@@ -16,18 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "GL/glew.h"
-#include "imgui.h"
-#include "imgui_internal.h"
-#include "backends/imgui_impl_opengl3.h"
+//#include "GL/glew.h"
+//#include "imgui.h"
+//#include "imgui_internal.h"
 
-#include <osgEarth/ImGui/ImGui>
+#include <osgEarth/ImGui/ImGuiApp>
+#include "backends/imgui_impl_opengl3.h"
 #include <osgEarth/GLUtils>
 
-using namespace osgEarth::GUI;
-
-
-/***********************************************************************************/
 using namespace osgEarth::GUI;
 
 
@@ -417,6 +413,7 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
 
 /***********************************************************************************/
 
+#if 0
 static osg::RefNodePath s_selectedNodePath;
 
 osg::Node* osgEarth::GUI::getSelectedNode()
@@ -443,6 +440,5 @@ void osgEarth::GUI::setSelectedNodePath(const osg::NodePath& nodePath)
         s_selectedNodePath.push_back(*itr);
     }
 }
-
-
+#endif
 

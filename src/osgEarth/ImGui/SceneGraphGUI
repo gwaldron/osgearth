@@ -31,7 +31,8 @@
 #include <osg/io_utils>
 #include <osg/PolygonMode>
 
-namespace osgEarth {
+namespace osgEarth
+{
     namespace GUI
     {
         using namespace osgEarth;
@@ -130,12 +131,76 @@ namespace osgEarth {
         class SceneGraphGUI : public BaseGUI
         {
         public:
+            osg::ref_ptr<osg::Node> _selectedNode;
+            osg::RefNodePath _selectedNodePath;
+
+            osg::ref_ptr<osg::Node> getSelectedNode()
+            {
+                return _selectedNode;
+            }
+
+            const osg::RefNodePath& getSelectedNodePath()
+            {
+                return _selectedNodePath;
+            }
+
+            void setSelectedNodePath(const osg::NodePath& nodePath)
+            {
+                _selectedNodePath.clear();
+                for (auto itr = nodePath.begin(); itr != nodePath.end(); ++itr)
+                {
+                    _selectedNodePath.push_back(*itr);
+                }
+            }
+
+            struct SelectNodeHandler : public osgGA::GUIEventHandler
+            {
+                SceneGraphGUI* _owner;
+
+                SelectNodeHandler(SceneGraphGUI* owner) :
+                    _owner(owner)
+                {
+                }
+
+                bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+                {
+                    osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+                    if (ea.getEventType() == ea.PUSH && ea.getButton() == ea.LEFT_MOUSE_BUTTON && ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL)
+                    {
+                        float w = 5.0;
+                        float h = 5.0;
+
+                        float x = ea.getX();
+                        float y = ea.getY();
+
+                        osg::ref_ptr< osgUtil::PolytopeIntersector> picker = new osgUtil::PolytopeIntersector(osgUtil::Intersector::WINDOW, x - w, y - h, x + w, y + h);
+                        picker->setIntersectionLimit(osgUtil::Intersector::LIMIT_NEAREST);
+                        osgUtil::IntersectionVisitor iv(picker.get());
+                        // This is a hack, but we set the node mask to something other than 1 << 2 which is what the "selected bounds" node mask is set to to avoid picking it.  
+                        // We should rework this later into something more formal so we can add widget type nodes that aren't generally interacted with.
+                        iv.setTraversalMask((1 << 1));
+                        view->getCamera()->accept(iv);
+                        if (picker->containsIntersections())
+                        {
+                            osg::NodePath nodePath = picker->getIntersections().begin()->nodePath;
+                            nodePath.push_back(picker->getIntersections().begin()->drawable.get());
+                            _owner->setSelectedNodePath(nodePath);
+
+                        }
+                    }
+                    return false;
+                }
+            };
 
             class SceneHierarchyVisitor : public osg::NodeVisitor
             {
             public:
-                SceneHierarchyVisitor() :
-                    osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+                SceneGraphGUI* _owner;
+
+                SceneHierarchyVisitor(SceneGraphGUI* owner) :
+                    osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+                    _owner(owner)
                 {
                     setNodeMaskOverride(~0);
                 }
@@ -146,7 +211,7 @@ namespace osgEarth {
                     std::string label = getLabel(node);
                     ImGuiTreeNodeFlags node_flags = base_flags;
                     node_flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-                    if (getSelectedNode() == &node)
+                    if (_owner->getSelectedNode() == &node)
                     {
                         node_flags |= ImGuiTreeNodeFlags_Selected;
                     }
@@ -154,7 +219,7 @@ namespace osgEarth {
                     ImGui::TreeNodeEx(&node, node_flags, label.c_str());
                     if (ImGui::IsItemClicked())
                     {                                         
-                        setSelectedNodePath(getNodePath());
+                        _owner->setSelectedNodePath(getNodePath());
                     }
                 }
 
@@ -162,7 +227,7 @@ namespace osgEarth {
                 {
                     std::string label = getLabel(node);
                     ImGuiTreeNodeFlags node_flags = base_flags;
-                    if (getSelectedNode() == &node)
+                    if (_owner->getSelectedNode() == &node)
                     {
                         node_flags |= ImGuiTreeNodeFlags_Selected;
                     }
@@ -175,7 +240,7 @@ namespace osgEarth {
                     bool node_open = ImGui::TreeNodeEx(&node, node_flags, label.c_str());
                     if (ImGui::IsItemClicked())
                     {                     
-                        setSelectedNodePath(getNodePath());
+                        _owner->setSelectedNodePath(getNodePath());
                     }
                     if (node_open)
                     {
@@ -194,7 +259,7 @@ namespace osgEarth {
 
                 bool isInSelectedNodePath(osg::Node* node)
                 {
-                    auto selectedNodePaths = getSelectedNodePath();                    
+                    auto selectedNodePaths = _owner->getSelectedNodePath();                    
 
                     for (unsigned int i = 0; i < selectedNodePaths.size(); i++)
                     {
@@ -233,7 +298,7 @@ namespace osgEarth {
                     if (!_installedSelectNodeHandler)
                     {
                         auto view = dynamic_cast<osgViewer::View*>(ri.getView());
-                        view->addEventHandler(new SelectNodeHandler());
+                        view->addEventHandler(new SelectNodeHandler(this));
                         _installedSelectNodeHandler = true;
                     }
 
@@ -242,7 +307,7 @@ namespace osgEarth {
                     if (ImGui::CollapsingHeader("Scene"))
                     {
                         ImGui::BeginChild("Scene", ImVec2(0, 0.6f * size.y));
-                        SceneHierarchyVisitor v;
+                        SceneHierarchyVisitor v(this);
                         _node->accept(v);
 
                         ImGui::EndChild();

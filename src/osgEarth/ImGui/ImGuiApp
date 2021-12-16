@@ -49,6 +49,94 @@ namespace osgEarth
 {
     namespace GUI
     {
+        class GlewInitOperation : public osg::Operation
+        {
+        public:
+            GlewInitOperation()
+                : osg::Operation("GlewInitCallback", false)
+            {
+            }
+
+            void operator()(osg::Object* object) override
+            {
+                osg::GraphicsContext* context = dynamic_cast<osg::GraphicsContext*>(object);
+                if (!context)
+                {
+                    return;
+                }
+
+#ifdef GLEW_OK
+                if (glewInit() != GLEW_OK)
+                {
+                    OSG_FATAL << "glewInit() failed" << std::endl;
+                }
+#endif
+            }
+        };
+
+
+        class OsgImGuiHandler : public osgGA::GUIEventHandler
+        {
+        public:
+            OsgImGuiHandler();
+
+            bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
+
+            class RealizeOperation : public osgEarth::GUI::GlewInitOperation
+            {
+                void operator()(osg::Object* object) override;
+            };
+
+            virtual void load(void* section, const std::string& key, const std::string& value) { }
+
+            virtual void save(osgEarth::Config& conf) { }
+
+            virtual void* findByName(const char* name) { return nullptr; }
+
+            virtual void* findByType(const std::type_info& type) { return nullptr; }
+
+            bool getAutoAdjustProjectionMatrix() const { return autoAdjustProjectionMatrix; }
+            void setAutoAdjustProjectionMatrix(bool value) { autoAdjustProjectionMatrix = value; }
+
+        protected:
+            // Put your ImGui code inside this function
+            virtual void draw(osg::RenderInfo& renderInfo) = 0;
+            friend class RealizeOperation;
+
+            virtual void init();
+
+        private:
+
+
+            void setCameraCallbacks(osg::Camera* camera);
+
+            void newFrame(osg::RenderInfo& renderInfo);
+
+            void render(osg::RenderInfo& renderInfo);
+
+        private:
+            struct ImGuiNewFrameCallback;
+            struct ImGuiRenderCallback;
+
+            double time_;
+            bool mousePressed_[3];
+            bool mouseDoubleClicked_[3];
+            float mouseWheel_;
+            bool initialized_;
+            bool firstFrame_;
+            bool show_;
+            bool autoAdjustProjectionMatrix = true;
+
+            static void* handleStartEntry(
+                ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name);
+
+            static void handleReadSetting(ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line);
+
+            static void handleWriteSettings(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf);
+
+            void installSettingsHandler();
+        };
+
         // ALL-PURPOSE GUI container - create a full-screen menu bar
         // that includes all built-in GUIs. User can add their own.
         class ApplicationGUI : public OsgImGuiHandler

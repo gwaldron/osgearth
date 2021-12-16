@@ -34,39 +34,47 @@ float oe_terrain_getElevation(in vec2 uv);
 #define VERTEX_SKIRT 8
 #define VERTEX_CONSTRAINT 16
 
+#define is_odd(x) ((x&1)==1)
+#define is_even(x) ((x&1)==0)
+
 int oe_rex_getNeighborIndex()
 {
+    const int skirt = OE_TILE_SIZE * OE_TILE_SIZE;
     int off = 0;
-    int col = gl_VertexID % OE_TILE_SIZE;
-    int row = gl_VertexID / OE_TILE_SIZE;
-    if ((col & 1) == 1) off -= 1;
-    if ((row & 1) == 1) off -= OE_TILE_SIZE;
+
+    if (gl_VertexID < skirt) // surface
+    {
+        int col = gl_VertexID % OE_TILE_SIZE;
+        int row = gl_VertexID / OE_TILE_SIZE;
+        if (is_odd(col)) off -= 1;
+        if (is_odd(row)) off -= OE_TILE_SIZE;
+    }
+    else if (gl_VertexID < skirt + 2 * (OE_TILE_SIZE-1)) // south skirt
+    {
+        int vi = gl_VertexID - skirt;
+        if (is_even(vi) && is_odd(vi / 2)) off -= 2;
+        else if (is_odd(vi) && is_odd((vi - 1) / 2)) off -= 2;
+    }
+    else if (gl_VertexID < skirt + 4 * (OE_TILE_SIZE-1)) // east skirt
+    {
+        int vi = gl_VertexID - (skirt + 2 * (OE_TILE_SIZE-1));
+        if (is_even(vi) && is_odd(vi / 2)) off -= 2;
+        else if (is_odd(vi) && is_odd((vi - 1) / 2)) off -= 2;
+    }
+    else if (gl_VertexID < skirt + 6 * (OE_TILE_SIZE-1)) // north skirt
+    {
+        int vi = gl_VertexID - (skirt + 4 * (OE_TILE_SIZE-1));
+        if (is_even(vi) && is_odd(vi / 2)) off += 2;
+        else if (is_odd(vi) && is_odd((vi - 1) / 2)) off += 2;
+    }
+    else // west skirt
+    {
+        int vi = gl_VertexID - (skirt + 6 * (OE_TILE_SIZE-1));
+        if (is_even(vi) && is_odd(vi / 2)) off += 2;
+        else if (is_odd(vi) && is_odd((vi - 1) / 2)) off += 2;
+        if (gl_VertexID + off >= OE_TILE_VERTS) off -= OE_SKIRT_VERTS;
+    }
     return gl_VertexID + off;
-}
-
-// Compute a morphing factor
-float oe_rex_ComputeMorphFactor(in vec4 position, in vec3 up)
-{
-    // Find the "would be" position of the vertex (the position the vertex would
-    // assume with no morphing)
-	vec4 final_position = position;
-
-#ifdef OE_TERRAIN_RENDER_ELEVATION
-    float elev = oe_terrain_getElevation( oe_layer_tilec.st );
-    final_position.xyz += up*elev;
-#endif
-
-#ifdef OE_IS_DEPTH_CAMERA
-    // For a depth camera, we have to compute the morphed position
-    // from the perspective of the primary camera so they match up:
-    final_position = oe_shadowToPrimaryMatrix * final_position;
-#endif
-
-    int lod = int(oe_tile_key.z);
-    float dist_to_eye = length(final_position.xyz); // or just -z.
-    vec2 mc = oe_global.morphConstants[lod];
-    float morph = 1.0f - clamp(mc[0] - dist_to_eye * mc[1], 0.0, 1.0 );
-    return morph;
 }
 
 void oe_rex_morph(inout vec4 vertex)
@@ -76,7 +84,26 @@ void oe_rex_morph(inout vec4 vertex)
     // other things (like image blending)
     if ((oe_terrain_vertexMarker & VERTEX_CONSTRAINT) == 0)
     {
-        oe_rex_morphFactor = oe_rex_ComputeMorphFactor(vertex, oe_UpVectorView);
+        // Start by computing the morphing factor.
+        // Find the "would be" position of the vertex (the position the vertex would
+        // assume with no morphing)
+        vec4 elevated_vertex = vertex;
+
+#ifdef OE_TERRAIN_RENDER_ELEVATION
+        float elev = oe_terrain_getElevation(oe_layer_tilec.st);
+        elevated_vertex.xyz += oe_UpVectorView * elev;
+#endif
+
+#ifdef OE_IS_DEPTH_CAMERA
+        // For a depth camera, we have to compute the morphed position
+        // from the perspective of the primary camera so they match up:
+        elevated_vertex = oe_shadowToPrimaryMatrix * elevated_vertex;
+#endif
+
+        int lod = int(oe_tile_key.z);
+        float dist_to_eye = length(elevated_vertex.xyz); // or just -z?
+        vec2 mc = oe_global.morphConstants[lod];
+        oe_rex_morphFactor = 1.0f - clamp(mc[0] - dist_to_eye * mc[1], 0.0, 1.0);
 
 #ifdef OE_TERRAIN_MORPH_GEOMETRY
 
@@ -93,13 +120,9 @@ void oe_rex_morph(inout vec4 vertex)
         vec2 fractionalPart = fract(oe_layer_tilec.st * halfSize) * twoOverHalfSize;
         vec2 neighbor_tilec = clamp(oe_layer_tilec.st - fractionalPart, 0.0, 1.0);
 
-        // morph the vertex:
+        // morph the vertex, normal, and uvs.
         vertex.xyz = mix(vertex.xyz, neighbor_vertex.xyz, oe_rex_morphFactor);
-
-        // morph the normal:
         vp_Normal = normalize(mix(vp_Normal, neighbor_normal, oe_rex_morphFactor));
-
-        // morph hte uvs:
         oe_layer_tilec.st = mix(oe_layer_tilec.st, neighbor_tilec, oe_rex_morphFactor);
 #endif
     }

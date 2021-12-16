@@ -410,16 +410,16 @@ GeometryPool::createGeometry(
 
             // first, create all the skirt verts, normals, and texcoords.
             for (int c = 0; c < (int)tileSize - 1; ++c)
-                addSkirtDataForIndex(c, height); //top
+                addSkirtDataForIndex(c, height); //south
 
             for (int r = 0; r < (int)tileSize - 1; ++r)
-                addSkirtDataForIndex(r*tileSize + (tileSize - 1), height); //right
+                addSkirtDataForIndex(r*tileSize + (tileSize - 1), height); //east
 
             for (int c = tileSize - 1; c > 0; --c)
-                addSkirtDataForIndex((tileSize - 1)*tileSize + c, height); //bottom
+                addSkirtDataForIndex((tileSize - 1)*tileSize + c, height); //north
 
             for (int r = tileSize - 1; r > 0; --r)
-                addSkirtDataForIndex(r*tileSize, height); //left
+                addSkirtDataForIndex(r*tileSize, height); //west
         }
 
         // By default we tessellate the surface, but if there's a masking set

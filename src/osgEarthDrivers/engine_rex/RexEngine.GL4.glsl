@@ -1,21 +1,19 @@
 #extension GL_ARB_gpu_shader_int64 : enable
 
-//#if !defined(VP_STAGE_FRAGMENT)
-
 #define OE_TILE_SIZE 17
-
-#define MAX_TILE_VERTS 417
+#define OE_TILE_VERTS 417
+#define OE_SKIRT_VERTS 128
 
 struct oe_rex_Global {
-    vec2 uvs[MAX_TILE_VERTS];
+    vec2 uvs[OE_TILE_VERTS];
     float padding[2];
     vec2 morphConstants[19]; // TODO - one per LOD
     float padding2[2];
 };
 
 struct oe_rex_Tile {
-    vec4 verts[MAX_TILE_VERTS];
-    vec4 normals[MAX_TILE_VERTS];
+    vec4 verts[OE_TILE_VERTS];
+    vec4 normals[OE_TILE_VERTS];
     vec4 tileKey;
     mat4 modelViewMatrix;
     mat4 colorMat;
@@ -31,8 +29,6 @@ struct oe_rex_Tile {
     int drawOrder;
     float padding[3];
 };
-
-#undef MAX_TILE_VERTS
 
 layout(binding = 0, std430) readonly buffer TileBuffer {
     oe_rex_Tile oe_tile[];

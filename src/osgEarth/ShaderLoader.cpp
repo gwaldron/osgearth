@@ -147,6 +147,64 @@ namespace
         result[1] = source.substr(newlinePos+1);
         return result;
     }
+
+    void insertStageDefine(std::string& source, osg::Shader::Type stage)
+    {
+        std::string define;
+        if (stage == osg::Shader::VERTEX) define = "VP_STAGE_VERTEX";
+        else if (stage == osg::Shader::TESSCONTROL) define = "VP_STAGE_TESSCONTROL";
+        else if (stage == osg::Shader::TESSEVALUATION) define = "VP_STAGE_TESSEVALUATION";
+        else if (stage == osg::Shader::GEOMETRY) define = "VP_STAGE_GEOMERTY";
+        else if (stage == osg::Shader::COMPUTE) define = "VP_STAGE_COMPUTE";
+        else if (stage == osg::Shader::FRAGMENT) define = "VP_STAGE_FRAGMENT";
+        else define = "UNDEFINED";
+
+        std::vector<std::string> parts = splitAtEndOfLineStartingWith(source, "#version");
+        if (parts.size() == 2)
+        {
+            source =
+                parts[0] +
+                "#define " + define + "\n" +
+                parts[1];
+        }
+    }
+
+    osg::Shader::Type getShaderTypeFromLocation(ShaderComp::FunctionLocation loc)
+    {
+        // If a location is set, install in that location only
+        if (loc == ShaderComp::LOCATION_VERTEX_MODEL ||
+            loc == ShaderComp::LOCATION_VERTEX_VIEW ||
+            loc == ShaderComp::LOCATION_VERTEX_CLIP)
+        {
+            return osg::Shader::VERTEX;
+        }
+        else if (
+            loc == ShaderComp::LOCATION_FRAGMENT_COLORING ||
+            loc == ShaderComp::LOCATION_FRAGMENT_LIGHTING ||
+            loc == ShaderComp::LOCATION_FRAGMENT_OUTPUT)
+        {
+            return osg::Shader::FRAGMENT;
+        }
+        else if (
+            loc == ShaderComp::LOCATION_GEOMETRY)
+        {
+            return osg::Shader::GEOMETRY;
+        }
+        else if (
+            loc == ShaderComp::LOCATION_TESS_CONTROL)
+        {
+            return osg::Shader::TESSCONTROL;
+        }
+        else if (
+            loc == ShaderComp::LOCATION_TESS_EVALUATION)
+        {
+            return osg::Shader::TESSEVALUATION;
+        }
+        else
+        {
+            return osg::Shader::UNDEFINED;
+        }
+    }
 }
 
 
@@ -454,6 +512,8 @@ ShaderLoader::load(VirtualProgram*       vp,
             if (f.location.isSet() == false)
                 f.location = ShaderComp::LOCATION_FRAGMENT_COLORING;
 
+            insertStageDefine(source, getShaderTypeFromLocation(f.location.get()));
+
             // set the function!
             vp->setFunction(
                 f.entryPoint, 
@@ -468,11 +528,9 @@ ShaderLoader::load(VirtualProgram*       vp,
             if (f.location.isSet())
             {
                 // If a location is set, install in that location only
-                osg::Shader::Type type =
-                    f.location == ShaderComp::LOCATION_VERTEX_MODEL || 
-                    f.location == ShaderComp::LOCATION_VERTEX_VIEW || 
-                    f.location == ShaderComp::LOCATION_VERTEX_CLIP ?
-                    osg::Shader::VERTEX : osg::Shader::FRAGMENT;
+                osg::Shader::Type type = getShaderTypeFromLocation(f.location.get());
+
+                insertStageDefine(source, type);
 
                 osg::Shader* shader = new osg::Shader(type, source);
                 shader->setName( filename );
@@ -489,21 +547,11 @@ ShaderLoader::load(VirtualProgram*       vp,
                     osg::Shader::TESSCONTROL, 
                     osg::Shader::TESSEVALUATION
                 };
-                const std::string stage_defines[5] = {
-                    "VP_STAGE_VERTEX",
-                    "VP_STAGE_FRAGMENT",
-                    "VP_STAGE_GEOMETRY",
-                    "VP_STAGE_TESSCONTROL",
-                    "VP_STAGE_TESSEVALUATION"
-                };
 
                 for(int i=0; i<5; ++i)
                 {
-                    std::vector<std::string> parts = splitAtEndOfLineStartingWith(source, "#version");
-                    std::string new_source =
-                        parts[0] +
-                        "#define " + stage_defines[i] + "\n" +
-                        parts[1];
+                    std::string new_source = source;
+                    insertStageDefine(new_source, types[i]);
                     osg::Shader* shader = new osg::Shader(types[i], new_source);
                     std::string name = Stringify() << filename + "_" + shader->getTypename();
                     shader->setName( name );

@@ -356,23 +356,28 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     Registry::instance()->getShaderFactory()->addPreProcessorCallback(
         "RexTerrainEngineNode",
-        [use_gl4](std::string& source)
+        [&](std::string& source)
         {
             while (true)
             {
-                const std::string token("#pragma vp_import_shared");
+                const std::string token("#pragma vp_import_sampler");
                 std::string::size_type statementPos = source.find(token);
                 if (statementPos == std::string::npos)
                     break;
 
-                std::string::size_type startPos = source.find_first_not_of(" \t", statementPos + token.length());
+                std::string::size_type startPos = source.find_first_not_of(" \t(", statementPos + token.length());
                 if (startPos == std::string::npos)
                     break;
 
-                std::string::size_type endPos = source.find('\n', startPos);
+                std::string::size_type endPos = source.find_first_of(")\n", startPos);
                 if (endPos == std::string::npos)
                     break;
 
+                std::string::size_type nlPos = source.find('\n', startPos);
+                if (nlPos == std::string::npos)
+                    break;
+
+                std::string line(source.substr(statementPos, nlPos - statementPos));
                 std::string statement(source.substr(statementPos, endPos - statementPos));
                 std::string value(trim(source.substr(startPos, endPos - startPos)));
 
@@ -391,8 +396,25 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
                         buf << incGL4 << "\n";
                     }
 
-                    buf << "#define " << tokens[0] << " sampler2D(tex[tile[oe_tileID].sharedIndex[0]])\n"
-                        << "#define " << tokens[1] << " tile[oe_tileID].sharedMat[0]\n";
+                    // find the shared index.
+                    int index = -1;
+                    const RenderBindings& bindings = this->_renderBindings;
+                    for (int i = SamplerBinding::SHARED; i < bindings.size() && index < 0; ++i)
+                    {
+                        if (bindings[i].samplerName() == tokens[0])
+                        {
+                            index = i - SamplerBinding::SHARED;
+                        }
+                    }
+                    if (index < 0)
+                    {
+                        OE_WARN << LC << "Cannot find a shared sampler binding for " << tokens[0] << std::endl;
+                        continue;
+                    }
+
+                    buf << "#define " << tokens[0] << "_HANDLE oe_terrain_tex[oe_tile[oe_tileID].sharedIndex[" << index << "]]\n"
+                        << "#define " << tokens[0] << " sampler2D(" << tokens[0] << "_HANDLE)\n"
+                        << "#define " << tokens[1] << " oe_tile[oe_tileID].sharedMat[" << index << "]\n";
                 }
                 else
                 {
@@ -400,7 +422,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
                         << "uniform mat4 " << tokens[1] << ";\n";
                 }
 
-                Strings::replaceIn(source, statement, buf.str());
+                Strings::replaceIn(source, line, buf.str());
             }
         }
     );
@@ -714,9 +736,11 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
     // If we're using geometry pooling, optimize the drawable for shared state
     // by sorting the draw commands.
+    // Skip if using GL4/indirect rendering.
     // TODO: benchmark this further to see whether it's worthwhile
     unsigned totalTiles = 0u;
-    if (getEngineContext()->getGeometryPool()->isEnabled())
+    if (options().useGL4() == false &&
+        getEngineContext()->getGeometryPool()->isEnabled())
     {
         totalTiles = culler._terrain.sortDrawCommands();
     }

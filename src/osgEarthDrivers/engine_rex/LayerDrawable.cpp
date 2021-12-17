@@ -306,10 +306,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                     }
                 }
 
-                // Morphing constants. Should probably put these in the global structure.
-
-
-                //TODO: other samplers and shared samplers...
+                // Other shared samplers.
                 if (tile._sharedSamplers != nullptr)
                 {
                     for (unsigned i = SamplerBinding::SHARED; i < tile._sharedSamplers->size(); ++i)
@@ -318,15 +315,19 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                         if (s._arena_texture)
                         {
                             int k = i - SamplerBinding::SHARED;
-                            s._arena_texture->_compress = false;
-                            s._arena_texture->_mipmap = true;
-                            //s._arena_texture->_maxAnisotropy = 4.0f;
-                            buf.sharedIndex[k] = _textures->add(s._arena_texture);
-                            for (int i = 0; i < 16; ++i) buf.sharedMat[k][i] = s._matrix.ptr()[i];
+                            if (k < NUM_SHARED_SAMPLERS)
+                            {
+                                s._arena_texture->_compress = false;
+                                s._arena_texture->_mipmap = true;
+                                //s._arena_texture->_maxAnisotropy = 4.0f;
+                                buf.sharedIndex[k] = _textures->add(s._arena_texture);
+                                for (int i = 0; i < 16; ++i) buf.sharedMat[k][i] = s._matrix.ptr()[i];
+                            }
+                            else
+                            {
+                                OE_WARN << LC << "Exceeded number of shared samplers" << std::endl;
+                            }
                         }
-
-                        //TODO:
-                        break;
                     }
                 }
 
@@ -335,6 +336,8 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                 if (gs.global == nullptr)
                 {
                     GlobalBuffer buf;
+
+                    // Shared UVs (same for every unconstrained tile)
                     for (unsigned i = 0; i < uvs->size(); ++i)
                     {
                         const osg::Vec3f& uv = (*uvs)[i];
@@ -342,6 +345,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                         buf.uvs[2 * i + 1] = uv.y();
                     }
 
+                    // Encode morphing constants, one per LOD
                     const SelectionInfo& info = _context->getSelectionInfo();
                     for (unsigned lod = 0; lod < 19; ++lod)
                     {

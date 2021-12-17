@@ -1076,9 +1076,8 @@ void TileNode::inheritSharedSampler(int binding)
     TileNode* parent = getParentTile();
     if (parent)
     {
-        TileRenderModel& parentModel = parent->_renderModel;
         Sampler& mySampler = _renderModel._sharedSamplers[binding];
-        mySampler = parentModel._sharedSamplers[binding];
+        mySampler = parent->_renderModel._sharedSamplers[binding];
         if (mySampler._texture.valid())
             mySampler._matrix.preMult(scaleBias[_key.getQuadrant()]);
     }
@@ -1170,6 +1169,7 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
 
                 // Did something change?
                 if (mySampler._texture.get() != parentColorSampler._texture.get() ||
+                    mySampler._arena_texture != parentColorSampler._arena_texture ||
                     mySampler._matrix != newMatrix ||
                     mySampler._revision != parentColorSampler._revision)
                 {
@@ -1250,7 +1250,7 @@ bool
 TileNode::passInLegalRange(const RenderingPass& pass) const
 {
     return 
-        pass.tileLayer() == 0L ||
+        pass.tileLayer() == nullptr ||
         pass.tileLayer()->isKeyInVisualRange(getKey());
 }
 

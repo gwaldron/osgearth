@@ -111,6 +111,8 @@ namespace osgEarth { namespace REX
         // maps directly into an SSBO, so don't cross the vec4 streams
         #define NUM_VERTS 417
 
+        #define NUM_SHARED_SAMPLERS 8
+
         // data shared across all tiles
         struct GlobalBuffer
         {
@@ -130,12 +132,12 @@ namespace osgEarth { namespace REX
             float parentMat[4 * 4];
             float elevMat[4 * 4];
             float normalMat[4 * 4];
-            float sharedMat[4][4 * 4];
+            float sharedMat[NUM_SHARED_SAMPLERS][4 * 4];
             int colorIndex;
             int parentIndex;
             int elevIndex;
             int normalIndex;
-            int sharedIndex[4];
+            int sharedIndex[NUM_SHARED_SAMPLERS];
             int drawOrder; // todo: stuff this somewhere else
             float padding[3];
 

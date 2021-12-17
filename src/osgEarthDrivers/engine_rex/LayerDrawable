@@ -130,12 +130,12 @@ namespace osgEarth { namespace REX
             float parentMat[4 * 4];
             float elevMat[4 * 4];
             float normalMat[4 * 4];
-            float sharedMat[4][4 * 4];
+            float sharedMat[8][4 * 4];
             int colorIndex;
             int parentIndex;
             int elevIndex;
             int normalIndex;
-            int sharedIndex[4];
+            int sharedIndex[8];
             int drawOrder; // todo: stuff this somewhere else
             float padding[3];
 

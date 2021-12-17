@@ -20,12 +20,12 @@ struct oe_rex_Tile {
     mat4 parentMat;
     mat4 elevMat;
     mat4 normalMat;
-    mat4 sharedMat[4];
+    mat4 sharedMat[8];
     int colorIndex;
     int parentIndex;
     int elevIndex;
     int normalIndex;
-    int sharedIndex[4];
+    int sharedIndex[8];
     int drawOrder;
     float padding[3];
 };
@@ -40,6 +40,8 @@ layout(binding = 5, std430) readonly buffer TextureArena {
     uint64_t oe_terrain_tex[];
 };
 
-int oe_tileID; // vertex stage global
-
-//#endif // !VP_STAGE_FRAGMENT
+#ifdef VP_STAGE_FRAGMENT
+flat in int oe_tileID;
+#else
+flat out int oe_tileID;
+#endif

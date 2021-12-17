@@ -153,6 +153,7 @@ namespace osgEarth
                 {
                     _selectedNodePath.push_back(*itr);
                 }
+                _boundsDirty = true;
             }
 
             struct SelectNodeHandler : public osgGA::GUIEventHandler
@@ -364,7 +365,10 @@ namespace osgEarth
                     setSelectedNodePath(empty);
                 }
 
-                updateBoundsDebug(_mapNode.get());
+                if (_boundsDirty)
+                {
+                    updateBoundsDebug(_mapNode.get());
+                }
             }
 
             void updateBoundsDebug(MapNode* mapNode)
@@ -431,6 +435,8 @@ namespace osgEarth
                         }
                     }
                 }
+
+                _boundsDirty = false;
             }
 
 
@@ -708,6 +714,7 @@ namespace osgEarth
             osg::observer_ptr<MapNode> _mapNode;
             osg::RefNodePath _selectedNodePath;
             bool _propertiesExpanded = true;
+            bool _boundsDirty = false;
         };
     }
 }

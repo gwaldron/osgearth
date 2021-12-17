@@ -130,13 +130,15 @@ namespace osgEarth
 
         class SceneGraphGUI : public BaseGUI
         {
-        public:
-            osg::ref_ptr<osg::Node> _selectedNode;
-            osg::RefNodePath _selectedNodePath;
+        public:            
 
             osg::ref_ptr<osg::Node> getSelectedNode()
             {
-                return _selectedNode;
+                if (!_selectedNodePath.empty())
+                {
+                    return _selectedNodePath.back();
+                }
+                return nullptr;
             }
 
             const osg::RefNodePath& getSelectedNodePath()
@@ -216,7 +218,16 @@ namespace osgEarth
                         node_flags |= ImGuiTreeNodeFlags_Selected;
                     }
 
+                    bool nodeOff = node.getNodeMask() == 0u;
+                    if (nodeOff)
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
+                    }
                     ImGui::TreeNodeEx(&node, node_flags, label.c_str());
+                    if (nodeOff)
+                    {
+                        ImGui::PopStyleColor();
+                    }
                     if (ImGui::IsItemClicked())
                     {                                         
                         _owner->setSelectedNodePath(getNodePath());
@@ -224,7 +235,7 @@ namespace osgEarth
                 }
 
                 void apply(osg::Group& node)
-                {
+                {   
                     std::string label = getLabel(node);
                     ImGuiTreeNodeFlags node_flags = base_flags;
                     if (_owner->getSelectedNode() == &node)
@@ -237,7 +248,17 @@ namespace osgEarth
                         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
                     }
 
+                    bool nodeOff = node.getNodeMask() == 0u;
+                    if (nodeOff)
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
+                    }
+
                     bool node_open = ImGui::TreeNodeEx(&node, node_flags, label.c_str());
+                    if (nodeOff)
+                    {
+                        ImGui::PopStyleColor();
+                    }
                     if (ImGui::IsItemClicked())
                     {                     
                         _owner->setSelectedNodePath(getNodePath());
@@ -252,7 +273,13 @@ namespace osgEarth
                 std::string getLabel(osg::Node& node)
                 {
                     std::stringstream buf;
-                    buf << node.getName() << " (" << typeid(node).name() << ")";
+                    buf << node.getName() << " [" << typeid(node).name() << "]";
+
+                    osg::Group* group = node.asGroup();
+                    if (group)
+                    {
+                        buf << " (" << group->getNumChildren() << ")";
+                    }
 
                     return buf.str();
                 }
@@ -306,7 +333,8 @@ namespace osgEarth
                     
                     if (ImGui::CollapsingHeader("Scene"))
                     {
-                        ImGui::BeginChild("Scene", ImVec2(0, 0.6f * size.y));
+                        // Change the size based on whether the properties panel is 
+                        ImGui::BeginChild("Scene", ImVec2(0, getSelectedNode() && _propertiesExpanded ? 0.6f * size.y : 0.90f * size.y), false, ImGuiWindowFlags_HorizontalScrollbar);
                         SceneHierarchyVisitor v(this);
                         _node->accept(v);
 
@@ -315,7 +343,8 @@ namespace osgEarth
 
                     if (getSelectedNode())
                     {
-                        if (ImGui::CollapsingHeader("Properties"))
+                        _propertiesExpanded = ImGui::CollapsingHeader("Properties", ImGuiTreeNodeFlags_DefaultOpen);
+                        if (_propertiesExpanded)
                         {
                             ImGui::BeginChild("Properties");
                             auto view = dynamic_cast<osgViewer::View*>(ri.getView());
@@ -677,6 +706,8 @@ namespace osgEarth
             osg::MatrixTransform* _selectedBounds;
             osg::observer_ptr<osg::Node> _node;
             osg::observer_ptr<MapNode> _mapNode;
+            osg::RefNodePath _selectedNodePath;
+            bool _propertiesExpanded = true;
         };
     }
 }

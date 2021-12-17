@@ -97,7 +97,7 @@ TileRasterizer::TileRasterizer(unsigned width, unsigned height)
     osg::StateSet* ss = _cx->_rtt->getOrCreateStateSet();
     //ss->setMode(GL_BLEND, 1);
     ss->setMode(GL_CULL_FACE, 0);
-    ss->setAttributeAndModes(new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), 1);
+    ss->setAttributeAndModes(new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
     GLUtils::setLighting(ss, 0);
 
     // default no-op shader

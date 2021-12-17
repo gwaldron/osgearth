@@ -315,12 +315,18 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                         if (s._arena_texture)
                         {
                             int k = i - SamplerBinding::SHARED;
-                            s._arena_texture->_compress = false;
-                            s._arena_texture->_mipmap = true;
-                            //s._arena_texture->_maxAnisotropy = 4.0f;
-                            buf.sharedIndex[k] = _textures->add(s._arena_texture);
-                            //for (int i = 0; i < 16; ++i) buf.sharedMat[k][i] = s._matrix.ptr()[i];
-                            for (int i = 0; i < 16; ++i) buf.sharedMat[k][i] = s._matrix.ptr()[i];
+                            if (k < NUM_SHARED_SAMPLERS)
+                            {
+                                s._arena_texture->_compress = false;
+                                s._arena_texture->_mipmap = true;
+                                //s._arena_texture->_maxAnisotropy = 4.0f;
+                                buf.sharedIndex[k] = _textures->add(s._arena_texture);
+                                for (int i = 0; i < 16; ++i) buf.sharedMat[k][i] = s._matrix.ptr()[i];
+                            }
+                            else
+                            {
+                                OE_WARN << LC << "Exceeded number of shared samplers" << std::endl;
+                            }
                         }
                     }
                 }

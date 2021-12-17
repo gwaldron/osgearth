@@ -436,7 +436,7 @@ namespace osgEarth
 
             void properties(osg::Node* node, osg::RenderInfo& ri, EarthManipulator* manip, MapNode* mapNode)
             {
-                if (ImGui::Button("Zoom to"))
+                if (manip && ImGui::Button("Zoom to"))
                 {
                     osg::NodePath nodePath = node->getParentalNodePaths()[0];
                     osg::Matrixd localToWorld = osg::computeLocalToWorld(nodePath);

@@ -96,6 +96,8 @@ namespace osgEarth { namespace REX
         void accept(osg::PrimitiveFunctor& functor) const override;
         bool supports(const osg::PrimitiveIndexFunctor&) const override { return true; }
         void accept(osg::PrimitiveIndexFunctor&) const override;
+        void releaseGLObjects(osg::State*) const override;
+        void resizeGLObjectBuffers(unsigned size) override;
 
     protected:
 

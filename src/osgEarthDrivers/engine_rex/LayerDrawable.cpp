@@ -176,7 +176,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
     GCState& gs = cs.gcState[ri.getContextID()];
     osg::State& state = *ri.getState();
 
-    if (gs.tiles == nullptr)
+    if (gs.tiles == nullptr || !gs.tiles->valid())
     {
         gs.tiles = GLBuffer::create(
             GL_SHADER_STORAGE_BUFFER,
@@ -184,7 +184,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             "LayerDrawable Tiles");
     }
 
-    if (gs.commands == nullptr)
+    if (gs.commands == nullptr || !gs.commands->valid())
     {
         gs.commands = GLBuffer::create(
             GL_DRAW_INDIRECT_BUFFER,
@@ -333,7 +333,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
                 // First time through any layer? Make the global buffer
                 // TODO: this might eventually go to the terrain level.
-                if (gs.global == nullptr)
+                if (gs.global == nullptr || !gs.global->valid())
                 {
                     GlobalBuffer buf;
 
@@ -371,7 +371,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
                 // First time through? Create the various shared buffer objects
                 // we will need.
-                if (gs.ebo == nullptr)
+                if (gs.ebo == nullptr || !gs.ebo->valid())
                 {
                     // A shared EBO used by all tiles
                     osg::DrawElementsUShort* de = dynamic_cast<osg::DrawElementsUShort*>(
@@ -517,4 +517,57 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             GL_UNSIGNED_SHORT,
             nullptr);            // nullptr means data is bound at GL_DRAW_INDIRECT_BUFFER
     }
+}
+
+void
+LayerDrawable::releaseGLObjects(osg::State* state) const
+{
+    RenderState& cs = _rs;
+    if (state)
+    {
+        GCState& gs = cs.gcState[state->getContextID()];
+        if (gs.vao >= 0)
+        {
+            osg::GLExtensions* ext = state->get<osg::GLExtensions>();
+            ext->glDeleteVertexArrays(1, &gs.vao);
+            gs.vao = -1;
+        }
+        //if (gs.commands) gs.commands->release();
+        //if (gs.ebo) gs.ebo->release();
+        //if (gs.global) gs.global->release();
+        //if (gs.tiles) gs.tiles->release();
+        //if (gs.vbo) gs.vbo->release();
+        gs.commands = nullptr;
+        gs.ebo = nullptr;
+        gs.global = nullptr;
+        gs.tiles = nullptr;
+        gs.vbo = nullptr;
+    }
+    else
+    {
+        cs.gcState.setAllElementsTo(GCState());
+    }
+
+    if (_textures.valid())
+    {
+        _textures->releaseGLObjects(state);
+    }
+
+    osg::Drawable::releaseGLObjects(state);
+}
+
+void
+LayerDrawable::resizeGLObjectBuffers(unsigned size)
+{
+    if (_rs.gcState.size() < size)
+    {
+        _rs.gcState.resize(size);
+    }
+
+    if (_textures.valid())
+    {
+        _textures->resizeGLObjectBuffers(size);
+    }
+
+    osg::Drawable::resizeGLObjectBuffers(size);
 }

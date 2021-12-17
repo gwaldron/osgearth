@@ -358,7 +358,7 @@ void
 GLBuffer::bind() const
 {
     OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
-    OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name");
+    OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name: " + label() << );
     ext()->glBindBuffer(_target, _name);
 }
 
@@ -366,7 +366,7 @@ void
 GLBuffer::bind(GLenum otherTarget) const
 {
     OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
-    OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name");
+    OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name: " + label() << );
     ext()->glBindBuffer(otherTarget, _name);
 }
 
@@ -437,7 +437,7 @@ void
 GLTexture::bind(osg::State& state)
 {
     OE_DEVEL << LC << "GLTexture::bind, name=" << name() << std::endl;
-    OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name");
+    OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name: " + label() << );
 
     glBindTexture(_target, _name);
 
@@ -468,7 +468,7 @@ GLTexture::makeResident(bool toggle)
 {
     if (_isResident != toggle)
     {
-        OE_SOFT_ASSERT_AND_RETURN(_handle != ~0ULL, void(), "makeResident() called on invalid handle");
+        OE_SOFT_ASSERT_AND_RETURN(_handle != ~0ULL, void(), "makeResident() called on invalid handle: " + label() << );
 
         if (toggle == true)
             ext()->glMakeTextureHandleResident(_handle);

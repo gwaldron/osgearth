@@ -203,6 +203,15 @@ RexTerrainEngineNode::releaseGLObjects(osg::State* state) const
         _imageLayerStateSet.get()->releaseGLObjects(state);
     }
 
+    // release the LayerDrawables
+    for (auto& p : _persistent)
+    {
+        for (auto& d : p.second._drawables)
+        {
+            d.second->releaseGLObjects(state);
+        }
+    }
+
     TerrainEngineNode::releaseGLObjects(state);
 }
 

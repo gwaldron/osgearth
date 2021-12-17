@@ -124,6 +124,7 @@ namespace osgEarth
         using Ptr = std::shared_ptr<GLObject>;
         virtual const std::string& label() const { return _label; }
         virtual void release() = 0;
+        virtual bool valid() const = 0;
         virtual GLsizei size() const = 0;
         osg::GLExtensions* ext() const { return _ext; }
     protected:
@@ -155,6 +156,9 @@ namespace osgEarth
 
         //! allocated size of this buffer, from a call to bufferData or bufferStorage
         GLsizei size() const override { return _size; }
+
+        //! whether this object is ready to use
+        bool valid() const override { return _name != ~0U; }
 
         //! de-allocate and release this buffer
         void release();
@@ -195,6 +199,7 @@ namespace osgEarth
         void release();
         std::string& id() { return _id; }
         GLsizei size() const override { return _size; }
+        bool valid() const override { return _name != ~0U; }
         void storage2D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t);
         void storage3D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r);
         void subImage2D(GLint level, GLint xoff, GLint yoff, GLsizei width, GLsizei height, GLenum format, GLenum type, const void* pixels) const;

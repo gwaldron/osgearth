@@ -255,21 +255,36 @@ TextureSplattingLayer::buildStateSets()
         // Install the texture splatting shader
         VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
         TerrainShaders terrain_shaders;
-        terrain_shaders.load(vp, terrain_shaders.TextureSplatting, getReadOptions());
+
+        // Do the layer replacements BEFORE calling load:
+        terrain_shaders.replace(
+            "OE_LIFEMAP_TEX",
+            getLifeMapLayer()->getSharedTextureUniformName());
+
+        terrain_shaders.replace(
+            "OE_LIFEMAP_MAT",
+            getLifeMapLayer()->getSharedTextureMatrixUniformName());
+
+        terrain_shaders.load(
+            vp, 
+            terrain_shaders.TextureSplatting, 
+            getReadOptions());
 
         // General purpose define indicating that this layer sets PBR values.
         ss->setDefine("OE_USE_PBR");
         Shaders shaders;
         shaders.load(vp, shaders.PBR);
 
+#if 0
         // Find the LifeMap layer and access its share
         ss->setDefine(
             "OE_LIFEMAP_TEX",
-            getLifeMapLayer()->getSharedTextureUniformName());
+            
 
         ss->setDefine(
             "OE_LIFEMAP_MAT",
             getLifeMapLayer()->getSharedTextureMatrixUniformName());
+#endif
 
         if (getBiomeLayer())
         {

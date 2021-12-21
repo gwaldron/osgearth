@@ -430,10 +430,10 @@ namespace
 
     bool s_dumpShaders = false;        // debugging
 
-                                       /** A device that lets us do a const search on the State's attribute map. OSG does not yet
-                                       have a const way to do this. It has getAttributeVec() but that is non-const (it creates
-                                       the vector if it doesn't exist); Newer versions have getAttributeMap(), but that does not
-                                       go back to OSG 3.0. */
+    /** A device that lets us do a const search on the State's attribute map. OSG does not yet
+    have a const way to do this. It has getAttributeVec() but that is non-const (it creates
+    the vector if it doesn't exist); Newer versions have getAttributeMap(), but that does not
+    go back to OSG 3.0. */
     struct StateEx : public osg::State
     {
         static const VirtualProgram::AttrStack* getProgramStack(const osg::State& state)

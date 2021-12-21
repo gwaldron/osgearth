@@ -53,10 +53,11 @@ void oe_splat_View(inout vec4 vertex_view)
 #pragma vp_name Texture Splatter FS
 #pragma vp_function oe_splat_Frag, fragment, 0.8
 
-#pragma import_defines(OE_LIFEMAP_TEX)
-#pragma import_defines(OE_LIFEMAP_MAT)
-uniform sampler2D OE_LIFEMAP_TEX;
-uniform mat4 OE_LIFEMAP_MAT;
+#pragma oe_use_shared_layer(OE_LIFEMAP_TEX, OE_LIFEMAP_MAT)
+//#pragma import_defines(OE_LIFEMAP_TEX)
+//#pragma import_defines(OE_LIFEMAP_MAT)
+//uniform sampler2D OE_LIFEMAP_TEX;
+//uniform mat4 OE_LIFEMAP_MAT;
 
 #pragma import_defines(OE_COLOR_LAYER_TEX)
 #pragma import_defines(OE_COLOR_LAYER_MAT)

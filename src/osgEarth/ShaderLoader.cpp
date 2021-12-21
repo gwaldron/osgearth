@@ -231,6 +231,37 @@ ShaderLoader::getPragmaValue(const std::string& source, const std::string& key)
     return trim(source.substr(startPos, newlinePos-startPos));
 }
 
+bool
+ShaderLoader::getPragmaValueAsTokens(
+    const std::string& input,
+    const std::string& key,
+    std::string& line_out,
+    std::vector<std::string>& tokens_out)
+{
+    std::string::size_type statementPos = input.find(key);
+    if (statementPos == std::string::npos)
+        return 0;
+
+    std::string::size_type startPos = input.find_first_not_of(" \t(", statementPos + key.length());
+    if (startPos == std::string::npos)
+        return 0;
+
+    std::string::size_type endPos = input.find_first_of(")\n", startPos);
+    if (endPos == std::string::npos)
+        return 0;
+
+    std::string::size_type nlPos = input.find('\n', startPos);
+    if (nlPos == std::string::npos)
+        return 0;
+
+    line_out = input.substr(statementPos, nlPos - statementPos);
+    std::string statement(input.substr(statementPos, endPos - statementPos));
+    std::string value(trim(input.substr(startPos, endPos - startPos)));
+
+    StringTokenizer(value, tokens_out, ", \t", "", false, true);
+    return tokens_out.size();
+}
+
 void
 ShaderLoader::getAllPragmaValues(const std::string&     source,
                                  const std::string&     key,
@@ -322,7 +353,15 @@ ShaderLoader::load(const std::string&    filename,
         osgEarth::replaceIn(output, "%QUOTE%", "\"");
     }
 
-    // Run the "pre" callbacks before ANYTHING else
+    // Process any user-defined replacements.
+    for (ShaderPackage::ReplaceMap::const_iterator i = package._replaces.begin();
+        i != package._replaces.end();
+        ++i)
+    {
+        osgEarth::replaceIn(output, i->first, i->second);
+    }
+
+    // Run the "pre" callbacks before includes
     ShaderPreProcessor::runPre(output);
 
     // Process any "#pragma include" statements
@@ -384,14 +423,6 @@ ShaderLoader::load(const std::string&    filename,
             << varName;
 
         Strings::replaceIn(output, statement, newStatement);
-    }
-
-    // Process any replacements.
-    for (ShaderPackage::ReplaceMap::const_iterator i = package._replaces.begin();
-        i != package._replaces.end();
-        ++i)
-    {
-        osgEarth::replaceIn(output, i->first, i->second);
     }
 
     // Lastly, remove any CRs

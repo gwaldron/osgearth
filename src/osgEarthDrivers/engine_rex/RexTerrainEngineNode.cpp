@@ -365,73 +365,62 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     Registry::instance()->getShaderFactory()->addPreProcessorCallback(
         "RexTerrainEngineNode",
-        [&](std::string& source)
+        [this, use_gl4](std::string& source)
         {
-            while (true)
+            std::string line;
+            std::vector<std::string> tokens;
+
+            while (ShaderLoader::getPragmaValueAsTokens(
+                source,
+                "#pragma oe_use_shared_layer",
+                line,
+                tokens))
             {
-                const std::string token("#pragma vp_import_sampler");
-                std::string::size_type statementPos = source.find(token);
-                if (statementPos == std::string::npos)
-                    break;
-
-                std::string::size_type startPos = source.find_first_not_of(" \t(", statementPos + token.length());
-                if (startPos == std::string::npos)
-                    break;
-
-                std::string::size_type endPos = source.find_first_of(")\n", startPos);
-                if (endPos == std::string::npos)
-                    break;
-
-                std::string::size_type nlPos = source.find('\n', startPos);
-                if (nlPos == std::string::npos)
-                    break;
-
-                std::string line(source.substr(statementPos, nlPos - statementPos));
-                std::string statement(source.substr(statementPos, endPos - statementPos));
-                std::string value(trim(source.substr(startPos, endPos - startPos)));
-
-                std::vector<std::string> tokens;
-                StringTokenizer(value, tokens, ", \t", "", false, true);
-                if (tokens.size() != 2)
-                    continue;
-
-                std::ostringstream buf;
-
-                if (use_gl4)
+                if (tokens.size() == 2)
                 {
-                    const std::string incGL4 = "#pragma include RexEngine.GL4.glsl";
-                    if (source.find(incGL4) == std::string::npos)
-                    {
-                        buf << incGL4 << "\n";
-                    }
+                    std::ostringstream buf;
 
-                    // find the shared index.
-                    int index = -1;
-                    const RenderBindings& bindings = this->_renderBindings;
-                    for (int i = SamplerBinding::SHARED; i < bindings.size() && index < 0; ++i)
+                    if (use_gl4)
                     {
-                        if (bindings[i].samplerName() == tokens[0])
+                        const std::string incGL4 = "#pragma include RexEngine.GL4.glsl";
+                        if (source.find(incGL4) == std::string::npos)
                         {
-                            index = i - SamplerBinding::SHARED;
+                            buf << incGL4 << "\n";
                         }
+
+                        // find the shared index.
+                        int index = -1;
+                        const RenderBindings& bindings = this->_renderBindings;
+                        for (int i = SamplerBinding::SHARED; i < bindings.size() && index < 0; ++i)
+                        {
+                            if (bindings[i].samplerName() == tokens[0])
+                            {
+                                index = i - SamplerBinding::SHARED;
+                            }
+                        }
+                        if (index < 0)
+                        {
+                            OE_WARN << LC << "Cannot find a shared sampler binding for " << tokens[0] << std::endl;
+                            Strings::replaceIn(source, line, "// error, no matching sampler binding");
+                            continue;
+                        }
+
+                        buf << "#define " << tokens[0] << "_HANDLE oe_terrain_tex[oe_tile[oe_tileID].sharedIndex[" << index << "]]\n"
+                            << "#define " << tokens[0] << " sampler2D(" << tokens[0] << "_HANDLE)\n"
+                            << "#define " << tokens[1] << " oe_tile[oe_tileID].sharedMat[" << index << "]\n";
                     }
-                    if (index < 0)
+                    else
                     {
-                        OE_WARN << LC << "Cannot find a shared sampler binding for " << tokens[0] << std::endl;
-                        continue;
+                        buf << "uniform sampler2D " << tokens[0] << ";\n"
+                            << "uniform mat4 " << tokens[1] << ";\n";
                     }
 
-                    buf << "#define " << tokens[0] << "_HANDLE oe_terrain_tex[oe_tile[oe_tileID].sharedIndex[" << index << "]]\n"
-                        << "#define " << tokens[0] << " sampler2D(" << tokens[0] << "_HANDLE)\n"
-                        << "#define " << tokens[1] << " oe_tile[oe_tileID].sharedMat[" << index << "]\n";
+                    Strings::replaceIn(source, line, buf.str());
                 }
                 else
                 {
-                    buf << "uniform sampler2D " << tokens[0] << ";\n"
-                        << "uniform mat4 " << tokens[1] << ";\n";
+                    Strings::replaceIn(source, line, "// error, missing token(s)");
                 }
-
-                Strings::replaceIn(source, line, buf.str());
             }
         }
     );

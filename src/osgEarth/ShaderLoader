@@ -162,6 +162,17 @@ namespace osgEarth { namespace Util
             const std::string& source,
             const std::string& key);
 
+        //! Find the #pragma called "key" in the string "input".
+        //! Store the entire line in "line_out".
+        //! Tokenize the value into tokens_out. The value may or may not
+        //! be enclosed in parntheses, and its components may or may not be
+        //! delimited by commas.
+        static bool getPragmaValueAsTokens(
+            const std::string& input,
+            const std::string& key,
+            std::string& line_out,
+            std::vector<std::string>& tokens_out);
+
         static void getAllPragmaValues(
             const std::string&     source,
             const std::string&     key,

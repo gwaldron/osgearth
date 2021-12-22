@@ -219,7 +219,7 @@ namespace osgEarth { namespace Procedural
             {
                 PCPUniforms();
                 GLint _generateDataUL;
-                float _generateData[5];
+                float _generateData[6];
                 GLint _maxRangeUL;
             };
             typedef std::unordered_map<const void*, PCPUniforms> PCPUniformsMap;
@@ -242,7 +242,8 @@ namespace osgEarth { namespace Procedural
                 Renderer::Ptr _renderer;
                 VegetationLayer* _layer;
                 std::size_t _previousHash;
-                TileBatch _batch;
+                const TileBatch* _batch;
+                unsigned _numTilesInGroup;
                 bool _castShadows;
                 osg::Uniform* _maxRange_u;
 
@@ -253,7 +254,7 @@ namespace osgEarth { namespace Procedural
                 }
 
                 bool empty() const {
-                    return _batch._tiles.empty();
+                    return _numTilesInGroup == 0u;
                 }
 
                 void setGeometry(
@@ -316,10 +317,6 @@ namespace osgEarth { namespace Procedural
 
             mutable CameraStateMap _cameraState;
 
-            // uniform IDs
-            unsigned _computeDataUName;
-            unsigned _maxRangeUName;
-
             void resizeGLObjectBuffers(unsigned maxSize);
             void releaseGLObjects(osg::State* state) const;
 
@@ -352,7 +349,6 @@ namespace osgEarth { namespace Procedural
         // future result of the asynchronous loader job
         Renderer::Ptr _renderer;
         bool _forceGenerate;
-
         bool _debug;
         osg::ref_ptr<osg::Drawable> _debugDrawable;
 
@@ -365,6 +361,8 @@ namespace osgEarth { namespace Procedural
         osg::ref_ptr<const Profile> _mapProfile;
 
         osg::ref_ptr<osg::Uniform> _sseU;
+
+        bool _useGL4;
 
         void configureTrees();
         void configureUndergrowth();

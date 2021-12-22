@@ -252,6 +252,7 @@ namespace osgEarth
 
     private:
         friend class MapNode;
+        friend class TerrainEngineNode;
         TerrainOptionsAPI(TerrainOptions*);
         TerrainOptions* _ptr;
         TerrainOptions& options() { return *_ptr; }

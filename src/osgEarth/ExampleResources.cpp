@@ -335,6 +335,15 @@ MapNodeHelper::loadWithoutControls(
         myReadOptions->setOptionString(str);
     }
 
+    // GL4 rendering?
+    if (args.read("--gl4") || args.read("--use-gl4"))
+    {
+        if (!myReadOptions.valid())
+            myReadOptions = new osgDB::Options();
+
+        myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_GL4");
+    }
+
     // read in the Earth file:
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
 
@@ -451,6 +460,12 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     if (args.read("--osg-options", str) || args.read("-O", str))
     {
         myReadOptions->setOptionString(str);
+    }
+
+    // GL4 rendering?
+    if (args.read("--gl4") || args.read("--use-gl4"))
+    {
+        myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_GL4");
     }
 
     // read in the Earth file:

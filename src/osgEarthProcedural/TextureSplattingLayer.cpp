@@ -37,8 +37,8 @@
 #define LC0 "[TextureSplattingLayer] "
 #define LC LC0 << getName() << ": "
 
-#define TEXTURE_ARENA_BINDING_POINT 10
-#define RENDERPARAMS_BINDING_POINT  11
+#define TEXTURE_ARENA_BINDING_POINT 5
+#define RENDERPARAMS_BINDING_POINT  6
 
 using namespace osgEarth::Procedural;
 

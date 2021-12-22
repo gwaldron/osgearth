@@ -88,11 +88,12 @@ namespace osgEarth
      * After that, you can call activate() or deactivate() on individual textures
      * to control their availability on the GPU.
      */
+    #define OE_TEXTURE_ARENA_SA_TYPE_ID (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY+8675309)
+
     class OSGEARTH_EXPORT TextureArena : public osg::StateAttribute
     {
     public:
-        META_StateAttribute(osgEarth, TextureArena,
-            (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY+8675309));
+        META_StateAttribute(osgEarth, TextureArena, OE_TEXTURE_ARENA_SA_TYPE_ID);
 
         //! Construct an empty arena.
         TextureArena();

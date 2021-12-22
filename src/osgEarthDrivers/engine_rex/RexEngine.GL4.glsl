@@ -1,5 +1,6 @@
 #extension GL_ARB_gpu_shader_int64 : enable
 
+#define OE_USE_GL4
 #define OE_TILE_SIZE 17
 #define OE_TILE_VERTS 417
 #define OE_SKIRT_VERTS 128
@@ -7,7 +8,7 @@
 struct oe_rex_Global {
     vec2 uvs[OE_TILE_VERTS];
     float padding[2];
-    vec2 morphConstants[19]; // TODO - one per LOD
+    vec2 morphConstants[19];
     float padding2[2];
 };
 
@@ -30,18 +31,20 @@ struct oe_rex_Tile {
     float padding[3];
 };
 
-layout(binding = 0, std430) readonly buffer TileBuffer {
-    oe_rex_Tile oe_tile[];
-};
-layout(binding = 1, std430) readonly buffer GlobalBuffer {
-    oe_rex_Global oe_global;
-};
-layout(binding = 5, std430) readonly buffer TextureArena {
+layout(binding = 29, std430) readonly buffer TextureArena {
     uint64_t oe_terrain_tex[];
 };
+layout(binding = 30, std430) readonly buffer GlobalBuffer {
+    oe_rex_Global oe_global;
+};
+layout(binding = 31, std430) readonly buffer TileBuffer {
+    oe_rex_Tile oe_tile[];
+};
 
-#ifdef VP_STAGE_FRAGMENT
+#if defined(VP_STAGE_VERTEX)
+flat out int oe_tileID;
+#elif defined(VP_STAGE_FRAGMENT)
 flat in int oe_tileID;
 #else
-flat out int oe_tileID;
+int oe_tileID;
 #endif

@@ -141,6 +141,9 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
 
     _map = map;
 
+    // store a const copy of the terrain options
+    _options = options;
+
     // Create a terrain utility interface. This interface can be used
     // to query the in-memory terrain graph, subscribe to tile events, etc.
     _terrainInterface = new Terrain( this, map->getProfile() );

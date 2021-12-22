@@ -176,6 +176,9 @@ namespace osgEarth
         //! Returns the name of the JobArena that handles terrain tile loading,
         //! or an empty string if the engine does not use an arena.
         virtual std::string getJobArenaName() const { return ""; }
+
+        //! Access an immutable options API
+        virtual const TerrainOptionsAPI getOptions() = 0;
     };
 
     /**
@@ -280,6 +283,10 @@ namespace osgEarth
             return this;
         }
 
+        const TerrainOptionsAPI getOptions() override {
+            return TerrainOptionsAPI(&_options);
+        }
+
     public:
         class OSGEARTH_EXPORT ModifyTileBoundingBoxCallback : public osg::Referenced
         {
@@ -347,6 +354,7 @@ namespace osgEarth
         osg::ref_ptr<Terrain>              _terrainInterface;
         unsigned                           _dirtyCount;
         bool                               _updateScheduled;
+        TerrainOptions _options;
 
         typedef std::vector<osg::ref_ptr<TerrainEffect> > TerrainEffectVector;
         TerrainEffectVector effects_;

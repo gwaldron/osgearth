@@ -104,7 +104,7 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
         pass->visibleLayer()->getVisible() == false)
     {
         //OE_DEBUG << LC << "Skipping " << pass->visibleLayer()->getName() << " because it's not visible." << std::endl;
-        return 0L;
+        return nullptr;
     }
 
     // add a new Draw command to the appropriate layer
@@ -132,7 +132,7 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             DrawTileCommand tile;
 
             // install everything we need in the Draw Command:
-            tile._colorSamplers = pass ? &(pass->samplers()) : 0L;
+            tile._colorSamplers = pass ? &(pass->samplers()) : nullptr;
             tile._sharedSamplers = &model->_sharedSamplers;
             tile._modelViewMatrix = _cv->getModelViewMatrix();
             tile._keyValue = tileNode->getTileKeyValue();
@@ -147,25 +147,8 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
 
             tile._layerOrder = drawable->_drawOrder;
 
-#if 0
-            const osg::Image* elevRaster = tileNode->getElevationRaster();
-            if (elevRaster)
-            {
-                float bias = _context->getUseTextureBorder() ? 1.5 : 0.5;
-
-                // Compute an elevation texture sampling scale/bias so we sample elevation data on center
-                // instead of on edge (as we do with color, etc.)
-                //
-                // This starts out as:
-                //   scale = (size-1)/size : this shrinks the sample area by one texel since we're sampling on center
-                //   bias = 0.5/size : this shifts the sample area over 1/2 texel to the center.
-                //
-                // But, since we also have a 1-texel border, we need to further reduce the scale by 2 texels to
-                // remove the border, and shift an extra texel over as well. Giving us this:
-                float size = (float)elevRaster->s();
-                tile._elevTexelCoeff.set((size - (2.0*bias)) / size, bias / size);
-            }
-#endif
+            // assign the draw sequence:
+            tile._sequence = drawable->_tiles.size();
 
             drawable->_tiles.emplace_back(std::move(tile));
             return &drawable->_tiles.back();

@@ -85,6 +85,9 @@ namespace osgEarth { namespace REX
         // is drawing a tile for the first LayerDrawable.
         int _layerOrder;
 
+        // Order in which this tile appears within the layer
+        int _sequence;
+
         // Renders the tile.
         void draw(osg::RenderInfo& ri) const;
 
@@ -113,7 +116,8 @@ namespace osgEarth { namespace REX
             _drawCallback(0L),
             _drawPatch(false),
             _range(0.0f),
-            _layerOrder(INT_MAX){ }
+            _layerOrder(INT_MAX),
+            _sequence(0) { }
 
         virtual void accept(osg::PrimitiveFunctor& functor) const;
         virtual void accept(osg::PrimitiveIndexFunctor& functor) const;
@@ -126,6 +130,10 @@ namespace osgEarth { namespace REX
 
         int getRevision() const override {
             return _tileRevision;
+        }
+
+        int getSequence() const override {
+            return _sequence;
         }
 
         const osg::BoundingBox& getBBox() const override {

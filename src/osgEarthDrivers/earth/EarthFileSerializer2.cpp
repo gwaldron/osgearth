@@ -611,6 +611,11 @@ EarthFileSerializer2::deserialize(
     // Yes, Map::Options and MapNode::Options share the same Config node. Weird but true.
     MapNode::Options mapNodeOptions( conf.child("options") );
 
+    if (readOptions && readOptions->getOptionString().find("OSGEARTH_USE_GL4") != std::string::npos)
+    {
+        mapNodeOptions.terrain()->useGL4() = true;
+    }
+
     // Create a map node.
     osg::ref_ptr<MapNode> mapNode = new MapNode( map.get(), mapNodeOptions );
 

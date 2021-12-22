@@ -38,6 +38,11 @@ TerrainRenderData::sortDrawCommands()
         DrawTileCommands& tiles = layer->_tiles;
         std::sort(tiles.begin(), tiles.end());
         total += tiles.size();
+
+        // re-sequence them after sorting
+        int seq = 0;
+        for (auto& tile : tiles)
+            tile._sequence = seq++;
     }
     return total;
 }

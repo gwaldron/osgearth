@@ -136,6 +136,9 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     _morphTerrainSupported(true),
     _frameLastUpdated(0u)
 {
+    // activate update traversals for this node.
+    ADJUST_UPDATE_TRAV_COUNT(this, +1);
+
     // Necessary for pager object data
     // Note: Do not change this value. Apps depend on it to
     // detect being inside a terrain traversal.
@@ -160,10 +163,7 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     _terrain = new osg::Group();
     addChild(_terrain.get());
 
-    // force an update traversal in order to compute layer extents.
     _cachedLayerExtentsComputeRequired = true;
-    ADJUST_UPDATE_TRAV_COUNT(this, +1);
-    ADJUST_EVENT_TRAV_COUNT(this, +1);
 
     _updatedThisFrame = false;
 }
@@ -856,30 +856,14 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 }
 
 void
-RexTerrainEngineNode::event_traverse(osg::NodeVisitor& nv)
-{
-    OE_PROFILING_ZONE;
-
-    // Update the cached layer extents as necessary.
-    osg::ref_ptr<const Layer> layer;
-    for (auto& layerExtent : _cachedLayerExtents)
-    {
-        layerExtent.second._layer.lock(layer);
-        if (layer.valid() && layer->getRevision() > layerExtent.second._revision)
-        {
-            layerExtent.second._extent = _map->getProfile()->clampAndTransformExtent(layer->getExtent());
-            layerExtent.second._revision = layer->getRevision();
-        }
-    }
-}
-
-void
 RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 {
     OE_PROFILING_ZONE;
 
     if (_renderModelUpdateRequired)
     {
+        OE_PROFILING_ZONE_NAMED("PurgeOrphanedLayers");
+
         PurgeOrphanedLayers visitor(getMap(), _renderBindings);
         _terrain->accept(visitor);
         _renderModelUpdateRequired = false;
@@ -891,16 +875,37 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
     {
         cacheAllLayerExtentsInMapSRS();
         _cachedLayerExtentsComputeRequired = false;
-        ADJUST_UPDATE_TRAV_COUNT(this, -1);
+    }
+    else
+    {
+        OE_PROFILING_ZONE_NAMED("Update cached layer extents");
+
+        // Update the cached layer extents as necessary.
+        osg::ref_ptr<const Layer> layer;
+        for (auto& layerExtent : _cachedLayerExtents)
+        {
+            layerExtent.second._layer.lock(layer);
+            if (layer.valid() && layer->getRevision() > layerExtent.second._revision)
+            {
+                layerExtent.second._extent = _map->getProfile()->clampAndTransformExtent(layer->getExtent());
+                layerExtent.second._revision = layer->getRevision();
+            }
+        }
     }
 
-    // Call update() on all open layers
-    LayerVector layers;
-    _map->getLayers(layers);
-    for (auto& layer : layers)
     {
-        if (layer->isOpen())
+        OE_PROFILING_ZONE_NAMED("Update open layers");
+
+        // Call update() on all open layers
+        LayerVector layers;
+        _map->getLayers(layers, [&](const Layer* layer) {
+            return layer->isOpen();
+            });
+
+        for (auto& layer : layers)
+        {
             layer->update(nv);
+        }
     }
 
     // Call update on the tile registry
@@ -910,13 +915,7 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 void
 RexTerrainEngineNode::traverse(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.EVENT_VISITOR)
-    {
-        event_traverse(nv);
-        TerrainEngineNode::traverse(nv);
-    }
-
-    else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+    if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
         if (!_updatedThisFrame.exchange(true))
         {
@@ -1207,18 +1206,6 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
             for (auto& e : _persistent)
                 e.second._drawables.erase(layerRemoved);
             });
-
-             
-        //_cullers.forEach([&](TerrainCuller& culler) {
-        //    culler.removeLayer(layerRemoved);
-        //});
-
-        //_layerDrawables.scoped_lock([&]() {
-        //    for (auto& entry : _layerDrawables) {
-        //        if (entry.first.first == layerRemoved)
-        //            _layerDrawables.erase(entry.first);
-        //    }
-        //});
 
         // for a shared layer, release the shared image unit.
         if ( layerRemoved->isOpen() && layerRemoved->isShared() )

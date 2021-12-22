@@ -267,6 +267,8 @@ VegetationLayer::init()
 
     _forceGenerate = false;
 
+    _useGL4 = false;
+
     // evil
     //installDefaultOpacityShader();
 }
@@ -546,6 +548,9 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
         }
 
         _renderer = std::make_shared<Renderer>(this);
+
+        // whether to use GL4 rendering
+        _useGL4 = engine->getOptions().getUseGL4();
     }
 
     buildStateSets();
@@ -947,18 +952,45 @@ VegetationLayer::Renderer::Renderer(VegetationLayer* layer)
 
     reset();
 
-    // create uniform IDs for each of our uniforms
-    //_isMSUName = osg::Uniform::getNameID("oe_veg_isMultisampled");
-    _computeDataUName = osg::Uniform::getNameID("veg_tiledata");
-    _maxRangeUName = osg::Uniform::getNameID("oe_veg_maxRange");
-
     _blending = new osg::BlendFunc(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
+
+    _computeSS = new osg::StateSet();
 
     // Load our compute shader
     GroundCoverShaders shaders;
 
+    // apply the shared layer bindings
+    if (layer->getColorLayer())
+    {
+        shaders.replace(
+            "OE_COLOR_SAMPLER",
+            layer->getColorLayer()->getSharedTextureUniformName());
+        shaders.replace(
+            "OE_COLOR_MATRIX",
+            layer->getColorLayer()->getSharedTextureMatrixUniformName());
+    }
+
+    if (layer->getLifeMapLayer())
+    {
+        shaders.replace(
+            "OE_LIFEMAP_SAMPLER",
+            layer->getLifeMapLayer()->getSharedTextureUniformName());
+        shaders.replace(
+            "OE_LIFEMAP_MATRIX",
+            layer->getLifeMapLayer()->getSharedTextureMatrixUniformName());
+    }
+
+    if (layer->getBiomeLayer())
+    {
+        shaders.replace(
+            "OE_BIOME_SAMPLER",
+            layer->getBiomeLayer()->getSharedTextureUniformName());
+        shaders.replace(
+            "OE_BIOME_MATRIX",
+            layer->getBiomeLayer()->getSharedTextureMatrixUniformName());
+    }
+
     std::string computeSource = ShaderLoader::load(shaders.Compute, shaders, layer->getReadOptions());
-    _computeSS = new osg::StateSet();
     osg::Program* compute = new osg::Program();
     compute->setName("VegetationLayer:COMPUTE");
     osg::Shader* computeShader = new osg::Shader(osg::Shader::COMPUTE, computeSource);
@@ -1149,9 +1181,6 @@ VegetationLayer::Renderer::CameraState::draw(
 {
     osg::State* state = ri.getState();
 
-    // do not shadow groups marked as not casting shadows
-    //bool isShadowCam = CameraUtils::isShadowCamera(ri.getCurrentCamera());
-
     // do we need to re-generate some (or all) of the tiles?
     bool needsGenerate =
         _geomDirty ||
@@ -1292,24 +1321,27 @@ bool
 VegetationLayer::Renderer::GroupState::setTileBatch(
     const TileBatch& input)
 {
-    _batch._env = input.env();
-    _batch._tiles.clear();
+    _batch = &input;
 
+    // Count the number of tiles in the batch that pertain
+    // to this group/LOD, and calculate a hash to see if
+    // the set has changed from last time:
+    _numTilesInGroup = 0u;
     std::size_t hash(0);
 
     for (auto tile_ptr : input._tiles)
     {
-        //if (tile_ptr->getKey().str() == "14/17205/4349")
-        if (tile_ptr->getKey().getLOD() == _lod)
-        {
-            _batch._tiles.push_back(tile_ptr);
+        if (tile_ptr->getKey().getLOD() != _lod)
+            continue;
 
-            hash = hash_value_unsigned(
-                hash,
-                tile_ptr->getKey().hash(),
-                (std::size_t)tile_ptr->getRevision());
-        }
+        ++_numTilesInGroup;
+
+        hash = hash_value_unsigned(
+            hash,
+            tile_ptr->getKey().hash(),
+            (std::size_t)tile_ptr->getRevision());
     }
+
     bool batchChanged = hash != _previousHash;
     _previousHash = hash;
     return batchChanged;
@@ -1319,7 +1351,7 @@ bool
 VegetationLayer::Renderer::GroupState::reallocate(
     osg::RenderInfo& ri)
 {
-    return _instancer->allocateGLObjects(ri, _batch.tiles().size());
+    return _instancer->allocateGLObjects(ri, _numTilesInGroup);
 }
 
 void
@@ -1328,6 +1360,8 @@ VegetationLayer::Renderer::GroupState::compute(
     bool needs_generate,
     bool needs_cull)
 {
+    OE_SOFT_ASSERT_AND_RETURN(!empty(), void());
+
     osg::State* state = ri.getState();
 
     state->apply(_instancer->getGeometryCloud()->getStateSet());
@@ -1364,11 +1398,16 @@ VegetationLayer::Renderer::GroupState::cull(
 {
     OE_PROFILING_ZONE_NAMED("Cull/Sort");
 
+    OE_SOFT_ASSERT_AND_RETURN(!empty(), void());
+
     PCPUniforms& uniforms = *_renderer->getUniforms(ri);
 
     // collect and upload tile matrix data
-    for (auto tile : _batch.tiles())
+    for (auto tile : _batch->tiles())
     {
+        if (tile->getKey().getLOD() != _lod)
+            continue;
+
         int slot = _tilemgr.getSlot(tile->getKey());
         if (slot >= 0)
         {
@@ -1394,6 +1433,8 @@ void
 VegetationLayer::Renderer::GroupState::render(
     osg::RenderInfo& ri)
 {
+    OE_SOFT_ASSERT_AND_RETURN(!empty(), void());
+
     osg::State* state = ri.getState();
 
     _maxRange_u->set(std::min(
@@ -1443,8 +1484,11 @@ VegetationLayer::Renderer::GroupState::collect(
             i._expired = true;
 
     // traverse each tile
-    for (auto tile : _batch.tiles())
+    for (auto tile : _batch->tiles())
     {
+        if (tile->getKey().getLOD() != _lod)
+            continue;
+
         // Decide whether this tile really needs regen:
         int slot = _tilemgr.getSlot(tile->getKey());
 
@@ -1512,11 +1556,18 @@ VegetationLayer::Renderer::GroupState::generate(
 
     PCPUniforms& uniforms = *_renderer->getUniforms(ri);
     OE_HARD_ASSERT(uniforms._generateDataUL >= 0);
+
+    // if we're using GL4 terrain rendering, we will not need to apply
+    // each tile since all the info is on the GPU.
+    bool needTileApply = (_layer->_useGL4 == false);
     
     osg::GLExtensions* ext = nullptr;
 
-    for (auto tile : _batch.tiles())
+    for (auto tile : _batch->tiles())
     {
+        if (tile->getKey().getLOD() != _lod)
+            continue;
+
         int slot = _tilemgr.getSlot(tile->getKey());
         if (slot >= 0)
         {
@@ -1533,15 +1584,21 @@ VegetationLayer::Renderer::GroupState::generate(
                 uniforms._generateData[2] = box.xMax();
                 uniforms._generateData[3] = box.yMax();
                 uniforms._generateData[4] = (float)slot;
+                uniforms._generateData[5] = tile->getSequence();
 
-                ext->glUniform1fv(uniforms._generateDataUL, 5, &uniforms._generateData[0]);
+                OE_HARD_ASSERT(tile->getSequence() >= 0 && tile->getSequence() < _batch->tiles().size());
+
+                ext->glUniform1fv(uniforms._generateDataUL, 6, &uniforms._generateData[0]);
 
                 //OE_INFO << "oe_tile " <<
                 //    box.xMin() << " " << box.yMin() << " " <<
                 //    box.xMax() << " " << box.yMax() << " " <<
                 //    slot << std::endl;
 
-                tile->apply(ri, _batch.env());
+                if (needTileApply)
+                {
+                    tile->apply(ri, _batch->env());
+                }
 
                 _instancer->generate_tile(ri);
 

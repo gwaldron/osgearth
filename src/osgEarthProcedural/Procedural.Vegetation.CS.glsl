@@ -1,4 +1,5 @@
 #version 430
+#extension GL_ARB_gpu_shader_int64 : enable
 #pragma include Procedural.Vegetation.Types.glsl
 
 layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
@@ -10,49 +11,26 @@ uniform sampler2D oe_veg_noiseTex;
 #define NOISE_RANDOM_2 2
 #define NOISE_CLUMPY   3
 
-// (LLx, LLy, URx, URy, tileNum)
-uniform float veg_tiledata[5];
+// (LLx, LLy, URx, URy, tileNum, tileSeq)
+uniform float veg_tiledata[6];
 
+// needed for elevation sampling
 uniform vec2 oe_tile_elevTexelCoeff;
-uniform sampler2D oe_tile_elevationTex;
-uniform mat4 oe_tile_elevationTexMatrix;
-uniform float oe_veg_colorMinSaturation;
 
-#pragma import_defines(OE_LANDCOVER_TEX)
-#pragma import_defines(OE_LANDCOVER_TEX_MATRIX)
-uniform sampler2D OE_LANDCOVER_TEX;
-uniform mat4 OE_LANDCOVER_TEX_MATRIX;
+#pragma oe_use_shared_layer(OE_LIFEMAP_SAMPLER, OE_LIFEMAP_MATRIX)
+#pragma oe_use_shared_layer(OE_BIOME_SAMPLER, OE_BIOME_MATRIX)
+#pragma oe_use_shared_layer(OE_COLOR_SAMPLER, OE_COLOR_MATRIX)
 
-#pragma import_defines(OE_GROUNDCOVER_COLOR_SAMPLER)
-#pragma import_defines(OE_GROUNDCOVER_COLOR_MATRIX)
-#ifdef OE_GROUNDCOVER_COLOR_SAMPLER
-uniform sampler2D OE_GROUNDCOVER_COLOR_SAMPLER ;
-uniform mat4 OE_GROUNDCOVER_COLOR_MATRIX ;
-#endif
-
-#pragma import_defines(OE_GROUNDCOVER_PICK_NOISE_TYPE)
-#ifdef OE_GROUNDCOVER_PICK_NOISE_TYPE
-int pickNoiseType = OE_GROUNDCOVER_PICK_NOISE_TYPE ;
+#pragma import_defines(OE_PICK_NOISE_TYPE)
+#ifdef OE_PICK_NOISE_TYPE
+int pickNoiseType = OE_PICK_NOISE_TYPE;
 #else
 int pickNoiseType = NOISE_RANDOM;
 //int pickNoiseType = NOISE_CLUMPY;
 #endif
 
-#pragma import_defines(OE_LIFEMAP_SAMPLER)
-#pragma import_defines(OE_LIFEMAP_MATRIX)
-#ifdef OE_LIFEMAP_SAMPLER
-uniform sampler2D OE_LIFEMAP_SAMPLER ;
-uniform mat4 OE_LIFEMAP_MATRIX ;
-#endif
+#ifdef OE_COLOR_SAMPLER
 
-#pragma import_defines(OE_BIOME_SAMPLER)
-#pragma import_defines(OE_BIOME_MATRIX)
-#ifdef OE_BIOME_SAMPLER
-uniform sampler2D OE_BIOME_SAMPLER;
-uniform mat4 OE_BIOME_MATRIX;
-#endif
-
-#ifdef OE_GROUNDCOVER_COLOR_SAMPLER
 // https://stackoverflow.com/a/17897228/4218920
 vec3 rgb2hsv(vec3 c)
 {
@@ -64,13 +42,27 @@ vec3 rgb2hsv(vec3 c)
     return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
 
+uniform float oe_veg_colorMinSaturation;
+
 bool isLegalColor(in vec2 tilec)
 {
-    vec4 c = texture(OE_GROUNDCOVER_COLOR_SAMPLER, (OE_GROUNDCOVER_COLOR_MATRIX*vec4(tilec,0,1)).st);
+    vec4 c = texture(OE_COLOR_SAMPLER, (OE_COLOR_MATRIX*vec4(tilec,0,1)).st);
     vec3 hsv = rgb2hsv(c.rgb);
-    return hsv[1] > oe_GroundCover_colorMinSaturation;
+    return hsv[1] > oe_veg_colorMinSaturation;
 }
-#endif // OE_GROUNDCOVER_COLOR_SAMPLER
+#endif // OE_COLOR_SAMPLER
+
+#ifdef OE_USE_GL4
+float getElevation(in vec2 tilec) {
+    vec2 elevc = tilec
+        * oe_tile_elevTexelCoeff.x * oe_tile[oe_tileID].elevMat[0][0] // scale
+        + oe_tile_elevTexelCoeff.x * oe_tile[oe_tileID].elevMat[3].st // bias
+        + oe_tile_elevTexelCoeff.y;
+    return texture(sampler2D(oe_terrain_tex[oe_tile[oe_tileID].elevIndex]), elevc).r;
+}
+#else
+uniform sampler2D oe_tile_elevationTex;
+uniform mat4 oe_tile_elevationTexMatrix;
 
 float getElevation(in vec2 tilec) {
     vec2 elevc = tilec
@@ -79,10 +71,12 @@ float getElevation(in vec2 tilec) {
         + oe_tile_elevTexelCoeff.y;
     return texture(oe_tile_elevationTex, elevc).r;
 }
+#endif
 
 #pragma import_defines(OE_BIOME_INDEX)
 #pragma import_defines(OE_LIFEMAP_DIRECT)
 #pragma import_defines(OE_SPLAT_TWEAKS)
+
 #ifdef OE_SPLAT_TWEAKS
 #define tweakable uniform
 #else
@@ -105,6 +99,10 @@ void generate()
 
     int tileNum = int(veg_tiledata[4]);
 
+#ifdef OE_USE_GL4
+    oe_tileID = int(veg_tiledata[5]);
+#endif
+
     uint local_i = 
         y * gl_NumWorkGroups.x + x;
 
@@ -126,7 +124,7 @@ void generate()
 
     vec4 tilec4 = vec4(tilec, 0, 1);
 
-#ifdef OE_GROUNDCOVER_COLOR_SAMPLER
+#ifdef OE_COLOR_SAMPLER
     if (!isLegalColor(tilec))
         return;
 #endif

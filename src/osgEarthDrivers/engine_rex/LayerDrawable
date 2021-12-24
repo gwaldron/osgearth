@@ -159,6 +159,7 @@ namespace osgEarth { namespace REX
             GLBuffer::Ptr global;
             GLBuffer::Ptr tiles;
             GLBuffer::Ptr commands;
+            void (GL_APIENTRY * glDrawElementsIndirect)(GLenum, GLenum, const void*);
         };
 
         struct RenderState

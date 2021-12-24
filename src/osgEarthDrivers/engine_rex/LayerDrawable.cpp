@@ -183,6 +183,10 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             GL_SHADER_STORAGE_BUFFER,
             state,
             "LayerDrawable Tiles");
+
+        osg::setGLExtensionFuncPtr(
+            gs.glDrawElementsIndirect,
+            "glDrawElementsIndirect", "glDrawElementsIndirectARB");
     }
 
     // Do we need DEI commands? Not for patch layers.
@@ -553,10 +557,10 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             // bind the shared element buffer object:
             gs.ebo->bind();
 
-            GLFunctions::get(*ri.getState()).glDrawElementsIndirect(
+            gs.glDrawElementsIndirect(
                 GL_TRIANGLES,
                 GL_UNSIGNED_SHORT,
-                nullptr);            // nullptr means data is bound at GL_DRAW_INDIRECT_BUFFER
+                nullptr);            // use GL_DRAW_INDIRECT_BUFFER
         }
     }
 }
@@ -584,6 +588,7 @@ LayerDrawable::releaseGLObjects(osg::State* state) const
         gs.global = nullptr;
         gs.tiles = nullptr;
         gs.vbo = nullptr;
+        gs.glDrawElementsIndirect = nullptr;
     }
     else
     {

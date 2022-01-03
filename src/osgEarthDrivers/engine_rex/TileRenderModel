@@ -35,6 +35,50 @@ namespace osgEarth { namespace REX
 {
     using namespace osgEarth::Util;
 
+
+    // **** GL4 rendering support ****
+    // SSBO data elements
+    // must align to 16 bytes
+    // maps directly into an SSBO, so don't cross the vec4 streams
+#define NUM_VERTS 417
+
+#define NUM_SHARED_SAMPLERS 8
+
+    // data shared across all tiles
+    struct GL4SharedDataBuffer
+    {
+        float uvs[NUM_VERTS * 2];
+        float padding[2];
+        float morphConstants[19 * 2]; //TODO
+        float padding2[2];
+    };
+
+    struct GL4TileBuffer
+    {
+        float verts[NUM_VERTS * 4];
+        float upvectors[NUM_VERTS * 4];
+        float tileKey[4];
+        float modelViewMatrix[4 * 4];
+        float colorMat[4 * 4];
+        float parentMat[4 * 4];
+        float elevMat[4 * 4];
+        float normalMat[4 * 4];
+        float sharedMat[NUM_SHARED_SAMPLERS][4 * 4];
+        int colorIndex;
+        int parentIndex;
+        int elevIndex;
+        int normalIndex;
+        int sharedIndex[NUM_SHARED_SAMPLERS];
+        int drawOrder; // todo: stuff this somewhere else
+        float padding[3];
+
+        GL4TileBuffer() :
+            colorIndex(-1),
+            elevIndex(-1),
+            normalIndex(-1),
+            parentIndex(-1) { }
+    };
+
     /**
      * A single texture and its matrix.
      * This corresponds to a single SamplerBinding. If the texture matrix 

@@ -170,6 +170,9 @@ TileNode::createGeometry(Cancelable* progress)
 
         if (elevationRaster.valid())
             _surface->setElevationRaster(elevationRaster.get(), elevationMatrix);
+
+        // if using GL4, make the GL4 buffer
+        
     }
     else
     {

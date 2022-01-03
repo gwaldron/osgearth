@@ -161,8 +161,8 @@ namespace osgEarth { namespace REX
         void releaseGLObjects(osg::State* state) const;
 
     protected:
-        TileKey                            _key;
-        TileNode*        _parentTile;
+        TileKey _key;
+        TileNode* _parentTile;
         osg::ref_ptr<SurfaceNode>          _surface;
         osg::ref_ptr<EngineContext>        _context;
         Threading::Mutex                   _mutex;

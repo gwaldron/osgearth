@@ -28,6 +28,8 @@ using namespace osgEarth::REX;
 #undef  LC
 #define LC "[LayerDrawable] "
 
+#define COPY_MAT4F(FROM,TO) ::memcpy((TO), (FROM).ptr(), 16*sizeof(float))
+
 
 LayerDrawable::LayerDrawable() :
 _renderType(Layer::RENDERTYPE_TERRAIN_SURFACE),
@@ -230,7 +232,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
             for (auto& tile : _tiles)
             {
-                TileBuffer& buf = cs.tilebuf[tile_num];
+                GL4TileBuffer& buf = cs.tilebuf[tile_num];
 
                 //TODO: pre-build the tile buffer in each TileNode so all we have to do it copy it.
 
@@ -272,16 +274,14 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                     if (color._arena_texture != nullptr)
                     {
                         buf.colorIndex = _textures->add(color._arena_texture);
-                        for (int i = 0; i < 16; ++i)
-                            buf.colorMat[i] = color._matrix.ptr()[i];
+                        COPY_MAT4F(color._matrix, buf.colorMat);
                     }
 
                     const Sampler& parent = (*tile._colorSamplers)[SamplerBinding::COLOR_PARENT];
                     if (parent._arena_texture != nullptr)
                     {
                         buf.parentIndex = _textures->add(parent._arena_texture);
-                        for (int i = 0; i < 16; ++i)
-                            buf.parentMat[i] = parent._matrix.ptr()[i];
+                        COPY_MAT4F(parent._matrix, buf.parentMat);
                     }
                 }
 
@@ -297,8 +297,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                         s._arena_texture->_internalFormat = GL_R32F;
                         s._arena_texture->_maxAnisotropy = 1.0f;
                         buf.elevIndex = _textures->add(s._arena_texture);
-                        for (int i = 0; i < 16; ++i)
-                            buf.elevMat[i] = s._matrix.ptr()[i];
+                        COPY_MAT4F(s._matrix, buf.elevMat);
                     }
                 }
 
@@ -313,8 +312,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                         s._arena_texture->_mipmap = true;
                         s._arena_texture->_maxAnisotropy = 1.0f;
                         buf.normalIndex = _textures->add(s._arena_texture);
-                        for (int i = 0; i < 16; ++i)
-                            buf.normalMat[i] = s._matrix.ptr()[i];
+                        COPY_MAT4F(s._matrix, buf.normalMat);
                     }
                 }
 
@@ -333,8 +331,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                                 s._arena_texture->_mipmap = true;
                                 //s._arena_texture->_maxAnisotropy = 4.0f;
                                 buf.sharedIndex[k] = _textures->add(s._arena_texture);
-                                for (int i = 0; i < 16; ++i)
-                                    buf.sharedMat[k][i] = s._matrix.ptr()[i];
+                                COPY_MAT4F(s._matrix, buf.sharedMat[k]);
                             }
                             else
                             {
@@ -344,11 +341,11 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                     }
                 }
 
-                // First time through any layer? Make the global buffer
+                // First time through any layer? Make the shared buffer
                 // TODO: this might eventually go to the terrain level.
-                if (gs.global == nullptr || !gs.global->valid())
+                if (gs.shared == nullptr || !gs.shared->valid())
                 {
-                    GlobalBuffer buf;
+                    GL4SharedDataBuffer buf;
 
                     // Shared UVs (same for every unconstrained tile)
                     for (unsigned i = 0; i < uvs->size(); ++i)
@@ -369,15 +366,15 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                         buf.morphConstants[(2*lod)+1] = one_over_end_minus_start;
                     }
 
-                    gs.global = GLBuffer::create(
+                    gs.shared = GLBuffer::create(
                         GL_SHADER_STORAGE_BUFFER,
                         state,
                         "LayerDrawable Global");
 
-                    gs.global->bind();
+                    gs.shared->bind();
 
-                    gs.global->bufferStorage(
-                        align((GLsizei)sizeof(GlobalBuffer), GLUtils::getSSBOAlignment(state)),
+                    gs.shared->bufferStorage(
+                        align((GLsizei)sizeof(GL4SharedDataBuffer), GLUtils::getSSBOAlignment(state)),
                         &buf,
                         0); // permanent
                 }
@@ -446,7 +443,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
         }
 
         // Update the tile render buffer:
-        GLsizei tileBufSize = sizeof(TileBuffer) * _tiles.size();
+        GLsizei tileBufSize = sizeof(GL4TileBuffer) * _tiles.size();
 
         if (tileBufSize > gs.tiles->size())
         {
@@ -519,7 +516,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
         OE_PROFILING_ZONE_NAMED("Draw");
 
         // Bind the layout indices so we can access our tile data from the shader:
-        gs.global->bindBufferBase(30);
+        gs.shared->bindBufferBase(30);
         gs.tiles->bindBufferBase(31);
 
         // Apply the the texture arena:
@@ -585,7 +582,7 @@ LayerDrawable::releaseGLObjects(osg::State* state) const
         //if (gs.vbo) gs.vbo->release();
         gs.commands = nullptr;
         gs.ebo = nullptr;
-        gs.global = nullptr;
+        gs.shared = nullptr;
         gs.tiles = nullptr;
         gs.vbo = nullptr;
         gs.glDrawElementsIndirect = nullptr;

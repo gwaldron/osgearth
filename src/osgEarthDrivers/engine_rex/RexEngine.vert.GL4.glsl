@@ -60,7 +60,7 @@ void oe_rex_init_view(inout vec4 vert_view)
     vp_Normal = mat3(oe_tile_mvm) * oe_tile[oe_tileID].normals[gl_VertexID].xyz;
 
     // extract tile UV (global data)
-    oe_layer_tilec = vec4(oe_global.uvs[gl_VertexID], 0, 1);
+    oe_layer_tilec = vec4(oe_shared.uvs[gl_VertexID], 0, 1);
 
     // the tile key
     oe_tile_key = oe_tile[oe_tileID].tileKey;

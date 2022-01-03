@@ -102,7 +102,7 @@ void oe_rex_morph(inout vec4 vertex)
 
         int lod = int(oe_tile_key.z);
         float dist_to_eye = length(elevated_vertex.xyz); // or just -z?
-        vec2 mc = oe_global.morphConstants[lod];
+        vec2 mc = oe_shared.morphConstants[lod];
         oe_rex_morphFactor = 1.0f - clamp(mc[0] - dist_to_eye * mc[1], 0.0, 1.0);
 
 #ifdef OE_TERRAIN_MORPH_GEOMETRY

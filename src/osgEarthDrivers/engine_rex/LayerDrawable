@@ -21,6 +21,7 @@
 
 #include "DrawTileCommand"
 #include "DrawState"
+#include "TileRenderModel"
 
 #include <osgEarth/ImageLayer>
 #include <osgEarth/GLUtils>
@@ -48,7 +49,7 @@ namespace osgEarth { namespace REX
         void accept(osg::NodeVisitor& nv) { Drawable::accept(nv); }
 
         // The (sorted) list of tiles to render for this layer
-        DrawTileCommands  _tiles;
+        DrawTileCommands _tiles;
 
         // Determines whether to use the default surface shader program
         Layer::RenderType _renderType;
@@ -106,57 +107,13 @@ namespace osgEarth { namespace REX
 
     private:
 
-        // **** GL4 rendering support ****
-
-        // SSBO data elements
-        // must align to 16 bytes
-        // maps directly into an SSBO, so don't cross the vec4 streams
-        #define NUM_VERTS 417
-
-        #define NUM_SHARED_SAMPLERS 8
-
-        // data shared across all tiles
-        struct GlobalBuffer
-        {
-            float uvs[NUM_VERTS * 2];
-            float padding[2];
-            float morphConstants[19*2]; //TODO
-            float padding2[2];
-        };
-
-        struct TileBuffer
-        {
-            float verts[NUM_VERTS * 4];
-            float upvectors[NUM_VERTS * 4];
-            float tileKey[4];
-            float modelViewMatrix[4 * 4];
-            float colorMat[4 * 4];
-            float parentMat[4 * 4];
-            float elevMat[4 * 4];
-            float normalMat[4 * 4];
-            float sharedMat[NUM_SHARED_SAMPLERS][4 * 4];
-            int colorIndex;
-            int parentIndex;
-            int elevIndex;
-            int normalIndex;
-            int sharedIndex[NUM_SHARED_SAMPLERS];
-            int drawOrder; // todo: stuff this somewhere else
-            float padding[3];
-
-            TileBuffer() :
-                colorIndex(-1),
-                elevIndex(-1),
-                normalIndex(-1),
-                parentIndex(-1) { }
-        };
-
         // Things maintained on a per-graphics-context basis
         struct GCState
         {
             GLuint vao;
             GLBuffer::Ptr vbo;
             GLBuffer::Ptr ebo;
-            GLBuffer::Ptr global;
+            GLBuffer::Ptr shared;
             GLBuffer::Ptr tiles;
             GLBuffer::Ptr commands;
             void (GL_APIENTRY * glDrawElementsIndirect)(GLenum, GLenum, const void*);
@@ -167,7 +124,7 @@ namespace osgEarth { namespace REX
             RenderState() {
                 gcState.resize(64);
             }
-            std::vector<TileBuffer> tilebuf;
+            std::vector<GL4TileBuffer> tilebuf;
             std::vector<DrawElementsIndirectCommand> commands;
             osg::buffered_object<GCState> gcState;
             DrawTileCommands _previous_tiles;

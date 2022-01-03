@@ -5,7 +5,7 @@
 #define OE_TILE_VERTS 417
 #define OE_SKIRT_VERTS 128
 
-struct oe_rex_Global {
+struct oe_rex_Shared {
     vec2 uvs[OE_TILE_VERTS];
     float padding[2];
     vec2 morphConstants[19];
@@ -34,8 +34,8 @@ struct oe_rex_Tile {
 layout(binding = 29, std430) readonly buffer TextureArena {
     uint64_t oe_terrain_tex[];
 };
-layout(binding = 30, std430) readonly buffer GlobalBuffer {
-    oe_rex_Global oe_global;
+layout(binding = 30, std430) readonly buffer GL4SharedDataBuffer {
+    oe_rex_Shared oe_shared;
 };
 layout(binding = 31, std430) readonly buffer TileBuffer {
     oe_rex_Tile oe_tile[];

@@ -343,7 +343,7 @@ namespace
         int pixelBytes = sampleSize * numBands;
 
         //Allocate the image
-        osg::Image *image = new osg::Image;
+        osg::ref_ptr<osg::Image> image = new osg::Image;
         image->allocateImage(ds->GetRasterXSize(), ds->GetRasterYSize(), 1, pixelFormat, dataType);
 
         CPLErr err = ds->RasterIO(
@@ -363,7 +363,8 @@ namespace
             OE_WARN << LC << "RasterIO failed.\n";
         }
 
-        return image;
+        // Convert the image to rgba8
+        return ImageUtils::convertToRGBA8(image.get());
     }
 
     GDALDataset*
@@ -477,6 +478,19 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
 
         if (image.valid())
         {
+            // Make any NO_DATA_VALUE pixels transparent
+            ImageUtils::PixelWriter writer(image.get());            
+            for (unsigned int r = 0; r < hf->getNumRows(); ++r)
+            {
+                for (unsigned int c = 0; c < hf->getNumColumns(); ++c)
+                {
+                    float h = hf->getHeight(c, r);
+                    if (h == NO_DATA_VALUE)
+                    {
+                        writer(osg::Vec4(0, 0, 0, 0), c, r);
+                    }
+                }
+            }
             return GeoImage(image.get() , key.getExtent());
         }
     }

@@ -371,6 +371,15 @@ GLBuffer::bind(GLenum otherTarget) const
 }
 
 void
+GLBuffer::uploadData(GLintptr datasize, GLvoid* data, GLbitfield flags) const
+{
+    if (datasize > size())
+        bufferData(datasize, data, flags);
+    else
+        bufferSubData(0, datasize, data);
+}
+
+void
 GLBuffer::bufferData(GLintptr size, GLvoid* data, GLbitfield flags) const
 {
     ext()->glBufferData(_target, size, data, flags);
@@ -378,16 +387,16 @@ GLBuffer::bufferData(GLintptr size, GLvoid* data, GLbitfield flags) const
 }
 
 void
+GLBuffer::bufferSubData(GLintptr offset, GLsizeiptr size, GLvoid* data) const
+{
+    ext()->glBufferSubData(_target, offset, size, data);
+}
+
+void
 GLBuffer::bufferStorage(GLintptr size, GLvoid* data, GLbitfield flags) const
 {
     ext()->glBufferStorage(_target, size, data, flags);
     _size = size;
-}
-
-void
-GLBuffer::bufferSubData(GLintptr offset, GLsizeiptr size, GLvoid* data) const
-{
-    ext()->glBufferSubData(_target, offset, size, data);
 }
 
 void

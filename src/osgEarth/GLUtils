@@ -163,14 +163,18 @@ namespace osgEarth
         //! de-allocate and release this buffer
         void release();
 
+        //! Upload data to the GPU. This method uses bufferData() or bufferSubData()
+        //! depending on whether it needs to allocate more space.
+        void uploadData(GLintptr size, GLvoid* data, GLbitfield flags=GL_DYNAMIC_DRAW) const;
+
         //! glBufferData - reallocate entire buffer
         void bufferData(GLintptr size, GLvoid* data, GLbitfield flags) const;
 
-        //! glBufferStorage - allocate with immutable storage
-        void bufferStorage(GLintptr size, GLvoid* data, GLbitfield flags) const;
-
         //! glBufferSubData - upload a subset of data to the GPU
         void bufferSubData(GLintptr offset, GLsizeiptr size, GLvoid* data) const;
+
+        //! glBufferStorage - allocate with immutable storage
+        void bufferStorage(GLintptr size, GLvoid* data, GLbitfield flags) const;
 
         //! bind the buffer to the layout index as specified in the shader
         //! (for SSBO/UBO/ACBO/TFBO only)

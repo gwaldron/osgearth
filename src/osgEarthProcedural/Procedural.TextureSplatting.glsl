@@ -63,7 +63,7 @@ void oe_splat_View(inout vec4 vertex_view)
 #pragma import_defines(OE_LIFEMAP_DIRECT)
 #pragma import_defines(OE_SPLAT_USE_MTL_GLS_AO)
 
-layout(binding = 5, std430) buffer TextureLUT {
+layout(binding = 5, std430) buffer SplatTextureArena {
     uint64_t texHandle[];
 };
 layout(binding = 6, std430) buffer RenderParamsLUT {
@@ -169,6 +169,8 @@ void get_pixel(out Pixel res, in int index, in vec2 coord)
 {
     res.rgbh = texture(sampler2D(texHandle[index * 2]), coord);
     vec4 temp = texture(sampler2D(texHandle[index * 2 + 1]), coord);
+    //res.rgbh = texture(sampler2D(texHandle[index * 2]), coord);
+    //vec4 temp = texture(sampler2D(texHandle[index * 2 + 1]), coord);
     res.normal = unpackNormal(temp);
     res.material = vec3(temp[2], temp[3], 0.0); // roughness, ao, metal
 }

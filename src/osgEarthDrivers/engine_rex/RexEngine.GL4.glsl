@@ -31,7 +31,7 @@ struct oe_rex_Tile {
     float padding[3];
 };
 
-layout(binding = 29, std430) readonly buffer TextureArena {
+layout(binding = 29, std430) readonly buffer RexTextureArena {
     uint64_t oe_terrain_tex[];
 };
 layout(binding = 30, std430) readonly buffer GL4SharedDataBuffer {

@@ -296,7 +296,8 @@ Texture::releaseGLObjects(osg::State* state) const
 
 TextureArena::TextureArena() :
     _autoRelease(false),
-    _bindingPoint(5u)
+    _bindingPoint(5u),
+    _useUBO(false)
 {
     // Keep this synchronous w.r.t. the render thread since we are
     // giong to be changing things on the fly
@@ -556,7 +557,7 @@ TextureArena::apply(osg::State& state) const
             tex->makeResident(state, true);
         }
         gc._toActivate.clear();
-        gc._handleLUT._dirty = true;
+        gc._dirty = true;
     }
 
     if (_autoRelease == true)
@@ -572,11 +573,54 @@ TextureArena::apply(osg::State& state) const
         }
     }
 
-    // update the LUT if it needs more space:
-    gc._handleLUT.sync(_textures, _bindingPoint, state);
+    if (gc._handleBuffer == nullptr)
+    {
+        std::string bufferName = "oe.TextureArena " + getName();
 
-    // bind to the layout index in the shader
-    gc._handleLUT.bindLayout();
+        if (_useUBO)
+            gc._handleBuffer = GLBuffer::create(GL_UNIFORM_BUFFER, state, bufferName);
+        else
+            gc._handleBuffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, bufferName);
+
+        gc._dirty = true;
+    }
+
+    // refresh the handles buffer if necessary:
+    if (_textures.size() > gc._handles.size())
+    {
+        gc._handles.resize(_textures.size());
+        gc._dirty = true;
+    }
+
+    unsigned ptr = 0;
+    for (auto& tex : _textures)
+    {
+        GLTexture* gltex = tex->_gc[state.getContextID()]._gltexture.get();
+        GLuint64 handle = gltex ? gltex->handle(state) : 0ULL;
+        if (gc._handles[ptr] != handle)
+        {
+            gc._handles[ptr] = handle;
+            gc._dirty = true;
+        }       
+        ++ptr;
+
+        if (_useUBO)
+            ++ptr; // hack for std140 vec4 alignment
+    }
+
+    // upload to GPU if it changed:
+    if (gc._dirty)
+    {
+        gc._handleBuffer->bind();
+
+        gc._handleBuffer->uploadData(
+            gc._handles.size() * sizeof(GLuint64),
+            gc._handles.data());
+
+        gc._dirty = false;
+    }
+
+    gc._handleBuffer->bindBufferBase(_bindingPoint);
 }
 
 void
@@ -610,101 +654,15 @@ TextureArena::releaseGLObjects(osg::State* state) const
 
     if (state)
     {
-        _gc[state->getContextID()]._handleLUT.release();
+        //_gc[state->getContextID()]._handleLUT.release();
+        _gc[state->getContextID()]._handleBuffer = nullptr;
     }
     else
     {
         for (unsigned i = 0; i < _gc.size(); ++i)
-            _gc[i]._handleLUT.release();
-    }
-}
-
-void
-TextureArena::HandleLUT::sync(
-    const TextureVector& textures,
-    unsigned bindingPoint,
-    osg::State& state)
-{
-    _requiredSize = textures.size() * sizeof(GLuint64);
-
-    if (_requiredSize > _allocatedSize)
-    {
-        static Threading::Mutex s_mutex("TextureArena::HandleLUT(OE)");
-        Threading::ScopedMutexLock lock(s_mutex);
-
-        if (!_alignment.isSet())
         {
-            glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &_alignment.mutable_value());
-            OE_DEBUG << "SSBO Alignment = " << _alignment.get() << std::endl;
+            //_gc[i]._handleLUT.release();
+            _gc[i]._handleBuffer = nullptr;
         }
-
-        _bindingIndex = bindingPoint;
-
-        release();
-
-        _numTextures = textures.size();
-        _allocatedSize = _requiredSize;
-
-        _buf = new GLuint64[textures.size()];
-
-        // set all data:
-        OE_DEBUG << LC << "Uploading " << _numTextures << " texture handles" << std::endl;
-
-        // copy handles to buffer:
-        refresh(textures, state);
-
-        _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE TextureArena");
-        _buffer->bind();
-        _buffer->bufferStorage(_allocatedSize, _buf, GL_DYNAMIC_STORAGE_BIT);
     }
-
-    else if (_dirty)
-    {
-        refresh(textures, state);
-        update();
-    }
-}
-
-void
-TextureArena::HandleLUT::refresh(const TextureVector& textures, osg::State& state)
-{
-    unsigned i=0;
-    for(const auto& tex : textures)
-    {
-        GLTexture* glTex = tex->_gc[state.getContextID()]._gltexture.get();
-        GLuint64 handle = 0ULL;
-        if (glTex)
-            handle = glTex->handle(state);
-
-        if (_buf[i] != handle)
-        {
-            _buf[i] = handle;
-            _dirty = true;
-        }
-        i++;
-    }
-}
-
-void
-TextureArena::HandleLUT::release() const
-{
-    SSBO::release();
-    if (_buf)
-    {
-        delete[] _buf;
-        _buf = nullptr;
-    }
-}
-
-bool
-TextureArena::HandleLUT::update()
-{
-    bool updateMe = _dirty;
-    if (updateMe)
-    {
-        _buffer->bind();
-        _buffer->bufferSubData(0, _allocatedSize, _buf);
-        _dirty = false;
-    }
-    return updateMe;
 }

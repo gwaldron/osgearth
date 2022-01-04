@@ -443,35 +443,12 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
         }
 
         // Update the tile render buffer:
-        GLsizei tileBufSize = sizeof(GL4TileBuffer) * _tiles.size();
+        gs.tiles->bind();
 
-        if (tileBufSize > gs.tiles->size())
-        {
-            OE_PROFILING_ZONE_NAMED("Tiles bufferData");
-
-            //OE_INFO << LC << "Reallocating tiles buffer = " << cs._tilebuf.size() << "(" << tileBufSize << " bytes)" << std::endl;
-            gs.tiles->bind();
-
-            // re-allocate the storage if necessary (check size)
-            gs.tiles->bufferData(
-                tileBufSize,
-                cs.tilebuf.data(),
-                GL_DYNAMIC_DRAW);
-        }
-
-        else
-        {
-            OE_PROFILING_ZONE_NAMED("Tiles bufferSubData");
-
-            gs.tiles->bind();
-
-            // copy the latest tile data to the GPU
-            // TODO: only copy if it changed, or only copy the parts that changed
-            gs.tiles->bufferSubData(
-                0,
-                tileBufSize,
-                cs.tilebuf.data());
-        }
+        gs.tiles->uploadData(
+            sizeof(GL4TileBuffer) * _tiles.size(),
+            cs.tilebuf.data(),
+            GL_DYNAMIC_DRAW);
 
         // If we are using a command buffer, upload it.
         if (gs.commands != nullptr)
@@ -479,26 +456,10 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             // Bind the indirect command buffer.
             gs.commands->bind();
 
-            // Update the command buffer if necessary.
-            GLsizei cmdBufSize = sizeof(DrawElementsIndirectCommand) * cs.commands.size();
-            if (cmdBufSize > gs.commands->size())
-            {
-                OE_PROFILING_ZONE_NAMED("Cmd bufferData");
-
-                // re-allocate the storage if necessary (check size)
-                gs.commands->bufferData(
-                    cmdBufSize,
-                    cs.commands.data(),
-                    GL_DYNAMIC_DRAW);
-            }
-            else
-            {
-                OE_PROFILING_ZONE_NAMED("Cmd bufferSubData");
-                gs.commands->bufferSubData(
-                    0,
-                    cmdBufSize,
-                    cs.commands.data());
-            }
+            gs.commands->uploadData(
+                sizeof(DrawElementsIndirectCommand) * cs.commands.size(),
+                cs.commands.data(),
+                GL_DYNAMIC_DRAW);
         }
 
         cs._previous_tiles = _tiles;

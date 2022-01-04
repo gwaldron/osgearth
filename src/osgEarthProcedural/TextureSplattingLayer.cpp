@@ -155,6 +155,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
 
                 // contains the textures and their bindless handles
                 result->_arena = new TextureArena();
+                result->_arena->setName("TextureSplattingLayer");
                 result->_arena->setBindingPoint(TEXTURE_ARENA_BINDING_POINT);
 
                 // contains metadata about the textures (size etc.)

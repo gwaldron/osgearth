@@ -158,8 +158,12 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                 result->_arena->setName("TextureSplattingLayer");
                 result->_arena->setBindingPoint(TEXTURE_ARENA_BINDING_POINT);
 
-                // contains metadata about the textures (size etc.)
-                result->_renderParams.setNumElements(assets.getLifeMapTextures().size() * tile_height_m.size());
+                // contains metadata about the textures
+                result->_textureScales = new osg::Uniform();
+                result->_textureScales->setName("oe_texScale");
+                result->_textureScales->setType(osg::Uniform::FLOAT);
+                result->_textureScales->setNumElements(
+                    assets.getLifeMapTextures().size() * tile_height_m.size());
 
                 if (assets.getLifeMapMatrixHeight() * assets.getLifeMapMatrixWidth() !=
                     assets.getLifeMapTextures().size())
@@ -190,24 +194,17 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                         return nullptr;
 
                     // Set up the texture scaling:
-                    RenderParams& params0 = result->_renderParams[ptr0++];
-                    params0._scaleV = tex.size().isSet() ? tile_height_m[0] / tex.size()->as(Units::METERS) : 1.0f;
-                    params0._scaleU = params0._scaleV;
+                    result->_textureScales->setElement(
+                        ptr0++,
+                        (float)(tex.size().isSet() ? tile_height_m[0] / tex.size()->as(Units::METERS) : 1.0f));
 
                     if (tile_height_m.size() > 1)
                     {
-                        RenderParams& params1 = result->_renderParams[ptr1++];
-                        params1._scaleV = tex.size().isSet() ? tile_height_m[1] / tex.size()->as(Units::METERS) : 1.0f;
-                        params1._scaleU = params1._scaleV;
+                        result->_textureScales->setElement(
+                            ptr1++,
+                            (float)(tex.size().isSet() ? tile_height_m[1] / tex.size()->as(Units::METERS) : 1.0f));
                     }
-
-                    //OE_INFO << LC0 << "   size=" << tex.size()->as(Units::METERS) << "m  scale=" << params._scaleU << std::endl;
                 }
-
-                result->_renderParams.dirty();
-
-                // bind the buffer to a layout index in the shader
-                result->_renderParams.setBindingIndex(RENDERPARAMS_BINDING_POINT);
 
                 return result;
             };
@@ -250,14 +247,15 @@ TextureSplattingLayer::buildStateSets()
         // Install the texture arena as a state attribute:
         ss->setAttribute(_materials->_arena);
 
-        // install the LUT buffer for per-texture render parameters.
-        ss->setAttribute(new StateAttributeAdapter(&_materials->_renderParams));
+        // Install the uniform holding constant texture scales
+        ss->addUniform(_materials->_textureScales);
 
         // Install the texture splatting shader
         VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
         TerrainShaders terrain_shaders;
 
-        // Do the layer replacements BEFORE calling load:
+        // Do the layer replacements BEFORE calling load. This way
+        // the "oe_use_shared_layer" directive will be able to find the shared layer.
         terrain_shaders.replace(
             "OE_LIFEMAP_TEX",
             getLifeMapLayer()->getSharedTextureUniformName());
@@ -276,17 +274,6 @@ TextureSplattingLayer::buildStateSets()
         Shaders shaders;
         shaders.load(vp, shaders.PBR);
 
-#if 0
-        // Find the LifeMap layer and access its share
-        ss->setDefine(
-            "OE_LIFEMAP_TEX",
-            
-
-        ss->setDefine(
-            "OE_LIFEMAP_MAT",
-            getLifeMapLayer()->getSharedTextureMatrixUniformName());
-#endif
-
         if (getBiomeLayer())
         {
             const auto& assets = getBiomeLayer()->getBiomeCatalog()->getAssets();
@@ -304,18 +291,10 @@ void
 TextureSplattingLayer::resizeGLObjectBuffers(unsigned maxSize)
 {
     VisibleLayer::resizeGLObjectBuffers(maxSize);
-
-    // no need to process _arena because it's in the StateSet
-    if (_materials)
-        _materials->_renderParams.resizeGLObjectBuffers(maxSize);
 }
 
 void
 TextureSplattingLayer::releaseGLObjects(osg::State* state) const
 {
     VisibleLayer::releaseGLObjects(state);
-
-    // no need to process _arena because it's in the StateSet
-    if (_materials)
-        _materials->_renderParams.releaseGLObjects(state);
 }

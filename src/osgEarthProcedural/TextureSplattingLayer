@@ -73,18 +73,11 @@ namespace osgEarth { namespace Procedural
     protected:
         virtual ~TextureSplattingLayer() { }
         
-        struct RenderParams
-        {
-            RenderParams() : _scaleU(1.0f), _scaleV(1.0f) { }
-            float _scaleU, _scaleV;
-        };
-        using RenderParamsBuf = ArraySSBO<RenderParams>;
-
         struct Materials
         {
             using Ptr = std::shared_ptr<Materials>;
             osg::ref_ptr<TextureArena> _arena;
-            RenderParamsBuf _renderParams;
+            osg::ref_ptr<osg::Uniform> _textureScales;
             std::vector<const LifeMapTextureAsset*> _assets;
         };
 

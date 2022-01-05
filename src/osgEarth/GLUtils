@@ -80,9 +80,6 @@ namespace osgEarth
         //! Removes the state associated with a GL capability, causing it to inherit from above.
         //! and if one of: GL_LIGHTING, GL_LINE_WIDTH, GL_LINE_STIPPLE, GL_LINE_SMOOTH, GL_POINT_SIZE
         static void remove(osg::StateSet* stateSet, GLenum cap);
-
-        //! Computes the driver's reported alignment for SSBO allocation
-        static GLsizei getSSBOAlignment(osg::State&);
     };
 
     struct OSGEARTH_EXPORT CustomRealizeOperation : public osg::Operation
@@ -165,16 +162,16 @@ namespace osgEarth
 
         //! Upload data to the GPU. This method uses bufferData() or bufferSubData()
         //! depending on whether it needs to allocate more space.
-        void uploadData(GLintptr size, GLvoid* data, GLbitfield flags=GL_DYNAMIC_DRAW) const;
+        void uploadData(GLintptr size, const GLvoid* data, GLbitfield flags=GL_DYNAMIC_DRAW) const;
 
         //! glBufferData - reallocate entire buffer
-        void bufferData(GLintptr size, GLvoid* data, GLbitfield flags) const;
+        void bufferData(GLintptr size, const GLvoid* data, GLbitfield flags) const;
 
         //! glBufferSubData - upload a subset of data to the GPU
-        void bufferSubData(GLintptr offset, GLsizeiptr size, GLvoid* data) const;
+        void bufferSubData(GLintptr offset, GLsizeiptr size, const GLvoid* data) const;
 
         //! glBufferStorage - allocate with immutable storage
-        void bufferStorage(GLintptr size, GLvoid* data, GLbitfield flags) const;
+        void bufferStorage(GLintptr size, const GLvoid* data, GLbitfield flags) const;
 
         //! bind the buffer to the layout index as specified in the shader
         //! (for SSBO/UBO/ACBO/TFBO only)
@@ -184,8 +181,8 @@ namespace osgEarth
         GLBuffer(GLenum target, osg::State& state, const std::string& label);
         GLuint _name;
         GLenum _target;
-        GLuint _layoutIndex;
         mutable GLsizei _size;
+        mutable bool _immutable;
     };
 
     //! A texture object with optional resident handle
@@ -254,58 +251,48 @@ namespace osgEarth
         virtual void releaseGLObjects(osg::State* state) const = 0;
     };
 
-    //! Base class for a shader storage buffer object
-    class OSGEARTH_EXPORT SSBO
-    {
-    public:
-        SSBO();
-
-        mutable GLBuffer::Ptr _buffer;
-        mutable GLsizei _allocatedSize;
-        mutable GLsizei _requiredSize;
-        GLint _bindingIndex;
-        void bindLayout() const;
-        virtual void release() const;
-        inline bool valid() const { return _buffer != nullptr; } // .valid(); }
-    };
-
+    /**
+     * Helper class that maintains a per-GC GL Buffer that
+     * reflects an in-memory array.
+     * (consider using GLBuffer directly in most cases moving forward)
+     * (might deprecate)
+     */
     template<typename T>
     class ArraySSBO : public OSG_GL_API
     {
     public:
-        ArraySSBO() : _buf(nullptr), _numElements(0), _bindingIndex(0)
+        ArraySSBO() : _bindingPoint(0)
         {
-            _dirty.setAllElementsTo(false);
+            _ssbo.resize(16);
+            _dirty.resize(16);
+            _dirty.setAllElementsTo(0);
         }
 
         virtual ~ArraySSBO()
         {
-            for (unsigned i=0; i<_ssbo.size(); ++i)
-                _ssbo[i].release();
-            if (_buf)
-                delete[] _buf;
+            for (unsigned i = 0; i < _ssbo.size(); ++i)
+                _ssbo[i] = nullptr;
         }
 
         //! Sets the number of elements this object can hold
-        void setNumElements(unsigned value)
+        void setMaxNumElements(unsigned value)
         {
-            if (value > _numElements)
+            if (value > _array.size())
             {
-                _numElements = value;
-                if (_buf) delete[] _buf;
-                _buf = new T[_numElements];
-                _dirty.setAllElementsTo(true);
+                _array.resize(value);
+                dirty();
             }
         }
 
-        void setBindingIndex(unsigned value)
+        void setBindingPoint(unsigned value)
         {
-            _bindingIndex = value;
+            _bindingPoint = value;
         }
 
         T& operator[](int index)
         {
-            return _buf[index];
+            setMaxNumElements(index+1);
+            return _array[index];
         }
 
         void dirty()
@@ -313,73 +300,65 @@ namespace osgEarth
             _dirty.setAllElementsTo(1);
         }
 
+        void bind(GLenum target, osg::State& state) const
+        {
+            _ssbo[state.getContextID()]->bind(target);
+        }
+
     public: // OSG_GL_API
 
         void apply(osg::State& state) const override
         {
-            if (_numElements == 0)
+            if (_array.empty())
+                return;
+            if (_array.empty())
                 return;
 
-            bool bound = false;
+            unsigned id = state.getContextID();
 
-            int i = state.getContextID();
+            GLBuffer::Ptr& ssbo = _ssbo[id];
 
-            SSBO& ssbo = _ssbo[i];
-
-            GLsizei contentSize = _numElements * sizeof(T);
-
-            if (ssbo._allocatedSize < contentSize)
+            if (ssbo == nullptr)
             {
-                // reallocate the SSBO
-                GLsizei alignedAllocationSize = align(contentSize, GLUtils::getSSBOAlignment(state));
-                ssbo.release();
-                ssbo._bindingIndex = _bindingIndex;
-                ssbo._allocatedSize = contentSize;
-                ssbo._buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, typeid(*this).name());
-                ssbo._buffer->bind();
-                bound = true;
-                ssbo._buffer->ext()->glBufferStorage(GL_SHADER_STORAGE_BUFFER, alignedAllocationSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
-                _dirty[i] = 1;
+                ssbo = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, typeid(*this).name());
+                _dirty[id] = 1;
             }
 
-            if (_dirty[i])
+            if (_dirty[id] == 1 && _array.size() > 0)
             {
-                if (!bound) ssbo._buffer->bind();
-                ssbo._buffer->ext()->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, contentSize, (const GLvoid*)_buf);
-                _dirty[i] = 0;
+                ssbo->bind();
+                ssbo->uploadData(sizeof(T)*_array.size(), _array.data());
+                _dirty[id] = 0;
             }
 
-            ssbo.bindLayout();
+            ssbo->bindBufferBase(_bindingPoint);
         }
 
         void resizeGLObjectBuffers(unsigned maxSize) override
         {
             _ssbo.resize(maxSize);
             _dirty.resize(maxSize);
-            _dirty.setAllElementsTo(1);
+            dirty();
         }
 
         void releaseGLObjects(osg::State* state) const override
         {
             if (state)
             {
-                _ssbo[state->getContextID()].release();
+                _ssbo[state->getContextID()] = nullptr;
             }
             else
             {
                 for (unsigned i = 0; i < _ssbo.size(); ++i)
-                {
-                    _ssbo[i].release();
-                }
+                    _ssbo[i] = nullptr;
             }
         }
 
     private:
-        mutable osg::buffered_object<SSBO> _ssbo;
+        mutable osg::buffered_object<GLBuffer::Ptr> _ssbo;
         mutable osg::buffered_object<int> _dirty;
-        T* _buf;
-        unsigned _numElements;
-        unsigned _bindingIndex;
+        unsigned _bindingPoint;
+        std::vector<T> _array;
     };
 
     // State attribute containing an object with the OSG GL API

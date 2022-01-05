@@ -187,15 +187,6 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
     }
 }
 
-GLsizei
-GLUtils::getSSBOAlignment(osg::State& state)
-{
-    static GLsizei _ssboAlignment = -1;
-    if (_ssboAlignment < 0)
-        glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &_ssboAlignment);
-    return _ssboAlignment;
-}
-
 void
 CustomRealizeOperation::setSyncToVBlank(bool value)
 {
@@ -259,6 +250,14 @@ namespace
         }
     }
 
+    template<typename T>
+    T getSSBOAlignment()
+    {
+        static GLsizei _ssboAlignment = -1;
+        if (_ssboAlignment < 0)
+            glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &_ssboAlignment);
+        return T(_ssboAlignment);
+    }
 }
 
 void
@@ -335,7 +334,7 @@ GLBuffer::GLBuffer(GLenum target, osg::State& state, const std::string& label) :
     _target(target),
     _name(~0U),
     _size(0),
-    _layoutIndex(0u)
+    _immutable(false)
 {
     ext()->glGenBuffers(1, &_name);
     if (_name != ~0U)
@@ -371,32 +370,39 @@ GLBuffer::bind(GLenum otherTarget) const
 }
 
 void
-GLBuffer::uploadData(GLintptr datasize, GLvoid* data, GLbitfield flags) const
+GLBuffer::uploadData(GLintptr datasize, const GLvoid* data, GLbitfield flags) const
 {
+    OE_HARD_ASSERT(_immutable == false);
+
     if (datasize > size())
         bufferData(datasize, data, flags);
-    else
+    else if (data != nullptr)
         bufferSubData(0, datasize, data);
 }
 
 void
-GLBuffer::bufferData(GLintptr size, GLvoid* data, GLbitfield flags) const
+GLBuffer::bufferData(GLintptr size, const GLvoid* data, GLbitfield flags) const
 {
+    size = align(size, getSSBOAlignment<GLintptr>());
     ext()->glBufferData(_target, size, data, flags);
     _size = size;
+    _immutable = false;
 }
 
 void
-GLBuffer::bufferSubData(GLintptr offset, GLsizeiptr size, GLvoid* data) const
+GLBuffer::bufferSubData(GLintptr offset, GLsizeiptr datasize, const GLvoid* data) const
 {
-    ext()->glBufferSubData(_target, offset, size, data);
+    OE_SOFT_ASSERT_AND_RETURN(offset + datasize <= size(), void());
+    ext()->glBufferSubData(_target, offset, datasize, data);
 }
 
 void
-GLBuffer::bufferStorage(GLintptr size, GLvoid* data, GLbitfield flags) const
+GLBuffer::bufferStorage(GLintptr size, const GLvoid* data, GLbitfield flags) const
 {
+    size = align(size, getSSBOAlignment<GLintptr>());
     ext()->glBufferStorage(_target, size, data, flags);
     _size = size;
+    _immutable = true;
 }
 
 void
@@ -548,29 +554,6 @@ void
 GLTexture::compressedSubImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const void* data) const
 {
     ext()->glCompressedTexSubImage3D(_target, level, xoff, yoff, zoff, width, height, depth, format, imageSize, data);
-}
-
-SSBO::SSBO() :
-    _allocatedSize(0),
-    _bindingIndex(-1)
-{
-    //nop
-}
-
-void
-SSBO::release() const
-{
-    _buffer = nullptr; // triggers the releaser
-    _allocatedSize = 0u;
-}
-
-void
-SSBO::bindLayout() const
-{
-    if (_buffer != nullptr && _bindingIndex >= 0)
-    {
-        _buffer->bindBufferBase(_bindingIndex);
-    }
 }
 
 #undef LC

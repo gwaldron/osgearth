@@ -1289,6 +1289,7 @@ VegetationLayer::Renderer::CameraState::draw(
 VegetationLayer::Renderer::GroupState::GroupState() :
     _renderer(nullptr),
     _previousHash(-1),
+    _numTilesInGroup(0),
     _batch(nullptr)
 {
     //nop
@@ -1371,7 +1372,7 @@ VegetationLayer::Renderer::GroupState::compute(
     if (state->getUseModelViewAndProjectionUniforms())
         state->applyModelViewAndProjectionUniformsIfRequired();
 
-    _instancer->bind();
+    _instancer->bind(ri);
 
     if (needs_generate)
     {
@@ -1451,7 +1452,7 @@ VegetationLayer::Renderer::GroupState::render(
         state->applyModelViewAndProjectionUniformsIfRequired();
 
     // binds the instancer's buffer objects
-    _instancer->bind();
+    _instancer->bind(ri);
 
     // draws the instances
     _instancer->draw(ri);

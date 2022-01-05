@@ -66,9 +66,8 @@ void oe_splat_View(inout vec4 vertex_view)
 layout(binding = 5, std430) buffer SplatTextureArena {
     uint64_t texHandle[];
 };
-layout(binding = 6, std430) buffer RenderParamsLUT {
-    vec2 texScale[];
-};
+
+uniform float oe_texScale[OE_TEX_DIM_X*OE_TEX_DIM_Y];
 
 #define RUGGED 0
 #define DENSE 1
@@ -159,7 +158,7 @@ struct OE_PBR {
 // overflow the interpolator and pause pixel jitter
 void get_coord(out vec2 coord, in int index, in int level)
 {
-    vec2 scale = texScale[index];
+    vec2 scale = vec2(oe_texScale[index]);
     vec2 a = fract(splat_tilexy[level] * scale);
     vec2 b = splat_uv[level] * scale;
     coord = a + b;
@@ -169,8 +168,6 @@ void get_pixel(out Pixel res, in int index, in vec2 coord)
 {
     res.rgbh = texture(sampler2D(texHandle[index * 2]), coord);
     vec4 temp = texture(sampler2D(texHandle[index * 2 + 1]), coord);
-    //res.rgbh = texture(sampler2D(texHandle[index * 2]), coord);
-    //vec4 temp = texture(sampler2D(texHandle[index * 2 + 1]), coord);
     res.normal = unpackNormal(temp);
     res.material = vec3(temp[2], temp[3], 0.0); // roughness, ao, metal
 }

@@ -128,8 +128,6 @@ namespace osgEarth
         //! Textures installed in this arena
         const TextureVector& getTextures() const { return _textures; }
 
-        void setUseUBO(bool value) { _useUBO = value; }
-
         //! destruct
         virtual ~TextureArena();
 

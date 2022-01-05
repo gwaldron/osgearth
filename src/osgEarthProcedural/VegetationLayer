@@ -254,7 +254,7 @@ namespace osgEarth { namespace Procedural
                 }
 
                 bool empty() const {
-                    return _numTilesInGroup == 0u;
+                    return _numTilesInGroup == 0u || _batch == nullptr;
                 }
 
                 void setGeometry(

@@ -46,33 +46,32 @@ namespace osgEarth
     public:
 
         // Buffer holding all draw commands (Keep a CPU copy for wiping)
-        struct CommandBuffer : public SSBO
+        struct CommandBuffer
         {
-            CommandBuffer() : _buf(NULL) { }
-            ~CommandBuffer() { if (_buf) delete[] _buf; }
-            mutable DrawElementsIndirectCommand* _buf;
+            mutable GLBuffer::Ptr _buf;
+            mutable std::vector<DrawElementsIndirectCommand> _backing;
             GeometryCloud* _geom;
-            void allocate(GeometryCloud* cloud, GLsizei alignment, osg::State&);
-            void reset();
+            void allocate(GeometryCloud* cloud, osg::State&);
+            void reset(osg::State&);
+            void release() const { _buf = nullptr, _backing.clear(); }
         };
 
         // Buffer holding per-tile information. 
         // For now this consists of the modelview and normal matrices for each tile.
         // Since we draw the entire tile set in one call, we need these matrices
         // so we can transform the verts in the shader
-        struct TileBuffer : public SSBO
+        struct TileBuffer
         {
             struct Data {
                 GLfloat _modelViewMatrix[16];   // 64
-
                 GLint   _inUse; // 4
                 GLfloat _padding[3]; // 12
             };
-            Data* _buf;
-            TileBuffer() : _buf(NULL) { }
-            ~TileBuffer() { if (_buf) delete[] _buf; }
-            void allocate(unsigned numTiles, GLsizei alignment, osg::State&);
+            mutable std::vector<Data> _backing;
+            mutable GLBuffer::Ptr _buf;
+            void allocate(unsigned numTiles, osg::State&);
             void update() const;
+            void release() const { _buf = nullptr, _backing.clear(); }
         };
 
         // Data about each rendered instance.
@@ -102,36 +101,33 @@ namespace osgEarth
         // Buffer containing information on each instance in each tile.
         // Each tile's data starts at an offset based on the total dimensions
         // of each tile multiplied by the tile number.
-        struct InstanceBuffer : public SSBO
+        struct InstanceBuffer
         {
-            InstanceData* _buf;
-            unsigned _numInstancesPerTile;
-            InstanceBuffer() : _buf(NULL) { }
-            ~InstanceBuffer() { if (_buf) delete[] _buf; }
-            void allocate(unsigned numTiles, unsigned numInstancesPerTile, GLsizei alignment, osg::State&);
+            mutable GLBuffer::Ptr _buf;
+            void allocate(unsigned numTiles, unsigned numInstancesPerTile, osg::State&);
+            void release() const { _buf = nullptr; }
         };
 
         // Buffer containing the index of each index to cull.
-        struct CullBuffer : public SSBO
+        struct CullBuffer
         {
             struct Data {
                 DispatchIndirectCommand di;
                 GLfloat _padding[1];
             };
-            Data* _buf;
-            CullBuffer() : _buf(NULL) { }
-            ~CullBuffer() { if (_buf) delete[] _buf; }
-            void allocate(unsigned numTiles, GLsizei alignment, osg::State&);
+            mutable Data _backing;
+            mutable GLBuffer::Ptr _buf;
+            void allocate(unsigned numTiles, osg::State&);
             void clear();
+            void release() const { _buf = nullptr; }
         };
 
         // Buffer containing the index of each instance to render after passing cull.
-        struct RenderBuffer : public SSBO
+        struct RenderBuffer
         {
-            GLuint* _buf;
-            RenderBuffer() : _buf(NULL) { }
-            ~RenderBuffer() { if (_buf) delete[] _buf; }
-            void allocate(unsigned numTiles, GLsizei alignment, osg::State&);
+            mutable GLBuffer::Ptr _buf;
+            void allocate(unsigned numTiles, osg::State&);
+            void release() const { _buf = nullptr; }
         };
 
         struct PCPData
@@ -155,8 +151,6 @@ namespace osgEarth
             mutable unsigned _numTilesAllocated;
             unsigned _numInstancesGenerated;
             unsigned _highestTileSlotInUse;
-
-            GLsizei _alignment; // SSBO range alignment
 
             std::unordered_map<const void*, PCPData> _pcpData;
 
@@ -202,7 +196,7 @@ namespace osgEarth
         void setHighestTileSlot(unsigned slot);
 
         //! Prepare to render a new frame by binding buffers
-        void bind();
+        void bind(osg::RenderInfo&);
 
         //! Clean up at the end of the frame and unbind the buffers
         void unbind(osg::RenderInfo&);
@@ -230,6 +224,7 @@ namespace osgEarth
     private:
 
         InstancingData _data;
+        void (GL_APIENTRY * glDispatchComputeIndirect)(GLintptr);
     };
 }
 

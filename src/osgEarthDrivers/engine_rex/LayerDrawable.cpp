@@ -374,7 +374,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                     gs.shared->bind();
 
                     gs.shared->bufferStorage(
-                        align((GLsizei)sizeof(GL4SharedDataBuffer), GLUtils::getSSBOAlignment(state)),
+                        (GLsizei)sizeof(GL4SharedDataBuffer),
                         &buf,
                         0); // permanent
                 }

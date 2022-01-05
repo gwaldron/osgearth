@@ -622,8 +622,8 @@ BiomeManager::createGPULookupTables(
     // SSBO bindings corresponding to the "layout" directives in the shader
     // Consider making these configuration if necessary. These need to match
     // the buffer bindings in GroundCover.Types.glsl.
-    luts->biomeLUT().setBindingIndex(6);
-    luts->assetLUT().setBindingIndex(7);
+    luts->biomeLUT().setBindingPoint(6);
+    luts->assetLUT().setBindingPoint(7);
 
     // working cache
     std::unordered_map<
@@ -694,7 +694,7 @@ BiomeManager::createGPULookupTables(
             numElements += instance._weight*weightMultiplier;
         }
     }
-    luts->assetLUT().setNumElements(numElements);
+    luts->assetLUT().setMaxNumElements(numElements);
 
     // Next, build the asset table using weightings.
     // Slot zero (0) will not be used because biome index starts at 1.
@@ -739,7 +739,7 @@ BiomeManager::createGPULookupTables(
     }
 
     // allocate enough space for the highest-numbered biome index
-    luts->biomeLUT().setNumElements(
+    luts->biomeLUT().setMaxNumElements(
         biomeLUTData.empty() ? 1 : biomeLUTData.rbegin()->first+1);
 
     for (auto& iter : biomeLUTData)

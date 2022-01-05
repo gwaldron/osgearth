@@ -48,69 +48,59 @@ using namespace osgEarth;
 void
 InstanceCloud::CommandBuffer::allocate(
     GeometryCloud* geom,
-    GLsizei alignment,
     osg::State& state)
 {
-    unsigned numCommands = geom->getNumDrawCommands();
-
-    _requiredSize = numCommands * sizeof(DrawElementsIndirectCommand);
-
-    if (_requiredSize > _allocatedSize || _buffer == nullptr)
+    if (_buf == nullptr)
     {
-        //OE_PROFILING_GPU_ZONE("CommandBuffer::allocate");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC CommandBuffer");
+    }
 
-        _geom = geom;
+    _geom = geom;
 
-        release();
-        if (_buf) delete [] _buf;
-
-        _buf = new DrawElementsIndirectCommand[numCommands];
-        _allocatedSize = align(_requiredSize, alignment);
-
-        _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC DrawCommands");
-
-        _buffer->bind();
-        _buffer->bufferStorage(_allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+    if (_geom && _geom->getNumDrawCommands() > _backing.size())
+    {
+        _backing.resize(_geom->getNumDrawCommands());
     }
 }
 
 void
-InstanceCloud::CommandBuffer::reset()
+InstanceCloud::CommandBuffer::reset(osg::State& state)
 {
     //OE_PROFILING_GPU_ZONE("CommandBuffer::reset");
 
-    // Initialize and blit to GPU
-    if (_requiredSize > 0)
+    OE_HARD_ASSERT(_geom != nullptr);
+
+    if (_geom->getNumDrawCommands() > 0)
     {
+        OE_HARD_ASSERT(_backing.size() == _geom->getNumDrawCommands());
+
+        // copy comands into our backing store
         for (unsigned i = 0; i < _geom->getNumDrawCommands(); ++i)
         {
-            _geom->getDrawCommand(i, _buf[i]);
+            _geom->getDrawCommand(i, _backing[i]);
         }
 
-        _buffer->bind();
-        _buffer->bufferSubData(0, _requiredSize, _buf);
+        _buf->bind();
+
+        _buf->uploadData(
+            sizeof(DrawElementsIndirectCommand)*_backing.size(),
+            _backing.data());
     }
 }
 
 void
-InstanceCloud::TileBuffer::allocate(unsigned numTiles, GLsizei alignment, osg::State& state)
+InstanceCloud::TileBuffer::allocate(
+    unsigned numTiles,
+    osg::State& state)
 {
-    _requiredSize = numTiles * sizeof(Data);
-    if (_requiredSize > _allocatedSize || _buffer == nullptr)
+    if (_buf == nullptr)
     {
-        //OE_PROFILING_GPU_ZONE("TileBuffer::allocate");
-        release();
-        if (_buf) delete [] _buf;
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC TileBuffer");
+    }
 
-        _buf = new Data[numTiles];
-        _allocatedSize = align(_requiredSize, alignment);
-
-        osg::GLExtensions* ext = state.get<osg::GLExtensions>();
-
-        _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC TileBuffer");
-        
-        _buffer->bind();
-        _buffer->bufferStorage(_allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+    if (numTiles > 0)
+    {
+        _backing.resize(numTiles);
     }
 }
 
@@ -118,32 +108,29 @@ void
 InstanceCloud::TileBuffer::update() const
 {
     //OE_PROFILING_GPU_ZONE("TileBuffer::update");
-    if (_requiredSize > 0)
+    if (_backing.size() > 0)
     {
-        _buffer->bind();
-        _buffer->bufferSubData(0, _requiredSize, _buf);
+        _buf->bind();
+        _buf->uploadData(sizeof(Data) * _backing.size(), _backing.data());
     }
 }
 
 void
-InstanceCloud::CullBuffer::allocate(unsigned numInstances, GLsizei alignment, osg::State& state)
+InstanceCloud::CullBuffer::allocate(
+    unsigned numInstances,
+    osg::State& state)
 {
-    _requiredSize = sizeof(Data) + (numInstances * sizeof(GLuint));
-
-    if (_requiredSize > _allocatedSize || _buffer == nullptr)
+    if (_buf == nullptr)
     {
-        //OE_PROFILING_GPU_ZONE("InstanceBuffer::allocate");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC CullBuffer");
+    }
 
-        release();
-        if (_buf) delete[] _buf;
-
-        _buf = new Data();
-        _allocatedSize = align(_requiredSize, alignment);
-
-        _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC CullBuffer");
-
-        _buffer->bind();
-        _buffer->bufferStorage(_allocatedSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+    // allocate enough space for the data header and all instance refs
+    GLsizei size = sizeof(Data) + (numInstances * sizeof(GLuint));
+    if (size > _buf->size())
+    {
+        _buf->bind();
+        _buf->uploadData(size, nullptr);
     }
 }
 
@@ -151,71 +138,61 @@ void
 InstanceCloud::CullBuffer::clear()
 {
     //OE_PROFILING_GPU_ZONE("CullBuffer::clear");
-    OE_SOFT_ASSERT_AND_RETURN(valid(), void());
+    OE_SOFT_ASSERT_AND_RETURN(_buf != nullptr, void());
 
     // Zero out the workgroup/instance count.
-    _buf->di.num_groups_x = 0u;
-    _buf->di.num_groups_y = 1u;
-    _buf->di.num_groups_z = 1u;
-    _buf->_padding[0] = 0;
+    _backing.di.num_groups_x = 0u;
+    _backing.di.num_groups_y = 1u;
+    _backing.di.num_groups_z = 1u;
+    _backing._padding[0] = 0;
 
-    _buffer->bind();
-    _buffer->bufferSubData(0, sizeof(Data), _buf);
+    _buf->bind();
+    _buf->bufferSubData(0, sizeof(Data), &_backing);
 }
 
 void
-InstanceCloud::InstanceBuffer::allocate(unsigned numTiles, unsigned numInstancesPerTile, GLsizei alignment, osg::State& state)
+InstanceCloud::InstanceBuffer::allocate(
+    unsigned numTiles, 
+    unsigned numInstancesPerTile,
+    osg::State& state)
 {
-    unsigned numBytesPerTile = numInstancesPerTile * sizeof(InstanceData);
-    _requiredSize = numTiles * numBytesPerTile;
-    if (_requiredSize > _allocatedSize || _buffer == nullptr)
+    if (_buf == nullptr)
     {
-        //OE_PROFILING_GPU_ZONE("GenBuffer::allocate");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC GenBuffer");
+    }
 
-        release();
-        if (_buf) delete[] _buf;
-
-        _numInstancesPerTile = numInstancesPerTile;
-        _allocatedSize = align(_requiredSize, alignment);
-
-        _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC GenBuffer");
-
-        _buffer->bind();
-        _buffer->bufferStorage(_allocatedSize, nullptr, 0);
+    GLsizei size = sizeof(InstanceData) * numTiles * numInstancesPerTile;
+    if (size > _buf->size())
+    {
+        _buf->bind();
+        _buf->uploadData(size, nullptr);
     }
 }
 
 void
-InstanceCloud::RenderBuffer::allocate(unsigned numInstances, GLsizei alignment, osg::State& state)
+InstanceCloud::RenderBuffer::allocate(
+    unsigned numInstances,
+    osg::State& state)
 {
-    _requiredSize = numInstances * (sizeof(GLuint)*2); // sizeof RenderLeaf
-    if (_requiredSize > _allocatedSize || _buffer == nullptr)
+    if (_buf == nullptr)
     {
-        //OE_PROFILING_GPU_ZONE("RenderBuffer::allocate");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC RenderBuffer");
+    }
 
-        release();
-
-        _allocatedSize = align(_requiredSize, alignment);
-
-        _buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC RenderBuffer");
-
-        _buffer->bind();
-        _buffer->bufferStorage(_allocatedSize, nullptr, 0);
+    GLsizei size = numInstances * (sizeof(GLuint)*2); // sizeof RenderLeaf
+    if (size > _buf->size())
+    {
+        _buf->bind();
+        _buf->uploadData(size, nullptr);
     }
 }
 
 InstanceCloud::InstancingData::InstancingData() :
     _numTilesAllocated(0u),
-    _alignment((GLsizei)-1),
     _numX(0u),
     _numY(0u)
 {
-    // Layout bindings. Make sure these match the layout specs in the shaders.
-    _commandBuffer._bindingIndex = 0;
-    _instanceBuffer._bindingIndex = 1;
-    _cullBuffer._bindingIndex = 2;
-    _tileBuffer._bindingIndex = 3;
-    _renderBuffer._bindingIndex = 4;
+    //nop
 }
 
 InstanceCloud::InstancingData::~InstancingData()
@@ -228,12 +205,6 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State& state, unsigned num
 {
     OE_PROFILING_ZONE;
 
-    if (_alignment < 0)
-    {
-        glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &_alignment);
-        OE_DEBUG << LC << "SSBO Alignment = " << _alignment << std::endl;
-    }
-
     _numTilesActive = numTiles;
 
     if (numTiles > _numTilesAllocated)
@@ -242,11 +213,11 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State& state, unsigned num
 
         GLuint numInstances = numTiles * _numX * _numY;
 
-        _commandBuffer.allocate(_geom.get(), _alignment, state);
-        _instanceBuffer.allocate(numTiles, _numX*_numY, _alignment, state);
-        _cullBuffer.allocate(numInstances, _alignment, state);
-        _tileBuffer.allocate(numTiles, _alignment, state);
-        _renderBuffer.allocate(numInstances, _alignment, state);
+        _commandBuffer.allocate(_geom.get(), state);
+        _instanceBuffer.allocate(numTiles, _numX*_numY, state);
+        _cullBuffer.allocate(numInstances, state);
+        _tileBuffer.allocate(numTiles, state);
+        _renderBuffer.allocate(numInstances, state);
 
         _numTilesAllocated = numTiles;
         OE_DEBUG << "Re-alloc: tiles = " << _numTilesAllocated << std::endl;
@@ -269,7 +240,8 @@ InstanceCloud::InstancingData::releaseGLObjects(osg::State* state) const
     _numTilesAllocated = 0;
 }
 
-InstanceCloud::InstanceCloud()
+InstanceCloud::InstanceCloud() :
+    glDispatchComputeIndirect(nullptr)
 {
     //nop
 }
@@ -321,13 +293,14 @@ InstanceCloud::allocateGLObjects(osg::RenderInfo& ri, unsigned numTiles)
 }
 
 void
-InstanceCloud::bind()
+InstanceCloud::bind(osg::RenderInfo& ri)
 {
-    _data._commandBuffer.bindLayout();
-    _data._instanceBuffer.bindLayout();
-    _data._tileBuffer.bindLayout();
-    _data._cullBuffer.bindLayout();
-    _data._renderBuffer.bindLayout();
+    // These map the the "layout binding" directives in the shader
+    _data._commandBuffer._buf->bindBufferBase(0u);
+    _data._instanceBuffer._buf->bindBufferBase(1u);
+    _data._cullBuffer._buf->bindBufferBase(2u);
+    _data._tileBuffer._buf->bindBufferBase(3u);
+    _data._renderBuffer._buf->bindBufferBase(4u);
 }
 
 void
@@ -340,32 +313,13 @@ void
 InstanceCloud::setMatrix(unsigned tileNum, const osg::Matrix& modelView)
 {
     // double to float before doing a memcpy!
+    TileBuffer::Data& tile = _data._tileBuffer._backing[tileNum];
+
     osg::Matrixf modelViewF = modelView;
     ::memcpy(
-        _data._tileBuffer._buf[tileNum]._modelViewMatrix,
+        tile._modelViewMatrix,
         modelViewF.ptr(),
         sizeof(TileBuffer::Data::_modelViewMatrix));
-
-    // derive normal matrix (transposed inverse of MVM 3x3)
-    // NOTE: ignore this for now, and just derive it from
-    // the mat3(mvm) in the shader. This works as long as the
-    // MVM is not anisotropic (scale factors are different on
-    // different axes) which is (?) always the case in OE
-#if 0
-    osg::Matrix mv(modelView);
-    mv.setTrans(0.0, 0.0, 0.0);
-    osg::Matrix matrix;
-    matrix.invert(mv);
-    osg::Matrixf normalMatrix(
-        matrix(0,0), matrix(1,0), matrix(2,0), matrix(3,0),
-        matrix(0,1), matrix(1,1), matrix(2,1), matrix(3,1),
-        matrix(0,2), matrix(1,2), matrix(2,2), matrix(3,2),
-        matrix(0,3), matrix(1,3), matrix(2,3), matrix(3,3));
-    ::memcpy(
-        _data._tileBuffer._buf[tileNum]._normalMatrix,
-        normalMatrix.ptr(),
-        sizeof(TileBuffer::Data::_normalMatrix));
-#endif
 }
 
 void
@@ -374,7 +328,10 @@ InstanceCloud::setTileActive(unsigned tileNum, bool value)
     //OE_SOFT_ASSERT(tileNum < _data._numTilesAllocated);
 
     if (tileNum < _data._numTilesAllocated)
-        _data._tileBuffer._buf[tileNum]._inUse = value ? 1 : 0;
+    {
+        TileBuffer::Data& data = _data._tileBuffer._backing[tileNum];
+        data._inUse = value ? 1 : 0;
+    }
 }
 
 void
@@ -426,22 +383,25 @@ InstanceCloud::cull(osg::RenderInfo& ri)
 {
     OE_PROFILING_ZONE;
 
-    OE_SOFT_ASSERT_AND_RETURN(_data._commandBuffer.valid(), void());
-    OE_SOFT_ASSERT_AND_RETURN(_data._cullBuffer.valid(), void());
+    //OE_SOFT_ASSERT_AND_RETURN(_data._commandBuffer.valid(), void());
+    OE_SOFT_ASSERT_AND_RETURN(_data._cullBuffer._buf != nullptr, void());
     OE_SOFT_ASSERT_AND_RETURN(_data._geom != nullptr, void());
 
     osg::State& state = *ri.getState();
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
 
+    if (glDispatchComputeIndirect == nullptr)
+        osg::setGLExtensionFuncPtr(glDispatchComputeIndirect, "glDispatchComputeIndirect", "glDispatchComputeIndirectARB");
+
     // reset the command buffer in prep for culling and sorting
-    _data._commandBuffer.reset();
+    _data._commandBuffer.reset(state);
 
     // update with the newest tile matrices and data
     _data._tileBuffer.update();
 
     // Bind the indirect dispatch parameters to the header
     // of our cull buffer, which contains the X=instance count and YZ=1.
-    _data._cullBuffer._buffer->bind(GL_DISPATCH_INDIRECT_BUFFER);
+    _data._cullBuffer._buf->bind(GL_DISPATCH_INDIRECT_BUFFER);
 
     // need the projection matrix for frustum culling.
     if (state.getUseModelViewAndProjectionUniforms())
@@ -456,9 +416,7 @@ InstanceCloud::cull(osg::RenderInfo& ri)
         ext->glUniform1i(pcp_data->_passUL, (int)PASS_CULL);
         ext->glUniform1i(pcp_data->_numCommandsUL, (int)_data._geom->getNumDrawCommands());
         ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // prep to read from SSBO
-
-        GLFunctions::get(state).
-            glDispatchComputeIndirect(0);
+        glDispatchComputeIndirect(0);
     }
 
     // second pass: sort
@@ -467,9 +425,7 @@ InstanceCloud::cull(osg::RenderInfo& ri)
 
         ext->glUniform1i(pcp_data->_passUL, (int)PASS_SORT);
         ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // prep to read from SSBO
-
-        GLFunctions::get(state).
-            glDispatchComputeIndirect(0);
+        glDispatchComputeIndirect(0);
     }
 }
 
@@ -484,15 +440,16 @@ void
 InstanceCloud::draw(osg::RenderInfo& ri)
 {
     //OE_PROFILING_GPU_ZONE("IC:Draw");
-    OE_SOFT_ASSERT_AND_RETURN(_data._commandBuffer.valid(), void());
+    OE_SOFT_ASSERT_AND_RETURN(_data._commandBuffer._buf != nullptr, void());
     OE_SOFT_ASSERT_AND_RETURN(_data._geom != nullptr, void());
+
+    osg::GLExtensions* ext = _data._commandBuffer._buf->ext();
 
     // GL_DRAW_INDIRECT_BUFFER buffing binding is NOT part of VAO state (per spec)
     // so we have to bind it here.
-    _data._commandBuffer._buffer->bind(GL_DRAW_INDIRECT_BUFFER);
+    _data._commandBuffer._buf->bind(GL_DRAW_INDIRECT_BUFFER);
 
     // sync to read from SSBO and CMD
-    osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
     ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
 
     // draw the geom

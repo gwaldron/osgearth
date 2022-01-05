@@ -57,17 +57,9 @@ namespace
     };
 
     // GL data that must be stored per-graphics-context
-    struct DrawState
+    struct GCState
     {
-        DrawState() :
-            _bufferSize(0),
-            _glBufferStorage(nullptr) { }
-
         GLBuffer::Ptr _buffer;
-        GLuint _bufferSize;
-
-        // pre-OSG 3.6 support
-        void (GL_APIENTRY * _glBufferStorage)(GLenum, GLuint, const void*, GLenum);
     };
 
     // Data stored per-camera
@@ -146,7 +138,7 @@ namespace
         WindDrawable(const osgDB::Options* readOptions);
 
         void setupPerCameraState(const osg::Camera* camera);
-        void compileGLObjects(osg::RenderInfo& ri, DrawState& ds) const;
+        void streamDataToGPU(osg::RenderInfo& ri, GCState& ds) const;
         void updateBuffers(CameraState&, const osg::Camera*);
 
         void drawImplementation(osg::RenderInfo& ri) const override;
@@ -156,7 +148,7 @@ namespace
         osg::ref_ptr<const osgDB::Options> _readOptions;
         osg::ref_ptr<osg::Program> _computeProgram;
         std::vector<osg::ref_ptr<Wind> > _winds;
-        mutable osg::buffered_object<DrawState> _ds;
+        mutable osg::buffered_object<GCState> _ds;
         mutable CameraStates _cameraState;
         TextureImageUnitReservation _unitReservation;
     };
@@ -243,34 +235,24 @@ namespace
         cs._sharedStateSet->setDefine("OE_WIND_TEX", "oe_wind_tex");
     }
 
-    void WindDrawable::compileGLObjects(osg::RenderInfo& ri, DrawState& ds) const
+    void WindDrawable::streamDataToGPU(osg::RenderInfo& ri, GCState& ds) const
     {
         osg::State* state = ri.getState();
         if (state)
         {
-            osg::GLExtensions* ext = state->get<osg::GLExtensions>();
-
             CameraState& cs = _cameraState.get(ri.getCurrentCamera());
 
-            GLuint requiredBufferSize = sizeof(WindData) * (_winds.size()+1);
-
-            if (ds._buffer == nullptr || ds._bufferSize < requiredBufferSize)
+            if (ds._buffer == nullptr)
             {
                 ds._buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state, "oe.wind");
-                ds._bufferSize = requiredBufferSize;
-
-                ds._buffer->bind();
-
-                GLFunctions::get(*state).
-                    glBufferStorage(GL_SHADER_STORAGE_BUFFER, ds._bufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
-            }
-            else
-            {
-                ds._buffer->bind();
             }
 
-            // download to GPU
-            ext->glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, ds._bufferSize, cs._windData);
+            // upload to GPU
+            ds._buffer->bind();
+
+            ds._buffer->uploadData(
+                sizeof(WindData) * (_winds.size() + 1), 
+                cs._windData);
         }
     }
 
@@ -329,7 +311,7 @@ namespace
     {
         if (state)
         {
-            DrawState& ds = _ds[state->getContextID()];
+            GCState& ds = _ds[state->getContextID()];
             ds._buffer = nullptr;
         }
         else
@@ -362,14 +344,14 @@ namespace
         if (ri.getCurrentCamera() == nullptr)
             return;
 
-        DrawState& ds = _ds[ri.getState()->getContextID()];
+        GCState& ds = _ds[ri.getState()->getContextID()];
         osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
         // update buffer with wind data
-        compileGLObjects(ri, ds);
+        streamDataToGPU(ri, ds);
 
         // activate layout() binding point:
-        ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ds._buffer->name());
+        ds._buffer->bindBufferBase(0);
 
         // run it
         ext->glDispatchCompute(WIND_DIM_X, WIND_DIM_Y, WIND_DIM_Z);

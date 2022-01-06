@@ -21,6 +21,7 @@
 #include "SilverLiningContext"
 #include "SilverLiningContextNode"
 #include <osgEarth/SpatialReference>
+#include <osgEarth/GLUtils>
 
 #ifndef SILVERLINING_MAJOR_VERSION
 #include <Version.h>
@@ -48,6 +49,8 @@ _contextNode(contexNode)
 void
 CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
+    OE_GL_ZONE;
+
 	osg::Camera* camera = renderInfo.getCurrentCamera();
 #ifndef SL_USE_CULL_MASK
 	if(_contextNode->getTargetCamera() == camera)

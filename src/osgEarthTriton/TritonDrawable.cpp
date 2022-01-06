@@ -29,6 +29,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Random>
+#include <osgEarth/GLUtils>
 
 #undef  LC
 #define LC "[TritonDrawable] "
@@ -102,6 +103,8 @@ getOceanShader(::Triton::Ocean* ocean, ::Triton::Shaders shaderProgram, void* co
 void
 TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
+    OE_GL_ZONE;
+
     osg::State* state = renderInfo.getState();
 
     state->disableAllVertexArrays();

@@ -1147,6 +1147,13 @@ namespace
 }
 
 void
+LineDrawable::drawImplementation(osg::RenderInfo& ri) const
+{
+    OE_GL_ZONE;
+    _geom->draw(ri);
+}
+
+void
 LineDrawable::dirty()
 {
     initialize();

@@ -92,7 +92,7 @@ PolyShader::PolyShaderCache PolyShader::_polyShaderCache;
 
 namespace
 {
-    std::atomic_bool s_debugGroupPushed = false;
+    std::atomic_bool s_debugGroupPushed(false);
 
     /** Locate a function by name in the location map. */
     bool findFunction(const std::string&               name,

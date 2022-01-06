@@ -18,6 +18,7 @@
  */
 #include <osgEarth/ResourceReleaser>
 #include <osgEarth/Metrics>
+#include <osgEarth/GLUtils>
 #include <osgEarth/StringUtils>
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,0)
 #include <osg/ContextData>
@@ -63,6 +64,7 @@ ResourceReleaser::push(const ObjectList& objects)
 void
 ResourceReleaser::drawImplementation(osg::RenderInfo& ri) const
 {
+    OE_GL_ZONE;
     releaseGLObjects(ri.getState());
 }
 

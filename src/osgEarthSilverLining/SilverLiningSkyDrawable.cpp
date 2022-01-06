@@ -21,6 +21,7 @@
 #include "SilverLiningContext"
 #include "SilverLiningContextNode"
 #include <osgEarth/SpatialReference>
+#include <osgEarth/GLUtils>
 
 #define LC "[SilverLining:SkyDrawable] "
 
@@ -44,6 +45,8 @@ _contextNode(contexNode)
 void
 SkyDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 {
+    OE_GL_ZONE;
+
     osg::Camera* camera = renderInfo.getCurrentCamera();
 #ifndef SL_USE_CULL_MASK
 	//Check if this is the target camera

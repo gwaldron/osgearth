@@ -50,7 +50,8 @@ namespace osgUtil {
     class StateToCompile;
 }
 
-#define OE_GL_SCOPE(X) osgEarth::ScopedGLDebugGroup __oe_glscope(X)
+#define OE_GL_ZONE osgEarth::ScopedGLDebugGroup __oe_glscope(typeid(*this).name())
+#define OE_GL_ZONE_NAMED(X) osgEarth::ScopedGLDebugGroup __oe_glscope(X)
 
 #define OE_GL_PUSH(X) if (GLUtils::isGLDebuggingEnabled()) GLUtils::pushDebugGroup(X)
 #define OE_GL_POP if (GLUtils::isGLDebuggingEnabled()) GLUtils::popDebugGroup()

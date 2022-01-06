@@ -657,6 +657,8 @@ PointDrawable::setupState()
 void
 PointDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
+    OE_GL_ZONE;
+
     checkSharedStateSet(ri.getState());
 
     // in the compatibility profile, we have to expressly enable point sprites;

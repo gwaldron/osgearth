@@ -103,7 +103,7 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(zone);
-    OE_GL_SCOPE(zone);
+    OE_GL_ZONE_NAMED(zone);
 
     if (_useIndirectRendering)
         drawImplementationIndirect(ri);

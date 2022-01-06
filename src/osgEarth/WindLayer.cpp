@@ -344,6 +344,8 @@ namespace
         if (ri.getCurrentCamera() == nullptr)
             return;
 
+        OE_GL_ZONE;
+
         GCState& ds = _ds[ri.getState()->getContextID()];
         osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 

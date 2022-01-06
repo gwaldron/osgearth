@@ -214,9 +214,8 @@ namespace osgEarth
 
     public: // osg::Drawable pass thrus
 
-        virtual void drawImplementation(osg::RenderInfo& ri) const override {
-            _geom->draw(ri);
-        }
+        virtual void drawImplementation(osg::RenderInfo& ri) const override;
+
         virtual void traverse(osg::NodeVisitor& nv) override {
             _geom->accept(nv);
         }

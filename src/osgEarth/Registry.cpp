@@ -23,6 +23,7 @@
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/TerrainEngineNode>
+#include "GLUtils"
 
 #include <osgText/Font>
 #include <osgDB/Registry>
@@ -38,6 +39,17 @@ using namespace osgEarth;
 void osgEarth::initialize()
 {
     osgEarth::Registry::instance()->getCapabilities();
+
+    if (::getenv("OSGEARTH_GL_DEBUG"))
+    {
+        GLUtils::enableGLDebugging();
+    }
+
+    if (::getenv("OSGEARTH_VP_DEBUG"))
+    {
+        GLUtils::enableGLDebugging();
+        VirtualProgram::enableGLDebugging();
+    }
 }
 
 namespace

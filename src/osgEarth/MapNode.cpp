@@ -434,9 +434,11 @@ MapNode::open()
 
     // activate PBR support.
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+    vp->setName(className());
     Shaders shaders;
     shaders.load(vp, shaders.PBR);
     stateset->setDefine("OE_USE_PBR");
+
 
     dirtyBound();
 

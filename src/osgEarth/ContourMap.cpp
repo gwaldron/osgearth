@@ -121,7 +121,7 @@ ContourMapLayer::init()
 
     // shaders:
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-    vp->setName("ContourMap");
+    vp->setName(typeid(*this).name());
     Shaders pkg;
     pkg.load(vp, pkg.ContourMap);
 

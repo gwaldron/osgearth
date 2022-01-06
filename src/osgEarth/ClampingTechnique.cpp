@@ -224,7 +224,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     // This will prevent things like VPs on the main camera (e.g., log depth buffer)
     // from interfering with the depth camera
     VirtualProgram* rttVP = VirtualProgram::getOrCreate(rttStateSet);
-    rttVP->setName("GPU Clamping RTT");
+    rttVP->setName(typeid(*this).name());
     rttVP->setInheritShaders(false);
     
     // attach the terrain to the camera.
@@ -294,7 +294,7 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     // make the shader that will do clamping and depth offsetting.
     VirtualProgram* vp = VirtualProgram::getOrCreate(local->_groupStateSet.get());
-    vp->setName( "GPUClamping" );
+    vp->setName(typeid(*this).name());
 
     // Bind clamping attribute location, and a default uniform indicating whether
     // they are available (default is false).

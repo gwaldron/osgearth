@@ -349,6 +349,7 @@ GeodeticGraticule::setMapNode(MapNode* mapNode)
             VirtualProgram* vp = VirtualProgram::get(stateset);
             if ( vp )
             {
+                vp->setName(typeid(*this).name());
                 Shaders package;
                 package.unload( vp, package.GeodeticGraticule );
 
@@ -370,7 +371,7 @@ GeodeticGraticule::setMapNode(MapNode* mapNode)
         // shader components
         osg::StateSet* stateset = mapNode->getTerrainEngine()->getSurfaceStateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-        vp->setName("GeodeticGraticule");
+        vp->setName(typeid(*this).name());
 
         // configure shaders
         Shaders package;
@@ -743,7 +744,7 @@ GeodeticGraticule::getCameraData(osg::Camera* cam) const
 
         cdata._labelStateset = new osg::StateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(cdata._labelStateset.get());
-        vp->setName("GeodeticGraticule Text");
+        vp->setName(typeid(*this).name());
         vp->setFunction("oe_GeodeticGraticule_text_frag", textFadeFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
     }
 

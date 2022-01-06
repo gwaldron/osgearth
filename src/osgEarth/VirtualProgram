@@ -391,6 +391,9 @@ namespace osgEarth
         bool addGLSLExtension(const std::string& extension);
         bool hasGLSLExtension(const std::string& extension) const;
         bool removeGLSLExtension(const std::string& extension);
+
+        static void enableGLDebugging();
+
     public: 
         /**
          * Constructs a new VP
@@ -595,6 +598,8 @@ namespace osgEarth
         AttribAliasMap _attribAliases;
 
         bool _acceptCallbacksVaryPerFrame;
+
+        static bool _gldebug;
 
         mutable osg::buffered_object< osg::ref_ptr<osg::Program> > _lastUsedProgram;
 

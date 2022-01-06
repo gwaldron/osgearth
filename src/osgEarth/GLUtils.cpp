@@ -57,6 +57,53 @@ using namespace osgEarth;
 #define GL_NORMALIZE 0x0BA1
 #endif
 
+namespace
+{
+    struct
+    {
+        typedef void (GL_APIENTRY* DebugProc)(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar*, const void*);
+        
+        void (GL_APIENTRY * DebugMessageCallback)(DebugProc, const void*);
+        void (GL_APIENTRY * DebugMessageControl)(GLenum, GLenum, GLenum, GLsizei, const GLuint*, bool);
+        void (GL_APIENTRY * PushDebugGroup)(GLenum, GLuint, GLsizei, const char*);
+        void (GL_APIENTRY * PopDebugGroup)(void);
+
+        inline void init()
+        {
+            if (DebugMessageCallback == nullptr)
+            {
+                osg::setGLExtensionFuncPtr(DebugMessageCallback, "glDebugMessageCallback", "glDebugMessageCallbackKHR");
+                osg::setGLExtensionFuncPtr(DebugMessageControl, "glDebugMessageControl", "glDebugMessageControlKHR");
+                osg::setGLExtensionFuncPtr(PushDebugGroup, "glPushDebugGroup", "glPushDebugGroupKHR");
+                osg::setGLExtensionFuncPtr(PopDebugGroup, "glPopDebugGroup", "glPopDebugGroupKHR");
+            }
+        }
+    } gl;
+}
+
+// static
+bool GLUtils::_gldebugging = false;
+
+void
+GLUtils::enableGLDebugging()
+{
+    _gldebugging = true;
+}
+
+void
+GLUtils::pushDebugGroup(const char* name)
+{
+    gl.init();
+    gl.PushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, name);
+}
+
+void
+GLUtils::popDebugGroup()
+{
+    gl.init();
+    gl.PopDebugGroup();
+}
+
 void
 GLUtils::setGlobalDefaults(osg::StateSet* stateSet)
 {
@@ -193,12 +240,6 @@ CustomRealizeOperation::setSyncToVBlank(bool value)
     _vsync = value;
 }
 
-void
-CustomRealizeOperation::setEnableGLDebugging(bool value)
-{
-    _gldebug = value;
-}
-
 namespace
 {
 #ifndef GL_DEBUG_OUTPUT_SYNCHRONOUS
@@ -272,18 +313,24 @@ CustomRealizeOperation::operator()(osg::Object* object)
         }
     }
 
-    if (_gldebug.isSetTo(true))
+    if (GLUtils::isGLDebuggingEnabled())
     {
-        osg::GraphicsContext* gc = static_cast<osg::GraphicsContext*>(object);
-        OE_HARD_ASSERT(gc != nullptr);
+        gl.init();
 
-        OE_INFO << "ENABLING DEBUG GL MESSAGES" << std::endl;
-        glEnable(GL_DEBUG_OUTPUT);
-        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-        GLFunctions& gl = GLFunctions::get(*gc->getState());
-        gl.glDebugMessageCallback(s_oe_gldebugproc, nullptr);
-        gl.glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_MEDIUM, 0, nullptr, GL_TRUE);
-        gl.glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, nullptr, GL_TRUE);
+        //osg::GraphicsContext* gc = static_cast<osg::GraphicsContext*>(object);
+        //OE_HARD_ASSERT(gc != nullptr);
+
+        if (gl.DebugMessageCallback)
+        {
+            OE_INFO << "ENABLING DEBUG GL MESSAGES" << std::endl;
+
+            glEnable(GL_DEBUG_OUTPUT);
+            glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+
+            gl.DebugMessageCallback(s_oe_gldebugproc, nullptr);
+            gl.DebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_MEDIUM, 0, nullptr, GL_TRUE);
+            gl.DebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_HIGH, 0, nullptr, GL_TRUE);
+        }
     }
 }
 
@@ -1056,29 +1103,4 @@ GLObjectsCompiler::compileNow(
         Future<osg::ref_ptr<osg::Node>> result = compileAsync(node, host, progress);
         result.join(progress);
     }
-}
-
-GLFunctions::GLFunctions() :
-    glBufferStorage(NULL)
-{
-    //nop
-}
-GLFunctions GLFunctions::_buf[256];
-
-GLFunctions&
-GLFunctions::get(unsigned contextID)
-{
-    GLFunctions& f = _buf[contextID];
-    if (f.glBufferStorage == NULL)
-    {
-        osg::setGLExtensionFuncPtr(f.glBufferStorage, "glBufferStorage", "glBufferStorageARB");
-        osg::setGLExtensionFuncPtr(f.glClearBufferSubData, "glClearBufferSubData", "glClearBufferSubDataARB");
-        osg::setGLExtensionFuncPtr(f.glDrawElementsIndirect, "glDrawElementsIndirect", "glDrawElementsIndirectARB");
-        osg::setGLExtensionFuncPtr(f.glMultiDrawElementsIndirect, "glMultiDrawElementsIndirect", "glMultiDrawElementsIndirectARB");
-        osg::setGLExtensionFuncPtr(f.glDispatchComputeIndirect, "glDispatchComputeIndirect", "glDispatchComputeIndirectARB");
-        osg::setGLExtensionFuncPtr(f.glTexStorage3D, "glTexStorage3D", "glTexStorage3DARB");
-        osg::setGLExtensionFuncPtr(f.glDebugMessageCallback, "glDebugMessageCallback", "glDebugMessageCallbackKHR");
-        osg::setGLExtensionFuncPtr(f.glDebugMessageControl, "glDebugMessageControl", "glDebugMessageControlKHR");
-    }
-    return f;
 }

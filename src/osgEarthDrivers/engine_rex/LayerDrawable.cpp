@@ -99,11 +99,11 @@ namespace
 void
 LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
+    const char* zone = _layer ? _layer->getName().c_str() : className();
+
     OE_PROFILING_ZONE;
-    if (_layer)
-    {
-        OE_PROFILING_ZONE_TEXT(_layer->getName().c_str());
-    }
+    OE_PROFILING_ZONE_TEXT(zone);
+    OE_GL_SCOPE(zone);
 
     if (_useIndirectRendering)
         drawImplementationIndirect(ri);

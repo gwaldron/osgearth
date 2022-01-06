@@ -642,7 +642,7 @@ CascadeDrapingDecorator::CameraLocal::initialize(osg::Camera* camera, CascadeDra
     
     // install the shader program to project a texture on the terrain
     VirtualProgram* drapingShader = VirtualProgram::getOrCreate(_terrainSS.get());
-    drapingShader->setName("Draping");
+    drapingShader->setName(typeid(*this).name());
     Shaders shaders;
     shaders.load(drapingShader, shaders.CascadeDraping);
 }

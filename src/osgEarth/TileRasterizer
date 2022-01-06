@@ -87,6 +87,7 @@ namespace osgEarth
             osg::ref_ptr<osg::Texture2D> _tex;
             osg::ref_ptr<osg::Camera> _rtt;
             GLuint _samples;
+            std::atomic_bool _sampleQueryActive;
             std::atomic_bool _rttActive;
             RenderJob* _activeJob;
         };

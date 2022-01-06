@@ -566,7 +566,7 @@ GroundCoverLayer::buildStateSets()
 
     // Install the land cover shaders on the state set
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-    vp->setName("Ground cover");
+    vp->setName(typeid(*this).name());
 
     // Load shaders particular to this class
     loadShaders(vp, getReadOptions());

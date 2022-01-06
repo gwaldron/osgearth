@@ -154,7 +154,7 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     osg::StateSet* stateset = getOrCreateStateSet();
     stateset->setName("RexTerrainEngineNode");
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-    vp->setName("RexTerrainEngineNode");
+    vp->setName(typeid(*this).name());
     vp->setIsAbstract(true);    // cannot run by itself, requires additional children
 
     _surfaceStateSet = new osg::StateSet();
@@ -1314,13 +1314,13 @@ RexTerrainEngineNode::updateState()
 
         // Shaders that affect any terrain layer:
         VirtualProgram* terrainVP = VirtualProgram::getOrCreate(terrainStateSet);
-        terrainVP->setName("Rex Terrain");
+        terrainVP->setName(typeid(*this).name());
         shaders.load(terrainVP, shaders.sdk());
         shaders.load(terrainVP, shaders.vert());
 
         // Shaders that affect only terrain surface layers (RENDERTYPE_TERRAIN_SURFACE)
         VirtualProgram* surfaceVP = VirtualProgram::getOrCreate(surfaceStateSet);
-        surfaceVP->setName("Rex Surface");
+        surfaceVP->setName(typeid(*this).name());
 
         // Functions that affect the terrain surface only:
         shaders.load(surfaceVP, shaders.elevation());

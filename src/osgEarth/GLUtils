@@ -50,6 +50,11 @@ namespace osgUtil {
     class StateToCompile;
 }
 
+#define OE_GL_SCOPE(X) osgEarth::ScopedGLDebugGroup __oe_glscope(X)
+
+#define OE_GL_PUSH(X) if (GLUtils::isGLDebuggingEnabled()) GLUtils::pushDebugGroup(X)
+#define OE_GL_POP if (GLUtils::isGLDebuggingEnabled()) GLUtils::popDebugGroup()
+
 namespace osgEarth
 {
     using namespace Threading;
@@ -80,13 +85,36 @@ namespace osgEarth
         //! Removes the state associated with a GL capability, causing it to inherit from above.
         //! and if one of: GL_LIGHTING, GL_LINE_WIDTH, GL_LINE_STIPPLE, GL_LINE_SMOOTH, GL_POINT_SIZE
         static void remove(osg::StateSet* stateSet, GLenum cap);
+
+        //! Enables global GL debugging
+        static void enableGLDebugging();
+
+        //! Whether global GL debugging is enabled
+        static bool isGLDebuggingEnabled() { return _gldebugging; }
+
+        //! Push a GL debugging group
+        static void pushDebugGroup(const char* name);
+
+        //! Pop a GL debugging group
+        static void popDebugGroup();
+
+    private:
+        static bool _gldebugging;
+    };
+
+    /**
+     * Scope-based GL debug group 
+     */
+    struct ScopedGLDebugGroup
+    {
+        ScopedGLDebugGroup(const char* name) { OE_GL_PUSH(name); }
+        ~ScopedGLDebugGroup() { OE_GL_POP; }
     };
 
     struct OSGEARTH_EXPORT CustomRealizeOperation : public osg::Operation
     {
         virtual void operator()(osg::Object*);
         void setSyncToVBlank(bool);
-        void setEnableGLDebugging(bool);
         optional<bool> _vsync;
         optional<bool> _gldebug;
     };
@@ -392,29 +420,6 @@ namespace osgEarth
 
     private:
         OSG_GL_API* _object;
-    };
-
-    // Functions that aren't in osg::GLExtensions (some in 3.4, some in 3.6+)
-    struct OSGEARTH_EXPORT GLFunctions
-    {
-        static GLFunctions& get(unsigned contextID);
-        static GLFunctions& get(osg::State& state) { return get(state.getContextID()); }
-
-        GLFunctions();
-        void (GL_APIENTRY * glBufferStorage)(GLenum, GLuint, const void*, GLenum);
-        void (GL_APIENTRY * glClearBufferSubData)(GLenum, GLenum, GLintptr, GLsizeiptr, GLenum, GLenum type, const void*);
-        void (GL_APIENTRY * glDrawElementsIndirect)(GLenum, GLenum, const void*);
-        void (GL_APIENTRY * glMultiDrawElementsIndirect)(GLenum, GLenum, const void*, GLsizei, GLsizei);
-        void (GL_APIENTRY * glDispatchComputeIndirect)(GLintptr);
-        void (GL_APIENTRY * glTexStorage3D)(GLenum, GLsizei, GLenum, GLsizei, GLsizei, GLsizei);
-
-        typedef void (GL_APIENTRY* DebugProc)(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar*, const void*);
-        void (GL_APIENTRY * glDebugMessageCallback)(DebugProc, const void*);
-        void (GL_APIENTRY * glDebugMessageControl)(GLenum, GLenum, GLenum, GLsizei, const GLuint*, bool);
-
-
-    private:
-        static GLFunctions _buf[256];
     };
 
     /**

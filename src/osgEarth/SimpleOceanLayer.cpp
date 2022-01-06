@@ -88,7 +88,7 @@ SimpleOceanLayer::init()
     ss->setDataVariance(ss->DYNAMIC);
     
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    vp->setName("SimpleOceanLayer");
+    vp->setName(typeid(*this).name());
     Shaders shaders;
     shaders.load(vp, shaders.SimpleOceanLayer);
 

@@ -411,7 +411,20 @@ MapNodeHelper::loadWithoutControls(
     if (args.read("--vsync"))
         vsync = true;
     else if (args.read("--novsync"))
-        vsync = false;
+        vsync = false;   
+
+    // GL debugging stuff
+    if (args.read("--gldebug") || args.read("--gl-debug"))
+    {
+        GLUtils::enableGLDebugging();
+    }
+
+    // VP debugging
+    if (args.read("--vpdebug") || args.read("--vp-debug"))
+    {
+        GLUtils::enableGLDebugging();
+        VirtualProgram::enableGLDebugging();
+    }
 
     if (viewer)
     {
@@ -427,9 +440,6 @@ MapNodeHelper::loadWithoutControls(
 #endif
         if (vsync.isSet())
             rop->setSyncToVBlank(vsync.get());
-
-        if (args.read("--gldebug") || args.read("--gl-debug"))
-            rop->setEnableGLDebugging(true);
 
         op->_ops.push_back(rop);
 
@@ -547,6 +557,19 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
         vsync = true;
     else if (args.read("--novsync"))
         vsync = false;
+
+    // GL debugging stuff
+    if (args.read("--gldebug") || args.read("--gl-debug"))
+    {
+        GLUtils::enableGLDebugging();
+    }
+
+    // VP debugging
+    if (args.read("--vpdebug") || args.read("--vp-debug"))
+    {
+        GLUtils::enableGLDebugging();
+        VirtualProgram::enableGLDebugging();
+    }
 
     if (viewer)
     {

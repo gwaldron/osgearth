@@ -260,7 +260,7 @@ ObjectIDPicker::setupRTT(osgViewer::View* view)
 
     // install the picking shaders:
     VirtualProgram* vp = new VirtualProgram();
-    vp->setName("osgEarth::ObjectIDPicker");
+    vp->setName(typeid(*this).name());
     Shaders shaders;
     shaders.load(vp, shaders.RTTPicker);
     // Install shaders and bindings from the ObjectIndex:

@@ -173,7 +173,7 @@ ShadowCaster::reinitialize()
 
     // Establish a Virtual Program on the stateset.
     VirtualProgram* vp = VirtualProgram::getOrCreate(_renderStateSet.get());
-    vp->setName("ShadowCaster");
+    vp->setName(typeid(*this).name());
 
     // Load the shadowing shaders.
     Shaders package;

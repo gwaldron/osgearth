@@ -89,6 +89,7 @@ TileRasterizer::TileRasterizer(unsigned width, unsigned height)
 
     _cx->_activeJob = nullptr;
     _cx->_rttActive = false;
+    _cx->_sampleQueryActive = false;
 
     // GL objects
     _cx->_samplesQuery = 0;
@@ -102,7 +103,7 @@ TileRasterizer::TileRasterizer(unsigned width, unsigned height)
 
     // default no-op shader
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    vp->setName("TileRasterizer");
+    vp->setName(typeid(*this).name());
     vp->setInheritShaders(false);
 }
 
@@ -211,6 +212,7 @@ TileRasterizer::preDraw(osg::RenderInfo& ri)
 
     _cx->_samples = 0u;
     ext->glBeginQuery(GL_ANY_SAMPLES_PASSED, _cx->_samplesQuery);
+    _cx->_sampleQueryActive.exchange(true);
 #endif
 }
 
@@ -223,8 +225,8 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
     osg::ref_ptr<osg::Image> image;
     osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
-    // finalize the samples query (if in use)
-    if (_cx->_samplesQuery > 0)
+    // finalize the samples query (if in use and if there was a glBeginQuery)
+    if (_cx->_samplesQuery > 0 && _cx->_sampleQueryActive.exchange(false))
     {
         OE_PROFILING_ZONE_NAMED("glEndQuery/glGet");
         ext->glEndQuery(GL_ANY_SAMPLES_PASSED);

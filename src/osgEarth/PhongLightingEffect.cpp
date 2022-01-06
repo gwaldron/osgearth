@@ -58,7 +58,7 @@ PhongLightingEffect::attach(osg::StateSet* stateset)
     {
         _statesets.push_back(stateset);
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-        vp->setName( "osgEarth.PhongLightingEffect" );
+        vp->setName(typeid(*this).name());
         
         Shaders shaders;
         shaders.load(vp, shaders.PhongLighting);

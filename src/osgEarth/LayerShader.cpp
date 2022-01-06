@@ -139,6 +139,7 @@ LayerShader::install(Layer* layer, TerrainResources* res)
     osg::StateSet* stateset = layer->getOrCreateStateSet();
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
+    vp->setName(layer->getName());
     ShaderPackage package;
     package.add("", _options.code());
     package.loadAll(vp, layer->getReadOptions());

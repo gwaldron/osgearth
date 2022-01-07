@@ -1180,8 +1180,6 @@ VegetationLayer::Renderer::CameraState::draw(
     osg::RenderInfo& ri,
     const TileBatch& batch)
 {
-    OE_GL_ZONE;
-
     osg::State* state = ri.getState();
 
     // do we need to re-generate some (or all) of the tiles?

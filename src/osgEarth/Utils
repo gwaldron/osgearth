@@ -332,9 +332,8 @@ namespace osgEarth { namespace Util
 
                     // remove it from the tracker list:
                     _list.erase(tmp);
-                }
-
-                ++count;
+                    ++count;
+                }                
             }
 
             // reset the sentry.

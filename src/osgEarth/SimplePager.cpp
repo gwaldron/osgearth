@@ -11,6 +11,8 @@
 #include <osg/ShapeDrawable>
 #include <osg/MatrixTransform>
 
+#include <osg/KdTree>
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
@@ -157,6 +159,10 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
 
     if (node.valid())
     {
+        // Build kdtrees to increase intersection speed.
+        osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = new osg::KdTreeBuilder();
+        node->accept(*kdTreeBuilder.get());
+
         pagedNode->addChild(node);
         fire_onCreateNode(key, node.get());
     }

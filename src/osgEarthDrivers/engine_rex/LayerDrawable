@@ -27,6 +27,8 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/TextureArena>
 
+#include <osg/PrimitiveSetIndirect>
+
 #include <vector>
 
 using namespace osgEarth;
@@ -45,8 +47,6 @@ namespace osgEarth { namespace REX
     {
     public:
         LayerDrawable();
-
-        void accept(osg::NodeVisitor& nv) { Drawable::accept(nv); }
 
         // The (sorted) list of tiles to render for this layer
         DrawTileCommands _tiles;
@@ -99,6 +99,7 @@ namespace osgEarth { namespace REX
         void accept(osg::PrimitiveIndexFunctor&) const override;
         void releaseGLObjects(osg::State*) const override;
         void resizeGLObjectBuffers(unsigned size) override;
+        void accept(osg::NodeVisitor& nv) override;
 
     protected:
 
@@ -110,26 +111,32 @@ namespace osgEarth { namespace REX
         // Things maintained on a per-graphics-context basis
         struct GCState
         {
-            GLuint vao;
-            GLBuffer::Ptr vbo;
-            GLBuffer::Ptr ebo;
             GLBuffer::Ptr shared;
             GLBuffer::Ptr tiles;
-            GLBuffer::Ptr commands;
-            void (GL_APIENTRY * glDrawElementsIndirect)(GLenum, GLenum, const void*);
         };
 
         struct RenderState
         {
-            RenderState() {
-                gcState.resize(64);
-            }
-            std::vector<GL4TileBuffer> tilebuf;
+            RenderState();
+
+            bool _dirty;
+
             std::vector<DrawElementsIndirectCommand> commands;
             osg::buffered_object<GCState> gcState;
             DrawTileCommands _previous_tiles;
+
+            std::vector<GL4Tile> tilebuf;
+            osg::ref_ptr<osg::Geometry> geom;
+            osg::Vec3Array* verts;
+            osg::Vec3Array* uvs;
+            osg::Vec3Array* upvectors;
+            osg::Vec3Array* neighbors;
+            osg::Vec3Array* neighborupvectors;
+            osg::MultiDrawElementsIndirectUShort* multidraw;
         };
         mutable RenderState _rs;
+
+        void refreshRenderState();
 
         // todo: move higher and share?
         mutable osg::ref_ptr<TextureArena> _textures;

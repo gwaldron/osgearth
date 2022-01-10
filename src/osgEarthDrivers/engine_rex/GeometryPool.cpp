@@ -186,7 +186,7 @@ namespace
     primSet->addElement((INDEX1)+1); \
 }
 
-osg::DrawElements*
+osg::DrawElementsUShort*
 GeometryPool::createPrimitiveSet(
     unsigned tileSize,
     float skirtRatio,
@@ -203,7 +203,7 @@ GeometryPool::createPrimitiveSet(
 
     GLenum mode = UseGpuTessellation ? GL_PATCHES : GL_TRIANGLES;
 
-    osg::ref_ptr<osg::DrawElements> primSet = new osg::DrawElementsUShort(mode);
+    osg::ref_ptr<osg::DrawElementsUShort> primSet = new osg::DrawElementsUShort(mode);
     primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
 
     // add the elements for the surface:
@@ -292,7 +292,7 @@ GeometryPool::createGeometry(
     osg::ref_ptr<osg::VertexBufferObject> vbo = new osg::VertexBufferObject();
 
     // Elements set ... later we'll decide whether to use the global one
-    osg::DrawElements* primSet = NULL;
+    osg::DrawElementsUShort* primSet = NULL;
 
     // the initial vertex locations:
     osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array();

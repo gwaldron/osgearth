@@ -391,7 +391,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
                         // find the shared index.
                         int index = -1;
                         const RenderBindings& bindings = this->_renderBindings;
-                        for (int i = SamplerBinding::SHARED; i < bindings.size() && index < 0; ++i)
+                        for (int i = SamplerBinding::SHARED; i < (int)bindings.size() && index < 0; ++i)
                         {
                             if (bindings[i].samplerName() == tokens[0])
                             {

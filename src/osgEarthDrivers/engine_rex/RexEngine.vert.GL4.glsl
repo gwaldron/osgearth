@@ -15,7 +15,8 @@ void oe_rex_init_model(inout vec4 vertexModel)
 {
     // instance ID from the DrawElementsIndirect cmd
     // if we go with MDEI, change this to gl_DrawID
-    oe_tileID = gl_InstanceID;
+    //oe_tileID = gl_InstanceID;
+    oe_tileID = gl_DrawID;
 
     // Color of the underlying map geometry (untextured)
     vp_Color = oe_terrain_color;
@@ -50,17 +51,20 @@ void oe_rex_init_view(inout vec4 vert_view)
     oe_tile_mvm = oe_tile[oe_tileID].modelViewMatrix;
 
     // extract vertex and its marker (in w)
-    vec4 vdata = oe_tile[oe_tileID].verts[gl_VertexID];
-    vert_view = oe_tile_mvm * vec4(vdata.xyz, 1);
+    //vec4 vdata = oe_tile[oe_tileID].verts[gl_VertexID];
+    //vert_view = oe_tile_mvm * vec4(vdata.xyz, 1);
+    vert_view = oe_tile_mvm * gl_Vertex;
 
     // assign vertex marker flags
-    oe_terrain_vertexMarker = int(vdata.w);
+    oe_terrain_vertexMarker = int(gl_MultiTexCoord0.z); // int(vdata.w);
 
     // extract normal
-    vp_Normal = mat3(oe_tile_mvm) * oe_tile[oe_tileID].normals[gl_VertexID].xyz;
+    //vp_Normal = mat3(oe_tile_mvm) * oe_tile[oe_tileID].normals[gl_VertexID].xyz;
+    vp_Normal = mat3(oe_tile_mvm) * gl_Normal;
 
     // extract tile UV (global data)
-    oe_layer_tilec = vec4(oe_shared.uvs[gl_VertexID], 0, 1);
+    //oe_layer_tilec = vec4(oe_shared.uvs[gl_VertexID], 0, 1);
+    oe_layer_tilec = vec4(gl_MultiTexCoord0.xy, 0, 1);
 
     // the tile key
     oe_tile_key = oe_tile[oe_tileID].tileKey;

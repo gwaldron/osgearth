@@ -1,5 +1,4 @@
 #version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name       REX Engine - Morphing
 #pragma vp_entryPoint oe_rex_morph

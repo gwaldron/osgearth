@@ -62,12 +62,6 @@ namespace osgEarth { namespace REX
         // Data revision # of the tile
         unsigned _tileRevision;
 
-        // Elevation texel sampling coefficients (so we sample elevation
-        // data on center rather than on edge) - We might be able to move
-        // this to the Layer level as long as the elevation texture size
-        // doesn't change
-        //osg::Vec2f _elevTexelCoeff;
-
         // Coefficient used for tile vertex morphing
         osg::Vec2f _morphConstants;
 
@@ -87,6 +81,9 @@ namespace osgEarth { namespace REX
 
         // Order in which this tile appears within the layer
         int _sequence;
+
+        // True if the tile has a custom constrainted mesh
+        bool _hasConstraints;
 
         // Renders the tile.
         void draw(osg::RenderInfo& ri) const;
@@ -112,12 +109,12 @@ namespace osgEarth { namespace REX
             _sharedSamplers(0L),
             _colorSamplers(0L),
             _geom(0L),
-            //_elevTexelCoeff(1.0f, 0.0f),
             _drawCallback(0L),
             _drawPatch(false),
             _range(0.0f),
             _layerOrder(INT_MAX),
-            _sequence(0) { }
+            _sequence(0),
+            _hasConstraints(false) { }
 
         virtual void accept(osg::PrimitiveFunctor& functor) const;
         virtual void accept(osg::PrimitiveIndexFunctor& functor) const;

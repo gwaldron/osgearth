@@ -169,10 +169,38 @@ TileNode::createGeometry(Cancelable* progress)
         _surface = new SurfaceNode(_key, surfaceDrawable);
 
         if (elevationRaster.valid())
+        {
             _surface->setElevationRaster(elevationRaster.get(), elevationMatrix);
+        }
 
-        // if using GL4, make the GL4 buffer
-        
+#if 0
+        // if using GL4, make the encoded GL4 buffer now.
+        if (_context->options().useGL4() == true)
+        {
+            // VBO data
+            unsigned size = geom->getVertexArray()->getNumElements();
+            _gl4Verts.resize(size);
+            for (unsigned i = 0; i < size; ++i)
+            {
+                GL4TileVertex& v = _gl4Verts[i];
+                v.vertex[0] = (*geom->getVertexArray())[i].x();
+                v.vertex[1] = (*geom->getVertexArray())[i].y();
+                v.vertex[2] = (*geom->getVertexArray())[i].z();
+                v.marker = (*geom->getTexCoordArray())[i].z();
+                v.upvector[0] = (*geom->getNormalArray())[i].x();
+                v.upvector[1] = (*geom->getNormalArray())[i].y();
+                v.upvector[2] = (*geom->getNormalArray())[i].z();
+                v.uv[0] = (*geom->getTexCoordArray())[i].x();
+                v.uv[1] = (*geom->getTexCoordArray())[i].y();
+            }
+
+            // EBO data
+            size = geom->getDrawElements()->getNumIndices();
+            _gl4Elements.resize(size);
+            for (unsigned i = 0; i < size; ++i)
+                _gl4Elements[i] = geom->getDrawElements()->getElement(i);
+        }
+#endif
     }
     else
     {

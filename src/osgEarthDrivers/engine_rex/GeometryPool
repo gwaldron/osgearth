@@ -54,29 +54,29 @@ namespace osgEarth {
 
             META_Node(osgEarthRex, SharedGeometry);
 
-            void setVertexArray(osg::Array* array) { _vertexArray = array; }
-            osg::Array* getVertexArray() { return _vertexArray.get(); }
-            const osg::Array* getVertexArray() const { return _vertexArray.get(); }
+            void setVertexArray(osg::Vec3Array* array) { _vertexArray = array; }
+            osg::Vec3Array* getVertexArray() { return _vertexArray.get(); }
+            const osg::Vec3Array* getVertexArray() const { return _vertexArray.get(); }
 
-            void setNormalArray(osg::Array* array) { _normalArray = array; }
-            osg::Array* getNormalArray() { return _normalArray.get(); }
-            const osg::Array* getNormalArray() const { return _normalArray.get(); }
+            void setNormalArray(osg::Vec3Array* array) { _normalArray = array; }
+            osg::Vec3Array* getNormalArray() { return _normalArray.get(); }
+            const osg::Vec3Array* getNormalArray() const { return _normalArray.get(); }
 
-            void setTexCoordArray(osg::Array* array) { _texcoordArray = array; }
-            osg::Array* getTexCoordArray() { return _texcoordArray.get(); }
-            const osg::Array* getTexCoordArray() const { return _texcoordArray.get(); }
+            void setTexCoordArray(osg::Vec3Array* array) { _texcoordArray = array; }
+            osg::Vec3Array* getTexCoordArray() { return _texcoordArray.get(); }
+            const osg::Vec3Array* getTexCoordArray() const { return _texcoordArray.get(); }
 
-            void setNeighborArray(osg::Array* array) { _neighborArray = array; }
-            osg::Array* getNeighborArray() { return _neighborArray.get(); }
-            const osg::Array* getNeighborArray() const { return _neighborArray.get(); }
+            void setNeighborArray(osg::Vec3Array* array) { _neighborArray = array; }
+            osg::Vec3Array* getNeighborArray() { return _neighborArray.get(); }
+            const osg::Vec3Array* getNeighborArray() const { return _neighborArray.get(); }
 
-            void setNeighborNormalArray(osg::Array* array) { _neighborNormalArray = array; }
-            osg::Array* getNeighborNormalArray() { return _neighborNormalArray.get(); }
-            const osg::Array* getNeighborNormalArray() const { return _neighborNormalArray.get(); }
+            void setNeighborNormalArray(osg::Vec3Array* array) { _neighborNormalArray = array; }
+            osg::Vec3Array* getNeighborNormalArray() { return _neighborNormalArray.get(); }
+            const osg::Vec3Array* getNeighborNormalArray() const { return _neighborNormalArray.get(); }
 
-            void setDrawElements(osg::DrawElements* array) { _drawElements = array; }
-            osg::DrawElements* getDrawElements() { return _drawElements.get(); }
-            const osg::DrawElements* getDrawElements() const { return _drawElements.get(); }
+            void setDrawElements(osg::DrawElementsUShort* array) { _drawElements = array; }
+            osg::DrawElementsUShort* getDrawElements() { return _drawElements.get(); }
+            const osg::DrawElementsUShort* getDrawElements() const { return _drawElements.get(); }
 
             //! Does this geometry include custom constraints?
             void setHasConstraints(bool value) { _hasConstraints = value; }
@@ -120,13 +120,13 @@ namespace osgEarth {
 
             virtual ~SharedGeometry();
 
-            osg::ref_ptr<osg::Array>        _vertexArray;
-            osg::ref_ptr<osg::Array>        _normalArray;
-            osg::ref_ptr<osg::Array>        _colorArray;
-            osg::ref_ptr<osg::Array>        _texcoordArray;
-            osg::ref_ptr<osg::Array>        _neighborArray;
-            osg::ref_ptr<osg::Array>        _neighborNormalArray;
-            osg::ref_ptr<osg::DrawElements> _drawElements;
+            osg::ref_ptr<osg::Vec3Array> _vertexArray;
+            osg::ref_ptr<osg::Vec3Array> _normalArray;
+            osg::ref_ptr<osg::Vec4Array> _colorArray;
+            osg::ref_ptr<osg::Vec3Array> _texcoordArray;
+            osg::ref_ptr<osg::Vec3Array> _neighborArray;
+            osg::ref_ptr<osg::Vec3Array> _neighborNormalArray;
+            osg::ref_ptr<osg::DrawElementsUShort> _drawElements;
             bool _hasConstraints;
 
         private:
@@ -286,7 +286,7 @@ namespace osgEarth {
         mutable Threading::Gate<GeometryKey> _keygate;
         mutable Threading::Mutex _geometryMapMutex;
         GeometryMap _geometryMap;
-        osg::ref_ptr<osg::DrawElements> _defaultPrimSet;
+        osg::ref_ptr<osg::DrawElementsUShort> _defaultPrimSet;
 
         void createKeyForTileKey(
             const TileKey& tileKey,
@@ -303,7 +303,7 @@ namespace osgEarth {
             Cancelable* state) const;
 
         // builds a primitive set to use for any tile without a mask
-        osg::DrawElements* createPrimitiveSet(
+        osg::DrawElementsUShort* createPrimitiveSet(
             unsigned tileSize,
             float skirtRatio,
             bool UseGpuTessellation) const;

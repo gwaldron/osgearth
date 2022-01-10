@@ -33,10 +33,11 @@ jobs:
       with:
         path: |
           ${{ matrix.VCPKG_WORKSPACE }}
-          !${{ matrix.VCPKG_WORKSPACE }}/packages
-          !${{ matrix.VCPKG_WORKSPACE }}/buildtrees
-          !${{ matrix.VCPKG_WORKSPACE }}/downloads
-        key: vcpkg-${{ matrix.triplet }}-v2
+          !${{ matrix.VCPKG_WORKSPACE }}/vcpkg/packages
+          !${{ matrix.VCPKG_WORKSPACE }}/vcpkg/buildtrees
+          !${{ matrix.VCPKG_WORKSPACE }}/vcpkg/downloads
+        # need to change for cache reset
+        key: vcpkg-${{ matrix.triplet }}-v4
 
     - name: Installing vcpkg (windows)
       if: steps.vcpkgcache.outputs.cache-hit != 'true'

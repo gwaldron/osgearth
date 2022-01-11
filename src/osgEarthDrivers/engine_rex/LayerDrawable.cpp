@@ -198,7 +198,8 @@ namespace
 void
 LayerDrawable::accept(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.CULL_VISITOR)
+    if (nv.getVisitorType() == nv.CULL_VISITOR &&
+        _useIndirectRendering)
     {
         refreshRenderState();
     }

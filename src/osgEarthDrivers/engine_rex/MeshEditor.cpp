@@ -402,7 +402,7 @@ MeshEditor::createTileMesh(
     }
 
     // TODO: combine this with the skirt gen for speed
-    osg::DrawElementsUShort* de = new osg::DrawElementsUShort(mode);
+    SharedDrawElements* de = new SharedDrawElements(mode);
     de->reserveElements(mesh._triangles.size() * 3);
     for (const auto& tri : mesh._triangles)
     {

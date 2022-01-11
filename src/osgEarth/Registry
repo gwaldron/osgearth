@@ -183,11 +183,6 @@ namespace osgEarth
         static ProgramRepo& programRepo() { return instance()->getProgramRepo(); }
 
         /**
-         * Generates an instance-wide global unique ID.
-         */
-        UID createUID();
-
-        /**
          * Sets a global read callback for URI objects.
          */
         void setURIReadCallback( URIReadCallback* callback );
@@ -316,9 +311,6 @@ namespace osgEarth
 
         osg::ref_ptr<Util::ShaderFactory> _shaderLib;
         osg::ref_ptr<ShaderGenerator> _shaderGen;
-
-        // unique ID generator:
-        std::atomic_int _uidGen;
 
         // system capabilities:
         osg::ref_ptr< Capabilities > _caps;

@@ -121,9 +121,11 @@ namespace osgEarth { namespace REX
 
             bool _dirty;
 
-            std::vector<DrawElementsIndirectCommand> commands;
             osg::buffered_object<GCState> gcState;
-            DrawTileCommands _previous_tiles;
+            DrawTileCommands _tiles;
+
+            std::unordered_map<UID, unsigned> baseVertexLUT;
+            std::unordered_map<UID, unsigned> firstIndexLUT;
 
             std::vector<GL4Tile> tilebuf;
             osg::ref_ptr<osg::Geometry> geom;
@@ -132,7 +134,7 @@ namespace osgEarth { namespace REX
             osg::Vec3Array* upvectors;
             osg::Vec3Array* neighbors;
             osg::Vec3Array* neighborupvectors;
-            osg::MultiDrawElementsIndirectUShort* multidraw;
+            osg::MultiDrawElementsIndirectUShort* elements;
         };
         mutable RenderState _rs;
 

@@ -52,6 +52,14 @@ void osgEarth::initialize()
     }
 }
 
+osgEarth::UID
+osgEarth::createUID()
+{
+    static std::atomic_int s_uidGen(0);
+    return s_uidGen++;
+}
+
+
 namespace
 {
     void CPL_STDCALL myCPLErrorHandler(CPLErr errClass, int errNum, const char* msg)
@@ -61,7 +69,6 @@ namespace
 }
 
 Registry::Registry() :
-_uidGen             ( 0 ),
 _caps               ( 0L ),
 _defaultFont        ( 0L ),
 _terrainEngineDriver( "rex" ),
@@ -594,12 +601,6 @@ Registry::getDefaultFont()
 {
     Threading::ScopedMutexLock shared(_regMutex);
     return _defaultFont.get();
-}
-
-UID
-Registry::createUID()
-{
-    return _uidGen++;
 }
 
 const osgDB::Options*

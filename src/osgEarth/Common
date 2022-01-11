@@ -53,19 +53,14 @@
 namespace osgEarth
 {
     // application-wide unique ID.
-    typedef int UID;
+    using UID = int;
 
-    // reference counted unique UID.
-    struct OSGEARTH_EXPORT RefUID : public osg::Referenced {
-        RefUID() : _uid(0) { }
-        RefUID(UID uid) : _uid(uid) { }
-        operator UID() const { return _uid; }
-        UID _uid;
-    };
-
-    // Global initializer for osgEarth - call this if you are setting up
-    // windows and views prior to using osgEarth
+    //! Global initializer for osgEarth - call this if you are setting up
+    //! windows and views prior to using osgEarth
     extern OSGEARTH_EXPORT void initialize();
+
+    //! Generate an application-wide unique identifier.
+    extern OSGEARTH_EXPORT UID createUID();
 }
 
 #ifdef _MSC_VER

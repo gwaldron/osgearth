@@ -127,7 +127,7 @@ Map::init()
         osg::Object::setName("osgEarth.Map");
 
     // Generate a UID.
-    _uid = Registry::instance()->createUID();
+    _uid = osgEarth::createUID();
 
     // Set up the map's profile
     if (options().profile().isSet())

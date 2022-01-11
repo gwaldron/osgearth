@@ -145,7 +145,7 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     this->setName("osgEarth.RexTerrainEngineNode");
 
     // unique ID for this engine:
-    _uid = Registry::instance()->createUID();
+    _uid = osgEarth::createUID();
 
     // always require elevation.
     _requireElevationTextures = true;

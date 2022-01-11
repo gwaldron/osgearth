@@ -277,7 +277,7 @@ XYZElevationLayer::init()
 void
 XYZElevationLayer::setProfile(const Profile* profile)
 {
-    XYZElevationLayer::setProfile(profile);
+    ElevationLayer::setProfile(profile);
 
     if (profile)
     {

@@ -22,6 +22,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TopologyGraph>
 #include <osgEarth/Metrics>
+#include <osgEarth/Registry>
 #include <osg/Point>
 #include <osgUtil/MeshOptimizers>
 #include <cstdlib> // for getenv
@@ -186,7 +187,7 @@ namespace
     primSet->addElement((INDEX1)+1); \
 }
 
-osg::DrawElementsUShort*
+SharedDrawElements*
 GeometryPool::createPrimitiveSet(
     unsigned tileSize,
     float skirtRatio,
@@ -203,7 +204,7 @@ GeometryPool::createPrimitiveSet(
 
     GLenum mode = UseGpuTessellation ? GL_PATCHES : GL_TRIANGLES;
 
-    osg::ref_ptr<osg::DrawElementsUShort> primSet = new osg::DrawElementsUShort(mode);
+    osg::ref_ptr<SharedDrawElements> primSet = new SharedDrawElements(mode);
     primSet->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
 
     // add the elements for the surface:
@@ -291,8 +292,7 @@ GeometryPool::createGeometry(
 
     osg::ref_ptr<osg::VertexBufferObject> vbo = new osg::VertexBufferObject();
 
-    // Elements set ... later we'll decide whether to use the global one
-    osg::DrawElementsUShort* primSet = NULL;
+    SharedDrawElements* primSet = NULL;
 
     // the initial vertex locations:
     osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array();
@@ -429,7 +429,6 @@ GeometryPool::createGeometry(
         if (tessellateSurface && primSet == nullptr)
         {
             primSet = _defaultPrimSet.get();
-            //primSet = createPrimitiveSet(tileSize);
         }
 
         if (primSet)
@@ -471,7 +470,7 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
 void
 GeometryPool::clear()
 {
-    releaseGLObjects(NULL);
+    releaseGLObjects(nullptr);
     Threading::ScopedMutexLock lock(_geometryMapMutex);
     _geometryMap.clear();
 }
@@ -523,7 +522,8 @@ GeometryPool::releaseGLObjects(osg::State* state) const
 
 SharedGeometry::SharedGeometry() :
     osg::Drawable(),
-    _hasConstraints(false)
+    _hasConstraints(false),
+    _uid(osgEarth::createUID())
 {
     _supportsVertexBufferObjects = true;
     _ptype.resize(64u);
@@ -542,7 +542,8 @@ SharedGeometry::SharedGeometry(const SharedGeometry& rhs,const osg::CopyOp& copy
     _neighborArray(rhs._neighborArray),
     _neighborNormalArray(rhs._neighborNormalArray),
     _drawElements(rhs._drawElements),
-    _hasConstraints(rhs._hasConstraints)
+    _hasConstraints(rhs._hasConstraints),
+    _uid(osgEarth::createUID())
 {
     _ptype.resize(64u);
     _ptype.setAllElementsTo(GL_TRIANGLES);

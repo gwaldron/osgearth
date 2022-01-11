@@ -979,7 +979,7 @@ VirtualProgram::VirtualProgram(unsigned mask) :
     // Note: we cannot set _active here. Wait until apply().
     // It will cause a conflict in the Registry.
 
-    _id = osgEarth::Registry::instance()->createUID();
+    _id = osgEarth::createUID();
 
     // check the the dump env var
     if (::getenv(OSGEARTH_DUMP_SHADERS) != 0L)
@@ -1032,7 +1032,7 @@ VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& cop
     _dataModelMutex("OE.VirtualProgram")
 
 {
-    _id = osgEarth::Registry::instance()->createUID();
+    _id = osgEarth::createUID();
 
     // Attribute bindings.
     const osg::Program::AttribBindingList &abl = rhs.getAttribBindingList();

@@ -44,6 +44,23 @@ namespace osgEarth {
     {
         using namespace osgEarth;
 
+        // A DrawElements with a UID.
+        class /* internal */ SharedDrawElements : public osg::DrawElementsUShort
+        {
+        public:
+            SharedDrawElements(GLenum type) :
+                osg::DrawElementsUShort(type),
+                _uid(osgEarth::createUID())
+            {
+                //nop
+            }
+
+            UID uid() const { return _uid; }
+
+        private:
+            UID _uid;
+        };
+
         // Adapted from osgTerrain shared geometry class.
         class /*internal*/ SharedGeometry : public osg::Drawable //, public PatchLayer::GeometryArrayProvider
         {
@@ -74,9 +91,9 @@ namespace osgEarth {
             osg::Vec3Array* getNeighborNormalArray() { return _neighborNormalArray.get(); }
             const osg::Vec3Array* getNeighborNormalArray() const { return _neighborNormalArray.get(); }
 
-            void setDrawElements(osg::DrawElementsUShort* array) { _drawElements = array; }
-            osg::DrawElementsUShort* getDrawElements() { return _drawElements.get(); }
-            const osg::DrawElementsUShort* getDrawElements() const { return _drawElements.get(); }
+            void setDrawElements(SharedDrawElements* array) { _drawElements = array; }
+            SharedDrawElements* getDrawElements() { return _drawElements.get(); }
+            const SharedDrawElements* getDrawElements() const { return _drawElements.get(); }
 
             //! Does this geometry include custom constraints?
             void setHasConstraints(bool value) { _hasConstraints = value; }
@@ -87,6 +104,8 @@ namespace osgEarth {
 
             // whether this geometry contains anything
             bool empty() const;
+
+            UID uid() const { return _uid; }
 
         public: // osg::Drawable
 
@@ -126,8 +145,9 @@ namespace osgEarth {
             osg::ref_ptr<osg::Vec3Array> _texcoordArray;
             osg::ref_ptr<osg::Vec3Array> _neighborArray;
             osg::ref_ptr<osg::Vec3Array> _neighborNormalArray;
-            osg::ref_ptr<osg::DrawElementsUShort> _drawElements;
+            osg::ref_ptr<SharedDrawElements> _drawElements;
             bool _hasConstraints;
+            UID _uid;
 
         private:
 
@@ -286,7 +306,7 @@ namespace osgEarth {
         mutable Threading::Gate<GeometryKey> _keygate;
         mutable Threading::Mutex _geometryMapMutex;
         GeometryMap _geometryMap;
-        osg::ref_ptr<osg::DrawElementsUShort> _defaultPrimSet;
+        osg::ref_ptr<SharedDrawElements> _defaultPrimSet;
 
         void createKeyForTileKey(
             const TileKey& tileKey,
@@ -303,7 +323,7 @@ namespace osgEarth {
             Cancelable* state) const;
 
         // builds a primitive set to use for any tile without a mask
-        osg::DrawElementsUShort* createPrimitiveSet(
+        SharedDrawElements* createPrimitiveSet(
             unsigned tileSize,
             float skirtRatio,
             bool UseGpuTessellation) const;

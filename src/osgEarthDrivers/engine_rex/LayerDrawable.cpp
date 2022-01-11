@@ -181,13 +181,14 @@ LayerDrawable::drawImplementationDirect(osg::RenderInfo& ri) const
 namespace
 {
     // template to append one array onto another
-    template<typename T> void append(T* dest, const osg::Array* src)
+    template<typename T> inline void append(T* dest, const T* src)
     {
         const T* src_typed = static_cast<const T*>(src);
-        std::copy(src_typed->begin(), src_typed->end(), std::back_inserter(*dest));
+        for (unsigned i = 0; i < src->getNumElements(); ++i)
+            dest->push_back((*src)[i]);
     }
 
-    template<typename T> void copy(T* dest, const osg::Array* src, unsigned offset)
+    template<typename T> inline void copy(T* dest, const osg::Array* src, unsigned offset)
     {
         const T* src_typed = static_cast<const T*>(src);
         std::copy(src_typed->begin(), src_typed->end(), dest->begin() + offset);
@@ -208,86 +209,94 @@ LayerDrawable::accept(osg::NodeVisitor& nv)
 void
 LayerDrawable::refreshRenderState()
 {
+    OE_PROFILING_ZONE;
+
     // This is THREAD SAFE because the LayerDrawable object itself
     // exists on a per-camera basis. Therefore we do not need to
     // worry about statefulness
 
     // Do we need DEI commands? Not for patch layers.
-    bool useCommands = (_patchLayer == nullptr);
+    bool refreshGeometry = (_patchLayer == nullptr);
 
-    if (_tiles != _rs._previous_tiles)
+    if (_tiles != _rs._tiles)
     {
-        if (useCommands)
+        if (refreshGeometry)
         {
-            // step 1 - update this geometry's vbo arrays with data from the tile set
-            //          and build the command list at the same tile.
-            _rs.verts->clear();
-            _rs.uvs->clear();
-            _rs.upvectors->clear();
-            _rs.neighbors->clear();
-            _rs.neighborupvectors->clear();
-            _rs.multidraw->clear();
+            osg::DefaultIndirectCommandDrawElements& commands =
+                static_cast<osg::DefaultIndirectCommandDrawElements&>(*_rs.elements->getIndirectCommandArray());
 
-            auto commands = _rs.multidraw->getIndirectCommandArray();
-            commands->resizeElements(_tiles.size());
+            commands.resizeElements(_tiles.size());
+            commands.dirty();
 
-            _rs.multidraw->setNumCommandsToDraw(_tiles.size());
-
-            _rs.commands.clear();
+            _rs.elements->setNumCommandsToDraw(_tiles.size());
 
             unsigned cmd = 0;
-            unsigned baseVertexIter = 0;
-            unsigned firstIndexIter = 0;
+            bool vboDirty = false;
+            bool eboDirty = false;
 
-            // Track shared data to minimize buffer sizes.
-            // Bonus: this automatically works with constrained tiles :)
-            std::unordered_map<void*, unsigned> sharedVerts;
-            std::unordered_map<void*, unsigned> sharedElements;
+            const bool reset = true;
+            if (reset)
+            {
+                _rs.verts->clear();
+                _rs.uvs->clear();
+                _rs.upvectors->clear();
+                _rs.neighbors->clear();
+                _rs.neighborupvectors->clear();
+                _rs.elements->clear();
+                _rs.baseVertexLUT.clear();
+                _rs.firstIndexLUT.clear();
+            }
 
             for (auto& tile : _tiles)
             {
-                auto r0 = sharedVerts.insert({ tile._geom->getVertexArray(), baseVertexIter });
-                unsigned baseVertex = r0.first->second;
+                SharedGeometry* geom = tile._geom.get();
+
+                auto r0 = _rs.baseVertexLUT.emplace(geom->uid(), _rs.verts->size());
+                commands[cmd].baseVertex = r0.first->second;
                 if (r0.second) // new array
                 {
-                    append(_rs.verts, tile._geom->getVertexArray());
-                    append(_rs.uvs, tile._geom->getTexCoordArray());
-                    append(_rs.upvectors, tile._geom->getNormalArray());
-                    append(_rs.neighbors, tile._geom->getNeighborArray());
-                    append(_rs.neighborupvectors, tile._geom->getNeighborNormalArray());
-
-                    baseVertexIter += tile._geom->getVertexArray()->getNumElements();
+                    vboDirty = true;
+                    append(_rs.verts, geom->getVertexArray());
+                    append(_rs.uvs, geom->getTexCoordArray());
+                    append(_rs.upvectors, geom->getNormalArray());
+                    append(_rs.neighbors, geom->getNeighborArray());
+                    append(_rs.neighborupvectors, geom->getNeighborNormalArray());
                 }
 
-                osg::DrawElements* de = tile._geom->getDrawElements();
+                SharedDrawElements* de = geom->getDrawElements();
+                auto r1 = _rs.firstIndexLUT.emplace(de->uid(), _rs.elements->size());
+                commands[cmd].firstIndex = r1.first->second;
                 unsigned numIndices = de->getNumIndices();
-
-                auto r1 = sharedElements.insert({ de, firstIndexIter });
-                unsigned firstIndex = r1.first->second;
                 if (r1.second) // new elements
                 {
+                    eboDirty = true;
                     for (unsigned i = 0; i < numIndices; ++i)
-                        _rs.multidraw->push_back(de->getElement(i));
-
-                    firstIndexIter += numIndices;
+                        _rs.elements->push_back(de->getElement(i));
                 }
+                commands[cmd].count = numIndices;
+                commands[cmd].baseInstance = 0;
+                commands[cmd].instanceCount = 1;
 
-                commands->baseVertex(cmd) = baseVertex;
-                commands->firstIndex(cmd) = firstIndex;
-                commands->count(cmd) = numIndices;
-                commands->baseInstance(cmd) = 0;
-                commands->instanceCount(cmd) = 1;
                 ++cmd;
             }
 
-            _rs.verts->dirty();
-            _rs.uvs->dirty();
-            _rs.upvectors->dirty();
-            _rs.neighbors->dirty();
-            _rs.neighborupvectors->dirty();
-            _rs.multidraw->dirty();
-            _rs.multidraw->getIndirectCommandArray()->dirty();
+            if (vboDirty)
+            {
+                _rs.verts->dirty();
+                _rs.uvs->dirty();
+                _rs.upvectors->dirty();
+                _rs.neighbors->dirty();
+                _rs.neighborupvectors->dirty();
+            }
+
+            if (eboDirty)
+            {
+                _rs.elements->dirty();
+            }
+
+            OE_PROFILING_PLOT("Terrain VBO size", float(_rs.verts->size() * sizeof(osg::Vec3f) * 5));
         }
+
 
         // Next assemble the TileBuffer structures
         if (_rs.tilebuf.size() < _tiles.size())
@@ -388,7 +397,7 @@ LayerDrawable::refreshRenderState()
             buf.drawOrder = _drawOrder;
         }
 
-        _rs._previous_tiles = _tiles;
+        _rs._tiles.swap(_tiles);
 
         // This will trigger a GPU upload on the next draw
         _rs._dirty = true;
@@ -405,7 +414,7 @@ LayerDrawable::RenderState::RenderState()
     upvectors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
     neighbors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
     neighborupvectors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    multidraw = new osg::MultiDrawElementsIndirectUShort(GL_TRIANGLES);
+    elements = new osg::MultiDrawElementsIndirectUShort(GL_TRIANGLES);
 
     geom = new osg::Geometry();
     geom->setUseVertexBufferObjects(true);
@@ -417,7 +426,7 @@ LayerDrawable::RenderState::RenderState()
     geom->setTexCoordArray(1, neighbors);
     geom->setTexCoordArray(2, neighborupvectors);
     // todo: neighbors and neighbor normals
-    geom->addPrimitiveSet(multidraw);
+    geom->addPrimitiveSet(elements);
 
     // TODO: This will force the VAO to update every time..do we want that?
     geom->setDataVariance(osg::Object::DYNAMIC);
@@ -429,7 +438,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
     GCState& gs = _rs.gcState[ri.getContextID()];
     osg::State& state = *ri.getState();
 
-    if (_tiles.empty())
+    if (_rs._tiles.empty())
         return;
 
     if (gs.tiles == nullptr || !gs.tiles->valid())
@@ -440,39 +449,39 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             "LayerDrawable Tiles");
     }
 
+    // First time through any layer? Make the shared buffer
+    // TODO: this might eventually go to the terrain level.
+    if (gs.shared == nullptr || !gs.shared->valid())
+    {
+        GL4GlobalData buf;
+
+        // Encode morphing constants, one per LOD
+        const SelectionInfo& info = _context->getSelectionInfo();
+        for (unsigned lod = 0; lod < 19; ++lod)
+        {
+            float end = info.getLOD(lod)._morphEnd;
+            float start = info.getLOD(lod)._morphStart;
+            float one_over_end_minus_start = 1.0f / (end - start);
+            buf.morphConstants[(2 * lod) + 0] = end * one_over_end_minus_start;
+            buf.morphConstants[(2 * lod) + 1] = one_over_end_minus_start;
+        }
+
+        gs.shared = GLBuffer::create(
+            GL_SHADER_STORAGE_BUFFER,
+            state,
+            "LayerDrawable Global");
+
+        gs.shared->bind();
+        gs.shared->bufferStorage((GLsizei)sizeof(GL4GlobalData), &buf, 0); // permanent
+    }
+
     if (_rs._dirty)
     {
         _rs._dirty = false;
 
-        // First time through any layer? Make the shared buffer
-        // TODO: this might eventually go to the terrain level.
-        if (gs.shared == nullptr || !gs.shared->valid())
-        {
-            GL4GlobalData buf;
-
-            // Encode morphing constants, one per LOD
-            const SelectionInfo& info = _context->getSelectionInfo();
-            for (unsigned lod = 0; lod < 19; ++lod)
-            {
-                float end = info.getLOD(lod)._morphEnd;
-                float start = info.getLOD(lod)._morphStart;
-                float one_over_end_minus_start = 1.0f / (end - start);
-                buf.morphConstants[(2 * lod) + 0] = end * one_over_end_minus_start;
-                buf.morphConstants[(2 * lod) + 1] = one_over_end_minus_start;
-            }
-
-            gs.shared = GLBuffer::create(
-                GL_SHADER_STORAGE_BUFFER,
-                state,
-                "LayerDrawable Global");
-
-            gs.shared->bind();
-            gs.shared->bufferStorage((GLsizei)sizeof(GL4GlobalData), &buf, 0); // permanent
-        }
-
         // Update the tile render buffer:
         gs.tiles->bind();
-        gs.tiles->uploadData(sizeof(GL4Tile) * _tiles.size(), _rs.tilebuf.data());
+        gs.tiles->uploadData(sizeof(GL4Tile) * _rs._tiles.size(), _rs.tilebuf.data());
     }
 
     // Bind the layout indices so we can access our tile data from the shader:

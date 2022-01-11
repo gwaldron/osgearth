@@ -321,7 +321,7 @@ namespace osgEarth
             {
                 // ID for the new decal(s). ID's need to be unique in a single decal layer,
                 // but the three different TYPES of layers can share the same ID
-                std::string id = Stringify() << Registry::instance()->createUID();
+                std::string id = Stringify() << osgEarth::createUID();
                 _undoStack.push(id);
 
                 OE_NOTICE << "Adding decal #" << id << std::endl;

@@ -321,7 +321,7 @@ Layer::getCachePolicy() const
 void
 Layer::init()
 {
-    _uid = osgEarth::Registry::instance()->createUID();
+    _uid = osgEarth::createUID();
     _renderType = RENDERTYPE_NONE;
     _status.set(Status::ResourceUnavailable, getEnabled() ? "Layer closed" : "Layer disabled");
     _isClosing = false;

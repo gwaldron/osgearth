@@ -86,7 +86,7 @@ namespace
                 ++i)
             {
                 AssetLUTEntry entry;
-                entry.assetConfig = i->getConfig();
+                entry.assetConfig = i->options()._initConfig;
                 entry.width = i->options().width().get();
                 entry.height = i->options().height().get();
                 entry.sizeVariation = i->options().sizeVariation().getOrUse(

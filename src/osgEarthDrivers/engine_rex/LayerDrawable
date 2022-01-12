@@ -115,11 +115,27 @@ namespace osgEarth { namespace REX
             GLBuffer::Ptr tiles;
         };
 
+        struct Block
+        {
+            Block(unsigned int _index, unsigned int _count) :
+                index(_index),
+                count(_count),
+                isFree(false)
+            {
+            }
+
+            unsigned int index;
+            unsigned int count;
+            bool isFree;
+        };
+        typedef std::vector<Block> BlockList;
+
         struct RenderState
         {
             RenderState();
 
             bool _dirty;
+            bool _dirtyVBO;
 
             osg::buffered_object<GCState> gcState;
             DrawTileCommands _tiles;
@@ -135,6 +151,27 @@ namespace osgEarth { namespace REX
             osg::Vec3Array* neighbors;
             osg::Vec3Array* neighborupvectors;
             osg::MultiDrawElementsIndirectUShort* elements;
+
+            struct DirtyRange
+            {
+                DirtyRange(unsigned int index, unsigned int count):
+                    index(index),
+                    count(count)
+                {
+                }
+
+                unsigned int index;
+                unsigned int count;
+            };
+
+            // the ranges to dirty in draw with glBufferSubData
+            std::vector< DirtyRange > dirtyRanges;
+
+            void grow(unsigned int size);
+
+            const Block& requestBlock(unsigned int size);
+
+            BlockList blocks;
         };
         mutable RenderState _rs;
 

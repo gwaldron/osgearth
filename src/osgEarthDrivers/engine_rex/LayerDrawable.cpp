@@ -188,6 +188,15 @@ namespace
             dest->push_back((*src)[i]);
     }
 
+    template<typename T> inline void insert(T* dest, int index, const T* src)
+    {
+        const T* src_typed = static_cast<const T*>(src);
+        for (unsigned i = 0; i < src->getNumElements(); ++i)
+        {
+            (*dest)[index + i] = (*src)[i];
+        }            
+    }
+
     template<typename T> inline void copy(T* dest, const osg::Array* src, unsigned offset)
     {
         const T* src_typed = static_cast<const T*>(src);
@@ -207,6 +216,51 @@ LayerDrawable::accept(osg::NodeVisitor& nv)
     osg::Drawable::accept(nv);
 }
 
+void LayerDrawable::RenderState::grow(unsigned int size)
+{
+    verts->resize(verts->size() + size);
+    verts->dirty();
+    uvs->resize(uvs->size() + size);
+    uvs->dirty();
+    upvectors->resize(upvectors->size() + size);
+    upvectors->dirty();
+    neighbors->resize(neighbors->size() + size);
+    neighbors->dirty();
+    neighborupvectors->resize(neighborupvectors->size() + size);
+    neighborupvectors->dirty();
+}
+
+const LayerDrawable::Block& LayerDrawable::RenderState::requestBlock(unsigned int size)
+{
+
+#if 0
+    // Always dirty
+    verts->dirty();
+    uvs->dirty();
+    upvectors->dirty();
+    neighbors->dirty();
+    neighborupvectors->dirty();
+#endif
+
+    for (unsigned int i = 0; i < blocks.size(); ++i)
+    {
+        if (blocks[i].isFree && blocks[i].count >= size)
+        {
+            blocks[i].isFree = false;
+            dirtyRanges.emplace_back(blocks[i].index, size);
+            return blocks[i];
+        }
+    }
+
+    // We couldn't find a block so we need to resize all of the arrays and append a block at the end.
+    blocks.emplace_back(verts->size(), size);
+    grow(size);
+
+    _dirtyVBO = true;
+
+    return blocks.back();
+}
+
 void
 LayerDrawable::refreshRenderState()
 {
@@ -223,6 +277,48 @@ LayerDrawable::refreshRenderState()
     {
         if (refreshGeometry)
         {
+            _rs._dirtyVBO = false;
+
+            unsigned int numExpired = false;
+
+            // Find all the tiles that were in the previous renderstate but not in this one
+            for (auto& prevTile : _rs._tiles)
+            {
+                auto id = prevTile._geom->uid();
+
+                bool found = false;
+                for (auto& t : _tiles)
+                {
+                    if (t._geom->uid() == id)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {                    
+                    auto itr = _rs.baseVertexLUT.find(id);
+                    if (itr != _rs.baseVertexLUT.end())
+                    {
+                        //std::cout << "Expired tile " << id << " base vertex " << itr->second << " size=" << prevTile._geom.get()->getVertexArray()->size() << std::endl;
+                        for (auto& b: _rs.blocks)
+                        {
+                            if (b.index == itr->second)
+                            {
+                                b.isFree = true;
+                                _rs.baseVertexLUT.erase(itr);
+                                break;
+                            }
+                        }
+                    }                    
+
+                    ++numExpired;
+                }
+            }
+            //std::cout << "Old tiles " << _rs._tiles.size() << " New tiles " << _tiles.size() << " Expired " << numExpired << std::endl;
+
+            unsigned int numCopied = 0;
+
             osg::DefaultIndirectCommandDrawElements& commands =
                 static_cast<osg::DefaultIndirectCommandDrawElements&>(*_rs.elements->getIndirectCommandArray());
 
@@ -235,7 +331,8 @@ LayerDrawable::refreshRenderState()
             bool vboDirty = false;
             bool eboDirty = false;
 
-            const bool reset = true;
+            /*
+            const bool reset = false;            
             if (reset)
             {
                 _rs.verts->clear();
@@ -247,25 +344,58 @@ LayerDrawable::refreshRenderState()
                 _rs.baseVertexLUT.clear();
                 _rs.firstIndexLUT.clear();
             }
+            */
 
             for (auto& tile : _tiles)
             {
                 SharedGeometry* geom = tile._geom.get();
 
+                // Try to find the existing array
+                auto baseVertexItr = _rs.baseVertexLUT.find(geom->uid());
+                if (baseVertexItr == _rs.baseVertexLUT.end())
+                {
+                    auto block = _rs.requestBlock(geom->getVertexArray()->size());
+                    _rs.baseVertexLUT[geom->uid()] = block.index;
+                    copy(_rs.verts, geom->getVertexArray(), block.index);                    
+                    copy(_rs.uvs, geom->getTexCoordArray(), block.index );
+                    copy(_rs.upvectors, geom->getNormalArray(), block.index );
+                    copy(_rs.neighbors, geom->getNeighborArray(), block.index );
+                    copy(_rs.neighborupvectors, geom->getNeighborNormalArray(), block.index );
+
+                    //insert(_rs.verts, block.index, geom->getVertexArray());
+                    //insert(_rs.uvs, block.index, geom->getTexCoordArray());
+                    //insert(_rs.upvectors, block.index, geom->getNormalArray());
+                    //insert(_rs.neighbors, block.index, geom->getNeighborArray());
+                    //insert(_rs.neighborupvectors, block.index, geom->getNeighborNormalArray());
+                    commands[cmd].baseVertex = block.index;
+                }
+                else
+                {
+                    commands[cmd].baseVertex = baseVertexItr->second;
+                }
+
+                
+
+                /*
+                // TODO:  Figure out the right block to insert it and not at the end
                 auto r0 = _rs.baseVertexLUT.emplace(geom->uid(), _rs.verts->size());
                 commands[cmd].baseVertex = r0.first->second;
                 if (r0.second) // new array
                 {
                     vboDirty = true;
+                    numCopied += geom->getVertexArray()->size();
                     append(_rs.verts, geom->getVertexArray());
                     append(_rs.uvs, geom->getTexCoordArray());
                     append(_rs.upvectors, geom->getNormalArray());
                     append(_rs.neighbors, geom->getNeighborArray());
                     append(_rs.neighborupvectors, geom->getNeighborNormalArray());
                 }
+                */
 
+                // Does the draw elements need a memory manager too?
                 SharedDrawElements* de = geom->getDrawElements();
                 auto r1 = _rs.firstIndexLUT.emplace(de->uid(), _rs.elements->size());
+
                 commands[cmd].firstIndex = r1.first->second;
                 unsigned numIndices = de->getNumIndices();
                 if (r1.second) // new elements
@@ -281,6 +411,7 @@ LayerDrawable::refreshRenderState()
                 ++cmd;
             }
 
+            /*
             if (vboDirty)
             {
                 _rs.verts->dirty();
@@ -289,6 +420,9 @@ LayerDrawable::refreshRenderState()
                 _rs.neighbors->dirty();
                 _rs.neighborupvectors->dirty();
             }
+            */
+
+            //std::cout << "Copied " << numCopied << " elements" << std::endl;
 
             if (eboDirty)
             {
@@ -409,18 +543,28 @@ LayerDrawable::RenderState::RenderState()
 {
     gcState.resize(64);
 
-    // configure the GL4 geometry
-    verts = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    uvs = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    upvectors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    neighbors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    neighborupvectors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    elements = new osg::MultiDrawElementsIndirectUShort(GL_TRIANGLES);
-
     geom = new osg::Geometry();
     geom->setUseVertexBufferObjects(true);
     geom->setUseDisplayList(false);
 
+    // configure the GL4 geometry
+    verts = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    verts->setBufferObject(new osg::VertexBufferObject());
+
+    uvs = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    uvs->setBufferObject(new osg::VertexBufferObject());
+
+    upvectors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    upvectors->setBufferObject(new osg::VertexBufferObject());
+
+    neighbors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    neighbors->setBufferObject(new osg::VertexBufferObject());
+
+    neighborupvectors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    neighborupvectors->setBufferObject(new osg::VertexBufferObject());
+
+    elements = new osg::MultiDrawElementsIndirectUShort(GL_TRIANGLES);
+    
     geom->setVertexArray(verts);
     geom->setNormalArray(upvectors);
     geom->setTexCoordArray(0, uvs);
@@ -438,6 +582,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 {
     GCState& gs = _rs.gcState[ri.getContextID()];
     osg::State& state = *ri.getState();
+    osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
 
     if (_rs._tiles.empty())
         return;
@@ -513,6 +658,55 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
     }
     else
     {
+
+        if (!_rs._dirtyVBO)
+        {
+#if 1
+            // Needs to be single threaded without a mutex....
+            for (auto& dirtyRange : _rs.dirtyRanges)
+            {
+                
+                {
+                    auto vbo = _rs.verts->getVertexBufferObject();
+                    auto bufferObject = vbo->getGLBufferObject(ri.getContextID());
+                    ext->glBindBuffer(GL_ARRAY_BUFFER, bufferObject->getGLObjectID());                    
+                    ext->glBufferSubData(vbo->getProfile()._target, dirtyRange.index * _rs.verts->getElementSize(), _rs.verts->getElementSize() * dirtyRange.count, _rs.verts->getDataPointer(dirtyRange.index));
+                }
+
+                {
+                    auto vbo = _rs.uvs->getVertexBufferObject();
+                    auto bufferObject = vbo->getGLBufferObject(ri.getContextID());
+                    ext->glBindBuffer(GL_ARRAY_BUFFER, bufferObject->getGLObjectID());
+                    ext->glBufferSubData(vbo->getProfile()._target, dirtyRange.index * _rs.uvs->getElementSize(), _rs.uvs->getElementSize() * dirtyRange.count, _rs.uvs->getDataPointer(dirtyRange.index));
+                }
+
+                {
+                    auto vbo = _rs.upvectors->getVertexBufferObject();
+                    auto bufferObject = vbo->getGLBufferObject(ri.getContextID());
+                    ext->glBindBuffer(GL_ARRAY_BUFFER, bufferObject->getGLObjectID());
+                    ext->glBufferSubData(vbo->getProfile()._target, dirtyRange.index * _rs.upvectors->getElementSize(), _rs.upvectors->getElementSize() * dirtyRange.count, _rs.upvectors->getDataPointer(dirtyRange.index));
+                }
+
+                {
+                    auto vbo = _rs.neighbors->getVertexBufferObject();
+                    auto bufferObject = vbo->getGLBufferObject(ri.getContextID());
+                    ext->glBindBuffer(GL_ARRAY_BUFFER, bufferObject->getGLObjectID());
+                    ext->glBufferSubData(vbo->getProfile()._target, dirtyRange.index * _rs.neighbors->getElementSize(), _rs.neighbors->getElementSize() * dirtyRange.count, _rs.neighbors->getDataPointer(dirtyRange.index));
+                }
+
+                {
+                    auto vbo = _rs.neighborupvectors->getVertexBufferObject();
+                    auto bufferObject = vbo->getGLBufferObject(ri.getContextID());
+                    ext->glBindBuffer(GL_ARRAY_BUFFER, bufferObject->getGLObjectID());
+                    ext->glBufferSubData(vbo->getProfile()._target, dirtyRange.index * _rs.neighborupvectors->getElementSize(), _rs.neighborupvectors->getElementSize() * dirtyRange.count, _rs.neighborupvectors->getDataPointer(dirtyRange.index));
+                }
+            }
+            _rs.dirtyRanges.clear();
+#endif
+        }
+
+
+
         // we don't care about the MVM but we do need to projection matrix:
         if (ri.getState()->getUseModelViewAndProjectionUniforms())
             ri.getState()->applyModelViewAndProjectionUniformsIfRequired();

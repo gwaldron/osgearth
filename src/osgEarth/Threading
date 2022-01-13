@@ -25,6 +25,7 @@
 #include <condition_variable>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <queue>
 #include <thread>
 #include <type_traits>
@@ -431,26 +432,19 @@ namespace osgEarth { namespace Threading
 
         Gate(const std::string& name) : _m(name) { }
 
-        inline void lock(T key) {
+        inline void lock(const T& key) {
             std::unique_lock<Mutex> lock(_m);
-            for(;;) {
-                auto& count = _users.insert(std::make_pair(key, 0)).first->second;
-                if (count == 0) {
-                    ++count;
-                    break;
-                }
+            for (;;) {
+                if (_keys.insert(key).second)
+                    return;
                 _unlocked.wait(lock);
             }
         }
 
-        inline void unlock(T key) {
+        inline void unlock(const T& key) {
             std::unique_lock<Mutex> lock(_m);
-            auto& count = _users[key];
-            --count;
-            if (count == 0) {
-                _users.erase(key);
-                _unlocked.notify_all();
-            }
+            _keys.erase(key);
+            _unlocked.notify_all();
         }
 
         inline void setName(const std::string& name) {
@@ -460,7 +454,7 @@ namespace osgEarth { namespace Threading
     private:
         Mutex _m;
         std::condition_variable_any _unlocked;
-        std::unordered_map<T, int> _users;
+        std::unordered_set<T> _keys;
     };
 
     //! Gate the locks for the duration of this object's scope
@@ -468,7 +462,7 @@ namespace osgEarth { namespace Threading
     struct ScopedGate {
     public:
         //! Lock a gate based on key "key"
-        ScopedGate(Gate<T>& gate, T key) : 
+        ScopedGate(Gate<T>& gate, const T& key) : 
             _gate(gate), 
             _key(key), 
             _active(true)
@@ -478,7 +472,7 @@ namespace osgEarth { namespace Threading
 
         //! Lock a gate based on key "key" IFF the predicate is true,
         //! else it's a nop.
-        ScopedGate(Gate<T>& gate, T key, std::function<bool()> pred) :
+        ScopedGate(Gate<T>& gate, const T& key, std::function<bool()> pred) :
             _gate(gate),
             _key(key),
             _active(pred())

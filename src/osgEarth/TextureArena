@@ -161,6 +161,8 @@ namespace osgEarth
         bool _autoRelease;
         unsigned _bindingPoint;
         bool _useUBO;
+
+        mutable Mutex _m;
     };
 }
 

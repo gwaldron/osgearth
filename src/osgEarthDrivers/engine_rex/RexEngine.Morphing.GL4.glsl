@@ -19,6 +19,8 @@ flat out int oe_terrain_vertexMarker;
 vec4 oe_tile_key;
 mat4 oe_tile_mvm;
 
+layout(location = 3) in vec3 neighbor;
+layout(location = 4) in vec3 neighborNormal;
 
 #ifdef OE_IS_DEPTH_CAMERA
 uniform mat4 oe_shadowToPrimaryMatrix;
@@ -65,8 +67,8 @@ void oe_rex_morph(inout vec4 vertex)
         oe_rex_morphFactor = 1.0f - clamp(mc[0] - dist_to_eye * mc[1], 0.0, 1.0);
 
 #ifdef OE_TERRAIN_MORPH_GEOMETRY
-        vec4 neighbor_vertex = oe_tile_mvm * vec4(gl_MultiTexCoord1.xyz,1);
-        vec3 neighbor_up = mat3(oe_tile_mvm) * gl_MultiTexCoord2.xyz;
+        vec4 neighbor_vertex = oe_tile_mvm * vec4(neighbor, 1); // vec4(gl_MultiTexCoord1.xyz, 1);
+        vec3 neighbor_up = mat3(oe_tile_mvm) * neighborNormal; // gl_MultiTexCoord2.xyz;
 
         const float halfSize = (0.5*OE_TILE_SIZE) - 0.5;
         const float twoOverHalfSize = 2.0 / (OE_TILE_SIZE - 1.0);

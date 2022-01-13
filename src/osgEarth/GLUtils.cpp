@@ -57,6 +57,14 @@ using namespace osgEarth;
 #define GL_NORMALIZE 0x0BA1
 #endif
 
+#ifndef GL_BUFFER_GPU_ADDRESS_NV
+#define GL_BUFFER_GPU_ADDRESS_NV 0x8F1D
+#endif
+
+#ifndef GL_READ_ONLY
+#define GL_READ_ONLY 0x88B8
+#endif
+
 namespace
 {
     struct
@@ -68,6 +76,16 @@ namespace
         void (GL_APIENTRY * PushDebugGroup)(GLenum, GLuint, GLsizei, const char*);
         void (GL_APIENTRY * PopDebugGroup)(void);
 
+        // NV_shader_buffer_load
+        // https://developer.download.nvidia.com/opengl/specs/GL_NV_shader_buffer_load.txt
+        void (GL_APIENTRY * MakeNamedBufferResidentNV)(GLuint name, GLenum access);
+        void (GL_APIENTRY * MakeNamedBufferNonResidentNV)(GLuint name);
+        void (GL_APIENTRY * GetNamedBufferParameterui64vNV)(GLenum name, GLenum pname, GLuint64* params);
+
+        void (GL_APIENTRY * MakeBufferResidentNV)(GLuint name, GLenum access);
+        void (GL_APIENTRY * MakeBufferNonResidentNV)(GLuint name);
+        void (GL_APIENTRY * GetBufferParameterui64vNV)(GLenum target, GLenum pname, GLuint64* params);
+
         inline void init()
         {
             if (DebugMessageCallback == nullptr)
@@ -76,6 +94,14 @@ namespace
                 osg::setGLExtensionFuncPtr(DebugMessageControl, "glDebugMessageControl", "glDebugMessageControlKHR");
                 osg::setGLExtensionFuncPtr(PushDebugGroup, "glPushDebugGroup", "glPushDebugGroupKHR");
                 osg::setGLExtensionFuncPtr(PopDebugGroup, "glPopDebugGroup", "glPopDebugGroupKHR");
+
+                osg::setGLExtensionFuncPtr(MakeNamedBufferResidentNV, "glMakeNamedBufferResidentNV");
+                osg::setGLExtensionFuncPtr(MakeNamedBufferNonResidentNV, "glMakeNamedBufferNonResidentNV");
+                osg::setGLExtensionFuncPtr(GetNamedBufferParameterui64vNV, "glGetNamedBufferParameterui64vNV");
+
+                osg::setGLExtensionFuncPtr(MakeBufferResidentNV, "glMakeBufferResidentNV");
+                osg::setGLExtensionFuncPtr(MakeBufferNonResidentNV, "glMakeBufferNonResidentNV");
+                osg::setGLExtensionFuncPtr(GetBufferParameterui64vNV, "glGetBufferParameterui64vNV");
             }
         }
     } gl;
@@ -376,12 +402,15 @@ GLObject::GLObject(osg::State& state, const std::string& label) :
     //nop
 }
 
+
+
 GLBuffer::GLBuffer(GLenum target, osg::State& state, const std::string& label) :
-    GLObject(state, label),
+    GLObject(state, label.empty() ? "Unlabeled buffer" : label),
     _target(target),
     _name(~0U),
     _size(0),
-    _immutable(false)
+    _immutable(false),
+    _address(0ULL)
 {
     ext()->glGenBuffers(1, &_name);
     if (_name != ~0U)
@@ -403,7 +432,7 @@ GLBuffer::create(GLenum target, osg::State& state, const std::string& label)
 void
 GLBuffer::bind() const
 {
-    OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
+    //OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
     OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name: " + label() << );
     ext()->glBindBuffer(_target, _name);
 }
@@ -411,15 +440,22 @@ GLBuffer::bind() const
 void
 GLBuffer::bind(GLenum otherTarget) const
 {
-    OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
+    //OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
     OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name: " + label() << );
     ext()->glBindBuffer(otherTarget, _name);
 }
 
 void
+GLBuffer::unbind() const
+{
+    OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "unbind() called on invalid/deleted name: " + label() << );
+    ext()->glBindBuffer(_target, 0);
+}
+
+void
 GLBuffer::uploadData(GLintptr datasize, const GLvoid* data, GLbitfield flags) const
 {
-    OE_HARD_ASSERT(_immutable == false);
+    OE_HARD_ASSERT(_immutable == false || datasize <= size());
 
     if (datasize > size())
         bufferData(datasize, data, flags);
@@ -430,7 +466,8 @@ GLBuffer::uploadData(GLintptr datasize, const GLvoid* data, GLbitfield flags) co
 void
 GLBuffer::bufferData(GLintptr size, const GLvoid* data, GLbitfield flags) const
 {
-    size = align(size, getSSBOAlignment<GLintptr>());
+    if (_target == GL_SHADER_STORAGE_BUFFER)
+        size = align(size, getSSBOAlignment<GLintptr>());
     ext()->glBufferData(_target, size, data, flags);
     _size = size;
     _immutable = false;
@@ -446,7 +483,8 @@ GLBuffer::bufferSubData(GLintptr offset, GLsizeiptr datasize, const GLvoid* data
 void
 GLBuffer::bufferStorage(GLintptr size, const GLvoid* data, GLbitfield flags) const
 {
-    size = align(size, getSSBOAlignment<GLintptr>());
+    if (_target == GL_SHADER_STORAGE_BUFFER)
+        size = align(size, getSSBOAlignment<GLintptr>());
     ext()->glBufferStorage(_target, size, data, flags);
     _size = size;
     _immutable = true;
@@ -464,6 +502,8 @@ GLBuffer::release()
     if (_name != ~0U)
     {
         OE_DEVEL << LC << "GLBuffer::release, name=" << name() << std::endl;
+
+        makeNonResident();
         //OE_DEVEL << "Releasing buffer " << _name << "(" << _label << ")" << std::endl;
         ext()->glDeleteBuffers(1, &_name);
         _name = ~0U;
@@ -471,8 +511,43 @@ GLBuffer::release()
     }
 }
 
+GLuint64
+GLBuffer::address()
+{
+    if (_address == 0ULL)
+    {
+        gl.init();
+        OE_HARD_ASSERT(gl.GetNamedBufferParameterui64vNV);
+        gl.GetNamedBufferParameterui64vNV(name(), GL_BUFFER_GPU_ADDRESS_NV, &_address);
+    }
+    return _address;
+}
+
+void
+GLBuffer::makeResident()
+{
+    if (address() != 0ULL)
+    {
+        OE_HARD_ASSERT(gl.MakeNamedBufferResidentNV);
+        //Currently only GL_READ_ONLY is supported according to the spec
+        gl.MakeNamedBufferResidentNV(name(), GL_READ_ONLY);
+    }
+}
+
+void
+GLBuffer::makeNonResident()
+{
+    if (_address != 0ULL)
+    {
+        OE_HARD_ASSERT(gl.MakeNamedBufferNonResidentNV);
+        gl.MakeNamedBufferNonResidentNV(name());
+    }
+}
+
+
+
 GLTexture::GLTexture(GLenum target, osg::State& state, const std::string& label) :
-    GLObject(state, label),
+    GLObject(state, label.empty() ? "Unlabeled texture" : label),
     _target(target),
     _name(~0U),
     _handle(~0ULL),
@@ -611,6 +686,12 @@ GLObjectReleaser::GLObjectReleaser(unsigned contextID) :
     _mutex("GLObjectReleaser(OE)")
 {
     //nop
+}
+
+const GLObjectReleaser&
+GLObjectReleaser::get(osg::State& state)
+{
+    return *osg::get<GLObjectReleaser>(state.getContextID());
 }
 
 void

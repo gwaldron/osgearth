@@ -21,6 +21,7 @@
 
 #include "Common"
 #include "MeshEditor"
+#include "TileRenderModel"
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/TileKey>
 #include <osgEarth/Threading>
@@ -49,20 +50,40 @@ namespace osgEarth {
         {
         public:
             SharedDrawElements(GLenum type) :
-                osg::DrawElementsUShort(type),
-                _uid(osgEarth::createUID())
+                osg::DrawElementsUShort(type)
             {
                 //nop
             }
 
-            UID uid() const { return _uid; }
+            ~SharedDrawElements()
+            {
+                releaseGLObjects(nullptr);
+            }
 
-        private:
-            UID _uid;
+            void releaseGLObjects(osg::State* state) const override
+            {
+                osg::DrawElementsUShort::releaseGLObjects(state);
+                if (state)
+                    _gc[state->getContextID()]._ebo = nullptr;
+                else
+                    _gc.setAllElementsTo(GCState());
+            }
+
+            void resizeGLObjectBuffers(unsigned size) override
+            {
+                osg::DrawElementsUShort::resizeGLObjectBuffers(size);
+                _gc.resize(size);
+            }
+
+            struct GCState
+            {
+                GLBuffer::Ptr _ebo;
+            };
+            mutable osg::buffered_object<GCState> _gc;
         };
 
         // Adapted from osgTerrain shared geometry class.
-        class /*internal*/ SharedGeometry : public osg::Drawable //, public PatchLayer::GeometryArrayProvider
+        class /*internal*/ SharedGeometry : public osg::Drawable
         {
         public:
             SharedGeometry();
@@ -105,8 +126,6 @@ namespace osgEarth {
             // whether this geometry contains anything
             bool empty() const;
 
-            UID uid() const { return _uid; }
-
         public: // osg::Drawable
 
             osg::VertexArrayState* createVertexArrayStateImplementation(osg::RenderInfo& renderInfo) const override;
@@ -135,6 +154,9 @@ namespace osgEarth {
 
             const osg::BoundingBox& getBoundingBox() const { return osg::Drawable::getBoundingBox(); }
 
+            const DrawElementsIndirectBindlessCommandNV& getOrCreateCommand(
+                osg::State& state);
+
         protected:
 
             virtual ~SharedGeometry();
@@ -147,11 +169,21 @@ namespace osgEarth {
             osg::ref_ptr<osg::Vec3Array> _neighborNormalArray;
             osg::ref_ptr<SharedDrawElements> _drawElements;
             bool _hasConstraints;
-            UID _uid;
+
+
+            std::vector<GL4Vertex> _verts;
+
+            struct GCState
+            {
+                DrawElementsIndirectBindlessCommandNV _command;
+                GLBuffer::Ptr _vbo;
+            };
+            mutable osg::buffered_object<GCState> _gc;
 
         private:
 
             friend struct DrawTileCommand;
+            friend class GeometryPool;
             mutable osg::buffered_object<GLenum> _ptype;
         };
     }

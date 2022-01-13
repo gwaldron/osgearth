@@ -66,6 +66,15 @@ namespace osgEarth { namespace REX
         float padding[3];
     };
 
+    struct GL4Vertex
+    {
+        osg::Vec3f position;
+        osg::Vec3f normal;
+        osg::Vec3f uv;
+        osg::Vec3f neighborPosition;
+        osg::Vec3f neighborNormal;
+    };
+
     /**
      * A single texture and its matrix.
      * This corresponds to a single SamplerBinding. If the texture matrix 
@@ -294,6 +303,8 @@ namespace osgEarth { namespace REX
 
         /** Samplers bound for each visible layer (color) */
         RenderingPasses _passes;
+
+        DrawElementsIndirectBindlessCommandNV _command;
 
         /** Add a new rendering pass to the end of the list. */
         RenderingPass& addPass()

@@ -142,6 +142,24 @@ namespace osgEarth
         GLuint num_groups_y;
         GLuint num_groups_z;
     };
+
+    //! A pointer record for bindless buffer usage
+    struct BindlessPtrNV
+    {
+        GLuint index;
+        GLuint reserved;
+        GLuint64 address;
+        GLuint64 length;
+    };
+
+    //! A draw command for NVIDIA bindless buffer draws with a single VBO
+    struct DrawElementsIndirectBindlessCommandNV
+    {
+        DrawElementsIndirectCommand cmd;
+        GLuint reserved;
+        BindlessPtrNV indexBuffer;
+        BindlessPtrNV vertexBuffer;
+    };
     
     //! Base class for GL object containers
     class OSGEARTH_EXPORT GLObject
@@ -174,6 +192,9 @@ namespace osgEarth
         //! bind to something other than target()
         void bind(GLenum target) const;
 
+        //! binds this buffer's target to zero.
+        void unbind() const;
+
         //! GL name of the buffer (an integer)
         GLuint name() const { return _name; }
 
@@ -187,7 +208,7 @@ namespace osgEarth
         bool valid() const override { return _name != ~0U; }
 
         //! de-allocate and release this buffer
-        void release();
+        virtual void release();
 
         //! Upload data to the GPU. This method uses bufferData() or bufferSubData()
         //! depending on whether it needs to allocate more space.
@@ -200,16 +221,27 @@ namespace osgEarth
         void bufferSubData(GLintptr offset, GLsizeiptr size, const GLvoid* data) const;
 
         //! glBufferStorage - allocate with immutable storage
-        void bufferStorage(GLintptr size, const GLvoid* data, GLbitfield flags) const;
+        void bufferStorage(GLintptr size, const GLvoid* data, GLbitfield flags =0) const;
 
         //! bind the buffer to the layout index as specified in the shader
         //! (for SSBO/UBO/ACBO/TFBO only)
         void bindBufferBase(GLuint index) const;
 
-    private:
+        //! Creates and/or returns the GPU address of this buffer
+        //! (for use with bindless buffers only)
+        GLuint64 address();
+
+        //! Makes a bindless buffer resident
+        void makeResident();
+
+        //! Make a bindless buffer non-resident
+        void makeNonResident();
+
+    protected:
         GLBuffer(GLenum target, osg::State& state, const std::string& label);
         GLuint _name;
         GLenum _target;
+        GLuint64 _address; // bindless GPU address
         mutable GLsizei _size;
         mutable bool _immutable;
     };
@@ -258,6 +290,7 @@ namespace osgEarth
         static void watch(GLObject::Ptr, osg::State&);
         static void releaseAll(osg::State&);
         static GLsizei totalBytes(osg::State&);
+        static const GLObjectReleaser& get(osg::State&);
 
         virtual void flushDeletedGLObjects(double currentTime, double& availableTime);
         virtual void flushAllDeletedGLObjects();

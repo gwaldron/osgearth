@@ -22,6 +22,7 @@
 #include "EngineContext"
 #include <osgEarth/Metrics>
 #include <sstream>
+#include <cstddef>
 
 using namespace osgEarth::REX;
 
@@ -29,6 +30,12 @@ using namespace osgEarth::REX;
 #define LC "[LayerDrawable] "
 
 #define COPY_MAT4F(FROM,TO) ::memcpy((TO), (FROM).ptr(), 16*sizeof(float))
+
+#ifndef GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV
+#define GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV 0x8F1E
+#define GL_ELEMENT_ARRAY_UNIFIED_NV 0x8F1F
+#endif
+
 
 
 LayerDrawable::LayerDrawable() :
@@ -139,6 +146,7 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
         ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
         ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
+        ext->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
 
         // gw: no need to do this, in fact it will cause positional attributes
         // (light clip planes and lights) to immediately be reapplied under the
@@ -212,95 +220,16 @@ LayerDrawable::refreshRenderState()
 {
     OE_PROFILING_ZONE;
 
-    // This is THREAD SAFE because the LayerDrawable object itself
-    // exists on a per-camera basis. Therefore we do not need to
-    // worry about statefulness
+    // NOTE: LayerDrawable exists on a per-camera basis
+    // ...BUT in a multithreading mode, we will probably need
+    //    to double-buffer some things. TODO.
 
-    // Do we need DEI commands? Not for patch layers.
     bool refreshGeometry = (_patchLayer == nullptr);
 
-    if (_tiles != _rs._tiles)
+    if (_tiles != _rs.tiles)
     {
-        if (refreshGeometry)
-        {
-            osg::DefaultIndirectCommandDrawElements& commands =
-                static_cast<osg::DefaultIndirectCommandDrawElements&>(*_rs.elements->getIndirectCommandArray());
-
-            commands.resizeElements(_tiles.size());
-            commands.dirty();
-
-            _rs.elements->setNumCommandsToDraw(_tiles.size());
-
-            unsigned cmd = 0;
-            bool vboDirty = false;
-            bool eboDirty = false;
-
-            const bool reset = true;
-            if (reset)
-            {
-                _rs.verts->clear();
-                _rs.uvs->clear();
-                _rs.upvectors->clear();
-                _rs.neighbors->clear();
-                _rs.neighborupvectors->clear();
-                _rs.elements->clear();
-                _rs.baseVertexLUT.clear();
-                _rs.firstIndexLUT.clear();
-            }
-
-            for (auto& tile : _tiles)
-            {
-                SharedGeometry* geom = tile._geom.get();
-
-                auto r0 = _rs.baseVertexLUT.emplace(geom->uid(), _rs.verts->size());
-                commands[cmd].baseVertex = r0.first->second;
-                if (r0.second) // new array
-                {
-                    vboDirty = true;
-                    append(_rs.verts, geom->getVertexArray());
-                    append(_rs.uvs, geom->getTexCoordArray());
-                    append(_rs.upvectors, geom->getNormalArray());
-                    append(_rs.neighbors, geom->getNeighborArray());
-                    append(_rs.neighborupvectors, geom->getNeighborNormalArray());
-                }
-
-                SharedDrawElements* de = geom->getDrawElements();
-                auto r1 = _rs.firstIndexLUT.emplace(de->uid(), _rs.elements->size());
-                commands[cmd].firstIndex = r1.first->second;
-                unsigned numIndices = de->getNumIndices();
-                if (r1.second) // new elements
-                {
-                    eboDirty = true;
-                    for (unsigned i = 0; i < numIndices; ++i)
-                        _rs.elements->push_back(de->getElement(i));
-                }
-                commands[cmd].count = numIndices;
-                commands[cmd].baseInstance = 0;
-                commands[cmd].instanceCount = 1;
-
-                ++cmd;
-            }
-
-            if (vboDirty)
-            {
-                _rs.verts->dirty();
-                _rs.uvs->dirty();
-                _rs.upvectors->dirty();
-                _rs.neighbors->dirty();
-                _rs.neighborupvectors->dirty();
-            }
-
-            if (eboDirty)
-            {
-                _rs.elements->dirty();
-            }
-
-            OE_PROFILING_PLOT("Terrain VBO size", float(_rs.verts->size() * sizeof(osg::Vec3f) * 5));
-        }
-
-
         // Next assemble the TileBuffer structures
-        if (_rs.tilebuf.size() < _tiles.size())
+        if (refreshGeometry && _rs.tilebuf.size() < _tiles.size())
         {
             _rs.tilebuf.resize(_tiles.size());
         }
@@ -398,56 +327,96 @@ LayerDrawable::refreshRenderState()
             buf.drawOrder = _drawOrder;
         }
 
-        _rs._tiles.swap(_tiles);
+        _rs.tiles = std::move(_tiles); // .swap(_tiles);
 
         // This will trigger a GPU upload on the next draw
-        _rs._dirty = true;
+        _rs.dirty = true;
     }
 }
 
-LayerDrawable::RenderState::RenderState()
+LayerDrawable::GL4RenderState::GL4RenderState()
 {
     gcState.resize(64);
-
-    // configure the GL4 geometry
-    verts = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    uvs = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    upvectors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    neighbors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    neighborupvectors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-    elements = new osg::MultiDrawElementsIndirectUShort(GL_TRIANGLES);
-
-    geom = new osg::Geometry();
-    geom->setUseVertexBufferObjects(true);
-    geom->setUseDisplayList(false);
-
-    geom->setVertexArray(verts);
-    geom->setNormalArray(upvectors);
-    geom->setTexCoordArray(0, uvs);
-    geom->setTexCoordArray(1, neighbors);
-    geom->setTexCoordArray(2, neighborupvectors);
-    // todo: neighbors and neighbor normals
-    geom->addPrimitiveSet(elements);
-
-    // TODO: This will force the VAO to update every time..do we want that?
-    geom->setDataVariance(osg::Object::DYNAMIC);
 }
 
 void
 LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 {
+    // Research on glMultiDrawElementsIndirectBindlessNV:
+    // https://github.com/ychding11/HelloWorld/wiki/Modern-GPU-Driven-Rendering--%28How-to-draw-fast%29
+    // https://on-demand.gputechconf.com/siggraph/2014/presentation/SG4117-OpenGL-Scene-Rendering-Techniques.pdf
+    // https://developer.download.nvidia.com/opengl/tutorials/bindless_graphics.pdf
+
     GCState& gs = _rs.gcState[ri.getContextID()];
     osg::State& state = *ri.getState();
 
-    if (_rs._tiles.empty())
+    if (_rs.tiles.empty())
         return;
 
     if (gs.tiles == nullptr || !gs.tiles->valid())
     {
+        gs.ext = osg::GLExtensions::Get(state.getContextID(), true);
+
         gs.tiles = GLBuffer::create(
             GL_SHADER_STORAGE_BUFFER,
             state,
             "LayerDrawable Tiles");
+
+        gs.commands = GLBuffer::create(
+            GL_DRAW_INDIRECT_BUFFER,
+            state,
+            "LayerDrawable DrawIndirect Commands");
+
+        // preallocate space for 1024 draw commands (more than we will ever need).
+        gs.commands->bufferStorage(
+            1024 * sizeof(DrawElementsIndirectBindlessCommandNV),
+            nullptr,
+            GL_DYNAMIC_STORAGE_BIT);
+
+        osg::setGLExtensionFuncPtr(
+            gs.glMultiDrawElementsIndirectBindlessNV,
+            "glMultiDrawElementsIndirectBindlessNV");
+        OE_HARD_ASSERT(gs.glMultiDrawElementsIndirectBindlessNV != nullptr);
+
+        // OSG bug: glVertexAttribFormat is mapped to the wrong function :( so
+        // we have to look it up fresh.
+        osg::setGLExtensionFuncPtr(
+            gs.glVertexAttribFormat,
+            "glVertexAttribFormat");
+        OE_HARD_ASSERT(gs.glVertexAttribFormat != nullptr);
+
+
+        // Set up a VAO that we'll use to render with bindless NV.
+        gs.ext->glGenVertexArrays(1, &gs.vao);
+
+        // Start recording
+        gs.ext->glBindVertexArray(gs.vao);
+
+        // set up the VAO for NVIDIA bindless buffers
+        glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
+        glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+
+        // Record the format for each of the attributes in GL4Vertex
+        const GLuint offsets[5] = {
+            offsetof(GL4Vertex, position),
+            offsetof(GL4Vertex, normal),
+            offsetof(GL4Vertex, uv),
+            offsetof(GL4Vertex, neighborPosition),
+            offsetof(GL4Vertex, neighborNormal)
+        };
+        for (unsigned location = 0; location < 5; ++location)
+        {
+            gs.glVertexAttribFormat(location, 3, GL_FLOAT, GL_FALSE, offsets[location]);
+            gs.ext->glVertexAttribBinding(location, 0);
+            gs.ext->glEnableVertexAttribArray(location);
+        }
+
+        // bind a "dummy buffer" that will record the stride, which is
+        // just the size of our vertex structure.
+        gs.ext->glBindVertexBuffer(0, 0, 0, sizeof(GL4Vertex));
+
+        // Finish recording
+        gs.ext->glBindVertexArray(0);
     }
 
     // First time through any layer? Make the shared buffer
@@ -470,19 +439,43 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
         gs.shared = GLBuffer::create(
             GL_SHADER_STORAGE_BUFFER,
             state,
-            "LayerDrawable Global");
+            "LayerDrawable Shared");
 
         gs.shared->bind();
-        gs.shared->bufferStorage((GLsizei)sizeof(GL4GlobalData), &buf, 0); // permanent
+        gs.shared->bufferStorage(sizeof(GL4GlobalData), &buf, 0); // permanent
     }
 
-    if (_rs._dirty)
+    if (_rs.dirty)
     {
-        _rs._dirty = false;
+        // TODO: implement double/triple buffering so OSG multi-threading modes
+        // will not overlap and corrupt the buffers
+
+        // The CULL traversal determined that the tile set changed,
+        // so we need to re-upload the tile buffer and we need to 
+        // rebuild the command list.
+        _rs.dirty = false;
 
         // Update the tile render buffer:
         gs.tiles->bind();
-        gs.tiles->uploadData(sizeof(GL4Tile) * _rs._tiles.size(), _rs.tilebuf.data());
+        gs.tiles->uploadData(sizeof(GL4Tile) * _rs.tiles.size(), _rs.tilebuf.data());
+
+        _rs.commands.clear();
+        for(auto& tile : _rs.tiles)
+        {
+            SharedGeometry* geom = tile._geom.get();
+            _rs.commands.push_back(geom->getOrCreateCommand(state));
+        }
+
+        // Update the commands buffer:
+        gs.commands->bind();
+        gs.commands->uploadData(
+            _rs.commands.size() * sizeof(DrawElementsIndirectBindlessCommandNV),
+            _rs.commands.data());
+    }
+    else
+    {
+        // Just bind the command buffer
+        gs.commands->bind();
     }
 
     // Bind the layout indices so we can access our tile data from the shader:
@@ -513,31 +506,34 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
     }
     else
     {
-        // we don't care about the MVM but we do need to projection matrix:
-        if (ri.getState()->getUseModelViewAndProjectionUniforms())
-            ri.getState()->applyModelViewAndProjectionUniformsIfRequired();
+        gs.ext->glBindVertexArray(gs.vao);
 
-        _rs.geom->draw(ri);
+        gs.glMultiDrawElementsIndirectBindlessNV(
+            GL_TRIANGLES,
+            GL_UNSIGNED_SHORT,
+            nullptr,
+            _rs.commands.size(),
+            sizeof(DrawElementsIndirectBindlessCommandNV),
+            1);
+
+        gs.ext->glBindVertexArray(0);
     }
 }
 
 void
 LayerDrawable::releaseGLObjects(osg::State* state) const
 {
-    RenderState& cs = _rs;
+    GL4RenderState& cs = _rs;
     if (state)
     {
         GCState& gs = cs.gcState[state->getContextID()];
         gs.shared = nullptr;
         gs.tiles = nullptr;
-        if (cs.geom.valid())
-            cs.geom->releaseGLObjects(state);
+        gs.commands = nullptr;
     }
     else
     {
         cs.gcState.setAllElementsTo(GCState());
-        if (cs.geom.valid())
-            cs.geom->releaseGLObjects(nullptr);
     }
 
     if (_textures.valid())
@@ -551,9 +547,6 @@ LayerDrawable::resizeGLObjectBuffers(unsigned size)
 {
     if (_rs.gcState.size() < size)
         _rs.gcState.resize(size);
-
-    if (_rs.geom.valid())
-        _rs.geom->resizeGLObjectBuffers(size);
 
     if (_textures.valid())
         _textures->resizeGLObjectBuffers(size);

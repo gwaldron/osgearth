@@ -114,6 +114,18 @@ namespace osgEarth
                     ImGui::Separator();
                     if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 4.0f))
                         dirtySettings();
+
+                    ImGui::Separator();
+                    const GLObjectReleaser& rel = GLObjectReleaser::get(*ri.getState());
+                    std::map<std::string, std::vector<int>> bos;
+                    for (auto& obj : rel._objects)
+                    {
+                        bos[obj->label()].push_back(obj->size());
+                    }
+                    for (auto& bo : bos)
+                    {
+                        ImGui::Text("%s (%d)", bo.first.c_str(), bo.second.size());
+                    }
                 }
                 ImGui::End();
             }

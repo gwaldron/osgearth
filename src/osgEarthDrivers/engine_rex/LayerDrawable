@@ -111,32 +111,40 @@ namespace osgEarth { namespace REX
         // Things maintained on a per-graphics-context basis
         struct GCState
         {
+            // ssbo containing globally shared constant data
             GLBuffer::Ptr shared;
+
+            // ssbo containing per-tile render info
             GLBuffer::Ptr tiles;
+
+            // VAO for rendering with bindless buffers
+            GLuint vao;
+
+            // bindless draw commands
+            GLBuffer::Ptr commands;
+
+            osg::GLExtensions* ext;
+
+            void(GL_APIENTRY * glMultiDrawElementsIndirectBindlessNV)
+                (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint);
+
+            void(GL_APIENTRY * glVertexAttribFormat)
+                (GLuint, GLint, GLenum, GLboolean, GLuint);
         };
 
-        struct RenderState
+        struct GL4RenderState
         {
-            RenderState();
+            GL4RenderState();
 
-            bool _dirty;
-
-            osg::buffered_object<GCState> gcState;
-            DrawTileCommands _tiles;
-
-            std::unordered_map<UID, unsigned> baseVertexLUT;
-            std::unordered_map<UID, unsigned> firstIndexLUT;
-
+            bool dirty;
+           
+            DrawTileCommands tiles;
             std::vector<GL4Tile> tilebuf;
-            osg::ref_ptr<osg::Geometry> geom;
-            osg::Vec3Array* verts;
-            osg::Vec3Array* uvs;
-            osg::Vec3Array* upvectors;
-            osg::Vec3Array* neighbors;
-            osg::Vec3Array* neighborupvectors;
-            osg::MultiDrawElementsIndirectUShort* elements;
+
+            std::vector<DrawElementsIndirectBindlessCommandNV> commands;
+            osg::buffered_object<GCState> gcState;
         };
-        mutable RenderState _rs;
+        mutable GL4RenderState _rs;
 
         void refreshRenderState();
 

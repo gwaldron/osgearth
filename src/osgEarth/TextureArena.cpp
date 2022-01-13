@@ -333,6 +333,8 @@ TextureArena::find(Texture::Ptr tex) const
 int
 TextureArena::add(Texture::Ptr tex)
 {
+    ScopedMutexLock lock(_m);
+
     if (tex == nullptr)
     {
         OE_SOFT_ASSERT_AND_RETURN(tex != nullptr, -1);
@@ -419,6 +421,8 @@ TextureArena::add(Texture::Ptr tex)
 void
 TextureArena::activate(Texture::Ptr tex)
 {
+    ScopedMutexLock lock(_m);
+
     if (!tex) return;
 
     // add to all GCs.
@@ -433,6 +437,8 @@ TextureArena::activate(Texture::Ptr tex)
 void
 TextureArena::deactivate(Texture::Ptr tex)
 {
+    ScopedMutexLock lock(_m);
+
     if (!tex) return;
 
     // add to all GCs.
@@ -467,6 +473,8 @@ TextureArena::apply(osg::State& state) const
 {
     if (_textures.empty())
         return;
+
+    ScopedMutexLock lock(_m);
 
     OE_PROFILING_ZONE;
 
@@ -633,6 +641,8 @@ TextureArena::compileGLObjects(osg::State& state) const
 void
 TextureArena::resizeGLObjectBuffers(unsigned maxSize)
 {
+    ScopedMutexLock lock(_m);
+
     if (_gc.size() < maxSize)
     {
         _gc.resize(maxSize);
@@ -646,7 +656,9 @@ TextureArena::resizeGLObjectBuffers(unsigned maxSize)
 
 void
 TextureArena::releaseGLObjects(osg::State* state) const
-{    
+{
+    ScopedMutexLock lock(_m);
+
     for(auto& tex : _textures)
     {
         tex->releaseGLObjects(state);

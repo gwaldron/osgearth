@@ -240,7 +240,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     // merge in the custom options:
     _terrainOptions = &inOptions;
-    //_terrainOptions.merge( options );
 
     _morphingSupported = true;
     if (options().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
@@ -734,7 +733,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
     // If we're using geometry pooling, optimize the drawable for shared state
     // by sorting the draw commands.
-    // Skip if using GL4/indirect rendering.
+    // Skip if using GL4/indirect rendering. Actually seems to hurt?
     // TODO: benchmark this further to see whether it's worthwhile
     unsigned totalTiles = 0u;
     if (options().useGL4() == false &&
@@ -753,6 +752,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     bool surfaceStateSetPushed = false;
     bool imageLayerStateSetPushed = false;
     int layersDrawn = 0;
+    unsigned surfaceDrawOrder = 0;
 
     for(auto layerDrawable : culler._terrain._layerList)
     {
@@ -765,6 +765,8 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
             // default surface state set or the image layer state set.
             if (layerDrawable->_renderType == Layer::RENDERTYPE_TERRAIN_SURFACE)
             {
+                layerDrawable->_surfaceDrawOrder = surfaceDrawOrder++;
+
                 if (!surfaceStateSetPushed)
                 {
                     cv->pushStateSet(_surfaceStateSet.get());

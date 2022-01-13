@@ -48,7 +48,7 @@ namespace osgEarth { namespace REX
     public:
         LayerDrawable();
 
-        // The (sorted) list of tiles to render for this layer
+        // The colletion of tiles to render for this layer
         DrawTileCommands _tiles;
 
         // Determines whether to use the default surface shader program
@@ -69,6 +69,9 @@ namespace osgEarth { namespace REX
         // Layer render order, which is pushed into a Uniform at render time.
         // This value is assigned at cull time by RexTerrainEngineNode.
         int _drawOrder;
+
+        // Layer render order (only terrain surface layers)
+        int _surfaceDrawOrder;
 
         // The last layer to render will have this flag set, which will
         // prompt the render to dirty the osg::State to prevent corruption.
@@ -147,9 +150,6 @@ namespace osgEarth { namespace REX
         mutable GL4RenderState _rs;
 
         void refreshRenderState();
-
-        // todo: move higher and share?
-        mutable osg::ref_ptr<TextureArena> _textures;
 
         void drawImplementationDirect(osg::RenderInfo& ri) const;
 

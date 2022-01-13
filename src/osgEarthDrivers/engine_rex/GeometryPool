@@ -65,8 +65,9 @@ namespace osgEarth {
                 osg::DrawElementsUShort::releaseGLObjects(state);
                 if (state)
                     _gc[state->getContextID()]._ebo = nullptr;
-                else
-                    _gc.setAllElementsTo(GCState());
+
+                // Do nothing if state is nullptr!
+                // Let nature take its course and let the GLObjectReleaser release it
             }
 
             void resizeGLObjectBuffers(unsigned size) override
@@ -205,6 +206,16 @@ namespace osgEarth {
                 patch(false),
                 size(0u)
             {
+                //nop
+            }
+
+            GeometryKey(const GeometryKey& rhs) :
+                lod(rhs.lod),
+                tileY(rhs.tileY),
+                patch(rhs.patch),
+                size(rhs.size)
+            {
+                //nop
             }
 
             bool operator < (const GeometryKey& rhs) const
@@ -243,7 +254,8 @@ namespace osgEarth {
                 return osgEarth::hash_value_unsigned(
                     (unsigned)key.lod,
                     (unsigned)key.tileY,
-                    key.size, key.patch ? 1u : 0u);
+                    key.size,
+                    key.patch ? 1u : 0u);
             }
 
             int      lod;

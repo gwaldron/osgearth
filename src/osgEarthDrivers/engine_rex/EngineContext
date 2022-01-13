@@ -87,6 +87,8 @@ namespace osgEarth { namespace REX
 
         const FrameClock* getClock() const { return _clock; }
 
+        TextureArena* textures() const { return _textures.get(); }
+
     protected:
 
         virtual ~EngineContext() { }
@@ -107,6 +109,7 @@ namespace osgEarth { namespace REX
         double                                _expirationRange2;
         osg::ref_ptr<ModifyBoundingBoxCallback> _bboxCB;
         const FrameClock*                     _clock;
+        osg::ref_ptr<TextureArena>            _textures;
     };
 
 } } // namespace osgEarth::Drivers::RexTerrainEngine

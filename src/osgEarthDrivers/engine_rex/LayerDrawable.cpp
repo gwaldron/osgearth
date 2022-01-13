@@ -41,6 +41,7 @@ using namespace osgEarth::REX;
 LayerDrawable::LayerDrawable() :
 _renderType(Layer::RENDERTYPE_TERRAIN_SURFACE),
 _drawOrder(0),
+_surfaceDrawOrder(0),
 _layer(0L),
 _visibleLayer(0L),
 _imageLayer(0L),
@@ -60,9 +61,9 @@ _useIndirectRendering(false)
     // set up an arena with "auto release" which means th textures
     // will automatically get released when all references drop.
     // TODO: move this to the engine level and share??
-    _textures = new TextureArena();
-    _textures->setBindingPoint(29);
-    _textures->setAutoRelease(true);
+    //_textures = new TextureArena();
+    //_textures->setBindingPoint(29);
+    //_textures->setAutoRelease(true);
 }
 
 LayerDrawable::~LayerDrawable()
@@ -146,7 +147,6 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
         ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
         ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
-        ext->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
 
         // gw: no need to do this, in fact it will cause positional attributes
         // (light clip planes and lights) to immediately be reapplied under the
@@ -224,15 +224,15 @@ LayerDrawable::refreshRenderState()
     // ...BUT in a multithreading mode, we will probably need
     //    to double-buffer some things. TODO.
 
-    bool refreshGeometry = (_patchLayer == nullptr);
-
     if (_tiles != _rs.tiles)
     {
         // Next assemble the TileBuffer structures
-        if (refreshGeometry && _rs.tilebuf.size() < _tiles.size())
+        if (_rs.tilebuf.size() < _tiles.size())
         {
             _rs.tilebuf.resize(_tiles.size());
         }
+
+        TextureArena* textures = _context->textures();
 
         unsigned tile_num = 0;
         for (auto& tile : _tiles)
@@ -255,14 +255,14 @@ LayerDrawable::refreshRenderState()
                 const Sampler& color = (*tile._colorSamplers)[SamplerBinding::COLOR];
                 if (color._arena_texture != nullptr)
                 {
-                    buf.colorIndex = _textures->add(color._arena_texture);
+                    buf.colorIndex = textures->add(color._arena_texture);
                     COPY_MAT4F(color._matrix, buf.colorMat);
                 }
 
                 const Sampler& parent = (*tile._colorSamplers)[SamplerBinding::COLOR_PARENT];
                 if (parent._arena_texture != nullptr)
                 {
-                    buf.parentIndex = _textures->add(parent._arena_texture);
+                    buf.parentIndex = textures->add(parent._arena_texture);
                     COPY_MAT4F(parent._matrix, buf.parentMat);
                 }
             }
@@ -278,7 +278,7 @@ LayerDrawable::refreshRenderState()
                     s._arena_texture->_mipmap = false;
                     s._arena_texture->_internalFormat = GL_R32F;
                     s._arena_texture->_maxAnisotropy = 1.0f;
-                    buf.elevIndex = _textures->add(s._arena_texture);
+                    buf.elevIndex = textures->add(s._arena_texture);
                     COPY_MAT4F(s._matrix, buf.elevMat);
                 }
             }
@@ -293,7 +293,7 @@ LayerDrawable::refreshRenderState()
                     s._arena_texture->_compress = false;
                     s._arena_texture->_mipmap = true;
                     s._arena_texture->_maxAnisotropy = 1.0f;
-                    buf.normalIndex = _textures->add(s._arena_texture);
+                    buf.normalIndex = textures->add(s._arena_texture);
                     COPY_MAT4F(s._matrix, buf.normalMat);
                 }
             }
@@ -312,7 +312,7 @@ LayerDrawable::refreshRenderState()
                             s._arena_texture->_compress = false;
                             s._arena_texture->_mipmap = true;
                             //s._arena_texture->_maxAnisotropy = 4.0f;
-                            buf.sharedIndex[k] = _textures->add(s._arena_texture);
+                            buf.sharedIndex[k] = textures->add(s._arena_texture);
                             COPY_MAT4F(s._matrix, buf.sharedMat[k]);
                         }
                         else
@@ -324,10 +324,10 @@ LayerDrawable::refreshRenderState()
             }
 
             // stuck the layer order here (for now...later, hide it elsewhere)
-            buf.drawOrder = _drawOrder;
+            buf.drawOrder = _surfaceDrawOrder;
         }
 
-        _rs.tiles = std::move(_tiles); // .swap(_tiles);
+        _rs.tiles = std::move(_tiles);
 
         // This will trigger a GPU upload on the next draw
         _rs.dirty = true;
@@ -367,9 +367,9 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             state,
             "LayerDrawable DrawIndirect Commands");
 
-        // preallocate space for 1024 draw commands (more than we will ever need).
+        // preallocate space for a bunch of draw commands (just for fun)
         gs.commands->bufferStorage(
-            1024 * sizeof(DrawElementsIndirectBindlessCommandNV),
+            512 * sizeof(DrawElementsIndirectBindlessCommandNV),
             nullptr,
             GL_DYNAMIC_STORAGE_BIT);
 
@@ -457,16 +457,17 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
         // Update the tile render buffer:
         gs.tiles->bind();
-        gs.tiles->uploadData(sizeof(GL4Tile) * _rs.tiles.size(), _rs.tilebuf.data());
+        gs.tiles->uploadData(
+            _rs.tiles.size() * sizeof(GL4Tile),
+            _rs.tilebuf.data());
 
+        // Reconstruct and upload the command list:
         _rs.commands.clear();
         for(auto& tile : _rs.tiles)
         {
             SharedGeometry* geom = tile._geom.get();
             _rs.commands.push_back(geom->getOrCreateCommand(state));
         }
-
-        // Update the commands buffer:
         gs.commands->bind();
         gs.commands->uploadData(
             _rs.commands.size() * sizeof(DrawElementsIndirectBindlessCommandNV),
@@ -478,16 +479,22 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
         gs.commands->bind();
     }
 
-    // Bind the layout indices so we can access our tile data from the shader:
-    gs.shared->bindBufferBase(30);
-    gs.tiles->bindBufferBase(31);
-
-    // Apply the the texture arena:
-    if (state.getLastAppliedAttribute(OE_TEXTURE_ARENA_SA_TYPE_ID) != _textures)
+    // Bind the shared data to its layout(binding=X) in the shader.
+    // For shared data we only need to do this once per pass
+    if (_surfaceDrawOrder == 0)
     {
-        _textures->apply(state);
-        state.haveAppliedAttribute(_textures.get());
+        gs.shared->bindBufferBase(30);
+
+        // Apply the the texture arena:
+        if (state.getLastAppliedAttribute(OE_TEXTURE_ARENA_SA_TYPE_ID) != _context->textures())
+        {
+            _context->textures()->apply(state);
+            state.haveAppliedAttribute(_context->textures());
+        }
     }
+
+    // Bind the tiles data to its layout(binding=X) in the shader.
+    gs.tiles->bindBufferBase(31);
 
     if (_patchLayer)
     {
@@ -506,6 +513,9 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
     }
     else
     {
+        //TODO: if we render all the image layers in order,
+        // we can bind this Once and leave it. If not, we have to bind it
+        // and unbind it each layer. No biggie.
         gs.ext->glBindVertexArray(gs.vao);
 
         gs.glMultiDrawElementsIndirectBindlessNV(
@@ -530,14 +540,14 @@ LayerDrawable::releaseGLObjects(osg::State* state) const
         gs.shared = nullptr;
         gs.tiles = nullptr;
         gs.commands = nullptr;
+        if (gs.vao)
+            gs.ext->glDeleteVertexArrays(1, &gs.vao);
+        gs.vao = 0;
     }
     else
     {
         cs.gcState.setAllElementsTo(GCState());
     }
-
-    if (_textures.valid())
-        _textures->releaseGLObjects(state);
 
     osg::Drawable::releaseGLObjects(state);
 }
@@ -547,9 +557,6 @@ LayerDrawable::resizeGLObjectBuffers(unsigned size)
 {
     if (_rs.gcState.size() < size)
         _rs.gcState.resize(size);
-
-    if (_textures.valid())
-        _textures->resizeGLObjectBuffers(size);
 
     osg::Drawable::resizeGLObjectBuffers(size);
 }

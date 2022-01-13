@@ -476,19 +476,20 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
         Threading::ScopedMutexLock lock(_geometryMapMutex);
 
         std::vector<GeometryKey> keys;
-        for (GeometryMap::iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
-        {
-            if (i->second.get()->referenceCount() == 1)
-            {
-                keys.push_back(i->first);
-                i->second->releaseGLObjects(NULL);
 
-                OE_DEBUG << "Releasing: " << i->second.get() << std::endl;
+        for(auto& iter : _geometryMap)
+        {
+            if (iter.second.get()->referenceCount() == 1)
+            {
+                keys.push_back(iter.first);
+                //iter.second->releaseGLObjects(nullptr);
+                OE_DEBUG << "Releasing: " << iter.second.get() << std::endl;
             }
         }
-        for (std::vector<GeometryKey>::iterator key = keys.begin(); key != keys.end(); ++key)
+
+        for(auto& key : keys)
         {
-            _geometryMap.erase(*key);
+            _geometryMap.erase(key);
         }
     }
 
@@ -577,7 +578,7 @@ SharedGeometry::SharedGeometry(const SharedGeometry& rhs,const osg::CopyOp& copy
 
 SharedGeometry::~SharedGeometry()
 {
-    //nop
+    releaseGLObjects(nullptr);
 }
 
 const DrawElementsIndirectBindlessCommandNV&
@@ -706,8 +707,9 @@ void SharedGeometry::releaseGLObjects(osg::State* state) const
 
     if (state)
         _gc[state->getContextID()]._vbo = nullptr;
-    else
-        _gc.setAllElementsTo(GCState());
+
+    // Do nothing if state is nullptr!
+    // Let nature take its course and let the GLObjectReleaser deal with it
 }
 
 void

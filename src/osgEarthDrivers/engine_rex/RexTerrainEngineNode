@@ -191,9 +191,9 @@ namespace osgEarth { namespace REX
         {
             template <class T>
             std::size_t operator() (const T& path) const {
-                std::size_t h;
+                std::size_t h = 0;
                 for (auto i : path)
-                    h ^= hash_value_unsigned((std::uintptr_t)i);
+                    h = hash_value_unsigned(h, (std::uintptr_t)i);
                 return h;
             }
         };
@@ -204,13 +204,6 @@ namespace osgEarth { namespace REX
             osgNodePath_hash>>;
 
         PersistentDataTable _persistent;
-
-        //using Cullers = Mutexed<std::unordered_map<
-        //    osg::NodePath,
-        //    TerrainCuller,
-        //    osgNodePath_hash>>;
-
-        //Cullers _cullers;
 
         unsigned _frameLastUpdated;
         FrameClock _clock;

@@ -603,6 +603,8 @@ GLTexture::handle(osg::State& state)
 void
 GLTexture::makeResident(bool toggle)
 {
+    //TODO: does this stall??
+    //if (toggle != ext()->glIsTextureHandleResident(_handle))
     if (_isResident != toggle)
     {
         OE_SOFT_ASSERT_AND_RETURN(_handle != ~0ULL, void(), "makeResident() called on invalid handle: " + label() << );
@@ -954,6 +956,8 @@ ComputeImageSession::ComputeImageSession() :
 {
     _stateSet = new osg::StateSet();
     _tex = new osg::Texture2D();
+    _tex->setFilter(_tex->MIN_FILTER, _tex->NEAREST);
+    _tex->setFilter(_tex->MAG_FILTER, _tex->NEAREST);
     _stateSet->setTextureAttribute(0, _tex, 1);
     _stateSet->addUniform(new osg::Uniform("buf", 0));
 }

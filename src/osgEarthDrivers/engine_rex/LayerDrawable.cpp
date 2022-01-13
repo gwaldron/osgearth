@@ -353,6 +353,9 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
     if (_rs.tiles.empty())
         return;
 
+    bool renderTerrainSurface = (_patchLayer == nullptr);
+
+
     if (gs.tiles == nullptr || !gs.tiles->valid())
     {
         gs.ext = osg::GLExtensions::Get(state.getContextID(), true);
@@ -362,160 +365,163 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             state,
             "LayerDrawable Tiles");
 
-        gs.commands = GLBuffer::create(
-            GL_DRAW_INDIRECT_BUFFER,
-            state,
-            "LayerDrawable DrawIndirect Commands");
-
-        // preallocate space for a bunch of draw commands (just for fun)
-        gs.commands->bufferStorage(
-            512 * sizeof(DrawElementsIndirectBindlessCommandNV),
+        // preallocate space for a bunch of tiles (just for fun)
+        gs.tiles->bufferData(
+            512 * sizeof(GL4Tile),
             nullptr,
-            GL_DYNAMIC_STORAGE_BIT);
-
-        osg::setGLExtensionFuncPtr(
-            gs.glMultiDrawElementsIndirectBindlessNV,
-            "glMultiDrawElementsIndirectBindlessNV");
-        OE_HARD_ASSERT(gs.glMultiDrawElementsIndirectBindlessNV != nullptr);
-
-        // OSG bug: glVertexAttribFormat is mapped to the wrong function :( so
-        // we have to look it up fresh.
-        osg::setGLExtensionFuncPtr(
-            gs.glVertexAttribFormat,
-            "glVertexAttribFormat");
-        OE_HARD_ASSERT(gs.glVertexAttribFormat != nullptr);
-
-
-        // Set up a VAO that we'll use to render with bindless NV.
-        gs.ext->glGenVertexArrays(1, &gs.vao);
-
-        // Start recording
-        gs.ext->glBindVertexArray(gs.vao);
-
-        // set up the VAO for NVIDIA bindless buffers
-        glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
-        glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
-
-        // Record the format for each of the attributes in GL4Vertex
-        const GLuint offsets[5] = {
-            offsetof(GL4Vertex, position),
-            offsetof(GL4Vertex, normal),
-            offsetof(GL4Vertex, uv),
-            offsetof(GL4Vertex, neighborPosition),
-            offsetof(GL4Vertex, neighborNormal)
-        };
-        for (unsigned location = 0; location < 5; ++location)
-        {
-            gs.glVertexAttribFormat(location, 3, GL_FLOAT, GL_FALSE, offsets[location]);
-            gs.ext->glVertexAttribBinding(location, 0);
-            gs.ext->glEnableVertexAttribArray(location);
-        }
-
-        // bind a "dummy buffer" that will record the stride, which is
-        // just the size of our vertex structure.
-        gs.ext->glBindVertexBuffer(0, 0, 0, sizeof(GL4Vertex));
-
-        // Finish recording
-        gs.ext->glBindVertexArray(0);
+            GL_DYNAMIC_DRAW);
     }
 
-    // First time through any layer? Make the shared buffer
-    // TODO: this might eventually go to the terrain level.
-    if (gs.shared == nullptr || !gs.shared->valid())
+    if (renderTerrainSurface)
     {
-        GL4GlobalData buf;
-
-        // Encode morphing constants, one per LOD
-        const SelectionInfo& info = _context->getSelectionInfo();
-        for (unsigned lod = 0; lod < 19; ++lod)
+        if (gs.commands == nullptr || !gs.commands->valid())
         {
-            float end = info.getLOD(lod)._morphEnd;
-            float start = info.getLOD(lod)._morphStart;
-            float one_over_end_minus_start = 1.0f / (end - start);
-            buf.morphConstants[(2 * lod) + 0] = end * one_over_end_minus_start;
-            buf.morphConstants[(2 * lod) + 1] = one_over_end_minus_start;
+            gs.commands = GLBuffer::create(
+                GL_DRAW_INDIRECT_BUFFER,
+                state,
+                "LayerDrawable DrawIndirect Commands");
+
+            // preallocate space for a bunch of draw commands (just for fun)
+            gs.commands->bufferData(
+                512 * sizeof(DrawElementsIndirectBindlessCommandNV),
+                nullptr,
+                GL_DYNAMIC_DRAW);
+
+            osg::setGLExtensionFuncPtr(
+                gs.glMultiDrawElementsIndirectBindlessNV,
+                "glMultiDrawElementsIndirectBindlessNV");
+            OE_HARD_ASSERT(gs.glMultiDrawElementsIndirectBindlessNV != nullptr);
+
+            // OSG bug: glVertexAttribFormat is mapped to the wrong function :( so
+            // we have to look it up fresh.
+            osg::setGLExtensionFuncPtr(
+                gs.glVertexAttribFormat,
+                "glVertexAttribFormat");
+            OE_HARD_ASSERT(gs.glVertexAttribFormat != nullptr);
+
+
+            // Set up a VAO that we'll use to render with bindless NV.
+            gs.ext->glGenVertexArrays(1, &gs.vao);
+
+            // Start recording
+            gs.ext->glBindVertexArray(gs.vao);
+
+            // set up the VAO for NVIDIA bindless buffers
+            glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
+            glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+
+            // Record the format for each of the attributes in GL4Vertex
+            const GLuint offsets[5] = {
+                offsetof(GL4Vertex, position),
+                offsetof(GL4Vertex, normal),
+                offsetof(GL4Vertex, uv),
+                offsetof(GL4Vertex, neighborPosition),
+                offsetof(GL4Vertex, neighborNormal)
+            };
+            for (unsigned location = 0; location < 5; ++location)
+            {
+                gs.glVertexAttribFormat(location, 3, GL_FLOAT, GL_FALSE, offsets[location]);
+                gs.ext->glVertexAttribBinding(location, 0);
+                gs.ext->glEnableVertexAttribArray(location);
+            }
+
+            // bind a "dummy buffer" that will record the stride, which is
+            // just the size of our vertex structure.
+            gs.ext->glBindVertexBuffer(0, 0, 0, sizeof(GL4Vertex));
+
+            // Finish recording
+            gs.ext->glBindVertexArray(0);
         }
 
-        gs.shared = GLBuffer::create(
-            GL_SHADER_STORAGE_BUFFER,
-            state,
-            "LayerDrawable Shared");
+        if (gs.shared == nullptr || !gs.shared->valid())
+        {
+            GL4GlobalData buf;
 
-        gs.shared->bind();
-        gs.shared->bufferStorage(sizeof(GL4GlobalData), &buf, 0); // permanent
+            // Encode morphing constants, one per LOD
+            const SelectionInfo& info = _context->getSelectionInfo();
+            for (unsigned lod = 0; lod < 19; ++lod)
+            {
+                float end = info.getLOD(lod)._morphEnd;
+                float start = info.getLOD(lod)._morphStart;
+                float one_over_end_minus_start = 1.0f / (end - start);
+                buf.morphConstants[(2 * lod) + 0] = end * one_over_end_minus_start;
+                buf.morphConstants[(2 * lod) + 1] = one_over_end_minus_start;
+            }
+
+            gs.shared = GLBuffer::create(
+                GL_SHADER_STORAGE_BUFFER,
+                state,
+                "LayerDrawable Shared");
+
+            gs.shared->bind();
+            gs.shared->bufferStorage(sizeof(GL4GlobalData), &buf, 0); // permanent
+        }
     }
 
     if (_rs.dirty)
     {
-        // TODO: implement double/triple buffering so OSG multi-threading modes
-        // will not overlap and corrupt the buffers
-
         // The CULL traversal determined that the tile set changed,
         // so we need to re-upload the tile buffer and we need to 
         // rebuild the command list.
+
         _rs.dirty = false;
 
-        // Update the tile render buffer:
+        // TODO: implement double/triple buffering so OSG multi-threading modes
+        // will not overlap and corrupt the buffers
+
+        // Update the tile data buffer:
         gs.tiles->bind();
         gs.tiles->uploadData(
             _rs.tiles.size() * sizeof(GL4Tile),
             _rs.tilebuf.data());
 
-        // Reconstruct and upload the command list:
-        _rs.commands.clear();
-        for(auto& tile : _rs.tiles)
+
+        if (renderTerrainSurface)
         {
-            SharedGeometry* geom = tile._geom.get();
-            _rs.commands.push_back(geom->getOrCreateCommand(state));
+            // Reconstruct and upload the command list:
+            _rs.commands.clear();
+            for (auto& tile : _rs.tiles)
+            {
+                SharedGeometry* geom = tile._geom.get();
+                _rs.commands.push_back(geom->getOrCreateCommand(state));
+            }
+
+            gs.commands->bind();
+            gs.commands->uploadData(
+                _rs.commands.size() * sizeof(DrawElementsIndirectBindlessCommandNV),
+                _rs.commands.data());
         }
-        gs.commands->bind();
-        gs.commands->uploadData(
-            _rs.commands.size() * sizeof(DrawElementsIndirectBindlessCommandNV),
-            _rs.commands.data());
     }
-    else
+    else if (renderTerrainSurface)
     {
         // Just bind the command buffer
         gs.commands->bind();
     }
 
-    // Bind the shared data to its layout(binding=X) in the shader.
-    // For shared data we only need to do this once per pass
-    if (_surfaceDrawOrder == 0)
-    {
-        gs.shared->bindBufferBase(30);
 
-        // Apply the the texture arena:
-        if (state.getLastAppliedAttribute(OE_TEXTURE_ARENA_SA_TYPE_ID) != _context->textures())
+    if (renderTerrainSurface)
+    {
+        // Bind the shared data to its layout(binding=X) in the shader.
+        // For shared data we only need to do this once per pass
+        if (_surfaceDrawOrder == 0)
         {
-            _context->textures()->apply(state);
-            state.haveAppliedAttribute(_context->textures());
+            gs.shared->bindBufferBase(30);
         }
+    }
+
+    // Apply the the texture arena:
+    if (state.getLastAppliedAttribute(OE_TEXTURE_ARENA_SA_TYPE_ID) != _context->textures())
+    {
+        _context->textures()->apply(state);
+        state.haveAppliedAttribute(_context->textures());
     }
 
     // Bind the tiles data to its layout(binding=X) in the shader.
     gs.tiles->bindBufferBase(31);
 
-    if (_patchLayer)
-    {
-        if (_patchLayer->getRenderer())
-        {
-            // If it's a patch layer, the layer does its own rendering
-            // TODO: pass along the fact that we're using GL4 so that
-            // the patch layer doesn't actually APPLY each DrawTileCommand!
-            TileBatch batch(_drawState.get());
-            batch._tiles.reserve(_tiles.size());
-            for (auto& tile : _tiles)
-                batch._tiles.push_back(&tile);
 
-            _patchLayer->getRenderer()->draw(ri, batch);
-        }
-    }
-    else
+    if (renderTerrainSurface)
     {
-        //TODO: if we render all the image layers in order,
-        // we can bind this Once and leave it. If not, we have to bind it
-        // and unbind it each layer. No biggie.
         gs.ext->glBindVertexArray(gs.vao);
 
         gs.glMultiDrawElementsIndirectBindlessNV(
@@ -527,6 +533,19 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             1);
 
         gs.ext->glBindVertexArray(0);
+    }
+
+    else if (_patchLayer && _patchLayer->getRenderer())
+    {
+        // If it's a patch layer, the layer does its own rendering
+        // TODO: pass along the fact that we're using GL4 so that
+        // the patch layer doesn't actually APPLY each DrawTileCommand!
+        TileBatch batch(_drawState.get());
+        batch._tiles.reserve(_rs.tiles.size());
+        for (auto& tile : _rs.tiles)
+            batch._tiles.push_back(&tile);
+
+        _patchLayer->getRenderer()->draw(ri, batch);
     }
 }
 

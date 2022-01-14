@@ -64,41 +64,9 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
-                    ImGui::Text("Mem PB: %u MB", (Memory::getProcessPrivateUsage() / 1048576U));
-                    ImGui::SameLine();
-                    ImGui::Text("  WS: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
-                    ImGui::SameLine();
-                    ImGui::Text("  GL: %u MB", GLObjectReleaser::totalBytes(*ri.getState()) / 1048576U);
-                    ImGui::Separator();
-
-                    ImGui::Text("Job Activity:");
-                    ImGui::Indent();
-                    const JobArena::Metrics& m = JobArena::metrics();
-                    for (int i = 0; i <= m.maxArenaIndex; ++i)
-                    {
-                        if (m.arena(i).active)
-                        {
-                            ImGui::Text("%s (%d) %d / %d // %d",
-                                m.arena(i).arenaName.c_str(),
-                                (int)m.arena(i).concurrency,
-                                (int)m.arena(i).numJobsRunning,
-                                (int)m.arena(i).numJobsPending,
-                                (int)m.arena(i).numJobsCanceled);
-                        }
-                    }
-                    ImGui::Unindent();
-
-                    ImGui::Separator();
-                    ImGui::Text("Total: %d", m.totalJobs());
-                    ImGui::SameLine();
-                    ImGui::Text(" ICO: %d", GLObjectsCompiler::totalJobs());
-                    ImGui::SameLine();
-                    ImGui::Text(" Compute: %d", GPUJobArena::arena().size());
-
                     time_point now = std::chrono::steady_clock::now();
                     int us = std::chrono::duration_cast<std::chrono::microseconds>(now - _lastFrame).count();
                     _lastFrame = now;
-
                     constexpr int interval = 30;
                     _times.push(us);
                     _time_accum += us;
@@ -108,23 +76,59 @@ namespace osgEarth
                     }
                     if (_frameCounter++ % interval == 0)
                         _fps = 1000000 / (_time_accum / interval);
-                    ImGui::SameLine();
-                    ImGui::Text(" FPS: %d", _fps);
+                    ImGui::Text("FPS: %d", _fps);
 
-                    ImGui::Separator();
+                    ImGui::Text("Mem PB: %u MB", (Memory::getProcessPrivateUsage() / 1048576U));
+                    ImGui::SameLine();
+                    ImGui::Text("  WS: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
+
                     if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 4.0f))
                         dirtySettings();
-
                     ImGui::Separator();
-                    const GLObjectReleaser& rel = GLObjectReleaser::get(*ri.getState());
-                    std::map<std::string, std::vector<int>> bos;
-                    for (auto& obj : rel._objects)
+
+                    if (ImGui::TreeNodeEx("Job Arenas", ImGuiTreeNodeFlags_DefaultOpen))
                     {
-                        bos[obj->label()].push_back(obj->size());
+                        const JobArena::Metrics& m = JobArena::metrics();
+                        for (int i = 0; i <= m.maxArenaIndex; ++i)
+                        {
+                            if (m.arena(i).active)
+                            {
+                                ImGui::Text("%s (%d) %d / %d // %d",
+                                    m.arena(i).arenaName.c_str(),
+                                    (int)m.arena(i).concurrency,
+                                    (int)m.arena(i).numJobsRunning,
+                                    (int)m.arena(i).numJobsPending,
+                                    (int)m.arena(i).numJobsCanceled);
+                            }
+                        }
+
+                        ImGui::Separator();
+                        ImGui::Text("Total: %d", m.totalJobs());
+                        ImGui::SameLine();
+                        ImGui::Text(" ICO: %d", GLObjectsCompiler::totalJobs());
+                        ImGui::SameLine();
+                        ImGui::Text(" Compute: %d", GPUJobArena::arena().size());
+
+                        ImGui::TreePop();
                     }
-                    for (auto& bo : bos)
+
+                    if (ImGui::TreeNodeEx("GL Inspector", ImGuiTreeNodeFlags_DefaultOpen))
                     {
-                        ImGui::Text("%s (%d)", bo.first.c_str(), bo.second.size());
+                        auto glpool = GLObjectPool::get(*ri.getState());
+                        auto globjects = glpool->objects();
+                        ImGui::Text("GPU Mem: %u MB  Recycling: %u%%",
+                            glpool->totalBytes() / 1048576U,
+                            int(100 * float(glpool->recycleHits()) / float(glpool->recycleHits() + glpool->recycleMisses())));
+
+                        ImGui::Separator();
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Objects:");
+                        std::map<std::string, std::vector<int>> bos;
+                        for (auto& obj : globjects)
+                            bos[obj->label()].push_back(obj->size());
+                        for (auto& bo : bos)
+                            ImGui::Text("%s (%d)", bo.first.c_str(), bo.second.size());
+
+                        ImGui::TreePop();
                     }
                 }
                 ImGui::End();

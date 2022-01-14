@@ -73,6 +73,11 @@ namespace osgEarth {
                     auto view = dynamic_cast<osgViewer::View*>(ri.getView());
                     OE_SOFT_ASSERT_AND_RETURN(view, void());
 
+                    auto manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+
+                    if (!manip)
+                        ImGui::TextColored(ImVec4(1,.9,.9,1), "(Viewpoints not active)");
+
                     for (auto& vp : _viewpoints)
                     {
                         ImGui::PushID(&vp);
@@ -82,11 +87,15 @@ namespace osgEarth {
                         {
                             name = "<no name>";
                         }
-                        ImGui::Selectable(name.c_str(), &selected);
-                        if (selected)
+                        if (manip)
                         {
-                            auto manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
-                            manip->setViewpoint(vp, _duration);
+                            ImGui::Selectable(name.c_str(), &selected);
+                            if (selected)
+                                manip->setViewpoint(vp, _duration);
+                        }
+                        else
+                        {
+                            ImGui::TextColored(ImVec4(.5,.5,.5,1), name.c_str());
                         }
                         ImGui::PopID();
                         ImGui::Separator();

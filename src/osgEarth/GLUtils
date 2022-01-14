@@ -33,6 +33,7 @@
 #include <osg/GLObjects>
 #include <osg/Drawable>
 #include <osg/Texture2D>
+#include <osg/ContextData>
 #include <set>
 
 #ifndef GLintptr
@@ -165,16 +166,23 @@ namespace osgEarth
     class OSGEARTH_EXPORT GLObject
     {
     public:
+        enum Type { BUFFER, TEXTURE };
         using Ptr = std::shared_ptr<GLObject>;
+        using Compatible = std::function<bool(GLObject*)>;
         virtual const std::string& label() const { return _label; }
+        virtual Type type() const { return _type; }
         virtual void release() = 0;
         virtual bool valid() const = 0;
         virtual GLsizei size() const = 0;
+        bool recyclable() const { return _recyclable; }
         osg::GLExtensions* ext() const { return _ext; }
     protected:
-        GLObject(osg::State& state, const std::string& label);
+        GLObject(osg::State& state, Type type, const std::string& label);
         std::string _label;
+        Type _type;
+        bool _recyclable;
         osg::GLExtensions* _ext;
+        friend class GLObjectPool;
     };
 
     //! A buffer object
@@ -185,6 +193,10 @@ namespace osgEarth
 
         //! create a new unallocated buffer
         static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
+
+        //! create a new buffer with a "size hint" that allows the system to 
+        //! try and reuse a discarded buffer
+        static Ptr create(GLenum target, osg::State& state, GLsizei sizeHint, const std::string& label = "");
 
         //! bind to target()
         void bind() const;
@@ -212,16 +224,16 @@ namespace osgEarth
 
         //! Upload data to the GPU. This method uses bufferData() or bufferSubData()
         //! depending on whether it needs to allocate more space.
-        void uploadData(GLintptr size, const GLvoid* data, GLbitfield flags=GL_DYNAMIC_DRAW) const;
+        void uploadData(GLsizei size, const GLvoid* data, GLbitfield flags=GL_DYNAMIC_DRAW) const;
 
         //! glBufferData - reallocate entire buffer
-        void bufferData(GLintptr size, const GLvoid* data, GLbitfield flags) const;
+        void bufferData(GLsizei size, const GLvoid* data, GLbitfield flags) const;
 
         //! glBufferSubData - upload a subset of data to the GPU
-        void bufferSubData(GLintptr offset, GLsizeiptr size, const GLvoid* data) const;
+        void bufferSubData(GLintptr offset, GLsizei size, const GLvoid* data) const;
 
         //! glBufferStorage - allocate with immutable storage
-        void bufferStorage(GLintptr size, const GLvoid* data, GLbitfield flags =0) const;
+        void bufferStorage(GLsizei size, const GLvoid* data, GLbitfield flags =0) const;
 
         //! bind the buffer to the layout index as specified in the shader
         //! (for SSBO/UBO/ACBO/TFBO only)
@@ -239,11 +251,13 @@ namespace osgEarth
 
     protected:
         GLBuffer(GLenum target, osg::State& state, const std::string& label);
+        void reset(GLenum target, const std::string& label);
         GLuint _name;
         GLenum _target;
         GLuint64 _address; // bindless GPU address
         mutable GLsizei _size;
         mutable bool _immutable;
+        bool _isResident;
     };
 
     //! A texture object with optional resident handle
@@ -251,7 +265,40 @@ namespace osgEarth
     {
     public:
         using Ptr = std::shared_ptr<GLTexture>;
-        static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
+
+        struct OSGEARTH_EXPORT Profile : public osg::Texture::TextureProfile
+        {
+            Profile(GLenum target);
+            Profile(
+                GLenum    target,
+                GLint     numMipmapLevels,
+                GLenum    internalFormat,
+                GLsizei   width,
+                GLsizei   height,
+                GLsizei   depth,
+                GLint     border,
+                GLint     minFilter,
+                GLint     magFilter,
+                GLint     wrapS,
+                GLint     wrapT,
+                GLint     wrapR,
+                GLfloat   maxAnisotropy);
+            GLint _minFilter, _magFilter;
+            GLint _wrapS, _wrapT, _wrapR;
+            GLfloat _maxAnisotropy;
+            bool operator == (const Profile& rhs) const;
+        };
+
+        static Ptr create(
+            GLenum target, 
+            osg::State& state, 
+            const std::string& label = "");
+
+        static Ptr create(
+            GLenum target,
+            osg::State& state,
+            const Profile& profileHint,
+            const std::string& label = "");
 
         void bind(osg::State& state);
         GLuint64 handle(osg::State& state);
@@ -262,44 +309,76 @@ namespace osgEarth
         std::string& id() { return _id; }
         GLsizei size() const override { return _size; }
         bool valid() const override { return _name != ~0U; }
-        void storage2D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t);
-        void storage3D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r);
+
+        void storage2D(const Profile& profile); // GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t);
+        void storage3D(const Profile& profile); // GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r);
         void subImage2D(GLint level, GLint xoff, GLint yoff, GLsizei width, GLsizei height, GLenum format, GLenum type, const void* pixels) const;
         void subImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void* pixels) const;
         void compressedSubImage2D(GLint level, GLint xoff, GLint yoff, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const void* data) const;
         void compressedSubImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const void* data) const;
+
     protected:
         GLTexture(GLenum target, osg::State& state, const std::string& label);
+
     private:
         GLenum _target;
         GLuint _name;
         GLuint64 _handle;
         bool _isResident;
         std::string _id;
-        mutable GLsizei _size;
+        GLsizei _size;
+        Profile _profile;
+        void reset(GLenum, const std::string&, osg::State&);
     };
 
     /**
      * Mechanism that will automatically delete a GL object
      * when its container goes out of scope
      */
-    struct OSGEARTH_EXPORT GLObjectReleaser : public osg::GraphicsObjectManager
+    class OSGEARTH_EXPORT GLObjectPool : public osg::GraphicsObjectManager
     {
-        GLObjectReleaser(unsigned contextID);
+    public:
+        using Collection = std::unordered_set<GLObject::Ptr>;
 
-        static void watch(GLObject::Ptr, osg::State&);
-        static void releaseAll(osg::State&);
-        static GLsizei totalBytes(osg::State&);
-        static const GLObjectReleaser& get(osg::State&);
+        GLObjectPool(unsigned contextID);
 
-        virtual void flushDeletedGLObjects(double currentTime, double& availableTime);
-        virtual void flushAllDeletedGLObjects();
-        virtual void deleteAllGLObjects();
-        virtual void discardAllGLObjects();
+        static GLObjectPool* GLObjectPool::get(osg::State& state);
+
+        void watch(GLObject::Ptr);
+        void releaseAll();
+        GLsizeiptr totalBytes() const;
+        unsigned recycleHits() const { return _hits; }
+        unsigned recycleMisses() const { return _misses; }
+        Collection objects() const;
+
+        template<typename T>
+        typename T::Ptr recycle(const GLObject::Compatible& compatible) {
+            ScopedMutexLock lock(_mutex);
+            typename T::Ptr result;
+            for (auto& object : _objects) {
+                if (object.use_count() == 1 && compatible(object.get())) {
+                    result = std::dynamic_pointer_cast<T>(object);
+                    ++_hits;
+                    break;
+                }
+            }
+            if (result == nullptr)
+                ++_misses;
+            return result;
+        }
+
+        void flushDeletedGLObjects(double now, double& avail) override;
+        void flushAllDeletedGLObjects() override;
+        void deleteAllGLObjects() override;
+        void discardAllGLObjects() override;
+
+    protected:
 
         mutable Mutex _mutex;
-        std::unordered_set<GLObject::Ptr> _objects;
-        GLsizei _totalBytes;
+        Collection _objects;
+        GLsizeiptr _totalBytes;
+        unsigned _hits;
+        unsigned _misses;
     };
 
     /**

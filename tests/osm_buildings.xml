@@ -9,7 +9,7 @@
     </filters>
     <styles>          
         <library name="us_resources">
-            <url>../data/resources/textures_us/catalog.xml</url>
+            <url>../data/resources/textures_us/catalog_atlas.osgb.xml</url>
         </library>
         
         <style type="text/css">

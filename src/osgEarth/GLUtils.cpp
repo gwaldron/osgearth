@@ -32,8 +32,6 @@
 #include <osg/Texture2D>
 #include <osg/BindImageTexture>
 
-#include <osg/ContextData>
-
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
 #include <osg/LineWidth>
 #include <osg/Point>
@@ -393,26 +391,134 @@ GL3RealizeOperation::operator()(osg::Object* object)
 
 
 #undef LC
-#define LC "[GLObjectReleaser] "
+#define LC "[GLObjectPool] "
 
-GLObject::GLObject(osg::State& state, const std::string& label) :
+GLObjectPool*
+GLObjectPool::get(osg::State& state)
+{
+    return osg::get<GLObjectPool>(state.getContextID());
+}
+
+GLObjectPool::GLObjectPool(unsigned cxid) :
+    osg::GraphicsObjectManager("osgEarth::GLObjectPool", cxid),
+    _hits(0),
+    _misses(0),
+    _totalBytes(0)
+{
+    //nop
+}
+
+void
+GLObjectPool::watch(GLObject::Ptr object)
+{
+    ScopedMutexLock lock(_mutex);
+    _objects.insert(object);
+}
+
+void
+GLObjectPool::releaseAll()
+{
+    ScopedMutexLock lock(_mutex);
+    for (auto& object : _objects)
+        object->release();
+    _objects.clear();
+}
+
+GLsizeiptr
+GLObjectPool::totalBytes() const
+{
+    return _totalBytes;
+}
+
+GLObjectPool::Collection
+GLObjectPool::objects() const
+{
+    return _objects;
+}
+
+void
+GLObjectPool::flushDeletedGLObjects(double now, double& avail)
+{
+    //TODO: track timing and only flush periodically
+    ScopedMutexLock lock(_mutex);
+    GLObject::Ptr objectToRelease;
+    GLsizeiptr bytes = 0;
+    const unsigned maxAge = 0; // none.
+    for (auto& object : _objects)
+    {
+        if (objectToRelease == nullptr &&
+            object.use_count() == 1)
+        {
+            objectToRelease = object;
+        }
+        else
+        {
+            bytes += object->size();
+        }
+    }
+    if (objectToRelease)
+    {
+        objectToRelease->release();
+        _objects.erase(objectToRelease);
+    }
+    _totalBytes = bytes;
+}
+
+void
+GLObjectPool::flushAllDeletedGLObjects()
+{
+    deleteAllGLObjects();
+}
+
+void
+GLObjectPool::deleteAllGLObjects()
+{
+    ScopedMutexLock lock(_mutex);
+    for (auto& object : _objects)
+        object->release();
+    _objects.clear();
+    _totalBytes = 0;
+}
+
+void
+GLObjectPool::discardAllGLObjects()
+{
+    ScopedMutexLock lock(_mutex);
+    _objects.clear();
+    _totalBytes = 0;
+}
+
+
+
+GLObject::GLObject(osg::State& state, Type type, const std::string& label) :
     _label(label),
+    _type(type),
+    _recyclable(false),
     _ext(state.get<osg::GLExtensions>())
 {
     //nop
 }
 
 
-
 GLBuffer::GLBuffer(GLenum target, osg::State& state, const std::string& label) :
-    GLObject(state, label.empty() ? "Unlabeled buffer" : label),
+    GLObject(state, BUFFER, label.empty() ? "Unlabeled buffer" : label),
     _target(target),
     _name(~0U),
     _size(0),
     _immutable(false),
-    _address(0ULL)
+    _address(0ULL),
+    _isResident(false)
 {
     ext()->glGenBuffers(1, &_name);
+    reset(target, label);
+}
+
+void
+GLBuffer::reset(GLenum target, const std::string& label)
+{
+    _target = target;
+    _label = label;
+
     if (_name != ~0U)
     {
         bind();
@@ -423,10 +529,34 @@ GLBuffer::GLBuffer(GLenum target, osg::State& state, const std::string& label) :
 GLBuffer::Ptr
 GLBuffer::create(GLenum target, osg::State& state, const std::string& label)
 {
-    Ptr obj(new GLBuffer(target, state, label));
-    GLObjectReleaser::watch(obj, state);
-    OE_DEVEL << LC << "GLBuffer::create, name=" << obj->name() << std::endl;
-    return obj;
+    Ptr object(new GLBuffer(target, state, label));
+    GLObjectPool::get(state)->watch(object);
+    OE_DEVEL << LC << "GLBuffer::create, name=" << object->name() << std::endl;
+    return object;
+}
+
+GLBuffer::Ptr
+GLBuffer::create(GLenum target, osg::State& state, GLsizei sizeHint, const std::string& label)
+{
+    const GLObject::Compatible comp = [sizeHint](GLObject* obj) {
+        return
+            obj->type() == BUFFER &&
+            obj->recyclable() &&
+            obj->size() == sizeHint;
+    };
+
+    Ptr object = GLObjectPool::get(state)->recycle<GLBuffer>(comp);
+    if (object)
+    {
+        object->reset(target, label);
+        return object;
+    }
+    else
+    {
+        object = create(target, state, label);
+        object->_recyclable = true;
+    }
+    return object;
 }
 
 void
@@ -453,9 +583,9 @@ GLBuffer::unbind() const
 }
 
 void
-GLBuffer::uploadData(GLintptr datasize, const GLvoid* data, GLbitfield flags) const
+GLBuffer::uploadData(GLsizei datasize, const GLvoid* data, GLbitfield flags) const
 {
-    OE_HARD_ASSERT(_immutable == false || datasize <= size());
+    OE_SOFT_ASSERT_AND_RETURN(_immutable == false || datasize <= size(), void());
 
     if (datasize > size())
         bufferData(datasize, data, flags);
@@ -464,28 +594,39 @@ GLBuffer::uploadData(GLintptr datasize, const GLvoid* data, GLbitfield flags) co
 }
 
 void
-GLBuffer::bufferData(GLintptr size, const GLvoid* data, GLbitfield flags) const
+GLBuffer::bufferData(GLsizei size, const GLvoid* data, GLbitfield flags) const
 {
     if (_target == GL_SHADER_STORAGE_BUFFER)
-        size = align(size, getSSBOAlignment<GLintptr>());
+        size = align(size, getSSBOAlignment<GLsizei>());
     ext()->glBufferData(_target, size, data, flags);
     _size = size;
     _immutable = false;
 }
 
 void
-GLBuffer::bufferSubData(GLintptr offset, GLsizeiptr datasize, const GLvoid* data) const
+GLBuffer::bufferSubData(GLintptr offset, GLsizei datasize, const GLvoid* data) const
 {
     OE_SOFT_ASSERT_AND_RETURN(offset + datasize <= size(), void());
     ext()->glBufferSubData(_target, offset, datasize, data);
 }
 
 void
-GLBuffer::bufferStorage(GLintptr size, const GLvoid* data, GLbitfield flags) const
+GLBuffer::bufferStorage(GLsizei size, const GLvoid* data, GLbitfield flags) const
 {
     if (_target == GL_SHADER_STORAGE_BUFFER)
-        size = align(size, getSSBOAlignment<GLintptr>());
-    ext()->glBufferStorage(_target, size, data, flags);
+        size = align(size, getSSBOAlignment<GLsizei>());
+
+    if (recyclable() && size == _size)
+    {
+        ext()->glBufferSubData(_target, 0, size, data);
+    }
+    else
+    {
+        if (recyclable())
+            flags |= GL_DYNAMIC_STORAGE_BIT;
+
+        ext()->glBufferStorage(_target, size, data, flags);
+    }
     _size = size;
     _immutable = true;
 }
@@ -526,34 +667,101 @@ GLBuffer::address()
 void
 GLBuffer::makeResident()
 {
-    if (address() != 0ULL)
+    if (address() != 0ULL && !_isResident)
     {
         OE_HARD_ASSERT(gl.MakeNamedBufferResidentNV);
         //Currently only GL_READ_ONLY is supported according to the spec
         gl.MakeNamedBufferResidentNV(name(), GL_READ_ONLY);
+        _isResident = true;
     }
 }
 
 void
 GLBuffer::makeNonResident()
 {
-    if (_address != 0ULL)
+    if (_address != 0ULL && _isResident)
     {
         OE_HARD_ASSERT(gl.MakeNamedBufferNonResidentNV);
         gl.MakeNamedBufferNonResidentNV(name());
+        _isResident = false;
     }
 }
 
 
+GLTexture::Profile::Profile(GLenum target) :
+    osg::Texture::TextureProfile(target),
+    _minFilter(GL_LINEAR),
+    _magFilter(GL_LINEAR),
+    _wrapS(GL_CLAMP_TO_EDGE),
+    _wrapT(GL_CLAMP_TO_EDGE),
+    _wrapR(GL_CLAMP_TO_EDGE),
+    _maxAnisotropy(1.0f)
+{
+    //nop
+}
+
+GLTexture::Profile::Profile(
+    GLenum    target,
+    GLint     numMipmapLevels,
+    GLenum    internalFormat,
+    GLsizei   width,
+    GLsizei   height,
+    GLsizei   depth,
+    GLint     border,
+    GLint     minFilter,
+    GLint     magFilter,
+    GLint     wrapS,
+    GLint     wrapT,
+    GLint     wrapR,
+    GLfloat   maxAnisotropy) :
+    osg::Texture::TextureProfile(
+        target,
+        numMipmapLevels,
+        internalFormat,
+        width, height, depth,
+        border),
+    _minFilter(minFilter),
+    _magFilter(magFilter),
+    _wrapS(wrapS),
+    _wrapT(wrapT),
+    _wrapR(wrapR),
+    _maxAnisotropy(maxAnisotropy)
+{
+    //nop
+}
+
+bool
+GLTexture::Profile::operator==(const GLTexture::Profile& rhs) const
+{
+    return
+        osg::Texture::TextureProfile::operator==(rhs) &&
+        _minFilter == rhs._minFilter &&
+        _magFilter == rhs._magFilter &&
+        _wrapS == rhs._wrapS &&
+        _wrapT == rhs._wrapT &&
+        _wrapR == rhs._wrapR &&
+        _maxAnisotropy == rhs._maxAnisotropy;
+}
 
 GLTexture::GLTexture(GLenum target, osg::State& state, const std::string& label) :
-    GLObject(state, label.empty() ? "Unlabeled texture" : label),
+    GLObject(state, TEXTURE, label.empty() ? "Unlabeled texture" : label),
     _target(target),
     _name(~0U),
     _handle(~0ULL),
-    _isResident(false)
+    _isResident(false),
+    _profile(target),
+    _size(0)
 {
     glGenTextures(1, &_name);
+    reset(target, label, state);
+}
+
+void
+GLTexture::reset(GLenum target, const std::string& label, osg::State& state)
+{
+    _target = target;
+    _label = label;
+
     if (_name != ~0U)
     {
         bind(state);
@@ -565,9 +773,37 @@ GLTexture::Ptr
 GLTexture::create(GLenum target, osg::State& state, const std::string& label)
 {
     Ptr obj(new GLTexture(target, state, label));
-    GLObjectReleaser::watch(obj, state);
+    GLObjectPool::get(state)->watch(obj);
     OE_DEVEL << LC << "GLTexture::release, name=" << obj->name() << std::endl;
     return obj;
+}
+
+GLTexture::Ptr
+GLTexture::create(
+    GLenum target, 
+    osg::State& state, 
+    const Profile& profileHint,
+    const std::string& label)
+{
+    const GLObject::Compatible comp = [profileHint](GLObject* obj) {
+        return
+            obj->type() == TEXTURE &&
+            obj->recyclable() &&
+            static_cast<GLTexture*>(obj)->_profile == profileHint;
+    };
+
+    Ptr object = GLObjectPool::get(state)->recycle<GLTexture>(comp);
+    if (object)
+    {
+        object->reset(target, label, state);
+        return object;
+    }
+    else
+    {
+        object = create(target, state, label);
+        object->_recyclable = true;
+    }
+    return object;
 }
 
 void
@@ -638,22 +874,52 @@ GLTexture::release()
 }
 
 void
-GLTexture::storage2D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t)
+GLTexture::storage2D(const Profile& profile) //GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t)
 {
-    ext()->glTexStorage2D(_target, mipLevels, internalFormat, s, t);
+    if (size() == 0)
+    {
+        _profile = profile; // Profile(_target, mipLevels, internalFormat, s, t, 1, 0);
 
-    osg::Texture::TextureProfile p(_target, mipLevels, internalFormat, s, t, 1, 0);
-    _size = p._size;
+        ext()->glTexStorage2D(
+            _target,
+            profile._numMipmapLevels,
+            profile._internalFormat,
+            profile._width,
+            profile._height);    
+        
+        glTexParameteri(_target, GL_TEXTURE_MIN_FILTER, profile._minFilter);
+        glTexParameteri(_target, GL_TEXTURE_MAG_FILTER, profile._magFilter);
+        glTexParameteri(_target, GL_TEXTURE_WRAP_S, profile._wrapS);
+        glTexParameteri(_target, GL_TEXTURE_WRAP_T, profile._wrapT);
+        glTexParameterf(_target, GL_TEXTURE_MAX_ANISOTROPY_EXT, profile._maxAnisotropy);
+
+        _size = _profile._size;
+    }
 }
 
 void
-GLTexture::storage3D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r)
+GLTexture::storage3D(const Profile& profile) //GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r)
 {
-    ext()->glTexStorage3D(_target, mipLevels, internalFormat, s, t, r);
+    if (size() == 0)
+    {
+        _profile = profile; // Profile(_target, mipLevels, internalFormat, s, t, r, 0);
 
-    osg::Texture::TextureProfile p(_target, mipLevels, internalFormat, s, t, r, 0);
-    _size = p._size;
+        ext()->glTexStorage3D(
+            _target, 
+            profile._numMipmapLevels, 
+            profile._internalFormat,
+            profile._width,
+            profile._height,
+            profile._depth);
 
+        glTexParameteri(_target, GL_TEXTURE_MIN_FILTER, profile._minFilter);
+        glTexParameteri(_target, GL_TEXTURE_MAG_FILTER, profile._magFilter);
+        glTexParameteri(_target, GL_TEXTURE_WRAP_S, profile._wrapS);
+        glTexParameteri(_target, GL_TEXTURE_WRAP_T, profile._wrapT);
+        glTexParameterf(_target, GL_TEXTURE_MAX_ANISOTROPY_EXT, profile._maxAnisotropy);
+
+        _size = _profile._size;
+    }
 }
 
 void
@@ -678,113 +944,6 @@ void
 GLTexture::compressedSubImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const void* data) const
 {
     ext()->glCompressedTexSubImage3D(_target, level, xoff, yoff, zoff, width, height, depth, format, imageSize, data);
-}
-
-#undef LC
-#define LC "[GLObjectReleaser] "
-
-GLObjectReleaser::GLObjectReleaser(unsigned contextID) :
-    osg::GraphicsObjectManager("OE GLObjectReleaser", contextID),
-    _mutex("GLObjectReleaser(OE)")
-{
-    //nop
-}
-
-const GLObjectReleaser&
-GLObjectReleaser::get(osg::State& state)
-{
-    return *osg::get<GLObjectReleaser>(state.getContextID());
-}
-
-void
-GLObjectReleaser::watch(GLObject::Ptr object, osg::State& state_unused)
-{
-    if (object && object->ext())
-    {
-        GLObjectReleaser* rel = osg::get<GLObjectReleaser>(object->ext()->contextID);
-        if (rel)
-        {
-            ScopedMutexLock lock(rel->_mutex);
-            rel->_objects.insert(object);
-            OE_DEVEL << LC << "Added \"" << object->label() << "\"" << std::endl;
-            //OE_INFO << LC << "Watching " << rel->_objects.size() << std::endl;
-        }
-    }
-}
-
-void
-GLObjectReleaser::releaseAll(osg::State& state)
-{
-    GLObjectReleaser* rel = osg::get<GLObjectReleaser>(state.getContextID());
-    if (rel)
-    {
-        ScopedMutexLock lock(rel->_mutex);
-
-        for (auto& object : rel->_objects)
-        {
-            OE_DEVEL << LC << "Releasing \"" << object->label() << "\"" << std::endl;
-            object->release();
-        }
-
-        rel->_objects.clear();
-    }
-}
-
-GLsizei
-GLObjectReleaser::totalBytes(osg::State& state)
-{
-    GLObjectReleaser* rel = osg::get<GLObjectReleaser>(state.getContextID());
-    return rel ? rel->_totalBytes : 0;
-}
-
-void
-GLObjectReleaser::flushDeletedGLObjects(double currentTime, double& availableTime)
-{
-    // OSG calls this method periodically
-    flushAllDeletedGLObjects();
-}
-
-void
-GLObjectReleaser::flushAllDeletedGLObjects()
-{
-    ScopedMutexLock lock(_mutex);
-
-    // OSG calls this method periodically
-    std::unordered_set<std::shared_ptr<GLObject>> keep;
-
-    GLsizei bytes = 0;
-
-    for (auto& object : _objects)
-    {
-        if (object.use_count() == 1)
-        {
-            OE_DEVEL << LC << "Releasing \"" << object->label() << "\"" << std::endl;
-            object->release();
-        }
-        else
-        {
-            keep.insert(object);
-            bytes += object->size();
-        }
-    }
-
-    _objects.swap(keep);
-    _totalBytes = bytes;
-}
-
-void
-GLObjectReleaser::deleteAllGLObjects()
-{
-    // not really sure what this is supposed to do TBH
-    flushAllDeletedGLObjects();
-}
-
-void
-GLObjectReleaser::discardAllGLObjects()
-{
-    ScopedMutexLock lock(_mutex);
-    // no graphics context available..just empty the bucket
-    _objects.clear();
 }
 
 #undef LC

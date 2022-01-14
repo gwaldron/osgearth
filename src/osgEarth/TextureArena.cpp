@@ -61,11 +61,6 @@ Texture::compileGLObjects(osg::State& state) const
     //GLenum target = GL_TEXTURE_2D_ARRAY;
     GLenum target = GL_TEXTURE_2D;
 
-    gc._gltexture = GLTexture::create(target, state, _uri->base());
-
-    // debugging
-    gc._gltexture->id() = _uri->base();
-
     // mipmaps already created and in the image:
     unsigned numMipLevelsInMemory = _image->getNumMipmapLevels();
 
@@ -96,27 +91,42 @@ Texture::compileGLObjects(osg::State& state) const
             internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
     }
 
+    // Calculate the size beforehand so we can make the texture recyclable
+    GLTexture::Profile profileHint(
+        target,
+        numMipLevelsToAllocate, 
+        internalFormat,
+        _image->s(), _image->t(), _image->r(),
+        0, // border
+        _mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST,
+        GL_LINEAR,
+        _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT,
+        _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT,
+        _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT,
+        _maxAnisotropy.getOrUse(4.0f));
+
+    gc._gltexture = GLTexture::create(
+        target,
+        state,
+        profileHint,
+        _label.empty() ? _uri->base() : _label);
+
+    // debugging
+    gc._gltexture->id() = _uri->base();
+
     // Blit our image to the GPU
     gc._gltexture->bind(state);
 
     if (target == GL_TEXTURE_2D_ARRAY)
     {
-        gc._gltexture->storage3D(
-            numMipLevelsToAllocate,
-            internalFormat,
-            _image->s(),
-            _image->t(),
-            _image->r());
+        gc._gltexture->storage3D(profileHint);
     }
     else
     {
-        gc._gltexture->storage2D(
-            numMipLevelsToAllocate,
-            internalFormat,
-            _image->s(),
-            _image->t() );
+        gc._gltexture->storage2D(profileHint);
     }
 
+#if 0
     GLint min_filter = _mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST;
     glTexParameteri(target, GL_TEXTURE_MIN_FILTER, min_filter);
     glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -127,6 +137,7 @@ Texture::compileGLObjects(osg::State& state) const
 
     float ma_value = _maxAnisotropy.getOrUse(4.0f);
     glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, ma_value);
+#endif
 
     // Force creation of the bindless handle - once you do this, you can
     // no longer change the texture parameters.
@@ -583,7 +594,7 @@ TextureArena::apply(osg::State& state) const
 
     if (gc._handleBuffer == nullptr)
     {
-        std::string bufferName = "oe.TextureArena " + getName();
+        std::string bufferName = "TextureArena " + getName();
 
         if (_useUBO)
             gc._handleBuffer = GLBuffer::create(GL_UNIFORM_BUFFER, state, bufferName);

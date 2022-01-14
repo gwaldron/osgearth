@@ -66,6 +66,7 @@ namespace osgEarth
 
         optional<URI> _uri;
         osg::ref_ptr<osg::Image> _image;
+        std::string _label;
         bool _compress;
         bool _mipmap;
         bool _clamp;

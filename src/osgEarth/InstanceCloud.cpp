@@ -52,7 +52,7 @@ InstanceCloud::CommandBuffer::allocate(
 {
     if (_buf == nullptr)
     {
-        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC CommandBuffer");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "InstanceCloud CommandBuffer");
     }
 
     _geom = geom;
@@ -95,7 +95,7 @@ InstanceCloud::TileBuffer::allocate(
 {
     if (_buf == nullptr)
     {
-        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC TileBuffer");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "InstanceCloud TileBuffer");
     }
 
     if (numTiles > 0)
@@ -122,7 +122,7 @@ InstanceCloud::CullBuffer::allocate(
 {
     if (_buf == nullptr)
     {
-        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC CullBuffer");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "InstanceCloud CullBuffer");
     }
 
     // allocate enough space for the data header and all instance refs
@@ -158,7 +158,7 @@ InstanceCloud::InstanceBuffer::allocate(
 {
     if (_buf == nullptr)
     {
-        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC GenBuffer");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "InstanceCloud GenBuffer");
     }
 
     GLsizei size = sizeof(InstanceData) * numTiles * numInstancesPerTile;
@@ -176,7 +176,7 @@ InstanceCloud::RenderBuffer::allocate(
 {
     if (_buf == nullptr)
     {
-        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "OE IC RenderBuffer");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "InstanceCloud RenderBuffer");
     }
 
     GLsizei size = numInstances * (sizeof(GLuint)*2); // sizeof RenderLeaf

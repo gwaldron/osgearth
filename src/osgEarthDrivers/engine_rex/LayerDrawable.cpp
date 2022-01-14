@@ -298,6 +298,24 @@ LayerDrawable::refreshRenderState()
                 }
             }
 
+            // LandCover sampler:
+            if (_context->options().useLandCover() == true)
+            {
+                buf.landcoverIndex = -1;
+                if (tile._sharedSamplers != nullptr /* && is normalmapping active */)
+                {
+                    const Sampler& s = (*tile._sharedSamplers)[SamplerBinding::LANDCOVER];
+                    if (s._arena_texture)
+                    {
+                        s._arena_texture->_compress = false;
+                        s._arena_texture->_mipmap = false;
+                        s._arena_texture->_maxAnisotropy = 1.0f;
+                        buf.landcoverIndex = textures->add(s._arena_texture);
+                        COPY_MAT4F(s._matrix, buf.landcoverMat);
+                    }
+                }
+            }
+
             // Other shared samplers.
             if (tile._sharedSamplers != nullptr)
             {
@@ -363,7 +381,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
         gs.tiles = GLBuffer::create(
             GL_SHADER_STORAGE_BUFFER,
             state,
-            "LayerDrawable Tiles");
+            "REX Renderer");
 
         // preallocate space for a bunch of tiles (just for fun)
         gs.tiles->bufferData(
@@ -379,7 +397,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             gs.commands = GLBuffer::create(
                 GL_DRAW_INDIRECT_BUFFER,
                 state,
-                "LayerDrawable DrawIndirect Commands");
+                "REX Renderer");
 
             // preallocate space for a bunch of draw commands (just for fun)
             gs.commands->bufferData(
@@ -451,7 +469,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             gs.shared = GLBuffer::create(
                 GL_SHADER_STORAGE_BUFFER,
                 state,
-                "LayerDrawable Shared");
+                "REX Renderer");
 
             gs.shared->bind();
             gs.shared->bufferStorage(sizeof(GL4GlobalData), &buf, 0); // permanent

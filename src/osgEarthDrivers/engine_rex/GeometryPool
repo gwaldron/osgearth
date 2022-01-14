@@ -67,7 +67,7 @@ namespace osgEarth {
                     _gc[state->getContextID()]._ebo = nullptr;
 
                 // Do nothing if state is nullptr!
-                // Let nature take its course and let the GLObjectReleaser release it
+                // Let nature take its course and let the GLObjectPool release it
             }
 
             void resizeGLObjectBuffers(unsigned size) override

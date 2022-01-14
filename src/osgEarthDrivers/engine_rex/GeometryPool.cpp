@@ -592,6 +592,7 @@ SharedGeometry::getOrCreateCommand(osg::State& state)
     SharedDrawElements::GCState& de = _drawElements->_gc[gcid];
     if (de._ebo == nullptr || !de._ebo->valid())
     {
+        //TODO consider sharing
         de._ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state, "Rex EBO");
         de._ebo->bind();
         de._ebo->bufferStorage(_drawElements->getTotalDataSize(), _drawElements->getDataPointer(), 0);
@@ -604,9 +605,14 @@ SharedGeometry::getOrCreateCommand(osg::State& state)
     GCState& gs = _gc[gcid];
     if (gs._vbo == nullptr || !gs._vbo->valid())
     {
-        gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, "Rex VBO");
+        // supply a "size hint" for unconstrained tiles to the GLBuffer so it can try to re-use
+        GLsizei size = _verts.size() * sizeof(GL4Vertex);
+        if (_hasConstraints)
+            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, "REX VBO");
+        else
+            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, size, "REX VBO");
         gs._vbo->bind();
-        gs._vbo->bufferStorage(_verts.size() * sizeof(GL4Vertex), _verts.data(), 0);
+        gs._vbo->bufferStorage(size, _verts.data());
         gs._vbo->makeResident();
         OE_HARD_ASSERT(gs._vbo->address());
 
@@ -709,7 +715,7 @@ void SharedGeometry::releaseGLObjects(osg::State* state) const
         _gc[state->getContextID()]._vbo = nullptr;
 
     // Do nothing if state is nullptr!
-    // Let nature take its course and let the GLObjectReleaser deal with it
+    // Let nature take its course and let the GLObjectPool deal with it
 }
 
 void

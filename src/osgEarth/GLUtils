@@ -134,6 +134,9 @@ namespace osgEarth
         GLuint  firstIndex;     // index of the first element in the EBO to use
         GLuint  baseVertex;     // offset to add to each element index (lets us use USHORT even when >65535 verts)
         GLuint  baseInstance;   // offset to instance # when fetching vertex attrs (does NOT affect gl_InstanceID)
+
+        DrawElementsIndirectCommand() :
+            count(0), instanceCount(1), firstIndex(0), baseVertex(0), baseInstance(0) { }
     };
 
     //! A dispatch command for indirect compute
@@ -142,15 +145,19 @@ namespace osgEarth
         GLuint num_groups_x;
         GLuint num_groups_y;
         GLuint num_groups_z;
+
+        DispatchIndirectCommand() : num_groups_x(1), num_groups_y(0), num_groups_z(0) { }
     };
 
     //! A pointer record for bindless buffer usage
     struct BindlessPtrNV
     {
-        GLuint index;
-        GLuint reserved;
-        GLuint64 address;
-        GLuint64 length;
+        GLuint index;      // unused
+        GLuint reserved;   // unused
+        GLuint64 address;  // GPU address of bindless buffer
+        GLuint64 length;   // length in bytes of bindless buffer
+
+        BindlessPtrNV() : index(0), reserved(0), address(0), length(0) { }
     };
 
     //! A draw command for NVIDIA bindless buffer draws with a single VBO
@@ -160,6 +167,9 @@ namespace osgEarth
         GLuint reserved;
         BindlessPtrNV indexBuffer;
         BindlessPtrNV vertexBuffer;
+
+        DrawElementsIndirectBindlessCommandNV() :
+            cmd(), reserved(0), indexBuffer(), vertexBuffer() { }
     };
     
     //! Base class for GL object containers

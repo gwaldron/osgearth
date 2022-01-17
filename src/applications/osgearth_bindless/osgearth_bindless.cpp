@@ -25,12 +25,13 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/GeometryCloud>
+#include <osgEarth/Chonk>
 
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgDB/ReadFile>
 #include <osg/MatrixTransform>
-#include <osg/PrimitiveSetIndirect>
+#include <osg/BlendFunc>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -139,9 +140,153 @@ struct GeometryCloudRenderer : public osg::Drawable::DrawCallback
     }
 };
 
+
+const char* vs_NV = R"(
+    #version 430
+    #extension GL_ARB_gpu_shader_int64 : enable
+
+    layout(binding=5, std430) buffer TextureArena {
+        uint64_t textures[];
+    };
+
+    layout(location=0) in vec3 position;
+    layout(location=1) in vec3 normal;
+    layout(location=2) in vec4 color;
+    layout(location=3) in vec2 uv;
+    layout(location=4) in int albedo;
+
+    out vec3 vp_Normal;
+    out vec4 vp_Color;
+
+    out vec2 tex_coord;
+    flat out uint64_t tex_handle;
+
+    void vs(inout vec4 vertex)
+    {
+        vertex = vec4(position, 1);
+        vp_Color = color;
+        vp_Normal = normal;
+        tex_coord = uv;
+        tex_handle = albedo >= 0 ? textures[albedo] : 0;
+    };
+)";
+
+const char* fs_NV = R"(
+    #version 430
+    #extension GL_ARB_gpu_shader_int64 : enable
+    #pragma import_defines(USE_ALPHA_DISCARD)
+
+    in vec2 tex_coord;
+    flat in uint64_t tex_handle;
+
+    void fs(inout vec4 color)
+    {
+        if (tex_handle > 0) {
+            vec4 texel = texture(sampler2D(tex_handle), tex_coord);
+            color *= texel;
+        }
+        else color = vec4(1,0,0,1); 
+
+#ifdef USE_ALPHA_DISCARD
+        if (color.a < 0.15)
+            discard;
+#endif
+    }
+)";
+
+int main_NV(int argc, char** argv)
+{
+    osgEarth::initialize();
+    osg::ArgumentParser arguments(&argc, argv);
+
+    osgViewer::Viewer viewer(arguments);
+
+    osg::Group* root = new osg::Group();
+    osg::StateSet* root_ss = root->getOrCreateStateSet();
+
+    // Simple shader that will render geometry with bindless textures
+    VirtualProgram* vp = VirtualProgram::getOrCreate(root->getOrCreateStateSet());
+    vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
+    vp->setFunction("vs", vs_NV, ShaderComp::LOCATION_VERTEX_MODEL);
+    vp->setFunction("fs", fs_NV, ShaderComp::LOCATION_FRAGMENT_COLORING);
+
+    osg::ref_ptr<TextureArena> arena = new TextureArena();
+    root_ss->setAttribute(arena.get(), 1);
+
+
+    if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
+    {
+#define GL_SAMPLE_ALPHA_TO_COVERAGE_ARB   0x809E
+        root_ss->setMode(GL_BLEND, 0);
+        root_ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+    }
+    else
+    {
+        root_ss->setAttributeAndModes(new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), 1);
+        root_ss->setDefine("USE_ALPHA_DISCARD");
+    }
+
+    ChonkManager chonk_man(arena.get());
+
+    float spacing = 0.0;
+
+    for (int i = 1; i < argc; ++i)
+    {
+        osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile(argv[i]);
+        if (!node.valid())
+            return -1;
+
+        OE_NOTICE << "Loaded " << argv[i] << ", adding to the cloud" << std::endl;
+
+        float radius = node->getBound().radius();
+        spacing += radius;
+
+        osg::ref_ptr<osg::MatrixTransform> mt = new osg::MatrixTransform();
+        mt->setMatrix(osg::Matrix::translate(spacing, 0, 0));
+        mt->addChild(node);
+
+        chonk_man.add(mt.get());
+
+        spacing += radius;
+    }
+
+    auto drawable = new ChonkDrawable();
+    drawable->_man = &chonk_man;
+
+    root->addChild(drawable);
+    viewer.setSceneData(root);
+
+    viewer.addEventHandler(new osgViewer::StatsHandler());
+
+    EventRouter* router = new EventRouter();
+    viewer.addEventHandler(router);
+
+    router->onKeyPress(router->KEY_Leftbracket, [&arena]() {
+        OE_NOTICE << "Activating " << arena->size() << " textures" << std::endl;
+        for (auto& tex : arena->getTextures())
+            arena->activate(tex);
+        });
+
+    router->onKeyPress(router->KEY_Rightbracket, [&arena]() {
+        OE_NOTICE << "Deactivating " << arena->size() << " textures" << std::endl;
+        for (auto& tex : arena->getTextures())
+            arena->deactivate(tex);
+        });
+
+    OE_NOTICE
+        << "\n\n\nHello. There are " << arena->size() << " textures in the arena."
+        << "\n\nPress '[' to make resident, ']' to make non-resident"
+        << std::endl;
+
+    return viewer.run();
+}
+
 int
 main(int argc, char** argv)
 {
+    // new bindlessNV
+    return main_NV(argc, argv);
+
     osgEarth::initialize();
     osg::ArgumentParser arguments(&argc, argv);
 

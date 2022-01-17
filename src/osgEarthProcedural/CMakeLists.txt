@@ -37,6 +37,7 @@ set(TARGET_SRC
     LifeMapLayer.cpp
     VegetationFeatureGenerator.cpp
     VegetationLayer.cpp
+    VegetationLayerNV.cpp
     ${SHADERS_CPP})
 	
 set(LIB_PUBLIC_HEADERS
@@ -51,7 +52,8 @@ set(LIB_PUBLIC_HEADERS
     TextureSplattingMaterials
     LifeMapLayer
     VegetationFeatureGenerator
-    VegetationLayer)
+    VegetationLayer
+    VegetationLayerNV)
 	
 SET(TARGET_H
 	${LIB_PUBLIC_HEADERS}

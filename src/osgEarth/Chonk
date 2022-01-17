@@ -1,0 +1,144 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_CHONK
+#define OSGEARTH_CHONK 1
+
+#include <osgEarth/Common>
+#include <osgEarth/GLUtils>
+#include <osgEarth/TextureArena>
+#include <vector>
+#include <unordered_set>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT ChonkMaterial
+    {
+    public:
+        using Ptr = std::shared_ptr<ChonkMaterial>;
+        static Ptr create();
+
+        int albedo;
+
+    private:
+        ChonkMaterial() : albedo(-1) { }
+    };
+
+    /**
+     * A bindless drawable.
+     */
+    class OSGEARTH_EXPORT Chonk
+    {
+    public:
+        struct VertexGPU
+        {
+            osg::Vec3f position;
+            osg::Vec3f normal;
+            osg::Vec4ub color;
+            osg::Vec2f uv;
+            GLint albedo; // TODO: upgrade to material index
+        };
+        /*
+        struct VertexGPU
+        {
+            vec3 position;
+            vec3 normal;
+            unorm32 color;
+            vec2 uv;
+            short albedo;
+        };
+        */
+
+    public:
+        using Ptr = std::shared_ptr<Chonk>;
+        static Ptr create();
+
+        std::vector<ChonkMaterial::Ptr> _materials; // todo: upgrade to material index
+        std::vector<VertexGPU> _vbo_store;
+        std::vector<GLushort> _ebo_store;
+
+        struct GCState
+        {
+            GLBuffer::Ptr vbo;
+            GLBuffer::Ptr ebo;
+            DrawElementsIndirectBindlessCommandNV command;
+        };
+        mutable osg::buffered_object<GCState> _gs;
+        
+        //! Gets (or creates) a draw command, possibly
+        //! resolving texture handles and uploading buffers.
+        const DrawElementsIndirectBindlessCommandNV& getCommand(
+            osg::State&) const;
+
+    private:
+        Chonk();
+    };
+
+    /**
+     * Manages a collection of Chonks.
+     * Really just converts osg::Nodes into Chonks using the 
+     * supplied TextureArena and MaterialArena, and then holds
+     * a collection of pointers to keep them resident.
+     */
+    class OSGEARTH_EXPORT ChonkManager
+    {
+    public:
+        ChonkManager(
+            TextureArena* textures);
+
+        //! Adds a node and generates an asset drawable for it.
+        //! The asset will upload to the GPU on the next call to apply.
+        Chonk::Ptr add(osg::Node* node);
+
+        //! Removes a drawable.
+        void remove(Chonk::Ptr);
+
+        const std::unordered_set<Chonk::Ptr>& getChonks() const {
+            return _chonks;
+        }
+
+    private:
+        std::unordered_set<Chonk::Ptr> _chonks;
+        osg::ref_ptr<TextureArena> _textures;
+    };
+
+    /**
+     * Test class to render a Chonk.
+     */
+    class OSGEARTH_EXPORT ChonkDrawable : public osg::Drawable
+    {
+    public:
+        ChonkManager* _man;
+        mutable GLBuffer::Ptr _commandBuf;
+        mutable GLuint _vao;
+
+        osg::BoundingSphere computeBound() const override {
+            return osg::BoundingSphere(getBoundingBox());
+        };
+        osg::BoundingBox computeBoundingBox() const override {
+            return osg::BoundingBox({ -50,-50,-50,50,50,50 });
+        };
+
+        void drawImplementation(osg::RenderInfo& ri) const override;
+    };
+}
+
+#endif // OSGEARTH_INSTANCE_CLOUD

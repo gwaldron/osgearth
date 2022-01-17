@@ -74,7 +74,8 @@ FeatureSDFLayer::init()
     }
 
     // enable GPU processing if available
-    _sdfGenerator.setUseGPU(true);
+    //_sdfGenerator.setUseGPU(true);
+    _sdfGenerator.setUseGPU(false);
 }
 
 void

@@ -59,6 +59,10 @@
 #define GL_MULTISAMPLE 0x809D
 #endif
 
+#ifndef GL_SAMPLE_ALPHA_TO_COVERAGE_ARB
+#define GL_SAMPLE_ALPHA_TO_COVERAGE_ARB   0x809E
+#endif
+
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
 
@@ -663,6 +667,14 @@ VegetationLayer::configureTrees()
     trees_vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
     trees_vp->addBindAttribLocation("oe_veg_texArenaIndex", 6);
     trees_vp->addBindAttribLocation("oe_veg_nmlArenaIndex", 7);
+
+    if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
+    {
+        trees._renderStateSet->setDefine("OE_USE_ALPHA_TO_COVERAGE");
+        trees._renderStateSet->setMode(GL_MULTISAMPLE, 1);
+        trees._renderStateSet->setMode(GL_BLEND, 0);
+        trees._renderStateSet->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+    }
 
     GroundCoverShaders shaders;
     shaders.load(trees_vp, shaders.Trees);

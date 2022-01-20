@@ -71,6 +71,8 @@ namespace osgEarth
         using Ptr = std::shared_ptr<Chonk>;
         static Ptr create();
 
+        using Command = DrawElementsIndirectBindlessCommandNV;
+
         std::vector<ChonkMaterial::Ptr> _materials; // todo: upgrade to material index
         std::vector<VertexGPU> _vbo_store;
         std::vector<GLushort> _ebo_store;
@@ -85,38 +87,34 @@ namespace osgEarth
         
         //! Gets (or creates) a draw command, possibly
         //! resolving texture handles and uploading buffers.
-        const DrawElementsIndirectBindlessCommandNV& getCommand(
-            osg::State&) const;
+        const Command& getOrCreateCommand(osg::State&) const;
 
     private:
         Chonk();
     };
 
     /**
-     * Manages a collection of Chonks.
-     * Really just converts osg::Nodes into Chonks using the 
-     * supplied TextureArena and MaterialArena, and then holds
-     * a collection of pointers to keep them resident.
+     * Creates Chonks.
      */
-    class OSGEARTH_EXPORT ChonkManager
+    class OSGEARTH_EXPORT ChonkFactory
     {
     public:
-        ChonkManager(
+        ChonkFactory(
             TextureArena* textures);
 
         //! Adds a node and generates an asset drawable for it.
         //! The asset will upload to the GPU on the next call to apply.
-        Chonk::Ptr add(osg::Node* node);
+        Chonk::Ptr create(osg::Node* node);
 
         //! Removes a drawable.
         void remove(Chonk::Ptr);
 
-        const std::unordered_set<Chonk::Ptr>& getChonks() const {
+        const std::vector<Chonk::Ptr>& getChonks() const {
             return _chonks;
         }
 
     private:
-        std::unordered_set<Chonk::Ptr> _chonks;
+        std::vector<Chonk::Ptr> _chonks;
         osg::ref_ptr<TextureArena> _textures;
     };
 
@@ -126,9 +124,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT ChonkDrawable : public osg::Drawable
     {
     public:
-        ChonkManager* _man;
-        mutable GLBuffer::Ptr _commandBuf;
-        mutable GLuint _vao;
+        ChonkDrawable();
 
         osg::BoundingSphere computeBound() const override {
             return osg::BoundingSphere(getBoundingBox());
@@ -137,7 +133,38 @@ namespace osgEarth
             return osg::BoundingBox({ -50,-50,-50,50,50,50 });
         };
 
-        void drawImplementation(osg::RenderInfo& ri) const override;
+        //! Adds a chonk to the drawable.
+        void add(Chonk::Ptr value);
+
+    public:
+
+        virtual void drawImplementation(osg::RenderInfo& ri) const override;
+        virtual void resizeGLObjectBuffers(unsigned) override;
+        virtual void releaseGLObjects(osg::State*) const override;
+
+    protected:
+        virtual ~ChonkDrawable() { }
+
+        mutable Mutex _m;
+        std::vector<Chonk::Ptr> _chonks;
+
+        struct GCState
+        {
+            unsigned _numCommands;
+            GLBuffer::Ptr _commandBuf;
+            GLVAO::Ptr _vao;
+            bool _dirty;
+            void(GL_APIENTRY * _glMultiDrawElementsIndirectBindlessNV)
+                (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint);
+                
+            GCState() : _vao(0), _dirty(true) { }
+            void update(const std::vector<Chonk::Ptr>&, osg::State&);
+            void draw(osg::State& state);
+            void release();
+            GLVAO::Ptr createAndRecordVAO(osg::State& state);
+        };
+        mutable osg::buffered_object<GCState> _gs;
+
     };
 }
 

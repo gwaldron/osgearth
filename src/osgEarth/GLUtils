@@ -176,7 +176,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT GLObject
     {
     public:
-        enum Type { BUFFER, TEXTURE };
+        enum Type { VAO, BUFFER, TEXTURE };
         using Ptr = std::shared_ptr<GLObject>;
         using Compatible = std::function<bool(GLObject*)>;
         virtual const std::string& label() const { return _label; }
@@ -193,6 +193,28 @@ namespace osgEarth
         bool _recyclable;
         osg::GLExtensions* _ext;
         friend class GLObjectPool;
+    };
+
+    class OSGEARTH_EXPORT GLVAO : public GLObject
+    {
+    public:
+        using Ptr = std::shared_ptr<GLVAO>;
+
+        //! Create a new VAO.
+        static Ptr create(osg::State& state, const std::string& label = "");
+
+        //! Bind the VAO.
+        void bind();
+
+        //! Unbind the VAO. (bind to 0)
+        void unbind();
+
+        //! de-allocate and release this buffer
+        virtual void release();
+
+    private:
+        GLVAO(osg::State& state, const std::string& label = "");
+        GLuint _name;
     };
 
     //! A buffer object

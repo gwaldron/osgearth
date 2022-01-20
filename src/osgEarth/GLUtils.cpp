@@ -499,6 +499,33 @@ GLObject::GLObject(osg::State& state, Type type, const std::string& label) :
     //nop
 }
 
+GLVAO::GLVAO(osg::State& state, const std::string& label) :
+    GLObject(state, VAO, label.empty() ? "Unlabaled VAO" : label),
+    _name(0U)
+{
+    ext()->glGenVertexArrays(1, &_name);
+}
+
+void
+GLVAO::release()
+{
+    if (_name != 0U)
+        ext()->glDeleteVertexArrays(1, &_name);
+    _name = 0;
+}
+
+void
+GLVAO::bind()
+{
+    OE_SOFT_ASSERT_AND_RETURN(_name != 0U, void());
+    ext()->glBindVertexArray(_name);
+}
+
+void
+GLVAO::unbind()
+{
+    ext()->glBindVertexArray(0);
+}
 
 GLBuffer::GLBuffer(GLenum target, osg::State& state, const std::string& label) :
     GLObject(state, BUFFER, label.empty() ? "Unlabeled buffer" : label),
@@ -684,6 +711,8 @@ GLBuffer::makeNonResident()
         OE_HARD_ASSERT(gl.MakeNamedBufferNonResidentNV);
         gl.MakeNamedBufferNonResidentNV(name());
         _isResident = false;
+        // address can be invalidated, so zero it out
+        _address = 0ULL;
     }
 }
 

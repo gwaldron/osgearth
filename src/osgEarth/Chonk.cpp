@@ -220,7 +220,7 @@ Chonk::Chonk()
 }
 
 const DrawElementsIndirectBindlessCommandNV&
-Chonk::getCommand(osg::State& state) const
+Chonk::getOrCreateCommand(osg::State& state) const
 {
     auto& gs = _gs[state.getContextID()];
 
@@ -242,8 +242,10 @@ Chonk::getCommand(osg::State& state) const
 
         // describe the draw command
         gs.command.cmd.count = _ebo_store.size();
+
         gs.command.indexBuffer.address = gs.ebo->address();
         gs.command.indexBuffer.length = gs.ebo->size();
+
         gs.command.vertexBuffer.address = gs.vbo->address();
         gs.command.vertexBuffer.length = gs.vbo->size();
     }
@@ -252,14 +254,14 @@ Chonk::getCommand(osg::State& state) const
 }
 
 
-ChonkManager::ChonkManager(TextureArena* textures) :
+ChonkFactory::ChonkFactory(TextureArena* textures) :
     _textures(textures)
 {
     //nop
 }
 
 Chonk::Ptr
-ChonkManager::add(osg::Node* node)
+ChonkFactory::create(osg::Node* node)
 {
     // convert all primitive sets to GL_TRIANGLES
     osgUtil::Optimizer o;
@@ -270,26 +272,20 @@ ChonkManager::add(osg::Node* node)
     // implies the verts are in a specific order for a good reason, which
     // is usually because the shader relies on gl_VertexID.
     //if (alignment == 0u)
-    {
-        osgUtil::VertexCacheVisitor vcv;
-        node->accept(vcv);
-        vcv.optimizeVertices();
-    }
+    //{
+    //    osgUtil::VertexCacheVisitor vcv;
+    //    node->accept(vcv);
+    //    vcv.optimizeVertices();
+    //}
 
     // rip geometry and textures into a new Asset object
     Ripper ripper(_textures.get());
     node->accept(ripper);
     
     // put under management and prep for GPU upload
-    _chonks.emplace(ripper._result);
+    _chonks.emplace_back(ripper._result);
 
     return ripper._result;
-}
-
-void
-ChonkManager::remove(Chonk::Ptr chonk)
-{
-    _chonks.erase(chonk);
 }
 
 
@@ -297,105 +293,179 @@ ChonkManager::remove(Chonk::Ptr chonk)
 #define GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV 0x8F1E
 #define GL_ELEMENT_ARRAY_UNIFIED_NV 0x8F1F
 #endif
+
 #ifndef GL_INT64_NV
 #define GL_INT64_NV 0x140E
 #define GL_UNSIGNED_INT64_NV 0x140F
 #endif
 
-struct VADef {
-    GLint size;
-    GLenum type;
-    GLboolean normalize;
-    GLint offset;
-};
+namespace {
+    struct VADef {
+        GLint size;
+        GLenum type;
+        GLboolean normalize;
+        GLint offset;
+    };
+}
+
+ChonkDrawable::ChonkDrawable() :
+    osg::Drawable()
+{
+    //nop
+}
+
+void
+ChonkDrawable::add(Chonk::Ptr value)
+{
+    if (value)
+    {
+        ScopedMutexLock lock(_m);
+
+        _chonks.push_back(value);
+
+        for (unsigned i = 0; i < _gs.size(); ++i)
+            _gs[i]._dirty = true;
+    }
+}
+
+void
+ChonkDrawable::GCState::update(
+    const std::vector<Chonk::Ptr>& chonks,
+    osg::State& state)
+{
+    if (_commandBuf == nullptr)
+    {
+        _vao = GLVAO::create(state, "ChonkDrawable");
+
+        _commandBuf = GLBuffer::create(GL_DRAW_INDIRECT_BUFFER, state, "ChonkDrawable");
+
+        osg::setGLExtensionFuncPtr(
+            _glMultiDrawElementsIndirectBindlessNV,
+            "glMultiDrawElementsIndirectBindlessNV");
+    }
+
+    std::vector<DrawElementsIndirectBindlessCommandNV> temp;
+
+    for (auto chonk : chonks)
+    {
+        temp.push_back(chonk->getOrCreateCommand(state));
+    }
+
+    _commandBuf->bind();
+    _commandBuf->uploadData(
+        temp.size() * sizeof(DrawElementsIndirectBindlessCommandNV),
+        temp.data());
+
+    _numCommands = chonks.size();
+
+    _dirty = false;
+}
+
+void
+ChonkDrawable::GCState::draw(osg::State& state)
+{
+    _vao->bind();
+
+    _glMultiDrawElementsIndirectBindlessNV(
+        GL_TRIANGLES,
+        GL_UNSIGNED_SHORT,
+        (const GLvoid*)0,
+        _numCommands,
+        sizeof(Chonk::VertexGPU),
+        1);
+    
+    _vao->unbind();
+}
+
+void
+ChonkDrawable::GCState::release()
+{
+    _vao = nullptr;
+    _commandBuf = nullptr;
+    _numCommands = 0u;
+    _dirty = true;
+}
 
 void
 ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
-    OE_HARD_ASSERT(_man != nullptr);
-
     osg::State& state = *ri.getState();
+    GCState& gs = _gs[ri.getContextID()];
 
-    if (_commandBuf == nullptr)
+    if (gs._dirty)
     {
-        _commandBuf = GLBuffer::create(GL_DRAW_INDIRECT_BUFFER, state, "Chonk cmd");
-
-        osg::GLExtensions* e = _commandBuf->ext();
-
-        void(GL_APIENTRY * gl_VertexAttribFormat)(GLuint, GLint, GLenum, GLboolean, GLuint);
-        osg::setGLExtensionFuncPtr(gl_VertexAttribFormat, "glVertexAttribFormat");
-
-        void(GL_APIENTRY * gl_VertexAttribIFormat)(GLuint, GLint, GLenum, GLuint);
-        osg::setGLExtensionFuncPtr(gl_VertexAttribIFormat, "glVertexAttribIFormat");
-
-        void(GL_APIENTRY * gl_VertexAttribLFormat)(GLuint, GLint, GLenum, GLuint);
-        osg::setGLExtensionFuncPtr(gl_VertexAttribLFormat, "glVertexAttribLFormatNV");
-
-        e->glGenVertexArrays(1, &_vao);
-        e->glBindVertexArray(_vao);
-
-        glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
-        glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
-
-        const VADef formats[5] = {
-            {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, position)},
-            {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, normal)},
-            {4, GL_UNSIGNED_BYTE, GL_TRUE,  offsetof(Chonk::VertexGPU, color)},
-            {2, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, uv)},
-            {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, albedo)}
-        };
-
-        for (unsigned location = 0; location < 5; ++location)
-        {
-            const VADef& d = formats[location];
-            if (d.type == GL_INT || d.type == GL_INT)
-                gl_VertexAttribIFormat(location, d.size, d.type, d.offset);
-            else
-                gl_VertexAttribFormat(location, d.size, d.type, d.normalize, d.offset);
-            e->glVertexAttribBinding(location, 0);
-            e->glEnableVertexAttribArray(location);
-        }
-
-        // bind a "dummy buffer" that will record the stride, which is
-        // just the size of our vertex structure.
-        e->glBindVertexBuffer(0, 0, 0, sizeof(Chonk::VertexGPU));
-
-        // Finish recording
-        e->glBindVertexArray(0);
+        ScopedMutexLock lock(_m);
+        gs.update(_chonks, *ri.getState());
     }
 
-    static void(GL_APIENTRY * gl_MultiDrawElementsIndirectBindlessNV)
-        (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint) = nullptr;
-
-    if (gl_MultiDrawElementsIndirectBindlessNV == nullptr)
+    if (_chonks.size() > 0)
     {
-        osg::setGLExtensionFuncPtr(gl_MultiDrawElementsIndirectBindlessNV, "glMultiDrawElementsIndirectBindlessNV");
+        gs.draw(*ri.getState());
+    }
+}
+
+void
+ChonkDrawable::resizeGLObjectBuffers(unsigned size)
+{
+    _gs.resize(size);
+}
+
+void
+ChonkDrawable::releaseGLObjects(osg::State* state) const
+{
+    if (state)
+        _gs[state->getContextID()].release();
+    else
+        _gs.setAllElementsTo(GCState());
+}
+
+GLVAO::Ptr
+ChonkDrawable::GCState::createAndRecordVAO(osg::State& state)
+{
+    GLVAO::Ptr vao = GLVAO::create(state, "ChonkDrawable");
+
+    void(GL_APIENTRY * gl_VertexAttribFormat)(GLuint, GLint, GLenum, GLboolean, GLuint);
+    osg::setGLExtensionFuncPtr(gl_VertexAttribFormat, "glVertexAttribFormat");
+
+    void(GL_APIENTRY * gl_VertexAttribIFormat)(GLuint, GLint, GLenum, GLuint);
+    osg::setGLExtensionFuncPtr(gl_VertexAttribIFormat, "glVertexAttribIFormat");
+
+    void(GL_APIENTRY * gl_VertexAttribLFormat)(GLuint, GLint, GLenum, GLuint);
+    osg::setGLExtensionFuncPtr(gl_VertexAttribLFormat, "glVertexAttribLFormatNV");
+
+    // start recording...
+    vao->bind();
+
+    // required in order to use BindlessNV extension
+    glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
+    glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+
+    const VADef formats[5] = {
+        {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, position)},
+        {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, normal)},
+        {4, GL_UNSIGNED_BYTE, GL_TRUE,  offsetof(Chonk::VertexGPU, color)},
+        {2, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, uv)},
+        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, albedo)}
+    };
+
+    // configure the format of each vertex attribute in our structure.
+    for (unsigned location = 0; location < 5; ++location)
+    {
+        const VADef& d = formats[location];
+        if (d.type == GL_INT || d.type == GL_INT)
+            gl_VertexAttribIFormat(location, d.size, d.type, d.offset);
+        else
+            gl_VertexAttribFormat(location, d.size, d.type, d.normalize, d.offset);
+        vao->ext()->glVertexAttribBinding(location, 0);
+        vao->ext()->glEnableVertexAttribArray(location);
     }
 
-    std::vector<DrawElementsIndirectBindlessCommandNV> cmd;
+    // bind a "dummy buffer" that will record the stride, which is
+    // simply the size of our vertex structure.
+    vao->ext()->glBindVertexBuffer(0, 0, 0, sizeof(Chonk::VertexGPU));
 
-    for (auto chonk : _man->getChonks())
-    {
-        cmd.push_back(chonk->getCommand(state));
-    }
-
-    _commandBuf->bind();
-
-    _commandBuf->uploadData(
-        cmd.size() * sizeof(DrawElementsIndirectBindlessCommandNV),
-        cmd.data());
-
-    auto e = _commandBuf->ext();
-
-    e->glBindVertexArray(_vao);
-
-    gl_MultiDrawElementsIndirectBindlessNV(
-        GL_TRIANGLES,
-        GL_UNSIGNED_SHORT,
-        (const GLvoid*)0,
-        cmd.size(),
-        sizeof(Chonk::VertexGPU),
-        1);
-
-    e->glBindVertexArray(0);
+    // Finish recording
+    _vao->unbind();
+    
+    return vao;
 }

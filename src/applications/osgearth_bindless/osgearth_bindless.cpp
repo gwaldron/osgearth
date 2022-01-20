@@ -226,7 +226,9 @@ int main_NV(int argc, char** argv)
         root_ss->setDefine("USE_ALPHA_DISCARD");
     }
 
-    ChonkManager chonk_man(arena.get());
+    ChonkFactory factory(arena.get());
+
+    auto drawable = new ChonkDrawable();
 
     float spacing = 0.0;
 
@@ -245,13 +247,10 @@ int main_NV(int argc, char** argv)
         mt->setMatrix(osg::Matrix::translate(spacing, 0, 0));
         mt->addChild(node);
 
-        chonk_man.add(mt.get());
+        drawable->add(factory.create(mt.get()));
 
         spacing += radius;
     }
-
-    auto drawable = new ChonkDrawable();
-    drawable->_man = &chonk_man;
 
     root->addChild(drawable);
     viewer.setSceneData(root);

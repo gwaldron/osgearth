@@ -333,15 +333,9 @@ ChonkDrawable::GCState::update(
     const std::vector<Chonk::Ptr>& chonks,
     osg::State& state)
 {
-    if (_commandBuf == nullptr)
+    if (_vao == nullptr)
     {
-        _vao = GLVAO::create(state, "ChonkDrawable");
-
-        _commandBuf = GLBuffer::create(GL_DRAW_INDIRECT_BUFFER, state, "ChonkDrawable");
-
-        osg::setGLExtensionFuncPtr(
-            _glMultiDrawElementsIndirectBindlessNV,
-            "glMultiDrawElementsIndirectBindlessNV");
+        initialize(state);
     }
 
     std::vector<DrawElementsIndirectBindlessCommandNV> temp;
@@ -365,6 +359,8 @@ void
 ChonkDrawable::GCState::draw(osg::State& state)
 {
     _vao->bind();
+
+    _commandBuf->bind();
 
     _glMultiDrawElementsIndirectBindlessNV(
         GL_TRIANGLES,
@@ -419,11 +415,9 @@ ChonkDrawable::releaseGLObjects(osg::State* state) const
         _gs.setAllElementsTo(GCState());
 }
 
-GLVAO::Ptr
-ChonkDrawable::GCState::createAndRecordVAO(osg::State& state)
+void
+ChonkDrawable::GCState::initialize(osg::State& state)
 {
-    GLVAO::Ptr vao = GLVAO::create(state, "ChonkDrawable");
-
     void(GL_APIENTRY * gl_VertexAttribFormat)(GLuint, GLint, GLenum, GLboolean, GLuint);
     osg::setGLExtensionFuncPtr(gl_VertexAttribFormat, "glVertexAttribFormat");
 
@@ -433,8 +427,19 @@ ChonkDrawable::GCState::createAndRecordVAO(osg::State& state)
     void(GL_APIENTRY * gl_VertexAttribLFormat)(GLuint, GLint, GLenum, GLuint);
     osg::setGLExtensionFuncPtr(gl_VertexAttribLFormat, "glVertexAttribLFormatNV");
 
+    // DrawElementsCommand buffer:
+    _commandBuf = GLBuffer::create(GL_DRAW_INDIRECT_BUFFER, state, "ChonkDrawable");
+
+    // Multidraw command:
+    osg::setGLExtensionFuncPtr(
+        _glMultiDrawElementsIndirectBindlessNV,
+        "glMultiDrawElementsIndirectBindlessNV");
+
+    // VAO:
+    _vao = GLVAO::create(state, "ChonkDrawable");
+
     // start recording...
-    vao->bind();
+    _vao->bind();
 
     // required in order to use BindlessNV extension
     glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
@@ -456,16 +461,14 @@ ChonkDrawable::GCState::createAndRecordVAO(osg::State& state)
             gl_VertexAttribIFormat(location, d.size, d.type, d.offset);
         else
             gl_VertexAttribFormat(location, d.size, d.type, d.normalize, d.offset);
-        vao->ext()->glVertexAttribBinding(location, 0);
-        vao->ext()->glEnableVertexAttribArray(location);
+        _vao->ext()->glVertexAttribBinding(location, 0);
+        _vao->ext()->glEnableVertexAttribArray(location);
     }
 
     // bind a "dummy buffer" that will record the stride, which is
     // simply the size of our vertex structure.
-    vao->ext()->glBindVertexBuffer(0, 0, 0, sizeof(Chonk::VertexGPU));
+    _vao->ext()->glBindVertexBuffer(0, 0, 0, sizeof(Chonk::VertexGPU));
 
     // Finish recording
     _vao->unbind();
-    
-    return vao;
 }

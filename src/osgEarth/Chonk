@@ -119,7 +119,7 @@ namespace osgEarth
     };
 
     /**
-     * Test class to render a Chonk.
+     * Class to render a Chonk.
      */
     class OSGEARTH_EXPORT ChonkDrawable : public osg::Drawable
     {
@@ -157,11 +157,11 @@ namespace osgEarth
             void(GL_APIENTRY * _glMultiDrawElementsIndirectBindlessNV)
                 (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint);
                 
-            GCState() : _vao(0), _dirty(true) { }
+            GCState() : _dirty(true), _numCommands(0) { }
+            void initialize(osg::State& state);
             void update(const std::vector<Chonk::Ptr>&, osg::State&);
             void draw(osg::State& state);
             void release();
-            GLVAO::Ptr createAndRecordVAO(osg::State& state);
         };
         mutable osg::buffered_object<GCState> _gs;
 

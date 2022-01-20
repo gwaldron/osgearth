@@ -506,12 +506,20 @@ GLVAO::GLVAO(osg::State& state, const std::string& label) :
     ext()->glGenVertexArrays(1, &_name);
 }
 
+GLVAO::Ptr
+GLVAO::create(osg::State& state, const std::string& label)
+{
+    Ptr result(new GLVAO(state, label));
+    GLObjectPool::get(state)->watch(result);
+    return result;
+}
+
 void
 GLVAO::release()
 {
     if (_name != 0U)
         ext()->glDeleteVertexArrays(1, &_name);
-    _name = 0;
+    _name = 0U;
 }
 
 void

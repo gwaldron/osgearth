@@ -187,7 +187,7 @@ const char* fs_NV = R"(
         }
         else color = vec4(1,0,0,1); 
 
-#ifdef USE_ALPHA_DISCARD
+#ifdef OE_USE_ALPHA_DISCARD
         if (color.a < 0.15)
             discard;
 #endif
@@ -223,7 +223,7 @@ int main_NV(int argc, char** argv)
     else
     {
         root_ss->setAttributeAndModes(new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), 1);
-        root_ss->setDefine("USE_ALPHA_DISCARD");
+        root_ss->setDefine("OE_USE_ALPHA_DISCARD");
     }
 
     ChonkFactory factory(arena.get());

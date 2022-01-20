@@ -209,8 +209,10 @@ namespace osgEarth
         //! Unbind the VAO. (bind to 0)
         void unbind();
 
-        //! de-allocate and release this buffer
-        virtual void release();
+    public:
+        void release() override;
+        bool valid() const override { return _name != 0; }
+        GLsizei size() const override { return sizeof(GLuint); }
 
     private:
         GLVAO(osg::State& state, const std::string& label = "");

@@ -249,10 +249,17 @@ namespace osgEarth { namespace Threading
         // internal structure to track referenced to the result
         struct Container {
             Container() { }
-            Container(const T& obj) { set(obj); }
-            void set(const T& obj) { _obj = std::move(obj); }
+            //Container(const T& obj) { set(obj); }
+            void set(const T& obj) { 
+                ScopedMutexLock lock(_m);
+                _obj = std::move(obj);
+            }
+            const T& obj() const {
+                ScopedMutexLock lock(_m);
+                return _obj;
+            }
             T _obj;
-            const T& obj() const { return _obj; }
+            mutable Mutex _m;
         };
 
     public:
@@ -293,21 +300,23 @@ namespace osgEarth { namespace Threading
         //! Deference the result object. Make sure you check isAvailable()
         //! to check that the future was actually resolved; otherwise you
         //! will just get the default object.
-        const T& get() const {
+        T get() const {
             return _shared->obj();
         }
 
-        //! Deference the result object and then reset the future to
-        //! its uninitalized state.
+        //! Same as get(), but if the result is available will reset the
+        //! future before returning the result object.
         T release() {
+            bool avail = isAvailable();
             T result = get();
-            reset();
+            if (avail)
+                reset();
             return result;
         }
 
         //! Blocks until the result becomes available or the future is abandoned;
         //! then returns the result object.
-        const T& join() const {
+        T join() const {
             while (
                 !isAbandoned() &&
                 !_ev->wait(1u));
@@ -316,7 +325,7 @@ namespace osgEarth { namespace Threading
 
         //! Blocks until the result becomes available or the future is abandoned
         //! or a cancelation flag is set; then returns the result object.
-        const T& join(const Cancelable* cancelable) const {
+        T join(const Cancelable* cancelable) const {
             while (
                 !isAvailable() &&
                 !isAbandoned() &&

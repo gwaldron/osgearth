@@ -248,8 +248,6 @@ namespace
             }
 
             // upload to GPU
-            ds._buffer->bind();
-
             ds._buffer->uploadData(
                 sizeof(WindData) * (_winds.size() + 1), 
                 cs._windData);

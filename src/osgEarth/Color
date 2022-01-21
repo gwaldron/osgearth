@@ -89,6 +89,9 @@ namespace osgEarth
         //! populates the RGB from HSL
         void fromHSL(const osg::Vec4f& hsla);
 
+        //! as normalized ubyte4
+        osg::Vec4ub asNormalizedRGBA() const;
+
         // built in colors
         // http://en.wikipedia.org/wiki/Web_colors#HTML_color_names
 

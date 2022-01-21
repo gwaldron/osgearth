@@ -630,8 +630,6 @@ TextureArena::apply(osg::State& state) const
     // upload to GPU if it changed:
     if (gc._dirty)
     {
-        gc._handleBuffer->bind();
-
         gc._handleBuffer->uploadData(
             gc._handles.size() * sizeof(GLuint64),
             gc._handles.data());

@@ -620,8 +620,15 @@ GLBuffer::unbind() const
 void
 GLBuffer::uploadData(GLsizei datasize, const GLvoid* data, GLbitfield flags) const
 {
+    uploadData(target(), datasize, data, flags);
+}
+
+void
+GLBuffer::uploadData(GLenum otherTarget, GLsizei datasize, const GLvoid* data, GLbitfield flags) const
+{
     OE_SOFT_ASSERT_AND_RETURN(_immutable == false || datasize <= size(), void());
 
+    bind(otherTarget);
     if (datasize > size())
         bufferData(datasize, data, flags);
     else if (data != nullptr)
@@ -669,7 +676,16 @@ GLBuffer::bufferStorage(GLsizei size, const GLvoid* data, GLbitfield flags) cons
 void
 GLBuffer::bindBufferBase(GLuint index) const
 {
-    ext()->glBindBufferBase(target(), index, name());
+    if (target() == GL_SHADER_STORAGE_BUFFER ||
+        target() == GL_UNIFORM_BUFFER ||
+        target() == GL_ATOMIC_COUNTER_BUFFER)
+    {
+        ext()->glBindBufferBase(target(), index, name());
+    }
+    else
+    {
+        ext()->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, index, name());
+    }
 }
 
 void

@@ -488,7 +488,6 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
         // will not overlap and corrupt the buffers
 
         // Update the tile data buffer:
-        gs.tiles->bind();
         gs.tiles->uploadData(
             _rs.tiles.size() * sizeof(GL4Tile),
             _rs.tilebuf.data());
@@ -504,7 +503,6 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                 _rs.commands.push_back(geom->getOrCreateCommand(state));
             }
 
-            gs.commands->bind();
             gs.commands->uploadData(
                 _rs.commands.size() * sizeof(DrawElementsIndirectBindlessCommandNV),
                 _rs.commands.data());

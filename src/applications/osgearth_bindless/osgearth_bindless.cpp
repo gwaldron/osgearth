@@ -25,6 +25,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/GeometryCloud>
+#include <osgEarth/CullingUtils>
 #include <osgEarth/Chonk>
 
 #include <osgViewer/Viewer>
@@ -32,6 +33,7 @@
 #include <osgDB/ReadFile>
 #include <osg/MatrixTransform>
 #include <osg/BlendFunc>
+#include <osgUtil/Simplifier>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -142,28 +144,36 @@ struct GeometryCloudRenderer : public osg::Drawable::DrawCallback
 
 
 const char* vs_NV = R"(
-    #version 430
+    #version 460
     #extension GL_ARB_gpu_shader_int64 : enable
 
     layout(binding=5, std430) buffer TextureArena {
         uint64_t textures[];
+    };
+    struct Instance {
+        mat4 xform;
+        int cmd_index;
+        float _padding[3];
+    };
+    layout(binding=0, std430) buffer Instances {
+        Instance instances[];
     };
 
     layout(location=0) in vec3 position;
     layout(location=1) in vec3 normal;
     layout(location=2) in vec4 color;
     layout(location=3) in vec2 uv;
-    layout(location=4) in int albedo;
+    layout(location=4) in int albedo; // todo: material LUT index
 
     out vec3 vp_Normal;
     out vec4 vp_Color;
-
     out vec2 tex_coord;
     flat out uint64_t tex_handle;
 
     void vs(inout vec4 vertex)
     {
-        vertex = vec4(position, 1);
+        int i = gl_BaseInstance + gl_InstanceID;
+        vertex = instances[i].xform * vec4(position, 1);
         vp_Color = color;
         vp_Normal = normal;
         tex_coord = uv;
@@ -174,7 +184,7 @@ const char* vs_NV = R"(
 const char* fs_NV = R"(
     #version 430
     #extension GL_ARB_gpu_shader_int64 : enable
-    #pragma import_defines(USE_ALPHA_DISCARD)
+    #pragma import_defines(OE_USE_ALPHA_DISCARD)
 
     in vec2 tex_coord;
     flat in uint64_t tex_handle;
@@ -185,7 +195,6 @@ const char* fs_NV = R"(
             vec4 texel = texture(sampler2D(tex_handle), tex_coord);
             color *= texel;
         }
-        else color = vec4(1,0,0,1); 
 
 #ifdef OE_USE_ALPHA_DISCARD
         if (color.a < 0.15)
@@ -200,8 +209,24 @@ int main_NV(int argc, char** argv)
     osg::ArgumentParser arguments(&argc, argv);
 
     osgViewer::Viewer viewer(arguments);
+    MapNodeHelper().configureView(&viewer);
+
+    if (arguments.read("--pause"))
+        ::getchar();
+
+    if (arguments.read("--novsync")) {
+        CustomRealizeOperation* op = new CustomRealizeOperation();
+        op->setSyncToVBlank(false);
+        viewer.setRealizeOperation(op);
+    }
+
+    int size = 1;
+    arguments.read("--size", size);
 
     osg::Group* root = new osg::Group();
+
+    viewer.getCamera()->addCullCallback(new InstallCameraUniform());
+
     osg::StateSet* root_ss = root->getOrCreateStateSet();
 
     // Simple shader that will render geometry with bindless textures
@@ -231,6 +256,10 @@ int main_NV(int argc, char** argv)
     auto drawable = new ChonkDrawable();
 
     float spacing = 0.0;
+    osgUtil::Simplifier simp;
+    simp.setSampleRatio(0.01f);
+
+    std::vector<Chonk::Ptr> chonks;
 
     for (int i = 1; i < argc; ++i)
     {
@@ -238,24 +267,35 @@ int main_NV(int argc, char** argv)
         if (!node.valid())
             return -1;
 
-        OE_NOTICE << "Loaded " << argv[i] << ", adding to the cloud" << std::endl;
+        OE_NOTICE << "Loaded " << argv[i] << std::endl;
 
         float radius = node->getBound().radius();
-        spacing += radius;
+        spacing = std::max(spacing, radius*1.1f);
 
-        osg::ref_ptr<osg::MatrixTransform> mt = new osg::MatrixTransform();
-        mt->setMatrix(osg::Matrix::translate(spacing, 0, 0));
-        mt->addChild(node);
+        Chonk::Ptr chonk = Chonk::create();
+        chonk->add(node.get(), 350, FLT_MAX, factory);
 
-        drawable->add(factory.create(mt.get()));
+        node->accept(simp);
+        chonk->add(node.get(), 0, 350, factory);
 
-        spacing += radius;
+        chonks.push_back(chonk);
+    }
+
+    for (int x = 0; x < size; ++x) {
+        for (int y = 0; y < size; ++y) {
+            for (int z = 0; z < size; ++z) {
+                osg::Matrixf xform = osg::Matrixf::translate(
+                    spacing*float(x), 
+                    spacing*float(y),
+                    spacing*float(z));
+                int index = (x + y + z) % chonks.size();
+                drawable->add(chonks[index], xform);
+            }
+        }
     }
 
     root->addChild(drawable);
     viewer.setSceneData(root);
-
-    viewer.addEventHandler(new osgViewer::StatsHandler());
 
     EventRouter* router = new EventRouter();
     viewer.addEventHandler(router);
@@ -317,7 +357,6 @@ main(int argc, char** argv)
 
         float radius = node->getBound().radius();
         spacing += radius;
-
         osg::ref_ptr<osg::MatrixTransform> mt = new osg::MatrixTransform();
         mt->setMatrix(osg::Matrix::translate(spacing, 0, 0));
         mt->addChild(node);

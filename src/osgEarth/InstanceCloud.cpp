@@ -80,8 +80,6 @@ InstanceCloud::CommandBuffer::reset(osg::State& state)
             _geom->getDrawCommand(i, _backing[i]);
         }
 
-        _buf->bind();
-
         _buf->uploadData(
             sizeof(DrawElementsIndirectCommand)*_backing.size(),
             _backing.data());
@@ -110,7 +108,6 @@ InstanceCloud::TileBuffer::update() const
     //OE_PROFILING_GPU_ZONE("TileBuffer::update");
     if (_backing.size() > 0)
     {
-        _buf->bind();
         _buf->uploadData(sizeof(Data) * _backing.size(), _backing.data());
     }
 }
@@ -129,7 +126,6 @@ InstanceCloud::CullBuffer::allocate(
     GLsizei size = sizeof(Data) + (numInstances * sizeof(GLuint));
     if (size > _buf->size())
     {
-        _buf->bind();
         _buf->uploadData(size, nullptr);
     }
 }
@@ -164,7 +160,6 @@ InstanceCloud::InstanceBuffer::allocate(
     GLsizei size = sizeof(InstanceData) * numTiles * numInstancesPerTile;
     if (size > _buf->size())
     {
-        _buf->bind();
         _buf->uploadData(size, nullptr);
     }
 }
@@ -182,7 +177,6 @@ InstanceCloud::RenderBuffer::allocate(
     GLsizei size = numInstances * (sizeof(GLuint)*2); // sizeof RenderLeaf
     if (size > _buf->size())
     {
-        _buf->bind();
         _buf->uploadData(size, nullptr);
     }
 }

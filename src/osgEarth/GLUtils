@@ -258,7 +258,13 @@ namespace osgEarth
 
         //! Upload data to the GPU. This method uses bufferData() or bufferSubData()
         //! depending on whether it needs to allocate more space.
+        //! Automatically calls bind().
         void uploadData(GLsizei size, const GLvoid* data, GLbitfield flags=GL_DYNAMIC_DRAW) const;
+
+        //! Upload data to the GPU to a custom target. This method uses bufferData() or bufferSubData()
+        //! depending on whether it needs to allocate more space.
+        //! Automatically calls bind(target).
+        void uploadData(GLenum target, GLsizei size, const GLvoid* data, GLbitfield flags = GL_DYNAMIC_DRAW) const;
 
         //! glBufferData - reallocate entire buffer
         void bufferData(GLsizei size, const GLvoid* data, GLbitfield flags) const;
@@ -501,7 +507,6 @@ namespace osgEarth
 
             if (_dirty[id] == 1 && _array.size() > 0)
             {
-                ssbo->bind();
                 ssbo->uploadData(sizeof(T)*_array.size(), _array.data());
                 _dirty[id] = 0;
             }

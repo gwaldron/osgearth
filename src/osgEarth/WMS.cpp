@@ -531,7 +531,18 @@ WMS::Driver::open(osg::ref_ptr<const Profile>& profile,
                 double minLon, minLat, maxLon, maxLat;
                 layer->getLatLonExtents(minLon, minLat, maxLon, maxLat);
                 GeoExtent wgs84Extent(SpatialReference::create("wgs84"), minLon, minLat, maxLon, maxLat);
-                dataExtents.push_back(DataExtent(wgs84Extent, 0));
+                if (wgs84Extent.width() <= 0 || wgs84Extent.height() <= 0)
+                {
+                    // Try the native bounds if a lat/lon extent isn't specified.
+                    double minX, minY, maxX, maxY;
+                    layer->getExtents(minX, minY, maxX, maxY);
+                    GeoExtent nativeExtent(wms_srs, minX, minY, maxX, maxY);
+                    wgs84Extent = nativeExtent.transform(SpatialReference::create("wgs84"));
+                }
+                if (wgs84Extent.width() > 0 && wgs84Extent.height() > 0)
+                {
+                    dataExtents.push_back(DataExtent(wgs84Extent, 0));
+                }
             }
         }
 

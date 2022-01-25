@@ -141,17 +141,39 @@ namespace osgEarth
     class OSGEARTH_EXPORT ChonkDrawable : public osg::Drawable
     {
     public:
+        using Vector = std::vector<osg::ref_ptr<ChonkDrawable>>;
+
+    public:
         ChonkDrawable();
 
         //! Adds a chonk to the drawable.
         void add(Chonk::Ptr value);
 
-        void add(Chonk::Ptr value, const osg::Matrixf& xform);
+        //! Adds a chonk instance to the drawable.
+        void add(
+            Chonk::Ptr value,
+            const osg::Matrixf& xform);
 
-    public:
+        //! Adds a chonk instance to the drawable, along with
+        //! a tile-local UV coordinate.
+        void add(
+            Chonk::Ptr value,
+            const osg::Matrixf& xform,
+            const osg::Vec2f& local_uv);
 
-        // todo - call whn the cull program is active
-        //void cull(osg::RenderInfo& ri) const;
+        //! Adds a collection of sub-drawables to the drawable. All sub-drawables
+        //! are culled together and then drawn together if possible.
+        void setChildren(const Vector&);
+
+        //! The stateset to apply before drawing this object
+        //! or its sub-drawables. PResumably contains a shader program.
+        void setDrawStateSet(osg::StateSet* ss);
+
+        //! Model view matrix to apply before rendering
+        //! this drawable. Optional
+        void setModelViewMatrix(const osg::Matrix& mvm);
+
+        void setCustomCullingShader(osg::Shader*);
 
     public:
 
@@ -167,30 +189,38 @@ namespace osgEarth
 
         struct Instance
         {
-            osg::Matrixf xform;
+            osg::Matrixf xform;  // local xform
+            osg::Vec2f uv; // tile-local UV
             GLuint first_variant_cmd_index;
-            GLuint visible_mask;
-            GLfloat _padding[2];
+            GLuint visibility_mask;
+            //GLfloat _padding[2];
         };
         using Instances = std::vector<Instance>;
         using Batches = std::unordered_map<Chonk::Ptr, Instances>;
         Batches _batches;
-
-        struct ChonkVariant
-        {
-            osg::Vec3f center;
-            GLfloat radius;
-            GLfloat min_pixel_size;
-            GLfloat max_pixel_size;
-            GLuint num_variants;
-            GLuint total_num_commands;
-        };
+        Vector _children;
 
         struct GCState
         {
+            // GPU variant/lod def. Keep me 16-byte aligned.
+            struct ChonkVariant
+            {
+                osg::Vec3f center;
+                GLfloat radius;
+                GLfloat min_pixel_size;
+                GLfloat max_pixel_size;
+                GLuint num_variants;
+                GLuint total_num_commands;
+            };
+
+            // re-usable arrays
             std::vector<Chonk::DrawCommand> _commands;
+            std::vector<Instance> _all_instances;
+            std::vector<ChonkVariant> _chonk_variants;
+
             std::size_t _numInstances;
             std::size_t _maxNumVariants;
+            osg::GLExtensions* _ext;
             GLBuffer::Ptr _commandBuf;
             GLBuffer::Ptr _instanceInputBuf;
             GLBuffer::Ptr _instanceOutputBuf;
@@ -208,11 +238,17 @@ namespace osgEarth
             void cull(osg::State& state);
             void draw(osg::State& state);
             void release();
-
-            osg::ref_ptr<osg::Program> _cullProgram;
-            osg::ref_ptr<osg::StateSet> _cullSS;
         };
         mutable osg::buffered_object<GCState> _gs;
+        osg::ref_ptr<osg::StateSet> _drawSS;
+        osg::ref_ptr<osg::StateSet> _cullSS;
+        osg::Matrix _mvm;
+
+        void cull_children(osg::State& state) const;
+        void draw_children(GCState& gs, osg::State& state) const;
+
+        void cull_batches(osg::State& state) const;
+        void draw_batches(osg::State& state) const;
 
     };
 }

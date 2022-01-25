@@ -24,6 +24,8 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/Math>
 #include <osgEarth/Utils>
+#include <osgEarth/Capabilities>
+#include <osgEarth/Registry>
 
 #include <osg/LineStipple>
 #include <osg/GraphicsContext>
@@ -59,10 +61,6 @@ using namespace osgEarth;
 #define GL_BUFFER_GPU_ADDRESS_NV 0x8F1D
 #endif
 
-#ifndef GL_READ_ONLY
-#define GL_READ_ONLY 0x88B8
-#endif
-
 namespace
 {
     struct
@@ -84,10 +82,20 @@ namespace
         void (GL_APIENTRY * MakeBufferNonResidentNV)(GLuint name);
         void (GL_APIENTRY * GetBufferParameterui64vNV)(GLenum target, GLenum pname, GLuint64* params);
 
+        void (GL_APIENTRY * NamedBufferData)(GLuint name, GLsizeiptr size, const void* data, GLenum usage);
+        void (GL_APIENTRY * NamedBufferSubData)(GLuint name, GLintptr offset ,GLsizeiptr size, const void* data);
+        void*(GL_APIENTRY * MapNamedBuffer)(GLuint name, GLbitfield access);
+        void*(GL_APIENTRY * MapNamedBufferRange)(GLuint name, GLintptr offset, GLsizeiptr length, GLbitfield access);
+        void (GL_APIENTRY * UnmapNamedBuffer)(GLuint name);
+
         inline void init()
         {
             if (DebugMessageCallback == nullptr)
             {
+                //Threading::setThreadName("GL");
+
+                float version = osg::getGLVersionNumber();
+
                 osg::setGLExtensionFuncPtr(DebugMessageCallback, "glDebugMessageCallback", "glDebugMessageCallbackKHR");
                 osg::setGLExtensionFuncPtr(DebugMessageControl, "glDebugMessageControl", "glDebugMessageControlKHR");
                 osg::setGLExtensionFuncPtr(PushDebugGroup, "glPushDebugGroup", "glPushDebugGroupKHR");
@@ -100,6 +108,15 @@ namespace
                 osg::setGLExtensionFuncPtr(MakeBufferResidentNV, "glMakeBufferResidentNV");
                 osg::setGLExtensionFuncPtr(MakeBufferNonResidentNV, "glMakeBufferNonResidentNV");
                 osg::setGLExtensionFuncPtr(GetBufferParameterui64vNV, "glGetBufferParameterui64vNV");
+
+                if (version >= 4.5f)
+                {
+                    osg::setGLExtensionFuncPtr(NamedBufferData, "glNamedBufferData");
+                    osg::setGLExtensionFuncPtr(NamedBufferSubData, "glNamedBufferSubData");
+                    osg::setGLExtensionFuncPtr(MapNamedBuffer, "glMapNamedBuffer");
+                    osg::setGLExtensionFuncPtr(MapNamedBufferRange, "glMapNamedBufferRange");
+                    osg::setGLExtensionFuncPtr(UnmapNamedBuffer, "glUnmapNamedBuffer");
+                }
             }
         }
     } gl;
@@ -441,6 +458,8 @@ GLObjectPool::flushDeletedGLObjects(double now, double& avail)
 {
     //TODO: track timing and only flush periodically
     ScopedMutexLock lock(_mutex);
+
+#if 0
     GLObject::Ptr objectToRelease;
     GLsizeiptr bytes = 0;
     const unsigned maxAge = 0; // none.
@@ -462,6 +481,24 @@ GLObjectPool::flushDeletedGLObjects(double now, double& avail)
         _objects.erase(objectToRelease);
     }
     _totalBytes = bytes;
+#else
+    GLsizeiptr bytes = 0;
+    std::unordered_set<GLObject::Ptr> keep;
+    for (auto& object : _objects)
+    {
+        if (object.use_count() == 1)
+        {
+            object->release();
+        }
+        else
+        {
+            keep.insert(object);
+            bytes += object->size();
+        }
+    }
+    _objects.swap(keep);
+    _totalBytes = bytes;
+#endif
 }
 
 void
@@ -496,7 +533,7 @@ GLObject::GLObject(osg::State& state, Type type, const std::string& label) :
     _recyclable(false),
     _ext(state.get<osg::GLExtensions>())
 {
-    //nop
+    gl.init();
 }
 
 GLVAO::GLVAO(osg::State& state, const std::string& label) :
@@ -620,7 +657,27 @@ GLBuffer::unbind() const
 void
 GLBuffer::uploadData(GLsizei datasize, const GLvoid* data, GLbitfield flags) const
 {
-    uploadData(target(), datasize, data, flags);
+    OE_SOFT_ASSERT_AND_RETURN(_immutable == false || datasize <= size(), void());
+
+    if (!gl.NamedBufferData)
+        bind(target());
+
+    if (datasize > size())
+        bufferData(datasize, data, flags);
+    else if (data != nullptr)
+    {
+#if 1
+        bufferSubData(0, datasize, data);
+#else
+        // CRASHES. Why?
+        bind();
+        void* ptr = ext()->glMapBuffer(_target, GL_WRITE_ONLY_ARB);
+        OE_HARD_ASSERT(ptr != nullptr);
+        ::memcpy(ptr, data, datasize);
+        OE_HARD_ASSERT(ext()->glUnmapBuffer(_target) == GL_TRUE);
+        unbind();
+#endif
+    }
 }
 
 void
@@ -629,6 +686,7 @@ GLBuffer::uploadData(GLenum otherTarget, GLsizei datasize, const GLvoid* data, G
     OE_SOFT_ASSERT_AND_RETURN(_immutable == false || datasize <= size(), void());
 
     bind(otherTarget);
+
     if (datasize > size())
         bufferData(datasize, data, flags);
     else if (data != nullptr)
@@ -640,7 +698,10 @@ GLBuffer::bufferData(GLsizei size, const GLvoid* data, GLbitfield flags) const
 {
     if (_target == GL_SHADER_STORAGE_BUFFER)
         size = align(size, getSSBOAlignment<GLsizei>());
-    ext()->glBufferData(_target, size, data, flags);
+    if (gl.NamedBufferData)
+        gl.NamedBufferData(name(), size, data, flags);
+    else
+        ext()->glBufferData(_target, size, data, flags);
     _size = size;
     _immutable = false;
 }
@@ -649,7 +710,10 @@ void
 GLBuffer::bufferSubData(GLintptr offset, GLsizei datasize, const GLvoid* data) const
 {
     OE_SOFT_ASSERT_AND_RETURN(offset + datasize <= size(), void());
-    ext()->glBufferSubData(_target, offset, datasize, data);
+    if (gl.NamedBufferSubData)
+        gl.NamedBufferSubData(name(), offset, datasize, data);
+    else
+        ext()->glBufferSubData(target(), offset, datasize, data);
 }
 
 void
@@ -671,6 +735,30 @@ GLBuffer::bufferStorage(GLsizei size, const GLvoid* data, GLbitfield flags) cons
     }
     _size = size;
     _immutable = true;
+}
+
+void*
+GLBuffer::map(GLbitfield access) const
+{
+    if (gl.MapNamedBuffer)
+        return gl.MapNamedBuffer(_name, access);
+    else
+    {
+        bind();
+        return ext()->glMapBuffer(_target, access);
+    }
+}
+
+void
+GLBuffer::unmap() const
+{
+    if (gl.UnmapNamedBuffer)
+        gl.UnmapNamedBuffer(_name);
+    else
+    {
+        bind();
+        ext()->glUnmapBuffer(_target);
+    }
 }
 
 void
@@ -722,7 +810,7 @@ GLBuffer::makeResident()
     {
         OE_HARD_ASSERT(gl.MakeNamedBufferResidentNV);
         //Currently only GL_READ_ONLY is supported according to the spec
-        gl.MakeNamedBufferResidentNV(name(), GL_READ_ONLY);
+        gl.MakeNamedBufferResidentNV(name(), GL_READ_ONLY_ARB);
         _isResident = true;
     }
 }
@@ -1226,6 +1314,7 @@ ComputeImageSession::render(osg::State* state)
         state->apply(_stateSet.get());
     }
 
+    // BUG: need to resize if the new image is larger! (use GLBuffer)
     if (_pbo == INT_MAX)
     {
         int size = _image->getTotalSizeInBytes();

@@ -679,6 +679,74 @@ VegetationLayer::configureTrees()
     GroundCoverShaders shaders;
     shaders.load(trees_vp, shaders.Trees);
 
+#if 1
+    // functor for generating cross hatch geometry for trees:
+    trees._createImposter = [](
+        const osg::BoundingBox& b, 
+        std::vector<osg::Texture*>& textures)
+    {
+        osg::Group* group = new osg::Group();
+        osg::Geometry* geom[2];
+
+        // one part if we only have side textures;
+        // two parts if we also have top textures
+        int parts = textures.size() > 2 ? 2 : 1;
+
+        for (int i = 0; i < parts; ++i)
+        {
+            geom[i] = new osg::Geometry();
+            geom[i]->setUseVertexBufferObjects(true);
+            geom[i]->setUseDisplayList(false);
+
+            static const GLushort indices[18] = {
+                0,1,2,  2,3,0,
+                4,5,6,  6,7,4,
+                8,9,10, 10,11,8 };
+            geom[i]->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 18, &indices[0]));
+
+            double zmid = 0.5*(b.zMax() - b.zMin());
+            osg::Vec3Array* verts = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 12);
+
+            // overhead:
+            (*verts)[0].set(b.xMin(), b.yMin(), zmid);
+            (*verts)[1].set(b.xMax(), b.yMin(), zmid);
+            (*verts)[2].set(b.xMax(), b.yMax(), zmid);
+            (*verts)[3].set(b.xMin(), b.yMax(), zmid);
+
+            // X plane
+            (*verts)[4].set(b.xMin(), 0, b.zMin());
+            (*verts)[5].set(b.xMax(), 0, b.zMin());
+            (*verts)[6].set(b.xMax(), 0, b.zMax());
+            (*verts)[7].set(b.xMin(), 0, b.zMax());
+
+            // Y plane
+            (*verts)[8].set(0, b.yMin(), b.zMin());
+            (*verts)[9].set(0, b.yMax(), b.zMin());
+            (*verts)[10].set(0, b.yMax(), b.zMax());
+            (*verts)[11].set(0, b.yMin(), b.zMax());
+
+            geom[i]->setVertexArray(verts);
+
+            osg::StateSet* ss = geom[i]->getOrCreateStateSet();
+            if (i == 0)
+            {
+                if (textures.size() > 0)
+                    ss->setTextureAttribute(0, textures[0], 1); // side albedo
+                if (textures.size() > 1)
+                    ss->setTextureAttribute(1, textures[1], 1); // side normal
+            }
+            else
+            {
+                if (textures.size() > 2)
+                    ss->setTextureAttribute(0, textures[2], 1); // top albedo
+                if (textures.size() > 3)
+                    ss->setTextureAttribute(1, textures[3], 1); // top normal
+            }
+            group->addChild(geom[i]);
+        }
+        return group;
+    };
+#else
     // functor for generating billboard geometry for trees:
     trees._createImposter = [](std::vector<osg::Texture*>& textures)
     {
@@ -718,6 +786,7 @@ VegetationLayer::configureTrees()
         }
         return group;
     };
+#endif
 }
 
 void
@@ -739,7 +808,9 @@ VegetationLayer::configureUndergrowth()
     shaders.load(undergrowth_vp, shaders.Grass);
 
     // functor for generating billboard geometry for grass:
-    undergrowth._createImposter = [](std::vector<osg::Texture*>& textures)
+    undergrowth._createImposter = [](
+        const osg::BoundingBox& bbox,
+        std::vector<osg::Texture*>& textures)
     {
         constexpr unsigned vertsPerInstance = 16;
         constexpr unsigned indiciesPerInstance = 54;
@@ -839,9 +910,10 @@ namespace
 osg::Node*
 VegetationLayer::createParametricGeometry(
     AssetGroup::Type group,
+    const osg::BoundingBox& bbox,
     std::vector<osg::Texture*>& textures) const
 {
-    return options().group(group)._createImposter(textures);
+    return options().group(group)._createImposter(bbox, textures);
 }
 
 //........................................................................
@@ -1078,9 +1150,9 @@ VegetationLayer::Renderer::isNewGeometryCloudAvailable(
                 std::set<AssetGroup::Type> groups;
 
                 result = biomeMan.updateResidency(
-                    [layer](AssetGroup::Type group, std::vector<osg::Texture*>& textures)
+                    [layer](AssetGroup::Type group, const osg::BoundingBox& bbox, std::vector<osg::Texture*>& textures)
                     {
-                        return layer->createParametricGeometry(group, textures);
+                        return layer->createParametricGeometry(group, bbox, textures);
                     },
                     layer->getReadOptions());
             }

@@ -316,29 +316,37 @@ ShaderLoader::load(const std::string&    filename,
     if ( source != package._sources.end() )
         inlineSource = source->second;
 
-    std::string path = osgDB::findDataFile(uri.full(), dbOptions);
-    if ( path.empty() )
+    if (!filename.empty())
     {
-        output = inlineSource;
-        useInlineSource = true;
-        if ( inlineSource.empty() )
+        std::string path = osgDB::findDataFile(uri.full(), dbOptions);
+        if (path.empty())
         {
-            OE_WARN << LC << "Inline source for \"" << filename << "\" is empty, and no external file could be found.\n";
+            output = inlineSource;
+            useInlineSource = true;
+            if (inlineSource.empty())
+            {
+                OE_WARN << LC << "Inline source for \"" << filename << "\" is empty, and no external file could be found.\n";
+            }
+        }
+        else
+        {
+            std::string externalSource = URI(path, context).getString(dbOptions);
+            if (!externalSource.empty())
+            {
+                OE_DEBUG << LC << "Loaded external shader " << filename << " from " << path << "\n";
+                output = externalSource;
+            }
+            else
+            {
+                output = inlineSource;
+                useInlineSource = true;
+            }
         }
     }
     else
     {
-        std::string externalSource = URI(path, context).getString(dbOptions);
-        if (!externalSource.empty())
-        {
-            OE_DEBUG << LC << "Loaded external shader " << filename << " from " << path << "\n";
-            output = externalSource;
-        }
-        else
-        {
-            output = inlineSource;
-            useInlineSource = true;
-        }
+        output = inlineSource;
+        useInlineSource = true;
     }
 
     // replace common tokens:

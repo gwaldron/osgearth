@@ -807,7 +807,18 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
             if (layerDrawable->_layer)
             {
-                layerDrawable->_layer->apply(layerDrawable, cv);
+                if (layerDrawable->_patchLayer)
+                {
+                    TileBatch batch(nullptr);
+                    for (auto& tile : layerDrawable->_tiles)
+                        batch._tiles.push_back(&tile);
+
+                    layerDrawable->_patchLayer->cull(batch, *cv);
+                }
+                else
+                {
+                    layerDrawable->_layer->apply(layerDrawable, cv);
+                }
             }
             else
             {

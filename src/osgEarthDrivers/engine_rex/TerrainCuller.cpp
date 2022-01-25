@@ -257,6 +257,7 @@ TerrainCuller::apply(TileNode& node)
                 // Add the draw command:
                 for(auto patchLayer : _patchLayers)
                 {
+#if 1
                     DrawTileCommand* cmd = addDrawCommand(patchLayer->getUID(), &renderModel, nullptr, &node);
                     if (cmd)
                     {
@@ -264,6 +265,9 @@ TerrainCuller::apply(TileNode& node)
                         cmd->_drawCallback = patchLayer->getRenderer();
                         //cmd->_drawCallback = patchLayer->getDrawCallback();
                     }
+#else
+                    patchLayer->cull(_currentTileNode->getKey(), *this);
+#endif
                 }
             }
 

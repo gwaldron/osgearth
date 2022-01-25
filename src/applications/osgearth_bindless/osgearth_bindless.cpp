@@ -256,8 +256,6 @@ int main_NV(int argc, char** argv)
     auto drawable = new ChonkDrawable();
 
     float spacing = 0.0;
-    osgUtil::Simplifier simp;
-    simp.setSampleRatio(0.01f);
 
     std::vector<Chonk::Ptr> chonks;
 
@@ -274,9 +272,6 @@ int main_NV(int argc, char** argv)
 
         Chonk::Ptr chonk = Chonk::create();
         chonk->add(node.get(), 350, FLT_MAX, factory);
-
-        node->accept(simp);
-        chonk->add(node.get(), 0, 350, factory);
 
         chonks.push_back(chonk);
     }

@@ -121,7 +121,7 @@ namespace osgEarth { namespace REX
             GLBuffer::Ptr tiles;
 
             // VAO for rendering with bindless buffers
-            GLuint vao;
+            GLVAO::Ptr vao;
 
             // bindless draw commands
             GLBuffer::Ptr commands;

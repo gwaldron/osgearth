@@ -266,6 +266,18 @@ namespace osgEarth
         //! Automatically calls bind(target).
         void uploadData(GLenum target, GLsizei size, const GLvoid* data, GLbitfield flags = GL_DYNAMIC_DRAW) const;
 
+        //! Convenience template to upload a vector
+        template<class T>
+        void uploadData(const std::vector<T>& v, GLbitfield flags = GL_DYNAMIC_DRAW) {
+            uploadData(v.size() * sizeof(T), v.data(), flags);
+        }
+
+        //! Convenience template to upload a vector to a custom target
+        template<class T>
+        void uploadData(GLenum target, const std::vector<T>& v, GLbitfield flags = GL_DYNAMIC_DRAW) {
+            uploadData(target, v.size() * sizeof(T), v.data(), flags);
+        }
+
         //! glBufferData - reallocate entire buffer
         void bufferData(GLsizei size, const GLvoid* data, GLbitfield flags) const;
 
@@ -274,6 +286,10 @@ namespace osgEarth
 
         //! glBufferStorage - allocate with immutable storage
         void bufferStorage(GLsizei size, const GLvoid* data, GLbitfield flags =0) const;
+
+        void* map(GLbitfield access) const;
+
+        void unmap() const;
 
         //! bind the buffer to the layout index as specified in the shader
         //! (for SSBO/UBO/ACBO/TFBO only)

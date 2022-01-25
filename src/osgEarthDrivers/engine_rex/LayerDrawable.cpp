@@ -419,10 +419,10 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
 
             // Set up a VAO that we'll use to render with bindless NV.
-            gs.ext->glGenVertexArrays(1, &gs.vao);
+            gs.vao = GLVAO::create(state, "REX Renderer");
 
             // Start recording
-            gs.ext->glBindVertexArray(gs.vao);
+            gs.vao->bind();
 
             // set up the VAO for NVIDIA bindless buffers
             glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
@@ -448,7 +448,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             gs.ext->glBindVertexBuffer(0, 0, 0, sizeof(GL4Vertex));
 
             // Finish recording
-            gs.ext->glBindVertexArray(0);
+            gs.vao->unbind();
         }
 
         if (gs.shared == nullptr || !gs.shared->valid())
@@ -492,7 +492,6 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             _rs.tiles.size() * sizeof(GL4Tile),
             _rs.tilebuf.data());
 
-
         if (renderTerrainSurface)
         {
             // Reconstruct and upload the command list:
@@ -503,25 +502,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                 _rs.commands.push_back(geom->getOrCreateCommand(state));
             }
 
-            gs.commands->uploadData(
-                _rs.commands.size() * sizeof(DrawElementsIndirectBindlessCommandNV),
-                _rs.commands.data());
-        }
-    }
-    else if (renderTerrainSurface)
-    {
-        // Just bind the command buffer
-        gs.commands->bind();
-    }
-
-
-    if (renderTerrainSurface)
-    {
-        // Bind the shared data to its layout(binding=X) in the shader.
-        // For shared data we only need to do this once per pass
-        if (_surfaceDrawOrder == 0)
-        {
-            gs.shared->bindBufferBase(30);
+            gs.commands->uploadData(_rs.commands);
         }
     }
 
@@ -538,7 +519,17 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
     if (renderTerrainSurface)
     {
-        gs.ext->glBindVertexArray(gs.vao);
+        // Bind the command buffer for rendering.
+        gs.commands->bind();
+
+        // Bind the shared data to its layout(binding=X) in the shader.
+        // For shared data we only need to do this once per pass
+        if (_surfaceDrawOrder == 0)
+        {
+            gs.shared->bindBufferBase(30);
+        }
+
+        gs.vao->bind();
 
         gs.glMultiDrawElementsIndirectBindlessNV(
             GL_TRIANGLES,
@@ -548,7 +539,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             sizeof(DrawElementsIndirectBindlessCommandNV),
             1);
 
-        gs.ext->glBindVertexArray(0);
+        gs.vao->unbind();
     }
 
     else if (_patchLayer && _patchLayer->getRenderer())
@@ -575,9 +566,7 @@ LayerDrawable::releaseGLObjects(osg::State* state) const
         gs.shared = nullptr;
         gs.tiles = nullptr;
         gs.commands = nullptr;
-        if (gs.vao)
-            gs.ext->glDeleteVertexArrays(1, &gs.vao);
-        gs.vao = 0;
+        gs.vao = nullptr;
     }
     else
     {

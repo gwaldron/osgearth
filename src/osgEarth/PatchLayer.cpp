@@ -42,10 +42,3 @@ PatchLayer::init()
     VisibleLayer::init();    
     setRenderType(RENDERTYPE_TERRAIN_PATCH);
 }
-
-GeoNode
-PatchLayer::createNode(const TileKey& key, ProgressCallback* progress)
-{
-    // TODO: caching code
-    return createNodeImplementation(key, progress);
-}

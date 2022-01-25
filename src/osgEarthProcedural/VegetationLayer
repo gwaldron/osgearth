@@ -66,7 +66,9 @@ namespace osgEarth { namespace Procedural
 
                 // internal
                 osg::ref_ptr<osg::StateSet> _renderStateSet;
-                std::function<osg::Node*(std::vector<osg::Texture*>&)> _createImposter;
+                std::function<osg::Node*(
+                    const osg::BoundingBox&,
+                    std::vector<osg::Texture*>&)> _createImposter;
             };
             OE_OPTION_VECTOR(Group, groups);
             const Group& group(AssetGroup::Type t) const { 
@@ -356,6 +358,7 @@ namespace osgEarth { namespace Procedural
         // (for billboards, etc)
         virtual osg::Node* createParametricGeometry(
             AssetGroup::Type group,
+            const osg::BoundingBox& bbox,
             std::vector<osg::Texture*>& textures) const;
 
         osg::ref_ptr<const Profile> _mapProfile;

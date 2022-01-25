@@ -21,13 +21,13 @@
 #define OSGEARTH_PATCH_LAYER_H 1
 
 #include <osgEarth/VisibleLayer>
-#include <osgEarth/GeoData>
 #include <osgEarth/TerrainTileNode>
 #include <osg/RenderInfo>
 #include <osg/Texture>
 
 namespace osgEarth
 {
+    class TileBatch;
     class TileRenderer;
 
     /**
@@ -47,10 +47,6 @@ namespace osgEarth
 
     public:
         META_Layer(osgEarth, PatchLayer, Options, VisibleLayer, Patch);
-
-        //! Create a node for a given tilekey
-        //! (Not yet implemented)
-        virtual GeoNode createNode(const TileKey& key, ProgressCallback*);
 
         //! API providing access to patch geometry 
         class OSGEARTH_EXPORT TileInfoProvider
@@ -78,6 +74,17 @@ namespace osgEarth
 
     public:
 
+        virtual void cull(
+            const TileKey& key,
+            osg::NodeVisitor& nv) const { }
+
+        virtual void cull(
+            const TileBatch& batch,
+            osg::NodeVisitor& nv) const { }
+
+        virtual void draw(
+            osg::RenderInfo& ri) const { }
+
         //! Custom tile renderer for this layer
         //void setRenderer(TileRenderer* value) {
         //    _renderer = value;
@@ -98,12 +105,6 @@ namespace osgEarth
 
         //! post-ctor initialization, chain to super/subclasses.
         virtual void init();
-
-        //! Optional implementation of createNode.
-        //! (Not yet implemented)
-        virtual GeoNode createNodeImplementation(const TileKey& key, ProgressCallback* progress) const {
-            return GeoNode::INVALID;
-        }
 
     private:
         osg::ref_ptr<AcceptCallback> _acceptCallback;
@@ -143,8 +144,9 @@ namespace osgEarth
     /**
      * Collection of tiles for a patchlayer to render
      */
-    struct TileBatch
+    class TileBatch
     {
+    public:
         TileBatch(void* env) : _env(env) { }
 
         const std::vector<const TileState*>& tiles() const { return _tiles; }

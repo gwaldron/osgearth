@@ -366,8 +366,8 @@ namespace osgEarth
         GLsizei size() const override { return _size; }
         bool valid() const override { return _name != ~0U; }
 
-        void storage2D(const Profile& profile); // GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t);
-        void storage3D(const Profile& profile); // GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r);
+        void storage2D(const Profile& profile);
+        void storage3D(const Profile& profile);
         void subImage2D(GLint level, GLint xoff, GLint yoff, GLsizei width, GLsizei height, GLenum format, GLenum type, const void* pixels) const;
         void subImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, const void* pixels) const;
         void compressedSubImage2D(GLint level, GLint xoff, GLint yoff, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const void* data) const;

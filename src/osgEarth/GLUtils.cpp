@@ -325,7 +325,8 @@ namespace
     {
         const std::string severities[3] = { "HIGH", "MEDIUM", "LOW" };
 
-        if (severity != GL_DEBUG_SEVERITY_NOTIFICATION)
+        if (severity != GL_DEBUG_SEVERITY_NOTIFICATION &&
+            severity != GL_DEBUG_SEVERITY_LOW)
         {
             const std::string& s = severities[severity - GL_DEBUG_SEVERITY_HIGH];
             OE_WARN << "GL (" << s << ", " << source << ") -- " << message << std::endl;

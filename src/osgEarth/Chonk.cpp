@@ -132,11 +132,11 @@ void cull()
 #endif
 
     // transform the bounding sphere to a view-space bbox.
-    vec4 center = vec4(chonks[v].bs.xyz, 1);
+    vec4 center = input_instances[i].xform * vec4(chonks[v].bs.xyz, 1);
+    vec4 center_view = gl_ModelViewMatrix * center;
     float radius = chonks[v].bs.w;
-    vec4 center_view = gl_ModelViewMatrix * (input_instances[i].xform * center);
-    vec4 LL_view = center_view - vec4(radius, radius, radius, 0);
-    vec4 UR_view = center_view + vec4(radius, radius, radius, 0);
+    vec4 LL_view = center_view - vec4(radius, radius, 0, 0);
+    vec4 UR_view = center_view + vec4(radius, radius, 0, 0);
 
     // transform the bbox to clip and see if it intersects the frustum:
     vec4 LL = gl_ProjectionMatrix * LL_view;

@@ -45,7 +45,10 @@ namespace osgEarth
     class ChonkFactory;
 
     /**
-     * A bindless drawable.
+     * A bindless rendering unit comprised of one VBO and one EBO.
+     * A single Chonk usually represents one drawable "Object" in 
+     * the scene. It can include multiple "variants" which are
+     * typically used as LODs.
      */
     class OSGEARTH_EXPORT Chonk
     {
@@ -62,10 +65,12 @@ namespace osgEarth
             float max_pixel_size,
             ChonkFactory& factory);
 
+        //! Local bounding box of this Chonk.
         const osg::BoundingBoxf& getBound();
 
     public:
-        //! Single vertex in the drawable
+        //! Single vertex data.
+        //! GPU data - keep me 16-byte aligned.
         struct VertexGPU
         {
             osg::Vec3f position;
@@ -98,6 +103,7 @@ namespace osgEarth
         using DrawCommand = DrawElementsIndirectBindlessCommandNV;
         using DrawCommands = std::vector<DrawCommand>;
 
+        //! Per-GC objects and state
         struct GCState
         {
             GLBuffer::Ptr vbo;
@@ -117,7 +123,7 @@ namespace osgEarth
     };
 
     /**
-     * Creates Chonks.
+     * Converts OSG geometry into Chonk data.
      */
     class OSGEARTH_EXPORT ChonkFactory
     {
@@ -136,7 +142,7 @@ namespace osgEarth
     };
 
     /**
-     * Class to render a Chonk.
+     * Renders batches of chonks with gpu culling.
      */
     class OSGEARTH_EXPORT ChonkDrawable : public osg::Drawable
     {
@@ -146,16 +152,17 @@ namespace osgEarth
     public:
         ChonkDrawable();
 
-        //! Adds a chonk to the drawable.
+        //! Adds one instance of a chonk to the drawable.
         void add(Chonk::Ptr value);
 
-        //! Adds a chonk instance to the drawable.
+        //! Adds an instance of a chonk to the drawable.
         void add(
             Chonk::Ptr value,
             const osg::Matrixf& xform);
 
         //! Adds a chonk instance to the drawable, along with
-        //! a tile-local UV coordinate.
+        //! a tile-local UV coordinate. You only need this if you
+        //! intend to set a custom culling shader.
         void add(
             Chonk::Ptr value,
             const osg::Matrixf& xform,
@@ -165,7 +172,7 @@ namespace osgEarth
         //! are culled together and then drawn together if possible.
         void setChildren(const Vector&);
 
-        //! The stateset to apply before drawing this object
+        //! Stateset to apply before drawing this object
         //! or its sub-drawables. PResumably contains a shader program.
         void setDrawStateSet(osg::StateSet* ss);
 
@@ -173,6 +180,8 @@ namespace osgEarth
         //! this drawable. Optional
         void setModelViewMatrix(const osg::Matrix& mvm);
 
+        //! Experimental - inject some custom culling code
+        //! into the culling compute shader.
         void setCustomCullingShader(osg::Shader*);
 
     public:
@@ -193,7 +202,6 @@ namespace osgEarth
             osg::Vec2f uv; // tile-local UV
             GLuint first_variant_cmd_index;
             GLuint visibility_mask;
-            //GLfloat _padding[2];
         };
         using Instances = std::vector<Instance>;
         using Batches = std::unordered_map<Chonk::Ptr, Instances>;

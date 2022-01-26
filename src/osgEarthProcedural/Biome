@@ -39,7 +39,7 @@ namespace osgEarth
          * determine how the system handles them. Right now there are
          * only two types -- trees and undergrowth.
          */
-        #define NUM_ASSET_GROUPS 1
+        #define NUM_ASSET_GROUPS 2
         struct OSGEARTHPROCEDURAL_EXPORT AssetGroup
         {
             enum Type

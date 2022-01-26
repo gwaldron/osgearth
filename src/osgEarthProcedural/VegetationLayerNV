@@ -103,6 +103,7 @@ namespace osgEarth { namespace Procedural
 
         //! LOD at which to draw ground cover
         bool hasGroupAtLOD(unsigned lod) const;
+        AssetGroup::Type getGroupAtLOD(unsigned lod) const;
         unsigned getGroupLOD(AssetGroup::Type) const;
 
         //! Whether any of the vegetation casts shadows on the terrain
@@ -171,9 +172,11 @@ namespace osgEarth { namespace Procedural
 
         struct Tile
         {
-            //osg::ref_ptr<osg::MatrixTransform> _mt;
+            int _revision;
             osg::ref_ptr<ChonkDrawable> _drawable;
             osg::Matrix _mvm;
+
+            Tile() : _revision(-1) { }
         };
 
         // Data unique to a specific camera traversal
@@ -195,8 +198,8 @@ namespace osgEarth { namespace Procedural
 
         std::atomic_int _biomeRevision;
         Status _status;
-        Future<BiomeManager::Drawables> _newDrawables;
-        BiomeManager::Drawables _drawables;
+        Future<BiomeManager::AssetsByGroup> _newDrawables;
+        BiomeManager::AssetsByGroup _assetsByGroup;
         Chonk::Ptr _defaultTree;
         osg::ref_ptr<TextureArena> _textures;
 
@@ -205,6 +208,7 @@ namespace osgEarth { namespace Procedural
 
         ChonkDrawable* createDrawable(
             const TileKey&,
+            const AssetGroup::Type&,
             const osg::BoundingBox& bbox) const;
     };
 

@@ -52,6 +52,7 @@ _useIndirectRendering(false)
 {
     // Since we refresh the render state in the CULL traversal, we must
     // set the variance to dynamic to prevent overlap with DRAW
+    //TODO: Check this.
     setDataVariance(DYNAMIC);
 
     setUseDisplayList(false);

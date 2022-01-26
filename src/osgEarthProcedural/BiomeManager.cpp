@@ -509,8 +509,8 @@ BiomeManager::materializeNewAssets(
     }
 }
 
-BiomeManager::Drawables
-BiomeManager::getDrawables(
+BiomeManager::AssetsByGroup
+BiomeManager::getAssets(
     TextureArena* textures,
     CreateImposterFunction createImposter,
     const osgDB::Options* readOptions)
@@ -524,80 +524,73 @@ BiomeManager::getDrawables(
     // Finally, return the new list of renderable objects.
     ChonkFactory factory(textures);
 
-    Drawables result;
+    AssetsByGroup result;
+    result.resize(NUM_ASSET_GROUPS);
 
     // TODO - all groups...
-    auto group = AssetGroup::TREES;
-
-    using Key = std::pair<void*, void*>;
-    std::map<Key, Chonk::Ptr> cache;
-    std::unordered_map<Chonk::Ptr, unsigned> chonk_index;
-
-    // LUT of asset-to-chonk-index
-    CommandIndexMap asset_to_chonk_index;
-
-
-    ScopedMutexLock lock(_residentData_mutex);
-
-    for (auto iter : _residentBiomes)
+    for (int group = 0; group < NUM_ASSET_GROUPS; ++group)
     {
-        const ResidentModelAssetInstances& instances = iter.second[group];
-        for (auto& instance : instances)
+        std::vector<ResidentModelAsset::Ptr>& objects = result[group];
+
+        using Key = std::pair<void*, void*>;
+        std::map<Key, Chonk::Ptr> cache;
+        std::unordered_map<Chonk::Ptr, unsigned> chonk_index;
+
+        // LUT of asset-to-chonk-index
+        CommandIndexMap asset_to_chonk_index;
+
+        ScopedMutexLock lock(_residentData_mutex);
+
+        for (auto iter : _residentBiomes)
         {
-            ResidentModelAsset::Ptr asset = instance._residentAsset;
-
-            // initialize the command
-            // (insert will fail silently if it already exists)
-            asset_to_chonk_index.insert(std::make_pair(asset, -1));
-
-            auto model = asset->_model.get();
-            auto billboard = asset->_billboard.get();
-            auto key = std::make_pair(model, billboard);
-
-            auto& chonk = cache[key];
-
-            if (asset->_chonk == nullptr)
+            const ResidentModelAssetInstances& instances = iter.second[group];
+            for (auto& instance : instances)
             {
-                if (chonk)
+                ResidentModelAsset::Ptr asset = instance._residentAsset;
+
+                // initialize the command
+                // (insert will fail silently if it already exists)
+                asset_to_chonk_index.insert(std::make_pair(asset, -1));
+
+                auto model = asset->_model.get();
+                auto billboard = asset->_billboard.get();
+                auto key = std::make_pair(model, billboard);
+
+                auto& chonk = cache[key];
+
+                if (asset->_chonk == nullptr)
                 {
-                    asset->_chonk = chonk;
+                    if (chonk)
+                    {
+                        asset->_chonk = chonk;
+                    }
+                    else
+                    {
+                        asset->_chonk = Chonk::create();
+
+                        if (model)
+                            asset->_chonk->add(model, 400, FLT_MAX, factory);
+
+                        if (billboard)
+                            asset->_chonk->add(billboard, 50, 400, factory);
+
+                        chonk = asset->_chonk; // save to cache
+                    }
+                }
+
+                auto iter = chonk_index.find(asset->_chonk);
+                if (iter != chonk_index.end())
+                {
+                    asset_to_chonk_index[asset] = iter->second;
                 }
                 else
                 {
-                    asset->_chonk = Chonk::create();
-
-                    if (model)
-                        asset->_chonk->add(model, 400, FLT_MAX, factory);
-
-                    if (billboard)
-                        asset->_chonk->add(billboard, 50, 400, factory);
-
-                    chonk = asset->_chonk; // save to cache
+                    asset_to_chonk_index[asset] = objects.size();
+                    chonk_index[asset->_chonk] = objects.size();
+                    objects.push_back(asset);
                 }
             }
-
-            auto iter = chonk_index.find(asset->_chonk);
-            if (iter != chonk_index.end())
-            {
-                asset_to_chonk_index[asset] = iter->second;
-            }
-            else
-            {
-                asset_to_chonk_index[asset] = result.objects.size();
-                chonk_index[asset->_chonk] = result.objects.size();
-                result.objects.push_back(asset->_chonk);
-            }
         }
-    }
-
-    if (result.objects.size() > 0)
-    {
-        result.stateattr = createGPULookupTables(
-            group,
-            asset_to_chonk_index,
-            //modelCommands,
-            //imposterCommands,
-            _residentBiomes);
     }
 
     return std::move(result);

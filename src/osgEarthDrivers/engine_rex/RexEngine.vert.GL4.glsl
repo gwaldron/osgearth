@@ -3,6 +3,7 @@
 #pragma vp_name REX Engine - Init Model Space
 #pragma vp_function oe_rex_init_model, vertex_model, first
 
+
 // uniforms
 uniform vec4 oe_terrain_color;
 

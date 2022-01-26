@@ -135,11 +135,13 @@ LayerDrawable*
 TerrainRenderData::addLayerDrawable(
     const Layer* layer)
 {
-    auto& drawable = _persistent->_drawables[layer];
+    // Create a new drawable each time instead of reusing them to prevent issues with multithreading.  Revisit later.
+    LayerDrawable* drawable = new LayerDrawable();
+    //auto& drawable = _persistent->_drawables[layer];
 
-    if (!drawable.valid())
+    //if (!drawable.valid())
     {
-        drawable = new LayerDrawable();
+        //drawable = new LayerDrawable();
         drawable->_useIndirectRendering = _useGL4Rendering;
         drawable->_context = _context;
 
@@ -165,6 +167,7 @@ TerrainRenderData::addLayerDrawable(
 
     drawable->_drawState = _drawState;
 
+
     drawable->dirtyBound();
     
     if (layer)
@@ -176,5 +179,5 @@ TerrainRenderData::addLayerDrawable(
         _layersByUID[-1] = drawable;
     }
 
-    return drawable.get();
+    return drawable;
 }

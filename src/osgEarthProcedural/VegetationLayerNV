@@ -64,7 +64,7 @@ namespace osgEarth { namespace Procedural
                 OE_OPTION(float, maxAlpha);
 
                 // internal
-                osg::ref_ptr<osg::StateSet> _renderStateSet;
+                osg::ref_ptr<osg::StateSet> _drawStateSet;
                 std::function<osg::Node*(
                     const osg::BoundingBox&,
                     std::vector<osg::Texture*>&)> _createImposter;
@@ -156,7 +156,6 @@ namespace osgEarth { namespace Procedural
 
         LayerReference<LifeMapLayer> _lifeMapLayer;
         LayerReference<BiomeLayer> _biomeLayer;
-        TextureImageUnitReservation _noiseBinding;
         osg::observer_ptr<const Map> _map;
         osg::ref_ptr<osg::Shader> _cullShader;
 
@@ -189,22 +188,24 @@ namespace osgEarth { namespace Procedural
         };            
         mutable std::unordered_map<const osg::Camera*, CameraState> _cameraState;
 
-        double _tileWidths[23]; // per LOD
         osg::ref_ptr<osg::Texture> _noiseTex; // noise for placement
         osg::ref_ptr<osg::Uniform> _sseU; // screen-space error uniform
         mutable osg::FrameStamp _lastVisit; // for timeouts
         std::size_t _lastTileBatchSize; // stats use only
         osg::ref_ptr<const Profile> _mapProfile;
+        TextureImageUnitReservation _noiseBinding;
+
+        using AssetsByBiome = std::unordered_map<const Biome*, std::vector<ResidentModelAssetInstance>>;
+        using Assets = std::vector<AssetsByBiome>;
 
         std::atomic_int _biomeRevision;
         Status _status;
-        Future<BiomeManager::AssetsByGroup> _newDrawables;
-        BiomeManager::AssetsByGroup _assetsByGroup;
-        Chonk::Ptr _defaultTree;
+        Future<Assets> _newAssets;
+        Assets _assets;
         osg::ref_ptr<TextureArena> _textures;
 
         void configureTrees();
-        void configureUndergrowth();
+        void configureGrass();
 
         ChonkDrawable* createDrawable(
             const TileKey&,

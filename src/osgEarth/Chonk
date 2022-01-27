@@ -36,10 +36,12 @@ namespace osgEarth
         using Ptr = std::shared_ptr<ChonkMaterial>;
         static Ptr create();
 
+        // texturearena indexes of material textures
         int albedo;
+        int normal;
 
     private:
-        ChonkMaterial() : albedo(-1) { }
+        ChonkMaterial() : albedo(-1), normal(-1) { }
     };
 
     class ChonkFactory;
@@ -70,14 +72,17 @@ namespace osgEarth
 
     public:
         //! Single vertex data.
-        //! GPU data - keep me 16-byte aligned.
         struct VertexGPU
         {
             osg::Vec3f position;
             osg::Vec3f normal;
             osg::Vec4ub color;
             osg::Vec2f uv;
-            GLint albedo; // TODO: upgrade to material index
+            float flex;
+
+            // TODO: upgrade to material index
+            GLint albedo;
+            GLint normalmap;
         };
 
         //! Geometry variant for a given pixel size range
@@ -196,12 +201,14 @@ namespace osgEarth
 
         mutable Mutex _m;
 
+        // Keep me 16-byte aligned
         struct Instance
         {
             osg::Matrixf xform;  // local xform
             osg::Vec2f uv; // tile-local UV
+            float fade;
+            float visibility[4]; // per variant
             GLuint first_variant_cmd_index;
-            GLuint visibility_mask;
         };
         using Instances = std::vector<Instance>;
         using Batches = std::unordered_map<Chonk::Ptr, Instances>;

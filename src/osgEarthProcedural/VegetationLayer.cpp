@@ -1149,12 +1149,12 @@ VegetationLayer::Renderer::isNewGeometryCloudAvailable(
 
                 std::set<AssetGroup::Type> groups;
 
-                result = biomeMan.updateResidency(
-                    [layer](AssetGroup::Type group, const osg::BoundingBox& bbox, std::vector<osg::Texture*>& textures)
-                    {
-                        return layer->createParametricGeometry(group, bbox, textures);
-                    },
-                    layer->getReadOptions());
+                //result = biomeMan.updateResidency(
+                //    [layer](const osg::BoundingBox& bbox, std::vector<osg::Texture*>& textures)
+                //    {
+                //        return layer->createParametricGeometry(group, bbox, textures);
+                //    },
+                //    layer->getReadOptions());
             }
             return result;
         };

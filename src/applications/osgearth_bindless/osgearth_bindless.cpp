@@ -163,7 +163,8 @@ const char* vs_NV = R"(
     layout(location=1) in vec3 normal;
     layout(location=2) in vec4 color;
     layout(location=3) in vec2 uv;
-    layout(location=4) in int albedo; // todo: material LUT index
+    layout(location=4) in vec3 flex;
+    layout(location=5) in int albedo; // todo: material LUT index
 
     out vec3 vp_Normal;
     out vec4 vp_Color;

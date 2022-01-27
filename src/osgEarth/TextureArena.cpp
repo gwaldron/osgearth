@@ -37,22 +37,32 @@ using namespace osgEarth;
 
 //#define USE_ICO 1
 
+Texture::Ptr
+Texture::create(GLTexture::Ptr gltexture, osg::State& state)
+{
+    Texture::Ptr object(new Texture());
+    GCState& gs = object->_gs[state.getContextID()];
+    return object;
+}
+
 Texture::GCState&
 Texture::get(const osg::State& state) const
 {
-    return _gc[state.getContextID()];
+    return _gs[state.getContextID()];
 }
 
 bool
 Texture::isCompiled(const osg::State& state) const
 {
-    return _gc[state.getContextID()]._gltexture != nullptr;
+    return _gs[state.getContextID()]._gltexture != nullptr;
 }
 
 void
 Texture::compileGLObjects(osg::State& state) const
 {
     OE_PROFILING_ZONE;
+
+    OE_HARD_ASSERT(_image.valid());
 
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
     Texture::GCState& gc = get(state);
@@ -261,8 +271,8 @@ Texture::isResident(const osg::State& state) const
 void
 Texture::resizeGLObjectBuffers(unsigned maxSize)
 {
-    if (_gc.size() < maxSize)
-        _gc.resize(maxSize);
+    if (_gs.size() < maxSize)
+        _gs.resize(maxSize);
 }
 
 void
@@ -270,30 +280,30 @@ Texture::releaseGLObjects(osg::State* state) const
 {
     if (state)
     {
-        if (_gc[state->getContextID()]._gltexture != nullptr)
+        if (_gs[state->getContextID()]._gltexture != nullptr)
         {
-            GCState& gc = get(*state);
+            GCState& gs = get(*state);
 
             // debugging
             OE_DEVEL << LC 
-                << "Texture::releaseGLObjects '" << gc._gltexture->id() 
-                << "' name=" << gc._gltexture->name() 
-                << " handle=" << gc._gltexture->handle(*state) << std::endl;
+                << "Texture::releaseGLObjects '" << gs._gltexture->id() 
+                << "' name=" << gs._gltexture->name() 
+                << " handle=" << gs._gltexture->handle(*state) << std::endl;
 
             //gc._gltexture->release();
-            gc._gltexture->makeResident(false);
+            gs._gltexture->makeResident(false);
 
             // will activate the releaser
-            gc._gltexture = nullptr;
+            gs._gltexture = nullptr;
         }
     }
     else
     {
         // rely on the Releaser to get around to it
-        for(unsigned i=0; i<_gc.size(); ++i)
+        for(unsigned i=0; i< _gs.size(); ++i)
         {
             // will activate the releaser(s)
-            _gc[i]._gltexture = nullptr;
+            _gs[i]._gltexture = nullptr;
         }
     }
 }
@@ -375,7 +385,8 @@ TextureArena::add(Texture::Ptr tex)
     }
 
     // load the image if necessary (TODO: background?)
-    if (tex->_image.valid() == false)
+    if (tex->_image.valid() == false &&
+        tex->_uri.isSet())
     {
         // TODO support read options for caching
         tex->_image = tex->_uri->getImage(nullptr);
@@ -421,12 +432,36 @@ TextureArena::add(Texture::Ptr tex)
 
         return index;
     }
+
     else
     {
-        return -1;
+        // might be a pre-existing GLTexture:
+        bool added = false;
+
+        for (unsigned i = 0; i < _gc.size(); ++i)
+        {
+            if (_gc[i]._inUse && 
+                tex->_gs.size() > i &&
+                tex->_gs[i]._gltexture != nullptr)
+            {
+                _gc[i]._toAdd.push_back(tex);
+                added = true;
+            }
+        }
+
+        if (added)
+        {
+            if (index < _textures.size())
+                _textures[index] = tex;
+            else
+                _textures.push_back(tex);
+
+            return index;
+        }
     }
 
-    //TODO: consider issues like multiple GCs and "unref after apply"
+    // nope...fail
+    return -1;
 }
 
 void
@@ -614,7 +649,7 @@ TextureArena::apply(osg::State& state) const
     unsigned ptr = 0;
     for (auto& tex : _textures)
     {
-        GLTexture* gltex = tex->_gc[state.getContextID()]._gltexture.get();
+        GLTexture* gltex = tex->_gs[state.getContextID()]._gltexture.get();
         GLuint64 handle = gltex ? gltex->handle(state) : 0ULL;
         if (gc._handles[ptr] != handle)
         {

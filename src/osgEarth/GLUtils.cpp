@@ -916,7 +916,7 @@ GLTexture::create(GLenum target, osg::State& state, const std::string& label)
 {
     Ptr obj(new GLTexture(target, state, label));
     GLObjectPool::get(state)->watch(obj);
-    OE_DEVEL << LC << "GLTexture::release, name=" << obj->name() << std::endl;
+    OE_DEVEL << LC << "GLTexture::create, name=" << obj->name() << std::endl;
     return obj;
 }
 
@@ -1016,18 +1016,18 @@ GLTexture::release()
 }
 
 void
-GLTexture::storage2D(const Profile& profile) //GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t)
+GLTexture::storage2D(const Profile& profile)
 {
     if (size() == 0)
     {
-        _profile = profile; // Profile(_target, mipLevels, internalFormat, s, t, 1, 0);
+        _profile = profile;
 
         ext()->glTexStorage2D(
             _target,
             profile._numMipmapLevels,
             profile._internalFormat,
             profile._width,
-            profile._height);    
+            profile._height);
         
         glTexParameteri(_target, GL_TEXTURE_MIN_FILTER, profile._minFilter);
         glTexParameteri(_target, GL_TEXTURE_MAG_FILTER, profile._magFilter);
@@ -1040,7 +1040,7 @@ GLTexture::storage2D(const Profile& profile) //GLsizei mipLevels, GLenum interna
 }
 
 void
-GLTexture::storage3D(const Profile& profile) //GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r)
+GLTexture::storage3D(const Profile& profile)
 {
     if (size() == 0)
     {
@@ -1087,6 +1087,138 @@ GLTexture::compressedSubImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff,
 {
     ext()->glCompressedTexSubImage3D(_target, level, xoff, yoff, zoff, width, height, depth, format, imageSize, data);
 }
+
+
+GLFBO::Ptr
+GLFBO::create(osg::State& state, const std::string& label)
+{
+    Ptr object(new GLFBO(state, label));
+    GLObjectPool::get(state)->watch(object);
+    return object;
+}
+
+GLFBO::GLFBO(osg::State& state, const std::string& label) :
+    GLObject(state, FBO, label),
+    _name(0)
+{
+    ext()->glGenFramebuffers(1, &_name);
+}
+
+void
+GLFBO::release()
+{
+    if (_name != 0)
+    {
+        ext()->glDeleteFramebuffers(1, &_name);
+        _name = 0;
+    }
+}
+
+bool
+GLFBO::valid() const
+{
+    return _name != 0;
+}
+
+GLsizei
+GLFBO::size() const
+{
+    //todo
+    return 0;
+}
+
+GLTexture::Ptr
+GLFBO::renderToTexture(
+    GLsizei width,
+    GLsizei height,
+    DrawFunction draw, 
+    osg::State& state)
+{
+    // http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-14-render-to-texture/
+
+    OE_SOFT_ASSERT_AND_RETURN(width > 0 && height > 0, nullptr);
+    OE_SOFT_ASSERT_AND_RETURN(draw != nullptr, nullptr);
+
+    GLTexture::Profile profile(
+        GL_TEXTURE_2D,    // target
+        1,                // mip levels
+        GL_RGBA8,         // internal format
+        width,            // width
+        height,           // height
+        1,                // depth
+        0,                // border,
+        GL_NEAREST,       // minification filter
+        GL_NEAREST,       // magnification filter
+        GL_CLAMP_TO_EDGE, // wrap S
+        GL_CLAMP_TO_EDGE, // wrap T
+        GL_CLAMP_TO_EDGE, // wrap R
+        4.0f);            // max anisotropy
+
+    // create out RTT texture:
+    GLTexture::Ptr texture = GLTexture::create(
+        GL_TEXTURE_2D,
+        state,
+        profile,
+        "RTT");
+
+    // allocate the storage.
+    // TODO: use glTexImage2D instead so we can change the 
+    // mipmapping filters later?
+    texture->storage2D(profile);
+
+    // set up a depth buffer:
+    GLuint depth_rb;
+    ext()->glGenRenderbuffers(1, &depth_rb);
+    ext()->glBindRenderbuffer(GL_RENDERBUFFER_EXT, depth_rb);
+    ext()->glRenderbufferStorage(
+        GL_RENDERBUFFER_EXT,
+        GL_DEPTH_COMPONENT,
+        width, height);
+
+    // attach the texture
+    ext()->glFramebufferTexture(
+        GL_FRAMEBUFFER_EXT,
+        GL_COLOR_ATTACHMENT0_EXT,
+        texture->name(),
+        0);
+
+    // set the list of draw buffers.
+    GLenum draw_buffers[1] = { GL_COLOR_ATTACHMENT0_EXT };
+    ext()->glDrawBuffers(1, draw_buffers);
+
+    // check for completeness:
+    bool complete = ext()->glCheckFramebufferStatus(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT;
+    OE_SOFT_ASSERT(complete);
+
+    if (complete)
+    {
+        ext()->glBindFramebuffer(GL_FRAMEBUFFER_EXT, _name);
+
+        // save and reconfigure viewport:
+        const osg::Viewport* viewport = state.getCurrentViewport();
+        glViewport(0, 0, width, height);
+
+        // Render to texture
+        draw(state);
+
+        // restore viewport
+        viewport->apply(state);
+
+        ext()->glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
+
+        // Re-apply previous OSG state
+        //state.dirtyAllAttributes();
+        //state.dirtyAllModes();
+        //state.apply();
+    }
+
+    ext()->glDeleteRenderbuffers(1, &depth_rb);
+
+    return texture;
+}
+
+
+
 
 #undef LC
 #define LC "[GPUJobArena] "

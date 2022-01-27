@@ -85,9 +85,9 @@ struct Instance
 {
     mat4 xform;
     vec2 local_uv;
+    float fade;
+    float visibility[4];
     uint first_variant_cmd_index;
-    uint visibility_mask;
-    //float _padding[2];
 };
 
 layout(binding=0) buffer OutputBuffer
@@ -111,14 +111,16 @@ layout(binding=3) buffer InputBuffer
 };
 
 uniform vec3 oe_Camera;
+uniform float oe_pixel_size_scale = 1.0;
 
 void cull()
 {
     const uint i = gl_GlobalInvocationID.x; // instance
     const uint variant = gl_GlobalInvocationID.y; // variant
 
-    // initialize by clearing the visibility bit for this variant:
-    atomicAnd(input_instances[i].visibility_mask, ~(1<<variant));
+    // initialize by clearing the visibility for this variant:
+    input_instances[i].visibility[variant] = 0.0;
+    //atomicAnd(input_instances[i].visibility_mask, ~(1<<variant));
 
     // bail if our chonk does not have this variant
     uint v = input_instances[i].first_variant_cmd_index + variant;
@@ -151,14 +153,28 @@ void cull()
 
     // OK, it is in view - now check pixel size on screen for this variant:
     vec2 dims = 0.5*(UR.xy-LL.xy)*oe_Camera.xy;
+
     float pixelSize = max(dims.x, dims.y);
-    if (pixelSize < chonks[v].min_pixel_size)
-        return;
-    if (pixelSize > chonks[v].max_pixel_size)
+    float pixelSizePad = pixelSize*0.1;
+
+    float maxPixelSize = chonks[v].max_pixel_size * oe_pixel_size_scale;
+    if (pixelSize > (maxPixelSize + pixelSizePad))
         return;
 
+    float minPixelSize = chonks[v].min_pixel_size * oe_pixel_size_scale;
+    if (pixelSize < (minPixelSize - pixelSizePad))
+        return;
+
+    float fade = 1.0;
+    if (pixelSize > maxPixelSize)
+        fade = 1.0-(pixelSize-maxPixelSize)/pixelSizePad;
+    if (pixelSize < minPixelSize)
+        fade = 1.0-(minPixelSize-pixelSize)/pixelSizePad;
+
+    input_instances[i].visibility[variant] = fade;
+
     // Pass! Set the visibility bit for this variant:
-    atomicOr(input_instances[i].visibility_mask, (1 << variant));
+    //atomicOr(input_instances[i].visibility_mask, (1 << variant));
 
     // Bump all baseInstances following this one:
     const uint cmd_count = chonks[v].total_num_commands;
@@ -172,13 +188,15 @@ void compact()
     const uint i = gl_GlobalInvocationID.x; // instance
     const uint variant = gl_GlobalInvocationID.y; // variant
     
-    if ((input_instances[i].visibility_mask & (1 << variant)) == 0)
+    float fade = input_instances[i].visibility[variant];
+    if (fade < 0.15)
         return;
 
     uint v = input_instances[i].first_variant_cmd_index + variant;
     uint offset = commands[v].cmd.baseInstance;
     uint index = atomicAdd(commands[v].cmd.instanceCount, 1);
     output_instances[offset+index] = input_instances[i];
+    output_instances[offset+index].fade = fade;
 }
 
 // Entry point.
@@ -203,7 +221,10 @@ void main()
         TextureArena* _textures;
         std::stack<ChonkMaterial::Ptr> _materialStack;
         std::stack<osg::Matrix> _transformStack;
-        std::unordered_map<osg::Texture*, ChonkMaterial::Ptr> _materialLUT;
+        std::unordered_map<osg::Texture*, unsigned> _textureLUT;
+
+        const unsigned ALBEDO = 0;
+        const unsigned NORMAL = 1;
 
         Ripper(Chonk& chonk, TextureArena* textures) :
             _result(chonk),
@@ -218,42 +239,59 @@ void main()
 
         std::stack<int> _materialIndexStack;
 
+        // adds a teture to the arena and returns its index
+        int addTexture(unsigned slot, osg::StateSet* stateset)
+        {
+            int result = -1;
+
+            osg::Texture* tex = dynamic_cast<osg::Texture*>(
+                stateset->getTextureAttribute(slot, osg::StateAttribute::TEXTURE));
+
+            if (tex && tex->getImage(0))
+            {
+                auto i = _textureLUT.find(tex);
+
+                if (i == _textureLUT.end())
+                {
+                    Texture::Ptr t = Texture::create();
+                    t->_image = tex->getImage(0);
+                    t->_uri = t->_image->getFileName();
+                    t->_label = "Chonk texture";
+
+                    result = _textures->add(t);
+                    if (result >= 0)
+                    {
+                        _textureLUT[tex] = result;
+                    }
+                }
+                else
+                {
+                    result = i->second;
+                }
+            }
+
+            return result;
+        }
+
         // record materials, and return true if we pushed one.
         bool pushStateSet(osg::StateSet* stateset)
         {
+            bool pushed = false;
             if (stateset)
             {
-                auto& material = _materialStack.top();
+                int albedo = addTexture(ALBEDO, stateset);
+                int normal = addTexture(NORMAL, stateset);
 
-                osg::Texture* tex = dynamic_cast<osg::Texture*>(
-                    stateset->getTextureAttribute(0, osg::StateAttribute::TEXTURE));
-
-                if (tex && tex->getImage(0))
+                if (albedo >= 0 || normal >= 0)
                 {
-                    auto i = _materialLUT.find(tex);
-
-                    if (i == _materialLUT.end())
-                    {
-                        Texture::Ptr t = Texture::create();
-                        t->_image = tex->getImage(0);
-                        t->_uri = t->_image->getFileName();
-                        t->_label = "Chonk texture";
-                        
-                        material->albedo = _textures->add(t);
-                        if (material->albedo >= 0)
-                        {
-                            _materialLUT[tex] = material;
-                        }
-                    }
-                    else
-                    {
-                        material = i->second;
-                    }
+                    ChonkMaterial::Ptr material = ChonkMaterial::create();
+                    material->albedo = albedo;
+                    material->normal = normal;
+                    _materialStack.push(material);
+                    pushed = true;
                 }
-                _materialStack.push(material);
-                return true; // yes push
             }
-            return false; // no push
+            return pushed;
         }
 
         void popStateSet()
@@ -290,6 +328,7 @@ void main()
             auto colors = dynamic_cast<osg::Vec4Array*>(node.getColorArray());
             auto normals = dynamic_cast<osg::Vec3Array*>(node.getNormalArray());
             auto uvs = dynamic_cast<osg::Vec2Array*>(node.getTexCoordArray(0));
+            auto flexers = dynamic_cast<osg::FloatArray*>(node.getTexCoordArray(3));
 
             auto& material = _materialStack.top();
 
@@ -326,7 +365,7 @@ void main()
                     v.normal.set(0, 0, 1);
                 }
 
-                if (uvs && uvs)
+                if (uvs)
                 {
                     if (uvs->getBinding() == normals->BIND_PER_VERTEX)
                         v.uv = (*uvs)[i];
@@ -334,7 +373,16 @@ void main()
                         v.uv = (*uvs)[0];
                 }
 
+                if (flexers)
+                {
+                    if (flexers->getBinding() == flexers->BIND_PER_VERTEX)
+                        v.flex = (*flexers)[i];
+                    else
+                        v.flex = (*flexers)[0];
+                }
+
                 v.albedo = material ? material->albedo : -1;
+                v.normalmap = material ? material->normal : -1;
 
                 _result._vbo_store.emplace_back(std::move(v));
 
@@ -368,6 +416,18 @@ ChonkMaterial::create()
 {
     return Ptr(new ChonkMaterial);
 }
+
+namespace std {
+    // std::hash specialization for ChonkMaterial
+    template<> struct hash<ChonkMaterial> {
+        inline size_t operator()(const ChonkMaterial& value) const {
+            return hash_value_unsigned(
+                value.albedo,
+                value.normal);
+        }
+    };
+}
+
 
 Chonk::Ptr
 Chonk::create()
@@ -573,7 +633,7 @@ ChonkDrawable::add(
         instance.xform = xform;
         instance.uv = local_uv;
         instance.first_variant_cmd_index = 0;
-        instance.visibility_mask = 0;
+        //instance.visibility_mask = 0;
         _batches[chonk].push_back(std::move(instance));
 
         for (unsigned i = 0; i < _gs.size(); ++i)
@@ -837,16 +897,18 @@ ChonkDrawable::GCState::initialize(osg::State& state)
     glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
     glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
 
-    const VADef formats[5] = {
+    const VADef formats[7] = {
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, position)},
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, normal)},
         {4, GL_UNSIGNED_BYTE, GL_TRUE,  offsetof(Chonk::VertexGPU, color)},
         {2, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, uv)},
-        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, albedo)}
+        {1, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, flex)},
+        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, albedo)},
+        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, normalmap)}
     };
 
     // configure the format of each vertex attribute in our structure.
-    for (unsigned location = 0; location < 5; ++location)
+    for (unsigned location = 0; location < 7; ++location)
     {
         const VADef& d = formats[location];
         if (d.type == GL_INT || d.type == GL_INT)

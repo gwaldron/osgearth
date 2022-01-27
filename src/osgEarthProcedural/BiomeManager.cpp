@@ -246,7 +246,7 @@ namespace
 
 void
 BiomeManager::materializeNewAssets(
-    CreateImposterFunction createImposter,
+    ChonkFactory& chonkFactory,
     const osgDB::Options* readOptions)
 {
     // exclusive access to the resident dataset
@@ -369,9 +369,14 @@ BiomeManager::materializeNewAssets(
                         bbox = residentAsset->_modelAABB;
                     }
 
-                    if (assetDef->sideBillboardURI().isSet())
+                    URI sideBB = assetDef->sideBillboardURI().isSet() ?
+                        assetDef->sideBillboardURI().get() :
+                        URI(assetDef->modelURI()->full() + ".side.png", assetDef->modelURI()->context());
+
+                    if (!sideBB.empty()) //assetDef->sideBillboardURI().isSet())
                     {
-                        const URI& uri = assetDef->sideBillboardURI().get();
+                        //const URI& uri = assetDef->sideBillboardURI().get();
+                        const URI& uri = sideBB;
 
                         auto ic = texcache.find(uri);
                         if (ic != texcache.end())
@@ -389,21 +394,25 @@ BiomeManager::materializeNewAssets(
                                 OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
                                 texcache[uri] = residentAsset;
 
-                                // normal map is the same file name but with _NML inserted before the extension
-                                URI normalMapURI(
-                                    osgDB::getNameLessExtension(uri.full()) +
-                                    "_NML." +
-                                    osgDB::getFileExtension(uri.full()));
+                                osg::ref_ptr<osg::Image> normalMap;
+                                for (int i = 0; i < 2 && !normalMap.valid(); ++i)
+                                {
+                                    // normal map is the same file name but with _NML inserted before the extension
+                                    URI normalMapURI(
+                                        osgDB::getNameLessExtension(uri.full()) +
+                                        (i == 0 ? "_NML." : ".normal.") +
+                                        osgDB::getFileExtension(uri.full()));
 
-                                // silenty fail if no normal map found.
-                                osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
-                                if (normalMap.valid())
-                                {
-                                    residentAsset->_sideBillboardNormalMap = new osg::Texture2D(normalMap.get());
-                                }
-                                else
-                                {
-                                    residentAsset->_sideBillboardNormalMap = defaultNormalMap;
+                                    // silenty fail if no normal map found.
+                                    normalMap = normalMapURI.getImage(readOptions);
+                                    if (normalMap.valid())
+                                    {
+                                        residentAsset->_sideBillboardNormalMap = new osg::Texture2D(normalMap.get());
+                                    }
+                                    else
+                                    {
+                                        residentAsset->_sideBillboardNormalMap = defaultNormalMap;
+                                    }
                                 }
                             }
                             else
@@ -412,10 +421,13 @@ BiomeManager::materializeNewAssets(
                             }
                         }
 
+                        URI topBB = assetDef->topBillboardURI().isSet() ?
+                            assetDef->topBillboardURI().get() :
+                            URI(assetDef->modelURI()->full() + ".top.png", assetDef->modelURI()->context());
 
-                        if (assetDef->topBillboardURI().isSet())
+                        if (!topBB.empty()) //assetDef->topBillboardURI().isSet())
                         {
-                            const URI& uri = assetDef->topBillboardURI().get();
+                            const URI& uri = topBB; // assetDef->topBillboardURI().get();
 
                             auto ic = texcache.find(uri);
                             if (ic != texcache.end())
@@ -433,21 +445,25 @@ BiomeManager::materializeNewAssets(
                                     OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
                                     texcache[uri] = residentAsset;
 
-                                    // normal map is the same file name but with _NML inserted before the extension
-                                    URI normalMapURI(
-                                        osgDB::getNameLessExtension(uri.full()) +
-                                        "_NML." +
-                                        osgDB::getFileExtension(uri.full()));
+                                    osg::ref_ptr<osg::Image> normalMap;
+                                    for (int i = 0; i < 2 && !normalMap.valid(); ++i)
+                                    {
+                                        // normal map is the same file name but with _NML inserted before the extension
+                                        URI normalMapURI(
+                                            osgDB::getNameLessExtension(uri.full()) +
+                                            (i == 0 ? "_NML." : ".normal.") +
+                                            osgDB::getFileExtension(uri.full()));
 
-                                    // silenty fail if no normal map found.
-                                    osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
-                                    if (normalMap.valid())
-                                    {
-                                        residentAsset->_topBillboardNormalMap = new osg::Texture2D(normalMap.get());
-                                    }
-                                    else
-                                    {
-                                        residentAsset->_topBillboardNormalMap = defaultNormalMap;
+                                        // silenty fail if no normal map found.
+                                        normalMap = normalMapURI.getImage(readOptions);
+                                        if (normalMap.valid())
+                                        {
+                                            residentAsset->_topBillboardNormalMap = new osg::Texture2D(normalMap.get());
+                                        }
+                                        else
+                                        {
+                                            residentAsset->_topBillboardNormalMap = defaultNormalMap;
+                                        }
                                     }
                                 }
                                 else
@@ -463,7 +479,7 @@ BiomeManager::materializeNewAssets(
                         textures[2] = residentAsset->_topBillboardTex.get();
                         textures[3] = residentAsset->_topBillboardNormalMap.get();
 
-                        if (createImposter)
+                        if (_createImposter[group])
                         {
                             if (!bbox.valid())
                             {
@@ -476,12 +492,39 @@ BiomeManager::materializeNewAssets(
                                     residentAsset->_assetDef->height().get());
                             }
 
-                            //TODO:
-                            residentAsset->_billboard = createImposter(
-                                (AssetGroup::Type)group,
+                            residentAsset->_billboard = _createImposter[group](
                                 bbox,
                                 textures);
                         }
+                    }
+
+                    // Finally, chonkify.
+                    if (residentAsset->_model.valid())
+                    {
+                        float minp = 400.0f;
+                        float maxp = FLT_MAX;
+
+                        if (residentAsset->_chonk == nullptr)
+                            residentAsset->_chonk = Chonk::create();
+
+                        residentAsset->_chonk->add(
+                            residentAsset->_model.get(),
+                            minp, maxp,
+                            chonkFactory);
+                    }
+
+                    if (residentAsset->_billboard.valid())
+                    {
+                        float minp = 50.0f;
+                        float maxp = residentAsset->_model.valid() ? 400.0f : FLT_MAX;
+
+                        if (residentAsset->_chonk == nullptr)
+                            residentAsset->_chonk = Chonk::create();
+
+                        residentAsset->_chonk->add(
+                            residentAsset->_billboard.get(),
+                            minp, maxp,
+                            chonkFactory);
                     }
 
                     OE_INFO << LC << "  Loaded asset " << assetDef->name().get()
@@ -509,6 +552,104 @@ BiomeManager::materializeNewAssets(
     }
 }
 
+void
+BiomeManager::setCreateFunction(
+    AssetGroup::Type group,
+    CreateImposterFunction func)
+{
+    ScopedMutexLock lock(_residentData_mutex);
+    _createImposter[group] = func;
+}
+
+BiomeManager::ResidentBiomes
+BiomeManager::getResidentBiomes(
+    ChonkFactory& factory,
+    const osgDB::Options* readOptions)
+{
+    // First refresh the resident biome collection based on current refcounts
+    recalculateResidentBiomes();
+
+    // Next go through and load any assets that are not yet loaded
+    materializeNewAssets(factory, readOptions);
+
+    // Make a copy:
+    ResidentBiomes result = _residentBiomes;
+
+#if 0
+    // Go through and chonkify things as necessary.
+    // Maybe later we can put this in materialize.
+
+    // TODO - all groups...
+    for (int group = 0; group < NUM_ASSET_GROUPS; ++group)
+    {
+        std::vector<ResidentModelAsset::Ptr>& objects = result[group];
+
+        using Key = std::pair<void*, void*>;
+        std::map<Key, Chonk::Ptr> cache;
+        std::unordered_map<Chonk::Ptr, unsigned> chonk_index;
+
+        // LUT of asset-to-chonk-index
+        CommandIndexMap asset_to_chonk_index;
+
+        ScopedMutexLock lock(_residentData_mutex);
+
+        for (auto iter : _residentBiomes)
+        {
+            const ResidentModelAssetInstances& instances = iter.second[group];
+            for (auto& instance : instances)
+            {
+                ResidentModelAsset::Ptr asset = instance._residentAsset;
+
+                // initialize the command
+                // (insert will fail silently if it already exists)
+                asset_to_chonk_index.insert(std::make_pair(asset, -1));
+
+                auto model = asset->_model.get();
+                auto billboard = asset->_billboard.get();
+                auto key = std::make_pair(model, billboard);
+
+                auto& chonk = cache[key];
+
+                if (asset->_chonk == nullptr)
+                {
+                    if (chonk)
+                    {
+                        asset->_chonk = chonk;
+                    }
+                    else
+                    {
+                        asset->_chonk = Chonk::create();
+
+                        if (model)
+                            asset->_chonk->add(model, 400, FLT_MAX, factory);
+
+                        if (billboard)
+                            asset->_chonk->add(billboard, 50, 400, factory);
+
+                        chonk = asset->_chonk; // save to cache
+                    }
+                }
+
+                auto iter = chonk_index.find(asset->_chonk);
+                if (iter != chonk_index.end())
+                {
+                    asset_to_chonk_index[asset] = iter->second;
+                }
+                else
+                {
+                    asset_to_chonk_index[asset] = objects.size();
+                    chonk_index[asset->_chonk] = objects.size();
+                    objects.push_back(asset);
+                }
+            }
+        }
+    }
+#endif
+
+    return std::move(result);
+}
+
+#if 0
 BiomeManager::AssetsByGroup
 BiomeManager::getAssets(
     TextureArena* textures,
@@ -519,7 +660,7 @@ BiomeManager::getAssets(
     recalculateResidentBiomes();
 
     // Next go through and load any assets that are not yet loaded
-    materializeNewAssets(createImposter, readOptions);
+    materializeNewAssets(readOptions);
 
     // Finally, return the new list of renderable objects.
     ChonkFactory factory(textures);
@@ -595,7 +736,7 @@ BiomeManager::getAssets(
 
     return std::move(result);
 }
-
+#endif
 
 GeometryCloudCollection
 BiomeManager::updateResidency(
@@ -813,8 +954,7 @@ BiomeManager::updateResidency(
                         textures[2] = residentAsset->_topBillboardTex.get();
                         textures[3] = residentAsset->_topBillboardNormalMap.get();
 
-                        residentAsset->_billboard = createImposter(
-                            (AssetGroup::Type)group,
+                        residentAsset->_billboard = _createImposter[group](
                             osg::BoundingBox(),
                             textures);
                     }

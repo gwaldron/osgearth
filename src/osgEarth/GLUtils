@@ -176,7 +176,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT GLObject
     {
     public:
-        enum Type { VAO, BUFFER, TEXTURE };
+        enum Type { VAO, BUFFER, TEXTURE, FBO };
         using Ptr = std::shared_ptr<GLObject>;
         using Compatible = std::function<bool(GLObject*)>;
         virtual const std::string& label() const { return _label; }
@@ -362,6 +362,7 @@ namespace osgEarth
         void makeResident(bool toggle);
         bool isResident() const { return _isResident; }
         void release();
+        const Profile& profile() const { return _profile; }
         std::string& id() { return _id; }
         GLsizei size() const override { return _size; }
         bool valid() const override { return _name != ~0U; }
@@ -385,6 +386,38 @@ namespace osgEarth
         GLsizei _size;
         Profile _profile;
         void reset(GLenum, const std::string&, osg::State&);
+    };
+
+    /**
+     * GL Framebuffer object - for rendering to a texture.
+    */
+    class OSGEARTH_EXPORT GLFBO : public GLObject
+    {
+    public:
+        using Ptr = std::shared_ptr<GLFBO>;
+
+        using DrawFunction = std::function<void(osg::State&)>;
+
+        static Ptr create(
+            osg::State& state,
+            const std::string& label = "");
+
+        //! Render something to a texture using this FBO.
+        GLTexture::Ptr renderToTexture(
+            GLsizei width,
+            GLsizei height,
+            DrawFunction draw,
+            osg::State& state);
+
+    public: // GLObject
+
+        void release() override;
+        bool valid() const override;
+        GLsizei size() const override;
+
+    protected:
+        GLFBO(osg::State&, const std::string& label);
+        GLuint _name;
     };
 
     /**

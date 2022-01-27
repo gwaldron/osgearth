@@ -421,7 +421,8 @@ GLObjectPool::GLObjectPool(unsigned cxid) :
     osg::GraphicsObjectManager("osgEarth::GLObjectPool", cxid),
     _hits(0),
     _misses(0),
-    _totalBytes(0)
+    _totalBytes(0),
+    _avarice(0.5f)
 {
     //nop
 }
@@ -457,39 +458,20 @@ GLObjectPool::objects() const
 void
 GLObjectPool::flushDeletedGLObjects(double now, double& avail)
 {
-    //TODO: track timing and only flush periodically
     ScopedMutexLock lock(_mutex);
 
-#if 0
-    GLObject::Ptr objectToRelease;
-    GLsizeiptr bytes = 0;
-    const unsigned maxAge = 0; // none.
-    for (auto& object : _objects)
-    {
-        if (objectToRelease == nullptr &&
-            object.use_count() == 1)
-        {
-            objectToRelease = object;
-        }
-        else
-        {
-            bytes += object->size();
-        }
-    }
-    if (objectToRelease)
-    {
-        objectToRelease->release();
-        _objects.erase(objectToRelease);
-    }
-    _totalBytes = bytes;
-#else
     GLsizeiptr bytes = 0;
     std::unordered_set<GLObject::Ptr> keep;
+    unsigned maxNumToRelease =
+        std::max(1u, (unsigned)((float)_objects.size() * _avarice));
+    unsigned numReleased = 0u;
+
     for (auto& object : _objects)
     {
-        if (object.use_count() == 1)
+        if (object.use_count() == 1 && numReleased < maxNumToRelease)
         {
             object->release();
+            ++numReleased;
         }
         else
         {
@@ -499,7 +481,6 @@ GLObjectPool::flushDeletedGLObjects(double now, double& avail)
     }
     _objects.swap(keep);
     _totalBytes = bytes;
-#endif
 }
 
 void

@@ -118,7 +118,11 @@ namespace osgEarth
                         auto globjects = glpool->objects();
                         ImGui::Text("GPU Mem: %u MB  Recycling: %u%%",
                             glpool->totalBytes() / 1048576U,
-                            int(100 * float(glpool->recycleHits()) / float(glpool->recycleHits() + glpool->recycleMisses())));
+                            int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
+
+                        float avarice = glpool->getAvarice();
+                        if (ImGui::SliderFloat("Avarice", &avarice, 0.0f, 1.0f))
+                            glpool->setAvarice(avarice);
 
                         ImGui::Separator();
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Objects:");

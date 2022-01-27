@@ -47,6 +47,8 @@ layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 bool oe_custom_cull(in vec2);
 #endif
 
+#pragma import_defines(OE_IS_DEPTH_CAMERA)
+
 struct DrawElementsIndirectCommand
 {
     uint count;
@@ -120,7 +122,6 @@ void cull()
 
     // initialize by clearing the visibility for this variant:
     input_instances[i].visibility[variant] = 0.0;
-    //atomicAnd(input_instances[i].visibility_mask, ~(1<<variant));
 
     // bail if our chonk does not have this variant
     uint v = input_instances[i].first_variant_cmd_index + variant;
@@ -171,10 +172,8 @@ void cull()
     if (pixelSize < minPixelSize)
         fade = 1.0-(minPixelSize-pixelSize)/pixelSizePad;
 
+    // Pass! Set the visibility for this variant:
     input_instances[i].visibility[variant] = fade;
-
-    // Pass! Set the visibility bit for this variant:
-    //atomicOr(input_instances[i].visibility_mask, (1 << variant));
 
     // Bump all baseInstances following this one:
     const uint cmd_count = chonks[v].total_num_commands;
@@ -195,6 +194,8 @@ void compact()
     uint v = input_instances[i].first_variant_cmd_index + variant;
     uint offset = commands[v].cmd.baseInstance;
     uint index = atomicAdd(commands[v].cmd.instanceCount, 1);
+
+    // Lazy! Re-using the instance struct for render leaves..
     output_instances[offset+index] = input_instances[i];
     output_instances[offset+index].fade = fade;
 }
@@ -328,7 +329,7 @@ void main()
             auto colors = dynamic_cast<osg::Vec4Array*>(node.getColorArray());
             auto normals = dynamic_cast<osg::Vec3Array*>(node.getNormalArray());
             auto uvs = dynamic_cast<osg::Vec2Array*>(node.getTexCoordArray(0));
-            auto flexers = dynamic_cast<osg::FloatArray*>(node.getTexCoordArray(3));
+            auto flexers = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(3));
 
             auto& material = _materialStack.top();
 
@@ -902,7 +903,7 @@ ChonkDrawable::GCState::initialize(osg::State& state)
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, normal)},
         {4, GL_UNSIGNED_BYTE, GL_TRUE,  offsetof(Chonk::VertexGPU, color)},
         {2, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, uv)},
-        {1, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, flex)},
+        {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, flex)},
         {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, albedo)},
         {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, normalmap)}
     };

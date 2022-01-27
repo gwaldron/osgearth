@@ -38,6 +38,8 @@ using namespace osgEarth;
 
 void osgEarth::initialize()
 {
+    OE_INFO << "Hello, world." << std::endl;
+
     osgEarth::Registry::instance()->getCapabilities();
 
     if (::getenv("OSGEARTH_GL_DEBUG"))

@@ -78,11 +78,13 @@ namespace osgEarth
             osg::Vec3f normal;
             osg::Vec4ub color;
             osg::Vec2f uv;
-            float flex;
+            osg::Vec3f flex;
 
             // TODO: upgrade to material index
             GLint albedo;
             GLint normalmap;
+
+            VertexGPU() : albedo(-1), normalmap(-1) {}
         };
 
         //! Geometry variant for a given pixel size range

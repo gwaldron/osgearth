@@ -165,7 +165,7 @@ layout(location=0) in vec3 position;
 layout(location=1) in vec3 normal;
 layout(location=2) in vec4 color;
 layout(location=3) in vec2 uv;
-layout(location=4) in float flex;
+layout(location=4) in vec3 flex;
 layout(location=5) in int albedo; // todo: material LUT index
 layout(location=6) in int normalmap; // todo: material LUT index
 
@@ -215,13 +215,13 @@ layout(binding=0, std430) buffer Instances {
     Instance instances[];
 };
 
-layout(location=4) in float flex;
+layout(location=4) in vec3 flex;
 
 // outputs
 out vec3 vp_Normal;
+out vec3 oe_tangent;
 out vec3 oe_pos3_view;
 flat out uint64_t oe_normalmap_handle;
-flat out mat3 oe_TBN;
 
 // stage globals
 mat3 vec3xform; // set in model function
@@ -232,18 +232,26 @@ uniform mat4 OE_WIND_TEX_MATRIX ;
 uniform float osg_FrameTime;
 uniform sampler2D oe_veg_noise;
 
+uniform float wind_power = 1.0;
+
 #define remap(X, LO, HI) (LO + X * (HI - LO))
 
 void apply_wind(inout vec4 vertex, in vec2 local_uv)
 {
-    vec4 wind = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex));
-    vec3 wind_dir_view = normalize(wind.rgb * 2 - 1);
-    const float rate = 0.01;
-    vec4 noise_moving = textureLod(oe_veg_noise, local_uv + osg_FrameTime * rate, 0);
-    float speed_var = remap(noise_moving[3], -0.2, 1.4);
-    float speed = wind.a * speed_var;
-    vec3 bend_dir = vp_Normal + wind_dir_view * speed * flex;
-    vertex.xyz += bend_dir;
+    float flexibility = length(flex);
+    if (flexibility > 0.0) {
+        vec4 wind = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex));
+        vec3 wind_dir = normalize(wind.rgb * 2 - 1); // view space
+        const float rate = 0.01;
+        vec4 noise_moving = textureLod(oe_veg_noise, local_uv + osg_FrameTime * rate, 0);
+        float speed_var = remap(noise_moving[3], -0.2, 1.4);
+        float speed = wind.a * speed_var;
+        vec3 bend_vec = wind_dir * speed;
+        vec3 flex_dir = normalize(gl_NormalMatrix * vec3xform * flex);
+        float flex_planar = abs(dot(wind_dir, flex_dir));
+        flex_planar = 1.0 - (flex_planar*flex_planar);
+        vertex.xyz += bend_vec * flex_planar * flexibility * wind_power;
+    }
 }
 #endif
 
@@ -256,18 +264,14 @@ void vegetation_vs_view(inout vec4 vertex)
     if (oe_normalmap_handle > 0)
     {
         vec3 ZAXIS = gl_NormalMatrix * vec3(0,0,1);
-        vec3 T;
         if (dot(ZAXIS, vp_Normal) > 0.95)
-            T = gl_NormalMatrix * (vec3xform * vec3(1,0,0));
+            oe_tangent = gl_NormalMatrix * (vec3xform * vec3(1,0,0));
         else
-            T = cross(ZAXIS, vp_Normal);
-        vec3 B = cross(vp_Normal, T);
-        oe_TBN = mat3(normalize(T), normalize(B), vp_Normal);
+            oe_tangent = cross(ZAXIS, vp_Normal);
     }
 
 #ifdef OE_WIND_TEX
-    if (flex > 0.0)
-        apply_wind(vertex, instances[i].local_uv);
+    apply_wind(vertex, instances[i].local_uv);
 #endif
 }
 
@@ -283,7 +287,7 @@ in vec2 oe_tex_uv;
 in vec3 oe_pos3_view;
 in float oe_fade;
 in vec3 vp_Normal;
-flat in mat3 oe_TBN;
+in vec3 oe_tangent;
 flat in uint64_t oe_albedo_handle;
 flat in uint64_t oe_normalmap_handle;
 
@@ -308,17 +312,21 @@ void vegetation_fs(inout vec4 color)
 #else
         n.xyz = normalize(n.xyz*2.0-1.0);
 #endif
-        // reflect the TBN normal for back-facing polys:
-        if (gl_FrontFacing == false)
-        {
-            oe_TBN[2] = -oe_TBN[2];
-        }
-        vp_Normal = normalize(oe_TBN * n.xyz);
+
+        // construct the TBN and apply to normal,
+        // reflecting the normal on back-facing polys
+        mat3 tbn = mat3(
+            normalize(oe_tangent),
+            normalize(cross(vp_Normal, oe_tangent)),
+            gl_FrontFacing ? vp_Normal : -vp_Normal);
+        
+        vp_Normal = normalize(tbn * n.xyz);
     }
 
+    // cull fading for LOD transitions:
     color.a *= oe_fade;
 
-    vec3 pos = gl_FragCoord.xyz;
+    // alpha-down faces that are orthogonal to the view vector:
     vec3 face_normal = normalize(cross(dFdx(oe_pos3_view), dFdy(oe_pos3_view)));
     float d = clamp(1.2*abs(dot(face_normal, normalize(oe_pos3_view))),0.0,1.0);
     color.a *= d;
@@ -343,7 +351,6 @@ void vegetation_fs(inout vec4 color)
         float mml = max(0, 0.5 * log2(delta_max_sqr));
         color.a *= (1.0 + mml * 0.25);
     }
-
 #else
     // force alpha to 0 or 1 and threshold it.
     const float threshold = 0.15;
@@ -831,36 +838,36 @@ VegetationLayerNV::buildStateSets()
 
     if (AssetGroup::UNDERGROWTH < NUM_ASSET_GROUPS)
         configureGrass();
-}
 
-void
-VegetationLayerNV::configureTrees()
-{
-    auto& trees = options().group(AssetGroup::TREES);
-
-    trees._drawStateSet = new osg::StateSet();    
+    osg::StateSet* ss = getOrCreateStateSet();
 
     // Install the texture arena:
-    trees._drawStateSet->setAttribute(_textures, 1);
+    ss->setAttribute(_textures, 1);
 
-    VirtualProgram* vp = VirtualProgram::getOrCreate(trees._drawStateSet);
+    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
     vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
     vp->setFunction("vegetation_vs_model", vs_model, ShaderComp::LOCATION_VERTEX_MODEL);
     vp->setFunction("vegetation_vs_view", vs_view, ShaderComp::LOCATION_VERTEX_VIEW);
     vp->setFunction("vegetation_fs", fs, ShaderComp::LOCATION_FRAGMENT_COLORING);
 
     // bind the noise sampler.
-    trees._drawStateSet->setTextureAttribute(_noiseBinding.unit(), _noiseTex.get(), 1);
-    trees._drawStateSet->addUniform(new osg::Uniform("oe_veg_noise", _noiseBinding.unit()));
+    ss->setTextureAttribute(_noiseBinding.unit(), _noiseTex.get(), 1);
+    ss->addUniform(new osg::Uniform("oe_veg_noise", _noiseBinding.unit()));
 
-        // If multisampling is on, use alpha to coverage.
+    // If multisampling is on, use alpha to coverage.
     if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
     {
-        trees._drawStateSet->setDefine("OE_USE_ALPHA_TO_COVERAGE");
-        trees._drawStateSet->setMode(GL_MULTISAMPLE, 1);
-        trees._drawStateSet->setMode(GL_BLEND, 0);
-        trees._drawStateSet->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+        ss->setDefine("OE_USE_ALPHA_TO_COVERAGE");
+        ss->setMode(GL_MULTISAMPLE, 1);
+        ss->setMode(GL_BLEND, 0);
+        ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
     }
+}
+
+void
+VegetationLayerNV::configureTrees()
+{
+    auto& trees = options().group(AssetGroup::TREES);
 
     // functor for generating cross hatch geometry for trees:
     trees._createImposter = [](
@@ -886,6 +893,10 @@ VegetationLayerNV::configureTrees()
             geom[i]->setUseDisplayList(false);
 
             osg::StateSet* ss = geom[i]->getOrCreateStateSet();
+
+            const osg::Vec4f colors[1] = {
+                {1,1,1,1}
+            };
 
             if (i == 0)
             {
@@ -914,11 +925,12 @@ VegetationLayerNV::configureTrees()
                     {0,0},{1,0},{1,1},{0,1}
                 };
 
-
                 geom[i]->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
                 geom[i]->setVertexArray(new osg::Vec3Array(8, verts));
                 geom[i]->setNormalArray(new osg::Vec3Array(8, normals));
+                geom[i]->setColorArray(new osg::Vec4Array(1, colors), osg::Array::BIND_OVERALL);
                 geom[i]->setTexCoordArray(0, new osg::Vec2Array(8, uvs));
+                geom[i]->setTexCoordArray(3, new osg::Vec3Array(8)); // flexors
 
                 if (textures.size() > 0)
                     ss->setTextureAttribute(0, textures[0], 1); // side albedo
@@ -948,7 +960,9 @@ VegetationLayerNV::configureTrees()
                 geom[i]->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 6, &indices[0]));
                 geom[i]->setVertexArray(new osg::Vec3Array(4, verts));
                 geom[i]->setNormalArray(new osg::Vec3Array(4, normals));
+                geom[i]->setColorArray(new osg::Vec4Array(1, colors), osg::Array::BIND_OVERALL);
                 geom[i]->setTexCoordArray(0, new osg::Vec2Array(4, uvs));
+                geom[i]->setTexCoordArray(3, new osg::Vec3Array(4)); // flexors
 
                 if (textures.size() > 2)
                     ss->setTextureAttribute(0, textures[2], 1); // top albedo
@@ -969,26 +983,6 @@ void
 VegetationLayerNV::configureGrass()
 {
     auto& grass = options().group(AssetGroup::UNDERGROWTH);
-
-    grass._drawStateSet = new osg::StateSet();
-
-    // Install the texture arena:
-    grass._drawStateSet->setAttribute(_textures, 1);
-
-    VirtualProgram* vp = VirtualProgram::getOrCreate(grass._drawStateSet);
-    vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
-    vp->setFunction("vegetation_vs_model", vs_model, ShaderComp::LOCATION_VERTEX_MODEL);
-    vp->setFunction("vegetation_vs_view", vs_view, ShaderComp::LOCATION_VERTEX_VIEW);
-    vp->setFunction("vegetation_fs", fs, ShaderComp::LOCATION_FRAGMENT_COLORING);
-
-    // If multisampling is on, use alpha to coverage.
-    if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
-    {
-        grass._drawStateSet->setDefine("OE_USE_ALPHA_TO_COVERAGE");
-        grass._drawStateSet->setMode(GL_MULTISAMPLE, 1);
-        grass._drawStateSet->setMode(GL_BLEND, 0);
-        grass._drawStateSet->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
-    }
 
     // functor for generating billboard geometry for grass:
     grass._createImposter = [](
@@ -1017,17 +1011,11 @@ VegetationLayerNV::configureGrass()
         const float x0 = -0.5f;
         for (int z = 0; z < 4; ++z)
         {
-            verts->push_back({ x0+0.0f,      th, float(z)*th });
-            verts->push_back({ x0+th,      0.0f, float(z)*th });
-            verts->push_back({ x0+th + th, 0.0f, float(z)*th });
-            verts->push_back({ x0+1.0f,      th, float(z)*th });
+            verts->push_back({ x0+0.0f,    th, float(z)*th });
+            verts->push_back({ x0+th,    0.0f, float(z)*th });
+            verts->push_back({ x0+th+th, 0.0f, float(z)*th });
+            verts->push_back({ x0+1.0f,    th, float(z)*th });
         }
-
-        // generate smooth per-vextex normals.
-        // Run this BEFORE adding uv's... it does something to them, not sure what.
-        osgUtil::SmoothingVisitor smoother;
-        out_geom->accept(smoother);
-        osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>(out_geom->getNormalArray());
 
         osg::Vec2Array* uvs = new osg::Vec2Array(osg::Array::BIND_PER_VERTEX);
         uvs->reserve(vertsPerInstance);
@@ -1038,19 +1026,44 @@ VegetationLayerNV::configureGrass()
             uvs->push_back({ th,      float(z)*th });
             uvs->push_back({ th + th, float(z)*th });
             uvs->push_back({ 1.0f,    float(z)*th });
-        }        
-        
-        osg::FloatArray* flex = new osg::FloatArray(osg::Array::BIND_PER_VERTEX);
-        flex->reserve(vertsPerInstance);
+        }
+
+        const osg::Vec4f colors[1] = {
+            {1,1,1,1}
+        };
+        out_geom->setColorArray(new osg::Vec4Array(1, colors), osg::Array::BIND_OVERALL);
+
+        osg::Vec3f up(0, 0, 1);
+
+        osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 16);
+        out_geom->setNormalArray(normals);
+
+        osg::Vec3Array* flex = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 16);
         out_geom->setTexCoordArray(3, flex);
+
+        const osg::Vec3f face_vec(0, -1, 0);
         const float gravity = 0.025;
+
         for (int i = 0; i < 16; ++i)
         {
-            float heightRatio = (*uvs)[i].y();
-            float power = pow(3.0f*heightRatio + 0.8f, 2.0f);
-            float value = heightRatio * power;
-            flex->push_back(value);
-            (*verts)[i] += (*normals)[i] * value * gravity; // initial gravity bend :)
+            float bend_power = pow(3.0f*(*uvs)[i].y() + 0.8f, 2.0f);
+            osg::Vec3f bend_vec = face_vec * gravity * bend_power;
+            float bend_len = bend_vec.length();
+            if (bend_len > (*verts)[i].z())
+                bend_vec = (bend_vec/bend_len) * (*verts)[i].z();
+
+            (*verts)[i] += bend_vec; // initial gravity bend :)
+            if (i < 4) {
+                (*normals)[i] = up;
+                (*flex)[i].set(0, 0, 0); // no flex
+            }
+            else {
+                (*normals)[i] = up + ((*verts)[i] - (*verts)[i % 4]);
+                (*normals)[i].normalize();
+                (*flex)[i] = ((*verts)[i] - (*verts)[i - 4]);
+                (*flex)[i].normalize();
+                (*flex)[i] *= (*uvs)[i].y();
+            }
         }
 
         osg::StateSet* ss = out_geom->getOrCreateStateSet();
@@ -1102,16 +1115,32 @@ VegetationLayerNV::checkForNewAssets()
                 factory,
                 layer->getReadOptions());
 
-            // re-organize the data into a form we can use:
+            // re-organize the data into a form we can readily use.
             for (auto iter : biomes)
             {
                 const Biome* biome = iter.first;
                 auto& instances = iter.second;
+
                 for (int group = 0; group < NUM_ASSET_GROUPS; ++group)
                 {
+                    float total_weight = 0.0f;
+                    float smallest_weight = FLT_MAX;
+
                     for (auto& instance : instances[group])
                     {
-                        result[group][biome].push_back(instance);
+                        total_weight += instance._weight;
+                        smallest_weight = std::min(smallest_weight, instance._weight);
+                    }
+
+                    // calculate the weight multiplier
+                    float weight_scale = 1.0f / smallest_weight;
+                    total_weight *= weight_scale;
+
+                    for (auto& instance : instances[group])
+                    {
+                        unsigned num = std::max(1u, (unsigned)(instance._weight * weight_scale));
+                        for(unsigned i=0; i<num; ++i)
+                            result[group][biome].push_back(instance);
                     }
                 }
             }
@@ -1141,7 +1170,7 @@ ChonkDrawable*
 VegetationLayerNV::createDrawable(
     const TileKey& key,
     const AssetGroup::Type& group,
-    const osg::BoundingBox& bbox) const
+    const osg::BoundingBox& tile_bbox) const
 {
 #define N_SMOOTH   0
 #define N_RANDOM   1
@@ -1191,15 +1220,15 @@ VegetationLayerNV::createDrawable(
     ImageUtils::PixelReader readNoise(_noiseTex->getImage(0));
     readNoise.setSampleAsRepeatingTexture(true);
     
-    double tile_width = (bbox.xMax() - bbox.xMin());
-    double tile_height = (bbox.yMax() - bbox.yMin());
+    double tile_width = (tile_bbox.xMax() - tile_bbox.xMin());
+    double tile_height = (tile_bbox.yMax() - tile_bbox.yMin());
 
     constexpr int max_instances = 4096;
 
     using Index = RTree<double, double, 2>;
     Index index;
 
-    std::mt19937 gen(key.hash());
+    std::default_random_engine gen(key.hash());
     std::uniform_int_distribution<unsigned> rand_uint(0, assetInstances.size()-1);
     std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
 
@@ -1224,12 +1253,6 @@ VegetationLayerNV::createDrawable(
     const double s2inv = 1.0 / sqrt(2.0);
     osg::BoundingBox box;
 
-    //std::vector<ResidentModelAsset::Ptr> weightedAssets;
-    //for (auto& asset : groupAssets)
-    //{
-    //    if (asset->
-    //}
-
     for (int i = 0; i < max_instances; ++i)
     {
         auto& instance = assetInstances[rand_uint(gen)];
@@ -1246,11 +1269,14 @@ VegetationLayerNV::createDrawable(
         {
             scale.set(
                 asset->_assetDef->width().get(),
-                1.0f,
+                asset->_assetDef->width().get(),
                 asset->_assetDef->height().get());
+        }
 
-            box._min = osg::componentMultiply(box._min, scale);
-            box._max = osg::componentMultiply(box._max, scale);
+        if (asset->_assetDef->sizeVariation().isSet())
+        {
+            scale *= 1.0 + (asset->_assetDef->sizeVariation().get() *
+                (noise[N_RANDOM_2] * 2.0f - 1.0f));
         }
 
         // allow overlap for "billboard" models (i.e. grasses).
@@ -1275,8 +1301,27 @@ VegetationLayerNV::createDrawable(
         if (density < 0.01f)
             continue;
 
-        local[0] = bbox.xMin() + u * tile_width;
-        local[1] = bbox.yMin() + v * tile_height;
+        density *= instance._fill;
+
+        if (noise[N_SMOOTH] > density)
+            continue;
+        else
+            noise[N_SMOOTH] /= density;
+
+        if (isGrass)
+        {
+            float edge_scale = 1.0f;
+            const float edge_threshold = 0.5f;
+            if (noise[N_SMOOTH] > edge_threshold)
+                edge_scale = 1.0f - ((noise[N_SMOOTH] - edge_threshold) / (1.0f - edge_threshold));
+            scale *= edge_scale;
+        }
+
+        box._min = osg::componentMultiply(box._min, scale);
+        box._max = osg::componentMultiply(box._max, scale);
+
+        local[0] = tile_bbox.xMin() + u * tile_width;
+        local[1] = tile_bbox.yMin() + v * tile_height;
 
         bool pass = true;
 
@@ -1388,8 +1433,7 @@ VegetationLayerNV::cull(
         {
             cs._superDrawable = new ChonkDrawable();
             cs._superDrawable->setName("VegetationNV");
-            cs._superDrawable->setDrawStateSet(
-                options().group(AssetGroup::TREES)._drawStateSet.get());
+            cs._superDrawable->setDrawStateSet(getStateSet());
         }
 
         // assign the new set of tiles:

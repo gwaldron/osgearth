@@ -411,7 +411,7 @@ BiomeManager::materializeNewAssets(
                                     }
                                     else
                                     {
-                                        residentAsset->_sideBillboardNormalMap = defaultNormalMap;
+                                        //residentAsset->_sideBillboardNormalMap = defaultNormalMap;
                                     }
                                 }
                             }
@@ -462,7 +462,7 @@ BiomeManager::materializeNewAssets(
                                         }
                                         else
                                         {
-                                            residentAsset->_topBillboardNormalMap = defaultNormalMap;
+                                            //residentAsset->_topBillboardNormalMap = defaultNormalMap;
                                         }
                                     }
                                 }
@@ -526,10 +526,6 @@ BiomeManager::materializeNewAssets(
                             minp, maxp,
                             chonkFactory);
                     }
-
-                    OE_INFO << LC << "  Loaded asset " << assetDef->name().get()
-                        << ", radius = " << bbox.radius()
-                        << std::endl;
                 }
 
                 // If this data successfully materialized, add it to the
@@ -574,77 +570,6 @@ BiomeManager::getResidentBiomes(
 
     // Make a copy:
     ResidentBiomes result = _residentBiomes;
-
-#if 0
-    // Go through and chonkify things as necessary.
-    // Maybe later we can put this in materialize.
-
-    // TODO - all groups...
-    for (int group = 0; group < NUM_ASSET_GROUPS; ++group)
-    {
-        std::vector<ResidentModelAsset::Ptr>& objects = result[group];
-
-        using Key = std::pair<void*, void*>;
-        std::map<Key, Chonk::Ptr> cache;
-        std::unordered_map<Chonk::Ptr, unsigned> chonk_index;
-
-        // LUT of asset-to-chonk-index
-        CommandIndexMap asset_to_chonk_index;
-
-        ScopedMutexLock lock(_residentData_mutex);
-
-        for (auto iter : _residentBiomes)
-        {
-            const ResidentModelAssetInstances& instances = iter.second[group];
-            for (auto& instance : instances)
-            {
-                ResidentModelAsset::Ptr asset = instance._residentAsset;
-
-                // initialize the command
-                // (insert will fail silently if it already exists)
-                asset_to_chonk_index.insert(std::make_pair(asset, -1));
-
-                auto model = asset->_model.get();
-                auto billboard = asset->_billboard.get();
-                auto key = std::make_pair(model, billboard);
-
-                auto& chonk = cache[key];
-
-                if (asset->_chonk == nullptr)
-                {
-                    if (chonk)
-                    {
-                        asset->_chonk = chonk;
-                    }
-                    else
-                    {
-                        asset->_chonk = Chonk::create();
-
-                        if (model)
-                            asset->_chonk->add(model, 400, FLT_MAX, factory);
-
-                        if (billboard)
-                            asset->_chonk->add(billboard, 50, 400, factory);
-
-                        chonk = asset->_chonk; // save to cache
-                    }
-                }
-
-                auto iter = chonk_index.find(asset->_chonk);
-                if (iter != chonk_index.end())
-                {
-                    asset_to_chonk_index[asset] = iter->second;
-                }
-                else
-                {
-                    asset_to_chonk_index[asset] = objects.size();
-                    chonk_index[asset->_chonk] = objects.size();
-                    objects.push_back(asset);
-                }
-            }
-        }
-    }
-#endif
 
     return std::move(result);
 }
@@ -894,7 +819,7 @@ BiomeManager::updateResidency(
                                 }
                                 else
                                 {
-                                    residentAsset->_sideBillboardNormalMap = defaultNormalMap;
+                                    //residentAsset->_sideBillboardNormalMap = defaultNormalMap;
                                 }
                             }
                             else
@@ -938,7 +863,7 @@ BiomeManager::updateResidency(
                                     }
                                     else
                                     {
-                                        residentAsset->_topBillboardNormalMap = defaultNormalMap;
+                                        //residentAsset->_topBillboardNormalMap = defaultNormalMap;
                                     }
                                 }
                                 else

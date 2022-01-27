@@ -90,10 +90,6 @@ namespace osgEarth
 
             // coverage percentage
             float _fill;
-            
-            // These references prevent the TextureArena from making
-            // the textures non-resident.
-            //std::vector<Texture::Ptr> _textures;
         };
 
 #if 1

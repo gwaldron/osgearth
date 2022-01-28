@@ -1506,6 +1506,12 @@ VegetationLayerNV::cull(
         AssetGroup::Type group = getGroupAtLOD(key.getLOD());
         OE_HARD_ASSERT(group != AssetGroup::UNDEFINED);
 
+        if (CameraUtils::isShadowCamera(cv->getCurrentCamera()) &&
+            options().group(group).castShadows() == false)
+        {
+            continue;
+        }
+
         // create if necessary:
         if (tile._revision != batch_entry->getRevision())
         {

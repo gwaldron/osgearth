@@ -1146,13 +1146,30 @@ InstallCameraUniform::operator()(osg::Node* node, osg::NodeVisitor* nv)
     
     osg::ref_ptr<osg::StateSet> ss;
 
-    if (camera && camera->getViewport())
+    if (camera)
     {
+        float width = 1, height = 1;
+
+        if (camera->getViewport())
+        {
+            width = camera->getViewport()->width();
+            height = camera->getViewport()->height();
+        }
+        else
+        {
+            const osg::Matrixd& proj = camera->getProjectionMatrix();
+            if (proj(3, 3) == 1.0) // ortho
+            {
+                float L, R, B, T, N, F;
+                proj.getOrtho(L, R, B, T, N, F);
+                width = R - L;
+                height = T - B;
+            }
+        }
+    
         ss = new osg::StateSet();
-        ss->addUniform(new osg::Uniform("oe_Camera", osg::Vec3f(
-            camera->getViewport()->width(),
-            camera->getViewport()->height(),
-            camera->getLODScale())));
+        ss->addUniform(new osg::Uniform("oe_Camera",
+            osg::Vec3f(width, height, camera->getLODScale())));
         cv->pushStateSet(ss.get());
     }
 

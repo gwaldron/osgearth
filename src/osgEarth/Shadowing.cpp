@@ -151,6 +151,7 @@ ShadowCaster::reinitialize()
         rtt->setImplicitBufferAttachmentMask(0, 0);
         rtt->attach( osg::Camera::DEPTH_BUFFER, _shadowmap.get(), 0, i );
         rtt->addChild( _castingGroup.get() );
+        rtt->addCullCallback(new InstallCameraUniform());
         _rttCameras.push_back(rtt);
     }
 

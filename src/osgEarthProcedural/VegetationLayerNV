@@ -60,6 +60,7 @@ namespace osgEarth { namespace Procedural
                 OE_OPTION(Distance, spacing);
                 OE_OPTION(float, maxRange);
                 OE_OPTION(unsigned, lod);
+                OE_OPTION(unsigned, count);
                 OE_OPTION(bool, castShadows);
                 OE_OPTION(float, maxAlpha);
 
@@ -161,31 +162,32 @@ namespace osgEarth { namespace Procedural
 
         void buildStateSets();
         void reset();
+
+        // call from UPDATE peridoically to see if new biomes
+        // caused new assets to page in
         void checkForNewAssets();
 
-        struct GCState
-        {
-            // TODO: imposter generator objects
-        };
-        osg::buffered_object<GCState> _gs;
+        // Result of background drawable-creation jobs
+        using FutureDrawable = Future<osg::ref_ptr<ChonkDrawable>>;
 
+        // Share the creator jobs across multiple cameras
+        // (e.g. views or shadow cams)
+        using TileJobs = std::unordered_map<
+            TileKey,
+            FutureDrawable>;
+        mutable TileJobs _tileJobs;
+        mutable Mutex _tileJobs_mutex;
+
+        // One cached tile that's passed cull in a camera state
         struct Tile
         {
             int _revision;
-            Future<osg::ref_ptr<ChonkDrawable>> _newDrawable;
+            FutureDrawable _newDrawable;
             osg::ref_ptr<ChonkDrawable> _drawable;
             osg::Matrix _mvm;
 
             Tile() : _revision(-1) { }
         };
-
-
-        using TileJobs = std::unordered_map<
-            TileKey,
-            Future<osg::ref_ptr<ChonkDrawable>>>;
-
-        mutable TileJobs _tileJobs;
-        mutable Mutex _tileJobs_mutex;
 
         // Data unique to a specific camera traversal
         // (multiple views, shadow cams, etc)
@@ -194,26 +196,26 @@ namespace osgEarth { namespace Procedural
             using TileCache = std::unordered_map<TileKey, Tile>;
             TileCache _tiles;
             osg::ref_ptr<ChonkDrawable> _superDrawable;
-        };            
-        mutable std::unordered_map<const osg::Camera*, CameraState> _cameraState;
+        };
+        using CameraStates = std::unordered_map<const osg::Camera*, CameraState>;
+        mutable CameraStates _cameraState;
 
-        osg::ref_ptr<osg::Texture> _noiseTex; // noise for placement
         osg::ref_ptr<osg::Uniform> _sseU; // screen-space error uniform
         mutable osg::FrameStamp _lastVisit; // for timeouts
-        std::size_t _lastTileBatchSize; // stats use only
-        osg::ref_ptr<const Profile> _mapProfile;
+
+        // noise texture. I guess this could go in the arena..
+        osg::ref_ptr<osg::Texture> _noiseTex;
         TextureImageUnitReservation _noiseBinding;
 
         using AssetsByBiome = std::unordered_map<const Biome*, std::vector<ResidentModelAssetInstance>>;
         using Assets = std::vector<AssetsByBiome>;
-
-        std::atomic_int _biomeRevision;
-        Status _status;
         Future<Assets> _newAssets;
 
-        // mutex required b/c of async createDrawable
-        mutable Mutex _assets_mutex;
+        mutable Mutex _assets_mutex; // since createDrawable in async
         Assets _assets;
+
+        std::atomic_int _biomeRevision; // keep track of when to load to assets
+        Status _status;
 
         osg::ref_ptr<TextureArena> _textures;
 

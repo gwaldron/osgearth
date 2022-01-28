@@ -532,7 +532,7 @@ BiomeManager::materializeNewAssets(
 
                     if (residentAsset->_billboard.valid())
                     {
-                        float minp = 50.0f;
+                        float minp = 35.0f;
                         float maxp = residentAsset->_model.valid() ? 400.0f : FLT_MAX;
 
                         if (residentAsset->_chonk == nullptr)

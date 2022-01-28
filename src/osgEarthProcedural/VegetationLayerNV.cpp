@@ -404,6 +404,7 @@ VegetationLayerNV::Options::fromConfig(const Config& conf)
         groups()[AssetGroup::TREES].castShadows() = true;
         groups()[AssetGroup::TREES].maxRange() = 2500.0f;
         groups()[AssetGroup::TREES].lod() = 14;
+        groups()[AssetGroup::TREES].count() = 4096;
         groups()[AssetGroup::TREES].spacing() = Distance(15.0f, Units::METERS);
         groups()[AssetGroup::TREES].maxAlpha() = 0.15f;
     }
@@ -414,6 +415,7 @@ VegetationLayerNV::Options::fromConfig(const Config& conf)
         groups()[AssetGroup::UNDERGROWTH].castShadows() = false;
         groups()[AssetGroup::UNDERGROWTH].maxRange() = 75.0f;
         groups()[AssetGroup::UNDERGROWTH].lod() = 19;
+        groups()[AssetGroup::UNDERGROWTH].count() = 2048;
         groups()[AssetGroup::UNDERGROWTH].spacing() = Distance(1.0f, Units::METERS);
         groups()[AssetGroup::UNDERGROWTH].maxAlpha() = 0.75f;
     }
@@ -436,6 +438,7 @@ VegetationLayerNV::Options::fromConfig(const Config& conf)
             group_c.get("spacing", group.spacing());
             group_c.get("max_range", group.maxRange());
             group_c.get("lod", group.lod());
+            group_c.get("count", group.count());
             group_c.get("cast_shadows", group.castShadows());
             group_c.get("max_alpha", group.maxAlpha());
         }
@@ -724,8 +727,6 @@ VegetationLayerNV::addedToMap(const Map* map)
     }
 
     _map = map;
-
-    _mapProfile = map->getProfile();
 
     if (getBiomeLayer() == nullptr)
     {
@@ -1081,12 +1082,6 @@ VegetationLayerNV::configureGrass()
         grass._createImposter);
 }
 
-unsigned
-VegetationLayerNV::getNumTilesRendered() const
-{
-    return _lastTileBatchSize;
-}
-
 void
 VegetationLayerNV::checkForNewAssets()
 {
@@ -1158,13 +1153,16 @@ VegetationLayerNV::reset()
 {
     _lastVisit.setReferenceTime(DBL_MAX);
     _lastVisit.setFrameNumber(~0U);
-    _lastTileBatchSize = 0u;
-    _cameraState.clear();
 
     OE_SOFT_ASSERT_AND_RETURN(getBiomeLayer(), void());
 
     BiomeManager& biomeMan = getBiomeLayer()->getBiomeManager();
     _biomeRevision = biomeMan.getRevision();
+
+    ScopedMutexLock lock(_assets_mutex);
+    _assets.clear();
+
+    _cameraState.clear();
 }
 
 // random-texture channels
@@ -1203,13 +1201,9 @@ VegetationLayerNV::createDrawable(
     ProgressCallback* progress) const
 {
     //TODO:
-    // - port stuff from old CS shader:
     // - use a noise texture instead of RNG
-    // - use "asset fill" parameter
     // - use "asset size variation" parameter
-    // - biome selection
     // - lush variation
-    // - fill threshold
     // - think about using BLEND2D to rasterize a collision map!
     //   - would need to be in a background thread I'm sure
     // - caching
@@ -1273,7 +1267,7 @@ VegetationLayerNV::createDrawable(
     double tile_width = (tile_bbox.xMax() - tile_bbox.xMin());
     double tile_height = (tile_bbox.yMax() - tile_bbox.yMin());
 
-    constexpr int max_instances = 4096;
+    unsigned max_instances = options().group(group).count().get();
 
     using Index = RTree<double, double, 2>;
     Index index;
@@ -1336,8 +1330,8 @@ VegetationLayerNV::createDrawable(
         auto iter = groupAssets.find(biome);
         if (iter == groupAssets.end())
         {
-            biome = default_biome;
-            OE_WARN << "no assets found for biome, skipping" << std::endl;
+            OE_WARN << "no assets found for biome " << biome->id().get() << "...skipping" << std::endl;
+            //biome = default_biome;
             continue;
         }
 
@@ -1522,8 +1516,19 @@ VegetationLayerNV::cull(
             // createDrawable jobs globally.
             ScopedMutexLock lock(_tileJobs_mutex);
 
+            bool newJob = true;
             auto iter = _tileJobs.find(key);
-            if (iter == _tileJobs.end())
+            if (iter != _tileJobs.end())
+            {
+                // found an active one in the table already
+                if (!iter->second.isAbandoned())
+                {
+                    tile._newDrawable = iter->second;
+                    newJob = false;
+                }
+            }
+
+            if (newJob)
             {
                 tile._newDrawable = createDrawableAsync(
                     key,
@@ -1531,11 +1536,6 @@ VegetationLayerNV::cull(
                     batch_entry->getBBox());
 
                 _tileJobs.emplace(key, tile._newDrawable);
-            }
-            else
-            {
-                // found an active one in the table already
-                tile._newDrawable = iter->second;
             }
         }
 
@@ -1549,9 +1549,6 @@ VegetationLayerNV::cull(
             {
                 tile._revision = -1;
             }
-
-            ScopedMutexLock lock(_tileJobs_mutex);
-            _tileJobs.erase(key);
         }
 
         if (tile._drawable.valid())
@@ -1563,6 +1560,16 @@ VegetationLayerNV::cull(
         }
 
         active_tiles[key] = tile;
+
+        // clean up the jobs cache 
+        // TODO: improve?
+        ScopedMutexLock lock(_tileJobs_mutex);
+        for (auto it = _tileJobs.begin(); it != _tileJobs.end(); ) {
+            if (it->second.refs() == 1)
+                it = _tileJobs.erase(it);
+            else
+                ++it;
+        }
     }
 
     if (!tiles_to_draw.empty())

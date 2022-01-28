@@ -559,6 +559,7 @@ VegetationLayerNV::update(osg::NodeVisitor& nv)
         Assets newAssets = _newAssets.release();
         if (!newAssets.empty())
         {
+            ScopedMutexLock lock(_assets_mutex);
             _assets = std::move(newAssets);
         }
     }
@@ -1166,17 +1167,41 @@ VegetationLayerNV::reset()
     _biomeRevision = biomeMan.getRevision();
 }
 
-ChonkDrawable*
-VegetationLayerNV::createDrawable(
-    const TileKey& key,
-    const AssetGroup::Type& group,
-    const osg::BoundingBox& tile_bbox) const
-{
+// random-texture channels
 #define N_SMOOTH   0
 #define N_RANDOM   1
 #define N_RANDOM_2 2
 #define N_CLUMPY   3
 
+Future<osg::ref_ptr<ChonkDrawable>>
+VegetationLayerNV::createDrawableAsync(
+    const TileKey& key_,
+    const AssetGroup::Type& group_,
+    const osg::BoundingBox& tile_bbox_) const
+{
+    osg::ref_ptr<const VegetationLayerNV> layer = this;
+    TileKey key = key_;
+    AssetGroup::Type group = group_;
+    osg::BoundingBox tile_bbox = tile_bbox_;
+
+    auto function =
+        [layer, key, group, tile_bbox](Cancelable* c)
+        -> osg::ref_ptr<ChonkDrawable>
+    {
+        osg::ref_ptr<ProgressCallback> p = new ProgressCallback(c);
+        return layer->createDrawable(key, group, tile_bbox, p.get());
+    };
+
+    return Job().dispatch<osg::ref_ptr<ChonkDrawable>>(function);
+}
+
+osg::ref_ptr<ChonkDrawable>
+VegetationLayerNV::createDrawable(
+    const TileKey& key,
+    const AssetGroup::Type& group,
+    const osg::BoundingBox& tile_bbox,
+    ProgressCallback* progress) const
+{
     //TODO:
     // - port stuff from old CS shader:
     // - use a noise texture instead of RNG
@@ -1192,34 +1217,59 @@ VegetationLayerNV::createDrawable(
 
     OE_PROFILING_ZONE;
 
-    auto& groupAssets = _assets[group];
+    // Safely copy the instance list. The object is immutable
+    // once we get to this point, since all assets are materialized
+    // by the biome manager.
+    _assets_mutex.lock();
+    auto groupAssets = _assets[group];
+    _assets_mutex.unlock();
+
+    // if it's empty, bail out (and probably return later)
     if (groupAssets.empty())
+    {
+        OE_DEBUG << LC << "key=" << key.str() << "; asset list is empty for group " << group << std::endl;
         return nullptr;
+    }
 
-    // TEMP
-    auto& assetInstances = groupAssets.begin()->second;
-
-    auto d = new ChonkDrawable();
-
+    // Load a lifemap raster:
     GeoImage lifemap;
     osg::Matrix lifemap_sb;
     if (getLifeMapLayer())
     {
-        TileKey query_key = key.createAncestorKey(14u);
-        //TODO:
-        // This causes a frame stall. Options...
-        // - Bakground job?
-        // - only use if already in memory?
-        // - Wait until if completes to return a drawable? 
-        // - Return a placeholder drawable and regen later?
-        lifemap = getLifeMapLayer()->createImage(query_key);
-        key.getExtent().createScaleBias(query_key.getExtent(), lifemap_sb);
+        for (TileKey q_key = key;
+            q_key.valid() && !lifemap.valid();
+            q_key.makeParent())
+        {
+            lifemap = getLifeMapLayer()->createImage(q_key, progress);
+            if (lifemap.valid())
+                key.getExtent().createScaleBias(q_key.getExtent(), lifemap_sb);
+        }
     }
+
+    // Load a biome map raster:
+    GeoImage biomemap;
+    osg::Matrix biomemap_sb;
+    if (getBiomeLayer())
+    {
+        for (TileKey q_key = key;
+            q_key.valid() && !biomemap.valid();
+            q_key.makeParent())
+        {
+            biomemap = getBiomeLayer()->createImage(q_key, progress);
+            if (biomemap.valid())
+            {
+                key.getExtent().createScaleBias(q_key.getExtent(), biomemap_sb);
+                biomemap.getReader().setBilinear(false);
+            }
+        }
+    }
+
+    const Biome* default_biome = groupAssets.begin()->first;
 
     osg::Vec4f noise;
     ImageUtils::PixelReader readNoise(_noiseTex->getImage(0));
     readNoise.setSampleAsRepeatingTexture(true);
-    
+
     double tile_width = (tile_bbox.xMax() - tile_bbox.xMin());
     double tile_height = (tile_bbox.yMax() - tile_bbox.yMin());
 
@@ -1229,7 +1279,6 @@ VegetationLayerNV::createDrawable(
     Index index;
 
     std::default_random_engine gen(key.hash());
-    std::uniform_int_distribution<unsigned> rand_uint(0, assetInstances.size()-1);
     std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
 
     std::vector<osg::Vec3d> map_points;
@@ -1248,31 +1297,79 @@ VegetationLayerNV::createDrawable(
 
     osg::Matrixf xform;
     osg::Vec4f lifemap_value;
+    osg::Vec4f biomemap_value;
     double local[2];
     std::vector<double> hits;
     const double s2inv = 1.0 / sqrt(2.0);
     osg::BoundingBox box;
 
+
+    auto catalog = getBiomeLayer()->getBiomeCatalog();
+
+    // Generate random instances within the tile:
     for (int i = 0; i < max_instances; ++i)
     {
+        // random tile-normalized position:
+        float u = rand_float(gen);
+        float v = rand_float(gen);
+
+        // resolve the biome at this position:
+        const Biome* biome = nullptr;
+        if (biomemap.valid())
+        {
+            float uu = u * biomemap_sb(0, 0) + biomemap_sb(3, 0);
+            float vv = v * biomemap_sb(1, 1) + biomemap_sb(3, 1);
+            biomemap.getReader()(biomemap_value, uu, vv);
+            int index = (int)biomemap_value.r();
+            biome = catalog->getBiomeByIndex(index);
+            if (!biome)
+                continue;
+        }
+
+        if (biome == nullptr)
+        {
+            // not sure this is even possible
+            biome = default_biome;
+        }
+
+        // fetch the collection of assets belonging to the selected biome:
+        auto iter = groupAssets.find(biome);
+        if (iter == groupAssets.end())
+        {
+            biome = default_biome;
+            OE_WARN << "no assets found for biome, skipping" << std::endl;
+            continue;
+        }
+
+        // randomly select an asset from the biome.
+        // TODO: consider life map values here, like lushness and ruggedness?
+        auto& assetInstances = iter->second;
+        std::uniform_int_distribution<unsigned> rand_uint(0, assetInstances.size() - 1);
         auto& instance = assetInstances[rand_uint(gen)];
+
         auto& asset = instance._residentAsset;
 
+        // if there's no geometry... bye
         if (asset->_chonk == nullptr)
             continue;
 
         osg::Vec3f scale(1, 1, 1);
+
         box = asset->_chonk->getBound();
-        
+
+        // hack. assume an explicit width/height means this is a grass billboard..
+        // TODO: find another way.
         bool isGrass = asset->_assetDef->width().isSet();
         if (isGrass)
         {
+            // Grass imposter geometrh is 1x1, so scale it:
             scale.set(
                 asset->_assetDef->width().get(),
                 asset->_assetDef->width().get(),
                 asset->_assetDef->height().get());
         }
 
+        // Apply a size variation with some randomness
         if (asset->_assetDef->sizeVariation().isSet())
         {
             scale *= 1.0 + (asset->_assetDef->sizeVariation().get() *
@@ -1280,14 +1377,12 @@ VegetationLayerNV::createDrawable(
         }
 
         // allow overlap for "billboard" models (i.e. grasses).
-        bool allow_overlap = (!asset->_assetDef->modelURI().isSet());
+        bool allow_overlap = isGrass;
 
-        float u = rand_float(gen);
-        float v = rand_float(gen);
-
-        // sample the noise texture at this u,v:
+        // sample the noise texture at this (u,v)
         readNoise(noise, u, v);
 
+        // read the life map at this point:
         float density = 1.0f;
         float lush = 1.0f;
         if (lifemap.valid())
@@ -1301,13 +1396,17 @@ VegetationLayerNV::createDrawable(
         if (density < 0.01f)
             continue;
 
+        // apply instance-specific density adjustment:
         density *= instance._fill;
 
+        // use randomness to apply a density threshold:
         if (noise[N_SMOOTH] > density)
             continue;
         else
             noise[N_SMOOTH] /= density;
 
+        // For grasses, shrink the instance as the density decreases.
+        // TODO: should we?
         if (isGrass)
         {
             float edge_scale = 1.0f;
@@ -1320,6 +1419,7 @@ VegetationLayerNV::createDrawable(
         box._min = osg::componentMultiply(box._min, scale);
         box._max = osg::componentMultiply(box._max, scale);
 
+        // tile-local coordinates of the position:
         local[0] = tile_bbox.xMin() + u * tile_width;
         local[1] = tile_bbox.yMin() + v * tile_height;
 
@@ -1327,11 +1427,16 @@ VegetationLayerNV::createDrawable(
 
         if (!allow_overlap)
         {
+            // To prevent overlap, write positions and radii
+            // to an r-tree. 
+            // TODO: consider using a Blend2d raster to update the 
+            // density/lifemap raster as we place objects..?
             pass = false;
 
             float radius = 0.5f*(box.xMax() - box.xMin());
 
-            // adjust collision radius based on density:
+            // adjust collision radius based on density.
+            // i.e., denser areas allow vegetation to be closer.
             float search_radius = mix(radius*3.0f, radius*0.25f, density);
 
             if (index.KNNSearch(local, &hits, nullptr, 1, search_radius) == 0)
@@ -1346,6 +1451,7 @@ VegetationLayerNV::createDrawable(
 
         if (pass)
         {
+            // good to go, generate a random rotation and record the position.
             float rotation = rand_float(gen) * 3.1415927 * 2.0;
 
             assets.emplace_back(asset);
@@ -1356,7 +1462,7 @@ VegetationLayerNV::createDrawable(
         }
     }
 
-    // clamp them to the terrain
+    // clamp everything to the terrain
     _map->getElevationPool()->sampleMapCoords(
         map_points,
         Distance(),
@@ -1365,16 +1471,19 @@ VegetationLayerNV::createDrawable(
 
     const osg::Vec3f ZAXIS(0, 0, 1);
 
+    // finally, assemble the drawable.
+    osg::ref_ptr<ChonkDrawable> result = new ChonkDrawable();
+
     for (unsigned i = 0; i < map_points.size(); ++i)
     {
         xform.makeTranslate(local_points[i].x(), local_points[i].y(), map_points[i].z());
         xform.preMultRotate(osg::Quat(local_points[i].z(), ZAXIS));
         xform.preMultScale(scales[i]);
 
-        d->add(assets[i]->_chonk, xform, uvs[i]);
+        result->add(assets[i]->_chonk, xform, uvs[i]);
     }
 
-    return d;
+    return result;
 }
 
 void
@@ -1392,8 +1501,8 @@ VegetationLayerNV::cull(
 
     CameraState& cs = _cameraState[cv->getCurrentCamera()];
 
-    CameraState::TileCache new_tiles;
-    ChonkDrawable::Vector tile_drawables;
+    CameraState::TileCache active_tiles;
+    ChonkDrawable::Vector tiles_to_draw;
 
     for (auto& batch_entry : batch.tiles())
     {
@@ -1404,15 +1513,45 @@ VegetationLayerNV::cull(
         OE_HARD_ASSERT(group != AssetGroup::UNDEFINED);
 
         // create if necessary:
-        if (tile._drawable.valid() == false ||
-            tile._revision != batch_entry->getRevision())
+        if (tile._revision != batch_entry->getRevision())
         {
-            tile._drawable = createDrawable(
-                key,
-                group,
-                batch_entry->getBBox());
-
             tile._revision = batch_entry->getRevision();
+
+            // We don't want more than one camera creating the
+            // same drawable, so this tileJobs table tracks 
+            // createDrawable jobs globally.
+            ScopedMutexLock lock(_tileJobs_mutex);
+
+            auto iter = _tileJobs.find(key);
+            if (iter == _tileJobs.end())
+            {
+                tile._newDrawable = createDrawableAsync(
+                    key,
+                    group,
+                    batch_entry->getBBox());
+
+                _tileJobs.emplace(key, tile._newDrawable);
+            }
+            else
+            {
+                // found an active one in the table already
+                tile._newDrawable = iter->second;
+            }
+        }
+
+        else if (tile._newDrawable.isAvailable())
+        {
+            tile._drawable = tile._newDrawable.release();
+
+            // If the job failed for some reason (by returning nullptr)
+            // trigger a reschedule by "dirtying" the revision number.
+            if (tile._drawable == nullptr)
+            {
+                tile._revision = -1;
+            }
+
+            ScopedMutexLock lock(_tileJobs_mutex);
+            _tileJobs.erase(key);
         }
 
         if (tile._drawable.valid())
@@ -1420,13 +1559,13 @@ VegetationLayerNV::cull(
             // update the MVM for this frame:
             tile._drawable->setModelViewMatrix(batch_entry->getModelViewMatrix());
 
-            new_tiles[key] = tile;
-
-            tile_drawables.push_back(tile._drawable.get());
+            tiles_to_draw.push_back(tile._drawable.get());
         }
+
+        active_tiles[key] = tile;
     }
 
-    if (!tile_drawables.empty())
+    if (!tiles_to_draw.empty())
     {
         // intiailize the super-drawable:
         if (cs._superDrawable == nullptr)
@@ -1437,14 +1576,14 @@ VegetationLayerNV::cull(
         }
 
         // assign the new set of tiles:
-        cs._superDrawable->setChildren(tile_drawables);
+        cs._superDrawable->setChildren(tiles_to_draw);
 
         // finally, traverse it so OSG will draw it.
         cs._superDrawable->accept(nv);
     }
 
     // Purge old tiles.
-    cs._tiles.swap(new_tiles);
+    cs._tiles.swap(active_tiles);
 }
 
 void

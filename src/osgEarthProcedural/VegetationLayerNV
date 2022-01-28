@@ -172,11 +172,20 @@ namespace osgEarth { namespace Procedural
         struct Tile
         {
             int _revision;
+            Future<osg::ref_ptr<ChonkDrawable>> _newDrawable;
             osg::ref_ptr<ChonkDrawable> _drawable;
             osg::Matrix _mvm;
 
             Tile() : _revision(-1) { }
         };
+
+
+        using TileJobs = std::unordered_map<
+            TileKey,
+            Future<osg::ref_ptr<ChonkDrawable>>>;
+
+        mutable TileJobs _tileJobs;
+        mutable Mutex _tileJobs_mutex;
 
         // Data unique to a specific camera traversal
         // (multiple views, shadow cams, etc)
@@ -201,16 +210,27 @@ namespace osgEarth { namespace Procedural
         std::atomic_int _biomeRevision;
         Status _status;
         Future<Assets> _newAssets;
+
+        // mutex required b/c of async createDrawable
+        mutable Mutex _assets_mutex;
         Assets _assets;
+
         osg::ref_ptr<TextureArena> _textures;
 
         void configureTrees();
         void configureGrass();
 
-        ChonkDrawable* createDrawable(
+        Future<osg::ref_ptr<ChonkDrawable>> createDrawableAsync(
             const TileKey&,
             const AssetGroup::Type&,
             const osg::BoundingBox& bbox) const;
+
+        osg::ref_ptr<ChonkDrawable> createDrawable(
+            const TileKey&,
+            const AssetGroup::Type&,
+            const osg::BoundingBox& bbox,
+            ProgressCallback* c) const;
+
     };
 
 } } // namespace osgEarth::Procedural

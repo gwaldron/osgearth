@@ -120,8 +120,8 @@ namespace osgEarth
                             glpool->totalBytes() / 1048576U,
                             int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
 
-                        float avarice = glpool->getAvarice();
-                        if (ImGui::SliderFloat("Avarice", &avarice, 0.0f, 1.0f))
+                        int avarice = glpool->getAvarice();
+                        if (ImGui::SliderInt("Avarice", &avarice, 1, 100))
                             glpool->setAvarice(avarice);
 
                         ImGui::Separator();

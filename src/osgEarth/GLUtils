@@ -436,8 +436,8 @@ namespace osgEarth
         void watch(GLObject::Ptr);
         void releaseAll();
         GLsizeiptr totalBytes() const;
-        void setAvarice(float value) { _avarice = value; _hits = 0; _misses = 0; }
-        float getAvarice() const { return _avarice; }
+        void setAvarice(unsigned value) { _avarice = value; _hits = 0; _misses = 0; }
+        unsigned getAvarice() const { return _avarice; }
         unsigned recycleHits() const { return _hits; }
         unsigned recycleMisses() const { return _misses; }
         Collection objects() const;
@@ -470,7 +470,7 @@ namespace osgEarth
         GLsizeiptr _totalBytes;
         unsigned _hits;
         unsigned _misses;
-        float _avarice;
+        unsigned _avarice;
     };
 
     /**

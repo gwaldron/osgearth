@@ -44,7 +44,7 @@ const char* vs = R"(
     #version 430
     #extension GL_ARB_gpu_shader_int64 : enable
 
-    layout(binding=5, std430) buffer TextureArena {
+    layout(binding=1, std430) buffer TextureArena {
         uint64_t tex_arena[];
     };
 
@@ -147,16 +147,19 @@ const char* vs_NV = R"(
     #version 460
     #extension GL_ARB_gpu_shader_int64 : enable
 
-    layout(binding=5, std430) buffer TextureArena {
-        uint64_t textures[];
-    };
-    struct Instance {
+    struct Instance
+    {
         mat4 xform;
-        int cmd_index;
-        float _padding[3];
+        vec2 local_uv;
+        float fade;
+        float visibility[4];
+        uint first_variant_cmd_index;
     };
     layout(binding=0, std430) buffer Instances {
         Instance instances[];
+    };
+    layout(binding=1, std430) buffer TextureArena {
+        uint64_t textures[];
     };
 
     layout(location=0) in vec3 position;
@@ -165,6 +168,7 @@ const char* vs_NV = R"(
     layout(location=3) in vec2 uv;
     layout(location=4) in vec3 flex;
     layout(location=5) in int albedo; // todo: material LUT index
+    layout(location=6) in int normalmap; // todo: material LUT index
 
     out vec3 vp_Normal;
     out vec4 vp_Color;
@@ -183,7 +187,7 @@ const char* vs_NV = R"(
 )";
 
 const char* fs_NV = R"(
-    #version 430
+    #version 460
     #extension GL_ARB_gpu_shader_int64 : enable
     #pragma import_defines(OE_USE_ALPHA_DISCARD)
 
@@ -221,6 +225,9 @@ int main_NV(int argc, char** argv)
         viewer.setRealizeOperation(op);
     }
 
+    GLUtils::enableGLDebugging();
+    VirtualProgram::enableGLDebugging();
+
     int size = 1;
     arguments.read("--size", size);
 
@@ -230,14 +237,9 @@ int main_NV(int argc, char** argv)
 
     osg::StateSet* root_ss = root->getOrCreateStateSet();
 
-    // Simple shader that will render geometry with bindless textures
-    VirtualProgram* vp = VirtualProgram::getOrCreate(root->getOrCreateStateSet());
-    vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
-    vp->setFunction("vs", vs_NV, ShaderComp::LOCATION_VERTEX_MODEL);
-    vp->setFunction("fs", fs_NV, ShaderComp::LOCATION_FRAGMENT_COLORING);
-
     osg::ref_ptr<TextureArena> arena = new TextureArena();
-    root_ss->setAttribute(arena.get(), 1);
+    arena->setBindingPoint(1);
+    root_ss->setAttribute(arena);
 
 
     if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
@@ -290,6 +292,20 @@ int main_NV(int argc, char** argv)
         }
     }
 
+    // Simple shader that will render geometry with bindless textures
+    // This is annoying. Why does it have to be set on the drawable only?
+    //osg::StateSet* dss = new osg::StateSet();
+    //VirtualProgram* vp = VirtualProgram::getOrCreate(dss);
+    //vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
+    //vp->setFunction("vs", vs_NV, ShaderComp::LOCATION_VERTEX_MODEL);
+    //vp->setFunction("fs", fs_NV, ShaderComp::LOCATION_FRAGMENT_COLORING);
+    //drawable->setDrawStateSet(dss);
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate(root_ss);
+    vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
+    vp->setFunction("vs", vs_NV, ShaderComp::LOCATION_VERTEX_MODEL);
+    vp->setFunction("fs", fs_NV, ShaderComp::LOCATION_FRAGMENT_COLORING);
+
     root->addChild(drawable);
     viewer.setSceneData(root);
 
@@ -322,6 +338,7 @@ main(int argc, char** argv)
     // new bindlessNV
     return main_NV(argc, argv);
 
+#if 0
     osgEarth::initialize();
     osg::ArgumentParser arguments(&argc, argv);
 
@@ -337,6 +354,7 @@ main(int argc, char** argv)
     vp->setFunction("fs", fs, ShaderComp::LOCATION_FRAGMENT_COLORING);
 
     osg::ref_ptr<TextureArena> arena = new TextureArena();
+    arena->setBindingPoint(1);
     root_ss->setAttribute(arena.get(), 1);
 
     osg::ref_ptr<GeometryCloud> cloud = new GeometryCloud(arena.get());
@@ -388,4 +406,5 @@ main(int argc, char** argv)
         << std::endl;
 
     return viewer.run();
+#endif
 }

@@ -267,6 +267,16 @@ namespace osgEarth
         void cull_batches(osg::State& state) const;
         void draw_batches(osg::State& state) const;
 
+
+    public:
+        // support intersectors and stats visitors
+        bool supports(const osg::PrimitiveFunctor& f) const override { return true; }
+        virtual void accept(osg::PrimitiveFunctor&) const override;
+    private:
+        mutable bool _proxy_dirty;
+        mutable std::vector<osg::Vec3f> _proxy_verts;
+        mutable std::vector<GLuint> _proxy_indices;
+        void refreshProxy() const;
     };
 }
 

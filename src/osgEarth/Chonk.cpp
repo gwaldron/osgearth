@@ -97,17 +97,17 @@ layout(binding=0) buffer OutputBuffer
     Instance output_instances[];
 };
 
-layout(binding=1) buffer Commands
+layout(binding=29) buffer Commands
 {
     DrawElementsIndirectBindlessCommandNV commands[];
 };
 
-layout(binding=2) buffer ChonkVariants
+layout(binding=30) buffer ChonkVariants
 {
     ChonkVariant chonks[];
 };
 
-layout(binding=3) buffer InputBuffer
+layout(binding=31) buffer InputBuffer
 {
     Instance input_instances[];
 };
@@ -477,7 +477,7 @@ Chonk::add(
 
     _box.init();
 
-    OE_INFO << LC << "Added variant with " << (_ebo_store.size() - offset) / 3 << " triangles" << std::endl;
+    OE_DEBUG << LC << "Added variant with " << (_ebo_store.size() - offset) / 3 << " triangles" << std::endl;
 
     return true;
 }
@@ -596,7 +596,8 @@ namespace
 }
 
 ChonkDrawable::ChonkDrawable() :
-    osg::Drawable()
+    osg::Drawable(),
+    _proxy_dirty(true)
 {
     setName(typeid(*this).name());
     setCustomCullingShader(nullptr);
@@ -708,12 +709,21 @@ ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
     }
     else if (!_batches.empty())
     {
+        // save the pcp b/c osg will not re-apply it 
+        // when we can state.apply(). boo
+        auto pcp = state.getLastAppliedProgramObject();
+
         // activate the culling compute shader and cull
         state.apply(_cullSS.get());
         cull_batches(state);
 
         // apply the stateset with our rendering shader:
-        state.apply(_drawSS.get());
+        if (_drawSS.valid())
+            state.apply(_drawSS.get());
+        else if (pcp)
+            pcp->useProgram();
+        else
+            state.apply();
 
         // render
         gs._vao->bind();
@@ -734,6 +744,8 @@ ChonkDrawable::cull_children(osg::State& state) const
     OE_PROFILING_ZONE;
     OE_GL_ZONE_NAMED("GPU Cull");
 
+    auto pcp = state.getLastAppliedProgramObject();
+
     // activate the culling compute shader and cull all subs
     state.apply(_cullSS.get());
 
@@ -741,6 +753,9 @@ ChonkDrawable::cull_children(osg::State& state) const
     {
         child->cull_batches(state);
     }
+
+    if (!_drawSS.valid() && pcp)
+        pcp->useProgram();
 }
 
 void
@@ -750,7 +765,8 @@ ChonkDrawable::draw_children(GCState& gs, osg::State& state) const
     OE_GL_ZONE_NAMED("Draw");
 
     // apply the stateset with our rendering shader:
-    state.apply(_drawSS.get());
+    if (_drawSS.valid())
+        state.apply(_drawSS.get());
 
     // activate the VAO and draw all subs.
     gs._vao->bind();
@@ -852,6 +868,51 @@ ChonkDrawable::releaseGLObjects(osg::State* state) const
         _gs.setAllElementsTo(GCState());
 }
 
+void
+ChonkDrawable::refreshProxy() const
+{
+    if (_proxy_dirty)
+    {
+        ScopedMutexLock lock(_m);
+
+        _proxy_verts.clear();
+        _proxy_indices.clear();
+
+        unsigned offset = 0;
+        for (auto& batch : _batches)
+        {
+            Chonk::Ptr c = batch.first;
+            for (auto& instance : batch.second)
+            {
+                for (auto& vert : c->_vbo_store)
+                {
+                    _proxy_verts.push_back(vert.position * instance.xform);
+                }
+                for (auto& index : c->_ebo_store)
+                {
+                    _proxy_indices.push_back(index + offset);
+                }
+            }
+            offset += c->_vbo_store.size();
+        }
+
+        _proxy_dirty = false;
+    }
+}
+
+void
+ChonkDrawable::accept(osg::PrimitiveFunctor& f) const
+{
+    for (auto& child : _children)
+        child->accept(f);
+
+    if (!_batches.empty())
+    {
+        refreshProxy();
+        f.setVertexArray(_proxy_verts.size(), _proxy_verts.data());
+        f.drawElements(GL_TRIANGLES, _proxy_indices.size(), _proxy_indices.data());
+    }
+}
 
 
 void
@@ -1050,9 +1111,9 @@ ChonkDrawable::GCState::cull(osg::State& state)
     _commandBuf->uploadData(_commands);
 
     _instanceOutputBuf->bindBufferBase(0);
-    _commandBuf->bindBufferBase(1);
-    _chonkBuf->bindBufferBase(2);
-    _instanceInputBuf->bindBufferBase(3);
+    _commandBuf->bindBufferBase(29);
+    _chonkBuf->bindBufferBase(30);
+    _instanceInputBuf->bindBufferBase(31);
 
     // cull:
     ext->glUniform1i(_passUL, 0);

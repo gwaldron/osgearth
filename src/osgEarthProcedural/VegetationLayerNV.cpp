@@ -1586,7 +1586,7 @@ VegetationLayerNV::cull(
         cs._superDrawable->setChildren(tiles_to_draw);
 
         // finally, traverse it so OSG will draw it.
-        cs._superDrawable->accept(nv);
+        cs._superDrawable->osg::Drawable::accept(nv);
     }
 
     // Purge old tiles.

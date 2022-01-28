@@ -339,12 +339,21 @@ namespace osgEarth { namespace Threading
         //! Release reference to a promise, resetting this future to its default state
         void abandon() {
             _shared.reset(new Container());
-            _ev->reset();
+            _ev.reset(new Event());
+            //_ev->reset();
         }
 
         //! synonym for abandon.
         void reset() {
             abandon();
+        }
+
+        //! The number of objects, including this one, that
+        //! refernece the shared container. if this method
+        //! returns 1, that means this is the only object with
+        //! access to the data. This method will never return zero.
+        unsigned refs() const {
+            return _shared.use_count();
         }
 
     private:

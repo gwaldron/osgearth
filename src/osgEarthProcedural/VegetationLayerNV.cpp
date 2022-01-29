@@ -313,12 +313,11 @@ void vegetation_fs(inout vec4 color)
         n.xyz = normalize(n.xyz*2.0-1.0);
 #endif
 
-        // construct the TBN and apply to normal,
-        // reflecting the normal on back-facing polys
+        // construct the TBN, reflecting the normal on back-facing polys
         mat3 tbn = mat3(
             normalize(oe_tangent),
             normalize(cross(vp_Normal, oe_tangent)),
-            gl_FrontFacing ? vp_Normal : -vp_Normal);
+            normalize(gl_FrontFacing ? vp_Normal : -vp_Normal));
         
         vp_Normal = normalize(tbn * n.xyz);
     }
@@ -1297,7 +1296,6 @@ VegetationLayerNV::createDrawable(
     const double s2inv = 1.0 / sqrt(2.0);
     osg::BoundingBox box;
 
-
     auto catalog = getBiomeLayer()->getBiomeCatalog();
 
     // Generate random instances within the tile:
@@ -1335,11 +1333,42 @@ VegetationLayerNV::createDrawable(
             continue;
         }
 
+        // sample the noise texture at this (u,v)
+        readNoise(noise, u, v);
+
+        // read the life map at this point:
+        float density = 1.0f;
+        float lush = 1.0f;
+        if (lifemap.valid())
+        {
+            float uu = u * lifemap_sb(0, 0) + lifemap_sb(3, 0);
+            float vv = v * lifemap_sb(1, 1) + lifemap_sb(3, 1);
+            lifemap.getReader()(lifemap_value, uu, vv);
+            density = lifemap_value[LIFEMAP_DENSE];
+            lush = lifemap_value[LIFEMAP_LUSH];
+        }
+        if (density < 0.01f)
+            continue;
+
+        auto& assetInstances = iter->second;
+
+        // allows lush-based selection to smoothly transition
+
+        // RNG with normal distribution between approx +1/-1
+        std::normal_distribution<float> normal_dist(lush, 1.0f / 6.0f);
+        lush = clamp(normal_dist(gen), 0.0f, 1.0f);
+        //float lush_var = 0.125f * normal_dist(gen);
+        //float lush_var = (0.25*noise[N_CLUMPY]) - 0.125;
+        //lush = clamp(lush + lush_var, 0.0f, 1.0f);
+        int assetIndex = clamp(
+            (int)(lush*(float)assetInstances.size()),
+            0, 
+            (int)assetInstances.size() - 1);
+
         // randomly select an asset from the biome.
         // TODO: consider life map values here, like lushness and ruggedness?
-        auto& assetInstances = iter->second;
-        std::uniform_int_distribution<unsigned> rand_uint(0, assetInstances.size() - 1);
-        auto& instance = assetInstances[rand_uint(gen)];
+        //std::uniform_int_distribution<unsigned> rand_uint(0, assetInstances.size() - 1);
+        auto& instance = assetInstances[assetIndex]; // rand_uint(gen)];
 
         auto& asset = instance._residentAsset;
 
@@ -1372,23 +1401,6 @@ VegetationLayerNV::createDrawable(
 
         // allow overlap for "billboard" models (i.e. grasses).
         bool allow_overlap = isGrass;
-
-        // sample the noise texture at this (u,v)
-        readNoise(noise, u, v);
-
-        // read the life map at this point:
-        float density = 1.0f;
-        float lush = 1.0f;
-        if (lifemap.valid())
-        {
-            float uu = u * lifemap_sb(0, 0) + lifemap_sb(3, 0);
-            float vv = v * lifemap_sb(1, 1) + lifemap_sb(3, 1);
-            lifemap.getReader()(lifemap_value, uu, vv);
-            density = lifemap_value[LIFEMAP_DENSE];
-            lush = lifemap_value[LIFEMAP_LUSH];
-        }
-        if (density < 0.01f)
-            continue;
 
         // apply instance-specific density adjustment:
         density *= instance._fill;

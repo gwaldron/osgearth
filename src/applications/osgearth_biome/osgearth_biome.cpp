@@ -34,7 +34,7 @@
 #include <osgEarthProcedural/BiomeLayer>
 #include <osgEarthProcedural/BiomeManager>
 #include <osgEarthProcedural/LifeMapLayer>
-#include <osgEarthProcedural/VegetationLayer>
+#include <osgEarthProcedural/VegetationLayerNV>
 
 #include <osgViewer/Viewer>
 #include <osgDB/ReadFile>
@@ -308,7 +308,7 @@ struct VegetationGUI : public GUI::BaseGUI
     Clock::time_point _lastVisit;
     osg::ref_ptr<osg::Uniform> _sseUni;
     osg::observer_ptr<BiomeLayer> _biolayer;
-    osg::observer_ptr<VegetationLayer> _veglayer;
+    osg::observer_ptr<VegetationLayerNV> _veglayer;
     float _maxMaxRanges[NUM_ASSET_GROUPS];
 
     VegetationGUI(App& app) : GUI::BaseGUI("Vegetation"),
@@ -390,12 +390,12 @@ struct VegetationGUI : public GUI::BaseGUI
                 }
             }
 
-            if (ImGui::Checkbox("Regenerate vegetation every frame", &_forceGenerate))
-            {
-                _veglayer->setAlwaysGenerate(_forceGenerate);
-            }
+            //if (ImGui::Checkbox("Regenerate vegetation every frame", &_forceGenerate))
+            //{
+            //    _veglayer->setAlwaysGenerate(_forceGenerate);
+            //}
 
-            ImGui::Text("Num tiles: %d", _veglayer->getNumTilesRendered());
+            //ImGui::Text("Num tiles: %d", _veglayer->getNumTilesRendered());
 
             ImGui::Text("Groups:");
             ImGui::Indent();

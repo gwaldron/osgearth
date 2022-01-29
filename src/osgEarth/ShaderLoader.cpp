@@ -300,6 +300,18 @@ ShaderLoader::getAllPragmaValues(const std::string&     source,
     }
 }
 
+bool
+ShaderLoader::load(
+    VirtualProgram* vp,
+    const std::string& source)
+{
+    ShaderPackage pkg;
+    pkg.add("", source);
+    return load(vp, "", pkg, nullptr);
+
+
+}
+
 std::string
 ShaderLoader::load(const std::string&    filename,
                    const ShaderPackage&  package,
@@ -601,6 +613,16 @@ ShaderLoader::load(VirtualProgram*       vp,
     }
 
     return true;
+}
+
+bool
+ShaderLoader::unload(
+    VirtualProgram* vp,
+    const std::string& source)
+{
+    ShaderPackage pkg;
+    pkg.add("", source);
+    return unload(vp, "", pkg, nullptr);
 }
 
 bool

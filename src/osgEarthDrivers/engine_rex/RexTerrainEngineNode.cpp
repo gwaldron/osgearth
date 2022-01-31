@@ -731,7 +731,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     // Assemble the terrain drawables:
     _terrain->accept(culler);
 
-    // If we're using geometry pooling, optimize the drawable for shared state
+    // If we're using geometry pooling, optimize the drawable forf shared state
     // by sorting the draw commands.
     // Skip if using GL4/indirect rendering. Actually seems to hurt?
     // TODO: benchmark this further to see whether it's worthwhile
@@ -854,7 +854,10 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
         for (auto& tile : layerDrawable->_tiles)
             batch._tiles.push_back(&tile);
 
-        layerDrawable->_patchLayer->cull(batch, *cv);
+        if (layerDrawable->_patchLayer->getCullCallback()) // backwards compat
+            layerDrawable->_patchLayer->apply(layerDrawable, cv);
+        else
+            layerDrawable->_patchLayer->cull(batch, *cv);
     }
 
     // The last layer to render must clear up the OSG state,

@@ -360,10 +360,10 @@ main(int argc, char** argv)
         // New scene graph root
         osg::Group* root = new osg::Group();
 
-        // First create a Sky which we will place in the (default) ECI frame.
+        // First create a Sky which we will place in the ECI frame.
         SkyOptions skyOptions;
         skyOptions.coordinateSystem() = SkyOptions::COORDSYS_ECI;
-        app.sky = SkyNode::create();
+        app.sky = SkyNode::create(skyOptions);
         app.sky->attach(&viewer);
         app.sky->getSunLight()->setAmbient(osg::Vec4(0.5,0.5,0.5,1.0));
         root->addChild(app.sky);

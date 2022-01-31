@@ -754,11 +754,25 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     int layersDrawn = 0;
     unsigned surfaceDrawOrder = 0;
 
+    std::vector<LayerDrawable*> patchLayers;
+
+    for (auto layerDrawable : culler._terrain._layerList)
+    {
+        if (layerDrawable->_tiles.empty() == false &&
+            layerDrawable->_patchLayer)
+        {
+            patchLayers.push_back(layerDrawable);
+        }
+    }
+
     for(auto layerDrawable : culler._terrain._layerList)
     {
-        // Note: Cannot save lastLayer here because its _tiles may be empty, which can lead to a crash later
         if (!layerDrawable->_tiles.empty())
         {
+            // skip patch layers for now
+            if (layerDrawable->_patchLayer)
+                continue;
+
             lastLayer = layerDrawable;
 
             // if this is a RENDERTYPE_TERRAIN_SURFACE, we need to activate either the
@@ -807,18 +821,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
             if (layerDrawable->_layer)
             {
-                if (layerDrawable->_patchLayer)
-                {
-                    TileBatch batch(nullptr);
-                    for (auto& tile : layerDrawable->_tiles)
-                        batch._tiles.push_back(&tile);
-
-                    layerDrawable->_patchLayer->cull(batch, *cv);
-                }
-                else
-                {
-                    layerDrawable->_layer->apply(layerDrawable, cv);
-                }
+                layerDrawable->_layer->apply(layerDrawable, cv);
             }
             else
             {
@@ -829,13 +832,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
         }
     }
 
-    // The last layer to render must clear up the OSG state,
-    // otherwise it will be corrupt and can lead to crashing.
-    if (lastLayer)
-    {
-        lastLayer->_clearOsgState = true;
-    }
-
+    // clear out the statesets:
     if (imageLayerStateSetPushed)
     {
         cv->popStateSet();
@@ -846,6 +843,25 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     {
         cv->popStateSet();
         surfaceStateSetPushed = false;
+    }
+
+    // patch layers go last
+    for (auto layerDrawable : patchLayers)
+    {
+        lastLayer = layerDrawable;
+
+        TileBatch batch(nullptr);
+        for (auto& tile : layerDrawable->_tiles)
+            batch._tiles.push_back(&tile);
+
+        layerDrawable->_patchLayer->cull(batch, *cv);
+    }
+
+    // The last layer to render must clear up the OSG state,
+    // otherwise it will be corrupt and can lead to crashing.
+    if (lastLayer)
+    {
+        lastLayer->_clearOsgState = true;
     }
 
     // pop the common terrain state set
@@ -1403,7 +1419,9 @@ RexTerrainEngineNode::updateState()
             if ((options().morphTerrain() == true && _morphTerrainSupported == true) ||
                 options().morphImagery() == true)
             {
-                shaders.load(surfaceVP, shaders.morphing());
+                // GL4 morphing is built into another shader (vert.GL4.glsl)
+                if (options().useGL4() == false)
+                    shaders.load(surfaceVP, shaders.morphing());
 
                 if ((options().morphTerrain() == true && _morphTerrainSupported == true))
                 {

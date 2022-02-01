@@ -186,24 +186,11 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
 
         // Data that we maintain across frames on a per-camera basis.
+        using PersistentDataTable = std::unordered_map<
+            osg::Camera*,
+            TerrainRenderData::PersistentData>;
 
-        struct osgNodePath_hash
-        {
-            template <class T>
-            std::size_t operator() (const T& path) const {
-                std::size_t h = 0;
-                for (auto i : path)
-                    h = hash_value_unsigned(h, (std::uintptr_t)i);
-                return h;
-            }
-        };
-
-        using PersistentDataTable = Mutexed<std::unordered_map<
-            osg::NodePath,
-            TerrainRenderData::PersistentData,
-            osgNodePath_hash>>;
-
-        PersistentDataTable _persistent;
+        Mutexed<PersistentDataTable> _persistent;
 
         unsigned _frameLastUpdated;
         FrameClock _clock;

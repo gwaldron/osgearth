@@ -716,7 +716,8 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
 
     // fetch the persistent data associated with this traversal.
     _persistent.lock();
-    TerrainRenderData::PersistentData& pd = _persistent[nv.getNodePath()];
+    TerrainRenderData::PersistentData& pd = _persistent[cv->getCurrentCamera()];
+    pd._lastCull = *nv.getFrameStamp();
     _persistent.unlock();
 
     // Prepare the culler:
@@ -942,6 +943,20 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
 
     // Call update on the tile registry
     _liveTiles->update(nv);
+
+    // check on the persistent data cache
+    _persistent.lock();
+    const osg::FrameStamp* fs = nv.getFrameStamp();
+    for (auto iter : _persistent)
+    {
+        if (fs->getFrameNumber() - iter.second._lastCull.getFrameNumber() > 60)
+        {
+            _persistent.erase(iter.first);
+            OE_INFO << LC << "Releasing orphaned view data" << std::endl;
+            break;
+        }
+    }
+    _persistent.unlock();
 }
 
 void

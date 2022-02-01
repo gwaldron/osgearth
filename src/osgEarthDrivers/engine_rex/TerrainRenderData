@@ -43,6 +43,7 @@ namespace osgEarth { namespace REX
     public:
         struct PersistentData
         {
+            osg::FrameStamp _lastCull;
             LayerDrawableTable _drawables;
         };
 

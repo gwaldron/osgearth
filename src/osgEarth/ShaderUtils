@@ -112,6 +112,7 @@ namespace osgEarth { namespace Util
         void setElement( unsigned index, float value );
         void setElement( unsigned index, const osg::Matrix& value );
         void setElement( unsigned index, const osg::Vec3& value );
+        void setElement(unsigned index, const osg::Vec4& value);
 
         bool getElement( unsigned index, int& out_value ) const;
         bool getElement( unsigned index, unsigned& out_value ) const;
@@ -119,6 +120,7 @@ namespace osgEarth { namespace Util
         bool getElement( unsigned index, float& out_value ) const;
         bool getElement( unsigned index, osg::Matrix& out_value ) const;
         bool getElement( unsigned index, osg::Vec3& out_value ) const;
+        bool getElement( unsigned index, osg::Vec4& out_value) const;
 
         bool isValid() const { return _uniform.valid() && _uniformAlt.valid(); }
         int getNumElements() const { return isValid() ? _uniform->getNumElements() : -1; }

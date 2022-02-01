@@ -29,16 +29,17 @@
 
 namespace {
     const char* render_view_normals = R"(
-#version 330
+#version 450
 #pragma vp_function oeui_render_view_normals, fragment_output
 in vec3 vp_Normal;
+out vec4 frag_out;
 void oeui_render_view_normals(inout vec4 color) {
-    gl_FragColor = vec4((vp_Normal+1.0)*0.5, 1);
+    frag_out = vec4((vp_Normal+1.0)*0.5, 1);
 }
 )";
 
     const char* render_model_normals = R"(
-#version 330
+#version 450
 #pragma vp_function oeui_render_model_normals_vs, vertex_model, last
 out vec3 vp_Normal;
 out vec3 oeui_model_normal;
@@ -217,19 +218,22 @@ namespace osgEarth
                         if (ImGui::RadioButton("Triangle outlines", &s_renderMode, m++)) {
                             setRenderMode(render_outlines, ri);
                         }
+                        ImGui::TreePop();
                     }
 
-                    if (ImGui::TreeNodeEx("GL Inspector")) //, ImGuiTreeNodeFlags_DefaultOpen))
+                    if (ImGui::TreeNodeEx("GL Inspector"))
                     {
                         auto glpool = GLObjectPool::get(*ri.getState());
                         auto globjects = glpool->objects();
-                        ImGui::Text("GPU Mem: %u MB  Recycling: %u%%",
-                            glpool->totalBytes() / 1048576U,
-                            int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
+                        ImGui::Text("GPU Mem: %u MB",
+                            glpool->totalBytes() / 1048576U);
 
                         int avarice = glpool->getAvarice();
-                        if (ImGui::SliderInt("Avarice", &avarice, 1, 100))
+                        ImGui::Text("Chill"); ImGui::SameLine();
+                        if (ImGui::SliderInt("Needy", &avarice, 1, 100))
                             glpool->setAvarice(avarice);
+                        ImGui::Text("Recycled: %u%%",
+                            int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
 
                         ImGui::Separator();
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Objects:");

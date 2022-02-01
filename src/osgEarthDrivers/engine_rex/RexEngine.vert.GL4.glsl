@@ -6,7 +6,7 @@
 #pragma import_defines(OE_TERRAIN_RENDER_ELEVATION)
 #pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY)
 #pragma import_defines(OE_TERRAIN_MORPH_IMAGERY)
-#pragma import_defines(OE_IS_DEPTH_CAMERA)
+#pragma import_defines(OE_IS_SHADOW_CAMERA)
 
 // SDK functions:
 float oe_terrain_getElevation(in vec2 uv);
@@ -22,7 +22,7 @@ layout(location = 4) in vec3 a_neighborNormal;
 
 // uniforms
 uniform vec4 oe_terrain_color;
-#ifdef OE_IS_DEPTH_CAMERA
+#ifdef OE_IS_SHADOW_CAMERA
 uniform mat4 oe_shadowToPrimaryMatrix;
 #endif
 
@@ -83,9 +83,8 @@ void oe_rex_init_model(inout vec4 not_used)
 // Uses neighbor data to morph across LODs
 void oe_rex_morph_model()
 {
-    // Start by computing the morphing factor.
-    // We need the distance to the "final" vertex (elev applied)
-    // to compute it
+    // Compute the morphing factor. We need the distance to
+    // the "final" vertex (elevation applied) to compute it
 
 #ifdef OE_TERRAIN_RENDER_ELEVATION
     float elev = oe_terrain_getElevation(oe_layer_tilec.st);
@@ -94,7 +93,7 @@ void oe_rex_morph_model()
     vec4 vertex_view = oe_tile_mvm * vec4(a_vertex, 1);
 #endif
 
-#ifdef OE_IS_DEPTH_CAMERA
+#ifdef OE_IS_SHADOW_CAMERA
     // For a depth camera, we have to compute the morphed position
     // from the perspective of the primary camera so they match up:
     vertex_view = oe_shadowToPrimaryMatrix * vertex_view;

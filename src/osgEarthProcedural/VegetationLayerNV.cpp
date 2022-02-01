@@ -145,6 +145,7 @@ namespace
 #version 460
 #extension GL_ARB_gpu_shader_int64 : enable
 #pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
+#pragma import_defines(OE_IS_SHADOW_CAMERA)
 
 layout(binding=1, std430) buffer TextureArena {
     uint64_t textures[];
@@ -189,9 +190,15 @@ void vegetation_vs_model(inout vec4 vertex)
     vec3xform = mat3(xform);
     vp_Normal = vec3xform * normal;
     oe_tex_uv = uv;
-    oe_fade = instances[i].fade;
     oe_albedo_handle = albedo >= 0 ? textures[albedo] : 0;
+
+#ifndef OE_IS_SHADOW_CAMERA
     oe_normalmap_handle = normalmap >= 0 ? textures[normalmap] : 0;
+    oe_fade = instances[i].fade;
+#else
+    oe_normalmap_handle = 0;
+    oe_fade = 1.0;
+#endif
 };
 
     )";
@@ -257,8 +264,6 @@ void apply_wind(inout vec4 vertex, in vec2 local_uv)
 
 void vegetation_vs_view(inout vec4 vertex)
 {
-    int i = gl_BaseInstance + gl_InstanceID;
-
     oe_pos3_view = vertex.xyz;
 
     if (oe_normalmap_handle > 0)
@@ -271,6 +276,7 @@ void vegetation_vs_view(inout vec4 vertex)
     }
 
 #ifdef OE_WIND_TEX
+    int i = gl_BaseInstance + gl_InstanceID;
     apply_wind(vertex, instances[i].local_uv);
 #endif
 }
@@ -282,6 +288,7 @@ void vegetation_vs_view(inout vec4 vertex)
 #version 430
 #extension GL_ARB_gpu_shader_int64 : enable
 #pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
+#pragma import_defines(OE_IS_SHADOW_CAMERA)
 
 in vec2 oe_tex_uv;
 in vec3 oe_pos3_view;
@@ -290,6 +297,8 @@ in vec3 vp_Normal;
 in vec3 oe_tangent;
 flat in uint64_t oe_albedo_handle;
 flat in uint64_t oe_normalmap_handle;
+
+uniform float shmoo = 0.5;
 
 void vegetation_fs(inout vec4 color)
 {
@@ -325,9 +334,16 @@ void vegetation_fs(inout vec4 color)
     // cull fading for LOD transitions:
     color.a *= oe_fade;
 
-    // alpha-down faces that are orthogonal to the view vector:
+#ifdef OE_IS_SHADOW_CAMERA
+    const float threshold = 0.15;
+    color.a = step(threshold, color.a);
+    if (color.a < threshold) discard;
+#else
+    // alpha-down faces that are orthogonal to the view vector.
+    // this makes cross-hatch imposters look better
     vec3 face_normal = normalize(cross(dFdx(oe_pos3_view), dFdy(oe_pos3_view)));
-    float d = clamp(1.2*abs(dot(face_normal, normalize(oe_pos3_view))),0.0,1.0);
+    const float edge_factor = 0.8;
+    float d = clamp(edge_factor*abs(dot(face_normal, normalize(oe_pos3_view))),0.0,1.0);
     color.a *= d;
 
 #ifdef OE_USE_ALPHA_TO_COVERAGE
@@ -356,6 +372,7 @@ void vegetation_fs(inout vec4 color)
     color.a = step(threshold, color.a);
     if (color.a < threshold)
         discard;
+#endif
 #endif
 }
 
@@ -1352,23 +1369,16 @@ VegetationLayerNV::createDrawable(
 
         auto& assetInstances = iter->second;
 
-        // allows lush-based selection to smoothly transition
-
         // RNG with normal distribution between approx +1/-1
         std::normal_distribution<float> normal_dist(lush, 1.0f / 6.0f);
         lush = clamp(normal_dist(gen), 0.0f, 1.0f);
-        //float lush_var = 0.125f * normal_dist(gen);
-        //float lush_var = (0.25*noise[N_CLUMPY]) - 0.125;
-        //lush = clamp(lush + lush_var, 0.0f, 1.0f);
+
         int assetIndex = clamp(
             (int)(lush*(float)assetInstances.size()),
             0, 
             (int)assetInstances.size() - 1);
 
-        // randomly select an asset from the biome.
-        // TODO: consider life map values here, like lushness and ruggedness?
-        //std::uniform_int_distribution<unsigned> rand_uint(0, assetInstances.size() - 1);
-        auto& instance = assetInstances[assetIndex]; // rand_uint(gen)];
+        auto& instance = assetInstances[assetIndex];
 
         auto& asset = instance._residentAsset;
 
@@ -1473,7 +1483,8 @@ VegetationLayerNV::createDrawable(
         map_points,
         Distance(),
         nullptr,
-        nullptr);
+        nullptr,
+        0.0f); // store zero upon failure
 
     const osg::Vec3f ZAXIS(0, 0, 1);
 

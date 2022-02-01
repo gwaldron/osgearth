@@ -47,7 +47,7 @@ layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 bool oe_custom_cull(in vec2);
 #endif
 
-#pragma import_defines(OE_IS_DEPTH_CAMERA)
+#pragma import_defines(OE_IS_SHADOW_CAMERA)
 
 struct DrawElementsIndirectCommand
 {
@@ -123,6 +123,13 @@ void cull()
     // initialize by clearing the visibility for this variant:
     input_instances[i].visibility[variant] = 0.0;
 
+#ifdef OE_IS_SHADOW_CAMERA
+    // only use the highest LOD for shadow-casting.
+    // TODO: reevaluate this.
+    if (variant > 0)
+        return;
+#endif
+
     // bail if our chonk does not have this variant
     uint v = input_instances[i].first_variant_cmd_index + variant;
     if (variant >= chonks[v].num_variants)
@@ -152,6 +159,9 @@ void cull()
     if (UR.x < -1.0 || UR.y < -1.0) // || UR.z < -1.0)
         return;
 
+    float fade = 1.0;
+
+#ifndef OE_IS_SHADOW_CAMERA
     // OK, it is in view - now check pixel size on screen for this variant:
     vec2 dims = 0.5*(UR.xy-LL.xy)*oe_Camera.xy;
 
@@ -166,11 +176,11 @@ void cull()
     if (pixelSize < (minPixelSize - pixelSizePad))
         return;
 
-    float fade = 1.0;
     if (pixelSize > maxPixelSize)
         fade = 1.0-(pixelSize-maxPixelSize)/pixelSizePad;
     if (pixelSize < minPixelSize)
         fade = 1.0-(minPixelSize-pixelSize)/pixelSizePad;
+#endif
 
     // Pass! Set the visibility for this variant:
     input_instances[i].visibility[variant] = fade;
@@ -1093,11 +1103,12 @@ ChonkDrawable::GCState::cull(osg::State& state)
 
     auto ext = _vao->ext();
 
-    if (_passUL < 0)
+    auto pcp = state.getLastAppliedProgramObject();
+    OE_HARD_ASSERT(pcp != nullptr, "Check for shader errors!");
+    PCPState& ps = _pcps[pcp];
+    if (ps._passUL < 0)
     {
-        auto pcp = state.getLastAppliedProgramObject();
-        OE_HARD_ASSERT(pcp != nullptr, "Check for shader errors!");
-        _passUL = pcp->getUniformLocation("oe_pass");
+        ps._passUL = pcp->getUniformLocation("oe_pass");
     }
 
     // reset the command buffer values
@@ -1116,11 +1127,11 @@ ChonkDrawable::GCState::cull(osg::State& state)
     _instanceInputBuf->bindBufferBase(31);
 
     // cull:
-    ext->glUniform1i(_passUL, 0);
+    ext->glUniform1i(ps._passUL, 0);
     ext->glDispatchCompute(_numInstances, _maxNumVariants, 1);
 
     // compact:
-    ext->glUniform1i(_passUL, 1);
+    ext->glUniform1i(ps._passUL, 1);
     ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
     ext->glDispatchCompute(_numInstances, _maxNumVariants, 1);
 }

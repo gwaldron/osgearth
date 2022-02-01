@@ -158,7 +158,7 @@ namespace osgEarth
 
         void updateFilters();
 
-        osg::Node* createNode(osgEarth::Feature* feature, bool split);
+        osg::Node* createNode();
 
         osg::Vec2d _lowerLeft;
         osg::Vec2d _lowerRight;

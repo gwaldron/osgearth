@@ -94,10 +94,12 @@ namespace osgEarth
             //! the result in the Z coordinate. Input points must be in the map's SRS.
             //! @param points Array of points in map coords for which to sample elevation
             //! @param progress Optional progress callback (can be nullptr)
+            //! @param failValue Value to store in Z if the sampling fails
             //! @return Number of valid elevations sampled, or -1 if there was an error
             int sampleMapCoords(
                 std::vector<osg::Vec3d>& points,
-                ProgressCallback* progress);
+                ProgressCallback* progress,
+                float failValue = NO_DATA_VALUE);
 
         public:
             // internal
@@ -178,11 +180,13 @@ namespace osgEarth
         //! @param points Array of points in map coords for which to sample elevation
         //! @param ws Optional working set (local cache, can be nullptr)
         //! @param progress Optional progress callback (can be nullptr)
+        //! @param failValue Value to store in Z if the sampling fails
         //! @return Number of valid elevations sampled, or -1 if there was an error
         int sampleMapCoords(
             std::vector<osg::Vec4d>& points,
             WorkingSet* ws,
-            ProgressCallback* progress);
+            ProgressCallback* progress,
+            float failValue =NO_DATA_VALUE);
 
         //! For each point in an array of points, sample the elevation and store
         //! the result in the Z coordinate. Input points must be in the map's SRS.
@@ -190,12 +194,14 @@ namespace osgEarth
         //! @param resolution Resolution at which to sample the points
         //! @param ws Optional working set (local cache, can be nullptr)
         //! @param progress Optional progress callback (can be nullptr)
+        //! @param failValue Value to store in Z if the sampling fails
         //! @return Number of valid elevations sampled, or -1 if there was an error
         int sampleMapCoords(
             std::vector<osg::Vec3d>& points,
             const Distance& resolution,
             WorkingSet* ws,
-            ProgressCallback* progress);
+            ProgressCallback* progress,
+            float failValue = NO_DATA_VALUE);
 
         //! Creates an envelope for sampling lots of points in a localized region
         //! @param out Created envelope (output)

@@ -196,7 +196,7 @@ void compact()
 {
     const uint i = gl_GlobalInvocationID.x; // instance
     const uint variant = gl_GlobalInvocationID.y; // variant
-    
+
     float fade = input_instances[i].visibility[variant];
     if (fade < 0.15)
         return;
@@ -351,7 +351,7 @@ void main()
                 {
                     v.position = (*verts)[i] * _transformStack.top();
                 }
-                
+
                 if (colors)
                 {
                     if (colors->getBinding() == colors->BIND_PER_VERTEX)
@@ -410,7 +410,7 @@ void main()
                     {
                         int index = de->getElement(k);
                         // by using a "model-local" offset here, we can use UShort even
-                        // if our vertex array size exceeds 65535 by storing the 
+                        // if our vertex array size exceeds 65535 by storing the
                         // baseVertex in our DrawElements structure
                         _result._ebo_store.push_back(vbo_offset + index);
                     }
@@ -681,7 +681,7 @@ ChonkDrawable::setCustomCullingShader(osg::Shader* value)
     if (_s_baseShader.valid() == false)
     {
         _s_baseShader = new osg::Shader(
-            osg::Shader::COMPUTE, 
+            osg::Shader::COMPUTE,
             s_chonk_cull_compute_shader);
     }
 
@@ -719,7 +719,7 @@ ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
     }
     else if (!_batches.empty())
     {
-        // save the pcp b/c osg will not re-apply it 
+        // save the pcp b/c osg will not re-apply it
         // when we can state.apply(). boo
         auto pcp = state.getLastAppliedProgramObject();
 
@@ -833,12 +833,12 @@ osg::BoundingBox
 ChonkDrawable::computeBoundingBox() const
 {
     ScopedMutexLock lock(_m);
-    
+
     osg::BoundingBox result;
 
     for(auto& batch : _batches)
     {
-        auto& chonk = batch.first;   
+        auto& chonk = batch.first;
 
         auto& box = chonk->getBound();
         if (box.valid())
@@ -966,8 +966,14 @@ ChonkDrawable::GCState::initialize(osg::State& state)
     _vao->bind();
 
     // required in order to use BindlessNV extension
-    glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
-    glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+    osg::setGLExtensionFuncPtr(
+        _glEnableClientState,
+        "glEnableClientState");
+    if (_glEnableClientState)
+    {
+        _glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
+        _glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+    }
 
     const VADef formats[7] = {
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, position)},
@@ -1013,7 +1019,7 @@ ChonkDrawable::GCState::update(
         initialize(state);
     }
 
-    // build a list of draw commands, each of which will 
+    // build a list of draw commands, each of which will
     // have N instances, one per chonk meta.
     _commands.clear();
 
@@ -1078,7 +1084,7 @@ ChonkDrawable::GCState::update(
     if (_cull)
     {
         _chonkBuf->uploadData(_chonk_variants);
-        
+
         // just reserve space if necessary.
         // this is a NOP if the buffer is already sized properly
         _instanceOutputBuf->uploadData(_instanceInputBuf->size(), nullptr);

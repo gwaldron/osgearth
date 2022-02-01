@@ -49,7 +49,7 @@ namespace osgEarth
 
     /**
      * A bindless rendering unit comprised of one VBO and one EBO.
-     * A single Chonk usually represents one drawable "Object" in 
+     * A single Chonk usually represents one drawable "Object" in
      * the scene. It can include multiple "variants" which are
      * typically used as LODs.
      */
@@ -119,7 +119,7 @@ namespace osgEarth
             DrawCommands commands;
         };
         mutable osg::buffered_object<GCState> _gs;
-        
+
         //! Gets (or creates) a draw command, possibly
         //! resolving texture handles and uploading buffers.
         const DrawCommands& getOrCreateCommands(osg::State&) const;
@@ -248,13 +248,15 @@ namespace osgEarth
             bool _cull;
             void(GL_APIENTRY * _glMultiDrawElementsIndirectBindlessNV)
                 (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint);
+            void(GL_APIENTRY* _glEnableClientState)
+                (GLenum);
 
             struct PCPState {
                 GLint _passUL;
                 PCPState() : _passUL(-1) { }
             };
             mutable std::unordered_map<const void*, PCPState> _pcps;
-                
+
             GCState() : _dirty(true), _cull(true) { }
             void initialize(osg::State& state);
             void update(const Batches&, osg::State&);

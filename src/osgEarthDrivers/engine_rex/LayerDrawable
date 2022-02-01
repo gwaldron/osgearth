@@ -38,9 +38,9 @@ namespace osgEarth { namespace REX
     class TerrainRenderData;
 
     /**
-     * Drawable for single "Layer" i.e. rendering pass. 
+     * Drawable for single "Layer" i.e. rendering pass.
      * It is important that LayerDrawables be rendered in the order in which
-     * they appear. Since all LayerDrawables share a common bounds, this 
+     * they appear. Since all LayerDrawables share a common bounds, this
      * should happen automatically, but let's keep an eye out for trouble.
      */
     class LayerDrawable : public osg::Drawable
@@ -90,7 +90,7 @@ namespace osgEarth { namespace REX
         class EngineContext* _context;
 
     public: // osg::Drawable
-        
+
         void drawImplementation(osg::RenderInfo& ri) const override;
 
         // All LayerDrawables share the common terrain bounds.
@@ -133,6 +133,9 @@ namespace osgEarth { namespace REX
 
             void(GL_APIENTRY * glVertexAttribFormat)
                 (GLuint, GLint, GLenum, GLboolean, GLuint);
+
+            void(GL_APIENTRY* glEnableClientState)
+                (GLenum);
         };
 
         struct GL4RenderState
@@ -140,7 +143,7 @@ namespace osgEarth { namespace REX
             GL4RenderState();
 
             bool dirty;
-           
+
             DrawTileCommands tiles;
             std::vector<GL4Tile> tilebuf;
 
@@ -161,6 +164,6 @@ namespace osgEarth { namespace REX
     using LayerDrawableList = std::vector<osg::ref_ptr<LayerDrawable>>;
     using LayerDrawableMap = std::unordered_map<UID, osg::ref_ptr<LayerDrawable>>;
 
-} } // namespace 
+} } // namespace
 
 #endif // OSGEARTH_REX_TERRAIN_LAYER_DRAWABLE_H

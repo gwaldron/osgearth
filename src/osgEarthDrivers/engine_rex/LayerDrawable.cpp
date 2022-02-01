@@ -36,6 +36,7 @@ using namespace osgEarth::REX;
 #define GL_ELEMENT_ARRAY_UNIFIED_NV 0x8F1F
 #endif
 
+typedef void (APIENTRYP PFNGLENABLECLIENTSTATEPROC) (GLenum cap);
 
 
 LayerDrawable::LayerDrawable() :
@@ -91,7 +92,7 @@ LayerDrawable::accept(osg::PrimitiveIndexFunctor& functor) const
 
 namespace
 {
-    // Hack State so we can dirty the texture attrs without dirtying the other 
+    // Hack State so we can dirty the texture attrs without dirtying the other
     // attributes (as dirtyAllAttributes() would do).
     struct StateEx : public osg::State
     {
@@ -135,7 +136,7 @@ LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
         // NOTE: cannot call state.dirtyAllAttributes, because that would invalidate
         // positional state like light sources!
         reinterpret_cast<StateEx*>(ri.getState())->dirtyAllTextureAttributes();
-        
+
         // make sure any VAO is unbound before unbinind the VBO/EBOs,
         // as failing to do so will remove the VBO/EBO from the VAO
         if (ri.getState()->useVertexArrayObject(_useVertexArrayObject))
@@ -418,6 +419,11 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                 "glVertexAttribFormat");
             OE_HARD_ASSERT(gs.glVertexAttribFormat != nullptr);
 
+            // Core profile doesn't support glEnableClientState(), but if GL_ELEMENT_ARRAY_UNIFIED_NV
+            // is supported then glEnableClientState() will exist.
+            osg::setGLExtensionFuncPtr(
+                gs.glEnableClientState,
+                "glEnableClientState");
 
             // Set up a VAO that we'll use to render with bindless NV.
             gs.vao = GLVAO::create(state, "REX Renderer");
@@ -426,8 +432,11 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             gs.vao->bind();
 
             // set up the VAO for NVIDIA bindless buffers
-            glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
-            glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+            if (gs.glEnableClientState)
+            {
+                gs.glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
+                gs.glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+            }
 
             // Record the format for each of the attributes in GL4Vertex
             const GLuint offsets[5] = {
@@ -480,7 +489,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
     if (_rs.dirty)
     {
         // The CULL traversal determined that the tile set changed,
-        // so we need to re-upload the tile buffer and we need to 
+        // so we need to re-upload the tile buffer and we need to
         // rebuild the command list.
 
         _rs.dirty = false;

@@ -169,6 +169,12 @@ BiomeLayer::closeImplementation()
     options().vectorLayer().close();
     options().coverageLayer().close();
 
+    // cache:
+    {
+        ScopedMutexLock lock(_imageCache);
+        _imageCache.clear();
+    }
+
     return ImageLayer::closeImplementation();
 }
 
@@ -361,6 +367,17 @@ BiomeLayer::createImageImplementation(
         return GeoImage::INVALID;
     }
 
+    // check the cache:
+    {
+        ScopedMutexLock lock(_imageCache);
+        auto iter = _imageCache.find(key);
+        osg::ref_ptr<osg::Image> image;
+        if (iter != _imageCache.end() && iter->second.lock(image))
+        {
+            return GeoImage(image.get(), key.getExtent());
+        }
+    }
+
     PolygonSpatialIndex* polygonIndex = static_cast<PolygonSpatialIndex*>(_polygonIndex);
     if (polygonIndex)
     {
@@ -501,6 +518,12 @@ BiomeLayer::createImageImplementation(
         // This will allow us to page out when all references to a biome
         // expire from the scene
         trackImage(result, key, biome_indices_seen);
+
+        // cache:
+        {
+            ScopedMutexLock lock(_imageCache);
+            _imageCache[key] = image.get();
+        }
 
         return result;
     }

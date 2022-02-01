@@ -292,7 +292,7 @@ GeometryPool::createGeometry(
 
     osg::ref_ptr<osg::VertexBufferObject> vbo = new osg::VertexBufferObject();
 
-    SharedDrawElements* primSet = NULL;
+    SharedDrawElements* primSet = nullptr;
 
     // the initial vertex locations:
     osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array();
@@ -428,12 +428,40 @@ GeometryPool::createGeometry(
 
         if (tessellateSurface && primSet == nullptr)
         {
-            primSet = _defaultPrimSet.get();
+            if (_enabled)
+                primSet = _defaultPrimSet.get();
+            else
+                primSet = createPrimitiveSet(tileSize, skirtRatio, gpuTessellation);
         }
 
         if (primSet)
         {
             geom->setDrawElements(primSet);
+        }
+    }
+
+    // if we are using GL4, create the GL4 tile model.
+    if (/*using GL4*/true)
+    {
+        unsigned size = geom->getVertexArray()->size();
+
+        geom->_verts.reserve(size);
+
+        for (unsigned i = 0; i < size; ++i)
+        {
+            GL4Vertex v;
+
+            v.position = (*geom->getVertexArray())[i];
+            v.normal = (*geom->getNormalArray())[i];
+            v.uv = (*geom->getTexCoordArray())[i];
+
+            if (geom->getNeighborArray())
+                v.neighborPosition = (*geom->getNeighborArray())[i];
+
+            if (geom->getNeighborNormalArray())
+                v.neighborNormal = (*geom->getNeighborNormalArray())[i];
+
+            geom->_verts.emplace_back(std::move(v));
         }
     }
 
@@ -448,19 +476,20 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
         Threading::ScopedMutexLock lock(_geometryMapMutex);
 
         std::vector<GeometryKey> keys;
-        for (GeometryMap::iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
-        {
-            if (i->second.get()->referenceCount() == 1)
-            {
-                keys.push_back(i->first);
-                i->second->releaseGLObjects(NULL);
 
-                OE_DEBUG << "Releasing: " << i->second.get() << std::endl;
+        for(auto& iter : _geometryMap)
+        {
+            if (iter.second.get()->referenceCount() == 1)
+            {
+                keys.push_back(iter.first);
+                //iter.second->releaseGLObjects(nullptr);
+                OE_DEBUG << "Releasing: " << iter.second.get() << std::endl;
             }
         }
-        for (std::vector<GeometryKey>::iterator key = keys.begin(); key != keys.end(); ++key)
+
+        for(auto& key : keys)
         {
-            _geometryMap.erase(*key);
+            _geometryMap.erase(key);
         }
     }
 
@@ -522,8 +551,7 @@ GeometryPool::releaseGLObjects(osg::State* state) const
 
 SharedGeometry::SharedGeometry() :
     osg::Drawable(),
-    _hasConstraints(false),
-    _uid(osgEarth::createUID())
+    _hasConstraints(false)
 {
     _supportsVertexBufferObjects = true;
     _ptype.resize(64u);
@@ -542,8 +570,7 @@ SharedGeometry::SharedGeometry(const SharedGeometry& rhs,const osg::CopyOp& copy
     _neighborArray(rhs._neighborArray),
     _neighborNormalArray(rhs._neighborNormalArray),
     _drawElements(rhs._drawElements),
-    _hasConstraints(rhs._hasConstraints),
-    _uid(osgEarth::createUID())
+    _hasConstraints(rhs._hasConstraints)
 {
     _ptype.resize(64u);
     _ptype.setAllElementsTo(GL_TRIANGLES);
@@ -551,7 +578,69 @@ SharedGeometry::SharedGeometry(const SharedGeometry& rhs,const osg::CopyOp& copy
 
 SharedGeometry::~SharedGeometry()
 {
-    //nop
+    releaseGLObjects(nullptr);
+}
+
+const DrawElementsIndirectBindlessCommandNV&
+SharedGeometry::getOrCreateCommand(osg::State& state)
+{
+    bool dirty = false;
+
+    unsigned gcid = state.getContextID();
+
+    // first the drawelements
+    SharedDrawElements::GCState& de = _drawElements->_gc[gcid];
+    if (de._ebo == nullptr || !de._ebo->valid())
+    {
+        //TODO consider sharing
+        de._ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state, "Rex EBO");
+        de._ebo->bind();
+        de._ebo->bufferStorage(_drawElements->getTotalDataSize(), _drawElements->getDataPointer(), 0);
+        de._ebo->makeResident();
+        OE_HARD_ASSERT(de._ebo->address());
+
+        dirty = true;
+    }
+
+    GCState& gs = _gc[gcid];
+    if (gs._vbo == nullptr || !gs._vbo->valid())
+    {
+        // supply a "size hint" for unconstrained tiles to the GLBuffer so it can try to re-use
+        GLsizei size = _verts.size() * sizeof(GL4Vertex);
+        if (_hasConstraints)
+            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, "REX VBO");
+        else
+            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, size, "REX VBO");
+        gs._vbo->bind();
+        gs._vbo->bufferStorage(size, _verts.data());
+        gs._vbo->makeResident();
+        OE_HARD_ASSERT(gs._vbo->address());
+
+        dirty = true;
+    }
+
+    if (dirty)
+    {
+        gs._command.cmd.count = _drawElements->size();
+        gs._command.cmd.instanceCount = 1;
+        gs._command.cmd.firstIndex = 0;
+        gs._command.cmd.baseVertex = 0;
+        gs._command.cmd.baseInstance = 0;
+
+        gs._command.reserved = 0;
+
+        gs._command.indexBuffer.index = 0;
+        gs._command.indexBuffer.reserved = 0;
+        gs._command.indexBuffer.address = de._ebo->address();
+        gs._command.indexBuffer.length = de._ebo->size();
+
+        gs._command.vertexBuffer.index = 0;
+        gs._command.vertexBuffer.reserved = 0;
+        gs._command.vertexBuffer.address = gs._vbo->address();
+        gs._command.vertexBuffer.length = gs._vbo->size();
+    }
+
+    return gs._command;
 }
 
 bool
@@ -605,8 +694,10 @@ void SharedGeometry::resizeGLObjectBuffers(unsigned int maxSize)
     if (_neighborArray.valid()) _neighborArray->resizeGLObjectBuffers(maxSize);
     if (_neighborNormalArray.valid()) _neighborNormalArray->resizeGLObjectBuffers(maxSize);
 
-    // not here - it's shared
-    //if (_drawElements.valid()) _drawElements->resizeGLObjectBuffers(maxSize);
+    _gc.resize(maxSize);
+
+    if (_drawElements.valid())
+        _drawElements->resizeGLObjectBuffers(maxSize);
 }
 
 void SharedGeometry::releaseGLObjects(osg::State* state) const
@@ -620,8 +711,11 @@ void SharedGeometry::releaseGLObjects(osg::State* state) const
     if (_neighborArray.valid()) _neighborArray->releaseGLObjects(state);
     if (_neighborNormalArray.valid()) _neighborNormalArray->releaseGLObjects(state);
 
-    // not here - it's shared
-    //if (_drawElements.valid()) _drawElements->releaseGLObjects(state);
+    if (state)
+        _gc[state->getContextID()]._vbo = nullptr;
+
+    // Do nothing if state is nullptr!
+    // Let nature take its course and let the GLObjectPool deal with it
 }
 
 void

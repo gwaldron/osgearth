@@ -111,10 +111,13 @@ namespace
     const char* opacityInterpolateFS =
         "#version " GLSL_VERSION_STR R"(
         )" GLSL_DEFAULT_PRECISION_FLOAT R"(
+        #pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
         in float oe_layer_opacity;
         void oe_VisibleLayer_setOpacity(inout vec4 color)
         {
+          #ifndef OE_USE_ALPHA_TO_COVERAGE
             color.a *= oe_layer_opacity;
+          #endif
         }
     )";
 

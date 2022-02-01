@@ -53,7 +53,7 @@ _enabled(true),
 _size         ( 2048 ),
 _texImageUnit ( 7 ),
 _blurFactor   ( 0.001f ),
-_color        ( 0.5f ),
+_color        ( 0.325f ),
 _traversalMask( ~0 )
 {
     _castingGroup = new osg::Group();
@@ -151,23 +151,24 @@ ShadowCaster::reinitialize()
         rtt->setImplicitBufferAttachmentMask(0, 0);
         rtt->attach( osg::Camera::DEPTH_BUFFER, _shadowmap.get(), 0, i );
         rtt->addChild( _castingGroup.get() );
+        rtt->addCullCallback(new InstallCameraUniform());
         _rttCameras.push_back(rtt);
     }
 
     _rttStateSet = new osg::StateSet();
 
     // only draw back faces to the shadow depth map
+    // TODO: consider this. Commented out for now because it doesn't
+    // look right for trees.
+#if 0
     _rttStateSet->setAttributeAndModes( 
         new osg::CullFace(osg::CullFace::FRONT),
         osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-
-    // tell the terrain engine this is a depth-only camera
-    //_rttStateSet->setDefine("OE_IS_SHADOW_CAMERA"); // done above in rtt stateset
+#endif
 
     // install a shadow-to-primary xform matrix (per frame) so verts match up
     _shadowToPrimaryMatrix = _rttStateSet->getOrCreateUniform(
         "oe_shadowToPrimaryMatrix", osg::Uniform::FLOAT_MAT4);
-
 
     _renderStateSet = new osg::StateSet();
 
@@ -269,7 +270,7 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
             lightUp.normalize();
             lightViewMat.makeLookAt(lightPosWorld, lightPosWorld+lightVectorWorld, lightUp);
 
-            // set the primary-camera-to-shadow-camera transformation matrix,
+            // set the shadow-camera-to-primary-camera transformation matrix,
             // which lets you perform vertex shader operations from the perspective
             // of the primary camera (morphing, etc.) so that things match up
             // between the two cameras.

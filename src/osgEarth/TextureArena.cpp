@@ -37,16 +37,24 @@ using namespace osgEarth;
 
 //#define USE_ICO 1
 
+Texture::Ptr
+Texture::create(GLTexture::Ptr gltexture, osg::State& state)
+{
+    Texture::Ptr object(new Texture());
+    GCState& gs = object->_gs[state.getContextID()];
+    return object;
+}
+
 Texture::GCState&
 Texture::get(const osg::State& state) const
 {
-    return _gc[state.getContextID()];
+    return _gs[state.getContextID()];
 }
 
 bool
 Texture::isCompiled(const osg::State& state) const
 {
-    return _gc[state.getContextID()]._gltexture != nullptr;
+    return _gs[state.getContextID()]._gltexture != nullptr;
 }
 
 void
@@ -54,17 +62,14 @@ Texture::compileGLObjects(osg::State& state) const
 {
     OE_PROFILING_ZONE;
 
+    OE_HARD_ASSERT(_image.valid());
+
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
     Texture::GCState& gc = get(state);
 
     // If you change this you must change the typecast in the fragment shader too
     //GLenum target = GL_TEXTURE_2D_ARRAY;
     GLenum target = GL_TEXTURE_2D;
-
-    gc._gltexture = GLTexture::create(target, state, _uri->base());
-
-    // debugging
-    gc._gltexture->id() = _uri->base();
 
     // mipmaps already created and in the image:
     unsigned numMipLevelsInMemory = _image->getNumMipmapLevels();
@@ -96,27 +101,42 @@ Texture::compileGLObjects(osg::State& state) const
             internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
     }
 
+    // Calculate the size beforehand so we can make the texture recyclable
+    GLTexture::Profile profileHint(
+        target,
+        numMipLevelsToAllocate, 
+        internalFormat,
+        _image->s(), _image->t(), _image->r(),
+        0, // border
+        _mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST,
+        GL_LINEAR,
+        _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT,
+        _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT,
+        _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT,
+        _maxAnisotropy.getOrUse(4.0f));
+
+    gc._gltexture = GLTexture::create(
+        target,
+        state,
+        profileHint,
+        _label.empty() ? _uri->base() : _label);
+
+    // debugging
+    gc._gltexture->id() = _uri->base();
+
     // Blit our image to the GPU
     gc._gltexture->bind(state);
 
     if (target == GL_TEXTURE_2D_ARRAY)
     {
-        gc._gltexture->storage3D(
-            numMipLevelsToAllocate,
-            internalFormat,
-            _image->s(),
-            _image->t(),
-            _image->r());
+        gc._gltexture->storage3D(profileHint);
     }
     else
     {
-        gc._gltexture->storage2D(
-            numMipLevelsToAllocate,
-            internalFormat,
-            _image->s(),
-            _image->t() );
+        gc._gltexture->storage2D(profileHint);
     }
 
+#if 0
     GLint min_filter = _mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST;
     glTexParameteri(target, GL_TEXTURE_MIN_FILTER, min_filter);
     glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -127,6 +147,7 @@ Texture::compileGLObjects(osg::State& state) const
 
     float ma_value = _maxAnisotropy.getOrUse(4.0f);
     glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, ma_value);
+#endif
 
     // Force creation of the bindless handle - once you do this, you can
     // no longer change the texture parameters.
@@ -250,8 +271,8 @@ Texture::isResident(const osg::State& state) const
 void
 Texture::resizeGLObjectBuffers(unsigned maxSize)
 {
-    if (_gc.size() < maxSize)
-        _gc.resize(maxSize);
+    if (_gs.size() < maxSize)
+        _gs.resize(maxSize);
 }
 
 void
@@ -259,30 +280,30 @@ Texture::releaseGLObjects(osg::State* state) const
 {
     if (state)
     {
-        if (_gc[state->getContextID()]._gltexture != nullptr)
+        if (_gs[state->getContextID()]._gltexture != nullptr)
         {
-            GCState& gc = get(*state);
+            GCState& gs = get(*state);
 
             // debugging
             OE_DEVEL << LC 
-                << "Texture::releaseGLObjects '" << gc._gltexture->id() 
-                << "' name=" << gc._gltexture->name() 
-                << " handle=" << gc._gltexture->handle(*state) << std::endl;
+                << "Texture::releaseGLObjects '" << gs._gltexture->id() 
+                << "' name=" << gs._gltexture->name() 
+                << " handle=" << gs._gltexture->handle(*state) << std::endl;
 
             //gc._gltexture->release();
-            gc._gltexture->makeResident(false);
+            gs._gltexture->makeResident(false);
 
             // will activate the releaser
-            gc._gltexture = nullptr;
+            gs._gltexture = nullptr;
         }
     }
     else
     {
         // rely on the Releaser to get around to it
-        for(unsigned i=0; i<_gc.size(); ++i)
+        for(unsigned i=0; i< _gs.size(); ++i)
         {
             // will activate the releaser(s)
-            _gc[i]._gltexture = nullptr;
+            _gs[i]._gltexture = nullptr;
         }
     }
 }
@@ -333,6 +354,8 @@ TextureArena::find(Texture::Ptr tex) const
 int
 TextureArena::add(Texture::Ptr tex)
 {
+    ScopedMutexLock lock(_m);
+
     if (tex == nullptr)
     {
         OE_SOFT_ASSERT_AND_RETURN(tex != nullptr, -1);
@@ -362,7 +385,8 @@ TextureArena::add(Texture::Ptr tex)
     }
 
     // load the image if necessary (TODO: background?)
-    if (tex->_image.valid() == false)
+    if (tex->_image.valid() == false &&
+        tex->_uri.isSet())
     {
         // TODO support read options for caching
         tex->_image = tex->_uri->getImage(nullptr);
@@ -408,17 +432,43 @@ TextureArena::add(Texture::Ptr tex)
 
         return index;
     }
+
     else
     {
-        return -1;
+        // might be a pre-existing GLTexture:
+        bool added = false;
+
+        for (unsigned i = 0; i < _gc.size(); ++i)
+        {
+            if (_gc[i]._inUse && 
+                tex->_gs.size() > i &&
+                tex->_gs[i]._gltexture != nullptr)
+            {
+                _gc[i]._toAdd.push_back(tex);
+                added = true;
+            }
+        }
+
+        if (added)
+        {
+            if (index < _textures.size())
+                _textures[index] = tex;
+            else
+                _textures.push_back(tex);
+
+            return index;
+        }
     }
 
-    //TODO: consider issues like multiple GCs and "unref after apply"
+    // nope...fail
+    return -1;
 }
 
 void
 TextureArena::activate(Texture::Ptr tex)
 {
+    ScopedMutexLock lock(_m);
+
     if (!tex) return;
 
     // add to all GCs.
@@ -433,6 +483,8 @@ TextureArena::activate(Texture::Ptr tex)
 void
 TextureArena::deactivate(Texture::Ptr tex)
 {
+    ScopedMutexLock lock(_m);
+
     if (!tex) return;
 
     // add to all GCs.
@@ -467,6 +519,8 @@ TextureArena::apply(osg::State& state) const
 {
     if (_textures.empty())
         return;
+
+    ScopedMutexLock lock(_m);
 
     OE_PROFILING_ZONE;
 
@@ -575,7 +629,7 @@ TextureArena::apply(osg::State& state) const
 
     if (gc._handleBuffer == nullptr)
     {
-        std::string bufferName = "oe.TextureArena " + getName();
+        std::string bufferName = "TextureArena " + getName();
 
         if (_useUBO)
             gc._handleBuffer = GLBuffer::create(GL_UNIFORM_BUFFER, state, bufferName);
@@ -595,7 +649,7 @@ TextureArena::apply(osg::State& state) const
     unsigned ptr = 0;
     for (auto& tex : _textures)
     {
-        GLTexture* gltex = tex->_gc[state.getContextID()]._gltexture.get();
+        GLTexture* gltex = tex->_gs[state.getContextID()]._gltexture.get();
         GLuint64 handle = gltex ? gltex->handle(state) : 0ULL;
         if (gc._handles[ptr] != handle)
         {
@@ -611,8 +665,6 @@ TextureArena::apply(osg::State& state) const
     // upload to GPU if it changed:
     if (gc._dirty)
     {
-        gc._handleBuffer->bind();
-
         gc._handleBuffer->uploadData(
             gc._handles.size() * sizeof(GLuint64),
             gc._handles.data());
@@ -633,6 +685,8 @@ TextureArena::compileGLObjects(osg::State& state) const
 void
 TextureArena::resizeGLObjectBuffers(unsigned maxSize)
 {
+    ScopedMutexLock lock(_m);
+
     if (_gc.size() < maxSize)
     {
         _gc.resize(maxSize);
@@ -646,7 +700,9 @@ TextureArena::resizeGLObjectBuffers(unsigned maxSize)
 
 void
 TextureArena::releaseGLObjects(osg::State* state) const
-{    
+{
+    ScopedMutexLock lock(_m);
+
     for(auto& tex : _textures)
     {
         tex->releaseGLObjects(state);

@@ -94,15 +94,22 @@ namespace osgEarth { namespace REX
         {
             if (_range > rhs._range) return false;
             if (_range < rhs._range) return true;
-            return _geom < rhs._geom;
+            return _geom.get() < rhs._geom.get();
         }
 
         bool operator == (const DrawTileCommand& rhs) const
         {
             return
+                // same tile
                 _tile == rhs._tile &&
+                // same revision
                 _tileRevision == rhs._tileRevision &&
-                *_modelViewMatrix == *rhs._modelViewMatrix;
+                // same matrix
+                *_modelViewMatrix == *rhs._modelViewMatrix &&
+                // same underlying geometry pointer - this is important
+                // if we're doing bindless NV rendering and have to 
+                // use a different GPU buffer address.
+                _geom.get() == rhs._geom.get();
         }
 
         DrawTileCommand() :

@@ -44,7 +44,6 @@ namespace osgEarth
     public:
         struct GCState {
             GLTexture::Ptr _gltexture;
-            bool _resident;
             osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
         };
 
@@ -52,9 +51,13 @@ namespace osgEarth
         using Ptr = std::shared_ptr<Texture>;
         using WeakPtr = std::weak_ptr<Texture>;
 
+        //! Create a new texture
         static Ptr create() {
             return Ptr(new Texture());
         }
+
+        //! Create from an existing GLTexture
+        static Ptr create(GLTexture::Ptr, osg::State&);
 
         GCState& get(const osg::State&) const;
         void makeResident(const osg::State&, bool toggle) const;
@@ -66,12 +69,13 @@ namespace osgEarth
 
         optional<URI> _uri;
         osg::ref_ptr<osg::Image> _image;
+        std::string _label;
         bool _compress;
         bool _mipmap;
         bool _clamp;
         optional<GLenum> _internalFormat;
         optional<float> _maxAnisotropy;
-        mutable osg::buffered_object<GCState> _gc;
+        mutable osg::buffered_object<GCState> _gs;
 
     protected:
         Texture() : _compress(true), _mipmap(true), _clamp(false) { }
@@ -161,6 +165,8 @@ namespace osgEarth
         bool _autoRelease;
         unsigned _bindingPoint;
         bool _useUBO;
+
+        mutable Mutex _m;
     };
 }
 

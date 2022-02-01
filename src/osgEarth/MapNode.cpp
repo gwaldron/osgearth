@@ -955,18 +955,14 @@ MapNode::releaseGLObjects(osg::State* state) const
     for(const osg::Callback* ec = getEventCallback(); ec; ec = ec->getNestedCallback())
         ec->releaseGLObjects(state);
 
-    // inform the GLObjectReleaser for this context
+    // inform the GL object pools for this context
     if (state)
-        GLObjectReleaser::releaseAll(*state);
+    {
+        GLObjectPool::get(*state)->releaseAll();
+    }
 
     osg::Group::releaseGLObjects(state);
 }
-
-//std::shared_ptr<DrapingManager>&
-//MapNode::getDrapingManager()
-//{
-//    return _drapingManager;
-//}
 
 ClampingManager*
 MapNode::getClampingManager()

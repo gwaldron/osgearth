@@ -407,6 +407,16 @@ Color::fromHSL(const osg::Vec4f& hsl)
     }
 }
 
+osg::Vec4ub
+Color::asNormalizedRGBA() const
+{
+    return osg::Vec4ub(
+        (char)(r() * 255.0),
+        (char)(g() * 255.0),
+        (char)(b() * 255.0),
+        (char)(a() * 255.0));
+}
+
 void
 Color::createRandomColorRamp(
     unsigned count,

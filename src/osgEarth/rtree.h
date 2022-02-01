@@ -634,7 +634,8 @@ int RTREE_QUAL::KNNSearch(
     OE_SOFT_ASSERT_AND_RETURN(point != nullptr, 0);
     OE_SOFT_ASSERT_AND_RETURN(hits != nullptr, 0);
 
-    hits->clear();
+    if (hits)
+        hits->clear();
 
     if (ranges_squared)
         ranges_squared->clear();

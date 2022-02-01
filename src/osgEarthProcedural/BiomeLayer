@@ -193,6 +193,12 @@ namespace osgEarth
 
             void loadPolygonControlSet();
 
+            using WeakCache = std::unordered_map<
+                TileKey,
+                osg::observer_ptr<osg::Image>>;
+
+            mutable Mutexed<WeakCache> _imageCache;
+
         protected:
             virtual ~BiomeLayer() { }
         };

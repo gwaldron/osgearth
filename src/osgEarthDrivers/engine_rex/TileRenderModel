@@ -56,14 +56,25 @@ namespace osgEarth { namespace REX
         GLfloat parentMat[4 * 4];
         GLfloat elevMat[4 * 4];
         GLfloat normalMat[4 * 4];
+        GLfloat landcoverMat[4 * 4];
         GLfloat sharedMat[MAX_NUM_SHARED_SAMPLERS][4 * 4];
         GLint colorIndex;
         GLint parentIndex;
         GLint elevIndex;
         GLint normalIndex;
+        GLint landcoverIndex;
         GLint sharedIndex[MAX_NUM_SHARED_SAMPLERS];
         GLint drawOrder; // todo: stuff this somewhere else?
-        float padding[3];
+        float padding[2];
+    };
+
+    struct GL4Vertex
+    {
+        osg::Vec3f position;
+        osg::Vec3f normal;
+        osg::Vec3f uv;
+        osg::Vec3f neighborPosition;
+        osg::Vec3f neighborNormal;
     };
 
     /**
@@ -255,6 +266,7 @@ namespace osgEarth { namespace REX
                 sampler._arena_texture->_image = texture->getImage(0);
                 sampler._arena_texture->_clamp = true;
                 sampler._arena_texture->_compress = false;
+                sampler._arena_texture->_label = "Terrain texture";
             }
         }
 
@@ -294,6 +306,8 @@ namespace osgEarth { namespace REX
 
         /** Samplers bound for each visible layer (color) */
         RenderingPasses _passes;
+
+        DrawElementsIndirectBindlessCommandNV _command;
 
         /** Add a new rendering pass to the end of the list. */
         RenderingPass& addPass()
@@ -344,6 +358,7 @@ namespace osgEarth { namespace REX
                 sampler._arena_texture->_image = texture->getImage(0);
                 sampler._arena_texture->_clamp = true;
                 sampler._arena_texture->_compress = false;
+                sampler._arena_texture->_label = "Terrain texture";
             }
         }
 

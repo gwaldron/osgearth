@@ -516,7 +516,8 @@ ElevationPool::prepareEnvelope(
 int
 ElevationPool::Envelope::sampleMapCoords(
     std::vector<osg::Vec3d>& points,
-    ProgressCallback* progress)
+    ProgressCallback* progress,
+    float failValue)
 {
     OE_PROFILING_ZONE;
 
@@ -599,16 +600,16 @@ ElevationPool::Envelope::sampleMapCoords(
                 }
                 else
                 {
-                    p.z() = NO_DATA_VALUE;
+                    p.z() = failValue;
                 }
             }
         }
         else
         {
-            p.z() = NO_DATA_VALUE;
+            p.z() = failValue;
         }
 
-        if (p.z() != NO_DATA_VALUE)
+        if (p.z() != failValue)
             ++count;
     }
 
@@ -619,7 +620,8 @@ int
 ElevationPool::sampleMapCoords(
     std::vector<osg::Vec4d>& points,
     WorkingSet* ws,
-    ProgressCallback* progress)
+    ProgressCallback* progress,
+    float failValue)
 {
     OE_PROFILING_ZONE;
 
@@ -687,7 +689,7 @@ ElevationPool::sampleMapCoords(
                 lod = std::min( getLOD(p.x(), p.y()), (int)maxLOD );
                 if (lod < 0)
                 {
-                    p.z() = NO_DATA_VALUE;
+                    p.z() = failValue;
                     continue;
                 }
 
@@ -752,16 +754,16 @@ ElevationPool::sampleMapCoords(
                 }
                 else
                 {
-                    p.z() = NO_DATA_VALUE;
+                    p.z() = failValue;
                 }
             }
         }
         else
         {
-            p.z() = NO_DATA_VALUE;
+            p.z() = failValue;
         }
 
-        if (p.z() != NO_DATA_VALUE)
+        if (p.z() != failValue)
             ++count;
     }
 
@@ -773,7 +775,8 @@ ElevationPool::sampleMapCoords(
     std::vector<osg::Vec3d>& points,
     const Distance& resolution,
     WorkingSet* ws,
-    ProgressCallback* progress)
+    ProgressCallback* progress,
+    float failValue)
 {
     OE_PROFILING_ZONE;
 
@@ -890,16 +893,16 @@ ElevationPool::sampleMapCoords(
                 }
                 else
                 {
-                    p.z() = NO_DATA_VALUE;
+                    p.z() = failValue;
                 }
             }
         }
         else
         {
-            p.z() = NO_DATA_VALUE;
+            p.z() = failValue;
         }
 
-        if (p.z() != NO_DATA_VALUE)
+        if (p.z() != failValue)
             ++count;
     }
 

@@ -390,12 +390,12 @@ struct VegetationGUI : public GUI::BaseGUI
                 }
             }
 
-            if (ImGui::Checkbox("Regenerate vegetation every frame", &_forceGenerate))
-            {
-                _veglayer->setAlwaysGenerate(_forceGenerate);
-            }
+            //if (ImGui::Checkbox("Regenerate vegetation every frame", &_forceGenerate))
+            //{
+            //    _veglayer->setAlwaysGenerate(_forceGenerate);
+            //}
 
-            ImGui::Text("Num tiles: %d", _veglayer->getNumTilesRendered());
+            //ImGui::Text("Num tiles: %d", _veglayer->getNumTilesRendered());
 
             ImGui::Text("Groups:");
             ImGui::Indent();

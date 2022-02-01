@@ -35,7 +35,8 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 #pragma vp_location   fragment_lighting
 #pragma vp_order      0.7
 
-#pragma import_defines(OE_LIGHTING, OE_NUM_LIGHTS)
+#pragma import_defines(OE_LIGHTING)
+#pragma import_defines(OE_NUM_LIGHTS)
 
 uniform sampler2DArray oe_shadow_map;
 uniform float          oe_shadow_color;

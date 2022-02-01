@@ -447,11 +447,13 @@ SimpleSkyNode::onSetDateTime()
     osg::View* view = 0L;
     const DateTime& dt = getDateTime();
 
+    bool useECI = _options.coordinateSystem() == SkyOptions::COORDSYS_ECI;
+
     CelestialBody sun = getEphemeris()->getSunPosition(dt);
-    setSunPosition( sun.geocentric );
+    setSunPosition(useECI ? sun.eci : sun.geocentric );
 
     CelestialBody moon = getEphemeris()->getMoonPosition(dt);
-    setMoonPosition( moon.geocentric );
+    setMoonPosition(useECI ? moon.eci : moon.geocentric );
 
     // position the stars:
     double time_r = dt.hours()/24.0; // 0..1

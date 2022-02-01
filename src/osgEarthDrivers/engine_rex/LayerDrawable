@@ -48,7 +48,7 @@ namespace osgEarth { namespace REX
     public:
         LayerDrawable();
 
-        // The (sorted) list of tiles to render for this layer
+        // The colletion of tiles to render for this layer
         DrawTileCommands _tiles;
 
         // Determines whether to use the default surface shader program
@@ -69,6 +69,9 @@ namespace osgEarth { namespace REX
         // Layer render order, which is pushed into a Uniform at render time.
         // This value is assigned at cull time by RexTerrainEngineNode.
         int _drawOrder;
+
+        // Layer render order (only terrain surface layers)
+        int _surfaceDrawOrder;
 
         // The last layer to render will have this flag set, which will
         // prompt the render to dirty the osg::State to prevent corruption.
@@ -111,37 +114,42 @@ namespace osgEarth { namespace REX
         // Things maintained on a per-graphics-context basis
         struct GCState
         {
+            // ssbo containing globally shared constant data
             GLBuffer::Ptr shared;
+
+            // ssbo containing per-tile render info
             GLBuffer::Ptr tiles;
+
+            // VAO for rendering with bindless buffers
+            GLVAO::Ptr vao;
+
+            // bindless draw commands
+            GLBuffer::Ptr commands;
+
+            osg::GLExtensions* ext;
+
+            void(GL_APIENTRY * glMultiDrawElementsIndirectBindlessNV)
+                (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint);
+
+            void(GL_APIENTRY * glVertexAttribFormat)
+                (GLuint, GLint, GLenum, GLboolean, GLuint);
         };
 
-        struct RenderState
+        struct GL4RenderState
         {
-            RenderState();
+            GL4RenderState();
 
-            bool _dirty;
-
-            osg::buffered_object<GCState> gcState;
-            DrawTileCommands _tiles;
-
-            std::unordered_map<UID, unsigned> baseVertexLUT;
-            std::unordered_map<UID, unsigned> firstIndexLUT;
-
+            bool dirty;
+           
+            DrawTileCommands tiles;
             std::vector<GL4Tile> tilebuf;
-            osg::ref_ptr<osg::Geometry> geom;
-            osg::Vec3Array* verts;
-            osg::Vec3Array* uvs;
-            osg::Vec3Array* upvectors;
-            osg::Vec3Array* neighbors;
-            osg::Vec3Array* neighborupvectors;
-            osg::MultiDrawElementsIndirectUShort* elements;
+
+            std::vector<DrawElementsIndirectBindlessCommandNV> commands;
+            osg::buffered_object<GCState> gcState;
         };
-        mutable RenderState _rs;
+        mutable GL4RenderState _rs;
 
         void refreshRenderState();
-
-        // todo: move higher and share?
-        mutable osg::ref_ptr<TextureArena> _textures;
 
         void drawImplementationDirect(osg::RenderInfo& ri) const;
 

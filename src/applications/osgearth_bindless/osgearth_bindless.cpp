@@ -25,12 +25,15 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/GeometryCloud>
+#include <osgEarth/CullingUtils>
+#include <osgEarth/Chonk>
 
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgDB/ReadFile>
 #include <osg/MatrixTransform>
-#include <osg/PrimitiveSetIndirect>
+#include <osg/BlendFunc>
+#include <osgUtil/Simplifier>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -41,7 +44,7 @@ const char* vs = R"(
     #version 430
     #extension GL_ARB_gpu_shader_int64 : enable
 
-    layout(binding=5, std430) buffer TextureArena {
+    layout(binding=1, std430) buffer TextureArena {
         uint64_t tex_arena[];
     };
 
@@ -139,9 +142,203 @@ struct GeometryCloudRenderer : public osg::Drawable::DrawCallback
     }
 };
 
+
+const char* vs_NV = R"(
+    #version 460
+    #extension GL_ARB_gpu_shader_int64 : enable
+
+    struct Instance
+    {
+        mat4 xform;
+        vec2 local_uv;
+        float fade;
+        float visibility[4];
+        uint first_variant_cmd_index;
+    };
+    layout(binding=0, std430) buffer Instances {
+        Instance instances[];
+    };
+    layout(binding=1, std430) buffer TextureArena {
+        uint64_t textures[];
+    };
+
+    layout(location=0) in vec3 position;
+    layout(location=1) in vec3 normal;
+    layout(location=2) in vec4 color;
+    layout(location=3) in vec2 uv;
+    layout(location=4) in vec3 flex;
+    layout(location=5) in int albedo; // todo: material LUT index
+    layout(location=6) in int normalmap; // todo: material LUT index
+
+    out vec3 vp_Normal;
+    out vec4 vp_Color;
+    out vec2 tex_coord;
+    flat out uint64_t tex_handle;
+
+    void vs(inout vec4 vertex)
+    {
+        int i = gl_BaseInstance + gl_InstanceID;
+        vertex = instances[i].xform * vec4(position, 1);
+        vp_Color = color;
+        vp_Normal = normal;
+        tex_coord = uv;
+        tex_handle = albedo >= 0 ? textures[albedo] : 0;
+    };
+)";
+
+const char* fs_NV = R"(
+    #version 460
+    #extension GL_ARB_gpu_shader_int64 : enable
+    #pragma import_defines(OE_USE_ALPHA_DISCARD)
+
+    in vec2 tex_coord;
+    flat in uint64_t tex_handle;
+
+    void fs(inout vec4 color)
+    {
+        if (tex_handle > 0) {
+            vec4 texel = texture(sampler2D(tex_handle), tex_coord);
+            color *= texel;
+        }
+
+#ifdef OE_USE_ALPHA_DISCARD
+        if (color.a < 0.15)
+            discard;
+#endif
+    }
+)";
+
+int main_NV(int argc, char** argv)
+{
+    osgEarth::initialize();
+    osg::ArgumentParser arguments(&argc, argv);
+
+    osgViewer::Viewer viewer(arguments);
+    MapNodeHelper().configureView(&viewer);
+
+    if (arguments.read("--pause"))
+        ::getchar();
+
+    if (arguments.read("--novsync")) {
+        CustomRealizeOperation* op = new CustomRealizeOperation();
+        op->setSyncToVBlank(false);
+        viewer.setRealizeOperation(op);
+    }
+
+    GLUtils::enableGLDebugging();
+    VirtualProgram::enableGLDebugging();
+
+    int size = 1;
+    arguments.read("--size", size);
+
+    osg::Group* root = new osg::Group();
+
+    viewer.getCamera()->addCullCallback(new InstallCameraUniform());
+
+    osg::StateSet* root_ss = root->getOrCreateStateSet();
+
+    osg::ref_ptr<TextureArena> arena = new TextureArena();
+    arena->setBindingPoint(1);
+    root_ss->setAttribute(arena);
+
+
+    if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
+    {
+#define GL_SAMPLE_ALPHA_TO_COVERAGE_ARB   0x809E
+        root_ss->setMode(GL_BLEND, 0);
+        root_ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+    }
+    else
+    {
+        root_ss->setAttributeAndModes(new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), 1);
+        root_ss->setDefine("OE_USE_ALPHA_DISCARD");
+    }
+
+    ChonkFactory factory(arena.get());
+
+    auto drawable = new ChonkDrawable();
+
+    float spacing = 0.0;
+
+    std::vector<Chonk::Ptr> chonks;
+
+    for (int i = 1; i < argc; ++i)
+    {
+        osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFile(argv[i]);
+        if (!node.valid())
+            return -1;
+
+        OE_NOTICE << "Loaded " << argv[i] << std::endl;
+
+        float radius = node->getBound().radius();
+        spacing = std::max(spacing, radius*1.1f);
+
+        Chonk::Ptr chonk = Chonk::create();
+        chonk->add(node.get(), 350, FLT_MAX, factory);
+
+        chonks.push_back(chonk);
+    }
+
+    for (int x = 0; x < size; ++x) {
+        for (int y = 0; y < size; ++y) {
+            for (int z = 0; z < size; ++z) {
+                osg::Matrixf xform = osg::Matrixf::translate(
+                    spacing*float(x), 
+                    spacing*float(y),
+                    spacing*float(z));
+                int index = (x + y + z) % chonks.size();
+                drawable->add(chonks[index], xform);
+            }
+        }
+    }
+
+    // Simple shader that will render geometry with bindless textures
+    // This is annoying. Why does it have to be set on the drawable only?
+    //osg::StateSet* dss = new osg::StateSet();
+    //VirtualProgram* vp = VirtualProgram::getOrCreate(dss);
+    //vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
+    //vp->setFunction("vs", vs_NV, ShaderComp::LOCATION_VERTEX_MODEL);
+    //vp->setFunction("fs", fs_NV, ShaderComp::LOCATION_FRAGMENT_COLORING);
+    //drawable->setDrawStateSet(dss);
+
+    VirtualProgram* vp = VirtualProgram::getOrCreate(root_ss);
+    vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
+    vp->setFunction("vs", vs_NV, ShaderComp::LOCATION_VERTEX_MODEL);
+    vp->setFunction("fs", fs_NV, ShaderComp::LOCATION_FRAGMENT_COLORING);
+
+    root->addChild(drawable);
+    viewer.setSceneData(root);
+
+    EventRouter* router = new EventRouter();
+    viewer.addEventHandler(router);
+
+    router->onKeyPress(router->KEY_Leftbracket, [&arena]() {
+        OE_NOTICE << "Activating " << arena->size() << " textures" << std::endl;
+        for (auto& tex : arena->getTextures())
+            arena->activate(tex);
+        });
+
+    router->onKeyPress(router->KEY_Rightbracket, [&arena]() {
+        OE_NOTICE << "Deactivating " << arena->size() << " textures" << std::endl;
+        for (auto& tex : arena->getTextures())
+            arena->deactivate(tex);
+        });
+
+    OE_NOTICE
+        << "\n\n\nHello. There are " << arena->size() << " textures in the arena."
+        << "\n\nPress '[' to make resident, ']' to make non-resident"
+        << std::endl;
+
+    return viewer.run();
+}
+
 int
 main(int argc, char** argv)
 {
+    // new bindlessNV
+    return main_NV(argc, argv);
+
+#if 0
     osgEarth::initialize();
     osg::ArgumentParser arguments(&argc, argv);
 
@@ -157,6 +354,7 @@ main(int argc, char** argv)
     vp->setFunction("fs", fs, ShaderComp::LOCATION_FRAGMENT_COLORING);
 
     osg::ref_ptr<TextureArena> arena = new TextureArena();
+    arena->setBindingPoint(1);
     root_ss->setAttribute(arena.get(), 1);
 
     osg::ref_ptr<GeometryCloud> cloud = new GeometryCloud(arena.get());
@@ -173,7 +371,6 @@ main(int argc, char** argv)
 
         float radius = node->getBound().radius();
         spacing += radius;
-
         osg::ref_ptr<osg::MatrixTransform> mt = new osg::MatrixTransform();
         mt->setMatrix(osg::Matrix::translate(spacing, 0, 0));
         mt->addChild(node);
@@ -209,4 +406,5 @@ main(int argc, char** argv)
         << std::endl;
 
     return viewer.run();
+#endif
 }

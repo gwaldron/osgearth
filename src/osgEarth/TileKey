@@ -121,7 +121,6 @@ namespace osgEarth
          */
         unsigned getQuadrant() const;
 
-    public:
         /**
          * Gets a reference to the child key of this key in the specified
          * quadrant (0, 1, 2, or 3).
@@ -204,6 +203,11 @@ namespace osgEarth
         //! X and Y resolution (in profile units) for the given tile size
         std::pair<double,double> getResolution(
             unsigned tileSize) const;
+
+        //! Convenience method to match this key.
+        bool is(unsigned lod, unsigned x, unsigned y) const {
+            return _lod == lod && _x == x && _y == y;
+        }
 
     protected:
         unsigned int _lod;

@@ -375,8 +375,9 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 #pragma vp_location   fragment_coloring
 
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
-#pragma import_defines(OE_IS_MULTISAMPLE)
+#pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
 
+#if 0
 // fragment stage global PBR parameters.
 struct OE_PBR {
     float roughness;
@@ -385,6 +386,7 @@ struct OE_PBR {
     float brightness;
     float contrast;
 } oe_pbr;
+#endif
 
 uniform float oe_veg_maxAlpha;
 
@@ -409,8 +411,6 @@ float mapToNormalizedRange(in float value, in float lo, in float hi)
     return clamp((value - lo) / (hi - lo), 0.0, 1.0);
 }
 
-uniform float oe_snow = 0.0;
-
 void oe_GroundCover_FS(inout vec4 color)
 {
     // apply the transition fade
@@ -426,11 +426,11 @@ void oe_GroundCover_FS(inout vec4 color)
         if (oe_veg_nmlHandle > 0UL)
         {
             vec4 n = texture(sampler2D(oe_veg_nmlHandle), oe_veg_texCoord.st);
-            n.xyz = n.xyz*2.0-1.0;
+            n.xyz = n.xyz*2.0 - 1.0;
             n.z = 1.0 - abs(n.x) - abs(n.y);
             float t = clamp(-n.z, 0, 1);
-            n.x += (n.x > 0)? -t : t;
-            n.y += (n.y > 0)? -t : t;
+            n.x += (n.x > 0) ? -t : t;
+            n.y += (n.y > 0) ? -t : t;
             vp_Normal = normalize(oe_veg_TBN * n.xyz);
             //color.rgb = (vp_Normal + 1.0)*0.5; // debug
 
@@ -438,29 +438,35 @@ void oe_GroundCover_FS(inout vec4 color)
 #endif
     }
 
-#if !defined(OE_IS_MULTISAMPLE) || defined(OE_IS_SHADOW_CAMERA)
 
+#ifdef OE_IS_SHADOW_CAMERA
     if (color.a < oe_veg_maxAlpha)
         discard;
-
-#else
-
-    // mitigate the screen-door effect of A2C in the distance
-    // https://tinyurl.com/y7bbbpl9
-    float a = (color.a - oe_veg_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
-    color.a = mix(color.a, a, oe_veg_distance);
-
 #endif
 
-#if 0 //ifndef OE_IS_SHADOW_CAMERA
-    // TODO: revisit once we can figure out how to get terrain elevation
-    float coldness = mapToNormalizedRange(elev, 1000, 3500);
-    float cos_angle = clamp(dot(vp_Normal, normalize(oe_UpVectorView)), 0, 1);
-    if (cos_angle > 0.3) {
-        float snowiness = step(1.0 - oe_snow*coldness, cos_angle);
-        color.rgb = mix(color.rgb, vec3(1), snowiness);
-        oe_pbr.roughness = mix(oe_pbr.roughness, 0.1, snowiness);
+#ifdef OE_USE_ALPHA_TO_COVERAGE
+    // mitigate the screen-door effect of A2C in the distance
+    // https://tinyurl.com/y7bbbpl9
+    //float a = (color.a - oe_veg_maxAlpha) / max(fwidth(color.a), 0.0001) + 0.5;
+    //color.a = mix(color.a, a, oe_veg_distance);
+
+    // adjust the alpha based on the calculated mipmap level:
+    // better, but a bit more expensive than the above method
+    // https://tinyurl.com/fhu4zdxz
+    if (oe_veg_texHandle > 0UL)
+    {
+        ivec2 tsize = textureSize(sampler2D(oe_veg_texHandle), 0);
+        vec2 cf = vec2(float(tsize.x)*oe_veg_texCoord.s, float(tsize.y)*oe_veg_texCoord.t);
+        vec2 dx_vtc = dFdx(cf);
+        vec2 dy_vtc = dFdy(cf);
+        float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
+        float mml = max(0, 0.5 * log2(delta_max_sqr));
+        color.a *= (1.0 + mml * 0.25);
     }
+
+#else
+    if (color.a < oe_veg_maxAlpha)
+        discard;
 #endif
 }
 

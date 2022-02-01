@@ -84,7 +84,7 @@
 
     <TerrainConstraint name="constraint: roads" features="data:osm-roads" min_level="12" enabled="false"/>
 
-    <DebugImage show_tessellation="true" enabled="true"/>
+    <DebugImage show_tessellation="true" enabled="false"/>
 
     <viewpoints>
         <viewpoint name="Grand Canyon">

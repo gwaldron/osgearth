@@ -24,6 +24,8 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/Math>
 #include <osgEarth/Utils>
+#include <osgEarth/Capabilities>
+#include <osgEarth/Registry>
 
 #include <osg/LineStipple>
 #include <osg/GraphicsContext>
@@ -31,8 +33,6 @@
 #include <osgViewer/GraphicsWindow>
 #include <osg/Texture2D>
 #include <osg/BindImageTexture>
-
-#include <osg/ContextData>
 
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
 #include <osg/LineWidth>
@@ -57,6 +57,10 @@ using namespace osgEarth;
 #define GL_NORMALIZE 0x0BA1
 #endif
 
+#ifndef GL_BUFFER_GPU_ADDRESS_NV
+#define GL_BUFFER_GPU_ADDRESS_NV 0x8F1D
+#endif
+
 namespace
 {
     struct
@@ -68,14 +72,51 @@ namespace
         void (GL_APIENTRY * PushDebugGroup)(GLenum, GLuint, GLsizei, const char*);
         void (GL_APIENTRY * PopDebugGroup)(void);
 
+        // NV_shader_buffer_load
+        // https://developer.download.nvidia.com/opengl/specs/GL_NV_shader_buffer_load.txt
+        void (GL_APIENTRY * MakeNamedBufferResidentNV)(GLuint name, GLenum access);
+        void (GL_APIENTRY * MakeNamedBufferNonResidentNV)(GLuint name);
+        void (GL_APIENTRY * GetNamedBufferParameterui64vNV)(GLenum name, GLenum pname, GLuint64* params);
+
+        void (GL_APIENTRY * MakeBufferResidentNV)(GLuint name, GLenum access);
+        void (GL_APIENTRY * MakeBufferNonResidentNV)(GLuint name);
+        void (GL_APIENTRY * GetBufferParameterui64vNV)(GLenum target, GLenum pname, GLuint64* params);
+
+        void (GL_APIENTRY * NamedBufferData)(GLuint name, GLsizeiptr size, const void* data, GLenum usage);
+        void (GL_APIENTRY * NamedBufferSubData)(GLuint name, GLintptr offset ,GLsizeiptr size, const void* data);
+        void*(GL_APIENTRY * MapNamedBuffer)(GLuint name, GLbitfield access);
+        void*(GL_APIENTRY * MapNamedBufferRange)(GLuint name, GLintptr offset, GLsizeiptr length, GLbitfield access);
+        void (GL_APIENTRY * UnmapNamedBuffer)(GLuint name);
+
         inline void init()
         {
             if (DebugMessageCallback == nullptr)
             {
+                //Threading::setThreadName("GL");
+
+                float version = osg::getGLVersionNumber();
+
                 osg::setGLExtensionFuncPtr(DebugMessageCallback, "glDebugMessageCallback", "glDebugMessageCallbackKHR");
                 osg::setGLExtensionFuncPtr(DebugMessageControl, "glDebugMessageControl", "glDebugMessageControlKHR");
                 osg::setGLExtensionFuncPtr(PushDebugGroup, "glPushDebugGroup", "glPushDebugGroupKHR");
                 osg::setGLExtensionFuncPtr(PopDebugGroup, "glPopDebugGroup", "glPopDebugGroupKHR");
+
+                osg::setGLExtensionFuncPtr(MakeNamedBufferResidentNV, "glMakeNamedBufferResidentNV");
+                osg::setGLExtensionFuncPtr(MakeNamedBufferNonResidentNV, "glMakeNamedBufferNonResidentNV");
+                osg::setGLExtensionFuncPtr(GetNamedBufferParameterui64vNV, "glGetNamedBufferParameterui64vNV");
+
+                osg::setGLExtensionFuncPtr(MakeBufferResidentNV, "glMakeBufferResidentNV");
+                osg::setGLExtensionFuncPtr(MakeBufferNonResidentNV, "glMakeBufferNonResidentNV");
+                osg::setGLExtensionFuncPtr(GetBufferParameterui64vNV, "glGetBufferParameterui64vNV");
+
+                if (version >= 4.5f)
+                {
+                    osg::setGLExtensionFuncPtr(NamedBufferData, "glNamedBufferData");
+                    osg::setGLExtensionFuncPtr(NamedBufferSubData, "glNamedBufferSubData");
+                    osg::setGLExtensionFuncPtr(MapNamedBuffer, "glMapNamedBuffer");
+                    osg::setGLExtensionFuncPtr(MapNamedBufferRange, "glMapNamedBufferRange");
+                    osg::setGLExtensionFuncPtr(UnmapNamedBuffer, "glUnmapNamedBuffer");
+                }
             }
         }
     } gl;
@@ -284,7 +325,8 @@ namespace
     {
         const std::string severities[3] = { "HIGH", "MEDIUM", "LOW" };
 
-        if (severity != GL_DEBUG_SEVERITY_NOTIFICATION)
+        if (severity != GL_DEBUG_SEVERITY_NOTIFICATION &&
+            severity != GL_DEBUG_SEVERITY_LOW)
         {
             const std::string& s = severities[severity - GL_DEBUG_SEVERITY_HIGH];
             OE_WARN << "GL (" << s << ", " << source << ") -- " << message << std::endl;
@@ -367,23 +409,169 @@ GL3RealizeOperation::operator()(osg::Object* object)
 
 
 #undef LC
-#define LC "[GLObjectReleaser] "
+#define LC "[GLObjectPool] "
 
-GLObject::GLObject(osg::State& state, const std::string& label) :
-    _label(label),
-    _ext(state.get<osg::GLExtensions>())
+GLObjectPool*
+GLObjectPool::get(osg::State& state)
+{
+    return osg::get<GLObjectPool>(state.getContextID());
+}
+
+GLObjectPool::GLObjectPool(unsigned cxid) :
+    osg::GraphicsObjectManager("osgEarth::GLObjectPool", cxid),
+    _hits(0),
+    _misses(0),
+    _totalBytes(0),
+    _avarice(0.5f)
 {
     //nop
 }
 
+void
+GLObjectPool::watch(GLObject::Ptr object)
+{
+    ScopedMutexLock lock(_mutex);
+    _objects.insert(object);
+}
+
+void
+GLObjectPool::releaseAll()
+{
+    ScopedMutexLock lock(_mutex);
+    for (auto& object : _objects)
+        object->release();
+    _objects.clear();
+}
+
+GLsizeiptr
+GLObjectPool::totalBytes() const
+{
+    return _totalBytes;
+}
+
+GLObjectPool::Collection
+GLObjectPool::objects() const
+{
+    return _objects;
+}
+
+void
+GLObjectPool::flushDeletedGLObjects(double now, double& avail)
+{
+    ScopedMutexLock lock(_mutex);
+
+    GLsizeiptr bytes = 0;
+    std::unordered_set<GLObject::Ptr> keep;
+    unsigned maxNumToRelease = std::max(1u, _avarice);
+    unsigned numReleased = 0u;
+
+    for (auto& object : _objects)
+    {
+        if (object.use_count() == 1 && numReleased < maxNumToRelease)
+        {
+            object->release();
+            ++numReleased;
+        }
+        else
+        {
+            keep.insert(object);
+            bytes += object->size();
+        }
+    }
+    _objects.swap(keep);
+    _totalBytes = bytes;
+}
+
+void
+GLObjectPool::flushAllDeletedGLObjects()
+{
+    deleteAllGLObjects();
+}
+
+void
+GLObjectPool::deleteAllGLObjects()
+{
+    ScopedMutexLock lock(_mutex);
+    for (auto& object : _objects)
+        object->release();
+    _objects.clear();
+    _totalBytes = 0;
+}
+
+void
+GLObjectPool::discardAllGLObjects()
+{
+    ScopedMutexLock lock(_mutex);
+    _objects.clear();
+    _totalBytes = 0;
+}
+
+
+
+GLObject::GLObject(osg::State& state, Type type, const std::string& label) :
+    _label(label),
+    _type(type),
+    _recyclable(false),
+    _ext(state.get<osg::GLExtensions>())
+{
+    gl.init();
+}
+
+GLVAO::GLVAO(osg::State& state, const std::string& label) :
+    GLObject(state, VAO, label.empty() ? "Unlabaled VAO" : label),
+    _name(0U)
+{
+    ext()->glGenVertexArrays(1, &_name);
+}
+
+GLVAO::Ptr
+GLVAO::create(osg::State& state, const std::string& label)
+{
+    Ptr result(new GLVAO(state, label));
+    GLObjectPool::get(state)->watch(result);
+    return result;
+}
+
+void
+GLVAO::release()
+{
+    if (_name != 0U)
+        ext()->glDeleteVertexArrays(1, &_name);
+    _name = 0U;
+}
+
+void
+GLVAO::bind()
+{
+    OE_SOFT_ASSERT_AND_RETURN(_name != 0U, void());
+    ext()->glBindVertexArray(_name);
+}
+
+void
+GLVAO::unbind()
+{
+    ext()->glBindVertexArray(0);
+}
+
 GLBuffer::GLBuffer(GLenum target, osg::State& state, const std::string& label) :
-    GLObject(state, label),
+    GLObject(state, BUFFER, label.empty() ? "Unlabeled buffer" : label),
     _target(target),
     _name(~0U),
     _size(0),
-    _immutable(false)
+    _immutable(false),
+    _address(0ULL),
+    _isResident(false)
 {
     ext()->glGenBuffers(1, &_name);
+    reset(target, label);
+}
+
+void
+GLBuffer::reset(GLenum target, const std::string& label)
+{
+    _target = target;
+    _label = label;
+
     if (_name != ~0U)
     {
         bind();
@@ -394,16 +582,40 @@ GLBuffer::GLBuffer(GLenum target, osg::State& state, const std::string& label) :
 GLBuffer::Ptr
 GLBuffer::create(GLenum target, osg::State& state, const std::string& label)
 {
-    Ptr obj(new GLBuffer(target, state, label));
-    GLObjectReleaser::watch(obj, state);
-    OE_DEVEL << LC << "GLBuffer::create, name=" << obj->name() << std::endl;
-    return obj;
+    Ptr object(new GLBuffer(target, state, label));
+    GLObjectPool::get(state)->watch(object);
+    OE_DEVEL << LC << "GLBuffer::create, name=" << object->name() << std::endl;
+    return object;
+}
+
+GLBuffer::Ptr
+GLBuffer::create(GLenum target, osg::State& state, GLsizei sizeHint, const std::string& label)
+{
+    const GLObject::Compatible comp = [sizeHint](GLObject* obj) {
+        return
+            obj->type() == BUFFER &&
+            obj->recyclable() &&
+            obj->size() == sizeHint;
+    };
+
+    Ptr object = GLObjectPool::get(state)->recycle<GLBuffer>(comp);
+    if (object)
+    {
+        object->reset(target, label);
+        return object;
+    }
+    else
+    {
+        object = create(target, state, label);
+        object->_recyclable = true;
+    }
+    return object;
 }
 
 void
 GLBuffer::bind() const
 {
-    OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
+    //OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
     OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name: " + label() << );
     ext()->glBindBuffer(_target, _name);
 }
@@ -411,15 +623,50 @@ GLBuffer::bind() const
 void
 GLBuffer::bind(GLenum otherTarget) const
 {
-    OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
+    //OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
     OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "bind() called on invalid/deleted name: " + label() << );
     ext()->glBindBuffer(otherTarget, _name);
 }
 
 void
-GLBuffer::uploadData(GLintptr datasize, const GLvoid* data, GLbitfield flags) const
+GLBuffer::unbind() const
 {
-    OE_HARD_ASSERT(_immutable == false);
+    OE_SOFT_ASSERT_AND_RETURN(_name != ~0U, void(), "unbind() called on invalid/deleted name: " + label() << );
+    ext()->glBindBuffer(_target, 0);
+}
+
+void
+GLBuffer::uploadData(GLsizei datasize, const GLvoid* data, GLbitfield flags) const
+{
+    OE_SOFT_ASSERT_AND_RETURN(_immutable == false || datasize <= size(), void());
+
+    if (!gl.NamedBufferData)
+        bind(target());
+
+    if (datasize > size())
+        bufferData(datasize, data, flags);
+    else if (data != nullptr)
+    {
+#if 1
+        bufferSubData(0, datasize, data);
+#else
+        // CRASHES. Why?
+        bind();
+        void* ptr = ext()->glMapBuffer(_target, GL_WRITE_ONLY_ARB);
+        OE_HARD_ASSERT(ptr != nullptr);
+        ::memcpy(ptr, data, datasize);
+        OE_HARD_ASSERT(ext()->glUnmapBuffer(_target) == GL_TRUE);
+        unbind();
+#endif
+    }
+}
+
+void
+GLBuffer::uploadData(GLenum otherTarget, GLsizei datasize, const GLvoid* data, GLbitfield flags) const
+{
+    OE_SOFT_ASSERT_AND_RETURN(_immutable == false || datasize <= size(), void());
+
+    bind(otherTarget);
 
     if (datasize > size())
         bufferData(datasize, data, flags);
@@ -428,34 +675,86 @@ GLBuffer::uploadData(GLintptr datasize, const GLvoid* data, GLbitfield flags) co
 }
 
 void
-GLBuffer::bufferData(GLintptr size, const GLvoid* data, GLbitfield flags) const
+GLBuffer::bufferData(GLsizei size, const GLvoid* data, GLbitfield flags) const
 {
-    size = align(size, getSSBOAlignment<GLintptr>());
-    ext()->glBufferData(_target, size, data, flags);
+    if (_target == GL_SHADER_STORAGE_BUFFER)
+        size = align(size, getSSBOAlignment<GLsizei>());
+    if (gl.NamedBufferData)
+        gl.NamedBufferData(name(), size, data, flags);
+    else
+        ext()->glBufferData(_target, size, data, flags);
     _size = size;
     _immutable = false;
 }
 
 void
-GLBuffer::bufferSubData(GLintptr offset, GLsizeiptr datasize, const GLvoid* data) const
+GLBuffer::bufferSubData(GLintptr offset, GLsizei datasize, const GLvoid* data) const
 {
     OE_SOFT_ASSERT_AND_RETURN(offset + datasize <= size(), void());
-    ext()->glBufferSubData(_target, offset, datasize, data);
+    if (gl.NamedBufferSubData)
+        gl.NamedBufferSubData(name(), offset, datasize, data);
+    else
+        ext()->glBufferSubData(target(), offset, datasize, data);
 }
 
 void
-GLBuffer::bufferStorage(GLintptr size, const GLvoid* data, GLbitfield flags) const
+GLBuffer::bufferStorage(GLsizei size, const GLvoid* data, GLbitfield flags) const
 {
-    size = align(size, getSSBOAlignment<GLintptr>());
-    ext()->glBufferStorage(_target, size, data, flags);
+    if (_target == GL_SHADER_STORAGE_BUFFER)
+        size = align(size, getSSBOAlignment<GLsizei>());
+
+    if (recyclable() && size == _size)
+    {
+        ext()->glBufferSubData(_target, 0, size, data);
+    }
+    else
+    {
+        if (recyclable())
+            flags |= GL_DYNAMIC_STORAGE_BIT;
+
+        ext()->glBufferStorage(_target, size, data, flags);
+    }
     _size = size;
     _immutable = true;
+}
+
+void*
+GLBuffer::map(GLbitfield access) const
+{
+    if (gl.MapNamedBuffer)
+        return gl.MapNamedBuffer(_name, access);
+    else
+    {
+        bind();
+        return ext()->glMapBuffer(_target, access);
+    }
+}
+
+void
+GLBuffer::unmap() const
+{
+    if (gl.UnmapNamedBuffer)
+        gl.UnmapNamedBuffer(_name);
+    else
+    {
+        bind();
+        ext()->glUnmapBuffer(_target);
+    }
 }
 
 void
 GLBuffer::bindBufferBase(GLuint index) const
 {
-    ext()->glBindBufferBase(target(), index, name());
+    if (target() == GL_SHADER_STORAGE_BUFFER ||
+        target() == GL_UNIFORM_BUFFER ||
+        target() == GL_ATOMIC_COUNTER_BUFFER)
+    {
+        ext()->glBindBufferBase(target(), index, name());
+    }
+    else
+    {
+        ext()->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, index, name());
+    }
 }
 
 void
@@ -464,6 +763,8 @@ GLBuffer::release()
     if (_name != ~0U)
     {
         OE_DEVEL << LC << "GLBuffer::release, name=" << name() << std::endl;
+
+        makeNonResident();
         //OE_DEVEL << "Releasing buffer " << _name << "(" << _label << ")" << std::endl;
         ext()->glDeleteBuffers(1, &_name);
         _name = ~0U;
@@ -471,14 +772,118 @@ GLBuffer::release()
     }
 }
 
+GLuint64
+GLBuffer::address()
+{
+    if (_address == 0ULL)
+    {
+        gl.init();
+        OE_HARD_ASSERT(gl.GetNamedBufferParameterui64vNV);
+        gl.GetNamedBufferParameterui64vNV(name(), GL_BUFFER_GPU_ADDRESS_NV, &_address);
+    }
+    return _address;
+}
+
+void
+GLBuffer::makeResident()
+{
+    if (address() != 0ULL && !_isResident)
+    {
+        OE_HARD_ASSERT(gl.MakeNamedBufferResidentNV);
+        //Currently only GL_READ_ONLY is supported according to the spec
+        gl.MakeNamedBufferResidentNV(name(), GL_READ_ONLY_ARB);
+        _isResident = true;
+    }
+}
+
+void
+GLBuffer::makeNonResident()
+{
+    if (_address != 0ULL && _isResident)
+    {
+        OE_HARD_ASSERT(gl.MakeNamedBufferNonResidentNV);
+        gl.MakeNamedBufferNonResidentNV(name());
+        _isResident = false;
+        // address can be invalidated, so zero it out
+        _address = 0ULL;
+    }
+}
+
+
+GLTexture::Profile::Profile(GLenum target) :
+    osg::Texture::TextureProfile(target),
+    _minFilter(GL_LINEAR),
+    _magFilter(GL_LINEAR),
+    _wrapS(GL_CLAMP_TO_EDGE),
+    _wrapT(GL_CLAMP_TO_EDGE),
+    _wrapR(GL_CLAMP_TO_EDGE),
+    _maxAnisotropy(1.0f)
+{
+    //nop
+}
+
+GLTexture::Profile::Profile(
+    GLenum    target,
+    GLint     numMipmapLevels,
+    GLenum    internalFormat,
+    GLsizei   width,
+    GLsizei   height,
+    GLsizei   depth,
+    GLint     border,
+    GLint     minFilter,
+    GLint     magFilter,
+    GLint     wrapS,
+    GLint     wrapT,
+    GLint     wrapR,
+    GLfloat   maxAnisotropy) :
+    osg::Texture::TextureProfile(
+        target,
+        numMipmapLevels,
+        internalFormat,
+        width, height, depth,
+        border),
+    _minFilter(minFilter),
+    _magFilter(magFilter),
+    _wrapS(wrapS),
+    _wrapT(wrapT),
+    _wrapR(wrapR),
+    _maxAnisotropy(maxAnisotropy)
+{
+    //nop
+}
+
+bool
+GLTexture::Profile::operator==(const GLTexture::Profile& rhs) const
+{
+    return
+        osg::Texture::TextureProfile::operator==(rhs) &&
+        _minFilter == rhs._minFilter &&
+        _magFilter == rhs._magFilter &&
+        _wrapS == rhs._wrapS &&
+        _wrapT == rhs._wrapT &&
+        _wrapR == rhs._wrapR &&
+        _maxAnisotropy == rhs._maxAnisotropy;
+}
+
 GLTexture::GLTexture(GLenum target, osg::State& state, const std::string& label) :
-    GLObject(state, label),
+    GLObject(state, TEXTURE, label.empty() ? "Unlabeled texture" : label),
     _target(target),
     _name(~0U),
     _handle(~0ULL),
-    _isResident(false)
+    _isResident(false),
+    _profile(target),
+    _size(0)
 {
     glGenTextures(1, &_name);
+    reset(target, label, state);
+}
+
+void
+GLTexture::reset(GLenum target, const std::string& label, osg::State& state)
+{
+    _target = target;
+    _label = label;
+
     if (_name != ~0U)
     {
         bind(state);
@@ -490,9 +895,37 @@ GLTexture::Ptr
 GLTexture::create(GLenum target, osg::State& state, const std::string& label)
 {
     Ptr obj(new GLTexture(target, state, label));
-    GLObjectReleaser::watch(obj, state);
-    OE_DEVEL << LC << "GLTexture::release, name=" << obj->name() << std::endl;
+    GLObjectPool::get(state)->watch(obj);
+    OE_DEVEL << LC << "GLTexture::create, name=" << obj->name() << std::endl;
     return obj;
+}
+
+GLTexture::Ptr
+GLTexture::create(
+    GLenum target, 
+    osg::State& state, 
+    const Profile& profileHint,
+    const std::string& label)
+{
+    const GLObject::Compatible comp = [profileHint](GLObject* obj) {
+        return
+            obj->type() == TEXTURE &&
+            obj->recyclable() &&
+            static_cast<GLTexture*>(obj)->_profile == profileHint;
+    };
+
+    Ptr object = GLObjectPool::get(state)->recycle<GLTexture>(comp);
+    if (object)
+    {
+        object->reset(target, label, state);
+        return object;
+    }
+    else
+    {
+        object = create(target, state, label);
+        object->_recyclable = true;
+    }
+    return object;
 }
 
 void
@@ -528,6 +961,8 @@ GLTexture::handle(osg::State& state)
 void
 GLTexture::makeResident(bool toggle)
 {
+    //TODO: does this stall??
+    //if (toggle != ext()->glIsTextureHandleResident(_handle))
     if (_isResident != toggle)
     {
         OE_SOFT_ASSERT_AND_RETURN(_handle != ~0ULL, void(), "makeResident() called on invalid handle: " + label() << );
@@ -561,22 +996,52 @@ GLTexture::release()
 }
 
 void
-GLTexture::storage2D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t)
+GLTexture::storage2D(const Profile& profile)
 {
-    ext()->glTexStorage2D(_target, mipLevels, internalFormat, s, t);
+    if (size() == 0)
+    {
+        _profile = profile;
 
-    osg::Texture::TextureProfile p(_target, mipLevels, internalFormat, s, t, 1, 0);
-    _size = p._size;
+        ext()->glTexStorage2D(
+            _target,
+            profile._numMipmapLevels,
+            profile._internalFormat,
+            profile._width,
+            profile._height);
+        
+        glTexParameteri(_target, GL_TEXTURE_MIN_FILTER, profile._minFilter);
+        glTexParameteri(_target, GL_TEXTURE_MAG_FILTER, profile._magFilter);
+        glTexParameteri(_target, GL_TEXTURE_WRAP_S, profile._wrapS);
+        glTexParameteri(_target, GL_TEXTURE_WRAP_T, profile._wrapT);
+        glTexParameterf(_target, GL_TEXTURE_MAX_ANISOTROPY_EXT, profile._maxAnisotropy);
+
+        _size = _profile._size;
+    }
 }
 
 void
-GLTexture::storage3D(GLsizei mipLevels, GLenum internalFormat, GLsizei s, GLsizei t, GLsizei r)
+GLTexture::storage3D(const Profile& profile)
 {
-    ext()->glTexStorage3D(_target, mipLevels, internalFormat, s, t, r);
+    if (size() == 0)
+    {
+        _profile = profile; // Profile(_target, mipLevels, internalFormat, s, t, r, 0);
 
-    osg::Texture::TextureProfile p(_target, mipLevels, internalFormat, s, t, r, 0);
-    _size = p._size;
+        ext()->glTexStorage3D(
+            _target, 
+            profile._numMipmapLevels, 
+            profile._internalFormat,
+            profile._width,
+            profile._height,
+            profile._depth);
 
+        glTexParameteri(_target, GL_TEXTURE_MIN_FILTER, profile._minFilter);
+        glTexParameteri(_target, GL_TEXTURE_MAG_FILTER, profile._magFilter);
+        glTexParameteri(_target, GL_TEXTURE_WRAP_S, profile._wrapS);
+        glTexParameteri(_target, GL_TEXTURE_WRAP_T, profile._wrapT);
+        glTexParameterf(_target, GL_TEXTURE_MAX_ANISOTROPY_EXT, profile._maxAnisotropy);
+
+        _size = _profile._size;
+    }
 }
 
 void
@@ -603,106 +1068,137 @@ GLTexture::compressedSubImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff,
     ext()->glCompressedTexSubImage3D(_target, level, xoff, yoff, zoff, width, height, depth, format, imageSize, data);
 }
 
-#undef LC
-#define LC "[GLObjectReleaser] "
 
-GLObjectReleaser::GLObjectReleaser(unsigned contextID) :
-    osg::GraphicsObjectManager("OE GLObjectReleaser", contextID),
-    _mutex("GLObjectReleaser(OE)")
+GLFBO::Ptr
+GLFBO::create(osg::State& state, const std::string& label)
 {
-    //nop
+    Ptr object(new GLFBO(state, label));
+    GLObjectPool::get(state)->watch(object);
+    return object;
+}
+
+GLFBO::GLFBO(osg::State& state, const std::string& label) :
+    GLObject(state, FBO, label),
+    _name(0)
+{
+    ext()->glGenFramebuffers(1, &_name);
 }
 
 void
-GLObjectReleaser::watch(GLObject::Ptr object, osg::State& state_unused)
+GLFBO::release()
 {
-    if (object && object->ext())
+    if (_name != 0)
     {
-        GLObjectReleaser* rel = osg::get<GLObjectReleaser>(object->ext()->contextID);
-        if (rel)
-        {
-            ScopedMutexLock lock(rel->_mutex);
-            rel->_objects.insert(object);
-            OE_DEVEL << LC << "Added \"" << object->label() << "\"" << std::endl;
-            //OE_INFO << LC << "Watching " << rel->_objects.size() << std::endl;
-        }
+        ext()->glDeleteFramebuffers(1, &_name);
+        _name = 0;
     }
 }
 
-void
-GLObjectReleaser::releaseAll(osg::State& state)
+bool
+GLFBO::valid() const
 {
-    GLObjectReleaser* rel = osg::get<GLObjectReleaser>(state.getContextID());
-    if (rel)
-    {
-        ScopedMutexLock lock(rel->_mutex);
-
-        for (auto& object : rel->_objects)
-        {
-            OE_DEVEL << LC << "Releasing \"" << object->label() << "\"" << std::endl;
-            object->release();
-        }
-
-        rel->_objects.clear();
-    }
+    return _name != 0;
 }
 
 GLsizei
-GLObjectReleaser::totalBytes(osg::State& state)
+GLFBO::size() const
 {
-    GLObjectReleaser* rel = osg::get<GLObjectReleaser>(state.getContextID());
-    return rel ? rel->_totalBytes : 0;
+    //todo
+    return 0;
 }
 
-void
-GLObjectReleaser::flushDeletedGLObjects(double currentTime, double& availableTime)
+GLTexture::Ptr
+GLFBO::renderToTexture(
+    GLsizei width,
+    GLsizei height,
+    DrawFunction draw, 
+    osg::State& state)
 {
-    // OSG calls this method periodically
-    flushAllDeletedGLObjects();
-}
+    // http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-14-render-to-texture/
 
-void
-GLObjectReleaser::flushAllDeletedGLObjects()
-{
-    ScopedMutexLock lock(_mutex);
+    OE_SOFT_ASSERT_AND_RETURN(width > 0 && height > 0, nullptr);
+    OE_SOFT_ASSERT_AND_RETURN(draw != nullptr, nullptr);
 
-    // OSG calls this method periodically
-    std::unordered_set<std::shared_ptr<GLObject>> keep;
+    GLTexture::Profile profile(
+        GL_TEXTURE_2D,    // target
+        1,                // mip levels
+        GL_RGBA8,         // internal format
+        width,            // width
+        height,           // height
+        1,                // depth
+        0,                // border,
+        GL_NEAREST,       // minification filter
+        GL_NEAREST,       // magnification filter
+        GL_CLAMP_TO_EDGE, // wrap S
+        GL_CLAMP_TO_EDGE, // wrap T
+        GL_CLAMP_TO_EDGE, // wrap R
+        4.0f);            // max anisotropy
 
-    GLsizei bytes = 0;
+    // create out RTT texture:
+    GLTexture::Ptr texture = GLTexture::create(
+        GL_TEXTURE_2D,
+        state,
+        profile,
+        "RTT");
 
-    for (auto& object : _objects)
+    // allocate the storage.
+    // TODO: use glTexImage2D instead so we can change the 
+    // mipmapping filters later?
+    texture->storage2D(profile);
+
+    // set up a depth buffer:
+    GLuint depth_rb;
+    ext()->glGenRenderbuffers(1, &depth_rb);
+    ext()->glBindRenderbuffer(GL_RENDERBUFFER_EXT, depth_rb);
+    ext()->glRenderbufferStorage(
+        GL_RENDERBUFFER_EXT,
+        GL_DEPTH_COMPONENT,
+        width, height);
+
+    // attach the texture
+    ext()->glFramebufferTexture(
+        GL_FRAMEBUFFER_EXT,
+        GL_COLOR_ATTACHMENT0_EXT,
+        texture->name(),
+        0);
+
+    // set the list of draw buffers.
+    GLenum draw_buffers[1] = { GL_COLOR_ATTACHMENT0_EXT };
+    ext()->glDrawBuffers(1, draw_buffers);
+
+    // check for completeness:
+    bool complete = ext()->glCheckFramebufferStatus(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT;
+    OE_SOFT_ASSERT(complete);
+
+    if (complete)
     {
-        if (object.use_count() == 1)
-        {
-            OE_DEVEL << LC << "Releasing \"" << object->label() << "\"" << std::endl;
-            object->release();
-        }
-        else
-        {
-            keep.insert(object);
-            bytes += object->size();
-        }
+        ext()->glBindFramebuffer(GL_FRAMEBUFFER_EXT, _name);
+
+        // save and reconfigure viewport:
+        const osg::Viewport* viewport = state.getCurrentViewport();
+        glViewport(0, 0, width, height);
+
+        // Render to texture
+        draw(state);
+
+        // restore viewport
+        viewport->apply(state);
+
+        ext()->glBindFramebuffer(GL_FRAMEBUFFER_EXT, 0);
+
+        // Re-apply previous OSG state
+        //state.dirtyAllAttributes();
+        //state.dirtyAllModes();
+        //state.apply();
     }
 
-    _objects.swap(keep);
-    _totalBytes = bytes;
+    ext()->glDeleteRenderbuffers(1, &depth_rb);
+
+    return texture;
 }
 
-void
-GLObjectReleaser::deleteAllGLObjects()
-{
-    // not really sure what this is supposed to do TBH
-    flushAllDeletedGLObjects();
-}
 
-void
-GLObjectReleaser::discardAllGLObjects()
-{
-    ScopedMutexLock lock(_mutex);
-    // no graphics context available..just empty the bucket
-    _objects.clear();
-}
+
 
 #undef LC
 #define LC "[GPUJobArena] "
@@ -873,6 +1369,8 @@ ComputeImageSession::ComputeImageSession() :
 {
     _stateSet = new osg::StateSet();
     _tex = new osg::Texture2D();
+    _tex->setFilter(_tex->MIN_FILTER, _tex->NEAREST);
+    _tex->setFilter(_tex->MAG_FILTER, _tex->NEAREST);
     _stateSet->setTextureAttribute(0, _tex, 1);
     _stateSet->addUniform(new osg::Uniform("buf", 0));
 }
@@ -929,6 +1427,7 @@ ComputeImageSession::render(osg::State* state)
         state->apply(_stateSet.get());
     }
 
+    // BUG: need to resize if the new image is larger! (use GLBuffer)
     if (_pbo == INT_MAX)
     {
         int size = _image->getTotalSizeInBytes();

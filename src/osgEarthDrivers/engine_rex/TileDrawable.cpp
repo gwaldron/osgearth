@@ -100,7 +100,7 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
     }
 
     const osg::Vec3Array& verts = *static_cast<osg::Vec3Array*>(_geom->getVertexArray());
-    const osg::DrawElementsUShort* de = dynamic_cast<osg::DrawElementsUShort*>(_geom->getDrawElements());
+    const osg::DrawElements* de = dynamic_cast<osg::DrawElements*>(_geom->getDrawElements());
 
     OE_SOFT_ASSERT_AND_RETURN(de != nullptr, void());
 

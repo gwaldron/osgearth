@@ -240,7 +240,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     // merge in the custom options:
     _terrainOptions = &inOptions;
-    //_terrainOptions.merge( options );
 
     _morphingSupported = true;
     if (options().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
@@ -732,9 +731,9 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     // Assemble the terrain drawables:
     _terrain->accept(culler);
 
-    // If we're using geometry pooling, optimize the drawable for shared state
+    // If we're using geometry pooling, optimize the drawable forf shared state
     // by sorting the draw commands.
-    // Skip if using GL4/indirect rendering.
+    // Skip if using GL4/indirect rendering. Actually seems to hurt?
     // TODO: benchmark this further to see whether it's worthwhile
     unsigned totalTiles = 0u;
     if (options().useGL4() == false &&
@@ -753,18 +752,35 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     bool surfaceStateSetPushed = false;
     bool imageLayerStateSetPushed = false;
     int layersDrawn = 0;
+    unsigned surfaceDrawOrder = 0;
+
+    std::vector<LayerDrawable*> patchLayers;
+
+    for (auto layerDrawable : culler._terrain._layerList)
+    {
+        if (layerDrawable->_tiles.empty() == false &&
+            layerDrawable->_patchLayer)
+        {
+            patchLayers.push_back(layerDrawable);
+        }
+    }
 
     for(auto layerDrawable : culler._terrain._layerList)
     {
-        // Note: Cannot save lastLayer here because its _tiles may be empty, which can lead to a crash later
         if (!layerDrawable->_tiles.empty())
         {
+            // skip patch layers for now
+            if (layerDrawable->_patchLayer)
+                continue;
+
             lastLayer = layerDrawable;
 
             // if this is a RENDERTYPE_TERRAIN_SURFACE, we need to activate either the
             // default surface state set or the image layer state set.
             if (layerDrawable->_renderType == Layer::RENDERTYPE_TERRAIN_SURFACE)
             {
+                layerDrawable->_surfaceDrawOrder = surfaceDrawOrder++;
+
                 if (!surfaceStateSetPushed)
                 {
                     cv->pushStateSet(_surfaceStateSet.get());
@@ -816,13 +832,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
         }
     }
 
-    // The last layer to render must clear up the OSG state,
-    // otherwise it will be corrupt and can lead to crashing.
-    if (lastLayer)
-    {
-        lastLayer->_clearOsgState = true;
-    }
-
+    // clear out the statesets:
     if (imageLayerStateSetPushed)
     {
         cv->popStateSet();
@@ -833,6 +843,28 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     {
         cv->popStateSet();
         surfaceStateSetPushed = false;
+    }
+
+    // patch layers go last
+    for (auto layerDrawable : patchLayers)
+    {
+        lastLayer = layerDrawable;
+
+        TileBatch batch(nullptr);
+        for (auto& tile : layerDrawable->_tiles)
+            batch._tiles.push_back(&tile);
+
+        if (layerDrawable->_patchLayer->getCullCallback()) // backwards compat
+            layerDrawable->_patchLayer->apply(layerDrawable, cv);
+        else
+            layerDrawable->_patchLayer->cull(batch, *cv);
+    }
+
+    // The last layer to render must clear up the OSG state,
+    // otherwise it will be corrupt and can lead to crashing.
+    if (lastLayer)
+    {
+        lastLayer->_clearOsgState = true;
     }
 
     // pop the common terrain state set
@@ -1390,7 +1422,9 @@ RexTerrainEngineNode::updateState()
             if ((options().morphTerrain() == true && _morphTerrainSupported == true) ||
                 options().morphImagery() == true)
             {
-                shaders.load(surfaceVP, shaders.morphing());
+                // GL4 morphing is built into another shader (vert.GL4.glsl)
+                if (options().useGL4() == false)
+                    shaders.load(surfaceVP, shaders.morphing());
 
                 if ((options().morphTerrain() == true && _morphTerrainSupported == true))
                 {

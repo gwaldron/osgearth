@@ -5,43 +5,6 @@
 #define OE_TILE_VERTS 417
 #define OE_SKIRT_VERTS 128
 
-#if 0
-struct oe_rex_Shared {
-    vec2 uvs[OE_TILE_VERTS];
-    float padding[2];
-    vec2 morphConstants[19];
-    float padding2[2];
-};
-
-struct oe_rex_Tile {
-    vec4 verts[OE_TILE_VERTS];
-    vec4 normals[OE_TILE_VERTS];
-    vec4 tileKey;
-    mat4 modelViewMatrix;
-    mat4 colorMat;
-    mat4 parentMat;
-    mat4 elevMat;
-    mat4 normalMat;
-    mat4 sharedMat[8];
-    int colorIndex;
-    int parentIndex;
-    int elevIndex;
-    int normalIndex;
-    int sharedIndex[8];
-    int drawOrder;
-    float padding[3];
-};
-
-layout(binding = 29, std430) readonly buffer RexTextureArena {
-    uint64_t oe_terrain_tex[];
-};
-layout(binding = 30, std430) readonly buffer GL4SharedDataBuffer {
-    oe_rex_Shared oe_shared;
-};
-layout(binding = 31, std430) readonly buffer TileBuffer {
-    oe_rex_Tile oe_tile[];
-};
-#else
 struct oe_rex_Shared {
     vec2 morphConstants[19];
     float padding[2];
@@ -53,14 +16,16 @@ struct oe_rex_Tile {
     mat4 parentMat;
     mat4 elevMat;
     mat4 normalMat;
+    mat4 landcoverMat;
     mat4 sharedMat[8];
     int colorIndex;
     int parentIndex;
     int elevIndex;
     int normalIndex;
+    int landcoverIndex;
     int sharedIndex[8];
     int drawOrder;
-    float padding[3];
+    float padding[2];
 };
 layout(binding = 29, std430) readonly buffer RexTextureArena {
     uint64_t oe_terrain_tex[];
@@ -71,7 +36,6 @@ layout(binding = 30, std430) readonly buffer GL4SharedDataBuffer {
 layout(binding = 31, std430) readonly buffer TileBuffer {
     oe_rex_Tile oe_tile[];
 };
-#endif
 
 #if defined(VP_STAGE_VERTEX)
 flat out int oe_tileID;

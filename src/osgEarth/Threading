@@ -25,6 +25,7 @@
 #include <condition_variable>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <queue>
 #include <thread>
 #include <type_traits>
@@ -248,10 +249,17 @@ namespace osgEarth { namespace Threading
         // internal structure to track referenced to the result
         struct Container {
             Container() { }
-            Container(const T& obj) { set(obj); }
-            void set(const T& obj) { _obj = std::move(obj); }
+            //Container(const T& obj) { set(obj); }
+            void set(const T& obj) { 
+                ScopedMutexLock lock(_m);
+                _obj = std::move(obj);
+            }
+            const T& obj() const {
+                ScopedMutexLock lock(_m);
+                return _obj;
+            }
             T _obj;
-            const T& obj() const { return _obj; }
+            mutable Mutex _m;
         };
 
     public:
@@ -292,21 +300,23 @@ namespace osgEarth { namespace Threading
         //! Deference the result object. Make sure you check isAvailable()
         //! to check that the future was actually resolved; otherwise you
         //! will just get the default object.
-        const T& get() const {
+        T get() const {
             return _shared->obj();
         }
 
-        //! Deference the result object and then reset the future to
-        //! its uninitalized state.
+        //! Same as get(), but if the result is available will reset the
+        //! future before returning the result object.
         T release() {
+            bool avail = isAvailable();
             T result = get();
-            reset();
+            if (avail)
+                reset();
             return result;
         }
 
         //! Blocks until the result becomes available or the future is abandoned;
         //! then returns the result object.
-        const T& join() const {
+        T join() const {
             while (
                 !isAbandoned() &&
                 !_ev->wait(1u));
@@ -315,7 +325,7 @@ namespace osgEarth { namespace Threading
 
         //! Blocks until the result becomes available or the future is abandoned
         //! or a cancelation flag is set; then returns the result object.
-        const T& join(const Cancelable* cancelable) const {
+        T join(const Cancelable* cancelable) const {
             while (
                 !isAvailable() &&
                 !isAbandoned() &&
@@ -329,12 +339,21 @@ namespace osgEarth { namespace Threading
         //! Release reference to a promise, resetting this future to its default state
         void abandon() {
             _shared.reset(new Container());
-            _ev->reset();
+            _ev.reset(new Event());
+            //_ev->reset();
         }
 
         //! synonym for abandon.
         void reset() {
             abandon();
+        }
+
+        //! The number of objects, including this one, that
+        //! refernece the shared container. if this method
+        //! returns 1, that means this is the only object with
+        //! access to the data. This method will never return zero.
+        unsigned refs() const {
+            return _shared.use_count();
         }
 
     private:
@@ -431,26 +450,19 @@ namespace osgEarth { namespace Threading
 
         Gate(const std::string& name) : _m(name) { }
 
-        inline void lock(T key) {
+        inline void lock(const T& key) {
             std::unique_lock<Mutex> lock(_m);
-            for(;;) {
-                auto& count = _users.insert(std::make_pair(key, 0)).first->second;
-                if (count == 0) {
-                    ++count;
-                    break;
-                }
+            for (;;) {
+                if (_keys.insert(key).second)
+                    return;
                 _unlocked.wait(lock);
             }
         }
 
-        inline void unlock(T key) {
+        inline void unlock(const T& key) {
             std::unique_lock<Mutex> lock(_m);
-            auto& count = _users[key];
-            --count;
-            if (count == 0) {
-                _users.erase(key);
-                _unlocked.notify_all();
-            }
+            _keys.erase(key);
+            _unlocked.notify_all();
         }
 
         inline void setName(const std::string& name) {
@@ -460,7 +472,7 @@ namespace osgEarth { namespace Threading
     private:
         Mutex _m;
         std::condition_variable_any _unlocked;
-        std::unordered_map<T, int> _users;
+        std::unordered_set<T> _keys;
     };
 
     //! Gate the locks for the duration of this object's scope
@@ -468,7 +480,7 @@ namespace osgEarth { namespace Threading
     struct ScopedGate {
     public:
         //! Lock a gate based on key "key"
-        ScopedGate(Gate<T>& gate, T key) : 
+        ScopedGate(Gate<T>& gate, const T& key) : 
             _gate(gate), 
             _key(key), 
             _active(true)
@@ -478,7 +490,7 @@ namespace osgEarth { namespace Threading
 
         //! Lock a gate based on key "key" IFF the predicate is true,
         //! else it's a nop.
-        ScopedGate(Gate<T>& gate, T key, std::function<bool()> pred) :
+        ScopedGate(Gate<T>& gate, const T& key, std::function<bool()> pred) :
             _gate(gate),
             _key(key),
             _active(pred())

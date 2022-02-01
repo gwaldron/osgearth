@@ -107,6 +107,7 @@ SET(LIB_PUBLIC_HEADERS
     Capabilities
     CesiumIon
     CascadeDrapingDecorator
+    Chonk
     Clamping
     ClampableNode
     ClampingTechnique
@@ -538,6 +539,7 @@ set(TARGET_SRC
     Capabilities.cpp
     CesiumIon.cpp
     CascadeDrapingDecorator.cpp
+    Chonk.cpp
     Clamping.cpp
     ClampableNode.cpp
     ClampingTechnique.cpp

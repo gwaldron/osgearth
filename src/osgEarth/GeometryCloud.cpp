@@ -275,6 +275,7 @@ GeometryCloud::pushStateSet(osg::Node& node)
                     Texture::Ptr t = Texture::create();
                     t->_image = tex->getImage(0);
                     t->_uri = t->_image->getFileName();
+                    t->_label = "GeometryCloud texture";
 
                     int nextIndex = _texarena->add(t);
                     if (nextIndex >= 0)
@@ -310,6 +311,7 @@ GeometryCloud::pushStateSet(osg::Node& node)
                     Texture::Ptr t = Texture::create();
                     t->_image = tex->getImage(0);
                     t->_compress = false; // do not compress normal maps
+                    t->_label = "GeometryCloud texture";
 
                     int nextIndex = _texarena->add(t);
                     if (nextIndex >= 0)

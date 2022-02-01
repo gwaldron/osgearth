@@ -431,7 +431,7 @@ namespace osgEarth
 
         GLObjectPool(unsigned contextID);
 
-        static GLObjectPool* GLObjectPool::get(osg::State& state);
+        static GLObjectPool* get(osg::State& state);
 
         void watch(GLObject::Ptr);
         void releaseAll();

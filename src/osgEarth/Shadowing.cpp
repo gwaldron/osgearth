@@ -170,7 +170,6 @@ ShadowCaster::reinitialize()
     _shadowToPrimaryMatrix = _rttStateSet->getOrCreateUniform(
         "oe_shadowToPrimaryMatrix", osg::Uniform::FLOAT_MAT4);
 
-
     _renderStateSet = new osg::StateSet();
 
     // Establish a Virtual Program on the stateset.

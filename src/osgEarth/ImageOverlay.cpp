@@ -273,61 +273,9 @@ ImageOverlay::compile()
     }
 
     if ( getMapNode() )
-    {                
-        const SpatialReference* mapSRS = getMapNode()->getMapSRS();
-
-        osg::ref_ptr<Feature> f = new Feature( new Polygon(), mapSRS->getGeodeticSRS() );
-        Geometry* g = f->getGeometry();
-        g->push_back( osg::Vec3d(_lowerLeft.x(),  _lowerLeft.y(), 0) );
-        g->push_back( osg::Vec3d(_lowerRight.x(), _lowerRight.y(), 0) );
-        g->push_back( osg::Vec3d(_upperRight.x(), _upperRight.y(), 0) );
-        g->push_back( osg::Vec3d(_upperLeft.x(),  _upperLeft.y(),  0) );
-
-        osgEarth::Bounds bounds = getBounds();
-
-        FeatureList features;
-        if (!mapSRS->isGeographic())        
-        {
-            f->splitAcrossDateLine(features);
-        }
-        // The width of the image overlay is >= 180 degrees so split it into two chunks of < 180 degrees
-        // so the MeshSubdivider will work.
-        else if (bounds.width() > 180.0)
-        {
-            Bounds boundsA(bounds.xMin(), bounds.yMin(), bounds.xMin() + 180.0, bounds.yMax());
-            Bounds boundsB(bounds.xMin() + 180.0, bounds.yMin(), bounds.xMax(), bounds.yMax());
-            
-            osg::ref_ptr< Geometry > geomA;
-            if (f->getGeometry()->crop(boundsA, geomA))
-            {
-                osg::ref_ptr< Feature > croppedFeature = new Feature(*f);
-                // Make sure the feature is wound correctly.
-                geomA->rewind(osgEarth::Geometry::ORIENTATION_CCW);
-                croppedFeature->setGeometry(geomA.get());
-                features.push_back(croppedFeature);
-            }
-            osg::ref_ptr< Geometry > geomB;
-            if (f->getGeometry()->crop(boundsB, geomB))
-            {
-                osg::ref_ptr< Feature > croppedFeature = new Feature(*f);
-                // Make sure the feature is wound correctly.
-                geomA->rewind(osgEarth::Geometry::ORIENTATION_CCW);
-                croppedFeature->setGeometry(geomB.get());
-                features.push_back(croppedFeature);
-            }
-        }
-        else
-        {
-            features.push_back( f );
-        }
-
-        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
-        {
-            _root->addChild(createNode(itr->get(), features.size() > 1));
-        }
-
+    {                        
+        _root->addChild(createNode());
         _dirty = false;
-
         // image overlay is unlit by default.
         setDefaultLighting(false);
     }
@@ -397,104 +345,116 @@ ImageOverlay::setMagFilter( osg::Texture::FilterMode filter )
     updateFilters();
 }
 
-osg::Node* ImageOverlay::createNode(Feature* feature, bool split)
-{    
+
+// Bilinear interpolate a 2d position from texture coordinates
+namespace
+{
+    osg::Vec2d bilinearInterpolate(double s, double t, const osg::Vec2d& lowerLeft, const osg::Vec2d& lowerRight, const osg::Vec2d& upperLeft, const osg::Vec2d& upperRight)
+    {
+        s = osg::clampBetween(s, 0.0, 1.0);
+        t = osg::clampBetween(t, 0.0, 1.0);
+        osg::Vec2d r1 = lowerLeft * (1.0 - s) + lowerRight * s;
+        osg::Vec2d r2 = upperLeft * (1.0 - s) + upperRight * s;
+        osg::Vec2d result = r1 * (1.0 - t) + r2 * t;
+        return result;
+    }
+}
+
+osg::Node* ImageOverlay::createNode()
+{
     const SpatialReference* mapSRS = getMapNode()->getMapSRS();
+    auto geoSRS = mapSRS->getGeodeticSRS();
 
     osg::MatrixTransform* transform = new osg::MatrixTransform;
-    
-    //osg::Geode* geode = new osg::Geode;
-    //transform->addChild(geode);
 
     osg::Geometry* geometry = new osg::Geometry();
     geometry->setUseVertexBufferObjects(true);
 
     transform->addChild(geometry);
 
-    // next, convert to world coords and create the geometry:
+
+    double targetDegrees = _geometryResolution.as(Units::DEGREES);
+
+    osgEarth::Bounds bounds;
+
+    double minX = osg::minimum(_lowerLeft.x(), osg::minimum(_lowerRight.x(), osg::minimum(_upperLeft.x(), _upperRight.x())));
+    double minY = osg::minimum(_lowerLeft.y(), osg::minimum(_lowerRight.y(), osg::minimum(_upperLeft.y(), _upperRight.y())));
+    double maxX = osg::maximum(_lowerLeft.x(), osg::maximum(_lowerRight.x(), osg::maximum(_upperLeft.x(), _upperRight.x())));
+    double maxY = osg::maximum(_lowerLeft.y(), osg::maximum(_lowerRight.y(), osg::maximum(_upperLeft.y(), _upperRight.y())));
+
+    int numCols = osg::maximum(2, (int)((maxX - minX) / targetDegrees) + 1);
+    int numRows = osg::maximum(2, (int)((maxY - minY) / targetDegrees) + 1);
+
+    float dx = 1.0 / (float)(numCols - 1);
+    float dy = 1.0 / (float)(numRows - 1);
+
     osg::Vec3Array* verts = new osg::Vec3Array();
-    verts->reserve(4);
-    osg::Vec3d anchor;
-    for( Geometry::iterator i = feature->getGeometry()->begin(); i != feature->getGeometry()->end(); ++i )
-    {        
-        osg::Vec3d map, world;        
-        feature->getSRS()->transform( *i, mapSRS, map);
-        mapSRS->transformToWorld( map, world );
-        if (i == feature->getGeometry()->begin())
-        {
-            anchor = world;
-        }
-        verts->push_back( world - anchor );
-    }    
-
-    transform->setMatrix( osg::Matrixd::translate( anchor ) );
-
-    geometry->setVertexArray( verts );
-    if ( verts->getVertexBufferObject() )
-        verts->getVertexBufferObject()->setUsage(GL_STATIC_DRAW_ARB);
-
-    GLushort tris[6] = { 0, 1, 2,
-        0, 2, 3
-    };        
-    geometry->addPrimitiveSet(new osg::DrawElementsUShort( GL_TRIANGLES, 6, tris ) );
+    verts->reserve(numCols * numRows);
+    geometry->setVertexArray(verts);
 
     bool flip = false;
     if (_image.valid())
     {
         //Create the texture
-        _texture = new osg::Texture2D(_image.get());     
+        _texture = new osg::Texture2D(_image.get());
         _texture->setWrap(_texture->WRAP_S, _texture->CLAMP_TO_EDGE);
         _texture->setWrap(_texture->WRAP_T, _texture->CLAMP_TO_EDGE);
         _texture->setResizeNonPowerOfTwoHint(false);
         updateFilters();
-        transform->getOrCreateStateSet()->setTextureAttributeAndModes(0, _texture, osg::StateAttribute::ON);    
-        flip = _image->getOrigin()==osg::Image::TOP_LEFT;
+        transform->getOrCreateStateSet()->setTextureAttributeAndModes(0, _texture, osg::StateAttribute::ON);
+        flip = _image->getOrigin() == osg::Image::TOP_LEFT;
     }
 
-    osg::Vec2Array* texcoords = new osg::Vec2Array(4);
+    osg::Vec2Array* texcoords = new osg::Vec2Array();
+    texcoords->reserve(numCols * numRows);
+    geometry->setTexCoordArray(0, texcoords);
 
+    osg::Vec3d anchor;
+    bool anchorSet = false;
 
-
-    if (split)
+    for (unsigned int r = 0; r < numRows; ++r)
     {
-        // If the feature has been split across the antimerdian we have to figure out new texture coordinates, we can't just just use the corners.
-        // This code is limited in that it only works with rectangular images though, so overlays that are non axis aligned and split across the antimerdian could look wrong
-        double width = _upperRight.x() - _lowerLeft.x();
-        double height = _upperRight.y() - _lowerLeft.y();
-
-        for (unsigned int i = 0; i < feature->getGeometry()->size(); ++i)
+        float t = (float)r * dy;
+        for (unsigned int c = 0; c < numCols; ++c)
         {
-            osg::Vec3d v = (*feature->getGeometry())[i];
+            float s = (float)c * dx;
+            osg::Vec2d coord = bilinearInterpolate(s, t, _lowerLeft, _lowerRight, _upperLeft, _upperRight);
+            
+            osg::Vec3d map, world;
+            geoSRS->transform(osg::Vec3d(coord.x(), coord.y(), 0.0), mapSRS, map);
+            mapSRS->transformToWorld(map, world);
 
-            if (v.x() < _lowerLeft.x())
+            if (!anchorSet)
             {
-                v.x() += 360.0;
+                anchor = world;
+                anchorSet = true;
             }
-            if (v.x() > _upperRight.x())
-            {
-                v.x() -= 360.0;
-            }
-
-            float s = (v.x() - _lowerLeft.x()) / width;
-            float t = (v.y() - _lowerLeft.y()) / height;
-            (*texcoords)[i].set(s, flip ? 1.0f - t : t);
+            verts->push_back(world - anchor);
+            texcoords->push_back(osg::Vec2(s, flip ? 1.0 - t : t));
         }
     }
-    else
-    {
-        (*texcoords)[0].set(0.0f, flip ? 1.0 : 0.0f);
-        (*texcoords)[1].set(1.0f, flip ? 1.0 : 0.0f);
-        (*texcoords)[2].set(1.0f, flip ? 0.0 : 1.0f);
-        (*texcoords)[3].set(0.0f, flip ? 0.0 : 1.0f);
-    }
-    geometry->setTexCoordArray(0, texcoords);    
 
-    //Only run the MeshSubdivider on geocentric maps
-    if (getMapNode()->getMapSRS()->isGeographic())
+    transform->setMatrix(osg::Matrixd::translate(anchor));
+
+    // Generate the triangles
+    osg::DrawElementsUInt* de = new osg::DrawElementsUInt(GL_TRIANGLES);
+    geometry->addPrimitiveSet(de);
+
+    for (unsigned int r = 0; r < numRows - 1; ++r)
     {
-        MeshSubdivider ms(osg::Matrixd::inverse(transform->getMatrix()), transform->getMatrix());
-        ms.run(*geometry, _geometryResolution.as(Units::RADIANS), GEOINTERP_RHUMB_LINE);
+        for (unsigned int c = 0; c < numCols - 1; ++c)
+        {
+            unsigned int ll = r * numCols + c;
+            unsigned int lr = ll + 1;
+            unsigned int ul = ll + numCols;
+            unsigned int ur = ul + 1;
+            de->push_back(ll);  de->push_back(lr); de->push_back(ul);
+            de->push_back(lr);  de->push_back(ur); de->push_back(ul);
+        }
     }
+
+
+
 
     return transform;
 }
@@ -599,8 +559,7 @@ ImageOverlay::setEast(double value_deg)
 {
     while (value_deg < _upperLeft.x())
         value_deg += 360.0;
-    if (value_deg - _upperLeft.x() >= 180.0)
-        return;
+
     _upperRight.x() = value_deg;
     _lowerRight.x() = value_deg;
     dirty();
@@ -611,8 +570,7 @@ ImageOverlay::setWest(double value_deg)
 {
     while (value_deg > _upperRight.x())
         value_deg -= 360.0;
-    if (_upperRight.x() - value_deg >= 180.0)
-        return;
+
     _lowerLeft.x() = value_deg;
     _upperLeft.x() = value_deg;
     dirty();
@@ -625,7 +583,7 @@ ImageOverlay::setCorners(const osg::Vec2d& lowerLeft, const osg::Vec2d& lowerRig
     _lowerLeft = lowerLeft;
     _lowerRight = lowerRight;
     _upperLeft = upperLeft;
-    _upperRight = upperRight;
+    _upperRight = upperRight;    
     clampLatitudes();
     
     dirty();
@@ -669,51 +627,30 @@ ImageOverlay::setBoundsAndRotation(const osgEarth::Bounds& b, const Angular& rot
 {
     double rot_rad = rot.as(Units::RADIANS);
 
-    if ( osg::equivalent( rot_rad, 0.0 ) )
+    if ( osg::equivalent( rot_rad, 0.0 ) )    
     {
         setBounds(b);
     }
     else
     {
-        osg::Vec3d ll( b.xMin(), b.yMin(), 0 );
-        osg::Vec3d ul( b.xMin(), b.yMax(), 0 );
-        osg::Vec3d ur( b.xMin() + b.width(), b.yMax(), 0 );
-        osg::Vec3d lr( b.xMin() + b.width(), b.yMin(), 0 );
+        osg::Vec3d ll(b.xMin(), b.yMin(), 0);
+        osg::Vec3d ul(b.xMin(), b.yMax(), 0);
+        osg::Vec3d ur(b.xMin() + b.width(), b.yMax(), 0);
+        osg::Vec3d lr(b.xMin() + b.width(), b.yMin(), 0);
 
-        double sinR = sin(-rot_rad), cosR = cos(-rot_rad);
+        osg::Vec3d center = b.center();
+        // Rotate around the center point
+        osg::Matrixd transform = osg::Matrixd::translate(-center) * osg::Matrixd::rotate(rot_rad, osg::Vec3d(0, 0, 1)) * osg::Matrixd::translate(center);
 
-        osg::Vec3d c( 0.5*(b.xMax()+b.xMin()), 0.5*(b.yMax()+b.yMin()), 0);
-
-        // there must be a better way, but my internet is down so i can't look it up with now..
-
-        osg::ref_ptr<const SpatialReference> srs = SpatialReference::create("wgs84");
-        osg::ref_ptr<const SpatialReference> utm = srs->createUTMFromLonLat(
-            Angle(c.x(), Units::DEGREES),
-            Angle(c.y(), Units::DEGREES) );
-
-        osg::Vec3d ll_utm, ul_utm, ur_utm, lr_utm, c_utm;
-        
-        srs->transform( ll, utm.get(), ll_utm );
-        srs->transform( ul, utm.get(), ul_utm );
-        srs->transform( ur, utm.get(), ur_utm );
-        srs->transform( lr, utm.get(), lr_utm );
-        srs->transform( c,  utm.get(), c_utm  );
-
-        osg::Vec3d llp( cosR*(ll_utm.x()-c_utm.x()) - sinR*(ll_utm.y()-c_utm.y()), sinR*(ll_utm.x()-c_utm.x()) + cosR*(ll_utm.y()-c_utm.y()), 0 );
-        osg::Vec3d ulp( cosR*(ul_utm.x()-c_utm.x()) - sinR*(ul_utm.y()-c_utm.y()), sinR*(ul_utm.x()-c_utm.x()) + cosR*(ul_utm.y()-c_utm.y()), 0 );
-        osg::Vec3d urp( cosR*(ur_utm.x()-c_utm.x()) - sinR*(ur_utm.y()-c_utm.y()), sinR*(ur_utm.x()-c_utm.x()) + cosR*(ur_utm.y()-c_utm.y()), 0 );
-        osg::Vec3d lrp( cosR*(lr_utm.x()-c_utm.x()) - sinR*(lr_utm.y()-c_utm.y()), sinR*(lr_utm.x()-c_utm.x()) + cosR*(lr_utm.y()-c_utm.y()), 0 );    
-
-        utm->transform( (llp+c_utm), srs.get(), ll );
-        utm->transform( (ulp+c_utm), srs.get(), ul );
-        utm->transform( (urp+c_utm), srs.get(), ur );
-        utm->transform( (lrp+c_utm), srs.get(), lr );
-
-        setCorners( 
-            osg::Vec2d(ll.x(), ll.y()), 
+        ll = ll * transform;
+        ul = ul * transform;
+        ur = ur * transform;;
+        lr = lr * transform;;
+        setCorners(
+            osg::Vec2d(ll.x(), ll.y()),
             osg::Vec2d(lr.x(), lr.y()),
             osg::Vec2d(ul.x(), ul.y()),
-            osg::Vec2d(ur.x(), ur.y()) );
+            osg::Vec2d(ur.x(), ur.y()));
     }
 }
 

@@ -65,7 +65,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
 
             // Remove them from the registry:
             _tiles->collectDormantTiles(
-                nv, 
+                nv,
                 oldestAllowableTime,
                 oldestAllowableFrame,
                 _minRange,
@@ -77,16 +77,19 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                 ++i)
             {
                 // may be NULL since we're removing scene graph objects as we go!
-                osg::ref_ptr<TileNode> tile = i->get();
+                osg::ref_ptr<TileNode> tile;
+                if (!i->lock(tile))
+                    continue;
 
                 if (tile.valid())
                 {
-                    TileNode* parent = tile->getParentTile();
+                    osg::ref_ptr<TileNode> parent;
+                    tile->getParentTile(parent);
 
                     // Check that this tile doesn't have any live quadtree siblings. If it does,
                     // we don't want to remove them too!
                     // GW: moved this check to the collectAbandonedTiles function where it belongs
-                    if (parent)
+                    if (parent.valid())
                     {
                         parent->removeSubTiles();
                         ++count;

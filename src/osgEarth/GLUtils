@@ -429,15 +429,27 @@ namespace osgEarth
     public:
         using Collection = std::unordered_set<GLObject::Ptr>;
 
+        //! construct an object pool under the given graphics context ID
         GLObjectPool(unsigned contextID);
 
-        static GLObjectPool* GLObjectPool::get(osg::State& state);
+        //! Fetch the object pool for the graphics context represented
+        //! by the state object
+        static GLObjectPool* get(osg::State& state);
 
+        //! Start watching a GL object for automatic release
         void watch(GLObject::Ptr);
+
+        //! Release all object under watch
         void releaseAll();
+
+        //! Report the total memory size of all objects in the pool
         GLsizeiptr totalBytes() const;
+
+        //! Set the speed at which the pool will release orphaned objects.
+        //! zero is the slowest.
         void setAvarice(unsigned value) { _avarice = value; _hits = 0; _misses = 0; }
         unsigned getAvarice() const { return _avarice; }
+
         unsigned recycleHits() const { return _hits; }
         unsigned recycleMisses() const { return _misses; }
         Collection objects() const;

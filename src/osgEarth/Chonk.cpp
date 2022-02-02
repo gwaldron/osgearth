@@ -958,6 +958,11 @@ ChonkDrawable::GCState::initialize(osg::State& state)
     osg::setGLExtensionFuncPtr(
         _glMultiDrawElementsIndirectBindlessNV,
         "glMultiDrawElementsIndirectBindlessNV");
+    OE_HARD_ASSERT(_glMultiDrawElementsIndirectBindlessNV != nullptr);
+
+    void(GL_APIENTRY * glEnableClientState_)(GLenum);
+    osg::setGLExtensionFuncPtr(glEnableClientState_, "glEnableClientState");
+    OE_HARD_ASSERT(glEnableClientState_ != nullptr);
 
     // VAO:
     _vao = GLVAO::create(state, "ChonkDrawable");
@@ -966,8 +971,8 @@ ChonkDrawable::GCState::initialize(osg::State& state)
     _vao->bind();
 
     // required in order to use BindlessNV extension
-    glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
-    glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+    glEnableClientState_(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
+    glEnableClientState_(GL_ELEMENT_ARRAY_UNIFIED_NV);
 
     const VADef formats[7] = {
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, position)},

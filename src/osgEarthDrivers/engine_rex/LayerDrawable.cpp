@@ -418,6 +418,11 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                 "glVertexAttribFormat");
             OE_HARD_ASSERT(gs.glVertexAttribFormat != nullptr);
 
+            // Needed for core profile
+            void(GL_APIENTRY * glEnableClientState_)(GLenum);
+            osg::setGLExtensionFuncPtr(glEnableClientState_, "glEnableClientState");
+            OE_HARD_ASSERT(glEnableClientState_ != nullptr);
+
 
             // Set up a VAO that we'll use to render with bindless NV.
             gs.vao = GLVAO::create(state, "REX Renderer");
@@ -426,8 +431,8 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             gs.vao->bind();
 
             // set up the VAO for NVIDIA bindless buffers
-            glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
-            glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+            glEnableClientState_(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
+            glEnableClientState_(GL_ELEMENT_ARRAY_UNIFIED_NV);
 
             // Record the format for each of the attributes in GL4Vertex
             const GLuint offsets[5] = {

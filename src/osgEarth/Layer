@@ -183,7 +183,6 @@ namespace osgEarth
         public:
             META_LayerOptions(osgEarth, Options, ConfigOptions);
             OE_OPTION(std::string, name);
-            OE_OPTION(bool, enabled);
             OE_OPTION(bool, openAutomatically);
             OE_OPTION(std::string, cacheId);
             OE_OPTION(CachePolicy, cachePolicy);

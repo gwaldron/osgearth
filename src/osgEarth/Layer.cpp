@@ -37,7 +37,9 @@ Layer::Options::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
     conf.set("name", name());
-    conf.set("enabled", enabled());
+    //conf.set("enabled", enabled());
+    conf.set("open", openAutomatically());
+    conf.set("enabled", openAutomatically()); // back compat
     conf.set("cacheid", cacheId());
     if (cachePolicy().isSet() && !cachePolicy()->empty())
         conf.set("cache_policy", cachePolicy());
@@ -66,7 +68,8 @@ Layer::Options::fromConfig(const Config& conf)
     _terrainPatch.init(false);
 
     conf.get("name", name());
-    conf.get("enabled", enabled());
+    conf.get("open", openAutomatically()); // back compat
+    conf.get("enabled", openAutomatically());
     conf.get("cache_id", cacheId()); // compat
     conf.get("cacheid", cacheId());
     conf.get("attribution", attribution());
@@ -269,23 +272,32 @@ Layer::getConfig() const
 }
 
 bool
+Layer::getOpenAutomatically() const
+{
+    return (options().openAutomatically() == true);
+}
+
+void
+Layer::setOpenAutomatically(bool value)
+{
+    if (options().openAutomatically() != value)
+    {
+        options().openAutomatically() = value;
+    }
+}
+
+bool
 Layer::getEnabled() const
 {
-    return (options().enabled() == true);
+    OE_DEPRECATED(Layer::getEnabled, Layer::getOpenAutomatically);
+    return getOpenAutomatically();
 }
 
 void
 Layer::setEnabled(bool value)
 {
-    if (options().enabled() != value)
-    {
-        options().enabled() = value;
-        if (value == false && isOpen())
-        {
-            close();
-            _status.set(Status::ResourceUnavailable, "Layer disabled");
-        }
-    }
+    OE_DEPRECATED(Layer::setEnabled, Layer::setOpenAutomatically);
+    setOpenAutomatically(value);
 }
 
 const Status&
@@ -323,7 +335,8 @@ Layer::init()
 {
     _uid = osgEarth::createUID();
     _renderType = RENDERTYPE_NONE;
-    _status.set(Status::ResourceUnavailable, getEnabled() ? "Layer closed" : "Layer disabled");
+    _status.set(Status::ResourceUnavailable,
+        getOpenAutomatically() ? "Layer closed" : "Layer disabled");
     _isClosing = false;
 
     // For detecting scene graph changes at runtime

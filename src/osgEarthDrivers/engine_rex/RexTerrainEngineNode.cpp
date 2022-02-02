@@ -1134,7 +1134,7 @@ RexTerrainEngineNode::addLayer(Layer* layer)
 {
     if (layer)
     {
-        if (layer->isOpen() && layer->getEnabled())
+        if (layer->isOpen())
         {
             if (layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE)
                 addSurfaceLayer(layer);
@@ -1149,7 +1149,7 @@ RexTerrainEngineNode::addLayer(Layer* layer)
 void
 RexTerrainEngineNode::addSurfaceLayer(Layer* layer)
 {
-    if (layer && layer->isOpen() && layer->getEnabled() )
+    if (layer && layer->isOpen())
     {
         ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
         if (imageLayer)
@@ -1299,7 +1299,7 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
 void
 RexTerrainEngineNode::addElevationLayer(Layer* layer)
 {
-    if (layer && layer->isOpen() && layer->getEnabled())
+    if (layer && layer->isOpen())
     {
         std::vector<const Layer*> layers;
         layers.push_back(layer);
@@ -1483,7 +1483,7 @@ RexTerrainEngineNode::updateState()
             for( int i=0; i<imageLayers.size(); ++i )
             {
                 ImageLayer* layer = imageLayers[i].get();
-                if ( layer->isOpen() && layer->getEnabled() )
+                if (layer->isOpen())
                 {
                     // install Color Filter function calls:
                     const ColorFilterChain& chain = layer->getColorFilters();

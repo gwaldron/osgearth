@@ -128,7 +128,7 @@ namespace osgEarth {
                     {
                         osgEarth::Layer* layer = _layers[i].get();
 
-                        if (!_showDisabled && !layer->isOpen() && !layer->getEnabled())
+                        if (!_showDisabled && !layer->isOpen() && !layer->getOpenAutomatically())
                             continue;
 
                         ImGui::PushID(layer);
@@ -152,11 +152,7 @@ namespace osgEarth {
 
                             if (wantOpen && !layer->isOpen())
                             {
-                                if (!layer->getEnabled())
-                                    layer->setEnabled(true);
-
                                 visibleLayer->setVisible(true);
-
                                 layer->open();
                             }
                             else if (!wantOpen && layer->isOpen())

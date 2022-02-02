@@ -236,8 +236,7 @@ int main(int argc, char** argv)
     for(LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
     {
         Layer* layer = i->get();
-        if (layer->getStatus().isError() &&
-            layer->getEnabled())
+        if (layer->getOpenAutomatically() && !layer->isOpen())
         {
             OE_WARN << layer->getName() << " : " << layer->getStatus().toString() << std::endl;
         }

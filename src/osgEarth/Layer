@@ -177,6 +177,29 @@ namespace osgEarth
     public:
         META_Object(osgEarth, Layer);
 
+        /** Layer options for serialization */
+        class OSGEARTH_EXPORT Options : public ConfigOptions
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ConfigOptions);
+            OE_OPTION(std::string, name);
+            OE_OPTION(bool, enabled);
+            OE_OPTION(bool, openAutomatically);
+            OE_OPTION(std::string, cacheId);
+            OE_OPTION(CachePolicy, cachePolicy);
+            OE_OPTION(std::string, shaderDefine);
+            OE_OPTION(bool, terrainPatch);
+            OE_OPTION(std::string, attribution);
+            OE_OPTION(ShaderOptions, shader);
+            OE_OPTION_VECTOR(ShaderOptions, shaders);
+            OE_OPTION(ProxySettings, proxySettings);
+            OE_OPTION(std::string, osgOptionString);
+            OE_OPTION(unsigned int, l2CacheSize);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
     public:
         //! Hints that a layer can set to influence the operation of
         //! the map engine
@@ -226,17 +249,13 @@ namespace osgEarth
         //! Serialize this layer into a Config object (if applicable)
         virtual Config getConfig() const;
 
-        //! Whether the layer is used by the map and the terrain engine
-        //! to create tiles.
-        virtual void setEnabled(bool value);
+        //! Whether to automatically open this layer (by calling open) when
+        //! adding the layer to a Map or when opening a map containing this Layer.
+        virtual void setOpenAutomatically(bool value);
 
-        //! Whether the layer is used by the map and the terrain engine
-        //! to create tiles. This will return false if the layer is set
-        //! to disabled OR if getStatus returns an error. Note: a layer
-        //! can still be opened and used with this is false; however,
-        //! the terrain engine will ignore it for the purposes of
-        //! building tiles.
-        virtual bool getEnabled() const;
+        //! Whether to automatically open this layer (by calling open) when
+        //! adding the layer to a Map or when opening a map containing this Layer.
+        virtual bool getOpenAutomatically() const;
 
         //! Cacheing policy. Only set this before opening the layer or adding to a map.
         void setCachePolicy(const CachePolicy& value);
@@ -392,6 +411,14 @@ namespace osgEarth
 
         class Options;
 
+    public: // deprecated
+
+        //! @deprecated - use getOpenAutomatically
+        bool getEnabled() const;
+
+        //! @deprecated - use setOpenAutomatically
+        void setEnabled(bool value);
+
     protected:
 
         //! Constructs a map layer by deserializing options.
@@ -484,27 +511,7 @@ namespace osgEarth
         //! are we in the middle of a close() call?
         bool isClosing() const { return _isClosing; }
 
-    public: // serialization
-        class OSGEARTH_EXPORT Options : public ConfigOptions
-        {
-        public:
-            META_LayerOptions(osgEarth, Options, ConfigOptions);
-            OE_OPTION(std::string, name);
-            OE_OPTION(bool, enabled);
-            OE_OPTION(std::string, cacheId);
-            OE_OPTION(CachePolicy, cachePolicy);
-            OE_OPTION(std::string, shaderDefine);
-            OE_OPTION(bool, terrainPatch);
-            OE_OPTION(std::string, attribution);
-            OE_OPTION(ShaderOptions, shader);
-            OE_OPTION_VECTOR(ShaderOptions, shaders);
-            OE_OPTION(ProxySettings, proxySettings);
-            OE_OPTION(std::string, osgOptionString);
-            OE_OPTION(unsigned int, l2CacheSize);
-            virtual Config getConfig() const;
-        private:
-            void fromConfig(const Config& conf);
-        };
+    public:
 
         Layer::Options& options() { return *_options; }
         const Layer::Options& options() const { return *_options; }

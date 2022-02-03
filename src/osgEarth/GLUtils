@@ -176,7 +176,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT GLObject
     {
     public:
-        enum Type { VAO, BUFFER, TEXTURE, FBO };
+        enum Type { VAO, BUFFER, TEXTURE, FBO, QUERY };
         using Ptr = std::shared_ptr<GLObject>;
         using Compatible = std::function<bool(GLObject*)>;
         virtual const std::string& label() const { return _label; }
@@ -193,6 +193,40 @@ namespace osgEarth
         bool _recyclable;
         osg::GLExtensions* _ext;
         friend class GLObjectPool;
+    };
+
+    class OSGEARTH_EXPORT GLQuery : public GLObject
+    {
+    public:
+        using Ptr = std::shared_ptr<GLQuery>;
+
+        //! Create a new query object.
+        static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
+
+        //! Start the query
+        void begin();
+
+        //! Are the results ready to read?
+        bool isReady() const;
+
+        //! End the query and fetch its value.
+        //! This will stall the pipeline if the result is not ready yet.
+        //! Call isReady() to check.
+        void getResult(GLuint* result);
+
+        //! End a query. Usually called after getResult.
+        void end();
+
+    public:
+        void release() override;
+        bool valid() const override { return _name != 0; }
+        GLsizei size() const override { return sizeof(GLuint); }
+
+    private:
+        GLQuery(GLenum target, osg::State& state, const std::string& label);
+        GLenum _target;
+        GLuint _name;
+        bool _active;
     };
 
     class OSGEARTH_EXPORT GLVAO : public GLObject
@@ -287,9 +321,20 @@ namespace osgEarth
         //! glBufferStorage - allocate with immutable storage
         void bufferStorage(GLsizei size, const GLvoid* data, GLbitfield flags =0) const;
 
+        //! map the buffer to a pointer
         void* map(GLbitfield access) const;
 
+        //! map a range of the buffer to a pointer
+        void* mapRange(GLintptr offset, GLsizei length, GLbitfield access) const;
+
+        //! unmap a pointer mapped with map()
         void unmap() const;
+
+        //! GPU copy this buffer to another buffer
+        void copyBufferSubData(GLBuffer::Ptr dest, GLintptr readOffset, GLintptr writeOffset, GLsizei size) const;
+
+        //! Read data from the buffer to the CPU
+        void getBufferSubData(GLintptr offset, GLsizei size, void* ptr) const;
 
         //! bind the buffer to the layout index as specified in the shader
         //! (for SSBO/UBO/ACBO/TFBO only)
@@ -636,6 +681,40 @@ namespace osgEarth
 
     private:
         OSG_GL_API* _object;
+    };
+
+
+    /**
+     * An osg::Operation can takes a lambda function and runs
+     * on a graphics context.
+     */
+    class OSGEARTH_EXPORT GPUOperation : public osg::Operation
+    {
+    public:
+        using Function = std::function<bool(osg::State&)>;
+
+        GPUOperation(const std::string& name, Function func) :
+            osg::Operation(name, true),
+            _func(func) {
+            //nop
+        }
+
+        GPUOperation(Function func) :
+            osg::Operation("osgEarth::GPUOperation", true),
+            _func(func) {
+            //nop
+        }
+
+        void operator()(osg::Object* obj) override
+        {
+            if (getKeep())
+            {
+                setKeep(_func(*static_cast<osg::GraphicsContext*>(obj)->getState()));
+            }
+        }
+
+    private:
+        Function _func;
     };
 
     /**

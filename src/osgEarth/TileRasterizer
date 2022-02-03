@@ -26,11 +26,15 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/Threading>
 #include <osgEarth/TileKey>
+#include <osgEarth/GLUtils>
+
 #include <osg/Camera>
-#include <osg/BufferObject>
 #include <osg/Texture2D>
 #include <osgViewer/Viewer>
+#include <osg/buffered_value>
+
 #include <queue>
+#include <list>
 
 namespace osgEarth
 {
@@ -68,32 +72,57 @@ namespace osgEarth
         void resizeGLObjectBuffers(unsigned) override;
 
     private:
-
-
-        struct RenderJob
+        // Object that renders a node with an RTT camera.
+        struct Renderer
         {
-            osg::ref_ptr<osg::Node> _node;
-            GeoExtent _extent;
-            Promise<osg::ref_ptr<osg::Image>> _promise;
-        };
-        Mutexed<std::queue<RenderJob*>> _queue;
+            enum Phase { RENDER, QUERY, READBACK };
+            Phase _phase;
 
-        struct RenderContext
-        {
-            RenderContext() : _samplesQuery(0), _pbo(0) { }
-            GLuint _samplesQuery;
-            GLuint _pbo;
-            unsigned _width, _height;
+            using Ptr = std::shared_ptr<Renderer>;
+            struct GCState
+            {
+                GLQuery::Ptr query;
+                GLBuffer::Ptr pbo; // pixel buffer object
+                GLBuffer::Ptr cbo; // copy buffer object
+            };
+            mutable osg::buffered_object<GCState> _gs;
             osg::ref_ptr<osg::Texture2D> _tex;
             osg::ref_ptr<osg::Camera> _rtt;
-            GLuint _samples;
-            std::atomic_bool _sampleQueryActive;
-            std::atomic_bool _rttActive;
-            RenderJob* _activeJob;
-        };
-        mutable std::shared_ptr<RenderContext> _cx;
+            UID _uid;
+            GLsizei _dataSize;
+            osg::Image* createImage() const;
 
-        // simple adapter to make draw callbacks smoother
+            Renderer(unsigned width, unsigned height);
+            //void preDraw(osg::State&);
+            void releaseGLObjects(osg::State*) const;
+            void resizeGLObjectBuffers(unsigned);
+        };
+
+        // rendering contexts 
+        RoundRobin<Renderer::Ptr> _renderers;
+
+        // One tile-rendering job
+        struct Job
+        {
+            using Ptr = std::shared_ptr<Job>;
+
+            UID _uid;
+            osg::ref_ptr<osg::Node> _node; // node to render
+            GeoExtent _extent; // viewport extent of the node
+            Renderer::Ptr _renderer; // Rtt camera to use to renderer
+
+            Promise<osg::ref_ptr<osg::Image>> _promise;
+
+            void useRenderer(Renderer::Ptr);
+        };
+
+        // Jobs waiting to run
+        MutexedQueue<Job::Ptr> _jobQ;
+
+        // Jobs waiting to render
+        MutexedQueue<Job::Ptr> _renderQ;
+
+        // simple adapter to make draw callbacks take lambdas
         struct DrawCallback : public osg::Camera::DrawCallback
         {
             DrawCallback(std::function<void(osg::RenderInfo&)> func) : _func(func) { }
@@ -102,7 +131,7 @@ namespace osgEarth
             friend class TileRasterizer;
         };
 
-        void preDraw(osg::RenderInfo& ri);
+        //void preDraw(osg::RenderInfo& ri);
         void postDraw(osg::RenderInfo& ri);
     };
 

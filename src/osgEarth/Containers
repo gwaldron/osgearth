@@ -31,6 +31,7 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <queue>
 
 namespace osgEarth { namespace Util
 {
@@ -817,6 +818,80 @@ namespace osgEarth { namespace Util
     {
     };
 
+    template<typename T>
+    class MutexedQueue
+    {
+    public:
+        void push(const T& t) {
+            osgEarth::Threading::ScopedMutexLock lock(_m);
+            _queue.push(t);
+        }
+        void pop() {
+            osgEarth::Threading::ScopedMutexLock lock(_m);
+            _queue.pop();
+        }
+        T front() {
+            osgEarth::Threading::ScopedMutexLock lock(_m);
+            return _queue.empty() ? _default : _queue.front();
+        }
+        T take_front() {
+            osgEarth::Threading::ScopedMutexLock lock(_m);
+            T t = _queue.empty() ? _default : _queue.front();
+            if (_queue.empty() == false)
+                _queue.pop();
+            return t;
+        }
+        void clear() {
+            osgEarth::Threading::ScopedMutexLock lock(_m);
+            _queue.swap(std::queue<T>());
+        }
+        bool unsafe_empty() const {
+            //osgEarth::Threading::ScopedMutexLock lock(_m);
+            return _queue.empty();
+        }
+    private:
+        std::queue<T> _queue;
+        mutable osgEarth::Threading::Mutex _m;
+        T _default;
+    };
+
+    /**
+     * A circular list that you can pull pointers from
+     * NOT thread safe.
+     */
+    template<typename T>
+    class OSGEARTH_EXPORT RoundRobin {
+    public:
+        using iterator = typename std::list<T>::iterator;
+        using const_iterator = typename std::list<T>::const_iterator;
+
+        void add(const T& t) {
+            _list.push_back(t);
+            if (_list.size() == 1)
+                _iter = begin();
+        }
+        T next() {
+            OE_HARD_ASSERT(_list.size() > 0);
+            T t = *_iter++;
+            if (_iter == end()) _iter = begin();
+            return t;
+        }
+        iterator begin() {
+            return _list.begin();
+        }
+        const_iterator begin() const {
+            return _list.begin();
+        }
+        iterator end() {
+            return _list.end();
+        }
+        const_iterator end() const {
+            return _list.end();
+        }
+    private:
+        std::list<T> _list;
+        iterator _iter;
+    };
 } }
 
 #endif // OSGEARTH_CONTAINERS_H

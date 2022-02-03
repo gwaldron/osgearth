@@ -17,7 +17,7 @@ http://readymap.org
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
 
-    <DebugImage name="Tilekeys" enabled="false"/>
+    <DebugImage name="Tilekeys" open="false"/>
 
     <RoadSurface name="ROadSurface" min_level="14" max_data_level="18">
         <cache_policy usage="no_cache"/>
@@ -34,7 +34,7 @@ http://readymap.org
         </styles>
     </RoadSurface>
 
-    <FeatureModel name="Road verts">
+    <FeatureModel name="Road verts" open="false">
         <profile>spherical-mercator</profile>
         <features>roads-data</features>
         <styles>
@@ -51,7 +51,7 @@ http://readymap.org
         </styles>
     </FeatureModel>
 
-    <FeatureModel name="Road skeleton" enabled="false">
+    <FeatureModel name="Road skeleton" open="false">
         <profile>spherical-mercator</profile>
         <features>roads-data</features>
         <styles>

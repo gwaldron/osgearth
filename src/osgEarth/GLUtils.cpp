@@ -88,6 +88,10 @@ namespace
         void*(GL_APIENTRY * MapNamedBufferRange)(GLuint name, GLintptr offset, GLsizeiptr length, GLbitfield access);
         void (GL_APIENTRY * UnmapNamedBuffer)(GLuint name);
 
+        void (GL_APIENTRY * CopyBufferSubData)(GLenum readTarget, GLenum writeTarget, GLintptr readOffset, GLintptr writeOffset, GLsizei size);
+        void (GL_APIENTRY * CopyNamedBufferSubData)(GLuint readName, GLuint writeName, GLintptr readOffset, GLintptr writeOffset, GLsizei size);
+        void (GL_APIENTRY * GetNamedBufferSubData)(GLuint name, GLintptr offset, GLsizei size, void*);
+
         inline void init()
         {
             if (DebugMessageCallback == nullptr)
@@ -109,6 +113,8 @@ namespace
                 osg::setGLExtensionFuncPtr(MakeBufferNonResidentNV, "glMakeBufferNonResidentNV");
                 osg::setGLExtensionFuncPtr(GetBufferParameterui64vNV, "glGetBufferParameterui64vNV");
 
+                osg::setGLExtensionFuncPtr(CopyBufferSubData, "glCopyBufferSubData");
+
                 if (version >= 4.5f)
                 {
                     osg::setGLExtensionFuncPtr(NamedBufferData, "glNamedBufferData");
@@ -116,6 +122,8 @@ namespace
                     osg::setGLExtensionFuncPtr(MapNamedBuffer, "glMapNamedBuffer");
                     osg::setGLExtensionFuncPtr(MapNamedBufferRange, "glMapNamedBufferRange");
                     osg::setGLExtensionFuncPtr(UnmapNamedBuffer, "glUnmapNamedBuffer");
+                    osg::setGLExtensionFuncPtr(CopyNamedBufferSubData, "glCopyNamedBufferSubData");
+                    osg::setGLExtensionFuncPtr(GetNamedBufferSubData, "glGetNamedBufferSubData");
                 }
             }
         }
@@ -517,6 +525,67 @@ GLObject::GLObject(osg::State& state, Type type, const std::string& label) :
     gl.init();
 }
 
+
+GLQuery::GLQuery(GLenum target, osg::State& state, const std::string& label) :
+    GLObject(state, QUERY, label.empty() ? "Unlabeled Query" : label),
+    _target(target),
+    _name(0U),
+    _active(false)
+{
+    ext()->glGenQueries(1, &_name);
+}
+
+GLQuery::Ptr
+GLQuery::create(GLenum target, osg::State& state, const std::string& label)
+{
+    Ptr result(new GLQuery(target, state, label));
+    GLObjectPool::get(state)->watch(result);
+    return result;
+}
+
+void
+GLQuery::begin()
+{
+    // end an already-active query
+    if (_active)
+        ext()->glEndQuery(_target);
+
+    ext()->glBeginQuery(_target, _name);
+    _active = true;
+}
+
+bool
+GLQuery::isReady() const
+{
+    OE_HARD_ASSERT(_active);
+    GLuint available = GL_TRUE;
+    ext()->glGetQueryObjectuiv(_name, GL_QUERY_RESULT_AVAILABLE, &available);
+    return available == GL_TRUE;
+}
+
+void
+GLQuery::getResult(GLuint* results)
+{
+    OE_HARD_ASSERT(_active);
+    ext()->glGetQueryObjectuiv(_name, GL_QUERY_RESULT, results);
+}
+
+void
+GLQuery::end()
+{
+    if (_active)
+        ext()->glEndQuery(_target);
+}
+
+void
+GLQuery::release()
+{
+    if (_name != 0U)
+        ext()->glDeleteQueries(1, &_name);
+    _name = 0U;
+}
+
+
 GLVAO::GLVAO(osg::State& state, const std::string& label) :
     GLObject(state, VAO, label.empty() ? "Unlabaled VAO" : label),
     _name(0U)
@@ -718,6 +787,30 @@ GLBuffer::bufferStorage(GLsizei size, const GLvoid* data, GLbitfield flags) cons
     _immutable = true;
 }
 
+void
+GLBuffer::copyBufferSubData(GLBuffer::Ptr dst, GLintptr readOffset, GLintptr writeOffset, GLsizei size) const
+{
+    if (gl.CopyNamedBufferSubData)
+        gl.CopyNamedBufferSubData(name(), dst->name(), readOffset, writeOffset, size);
+    else
+    {
+        dst->bind(); // hmm
+        gl.CopyBufferSubData(target(), dst->target(), readOffset, writeOffset, size);
+    }
+}
+
+void
+GLBuffer::getBufferSubData(GLintptr offset, GLsizei size, void* data) const
+{
+    if (gl.GetNamedBufferSubData)
+        gl.GetNamedBufferSubData(name(), offset, size, data);
+    else
+    {
+        bind();
+        ext()->glGetBufferSubData(_target, offset, size, data);
+    }
+}
+
 void*
 GLBuffer::map(GLbitfield access) const
 {
@@ -727,6 +820,18 @@ GLBuffer::map(GLbitfield access) const
     {
         bind();
         return ext()->glMapBuffer(_target, access);
+    }
+}
+
+void*
+GLBuffer::mapRange(GLintptr offset, GLsizei length, GLbitfield access) const
+{
+    if (gl.MapNamedBufferRange)
+        return gl.MapNamedBufferRange(_name, offset, length, access);
+    else
+    {
+        bind();
+        return ext()->glMapBufferRange(_target, offset, length, access);
     }
 }
 

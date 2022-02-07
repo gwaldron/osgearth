@@ -818,22 +818,31 @@ namespace osgEarth { namespace Util
     {
     };
 
+    /**
+     * Thread-safe queue.
+     */
     template<typename T>
     class MutexedQueue
     {
     public:
+        //! Push a new item safely
         void push(const T& t) {
             osgEarth::Threading::ScopedMutexLock lock(_m);
             _queue.push(t);
         }
+        //! Remove the front item safely 
         void pop() {
             osgEarth::Threading::ScopedMutexLock lock(_m);
             _queue.pop();
         }
+        //! Safely return a copy of the item at the head of
+        //! the queue
         T front() {
             osgEarth::Threading::ScopedMutexLock lock(_m);
             return _queue.empty() ? _default : _queue.front();
         }
+        //! Safely remove the item at the head of the queue
+        //! and return it
         T take_front() {
             osgEarth::Threading::ScopedMutexLock lock(_m);
             T t = _queue.empty() ? _default : _queue.front();
@@ -841,14 +850,17 @@ namespace osgEarth { namespace Util
                 _queue.pop();
             return t;
         }
+        //! Safely clear the queue
         void clear() {
             osgEarth::Threading::ScopedMutexLock lock(_m);
             _queue.swap(std::queue<T>());
         }
-        bool unsafe_empty() const {
-            //osgEarth::Threading::ScopedMutexLock lock(_m);
+        //! True if the queue is empty (but only at the 
+        //! instant of the call.)
+        bool empty() const {
             return _queue.empty();
         }
+
     private:
         std::queue<T> _queue;
         mutable osgEarth::Threading::Mutex _m;

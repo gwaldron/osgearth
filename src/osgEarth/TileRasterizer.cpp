@@ -39,7 +39,7 @@
 // See Page 22 of this deck:
 // https://on-demand.gputechconf.com/gtc/2012/presentations/S0356-GTC2012-Texture-Transfers.pdf
 // Note: we may need to disable this for AMD
-#define USE_CBO
+//#define USE_CBO
 
 // Set to use GPU sample queries to determine whether any data was rendered.
 // This will not work here because of threading overlap and multiple query objects;
@@ -95,30 +95,6 @@ TileRasterizer::Renderer::createImage() const
 
     return image;
 }
-
-#if 0
-void
-TileRasterizer::Renderer::preDraw(osg::State& state)
-{
-    GCState& gs = _gs[state.getContextID()];
-
-#ifdef USE_QUERY
-    if (gs.query == nullptr)
-    {
-        gs.query = GLQuery::create(
-            GL_SAMPLES_PASSED_ARB, state, typeid(*this).name());
-    }
-    gs.query->begin();
-
-    // transition to query phase.
-    _phase = QUERY;
-#else
-
-    // transition to render phase.
-    _phase = RENDER;
-#endif
-}
-#endif
 
 void
 TileRasterizer::Renderer::releaseGLObjects(osg::State* state) const
@@ -220,11 +196,14 @@ TileRasterizer::render(osg::Node* node, const GeoExtent& extent)
     job->_uid = osgEarth::createUID();
     job->_node = node;
     job->_extent = extent;
-    Future<osg::ref_ptr<osg::Image>> result = job->_promise.getFuture();
 
+    // retrieve the future so we can return it to the caller:
+    Future<Job::Result> result = job->_promise.getFuture();
+
+    // put it on the queue:
     _jobQ.push(job);
 
-    // return a Future result.
+    // all set.
     return result;
 }
 
@@ -270,19 +249,6 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
     osg::Node::traverse(nv);
 }
 
-#if 0
-void
-TileRasterizer::preDraw(osg::RenderInfo& ri)
-{
-    // do NOT remove the job yet - do that in postDraw
-    Job::Ptr job = _renderQ.front();
-    if (job)
-    {
-        job->_renderer->preDraw(*ri.getState());
-    }
-}
-#endif
-
 #define OE_TEST OE_DEBUG
 
 void
@@ -292,122 +258,121 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
     OE_HARD_ASSERT(job != nullptr);
 
     // Check to see if the client still wants the result:
-    if (job->_promise.isAbandoned())
+    if (job->_promise.isCanceled())
         return;
 
-    auto operation = [job](osg::State& state)
+    // GPU task delegate:
+    auto gpu_task = [job](osg::State& state, Promise<Job::Result>& promise, int invocation)
     {
-        if (job->_promise.isAbandoned())
-        {
-            return false;
-        }
+        // invocations:
+        constexpr int RENDER = 0;
+        constexpr int QUERY = 1;
+        constexpr int READBACK = 2;
 
-        // was the job already resolved? (This should never happen)
-        if (job->_promise.isResolved())
+        if (promise.isAbandoned())
         {
-            return false;
+            OE_DEBUG << "Job " << job << " canceled" << std::endl;
+            return false; // done
         }
 
         Renderer::Ptr& renderer = job->_renderer;
         Renderer::GCState& gs = renderer->_gs[state.getContextID()];
 
-        if (gs.pbo == nullptr)
+        if (invocation == RENDER)
         {
-            gs.pbo = GLBuffer::create(
-                GL_PIXEL_PACK_BUFFER_ARB, state, "TileRasterizer");
-
-#ifdef USE_CBO
-            gs.cbo = GLBuffer::create(
-                GL_COPY_WRITE_BUFFER, state, "TileRasterizer");
-#endif
-        }
-
-        if (gs.pbo->size() < renderer->_dataSize)
-        {
-#ifdef USE_CBO
-            gs.pbo->bind();
-            gs.pbo->bufferData(renderer->_dataSize, nullptr, GL_STATIC_COPY);
-            gs.pbo->unbind();
-
-            gs.cbo->bind();
-            gs.cbo->bufferData(renderer->_dataSize, nullptr, GL_STREAM_READ);
-            gs.cbo->unbind();
-#else
-            gs.pbo->bind();
-            gs.pbo->bufferData(renderer->_dataSize, nullptr, GL_STREAM_READ);
-            gs.pbo->unbind();
-#endif
-        }
-
-        if (renderer->_phase == Renderer::RENDER)
-        {
-            // wait until the next frame.
-            renderer->_phase = Renderer::QUERY;
-            return true;
-        }
-
-        // is the query still running?
-        else if (renderer->_phase == Renderer::QUERY)
-        {
-            // is the result ready?
-            if (gs.query == nullptr || gs.query->isReady())
+            if (gs.pbo == nullptr)
             {
-                // yes, read the result.
-                GLuint samples = 1;
-
-                if (gs.query)
-                    gs.query->getResult(&samples);
-
-                if (samples > 0)
-                {
-                    // make the target texture current so we can read it back.
-                    renderer->_tex->apply(state);
-
-                    // begin the asynchronous transfer from texture to PBO
-                    gs.pbo->bind();
-
-                    // should return immediately
-                    glGetTexImage(
-                        renderer->_tex->getTextureTarget(),
-                        0, // mip level
-                        renderer->_tex->getSourceFormat(),
-                        renderer->_tex->getSourceType(),
-                        nullptr);
+                gs.pbo = GLBuffer::create(
+                    GL_PIXEL_PACK_BUFFER_ARB, state, "TileRasterizer");
 
 #ifdef USE_CBO
-                    gs.cbo->bind();
-                    gs.pbo->copyBufferSubData(gs.cbo, 0, 0, renderer->_dataSize);
-                    gs.cbo->unbind();
+                // dedicated copy buffer to take advantage of the Fermi+
+                // copy engines. Rumor has it this slows things down on AMD
+                // so we might want to disable it for them
+                gs.cbo = GLBuffer::create(
+                    GL_COPY_WRITE_BUFFER, state, "TileRasterizer");
 #endif
+            }
 
+            if (gs.pbo->size() < renderer->_dataSize)
+            {
+                if (gs.cbo)
+                {
+                    // when using a copy engine, GL_STATIC_COPY ensures a GPU->GPU
+                    // transfer to the copy buffer for later fast readback.
+                    gs.pbo->bind();
+                    gs.pbo->bufferData(renderer->_dataSize, nullptr, GL_STATIC_COPY);
                     gs.pbo->unbind();
 
-                    renderer->_phase = Renderer::READBACK;
-                    return true; // come back later when the results are ready.
+                    gs.cbo->bind();
+                    gs.cbo->bufferData(renderer->_dataSize, nullptr, GL_STREAM_READ);
+                    gs.cbo->unbind();
                 }
                 else
                 {
-                    // no samples drawn? we are done with an empty result.
-                    job->_promise.resolve(nullptr);
-                    return false;
+                    gs.pbo->bind();
+                    gs.pbo->bufferData(renderer->_dataSize, nullptr, GL_STREAM_READ);
+                    gs.pbo->unbind();
                 }
+            }
+
+            return true; // wait until the next frame (for render/query to finish)
+        }
+
+        // is the query still running?
+        else if (invocation == QUERY)
+        {
+            OE_GL_ZONE_NAMED("TileRasterizer/QUERY");
+
+            GLuint samples = 1;
+            if (gs.query)
+                gs.query->getResult(&samples);
+
+            if (samples > 0)
+            {
+                // make the target texture current so we can read it back.
+                renderer->_tex->apply(state);
+
+                // begin the asynchronous transfer from texture to PBO
+                gs.pbo->bind();
+
+                // should return immediately
+                glGetTexImage(
+                    renderer->_tex->getTextureTarget(),
+                    0, // mip level
+                    renderer->_tex->getSourceFormat(),
+                    renderer->_tex->getSourceType(),
+                    nullptr);
+
+                if (gs.cbo)
+                {
+                    // two-stage copy speeds things up on fermi allegedly
+                    gs.cbo->bind();
+                    gs.pbo->copyBufferSubData(gs.cbo, 0, 0, renderer->_dataSize);
+                    gs.cbo->unbind();
+                }
+
+                gs.pbo->unbind();
+
+                return true; // come back later when the results are ready.
             }
             else
             {
-                // nope, wait another frame.
-                return true;
+                // no samples drawn? we are done with an empty result.
+                promise.resolve(nullptr);
+                return false;
             }
         }
 
-        else if (renderer->_phase == Renderer::READBACK)
+        else if (invocation == READBACK)
         {
+            OE_GL_ZONE_NAMED("TileRasterizer/READBACK");
+
             osg::ref_ptr<osg::Image> result = renderer->createImage();
 
-#ifdef USE_CBO
-            GLBuffer::Ptr readback_buf = gs.cbo;
-#else
-            GLBuffer::Ptr readback_buf = gs.pbo;
-#endif
+            GLBuffer::Ptr readback_buf =
+                gs.cbo ? gs.cbo :
+                gs.pbo;
 
             readback_buf->bind();
 
@@ -429,24 +394,18 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
 
             readback_buf->unbind();
 
-            if (ImageUtils::isEmptyImage(result.get()))
-                result = nullptr;
-
-            job->_promise.resolve(result);
-
-            return false; // all done.
+            // all done:
+            promise.resolve(result);
+            return false;
         }
 
         // bad dates
         OE_HARD_ASSERT(false, "Bad dates.");
     };
 
-    // schedule a new GPU operation on this GC.
-    osg::State& state = *ri.getState();
-    state.getGraphicsContext()->add(new GPUOperation(operation));
 
-    // Test: run it all inline
-    //while (operation(state));
+    // Queue up our GPU job (using our existing Promise object)
+    GLPipeline::get()->dispatch<Job::Result>(gpu_task, job->_promise);
 }
 
 void

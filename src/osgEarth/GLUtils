@@ -292,12 +292,12 @@ namespace osgEarth
 
         //! Upload data to the GPU. This method uses bufferData() or bufferSubData()
         //! depending on whether it needs to allocate more space.
-        //! Automatically calls bind().
+        //! Automatically calls bind()/unbind().
         void uploadData(GLsizei size, const GLvoid* data, GLbitfield flags=GL_DYNAMIC_DRAW) const;
 
         //! Upload data to the GPU to a custom target. This method uses bufferData() or bufferSubData()
         //! depending on whether it needs to allocate more space.
-        //! Automatically calls bind(target).
+        //! Automatically calls bind(target)/unbind().
         void uploadData(GLenum target, GLsizei size, const GLvoid* data, GLbitfield flags = GL_DYNAMIC_DRAW) const;
 
         //! Convenience template to upload a vector
@@ -762,7 +762,7 @@ namespace osgEarth
      *
      * Dispatch a job on the GPU like so:
      *
-     * Future<MyObject> job = GLPipeline::get()->dispatch<MyObject>(
+     * auto task =
      *    [&](osg::State& state, Promise<MyObject>& promise, int invocation)
      *    {
      *        MyObject result;
@@ -770,8 +770,9 @@ namespace osgEarth
      *        ...
      *        promise.resolve(result);
      *        return false;
-     *    }
-     * );
+     *    };
+     *
+     * Future<MyObject> job = GLPipeline::get()->dispatch<MyObject>(task);
      *
      * Return "true" from the function to request another invocation.
      * Each invocation will increment the "invocation" argument so you 
@@ -815,9 +816,32 @@ namespace osgEarth
             Delegate<T> _delegate;
             Promise<T> _promise;
             int _invocation;
+
             DelegateOperation(Delegate<T> d) :
                 osg::Operation("GLPipeline", true),
                 _delegate(d),
+                _invocation(0) { }
+
+            void operator()(osg::Object* obj) {
+                if (getKeep()) {
+                    auto gc = static_cast<osg::GraphicsContext*>(obj);
+                    setKeep(_delegate(*gc->getState(), _promise, _invocation++));
+                }
+            }
+        };
+
+        // Internal delegation operation for the GC queue
+        // that reference a user-created Promise object
+        template<typename T>
+        struct DelegateOperation2 : public osg::Operation {
+            Delegate<T> _delegate;
+            Promise<T>& _promise;
+            int _invocation;
+
+            DelegateOperation2(Delegate<T> d, Promise<T>& promise) :
+                osg::Operation("GLPipeline", true),
+                _delegate(d),
+                _promise(promise),
                 _invocation(0) { }
 
             void operator()(osg::Object* obj) {
@@ -840,6 +864,18 @@ namespace osgEarth
             else
                 _gc->add(operation);
             return future;
+        }
+
+        // Launch an operation on this GL Pipeline, supplying your own Promise.
+        // Be sure to call getFuture() prior to calling this function.
+        template<typename T>
+        void dispatch(Delegate<T> delegate, Promise<T>& promise)
+        {
+            auto operation = new DelegateOperation2<T>(delegate, promise);
+            if (_dispatcher.valid())
+                _dispatcher->push(operation);
+            else
+                _gc->add(operation);
         }
 
     private:

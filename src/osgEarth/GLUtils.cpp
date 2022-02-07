@@ -115,6 +115,7 @@ namespace
 
                 osg::setGLExtensionFuncPtr(CopyBufferSubData, "glCopyBufferSubData");
 
+#if 0
                 if (version >= 4.5f)
                 {
                     osg::setGLExtensionFuncPtr(NamedBufferData, "glNamedBufferData");
@@ -125,6 +126,7 @@ namespace
                     osg::setGLExtensionFuncPtr(CopyNamedBufferSubData, "glCopyNamedBufferSubData");
                     osg::setGLExtensionFuncPtr(GetNamedBufferSubData, "glGetNamedBufferSubData");
                 }
+#endif
             }
         }
     } gl;
@@ -728,6 +730,9 @@ GLBuffer::uploadData(GLsizei datasize, const GLvoid* data, GLbitfield flags) con
         unbind();
 #endif
     }
+
+    if (!gl.NamedBufferData)
+        unbind();
 }
 
 void
@@ -741,6 +746,8 @@ GLBuffer::uploadData(GLenum otherTarget, GLsizei datasize, const GLvoid* data, G
         bufferData(datasize, data, flags);
     else if (data != nullptr)
         bufferSubData(0, datasize, data);
+
+    unbind();
 }
 
 void
@@ -793,10 +800,7 @@ GLBuffer::copyBufferSubData(GLBuffer::Ptr dst, GLintptr readOffset, GLintptr wri
     if (gl.CopyNamedBufferSubData)
         gl.CopyNamedBufferSubData(name(), dst->name(), readOffset, writeOffset, size);
     else
-    {
-        dst->bind(); // hmm
         gl.CopyBufferSubData(target(), dst->target(), readOffset, writeOffset, size);
-    }
 }
 
 void
@@ -805,10 +809,7 @@ GLBuffer::getBufferSubData(GLintptr offset, GLsizei size, void* data) const
     if (gl.GetNamedBufferSubData)
         gl.GetNamedBufferSubData(name(), offset, size, data);
     else
-    {
-        bind();
         ext()->glGetBufferSubData(_target, offset, size, data);
-    }
 }
 
 void*
@@ -817,10 +818,7 @@ GLBuffer::map(GLbitfield access) const
     if (gl.MapNamedBuffer)
         return gl.MapNamedBuffer(_name, access);
     else
-    {
-        bind();
         return ext()->glMapBuffer(_target, access);
-    }
 }
 
 void*
@@ -829,10 +827,7 @@ GLBuffer::mapRange(GLintptr offset, GLsizei length, GLbitfield access) const
     if (gl.MapNamedBufferRange)
         return gl.MapNamedBufferRange(_name, offset, length, access);
     else
-    {
-        bind();
         return ext()->glMapBufferRange(_target, offset, length, access);
-    }
 }
 
 void
@@ -841,10 +836,7 @@ GLBuffer::unmap() const
     if (gl.UnmapNamedBuffer)
         gl.UnmapNamedBuffer(_name);
     else
-    {
-        bind();
         ext()->glUnmapBuffer(_target);
-    }
 }
 
 void

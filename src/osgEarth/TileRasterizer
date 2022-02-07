@@ -105,6 +105,7 @@ namespace osgEarth
         struct Job
         {
             using Ptr = std::shared_ptr<Job>;
+            using Result = osg::ref_ptr<osg::Image>;
 
             UID _uid;
             osg::ref_ptr<osg::Node> _node; // node to render

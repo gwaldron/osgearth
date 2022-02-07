@@ -401,12 +401,20 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             );
 
             // Immediately blocks on the result.
-            const osg::ref_ptr<osg::Image> image = result.join(local_progress.get());
+            // That is OK - we are hopefully in a loading thread.
+            osg::ref_ptr<osg::Image> image = result.join(local_progress.get());
 
-            if (image.valid() && image->data() != nullptr)
+            // Empty image means the texture did not render anything
+            if (image.valid()
+                && image->data() != nullptr &&
+                !ImageUtils::isEmptyImage(image.get()))
+            {
                 return GeoImage(image.get(), key.getExtent());
+            }
             else
+            {
                 return GeoImage::INVALID;
+            }
         }
     }
 

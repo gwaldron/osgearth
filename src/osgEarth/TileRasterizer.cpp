@@ -34,14 +34,12 @@
 
 #define LC "[TileRasterizer] "
 
-// Set this to use a Pixel Buffer Object for DMA readback.
-#define USE_PBO
-
-// Set this to use an NVIDIA Copy Buffer Object for fast readback
-// Note, this will only be effective with a separate HW transfer thread
+// Set this to use an NVIDIA Fermi+ Copy Buffer Object for fast readback
+// https://community.khronos.org/t/nvidia-dual-copy-engines/62499/19
 // See Page 22 of this deck:
 // https://on-demand.gputechconf.com/gtc/2012/presentations/S0356-GTC2012-Texture-Transfers.pdf
-//#define USE_CBO
+// Note: we may need to disable this for AMD
+#define USE_CBO
 
 // Set to use GPU sample queries to determine whether any data was rendered.
 // This will not work here because of threading overlap and multiple query objects;
@@ -239,7 +237,7 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
-        if (!_jobQ.unsafe_empty())
+        if (!_jobQ.empty())
         {
             const osg::Camera* camera = static_cast<osgUtil::CullVisitor*>(&nv)->getCurrentCamera();
             if (CameraUtils::isShadowCamera(camera) ||
@@ -297,73 +295,49 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
     if (job->_promise.isAbandoned())
         return;
 
-    osg::State& state = *ri.getState();
-
-    OE_TEST << "Frame " << state.getFrameStamp()->getFrameNumber()
-        << " : scheduling job " << job->_uid
-        << " with renderer " << job->_renderer->_uid
-        << std::endl;
-
     auto operation = [job](osg::State& state)
     {
-        // is the job still valid?
         if (job->_promise.isAbandoned())
         {
-            OE_TEST << "Frame " << state.getFrameStamp()->getFrameNumber()
-                << " : job abandoned " << job->_uid
-                << " with renderer " << job->_renderer->_uid
-                << std::endl;
-
             return false;
         }
 
         // was the job already resolved? (This should never happen)
         if (job->_promise.isResolved())
         {
-            OE_TEST << "Frame " << state.getFrameStamp()->getFrameNumber()
-                << " : job already resolved " << job->_uid
-                << " with renderer " << job->_renderer->_uid
-                << std::endl;
-
             return false;
         }
 
         Renderer::Ptr& renderer = job->_renderer;
         Renderer::GCState& gs = renderer->_gs[state.getContextID()];
 
-#ifdef USE_PBO
         if (gs.pbo == nullptr)
         {
             gs.pbo = GLBuffer::create(
                 GL_PIXEL_PACK_BUFFER_ARB, state, "TileRasterizer");
-        }
-
-        GLenum pbo_usage = GL_STREAM_READ;
 
 #ifdef USE_CBO
-        if (gs.cbo == nullptr)
-        {
             gs.cbo = GLBuffer::create(
                 GL_COPY_WRITE_BUFFER, state, "TileRasterizer");
+#endif
         }
-
-        if (gs.cbo->size() < renderer->_dataSize)
-        {
-            gs.cbo->bind();
-            gs.cbo->bufferData(renderer->_dataSize, nullptr, GL_STREAM_READ);
-            gs.cbo->unbind();
-        }
-        pbo_usage = GL_STREAM_COPY;
-#endif // USE_CBO
 
         if (gs.pbo->size() < renderer->_dataSize)
         {
+#ifdef USE_CBO
             gs.pbo->bind();
-            gs.pbo->bufferData(renderer->_dataSize, nullptr, pbo_usage);
+            gs.pbo->bufferData(renderer->_dataSize, nullptr, GL_STATIC_COPY);
             gs.pbo->unbind();
-        }
 
-#endif // USE_PBO
+            gs.cbo->bind();
+            gs.cbo->bufferData(renderer->_dataSize, nullptr, GL_STREAM_READ);
+            gs.cbo->unbind();
+#else
+            gs.pbo->bind();
+            gs.pbo->bufferData(renderer->_dataSize, nullptr, GL_STREAM_READ);
+            gs.pbo->unbind();
+#endif
+        }
 
         if (renderer->_phase == Renderer::RENDER)
         {
@@ -375,18 +349,9 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
         // is the query still running?
         else if (renderer->_phase == Renderer::QUERY)
         {
-            OE_TEST << "Frame " << state.getFrameStamp()->getFrameNumber()
-                << " : running query " << job->_uid
-                << " with renderer " << job->_renderer->_uid
-                << std::endl;
-
             // is the result ready?
             if (gs.query == nullptr || gs.query->isReady())
             {
-                OE_TEST << "Frame " << state.getFrameStamp()->getFrameNumber()
-                    << " : query " << job->_uid << " is ready!"
-                    << std::endl;
-
                 // yes, read the result.
                 GLuint samples = 1;
 
@@ -395,10 +360,6 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
 
                 if (samples > 0)
                 {
-                    OE_TEST << "Frame " << state.getFrameStamp()->getFrameNumber()
-                        << " : posting a readback for " << job->_uid
-                        << std::endl;
-
                     // make the target texture current so we can read it back.
                     renderer->_tex->apply(state);
 
@@ -414,11 +375,9 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
                         nullptr);
 
 #ifdef USE_CBO
-                    // queue a buffer-to-buffer copy on the GPU
-                    // should return immediately
-                    gs.pbo->copyBufferSubData(
-                        gs.cbo,
-                        0, 0, renderer->_dataSize);
+                    gs.cbo->bind();
+                    gs.pbo->copyBufferSubData(gs.cbo, 0, 0, renderer->_dataSize);
+                    gs.cbo->unbind();
 #endif
 
                     gs.pbo->unbind();
@@ -428,10 +387,6 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
                 }
                 else
                 {
-                    OE_TEST << "Frame " << state.getFrameStamp()->getFrameNumber()
-                        << " : no samples drawn for " << job->_uid
-                        << std::endl;
-
                     // no samples drawn? we are done with an empty result.
                     job->_promise.resolve(nullptr);
                     return false;
@@ -439,10 +394,6 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
             }
             else
             {
-                OE_TEST << "Frame " << state.getFrameStamp()->getFrameNumber()
-                    << " : query " << job->_uid << " isn't ready yet.."
-                    << std::endl;
-
                 // nope, wait another frame.
                 return true;
             }
@@ -450,23 +401,17 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
 
         else if (renderer->_phase == Renderer::READBACK)
         {
-            OE_TEST << "Frame " << state.getFrameStamp()->getFrameNumber()
-                << " : reading back " << job->_uid
-                << " with context " << job->_renderer->_uid
-                << std::endl;
-
             osg::ref_ptr<osg::Image> result = renderer->createImage();
 
 #ifdef USE_CBO
-
-            gs.cbo->getBufferSubData(
-                0, renderer->_dataSize,
-                renderer->_result->data());
-
+            GLBuffer::Ptr readback_buf = gs.cbo;
 #else
-            gs.pbo->bind();
+            GLBuffer::Ptr readback_buf = gs.pbo;
+#endif
 
-            void* ptr = gs.pbo->map(GL_READ_ONLY_ARB);
+            readback_buf->bind();
+
+            void* ptr = readback_buf->map(GL_READ_ONLY_ARB);
             if (ptr)
             {
                 ::memcpy(
@@ -474,7 +419,7 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
                     ptr,
                     renderer->_dataSize);
 
-                gs.pbo->unmap();
+                readback_buf->unmap();
             }
             else
             {
@@ -482,8 +427,7 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
                 OE_SOFT_ASSERT(ptr != nullptr, "glMapBuffer failed to map to PBO");
             }
 
-            gs.pbo->unbind();
-#endif
+            readback_buf->unbind();
 
             if (ImageUtils::isEmptyImage(result.get()))
                 result = nullptr;
@@ -494,10 +438,11 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
         }
 
         // bad dates
-        OE_HARD_ASSERT(false, "Logic error, should never get here!");
+        OE_HARD_ASSERT(false, "Bad dates.");
     };
 
     // schedule a new GPU operation on this GC.
+    osg::State& state = *ri.getState();
     state.getGraphicsContext()->add(new GPUOperation(operation));
 
     // Test: run it all inline

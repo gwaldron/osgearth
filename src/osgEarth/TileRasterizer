@@ -83,7 +83,7 @@ namespace osgEarth
             {
                 GLQuery::Ptr query;
                 GLBuffer::Ptr pbo; // pixel buffer object
-                GLBuffer::Ptr cbo; // copy buffer object
+                GLBuffer::Ptr cbo; // copy buffer
             };
             mutable osg::buffered_object<GCState> _gs;
             osg::ref_ptr<osg::Texture2D> _tex;

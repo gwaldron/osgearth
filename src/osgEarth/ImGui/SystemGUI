@@ -189,8 +189,8 @@ namespace osgEarth
                         ImGui::Text("Total: %d", m.totalJobs());
                         ImGui::SameLine();
                         ImGui::Text(" ICO: %d", GLObjectsCompiler::totalJobs());
-                        ImGui::SameLine();
-                        ImGui::Text(" Compute: %d", GPUJobArena::arena().size());
+                        //ImGui::SameLine();
+                        //ImGui::Text(" Compute: %d", GPUJobArena::arena().size());
 
                         ImGui::TreePop();
                     }

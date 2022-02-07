@@ -758,85 +758,120 @@ namespace osgEarth
     };
 
     /**
-     * Arena for dispatching GPU jobs.
-     * Use the GPUJob<> API instead of accessing this directly.
+     * GL pipeline for asynchronous GPU tasks.
+     *
+     * Dispatch a job on the GPU like so:
+     *
+     * Future<MyObject> job = GLPipeline::get()->dispatch<MyObject>(
+     *    [&](osg::State& state, Promise<MyObject>& promise, int invocation)
+     *    {
+     *        MyObject result;
+     *        // do some GPU work
+     *        ...
+     *        promise.resolve(result);
+     *        return false;
+     *    }
+     * );
+     *
+     * Return "true" from the function to request another invocation.
+     * Each invocation will increment the "invocation" argument so you 
+     * can run multi-pass operations that don't stall the GL pipeline.
      */
-    class OSGEARTH_EXPORT GPUJobArena : public osg::GraphicsOperation
+    class OSGEARTH_EXPORT GLPipeline
     {
     public:
-        typedef std::function<void(osg::State*)> Delegate;
+        using Ptr = std::shared_ptr<GLPipeline>;
+        using WeakPtr = std::weak_ptr<GLPipeline>;
+
+        // Delegate function that fulfills a promise of type T.
+        // Return "true" from the delegate to re-run the delegate.
+        // Each run of the delegate will increase the "invocation"
+        // by one, to support multi-pass computation.
+        // Return "false" from the delegate when finished.
+        template<typename T>
+        using Delegate = std::function<bool(
+            osg::State& state,
+            Promise<T>& promise,
+            int         invocation)>;
 
     public:
-        //! Attach the arena to a graphics context
-        void setGraphicsContext(osg::GraphicsContext*);
-        osg::ref_ptr<osg::GraphicsContext> getGraphicsContext();
+        //! Gets the default GL pipeline
+        //! This pipeline will run jobs on the application's
+        //! primary graphics context in the main rendering thread.
+        static GLPipeline::Ptr get();
 
-        //! Time (ms) allocated to running GPU jobs per frame
-        //! Default = 0, meaning one job per frame is allowed.
-        void setTimeSlice(const std::chrono::milliseconds& value);
-        const std::chrono::milliseconds& getTimeSlice() const;
-
-        //! Dispatch a GPU job delegate
-        //! Use GPUJob::dispatch instead of calling this directly
-        void dispatch(Delegate& job);
-
-        //! Access to the job arena
-        static GPUJobArena& arena();
-
-        //! Jobs in queue
-        std::size_t size() const;
-
-        //! Is this arena usable?
-        bool valid() const { return _gc.valid(); }
-
-    public:
-
-        void operator()(osg::GraphicsContext*) override;
-
-    protected:
-
-        virtual ~GPUJobArena();
+        //! Gets the GL pipeline associated with the given name.
+        //! Job dispatched on this pipeline will run on a dedicated
+        //! thread with its own dedicated graphics context.
+        //! (Keep in mind that GL calls are still serialized by the
+        //! GPU driver.)
+        static GLPipeline::Ptr get(
+            const std::string& name);
 
     private:
-        GPUJobArena();
+        // Internal delegation operation for the GC queue:
+        template<typename T>
+        struct DelegateOperation : public osg::Operation {
+            Delegate<T> _delegate;
+            Promise<T> _promise;
+            int _invocation;
+            DelegateOperation(Delegate<T> d) :
+                osg::Operation("GLPipeline", true),
+                _delegate(d),
+                _invocation(0) { }
 
-        mutable Mutex _queue_mutex;
-        std::deque<Delegate> _queue;
-        mutable osg::observer_ptr<osg::GraphicsContext> _gc;
-        std::chrono::milliseconds _timeSlice;
-        bool _done;
-        static osg::ref_ptr<GPUJobArena> _arena_pool;
-        static Mutex _arena_pool_mutex;
-    };
-
-    /**
-     * Activates a GPUJobArena - place anywhere in the scene graph.
-     */
-    class OSGEARTH_EXPORT GPUJobArenaConnector : public osg::Drawable
-    {
-    public:
-        GPUJobArenaConnector();
-        void drawImplementation(osg::RenderInfo& ri) const override;
-    protected:
-        virtual ~GPUJobArenaConnector();
-    };
-
-    template<typename RESULT_TYPE>
-    Future<RESULT_TYPE> GPUJob<RESULT_TYPE>::dispatch(const Function& function)
-    {
-        Promise<RESULT_TYPE> promise;
-        Future<RESULT_TYPE> future = promise.getFuture();
-
-        std::function<void(osg::State*)> delegate = [function, promise](osg::State* state) mutable
-        {
-            if (!promise.isAbandoned())
-            {
-                promise.resolve(function(state, &promise));
+            void operator()(osg::Object* obj) {
+                if (getKeep()) {
+                    auto gc = static_cast<osg::GraphicsContext*>(obj);
+                    setKeep(_delegate(*gc->getState(), _promise, _invocation++));
+                }
             }
         };
-        GPUJobArena::arena().dispatch(delegate);
-        return std::move(future);
-    }
+
+    public:
+        // Launch an operation on this GL Pipeline.
+        template<typename T>
+        Future<T> dispatch(Delegate<T> delegate)
+        {
+            auto operation = new DelegateOperation<T>(delegate);
+            Future<T> future = operation->_promise.getFuture();
+            if (_dispatcher.valid())
+                _dispatcher->push(operation);
+            else
+                _gc->add(operation);
+            return future;
+        }
+
+    private:
+        osg::ref_ptr<osg::GraphicsContext> _gc;
+        static Mutex _mutex;
+        static std::unordered_map<std::string, GLPipeline::Ptr> _lut;
+
+        struct Dispatcher : public osg::GraphicsThread {
+            Dispatcher(GLPipeline::Ptr);
+            void run() override;
+            void frame();
+            using OpQ = std::queue<osg::ref_ptr<osg::Operation>>;
+            OpQ _thisQ;
+            OpQ _nextQ;
+            Mutex _queue_mutex;
+            bool _advance_frame;
+            Event _event;
+            GLPipeline::WeakPtr _pipeline_ref;
+            osg::ref_ptr<osg::GraphicsContext> _myGC;
+            void push(osg::Operation*);
+        };
+
+        struct SyncPipelineToFrame : public osg::Operation {
+            SyncPipelineToFrame(GLPipeline::Ptr);
+            GLPipeline::WeakPtr _pipeline;
+            void operator()(osg::Object*) override;
+        };
+
+        osg::ref_ptr<Dispatcher> _dispatcher;
+        void sync();
+        friend struct SyncPipelineToFrame;
+    };
 
     /**
      * Base class for a GPU Compute job that generates or modifies

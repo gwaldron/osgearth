@@ -73,7 +73,7 @@ FeatureSDFLayer::init()
         //setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
     }
 
-    // enable GPU processing if available
+    // The SDF shader is no good. Too many memory barriers.
     //_sdfGenerator.setUseGPU(true);
     _sdfGenerator.setUseGPU(false);
 }

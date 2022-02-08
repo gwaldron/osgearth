@@ -445,8 +445,14 @@ PagingManager::update()
         _tracker.flush(
             0.0f,
             _mergesPerFrame,
-            [this](osg::ref_ptr<PagedNode2> node) -> bool
+            [this](osg::ref_ptr<PagedNode2>& node) -> bool
             {
+                // if the node is no longer in the scene graph, expunge it
+                if (node->referenceCount() == 1)
+                {
+                    return true;
+                }
+
                 // Don't expire nodes that are still within range even if they haven't passed cull.
                 if (node->_lastRange < node->getMaxRange())
                 {

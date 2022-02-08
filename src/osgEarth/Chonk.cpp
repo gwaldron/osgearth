@@ -230,12 +230,37 @@ void main()
     {
         Chonk& _result;
         TextureArena* _textures;
+        std::list<ChonkMaterial::Ptr> _materialCache;
         std::stack<ChonkMaterial::Ptr> _materialStack;
         std::stack<osg::Matrix> _transformStack;
         std::unordered_map<osg::Texture*, unsigned> _textureLUT;
 
         const unsigned ALBEDO = 0;
         const unsigned NORMAL = 1;
+
+        ChonkMaterial::Ptr reuseOrCreateMaterial(int albedo, int normal)
+        {
+            for (auto& m : _materialCache)
+            {
+                if (m->albedo == albedo && m->normal == normal)
+                    return m;
+            }
+            auto material = ChonkMaterial::create();
+            material->albedo = albedo;
+            material->normal = normal;
+
+            // If our arena is in auto-release mode, we need to 
+            // store a pointer to each texture we use so they do not
+            // get deleted while the material is still in business:
+            if (_textures && _textures->getAutoRelease() == true)
+            {
+                material->albedo_tex = _textures->find(material->albedo);
+                material->normal_tex = _textures->find(material->normal);
+            }
+
+            _materialCache.push_back(material);
+            return material;
+        }
 
         Ripper(Chonk& chonk, TextureArena* textures) :
             _result(chonk),
@@ -244,7 +269,7 @@ void main()
             setTraversalMode(TRAVERSE_ALL_CHILDREN);
             setNodeMaskOverride(~0);
 
-            _materialStack.push(ChonkMaterial::create());
+            _materialStack.push(reuseOrCreateMaterial(-1, -1));
             _transformStack.push(osg::Matrix());
         }
 
@@ -253,6 +278,9 @@ void main()
         // adds a teture to the arena and returns its index
         int addTexture(unsigned slot, osg::StateSet* stateset)
         {
+            if (!_textures)
+                return -1;
+
             int result = -1;
 
             osg::Texture* tex = dynamic_cast<osg::Texture*>(
@@ -295,9 +323,7 @@ void main()
 
                 if (albedo >= 0 || normal >= 0)
                 {
-                    ChonkMaterial::Ptr material = ChonkMaterial::create();
-                    material->albedo = albedo;
-                    material->normal = normal;
+                    ChonkMaterial::Ptr material = reuseOrCreateMaterial(albedo, normal);
                     _materialStack.push(material);
                     pushed = true;
                 }
@@ -560,24 +586,13 @@ ChonkFactory::load(
     osgUtil::Optimizer o;
     o.optimize(node, o.INDEX_MESH);
 
-    // Reorder indices for optimal cache usage.
-    // DO NOT do this if alignment is set; using alignment
-    // implies the verts are in a specific order for a good reason, which
-    // is usually because the shader relies on gl_VertexID.
-    //if (alignment == 0u)
-    {
-        osgUtil::VertexCacheVisitor vcv;
-        node->accept(vcv);
-        vcv.optimizeVertices();
-    }
-
     // rip geometry and textures into a new Asset object
     Ripper ripper(chonk, _textures.get());
     node->accept(ripper);
 
+    // dirty its bounding box
     chonk._box.init();
 }
-
 
 
 #ifndef GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV
@@ -611,6 +626,11 @@ ChonkDrawable::ChonkDrawable() :
 {
     setName(typeid(*this).name());
     setCustomCullingShader(nullptr);
+}
+
+ChonkDrawable::~ChonkDrawable()
+{
+    //nop
 }
 
 void

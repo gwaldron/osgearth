@@ -41,6 +41,12 @@ namespace osgEarth
         int albedo;
         int normal;
 
+        // store refs to the original textures when the
+        // factory objects's texture arena is using auto-release.
+        // otherwise they are null.
+        Texture::Ptr albedo_tex;
+        Texture::Ptr normal_tex;
+
     private:
         ChonkMaterial() : albedo(-1), normal(-1) { }
     };
@@ -126,6 +132,7 @@ namespace osgEarth
 
     private:
         Chonk();
+
         friend class ChonkFactory;
         friend class ChonkDrawable;
     };
@@ -200,7 +207,7 @@ namespace osgEarth
         virtual void releaseGLObjects(osg::State*) const override;
 
     protected:
-        virtual ~ChonkDrawable() { }
+        virtual ~ChonkDrawable();
 
         mutable Mutex _m;
 

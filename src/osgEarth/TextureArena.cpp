@@ -365,12 +365,41 @@ TextureArena::setBindingPoint(unsigned value)
 }
 
 int
+TextureArena::find_no_lock(Texture::Ptr tex) const
+{
+    const std::string& filename = tex->getFilename();
+
+    for (int i = 0; i < _textures.size(); ++i)
+    {
+        if (_textures[i] == tex)
+        {
+            return i;
+        }
+
+        if (!filename.empty() &&
+            filename == _textures[i]->getFilename())
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int
 TextureArena::find(Texture::Ptr tex) const
 {
-    for (int i = 0; i < _textures.size(); ++i)
-        if (_textures[i] == tex)
-            return i;
-    return -1;
+    ScopedMutexLock lock(_m);
+    return find_no_lock(tex);
+}
+
+Texture::Ptr
+TextureArena::find(unsigned index) const
+{
+    ScopedMutexLock lock(_m);
+    if (index >= _textures.size())
+        return nullptr;
+
+    return _textures[index];
 }
 
 int
@@ -384,7 +413,7 @@ TextureArena::add(Texture::Ptr tex)
     }
 
     // if it's already there, we good
-    int index = find(tex);
+    int index = find_no_lock(tex);
     if (index >= 0)
         return index;
 

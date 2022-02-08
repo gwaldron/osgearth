@@ -617,9 +617,9 @@ void
 ChonkDrawable::add(
     Chonk::Ptr value)
 {
-    static const osg::Matrixf s_def_xform;
-    static const osg::Vec2f s_def_uv;
-    add(value, s_def_xform, s_def_uv);
+    static const osg::Matrixf s_identity_xform;
+    static const osg::Vec2f s_def_uv(0.0f, 0.0f);
+    add(value, s_identity_xform, s_def_uv);
 }
 
 void
@@ -627,7 +627,7 @@ ChonkDrawable::add(
     Chonk::Ptr value,
     const osg::Matrixf& xform)
 {
-    static const osg::Vec2f s_def_uv;
+    static const osg::Vec2f s_def_uv(0.0f, 0.0f);
     add(value, xform, s_def_uv);
 }
 
@@ -719,19 +719,14 @@ ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
     }
     else if (!_batches.empty())
     {
-        // save the pcp b/c osg will not re-apply it 
-        // when we can state.apply(). boo
-        auto pcp = state.getLastAppliedProgramObject();
-
         // activate the culling compute shader and cull
         state.apply(_cullSS.get());
+
         cull_batches(state);
 
         // apply the stateset with our rendering shader:
         if (_drawSS.valid())
             state.apply(_drawSS.get());
-        else if (pcp)
-            pcp->useProgram();
         else
             state.apply();
 
@@ -754,8 +749,6 @@ ChonkDrawable::cull_children(osg::State& state) const
     OE_PROFILING_ZONE;
     OE_GL_ZONE_NAMED("GPU Cull");
 
-    auto pcp = state.getLastAppliedProgramObject();
-
     // activate the culling compute shader and cull all subs
     state.apply(_cullSS.get());
 
@@ -764,8 +757,9 @@ ChonkDrawable::cull_children(osg::State& state) const
         child->cull_batches(state);
     }
 
-    if (!_drawSS.valid() && pcp)
-        pcp->useProgram();
+    // restore state before cull
+    if (!_drawSS.valid())
+        state.apply();
 }
 
 void

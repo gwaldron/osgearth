@@ -199,6 +199,10 @@ namespace osgEarth
         //! into the culling compute shader.
         void setCustomCullingShader(osg::Shader*);
 
+        //! Whether to GPU cull on the per-chonk basis.
+        //! Default is true.
+        void setCullPerChonk(bool value);
+
     public:
 
         virtual osg::BoundingBox computeBoundingBox() const override;
@@ -224,6 +228,7 @@ namespace osgEarth
         using Batches = std::unordered_map<Chonk::Ptr, Instances>;
         Batches _batches;
         Vector _children;
+        bool _cull;
 
         struct GCState
         {
@@ -274,10 +279,10 @@ namespace osgEarth
         osg::ref_ptr<osg::StateSet> _cullSS;
         osg::Matrix _mvm;
 
-        void cull_children(osg::State& state) const;
+        void update_and_cull_children(osg::State& state) const;
         void draw_children(GCState& gs, osg::State& state) const;
 
-        void cull_batches(osg::State& state) const;
+        void update_and_cull_batches(osg::State& state) const;
         void draw_batches(osg::State& state) const;
 
 

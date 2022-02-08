@@ -622,7 +622,8 @@ namespace
 
 ChonkDrawable::ChonkDrawable() :
     osg::Drawable(),
-    _proxy_dirty(true)
+    _proxy_dirty(true),
+    _cull(true)
 {
     setName(typeid(*this).name());
     setCustomCullingShader(nullptr);
@@ -631,6 +632,12 @@ ChonkDrawable::ChonkDrawable() :
 ChonkDrawable::~ChonkDrawable()
 {
     //nop
+}
+
+void
+ChonkDrawable::setCullPerChonk(bool value)
+{
+    _cull = value;
 }
 
 void
@@ -730,25 +737,36 @@ ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     GCState& gs = _gs[state.getContextID()];
     if (!gs._vao)
+    {
+        gs._cull = _cull;
         gs.initialize(state);
+    }
 
     if (!_children.empty())
     {
-        cull_children(state);
+        update_and_cull_children(state);
         draw_children(gs, state);
     }
+
     else if (!_batches.empty())
     {
-        // activate the culling compute shader and cull
-        state.apply(_cullSS.get());
+        if (_cull)
+        {
+            // activate the culling compute shader and cull
+            state.apply(_cullSS.get());
 
-        cull_batches(state);
+            update_and_cull_batches(state);
 
-        // apply the stateset with our rendering shader:
-        if (_drawSS.valid())
-            state.apply(_drawSS.get());
+            // apply the stateset with our rendering shader:
+            if (_drawSS.valid())
+                state.apply(_drawSS.get());
+            else
+                state.apply();
+        }
         else
-            state.apply();
+        {
+            update_and_cull_batches(state);
+        }
 
         // render
         gs._vao->bind();
@@ -764,21 +782,22 @@ ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
 }
 
 void
-ChonkDrawable::cull_children(osg::State& state) const
+ChonkDrawable::update_and_cull_children(osg::State& state) const
 {
     OE_PROFILING_ZONE;
     OE_GL_ZONE_NAMED("GPU Cull");
 
     // activate the culling compute shader and cull all subs
-    state.apply(_cullSS.get());
+    if (_cull)
+        state.apply(_cullSS.get());
 
     for (auto& child : _children)
     {
-        child->cull_batches(state);
+        child->update_and_cull_batches(state);
     }
 
     // restore state before cull
-    if (!_drawSS.valid())
+    if (_cull && !_drawSS.valid())
         state.apply();
 }
 
@@ -806,7 +825,7 @@ ChonkDrawable::draw_children(GCState& gs, osg::State& state) const
 }
 
 void
-ChonkDrawable::cull_batches(osg::State& state) const
+ChonkDrawable::update_and_cull_batches(osg::State& state) const
 {
     GCState& gs = _gs[state.getContextID()];
     //if (gs._dirty)
@@ -822,7 +841,10 @@ ChonkDrawable::cull_batches(osg::State& state) const
         state.applyModelViewMatrix(_mvm);
     }
 
-    gs.cull(state);
+    if (_cull)
+    {
+        gs.cull(state);
+    }
 }
 
 void

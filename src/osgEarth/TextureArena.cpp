@@ -164,13 +164,34 @@ Texture::compileGLObjects(osg::State& state) const
 
     bool compressed = _image->isCompressed();
 
+    glPixelStorei(GL_UNPACK_ALIGNMENT, _image->getPacking());
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, _image->getRowLength());
+
+    GLsizei width = _image->s();
+    GLsizei height = _image->t();
+
     // Iterate over the in-memory mipmap levels in this layer
     // and download each one
     for (unsigned mipLevel = 0; mipLevel < numMipLevelsInMemory; ++mipLevel)
     {
         // Note: getImageSizeInBytes() will return the actual data size 
         // even if the data is compressed.
-        int mipmapBytes = _image->getImageSizeInBytes() >> (2*mipLevel);
+        GLsizei mipmapBytes = _image->getImageSizeInBytes() >> (2*mipLevel);
+
+        if (compressed)
+        {
+            GLsizei blockSize; // unused
+
+            osg::Texture::getCompressedSize(
+                _image->getInternalTextureFormat(),
+                width, height, 1,
+                blockSize, mipmapBytes);
+        }
+        else
+        {
+            mipmapBytes = _image->getImageSizeInBytes() >> (2 * mipLevel);
+        }
+
 
         // Iterate over image slices:
         for (int r = 0; r < _image->r(); ++r)
@@ -187,8 +208,7 @@ Texture::compileGLObjects(osg::State& state) const
                         mipLevel,
                         0, 0, // xoffset, yoffset
                         r, // zoffset (array layer)
-                        _image->s() >> mipLevel, // width at mipmap level i
-                        _image->t() >> mipLevel, // height at mipmap level i
+                        width, height,
                         1, // z size always = 1
                         _image->getInternalTextureFormat(),
                         mipmapBytes,
@@ -200,8 +220,7 @@ Texture::compileGLObjects(osg::State& state) const
                         mipLevel, // mip level
                         0, 0, // xoffset, yoffset
                         r, // zoffset (array layer)
-                        _image->s() >> mipLevel, // width at mipmap level i
-                        _image->t() >> mipLevel, // height at mipmap level i
+                        width, height,
                         1, // z size always = 1
                         _image->getPixelFormat(),
                         _image->getDataType(),
@@ -218,8 +237,7 @@ Texture::compileGLObjects(osg::State& state) const
                     gc._gltexture->compressedSubImage2D(
                         mipLevel, // mip level
                         0, 0, // xoffset, yoffset
-                        _image->s() >> mipLevel, // width at mipmap level i
-                        _image->t() >> mipLevel, // height at mipmap level i
+                        width, height,
                         _image->getInternalTextureFormat(),
                         mipmapBytes,
                         dataptr );
@@ -229,14 +247,18 @@ Texture::compileGLObjects(osg::State& state) const
                     gc._gltexture->subImage2D(
                         mipLevel, // mip level
                         0, 0, // xoffset, yoffset
-                        _image->s() >> mipLevel, // width at mipmap level i
-                        _image->t() >> mipLevel, // height at mipmap level i
+                        width, height,
                         _image->getPixelFormat(),
                         _image->getDataType(),
                         dataptr );
                 }
             }
         }
+
+        width >>= 1;
+        if (width < 1) width = 1;
+        height >>= 1;
+        if (height < 1) height = 1;
     }
 
     if (numMipLevelsInMemory < numMipLevelsToAllocate)

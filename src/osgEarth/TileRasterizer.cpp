@@ -39,6 +39,9 @@
 // See Page 22 of this deck:
 // https://on-demand.gputechconf.com/gtc/2012/presentations/S0356-GTC2012-Texture-Transfers.pdf
 // Note: we may need to disable this for AMD
+// NOTE: THIS IS COMMENTED OUT B/C IT WAS CAUSING ISSUES IN NSIGHT.
+// Furthermore, calling glGetError just after glCopyBufferSubData causes
+// the code the break. Why? No one knows.
 //#define USE_CBO
 
 // Set to use GPU sample queries to determine whether any data was rendered.

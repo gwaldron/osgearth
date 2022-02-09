@@ -438,61 +438,53 @@ PagingManager::traverse(osg::NodeVisitor& nv)
 void
 PagingManager::update()
 {
-    // Discard expired nodes
-    {
-        ScopedMutexLock lock(_trackerMutex); // unnecessary?
+    ScopedMutexLock lock(_trackerMutex);
 
-        _tracker.flush(
-            0.0f,
-            _mergesPerFrame,
-            [this](osg::ref_ptr<PagedNode2>& node) -> bool
-            {
-                // if the node is no longer in the scene graph, expunge it
-                if (node->referenceCount() == 1)
-                {
-                    return true;
-                }
-
-                // Don't expire nodes that are still within range even if they haven't passed cull.
-                if (node->_lastRange < node->getMaxRange())
-                {
-                    return false;
-                }
-
-                if (node->getAutoUnload())
-                {
-                    node->unload();
-                    return true;
-                }
-                return false;
-            });
-
-        // Reset the lastRange on the nodes for the next frame.
-        for (auto& entry : _tracker._list)
+    _tracker.flush(
+        0.0f,
+        _mergesPerFrame,
+        [this](osg::ref_ptr<PagedNode2>& node) -> bool
         {
-            if (entry._data.valid())
+            // if the node is no longer in the scene graph, expunge it
+            if (node->referenceCount() == 1)
             {
-                entry._data->_lastRange = FLT_MAX;
+                return true;
             }
+
+            // Don't expire nodes that are still within range even if they haven't passed cull.
+            if (node->_lastRange < node->getMaxRange())
+            {
+                return false;
+            }
+
+            if (node->getAutoUnload())
+            {
+                node->unload();
+                return true;
+            }
+            return false;
+        });
+
+    // Reset the lastRange on the nodes for the next frame.
+    for (auto& entry : _tracker._list)
+    {
+        if (entry._data.valid())
+        {
+            entry._data->_lastRange = FLT_MAX;
         }
     }
 
     // Handle merges
-    if (_mergeQueue.empty() == false)
+    unsigned count = 0u;
+    while (_mergeQueue.empty() == false && count < _mergesPerFrame)
     {
-        ScopedMutexLock lock(_mergeMutex); // unnecessary?
-
-        unsigned count = 0u;
-        while (_mergeQueue.empty() == false && count < _mergesPerFrame)
+        ToMerge& front = _mergeQueue.front();
+        osg::ref_ptr<PagedNode2> next;
+        if (front._node.lock(next))
         {
-            ToMerge& front = _mergeQueue.front();
-            osg::ref_ptr<PagedNode2> next;
-            if (front._node.lock(next))
-            {
-                if (next->merge(front._revision))
-                    ++count;
-            }
-            _mergeQueue.pop();
+            if (next->merge(front._revision))
+                ++count;
         }
+        _mergeQueue.pop();
     }
 }

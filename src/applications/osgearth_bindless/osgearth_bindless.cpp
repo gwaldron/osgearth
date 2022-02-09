@@ -142,72 +142,6 @@ struct GeometryCloudRenderer : public osg::Drawable::DrawCallback
     }
 };
 
-
-const char* vs_NV = R"(
-    #version 460
-    #extension GL_ARB_gpu_shader_int64 : enable
-
-    struct Instance
-    {
-        mat4 xform;
-        vec2 local_uv;
-        float fade;
-        float visibility[4];
-        uint first_variant_cmd_index;
-    };
-    layout(binding=0, std430) buffer Instances {
-        Instance instances[];
-    };
-    layout(binding=1, std430) buffer TextureArena {
-        uint64_t textures[];
-    };
-
-    layout(location=0) in vec3 position;
-    layout(location=1) in vec3 normal;
-    layout(location=2) in vec4 color;
-    layout(location=3) in vec2 uv;
-    layout(location=4) in vec3 flex;
-    layout(location=5) in int albedo; // todo: material LUT index
-    layout(location=6) in int normalmap; // todo: material LUT index
-
-    out vec3 vp_Normal;
-    out vec4 vp_Color;
-    out vec2 tex_coord;
-    flat out uint64_t tex_handle;
-
-    void vs(inout vec4 vertex)
-    {
-        int i = gl_BaseInstance + gl_InstanceID;
-        vertex = instances[i].xform * vec4(position, 1);
-        vp_Color = color;
-        vp_Normal = normal;
-        tex_coord = uv;
-        tex_handle = albedo >= 0 ? textures[albedo] : 0;
-    };
-)";
-
-const char* fs_NV = R"(
-    #version 460
-    #extension GL_ARB_gpu_shader_int64 : enable
-    #pragma import_defines(OE_USE_ALPHA_DISCARD)
-
-    in vec2 tex_coord;
-    flat in uint64_t tex_handle;
-
-    void fs(inout vec4 color)
-    {
-        if (tex_handle > 0) {
-            vec4 texel = texture(sampler2D(tex_handle), tex_coord);
-            color *= texel;
-        }
-
-#ifdef OE_USE_ALPHA_DISCARD
-        if (color.a < 0.15)
-            discard;
-#endif
-    }
-)";
-
 int main_NV(int argc, char** argv)
 {
     osgEarth::initialize();
@@ -226,7 +160,6 @@ int main_NV(int argc, char** argv)
     }
 
     GLUtils::enableGLDebugging();
-    VirtualProgram::enableGLDebugging();
 
     int size = 1;
     arguments.read("--size", size);
@@ -293,18 +226,7 @@ int main_NV(int argc, char** argv)
     }
 
     // Simple shader that will render geometry with bindless textures
-    // This is annoying. Why does it have to be set on the drawable only?
-    //osg::StateSet* dss = new osg::StateSet();
-    //VirtualProgram* vp = VirtualProgram::getOrCreate(dss);
-    //vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
-    //vp->setFunction("vs", vs_NV, ShaderComp::LOCATION_VERTEX_MODEL);
-    //vp->setFunction("fs", fs_NV, ShaderComp::LOCATION_FRAGMENT_COLORING);
-    //drawable->setDrawStateSet(dss);
-
-    VirtualProgram* vp = VirtualProgram::getOrCreate(root_ss);
-    vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
-    vp->setFunction("vs", vs_NV, ShaderComp::LOCATION_VERTEX_MODEL);
-    vp->setFunction("fs", fs_NV, ShaderComp::LOCATION_FRAGMENT_COLORING);
+    ChonkDrawable::installDefaultShader(root_ss);
 
     root->addChild(drawable);
     viewer.setSceneData(root);

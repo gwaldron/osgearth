@@ -208,6 +208,7 @@ namespace osgEarth
     public:
 
         virtual osg::BoundingBox computeBoundingBox() const override;
+        virtual osg::BoundingSphere computeBound() const override;
         virtual void drawImplementation(osg::RenderInfo& ri) const override;
         virtual void resizeGLObjectBuffers(unsigned) override;
         virtual void releaseGLObjects(osg::State*) const override;
@@ -279,6 +280,7 @@ namespace osgEarth
         mutable osg::buffered_object<GCState> _gs;
         osg::ref_ptr<osg::StateSet> _drawSS;
         osg::ref_ptr<osg::StateSet> _cullSS;
+        osg::ref_ptr<osg::Program> _cullProgram;
         osg::Matrix _mvm;
 
         void update_and_cull_batches(osg::State& state) const;

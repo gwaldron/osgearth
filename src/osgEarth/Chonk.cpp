@@ -631,8 +631,8 @@ Chonk::getBound()
 {
     if (!_box.valid())
     {
-        for (auto& vertex : _vbo_store)
-            _box.expandBy(vertex.position);
+        for (auto index : _ebo_store)
+            _box.expandBy(_vbo_store[index].position);
     }
     return _box;
 }
@@ -693,6 +693,9 @@ ChonkDrawable::ChonkDrawable() :
 {
     setName(typeid(*this).name());
     setCustomCullingShader(nullptr);
+    setUseDisplayList(false);
+    setUseVertexBufferObjects(false);
+    setUseVertexArrayObject(false);
 }
 
 ChonkDrawable::~ChonkDrawable()
@@ -747,6 +750,7 @@ ChonkDrawable::add(
         Instance instance;
         instance.xform = xform;
         instance.uv = local_uv;
+        instance.fade = 1.0f;
         instance.first_lod_cmd_index = 0;
         //instance.visibility_mask = 0;
         _batches[chonk].push_back(std::move(instance));
@@ -796,12 +800,19 @@ ChonkDrawable::setCustomCullingShader(osg::Shader* value)
         if (value != nullptr)
             program->addShader(value);
         ss = new osg::StateSet();
-        ss->setAttribute(program);
+        ss->setAttribute(program, osg::StateAttribute::OVERRIDE);
         if (value != nullptr)
             ss->setDefine("OE_USE_CUSTOM_CULL_FUNCTION");
     }
     _cullSS = ss;
+    _cullProgram = dynamic_cast<osg::Program*>(ss->getAttribute(osg::StateAttribute::PROGRAM));
 }
+
+struct StateEx : public osg::State {
+    void applyUniforms() {
+        applyUniformMap(_uniformMap);
+    }
+};
 
 void
 ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
@@ -881,7 +892,8 @@ ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
             pcp = state.getLastAppliedProgramObject();
 
             // activate the culling compute shader and cull
-            state.apply(_cullSS.get());
+            _cullProgram->apply(state);
+            reinterpret_cast<StateEx*>(&state)->applyUniforms();
         }
 
         update_and_cull_batches(state);
@@ -891,8 +903,7 @@ ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
             state.apply(_drawSS.get());
         }
         else if (pcp) {
-            pcp->useProgram();
-            state.setLastAppliedProgramObject(pcp);
+            pcp->getProgram()->apply(state);
         }
 
         // render
@@ -958,6 +969,11 @@ ChonkDrawable::computeBoundingBox() const
     
     osg::BoundingBox result;
 
+    for (auto& child : _children)
+    {
+        result.expandBy(child->getBound());
+    }
+
     for(auto& batch : _batches)
     {
         auto& chonk = batch.first;   
@@ -965,24 +981,24 @@ ChonkDrawable::computeBoundingBox() const
         auto& box = chonk->getBound();
         if (box.valid())
         {
-            float r = box.radius();
             auto& instances = batch.second;
-
             for (auto& instance : instances)
             {
-                osg::Vec3f scale = instance.xform.getScale();
-                float scalar_scale = std::max(scale.x(), std::max(scale.y(), scale.z()));
-                float sr = r * scalar_scale;
-                osg::Vec3f c = box.center() * instance.xform;
-                osg::BoundingBox xbox(
-                    c.x() - sr, c.y() - sr, c.z() - sr,
-                    c.x() + sr, c.y() + sr, c.z() + sr);
-                result.expandBy(xbox);
+                for (unsigned i = 0; i < 8; ++i)
+                {
+                    result.expandBy(box.corner(i) * instance.xform);
+                }
             }
         }
     }
 
     return result;
+}
+
+osg::BoundingSphere
+ChonkDrawable::computeBound() const
+{
+    return osg::BoundingSphere(computeBoundingBox());
 }
 
 void

@@ -25,6 +25,8 @@
 #include <osgEarth/Common>
 #include <osgEarth/GLUtils>
 #include <osgEarth/TextureArena>
+#include <osgUtil/RenderLeaf>
+#include <osgUtil/RenderBin>
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
@@ -161,6 +163,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT ChonkDrawable : public osg::Drawable
     {
     public:
+        META_Node(osgEarth, ChonkDrawable);
+
         using Vector = std::vector<osg::ref_ptr<ChonkDrawable>>;
 
     public:
@@ -296,6 +300,38 @@ namespace osgEarth
         mutable std::vector<osg::Vec3f> _proxy_verts;
         mutable std::vector<GLuint> _proxy_indices;
         void refreshProxy() const;
+        ChonkDrawable(const ChonkDrawable& rhs, const osg::CopyOp&) { }
+
+        friend class ChonkRenderBin;
+    };
+
+    /**
+     * Custom renderbin for rendering ChonkDrawables en masse
+     * Called "ChonkBin"
+     */
+    class OSGEARTH_EXPORT ChonkRenderBin : public osgUtil::RenderBin
+    {
+    public:
+        ChonkRenderBin();
+        ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op);
+
+        void drawImplementation(
+            osg::RenderInfo& renderInfo,
+            osgUtil::RenderLeaf*&) override;
+
+        virtual osg::Object* cloneType() const override { return new ChonkRenderBin(); }
+        virtual osg::Object* clone(const osg::CopyOp& copyop) const override { return new ChonkRenderBin(*this, copyop); } // note only implements a clone of type.
+        virtual bool isSameKindAs(const osg::Object* obj) const override { return dynamic_cast<const ChonkRenderBin*>(obj) != 0L; }
+        virtual const char* libraryName() const override { return "osgEarth"; }
+        virtual const char* className() const override { return "ChonkRenderBin"; }
+
+    private:
+        osg::ref_ptr<osg::Program> _cullProgram;
+        osg::ref_ptr<osg::StateSet> _cullSS;
+        void robert(
+            osg::State& state, 
+            osgUtil::RenderLeaf* leaf,
+            osgUtil::RenderLeaf*& previous) const;
     };
 }
 

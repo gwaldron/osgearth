@@ -25,6 +25,8 @@
 #include "Metrics"
 #include "VirtualProgram"
 
+#include <osg/Switch>
+#include <osg/LOD>
 #include <osgUtil/Optimizer>
 #include <osgUtil/MeshOptimizers>
 
@@ -252,8 +254,8 @@ const char* oe_chonk_default_vertex_shader = R"(
 
     out vec3 vp_Normal;
     out vec4 vp_Color;
-    out vec2 tex_coord;
-    flat out uint64_t albedo_handle;
+    out vec2 oe_tex_coord;
+    flat out uint64_t oe_albedo_tex;
 
     void oe_chonk_default_vertex_shader(inout vec4 vertex)
     {
@@ -261,30 +263,24 @@ const char* oe_chonk_default_vertex_shader = R"(
         vertex = instances[i].xform * vec4(position, 1);
         vp_Color = color;
         vp_Normal = normal;
-        tex_coord = uv;
-        albedo_handle = albedo >= 0 ? textures[albedo] : 0;
+        oe_tex_coord = uv;
+        oe_albedo_tex = albedo >= 0 ? textures[albedo] : 0;
     };
 )";
 
 const char* oe_chonk_default_fragment_shader = R"(
     #version 460
     #extension GL_ARB_gpu_shader_int64 : enable
-    #pragma import_defines(OE_USE_ALPHA_DISCARD)
 
-    in vec2 tex_coord;
-    flat in uint64_t albedo_handle;
+    in vec2 oe_tex_coord;
+    flat in uint64_t oe_albedo_tex;
 
     void oe_chonk_default_fragment_shader(inout vec4 color)
     {
-        if (albedo_handle > 0) {
-            vec4 texel = texture(sampler2D(albedo_handle), tex_coord);
+        if (oe_albedo_tex > 0) {
+            vec4 texel = texture(sampler2D(oe_albedo_tex), oe_tex_coord);
             color *= texel;
         }
-
-#ifdef OE_USE_ALPHA_DISCARD
-        if (color.a < 0.15)
-            discard;
-#endif
     }
 )";
 
@@ -416,6 +412,16 @@ const char* oe_chonk_default_fragment_shader = R"(
             _transformStack.push(m);
             apply(static_cast<osg::Group&>(node));
             _transformStack.pop();
+        }
+
+        void apply(osg::Switch& node)
+        {
+            if (node.getNumChildren() > 0)
+            {
+                bool pushed = pushStateSet(node.getStateSet());
+                node.getChild(0)->accept(*this);
+                if (pushed) popStateSet();
+            }
         }
 
         void apply(osg::Geometry& node)
@@ -683,6 +689,8 @@ namespace
     Mutex _s_cullStateSetMutex;
     using CullSSLUT = std::unordered_map<osg::Shader*, osg::ref_ptr<osg::StateSet>>;
     osg::ref_ptr<osg::Shader> _s_baseShader;
+    osg::ref_ptr<osg::Program> _s_cullProgram;
+    osg::ref_ptr<osg::StateSet> _s_cullSS;
     CullSSLUT _s_cullStateSets;
 }
 
@@ -808,9 +816,25 @@ ChonkDrawable::setCustomCullingShader(osg::Shader* value)
     _cullProgram = dynamic_cast<osg::Program*>(ss->getAttribute(osg::StateAttribute::PROGRAM));
 }
 
-struct StateEx : public osg::State {
-    void applyUniforms() {
-        applyUniformMap(_uniformMap);
+struct StateEx : public osg::State
+{
+    void applyUniforms()
+    {
+        OE_HARD_ASSERT(_lastAppliedProgramObject != nullptr);
+
+        for (auto iter : _uniformMap)
+        {
+            auto& stack = iter.second;
+            if (!stack.uniformVec.empty())
+            {
+                auto& pair = stack.uniformVec.back();
+                _lastAppliedProgramObject->apply(*pair.first);
+                //OE_INFO << "...applied " << iter.first << std::endl;
+            }
+            else {
+               // OE_INFO << "...empty stack for " << iter.first << std::endl;
+            }
+        }
     }
 };
 
@@ -947,19 +971,12 @@ ChonkDrawable::draw_batches(osg::State& state) const
 {
     GCState& gs = _gs[state.getContextID()];
 
-    osg::Matrix saved_mvm;
     if (!_mvm.isIdentity())
     {
-        saved_mvm = state.getModelViewMatrix();
         state.applyModelViewMatrix(_mvm);
     }
 
     gs.draw(state);
-
-    if (!saved_mvm.isIdentity())
-    {
-        state.applyModelViewMatrix(saved_mvm);
-    }
 }
 
 osg::BoundingBox
@@ -1314,4 +1331,135 @@ ChonkDrawable::GCState::release()
     _chonkBuf = nullptr;
     _commands.clear();
     _dirty = true;
+}
+
+ChonkRenderBin::ChonkRenderBin() :
+    osgUtil::RenderBin()
+{
+    setName("ChonkBin");
+
+    _cullProgram = new osg::Program();
+    _cullProgram->addShader(new osg::Shader(
+        osg::Shader::COMPUTE,
+        s_chonk_cull_compute_shader));
+
+    _cullSS = new osg::StateSet();
+    _cullSS->setAttribute(_cullProgram);
+
+    _stateset = new osg::StateSet();
+    ChonkDrawable::installDefaultShader(_stateset.get());
+}
+
+ChonkRenderBin::ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op) :
+    osgUtil::RenderBin(rhs, op),
+    _cullSS(rhs._cullSS),
+    _cullProgram(rhs._cullProgram)
+{
+    //nop
+}
+
+void
+ChonkRenderBin::robert(
+    osg::State& state,
+    osgUtil::RenderLeaf* leaf,
+    osgUtil::RenderLeaf*& previous) const
+{
+    // mysterious state-fu from osgUtil::RenderLeaf
+    if (previous)
+    {
+        osgUtil::StateGraph* prev_rg = previous->_parent;
+        osgUtil::StateGraph* prev_rg_parent = prev_rg->_parent;
+        osgUtil::StateGraph* rg = leaf->_parent;
+        if (prev_rg_parent != rg->_parent)
+        {
+            osgUtil::StateGraph::moveStateGraph(state, prev_rg_parent, rg->_parent);
+            state.apply(rg->getStateSet());
+
+        }
+        else if (rg != prev_rg)
+        {
+            state.apply(rg->getStateSet());
+        }
+    }
+    else
+    {
+        osgUtil::StateGraph::moveStateGraph(state, nullptr, leaf->_parent->_parent);
+        state.apply(_parent->getStateSet());
+    }
+
+    state.applyModelViewMatrix(leaf->_modelview);
+    state.applyProjectionMatrix(leaf->_projection);
+
+    previous = leaf;
+}
+
+void
+ChonkRenderBin::drawImplementation(
+    osg::RenderInfo& ri,
+    osgUtil::RenderLeaf*& previous)
+{
+    OE_GL_ZONE_NAMED("ChonkRenderBin");
+
+    osg::State& state = *ri.getState();
+
+    // save state:
+    auto pcp = state.getLastAppliedProgramObject();
+
+    // apply the cull program:
+    state.apply(_cullSS.get());
+
+    // basically ignore state for now
+    copyLeavesFromStateGraphListToRenderLeafList();
+
+    // draw top-level render leaves
+    {
+        OE_GL_ZONE_NAMED("gpu cull");
+        for (auto& leaf : _renderLeafList)
+        {
+            auto d = static_cast<const ChonkDrawable*>(leaf->getDrawable());
+
+            state.applyModelViewMatrix(leaf->_modelview);
+            state.applyProjectionMatrix(leaf->_projection);
+
+            d->update_and_cull_batches(state);
+        }
+    }
+
+    unsigned int numToPop = (previous ? osgUtil::StateGraph::numToPop(previous->_parent) : 0);
+    if (numToPop > 1) --numToPop;
+    unsigned int insertStateSetPosition = state.getStateSetStackSize() - numToPop;
+    if (_stateset.valid())
+    {
+        state.insertStateSet(insertStateSetPosition, _stateset.get());
+    }
+
+    // render all leaves
+    {
+        OE_GL_ZONE_NAMED("draw");
+
+        GLVAO::Ptr vao;
+        for (auto& leaf : _renderLeafList)
+        {
+            auto d = static_cast<const ChonkDrawable*>(leaf->getDrawable());
+
+            if (!vao)
+            {
+                vao = d->_gs[state.getContextID()]._vao;
+                vao->bind();
+                vao->ext()->glMemoryBarrier(
+                    GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
+            }
+
+            robert(state, leaf, previous);
+
+            d->draw_batches(state);
+        }
+
+        if (vao) vao->unbind();
+    }
+
+    if (_stateset.valid())
+    {
+        state.removeStateSet(insertStateSetPosition);
+    }
 }

@@ -894,7 +894,9 @@ VirtualProgram::getOrCreate(osg::StateSet* stateset)
     if (!vp)
     {
         vp = new VirtualProgram();
-        vp->setInheritShaders(true);
+        vp->_inherit = true;
+        vp->_inheritSet = true;
+        //vp->setInheritShaders(true);
         stateset->setAttributeAndModes(vp, osg::StateAttribute::ON);
     }
     return vp;

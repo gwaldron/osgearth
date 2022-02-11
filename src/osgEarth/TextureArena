@@ -157,10 +157,11 @@ namespace osgEarth
         TextureArena(const TextureArena&, const osg::CopyOp&) { } 
 
         // Per-GC data
-        struct GCState {
+        struct GCState
+        {
             GCState() : _inUse(false) { }
             bool _inUse;
-            TextureVector _toAdd;
+            std::vector<int> _toCompile;
             TextureVector _toActivate;
             TextureVector _toDeactivate;
             TextureVector _toRemove;

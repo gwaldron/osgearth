@@ -312,9 +312,6 @@ Texture::releaseGLObjects(osg::State* state) const
                 << "' name=" << gs._gltexture->name() 
                 << " handle=" << gs._gltexture->handle(*state) << std::endl;
 
-            //gc._gltexture->release();
-            gs._gltexture->makeResident(false);
-
             // will activate the releaser
             gs._gltexture = nullptr;
         }
@@ -473,7 +470,8 @@ TextureArena::add(Texture::Ptr tex)
         for(unsigned i=0; i<_gc.size(); ++i)
         {
             if (_gc[i]._inUse)
-                _gc[i]._toAdd.push_back(tex);
+                _gc[i]._toCompile.push_back(index);
+                //_gc[i]._toCompile.push_back(tex);
         }
 
         if (index < _textures.size())
@@ -495,7 +493,7 @@ TextureArena::add(Texture::Ptr tex)
                 tex->_gs.size() > i &&
                 tex->_gs[i]._gltexture != nullptr)
             {
-                _gc[i]._toAdd.push_back(tex);
+                _gc[i]._toCompile.push_back(index); // push_back(tex);
                 added = true;
             }
         }
@@ -581,8 +579,11 @@ TextureArena::apply(osg::State& state) const
     if (gc._inUse == false)
     {
         gc._inUse = true;
-        gc._toAdd.resize(_textures.size());
-        std::copy(_textures.begin(), _textures.end(), gc._toAdd.begin());
+        gc._toCompile.clear();
+        for (unsigned i = 0; i < _textures.size(); ++i)
+            gc._toCompile.push_back(i);
+        //for (auto& tex : _textures)
+        //    gc._toCompile.push_back
     }
 
 #ifdef USE_ICO
@@ -604,8 +605,15 @@ TextureArena::apply(osg::State& state) const
     const unsigned max_to_compile_per_apply = ~0;
     unsigned num_compiled_this_apply = 0;
 
-    for(auto& tex : gc._toAdd)
+    while(
+        !gc._toCompile.empty() &&
+        num_compiled_this_apply < max_to_compile_per_apply)
     {
+        int index = gc._toCompile.back();
+        OE_HARD_ASSERT(index < _textures.size());
+
+        auto tex = _textures[index];
+
         if (!tex->isCompiled(state))
         {
 #ifdef USE_ICO
@@ -628,24 +636,13 @@ TextureArena::apply(osg::State& state) const
                 gc._toActivate.push_back(tex);
             }
 #else
-            if (num_compiled_this_apply < max_to_compile_per_apply)
-            {
-                tex->compileGLObjects(state);
-                ++num_compiled_this_apply;
-                gc._toActivate.push_back(tex);
-            }
-            else
-            {
-                waitingToCompile.push_back(tex);
-            }
+            tex->compileGLObjects(state);
+            ++num_compiled_this_apply;
 #endif
         }
-        else
-        {
-            gc._toActivate.push_back(tex);
-        }
-    }
-    gc._toAdd.swap(waitingToCompile);
+        gc._toCompile.resize(gc._toCompile.size() - 1);
+        gc._toActivate.push_back(tex);
+    }    
 
     // remove pending objects by swapping them out of memory
     for(auto& tex : gc._toDeactivate)
@@ -693,7 +690,8 @@ TextureArena::apply(osg::State& state) const
     // refresh the handles buffer if necessary:
     if (_textures.size() > gc._handles.size())
     {
-        gc._handles.resize(_textures.size());
+        //gc._handles.resize(_textures.size());
+        gc._handles.assign(_textures.size(), 0);
         gc._dirty = true;
     }
 
@@ -716,10 +714,7 @@ TextureArena::apply(osg::State& state) const
     // upload to GPU if it changed:
     if (gc._dirty)
     {
-        gc._handleBuffer->uploadData(
-            gc._handles.size() * sizeof(GLuint64),
-            gc._handles.data());
-
+        gc._handleBuffer->uploadData(gc._handles);
         gc._dirty = false;
     }
 
@@ -754,22 +749,36 @@ TextureArena::releaseGLObjects(osg::State* state) const
 {
     ScopedMutexLock lock(_m);
 
-    for(auto& tex : _textures)
-    {
-        tex->releaseGLObjects(state);
-    }
-
     if (state)
     {
-        //_gc[state->getContextID()]._handleLUT.release();
-        _gc[state->getContextID()]._handleBuffer = nullptr;
+        GCState& gs = _gc[state->getContextID()];
+        gs._handleBuffer = nullptr;
+        gs._toCompile.clear();
+        for (unsigned i = 0; i < _textures.size(); ++i)
+        {
+            _textures[i]->releaseGLObjects(state);
+            gs._toCompile.push_back(i);
+        }
     }
     else
     {
+        for (auto& tex : _textures)
+        {
+            tex->releaseGLObjects(state);
+        }
+
         for (unsigned i = 0; i < _gc.size(); ++i)
         {
-            //_gc[i]._handleLUT.release();
-            _gc[i]._handleBuffer = nullptr;
+            GCState& gs = _gc[i];
+            if(gs._inUse)
+            {
+                gs._handleBuffer = nullptr;
+                gs._toCompile.clear();
+                for (unsigned i = 0; i < _textures.size(); ++i)
+                {
+                    gs._toCompile.push_back(i);
+                }
+            }
         }
     }
 }

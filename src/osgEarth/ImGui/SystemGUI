@@ -229,19 +229,23 @@ namespace osgEarth
                             glpool->totalBytes() / 1048576U);
 
                         int avarice = glpool->getAvarice();
-                        ImGui::Text("Chill"); ImGui::SameLine();
-                        if (ImGui::SliderInt("Needy", &avarice, 1, 100))
+                        ImGui::Text("Quick"); ImGui::SameLine();
+                        if (ImGui::SliderInt("Chill", &avarice, 10, 1))
                             glpool->setAvarice(avarice);
                         ImGui::Text("Recycled: %u%%",
                             int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
 
                         ImGui::Separator();
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Objects:");
-                        std::map<std::string, std::vector<int>> bos;
-                        for (auto& obj : globjects)
-                            bos[obj->label()].push_back(obj->size());
-                        for (auto& bo : bos)
-                            ImGui::Text("%s (%d)", bo.first.c_str(), bo.second.size());
+                        std::map<std::string, std::vector<unsigned>> counts;
+                        for (auto& obj : globjects) {
+                            counts[obj->label()].push_back(obj->size());
+                        }
+                        for (auto& bo : counts) {
+                            unsigned total = 0;
+                            for (auto& c : bo.second) total += c;
+                            ImGui::Text("%s (%d) (%.1f MB)", bo.first.c_str(), bo.second.size(), (float)total / (float)1048576U);
+                        }
 
                         ImGui::TreePop();
                     }

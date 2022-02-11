@@ -135,6 +135,7 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             tile._colorSamplers = pass ? &(pass->samplers()) : nullptr;
             tile._sharedSamplers = &model->_sharedSamplers;
             tile._modelViewMatrix = _cv->getModelViewMatrix();
+            tile._localToWorld = new osg::RefMatrix(surface->getMatrix());
             tile._keyValue = tileNode->getTileKeyValue();
             tile._geom = surface->getDrawable()->_geom.get();
             tile._tile = surface->getDrawable();

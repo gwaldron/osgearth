@@ -182,8 +182,9 @@ namespace osgEarth { namespace REX
 
         SelectionInfo _selectionInfo;
 
-        osg::ref_ptr<osg::StateSet> _surfaceStateSet;
-        osg::ref_ptr<osg::StateSet> _imageLayerStateSet;
+        osg::ref_ptr<osg::StateSet> _surfaceSS;
+        osg::ref_ptr<osg::StateSet> _imageLayerSS;
+        osg::ref_ptr<osg::StateSet> _terrainSS;
 
         // Data that we maintain across frames on a per-camera basis.
         using PersistentDataTable = std::unordered_map<
@@ -195,6 +196,8 @@ namespace osgEarth { namespace REX
         unsigned _frameLastUpdated;
         FrameClock _clock;
         std::atomic_bool _updatedThisFrame;
+
+        void installColorFilters(VirtualProgram*);
     };
 
 } } // namespace osgEarth::REX

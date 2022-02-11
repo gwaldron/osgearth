@@ -155,7 +155,7 @@ namespace osgEarth {
 
             const osg::BoundingBox& getBoundingBox() const { return osg::Drawable::getBoundingBox(); }
 
-            const DrawElementsIndirectBindlessCommandNV& getOrCreateCommand(
+            const DrawElementsIndirectBindlessCommandNV& getOrCreateGL4Command(
                 osg::State& state);
 
         protected:

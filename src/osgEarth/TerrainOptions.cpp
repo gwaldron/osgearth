@@ -112,7 +112,9 @@ TerrainOptions::fromConfig(const Config& conf)
     useGL4().setDefault(false);
 
     if (::getenv("OSGEARTH_USE_GL4"))
+    {
         useGL4().setDefault(true);
+    }
 
     conf.get( "tile_size", _tileSize );
     conf.get( "min_tile_range_factor", _minTileRangeFactor );   

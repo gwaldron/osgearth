@@ -443,9 +443,10 @@ Status
 VegetationLayer::openImplementation()
 {
     // GL version requirement
-    if (Registry::capabilities().getGLSLVersion() < 4.6f)
+    if (Capabilities::get().getGLSLVersion() < 4.6f ||
+        Capabilities::get().supportsUnifiedNV() == false)
     {
-        return Status(Status::ResourceUnavailable, "Requires GL 4.6+");
+        return Status(Status::ResourceUnavailable, "Requires NVIDIA GL 4.6");
     }
 
     // Clamp the layer's max visible range the maximum range of the farthest

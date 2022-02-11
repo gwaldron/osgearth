@@ -39,6 +39,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT Capabilities : public osg::Referenced
     {
     public:
+        static const Capabilities& get();
+
         /** maximum # of texture units exposed in the fixed-function pipeline */
         int getMaxFFPTextureUnits() const { return _maxFFPTextureUnits; }
 
@@ -155,6 +157,10 @@ namespace osgEarth
 
         /** whether OpenGL supports vertex array objects */
         bool supportsVertexArrayObjects() const { return _supportsVertexArrayObjects; }
+        
+        //! Whether the NVIDIA unified memory extensions, including
+        //! bindless buffers and draw commands, are available
+        bool supportsUnifiedNV() const { return _supportsUnifiedNV; }
 
     protected:
         Capabilities();
@@ -202,6 +208,7 @@ namespace osgEarth
         int  _maxTextureBufferSize;
         bool _isCoreProfile;
         bool _supportsVertexArrayObjects;
+        bool _supportsUnifiedNV;
 
     public:
         friend class Registry;

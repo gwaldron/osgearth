@@ -20,6 +20,7 @@
 #include <osgEarth/Version>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/GEOS>
+#include "Registry"
 #include <osg/FragmentProgram>
 #include <osg/GL2Extensions>
 #include <osg/Version>
@@ -127,6 +128,12 @@ namespace
 
 #define SAYBOOL(X) (X?"yes":"no")
 
+const Capabilities&
+Capabilities::get()
+{
+    return osgEarth::Registry::instance()->capabilities();
+}
+
 Capabilities::Capabilities() :
 _maxFFPTextureUnits     ( 1 ),
 _maxGPUTextureUnits     ( 1 ),
@@ -162,7 +169,8 @@ _supportsRGTC           ( false ),
 _supportsTextureBuffer  ( false ),
 _maxTextureBufferSize   ( 0 ),
 _isCoreProfile          ( true ),
-_supportsVertexArrayObjects ( false )
+_supportsVertexArrayObjects ( false ),
+_supportsUnifiedNV(false)
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -243,6 +251,20 @@ _supportsVertexArrayObjects ( false )
             _isCoreProfile = ((profileMask & GL_CONTEXT_CORE_PROFILE_BIT) != 0);
         }
         OE_INFO << LC << "  GL Core Profile:   " << SAYBOOL(_isCoreProfile) << std::endl;
+
+        // this extension implies the availability of
+        // GL_NV_vertex_buffer_unified_memory (bindless buffers)
+        _supportsUnifiedNV =
+            GL2->glVersion >= 4.4f &&
+            osg::isGLExtensionSupported(id, "GL_NV_vertex_buffer_unified_memory") &&
+            osg::isGLExtensionSupported(id, "GL_NV_shader_buffer_load") &&
+            osg::isGLExtensionSupported(id, "GL_NV_bindless_multi_draw_indirect");
+
+        if (_vendor.find("NVIDIA") != std::string::npos)
+        {
+            OE_INFO << LC << "  NVIDIA unified mem:" << SAYBOOL(_supportsUnifiedNV) << std::endl;
+        }
+
 
 #if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
         glGetIntegerv( GL_MAX_TEXTURE_UNITS, &_maxFFPTextureUnits );

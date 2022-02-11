@@ -345,6 +345,11 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         _selectionInfo,
         &_clock);
 
+    if (useGL4())
+    {
+        OE_INFO << LC << "Using NVIDIA GL4 rendering" << std::endl;
+    }
+
     // Calculate the LOD morphing parameters:
     unsigned maxLOD = options().maxLOD().getOrUse(DEFAULT_MAX_LOD);
 
@@ -365,9 +370,11 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     // now that we have a map, set up to recompute the bounds
     dirtyBound();
 
-    // install a shader pre-processor
-    bool use_gl4 = (options().useGL4() == true);
+    // whether to use the GL4/NVIDIA rendering path
+    bool use_gl4 = useGL4();
 
+    // preprocess shaders to parse the "oe_use_shared_layer" directive
+    // for shared layer samplers
     Registry::instance()->getShaderFactory()->addPreProcessorCallback(
         "RexTerrainEngineNode",
         [this, use_gl4](std::string& source)
@@ -739,11 +746,10 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     // by sorting the draw commands.
     // Skip if using GL4/indirect rendering. Actually seems to hurt?
     // TODO: benchmark this further to see whether it's worthwhile
-    unsigned totalTiles = 0u;
-    if (options().useGL4() == false &&
+    if (!useGL4() &&
         getEngineContext()->getGeometryPool()->isEnabled())
     {
-        totalTiles = culler._terrain.sortDrawCommands();
+        culler._terrain.sortDrawCommands();
     }
 
     // The common stateset for the terrain group:
@@ -1349,9 +1355,7 @@ RexTerrainEngineNode::updateState()
     else
     {
         // Load up the appropriate shader package:
-        REXShaders& shaders = REXShadersFactory::get(
-            options().useGL4().get());
-
+        REXShaders& shaders = REXShadersFactory::get(useGL4());
 
         // State that affects any terrain layer (surface, patch, other)
         {
@@ -1364,7 +1368,7 @@ RexTerrainEngineNode::updateState()
             shaders.load(terrainVP, shaders.sdk());
 
             // GL4 rendering?
-            if (options().useGL4() == true)
+            if (useGL4())
             {
                 terrainVP->addGLSLExtension("GL_ARB_gpu_shader_int64");
             }
@@ -1468,7 +1472,7 @@ RexTerrainEngineNode::updateState()
                     options().morphImagery() == true)
                 {
                     // GL4 morphing is built into another shader (vert.GL4.glsl)
-                    if (options().useGL4() == false)
+                    if (!useGL4())
                         shaders.load(surfaceVP, shaders.morphing());
 
                     if ((options().morphTerrain() == true && _morphTerrainSupported == true))

@@ -505,7 +505,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             for (auto& tile : _rs.tiles)
             {
                 SharedGeometry* geom = tile._geom.get();
-                _rs.commands.push_back(geom->getOrCreateCommand(state));
+                _rs.commands.push_back(geom->getOrCreateGL4Command(state));
             }
 
             gs.commands->uploadData(_rs.commands);

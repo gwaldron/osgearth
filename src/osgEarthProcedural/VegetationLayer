@@ -183,6 +183,7 @@ namespace osgEarth { namespace Procedural
         {
             int _revision;
             FutureDrawable _newDrawable;
+            osg::ref_ptr<osg::RefMatrix> _matrix;
             osg::ref_ptr<ChonkDrawable> _drawable;
             osg::Matrix _mvm;
 

@@ -24,6 +24,7 @@
 #include "GLUtils"
 #include "Metrics"
 #include "VirtualProgram"
+#include "ShaderLoader"
 
 #include <osg/Switch>
 #include <osg/LOD>
@@ -225,63 +226,141 @@ void main()
 
 )";
 
-const char* oe_chonk_default_vertex_shader = R"(
-    #version 460
-    #extension GL_ARB_gpu_shader_int64 : enable
+const char* oe_chonk_default_shaders = R"(
 
-    struct Instance
+#version 460
+#extension GL_ARB_gpu_shader_int64 : enable
+#pragma vp_function oe_chonk_default_vertex_model, vertex_model, 0.0
+#pragma import_defines(OE_IS_SHADOW_CAMERA)
+
+struct Instance {
+    mat4 xform;
+    vec2 local_uv;
+    float fade;
+    float visibility[4];
+    uint first_variant_cmd_index;
+};
+layout(binding=0, std430) buffer Instances {
+    Instance instances[];
+};
+layout(binding=1, std430) buffer TextureArena {
+    uint64_t textures[];
+};
+
+layout(location=0) in vec3 position;
+layout(location=1) in vec3 normal;
+layout(location=2) in vec4 color;
+layout(location=3) in vec2 uv;
+layout(location=4) in vec3 flex;
+layout(location=5) in int albedo; // todo: material LUT index
+layout(location=6) in int normalmap; // todo: material LUT index
+
+// stage global
+mat3 xform3;
+
+// outputs
+out vec3 vp_Normal;
+out vec4 vp_Color;
+out float oe_fade;
+out vec2 oe_tex_uv;
+flat out uint64_t oe_albedo_tex;
+flat out uint64_t oe_normal_tex;
+
+void oe_chonk_default_vertex_model(inout vec4 vertex)
+{
+    int i = gl_BaseInstance + gl_InstanceID;
+    vertex = instances[i].xform * vec4(position, 1);
+    vp_Color = color;
+    xform3 = mat3(instances[i].xform);
+    vp_Normal = xform3 * normal;
+    oe_tex_uv = uv;
+    oe_albedo_tex = albedo >= 0 ? textures[albedo] : 0;
+    oe_normal_tex = normalmap >= 0 ? textures[normalmap] : 0;
+
+#ifndef OE_IS_SHADOW_CAMERA
+    oe_fade = instances[i].fade;
+#else
+    oe_fade = 1.0;
+#endif
+}
+
+[break]
+
+#version 460
+#extension GL_ARB_gpu_shader_int64 : enable
+#pragma vp_function oe_chonk_default_vertex_view, vertex_view, 0.0
+
+// stage
+mat3 xform3;
+
+// output
+out vec3 vp_Normal;
+out vec3 oe_tangent;
+flat out uint64_t oe_normal_tex;
+
+void oe_chonk_default_vertex_view(inout vec4 vertex)
+{
+    if (oe_normal_tex > 0)
     {
-        mat4 xform;
-        vec2 local_uv;
-        float fade;
-        float visibility[4];
-        uint first_variant_cmd_index;
-    };
-    layout(binding=0, std430) buffer Instances {
-        Instance instances[];
-    };
-    layout(binding=1, std430) buffer TextureArena {
-        uint64_t textures[];
-    };
-
-    layout(location=0) in vec3 position;
-    layout(location=1) in vec3 normal;
-    layout(location=2) in vec4 color;
-    layout(location=3) in vec2 uv;
-    layout(location=4) in vec3 flex;
-    layout(location=5) in int albedo; // todo: material LUT index
-    layout(location=6) in int normalmap; // todo: material LUT index
-
-    out vec3 vp_Normal;
-    out vec4 vp_Color;
-    out vec2 oe_tex_coord;
-    flat out uint64_t oe_albedo_tex;
-
-    void oe_chonk_default_vertex_shader(inout vec4 vertex)
-    {
-        int i = gl_BaseInstance + gl_InstanceID;
-        vertex = instances[i].xform * vec4(position, 1);
-        vp_Color = color;
-        vp_Normal = normal;
-        oe_tex_coord = uv;
-        oe_albedo_tex = albedo >= 0 ? textures[albedo] : 0;
-    };
-)";
-
-const char* oe_chonk_default_fragment_shader = R"(
-    #version 460
-    #extension GL_ARB_gpu_shader_int64 : enable
-
-    in vec2 oe_tex_coord;
-    flat in uint64_t oe_albedo_tex;
-
-    void oe_chonk_default_fragment_shader(inout vec4 color)
-    {
-        if (oe_albedo_tex > 0) {
-            vec4 texel = texture(sampler2D(oe_albedo_tex), oe_tex_coord);
-            color *= texel;
-        }
+        vec3 ZAXIS = gl_NormalMatrix * vec3(0,0,1);
+        if (dot(ZAXIS, vp_Normal) > 0.95)
+            oe_tangent = gl_NormalMatrix * (xform3 * vec3(1,0,0));
+        else
+            oe_tangent = cross(ZAXIS, vp_Normal);
     }
+}
+
+
+[break]
+
+#version 460
+#extension GL_ARB_gpu_shader_int64 : enable
+#pragma vp_function oe_chonk_default_fragment, fragment, 0.0
+#pragma import_defines(OE_COMPRESSED_NORMAL)
+
+// inputs
+in float oe_fade;
+in vec2 oe_tex_uv;
+in vec3 oe_tangent;
+in vec3 vp_Normal;
+flat in uint64_t oe_albedo_tex;
+flat in uint64_t oe_normal_tex;
+
+void oe_chonk_default_fragment(inout vec4 color)
+{
+    if (oe_albedo_tex > 0)
+    {
+        vec4 texel = texture(sampler2D(oe_albedo_tex), oe_tex_uv);
+        color *= texel;
+    }
+
+    // apply the high fade from the instancer
+    color.a *= oe_fade;
+
+    if (oe_normal_tex > 0)
+    {
+        vec4 n = texture(sampler2D(oe_normal_tex), oe_tex_uv);
+
+#ifdef OE_COMPRESSED_NORMAL
+        n.xyz = n.xyz*2.0 - 1.0;
+        n.z = 1.0 - abs(n.x) - abs(n.y);
+        float t = clamp(-n.z, 0, 1);
+        n.x += (n.x > 0) ? -t : t;
+        n.y += (n.y > 0) ? -t : t;
+#else
+        n.xyz = normalize(n.xyz*2.0-1.0);
+#endif
+
+        // construct the TBN, reflecting the normal on back-facing polys
+        mat3 tbn = mat3(
+            normalize(oe_tangent),
+            normalize(cross(vp_Normal, oe_tangent)),
+            normalize(gl_FrontFacing ? vp_Normal : -vp_Normal));
+        
+        vp_Normal = normalize(tbn * n.xyz);
+    }
+}
+
 )";
 
     /**
@@ -704,6 +783,11 @@ ChonkDrawable::ChonkDrawable() :
     setUseDisplayList(false);
     setUseVertexBufferObjects(false);
     setUseVertexArrayObject(false);
+
+    getOrCreateStateSet()->setRenderBinDetails(
+        818,
+        "ChonkBin",
+        osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
 }
 
 ChonkDrawable::~ChonkDrawable()
@@ -717,8 +801,18 @@ ChonkDrawable::installDefaultShader(osg::StateSet* ss)
     OE_SOFT_ASSERT_AND_RETURN(ss != nullptr, void());
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
     vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
-    vp->setFunction("oe_chonk_default_vertex_shader", oe_chonk_default_vertex_shader, ShaderComp::LOCATION_VERTEX_MODEL);
-    vp->setFunction("oe_chonk_default_fragment_shader", oe_chonk_default_fragment_shader, ShaderComp::LOCATION_FRAGMENT_COLORING);
+    ShaderLoader::load(vp, oe_chonk_default_shaders);
+
+    //vp->setFunction(
+    //    "oe_chonk_default_vertex_shader",
+    //    oe_chonk_default_vertex_shader,
+    //    ShaderComp::LOCATION_VERTEX_MODEL,
+    //    0.0f);
+    //vp->setFunction(
+    //    "oe_chonk_default_fragment_shader",
+    //    oe_chonk_default_fragment_shader,
+    //    ShaderComp::LOCATION_FRAGMENT_COLORING,
+    //    0.0f);
 }
 
 void
@@ -1095,18 +1189,18 @@ ChonkDrawable::GCState::initialize(osg::State& state)
     osg::setGLExtensionFuncPtr(gl_VertexAttribLFormat, "glVertexAttribLFormatNV");
 
     // DrawElementsCommand buffer:
-    _commandBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable/Cmd");
+    _commandBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable");
 
     // Per-culling instances:
-    _instanceInputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable/Input");
+    _instanceInputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable");
 
     if (_cull)
     {
         // Culled instances (GPU only)
-        _instanceOutputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable/Output");
+        _instanceOutputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable");
 
         // Chonk data
-        _chonkBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable/Chonk");
+        _chonkBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable");
     }
 
     // Multidraw command:
@@ -1387,9 +1481,6 @@ ChonkRenderBin::robert(
         state.apply(_parent->getStateSet());
     }
 
-    state.applyModelViewMatrix(leaf->_modelview);
-    state.applyProjectionMatrix(leaf->_projection);
-
     previous = leaf;
 }
 
@@ -1400,20 +1491,26 @@ ChonkRenderBin::drawImplementation(
 {
     OE_GL_ZONE_NAMED("ChonkRenderBin");
 
-    osg::State& state = *ri.getState();
+    osg::State& state = *ri.getState();    
+    
+    // apply this bin's stateset....somewhere
+    unsigned numToPop = (previous ? osgUtil::StateGraph::numToPop(previous->_parent) : 0);
+    if (numToPop > 1) --numToPop;
+    unsigned insertPos = state.getStateSetStackSize() - numToPop;
+    if (_stateset.valid())
+    {
+        state.insertStateSet(insertPos, _stateset.get());
+    }
 
-    // save state:
-    auto pcp = state.getLastAppliedProgramObject();
+    // copy everything to one level:
+    copyLeavesFromStateGraphListToRenderLeafList();
 
     // apply the cull program:
     state.apply(_cullSS.get());
 
-    // basically ignore state for now
-    copyLeavesFromStateGraphListToRenderLeafList();
-
     // draw top-level render leaves
     {
-        OE_GL_ZONE_NAMED("gpu cull");
+        OE_GL_ZONE_NAMED("cull");
         for (auto& leaf : _renderLeafList)
         {
             auto d = static_cast<const ChonkDrawable*>(leaf->getDrawable());
@@ -1423,14 +1520,6 @@ ChonkRenderBin::drawImplementation(
 
             d->update_and_cull_batches(state);
         }
-    }
-
-    unsigned int numToPop = (previous ? osgUtil::StateGraph::numToPop(previous->_parent) : 0);
-    if (numToPop > 1) --numToPop;
-    unsigned int insertStateSetPosition = state.getStateSetStackSize() - numToPop;
-    if (_stateset.valid())
-    {
-        state.insertStateSet(insertStateSetPosition, _stateset.get());
     }
 
     // render all leaves
@@ -1445,10 +1534,16 @@ ChonkRenderBin::drawImplementation(
             if (!vao)
             {
                 vao = d->_gs[state.getContextID()]._vao;
+
+                OE_HARD_ASSERT(vao != nullptr);
+
                 vao->bind();
                 vao->ext()->glMemoryBarrier(
                     GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
             }
+
+            state.applyModelViewMatrix(leaf->_modelview);
+            state.applyProjectionMatrix(leaf->_projection);
 
             robert(state, leaf, previous);
 
@@ -1460,6 +1555,6 @@ ChonkRenderBin::drawImplementation(
 
     if (_stateset.valid())
     {
-        state.removeStateSet(insertStateSetPosition);
+        state.removeStateSet(insertPos);
     }
 }

@@ -196,8 +196,8 @@ namespace osgEarth { namespace Procedural
         {
             using TileCache = std::unordered_map<TileKey, Tile>;
             TileCache _tiles;
-            osg::ref_ptr<ChonkDrawable> _superDrawable;
         };
+        mutable Mutex _cameraState_mutex;
         using CameraStates = std::unordered_map<const osg::Camera*, CameraState>;
         mutable CameraStates _cameraState;
 
@@ -218,10 +218,10 @@ namespace osgEarth { namespace Procedural
         std::atomic_int _biomeRevision; // keep track of when to load to assets
         Status _status;
 
-        osg::ref_ptr<TextureArena> _textures;
-
         void configureTrees();
         void configureGrass();
+
+        mutable ReadWrite<Mutex> _traversal_mutex;
 
         Future<osg::ref_ptr<ChonkDrawable>> createDrawableAsync(
             const TileKey&,

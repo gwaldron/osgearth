@@ -67,6 +67,8 @@ namespace osgEarth
 
             Chonk::Ptr _chonk;
 
+            std::vector<Texture::Ptr> _textures;
+
         private:
             ResidentModelAsset();
         };
@@ -160,14 +162,22 @@ namespace osgEarth
                 const AssetGroup::Type group,
                 CreateImposterFunction function);
 
+            //! Gets a copy of the currently resident biomes
+            //! (which is a snapshot in time)
             ResidentBiomes getResidentBiomes(
-                ChonkFactory& factory,
                 const osgDB::Options*);
 
             //! Calculate the new resident set, and then make it resident.
             GeometryCloudCollection updateResidency(
                 CreateImposterFunction createImposterGeometry,
                 const osgDB::Options* readOptions);
+
+            //! The texture arena containing all textures loaded
+            //! by this biome manager. You should install this on
+            //! the stateset you will use when rendering the assets.
+            TextureArena* getTextures() const {
+                return _textures.get();
+            }
 
         private:
             mutable Mutex _refsAndRevision_mutex;
@@ -184,11 +194,14 @@ namespace osgEarth
             // all model asset usage records, sorted by biome
             ResidentBiomes _residentBiomes;
 
+            // texture arena that holds all the textures for 
+            // loaded assets.
+            osg::ref_ptr<TextureArena> _textures;
+
             // recalculate the required resident biome sets
             void recalculateResidentBiomes();
 
             void materializeNewAssets(
-                ChonkFactory& factory,
                 const osgDB::Options* readOptions);
 
             //! Create a geometry cloud containing the current resident

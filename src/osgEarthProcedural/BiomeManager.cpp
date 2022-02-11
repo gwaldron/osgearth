@@ -81,7 +81,10 @@ BiomeManager::BiomeManager() :
     _refsAndRevision_mutex("BiomeManager.refsAndRevision(OE)"),
     _residentData_mutex("BiomeManager.residentData(OE)")
 {
-    //nop
+    // this arena will hold all the textures for loaded assets.
+    _textures = new TextureArena();
+    _textures->setName("Biomes");
+    _textures->setBindingPoint(1);
 }
 
 void
@@ -263,7 +266,6 @@ namespace
 
 void
 BiomeManager::materializeNewAssets(
-    ChonkFactory& chonkFactory,
     const osgDB::Options* readOptions)
 {
     // exclusive access to the resident dataset
@@ -279,6 +281,9 @@ BiomeManager::materializeNewAssets(
     TextureShareCache texcache;
     using ModelCache = std::map<URI, ModelCacheEntry>;
     ModelCache modelcache;
+
+    // Factory for loading chonk data. It will use our texture arena.
+    ChonkFactory factory(_textures.get());
 
     // Clear out each biome's instances so we can start fresh.
     // This is a low-cost operation since anything we can re-use
@@ -527,7 +532,7 @@ BiomeManager::materializeNewAssets(
                         residentAsset->_chonk->add(
                             residentAsset->_model.get(),
                             minp, maxp,
-                            chonkFactory);
+                            factory);
                     }
 
                     if (residentAsset->_billboard.valid())
@@ -541,7 +546,7 @@ BiomeManager::materializeNewAssets(
                         residentAsset->_chonk->add(
                             residentAsset->_billboard.get(),
                             minp, maxp,
-                            chonkFactory);
+                            factory);
                     }
                 }
 
@@ -576,14 +581,13 @@ BiomeManager::setCreateFunction(
 
 BiomeManager::ResidentBiomes
 BiomeManager::getResidentBiomes(
-    ChonkFactory& factory,
     const osgDB::Options* readOptions)
 {
     // First refresh the resident biome collection based on current refcounts
     recalculateResidentBiomes();
 
     // Next go through and load any assets that are not yet loaded
-    materializeNewAssets(factory, readOptions);
+    materializeNewAssets(readOptions);
 
     // Make a copy:
     ResidentBiomes result = _residentBiomes;

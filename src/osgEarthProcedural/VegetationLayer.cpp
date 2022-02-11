@@ -263,7 +263,7 @@ void oe_vegetation_fs(inout vec4 color)
     vec3 face_normal = normalize(cross(dFdx(oe_pos3_view), dFdy(oe_pos3_view)));
     const float edge_factor = 0.8;
     float d = clamp(edge_factor*abs(dot(face_normal, normalize(oe_pos3_view))),0.0,1.0);
-    color.a *= d;
+    //color.a *= d;
 
 #ifdef OE_USE_ALPHA_TO_COVERAGE
     // mitigate the screen-door effect of A2C in the distance
@@ -461,6 +461,8 @@ VegetationLayer::openImplementation()
     max_range = std::min(max_range, getMaxVisibleRange());
     setMaxVisibleRange(max_range);
 
+    _lastVisit.setFrameNumber(~0);
+
     return PatchLayer::openImplementation();
 }
 
@@ -468,6 +470,8 @@ Status
 VegetationLayer::closeImplementation()
 {
     releaseGLObjects(nullptr);
+    reset();
+
     return PatchLayer::closeImplementation();
 }
 
@@ -487,8 +491,8 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 
             reset();
 
-            if (getBiomeLayer())
-                getBiomeLayer()->getBiomeManager().reset();
+            //if (getBiomeLayer())
+            //    getBiomeLayer()->getBiomeManager().reset();
 
             OE_INFO << LC << "timed out for inactivity." << std::endl;
         }
@@ -690,10 +694,6 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
 {
     PatchLayer::prepareForRendering(engine);
 
-    // Holds all vegetation textures:
-    _textures = new TextureArena();
-    _textures->setBindingPoint(1);
-
     // make a 4-channel noise texture to use
     NoiseTextureFactory noise;
     _noiseTex = noise.create(256u, 4u);
@@ -781,7 +781,9 @@ VegetationLayer::buildStateSets()
     ss->setName(typeid(*this).name());
 
     // Install the texture arena:
-    ss->setAttribute(_textures, 1);
+    TextureArena* textures = getBiomeLayer()->getBiomeManager().getTextures();
+    textures->setBindingPoint(1);
+    ss->setAttribute(textures);
 
     // Custom shaders:
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
@@ -1041,10 +1043,7 @@ VegetationLayer::checkForNewAssets()
         osg::ref_ptr< VegetationLayer> layer;
         if (layer_weakptr.lock(layer))
         {
-            ChonkFactory factory(layer->_textures.get());
-
             BiomeManager::ResidentBiomes biomes = layer->getBiomeLayer()->getBiomeManager().getResidentBiomes(
-                factory,
                 layer->getReadOptions());
 
             // re-organize the data into a form we can readily use.
@@ -1432,11 +1431,17 @@ VegetationLayer::cull(
         return;
 
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
+
+    // protect the traversal data from releaseGLObject et al.
+    _traversal_mutex.read_lock();
     
-    // todo: mutex
+    // update the framestamp for auto-timeout support
     _lastVisit = *cv->getFrameStamp();
 
+    // exclusive lock on the camera state
+    _cameraState_mutex.lock();
     CameraState& cs = _cameraState[cv->getCurrentCamera()];
+    _cameraState_mutex.unlock();
 
     CameraState::TileCache active_tiles;
 
@@ -1517,30 +1522,56 @@ VegetationLayer::cull(
         active_tiles[key] = tile;
     }
 
+    // Purge old tiles.
+    cs._tiles.swap(active_tiles);
+
+    _traversal_mutex.read_unlock();
+
     // clean up the jobs cache 
-    // TODO: improve?
-    ScopedMutexLock lock(_tileJobs_mutex);
+    _tileJobs_mutex.lock();
     for (auto it = _tileJobs.begin(); it != _tileJobs.end(); ) {
         if (it->second.refs() == 1)
             it = _tileJobs.erase(it);
         else
             ++it;
     }
-
-    // Purge old tiles.
-    cs._tiles.swap(active_tiles);
+    _tileJobs_mutex.unlock();
 }
 
 void
 VegetationLayer::resizeGLObjectBuffers(unsigned maxSize)
 {
-    //todo
     PatchLayer::resizeGLObjectBuffers(maxSize);
+
+    ScopedWriteLock lock(_traversal_mutex);
+    for (auto& cs : _cameraState)
+    {
+        for (auto& tile : cs.second._tiles)
+        {
+            if (tile.second._drawable.valid())
+            {
+                tile.second._drawable->resizeGLObjectBuffers(maxSize);
+            }
+        }
+        cs.second._tiles.clear();
+    }
 }
 
 void
 VegetationLayer::releaseGLObjects(osg::State* state) const
 {
-    //todo
     PatchLayer::releaseGLObjects(state);
+
+    ScopedWriteLock lock(_traversal_mutex);
+    for (auto& cs : _cameraState)
+    {
+        for (auto& tile : cs.second._tiles)
+        {
+            if (tile.second._drawable.valid())
+            {
+                tile.second._drawable->releaseGLObjects(state);
+            }
+        }
+        cs.second._tiles.clear();
+    }
 }

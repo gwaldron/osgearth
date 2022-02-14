@@ -63,6 +63,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT Chonk
     {
     public:
+        using element_t = GLuint;
+
         //! Adds a node.
         bool add(
             osg::Node*,
@@ -110,7 +112,7 @@ namespace osgEarth
 
         std::vector<ChonkMaterial::Ptr> _materials; // todo: upgrade to material index
         std::vector<VertexGPU> _vbo_store;
-        std::vector<GLushort> _ebo_store;
+        std::vector<element_t> _ebo_store;
         std::vector<LOD> _lods;
         osg::BoundingBoxf _box;
 

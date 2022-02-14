@@ -364,6 +364,36 @@ void oe_chonk_default_fragment(inout vec4 color)
 )";
 
     /**
+     * Visitor that counts the verts and elements in a scene graph.
+     */
+    struct Counter : public osg::NodeVisitor
+    {
+        Counter() :
+            _numVerts(0),
+            _numElements(0)
+        {
+            // Use the "active chidren" mode to only bring in default switch
+            // and osgSim::MultiSwitch children for now. -gw
+            setTraversalMode(TRAVERSE_ACTIVE_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+
+        void apply(osg::Geometry& node) override
+        {
+            auto verts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
+            if (verts) _numVerts += verts->size();
+            
+            for (unsigned i = 0; i < node.getNumPrimitiveSets(); ++i) {
+                auto p = node.getPrimitiveSet(i);
+                if (p) _numElements += p->getNumIndices();
+            }
+        }
+
+        unsigned _numVerts;
+        unsigned _numElements;
+    };
+
+    /**
      * Visitor that traverses a graph and generates a Chonk,
      * storing any discovered textures in the provided arena.
      */
@@ -407,7 +437,9 @@ void oe_chonk_default_fragment(inout vec4 color)
             _result(chonk),
             _textures(textures)
         {
-            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            // Use the "active chidren" mode to only bring in default switch
+            // and osgSim::MultiSwitch children for now. -gw
+            setTraversalMode(TRAVERSE_ACTIVE_CHILDREN);
             setNodeMaskOverride(~0);
 
             _materialStack.push(reuseOrCreateMaterial(-1, -1));
@@ -493,23 +525,13 @@ void oe_chonk_default_fragment(inout vec4 color)
             _transformStack.pop();
         }
 
-        void apply(osg::Switch& node)
-        {
-            if (node.getNumChildren() > 0)
-            {
-                bool pushed = pushStateSet(node.getStateSet());
-                node.getChild(0)->accept(*this);
-                if (pushed) popStateSet();
-            }
-        }
-
         void apply(osg::Geometry& node)
         {
             bool pushed = pushStateSet(node.getStateSet());
 
             unsigned numVerts = node.getVertexArray()->getNumElements();
 
-            _result._vbo_store.reserve(_result._vbo_store.size() + numVerts);
+            //_result._vbo_store.reserve(_result._vbo_store.size() + numVerts);
             unsigned vbo_offset = _result._vbo_store.size();
 
             auto verts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
@@ -685,7 +707,7 @@ Chonk::getOrCreateCommands(osg::State& state) const
 
         gs.ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state, "Chonk EBO");
         gs.ebo->bufferStorage(
-            _ebo_store.size() * sizeof(GLushort),
+            _ebo_store.size() * sizeof(element_t),
             _ebo_store.data(),
             0); // permanent
         gs.ebo->makeResident();
@@ -736,6 +758,12 @@ ChonkFactory::load(
     // convert all primitive sets to GL_TRIANGLES
     osgUtil::Optimizer o;
     o.optimize(node, o.INDEX_MESH);
+    
+    // first count up the memory we need and allocate it
+    Counter counter;
+    node->accept(counter);
+    chonk._vbo_store.reserve(counter._numVerts);
+    chonk._ebo_store.reserve(counter._numElements);
 
     // rip geometry and textures into a new Asset object
     Ripper ripper(chonk, _textures.get());
@@ -1406,9 +1434,13 @@ ChonkDrawable::GCState::draw(osg::State& state)
     else
         _instanceInputBuf->bindBufferBase(0);
 
+    GLenum elementType = sizeof(Chonk::element_t) == sizeof(GLushort) ?
+        GL_UNSIGNED_SHORT :
+        GL_UNSIGNED_INT;
+
     _glMultiDrawElementsIndirectBindlessNV(
         GL_TRIANGLES,
-        GL_UNSIGNED_SHORT,
+        elementType,
         (const GLvoid*)0,
         _commands.size(),
         sizeof(Chonk::DrawCommand),

@@ -22,6 +22,7 @@
 #include <osgEarth/FeatureRasterizer>
 #include <osgEarth/ArcGISTilePackage>
 #include <osgEarth/XYZFeatureSource>
+#include <osgEarth/MVT>
 #include <osgEarth/Registry>
 
 #include <osgDB/WriteFile>
@@ -222,11 +223,21 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
     {
         URIContext context(styleSheetURI);
 
-        if (name() == "esri")
+        if (type() == "vector-vtpk")
         {
             URI uri(url(), context);
 
             osg::ref_ptr< VTPKFeatureSource > featureSource = new VTPKFeatureSource();
+            featureSource->setReadOptions(options);
+            featureSource->setURL(uri);
+            featureSource->open();
+            _featureSource = featureSource.get();
+        }
+        if (type() == "vector-mbtiles")
+        {
+            URI uri(url(), context);
+
+            osg::ref_ptr< MVTFeatureSource > featureSource = new MVTFeatureSource();
             featureSource->setReadOptions(options);
             featureSource->setURL(uri);
             featureSource->open();

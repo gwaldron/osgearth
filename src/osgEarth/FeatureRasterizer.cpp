@@ -254,8 +254,8 @@ namespace osgEarth {
             });
 
             Color color(Color::White);
-            uint32_t cap = BL_STROKE_CAP_ROUND;
-            uint32_t join = BL_STROKE_JOIN_ROUND;
+            auto cap = BL_STROKE_CAP_ROUND;
+            auto join = BL_STROKE_JOIN_ROUND;
 
             if (symbol->stroke().isSet())
             {

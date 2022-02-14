@@ -383,7 +383,7 @@ ArrayUniform::setElement( unsigned index, float value )
 }
 
 void
-ArrayUniform::setElement( unsigned index, const osg::Matrix& value )
+ArrayUniform::setElement( unsigned index, const osg::Matrixf& value )
 {
     if ( isValid() )
     {
@@ -394,7 +394,7 @@ ArrayUniform::setElement( unsigned index, const osg::Matrix& value )
 }
 
 void
-ArrayUniform::setElement( unsigned index, const osg::Vec3& value )
+ArrayUniform::setElement( unsigned index, const osg::Vec3f& value )
 {
     if ( isValid() )
     {
@@ -405,7 +405,7 @@ ArrayUniform::setElement( unsigned index, const osg::Vec3& value )
 }
 
 void
-ArrayUniform::setElement(unsigned index, const osg::Vec4& value)
+ArrayUniform::setElement(unsigned index, const osg::Vec4f& value)
 {
     if (isValid())
     {
@@ -440,23 +440,34 @@ ArrayUniform::getElement( unsigned index, float& out_value ) const
 }
 
 bool 
-ArrayUniform::getElement( unsigned index, osg::Matrix& out_value ) const
+ArrayUniform::getElement( unsigned index, osg::Matrixf& out_value ) const
 {
     return isValid() ? _uniform->getElement( index, out_value ) : false;
 }
 
 bool 
-ArrayUniform::getElement( unsigned index, osg::Vec3& out_value ) const
+ArrayUniform::getElement( unsigned index, osg::Vec3f& out_value ) const
 {
     return isValid() ? _uniform->getElement( index, out_value ) : false;
 }
 
 bool
-ArrayUniform::getElement(unsigned index, osg::Vec4& out_value) const
+ArrayUniform::getElement(unsigned index, osg::Vec4f& out_value) const
 {
     return isValid() ? _uniform->getElement(index, out_value) : false;
 }
 
+namespace
+{
+    template<typename T>
+    void copyElements(osg::Uniform* src, ArrayUniform* dest) {
+        for (unsigned i = 0; i < src->getNumElements(); ++i) {
+            T temp;
+            src->getElement(i, temp);
+            dest->setElement(i, temp);
+        }
+    };
+}
 
 void
 ArrayUniform::ensureCapacity( unsigned newSize )
@@ -475,41 +486,23 @@ ArrayUniform::ensureCapacity( unsigned newSize )
             _uniform    = new osg::Uniform( _uniform->getType(), _uniform->getName(), newSize );
             _uniformAlt = new osg::Uniform( _uniform->getType(), _uniform->getName() + "[0]", newSize );
 
-            switch( _oldUniform->getInternalArrayType(_oldUniform->getType()) )
+            switch (_oldUniform->getType())
             {
-            case GL_FLOAT:
-              {
-                for( unsigned i = 0; i < _oldUniform->getNumElements(); ++i )
-                {
-                  float value;
-                  _oldUniform->getElement(i, value);
-                  setElement( i, value );
-                }
-              }
-              break;
-
-            case GL_INT:
-              {
-                for( unsigned i = 0; i < _oldUniform->getNumElements(); ++i )
-                {
-                  int value;
-                  _oldUniform->getElement(i, value);
-                  setElement( i, value );
-                }
-              }
-              break;
-
-            case GL_UNSIGNED_INT:
-              {
-                for( unsigned i = 0; i < _oldUniform->getNumElements(); ++i )
-                {
-                  unsigned value;
-                  _oldUniform->getElement(i, value);
-                  setElement( i, value );
-                }
-              }
-              break;
-            }
+            case osg::Uniform::FLOAT:
+                copyElements<float>(_oldUniform, this); break;
+            case osg::Uniform::INT:
+                copyElements<int>(_oldUniform, this); break;
+            case osg::Uniform::UNSIGNED_INT:
+                copyElements<unsigned>(_oldUniform, this); break;
+            case osg::Uniform::FLOAT_VEC3:
+                copyElements<osg::Vec3f>(_oldUniform, this); break;
+            case osg::Uniform::FLOAT_VEC4:
+                copyElements<osg::Vec4f>(_oldUniform, this); break;
+            case osg::Uniform::FLOAT_MAT4:
+                copyElements<osg::Matrixf>(_oldUniform, this); break;
+            case osg::Uniform::BOOL:
+                copyElements<bool>(_oldUniform, this); break;
+            };
 
             stateSet_safe->addUniform( _uniform.get() );
             stateSet_safe->addUniform( _uniformAlt.get() );

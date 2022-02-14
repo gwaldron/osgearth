@@ -425,6 +425,8 @@ FeatureSource::createFeatureCursor(
 
     else
     {
+        if (!_featureProfile)
+            return nullptr;
         GeoExtent localExtent = key.getExtent().transform(_featureProfile->getSRS());
         if (localExtent.isInvalid())
             return nullptr;

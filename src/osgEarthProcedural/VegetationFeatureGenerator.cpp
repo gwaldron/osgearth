@@ -174,9 +174,12 @@ VegetationFeatureGenerator::initialize()
     }
 #endif
 
-    // open the elevation layers
+    // open the active elevation layers
     ElevationLayerVector elevLayers;   
-    _map->getLayers(elevLayers, [](const Layer* layer) { return layer->getEnabled(); });
+    _map->getLayers(elevLayers, [](const Layer* layer) { 
+        return layer->getOpenAutomatically();
+        });
+
     if (elevLayers.empty() == false)
     {
         for(ElevationLayerVector::iterator i = elevLayers.begin();

@@ -103,6 +103,10 @@ namespace osgEarth
         Map* getMap();
         const Map* getMap() const;
 
+        //! Screen-space error for geometry level of detail
+        void setScreenSpaceError(float sse);
+        float getScreenSpaceError() const;
+
         //! Whether to allow lighting when present
         void setEnableLighting(const bool& value);
         const bool& getEnableLighting() const;
@@ -263,6 +267,7 @@ namespace osgEarth
     private:
 
         osg::ref_ptr< MapCallback > _mapCallback;
+        osg::ref_ptr<osg::Uniform> _sseU;
     
         void init();
 

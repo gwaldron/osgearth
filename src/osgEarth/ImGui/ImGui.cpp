@@ -411,34 +411,4 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
     return false;
 }
 
-/***********************************************************************************/
-
-#if 0
-static osg::RefNodePath s_selectedNodePath;
-
-osg::Node* osgEarth::GUI::getSelectedNode()
-{
-    if (s_selectedNodePath.empty())
-    {
-        return nullptr;
-    }
-
-    return s_selectedNodePath.back().get();
-}
-
-const osg::RefNodePath& osgEarth::GUI::getSelectedNodePath()
-{
-    return s_selectedNodePath;
-}
-
-void osgEarth::GUI::setSelectedNodePath(const osg::NodePath& nodePath)
-{
-    s_selectedNodePath.clear();
-
-    for (auto itr = nodePath.begin(); itr != nodePath.end(); ++itr)
-    {
-        s_selectedNodePath.push_back(*itr);
-    }
-}
-#endif
 

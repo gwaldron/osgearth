@@ -129,6 +129,8 @@ namespace osgEarth
 
         virtual const osg::Matrix& getModelViewMatrix() const = 0;
 
+        virtual const osg::RefMatrix* getLocalToWorld() const = 0;
+
         virtual int getSequence() const = 0;
 
         virtual void apply(

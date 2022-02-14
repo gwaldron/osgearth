@@ -16,14 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/Cube>
-#include <osgEarth/ShaderFactory>
-#include <osgEarth/ObjectIndex>
-#include <osgEarth/HTTPClient>
-#include <osgEarth/TerrainEngineNode>
+#include "Registry"
+#include "Capabilities"
+#include "ShaderFactory"
+#include "ObjectIndex"
+#include "HTTPClient"
+#include "TerrainEngineNode"
 #include "GLUtils"
+#include "Chonk"
 
 #include <osgText/Font>
 #include <osgDB/Registry>
@@ -212,6 +212,11 @@ _blacklist("Reg.BlackList(OE)")
 
     // Default concurrency for async image layers
     JobArena::setConcurrency("oe.layer.async", 4u);
+
+    // register the chonk bin with OSG
+    osgUtil::RenderBin::addRenderBinPrototype(
+        "ChonkBin",
+        new ChonkRenderBin());
 }
 
 Registry::~Registry()

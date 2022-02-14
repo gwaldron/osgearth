@@ -79,9 +79,13 @@ namespace
 BiomeManager::BiomeManager() :
     _revision(0),
     _refsAndRevision_mutex("BiomeManager.refsAndRevision(OE)"),
-    _residentData_mutex("BiomeManager.residentData(OE)")
+    _residentData_mutex("BiomeManager.residentData(OE)"),
+    _lodTransitionPixelScale(8.0f)
 {
-    //nop
+    // this arena will hold all the textures for loaded assets.
+    _textures = new TextureArena();
+    _textures->setName("Biomes");
+    _textures->setBindingPoint(1);
 }
 
 void
@@ -138,6 +142,28 @@ int
 BiomeManager::getRevision() const
 {
     return _revision;
+}
+
+void
+BiomeManager::setLODTransitionPixelScale(float value)
+{
+    _lodTransitionPixelScale = value;
+
+    // We need to rebuild the assets, so clear everything out,
+    // recalculate the biome set, and bump the revision.
+    _residentData_mutex.lock();
+    _residentModelAssets.clear();
+    _residentData_mutex.unlock();
+
+    _refsAndRevision_mutex.lock();
+    ++_revision;
+    _refsAndRevision_mutex.unlock();
+}
+
+float
+BiomeManager::getLODTransitionPixelScale() const
+{
+    return _lodTransitionPixelScale;
 }
 
 void
@@ -263,7 +289,6 @@ namespace
 
 void
 BiomeManager::materializeNewAssets(
-    ChonkFactory& chonkFactory,
     const osgDB::Options* readOptions)
 {
     // exclusive access to the resident dataset
@@ -279,6 +304,9 @@ BiomeManager::materializeNewAssets(
     TextureShareCache texcache;
     using ModelCache = std::map<URI, ModelCacheEntry>;
     ModelCache modelcache;
+
+    // Factory for loading chonk data. It will use our texture arena.
+    ChonkFactory factory(_textures.get());
 
     // Clear out each biome's instances so we can start fresh.
     // This is a low-cost operation since anything we can re-use
@@ -518,30 +546,35 @@ BiomeManager::materializeNewAssets(
                     // Finally, chonkify.
                     if (residentAsset->_model.valid())
                     {
-                        float minp = 400.0f;
-                        float maxp = FLT_MAX;
+                        // models should disappear 8x closer than the SSE:
+                        float far_pixel_scale = getLODTransitionPixelScale();
+                        float near_pixel_scale = FLT_MAX;
 
                         if (residentAsset->_chonk == nullptr)
                             residentAsset->_chonk = Chonk::create();
 
                         residentAsset->_chonk->add(
                             residentAsset->_model.get(),
-                            minp, maxp,
-                            chonkFactory);
+                            far_pixel_scale,
+                            near_pixel_scale,
+                            factory);
                     }
 
                     if (residentAsset->_billboard.valid())
                     {
-                        float minp = 35.0f;
-                        float maxp = residentAsset->_model.valid() ? 400.0f : FLT_MAX;
+                        float far_pixel_scale = 1.0f;
+                        float near_pixel_scale = residentAsset->_model.valid() ? 
+                            getLODTransitionPixelScale() : 
+                            FLT_MAX;
 
                         if (residentAsset->_chonk == nullptr)
                             residentAsset->_chonk = Chonk::create();
 
                         residentAsset->_chonk->add(
                             residentAsset->_billboard.get(),
-                            minp, maxp,
-                            chonkFactory);
+                            far_pixel_scale,
+                            near_pixel_scale,
+                            factory);
                     }
                 }
 
@@ -576,14 +609,13 @@ BiomeManager::setCreateFunction(
 
 BiomeManager::ResidentBiomes
 BiomeManager::getResidentBiomes(
-    ChonkFactory& factory,
     const osgDB::Options* readOptions)
 {
     // First refresh the resident biome collection based on current refcounts
     recalculateResidentBiomes();
 
     // Next go through and load any assets that are not yet loaded
-    materializeNewAssets(factory, readOptions);
+    materializeNewAssets(readOptions);
 
     // Make a copy:
     ResidentBiomes result = _residentBiomes;

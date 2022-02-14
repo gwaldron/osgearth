@@ -421,7 +421,7 @@ Map::addLayer(Layer* layer)
 
     layer->setReadOptions(getReadOptions());
 
-    if (layer->getEnabled())
+    if (layer->getOpenAutomatically())
     {
         layer->open();
     }
@@ -474,7 +474,7 @@ Map::insertLayer(Layer* layer, unsigned index)
 
     layer->setReadOptions(getReadOptions());
 
-    if (layer->getEnabled())
+    if (layer->getOpenAutomatically())
     {
         layer->open();
     }
@@ -638,7 +638,7 @@ Map::addLayers(const LayerVector& layers)
         layer->setReadOptions(getReadOptions());
 
         // open, but don't call addedToMap(layer) yet.
-        if (layer->getEnabled())
+        if (layer->getOpenAutomatically())
         {
             layer->open();
         }

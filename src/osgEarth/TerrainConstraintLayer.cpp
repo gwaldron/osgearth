@@ -18,10 +18,8 @@
  */
 
 #include <osgEarth/TerrainConstraintLayer>
-#include <osgEarth/FeatureCursor>
 #include <osgEarth/Map>
 #include <osgEarth/Progress>
-#include <osgEarth/AltitudeFilter>
 
 using namespace osgEarth;
 
@@ -49,6 +47,10 @@ TerrainConstraintLayer::Options::fromConfig(const Config& conf)
     conf.get("remove_exterior", removeExterior());
     conf.get("has_elevation", hasElevation());
     conf.get("min_level", minLevel());
+
+    const Config& filtersConf = conf.child("filters");
+    for (auto& child : filtersConf.children())
+        filters().push_back(ConfigOptions(child));
 }
 
 Config
@@ -60,6 +62,14 @@ TerrainConstraintLayer::Options::getConfig() const
     conf.set("remove_exterior", removeExterior());
     conf.set("has_elevation", hasElevation());
     conf.set("min_level", minLevel());
+
+    if (filters().empty() == false)
+    {
+        Config temp;
+        for (unsigned i = 0; i < filters().size(); ++i)
+            temp.add(filters()[i].getConfig());
+        conf.set("filters", temp);
+    }
     return conf;
 }
 
@@ -93,6 +103,10 @@ TerrainConstraintLayer::openImplementation()
     Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
+
+    _filterchain = FeatureFilterChain::create(
+        options().filters(),
+        getReadOptions());
 
     return Status::NoError;
 }

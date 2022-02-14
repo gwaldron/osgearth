@@ -102,9 +102,11 @@ namespace osgEarth { namespace REX
         void notifyOfArrival(TileNode* that);
 
         /** Returns the tile's parent; convenience function */
-        inline TileNode* getParentTile() { return _parentTile; } //.get();
-    
-        inline const TileNode* getParentTile() const { return _parentTile; } //.get();
+        inline TileNode* getParentTile() { return _parentTile.get(); } //.get();
+
+        inline const TileNode* getParentTile() const { return _parentTile.get(); } //.get();
+
+        inline bool getParentTile(osg::ref_ptr<TileNode>& parent) { return _parentTile.lock(parent); }
 
         /** Returns the SurfaceNode under this node. */
         SurfaceNode* getSurfaceNode() { return _surface.get(); }
@@ -146,10 +148,10 @@ namespace osgEarth { namespace REX
             return _imageUpdatesActive;
         }
 
-        // update-traverse this node, updating any images that require 
+        // update-traverse this node, updating any images that require
         // and update-traverse
         void update(osg::NodeVisitor& nv);
-        
+
     public: // osg::Node
 
         osg::BoundingSphere computeBound() const;
@@ -163,7 +165,7 @@ namespace osgEarth { namespace REX
     protected:
 
         TileKey _key;
-        TileNode* _parentTile;
+        osg::observer_ptr<TileNode> _parentTile;
         osg::ref_ptr<SurfaceNode>          _surface;
         osg::ref_ptr<EngineContext>        _context;
         Threading::Mutex                   _mutex;
@@ -189,7 +191,7 @@ namespace osgEarth { namespace REX
         unsigned _loadsInQueue;
         const CreateTileManifest* _nextLoadManifestPtr;
 
-        bool dirty() const { 
+        bool dirty() const {
             return _loadsInQueue > 0;
         }
 

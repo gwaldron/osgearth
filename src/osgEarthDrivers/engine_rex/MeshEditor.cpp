@@ -45,6 +45,8 @@ MeshEditor::MeshEditor(const TileKey& key, unsigned tileSize, const Map* map, Pr
         {
             osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(
                 key,
+                layer->getFilters(),
+                nullptr,
                 progress);
 
             Edit edit;

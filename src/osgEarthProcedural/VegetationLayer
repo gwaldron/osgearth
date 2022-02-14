@@ -98,10 +98,6 @@ namespace osgEarth { namespace Procedural
         void setColorLayer(ImageLayer* layer);
         ImageLayer* getColorLayer() const;
 
-        //! Set the maximum screen-space error (pixels)
-        void setMaxSSE(float pixels);
-        float getMaxSSE() const;
-
         //! LOD at which to draw ground cover
         bool hasGroupAtLOD(unsigned lod) const;
         AssetGroup::Type getGroupAtLOD(unsigned lod) const;
@@ -122,8 +118,8 @@ namespace osgEarth { namespace Procedural
         void setEnabled(AssetGroup::Type, bool);
         bool getEnabled(AssetGroup::Type) const;
 
-        //! Number of vegetation tiles passed to the most recent draw call
-        unsigned getNumTilesRendered() const;
+        //! Force regeneration of the visible data
+        void dirty();
 
     protected:
 
@@ -183,6 +179,7 @@ namespace osgEarth { namespace Procedural
         {
             int _revision;
             FutureDrawable _newDrawable;
+            osg::ref_ptr<osg::RefMatrix> _matrix;
             osg::ref_ptr<ChonkDrawable> _drawable;
             osg::Matrix _mvm;
 
@@ -193,14 +190,15 @@ namespace osgEarth { namespace Procedural
         // (multiple views, shadow cams, etc)
         struct CameraState
         {
+            using Ptr = std::shared_ptr<CameraState>;
             using TileCache = std::unordered_map<TileKey, Tile>;
             TileCache _tiles;
-            osg::ref_ptr<ChonkDrawable> _superDrawable;
         };
-        using CameraStates = std::unordered_map<const osg::Camera*, CameraState>;
+        mutable Mutex _cameraState_mutex;
+        using CameraStates = std::unordered_map<
+            const osg::Camera*, CameraState::Ptr>;
         mutable CameraStates _cameraState;
 
-        osg::ref_ptr<osg::Uniform> _sseU; // screen-space error uniform
         mutable osg::FrameStamp _lastVisit; // for timeouts
 
         // noise texture. I guess this could go in the arena..
@@ -217,10 +215,10 @@ namespace osgEarth { namespace Procedural
         std::atomic_int _biomeRevision; // keep track of when to load to assets
         Status _status;
 
-        osg::ref_ptr<TextureArena> _textures;
-
         void configureTrees();
         void configureGrass();
+
+        mutable ReadWrite<Mutex> _traversal_mutex;
 
         Future<osg::ref_ptr<ChonkDrawable>> createDrawableAsync(
             const TileKey&,

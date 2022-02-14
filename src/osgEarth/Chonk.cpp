@@ -23,7 +23,11 @@
 #include "Color"
 #include "GLUtils"
 #include "Metrics"
+#include "VirtualProgram"
+#include "ShaderLoader"
 
+#include <osg/Switch>
+#include <osg/LOD>
 #include <osgUtil/Optimizer>
 #include <osgUtil/MeshOptimizers>
 
@@ -74,12 +78,12 @@ struct DrawElementsIndirectBindlessCommandNV
     BindlessPtrNV vertexBuffer;
 };
 
-struct ChonkVariant
+struct ChonkLOD
 {
     vec4 bs;
-    float min_pixel_size;
-    float max_pixel_size;
-    uint num_variants;
+    float far_pixel_scale;
+    float near_pixel_scale;
+    uint num_lods;
     uint total_num_commands; // global
 };
 
@@ -89,7 +93,7 @@ struct Instance
     vec2 local_uv;
     float fade;
     float visibility[4];
-    uint first_variant_cmd_index;
+    uint first_lod_cmd_index;
 };
 
 layout(binding=0) buffer OutputBuffer
@@ -102,9 +106,9 @@ layout(binding=29) buffer Commands
     DrawElementsIndirectBindlessCommandNV commands[];
 };
 
-layout(binding=30) buffer ChonkVariants
+layout(binding=30) buffer ChonkLODs
 {
-    ChonkVariant chonks[];
+    ChonkLOD chonks[];
 };
 
 layout(binding=31) buffer InputBuffer
@@ -113,26 +117,26 @@ layout(binding=31) buffer InputBuffer
 };
 
 uniform vec3 oe_Camera;
-uniform float oe_pixel_size_scale = 1.0;
+uniform float oe_sse;
 
 void cull()
 {
     const uint i = gl_GlobalInvocationID.x; // instance
-    const uint variant = gl_GlobalInvocationID.y; // variant
+    const uint lod = gl_GlobalInvocationID.y; // lod
 
-    // initialize by clearing the visibility for this variant:
-    input_instances[i].visibility[variant] = 0.0;
+    // initialize by clearing the visibility for this LOD:
+    input_instances[i].visibility[lod] = 0.0;
 
 #ifdef OE_IS_SHADOW_CAMERA
     // only use the highest LOD for shadow-casting.
     // TODO: reevaluate this.
-    if (variant > 0)
+    if (lod > 0)
         return;
 #endif
 
-    // bail if our chonk does not have this variant
-    uint v = input_instances[i].first_variant_cmd_index + variant;
-    if (variant >= chonks[v].num_variants)
+    // bail if our chonk does not have this LOD
+    uint v = input_instances[i].first_lod_cmd_index + lod;
+    if (lod >= chonks[v].num_lods)
         return;
 
     // TODO: benchmark this before and after the SS cull below.
@@ -162,18 +166,18 @@ void cull()
     float fade = 1.0;
 
 #ifndef OE_IS_SHADOW_CAMERA
-    // OK, it is in view - now check pixel size on screen for this variant:
+    // OK, it is in view - now check pixel size on screen for this LOD:
     vec2 dims = 0.5*(UR.xy-LL.xy)*oe_Camera.xy;
 
     float pixelSize = max(dims.x, dims.y);
     float pixelSizePad = pixelSize*0.1;
 
-    float maxPixelSize = chonks[v].max_pixel_size * oe_pixel_size_scale;
-    if (pixelSize > (maxPixelSize + pixelSizePad))
+    float minPixelSize = oe_sse * chonks[v].far_pixel_scale;
+    if (pixelSize < (minPixelSize - pixelSizePad))
         return;
 
-    float minPixelSize = chonks[v].min_pixel_size * oe_pixel_size_scale;
-    if (pixelSize < (minPixelSize - pixelSizePad))
+    float maxPixelSize = oe_sse * chonks[v].near_pixel_scale;
+    if (pixelSize > (maxPixelSize + pixelSizePad))
         return;
 
     if (pixelSize > maxPixelSize)
@@ -182,8 +186,8 @@ void cull()
         fade = 1.0-(minPixelSize-pixelSize)/pixelSizePad;
 #endif
 
-    // Pass! Set the visibility for this variant:
-    input_instances[i].visibility[variant] = fade;
+    // Pass! Set the visibility for this LOD:
+    input_instances[i].visibility[lod] = fade;
 
     // Bump all baseInstances following this one:
     const uint cmd_count = chonks[v].total_num_commands;
@@ -195,13 +199,13 @@ void cull()
 void compact()
 {
     const uint i = gl_GlobalInvocationID.x; // instance
-    const uint variant = gl_GlobalInvocationID.y; // variant
+    const uint lod = gl_GlobalInvocationID.y; // lod
     
-    float fade = input_instances[i].visibility[variant];
+    float fade = input_instances[i].visibility[lod];
     if (fade < 0.15)
         return;
 
-    uint v = input_instances[i].first_variant_cmd_index + variant;
+    uint v = input_instances[i].first_lod_cmd_index + lod;
     uint offset = commands[v].cmd.baseInstance;
     uint index = atomicAdd(commands[v].cmd.instanceCount, 1);
 
@@ -222,6 +226,173 @@ void main()
 
 )";
 
+const char* oe_chonk_default_shaders = R"(
+
+#version 460
+#extension GL_ARB_gpu_shader_int64 : enable
+#pragma vp_function oe_chonk_default_vertex_model, vertex_model, 0.0
+#pragma import_defines(OE_IS_SHADOW_CAMERA)
+
+struct Instance {
+    mat4 xform;
+    vec2 local_uv;
+    float fade;
+    float visibility[4];
+    uint first_variant_cmd_index;
+};
+layout(binding=0, std430) buffer Instances {
+    Instance instances[];
+};
+layout(binding=1, std430) buffer TextureArena {
+    uint64_t textures[];
+};
+
+layout(location=0) in vec3 position;
+layout(location=1) in vec3 normal;
+layout(location=2) in vec4 color;
+layout(location=3) in vec2 uv;
+layout(location=4) in vec3 flex;
+layout(location=5) in int albedo; // todo: material LUT index
+layout(location=6) in int normalmap; // todo: material LUT index
+
+// stage global
+mat3 xform3;
+
+// outputs
+out vec3 vp_Normal;
+out vec4 vp_Color;
+out float oe_fade;
+out vec2 oe_tex_uv;
+flat out uint64_t oe_albedo_tex;
+flat out uint64_t oe_normal_tex;
+
+void oe_chonk_default_vertex_model(inout vec4 vertex)
+{
+    int i = gl_BaseInstance + gl_InstanceID;
+    vertex = instances[i].xform * vec4(position, 1);
+    vp_Color = color;
+    xform3 = mat3(instances[i].xform);
+    vp_Normal = xform3 * normal;
+    oe_tex_uv = uv;
+    oe_albedo_tex = albedo >= 0 ? textures[albedo] : 0;
+    oe_normal_tex = normalmap >= 0 ? textures[normalmap] : 0;
+
+#ifndef OE_IS_SHADOW_CAMERA
+    oe_fade = instances[i].fade;
+#else
+    oe_fade = 1.0;
+#endif
+}
+
+[break]
+
+#version 460
+#extension GL_ARB_gpu_shader_int64 : enable
+#pragma vp_function oe_chonk_default_vertex_view, vertex_view, 0.0
+
+// stage
+mat3 xform3;
+
+// output
+out vec3 vp_Normal;
+out vec3 oe_tangent;
+flat out uint64_t oe_normal_tex;
+
+void oe_chonk_default_vertex_view(inout vec4 vertex)
+{
+    if (oe_normal_tex > 0)
+    {
+        vec3 ZAXIS = gl_NormalMatrix * vec3(0,0,1);
+        if (dot(ZAXIS, vp_Normal) > 0.95)
+            oe_tangent = gl_NormalMatrix * (xform3 * vec3(1,0,0));
+        else
+            oe_tangent = cross(ZAXIS, vp_Normal);
+    }
+}
+
+
+[break]
+
+#version 460
+#extension GL_ARB_gpu_shader_int64 : enable
+#pragma vp_function oe_chonk_default_fragment, fragment, 0.0
+#pragma import_defines(OE_COMPRESSED_NORMAL)
+
+// inputs
+in float oe_fade;
+in vec2 oe_tex_uv;
+in vec3 oe_tangent;
+in vec3 vp_Normal;
+flat in uint64_t oe_albedo_tex;
+flat in uint64_t oe_normal_tex;
+
+void oe_chonk_default_fragment(inout vec4 color)
+{
+    if (oe_albedo_tex > 0)
+    {
+        vec4 texel = texture(sampler2D(oe_albedo_tex), oe_tex_uv);
+        color *= texel;
+    }
+
+    // apply the high fade from the instancer
+    color.a *= oe_fade;
+
+    if (oe_normal_tex > 0)
+    {
+        vec4 n = texture(sampler2D(oe_normal_tex), oe_tex_uv);
+
+#ifdef OE_COMPRESSED_NORMAL
+        n.xyz = n.xyz*2.0 - 1.0;
+        n.z = 1.0 - abs(n.x) - abs(n.y);
+        float t = clamp(-n.z, 0, 1);
+        n.x += (n.x > 0) ? -t : t;
+        n.y += (n.y > 0) ? -t : t;
+#else
+        n.xyz = normalize(n.xyz*2.0-1.0);
+#endif
+
+        // construct the TBN, reflecting the normal on back-facing polys
+        mat3 tbn = mat3(
+            normalize(oe_tangent),
+            normalize(cross(vp_Normal, oe_tangent)),
+            normalize(gl_FrontFacing ? vp_Normal : -vp_Normal));
+        
+        vp_Normal = normalize(tbn * n.xyz);
+    }
+}
+
+)";
+
+    /**
+     * Visitor that counts the verts and elements in a scene graph.
+     */
+    struct Counter : public osg::NodeVisitor
+    {
+        Counter() :
+            _numVerts(0),
+            _numElements(0)
+        {
+            // Use the "active chidren" mode to only bring in default switch
+            // and osgSim::MultiSwitch children for now. -gw
+            setTraversalMode(TRAVERSE_ACTIVE_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+
+        void apply(osg::Geometry& node) override
+        {
+            auto verts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
+            if (verts) _numVerts += verts->size();
+            
+            for (unsigned i = 0; i < node.getNumPrimitiveSets(); ++i) {
+                auto p = node.getPrimitiveSet(i);
+                if (p) _numElements += p->getNumIndices();
+            }
+        }
+
+        unsigned _numVerts;
+        unsigned _numElements;
+    };
+
     /**
      * Visitor that traverses a graph and generates a Chonk,
      * storing any discovered textures in the provided arena.
@@ -230,6 +401,7 @@ void main()
     {
         Chonk& _result;
         TextureArena* _textures;
+        std::list<ChonkMaterial::Ptr> _materialCache;
         std::stack<ChonkMaterial::Ptr> _materialStack;
         std::stack<osg::Matrix> _transformStack;
         std::unordered_map<osg::Texture*, unsigned> _textureLUT;
@@ -237,14 +409,40 @@ void main()
         const unsigned ALBEDO = 0;
         const unsigned NORMAL = 1;
 
+        ChonkMaterial::Ptr reuseOrCreateMaterial(int albedo, int normal)
+        {
+            for (auto& m : _materialCache)
+            {
+                if (m->albedo == albedo && m->normal == normal)
+                    return m;
+            }
+            auto material = ChonkMaterial::create();
+            material->albedo = albedo;
+            material->normal = normal;
+
+            // If our arena is in auto-release mode, we need to 
+            // store a pointer to each texture we use so they do not
+            // get deleted while the material is still in business:
+            if (_textures && _textures->getAutoRelease() == true)
+            {
+                material->albedo_tex = _textures->find(material->albedo);
+                material->normal_tex = _textures->find(material->normal);
+            }
+
+            _materialCache.push_back(material);
+            return material;
+        }
+
         Ripper(Chonk& chonk, TextureArena* textures) :
             _result(chonk),
             _textures(textures)
         {
-            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            // Use the "active chidren" mode to only bring in default switch
+            // and osgSim::MultiSwitch children for now. -gw
+            setTraversalMode(TRAVERSE_ACTIVE_CHILDREN);
             setNodeMaskOverride(~0);
 
-            _materialStack.push(ChonkMaterial::create());
+            _materialStack.push(reuseOrCreateMaterial(-1, -1));
             _transformStack.push(osg::Matrix());
         }
 
@@ -253,6 +451,9 @@ void main()
         // adds a teture to the arena and returns its index
         int addTexture(unsigned slot, osg::StateSet* stateset)
         {
+            if (!_textures)
+                return -1;
+
             int result = -1;
 
             osg::Texture* tex = dynamic_cast<osg::Texture*>(
@@ -295,9 +496,7 @@ void main()
 
                 if (albedo >= 0 || normal >= 0)
                 {
-                    ChonkMaterial::Ptr material = ChonkMaterial::create();
-                    material->albedo = albedo;
-                    material->normal = normal;
+                    ChonkMaterial::Ptr material = reuseOrCreateMaterial(albedo, normal);
                     _materialStack.push(material);
                     pushed = true;
                 }
@@ -332,7 +531,7 @@ void main()
 
             unsigned numVerts = node.getVertexArray()->getNumElements();
 
-            _result._vbo_store.reserve(_result._vbo_store.size() + numVerts);
+            //_result._vbo_store.reserve(_result._vbo_store.size() + numVerts);
             unsigned vbo_offset = _result._vbo_store.size();
 
             auto verts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
@@ -457,10 +656,10 @@ Chonk::add(
     ChonkFactory& factory)
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
-    OE_HARD_ASSERT(_variants.size() < 4);
+    OE_HARD_ASSERT(_lods.size() < 4);
 
     factory.load(node, *this);
-    _variants.push_back({ 0u, _ebo_store.size(), 0.0f, FLT_MAX });
+    _lods.push_back({ 0u, _ebo_store.size(), 0.0f, FLT_MAX });
 
     _box.init();
 
@@ -470,24 +669,24 @@ Chonk::add(
 bool
 Chonk::add(
     osg::Node* node,
-    float min_pixel_size,
-    float max_pixel_size,
+    float far_pixel_scale,
+    float near_pixel_scale,
     ChonkFactory& factory)
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
-    OE_HARD_ASSERT(_variants.size() < 4);
+    OE_HARD_ASSERT(_lods.size() < 4);
 
     unsigned offset = _ebo_store.size();
     factory.load(node, *this);
-    _variants.push_back({
+    _lods.push_back({
         offset,
         (_ebo_store.size() - offset), // length of new variant
-        min_pixel_size,
-        max_pixel_size});
+        far_pixel_scale,
+        near_pixel_scale });
 
     _box.init();
 
-    OE_DEBUG << LC << "Added variant with " << (_ebo_store.size() - offset) / 3 << " triangles" << std::endl;
+    OE_DEBUG << LC << "Added LOD with " << (_ebo_store.size() - offset) / 3 << " triangles" << std::endl;
 
     return true;
 }
@@ -508,20 +707,20 @@ Chonk::getOrCreateCommands(osg::State& state) const
 
         gs.ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state, "Chonk EBO");
         gs.ebo->bufferStorage(
-            _ebo_store.size() * sizeof(GLushort),
+            _ebo_store.size() * sizeof(element_t),
             _ebo_store.data(),
             0); // permanent
         gs.ebo->makeResident();
 
-        gs.commands.reserve(_variants.size());
+        gs.commands.reserve(_lods.size());
 
         // for each variant:
-        for (auto& variant : _variants)
+        for (auto& lod : _lods)
         {
             DrawCommand command;
 
-            command.cmd.count = variant.length;
-            command.cmd.firstIndex = variant.offset;
+            command.cmd.count = lod.length;
+            command.cmd.firstIndex = lod.offset;
             command.indexBuffer.address = gs.ebo->address();
             command.indexBuffer.length = gs.ebo->size();
             command.vertexBuffer.address = gs.vbo->address();
@@ -539,8 +738,8 @@ Chonk::getBound()
 {
     if (!_box.valid())
     {
-        for (auto& vertex : _vbo_store)
-            _box.expandBy(vertex.position);
+        for (auto index : _ebo_store)
+            _box.expandBy(_vbo_store[index].position);
     }
     return _box;
 }
@@ -559,25 +758,20 @@ ChonkFactory::load(
     // convert all primitive sets to GL_TRIANGLES
     osgUtil::Optimizer o;
     o.optimize(node, o.INDEX_MESH);
-
-    // Reorder indices for optimal cache usage.
-    // DO NOT do this if alignment is set; using alignment
-    // implies the verts are in a specific order for a good reason, which
-    // is usually because the shader relies on gl_VertexID.
-    //if (alignment == 0u)
-    {
-        osgUtil::VertexCacheVisitor vcv;
-        node->accept(vcv);
-        vcv.optimizeVertices();
-    }
+    
+    // first count up the memory we need and allocate it
+    Counter counter;
+    node->accept(counter);
+    chonk._vbo_store.reserve(counter._numVerts);
+    chonk._ebo_store.reserve(counter._numElements);
 
     // rip geometry and textures into a new Asset object
     Ripper ripper(chonk, _textures.get());
     node->accept(ripper);
 
+    // dirty its bounding box
     chonk._box.init();
 }
-
 
 
 #ifndef GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV
@@ -602,24 +796,66 @@ namespace
     Mutex _s_cullStateSetMutex;
     using CullSSLUT = std::unordered_map<osg::Shader*, osg::ref_ptr<osg::StateSet>>;
     osg::ref_ptr<osg::Shader> _s_baseShader;
+    osg::ref_ptr<osg::Program> _s_cullProgram;
+    osg::ref_ptr<osg::StateSet> _s_cullSS;
     CullSSLUT _s_cullStateSets;
 }
 
 ChonkDrawable::ChonkDrawable() :
     osg::Drawable(),
-    _proxy_dirty(true)
+    _proxy_dirty(true),
+    _cull(true)
 {
     setName(typeid(*this).name());
     setCustomCullingShader(nullptr);
+    setUseDisplayList(false);
+    setUseVertexBufferObjects(false);
+    setUseVertexArrayObject(false);
+
+    getOrCreateStateSet()->setRenderBinDetails(
+        818,
+        "ChonkBin",
+        osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
+}
+
+ChonkDrawable::~ChonkDrawable()
+{
+    //nop
+}
+
+void
+ChonkDrawable::installDefaultShader(osg::StateSet* ss)
+{
+    OE_SOFT_ASSERT_AND_RETURN(ss != nullptr, void());
+    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
+    ShaderLoader::load(vp, oe_chonk_default_shaders);
+
+    //vp->setFunction(
+    //    "oe_chonk_default_vertex_shader",
+    //    oe_chonk_default_vertex_shader,
+    //    ShaderComp::LOCATION_VERTEX_MODEL,
+    //    0.0f);
+    //vp->setFunction(
+    //    "oe_chonk_default_fragment_shader",
+    //    oe_chonk_default_fragment_shader,
+    //    ShaderComp::LOCATION_FRAGMENT_COLORING,
+    //    0.0f);
+}
+
+void
+ChonkDrawable::setCullPerChonk(bool value)
+{
+    _cull = value;
 }
 
 void
 ChonkDrawable::add(
     Chonk::Ptr value)
 {
-    static const osg::Matrixf s_def_xform;
-    static const osg::Vec2f s_def_uv;
-    add(value, s_def_xform, s_def_uv);
+    static const osg::Matrixf s_identity_xform;
+    static const osg::Vec2f s_def_uv(0.0f, 0.0f);
+    add(value, s_identity_xform, s_def_uv);
 }
 
 void
@@ -627,7 +863,7 @@ ChonkDrawable::add(
     Chonk::Ptr value,
     const osg::Matrixf& xform)
 {
-    static const osg::Vec2f s_def_uv;
+    static const osg::Vec2f s_def_uv(0.0f, 0.0f);
     add(value, xform, s_def_uv);
 }
 
@@ -644,7 +880,8 @@ ChonkDrawable::add(
         Instance instance;
         instance.xform = xform;
         instance.uv = local_uv;
-        instance.first_variant_cmd_index = 0;
+        instance.fade = 1.0f;
+        instance.first_lod_cmd_index = 0;
         //instance.visibility_mask = 0;
         _batches[chonk].push_back(std::move(instance));
 
@@ -693,12 +930,35 @@ ChonkDrawable::setCustomCullingShader(osg::Shader* value)
         if (value != nullptr)
             program->addShader(value);
         ss = new osg::StateSet();
-        ss->setAttribute(program);
+        ss->setAttribute(program, osg::StateAttribute::OVERRIDE);
         if (value != nullptr)
             ss->setDefine("OE_USE_CUSTOM_CULL_FUNCTION");
     }
     _cullSS = ss;
+    _cullProgram = dynamic_cast<osg::Program*>(ss->getAttribute(osg::StateAttribute::PROGRAM));
 }
+
+struct StateEx : public osg::State
+{
+    void applyUniforms()
+    {
+        OE_HARD_ASSERT(_lastAppliedProgramObject != nullptr);
+
+        for (auto iter : _uniformMap)
+        {
+            auto& stack = iter.second;
+            if (!stack.uniformVec.empty())
+            {
+                auto& pair = stack.uniformVec.back();
+                _lastAppliedProgramObject->apply(*pair.first);
+                //OE_INFO << "...applied " << iter.first << std::endl;
+            }
+            else {
+               // OE_INFO << "...empty stack for " << iter.first << std::endl;
+            }
+        }
+    }
+};
 
 void
 ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
@@ -710,30 +970,87 @@ ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
 
     GCState& gs = _gs[state.getContextID()];
     if (!gs._vao)
+    {
+        gs._cull = _cull;
         gs.initialize(state);
+    }
 
+    // first possible path: render children by activating the cull shader,
+    // culling all, then activating the draw shader, and drawing all.
     if (!_children.empty())
     {
-        cull_children(state);
-        draw_children(gs, state);
+        const osg::Program::PerContextProgram* pcp = nullptr;
+
+        // Update and Cull pass:
+        {
+            OE_GL_ZONE_NAMED("GPU Cull");
+
+            if (_cull)
+            {     
+                // save bound program:
+                pcp = state.getLastAppliedProgramObject();
+
+                // activate the culling compute shader
+                state.apply(_cullSS.get());
+            }
+
+            for (auto& child : _children)
+            {
+                child->update_and_cull_batches(state);
+            }
+        }
+
+        // Draw all the child chonks
+        {
+            OE_GL_ZONE_NAMED("Draw");
+
+            // apply the stateset with our rendering shader:
+            if (_drawSS.valid()) {
+                state.apply(_drawSS.get());
+            }
+            else if (pcp) {
+                pcp->useProgram();
+                state.setLastAppliedProgramObject(pcp);
+            }
+
+            // activate the VAO and draw all subs.
+            gs._vao->bind();
+
+            // sync to cull results (call as late as possible)
+            gs._ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
+
+            for (auto& child : _children)
+            {
+                child->draw_batches(state);
+            }
+            gs._vao->unbind();
+        }
     }
+
+    // second possible path: just render all the chonks in this drawable.
     else if (!_batches.empty())
     {
-        // save the pcp b/c osg will not re-apply it 
-        // when we can state.apply(). boo
-        auto pcp = state.getLastAppliedProgramObject();
+        const osg::Program::PerContextProgram* pcp = nullptr; 
 
-        // activate the culling compute shader and cull
-        state.apply(_cullSS.get());
-        cull_batches(state);
+        if (_cull)
+        {
+            // save bound program:
+            pcp = state.getLastAppliedProgramObject();
 
-        // apply the stateset with our rendering shader:
-        if (_drawSS.valid())
+            // activate the culling compute shader and cull
+            _cullProgram->apply(state);
+            reinterpret_cast<StateEx*>(&state)->applyUniforms();
+        }
+
+        update_and_cull_batches(state);
+
+        // restore the draw state (or use the custom one):
+        if (_drawSS.valid()) {
             state.apply(_drawSS.get());
-        else if (pcp)
-            pcp->useProgram();
-        else
-            state.apply();
+        }
+        else if (pcp) {
+            pcp->getProgram()->apply(state);
+        }
 
         // render
         gs._vao->bind();
@@ -749,50 +1066,7 @@ ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
 }
 
 void
-ChonkDrawable::cull_children(osg::State& state) const
-{
-    OE_PROFILING_ZONE;
-    OE_GL_ZONE_NAMED("GPU Cull");
-
-    auto pcp = state.getLastAppliedProgramObject();
-
-    // activate the culling compute shader and cull all subs
-    state.apply(_cullSS.get());
-
-    for (auto& child : _children)
-    {
-        child->cull_batches(state);
-    }
-
-    if (!_drawSS.valid() && pcp)
-        pcp->useProgram();
-}
-
-void
-ChonkDrawable::draw_children(GCState& gs, osg::State& state) const
-{
-    OE_PROFILING_ZONE;
-    OE_GL_ZONE_NAMED("Draw");
-
-    // apply the stateset with our rendering shader:
-    if (_drawSS.valid())
-        state.apply(_drawSS.get());
-
-    // activate the VAO and draw all subs.
-    gs._vao->bind();
-
-    // sync to cull results (call as late as possible)
-    gs._ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
-
-    for (auto& child : _children)
-    {
-        child->draw_batches(state);
-    }
-    gs._vao->unbind();
-}
-
-void
-ChonkDrawable::cull_batches(osg::State& state) const
+ChonkDrawable::update_and_cull_batches(osg::State& state) const
 {
     GCState& gs = _gs[state.getContextID()];
     //if (gs._dirty)
@@ -808,7 +1082,10 @@ ChonkDrawable::cull_batches(osg::State& state) const
         state.applyModelViewMatrix(_mvm);
     }
 
-    gs.cull(state);
+    if (_cull)
+    {
+        gs.cull(state);
+    }
 }
 
 void
@@ -816,17 +1093,12 @@ ChonkDrawable::draw_batches(osg::State& state) const
 {
     GCState& gs = _gs[state.getContextID()];
 
-    osg::Matrix saved_mvm;
     if (!_mvm.isIdentity())
     {
-        saved_mvm = state.getModelViewMatrix();
         state.applyModelViewMatrix(_mvm);
     }
 
     gs.draw(state);
-
-    if (!saved_mvm.isIdentity())
-        state.applyModelViewMatrix(saved_mvm);
 }
 
 osg::BoundingBox
@@ -836,6 +1108,11 @@ ChonkDrawable::computeBoundingBox() const
     
     osg::BoundingBox result;
 
+    for (auto& child : _children)
+    {
+        result.expandBy(child->getBound());
+    }
+
     for(auto& batch : _batches)
     {
         auto& chonk = batch.first;   
@@ -843,24 +1120,24 @@ ChonkDrawable::computeBoundingBox() const
         auto& box = chonk->getBound();
         if (box.valid())
         {
-            float r = box.radius();
             auto& instances = batch.second;
-
             for (auto& instance : instances)
             {
-                osg::Vec3f scale = instance.xform.getScale();
-                float scalar_scale = std::max(scale.x(), std::max(scale.y(), scale.z()));
-                float sr = r * scalar_scale;
-                osg::Vec3f c = box.center() * instance.xform;
-                osg::BoundingBox xbox(
-                    c.x() - sr, c.y() - sr, c.z() - sr,
-                    c.x() + sr, c.y() + sr, c.z() + sr);
-                result.expandBy(xbox);
+                for (unsigned i = 0; i < 8; ++i)
+                {
+                    result.expandBy(box.corner(i) * instance.xform);
+                }
             }
         }
     }
 
     return result;
+}
+
+osg::BoundingSphere
+ChonkDrawable::computeBound() const
+{
+    return osg::BoundingSphere(computeBoundingBox());
 }
 
 void
@@ -940,24 +1217,29 @@ ChonkDrawable::GCState::initialize(osg::State& state)
     osg::setGLExtensionFuncPtr(gl_VertexAttribLFormat, "glVertexAttribLFormatNV");
 
     // DrawElementsCommand buffer:
-    _commandBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable/Cmd");
+    _commandBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable");
 
     // Per-culling instances:
-    _instanceInputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable/Input");
+    _instanceInputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable");
 
     if (_cull)
     {
         // Culled instances (GPU only)
-        _instanceOutputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable/Output");
+        _instanceOutputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable");
 
         // Chonk data
-        _chonkBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable/Chonk");
+        _chonkBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable");
     }
 
     // Multidraw command:
     osg::setGLExtensionFuncPtr(
         _glMultiDrawElementsIndirectBindlessNV,
         "glMultiDrawElementsIndirectBindlessNV");
+    OE_HARD_ASSERT(_glMultiDrawElementsIndirectBindlessNV != nullptr);
+
+    void(GL_APIENTRY * glEnableClientState_)(GLenum);
+    osg::setGLExtensionFuncPtr(glEnableClientState_, "glEnableClientState");
+    OE_HARD_ASSERT(glEnableClientState_ != nullptr);
 
     // VAO:
     _vao = GLVAO::create(state, "ChonkDrawable");
@@ -966,8 +1248,8 @@ ChonkDrawable::GCState::initialize(osg::State& state)
     _vao->bind();
 
     // required in order to use BindlessNV extension
-    glEnableClientState(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
-    glEnableClientState(GL_ELEMENT_ARRAY_UNIFIED_NV);
+    glEnableClientState_(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
+    glEnableClientState_(GL_ELEMENT_ARRAY_UNIFIED_NV);
 
     const VADef formats[7] = {
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, position)},
@@ -1018,38 +1300,38 @@ ChonkDrawable::GCState::update(
     _commands.clear();
 
     // record for each variant (LOD) of each chonk
-    _chonk_variants.clear();
+    _chonk_lods.clear();
 
     // build a LUT of all instances by (gl_InstanceID + gl_BaseInstance).
     _all_instances.clear();
 
-    std::size_t max_variant_count = 0;
+    std::size_t max_lod_count = 0;
 
     for (auto& batch : batches)
     {
         auto& chonk = batch.first;
         auto& instances = batch.second;
 
-        unsigned first_variant_cmd_index = _commands.size();
+        unsigned first_lod_cmd_index = _commands.size();
 
         // For each chonk variant, set up an instanced draw command:
-        const Chonk::DrawCommands& variantCommands = chonk->getOrCreateCommands(state);
+        const Chonk::DrawCommands& lod_commands = chonk->getOrCreateCommands(state);
 
-        for(unsigned i=0; i<variantCommands.size(); ++i)
+        for(unsigned i=0; i< lod_commands.size(); ++i)
         {
-            _commands.emplace_back(variantCommands[i]);
+            _commands.emplace_back(lod_commands[i]);
 
             if (_cull)
             {
                 // record the bounding box of this chonk:
                 auto& bs = chonk->getBound();
-                ChonkVariant v;
+                ChonkLOD v;
                 v.center = bs.center();
                 v.radius = bs.radius();
-                v.min_pixel_size = chonk->_variants[i].minPixelSize;
-                v.max_pixel_size = chonk->_variants[i].maxPixelSize;
-                v.num_variants = chonk->_variants.size();
-                _chonk_variants.push_back(std::move(v));
+                v.far_pixel_scale = chonk->_lods[i].far_pixel_scale;
+                v.near_pixel_scale = chonk->_lods[i].near_pixel_scale;
+                v.num_lods = chonk->_lods.size();
+                _chonk_lods.push_back(std::move(v));
             }
         }
 
@@ -1059,16 +1341,16 @@ ChonkDrawable::GCState::update(
         for (auto& instance : instances)
         {
             _all_instances.push_back(instance);
-            _all_instances.back().first_variant_cmd_index = first_variant_cmd_index;
+            _all_instances.back().first_lod_cmd_index = first_lod_cmd_index;
         }
 
-        max_variant_count = std::max(max_variant_count, variantCommands.size());
+        max_lod_count = std::max(max_lod_count, lod_commands.size());
     }
 
     // set globals
-    for (auto& cv : _chonk_variants)
+    for (auto& lod : _chonk_lods)
     {
-        cv.total_num_commands = _commands.size();
+        lod.total_num_commands = _commands.size();
     }
 
     // Send to the GPU:
@@ -1077,7 +1359,7 @@ ChonkDrawable::GCState::update(
 
     if (_cull)
     {
-        _chonkBuf->uploadData(_chonk_variants);
+        _chonkBuf->uploadData(_chonk_lods);
         
         // just reserve space if necessary.
         // this is a NOP if the buffer is already sized properly
@@ -1085,7 +1367,7 @@ ChonkDrawable::GCState::update(
     }
 
     _numInstances = _all_instances.size();
-    _maxNumVariants = max_variant_count;
+    _maxNumLODs = max_lod_count;
 
     _dirty = false;
 }
@@ -1128,12 +1410,12 @@ ChonkDrawable::GCState::cull(osg::State& state)
 
     // cull:
     ext->glUniform1i(ps._passUL, 0);
-    ext->glDispatchCompute(_numInstances, _maxNumVariants, 1);
+    ext->glDispatchCompute(_numInstances, _maxNumLODs, 1);
 
     // compact:
     ext->glUniform1i(ps._passUL, 1);
     ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-    ext->glDispatchCompute(_numInstances, _maxNumVariants, 1);
+    ext->glDispatchCompute(_numInstances, _maxNumLODs, 1);
 }
 
 void
@@ -1152,9 +1434,13 @@ ChonkDrawable::GCState::draw(osg::State& state)
     else
         _instanceInputBuf->bindBufferBase(0);
 
+    GLenum elementType = sizeof(Chonk::element_t) == sizeof(GLushort) ?
+        GL_UNSIGNED_SHORT :
+        GL_UNSIGNED_INT;
+
     _glMultiDrawElementsIndirectBindlessNV(
         GL_TRIANGLES,
-        GL_UNSIGNED_SHORT,
+        elementType,
         (const GLvoid*)0,
         _commands.size(),
         sizeof(Chonk::DrawCommand),
@@ -1171,4 +1457,136 @@ ChonkDrawable::GCState::release()
     _chonkBuf = nullptr;
     _commands.clear();
     _dirty = true;
+}
+
+ChonkRenderBin::ChonkRenderBin() :
+    osgUtil::RenderBin()
+{
+    setName("ChonkBin");
+
+    _cullProgram = new osg::Program();
+    _cullProgram->addShader(new osg::Shader(
+        osg::Shader::COMPUTE,
+        s_chonk_cull_compute_shader));
+
+    _cullSS = new osg::StateSet();
+    _cullSS->setAttribute(_cullProgram);
+
+    _stateset = new osg::StateSet();
+    ChonkDrawable::installDefaultShader(_stateset.get());
+}
+
+ChonkRenderBin::ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op) :
+    osgUtil::RenderBin(rhs, op),
+    _cullSS(rhs._cullSS),
+    _cullProgram(rhs._cullProgram)
+{
+    //nop
+}
+
+void
+ChonkRenderBin::robert(
+    osg::State& state,
+    osgUtil::RenderLeaf* leaf,
+    osgUtil::RenderLeaf*& previous) const
+{
+    // mysterious state-fu from osgUtil::RenderLeaf
+    if (previous)
+    {
+        osgUtil::StateGraph* prev_rg = previous->_parent;
+        osgUtil::StateGraph* prev_rg_parent = prev_rg->_parent;
+        osgUtil::StateGraph* rg = leaf->_parent;
+        if (prev_rg_parent != rg->_parent)
+        {
+            osgUtil::StateGraph::moveStateGraph(state, prev_rg_parent, rg->_parent);
+            state.apply(rg->getStateSet());
+
+        }
+        else if (rg != prev_rg)
+        {
+            state.apply(rg->getStateSet());
+        }
+    }
+    else
+    {
+        osgUtil::StateGraph::moveStateGraph(state, nullptr, leaf->_parent->_parent);
+        state.apply(_parent->getStateSet());
+    }
+
+    previous = leaf;
+}
+
+void
+ChonkRenderBin::drawImplementation(
+    osg::RenderInfo& ri,
+    osgUtil::RenderLeaf*& previous)
+{
+    OE_GL_ZONE_NAMED("ChonkRenderBin");
+
+    osg::State& state = *ri.getState();    
+    
+    // apply this bin's stateset....somewhere
+    unsigned numToPop = (previous ? osgUtil::StateGraph::numToPop(previous->_parent) : 0);
+    if (numToPop > 1) --numToPop;
+    unsigned insertPos = state.getStateSetStackSize() - numToPop;
+    if (_stateset.valid())
+    {
+        state.insertStateSet(insertPos, _stateset.get());
+    }
+
+    // copy everything to one level:
+    copyLeavesFromStateGraphListToRenderLeafList();
+
+    // apply the cull program:
+    state.apply(_cullSS.get());
+
+    // draw top-level render leaves
+    {
+        OE_GL_ZONE_NAMED("cull");
+        for (auto& leaf : _renderLeafList)
+        {
+            auto d = static_cast<const ChonkDrawable*>(leaf->getDrawable());
+
+            state.applyModelViewMatrix(leaf->_modelview);
+            state.applyProjectionMatrix(leaf->_projection);
+
+            d->update_and_cull_batches(state);
+        }
+    }
+
+    // render all leaves
+    {
+        OE_GL_ZONE_NAMED("draw");
+
+        GLVAO::Ptr vao;
+        for (auto& leaf : _renderLeafList)
+        {
+            auto d = static_cast<const ChonkDrawable*>(leaf->getDrawable());
+
+            if (!vao)
+            {
+                vao = d->_gs[state.getContextID()]._vao;
+
+                OE_HARD_ASSERT(vao != nullptr);
+
+                vao->bind();
+                vao->ext()->glMemoryBarrier(
+                    GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
+            }
+
+            state.applyModelViewMatrix(leaf->_modelview);
+            state.applyProjectionMatrix(leaf->_projection);
+
+            robert(state, leaf, previous);
+
+            d->draw_batches(state);
+        }
+
+        if (vao) vao->unbind();
+    }
+
+    if (_stateset.valid())
+    {
+        state.removeStateSet(insertPos);
+    }
 }

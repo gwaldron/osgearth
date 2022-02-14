@@ -124,9 +124,9 @@ ElevationPool::getElevationRevision(const Map* map) const
     // layers can "bump" their revisions (dynamic layers)
     int revision = map ? static_cast<int>(map->getDataModelRevision()) : 0;
 
-    for(auto i : _elevationLayers)
-        if (i->getEnabled())
-            revision += i->getRevision();
+    for(auto layer : _elevationLayers)
+        if (layer->isOpen())
+            revision += layer->getRevision();
     return revision;
 }
 

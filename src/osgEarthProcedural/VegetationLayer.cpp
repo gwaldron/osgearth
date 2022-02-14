@@ -34,6 +34,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Metrics>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Chonk>
 #include <osgEarth/rtree.h>
 
 #include <osg/BlendFunc>
@@ -140,18 +141,13 @@ namespace
         "undergrowth"
     };
 
-    const char* vs_model = R"(
+    const char* vegetation_shaders = R"(
 
 #version 460
 #extension GL_ARB_gpu_shader_int64 : enable
-#pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
-#pragma import_defines(OE_IS_SHADOW_CAMERA)
+#pragma vp_function oe_vegetation_vs_model, vertex_model
 
-layout(binding=1, std430) buffer TextureArena {
-    uint64_t textures[];
-};
-struct Instance
-{
+struct Instance {
     mat4 xform;
     vec2 local_uv;
     float fade;
@@ -162,56 +158,25 @@ layout(binding=0, std430) buffer Instances {
     Instance instances[];
 };
 
-layout(location=0) in vec3 position;
-layout(location=1) in vec3 normal;
-layout(location=2) in vec4 color;
-layout(location=3) in vec2 uv;
-layout(location=4) in vec3 flex;
-layout(location=5) in int albedo; // todo: material LUT index
-layout(location=6) in int normalmap; // todo: material LUT index
-
-// out to fragment shader
-out vec3 vp_Normal;
-out vec4 vp_Color;
-out vec2 oe_tex_uv;
-out float oe_fade;
-flat out uint64_t oe_albedo_handle;
-flat out uint64_t oe_normalmap_handle;
-
 // stage globals
 mat3 vec3xform;
 
-void vegetation_vs_model(inout vec4 vertex)
+void oe_vegetation_vs_model(inout vec4 vertex)
 {
     int i = gl_BaseInstance + gl_InstanceID;
-    mat4 xform = instances[i].xform;
-    vertex = xform * vec4(position, 1);
-    vp_Color = color;
-    vec3xform = mat3(xform);
-    vp_Normal = vec3xform * normal;
-    oe_tex_uv = uv;
-    oe_albedo_handle = albedo >= 0 ? textures[albedo] : 0;
-
-#ifndef OE_IS_SHADOW_CAMERA
-    oe_normalmap_handle = normalmap >= 0 ? textures[normalmap] : 0;
-    oe_fade = instances[i].fade;
-#else
-    oe_normalmap_handle = 0;
-    oe_fade = 1.0;
-#endif
+    vec3xform = mat3(instances[i].xform);
 };
 
-    )";
 
-    const char* vs_view = R"(
+[break]
 
 #version 460
 #extension GL_ARB_gpu_shader_int64 : enable
+#pragma vp_function oe_vegetation_vs_view, vertex_view
 #pragma import_defines(OE_WIND_TEX)
 #pragma import_defines(OE_WIND_TEX_MATRIX)
 
-struct Instance
-{
+struct Instance {
     mat4 xform;
     vec2 local_uv;
     float fade;
@@ -225,10 +190,8 @@ layout(binding=0, std430) buffer Instances {
 layout(location=4) in vec3 flex;
 
 // outputs
-out vec3 vp_Normal;
-out vec3 oe_tangent;
 out vec3 oe_pos3_view;
-flat out uint64_t oe_normalmap_handle;
+flat out uint64_t oe_normal_tex;
 
 // stage globals
 mat3 vec3xform; // set in model function
@@ -243,10 +206,11 @@ uniform float wind_power = 1.0;
 
 #define remap(X, LO, HI) (LO + X * (HI - LO))
 
-void apply_wind(inout vec4 vertex, in vec2 local_uv)
+void oe_apply_wind(inout vec4 vertex, in vec2 local_uv)
 {
     float flexibility = length(flex);
-    if (flexibility > 0.0) {
+    if (flexibility > 0.0)
+    {
         vec4 wind = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex));
         vec3 wind_dir = normalize(wind.rgb * 2 - 1); // view space
         const float rate = 0.01;
@@ -262,78 +226,34 @@ void apply_wind(inout vec4 vertex, in vec2 local_uv)
 }
 #endif
 
-void vegetation_vs_view(inout vec4 vertex)
+void oe_vegetation_vs_view(inout vec4 vertex)
 {
     oe_pos3_view = vertex.xyz;
 
-    if (oe_normalmap_handle > 0)
-    {
-        vec3 ZAXIS = gl_NormalMatrix * vec3(0,0,1);
-        if (dot(ZAXIS, vp_Normal) > 0.95)
-            oe_tangent = gl_NormalMatrix * (vec3xform * vec3(1,0,0));
-        else
-            oe_tangent = cross(ZAXIS, vp_Normal);
-    }
-
 #ifdef OE_WIND_TEX
     int i = gl_BaseInstance + gl_InstanceID;
-    apply_wind(vertex, instances[i].local_uv);
+    oe_apply_wind(vertex, instances[i].local_uv);
 #endif
 }
 
-)";
 
-    const char* fs = R"(
+[break]
 
 #version 430
 #extension GL_ARB_gpu_shader_int64 : enable
+#pragma vp_function oe_vegetation_fs, fragment
 #pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
+#pragma import_defines(OE_COMPRESSED_NORMAL)
 
 in vec2 oe_tex_uv;
 in vec3 oe_pos3_view;
-in float oe_fade;
-in vec3 vp_Normal;
-in vec3 oe_tangent;
-flat in uint64_t oe_albedo_handle;
-flat in uint64_t oe_normalmap_handle;
+flat in uint64_t oe_albedo_tex;
 
 uniform float shmoo = 0.5;
 
-void vegetation_fs(inout vec4 color)
+void oe_vegetation_fs(inout vec4 color)
 {
-    if (oe_albedo_handle > 0)
-    {
-        vec4 texel = texture(sampler2D(oe_albedo_handle), oe_tex_uv);
-        color *= texel;
-    }
-
-    if (oe_normalmap_handle > 0)
-    {
-        vec4 n = texture(sampler2D(oe_normalmap_handle), oe_tex_uv);
-
-#ifdef COMPRESSED_NORMAL
-        n.xyz = n.xyz*2.0 - 1.0;
-        n.z = 1.0 - abs(n.x) - abs(n.y);
-        float t = clamp(-n.z, 0, 1);
-        n.x += (n.x > 0) ? -t : t;
-        n.y += (n.y > 0) ? -t : t;
-#else
-        n.xyz = normalize(n.xyz*2.0-1.0);
-#endif
-
-        // construct the TBN, reflecting the normal on back-facing polys
-        mat3 tbn = mat3(
-            normalize(oe_tangent),
-            normalize(cross(vp_Normal, oe_tangent)),
-            normalize(gl_FrontFacing ? vp_Normal : -vp_Normal));
-        
-        vp_Normal = normalize(tbn * n.xyz);
-    }
-
-    // cull fading for LOD transitions:
-    color.a *= oe_fade;
-
 #ifdef OE_IS_SHADOW_CAMERA
     if (color.a < 0.15)
         discard;
@@ -343,7 +263,7 @@ void vegetation_fs(inout vec4 color)
     vec3 face_normal = normalize(cross(dFdx(oe_pos3_view), dFdy(oe_pos3_view)));
     const float edge_factor = 0.8;
     float d = clamp(edge_factor*abs(dot(face_normal, normalize(oe_pos3_view))),0.0,1.0);
-    color.a *= d;
+    //color.a *= d;
 
 #ifdef OE_USE_ALPHA_TO_COVERAGE
     // mitigate the screen-door effect of A2C in the distance
@@ -355,9 +275,9 @@ void vegetation_fs(inout vec4 color)
     // adjust the alpha based on the calculated mipmap level:
     // better, but a bit more expensive than the above method? Benchmark?
     // https://tinyurl.com/fhu4zdxz
-    if (oe_albedo_handle > 0UL)
+    if (oe_albedo_tex > 0UL)
     {
-        ivec2 tsize = textureSize(sampler2D(oe_albedo_handle), 0);
+        ivec2 tsize = textureSize(sampler2D(oe_albedo_tex), 0);
         vec2 cf = vec2(float(tsize.x)*oe_tex_uv.s, float(tsize.y)*oe_tex_uv.t);
         vec2 dx_vtc = dFdx(cf);
         vec2 dy_vtc = dFdy(cf);
@@ -389,7 +309,6 @@ VegetationLayer::Options::getConfig() const
 
     conf.set("color_min_saturation", colorMinSaturation());
     conf.set("alpha_to_coverage", alphaToCoverage());
-    conf.set("max_sse", maxSSE());
 
     //TODO: groups
 
@@ -489,23 +408,6 @@ VegetationLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 
 //........................................................................
 
-void VegetationLayer::setMaxSSE(float value)
-{
-    if (value != options().maxSSE().get())
-    {
-        options().maxSSE() = value;
-        if (_sseU.valid())
-            _sseU->set(value);
-    }
-}
-
-float VegetationLayer::getMaxSSE() const
-{
-    return options().maxSSE().get();
-}
-
-//........................................................................
-
 void
 VegetationLayer::init()
 {
@@ -523,9 +425,10 @@ Status
 VegetationLayer::openImplementation()
 {
     // GL version requirement
-    if (Registry::capabilities().getGLSLVersion() < 4.6f)
+    if (Capabilities::get().getGLSLVersion() < 4.6f ||
+        Capabilities::get().supportsUnifiedNV() == false)
     {
-        return Status(Status::ResourceUnavailable, "Requires GL 4.6+");
+        return Status(Status::ResourceUnavailable, "Requires NVIDIA GL 4.6");
     }
 
     // Clamp the layer's max visible range the maximum range of the farthest
@@ -540,6 +443,8 @@ VegetationLayer::openImplementation()
     max_range = std::min(max_range, getMaxVisibleRange());
     setMaxVisibleRange(max_range);
 
+    _lastVisit.setFrameNumber(~0);
+
     return PatchLayer::openImplementation();
 }
 
@@ -547,6 +452,8 @@ Status
 VegetationLayer::closeImplementation()
 {
     releaseGLObjects(nullptr);
+    reset();
+
     return PatchLayer::closeImplementation();
 }
 
@@ -566,8 +473,8 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 
             reset();
 
-            if (getBiomeLayer())
-                getBiomeLayer()->getBiomeManager().reset();
+            //if (getBiomeLayer())
+            //    getBiomeLayer()->getBiomeManager().reset();
 
             OE_INFO << LC << "timed out for inactivity." << std::endl;
         }
@@ -581,6 +488,13 @@ VegetationLayer::update(osg::NodeVisitor& nv)
             _assets = std::move(newAssets);
         }
     }
+}
+
+void
+VegetationLayer::dirty()
+{
+    ScopedWriteLock lock(_traversal_mutex);
+    _cameraState.clear();
 }
 
 void
@@ -769,10 +683,6 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
 {
     PatchLayer::prepareForRendering(engine);
 
-    // Holds all vegetation textures:
-    _textures = new TextureArena();
-    _textures->setBindingPoint(1);
-
     // make a 4-channel noise texture to use
     NoiseTextureFactory noise;
     _noiseTex = noise.create(256u, 4u);
@@ -857,15 +767,17 @@ VegetationLayer::buildStateSets()
         configureGrass();
 
     osg::StateSet* ss = getOrCreateStateSet();
+    ss->setName(typeid(*this).name());
 
     // Install the texture arena:
-    ss->setAttribute(_textures, 1);
+    TextureArena* textures = getBiomeLayer()->getBiomeManager().getTextures();
+    textures->setBindingPoint(1);
+    ss->setAttribute(textures);
 
+    // Custom shaders:
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
     vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
-    vp->setFunction("vegetation_vs_model", vs_model, ShaderComp::LOCATION_VERTEX_MODEL);
-    vp->setFunction("vegetation_vs_view", vs_view, ShaderComp::LOCATION_VERTEX_VIEW);
-    vp->setFunction("vegetation_fs", fs, ShaderComp::LOCATION_FRAGMENT_COLORING);
+    ShaderLoader::load(vp, vegetation_shaders);
 
     // bind the noise sampler.
     ss->setTextureAttribute(_noiseBinding.unit(), _noiseTex.get(), 1);
@@ -876,8 +788,8 @@ VegetationLayer::buildStateSets()
     {
         ss->setDefine("OE_USE_ALPHA_TO_COVERAGE");
         ss->setMode(GL_MULTISAMPLE, 1);
-        ss->setMode(GL_BLEND, 0);
         ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+        ss->setAttributeAndModes(new osg::BlendFunc(), 0 | osg::StateAttribute::OVERRIDE);
     }
 }
 
@@ -1120,10 +1032,7 @@ VegetationLayer::checkForNewAssets()
         osg::ref_ptr< VegetationLayer> layer;
         if (layer_weakptr.lock(layer))
         {
-            ChonkFactory factory(layer->_textures.get());
-
             BiomeManager::ResidentBiomes biomes = layer->getBiomeLayer()->getBiomeManager().getResidentBiomes(
-                factory,
                 layer->getReadOptions());
 
             // re-organize the data into a form we can readily use.
@@ -1511,19 +1420,26 @@ VegetationLayer::cull(
         return;
 
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
+
+    // protect the traversal data from releaseGLObject et al.
+    _traversal_mutex.read_lock();
     
-    // todo: mutex
+    // update the framestamp for auto-timeout support
     _lastVisit = *cv->getFrameStamp();
 
-    CameraState& cs = _cameraState[cv->getCurrentCamera()];
+    // exclusive lock on the camera state
+    _cameraState_mutex.lock();
+    CameraState::Ptr& cs = _cameraState[cv->getCurrentCamera()];
+    if (cs == nullptr)
+        cs = std::make_shared<CameraState>();
+    _cameraState_mutex.unlock();
 
     CameraState::TileCache active_tiles;
-    ChonkDrawable::Vector tiles_to_draw;
 
     for (auto& batch_entry : batch.tiles())
     {
         const TileKey& key = batch_entry->getKey();
-        Tile& tile = cs._tiles[key];
+        Tile& tile = cs->_tiles[key];
 
         AssetGroup::Type group = getGroupAtLOD(key.getLOD());
         OE_HARD_ASSERT(group != AssetGroup::UNDEFINED);
@@ -1577,60 +1493,76 @@ VegetationLayer::cull(
             {
                 tile._revision = -1;
             }
+            else
+            {
+                tile._matrix = new osg::RefMatrix();
+            }
         }
 
         if (tile._drawable.valid())
         {
-            // update the MVM for this frame:
-            tile._drawable->setModelViewMatrix(batch_entry->getModelViewMatrix());
+            tile._matrix->set(batch_entry->getModelViewMatrix());
 
-            tiles_to_draw.push_back(tile._drawable.get());
+            cv->pushModelViewMatrix(tile._matrix.get(), osg::Transform::ABSOLUTE_RF);
+           
+            tile._drawable->accept(nv);
+  
+            cv->popModelViewMatrix();
         }
 
         active_tiles[key] = tile;
-
-        // clean up the jobs cache 
-        // TODO: improve?
-        ScopedMutexLock lock(_tileJobs_mutex);
-        for (auto it = _tileJobs.begin(); it != _tileJobs.end(); ) {
-            if (it->second.refs() == 1)
-                it = _tileJobs.erase(it);
-            else
-                ++it;
-        }
-    }
-
-    if (!tiles_to_draw.empty())
-    {
-        // intiailize the super-drawable:
-        if (cs._superDrawable == nullptr)
-        {
-            cs._superDrawable = new ChonkDrawable();
-            cs._superDrawable->setName("VegetationNV");
-            cs._superDrawable->setDrawStateSet(getStateSet());
-        }
-
-        // assign the new set of tiles:
-        cs._superDrawable->setChildren(tiles_to_draw);
-
-        // finally, traverse it so OSG will draw it.
-        cs._superDrawable->osg::Drawable::accept(nv);
     }
 
     // Purge old tiles.
-    cs._tiles.swap(active_tiles);
+    cs->_tiles.swap(active_tiles);
+
+    _traversal_mutex.read_unlock();
+
+    // clean up the jobs cache 
+    _tileJobs_mutex.lock();
+    for (auto it = _tileJobs.begin(); it != _tileJobs.end(); ) {
+        if (it->second.refs() == 1)
+            it = _tileJobs.erase(it);
+        else
+            ++it;
+    }
+    _tileJobs_mutex.unlock();
 }
 
 void
 VegetationLayer::resizeGLObjectBuffers(unsigned maxSize)
 {
-    //todo
     PatchLayer::resizeGLObjectBuffers(maxSize);
+
+    ScopedWriteLock lock(_traversal_mutex);
+    for (auto& cs : _cameraState)
+    {
+        for (auto& tile : cs.second->_tiles)
+        {
+            if (tile.second._drawable.valid())
+            {
+                tile.second._drawable->resizeGLObjectBuffers(maxSize);
+            }
+        }
+        cs.second->_tiles.clear();
+    }
 }
 
 void
 VegetationLayer::releaseGLObjects(osg::State* state) const
 {
-    //todo
     PatchLayer::releaseGLObjects(state);
+
+    ScopedWriteLock lock(_traversal_mutex);
+    for (auto& cs : _cameraState)
+    {
+        for (auto& tile : cs.second->_tiles)
+        {
+            if (tile.second._drawable.valid())
+            {
+                tile.second._drawable->releaseGLObjects(state);
+            }
+        }
+        cs.second->_tiles.clear();
+    }
 }

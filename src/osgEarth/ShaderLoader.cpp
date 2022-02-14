@@ -95,8 +95,14 @@ namespace
                     f.entryPoint = tokens[0];
                 if (tokens.size() > 1)
                     parseLocation(tokens[1], f.location);
-                if (tokens.size() > 2)
-                    f.order = atof(tokens[2].c_str());
+                if (tokens.size() > 2) {
+                    if (tokens[2] == "first")
+                        f.order = -FLT_MAX;
+                    else if (tokens[2] == "last")
+                        f.order = FLT_MAX;
+                    else
+                        f.order = atof(tokens[2].c_str());
+                }
             }
         }
 

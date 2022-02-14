@@ -216,8 +216,9 @@ SDFGenerator::createNearestNeighborField(
         }
     );
 
-    if (_useGPU && GPUJobArena::arena().getGraphicsContext().valid())
+    if (_useGPU)
     {
+        // not good, too many barriers
         compute_nnf_on_gpu(nnimage);
     }
     else

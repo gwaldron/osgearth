@@ -327,26 +327,6 @@ main( int argc, char** argv )
 
 //------------------------------------------------------------------------
 
-struct EnableDisableHandler : public ControlEventHandler
-{
-    EnableDisableHandler( Layer* layer ) : _layer(layer) { }
-    void onClick( Control* control )
-    {
-        if (_layer->isOpen())
-            _layer->close();
-        else
-        {
-            if (_layer->getEnabled() == false)
-                _layer->setEnabled(true);
-
-            _layer->open();
-        }
-
-        updateControlPanel();
-    }
-    Layer* _layer;
-};
-
 struct RefreshHandler : public ControlEventHandler
 {
     RefreshHandler(const Layer* layer) : _layer(layer) { }
@@ -519,7 +499,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
 
     // a checkbox to toggle the layer's visibility:
-    if (visibleLayer && layer->getEnabled() && !(imageLayer && imageLayer->isCoverage()))
+    if (visibleLayer && layer->isOpen() && !(imageLayer && imageLayer->isCoverage()))
     {
         CheckBoxControl* visibility = new CheckBoxControl( visibleLayer->getVisible() );
         visibility->addEventHandler( new ToggleLayerVisibility(visibleLayer) );
@@ -528,7 +508,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     gridCol++;
 
     // the layer name
-    if (layer->getEnabled() && (layer->getExtent().isValid() || layer->getNode()))
+    if (layer->isOpen() && (layer->getExtent().isValid() || layer->getNode()))
     {
         ButtonControl* name = new ButtonControl(layer->getName());
         name->clearBackColor();
@@ -540,7 +520,7 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     {
         LabelControl* name = new LabelControl( layer->getName() );
         name->setPadding(4);
-        if (!layer->getEnabled())
+        if (!layer->isOpen())
             name->setForeColor(osg::Vec4f(1,1,1,0.35));
         grid->setControl( gridCol, gridRow, name );
     }
@@ -556,12 +536,12 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     // status indicator
     LabelControl* statusLabel =
         layer->getStatus().isError() ? new LabelControl("[error]", osg::Vec4(1,0,0,1)) :
-        !layer->getEnabled()?          new LabelControl("[disabled]", osg::Vec4(1,1,1,0.35)) :
+        !layer->isOpen()?              new LabelControl("[closed]", osg::Vec4(1,1,1,0.35)) :
                                        new LabelControl("[ok]", osg::Vec4(0,1,0,1)) ;
     grid->setControl( gridCol, gridRow, statusLabel );
     gridCol++;
 
-    if (visibleLayer && !elevationLayer && visibleLayer->getEnabled())
+    if (visibleLayer && !elevationLayer && visibleLayer->isOpen())
     {
         // an opacity slider
         HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, visibleLayer->getOpacity() );
@@ -600,15 +580,6 @@ addLayerItem( Grid* grid, int layerIndex, int numLayers, Layer* layer, bool isAc
     addRemove->setActiveColor( .8,0,0,1 );
     addRemove->addEventHandler( new RemoveLayerHandler(layer) );
     grid->setControl( gridCol, gridRow, addRemove );
-    gridCol++;
-
-    // enable/disable button
-    LabelControl* enableDisable = new LabelControl(layer->isOpen()? "CLOSE" : "OPEN", 14);
-    enableDisable->setHorizAlign( Control::ALIGN_CENTER );
-    enableDisable->setBackColor( .4,.4,.4,1 );
-    enableDisable->setActiveColor( .8,0,0,1 );
-    enableDisable->addEventHandler( new EnableDisableHandler(layer) );
-    grid->setControl( gridCol, gridRow, enableDisable );
     gridCol++;
 
     // refresh button (for image layers)

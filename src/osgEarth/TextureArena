@@ -56,6 +56,12 @@ namespace osgEarth
             return Ptr(new Texture());
         }
 
+        const std::string getFilename() const {
+            return _image.valid() && !_image->getFileName().empty() ? _image->getFileName() :
+                _uri.isSet() ? _uri->full() :
+                "";
+        }
+
         //! Create from an existing GLTexture
         static Ptr create(GLTexture::Ptr, osg::State&);
 
@@ -107,6 +113,7 @@ namespace osgEarth
         //! You can enable this if you want to populate the arena with
         //! textures that will be released when their owners desctruct (for example).
         void setAutoRelease(bool value);
+        bool getAutoRelease() const { return _autoRelease; }
 
         //! Sets the GLSL binding point for the arena. Default is 5.
         void setBindingPoint(unsigned value);
@@ -119,6 +126,9 @@ namespace osgEarth
         //! Find and return the index of this texture in the arena,
         //! or return -1 if not found.
         int find(Texture::Ptr tex) const;
+
+        //! Find the texture at index i.
+        Texture::Ptr find(unsigned index) const;
 
         //! Makes a texture fully available on the GPU.
         void activate(Texture::Ptr tex);
@@ -147,10 +157,11 @@ namespace osgEarth
         TextureArena(const TextureArena&, const osg::CopyOp&) { } 
 
         // Per-GC data
-        struct GCState {
+        struct GCState
+        {
             GCState() : _inUse(false) { }
             bool _inUse;
-            TextureVector _toAdd;
+            std::vector<int> _toCompile;
             TextureVector _toActivate;
             TextureVector _toDeactivate;
             TextureVector _toRemove;
@@ -167,6 +178,8 @@ namespace osgEarth
         bool _useUBO;
 
         mutable Mutex _m;
+
+        int find_no_lock(Texture::Ptr tex) const;
     };
 }
 

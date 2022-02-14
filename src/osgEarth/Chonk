@@ -25,6 +25,8 @@
 #include <osgEarth/Common>
 #include <osgEarth/GLUtils>
 #include <osgEarth/TextureArena>
+#include <osgUtil/RenderLeaf>
+#include <osgUtil/RenderBin>
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
@@ -41,6 +43,12 @@ namespace osgEarth
         int albedo;
         int normal;
 
+        // store refs to the original textures when the
+        // factory objects's texture arena is using auto-release.
+        // otherwise they are null.
+        Texture::Ptr albedo_tex;
+        Texture::Ptr normal_tex;
+
     private:
         ChonkMaterial() : albedo(-1), normal(-1) { }
     };
@@ -49,23 +57,24 @@ namespace osgEarth
 
     /**
      * A bindless rendering unit comprised of one VBO and one EBO.
-     * A single Chonk usually represents one drawable "Object" in 
-     * the scene. It can include multiple "variants" which are
-     * typically used as LODs.
+     * A single Chonk usually represents one drawable "Object" in
+     * the scene. It can include multiple LODs.
      */
     class OSGEARTH_EXPORT Chonk
     {
     public:
+        using element_t = GLuint;
+
         //! Adds a node.
         bool add(
             osg::Node*,
             ChonkFactory& factory);
 
-        //! Adds a node with pixel size limits.
+        //! Adds a node with screen-space-error limits.
         bool add(
             osg::Node* node,
-            float min_pixel_size,
-            float max_pixel_size,
+            float far_pixel_scale,
+            float near_pixel_scale,
             ChonkFactory& factory);
 
         //! Local bounding box of this Chonk.
@@ -89,12 +98,12 @@ namespace osgEarth
         };
 
         //! Geometry variant for a given pixel size range
-        struct Variant
+        struct LOD
         {
             unsigned offset;
             std::size_t length;
-            float minPixelSize;
-            float maxPixelSize;
+            float far_pixel_scale;
+            float near_pixel_scale;
         };
 
     public:
@@ -103,8 +112,8 @@ namespace osgEarth
 
         std::vector<ChonkMaterial::Ptr> _materials; // todo: upgrade to material index
         std::vector<VertexGPU> _vbo_store;
-        std::vector<GLushort> _ebo_store;
-        std::vector<Variant> _variants;
+        std::vector<element_t> _ebo_store;
+        std::vector<LOD> _lods;
         osg::BoundingBoxf _box;
 
         // Customed draw command
@@ -119,13 +128,14 @@ namespace osgEarth
             DrawCommands commands;
         };
         mutable osg::buffered_object<GCState> _gs;
-        
+
         //! Gets (or creates) a draw command, possibly
         //! resolving texture handles and uploading buffers.
         const DrawCommands& getOrCreateCommands(osg::State&) const;
 
     private:
         Chonk();
+
         friend class ChonkFactory;
         friend class ChonkDrawable;
     };
@@ -155,6 +165,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT ChonkDrawable : public osg::Drawable
     {
     public:
+        META_Node(osgEarth, ChonkDrawable);
+
         using Vector = std::vector<osg::ref_ptr<ChonkDrawable>>;
 
     public:
@@ -192,15 +204,23 @@ namespace osgEarth
         //! into the culling compute shader.
         void setCustomCullingShader(osg::Shader*);
 
+        //! Whether to GPU cull on the per-chonk basis.
+        //! Default is true.
+        void setCullPerChonk(bool value);
+
+        //! Installs a basic chonk-rendering shader on a stateset.
+        static void installDefaultShader(osg::StateSet* ss);
+
     public:
 
         virtual osg::BoundingBox computeBoundingBox() const override;
+        virtual osg::BoundingSphere computeBound() const override;
         virtual void drawImplementation(osg::RenderInfo& ri) const override;
         virtual void resizeGLObjectBuffers(unsigned) override;
         virtual void releaseGLObjects(osg::State*) const override;
 
     protected:
-        virtual ~ChonkDrawable() { }
+        virtual ~ChonkDrawable();
 
         mutable Mutex _m;
 
@@ -210,34 +230,35 @@ namespace osgEarth
             osg::Matrixf xform;  // local xform
             osg::Vec2f uv; // tile-local UV
             float fade;
-            float visibility[4]; // per variant
-            GLuint first_variant_cmd_index;
+            float visibility[4]; // per LOD
+            GLuint first_lod_cmd_index;
         };
         using Instances = std::vector<Instance>;
         using Batches = std::unordered_map<Chonk::Ptr, Instances>;
         Batches _batches;
         Vector _children;
+        bool _cull;
 
         struct GCState
         {
             // GPU variant/lod def. Keep me 16-byte aligned.
-            struct ChonkVariant
+            struct ChonkLOD
             {
                 osg::Vec3f center;
                 GLfloat radius;
-                GLfloat min_pixel_size;
-                GLfloat max_pixel_size;
-                GLuint num_variants;
-                GLuint total_num_commands;
+                GLfloat far_pixel_scale;
+                GLfloat near_pixel_scale;
+                GLuint num_lods; // chonk-global
+                GLuint total_num_commands; // global
             };
 
             // re-usable arrays
             std::vector<Chonk::DrawCommand> _commands;
             std::vector<Instance> _all_instances;
-            std::vector<ChonkVariant> _chonk_variants;
+            std::vector<ChonkLOD> _chonk_lods;
 
             std::size_t _numInstances;
-            std::size_t _maxNumVariants;
+            std::size_t _maxNumLODs;
             osg::GLExtensions* _ext;
             GLBuffer::Ptr _commandBuf;
             GLBuffer::Ptr _instanceInputBuf;
@@ -254,7 +275,7 @@ namespace osgEarth
                 PCPState() : _passUL(-1) { }
             };
             mutable std::unordered_map<const void*, PCPState> _pcps;
-                
+
             GCState() : _dirty(true), _cull(true) { }
             void initialize(osg::State& state);
             void update(const Batches&, osg::State&);
@@ -265,12 +286,10 @@ namespace osgEarth
         mutable osg::buffered_object<GCState> _gs;
         osg::ref_ptr<osg::StateSet> _drawSS;
         osg::ref_ptr<osg::StateSet> _cullSS;
+        osg::ref_ptr<osg::Program> _cullProgram;
         osg::Matrix _mvm;
 
-        void cull_children(osg::State& state) const;
-        void draw_children(GCState& gs, osg::State& state) const;
-
-        void cull_batches(osg::State& state) const;
+        void update_and_cull_batches(osg::State& state) const;
         void draw_batches(osg::State& state) const;
 
 
@@ -283,6 +302,38 @@ namespace osgEarth
         mutable std::vector<osg::Vec3f> _proxy_verts;
         mutable std::vector<GLuint> _proxy_indices;
         void refreshProxy() const;
+        ChonkDrawable(const ChonkDrawable& rhs, const osg::CopyOp&) { }
+
+        friend class ChonkRenderBin;
+    };
+
+    /**
+     * Custom renderbin for rendering ChonkDrawables en masse
+     * Called "ChonkBin"
+     */
+    class OSGEARTH_EXPORT ChonkRenderBin : public osgUtil::RenderBin
+    {
+    public:
+        ChonkRenderBin();
+        ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op);
+
+        void drawImplementation(
+            osg::RenderInfo& renderInfo,
+            osgUtil::RenderLeaf*&) override;
+
+        virtual osg::Object* cloneType() const override { return new ChonkRenderBin(); }
+        virtual osg::Object* clone(const osg::CopyOp& copyop) const override { return new ChonkRenderBin(*this, copyop); } // note only implements a clone of type.
+        virtual bool isSameKindAs(const osg::Object* obj) const override { return dynamic_cast<const ChonkRenderBin*>(obj) != 0L; }
+        virtual const char* libraryName() const override { return "osgEarth"; }
+        virtual const char* className() const override { return "ChonkRenderBin"; }
+
+    private:
+        osg::ref_ptr<osg::Program> _cullProgram;
+        osg::ref_ptr<osg::StateSet> _cullSS;
+        void robert(
+            osg::State& state,
+            osgUtil::RenderLeaf* leaf,
+            osgUtil::RenderLeaf*& previous) const;
     };
 }
 

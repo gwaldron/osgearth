@@ -39,6 +39,7 @@ namespace osgEarth
         public:
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION(bool, removeInterior);
             OE_OPTION(bool, removeExterior);
             OE_OPTION(bool, hasElevation);
@@ -74,6 +75,10 @@ namespace osgEarth
         //! Visibility toggle from VisibleLayer
         virtual void setVisible(bool value) override;
 
+        FeatureFilterChain* getFilters() const {
+            return _filterchain.get();
+        }
+
     protected:
 
         virtual Status openImplementation() override;
@@ -90,6 +95,8 @@ namespace osgEarth
     private:
 
         void create();
+
+        osg::ref_ptr<FeatureFilterChain> _filterchain;
     };
 } // namespace osgEarth
 

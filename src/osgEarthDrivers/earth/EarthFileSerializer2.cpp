@@ -374,7 +374,7 @@ namespace
             const Layer* layer = map->getLayerAt(i);
 
             if (layer->getStatus().isError() &&
-                layer->getEnabled() == true)
+                layer->getOpenAutomatically() == true)
             {
                 OE_WARN << LC << layer->getTypeName() << " \"" << layer->getName() << "\" : " << layer->getStatus().toString() << std::endl;
             }

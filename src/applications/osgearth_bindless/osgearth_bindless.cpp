@@ -207,7 +207,7 @@ int main_NV(int argc, char** argv)
         spacing = std::max(spacing, radius*1.1f);
 
         Chonk::Ptr chonk = Chonk::create();
-        chonk->add(node.get(), 350, FLT_MAX, factory);
+        chonk->add(node.get(), factory);
 
         chonks.push_back(chonk);
     }

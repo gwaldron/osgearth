@@ -70,11 +70,11 @@ namespace osgEarth
             osg::Node*,
             ChonkFactory& factory);
 
-        //! Adds a node with pixel size limits.
+        //! Adds a node with screen-space-error limits.
         bool add(
             osg::Node* node,
-            float min_pixel_size,
-            float max_pixel_size,
+            float far_pixel_scale,
+            float near_pixel_scale,
             ChonkFactory& factory);
 
         //! Local bounding box of this Chonk.
@@ -102,8 +102,8 @@ namespace osgEarth
         {
             unsigned offset;
             std::size_t length;
-            float minPixelSize;
-            float maxPixelSize;
+            float far_pixel_scale;
+            float near_pixel_scale;
         };
 
     public:
@@ -246,8 +246,8 @@ namespace osgEarth
             {
                 osg::Vec3f center;
                 GLfloat radius;
-                GLfloat min_pixel_size;
-                GLfloat max_pixel_size;
+                GLfloat far_pixel_scale;
+                GLfloat near_pixel_scale;
                 GLuint num_lods; // chonk-global
                 GLuint total_num_commands; // global
             };

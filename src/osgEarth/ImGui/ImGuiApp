@@ -40,6 +40,7 @@
 #include "TerrainEditGUI"
 #include "ShaderGUI"
 #include "CameraGUI"
+#include "RenderingGUI"
 
 #ifdef OSGEARTH_HAVE_GEOCODER
 #include "SearchGUI"
@@ -187,6 +188,7 @@ namespace osgEarth
                 _menu["Tools"].push_back(GUIPtr(new TextureInspectorGUI));
                 _menu["Tools"].push_back(GUIPtr(new TerrainEditGUI));
                 _menu["Tools"].push_back(GUIPtr(new ShaderGUI(args)));
+                _menu["Tools"].push_back(GUIPtr(new RenderingGUI()));
 
 #ifdef OSGEARTH_HAVE_GEOCODER
                 _menu["Tools"].push_back(GUIPtr(new SearchGUI));

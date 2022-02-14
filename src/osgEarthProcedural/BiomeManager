@@ -129,23 +129,10 @@ namespace osgEarth
         public:
             BiomeManager();
 
-            //! Tell the manager to increase the usage count of a biome by one.
-            //! If there are no users, the manager will make the biome resident.
-            //! @param biome Biome to activate
-            void ref(const Biome* biome);
-
-            void ref(
-                const Biome* biome, 
-                const TileKey& key,
-                const GeoImage& image);
-
-            //! Tell the manager to decrease the usage count of a biome by one.
-            //! If the user count goes to zero, teh manager will release the
-            //! biome's instance and free its memory.
-            void unref(const Biome* biome);
-
-            //! Unload everything and set all the refs to zero.
-            void reset();
+            //! Set the SSE pixel scale at which a 3D model should
+            //! transition to an imposter model. Default it 8.0.
+            void setLODTransitionPixelScale(float value);
+            float getLODTransitionPixelScale() const;
 
             //! The revision of the current configuration. This increments
             //! every time the set of resident biomes changes, so that a
@@ -179,10 +166,31 @@ namespace osgEarth
                 return _textures.get();
             }
 
+        public: // internal system functions
+
+            //! Tell the manager to increase the usage count of a biome by one.
+            //! If there are no users, the manager will make the biome resident.
+            //! @param biome Biome to activate
+            void ref(const Biome* biome);
+
+            void ref(
+                const Biome* biome,
+                const TileKey& key,
+                const GeoImage& image);
+
+            //! Tell the manager to decrease the usage count of a biome by one.
+            //! If the user count goes to zero, teh manager will release the
+            //! biome's instance and free its memory.
+            void unref(const Biome* biome);
+
+            //! Unload everything and set all the refs to zero.
+            void reset();
+
         private:
             mutable Mutex _refsAndRevision_mutex;
             mutable Mutex _residentData_mutex;
             int _revision;
+            float _lodTransitionPixelScale;
             CreateImposterFunction _createImposter[NUM_ASSET_GROUPS];
 
             using BiomeRefs = std::unordered_map<const Biome*, int>;

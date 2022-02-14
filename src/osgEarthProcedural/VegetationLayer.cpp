@@ -309,7 +309,6 @@ VegetationLayer::Options::getConfig() const
 
     conf.set("color_min_saturation", colorMinSaturation());
     conf.set("alpha_to_coverage", alphaToCoverage());
-    conf.set("max_sse", maxSSE());
 
     //TODO: groups
 
@@ -409,23 +408,6 @@ VegetationLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 
 //........................................................................
 
-void VegetationLayer::setMaxSSE(float value)
-{
-    if (value != options().maxSSE().get())
-    {
-        options().maxSSE() = value;
-        if (_sseU.valid())
-            _sseU->set(value);
-    }
-}
-
-float VegetationLayer::getMaxSSE() const
-{
-    return options().maxSSE().get();
-}
-
-//........................................................................
-
 void
 VegetationLayer::init()
 {
@@ -506,6 +488,13 @@ VegetationLayer::update(osg::NodeVisitor& nv)
             _assets = std::move(newAssets);
         }
     }
+}
+
+void
+VegetationLayer::dirty()
+{
+    ScopedWriteLock lock(_traversal_mutex);
+    _cameraState.clear();
 }
 
 void
@@ -1440,7 +1429,9 @@ VegetationLayer::cull(
 
     // exclusive lock on the camera state
     _cameraState_mutex.lock();
-    CameraState& cs = _cameraState[cv->getCurrentCamera()];
+    CameraState::Ptr& cs = _cameraState[cv->getCurrentCamera()];
+    if (cs == nullptr)
+        cs = std::make_shared<CameraState>();
     _cameraState_mutex.unlock();
 
     CameraState::TileCache active_tiles;
@@ -1448,7 +1439,7 @@ VegetationLayer::cull(
     for (auto& batch_entry : batch.tiles())
     {
         const TileKey& key = batch_entry->getKey();
-        Tile& tile = cs._tiles[key];
+        Tile& tile = cs->_tiles[key];
 
         AssetGroup::Type group = getGroupAtLOD(key.getLOD());
         OE_HARD_ASSERT(group != AssetGroup::UNDEFINED);
@@ -1523,7 +1514,7 @@ VegetationLayer::cull(
     }
 
     // Purge old tiles.
-    cs._tiles.swap(active_tiles);
+    cs->_tiles.swap(active_tiles);
 
     _traversal_mutex.read_unlock();
 
@@ -1546,14 +1537,14 @@ VegetationLayer::resizeGLObjectBuffers(unsigned maxSize)
     ScopedWriteLock lock(_traversal_mutex);
     for (auto& cs : _cameraState)
     {
-        for (auto& tile : cs.second._tiles)
+        for (auto& tile : cs.second->_tiles)
         {
             if (tile.second._drawable.valid())
             {
                 tile.second._drawable->resizeGLObjectBuffers(maxSize);
             }
         }
-        cs.second._tiles.clear();
+        cs.second->_tiles.clear();
     }
 }
 
@@ -1565,13 +1556,13 @@ VegetationLayer::releaseGLObjects(osg::State* state) const
     ScopedWriteLock lock(_traversal_mutex);
     for (auto& cs : _cameraState)
     {
-        for (auto& tile : cs.second._tiles)
+        for (auto& tile : cs.second->_tiles)
         {
             if (tile.second._drawable.valid())
             {
                 tile.second._drawable->releaseGLObjects(state);
             }
         }
-        cs.second._tiles.clear();
+        cs.second->_tiles.clear();
     }
 }

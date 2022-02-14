@@ -81,8 +81,8 @@ struct DrawElementsIndirectBindlessCommandNV
 struct ChonkLOD
 {
     vec4 bs;
-    float min_pixel_size;
-    float max_pixel_size;
+    float far_pixel_scale;
+    float near_pixel_scale;
     uint num_lods;
     uint total_num_commands; // global
 };
@@ -117,7 +117,7 @@ layout(binding=31) buffer InputBuffer
 };
 
 uniform vec3 oe_Camera;
-uniform float oe_pixel_size_scale = 1.0;
+uniform float oe_sse;
 
 void cull()
 {
@@ -172,12 +172,12 @@ void cull()
     float pixelSize = max(dims.x, dims.y);
     float pixelSizePad = pixelSize*0.1;
 
-    float maxPixelSize = chonks[v].max_pixel_size * oe_pixel_size_scale;
-    if (pixelSize > (maxPixelSize + pixelSizePad))
+    float minPixelSize = oe_sse * chonks[v].far_pixel_scale;
+    if (pixelSize < (minPixelSize - pixelSizePad))
         return;
 
-    float minPixelSize = chonks[v].min_pixel_size * oe_pixel_size_scale;
-    if (pixelSize < (minPixelSize - pixelSizePad))
+    float maxPixelSize = oe_sse * chonks[v].near_pixel_scale;
+    if (pixelSize > (maxPixelSize + pixelSizePad))
         return;
 
     if (pixelSize > maxPixelSize)
@@ -669,8 +669,8 @@ Chonk::add(
 bool
 Chonk::add(
     osg::Node* node,
-    float min_pixel_size,
-    float max_pixel_size,
+    float far_pixel_scale,
+    float near_pixel_scale,
     ChonkFactory& factory)
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
@@ -681,8 +681,8 @@ Chonk::add(
     _lods.push_back({
         offset,
         (_ebo_store.size() - offset), // length of new variant
-        min_pixel_size,
-        max_pixel_size});
+        far_pixel_scale,
+        near_pixel_scale });
 
     _box.init();
 
@@ -1328,8 +1328,8 @@ ChonkDrawable::GCState::update(
                 ChonkLOD v;
                 v.center = bs.center();
                 v.radius = bs.radius();
-                v.min_pixel_size = chonk->_lods[i].minPixelSize;
-                v.max_pixel_size = chonk->_lods[i].maxPixelSize;
+                v.far_pixel_scale = chonk->_lods[i].far_pixel_scale;
+                v.near_pixel_scale = chonk->_lods[i].near_pixel_scale;
                 v.num_lods = chonk->_lods.size();
                 _chonk_lods.push_back(std::move(v));
             }

@@ -79,7 +79,8 @@ namespace
 BiomeManager::BiomeManager() :
     _revision(0),
     _refsAndRevision_mutex("BiomeManager.refsAndRevision(OE)"),
-    _residentData_mutex("BiomeManager.residentData(OE)")
+    _residentData_mutex("BiomeManager.residentData(OE)"),
+    _lodTransitionPixelScale(8.0f)
 {
     // this arena will hold all the textures for loaded assets.
     _textures = new TextureArena();
@@ -141,6 +142,28 @@ int
 BiomeManager::getRevision() const
 {
     return _revision;
+}
+
+void
+BiomeManager::setLODTransitionPixelScale(float value)
+{
+    _lodTransitionPixelScale = value;
+
+    // We need to rebuild the assets, so clear everything out,
+    // recalculate the biome set, and bump the revision.
+    _residentData_mutex.lock();
+    _residentModelAssets.clear();
+    _residentData_mutex.unlock();
+
+    _refsAndRevision_mutex.lock();
+    ++_revision;
+    _refsAndRevision_mutex.unlock();
+}
+
+float
+BiomeManager::getLODTransitionPixelScale() const
+{
+    return _lodTransitionPixelScale;
 }
 
 void
@@ -523,29 +546,34 @@ BiomeManager::materializeNewAssets(
                     // Finally, chonkify.
                     if (residentAsset->_model.valid())
                     {
-                        float minp = 400.0f;
-                        float maxp = FLT_MAX;
+                        // models should disappear 8x closer than the SSE:
+                        float far_pixel_scale = getLODTransitionPixelScale();
+                        float near_pixel_scale = FLT_MAX;
 
                         if (residentAsset->_chonk == nullptr)
                             residentAsset->_chonk = Chonk::create();
 
                         residentAsset->_chonk->add(
                             residentAsset->_model.get(),
-                            minp, maxp,
+                            far_pixel_scale,
+                            near_pixel_scale,
                             factory);
                     }
 
                     if (residentAsset->_billboard.valid())
                     {
-                        float minp = 35.0f;
-                        float maxp = residentAsset->_model.valid() ? 400.0f : FLT_MAX;
+                        float far_pixel_scale = 1.0f;
+                        float near_pixel_scale = residentAsset->_model.valid() ? 
+                            getLODTransitionPixelScale() : 
+                            FLT_MAX;
 
                         if (residentAsset->_chonk == nullptr)
                             residentAsset->_chonk = Chonk::create();
 
                         residentAsset->_chonk->add(
                             residentAsset->_billboard.get(),
-                            minp, maxp,
+                            far_pixel_scale,
+                            near_pixel_scale,
                             factory);
                     }
                 }

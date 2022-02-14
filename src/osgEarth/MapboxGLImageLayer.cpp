@@ -229,7 +229,10 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
             osg::ref_ptr< VTPKFeatureSource > featureSource = new VTPKFeatureSource();
             featureSource->setReadOptions(options);
             featureSource->setURL(uri);
-            featureSource->open();
+            if (featureSource->open().isError())
+            {
+                OE_WARN << "[MapboxGLImageLayer] Failed to open: " << url() << std::endl;
+            }
             _featureSource = featureSource.get();
         }
         else if (type() == "vector")
@@ -254,7 +257,7 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
 
 
 /*************************/
-Paint::Paint() :    
+Paint::Paint() :
     _fillAntialias(true),
     _visibility("visible")
 {
@@ -652,6 +655,10 @@ ResourceLibrary* MapBoxGL::StyleSheet::loadSpriteLibrary(const URI& sprite)
                 library->addResource(skin);
             }
         }
+    }
+    else
+    {
+        OE_WARN << "[MapBoxGLImageLayer] Could not find image : " << imagePath.full() << std::endl;
     }
     return library;
 }
@@ -1139,7 +1146,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
                     if (allFeatures.empty())
                     {
-                        queryKey = queryKey.createParentKey();           
+                        queryKey = queryKey.createParentKey();
                         /*
                         if (queryKey.getLevelOfDetail() < featureSource->getFeatureProfile()->getMaxLevel())
                         {
@@ -1164,7 +1171,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
 
             if (layeredFeatures.features.find(layer.sourceLayer()) != layeredFeatures.features.end())
-            {                
+            {
                 // Run any filters on the layer.
                 FeatureList features;
                 if (!layer.filter()._filter.empty())
@@ -1218,8 +1225,8 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                     {
                         style.getOrCreateSymbol<TextSymbol>()->content() = layer.paint().textField().get();
                     }
-                    style.getOrCreateSymbol<TextSymbol>()->fill()->color() = layer.paint().textColor().evaluate(key.getLOD());                    
-                    style.getOrCreateSymbol<TextSymbol>()->halo()->color() = layer.paint().textHaloColor().evaluate(key.getLOD());                                       
+                    style.getOrCreateSymbol<TextSymbol>()->fill()->color() = layer.paint().textColor().evaluate(key.getLOD());
+                    style.getOrCreateSymbol<TextSymbol>()->halo()->color() = layer.paint().textHaloColor().evaluate(key.getLOD());
                     style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().evaluate(key.getLOD()));
 
                     if (layer.paint().iconImage().isSet())

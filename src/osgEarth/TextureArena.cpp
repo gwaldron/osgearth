@@ -349,18 +349,9 @@ TextureArena::find_no_lock(Texture::Ptr tex) const
     if (tex == nullptr)
         return -1;
 
-    const std::string& filename = tex->getFilename();
-
     for (int i = 0; i < _textures.size(); ++i)
     {
         if (_textures[i] == tex)
-        {
-            return i;
-        }
-
-        if (!filename.empty() &&
-            _textures[i] != nullptr &&
-            filename == _textures[i]->getFilename())
         {
             return i;
         }
@@ -572,30 +563,19 @@ TextureArena::apply(osg::State& state) const
     }
 
     // allocate textures and resident handles
-    const unsigned max_to_compile_per_apply = ~0;
-    unsigned num_compiled_this_apply = 0;
-
-    while (
-        !gc._toCompile.empty() &&
-        num_compiled_this_apply < max_to_compile_per_apply)
+    for(int index : gc._toCompile)
     {
-        int index = gc._toCompile.back();
-        OE_HARD_ASSERT(index < _textures.size());
-
         auto tex = _textures[index];
-
         if (tex)
         {
             if (!tex->isCompiled(state))
             {
                 tex->compileGLObjects(state);
-                ++num_compiled_this_apply;
                 gc._toActivate.push_back(tex);
             }
-
-            gc._toCompile.resize(gc._toCompile.size() - 1);
         }
     }
+    gc._toCompile.clear();
 
     // remove pending objects by swapping them out of memory
     for(auto& tex : gc._toDeactivate)

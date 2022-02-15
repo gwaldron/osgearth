@@ -42,20 +42,12 @@ namespace osgEarth
     class OSGEARTH_EXPORT Texture
     {
     public:
-
-    public:
         using Ptr = std::shared_ptr<Texture>;
         using WeakPtr = std::weak_ptr<Texture>;
 
         //! Create a new texture
         static Ptr create() {
             return Ptr(new Texture());
-        }
-
-        const std::string getFilename() const {
-            return _image.valid() && !_image->getFileName().empty() ? _image->getFileName() :
-                _uri.isSet() ? _uri->full() :
-                "";
         }
 
         //! Create from an existing GLTexture

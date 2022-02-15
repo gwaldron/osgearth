@@ -110,6 +110,9 @@ namespace osgEarth
 
     public:
         using Ptr = std::shared_ptr<Chonk>;
+        using WeakPtr = std::weak_ptr<Chonk>;
+
+        //! Creates a new empty chonk.
         static Ptr create();
 
         std::vector<ChonkMaterial::Ptr> _materials; // todo: upgrade to material index
@@ -148,8 +151,16 @@ namespace osgEarth
     class OSGEARTH_EXPORT ChonkFactory
     {
     public:
+        using GetOrCreateFunction =
+            std::function<Texture::Ptr(osg::Texture* osgTex, bool& isNew)>;
+
+    public:
         ChonkFactory(
             TextureArena* textures);
+
+        //! User function that can try to find textures instead of
+        //! creating new ones. Good for sharing data across invocations.
+        void setGetOrCreateFunction(GetOrCreateFunction);
 
         //! Adds a node and generates an asset drawable for it.
         //! The asset will upload to the GPU on the next call to apply.
@@ -159,6 +170,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<TextureArena> _textures;
+        GetOrCreateFunction _getOrCreateTexture;
     };
 
     /**

@@ -196,39 +196,34 @@ void cull()
         temp = gl_ProjectionMatrix * (center_view + vec4(+r,+r,+r,0)); temp /= temp.w;
         LL = min(LL, temp); UR = max(UR, temp);
 
-        if (LL.x > LL.w || LL.y > LL.w || LL.z > LL.w)
+        if (LL.x > LL.w || LL.y > LL.w) // || LL.z > LL.w)
             REJECT(REASON_FRUSTUM);
 
-        if (UR.x < -UR.w || UR.y < -UR.w || UR.z < -UR.w)
+        if (UR.x < -UR.w || UR.y < -UR.w) // || UR.z < -UR.w)
             REJECT(REASON_FRUSTUM);
 
 #ifndef OE_IS_SHADOW_CAMERA
 
-        if (oe_sse > 0)
-        {
-            // OK, it is in view - now check pixel size on screen for this LOD:
-            LL.xy /= LL.w;
-            UR.xy /= UR.w;
-            vec2 dims = 0.5*(UR.xy-LL.xy)*oe_Camera.xy;
+        // OK, it is in view - now check pixel size on screen for this LOD:
+        vec2 dims = 0.5*(UR.xy-LL.xy)*oe_Camera.xy;
     
-            float pixelSize = max(dims.x, dims.y);
-            float pixelSizePad = pixelSize*0.1;
+        float pixelSize = max(dims.x, dims.y);
+        float pixelSizePad = pixelSize*0.1;
 
-            float minPixelSize = oe_sse * chonks[v].far_pixel_scale;
-            if (pixelSize < (minPixelSize - pixelSizePad))
-                REJECT(REASON_SSE);
+        float minPixelSize = oe_sse * chonks[v].far_pixel_scale;
+        if (pixelSize < (minPixelSize - pixelSizePad))
+            REJECT(REASON_SSE);
 
-            float maxPixelSize = oe_sse * chonks[v].near_pixel_scale;
-            if (pixelSize > (maxPixelSize + pixelSizePad))
-                REJECT(REASON_SSE);
+        float maxPixelSize = oe_sse * chonks[v].near_pixel_scale;
+        if (pixelSize > (maxPixelSize + pixelSizePad))
+            REJECT(REASON_SSE);
 
-            if (fade == 1.0) // good to go, set the proper fade:
-            {
-                if (pixelSize > maxPixelSize)
-                    fade = 1.0-(pixelSize-maxPixelSize)/pixelSizePad;
-                else if (pixelSize < minPixelSize)
-                    fade = 1.0-(minPixelSize-pixelSize)/pixelSizePad;
-            }
+        if (fade == 1.0) // good to go, set the proper fade:
+        {
+            if (pixelSize > maxPixelSize)
+                fade = 1.0-(pixelSize-maxPixelSize)/pixelSizePad;
+            else if (pixelSize < minPixelSize)
+                fade = 1.0-(minPixelSize-pixelSize)/pixelSizePad;
         }
 #endif
     }
@@ -457,6 +452,7 @@ void oe_chonk_default_fragment(inout vec4 color)
     {
         Chonk& _result;
         TextureArena* _textures;
+        ChonkFactory::GetOrCreateFunction _getOrCreateTexture;
         std::list<ChonkMaterial::Ptr> _materialCache;
         std::stack<ChonkMaterial::Ptr> _materialStack;
         std::stack<osg::Matrix> _transformStack;
@@ -497,9 +493,10 @@ void oe_chonk_default_fragment(inout vec4 color)
             return material;
         }
 
-        Ripper(Chonk& chonk, TextureArena* textures) :
+        Ripper(Chonk& chonk, TextureArena* textures, ChonkFactory::GetOrCreateFunction func) :
             _result(chonk),
-            _textures(textures)
+            _textures(textures),
+            _getOrCreateTexture(func)
         {
             // Use the "active chidren" mode to only bring in default switch
             // and osgSim::MultiSwitch children for now. -gw
@@ -519,8 +516,7 @@ void oe_chonk_default_fragment(inout vec4 color)
             if (!_textures)
                 return nullptr;
 
-            //int result = -1;
-            Texture::Ptr result;
+            Texture::Ptr arena_tex;
 
             osg::Texture* tex = dynamic_cast<osg::Texture*>(
                 stateset->getTextureAttribute(slot, osg::StateAttribute::TEXTURE));
@@ -531,24 +527,33 @@ void oe_chonk_default_fragment(inout vec4 color)
 
                 if (i == _textureLUT.end())
                 {
-                    result = Texture::create();
-                    result->_image = tex->getImage(0);
-                    result->_uri = tex->getImage(0)->getFileName();
-                    result->_label = "Chonk texture";
+                    bool isNew = true;
 
-                    int index = _textures->add(result);
+                    if (_getOrCreateTexture)
+                        arena_tex = _getOrCreateTexture(tex, isNew);
+                    else
+                        arena_tex = Texture::create();
+
+                    if (isNew)
+                    {
+                        arena_tex->_image = tex->getImage(0);
+                        arena_tex->_uri = tex->getImage(0)->getFileName();
+                        arena_tex->_label = "Chonk texture";
+                    }
+
+                    int index = _textures->add(arena_tex);
                     if (index >= 0)
                     {
-                        _textureLUT[tex] = result;
+                        _textureLUT[tex] = arena_tex;
                     }
                 }
                 else
                 {
-                    result = i->second;
+                    arena_tex = i->second;
                 }
             }
 
-            return result;
+            return arena_tex;
         }
 
         // record materials, and return true if we pushed one.
@@ -823,6 +828,12 @@ ChonkFactory::ChonkFactory(TextureArena* textures) :
 }
 
 void
+ChonkFactory::setGetOrCreateFunction(GetOrCreateFunction value)
+{
+    _getOrCreateTexture = value;
+}
+
+void
 ChonkFactory::load(
     osg::Node* node,
     Chonk& chonk)
@@ -838,7 +849,7 @@ ChonkFactory::load(
     chonk._ebo_store.reserve(counter._numElements);
 
     // rip geometry and textures into a new Asset object
-    Ripper ripper(chonk, _textures.get());
+    Ripper ripper(chonk, _textures.get(), _getOrCreateTexture);
     node->accept(ripper);
 
     // dirty its bounding box

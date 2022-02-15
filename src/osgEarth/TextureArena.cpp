@@ -35,8 +35,6 @@ using namespace osgEarth;
 
 #define OE_DEVEL OE_DEBUG
 
-//#define USE_ICO 1
-
 Texture::Ptr
 Texture::create(GLTexture::Ptr gltexture, osg::State& state)
 {
@@ -108,7 +106,7 @@ Texture::compileGLObjects(osg::State& state) const
         internalFormat,
         _image->s(), _image->t(), _image->r(),
         0, // border
-        _mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST,
+        _mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR,
         GL_LINEAR,
         _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT,
         _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT,
@@ -136,19 +134,6 @@ Texture::compileGLObjects(osg::State& state) const
         gc._gltexture->storage2D(profileHint);
     }
 
-#if 0
-    GLint min_filter = _mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST;
-    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, min_filter);
-    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    GLint wrap_value = _clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
-    glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap_value);
-    glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap_value);
-
-    float ma_value = _maxAnisotropy.getOrUse(4.0f);
-    glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, ma_value);
-#endif
-
     // Force creation of the bindless handle - once you do this, you can
     // no longer change the texture parameters.
     gc._gltexture->handle(state);
@@ -158,9 +143,6 @@ Texture::compileGLObjects(osg::State& state) const
         << "Texture::compileGLObjects '" << gc._gltexture->id() 
         << "' name=" << gc._gltexture->name() 
         << " handle=" << gc._gltexture->handle(state) << std::endl;
-
-    // TODO: At this point, if/when we go with SPARSE textures,
-    // don't actually copy the image down until activation.
 
     bool compressed = _image->isCompressed();
 
@@ -364,6 +346,9 @@ TextureArena::setBindingPoint(unsigned value)
 int
 TextureArena::find_no_lock(Texture::Ptr tex) const
 {
+    if (tex == nullptr)
+        return -1;
+
     const std::string& filename = tex->getFilename();
 
     for (int i = 0; i < _textures.size(); ++i)
@@ -374,6 +359,7 @@ TextureArena::find_no_lock(Texture::Ptr tex) const
         }
 
         if (!filename.empty() &&
+            _textures[i] != nullptr &&
             filename == _textures[i]->getFilename())
         {
             return i;
@@ -419,7 +405,7 @@ TextureArena::add(Texture::Ptr tex)
     {
         for (int i = 0; i < _textures.size(); ++i)
         {
-            if (_textures[i].use_count() == 1)
+            if (_textures[i] == nullptr || _textures[i].use_count() == 1)
             {
                 index = i;
                 break;
@@ -471,7 +457,6 @@ TextureArena::add(Texture::Ptr tex)
         {
             if (_gc[i]._inUse)
                 _gc[i]._toCompile.push_back(index);
-                //_gc[i]._toCompile.push_back(tex);
         }
 
         if (index < _textures.size())
@@ -580,32 +565,17 @@ TextureArena::apply(osg::State& state) const
     {
         gc._inUse = true;
         gc._toCompile.clear();
-        for (unsigned i = 0; i < _textures.size(); ++i)
-            gc._toCompile.push_back(i);
-        //for (auto& tex : _textures)
-        //    gc._toCompile.push_back
+        for (unsigned i = 0; i < _textures.size(); ++i) {
+            if (_textures[i])
+                gc._toCompile.push_back(i);
+        }
     }
-
-#ifdef USE_ICO
-    osgUtil::IncrementalCompileOperation* ico = nullptr;
-
-    if (!gc._toAdd.empty())
-    {
-        const osg::Camera* camera = state.getGraphicsContext()->getCameras().front();
-        const osgViewer::View* osgView = dynamic_cast<const osgViewer::View*>(camera->getView());
-        if (osgView)
-            ico = const_cast<osgViewer::View*>(osgView)->getDatabasePager()->getIncrementalCompileOperation();
-    }
-#endif
 
     // allocate textures and resident handles
-
-    TextureVector waitingToCompile;
-
     const unsigned max_to_compile_per_apply = ~0;
     unsigned num_compiled_this_apply = 0;
 
-    while(
+    while (
         !gc._toCompile.empty() &&
         num_compiled_this_apply < max_to_compile_per_apply)
     {
@@ -614,40 +584,24 @@ TextureArena::apply(osg::State& state) const
 
         auto tex = _textures[index];
 
-        if (!tex->isCompiled(state))
+        if (tex)
         {
-#ifdef USE_ICO
-            if (ico)
-            {
-                Texture::GCState& tex_gc = tex->get(state);
-
-                if (!tex_gc._compileSet.valid())
-                {
-                    tex_gc._compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
-                    tex_gc._compileSet->_compileMap[state.getGraphicsContext()].add(new TextureCompileOp(tex));
-                    ico->add(tex_gc._compileSet.get());
-                }
-
-                waitingToCompile.push_back(tex);
-            }
-            else
+            if (!tex->isCompiled(state))
             {
                 tex->compileGLObjects(state);
+                ++num_compiled_this_apply;
                 gc._toActivate.push_back(tex);
             }
-#else
-            tex->compileGLObjects(state);
-            ++num_compiled_this_apply;
-#endif
+
+            gc._toCompile.resize(gc._toCompile.size() - 1);
         }
-        gc._toCompile.resize(gc._toCompile.size() - 1);
-        gc._toActivate.push_back(tex);
-    }    
+    }
 
     // remove pending objects by swapping them out of memory
     for(auto& tex : gc._toDeactivate)
     {
-        tex->makeResident(state, false);
+        if (tex)
+            tex->makeResident(state, false);
     }
     gc._toDeactivate.clear();
 
@@ -656,7 +610,8 @@ TextureArena::apply(osg::State& state) const
     {
         for(auto& tex : gc._toActivate)
         {
-            tex->makeResident(state, true);
+            if (tex)
+                tex->makeResident(state, true);
         }
         gc._toActivate.clear();
         gc._dirty = true;
@@ -664,13 +619,14 @@ TextureArena::apply(osg::State& state) const
 
     if (_autoRelease == true)
     {
-        for (auto& tex : _textures)
+        for (Texture::Ptr& tex : _textures)
         {
-            if (tex.use_count() == 1)
+            if (tex && tex.use_count() == 1)
             {
-                // TODO: remove it from the area altogether
+                // TODO: remove it from the arena altogether
                 tex->makeResident(state, false);
                 tex->releaseGLObjects(&state);
+                tex = nullptr;
             }
         }
     }
@@ -698,13 +654,13 @@ TextureArena::apply(osg::State& state) const
     unsigned ptr = 0;
     for (auto& tex : _textures)
     {
-        GLTexture* gltex = tex->_gs[state.getContextID()]._gltexture.get();
+        GLTexture* gltex = tex ? tex->_gs[state.getContextID()]._gltexture.get() : nullptr;
         GLuint64 handle = gltex ? gltex->handle(state) : 0ULL;
         if (gc._handles[ptr] != handle)
         {
             gc._handles[ptr] = handle;
             gc._dirty = true;
-        }       
+        }
         ++ptr;
 
         if (_useUBO)
@@ -740,7 +696,8 @@ TextureArena::resizeGLObjectBuffers(unsigned maxSize)
 
     for(auto& tex : _textures)
     {
-        tex->resizeGLObjectBuffers(maxSize);
+        if (tex)
+            tex->resizeGLObjectBuffers(maxSize);
     }
 }
 
@@ -756,15 +713,19 @@ TextureArena::releaseGLObjects(osg::State* state) const
         gs._toCompile.clear();
         for (unsigned i = 0; i < _textures.size(); ++i)
         {
-            _textures[i]->releaseGLObjects(state);
-            gs._toCompile.push_back(i);
+            if (_textures[i])
+            {
+                _textures[i]->releaseGLObjects(state);
+                gs._toCompile.push_back(i);
+            }
         }
     }
     else
     {
         for (auto& tex : _textures)
         {
-            tex->releaseGLObjects(state);
+            if (tex)
+                tex->releaseGLObjects(state);
         }
 
         for (unsigned i = 0; i < _gc.size(); ++i)
@@ -776,7 +737,8 @@ TextureArena::releaseGLObjects(osg::State* state) const
                 gs._toCompile.clear();
                 for (unsigned i = 0; i < _textures.size(); ++i)
                 {
-                    gs._toCompile.push_back(i);
+                    if (_textures[i])
+                        gs._toCompile.push_back(i);
                 }
             }
         }

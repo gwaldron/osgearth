@@ -42,10 +42,6 @@ namespace osgEarth
     class OSGEARTH_EXPORT Texture
     {
     public:
-        struct GCState {
-            GLTexture::Ptr _gltexture;
-            osg::ref_ptr<osgUtil::IncrementalCompileOperation::CompileSet> _compileSet;
-        };
 
     public:
         using Ptr = std::shared_ptr<Texture>;
@@ -65,7 +61,6 @@ namespace osgEarth
         //! Create from an existing GLTexture
         static Ptr create(GLTexture::Ptr, osg::State&);
 
-        GCState& get(const osg::State&) const;
         void makeResident(const osg::State&, bool toggle) const;
         bool isResident(const osg::State&) const;
         bool isCompiled(const osg::State&) const;
@@ -81,10 +76,17 @@ namespace osgEarth
         bool _clamp;
         optional<GLenum> _internalFormat;
         optional<float> _maxAnisotropy;
+
+        struct GCState
+        {
+            GLTexture::Ptr _gltexture;
+        };
         mutable osg::buffered_object<GCState> _gs;
+        GCState& get(const osg::State&) const;
 
     protected:
         Texture() : _compress(true), _mipmap(true), _clamp(false) { }
+        friend class TextureArena;
     };
 
     typedef std::vector<Texture::Ptr> TextureVector;
@@ -172,7 +174,7 @@ namespace osgEarth
         };
         mutable osg::buffered_object<GCState> _gc;
 
-        TextureVector _textures;
+        mutable TextureVector _textures;
         bool _autoRelease;
         unsigned _bindingPoint;
         bool _useUBO;

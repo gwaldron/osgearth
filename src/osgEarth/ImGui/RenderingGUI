@@ -170,7 +170,7 @@ namespace osgEarth
                     if (_sse == 0.0f)
                         _sse = _mapNode->getScreenSpaceError();
 
-                    if (ImGui::SliderFloat("SSE", &_sse, 1.0f, 200.0f))
+                    if (ImGui::SliderFloat("SSE", &_sse, 1.0f, 125.0f))
                     {
                         _mapNode->setScreenSpaceError(_sse);
                         dirtySettings();
@@ -186,20 +186,28 @@ namespace osgEarth
                         if (ImGui::RadioButton("Off", &s_renderMode, m++)) {
                             setRenderMode("", ri);
                         }
-                        if (ImGui::RadioButton("Normals (model space)", &s_renderMode, m++)) {
-                            setRenderMode(render_model_normals, ri);
+                        if (ImGui::RadioButton("Wireframe overlay", &s_renderMode, m++)) {
+                            setRenderMode(render_outlines, ri);
                         }
-                        if (ImGui::RadioButton("Normals (view space)", &s_renderMode, m++)) {
-                            setRenderMode(render_view_normals, ri);
+                        if (ImGui::RadioButton("Front/backfacing triangles", &s_renderMode, m++)) {
+                            setRenderMode(render_winding, ri);
                         }
                         if (ImGui::RadioButton("Normals (front/back)", &s_renderMode, m++)) {
                             setRenderMode(render_fb_normals, ri);
                         }
-                        if (ImGui::RadioButton("Triangles (front/back)", &s_renderMode, m++)) {
-                            setRenderMode(render_winding, ri);
+                        if (ImGui::RadioButton("Normals (view space)", &s_renderMode, m++)) {
+                            setRenderMode(render_view_normals, ri);
                         }
-                        if (ImGui::RadioButton("Triangle outlines", &s_renderMode, m++)) {
-                            setRenderMode(render_outlines, ri);
+                        if (ImGui::RadioButton("Normals (model space)", &s_renderMode, m++)) {
+                            setRenderMode(render_model_normals, ri);
+                        }
+
+                        static bool s_gpuculldebug = false;
+                        if (ImGui::Checkbox("GPU cull debug view", &s_gpuculldebug)) {
+                            if (s_gpuculldebug)
+                                stateset(ri)->setDefine("OE_GPUCULL_DEBUG");
+                            else
+                                stateset(ri)->removeDefine("OE_GPUCULL_DEBUG");
                         }
                         ImGui::TreePop();
                     }

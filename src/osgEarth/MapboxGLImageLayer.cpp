@@ -22,6 +22,7 @@
 #include <osgEarth/FeatureRasterizer>
 #include <osgEarth/ArcGISTilePackage>
 #include <osgEarth/XYZFeatureSource>
+#include <osgEarth/MVT>
 #include <osgEarth/Registry>
 
 #include <osgDB/WriteFile>
@@ -222,11 +223,21 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
     {
         URIContext context(styleSheetURI);
 
-        if (name() == "esri")
+        if (type() == "vector-vtpk")
         {
             URI uri(url(), context);
 
             osg::ref_ptr< VTPKFeatureSource > featureSource = new VTPKFeatureSource();
+            featureSource->setReadOptions(options);
+            featureSource->setURL(uri);
+            featureSource->open();
+            _featureSource = featureSource.get();
+        }
+        if (type() == "vector-mbtiles")
+        {
+            URI uri(url(), context);
+
+            osg::ref_ptr< MVTFeatureSource > featureSource = new MVTFeatureSource();
             featureSource->setReadOptions(options);
             featureSource->setURL(uri);
             featureSource->open();
@@ -239,7 +250,7 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
                 osg::ref_ptr< XYZFeatureSource > featureSource = new XYZFeatureSource;
                 URI uri(tiles()[0], context);
                 featureSource->setMinLevel(0);
-                featureSource->setMaxLevel(14);
+                featureSource->setMaxLevel(22);
                 featureSource->setURL(uri);
                 featureSource->setFormat("pbf");
                 featureSource->setReadOptions(options);
@@ -247,6 +258,45 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
                 featureSource->options().profile() = ProfileOptions("spherical-mercator");
                 featureSource->open();
                 _featureSource = featureSource.get();
+            }
+            else
+            {
+                // Read a tile json from the given URL
+                URI tilesURI(url(), context);
+
+                auto rr = tilesURI.readString(options);
+                std::string data = rr.getString();
+
+                Json::Reader reader;
+                Json::Value root(Json::objectValue);
+                if (reader.parse(data, root, false))
+                {
+                    if (root.isMember("tiles"))
+                    {
+                        std::string tilesetFull = tilesURI.full();
+
+                        // Make sure the service URL ends with a /
+                        std::stringstream buf;
+                        buf << tilesetFull;
+                        if (!endsWith(tilesetFull, "/")) buf << "/";
+
+                        // We need the context relative to the tile json, not the stylesheet.
+                        URIContext localContext(buf.str());
+
+                        osg::ref_ptr< XYZFeatureSource > featureSource = new XYZFeatureSource;
+                        URI uri(root["tiles"][0u].asString(), localContext);
+
+                        featureSource->setMinLevel(0);
+                        featureSource->setMaxLevel(22);
+                        featureSource->setURL(uri);
+                        featureSource->setFormat("pbf");
+                        featureSource->setReadOptions(options);
+                        // Not necessarily?
+                        featureSource->options().profile() = ProfileOptions("spherical-mercator");
+                        featureSource->open();
+                        _featureSource = featureSource.get();
+                    }                    
+                }
             }
         }
     }

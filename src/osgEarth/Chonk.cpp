@@ -911,6 +911,7 @@ ChonkDrawable::installDefaultShader(osg::StateSet* ss)
 {
     OE_SOFT_ASSERT_AND_RETURN(ss != nullptr, void());
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    vp->setName("ChonkDrawable");
     vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
     ShaderLoader::load(vp, oe_chonk_default_shaders);
 }
@@ -992,6 +993,7 @@ ChonkDrawable::setCustomCullingShader(osg::Shader* value)
     if (ss.valid() == false)
     {
         auto program = new osg::Program();
+        program->setName("Chonk Compute");
         program->addShader(_s_baseShader);
         if (value != nullptr)
             program->addShader(value);
@@ -1290,7 +1292,7 @@ ChonkDrawable::GCState::update(
     osg::State& state)
 {
     OE_PROFILING_ZONE;
-    OE_GL_ZONE_NAMED("Update");
+    OE_GL_ZONE_NAMED("update");
 
     if (_vao == nullptr)
     {
@@ -1380,7 +1382,7 @@ ChonkDrawable::GCState::cull(osg::State& state)
     if (_commands.empty())
         return;
 
-    OE_GL_ZONE_NAMED("Cull Dispatch");
+    OE_GL_ZONE_NAMED("dispatch");
 
     // transmit the uniforms
     state.applyModelViewAndProjectionUniformsIfRequired();
@@ -1401,8 +1403,6 @@ ChonkDrawable::GCState::cull(osg::State& state)
         command.cmd.instanceCount = 0;
         command.cmd.baseInstance = 0;
     }
-
-    // bind it as an SSBO so we can muck with it
     _commandBuf->uploadData(_commands);
 
     _instanceOutputBuf->bindBufferBase(0);
@@ -1512,7 +1512,7 @@ ChonkRenderBin::robert(
     else
     {
         osgUtil::StateGraph::moveStateGraph(state, nullptr, leaf->_parent->_parent);
-        state.apply(_parent->getStateSet());
+        state.apply(leaf->_parent->getStateSet());
     }
 
     previous = leaf;

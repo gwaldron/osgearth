@@ -295,11 +295,6 @@ namespace osgEarth
         //! Automatically calls bind()/unbind().
         void uploadData(GLsizei size, const GLvoid* data, GLbitfield flags=GL_DYNAMIC_DRAW) const;
 
-        //! Upload data to the GPU to a custom target. This method uses bufferData() or bufferSubData()
-        //! depending on whether it needs to allocate more space.
-        //! Automatically calls bind(target)/unbind().
-        void uploadData(GLenum target, GLsizei size, const GLvoid* data, GLbitfield flags = GL_DYNAMIC_DRAW) const;
-
         //! Convenience template to upload a vector
         template<class T>
         void uploadData(const std::vector<T>& v, GLbitfield flags = GL_DYNAMIC_DRAW) {
@@ -308,15 +303,27 @@ namespace osgEarth
 
         //! Convenience template to upload a vector to a custom target
         template<class T>
-        void uploadData(GLenum target, const std::vector<T>& v, GLbitfield flags = GL_DYNAMIC_DRAW) {
+        void uploadData(GLenum target, std::vector<T>& v, GLbitfield flags = GL_DYNAMIC_DRAW) {
             uploadData(target, v.size() * sizeof(T), v.data(), flags);
         }
 
         //! glBufferData - reallocate entire buffer
-        void bufferData(GLsizei size, const GLvoid* data, GLbitfield flags) const;
+        void bufferData(GLsizei size, const GLvoid* data, GLbitfield flags = GL_DYNAMIC_DRAW) const;
+
+        //! Convenience template to reallocate and upload a collection
+        template<class T>
+        void bufferData(const T& v, GLbitfield flags) const {
+            bufferData(v.size() * sizeof(T::value_type), v.data(), flags);
+        }
 
         //! glBufferSubData - upload a subset of data to the GPU
         void bufferSubData(GLintptr offset, GLsizei size, const GLvoid* data) const;
+
+        //! Convenience template to subdata a typed collection
+        template<class T>
+        void bufferSubData(const T& v) const {
+            bufferSubData(0, v.size() * sizeof(T::value_type), v.data());
+        }
 
         //! glBufferStorage - allocate with immutable storage
         void bufferStorage(GLsizei size, const GLvoid* data, GLbitfield flags =0) const;

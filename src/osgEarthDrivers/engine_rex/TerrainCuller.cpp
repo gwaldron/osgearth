@@ -282,7 +282,10 @@ TerrainCuller::apply(SurfaceNode& node)
 {
     TileRenderModel& renderModel = _currentTileNode->renderModel();
 
-    float range = _cv->getDistanceToViewPoint(node.getBound().center(), true) - node.getBound().radius();
+    float center_range = _cv->getDistanceToViewPoint(node.getBound().center(), true);
+    float node_radius = node.getBound().radius();
+    float near_range = center_range - node_radius;
+    float far_range = center_range + node_radius;
 
     // push the surface matrix:
     osg::RefMatrix* matrix = createOrReuseMatrix(*getModelViewMatrix());
@@ -307,7 +310,10 @@ TerrainCuller::apply(SurfaceNode& node)
             const RenderingPass& pass = renderModel._passes[p];
 
             // is the tile in visible range?
-            if (pass.visibleLayer() && pass.visibleLayer()->getMaxVisibleRange() < range)
+            if (pass.visibleLayer() && pass.visibleLayer()->getMaxVisibleRange() < near_range)
+                continue;
+
+            if (pass.visibleLayer() && pass.visibleLayer()->getMinVisibleRange() > far_range)
                 continue;
 
             //TODO: see if we can skip adding a draw command for 1-pixel images

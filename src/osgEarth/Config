@@ -672,4 +672,13 @@ namespace osgEarth
     void CLASS ::set ## FUNC (const TYPE & value) { options(). OPTION () = value; }\
     const TYPE & CLASS ::get ## FUNC () const { return options(). OPTION ().get(); }
 
+//! property macro
+#define OE_PROPERTY(TYPE, NAME) \
+    private: \
+    TYPE _ ## NAME ; \
+    public: \
+    TYPE & NAME () { return _ ## NAME; } \
+    TYPE & NAME ## _mutable() { return _ ## NAME; } \
+    const TYPE & NAME () const { return _ ## NAME; }
+
 #endif // OSGEARTH_CONFIG_H

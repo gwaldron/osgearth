@@ -46,6 +46,14 @@ RoadSurfaceLayer::Options::getConfig() const
     featureSource().set(conf, "features");
     styleSheet().set(conf, "styles");
     conf.set("buffer_width", featureBufferWidth());
+
+    if (filters().empty() == false)
+    {
+        Config temp;
+        for (unsigned i = 0; i < filters().size(); ++i)
+            temp.add(filters()[i].getConfig());
+        conf.set("filters", temp);
+    }
     return conf;
 }
 
@@ -55,6 +63,10 @@ RoadSurfaceLayer::Options::fromConfig(const Config& conf)
     featureSource().get(conf, "features");
     styleSheet().get(conf, "styles");
     conf.get("buffer_width", featureBufferWidth());
+
+    const Config& filtersConf = conf.child("filters");
+    for (ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
+        filters().push_back(ConfigOptions(*i));
 }
 
 //........................................................................
@@ -108,6 +120,10 @@ RoadSurfaceLayer::openImplementation()
             getTileSize(),
             getTileSize());
     }
+
+    _filterChain = FeatureFilterChain::create(
+        options().filters(),
+        getReadOptions());
 
     return Status::NoError;
 }
@@ -462,7 +478,7 @@ RoadSurfaceLayer::getFeatures(
             }
             else
             {
-                cursor = fs->createFeatureCursor(subkey, progress);
+                cursor = fs->createFeatureCursor(subkey, _filterChain.get(), nullptr, progress);
                 if (cursor.valid())
                 {
                     cursor->fill(

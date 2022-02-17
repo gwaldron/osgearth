@@ -16,9 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/VisibleLayer>
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/Utils>
+#include "VisibleLayer"
+#include "VirtualProgram"
+#include "Utils"
+#include "ShaderLoader"
+
 #include <osg/BlendFunc>
 #include <osgUtil/RenderBin>
 
@@ -135,6 +137,19 @@ namespace
             oe_layer_opacity = 1.0;
         }
     )";
+
+    const char* debugViewFS = R"(
+#version 450
+#extension GL_NV_fragment_shader_barycentric : enable
+#pragma vp_function oe_vl_debug, fragment_output
+out vec4 frag_out;
+void oe_vl_debug(inout vec4 color) {
+    float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z))*32.0;
+    vec4 debug_color = mix(vec4(1,0,0,1), color, 0.35);
+    frag_out = mix(vec4(1,0,0,1), debug_color, clamp(b,0,1));
+}
+)";
+
 }
 
 //------------------------------------------------------------------------
@@ -164,6 +179,7 @@ VisibleLayer::Options::fromConfig(const Config& conf)
     _attenuationRange.init(0.0f);
     _blend.init( BLEND_INTERPOLATE );
     _mask.init(DEFAULT_LAYER_MASK);
+    debugView().setDefault(false);
 
     conf.get( "visible", _visible );
     conf.get( "opacity", _opacity);
@@ -468,4 +484,29 @@ VisibleLayer::installDefaultOpacityShader()
     //    vp->setName("VisibleLayer");
     //    vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
     //}
+}
+
+void
+VisibleLayer::setEnableDebugView(bool value)
+{
+    if (options().debugView().get() != value)
+    {
+        if (value)
+        {
+            VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
+            ShaderLoader::load(vp, debugViewFS);
+        }
+        else
+        {
+            VirtualProgram* vp = VirtualProgram::get(getStateSet());
+            ShaderLoader::unload(vp, debugViewFS);
+        }
+        options().debugView() = value;
+    }
+}
+
+bool
+VisibleLayer::getEnableDebugView() const
+{
+    return options().debugView() == true;
 }

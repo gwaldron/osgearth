@@ -218,7 +218,7 @@ void oe_vegetation_fs(inout vec4 color)
     vec3 face_normal = normalize(cross(dFdx(oe_pos3_view), dFdy(oe_pos3_view)));
     const float edge_factor = 0.8;
     float d = clamp(edge_factor*abs(dot(face_normal, normalize(oe_pos3_view))),0.0,1.0);
-    //color.a *= d;
+    color.a *= d;
 
 #ifdef OE_USE_ALPHA_TO_COVERAGE
     // mitigate the screen-door effect of A2C in the distance

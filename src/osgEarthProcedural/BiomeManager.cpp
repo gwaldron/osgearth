@@ -359,7 +359,7 @@ BiomeManager::materializeNewAssets(
             // The group points to multiple assets, which we will analyze and load.
             for (auto& asset_ptr : assetsToUse)
             {
-                const ModelAsset* assetDef = asset_ptr.asset;
+                const ModelAsset* assetDef = asset_ptr.asset();
 
                 OE_SOFT_ASSERT(assetDef != nullptr);
                 if (assetDef == nullptr)
@@ -376,7 +376,7 @@ BiomeManager::materializeNewAssets(
 
                     residentAsset = ResidentModelAsset::create();
 
-                    residentAsset->_assetDef = assetDef;
+                    residentAsset->assetDef() = assetDef;
 
                     osg::BoundingBox bbox;
 
@@ -386,24 +386,24 @@ BiomeManager::materializeNewAssets(
                         ModelCache::iterator ic = modelcache.find(uri);
                         if (ic != modelcache.end())
                         {
-                            residentAsset->_model = ic->second._node.get();
-                            residentAsset->_modelAABB = ic->second._modelAABB;
+                            residentAsset->model() = ic->second._node.get();
+                            residentAsset->boundingBox() = ic->second._modelAABB;
                         }
                         else
                         {
-                            residentAsset->_model = uri.getNode(readOptions);
-                            if (residentAsset->_model.valid())
+                            residentAsset->model() = uri.getNode(readOptions);
+                            if (residentAsset->model().valid())
                             {
                                 // find materials:
-                                residentAsset->_model->accept(materialLoader);
+                                residentAsset->model()->accept(materialLoader);
 
                                 OE_DEBUG << LC << "Loaded model: " << uri.base() << std::endl;
-                                modelcache[uri]._node = residentAsset->_model.get();
+                                modelcache[uri]._node = residentAsset->model().get();
 
                                 osg::ComputeBoundsVisitor cbv;
-                                residentAsset->_model->accept(cbv);
-                                residentAsset->_modelAABB = cbv.getBoundingBox();
-                                modelcache[uri]._modelAABB = residentAsset->_modelAABB;
+                                residentAsset->model()->accept(cbv);
+                                residentAsset->boundingBox() = cbv.getBoundingBox();
+                                modelcache[uri]._modelAABB = residentAsset->boundingBox();
                             }
                             else
                             {
@@ -411,7 +411,7 @@ BiomeManager::materializeNewAssets(
                             }
                         }
 
-                        bbox = residentAsset->_modelAABB;
+                        bbox = residentAsset->boundingBox();
                     }
 
                     URI sideBB = assetDef->sideBillboardURI().isSet() ?
@@ -426,15 +426,15 @@ BiomeManager::materializeNewAssets(
                         auto ic = texcache.find(uri);
                         if (ic != texcache.end())
                         {
-                            residentAsset->_sideBillboardTex = ic->second->_sideBillboardTex;
-                            residentAsset->_sideBillboardNormalMap = ic->second->_sideBillboardNormalMap;
+                            residentAsset->sideBillboardTex() = ic->second->sideBillboardTex();
+                            residentAsset->sideBillboardNormalMap() = ic->second->sideBillboardNormalMap();
                         }
                         else
                         {
                             osg::ref_ptr<osg::Image> image = uri.getImage(readOptions);
                             if (image.valid())
                             {
-                                residentAsset->_sideBillboardTex = new osg::Texture2D(image.get());
+                                residentAsset->sideBillboardTex() = new osg::Texture2D(image.get());
 
                                 OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
                                 texcache[uri] = residentAsset;
@@ -452,11 +452,7 @@ BiomeManager::materializeNewAssets(
                                     normalMap = normalMapURI.getImage(readOptions);
                                     if (normalMap.valid())
                                     {
-                                        residentAsset->_sideBillboardNormalMap = new osg::Texture2D(normalMap.get());
-                                    }
-                                    else
-                                    {
-                                        //residentAsset->_sideBillboardNormalMap = defaultNormalMap;
+                                        residentAsset->sideBillboardNormalMap() = new osg::Texture2D(normalMap.get());
                                     }
                                 }
                             }
@@ -477,15 +473,15 @@ BiomeManager::materializeNewAssets(
                             auto ic = texcache.find(uri);
                             if (ic != texcache.end())
                             {
-                                residentAsset->_topBillboardTex = ic->second->_topBillboardTex;
-                                residentAsset->_topBillboardNormalMap = ic->second->_topBillboardNormalMap;
+                                residentAsset->topBillboardTex() = ic->second->topBillboardTex();
+                                residentAsset->topBillboardNormalMap() = ic->second->topBillboardNormalMap();
                             }
                             else
                             {
                                 osg::ref_ptr<osg::Image> image = uri.getImage(readOptions);
                                 if (image.valid())
                                 {
-                                    residentAsset->_topBillboardTex = new osg::Texture2D(image.get());
+                                    residentAsset->topBillboardTex() = new osg::Texture2D(image.get());
 
                                     OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
                                     texcache[uri] = residentAsset;
@@ -503,11 +499,7 @@ BiomeManager::materializeNewAssets(
                                         normalMap = normalMapURI.getImage(readOptions);
                                         if (normalMap.valid())
                                         {
-                                            residentAsset->_topBillboardNormalMap = new osg::Texture2D(normalMap.get());
-                                        }
-                                        else
-                                        {
-                                            //residentAsset->_topBillboardNormalMap = defaultNormalMap;
+                                            residentAsset->topBillboardNormalMap() = new osg::Texture2D(normalMap.get());
                                         }
                                     }
                                 }
@@ -519,59 +511,59 @@ BiomeManager::materializeNewAssets(
                         }
 
                         std::vector<osg::Texture*> textures(4);
-                        textures[0] = residentAsset->_sideBillboardTex.get();
-                        textures[1] = residentAsset->_sideBillboardNormalMap.get();
-                        textures[2] = residentAsset->_topBillboardTex.get();
-                        textures[3] = residentAsset->_topBillboardNormalMap.get();
+                        textures[0] = residentAsset->sideBillboardTex().get();
+                        textures[1] = residentAsset->sideBillboardNormalMap().get();
+                        textures[2] = residentAsset->topBillboardTex().get();
+                        textures[3] = residentAsset->topBillboardNormalMap().get();
 
-                        if (_createImposter[group])
+                        if (_createImpostor[group])
                         {
                             if (!bbox.valid())
                             {
                                 bbox.set(
-                                    -residentAsset->_assetDef->width().get(),
-                                    -residentAsset->_assetDef->width().get(),
+                                    -residentAsset->assetDef()->width().get(),
+                                    -residentAsset->assetDef()->width().get(),
                                     0,
-                                    residentAsset->_assetDef->width().get(),
-                                    residentAsset->_assetDef->width().get(),
-                                    residentAsset->_assetDef->height().get());
+                                    residentAsset->assetDef()->width().get(),
+                                    residentAsset->assetDef()->width().get(),
+                                    residentAsset->assetDef()->height().get());
                             }
 
-                            residentAsset->_billboard = _createImposter[group](
+                            residentAsset->impostor() = _createImpostor[group](
                                 bbox,
                                 textures);
                         }
                     }
 
                     // Finally, chonkify.
-                    if (residentAsset->_model.valid())
+                    if (residentAsset->model().valid())
                     {
                         // models should disappear 8x closer than the SSE:
                         float far_pixel_scale = getLODTransitionPixelScale();
                         float near_pixel_scale = FLT_MAX;
 
-                        if (residentAsset->_chonk == nullptr)
-                            residentAsset->_chonk = Chonk::create();
+                        if (residentAsset->chonk() == nullptr)
+                            residentAsset->chonk() = Chonk::create();
 
-                        residentAsset->_chonk->add(
-                            residentAsset->_model.get(),
+                        residentAsset->chonk()->add(
+                            residentAsset->model().get(),
                             far_pixel_scale,
                             near_pixel_scale,
                             factory);
                     }
 
-                    if (residentAsset->_billboard.valid())
+                    if (residentAsset->impostor().valid())
                     {
                         float far_pixel_scale = 1.0f;
-                        float near_pixel_scale = residentAsset->_model.valid() ? 
+                        float near_pixel_scale = residentAsset->model().valid() ?
                             getLODTransitionPixelScale() : 
                             FLT_MAX;
 
-                        if (residentAsset->_chonk == nullptr)
-                            residentAsset->_chonk = Chonk::create();
+                        if (residentAsset->chonk() == nullptr)
+                            residentAsset->chonk() = Chonk::create();
 
-                        residentAsset->_chonk->add(
-                            residentAsset->_billboard.get(),
+                        residentAsset->chonk()->add(
+                            residentAsset->impostor().get(),
                             far_pixel_scale,
                             near_pixel_scale,
                             factory);
@@ -580,12 +572,12 @@ BiomeManager::materializeNewAssets(
 
                 // If this data successfully materialized, add it to the
                 // biome's instance collection.
-                if (residentAsset->_sideBillboardTex.valid() || residentAsset->_model.valid())
+                if (residentAsset->sideBillboardTex().valid() || residentAsset->model().valid())
                 {
                     ResidentModelAssetInstance instance;
-                    instance._residentAsset = residentAsset;
-                    instance._weight = asset_ptr.weight;
-                    instance._fill = asset_ptr.fill;
+                    instance.residentAsset() = residentAsset;
+                    instance.weight() = asset_ptr.weight();
+                    instance.coverage() = asset_ptr.coverage();
                     assetInstances.push_back(std::move(instance));
                 }
             }
@@ -601,10 +593,10 @@ BiomeManager::materializeNewAssets(
 void
 BiomeManager::setCreateFunction(
     AssetGroup::Type group,
-    CreateImposterFunction func)
+    createImpostorFunction func)
 {
     ScopedMutexLock lock(_residentData_mutex);
-    _createImposter[group] = func;
+    _createImpostor[group] = func;
 }
 
 BiomeManager::ResidentBiomes
@@ -622,360 +614,6 @@ BiomeManager::getResidentBiomes(
 
     return std::move(result);
 }
-
-#if 0
-BiomeManager::AssetsByGroup
-BiomeManager::getAssets(
-    TextureArena* textures,
-    CreateImposterFunction createImposter,
-    const osgDB::Options* readOptions)
-{
-    // First refresh the resident biome collection based on current refcounts
-    recalculateResidentBiomes();
-
-    // Next go through and load any assets that are not yet loaded
-    materializeNewAssets(readOptions);
-
-    // Finally, return the new list of renderable objects.
-    ChonkFactory factory(textures);
-
-    AssetsByGroup result;
-    result.resize(NUM_ASSET_GROUPS);
-
-    // TODO - all groups...
-    for (int group = 0; group < NUM_ASSET_GROUPS; ++group)
-    {
-        std::vector<ResidentModelAsset::Ptr>& objects = result[group];
-
-        using Key = std::pair<void*, void*>;
-        std::map<Key, Chonk::Ptr> cache;
-        std::unordered_map<Chonk::Ptr, unsigned> chonk_index;
-
-        // LUT of asset-to-chonk-index
-        CommandIndexMap asset_to_chonk_index;
-
-        ScopedMutexLock lock(_residentData_mutex);
-
-        for (auto iter : _residentBiomes)
-        {
-            const ResidentModelAssetInstances& instances = iter.second[group];
-            for (auto& instance : instances)
-            {
-                ResidentModelAsset::Ptr asset = instance._residentAsset;
-
-                // initialize the command
-                // (insert will fail silently if it already exists)
-                asset_to_chonk_index.insert(std::make_pair(asset, -1));
-
-                auto model = asset->_model.get();
-                auto billboard = asset->_billboard.get();
-                auto key = std::make_pair(model, billboard);
-
-                auto& chonk = cache[key];
-
-                if (asset->_chonk == nullptr)
-                {
-                    if (chonk)
-                    {
-                        asset->_chonk = chonk;
-                    }
-                    else
-                    {
-                        asset->_chonk = Chonk::create();
-
-                        if (model)
-                            asset->_chonk->add(model, 400, FLT_MAX, factory);
-
-                        if (billboard)
-                            asset->_chonk->add(billboard, 50, 400, factory);
-
-                        chonk = asset->_chonk; // save to cache
-                    }
-                }
-
-                auto iter = chonk_index.find(asset->_chonk);
-                if (iter != chonk_index.end())
-                {
-                    asset_to_chonk_index[asset] = iter->second;
-                }
-                else
-                {
-                    asset_to_chonk_index[asset] = objects.size();
-                    chonk_index[asset->_chonk] = objects.size();
-                    objects.push_back(asset);
-                }
-            }
-        }
-    }
-
-    return std::move(result);
-}
-#endif
-
-GeometryCloudCollection
-BiomeManager::updateResidency(
-    CreateImposterFunction createImposter,
-    const osgDB::Options* readOptions)
-{
-    // First refresh the resident biome collection based on current refcounts.
-    recalculateResidentBiomes();
-
-    // exclusive access to the resident dataset
-    ScopedMutexLock lock(_residentData_mutex);
-
-    std::set<AssetGroup::Type> asset_groups;
-    
-    // Any billboard that doesn't have its own normal map will use this one.
-    osg::ref_ptr<osg::Texture> defaultNormalMap = osgEarth::createEmptyNormalMapTexture();
-
-    // Some caches to avoid duplicating data
-    using TextureShareCache = std::map<URI, ResidentModelAsset::Ptr>;
-    TextureShareCache texcache;
-    using ModelCache = std::map<URI, ModelCacheEntry>;
-    ModelCache modelcache;
-
-    // Clear out each biome's instances so we can start fresh.
-    // This is a low-cost operation since anything we can re-use
-    // will already by in the _residentModelAssetData collection.
-    OE_DEBUG << LC << "Found " << _residentBiomes.size() << " resident biomes..." << std::endl;
-    for (auto& iter : _residentBiomes)
-    {
-        auto& groups = iter.second;
-        for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
-            groups[i].clear();
-    }
-
-    // This loader will find material textures and install them on
-    // secondary texture image units.. in this case, normal maps.
-    // We can expand this later to include other types of material maps.
-    Util::MaterialLoader materialLoader;
-
-    materialLoader.setMangler(NORMAL_MAP_TEX_UNIT,
-        [](const std::string& filename)
-        {
-            return osgDB::getNameLessExtension(filename) + "_NML.png";
-        }
-    );
-
-    materialLoader.setTextureFactory(NORMAL_MAP_TEX_UNIT,
-        [](osg::Image* image)
-        {
-            // compresses the incoming texture if necessary
-            if (image->getPixelFormat() != GL_RG)
-                return new osg::Texture2D(convertNormalMapFromRGBToRG(image));
-            else
-                return new osg::Texture2D(image);
-        }
-    );
-
-    // Go through the residency list and materialize any model assets
-    // that are not already loaded (and present in _residentModelAssets);
-    // Along the way, build the instances for each biome.
-    for (auto& e : _residentBiomes)
-    {
-        const Biome* biome = e.first;
-
-        for (int group = 0; group < NUM_ASSET_GROUPS; ++group)
-        {
-            const Biome::ModelAssetsToUse& assetsToUse = biome->getModelAssetsToUse(group);
-
-            // this is the collection of instances we're going to populate
-            ResidentModelAssetInstances& assetInstances = e.second[group];
-
-            // The group points to multiple assets, which we will analyze and load.
-            for (auto& asset_ptr : assetsToUse)
-            {
-                const ModelAsset* assetDef = asset_ptr.asset;
-
-                OE_SOFT_ASSERT(assetDef != nullptr);
-                if (assetDef == nullptr)
-                    continue;
-
-                // Look up this model asset. If it's already in the resident set,
-                // do nothing; otherwise make it resident by loading all the data.
-                ResidentModelAsset::Ptr& residentAsset = _residentModelAssets[assetDef];
-
-                // First reference to this instance? Populate it:
-                if (residentAsset == nullptr)
-                {
-                    residentAsset = ResidentModelAsset::create();
-
-                    residentAsset->_assetDef = assetDef;
-
-                    if (assetDef->modelURI().isSet())
-                    {
-                        const URI& uri = assetDef->modelURI().get();
-                        ModelCache::iterator ic = modelcache.find(uri);
-                        if (ic != modelcache.end())
-                        {
-                            residentAsset->_model = ic->second._node.get();
-                            residentAsset->_modelAABB = ic->second._modelAABB;
-                        }
-                        else
-                        {
-                            residentAsset->_model = uri.getNode(readOptions);
-                            if (residentAsset->_model.valid())
-                            {
-                                // find materials:
-                                residentAsset->_model->accept(materialLoader);
-
-                                OE_DEBUG << LC << "Loaded model: " << uri.base() << std::endl;
-                                modelcache[uri]._node = residentAsset->_model.get();
-
-                                osg::ComputeBoundsVisitor cbv;
-                                residentAsset->_model->accept(cbv);
-                                residentAsset->_modelAABB = cbv.getBoundingBox();
-                                modelcache[uri]._modelAABB = residentAsset->_modelAABB;
-                            }
-                            else
-                            {
-                                OE_WARN << LC << "Failed to load model " << uri.full() << std::endl;
-                            }
-                        }
-                    }
-
-                    if (assetDef->sideBillboardURI().isSet())
-                    {
-                        const URI& uri = assetDef->sideBillboardURI().get();
-
-                        auto ic = texcache.find(uri);
-                        if (ic != texcache.end())
-                        {
-                            residentAsset->_sideBillboardTex = ic->second->_sideBillboardTex;
-                            residentAsset->_sideBillboardNormalMap = ic->second->_sideBillboardNormalMap;
-                        }
-                        else
-                        {
-                            osg::ref_ptr<osg::Image> image = uri.getImage(readOptions);
-                            if (image.valid())
-                            {
-                                residentAsset->_sideBillboardTex = new osg::Texture2D(image.get());
-
-                                OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
-                                texcache[uri] = residentAsset;
-
-                                // normal map is the same file name but with _NML inserted before the extension
-                                URI normalMapURI(
-                                    osgDB::getNameLessExtension(uri.full()) +
-                                    "_NML." +
-                                    osgDB::getFileExtension(uri.full()));
-
-                                // silenty fail if no normal map found.
-                                osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
-                                if (normalMap.valid())
-                                {
-                                    residentAsset->_sideBillboardNormalMap = new osg::Texture2D(normalMap.get());
-                                }
-                                else
-                                {
-                                    //residentAsset->_sideBillboardNormalMap = defaultNormalMap;
-                                }
-                            }
-                            else
-                            {
-                                OE_WARN << LC << "Failed to load side billboard " << uri.full() << std::endl;
-                            }
-                        }
-
-
-                        if (assetDef->topBillboardURI().isSet())
-                        {
-                            const URI& uri = assetDef->topBillboardURI().get();
-
-                            auto ic = texcache.find(uri);
-                            if (ic != texcache.end())
-                            {
-                                residentAsset->_topBillboardTex = ic->second->_topBillboardTex;
-                                residentAsset->_topBillboardNormalMap = ic->second->_topBillboardNormalMap;
-                            }
-                            else
-                            {
-                                osg::ref_ptr<osg::Image> image = uri.getImage(readOptions);
-                                if (image.valid())
-                                {
-                                    residentAsset->_topBillboardTex = new osg::Texture2D(image.get());
-
-                                    OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
-                                    texcache[uri] = residentAsset;
-
-                                    // normal map is the same file name but with _NML inserted before the extension
-                                    URI normalMapURI(
-                                        osgDB::getNameLessExtension(uri.full()) +
-                                        "_NML." +
-                                        osgDB::getFileExtension(uri.full()));
-
-                                    // silenty fail if no normal map found.
-                                    osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
-                                    if (normalMap.valid())
-                                    {
-                                        residentAsset->_topBillboardNormalMap = new osg::Texture2D(normalMap.get());
-                                    }
-                                    else
-                                    {
-                                        //residentAsset->_topBillboardNormalMap = defaultNormalMap;
-                                    }
-                                }
-                                else
-                                {
-                                    OE_WARN << LC << "Failed to load top billboard " << uri.full() << std::endl;
-                                }
-                            }
-                        }
-
-                        std::vector<osg::Texture*> textures(4);
-                        textures[0] = residentAsset->_sideBillboardTex.get();
-                        textures[1] = residentAsset->_sideBillboardNormalMap.get();
-                        textures[2] = residentAsset->_topBillboardTex.get();
-                        textures[3] = residentAsset->_topBillboardNormalMap.get();
-
-                        residentAsset->_billboard = _createImposter[group](
-                            osg::BoundingBox(),
-                            textures);
-                    }
-
-                    OE_INFO << LC << "  Loaded asset " << assetDef->name().get() 
-                        << ", radius = " << residentAsset->_modelAABB.radius()
-                        << std::endl;
-                }
-
-                // If this data successfully materialized, add it to the
-                // biome's instance collection.
-                if (residentAsset->_sideBillboardTex.valid() || residentAsset->_model.valid())
-                {
-                    ResidentModelAssetInstance instance;
-                    instance._residentAsset = residentAsset;
-                    instance._weight = asset_ptr.weight;
-                    instance._fill = asset_ptr.fill;
-                    assetInstances.push_back(std::move(instance));
-                }
-            }
-
-            if (!assetInstances.empty())
-            {
-                asset_groups.insert((AssetGroup::Type)group);
-            }
-        }
-    }
-
-    // Now assemble the new geometry clouds based on the updated 
-    // resident biome information.
-    GeometryCloudCollection clouds;
-
-    for (auto group : asset_groups)
-    {
-        osg::ref_ptr<GeometryCloud> cloud = createGeometryCloud(
-            group,
-            _residentBiomes);
-
-        if (cloud.valid())
-        {
-            clouds[group] = cloud;
-        }
-    }
-
-    return std::move(clouds);
-}
-
 
 namespace
 {
@@ -996,234 +634,4 @@ namespace
         }
         return count;
     }
-}
-
-GeometryCloud*
-BiomeManager::createGeometryCloud(
-    AssetGroup::Type group,
-    const ResidentBiomes& residentBiomes) const
-{
-    TextureArena* arena = new TextureArena();
-    arena->setName(AssetGroup::name(group));
-
-    GeometryCloud* cloud = new GeometryCloud(arena);
-
-    // Keep track so we don't add the same model twice
-    std::unordered_set<void*> visited;
-
-    CommandIndexMap modelCommands;
-    CommandIndexMap imposterCommands;
-
-    // For each resident biome, locate all asset instances that belong
-    // to the specified category. Add each to the geometry cloud.
-    for (auto& b_iter : residentBiomes)
-    {
-        // Find the instance list for the requested group,
-        // and if it's not empty, carry on:
-        auto& instances = b_iter.second[group];
-
-        // for each instance, add it to the cloud as appropriate:
-        for (auto& instance : instances)
-        {
-            auto residentAsset = instance._residentAsset;
-
-            // initialize the commands (insert will fail silently if it already exists)
-            modelCommands.insert(std::make_pair(residentAsset, -1));
-            imposterCommands.insert(std::make_pair(residentAsset, -1));
-
-            auto model = residentAsset->_model.get();
-            if (model && visited.count(model) == 0)
-            {
-                auto result = cloud->add(
-                    model,
-                    0U,
-                    NORMAL_MAP_TEX_UNIT);
-
-                modelCommands[residentAsset] = result._commandIndex;
-                //instance._textures = result._textures;
-
-                visited.insert(model);
-            }
-
-            auto imposter = residentAsset->_billboard.get();
-            if (imposter && visited.count(imposter) == 0)
-            {
-                auto result = cloud->add(
-                    imposter,
-                    getNumVertices(imposter),   // apply alignment so shader can use gl_VertexID
-                    NORMAL_MAP_TEX_UNIT);       // normal maps in texture image unit 1
-
-                imposterCommands[residentAsset] = result._commandIndex;
-                //instance._textures = result._textures;
-
-                visited.insert(imposter);
-            }
-        }
-    }
-
-    osg::StateSet* stateSet = cloud->getGeometry()->getOrCreateStateSet();
-
-    // attach the texture arena:
-    stateSet->setAttribute(
-        arena,
-        osg::StateAttribute::ON);
-
-#if 0
-    // attach the GPU lookup tables for this cloud:
-    osg::StateAttribute* luts = createGPULookupTables(
-        group,
-        modelCommands,
-        imposterCommands,
-        residentBiomes);
-
-    stateSet->setAttribute(
-        luts, 
-        osg::StateAttribute::ON);
-#endif
-
-    return cloud;
-}
-
-osg::StateAttribute*
-BiomeManager::createGPULookupTables(
-    AssetGroup::Type group,
-    const CommandIndexMap& asset_to_chonk_index,
-    const ResidentBiomes& residentBiomes) const
-{
-    // Our SSBOs to be reflected on the GPU:
-    auto luts = new BiomeManager::BiomeGPUData();
-
-    // SSBO bindings corresponding to the "layout" directives in the shader
-    // Consider making these configuration if necessary. These need to match
-    // the buffer bindings in GroundCover.Types.glsl.
-    luts->biomeLUT().setBindingPoint(6);
-    luts->assetLUT().setBindingPoint(7);
-
-    // working cache
-    std::unordered_map<
-        const ResidentModelAssetInstance*, 
-        BiomeManager::AssetLUT_Data> temp;
-
-    // First, caculate the weighting numbers by looping through all
-    // biomes and adding up the weights.
-    float weightTotal = 0.0f;
-    float smallestWeight = FLT_MAX;
-
-    for (const auto& b : residentBiomes)
-    {
-        const Biome* biome = b.first;
-        const ResidentModelAssetInstances& instances = b.second[group];
-        for (const auto& instance : instances)
-        {
-            weightTotal += instance._weight;
-            smallestWeight = std::min(smallestWeight, instance._weight);
-
-            auto residentAsset = instance._residentAsset;
-            auto assetDef = residentAsset->_assetDef;
-
-            // record an asset:
-            float width = assetDef->width().get();
-            if (assetDef->width().isSet() == false &&
-                residentAsset->_modelAABB.valid())
-            {
-                width = std::max(
-                    residentAsset->_modelAABB.xMax() - residentAsset->_modelAABB.xMin(),
-                    residentAsset->_modelAABB.yMax() - residentAsset->_modelAABB.yMin());
-            }
-
-            float height = assetDef->height().get();
-            if (assetDef->height().isSet() == false &&
-                residentAsset->_modelAABB.valid())
-            {
-                height = residentAsset->_modelAABB.zMax() - residentAsset->_modelAABB.zMin();
-            }
-
-            float sizeVariation = assetDef->sizeVariation().get();
-
-            // store in our temporary LUT
-            auto& r = temp[&instance];
-            r.chonkIndex = asset_to_chonk_index.at(residentAsset);
-            //r.modelCommand = modelCommands.at(residentAsset);
-            //r.imposterCommand = imposterCommands.at(residentAsset);
-            r.width = width;
-            r.height = height;
-            r.fill = instance._fill;
-            r.sizeVariation = sizeVariation;
-
-            OE_SOFT_ASSERT(r.chonkIndex >= 0);
-        }
-    }
-
-    // calculate the weight multiplier
-    float weightMultiplier = 1.0f / smallestWeight;
-    weightTotal = weightMultiplier * weightTotal;
-
-    // Calcluate the total number of possible slots and allocate them:
-    int numElements = 0;
-    for (const auto& b : residentBiomes)
-    {
-        const Biome* biome = b.first;
-        const ResidentModelAssetInstances& instances = b.second[group];
-        for(const auto& instance : instances)
-        {
-            numElements += instance._weight*weightMultiplier;
-        }
-    }
-    luts->assetLUT().setMaxNumElements(numElements);
-
-    // Next, build the asset table using weightings.
-    // Slot zero (0) will not be used because biome index starts at 1.
-    // Reserve it for later use.
-
-    std::map<unsigned, BiomeLUT_Data> biomeLUTData;
-
-    int offset = 0;
-    for (const auto& b : residentBiomes)
-    {
-        const Biome* biome = b.first;
-
-        if (biome->index() <= 0)
-        {
-            OE_SOFT_ASSERT(biome->index() > 0, "Found a biome index <= 0, skipping");
-            continue;
-        }
-
-        const ResidentModelAssetInstances& instances = b.second[group];
-        int ptr = offset;
-
-        for (const auto& instance : instances)
-        {
-            int num = (int)(instance._weight*weightMultiplier);
-
-            // copy the asset record into all slots corresponding to
-            // this instance. It wastes a bit of memory but no one cares
-            for (int w = 0; w < num; ++w)
-            {
-                auto& r = luts->assetLUT()[ptr++];
-                r = temp[&instance];
-            }
-        }
-
-        // populate the biome LUT:
-        BiomeLUT_Data entry;
-        entry.offset = offset;
-        entry.count = (ptr - offset);
-        biomeLUTData[biome->index()] = std::move(entry);
-
-        offset += (ptr - offset);
-    }
-
-    // allocate enough space for the highest-numbered biome index
-    luts->biomeLUT().setMaxNumElements(
-        biomeLUTData.empty() ? 1 : biomeLUTData.rbegin()->first+1);
-
-    for (auto& iter : biomeLUTData)
-    {
-        luts->biomeLUT()[iter.first] = std::move(iter.second);
-    }
-
-    luts->assetLUT().dirty();
-    luts->biomeLUT().dirty();
-
-    return luts;
 }

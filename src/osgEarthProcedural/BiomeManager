@@ -44,30 +44,33 @@ namespace osgEarth
         public:
             using Ptr = std::shared_ptr<ResidentModelAsset>;
 
-            //! Create a new instance - you can only create this as 
-            //! a shared_ptr.
+            //! Create a new asset
             static Ptr create();
 
             //! the asset definition materialized in this object
-            const ModelAsset* _assetDef;
+            using ModelAssetPtr = const ModelAsset * ;
+
+            //! Reference the model definintion itself
+            OE_PROPERTY(ModelAssetPtr, assetDef);
+
+            //! Local bounding box of the model
+            OE_PROPERTY(osg::BoundingBox, boundingBox);
 
             //! the model node loaded from the asset definition
-            osg::ref_ptr<osg::Node> _model;
+            OE_PROPERTY(osg::ref_ptr<osg::Node>, model);
 
-            //! the imposter node loaded from the asset definition
-            osg::ref_ptr<osg::Node> _billboard;
+            //! the impostor node loaded from the asset definition
+            OE_PROPERTY(osg::ref_ptr<osg::Node>, impostor);
 
             //! impostor textures
-            osg::ref_ptr<osg::Texture> _sideBillboardTex;
-            osg::ref_ptr<osg::Texture> _sideBillboardNormalMap;
-            osg::ref_ptr<osg::Texture> _topBillboardTex;
-            osg::ref_ptr<osg::Texture> _topBillboardNormalMap;
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardTex);
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardNormalMap);
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardTex);
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardNormalMap);
 
-            osg::BoundingBox _modelAABB;
-
-            Chonk::Ptr _chonk;
-
-            std::vector<Texture::Ptr> _textures;
+            //! Bindless geometry chonk
+            OE_PROPERTY(Chonk::Ptr, chonk);
+            OE_PROPERTY(std::vector<Texture::Ptr>, textures);
 
         private:
             ResidentModelAsset();
@@ -83,22 +86,16 @@ namespace osgEarth
         public:
             ResidentModelAssetInstance() :
                 _weight(1.0f),
-                _fill(1.0f) { }
+                _coverage(1.0f) { }
 
-            ResidentModelAsset::Ptr _residentAsset;
+            OE_PROPERTY(ResidentModelAsset::Ptr, residentAsset);
 
             // selection weight
-            float _weight;
+            OE_PROPERTY(float, weight);
 
             // coverage percentage
-            float _fill;
+            OE_PROPERTY(float, coverage);
         };
-
-#if 1
-        using GeometryCloudCollection = std::unordered_map<
-            AssetGroup::Type,
-            osg::ref_ptr<GeometryCloud>>;
-#endif
 
         /**
          * Manages the collection of active Biomes in memory.
@@ -117,14 +114,10 @@ namespace osgEarth
                 const Biome*,
                 ResidentModelAssetInstances[NUM_ASSET_GROUPS]>;
             
-            using CreateImposterFunction = std::function<
+            using createImpostorFunction = std::function<
                 osg::Node*(
                     const osg::BoundingBox& bbox,
                     std::vector<osg::Texture*>&)>;
-
-            using CommandIndexMap = std::unordered_map<
-                ResidentModelAsset::Ptr,
-                int>;
 
         public:
             BiomeManager();
@@ -147,17 +140,12 @@ namespace osgEarth
 
             void setCreateFunction(
                 const AssetGroup::Type group,
-                CreateImposterFunction function);
+                createImpostorFunction function);
 
             //! Gets a copy of the currently resident biomes
             //! (which is a snapshot in time)
             ResidentBiomes getResidentBiomes(
                 const osgDB::Options*);
-
-            //! Calculate the new resident set, and then make it resident.
-            GeometryCloudCollection updateResidency(
-                CreateImposterFunction createImposterGeometry,
-                const osgDB::Options* readOptions);
 
             //! The texture arena containing all textures loaded
             //! by this biome manager. You should install this on
@@ -191,7 +179,7 @@ namespace osgEarth
             mutable Mutex _residentData_mutex;
             int _revision;
             float _lodTransitionPixelScale;
-            CreateImposterFunction _createImposter[NUM_ASSET_GROUPS];
+            createImpostorFunction _createImpostor[NUM_ASSET_GROUPS];
 
             using BiomeRefs = std::unordered_map<const Biome*, int>;
             BiomeRefs _refs;
@@ -206,89 +194,13 @@ namespace osgEarth
             // loaded assets.
             osg::ref_ptr<TextureArena> _textures;
 
-            // recalculate the required resident biome sets
+            //! Recalculate the required resident biome sets
             void recalculateResidentBiomes();
 
+            //! Based on the computed set of resident biomes,
+            //! loads any assets that need loading, making them resident.
             void materializeNewAssets(
                 const osgDB::Options* readOptions);
-
-            //! Create a geometry cloud containing the current resident
-            //! set of biomes (for one asset group)
-            GeometryCloud* createGeometryCloud(
-                AssetGroup::Type group,
-                const ResidentBiomes& residentBiomes) const;
-
-            //! Generate the lookup tables necessary to render a geometry cloud
-            //! for one asset group
-            osg::StateAttribute* createGPULookupTables(
-                AssetGroup::Type group,
-                const CommandIndexMap& asset_to_chonk_index,
-                const ResidentBiomes& residentBiomes) const;
-
-        public:
-
-            struct BiomeLUT_Data
-            {
-                // please keep me 16-byte aligned
-                GLint offset;   // index of first asset in biome (in asset LUT)
-                GLint count;    // number of assets in biome
-                GLfloat _padding[2];
-                BiomeLUT_Data() : offset(-1), count(-1) { }
-            };
-            using BiomeLUT_SSBO = ArraySSBO<BiomeLUT_Data>;
-
-            // SSBO that holds the model asset information
-            struct AssetLUT_Data
-            {                
-                // please keep me 16-byte aligned
-                GLint chonkIndex;
-                GLfloat _padding_0[1];
-                //GLint modelCommand;
-                //GLint imposterCommand;
-                GLfloat width;
-                GLfloat height;
-
-                GLfloat fill;
-                GLfloat sizeVariation;
-                GLfloat _padding_1[2];
-            };
-            using AssetLUT_SSBO = ArraySSBO<AssetLUT_Data>;
-
-            // State attribute containing our LUTs
-            class BiomeGPUData : public osg::StateAttribute
-            {
-            public:
-                BiomeLUT_SSBO& biomeLUT() { return _biomeLUT; }
-                AssetLUT_SSBO& assetLUT() { return _assetLUT; }
-
-                void apply(osg::State& state) const override
-                {
-                    _biomeLUT.apply(state);
-                    _assetLUT.apply(state);
-                }
-
-                void resizeGLObjectBuffers(unsigned maxSize) override
-                {
-                    _biomeLUT.resizeGLObjectBuffers(maxSize);
-                    _assetLUT.resizeGLObjectBuffers(maxSize);
-                }
-
-                //TODO: evaluate.
-                //void releaseGLObjects(osg::State* state) const override
-                //{
-                //    _biomeLUT.releaseGLObjects(state);
-                //    _assetLUT.releaseGLObjects(state);
-                //}
-
-                META_StateAttribute(osgEarth, BiomeGPUData, (osg::StateAttribute::Type)12131415);
-                BiomeGPUData() { }
-                BiomeGPUData(const BiomeGPUData& rhs, const osg::CopyOp& op) { }
-                int compare(const osg::StateAttribute& rhs) const override { return -1; }
-
-            private:
-                BiomeLUT_SSBO _biomeLUT;
-                AssetLUT_SSBO _assetLUT;
-            };
         };
     }
 } // namespace osgEarth::Procedural

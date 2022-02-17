@@ -52,8 +52,7 @@ namespace osgEarth { namespace Procedural
     public:
         META_Layer(osgEarth, RoadSurfaceLayer, Options, osgEarth::ImageLayer, RoadSurface);
 
-        //! Sets the map layer from which to pull feature data. Call either
-        //! This or setFeatureSource
+        //! Sets the map layer from which to pull feature data
         void setFeatureSource(FeatureSource* layer);
         FeatureSource* getFeatureSource() const;
         

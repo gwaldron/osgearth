@@ -68,7 +68,7 @@ namespace osgEarth { namespace Procedural
                 osg::ref_ptr<osg::StateSet> _drawStateSet;
                 std::function<osg::Node*(
                     const osg::BoundingBox&,
-                    std::vector<osg::Texture*>&)> _createImposter;
+                    std::vector<osg::Texture*>&)> _createImpostor;
             };
             OE_OPTION_VECTOR(Group, groups);
             const Group& group(AssetGroup::Type t) const { 
@@ -121,6 +121,25 @@ namespace osgEarth { namespace Procedural
         //! Force regeneration of the visible data
         void dirty();
 
+    public:
+        struct Placement
+        {
+            OE_PROPERTY(osg::Vec3d, mapPoint);
+            OE_PROPERTY(osg::Vec2d, localPoint);
+            OE_PROPERTY(osg::Vec2f, uv);
+            OE_PROPERTY(osg::Vec3f, scale);
+            OE_PROPERTY(float, rotation);
+            OE_PROPERTY(ResidentModelAsset::Ptr, asset);
+        };
+
+        //! Gets all the asset placement information for a given
+        //! tile within the given asset group.
+        const std::vector<Placement> getAssetPlacements(
+            const TileKey& key,
+            const AssetGroup::Type& group,
+            bool loadBiomesOnDemand,
+            ProgressCallback* progress) const;
+
     protected:
 
         virtual void init() override;
@@ -160,8 +179,10 @@ namespace osgEarth { namespace Procedural
         void reset();
 
         // call from UPDATE peridoically to see if new biomes
-        // caused new assets to page in
-        void checkForNewAssets();
+        // caused new assets to page in.
+        // Returns true if the revision changes and a job to load new
+        // assets started.
+        bool checkForNewAssets() const;
 
         // Result of background drawable-creation jobs
         using FutureDrawable = Future<osg::ref_ptr<ChonkDrawable>>;
@@ -207,12 +228,12 @@ namespace osgEarth { namespace Procedural
 
         using AssetsByBiome = std::unordered_map<const Biome*, std::vector<ResidentModelAssetInstance>>;
         using Assets = std::vector<AssetsByBiome>;
-        Future<Assets> _newAssets;
 
         mutable Mutex _assets_mutex; // since createDrawable in async
-        Assets _assets;
+        mutable Future<Assets> _newAssets;
+        mutable Assets _assets;
 
-        std::atomic_int _biomeRevision; // keep track of when to load to assets
+        mutable std::atomic_int _biomeRevision; // keep track of when to load to assets
         Status _status;
 
         void configureTrees();

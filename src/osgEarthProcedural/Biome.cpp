@@ -133,7 +133,7 @@ AssetCatalog::AssetCatalog(const Config& conf)
             for (const auto& m : modelassets)
             {
                 ModelAsset asset(m);
-                asset._group = group;
+                asset.group() = group;
                 _models[asset.name().get()] = asset;
             }
         }
@@ -296,17 +296,18 @@ Biome::Biome(const Config& conf, AssetCatalog* assetCatalog) :
     for (const auto& child : assets)
     {
         ModelAssetToUse m;
-        m.asset = assetCatalog->getModel(child.value("name"));
-        if (m.asset)
+        m.asset() = assetCatalog->getModel(child.value("name"));
+        if (m.asset())
         {
-            m.weight = 1.0f;
-            child.get("weight", m.weight);
-            m.fill = 1.0f;
-            child.get("fill", m.fill);
+            m.weight() = 1.0f;
+            child.get("weight", m.weight());
+            m.coverage() = 1.0f;
+            child.get("fill", m.coverage()); // backwards compat
+            child.get("coverage", m.coverage());
 
-            if (m.asset->_group < NUM_ASSET_GROUPS)
+            if (m.asset()->group() < NUM_ASSET_GROUPS)
             {
-                _assetsToUse[m.asset->_group].emplace_back(m);
+                _assetsToUse[m.asset()->group()].emplace_back(m);
             }
         }
     }
@@ -445,7 +446,7 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
                 int count = 0;
                 for (auto& asset_ptr : assetsToUse)
                 {
-                    const std::string& traits = asset_ptr.asset->traits().get();
+                    const std::string& traits = asset_ptr.asset()->traits().get();
                     if (!traits.empty())
                     {
                         traits_table[traits][g].insert(asset_ptr);

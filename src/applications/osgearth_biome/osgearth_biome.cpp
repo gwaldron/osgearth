@@ -455,9 +455,9 @@ struct VegetationGUI : public GUI::BaseGUI
                             {
                                 for(auto& pointer : biome->getModelAssetsToUse(group))
                                 {
-                                    if (ImGui::TreeNode(pointer.asset->name()->c_str()))
+                                    if (ImGui::TreeNode(pointer.asset()->name()->c_str()))
                                     {
-                                        drawModelAsset(pointer.asset);
+                                        drawModelAsset(pointer.asset());
                                         ImGui::TreePop();
                                     }
                                 }

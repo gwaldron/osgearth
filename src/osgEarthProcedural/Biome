@@ -65,15 +65,39 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT ModelAsset
         {
         public:
+            //! Readable name of the asset
             OE_OPTION(std::string, name);
+
+            //! URI from which to load the asset 3D model
             OE_OPTION(URI, modelURI);
+
+            //! URI from which to load a side texture for an impostor
             OE_OPTION(URI, sideBillboardURI);
+
+            //! URI from which to load a top texture for an impostor
             OE_OPTION(URI, topBillboardURI);
+
+            //! When only billboards are available, width of each billboard
             OE_OPTION(float, width);
+
+            //! When only billboards are availalbe, height of each billboard
             OE_OPTION(float, height);
+
+            //! Variation range (+/-) added to the scale when creating an
+            //! instance of this asset.
+            //! For example:
+            //!  - Value of 0.0 means the scale will always be 1.0
+            //!  - Value of 0.5 means the scale can be [0.5 ... 1.5].
+            //!  - Value of 1.0 means the scale can be [0.0 ... 2.0].
             OE_OPTION(float, sizeVariation);
+
+            //! User-defined traits string
             OE_OPTION(std::string, traits);
 
+            //! Asset group to which this model belongs.
+            OE_PROPERTY(AssetGroup::Type, group);
+
+        public:
             //! Construct an empty model asset definition
             ModelAsset() { }
 
@@ -89,8 +113,6 @@ namespace osgEarth
             const Config& getSourceConfig() const {
                 return _sourceConfig;
             }
-
-            AssetGroup::Type _group;
 
         private:
             Config _sourceConfig;
@@ -175,24 +197,20 @@ namespace osgEarth
             struct ModelAssetToUse
             {
                 // points to the base asset in the catalog
-                const ModelAsset* asset;
+                using ModelAssetRef = const ModelAsset * ;
 
-                // selection weight compared to other assets (default = 1.0)
-                float weight;
+                //! Reference to the asset being used
+                OE_PROPERTY(ModelAssetRef, asset);
 
-                // coverage percentage when this asset it selected (default = 1.0)
-                float fill;
+                //! Selection weight compared to other assets (default = 1.0)
+                OE_PROPERTY(float, weight);
+
+                //! Coverage percentage when this asset it selected (default = 1.0)
+                OE_PROPERTY(float, coverage);
 
                 bool operator < (const ModelAssetToUse& rhs) const {
-                    return (std::uintptr_t)asset < (std::uintptr_t)rhs.asset;
+                    return (std::uintptr_t)asset() < (std::uintptr_t)rhs.asset();
                 }
-
-                ModelAssetToUse() { }
-
-                ModelAssetToUse(const ModelAssetToUse& rhs) :
-                    asset(rhs.asset),
-                    weight(rhs.weight),
-                    fill(rhs.fill) { }
             };
 
             using ModelAssetsToUse = std::vector<ModelAssetToUse>;
@@ -216,7 +234,6 @@ namespace osgEarth
             friend class BiomeCatalog;
         };
 
-#if 1
         /**
          * A single lifemap value set.
          */
@@ -233,7 +250,6 @@ namespace osgEarth
             OE_OPTION(float, rugged);
             OE_OPTION(std::string, special);
         };
-
 
         /**
          * Mappings from IDs to lifemap parameters.
@@ -252,7 +268,6 @@ namespace osgEarth
         private:
             std::unordered_map<std::string, LifeMapValue> _lut;
         };
-#endif
 
         /**
          * Defines all biomes, assets, and land use mappings used
@@ -277,23 +292,19 @@ namespace osgEarth
             //! Asset catalog
             const AssetCatalog& getAssets() const;
 
-#if 1
             //! Table that maps land use classes to lifemap values.
             const LifeMapValueTable* getLandUseTable() const;
 
             //! Table that maps land cover classes to lifemap values.
             const LifeMapValueTable* getLandCoverTable() const;
-#endif
 
         public:
             Config getConfig() const;
 
             int _biomeIndexGenerator;
             AssetCatalog _assets;
-#if 1
             std::shared_ptr<LifeMapValueTable> _landUseTable;
             std::shared_ptr<LifeMapValueTable> _landCoverTable;
-#endif
 
             std::map<int, Biome> _biomes_by_index; // keep ordered by index
         };

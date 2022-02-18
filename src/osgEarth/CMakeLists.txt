@@ -184,6 +184,7 @@ SET(LIB_PUBLIC_HEADERS
     Math
     Map
     MapboxGLImageLayer
+    MapboxGLGlyphManager
     MapCallback
     MapInfo
     MapModelChange
@@ -605,6 +606,7 @@ set(TARGET_SRC
     Math.cpp
     Map.cpp
     MapboxGLImageLayer.cpp
+    MapboxGLGlyphManager.cpp
     MapCallback.cpp
     MapInfo.cpp
     MapNode.cpp
@@ -854,13 +856,16 @@ IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
   ENDIF()
 
   PROTOBUF_GENERATE_CPP(PROTO_VECTOR_TILE_CPP PROTO_VECTOR_TILE_H vector_tile.proto)
+  PROTOBUF_GENERATE_CPP(PROTO_GLYPHS_CPP PROTO_GLYPHS_H glyphs.proto)
   SET(LIB_PUBLIC_HEADERS
     ${LIB_PUBLIC_HEADERS}
     ${PROTO_VECTOR_TILE_H}
+    ${PROTO_GLYPHS_H}
   )
   SET(TARGET_SRC
     ${TARGET_SRC}
     ${PROTO_VECTOR_TILE_CPP}
+    ${PROTO_GLYPHS_CPP}
   )
 ENDIF()
 

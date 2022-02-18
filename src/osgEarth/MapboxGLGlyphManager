@@ -1,0 +1,72 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_MAPBOXGL_GLYPH_MANAGER
+#define OSGEARTH_MAPBOXGL_GLYPH_MANAGER 1
+
+#include <osgEarth/Common>
+#include <osgEarth/URI>
+#include <osgDB/Options>
+#include <map>
+
+namespace osgEarth { namespace Util
+{
+    class OSGEARTH_EXPORT MapboxGLGlyphManager : public osg::Referenced
+    {        
+    public:
+        class Glyph : public osg::Referenced
+        {
+        public:
+            unsigned int id;
+            unsigned int width;
+            unsigned int height;
+            int left;
+            int top;
+            unsigned int advance;
+            std::string bitmap;
+        };
+
+        MapboxGLGlyphManager(const std::string& uri, const std::string& key, const osgDB::Options* readOptions);
+
+        const std::string& getURI() const;
+        void setURI(const std::string& uri);
+
+        const std::string& getKey() const;
+        void setKey(const std::string& key);
+
+        void getGlyphs(const std::string& text, const std::string& fontStack, std::vector< osg::ref_ptr< Glyph > >& result);
+
+    private:
+
+        //mapboxgl::glyphs::glyph getGlyph(const std::string& font, unsigned int code);
+        Glyph* getGlyph(const std::string& font, unsigned int code);
+
+        void loadFont(const osgEarth::URI& glyphsURI);
+
+        std::mutex _mutex;
+        std::map< std::string, std::map< unsigned int, osg::ref_ptr< Glyph > > > _fontsToGlyphs;
+        std::string _uri;
+        std::string _key;
+        osg::ref_ptr< const osgDB::Options > _options;
+
+        std::set< std::string > _loadedFonts;
+    };
+} }
+
+#endif // OSGEARTH_MAPBOXGL_GLYPH_MANAGER

@@ -187,24 +187,35 @@ namespace osgEarth { namespace Procedural
         // Result of background drawable-creation jobs
         using FutureDrawable = Future<osg::ref_ptr<ChonkDrawable>>;
 
-        // Share the creator jobs across multiple cameras
-        // (e.g. views or shadow cams)
-        using TileJobs = std::unordered_map<
-            TileKey,
-            FutureDrawable>;
-        mutable TileJobs _tileJobs;
-        mutable Mutex _tileJobs_mutex;
+        struct TileKeyAndRevision {
+            TileKey key;
+            int revision;
+            bool operator == (const TileKeyAndRevision& rhs) const {
+                return key == rhs.key && revision == rhs.revision;
+            }
+            std::size_t operator()(const TileKeyAndRevision& rhs) const {
+                return hash_value_unsigned(key.hash(), revision);
+            }
+        };
 
-        // One cached tile that's passed cull in a camera state
         struct Tile
         {
-            int _revision;
-            FutureDrawable _newDrawable;
-            osg::ref_ptr<osg::RefMatrix> _matrix;
-            osg::ref_ptr<ChonkDrawable> _drawable;
-            osg::Matrix _mvm;
+            using Ptr = std::shared_ptr<Tile>;
+            FutureDrawable _drawable;
+        };
 
-            Tile() : _revision(-1) { }
+        using Tiles = std::unordered_map<
+            TileKeyAndRevision,
+            Tile::Ptr,
+            TileKeyAndRevision>;
+
+        mutable Tiles _tiles;
+        mutable Mutex _tiles_mutex;
+
+        struct TileView
+        {
+            Tile::Ptr _tile;
+            osg::ref_ptr<osg::RefMatrix> _matrix;
         };
 
         // Data unique to a specific camera traversal
@@ -212,12 +223,12 @@ namespace osgEarth { namespace Procedural
         struct CameraState
         {
             using Ptr = std::shared_ptr<CameraState>;
-            using TileCache = std::unordered_map<TileKey, Tile>;
-            TileCache _tiles;
+            using TileViews = std::unordered_map<
+                TileKeyAndRevision, TileView, TileKeyAndRevision>;
+            TileViews _views;
         };
         mutable Mutex _cameraState_mutex;
-        using CameraStates = std::unordered_map<
-            const osg::Camera*, CameraState::Ptr>;
+        using CameraStates = std::unordered_map<const osg::Camera*, CameraState::Ptr>;
         mutable CameraStates _cameraState;
 
         mutable osg::FrameStamp _lastVisit; // for timeouts

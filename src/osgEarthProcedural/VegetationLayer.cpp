@@ -291,7 +291,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     {
         groups()[AssetGroup::TREES].enabled() = true;
         groups()[AssetGroup::TREES].castShadows() = true;
-        groups()[AssetGroup::TREES].maxRange() = 2500.0f;
+        groups()[AssetGroup::TREES].maxRange() = 4000.0f;
         groups()[AssetGroup::TREES].lod() = 14;
         groups()[AssetGroup::TREES].count() = 4096;
         groups()[AssetGroup::TREES].spacing() = Distance(15.0f, Units::METERS);
@@ -304,7 +304,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         groups()[AssetGroup::UNDERGROWTH].castShadows() = false;
         groups()[AssetGroup::UNDERGROWTH].maxRange() = 75.0f;
         groups()[AssetGroup::UNDERGROWTH].lod() = 19;
-        groups()[AssetGroup::UNDERGROWTH].count() = 2048;
+        groups()[AssetGroup::UNDERGROWTH].count() = 4096;
         groups()[AssetGroup::UNDERGROWTH].spacing() = Distance(1.0f, Units::METERS);
         groups()[AssetGroup::UNDERGROWTH].maxAlpha() = 0.75f;
     }
@@ -1211,7 +1211,7 @@ VegetationLayer::getAssetPlacements(
     osg::Vec2d local;
 
     // Generate random instances within the tile:
-    for (auto i = 0; i < max_instances; ++i)
+    for (unsigned i = 0; i < max_instances; ++i)
     {
         // random tile-normalized position:
         float u = rand_float(gen);
@@ -1440,27 +1440,22 @@ VegetationLayer::cull(
 
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
-    // protect the traversal data from releaseGLObject et al.
-    _traversal_mutex.read_lock();
-    
     // update the framestamp for auto-timeout support
     _lastVisit = *cv->getFrameStamp();
 
-    // exclusive lock on the camera state
+    // exclusive lock on the camera state (created a new one as necessary)
     _cameraState_mutex.lock();
     CameraState::Ptr& cs = _cameraState[cv->getCurrentCamera()];
-    if (cs == nullptr)
-        cs = std::make_shared<CameraState>();
     _cameraState_mutex.unlock();
 
-    CameraState::TileCache active_tiles;
+    if (cs == nullptr)
+        cs = std::make_shared<CameraState>();
 
-    for (auto& batch_entry : batch.tiles())
+    CameraState::TileViews active_views;
+
+    for (auto& entry : batch.tiles())
     {
-        const TileKey& key = batch_entry->getKey();
-        Tile& tile = cs->_tiles[key];
-
-        AssetGroup::Type group = getGroupAtLOD(key.getLOD());
+        AssetGroup::Type group = getGroupAtLOD(entry->getKey().getLOD());
         OE_HARD_ASSERT(group != AssetGroup::UNDEFINED);
 
         if (CameraUtils::isShadowCamera(cv->getCurrentCamera()) &&
@@ -1469,83 +1464,78 @@ VegetationLayer::cull(
             continue;
         }
 
-        // create if necessary:
-        if (tile._revision != batch_entry->getRevision())
-        {
-            tile._revision = batch_entry->getRevision();
+        // combine the key and revision to make a Unique ID.
+        TileKeyAndRevision tileId(
+            { entry->getKey(), entry->getRevision() }
+        );
 
+        // find this camera's view on the tile, createing a slot
+        // if necessary:
+        TileView& view = cs->_views[tileId];
+
+        // If this camera doesn't have a view on the tile, establish one:
+        if (view._tile == nullptr)
+        {
             // We don't want more than one camera creating the
             // same drawable, so this tileJobs table tracks 
             // createDrawable jobs globally.
-            ScopedMutexLock lock(_tileJobs_mutex);
+            ScopedMutexLock lock(_tiles_mutex);
 
-            bool newJob = true;
-            auto iter = _tileJobs.find(key);
-            if (iter != _tileJobs.end())
+            Tile::Ptr& tile = _tiles[tileId];
+            if (tile == nullptr)
             {
-                // found an active one in the table already
-                if (!iter->second.isAbandoned())
-                {
-                    tile._newDrawable = iter->second;
-                    newJob = false;
-                }
-            }
+                // new tile; create and fire off the loading job.
+                tile = std::make_shared<Tile>();
 
-            if (newJob)
-            {
-                tile._newDrawable = createDrawableAsync(
-                    key,
+                tile->_drawable = createDrawableAsync(
+                    entry->getKey(),
                     group,
-                    batch_entry->getBBox());
-
-                _tileJobs.emplace(key, tile._newDrawable);
+                    entry->getBBox());
             }
+
+            view._tile = tile;
+            view._matrix = new osg::RefMatrix();
         }
 
-        else if (tile._newDrawable.isAvailable())
+        // if the data is ready, cull it:
+        if (view._tile->_drawable.isAvailable())
         {
-            tile._drawable = tile._newDrawable.release();
+            view._matrix->set(entry->getModelViewMatrix());
+            cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
 
-            // If the job failed for some reason (by returning nullptr)
-            // trigger a reschedule by "dirtying" the revision number.
-            if (tile._drawable == nullptr)
-            {
-                tile._revision = -1;
-            }
-            else
-            {
-                tile._matrix = new osg::RefMatrix();
-            }
-        }
+            view._tile->_drawable.get()->accept(nv);
 
-        if (tile._drawable.valid())
-        {
-            tile._matrix->set(batch_entry->getModelViewMatrix());
-
-            cv->pushModelViewMatrix(tile._matrix.get(), osg::Transform::ABSOLUTE_RF);
-           
-            tile._drawable->accept(nv);
-  
             cv->popModelViewMatrix();
         }
 
-        active_tiles[key] = tile;
+        // If the job exists but was canceled for some reason,
+        // Reset this view so it will try again later.
+        else if (view._tile->_drawable.isAbandoned())
+        {
+            view._tile = nullptr;
+        }
+
+        if (view._tile)
+        {
+            active_views[tileId] = view;
+        }
     }
 
     // Purge old tiles.
-    cs->_tiles.swap(active_tiles);
+    cs->_views.swap(active_views);
 
     _traversal_mutex.read_unlock();
 
-    // clean up the jobs cache 
-    _tileJobs_mutex.lock();
-    for (auto it = _tileJobs.begin(); it != _tileJobs.end(); ) {
-        if (it->second.refs() == 1)
-            it = _tileJobs.erase(it);
+
+    // purge unused tiles
+    _tiles_mutex.lock();
+    for (auto it = _tiles.begin(); it != _tiles.end(); ) {
+        if (it->second.use_count() == 1)
+            it = _tiles.erase(it);
         else
             ++it;
     }
-    _tileJobs_mutex.unlock();
+    _tiles_mutex.unlock();
 }
 
 void
@@ -1553,17 +1543,12 @@ VegetationLayer::resizeGLObjectBuffers(unsigned maxSize)
 {
     PatchLayer::resizeGLObjectBuffers(maxSize);
 
-    ScopedWriteLock lock(_traversal_mutex);
-    for (auto& cs : _cameraState)
+    ScopedMutexLock lock(_tiles_mutex);
+    for (auto& tile : _tiles)
     {
-        for (auto& tile : cs.second->_tiles)
-        {
-            if (tile.second._drawable.valid())
-            {
-                tile.second._drawable->resizeGLObjectBuffers(maxSize);
-            }
-        }
-        cs.second->_tiles.clear();
+        auto drawable = tile.second->_drawable.get();
+        if (drawable.valid())
+            drawable->resizeGLObjectBuffers(maxSize);
     }
 }
 
@@ -1572,16 +1557,11 @@ VegetationLayer::releaseGLObjects(osg::State* state) const
 {
     PatchLayer::releaseGLObjects(state);
 
-    ScopedWriteLock lock(_traversal_mutex);
-    for (auto& cs : _cameraState)
+    ScopedMutexLock lock(_tiles_mutex);
+    for (auto& tile : _tiles)
     {
-        for (auto& tile : cs.second->_tiles)
-        {
-            if (tile.second._drawable.valid())
-            {
-                tile.second._drawable->releaseGLObjects(state);
-            }
-        }
-        cs.second->_tiles.clear();
+        auto drawable = tile.second->_drawable.get();
+        if (drawable.valid())
+            drawable->releaseGLObjects(state);
     }
 }

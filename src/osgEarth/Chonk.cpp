@@ -134,8 +134,10 @@ void cull()
 #ifdef OE_IS_SHADOW_CAMERA
     // only use the highest LOD for shadow-casting.
     // TODO: reevaluate this.
-    if (lod > 0)
+    if (lod < 1)
         return;
+    //if (lod > 0)
+    //    return;
 #endif
 
     // bail if our chonk does not have this LOD
@@ -186,18 +188,16 @@ void cull()
         LL = min(LL, temp); UR = max(UR, temp);
 
 #if OE_GPUCULL_DEBUG
-        float threshold = 0.9;
+        float threshold = 0.75;
 #else
         float threshold = 1.0;
 #endif
 
-        if (LL.x > threshold || LL.y > threshold) {
+        if (LL.x > threshold || LL.y > threshold)
             REJECT(REASON_FRUSTUM);
-        }
 
-        if (UR.x < -threshold || UR.y < -threshold) {
+        if (UR.x < -threshold || UR.y < -threshold)
             REJECT(REASON_FRUSTUM);
-        }
 
 #ifndef OE_IS_SHADOW_CAMERA
 
@@ -208,16 +208,15 @@ void cull()
         float pixelSizePad = pixelSize*0.1;
 
         float minPixelSize = oe_sse * chonks[v].far_pixel_scale;
-        if (pixelSize < (minPixelSize - pixelSizePad)) {
+        if (pixelSize < (minPixelSize - pixelSizePad))
             REJECT(REASON_SSE);
-        }
 
         float maxPixelSize = oe_sse * chonks[v].near_pixel_scale;
-        if (pixelSize > (maxPixelSize + pixelSizePad)) {
+        if (pixelSize > (maxPixelSize + pixelSizePad))
             REJECT(REASON_SSE);
-        }
 
-        if (fade < 1.5) { // good to go, set the proper fade:
+        if (fade==1.0)  // good to go, set the proper fade:
+        {
             if (pixelSize > maxPixelSize)
                 fade = 1.0-(pixelSize-maxPixelSize)/pixelSizePad;
             else if (pixelSize < minPixelSize)
@@ -242,7 +241,7 @@ void compact()
     const uint lod = gl_GlobalInvocationID.y; // lod
     
     float fade = input_instances[i].visibility[lod];
-    if (fade < 0.15)
+    if (fade < 0.1)
         return;
 
     uint v = input_instances[i].first_lod_cmd_index + lod;
@@ -251,6 +250,7 @@ void compact()
 
     // Lazy! Re-using the instance struct for render leaves..
     output_instances[offset+index] = input_instances[i];
+    output_instances[offset+index].fade = fade;
 }
 
 // Entry point.
@@ -375,15 +375,15 @@ void oe_chonk_default_fragment(inout vec4 color)
     }
 
     // apply the high fade from the instancer
-//#ifdef OE_GPUCULL_DEBUG
+#if OE_GPUCULL_DEBUG
     if (oe_fade <= 1.0) color.a *= oe_fade;
-    else if (oe_fade <= 2.0) color = vec4(1,0,0,1);
-    else if (oe_fade <= 3.0) color = vec4(1,1,0,1);
-    else if (oe_fade <= 4.0) color = vec4(0,1,0,1);
-    else color = vec4(1,0,1,1); // should never happen :)
-//#else
-//    color.a *= oe_fade;
-//#endif
+    else if (oe_fade <= 2.0) color.rgb = vec3(1,0,0);
+    else if (oe_fade <= 3.0) color.rgb = vec3(1,1,0);
+    else if (oe_fade <= 4.0) color.rgb = vec3(0,1,0);
+    else color.rgb = vec3(1,0,1); // should never happen :)
+#else
+    color.a *= oe_fade;
+#endif
 
     if (oe_normal_tex > 0)
     {

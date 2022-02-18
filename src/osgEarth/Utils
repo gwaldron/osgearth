@@ -32,6 +32,7 @@
 #include <osgViewer/View>
 #include <osgUtil/CullVisitor>
 #include <osgUtil/RenderBin>
+#include <osgUtil/RenderLeaf>
 
 #include <string>
 #include <list>
@@ -187,6 +188,22 @@ namespace osgEarth { namespace Util
     struct OSGEARTH_EXPORT RenderBinUtils
     {
         static unsigned getTotalNumRenderLeaves(osgUtil::RenderBin* bin);
+    };
+
+    /**
+     * RenderLeaf that copies another renderleaf's data and then provied
+     * a custom draw function.
+     */
+    class OSGEARTH_EXPORT CustomRenderLeaf : public osgUtil::RenderLeaf
+    {
+    public:
+        CustomRenderLeaf(osgUtil::RenderLeaf* leaf);
+
+        //! Implemenet this for a custom draw
+        virtual void draw(osg::State& state) = 0;
+
+        // from RenderLeaf
+        void render(osg::RenderInfo& renderInfo, osgUtil::RenderLeaf* previous) override;
     };
 
     /**

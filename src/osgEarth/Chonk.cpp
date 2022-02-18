@@ -25,6 +25,7 @@
 #include "Metrics"
 #include "VirtualProgram"
 #include "ShaderLoader"
+#include "Utils"
 
 #include <osg/Switch>
 #include <osg/LOD>
@@ -112,8 +113,9 @@ layout(binding=31) buffer InputBuffer
 uniform vec3 oe_Camera;
 uniform float oe_sse;
 
-#ifdef OE_GPUCULL_DEBUG
-#define REJECT(X) if (fade==1.0) fade=X
+#if OE_GPUCULL_DEBUG
+//#ifdef OE_GPUCULL_DEBUG
+#define REJECT(X) if (fade==1.0) { fade=(X);}
 #else
 #define REJECT(X) return
 #endif
@@ -145,22 +147,22 @@ void cull()
     float fade = 1.0;
 
     // transform the bounding sphere to a view-space bbox.
-    vec4 center = input_instances[i].xform * vec4(chonks[v].bs.xyz, 1);
+    mat4 xform = input_instances[i].xform;
+    vec4 center = xform * vec4(chonks[v].bs.xyz, 1);
     vec4 center_view = gl_ModelViewMatrix * center;
 
-    float r = chonks[v].bs.w;
-
-#ifdef OE_GPUCULL_DEBUG
-    r = max(1.0, r*0.75);
-#endif
+    float max_scale = max(xform[0][0], max(xform[1][1], xform[2][2]));
+    float r = chonks[v].bs.w * max_scale;
 
     // Trivially accept (at the highest LOD) anything whose bounding sphere
     // intersects the near clip plane:
+    bool is_perspective = gl_ProjectionMatrix[3][3] < 0.01;
     float near = gl_ProjectionMatrix[2][3] / (gl_ProjectionMatrix[2][2]-1.0);
-    if (-(center_view.z + r) <= near)
+    if (is_perspective && -(center_view.z + r) <= near)
     {
-        if (lod > 0) // reject all lower LODs
+        if (lod > 0) { // reject all lower LODs
             REJECT(REASON_NEARCLIP);
+        }
     }
     else
     {
@@ -183,11 +185,19 @@ void cull()
         temp = gl_ProjectionMatrix * (center_view + vec4(+r,+r,+r,0)); temp /= temp.w;
         LL = min(LL, temp); UR = max(UR, temp);
 
-        if (LL.x > LL.w || LL.y > LL.w) // || LL.z > LL.w)
-            REJECT(REASON_FRUSTUM);
+#if OE_GPUCULL_DEBUG
+        float threshold = 0.9;
+#else
+        float threshold = 1.0;
+#endif
 
-        if (UR.x < -UR.w || UR.y < -UR.w) // || UR.z < -UR.w)
+        if (LL.x > threshold || LL.y > threshold) {
             REJECT(REASON_FRUSTUM);
+        }
+
+        if (UR.x < -threshold || UR.y < -threshold) {
+            REJECT(REASON_FRUSTUM);
+        }
 
 #ifndef OE_IS_SHADOW_CAMERA
 
@@ -198,15 +208,16 @@ void cull()
         float pixelSizePad = pixelSize*0.1;
 
         float minPixelSize = oe_sse * chonks[v].far_pixel_scale;
-        if (pixelSize < (minPixelSize - pixelSizePad))
+        if (pixelSize < (minPixelSize - pixelSizePad)) {
             REJECT(REASON_SSE);
+        }
 
         float maxPixelSize = oe_sse * chonks[v].near_pixel_scale;
-        if (pixelSize > (maxPixelSize + pixelSizePad))
+        if (pixelSize > (maxPixelSize + pixelSizePad)) {
             REJECT(REASON_SSE);
+        }
 
-        if (fade == 1.0) // good to go, set the proper fade:
-        {
+        if (fade < 1.5) { // good to go, set the proper fade:
             if (pixelSize > maxPixelSize)
                 fade = 1.0-(pixelSize-maxPixelSize)/pixelSizePad;
             else if (pixelSize < minPixelSize)
@@ -240,7 +251,6 @@ void compact()
 
     // Lazy! Re-using the instance struct for render leaves..
     output_instances[offset+index] = input_instances[i];
-    output_instances[offset+index].fade = fade;
 }
 
 // Entry point.
@@ -365,15 +375,15 @@ void oe_chonk_default_fragment(inout vec4 color)
     }
 
     // apply the high fade from the instancer
-#ifdef OE_GPUCULL_DEBUG
+//#ifdef OE_GPUCULL_DEBUG
     if (oe_fade <= 1.0) color.a *= oe_fade;
     else if (oe_fade <= 2.0) color = vec4(1,0,0,1);
     else if (oe_fade <= 3.0) color = vec4(1,1,0,1);
     else if (oe_fade <= 4.0) color = vec4(0,1,0,1);
     else color = vec4(1,0,1,1); // should never happen :)
-#else
-    color.a *= oe_fade;
-#endif
+//#else
+//    color.a *= oe_fade;
+//#endif
 
     if (oe_normal_tex > 0)
     {
@@ -862,13 +872,6 @@ namespace
         GLboolean normalize;
         GLint offset;
     };
-
-    Mutex _s_cullStateSetMutex;
-    using CullSSLUT = std::unordered_map<osg::Shader*, osg::ref_ptr<osg::StateSet>>;
-    osg::ref_ptr<osg::Shader> _s_baseShader;
-    osg::ref_ptr<osg::Program> _s_cullProgram;
-    osg::ref_ptr<osg::StateSet> _s_cullSS;
-    CullSSLUT _s_cullStateSets;
 }
 
 ChonkDrawable::ChonkDrawable() :
@@ -881,10 +884,7 @@ ChonkDrawable::ChonkDrawable() :
     setUseVertexBufferObjects(false);
     setUseVertexArrayObject(false);
 
-    getOrCreateStateSet()->setRenderBinDetails(
-        818,
-        "ChonkBin",
-        osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
+    installRenderBin(this);
 }
 
 ChonkDrawable::~ChonkDrawable()
@@ -893,13 +893,29 @@ ChonkDrawable::~ChonkDrawable()
 }
 
 void
-ChonkDrawable::installDefaultShader(osg::StateSet* ss)
+ChonkDrawable::installRenderBin(ChonkDrawable* d)
 {
-    OE_SOFT_ASSERT_AND_RETURN(ss != nullptr, void());
-    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    vp->setName("ChonkDrawable");
-    vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
-    ShaderLoader::load(vp, oe_chonk_default_shaders);
+    static osg::ref_ptr<osg::StateSet> s_ss;
+    static osg::ref_ptr<VirtualProgram> s_vp;
+    static Mutex s_mutex;
+
+    if (!s_vp.valid())
+    {
+        ScopedMutexLock lock(s_mutex);
+        if (!s_vp.valid())
+        {
+            s_ss = new osg::StateSet();
+            s_ss->setDataVariance(s_ss->STATIC);
+            s_ss->setRenderBinDetails(818, "ChonkBin");
+
+            s_vp = VirtualProgram::getOrCreate(s_ss.get());
+            s_vp->setName("ChonkDrawable");
+            s_vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
+            ShaderLoader::load(s_vp.get(), oe_chonk_default_shaders);
+        }
+    }
+
+    d->setStateSet(s_ss.get());    
 }
 
 void
@@ -944,9 +960,11 @@ ChonkDrawable::add(
         //instance.visibility_mask = 0;
         _batches[chonk].push_back(std::move(instance));
 
+        // flag all graphics states as requiring an update:
         for (unsigned i = 0; i < _gs.size(); ++i)
             _gs[i]._dirty = true;
 
+        // flag the bounds for recompute
         dirtyBound();
     }
 }
@@ -983,53 +1001,14 @@ void
 ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
     OE_HARD_ASSERT(false, "ChonkRenderBin::drawImplementation should never be called WHAT ARE YOU DOING");
-
-    OE_PROFILING_ZONE;
-    OE_GL_ZONE_NAMED(getName().c_str());
-
-    if (_batches.empty())
-        return;
-
-    osg::State& state = *ri.getState();
-    GCState& gs = _gs[state.getContextID()];
-    if (!gs._vao)
-    {
-        gs._cull = _gpucull;
-        gs.initialize(state);
-    }
-        
-    const osg::Program::PerContextProgram* pcp = nullptr; 
-
-    if (_gpucull)
-    {
-        // save bound program:
-        pcp = state.getLastAppliedProgramObject();
-    }
-
-    update_and_cull_batches(state);
-
-    // restore the draw state (or use the custom one):
-    if (pcp) {
-        pcp->getProgram()->apply(state);
-    }
-
-    // render
-    gs._vao->bind();
-
-    // sync to cull results:
-    gs._ext->glMemoryBarrier(
-        GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
-
-    draw_batches(state);
-
-    gs._vao->unbind();
 }
 
 void
 ChonkDrawable::update_and_cull_batches(osg::State& state) const
 {
     GCState& gs = _gs[state.getContextID()];
-    //if (gs._dirty)
+
+    if (gs._dirty)
     {
         ScopedMutexLock lock(_m);
         gs.update(_batches, state);
@@ -1237,7 +1216,6 @@ ChonkDrawable::GCState::update(
     const Batches& batches,
     osg::State& state)
 {
-    OE_PROFILING_ZONE;
     OE_GL_ZONE_NAMED("update");
 
     if (_vao == nullptr)
@@ -1303,13 +1281,15 @@ ChonkDrawable::GCState::update(
         lod.total_num_commands = _commands.size();
     }
 
+    // no need to do this since it gets sent in cull()
+    //_commandBuf->uploadData(_commands);
+
     // Send to the GPU:
-    _commandBuf->uploadData(_commands);
-    _instanceInputBuf->uploadData(_all_instances);
+    _instanceInputBuf->uploadData(_all_instances, GL_STATIC_DRAW);
 
     if (_cull)
     {
-        _chonkBuf->uploadData(_chonk_lods);
+        _chonkBuf->uploadData(_chonk_lods, GL_STATIC_DRAW);
         
         // just reserve space if necessary.
         // this is a NOP if the buffer is already sized properly
@@ -1328,7 +1308,7 @@ ChonkDrawable::GCState::cull(osg::State& state)
     if (_commands.empty())
         return;
 
-    OE_GL_ZONE_NAMED("dispatch");
+    OE_GL_ZONE_NAMED("cull");
 
     // transmit the uniforms
     state.applyModelViewAndProjectionUniformsIfRequired();
@@ -1379,6 +1359,8 @@ ChonkDrawable::GCState::cull(osg::State& state)
 void
 ChonkDrawable::GCState::draw(osg::State& state)
 {
+    OE_GL_ZONE_NAMED("draw");
+
     // transmit the uniforms
     state.applyModelViewAndProjectionUniformsIfRequired();
 
@@ -1422,56 +1404,100 @@ ChonkRenderBin::ChonkRenderBin() :
 {
     setName("ChonkBin");
 
-    _cullProgram = new osg::Program();
-    _cullProgram->addShader(new osg::Shader(
+    osg::Program* p = new osg::Program();
+    p->addShader(new osg::Shader(
         osg::Shader::COMPUTE,
         s_chonk_cull_compute_shader));
 
     _cullSS = new osg::StateSet();
-    _cullSS->setAttribute(_cullProgram);
-
-    _stateset = new osg::StateSet();
-    ChonkDrawable::installDefaultShader(_stateset.get());
+    _cullSS->setAttribute(p);
 }
 
 ChonkRenderBin::ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op) :
     osgUtil::RenderBin(rhs, op),
-    _cullSS(rhs._cullSS),
-    _cullProgram(rhs._cullProgram)
+    _cullSS(rhs._cullSS)
+{
+    // for each render bin instance, create a StateGraph that we
+    // will use to track the OSG state properly when applying the
+    // cull program
+    _cull_sg = new osgUtil::StateGraph();
+    _cull_sg->_stateset = _cullSS.get();
+}
+
+namespace
+{
+    void apply_state_with_roberts_blessing(
+        osg::State& state,
+        osgUtil::StateGraph* new_rg,
+        osgUtil::StateGraph* prev_rg)
+    {
+        // mysterious state-fu adapted from osgUtil::RenderLeaf
+        if (prev_rg)
+        {
+            osgUtil::StateGraph* prev_rg_parent = prev_rg->_parent;
+            osgUtil::StateGraph* rg = new_rg;
+            if (prev_rg_parent != rg->_parent)
+            {
+                osgUtil::StateGraph::moveStateGraph(state, prev_rg_parent, rg->_parent);
+                state.apply(rg->getStateSet());
+
+            }
+            else if (rg != prev_rg)
+            {
+                state.apply(rg->getStateSet());
+            }
+        }
+        else
+        {
+            osgUtil::StateGraph::moveStateGraph(state, nullptr, new_rg->_parent);
+            state.apply(new_rg->getStateSet());
+        }
+    }
+}
+
+
+ChonkRenderBin::CullLeaf::CullLeaf(osgUtil::RenderLeaf* leaf) :
+    CustomRenderLeaf(leaf)
+{
+    //nop
+}
+
+void 
+ChonkRenderBin::CullLeaf::draw(osg::State& state)
+{
+    auto d = static_cast<const ChonkDrawable*>(getDrawable());
+    d->update_and_cull_batches(state);
+}
+
+ChonkRenderBin::DrawLeaf::DrawLeaf(osgUtil::RenderLeaf* leaf, bool first, bool last) :
+    CustomRenderLeaf(leaf),
+    _first(first),
+    _last(last)
 {
     //nop
 }
 
 void
-ChonkRenderBin::robert(
-    osg::State& state,
-    osgUtil::RenderLeaf* leaf,
-    osgUtil::RenderLeaf*& previous) const
+ChonkRenderBin::DrawLeaf::draw(osg::State& state)
 {
-    // mysterious state-fu from osgUtil::RenderLeaf
-    if (previous)
-    {
-        osgUtil::StateGraph* prev_rg = previous->_parent;
-        osgUtil::StateGraph* prev_rg_parent = prev_rg->_parent;
-        osgUtil::StateGraph* rg = leaf->_parent;
-        if (prev_rg_parent != rg->_parent)
-        {
-            osgUtil::StateGraph::moveStateGraph(state, prev_rg_parent, rg->_parent);
-            state.apply(rg->getStateSet());
+    auto d = static_cast<const ChonkDrawable*>(getDrawable());
 
-        }
-        else if (rg != prev_rg)
-        {
-            state.apply(rg->getStateSet());
-        }
-    }
-    else
+    if (_first)
     {
-        osgUtil::StateGraph::moveStateGraph(state, nullptr, leaf->_parent->_parent);
-        state.apply(leaf->_parent->getStateSet());
+        GLVAO::Ptr vao = d->_gs[state.getContextID()]._vao;
+        vao->bind();
+        vao->ext()->glMemoryBarrier(
+            GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
     }
 
-    previous = leaf;
+    d->draw_batches(state);
+
+    if (_last)
+    {
+        GLVAO::Ptr vao = d->_gs[state.getContextID()]._vao;
+        vao->unbind();
+    }
+
 }
 
 void
@@ -1481,70 +1507,44 @@ ChonkRenderBin::drawImplementation(
 {
     OE_GL_ZONE_NAMED("ChonkRenderBin");
 
-    osg::State& state = *ri.getState();    
-    
-    // apply this bin's stateset....somewhere
-    unsigned numToPop = (previous ? osgUtil::StateGraph::numToPop(previous->_parent) : 0);
-    if (numToPop > 1) --numToPop;
-    unsigned insertPos = state.getStateSetStackSize() - numToPop;
-    if (_stateset.valid())
-    {
-        state.insertStateSet(insertPos, _stateset.get());
-    }
+    OE_SOFT_ASSERT(
+        _stateGraphList.size() == 1,
+        "StateGraphList is not size=1, you need to write some code");
 
     // copy everything to one level:
     copyLeavesFromStateGraphListToRenderLeafList();
+    if (_renderLeafList.empty())
+        return;
 
-    // apply the cull program:
-    state.apply(_cullSS.get());
+    osg::State& state = *ri.getState();
 
-    // draw top-level render leaves
+    // rearrange the bin so we have cull leaves followed by draw leaves,
+    // each with the proper shader.
+
+    // draw graph:
+    osgUtil::StateGraph* draw_sg = _renderLeafList.front()->_parent;
+    draw_sg->_leaves.clear();
+
+    // cull graph:
+    _cull_sg->_parent = draw_sg;
+    _cull_sg->_leaves.clear();
+
+    for(unsigned i=0; i<_renderLeafList.size(); ++i)
     {
-        OE_GL_ZONE_NAMED("cull");
-        for (auto& leaf : _renderLeafList)
-        {
-            auto d = static_cast<const ChonkDrawable*>(leaf->getDrawable());
+        auto leaf = _renderLeafList[i];
+        bool first = (i == 0);
+        bool last = (i == _renderLeafList.size() - 1);
 
-            state.applyModelViewMatrix(leaf->_modelview);
-            state.applyProjectionMatrix(leaf->_projection);
-
-            d->update_and_cull_batches(state);
-        }
+        _cull_sg->addLeaf(new CullLeaf(leaf));
+        draw_sg->addLeaf(new DrawLeaf(leaf, first, last));
     }
 
-    // render all leaves
-    {
-        OE_GL_ZONE_NAMED("draw");
+    // install the new state graphs:
+    _renderLeafList.clear();
+    _stateGraphList.clear();
+    _stateGraphList.push_back(_cull_sg.get());
+    _stateGraphList.push_back(draw_sg);
 
-        GLVAO::Ptr vao;
-        for (auto& leaf : _renderLeafList)
-        {
-            auto d = static_cast<const ChonkDrawable*>(leaf->getDrawable());
-
-            if (!vao)
-            {
-                vao = d->_gs[state.getContextID()]._vao;
-
-                OE_HARD_ASSERT(vao != nullptr);
-
-                vao->bind();
-                vao->ext()->glMemoryBarrier(
-                    GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
-            }
-
-            state.applyModelViewMatrix(leaf->_modelview);
-            state.applyProjectionMatrix(leaf->_projection);
-
-            robert(state, leaf, previous);
-
-            d->draw_batches(state);
-        }
-
-        if (vao) vao->unbind();
-    }
-
-    if (_stateset.valid())
-    {
-        state.removeStateSet(insertPos);
-    }
+    // dispatch.
+    osgUtil::RenderBin::drawImplementation(ri, previous);
 }

@@ -63,18 +63,17 @@ int main_NV(int argc, char** argv)
     arguments.read("--size", size);
 
     osg::Group* root = new osg::Group();
-
-    viewer.getCamera()->addCullCallback(new InstallCameraUniform());
-
     osg::StateSet* root_ss = root->getOrCreateStateSet();
 
+    // textures:
     osg::ref_ptr<TextureArena> arena = new TextureArena();
     arena->setBindingPoint(1);
     root_ss->setAttribute(arena);
 
-    root_ss->addUniform(new osg::Uniform("oe_sse", 1.0f));
-    root_ss->setDefine("OE_GPUCULL_DEBUG");
-
+    // need these for GPU culling to work:
+    viewer.getCamera()->addCullCallback(new InstallCameraUniform());
+    root_ss->addUniform(new osg::Uniform("oe_sse", 50.0f));
+    root_ss->setDefine("OE_GPUCULL_DEBUG", "1");
 
     if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
     {
@@ -110,7 +109,7 @@ int main_NV(int argc, char** argv)
         chonks.push_back(chonk);
 
         float radius = chonk->getBound().radius();
-        spacing = std::max(spacing, radius*1.2f);
+        spacing = std::max(spacing, radius*2.01f);
     }
 
     for (int x = 0; x < size; ++x) {
@@ -126,38 +125,8 @@ int main_NV(int argc, char** argv)
         }
     }
 
-    // Normally this is unnecessary. But there seems to be a bug in OSG
-    // by which if the RenderBin is the ONLY thing (or first thing?) to
-    // be drawn, its stateset get placed at the bottom on the state stack
-    // and OSG's default shader program gets applied instead. So we will
-    // force the issue by installing the shader here.
-    ChonkDrawable::installDefaultShader(root_ss);
-
     root->addChild(drawable);
     viewer.setSceneData(root);
-
-#if 0
-
-    EventRouter* router = new EventRouter();
-    viewer.addEventHandler(router);
-
-    router->onKeyPress(router->KEY_Leftbracket, [&arena]() {
-        OE_NOTICE << "Activating " << arena->size() << " textures" << std::endl;
-        for (auto& tex : arena->getTextures())
-            arena->activate(tex);
-        });
-
-    router->onKeyPress(router->KEY_Rightbracket, [&arena]() {
-        OE_NOTICE << "Deactivating " << arena->size() << " textures" << std::endl;
-        for (auto& tex : arena->getTextures())
-            arena->deactivate(tex);
-        });
-
-    OE_NOTICE
-        << "\n\n\nHello. There are " << arena->size() << " textures in the arena."
-        << "\n\nPress '[' to make resident, ']' to make non-resident"
-        << std::endl;
-#endif
 
     return viewer.run();
 }

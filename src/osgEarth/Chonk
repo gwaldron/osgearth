@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/GLUtils>
 #include <osgEarth/TextureArena>
+#include <osgEarth/Utils>
 #include <osgUtil/RenderLeaf>
 #include <osgUtil/RenderBin>
 #include <vector>
@@ -65,7 +66,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT Chonk
     {
     public:
-        using element_t = GLuint;
+        using element_t = GLushort; // int;
 
         //! Adds a node.
         bool add(
@@ -211,7 +212,7 @@ namespace osgEarth
         void setUseGPUCulling(bool value);
 
         //! Installs a basic chonk-rendering shader on a stateset.
-        static void installDefaultShader(osg::StateSet* ss);
+        static void installRenderBin(ChonkDrawable*);
 
     public:
 
@@ -290,11 +291,11 @@ namespace osgEarth
         void update_and_cull_batches(osg::State& state) const;
         void draw_batches(osg::State& state) const;
 
-
     public:
         // support intersectors and stats visitors
         bool supports(const osg::PrimitiveFunctor& f) const override { return true; }
         virtual void accept(osg::PrimitiveFunctor&) const override;
+
     private:
         mutable bool _proxy_dirty;
         mutable std::vector<osg::Vec3f> _proxy_verts;
@@ -303,6 +304,8 @@ namespace osgEarth
         ChonkDrawable(const ChonkDrawable& rhs, const osg::CopyOp&) { }
 
         friend class ChonkRenderBin;
+        //friend class ChonkRenderBin::CullLeaf;
+        //friend class ChonkRenderBin::DrawLeaf;
     };
 
     /**
@@ -326,12 +329,21 @@ namespace osgEarth
         virtual const char* className() const override { return "ChonkRenderBin"; }
 
     private:
-        osg::ref_ptr<osg::Program> _cullProgram;
         osg::ref_ptr<osg::StateSet> _cullSS;
-        void robert(
-            osg::State& state,
-            osgUtil::RenderLeaf* leaf,
-            osgUtil::RenderLeaf*& previous) const;
+
+        friend class ChonkDrawable;
+
+        osg::ref_ptr<osgUtil::StateGraph> _cull_sg;
+
+        struct CullLeaf : public Util::CustomRenderLeaf {
+            CullLeaf(osgUtil::RenderLeaf*);
+            void draw(osg::State&) override;
+        };
+        struct DrawLeaf : public Util::CustomRenderLeaf {
+            DrawLeaf(osgUtil::RenderLeaf*, bool, bool);
+            void draw(osg::State&) override;
+            bool _first, _last;
+        };
     };
 }
 

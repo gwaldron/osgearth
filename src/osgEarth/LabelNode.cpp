@@ -102,7 +102,9 @@ LabelNode::construct()
             ScreenSpaceLayout::activate(geodeStateSet.get());
 
             // completely disable depth buffer
-            geodeStateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 ); 
+            geodeStateSet->setAttributeAndModes( 
+                new osg::Depth(osg::Depth::ALWAYS, 0, 1, false),
+                osg::StateAttribute::ON | osg::StateAttribute::PROTECTED); 
 
             // Disable lighting for place label bbox
             geodeStateSet->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);

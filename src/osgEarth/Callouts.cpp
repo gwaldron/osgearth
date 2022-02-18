@@ -78,7 +78,7 @@ _vpmChanged(false)
     // DOesn't work...why?
     getOrCreateStateSet()->setAttributeAndModes(
         new osg::Depth(osg::Depth::ALWAYS, 0, 1, false),
-        osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+        osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED);
 
     // Leader lines.
     _leaders = new LineDrawable(GL_LINES);

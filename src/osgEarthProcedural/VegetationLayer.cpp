@@ -294,6 +294,9 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         groups()[AssetGroup::TREES].maxRange() = 4000.0f;
         groups()[AssetGroup::TREES].lod() = 14;
         groups()[AssetGroup::TREES].count() = 4096;
+        //groups()[AssetGroup::TREES].maxRange() = 8000.0f;
+        //groups()[AssetGroup::TREES].lod() = 13;
+        //groups()[AssetGroup::TREES].count() = 16384;
         groups()[AssetGroup::TREES].spacing() = Distance(15.0f, Units::METERS);
         groups()[AssetGroup::TREES].maxAlpha() = 0.15f;
     }
@@ -986,8 +989,10 @@ VegetationLayer::checkForNewAssets() const
 
     osg::observer_ptr<const VegetationLayer> layer_weakptr(this);
 
-    auto load = [layer_weakptr](Cancelable* c) -> Assets
+    auto loadNewAssets = [layer_weakptr](Cancelable* c) -> Assets
     {
+        OE_PROFILING_ZONE_NAMED("VegetationLayer::loadNewAssets(job)");
+
         Assets result;
         result.resize(NUM_ASSET_GROUPS);
 
@@ -1030,7 +1035,7 @@ VegetationLayer::checkForNewAssets() const
         return result;
     };
 
-    _newAssets = Job().dispatch<Assets>(load);
+    _newAssets = Job().dispatch<Assets>(loadNewAssets);
 
     return true;
 }

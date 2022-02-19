@@ -59,6 +59,7 @@ void
 Texture::compileGLObjects(osg::State& state) const
 {
     OE_PROFILING_ZONE;
+    //OE_GL_ZONE_NAMED("oe tex compile");
 
     OE_HARD_ASSERT(_image.valid());
 
@@ -379,37 +380,21 @@ TextureArena::find(unsigned index) const
 int
 TextureArena::add(Texture::Ptr tex)
 {
-    ScopedMutexLock lock(_m);
-
     if (tex == nullptr)
     {
         OE_SOFT_ASSERT_AND_RETURN(tex != nullptr, -1);
     }
 
-    // if it's already there, we good
-    int index = find_no_lock(tex);
-    if (index >= 0)
-        return index;
+    // First check whether it's already there; if so, return the index.
+    int existingIndex = find(tex);
+    if (existingIndex >= 0)
+        return existingIndex;
 
-    // find an open slot if one is available:
-    if (_autoRelease == true)
-    {
-        for (int i = 0; i < _textures.size(); ++i)
-        {
-            if (_textures[i] == nullptr || _textures[i].use_count() == 1)
-            {
-                index = i;
-                break;
-            }
-        }
-    }
+    // not there - load and prepare the texture while keeping 
+    // the arena UNLOCKED
+    OE_PROFILING_ZONE;
 
-    if (index < 0)
-    {
-        index = _textures.size();
-    }
-
-    // load the image if necessary (TODO: background?)
+    // load the image if necessary
     if (tex->_image.valid() == false &&
         tex->_uri.isSet())
     {
@@ -419,8 +404,10 @@ TextureArena::add(Texture::Ptr tex)
 
     if (tex->_image.valid())
     {
+        // in case we want to cache it later:
         tex->_image->setWriteHint(osg::Image::STORE_INLINE);
 
+        // compress and mipmap:
         if (!tex->_image->isCompressed())
         {
             if (tex->_image->getPixelFormat() == tex->_image->getInternalTextureFormat())
@@ -442,22 +429,54 @@ TextureArena::add(Texture::Ptr tex)
                 ImageUtils::compressImageInPlace(tex->_image.get());
             }
         }
-
-        // add to all GCs.
-        for(unsigned i=0; i<_gc.size(); ++i)
-        {
-            if (_gc[i]._inUse)
-                _gc[i]._toCompile.push_back(index);
-        }
-
-        if (index < _textures.size())
-            _textures[index] = tex;
-        else
-            _textures.push_back(tex);
-
-        return index;
+    }
+    else
+    {
+        // is it a pre-existing gltexture? If not, fail.
+        if (tex->_gs.size() == 0)
+            return -1;
     }
 
+    // Now, lock the repo and find a place for it.
+    ScopedMutexLock lock(_m);
+
+    int index = -1;
+
+    // find an open slot if one is available:
+    if (_autoRelease == true)
+    {
+        for (int i = 0; i < _textures.size(); ++i)
+        {
+            if (_textures[i] == nullptr || _textures[i].use_count() == 1)
+            {
+                index = i;
+                break;
+            }
+        }
+    }
+
+    // no slot, stick it at the end.
+    if (index < 0)
+    {
+        index = _textures.size();
+    }
+
+    // add to all existing GCs:
+    for(unsigned i=0; i<_gc.size(); ++i)
+    {
+        if (_gc[i]._inUse)
+            _gc[i]._toCompile.push(index);
+    }
+
+    if (index < _textures.size())
+        _textures[index] = tex;
+    else
+        _textures.push_back(tex);
+
+    return index;
+//    }
+
+#if 0
     else
     {
         // might be a pre-existing GLTexture:
@@ -469,7 +488,7 @@ TextureArena::add(Texture::Ptr tex)
                 tex->_gs.size() > i &&
                 tex->_gs[i]._gltexture != nullptr)
             {
-                _gc[i]._toCompile.push_back(index); // push_back(tex);
+                _gc[i]._toCompile.push(index);
                 added = true;
             }
         }
@@ -487,6 +506,7 @@ TextureArena::add(Texture::Ptr tex)
 
     // nope...fail
     return -1;
+#endif
 }
 
 void
@@ -555,16 +575,20 @@ TextureArena::apply(osg::State& state) const
     if (gc._inUse == false)
     {
         gc._inUse = true;
-        gc._toCompile.clear();
+        while (!gc._toCompile.empty())
+            gc._toCompile.pop();
+        //gc._toCompile.clear();
         for (unsigned i = 0; i < _textures.size(); ++i) {
             if (_textures[i])
-                gc._toCompile.push_back(i);
+                gc._toCompile.push(i);
         }
     }
 
     // allocate textures and resident handles
-    for(int index : gc._toCompile)
+    while(!gc._toCompile.empty())
     {
+        int index = gc._toCompile.front();
+        gc._toCompile.pop();
         auto tex = _textures[index];
         if (tex)
         {
@@ -575,7 +599,7 @@ TextureArena::apply(osg::State& state) const
             }
         }
     }
-    gc._toCompile.clear();
+    //gc._toCompile.clear();
 
     // remove pending objects by swapping them out of memory
     for(auto& tex : gc._toDeactivate)
@@ -690,13 +714,15 @@ TextureArena::releaseGLObjects(osg::State* state) const
     {
         GCState& gs = _gc[state->getContextID()];
         gs._handleBuffer = nullptr;
-        gs._toCompile.clear();
+        while (!gs._toCompile.empty())
+            gs._toCompile.pop();
+        //gs._toCompile.clear();
         for (unsigned i = 0; i < _textures.size(); ++i)
         {
             if (_textures[i])
             {
                 _textures[i]->releaseGLObjects(state);
-                gs._toCompile.push_back(i);
+                gs._toCompile.push(i);
             }
         }
     }
@@ -714,11 +740,12 @@ TextureArena::releaseGLObjects(osg::State* state) const
             if(gs._inUse)
             {
                 gs._handleBuffer = nullptr;
-                gs._toCompile.clear();
+                while (!gs._toCompile.empty())
+                    gs._toCompile.pop();
                 for (unsigned i = 0; i < _textures.size(); ++i)
                 {
                     if (_textures[i])
-                        gs._toCompile.push_back(i);
+                        gs._toCompile.push(i);
                 }
             }
         }

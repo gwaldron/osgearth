@@ -844,6 +844,8 @@ ChonkFactory::load(
     osg::Node* node,
     Chonk& chonk)
 {
+    OE_PROFILING_ZONE;
+
     // convert all primitive sets to GL_TRIANGLES
     osgUtil::Optimizer o;
     o.optimize(node, o.INDEX_MESH);

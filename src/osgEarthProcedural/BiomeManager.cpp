@@ -21,6 +21,7 @@
 #include <osgEarth/TextureArena>
 #include <osgEarth/Elevation>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Metrics>
 #include <osgEarth/MaterialLoader>
 #include <osg/ComputeBoundsVisitor>
 
@@ -291,6 +292,8 @@ void
 BiomeManager::materializeNewAssets(
     const osgDB::Options* readOptions)
 {
+    OE_PROFILING_ZONE;
+
     // exclusive access to the resident dataset
     ScopedMutexLock lock(_residentData_mutex);
 
@@ -603,6 +606,8 @@ BiomeManager::ResidentBiomes
 BiomeManager::getResidentBiomes(
     const osgDB::Options* readOptions)
 {
+    OE_PROFILING_ZONE;
+
     // First refresh the resident biome collection based on current refcounts
     recalculateResidentBiomes();
 

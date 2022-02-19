@@ -440,8 +440,8 @@ VegetationLayer::update(osg::NodeVisitor& nv)
         Assets newAssets = _newAssets.release();
         if (!newAssets.empty())
         {
-            ScopedMutexLock lock(_assets_mutex);
-            _assets = std::move(newAssets);
+            ScopedMutexLock lock(_assets);
+            _assets = newAssets;
         }
     }
 }
@@ -449,8 +449,25 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 void
 VegetationLayer::dirty()
 {
-    ScopedWriteLock lock(_traversal_mutex);
-    _cameraState.clear();
+    _tiles.scoped_lock([this]() {
+        _tiles.clear(); });
+
+    _cameraState.scoped_lock([this]() {
+        _cameraState.clear(); });
+}
+
+void
+VegetationLayer::setSSEScales(const osg::Vec4f& value)
+{
+    _pixelScalesU->set(value);
+}
+
+osg::Vec4f
+VegetationLayer::getSSEScales() const
+{
+    osg::Vec4f value;
+    _pixelScalesU->get(value);
+    return value;
 }
 
 void
@@ -732,6 +749,10 @@ VegetationLayer::buildStateSets()
         ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
         ss->setAttributeAndModes(new osg::BlendFunc(), 0 | osg::StateAttribute::OVERRIDE);
     }
+
+    // Far pixel scale overrides.
+    _pixelScalesU = new osg::Uniform("oe_lod_scale", osg::Vec4f(1, 1, 1, 1));
+    ss->addUniform(_pixelScalesU.get(), osg::StateAttribute::OVERRIDE | 0x01);
 }
 
 void
@@ -1027,10 +1048,14 @@ VegetationLayer::reset()
     BiomeManager& biomeMan = getBiomeLayer()->getBiomeManager();
     _biomeRevision = biomeMan.getRevision();
 
-    ScopedMutexLock lock(_assets_mutex);
-    _assets.clear();
+    _assets.scoped_lock([this]() { 
+        _assets.clear(); });
 
-    _cameraState.clear();
+    _tiles.scoped_lock([this]() {
+        _tiles.clear(); });
+
+    _cameraState.scoped_lock([this]() {
+        _cameraState.clear(); });
 }
 
 // random-texture channels
@@ -1086,7 +1111,7 @@ VegetationLayer::getAssetPlacements(
 
     if (loadBiomesOnDemand == false)
     {
-        ScopedMutexLock lock(_assets_mutex);
+        ScopedMutexLock lock(_assets);
         if (_assets.size() <= group)
             return std::move(result);
         else
@@ -1143,14 +1168,14 @@ VegetationLayer::getAssetPlacements(
             Assets newAssets = _newAssets.release();
             if (!newAssets.empty())
             {
-                ScopedMutexLock lock(_assets_mutex);
+                ScopedMutexLock lock(_assets);
                 _assets = std::move(newAssets);
             }
         }
 
         // make a shallow copy of assets list safely
         {
-            ScopedMutexLock lock(_assets_mutex);
+            ScopedMutexLock lock(_assets);
             if (_assets.size() <= group)
                 return std::move(result);
             else
@@ -1444,9 +1469,9 @@ VegetationLayer::cull(
     _lastVisit = *cv->getFrameStamp();
 
     // exclusive lock on the camera state (created a new one as necessary)
-    _cameraState_mutex.lock();
+    _cameraState.lock();
     CameraState::Ptr& cs = _cameraState[cv->getCurrentCamera()];
-    _cameraState_mutex.unlock();
+    _cameraState.unlock();
 
     if (cs == nullptr)
         cs = std::make_shared<CameraState>();
@@ -1479,7 +1504,7 @@ VegetationLayer::cull(
             // We don't want more than one camera creating the
             // same drawable, so this tileJobs table tracks 
             // createDrawable jobs globally.
-            ScopedMutexLock lock(_tiles_mutex);
+            ScopedMutexLock lock(_tiles);
 
             Tile::Ptr& tile = _tiles[tileId];
             if (tile == nullptr)
@@ -1524,18 +1549,17 @@ VegetationLayer::cull(
     // Purge old tiles.
     cs->_views.swap(active_views);
 
-    _traversal_mutex.read_unlock();
-
 
     // purge unused tiles
-    _tiles_mutex.lock();
-    for (auto it = _tiles.begin(); it != _tiles.end(); ) {
-        if (it->second.use_count() == 1)
-            it = _tiles.erase(it);
-        else
-            ++it;
-    }
-    _tiles_mutex.unlock();
+    _tiles.scoped_lock([this]()
+        {
+            for (auto it = _tiles.begin(); it != _tiles.end(); ) {
+                if (it->second.use_count() == 1)
+                    it = _tiles.erase(it);
+                else
+                    ++it;
+            }
+        });
 }
 
 void
@@ -1543,7 +1567,8 @@ VegetationLayer::resizeGLObjectBuffers(unsigned maxSize)
 {
     PatchLayer::resizeGLObjectBuffers(maxSize);
 
-    ScopedMutexLock lock(_tiles_mutex);
+    ScopedMutexLock lock(_tiles);
+
     for (auto& tile : _tiles)
     {
         auto drawable = tile.second->_drawable.get();
@@ -1557,7 +1582,8 @@ VegetationLayer::releaseGLObjects(osg::State* state) const
 {
     PatchLayer::releaseGLObjects(state);
 
-    ScopedMutexLock lock(_tiles_mutex);
+    ScopedMutexLock lock(_tiles);
+
     for (auto& tile : _tiles)
     {
         auto drawable = tile.second->_drawable.get();

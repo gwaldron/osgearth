@@ -118,6 +118,9 @@ namespace osgEarth { namespace Procedural
         void setEnabled(AssetGroup::Type, bool);
         bool getEnabled(AssetGroup::Type) const;
 
+        void setSSEScales(const osg::Vec4f& lods);
+        osg::Vec4f getSSEScales() const;
+
         //! Force regeneration of the visible data
         void dirty();
 
@@ -201,6 +204,7 @@ namespace osgEarth { namespace Procedural
         struct Tile
         {
             using Ptr = std::shared_ptr<Tile>;
+            using WeakPtr = std::weak_ptr<Tile>;
             FutureDrawable _drawable;
         };
 
@@ -209,8 +213,7 @@ namespace osgEarth { namespace Procedural
             Tile::Ptr,
             TileKeyAndRevision>;
 
-        mutable Tiles _tiles;
-        mutable Mutex _tiles_mutex;
+        mutable Mutexed<Tiles> _tiles;
 
         struct TileView
         {
@@ -227,9 +230,8 @@ namespace osgEarth { namespace Procedural
                 TileKeyAndRevision, TileView, TileKeyAndRevision>;
             TileViews _views;
         };
-        mutable Mutex _cameraState_mutex;
         using CameraStates = std::unordered_map<const osg::Camera*, CameraState::Ptr>;
-        mutable CameraStates _cameraState;
+        mutable Mutexed<CameraStates> _cameraState;
 
         mutable osg::FrameStamp _lastVisit; // for timeouts
 
@@ -240,17 +242,16 @@ namespace osgEarth { namespace Procedural
         using AssetsByBiome = std::unordered_map<const Biome*, std::vector<ResidentModelAssetInstance>>;
         using Assets = std::vector<AssetsByBiome>;
 
-        mutable Mutex _assets_mutex; // since createDrawable in async
         mutable Future<Assets> _newAssets;
-        mutable Assets _assets;
+        mutable Mutexed<Assets> _assets;
 
         mutable std::atomic_int _biomeRevision; // keep track of when to load to assets
         Status _status;
 
+        osg::ref_ptr<osg::Uniform> _pixelScalesU;
+
         void configureTrees();
         void configureGrass();
-
-        mutable ReadWrite<Mutex> _traversal_mutex;
 
         Future<osg::ref_ptr<ChonkDrawable>> createDrawableAsync(
             const TileKey&,

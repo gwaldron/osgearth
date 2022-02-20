@@ -28,6 +28,7 @@
 
 #include <osg/Vec3f>
 #include <osg/AutoTransform>
+#include <osg/OperationThread>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 #include <osgUtil/CullVisitor>
@@ -389,6 +390,24 @@ namespace osgEarth { namespace Util
         osg::observer_ptr<T> _obj;
     };
 
+
+    struct OneTimer : public osg::Operation
+    {
+        using Function = std::function<void()>;
+
+        OneTimer(Function func) :
+            osg::Operation("osgEarth::OneTimer", true),
+            _func(func) { }
+
+        void operator()(osg::Object* obj) override
+        {
+            _func();
+            setKeep(false);
+        }
+
+    private:
+        Function _func;
+    };
 } }
 
 #endif // OSGEARTH_UTILS_H

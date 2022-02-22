@@ -411,6 +411,9 @@ BiomeManager::materializeNewAssets(
                                 // find materials:
                                 residentAsset->model()->accept(materialLoader);
 
+                                // add flexors:
+                                addFlexors(residentAsset->model());
+
                                 OE_DEBUG << LC << "Loaded model: " << uri.base() << std::endl;
                                 modelcache[uri]._node = residentAsset->model().get();
 
@@ -633,21 +636,77 @@ BiomeManager::getResidentBiomes(
 
 namespace
 {
-    unsigned getNumVertices(osg::Node* node)
+    template<class T>
+    struct MyVisitor : public osg::NodeVisitor
     {
-        unsigned count = 0u;
-        osg::Geometry* geom = node->asGeometry();
-        if (geom) {
-            for (unsigned i = 0; i < geom->getNumPrimitiveSets(); ++i)
-                count += geom->getVertexArray()->getNumElements();
+        using Function = std::function<void(T&, const osg::Matrix&)>;
+        Function _func;
+        std::stack<osg::Matrix> _transformStack;
+
+        MyVisitor() : osg::NodeVisitor()
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+            _transformStack.push(osg::Matrix::identity());
         }
-        else {
-            osg::Group* group = node->asGroup();
-            if (group) {
-                for (unsigned i = 0; i < group->getNumChildren(); ++i)
-                    count += getNumVertices(group->getChild(i));
-            }
+
+        void apply(osg::Node& node) override
+        {
+            T* n = dynamic_cast<T*>(&node);
+            if (n) _func(*n, _transformStack.top());
+            traverse(node);
         }
-        return count;
-    }
+
+        void apply(osg::Transform& node) override
+        {
+            osg::Matrix m = _transformStack.empty() ? osg::Matrix() : _transformStack.top();
+            node.computeLocalToWorldMatrix(m, this);
+            _transformStack.push(m);
+            apply(static_cast<osg::Group&>(node));
+            _transformStack.pop();
+        }
+
+        void visit(
+            osg::ref_ptr<osg::Node>& node,
+            Function func)
+        {
+            _func = func;
+            node->accept(*this);
+        }
+    };
+}
+
+void
+BiomeManager::addFlexors(osg::ref_ptr<osg::Node>& node)
+{
+    osg::ComputeBoundsVisitor cb;
+    node->accept(cb);
+    auto& bbox = cb.getBoundingBox();
+
+    auto addFlexors = [bbox](osg::Geometry& geom, const osg::Matrix& l2w)
+    {
+        osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
+        if (!verts) return;
+
+        osg::Vec3Array* flexors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+        flexors->reserve(verts->size());
+        geom.setTexCoordArray(3, flexors);
+
+        osg::Vec3f base(bbox.center().x(), bbox.center().y(), bbox.zMin());
+        float xy_radius = std::max(bbox.xMax() - bbox.xMin(), bbox.yMax() - bbox.yMin());
+
+        for (auto& local_vert : *verts)
+        {
+            auto vert = local_vert * l2w;
+            osg::Vec3f anchor(0.0f, 0.0f, vert.z());
+            float height_ratio = harden((vert.z() - bbox.zMin()) / (bbox.zMax() - bbox.zMin()));
+            auto lateral_vec = (vert - osg::Vec3f(0, 0, vert.z()));
+            float lateral_ratio = harden(lateral_vec.length() / xy_radius);
+            auto flex = normalize(lateral_vec) * (lateral_ratio * 3.0f) * (height_ratio * 1.5f);
+            flexors->push_back(flex);
+        }
+    };
+
+    MyVisitor<osg::Geometry> visitor;
+    visitor.visit(node, addFlexors);
 }

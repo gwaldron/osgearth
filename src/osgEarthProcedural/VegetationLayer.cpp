@@ -157,14 +157,14 @@ uniform mat4 OE_WIND_TEX_MATRIX ;
 uniform float osg_FrameTime;
 uniform sampler2D oe_veg_noise;
 
-uniform float wind_power = 1.0;
+uniform float oe_wind_power = 1.0;
 
 #define remap(X, LO, HI) (LO + X * (HI - LO))
 
 void oe_apply_wind(inout vec4 vertex, in vec2 local_uv)
 {
     float flexibility = length(flex);
-    if (flexibility > 0.0)
+    if (flexibility > 0.0 && oe_wind_power > 0.0)
     {
         vec4 wind = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex));
         vec3 wind_dir = normalize(wind.rgb * 2 - 1); // view space
@@ -176,7 +176,7 @@ void oe_apply_wind(inout vec4 vertex, in vec2 local_uv)
         vec3 flex_dir = normalize(gl_NormalMatrix * vec3xform * flex);
         float flex_planar = abs(dot(wind_dir, flex_dir));
         flex_planar = 1.0 - (flex_planar*flex_planar);
-        vertex.xyz += bend_vec * flex_planar * flexibility * wind_power;
+        vertex.xyz += bend_vec * flex_planar * flexibility * oe_wind_power;
     }
 }
 #endif
@@ -836,12 +836,17 @@ VegetationLayer::configureTrees()
                     {0,0},{1,0},{1,1},{0,1}
                 };
 
+                const osg::Vec3f flexors[8] = {
+                    {0,0,0}, {0,0,1}, {1,0,0}, {-1,0,1},
+                    {0,0,0}, {0,0,1}, {0,1,0}, {0,-1,1}
+                };
+
                 geom[i]->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
                 geom[i]->setVertexArray(new osg::Vec3Array(8, verts));
                 geom[i]->setNormalArray(new osg::Vec3Array(8, normals));
                 geom[i]->setColorArray(new osg::Vec4Array(1, colors), osg::Array::BIND_OVERALL);
                 geom[i]->setTexCoordArray(0, new osg::Vec2Array(8, uvs));
-                geom[i]->setTexCoordArray(3, new osg::Vec3Array(8)); // flexors
+                geom[i]->setTexCoordArray(3, new osg::Vec3Array(8, flexors));
 
                 if (textures.size() > 0)
                     ss->setTextureAttribute(0, textures[0], 1); // side albedo
@@ -1498,7 +1503,8 @@ VegetationLayer::cull(
     if (!_checkedForMultisampling.exchange(true))
     {
         _activateMultisampling =
-            cv->getState()->getLastAppliedModeValue(GL_MULTISAMPLE);
+            cv->getState()->getLastAppliedModeValue(GL_MULTISAMPLE) ||
+            osg::DisplaySettings::instance()->getMultiSamples() == true;
     }
 
     if (cs == nullptr)

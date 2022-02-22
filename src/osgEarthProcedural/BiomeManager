@@ -201,6 +201,10 @@ namespace osgEarth
             //! loads any assets that need loading, making them resident.
             void materializeNewAssets(
                 const osgDB::Options* readOptions);
+
+            //! add flexibility attributes to a model for
+            //! wind/deformation support
+            void addFlexors(osg::ref_ptr<osg::Node>& node);
         };
     }
 } // namespace osgEarth::Procedural

@@ -23,11 +23,44 @@
 #include <osgEarth/Ephemeris>
 #include <osgEarth/Sky>
 #include <osgEarth/Shadowing>
+#include <osgEarth/WindLayer>
+
+namespace
+{
+    const char* render_wind = R"(
+#version 450
+#pragma vp_function oe_ui_render_wind_vert, vertex_view
+out vec3 viewpos3_wind;
+void oe_ui_render_wind_vert(inout vec4 vertex) {
+    viewpos3_wind = vertex.xyz;
+}
+[break]
+#version 450
+#pragma vp_function oeui_render_wind_texture, fragment_output
+#pragma import_defines(OE_WIND_TEX)
+#pragma import_defines(OE_WIND_TEX_MATRIX)
+in vec3 viewpos3_wind;
+out vec4 frag_out;
+#ifdef OE_WIND_TEX
+uniform sampler3D OE_WIND_TEX;
+uniform mat4 OE_WIND_TEX_MATRIX;
+#endif
+void oeui_render_wind_texture(inout vec4 color) {
+    frag_out = color;
+#ifdef OE_WIND_TEX
+    vec4 texel = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX*vec4(viewpos3_wind,1)));
+    vec3 wind = normalize(texel.xyz);
+    frag_out = vec4(wind, 1); //mix(color, wind, 0.8f);
+#endif
+}
+)";
+}
 
 namespace osgEarth
 {
     namespace GUI
     {
+
         using namespace osgEarth;
         using namespace osgEarth::Util;
 
@@ -36,6 +69,7 @@ namespace osgEarth
         private:
             osg::observer_ptr<SkyNode> _skyNode;
             osg::observer_ptr<ShadowCaster> _shadowCaster;
+            osg::observer_ptr<WindLayer> _windLayer;
             bool _showDetails;
             float _hour;
             int _day, _month, _year;
@@ -47,9 +81,10 @@ namespace osgEarth
             bool _shadows;
             float _haze_cutoff, _haze_strength;
             float _shadow_darkness, _shadow_blur;
+            float _wind_power;
 
         public:
-            EphemerisGUI() : BaseGUI("Sky & Lighting"),
+            EphemerisGUI() : BaseGUI("Environment"),
                 _ambient(0.033f),
                 _exposure(3.5f),
                 _contrast(1.0f),
@@ -59,6 +94,7 @@ namespace osgEarth
                 _shadows(false),
                 _shadow_darkness(0.5f),
                 _shadow_blur(0.001f),
+                _wind_power(1.0f),
                 _first(true)
             {
                 DateTime now;
@@ -77,6 +113,7 @@ namespace osgEarth
                 conf.get("Ambient", _ambient);
                 conf.get("HazeCutoff", _haze_cutoff);
                 conf.get("HazeStrength", _haze_strength);
+                conf.get("WindPower", _wind_power);
             }
             void save(Config& conf) override
             {
@@ -90,6 +127,7 @@ namespace osgEarth
                 conf.set("Ambient", _ambient);
                 conf.set("HazeCutoff", _haze_cutoff);
                 conf.set("HazeStrength", _haze_strength);
+                conf.set("WindPower", _wind_power);
             }
 
             void draw(osg::RenderInfo& ri) override
@@ -99,10 +137,11 @@ namespace osgEarth
 
                 if (_first)
                 {
-                    _first = false;
                     findNode(_shadowCaster, ri);
                     if (_shadowCaster.valid())
                         _shadows = _shadowCaster->getEnabled();
+
+                    findLayer(_windLayer, ri);
 
                     _skyNode->setDateTime(DateTime(_year, _month, _day, _hour));
 
@@ -154,6 +193,24 @@ namespace osgEarth
                     else
                     {
                         _shadows = false;
+                    }
+
+                    if (_windLayer.valid())
+                    {
+                        if (ImGui::SliderFloat("Wind", &_wind_power, 1.0f, 10.0f) || _first)
+                        {
+                            stateset(ri)->addUniform(new osg::Uniform("oe_wind_power", _wind_power),
+                                osg::StateAttribute::OVERRIDE | 0x01);
+                        }
+
+                        static bool show_wind = false;
+                        if (ImGui::Checkbox("Wind debug view", &show_wind))
+                        {
+                            if (show_wind)
+                                ShaderLoader::load(VirtualProgram::getOrCreate(stateset(ri)), render_wind);
+                            else
+                                ShaderLoader::unload(VirtualProgram::getOrCreate(stateset(ri)), render_wind);
+                        }
                     }
 
                     if (_showDetails)
@@ -210,6 +267,8 @@ namespace osgEarth
                     }
                 }
                 ImGui::End();
+
+                _first = false;
             }
         };
     }

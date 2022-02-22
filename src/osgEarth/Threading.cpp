@@ -808,11 +808,11 @@ JobArena::startThreads()
     // Not enough? Start up more
     while(_metrics->concurrency < _targetConcurrency)
     {
+        _metrics->concurrency++;
+
         _threads.push_back(std::thread([this]
             {
                 //OE_INFO << LC << "Arena \"" << _name << "\" starting thread " << std::this_thread::get_id() << std::endl;
-                _metrics->concurrency++;
-
                 OE_THREAD_NAME(_name.c_str());
 
                 runJobs();

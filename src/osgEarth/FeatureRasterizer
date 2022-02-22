@@ -23,6 +23,7 @@
 #include <osgEarth/Session>
 #include <osgEarth/Feature>
 #include <osgEarth/Filter>
+#include <osgEarth/MapboxGLGlyphManager>
 
 namespace osgEarth
 {
@@ -41,17 +42,22 @@ namespace osgEarth
                 osg::Image* preallocatedImage,
                 const GeoExtent& extent);
 
+            MapboxGLGlyphManager* getGlyphManager() const;
+            void setGlyphManager(MapboxGLGlyphManager* glyphManager);
+
             void render(
                 const FeatureList& features,
                 const Style& style,
                 const FeatureProfile* profile =nullptr,
                 const StyleSheet* sheet =nullptr);
 
-            GeoImage finalize();
+            GeoImage finalize();            
 
         private:
             GeoExtent _extent;
             osg::ref_ptr< osg::Image > _image;
+            osg::ref_ptr< MapboxGLGlyphManager > _glyphManager;
+            
             enum RenderFormat {
                 RF_BGRA,
                 RF_ABGR

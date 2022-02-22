@@ -22,6 +22,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/JsonUtils>
+#include <osgEarth/MapboxGLGlyphManager>
 
 namespace osgEarth
 {
@@ -188,6 +189,9 @@ namespace osgEarth
             const optional<std::string>& textField() const;
             optional<std::string>& textField();
 
+            const optional<std::string>& textFont() const;
+            optional<std::string>& textFont();
+
             const PropertyValue<Color>& textColor() const;
             PropertyValue<Color>& textColor();
 
@@ -196,6 +200,9 @@ namespace osgEarth
 
             const PropertyValue<float>& textSize() const;
             PropertyValue<float>& textSize();
+
+            const optional<std::string>& textAnchor() const;
+            optional<std::string>& textAnchor();
 
             const optional<std::string>& iconImage() const;
             optional<std::string>& iconImage();
@@ -222,9 +229,11 @@ namespace osgEarth
 
             // Text
             optional<std::string> _textField;
+            optional<std::string> _textFont;
             PropertyValue<Color> _textColor = PropertyValue<Color>(Color::Black);
             PropertyValue<Color> _textHaloColor = PropertyValue<Color>(Color::Transparent);
             PropertyValue<float> _textSize = PropertyValue<float>(16.0f);
+            optional<std::string> _textAnchor;
 
             // Icon
             optional<std::string> _iconImage;
@@ -370,6 +379,7 @@ namespace osgEarth
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION(URI, url);
+            OE_OPTION(std::string, key);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );
@@ -381,6 +391,10 @@ namespace osgEarth
         //! URL of the style url
         void setURL(const URI& value);
         const URI& getURL() const;
+
+        //! API key
+        void setKey(const std::string& value);
+        const std::string& getKey() const;
 
         // Opens the layer and returns a status
         virtual Status openImplementation();
@@ -404,6 +418,7 @@ namespace osgEarth
 
         osg::observer_ptr< const osgEarth::Map > _map;
         MapBoxGL::StyleSheet _styleSheet;
+        osg::ref_ptr< MapboxGLGlyphManager > _glyphManager;
     };
 } // namespace osgEarth
 

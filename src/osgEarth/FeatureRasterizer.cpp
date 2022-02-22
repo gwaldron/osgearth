@@ -22,6 +22,7 @@
 
 #include <osgEarth/FeatureSource>
 #include <osgEarth/StyleSheet>
+#include <osgText/String>
 
 using namespace osgEarth;
 
@@ -319,13 +320,140 @@ namespace osgEarth {
             return result;
         }
 
+        void renderMapboxText(BLContext& ctx, float x, float y, const std::string& text, const TextSymbol* textSymbol, MapboxGLGlyphManager* glyphManager)
+        {
+            if (!glyphManager)
+            {
+                return;
+            }
+
+            float resolutionAdjust = 1.5f; // Maybe a scale based on the tilesize?  Probably based on multiple of 256?
+            float fontSize = textSymbol->size()->eval() * resolutionAdjust;
+
+            const float ONE_EM = 24.0;
+            float scale = fontSize / ONE_EM;
+            float baselineOffset = 7.0f;
+
+            // Collect a list of glyphs for the text
+            std::vector< osg::ref_ptr< MapboxGLGlyphManager::Glyph > > textGlyphs;
+            glyphManager->getGlyphs(text, textSymbol->font().get(), textGlyphs);
+
+            float cursorX = x;
+            float cursorY = y;
+
+            float lineWidth = 0.0f;
+            float lineHeight = 0.0f;
+
+            // Compute the line width and line height
+            for (auto& g : textGlyphs)
+            {
+                lineWidth += g->advance * scale;
+                lineHeight += std::max(lineHeight, g->height * scale);
+            }
+
+            // Adjust the cursor based on the alignment
+            auto alignment = textSymbol->alignment().get();
+
+            switch (alignment)
+            {
+            case TextSymbol::ALIGN_CENTER_CENTER:
+                cursorX -= lineWidth / 2.0;
+                cursorY -= (ONE_EM * scale) * 0.5;
+                break;
+            case TextSymbol::ALIGN_LEFT_CENTER:
+                cursorY -= (ONE_EM * scale) * 0.5;
+                break;
+            case TextSymbol::ALIGN_RIGHT_CENTER:
+                cursorX -= lineWidth;
+                cursorY -= (ONE_EM * scale) * 0.5;
+                break;
+            case TextSymbol::ALIGN_CENTER_TOP:
+                cursorX -= lineWidth / 2.0;
+                break;
+            case TextSymbol::ALIGN_CENTER_BOTTOM:
+                cursorX -= lineWidth / 2.0;
+                cursorY -= (ONE_EM * scale);
+                break;
+            case TextSymbol::ALIGN_LEFT_TOP:
+                // default
+                break;
+            case TextSymbol::ALIGN_RIGHT_TOP:
+                cursorX -= lineWidth;
+                break;
+            case TextSymbol::ALIGN_LEFT_BOTTOM:
+                cursorY -= (ONE_EM * scale);
+                break;
+            case TextSymbol::ALIGN_RIGHT_BOTTOM:
+                cursorX -= lineWidth;
+                cursorY -= (ONE_EM * scale);
+                break;
+            default:
+                break;
+            }            
+
+            // Render each glyph
+            for (unsigned int index = 0; index < textGlyphs.size(); ++index)
+            {
+                MapboxGLGlyphManager::Glyph* g = textGlyphs[index].get();
+
+                if (!g)
+                {                
+                    continue;
+                }
+
+                //Write each glyph into the output image.
+                unsigned glyphWidth = g->width + 6;
+                unsigned glyphHeight = g->height + 6;
+
+                if (g->bitmap.size() > 0)
+                {
+                    auto textColor = textSymbol->fill()->color();
+
+                    unsigned int numPixels = (g->width + 6) * (g->height + 6);
+
+                    unsigned char* glyphData = new unsigned char[g->bitmap.size() * 4]{ 0u };
+
+                    for (unsigned int i = 0; i < numPixels; ++i)
+                    {
+                        unsigned char* base = &glyphData[i * 4];
+                        unsigned char value = g->bitmap[i];
+                        float maxValue = 192.0; // alpha 1
+                        float minValue = 180.0;  // alpha 0
+                        float alpha = osg::clampBetween(((value - minValue) / (maxValue - minValue)), 0.0f, 1.0f);
+                        alpha *= textColor.a();
+
+                        base[0] = (unsigned char)(textColor.b() * alpha * 255.0f);
+                        base[1] = (unsigned char)(textColor.g() * alpha * 255.0f);
+                        base[2] = (unsigned char)(textColor.r() * alpha * 255.0f);
+                        base[3] = (unsigned char)(alpha * 255.0f);
+                    }
+
+                    BLImage sprite;
+                    sprite.createFromData(g->width + 6, g->height + 6, BL_FORMAT_PRGB32, glyphData, (g->width + 6) * 4);
+
+                    BLRectI glyphRect(0.0, 0.0, (double)(g->width + 6), (double)(g->height + 6));
+
+                    ctx.translate(cursorX, cursorY);
+                    ctx.scale(scale);
+                    ctx.blitImage(BLPoint((double)g->left, (double)(-g->top)), sprite, glyphRect);
+                    ctx.resetMatrix();
+
+                    delete[] glyphData;
+                }
+
+                // Advance the cursor
+                cursorX += (float)g->advance * scale;
+            }
+        }
+
         void rasterizeSymbols(
             const Feature* feature,
             const StyleSheet* styleSheet,
             const TextSymbol* textSymbol,
             const SkinSymbol* skinSymbol,
             RenderFrame& frame,
-            BLContext& ctx)
+            BLContext& ctx,
+            MapboxGLGlyphManager* glyphManager)
         {
             OE_HARD_ASSERT(feature != nullptr);
 
@@ -334,6 +462,12 @@ namespace osgEarth {
             BLFont font;
 
             Session* session = nullptr;
+
+            // Disable symbols for non-linear features until we have a better labeling strategy.
+            if (!feature->getGeometry()->isPointSet())
+            {
+                return;
+            }
 
             if (styleSheet && skinSymbol && skinSymbol->name().isSet())
             {
@@ -366,20 +500,20 @@ namespace osgEarth {
                             ctx.setCompOp(BL_COMP_OP_SRC_OVER);
 
                             feature->getGeometry()->forEachPart([&](const Geometry* part)
-                            {
-                                // Only label points for now
-                                for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
                                 {
-                                    const osg::Vec3d& p0 = *p;
-                                    double x = frame.xf*(p0.x() - frame.xmin);
-                                    double y = frame.yf*(p0.y() - frame.ymin);
-                                    y = ctx.targetHeight() - y;
+                                    // Only label points for now
+                                    for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                                    {
+                                        const osg::Vec3d& p0 = *p;
+                                        double x = frame.xf * (p0.x() - frame.xmin);
+                                        double y = frame.yf * (p0.y() - frame.ymin);
+                                        y = ctx.targetHeight() - y;
 
-                                    ctx.translate(x, y);
-                                    ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
-                                    ctx.resetMatrix();
-                                }
-                            });
+                                        ctx.translate(x, y);
+                                        ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
+                                        ctx.resetMatrix();
+                                    }
+                                });
                         }
                     }
                 }
@@ -397,35 +531,41 @@ namespace osgEarth {
                 std::string text = templateReplace(feature, expression.expr());
 
                 feature->getGeometry()->forEachPart([&](const Geometry* part)
-                {
-                    for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
                     {
-                        const osg::Vec3d& p0 = *p;
-                        double x = frame.xf*(p0.x() - frame.xmin);
-                        double y = frame.yf*(p0.y() - frame.ymin);
-                        y = ctx.targetHeight() - y;
-
-                        if (textSymbol->fill().isSet())
+                        for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
                         {
-                            osgEarth::Color fillColor = textSymbol->fill()->color();
-                            ctx.setFillStyle(BLRgba(fillColor.r(), fillColor.g(), fillColor.b(), fillColor.a()));
-                            ctx.fillUtf8Text(BLPoint(x, y), font, text.c_str());
-                        }
+                            const osg::Vec3d& p0 = *p;
+                            double x = frame.xf * (p0.x() - frame.xmin);
+                            double y = frame.yf * (p0.y() - frame.ymin);
+                            y = ctx.targetHeight() - y;
 
-                        if (textSymbol->halo().isSet())
-                        {
-                            osgEarth::Color haloColor = textSymbol->halo()->color();
-                            ctx.setStrokeStyle(BLRgba(haloColor.r(), haloColor.g(), haloColor.b(), haloColor.a()));
-                            ctx.setStrokeWidth(1);
-                            ctx.strokeUtf8Text(BLPoint(x, y), font, text.c_str());
+                            if (glyphManager)
+                            {
+                                // Use the mapboxgl font to render the text.
+                                renderMapboxText(ctx, x, y, text, textSymbol, glyphManager);
+                            }
+                            else
+                            {
+                                // Just use Blend's default font rendering
+                                if (textSymbol->fill().isSet())
+                                {
+                                    osgEarth::Color fillColor = textSymbol->fill()->color();
+                                    ctx.setFillStyle(BLRgba(fillColor.r(), fillColor.g(), fillColor.b(), fillColor.a()));
+                                    ctx.fillUtf8Text(BLPoint(x, y), font, text.c_str());
+                                }
+
+                                if (textSymbol->halo().isSet())
+                                {
+                                    osgEarth::Color haloColor = textSymbol->halo()->color();
+                                    ctx.setStrokeStyle(BLRgba(haloColor.r(), haloColor.g(), haloColor.b(), haloColor.a()));
+                                    ctx.setStrokeWidth(1);
+                                    ctx.strokeUtf8Text(BLPoint(x, y), font, text.c_str());
+                                }
+                            }
                         }
-                    }
-                });
+                    });
             }
-
-
         }
-
 #endif
     }
 }
@@ -468,6 +608,16 @@ FeatureRasterizer::FeatureRasterizer(
     _extent(extent)
 {
     //nop
+}
+
+MapboxGLGlyphManager* FeatureRasterizer::getGlyphManager() const
+{
+    return _glyphManager.get();
+}
+
+void FeatureRasterizer::setGlyphManager(MapboxGLGlyphManager* glyphManager)
+{
+    _glyphManager = glyphManager;
 }
 
 void
@@ -576,13 +726,13 @@ FeatureRasterizer::render_blend2d(
     }
 
     if (masterText || masterSkin)
-    {
+    {       
         // Rasterize the symbols:
         for (const auto& feature : features)
         {
             if (feature->getGeometry())
             {
-                rasterizeSymbols(feature.get(), sheet, masterText, masterSkin, frame, ctx);
+                rasterizeSymbols(feature.get(), sheet, masterText, masterSkin, frame, ctx, _glyphManager.get());
             }
         }
     }

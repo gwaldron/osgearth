@@ -205,8 +205,6 @@ in vec2 oe_tex_uv;
 in vec3 oe_pos3_view;
 flat in uint64_t oe_albedo_tex;
 
-uniform float shmoo = 0.5;
-
 void oe_vegetation_fs(inout vec4 color)
 {
 #ifdef OE_IS_SHADOW_CAMERA
@@ -372,6 +370,8 @@ VegetationLayer::init()
     PatchLayer::init();
 
     setAcceptCallback(new LayerAcceptor(this));
+
+    _activateMultisampling = false;
 }
 
 VegetationLayer::~VegetationLayer()
@@ -445,6 +445,12 @@ VegetationLayer::update(osg::NodeVisitor& nv)
         {
             ScopedMutexLock lock(_assets);
             _assets = newAssets;
+        }
+
+        if (_activateMultisampling)
+        {
+            activateMultisampling();
+            _activateMultisampling = false;
         }
     }
 }
@@ -646,6 +652,9 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
 {
     PatchLayer::prepareForRendering(engine);
 
+    _checkedForMultisampling = false;
+    _activateMultisampling = false;
+
     TerrainResources* res = engine->getResources();
     if (res)
     {
@@ -747,15 +756,23 @@ VegetationLayer::buildStateSets()
     // If multisampling is on, use alpha to coverage.
     if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
     {
-        ss->setDefine("OE_USE_ALPHA_TO_COVERAGE");
-        ss->setMode(GL_MULTISAMPLE, 1);
-        ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
-        ss->setAttributeAndModes(new osg::BlendFunc(), 0 | osg::StateAttribute::OVERRIDE);
+        activateMultisampling();
+        _checkedForMultisampling = true;
     }
 
     // Far pixel scale overrides.
     _pixelScalesU = new osg::Uniform("oe_lod_scale", osg::Vec4f(1, 1, 1, 1));
     ss->addUniform(_pixelScalesU.get(), osg::StateAttribute::OVERRIDE | 0x01);
+}
+
+void
+VegetationLayer::activateMultisampling()
+{
+    osg::StateSet* ss = getOrCreateStateSet();
+    ss->setDefine("OE_USE_ALPHA_TO_COVERAGE");
+    ss->setMode(GL_MULTISAMPLE, 1);
+    ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+    ss->setAttributeAndModes(new osg::BlendFunc(), 0 | osg::StateAttribute::OVERRIDE);
 }
 
 void
@@ -1477,6 +1494,12 @@ VegetationLayer::cull(
     _cameraState.lock();
     CameraState::Ptr& cs = _cameraState[cv->getCurrentCamera()];
     _cameraState.unlock();
+
+    if (!_checkedForMultisampling.exchange(true))
+    {
+        _activateMultisampling =
+            cv->getState()->getLastAppliedModeValue(GL_MULTISAMPLE);
+    }
 
     if (cs == nullptr)
         cs = std::make_shared<CameraState>();

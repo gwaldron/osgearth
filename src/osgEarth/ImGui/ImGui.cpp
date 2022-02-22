@@ -26,6 +26,31 @@
 
 using namespace osgEarth::GUI;
 
+#if 0
+
+std::unordered_map<
+    std::string,
+    GUIFactory::Factory> GUIFactory::_lut;
+
+void
+GUIFactory::add(
+    const std::string& name,
+    Factory factory)
+{
+    _lut[name] = factory;
+}
+
+BaseGUI::Ptr
+GUIFactory::create(const std::string& name)
+{
+    auto iter = _lut.find(name);
+    return iter != _lut.end() ?
+        BaseGUI::Ptr(iter->second()) :
+        nullptr;
+}
+#endif
+
+//..........................................
 
 void OsgImGuiHandler::RealizeOperation::operator()(osg::Object* object)
 {

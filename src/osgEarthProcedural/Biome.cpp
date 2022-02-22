@@ -56,12 +56,15 @@ AssetGroup::name(AssetGroup::Type group)
 
 ModelAsset::ModelAsset(const Config& conf)
 {
+    scale().setDefault(1.0f);
+
     conf.get("url", modelURI());
     conf.get("name", name());
     conf.get("side_url", sideBillboardURI());
     conf.get("top_url", topBillboardURI());
     conf.get("width", width());
     conf.get("height", height());
+    conf.get("scale", scale());
     conf.get("size_variation", sizeVariation());
     conf.get("traits", traits());
 
@@ -79,6 +82,7 @@ ModelAsset::getConfig() const
     conf.set("top_url", topBillboardURI());
     conf.set("width", width());
     conf.set("height", height());
+    conf.set("scale", scale());
     conf.set("size_variation", sizeVariation());
     conf.set("traits", traits());
     return conf;

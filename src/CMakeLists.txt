@@ -5,6 +5,8 @@ set_property(TARGET osgEarth PROPERTY FOLDER "Core")
 
 #optionals:
 if(OSGEARTH_BUILD_PROCEDURAL_NODEKIT)
+    add_definitions(-DHAVE_OSGEARTHPROCEDURAL)
+    set(OSGEARTHPROCEDURAL_LIBRARY osgEarthProcedural)
     add_subdirectory(osgEarthProcedural)
 endif()
 

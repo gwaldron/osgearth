@@ -24,6 +24,7 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/MaterialLoader>
 #include <osg/ComputeBoundsVisitor>
+#include <osg/MatrixTransform>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
@@ -386,6 +387,7 @@ BiomeManager::materializeNewAssets(
                     if (assetDef->modelURI().isSet())
                     {
                         const URI& uri = assetDef->modelURI().get();
+
                         ModelCache::iterator ic = modelcache.find(uri);
                         if (ic != modelcache.end())
                         {
@@ -397,6 +399,15 @@ BiomeManager::materializeNewAssets(
                             residentAsset->model() = uri.getNode(readOptions);
                             if (residentAsset->model().valid())
                             {
+                                // apply a static scale:
+                                if (assetDef->scale().isSet())
+                                {
+                                    osg::MatrixTransform* mt = new osg::MatrixTransform();
+                                    mt->setMatrix(osg::Matrix::scale(assetDef->scale().get(), assetDef->scale().get(), assetDef->scale().get()));
+                                    mt->addChild(residentAsset->model().get());
+                                    residentAsset->model() = mt;
+                                }
+
                                 // find materials:
                                 residentAsset->model()->accept(materialLoader);
 

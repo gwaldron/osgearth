@@ -19,15 +19,18 @@
 #ifndef OSGEARTH_IMGUI_H
 #define OSGEARTH_IMGUI_H 1
 
-#include <osg/Texture2D>
-#include <osg/RenderInfo>
-#include <osgViewer/View>
-#include <osgViewer/ViewerEventHandlers>
+#include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/GeoData>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/Terrain>
+
+#include <osg/Texture2D>
+#include <osg/RenderInfo>
+#include <osgViewer/View>
+#include <osgViewer/ViewerEventHandlers>
+
 #include <typeinfo>
 
 #ifdef IM_PI
@@ -47,6 +50,9 @@ namespace osgEarth
         // base class for GUI elements that allows you to toggle visibility
         class BaseGUI
         {
+        public:
+            using Ptr = std::unique_ptr<BaseGUI>;
+
         public:
             void setVisible(bool value) {
                 _visible = value;
@@ -192,8 +198,38 @@ namespace osgEarth
                 return whether;
             }
         };
+
+#if 0
+        class GUIFactory
+        {
+        public:
+            using Factory = std::function<BaseGUI*()>;
+
+            static BaseGUI::Ptr create(
+                const std::string& name);
+
+        public:
+            struct Delegate {
+                Delegate(const std::string& name, Factory factory) {
+                    GUIFactory::add(name, factory);
+                }
+            };
+
+            static void add(
+                const std::string& name,
+                Factory factory);
+
+        private:
+            static std::unordered_map<
+                std::string,
+                Factory> _lut;
+        };
+#endif
     }
 }
+
+#define REGISTER_OSGEARTH_IMGUI(NAME, FACTORY) \
+    namespace osgEarth { namespace GUI { static osgEarth::GUI::GUIFactory::Delegate __oe_regimgui_ ## NAME ( #NAME , FACTORY ); } }
 
 namespace ImGuiUtil
 {

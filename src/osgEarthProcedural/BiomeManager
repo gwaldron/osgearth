@@ -138,6 +138,13 @@ namespace osgEarth
             //! Collection of assets loaded into memory (snapshot in time copy)
             std::vector<const ModelAsset*> getResidentAssets() const;
 
+            //! Called getResidentAssets, but returns immediately with
+            //! and empty collection if another thread if holding the lock.
+            //! This is useful for monitoring/UIs.
+            std::vector<const ModelAsset*> getResidentAssetsIfNotLocked() const;
+
+            //! Assigns a geometry creation function for an asset group,
+            //! for making impostor geometry LODs.
             void setCreateFunction(
                 const AssetGroup::Type group,
                 createImpostorFunction function);
@@ -204,7 +211,9 @@ namespace osgEarth
 
             //! add flexibility attributes to a model for
             //! wind/deformation support
-            void addFlexors(osg::ref_ptr<osg::Node>& node);
+            void addFlexors(
+                osg::ref_ptr<osg::Node>& node,
+                float stiffness);
         };
     }
 } // namespace osgEarth::Procedural

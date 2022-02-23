@@ -94,6 +94,12 @@ namespace osgEarth
             //!  - Value of 1.0 means the scale can be [0.0 ... 2.0].
             OE_OPTION(float, sizeVariation);
 
+            //! Stiffness, or how much it will move in the wind. [0..1]
+            //!  - 0 = no stiffness, free to move;
+            //!  - 1 = completely stiff, wind has no effect.
+            //! Default is 0.
+            OE_OPTION(float, stiffness);
+
             //! User-defined traits string
             OE_OPTION(std::string, traits);
 

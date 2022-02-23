@@ -25,6 +25,7 @@
 #include <osgEarth/MaterialLoader>
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
+#include <osg/TriangleIndexFunctor>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
@@ -271,12 +272,29 @@ BiomeManager::getActiveBiomes() const
 std::vector<const ModelAsset*>
 BiomeManager::getResidentAssets() const
 {
+    std::vector<const ModelAsset*> result;
+
     ScopedMutexLock lock(_residentData_mutex);
 
-    std::vector<const ModelAsset*> result;
     result.reserve(_residentModelAssets.size());
     for (auto& entry : _residentModelAssets)
         result.push_back(entry.first);
+
+    return std::move(result);
+}
+
+std::vector<const ModelAsset*>
+BiomeManager::getResidentAssetsIfNotLocked() const
+{
+    std::vector<const ModelAsset*> result;
+    if (_residentData_mutex.try_lock())
+    {
+        result.reserve(_residentModelAssets.size());
+        for (auto& entry : _residentModelAssets)
+            result.push_back(entry.first);
+
+        _residentData_mutex.unlock();
+    }
     return std::move(result);
 }
 
@@ -412,7 +430,7 @@ BiomeManager::materializeNewAssets(
                                 residentAsset->model()->accept(materialLoader);
 
                                 // add flexors:
-                                addFlexors(residentAsset->model());
+                                addFlexors(residentAsset->model(), assetDef->stiffness().get());
 
                                 OE_DEBUG << LC << "Loaded model: " << uri.base() << std::endl;
                                 modelcache[uri]._node = residentAsset->model().get();
@@ -674,16 +692,88 @@ namespace
             node->accept(*this);
         }
     };
+
+    template<class T>
+    struct TriangleFullSend {
+        T* _receiver;
+        osg::Geometry* _geom;
+        inline void operator () (unsigned i0, unsigned i1, unsigned i2) {
+            _receiver->triangle(*_geom, i0, i1, i2);
+        }
+    };
+
+    //template<class T>
+    struct TriangleVisitor : public osg::NodeVisitor
+    {        
+        using TriangleFunction = std::function<void(
+            osg::Geometry& geom,
+            unsigned i0,
+            unsigned i1,
+            unsigned i2,
+            const osg::Matrix& l2w)>;
+
+        TriangleFunction _func;
+
+        std::stack<osg::Matrix> _transformStack;
+
+        TriangleVisitor() : osg::NodeVisitor()
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+            _transformStack.push(osg::Matrix::identity());
+        }
+
+        void apply(osg::Node& node) override
+        {
+            //T* n = dynamic_cast<T*>(&node);
+            //if (n) _func(*n, _transformStack.top());
+            traverse(node);
+        }
+
+        void apply(osg::Transform& node) override
+        {
+            osg::Matrix m = _transformStack.empty() ? osg::Matrix() : _transformStack.top();
+            node.computeLocalToWorldMatrix(m, this);
+            _transformStack.push(m);
+            apply(static_cast<osg::Group&>(node));
+            _transformStack.pop();
+        }
+
+        void apply(osg::Geometry& geom) override
+        {
+            osg::TriangleIndexFunctor<TriangleFullSend<TriangleVisitor>> _sender;
+            _sender._receiver = this;
+            _sender._geom = &geom;
+            geom.accept(_sender);
+        }
+
+        void visit(
+            osg::ref_ptr<osg::Node>& node,
+            TriangleFunction func)
+        {
+            _func = func;
+            node->accept(*this);
+        }
+
+        void triangle(osg::Geometry& geom, unsigned i0, unsigned i1, unsigned i2)
+        {
+            auto verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
+            _func(geom, i0, i1, i2, _transformStack.top());
+        }
+    };
 }
 
 void
-BiomeManager::addFlexors(osg::ref_ptr<osg::Node>& node)
+BiomeManager::addFlexors(osg::ref_ptr<osg::Node>& node, float stiffness)
 {
+    // note: stiffness is [0..1].
+
     osg::ComputeBoundsVisitor cb;
     node->accept(cb);
     auto& bbox = cb.getBoundingBox();
 
-    auto addFlexors = [bbox](osg::Geometry& geom, const osg::Matrix& l2w)
+#if 1
+    auto addFlexors = [bbox, stiffness](osg::Geometry& geom, const osg::Matrix& l2w)
     {
         osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
         if (!verts) return;
@@ -702,11 +792,77 @@ BiomeManager::addFlexors(osg::ref_ptr<osg::Node>& node)
             float height_ratio = harden((vert.z() - bbox.zMin()) / (bbox.zMax() - bbox.zMin()));
             auto lateral_vec = (vert - osg::Vec3f(0, 0, vert.z()));
             float lateral_ratio = harden(lateral_vec.length() / xy_radius);
-            auto flex = normalize(lateral_vec) * (lateral_ratio * 3.0f) * (height_ratio * 1.5f);
+            auto flex =
+                normalize(lateral_vec) *
+                (lateral_ratio * 3.0f) *
+                (height_ratio * 1.5f) *
+                (1.0-stiffness);
+
             flexors->push_back(flex);
         }
     };
 
     MyVisitor<osg::Geometry> visitor;
     visitor.visit(node, addFlexors);
+
+#else
+
+    // this doesn't work because all the vert's are not shared.
+    // if two adjacent triangles have co-placed verts, they will
+    // be deformed differently using this algorithm, resulting
+    // in cracks and gaps.
+    auto addFlexors = [bbox](
+        osg::Geometry& geom, 
+        unsigned i0, unsigned i1, unsigned i2,
+        const osg::Matrix& l2w)
+    {
+        osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
+        osg::Vec3Array* flexors = dynamic_cast<osg::Vec3Array*>(geom.getTexCoordArray(3));
+        if (flexors == nullptr) {
+            flexors = new osg::Vec3Array();
+            flexors->reserve(verts->size());
+            geom.setTexCoordArray(3, flexors);
+        }
+
+        osg::Vec3f flex, far;
+        auto v0 = (*verts)[i0], v1 = (*verts)[i1], v2 = (*verts)[i2];
+        float v0v1 = (v0 - v1).length();
+        float v1v2 = (v1 - v2).length();
+        float v2v0 = (v2 - v0).length();
+        if (v0v1 > v1v2 && v0v1 > v2v0) {
+            if ((v0 - bbox.center()).length2() > (v1 - bbox.center()).length2())
+                flex = v0 - v1, far = v0;
+            else
+                flex = v1 - v0, far = v1;
+        }
+        else if (v1v2 > v0v1 && v1v2 > v2v0) {
+            if ((v1 - bbox.center()).length2() > (v2 - bbox.center()).length2())
+                flex = v1 - v2, far = v1;
+            else
+                flex = v2 - v1, far = v2;
+        }
+        else {
+            if ((v2 - bbox.center()).length2() > (v0 - bbox.center()).length2())
+                flex = v2 - v0, far = v2;
+            else
+                flex = v0 - v2, far = v0;
+        }
+
+        //.//now compute the length...
+
+        osg::Vec3f base(bbox.center().x(), bbox.center().y(), bbox.zMin());
+        float xy_radius = std::max(bbox.xMax() - bbox.xMin(), bbox.yMax() - bbox.yMin());
+        float height_ratio = harden((far.z() - bbox.zMin()) / (bbox.zMax() - bbox.zMin()));
+        auto lateral_vec = (far - osg::Vec3f(0, 0, far.z()));
+        float lateral_ratio = harden(lateral_vec.length() / xy_radius);
+        flex = normalize(flex) * (lateral_ratio * 3.0f) * (height_ratio * 1.5f);
+
+        (*flexors)[i0] = flex;
+        (*flexors)[i1] = flex;
+        (*flexors)[i2] = flex;
+    };
+
+    TriangleVisitor visitor;
+    visitor.visit(node, addFlexors);
+#endif
 }

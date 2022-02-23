@@ -894,12 +894,16 @@ MapNode::traverse( osg::NodeVisitor& nv )
         getMap()->getLayers(layers);
 
         int count = 0;
-        for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+        for (auto& layer : layers)
         {
-            if (i->get()->getSharedStateSet(&nv))
+            if (layer->isOpen())
             {
-                cv->pushStateSet(i->get()->getSharedStateSet(&nv));
-                ++count;
+                osg::StateSet* ss = layer->getSharedStateSet(&nv);
+                if (ss)
+                {
+                    cv->pushStateSet(ss);
+                    ++count;
+                }
             }
         }
 

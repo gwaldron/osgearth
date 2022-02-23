@@ -135,6 +135,7 @@ layout(location = 1) in vec3 normal;
 // outputs
 out vec4 oe_layer_tilec;
 out vec3 vp_Normal;
+out vec3 vp_VertexView;
 out vec3 oe_UpVectorView;
 
 // stage globals
@@ -147,6 +148,9 @@ void oe_rex_init_view(inout vec4 vert_view)
 
     // Vertex to view space
     vert_view = oe_tile_mvm * oe_vertex_model;
+
+    // rewrite the internal VP variables
+    vp_VertexView = vert_view.xyz;
 
     // Normal to view space (use the original normal here)
     vp_Normal = mat3(oe_tile_mvm) * normal;

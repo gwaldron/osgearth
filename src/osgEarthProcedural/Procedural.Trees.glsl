@@ -315,11 +315,12 @@ void oe_GroundCover_Model(inout vec4 vertex_view, in uint i)
 {
     oe_layer_tilec = vec4(instance[i].tilec, 0, 1);
 
-    vertex_view = oe_vertex.view;
-
+    // update the system vars:
+    vp_VertexView = oe_vertex.view.xyz;
     vp_Normal = oe_vertex.normal;
-
     oe_UpVectorView = oe_transform.normal * vec3(0, 0, 1);
+
+    vertex_view = oe_vertex.view;
 
     oe_veg_texCoord = gl_MultiTexCoord7.xyz; // 7 why not
 

@@ -57,6 +57,7 @@ AssetGroup::name(AssetGroup::Type group)
 ModelAsset::ModelAsset(const Config& conf)
 {
     scale().setDefault(1.0f);
+    stiffness().setDefault(0.0f);
 
     conf.get("url", modelURI());
     conf.get("name", name());
@@ -66,6 +67,7 @@ ModelAsset::ModelAsset(const Config& conf)
     conf.get("height", height());
     conf.get("scale", scale());
     conf.get("size_variation", sizeVariation());
+    conf.get("stiffness", stiffness());
     conf.get("traits", traits());
 
     // save the original so the user can extract user-defined values
@@ -84,6 +86,7 @@ ModelAsset::getConfig() const
     conf.set("height", height());
     conf.set("scale", scale());
     conf.set("size_variation", sizeVariation());
+    conf.set("stiffness", stiffness());
     conf.set("traits", traits());
     return conf;
 }

@@ -264,8 +264,8 @@ namespace osgEarth { namespace Procedural
             const osg::BoundingBox& bbox,
             ProgressCallback* c) const;
 
-        mutable std::atomic_bool _checkedForMultisampling;
-        mutable bool _activateMultisampling;
+        mutable bool _requestMultisampling;
+        bool _multisamplingActivated;
         void activateMultisampling();
     };
 

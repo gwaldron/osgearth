@@ -145,7 +145,6 @@ layout(binding=0, std430) buffer Instances {
 layout(location=4) in vec3 flex;
 
 // outputs
-out vec3 oe_pos3_view;
 flat out uint64_t oe_normal_tex;
 
 // stage globals
@@ -183,8 +182,6 @@ void oe_apply_wind(inout vec4 vertex, in vec2 local_uv)
 
 void oe_vegetation_vs_view(inout vec4 vertex)
 {
-    oe_pos3_view = vertex.xyz;
-
 #ifdef OE_WIND_TEX
     int i = gl_BaseInstance + gl_InstanceID;
     oe_apply_wind(vertex, instances[i].local_uv);
@@ -202,8 +199,8 @@ void oe_vegetation_vs_view(inout vec4 vertex)
 #pragma import_defines(OE_COMPRESSED_NORMAL)
 
 in vec2 oe_tex_uv;
-in vec3 oe_pos3_view;
 flat in uint64_t oe_albedo_tex;
+in vec3 vp_VertexView;
 
 void oe_vegetation_fs(inout vec4 color)
 {
@@ -213,10 +210,12 @@ void oe_vegetation_fs(inout vec4 color)
 #else
     // alpha-down faces that are orthogonal to the view vector.
     // this makes cross-hatch imposters look better
-    vec3 face_normal = normalize(cross(dFdx(oe_pos3_view), dFdy(oe_pos3_view)));
+#if 0
+    vec3 face_normal = normalize(cross(dFdx(vp_VertexView), dFdy(vp_VertexView)));
     const float edge_factor = 0.8;
-    float d = clamp(edge_factor*abs(dot(face_normal, normalize(oe_pos3_view))),0.0,1.0);
-    //color.a *= d;
+    float d = clamp(edge_factor*abs(dot(face_normal, normalize(vp_VertexView))),0.0,1.0);
+    color.a *= d;
+#endif
 
 #ifdef OE_USE_ALPHA_TO_COVERAGE
     // mitigate the screen-door effect of A2C in the distance
@@ -371,7 +370,8 @@ VegetationLayer::init()
 
     setAcceptCallback(new LayerAcceptor(this));
 
-    _activateMultisampling = false;
+    _requestMultisampling = false;
+    _multisamplingActivated = false;
 }
 
 VegetationLayer::~VegetationLayer()
@@ -444,13 +444,13 @@ VegetationLayer::update(osg::NodeVisitor& nv)
         if (!newAssets.empty())
         {
             ScopedMutexLock lock(_assets);
-            _assets = newAssets;
+            _assets = std::move(newAssets);
         }
 
-        if (_activateMultisampling)
+        if (_requestMultisampling)
         {
             activateMultisampling();
-            _activateMultisampling = false;
+            _requestMultisampling = false;
         }
     }
 }
@@ -652,8 +652,8 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
 {
     PatchLayer::prepareForRendering(engine);
 
-    _checkedForMultisampling = false;
-    _activateMultisampling = false;
+    _requestMultisampling = false;
+    _multisamplingActivated = false;
 
     TerrainResources* res = engine->getResources();
     if (res)
@@ -739,6 +739,9 @@ VegetationLayer::buildStateSets()
     osg::StateSet* ss = getOrCreateStateSet();
     ss->setName(typeid(*this).name());
 
+    // Backface culling should be off for impostors.
+    ss->setMode(GL_CULL_FACE, 0x0 | osg::StateAttribute::PROTECTED);
+
     // Install the texture arena:
     TextureArena* textures = getBiomeLayer()->getBiomeManager().getTextures();
     textures->setBindingPoint(1);
@@ -757,7 +760,6 @@ VegetationLayer::buildStateSets()
     if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
     {
         activateMultisampling();
-        _checkedForMultisampling = true;
     }
 
     // Far pixel scale overrides.
@@ -773,6 +775,8 @@ VegetationLayer::activateMultisampling()
     ss->setMode(GL_MULTISAMPLE, 1);
     ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
     ss->setAttributeAndModes(new osg::BlendFunc(), 0 | osg::StateAttribute::OVERRIDE);
+
+    _multisamplingActivated = true;
 }
 
 void
@@ -1500,11 +1504,16 @@ VegetationLayer::cull(
     CameraState::Ptr& cs = _cameraState[cv->getCurrentCamera()];
     _cameraState.unlock();
 
-    if (!_checkedForMultisampling.exchange(true))
+    // check for multisampling
+    if (!_multisamplingActivated)
     {
-        _activateMultisampling =
-            cv->getState()->getLastAppliedModeValue(GL_MULTISAMPLE) ||
-            osg::DisplaySettings::instance()->getMultiSamples() == true;
+        if (cv->getState()->getLastAppliedModeValue(GL_MULTISAMPLE) ||
+            osg::DisplaySettings::instance()->getMultiSamples() == true ||
+            osg::DisplaySettings::instance()->getNumMultiSamples() > 1 ||
+            options().alphaToCoverage() == true)
+        {
+            _requestMultisampling = true;
+        }
     }
 
     if (cs == nullptr)

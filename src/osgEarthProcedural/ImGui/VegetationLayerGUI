@@ -198,7 +198,7 @@ namespace osgEarth {
                         auto biocat = _biolayer->getBiomeCatalog();
                         auto& bioman = _biolayer->getBiomeManager();
 
-                        auto assets = bioman.getResidentAssets();
+                        auto assets = bioman.getResidentAssetsIfNotLocked();
                         for (auto& asset : assets)
                         {
                             if (ImGui::TreeNode(asset->name()->c_str()))

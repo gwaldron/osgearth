@@ -344,15 +344,18 @@ struct VegetationGUI : public GUI::BaseGUI
 
         ImGui::Begin("Vegetation", nullptr, ImGuiWindowFlags_MenuBar);
         {
-            if (_lodTransitionPixelScale == 0.0f)
-                _lodTransitionPixelScale = _biolayer->getBiomeManager().getLODTransitionPixelScale();
-            if (ImGui::SliderFloat("Transition", &_lodTransitionPixelScale, 1.0f, 10.0f)) {
-                _biolayer->getBiomeManager().setLODTransitionPixelScale(_lodTransitionPixelScale);
-                _veglayer->dirty();
-                dirtySettings();
-            }
 
-            ImGui::Text("Groups:");
+            ImGui::TextColored(ImVec4(1, 1, 0, 1), "LOD scales:");
+            osg::Vec4f sse_scales = _veglayer->getSSEScales();
+            if (ImGui::SliderFloat("Near", &sse_scales[0], 0.5f, 2.0f))
+                _veglayer->setSSEScales(sse_scales);
+            if (ImGui::SliderFloat("Far", &sse_scales[1], 0.5f, 2.0f))
+                _veglayer->setSSEScales(sse_scales);
+
+            if (ImGui::Button("Regenerate"))
+                _veglayer->dirty();
+
+            ImGui::TextColored(ImVec4(1, 1, 0, 1), "Groups:");
             ImGui::Indent();
             for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
             {

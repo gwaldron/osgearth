@@ -26,7 +26,7 @@
 #include <osg/StateAttribute>
 #include <osg/buffered_value>
 #include <osg/Image>
-#include <osgUtil/IncrementalCompileOperation>
+#include <queue>
 
 namespace osgEarth
 {
@@ -155,7 +155,8 @@ namespace osgEarth
         {
             GCState() : _inUse(false) { }
             bool _inUse;
-            std::vector<int> _toCompile;
+            std::queue<int> _toCompile;
+            //std::vector<int> _toCompile;
             TextureVector _toActivate;
             TextureVector _toDeactivate;
             TextureVector _toRemove;

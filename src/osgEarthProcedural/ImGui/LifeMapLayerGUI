@@ -1,0 +1,126 @@
+#ifndef OSGEARTH_PROCEDURAL_LIFEMAP_LAYER_GUI
+#define OSGEARTH_PROCEDURAL_LIFEMAP_LAYER_GUI
+
+#include <osgEarthProcedural/LifeMapLayer>
+#include <osgEarth/ImGui/ImGui>
+
+namespace osgEarth {
+    namespace Procedural
+    {
+        using namespace osgEarth;
+
+        struct LifeMapLayerGUI : public GUI::BaseGUI
+        {
+            osg::observer_ptr<MapNode> _mapNode;
+            osg::observer_ptr<LifeMapLayer> _lifemap;
+            bool _lifemap_direct;
+            float _rugged_power;
+            float _dense_power;
+            float _lush_power;
+
+            LifeMapLayerGUI() : GUI::BaseGUI("Life Map"),
+                _lifemap_direct(false),
+                _rugged_power(1.0f),
+                _dense_power(1.0f),
+                _lush_power(1.0f)
+            {
+                //nop
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!findNodeOrHide(_mapNode, ri))
+                    return;
+                if (!findLayerOrHide(_lifemap, ri))
+                    return;
+
+                ImGui::Begin("Life Map");
+
+                // lifemap adjusters
+
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Runtime Adjustments");
+                ImGui::Indent();
+
+                if (ImGui::Checkbox("LifeMap Direct Set", &_lifemap_direct))
+                {
+                    if (_lifemap_direct) {
+                        stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "1", 0x7);
+                        _rugged_power = std::min(_rugged_power, 1.0f);
+                        _dense_power = std::min(_dense_power, 1.0f);
+                        _lush_power = std::min(_lush_power, 1.0f);
+                    }
+                    else {
+                        stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "0", 0x7);
+                    }
+                }
+
+                float lm_max = _lifemap_direct ? 1.0f : 4.0f;
+
+                ImGui::SliderFloat(_lifemap_direct ? "Dense" : "Dense multiplier", &_dense_power, 0.0f, lm_max);
+                stateset(ri)->addUniform(new osg::Uniform("dense_power", _dense_power));
+
+                ImGui::SliderFloat(_lifemap_direct ? "Rugged" : "Rugged multiplier", &_rugged_power, 0.0f, lm_max);
+                stateset(ri)->addUniform(new osg::Uniform("rugged_power", _rugged_power));
+
+                ImGui::SliderFloat(_lifemap_direct ? "Lush" : "Lush multiplier", &_lush_power, 0.0f, lm_max);
+                stateset(ri)->addUniform(new osg::Uniform("lush_power", _lush_power));
+
+                ImGui::Unindent();
+                ImGui::Separator();
+
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator Settings");
+                ImGui::Indent();
+
+                LifeMapLayer::Options& o = _lifemap->options();
+
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "LifeMap contributions levels:");
+                ImGui::Separator();
+                ImGui::SliderFloat("Coverage contrib", &o.landCoverWeight().mutable_value(), 0.0f, 1.0f);
+                ImGui::Indent();
+                float value = o.landCoverBlur()->as(Units::METERS);
+                if (ImGui::SliderFloat("Coverage blur (m)", &value, 0.0f, 100.0f))
+                    o.landCoverBlur()->set(value, Units::METERS);
+                ImGui::Unindent();
+
+                if (_lifemap->getColorLayer())
+                {
+                    ImGui::SliderFloat("Imagery color contrib", &o.colorWeight().mutable_value(), 0.0f, 1.0f);
+                }
+
+                ImGui::SliderFloat("Terrain contrib", &o.terrainWeight().mutable_value(), 0.0f, 1.0f);
+                ImGui::Indent();
+                ImGui::SliderFloat("Slope contrib", &o.slopeIntensity().mutable_value(), 1.0f, 10.0f);
+                ImGui::SliderFloat("Slope cutoff", &o.slopeCutoff().mutable_value(), 0.0f, 1.0f);
+                ImGui::Unindent();
+
+                if (_lifemap->getLandUseLayer())
+                {
+                    ImGui::SliderFloat("Land Use contrib", &o.landUseWeight().mutable_value(), 0.0f, 1.0f);
+                }
+
+                ImGui::SliderFloat("Noise contrib", &o.noiseWeight().mutable_value(), 0.0f, 1.0f);
+
+                if (ImGui::Button("Apply Changes"))
+                {
+                    // make sure the cache is off
+                    _lifemap->setCachePolicy(CachePolicy::NO_CACHE);
+
+                    _mapNode->getTerrainEngine()->invalidateRegion(
+                        { _lifemap.get() },
+                        GeoExtent::INVALID);
+                }
+
+                ImGui::Unindent();
+
+                ImGui::End();
+            }
+        };
+    }
+}
+#endif OSGEARTH_PROCEDURAL_LIFEMAP_LAYER_GUI
+
+//REGISTER_OSGEARTH_IMGUI(LifeMapLayer, []()
+//    {
+//        return new osgEarth::Procedural::LifeMapLayerGUI();
+//    }
+//)

@@ -446,6 +446,12 @@ MACRO(SETUP_IMGUI_APPLICATION APPLICATION_NAME)
             ${TARGET_SRC}
         )
 
+        # define for conditional compilation (esp for imgui headers)
+        if(OSGEARTHPROCEDURAL_LIBRARY)
+            add_definitions(-DHAVE_OSGEARTHPROCEDURAL)
+            list(APPEND TARGET_LIBRARIES_VARS OSGEARTHPROCEDURAL_LIBRARY)
+        endif()
+
         SETUP_APPLICATION(${APPLICATION_NAME})
     else()
         message(STATUS "ImGui application ${APPLICATION_NAME} skipped")

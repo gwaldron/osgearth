@@ -8,7 +8,9 @@ ELSE()
 ENDIF()
 
 SET(LIB_NAME osgEarthProcedural)
+set(OSGEARTHPROCEDURAL_LIBRARY ${LIB_NAME})
 
+# shaders:
 set(TARGET_GLSL
     Procedural.Vegetation.CS.glsl
     Procedural.Vegetation.Types.glsl
@@ -26,6 +28,7 @@ configure_shaders(
 set(TARGET_IN    
     ProceduralShaders.cpp.in)
 
+# sources:
 set(TARGET_SRC
     Biome.cpp
     BiomeLayer.cpp
@@ -37,8 +40,10 @@ set(TARGET_SRC
     LifeMapLayer.cpp
     VegetationFeatureGenerator.cpp
     VegetationLayer.cpp
-    ${SHADERS_CPP})
+    ${SHADERS_CPP}
+    )
 	
+# headers:
 set(LIB_PUBLIC_HEADERS
     Biome
     BiomeLayer
@@ -51,22 +56,29 @@ set(LIB_PUBLIC_HEADERS
     TextureSplattingMaterials
     LifeMapLayer
     VegetationFeatureGenerator
-    VegetationLayer)
-	
-SET(TARGET_H
-	${LIB_PUBLIC_HEADERS}
-	ProceduralShaders)
+    VegetationLayer
+    )
+    
+# ImGui headers:
+if(OSGEARTH_ENABLE_IMGUI)
+    set(LIB_PUBLIC_HEADERS_IMGUI
+        ImGui/LifeMapLayerGUI
+        ImGui/VegetationLayerGUI
+        ImGui/TextureSplattingLayerGUI
+        )    
+endif()
 
-ADD_LIBRARY(
+add_library(
     ${LIB_NAME}
     ${OSGEARTH_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
+    ${LIB_PUBLIC_HEADERS_IMGUI}
     ${TARGET_SRC}
     ${TARGET_GLSL}
     ${TARGET_IN}
 )
 
-LINK_EXTERNAL(
+LINK_INTERNAL(
     ${LIB_NAME} 
     ${TARGET_EXTERNAL_LIBRARIES} 
     ${CMAKE_THREAD_LIBS_INIT} 
@@ -78,7 +90,7 @@ LINK_INTERNAL(
 )
 
 IF (TRACY_FOUND)
-    INCLUDE_DIRECTORIES(${TRACY_INCLUDE_DIR})
+    include_directories(${TRACY_INCLUDE_DIR})
     LINK_WITH_VARIABLES(
         ${LIB_NAME}
         TRACY_LIBRARY )
@@ -95,7 +107,7 @@ LINK_CORELIB_DEFAULT(
     ${CMAKE_THREAD_LIBS_INIT}
     ${MATH_LIBRARY} )
 
-# Add this project to the NodeKits solution folder
+# Place it in the NodeKits solution folder
 set_property( TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )
 
 INCLUDE(ModuleInstall OPTIONAL)

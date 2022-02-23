@@ -156,11 +156,9 @@ CompositeImageLayer::openImplementation()
     // If the user didn't call addLayer(), try to read them from the options.
     if (_layers.empty())
     {
-        for(std::vector<ConfigOptions>::const_iterator i = options().layers().begin();
-            i != options().layers().end();
-            ++i)
+        for(auto& conf : options().layers())
         {
-            osg::ref_ptr<Layer> newLayer = Layer::create(*i);
+            osg::ref_ptr<Layer> newLayer = Layer::create(conf);
             ImageLayer* layer = dynamic_cast<ImageLayer*>(newLayer.get());
             if (layer)
             {
@@ -178,16 +176,16 @@ CompositeImageLayer::openImplementation()
     {
         // the user added layers through the API, so store each layer's options
         // for serialization
-        for(ImageLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+        for(auto& layer : _layers)
         {
-            ImageLayer* layer = i->get();
             options().layers().push_back(layer->getConfig());
         }
     }
 
-    for(ImageLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+    for(auto& layer : _layers)
     {
-        ImageLayer* layer = i->get();
+        if (!layer->isOpen() && !layer->getOpenAutomatically())
+            continue;
 
         layer->setReadOptions(getReadOptions());
 
@@ -289,9 +287,8 @@ CompositeImageLayer::openImplementation()
 Status
 CompositeImageLayer::closeImplementation()
 {
-    for(ImageLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+    for(auto& layer : _layers)
     {
-        ImageLayer* layer = i->get();
         layer->close();
     }
 
@@ -311,9 +308,11 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
     images.reserve(_layers.size());
 
     // Try to get an image from each of the layers for the given key.
-    for (ImageLayerVector::const_iterator itr = _layers.begin(); itr != _layers.end(); ++itr)
+    for(auto& layer : _layers)
     {
-        ImageLayer* layer = itr->get();
+        if (!layer->isOpen())
+            continue;
+
         Composite::ImageInfo imageInfo;
         imageInfo.opacity = layer->getOpacity();
         imageInfo.bestAvailableKey = layer->getBestAvailableTileKey(key);
@@ -488,9 +487,9 @@ CompositeElevationLayer::Options::getConfig() const
     if (_layers.empty() == false)
     {
         Config layersConf("layers");
-        for( std::vector<ConfigOptions>::const_iterator i = _layers.begin(); i != _layers.end(); ++i )
+        for(auto& options : _layers)
         {
-            layersConf.add(i->getConfig());
+            layersConf.add(options.getConfig());
         }
         conf.set(layersConf);
     }
@@ -501,9 +500,9 @@ void
 CompositeElevationLayer::Options::fromConfig(const Config& conf)
 {
     const ConfigSet& layers = conf.child("layers").children();
-    for( ConfigSet::const_iterator i = layers.begin(); i != layers.end(); ++i )
+    for(auto& conf : layers)
     {
-        _layers.push_back(ConfigOptions(*i));
+        _layers.push_back(ConfigOptions(conf));
     }
 }
 
@@ -544,22 +543,20 @@ CompositeElevationLayer::getNode() const
 void
 CompositeElevationLayer::addedToMap(const Map* map)
 {
-    for(ElevationLayerVector::iterator i = _layers.begin();
-        i != _layers.end();
-        ++i)
+    for (auto& layer : _layers)
     {
-        i->get()->addedToMap(map);
+        if (layer->isOpen())
+            layer->addedToMap(map);
     }
 }
 
 void
 CompositeElevationLayer::removedFromMap(const Map* map)
 {
-    for(ElevationLayerVector::iterator i = _layers.begin();
-        i != _layers.end();
-        ++i)
+    for (auto& layer : _layers)
     {
-        i->get()->removedFromMap(map);
+        if (layer->isOpen())
+            layer->removedFromMap(map);
     }
 }
 
@@ -581,11 +578,9 @@ CompositeElevationLayer::openImplementation()
     // If the user didn't call addLayer(), try to read them from the options.
     if (_layers.empty())
     {
-        for(std::vector<ConfigOptions>::const_iterator i = options().layers().begin();
-            i != options().layers().end();
-            ++i)
+        for(auto& conf : options().layers())
         {
-            osg::ref_ptr<Layer> newLayer = Layer::create(*i);
+            osg::ref_ptr<Layer> newLayer = Layer::create(conf);
             ElevationLayer* layer = dynamic_cast<ElevationLayer*>(newLayer.get());
             if (layer)
             {
@@ -603,16 +598,16 @@ CompositeElevationLayer::openImplementation()
     // someone calls getConfig.
     else
     {
-        for(ElevationLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+        for(auto& layer : _layers)
         {
-            ElevationLayer* layer = i->get();
             options().layers().push_back(layer->getConfig());
         }
     }
 
-    for(ElevationLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+    for (auto& layer : _layers)
     {
-        ElevationLayer* layer = i->get();
+        if (!layer->getOpenAutomatically())
+            continue;
 
         layer->setReadOptions(getReadOptions());
 
@@ -710,11 +705,8 @@ CompositeElevationLayer::openImplementation()
 Status
 CompositeElevationLayer::closeImplementation()
 {
-    for(ElevationLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
-    {
-        ElevationLayer* layer = i->get();
+    for(auto& layer : _layers)
         layer->close();
-    }
 
     if (_layerNodes.valid())
     {
@@ -759,9 +751,9 @@ CompositeLandCoverLayer::Options::getConfig() const
     if (_layers.empty() == false)
     {
         Config layersConf("layers");
-        for( std::vector<ConfigOptions>::const_iterator i = _layers.begin(); i != _layers.end(); ++i )
+        for(auto& options : _layers)
         {
-            layersConf.add(i->getConfig());
+            layersConf.add(options.getConfig());
         }
         conf.set(layersConf);
     }
@@ -772,9 +764,9 @@ void
 CompositeLandCoverLayer::Options::fromConfig(const Config& conf)
 {
     const ConfigSet& layers = conf.child("layers").children();
-    for( ConfigSet::const_iterator i = layers.begin(); i != layers.end(); ++i )
+    for(auto& conf : layers)
     {
-        _layers.push_back(ConfigOptions(*i));
+        _layers.push_back(ConfigOptions(conf));
     }
 }
 
@@ -816,22 +808,19 @@ CompositeLandCoverLayer::getNode() const
 void
 CompositeLandCoverLayer::addedToMap(const Map* map)
 {
-    for(LandCoverLayerVector::iterator i = _layers.begin();
-        i != _layers.end();
-        ++i)
+    for (auto& layer : _layers)
     {
-        i->get()->addedToMap(map);
+        if (layer->getOpenAutomatically())
+            layer->addedToMap(map);
     }
 }
 
 void
 CompositeLandCoverLayer::removedFromMap(const Map* map)
 {
-    for(LandCoverLayerVector::iterator i = _layers.begin();
-        i != _layers.end();
-        ++i)
+    for (auto& layer : _layers)
     {
-        i->get()->removedFromMap(map);
+        layer->removedFromMap(map);
     }
 }
 
@@ -860,11 +849,9 @@ CompositeLandCoverLayer::openImplementation()
     // If the user didn't call addLayer(), try to read them from the options.
     if (_layers.empty())
     {
-        for(std::vector<ConfigOptions>::const_iterator i = options().layers().begin();
-            i != options().layers().end();
-            ++i)
+        for(auto& conf : options().layers())
         {
-            osg::ref_ptr<Layer> newLayer = Layer::create(*i);
+            osg::ref_ptr<Layer> newLayer = Layer::create(conf);
             LandCoverLayer* layer = dynamic_cast<LandCoverLayer*>(newLayer.get());
             if (layer)
             {
@@ -882,16 +869,16 @@ CompositeLandCoverLayer::openImplementation()
     {
         // the user added layers through the API, so store each layer's options
         // for serialization
-        for(LandCoverLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+        for(auto& layer : _layers)
         {
-            LandCoverLayer* layer = i->get();
             options().layers().push_back(layer->getConfig());
         }
     }
 
-    for(LandCoverLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+    for(auto& layer : _layers)
     {
-        LandCoverLayer* layer = i->get();
+        if (!layer->getOpenAutomatically())
+            continue;
 
         layer->setReadOptions(getReadOptions());
 
@@ -990,9 +977,8 @@ CompositeLandCoverLayer::openImplementation()
 Status
 CompositeLandCoverLayer::closeImplementation()
 {
-    for(LandCoverLayerVector::iterator i = _layers.begin(); i != _layers.end(); ++i)
+    for(auto& layer : _layers)
     {
-        LandCoverLayer* layer = i->get();
         layer->close();
     }
 

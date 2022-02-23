@@ -157,14 +157,14 @@ uniform mat4 OE_WIND_TEX_MATRIX ;
 uniform float osg_FrameTime;
 uniform sampler2D oe_veg_noise;
 
-uniform float wind_power = 1.0;
+uniform float oe_wind_power = 1.0;
 
 #define remap(X, LO, HI) (LO + X * (HI - LO))
 
 void oe_apply_wind(inout vec4 vertex, in vec2 local_uv)
 {
     float flexibility = length(flex);
-    if (flexibility > 0.0)
+    if (flexibility > 0.0 && oe_wind_power > 0.0)
     {
         vec4 wind = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex));
         vec3 wind_dir = normalize(wind.rgb * 2 - 1); // view space
@@ -176,7 +176,7 @@ void oe_apply_wind(inout vec4 vertex, in vec2 local_uv)
         vec3 flex_dir = normalize(gl_NormalMatrix * vec3xform * flex);
         float flex_planar = abs(dot(wind_dir, flex_dir));
         flex_planar = 1.0 - (flex_planar*flex_planar);
-        vertex.xyz += bend_vec * flex_planar * flexibility * wind_power;
+        vertex.xyz += bend_vec * flex_planar * flexibility * oe_wind_power;
     }
 }
 #endif
@@ -204,8 +204,6 @@ void oe_vegetation_vs_view(inout vec4 vertex)
 in vec2 oe_tex_uv;
 in vec3 oe_pos3_view;
 flat in uint64_t oe_albedo_tex;
-
-uniform float shmoo = 0.5;
 
 void oe_vegetation_fs(inout vec4 color)
 {
@@ -294,6 +292,9 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         groups()[AssetGroup::TREES].maxRange() = 4000.0f;
         groups()[AssetGroup::TREES].lod() = 14;
         groups()[AssetGroup::TREES].count() = 4096;
+        //groups()[AssetGroup::TREES].maxRange() = 8000.0f;
+        //groups()[AssetGroup::TREES].lod() = 13;
+        //groups()[AssetGroup::TREES].count() = 16384;
         groups()[AssetGroup::TREES].spacing() = Distance(15.0f, Units::METERS);
         groups()[AssetGroup::TREES].maxAlpha() = 0.15f;
     }
@@ -369,6 +370,8 @@ VegetationLayer::init()
     PatchLayer::init();
 
     setAcceptCallback(new LayerAcceptor(this));
+
+    _activateMultisampling = false;
 }
 
 VegetationLayer::~VegetationLayer()
@@ -440,8 +443,14 @@ VegetationLayer::update(osg::NodeVisitor& nv)
         Assets newAssets = _newAssets.release();
         if (!newAssets.empty())
         {
-            ScopedMutexLock lock(_assets_mutex);
-            _assets = std::move(newAssets);
+            ScopedMutexLock lock(_assets);
+            _assets = newAssets;
+        }
+
+        if (_activateMultisampling)
+        {
+            activateMultisampling();
+            _activateMultisampling = false;
         }
     }
 }
@@ -449,8 +458,25 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 void
 VegetationLayer::dirty()
 {
-    ScopedWriteLock lock(_traversal_mutex);
-    _cameraState.clear();
+    _tiles.scoped_lock([this]() {
+        _tiles.clear(); });
+
+    _cameraState.scoped_lock([this]() {
+        _cameraState.clear(); });
+}
+
+void
+VegetationLayer::setSSEScales(const osg::Vec4f& value)
+{
+    _pixelScalesU->set(value);
+}
+
+osg::Vec4f
+VegetationLayer::getSSEScales() const
+{
+    osg::Vec4f value;
+    _pixelScalesU->get(value);
+    return value;
 }
 
 void
@@ -626,6 +652,9 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
 {
     PatchLayer::prepareForRendering(engine);
 
+    _checkedForMultisampling = false;
+    _activateMultisampling = false;
+
     TerrainResources* res = engine->getResources();
     if (res)
     {
@@ -727,11 +756,23 @@ VegetationLayer::buildStateSets()
     // If multisampling is on, use alpha to coverage.
     if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
     {
-        ss->setDefine("OE_USE_ALPHA_TO_COVERAGE");
-        ss->setMode(GL_MULTISAMPLE, 1);
-        ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
-        ss->setAttributeAndModes(new osg::BlendFunc(), 0 | osg::StateAttribute::OVERRIDE);
+        activateMultisampling();
+        _checkedForMultisampling = true;
     }
+
+    // Far pixel scale overrides.
+    _pixelScalesU = new osg::Uniform("oe_lod_scale", osg::Vec4f(1, 1, 1, 1));
+    ss->addUniform(_pixelScalesU.get(), osg::StateAttribute::OVERRIDE | 0x01);
+}
+
+void
+VegetationLayer::activateMultisampling()
+{
+    osg::StateSet* ss = getOrCreateStateSet();
+    ss->setDefine("OE_USE_ALPHA_TO_COVERAGE");
+    ss->setMode(GL_MULTISAMPLE, 1);
+    ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+    ss->setAttributeAndModes(new osg::BlendFunc(), 0 | osg::StateAttribute::OVERRIDE);
 }
 
 void
@@ -795,12 +836,17 @@ VegetationLayer::configureTrees()
                     {0,0},{1,0},{1,1},{0,1}
                 };
 
+                const osg::Vec3f flexors[8] = {
+                    {0,0,0}, {0,0,1}, {1,0,0}, {-1,0,1},
+                    {0,0,0}, {0,0,1}, {0,1,0}, {0,-1,1}
+                };
+
                 geom[i]->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
                 geom[i]->setVertexArray(new osg::Vec3Array(8, verts));
                 geom[i]->setNormalArray(new osg::Vec3Array(8, normals));
                 geom[i]->setColorArray(new osg::Vec4Array(1, colors), osg::Array::BIND_OVERALL);
                 geom[i]->setTexCoordArray(0, new osg::Vec2Array(8, uvs));
-                geom[i]->setTexCoordArray(3, new osg::Vec3Array(8)); // flexors
+                geom[i]->setTexCoordArray(3, new osg::Vec3Array(8, flexors));
 
                 if (textures.size() > 0)
                     ss->setTextureAttribute(0, textures[0], 1); // side albedo
@@ -965,8 +1011,10 @@ VegetationLayer::checkForNewAssets() const
 
     osg::observer_ptr<const VegetationLayer> layer_weakptr(this);
 
-    auto load = [layer_weakptr](Cancelable* c) -> Assets
+    auto loadNewAssets = [layer_weakptr](Cancelable* c) -> Assets
     {
+        OE_PROFILING_ZONE_NAMED("VegetationLayer::loadNewAssets(job)");
+
         Assets result;
         result.resize(NUM_ASSET_GROUPS);
 
@@ -1009,7 +1057,7 @@ VegetationLayer::checkForNewAssets() const
         return result;
     };
 
-    _newAssets = Job().dispatch<Assets>(load);
+    _newAssets = Job().dispatch<Assets>(loadNewAssets);
 
     return true;
 }
@@ -1027,10 +1075,14 @@ VegetationLayer::reset()
     BiomeManager& biomeMan = getBiomeLayer()->getBiomeManager();
     _biomeRevision = biomeMan.getRevision();
 
-    ScopedMutexLock lock(_assets_mutex);
-    _assets.clear();
+    _assets.scoped_lock([this]() { 
+        _assets.clear(); });
 
-    _cameraState.clear();
+    _tiles.scoped_lock([this]() {
+        _tiles.clear(); });
+
+    _cameraState.scoped_lock([this]() {
+        _cameraState.clear(); });
 }
 
 // random-texture channels
@@ -1086,7 +1138,7 @@ VegetationLayer::getAssetPlacements(
 
     if (loadBiomesOnDemand == false)
     {
-        ScopedMutexLock lock(_assets_mutex);
+        ScopedMutexLock lock(_assets);
         if (_assets.size() <= group)
             return std::move(result);
         else
@@ -1143,14 +1195,14 @@ VegetationLayer::getAssetPlacements(
             Assets newAssets = _newAssets.release();
             if (!newAssets.empty())
             {
-                ScopedMutexLock lock(_assets_mutex);
+                ScopedMutexLock lock(_assets);
                 _assets = std::move(newAssets);
             }
         }
 
         // make a shallow copy of assets list safely
         {
-            ScopedMutexLock lock(_assets_mutex);
+            ScopedMutexLock lock(_assets);
             if (_assets.size() <= group)
                 return std::move(result);
             else
@@ -1444,9 +1496,16 @@ VegetationLayer::cull(
     _lastVisit = *cv->getFrameStamp();
 
     // exclusive lock on the camera state (created a new one as necessary)
-    _cameraState_mutex.lock();
+    _cameraState.lock();
     CameraState::Ptr& cs = _cameraState[cv->getCurrentCamera()];
-    _cameraState_mutex.unlock();
+    _cameraState.unlock();
+
+    if (!_checkedForMultisampling.exchange(true))
+    {
+        _activateMultisampling =
+            cv->getState()->getLastAppliedModeValue(GL_MULTISAMPLE) ||
+            osg::DisplaySettings::instance()->getMultiSamples() == true;
+    }
 
     if (cs == nullptr)
         cs = std::make_shared<CameraState>();
@@ -1479,7 +1538,7 @@ VegetationLayer::cull(
             // We don't want more than one camera creating the
             // same drawable, so this tileJobs table tracks 
             // createDrawable jobs globally.
-            ScopedMutexLock lock(_tiles_mutex);
+            ScopedMutexLock lock(_tiles);
 
             Tile::Ptr& tile = _tiles[tileId];
             if (tile == nullptr)
@@ -1524,18 +1583,17 @@ VegetationLayer::cull(
     // Purge old tiles.
     cs->_views.swap(active_views);
 
-    _traversal_mutex.read_unlock();
-
 
     // purge unused tiles
-    _tiles_mutex.lock();
-    for (auto it = _tiles.begin(); it != _tiles.end(); ) {
-        if (it->second.use_count() == 1)
-            it = _tiles.erase(it);
-        else
-            ++it;
-    }
-    _tiles_mutex.unlock();
+    _tiles.scoped_lock([this]()
+        {
+            for (auto it = _tiles.begin(); it != _tiles.end(); ) {
+                if (it->second.use_count() == 1)
+                    it = _tiles.erase(it);
+                else
+                    ++it;
+            }
+        });
 }
 
 void
@@ -1543,7 +1601,8 @@ VegetationLayer::resizeGLObjectBuffers(unsigned maxSize)
 {
     PatchLayer::resizeGLObjectBuffers(maxSize);
 
-    ScopedMutexLock lock(_tiles_mutex);
+    ScopedMutexLock lock(_tiles);
+
     for (auto& tile : _tiles)
     {
         auto drawable = tile.second->_drawable.get();
@@ -1557,7 +1616,8 @@ VegetationLayer::releaseGLObjects(osg::State* state) const
 {
     PatchLayer::releaseGLObjects(state);
 
-    ScopedMutexLock lock(_tiles_mutex);
+    ScopedMutexLock lock(_tiles);
+
     for (auto& tile : _tiles)
     {
         auto drawable = tile.second->_drawable.get();

@@ -954,22 +954,4 @@ endif(NOT NRL_STATIC_LIBRARIES)
 
 LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
 
-
 INCLUDE(ModuleInstall OPTIONAL)
-
-if(OSGEARTH_ENABLE_IMGUI)
-    # custom install for ImGui stuff
-    if(NOT USE_CUSTOM_SOURCE_GROUPS)
-        source_group("Headers\\ImGui" FILES ${LIB_PUBLIC_HEADERS_IMGUI})
-    endif()
-    
-    if(HEADER_INSTALL_DIR)
-        SET(IMGUI_INSTALL_INCDIR include/${HEADER_INSTALL_DIR}/ImGui)
-    else()
-        SET(IMGUI_INSTALL_INCDIR include/${LIB_NAME}/ImGui)
-    endif()
-
-    install(
-        FILES ${LIB_PUBLIC_HEADERS_IMGUI} ImGui/ImGui.cpp
-        DESTINATION ${IMGUI_INSTALL_INCDIR})
-endif()

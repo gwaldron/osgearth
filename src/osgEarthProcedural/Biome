@@ -83,6 +83,9 @@ namespace osgEarth
             //! When only billboards are availalbe, height of each billboard
             OE_OPTION(float, height);
 
+            //! Static scale to apply to 3D model (no impact on width/height options)
+            OE_OPTION(float, scale);
+
             //! Variation range (+/-) added to the scale when creating an
             //! instance of this asset.
             //! For example:

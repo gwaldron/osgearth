@@ -112,6 +112,7 @@ layout(binding=31) buffer InputBuffer
 
 uniform vec3 oe_Camera;
 uniform float oe_sse;
+uniform vec4 oe_lod_scale;
 
 #if OE_GPUCULL_DEBUG
 //#ifdef OE_GPUCULL_DEBUG
@@ -131,19 +132,16 @@ void cull()
     // initialize by clearing the visibility for this LOD:
     input_instances[i].visibility[lod] = 0.0;
 
-#ifdef OE_IS_SHADOW_CAMERA
-    // only use the highest LOD for shadow-casting.
-    // TODO: reevaluate this.
-    if (lod < 1)
-        return;
-    //if (lod > 0)
-    //    return;
-#endif
-
     // bail if our chonk does not have this LOD
     uint v = input_instances[i].first_lod_cmd_index + lod;
     if (lod >= chonks[v].num_lods)
         return;
+
+#ifdef OE_IS_SHADOW_CAMERA
+    // only the lowest LOD for shadow-casting.
+    if (lod < chonks[v].num_lods-1)
+        return;
+#endif
 
     // intialize:
     float fade = 1.0;
@@ -207,6 +205,7 @@ void cull()
         float pixelSize = max(dims.x, dims.y);
         float pixelSizePad = pixelSize*0.1;
 
+#if 0
         float minPixelSize = oe_sse * chonks[v].far_pixel_scale;
         if (pixelSize < (minPixelSize - pixelSizePad))
             REJECT(REASON_SSE);
@@ -214,6 +213,16 @@ void cull()
         float maxPixelSize = oe_sse * chonks[v].near_pixel_scale;
         if (pixelSize > (maxPixelSize + pixelSizePad))
             REJECT(REASON_SSE);
+#else
+        float minPixelSize = oe_sse * chonks[v].far_pixel_scale * oe_lod_scale[lod];
+        if (pixelSize < (minPixelSize - pixelSizePad))
+            REJECT(REASON_SSE);
+
+        float near_scale = lod > 0 ? chonks[v].near_pixel_scale * oe_lod_scale[lod-1] : 99999.0;
+        float maxPixelSize = oe_sse * near_scale;
+        if (pixelSize > (maxPixelSize + pixelSizePad))
+            REJECT(REASON_SSE);
+#endif
 
         if (fade==1.0)  // good to go, set the proper fade:
         {
@@ -835,6 +844,8 @@ ChonkFactory::load(
     osg::Node* node,
     Chonk& chonk)
 {
+    OE_PROFILING_ZONE;
+
     // convert all primitive sets to GL_TRIANGLES
     osgUtil::Optimizer o;
     o.optimize(node, o.INDEX_MESH);
@@ -1404,13 +1415,18 @@ ChonkRenderBin::ChonkRenderBin() :
 {
     setName("ChonkBin");
 
+    _cullSS = new osg::StateSet();
+
+    // culling program
     osg::Program* p = new osg::Program();
     p->addShader(new osg::Shader(
         osg::Shader::COMPUTE,
         s_chonk_cull_compute_shader));
-
-    _cullSS = new osg::StateSet();
     _cullSS->setAttribute(p);
+
+    // Default far pixel scales per LOD.
+    // We expect this to be overriden from above.
+    _cullSS->addUniform(new osg::Uniform("oe_lod_scale", osg::Vec4f(1, 1, 1, 1)));
 }
 
 ChonkRenderBin::ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op) :

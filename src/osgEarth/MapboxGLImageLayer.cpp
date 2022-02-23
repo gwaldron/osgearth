@@ -36,6 +36,7 @@ using namespace MapBoxGL;
 REGISTER_OSGEARTH_LAYER(mapboxglimage, MapBoxGLImageLayer);
 OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, std::string, Key, key);
+OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, bool, DisableText, disableText);
 
 void getIfSet(const Json::Value& object, const std::string& member, PropertyValue<float>& value)
 {
@@ -1326,32 +1327,35 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                 else if (layer.type() == "symbol")
                 {
                     Style style;
-                    if (layer.paint().textField().isSet())
+                    if (!getDisableText())
                     {
-                        style.getOrCreateSymbol<TextSymbol>()->content() = layer.paint().textField().get();
-                    }
-                    style.getOrCreateSymbol<TextSymbol>()->fill()->color() = layer.paint().textColor().evaluate(key.getLOD());                    
-                    style.getOrCreateSymbol<TextSymbol>()->halo()->color() = layer.paint().textHaloColor().evaluate(key.getLOD());                                       
-                    style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().evaluate(key.getLOD()));
-                    if (layer.paint().textAnchor().isSet())
-                    {
-                        std::string anchor = layer.paint().textAnchor().get();
+                        if (layer.paint().textField().isSet())
+                        {
+                            style.getOrCreateSymbol<TextSymbol>()->content() = layer.paint().textField().get();
+                        }
+                        style.getOrCreateSymbol<TextSymbol>()->fill()->color() = layer.paint().textColor().evaluate(key.getLOD());
+                        style.getOrCreateSymbol<TextSymbol>()->halo()->color() = layer.paint().textHaloColor().evaluate(key.getLOD());
+                        style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().evaluate(key.getLOD()));
+                        if (layer.paint().textAnchor().isSet())
+                        {
+                            std::string anchor = layer.paint().textAnchor().get();
 
-                        TextSymbol::Alignment alignment = TextSymbol::ALIGN_CENTER_CENTER;
-                        if (anchor == "center") alignment = TextSymbol::ALIGN_CENTER_CENTER;
-                        else if (anchor == "left") alignment = TextSymbol::ALIGN_LEFT_CENTER;
-                        else if (anchor == "right") alignment = TextSymbol::ALIGN_RIGHT_CENTER;
-                        else if (anchor == "top") alignment = TextSymbol::ALIGN_CENTER_TOP;
-                        else if (anchor == "bottom") alignment = TextSymbol::ALIGN_CENTER_BOTTOM;
-                        else if (anchor == "top-left") alignment = TextSymbol::ALIGN_LEFT_TOP;
-                        else if (anchor == "top-right") alignment = TextSymbol::ALIGN_RIGHT_TOP;
-                        else if (anchor == "bottom-left") alignment = TextSymbol::ALIGN_LEFT_BOTTOM;
-                        else if (anchor == "bottom-right") alignment = TextSymbol::ALIGN_RIGHT_BOTTOM;
-                        style.getOrCreateSymbol<TextSymbol>()->alignment() = alignment;
-                    }
-                    if (layer.paint().textFont().isSet())
-                    {
-                        style.getOrCreateSymbol<TextSymbol>()->font() = layer.paint().textFont().get();
+                            TextSymbol::Alignment alignment = TextSymbol::ALIGN_CENTER_CENTER;
+                            if (anchor == "center") alignment = TextSymbol::ALIGN_CENTER_CENTER;
+                            else if (anchor == "left") alignment = TextSymbol::ALIGN_LEFT_CENTER;
+                            else if (anchor == "right") alignment = TextSymbol::ALIGN_RIGHT_CENTER;
+                            else if (anchor == "top") alignment = TextSymbol::ALIGN_CENTER_TOP;
+                            else if (anchor == "bottom") alignment = TextSymbol::ALIGN_CENTER_BOTTOM;
+                            else if (anchor == "top-left") alignment = TextSymbol::ALIGN_LEFT_TOP;
+                            else if (anchor == "top-right") alignment = TextSymbol::ALIGN_RIGHT_TOP;
+                            else if (anchor == "bottom-left") alignment = TextSymbol::ALIGN_LEFT_BOTTOM;
+                            else if (anchor == "bottom-right") alignment = TextSymbol::ALIGN_RIGHT_BOTTOM;
+                            style.getOrCreateSymbol<TextSymbol>()->alignment() = alignment;
+                        }
+                        if (layer.paint().textFont().isSet())
+                        {
+                            style.getOrCreateSymbol<TextSymbol>()->font() = layer.paint().textFont().get();
+                        }
                     }
 
                     if (layer.paint().iconImage().isSet())

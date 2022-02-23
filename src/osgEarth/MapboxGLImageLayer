@@ -24,6 +24,7 @@
 #include <osgEarth/JsonUtils>
 #include <osgEarth/MapboxGLGlyphManager>
 
+
 namespace osgEarth
 {
     namespace MapBoxGL
@@ -43,13 +44,13 @@ namespace osgEarth
         };
 
         template<typename T>
-        T lerp(float t, const T& a, const T& b)
+        inline T lerp(float t, const T& a, const T& b)
         {
             return (T)(a + (b - a) * t);
         }
 
         template<>
-        GeoPoint lerp(float t, const GeoPoint& a, const GeoPoint& b)
+        inline GeoPoint lerp(float t, const GeoPoint& a, const GeoPoint& b)
         {
             return a.interpolate(b, t);
         }
@@ -380,6 +381,7 @@ namespace osgEarth
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION(URI, url);
             OE_OPTION(std::string, key);
+            OE_OPTION(bool, disableText);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );
@@ -395,6 +397,9 @@ namespace osgEarth
         //! API key
         void setKey(const std::string& value);
         const std::string& getKey() const;
+
+        void setDisableText(const bool& value);
+        const bool& getDisableText() const;
 
         // Opens the layer and returns a status
         virtual Status openImplementation();
@@ -412,6 +417,7 @@ namespace osgEarth
         // post-ctor initialization
         virtual void init();
 
+
     protected:
 
         virtual ~MapBoxGLImageLayer() { }
@@ -419,6 +425,8 @@ namespace osgEarth
         osg::observer_ptr< const osgEarth::Map > _map;
         MapBoxGL::StyleSheet _styleSheet;
         osg::ref_ptr< MapboxGLGlyphManager > _glyphManager;
+
+        bool _disableText = false;
     };
 } // namespace osgEarth
 

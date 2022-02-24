@@ -10,6 +10,14 @@ namespace osgEarth { namespace Util
         CascadeDraping = "CascadeDraping.glsl";
         _sources[CascadeDraping] = @CascadeDraping.glsl@;
 
+        // Chonk Rendering
+        Chonk = "Chonk.glsl";
+        _sources[Chonk] = @Chonk.glsl@;
+
+        // Chonk GPU Culling
+        ChonkCulling = "Chonk.Culling.glsl";
+        _sources[ChonkCulling] = @Chonk.Culling.glsl@;
+
         // Depth Offset
         DepthOffset = "DepthOffset.glsl";
         _sources[DepthOffset] = @DepthOffset.glsl@;

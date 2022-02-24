@@ -24,7 +24,7 @@
 #include "GLUtils"
 #include "Metrics"
 #include "VirtualProgram"
-#include "ShaderLoader"
+#include "Shaders"
 #include "Utils"
 
 #include <osg/Switch>
@@ -39,387 +39,6 @@ using namespace osgEarth;
 
 namespace
 {
-    const char* s_chonk_cull_compute_shader = R"(
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
-#pragma import_defines(OE_GPUCULL_DEBUG)
-#pragma import_defines(OE_IS_SHADOW_CAMERA)
-
-layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
-
-struct DrawElementsIndirectCommand
-{
-    uint count;
-    uint instanceCount;
-    uint firstIndex;
-    uint baseVertex;
-    uint baseInstance;
-};
-
-struct BindlessPtrNV
-{
-    uint index;
-    uint reserved;
-    uint64_t address;
-    uint64_t length;
-};
-
-struct DrawElementsIndirectBindlessCommandNV
-{
-    DrawElementsIndirectCommand cmd;
-    uint reserved;
-    BindlessPtrNV indexBuffer;
-    BindlessPtrNV vertexBuffer;
-};
-
-struct ChonkLOD
-{
-    vec4 bs;
-    float far_pixel_scale;
-    float near_pixel_scale;
-    uint num_lods;
-    uint total_num_commands; // global
-};
-
-struct Instance
-{
-    mat4 xform;
-    vec2 local_uv;
-    float fade;
-    float visibility[4];
-    uint first_lod_cmd_index;
-};
-
-layout(binding=0) buffer OutputBuffer
-{
-    Instance output_instances[];
-};
-
-layout(binding=29) buffer Commands
-{
-    DrawElementsIndirectBindlessCommandNV commands[];
-};
-
-layout(binding=30) buffer ChonkLODs
-{
-    ChonkLOD chonks[];
-};
-
-layout(binding=31) buffer InputBuffer
-{
-    Instance input_instances[];
-};
-
-uniform vec3 oe_Camera;
-uniform float oe_sse;
-uniform vec4 oe_lod_scale;
-
-#if OE_GPUCULL_DEBUG
-//#ifdef OE_GPUCULL_DEBUG
-#define REJECT(X) if (fade==1.0) { fade=(X);}
-#else
-#define REJECT(X) return
-#endif
-#define REASON_FRUSTUM 1.5
-#define REASON_SSE 2.5
-#define REASON_NEARCLIP 3.5
-
-void cull()
-{
-    const uint i = gl_GlobalInvocationID.x; // instance
-    const uint lod = gl_GlobalInvocationID.y; // lod
-
-    // initialize by clearing the visibility for this LOD:
-    input_instances[i].visibility[lod] = 0.0;
-
-    // bail if our chonk does not have this LOD
-    uint v = input_instances[i].first_lod_cmd_index + lod;
-    if (lod >= chonks[v].num_lods)
-        return;
-
-#ifdef OE_IS_SHADOW_CAMERA
-    // only the lowest LOD for shadow-casting.
-    if (lod < chonks[v].num_lods-1)
-        return;
-#endif
-
-    // intialize:
-    float fade = 1.0;
-
-    // transform the bounding sphere to a view-space bbox.
-    mat4 xform = input_instances[i].xform;
-    vec4 center = xform * vec4(chonks[v].bs.xyz, 1);
-    vec4 center_view = gl_ModelViewMatrix * center;
-
-    float max_scale = max(xform[0][0], max(xform[1][1], xform[2][2]));
-    float r = chonks[v].bs.w * max_scale;
-
-    // Trivially accept (at the highest LOD) anything whose bounding sphere
-    // intersects the near clip plane:
-    bool is_perspective = gl_ProjectionMatrix[3][3] < 0.01;
-    float near = gl_ProjectionMatrix[2][3] / (gl_ProjectionMatrix[2][2]-1.0);
-    if (is_perspective && -(center_view.z + r) <= near)
-    {
-        if (lod > 0) { // reject all lower LODs
-            REJECT(REASON_NEARCLIP);
-        }
-    }
-    else
-    {
-        // find the clip-space MBR and intersect with the clip frustum:
-        vec4 LL, UR, temp;
-        temp = gl_ProjectionMatrix * (center_view + vec4(-r,-r,-r,0)); temp /= temp.w;
-        LL = temp; UR = temp;
-        temp = gl_ProjectionMatrix * (center_view + vec4(-r,-r,+r,0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-        temp = gl_ProjectionMatrix * (center_view + vec4(-r,+r,-r,0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-        temp = gl_ProjectionMatrix * (center_view + vec4(-r,+r,+r,0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-        temp = gl_ProjectionMatrix * (center_view + vec4(+r,-r,-r,0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-        temp = gl_ProjectionMatrix * (center_view + vec4(+r,-r,+r,0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-        temp = gl_ProjectionMatrix * (center_view + vec4(+r,+r,-r,0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-        temp = gl_ProjectionMatrix * (center_view + vec4(+r,+r,+r,0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-
-#if OE_GPUCULL_DEBUG
-        float threshold = 0.75;
-#else
-        float threshold = 1.0;
-#endif
-
-        if (LL.x > threshold || LL.y > threshold)
-            REJECT(REASON_FRUSTUM);
-
-        if (UR.x < -threshold || UR.y < -threshold)
-            REJECT(REASON_FRUSTUM);
-
-#ifndef OE_IS_SHADOW_CAMERA
-
-        // OK, it is in view - now check pixel size on screen for this LOD:
-        vec2 dims = 0.5*(UR.xy-LL.xy)*oe_Camera.xy;
-    
-        float pixelSize = max(dims.x, dims.y);
-        float pixelSizePad = pixelSize*0.1;
-
-#if 0
-        float minPixelSize = oe_sse * chonks[v].far_pixel_scale;
-        if (pixelSize < (minPixelSize - pixelSizePad))
-            REJECT(REASON_SSE);
-
-        float maxPixelSize = oe_sse * chonks[v].near_pixel_scale;
-        if (pixelSize > (maxPixelSize + pixelSizePad))
-            REJECT(REASON_SSE);
-#else
-        float minPixelSize = oe_sse * chonks[v].far_pixel_scale * oe_lod_scale[lod];
-        if (pixelSize < (minPixelSize - pixelSizePad))
-            REJECT(REASON_SSE);
-
-        float near_scale = lod > 0 ? chonks[v].near_pixel_scale * oe_lod_scale[lod-1] : 99999.0;
-        float maxPixelSize = oe_sse * near_scale;
-        if (pixelSize > (maxPixelSize + pixelSizePad))
-            REJECT(REASON_SSE);
-#endif
-
-        if (fade==1.0)  // good to go, set the proper fade:
-        {
-            if (pixelSize > maxPixelSize)
-                fade = 1.0-(pixelSize-maxPixelSize)/pixelSizePad;
-            else if (pixelSize < minPixelSize)
-                fade = 1.0-(minPixelSize-pixelSize)/pixelSizePad;
-        }
-#endif
-    }
-
-    // Pass! Set the visibility for this LOD:
-    input_instances[i].visibility[lod] = fade;
-
-    // Bump all baseInstances following this one:
-    const uint cmd_count = chonks[v].total_num_commands;
-    for(uint i=v+1; i<cmd_count; ++i)
-        atomicAdd(commands[i].cmd.baseInstance, 1);
-}
-
-// Copies the visible instances to a compacted output buffer.
-void compact()
-{
-    const uint i = gl_GlobalInvocationID.x; // instance
-    const uint lod = gl_GlobalInvocationID.y; // lod
-    
-    float fade = input_instances[i].visibility[lod];
-    if (fade < 0.1)
-        return;
-
-    uint v = input_instances[i].first_lod_cmd_index + lod;
-    uint offset = commands[v].cmd.baseInstance;
-    uint index = atomicAdd(commands[v].cmd.instanceCount, 1);
-
-    // Lazy! Re-using the instance struct for render leaves..
-    output_instances[offset+index] = input_instances[i];
-    output_instances[offset+index].fade = fade;
-}
-
-// Entry point.
-uniform int oe_pass;
-void main()
-{
-    if (oe_pass == 0)
-        cull();
-    else
-        compact();
-}
-
-)";
-
-const char* oe_chonk_default_shaders = R"(
-
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
-#pragma vp_function oe_chonk_default_vertex_model, vertex_model, 0.0
-#pragma import_defines(OE_IS_SHADOW_CAMERA)
-
-struct Instance {
-    mat4 xform;
-    vec2 local_uv;
-    float fade;
-    float visibility[4];
-    uint first_variant_cmd_index;
-};
-layout(binding=0, std430) buffer Instances {
-    Instance instances[];
-};
-layout(binding=1, std430) buffer TextureArena {
-    uint64_t textures[];
-};
-
-layout(location=0) in vec3 position;
-layout(location=1) in vec3 normal;
-layout(location=2) in vec4 color;
-layout(location=3) in vec2 uv;
-layout(location=4) in vec3 flex;
-layout(location=5) in int albedo; // todo: material LUT index
-layout(location=6) in int normalmap; // todo: material LUT index
-
-// stage global
-mat3 xform3;
-
-// outputs
-out vec3 vp_Normal;
-out vec4 vp_Color;
-out float oe_fade;
-out vec2 oe_tex_uv;
-flat out uint64_t oe_albedo_tex;
-flat out uint64_t oe_normal_tex;
-
-void oe_chonk_default_vertex_model(inout vec4 vertex)
-{
-    int i = gl_BaseInstance + gl_InstanceID;
-    vertex = instances[i].xform * vec4(position, 1);
-    vp_Color = color;
-    xform3 = mat3(instances[i].xform);
-    vp_Normal = xform3 * normal;
-    oe_tex_uv = uv;
-    oe_albedo_tex = albedo >= 0 ? textures[albedo] : 0;
-    oe_normal_tex = normalmap >= 0 ? textures[normalmap] : 0;
-
-#ifndef OE_IS_SHADOW_CAMERA
-    oe_fade = instances[i].fade;
-#else
-    oe_fade = 1.0;
-#endif
-}
-
-[break]
-
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
-#pragma vp_function oe_chonk_default_vertex_view, vertex_view, 0.0
-
-// stage
-mat3 xform3;
-
-// output
-out vec3 vp_Normal;
-out vec3 oe_tangent;
-flat out uint64_t oe_normal_tex;
-
-void oe_chonk_default_vertex_view(inout vec4 vertex)
-{
-    if (oe_normal_tex > 0)
-    {
-        vec3 ZAXIS = gl_NormalMatrix * vec3(0,0,1);
-        if (dot(ZAXIS, vp_Normal) > 0.95)
-            oe_tangent = gl_NormalMatrix * (xform3 * vec3(1,0,0));
-        else
-            oe_tangent = cross(ZAXIS, vp_Normal);
-    }
-}
-
-
-[break]
-
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
-#pragma vp_function oe_chonk_default_fragment, fragment, 0.0
-#pragma import_defines(OE_COMPRESSED_NORMAL)
-#pragma import_defines(OE_GPUCULL_DEBUG)
-
-// inputs
-in float oe_fade;
-in vec2 oe_tex_uv;
-in vec3 oe_tangent;
-in vec3 vp_Normal;
-flat in uint64_t oe_albedo_tex;
-flat in uint64_t oe_normal_tex;
-
-void oe_chonk_default_fragment(inout vec4 color)
-{
-    if (oe_albedo_tex > 0)
-    {
-        vec4 texel = texture(sampler2D(oe_albedo_tex), oe_tex_uv);
-        color *= texel;
-    }
-
-    // apply the high fade from the instancer
-#if OE_GPUCULL_DEBUG
-    if (oe_fade <= 1.0) color.a *= oe_fade;
-    else if (oe_fade <= 2.0) color.rgb = vec3(1,0,0);
-    else if (oe_fade <= 3.0) color.rgb = vec3(1,1,0);
-    else if (oe_fade <= 4.0) color.rgb = vec3(0,1,0);
-    else color.rgb = vec3(1,0,1); // should never happen :)
-#else
-    color.a *= oe_fade;
-#endif
-
-    if (oe_normal_tex > 0)
-    {
-        vec4 n = texture(sampler2D(oe_normal_tex), oe_tex_uv);
-
-#ifdef OE_COMPRESSED_NORMAL
-        n.xyz = n.xyz*2.0 - 1.0;
-        n.z = 1.0 - abs(n.x) - abs(n.y);
-        float t = clamp(-n.z, 0, 1);
-        n.x += (n.x > 0) ? -t : t;
-        n.y += (n.y > 0) ? -t : t;
-#else
-        n.xyz = normalize(n.xyz*2.0-1.0);
-#endif
-
-        // construct the TBN, reflecting the normal on back-facing polys
-        mat3 tbn = mat3(
-            normalize(oe_tangent),
-            normalize(cross(vp_Normal, oe_tangent)),
-            normalize(gl_FrontFacing ? vp_Normal : -vp_Normal));
-        
-        vp_Normal = normalize(tbn * n.xyz);
-    }
-}
-
-)";
-
     /**
      * Visitor that counts the verts and elements in a scene graph.
      */
@@ -922,7 +541,9 @@ ChonkDrawable::installRenderBin(ChonkDrawable* d)
             s_vp = VirtualProgram::getOrCreate(s_ss.get());
             s_vp->setName("ChonkDrawable");
             s_vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
-            ShaderLoader::load(s_vp.get(), oe_chonk_default_shaders);
+
+            Shaders pkg;
+            pkg.load(s_vp.get(), pkg.Chonk);
         }
     }
 
@@ -1414,25 +1035,37 @@ ChonkRenderBin::ChonkRenderBin() :
     osgUtil::RenderBin()
 {
     setName("ChonkBin");
-
-    _cullSS = new osg::StateSet();
-
-    // culling program
-    osg::Program* p = new osg::Program();
-    p->addShader(new osg::Shader(
-        osg::Shader::COMPUTE,
-        s_chonk_cull_compute_shader));
-    _cullSS->setAttribute(p);
-
-    // Default far pixel scales per LOD.
-    // We expect this to be overriden from above.
-    _cullSS->addUniform(new osg::Uniform("oe_lod_scale", osg::Vec4f(1, 1, 1, 1)));
 }
 
 ChonkRenderBin::ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op) :
     osgUtil::RenderBin(rhs, op),
     _cullSS(rhs._cullSS)
 {
+    // The first time this happens, create the shaders and statesets.
+    if (!_cullSS.valid())
+    {
+        static Mutex m;
+        ScopedMutexLock lock(m);
+
+        auto proto = static_cast<ChonkRenderBin*>(getRenderBinPrototype("ChonkBin"));
+        if (!proto->_cullSS.valid())
+        {
+            proto->_cullSS = new osg::StateSet();
+
+            // culling program
+            Shaders pkg;
+            std::string src = ShaderLoader::load(pkg.ChonkCulling, pkg);
+            osg::Program* p = new osg::Program();
+            p->addShader(new osg::Shader(osg::Shader::COMPUTE, src));
+            proto->_cullSS->setAttribute(p);
+
+            // Default far pixel scales per LOD.
+            // We expect this to be overriden from above.
+            proto->_cullSS->addUniform(new osg::Uniform("oe_lod_scale", osg::Vec4f(1, 1, 1, 1)));
+        }
+        _cullSS = proto->_cullSS;
+    }
+
     // for each render bin instance, create a StateGraph that we
     // will use to track the OSG state properly when applying the
     // cull program

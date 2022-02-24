@@ -56,6 +56,8 @@ SET(LIB_NAME osgEarth)
 
 set(TARGET_GLSL
     CascadeDraping.glsl
+    Chonk.glsl
+    Chonk.Culling.glsl
     DepthOffset.glsl
     Draping.glsl
     DrawInstancedAttribute.glsl

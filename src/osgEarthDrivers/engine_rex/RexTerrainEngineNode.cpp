@@ -394,10 +394,12 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
                     if (use_gl4)
                     {
-                        const std::string incGL4 = "#pragma include RexEngine.GL4.glsl";
-                        if (source.find(incGL4) == std::string::npos)
+                        ShadersGL4 sh;
+                        std::string incStrGL4 = ShaderLoader::load(sh.ENGINE_TYPES, sh);
+                        //const std::string incGL4 = "#pragma include RexEngine.GL4.glsl";
+                        if (source.find(incStrGL4) == std::string::npos)
                         {
-                            buf << incGL4 << "\n";
+                            buf << incStrGL4 << "\n";
                         }
 
                         // find the shared index.

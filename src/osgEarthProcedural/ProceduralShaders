@@ -26,23 +26,13 @@
 
 namespace osgEarth { namespace Procedural
 {
-    struct TerrainShaders : public osgEarth::Util::ShaderPackage
+    struct ProceduralShaders : public osgEarth::Util::ShaderPackage
 	{
-        TerrainShaders();
+        ProceduralShaders();
 
         std::string
-            TextureSplatting;
-	};
-
-    struct GroundCoverShaders : public osgEarth::Util::ShaderPackage
-	{
-        GroundCoverShaders();
-
-        std::string
-            Compute,
-            Types,
-            Trees,
-            Grass;
+            TextureSplatting,
+            Vegetation;
 	};
 	
 } } // namespace osgEarth::Procedural

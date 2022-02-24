@@ -64,6 +64,9 @@ encodeTexture(osg::ArgumentParser& args)
     std::string infile;
     if (args.read("--encode-texture", infile))
     {
+        std::string libName = osgDB::Registry::instance()->createLibraryNameForNodeKit("osgEarthProcedural");
+        osgDB::Registry::LoadStatus status = osgDB::Registry::instance()->loadLibrary(libName);
+
         osg::ref_ptr<osg::Image> image;
 
         image = osgDB::readRefImageFile(infile + ".oe_splat_rgbh");

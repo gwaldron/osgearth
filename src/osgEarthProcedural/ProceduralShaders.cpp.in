@@ -2,28 +2,11 @@
 
 #include <osgEarthProcedural/ProceduralShaders>
 
-//#define MULTILINE(...) #__VA_ARGS__
-
-using namespace osgEarth::Procedural;
-
-TerrainShaders::TerrainShaders()
+osgEarth::Procedural::ProceduralShaders::ProceduralShaders()
 {
     TextureSplatting = "Procedural.TextureSplatting.glsl";
     _sources[TextureSplatting] = @Procedural.TextureSplatting.glsl@;
-}
 
-
-GroundCoverShaders::GroundCoverShaders()
-{
-    Grass = "Procedural.Grass.glsl";
-    _sources[Grass] = @Procedural.Grass.glsl@;
-    
-    Trees = "Procedural.Trees.glsl";
-    _sources[Trees] = @Procedural.Trees.glsl@;
-    
-    Compute = "Procedural.Vegetation.CS.glsl";
-    _sources[Compute] = @Procedural.Vegetation.CS.glsl@;
-    
-    Types = "Procedural.Vegetation.Types.glsl";
-    _sources[Types] = @Procedural.Vegetation.Types.glsl@;
+    Vegetation = "Procedural.Vegetation.glsl";
+    _sources[Vegetation] = @Procedural.Vegetation.glsl@;
 }

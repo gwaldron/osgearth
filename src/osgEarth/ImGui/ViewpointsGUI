@@ -68,10 +68,9 @@ namespace osgEarth {
 
                 ImGui::Begin(name(), visible());
                 {
-                    auto view = dynamic_cast<osgViewer::View*>(ri.getView());
-                    OE_SOFT_ASSERT_AND_RETURN(view, void());
+                    OE_SOFT_ASSERT_AND_RETURN(view(ri), void());
 
-                    auto manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+                    auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
 
                     if (!manip)
                         ImGui::TextColored(ImVec4(1,.9,.9,1), "(Viewpoints not active)");

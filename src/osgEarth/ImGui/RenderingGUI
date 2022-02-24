@@ -167,17 +167,28 @@ namespace osgEarth
                         _fps = 1000000 / (_time_accum / interval);
                     ImGui::Text("FPS: %d", _fps);
 
+                    const osgViewer::ViewerBase::ThreadingModel models[] = {
+                        osgViewer::ViewerBase::SingleThreaded,
+                        osgViewer::ViewerBase::DrawThreadPerContext,
+                        osgViewer::ViewerBase::CullDrawThreadPerContext,
+                        osgViewer::ViewerBase::CullThreadPerCameraDrawThreadPerContext                    
+                    };
+                    const std::string modelNames[] = {
+                        "SingleThreaded",
+                        "DrawThreadPerContext",
+                        "CullDrawThreadPerContext",
+                        "CullThreadPerCameraDrawThreadPerContext"
+                    };
+
                     auto vb = view(ri)->getViewerBase();
-                    int tm = (int)vb->getThreadingModel();
-                    std::string model =
-                        tm == vb->SingleThreaded ? "SingleThreaded" :
-                        tm == vb->CullDrawThreadPerContext ? "CullDrawThreadPerContext" :
-                        tm == vb->DrawThreadPerContext ? "DrawThreadPerContext" :
-                        tm == vb->CullThreadPerCameraDrawThreadPerContext ? "CullThreadPerCameraDrawThreadPerContext" :
-                        "Unknown";
-                    if (ImGui::Button(model.c_str())) {
-                        vb->addUpdateOperation(new OneTimer([vb, tm]() {
-                            vb->setThreadingModel((osgViewer::Viewer::ThreadingModel)((tm + 1) % 5));
+                    int tmi;
+                    for(tmi=0; tmi<4; ++tmi)
+                        if (models[tmi] == vb->getThreadingModel())
+                            break;
+                    if (ImGui::Button(modelNames[tmi].c_str())) {
+                        auto new_tm = models[(tmi + 1) % 4];
+                        vb->addUpdateOperation(new OneTimer([vb, new_tm]() {
+                            vb->setThreadingModel(new_tm);
                             }));
                     }
                     ImGui::Separator();

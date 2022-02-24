@@ -347,8 +347,11 @@ namespace osgEarth {
             // Compute the line width and line height
             for (auto& g : textGlyphs)
             {
-                lineWidth += g->advance * scale;
-                lineHeight += std::max(lineHeight, g->height * scale);
+                if (g.valid())
+                {
+                    lineWidth += g->advance * scale;
+                    lineHeight += std::max(lineHeight, g->height * scale);
+                }
             }
 
             // Adjust the cursor based on the alignment

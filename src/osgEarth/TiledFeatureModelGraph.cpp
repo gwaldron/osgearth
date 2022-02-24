@@ -27,7 +27,7 @@ TiledFeatureModelGraph::TiledFeatureModelGraph(const osgEarth::Map* map,
                                                FeatureSource* features,
                                                StyleSheet* styleSheet,
                                                Session* session) :
-    SimplePager(map, features->getFeatureProfile()->getTilingProfile()),
+    SimplePager(map, (features && features->getFeatureProfile()) ? features->getFeatureProfile()->getTilingProfile() : nullptr),
     _features(features),
     _styleSheet(styleSheet),
     _session(session)

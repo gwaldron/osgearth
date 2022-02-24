@@ -27,8 +27,6 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/TextureArena>
 
-#include <osg/PrimitiveSetIndirect>
-
 #include <vector>
 
 using namespace osgEarth;

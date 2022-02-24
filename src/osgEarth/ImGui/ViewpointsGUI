@@ -42,10 +42,8 @@ namespace osgEarth {
                 if (!isVisible())
                     return;
 
-                if (!_mapNode.valid())
-                    _mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
-
-                OE_SOFT_ASSERT_AND_RETURN(_mapNode.valid(), void());
+                if (!findNodeOrHide(_mapNode, ri))
+                    return;
 
                 if (!_scannedForViewpoints)
                 {
@@ -68,7 +66,7 @@ namespace osgEarth {
                     _scannedForViewpoints = true;
                 }
 
-                if (!_viewpoints.empty() && _mapNode.valid() && ImGui::Begin(name(), visible()))
+                ImGui::Begin(name(), visible());
                 {
                     auto view = dynamic_cast<osgViewer::View*>(ri.getView());
                     OE_SOFT_ASSERT_AND_RETURN(view, void());
@@ -77,6 +75,9 @@ namespace osgEarth {
 
                     if (!manip)
                         ImGui::TextColored(ImVec4(1,.9,.9,1), "(Viewpoints not active)");
+
+                    if (_viewpoints.empty())
+                        ImGui::TextColored(ImVec4(1, .9, .9, 1), "No viewpoints");
 
                     for (auto& vp : _viewpoints)
                     {
@@ -100,8 +101,8 @@ namespace osgEarth {
                         ImGui::PopID();
                         ImGui::Separator();
                     }
-                    ImGui::EndTabItem();
                 }
+                ImGui::End();
             }
 
             bool _scannedForViewpoints;

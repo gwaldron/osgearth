@@ -63,7 +63,7 @@ namespace osgEarth {
                         _biolayer->getBiomeManager().setLODTransitionPixelScale(_lodTransitionPixelScale);
                 }
 
-                ImGui::Begin("Vegetation", nullptr, ImGuiWindowFlags_MenuBar);
+                ImGui::Begin("Vegetation", visible());
                 {
 
                     ImGui::TextColored(ImVec4(1, 1, 0, 1), "LOD scales:");

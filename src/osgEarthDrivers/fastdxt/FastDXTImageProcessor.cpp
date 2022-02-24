@@ -113,6 +113,7 @@ public:
             int levelZeroSizeBytes = sourceImage->getTotalSizeInBytes();
 
             // DXT compression has minimum mipmap sizes; enforce those now:
+            const int minSize = 16;
             for(int level=0; level<numLevels; ++level)
             {
                 int level_s = sourceImage->s() >> level;
@@ -122,6 +123,11 @@ public:
                 {
                     numLevels = level;
                     break;
+                }
+
+                if (level_s < minSize && level_t < minSize)
+                {
+                    numLevels = level;
                 }
             }
 

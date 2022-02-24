@@ -62,8 +62,10 @@ ProfileOptions::fromConfig( const Config& conf )
     if ( !conf.value().empty() )
         _namedProfile = conf.value();
 
-    conf.get( "srs", _srsInitString );
+    if (conf.hasChild("profile"))
+        fromConfig(conf.child("profile"));
 
+    conf.get( "srs", _srsInitString );
     conf.get( "vdatum", _vsrsInitString );
     conf.get( "vsrs", _vsrsInitString ); // back compat
 

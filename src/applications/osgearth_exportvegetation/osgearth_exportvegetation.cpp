@@ -71,8 +71,7 @@ struct App
     {
         osg::ArgumentParser arguments(&argc, argv);
 
-
-        debug = arguments.read("--debug");
+        debug = arguments.read("--pause");
         if (debug)
         {
             std::cout << "Press enter to run..." << std::endl;

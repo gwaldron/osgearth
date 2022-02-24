@@ -25,6 +25,7 @@
 #include "Metrics"
 #include "VirtualProgram"
 #include "ShaderLoader"
+#include "Utils"
 
 #include <osg/Switch>
 #include <osg/LOD>
@@ -38,20 +39,13 @@ using namespace osgEarth;
 
 namespace
 {
-
     const char* s_chonk_cull_compute_shader = R"(
-
 #version 460
 #extension GL_ARB_gpu_shader_int64 : enable
+#pragma import_defines(OE_GPUCULL_DEBUG)
+#pragma import_defines(OE_IS_SHADOW_CAMERA)
 
 layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
-
-#pragma import_defines(OE_USE_CUSTOM_CULL_FUNCTION)
-#ifdef OE_USE_CUSTOM_CULL_FUNCTION
-bool oe_custom_cull(in vec2);
-#endif
-
-#pragma import_defines(OE_IS_SHADOW_CAMERA)
 
 struct DrawElementsIndirectCommand
 {
@@ -81,8 +75,8 @@ struct DrawElementsIndirectBindlessCommandNV
 struct ChonkLOD
 {
     vec4 bs;
-    float min_pixel_size;
-    float max_pixel_size;
+    float far_pixel_scale;
+    float near_pixel_scale;
     uint num_lods;
     uint total_num_commands; // global
 };
@@ -117,7 +111,18 @@ layout(binding=31) buffer InputBuffer
 };
 
 uniform vec3 oe_Camera;
-uniform float oe_pixel_size_scale = 1.0;
+uniform float oe_sse;
+uniform vec4 oe_lod_scale;
+
+#if OE_GPUCULL_DEBUG
+//#ifdef OE_GPUCULL_DEBUG
+#define REJECT(X) if (fade==1.0) { fade=(X);}
+#else
+#define REJECT(X) return
+#endif
+#define REASON_FRUSTUM 1.5
+#define REASON_SSE 2.5
+#define REASON_NEARCLIP 3.5
 
 void cull()
 {
@@ -127,64 +132,107 @@ void cull()
     // initialize by clearing the visibility for this LOD:
     input_instances[i].visibility[lod] = 0.0;
 
-#ifdef OE_IS_SHADOW_CAMERA
-    // only use the highest LOD for shadow-casting.
-    // TODO: reevaluate this.
-    if (lod > 0)
-        return;
-#endif
-
     // bail if our chonk does not have this LOD
     uint v = input_instances[i].first_lod_cmd_index + lod;
     if (lod >= chonks[v].num_lods)
         return;
 
-    // TODO: benchmark this before and after the SS cull below.
-#ifdef OE_USE_CUSTOM_CULL_FUNCTION
-    if (oe_custom_cull(input_instances[i].local_uv) == false)
+#ifdef OE_IS_SHADOW_CAMERA
+    // only the lowest LOD for shadow-casting.
+    if (lod < chonks[v].num_lods-1)
         return;
 #endif
 
-    // transform the bounding sphere to a view-space bbox.
-    vec4 center = input_instances[i].xform * vec4(chonks[v].bs.xyz, 1);
-    vec4 center_view = gl_ModelViewMatrix * center;
-    float radius = chonks[v].bs.w;
-    vec4 LL_view = center_view - vec4(radius, radius, 0, 0);
-    vec4 UR_view = center_view + vec4(radius, radius, 0, 0);
-
-    // transform the bbox to clip and see if it intersects the frustum:
-    vec4 LL = gl_ProjectionMatrix * LL_view;
-    LL.xyz /= LL.w;
-    if (LL.x > 1.0 || LL.y > 1.0 || LL.z > 1.0)
-        return;
-    vec4 UR = gl_ProjectionMatrix * UR_view;
-    UR.xyz /= UR.w;
-    // note: avoid testing against near clip since it may not be set yet
-    if (UR.x < -1.0 || UR.y < -1.0) // || UR.z < -1.0)
-        return;
-
+    // intialize:
     float fade = 1.0;
 
-#ifndef OE_IS_SHADOW_CAMERA
-    // OK, it is in view - now check pixel size on screen for this LOD:
-    vec2 dims = 0.5*(UR.xy-LL.xy)*oe_Camera.xy;
+    // transform the bounding sphere to a view-space bbox.
+    mat4 xform = input_instances[i].xform;
+    vec4 center = xform * vec4(chonks[v].bs.xyz, 1);
+    vec4 center_view = gl_ModelViewMatrix * center;
 
-    float pixelSize = max(dims.x, dims.y);
-    float pixelSizePad = pixelSize*0.1;
+    float max_scale = max(xform[0][0], max(xform[1][1], xform[2][2]));
+    float r = chonks[v].bs.w * max_scale;
 
-    float maxPixelSize = chonks[v].max_pixel_size * oe_pixel_size_scale;
-    if (pixelSize > (maxPixelSize + pixelSizePad))
-        return;
+    // Trivially accept (at the highest LOD) anything whose bounding sphere
+    // intersects the near clip plane:
+    bool is_perspective = gl_ProjectionMatrix[3][3] < 0.01;
+    float near = gl_ProjectionMatrix[2][3] / (gl_ProjectionMatrix[2][2]-1.0);
+    if (is_perspective && -(center_view.z + r) <= near)
+    {
+        if (lod > 0) { // reject all lower LODs
+            REJECT(REASON_NEARCLIP);
+        }
+    }
+    else
+    {
+        // find the clip-space MBR and intersect with the clip frustum:
+        vec4 LL, UR, temp;
+        temp = gl_ProjectionMatrix * (center_view + vec4(-r,-r,-r,0)); temp /= temp.w;
+        LL = temp; UR = temp;
+        temp = gl_ProjectionMatrix * (center_view + vec4(-r,-r,+r,0)); temp /= temp.w;
+        LL = min(LL, temp); UR = max(UR, temp);
+        temp = gl_ProjectionMatrix * (center_view + vec4(-r,+r,-r,0)); temp /= temp.w;
+        LL = min(LL, temp); UR = max(UR, temp);
+        temp = gl_ProjectionMatrix * (center_view + vec4(-r,+r,+r,0)); temp /= temp.w;
+        LL = min(LL, temp); UR = max(UR, temp);
+        temp = gl_ProjectionMatrix * (center_view + vec4(+r,-r,-r,0)); temp /= temp.w;
+        LL = min(LL, temp); UR = max(UR, temp);
+        temp = gl_ProjectionMatrix * (center_view + vec4(+r,-r,+r,0)); temp /= temp.w;
+        LL = min(LL, temp); UR = max(UR, temp);
+        temp = gl_ProjectionMatrix * (center_view + vec4(+r,+r,-r,0)); temp /= temp.w;
+        LL = min(LL, temp); UR = max(UR, temp);
+        temp = gl_ProjectionMatrix * (center_view + vec4(+r,+r,+r,0)); temp /= temp.w;
+        LL = min(LL, temp); UR = max(UR, temp);
 
-    float minPixelSize = chonks[v].min_pixel_size * oe_pixel_size_scale;
-    if (pixelSize < (minPixelSize - pixelSizePad))
-        return;
-
-    if (pixelSize > maxPixelSize)
-        fade = 1.0-(pixelSize-maxPixelSize)/pixelSizePad;
-    if (pixelSize < minPixelSize)
-        fade = 1.0-(minPixelSize-pixelSize)/pixelSizePad;
+#if OE_GPUCULL_DEBUG
+        float threshold = 0.75;
+#else
+        float threshold = 1.0;
 #endif
+
+        if (LL.x > threshold || LL.y > threshold)
+            REJECT(REASON_FRUSTUM);
+
+        if (UR.x < -threshold || UR.y < -threshold)
+            REJECT(REASON_FRUSTUM);
+
+#ifndef OE_IS_SHADOW_CAMERA
+
+        // OK, it is in view - now check pixel size on screen for this LOD:
+        vec2 dims = 0.5*(UR.xy-LL.xy)*oe_Camera.xy;
+    
+        float pixelSize = max(dims.x, dims.y);
+        float pixelSizePad = pixelSize*0.1;
+
+#if 0
+        float minPixelSize = oe_sse * chonks[v].far_pixel_scale;
+        if (pixelSize < (minPixelSize - pixelSizePad))
+            REJECT(REASON_SSE);
+
+        float maxPixelSize = oe_sse * chonks[v].near_pixel_scale;
+        if (pixelSize > (maxPixelSize + pixelSizePad))
+            REJECT(REASON_SSE);
+#else
+        float minPixelSize = oe_sse * chonks[v].far_pixel_scale * oe_lod_scale[lod];
+        if (pixelSize < (minPixelSize - pixelSizePad))
+            REJECT(REASON_SSE);
+
+        float near_scale = lod > 0 ? chonks[v].near_pixel_scale * oe_lod_scale[lod-1] : 99999.0;
+        float maxPixelSize = oe_sse * near_scale;
+        if (pixelSize > (maxPixelSize + pixelSizePad))
+            REJECT(REASON_SSE);
+#endif
+
+        if (fade==1.0)  // good to go, set the proper fade:
+        {
+            if (pixelSize > maxPixelSize)
+                fade = 1.0-(pixelSize-maxPixelSize)/pixelSizePad;
+            else if (pixelSize < minPixelSize)
+                fade = 1.0-(minPixelSize-pixelSize)/pixelSizePad;
+        }
+#endif
+    }
 
     // Pass! Set the visibility for this LOD:
     input_instances[i].visibility[lod] = fade;
@@ -202,7 +250,7 @@ void compact()
     const uint lod = gl_GlobalInvocationID.y; // lod
     
     float fade = input_instances[i].visibility[lod];
-    if (fade < 0.15)
+    if (fade < 0.1)
         return;
 
     uint v = input_instances[i].first_lod_cmd_index + lod;
@@ -317,6 +365,7 @@ void oe_chonk_default_vertex_view(inout vec4 vertex)
 #extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_function oe_chonk_default_fragment, fragment, 0.0
 #pragma import_defines(OE_COMPRESSED_NORMAL)
+#pragma import_defines(OE_GPUCULL_DEBUG)
 
 // inputs
 in float oe_fade;
@@ -335,7 +384,15 @@ void oe_chonk_default_fragment(inout vec4 color)
     }
 
     // apply the high fade from the instancer
+#if OE_GPUCULL_DEBUG
+    if (oe_fade <= 1.0) color.a *= oe_fade;
+    else if (oe_fade <= 2.0) color.rgb = vec3(1,0,0);
+    else if (oe_fade <= 3.0) color.rgb = vec3(1,1,0);
+    else if (oe_fade <= 4.0) color.rgb = vec3(0,1,0);
+    else color.rgb = vec3(1,0,1); // should never happen :)
+#else
     color.a *= oe_fade;
+#endif
 
     if (oe_normal_tex > 0)
     {
@@ -364,6 +421,36 @@ void oe_chonk_default_fragment(inout vec4 color)
 )";
 
     /**
+     * Visitor that counts the verts and elements in a scene graph.
+     */
+    struct Counter : public osg::NodeVisitor
+    {
+        Counter() :
+            _numVerts(0),
+            _numElements(0)
+        {
+            // Use the "active chidren" mode to only bring in default switch
+            // and osgSim::MultiSwitch children for now. -gw
+            setTraversalMode(TRAVERSE_ACTIVE_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+
+        void apply(osg::Geometry& node) override
+        {
+            auto verts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
+            if (verts) _numVerts += verts->size();
+            
+            for (unsigned i = 0; i < node.getNumPrimitiveSets(); ++i) {
+                auto p = node.getPrimitiveSet(i);
+                if (p) _numElements += p->getNumIndices();
+            }
+        }
+
+        unsigned _numVerts;
+        unsigned _numElements;
+    };
+
+    /**
      * Visitor that traverses a graph and generates a Chonk,
      * storing any discovered textures in the provided arena.
      */
@@ -371,20 +458,29 @@ void oe_chonk_default_fragment(inout vec4 color)
     {
         Chonk& _result;
         TextureArena* _textures;
+        ChonkFactory::GetOrCreateFunction _getOrCreateTexture;
         std::list<ChonkMaterial::Ptr> _materialCache;
         std::stack<ChonkMaterial::Ptr> _materialStack;
         std::stack<osg::Matrix> _transformStack;
-        std::unordered_map<osg::Texture*, unsigned> _textureLUT;
+        std::unordered_map<osg::Texture*, Texture::Ptr> _textureLUT;
 
         const unsigned ALBEDO = 0;
         const unsigned NORMAL = 1;
 
-        ChonkMaterial::Ptr reuseOrCreateMaterial(int albedo, int normal)
+        ChonkMaterial::Ptr reuseOrCreateMaterial(
+            Texture::Ptr albedo_tex,
+            Texture::Ptr normal_tex)
         {
+            int albedo = _textures->find(albedo_tex);
+            int normal = _textures->find(normal_tex);
+
             for (auto& m : _materialCache)
             {
-                if (m->albedo == albedo && m->normal == normal)
+                if (m->albedo == albedo &&
+                    m->normal == normal)
+                {
                     return m;
+                }
             }
             auto material = ChonkMaterial::create();
             material->albedo = albedo;
@@ -395,34 +491,38 @@ void oe_chonk_default_fragment(inout vec4 color)
             // get deleted while the material is still in business:
             if (_textures && _textures->getAutoRelease() == true)
             {
-                material->albedo_tex = _textures->find(material->albedo);
-                material->normal_tex = _textures->find(material->normal);
+                material->albedo_tex = albedo_tex;
+                material->normal_tex = normal_tex;
             }
 
             _materialCache.push_back(material);
             return material;
         }
 
-        Ripper(Chonk& chonk, TextureArena* textures) :
+        Ripper(Chonk& chonk, TextureArena* textures, ChonkFactory::GetOrCreateFunction func) :
             _result(chonk),
-            _textures(textures)
+            _textures(textures),
+            _getOrCreateTexture(func)
         {
-            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            // Use the "active chidren" mode to only bring in default switch
+            // and osgSim::MultiSwitch children for now. -gw
+            setTraversalMode(TRAVERSE_ACTIVE_CHILDREN);
             setNodeMaskOverride(~0);
 
-            _materialStack.push(reuseOrCreateMaterial(-1, -1));
+            _materialStack.push(reuseOrCreateMaterial(
+                nullptr, nullptr));
             _transformStack.push(osg::Matrix());
         }
 
         std::stack<int> _materialIndexStack;
 
         // adds a teture to the arena and returns its index
-        int addTexture(unsigned slot, osg::StateSet* stateset)
+        Texture::Ptr addTexture(unsigned slot, osg::StateSet* stateset)
         {
             if (!_textures)
-                return -1;
+                return nullptr;
 
-            int result = -1;
+            Texture::Ptr arena_tex;
 
             osg::Texture* tex = dynamic_cast<osg::Texture*>(
                 stateset->getTextureAttribute(slot, osg::StateAttribute::TEXTURE));
@@ -433,24 +533,33 @@ void oe_chonk_default_fragment(inout vec4 color)
 
                 if (i == _textureLUT.end())
                 {
-                    Texture::Ptr t = Texture::create();
-                    t->_image = tex->getImage(0);
-                    t->_uri = t->_image->getFileName();
-                    t->_label = "Chonk texture";
+                    bool isNew = true;
 
-                    result = _textures->add(t);
-                    if (result >= 0)
+                    if (_getOrCreateTexture)
+                        arena_tex = _getOrCreateTexture(tex, isNew);
+                    else
+                        arena_tex = Texture::create();
+
+                    if (isNew)
                     {
-                        _textureLUT[tex] = result;
+                        arena_tex->_image = tex->getImage(0);
+                        arena_tex->_uri = tex->getImage(0)->getFileName();
+                        arena_tex->_label = "Chonk texture";
+                    }
+
+                    int index = _textures->add(arena_tex);
+                    if (index >= 0)
+                    {
+                        _textureLUT[tex] = arena_tex;
                     }
                 }
                 else
                 {
-                    result = i->second;
+                    arena_tex = i->second;
                 }
             }
 
-            return result;
+            return arena_tex;
         }
 
         // record materials, and return true if we pushed one.
@@ -459,12 +568,13 @@ void oe_chonk_default_fragment(inout vec4 color)
             bool pushed = false;
             if (stateset)
             {
-                int albedo = addTexture(ALBEDO, stateset);
-                int normal = addTexture(NORMAL, stateset);
+                Texture::Ptr albedo_tex = addTexture(ALBEDO, stateset);
+                Texture::Ptr normal_tex = addTexture(NORMAL, stateset);
 
-                if (albedo >= 0 || normal >= 0)
+                if (albedo_tex || normal_tex)
                 {
-                    ChonkMaterial::Ptr material = reuseOrCreateMaterial(albedo, normal);
+                    ChonkMaterial::Ptr material = reuseOrCreateMaterial(
+                        albedo_tex, normal_tex);
                     _materialStack.push(material);
                     pushed = true;
                 }
@@ -493,30 +603,22 @@ void oe_chonk_default_fragment(inout vec4 color)
             _transformStack.pop();
         }
 
-        void apply(osg::Switch& node)
-        {
-            if (node.getNumChildren() > 0)
-            {
-                bool pushed = pushStateSet(node.getStateSet());
-                node.getChild(0)->accept(*this);
-                if (pushed) popStateSet();
-            }
-        }
-
         void apply(osg::Geometry& node)
         {
             bool pushed = pushStateSet(node.getStateSet());
 
             unsigned numVerts = node.getVertexArray()->getNumElements();
 
-            _result._vbo_store.reserve(_result._vbo_store.size() + numVerts);
             unsigned vbo_offset = _result._vbo_store.size();
 
             auto verts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
             auto colors = dynamic_cast<osg::Vec4Array*>(node.getColorArray());
             auto normals = dynamic_cast<osg::Vec3Array*>(node.getNormalArray());
-            auto uvs = dynamic_cast<osg::Vec2Array*>(node.getTexCoordArray(0));
             auto flexers = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(3));
+
+            // support either 2- or 3-component tex coords, but only read the xy components!
+            auto uv2s = dynamic_cast<osg::Vec2Array*>(node.getTexCoordArray(0));
+            auto uv3s = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(0));
 
             auto& material = _materialStack.top();
 
@@ -553,12 +655,19 @@ void oe_chonk_default_fragment(inout vec4 color)
                     v.normal.set(0, 0, 1);
                 }
 
-                if (uvs)
+                if (uv2s)
                 {
-                    if (uvs->getBinding() == normals->BIND_PER_VERTEX)
-                        v.uv = (*uvs)[i];
+                    if (uv2s->getBinding() == normals->BIND_PER_VERTEX)
+                        v.uv = (*uv2s)[i];
                     else
-                        v.uv = (*uvs)[0];
+                        v.uv = (*uv2s)[0];
+                }
+                else if (uv3s)
+                {
+                    if (uv3s->getBinding() == normals->BIND_PER_VERTEX)
+                        v.uv.set((*uv3s)[i].x(), (*uv3s)[i].y());
+                    else
+                        v.uv.set((*uv3s)[0].x(), (*uv3s)[0].y());
                 }
 
                 if (flexers)
@@ -574,6 +683,7 @@ void oe_chonk_default_fragment(inout vec4 color)
 
                 _result._vbo_store.emplace_back(std::move(v));
 
+                // per-vert materials:
                 _result._materials.push_back(_materialStack.top());
             }
 
@@ -597,12 +707,6 @@ void oe_chonk_default_fragment(inout vec4 color)
             if (pushed) popStateSet();
         }
     };
-}
-
-ChonkMaterial::Ptr
-ChonkMaterial::create()
-{
-    return Ptr(new ChonkMaterial);
 }
 
 namespace std {
@@ -647,8 +751,8 @@ Chonk::add(
 bool
 Chonk::add(
     osg::Node* node,
-    float min_pixel_size,
-    float max_pixel_size,
+    float far_pixel_scale,
+    float near_pixel_scale,
     ChonkFactory& factory)
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
@@ -659,8 +763,8 @@ Chonk::add(
     _lods.push_back({
         offset,
         (_ebo_store.size() - offset), // length of new variant
-        min_pixel_size,
-        max_pixel_size});
+        far_pixel_scale,
+        near_pixel_scale });
 
     _box.init();
 
@@ -685,7 +789,7 @@ Chonk::getOrCreateCommands(osg::State& state) const
 
         gs.ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state, "Chonk EBO");
         gs.ebo->bufferStorage(
-            _ebo_store.size() * sizeof(GLushort),
+            _ebo_store.size() * sizeof(element_t),
             _ebo_store.data(),
             0); // permanent
         gs.ebo->makeResident();
@@ -699,6 +803,7 @@ Chonk::getOrCreateCommands(osg::State& state) const
 
             command.cmd.count = lod.length;
             command.cmd.firstIndex = lod.offset;
+            command.cmd.instanceCount = 1;
             command.indexBuffer.address = gs.ebo->address();
             command.indexBuffer.length = gs.ebo->size();
             command.vertexBuffer.address = gs.vbo->address();
@@ -729,16 +834,30 @@ ChonkFactory::ChonkFactory(TextureArena* textures) :
 }
 
 void
+ChonkFactory::setGetOrCreateFunction(GetOrCreateFunction value)
+{
+    _getOrCreateTexture = value;
+}
+
+void
 ChonkFactory::load(
     osg::Node* node,
     Chonk& chonk)
 {
+    OE_PROFILING_ZONE;
+
     // convert all primitive sets to GL_TRIANGLES
     osgUtil::Optimizer o;
     o.optimize(node, o.INDEX_MESH);
+    
+    // first count up the memory we need and allocate it
+    Counter counter;
+    node->accept(counter);
+    chonk._vbo_store.reserve(counter._numVerts);
+    chonk._ebo_store.reserve(counter._numElements);
 
     // rip geometry and textures into a new Asset object
-    Ripper ripper(chonk, _textures.get());
+    Ripper ripper(chonk, _textures.get(), _getOrCreateTexture);
     node->accept(ripper);
 
     // dirty its bounding box
@@ -764,30 +883,19 @@ namespace
         GLboolean normalize;
         GLint offset;
     };
-
-    Mutex _s_cullStateSetMutex;
-    using CullSSLUT = std::unordered_map<osg::Shader*, osg::ref_ptr<osg::StateSet>>;
-    osg::ref_ptr<osg::Shader> _s_baseShader;
-    osg::ref_ptr<osg::Program> _s_cullProgram;
-    osg::ref_ptr<osg::StateSet> _s_cullSS;
-    CullSSLUT _s_cullStateSets;
 }
 
 ChonkDrawable::ChonkDrawable() :
     osg::Drawable(),
     _proxy_dirty(true),
-    _cull(true)
+    _gpucull(true)
 {
     setName(typeid(*this).name());
-    setCustomCullingShader(nullptr);
     setUseDisplayList(false);
     setUseVertexBufferObjects(false);
     setUseVertexArrayObject(false);
 
-    getOrCreateStateSet()->setRenderBinDetails(
-        818,
-        "ChonkBin",
-        osg::StateSet::OVERRIDE_PROTECTED_RENDERBIN_DETAILS);
+    installRenderBin(this);
 }
 
 ChonkDrawable::~ChonkDrawable()
@@ -796,29 +904,35 @@ ChonkDrawable::~ChonkDrawable()
 }
 
 void
-ChonkDrawable::installDefaultShader(osg::StateSet* ss)
+ChonkDrawable::installRenderBin(ChonkDrawable* d)
 {
-    OE_SOFT_ASSERT_AND_RETURN(ss != nullptr, void());
-    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
-    ShaderLoader::load(vp, oe_chonk_default_shaders);
+    static osg::ref_ptr<osg::StateSet> s_ss;
+    static osg::ref_ptr<VirtualProgram> s_vp;
+    static Mutex s_mutex;
 
-    //vp->setFunction(
-    //    "oe_chonk_default_vertex_shader",
-    //    oe_chonk_default_vertex_shader,
-    //    ShaderComp::LOCATION_VERTEX_MODEL,
-    //    0.0f);
-    //vp->setFunction(
-    //    "oe_chonk_default_fragment_shader",
-    //    oe_chonk_default_fragment_shader,
-    //    ShaderComp::LOCATION_FRAGMENT_COLORING,
-    //    0.0f);
+    if (!s_vp.valid())
+    {
+        ScopedMutexLock lock(s_mutex);
+        if (!s_vp.valid())
+        {
+            s_ss = new osg::StateSet();
+            s_ss->setDataVariance(s_ss->STATIC);
+            s_ss->setRenderBinDetails(818, "ChonkBin");
+
+            s_vp = VirtualProgram::getOrCreate(s_ss.get());
+            s_vp->setName("ChonkDrawable");
+            s_vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
+            ShaderLoader::load(s_vp.get(), oe_chonk_default_shaders);
+        }
+    }
+
+    d->setStateSet(s_ss.get());    
 }
 
 void
-ChonkDrawable::setCullPerChonk(bool value)
+ChonkDrawable::setUseGPUCulling(bool value)
 {
-    _cull = value;
+    _gpucull = value;
 }
 
 void
@@ -857,57 +971,19 @@ ChonkDrawable::add(
         //instance.visibility_mask = 0;
         _batches[chonk].push_back(std::move(instance));
 
+        // flag all graphics states as requiring an update:
         for (unsigned i = 0; i < _gs.size(); ++i)
             _gs[i]._dirty = true;
 
+        // flag the bounds for recompute
         dirtyBound();
     }
-}
-
-void
-ChonkDrawable::setDrawStateSet(osg::StateSet* value)
-{
-    _drawSS = value;
-}
-
-void
-ChonkDrawable::setChildren(const Vector& value)
-{
-    _children = value;
 }
 
 void
 ChonkDrawable::setModelViewMatrix(const osg::Matrix& value)
 {
     _mvm = value;
-}
-
-void
-ChonkDrawable::setCustomCullingShader(osg::Shader* value)
-{
-    ScopedMutexLock lock(_s_cullStateSetMutex);
-
-    if (_s_baseShader.valid() == false)
-    {
-        _s_baseShader = new osg::Shader(
-            osg::Shader::COMPUTE, 
-            s_chonk_cull_compute_shader);
-    }
-
-    osg::ref_ptr<osg::StateSet>& ss = _s_cullStateSets[value];
-    if (ss.valid() == false)
-    {
-        auto program = new osg::Program();
-        program->addShader(_s_baseShader);
-        if (value != nullptr)
-            program->addShader(value);
-        ss = new osg::StateSet();
-        ss->setAttribute(program, osg::StateAttribute::OVERRIDE);
-        if (value != nullptr)
-            ss->setDefine("OE_USE_CUSTOM_CULL_FUNCTION");
-    }
-    _cullSS = ss;
-    _cullProgram = dynamic_cast<osg::Program*>(ss->getAttribute(osg::StateAttribute::PROGRAM));
 }
 
 struct StateEx : public osg::State
@@ -935,126 +1011,26 @@ struct StateEx : public osg::State
 void
 ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
-    OE_PROFILING_ZONE;
-    OE_GL_ZONE_NAMED(getName().c_str());
-
-    osg::State& state = *ri.getState();
-
-    GCState& gs = _gs[state.getContextID()];
-    if (!gs._vao)
-    {
-        gs._cull = _cull;
-        gs.initialize(state);
-    }
-
-    // first possible path: render children by activating the cull shader,
-    // culling all, then activating the draw shader, and drawing all.
-    if (!_children.empty())
-    {
-        const osg::Program::PerContextProgram* pcp = nullptr;
-
-        // Update and Cull pass:
-        {
-            OE_GL_ZONE_NAMED("GPU Cull");
-
-            if (_cull)
-            {     
-                // save bound program:
-                pcp = state.getLastAppliedProgramObject();
-
-                // activate the culling compute shader
-                state.apply(_cullSS.get());
-            }
-
-            for (auto& child : _children)
-            {
-                child->update_and_cull_batches(state);
-            }
-        }
-
-        // Draw all the child chonks
-        {
-            OE_GL_ZONE_NAMED("Draw");
-
-            // apply the stateset with our rendering shader:
-            if (_drawSS.valid()) {
-                state.apply(_drawSS.get());
-            }
-            else if (pcp) {
-                pcp->useProgram();
-                state.setLastAppliedProgramObject(pcp);
-            }
-
-            // activate the VAO and draw all subs.
-            gs._vao->bind();
-
-            // sync to cull results (call as late as possible)
-            gs._ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
-
-            for (auto& child : _children)
-            {
-                child->draw_batches(state);
-            }
-            gs._vao->unbind();
-        }
-    }
-
-    // second possible path: just render all the chonks in this drawable.
-    else if (!_batches.empty())
-    {
-        const osg::Program::PerContextProgram* pcp = nullptr; 
-
-        if (_cull)
-        {
-            // save bound program:
-            pcp = state.getLastAppliedProgramObject();
-
-            // activate the culling compute shader and cull
-            _cullProgram->apply(state);
-            reinterpret_cast<StateEx*>(&state)->applyUniforms();
-        }
-
-        update_and_cull_batches(state);
-
-        // restore the draw state (or use the custom one):
-        if (_drawSS.valid()) {
-            state.apply(_drawSS.get());
-        }
-        else if (pcp) {
-            pcp->getProgram()->apply(state);
-        }
-
-        // render
-        gs._vao->bind();
-
-        // sync to cull results:
-        gs._ext->glMemoryBarrier(
-            GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
-
-        draw_batches(state);
-
-        gs._vao->unbind();
-    }
+    OE_HARD_ASSERT(false, "ChonkRenderBin::drawImplementation should never be called WHAT ARE YOU DOING");
 }
 
 void
 ChonkDrawable::update_and_cull_batches(osg::State& state) const
 {
     GCState& gs = _gs[state.getContextID()];
-    //if (gs._dirty)
+
+    if (gs._dirty)
     {
         ScopedMutexLock lock(_m);
         gs.update(_batches, state);
     }
 
-    osg::Matrix saved_mvm;
     if (!_mvm.isIdentity())
     {
-        saved_mvm = state.getModelViewMatrix();
         state.applyModelViewMatrix(_mvm);
     }
 
-    if (_cull)
+    if (_gpucull)
     {
         gs.cull(state);
     }
@@ -1079,11 +1055,6 @@ ChonkDrawable::computeBoundingBox() const
     ScopedMutexLock lock(_m);
     
     osg::BoundingBox result;
-
-    for (auto& child : _children)
-    {
-        result.expandBy(child->getBound());
-    }
 
     for(auto& batch : _batches)
     {
@@ -1162,9 +1133,6 @@ ChonkDrawable::refreshProxy() const
 void
 ChonkDrawable::accept(osg::PrimitiveFunctor& f) const
 {
-    for (auto& child : _children)
-        child->accept(f);
-
     if (!_batches.empty())
     {
         refreshProxy();
@@ -1259,8 +1227,7 @@ ChonkDrawable::GCState::update(
     const Batches& batches,
     osg::State& state)
 {
-    OE_PROFILING_ZONE;
-    OE_GL_ZONE_NAMED("Update");
+    OE_GL_ZONE_NAMED("update");
 
     if (_vao == nullptr)
     {
@@ -1300,8 +1267,8 @@ ChonkDrawable::GCState::update(
                 ChonkLOD v;
                 v.center = bs.center();
                 v.radius = bs.radius();
-                v.min_pixel_size = chonk->_lods[i].minPixelSize;
-                v.max_pixel_size = chonk->_lods[i].maxPixelSize;
+                v.far_pixel_scale = chonk->_lods[i].far_pixel_scale;
+                v.near_pixel_scale = chonk->_lods[i].near_pixel_scale;
                 v.num_lods = chonk->_lods.size();
                 _chonk_lods.push_back(std::move(v));
             }
@@ -1325,13 +1292,15 @@ ChonkDrawable::GCState::update(
         lod.total_num_commands = _commands.size();
     }
 
+    // no need to do this since it gets sent in cull()
+    //_commandBuf->uploadData(_commands);
+
     // Send to the GPU:
-    _commandBuf->uploadData(_commands);
-    _instanceInputBuf->uploadData(_all_instances);
+    _instanceInputBuf->uploadData(_all_instances, GL_STATIC_DRAW);
 
     if (_cull)
     {
-        _chonkBuf->uploadData(_chonk_lods);
+        _chonkBuf->uploadData(_chonk_lods, GL_STATIC_DRAW);
         
         // just reserve space if necessary.
         // this is a NOP if the buffer is already sized properly
@@ -1350,7 +1319,7 @@ ChonkDrawable::GCState::cull(osg::State& state)
     if (_commands.empty())
         return;
 
-    OE_GL_ZONE_NAMED("Cull Dispatch");
+    OE_GL_ZONE_NAMED("cull");
 
     // transmit the uniforms
     state.applyModelViewAndProjectionUniformsIfRequired();
@@ -1371,14 +1340,22 @@ ChonkDrawable::GCState::cull(osg::State& state)
         command.cmd.instanceCount = 0;
         command.cmd.baseInstance = 0;
     }
-
-    // bind it as an SSBO so we can muck with it
     _commandBuf->uploadData(_commands);
 
     _instanceOutputBuf->bindBufferBase(0);
     _commandBuf->bindBufferBase(29);
     _chonkBuf->bindBufferBase(30);
     _instanceInputBuf->bindBufferBase(31);
+
+    // 2-pass culling compute. 
+    // Note. I tried separating this out so that all "pass ones"
+    // would run, and thena ll "pass twos" afterwards, in an attempt
+    // to avoid the memory barrier and multiple uniform sets.
+    // It was slower. Maybe because if was offset by having to 
+    // double-set the the matrix uniforms and the bindBufferBase
+    // calls for each tile.
+    // Also, removing the memory barrier seems to make no difference,
+    // but it's the right thing to do
 
     // cull:
     ext->glUniform1i(ps._passUL, 0);
@@ -1393,6 +1370,8 @@ ChonkDrawable::GCState::cull(osg::State& state)
 void
 ChonkDrawable::GCState::draw(osg::State& state)
 {
+    OE_GL_ZONE_NAMED("draw");
+
     // transmit the uniforms
     state.applyModelViewAndProjectionUniformsIfRequired();
 
@@ -1406,9 +1385,13 @@ ChonkDrawable::GCState::draw(osg::State& state)
     else
         _instanceInputBuf->bindBufferBase(0);
 
+    GLenum elementType = sizeof(Chonk::element_t) == sizeof(GLushort) ?
+        GL_UNSIGNED_SHORT :
+        GL_UNSIGNED_INT;
+
     _glMultiDrawElementsIndirectBindlessNV(
         GL_TRIANGLES,
-        GL_UNSIGNED_SHORT,
+        elementType,
         (const GLvoid*)0,
         _commands.size(),
         sizeof(Chonk::DrawCommand),
@@ -1432,56 +1415,105 @@ ChonkRenderBin::ChonkRenderBin() :
 {
     setName("ChonkBin");
 
-    _cullProgram = new osg::Program();
-    _cullProgram->addShader(new osg::Shader(
+    _cullSS = new osg::StateSet();
+
+    // culling program
+    osg::Program* p = new osg::Program();
+    p->addShader(new osg::Shader(
         osg::Shader::COMPUTE,
         s_chonk_cull_compute_shader));
+    _cullSS->setAttribute(p);
 
-    _cullSS = new osg::StateSet();
-    _cullSS->setAttribute(_cullProgram);
-
-    _stateset = new osg::StateSet();
-    ChonkDrawable::installDefaultShader(_stateset.get());
+    // Default far pixel scales per LOD.
+    // We expect this to be overriden from above.
+    _cullSS->addUniform(new osg::Uniform("oe_lod_scale", osg::Vec4f(1, 1, 1, 1)));
 }
 
 ChonkRenderBin::ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op) :
     osgUtil::RenderBin(rhs, op),
-    _cullSS(rhs._cullSS),
-    _cullProgram(rhs._cullProgram)
+    _cullSS(rhs._cullSS)
+{
+    // for each render bin instance, create a StateGraph that we
+    // will use to track the OSG state properly when applying the
+    // cull program
+    _cull_sg = new osgUtil::StateGraph();
+    _cull_sg->_stateset = _cullSS.get();
+}
+
+namespace
+{
+    void apply_state_with_roberts_blessing(
+        osg::State& state,
+        osgUtil::StateGraph* new_rg,
+        osgUtil::StateGraph* prev_rg)
+    {
+        // mysterious state-fu adapted from osgUtil::RenderLeaf
+        if (prev_rg)
+        {
+            osgUtil::StateGraph* prev_rg_parent = prev_rg->_parent;
+            osgUtil::StateGraph* rg = new_rg;
+            if (prev_rg_parent != rg->_parent)
+            {
+                osgUtil::StateGraph::moveStateGraph(state, prev_rg_parent, rg->_parent);
+                state.apply(rg->getStateSet());
+
+            }
+            else if (rg != prev_rg)
+            {
+                state.apply(rg->getStateSet());
+            }
+        }
+        else
+        {
+            osgUtil::StateGraph::moveStateGraph(state, nullptr, new_rg->_parent);
+            state.apply(new_rg->getStateSet());
+        }
+    }
+}
+
+
+ChonkRenderBin::CullLeaf::CullLeaf(osgUtil::RenderLeaf* leaf) :
+    CustomRenderLeaf(leaf)
+{
+    //nop
+}
+
+void 
+ChonkRenderBin::CullLeaf::draw(osg::State& state)
+{
+    auto d = static_cast<const ChonkDrawable*>(getDrawable());
+    d->update_and_cull_batches(state);
+}
+
+ChonkRenderBin::DrawLeaf::DrawLeaf(osgUtil::RenderLeaf* leaf, bool first, bool last) :
+    CustomRenderLeaf(leaf),
+    _first(first),
+    _last(last)
 {
     //nop
 }
 
 void
-ChonkRenderBin::robert(
-    osg::State& state,
-    osgUtil::RenderLeaf* leaf,
-    osgUtil::RenderLeaf*& previous) const
+ChonkRenderBin::DrawLeaf::draw(osg::State& state)
 {
-    // mysterious state-fu from osgUtil::RenderLeaf
-    if (previous)
-    {
-        osgUtil::StateGraph* prev_rg = previous->_parent;
-        osgUtil::StateGraph* prev_rg_parent = prev_rg->_parent;
-        osgUtil::StateGraph* rg = leaf->_parent;
-        if (prev_rg_parent != rg->_parent)
-        {
-            osgUtil::StateGraph::moveStateGraph(state, prev_rg_parent, rg->_parent);
-            state.apply(rg->getStateSet());
+    auto d = static_cast<const ChonkDrawable*>(getDrawable());
 
-        }
-        else if (rg != prev_rg)
-        {
-            state.apply(rg->getStateSet());
-        }
-    }
-    else
+    if (_first)
     {
-        osgUtil::StateGraph::moveStateGraph(state, nullptr, leaf->_parent->_parent);
-        state.apply(_parent->getStateSet());
+        GLVAO::Ptr vao = d->_gs[state.getContextID()]._vao;
+        vao->bind();
+        vao->ext()->glMemoryBarrier(
+            GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
     }
 
-    previous = leaf;
+    d->draw_batches(state);
+
+    if (_last)
+    {
+        GLVAO::Ptr vao = d->_gs[state.getContextID()]._vao;
+        vao->unbind();
+    }
+
 }
 
 void
@@ -1491,70 +1523,44 @@ ChonkRenderBin::drawImplementation(
 {
     OE_GL_ZONE_NAMED("ChonkRenderBin");
 
-    osg::State& state = *ri.getState();    
-    
-    // apply this bin's stateset....somewhere
-    unsigned numToPop = (previous ? osgUtil::StateGraph::numToPop(previous->_parent) : 0);
-    if (numToPop > 1) --numToPop;
-    unsigned insertPos = state.getStateSetStackSize() - numToPop;
-    if (_stateset.valid())
-    {
-        state.insertStateSet(insertPos, _stateset.get());
-    }
+    OE_SOFT_ASSERT(
+        _stateGraphList.size() == 1,
+        "StateGraphList is not size=1, you need to write some code");
 
     // copy everything to one level:
     copyLeavesFromStateGraphListToRenderLeafList();
+    if (_renderLeafList.empty())
+        return;
 
-    // apply the cull program:
-    state.apply(_cullSS.get());
+    osg::State& state = *ri.getState();
 
-    // draw top-level render leaves
+    // rearrange the bin so we have cull leaves followed by draw leaves,
+    // each with the proper shader.
+
+    // draw graph:
+    osgUtil::StateGraph* draw_sg = _renderLeafList.front()->_parent;
+    draw_sg->_leaves.clear();
+
+    // cull graph:
+    _cull_sg->_parent = draw_sg;
+    _cull_sg->_leaves.clear();
+
+    for(unsigned i=0; i<_renderLeafList.size(); ++i)
     {
-        OE_GL_ZONE_NAMED("cull");
-        for (auto& leaf : _renderLeafList)
-        {
-            auto d = static_cast<const ChonkDrawable*>(leaf->getDrawable());
+        auto leaf = _renderLeafList[i];
+        bool first = (i == 0);
+        bool last = (i == _renderLeafList.size() - 1);
 
-            state.applyModelViewMatrix(leaf->_modelview);
-            state.applyProjectionMatrix(leaf->_projection);
-
-            d->update_and_cull_batches(state);
-        }
+        _cull_sg->addLeaf(new CullLeaf(leaf));
+        draw_sg->addLeaf(new DrawLeaf(leaf, first, last));
     }
 
-    // render all leaves
-    {
-        OE_GL_ZONE_NAMED("draw");
+    // install the new state graphs:
+    _renderLeafList.clear();
+    _stateGraphList.clear();
+    _stateGraphList.push_back(_cull_sg.get());
+    _stateGraphList.push_back(draw_sg);
 
-        GLVAO::Ptr vao;
-        for (auto& leaf : _renderLeafList)
-        {
-            auto d = static_cast<const ChonkDrawable*>(leaf->getDrawable());
-
-            if (!vao)
-            {
-                vao = d->_gs[state.getContextID()]._vao;
-
-                OE_HARD_ASSERT(vao != nullptr);
-
-                vao->bind();
-                vao->ext()->glMemoryBarrier(
-                    GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
-            }
-
-            state.applyModelViewMatrix(leaf->_modelview);
-            state.applyProjectionMatrix(leaf->_projection);
-
-            robert(state, leaf, previous);
-
-            d->draw_batches(state);
-        }
-
-        if (vao) vao->unbind();
-    }
-
-    if (_stateset.valid())
-    {
-        state.removeStateSet(insertPos);
-    }
+    // dispatch.
+    osgUtil::RenderBin::drawImplementation(ri, previous);
 }

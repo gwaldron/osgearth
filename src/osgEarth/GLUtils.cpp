@@ -92,6 +92,8 @@ namespace
         void (GL_APIENTRY * CopyNamedBufferSubData)(GLuint readName, GLuint writeName, GLintptr readOffset, GLintptr writeOffset, GLsizei size);
         void (GL_APIENTRY * GetNamedBufferSubData)(GLuint name, GLintptr offset, GLsizei size, void*);
 
+        bool useNamedBuffers;
+
         inline void init()
         {
             if (DebugMessageCallback == nullptr)
@@ -115,7 +117,7 @@ namespace
 
                 osg::setGLExtensionFuncPtr(CopyBufferSubData, "glCopyBufferSubData");
 
-#if 0
+#if 1
                 if (version >= 4.5f)
                 {
                     osg::setGLExtensionFuncPtr(NamedBufferData, "glNamedBufferData");
@@ -127,6 +129,9 @@ namespace
                     osg::setGLExtensionFuncPtr(GetNamedBufferSubData, "glGetNamedBufferSubData");
                 }
 #endif
+                useNamedBuffers =
+                    NamedBufferData &&
+                    NamedBufferSubData;
             }
         }
     } gl;
@@ -711,30 +716,24 @@ GLBuffer::uploadData(GLsizei datasize, const GLvoid* data, GLbitfield flags) con
 {
     OE_SOFT_ASSERT_AND_RETURN(_immutable == false || datasize <= size(), void());
 
-    if (!gl.NamedBufferData)
-        bind(target());
+    //if (!gl.NamedBufferData)
+    if (!gl.useNamedBuffers)
+        bind();
 
     if (datasize > size())
+    {
         bufferData(datasize, data, flags);
+    }
     else if (data != nullptr)
     {
-#if 1
         bufferSubData(0, datasize, data);
-#else
-        // CRASHES. Why?
-        bind();
-        void* ptr = ext()->glMapBuffer(_target, GL_WRITE_ONLY_ARB);
-        OE_HARD_ASSERT(ptr != nullptr);
-        ::memcpy(ptr, data, datasize);
-        OE_HARD_ASSERT(ext()->glUnmapBuffer(_target) == GL_TRUE);
-        unbind();
-#endif
     }
 
-    if (!gl.NamedBufferData)
+    if (!gl.useNamedBuffers)
         unbind();
 }
 
+#if 0
 void
 GLBuffer::uploadData(GLenum otherTarget, GLsizei datasize, const GLvoid* data, GLbitfield flags) const
 {
@@ -749,12 +748,14 @@ GLBuffer::uploadData(GLenum otherTarget, GLsizei datasize, const GLvoid* data, G
 
     unbind();
 }
+#endif
 
 void
 GLBuffer::bufferData(GLsizei size, const GLvoid* data, GLbitfield flags) const
 {
     if (_target == GL_SHADER_STORAGE_BUFFER)
         size = align(size, getSSBOAlignment<GLsizei>());
+
     if (gl.NamedBufferData)
         gl.NamedBufferData(name(), size, data, flags);
     else

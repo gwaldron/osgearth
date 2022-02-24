@@ -251,6 +251,69 @@ VegetationFeatureGenerator::getFeatures(const GeoExtent& extent, FeatureList& ou
     return Status::NoError;
 }
 
+
+#if 1
+Status
+VegetationFeatureGenerator::getFeatures(
+    const TileKey& key, 
+    FeatureList& output) const
+{
+    VegetationLayer::Options::Group& trees = _veglayer->options().groups()[AssetGroup::TREES];
+    unsigned lod = trees.lod().get();
+    if (key.getLOD() != lod)
+        return Status(Status::ConfigurationError, "TileKey LOD does not match GroundCoverLayer LOD");
+
+    auto placements = _veglayer->getAssetPlacements(
+        key,
+        AssetGroup::TREES,
+        true,
+        nullptr);
+
+    for (auto& p : placements)
+    {
+        // record the asset's position and properties as a point feature:
+        Point* point = new Point();
+        point->push_back(p.mapPoint());
+
+        osg::ref_ptr<Feature> feature = new Feature(point, key.getExtent().getSRS());
+        feature->set("elevation", p.mapPoint().z());
+
+        float width = std::max(
+            p.asset()->boundingBox().xMax() - p.asset()->boundingBox().xMin(),
+            p.asset()->boundingBox().yMax() - p.asset()->boundingBox().yMin());
+
+        float height =
+            p.asset()->boundingBox().zMax() - p.asset()->boundingBox().zMin();
+
+        feature->set("width", width * std::max(p.scale().x(), p.scale().y()));
+        feature->set("height", height * p.scale().z());
+        feature->set("rotation", p.rotation());
+
+        // Store any pass-thru properties
+        if (!_propNames.empty())
+        {
+            const Config& assetConfig = p.asset()->assetDef()->getSourceConfig();
+
+            for (std::vector<std::string>::const_iterator i = _propNames.begin();
+                i != _propNames.end();
+                ++i)
+            {
+                std::string value = assetConfig.value(*i);
+                if (!value.empty())
+                {
+                    feature->set(*i, value);
+                }
+            }
+        }
+
+        output.push_back(feature.get());
+    }
+
+    return Status::NoError;
+}
+
+
+#else
 Status
 VegetationFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output) const
 {
@@ -262,9 +325,9 @@ VegetationFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output)
 
     // Populate the model, falling back on lower-LOD keys as necessary
     osg::ref_ptr<TerrainTileModel> model = _factory->createStandaloneTileModel(
-        _map.get(), 
-        key, 
-        _manifest, 
+        _map.get(),
+        key,
+        _manifest,
         nullptr, // requirements
         nullptr); // progress
 
@@ -336,13 +399,13 @@ VegetationFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output)
     osg::Vec2f numWorkgroupsF((float)numInstances1D, (float)numInstances1D);
 
     osg::Vec2f offset, tilec, shift;
-    osg::Vec4f noise(0,0,0,0);
+    osg::Vec4f noise(0, 0, 0, 0);
 
     osg::Vec2f halfSpacing(
         0.5f / numWorkgroupsF.x(),
         0.5f / numWorkgroupsF.y());
 
-    for(unsigned y = 0; y < numWorkgroups.y(); ++y)
+    for (unsigned y = 0; y < numWorkgroups.y(); ++y)
     {
         for (unsigned x = 0; x < numWorkgroups.x(); ++x)
         {
@@ -510,3 +573,4 @@ VegetationFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output)
 
     return Status::NoError;
 }
+#endif

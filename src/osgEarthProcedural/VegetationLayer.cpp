@@ -78,61 +78,16 @@ REGISTER_OSGEARTH_LAYER(vegetation, VegetationLayer);
 
 //  - BUG: Close/Open VegLayer doesn't work
 
-//  - TODO: separate the cloud's LUTs and TextureArena into different statesets, since they
-//    are never used together. This will skip binding all the LUTS when only rendering, and
-//    will skip binding the TA when only computing.
 //  - Move normal map conversion code out of here, and move towards a "MaterialTextureSet"
 //    kind of setup that will support N material textures at once.
 //  - FEATURE: automatically generate billboards? Imposters? Other?
 //  - [IDEA] programmable SSE for models?
-//  - Idea: include a "model range" or "max SSE" in the InstanceBuffer...?
 //  - [PERF] thin out distant instances automatically in large tiles
 //  - [PERF] cull by "horizon" .. e.g., the lower you are, the fewer distant trees...?
-//  - Figure out exactly where some of this functionality goes -- VL or IC? For example the
-//    TileManager stuff seems like it would go in IC?
 //  - variable spacing or clumping by asset...?
 //  - make the noise texture bindless as well? Stick it in the arena? Why not.
 
-//  - (DONE) [BUG] biomelayer from cache will NOT generate biome update notifications 6/25/21
-//  - (DONE) fix the random asset select with weighting...just not really working well.
-//  - (DONE) Allow us to store key, slot, etc data in the actual TileContext coming from the 
-//    PatchLayer. It is silly to have to do TileKey lookups and not be able to simple
-//    iterate over the TileBatch.
-//  - (DONE) Lighting: do something about billboard lighting. We might have to generate normal 
-//    maps when we make the imposter billboards (if we make them).
-//  - (DONE) FEATURE: FADE in 3D models from billboards
-//  - (DONE) BUG: multiple biomes, same asset in each biome; billboard sizes are messed up.
-//  - (DONE - using indexes instead of copies) Reduce the size of the RenderBuffer structure
-//  - (DONE) Fix model culling. The "radius" isn't quite sufficient since the origin is not at the center,
-//    AND because rotation changes the profile. Calculate it differently.
-//  - (DONE) [OPT] reduce the SIZE of the instance buffer by re-using variables (instanceID, drawID, assetID)
-//  - (DONE) Figure out how to pre-compile/ICO the TextureArena; it takes quite a while.
-//  - (DONE) [OPT] on Generate, store the instance count per tile in an array somewhere. Also store the 
-//    TOTAL instance count in the DI buffer. THen use this to dispatchComputeIndirect for the
-//    MERGE. That way we don't have to dispatch to "all possible locations" during a merge,
-//    hopefully making it much faster and avoiding frame breaks.
-//  - (DONE) FIX the multi-GC case. A resident handle can't cross GCs, so we will need
-//    to upgrade TextureArena (Texture) to store one object/handle per GC.
-//    We will also need to replace the sampler IDs in teh LUT shader with a mapping
-//    to a UBO (or something) that holds the actual resident handles. Blah..
-//  - (DONE) Properly delete all GL memory .. use the Releaser on the GC thread?
-//  - (DONE) Can we remove the normal matrix?
-//  - (DONE) [OPT] combine multiple object lists into the GLObjectReleaser
-//  - (DONE) FIX to work with SHADOW camera (separate culling...maybe?) (reference viewpoint?)
-//  - (DONE) FIX the multi-CAMERA case.
-//  - (DONE) Do NOT regenerate every tile every time the tilebatch changes!
-//  - (DONE .. had to call glBindBufferRange each frame) Two GC layers at the same time doesn't work! (grass + trees)
-//  - (DONE) FIX: IC's atlas is hard-coded to texture image unit 11. Allocate it dynamically.
-//  - (DONE .. the lighting shader was executing in the wrong order) Lighting
-//  - (DONE .. was good!!) read back the instance count to reduce the dispatch #?
-//  - (DONE .. was a bad oe_veg_Assets setup in the LUT shader) Fix teh "flashing" bug :(
-//  - (DONE .. merged at layer level) BUGFIX: we're merging the geometrycloud's stateset into the layer's stateset. Make sure that's kosher...?
-//  - (DONE) Fix the GRASS LAYER
-//  - (DONE) Rotation for models
-//  - (DONE) Scaling of the 3D models to match the height/width....? or not? set from loaded model?
-
 //........................................................................
-
 
 namespace
 {
@@ -190,7 +145,6 @@ layout(binding=0, std430) buffer Instances {
 layout(location=4) in vec3 flex;
 
 // outputs
-out vec3 oe_pos3_view;
 flat out uint64_t oe_normal_tex;
 
 // stage globals
@@ -202,14 +156,14 @@ uniform mat4 OE_WIND_TEX_MATRIX ;
 uniform float osg_FrameTime;
 uniform sampler2D oe_veg_noise;
 
-uniform float wind_power = 1.0;
+uniform float oe_wind_power = 1.0;
 
 #define remap(X, LO, HI) (LO + X * (HI - LO))
 
 void oe_apply_wind(inout vec4 vertex, in vec2 local_uv)
 {
     float flexibility = length(flex);
-    if (flexibility > 0.0)
+    if (flexibility > 0.0 && oe_wind_power > 0.0)
     {
         vec4 wind = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex));
         vec3 wind_dir = normalize(wind.rgb * 2 - 1); // view space
@@ -221,15 +175,13 @@ void oe_apply_wind(inout vec4 vertex, in vec2 local_uv)
         vec3 flex_dir = normalize(gl_NormalMatrix * vec3xform * flex);
         float flex_planar = abs(dot(wind_dir, flex_dir));
         flex_planar = 1.0 - (flex_planar*flex_planar);
-        vertex.xyz += bend_vec * flex_planar * flexibility * wind_power;
+        vertex.xyz += bend_vec * flex_planar * flexibility * oe_wind_power;
     }
 }
 #endif
 
 void oe_vegetation_vs_view(inout vec4 vertex)
 {
-    oe_pos3_view = vertex.xyz;
-
 #ifdef OE_WIND_TEX
     int i = gl_BaseInstance + gl_InstanceID;
     oe_apply_wind(vertex, instances[i].local_uv);
@@ -247,10 +199,8 @@ void oe_vegetation_vs_view(inout vec4 vertex)
 #pragma import_defines(OE_COMPRESSED_NORMAL)
 
 in vec2 oe_tex_uv;
-in vec3 oe_pos3_view;
 flat in uint64_t oe_albedo_tex;
-
-uniform float shmoo = 0.5;
+in vec3 vp_VertexView;
 
 void oe_vegetation_fs(inout vec4 color)
 {
@@ -260,10 +210,12 @@ void oe_vegetation_fs(inout vec4 color)
 #else
     // alpha-down faces that are orthogonal to the view vector.
     // this makes cross-hatch imposters look better
-    vec3 face_normal = normalize(cross(dFdx(oe_pos3_view), dFdy(oe_pos3_view)));
+#if 0
+    vec3 face_normal = normalize(cross(dFdx(vp_VertexView), dFdy(vp_VertexView)));
     const float edge_factor = 0.8;
-    float d = clamp(edge_factor*abs(dot(face_normal, normalize(oe_pos3_view))),0.0,1.0);
-    //color.a *= d;
+    float d = clamp(edge_factor*abs(dot(face_normal, normalize(vp_VertexView))),0.0,1.0);
+    color.a *= d;
+#endif
 
 #ifdef OE_USE_ALPHA_TO_COVERAGE
     // mitigate the screen-door effect of A2C in the distance
@@ -309,7 +261,6 @@ VegetationLayer::Options::getConfig() const
 
     conf.set("color_min_saturation", colorMinSaturation());
     conf.set("alpha_to_coverage", alphaToCoverage());
-    conf.set("max_sse", maxSSE());
 
     //TODO: groups
 
@@ -337,9 +288,12 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     {
         groups()[AssetGroup::TREES].enabled() = true;
         groups()[AssetGroup::TREES].castShadows() = true;
-        groups()[AssetGroup::TREES].maxRange() = 2500.0f;
+        groups()[AssetGroup::TREES].maxRange() = 4000.0f;
         groups()[AssetGroup::TREES].lod() = 14;
         groups()[AssetGroup::TREES].count() = 4096;
+        //groups()[AssetGroup::TREES].maxRange() = 8000.0f;
+        //groups()[AssetGroup::TREES].lod() = 13;
+        //groups()[AssetGroup::TREES].count() = 16384;
         groups()[AssetGroup::TREES].spacing() = Distance(15.0f, Units::METERS);
         groups()[AssetGroup::TREES].maxAlpha() = 0.15f;
     }
@@ -350,7 +304,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         groups()[AssetGroup::UNDERGROWTH].castShadows() = false;
         groups()[AssetGroup::UNDERGROWTH].maxRange() = 75.0f;
         groups()[AssetGroup::UNDERGROWTH].lod() = 19;
-        groups()[AssetGroup::UNDERGROWTH].count() = 2048;
+        groups()[AssetGroup::UNDERGROWTH].count() = 4096;
         groups()[AssetGroup::UNDERGROWTH].spacing() = Distance(1.0f, Units::METERS);
         groups()[AssetGroup::UNDERGROWTH].maxAlpha() = 0.75f;
     }
@@ -409,29 +363,15 @@ VegetationLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 
 //........................................................................
 
-void VegetationLayer::setMaxSSE(float value)
-{
-    if (value != options().maxSSE().get())
-    {
-        options().maxSSE() = value;
-        if (_sseU.valid())
-            _sseU->set(value);
-    }
-}
-
-float VegetationLayer::getMaxSSE() const
-{
-    return options().maxSSE().get();
-}
-
-//........................................................................
-
 void
 VegetationLayer::init()
 {
     PatchLayer::init();
 
     setAcceptCallback(new LayerAcceptor(this));
+
+    _requestMultisampling = false;
+    _multisamplingActivated = false;
 }
 
 VegetationLayer::~VegetationLayer()
@@ -463,6 +403,10 @@ VegetationLayer::openImplementation()
 
     _lastVisit.setFrameNumber(~0);
 
+    // make a 4-channel noise texture to use
+    NoiseTextureFactory noise;
+    _noiseTex = noise.create(256u, 4u);
+
     return PatchLayer::openImplementation();
 }
 
@@ -491,9 +435,6 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 
             reset();
 
-            //if (getBiomeLayer())
-            //    getBiomeLayer()->getBiomeManager().reset();
-
             OE_INFO << LC << "timed out for inactivity." << std::endl;
         }
 
@@ -502,21 +443,46 @@ VegetationLayer::update(osg::NodeVisitor& nv)
         Assets newAssets = _newAssets.release();
         if (!newAssets.empty())
         {
-            ScopedMutexLock lock(_assets_mutex);
+            ScopedMutexLock lock(_assets);
             _assets = std::move(newAssets);
         }
+
+        if (_requestMultisampling)
+        {
+            activateMultisampling();
+            _requestMultisampling = false;
+        }
     }
+}
+
+void
+VegetationLayer::dirty()
+{
+    _tiles.scoped_lock([this]() {
+        _tiles.clear(); });
+
+    _cameraState.scoped_lock([this]() {
+        _cameraState.clear(); });
+}
+
+void
+VegetationLayer::setSSEScales(const osg::Vec4f& value)
+{
+    _pixelScalesU->set(value);
+}
+
+osg::Vec4f
+VegetationLayer::getSSEScales() const
+{
+    osg::Vec4f value;
+    _pixelScalesU->get(value);
+    return value;
 }
 
 void
 VegetationLayer::setBiomeLayer(BiomeLayer* layer)
 {
     _biomeLayer.setLayer(layer);
-
-    if (layer)
-    {
-        buildStateSets();
-    }
 }
 
 BiomeLayer*
@@ -529,10 +495,6 @@ void
 VegetationLayer::setLifeMapLayer(LifeMapLayer* layer)
 {
     _lifeMapLayer.setLayer(layer);
-    if (layer)
-    {
-        buildStateSets();
-    }
 }
 
 LifeMapLayer*
@@ -545,10 +507,6 @@ void
 VegetationLayer::setColorLayer(ImageLayer* value)
 {
     options().colorLayer().setLayer(value);
-    if (value)
-    {
-        buildStateSets();
-    }
 }
 
 ImageLayer*
@@ -694,13 +652,14 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
 {
     PatchLayer::prepareForRendering(engine);
 
-    // make a 4-channel noise texture to use
-    NoiseTextureFactory noise;
-    _noiseTex = noise.create(256u, 4u);
+    _requestMultisampling = false;
+    _multisamplingActivated = false;
 
     TerrainResources* res = engine->getResources();
     if (res)
     {
+        // Get a binding for the noise texture. This is only used for wind, btw.
+        // Perhaps make this mapnode-level global or stick it in the texture arena.
         if (_noiseBinding.valid() == false)
         {
             if (res->reserveTextureImageUnitForLayer(_noiseBinding, this, "VegLayerNV noise sampler") == false)
@@ -780,6 +739,9 @@ VegetationLayer::buildStateSets()
     osg::StateSet* ss = getOrCreateStateSet();
     ss->setName(typeid(*this).name());
 
+    // Backface culling should be off for impostors.
+    ss->setMode(GL_CULL_FACE, 0x0 | osg::StateAttribute::PROTECTED);
+
     // Install the texture arena:
     TextureArena* textures = getBiomeLayer()->getBiomeManager().getTextures();
     textures->setBindingPoint(1);
@@ -797,11 +759,24 @@ VegetationLayer::buildStateSets()
     // If multisampling is on, use alpha to coverage.
     if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
     {
-        ss->setDefine("OE_USE_ALPHA_TO_COVERAGE");
-        ss->setMode(GL_MULTISAMPLE, 1);
-        ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
-        ss->setAttributeAndModes(new osg::BlendFunc(), 0 | osg::StateAttribute::OVERRIDE);
+        activateMultisampling();
     }
+
+    // Far pixel scale overrides.
+    _pixelScalesU = new osg::Uniform("oe_lod_scale", osg::Vec4f(1, 1, 1, 1));
+    ss->addUniform(_pixelScalesU.get(), osg::StateAttribute::OVERRIDE | 0x01);
+}
+
+void
+VegetationLayer::activateMultisampling()
+{
+    osg::StateSet* ss = getOrCreateStateSet();
+    ss->setDefine("OE_USE_ALPHA_TO_COVERAGE");
+    ss->setMode(GL_MULTISAMPLE, 1);
+    ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+    ss->setAttributeAndModes(new osg::BlendFunc(), 0 | osg::StateAttribute::OVERRIDE);
+
+    _multisamplingActivated = true;
 }
 
 void
@@ -810,7 +785,7 @@ VegetationLayer::configureTrees()
     auto& trees = options().group(AssetGroup::TREES);
 
     // functor for generating cross hatch geometry for trees:
-    trees._createImposter = [](
+    trees._createImpostor = [](
         const osg::BoundingBox& b,
         std::vector<osg::Texture*>& textures)
     {
@@ -865,12 +840,17 @@ VegetationLayer::configureTrees()
                     {0,0},{1,0},{1,1},{0,1}
                 };
 
+                const osg::Vec3f flexors[8] = {
+                    {0,0,0}, {0,0,1}, {1,0,0}, {-1,0,1},
+                    {0,0,0}, {0,0,1}, {0,1,0}, {0,-1,1}
+                };
+
                 geom[i]->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
                 geom[i]->setVertexArray(new osg::Vec3Array(8, verts));
                 geom[i]->setNormalArray(new osg::Vec3Array(8, normals));
                 geom[i]->setColorArray(new osg::Vec4Array(1, colors), osg::Array::BIND_OVERALL);
                 geom[i]->setTexCoordArray(0, new osg::Vec2Array(8, uvs));
-                geom[i]->setTexCoordArray(3, new osg::Vec3Array(8)); // flexors
+                geom[i]->setTexCoordArray(3, new osg::Vec3Array(8, flexors));
 
                 if (textures.size() > 0)
                     ss->setTextureAttribute(0, textures[0], 1); // side albedo
@@ -916,7 +896,7 @@ VegetationLayer::configureTrees()
 
     getBiomeLayer()->getBiomeManager().setCreateFunction(
         AssetGroup::TREES,
-        trees._createImposter);
+        trees._createImpostor);
 }
 
 void
@@ -925,7 +905,7 @@ VegetationLayer::configureGrass()
     auto& grass = options().group(AssetGroup::UNDERGROWTH);
 
     // functor for generating billboard geometry for grass:
-    grass._createImposter = [](
+    grass._createImpostor = [](
         const osg::BoundingBox& bbox,
         std::vector<osg::Texture*>& textures)
     {
@@ -1017,30 +997,32 @@ VegetationLayer::configureGrass()
 
     getBiomeLayer()->getBiomeManager().setCreateFunction(
         AssetGroup::UNDERGROWTH,
-        grass._createImposter);
+        grass._createImpostor);
 }
 
-void
-VegetationLayer::checkForNewAssets()
+bool
+VegetationLayer::checkForNewAssets() const
 {
-    OE_SOFT_ASSERT_AND_RETURN(getBiomeLayer() != nullptr, void());
+    OE_SOFT_ASSERT_AND_RETURN(getBiomeLayer() != nullptr, false);
 
     BiomeManager& biomeMan = getBiomeLayer()->getBiomeManager();
 
     // if the revision has not changed, bail out.
     if (_biomeRevision.exchange(biomeMan.getRevision()) == biomeMan.getRevision())
-        return;
+        return false;
 
     // revision changed -- start loading new assets.
 
-    osg::observer_ptr<VegetationLayer> layer_weakptr(this);
+    osg::observer_ptr<const VegetationLayer> layer_weakptr(this);
 
-    auto load = [layer_weakptr](Cancelable* c) -> Assets
+    auto loadNewAssets = [layer_weakptr](Cancelable* c) -> Assets
     {
+        OE_PROFILING_ZONE_NAMED("VegetationLayer::loadNewAssets(job)");
+
         Assets result;
         result.resize(NUM_ASSET_GROUPS);
 
-        osg::ref_ptr< VegetationLayer> layer;
+        osg::ref_ptr<const VegetationLayer> layer;
         if (layer_weakptr.lock(layer))
         {
             BiomeManager::ResidentBiomes biomes = layer->getBiomeLayer()->getBiomeManager().getResidentBiomes(
@@ -1059,8 +1041,8 @@ VegetationLayer::checkForNewAssets()
 
                     for (auto& instance : instances[group])
                     {
-                        total_weight += instance._weight;
-                        smallest_weight = std::min(smallest_weight, instance._weight);
+                        total_weight += instance.weight();
+                        smallest_weight = std::min(smallest_weight, instance.weight());
                     }
 
                     // calculate the weight multiplier
@@ -1069,7 +1051,7 @@ VegetationLayer::checkForNewAssets()
 
                     for (auto& instance : instances[group])
                     {
-                        unsigned num = std::max(1u, (unsigned)(instance._weight * weight_scale));
+                        unsigned num = std::max(1u, (unsigned)(instance.weight() * weight_scale));
                         for(unsigned i=0; i<num; ++i)
                             result[group][biome].push_back(instance);
                     }
@@ -1078,7 +1060,10 @@ VegetationLayer::checkForNewAssets()
         }
         return result;
     };
-    _newAssets = Job().dispatch<Assets>(load);
+
+    _newAssets = Job().dispatch<Assets>(loadNewAssets);
+
+    return true;
 }
 
 //........................................................................
@@ -1094,10 +1079,14 @@ VegetationLayer::reset()
     BiomeManager& biomeMan = getBiomeLayer()->getBiomeManager();
     _biomeRevision = biomeMan.getRevision();
 
-    ScopedMutexLock lock(_assets_mutex);
-    _assets.clear();
+    _assets.scoped_lock([this]() { 
+        _assets.clear(); });
 
-    _cameraState.clear();
+    _tiles.scoped_lock([this]() {
+        _tiles.clear(); });
+
+    _cameraState.scoped_lock([this]() {
+        _cameraState.clear(); });
 }
 
 // random-texture channels
@@ -1118,8 +1107,7 @@ VegetationLayer::createDrawableAsync(
     osg::BoundingBox tile_bbox = tile_bbox_;
 
     auto function =
-        [layer, key, group, tile_bbox](Cancelable* c)
-        -> osg::ref_ptr<ChonkDrawable>
+        [layer, key, group, tile_bbox](Cancelable* c) -> osg::ref_ptr<ChonkDrawable>
     {
         osg::ref_ptr<ProgressCallback> p = new ProgressCallback(c);
         return layer->createDrawable(key, group, tile_bbox, p.get());
@@ -1128,36 +1116,44 @@ VegetationLayer::createDrawableAsync(
     return Job().dispatch<osg::ref_ptr<ChonkDrawable>>(function);
 }
 
-osg::ref_ptr<ChonkDrawable>
-VegetationLayer::createDrawable(
+const std::vector<VegetationLayer::Placement>
+VegetationLayer::getAssetPlacements(
     const TileKey& key,
     const AssetGroup::Type& group,
-    const osg::BoundingBox& tile_bbox,
+    bool loadBiomesOnDemand,
     ProgressCallback* progress) const
 {
+    OE_PROFILING_ZONE;
+
     //TODO:
     // - use a noise texture instead of RNG
     // - use "asset size variation" parameter
-    // - lush variation
     // - think about using BLEND2D to rasterize a collision map!
     //   - would need to be in a background thread I'm sure
     // - caching
     // etc.
 
-    OE_PROFILING_ZONE;
+    std::vector<Placement> result;
 
     // Safely copy the instance list. The object is immutable
     // once we get to this point, since all assets are materialized
     // by the biome manager.
-    _assets_mutex.lock();
-    auto groupAssets = _assets[group];
-    _assets_mutex.unlock();
+    AssetsByBiome groupAssets;
 
-    // if it's empty, bail out (and probably return later)
-    if (groupAssets.empty())
+    if (loadBiomesOnDemand == false)
     {
-        OE_DEBUG << LC << "key=" << key.str() << "; asset list is empty for group " << group << std::endl;
-        return nullptr;
+        ScopedMutexLock lock(_assets);
+        if (_assets.size() <= group)
+            return std::move(result);
+        else
+            groupAssets = _assets[group]; // shallow copy
+
+        // if it's empty, bail out (and probably return later)
+        if (groupAssets.empty())
+        {
+            OE_DEBUG << LC << "key=" << key.str() << "; asset list is empty for group " << group << std::endl;
+            return std::move(result);
+        }
     }
 
     // Load a lifemap raster:
@@ -1193,14 +1189,44 @@ VegetationLayer::createDrawable(
         }
     }
 
+    // If the biome residency is not up to date, do that now
+    // after loading the biome map.
+    if (loadBiomesOnDemand)
+    {
+        if (checkForNewAssets() == true)
+        {
+            _newAssets.join(progress);
+            Assets newAssets = _newAssets.release();
+            if (!newAssets.empty())
+            {
+                ScopedMutexLock lock(_assets);
+                _assets = std::move(newAssets);
+            }
+        }
+
+        // make a shallow copy of assets list safely
+        {
+            ScopedMutexLock lock(_assets);
+            if (_assets.size() <= group)
+                return std::move(result);
+            else
+                groupAssets = _assets[group]; // shallow copy
+        }
+
+        // if it's empty, bail out (and probably return later)
+        if (groupAssets.empty())
+        {
+            OE_DEBUG << LC << "key=" << key.str() << "; asset list is empty for group " << group << std::endl;
+            return std::move(result);
+        }
+    }
+
+
     const Biome* default_biome = groupAssets.begin()->first;
 
     osg::Vec4f noise;
     ImageUtils::PixelReader readNoise(_noiseTex->getImage(0));
     readNoise.setSampleAsRepeatingTexture(true);
-
-    double tile_width = (tile_bbox.xMax() - tile_bbox.xMin());
-    double tile_height = (tile_bbox.yMax() - tile_bbox.yMin());
 
     unsigned max_instances = options().group(group).count().get();
 
@@ -1210,32 +1236,38 @@ VegetationLayer::createDrawable(
     std::default_random_engine gen(key.hash());
     std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
 
-    std::vector<osg::Vec3d> map_points;
-    std::vector<osg::Vec3f> local_points;
-    std::vector<osg::Vec2f> uvs;
-    std::vector<osg::Vec3f> scales;
-    std::vector<ResidentModelAsset::Ptr> assets;
+    // reserve some memory, maybe more than we need
+    result.reserve(max_instances);
 
+    // store these separately so we can clamp them all in one go
+    std::vector<osg::Vec3d> map_points;
     map_points.reserve(max_instances);
-    local_points.reserve(max_instances);
-    uvs.reserve(max_instances);
-    scales.reserve(max_instances);
-    assets.reserve(max_instances);
 
     const GeoExtent& e = key.getExtent();
 
     osg::Matrixf xform;
     osg::Vec4f lifemap_value;
     osg::Vec4f biomemap_value;
-    double local[2];
     std::vector<double> hits;
     const double s2inv = 1.0 / sqrt(2.0);
     osg::BoundingBox box;
 
     auto catalog = getBiomeLayer()->getBiomeCatalog();
 
+    // determine a local tile bbox size for collisions and uv generation
+    auto& ex = key.getExtent();
+    GeoPoint centroid = ex.getCentroid();
+    osg::ref_ptr<const SpatialReference> ltp = ex.getSRS()->createTangentPlaneSRS(centroid.vec3d());
+    double x0, y0, x1, y1;
+    ex.getSRS()->transform2D(ex.xMin(), ex.yMin(), ltp.get(), x0, y0);
+    ex.getSRS()->transform2D(ex.xMax(), ex.yMax(), ltp.get(), x1, y1);
+    osg::BoundingBox local_bbox(x0, y0, 0, x1, y1, 0);
+    double local_width = x1 - x0;
+    double local_height = y1 - y0;
+    osg::Vec2d local;
+
     // Generate random instances within the tile:
-    for (int i = 0; i < max_instances; ++i)
+    for (unsigned i = 0; i < max_instances; ++i)
     {
         // random tile-normalized position:
         float u = rand_float(gen);
@@ -1294,37 +1326,37 @@ VegetationLayer::createDrawable(
 
         int assetIndex = clamp(
             (int)(lush*(float)assetInstances.size()),
-            0, 
+            0,
             (int)assetInstances.size() - 1);
 
         auto& instance = assetInstances[assetIndex];
 
-        auto& asset = instance._residentAsset;
+        auto& asset = instance.residentAsset();
 
         // if there's no geometry... bye
-        if (asset->_chonk == nullptr)
+        if (asset->chonk() == nullptr)
             continue;
 
         osg::Vec3f scale(1, 1, 1);
 
-        box = asset->_chonk->getBound();
+        box = asset->chonk()->getBound();
 
         // hack. assume an explicit width/height means this is a grass billboard..
         // TODO: find another way.
-        bool isGrass = asset->_assetDef->width().isSet();
+        bool isGrass = asset->assetDef()->width().isSet();
         if (isGrass)
         {
             // Grass imposter geometrh is 1x1, so scale it:
             scale.set(
-                asset->_assetDef->width().get(),
-                asset->_assetDef->width().get(),
-                asset->_assetDef->height().get());
+                asset->assetDef()->width().get(),
+                asset->assetDef()->width().get(),
+                asset->assetDef()->height().get());
         }
 
         // Apply a size variation with some randomness
-        if (asset->_assetDef->sizeVariation().isSet())
+        if (asset->assetDef()->sizeVariation().isSet())
         {
-            scale *= 1.0 + (asset->_assetDef->sizeVariation().get() *
+            scale *= 1.0 + (asset->assetDef()->sizeVariation().get() *
                 (noise[N_RANDOM_2] * 2.0f - 1.0f));
         }
 
@@ -1332,7 +1364,7 @@ VegetationLayer::createDrawable(
         bool allow_overlap = isGrass;
 
         // apply instance-specific density adjustment:
-        density *= instance._fill;
+        density *= instance.coverage();
 
         // use randomness to apply a density threshold:
         if (noise[N_SMOOTH] > density)
@@ -1355,8 +1387,9 @@ VegetationLayer::createDrawable(
         box._max = osg::componentMultiply(box._max, scale);
 
         // tile-local coordinates of the position:
-        local[0] = tile_bbox.xMin() + u * tile_width;
-        local[1] = tile_bbox.yMin() + v * tile_height;
+        local.set(
+            local_bbox.xMin() + u * local_width,
+            local_bbox.yMin() + v * local_height);
 
         bool pass = true;
 
@@ -1374,11 +1407,11 @@ VegetationLayer::createDrawable(
             // i.e., denser areas allow vegetation to be closer.
             float search_radius = mix(radius*3.0f, radius*0.25f, density);
 
-            if (index.KNNSearch(local, &hits, nullptr, 1, search_radius) == 0)
+            if (index.KNNSearch(local.ptr(), &hits, nullptr, 1, search_radius) == 0)
             {
                 double r = radius * s2inv;
-                double a_min[2] = { local[0] - r, local[1] - r };
-                double a_max[2] = { local[0] + r, local[1] + r };
+                double a_min[2] = { local.x() - r, local.y() - r };
+                double a_max[2] = { local.x() + r, local.y() + r };
                 index.Insert(a_min, a_max, radius);
                 pass = true;
             }
@@ -1389,11 +1422,18 @@ VegetationLayer::createDrawable(
             // good to go, generate a random rotation and record the position.
             float rotation = rand_float(gen) * 3.1415927 * 2.0;
 
-            assets.emplace_back(asset);
-            local_points.emplace_back(local[0], local[1], rotation);
-            map_points.emplace_back(e.xMin() + u * e.width(), e.yMin() + v * e.height(), 0);
-            uvs.emplace_back(u, v);
-            scales.push_back(scale);
+            map_points.emplace_back(
+                e.xMin() + u * e.width(), e.yMin() + v * e.height(), 0
+            );
+
+            Placement p;
+            p.localPoint() = local;
+            p.uv().set(u, v);
+            p.scale() = scale;
+            p.rotation() = rotation;
+            p.asset() = asset;
+
+            result.emplace_back(std::move(p));
         }
     }
 
@@ -1405,18 +1445,42 @@ VegetationLayer::createDrawable(
         nullptr,
         0.0f); // store zero upon failure
 
+    // copy the clamped map points back over
+    for (std::size_t i = 0; i < map_points.size(); ++i)
+    {
+        result[i].mapPoint() = std::move(map_points[i]);
+    }
+
+    return std::move(result);
+}
+
+osg::ref_ptr<ChonkDrawable>
+VegetationLayer::createDrawable(
+    const TileKey& key,
+    const AssetGroup::Type& group,
+    const osg::BoundingBox& tile_bbox,
+    ProgressCallback* progress) const
+{
+    auto placements = getAssetPlacements(
+        key,
+        group,
+        false,
+        progress);
+
     const osg::Vec3f ZAXIS(0, 0, 1);
 
     // finally, assemble the drawable.
     osg::ref_ptr<ChonkDrawable> result = new ChonkDrawable();
+    result->setName(key.str() + " Vegetation");
 
-    for (unsigned i = 0; i < map_points.size(); ++i)
+    for (auto& p : placements)
     {
-        xform.makeTranslate(local_points[i].x(), local_points[i].y(), map_points[i].z());
-        xform.preMultRotate(osg::Quat(local_points[i].z(), ZAXIS));
-        xform.preMultScale(scales[i]);
+        osg::Matrixf xform;
+        xform.makeTranslate(p.localPoint().x(), p.localPoint().y(), p.mapPoint().z());
+        xform.preMultRotate(osg::Quat(p.rotation(), ZAXIS));
+        xform.preMultScale(p.scale());
 
-        result->add(assets[i]->_chonk, xform, uvs[i]);
+        result->add(p.asset()->chonk(), xform, p.uv());
     }
 
     return result;
@@ -1432,25 +1496,34 @@ VegetationLayer::cull(
 
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
 
-    // protect the traversal data from releaseGLObject et al.
-    _traversal_mutex.read_lock();
-    
     // update the framestamp for auto-timeout support
     _lastVisit = *cv->getFrameStamp();
 
-    // exclusive lock on the camera state
-    _cameraState_mutex.lock();
-    CameraState& cs = _cameraState[cv->getCurrentCamera()];
-    _cameraState_mutex.unlock();
+    // exclusive lock on the camera state (created a new one as necessary)
+    _cameraState.lock();
+    CameraState::Ptr& cs = _cameraState[cv->getCurrentCamera()];
+    _cameraState.unlock();
 
-    CameraState::TileCache active_tiles;
-
-    for (auto& batch_entry : batch.tiles())
+    // check for multisampling
+    if (!_multisamplingActivated)
     {
-        const TileKey& key = batch_entry->getKey();
-        Tile& tile = cs._tiles[key];
+        if (cv->getState()->getLastAppliedModeValue(GL_MULTISAMPLE) ||
+            osg::DisplaySettings::instance()->getMultiSamples() == true ||
+            osg::DisplaySettings::instance()->getNumMultiSamples() > 1 ||
+            options().alphaToCoverage() == true)
+        {
+            _requestMultisampling = true;
+        }
+    }
 
-        AssetGroup::Type group = getGroupAtLOD(key.getLOD());
+    if (cs == nullptr)
+        cs = std::make_shared<CameraState>();
+
+    CameraState::TileViews active_views;
+
+    for (auto& entry : batch.tiles())
+    {
+        AssetGroup::Type group = getGroupAtLOD(entry->getKey().getLOD());
         OE_HARD_ASSERT(group != AssetGroup::UNDEFINED);
 
         if (CameraUtils::isShadowCamera(cv->getCurrentCamera()) &&
@@ -1459,83 +1532,77 @@ VegetationLayer::cull(
             continue;
         }
 
-        // create if necessary:
-        if (tile._revision != batch_entry->getRevision())
-        {
-            tile._revision = batch_entry->getRevision();
+        // combine the key and revision to make a Unique ID.
+        TileKeyAndRevision tileId(
+            { entry->getKey(), entry->getRevision() }
+        );
 
+        // find this camera's view on the tile, createing a slot
+        // if necessary:
+        TileView& view = cs->_views[tileId];
+
+        // If this camera doesn't have a view on the tile, establish one:
+        if (view._tile == nullptr)
+        {
             // We don't want more than one camera creating the
             // same drawable, so this tileJobs table tracks 
             // createDrawable jobs globally.
-            ScopedMutexLock lock(_tileJobs_mutex);
+            ScopedMutexLock lock(_tiles);
 
-            bool newJob = true;
-            auto iter = _tileJobs.find(key);
-            if (iter != _tileJobs.end())
+            Tile::Ptr& tile = _tiles[tileId];
+            if (tile == nullptr)
             {
-                // found an active one in the table already
-                if (!iter->second.isAbandoned())
-                {
-                    tile._newDrawable = iter->second;
-                    newJob = false;
-                }
-            }
+                // new tile; create and fire off the loading job.
+                tile = std::make_shared<Tile>();
 
-            if (newJob)
-            {
-                tile._newDrawable = createDrawableAsync(
-                    key,
+                tile->_drawable = createDrawableAsync(
+                    entry->getKey(),
                     group,
-                    batch_entry->getBBox());
-
-                _tileJobs.emplace(key, tile._newDrawable);
+                    entry->getBBox());
             }
+
+            view._tile = tile;
+            view._matrix = new osg::RefMatrix();
         }
 
-        else if (tile._newDrawable.isAvailable())
+        // if the data is ready, cull it:
+        if (view._tile->_drawable.isAvailable())
         {
-            tile._drawable = tile._newDrawable.release();
+            view._matrix->set(entry->getModelViewMatrix());
+            cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
 
-            // If the job failed for some reason (by returning nullptr)
-            // trigger a reschedule by "dirtying" the revision number.
-            if (tile._drawable == nullptr)
-            {
-                tile._revision = -1;
-            }
-            else
-            {
-                tile._matrix = new osg::RefMatrix();
-            }
-        }
+            view._tile->_drawable.get()->accept(nv);
 
-        if (tile._drawable.valid())
-        {
-            tile._matrix->set(batch_entry->getModelViewMatrix());
-
-            cv->pushModelViewMatrix(tile._matrix.get(), osg::Transform::ABSOLUTE_RF);
-           
-            tile._drawable->accept(nv);
-  
             cv->popModelViewMatrix();
         }
 
-        active_tiles[key] = tile;
+        // If the job exists but was canceled for some reason,
+        // Reset this view so it will try again later.
+        else if (view._tile->_drawable.isAbandoned())
+        {
+            view._tile = nullptr;
+        }
+
+        if (view._tile)
+        {
+            active_views[tileId] = view;
+        }
     }
 
     // Purge old tiles.
-    cs._tiles.swap(active_tiles);
+    cs->_views.swap(active_views);
 
-    _traversal_mutex.read_unlock();
 
-    // clean up the jobs cache 
-    _tileJobs_mutex.lock();
-    for (auto it = _tileJobs.begin(); it != _tileJobs.end(); ) {
-        if (it->second.refs() == 1)
-            it = _tileJobs.erase(it);
-        else
-            ++it;
-    }
-    _tileJobs_mutex.unlock();
+    // purge unused tiles
+    _tiles.scoped_lock([this]()
+        {
+            for (auto it = _tiles.begin(); it != _tiles.end(); ) {
+                if (it->second.use_count() == 1)
+                    it = _tiles.erase(it);
+                else
+                    ++it;
+            }
+        });
 }
 
 void
@@ -1543,17 +1610,13 @@ VegetationLayer::resizeGLObjectBuffers(unsigned maxSize)
 {
     PatchLayer::resizeGLObjectBuffers(maxSize);
 
-    ScopedWriteLock lock(_traversal_mutex);
-    for (auto& cs : _cameraState)
+    ScopedMutexLock lock(_tiles);
+
+    for (auto& tile : _tiles)
     {
-        for (auto& tile : cs.second._tiles)
-        {
-            if (tile.second._drawable.valid())
-            {
-                tile.second._drawable->resizeGLObjectBuffers(maxSize);
-            }
-        }
-        cs.second._tiles.clear();
+        auto drawable = tile.second->_drawable.get();
+        if (drawable.valid())
+            drawable->resizeGLObjectBuffers(maxSize);
     }
 }
 
@@ -1562,16 +1625,12 @@ VegetationLayer::releaseGLObjects(osg::State* state) const
 {
     PatchLayer::releaseGLObjects(state);
 
-    ScopedWriteLock lock(_traversal_mutex);
-    for (auto& cs : _cameraState)
+    ScopedMutexLock lock(_tiles);
+
+    for (auto& tile : _tiles)
     {
-        for (auto& tile : cs.second._tiles)
-        {
-            if (tile.second._drawable.valid())
-            {
-                tile.second._drawable->releaseGLObjects(state);
-            }
-        }
-        cs.second._tiles.clear();
+        auto drawable = tile.second->_drawable.get();
+        if (drawable.valid())
+            drawable->releaseGLObjects(state);
     }
 }

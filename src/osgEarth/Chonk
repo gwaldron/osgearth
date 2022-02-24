@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/GLUtils>
 #include <osgEarth/TextureArena>
+#include <osgEarth/Utils>
 #include <osgUtil/RenderLeaf>
 #include <osgUtil/RenderBin>
 #include <vector>
@@ -37,7 +38,9 @@ namespace osgEarth
     {
     public:
         using Ptr = std::shared_ptr<ChonkMaterial>;
-        static Ptr create();
+        static Ptr create() {
+            return Ptr(new ChonkMaterial);
+        }
 
         // texturearena indexes of material textures
         int albedo;
@@ -63,16 +66,18 @@ namespace osgEarth
     class OSGEARTH_EXPORT Chonk
     {
     public:
+        using element_t = GLushort; // int;
+
         //! Adds a node.
         bool add(
             osg::Node*,
             ChonkFactory& factory);
 
-        //! Adds a node with pixel size limits.
+        //! Adds a node with screen-space-error limits.
         bool add(
             osg::Node* node,
-            float min_pixel_size,
-            float max_pixel_size,
+            float far_pixel_scale,
+            float near_pixel_scale,
             ChonkFactory& factory);
 
         //! Local bounding box of this Chonk.
@@ -100,17 +105,20 @@ namespace osgEarth
         {
             unsigned offset;
             std::size_t length;
-            float minPixelSize;
-            float maxPixelSize;
+            float far_pixel_scale;
+            float near_pixel_scale;
         };
 
     public:
         using Ptr = std::shared_ptr<Chonk>;
+        using WeakPtr = std::weak_ptr<Chonk>;
+
+        //! Creates a new empty chonk.
         static Ptr create();
 
         std::vector<ChonkMaterial::Ptr> _materials; // todo: upgrade to material index
         std::vector<VertexGPU> _vbo_store;
-        std::vector<GLushort> _ebo_store;
+        std::vector<element_t> _ebo_store;
         std::vector<LOD> _lods;
         osg::BoundingBoxf _box;
 
@@ -144,8 +152,16 @@ namespace osgEarth
     class OSGEARTH_EXPORT ChonkFactory
     {
     public:
+        using GetOrCreateFunction =
+            std::function<Texture::Ptr(osg::Texture* osgTex, bool& isNew)>;
+
+    public:
         ChonkFactory(
             TextureArena* textures);
+
+        //! User function that can try to find textures instead of
+        //! creating new ones. Good for sharing data across invocations.
+        void setGetOrCreateFunction(GetOrCreateFunction);
 
         //! Adds a node and generates an asset drawable for it.
         //! The asset will upload to the GPU on the next call to apply.
@@ -155,6 +171,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<TextureArena> _textures;
+        GetOrCreateFunction _getOrCreateTexture;
     };
 
     /**
@@ -186,28 +203,16 @@ namespace osgEarth
             const osg::Matrixf& xform,
             const osg::Vec2f& local_uv);
 
-        //! Adds a collection of sub-drawables to the drawable. All sub-drawables
-        //! are culled together and then drawn together if possible.
-        void setChildren(const Vector&);
-
-        //! Stateset to apply before drawing this object
-        //! or its sub-drawables. PResumably contains a shader program.
-        void setDrawStateSet(osg::StateSet* ss);
-
         //! Model view matrix to apply before rendering
         //! this drawable. Optional
         void setModelViewMatrix(const osg::Matrix& mvm);
 
-        //! Experimental - inject some custom culling code
-        //! into the culling compute shader.
-        void setCustomCullingShader(osg::Shader*);
-
         //! Whether to GPU cull on the per-chonk basis.
         //! Default is true.
-        void setCullPerChonk(bool value);
+        void setUseGPUCulling(bool value);
 
         //! Installs a basic chonk-rendering shader on a stateset.
-        static void installDefaultShader(osg::StateSet* ss);
+        static void installRenderBin(ChonkDrawable*);
 
     public:
 
@@ -234,8 +239,7 @@ namespace osgEarth
         using Instances = std::vector<Instance>;
         using Batches = std::unordered_map<Chonk::Ptr, Instances>;
         Batches _batches;
-        Vector _children;
-        bool _cull;
+        bool _gpucull;
 
         struct GCState
         {
@@ -244,8 +248,8 @@ namespace osgEarth
             {
                 osg::Vec3f center;
                 GLfloat radius;
-                GLfloat min_pixel_size;
-                GLfloat max_pixel_size;
+                GLfloat far_pixel_scale;
+                GLfloat near_pixel_scale;
                 GLuint num_lods; // chonk-global
                 GLuint total_num_commands; // global
             };
@@ -282,19 +286,16 @@ namespace osgEarth
             void release();
         };
         mutable osg::buffered_object<GCState> _gs;
-        osg::ref_ptr<osg::StateSet> _drawSS;
-        osg::ref_ptr<osg::StateSet> _cullSS;
-        osg::ref_ptr<osg::Program> _cullProgram;
         osg::Matrix _mvm;
 
         void update_and_cull_batches(osg::State& state) const;
         void draw_batches(osg::State& state) const;
 
-
     public:
         // support intersectors and stats visitors
         bool supports(const osg::PrimitiveFunctor& f) const override { return true; }
         virtual void accept(osg::PrimitiveFunctor&) const override;
+
     private:
         mutable bool _proxy_dirty;
         mutable std::vector<osg::Vec3f> _proxy_verts;
@@ -303,6 +304,8 @@ namespace osgEarth
         ChonkDrawable(const ChonkDrawable& rhs, const osg::CopyOp&) { }
 
         friend class ChonkRenderBin;
+        //friend class ChonkRenderBin::CullLeaf;
+        //friend class ChonkRenderBin::DrawLeaf;
     };
 
     /**
@@ -326,12 +329,21 @@ namespace osgEarth
         virtual const char* className() const override { return "ChonkRenderBin"; }
 
     private:
-        osg::ref_ptr<osg::Program> _cullProgram;
         osg::ref_ptr<osg::StateSet> _cullSS;
-        void robert(
-            osg::State& state,
-            osgUtil::RenderLeaf* leaf,
-            osgUtil::RenderLeaf*& previous) const;
+
+        friend class ChonkDrawable;
+
+        osg::ref_ptr<osgUtil::StateGraph> _cull_sg;
+
+        struct CullLeaf : public Util::CustomRenderLeaf {
+            CullLeaf(osgUtil::RenderLeaf*);
+            void draw(osg::State&) override;
+        };
+        struct DrawLeaf : public Util::CustomRenderLeaf {
+            DrawLeaf(osgUtil::RenderLeaf*, bool, bool);
+            void draw(osg::State&) override;
+            bool _first, _last;
+        };
     };
 }
 

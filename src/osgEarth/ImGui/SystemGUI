@@ -27,72 +27,6 @@
 #include <chrono>
 #include <list>
 
-namespace {
-    const char* render_view_normals = R"(
-#version 450
-#pragma vp_function oeui_render_view_normals, fragment_output
-in vec3 vp_Normal;
-out vec4 frag_out;
-void oeui_render_view_normals(inout vec4 color) {
-    frag_out = vec4((vp_Normal+1.0)*0.5, 1);
-}
-)";
-
-    const char* render_model_normals = R"(
-#version 450
-#pragma vp_function oeui_render_model_normals_vs, vertex_model, last
-out vec3 vp_Normal;
-out vec3 oeui_model_normal;
-void oeui_render_model_normals_vs(inout vec4 vertex) {
-    oeui_model_normal = vp_Normal;
-}
-[break]
-#version 450
-#pragma vp_function oeui_render_view_normals_fs, fragment_output
-in vec3 oeui_model_normal;
-out vec4 frag_out;
-void oeui_render_view_normals_fs(inout vec4 color) {
-    frag_out = vec4( (normalize(oeui_model_normal)+1.0)*0.5, 1);
-}
-)";
-
-    const char* render_fb_normals = R"(
-#version 450
-#pragma vp_function oeui_render_fb_normals, fragment_output
-in vec3 vp_Normal;
-out vec4 frag_out;
-void oeui_render_fb_normals(inout vec4 color) {
-    float a = step(0.5, color.a);
-    color.rgb = mix(vec3(1,0,0), vec3(0,0.75,0), (vp_Normal.z+1.0)*0.5);
-    frag_out = vec4(color.rgb, a);
-}
-)";
-
-    const char* render_winding = R"(
-#version 450
-#extension GL_NV_fragment_shader_barycentric : enable
-#pragma vp_function oeui_render_winding_fs, fragment_output
-out vec4 frag_out;
-void oeui_render_winding_fs(inout vec4 color) {
-    color.rgb = gl_FrontFacing ? vec3(0,0.75,0) : vec3(1,0,0);
-    float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z))*32.0;
-    frag_out = vec4(mix(vec3(1), color.rgb, clamp(b,0,1)), 1.0);
-}
-)";
-
-    const char* render_outlines = R"(
-#version 450
-#extension GL_NV_fragment_shader_barycentric : enable
-#pragma vp_function oeui_render_outlines, fragment_output
-out vec4 frag_out;
-void oeui_render_outlines(inout vec4 color) {
-    float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z))*32.0;
-    frag_out = vec4(mix(vec3(1), color.rgb, clamp(b,0,1)), color.a);
-}
-)";
-
-}
-
 namespace osgEarth
 {
     namespace GUI
@@ -103,12 +37,6 @@ namespace osgEarth
         class SystemGUI : public BaseGUI
         {
         private:
-            using time_point = std::chrono::time_point<std::chrono::steady_clock>;
-            time_point _lastFrame;
-            std::queue<int> _times;
-            int _time_accum;
-            int _frameCounter;
-            int _fps;
             std::string _renderMode;
             bool _renderViewNormals;
             bool _renderModelNormals;
@@ -117,7 +45,6 @@ namespace osgEarth
 
         public:
             SystemGUI() : BaseGUI("System"),
-                _frameCounter(0), _time_accum(0),
                 _renderViewNormals(false), _renderModelNormals(false),
                 _renderWinding(false), _renderOutlines(false) { }
 
@@ -131,15 +58,6 @@ namespace osgEarth
                 conf.set("ImGui.FontGlobalScale", ImGui::GetIO().FontGlobalScale);
             }
 
-            void setRenderMode(const std::string& mode, osg::RenderInfo& ri)
-            {
-                auto* vp = VirtualProgram::getOrCreate(stateset(ri));
-                ShaderLoader::unload(vp, _renderMode);
-                _renderMode = mode;
-                if (!mode.empty())
-                    ShaderLoader::load(vp, _renderMode);
-            }
-
             void draw(osg::RenderInfo& ri) override
             {
                 if (!isVisible())
@@ -147,26 +65,13 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
-                    time_point now = std::chrono::steady_clock::now();
-                    int us = std::chrono::duration_cast<std::chrono::microseconds>(now - _lastFrame).count();
-                    _lastFrame = now;
-                    constexpr int interval = 30;
-                    _times.push(us);
-                    _time_accum += us;
-                    if (_times.size() > interval) {
-                        _time_accum -= _times.front();
-                        _times.pop();
-                    }
-                    if (_frameCounter++ % interval == 0)
-                        _fps = 1000000 / (_time_accum / interval);
-                    ImGui::Text("FPS: %d", _fps);
-
                     ImGui::Text("Mem PB: %u MB", (Memory::getProcessPrivateUsage() / 1048576U));
                     ImGui::SameLine();
                     ImGui::Text("  WS: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
 
                     if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 4.0f))
                         dirtySettings();
+
                     ImGui::Separator();
 
                     if (ImGui::TreeNodeEx("Job Arenas", ImGuiTreeNodeFlags_DefaultOpen))
@@ -189,63 +94,6 @@ namespace osgEarth
                         ImGui::Text("Total: %d", m.totalJobs());
                         ImGui::SameLine();
                         ImGui::Text(" ICO: %d", GLObjectsCompiler::totalJobs());
-                        //ImGui::SameLine();
-                        //ImGui::Text(" Compute: %d", GPUJobArena::arena().size());
-
-                        ImGui::TreePop();
-                    }
-
-                    if (ImGui::TreeNodeEx("Rendering Modes"))
-                    {
-                        static int s_renderMode = 0;
-                        int m = 0;
-
-                        if (ImGui::RadioButton("Off", &s_renderMode, m++)) {
-                            setRenderMode("", ri);
-                        }
-                        if (ImGui::RadioButton("Normals (model space)", &s_renderMode, m++)) {
-                            setRenderMode(render_model_normals, ri);
-                        }
-                        if (ImGui::RadioButton("Normals (view space)", &s_renderMode, m++)) {
-                            setRenderMode(render_view_normals, ri);
-                        }
-                        if (ImGui::RadioButton("Normals (front/back)", &s_renderMode, m++)) {
-                            setRenderMode(render_fb_normals, ri);
-                        }
-                        if (ImGui::RadioButton("Triangles (front/back)", &s_renderMode, m++)) {
-                            setRenderMode(render_winding, ri);
-                        }
-                        if (ImGui::RadioButton("Triangle outlines", &s_renderMode, m++)) {
-                            setRenderMode(render_outlines, ri);
-                        }
-                        ImGui::TreePop();
-                    }
-
-                    if (ImGui::TreeNodeEx("GL Inspector"))
-                    {
-                        auto glpool = GLObjectPool::get(*ri.getState());
-                        auto globjects = glpool->objects();
-                        ImGui::Text("GPU Mem: %u MB",
-                            glpool->totalBytes() / 1048576U);
-
-                        int avarice = glpool->getAvarice();
-                        ImGui::Text("Quick"); ImGui::SameLine();
-                        if (ImGui::SliderInt("Chill", &avarice, 10, 1))
-                            glpool->setAvarice(avarice);
-                        ImGui::Text("Recycled: %u%%",
-                            int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
-
-                        ImGui::Separator();
-                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Objects:");
-                        std::map<std::string, std::vector<unsigned>> counts;
-                        for (auto& obj : globjects) {
-                            counts[obj->label()].push_back(obj->size());
-                        }
-                        for (auto& bo : counts) {
-                            unsigned total = 0;
-                            for (auto& c : bo.second) total += c;
-                            ImGui::Text("%s (%d) (%.1f MB)", bo.first.c_str(), bo.second.size(), (float)total / (float)1048576U);
-                        }
 
                         ImGui::TreePop();
                     }

@@ -52,7 +52,7 @@ endif(OSGEARTH_INSTALL_SHADERS)
 
 IF(NOT OSGEARTH_BUILD_FRAMEWORKS)
     INSTALL(
-        FILES        ${LIB_PUBLIC_HEADERS}
+        FILES       ${LIB_PUBLIC_HEADERS}
         DESTINATION ${INSTALL_INCDIR}
     )
 ELSE()
@@ -76,3 +76,23 @@ IF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
 	    RUNTIME DESTINATION ${OSG_DIR}/bin
     )
 ENDIF(OSGEARTH_INSTALL_TO_OSG_DIR AND OSG_DIR)
+
+
+# custom install for ImGui headers.
+# inputs: LIB_PUBLIC_HEADERS_IMGUI = list of ImGui headers (each with ImGui/ prefix)
+#         LIB_NAME = library that includes these headers
+if(OSGEARTH_ENABLE_IMGUI)
+    if(NOT USE_CUSTOM_SOURCE_GROUPS)
+        source_group("Headers\\ImGui" FILES ${LIB_PUBLIC_HEADERS_IMGUI})
+    endif()
+    
+    if(HEADER_INSTALL_DIR)
+        SET(_IMGUI_INSTALL_INCDIR include/${HEADER_INSTALL_DIR}/ImGui)
+    else()
+        SET(_IMGUI_INSTALL_INCDIR include/${LIB_NAME}/ImGui)
+    endif()
+
+    install(
+        FILES ${LIB_PUBLIC_HEADERS_IMGUI}
+        DESTINATION ${_IMGUI_INSTALL_INCDIR})
+endif()

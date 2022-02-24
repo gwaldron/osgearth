@@ -56,13 +56,18 @@ AssetGroup::name(AssetGroup::Type group)
 
 ModelAsset::ModelAsset(const Config& conf)
 {
+    scale().setDefault(1.0f);
+    stiffness().setDefault(0.0f);
+
     conf.get("url", modelURI());
     conf.get("name", name());
     conf.get("side_url", sideBillboardURI());
     conf.get("top_url", topBillboardURI());
     conf.get("width", width());
     conf.get("height", height());
+    conf.get("scale", scale());
     conf.get("size_variation", sizeVariation());
+    conf.get("stiffness", stiffness());
     conf.get("traits", traits());
 
     // save the original so the user can extract user-defined values
@@ -79,7 +84,9 @@ ModelAsset::getConfig() const
     conf.set("top_url", topBillboardURI());
     conf.set("width", width());
     conf.set("height", height());
+    conf.set("scale", scale());
     conf.set("size_variation", sizeVariation());
+    conf.set("stiffness", stiffness());
     conf.set("traits", traits());
     return conf;
 }
@@ -133,7 +140,7 @@ AssetCatalog::AssetCatalog(const Config& conf)
             for (const auto& m : modelassets)
             {
                 ModelAsset asset(m);
-                asset._group = group;
+                asset.group() = group;
                 _models[asset.name().get()] = asset;
             }
         }
@@ -296,17 +303,18 @@ Biome::Biome(const Config& conf, AssetCatalog* assetCatalog) :
     for (const auto& child : assets)
     {
         ModelAssetToUse m;
-        m.asset = assetCatalog->getModel(child.value("name"));
-        if (m.asset)
+        m.asset() = assetCatalog->getModel(child.value("name"));
+        if (m.asset())
         {
-            m.weight = 1.0f;
-            child.get("weight", m.weight);
-            m.fill = 1.0f;
-            child.get("fill", m.fill);
+            m.weight() = 1.0f;
+            child.get("weight", m.weight());
+            m.coverage() = 1.0f;
+            child.get("fill", m.coverage()); // backwards compat
+            child.get("coverage", m.coverage());
 
-            if (m.asset->_group < NUM_ASSET_GROUPS)
+            if (m.asset()->group() < NUM_ASSET_GROUPS)
             {
-                _assetsToUse[m.asset->_group].emplace_back(m);
+                _assetsToUse[m.asset()->group()].emplace_back(m);
             }
         }
     }
@@ -445,7 +453,7 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
                 int count = 0;
                 for (auto& asset_ptr : assetsToUse)
                 {
-                    const std::string& traits = asset_ptr.asset->traits().get();
+                    const std::string& traits = asset_ptr.asset()->traits().get();
                     if (!traits.empty())
                     {
                         traits_table[traits][g].insert(asset_ptr);

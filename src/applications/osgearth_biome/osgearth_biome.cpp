@@ -293,20 +293,12 @@ struct TextureSplattingGUI : public GUI::BaseGUI
 
 struct VegetationGUI : public GUI::BaseGUI
 {
-    using Clock = std::chrono::steady_clock;
-
     App _app;
     bool _first;
-    float _sse;
-    bool _auto_sse;
-    std::queue<float> _times;
-    float _total;
-    float _sse_target_ms;
+    float _lodTransitionPixelScale;
     bool _forceGenerate;
     bool _manualBiomes;
     std::unordered_map<const Biome*, bool> _isManualBiomeActive;
-    Clock::time_point _lastVisit;
-    osg::ref_ptr<osg::Uniform> _sseUni;
     osg::observer_ptr<BiomeLayer> _biolayer;
     osg::observer_ptr<VegetationLayer> _veglayer;
     float _maxMaxRanges[NUM_ASSET_GROUPS];
@@ -314,26 +306,21 @@ struct VegetationGUI : public GUI::BaseGUI
     VegetationGUI(App& app) : GUI::BaseGUI("Vegetation"),
         _app(app),
         _first(true),
-        _sse(100.0f),
-        _auto_sse(false),
+        _lodTransitionPixelScale(0.0f),
         _forceGenerate(false),
-        _manualBiomes(false),
-        _sse_target_ms(15.0f)
+        _manualBiomes(false)
     {
-        for (int i = 0; i < 60; ++i) _times.push(0.0f);
-        _total = 0.0f;
+        //nop
     }
 
     void load(const Config& conf) override
     {
-        conf.get("SSE", _sse);
-        conf.get("AUTO_SSE", _auto_sse);
+        conf.get("LOD_TRANSITION_PIXEL_SCALE", _lodTransitionPixelScale);
     }
 
     void save(Config& conf) override
     {
-        conf.set("SSE", _sse);
-        conf.set("AUTO_SSE", _auto_sse);
+        conf.set("LOD_TRANSITION_PIXEL_SCALE", _lodTransitionPixelScale);
     }
 
     void draw(osg::RenderInfo& ri) override
@@ -348,56 +335,27 @@ struct VegetationGUI : public GUI::BaseGUI
             _first = false;
             for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
                 _maxMaxRanges[i] = _veglayer->options().groups()[i].maxRange().get() * 2.0f;
-        }
 
-        Clock::time_point now = Clock::now();
-        float elapsed_ms = (float)(std::chrono::duration_cast<std::chrono::milliseconds>(now - _lastVisit).count());
-        _lastVisit = now;
-        _times.push(elapsed_ms);
-        _total += _times.back();
-        _total -= _times.front();
-        _times.pop();
-        float t = _total / (float)_times.size();
+            if (_lodTransitionPixelScale == 0.0f)
+                _lodTransitionPixelScale = _biolayer->getBiomeManager().getLODTransitionPixelScale();
+            else
+                _biolayer->getBiomeManager().setLODTransitionPixelScale(_lodTransitionPixelScale);
+        }
 
         ImGui::Begin("Vegetation", nullptr, ImGuiWindowFlags_MenuBar);
         {
-            if (ImGui::SliderFloat("SSE", &_sse, 1.0f, 1000.0f)) {
-                _veglayer->setMaxSSE(_sse);
-                dirtySettings();
-            }
-            
-            ImGui::SameLine();
-            if (ImGui::Checkbox("Auto", &_auto_sse)) {
-                dirtySettings();
-            }
 
-            if (_auto_sse)
-            {
-                if (t > _sse_target_ms*2.0f)
-                {
-                    _sse = clamp(_sse + 4.0f, 1.0f, 1000.0f);
-                    _veglayer->setMaxSSE(_sse);
-                }
-                else if (t > _sse_target_ms*1.01f)
-                {
-                    _sse = clamp(_sse+0.25f, 1.0f, 1000.0f);
-                    _veglayer->setMaxSSE(_sse);
-                }
-                else if (t < _sse_target_ms*0.8f)
-                {
-                    _sse = clamp(_sse-0.1f, 1.0f, 1000.0f);
-                    _veglayer->setMaxSSE(_sse);
-                }
-            }
+            ImGui::TextColored(ImVec4(1, 1, 0, 1), "LOD scales:");
+            osg::Vec4f sse_scales = _veglayer->getSSEScales();
+            if (ImGui::SliderFloat("Near", &sse_scales[0], 0.5f, 2.0f))
+                _veglayer->setSSEScales(sse_scales);
+            if (ImGui::SliderFloat("Far", &sse_scales[1], 0.5f, 2.0f))
+                _veglayer->setSSEScales(sse_scales);
 
-            //if (ImGui::Checkbox("Regenerate vegetation every frame", &_forceGenerate))
-            //{
-            //    _veglayer->setAlwaysGenerate(_forceGenerate);
-            //}
+            if (ImGui::Button("Regenerate"))
+                _veglayer->dirty();
 
-            //ImGui::Text("Num tiles: %d", _veglayer->getNumTilesRendered());
-
-            ImGui::Text("Groups:");
+            ImGui::TextColored(ImVec4(1, 1, 0, 1), "Groups:");
             ImGui::Indent();
             for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
             {
@@ -500,9 +458,9 @@ struct VegetationGUI : public GUI::BaseGUI
                             {
                                 for(auto& pointer : biome->getModelAssetsToUse(group))
                                 {
-                                    if (ImGui::TreeNode(pointer.asset->name()->c_str()))
+                                    if (ImGui::TreeNode(pointer.asset()->name()->c_str()))
                                     {
-                                        drawModelAsset(pointer.asset);
+                                        drawModelAsset(pointer.asset());
                                         ImGui::TreePop();
                                     }
                                 }

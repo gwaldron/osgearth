@@ -26,6 +26,31 @@
 
 using namespace osgEarth::GUI;
 
+#if 0
+
+std::unordered_map<
+    std::string,
+    GUIFactory::Factory> GUIFactory::_lut;
+
+void
+GUIFactory::add(
+    const std::string& name,
+    Factory factory)
+{
+    _lut[name] = factory;
+}
+
+BaseGUI::Ptr
+GUIFactory::create(const std::string& name)
+{
+    auto iter = _lut.find(name);
+    return iter != _lut.end() ?
+        BaseGUI::Ptr(iter->second()) :
+        nullptr;
+}
+#endif
+
+//..........................................
 
 void OsgImGuiHandler::RealizeOperation::operator()(osg::Object* object)
 {
@@ -411,34 +436,4 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
     return false;
 }
 
-/***********************************************************************************/
-
-#if 0
-static osg::RefNodePath s_selectedNodePath;
-
-osg::Node* osgEarth::GUI::getSelectedNode()
-{
-    if (s_selectedNodePath.empty())
-    {
-        return nullptr;
-    }
-
-    return s_selectedNodePath.back().get();
-}
-
-const osg::RefNodePath& osgEarth::GUI::getSelectedNodePath()
-{
-    return s_selectedNodePath;
-}
-
-void osgEarth::GUI::setSelectedNodePath(const osg::NodePath& nodePath)
-{
-    s_selectedNodePath.clear();
-
-    for (auto itr = nodePath.begin(); itr != nodePath.end(); ++itr)
-    {
-        s_selectedNodePath.push_back(*itr);
-    }
-}
-#endif
 

@@ -41,6 +41,7 @@ namespace osgEarth { namespace Procedural
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION_LAYER(StyleSheet, styleSheet);
             OE_OPTION(Distance, featureBufferWidth);
             virtual Config getConfig() const;
@@ -51,8 +52,7 @@ namespace osgEarth { namespace Procedural
     public:
         META_Layer(osgEarth, RoadSurfaceLayer, Options, osgEarth::ImageLayer, RoadSurface);
 
-        //! Sets the map layer from which to pull feature data. Call either
-        //! This or setFeatureSource
+        //! Sets the map layer from which to pull feature data
         void setFeatureSource(FeatureSource* layer);
         FeatureSource* getFeatureSource() const;
         
@@ -98,6 +98,7 @@ namespace osgEarth { namespace Procedural
         mutable Gate<TileKey> _keygate;
         using FeatureListCache = LRUCache<TileKey, FeatureList>;
         mutable std::unique_ptr<FeatureListCache> _lru;
+        osg::ref_ptr<FeatureFilterChain> _filterChain;
 
         void getFeatures(
             FeatureSource* featureSource,

@@ -383,7 +383,13 @@ namespace osgEarth
     {
         return sqrt(distanceSquared3D(a, b));
     }
-
+    template<typename T>
+    inline T normalize(const T& a)
+    {
+        T temp = a;
+        temp.normalize();
+        return temp;
+    }
     // Newton-Raphson solver
     template<typename Func, typename FuncDeriv>
     double solve(Func func, FuncDeriv deriv, double guess, double tolerance, bool& valid, int maxIterations = 16)

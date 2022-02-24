@@ -105,7 +105,9 @@ namespace
 
         stateSet->setMode( GL_BLEND, 1 );
         stateSet->setRenderBinDetails( 95, "DepthSortedBin" );
-        stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS,false), 1 );
+        stateSet->setAttributeAndModes(
+            new osg::Depth(osg::Depth::ALWAYS, 0, 1, false),
+            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
 
         osg::Geode* geode = new osg::Geode;
         geode->addDrawable( geometry );

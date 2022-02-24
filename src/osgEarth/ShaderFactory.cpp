@@ -201,9 +201,10 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
     VarDefs varDefs;
 
     // built-ins:
-    varDefs.insert( "vec4 vp_Color" );
-    varDefs.insert( "vec3 vp_Normal" );
-    varDefs.insert( "vec4 vp_Vertex" );
+    varDefs.insert("vec4 vp_Color");
+    varDefs.insert("vec3 vp_Normal");
+    varDefs.insert("vec4 vp_Vertex");
+    varDefs.insert("vec3 vp_VertexView");
 
     // parse the vp_varyings (which were injected by the ShaderLoader)
     // We actually only care about the in's. Because any varying that 
@@ -401,6 +402,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             {
                 buf <<
                     INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
+                    INDENT << "vp_VertexView = vp_Vertex.xyz; \n"
                     INDENT << "vp_Normal = normalize(" << gl_NormalMatrix    << " * vp_Normal); \n";
 
                 for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
@@ -420,6 +422,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                     else
                     {
                         buf <<
+                            INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n"
                             INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
                             INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
                     }
@@ -440,7 +443,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
                 buf << INDENT "gl_Position = vp_Vertex; \n";
             else if ( viewStage )
                 buf << INDENT "gl_Position = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
-            else
+            else // modelstage
                 buf << INDENT "gl_Position = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n";
         }
 
@@ -689,6 +692,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             if ( viewStage && viewStageInTES )
             {
                 buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
+                    << INDENT << "vp_VertexView = vp_Vertex.xyz; \n"
                     << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
                 space = SPACE_VIEW;
 
@@ -701,8 +705,9 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             if ( clipStage && clipStageInTES )
             {
                 if ( space == SPACE_MODEL )
-                    buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
-                    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+                    buf << INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n" 
+                        << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+                        << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
                 else if ( space == SPACE_VIEW )
                     buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
 
@@ -718,7 +723,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
             if ( !hasGS )
             {
                 if ( space == SPACE_MODEL )
-                    buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+                    buf << INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n"
+                        << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
                         << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
                 else if ( space == SPACE_VIEW )
                     buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
@@ -839,7 +845,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         int space = SPACE_MODEL;
         if ( viewStage && viewStageInGS )
         {
-            buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex;\n"
+            buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
+                << INDENT << "vp_VertexView = vp_Vertex.xyz; \n"
                 << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
 
             space = SPACE_VIEW;
@@ -854,7 +861,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         {
             if ( space == SPACE_MODEL )
             {
-                buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+                buf << INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n"
+                    << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
                     << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
             }
             else if ( space == SPACE_VIEW )
@@ -873,7 +881,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         // resolve vertex to its next space:
         if ( space == SPACE_MODEL )
         {
-            buf << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+            buf << INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n"
+                << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
                 << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
         }
         else if ( space == SPACE_VIEW )

@@ -624,3 +624,91 @@ RenderBinUtils::getTotalNumRenderLeaves(osgUtil::RenderBin* bin)
 
     return count;
 }
+
+
+CustomRenderLeaf::CustomRenderLeaf(osgUtil::RenderLeaf* leaf) : 
+    osgUtil::RenderLeaf(
+        leaf->_drawable,
+        leaf->_projection,
+        leaf->_modelview,
+        leaf->_depth,
+        leaf->_traversalOrderNumber)
+{
+    //nop
+}
+
+void
+CustomRenderLeaf::render(osg::RenderInfo& renderInfo, osgUtil::RenderLeaf* previous)
+{
+    // ALL CODE COPIED FROM OSG except for the DRAW OVERRIDE.
+
+    osg::State& state = *renderInfo.getState();
+
+    // don't draw this leaf if the abort rendering flag has been set.
+    if (state.getAbortRendering())
+    {
+        //cout << "early abort"<<endl;
+        return;
+    }
+
+    if (previous)
+    {
+
+        // apply matrices if required.
+        state.applyProjectionMatrix(_projection.get());
+        state.applyModelViewMatrix(_modelview.get());
+
+        // apply state if required.
+        osgUtil::StateGraph* prev_rg = previous->_parent;
+        osgUtil::StateGraph* prev_rg_parent = prev_rg->_parent;
+        osgUtil::StateGraph* rg = _parent;
+        if (prev_rg_parent != rg->_parent)
+        {
+            osgUtil::StateGraph::moveStateGraph(state, prev_rg_parent, rg->_parent);
+
+            // send state changes and matrix changes to OpenGL.
+            state.apply(rg->getStateSet());
+
+        }
+        else if (rg != prev_rg)
+        {
+
+            // send state changes and matrix changes to OpenGL.
+            state.apply(rg->getStateSet());
+
+        }
+
+        // if we are using osg::Program which requires OSG's generated uniforms to track
+        // modelview and projection matrices then apply them now.
+        if (state.getUseModelViewAndProjectionUniforms()) state.applyModelViewAndProjectionUniformsIfRequired();
+
+        // draw the drawable
+        //_drawable->draw(renderInfo);
+    }
+    else
+    {
+        // apply matrices if required.
+        state.applyProjectionMatrix(_projection.get());
+        state.applyModelViewMatrix(_modelview.get());
+
+        // apply state if required.
+        osgUtil::StateGraph::moveStateGraph(state, NULL, _parent->_parent);
+
+        state.apply(_parent->getStateSet());
+
+        // if we are using osg::Program which requires OSG's generated uniforms to track
+        // modelview and projection matrices then apply them now.
+        if (state.getUseModelViewAndProjectionUniforms()) state.applyModelViewAndProjectionUniformsIfRequired();
+
+        // draw the drawable
+        //_drawable->draw(renderInfo);
+    }
+
+    // Custom user draw function.
+    draw(state);
+
+    if (_dynamic)
+    {
+        state.decrementDynamicObjectCount();
+    }
+}

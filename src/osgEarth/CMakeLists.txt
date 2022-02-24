@@ -184,6 +184,7 @@ SET(LIB_PUBLIC_HEADERS
     Math
     Map
     MapboxGLImageLayer
+    MapboxGLGlyphManager
     MapCallback
     MapInfo
     MapModelChange
@@ -478,6 +479,7 @@ if(OSGEARTH_ENABLE_IMGUI)
         ImGui/TerrainGUI
         ImGui/TerrainEditGUI
         ImGui/CameraGUI
+        ImGui/RenderingGUI
         )
 endif()
 
@@ -604,6 +606,7 @@ set(TARGET_SRC
     Math.cpp
     Map.cpp
     MapboxGLImageLayer.cpp
+    MapboxGLGlyphManager.cpp
     MapCallback.cpp
     MapInfo.cpp
     MapNode.cpp
@@ -853,13 +856,16 @@ IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
   ENDIF()
 
   PROTOBUF_GENERATE_CPP(PROTO_VECTOR_TILE_CPP PROTO_VECTOR_TILE_H vector_tile.proto)
+  PROTOBUF_GENERATE_CPP(PROTO_GLYPHS_CPP PROTO_GLYPHS_H glyphs.proto)
   SET(LIB_PUBLIC_HEADERS
     ${LIB_PUBLIC_HEADERS}
     ${PROTO_VECTOR_TILE_H}
+    ${PROTO_GLYPHS_H}
   )
   SET(TARGET_SRC
     ${TARGET_SRC}
     ${PROTO_VECTOR_TILE_CPP}
+    ${PROTO_GLYPHS_CPP}
   )
 ENDIF()
 
@@ -948,22 +954,4 @@ endif(NOT NRL_STATIC_LIBRARIES)
 
 LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
 
-
 INCLUDE(ModuleInstall OPTIONAL)
-
-if(OSGEARTH_ENABLE_IMGUI)
-    # custom install for ImGui stuff
-    if(NOT USE_CUSTOM_SOURCE_GROUPS)
-        source_group("Headers\\ImGui" FILES ${LIB_PUBLIC_HEADERS_IMGUI})
-    endif()
-    
-    if(HEADER_INSTALL_DIR)
-        SET(IMGUI_INSTALL_INCDIR include/${HEADER_INSTALL_DIR}/ImGui)
-    else()
-        SET(IMGUI_INSTALL_INCDIR include/${LIB_NAME}/ImGui)
-    endif()
-
-    install(
-        FILES ${LIB_PUBLIC_HEADERS_IMGUI} ImGui/ImGui.cpp
-        DESTINATION ${IMGUI_INSTALL_INCDIR})
-endif()

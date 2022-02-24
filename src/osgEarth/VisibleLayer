@@ -55,6 +55,7 @@ namespace osgEarth
             OE_OPTION(float, attenuationRange);
             OE_OPTION(ColorBlending, blend);
             OE_OPTION(osg::Node::NodeMask, mask);
+            OE_OPTION(bool, debugView);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -98,6 +99,10 @@ namespace osgEarth
         //! Gets/Sets the default mask to use for VisibleLayers.  Default is 0xffffffff.  Set this very early on your application to make all VisibleLayers have this mask by default.
         static osg::Node::NodeMask getDefaultMask();
         static void setDefaultMask(osg::Node::NodeMask mask);
+
+        //! Enables/disables a debug view for this layer, if available.
+        void setEnableDebugView(bool value);
+        bool getEnableDebugView() const;
 
     public: // Layer
 

@@ -121,7 +121,9 @@ TrackNode::construct()
             ScreenSpaceLayout::activate(geodeStateSet.get());
 
             // completely disable depth buffer
-            geodeStateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 ); 
+            geodeStateSet->setAttributeAndModes(
+                new osg::Depth(osg::Depth::ALWAYS, 0, 1, false),
+                osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
 
             // Disable lighting for place nodes by default
             Lighting::set(geodeStateSet.get(), osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);

@@ -5,7 +5,7 @@
 struct Instance {
     mat4 xform;
     vec2 local_uv;
-    float fade;
+    uint lod;
     float visibility[4];
     uint first_variant_cmd_index;
 };
@@ -34,7 +34,7 @@ void oe_vegetation_vs_model(inout vec4 vertex)
 struct Instance {
     mat4 xform;
     vec2 local_uv;
-    float fade;
+    uint lod;
     float visibility[4];
     uint first_variant_cmd_index;
 };
@@ -46,6 +46,7 @@ layout(location = 4) in vec3 flex;
 
 // outputs
 flat out uint64_t oe_normal_tex;
+flat out uint oe_lod;
 
 // stage globals
 mat3 vec3xform; // set in model function
@@ -82,8 +83,10 @@ void oe_apply_wind(inout vec4 vertex, in vec2 local_uv)
 
 void oe_vegetation_vs_view(inout vec4 vertex)
 {
-#ifdef OE_WIND_TEX
     int i = gl_BaseInstance + gl_InstanceID;
+    oe_lod = instances[i].lod;
+
+#ifdef OE_WIND_TEX
     oe_apply_wind(vertex, instances[i].local_uv);
 #endif
 }
@@ -100,6 +103,7 @@ void oe_vegetation_vs_view(inout vec4 vertex)
 
 in vec2 oe_tex_uv;
 flat in uint64_t oe_albedo_tex;
+flat in uint oe_lod;
 in vec3 vp_VertexView;
 
 void oe_vegetation_fs(inout vec4 color)
@@ -109,13 +113,19 @@ void oe_vegetation_fs(inout vec4 color)
         discard;
 #else
     // alpha-down faces that are orthogonal to the view vector.
-    // this makes cross-hatch imposters look better
-#if 0
-    vec3 face_normal = normalize(cross(dFdx(vp_VertexView), dFdy(vp_VertexView)));
-    const float edge_factor = 0.8;
-    float d = clamp(edge_factor*abs(dot(face_normal, normalize(vp_VertexView))), 0.0, 1.0);
-    color.a *= d;
-#endif
+    // this makes cross-hatch imposters look better.
+    // (only do this for lower lods)
+    if (oe_lod > 0)
+    {
+        vec3 dx = dFdx(vp_VertexView);
+        vec3 dy = dFdy(vp_VertexView);
+        vec3 fn = normalize(cross(dx, dy));
+        float facey = abs(dot(fn, normalize(vp_VertexView)));
+        const float threshold = 0.5;
+        if (facey < threshold) {
+            color.a *= clamp(pow(facey / threshold, 4.0), 0, 1);
+        }
+    }
 
 #ifdef OE_USE_ALPHA_TO_COVERAGE
     // mitigate the screen-door effect of A2C in the distance

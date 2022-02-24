@@ -43,7 +43,7 @@ struct Instance
 {
     mat4 xform;
     vec2 local_uv;
-    float fade;
+    uint lod;
     float visibility[4];
     uint first_lod_cmd_index;
 };
@@ -217,7 +217,7 @@ void compact()
 
     // Lazy! Re-using the instance struct for render leaves..
     output_instances[offset + index] = input_instances[i];
-    output_instances[offset + index].fade = fade;
+    output_instances[offset + index].lod = lod; // .fade = fade;
 }
 
 // Entry point.

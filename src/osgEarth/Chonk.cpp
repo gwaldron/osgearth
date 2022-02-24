@@ -587,9 +587,12 @@ ChonkDrawable::add(
         Instance instance;
         instance.xform = xform;
         instance.uv = local_uv;
-        instance.fade = 1.0f;
+        instance.lod = 0;
+        instance.visibility[0] = 0;
+        instance.visibility[1] = 0;
+        instance.visibility[2] = 0;
+        instance.visibility[3] = 0;
         instance.first_lod_cmd_index = 0;
-        //instance.visibility_mask = 0;
         _batches[chonk].push_back(std::move(instance));
 
         // flag all graphics states as requiring an update:

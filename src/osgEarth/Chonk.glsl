@@ -6,7 +6,7 @@
 struct Instance {
     mat4 xform;
     vec2 local_uv;
-    float fade;
+    uint lod;
     float visibility[4];
     uint first_variant_cmd_index;
 };
@@ -48,7 +48,7 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
     oe_normal_tex = normalmap >= 0 ? textures[normalmap] : 0;
 
 #ifndef OE_IS_SHADOW_CAMERA
-    oe_fade = instances[i].fade;
+    oe_fade = instances[i].visibility[instances[i].lod];
 #else
     oe_fade = 1.0;
 #endif
@@ -79,7 +79,6 @@ void oe_chonk_default_vertex_view(inout vec4 vertex)
             oe_tangent = cross(ZAXIS, vp_Normal);
     }
 }
-
 
 [break]
 

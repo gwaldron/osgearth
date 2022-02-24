@@ -232,7 +232,7 @@ namespace osgEarth
         {
             osg::Matrixf xform;  // local xform
             osg::Vec2f uv; // tile-local UV
-            float fade;
+            GLuint lod;
             float visibility[4]; // per LOD
             GLuint first_lod_cmd_index;
         };

@@ -196,7 +196,7 @@ namespace osgEarth
                     if (_sse == 0.0f)
                         _sse = _mapNode->getScreenSpaceError();
 
-                    if (ImGui::SliderFloat("SSE", &_sse, 1.0f, 125.0f))
+                    if (ImGui::SliderFloat("SSE", &_sse, 1.0f, 200.0f))
                     {
                         _mapNode->setScreenSpaceError(_sse);
                         dirtySettings();

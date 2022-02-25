@@ -309,6 +309,20 @@ FeatureSDFLayer::createImageImplementation(
         Color(1, 1, 1, 0)); // background
 
 #endif
+
+
+    // Hello! If you are looking at this code, maybe you are wondering
+    // why your SDF layer with multiple styles only seems to be applying
+    // one of those styles. If so, that is because this code is wrong.
+    // It rasterizes all the features to a nearest-neighbor (NN) field first,
+    // and then creates an SDF from that combined NN filed. Sadly doing 
+    // this makes it so the SDF generator doesn't know which pixels came from
+    // which features, making it impossible to apply different SDF distance
+    // limits to different features.
+    // The correct approach is to NN and SDF each style separately and then
+    // multiply the SDFs together at the end. Someone should do that.
+
+
     GeoImage rasterizedFeatures;
     GeoImage nnfield;
 

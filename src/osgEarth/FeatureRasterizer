@@ -106,6 +106,33 @@ namespace osgEarth
                 FeatureFilterChain* filters,
                 FeatureList& output,
                 ProgressCallback* progress) const;
+
+            void sort_usingEmbeddedStyles(
+                const TileKey& key,
+                const Distance& buffer,
+                FeatureFilterChain* filters,
+                Session* session,
+                Function processFeaturesForStyle,
+                ProgressCallback* progress) const;
+
+            void sort_usingSelectors(
+                const TileKey& key,
+                const Distance& buffer,
+                FeatureFilterChain* filters,
+                Session* session,
+                Function processFeaturesForStyle,
+                ProgressCallback* progress) const;
+
+            void sort_usingOneStyle(
+                const Style& style,
+                const TileKey& key,
+                const Distance& buffer,
+                FeatureFilterChain* filters,
+                Session* session,
+                Function processFeaturesForStyle,
+                ProgressCallback* progress) const;
+
+
         };
     }
 }

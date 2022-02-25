@@ -408,6 +408,16 @@ PropertyValue<Color>& Paint::fillColor()
     return _fillColor;
 }
 
+const optional<std::string>& Paint::fillPattern() const
+{
+    return _fillPattern;
+}
+
+optional<std::string>& Paint::fillPattern()
+{
+    return _fillPattern;
+}
+
 const PropertyValue<Color>& Paint::lineColor() const
 {
     return _lineColor;
@@ -656,6 +666,7 @@ MapBoxGL::StyleSheet MapBoxGL::StyleSheet::load(const URI& location, const osgDB
                 getIfSet(paint, "background-color", layer.paint().backgroundColor());
                 getIfSet(paint, "background-opacity", layer.paint().backgroundOpacity());
                 getIfSet(paint, "fill-color", layer.paint().fillColor());
+                getIfSet(paint, "fill-pattern", layer.paint().fillPattern());
 
                 getIfSet(paint, "line-color", layer.paint().lineColor());
                 getIfSet(paint, "line-width", layer.paint().lineWidth());
@@ -1302,6 +1313,11 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
                 if (layer.type() == "fill")
                 {
+                    if (layer.paint().fillPattern().isSet())
+                    {
+                        OE_INFO << LC << "Skipping layer " << layer.id() << " with fill-pattern=" << layer.paint().fillPattern().get() << ".  Fill patterns are not supported" << std::endl;
+                        continue;
+                    }
                     Style style;
                     style.getOrCreateSymbol<PolygonSymbol>()->fill() = Color(layer.paint().fillColor().evaluate(key.getLOD()));
                     featureRasterizer.render(

@@ -85,8 +85,7 @@ MapboxGLGlyphManager::Glyph* MapboxGLGlyphManager::getGlyph(const std::string& f
     buf << range << "-" << range + 255;
     osgEarth::replaceIn(url, "{fontstack}", font);
     osgEarth::replaceIn(url, "{key}", _key);
-    osgEarth::replaceIn(url, "{range}", buf.str());
-    osgEarth::replaceIn(url, " ", "%20");    
+    osgEarth::replaceIn(url, "{range}", buf.str());    
     loadFont(url);
 
     // Try again.

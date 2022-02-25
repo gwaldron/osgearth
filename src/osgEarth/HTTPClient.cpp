@@ -203,7 +203,8 @@ namespace osgEarth
 HTTPRequest::HTTPRequest( const std::string& url )
 : _url( url )
 {
-    //NOP
+    // Convert spaces to %20.
+    osgEarth::replaceIn(_url, " ", "%20");
 }
 
 HTTPRequest::HTTPRequest( const HTTPRequest& rhs ) :

@@ -235,6 +235,11 @@ namespace osgEarth
                             else
                                 stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "0");
                         }
+
+                        float lod_scale = camera(ri)->getLODScale();
+                        if (ImGui::SliderFloat("LOD Scale", &lod_scale, 0.1f, 4.0f))
+                            camera(ri)->setLODScale(lod_scale);
+
                         ImGui::TreePop();
                     }
 

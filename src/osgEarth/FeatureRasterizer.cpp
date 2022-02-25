@@ -1135,6 +1135,152 @@ FeatureStyleSorter::FeatureStyleSorter()
 }
 
 void
+FeatureStyleSorter::sort_usingEmbeddedStyles(
+    const TileKey& key,
+    const Distance& buffer,
+    FeatureFilterChain* filters,
+    Session* session,
+    FeatureStyleSorter::Function processFeaturesForStyle,
+    ProgressCallback* progress) const
+{
+    // Each feature has its own embedded style data, so use that:
+    FilterContext context;
+
+    osg::ref_ptr<FeatureCursor> cursor = session->getFeatureSource()->createFeatureCursor(
+        key,
+        buffer,
+        filters,
+        &context,
+        progress);
+
+    while (cursor.valid() && cursor->hasMore())
+    {
+        osg::ref_ptr< Feature > feature = cursor->nextFeature();
+        if (feature.valid())
+        {
+            FeatureList data;
+            data.push_back(feature);
+            processFeaturesForStyle(feature->style().get(), data, progress);
+        }
+    }
+}
+
+void
+FeatureStyleSorter::sort_usingSelectors(
+    const TileKey& key,
+    const Distance& buffer,
+    FeatureFilterChain* filters,
+    Session* session,
+    FeatureStyleSorter::Function processFeaturesForStyle,
+    ProgressCallback* progress) const
+{
+    FeatureSource* features = session->getFeatureSource();
+
+    Query defaultQuery;
+    defaultQuery.tileKey() = key;
+
+    for (auto& iter : session->styles()->getSelectors())
+    {
+        const StyleSelector& sel = iter.second;
+        if (sel.styleExpression().isSet())
+        {
+            const FeatureProfile* featureProfile = features->getFeatureProfile();
+
+            // establish the working bounds and a context:
+            FilterContext context(session, featureProfile);
+            StringExpression styleExprCopy(sel.styleExpression().get());
+
+            FeatureList features;
+            getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
+            if (!features.empty())
+            {
+                std::unordered_map<std::string, Style> literal_styles;
+                std::map<const Style*, FeatureList> style_buckets;
+
+                for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+                {
+                    Feature* feature = itr->get();
+
+                    const std::string& styleString = feature->eval(styleExprCopy, &context);
+                    if (!styleString.empty() && styleString != "null")
+                    {
+                        // resolve the style:
+                        //Style combinedStyle;
+                        const Style* resolved_style = nullptr;
+
+                        // if the style string begins with an open bracket, it's an inline style definition.
+                        if (styleString.length() > 0 && styleString[0] == '{')
+                        {
+                            Config conf("style", styleString);
+                            conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
+                            conf.set("type", "text/css");
+                            Style& literal_style = literal_styles[conf.toJSON()];
+                            if (literal_style.empty())
+                                literal_style = Style(conf);
+                            resolved_style = &literal_style;
+                        }
+
+                        // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
+                        // style in this case: for style expressions, the user must be explicity about
+                        // default styling; this is because there is no other way to exclude unwanted
+                        // features.
+                        else
+                        {
+                            const Style* selected_style = session->styles()->getStyle(styleString, false);
+                            if (selected_style)
+                                resolved_style = selected_style;
+                        }
+
+                        if (resolved_style)
+                        {
+                            style_buckets[resolved_style].push_back(feature);
+                        }
+                    }
+                }
+
+                for (auto& iter : style_buckets)
+                {
+                    const Style* style = iter.first;
+                    FeatureList& list = iter.second;
+                    processFeaturesForStyle(*style, list, progress);
+                }
+            }
+        }
+        else
+        {
+            const Style* style = session->styles()->getStyle(sel.getSelectedStyleName());
+            Query query = sel.query().get();
+            query.tileKey() = key;
+
+            // Get the features
+            FeatureList features;
+            getFeatures(session, query, buffer, key.getExtent(), filters, features, progress);
+
+            processFeaturesForStyle(*style, features, progress);
+        }
+    }
+}
+
+void
+FeatureStyleSorter::sort_usingOneStyle(
+    const Style& style,
+    const TileKey& key,
+    const Distance& buffer,
+    FeatureFilterChain* filters,
+    Session* session,
+    Function processFeaturesForStyle,
+    ProgressCallback* progress) const
+{
+    Query defaultQuery;
+    defaultQuery.tileKey() = key;
+
+    FeatureList features;
+    getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
+
+    processFeaturesForStyle(style, features, progress);
+}
+
+void
 FeatureStyleSorter::sort(
     const TileKey& key,
     const Distance& buffer,
@@ -1149,139 +1295,52 @@ FeatureStyleSorter::sort(
 
     OE_PROFILING_ZONE;
 
-    Query defaultQuery;
-    defaultQuery.tileKey() = key;
-
-    FeatureSource* features = session->getFeatureSource();
-
-    // figure out if and how to style the geometry.
-    if (features->hasEmbeddedStyles())
+    if (session->getFeatureSource()->hasEmbeddedStyles())
     {
-        // Each feature has its own embedded style data, so use that:
-        FilterContext context;
-
-        osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(
+        sort_usingEmbeddedStyles(
             key,
             buffer,
             filters,
-            &context,
+            session,
+            processFeaturesForStyle,
             progress);
 
-        while (cursor.valid() && cursor->hasMore())
-        {
-            osg::ref_ptr< Feature > feature = cursor->nextFeature();
-            if (feature.valid())
-            {
-                FeatureList data;
-                data.push_back(feature);
-                processFeaturesForStyle(feature->style().get(), data, progress);
-            }
-        }
     }
     else if (session->styles())
     {
         if (session->styles()->getSelectors().size() > 0)
         {
-            for(auto& iter : session->styles()->getSelectors())
-            {
-                const StyleSelector& sel = iter.second;
-                if (sel.styleExpression().isSet())
-                {
-                    const FeatureProfile* featureProfile = features->getFeatureProfile();
+            sort_usingSelectors(
+                key,
+                buffer,
+                filters,
+                session,
+                processFeaturesForStyle,
+                progress);
 
-                    // establish the working bounds and a context:
-                    FilterContext context(session, featureProfile);
-                    StringExpression styleExprCopy(sel.styleExpression().get());
-
-                    FeatureList features;
-                    getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
-                    if (!features.empty())
-                    {
-                        std::unordered_map<std::string, Style> literal_styles;
-                        std::map<const Style*, FeatureList> style_buckets;
-
-                        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
-                        {
-                            Feature* feature = itr->get();
-
-                            const std::string& styleString = feature->eval(styleExprCopy, &context);
-                            if (!styleString.empty() && styleString != "null")
-                            {
-                                // resolve the style:
-                                //Style combinedStyle;
-                                const Style* resolved_style = nullptr;
-
-                                // if the style string begins with an open bracket, it's an inline style definition.
-                                if (styleString.length() > 0 && styleString[0] == '{')
-                                {
-                                    Config conf("style", styleString);
-                                    conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
-                                    conf.set("type", "text/css");
-                                    Style& literal_style = literal_styles[conf.toJSON()];
-                                    if (literal_style.empty())
-                                        literal_style = Style(conf);
-                                    resolved_style = &literal_style;
-                                }
-
-                                // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-                                // style in this case: for style expressions, the user must be explicity about
-                                // default styling; this is because there is no other way to exclude unwanted
-                                // features.
-                                else
-                                {
-                                    const Style* selected_style = session->styles()->getStyle(styleString, false);
-                                    if (selected_style)
-                                        resolved_style = selected_style;
-                                }
-
-                                if (resolved_style)
-                                {
-                                    style_buckets[resolved_style].push_back(feature);
-                                }
-                            }
-                        }
-
-                        for (auto& iter : style_buckets)
-                        {
-                            const Style* style = iter.first;
-                            FeatureList& list = iter.second;
-                            processFeaturesForStyle(*style, list, progress);
-                        }
-                    }
-                }
-                else
-                {
-                    const Style* style = session->styles()->getStyle(sel.getSelectedStyleName());
-                    Query query = sel.query().get();
-                    query.tileKey() = key;
-
-                    // Get the features
-                    FeatureList features;
-                    getFeatures(session, query, buffer, key.getExtent(), filters, features, progress);
-
-                    processFeaturesForStyle(*style, features, progress);
-                }
-            }
         }
         else
         {
-            const Style* style = session->styles()->getDefaultStyle();
-
-            // Get the features
-            FeatureList features;
-            getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
-            
-            processFeaturesForStyle(*style, features, progress);
+            sort_usingOneStyle(
+                *session->styles()->getDefaultStyle(),
+                key,
+                buffer,
+                filters,
+                session,
+                processFeaturesForStyle,
+                progress);
         }
     }
     else
     {
-        FeatureList features;
-        getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
-
-        // Render the features
-        Style emptyStyle;
-        processFeaturesForStyle(emptyStyle, features, progress);
+        sort_usingOneStyle(
+            Style(), // empty style
+            key,
+            buffer,
+            filters,
+            session,
+            processFeaturesForStyle,
+            progress);
     }
 }
 

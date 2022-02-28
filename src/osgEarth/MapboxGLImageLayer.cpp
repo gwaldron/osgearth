@@ -408,6 +408,16 @@ PropertyValue<Color>& Paint::fillColor()
     return _fillColor;
 }
 
+const optional<std::string>& Paint::fillPattern() const
+{
+    return _fillPattern;
+}
+
+optional<std::string>& Paint::fillPattern()
+{
+    return _fillPattern;
+}
+
 const PropertyValue<Color>& Paint::lineColor() const
 {
     return _lineColor;
@@ -656,6 +666,7 @@ MapBoxGL::StyleSheet MapBoxGL::StyleSheet::load(const URI& location, const osgDB
                 getIfSet(paint, "background-color", layer.paint().backgroundColor());
                 getIfSet(paint, "background-opacity", layer.paint().backgroundOpacity());
                 getIfSet(paint, "fill-color", layer.paint().fillColor());
+                getIfSet(paint, "fill-pattern", layer.paint().fillPattern());
 
                 getIfSet(paint, "line-color", layer.paint().lineColor());
                 getIfSet(paint, "line-width", layer.paint().lineWidth());
@@ -1208,47 +1219,54 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                 TileKey queryKey = key;
                 while (allFeatures.empty() && queryKey.valid())
                 {
-                    // Get all the features from the feature source as well as it's neighbors so we can render labels and icons nicely along the edges
-#if 1
-                    unsigned int numWide, numHigh;
-                    queryKey.getProfile()->getNumTiles(queryKey.getLevelOfDetail(), numWide, numHigh);
+                    // If the requested key isn't valid we avoid requesting the neighbor keys for metatiling and just fallback on the parent key
+                    // to avoid ending up with empty tiles.
+                    bool centerSampleValid = false;
 
-                    for (int x = (int)queryKey.getTileX() - 1; x <= (int)queryKey.getTileX() + 1; ++x)
                     {
-                        for (int y = (int)queryKey.getTileY() - 1; y <= (int)queryKey.getTileY() + 1; ++y)
+                        // Get the features for this tile
+                        osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(queryKey, progress);
+                        if (progress && progress->isCanceled())
                         {
-                            if (x < 0 || x >= numWide || y < 0 || y >= numHigh) continue;
+                            return GeoImage::INVALID;
+                        }
 
-                            TileKey key(queryKey.getLevelOfDetail(), x, y, queryKey.getProfile());
-                            if (key.valid())
+                        if (cursor.valid())
+                        {
+                            cursor->fill(allFeatures);
+                            centerSampleValid = !allFeatures.empty();
+                        }
+                    }
+
+                    if (centerSampleValid)
+                    {
+                        unsigned int numWide, numHigh;
+                        queryKey.getProfile()->getNumTiles(queryKey.getLevelOfDetail(), numWide, numHigh);
+
+                        for (int x = (int)queryKey.getTileX() - 1; x <= (int)queryKey.getTileX() + 1; ++x)
+                        {
+                            for (int y = (int)queryKey.getTileY() - 1; y <= (int)queryKey.getTileY() + 1; ++y)
                             {
-                                osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(key, progress);
-                                if (progress && progress->isCanceled())
-                                {
-                                    return GeoImage::INVALID;
-                                }
+                                if (x < 0 || x >= numWide || y < 0 || y >= numHigh || (x == queryKey.getTileX() && y == queryKey.getTileY())) continue;
 
-                                if (cursor.valid())
+                                TileKey sampleKey(queryKey.getLevelOfDetail(), x, y, queryKey.getProfile());
+
+                                if (key.valid())
                                 {
-                                    cursor->fill(allFeatures);
+                                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(sampleKey, progress);
+                                    if (progress && progress->isCanceled())
+                                    {
+                                        return GeoImage::INVALID;
+                                    }
+
+                                    if (cursor.valid())
+                                    {
+                                        cursor->fill(allFeatures);
+                                    }
                                 }
                             }
                         }
                     }
-#else
-                    // Just get the features for this tile.
-                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(queryKey, progress);
-                    if (progress && progress->isCanceled())
-                    {
-                        return GeoImage::INVALID;
-                    }
-
-
-                    if (cursor.valid())
-                    {
-                        cursor->fill(allFeatures);
-                    }
-#endif
 
                     if (allFeatures.empty())
                     {
@@ -1302,6 +1320,11 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
                 if (layer.type() == "fill")
                 {
+                    if (layer.paint().fillPattern().isSet())
+                    {
+                        OE_INFO << LC << "Skipping layer " << layer.id() << " with fill-pattern=" << layer.paint().fillPattern().get() << ".  Fill patterns are not supported" << std::endl;
+                        continue;
+                    }
                     Style style;
                     style.getOrCreateSymbol<PolygonSymbol>()->fill() = Color(layer.paint().fillColor().evaluate(key.getLOD()));
                     featureRasterizer.render(

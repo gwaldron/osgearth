@@ -181,6 +181,9 @@ namespace osgEarth
             const PropertyValue<Color>& fillColor() const;
             PropertyValue<Color>& fillColor();
 
+            const optional<std::string>& fillPattern() const;
+            optional<std::string>& fillPattern();
+
             const PropertyValue<Color>& lineColor() const;
             PropertyValue<Color>& lineColor();
 
@@ -222,6 +225,7 @@ namespace osgEarth
             optional<bool> _fillAntialias;
             PropertyValue<Color>  _fillColor = PropertyValue<Color>(Color("#000000"));
             PropertyValue<float> _fillOpacity = PropertyValue<float>(1.0f);
+            optional<std::string> _fillPattern;
 
             // Line
             PropertyValue<Color> _lineColor = PropertyValue<Color>(Color::Green);

@@ -320,15 +320,14 @@ namespace osgEarth {
             return result;
         }
 
-        void renderMapboxText(BLContext& ctx, float x, float y, const std::string& text, const TextSymbol* textSymbol, MapboxGLGlyphManager* glyphManager)
+        void renderMapboxText(BLContext& ctx, float x, float y, const std::string& text, const TextSymbol* textSymbol, MapboxGLGlyphManager* glyphManager, float textScale)
         {
             if (!glyphManager)
             {
                 return;
             }
 
-            float resolutionAdjust = 1.5f; // Maybe a scale based on the tilesize?  Probably based on multiple of 256?
-            float fontSize = textSymbol->size()->eval() * resolutionAdjust;
+            float fontSize = textSymbol->size()->eval() * textScale;
 
             const float ONE_EM = 24.0;
             float scale = fontSize / ONE_EM;
@@ -456,7 +455,8 @@ namespace osgEarth {
             const SkinSymbol* skinSymbol,
             RenderFrame& frame,
             BLContext& ctx,
-            MapboxGLGlyphManager* glyphManager)
+            MapboxGLGlyphManager* glyphManager,
+            float scale)
         {
             OE_HARD_ASSERT(feature != nullptr);
 
@@ -513,6 +513,7 @@ namespace osgEarth {
                                         y = ctx.targetHeight() - y;
 
                                         ctx.translate(x, y);
+                                        ctx.scale(scale);
                                         ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
                                         ctx.resetMatrix();
                                     }
@@ -527,7 +528,7 @@ namespace osgEarth {
                 NumericExpression fontSizeExpression = textSymbol->size().get();
                 std::string fontSizeText = templateReplace(feature, fontSizeExpression.expr());
 
-                float fontSize = as<float>(fontSizeText, 12);//feature->eval(fontSizeExpression, session);
+                float fontSize = as<float>(fontSizeText, 12) * scale;//feature->eval(fontSizeExpression, session);
                 font.createFromFace(getOrCreateFontFace(), fontSize);
                 StringExpression expression = textSymbol->content().get();
                 //std::string text = feature->eval(expression, session);
@@ -545,7 +546,7 @@ namespace osgEarth {
                             if (glyphManager)
                             {
                                 // Use the mapboxgl font to render the text.
-                                renderMapboxText(ctx, x, y, text, textSymbol, glyphManager);
+                                renderMapboxText(ctx, x, y, text, textSymbol, glyphManager, scale);
                             }
                             else
                             {
@@ -621,6 +622,16 @@ MapboxGLGlyphManager* FeatureRasterizer::getGlyphManager() const
 void FeatureRasterizer::setGlyphManager(MapboxGLGlyphManager* glyphManager)
 {
     _glyphManager = glyphManager;
+}
+
+float FeatureRasterizer::getPixelScale() const
+{
+    return _pixelScale;
+}
+
+void FeatureRasterizer::setPixelScale(float pixelScale)
+{
+    _pixelScale = pixelScale;
 }
 
 void
@@ -735,7 +746,7 @@ FeatureRasterizer::render_blend2d(
         {
             if (feature->getGeometry())
             {
-                rasterizeSymbols(feature.get(), sheet, masterText, masterSkin, frame, ctx, _glyphManager.get());
+                rasterizeSymbols(feature.get(), sheet, masterText, masterSkin, frame, ctx, _glyphManager.get(), getPixelScale());
             }
         }
     }

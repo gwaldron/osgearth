@@ -45,6 +45,10 @@ namespace osgEarth
             MapboxGLGlyphManager* getGlyphManager() const;
             void setGlyphManager(MapboxGLGlyphManager* glyphManager);
 
+            //! A scaling factor that adjusts symbols to the desired pixel size.  Mostly useful for mapbox layers.
+            float getPixelScale() const;
+            void setPixelScale(float pixelScale);
+
             void render(
                 const FeatureList& features,
                 const Style& style,
@@ -57,6 +61,7 @@ namespace osgEarth
             GeoExtent _extent;
             osg::ref_ptr< osg::Image > _image;
             osg::ref_ptr< MapboxGLGlyphManager > _glyphManager;
+            float _pixelScale = 1.0f;
             
             enum RenderFormat {
                 RF_BGRA,

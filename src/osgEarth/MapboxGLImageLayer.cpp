@@ -37,6 +37,7 @@ REGISTER_OSGEARTH_LAYER(mapboxglimage, MapBoxGLImageLayer);
 OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, std::string, Key, key);
 OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, bool, DisableText, disableText);
+OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, float, PixelScale, pixelScale);
 
 void getIfSet(const Json::Value& object, const std::string& member, PropertyValue<float>& value)
 {
@@ -760,14 +761,18 @@ MapBoxGLImageLayer::Options::getConfig() const
     Config conf = ImageLayer::Options::getConfig();
     conf.set("url", _url);
     conf.set("key", _key);
+    conf.set("pixel_scale", _pixelScale);
     return conf;
 }
 
 void
 MapBoxGLImageLayer::Options::fromConfig(const Config& conf)
 {
+    pixelScale().setDefault(1.0);
+
     conf.get("url", url());
     conf.get("key", key());
+    conf.get("pixel_scale", pixelScale());
 }
 
 void
@@ -1172,6 +1177,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
     FeatureRasterizer featureRasterizer(getTileSize(), getTileSize(), key.getExtent(), backgroundColor);
     featureRasterizer.setGlyphManager(_glyphManager.get());
+    featureRasterizer.setPixelScale(getPixelScale());
 
     osg::ref_ptr< StyleSheet > styleSheet = new StyleSheet;
     if (_styleSheet.spriteLibrary())

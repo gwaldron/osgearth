@@ -62,7 +62,7 @@ struct App
     osg::ref_ptr<OGRFeatureSource> outfs;
 
     Threading::Mutexed<std::queue<FeatureList*> > outputQueue;
-    Threading::Event gate;
+    Threading::Event outputReady;
     bool debug;
 
     App() { }
@@ -105,6 +105,10 @@ struct App
         if (!veglayer)
             return usage(argv[0], "Cannot find Vegetation layer in map");
 
+        // prevent the biome manager from unloading data while we're exporting.
+        if (veglayer->getBiomeLayer())
+            veglayer->getBiomeLayer()->getBiomeManager().setLocked(true);
+
         featureGen.setMap(map);
         featureGen.setLayer(veglayer);
         featureGen.setFactory(new TerrainTileModelFactory(mapNode->options().terrain().get()));
@@ -137,6 +141,8 @@ struct App
 
     void exportKey(const TileKey& key)
     {
+        std::cout << " Key = " << key.str() << std::endl;
+
         // even if the output if empty, we still must push a FeatureList
         // to the output queue b/c it's expecting an exact number of keys.
         FeatureList* output = new FeatureList();
@@ -144,7 +150,7 @@ struct App
 
         outputQueue.lock();
         outputQueue.push(output);
-        gate.set();
+        outputReady.set();
         outputQueue.unlock();
     }
 };
@@ -166,26 +172,27 @@ main(int argc, char** argv)
     if (keys.empty())
         return usage(argv[0], "No data in extent");
 
-    JobArena arena("Vegetation Export", 4u);
+    JobArena arena("Vegetation Export", 1u);
 
     std::cout << "Exporting " << keys.size() << " keys.." << std::endl;
 
-    for(const auto& key : keys)
+    for(const auto key : keys)
     {
-        Job().dispatch(
+        Job(&arena).dispatch(
             [&app, key](Cancelable*)
             {
                 app.exportKey(key);
             }
         );
     }
+    
 
     unsigned totalFeatures = 0u;
     std::vector<TimeSpan> writeTimes;
 
     for(unsigned i=0; i<keys.size(); )
     {
-        app.gate.waitAndReset();
+        app.outputReady.waitAndReset();
 
         std::vector<FeatureList*> outputs;
 
@@ -218,7 +225,6 @@ main(int argc, char** argv)
 
     std::cout << "\nBuilding index.." << std::flush;
     app.outfs->buildSpatialIndex();
-
     app.outfs->close();
 
     osg::Timer_t end = osg::Timer::instance()->tick();

@@ -83,7 +83,8 @@ BiomeManager::BiomeManager() :
     _revision(0),
     _refsAndRevision_mutex("BiomeManager.refsAndRevision(OE)"),
     _residentData_mutex("BiomeManager.residentData(OE)"),
-    _lodTransitionPixelScale(8.0f)
+    _lodTransitionPixelScale(8.0f),
+    _locked(false)
 {
     // this arena will hold all the textures for loaded assets.
     _textures = new TextureArena();
@@ -133,11 +134,14 @@ BiomeManager::unref(const Biome* biome)
     if (iter == _refs.end() || iter->second == 0)
         return;
 
-    --iter->second;
-    if (iter->second == 0)
+    if (!_locked)
     {
-        ++_revision;
-        OE_INFO << LC << "Goodbye, " << biome->name().get() << std::endl;
+        --iter->second;
+        if (iter->second == 0)
+        {
+            ++_revision;
+            OE_INFO << LC << "Goodbye, " << biome->name().get() << std::endl;
+        }
     }
 }
 
@@ -210,7 +214,7 @@ BiomeManager::recalculateResidentBiomes()
             {
                 biomes_to_add.push_back(biome);
             }
-            else
+            else if (!_locked)
             {
                 biomes_to_remove.push_back(biome);
             }

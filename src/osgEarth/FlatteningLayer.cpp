@@ -490,11 +490,18 @@ namespace
         {
             P.y() = ex.yMin() + (double)row * row_interval;
 
-            std::vector< unsigned int > hits;
+            std::vector<unsigned> hits;
 
             double searchMin[2] = { ex.xMin() - maxBufferDistance, P.y() - maxBufferDistance };
             double searchMax[2] = { ex.xMax() + maxBufferDistance, P.y() + maxBufferDistance };
-            index.Search(searchMin, searchMax, &hits, ~0u);
+
+            index.Search(
+                searchMin, searchMax,
+                [&hits](const unsigned& hit)
+                {
+                    hits.push_back(hit);
+                    return true;
+                });
 
             // If there are no hits just skip the whole row.
             if (hits.size() == 0)

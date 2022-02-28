@@ -181,6 +181,12 @@ namespace osgEarth
             //! Unload everything and set all the refs to zero.
             void reset();
 
+            //! Sets the biome manager to be locked, meaning that
+            //! it will never unload data by unref.
+            void setLocked(bool value) {
+                _locked = value;
+            }
+
         private:
             mutable Mutex _refsAndRevision_mutex;
             mutable Mutex _residentData_mutex;
@@ -190,6 +196,7 @@ namespace osgEarth
 
             using BiomeRefs = std::unordered_map<const Biome*, int>;
             BiomeRefs _refs;
+            bool _locked;
 
             // all currently loaded model assets (regardless of biome)
             ResidentModelAssets _residentModelAssets;

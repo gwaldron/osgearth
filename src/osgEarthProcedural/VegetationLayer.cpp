@@ -963,6 +963,7 @@ VegetationLayer::createDrawableAsync(
     return Job().dispatch<osg::ref_ptr<ChonkDrawable>>(function);
 }
 
+
 const std::vector<VegetationLayer::Placement>
 VegetationLayer::getAssetPlacements(
     const TileKey& key,
@@ -979,6 +980,8 @@ VegetationLayer::getAssetPlacements(
     //   - would need to be in a background thread I'm sure
     // - caching
     // etc.
+
+    //bool debug = key.is(14, 6706, 4643);
 
     std::vector<Placement> result;
 
@@ -1014,7 +1017,9 @@ VegetationLayer::getAssetPlacements(
         {
             lifemap = getLifeMapLayer()->createImage(q_key, progress);
             if (lifemap.valid())
+            {
                 key.getExtent().createScaleBias(q_key.getExtent(), lifemap_sb);
+            }
         }
     }
 
@@ -1063,7 +1068,6 @@ VegetationLayer::getAssetPlacements(
         // if it's empty, bail out (and probably return later)
         if (groupAssets.empty())
         {
-            OE_DEBUG << LC << "key=" << key.str() << "; asset list is empty for group " << group << std::endl;
             return std::move(result);
         }
     }
@@ -1077,10 +1081,14 @@ VegetationLayer::getAssetPlacements(
 
     unsigned max_instances = options().group(group).count().get();
 
-    using Index = RTree<double, double, 2>;
+    struct CollisionData 
+    {
+        double x, y, radius;
+    };
+    using Index = RTree<CollisionData, double, 2>;
     Index index;
 
-    std::default_random_engine gen(key.hash());
+    std::minstd_rand0 gen(key.hash());
     std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
 
     // reserve some memory, maybe more than we need
@@ -1097,11 +1105,11 @@ VegetationLayer::getAssetPlacements(
     osg::Vec4f biomemap_value;
     std::vector<double> hits;
     const double s2inv = 1.0 / sqrt(2.0);
-    osg::BoundingBox box;
 
     auto catalog = getBiomeLayer()->getBiomeCatalog();
 
     // determine a local tile bbox size for collisions and uv generation
+    // note. This doesn't take elevation data into account. Does that matter?
     auto& ex = key.getExtent();
     GeoPoint centroid = ex.getCentroid();
     osg::ref_ptr<const SpatialReference> ltp = ex.getSRS()->createTangentPlaneSRS(centroid.vec3d());
@@ -1170,7 +1178,7 @@ VegetationLayer::getAssetPlacements(
         // RNG with normal distribution between approx +1/-1
         std::normal_distribution<float> normal_dist(lush, 1.0f / 6.0f);
         lush = clamp(normal_dist(gen), 0.0f, 1.0f);
-
+        
         int assetIndex = clamp(
             (int)(lush*(float)assetInstances.size()),
             0,
@@ -1182,11 +1190,11 @@ VegetationLayer::getAssetPlacements(
 
         // if there's no geometry... bye
         if (asset->chonk() == nullptr)
+        {
             continue;
+        }
 
-        osg::Vec3f scale(1, 1, 1);
-
-        box = asset->chonk()->getBound();
+        osg::Vec3d scale(1, 1, 1);
 
         // hack. assume an explicit width/height means this is a grass billboard..
         // TODO: find another way.
@@ -1230,9 +1238,6 @@ VegetationLayer::getAssetPlacements(
             scale *= edge_scale;
         }
 
-        box._min = osg::componentMultiply(box._min, scale);
-        box._max = osg::componentMultiply(box._max, scale);
-
         // tile-local coordinates of the position:
         local.set(
             local_bbox.xMin() + u * local_width,
@@ -1242,24 +1247,46 @@ VegetationLayer::getAssetPlacements(
 
         if (!allow_overlap)
         {
-            // To prevent overlap, write positions and radii
-            // to an r-tree. 
+            // To prevent overlap, write positions and radii to an r-tree. 
             // TODO: consider using a Blend2d raster to update the 
             // density/lifemap raster as we place objects..?
             pass = false;
 
-            float radius = 0.5f*(box.xMax() - box.xMin());
+            // scale the asset bounding box in preparation for collision:
+            const osg::BoundingBoxd assetbbox = asset->boundingBox();
+
+            // radius of the scaled bounding box.
+            double radius = 0.5 * std::max(
+                scale.x() * (assetbbox.xMax() - assetbbox.xMin()),
+                scale.y() * (assetbbox.yMax() - assetbbox.yMin())
+            );
 
             // adjust collision radius based on density.
             // i.e., denser areas allow vegetation to be closer.
-            float search_radius = mix(radius*3.0f, radius*0.25f, density);
+            double search_radius = mix(radius*3.0f, radius*0.5f, density);
+            double search_radius_2 = search_radius * search_radius;
 
-            if (index.KNNSearch(local.ptr(), &hits, nullptr, 1, search_radius) == 0)
+            bool collision = false;
+
+            auto collision_check = [&local, &search_radius_2, &collision](const CollisionData& c)
             {
-                double r = radius * s2inv;
-                double a_min[2] = { local.x() - r, local.y() - r };
-                double a_max[2] = { local.x() + r, local.y() + r };
-                index.Insert(a_min, a_max, radius);
+                double dx = local.x() - c.x;
+                double dy = local.y() - c.y;
+                double dist2 = (dx * dx + dy * dy) - (c.radius*c.radius);
+                collision = (dist2 < search_radius_2);
+                return !collision; // stop at first collision
+            };
+
+            double a_min[2] = { local.x() - search_radius, local.y() - search_radius };
+            double a_max[2] = { local.x() + search_radius, local.y() + search_radius };
+            
+            index.Search(a_min, a_max, collision_check);
+
+            if (!collision)
+            {
+                a_min[0] = local.x() - radius, a_min[1] = local.y() - radius;
+                a_max[0] = local.x() + radius, a_max[1] = local.y() + radius;
+                index.Insert(a_min, a_max, { local.x(), local.y(), radius });
                 pass = true;
             }
         }
@@ -1268,7 +1295,7 @@ VegetationLayer::getAssetPlacements(
         {
             // good to go, generate a random rotation and record the position.
             float rotation = rand_float(gen) * 3.1415927 * 2.0;
-
+            
             map_points.emplace_back(
                 e.xMin() + u * e.width(), e.yMin() + v * e.height(), 0
             );
@@ -1290,7 +1317,7 @@ VegetationLayer::getAssetPlacements(
         Distance(),
         nullptr,
         nullptr,
-        0.0f); // store zero upon failure
+        0.0f); // store zero upon failure?
 
     // copy the clamped map points back over
     for (std::size_t i = 0; i < map_points.size(); ++i)
@@ -1322,12 +1349,16 @@ VegetationLayer::createDrawable(
 
     for (auto& p : placements)
     {
-        osg::Matrixf xform;
-        xform.makeTranslate(p.localPoint().x(), p.localPoint().y(), p.mapPoint().z());
-        xform.preMultRotate(osg::Quat(p.rotation(), ZAXIS));
-        xform.preMultScale(p.scale());
+        osg::Matrixd xform;
 
-        result->add(p.asset()->chonk(), xform, p.uv());
+        if (p.mapPoint().z() < FLT_MAX)
+        {
+            xform.makeTranslate(p.localPoint().x(), p.localPoint().y(), p.mapPoint().z());
+            xform.preMultRotate(osg::Quat(p.rotation(), ZAXIS));
+            xform.preMultScale(p.scale());
+
+            result->add(p.asset()->chonk(), xform, p.uv());
+        }
     }
 
     return result;

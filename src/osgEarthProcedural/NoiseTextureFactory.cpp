@@ -24,6 +24,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Metrics>
 #include <osg/Texture2D>
+#include <random>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
@@ -73,7 +74,9 @@ NoiseTextureFactory::createImage(unsigned dim, unsigned chans) const
     const float P[4] = { 0.8f,  1.0f,  0.9f, 0.9f };
     const float L[4] = { 2.2f,  1.0f,  1.0f, 4.0f };
 
-    Random random(0, Random::METHOD_FAST);
+    // seed = 0 so it is deterministic
+    std::default_random_engine gen(0);
+    std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
     
     for(unsigned k=0; k<chans; ++k)
     {
@@ -105,7 +108,7 @@ NoiseTextureFactory::createImage(unsigned dim, unsigned chans) const
 
                 if ( k == 1 || k == 2 )
                 {
-                    n = (float)random.next();
+                    n = rand_float(gen); // (float)random.next();
                 }
                 else
                 {

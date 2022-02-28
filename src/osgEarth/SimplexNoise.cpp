@@ -255,7 +255,7 @@ double SimplexNoise::getValue(double xin, double yin) const
 double SimplexNoise::getValue(double xin, double yin, double zin) const
 {
     double freq = _freq;
-    double o = osg::maximum(1u, _octaves);
+    double o = std::max(1u, _octaves);
     double amp = 1.0;
     double maxamp = 0.0;
     double n = 0.0;
@@ -279,7 +279,7 @@ double SimplexNoise::getValue(double xin, double yin, double zin) const
 double SimplexNoise::getValue(double xin, double yin, double zin, double win) const
 {
     double freq = _freq;
-    double o = osg::maximum(1u, _octaves);
+    double o = std::max(1u, _octaves);
     double amp = 1.0;
     double maxamp = 0.0;
     double n = 0.0;

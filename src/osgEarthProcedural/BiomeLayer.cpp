@@ -470,7 +470,9 @@ BiomeLayer::createImageImplementation(
 
                     hits.clear();
 
-                    polygonIndex->Search(a_point, a_point, &hits, 999u);
+                    polygonIndex->Search(
+                        a_point, a_point,
+                        [&hits](const PolygonRecordPtr& d) { hits.push_back(d); return true; });
 
                     // take the first hit.
                     // idea: use a priority attribute to resolve layered polygons?

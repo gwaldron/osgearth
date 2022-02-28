@@ -290,6 +290,11 @@ CalloutManager::sort(osg::NodeVisitor& nv)
 
     int frame = nv.getFrameStamp()->getFrameNumber();
 
+    // stop on any hit
+    auto stop_on_any_hit = [&](const CalloutRecord*) {
+        return false;
+    };
+
     for (Callouts::reverse_iterator i = _callouts.rbegin();
         i != _callouts.rend();
         ++i)
@@ -307,13 +312,13 @@ CalloutManager::sort(osg::NodeVisitor& nv)
             b_max[0] = rec._leaderBB.UR.x(), b_max[1] = rec._leaderBB.UR.y();
 
             // does the label conflict with another label?
-            if (_labelIndex.Search(a_min, a_max, &hits, 1) > 0)
+            if (_labelIndex.Search(a_min, a_max, stop_on_any_hit) > 0)
             {
                 handleOverlap(&rec, (*hits.begin())->_vpBB);
             }
 
             // does the label conflict with another leader?
-            else if (_leaderIndex.Search(a_min, a_max, &hits, 1) > 0)
+            else if (_leaderIndex.Search(a_min, a_max, stop_on_any_hit) > 0)
             {
                 handleOverlap(&rec, (*hits.begin())->_leaderBB);
             }

@@ -215,8 +215,17 @@ namespace
 
             std::vector<osg::ref_ptr<Feature>> hits;
 
-            if (_index.Search(a_min, a_max, &hits, ~0) == 0)
+            int count = _index.Search(
+                a_min, a_max,
+                [&hits](const osg::ref_ptr<Feature>& f) {
+                    hits.push_back(f);
+                    return true;
+                });
+
+            if (count == 0)
+            {
                 return nullptr;
+            }
 
             const LifeMapValue* result = nullptr;
 

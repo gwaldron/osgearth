@@ -800,9 +800,21 @@ FeatureRasterizer::render_blend2d(
     }
 
     if (masterText || masterSkin)
-    {    
+    {   
+        // Sort the features based their location.  We do this to ensure that features collected in a metatiling
+        // fashion will always be rendered in the same order when rendered in multiple neighboring tiles
+        // so the decluttering algorithm will work consistently across tiles.
+        FeatureList sortedFeatures(features);
+        sortedFeatures.sort([](const osg::ref_ptr< Feature >& a, const osg::ref_ptr< Feature >& b) {
+            auto centerA = a->getGeometry()->getBounds().center();
+            auto centerB = b->getGeometry()->getBounds().center();
+            if (centerA.x() < centerB.x()) return true;
+            if (centerA.x() > centerB.x()) return false;
+            return centerA.y() < centerB.y();
+        });
+
         // Rasterize the symbols:
-        for (const auto& feature : features)
+        for (const auto& feature : sortedFeatures)
         {
             if (feature->getGeometry())
             {

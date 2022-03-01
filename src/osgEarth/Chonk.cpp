@@ -536,7 +536,8 @@ ChonkDrawable::installRenderBin(ChonkDrawable* d)
         {
             s_ss = new osg::StateSet();
             s_ss->setDataVariance(s_ss->STATIC);
-            s_ss->setRenderBinDetails(818, "ChonkBin");
+            s_ss->setRenderBinDetails(818, "ChonkBin", (osg::StateSet::RenderBinMode)
+                (osg::StateSet::USE_RENDERBIN_DETAILS | osg::StateSet::PROTECTED_RENDERBIN_DETAILS));
 
             s_vp = VirtualProgram::getOrCreate(s_ss.get());
             s_vp->setName("ChonkDrawable");
@@ -1158,10 +1159,6 @@ ChonkRenderBin::drawImplementation(
     osgUtil::RenderLeaf*& previous)
 {
     OE_GL_ZONE_NAMED("ChonkRenderBin");
-
-    OE_SOFT_ASSERT(
-        _stateGraphList.size() == 1,
-        "StateGraphList is not size=1, you need to write some code");
 
     // copy everything to one level:
     copyLeavesFromStateGraphListToRenderLeafList();

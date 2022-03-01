@@ -1365,11 +1365,11 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                         style.getOrCreateSymbol<TextSymbol>()->fill()->color() = layer.paint().textColor().evaluate(key.getLOD());
                         style.getOrCreateSymbol<TextSymbol>()->halo()->color() = layer.paint().textHaloColor().evaluate(key.getLOD());
                         style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().evaluate(key.getLOD()));
+
+                        TextSymbol::Alignment alignment = TextSymbol::ALIGN_CENTER_CENTER;
                         if (layer.paint().textAnchor().isSet())
                         {
                             std::string anchor = layer.paint().textAnchor().get();
-
-                            TextSymbol::Alignment alignment = TextSymbol::ALIGN_CENTER_CENTER;
                             if (anchor == "center") alignment = TextSymbol::ALIGN_CENTER_CENTER;
                             else if (anchor == "left") alignment = TextSymbol::ALIGN_LEFT_CENTER;
                             else if (anchor == "right") alignment = TextSymbol::ALIGN_RIGHT_CENTER;
@@ -1378,9 +1378,10 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                             else if (anchor == "top-left") alignment = TextSymbol::ALIGN_LEFT_TOP;
                             else if (anchor == "top-right") alignment = TextSymbol::ALIGN_RIGHT_TOP;
                             else if (anchor == "bottom-left") alignment = TextSymbol::ALIGN_LEFT_BOTTOM;
-                            else if (anchor == "bottom-right") alignment = TextSymbol::ALIGN_RIGHT_BOTTOM;
-                            style.getOrCreateSymbol<TextSymbol>()->alignment() = alignment;
+                            else if (anchor == "bottom-right") alignment = TextSymbol::ALIGN_RIGHT_BOTTOM;                        
                         }
+                        style.getOrCreateSymbol<TextSymbol>()->alignment() = alignment;
+
                         if (layer.paint().textFont().isSet())
                         {
                             style.getOrCreateSymbol<TextSymbol>()->font() = layer.paint().textFont().get();

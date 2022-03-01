@@ -74,14 +74,9 @@ REGISTER_OSGEARTH_LAYER(vegetation, VegetationLayer);
 
 // TODO LIST
 //
-
 //  - BUG: Close/Open VegLayer doesn't work
-
-//  - Move normal map conversion code out of here, and move towards a "MaterialTextureSet"
-//    kind of setup that will support N material textures at once.
 //  - FEATURE: automatically generate billboards? Imposters? Other?
 //  - [IDEA] programmable SSE for models?
-//  - [PERF] thin out distant instances automatically in large tiles
 //  - [PERF] cull by "horizon" .. e.g., the lower you are, the fewer distant trees...?
 //  - variable spacing or clumping by asset...?
 //  - make the noise texture bindless as well? Stick it in the arena? Why not.
@@ -304,11 +299,16 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 void
 VegetationLayer::dirty()
 {
-    _tiles.scoped_lock([this]() {
-        _tiles.clear(); });
+    _tiles.scoped_lock([this]()
+        {
+            _tiles.clear(); 
+            _placeholders.clear();
+        });
 
-    _cameraState.scoped_lock([this]() {
-        _cameraState.clear(); });
+    _cameraState.scoped_lock([this]()
+        {
+            _cameraState.clear();
+        });
 }
 
 void
@@ -928,14 +928,21 @@ VegetationLayer::reset()
     BiomeManager& biomeMan = getBiomeLayer()->getBiomeManager();
     _biomeRevision = biomeMan.getRevision();
 
-    _assets.scoped_lock([this]() { 
-        _assets.clear(); });
+    _assets.scoped_lock([this]()
+        {
+            _assets.clear();
+        });
 
-    _tiles.scoped_lock([this]() {
-        _tiles.clear(); });
+    _tiles.scoped_lock([this]()
+        {
+            _tiles.clear();
+            _placeholders.clear();
+        });
 
-    _cameraState.scoped_lock([this]() {
-        _cameraState.clear(); });
+    _cameraState.scoped_lock([this]()
+        {
+            _cameraState.clear();
+        });
 }
 
 // random-texture channels
@@ -1413,13 +1420,12 @@ VegetationLayer::cull(
         }
 
         // combine the key and revision to make a Unique ID.
-        TileKeyAndRevision tileId(
+        TileKeyAndRevision rev_tile_key(
             { entry->getKey(), entry->getRevision() }
         );
 
-        // find this camera's view on the tile, createing a slot
-        // if necessary:
-        TileView& view = cs->_views[tileId];
+        // find this camera's view on the tile, creating a slot if necessary:
+        TileView& view = cs->_views[rev_tile_key];
 
         // If this camera doesn't have a view on the tile, establish one:
         if (view._tile == nullptr)
@@ -1429,7 +1435,7 @@ VegetationLayer::cull(
             // createDrawable jobs globally.
             ScopedMutexLock lock(_tiles);
 
-            Tile::Ptr& tile = _tiles[tileId];
+            Tile::Ptr& tile = _tiles[rev_tile_key];
             if (tile == nullptr)
             {
                 // new tile; create and fire off the loading job.
@@ -1443,6 +1449,11 @@ VegetationLayer::cull(
 
             view._tile = tile;
             view._matrix = new osg::RefMatrix();
+
+            // in the meantime, get (or create) a placeholder
+            // based on the same tile key, ignoring the revision;
+            // then swap the new tile in as the next placeholder.
+            view._placeholder = _placeholders[entry->getKey()];
         }
 
         // if the data is ready, cull it:
@@ -1450,10 +1461,21 @@ VegetationLayer::cull(
         {
             view._matrix->set(entry->getModelViewMatrix());
             cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
-
             view._tile->_drawable.get()->accept(nv);
-
             cv->popModelViewMatrix();
+
+            // unref the old placeholder.
+            if (!view._loaded)
+            {
+                view._loaded = true;
+                view._placeholder = nullptr;
+
+                // update the placeholder for this tilekey.
+                _tiles.scoped_lock([&]()
+                    {
+                        _placeholders[entry->getKey()] = view._tile;
+                    });
+            }
         }
 
         // If the job exists but was canceled for some reason,
@@ -1463,9 +1485,19 @@ VegetationLayer::cull(
             view._tile = nullptr;
         }
 
+        // Still loading, so draw a placeholder if we have one.
+        // The placeholder is just an older version of the tile.
+        else if (view._placeholder != nullptr)
+        {
+            view._matrix->set(entry->getModelViewMatrix());
+            cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
+            view._placeholder->_drawable.get()->accept(nv);
+            cv->popModelViewMatrix();
+        }
+
         if (view._tile)
         {
-            active_views[tileId] = view;
+            active_views[rev_tile_key] = view;
         }
     }
 
@@ -1476,7 +1508,8 @@ VegetationLayer::cull(
     // purge unused tiles
     _tiles.scoped_lock([this]()
         {
-            for (auto it = _tiles.begin(); it != _tiles.end(); ) {
+            for (auto it = _tiles.begin(); it != _tiles.end(); )
+            {
                 if (it->second.use_count() == 1)
                     it = _tiles.erase(it);
                 else

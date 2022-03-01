@@ -15,7 +15,7 @@ out vec2 splat_uv[2];
 vec4 oe_terrain_scaleCoordsAndTileKeyToRefLOD(in vec2 tc, in float refLOD);
 
 out vec4 oe_layer_tilec;
-out float splatLevelBlend;
+out float oe_splat_levelblend;
 
 #ifdef OE_SNOW
 out float oe_elev;
@@ -42,7 +42,7 @@ void oe_splat_View(inout vec4 vertex_view)
         splat_uv[i] = uvxy.xy;
         splat_tilexy[i] = uvxy.zw;
     }
-    splatLevelBlend = MAP_TO_01(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
+    oe_splat_levelblend = MAP_TO_01(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
 
 #ifdef OE_SNOW
     oe_elev = oe_terrain_getElevation();
@@ -80,7 +80,7 @@ uniform float oe_texScale[OE_TEX_DIM_X*OE_TEX_DIM_Y];
 in vec3 vp_Normal;
 in vec3 vp_VertexView;
 in vec3 oe_UpVectorView;
-in float splatLevelBlend;
+in float oe_splat_levelblend;
 in vec4 oe_layer_tilec;
 
 #pragma import_defines(OE_SPLAT_NUM_LEVELS)
@@ -110,10 +110,10 @@ tweakable float oe_snow_min_elev = 1000.0;
 tweakable float oe_snow_max_elev = 3500.0;
 tweakable float oe_splat_blend_rgbh_mix = 0.8;
 tweakable float oe_splat_blend_normal_mix = 0.85;
-tweakable float brightness = 1.0;
-tweakable float contrast = 1.0;
-tweakable float dense_contrast = 0.35;
-tweakable float dense_brightness = -0.5;
+tweakable float oe_splat_brightness = 1.0;
+tweakable float oe_splat_contrast = 1.0;
+tweakable float oe_dense_contrast = 0.35;
+tweakable float oe_dense_brightness = -0.5;
 
 in float oe_layer_opacity;
 
@@ -250,9 +250,9 @@ void resolveLevel(out Pixel result, int level, float rugged, float lush, float d
         Pixel temp;
         pixmix(temp, substrate, surface, m);
 
-        float mat_mix = min(splatLevelBlend, oe_splat_blend_rgbh_mix);
+        float mat_mix = min(oe_splat_levelblend, oe_splat_blend_rgbh_mix);
         result.rgbh = mix(result.rgbh, temp.rgbh, mat_mix);
-        result.normal = mix(result.normal, temp.normal, min(splatLevelBlend, oe_splat_blend_normal_mix));
+        result.normal = mix(result.normal, temp.normal, min(oe_splat_levelblend, oe_splat_blend_normal_mix));
         result.material = mix(result.material, temp.material, mat_mix);
     }
 }
@@ -277,8 +277,8 @@ void oe_splat_Frag(inout vec4 quad)
     oe_pbr.ao *= pow(pixel.material[AO], ao_power);
     oe_pbr.metal = pixel.material[METAL];
 
-    float f_c = contrast + (dense * dense_contrast);
-    float f_b = brightness + (dense * dense_brightness);
+    float f_c = oe_splat_contrast + (dense * oe_dense_contrast);
+    float f_b = oe_splat_brightness + (dense * oe_dense_brightness);
     pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*f_c + 0.5) * f_b, 0, 1);
 
     vec3 color = pixel.rgbh.rgb;

@@ -132,9 +132,6 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         groups()[AssetGroup::TREES].maxRange() = 4000.0f;
         groups()[AssetGroup::TREES].lod() = 14;
         groups()[AssetGroup::TREES].count() = 4096;
-        //groups()[AssetGroup::TREES].maxRange() = 8000.0f;
-        //groups()[AssetGroup::TREES].lod() = 13;
-        //groups()[AssetGroup::TREES].count() = 16384;
         groups()[AssetGroup::TREES].spacing() = Distance(15.0f, Units::METERS);
         groups()[AssetGroup::TREES].maxAlpha() = 0.15f;
     }
@@ -678,10 +675,13 @@ VegetationLayer::configureTrees()
                     { 0, ymin, b.zMax() }
                 };
 
-                const osg::Vec3f normals[8] = {
+                osg::Vec3f normals[8] = {
+                    //{-1,0,0}, {1,0,0}, {1,0,1}, {-1,0,1},
+                    //{0,1,0}, {0,-1,0}, {0,-1,1}, {0,1,1}
                     {0,-1,0}, {0,-1,0}, {0,-1,0}, {0,-1,0},
                     {1,0,0}, {1,0,0}, {1,0,0}, {1,0,0}
                 };
+                for (int i = 0; i < 8; ++i) normals[i].normalize();
 
                 const osg::Vec2f uvs[8] = {
                     {0,0},{1,0},{1,1},{0,1},
@@ -689,8 +689,8 @@ VegetationLayer::configureTrees()
                 };
 
                 const osg::Vec3f flexors[8] = {
-                    {0,0,0}, {0,0,1}, {1,0,0}, {-1,0,1},
-                    {0,0,0}, {0,0,1}, {0,1,0}, {0,-1,1}
+                    {0,0,0}, {0,0,0}, {1,0,1}, {-1,0,1},
+                    {0,0,0}, {0,0,0}, {0,1,1}, {0,-1,1}
                 };
 
                 geom[i]->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
@@ -837,9 +837,9 @@ VegetationLayer::configureGrass()
 
         osg::StateSet* ss = out_geom->getOrCreateStateSet();
         if (textures.size() > 0)
-            ss->setTextureAttribute(0, textures[0], 1);
+            ss->setTextureAttribute(0, textures[0], 1); // side albedo
         if (textures.size() > 1)
-            ss->setTextureAttribute(1, textures[1], 1);
+            ss->setTextureAttribute(1, textures[1], 1); // side normal
 
         return out_geom;
     };

@@ -368,6 +368,7 @@ osg::Node* ImageOverlay::createNode()
     osg::MatrixTransform* transform = new osg::MatrixTransform;
 
     osg::Geometry* geometry = new osg::Geometry();
+    geometry->setName(typeid(*this).name());
     geometry->setUseVertexBufferObjects(true);
 
     transform->addChild(geometry);

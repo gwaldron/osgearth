@@ -515,6 +515,7 @@ public:
                 {
                     geom = new osg::Geometry;
                 }
+                geom->setName(typeid(*this).name());
                 geom->setUseVertexBufferObjects(true);
 
                 group->addChild(geom.get());

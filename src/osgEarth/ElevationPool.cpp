@@ -225,15 +225,17 @@ ElevationPool::getLOD(double x, double y) const
 {
     MaxLevelIndex* index = static_cast<MaxLevelIndex*>(_index);
 
-    double minv[2], maxv[2];
-    minv[0] = maxv[0] = x, minv[1] = maxv[1] = y;
-    std::vector<unsigned> hits;
-    index->Search(minv, maxv, &hits, 99);
+    double point[2] = { x, y };
     int maxiestMaxLevel = -1;
-    for(auto h = hits.begin(); h != hits.end(); ++h)
-    {
-        maxiestMaxLevel = osg::maximum(maxiestMaxLevel, (int)*h);
-    }
+
+    index->Search(
+        point, point,
+        [&maxiestMaxLevel](const unsigned& level)
+        {
+            maxiestMaxLevel = std::max(maxiestMaxLevel, (int)level);
+            return true;
+        });
+
     return maxiestMaxLevel;
 }
 

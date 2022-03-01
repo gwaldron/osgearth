@@ -90,6 +90,7 @@ namespace
             ellipsoid.getRadiusPolar());
 
         osg::Geometry* geom = new osg::Geometry();
+        geom->setName("SimpleSky");
         geom->setUseVertexBufferObjects(true);
 
         int latSegments = 100;
@@ -169,6 +170,7 @@ namespace
         float deltaAngle = 360.0/(float)segments;
 
         osg::Geometry* geom = new osg::Geometry();
+        geom->setName("SimpleSky");
         geom->setUseVertexBufferObjects(true);
 
         osg::Vec3Array* verts = new osg::Vec3Array();
@@ -619,6 +621,7 @@ SimpleSkyNode::makeAtmosphere(const Ellipsoid& em)
 #else
     // TEST!
     osg::Geometry* drawable = new osg::Geometry();
+    drawable->setName("SimpleSky");
     drawable->setCullingActive(false);
     drawable->setName("Atmosphere Drawable");
     drawable->setUseVertexBufferObjects(true);

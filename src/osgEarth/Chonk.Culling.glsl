@@ -163,15 +163,6 @@ void cull()
         float pixelSize = max(dims.x, dims.y);
         float pixelSizePad = pixelSize * 0.1;
 
-#if 0
-        float minPixelSize = oe_sse * chonks[v].far_pixel_scale;
-        if (pixelSize < (minPixelSize - pixelSizePad))
-            REJECT(REASON_SSE);
-
-        float maxPixelSize = oe_sse * chonks[v].near_pixel_scale;
-        if (pixelSize > (maxPixelSize + pixelSizePad))
-            REJECT(REASON_SSE);
-#else
         float minPixelSize = oe_sse * chonks[v].far_pixel_scale * oe_lod_scale[lod];
         if (pixelSize < (minPixelSize - pixelSizePad))
             REJECT(REASON_SSE);
@@ -180,7 +171,6 @@ void cull()
         float maxPixelSize = oe_sse * near_scale;
         if (pixelSize > (maxPixelSize + pixelSizePad))
             REJECT(REASON_SSE);
-#endif
 
         if (fade == 1.0)  // good to go, set the proper fade:
         {

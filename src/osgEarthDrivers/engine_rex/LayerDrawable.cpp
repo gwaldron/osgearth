@@ -537,8 +537,11 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
         gs.vao->bind();
 
+        GLenum primitive =
+            _context->options().gpuTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
+
         gs.glMultiDrawElementsIndirectBindlessNV(
-            GL_TRIANGLES,
+            primitive,
             GL_UNSIGNED_SHORT,
             nullptr,
             _rs.commands.size(),

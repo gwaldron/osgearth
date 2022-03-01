@@ -584,7 +584,8 @@ TileNode::traverse(osg::NodeVisitor& nv)
         {
             for(int i=0; i<numChildren; ++i)
             {
-                _children[i]->accept( nv );
+                if (_children[i].valid())
+                    _children[i]->accept( nv );
             }
         }
 

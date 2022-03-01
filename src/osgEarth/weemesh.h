@@ -386,7 +386,13 @@ namespace weemesh
             a_min[1] = a_max[1] = vert.y();
 
             std::vector<UID> uids;
-            _spatial_index.Search(a_min, a_max, &uids, ~0);
+
+            _spatial_index.Search(
+                a_min, a_max, 
+                [&uids](const UID& u) {
+                    uids.push_back(u);
+                    return true;
+                });
 
             for (auto uid : uids)
             {
@@ -415,7 +421,13 @@ namespace weemesh
             a_max[0] = std::max(seg.first.x(), seg.second.x());
             a_max[1] = std::max(seg.first.y(), seg.second.y());
             std::vector<UID> uids;
-            _spatial_index.Search(a_min, a_max, &uids, ~0);
+
+            _spatial_index.Search(
+                a_min, a_max, 
+                [&uids](const UID& u) {
+                    uids.push_back(u);
+                    return true;
+                });
 
             // The working set of triangles which we will add to if we have
             // to split triangles. Any triangle only needs to be split once,

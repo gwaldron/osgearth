@@ -181,7 +181,8 @@ void atmos_GroundFromAtmosphere(in vec4 vertexVIEW)
     atmos_atten = v3Attenuate; 
 } 
 
-out vec3 camera_world, vertex_world;
+out vec3 camera_world;
+out vec3 vertex_world;
 
 void atmos_vertex_main(inout vec4 vertexVIEW) 
 {

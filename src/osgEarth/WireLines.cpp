@@ -93,6 +93,7 @@ osg::Geometry* WireLinesOperator::operator()(osg::Vec3Array* verts, osg::Vec3Arr
 {
     const size_t numVerts = verts->size();
     osg::Geometry* geom = new osg::Geometry();
+    geom->setName(typeid(*this).name());
     geom->setUseVertexBufferObjects(true);
     osg::ref_ptr<osg::Vec3Array> wireVerts = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX,
                                                                 numWireVerts * numVerts);

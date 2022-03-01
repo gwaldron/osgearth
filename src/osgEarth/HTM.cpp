@@ -101,6 +101,7 @@ _settings(settings)
         const double R = SpatialReference::get("wgs84")->getEllipsoid().getRadiusEquator();
 
         osg::Geometry* geom = new osg::Geometry();
+        geom->setName(typeid(*this).name());
         geom->setUseVertexBufferObjects(true);
     
         osg::Vec3Array* verts = new osg::Vec3Array();

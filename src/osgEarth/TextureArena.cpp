@@ -61,7 +61,7 @@ Texture::compileGLObjects(osg::State& state) const
     OE_PROFILING_ZONE;
     //OE_GL_ZONE_NAMED("oe tex compile");
 
-    OE_HARD_ASSERT(_image.valid());
+    OE_SOFT_ASSERT_AND_RETURN(_image.valid(), void(), "Tried to compile a null texture, stop that");
 
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
     Texture::GCState& gc = get(state);

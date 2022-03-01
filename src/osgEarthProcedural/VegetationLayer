@@ -201,6 +201,7 @@ namespace osgEarth { namespace Procedural
             }
         };
 
+        // One tile's drawable vegetation.
         struct Tile
         {
             using Ptr = std::shared_ptr<Tile>;
@@ -213,12 +214,30 @@ namespace osgEarth { namespace Procedural
             Tile::Ptr,
             TileKeyAndRevision>;
 
+        // Shared (amongst all cameras) cache of vegetation tiles,
+        // indexed by a revisioned tile key.
         mutable Mutexed<Tiles> _tiles;
 
+        using Placeholders = std::unordered_map<
+            TileKey,
+            Tile::Ptr>;
+
+        // Shared cache of tile placeholders. These are just tiles,
+        // but indexed only by the tile key (no revision) and we 
+        // use them to draw the old version of the tile while loading
+        // a new revision.
+        mutable Placeholders _placeholders;
+
+        // One camera's view on a tile (and its placeholder).
+        // We update the matrix each frame as necessary just before
+        // accepting the cull.
         struct TileView
         {
             Tile::Ptr _tile;
+            Tile::Ptr _placeholder;
+            bool _loaded;
             osg::ref_ptr<osg::RefMatrix> _matrix;
+            TileView() : _loaded(false) { }
         };
 
         // Data unique to a specific camera traversal
@@ -226,28 +245,44 @@ namespace osgEarth { namespace Procedural
         struct CameraState
         {
             using Ptr = std::shared_ptr<CameraState>;
+
             using TileViews = std::unordered_map<
                 TileKeyAndRevision, TileView, TileKeyAndRevision>;
+
+            // views indexed by the current key+revision
             TileViews _views;
         };
-        using CameraStates = std::unordered_map<const osg::Camera*, CameraState::Ptr>;
+
+        using CameraStates = std::unordered_map<
+            const osg::Camera*, 
+            CameraState::Ptr>;
+
+        // Collection tile views for each camera
         mutable Mutexed<CameraStates> _cameraState;
 
-        mutable osg::FrameStamp _lastVisit; // for timeouts
+        // So we can timeout the layer and release resources
+        mutable osg::FrameStamp _lastVisit;
 
-        // noise texture. I guess this could go in the arena..
+        // noise texture. Put in the arena? Or global?
         osg::ref_ptr<osg::Texture> _noiseTex;
         TextureImageUnitReservation _noiseBinding;
 
-        using AssetsByBiome = std::unordered_map<const Biome*, std::vector<ResidentModelAssetInstance>>;
+        using AssetsByBiome = std::unordered_map<
+            const Biome*,
+            std::vector<ResidentModelAssetInstance>>;
+
         using Assets = std::vector<AssetsByBiome>;
 
+        // Asynchronously loading resident asset collection
         mutable Future<Assets> _newAssets;
+
+        // Resident asset collection (created by the BiomeManager)
         mutable Mutexed<Assets> _assets;
 
-        mutable std::atomic_int _biomeRevision; // keep track of when to load to assets
-        Status _status;
+        // Track biome changes so we can reload as necessary
+        mutable std::atomic_int _biomeRevision;
 
+        // Uniform to scale the SSE
         osg::ref_ptr<osg::Uniform> _pixelScalesU;
 
         void configureTrees();
@@ -264,6 +299,7 @@ namespace osgEarth { namespace Procedural
             const osg::BoundingBox& bbox,
             ProgressCallback* c) const;
 
+        // Things that help us detect the presence of multisampling
         mutable bool _requestMultisampling;
         bool _multisamplingActivated;
         void activateMultisampling();

@@ -253,7 +253,6 @@ TextureSplattingLayer::buildStateSets()
         // Install the texture splatting shader
         VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
         ProceduralShaders terrain_shaders;
-        terrain_shaders.load(vp, terrain_shaders.TextureSplatting);
 
         // Do the layer replacements BEFORE calling load. This way
         // the "oe_use_shared_layer" directive will be able to find the shared layer.

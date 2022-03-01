@@ -881,6 +881,7 @@ osg::Geometry*
 SharedGeometry::makeOsgGeometry()
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setName(typeid(*this).name());
     geom->setUseVertexBufferObjects(true);
     geom->setUseDisplayList(false);
 

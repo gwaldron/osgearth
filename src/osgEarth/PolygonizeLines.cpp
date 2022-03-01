@@ -150,6 +150,7 @@ PolygonizeLinesOperator::operator()(
     bool  autoScale        = minPixelSize > 0.0f;
 
     osg::Geometry* geom  = new osg::Geometry();
+    geom->setName("PolygonizeLines");
     geom->setUseVertexBufferObjects(true);
 
     // Add the input verts to the geometry. This forms the "spine" of the

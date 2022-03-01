@@ -378,6 +378,7 @@ _colors(NULL)
     setUseVertexBufferObjects(false);
 
     _geom = new osg::Geometry();
+    _geom->setName(typeid(*this).name());
     _geom->setUseVertexBufferObjects(true);
     _geom->setUseDisplayList(false);
 

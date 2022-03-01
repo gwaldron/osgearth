@@ -587,6 +587,7 @@ namespace
 
         // assemble the new geometry.
         osg::Geometry* newGeom = new osg::Geometry();
+        newGeom->setName("MeshConsolidator");
         newGeom->setUseVertexBufferObjects(true);
 
         newGeom->setVertexArray( newVerts );

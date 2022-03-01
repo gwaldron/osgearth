@@ -285,6 +285,7 @@ LinearLineOfSightNode::draw(bool backgroundThread)
     if (_start != _end)
     {
         osg::Geometry* geometry = new osg::Geometry;
+        geometry->setName(typeid(*this).name());
         geometry->setUseVertexBufferObjects(true);
 
         osg::Vec3Array* verts = new osg::Vec3Array();

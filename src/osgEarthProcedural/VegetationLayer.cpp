@@ -651,6 +651,7 @@ VegetationLayer::configureTrees()
         for (int i = 0; i < parts; ++i)
         {
             geom[i] = new osg::Geometry();
+            geom[i]->setName("Tree impostor");
             geom[i]->setUseVertexBufferObjects(true);
             geom[i]->setUseDisplayList(false);
 
@@ -760,6 +761,7 @@ VegetationLayer::configureGrass()
         constexpr unsigned indiciesPerInstance = 54;
 
         osg::Geometry* out_geom = new osg::Geometry();
+        out_geom->setName("Grass impostor");
         out_geom->setUseVertexBufferObjects(true);
         out_geom->setUseDisplayList(false);
 

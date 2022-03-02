@@ -1361,6 +1361,7 @@ RexTerrainEngineNode::updateState()
         REXShaders& shaders = REXShadersFactory::get(useGL4());
 
         // State that affects any terrain layer (surface, patch, other)
+        // AND compute shaders
         {
             // activate standard mix blending.
             _terrainSS->setAttributeAndModes(
@@ -1390,6 +1391,18 @@ RexTerrainEngineNode::updateState()
             // uniform that conveys the tile vertex dimensions
             _terrainSS->addUniform(new osg::Uniform(
                 "oe_tile_size", (float)options().tileSize().get()));
+
+            if (this->elevationTexturesRequired())
+            {
+                // Compute an elevation texture sampling scale/bias so we sample elevation data on center
+                // instead of on edge (as we do with color, etc.)
+                float bias = getEngineContext()->getUseTextureBorder() ? 1.5 : 0.5;
+                float size = (float)ELEVATION_TILE_SIZE;
+
+                _terrainSS->addUniform(new osg::Uniform(
+                    "oe_tile_elevTexelCoeff",
+                    osg::Vec2f((size - (2.0*bias)) / size, bias / size)));
+            }
         }
 
 
@@ -1439,15 +1452,6 @@ RexTerrainEngineNode::updateState()
             if (this->elevationTexturesRequired())
             {
                 _surfaceSS->setDefine("OE_TERRAIN_RENDER_ELEVATION");
-
-                float bias = getEngineContext()->getUseTextureBorder() ? 1.5 : 0.5;
-                float size = (float)ELEVATION_TILE_SIZE;
-
-                // Compute an elevation texture sampling scale/bias so we sample elevation data on center
-                // instead of on edge (as we do with color, etc.)
-                _surfaceSS->addUniform(new osg::Uniform(
-                    "oe_tile_elevTexelCoeff",
-                    osg::Vec2f((size - (2.0*bias)) / size, bias / size)));
             }
 
             // Normal mapping

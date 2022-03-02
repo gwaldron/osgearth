@@ -48,8 +48,9 @@ uniform mat4 osg_ViewMatrix;
 
 // Stage globals
 vec3 oe_UpVectorView;
-vec4 vp_Color;
-vec3 vp_Normal;
+
+out vec4 vp_Color;
+out vec3 vp_Normal;
 out vec4 oe_layer_tilec;
 // Output grass texture coordinates to the fragment shader
 out vec2 oe_GroundCover_texCoord;

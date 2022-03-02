@@ -44,7 +44,7 @@ out vec3 oe_GroundCover_texCoord;
 // Output that selects the land cover texture from the texture array (non interpolated)
 out float oe_GroundCover_falloff;
 
-vec3 vp_Normal;
+out vec3 vp_Normal;
 
 // MAIN ENTRY POINT  
 void oe_GroundCover_Model_VS(inout vec4 vertex)

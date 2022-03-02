@@ -21,7 +21,6 @@
 
 #include <osgEarthProcedural/Biome>
 #include <osgEarth/Chonk>
-#include <osgEarth/GeometryCloud>
 
 namespace osgEarth
 {

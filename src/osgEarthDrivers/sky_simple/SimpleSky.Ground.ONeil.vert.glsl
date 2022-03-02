@@ -43,7 +43,7 @@ out vec3 atmos_up;             // earth up vector at vertex location (not the no
 out float atmos_space;         // [0..1]: camera: 0=inner radius (ground); 1.0=outer radius
 out vec3 atmos_vert; 
 
-vec3 vp_Normal;             // surface normal (from osgEarth)
+out vec3 vp_Normal;             // surface normal (from osgEarth)
 
 out vec3 camera_pos;
 out vec3 earth_center;

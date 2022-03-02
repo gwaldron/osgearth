@@ -380,9 +380,12 @@ void oe_splat_simple(inout vec4 color)
 //............................................................................
 // Main entry point for fragment shader.
 
+// stage inputs
+in vec3 vp_Normal;
+
 // stage global
 mat3 oe_normalMapTBN;
-vec3 vp_Normal;
+
 
 void oe_splat_complex(inout vec4 color)
 {

@@ -386,6 +386,7 @@ namespace osgEarth
             OE_OPTION(URI, url);
             OE_OPTION(std::string, key);
             OE_OPTION(bool, disableText);
+            OE_OPTION(float, pixelScale);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );
@@ -404,6 +405,9 @@ namespace osgEarth
 
         void setDisableText(const bool& value);
         const bool& getDisableText() const;
+
+        void setPixelScale(const float& value);
+        const float& getPixelScale() const;
 
         // Opens the layer and returns a status
         virtual Status openImplementation();

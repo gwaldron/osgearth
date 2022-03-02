@@ -307,32 +307,49 @@ namespace osgEarth {
             return fontFace;
         }
 
-
-        // Simpler than StringExpression for doing template replacement.  Need to fix StringExpression so it supports inline templates as well like road_{number}
         std::string templateReplace(const Feature* feature, const std::string& expression)
         {
             std::string result = expression;
-            for (auto& attr : feature->getAttrs())
+            auto start = result.find('{');
+            auto end = result.find('}');
+            if (start != std::string::npos && end != std::string::npos)
             {
-                std::string replaceText = Stringify() << "{" << attr.first << "}";
-                osgEarth::replaceIn(result, replaceText, attr.second.getString());
+                std::string attribute = result.substr(start + 1, end - start - 1);
+                if (feature->hasAttr(attribute))
+                {
+                    std::string value = feature->getString(attribute);
+                    std::string replaceText = Stringify() << "{" << attribute << "}";
+                    osgEarth::replaceIn(result, replaceText, value);
+                }
+            }
+
+            if (result.find("{") != std::string::npos || result.find("}") != std::string::npos)
+            {
+                OE_INFO << LC << "Failed to replace attributes in template " << expression << std::endl;
+                result = "";
             }
             return result;
         }
 
-        void renderMapboxText(BLContext& ctx, float x, float y, const std::string& text, const TextSymbol* textSymbol, MapboxGLGlyphManager* glyphManager)
+        void renderMapboxText(BLContext& ctx, float x, float y, const std::string& text, const TextSymbol* textSymbol, MapboxGLGlyphManager* glyphManager, float textScale, FeatureRasterizer::SymbolBoundingBoxes& symbolBounds)
         {
             if (!glyphManager)
             {
                 return;
             }
 
-            float resolutionAdjust = 1.5f; // Maybe a scale based on the tilesize?  Probably based on multiple of 256?
-            float fontSize = textSymbol->size()->eval() * resolutionAdjust;
+#if 0
+            // Draw the label position
+            ctx.setFillStyle(BLRgba(0.0, 1.0, 0.0, 1.0));
+            ctx.fillCircle(x, y, 4);
+#endif
+
+            float fontSize = textSymbol->size()->eval() * textScale;
 
             const float ONE_EM = 24.0;
             float scale = fontSize / ONE_EM;
             float baselineOffset = 7.0f;
+            float GLYPH_PADDING = 3.0f;
 
             // Collect a list of glyphs for the text
             std::vector< osg::ref_ptr< MapboxGLGlyphManager::Glyph > > textGlyphs;
@@ -344,15 +361,33 @@ namespace osgEarth {
             float lineWidth = 0.0f;
             float lineHeight = 0.0f;
 
+            osg::BoundingBox bounds;
+
             // Compute the line width and line height
             for (auto& g : textGlyphs)
             {
                 if (g.valid())
                 {
-                    lineWidth += g->advance * scale;
-                    lineHeight += std::max(lineHeight, g->height * scale);
+                    float minX = cursorX + g->left * scale;
+                    float minY = cursorY - g->top * scale;
+                    float maxX = minX + g->width * scale;
+                    float maxY = minY + g->height * scale;
+                    bounds.expandBy(minX, minY, 0.0f);
+                    bounds.expandBy(maxX, minY, 0.0f);
+                    bounds.expandBy(maxX, maxY, 0.0f);
+                    bounds.expandBy(minX, maxY, 0.0f);
+                    cursorX += g->advance * scale;
+                    //ctx.blitImage(BLPoint((double)g->left, (double)(-g->top)), sprite, glyphRect);
+                    //lineWidth += g->advance * scale;
+                    //lineHeight = std::max(lineHeight, (g->height) * scale);
                 }
             }
+
+            lineWidth = bounds.xMax() - bounds.xMin();
+            lineHeight = bounds.yMax() - bounds.yMin();
+
+            cursorX = x;
+            cursorY = y;
 
             // Adjust the cursor based on the alignment
             auto alignment = textSymbol->alignment().get();
@@ -394,6 +429,20 @@ namespace osgEarth {
                 break;
             }            
 
+            float offsetX = x - cursorX;
+            float offsetY = y - cursorY;
+            bounds.xMin() -= offsetX;
+            bounds.yMin() -= offsetY;
+            bounds.xMax() -= offsetX;
+            bounds.yMax() -= offsetY;
+
+            // Don't draw the text if it intersects an existing label.
+            bool intersects = false;
+            if (symbolBounds.intersects2d(bounds))
+            {
+                return;             
+            }
+
             // Render each glyph
             for (unsigned int index = 0; index < textGlyphs.size(); ++index)
             {
@@ -405,14 +454,14 @@ namespace osgEarth {
                 }
 
                 //Write each glyph into the output image.
-                unsigned glyphWidth = g->width + 6;
-                unsigned glyphHeight = g->height + 6;
+                unsigned glyphWidth = g->width + GLYPH_PADDING*2.0;
+                unsigned glyphHeight = g->height + GLYPH_PADDING * 2.0;
 
                 if (g->bitmap.size() > 0)
                 {
                     auto textColor = textSymbol->fill()->color();
 
-                    unsigned int numPixels = (g->width + 6) * (g->height + 6);
+                    unsigned int numPixels = glyphWidth * glyphHeight;
 
                     unsigned char* glyphData = new unsigned char[g->bitmap.size() * 4]{ 0u };
 
@@ -432,14 +481,21 @@ namespace osgEarth {
                     }
 
                     BLImage sprite;
-                    sprite.createFromData(g->width + 6, g->height + 6, BL_FORMAT_PRGB32, glyphData, (g->width + 6) * 4);
+                    sprite.createFromData(glyphWidth, glyphHeight, BL_FORMAT_PRGB32, glyphData, glyphWidth * 4);
 
-                    BLRectI glyphRect(0.0, 0.0, (double)(g->width + 6), (double)(g->height + 6));
+                    BLRectI glyphRect(0.0, 0.0, (double)glyphWidth, (double)glyphHeight);
 
                     ctx.translate(cursorX, cursorY);
                     ctx.scale(scale);
-                    ctx.blitImage(BLPoint((double)g->left, (double)(-g->top)), sprite, glyphRect);
+                    ctx.blitImage(BLPoint((double)g->left - GLYPH_PADDING, (double)(-g->top) - GLYPH_PADDING), sprite, glyphRect);
+                    //ctx.blitImage(BLPoint(0, 0), sprite, glyphRect);
                     ctx.resetMatrix();
+
+#if 0
+                    // Draw the text bounding box
+                    ctx.setStrokeStyle(BLRgba(1.0, 0.0, 0.0, 1.0));
+                    ctx.strokeBox(BLBoxI(bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
+#endif
 
                     delete[] glyphData;
                 }
@@ -447,6 +503,8 @@ namespace osgEarth {
                 // Advance the cursor
                 cursorX += (float)g->advance * scale;
             }
+
+            symbolBounds._bounds.push_back(bounds);
         }
 
         void rasterizeSymbols(
@@ -456,7 +514,9 @@ namespace osgEarth {
             const SkinSymbol* skinSymbol,
             RenderFrame& frame,
             BLContext& ctx,
-            MapboxGLGlyphManager* glyphManager)
+            MapboxGLGlyphManager* glyphManager,
+            float scale,
+            FeatureRasterizer::SymbolBoundingBoxes& symbolBounds)
         {
             OE_HARD_ASSERT(feature != nullptr);
 
@@ -513,6 +573,7 @@ namespace osgEarth {
                                         y = ctx.targetHeight() - y;
 
                                         ctx.translate(x, y);
+                                        ctx.scale(scale);
                                         ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
                                         ctx.resetMatrix();
                                     }
@@ -527,7 +588,7 @@ namespace osgEarth {
                 NumericExpression fontSizeExpression = textSymbol->size().get();
                 std::string fontSizeText = templateReplace(feature, fontSizeExpression.expr());
 
-                float fontSize = as<float>(fontSizeText, 12);//feature->eval(fontSizeExpression, session);
+                float fontSize = as<float>(fontSizeText, 12) * scale;//feature->eval(fontSizeExpression, session);
                 font.createFromFace(getOrCreateFontFace(), fontSize);
                 StringExpression expression = textSymbol->content().get();
                 //std::string text = feature->eval(expression, session);
@@ -545,7 +606,7 @@ namespace osgEarth {
                             if (glyphManager)
                             {
                                 // Use the mapboxgl font to render the text.
-                                renderMapboxText(ctx, x, y, text, textSymbol, glyphManager);
+                                renderMapboxText(ctx, x, y, text, textSymbol, glyphManager, scale, symbolBounds);
                             }
                             else
                             {
@@ -621,6 +682,16 @@ MapboxGLGlyphManager* FeatureRasterizer::getGlyphManager() const
 void FeatureRasterizer::setGlyphManager(MapboxGLGlyphManager* glyphManager)
 {
     _glyphManager = glyphManager;
+}
+
+float FeatureRasterizer::getPixelScale() const
+{
+    return _pixelScale;
+}
+
+void FeatureRasterizer::setPixelScale(float pixelScale)
+{
+    _pixelScale = pixelScale;
 }
 
 void
@@ -729,13 +800,25 @@ FeatureRasterizer::render_blend2d(
     }
 
     if (masterText || masterSkin)
-    {       
+    {   
+        // Sort the features based their location.  We do this to ensure that features collected in a metatiling
+        // fashion will always be rendered in the same order when rendered in multiple neighboring tiles
+        // so the decluttering algorithm will work consistently across tiles.
+        FeatureList sortedFeatures(features);
+        sortedFeatures.sort([](const osg::ref_ptr< Feature >& a, const osg::ref_ptr< Feature >& b) {
+            auto centerA = a->getGeometry()->getBounds().center();
+            auto centerB = b->getGeometry()->getBounds().center();
+            if (centerA.x() < centerB.x()) return true;
+            if (centerA.x() > centerB.x()) return false;
+            return centerA.y() < centerB.y();
+        });
+
         // Rasterize the symbols:
-        for (const auto& feature : features)
+        for (const auto& feature : sortedFeatures)
         {
             if (feature->getGeometry())
             {
-                rasterizeSymbols(feature.get(), sheet, masterText, masterSkin, frame, ctx, _glyphManager.get());
+                rasterizeSymbols(feature.get(), sheet, masterText, masterSkin, frame, ctx, _glyphManager.get(), getPixelScale(), _symbolBoundingBoxes);
             }
         }
     }

@@ -246,30 +246,23 @@ namespace osgEarth { namespace MVT
                     currentRing->push_back(geoX, geoY, 0);
                 }
                 else if (cmd == (SEG_CLOSE & ((1 << cmd_bits) - 1)))
-                {
-                    // The orientation is the opposite of what we want for features.  clockwise means exterior ring, counter clockwise means interior
+                {                    
+                    double area = currentRing->getSignedArea2D();
 
-                    // Figure out what to do with the ring based on the orientation of the ring
-                    Geometry::Orientation orientation = currentRing->getOrientation();
                     // Close the ring.
                     currentRing->close();
 
-                    // Clockwise means exterior ring.  Start a new polygon and add the ring.
-                    if (orientation == Geometry::ORIENTATION_CW)
+                    // New polygon
+                    if (area > 0)
                     {
-                        // osgearth orientations are reversed from mvt
-                        currentRing->rewind(Geometry::ORIENTATION_CCW);
-
                         currentPolygon = new osgEarth::Polygon(&currentRing->asVector());
                         polygons.push_back(currentPolygon.get());
                     }
-                    else if (orientation == Geometry::ORIENTATION_CCW)
-                    // Counter clockwise means a hole, add it to the existing polygon.
+                    // Hole
+                    else if (area < 0)
                     {
                         if (currentPolygon.valid())
                         {
-                            // osgearth orientations are reversed from mvt
-                            currentRing->rewind(Geometry::ORIENTATION_CW);
                             currentPolygon->getHoles().push_back( currentRing );
                         }
                         else

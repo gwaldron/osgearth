@@ -795,17 +795,18 @@ Ring::isOpen() const
 double
 Ring::getSignedArea2D() const
 {
+    // Computes area based on the surveyors formula
     const_cast<Ring*>(this)->open();
 
-    double sum = 0.0;
-
-    for( unsigned i=0; i<size(); ++i )
+    unsigned int n = size();
+    double area = 0.0;
+    int j = n - 1;
+    for (int i = 0; i < n; i++)
     {
-        const osg::Vec3d& p0 = (*this)[0];
-        const osg::Vec3d& p1 = i+1 < size() ? (*this)[i+1] : (*this)[0];
-        sum += p0.x()*p1.y() - p1.x()*p0.y();
+        area += ((*this)[j].x() + (*this)[i].x()) * ((*this)[j].y() - (*this)[i].y());
+        j = i;
     }
-    return .5*sum;
+    return area / 2.0;
 }
 
 double

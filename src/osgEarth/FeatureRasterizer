@@ -45,25 +45,50 @@ namespace osgEarth
             MapboxGLGlyphManager* getGlyphManager() const;
             void setGlyphManager(MapboxGLGlyphManager* glyphManager);
 
+            //! A scaling factor that adjusts symbols to the desired pixel size.  Mostly useful for mapbox layers.
+            float getPixelScale() const;
+            void setPixelScale(float pixelScale);
+
             void render(
                 const FeatureList& features,
                 const Style& style,
                 const FeatureProfile* profile =nullptr,
                 const StyleSheet* sheet =nullptr);
 
-            GeoImage finalize();            
+            GeoImage finalize();        
+
+            struct SymbolBoundingBoxes
+            {
+                bool intersects2d(const osg::BoundingBox& bb)
+                {
+                    for (auto& b : _bounds)
+                    {
+                        if (osg::maximum(b.xMin(), bb.xMin()) <= osg::minimum(b.xMax(), bb.xMax()) &&
+                            osg::maximum(b.yMin(), bb.yMin()) <= osg::minimum(b.yMax(), bb.yMax()))
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                std::vector< osg::BoundingBox > _bounds;
+            };
 
         private:
             GeoExtent _extent;
             osg::ref_ptr< osg::Image > _image;
             osg::ref_ptr< MapboxGLGlyphManager > _glyphManager;
+            float _pixelScale = 1.0f;
             
             enum RenderFormat {
                 RF_BGRA,
                 RF_ABGR
             };
             RenderFormat _implPixelFormat;
-            bool _inverted;
+            bool _inverted;            
+
+            SymbolBoundingBoxes _symbolBoundingBoxes;
+
 
             void render_blend2d(
                 const FeatureList& features,

@@ -85,9 +85,6 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 // from: Splat.util.glsl
 void oe_splat_getLodBlend(in float range, out float lod0, out float rangeOuter, out float rangeInner, out float clampedRange);
 
-// from terrain SDK:
-vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD);
-
 // from the terrain engine:
 in vec4 oe_layer_tilec;                     // unit tile coords
 
@@ -107,6 +104,8 @@ uniform int oe_splat_scaleOffsetInt;
 
 uniform float oe_splat_detailRange;
 uniform float oe_splat_noiseScale;
+
+uniform vec4 oe_tile_key_u;
 
 #ifdef OE_SPLAT_EDIT_MODE
 uniform float oe_splat_brightness;
@@ -349,6 +348,23 @@ vec4 oe_splat_getNoise(in vec2 tc)
 #endif // SPLAT_GPU_NOISE
 
 
+// cannot use the SDK version because it is VS only
+vec2 oe_scaleToRefLOD(in vec2 tc, in float refLOD)
+{
+    float dL = oe_tile_key_u.z - refLOD;
+    float factor = exp2(dL);
+    float invFactor = 1.0 / factor;
+    vec2 result = tc * vec2(invFactor);
+
+    vec2 a = floor(oe_tile_key_u.xy * invFactor);
+    vec2 b = a * factor;
+    vec2 c = b + factor;
+
+    float m = floor(clamp(factor, 0.0, 1.0)); // if factor>=1.0
+    result += m * (oe_tile_key_u.xy - b) / (c - b);
+
+    return result;
+}
 
 //............................................................................
 // Simplified entry point with does no filtering or range blending. (much faster.)
@@ -356,7 +372,7 @@ vec4 oe_splat_getNoise(in vec2 tc)
 void oe_splat_simple(inout vec4 color)
 {
     float noiseLOD = floor(oe_splat_noiseScale);
-    vec2 noiseCoords = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, noiseLOD);
+    vec2 noiseCoords = oe_scaleToRefLOD(oe_layer_tilec.st, noiseLOD);
 
     oe_SplatEnv env;
     env.range = oe_splat_range;
@@ -367,7 +383,7 @@ void oe_splat_simple(inout vec4 color)
     float lod0;
     float rangeOuter, rangeInner;
     oe_splat_getLodBlend(oe_splat_range, lod0, rangeOuter, rangeInner, env.range);
-    vec2 tc = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, lod0 + float(oe_splat_scaleOffsetInt));
+    vec2 tc = oe_scaleToRefLOD(oe_layer_tilec.st, lod0 + float(oe_splat_scaleOffsetInt));
 
 #ifdef OE_SPLAT_USE_MATERIALS
     vec4 material;
@@ -391,7 +407,7 @@ void oe_splat_complex(inout vec4 color)
 {
     // Noise coords.
     float noiseLOD = floor(oe_splat_noiseScale);
-    vec2 noiseCoords = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, noiseLOD);
+    vec2 noiseCoords = oe_scaleToRefLOD(oe_layer_tilec.st, noiseLOD);
 
     oe_SplatEnv env;
     env.range = oe_splat_range;
@@ -412,11 +428,11 @@ void oe_splat_complex(inout vec4 color)
     vec4 texel0, texel1;
     vec4 material0, material1;
 
-    vec2 tc0 = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, lod0 + scaleOffset);
+    vec2 tc0 = oe_scaleToRefLOD(oe_layer_tilec.st, lod0 + scaleOffset);
     env.lod = lod0;
     oe_splat_bilinear(tc0, env, texel0, material0);
     
-    vec2 tc1 = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, lod0 + 1.0 + scaleOffset);
+    vec2 tc1 = oe_scaleToRefLOD(oe_layer_tilec.st, lod0 + 1.0 + scaleOffset);
     env.lod = lod0+1.0;
     oe_splat_bilinear(tc1, env, texel1, material1);
 

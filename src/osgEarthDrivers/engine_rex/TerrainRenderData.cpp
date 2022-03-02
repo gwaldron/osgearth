@@ -53,12 +53,12 @@ TerrainRenderData::reset(
     const RenderBindings& bindings,
     unsigned frameNum,
     PersistentData& persistent,
-    bool useGL4Rendering,
+    bool useNVGL,
     osgUtil::CullVisitor* cv,
     EngineContext* context)
 {
     _bindings = &bindings;
-    _useGL4Rendering = useGL4Rendering;
+    _useNVGL = useNVGL;
     _persistent = &persistent;
     _context = context;
 
@@ -135,14 +135,28 @@ LayerDrawable*
 TerrainRenderData::addLayerDrawable(
     const Layer* layer)
 {
-    auto& drawable = _persistent->_drawables[layer];
+    LayerDrawable* drawable = nullptr;
+    bool isNew = false;
 
-    if (!drawable.valid())
+    if (_useNVGL)
     {
-        drawable = new LayerDrawable();
-        drawable->_useIndirectRendering = _useGL4Rendering;
-        drawable->_context = _context;
+        osg::ref_ptr<LayerDrawable>& obj = _persistent->_drawables[layer];
+        if (!obj.valid())
+        {
+            obj = new LayerDrawableNVGL();
+            isNew = true;
+        }
+        drawable = obj.get();
+    }
+    else
+    {
+        drawable = new LayerDrawableGL3();
+        isNew = true;
+    }
 
+    if (isNew)
+    {
+        drawable->_context = _context;
         drawable->_layer = layer;
         drawable->_visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
         drawable->_imageLayer = dynamic_cast<const ImageLayer*>(layer);
@@ -159,13 +173,10 @@ TerrainRenderData::addLayerDrawable(
     // reset state:
     drawable->_tiles.clear();
     drawable->_clearOsgState = false;
-
+    drawable->_drawState = _drawState;
+    drawable->dirtyBound();
     drawable->_drawOrder = _layerList.size();
     _layerList.push_back(drawable);
-
-    drawable->_drawState = _drawState;
-
-    drawable->dirtyBound();
     
     if (layer)
     {
@@ -176,5 +187,5 @@ TerrainRenderData::addLayerDrawable(
         _layersByUID[-1] = drawable;
     }
 
-    return drawable.get();
+    return drawable;
 }

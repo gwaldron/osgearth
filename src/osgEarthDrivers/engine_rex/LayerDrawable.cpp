@@ -47,24 +47,15 @@ _visibleLayer(0L),
 _imageLayer(0L),
 _patchLayer(0L),
 _clearOsgState(false),
-_draw(true),
-_useIndirectRendering(false)
+_draw(true)
 {
     // Since we refresh the render state in the CULL traversal, we must
     // set the variance to dynamic to prevent overlap with DRAW
     //TODO: Check this.
     setDataVariance(DYNAMIC);
-
     setUseDisplayList(false);
     setUseVertexBufferObjects(true);
     _tiles.reserve(128);
-
-    // set up an arena with "auto release" which means th textures
-    // will automatically get released when all references drop.
-    // TODO: move this to the engine level and share??
-    //_textures = new TextureArena();
-    //_textures->setBindingPoint(29);
-    //_textures->setAutoRelease(true);
 }
 
 LayerDrawable::~LayerDrawable()
@@ -89,76 +80,25 @@ LayerDrawable::accept(osg::PrimitiveIndexFunctor& functor) const
         tile.accept(functor);
 }
 
-namespace
+//.........................................................
+
+LayerDrawableGL3::LayerDrawableGL3() :
+    LayerDrawable()
 {
-    // Hack State so we can dirty the texture attrs without dirtying the other 
-    // attributes (as dirtyAllAttributes() would do).
-    struct StateEx : public osg::State
-    {
-        void dirtyAllTextureAttributes()
-        {
-            for (auto& attr_map : _textureAttributeMapList)
-            {
-                for (auto& attr_entry : attr_map)
-                {
-                    attr_entry.second.last_applied_attribute = 0;
-                    attr_entry.second.changed = true;
-                }
-            }
-        }
-    };
+    //nop
+}
+
+LayerDrawableGL3::~LayerDrawableGL3()
+{
+    //nop
 }
 
 void
-LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
+LayerDrawableGL3::drawImplementation(osg::RenderInfo& ri) const
 {
     const char* zone = _layer ? _layer->getName().c_str() : className();
-
-    OE_PROFILING_ZONE;
-    OE_PROFILING_ZONE_TEXT(zone);
     OE_GL_ZONE_NAMED(zone);
 
-    if (_useIndirectRendering)
-    {
-        drawImplementationIndirect(ri);
-    }
-    else
-    {
-        drawImplementationDirect(ri);
-    }
-
-    // If set, dirty all OSG state to prevent any leakage - this is sometimes
-    // necessary when doing custom OpenGL within a Drawable.
-    if (_clearOsgState)
-    {
-        // Dirty the texture attributes so OSG can properly reset them
-        // NOTE: cannot call state.dirtyAllAttributes, because that would invalidate
-        // positional state like light sources!
-        reinterpret_cast<StateEx*>(ri.getState())->dirtyAllTextureAttributes();
-        
-        // make sure any VAO is unbound before unbinind the VBO/EBOs,
-        // as failing to do so will remove the VBO/EBO from the VAO
-        if (ri.getState()->useVertexArrayObject(_useVertexArrayObject))
-        {
-            ri.getState()->unbindVertexArrayObject();
-        }
-
-        // unbind local buffers when finished.
-        // Not necessary if using VAOs?
-        osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
-        ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
-        ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
-
-        // gw: no need to do this, in fact it will cause positional attributes
-        // (light clip planes and lights) to immediately be reapplied under the
-        // current MVM, which will by definition be wrong!)
-        //ri.getState()->apply();
-    }
-}
-
-void
-LayerDrawable::drawImplementationDirect(osg::RenderInfo& ri) const
-{
     if (_patchLayer && _patchLayer->getRenderer())
     {
         TileBatch batch(_drawState.get());
@@ -185,30 +125,26 @@ LayerDrawable::drawImplementationDirect(osg::RenderInfo& ri) const
             tile.draw(ri);
         }
     }
+
+    LayerDrawable::drawImplementation(ri);
 }
 
-namespace
-{
-    // template to append one array onto another
-    template<typename T> inline void append(T* dest, const T* src)
-    {
-        const T* src_typed = static_cast<const T*>(src);
-        for (unsigned i = 0; i < src->getNumElements(); ++i)
-            dest->push_back((*src)[i]);
-    }
+//.........................................................
 
-    template<typename T> inline void copy(T* dest, const osg::Array* src, unsigned offset)
-    {
-        const T* src_typed = static_cast<const T*>(src);
-        std::copy(src_typed->begin(), src_typed->end(), dest->begin() + offset);
-    }
+LayerDrawableNVGL::LayerDrawableNVGL() :
+    LayerDrawable()
+{
+    //nop
+}
+LayerDrawableNVGL::~LayerDrawableNVGL()
+{
+    //nop
 }
 
 void
-LayerDrawable::accept(osg::NodeVisitor& nv)
+LayerDrawableNVGL::accept(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.CULL_VISITOR &&
-        _useIndirectRendering)
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
         refreshRenderState();
     }
@@ -217,7 +153,7 @@ LayerDrawable::accept(osg::NodeVisitor& nv)
 }
 
 void
-LayerDrawable::refreshRenderState()
+LayerDrawableNVGL::refreshRenderState()
 {
     OE_PROFILING_ZONE;
 
@@ -353,13 +289,13 @@ LayerDrawable::refreshRenderState()
     }
 }
 
-LayerDrawable::GL4RenderState::GL4RenderState()
+LayerDrawableNVGL::GL4RenderState::GL4RenderState()
 {
     gcState.resize(64);
 }
 
 void
-LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
+LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
 {
     // Research on glMultiDrawElementsIndirectBindlessNV:
     // https://github.com/ychding11/HelloWorld/wiki/Modern-GPU-Driven-Rendering--%28How-to-draw-fast%29
@@ -563,10 +499,12 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
         _patchLayer->getRenderer()->draw(ri, batch);
     }
+
+    LayerDrawable::drawImplementation(ri);
 }
 
 void
-LayerDrawable::releaseGLObjects(osg::State* state) const
+LayerDrawableNVGL::releaseGLObjects(osg::State* state) const
 {
     GL4RenderState& cs = _rs;
     if (state)
@@ -582,14 +520,14 @@ LayerDrawable::releaseGLObjects(osg::State* state) const
         cs.gcState.setAllElementsTo(GCState());
     }
 
-    osg::Drawable::releaseGLObjects(state);
+    LayerDrawable::releaseGLObjects(state);
 }
 
 void
-LayerDrawable::resizeGLObjectBuffers(unsigned size)
+LayerDrawableNVGL::resizeGLObjectBuffers(unsigned size)
 {
     if (_rs.gcState.size() < size)
         _rs.gcState.resize(size);
 
-    osg::Drawable::resizeGLObjectBuffers(size);
+    LayerDrawable::resizeGLObjectBuffers(size);
 }

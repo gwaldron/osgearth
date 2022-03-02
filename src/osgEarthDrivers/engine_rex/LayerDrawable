@@ -82,15 +82,11 @@ namespace osgEarth { namespace REX
         // Whether to render this layer.
         bool _draw;
 
-        // Whether to use indirect rendering, which requires GL 4.6.
-        bool _useIndirectRendering;
-
+        // shared context
         class EngineContext* _context;
 
     public: // osg::Drawable
         
-        void drawImplementation(osg::RenderInfo& ri) const override;
-
         // All LayerDrawables share the common terrain bounds.
         osg::BoundingSphere computeBound() const override { return _drawState->_bs; }
         osg::BoundingBox computeBoundingBox() const override { return _drawState->_box; }
@@ -98,14 +94,63 @@ namespace osgEarth { namespace REX
         void accept(osg::PrimitiveFunctor& functor) const override;
         bool supports(const osg::PrimitiveIndexFunctor&) const override { return true; }
         void accept(osg::PrimitiveIndexFunctor&) const override;
-        void releaseGLObjects(osg::State*) const override;
-        void resizeGLObjectBuffers(unsigned size) override;
-        void accept(osg::NodeVisitor& nv) override;
+
+        virtual void accept(osg::NodeVisitor& nv) override {
+            osg::Drawable::accept(nv);
+        }
 
     protected:
 
         // overriden to prevent OSG from releasing GL objects on an attached stateset.
         virtual ~LayerDrawable();
+
+    private:
+    };
+
+
+    /**
+     * Drawable for single "Layer" i.e. rendering pass.
+     * It is important that LayerDrawables be rendered in the order in which
+     * they appear. Since all LayerDrawables share a common bounds, this
+     * should happen automatically, but let's keep an eye out for trouble.
+     */
+    class LayerDrawableGL3 : public LayerDrawable
+    {
+    public:
+        LayerDrawableGL3();
+
+    public: // osg::Drawable
+
+        void drawImplementation(osg::RenderInfo& ri) const override;
+
+    protected:
+
+        // overriden to prevent OSG from releasing GL objects on an attached stateset.
+        virtual ~LayerDrawableGL3();
+    };
+
+
+    /**
+     * Drawable for single "Layer" i.e. rendering pass.
+     * It is important that LayerDrawables be rendered in the order in which
+     * they appear. Since all LayerDrawables share a common bounds, this
+     * should happen automatically, but let's keep an eye out for trouble.
+     */
+    class LayerDrawableNVGL : public LayerDrawable
+    {
+    public:
+        LayerDrawableNVGL();
+
+    public: // osg::Drawable
+
+        virtual void drawImplementation(osg::RenderInfo& ri) const override;
+        virtual void releaseGLObjects(osg::State*) const override;
+        virtual void resizeGLObjectBuffers(unsigned size) override;
+        virtual void accept(osg::NodeVisitor& nv) override;
+
+    protected:
+
+        virtual ~LayerDrawableNVGL();
 
     private:
 
@@ -138,7 +183,7 @@ namespace osgEarth { namespace REX
             GL4RenderState();
 
             bool dirty;
-           
+
             DrawTileCommands tiles;
             std::vector<GL4Tile> tilebuf;
 

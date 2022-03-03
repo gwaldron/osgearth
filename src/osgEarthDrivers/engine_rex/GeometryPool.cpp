@@ -582,7 +582,7 @@ SharedGeometry::~SharedGeometry()
 }
 
 const DrawElementsIndirectBindlessCommandNV&
-SharedGeometry::getOrCreateGL4Command(osg::State& state)
+SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
 {
     bool dirty = false;
 

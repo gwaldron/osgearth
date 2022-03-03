@@ -36,7 +36,7 @@ namespace osgEarth { namespace REX
     using namespace osgEarth::Util;
 
 
-    // **** GL4 rendering support ****
+    // **** NVGL rendering support ****
 
 #define MAX_NUM_SHARED_SAMPLERS 8
 

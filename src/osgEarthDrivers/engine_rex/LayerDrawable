@@ -178,9 +178,9 @@ namespace osgEarth { namespace REX
                 (GLuint, GLint, GLenum, GLboolean, GLuint);
         };
 
-        struct GL4RenderState
+        struct RenderState
         {
-            GL4RenderState();
+            RenderState();
 
             bool dirty;
 
@@ -190,13 +190,9 @@ namespace osgEarth { namespace REX
             std::vector<DrawElementsIndirectBindlessCommandNV> commands;
             osg::buffered_object<GCState> gcState;
         };
-        mutable GL4RenderState _rs;
+        mutable RenderState _rs;
 
         void refreshRenderState();
-
-        void drawImplementationDirect(osg::RenderInfo& ri) const;
-
-        void drawImplementationIndirect(osg::RenderInfo& ri) const;
     };
 
 

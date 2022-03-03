@@ -335,13 +335,13 @@ MapNodeHelper::loadWithoutControls(
         myReadOptions->setOptionString(str);
     }
 
-    // GL4 rendering?
-    if (args.read("--gl4") || args.read("--use-gl4"))
+    // NVGL4 rendering?
+    if (args.read("--nvgl") || args.read("--gl4") || args.read("--use-gl4"))
     {
         if (!myReadOptions.valid())
             myReadOptions = new osgDB::Options();
 
-        myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_GL4");
+        myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_NVGL");
     }
 
     // read in the Earth file:
@@ -472,10 +472,10 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
         myReadOptions->setOptionString(str);
     }
 
-    // GL4 rendering?
-    if (args.read("--gl4") || args.read("--use-gl4"))
+    // NVGL rendering?
+    if (args.read("--nvgl") || args.read("--gl4") || args.read("--use-gl4"))
     {
-        myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_GL4");
+        myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_NVGL");
     }
 
     // read in the Earth file:

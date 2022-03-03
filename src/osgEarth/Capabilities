@@ -158,9 +158,9 @@ namespace osgEarth
         /** whether OpenGL supports vertex array objects */
         bool supportsVertexArrayObjects() const { return _supportsVertexArrayObjects; }
         
-        //! Whether the NVIDIA unified memory extensions, including
+        //! Whether the NVIDIA GL4 extensions for unified memory, including
         //! bindless buffers and draw commands, are available
-        bool supportsUnifiedNV() const { return _supportsUnifiedNV; }
+        bool supportsNVGL() const { return _supportsNVGL; }
 
     protected:
         Capabilities();
@@ -208,7 +208,7 @@ namespace osgEarth
         int  _maxTextureBufferSize;
         bool _isCoreProfile;
         bool _supportsVertexArrayObjects;
-        bool _supportsUnifiedNV;
+        bool _supportsNVGL;
 
     public:
         friend class Registry;

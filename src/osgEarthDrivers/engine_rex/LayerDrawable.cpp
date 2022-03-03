@@ -289,7 +289,7 @@ LayerDrawableNVGL::refreshRenderState()
     }
 }
 
-LayerDrawableNVGL::GL4RenderState::GL4RenderState()
+LayerDrawableNVGL::RenderState::RenderState()
 {
     gcState.resize(64);
 }
@@ -441,7 +441,7 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
             for (auto& tile : _rs.tiles)
             {
                 SharedGeometry* geom = tile._geom.get();
-                _rs.commands.push_back(geom->getOrCreateGL4Command(state));
+                _rs.commands.push_back(geom->getOrCreateNVGLCommand(state));
             }
 
             gs.commands->uploadData(_rs.commands);
@@ -506,7 +506,7 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
 void
 LayerDrawableNVGL::releaseGLObjects(osg::State* state) const
 {
-    GL4RenderState& cs = _rs;
+    RenderState& cs = _rs;
     if (state)
     {
         GCState& gs = cs.gcState[state->getContextID()];

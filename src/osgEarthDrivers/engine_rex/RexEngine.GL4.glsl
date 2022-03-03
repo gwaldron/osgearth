@@ -30,10 +30,10 @@ struct oe_rex_Tile {
 layout(binding = 29, std430) readonly buffer RexTextureArena {
     uint64_t oe_terrain_tex[];
 };
-layout(binding = 30, std430) readonly buffer GL4SharedDataBuffer {
+layout(binding = 30, std430) readonly buffer RexSharedDataBuffer {
     oe_rex_Shared oe_shared;
 };
-layout(binding = 31, std430) readonly buffer TileBuffer {
+layout(binding = 31, std430) readonly buffer RexTileBuffer {
     oe_rex_Tile oe_tile[];
 };
 

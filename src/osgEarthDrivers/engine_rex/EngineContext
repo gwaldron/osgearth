@@ -87,7 +87,7 @@ namespace osgEarth { namespace REX
 
         const FrameClock* getClock() const { return _clock; }
 
-        bool useGL4() const { return _useGL4; }
+        bool useNVGL() const { return _useNVGL; }
 
         TextureArena* textures() const { return _textures.get(); }
 
@@ -112,7 +112,7 @@ namespace osgEarth { namespace REX
         osg::ref_ptr<ModifyBoundingBoxCallback> _bboxCB;
         const FrameClock*                     _clock;
         osg::ref_ptr<TextureArena>            _textures;
-        bool _useGL4;
+        bool _useNVGL;
     };
 
 } } // namespace osgEarth::Drivers::RexTerrainEngine

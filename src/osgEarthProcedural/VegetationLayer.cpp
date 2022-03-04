@@ -222,7 +222,7 @@ VegetationLayer::openImplementation()
 {
     // GL version requirement
     if (Capabilities::get().getGLSLVersion() < 4.6f ||
-        Capabilities::get().supportsUnifiedNV() == false)
+        Capabilities::get().supportsNVGL() == false)
     {
         return Status(Status::ResourceUnavailable, "Requires NVIDIA GL 4.6");
     }

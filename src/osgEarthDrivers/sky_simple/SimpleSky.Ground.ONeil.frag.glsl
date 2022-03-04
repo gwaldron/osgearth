@@ -18,8 +18,7 @@ in vec3 atmos_atten;       // atmospheric lighting attenuation factor
 in vec3 atmos_up;          // earth up vector at fragment (in view coords)
 in float atmos_space;      // camera altitude (0=ground, 1=atmos outer radius)
 in vec3 atmos_vert;
-
-vec3 vp_Normal; // surface normal (from osgEarth)
+in vec3 vp_Normal; // surface normal (from osgEarth)
 
 // frag stage global PBR parameters
 #ifdef OE_USE_PBR

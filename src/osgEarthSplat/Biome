@@ -16,12 +16,11 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_PROCEDURAL_BIOME
-#define OSGEARTH_PROCEDURAL_BIOME 1
+#ifndef OSGEARTH_SPLAT_BIOME
+#define OSGEARTH_SPLAT_BIOME 1
 
 #include "Export"
 #include <osgEarth/Config>
-//#include <osgEarth/BillboardSymbol>
 #include <osgEarth/URI>
 #include <osgEarth/Units>
 #include <osgEarth/GeoData>
@@ -179,4 +178,5 @@ namespace osgEarth { namespace Splat
     
 } } // namespace osgEarth::Splat
 
-#endif
+#endif // OSGEARTH_SPLAT_BIOME
+

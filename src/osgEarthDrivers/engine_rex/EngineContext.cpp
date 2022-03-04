@@ -56,9 +56,9 @@ _clock(clock)
     _expirationRange2 = _options.minExpiryRange().get() * _options.minExpiryRange().get();
     _bboxCB = new ModifyBoundingBoxCallback(this);
 
-    _useGL4 =
-        (Capabilities::get().supportsUnifiedNV()) &&
-        (options.useGL4() == true);
+    _useNVGL =
+        (Capabilities::get().supportsNVGL()) &&
+        (options.useNVGL() == true);
 
     _textures = new TextureArena();
     _textures->setBindingPoint(29); // TODO

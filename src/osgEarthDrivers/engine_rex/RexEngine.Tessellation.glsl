@@ -12,9 +12,11 @@ uniform float oe_terrain_tess_range;
 // temporary: use lifemap texture from earth file
 uniform sampler2D LIFEMAP_TEX;
 uniform mat4 LIFEMAP_MAT;
-vec4 oe_layer_tilec;
-vec4 vp_Vertex;
-vec3 vp_Normal;
+
+varying vec4 oe_layer_tilec;
+varying vec4 vp_Vertex;
+varying vec3 vp_Normal;
+
 void VP_LoadVertex(in int);
 float oe_terrain_getElevation();
 
@@ -107,8 +109,8 @@ vec4 VP_Interpolate3(vec4 a, vec4 b, vec4 c)
         dot(gl_TessCoord.xyz, vec3(a.w,b.w,c.w)));
 }
 
-vec3 oe_UpVectorView;
-vec3 vp_Normal;
+varying vec3 oe_UpVectorView;
+varying vec3 vp_Normal;
 
 void oe_rex_TES()
 {

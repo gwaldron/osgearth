@@ -6,8 +6,8 @@
 
 #pragma include Splat.GroundCover.Types.glsl
 
-vec3 vp_Normal;
-vec4 vp_Color;
+out vec3 vp_Normal;
+out vec4 vp_Color;
 
 struct oe_VertexSpec {
     //vec4 model;
@@ -83,8 +83,9 @@ uniform sampler2D oe_gc_noiseTex;
 
 // Stage globals
 vec3 oe_UpVectorView;
-vec4 vp_Color;
-vec3 vp_Normal;
+
+out vec4 vp_Color;
+out vec3 vp_Normal;
 out vec4 oe_layer_tilec;
 
 out vec3 oe_gc_texCoord; // Output tx coords
@@ -326,7 +327,7 @@ uniform float oe_gc_maxAlpha;
 uniform int oe_gc_isMultisampled;
 
 in vec3 oe_gc_texCoord;
-vec3 vp_Normal;
+in vec3 vp_Normal;
 flat in uint64_t oe_gc_texHandle;
 
 flat in uint64_t oe_gc_nmlHandle;

@@ -26,7 +26,7 @@ void oe_phong_vertex(inout vec4 VertexVIEW)
 #version $GLSL_VERSION_STR
 $GLSL_DEFAULT_PRECISION_FLOAT
 
-#pragma vp_name       Phong Lighting Vertex Stage
+#pragma vp_name       Phong Lighting Fragment Stage
 #pragma vp_entryPoint oe_phong_fragment
 #pragma vp_location   fragment_lighting
 
@@ -38,7 +38,7 @@ $GLSL_DEFAULT_PRECISION_FLOAT
 in vec3 oe_phong_vertexView3; 
 
 // stage global
-vec3 vp_Normal;
+in vec3 vp_Normal;
 
 // Parameters of each light:
 struct osg_LightSourceParameters 

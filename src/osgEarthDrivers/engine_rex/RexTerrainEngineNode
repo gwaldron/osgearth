@@ -199,10 +199,10 @@ namespace osgEarth { namespace REX
 
         void installColorFilters(VirtualProgram*);
 
-        bool useGL4() const {
+        bool useNVGL() const {
             return
-                _engineContext ? _engineContext->useGL4() :
-                _terrainOptions ? _terrainOptions->useGL4() == true :
+                _engineContext ? _engineContext->useNVGL() :
+                _terrainOptions ? _terrainOptions->useNVGL() == true :
                 false;
         }
     };

@@ -60,7 +60,7 @@ namespace osgEarth { namespace REX
             const RenderBindings& bindings,
             unsigned frameNum,
             PersistentData& pd,
-            bool useGL4Rendering,
+            bool useNVGL,
             osgUtil::CullVisitor* cv,
             EngineContext* context);
 
@@ -85,7 +85,7 @@ namespace osgEarth { namespace REX
         std::vector<LayerDrawable*> _layerList;
         const RenderBindings* _bindings;
         PatchLayerVector _patchLayers; // Layers of type RENDERTYPE_TERRAIN_PATCH
-        bool _useGL4Rendering;
+        bool _useNVGL;
         PersistentData* _persistent;
         EngineContext* _context;
     };

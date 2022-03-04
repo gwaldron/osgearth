@@ -762,6 +762,7 @@ MapBoxGLImageLayer::Options::getConfig() const
     conf.set("url", _url);
     conf.set("key", _key);
     conf.set("pixel_scale", _pixelScale);
+    conf.set("disable_text", _disableText);
     return conf;
 }
 
@@ -769,10 +770,12 @@ void
 MapBoxGLImageLayer::Options::fromConfig(const Config& conf)
 {
     pixelScale().setDefault(1.0);
+    disableText().setDefault(false);
 
     conf.get("url", url());
     conf.get("key", key());
     conf.get("pixel_scale", pixelScale());
+    conf.get("disable_text", disableText());
 }
 
 void

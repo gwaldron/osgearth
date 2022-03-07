@@ -289,7 +289,9 @@ namespace osgEarth
                 {
                     for (auto& gui : iter.second)
                     {
-                        gui->draw(ri);
+                        if (gui->isVisible())
+                            gui->draw(ri);
+
                         if (gui->visibilityChanged())
                             dirty = true;
                     }

@@ -132,7 +132,7 @@ namespace osgEarth
 
             void draw(osg::RenderInfo& ri) override
             {
-                if (!findNodeOrHide(_skyNode, ri))
+                if (!isVisible() || !findNodeOrHide(_skyNode, ri))
                     return;
 
                 if (_first)

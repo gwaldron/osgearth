@@ -112,17 +112,16 @@ void cull()
     float max_scale = max(xform[0][0], max(xform[1][1], xform[2][2]));
     float r = chonks[v].bs.w * max_scale;
 
-    // Trivially accept (at the highest LOD) anything whose bounding sphere
-    // intersects the near clip plane:
-    bool is_perspective = gl_ProjectionMatrix[3][3] < 0.01;
-    float near = gl_ProjectionMatrix[2][3] / (gl_ProjectionMatrix[2][2] - 1.0);
-    if (is_perspective && -(center_view.z + r) <= near)
+    // Trivially reject low-LOD instances that intersect the near clip plane:
+    if ((lod > 0) && (gl_ProjectionMatrix[3][3] < 0.01)) // is perspective camera
     {
-        if (lod > 0) { // reject all lower LODs
+        float near = gl_ProjectionMatrix[2][3] / (gl_ProjectionMatrix[2][2] - 1.0);
+        if (-(center_view.z + r) <= near)
+        {
             REJECT(REASON_NEARCLIP);
         }
     }
-    else
+
     {
         // find the clip-space MBR and intersect with the clip frustum:
         vec4 LL, UR, temp;
@@ -181,6 +180,9 @@ void cull()
         }
 #endif
     }
+
+    if (fade < 0.1)
+        return;
 
     // Pass! Set the visibility for this LOD:
     input_instances[i].visibility[lod] = fade;

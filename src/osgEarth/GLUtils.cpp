@@ -141,6 +141,21 @@ namespace
 bool GLUtils::_gldebugging = false;
 
 void
+GLUtils::useNVGL(bool value)
+{
+    bool oldValue = _useNVGL;
+
+    _useNVGL =
+        value == true &&
+        Capabilities::get().supportsNVGL();
+
+    if (_useNVGL)
+    {
+        OE_INFO << LC << "Using NVIDIA GL4 extensions" << std::endl;
+    }
+}
+
+void
 GLUtils::enableGLDebugging()
 {
     _gldebugging = true;

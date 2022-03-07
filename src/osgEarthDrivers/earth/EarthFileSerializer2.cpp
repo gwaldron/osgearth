@@ -22,6 +22,7 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarth/URI>
+#include <osgEarth/GLUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <stdio.h>
@@ -615,7 +616,7 @@ EarthFileSerializer2::deserialize(
         readOptions->getOptionString().find("OSGEARTH_USE_NVGL") != std::string::npos ||
         readOptions->getOptionString().find("OSGEARTH_USE_GL4") != std::string::npos))
     {
-        mapNodeOptions.terrain()->useNVGL() = true;
+        GLUtils::useNVGL(true);
     }
 
     // Create a map node.

@@ -77,7 +77,6 @@ TerrainCuller::reset(
         context->getRenderBindings(),
         frameNum,
         pd,
-        context->useNVGL(),
         _cv,
         _context);
 }

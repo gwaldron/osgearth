@@ -734,16 +734,34 @@ JobArena::runJobs()
 
             if (!_queue.empty() && !_done)
             {
-                // Quickly find the highest priority item in the "queue"
-                std::partial_sort(
-                    _queue.rbegin(), _queue.rbegin() + 1, _queue.rend(),
-                    [](const QueuedJob& lhs, const QueuedJob& rhs) {
-                        return lhs._job.getPriority() > rhs._job.getPriority();
-                    });
-
-                next = std::move(_queue.back());
+                // Find the highest priority item in the queue.
+                // Note: We could use std::partial_sort or std::nth_element,
+                // but benchmarking proves that a simple brute-force search
+                // is always the fastest.
+                // Also note: it is indeed possible for the results of 
+                // Job::getPriority() to change during the search. We don't care.
+                int index = -1;
+                float highest_priority = -FLT_MAX;
+                for (unsigned i = 0; i < _queue.size(); ++i)
+                {
+                    if (index < 0 || _queue[i]._job.getPriority() > highest_priority)
+                    {
+                        index = i;
+                        highest_priority = _queue[i]._job.getPriority();
+                    }
+                }
+                
+                next = std::move(_queue[index]);
                 have_next = true;
-                _queue.pop_back();
+                
+                // move the last element into the empty position:
+                if (index < _queue.size()-1)
+                {
+                    _queue[index] = std::move(_queue.back());
+                }
+
+                // and remove the last element.
+                _queue.erase(_queue.end() - 1);
             }
         }
 
@@ -842,15 +860,6 @@ void JobArena::stopThreads()
             }
         }
         _queue.clear();
-
-        //while (_queue.empty() == false)
-        //{
-        //    if (_queue.back()._groupsema != nullptr)
-        //    {
-        //        _queue.back()._groupsema->reset();
-        //    }
-        //    _queue.pop_back();
-        //}
 
         // wake up all threads so they can exit
         _block.notify_all();

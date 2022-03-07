@@ -433,8 +433,6 @@ namespace osgEarth
         osg::observer_ptr< const osgEarth::Map > _map;
         MapBoxGL::StyleSheet _styleSheet;
         osg::ref_ptr< MapboxGLGlyphManager > _glyphManager;
-
-        bool _disableText = false;
     };
 } // namespace osgEarth
 

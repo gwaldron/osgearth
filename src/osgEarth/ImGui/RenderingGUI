@@ -165,31 +165,39 @@ namespace osgEarth
                     }
                     if (_frameCounter++ % interval == 0)
                         _fps = 1000000 / (_time_accum / interval);
-                    ImGui::Text("FPS: %d", _fps);
 
-                    const osgViewer::ViewerBase::ThreadingModel models[] = {
-                        osgViewer::ViewerBase::SingleThreaded,
-                        osgViewer::ViewerBase::DrawThreadPerContext,
-                        osgViewer::ViewerBase::CullDrawThreadPerContext,
-                        osgViewer::ViewerBase::CullThreadPerCameraDrawThreadPerContext                    
-                    };
-                    const std::string modelNames[] = {
-                        "SingleThreaded",
-                        "DrawThreadPerContext",
-                        "CullDrawThreadPerContext",
-                        "CullThreadPerCameraDrawThreadPerContext"
-                    };
+                    if (ImGui::BeginTable("render", 2))
+                    {
+                        ImGui::TableNextColumn();
+                        ImGui::Text("FPS: %d", _fps);
 
-                    auto vb = view(ri)->getViewerBase();
-                    int tmi;
-                    for(tmi=0; tmi<4; ++tmi)
-                        if (models[tmi] == vb->getThreadingModel())
-                            break;
-                    if (ImGui::Button(modelNames[tmi].c_str())) {
-                        auto new_tm = models[(tmi + 1) % 4];
-                        vb->addUpdateOperation(new OneTimer([vb, new_tm]() {
-                            vb->setThreadingModel(new_tm);
-                            }));
+                        const osgViewer::ViewerBase::ThreadingModel models[] = {
+                            osgViewer::ViewerBase::SingleThreaded,
+                            osgViewer::ViewerBase::DrawThreadPerContext,
+                            osgViewer::ViewerBase::CullDrawThreadPerContext,
+                            osgViewer::ViewerBase::CullThreadPerCameraDrawThreadPerContext
+                        };
+                        const std::string modelNames[] = {
+                            "SingleThreaded",
+                            "DrawThreadPerContext",
+                            "CullDrawThreadPerContext",
+                            "CullThreadPerCameraDrawThreadPerContext"
+                        };
+
+                        auto vb = view(ri)->getViewerBase();
+                        int tmi;
+                        for (tmi = 0; tmi < 4; ++tmi)
+                            if (models[tmi] == vb->getThreadingModel())
+                                break;
+
+                        ImGui::TableNextColumn();
+                        if (ImGui::Button(modelNames[tmi].c_str())) {
+                            auto new_tm = models[(tmi + 1) % 4];
+                            vb->addUpdateOperation(new OneTimer([vb, new_tm]() {
+                                vb->setThreadingModel(new_tm);
+                                }));
+                        }
+                        ImGui::EndTable();
                     }
                     ImGui::Separator();
 
@@ -249,22 +257,31 @@ namespace osgEarth
                         auto globjects = glpool->objects();
 
                         ImGui::Text("Recycling: %u%%",
-                            int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));                        int avarice = glpool->getAvarice();
+                            int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
+                        int avarice = glpool->getAvarice();
                         ImGui::Text("Quick"); ImGui::SameLine();
                         if (ImGui::SliderInt("Relaxed", &avarice, 10, 0))
                             glpool->setAvarice(avarice);
 
                         ImGui::Separator();
 
-                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Memory: %u MB", glpool->totalBytes() / 1048576U);
+                        double glmem = (double)glpool->totalBytes() / 1048576.;
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Memory: %.1lf MB", glmem);
                         std::map<std::string, std::vector<unsigned>> counts;
                         for (auto& obj : globjects) {
                             counts[obj->label()].push_back(obj->size());
                         }
-                        for (auto& bo : counts) {
-                            unsigned total = 0;
-                            for (auto& c : bo.second) total += c;
-                            ImGui::Text("%s (%d) (%.1f MB)", bo.first.c_str(), bo.second.size(), (float)total / (float)1048576U);
+                        if (ImGui::BeginTable("globjects", 2))
+                        {
+                            for (auto& bo : counts) {
+                                unsigned total = 0;
+                                for (auto& c : bo.second) total += c;
+                                ImGui::TableNextColumn();
+                                ImGui::Text("%s", bo.first.c_str());
+                                ImGui::TableNextColumn();
+                                ImGui::Text("(%d) (%.1lf MB)", bo.second.size(), (double)total / (double)1048576.);
+                            }
+                            ImGui::EndTable();
                         }
 
                         ImGui::TreePop();

@@ -65,7 +65,8 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
-                    ImGui::Text("Mem PB: %u MB", (Memory::getProcessPrivateUsage() / 1048576U));
+                    double pb = (double)Memory::getProcessPrivateUsage() / 1048576.0;
+                    ImGui::Text("Mem PB: %.2lf MB", pb);
                     ImGui::SameLine();
                     ImGui::Text("  WS: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
 
@@ -76,19 +77,25 @@ namespace osgEarth
 
                     if (ImGui::TreeNodeEx("Job Arenas", ImGuiTreeNodeFlags_DefaultOpen))
                     {
+                        ImGui::BeginTable("arenas", 2);
                         const JobArena::Metrics& m = JobArena::metrics();
                         for (int i = 0; i <= m.maxArenaIndex; ++i)
                         {
                             if (m.arena(i).active)
                             {
-                                ImGui::Text("%s (%d) %d / %d // %d",
-                                    m.arena(i).arenaName.c_str(),
+                                ImGui::TableNextColumn();
+                                ImGui::Text("%s",
+                                    m.arena(i).arenaName.c_str());
+
+                                ImGui::TableNextColumn();
+                                ImGui::Text("(%d) %d / %d // %d",
                                     (int)m.arena(i).concurrency,
                                     (int)m.arena(i).numJobsRunning,
                                     (int)m.arena(i).numJobsPending,
                                     (int)m.arena(i).numJobsCanceled);
                             }
                         }
+                        ImGui::EndTable();
 
                         ImGui::Separator();
                         ImGui::Text("Total: %d", m.totalJobs());

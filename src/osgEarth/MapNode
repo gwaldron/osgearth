@@ -199,9 +199,6 @@ namespace osgEarth
         //! Opens the map (installs a terrain engine and initializes all the layers)
         bool open();
 
-        //! Shuts down the terrain engine and any running services.
-        void shutdown();
-
         //! Returns the map coordinates under the provided mouse (window) coordinates.
         //! @param view View in which to do the query
         //! @param mx, my Mouse coordinates

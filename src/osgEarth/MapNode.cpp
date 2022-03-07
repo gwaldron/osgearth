@@ -472,26 +472,12 @@ MapNode::open()
     return true;
 }
 
-void
-MapNode::shutdown()
+MapNode::~MapNode()
 {
     releaseGLObjects(nullptr);
 
     if (_terrainEngine)
         _terrainEngine->shutdown();
-
-    if (_map.valid())
-    {
-        LayerVector layers;
-        _map->getLayers(layers);
-        for(auto& layer : layers)
-            layer->close();
-    }
-}
-
-MapNode::~MapNode()
-{
-    shutdown();
 
     if (_mapCallback.valid())
     {

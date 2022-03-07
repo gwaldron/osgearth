@@ -139,6 +139,15 @@ namespace
 
 // static
 bool GLUtils::_gldebugging = false;
+bool GLUtils::_useNVGL = false;
+
+void
+GLUtils::useNVGL(bool value)
+{
+    _useNVGL =
+        value &&
+        Capabilities::get().supportsNVGL();
+}
 
 void
 GLUtils::useNVGL(bool value)

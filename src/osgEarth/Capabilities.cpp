@@ -251,7 +251,6 @@ _supportsNVGL(false)
             _isCoreProfile = ((profileMask & GL_CONTEXT_CORE_PROFILE_BIT) != 0);
         }
         OE_INFO << LC << "  GL Core Profile:   " << SAYBOOL(_isCoreProfile) << std::endl;
-        OE_INFO << LC << "  NVIDIA GL4:        " << SAYBOOL(_supportsNVGL) << std::endl;
 
         // this extension implies the availability of
         // GL_NV_vertex_buffer_unified_memory (bindless buffers)

@@ -738,6 +738,7 @@ JobArena::runJobs()
                 // Note: We could use std::partial_sort or std::nth_element,
                 // but benchmarking proves that a simple brute-force search
                 // is always the fastest.
+                // (Benchmark: https://stackoverflow.com/a/20365638/4218920)
                 // Also note: it is indeed possible for the results of 
                 // Job::getPriority() to change during the search. We don't care.
                 int index = -1;

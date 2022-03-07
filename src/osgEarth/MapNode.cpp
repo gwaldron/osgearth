@@ -911,7 +911,8 @@ MapNode::traverse( osg::NodeVisitor& nv )
         // Ensures only one update will happen per frame loop
         if (_readyForUpdate.exchange(false))
         {
-            JobArena::get(JobArena::UPDATE_TRAVERSAL)->runJobs();
+            // re-enable if we decide to use it.
+            //JobArena::get(JobArena::UPDATE_TRAVERSAL)->runJobs();
         }
 
         // include these in the above condition as well??

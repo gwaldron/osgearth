@@ -42,11 +42,13 @@ namespace osgEarth
             bool _renderModelNormals;
             bool _renderWinding;
             bool _renderOutlines;
+            bool _showConcurrency;
 
         public:
             SystemGUI() : BaseGUI("System"),
                 _renderViewNormals(false), _renderModelNormals(false),
-                _renderWinding(false), _renderOutlines(false) { }
+                _renderWinding(false), _renderOutlines(false),
+                _showConcurrency(false){ }
 
             void load(const Config& conf) override
             {
@@ -93,6 +95,20 @@ namespace osgEarth
                                     (int)m.arena(i).numJobsRunning,
                                     (int)m.arena(i).numJobsPending,
                                     (int)m.arena(i).numJobsCanceled);
+
+                                if (_showConcurrency)
+                                {
+                                    ImGui::TableNextColumn();
+                                    ImGui::Text("  Concurrency:");
+                                    ImGui::TableNextColumn();
+                                    ImGui::PushID(i);
+                                    int concurrency = m.arena(i).concurrency;
+                                    if (ImGui::SliderInt("", &concurrency, 1, 16)) {
+                                        JobArena::get(m.arena(i).arenaName)->setConcurrency(concurrency);
+                                    }
+                                    ImGui::PopID();
+                                    ImGui::Separator();
+                                }
                             }
                         }
                         ImGui::EndTable();
@@ -101,6 +117,7 @@ namespace osgEarth
                         ImGui::Text("Total: %d", m.totalJobs());
                         ImGui::SameLine();
                         ImGui::Text(" ICO: %d", GLObjectsCompiler::totalJobs());
+                        ImGui::Checkbox("Adjust concurrency", &_showConcurrency);
 
                         ImGui::TreePop();
                     }

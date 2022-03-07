@@ -176,7 +176,7 @@ TerrainRenderData::addLayerDrawable(
     drawable->_drawState = _drawState;
     drawable->dirtyBound();
     drawable->_drawOrder = _layerList.size();
-    _layerList.push_back(drawable);
+    _layerList.push_back(drawable); // ref taken
     
     if (layer)
     {

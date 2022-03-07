@@ -82,7 +82,7 @@ namespace osgEarth { namespace REX
         // transient:
         // ref_ptr's not necessary b/c of refs in _drawables above
         std::unordered_map<UID, LayerDrawable*> _layersByUID;
-        std::vector<LayerDrawable*> _layerList;
+        std::vector<osg::ref_ptr<LayerDrawable>> _layerList;
         const RenderBindings* _bindings;
         PatchLayerVector _patchLayers; // Layers of type RENDERTYPE_TERRAIN_PATCH
         bool _useNVGL;

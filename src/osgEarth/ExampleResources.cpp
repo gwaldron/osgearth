@@ -338,6 +338,8 @@ MapNodeHelper::loadWithoutControls(
     // NVGL4 rendering?
     if (args.read("--nvgl") || args.read("--gl4") || args.read("--use-gl4"))
     {
+        GLUtils::useNVGL(true);
+
         if (!myReadOptions.valid())
             myReadOptions = new osgDB::Options();
 
@@ -475,6 +477,8 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
     // NVGL rendering?
     if (args.read("--nvgl") || args.read("--gl4") || args.read("--use-gl4"))
     {
+        GLUtils::useNVGL(true);
+
         myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_NVGL");
     }
 

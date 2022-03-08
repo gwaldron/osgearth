@@ -1733,39 +1733,39 @@ GeoExtent(extent)
 }
 
 DataExtent::DataExtent(const GeoExtent& extent, const std::string &description) :
-GeoExtent(extent),
-_minLevel( 0 ),
-_maxLevel( 0 )
+    GeoExtent(extent),
+    _minLevel(0),
+    _maxLevel(19u)
 {
     _description = description;
 }
 
-DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel,  unsigned maxLevel) :
-GeoExtent(extent)
+DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel) :
+    GeoExtent(extent)
 {
     _minLevel = minLevel;
     _maxLevel = maxLevel;
 }
 
 DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel) :
-GeoExtent(extent),
-_maxLevel( 19u )
+    GeoExtent(extent),
+    _maxLevel(19u)
 {
     _minLevel = minLevel;
 }
 
 DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel, const std::string &description) :
-GeoExtent(extent),
-_maxLevel( 0 )
+    GeoExtent(extent),
+    _maxLevel(19u)
 {
     _minLevel = minLevel;
     _description = description;
 }
 
-DataExtent::DataExtent(const GeoExtent& extent ) :
-GeoExtent(extent),
-_minLevel( 0 ),
-_maxLevel( 19u )
+DataExtent::DataExtent(const GeoExtent& extent) :
+    GeoExtent(extent),
+    _minLevel(0),
+    _maxLevel(19u)
 {
     //nop
 }

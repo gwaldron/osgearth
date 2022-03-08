@@ -100,7 +100,6 @@ VegetationLayer::Options::getConfig() const
     colorLayer().set(conf, "color_layer");
     biomeLayer().set(conf, "biomes_layer");
 
-    conf.set("color_min_saturation", colorMinSaturation());
     conf.set("alpha_to_coverage", alphaToCoverage());
 
     //TODO: groups
@@ -113,38 +112,31 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 {
     // defaults:
     alphaToCoverage().setDefault(true);
-    maxSSE().setDefault(150.0f);
 
     colorLayer().get(conf, "color_layer");
     biomeLayer().get(conf, "biomes_layer");
 
-    conf.get("color_min_saturation", colorMinSaturation());
     conf.get("alpha_to_coverage", alphaToCoverage());
-    conf.get("max_sse", maxSSE());
 
     // defaults for groups:
     groups().resize(NUM_ASSET_GROUPS);
 
     if (AssetGroup::TREES < NUM_ASSET_GROUPS)
     {
-        groups()[AssetGroup::TREES].enabled() = true;
-        groups()[AssetGroup::TREES].castShadows() = true;
-        groups()[AssetGroup::TREES].maxRange() = 4000.0f;
-        groups()[AssetGroup::TREES].lod() = 14;
-        groups()[AssetGroup::TREES].count() = 4096;
-        groups()[AssetGroup::TREES].spacing() = Distance(15.0f, Units::METERS);
-        groups()[AssetGroup::TREES].maxAlpha() = 0.15f;
+        groups()[AssetGroup::TREES].lod().setDefault(14);
+        groups()[AssetGroup::TREES].enabled().setDefault(true);
+        groups()[AssetGroup::TREES].castShadows().setDefault(true);
+        groups()[AssetGroup::TREES].maxRange().setDefault(4000.0f);
+        groups()[AssetGroup::TREES].density().setDefault(0.5f);
     }
 
     if (AssetGroup::UNDERGROWTH < NUM_ASSET_GROUPS)
     {
-        groups()[AssetGroup::UNDERGROWTH].enabled() = true;
-        groups()[AssetGroup::UNDERGROWTH].castShadows() = false;
-        groups()[AssetGroup::UNDERGROWTH].maxRange() = 75.0f;
-        groups()[AssetGroup::UNDERGROWTH].lod() = 19;
-        groups()[AssetGroup::UNDERGROWTH].count() = 4096;
-        groups()[AssetGroup::UNDERGROWTH].spacing() = Distance(1.0f, Units::METERS);
-        groups()[AssetGroup::UNDERGROWTH].maxAlpha() = 0.75f;
+        groups()[AssetGroup::UNDERGROWTH].lod().setDefault(19);
+        groups()[AssetGroup::UNDERGROWTH].enabled().setDefault(true);
+        groups()[AssetGroup::UNDERGROWTH].castShadows().setDefault(false);
+        groups()[AssetGroup::UNDERGROWTH].maxRange().setDefault(75.0f);
+        groups()[AssetGroup::UNDERGROWTH].density().setDefault(1.0f);
     }
 
     ConfigSet groups_c = conf.child("groups").children();
@@ -162,12 +154,10 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         {
             Group& group = groups()[g];
             group_c.get("enabled", group.enabled());
-            group_c.get("spacing", group.spacing());
             group_c.get("max_range", group.maxRange());
+            group_c.get("density", group.density());
             group_c.get("lod", group.lod());
-            group_c.get("count", group.count());
             group_c.get("cast_shadows", group.castShadows());
-            group_c.get("max_alpha", group.maxAlpha());
         }
     }
 }
@@ -175,7 +165,9 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 //........................................................................
 
 bool
-VegetationLayer::LayerAcceptor::acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const
+VegetationLayer::LayerAcceptor::acceptLayer(
+    osg::NodeVisitor& nv,
+    const osg::Camera* camera) const
 {
     // if this is a shadow camera and the layer is configured to cast shadows, accept it.
     if (CameraUtils::isShadowCamera(camera))
@@ -196,7 +188,7 @@ VegetationLayer::LayerAcceptor::acceptLayer(osg::NodeVisitor& nv, const osg::Cam
 bool
 VegetationLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 {
-     return _layer->hasGroupAtLOD(key.getLOD());
+     return _layer->hasEnabledGroupAtLOD(key.getLOD());
 }
 
 //........................................................................
@@ -382,12 +374,15 @@ VegetationLayer::getCastShadows() const
 }
 
 bool
-VegetationLayer::hasGroupAtLOD(unsigned lod) const
+VegetationLayer::hasEnabledGroupAtLOD(unsigned lod) const
 {
     for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
     {
-        if (options().groups()[i].lod() == lod)
+        if (options().groups()[i].lod() == lod &&
+            options().groups()[i].enabled() == true)
+        {
             return true;
+        }
     }
     return false;
 }
@@ -1088,8 +1083,6 @@ VegetationLayer::getAssetPlacements(
     ImageUtils::PixelReader readNoise(_noiseTex->getImage(0));
     readNoise.setSampleAsRepeatingTexture(true);
 
-    unsigned max_instances = options().group(group).count().get();
-
     struct CollisionData 
     {
         double x, y, radius;
@@ -1099,6 +1092,17 @@ VegetationLayer::getAssetPlacements(
 
     std::minstd_rand0 gen(key.hash());
     std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
+
+    unsigned max_instances = 4096;
+
+    bool allow_overlap = (group == AssetGroup::UNDERGROWTH);
+
+    float packing_density = options().group(group).density().get();
+
+    if (allow_overlap)
+    {
+        max_instances = (unsigned)((float)max_instances * packing_density);
+    }
 
     // reserve some memory, maybe more than we need
     result.reserve(max_instances);
@@ -1225,7 +1229,7 @@ VegetationLayer::getAssetPlacements(
         }
 
         // allow overlap for "billboard" models (i.e. grasses).
-        bool allow_overlap = isGrass;
+        //bool allow_overlap = isGrass;
 
         // apply instance-specific density adjustment:
         density *= instance.coverage();
@@ -1272,7 +1276,8 @@ VegetationLayer::getAssetPlacements(
 
             // adjust collision radius based on density.
             // i.e., denser areas allow vegetation to be closer.
-            double search_radius = mix(radius*3.0f, radius*0.5f, density);
+            double density_mix = density * packing_density;
+            double search_radius = mix(radius*3.0f, radius*0.2f, density_mix);
             double search_radius_2 = search_radius * search_radius;
 
             bool collision = false;
@@ -1412,6 +1417,11 @@ VegetationLayer::cull(
     {
         AssetGroup::Type group = getGroupAtLOD(entry->getKey().getLOD());
         OE_HARD_ASSERT(group != AssetGroup::UNDEFINED);
+
+        if (options().group(group).enabled() == false)
+        {
+            continue;
+        }
 
         if (CameraUtils::isShadowCamera(cv->getCurrentCamera()) &&
             options().group(group).castShadows() == false)

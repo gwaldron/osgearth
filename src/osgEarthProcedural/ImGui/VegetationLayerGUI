@@ -73,11 +73,9 @@ namespace osgEarth {
                     if (ImGui::SliderFloat("Far", &sse_scales[1], 0.5f, 2.0f))
                         _veglayer->setSSEScales(sse_scales);
 
-                    if (ImGui::Button("Regenerate"))
-                        _veglayer->dirty();
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator:");
 
-                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Groups:");
-                    ImGui::Indent();
                     for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
                     {
                         ImGui::PushID(i);
@@ -91,17 +89,23 @@ namespace osgEarth {
                             AssetGroup::name(type).c_str(),
                             &_veglayer->options().group(type).enabled().mutable_value());
 
-                        if (ImGui::SliderFloat(
-                            "Range",
+                        ImGui::SliderFloat(
+                            "Max range",
                             &_veglayer->options().group(type).maxRange().mutable_value(),
-                            0.0f, _maxMaxRanges[i]))
-                        {
-                            _veglayer->setMaxRange(type, _veglayer->options().group(type).maxRange().get());
-                        }
+                            0.0f, _maxMaxRanges[i]);
+
+                        ImGui::SliderFloat(
+                            "Density",
+                            &_veglayer->options().group(type).density().mutable_value(),
+                            0.0f, 1.0f);
 
                         ImGui::PopID();
                     }
-                    ImGui::Unindent();
+
+                    if (ImGui::Button("Regenerate Now"))
+                        _veglayer->dirty();
+
+                    ImGui::Separator();
 
                     if (ImGui::CollapsingHeader("All Biomes"))
                     {

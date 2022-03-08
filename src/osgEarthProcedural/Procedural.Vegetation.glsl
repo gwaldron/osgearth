@@ -106,12 +106,15 @@ flat in uint64_t oe_albedo_tex;
 flat in uint oe_lod;
 in vec3 vp_VertexView;
 
+#define OE_A2C_ADJUSTMENT 0.275
+
 void oe_vegetation_fs(inout vec4 color)
 {
 #ifdef OE_IS_SHADOW_CAMERA
     if (color.a < 0.15)
         discard;
 #else
+
     // alpha-down faces that are orthogonal to the view vector.
     // this makes cross-hatch imposters look better.
     // (only do this for lower lods)
@@ -128,14 +131,9 @@ void oe_vegetation_fs(inout vec4 color)
     }
 
 #ifdef OE_USE_ALPHA_TO_COVERAGE
-    // mitigate the screen-door effect of A2C in the distance
-    // https://tinyurl.com/y7bbbpl9
-    //const float threshold = 0.15;
-    //float a = (color.a - threshold) / max(fwidth(color.a), 0.0001) + 0.5;
-    //color.a = mix(color.a, a, unit_distance_to_vert);
 
-    // adjust the alpha based on the calculated mipmap level:
-    // better, but a bit more expensive than the above method? Benchmark?
+    // Adjust the alpha based on the calculated mipmap level.
+    // Looks beterr and actually helps performance a bit as well.
     // https://tinyurl.com/fhu4zdxz
     if (oe_albedo_tex > 0UL)
     {
@@ -145,8 +143,9 @@ void oe_vegetation_fs(inout vec4 color)
         vec2 dy_vtc = dFdy(cf);
         float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
         float mml = max(0, 0.5 * log2(delta_max_sqr));
-        color.a *= (1.0 + mml * 0.25);
+        color.a *= (1.0 + mml * OE_A2C_ADJUSTMENT);
     }
+
 #else
     // force alpha to 0 or 1 and threshold it.
     const float threshold = 0.15;

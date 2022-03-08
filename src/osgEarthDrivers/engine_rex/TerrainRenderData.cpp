@@ -53,12 +53,10 @@ TerrainRenderData::reset(
     const RenderBindings& bindings,
     unsigned frameNum,
     PersistentData& persistent,
-    bool useNVGL,
     osgUtil::CullVisitor* cv,
     EngineContext* context)
 {
     _bindings = &bindings;
-    _useNVGL = useNVGL;
     _persistent = &persistent;
     _context = context;
 
@@ -138,7 +136,7 @@ TerrainRenderData::addLayerDrawable(
     LayerDrawable* drawable = nullptr;
     bool isNew = false;
 
-    if (_useNVGL)
+    if (GLUtils::useNVGL())
     {
         osg::ref_ptr<LayerDrawable>& obj = _persistent->_drawables[layer];
         if (!obj.valid())

@@ -100,8 +100,13 @@ namespace osgEarth
         //! Pop a GL debugging group
         static void popDebugGroup();
 
+        //! Whether to use NVGL when possible (and if supported)
+        static void useNVGL(bool value);
+        static bool useNVGL() { return _useNVGL; }
+
     private:
         static bool _gldebugging;
+        static bool _useNVGL;
     };
 
     /**

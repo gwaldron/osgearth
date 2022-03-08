@@ -52,6 +52,11 @@ void osgEarth::initialize()
         GLUtils::enableGLDebugging();
         VirtualProgram::enableGLDebugging();
     }
+
+    if (::getenv("OSGEARTH_USE_NVGL") || ::getenv("OSGEARTH_USE_GL4"))
+    {
+        GLUtils::useNVGL(true);
+    }
 }
 
 osgEarth::UID

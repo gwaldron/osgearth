@@ -50,19 +50,15 @@ namespace osgEarth { namespace Procedural
             META_LayerOptions(osgEarth, Options, PatchLayer::Options);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
-            OE_OPTION(float, colorMinSaturation);
             OE_OPTION(bool, alphaToCoverage);
-            OE_OPTION(float, maxSSE);
 
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
                 OE_OPTION(bool, enabled);
-                OE_OPTION(Distance, spacing);
-                OE_OPTION(float, maxRange);
                 OE_OPTION(unsigned, lod);
-                OE_OPTION(unsigned, count);
+                OE_OPTION(float, maxRange);
+                OE_OPTION(float, density);
                 OE_OPTION(bool, castShadows);
-                OE_OPTION(float, maxAlpha);
 
                 // internal
                 osg::ref_ptr<osg::StateSet> _drawStateSet;
@@ -99,7 +95,7 @@ namespace osgEarth { namespace Procedural
         ImageLayer* getColorLayer() const;
 
         //! LOD at which to draw ground cover
-        bool hasGroupAtLOD(unsigned lod) const;
+        bool hasEnabledGroupAtLOD(unsigned lod) const;
         AssetGroup::Type getGroupAtLOD(unsigned lod) const;
         unsigned getGroupLOD(AssetGroup::Type) const;
 

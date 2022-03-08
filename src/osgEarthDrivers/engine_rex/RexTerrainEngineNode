@@ -198,13 +198,6 @@ namespace osgEarth { namespace REX
         std::atomic_bool _updatedThisFrame;
 
         void installColorFilters(VirtualProgram*);
-
-        bool useNVGL() const {
-            return
-                _engineContext ? _engineContext->useNVGL() :
-                _terrainOptions ? _terrainOptions->useNVGL() == true :
-                false;
-        }
     };
 
 } } // namespace osgEarth::REX

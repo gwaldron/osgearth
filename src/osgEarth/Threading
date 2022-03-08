@@ -452,9 +452,12 @@ namespace osgEarth { namespace Threading
 
         inline void lock(const T& key) {
             std::unique_lock<Mutex> lock(_m);
+            auto thread_id = getCurrentThreadId();
             for (;;) {
-                if (_keys.insert(key).second)
+                auto i = _keys.emplace(key, thread_id);
+                if (i.second)
                     return;
+                OE_HARD_ASSERT(i.first->second != thread_id, "Recursive Gate access attempt");
                 _unlocked.wait(lock);
             }
         }
@@ -472,7 +475,7 @@ namespace osgEarth { namespace Threading
     private:
         Mutex _m;
         std::condition_variable_any _unlocked;
-        std::unordered_set<T> _keys;
+        std::unordered_map<T,unsigned> _keys;
     };
 
     //! Gate the locks for the duration of this object's scope

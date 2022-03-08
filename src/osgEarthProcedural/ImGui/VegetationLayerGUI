@@ -90,11 +90,6 @@ namespace osgEarth {
                             &_veglayer->options().group(type).enabled().mutable_value());
 
                         ImGui::SliderFloat(
-                            "Max range",
-                            &_veglayer->options().group(type).maxRange().mutable_value(),
-                            0.0f, _maxMaxRanges[i]);
-
-                        ImGui::SliderFloat(
                             "Density",
                             &_veglayer->options().group(type).density().mutable_value(),
                             0.0f, 1.0f);

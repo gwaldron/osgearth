@@ -368,7 +368,7 @@ GeoImage
 ImageLayer::createImage(
     const TileKey& key,
     ProgressCallback* progress)
-{
+{    
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(getName() + " " + key.str());
 
@@ -402,6 +402,7 @@ ImageLayer::createImage(
     const TileKey& key,
     ProgressCallback* progress)
 {
+    Threading::ScopedReadLock lock(layerMutex());
     return createImageImplementation(canvas, key, progress);
 }
 
@@ -534,6 +535,7 @@ ImageLayer::createImageInKeyProfile(
         }
         else
         {
+            Threading::ScopedReadLock lock(layerMutex());
             result = createImageImplementation(key, progress);
         }
     }
@@ -689,7 +691,11 @@ ImageLayer::assembleImage(
                 parentKey.valid() && !image.valid();
                 parentKey.makeParent())
             {
-                image = createImageImplementation( parentKey, progress );
+                {
+                    Threading::ScopedReadLock lock(layerMutex());
+                    image = createImageImplementation(parentKey, progress);
+                }
+
                 if ( image.valid() )
                 {
                     GeoImage cropped;

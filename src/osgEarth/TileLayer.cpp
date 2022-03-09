@@ -484,7 +484,7 @@ TileLayer::getCacheBin(const Profile* profile)
     // does the metadata need initializing?
     std::string metaKey = getMetadataKey(profile);
 
-    Threading::ScopedMutexLock lock(layerMutex());
+    Threading::ScopedWriteLock lock(layerMutex());
 
     CacheBinMetadataMap::iterator i = _cacheBinMetadata.find(metaKey);
     if (i == _cacheBinMetadata.end())
@@ -593,7 +593,7 @@ TileLayer::getCacheBinMetadata(const Profile* profile)
     if (!profile)
         return 0L;
 
-    Threading::ScopedMutexLock lock(layerMutex());
+    Threading::ScopedReadLock lock(layerMutex());
 
     CacheBinMetadataMap::iterator i = _cacheBinMetadata.find(getMetadataKey(profile));
     return i != _cacheBinMetadata.end() ? i->second.get() : 0L;
@@ -751,7 +751,7 @@ TileLayer::dataExtents()
 void
 TileLayer::dirtyDataExtents()
 {
-    Threading::ScopedMutexLock lock(layerMutex());
+    Threading::ScopedWriteLock lock(layerMutex());
     _dataExtentsUnion = GeoExtent::INVALID;
 }
 
@@ -762,7 +762,7 @@ TileLayer::getDataExtentsUnion() const
 
     if (_dataExtentsUnion.isInvalid() && !de.empty())
     {
-        Threading::ScopedMutexLock lock(layerMutex());
+        Threading::ScopedWriteLock lock(layerMutex());
         {
             if (_dataExtentsUnion.isInvalid() && !de.empty()) // double-check
             {

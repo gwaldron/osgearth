@@ -349,7 +349,7 @@ Layer::init()
         osg::Object::setName(options().name().get());
     }
 
-    _mutex = new Threading::Mutex(options().name().isSet() ? options().name().get() : "Unnamed Layer(OE)");
+    _mutex = new Threading::ReadWriteMutex(options().name().isSet() ? options().name().get() : "Unnamed Layer(OE)");
 }
 
 Status
@@ -360,6 +360,8 @@ Layer::open()
     {
         return getStatus();
     }
+
+    Threading::ScopedWriteLock lock(layerMutex());
 
     // be optimistic :)
     _status.set(Status::NoError);
@@ -443,12 +445,14 @@ Layer::closeImplementation()
 
 Status
 Layer::close()
-{
+{    
     if (isOpen())
     {
+        Threading::ScopedWriteLock lock(layerMutex());
         _isClosing = true;
         closeImplementation();
         _status.set(Status::ResourceUnavailable, "Layer closed");
+        _runtimeCacheId = "";
         fireCallback(&LayerCallback::onClose);
         _isClosing = false;
     }

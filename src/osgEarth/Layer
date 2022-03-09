@@ -476,7 +476,7 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<CacheSettings> _cacheSettings;
         std::vector<osg::ref_ptr<LayerShader> > _shaders;
-        mutable Threading::Mutex* _mutex;
+        mutable Threading::ReadWriteMutex* _mutex;
         bool _isClosing;
 
         //! Prepares the layer for rendering if necessary.
@@ -505,7 +505,7 @@ namespace osgEarth
         const CacheSettings* getCacheSettings() const { return _cacheSettings.get(); }
 
         //! subclass access to general-purpose layer mutex
-        Threading::Mutex& layerMutex() const { return *_mutex; }
+        Threading::ReadWriteMutex& layerMutex() const { return *_mutex; }
 
         //! are we in the middle of a close() call?
         bool isClosing() const { return _isClosing; }

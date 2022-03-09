@@ -839,7 +839,7 @@ MapBoxGLImageLayer::removedFromMap(const Map* map)
 
 struct LayeredFeatures
 {
-    std::map< std::string, FeatureList > features;
+    std::unordered_map< std::string, FeatureList > features;
 };
 
 
@@ -1204,7 +1204,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
     }
     osg::ref_ptr< Session > session = new Session(_map.get(), styleSheet.get(), nullptr, nullptr);
 
-    std::map< std::string, LayeredFeatures > sourceToFeatures;
+    std::unordered_map< std::string, LayeredFeatures > sourceToFeatures;
 
     for (auto& layer : _styleSheet.layers())
     {

@@ -66,7 +66,7 @@ ElevationPool::MapCallbackAdapter::onMapModelChanged(const MapModelChange& c)
 }
 
 ElevationPool::ElevationPool() :
-    _index(NULL),
+    _index(nullptr),
     _tileSize(257),
     _mapDataDirty(true),
     _workers(0),
@@ -80,11 +80,15 @@ ElevationPool::ElevationPool() :
     _mapCallback = new MapCallbackAdapter();
 }
 
-typedef RTree<unsigned, double, 2> MaxLevelIndex;
+namespace
+{
+    using MaxLevelIndex = RTree<unsigned, double, 2>;
+}
 
 ElevationPool::~ElevationPool()
 {
-    setMap(NULL);
+    setMap(nullptr);
+
     if (_index)
         delete static_cast<MaxLevelIndex*>(_index);
 }

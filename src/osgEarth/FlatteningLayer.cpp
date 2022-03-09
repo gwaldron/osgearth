@@ -861,6 +861,11 @@ FlatteningLayer::openImplementation()
         setProfile(profile);
     }
 
+    dataExtents().push_back(DataExtent(
+        profile->getExtent(),
+        getMinLevel(),
+        getMaxDataLevel()));
+
     return Status::NoError;
 }
 

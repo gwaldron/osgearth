@@ -25,7 +25,9 @@
 #include <osgEarth/ViewFitter>
 #include <osgEarth/ThreeDTilesLayer>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/MapboxGLImageLayer>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/TerrainEngineNode>
 #include <osg/Camera>
 
 namespace osgEarth {
@@ -249,6 +251,23 @@ namespace osgEarth {
                                     threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
                                     ImGui::PopID();
                                 }
+
+                                auto mapboxGLLayer = dynamic_cast<MapBoxGLImageLayer*>(layer);
+                                if (mapboxGLLayer)
+                                {
+                                    bool disableText = mapboxGLLayer->getDisableText();
+                                    if (ImGui::Checkbox("Disable text", &disableText))
+                                    {
+                                        mapboxGLLayer->setDisableText(disableText);
+                                    }
+
+                                    float pixelScale = mapboxGLLayer->getPixelScale();
+                                    if (ImGui::InputFloat("Pixel Scale", &pixelScale))
+                                    {
+                                        mapboxGLLayer->setPixelScale(pixelScale);
+                                    }
+                                }
+
 
                                 auto tileLayer = dynamic_cast<osgEarth::TileLayer*>(layer);
                                 if (tileLayer)

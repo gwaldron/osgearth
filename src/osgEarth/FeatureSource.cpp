@@ -268,9 +268,11 @@ FeatureSource::createFeatureCursor(
         // Try reading from the cache first if we have a TileKey.
         if (query.tileKey().isSet())
         {
-            ScopedMutexLock lk(_featuresCacheMutex);
             FeaturesLRU::Record result;
-            _featuresCache->get(*query.tileKey(), result);
+            {
+                ScopedMutexLock lk(_featuresCacheMutex);
+                _featuresCache->get(*query.tileKey(), result);
+            }
             if (result.valid())
             {
                 FeatureList copy(result.value().size());
@@ -293,17 +295,18 @@ FeatureSource::createFeatureCursor(
     // Insert it into the cache if we read it from the source itself.
     if (_featuresCache && !fromCache && cursor.valid() && query.tileKey().isSet())
     {
-        ScopedMutexLock lk(_featuresCacheMutex);
         FeatureList features;
         cursor->fill(features);
-
 #if 1
         FeatureList copy(features.size());
         std::transform(features.begin(), features.end(), copy.begin(),
             [&](const osg::ref_ptr<Feature>& feature) {
                 return osg::clone(feature.get(), osg::CopyOp::DEEP_COPY_ALL);
             });
-        _featuresCache->insert(*query.tileKey(), copy);
+        {
+            ScopedMutexLock lk(_featuresCacheMutex);
+            _featuresCache->insert(*query.tileKey(), copy);
+        }
 #else
         // original code: stored raw features in the cache, but they are not const.
         // revisit if/when we refactor this

@@ -39,7 +39,7 @@ Group {
             useHardwareMipMapGeneration TRUE
             unRefImageDataAfterApply FALSE
             internalFormatMode USE_IMAGE_DATA_FORMAT
-            resizeNonPowerOfTwo TRUE
+            resizeNonPowerOfTwo FALSE
           }
         }
       }

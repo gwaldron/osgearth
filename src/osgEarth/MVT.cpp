@@ -78,6 +78,8 @@ namespace osgEarth { namespace MVT
         std::vector< osg::ref_ptr< osgEarth::LineString > > lines;
         osg::ref_ptr< osgEarth::LineString > currentLine;
 
+        GeoExtent extent = key.getExtent();
+
         for (int k = 0; k < feature.geometry_size();)
         {
             if (!length)
@@ -105,11 +107,11 @@ namespace osgEarth { namespace MVT
                     x += px;
                     y += py;
 
-                    double width = key.getExtent().width();
-                    double height = key.getExtent().height();
+                    double width = extent.width();
+                    double height = extent.height();
 
-                    double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
-                    double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
+                    double geoX = extent.xMin() + (width/(double)tileres) * (double)x;
+                    double geoY = extent.yMax() - (height/(double)tileres) * (double)y;
 
                     if (currentLine.valid())
                     {
@@ -153,6 +155,8 @@ namespace osgEarth { namespace MVT
 
         osgEarth::PointSet *geometry = new osgEarth::PointSet();
 
+        GeoExtent extent = key.getExtent();
+
         for (int k = 0; k < feature.geometry_size();)
         {
             if (!length)
@@ -174,11 +178,11 @@ namespace osgEarth { namespace MVT
                     x += px;
                     y += py;
 
-                    double width = key.getExtent().width();
-                    double height = key.getExtent().height();
+                    double width = extent.width();
+                    double height = extent.height();
 
-                    double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
-                    double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
+                    double geoX = extent.xMin() + (width/(double)tileres) * (double)x;
+                    double geoY = extent.yMax() - (height/(double)tileres) * (double)y;
                     geometry->push_back(geoX, geoY, 0);
                 }
             }
@@ -212,6 +216,8 @@ namespace osgEarth { namespace MVT
 
         osg::ref_ptr< osgEarth::Ring > currentRing;
 
+        GeoExtent extent = key.getExtent();
+
         for (int k = 0; k < feature.geometry_size();)
         {
             if (!length)
@@ -238,11 +244,11 @@ namespace osgEarth { namespace MVT
                     x += px;
                     y += py;
 
-                    double width = key.getExtent().width();
-                    double height = key.getExtent().height();
+                    double width = extent.width();
+                    double height = extent.height();
 
-                    double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
-                    double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
+                    double geoX = extent.xMin() + (width/(double)tileres) * (double)x;
+                    double geoY = extent.yMax() - (height/(double)tileres) * (double)y;
                     currentRing->push_back(geoX, geoY, 0);
                 }
                 else if (cmd == (SEG_CLOSE & ((1 << cmd_bits) - 1)))

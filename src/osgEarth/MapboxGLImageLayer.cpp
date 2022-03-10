@@ -36,8 +36,23 @@ using namespace MapBoxGL;
 REGISTER_OSGEARTH_LAYER(mapboxglimage, MapBoxGLImageLayer);
 OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, std::string, Key, key);
-OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, bool, DisableText, disableText);
-OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, float, PixelScale, pixelScale);
+
+void MapBoxGLImageLayer::setPixelScale(const float& value) {
+    setOptionThatRequiresReopen(options().pixelScale(), value);
+}
+
+const float& MapBoxGLImageLayer::getPixelScale() const {
+    return options().pixelScale().get();
+}
+
+void MapBoxGLImageLayer::setDisableText(const bool& value) {
+    setOptionThatRequiresReopen(options().disableText(), value);
+}
+
+const bool& MapBoxGLImageLayer::getDisableText() const {
+    return options().disableText().get();
+}
+
 
 void getIfSet(const Json::Value& object, const std::string& member, PropertyValue<float>& value)
 {
@@ -824,7 +839,7 @@ MapBoxGLImageLayer::removedFromMap(const Map* map)
 
 struct LayeredFeatures
 {
-    std::map< std::string, FeatureList > features;
+    std::unordered_map< std::string, FeatureList > features;
 };
 
 
@@ -1189,7 +1204,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
     }
     osg::ref_ptr< Session > session = new Session(_map.get(), styleSheet.get(), nullptr, nullptr);
 
-    std::map< std::string, LayeredFeatures > sourceToFeatures;
+    std::unordered_map< std::string, LayeredFeatures > sourceToFeatures;
 
     for (auto& layer : _styleSheet.layers())
     {

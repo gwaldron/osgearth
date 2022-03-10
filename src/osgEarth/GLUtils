@@ -548,7 +548,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT OSG_GL_API
     {
     public:
-        virtual void apply(osg::State& state) const = 0;
+        virtual void apply(osg::State& state) const { }
+        virtual void compileGLObjects(osg::State& state) const = 0;
         virtual void resizeGLObjectBuffers(unsigned maxsize) = 0;
         virtual void releaseGLObjects(osg::State* state) const = 0;
     };

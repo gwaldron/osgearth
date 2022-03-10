@@ -130,7 +130,7 @@ namespace osgEarth
             ProgressCallback*                progress,
             bool                             standalone);
 
-        virtual TerrainTileImageLayerModel* addImageLayer(
+        virtual bool addImageLayer(
             TerrainTileModel* model,
             ImageLayer* layer,
             const TileKey& key,
@@ -160,7 +160,7 @@ namespace osgEarth
             unsigned                     border,
             ProgressCallback*            progress);
 
-        virtual TerrainTileLandCoverModel* addLandCover(
+        virtual bool addLandCover(
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
@@ -176,29 +176,18 @@ namespace osgEarth
             const CreateTileManifest&    manifest,
             ProgressCallback*            progress);
 
-        //virtual void addPatchLayers(
-        //    TerrainTileModel*            model,
-        //    const Map*                   map,
-        //    const TileKey&               key,
-        //    const CreateTileManifest&    manifest,
-        //    ProgressCallback*            progress,
-        //    bool                         fallback);
-
     protected:
 
-        osg::Texture* createImageTexture(
+        Texture::Ptr createImageTexture(
             const osg::Image* image,
             const ImageLayer* layer) const;
 
-        osg::Texture* createCoverageTexture(
-            const osg::Image* image) const;
-
-        osg::Texture* createElevationTexture(
+        Texture::Ptr createCoverageTexture(
             const osg::Image* image) const;
 
         TerrainOptions _options;
-        osg::ref_ptr<osg::Texture> _emptyColorTexture;
-        osg::ref_ptr<osg::Texture> _emptyLandCoverTexture;
+        Texture::Ptr _emptyColorTexture;
+        Texture::Ptr _emptyLandCoverTexture;
         ElevationPool::WorkingSet _workingSet;
     };
 }

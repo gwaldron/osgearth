@@ -55,6 +55,9 @@ _clock(clock)
 {
     _expirationRange2 = _options.minExpiryRange().get() * _options.minExpiryRange().get();
     _bboxCB = new ModifyBoundingBoxCallback(this);
+
+    // create a bindless texture arena and set it to automatically
+    // release textures that the terrain no longer references.
     _textures = new TextureArena();
     _textures->setBindingPoint(29); // TODO
     _textures->setAutoRelease(true);

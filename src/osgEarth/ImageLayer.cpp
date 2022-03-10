@@ -886,7 +886,6 @@ FutureTexture2D::requiresUpdateCall() const
     return true;
 }
 
-
 void
 FutureTexture2D::update(osg::NodeVisitor* nv)
 {

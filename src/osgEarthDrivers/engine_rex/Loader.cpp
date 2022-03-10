@@ -74,7 +74,8 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
         OE_SOFT_ASSERT_AND_RETURN(state.valid(), void());
 
         // populate it with the tile model contents:
-        data->_result.join()->getStateToCompile(*state.get());
+        bool bindless = GLUtils::useNVGL();
+        data->_result.join()->getStateToCompile(*state.get(), bindless);
 
         ScopedMutexLock lock(_mutex);
 

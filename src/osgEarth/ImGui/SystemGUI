@@ -24,6 +24,7 @@
 #include <osgEarth/Memory>
 #include <osgEarth/GLUtils>
 #include <osgEarth/ShaderLoader>
+#include <osgEarth/Registry>
 #include <chrono>
 #include <list>
 
@@ -42,13 +43,13 @@ namespace osgEarth
             bool _renderModelNormals;
             bool _renderWinding;
             bool _renderOutlines;
-            bool _showConcurrency;
+            bool _showArenaControls;
 
         public:
             SystemGUI() : BaseGUI("System"),
                 _renderViewNormals(false), _renderModelNormals(false),
                 _renderWinding(false), _renderOutlines(false),
-                _showConcurrency(false){ }
+                _showArenaControls(false){ }
 
             void load(const Config& conf) override
             {
@@ -67,13 +68,12 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
-                    double pb = (double)Memory::getProcessPrivateUsage() / 1048576.0;
-                    ImGui::Text("Mem PB: %.2lf MB", pb);
+                    auto pb = Memory::getProcessPrivateUsage();
+                    ImGui::Text("Mem Alloc: %.1lf MB",
+                        (double)(pb - osgEarth::g_startupPrivateBytes) / 1048576.0);
                     ImGui::SameLine();
-                    ImGui::Text("  WS: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
-
-                    if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 4.0f))
-                        dirtySettings();
+                    ImGui::Text(" Total: %.1lf MB", (double)pb / 1048576.0);
+                    //ImGui::Text("  WS: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
 
                     ImGui::Separator();
 
@@ -96,7 +96,7 @@ namespace osgEarth
                                     (int)m.arena(i).numJobsPending,
                                     (int)m.arena(i).numJobsCanceled);
 
-                                if (_showConcurrency)
+                                if (_showArenaControls)
                                 {
                                     ImGui::TableNextColumn();
                                     ImGui::Text("  Concurrency:");
@@ -117,10 +117,18 @@ namespace osgEarth
                         ImGui::Text("Total: %d", m.totalJobs());
                         ImGui::SameLine();
                         ImGui::Text(" ICO: %d", GLObjectsCompiler::totalJobs());
-                        ImGui::Checkbox("Adjust concurrency", &_showConcurrency);
+                        ImGui::Checkbox("Show arena controls", &_showArenaControls);
 
                         ImGui::TreePop();
                     }
+
+                    ImGui::Separator();
+
+                    if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 2.0f))
+                        dirtySettings();
+
+                    ImGui::Checkbox("Unref image data after apply",
+                        &Registry::instance()->unRefImageDataAfterApply().mutable_value());
                 }
                 ImGui::End();
             }

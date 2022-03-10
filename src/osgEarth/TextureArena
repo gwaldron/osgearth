@@ -45,39 +45,65 @@ namespace osgEarth
         using Ptr = std::shared_ptr<Texture>;
         using WeakPtr = std::weak_ptr<Texture>;
 
-        //! Create a new texture
-        static Ptr create() {
-            return Ptr(new Texture());
-        }
+        //! Create for a given texture target
+        static Ptr create(
+            osg::Image* image = nullptr,
+            GLenum target = GL_TEXTURE_2D);
 
-        //! Create from an existing GLTexture
-        static Ptr create(GLTexture::Ptr, osg::State&);
+        //! Create from an existing OSG texture instance
+        static Ptr create(
+            osg::Texture* tex);
 
+        //! Make this texture resident as a bindless texture
         void makeResident(const osg::State&, bool toggle) const;
+
+        //! True if the texture is resident in state's context
         bool isResident(const osg::State&) const;
+
+        //! True if the texture has been uploaded to the GPU 
+        //! in the state's context
         bool isCompiled(const osg::State&) const;
+
+        //! Whether we need to compile (or recompile) this texture
+        bool needsCompile(const osg::State&) const;
+
         void compileGLObjects(osg::State&) const;
         void resizeGLObjectBuffers(unsigned);
         void releaseGLObjects(osg::State*) const;
 
-        optional<URI> _uri;
-        osg::ref_ptr<osg::Image> _image;
-        std::string _label;
-        bool _compress;
-        bool _mipmap;
-        bool _clamp;
-        optional<GLenum> _internalFormat;
-        optional<float> _maxAnisotropy;
+        OE_PROPERTY(std::string, name);
+        OE_PROPERTY(std::string, label);
+        OE_PROPERTY(bool, compress);
+        OE_PROPERTY(bool, mipmap);
+        OE_PROPERTY(bool, clamp);
+        OE_PROPERTY(bool, keepImage);
+        
+        OE_OPTION(URI, uri);
+        OE_OPTION(GLenum, internalFormat);
+        OE_OPTION(float, maxAnisotropy);
+
+        OE_PROPERTY(osg::ref_ptr<osg::Texture>, osgTexture);
+        OE_PROPERTY_CONST(GLenum, target);
+        OE_PROPERTY_CONST(bool, dynamic);
+
+        //! Whether any actual image data has been loaded into this object,
+        //! or whether we need to load it from the URI
+        bool dataLoaded() const;
 
         struct GCState
         {
             GLTexture::Ptr _gltexture;
+            unsigned _imageModCount;
+            GCState() : _imageModCount(0) { }
         };
-        mutable osg::buffered_object<GCState> _gs;
+        mutable std::vector<GCState> _gs;
         GCState& get(const osg::State&) const;
 
+        ~Texture();
+
     protected:
-        Texture() : _compress(true), _mipmap(true), _clamp(false) { }
+        Texture(GLenum target);
+        Texture(osg::Texture*);
         friend class TextureArena;
     };
 
@@ -123,12 +149,6 @@ namespace osgEarth
 
         //! Find the texture at index i.
         Texture::Ptr find(unsigned index) const;
-
-        //! Makes a texture fully available on the GPU.
-        void activate(Texture::Ptr tex);
-
-        //! Removes the texture from the GPU.
-        void deactivate(Texture::Ptr tex);
         
         //! Number of textures registered
         size_t size() const { return _textures.size(); }
@@ -156,9 +176,6 @@ namespace osgEarth
             GCState() : _inUse(false) { }
             bool _inUse;
             std::queue<int> _toCompile;
-            //std::vector<int> _toCompile;
-            TextureVector _toActivate;
-            TextureVector _toDeactivate;
             TextureVector _toRemove;
 
             GLBuffer::Ptr _handleBuffer;

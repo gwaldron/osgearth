@@ -190,16 +190,16 @@ LayerDrawableNVGL::refreshRenderState()
             if (tile._colorSamplers != nullptr)
             {
                 const Sampler& color = (*tile._colorSamplers)[SamplerBinding::COLOR];
-                if (color._arena_texture != nullptr)
+                if (color._texture != nullptr)
                 {
-                    buf.colorIndex = textures->add(color._arena_texture);
+                    buf.colorIndex = textures->add(color._texture);
                     COPY_MAT4F(color._matrix, buf.colorMat);
                 }
 
                 const Sampler& parent = (*tile._colorSamplers)[SamplerBinding::COLOR_PARENT];
-                if (parent._arena_texture != nullptr)
+                if (parent._texture != nullptr)
                 {
-                    buf.parentIndex = textures->add(parent._arena_texture);
+                    buf.parentIndex = textures->add(parent._texture);
                     COPY_MAT4F(parent._matrix, buf.parentMat);
                 }
             }
@@ -209,13 +209,12 @@ LayerDrawableNVGL::refreshRenderState()
             if (tile._sharedSamplers != nullptr /* && is elevation active */)
             {
                 const Sampler& s = (*tile._sharedSamplers)[SamplerBinding::ELEVATION];
-                if (s._arena_texture)
+                if (s._texture)
                 {
-                    s._arena_texture->_compress = false;
-                    s._arena_texture->_mipmap = false;
-                    s._arena_texture->_internalFormat = GL_R32F;
-                    s._arena_texture->_maxAnisotropy = 1.0f;
-                    buf.elevIndex = textures->add(s._arena_texture);
+                    s._texture->compress() = false;
+                    s._texture->mipmap() = false;
+                    s._texture->keepImage() = true; // never discard.. we use it elsewhere
+                    buf.elevIndex = textures->add(s._texture);
                     COPY_MAT4F(s._matrix, buf.elevMat);
                 }
             }
@@ -225,12 +224,12 @@ LayerDrawableNVGL::refreshRenderState()
             if (tile._sharedSamplers != nullptr /* && is normalmapping active */)
             {
                 const Sampler& s = (*tile._sharedSamplers)[SamplerBinding::NORMAL];
-                if (s._arena_texture)
+                if (s._texture)
                 {
-                    s._arena_texture->_compress = false;
-                    s._arena_texture->_mipmap = true;
-                    s._arena_texture->_maxAnisotropy = 1.0f;
-                    buf.normalIndex = textures->add(s._arena_texture);
+                    s._texture->compress() = false;
+                    s._texture->mipmap() = true;
+                    s._texture->maxAnisotropy() = 1.0f;
+                    buf.normalIndex = textures->add(s._texture);
                     COPY_MAT4F(s._matrix, buf.normalMat);
                 }
             }
@@ -242,12 +241,12 @@ LayerDrawableNVGL::refreshRenderState()
                 if (tile._sharedSamplers != nullptr /* && is normalmapping active */)
                 {
                     const Sampler& s = (*tile._sharedSamplers)[SamplerBinding::LANDCOVER];
-                    if (s._arena_texture)
+                    if (s._texture)
                     {
-                        s._arena_texture->_compress = false;
-                        s._arena_texture->_mipmap = false;
-                        s._arena_texture->_maxAnisotropy = 1.0f;
-                        buf.landcoverIndex = textures->add(s._arena_texture);
+                        s._texture->compress() = false;
+                        s._texture->mipmap() = false;
+                        s._texture->maxAnisotropy() = 1.0f;
+                        buf.landcoverIndex = textures->add(s._texture);
                         COPY_MAT4F(s._matrix, buf.landcoverMat);
                     }
                 }
@@ -259,15 +258,15 @@ LayerDrawableNVGL::refreshRenderState()
                 for (unsigned i = SamplerBinding::SHARED; i < tile._sharedSamplers->size(); ++i)
                 {
                     const Sampler& s = (*tile._sharedSamplers)[i];
-                    if (s._arena_texture)
+                    if (s._texture)
                     {
                         int k = i - SamplerBinding::SHARED;
                         if (k < MAX_NUM_SHARED_SAMPLERS)
                         {
-                            s._arena_texture->_compress = false;
-                            s._arena_texture->_mipmap = true;
+                            s._texture->compress() = false;
+                            s._texture->mipmap() = true;
                             //s._arena_texture->_maxAnisotropy = 4.0f;
-                            buf.sharedIndex[k] = textures->add(s._arena_texture);
+                            buf.sharedIndex[k] = textures->add(s._texture);
                             COPY_MAT4F(s._matrix, buf.sharedMat[k]);
                         }
                         else

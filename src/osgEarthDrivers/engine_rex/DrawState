@@ -21,6 +21,8 @@
 
 #include "RenderBindings"
 
+#include <osgEarth/TextureArena>
+
 #include <osg/RenderInfo>
 #include <osg/GLExtensions>
 #include <osg/StateSet>
@@ -40,9 +42,9 @@ namespace osgEarth { namespace REX
     {
         SamplerState() : _matrixUL(-1) { }
         std::string _name;
-        optional<osg::Texture*> _texture;    // Texture currently bound
-        optional<osg::Matrixf> _matrix;      // Matrix that is currently set
-        GLint _matrixUL;                     // Matrix uniform location
+        optional<Texture::Ptr> _texture; // Texture currently bound
+        optional<osg::Matrixf> _matrix; // Matrix that is currently set
+        GLint _matrixUL; // Matrix uniform location
 
         void clear() {
             _texture.clear();

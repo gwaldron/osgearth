@@ -253,35 +253,42 @@ namespace osgEarth
 
                     if (ImGui::TreeNodeEx("GL Inspector", ImGuiTreeNodeFlags_DefaultOpen))
                     {
-                        auto glpool = GLObjectPool::get(*ri.getState());
-                        auto globjects = glpool->objects();
-
-                        ImGui::Text("Recycling: %u%%",
-                            int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
-                        int avarice = glpool->getAvarice();
-                        ImGui::Text("Quick"); ImGui::SameLine();
-                        if (ImGui::SliderInt("Relaxed", &avarice, 10, 0))
-                            glpool->setAvarice(avarice);
-
-                        ImGui::Separator();
-
-                        double glmem = (double)glpool->totalBytes() / 1048576.;
-                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Memory: %.1lf MB", glmem);
-                        std::map<std::string, std::vector<unsigned>> counts;
-                        for (auto& obj : globjects) {
-                            counts[obj->label()].push_back(obj->size());
-                        }
-                        if (ImGui::BeginTable("globjects", 2))
+                        if (GLUtils::useNVGL())
                         {
-                            for (auto& bo : counts) {
-                                unsigned total = 0;
-                                for (auto& c : bo.second) total += c;
-                                ImGui::TableNextColumn();
-                                ImGui::Text("%s", bo.first.c_str());
-                                ImGui::TableNextColumn();
-                                ImGui::Text("(%d) (%.1lf MB)", bo.second.size(), (double)total / (double)1048576.);
+                            auto glpool = GLObjectPool::get(*ri.getState());
+                            auto globjects = glpool->objects();
+
+                            ImGui::Text("Recycling: %u%%",
+                                int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
+                            int avarice = glpool->getAvarice();
+                            ImGui::Text("Quick"); ImGui::SameLine();
+                            if (ImGui::SliderInt("Relaxed", &avarice, 10, 0))
+                                glpool->setAvarice(avarice);
+
+                            ImGui::Separator();
+
+                            double glmem = (double)glpool->totalBytes() / 1048576.;
+                            ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Memory: %.1lf MB", glmem);
+                            std::map<std::string, std::vector<unsigned>> counts;
+                            for (auto& obj : globjects) {
+                                counts[obj->label()].push_back(obj->size());
                             }
-                            ImGui::EndTable();
+                            if (ImGui::BeginTable("globjects", 2))
+                            {
+                                for (auto& bo : counts) {
+                                    unsigned total = 0;
+                                    for (auto& c : bo.second) total += c;
+                                    ImGui::TableNextColumn();
+                                    ImGui::Text("%s", bo.first.c_str());
+                                    ImGui::TableNextColumn();
+                                    ImGui::Text("(%d) (%.1lf MB)", bo.second.size(), (double)total / (double)1048576.);
+                                }
+                                ImGui::EndTable();
+                            }
+                        }
+                        else
+                        {
+                            ImGui::Text("NVGL not active");
                         }
 
                         ImGui::TreePop();

@@ -24,124 +24,98 @@ using namespace osgEarth;
 #undef  LC
 #define LC "[TerrainTileModel] "
 
-//...................................................................
-
-TerrainTileLayerModel::TerrainTileLayerModel() :
-    _revision(-1)
+namespace
 {
+    // adapter that lets us compile a Texture::Ptr using the ICO
+    struct TextureAdapter : public osg::Texture2D
+    {
+        osgEarth::Texture::Ptr _tex;
+        TextureAdapter(osgEarth::Texture::Ptr value) : _tex(value) { }
+
+        // apply is called by the ICO for textures (not compileGLObjects)
+        void apply(osg::State& state) const override {
+            if (_tex)
+                _tex->compileGLObjects(state);
+        }
+    };
 }
 
 //...................................................................
 
-TerrainTileElevationModel::TerrainTileElevationModel() :
-_minHeight( FLT_MAX ),
-_maxHeight(-FLT_MAX )
+TerrainTileModel::Elevation::Elevation() :
+    _minHeight(FLT_MAX),
+    _maxHeight(-FLT_MAX)
 {
-    //NOP
+    //nop
 }
 
 //...................................................................
 
-TerrainTileModel::TerrainTileModel(const TileKey&  key,
-                                   const Revision& revision) :
-_key                   ( key ),
-_revision              ( revision ),
-_requiresUpdateTraverse( false )
+TerrainTileModel::TerrainTileModel(
+    const TileKey&  key,
+    const Revision& revision) :
+    _key(key),
+    _revision(revision),
+    _requiresUpdateTraversal(false)
 {
-    //NOP
-}
-
-osg::Texture* 
-TerrainTileModel::getNormalTexture() const
-{
-    return _normalLayer.valid() ? _normalLayer->getTexture() : 0L;
-}
-
-osg::RefMatrixf* 
-TerrainTileModel::getNormalTextureMatrix() const
-{
-    return _normalLayer.valid() ? _normalLayer->getMatrix() : 0L;
-}
-
-osg::Texture* 
-TerrainTileModel::getElevationTexture() const
-{
-    return _elevationLayer.valid() ? _elevationLayer->getTexture() : 0L;
-}
-
-osg::RefMatrixf* 
-TerrainTileModel::getElevationTextureMatrix() const
-{
-    return _elevationLayer.valid() ? _elevationLayer->getMatrix() : 0L;
-}
-
-osg::Texture* 
-TerrainTileModel::getLandCoverTexture() const
-{
-    return _landCoverLayer.valid() ? _landCoverLayer->getTexture() : 0L;
-}
-
-osg::RefMatrixf* 
-TerrainTileModel::getLandCoverTextureMatrix() const
-{
-    return _landCoverLayer.valid() ? _landCoverLayer->getMatrix() : 0L;
+    // nop
 }
 
 void
-TerrainTileModel::compileGLObjects(osg::State& state) const
+TerrainTileModel::getStateToCompile(
+    osgUtil::StateToCompile& out,
+    bool bindless) const
 {
-    for (TerrainTileColorLayerModelVector::const_iterator i = _colorLayers.begin();
-        i != _colorLayers.end();
-        ++i)
+    for (auto& colorLayer : colorLayers())
     {
-        if (i->get()->getTexture())
-            i->get()->getTexture()->compileGLObjects(state);
+        if (colorLayer.texture())
+        {
+            out._textures.insert(bindless ?
+                new TextureAdapter(colorLayer.texture()) :
+                colorLayer.texture()->osgTexture().get());
+        }
     }
 
-    // since non-core shared layers are ALSO in the colorLayers vector,
-    // there is no need to iterator over them.
+    if (normalMap().texture())
+    {
+        out._textures.insert(bindless ?
+            new TextureAdapter(normalMap().texture()) :
+            normalMap().texture()->osgTexture().get());
+    }
 
-    if (getNormalTexture())
-        getNormalTexture()->compileGLObjects(state);
+    if (elevation().texture())
+    {
+        out._textures.insert(bindless ?
+            new TextureAdapter(elevation().texture()) :
+            elevation().texture()->osgTexture().get());
+    }
 
-    if (getElevationTexture())
-        getElevationTexture()->compileGLObjects(state);
-
-    if (getLandCoverTexture())
-        getLandCoverTexture()->compileGLObjects(state);
+    if (landCover().texture())
+    {
+        out._textures.insert(bindless ?
+            new TextureAdapter(landCover().texture()) :
+            landCover().texture()->osgTexture().get());
+    }
 }
 
-void
-TerrainTileModel::getStateToCompile(osgUtil::StateToCompile& out) const
-{
-    for(auto& colorLayer : _colorLayers)
-        if (colorLayer->getTexture())
-            out._textures.insert(colorLayer->getTexture());
-
-    if (getNormalTexture())
-        out._textures.insert(getNormalTexture());
-
-    if (getElevationTexture())
-        out._textures.insert(getElevationTexture());
-
-    if (getLandCoverTexture())
-        out._textures.insert(getLandCoverTexture());
-}
-
-osg::Texture*
+Texture::Ptr
 TerrainTileModel::getTexture(UID layerUID) const
 {
-    for(unsigned i=0; i<colorLayers().size(); ++i)
-        if (colorLayers()[i]->getLayer()->getUID() == layerUID)
-            return colorLayers()[i]->getTexture();
-    return NULL;
+    for (auto& colorLayer : colorLayers())
+        if (colorLayer.layer() && colorLayer.layer()->getUID() == layerUID)
+            return colorLayer.texture();
+
+    return nullptr;
 }
 
-osg::RefMatrixf* 
+const osg::Matrixf&
 TerrainTileModel::getMatrix(UID layerUID) const
 {
-    for (unsigned i = 0; i < colorLayers().size(); ++i)
-        if (colorLayers()[i]->getLayer()->getUID() == layerUID)
-            return colorLayers()[i]->getMatrix();
-    return NULL;
+    static osg::Matrixf s_identity;
+
+    for (auto& colorLayer : colorLayers())
+        if (colorLayer.layer() && colorLayer.layer()->getUID() == layerUID)
+            return colorLayer.matrix();
+
+    return s_identity;
 }

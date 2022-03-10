@@ -24,6 +24,7 @@
 #include "TerrainEngineNode"
 #include "GLUtils"
 #include "Chonk"
+#include "Memory"
 
 #include <osgText/Font>
 #include <osgDB/Registry>
@@ -40,6 +41,7 @@ void osgEarth::initialize()
 {
     OE_INFO << "Hello, world." << std::endl;
 
+    // creates a registry and initializes the system caps
     osgEarth::Registry::instance()->getCapabilities();
 
     if (::getenv("OSGEARTH_GL_DEBUG"))
@@ -66,6 +68,9 @@ osgEarth::createUID()
     return s_uidGen++;
 }
 
+// private bytes usage at startup.
+std::int64_t osgEarth::g_startupPrivateBytes =
+    osgEarth::Util::Memory::getProcessPrivateUsage();
 
 namespace
 {

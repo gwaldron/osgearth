@@ -81,20 +81,17 @@ DrawTileCommand::apply(
             const Sampler& sampler = (*_colorSamplers)[s];
             SamplerState& samplerState = pps._samplerState._samplers[s];
 
-            if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture.get()))
+            if (sampler._texture &&
+                !samplerState._texture.isSetTo(sampler._texture))
             {
-                // test for a "placeholder" texture, i.e. a texture whose image
-                // is not yet available -- if encountered, bail and render nothing.
-                if (sampler._texture->getNumImages() > 0 &&
-                    sampler._texture->getImage(0) != nullptr &&
-                    sampler._texture->getImage(0)->valid() == false)
+                if (!sampler._texture->dataLoaded())
                 {
                     return;
                 }
 
                 state.setActiveTextureUnit((*ds._bindings)[s].unit());
-                sampler._texture->apply(state);
-                samplerState._texture = sampler._texture.get();
+                sampler._texture->osgTexture()->apply(state);
+                samplerState._texture = sampler._texture;
             }
 
             if (samplerState._matrixUL >= 0 && !samplerState._matrix.isSetTo(sampler._matrix))
@@ -108,8 +105,8 @@ DrawTileCommand::apply(
             {
                 if (pps._parentTextureExistsUL >= 0 && !pps._parentTextureExists.isSetTo(sampler._texture.get() != 0L))
                 {
-                    ext->glUniform1f(pps._parentTextureExistsUL, sampler._texture.valid() ? 1.0f : 0.0f);
-                    pps._parentTextureExists = sampler._texture.valid();
+                    ext->glUniform1f(pps._parentTextureExistsUL, sampler._texture ? 1.0f : 0.0f);
+                    pps._parentTextureExists = sampler._texture != nullptr;
                 }
             }
         }
@@ -122,11 +119,11 @@ DrawTileCommand::apply(
             const Sampler& sampler = (*_sharedSamplers)[s];
             SamplerState& samplerState = pps._samplerState._samplers[s];
 
-            if (sampler._texture.valid() && !samplerState._texture.isSetTo(sampler._texture.get()))
+            if (sampler._texture && !samplerState._texture.isSetTo(sampler._texture))
             {
                 state.setActiveTextureUnit((*ds._bindings)[s].unit());
-                sampler._texture->apply(state);
-                samplerState._texture = sampler._texture.get();
+                sampler._texture->osgTexture()->apply(state);
+                samplerState._texture = sampler._texture;
             }
 
             if (samplerState._matrixUL >= 0 && !samplerState._matrix.isSetTo(sampler._matrix))

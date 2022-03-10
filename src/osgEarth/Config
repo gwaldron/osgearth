@@ -681,4 +681,14 @@ namespace osgEarth
     TYPE & NAME ## _mutable() { return _ ## NAME; } \
     const TYPE & NAME () const { return _ ## NAME; }
 
+//! const property macro
+#define OE_PROPERTY_CONST(TYPE, NAME) \
+    private: \
+    TYPE _ ## NAME ; \
+    protected: \
+    TYPE & NAME () { return _ ## NAME; } \
+    TYPE & NAME ## _mutable() { return _ ## NAME; } \
+    public: \
+    const TYPE & NAME () const { return _ ## NAME; }
+
 #endif // OSGEARTH_CONFIG_H

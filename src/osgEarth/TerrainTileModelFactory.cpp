@@ -16,13 +16,13 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarth/TerrainTileModelFactory>
-#include <osgEarth/ImageToHeightFieldConverter>
-#include <osgEarth/Map>
-#include <osgEarth/Registry>
-#include <osgEarth/LandCoverLayer>
-#include <osgEarth/TerrainConstraintLayer>
-#include <osgEarth/Metrics>
+#include "TerrainTileModelFactory"
+#include "ImageToHeightFieldConverter"
+#include "Map"
+#include "Registry"
+#include "LandCoverLayer"
+#include "TerrainConstraintLayer"
+#include "Metrics"
 
 #include <osg/Texture2D>
 #include <osg/Texture2DArray>
@@ -30,6 +30,11 @@
 #define LC "[TerrainTileModelFactory] "
 
 using namespace osgEarth;
+
+#define LABEL_IMAGERY "Terrain imagery"
+#define LABEL_NORMALMAP "Terrain normalmap"
+#define LABEL_ELEVATION "Terrain elevation"
+#define LABEL_COVERAGE "Terrain coverage"
 
 //.........................................................................
 
@@ -138,18 +143,19 @@ void CreateTileManifest::setProgressive(bool value)
 
 //.........................................................................
 
-TerrainTileModelFactory::TerrainTileModelFactory(const TerrainOptions& options) :
-_options( options )
+TerrainTileModelFactory::TerrainTileModelFactory(
+    const TerrainOptions& options) :
+    _options(options)
 {
     // Create an empty texture that we can use as a placeholder
-    _emptyColorTexture = new osg::Texture2D(ImageUtils::createEmptyImage());
-    _emptyColorTexture->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    _emptyColorTexture = Texture::create(ImageUtils::createEmptyImage());
+    _emptyColorTexture->label() = LABEL_IMAGERY;
 
     osg::Image* landCoverImage = LandCover::createImage(1u);
     ImageUtils::PixelWriter writeLC(landCoverImage);
     writeLC(osg::Vec4(0,0,0,0), 0, 0);
-    _emptyLandCoverTexture = new osg::Texture2D(landCoverImage);
-    _emptyLandCoverTexture->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    _emptyLandCoverTexture = Texture::create(landCoverImage);
+    _emptyColorTexture->label() = LABEL_COVERAGE;
 }
 
 TerrainTileModel*
@@ -215,7 +221,7 @@ TerrainTileModelFactory::createStandaloneTileModel(
     return model.release();
 }
 
-TerrainTileImageLayerModel*
+bool
 TerrainTileModelFactory::addImageLayer(
     TerrainTileModel* model,
     ImageLayer* imageLayer,
@@ -227,34 +233,37 @@ TerrainTileModelFactory::addImageLayer(
     OE_PROFILING_ZONE_TEXT(imageLayer->getName());
 
     if (!imageLayer->isOpen())
-        return nullptr;
+        return false;
 
-    TerrainTileImageLayerModel* layerModel = NULL;
-    osg::Texture* tex = 0L;
     TextureWindow window;
     osg::Matrix scaleBiasMatrix;
+    Texture::Ptr tex;
 
     if (imageLayer->isKeyInLegalRange(key) && imageLayer->mayHaveData(key))
     {
         if (imageLayer->useCreateTexture())
         {
             window = imageLayer->createTexture(key, progress);
-            tex = window.getTexture();
+            tex = Texture::create();
+            tex->osgTexture() = window.getTexture();
             scaleBiasMatrix = window.getMatrix();
         }
 
         else if (imageLayer->getAsyncLoading() == true)
         {
-            tex = new FutureTexture2D(imageLayer, key);
-            tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
-            tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
-            tex->setResizeNonPowerOfTwoHint(false);
+            osg::Texture* t = new FutureTexture2D(imageLayer, key);
+            t->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+            t->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+            t->setResizeNonPowerOfTwoHint(false);
             osg::Texture::FilterMode magFilter = imageLayer->options().magFilter().get();
             osg::Texture::FilterMode minFilter = imageLayer->options().minFilter().get();
-            tex->setFilter(osg::Texture::MAG_FILTER, magFilter);
-            tex->setFilter(osg::Texture::MIN_FILTER, minFilter);
-            tex->setMaxAnisotropy(4.0f);
-            tex->setUnRefImageDataAfterApply(false);
+            t->setFilter(osg::Texture::MAG_FILTER, magFilter);
+            t->setFilter(osg::Texture::MIN_FILTER, minFilter);
+            t->setMaxAnisotropy(4.0f);
+            t->setUnRefImageDataAfterApply(false);
+
+            tex = Texture::create();
+            tex->osgTexture() = t;
         }
 
         else
@@ -271,50 +280,55 @@ TerrainTileModelFactory::addImageLayer(
                 // Propagate the tracking token to the texture if there is one:
                 if (tex && geoImage.getTrackingToken())
                 {
-                    tex->getOrCreateUserDataContainer()->addUserObject(
+                    tex->osgTexture()->getOrCreateUserDataContainer()->addUserObject(
                         geoImage.getTrackingToken());
                 }
             }
+
         }
     }
 
     // if this is the first LOD, and the engine requires that the first LOD
     // be populated, make an empty texture if we didn't get one.
-    if (tex == 0L &&
+    if (tex == nullptr &&
         _options.firstLOD() == key.getLOD() &&
         reqs && reqs->fullDataAtFirstLodRequired())
     {
-        tex = _emptyColorTexture.get();
+        tex = _emptyColorTexture;
     }
 
     if (tex)
     {
-        tex->setName(
-            model->getKey().str() + ":" +
-            (imageLayer->getName().empty() ? "(unnamed image layer)" : imageLayer->getName()));
+        tex->label() = LABEL_IMAGERY;
 
-        layerModel = new TerrainTileImageLayerModel();
+        tex->name() =
+            model->key().str() + ":" +
+            (imageLayer->getName().empty() ? "(unnamed image layer)" : imageLayer->getName());
 
-        layerModel->setImageLayer(imageLayer);
-
-        layerModel->setTexture(tex);
-        layerModel->setMatrix(new osg::RefMatrixf(scaleBiasMatrix));
-        layerModel->setRevision(imageLayer->getRevision());
-
-        model->colorLayers().push_back(layerModel);
+        TerrainTileModel::ColorLayer layerModel;
+        layerModel.layer() = imageLayer;
+        layerModel.texture() = tex;
+        layerModel.matrix() = scaleBiasMatrix;
+        layerModel.revision() = imageLayer->getRevision();
 
         if (imageLayer->isShared())
         {
-            model->sharedLayers().push_back(layerModel);
+            model->sharedLayerIndices().push_back(
+                model->colorLayers().size());
         }
 
         if (imageLayer->isDynamic() || imageLayer->getAsyncLoading())
         {
-            model->setRequiresUpdateTraverse(true);
+            model->requiresUpdateTraversal() = true;
         }
+
+        model->colorLayers().push_back(std::move(layerModel));
+        return true;
     }
 
-    return layerModel;
+    return false;
+
+    return &model->colorLayers().back();
 }
 
 void
@@ -325,13 +339,14 @@ TerrainTileModelFactory::addStandaloneImageLayer(
     const TerrainEngineRequirements* reqs,
     ProgressCallback* progress)
 {
-    TerrainTileImageLayerModel* layerModel = NULL;
+    //TerrainTileImageLayerModel* layerModel = NULL;
     TileKey keyToUse = key;
     osg::Matrixf scaleBiasMatrix;
-    while (keyToUse.valid() && !layerModel)
+    bool added = false;
+    while (keyToUse.valid() && !added)
     {
-        layerModel = addImageLayer(model, imageLayer, keyToUse, reqs, progress);
-        if (!layerModel)
+        bool added = addImageLayer(model, imageLayer, keyToUse, reqs, progress);
+        if (!added)
         {
             TileKey parentKey = keyToUse.createParentKey();
             if (parentKey.valid())
@@ -343,9 +358,10 @@ TerrainTileModelFactory::addStandaloneImageLayer(
             keyToUse = parentKey;
         }
     }
-    if (layerModel)
+
+    if (added)
     {
-        layerModel->setMatrix(new osg::RefMatrixf(scaleBiasMatrix));
+        model->colorLayers().back().matrix() = scaleBiasMatrix;
     }
 }
 
@@ -392,12 +408,12 @@ TerrainTileModelFactory::addColorLayers(
                 addImageLayer(model, imageLayer, key, reqs, progress);
             }
         }
-        else // non-image kind of TILE layer:
+        else // non-image kind of TILE layer (e.g., splatting)
         {
-            TerrainTileColorLayerModel* colorModel = new TerrainTileColorLayerModel();
-            colorModel->setLayer(layer);
-            colorModel->setRevision(layer->getRevision());
-            model->colorLayers().push_back(colorModel);
+            TerrainTileModel::ColorLayer colorModel;
+            colorModel.layer() = layer;
+            colorModel.revision() = layer->getRevision();
+            model->colorLayers().push_back(std::move(colorModel));
         }
     }
 }
@@ -433,34 +449,34 @@ TerrainTileModelFactory::addElevation(
     if (!needElevation)
         return;
 
+
     osg::ref_ptr<ElevationTexture> elevTex;
 
     const bool acceptLowerRes = false;
 
     if (map->getElevationPool()->getTile(key, acceptLowerRes, elevTex, &_workingSet, progress))
     {
-        osg::ref_ptr<TerrainTileElevationModel> layerModel = new TerrainTileElevationModel();
-
-        layerModel->setRevision(combinedRevision);
-
-        if ( elevTex.valid() )
+        if (elevTex.valid())
         {
+            model->elevation().revision() = combinedRevision;
+            model->elevation().texture() = Texture::create(elevTex.get());
+            model->elevation().texture()->label() = LABEL_ELEVATION;
+
             if (_options.useNormalMaps() == true)
             {
                 // Make a normal map if it doesn't already exist
                 elevTex->generateNormalMap(map, &_workingSet, progress);
 
                 if (elevTex->getNormalMapTexture())
+                {
                     elevTex->getNormalMapTexture()->setName(key.str() + ":normalmap");
+                    model->normalMap().texture() = Texture::create(elevTex->getNormalMapTexture());
+                    model->normalMap().texture()->label() = LABEL_NORMALMAP;
+                }
             }
 
-            // Made an image, so store this as a texture with no matrix.
-            layerModel->setTexture( elevTex.get() );
-
             // Keep the heightfield pointer around for legacy 3rd party usage (VRF)
-            layerModel->setHeightField(elevTex->getHeightField());
-
-            model->elevationModel() = layerModel.get();
+            model->elevation().heightField() = elevTex->getHeightField();
         }
     }
 }
@@ -475,23 +491,24 @@ TerrainTileModelFactory::addStandaloneElevation(
     ProgressCallback*            progress)
 {
     TileKey keyToUse = key;
-    while (keyToUse.valid() && model->elevationModel().valid() == false)
+    while (keyToUse.valid() && model->elevation().texture() == nullptr)
     {
         addElevation(model, map, keyToUse, manifest, border, progress);
-        if (model->elevationModel() == NULL)
+
+        if (model->elevation().texture() == nullptr)
         {
             keyToUse = keyToUse.createParentKey();
         }
     }
-    if (model->elevationModel().valid())
+    if (model->elevation().texture() != nullptr)
     {
         osg::Matrixf scaleBiasMatrix;
         key.getExtent().createScaleBias(keyToUse.getExtent(), scaleBiasMatrix);
-        model->elevationModel()->setMatrix(new osg::RefMatrixf(scaleBiasMatrix));
+        model->elevation().matrix() = scaleBiasMatrix;
     }
 }
 
-TerrainTileLandCoverModel*
+bool
 TerrainTileModelFactory::addLandCover(
     TerrainTileModel*            model,
     const Map*                   map,
@@ -502,8 +519,6 @@ TerrainTileModelFactory::addLandCover(
 {
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT("LandCover");
-
-    TerrainTileLandCoverModel* landCoverModel = NULL;
 
     // Note. We only support one land cover layer...
     LandCoverLayerVector layers;
@@ -537,35 +552,26 @@ TerrainTileModelFactory::addLandCover(
 
     osg::ref_ptr<osg::Image> coverageImage;
 
-    osg::ref_ptr<osg::Texture> tex;
-
     if (layers.populateLandCoverImage(coverageImage, key, progress))
     {
-        tex = createCoverageTexture(coverageImage.get());
+        model->landCover().texture() = createCoverageTexture(coverageImage.get());
     }
 
     // if this is the first LOD, and the engine requires that the first LOD
     // be populated, make an empty texture if we didn't get one.
-    if (tex == 0L &&
+    if (model->landCover().texture() == nullptr &&
         _options.firstLOD() == key.getLOD() &&
         reqs && reqs->fullDataAtFirstLodRequired())
     {
-        tex = _emptyLandCoverTexture.get();
+        model->landCover().texture() = _emptyLandCoverTexture;
     }
 
-    if (tex)
+    if (model->landCover().texture())
     {
-        tex->setName(model->getKey().str() + ":landcover");
-
-        landCoverModel = new TerrainTileLandCoverModel();
-        landCoverModel->setRevision(combinedRevision);
-
-        landCoverModel->setTexture(tex.get());
-
-        model->landCoverModel() = landCoverModel;
+        model->landCover().texture()->name() = model->key().str() + ":landcover";
     }
 
-    return landCoverModel;
+    return model->landCover().texture() != nullptr;
 }
 
 void
@@ -577,13 +583,12 @@ TerrainTileModelFactory::addStandaloneLandCover(
     const CreateTileManifest&    manifest,
     ProgressCallback*            progress)
 {
-    TerrainTileLandCoverModel* layerModel = NULL;
     TileKey keyToUse = key;
     osg::Matrixf scaleBiasMatrix;
-    while (keyToUse.valid() && !layerModel)
+    while (keyToUse.valid() && !model->landCover().texture())
     {
-        layerModel = addLandCover(model, map, keyToUse, reqs, manifest, progress);
-        if (!layerModel)
+        addLandCover(model, map, keyToUse, reqs, manifest, progress);
+        if (!model->landCover().texture())
         {
             TileKey parentKey = keyToUse.createParentKey();
             if (parentKey.valid())
@@ -595,9 +600,9 @@ TerrainTileModelFactory::addStandaloneLandCover(
             keyToUse = parentKey;
         }
     }
-    if (layerModel)
+    if (model->landCover().texture())
     {
-        layerModel->setMatrix(new osg::RefMatrixf(scaleBiasMatrix));
+        model->landCover().matrix() = scaleBiasMatrix;
     }
 }
 
@@ -627,9 +632,10 @@ namespace
     }
 }
 
-osg::Texture*
-TerrainTileModelFactory::createImageTexture(const osg::Image* image,
-                                            const ImageLayer* layer) const
+Texture::Ptr
+TerrainTileModelFactory::createImageTexture(
+    const osg::Image* image,
+    const ImageLayer* layer) const
 {
     if (image == nullptr || layer == nullptr)
         return nullptr;
@@ -739,7 +745,7 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 
     // For GL_RED, swizzle the RGBA all to RED in order to match old GL_LUMINANCE behavior
-    for(unsigned i=0; i<tex->getNumImages(); ++i)
+    for(unsigned i=0; i< tex->getNumImages(); ++i)
     {
         if (tex->getImage(i) && tex->getImage(i)->getPixelFormat() == GL_RED)
         {
@@ -748,10 +754,10 @@ TerrainTileModelFactory::createImageTexture(const osg::Image* image,
         }
     }
 
-    return tex;
+    return Texture::create(tex);
 }
 
-osg::Texture*
+Texture::Ptr
 TerrainTileModelFactory::createCoverageTexture(const osg::Image* image) const
 {
     osg::Texture2D* tex = createTexture2D(image);
@@ -770,21 +776,5 @@ TerrainTileModelFactory::createCoverageTexture(const osg::Image* image) const
 
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 
-    return tex;
-}
-
-osg::Texture*
-TerrainTileModelFactory::createElevationTexture(const osg::Image* image) const
-{
-    osg::Texture2D* tex = createTexture2D(image);
-    tex->setDataVariance(osg::Object::STATIC);
-    tex->setInternalFormat(GL_R32F);
-    tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
-    tex->setWrap  ( osg::Texture::WRAP_S,     osg::Texture::CLAMP_TO_EDGE );
-    tex->setWrap  ( osg::Texture::WRAP_T,     osg::Texture::CLAMP_TO_EDGE );
-    tex->setResizeNonPowerOfTwoHint( false );
-    tex->setMaxAnisotropy( 1.0f );
-    tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
-    return tex;
+    return Texture::create(tex);
 }

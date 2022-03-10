@@ -593,7 +593,7 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
     if (de._ebo == nullptr || !de._ebo->valid())
     {
         //TODO consider sharing
-        de._ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state, "Rex EBO");
+        de._ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state, "REX EBO");
         de._ebo->bind();
         de._ebo->bufferStorage(_drawElements->getTotalDataSize(), _drawElements->getDataPointer(), 0);
         de._ebo->makeResident();

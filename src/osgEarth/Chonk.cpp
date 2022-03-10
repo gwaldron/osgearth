@@ -152,19 +152,17 @@ namespace
 
                 if (i == _textureLUT.end())
                 {
-                    bool isNew = true;
-
                     if (_getOrCreateTexture)
-                        arena_tex = _getOrCreateTexture(tex, isNew);
-                    else
-                        arena_tex = Texture::create();
-
-                    if (isNew)
                     {
-                        arena_tex->_image = tex->getImage(0);
-                        arena_tex->_uri = tex->getImage(0)->getFileName();
-                        arena_tex->_label = "Chonk texture";
+                        bool isNew = true;
+                        arena_tex = _getOrCreateTexture(tex, isNew);
                     }
+                    else
+                    {
+                        arena_tex = Texture::create(tex);
+                    }
+
+                    arena_tex->label() = "Chonk Texture";
 
                     int index = _textures->add(arena_tex);
                     if (index >= 0)

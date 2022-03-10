@@ -769,6 +769,7 @@ ImageLayer::writeImage(const TileKey& key, const osg::Image* image, ProgressCall
     if (getStatus().isError())
         return getStatus();
 
+    Threading::ScopedReadLock lock(layerMutex());
     return writeImageImplementation(key, image, progress);
 }
 

@@ -1148,7 +1148,6 @@ void
 TMSImageLayer::init()
 {
     ImageLayer::init();
-    _mutex.setName("oe.TMSImageLayer");
 }
 
 Status
@@ -1157,8 +1156,6 @@ TMSImageLayer::openImplementation()
     Status parent = ImageLayer::openImplementation();
     if (parent.isError())
         return parent;
-
-    ScopedWriteLock lock(_mutex);
 
     osg::ref_ptr<const Profile> profile = getProfile();
 
@@ -1184,8 +1181,6 @@ TMSImageLayer::openImplementation()
 Status
 TMSImageLayer::closeImplementation()
 {
-    ScopedWriteLock lock(_mutex);
-
     _driver.close();
     return ImageLayer::closeImplementation();
 }
@@ -1193,8 +1188,6 @@ TMSImageLayer::closeImplementation()
 GeoImage
 TMSImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    ScopedReadLock lock(_mutex);
-
     ReadResult r = _driver.read(
         options().url().get(),
         key,
@@ -1213,8 +1206,6 @@ TMSImageLayer::writeImageImplementation(const TileKey& key, const osg::Image* im
 {
     if (!isWritingRequested())
         return Status::ServiceUnavailable;
-
-    ScopedReadLock lock(_mutex);
 
     bool ok = _driver.write(
         options().url().get(),
@@ -1261,7 +1252,6 @@ void
 TMSElevationLayer::init()
 {
     ElevationLayer::init();
-    _mutex.setName("oe.TMSElevationLayer");
 }
 
 Status
@@ -1270,8 +1260,6 @@ TMSElevationLayer::openImplementation()
     Status parent = ElevationLayer::openImplementation();
     if (parent.isError())
         return parent;
-
-    ScopedWriteLock lock(_mutex);
 
     // Create an image layer under the hood. TMS fetch is the same for image and
     // elevation; we just convert the resulting image to a heightfield
@@ -1301,8 +1289,6 @@ TMSElevationLayer::openImplementation()
 Status
 TMSElevationLayer::closeImplementation()
 {
-    ScopedWriteLock lock(_mutex);
-
     if (_imageLayer.valid())
     {
         _imageLayer->close();
@@ -1314,7 +1300,6 @@ TMSElevationLayer::closeImplementation()
 GeoHeightField
 TMSElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    ScopedReadLock lock(_mutex);
 
     if (_imageLayer.valid() == false ||
         !_imageLayer->isOpen())
@@ -1349,8 +1334,6 @@ TMSElevationLayer::writeHeightFieldImplementation(
     const osg::HeightField* hf,
     ProgressCallback* progress) const
 {
-    ScopedReadLock lock(_mutex);
-
     if (_imageLayer.valid() == false ||
         !_imageLayer->isOpen())
     {

@@ -585,6 +585,7 @@ ElevationLayer::writeHeightField(const TileKey& key, const osg::HeightField* hf,
 {
     if (isWritingSupported() && isWritingRequested())
     {
+        Threading::ScopedReadLock lock(layerMutex());
         return writeHeightFieldImplementation(key, hf, progress);
     }
     return Status::ServiceUnavailable;

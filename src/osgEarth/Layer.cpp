@@ -338,6 +338,7 @@ Layer::init()
     _status.set(Status::ResourceUnavailable,
         getOpenAutomatically() ? "Layer closed" : "Layer disabled");
     _isClosing = false;
+    _isOpening = false;
 
     // For detecting scene graph changes at runtime
     _sceneGraphCallbacks = new SceneGraphCallbacks(this);
@@ -379,12 +380,13 @@ Layer::open()
         getOrCreateStateSet()->setDefine(options().shaderDefine().get());
     }
 
+    _isOpening = true;
     setStatus(openImplementation());
-
     if (isOpen())
     {
         fireCallback(&LayerCallback::onOpen);
     }
+    _isOpening = false;
 
     return getStatus();
 }

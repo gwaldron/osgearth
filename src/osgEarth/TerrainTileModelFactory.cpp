@@ -299,11 +299,14 @@ TerrainTileModelFactory::addImageLayer(
 
     if (tex)
     {
-        tex->label() = LABEL_IMAGERY;
+        if (tex != _emptyColorTexture)
+        {
+            tex->label() = LABEL_IMAGERY;
 
-        tex->name() =
-            model->key().str() + ":" +
-            (imageLayer->getName().empty() ? "(unnamed image layer)" : imageLayer->getName());
+            tex->name() =
+                model->key().str() + ":" +
+                (imageLayer->getName().empty() ? "(unnamed image layer)" : imageLayer->getName());
+        }
 
         TerrainTileModel::ColorLayer layerModel;
         layerModel.layer() = imageLayer;

@@ -107,7 +107,7 @@ namespace osgEarth { namespace REX
         osg::Matrixf _matrix;
 
         // point to a texture whose image is still being loaded asynchronously
-        osg::ref_ptr<FutureTexture2D> _futureTexture;
+        Texture::Ptr _futureTexture;
 
         // revision of the data in this sampler (taken from its source layer)
         unsigned _revision;
@@ -205,7 +205,7 @@ namespace osgEarth { namespace REX
                 const Sampler& sampler = _samplers[s];
                 if (sampler.ownsTexture())
                     sampler._texture->releaseGLObjects(state);
-                if (sampler._futureTexture.valid())
+                if (sampler._futureTexture)
                     sampler._futureTexture->releaseGLObjects(state);
             }
         }
@@ -217,7 +217,7 @@ namespace osgEarth { namespace REX
                 const Sampler& sampler = _samplers[s];
                 if (sampler.ownsTexture())
                     sampler._texture->resizeGLObjectBuffers(size);
-                if (sampler._futureTexture.valid())
+                if (sampler._futureTexture)
                     sampler._futureTexture->resizeGLObjectBuffers(size);
             }
         }

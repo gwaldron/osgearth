@@ -58,12 +58,11 @@ Texture::create(osg::Texture* input)
 }
 
 Texture::Texture(GLenum target_) :
-    _gs(1),
+    _gc(16),
     _compress(true),
     _mipmap(true),
     _clamp(false),
     _keepImage(true),
-    _dynamic(false),
     _target(target_)
 {
     // nop
@@ -86,9 +85,8 @@ Texture::Texture(GLenum target_) :
 }
 
 Texture::Texture(osg::Texture* input) :
-    _gs(1),
-    _osgTexture(input),
-    _dynamic(false)
+    _gc(16),
+    _osgTexture(input)
 {
     OE_HARD_ASSERT(input != nullptr);
 
@@ -118,7 +116,6 @@ Texture::Texture(osg::Texture* input) :
     if (dataLoaded())
     {
         uri() = URI(input->getImage(0)->getFileName());
-        dynamic() = input->getImage(0)->requiresUpdateCall();
     }
 
     keepImage() = !Registry::instance()->unRefImageDataAfterApply().get();
@@ -129,35 +126,38 @@ Texture::~Texture()
     //nop
 }
 
-Texture::GCState&
-Texture::get(const osg::State& state) const
-{
-    return _gs[state.getContextID()];
-}
-
 bool
 Texture::isCompiled(const osg::State& state) const
 {
-    return _gs[state.getContextID()]._gltexture != nullptr;
+    return get(state)._gltexture != nullptr;
 }
 
 bool
 Texture::needsCompile(const osg::State& state) const
 {
-    auto& gs = _gs[state.getContextID()];
+    auto& gc = get(state);
 
-    if (gs._gltexture == nullptr)
+    if (gc._gltexture == nullptr)
         return true;
 
     if (!dataLoaded())
         return false;
 
-    auto image = osgTexture()->getImage(0);
+    return (osgTexture()->getImage(0)->getModifiedCount() != gc._imageModCount);
+}
 
-    if (!image->requiresUpdateCall())
-        return false;
+bool
+Texture::needsUpdates() const
+{
+    return
+        dataLoaded() &&
+        osgTexture()->getImage(0)->requiresUpdateCall();
+}
 
-    return (image->getModifiedCount() != gs._imageModCount);
+void
+Texture::update(osg::NodeVisitor& nv)
+{
+    osgTexture()->getImage(0)->update(&nv);
 }
 
 bool
@@ -186,8 +186,6 @@ Texture::compileGLObjects(osg::State& state) const
     {
         // hmm, it's already compiled. Does it need a recompile 
         // because of a modified image?
-        if (!image->requiresUpdateCall())
-            return; // nope
 
         if (gc._imageModCount == image->getModifiedCount())
             return; // nope
@@ -412,8 +410,8 @@ Texture::isResident(const osg::State& state) const
 void
 Texture::resizeGLObjectBuffers(unsigned maxSize)
 {
-    if (_gs.size() < maxSize)
-        _gs.resize(maxSize);
+    if (_gc.size() < maxSize)
+        _gc.resize(maxSize);
 
     if (osgTexture().valid())
         osgTexture()->resizeGLObjectBuffers(maxSize);
@@ -424,27 +422,26 @@ Texture::releaseGLObjects(osg::State* state) const
 {
     if (state)
     {
-        if (_gs[state->getContextID()]._gltexture != nullptr)
+        GCState& gc = get(*state);
+        if (gc._gltexture != nullptr)
         {
-            GCState& gs = get(*state);
-
             // debugging
             OE_DEVEL << LC 
-                << "Texture::releaseGLObjects '" << gs._gltexture->id() 
-                << "' name=" << gs._gltexture->name() 
-                << " handle=" << gs._gltexture->handle(*state) << std::endl;
+                << "Texture::releaseGLObjects '" << gc._gltexture->id()
+                << "' name=" << gc._gltexture->name()
+                << " handle=" << gc._gltexture->handle(*state) << std::endl;
 
             // will activate the releaser
-            gs._gltexture = nullptr;
+            gc._gltexture = nullptr;
         }
     }
     else
     {
         // rely on the Releaser to get around to it
-        for(unsigned i=0; i< _gs.size(); ++i)
+        for(unsigned i=0; i< _gc.size(); ++i)
         {
             // will activate the releaser(s)
-            _gs[i]._gltexture = nullptr;
+            _gc[i]._gltexture = nullptr;
         }
     }
 
@@ -577,7 +574,7 @@ TextureArena::add(Texture::Ptr tex)
     else
     {
         // is it a pre-existing gltexture? If not, fail.
-        if (tex->_gs.size() == 0)
+        if (tex->_gc.size() == 0)
             return -1;
     }
 
@@ -606,7 +603,7 @@ TextureArena::add(Texture::Ptr tex)
     }
 
     // add to all existing GCs:
-    for(unsigned i=0; i<_gc.size(); ++i)
+    for(unsigned i=0; i< _gc.size(); ++i)
     {
         if (_gc[i]._inUse)
             _gc[i]._toCompile.push(index);
@@ -650,7 +647,7 @@ TextureArena::apply(osg::State& state) const
 
     OE_PROFILING_ZONE;
 
-    GCState& gc = _gc[state.getContextID()];
+    GCState& gc = get(state);
 
     // first time seeing this GC? Prime it by adding all textures!
     if (gc._inUse == false)
@@ -716,7 +713,7 @@ TextureArena::apply(osg::State& state) const
     unsigned ptr = 0;
     for (auto& tex : _textures)
     {
-        GLTexture* gltex = tex ? tex->_gs[state.getContextID()]._gltexture.get() : nullptr;
+        GLTexture* gltex = tex ? tex->get(state)._gltexture.get() : nullptr;
         GLuint64 handle = gltex ? gltex->handle(state) : 0ULL;
         unsigned index = _useUBO ? ptr * 2 : ptr; // hack for std140 vec4 alignment
         if (gc._handles[index] != handle)
@@ -775,17 +772,17 @@ TextureArena::releaseGLObjects(osg::State* state) const
 
     if (state)
     {
-        GCState& gs = _gc[state->getContextID()];
-        gs._handleBuffer = nullptr;
-        while (!gs._toCompile.empty())
-            gs._toCompile.pop();
+        GCState& gc = get(*state);
+        gc._handleBuffer = nullptr;
+        while (!gc._toCompile.empty())
+            gc._toCompile.pop();
 
         for (unsigned i = 0; i < _textures.size(); ++i)
         {
             if (_textures[i])
             {
                 _textures[i]->releaseGLObjects(state);
-                gs._toCompile.push(i);
+                gc._toCompile.push(i);
             }
         }
     }
@@ -799,16 +796,16 @@ TextureArena::releaseGLObjects(osg::State* state) const
 
         for (unsigned i = 0; i < _gc.size(); ++i)
         {
-            GCState& gs = _gc[i];
-            if(gs._inUse)
+            GCState& gc = _gc[i];
+            if(gc._inUse)
             {
-                gs._handleBuffer = nullptr;
-                while (!gs._toCompile.empty())
-                    gs._toCompile.pop();
+                gc._handleBuffer = nullptr;
+                while (!gc._toCompile.empty())
+                    gc._toCompile.pop();
                 for (unsigned i = 0; i < _textures.size(); ++i)
                 {
                     if (_textures[i])
-                        gs._toCompile.push(i);
+                        gc._toCompile.push(i);
                 }
             }
         }

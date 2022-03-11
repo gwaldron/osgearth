@@ -261,6 +261,7 @@ namespace osgEarth { namespace MVT
                     // New polygon
                     if (area > 0)
                     {
+                        currentRing->rewind(Geometry::ORIENTATION_CCW);
                         currentPolygon = new osgEarth::Polygon(&currentRing->asVector());
                         polygons.push_back(currentPolygon.get());
                     }
@@ -269,6 +270,7 @@ namespace osgEarth { namespace MVT
                     {
                         if (currentPolygon.valid())
                         {
+                            currentRing->rewind(Geometry::ORIENTATION_CW);
                             currentPolygon->getHoles().push_back( currentRing );
                         }
                         else

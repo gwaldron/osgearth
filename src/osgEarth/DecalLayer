@@ -90,6 +90,7 @@ namespace osgEarth { namespace Contrib
             osg::ref_ptr<const osg::Image> _image;
         };
         GeoExtent _extent;
+        mutable ReadWrite<Mutex> _data_mutex;
         std::list<Decal> _decalList;
         using DecalIndex = std::unordered_map<std::string, std::list<Decal>::iterator>;
         DecalIndex _decalIndex;
@@ -184,6 +185,7 @@ namespace osgEarth { namespace Contrib
             GeoHeightField _heightfield;
         };
         GeoExtent _extent;
+        mutable ReadWrite<Mutex> _data_mutex;
         std::list<Decal> _decalList;
         using DecalIndex = std::unordered_map<std::string, std::list<Decal>::iterator>;
         DecalIndex _decalIndex;
@@ -244,6 +246,7 @@ namespace osgEarth { namespace Contrib
             GeoExtent _extent;
         };
         GeoExtent _extent;
+        mutable ReadWrite<Mutex> _data_mutex;
         std::list<Decal> _decalList;
         using DecalIndex = std::unordered_map<std::string, std::list<Decal>::iterator>;
         DecalIndex _decalIndex;

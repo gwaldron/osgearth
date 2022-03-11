@@ -24,6 +24,7 @@
 #include <osgEarth/MemCache>
 
 using namespace osgEarth;
+using namespace osgEarth::Threading;
 
 #define LC "[TileLayer] Layer \"" << getName() << "\" "
 
@@ -486,16 +487,14 @@ TileLayer::getCacheBin(const Profile* profile)
 
     // See if the cache bin metadata is already stored.
     {
-        Threading::ScopedReadLock lock(layerMutex());
-        CacheBinMetadataMap::iterator i = _cacheBinMetadata.find(metaKey);
-        if (i != _cacheBinMetadata.end())
-        {
+        ScopedReadLock lock(_data_mutex);
+        if (_cacheBinMetadata.find(metaKey) != _cacheBinMetadata.end())
             return bin;
-        }
     }
 
     // We need to update the cache bin metadata
-    Threading::ScopedWriteLock lock(layerMutex());
+    ScopedWriteLock lock(_data_mutex);
+
     // read the metadata record from the cache bin:
     ReadResult rr = bin->readString(metaKey, getReadOptions());
 
@@ -597,12 +596,11 @@ TileLayer::CacheBinMetadata*
 TileLayer::getCacheBinMetadata(const Profile* profile)
 {
     if (!profile)
-        return 0L;
+        return nullptr;
 
-    Threading::ScopedReadLock lock(layerMutex());
-
-    CacheBinMetadataMap::iterator i = _cacheBinMetadata.find(getMetadataKey(profile));
-    return i != _cacheBinMetadata.end() ? i->second.get() : 0L;
+    ScopedReadLock lock(_data_mutex);
+    auto i = _cacheBinMetadata.find(getMetadataKey(profile));
+    return i != _cacheBinMetadata.end() ? i->second.get() : nullptr;
 }
 
 bool
@@ -757,7 +755,7 @@ TileLayer::dataExtents()
 void
 TileLayer::dirtyDataExtents()
 {
-    Threading::ScopedWriteLock lock(layerMutex());
+    ScopedWriteLock lock(_data_mutex);
     _dataExtentsUnion = GeoExtent::INVALID;
 }
 
@@ -768,7 +766,7 @@ TileLayer::getDataExtentsUnion() const
 
     if (_dataExtentsUnion.isInvalid() && !de.empty())
     {
-        Threading::ScopedWriteLock lock(layerMutex());
+        ScopedWriteLock lock(_data_mutex);
         {
             if (_dataExtentsUnion.isInvalid() && !de.empty()) // double-check
             {

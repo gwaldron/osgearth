@@ -505,7 +505,9 @@ namespace osgEarth
         CacheSettings* getCacheSettings() { return _cacheSettings.get(); }
         const CacheSettings* getCacheSettings() const { return _cacheSettings.get(); }
 
-        //! subclass access to general-purpose layer mutex
+        //! subclass access to a mutex that serializes the 
+        //! Layer open and close methods with respect to any asynchronous
+        //! functions that require the layer to remain open
         Threading::ReadWriteMutex& layerMutex() const { return *_mutex; }
 
         //! are we in the middle of a close() call?

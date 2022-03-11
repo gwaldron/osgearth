@@ -541,6 +541,12 @@ namespace osgEarth { namespace Threading
                 _unlocked.notify_one();
         }
 
+        void read_lock(std::function<void()> f) {
+            read_lock();
+            f();
+            read_unlock();
+        }
+
         void write_lock() {
             std::unique_lock<T> lock(_m);
             _unlocked.wait(lock, [&]() { return _writers == 0 && _readers == 0; });
@@ -551,6 +557,12 @@ namespace osgEarth { namespace Threading
             std::unique_lock<T> lock(_m);
             _writers = 0;
             _unlocked.notify_one();
+        }
+
+        void write_lock(std::function<void()> f) {
+            write_lock();
+            f();
+            write_unlock();
         }
 
         void setName(const std::string& name) {
@@ -600,6 +612,7 @@ namespace osgEarth { namespace Threading
         void lock() const { _lockable_mutex.lock(); }
         void unlock() { _lockable_mutex.unlock(); }
         void unlock() const { _lockable_mutex.unlock(); }
+        void lock(std::function<void()> func) { lock(); func(); unlock(); }
         void scoped_lock(std::function<void()> func) { lock(); func(); unlock(); }
         Mutex& mutex() const { return _lockable_mutex; }
         T& operator = (const T& rhs) { return T::operator=(rhs); }

@@ -422,7 +422,7 @@ Texture::resizeGLObjectBuffers(unsigned maxSize)
 void
 Texture::releaseGLObjects(osg::State* state) const
 {
-    if (state)
+    if (state && _gs.size() > state->getContextID())
     {
         if (_gs[state->getContextID()]._gltexture != nullptr)
         {

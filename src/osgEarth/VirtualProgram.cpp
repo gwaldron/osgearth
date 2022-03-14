@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderFactory>
+#include <osgEarth/ShaderLoader>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/ShaderMerger>
 #include <osgEarth/StringUtils>
@@ -2285,10 +2286,8 @@ PolyShader::lookUpShader(const std::string& functionName, const std::string& sha
 
     if (!shader)
     {
-
-        // Remove any quotes in the shader source (illegal)
         std::string source(shaderSource);
-        osgEarth::replaceIn(source, "\"", " ");
+        ShaderLoader::configureHeader(source);
 
         shader = new PolyShader();
         shader->setName(functionName);

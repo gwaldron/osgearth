@@ -1,4 +1,3 @@
-#version 460
 #pragma include RexEngine.GL4.glsl
 
 #pragma vp_name  REX Engine - Morphing

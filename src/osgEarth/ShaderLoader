@@ -146,20 +146,13 @@ namespace osgEarth { namespace Util
             VirtualProgram* vp,
             const std::string& source);
 
-        /**
-         * Loads shader source from the specified filename. If the
-         * file can't be found in the OSG file path, use the source
-         * provided in backupSource.
-         */
-        static std::string load(
-            const std::string&    filename,
-            const std::string&    backupSource,
-            const osgDB::Options* dbOptions =0L );
-
+        //! Loads shader source from the specified filename. If the
+        //! file can't be found in the OSG file path, use the source
+        //! provided in backupSource.
         static std::string load(
             const std::string&    filename,
             const ShaderPackage&  package,
-            const osgDB::Options* dbOptions =0L );
+            const osgDB::Options* dbOptions =nullptr);
 
         /**
          * Utility function that returns the value of #pragma; e.g.,
@@ -189,6 +182,18 @@ namespace osgEarth { namespace Util
         static void split(
             const std::string& multisource,
             std::vector<std::string>& out_sources);
+
+        static void configureHeader(
+            std::string& in_out_source);
+
+    private:
+        // internal function to load a file but apply
+        // no processing to it
+        static std::string load_source(
+            const std::string&    filename,
+            const ShaderPackage&  package,
+            const osgDB::Options* dbOptions);
+
     };
 } } // namespace osgEarth
 

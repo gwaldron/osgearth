@@ -1,4 +1,3 @@
-#version 460
 #pragma include RexEngine.GL4.glsl
 #pragma vp_name REX Engine - ImageLayer/VS
 #pragma vp_function oe_rex_imageLayer_VS, vertex_view, 0.4
@@ -26,9 +25,6 @@ void oe_rex_imageLayer_VS(inout vec4 vertexView)
 
 
 [break]
-
-
-#version 460
 #pragma include RexEngine.GL4.glsl
 
 #pragma vp_name REX Engine - Fragment

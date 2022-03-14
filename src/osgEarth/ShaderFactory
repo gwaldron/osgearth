@@ -113,6 +113,10 @@ namespace osgEarth { namespace Util
         void removePostProcessorCallback(
             const std::string& name);
 
+        //! Returns a string you can use as your shader header,
+        //! including the #version, precision, and extensions strings.
+        static std::string getGLSLHeader();
+
     protected:
         /** dtor */
         virtual ~ShaderFactory() { }

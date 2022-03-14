@@ -1,5 +1,3 @@
-#version $GLSL_VERSION_STR
-
 #pragma vp_name       REX Engine - Morphing
 #pragma vp_entryPoint oe_rex_morph
 #pragma vp_location   vertex_model

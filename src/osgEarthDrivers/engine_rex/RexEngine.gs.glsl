@@ -1,5 +1,3 @@
-#version 400
-
 #pragma vp_name       REX Engine - GS
 #pragma vp_entryPoint oe_rex_GS
 #pragma vp_location   geometry

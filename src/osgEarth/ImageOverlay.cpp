@@ -50,14 +50,12 @@ namespace
     static Distance default_geometryResolution(5.0, Units::DEGREES);
 
     const char* imageVS =
-        "#version " GLSL_VERSION_STR "\n"
         "out vec2 oe_ImageOverlay_texcoord; \n"
         "void oe_ImageOverlay_VS(inout vec4 vertex) { \n"
         "    oe_ImageOverlay_texcoord = gl_MultiTexCoord0.st; \n"
         "} \n";
 
     const char* imageFS =
-        "#version " GLSL_VERSION_STR "\n"
         "in vec2 oe_ImageOverlay_texcoord; \n"
         "uniform sampler2D oe_ImageOverlay_tex; \n"
         "uniform float oe_ImageOverlay_alpha; \n"

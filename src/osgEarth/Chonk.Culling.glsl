@@ -1,5 +1,3 @@
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
 #pragma import_defines(OE_GPUCULL_DEBUG)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 

@@ -42,7 +42,6 @@ using namespace osgEarth;
 namespace
 {
     const char* iconVS =
-        "#version " GLSL_VERSION_STR "\n"
         "out vec2 oe_PlaceNode_texcoord; \n"
         "void oe_PlaceNode_icon_VS(inout vec4 vertex) \n"
         "{ \n"
@@ -50,7 +49,6 @@ namespace
         "} \n";
 
     const char* iconFS =
-        "#version " GLSL_VERSION_STR "\n"
         "in vec2 oe_PlaceNode_texcoord; \n"
         "uniform sampler2D oe_PlaceNode_tex; \n"
         "void oe_PlaceNode_icon_FS(inout vec4 color) \n"

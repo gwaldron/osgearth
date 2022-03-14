@@ -1,8 +1,5 @@
-#version $GLSL_VERSION_STR
-
-#pragma vp_name       Draping Vertex Shader
-#pragma vp_entryPoint oe_Draping_VS
-#pragma vp_location   vertex_view
+#pragma vp_name     Draping Vertex Shader
+#pragma vp_function oe_Draping_VS, vertex_view
 
 out vec4 oe_Draping_vertexView;
 
@@ -13,10 +10,6 @@ void oe_Draping_VS(inout vec4 vertexView)
 
 
 [break]
-
-
-#version $GLSL_VERSION_STR
-
 #pragma vp_name       Draping Fragment Shader
 #pragma vp_entryPoint oe_Draping_FS
 #pragma vp_location   fragment_coloring

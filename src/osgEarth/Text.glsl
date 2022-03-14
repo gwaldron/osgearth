@@ -1,5 +1,3 @@
-#version $GLSL_VERSION_STR
-
 out vec2 oe_Text_texCoord;
 
 #pragma vp_entryPoint oe_Text_VS
@@ -12,9 +10,6 @@ void oe_Text_VS(inout vec4 position)
 
 
 [break]
-
-#version $GLSL_VERSION_STR
-
 #ifdef GL_ES
     #extension GL_OES_standard_derivatives : enable
     #ifndef GL_OES_standard_derivatives

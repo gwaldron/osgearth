@@ -1,5 +1,3 @@
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_function oe_chonk_default_vertex_model, vertex_model, 0.0
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
@@ -55,9 +53,6 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
 }
 
 [break]
-
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_function oe_chonk_default_vertex_view, vertex_view, 0.0
 
 // stage
@@ -81,9 +76,6 @@ void oe_chonk_default_vertex_view(inout vec4 vertex)
 }
 
 [break]
-
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_function oe_chonk_default_fragment, fragment, 0.0
 #pragma import_defines(OE_COMPRESSED_NORMAL)
 #pragma import_defines(OE_GPUCULL_DEBUG)

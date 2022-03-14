@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_name       Phong Lighting Vertex Stage
 #pragma vp_entryPoint oe_phong_vertex
 #pragma vp_location   vertex_view
@@ -21,10 +18,6 @@ void oe_phong_vertex(inout vec4 VertexVIEW)
 
 
 [break]
-
-  
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_name       Phong Lighting Fragment Stage
 #pragma vp_entryPoint oe_phong_fragment

@@ -587,7 +587,6 @@ VegetationLayer::buildStateSets()
 
     // Custom shaders:
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
     ProceduralShaders shaders;
     shaders.load(vp, shaders.Vegetation);
 

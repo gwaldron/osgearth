@@ -124,9 +124,6 @@ _blacklist("Reg.BlackList(OE)")
     if (::getenv("GDAL_DATA") == NULL)
         OE_INFO << LC << "Note: GDAL_DATA environment variable is not set" << std::endl;
 
-    // generates the basic shader code for the terrain engine and model layers.
-    _shaderLib = new ShaderFactory();
-
     // shader generator used internally by osgEarth. Can be replaced.
     _shaderGen = new ShaderGenerator();
 
@@ -571,6 +568,12 @@ Registry::initCapabilities()
 ShaderFactory*
 Registry::getShaderFactory() const
 {
+    if (!_shaderLib.valid())
+    {
+        ScopedMutexLock lock(_regMutex);
+        if (!_shaderLib.valid())
+            const_cast<Registry*>(this)->_shaderLib = new ShaderFactory();
+    }
     return _shaderLib.get();
 }
 

@@ -1,4 +1,3 @@
-#version 330
 #pragma vp_function oe_pbr_init, fragment, first
 
 // fragment stage global PBR parameters.

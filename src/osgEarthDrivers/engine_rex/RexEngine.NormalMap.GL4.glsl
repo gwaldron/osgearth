@@ -1,4 +1,3 @@
-#version 460
 #pragma include RexEngine.GL4.glsl
 #pragma vp_function oe_rex_normalMapVS, vertex_view, 0.5
 
@@ -36,7 +35,6 @@ void oe_rex_normalMapVS(inout vec4 unused)
 
 
 [break]
-#version 460
 #pragma include RexEngine.GL4.glsl
 #pragma vp_function oe_rex_normalMapFS, fragment_coloring, 0.1
 

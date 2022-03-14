@@ -1,5 +1,3 @@
-#version $GLSL_VERSION_STR
-
 #pragma vp_name Rex Terrain SDK
 
 uniform sampler2D oe_tile_elevationTex;

@@ -33,6 +33,7 @@
 #include <string>
 #include <map>
 
+#if 0
 #if defined(OSG_GLES2_AVAILABLE)
 #    define GLSL_VERSION                 100
 #    define GLSL_VERSION_STR             "100"
@@ -49,6 +50,7 @@
 #    define GLSL_VERSION                 330
 #    define GLSL_VERSION_STR             "330 compatibility" 
 #    define GLSL_DEFAULT_PRECISION_FLOAT ""
+#endif
 #endif
 
 #define OE_USE_HASH_FOR_PROGRAM_KEY

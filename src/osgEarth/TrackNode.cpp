@@ -40,14 +40,12 @@ using namespace osgEarth;
 namespace
 {
     const char* iconVS =
-        "#version " GLSL_VERSION_STR "\n"
         "out vec2 oe_TrackNode_texcoord; \n"
         "void oe_TrackNode_icon_VS(inout vec4 vertex) { \n"
         "    oe_TrackNode_texcoord = gl_MultiTexCoord0.st; \n"
         "} \n";
 
     const char* iconFS =
-        "#version " GLSL_VERSION_STR "\n"
         "in vec2 oe_TrackNode_texcoord; \n"
         "uniform sampler2D oe_TrackNode_tex; \n"
         "void oe_TrackNode_icon_FS(inout vec4 color) { \n"

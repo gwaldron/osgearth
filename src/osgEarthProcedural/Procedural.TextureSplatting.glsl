@@ -1,11 +1,9 @@
-#version 430
-#extension GL_ARB_gpu_shader_int64 : enable
-
 #pragma vp_name Texture Splatter VV
 #pragma vp_function oe_splat_View, vertex_view
 
 #pragma import_defines(OE_SPLAT_TWEAKS)
 #pragma import_defines(OE_SPLAT_NUM_LEVELS)
+#pragma import_defines(OE_SNOW)
 
 const int levels[2] = int[](14, 19);
 flat out vec2 splat_tilexy[2];
@@ -51,8 +49,6 @@ void oe_splat_View(inout vec4 vertex_view)
 
 
 [break]
-#version 430
-#extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_name Texture Splatter FS
 #pragma vp_function oe_splat_Frag, fragment, 0.8
 
@@ -65,6 +61,7 @@ void oe_splat_View(inout vec4 vertex_view)
 #pragma import_defines(OE_SPLAT_TWEAKS)
 #pragma import_defines(OE_LIFEMAP_DIRECT)
 #pragma import_defines(OE_SPLAT_USE_MTL_GLS_AO)
+#pragma import_defines(OE_SNOW)
 
 layout(binding = 5, std430) buffer SplatTextureArena {
     uint64_t texHandle[];
@@ -299,11 +296,8 @@ void oe_splat_Frag(inout vec4 quad)
 #ifdef OE_SNOW
     // SNOW
     float coldness = MAP_TO_01(oe_elev, oe_snow_min_elev, oe_snow_max_elev);
-    float min_snow_cos_angle = 1.0 - SOFTEN(oe_snow*coldness);
-    const float snow_buf = 0.01;
-    float b = min(min_snow_cos_angle + snow_buf, 1.0);
-    float cos_angle = dot(vp_Normal, oe_UpVectorView);
-    float snowiness = (1.0-water)*step(min_snow_cos_angle, cos_angle);
+    float cos_angle = max(0, dot(vp_Normal, oe_UpVectorView));
+    float snowiness = heightAndEffectMix(pixel.rgbh.a, 1.0, oe_snow, cos_angle, 0.0) * (1.0 - water);
     color = mix(color, vec3(1), snowiness);
     oe_pbr.roughness = mix(oe_pbr.roughness, 0.1, snowiness);
 #endif

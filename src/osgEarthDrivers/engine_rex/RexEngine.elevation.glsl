@@ -1,5 +1,3 @@
-#version $GLSL_VERSION_STR
-
 #pragma vp_name REX Engine - Elevation
 #pragma vp_function oe_rex_applyElevation, vertex_view, 0.1
 

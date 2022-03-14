@@ -69,9 +69,7 @@ namespace
     };
 
     // Shader that just copies the uniform value into a stage global/output
-    const char* opacityVS =
-        "#version " GLSL_VERSION_STR R"(
-        )" GLSL_DEFAULT_PRECISION_FLOAT R"(
+    const char* opacityVS = R"(
         uniform float oe_VisibleLayer_opacityUniform;
         out float oe_layer_opacity;
         void oe_VisibleLayer_initOpacity(inout vec4 vertex)
@@ -81,9 +79,7 @@ namespace
     )";
 
     // Shader that incorporates range-based opacity (min/max range with attenuation)
-    const char* rangeOpacityVS =
-        "#version " GLSL_VERSION_STR R"(
-        )" GLSL_DEFAULT_PRECISION_FLOAT R"(
+    const char* rangeOpacityVS = R"(
         #pragma import_defines(OE_DISABLE_RANGE_OPACITY)
         uniform vec3 oe_VisibleLayer_ranges;
         uniform vec3 oe_Camera; // (vp width, vp height, lodscale)
@@ -110,9 +106,7 @@ namespace
     )";
 
     // Shader that calculates a modulation color based on the "opacity", i.e. intensity
-    const char* opacityInterpolateFS =
-        "#version " GLSL_VERSION_STR R"(
-        )" GLSL_DEFAULT_PRECISION_FLOAT R"(
+    const char* opacityInterpolateFS = R"(
         #pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
         in float oe_layer_opacity;
         void oe_VisibleLayer_setOpacity(inout vec4 color)
@@ -124,9 +118,7 @@ namespace
     )";
 
     // Shader that calculates a modulation color based on the "opacity", i.e. intensity
-    const char* opacityModulateFS =
-        "#version " GLSL_VERSION_STR R"(
-        )" GLSL_DEFAULT_PRECISION_FLOAT R"(
+    const char* opacityModulateFS = R"(
         const float OE_MODULATION_EXPOSURE = 2.35;
         in float oe_layer_opacity;
         void oe_VisibleLayer_setOpacity(inout vec4 color)
@@ -139,7 +131,6 @@ namespace
     )";
 
     const char* debugViewFS = R"(
-#version 450
 #extension GL_NV_fragment_shader_barycentric : enable
 #pragma vp_function oe_vl_debug, fragment_output
 out vec4 frag_out;

@@ -33,7 +33,6 @@ using namespace osgEarth;
 namespace
 {
     constexpr const char* clip_shader = R"(
-        #version 330
         #pragma import_defines(OE_CLIPPLANE_NUM)
 
         // OSG built-in to transform from view to world

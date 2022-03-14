@@ -82,6 +82,7 @@ namespace osgEarth {
                     // activate tweakable uniforms
                     stateset(ri)->setDataVariance(osg::Object::DYNAMIC);
                     stateset(ri)->setDefine("OE_SPLAT_TWEAKS", 0x7);
+                    stateset(ri)->setDefine("OE_SNOW", 0x7);
                     _installed = true;
                 }
 

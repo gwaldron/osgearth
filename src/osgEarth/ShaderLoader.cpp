@@ -20,6 +20,8 @@
 #include "ShaderUtils"
 #include "URI"
 #include "VirtualProgram"
+#include "Capabilities"
+#include "ShaderFactory"
 
 #include <osgDB/FileUtils>
 
@@ -314,39 +316,28 @@ ShaderLoader::load(
     ShaderPackage pkg;
     pkg.add("", source);
     return load(vp, "", pkg, nullptr);
-
-
 }
 
 std::string
-ShaderLoader::load(const std::string&    filename,
-                   const ShaderPackage&  package,
-                   const osgDB::Options* dbOptions)
+ShaderLoader::load_source(
+    const std::string&    filename,
+    const ShaderPackage&  package,
+    const osgDB::Options* dbOptions)
 {
-    std::string output;
-    bool useInlineSource = false;
-
-    URIContext context( dbOptions );
+    URIContext context(dbOptions);
     URI uri(filename, context);
 
-    std::string inlineSource;
+    std::string output;
+
     ShaderPackage::SourceMap::const_iterator source = package._sources.find(filename);
-    if ( source != package._sources.end() )
-        inlineSource = source->second;
+    if (source != package._sources.end())
+        output = source->second;
 
     if (!filename.empty())
     {
+        // searches OSG_FILE_PATH
         std::string path = osgDB::findDataFile(uri.full(), dbOptions);
-        if (path.empty())
-        {
-            output = inlineSource;
-            useInlineSource = true;
-            if (inlineSource.empty())
-            {
-                OE_WARN << LC << "Inline source for \"" << filename << "\" is empty, and no external file could be found.\n";
-            }
-        }
-        else
+        if (!path.empty())
         {
             std::string externalSource = URI(path, context).getString(dbOptions);
             if (!externalSource.empty())
@@ -354,70 +345,61 @@ ShaderLoader::load(const std::string&    filename,
                 OE_DEBUG << LC << "Loaded external shader " << filename << " from " << path << "\n";
                 output = externalSource;
             }
-            else
-            {
-                output = inlineSource;
-                useInlineSource = true;
-            }
+        }
+        else
+        {
+            OE_WARN << LC << "No source found for \"" << filename << "\"" << std::endl;
         }
     }
-    else
-    {
-        output = inlineSource;
-        useInlineSource = true;
-    }
 
-    // replace common tokens:
-    osgEarth::replaceIn(output, "$GLSL_VERSION_STR", GLSL_VERSION_STR);
-    osgEarth::replaceIn(output, "$GLSL_DEFAULT_PRECISION_FLOAT", GLSL_DEFAULT_PRECISION_FLOAT);
+    return output;
+}
 
-    // If we're using inline source, we have to post-process the string.
-    if ( useInlineSource )
-    {
-        // Replace tokens inserted in the CMakeModules/ConfigureShaders.cmake.in script.
-        osgEarth::replaceIn(output, "%EOL%",   "\n");
-        osgEarth::replaceIn(output, "%QUOTE%", "\"");
-    }
+std::string
+ShaderLoader::load(
+    const std::string&    filename,
+    const ShaderPackage&  package,
+    const osgDB::Options* dbOptions)
+{
+    std::string output = load_source(filename, package, dbOptions);
 
-    // Process any user-defined replacements.
-    for (ShaderPackage::ReplaceMap::const_iterator i = package._replaces.begin();
-        i != package._replaces.end();
-        ++i)
-    {
-        osgEarth::replaceIn(output, i->first, i->second);
-    }
-
-    // Run the "pre" callbacks before includes
-    ShaderPreProcessor::runPre(output);
-
-    // Process any "#pragma include" statements
-    while(true)
+    // Bring in include files:
+    while (true)
     {
         const std::string token("#pragma include");
         std::string::size_type statementPos = output.find(token);
-        if ( statementPos == std::string::npos )
+        if (statementPos == std::string::npos)
             break;
 
-        std::string::size_type startPos = output.find_first_not_of(" \t", statementPos+token.length());
-        if ( startPos == std::string::npos )
+        std::string::size_type startPos = output.find_first_not_of(" \t", statementPos + token.length());
+        if (startPos == std::string::npos)
             break;
 
         std::string::size_type endPos = output.find('\n', startPos);
-        if ( endPos == std::string::npos )
+        if (endPos == std::string::npos)
             break;
 
-        std::string statement( output.substr(statementPos, endPos-statementPos) );
-        std::string fileToInclude( trim(output.substr(startPos, endPos-startPos)) );
+        std::string statement(output.substr(statementPos, endPos - statementPos));
+        std::string fileToInclude(trim(output.substr(startPos, endPos - startPos)));
 
         // load the source of the included file, and append a newline so we
         // don't break the MULTILINE macro if the last line of the include
         // file is a comment.
-        std::string fileSource = Stringify()
-            << load(fileToInclude, package, dbOptions)
+        std::string included_source = Stringify()
+            << load_source(fileToInclude, package, dbOptions)
             << "\n";
 
-        Strings::replaceIn(output, statement, fileSource);
+        Strings::replaceIn(output, statement, included_source);
+    }    
+    
+    // Process any user-defined string replacements
+    for (auto& r : package._replaces)
+    {
+        Strings::replaceIn(output, r.first, r.second);
     }
+
+    // Run user-defined pre-processors
+    ShaderPreProcessor::runPre(output);
 
     // Process any "#pragma define" statements
     while (true)
@@ -451,58 +433,11 @@ ShaderLoader::load(const std::string&    filename,
         Strings::replaceIn(output, statement, newStatement);
     }
 
-    // Lastly, remove any CRs
-    osgEarth::replaceIn(output, "\r", "");
-
-    return output;
-}
-
-std::string
-ShaderLoader::load(const std::string&    filename,
-                   const std::string&    inlineSource,
-                   const osgDB::Options* dbOptions)
-{
-    std::string output;
-    bool useInlineSource = false;
-
-    URIContext context(dbOptions);
-    URI uri(filename, context);
-
-    std::string path = osgDB::findDataFile(filename, dbOptions);
-    if (path.empty())
-    {
-        output = inlineSource;
-        useInlineSource = true;
-    }
-    else
-    {
-        std::string externalSource = URI(path, context).getString(dbOptions);
-        if (!externalSource.empty())
-        {
-            OE_DEBUG << LC << "Loaded external shader " << filename << " from " << path << "\n";
-            output = externalSource;
-        }
-        else
-        {
-            output = inlineSource;
-            useInlineSource = true;
-        }
-    }
-
-    // replace common tokens:
-    osgEarth::replaceIn(output, "$GLSL_VERSION_STR", GLSL_VERSION_STR);
-    osgEarth::replaceIn(output, "$GLSL_DEFAULT_PRECISION_FLOAT", GLSL_DEFAULT_PRECISION_FLOAT);
-
-    // If we're using inline source, we have to post-process the string.
-    if (useInlineSource)
-    {
-        // Replace tokens inserted in the CMakeModules/ConfigureShaders.cmake.in script.
-        osgEarth::replaceIn(output, "%EOL%", "\n");
-        osgEarth::replaceIn(output, "%QUOTE%", "\"");
-    }
+    // Install a proper header
+    configureHeader(output);
 
     // Lastly, remove any CRs
-    osgEarth::replaceIn(output, "\r", "");
+    Strings::replaceIn(output, "\r", "");
 
     return output;
 }
@@ -675,6 +610,24 @@ ShaderLoader::unload(VirtualProgram*       vp,
     return true;
 }
 
+void
+ShaderLoader::configureHeader(
+    std::string& in_out_source)
+{
+    // If there is no version string, insert the entire default GLSL header.
+    if (in_out_source.find("#version") == std::string::npos)
+    {
+        in_out_source =
+            ShaderFactory::getGLSLHeader() + "\n" +
+            in_out_source;
+    }
+    else
+    {
+        std::string glv = std::to_string(Capabilities::get().getGLSLVersionInt());
+        Strings::replaceIn(in_out_source, "$GLSL_VERSION_STR", glv);
+    }
+}
+
 //...................................................................
 
 void
@@ -730,3 +683,4 @@ ShaderPackage::unloadAll(VirtualProgram*       vp,
     }
     return oks == _sources.size();
 }
+

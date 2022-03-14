@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_entryPoint oe_rex_normalMapVS
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
@@ -43,8 +40,6 @@ void oe_rex_normalMapVS(inout vec4 unused)
 
 
 [break]
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
 
 #pragma vp_entryPoint oe_rex_normalMapFS
 #pragma vp_location   fragment_coloring

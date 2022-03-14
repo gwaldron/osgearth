@@ -1,6 +1,3 @@
-#extension GL_ARB_gpu_shader_int64 : enable
-
-#define OE_USE_GL4
 #define OE_TILE_SIZE 17
 #define OE_TILE_VERTS 417
 #define OE_SKIRT_VERTS 128

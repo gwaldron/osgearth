@@ -16,18 +16,26 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/ShaderFactory>
+#include "ShaderFactory"
+#include "ShaderLoader"
+#include "ShaderUtils"
+#include "Capabilities"
+#include "GLUtils"
+#include "Threading"
 
-#include <osgEarth/ShaderLoader>
-#include <osgEarth/Registry>
-#include <osgEarth/Capabilities>
-#include <osgEarth/ShaderUtils>
 #include <sstream>
 
 #define LC "[ShaderFactory] "
 
+using namespace osgEarth;
+using namespace osgEarth::ShaderComp;
+using namespace osgEarth::Util;
+
 namespace
 {
+    Threading::Mutex s_glslMutex;
+    std::string s_glslHeader;
+
     #if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
         static bool s_GLES_SHADERS = true;
     #else
@@ -37,14 +45,46 @@ namespace
 
 #define INDENT "    "
 
-using namespace osgEarth;
-using namespace osgEarth::ShaderComp;
-using namespace osgEarth::Util;
-
-
 ShaderFactory::ShaderFactory()
 {
     //nop
+}
+
+std::string
+ShaderFactory::getGLSLHeader()
+{
+    if (s_glslHeader.empty())
+    {
+        Threading::ScopedMutexLock lock(s_glslMutex);
+        if (s_glslHeader.empty())
+        {
+            int version = Capabilities::get().getGLSLVersionInt();
+
+            std::ostringstream buf;
+            buf << "#version " << version;
+
+#if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
+            buf << "\nprecision highp float";
+#else
+            if (GLUtils::useNVGL())
+            {
+                buf << "\n#extension GL_NV_gpu_shader5 : enable";
+            }
+            else if (version >= 150)
+            {
+                buf << "\n#extension GL_ARB_gpu_shader5 : enable"
+                    << "\n#extension GL_ARB_gpu_shader_int64 : enable";
+            }
+            else if (version >= 130)
+            {
+                buf << "\n#extension GL_ARB_gpu_shader4 : enable";
+            }
+#endif
+
+            s_glslHeader = buf.str();
+        }
+    }
+    return s_glslHeader;
 }
 
 void
@@ -121,22 +161,24 @@ namespace
 
     typedef std::vector<Variable> Variables;
 
-	void addExtensionsToBuffer(std::ostream& buf, const VirtualProgram::ExtensionsSet& in_extensions)
+	void addExtensionsToBuffer(
+        std::ostream& buf, 
+        const VirtualProgram::ExtensionsSet& extensions)
 	{
-	   for (VirtualProgram::ExtensionsSet::const_iterator it = in_extensions.begin(); it != in_extensions.end(); ++it)
-	   {
-	      const std::string& extension = *it;
-	      buf << "#extension "<<extension<< " : enable \n";
-	   }
-	}
+	   for (auto& extension : extensions)
+       {
+           buf << "#extension " << extension << " : enable\n";
+       }
+    }
 }
 
 
 ShaderComp::StageMask
-ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
-                           const VirtualProgram::ShaderMap&          in_shaders,
-                           const VirtualProgram::ExtensionsSet&      in_extensions,
-                           std::vector< osg::ref_ptr<osg::Shader> >& out_shaders) const
+ShaderFactory::createMains(
+    const ShaderComp::FunctionLocationMap&    functions,
+    const VirtualProgram::ShaderMap&          in_shaders,
+    const VirtualProgram::ExtensionsSet&      in_extensions,
+    std::vector< osg::ref_ptr<osg::Shader> >& out_shaders) const
 {
     StageMask stages =
         ShaderComp::STAGE_VERTEX |
@@ -277,7 +319,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         }
     }
 
-    std::string
+    const std::string
         gl_Color                     = "gl_Color",
         gl_Vertex                    = "gl_Vertex",
         gl_Normal                    = "gl_Normal",
@@ -289,27 +331,6 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         gl_FrontColor                = "gl_FrontColor";
 
     std::string glMatrixUniforms = "";
-
-    #define GLSL_330 GLSL_VERSION_STR // "330 compatibility"
-
-#if defined(OSG_GL3_AVAILABLE) || defined(OSG_GL4_AVAILABLE)
-#   define GLSL_400 "400"
-#else
-#   define GLSL_400 "400 compatibility"
-#endif
-
-    // use GLSL 400 if it's avaiable since that will give the developer
-    // access to double-precision types.
-    bool use400 = 
-        Registry::instance()->hasCapabilities() &&
-        Registry::capabilities().getGLSLVersionInt() >= 400;
-
-    std::string tcs_glsl_version(GLSL_400);
-    std::string tes_glsl_version(GLSL_400);
-
-    std::string vs_glsl_version = use400 ? GLSL_400 : GLSL_330;
-    std::string fs_glsl_version = use400 ? GLSL_400 : GLSL_330;
-    std::string gs_glsl_version = use400 ? GLSL_400 : GLSL_330;
 
     // build the vertex data interface block definition:
     std::string vertdata;
@@ -332,10 +353,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version " << vs_glsl_version << "\n"
-            GLSL_DEFAULT_PRECISION_FLOAT << "\n"
-            "#pragma vp_name VP Vertex Shader Main\n"
-            << (!s_GLES_SHADERS ? "#extension GL_ARB_gpu_shader5 : enable \n" : "");
+        buf << getGLSLHeader() << "\n"
+            "#pragma vp_name VP Vertex Shader Main \n";
 
         addExtensionsToBuffer(buf, in_extensions);
 
@@ -494,11 +513,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
         stages |= ShaderComp::STAGE_TESSCONTROL;
         std::stringstream buf;
 
-        buf << "#version " << tcs_glsl_version << "\n"
-            << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
-            << "#pragma vp_name VP Tessellation Control Shader (TCS) Main\n"
-            // For gl_MaxPatchVertices
-            << (!s_GLES_SHADERS ? "#extension GL_NV_gpu_shader5 : enable\n" : "");
+        buf << getGLSLHeader() << "\n"
+            << "#pragma vp_name VP Tessellation Control Shader (TCS) Main\n";
 
         addExtensionsToBuffer(buf, in_extensions);
 
@@ -576,8 +592,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version " << tes_glsl_version << "\n"
-            << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
+        buf << getGLSLHeader() << "\n"
             << "#pragma vp_name VP Tessellation Evaluation (TES) Shader MAIN\n";
 
         addExtensionsToBuffer(buf, in_extensions);
@@ -778,8 +793,7 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version " << gs_glsl_version << "\n"
-            << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
+        buf << getGLSLHeader() << "\n"
             << "#pragma vp_name VP Geometry Shader Main\n";
 
         addExtensionsToBuffer(buf, in_extensions);
@@ -974,10 +988,8 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
         std::stringstream buf;
 
-        buf << "#version " << fs_glsl_version << "\n"
-            << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
-            << "#pragma vp_name VP Fragment Shader Main\n"
-            << (!s_GLES_SHADERS ? "#extension GL_ARB_gpu_shader5 : enable\n" : "");
+        buf << getGLSLHeader() << "\n"
+            << "#pragma vp_name VP Fragment Shader Main\n";
 
         addExtensionsToBuffer(buf, in_extensions);
 
@@ -1086,12 +1098,12 @@ ShaderFactory::createMains(const ShaderComp::FunctionLocationMap&    functions,
 
 
 osg::Shader*
-ShaderFactory::createColorFilterChainFragmentShader(const std::string&      function, 
-                                                    const ColorFilterChain& chain ) const
+ShaderFactory::createColorFilterChainFragmentShader(
+    const std::string& function,
+    const ColorFilterChain& chain ) const
 {
     std::stringstream buf;
-    buf << 
-        "#version " GLSL_VERSION_STR "\n" << GLSL_DEFAULT_PRECISION_FLOAT "\n";
+    buf << getGLSLHeader() << "\n";
 
     // write out the shader function prototypes:
     for( ColorFilterChain::const_iterator i = chain.begin(); i != chain.end(); ++i )
@@ -1115,6 +1127,7 @@ ShaderFactory::createColorFilterChainFragmentShader(const std::string&      func
 
     std::string bufstr;
     bufstr = buf.str();
+    
     return new osg::Shader(osg::Shader::FRAGMENT, bufstr);
 }
 

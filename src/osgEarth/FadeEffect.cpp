@@ -51,9 +51,6 @@ FadeOptions::getConfig() const
 namespace
 {
     const char* FadeEffectVertexShader =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
         "uniform float oe_fadeeffect_duration; \n"
         "uniform float oe_fadeeffect_startTime; \n"
         "uniform float oe_fadeeffect_maxRange; \n"
@@ -70,9 +67,6 @@ namespace
         "} \n";
 
     const char* FadeEffectFragmentShader = 
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
         "in float oe_fadeeffect_opacity; \n"
 
         "void oe_fragFadeEffect( inout vec4 color ) \n"
@@ -162,9 +156,6 @@ FadeEffect::getAttenuationDistance() const
 namespace
 {
     const char* FadeLODFragmentShader = 
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
         "uniform float oe_FadeLOD_opacity; \n"
         "void oe_fragFadeLOD( inout vec4 color ) \n"
         "{ \n"

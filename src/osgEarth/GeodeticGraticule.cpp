@@ -100,7 +100,6 @@ namespace
     };
 
     const char* textFadeFS =
-        "#version " GLSL_VERSION_STR "\n"
         "uniform mat4 osg_ViewMatrixInverse;\n"
         "void oe_GeodeticGraticule_text_frag(inout vec4 color) { \n"
         "    const float maxHAE = 4000.0;\n"

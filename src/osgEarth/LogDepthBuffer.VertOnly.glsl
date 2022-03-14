@@ -1,5 +1,3 @@
-#version $GLSL_VERSION_STR
-
 #pragma vp_entryPoint oe_logDepth_vert
 #pragma vp_location   vertex_clip
 #pragma vp_order      0.99

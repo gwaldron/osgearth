@@ -1,4 +1,3 @@
-#version 400
 #pragma vp_name       REX Engine TCS
 #pragma vp_entryPoint oe_rex_TCS
 #pragma vp_location   tess_control
@@ -66,8 +65,6 @@ void oe_rex_TCS()
 
 
 [break]
-#version 400
-
 #pragma vp_name       REX Engine TES
 #pragma vp_entryPoint oe_rex_TES
 #pragma vp_location   tess_eval

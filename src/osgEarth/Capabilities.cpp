@@ -259,7 +259,6 @@ _supportsNVGL(false)
             osg::isGLExtensionSupported(id, "GL_NV_vertex_buffer_unified_memory") &&
             osg::isGLExtensionSupported(id, "GL_NV_shader_buffer_load") &&
             osg::isGLExtensionSupported(id, "GL_NV_bindless_multi_draw_indirect");
-        OE_INFO << LC << "  NVIDIA GL4:        " << SAYBOOL(_supportsNVGL) << std::endl;
 
 #if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
         glGetIntegerv( GL_MAX_TEXTURE_UNITS, &_maxFFPTextureUnits );

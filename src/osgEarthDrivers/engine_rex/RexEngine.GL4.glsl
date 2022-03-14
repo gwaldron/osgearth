@@ -1,7 +1,3 @@
-#define OE_TILE_SIZE 17
-#define OE_TILE_VERTS 417
-#define OE_SKIRT_VERTS 128
-
 struct oe_rex_Shared {
     vec2 morphConstants[19];
     float padding[2];

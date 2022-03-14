@@ -1369,6 +1369,10 @@ RexTerrainEngineNode::updateState()
                 _terrainSS->setDefine("OE_USE_GL4");
             }
 
+            // vertex-dimension of each standard terrain tile.
+            _terrainSS->setDefine("OE_TILE_SIZE",
+                std::to_string(options().tileSize().get()));
+
             // uniform that conveys the layer UID to the shaders; necessary
             // for per-layer branching (like color filters)
             // UID -1 => no image layer (no texture)

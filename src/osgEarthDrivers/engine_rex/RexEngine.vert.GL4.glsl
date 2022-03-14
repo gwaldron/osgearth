@@ -6,6 +6,7 @@
 #pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY)
 #pragma import_defines(OE_TERRAIN_MORPH_IMAGERY)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
+#pragma import_defines(OE_TILE_SIZE)
 
 // SDK functions:
 float oe_terrain_getElevation(in vec2 uv);

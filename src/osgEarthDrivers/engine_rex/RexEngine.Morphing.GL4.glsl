@@ -6,6 +6,7 @@
 #pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY)
 #pragma import_defines(OE_TERRAIN_RENDER_ELEVATION)
 #pragma import_defines(OE_IS_DEPTH_CAMERA)
+#pragma import_defines(OE_TILE_SIZE)
 
 out vec4 vp_Color;
 out vec3 vp_Normal;

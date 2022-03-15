@@ -1,10 +1,3 @@
-#extension GL_ARB_gpu_shader_int64 : enable
-
-#define OE_USE_GL4
-#define OE_TILE_SIZE 17
-#define OE_TILE_VERTS 417
-#define OE_SKIRT_VERTS 128
-
 struct oe_rex_Shared {
     vec2 morphConstants[19];
     float padding[2];
@@ -37,7 +30,7 @@ layout(binding = 31, std430) readonly buffer RexTileBuffer {
     oe_rex_Tile oe_tile[];
 };
 
-#if defined(VP_STAGE_VERTEX)
+#if defined(VP_STAGE_VERTEX) || defined(VP_STAGE_TESSEVALUATION)
 flat out int oe_tileID;
 #elif defined(VP_STAGE_FRAGMENT)
 flat in int oe_tileID;

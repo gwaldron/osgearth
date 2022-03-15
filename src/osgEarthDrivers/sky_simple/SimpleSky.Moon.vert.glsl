@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 uniform vec3 moonToSun;
 out vec4 moon_TexCoord;
 out float moon_Lighting;

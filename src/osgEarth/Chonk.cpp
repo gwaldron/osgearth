@@ -539,7 +539,6 @@ ChonkDrawable::installRenderBin(ChonkDrawable* d)
 
             s_vp = VirtualProgram::getOrCreate(s_ss.get());
             s_vp->setName("ChonkDrawable");
-            s_vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
 
             Shaders pkg;
             pkg.load(s_vp.get(), pkg.Chonk);

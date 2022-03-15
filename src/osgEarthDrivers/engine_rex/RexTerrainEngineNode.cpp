@@ -1366,8 +1366,12 @@ RexTerrainEngineNode::updateState()
             // GL4 rendering?
             if (GLUtils::useNVGL())
             {
-                terrainVP->addGLSLExtension("GL_ARB_gpu_shader_int64");
+                _terrainSS->setDefine("OE_USE_GL4");
             }
+
+            // vertex-dimension of each standard terrain tile.
+            _terrainSS->setDefine("OE_TILE_SIZE",
+                std::to_string(options().tileSize().get()));
 
             // uniform that conveys the layer UID to the shaders; necessary
             // for per-layer branching (like color filters)
@@ -1518,8 +1522,6 @@ RexTerrainEngineNode::installColorFilters(
     {
         // Color filter frag function:
         std::string fs_colorfilters =
-            "#version " GLSL_VERSION_STR "\n"
-            GLSL_DEFAULT_PRECISION_FLOAT "\n"
             "uniform int oe_layer_uid; \n"
             "$COLOR_FILTER_HEAD"
             "void oe_rexEngine_applyFilters(inout vec4 color) \n"

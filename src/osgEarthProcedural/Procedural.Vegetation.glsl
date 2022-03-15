@@ -1,5 +1,3 @@
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_function oe_vegetation_vs_model, vertex_model
 
 struct Instance {
@@ -25,8 +23,6 @@ void oe_vegetation_vs_model(inout vec4 vertex)
 
 [break]
 
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_function oe_vegetation_vs_view, vertex_view
 #pragma import_defines(OE_WIND_TEX)
 #pragma import_defines(OE_WIND_TEX_MATRIX)
@@ -93,9 +89,6 @@ void oe_vegetation_vs_view(inout vec4 vertex)
 
 
 [break]
-
-#version 430
-#extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_function oe_vegetation_fs, fragment
 #pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)

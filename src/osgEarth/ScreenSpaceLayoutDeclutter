@@ -32,8 +32,6 @@ namespace osgEarth { namespace Internal
     using namespace osgEarth;
 
     static const char* s_faderFS =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "uniform float " FADE_UNIFORM_NAME ";\n"
         "void oe_declutter_apply_fade(inout vec4 color) { \n"
         "    color.a *= " FADE_UNIFORM_NAME ";\n"

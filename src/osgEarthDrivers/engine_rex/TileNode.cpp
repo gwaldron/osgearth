@@ -611,40 +611,33 @@ TileNode::update(osg::NodeVisitor& nv)
             // by an "async" image layer that is working in the background
             // to load. Once it is available we can merge it into the real texture
             // slot for rendering.
-            if (sampler._futureTexture.valid())
+            if (sampler._futureTexture)
             {
-                if (sampler._futureTexture->requiresUpdateCall())
+                if (sampler._futureTexture->needsUpdates())
                 {
-                    sampler._futureTexture->update(&nv);
+                    sampler._futureTexture->update(nv);
                     ++numUpdatedTotal;
                 }
 
-                // TODO -- FIX THIS
-                //if (sampler._futureTexture->doneLoading())
-                //{
-                //    sampler._texture = sampler._futureTexture;
-                //    sampler._matrix.makeIdentity();
-                //    sampler._futureTexture = nullptr;
-                //    ++numFuturesResolved;
-                //}
+                FutureTexture* ft = reinterpret_cast<FutureTexture*>(sampler._futureTexture->osgTexture().get());
+                if (ft->doneLoading())
+                {
+                    sampler._texture = sampler._futureTexture;
+                    sampler._futureTexture = nullptr;
+                    sampler._matrix.makeIdentity();
+                    ++numFuturesResolved;
+                }
 
-                else if (sampler._futureTexture->failed())
+                else if (ft->failed())
                 {
                     sampler._futureTexture = nullptr;
                 }
             }
 
-            if (sampler.ownsTexture())
+            if (sampler.ownsTexture() && sampler._texture->needsUpdates())
             {
-                for (unsigned i = 0; i < sampler._texture->osgTexture()->getNumImages(); ++i)
-                {
-                    osg::Image* image = sampler._texture->osgTexture()->getImage(i);
-                    if (image && image->requiresUpdateCall())
-                    {
-                        image->update(&nv);
-                        ++numUpdatedTotal;
-                    }
-                }
+                sampler._texture->update(nv);
+                ++numUpdatedTotal;
             }
         }
     }
@@ -688,7 +681,6 @@ TileNode::createChildren()
 
                 auto createChildOperation = [context, tile_weakptr, childkey](Cancelable* state)
                 {
-                    //osg::ref_ptr<TileNode> tile = context->liveTiles()->get(parentkey);
                     osg::ref_ptr<TileNode> tile;
                     if (tile_weakptr.lock(tile) && !state->isCanceled())
                         return tile->createChild(childkey, state);
@@ -827,20 +819,9 @@ TileNode::merge(
                 }
 
                 // check to see if this data requires an image update traversal.
-                // TODO: FIX THIS
                 if (_imageUpdatesActive == false)
                 {
-                    auto osgtex = colorLayer.texture()->osgTexture();
-
-                    for (unsigned i = 0; i < osgtex->getNumImages(); ++i)
-                    {
-                        const osg::Image* image = osgtex->getImage(i);
-                        if (image && image->requiresUpdateCall())
-                        {
-                            _imageUpdatesActive = true;
-                            break;
-                        }
-                    }
+                    _imageUpdatesActive = colorLayer.texture()->needsUpdates();
                 }
 
                 if (imageLayer->getAsyncLoading())
@@ -853,7 +834,6 @@ TileNode::merge(
                         {
                             Sampler& colorParent = pass->sampler(SamplerBinding::COLOR_PARENT);
                             colorParent._texture = parentPass->sampler(SamplerBinding::COLOR)._texture;
-                            //colorParent._arena_texture = parentPass->sampler(SamplerBinding::COLOR)._arena_texture;
                             colorParent._matrix = parentPass->sampler(SamplerBinding::COLOR)._matrix;
                             colorParent._matrix.preMult(scaleBias[_key.getQuadrant()]);
                         }
@@ -864,8 +844,7 @@ TileNode::merge(
                         OE_DEBUG << "no parent pass in my pass. key=" << model->key().str() << std::endl;
                     }
 
-                    pass->sampler(SamplerBinding::COLOR)._futureTexture =
-                        dynamic_cast<FutureTexture2D*>(colorLayer.texture()->osgTexture().get());
+                    pass->sampler(SamplerBinding::COLOR)._futureTexture = colorLayer.texture();
 
                     // require an update pass to process the future texture
                     _imageUpdatesActive = true;

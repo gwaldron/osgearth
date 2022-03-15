@@ -156,7 +156,7 @@ namespace osgEarth
                     time_point now = std::chrono::steady_clock::now();
                     int us = std::chrono::duration_cast<std::chrono::microseconds>(now - _lastFrame).count();
                     _lastFrame = now;
-                    constexpr int interval = 30;
+                    constexpr int interval = 60;
                     _times.push(us);
                     _time_accum += us;
                     if (_times.size() > interval) {

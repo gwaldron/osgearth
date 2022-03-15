@@ -1,6 +1,3 @@
-#version 430
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_name       GroundCover vertex shader
 #pragma vp_entryPoint oe_GroundCover_VS
 #pragma vp_location   vertex_view
@@ -257,7 +254,6 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
 
 [break]
-#version $GLSL_VERSION_STR
 #pragma vp_name       Land cover billboard texture application
 #pragma vp_entryPoint oe_GroundCover_FS
 #pragma vp_location   fragment_coloring

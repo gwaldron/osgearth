@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_entryPoint oe_logDepth_vert
 #pragma vp_location   vertex_clip
 #pragma vp_order      0.99
@@ -27,10 +24,6 @@ void oe_logDepth_vert(inout vec4 clip)
 }
 
 [break]
-
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_entryPoint oe_logDepth_frag
 #pragma vp_location   fragment_lighting
 #pragma vp_order      0.99

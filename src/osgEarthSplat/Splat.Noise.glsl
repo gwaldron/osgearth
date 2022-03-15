@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 //
 // Description : Array and textureless GLSL 2D/3D/4D simplex 
 //               noise functions.

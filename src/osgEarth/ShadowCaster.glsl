@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_name       Shadowing Vertex Shader
 #pragma vp_entryPoint oe_shadow_vertex
 #pragma vp_location   vertex_view
@@ -26,10 +23,6 @@ void oe_shadow_vertex(inout vec4 VertexVIEW)
 
 
 [break]
-
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_name       Shadowing Fragment Shader
 #pragma vp_entryPoint oe_shadow_fragment
 #pragma vp_location   fragment_lighting

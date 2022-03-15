@@ -195,9 +195,7 @@ namespace osgEarth
             std::stringstream _viewHead, _viewBody;
             std::stringstream _fragHead, _fragBody;
             osg::StateSet*    _stateSet;
-            unsigned          _version;
 
-            bool requireVersion(unsigned glslVersion, unsigned glesVersion=100u);
             GenBuffers();
         };
 

@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #if(__VERSION__ < 400)
     #extension GL_ARB_gpu_shader5 : enable  // textureGather
 #endif
@@ -60,11 +57,6 @@ void oe_splat_sampleCoverage(inout vec4 unused)
 
 
 [break]
-
-
-    
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
 
 // order of 1.1 allows user the opportunity to override oe_splat_coverage stage global
 #pragma vp_entryPoint oe_splat_complex

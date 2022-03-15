@@ -581,8 +581,6 @@ DiscardAlphaFragments::install(osg::StateSet* ss, float minAlpha) const
             vp->setName("Discard Alpha");
 
             std::string code = Stringify()
-                << "#version " << GLSL_VERSION_STR << "\n"
-                << GLSL_DEFAULT_PRECISION_FLOAT << "\n"
                 << "void oe_discardalpha_frag(inout vec4 color) { \n"
                 << "    if ( color.a < " << std::setprecision(1) << minAlpha << ") discard;\n"
                 << "} \n";
@@ -613,7 +611,6 @@ DiscardAlphaFragments::uninstall(osg::StateSet* ss) const
 namespace
 {
     const char* fs =
-        "#version " GLSL_VERSION_STR "\n"
         "void oe_default_fs(inout vec4 color) { } \n";
 }
 

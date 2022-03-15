@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ShaderFactory>
+#include <osgEarth/ShaderLoader>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/ShaderMerger>
 #include <osgEarth/StringUtils>
@@ -2140,7 +2141,9 @@ PolyShader::setLocation(ShaderComp::FunctionLocation location)
 osg::Shader*
 PolyShader::getShader(ShaderComp::StageMask mask) const
 {
-    if (_location == ShaderComp::LOCATION_VERTEX_VIEW || _location == ShaderComp::LOCATION_VERTEX_CLIP)
+    if (_location == ShaderComp::LOCATION_VERTEX_VIEW || 
+        _location == ShaderComp::LOCATION_VERTEX_CLIP ||
+        _location == ShaderComp::LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW)
     {
         OE_DEBUG << "getShader, mask = " << std::hex << mask << ", location = " << _location << "\n";
 
@@ -2169,6 +2172,7 @@ PolyShader::prepare()
         osg::Shader::Type nominalType;
         switch (_location)
         {
+        case ShaderComp::LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW:
         case ShaderComp::LOCATION_VERTEX_MODEL:
         case ShaderComp::LOCATION_VERTEX_VIEW:
         case ShaderComp::LOCATION_VERTEX_CLIP:
@@ -2202,7 +2206,9 @@ PolyShader::prepare()
         ShaderPreProcessor::runPost(_nominalShader.get());
 
         // for a VERTEX_VIEW or VERTEX_CLIP shader, these might get moved to another stage.
-        if (_location == ShaderComp::LOCATION_VERTEX_VIEW || _location == ShaderComp::LOCATION_VERTEX_CLIP)
+        if (_location == ShaderComp::LOCATION_VERTEX_VIEW || 
+            _location == ShaderComp::LOCATION_VERTEX_CLIP ||
+            _location == ShaderComp::LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW)
         {
             _geomShader = new osg::Shader(osg::Shader::GEOMETRY, _source);
             if (!_name.empty())
@@ -2285,10 +2291,8 @@ PolyShader::lookUpShader(const std::string& functionName, const std::string& sha
 
     if (!shader)
     {
-
-        // Remove any quotes in the shader source (illegal)
         std::string source(shaderSource);
-        osgEarth::replaceIn(source, "\"", " ");
+        ShaderLoader::configureHeader(source);
 
         shader = new PolyShader();
         shader->setName(functionName);

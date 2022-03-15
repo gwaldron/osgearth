@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 in vec3 atmos_v3Direction;
 out vec4 out_FragColor;
 

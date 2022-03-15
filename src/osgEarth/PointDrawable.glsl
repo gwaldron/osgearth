@@ -1,4 +1,3 @@
-#version $GLSL_VERSION_STR
 #pragma vp_name PointDrawable
 #pragma vp_entryPoint oe_PointDrawable_VS_VIEW
 #pragma vp_location vertex_view
@@ -12,8 +11,6 @@ void oe_PointDrawable_VS_VIEW(inout vec4 vertexView)
 }
 
 [break]
-
-#version $GLSL_VERSION_STR
 #pragma vp_name PointDrawable FS
 #pragma vp_entryPoint oe_PointDrawable_FS
 #pragma vp_location fragment_coloring

@@ -30,9 +30,6 @@ using namespace osgEarth::Triton;
 namespace
 {    
     const char* vertexShader =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
         "#pragma import_defines(OE_TRITON_MASK_MATRIX);\n"
 
         "// terrain SDK:\n"
@@ -60,9 +57,6 @@ namespace
     // imagery, this will overwrite it.
 
     const char* fragmentShader =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
-
         "#pragma import_defines(OE_TRITON_MASK_SAMPLER);\n"
 
         "in float oe_triton_elev;\n"

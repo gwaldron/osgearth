@@ -1061,14 +1061,12 @@ ImageControl::getImageStateSet()
             s_imageStateSet = stateSet = new osg::StateSet();
 
             const char* vert =
-                "#version " GLSL_VERSION_STR "\n"
                 "out vec2 oe_Controls_texCoord; \n"
                 "void oe_Controls_renderImageVert(inout vec4 vert) { \n"
                 "    oe_Controls_texCoord = gl_MultiTexCoord0.xy; \n"
                 "}\n";
 
             const char* frag =
-                "#version " GLSL_VERSION_STR "\n"
                 "in vec2 oe_Controls_texCoord; \n"
                 "uniform sampler2D oe_Controls_tex; \n"
                 "void oe_Controls_renderImageFrag(inout vec4 color) { \n"

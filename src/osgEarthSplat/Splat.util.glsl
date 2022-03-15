@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_location fragment_coloring
 
 // Number of LOD range. Do not increase this past 25; doing so will result in precision errors

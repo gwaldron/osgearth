@@ -67,6 +67,14 @@ namespace osgEarth
         //! Whether we need to compile (or recompile) this texture
         bool needsCompile(const osg::State&) const;
 
+        //! Wether the underlying image is dynamic
+        //! and needs updates.
+        bool needsUpdates() const;
+
+        //! Update the underlying image if necessary
+        void update(osg::NodeVisitor& nv);
+
+        //! GL memory functions
         void compileGLObjects(osg::State&) const;
         void resizeGLObjectBuffers(unsigned);
         void releaseGLObjects(osg::State*) const;
@@ -84,7 +92,6 @@ namespace osgEarth
 
         OE_PROPERTY(osg::ref_ptr<osg::Texture>, osgTexture);
         OE_PROPERTY_CONST(GLenum, target);
-        OE_PROPERTY_CONST(bool, dynamic);
 
         //! Whether any actual image data has been loaded into this object,
         //! or whether we need to load it from the URI
@@ -96,8 +103,12 @@ namespace osgEarth
             unsigned _imageModCount;
             GCState() : _imageModCount(0) { }
         };
-        mutable std::vector<GCState> _gs;
-        GCState& get(const osg::State&) const;
+        mutable std::vector<GCState> _gc;
+        GCState& get(const osg::State& s) const {
+            unsigned id = s.getContextID();
+            if (id >= _gc.size()) _gc.resize(id + 1);
+            return _gc[id];
+        }
 
         ~Texture();
 
@@ -182,7 +193,12 @@ namespace osgEarth
             std::vector<GLuint64> _handles;
             bool _dirty;
         };
-        mutable osg::buffered_object<GCState> _gc;
+        mutable std::vector<GCState> _gc;
+        GCState& get(const osg::State& s) const {
+            unsigned id = s.getContextID();
+            if (id >= _gc.size()) _gc.resize(id + 1);
+            return _gc[id];
+        }
 
         mutable TextureVector _textures;
         bool _autoRelease;

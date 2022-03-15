@@ -291,6 +291,9 @@ namespace osgEarth
         std::string getMetadataKey(const Profile*) const;
 
     private:
+        // general purpose data protector
+        mutable ReadWrite<Mutex> _data_mutex;
+
         DataExtentList _dataExtents;
         mutable DataExtent _dataExtentsUnion;
 

@@ -1,6 +1,3 @@
-#version 460
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_name       Grass VS MODEL
 #pragma vp_entryPoint oe_Grass_VS_MODEL
 #pragma vp_location   vertex_model
@@ -52,9 +49,6 @@ void oe_Grass_VS_MODEL(inout vec4 geom_vertex)
 
 
 [break]
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
-
 #pragma vp_name       Grass Render VS
 #pragma vp_entryPoint oe_Grass_main
 #pragma vp_location   vertex_view
@@ -283,9 +277,6 @@ void oe_Grass_main(inout vec4 vertex_view)
 
 
 [break]
-#version 430
-#extension GL_ARB_gpu_shader_int64 : enable
-
 #pragma vp_name Grass frag shader
 #pragma vp_entryPoint oe_Grass_FS
 #pragma vp_location fragment

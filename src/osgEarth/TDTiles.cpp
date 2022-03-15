@@ -443,7 +443,6 @@ Tileset::create(const std::string& json, const URIContext& uc)
 static VirtualProgram* getOrCreateDebugVirtualProgram()
 {
     char s_debugColoring[] =
-        "#version " GLSL_VERSION_STR "\n"
         "#pragma import_defines(OE_3DTILES_DEBUG)\n"
         "uniform vec4 debugColor;\n"
         "void color( inout vec4 color ) \n"

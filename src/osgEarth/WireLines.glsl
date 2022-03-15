@@ -1,4 +1,3 @@
-#version $GLSL_VERSION_STR
 #pragma vp_name Wire Lines Vertex Shader Model
 #pragma vp_entryPoint oe_WireLine_VS_MODEL
 #pragma vp_location vertex_model

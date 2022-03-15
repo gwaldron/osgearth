@@ -3,17 +3,20 @@
 #pragma vp_location   tess_control
 #pragma vp_order      last
 
+#pragma include RexEngine.GL4.glsl
+
 layout(vertices=3) out;
 
 uniform float oe_terrain_tess;
 uniform float oe_terrain_tess_range;
 
 // temporary: use lifemap texture from earth file
-//#pragma oe_use_shared_layer(LIFEMAP_TEX, LIFEMAP_MAT);
+#pragma oe_use_shared_layer(LIFEMAP_TEX, LIFEMAP_MAT)
 
 varying vec4 oe_layer_tilec;
 varying vec4 vp_Vertex;
 varying vec3 vp_Normal;
+flat out vec4 oe_tile_key;
 
 void VP_LoadVertex(in int);
 float oe_terrain_getElevation();
@@ -23,24 +26,29 @@ float remap_unit(in float value, in float lo, in float hi)
     return clamp((value - lo) / (hi - lo), 0.0, 1.0);
 }
 
+// note: we are in MODEL space
 void oe_rex_TCS()
 {
     if (gl_InvocationID == 0)
     {
-#if 0
+#if 1
         // iterator backward so we end up loading vertex 0
         float d[3];
         vec3 v[3];
+        mat4 mvm = oe_tile[oe_tileID].modelViewMatrix;
         for (int i = 2; i >= 0; --i)
         {
             VP_LoadVertex(i);
-            v[i] = (gl_ModelViewMatrix * (vp_Vertex + vec4(vp_Normal * oe_terrain_getElevation(), 0.0))).xyz;
+            v[i] = (mvm * (vp_Vertex + vec4(vp_Normal * oe_terrain_getElevation(), 0.0))).xyz;
+            d[i] = 1.0;
+#ifdef LIFEMAP_TEX
             d[i] = 1.0 - texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st).g;
+#endif
             d[i] = oe_terrain_tess * d[i] * d[i] * d[i];
         }
 
-        float max_dist = oe_terrain_tess_range;
-        float min_dist = oe_terrain_tess_range / 6.0;
+        float min_dist = oe_terrain_tess_range;
+        float max_dist = oe_terrain_tess_range * 3.0;
 
         vec3 m12 = 0.5*(v[1] + v[2]);
         vec3 m20 = 0.5*(v[2] + v[0]);
@@ -61,11 +69,11 @@ void oe_rex_TCS()
         gl_TessLevelOuter[2] = e2;
         gl_TessLevelInner[0] = e3;
 #else
-
-        gl_TessLevelOuter[0] = oe_terrain_tess;
-        gl_TessLevelOuter[1] = oe_terrain_tess;
-        gl_TessLevelOuter[2] = oe_terrain_tess;
-        gl_TessLevelInner[0] = oe_terrain_tess;
+        float t = max(1, oe_terrain_tess * (oe_tile_key.z - 16));
+        gl_TessLevelOuter[0] = t;
+        gl_TessLevelOuter[1] = t;
+        gl_TessLevelOuter[2] = t;
+        gl_TessLevelInner[0] = t;
 #endif
     }
 }

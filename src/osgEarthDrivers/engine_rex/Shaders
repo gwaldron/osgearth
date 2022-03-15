@@ -69,7 +69,6 @@ namespace osgEarth { namespace REX
             ENGINE_GEOM,
             ENGINE_TESSELLATION,
             ENGINE_NORMAL_MAP,
-            //ENGINE_MORPHING,
             ENGINE_IMAGELAYER,
             ENGINE_SDK,
             ENGINE_TYPES;
@@ -79,7 +78,7 @@ namespace osgEarth { namespace REX
         virtual std::string geom() { return ENGINE_GEOM; }
         virtual std::string tessellation() { return ENGINE_TESSELLATION; }
         virtual std::string normal_map() { return ENGINE_NORMAL_MAP; }
-        virtual std::string morphing() { return ""; } // ENGINE_MORPHING; }
+        virtual std::string morphing() { return ""; }
         virtual std::string imagelayer() { return ENGINE_IMAGELAYER; }
         virtual std::string sdk() { return ENGINE_SDK; }
         virtual std::string types() { return ENGINE_TYPES; }

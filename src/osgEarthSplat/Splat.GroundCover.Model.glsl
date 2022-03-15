@@ -1,6 +1,3 @@
-#version 430
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_name       GroundCover model shader VS
 #pragma vp_entryPoint oe_GroundCover_Model_VS
 #pragma vp_location   vertex_model
@@ -87,8 +84,6 @@ void oe_GroundCover_Model_VS(inout vec4 vertex)
 
 
 [break]
-
-#version $GLSL_VERSION_STR
 #pragma vp_name       GroundCover Model FS
 #pragma vp_entryPoint oe_GroundCover_Model_FS
 #pragma vp_location   fragment_coloring

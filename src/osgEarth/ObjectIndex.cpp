@@ -164,6 +164,46 @@ ObjectIndex::tagDrawable(osg::Drawable* drawable, ObjectID id) const
     ids->assign( geom->getVertexArray()->getNumElements(), id );
 }
 
+ObjectID
+ObjectIndex::tagRange(osg::Drawable* drawable, osg::Referenced* object, unsigned int start, unsigned int count)
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    ObjectID oid = insertImpl(object);
+    tagRange(drawable, oid, start, count);
+    return oid;
+}
+
+void
+ObjectIndex::tagRange(osg::Drawable* drawable, ObjectID id, unsigned int start, unsigned int count) const
+{
+    if (drawable == 0L)
+        return;
+
+    osg::Geometry* geom = drawable->asGeometry();
+    if (!geom)
+        return;
+
+    ObjectIDArray* ids = dynamic_cast<ObjectIDArray*>(geom->getVertexAttribArray(_attribLocation));
+    if (!ids)
+    {
+        // add a new integer attributer to store the feautre ID per vertex.
+        ids = new ObjectIDArray();
+        ids->setBinding(osg::Array::BIND_PER_VERTEX);
+        ids->setNormalize(false);
+        geom->setVertexAttribArray(_attribLocation, ids);
+        ids->setPreserveDataType(true);
+    }
+
+    for (unsigned int i = 0; i < count; ++i)
+    {
+        (*ids)[start + i] = id;
+    }
+
+    ids->dirty();
+}
+
+
+
 namespace
 {
     struct FindAndTagDrawables : public osg::NodeVisitor

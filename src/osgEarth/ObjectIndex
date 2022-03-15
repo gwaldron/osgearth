@@ -64,6 +64,13 @@ namespace osgEarth
          * the object id. Returns the Object ID.
          */
         virtual ObjectID tagNode(osg::Node* node, T* object) =0;
+
+        /**
+         * Inserts the object into the index, and tags the drawable's range with its object id.
+         * Use this if you are already creating merged geometries in a single drawable.
+         * Returns the ID of the object.
+         */
+        virtual ObjectID tagRange(osg::Drawable* drawable, T* object, unsigned int start, unsigned int count) = 0;
     };
 
 
@@ -174,6 +181,13 @@ namespace osgEarth
          */
         ObjectID tagNode(osg::Node* node, osg::Referenced* object);
 
+        /**
+         * Inserts the object into the index, and tags the drawable's range with its object id.
+         * Use this if you are already creating merged geometries in a single drawable.
+         * Returns the ID of the object.
+         */
+        ObjectID tagRange(osg::Drawable* drawable, osg::Referenced* object, unsigned int start, unsigned int count);
+
 
     public: // Raw tagging methods.
 
@@ -193,6 +207,12 @@ namespace osgEarth
          * to tag an entire model and are not planning to merge geometries.
          */
         void tagNode(osg::Node* node, ObjectID id) const;
+
+        /**
+         * Tags the drawable's range with its object id.
+         * Use this if you are already creating merged geometries in a single drawable.         
+         */
+        void tagRange(osg::Drawable* drawable, ObjectID id, unsigned int start, unsigned int count) const;
 
         /**
          * For each ObjectID found in a drawable, update it with a new Object ID and

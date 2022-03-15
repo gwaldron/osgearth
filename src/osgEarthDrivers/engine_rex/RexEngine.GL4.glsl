@@ -30,7 +30,7 @@ layout(binding = 31, std430) readonly buffer RexTileBuffer {
     oe_rex_Tile oe_tile[];
 };
 
-#if defined(VP_STAGE_VERTEX)
+#if defined(VP_STAGE_VERTEX) || defined(VP_STAGE_TESSEVALUATION)
 flat out int oe_tileID;
 #elif defined(VP_STAGE_FRAGMENT)
 flat in int oe_tileID;

@@ -44,7 +44,9 @@ namespace
     {
         bool locationSet = true;
 
-        if (ciEquals(loc, "vertex_model"))
+        if (ciEquals(loc, "vertex_transform_model_to_view"))
+            location = ShaderComp::LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW;
+        else if (ciEquals(loc, "vertex_model"))
             location = ShaderComp::LOCATION_VERTEX_MODEL;
         else if (ciEquals(loc, "vertex_view"))
             location = ShaderComp::LOCATION_VERTEX_VIEW;

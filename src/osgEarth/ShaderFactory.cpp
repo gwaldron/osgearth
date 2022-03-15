@@ -186,6 +186,9 @@ ShaderFactory::createMains(
 
     FunctionLocationMap::const_iterator f;
 
+    f = functions.find(LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW);
+    const OrderedFunctionMap* xformModelToView = f != functions.end() ? &f->second : nullptr;
+
     // collect the "model" stage vertex functions:
     f = functions.find( LOCATION_VERTEX_MODEL );
     const OrderedFunctionMap* modelStage = f != functions.end() ? &f->second : 0L;
@@ -382,21 +385,39 @@ ShaderFactory::createMains(
             }
         }
 
-        // prototypes for view stage methods:
-        if ( viewStage != 0L && viewStageInVS )
+        if (viewStageInVS)
         {
-            for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
+            if (xformModelToView)
             {
-                buf << "void " << i->second._name << "(inout vec4); \n";
+                for (auto& iter : *xformModelToView)
+                    buf << "void " << iter.second._name << "();\n";
+            }
+
+            // prototypes for view stage methods:
+            if (viewStage)
+            {
+                for (OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i)
+                {
+                    buf << "void " << i->second._name << "(inout vec4); \n";
+                }
             }
         }
 
-        // prototypes for clip stage methods:
-        if ( clipStage != 0L && clipStageInVS )
+        if (clipStageInVS)
         {
-            for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
+            if (xformModelToView)
             {
-                buf << "void " << i->second._name << "(inout vec4); \n";
+                for (auto& iter : *xformModelToView)
+                    buf << "void " << iter.second._name << "();\n";
+            }
+
+            // prototypes for clip stage methods:
+            if (clipStage != 0L)
+            {
+                for (OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i)
+                {
+                    buf << "void " << i->second._name << "(inout vec4); \n";
+                }
             }
         }
 
@@ -419,10 +440,19 @@ ShaderFactory::createMains(
         {
             if ( viewStage )
             {
-                buf <<
-                    INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
-                    INDENT << "vp_VertexView = vp_Vertex.xyz; \n"
-                    INDENT << "vp_Normal = normalize(" << gl_NormalMatrix    << " * vp_Normal); \n";
+                if (xformModelToView)
+                {
+                    buf <<
+                        INDENT << xformModelToView->begin()->second._name << "();\n";
+                }
+                else
+                {
+                    buf <<
+                        INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
+                        INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+                }
+
+                buf << INDENT << "vp_VertexView = vp_Vertex.xyz;\n";
 
                 for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
                 {
@@ -440,10 +470,20 @@ ShaderFactory::createMains(
                     }
                     else
                     {
-                        buf <<
-                            INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n"
-                            INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
-                            INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+                        if (xformModelToView)
+                        {
+                            buf <<
+                                INDENT << xformModelToView->begin()->second._name << "();\n"
+                                INDENT << "vp_VertexView = vp_Vertex.xyz;\n"
+                                INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex;\n";
+                        }
+                        else
+                        {
+                            buf <<
+                                INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n"
+                                INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+                                INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+                        }
                     }
 
                     for( OrderedFunctionMap::const_iterator i = clipStage->begin(); i != clipStage->end(); ++i )
@@ -642,6 +682,12 @@ ShaderFactory::createMains(
                 }
             }
 
+            if (xformModelToView)
+            {
+                for (auto& iter : *xformModelToView)
+                    buf << "void " << iter.second._name << "();\n";
+            }
+
             if (viewStage && viewStageInTES)
             {
                 for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
@@ -672,7 +718,7 @@ ShaderFactory::createMains(
                 << "{ \n";            
             for(Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
             {
-                if ( i->interp != "flat" )
+                if ( i->interp != "flat" )                     
                 {
                     if ( i->arraySize == 0 )
                     {
@@ -706,9 +752,19 @@ ShaderFactory::createMains(
 
             if ( viewStage && viewStageInTES )
             {
-                buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
-                    << INDENT << "vp_VertexView = vp_Vertex.xyz; \n"
-                    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+                if (xformModelToView)
+                {
+                    buf <<
+                        INDENT << xformModelToView->begin()->second._name << "();\n";
+                }
+                else
+                {
+                    buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
+                        << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+                }
+
+                buf << INDENT << "vp_VertexView = vp_Vertex.xyz;\n";
+
                 space = SPACE_VIEW;
 
                 for( OrderedFunctionMap::const_iterator i = viewStage->begin(); i != viewStage->end(); ++i )
@@ -719,12 +775,24 @@ ShaderFactory::createMains(
 
             if ( clipStage && clipStageInTES )
             {
-                if ( space == SPACE_MODEL )
-                    buf << INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n" 
-                        << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
-                        << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
-                else if ( space == SPACE_VIEW )
+                if (space == SPACE_MODEL)
+                {
+                    if (xformModelToView)
+                    {
+                        buf << INDENT << xformModelToView->begin()->second._name << "();\n";
+                    }
+                    else
+                    {
+                        buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
+                            << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+                    }
+                    buf << INDENT << "vp_VertexView = vp_Vertex.xyz; \n";
+                    buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex;\n";
+                }
+                else if (space == SPACE_VIEW)
+                {
                     buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
+                }
 
                 space = SPACE_CLIP;
 
@@ -737,12 +805,27 @@ ShaderFactory::createMains(
             // resolve vertex to its next space, but ONLY if this is the final Vertex Processing stage.
             if ( !hasGS )
             {
-                if ( space == SPACE_MODEL )
-                    buf << INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n"
-                        << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
-                        << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
-                else if ( space == SPACE_VIEW )
+                if (space == SPACE_MODEL)
+                {
+                    if (xformModelToView)
+                    {
+                        buf << INDENT << xformModelToView->begin()->second._name << "();\n";
+                    }
+                    else
+                    {
+                        buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
+                            << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+                    }
+                    buf << INDENT << "vp_VertexView = vp_Vertex.xyz; \n";
+                    buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex;\n";
+                    //buf << INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n"
+                    //    << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+                    //    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+                }
+                else if (space == SPACE_VIEW)
+                {
                     buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex; \n";
+                }
             }
         
             // Copy globals to output block:
@@ -784,7 +867,6 @@ ShaderFactory::createMains(
 
 
     //.................................................................................
-
 
     // Build the geometry shader.
     if ( hasGS )
@@ -859,9 +941,16 @@ ShaderFactory::createMains(
         int space = SPACE_MODEL;
         if ( viewStage && viewStageInGS )
         {
-            buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
-                << INDENT << "vp_VertexView = vp_Vertex.xyz; \n"
-                << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+            if (xformModelToView)
+            {
+                buf << INDENT << xformModelToView->begin()->second._name << "();\n";
+            }
+            else
+            {
+                buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
+                    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+            }
+            buf << INDENT << "vp_VertexView = vp_Vertex.xyz; \n";
 
             space = SPACE_VIEW;
 
@@ -875,9 +964,20 @@ ShaderFactory::createMains(
         {
             if ( space == SPACE_MODEL )
             {
-                buf << INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n"
-                    << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
-                    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+                if (xformModelToView)
+                {
+                    buf << INDENT << xformModelToView->begin()->second._name << "();\n";
+                }
+                else
+                {
+                    buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
+                        << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+                }
+                buf << INDENT << "vp_VertexView = vp_Vertex.xyz; \n";
+                buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex;\n";
+                //buf << INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n"
+                //    << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+                //    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
             }
             else if ( space == SPACE_VIEW )
             {
@@ -895,9 +995,20 @@ ShaderFactory::createMains(
         // resolve vertex to its next space:
         if ( space == SPACE_MODEL )
         {
-            buf << INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n"
-                << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
-                << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+            if (xformModelToView)
+            {
+                buf << INDENT << xformModelToView->begin()->second._name << "();\n";
+            }
+            else
+            {
+                buf << INDENT << "vp_Vertex = " << gl_ModelViewMatrix << " * vp_Vertex; \n"
+                    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
+            }
+            buf << INDENT << "vp_VertexView = vp_Vertex.xyz; \n";
+            buf << INDENT << "vp_Vertex = " << gl_ProjectionMatrix << " * vp_Vertex;\n";
+            //buf << INDENT << "vp_VertexView = (" << gl_ModelViewMatrix << " * vp_Vertex).xyz; \n"
+            //    << INDENT << "vp_Vertex = " << gl_ModelViewProjectionMatrix << " * vp_Vertex; \n"
+            //    << INDENT << "vp_Normal = normalize(" << gl_NormalMatrix << " * vp_Normal); \n";
         }
         else if ( space == SPACE_VIEW )
         {

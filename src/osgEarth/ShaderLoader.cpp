@@ -326,9 +326,6 @@ ShaderLoader::load_source(
     const ShaderPackage&  package,
     const osgDB::Options* dbOptions)
 {
-    URIContext context(dbOptions);
-    URI uri(filename, context);
-
     std::string output;
 
     ShaderPackage::SourceMap::const_iterator source = package._sources.find(filename);
@@ -337,6 +334,9 @@ ShaderLoader::load_source(
 
     if (!filename.empty())
     {
+        URIContext context(dbOptions);
+        URI uri(filename, context);
+
         // searches OSG_FILE_PATH
         std::string path = osgDB::findDataFile(uri.full(), dbOptions);
         if (!path.empty())
@@ -348,10 +348,11 @@ ShaderLoader::load_source(
                 output = externalSource;
             }
         }
-        else
-        {
-            OE_WARN << LC << "No source found for \"" << filename << "\"" << std::endl;
-        }
+    }
+
+    if (output.empty())
+    {
+        OE_WARN << LC << "No shader source found for \"" << filename << "\"" << std::endl;
     }
 
     return output;
@@ -627,6 +628,7 @@ ShaderLoader::configureHeader(
     {
         std::string glv = std::to_string(Capabilities::get().getGLSLVersionInt());
         Strings::replaceIn(in_out_source, "$GLSL_VERSION_STR", glv);
+        Strings::replaceIn(in_out_source, "$GLSL_DEFAULT_PRECISION_FLOAT", ""); // back compat
     }
 }
 

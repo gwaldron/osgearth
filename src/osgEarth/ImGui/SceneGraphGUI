@@ -55,25 +55,6 @@ namespace osgEarth
         }
 
         template<typename T>
-        void printArrayTable(const std::string& name, const T* array)
-        {
-            if (!array) return;
-
-            if (ImGui::BeginTable(name.c_str(), 2, ImGuiTableFlags_Borders))
-            {
-                unsigned int size = array->size();
-                for (unsigned i = 0; i < size; ++i)
-                {
-                    std::stringstream val;
-                    ImGui::TableNextColumn(); ImGui::Text("%d", i);
-                    val << (*array)[i];
-                    ImGui::TableNextColumn(); ImGui::Text(val.str().c_str());
-                }
-                ImGui::EndTable();
-            }
-        }
-
-        template<typename T>
         void printArrayTablePretty(const std::string& name, const T* array)
         {
             if (!array) return;
@@ -83,6 +64,7 @@ namespace osgEarth
 
             // When using ScrollX or ScrollY we need to specify a size for our table container!
             // Otherwise by default the table will fit all available space, like a BeginChild() call.
+            ImGui::Text(typeid(*array).name());
             ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 8);
             if (ImGui::BeginTable(name.c_str(), 2, flags, outer_size))
             {
@@ -110,6 +92,133 @@ namespace osgEarth
                     }
                 }
                 ImGui::EndTable();
+            }
+        }
+
+        inline void printArrayTable(const osg::Array* array)
+        {
+            switch (array->getType())
+            {
+            case osg::Array::ByteArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::ByteArray*>(array));
+                break;
+            case osg::Array::ShortArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::ShortArray*>(array));
+                break;
+            case osg::Array::IntArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::IntArray*>(array));
+                break;
+            case osg::Array::UByteArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::UByteArray*>(array));
+                break;
+            case osg::Array::UShortArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::UShortArray*>(array));
+                break;
+            case osg::Array::UIntArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::UIntArray*>(array));
+                break;
+            case osg::Array::FloatArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::FloatArray*>(array));
+                break;
+            case osg::Array::DoubleArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::DoubleArray*>(array));
+                break;
+            case osg::Array::Vec2bArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec2bArray*>(array));
+                break;
+            case osg::Array::Vec3bArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec3bArray*>(array));
+                break;
+            case osg::Array::Vec4bArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec4bArray*>(array));
+                break;
+            case osg::Array::Vec2sArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec2sArray*>(array));
+                break;
+            case osg::Array::Vec3sArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec3sArray*>(array));
+                break;
+            case osg::Array::Vec4sArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec4sArray*>(array));
+                break;
+            case osg::Array::Vec2iArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec2iArray*>(array));
+                break;
+            case osg::Array::Vec3iArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec3iArray*>(array));
+                break;
+            case osg::Array::Vec4iArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec4iArray*>(array));
+                break;
+#if 0
+            case osg::Array::Vec2ubArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec2ubArray*>(array));
+                break;
+            case osg::Array::Vec3ubArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec3ubArray*>(array));
+                break;
+#endif
+            case osg::Array::Vec4ubArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec4ubArray*>(array));
+                break;
+#if 0
+            case osg::Array::Vec2usArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec2usArray*>(array));
+                break;
+            case osg::Array::Vec3usArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec3usArray*>(array));
+                break;
+            case osg::Array::Vec4usArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec4usArray*>(array));
+                break;
+            case osg::Array::Vec2uiArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec2uiArray*>(array));
+                break;
+            case osg::Array::Vec3uiArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec3uiArray*>(array));
+                break;
+            case osg::Array::Vec4uiArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec4uiArray*>(array));
+                break;
+#endif
+            case osg::Array::Vec2ArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec2Array*>(array));
+                break;
+            case osg::Array::Vec3ArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec3Array*>(array));
+                break;
+            case osg::Array::Vec4ArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec4Array*>(array));
+                break;
+            case osg::Array::Vec2dArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec2dArray*>(array));
+                break;
+            case osg::Array::Vec3dArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec3dArray*>(array));
+                break;
+            case osg::Array::Vec4dArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Vec4dArray*>(array));
+                break;
+#if 0
+            case osg::Array::MatrixArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::MatrixfArray*>(array));
+                break;
+            case osg::Array::MatrixdArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::MatrixdArray*>(array));
+                break;
+            case osg::Array::QuatArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::QuatArray*>(array));
+                break;
+#endif
+            case osg::Array::UInt64ArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::UInt64Array*>(array));
+                break;
+            case osg::Array::Int64ArrayType:
+                printArrayTablePretty("Data", static_cast<const osg::Int64Array*>(array));
+                break;
+            default:
+                ImGui::Text("Unknown array type");
+                break;
             }
         }
 
@@ -634,31 +743,113 @@ namespace osgEarth
                 {
                     if (geometry->getVertexArray())
                     {
-                        if (ImGui::TreeNode("Vertices"))
+                        if (ImGui::TreeNode("verts", "VERTICES %d", geometry->getVertexArray()->getNumElements()))
                         {                            
-                            ImGui::Text("%d elements", geometry->getVertexArray()->getNumElements());
-                            printArrayTablePretty("Vertices", static_cast<osg::Vec3Array*>(geometry->getVertexArray()));
+                            printArrayTable(geometry->getVertexArray());
                             ImGui::TreePop();
                         }
                     }
 
                     if (geometry->getColorArray())
                     {
-                        if (ImGui::TreeNode("Colors"))
+                        if (ImGui::TreeNode("colors", "COLORS %d", geometry->getColorArray()->getNumElements()))
                         {
-                            ImGui::Text("%d elements", geometry->getColorArray()->getNumElements());
-                            printArrayTablePretty("Colors", static_cast<osg::Vec4Array*>(geometry->getColorArray()));
+                            printArrayTable(geometry->getColorArray());
                             ImGui::TreePop();
                         }
                     }
 
                     if (geometry->getNormalArray())
                     {
-                        if (ImGui::TreeNode("Normals"))
+                        if (ImGui::TreeNode("normals", "NORMALS %d", geometry->getNormalArray()->getNumElements()))
                         {
-                            ImGui::Text("%d elements", geometry->getNormalArray()->getNumElements());
-                            printArrayTablePretty("Normals", static_cast<osg::Vec3Array*>(geometry->getNormalArray()));
+                            printArrayTable(geometry->getNormalArray());
                             ImGui::TreePop();
+                        }
+                    }
+
+                    // Vetex attrib arrays
+                    osg::Geometry::ArrayList& arrays = geometry->getVertexAttribArrayList();
+                    bool validVertexAttributeArray = false;
+                    for (unsigned int i = 0; i < arrays.size(); ++i)
+                    {
+                        if (arrays[i].valid())
+                        {
+                            validVertexAttributeArray = true;
+                            break;
+                        }
+                    }
+
+                    if (validVertexAttributeArray)
+                    {
+
+                        ImGui::Text("Vertex Attributes");
+                        ImGui::Separator();
+                        for (unsigned int i = 0; i < arrays.size(); ++i)
+                        {
+                            if (!arrays[i].valid()) continue;
+
+                            const char* arrayName = "";
+
+                            switch (i)
+                            {
+                            case osg::Drawable::VERTICES:
+                                arrayName = "VERTICES";
+                                break;
+                            case osg::Drawable::WEIGHTS:
+                                arrayName = "WEIGHTS";
+                                break;
+                            case osg::Drawable::NORMALS:
+                                arrayName = "NORMALS";
+                                break;
+                            case osg::Drawable::COLORS:
+                                arrayName = "COLORS";
+                                break;
+                            case osg::Drawable::SECONDARY_COLORS:
+                                arrayName = "SECONDARY_COLORS";
+                                break;
+                            case osg::Drawable::FOG_COORDS:
+                                arrayName = "FOG_COORDS";
+                                break;
+                            case osg::Drawable::ATTRIBUTE_6:
+                                arrayName = "ATTRIBUTE_6";
+                                break;
+                            case osg::Drawable::ATTRIBUTE_7:
+                                arrayName = "ATTRIBUTE_7";
+                                break;
+                            case osg::Drawable::TEXTURE_COORDS_0:
+                                arrayName = "TEXTURE_COORDS_0";
+                                break;
+                            case osg::Drawable::TEXTURE_COORDS_1:
+                                arrayName = "TEXTURE_COORDS_1";
+                                break;
+                            case osg::Drawable::TEXTURE_COORDS_2:
+                                arrayName = "TEXTURE_COORDS_2";
+                                break;
+                            case osg::Drawable::TEXTURE_COORDS_3:
+                                arrayName = "TEXTURE_COORDS_3";
+                                break;
+                            case osg::Drawable::TEXTURE_COORDS_4:
+                                arrayName = "TEXTURE_COORDS_4";
+                                break;
+                            case osg::Drawable::TEXTURE_COORDS_5:
+                                arrayName = "TEXTURE_COORDS_5";
+                                break;
+                            case osg::Drawable::TEXTURE_COORDS_6:
+                                arrayName = "TEXTURE_COORDS_6";
+                                break;
+                            case osg::Drawable::TEXTURE_COORDS_7:
+                                arrayName = "TEXTURE_COORDS_7";
+                                break;
+                            default:
+                                arrayName = "Uknown Array";
+                            }
+
+                            if (ImGui::TreeNode(arrayName, "%s %d", arrayName, arrays[i]->getNumElements()))
+                            {
+                                printArrayTable(arrays[i].get());
+                                ImGui::TreePop();
+                            }
                         }
                     }
 

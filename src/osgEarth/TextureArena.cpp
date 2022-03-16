@@ -90,6 +90,9 @@ Texture::Texture(osg::Texture* input) :
 {
     OE_HARD_ASSERT(input != nullptr);
 
+    OE_SOFT_ASSERT(input->getNumImages() > 0 && input->getImage(0) != nullptr,
+        "Texture has a null image?");
+
     target() = input->getTextureTarget();
 
     mipmap() =
@@ -137,10 +140,12 @@ Texture::needsCompile(const osg::State& state) const
 {
     auto& gc = get(state);
 
-    if (gc._gltexture == nullptr)
+    bool hasData = dataLoaded();
+
+    if (gc._gltexture == nullptr && hasData == true)
         return true;
 
-    if (!dataLoaded())
+    if (hasData == false)
         return false;
 
     return (osgTexture()->getImage(0)->getModifiedCount() != gc._imageModCount);
@@ -171,10 +176,13 @@ Texture::dataLoaded() const
 void
 Texture::compileGLObjects(osg::State& state) const
 {
-    OE_PROFILING_ZONE;
+    if (!needsCompile(state))
+        return;
 
+    OE_PROFILING_ZONE;
     OE_HARD_ASSERT(osgTexture().valid());
-    OE_SOFT_ASSERT_AND_RETURN(osgTexture()->getNumImages() > 0, void());
+    OE_HARD_ASSERT(osgTexture()->getNumImages() > 0);
+    OE_HARD_ASSERT(osgTexture()->getImage(0) != nullptr);
 
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
     Texture::GCState& gc = get(state);
@@ -538,7 +546,15 @@ TextureArena::add(Texture::Ptr tex)
     if (!tex->dataLoaded() && tex->uri().isSet())
     {
         // TODO support read options for caching
-        osgTex->setImage(0, tex->_uri->getImage(nullptr));
+        osg::ref_ptr<osg::Image> image = tex->_uri->getImage(nullptr);
+        if (image.valid())
+        {
+            osgTex->setImage(0, image);
+        }
+        else
+        {
+            OE_WARN << LC << "Failed to load \"" << tex->_uri->full() << "\"" << std::endl;
+        }
     }
 
     if (tex->dataLoaded())
@@ -615,26 +631,6 @@ TextureArena::add(Texture::Ptr tex)
         _textures.push_back(tex);
 
     return index;
-}
-
-namespace
-{
-    struct TextureCompileOp : public osgUtil::IncrementalCompileOperation::CompileOp
-    {
-        Texture::Ptr _tex;
-
-        TextureCompileOp(Texture::Ptr tex) : _tex(tex) { }
-
-        // How many seconds we expect the operation to take. Educated guess.
-        double estimatedTimeForCompile(osgUtil::IncrementalCompileOperation::CompileInfo& compileInfo) const {
-            return 0.1;
-        }
-        bool compile(osgUtil::IncrementalCompileOperation::CompileInfo& compileInfo) {
-            OE_PROFILING_ZONE_NAMED("TextureCompileOp::compile");
-            _tex->compileGLObjects(*compileInfo.getState());
-            return true;
-        }
-    };
 }
 
 void

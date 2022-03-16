@@ -113,7 +113,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
 
     vec3 albedo = color.rgb;
 
-    vec3 N = normalize(vp_Normal);
+    vec3 N = normalize(gl_FrontFacing ? vp_Normal : -vp_Normal);
     vec3 V = normalize(-atmos_vert);
 
     vec3 F0 = vec3(0.04);
@@ -182,7 +182,7 @@ void atmos_fragment_material(inout vec4 color)
     // https://en.wikibooks.org/wiki/GLSL_Programming/GLUT/Specular_Highlights
 
     // normal vector at vertex
-    vec3 N = normalize(vp_Normal);
+    vec3 N = normalize(gl_FrontFacing ? vp_Normal : -vp_Normal);
 
     float shine = clamp(osg_FrontMaterial.shininess, 1.0, 128.0);
     vec4 surfaceSpecularity = osg_FrontMaterial.specular;

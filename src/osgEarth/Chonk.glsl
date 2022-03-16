@@ -125,7 +125,8 @@ void oe_chonk_default_fragment(inout vec4 color)
         mat3 tbn = mat3(
             normalize(oe_tangent),
             normalize(cross(vp_Normal, oe_tangent)),
-            normalize(gl_FrontFacing ? vp_Normal : -vp_Normal));
+            vp_Normal);
+            //normalize(gl_FrontFacing ? vp_Normal : -vp_Normal));
 
         vp_Normal = normalize(tbn * n.xyz);
     }

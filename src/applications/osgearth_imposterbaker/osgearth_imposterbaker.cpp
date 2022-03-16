@@ -126,13 +126,15 @@ const char* normalMapVS =
 "void normalMapVS(inout vec4 vertex) { \n"
 "    modelNormal = gl_NormalMatrix * gl_Normal; \n"
 "} \n";
-const char* normalMapFS =
-"#version 330 \n"
-"in vec3 modelNormal; \n"
-"out vec4 encodedNormal; \n"
-"void normalMapFS(inout vec4 color) { \n"
-"    encodedNormal = vec4((modelNormal.xyz+1.0)*0.5, 1.0); \n"
-"} \n";
+const char* normalMapFS = R"(
+#version 330
+in vec3 modelNormal;
+out vec4 encodedNormal;
+void normalMapFS(inout vec4 color) {
+    vec3 N = normalize(gl_FrontFacing ? modelNormal : -modelNormal);
+    encodedNormal = vec4((N.xyz+1.0)*0.5, 1.0);
+}
+)";
 
 int
 main(int argc, char** argv)

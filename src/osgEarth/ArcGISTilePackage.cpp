@@ -423,7 +423,7 @@ ArcGISTilePackageImageLayer::createImageImplementation(const TileKey& key, Progr
 void
 ArcGISTilePackageImageLayer::readConf()
 {
-    std::string confPath = options().url()->full() + "/conf.xml";
+    std::string confPath = options().url()->full() + "/Conf.xml";
 
     osg::ref_ptr<XmlDocument> doc = XmlDocument::load(confPath);
     if (doc.valid())

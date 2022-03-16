@@ -528,6 +528,8 @@ ImageUtils::mipmapImage(const osg::Image* input)
 
     for(int level=1; level<numLevels; ++level)
     {
+#if 0
+        // Build mipmaps based on the full resolution image
         // OSG-custom gluScaleImage that does not require a graphics context
         GLint status = gluScaleImage(
             &psm,
@@ -540,6 +542,22 @@ ImageUtils::mipmapImage(const osg::Image* input)
             output->t() >> level,
             output->getDataType(),
             output->getMipmapData(level));
+#else
+        // Build mipmaps based on the previous level and not the full resolution for speed
+        // OSG-custom gluScaleImage that does not require a graphics context
+        GLint status = gluScaleImage(
+            &psm,
+            output->getPixelFormat(),
+            output->s() >> (level - 1),
+            output->t() >> (level -1 ),
+            output->getDataType(),
+            //output->data(),
+            output->getMipmapData(level - 1),
+            output->s() >> level,
+            output->t() >> level,
+            output->getDataType(),
+            output->getMipmapData(level));
+#endif
     }
 
     return output;

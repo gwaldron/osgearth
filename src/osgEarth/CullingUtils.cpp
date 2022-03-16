@@ -924,8 +924,8 @@ HorizonCullingProgram::install(osg::StateSet* stateset)
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setName("HorizonCullingProgram");
-        vp->setFunction( "oe_horizon_vertex",   horizon_vs, ShaderComp::LOCATION_VERTEX_VIEW );
-        vp->setFunction( "oe_horizon_fragment", horizon_fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
+        vp->setFunction( "oe_horizon_vertex",   horizon_vs, VirtualProgram::LOCATION_VERTEX_VIEW );
+        vp->setFunction( "oe_horizon_fragment", horizon_fs, VirtualProgram::LOCATION_FRAGMENT_COLORING );
     }
 }
 

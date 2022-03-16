@@ -299,7 +299,7 @@ ComputeDrawable::populateRenderingStateSets(
         //vp->setFunction(
         //    "atmos_eb_ground_init_frag",
         //    shaders.ground_init_frag,
-        //    ShaderComp::LOCATION_FRAGMENT_COLORING,
+        //    VirtualProgram::LOCATION_FRAGMENT_COLORING,
         //    -FLT_MAX);
 
         if (i == 0) // ground
@@ -316,13 +316,13 @@ ComputeDrawable::populateRenderingStateSets(
             vp->setFunction(
                 "atmos_eb_ground_render_vert",
                 vert,
-                ShaderComp::LOCATION_VERTEX_VIEW,
+                VirtualProgram::LOCATION_VERTEX_VIEW,
                 1.1f);
 
             vp->setFunction(
                 "atmos_eb_ground_render_frag",
                 frag,
-                ShaderComp::LOCATION_FRAGMENT_LIGHTING,
+                VirtualProgram::LOCATION_FRAGMENT_LIGHTING,
                 0.8f);
         }
         else // sky
@@ -338,13 +338,13 @@ ComputeDrawable::populateRenderingStateSets(
             vp->setFunction(
                 "atmos_eb_sky_render_vert",
                 vert,
-                ShaderComp::LOCATION_VERTEX_VIEW,
+                VirtualProgram::LOCATION_VERTEX_VIEW,
                 1.1f);
 
             vp->setFunction(
                 "atmos_eb_sky_render_frag",
                 frag,
-                ShaderComp::LOCATION_FRAGMENT_LIGHTING,
+                VirtualProgram::LOCATION_FRAGMENT_LIGHTING,
                 0.8f);
 
             vp->setInheritShaders(false);

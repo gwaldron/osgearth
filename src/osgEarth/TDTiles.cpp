@@ -456,7 +456,7 @@ static VirtualProgram* getOrCreateDebugVirtualProgram()
     if (!s_debugProgram.valid())
     {
         s_debugProgram = new VirtualProgram();
-        s_debugProgram->setFunction("color", s_debugColoring, ShaderComp::LOCATION_FRAGMENT_LIGHTING);
+        s_debugProgram->setFunction("color", s_debugColoring, VirtualProgram::LOCATION_FRAGMENT_LIGHTING);
     }
     return s_debugProgram.get();
 }

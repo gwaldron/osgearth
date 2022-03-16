@@ -588,7 +588,7 @@ DiscardAlphaFragments::install(osg::StateSet* ss, float minAlpha) const
             vp->setFunction(
                 "oe_discardalpha_frag",
                 code,
-                ShaderComp::LOCATION_FRAGMENT_COLORING,
+                VirtualProgram::LOCATION_FRAGMENT_COLORING,
                 0L, 0.95f);
         }
     }
@@ -618,5 +618,5 @@ void
 ShaderUtils::installDefaultShader(osg::StateSet* ss)
 {
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    vp->setFunction("oe_default_fs", fs, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0);
+    vp->setFunction("oe_default_fs", fs, VirtualProgram::LOCATION_FRAGMENT_COLORING, 0.0);
 }

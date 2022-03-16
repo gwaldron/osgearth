@@ -91,8 +91,8 @@ FadeEffect::FadeEffect()
     {
         VirtualProgram* vp = new VirtualProgram();
 
-        vp->setFunction( "oe_vertFadeEffect", FadeEffectVertexShader,   ShaderComp::LOCATION_VERTEX_VIEW, 0.5f );
-        vp->setFunction( "oe_fragFadeEffect", FadeEffectFragmentShader, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
+        vp->setFunction( "oe_vertFadeEffect", FadeEffectVertexShader,   VirtualProgram::LOCATION_VERTEX_VIEW, 0.5f );
+        vp->setFunction( "oe_fragFadeEffect", FadeEffectFragmentShader, VirtualProgram::LOCATION_FRAGMENT_COLORING, 0.5f );
 
         ss->setAttributeAndModes( vp, osg::StateAttribute::ON );
 
@@ -181,7 +181,7 @@ _maxFadeExtent ( 0.0f )
         vp->setFunction(
             "oe_fragFadeLOD",
             FadeLODFragmentShader,
-            osgEarth::ShaderComp::LOCATION_FRAGMENT_COLORING,
+            osgEarth::VirtualProgram::LOCATION_FRAGMENT_COLORING,
             0.5f );
 
         osg::StateSet* ss = getOrCreateStateSet();

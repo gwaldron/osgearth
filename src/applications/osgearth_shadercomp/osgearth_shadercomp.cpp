@@ -114,8 +114,8 @@ namespace TEST_1
     osg::StateAttribute* createHaze()
     {
         osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
-        vp->setFunction( "setup_haze", s_hazeVertShader, osgEarth::ShaderComp::LOCATION_VERTEX_VIEW );
-        vp->setFunction( "apply_haze", s_hazeFragShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_LIGHTING );
+        vp->setFunction( "setup_haze", s_hazeVertShader, osgEarth::VirtualProgram::LOCATION_VERTEX_VIEW );
+        vp->setFunction( "apply_haze", s_hazeFragShader, osgEarth::VirtualProgram::LOCATION_FRAGMENT_LIGHTING );
         vp->setShaderLogging(true, "shaders.txt");
         return vp;
     }
@@ -131,7 +131,7 @@ namespace TEST_1
 
 //-------------------------------------------------------------------------
 
-// Tests the VirtualProgram's ShaderComp::AcceptCallback
+// Tests the VirtualProgram's VirtualProgram::AcceptCallback
 namespace TEST_2
 {
     const char* fragShader = R"(
@@ -141,7 +141,7 @@ namespace TEST_2
         }
     )";
 
-    struct Acceptor : public ShaderComp::AcceptCallback
+    struct Acceptor : public VirtualProgram::AcceptCallback
     {
         // Return true to activate the shader function.
         bool operator()(const osg::State& state)
@@ -157,7 +157,7 @@ namespace TEST_2
     osg::Group* run(osg::Node* node)
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate(node->getOrCreateStateSet());
-        vp->setFunction("make_it_red", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, new Acceptor());
+        vp->setFunction("make_it_red", fragShader, VirtualProgram::LOCATION_FRAGMENT_LIGHTING, new Acceptor());
 
         osg::Group* g = new osg::Group();
         g->addChild( node );
@@ -179,7 +179,7 @@ namespace TEST_4
         }
     )";
 
-    struct Acceptor : public ShaderComp::AcceptCallback
+    struct Acceptor : public VirtualProgram::AcceptCallback
     {
         osg::ref_ptr<osg::Array> _a;
 
@@ -216,7 +216,7 @@ namespace TEST_4
                     {
                         vp->setFunction(
                             "make_it_red", fragShader,
-                            osgEarth::ShaderComp::LOCATION_FRAGMENT_COLORING,
+                            osgEarth::VirtualProgram::LOCATION_FRAGMENT_COLORING,
                             new Acceptor() );
                     }
                     else
@@ -264,7 +264,7 @@ namespace TEST_5
         osg::Node* n2 = makeGeom(  5 );
 
         VirtualProgram* vp = new VirtualProgram();
-        vp->setFunction("test", s_vp, ShaderComp::LOCATION_FRAGMENT_LIGHTING);
+        vp->setFunction("test", s_vp, VirtualProgram::LOCATION_FRAGMENT_LIGHTING);
         n1->getOrCreateStateSet()->setAttributeAndModes( vp, 1 );
 
         osg::Group* root = new osg::Group();
@@ -280,7 +280,7 @@ namespace TEST_5
 
 //-------------------------------------------------------------------------
 
-// Tests the VirtualProgram's ShaderComp::AcceptCallback with multiple cameras
+// Tests the VirtualProgram's VirtualProgram::AcceptCallback with multiple cameras
 // in order to vertify that the State Stack Memory is being properly disabled
 // when Accept Callbacks are in play.
 namespace TEST_6
@@ -301,7 +301,7 @@ namespace TEST_6
     // This acceptor will only include the fragment shader snippet above
     // when the camera's viewport.x == 0. Normally the Program will only
     // be applied once in succession.
-    struct Acceptor : public ShaderComp::AcceptCallback
+    struct Acceptor : public VirtualProgram::AcceptCallback
     {
         Acceptor() : _fn(0) { }
 
@@ -319,7 +319,7 @@ namespace TEST_6
     {
         osg::Group* group1 = new osg::Group();
         VirtualProgram* vp1 = VirtualProgram::getOrCreate(group1->getOrCreateStateSet());
-        vp1->setFunction("make_it_red", fragShader, ShaderComp::LOCATION_FRAGMENT_LIGHTING, new Acceptor());
+        vp1->setFunction("make_it_red", fragShader, VirtualProgram::LOCATION_FRAGMENT_LIGHTING, new Acceptor());
         vp1->setAcceptCallbacksVaryPerFrame(true);
         group1->addChild( node );
 
@@ -333,7 +333,7 @@ namespace TEST_6
 
         osg::Group* group2 = new osg::Group();
         VirtualProgram* vp2 =  VirtualProgram::getOrCreate(group2->getOrCreateStateSet());
-        vp2->setFunction("make_it_blue", fragShader2, ShaderComp::LOCATION_FRAGMENT_LIGHTING);
+        vp2->setFunction("make_it_blue", fragShader2, VirtualProgram::LOCATION_FRAGMENT_LIGHTING);
         group2->addChild( node );
 
         osg::Camera* cam3 = new osg::Camera();
@@ -407,9 +407,9 @@ namespace TEST_7
     osg::StateAttribute* createVP()
     {
         osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
-        vp->setFunction( "myVertShader", vert, osgEarth::ShaderComp::LOCATION_VERTEX_MODEL );
-        vp->setFunction( "myGeomShader", geom, osgEarth::ShaderComp::LOCATION_GEOMETRY );
-        vp->setFunction( "myFragShader", frag, osgEarth::ShaderComp::LOCATION_FRAGMENT_COLORING );
+        vp->setFunction( "myVertShader", vert, osgEarth::VirtualProgram::LOCATION_VERTEX_MODEL );
+        vp->setFunction( "myGeomShader", geom, osgEarth::VirtualProgram::LOCATION_GEOMETRY );
+        vp->setFunction( "myFragShader", frag, osgEarth::VirtualProgram::LOCATION_FRAGMENT_COLORING );
         vp->setShaderLogging(true, "test7.glsl");
         return vp;
     }
@@ -553,8 +553,8 @@ namespace TEST_9
 
         osg::StateSet* ss = earthfile->getOrCreateStateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-        vp->setFunction("vertex",   vs64, ShaderComp::LOCATION_VERTEX_VIEW);
-        vp->setFunction("fragment", fs,   ShaderComp::LOCATION_FRAGMENT_COLORING);
+        vp->setFunction("vertex",   vs64, VirtualProgram::LOCATION_VERTEX_VIEW);
+        vp->setFunction("fragment", fs,   VirtualProgram::LOCATION_FRAGMENT_COLORING);
 
 
         return earthfile;

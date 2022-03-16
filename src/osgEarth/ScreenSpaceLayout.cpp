@@ -122,7 +122,7 @@ namespace
                 {
                     VirtualProgram* vp = VirtualProgram::getOrCreate(getStateSet());
                     vp->setName(typeid(*this).name());
-                    vp->setFunction( "oe_declutter_apply_fade", s_faderFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.5f );
+                    vp->setFunction( "oe_declutter_apply_fade", s_faderFS, VirtualProgram::LOCATION_FRAGMENT_COLORING, 0.5f );
                     _vpInstalled = true;
                     OE_INFO << LC << "Decluttering VP installed\n";
                 }

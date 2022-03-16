@@ -243,8 +243,8 @@ ImageOverlay::construct()
         {
             _program = new VirtualProgram;
             _program->setInheritShaders(true);
-            _program->setFunction("oe_ImageOverlay_VS", imageVS, ShaderComp::LOCATION_VERTEX_MODEL);
-            _program->setFunction("oe_ImageOverlay_FS", imageFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            _program->setFunction("oe_ImageOverlay_VS", imageVS, VirtualProgram::LOCATION_VERTEX_MODEL);
+            _program->setFunction("oe_ImageOverlay_FS", imageFS, VirtualProgram::LOCATION_FRAGMENT_COLORING);
         }
         mutex.unlock();
     }

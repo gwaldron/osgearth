@@ -293,8 +293,8 @@ main(int argc, char** argv)
     root->addChild(colorCamera);
 
     VirtualProgram* colorVP = VirtualProgram::getOrCreate(colorCamera->getOrCreateStateSet());
-    colorVP->setFunction("removeVertexColors", removeVertexColors, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0f);
-    colorVP->setFunction("discardAlpha", discardAlpha, ShaderComp::LOCATION_FRAGMENT_COLORING);
+    colorVP->setFunction("removeVertexColors", removeVertexColors, VirtualProgram::LOCATION_FRAGMENT_COLORING, 0.0f);
+    colorVP->setFunction("discardAlpha", discardAlpha, VirtualProgram::LOCATION_FRAGMENT_COLORING);
 
     osg::Camera* normalMapCamera = createNormalMapCamera(size);
     normalMapCamera->addChild(models);
@@ -302,8 +302,8 @@ main(int argc, char** argv)
 
     VirtualProgram* normalMapVP = new VirtualProgram();
     normalMapCamera->getOrCreateStateSet()->setAttribute(normalMapVP, osg::StateAttribute::OVERRIDE);
-    normalMapVP->setFunction("normalMapVS", normalMapVS, ShaderComp::LOCATION_VERTEX_MODEL);
-    normalMapVP->setFunction("normalMapFS", normalMapFS, ShaderComp::LOCATION_FRAGMENT_OUTPUT);
+    normalMapVP->setFunction("normalMapVS", normalMapVS, VirtualProgram::LOCATION_VERTEX_MODEL);
+    normalMapVP->setFunction("normalMapFS", normalMapFS, VirtualProgram::LOCATION_FRAGMENT_OUTPUT);
 
     viewer.setSceneData(root);
     viewer.realize();

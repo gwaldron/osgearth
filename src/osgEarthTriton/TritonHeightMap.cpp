@@ -315,8 +315,8 @@ TritonHeightMap::setup(CameraLocal& local, const std::string& name)
     
     osgEarth::VirtualProgram* rttVP = osgEarth::VirtualProgram::getOrCreate(rttSS);
     rttVP->setName("Triton Height Map");
-    rttVP->setFunction( "oe_triton_setupHeightMap", vertexShader,   ShaderComp::LOCATION_VERTEX_MODEL);
-    rttVP->setFunction( "oe_triton_drawHeightMap",  fragmentShader, ShaderComp::LOCATION_FRAGMENT_OUTPUT);
+    rttVP->setFunction( "oe_triton_setupHeightMap", vertexShader,   VirtualProgram::LOCATION_VERTEX_MODEL);
+    rttVP->setFunction( "oe_triton_drawHeightMap",  fragmentShader, VirtualProgram::LOCATION_FRAGMENT_OUTPUT);
     rttVP->setInheritShaders(false);
 
     osg::StateAttribute::OverrideValue off = osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE;

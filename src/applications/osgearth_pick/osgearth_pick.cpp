@@ -174,8 +174,8 @@ void installHighlighter(App& app)
 
     // This shader program will highlight the selected object.
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-    vp->setFunction( "checkForHighlight",  highlightVert, ShaderComp::LOCATION_VERTEX_CLIP );
-    vp->setFunction( "highlightFragment",  highlightFrag, ShaderComp::LOCATION_FRAGMENT_COLORING );
+    vp->setFunction( "checkForHighlight",  highlightVert, VirtualProgram::LOCATION_VERTEX_CLIP );
+    vp->setFunction( "highlightFragment",  highlightFrag, VirtualProgram::LOCATION_FRAGMENT_COLORING );
 
     // Since we're accessing object IDs, we need to load the indexing shader as well:
     Registry::objectIndex()->loadShaders( vp );
@@ -228,8 +228,8 @@ setupPreviewCamera(App& app)
     app.previewStateSet->addUniform(new osg::Uniform("tex", 0));
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(app.previewStateSet);
-    vp->setFunction("recolor_vs", recolor_vs, ShaderComp::LOCATION_VERTEX_CLIP);
-    vp->setFunction("recolor_fs", recolor_fs, ShaderComp::LOCATION_FRAGMENT_OUTPUT);
+    vp->setFunction("recolor_vs", recolor_vs, VirtualProgram::LOCATION_VERTEX_CLIP);
+    vp->setFunction("recolor_fs", recolor_fs, VirtualProgram::LOCATION_FRAGMENT_OUTPUT);
 
     app.previewTexture = new osg::Texture2D();
     app.previewTexture->setTextureSize(256, 256);

@@ -40,32 +40,32 @@ namespace
 
     bool parseLocation(
         const std::string& loc,
-        optional<ShaderComp::FunctionLocation>& location)
+        optional<VirtualProgram::FunctionLocation>& location)
     {
         bool locationSet = true;
 
         if (ciEquals(loc, "vertex_transform_model_to_view"))
-            location = ShaderComp::LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW;
+            location = VirtualProgram::LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW;
         else if (ciEquals(loc, "vertex_model"))
-            location = ShaderComp::LOCATION_VERTEX_MODEL;
+            location = VirtualProgram::LOCATION_VERTEX_MODEL;
         else if (ciEquals(loc, "vertex_view"))
-            location = ShaderComp::LOCATION_VERTEX_VIEW;
+            location = VirtualProgram::LOCATION_VERTEX_VIEW;
         else if (ciEquals(loc, "vertex_clip"))
-            location = ShaderComp::LOCATION_VERTEX_CLIP;
+            location = VirtualProgram::LOCATION_VERTEX_CLIP;
         else if (ciEquals(loc, "tess_control") || ciEquals(loc, "tessellation_control"))
-            location = ShaderComp::LOCATION_TESS_CONTROL;
+            location = VirtualProgram::LOCATION_TESS_CONTROL;
         else if (ciEquals(loc, "tess_eval") || ciEquals(loc, "tessellation_eval") || ciEquals(loc, "tessellation_evaluation") || ciEquals(loc, "tess_evaluation"))
-            location = ShaderComp::LOCATION_TESS_EVALUATION;
+            location = VirtualProgram::LOCATION_TESS_EVALUATION;
         else if (ciEquals(loc, "vertex_geometry") || ciEquals(loc, "geometry"))
-            location = ShaderComp::LOCATION_GEOMETRY;
+            location = VirtualProgram::LOCATION_GEOMETRY;
         else if (ciEquals(loc, "fragment"))
-            location = ShaderComp::LOCATION_FRAGMENT_COLORING;
+            location = VirtualProgram::LOCATION_FRAGMENT_COLORING;
         else if (ciEquals(loc, "fragment_coloring"))
-            location = ShaderComp::LOCATION_FRAGMENT_COLORING;
+            location = VirtualProgram::LOCATION_FRAGMENT_COLORING;
         else if (ciEquals(loc, "fragment_lighting"))
-            location = ShaderComp::LOCATION_FRAGMENT_LIGHTING;
+            location = VirtualProgram::LOCATION_FRAGMENT_LIGHTING;
         else if (ciEquals(loc, "fragment_output"))
-            location = ShaderComp::LOCATION_FRAGMENT_OUTPUT;
+            location = VirtualProgram::LOCATION_FRAGMENT_OUTPUT;
         else
             locationSet = false;
 
@@ -81,7 +81,7 @@ namespace
         }
 
         std::string entryPoint;
-        optional<ShaderComp::FunctionLocation> location;
+        optional<VirtualProgram::FunctionLocation> location;
         optional<float> order;
     };
 
@@ -179,34 +179,34 @@ namespace
         }
     }
 
-    osg::Shader::Type getShaderTypeFromLocation(ShaderComp::FunctionLocation loc)
+    osg::Shader::Type getShaderTypeFromLocation(VirtualProgram::FunctionLocation loc)
     {
         // If a location is set, install in that location only
-        if (loc == ShaderComp::LOCATION_VERTEX_MODEL ||
-            loc == ShaderComp::LOCATION_VERTEX_VIEW ||
-            loc == ShaderComp::LOCATION_VERTEX_CLIP)
+        if (loc == VirtualProgram::LOCATION_VERTEX_MODEL ||
+            loc == VirtualProgram::LOCATION_VERTEX_VIEW ||
+            loc == VirtualProgram::LOCATION_VERTEX_CLIP)
         {
             return osg::Shader::VERTEX;
         }
         else if (
-            loc == ShaderComp::LOCATION_FRAGMENT_COLORING ||
-            loc == ShaderComp::LOCATION_FRAGMENT_LIGHTING ||
-            loc == ShaderComp::LOCATION_FRAGMENT_OUTPUT)
+            loc == VirtualProgram::LOCATION_FRAGMENT_COLORING ||
+            loc == VirtualProgram::LOCATION_FRAGMENT_LIGHTING ||
+            loc == VirtualProgram::LOCATION_FRAGMENT_OUTPUT)
         {
             return osg::Shader::FRAGMENT;
         }
         else if (
-            loc == ShaderComp::LOCATION_GEOMETRY)
+            loc == VirtualProgram::LOCATION_GEOMETRY)
         {
             return osg::Shader::GEOMETRY;
         }
         else if (
-            loc == ShaderComp::LOCATION_TESS_CONTROL)
+            loc == VirtualProgram::LOCATION_TESS_CONTROL)
         {
             return osg::Shader::TESSCONTROL;
         }
         else if (
-            loc == ShaderComp::LOCATION_TESS_EVALUATION)
+            loc == VirtualProgram::LOCATION_TESS_EVALUATION)
         {
             return osg::Shader::TESSEVALUATION;
         }
@@ -505,7 +505,7 @@ ShaderLoader::load(VirtualProgram*       vp,
         if (!f.entryPoint.empty())
         {
             if (f.location.isSet() == false)
-                f.location = ShaderComp::LOCATION_FRAGMENT_COLORING;
+                f.location = VirtualProgram::LOCATION_FRAGMENT_COLORING;
 
             insertStageDefine(source, getShaderTypeFromLocation(f.location.get()));
 

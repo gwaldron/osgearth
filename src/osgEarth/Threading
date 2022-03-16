@@ -157,9 +157,11 @@ namespace osgEarth { namespace Threading
 
     //! Locks a mutex for the duration of the scope
     using ScopedMutexLock = std::lock_guard<BasicLockable>;
+    using ScopedLock = ScopedMutexLock;
 
     //! Locks a recursive mutex for the duration of the scope
     using ScopedRecursiveMutexLock = std::lock_guard<RecursiveMutex>;
+    using ScopedRecursiveLock = ScopedRecursiveMutexLock;
 
     /**
      * Gets the approximate number of available threading contexts.

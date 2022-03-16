@@ -1575,7 +1575,7 @@ RexTerrainEngineNode::installColorFilters(
             surfaceVP->setFunction(
                 "oe_rexEngine_applyFilters",
                 fs_colorfilters,
-                ShaderComp::LOCATION_FRAGMENT_COLORING,
+                VirtualProgram::LOCATION_FRAGMENT_COLORING,
                 0.6);
         }
     }

@@ -100,40 +100,21 @@ public:
 
         if (generateMipMap)
         {
+            // size in bytes of the top-level image set (sum of [0..r-1])
+            int levelZeroSizeBytes = sourceImage->getTotalSizeInBytes();
+
+            // Mipmap the image
+            osg::ref_ptr< const osg::Image > mipmapped = ImageUtils::mipmapImage(sourceImage, minLevelSize);
+
             // data ptr of each mipmap level [0..r-1]
             std::vector<unsigned char*> mipLevels;
 
             // length in bytes of each mipmap level [0..r-1]
             std::vector<unsigned> mipLevelBytes;
 
-            // How many levels can we have?
-            int numLevels = osg::Image::computeNumberOfMipmapLevels(sourceImage->s(), sourceImage->t(), 1);
-
-            // size in bytes of the top-level image set (sum of [0..r-1])
-            int levelZeroSizeBytes = sourceImage->getTotalSizeInBytes();
-
-            // DXT compression has minimum mipmap sizes; enforce those now:
-            const int minSize = 16;
-            for(int level=0; level<numLevels; ++level)
-            {
-                int level_s = sourceImage->s() >> level;
-                int level_t = sourceImage->t() >> level;
-
-                if (level_s < minLevelSize || level_t < minLevelSize)
-                {
-                    numLevels = level;
-                    break;
-                }
-
-                if (level_s < minSize && level_t < minSize)
-                {
-                    numLevels = level;
-                }
-            }
-
             // offset vector does not include level 0 (the full-resolution level)
             osg::Image::MipmapDataType mipOffsets;
-            mipOffsets.reserve(numLevels-1);
+            mipOffsets.reserve(mipmapped->getNumMipmapLevels());
 
             // now, populate the image levels.
             osg::PixelStorageModes psm;
@@ -141,12 +122,12 @@ public:
             psm.pack_row_length = sourceImage->getRowLength();
             psm.unpack_alignment = sourceImage->getPacking();
 
-            unsigned char* workspace = (unsigned char*)memalign(16, levelZeroSizeBytes);
-            unsigned char* in;
+            const unsigned char* in = nullptr;
 
             unsigned totalCompressedBytes = 0u;
 
             // interate over mipmap levels:
+            unsigned int numLevels = mipmapped->getNumMipmapLevels();
             for (int level = 0; level < numLevels; ++level)
             {
                 int level_s = sourceImage->s() >> level;
@@ -159,64 +140,37 @@ public:
 
                 unsigned levelCompressedBytes = 0u;
 
-                // iterate over depth:
-                for (int r = 0; r < sourceImage->r(); ++r)
+                in = mipmapped->getMipmapData(level);
+
+                if (level != 0)
                 {
-                    if (level == 0)
-                    {
-                        in = sourceImage->data(0, 0, r);
-                    }
-                    else
-                    {
-                        if (r == 0)
-                        {
-                            // when we start a new mip level that's > 0, record its offset.
-                            mipOffsets.push_back(totalCompressedBytes);
-                        }
-
-                        // OSG-custom gluScaleImage that does not require a graphics context
-                        GLint status = gluScaleImage(
-                            &psm,
-                            sourceImage->getPixelFormat(),
-                            sourceImage->s(),
-                            sourceImage->t(),
-                            sourceImage->getDataType(),
-                            sourceImage->data(0, 0, r),
-                            level_s,
-                            level_t,
-                            sourceImage->getDataType(),
-                            workspace);
-
-                        in = workspace;
-                    }
-
-                    int outputBytes = CompressDXT(
-                        in,
-                        compressedLevelDataPtr, 
-                        level_s, 
-                        level_t, 
-                        format);
-
-                    // advance our counters:
-                    levelCompressedBytes += outputBytes;
-                    totalCompressedBytes += outputBytes;
-
-                    // advance output pointer:
-                    compressedLevelDataPtr += outputBytes;
+                    // when we start a new mip level that's > 0, record its offset.
+                    mipOffsets.push_back(totalCompressedBytes);
                 }
+
+                int outputBytes = CompressDXT(
+                    in,
+                    compressedLevelDataPtr,
+                    level_s,
+                    level_t,
+                    format);
+
+                // advance our counters:
+                levelCompressedBytes += outputBytes;
+                totalCompressedBytes += outputBytes;
+
+                // advance output pointer:
+                compressedLevelDataPtr += outputBytes;
 
                 // record the data offset of this mip level
                 mipLevelBytes.push_back(levelCompressedBytes);
             }
 
-            // done with our temporary workspace
-            memfree(workspace);
-
             // now combine into a new mipmapped compressed image
             // and delete any workspaces along the way.
             unsigned char* data = new unsigned char[totalCompressedBytes];
             unsigned char* ptr = data;
-            for(unsigned i=0; i<mipLevels.size(); ++i)
+            for (unsigned i = 0; i < mipLevels.size(); ++i)
             {
                 ::memcpy(ptr, mipLevels[i], mipLevelBytes[i]);
                 ptr += mipLevelBytes[i];
@@ -228,9 +182,9 @@ public:
                 sourceImage->t(),
                 sourceImage->r(),
                 compressedPixelFormat, // ?
-                compressedPixelFormat, 
-                GL_UNSIGNED_BYTE, 
-                data, 
+                compressedPixelFormat,
+                GL_UNSIGNED_BYTE,
+                data,
                 osg::Image::USE_NEW_DELETE);
 
             input.setMipmapLevels(mipOffsets);

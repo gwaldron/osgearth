@@ -310,11 +310,13 @@ namespace osgEarth { namespace Util
         /**
          * Creates a copy of the input image with added mipmaps.
          * @param image Input image to generate mipmaps for
+         * @param minLevelSize The smallest mipmap level size to generate
          * @return image with mipmaps. If the input already had mipmaps,
          *   just returns the input pointer (that is why it's const)
          */
         static const osg::Image* mipmapImage(
-            const osg::Image* image);
+            const osg::Image* image,
+            int minLevelSize = 16);
 
         /**
         * Adds mipmaps to an existing image if neccessary

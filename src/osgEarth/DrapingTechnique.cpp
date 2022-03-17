@@ -551,7 +551,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
             "} \n";
         VirtualProgram* rtt_vp = VirtualProgram::getOrCreate(rttStateSet);
         rtt_vp->setName(typeid(*this).name());
-        rtt_vp->setFunction( "oe_overlay_warpClip", warpClip, ShaderComp::LOCATION_VERTEX_CLIP );
+        rtt_vp->setFunction( "oe_overlay_warpClip", warpClip, VirtualProgram::LOCATION_VERTEX_CLIP );
     }
 
     // Assemble the terrain shaders that will apply projective texturing.

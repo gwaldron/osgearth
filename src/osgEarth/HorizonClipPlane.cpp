@@ -86,7 +86,7 @@ HorizonClipPlane::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(d.stateSet.get());
         vp->setName("HorizonClipPlane");
-        vp->setFunction("oe_ClipPlane_vs", clip_shader, ShaderComp::LOCATION_VERTEX_VIEW, FLT_MAX);
+        vp->setFunction("oe_ClipPlane_vs", clip_shader, VirtualProgram::LOCATION_VERTEX_VIEW, FLT_MAX);
     }
 
     // push this horizon on to the nodevisitor so modules can access it

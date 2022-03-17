@@ -126,13 +126,15 @@ const char* normalMapVS =
 "void normalMapVS(inout vec4 vertex) { \n"
 "    modelNormal = gl_NormalMatrix * gl_Normal; \n"
 "} \n";
-const char* normalMapFS =
-"#version 330 \n"
-"in vec3 modelNormal; \n"
-"out vec4 encodedNormal; \n"
-"void normalMapFS(inout vec4 color) { \n"
-"    encodedNormal = vec4((modelNormal.xyz+1.0)*0.5, 1.0); \n"
-"} \n";
+const char* normalMapFS = R"(
+#version 330
+in vec3 modelNormal;
+out vec4 encodedNormal;
+void normalMapFS(inout vec4 color) {
+    vec3 N = normalize(gl_FrontFacing ? modelNormal : -modelNormal);
+    encodedNormal = vec4((N.xyz+1.0)*0.5, 1.0);
+}
+)";
 
 int
 main(int argc, char** argv)
@@ -293,8 +295,8 @@ main(int argc, char** argv)
     root->addChild(colorCamera);
 
     VirtualProgram* colorVP = VirtualProgram::getOrCreate(colorCamera->getOrCreateStateSet());
-    colorVP->setFunction("removeVertexColors", removeVertexColors, ShaderComp::LOCATION_FRAGMENT_COLORING, 0.0f);
-    colorVP->setFunction("discardAlpha", discardAlpha, ShaderComp::LOCATION_FRAGMENT_COLORING);
+    colorVP->setFunction("removeVertexColors", removeVertexColors, VirtualProgram::LOCATION_FRAGMENT_COLORING, 0.0f);
+    colorVP->setFunction("discardAlpha", discardAlpha, VirtualProgram::LOCATION_FRAGMENT_COLORING);
 
     osg::Camera* normalMapCamera = createNormalMapCamera(size);
     normalMapCamera->addChild(models);
@@ -302,8 +304,8 @@ main(int argc, char** argv)
 
     VirtualProgram* normalMapVP = new VirtualProgram();
     normalMapCamera->getOrCreateStateSet()->setAttribute(normalMapVP, osg::StateAttribute::OVERRIDE);
-    normalMapVP->setFunction("normalMapVS", normalMapVS, ShaderComp::LOCATION_VERTEX_MODEL);
-    normalMapVP->setFunction("normalMapFS", normalMapFS, ShaderComp::LOCATION_FRAGMENT_OUTPUT);
+    normalMapVP->setFunction("normalMapVS", normalMapVS, VirtualProgram::LOCATION_VERTEX_MODEL);
+    normalMapVP->setFunction("normalMapFS", normalMapFS, VirtualProgram::LOCATION_FRAGMENT_OUTPUT);
 
     viewer.setSceneData(root);
     viewer.realize();

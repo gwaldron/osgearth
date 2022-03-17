@@ -744,7 +744,7 @@ GeodeticGraticule::getCameraData(osg::Camera* cam) const
         cdata._labelStateset = new osg::StateSet();
         VirtualProgram* vp = VirtualProgram::getOrCreate(cdata._labelStateset.get());
         vp->setName(typeid(*this).name());
-        vp->setFunction("oe_GeodeticGraticule_text_frag", textFadeFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+        vp->setFunction("oe_GeodeticGraticule_text_frag", textFadeFS, VirtualProgram::LOCATION_FRAGMENT_COLORING);
     }
 
     return cdata;

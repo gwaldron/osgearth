@@ -138,8 +138,8 @@ TrackNode::construct()
             s_imageStateSet = _imageStateSet = new osg::StateSet();
             VirtualProgram* vp = VirtualProgram::getOrCreate(_imageStateSet.get());
             vp->setName("TrackNode");
-            vp->setFunction("oe_TrackNode_icon_VS", iconVS, ShaderComp::LOCATION_VERTEX_MODEL);
-            vp->setFunction("oe_TrackNode_icon_FS", iconFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            vp->setFunction("oe_TrackNode_icon_VS", iconVS, VirtualProgram::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_TrackNode_icon_FS", iconFS, VirtualProgram::LOCATION_FRAGMENT_COLORING);
             _imageStateSet->addUniform(new osg::Uniform("oe_TrackNode_tex", 0));
         }
     }

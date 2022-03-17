@@ -879,7 +879,7 @@ namespace osgEarth
                 }
             }
 
-            const char* FunctionLocationToString(ShaderComp::FunctionLocation location)
+            const char* FunctionLocationToString(VirtualProgram::FunctionLocation location)
             {
                 using namespace osgEarth::ShaderComp;
 

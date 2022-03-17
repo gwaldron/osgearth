@@ -173,56 +173,56 @@ namespace
 }
 
 
-ShaderComp::StageMask
+VirtualProgram::StageMask
 ShaderFactory::createMains(
-    const ShaderComp::FunctionLocationMap&    functions,
+    const VirtualProgram::FunctionLocationMap&    functions,
     const VirtualProgram::ShaderMap&          in_shaders,
     const VirtualProgram::ExtensionsSet&      in_extensions,
     std::vector< osg::ref_ptr<osg::Shader> >& out_shaders) const
 {
     StageMask stages =
-        ShaderComp::STAGE_VERTEX |
-        ShaderComp::STAGE_FRAGMENT;
+        VirtualProgram::STAGE_VERTEX |
+        VirtualProgram::STAGE_FRAGMENT;
 
     FunctionLocationMap::const_iterator f;
 
-    f = functions.find(LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW);
+    f = functions.find(VirtualProgram::LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW);
     const OrderedFunctionMap* xformModelToView = f != functions.end() ? &f->second : nullptr;
 
     // collect the "model" stage vertex functions:
-    f = functions.find( LOCATION_VERTEX_MODEL );
+    f = functions.find(VirtualProgram::LOCATION_VERTEX_MODEL );
     const OrderedFunctionMap* modelStage = f != functions.end() ? &f->second : 0L;
 
     // collect the "view" stage vertex functions:
-    f = functions.find( LOCATION_VERTEX_VIEW );
+    f = functions.find(VirtualProgram::LOCATION_VERTEX_VIEW );
     const OrderedFunctionMap* viewStage = f != functions.end() ? &f->second : 0L;
 
     // geometry shader functions:
-    f = functions.find( LOCATION_TESS_CONTROL );
+    f = functions.find(VirtualProgram::LOCATION_TESS_CONTROL );
     const OrderedFunctionMap* tessControlStage = f != functions.end() ? &f->second : 0L;
 
     // geometry shader functions:
-    f = functions.find( LOCATION_TESS_EVALUATION );
+    f = functions.find(VirtualProgram::LOCATION_TESS_EVALUATION );
     const OrderedFunctionMap* tessEvalStage = f != functions.end() ? &f->second : 0L;
 
     // geometry shader functions:
-    f = functions.find( LOCATION_GEOMETRY );
+    f = functions.find(VirtualProgram::LOCATION_GEOMETRY );
     const OrderedFunctionMap* geomStage = f != functions.end() ? &f->second : 0L;
 
     // collect the "clip" stage functions:
-    f = functions.find( LOCATION_VERTEX_CLIP );
+    f = functions.find(VirtualProgram::LOCATION_VERTEX_CLIP );
     const OrderedFunctionMap* clipStage = f != functions.end() ? &f->second : 0L;
 
     // fragment shader coloring functions:
-    f = functions.find( LOCATION_FRAGMENT_COLORING );
+    f = functions.find(VirtualProgram::LOCATION_FRAGMENT_COLORING );
     const OrderedFunctionMap* coloringStage = f != functions.end() ? &f->second : 0L;
 
     // fragment shader lighting functions:
-    f = functions.find( LOCATION_FRAGMENT_LIGHTING );
+    f = functions.find(VirtualProgram::LOCATION_FRAGMENT_LIGHTING );
     const OrderedFunctionMap* lightingStage = f != functions.end() ? &f->second : 0L;
 
     // fragment shader lighting functions:
-    f = functions.find( LOCATION_FRAGMENT_OUTPUT );
+    f = functions.find(VirtualProgram::LOCATION_FRAGMENT_OUTPUT );
     const OrderedFunctionMap* outputStage = f != functions.end() ? &f->second : 0L;
 
     // what do we need to build?
@@ -352,7 +352,7 @@ ShaderFactory::createMains(
     // Build the vertex shader.
     if ( hasVS )
     {
-        stages |= ShaderComp::STAGE_VERTEX;
+        stages |= VirtualProgram::STAGE_VERTEX;
 
         std::stringstream buf;
 
@@ -550,7 +550,7 @@ ShaderFactory::createMains(
 
     if ( hasTCS )
     {
-        stages |= ShaderComp::STAGE_TESSCONTROL;
+        stages |= VirtualProgram::STAGE_TESSCONTROL;
         std::stringstream buf;
 
         buf << getGLSLHeader() << "\n"
@@ -628,7 +628,7 @@ ShaderFactory::createMains(
 
     if ( hasTES )
     {
-        stages |= ShaderComp::STAGE_TESSEVALUATION;
+        stages |= VirtualProgram::STAGE_TESSEVALUATION;
 
         std::stringstream buf;
 
@@ -871,7 +871,7 @@ ShaderFactory::createMains(
     // Build the geometry shader.
     if ( hasGS )
     {
-        stages |= ShaderComp::STAGE_GEOMETRY;
+        stages |= VirtualProgram::STAGE_GEOMETRY;
 
         std::stringstream buf;
 
@@ -1095,7 +1095,7 @@ ShaderFactory::createMains(
     // Build the Fragment shader.
     if ( hasFS )
     {
-        stages |= ShaderComp::STAGE_FRAGMENT;
+        stages |= VirtualProgram::STAGE_FRAGMENT;
 
         std::stringstream buf;
 

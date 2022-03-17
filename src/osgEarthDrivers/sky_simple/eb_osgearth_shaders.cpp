@@ -173,17 +173,18 @@ in vec3 atmos_vert_to_light;
 in vec3 atmos_ambient;
 
 void atmos_eb_ground_render_frag(inout vec4 COLOR)
-{
+{    
 #ifdef OE_LIGHTING
+    vec3 N = gl_FrontFacing ? vp_Normal : -vp_Normal;
 	vec3 sky_irradiance;
-	vec3 sun_irradiance = GetSunAndSkyIrradiance(atmos_center_to_vert, vp_Normal, atmos_light_dir, sky_irradiance);
+	vec3 sun_irradiance = GetSunAndSkyIrradiance(atmos_center_to_vert, N, atmos_light_dir, sky_irradiance);
 	vec3 radiance = (1.0 / PI) * (sun_irradiance + sky_irradiance);
 	vec3 atmos_transmittance;
 	vec3 atmos_scatter = GetSkyRadianceToPoint(atmos_center_to_camera, atmos_center_to_vert, 4.0, atmos_light_dir, atmos_transmittance);
     vec3 ambience = atmos_ambient;
 
 #ifdef OE_USE_PBR
-    atmos_pbr_spec(atmos_view_dir, atmos_vert_to_light, vp_Normal, ambience, COLOR.rgb);
+    atmos_pbr_spec(atmos_view_dir, atmos_vert_to_light, N, ambience, COLOR.rgb);
 #endif
 
     vec3 ambient_floor = COLOR.rgb*ambience;
@@ -294,13 +295,14 @@ const vec3 white_point = vec3(1,1,1);
 void atmos_eb_ground_render_frag(inout vec4 COLOR)
 {
 #ifdef OE_LIGHTING
+    vec3 N = gl_FrontFacing ? vp_Normal : -vp_Normal;
 	vec3 sky_irradiance;
-	vec3 sun_irradiance = GetSunAndSkyIrradiance(atmos_center_to_vert, vp_Normal, atmos_light_dir, sky_irradiance);
+	vec3 sun_irradiance = GetSunAndSkyIrradiance(atmos_center_to_vert, N, atmos_light_dir, sky_irradiance);
     vec3 radiance = (1.0 / PI) * (sun_irradiance + sky_irradiance);
     vec3 ambience = atmos_ambient;
 
 #ifdef OE_USE_PBR
-    atmos_pbr_spec(atmos_view_dir, atmos_vert_to_light, vp_Normal, ambience, COLOR.rgb);
+    atmos_pbr_spec(atmos_view_dir, atmos_vert_to_light, N, ambience, COLOR.rgb);
 #endif
 
     vec3 ambient_floor = COLOR.rgb*ambience;

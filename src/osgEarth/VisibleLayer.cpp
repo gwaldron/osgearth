@@ -200,7 +200,7 @@ VisibleLayer::init()
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
         vp->setName(className());
-        vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
+        vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, VirtualProgram::LOCATION_FRAGMENT_COLORING, 1.1f);
     }
 }
 
@@ -327,13 +327,13 @@ VisibleLayer::initializeUniforms()
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
         vp->setName(className());
 
-        vp->setFunction("oe_VisibleLayer_initOpacity", opacityVS, ShaderComp::LOCATION_VERTEX_MODEL);
+        vp->setFunction("oe_VisibleLayer_initOpacity", opacityVS, VirtualProgram::LOCATION_VERTEX_MODEL);
 
         if (options().blend() == BLEND_MODULATE)
         {
             vp->setFunction("oe_VisibleLayer_setOpacity", 
                 opacityModulateFS, 
-                ShaderComp::LOCATION_FRAGMENT_COLORING,
+                VirtualProgram::LOCATION_FRAGMENT_COLORING,
                 1.1f);
 
             stateSet->setAttributeAndModes(
@@ -347,7 +347,7 @@ VisibleLayer::initializeUniforms()
 
             vp->setFunction("oe_VisibleLayer_setOpacity", 
                 opacityInterpolateFS, 
-                ShaderComp::LOCATION_FRAGMENT_COLORING,
+                VirtualProgram::LOCATION_FRAGMENT_COLORING,
                 1.1f);
 
             stateSet->setAttributeAndModes(
@@ -378,7 +378,7 @@ VisibleLayer::initializeMinMaxRangeShader()
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
         vp->setName(className());
-        vp->setFunction("oe_VisibleLayer_applyMinMaxRange", rangeOpacityVS, ShaderComp::LOCATION_VERTEX_VIEW);
+        vp->setFunction("oe_VisibleLayer_applyMinMaxRange", rangeOpacityVS, VirtualProgram::LOCATION_VERTEX_VIEW);
         _minMaxRangeShaderAdded = true;
     }
 }
@@ -473,7 +473,7 @@ VisibleLayer::installDefaultOpacityShader()
     //{
     //    VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
     //    vp->setName("VisibleLayer");
-    //    vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, ShaderComp::LOCATION_FRAGMENT_COLORING, 1.1f);
+    //    vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, VirtualProgram::LOCATION_FRAGMENT_COLORING, 1.1f);
     //}
 }
 

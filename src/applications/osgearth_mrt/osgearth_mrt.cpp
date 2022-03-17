@@ -83,8 +83,8 @@ createMRTPass(App& app, osg::Node* sceneGraph)
     )";
 
     VirtualProgram* vp = VirtualProgram::getOrCreate( rtt->getOrCreateStateSet() );
-    vp->setFunction( "oe_mrt_vertex",   vertSource, ShaderComp::LOCATION_VERTEX_CLIP );
-    vp->setFunction( "oe_mrt_fragment", fragSource, ShaderComp::LOCATION_FRAGMENT_OUTPUT );
+    vp->setFunction( "oe_mrt_vertex",   vertSource, VirtualProgram::LOCATION_VERTEX_CLIP );
+    vp->setFunction( "oe_mrt_fragment", fragSource, VirtualProgram::LOCATION_FRAGMENT_OUTPUT );
 
     rtt->addChild( sceneGraph );
     return rtt;
@@ -187,8 +187,8 @@ createFramebufferPass(App& app)
     )";
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-    vp->setFunction("effect_vert", vertSource, ShaderComp::LOCATION_VERTEX_VIEW);
-    vp->setFunction("effect_frag", fragSource, ShaderComp::LOCATION_FRAGMENT_COLORING);
+    vp->setFunction("effect_vert", vertSource, VirtualProgram::LOCATION_VERTEX_VIEW);
+    vp->setFunction("effect_frag", fragSource, VirtualProgram::LOCATION_FRAGMENT_COLORING);
 
     stateset->setTextureAttributeAndModes(0, app.gcolor, 1);
     stateset->addUniform(new osg::Uniform("gcolor", 0));

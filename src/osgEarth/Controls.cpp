@@ -1077,8 +1077,8 @@ ImageControl::getImageStateSet()
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet.get());
             vp->setName(typeid(*this).name());
             vp->setInheritShaders(false);
-            vp->setFunction("oe_Controls_renderImageVert", vert, ShaderComp::LOCATION_VERTEX_MODEL);
-            vp->setFunction("oe_Controls_renderImageFrag", frag, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            vp->setFunction("oe_Controls_renderImageVert", vert, VirtualProgram::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_Controls_renderImageFrag", frag, VirtualProgram::LOCATION_FRAGMENT_COLORING);
         }
     }
 

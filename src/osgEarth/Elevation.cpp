@@ -173,6 +173,7 @@ ElevationTexture::generateNormalMap(
     void* workingSet,
     ProgressCallback* progress)
 {
+    OE_PROFILING_ZONE;
     if (!_normalTex.valid())
     {
         // one thread allowed to generate the normal map
@@ -223,7 +224,7 @@ NormalMapGenerator::createNormalMap(
     void* ws,
     osg::Image* ruggedness,
     ProgressCallback* progress)
-{
+{    
     if (!map)
         return NULL;
 
@@ -246,12 +247,6 @@ NormalMapGenerator::createNormalMap(
     osg::Vec2 packedNormal;
     osg::Vec4 pixel;
 
-    GeoPoint
-        north(key.getProfile()->getSRS()),
-        south(key.getProfile()->getSRS()),
-        east(key.getProfile()->getSRS()),
-        west(key.getProfile()->getSRS());
-
     osg::Vec3 a[4];
 
     const GeoExtent& ex = key.getExtent();
@@ -264,33 +259,68 @@ NormalMapGenerator::createNormalMap(
         return NULL;
 
     // build the sample set.
-    std::vector<osg::Vec4d> points(write.s() * write.t() * 4);
+    unsigned int sampleWidth = write.s() + 2;
+    unsigned int sampleHeight = write.t() + 2;
+    std::vector<osg::Vec4d> points(sampleWidth * sampleHeight);
+   
     int p = 0;
-    for(int t=0; t<write.t(); ++t)
+    // Add the south row
+    for (int s = 0; s < write.s(); ++s)
     {
-        double v = (double)t/(double)(write.t()-1);
-        double y = ex.yMin() + v*ex.height();
-        east.y() = y;
-        west.y() = y;
-
-        for(int s=0; s<write.s(); ++s)
+        double u = (double)s / (double)(write.s() - 1);
+        double x = ex.xMin() + u * ex.width();
+        double r = heights->getResolution(s, 0);
+        double y = ex.yMin();
+        if (s == 0)
         {
-            double u = (double)s/(double)(write.s()-1);
-            double x = ex.xMin() + u*ex.width();
-            north.x() = x;
-            south.x() = x;
+            points[p++].set(x-r, y-r, 0.0, r);
+        }
+        points[p++].set(x, y-r, 0.0, r);
+        if (s == write.s() - 1)
+        {
+            points[p++].set(x + r, y-r, 0.0, r);
+        }
+    }
+
+    for (int t = 0; t < write.t(); ++t)
+    {
+        double v = (double)t / (double)(write.t() - 1);
+        double y = ex.yMin() + v * ex.height();
+
+        for (int s = 0; s < write.s(); ++s)
+        {
+            double u = (double)s / (double)(write.s() - 1);
+            double x = ex.xMin() + u * ex.width();
 
             double r = heights->getResolution(s, t);
 
-            east.x() = x + r;
-            west.x() = x - r;
-            north.y() = y + r;
-            south.y() = y - r;
+            if (s == 0)
+            {
+                points[p++].set(x - r, y, 0.0, r);
+            }
+            points[p++].set(x, y, 0.0, r);
+            if (s == write.s() - 1)
+            {
+                points[p++].set(x + r, y, 0.0, r);
+            }            
+        }
+    }
 
-            points[p++].set(west.x(), west.y(), 0.0, r);
-            points[p++].set(east.x(), east.y(), 0.0, r);
-            points[p++].set(south.x(), south.y(), 0.0, r);
-            points[p++].set(north.x(), north.y(), 0.0, r);
+    // Add the north row
+    for (int s = 0; s < write.s(); ++s)
+    {
+        double u = (double)s / (double)(write.s() - 1);
+        double x = ex.xMin() + u * ex.width();
+        double r = heights->getResolution(s, 0);
+        double y = ex.yMax();
+        if (s == 0)
+        {
+            points[p++].set(x - r, y + r, 0.0, r);
+        }
+        points[p++].set(x, y + r, 0.0, r);
+        if (s == write.s() - 1)
+        {
+            points[p++].set(x + r, y + r, 0.0, r);
         }
     }
 
@@ -315,52 +345,62 @@ NormalMapGenerator::createNormalMap(
     double dx, dy;
     osg::Vec4 riPixel;
 
-    for(int t=0; t<write.t(); ++t)
+    for (int t = 0; t < write.t(); ++t)
     {
-        double v = (double)t/(double)(write.t()-1);
-        double y_or_lat = ex.yMin() + v*ex.height();
+        double v = (double)t / (double)(write.t() - 1);
+        double y_or_lat = ex.yMin() + v * ex.height();
+        
+        unsigned int sampleT = t + 1;
 
-        for(int s=0; s<write.s(); ++s)
+        for (int s = 0; s < write.s(); ++s)
         {
-            int p = (4*write.s()*t + 4*s);
+            unsigned int sampleS = s + 1;
 
+            // Get the index of this point in the sample point array
+            int p = sampleT * sampleWidth + sampleS;
             res.set(points[p].w(), res.getUnits());
+
             dx = res.asDistance(Units::METERS, y_or_lat);
             dy = res.asDistance(Units::METERS, 0.0);
 
             riPixel.r() = 0.0f;
 
+            osg::Vec4d& west = points[p - 1];
+            osg::Vec4d& east = points[p + 1];
+            osg::Vec4d& north = points[p + sampleWidth];
+            osg::Vec4d& south = points[p - sampleWidth];
+
             // only attempt to create a normal vector if all the data is valid:
             // a valid resolution value and four valid corner points.
             if (res.getValue() != FLT_MAX &&
-                points[p+0].z() != NO_DATA_VALUE &&
-                points[p+1].z() != NO_DATA_VALUE &&
-                points[p+2].z() != NO_DATA_VALUE &&
-                points[p+3].z() != NO_DATA_VALUE)
+                west.z() != NO_DATA_VALUE &&
+                east.z() != NO_DATA_VALUE &&
+                south.z() != NO_DATA_VALUE &&
+                north.z() != NO_DATA_VALUE)
             {
-                a[0].set(-dx, 0, points[p+0].z());
-                a[1].set( dx, 0, points[p+1].z());
-                a[2].set(0, -dy, points[p+2].z());
-                a[3].set(0,  dy, points[p+3].z());
+                a[0].set(-dx, 0, west.z());
+                a[1].set(dx, 0, east.z());
+                a[2].set(0, -dy, south.z());
+                a[3].set(0, dy, north.z());
 
-                normal = (a[1]-a[0]) ^ (a[3]-a[2]);
+                normal = (a[1] - a[0]) ^ (a[3] - a[2]);
                 normal.normalize();
 
                 if (ruggedness)
                 {
                     // rudimentary normalized ruggedness index
                     riPixel.r() = 0.25 * (
-                        fabs(points[p + 0].z() - points[p + 3].z()) +
-                        fabs(points[p + 1].z() - points[p + 0].z()) +
-                        fabs(points[p + 2].z() - points[p + 1].z()) +
-                        fabs(points[p + 3].z() - points[p + 2].z()));
+                        fabs(west.z() - north.z()) +
+                        fabs(east.z() - west.z()) +
+                        fabs(south.z() - east.z()) +
+                        fabs(north.z() - north.z()));
                     riPixel.r() = clamp(riPixel.r() / (float)dy, 0.0f, 1.0f);
                     riPixel.r() = harden(harden(riPixel.r()));
                 }
             }
             else
             {
-                normal.set(0,0,1);
+                normal.set(0, 0, 1);
             }
 
             NormalMapGenerator::pack(normal, pixel);
@@ -390,34 +430,4 @@ NormalMapGenerator::createNormalMap(
     normalTex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
 
     return normalTex;
-}
-
-void
-NormalMapGenerator::pack(const osg::Vec3& n, osg::Vec4& p)
-{
-    // octohodreal normal packing
-    float d = 1.0/(fabs(n.x())+fabs(n.y())+fabs(n.z()));
-    p.x() = n.x() * d;
-    p.y() = n.y() * d;
-
-    if (n.z() < 0.0)
-    {
-        p.x() = (1.0 - fabs(p.y())) * (p.x() >= 0.0? 1.0 : -1.0);
-        p.y() = (1.0 - fabs(p.x())) * (p.y() >= 0.0? 1.0 : -1.0);
-    }
-
-    p.x() = 0.5f*(p.x()+1.0f);
-    p.y() = 0.5f*(p.y()+1.0f);
-}
-
-void
-NormalMapGenerator::unpack(const osg::Vec4& packed, osg::Vec3& normal)
-{
-    normal.x() = packed.x()*2.0-1.0;
-    normal.y() = packed.y()*2.0-1.0;
-    normal.z() = 1.0-fabs(normal.x())-fabs(normal.y());
-    float t = osg::clampBetween(-normal.z(), 0.0f, 1.0f);
-    normal.x() += (normal.x() > 0)? -t : t;
-    normal.y() += (normal.y() > 0)? -t : t;
-    normal.normalize();
 }

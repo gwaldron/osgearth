@@ -364,7 +364,7 @@ SET(LIB_PUBLIC_HEADERS
     GeometryCompiler
     GeometryUtils
     ImageToFeatureLayer
-    InstanceCloud.cpp
+    InstanceCloud
     MVT
     OgrUtils
     OGRFeatureSource
@@ -380,7 +380,6 @@ SET(LIB_PUBLIC_HEADERS
     SubstituteModelFilter
     TessellateOperator
     TextSymbolizer
-    TextureArena.cpp
     TFS
     TransformFilter
     WingedEdgeMesh
@@ -594,6 +593,7 @@ set(TARGET_SRC
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
     InstanceBuilder.cpp
+    InstanceCloud.cpp
     IntersectionPicker.cpp
     IOTypes.cpp
     JoinPointsLinesFilter.cpp
@@ -663,6 +663,7 @@ set(TARGET_SRC
     TerrainTileModelFactory.cpp
     Tessellator.cpp
     Text.cpp
+    TextureArena.cpp
     TextureBuffer.cpp
     ThreeDTilesLayer.cpp
     TextureBufferSerializer.cpp

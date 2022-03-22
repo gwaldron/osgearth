@@ -296,6 +296,7 @@ namespace osgEarth
 
         DataExtentList _dataExtents;
         mutable DataExtent _dataExtentsUnion;
+        mutable void* _dataExtentsIndex;
 
         // The cache ID used at runtime. This will either be the cacheId found in
         // the TileLayerOptions, or a dynamic cacheID generated at runtime.

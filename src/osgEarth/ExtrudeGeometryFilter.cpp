@@ -822,7 +822,7 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
         _style.get<ExtrusionSymbol>()->flatten() == true;
 
 
-    osg::Geometry* tempGeom = new osg::Geometry;
+    osg::ref_ptr< osg::Geometry > tempGeom = new osg::Geometry;
     tempGeom->setVertexArray(verts);
 
     // Create a series of line loops that the tessellator can reorganize

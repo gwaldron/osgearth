@@ -88,10 +88,7 @@ Texture::Texture(osg::Texture* input) :
     _gc(16),
     _osgTexture(input)
 {
-    OE_HARD_ASSERT(input != nullptr);
-
-    OE_SOFT_ASSERT(input->getNumImages() > 0 && input->getImage(0) != nullptr,
-        "Texture has a null image?");
+    OE_HARD_ASSERT(dataLoaded(), "Texture has a null image?");
 
     target() = input->getTextureTarget();
 
@@ -169,6 +166,7 @@ bool
 Texture::dataLoaded() const
 {
     return
+        osgTexture().valid() &&
         osgTexture()->getNumImages() > 0 &&
         osgTexture()->getImage(0) != nullptr;
 }
@@ -180,9 +178,7 @@ Texture::compileGLObjects(osg::State& state) const
         return;
 
     OE_PROFILING_ZONE;
-    OE_HARD_ASSERT(osgTexture().valid());
-    OE_HARD_ASSERT(osgTexture()->getNumImages() > 0);
-    OE_HARD_ASSERT(osgTexture()->getImage(0) != nullptr);
+    OE_HARD_ASSERT(dataLoaded() == true);
 
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
     Texture::GCState& gc = get(state);

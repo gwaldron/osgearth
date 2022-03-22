@@ -22,9 +22,15 @@
 #include <osgEarth/URI>
 #include <osgEarth/Map>
 #include <osgEarth/MemCache>
+#include <osgEarth/rtree.h>
 
 using namespace osgEarth;
 using namespace osgEarth::Threading;
+
+namespace
+{
+    using DataExtentsIndex = RTree<DataExtent, double, 2>;
+}
 
 #define LC "[TileLayer] Layer \"" << getName() << "\" "
 
@@ -190,7 +196,10 @@ TileLayer::CacheBinMetadata::getConfig() const
 
 TileLayer::~TileLayer()
 {
-    //nop
+    if (_dataExtentsIndex)
+    {
+        delete static_cast<DataExtentsIndex*>(_dataExtentsIndex);
+    }    
 }
 
 void TileLayer::setMinLevel(unsigned value)
@@ -313,6 +322,7 @@ TileLayer::init()
 {
     Layer::init();
     _writingRequested = false;
+    _dataExtentsIndex = nullptr;
 }
 
 Status
@@ -757,6 +767,12 @@ TileLayer::dirtyDataExtents()
 {
     ScopedWriteLock lock(_data_mutex);
     _dataExtentsUnion = GeoExtent::INVALID;
+
+    if (_dataExtentsIndex)
+    {
+        delete static_cast<DataExtentsIndex*>(_dataExtentsIndex);
+        _dataExtentsIndex = nullptr;
+    }
 }
 
 const DataExtent&
@@ -829,11 +845,11 @@ TileLayer::getBestAvailableTileKey(
     if (options().minResolution().isSet() || options().maxResolution().isSet())
     {
         const Profile* profile = getProfile();
-        if ( profile )
+        if (profile)
         {
             // calculate the resolution in the layer's profile, which can
             // be different that the key's profile.
-            double resKey   = key.getExtent().width() / (double)getTileSize();
+            double resKey = key.getExtent().width() / (double)getTileSize();
             double resLayer = key.getProfile()->getSRS()->transformUnits(resKey, profile->getSRS());
 
             if (options().maxResolution().isSet() &&
@@ -869,40 +885,67 @@ TileLayer::getBestAvailableTileKey(
     bool     intersects = false;
     unsigned highestLOD = 0;
 
-    // Check each data extent in turn:
-    for (auto& de : de_list)
+    double a_min[2], a_max[2];
+    // Build the index if needed.
+    if (!_dataExtentsIndex)
     {
-        // check for 2D intersection:
-        if (key.getExtent().intersects(de))
+        ScopedWriteLock lock(_data_mutex);
+        if (!_dataExtentsIndex) // Double check
         {
-            // check that the extent isn't higher-resolution than our key:
-            if ( !de.minLevel().isSet() || localLOD >= (int)de.minLevel().get() )
+            OE_INFO << LC << "Building data extents index with " << getDataExtents().size() << " extents" << std::endl;
+            DataExtentsIndex* dataExtentsIndex = new DataExtentsIndex();
+            for (auto de = getDataExtents().begin(); de != getDataExtents().end(); ++de)
             {
-                // Got an intersetion; now test the LODs:
-                intersects = true;
-
-                // If the maxLevel is not set, there's not enough information
-                // so just assume our key might be good.
-                if ( !de.maxLevel().isSet())
-                {
-                    return localLOD > MDL ? key.createAncestorKey(MDL) : key;
-                }
-
-                // Is our key at a lower or equal LOD than the max key in this extent?
-                // If so, our key is good.
-                else if ( localLOD <= (int)de.maxLevel().get() )
-                {
-                    return localLOD > MDL ? key.createAncestorKey(MDL) : key;
-                }
-
-                // otherwise, record the highest encountered LOD that
-                // intersects our key.
-                else if ( de.maxLevel().get() > highestLOD )
-                {
-                    highestLOD = de.maxLevel().get();
-                }
+                a_min[0] = de->xMin(), a_min[1] = de->yMin();
+                a_max[0] = de->xMax(), a_max[1] = de->yMax();
+                dataExtentsIndex->Insert(a_min, a_max, *de);
             }
+            _dataExtentsIndex = dataExtentsIndex;
         }
+    }
+
+    a_min[0] = key.getExtent().xMin(); a_min[1] = key.getExtent().yMin();
+    a_max[0] = key.getExtent().xMax(); a_max[1] = key.getExtent().yMax();
+
+    DataExtentsIndex* index = static_cast<DataExtentsIndex*>(_dataExtentsIndex);
+
+    TileKey bestKey;
+    index->Search(a_min, a_max, [&](const DataExtent& de) {
+        // check that the extent isn't higher-resolution than our key:
+        if (!de.minLevel().isSet() || localLOD >= (int)de.minLevel().get())
+        {
+            // Got an intersetion; now test the LODs:
+            intersects = true;
+
+            // If the maxLevel is not set, there's not enough information
+            // so just assume our key might be good.
+            if (!de.maxLevel().isSet())
+            {
+                bestKey = localLOD > MDL ? key.createAncestorKey(MDL) : key;
+                return false; //Stop searching, we've found a key
+            }
+
+            // Is our key at a lower or equal LOD than the max key in this extent?
+            // If so, our key is good.
+            else if (localLOD <= (int)de.maxLevel().get())
+            {
+                bestKey = localLOD > MDL ? key.createAncestorKey(MDL) : key;
+                return false; //Stop searching, we've found a key
+            }
+
+            // otherwise, record the highest encountered LOD that
+            // intersects our key.
+            else if (de.maxLevel().get() > highestLOD)
+            {
+                highestLOD = de.maxLevel().get();
+            }                        
+        }
+        return true; // Continue searching
+    });
+
+    if (bestKey.valid())
+    {
+        return bestKey;
     }
 
     if ( intersects )

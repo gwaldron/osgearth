@@ -106,8 +106,27 @@ FeatureElevationLayer::addedToMap(const Map* map)
 
     _extent = features->getFeatureProfile()->getExtent();
 
-    DataExtent de(_extent);
+#if 0
+    // Add the bounds of the features
+    DataExtent de(_extent, getMinLevel(), getMaxDataLevel());
     dataExtents().push_back(de);
+#else
+    // Add a data extent for every feature in the dataset, this will provide tighter extents and avoid creating tiles unnecessarily
+    // that are outide of the bounds of where the feature data actually is.  For example, we use a shapefile that contains boundaries of every airport
+    // in the world.  The extent is the entire world, but it's actually very sparsley covered so tiles in the middle of nowhere with
+    // no airport will still be considered valid for this layer and a tile will be created which we don't want to happen.
+    auto profile = getProfile();
+    osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(nullptr);
+    while (cursor.valid() && cursor->hasMore())
+    {
+        osg::ref_ptr< Feature > f = cursor->nextFeature();
+        if (f && f->getGeometry())
+        {
+            GeoExtent featureExtent = f->getExtent();
+            dataExtents().push_back(DataExtent(featureExtent.transform(profile->getSRS()), getMinLevel(), getMaxDataLevel()));            
+        }
+    }
+#endif
 
     setProfile(
         map->getProfile() != nullptr ? map->getProfile() :
@@ -135,125 +154,118 @@ FeatureElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
 
     int tileSize = getTileSize();
 
-    if (intersects(key))
+    //Get the extents of the tile
+    double xmin, ymin, xmax, ymax;
+    key.getExtent().getBounds(xmin, ymin, xmax, ymax);
+
+    const SpatialReference* featureSRS = features->getFeatureProfile()->getSRS();
+    GeoExtent extentInFeatureSRS = key.getExtent().transform(featureSRS);
+
+    const SpatialReference* keySRS = key.getProfile()->getSRS();
+
+    // populate feature list
+    // assemble a spatial query. It helps if your features have a spatial index.
+    Query query;
+    query.bounds() = extentInFeatureSRS.bounds();
+
+    FeatureList featureList;
+    osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(query, progress);
+    while (cursor.valid() && cursor->hasMore())
     {
-        //Get the extents of the tile
-        double xmin, ymin, xmax, ymax;
-        key.getExtent().getBounds(xmin, ymin, xmax, ymax);
+        Feature* f = cursor->nextFeature();
+        if (f && f->getGeometry())
+            featureList.push_back(f);
+    }
 
-        const SpatialReference* featureSRS = features->getFeatureProfile()->getSRS();
-        GeoExtent extentInFeatureSRS = key.getExtent().transform(featureSRS);
+    // We now have a feature list in feature SRS.
 
-        const SpatialReference* keySRS = key.getProfile()->getSRS();
+    bool transformRequired = !keySRS->isHorizEquivalentTo(featureSRS);
 
-        // populate feature list
-        // assemble a spatial query. It helps if your features have a spatial index.
-        Query query;
-        query.bounds() = extentInFeatureSRS.bounds();
+    if (progress && progress->isCanceled())
+        return GeoHeightField::INVALID;
 
-        FeatureList featureList;
-        osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(query, progress);
-        while (cursor.valid() && cursor->hasMore())
+    //Only allocate the heightfield if we actually intersect any features.
+    osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
+    hf->allocate(tileSize, tileSize);
+    for (unsigned int i = 0; i < hf->getHeightList().size(); ++i) hf->getHeightList()[i] = NO_DATA_VALUE;
+
+    // Iterate over the output heightfield and sample the data that was read into it.
+    double dx = (xmax - xmin) / (tileSize - 1);
+    double dy = (ymax - ymin) / (tileSize - 1);
+
+    for (int c = 0; c < tileSize; ++c)
+    {
+        double geoX = xmin + (dx * (double)c);
+        for (int r = 0; r < tileSize; ++r)
         {
-            Feature* f = cursor->nextFeature();
-            if (f && f->getGeometry())
-                featureList.push_back(f);
-        }
+            double geoY = ymin + (dy * (double)r);
 
-        // We now have a feature list in feature SRS.
+            float h = NO_DATA_VALUE;
 
-        bool transformRequired = !keySRS->isHorizEquivalentTo(featureSRS);
-
-        if (!featureList.empty())
-        {
-            if (progress && progress->isCanceled())
-                return GeoHeightField::INVALID;
-
-            //Only allocate the heightfield if we actually intersect any features.
-            osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
-            hf->allocate(tileSize, tileSize);
-            for (unsigned int i = 0; i < hf->getHeightList().size(); ++i) hf->getHeightList()[i] = NO_DATA_VALUE;
-
-            // Iterate over the output heightfield and sample the data that was read into it.
-            double dx = (xmax - xmin) / (tileSize - 1);
-            double dy = (ymax - ymin) / (tileSize - 1);
-
-            for (int c = 0; c < tileSize; ++c)
+            for (FeatureList::iterator f = featureList.begin(); f != featureList.end(); ++f)
             {
-                double geoX = xmin + (dx * (double)c);
-                for (int r = 0; r < tileSize; ++r)
+                if (progress && progress->isCanceled())
+                    return GeoHeightField::INVALID;
+
+                osgEarth::Polygon* boundary = dynamic_cast<osgEarth::Polygon*>((*f)->getGeometry());
+
+                if (!boundary)
                 {
-                    double geoY = ymin + (dy * (double)r);
+                    OE_WARN << LC << "NOT A POLYGON" << std::endl;
+                }
+                else
+                {
+                    GeoPoint geo(keySRS, geoX, geoY, 0.0, ALTMODE_ABSOLUTE);
 
-                    float h = NO_DATA_VALUE;
+                    if (transformRequired)
+                        geo = geo.transform(featureSRS);
 
-                    for (FeatureList::iterator f = featureList.begin(); f != featureList.end(); ++f)
+                    if (boundary->contains2D(geo.x(), geo.y()))
                     {
-                        if (progress && progress->isCanceled())
-                            return GeoHeightField::INVALID;
+                        h = (*f)->getDouble(options().attr().get());
 
-                        osgEarth::Polygon* boundary = dynamic_cast<osgEarth::Polygon*>((*f)->getGeometry());
-
-                        if (!boundary)
+                        if (keySRS->isGeographic())
                         {
-                            OE_WARN << LC << "NOT A POLYGON" << std::endl;
-                        }
-                        else
-                        {
-                            GeoPoint geo(keySRS, geoX, geoY, 0.0, ALTMODE_ABSOLUTE);
-
+                            // for a round earth, must adjust the final elevation accounting for the
+                            // curvature of the earth; so we have to adjust it in the feature boundary's
+                            // local tangent plane.
+                            Bounds bounds = boundary->getBounds();
+                            GeoPoint anchor(featureSRS, bounds.center().x(), bounds.center().y(), h, ALTMODE_ABSOLUTE);
                             if (transformRequired)
-                                geo = geo.transform(featureSRS);
+                                anchor = anchor.transform(keySRS);
 
-                            if (boundary->contains2D(geo.x(), geo.y()))
-                            {
-                                h = (*f)->getDouble(options().attr().get());
+                            // For transforming between ECEF and local tangent plane:
+                            osg::Matrix localToWorld, worldToLocal;
+                            anchor.createLocalToWorld(localToWorld);
+                            worldToLocal.invert(localToWorld);
 
-                                if (keySRS->isGeographic())
-                                {
-                                    // for a round earth, must adjust the final elevation accounting for the
-                                    // curvature of the earth; so we have to adjust it in the feature boundary's
-                                    // local tangent plane.
-                                    Bounds bounds = boundary->getBounds();
-                                    GeoPoint anchor(featureSRS, bounds.center().x(), bounds.center().y(), h, ALTMODE_ABSOLUTE);
-                                    if (transformRequired)
-                                        anchor = anchor.transform(keySRS);
+                            // Get the ECEF location of the anchor point:
+                            osg::Vec3d ecef;
+                            geo.toWorld(ecef);
 
-                                    // For transforming between ECEF and local tangent plane:
-                                    osg::Matrix localToWorld, worldToLocal;
-                                    anchor.createLocalToWorld(localToWorld);
-                                    worldToLocal.invert(localToWorld);
+                            // Move it into Local Tangent Plane coordinates:
+                            osg::Vec3d local = ecef * worldToLocal;
 
-                                    // Get the ECEF location of the anchor point:
-                                    osg::Vec3d ecef;
-                                    geo.toWorld(ecef);
+                            // Reset the Z to zero, since the LTP is centered on the "h" elevation:
+                            local.z() = 0.0;
 
-                                    // Move it into Local Tangent Plane coordinates:
-                                    osg::Vec3d local = ecef * worldToLocal;
+                            // Back into ECEF:
+                            ecef = local * localToWorld;
 
-                                    // Reset the Z to zero, since the LTP is centered on the "h" elevation:
-                                    local.z() = 0.0;
+                            // And back into lat/long/alt:
+                            geo.fromWorld(geo.getSRS(), ecef);
 
-                                    // Back into ECEF:
-                                    ecef = local * localToWorld;
-
-                                    // And back into lat/long/alt:
-                                    geo.fromWorld(geo.getSRS(), ecef);
-
-                                    h = geo.z();
-                                }
-                                break;
-                            }
+                            h = geo.z();
                         }
+                        break;
                     }
-
-                    hf->setHeight(c, r, h + options().offset().get());
                 }
             }
-            return GeoHeightField(hf.release(), key.getExtent());
+
+            hf->setHeight(c, r, h + options().offset().get());
         }
     }
-    return GeoHeightField::INVALID;
+    return GeoHeightField(hf.release(), key.getExtent());
 }
 
 bool

@@ -106,7 +106,7 @@ FeatureElevationLayer::addedToMap(const Map* map)
 
     _extent = features->getFeatureProfile()->getExtent();
 
-    DataExtent de(_extent);
+    DataExtent de(_extent, getMinLevel(), getMaxDataLevel());
     dataExtents().push_back(de);
 
     setProfile(

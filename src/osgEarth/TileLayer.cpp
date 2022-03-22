@@ -320,7 +320,7 @@ bool TileLayer::getUpsample() const
 void
 TileLayer::init()
 {
-    Layer::init();
+    VisibleLayer::init();
     _writingRequested = false;
     _dataExtentsIndex = nullptr;
 }

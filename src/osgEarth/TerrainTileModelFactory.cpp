@@ -244,9 +244,11 @@ TerrainTileModelFactory::addImageLayer(
         if (imageLayer->useCreateTexture())
         {
             window = imageLayer->createTexture(key, progress);
-            tex = Texture::create();
-            tex->osgTexture() = window.getTexture();
-            scaleBiasMatrix = window.getMatrix();
+            if (window.getTexture())
+            {
+                tex = Texture::create(window.getTexture());
+                scaleBiasMatrix = window.getMatrix();
+            }
         }
 
         else if (imageLayer->getAsyncLoading() == true)
@@ -262,8 +264,7 @@ TerrainTileModelFactory::addImageLayer(
             t->setMaxAnisotropy(4.0f);
             t->setUnRefImageDataAfterApply(false);
 
-            tex = Texture::create();
-            tex->osgTexture() = t;
+            tex = Texture::create(t);
         }
 
         else

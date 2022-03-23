@@ -137,9 +137,6 @@ _blacklist("Reg.BlackList(OE)")
     if (::getenv("OSGEARTH_DISABLE_UNREF_AFTER_APPLY"))
         _unRefImageDataAfterApply = false;
 
-    // Default object index for tracking scene object by UID.
-    _objectIndex = new ObjectIndex();
-
     // activate KMZ support
     osgDB::Registry::instance()->addArchiveExtension( "kmz" );
     osgDB::Registry::instance()->addArchiveExtension( "3tz");
@@ -309,8 +306,7 @@ Registry::release()
     _srsCache.clear();
 
     // Shared object index
-    if (_objectIndex.valid())
-        _objectIndex = new ObjectIndex();
+    _objectIndex = nullptr;
 }
 
 Threading::RecursiveMutex& osgEarth::getGDALMutex()
@@ -695,6 +691,14 @@ Registry::getProgramRepo()
 ObjectIndex*
 Registry::getObjectIndex() const
 {
+    if (!_objectIndex.valid())
+    {
+        ScopedMutexLock lock(_regMutex);
+        if (!_objectIndex.valid())
+        {
+            _objectIndex = new ObjectIndex();
+        }
+    }
     return _objectIndex.get();
 }
 

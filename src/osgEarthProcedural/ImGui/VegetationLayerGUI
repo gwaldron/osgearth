@@ -92,7 +92,7 @@ namespace osgEarth {
                         ImGui::SliderFloat(
                             "Density",
                             &_veglayer->options().group(type).density().mutable_value(),
-                            0.0f, 1.0f);
+                            0.0f, 4.0f);
 
                         ImGui::PopID();
                     }

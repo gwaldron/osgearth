@@ -344,7 +344,7 @@ namespace osgEarth
 
         optional<bool> _unRefImageDataAfterApply;
 
-        osg::ref_ptr<ObjectIndex> _objectIndex;
+        mutable osg::ref_ptr<ObjectIndex> _objectIndex;
 
         std::set<int> _offLimitsTextureImageUnits;
 

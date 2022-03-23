@@ -1489,6 +1489,7 @@ GroundCoverLayer::createLUTShader() const
     shader->setName( "GroundCover LUTs" );
     shader->setShaderSource(
         Stringify() 
+        << "#version " << std::to_string(Capabilities::get().getGLSLVersionInt()) << "\n"
         << lutbuf.str() << "\n");
 
     return shader;

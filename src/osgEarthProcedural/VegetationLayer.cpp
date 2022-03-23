@@ -670,10 +670,8 @@ VegetationLayer::configureTrees()
                 };
 
                 osg::Vec3f normals[8] = {
-                    //{-1,0,0}, {1,0,0}, {1,0,1}, {-1,0,1},
-                    //{0,1,0}, {0,-1,0}, {0,-1,1}, {0,1,1}
-                    {0,-1,0}, {0,-1,0}, {0,-1,0}, {0,-1,0},
-                    {1,0,0}, {1,0,0}, {1,0,0}, {1,0,0}
+                    {-1,0,1}, {1,0,1}, {1,0,2}, {-1,0,2},
+                    {0,-1,1}, {0,1,1}, {0,1,2}, {0,-1,2}
                 };
                 for (int i = 0; i < 8; ++i) normals[i].normalize();
 
@@ -688,16 +686,18 @@ VegetationLayer::configureTrees()
                 };
 
                 geom[i]->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
-                geom[i]->setVertexArray(new osg::Vec3Array(8, verts));
-                geom[i]->setNormalArray(new osg::Vec3Array(8, normals));
-                geom[i]->setColorArray(new osg::Vec4Array(1, colors), osg::Array::BIND_OVERALL);
-                geom[i]->setTexCoordArray(0, new osg::Vec2Array(8, uvs));
-                geom[i]->setTexCoordArray(3, new osg::Vec3Array(8, flexors));
+                geom[i]->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, verts));
+                geom[i]->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, normals));
+                geom[i]->setColorArray(new osg::Vec4Array(osg::Array::BIND_OVERALL, 1, colors));
+                geom[i]->setTexCoordArray(0, new osg::Vec2Array(osg::Array::BIND_PER_VERTEX, 8, uvs));
+                geom[i]->setTexCoordArray(3, new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, flexors));
 
                 if (textures.size() > 0)
                     ss->setTextureAttribute(0, textures[0], 1); // side albedo
-                if (textures.size() > 1)
-                    ss->setTextureAttribute(1, textures[1], 1); // side normal
+
+                // No normal texture support - it looks much better without it.
+                //if (textures.size() > 1)
+                //    ss->setTextureAttribute(1, textures[1], 1); // side normal
             }
             else if (i == 1)
             {
@@ -712,24 +712,29 @@ VegetationLayer::configureTrees()
                     {xmax, ymax, zmid},
                     {xmin, ymax, zmid}
                 };
-                const osg::Vec3f normals[4] = {
-                    {0,0,1}, {0,0,1}, {0,0,1}, {0,0,1}
+                osg::Vec3f normals[4] = {
+                    {-1,-1,2}, {1,-1,2}, {1,1,2}, {-1,1,2}
+                    //{0,0,1}, {0,0,1}, {0,0,1}, {0,0,1}
                 };
+                for (int i = 0; i < 4; ++i) normals[i].normalize();
+
                 const osg::Vec2f uvs[4] = {
                     {0,0}, {1,0}, {1,1}, {0,1}
                 };
 
                 geom[i]->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 6, &indices[0]));
-                geom[i]->setVertexArray(new osg::Vec3Array(4, verts));
-                geom[i]->setNormalArray(new osg::Vec3Array(4, normals));
-                geom[i]->setColorArray(new osg::Vec4Array(1, colors), osg::Array::BIND_OVERALL);
-                geom[i]->setTexCoordArray(0, new osg::Vec2Array(4, uvs));
-                geom[i]->setTexCoordArray(3, new osg::Vec3Array(4)); // flexors
+                geom[i]->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, verts));
+                geom[i]->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, normals));
+                geom[i]->setColorArray(new osg::Vec4Array(osg::Array::BIND_OVERALL, 1, colors));
+                geom[i]->setTexCoordArray(0, new osg::Vec2Array(osg::Array::BIND_PER_VERTEX, 4, uvs));
+                geom[i]->setTexCoordArray(3, new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4)); // flexors
 
                 if (textures.size() > 2)
                     ss->setTextureAttribute(0, textures[2], 1); // top albedo
-                if (textures.size() > 3)
-                    ss->setTextureAttribute(1, textures[3], 1); // top normal
+
+                // No normal texture support - it looks much better without it.
+                //if (textures.size() > 3)
+                //    ss->setTextureAttribute(1, textures[3], 1); // top normal
             }
             group->addChild(geom[i]);
         }

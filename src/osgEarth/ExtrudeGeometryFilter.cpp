@@ -823,12 +823,13 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
 
 
     osg::ref_ptr< osg::Geometry > tempGeom = new osg::Geometry;
-    tempGeom->setVertexArray(verts);
+    osg::Vec3Array* tempVerts = new osg::Vec3Array;
+    tempGeom->setVertexArray(tempVerts);
 
     // Create a series of line loops that the tessellator can reorganize
     // into polygons.
-    unsigned int vertptr = verts->size();
-    unsigned int startVertPtr = vertptr;
+    unsigned int vertptr = 0;// verts->size();
+    unsigned int startVertPtr = verts->size();
     for(Elevations::const_iterator e = structure.elevations.begin(); e != structure.elevations.end(); ++e)
     {
         unsigned elevptr = vertptr;
@@ -840,6 +841,7 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
             if ( f->left.isFromSource )
             {
                 verts->push_back( f->left.roof );
+                tempVerts->push_back(f->left.roof);
                 color->push_back( roofColor );
                 normal->push_back(osg::Vec3(0, 0, 1));
 
@@ -911,7 +913,7 @@ ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
 
     if (index)
     {
-        unsigned count = vertptr - startVertPtr;
+        unsigned count = vertptr;
         ids->resize(ids->size() + count);
         index->tagRange(roof, feature, startVertPtr, count);
     }

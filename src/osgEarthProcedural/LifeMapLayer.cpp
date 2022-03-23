@@ -907,8 +907,8 @@ LifeMapLayer::createImageImplementation(
             readDensityMask(temp, uu, vv);
             
             combined_pixel[LIFEMAP_DENSE] *= temp.r();
-            combined_pixel[LIFEMAP_LUSH] *= temp.r();
-            combined_pixel[LIFEMAP_RUGGED] *= temp.r();
+            //combined_pixel[LIFEMAP_LUSH] *= temp.r();
+            //combined_pixel[LIFEMAP_RUGGED] *= temp.r();
         }
 
         // WATER MASK

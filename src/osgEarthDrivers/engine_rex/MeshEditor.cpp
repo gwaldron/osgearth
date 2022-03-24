@@ -166,7 +166,7 @@ MeshEditor::createTileMesh(
                 marker |= VERTEX_BOUNDARY;
 
             int i = mesh.get_or_create_vertex(
-                modelLTP,
+                weemesh::vert_t(modelLTP.x(), modelLTP.y(), modelLTP.z()),
                 marker);
 
             if (row > 0 && col > 0)
@@ -224,7 +224,8 @@ MeshEditor::createTileMesh(
                 {
                     for (int i = 0; i < part->size(); ++i)
                     {
-                        const vert_t& v = (*part)[i];
+                        const vert_t v((*part)[i].ptr());
+
                         if (v.x() >= xmin && v.x() <= xmax &&
                             v.y() >= ymin && v.y() <= ymax)
                         {
@@ -249,8 +250,8 @@ MeshEditor::createTileMesh(
 
                     for (; i < part->size(); j = i++)
                     {
-                        const vert_t& p0 = (*part)[i];
-                        const vert_t& p1 = (*part)[j];
+                        const vert_t p0((*part)[i].ptr());
+                        const vert_t p1((*part)[j].ptr());
 
                         // cull segment to tile
                         if ((p0.x() >= xmin || p1.x() >= xmin) &&

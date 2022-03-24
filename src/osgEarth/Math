@@ -474,10 +474,16 @@ namespace osgEarth
         return ((x + isPositive * (multiple - 1)) / multiple) * multiple;
     }
 
-    // equal within a threshold
+    // equal within a default threshold
     template<typename T>
     bool equivalent(T x, T y) {
         return osg::equivalent(x, y);
+    }
+
+    // equal within a threshold
+    template<typename T>
+    bool equivalent(T x, T y, T epsilon) {
+        return osg::equivalent(x, y, epsilon);
     }
 
     inline int nextPowerOf2(int x)

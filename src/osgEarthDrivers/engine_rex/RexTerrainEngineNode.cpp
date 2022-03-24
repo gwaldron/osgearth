@@ -961,7 +961,7 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
         if (fs->getFrameNumber() - iter.second._lastCull.getFrameNumber() > 60)
         {
             _persistent.erase(iter.first);
-            OE_INFO << LC << "Releasing orphaned view data" << std::endl;
+            OE_DEBUG << LC << "Releasing orphaned view data" << std::endl;
             break;
         }
     }

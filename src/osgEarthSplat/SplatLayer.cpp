@@ -169,6 +169,17 @@ SplatLayer::setLandCoverLayer(LandCoverLayer* layer)
     }
 }
 
+Status
+SplatLayer::openImplementation()
+{
+    if (GLUtils::useNVGL())
+    {
+        return Status(Status::ResourceUnavailable, "Layer is not compatible with NVGL");
+    }
+
+    return VisibleLayer::openImplementation();
+}
+
 void
 SplatLayer::addedToMap(const Map* map)
 {

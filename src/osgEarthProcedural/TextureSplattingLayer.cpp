@@ -22,15 +22,20 @@
 #include "TextureSplattingLayer"
 #include "TextureSplattingMaterials"
 #include "ProceduralShaders"
+#include "NoiseTextureFactory"
+
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/TerrainResources>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
+
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
 #include <osg/Drawable>
 #include <osgDB/Registry>
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
+
 #include <cstdlib> // getenv
 
 #define LC0 "[TextureSplattingLayer] "
@@ -126,6 +131,16 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
         // without a lifemap layer we can't do any splatting
         setStatus(Status::ResourceUnavailable, "No LifeMap data to splat");
         return;
+    }
+
+    // Install a general-purpose noise texture
+    engine->getResources()->reserveTextureImageUnit(_noiseUnit, getName().c_str());
+    if (_noiseUnit.valid())
+    {
+        NoiseTextureFactory ntf;
+        osg::Texture* noise = ntf.create(256u, 4u);
+        getOrCreateStateSet()->setTextureAttribute(_noiseUnit.unit(), noise);
+        getOrCreateStateSet()->addUniform(new osg::Uniform("oe_noise", _noiseUnit.unit()));
     }
 
     // Since we're actually rendering, load the materials for splatting

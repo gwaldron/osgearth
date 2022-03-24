@@ -83,6 +83,7 @@ namespace osgEarth { namespace Procedural
 
         Future<Materials::Ptr> _materialsJob;
         Materials::Ptr _materials;
+        TextureImageUnitReservation _noiseUnit;
 
         void buildStateSets();
 

@@ -127,7 +127,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         groups()[AssetGroup::TREES].enabled().setDefault(true);
         groups()[AssetGroup::TREES].castShadows().setDefault(true);
         groups()[AssetGroup::TREES].maxRange().setDefault(4000.0f);
-        groups()[AssetGroup::TREES].density().setDefault(0.5f);
+        groups()[AssetGroup::TREES].density().setDefault(1.0f);
     }
 
     if (AssetGroup::UNDERGROWTH < NUM_ASSET_GROUPS)
@@ -136,7 +136,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         groups()[AssetGroup::UNDERGROWTH].enabled().setDefault(true);
         groups()[AssetGroup::UNDERGROWTH].castShadows().setDefault(false);
         groups()[AssetGroup::UNDERGROWTH].maxRange().setDefault(75.0f);
-        groups()[AssetGroup::UNDERGROWTH].density().setDefault(0.5f);
+        groups()[AssetGroup::UNDERGROWTH].density().setDefault(1.0f);
     }
 
     ConfigSet groups_c = conf.child("groups").children();

@@ -137,9 +137,10 @@ namespace osgEarth
             void setRenderMode(const std::string& mode, osg::RenderInfo& ri)
             {
                 auto* vp = VirtualProgram::getOrCreate(stateset(ri));
-                ShaderLoader::unload(vp, _renderMode);
+                if (!_renderMode.empty())
+                    ShaderLoader::unload(vp, _renderMode);
                 _renderMode = mode;
-                if (!mode.empty())
+                if (!_renderMode.empty())
                     ShaderLoader::load(vp, _renderMode);
             }
 

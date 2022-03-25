@@ -294,6 +294,11 @@ namespace osgEarth { namespace Threading
             return !isAvailable() && _shared.use_count() == 1;
         }
 
+        //! True if a Promise exists, but has not yet been fulfilled.
+        bool isWorking() const {
+            return !isAvailable() && !isAbandoned();
+        }
+
         //! Synonym for isAbandoned. (Canceleble interface)
         bool isCanceled() const override {
             return isAbandoned();

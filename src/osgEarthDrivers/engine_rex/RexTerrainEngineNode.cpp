@@ -629,7 +629,9 @@ RexTerrainEngineNode::setupRenderBindings()
     color.matrixName()  = "oe_layer_texMatrix";
     color.setDefaultTexture(new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)));
     color.getDefaultTexture()->setName("rex default color");
-    getResources()->reserveTextureImageUnit( color.unit(), "Terrain Color" );
+
+    if (!GLUtils::useNVGL())
+        getResources()->reserveTextureImageUnit( color.unit(), "Terrain Color" );
 
     if(this->elevationTexturesRequired())
     {
@@ -639,7 +641,9 @@ RexTerrainEngineNode::setupRenderBindings()
         elevation.matrixName() = "oe_tile_elevationTexMatrix";
         elevation.setDefaultTexture(osgEarth::createEmptyElevationTexture());
         elevation.getDefaultTexture()->setName("rex default elevation");
-        getResources()->reserveTextureImageUnit(elevation.unit(), "Terrain Elevation");
+
+        if (!GLUtils::useNVGL())
+            getResources()->reserveTextureImageUnit(elevation.unit(), "Terrain Elevation");
     }
 
     if (this->normalTexturesRequired())
@@ -650,7 +654,9 @@ RexTerrainEngineNode::setupRenderBindings()
         normal.matrixName() = "oe_tile_normalTexMatrix";
         normal.setDefaultTexture(osgEarth::createEmptyNormalMapTexture());
         normal.getDefaultTexture()->setName("rex default normalmap");
-        getResources()->reserveTextureImageUnit(normal.unit(), "Terrain Normals");
+
+        if (!GLUtils::useNVGL())
+            getResources()->reserveTextureImageUnit(normal.unit(), "Terrain Normals");
     }
 
     if (this->parentTexturesRequired())
@@ -659,7 +665,9 @@ RexTerrainEngineNode::setupRenderBindings()
         colorParent.usage() = SamplerBinding::COLOR_PARENT;
         colorParent.samplerName() = "oe_layer_texParent";
         colorParent.matrixName() = "oe_layer_texParentMatrix";
-        getResources()->reserveTextureImageUnit(colorParent.unit(), "Terrain Parent Color");
+
+        if (!GLUtils::useNVGL())
+            getResources()->reserveTextureImageUnit(colorParent.unit(), "Terrain Parent Color");
     }
 
     if (this->landCoverTexturesRequired())
@@ -670,21 +678,26 @@ RexTerrainEngineNode::setupRenderBindings()
         landCover.matrixName() = "oe_tile_landCoverTexMatrix";
         landCover.setDefaultTexture(LandCover::createEmptyTexture());
         landCover.getDefaultTexture()->setName("rex default landcover");
-        getResources()->reserveTextureImageUnit(landCover.unit(), "Terrain Land Cover");
         getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX", landCover.samplerName());
         getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX_MATRIX", landCover.matrixName());
+
+        if (!GLUtils::useNVGL())
+            getResources()->reserveTextureImageUnit(landCover.unit(), "Terrain Land Cover");
     }
 
     // Apply a default, empty texture to each render binding.
-    OE_DEBUG << LC << "Render Bindings:\n";
-    for (unsigned i = 0; i < _renderBindings.size(); ++i)
+    if (!GLUtils::useNVGL())
     {
-        SamplerBinding& b = _renderBindings[i];
-        if (b.isActive())
+        OE_DEBUG << LC << "Render Bindings:\n";
+        for (unsigned i = 0; i < _renderBindings.size(); ++i)
         {
-            _terrainSS->addUniform(new osg::Uniform(b.samplerName().c_str(), b.unit()));
-            _terrainSS->setTextureAttribute(b.unit(), b.getDefaultTexture());
-            OE_DEBUG << LC << " > Bound \"" << b.samplerName() << "\" to unit " << b.unit() << "\n";
+            SamplerBinding& b = _renderBindings[i];
+            if (b.isActive())
+            {
+                _terrainSS->addUniform(new osg::Uniform(b.samplerName().c_str(), b.unit()));
+                _terrainSS->setTextureAttribute(b.unit(), b.getDefaultTexture());
+                OE_DEBUG << LC << " > Bound \"" << b.samplerName() << "\" to unit " << b.unit() << "\n";
+            }
         }
     }
 }

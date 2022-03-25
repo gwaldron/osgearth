@@ -51,7 +51,7 @@ namespace osgEarth {
             std::unordered_map<Layer*, float> _maxAttenRanges;
 
         public:
-            LayersGUI() : BaseGUI("Map Layers"),
+            LayersGUI() : BaseGUI("Map"),
                 _showDisabled(false),
                 _mapRevision(-1)
             {
@@ -197,10 +197,6 @@ namespace osgEarth {
                                     if (ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f))
                                         visibleLayer->setOpacity(opacity);
 
-                                    bool modulate = visibleLayer->getColorBlending() == BLEND_MODULATE;
-                                    if (ImGui::Checkbox("Modulate", &modulate))
-                                        visibleLayer->setColorBlending(modulate ? BLEND_MODULATE : BLEND_INTERPOLATE);
-
                                     if (visibleLayer->options().maxVisibleRange().isSet())
                                     {
                                         float value = visibleLayer->getMaxVisibleRange();
@@ -225,9 +221,13 @@ namespace osgEarth {
                                     }
 
                                     bool debugView = visibleLayer->getEnableDebugView();
-                                    if (ImGui::Checkbox("Debug overlay", &debugView)) {
+                                    if (ImGui::Checkbox("Highlight tiles", &debugView)) {
                                         visibleLayer->setEnableDebugView(debugView);
                                     }
+
+                                    bool modulate = visibleLayer->getColorBlending() == BLEND_MODULATE;
+                                    if (ImGui::Checkbox("Modulate", &modulate))
+                                        visibleLayer->setColorBlending(modulate ? BLEND_MODULATE : BLEND_INTERPOLATE);
                                 }
 
                                 auto threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(layer);

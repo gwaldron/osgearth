@@ -147,20 +147,20 @@ struct PickerGUI : public GUI::BaseGUI
 
 // Shaders that will highlight the currently "picked" feature.
 
-const char* highlightVert = R"(
-    #version 330
+const char* highlight_shader = R"(
+    #pragma vp_function check_for_highlight, vertex_clip
     uniform uint objectid_to_highlight;
     uint oe_index_objectid;      // Stage global containing object id
     flat out int selected;
-    void checkForHighlight(inout vec4 vertex)
+    void check_for_highlight(inout vec4 vertex)
     {
         selected = (objectid_to_highlight > 1u && objectid_to_highlight == oe_index_objectid) ? 1 : 0;
     }
-)";
-const char* highlightFrag = R"(
-    #version 330
+
+    [break]
+    #pragma vp_function highlight_fragment, fragment
     flat in int selected;
-    void highlightFragment(inout vec4 color)
+    void highlight_fragment(inout vec4 color)
     {
         if ( selected == 1 )
             color.rgb = mix(color.rgb, clamp(vec3(0.5,2.0,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5);
@@ -174,8 +174,7 @@ void installHighlighter(App& app)
 
     // This shader program will highlight the selected object.
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
-    vp->setFunction( "checkForHighlight",  highlightVert, VirtualProgram::LOCATION_VERTEX_CLIP );
-    vp->setFunction( "highlightFragment",  highlightFrag, VirtualProgram::LOCATION_FRAGMENT_COLORING );
+    ShaderLoader::load(vp, highlight_shader);
 
     // Since we're accessing object IDs, we need to load the indexing shader as well:
     Registry::objectIndex()->loadShaders( vp );
@@ -194,26 +193,25 @@ void
 setupPreviewCamera(App& app)
 {
     // simple fragment shader to recolor a texture
-    const char* recolor_vs = R"(
-        #version 330
-        out vec2 tc;
-        void recolor_vs(inout vec4 clip) {
-            if      (gl_VertexID==0) { clip = vec4(-1,-1,0,1); tc = vec2(0,0); }
-            else if (gl_VertexID==1) { clip = vec4( 1, 1,0,1); tc = vec2(1,1); }
-            else if (gl_VertexID==2) { clip = vec4(-1, 1,0,1); tc = vec2(0,1); }
-            else if (gl_VertexID==3) { clip = vec4( 1, 1,0,1); tc = vec2(1,1); }
-            else if (gl_VertexID==4) { clip = vec4(-1,-1,0,1); tc = vec2(0,0); }
-            else if (gl_VertexID==5) { clip = vec4( 1,-1,0,1); tc = vec2(1,0); }
+    const char* pick_preview = R"(
+        #pragma vp_function pick_preview_vs, vertex_clip
+        out vec2 uv;
+        void pick_preview_vs(inout vec4 clip) {
+            const vec2 uvs[6] = vec2[6](
+                vec2(0,0), vec2(1,1), vec2(0,1),
+                vec2(1,1), vec2(0,0), vec2(1,0)
+            );
+            uv = uvs[gl_VertexID];
+            clip = vec4(uv*2-1, 0, 1);
         }
-    )";
 
-    const char* recolor_fs = R"(
-        #version 330
-        in vec2 tc;
+        [break]
+        #pragma vp_function pick_preview_fs, fragment_output
+        in vec2 uv;
         out vec4 frag;
         uniform sampler2D tex;
-        void recolor_fs(inout vec4 c) {
-            c = texture(tex, tc);
+        void pick_preview_fs(inout vec4 c) {
+            c = texture(tex, uv);
             frag = c==vec4(0)? vec4(1) : vec4(vec3((c.r+c.g+c.b+c.a)/4.0),1);
         }
     )";
@@ -228,8 +226,7 @@ setupPreviewCamera(App& app)
     app.previewStateSet->addUniform(new osg::Uniform("tex", 0));
 
     VirtualProgram* vp = VirtualProgram::getOrCreate(app.previewStateSet);
-    vp->setFunction("recolor_vs", recolor_vs, VirtualProgram::LOCATION_VERTEX_CLIP);
-    vp->setFunction("recolor_fs", recolor_fs, VirtualProgram::LOCATION_FRAGMENT_OUTPUT);
+    ShaderLoader::load(vp, pick_preview);
 
     app.previewTexture = new osg::Texture2D();
     app.previewTexture->setTextureSize(256, 256);

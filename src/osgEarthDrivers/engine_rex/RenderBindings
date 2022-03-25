@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/optional>
 #include <osgEarth/Containers>
+#include <osgEarth/GLUtils>
 #include <osg/Texture>
 #include <osg/Matrix>
 #include <vector>
@@ -78,7 +79,9 @@ namespace osgEarth { namespace REX
 
     public:
         /** True if this binding is bound to a teture image unit and therefore active. */
-        bool isActive() const { return _unit >= 0; }
+        bool isActive() const {
+            return _unit >= 0 || GLUtils::useNVGL();
+        }
 
     private:
         optional<UID>   _sourceUID;

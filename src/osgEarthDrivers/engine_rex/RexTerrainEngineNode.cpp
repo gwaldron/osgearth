@@ -1180,7 +1180,7 @@ RexTerrainEngineNode::addSurfaceLayer(Layer* layer)
             // for a shared layer, allocate a shared image unit if necessary.
             if ( imageLayer->isShared() )
             {
-                if (!imageLayer->sharedImageUnit().isSet())
+                if (!imageLayer->sharedImageUnit().isSet() && !GLUtils::useNVGL())
                 {
                     int temp;
                     if ( getResources()->reserveTextureImageUnit(temp, imageLayer->getName().c_str()) )
@@ -1195,7 +1195,7 @@ RexTerrainEngineNode::addSurfaceLayer(Layer* layer)
                 }
 
                 // Build a sampler binding for the shared layer.
-                if ( imageLayer->sharedImageUnit().isSet() )
+                if ( imageLayer->sharedImageUnit().isSet() || GLUtils::useNVGL() )
                 {
                     // Find the next empty SHARED slot:
                     unsigned newIndex = SamplerBinding::SHARED;
@@ -1217,7 +1217,7 @@ RexTerrainEngineNode::addSurfaceLayer(Layer* layer)
 
                     // Install an empty texture for this binding at the top of the graph, so that
                     // a texture is always defined even when the data source supplies no real data.
-                    if (newBinding.isActive())
+                    if (newBinding.isActive() && !GLUtils::useNVGL())
                     {
                         osg::ref_ptr<osg::Texture> tex;
                         if (osg::Image* emptyImage = imageLayer->getEmptyImage())

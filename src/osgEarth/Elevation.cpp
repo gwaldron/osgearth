@@ -168,9 +168,8 @@ ElevationTexture::generateNormalMap(
 {
     OE_PROFILING_ZONE;
     if (!_normalTex.valid())
-    {
-        static Mutex s_mutex;
-        ScopedMutexLock lock(s_mutex);
+    {        
+        ScopedMutexLock lock(_mutex);
 
         // one thread allowed to generate the normal map
         //static Gate<void*> s_thisGate("OE.ElevTexNormalMap");

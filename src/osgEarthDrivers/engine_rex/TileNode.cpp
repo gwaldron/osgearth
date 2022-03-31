@@ -613,30 +613,29 @@ TileNode::update(osg::NodeVisitor& nv)
             // slot for rendering.
             if (sampler._futureTexture)
             {
-                if (sampler._futureTexture->needsUpdates())
-                {
-                    sampler._futureTexture->update(nv);
-                    ++numUpdatedTotal;
-                }
+                FutureTexture* ft = dynamic_cast<FutureTexture*>(
+                    sampler._futureTexture->osgTexture().get());
 
-                FutureTexture* ft = reinterpret_cast<FutureTexture*>(sampler._futureTexture->osgTexture().get());
-                if (ft->doneLoading())
+                if (ft->succeeded())
                 {
                     sampler._texture = sampler._futureTexture;
                     sampler._futureTexture = nullptr;
                     sampler._matrix.makeIdentity();
                     ++numFuturesResolved;
                 }
-
                 else if (ft->failed())
                 {
                     sampler._futureTexture = nullptr;
+                    ++numFuturesResolved;
                 }
+
+                ++numUpdatedTotal;
             }
 
             if (sampler.ownsTexture() && sampler._texture->needsUpdates())
             {
                 sampler._texture->update(nv);
+
                 ++numUpdatedTotal;
             }
         }

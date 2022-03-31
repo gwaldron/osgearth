@@ -875,28 +875,21 @@ FutureTexture2D::dispatch() const
         });
 }
 
-bool
-FutureTexture2D::requiresUpdateCall() const
+void
+FutureTexture2D::update()
 {
-    // careful - if we return false here, it may never get called again.
-
     if (_resolved)
     {
-        return false;
+        return;
     }
 
-    if (_result.isCanceled())
+    else if (_result.isCanceled())
     {
         dispatch();
+        return;
     }
 
-    return true;
-}
-
-void
-FutureTexture2D::update(osg::NodeVisitor* nv)
-{
-    if (_resolved == false && _result.isAvailable() == true)
+    else if (_result.isAvailable() == true)
     {
         OE_DEBUG<< LC << "Async result available for " << getName() << std::endl;
 
@@ -905,7 +898,7 @@ FutureTexture2D::update(osg::NodeVisitor* nv)
 
         if (geoImage.getStatus().isError())
         {
-            OE_WARN << LC << "Error: " << geoImage.getStatus().message() << std::endl;
+            OE_DEBUG << LC << "Error: " << geoImage.getStatus().message() << std::endl;
             _failed = true;
         }
         else

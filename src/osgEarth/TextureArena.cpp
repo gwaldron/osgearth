@@ -88,8 +88,6 @@ Texture::Texture(osg::Texture* input) :
     _gc(16),
     _osgTexture(input)
 {
-    OE_HARD_ASSERT(dataLoaded(), "Texture has a null image?");
-
     target() = input->getTextureTarget();
 
     mipmap() =

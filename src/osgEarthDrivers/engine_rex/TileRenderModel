@@ -92,6 +92,7 @@ namespace osgEarth { namespace REX
 
         //! Construct
         Sampler(const Sampler& rhs) :
+            // no _futuretexture
             _texture(rhs._texture),
             _matrix(rhs._matrix),
             _revision(rhs._revision)

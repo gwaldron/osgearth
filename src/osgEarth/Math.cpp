@@ -489,13 +489,13 @@ osgEarth::pointInPoly2d(const osg::Vec3d& pt, const osg::Geometry* polyPoints, f
 bool
 ProjectionMatrix::isOrtho(const osg::Matrix& m)
 {
-    return m(3, 3) > 0.0;
+    return !m.isIdentity() && m(3, 3) > 0.0;
 }
 
 bool
 ProjectionMatrix::isPerspective(const osg::Matrix& m)
 {
-    return m(3, 3) == 0.0;
+    return m(3, 3) == 0.0; // can't be identity if this is true
 }
 
 ProjectionMatrix::Type
@@ -552,8 +552,8 @@ ProjectionMatrix::getPerspective(
     const osg::Matrix& m,
     double& vfov, double& ar, double& N, double& F)
 {
-    if (m(3, 3) != 0.0)
-        return false; // not persp..
+    if (!isPerspective(m))
+        return false;
 
     if (getType(m) == REVERSE_Z)
     {

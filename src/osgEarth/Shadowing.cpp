@@ -286,7 +286,10 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
 
                 // take the camera's projection matrix and clamp it's near and far planes
                 // to our shadow map slice range.
-                osg::Matrix proj = _prevProjMatrix;
+                osg::Matrix proj =
+                    _prevProjMatrix.isIdentity() ? camera->getProjectionMatrix() :
+                    _prevProjMatrix;
+
                 double fovy,ar,zn,zf;
                 ProjectionMatrix::getPerspective(proj, fovy, ar, zn, zf);
                 ProjectionMatrix::setPerspective(proj, fovy, ar, std::max(n, zn), std::min(f, zf));

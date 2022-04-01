@@ -453,13 +453,14 @@ BiomeManager::materializeNewAssets(
                         bbox = residentAsset->boundingBox();
                     }
 
-                    URI sideBB = assetDef->sideBillboardURI().isSet() ?
-                        assetDef->sideBillboardURI().get() :
-                        URI(assetDef->modelURI()->full() + ".side.png", assetDef->modelURI()->context());
+                    URI sideBB;
+                    if (assetDef->sideBillboardURI().isSet())
+                        sideBB = assetDef->sideBillboardURI().get();
+                    else if (assetDef->modelURI().isSet())
+                        sideBB = URI(assetDef->modelURI()->full() + ".side.png", assetDef->modelURI()->context());
 
-                    if (!sideBB.empty()) //assetDef->sideBillboardURI().isSet())
+                    if (!sideBB.empty())
                     {
-                        //const URI& uri = assetDef->sideBillboardURI().get();
                         const URI& uri = sideBB;
 
                         auto ic = texcache.find(uri);
@@ -501,13 +502,15 @@ BiomeManager::materializeNewAssets(
                             }
                         }
 
-                        URI topBB = assetDef->topBillboardURI().isSet() ?
-                            assetDef->topBillboardURI().get() :
-                            URI(assetDef->modelURI()->full() + ".top.png", assetDef->modelURI()->context());
+                        URI topBB;
+                        if (assetDef->topBillboardURI().isSet())
+                            topBB = assetDef->topBillboardURI().get();
+                        else if (assetDef->modelURI().isSet())
+                            topBB = URI(assetDef->modelURI()->full() + ".top.png", assetDef->modelURI()->context());
 
-                        if (!topBB.empty()) //assetDef->topBillboardURI().isSet())
+                        if (!topBB.empty())
                         {
-                            const URI& uri = topBB; // assetDef->topBillboardURI().get();
+                            const URI& uri = topBB;
 
                             auto ic = texcache.find(uri);
                             if (ic != texcache.end())

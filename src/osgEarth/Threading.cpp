@@ -521,16 +521,9 @@ JobArena::JobArena(const std::string& name, unsigned concurrency, const Type& ty
     _quitMutex("OE.JobArena[" + name + "].quit")
 {
     // find a slot in the stats
-    int new_index = -1;
-    for (int i = 0; i < 512 && new_index < 0; ++i)
-        if (_allMetrics._arenas[i].active == false)
-            new_index = i;
-    _metrics = &_allMetrics._arenas[new_index];
+    _metrics = _allMetrics.newArena();
     _metrics->arenaName = name;
     _metrics->concurrency = 0;
-    _metrics->active = true;
-    if (new_index >= _allMetrics.maxArenaIndex)
-        _allMetrics.maxArenaIndex = new_index;
 
     if (_type == THREAD_POOL)
     {
@@ -540,8 +533,6 @@ JobArena::JobArena(const std::string& name, unsigned concurrency, const Type& ty
 
 JobArena::~JobArena()
 {
-    _metrics->free();
-
     if (_type == THREAD_POOL)
     {
         stopThreads();
@@ -880,12 +871,12 @@ void JobArena::stopThreads()
 
 
 JobArena::Metrics::Metrics() :
-    _arenas(512),
     maxArenaIndex(-1),
     _report(nullptr),
     _reportMinDuration(0)
 {
-    // nop
+    // to prevent thread safety issues
+    _arenas.resize(128);
 
     const char* report_us = ::getenv("OSGEARTH_JOB_REPORT_THRESHOLD");
     if (report_us)
@@ -908,7 +899,29 @@ JobArena::Metrics::Metrics() :
     }
 }
 
-const JobArena::Metrics::Arena&
+JobArena::Metrics::Arena::Ptr
+JobArena::Metrics::newArena()
+{
+    int new_index = -1;
+    for (int i = 0; i < _arenas.size() && new_index < 0; ++i)
+    {
+        if (_arenas[i] == nullptr)
+        {
+            new_index = i;
+            break;
+        }
+    }
+    OE_HARD_ASSERT(new_index >= 0, "Ran out of arena space :(");
+
+    if (new_index > maxArenaIndex)
+        maxArenaIndex = new_index;
+
+    auto arena = Arena::Ptr(new Arena);
+    _arenas[new_index] = arena;
+    return arena;
+}
+
+const JobArena::Metrics::Arena::Ptr
 JobArena::Metrics::arena(int index) const
 {
     return _arenas[index];
@@ -919,8 +932,8 @@ JobArena::Metrics::totalJobsPending() const
 {
     int count = 0;
     for (int i = 0; i <= maxArenaIndex; ++i)
-        if (arena(i).active)
-            count += arena(i).numJobsPending;
+        if (arena(i))
+            count += arena(i)->numJobsPending;
     return count;
 }
 
@@ -929,8 +942,8 @@ JobArena::Metrics::totalJobsRunning() const
 {
     int count = 0;
     for (int i = 0; i <= maxArenaIndex; ++i)
-        if (arena(i).active)
-            count += arena(i).numJobsRunning;
+        if (arena(i))
+            count += arena(i)->numJobsRunning;
     return count;
 }
 
@@ -939,7 +952,7 @@ JobArena::Metrics::totalJobsCanceled() const
 {
     int count = 0;
     for (int i = 0; i <= maxArenaIndex; ++i)
-        if (arena(i).active)
-            count += arena(i).numJobsCanceled;
+        if (arena(i))
+            count += arena(i)->numJobsCanceled;
     return count;
 }

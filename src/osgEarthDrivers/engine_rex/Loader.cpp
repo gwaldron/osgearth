@@ -40,6 +40,8 @@ Merger::Merger() :
     setCullingActive(false);
     setNumChildrenRequiringUpdateTraversal(+1);
     _mutex.setName(OE_MUTEX_NAME);
+
+    _metrics = JobArena::get(ARENA_LOAD_TILE)->metrics();
 }
 
 Merger::~Merger()
@@ -100,6 +102,11 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
         ScopedMutexLock lock(_mutex);
         _mergeQueue.push(data);
     }
+
+    if (_metrics)
+    {
+        _metrics->numJobsRunning++;
+    }
 }
 
 void
@@ -123,11 +130,20 @@ Merger::traverse(osg::NodeVisitor& nv)
                 // compile finished, put it on the merge queue
                 _mergeQueue.emplace(std::move(next._data));
                 _compileQueue.pop();
+
+                // note: no change the metrics since we are just moving from
+                // one queue to another
             }
             else if (next._compiled.isAbandoned())
             {
                 // compile canceled, ditch it
                 _compileQueue.pop();
+
+                if (_metrics)
+                {
+                    _metrics->numJobsRunning--;
+                    _metrics->numJobsCanceled++;
+                }
             }
             else
             {
@@ -144,7 +160,6 @@ Merger::traverse(osg::NodeVisitor& nv)
         while (!_mergeQueue.empty() && count < max_count)
         {
             LoadTileDataOperationPtr next = _mergeQueue.front();
-            _mergeQueue.pop();
 
             if (next != nullptr)
             {
@@ -159,6 +174,12 @@ Merger::traverse(osg::NodeVisitor& nv)
             }
 
             ++count;
+
+            _mergeQueue.pop();
+            if (_metrics)
+            {
+                _metrics->numJobsRunning--;
+            }
         }
 
         //if (count > 0)

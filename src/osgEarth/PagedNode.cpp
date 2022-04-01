@@ -376,7 +376,10 @@ PagingManager::PagingManager() :
 {
     setCullingActive(false);
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
-    JobArena::get(PAGEDNODE_ARENA_NAME)->setConcurrency(4u);
+
+    auto arena = JobArena::get(PAGEDNODE_ARENA_NAME);
+    arena->setConcurrency(4u);
+    _metrics = arena->metrics();
 
     // NOTE: this is causing multiple model layers to not appear.
     // Need to debug before using.
@@ -398,7 +401,11 @@ PagingManager::PagingManager() :
 
 PagingManager::~PagingManager()
 {
-    //nop
+    if (_mergeQueue.size() > 0)
+    {
+        _metrics->numJobsRunning.exchange(
+            _metrics->numJobsRunning - _mergeQueue.size());
+    }
 }
 
 void
@@ -433,6 +440,17 @@ PagingManager::traverse(osg::NodeVisitor& nv)
             }
         }
     }
+}
+
+void
+PagingManager::merge(PagedNode2* host)
+{
+    ScopedMutexLock lock(_mergeMutex);
+    ToMerge toMerge;
+    toMerge._node = host;
+    toMerge._revision = host->_revision;
+    _mergeQueue.push(std::move(toMerge));
+    _metrics->numJobsRunning++;
 }
 
 void
@@ -486,5 +504,6 @@ PagingManager::update()
                 ++count;
         }
         _mergeQueue.pop();
+        _metrics->numJobsRunning--;
     }
 }

@@ -892,23 +892,21 @@ namespace osgEarth { namespace Threading
         {
         public:
             //! Per-arena metrics. ALWAYS check the "active" flag
-            struct Arena {
-                bool active;
+            struct Arena
+            {
+                using Ptr = std::shared_ptr<Arena>;
                 std::string arenaName;
                 std::atomic<int> concurrency;
                 std::atomic<int> numJobsPending;
                 std::atomic<int> numJobsRunning;
                 std::atomic<int> numJobsCanceled;
 
-                Arena() : active(false), concurrency(0), numJobsPending(0), numJobsRunning(0), numJobsCanceled(0) { }
-                void free() {
-                    active = false, numJobsPending = 0, numJobsRunning = 0,
-                        numJobsCanceled = 0;
-                }
+                Arena() : concurrency(0), numJobsPending(0), numJobsRunning(0), numJobsCanceled(0) { }
             };
 
             //! Report sent to the user reporting function if set
-            struct Report {
+            struct Report
+            {
                 Report(const Job& job_, const std::string& arena_, const std::chrono::steady_clock::duration& duration_)
                     : job(job_), arena(arena_), duration(duration_) { }
                 const Job& job;
@@ -918,8 +916,11 @@ namespace osgEarth { namespace Threading
 
             std::atomic<int> maxArenaIndex;
 
+            //! create a new arena and return its index
+            Arena::Ptr newArena();
+
             //! metrics about the arena at index "index"
-            const Arena& arena(int index) const;
+            const Arena::Ptr arena(int index) const;
 
             //! Total number of pending jobs across all arenas
             int totalJobsPending() const;
@@ -946,20 +947,24 @@ namespace osgEarth { namespace Threading
 
         private:
             Metrics();
-            std::vector<Arena> _arenas;
+            std::vector<Arena::Ptr> _arenas;
             std::function<void(const Report&)> _report;
             std::chrono::steady_clock::duration _reportMinDuration;
             friend class JobArena;
         };
 
         //! Access to the system-wide job arena metrics
-        static const Metrics& metrics() { return _allMetrics; }
+        static Metrics& allMetrics() { return _allMetrics; }
 
-        public: // INTERNAL
+        //! Metrics object for thie arena
+        Metrics::Arena::Ptr metrics() { return _metrics; }
 
-            //! Run one or more pending jobs.
-            //! Internal function - do not call this directly.
-            void runJobs();
+
+    public: // INTERNAL
+
+        //! Run one or more pending jobs.
+        //! Internal function - do not call this directly.
+        void runJobs();
 
     private:
 
@@ -1010,7 +1015,7 @@ namespace osgEarth { namespace Threading
         // threads in the pool
         std::vector<std::thread> _threads;
         // pointer to the stats structure for this arena
-        Metrics::Arena* _metrics;
+        Metrics::Arena::Ptr _metrics;
 
         static Mutex _arenas_mutex;
         static std::unordered_map<std::string, unsigned> _arenaSizes;

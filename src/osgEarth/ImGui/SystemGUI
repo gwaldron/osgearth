@@ -80,21 +80,22 @@ namespace osgEarth
                     if (ImGui::TreeNodeEx("Job Arenas", ImGuiTreeNodeFlags_DefaultOpen))
                     {
                         ImGui::BeginTable("arenas", 2);
-                        const JobArena::Metrics& m = JobArena::metrics();
+                        const JobArena::Metrics& m = JobArena::allMetrics();
                         for (int i = 0; i <= m.maxArenaIndex; ++i)
                         {
-                            if (m.arena(i).active)
+                            auto metrics = m.arena(i);
+                            if (metrics)
                             {
                                 ImGui::TableNextColumn();
                                 ImGui::Text("%s",
-                                    m.arena(i).arenaName.c_str());
+                                    metrics->arenaName.c_str());
 
                                 ImGui::TableNextColumn();
                                 ImGui::Text("(%d) %d / %d // %d",
-                                    (int)m.arena(i).concurrency,
-                                    (int)m.arena(i).numJobsRunning,
-                                    (int)m.arena(i).numJobsPending,
-                                    (int)m.arena(i).numJobsCanceled);
+                                    (int)metrics->concurrency,
+                                    (int)metrics->numJobsRunning,
+                                    (int)metrics->numJobsPending,
+                                    (int)metrics->numJobsCanceled);
 
                                 if (_showArenaControls)
                                 {
@@ -102,9 +103,9 @@ namespace osgEarth
                                     ImGui::Text("  Concurrency:");
                                     ImGui::TableNextColumn();
                                     ImGui::PushID(i);
-                                    int concurrency = m.arena(i).concurrency;
+                                    int concurrency = metrics->concurrency;
                                     if (ImGui::SliderInt("", &concurrency, 1, 16)) {
-                                        JobArena::get(m.arena(i).arenaName)->setConcurrency(concurrency);
+                                        JobArena::get(metrics->arenaName)->setConcurrency(concurrency);
                                     }
                                     ImGui::PopID();
                                     ImGui::Separator();

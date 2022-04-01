@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <functional>
 #include <vector>
+#include <limits>
 
 #define ASSERT assert // RTree uses ASSERT( condition )
 #ifndef Min

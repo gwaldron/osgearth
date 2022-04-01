@@ -57,7 +57,7 @@ namespace
                 // OSG_INFO << "_clampProjectionMatrix widening znear and zfar to "<<znear<<" "<<zfar<<std::endl;
             }
 
-            if (fabs(projection(0,3))<epsilon  && fabs(projection(1,3))<epsilon  && fabs(projection(2,3))<epsilon )
+            if (ProjectionMatrix::isOrtho(projection))
             {
                 // OSG_INFO << "Orthographic matrix before clamping"<<projection<<std::endl;
 
@@ -69,6 +69,9 @@ namespace
                 // assign the clamped values back to the computed values.
                 znear = desired_znear;
                 zfar = desired_zfar;
+
+                //TODO: This only works with STANDARD ProjectionMatrix type
+                //TODO: rework to work with REVERSE_Z type if necessary
 
                 projection(2,2)=-2.0f/(desired_zfar-desired_znear);
                 projection(3,2)=-(desired_zfar+desired_znear)/(desired_zfar-desired_znear);
@@ -258,14 +261,6 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                 // ramp a new near/far ratio based on the HAE.
                 c->_nearFarRatio = Utils::remap( hae, 0.0, _haeThreshold, _minNearFarRatio, _maxNearFarRatio );
             }
-
-#if 0
-            {
-                double n, f, a, v;
-                cv->getProjectionMatrix()->getPerspective(v, a, n, f);
-                OE_INFO << std::setprecision(16) << "near = " << n << ", far = " << f << ", ratio = " << n/f << std::endl;
-            }
-#endif
         }
     }
     traverse( node, nv );

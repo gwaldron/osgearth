@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "WindLayer"
+#include "Math"
 #include <osgEarth/Shaders>
 #include <osgEarth/StringUtils>
 #include <osgEarth/GeoTransform>
@@ -574,10 +575,11 @@ WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
     else
     { 
         double y,a,n,f;
-        camera->getProjectionMatrix().getPerspective(y,a,n,f);
+        ProjectionMatrix::getPerspective(camera->getProjectionMatrix(), y, a, n, f);
 
         // pushing the NEAR out reduces jitter a lot
-        rttProjection.makePerspective(y, a, 5.0, R);
+        ProjectionMatrix::setPerspective(rttProjection, y, a, 5.0, R);
+        //rttProjection.makePerspective(y, a, 5.0, R);
     }
 
     // view to texture:

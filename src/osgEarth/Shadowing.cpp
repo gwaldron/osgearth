@@ -25,6 +25,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CameraUtils>
+#include <osgEarth/Math>
 #include <osg/CullFace>
 #include <osgShadow/ConvexPolyhedron>
 
@@ -287,8 +288,8 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
                 // to our shadow map slice range.
                 osg::Matrix proj = _prevProjMatrix;
                 double fovy,ar,zn,zf;
-                proj.getPerspective(fovy,ar,zn,zf);
-                proj.makePerspective(fovy,ar,osg::maximum(n,zn),osg::minimum(f,zf));
+                ProjectionMatrix::getPerspective(proj, fovy, ar, zn, zf);
+                ProjectionMatrix::setPerspective(proj, fovy, ar, std::max(n, zn), std::min(f, zf));
                 
                 // extract the corner points of the camera frustum in world space.
                 osg::Matrix MVP = MV * proj;
@@ -314,7 +315,8 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
                 n = -osg::maximum(bbox.zMin(), bbox.zMax());
                 f = -osg::minimum(bbox.zMin(), bbox.zMax());
                 // TODO: consider extending "n" so that objects outside the main view can still cast shadows
-                lightProjMat.makeOrtho(bbox.xMin(), bbox.xMax(), bbox.yMin(), bbox.yMax(), n, f);
+                ProjectionMatrix::setOrtho(lightProjMat,
+                    bbox.xMin(), bbox.xMax(), bbox.yMin(), bbox.yMax(), n, f);
 
                 // configure the RTT camera for this slice:
                 _rttCameras[i]->setViewMatrix( lightViewMat );

@@ -17,7 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/Terrain>
+#include "Terrain"
+#include "Math"
 #include <osgViewer/View>
 
 #define LC "[Terrain] "
@@ -186,7 +187,8 @@ Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d&
     {
         // persp camera: adjust the near plane to 1.0
         double V, A, N, F;
-        camera->getProjectionMatrixAsPerspective(V, A, N, F);
+        ProjectionMatrix::getPerspective(camera->getProjectionMatrix(), V, A, N, F);
+        ProjectionMatrix::setPerspective(proj, V, A, 1.0, F);
         proj.makePerspective(V, A, 1.0, F);
     }
 

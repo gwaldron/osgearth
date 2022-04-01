@@ -16,7 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/ViewFitter>
+#include "ViewFitter"
+#include "Math"
 
 #define LC "[ViewFitter] "
 
@@ -62,7 +63,7 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
     osg::Matrix projMatrix = _camera->getProjectionMatrix();
     osg::Matrix viewMatrix = _camera->getViewMatrix();
 
-    bool isPerspective = !osg::equivalent(projMatrix(3,3), 1.0);
+    bool isPerspective = ProjectionMatrix::isPerspective(projMatrix);
 
     // Convert the point set to world space:
     std::vector<osg::Vec3d> world(points.size());
@@ -105,7 +106,7 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
         // the far plane is the radius of the ellipsoid. We do this so
         // we can project our control points onto a common plane.
         double znear;
-        projMatrix.getPerspective(fovy_deg, ar, znear, zfar);
+        ProjectionMatrix::getPerspective(projMatrix, fovy_deg, ar, znear, zfar);
         znear = 1.0;
 
         if (_mapSRS->isGeographic())
@@ -128,14 +129,14 @@ ViewFitter::createViewpoint(const std::vector<GeoPoint>& points, Viewpoint& outV
             zfar = eyeDist;
         }
 
-        projMatrix.makePerspective(fovy_deg, ar, znear, zfar);
+        ProjectionMatrix::setPerspective(projMatrix, fovy_deg, ar, znear, zfar);
     }
 
     else // isOrtho
     {
         fovy_deg = _vfov;
         double L, R, B, T, N, F;
-        projMatrix.getOrtho(L, R, B, T, N, F);
+        ProjectionMatrix::getOrtho(projMatrix, L, R, B, T, N, F);
         ar = (R - L) / (T - B);
 
         if (_mapSRS->isGeographic())

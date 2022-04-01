@@ -27,8 +27,13 @@
 #include <osg/BoundingBox>
 #include <osg/Array>
 #include <osg/Geometry>
+#include <osg/Matrix>
 
 #include <iterator>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 namespace osgEarth
 {
@@ -270,6 +275,16 @@ namespace osgEarth
             }
         }
         return windingNum != 0;
+    }
+
+    template<typename T>
+    inline T deg2rad(T v) {
+        return v * static_cast<T>(M_PI)/static_cast<T>(180.0);
+    }
+
+    template<typename T>
+    inline T rad2deg(T v) {
+        return v * static_cast<T>(180.0) / static_cast<T>(M_PI);
     }
 
     template<typename T>
@@ -550,5 +565,63 @@ namespace osgEarth
         seed ^= hash_value_unsigned(e) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
         return seed;
     }
+
+    /**
+     * Utilities to manipulate a projection matrix.
+     * These functions will automatically handle standard OGL versus Reverse-Z
+     * projection matrices.
+     */
+    struct OSGEARTH_EXPORT ProjectionMatrix
+    {
+        //! Projection matrix type
+        using Type = enum {
+            STANDARD,
+            REVERSE_Z,
+            UNKNOWN
+        };
+
+        //! True for an orthographic projection matrix
+        static bool isOrtho(
+            const osg::Matrix& m);
+
+        //! True for a perspective projection matrix
+        static bool isPerspective(
+            const osg::Matrix& m);
+
+        //! Detected type of the projection matrix
+        static Type getType(
+            const osg::Matrix& m);
+
+        //! Construct a perspective matrix, deriving the type from the
+        //! existing values in the matrix if possible
+        static void setPerspective(
+            osg::Matrix& m,
+            double vfov, double ar, double N, double F,
+            Type = UNKNOWN);
+
+        //! Extract values from a perspective matrix
+        static bool getPerspective(
+            const osg::Matrix& m,
+            double& vfov, double& ar, double& N, double& F);
+
+        //! Extract raw frustum values from a perspective matrix
+        static bool getPerspective(
+            const osg::Matrix& m,
+            double& L, double& R, double& B, double& T, double& N, double& F);
+
+        //! Construct an orthographc matrix, deriving the type from the
+        //! existing values in the matrix if possible
+        static void setOrtho(
+            osg::Matrix& m,
+            double L, double R, double B, double T, double N, double F,
+            Type = UNKNOWN);
+
+        //! Extract frustum values from an orthographic matrix
+        static bool getOrtho(
+            const osg::Matrix& m,
+            double& L, double& R, double& B, double& T, double& N, double& F);
+    };
+
 }
 #endif
+

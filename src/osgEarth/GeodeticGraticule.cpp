@@ -482,13 +482,13 @@ GeodeticGraticule::cull(osgUtil::CullVisitor* cv)
         if (isOrtho)
         {
             double L, R, B, T, N, F;
-            proj.getOrtho(L, R, B, T, N, F);
+            ProjectionMatrix::getOrtho(proj, L, R, B, T, N, F);
             halfWidth = 0.5*(R-L);
         }
         else // perspective
         {
             double fovy, aspectRatio, zNear, zFar;
-            cv->getProjectionMatrix()->getPerspective(fovy, aspectRatio, zNear, zFar);
+            ProjectionMatrix::getPerspective(*cv->getProjectionMatrix(), fovy, aspectRatio, zNear, zFar);
             halfWidth = osg::absolute(tan(osg::DegreesToRadians(fovy / 2.0)) * dist);
         }
 
@@ -534,9 +534,9 @@ GeodeticGraticule::getViewExtent(osgUtil::CullVisitor* cullVisitor) const
     double nLeft, nRight, nTop, nBottom;
     double fLeft, fRight, fTop, fBottom;
 
-    if (osg::equivalent(proj(3,3), 1.0)) // ORTHOGRAPHIC
+    if (ProjectionMatrix::isOrtho(proj))
     {
-        proj.getOrtho(nLeft, nRight, nBottom, nTop, nearPlane, farPlane);
+        ProjectionMatrix::getOrtho(proj, nLeft, nRight, nBottom, nTop, nearPlane, farPlane);
 
         fLeft = nLeft;
         fRight = nRight;
@@ -552,12 +552,13 @@ GeodeticGraticule::getViewExtent(osgUtil::CullVisitor* cullVisitor) const
     else
     {
         double f, a, zn, zf;
-        proj.getPerspective(f,a,zn,zf);
+        ProjectionMatrix::getPerspective(proj, f, a, zn, zf);
         osg::ref_ptr<Horizon> horizon;
         ObjectStorage::get(cullVisitor, horizon);
         zf = horizon.valid() ? horizon->getDistanceToVisibleHorizon() : 1e6;
         zn = zf * cullVisitor->getNearFarRatio();
-        proj.makePerspective(f, a, zn, zf);
+        ProjectionMatrix::setPerspective(proj, f, a, zn, zf, ProjectionMatrix::STANDARD);
+        //proj.makePerspective(f, a, zn, zf);
 
         nearPlane = proj(3,2) / (proj(2,2)-1.0);
         farPlane = proj(3,2) / (1.0+proj(2,2));

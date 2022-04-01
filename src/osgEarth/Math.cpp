@@ -485,3 +485,179 @@ osgEarth::pointInPoly2d(const osg::Vec3d& pt, const osg::Geometry* polyPoints, f
     }
     return windingNum != 0;
 }
+
+bool
+ProjectionMatrix::isOrtho(const osg::Matrix& m)
+{
+    return m(3, 3) > 0.0;
+}
+
+bool
+ProjectionMatrix::isPerspective(const osg::Matrix& m)
+{
+    return m(3, 3) == 0.0;
+}
+
+ProjectionMatrix::Type
+ProjectionMatrix::getType(const osg::Matrix& m)
+{
+    if (m.isIdentity())
+    {
+        return UNKNOWN;
+    }
+    else if (m(2, 2) > 0.0)
+    {
+        return REVERSE_Z;
+    }
+    else
+    {
+        return STANDARD;
+    }
+}
+
+void
+ProjectionMatrix::setPerspective(
+    osg::Matrix& m,
+    double vfov, double ar, double N, double F,
+    ProjectionMatrix::Type type)
+{
+    if (type == UNKNOWN)
+    {
+        type = getType(m);
+    }
+
+    if (type == REVERSE_Z)
+    {
+        double k = tan(deg2rad(vfov*0.5));
+        double
+            L = k * ar * N,
+            R = -L,
+            T = k * N,
+            B = -T;
+
+        m.set(
+            2 * N / (R - L), 0, 0, 0,
+            0, 2 * N / (T - B), 0, 0,
+            (R + L) / (R - L), (T + B) / (T - B), N / (F - N), -1,
+            0, 0, F*N / (F - N), 0);
+    }
+    else
+    {
+        m.makePerspective(vfov, ar, N, F);
+    }
+}
+
+bool
+ProjectionMatrix::getPerspective(
+    const osg::Matrix& m,
+    double& vfov, double& ar, double& N, double& F)
+{
+    if (m(3, 3) != 0.0)
+        return false; // not persp..
+
+    if (getType(m) == REVERSE_Z)
+    {
+        double L, R, B, T, N, F;
+        if (getPerspective(m, L, R, B, T, N, F))
+        {
+            vfov = rad2deg((T / N) - atan(B / N));
+            ar = (R - L) / (T - B);
+        }
+        else return false;
+    }
+    else
+    {
+        m.getPerspective(vfov, ar, N, F);
+    }
+
+    return true;
+}
+
+bool
+ProjectionMatrix::getPerspective(
+    const osg::Matrix& m,
+    double& L, double& R, double& B, double& T, double& N, double& F)
+{
+    if (!isPerspective(m))
+        return false;
+
+    if (getType(m) == REVERSE_Z)
+    {
+        // don't use N and F directly in case they refer to the same var
+        double temp_near = m(3, 2) / (1.0 + m(2, 2));
+        double temp_far = m(3, 2) / m(2, 2);
+
+        L = temp_near * (m(2, 0) - 1.0) / m(0, 0);
+        R = temp_near * (1.0 + m(2, 0)) / m(0, 0);
+        T = temp_near * (1.0 + m(2, 1)) / m(1, 1);
+        B = temp_near * (m(2, 1) - 1.0) / m(1, 1);
+        N = temp_near;
+        F = temp_far;
+    }
+    else
+    {
+        m.getFrustum(L, R, B, T, N, F);
+    }
+
+    return true;
+}
+
+void
+ProjectionMatrix::setOrtho(
+    osg::Matrix& m,
+    double L, double R, double B, double T, double N, double F,
+    Type type)
+{
+    if (type == UNKNOWN)
+    {
+        type = getType(m);
+    }
+
+    if (type == REVERSE_Z)
+    {
+        double tx = -(R + L) / (R - L);
+        double ty = -(T + B) / (T - B);
+        double tz = F / (F - N); // <- reverse Z
+
+        m.set(
+            2.0 / (R - L), 0.0, 0.0, 0.0,
+            0.0, 2.0 / (T - B), 0.0, 0.0,
+            0.0, 0.0, 1. / (F - N), 0.0,
+            tx, ty, tz, 1.0);
+    }
+    else
+    {
+        m.makeOrtho(L, R, B, T, N, F);
+    }
+}
+
+bool 
+ProjectionMatrix::getOrtho(
+    const osg::Matrixd& m,
+    double& L, double& R, double& B, double& T, double& N, double& F)
+{
+    if (!isOrtho(m))
+        return false;
+
+    if (getType(m) == REVERSE_Z)
+    {
+        double c = 1.0 / m(2, 2);
+        F = m(3, 2) * c;
+        N = F - c;
+
+        //double i = mat(2, 2), j = mat(3, 2);
+        //N = (1.0 + j) / (-i * j);
+        //F = N * (1.0 - j) / (1.0 + j);
+
+        L = -(1.0 + m(3, 0)) / m(0, 0);
+        R = (1.0 - m(3, 0)) / m(0, 0);
+        B = -(1.0 + m(3, 1)) / m(1, 1);
+        T = (1.0 - m(3, 1)) / m(1, 1);
+
+        return true;
+    }
+    else
+    {
+        return m.getOrtho(L, R, B, T, N, F);
+    }
+}

@@ -753,7 +753,8 @@ void CascadeDrapingDecorator::Cascade::computeProjection(
 
 void CascadeDrapingDecorator::Cascade::makeProj(double rttFar)
 {
-    _rttProj.makeOrtho(_box.xMin(), _box.xMax(), _box.yMin(), _box.yMax(), -rttFar*4, rttFar);
+    ProjectionMatrix::setOrtho(_rttProj,
+        _box.xMin(), _box.xMax(), _box.yMin(), _box.yMax(), -rttFar*4, rttFar);
 }
 
 // Computes the "coverage" of the RTT region in normalized [0..1] clip space.

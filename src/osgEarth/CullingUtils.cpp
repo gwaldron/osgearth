@@ -16,10 +16,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/CullingUtils>
-#include <osgEarth/LineFunctor>
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/Utils>
+#include "CullingUtils"
+#include "LineFunctor"
+#include "VirtualProgram"
+#include "Utils"
+#include "Math"
+
 #include <osg/TemplatePrimitiveFunctor>
 #include <osgDB/ObjectWrapper>
 
@@ -1156,8 +1158,8 @@ InstallCameraUniform::operator()(osg::Node* node, osg::NodeVisitor* nv)
             const osg::Matrixd& proj = camera->getProjectionMatrix();
             if (proj(3, 3) == 1.0) // ortho
             {
-                float L, R, B, T, N, F;
-                proj.getOrtho(L, R, B, T, N, F);
+                double L, R, B, T, N, F;
+                ProjectionMatrix::getOrtho(proj, L, R, B, T, N, F);
                 width = R - L;
                 height = T - B;
             }

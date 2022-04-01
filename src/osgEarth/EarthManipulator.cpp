@@ -1567,24 +1567,12 @@ EarthManipulator::updateProjection(osg::Camera* eventCamera)
                 double y = _distance * tan(0.5*osg::DegreesToRadians(_lastKnownVFOV));
                 double x = y * ar;
 
-#if 0 // TODO: derive the pixel offsets and re-instate them.
-                // apply the offsets:
-                double px = 0.0, py = 0.0;
-                const osg::Vec2s& p = _settings->getCameraFrustumOffsets();
-                if ( p.x() != 0 || p.y() != 0 )
-                {
-                    px = (2.0*x*(double)-p.x()) / (double)vp->width();
-                    py = (2.0*y*(double)-p.y()) / (double)vp->height();
-                }
-
                 double ignore, N, F;
-                proj.getOrtho(ignore, ignore, ignore, ignore, N, F);
-                eventCamera->setProjectionMatrixAsOrtho( px-x, px+x, py-y, py+y, N, F);
-#else
-                double ignore, N, F;
-                proj.getOrtho(ignore, ignore, ignore, ignore, N, F);
-                eventCamera->setProjectionMatrixAsOrtho( -x, +x, -y, +y, N, F );
-#endif
+                ProjectionMatrix::getOrtho(proj, ignore, ignore, ignore, ignore, N, F);
+                //proj.getOrtho(ignore, ignore, ignore, ignore, N, F);
+                osg::Matrix orthoProj;
+                ProjectionMatrix::setOrtho(orthoProj, -x, +x, -y, +y, N, F,
+                    ProjectionMatrix::getType(proj));
 
                 OE_DEBUG << "ORTHO: "
                     << "ar = " << ar << ", width=" << vp->width() << ", height=" << vp->height()
@@ -3280,9 +3268,8 @@ namespace // Utility functions for drag()
     void decomposeCenter(const osg::Vec3d& center, const osg::Quat& centerRotation,
                          osg::Matrix& Me, osg::Matrix& Mlon)
     {
-        using namespace osg;
         Mlon.makeIdentity();
-        Matrix Mtotal(centerRotation);
+        osg::Matrix Mtotal(centerRotation);
         Mtotal.setTrans(center);
         // Use the X axis to determine longitude rotation. Due to the
         // OpenGL camera rotation, this axis will be the Y axis of the
@@ -3290,7 +3277,7 @@ namespace // Utility functions for drag()
         Mlon(1, 0) = Mtotal(0, 0);  Mlon(1, 1) = Mtotal(0, 1);
         // X axis is rotated 90 degrees, obviously
         Mlon(0, 0) = Mlon(1, 1);  Mlon(0, 1) = -Mlon(1, 0);
-        Matrix MlonInv = Matrixd::inverse(Mlon);
+        osg::Matrix MlonInv = osg::Matrixd::inverse(Mlon);
         Me = Mtotal * MlonInv;
     }
 

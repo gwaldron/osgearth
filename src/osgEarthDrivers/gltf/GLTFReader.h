@@ -33,6 +33,7 @@
 #include <osgDB/ObjectWrapper>
 #include <osgDB/Registry>
 #include <osgUtil/SmoothingVisitor>
+#include <osgUtil/Optimizer>
 #include <osgEarth/Notify>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/URI>
@@ -41,6 +42,7 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/InstanceBuilder>
 #include <osgEarth/StateTransition>
+#include <osgEarth/Math>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -272,10 +274,17 @@ public:
         bool zUp = env.readOptions && env.readOptions->getOptionString().find("gltfZUp") != std::string::npos;
 
         // Rotate y-up to z-up if necessary
+        osg::Group* top = new osg::Group();
         osg::MatrixTransform* transform = new osg::MatrixTransform;
+        top->addChild(transform);
+
         if (!zUp)
         {
-            transform->setMatrix(osg::Matrixd::rotate(osg::Vec3d(0.0, 1.0, 0.0), osg::Vec3d(0.0, 0.0, 1.0)));
+            auto gltf_to_zup =
+                osg::Matrix::rotate(M_PI / 2, osg::Vec3d(0,0,1)) *
+                osg::Matrix::rotate(M_PI / 2, osg::Vec3d(0,1,0));
+
+            transform->setMatrix(gltf_to_zup);
         }
 
         for (unsigned int i = 0; i < model.scenes.size(); i++)
@@ -292,11 +301,11 @@ public:
         }
 
         // Enable backface culling on the nodes
-        transform->getOrCreateStateSet()->setAttributeAndModes(new osg::CullFace(osg::CullFace::BACK), osg::StateAttribute::ON);
+        top->getOrCreateStateSet()->setAttributeAndModes(new osg::CullFace(osg::CullFace::BACK), osg::StateAttribute::ON);
 
         // Find all the StateTransitionNodes that were created and try to establishs links between the nodes.
         osgEarth::FindNodesVisitor<StateTransitionNode> findStateTransitions;
-        transform->accept(findStateTransitions);
+        top->accept(findStateTransitions);
 
         for (auto& st : findStateTransitions._results)
         {
@@ -306,7 +315,7 @@ public:
                 std::string name = stateToNodeName.second;
 
                 // Find the named node
-                osg::Node* node = findNamedNode(transform, name);
+                osg::Node* node = findNamedNode(top, name);
                 if (node)
                 {
                     st->_stateToNode[state] = node;
@@ -318,7 +327,11 @@ public:
             }
         }
 
-        return transform;
+        osgUtil::Optimizer opt;
+        transform->setDataVariance(osg::Object::STATIC);
+        opt.optimize(top, osgUtil::Optimizer::FLATTEN_STATIC_TRANSFORMS);
+
+        return top;
     }
 
 
@@ -642,7 +655,22 @@ public:
 
                     if (it->first.compare("POSITION") == 0)
                     {
+#if 0
+                        osg::Vec3Array* verts = new osg::Vec3Array(
+                            arrays[it->second]->getNumElements(),
+                            static_cast<const osg::Vec3*>(arrays[it->second]->getDataPointer()));
+
+                        auto gltf_to_zup =
+                            osg::Matrix::rotate(M_PI / 2, osg::Vec3d(0,0,1)) *
+                            osg::Matrix::rotate(M_PI / 2, osg::Vec3d(0,1,0));
+
+                        for(auto& vert : *verts)
+                            vert.set(vert * gltf_to_zup);
+
+                        geom->setVertexArray(verts);
+#else
                         geom->setVertexArray(arrays[it->second].get());
+#endif
                     }
                     else if (it->first.compare("NORMAL") == 0)
                     {

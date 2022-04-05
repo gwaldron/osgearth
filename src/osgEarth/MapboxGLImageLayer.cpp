@@ -256,6 +256,7 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
         }
         else if (type() == "vector-mbtiles")
         {
+#ifdef OSGEARTH_HAVE_MVT
             URI uri(url(), context);
 
             osg::ref_ptr< MVTFeatureSource > featureSource = new MVTFeatureSource();
@@ -266,6 +267,9 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
                 OE_WARN << "[MapBoxGLImageLayer] Failed to open: " << url() << std::endl;
             }
             _featureSource = featureSource.get();
+#else
+            OE_WARN << "[MapboxGLImageLayer] Cannot process 'vector-mbtiles' because osgEarth was not compiled with MVT support" << std::endl;
+#endif
         }
         else if (type() == "vector")
         {
@@ -1283,9 +1287,9 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                         unsigned int numWide, numHigh;
                         queryKey.getProfile()->getNumTiles(queryKey.getLevelOfDetail(), numWide, numHigh);
 
-                        for (int x = (int)queryKey.getTileX() - 1; x <= (int)queryKey.getTileX() + 1; ++x)
+                        for (unsigned x = queryKey.getTileX() - 1; x <= queryKey.getTileX() + 1; ++x)
                         {
-                            for (int y = (int)queryKey.getTileY() - 1; y <= (int)queryKey.getTileY() + 1; ++y)
+                            for (unsigned y = queryKey.getTileY() - 1; y <= queryKey.getTileY() + 1; ++y)
                             {
                                 if (x < 0 || x >= numWide || y < 0 || y >= numHigh || (x == queryKey.getTileX() && y == queryKey.getTileY())) continue;
 

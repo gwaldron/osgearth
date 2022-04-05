@@ -185,6 +185,10 @@ IF(draco_FOUND)
     ADD_DEFINITIONS(-DOSGEARTH_HAVE_DRACO)
 ENDIF(draco_FOUND)
 
+if(Protobuf_FOUND)
+    add_definitions(-DOSGEARTH_HAVE_PROTOBUF)
+endif()
+
 # GDAL is the underlying geospatial processing SDK
 IF(GDAL_FOUND)
     message(STATUS "Found GDAL ${GDAL_VERSION}" )

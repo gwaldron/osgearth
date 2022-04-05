@@ -896,16 +896,21 @@ TileLayer::getBestAvailableTileKey(
             DataExtentsIndex* dataExtentsIndex = new DataExtentsIndex();
             for (auto de = getDataExtents().begin(); de != getDataExtents().end(); ++de)
             {
-                a_min[0] = de->xMin(), a_min[1] = de->yMin();
-                a_max[0] = de->xMax(), a_max[1] = de->yMax();
+                // Build the index in the SRS of this layer
+                GeoExtent extentInLayerSRS = getProfile()->clampAndTransformExtent(*de);
+                a_min[0] = extentInLayerSRS.xMin(), a_min[1] = extentInLayerSRS.yMin();
+                a_max[0] = extentInLayerSRS.xMax(), a_max[1] = extentInLayerSRS.yMax();
                 dataExtentsIndex->Insert(a_min, a_max, *de);
             }
             _dataExtentsIndex = dataExtentsIndex;
         }
     }
 
-    a_min[0] = key.getExtent().xMin(); a_min[1] = key.getExtent().yMin();
-    a_max[0] = key.getExtent().xMax(); a_max[1] = key.getExtent().yMax();
+    // Transform the key extent to the SRS of this layer to do the index search
+    GeoExtent keyExtentInLayerSRS = getProfile()->clampAndTransformExtent(key.getExtent());
+
+    a_min[0] = keyExtentInLayerSRS.xMin(); a_min[1] = keyExtentInLayerSRS.yMin();
+    a_max[0] = keyExtentInLayerSRS.xMax(); a_max[1] = keyExtentInLayerSRS.yMax();
 
     DataExtentsIndex* index = static_cast<DataExtentsIndex*>(_dataExtentsIndex);
 

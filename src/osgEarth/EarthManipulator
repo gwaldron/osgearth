@@ -668,24 +668,21 @@ namespace osgEarth { namespace Util
         /**
          * Gets the distance from the focal point in world coordiantes
          */
-        double getDistance() const { return _distance; }
-
-        /**
-         * Sets the distance from the focal point in world coordinates.
-         *
-         * The incoming distance value will be clamped within the valid range specified by the settings.
-         */
-        void   setDistance( double distance);
+        double getDistance() const {
+            return getState().distance();
+        }
 
         /**
          * Gets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
          */
-        const osg::Quat& getRotation() { return _rotation; }
+        const osg::Quat& getRotation() {
+            return getState().rotation();
+        }
 
         /**
          * Sets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
          */
-        void  setRotation( const osg::Quat& rotation) { _rotation = rotation; }
+        void setRotation(const osg::Quat& rotation);
 
         /**
          * Gets the traversal node mask used to find root MapNode and CoordinateSystemNodes. Default is 0x1.
@@ -745,7 +742,9 @@ namespace osgEarth { namespace Util
         virtual osgUtil::SceneView::FusionDistanceMode getFusionDistanceMode() const { return osgUtil::SceneView::USE_FUSION_DISTANCE_VALUE; }
 
         // Gets the stereo convergance distance.
-        virtual float getFusionDistanceValue() const { return _distance; }
+        virtual float getFusionDistanceValue() const {
+            return getState().distance();
+        }
 
         // Attach a node to the manipulator.
         virtual void setNode(osg::Node*);
@@ -774,11 +773,18 @@ namespace osgEarth { namespace Util
         // returns the absolute Euler angles composited from the composite rotation matrix.
         void getCompositeEulerAngles( double* out_azim, double* out_pitch =0L ) const;
 
+        //! gets the geopoint on which the camera is focusing
+        const GeoPoint& centerMap() const {
+            return getState().centerMap();
+        }
+
     protected:
 
         virtual ~EarthManipulator();
 
         bool intersect(const osg::Vec3d& start, const osg::Vec3d& end, osg::Vec3d& intersection, osg::Vec3d& normal) const;
+
+        bool intersect(const osg::Polytope& volume) const;
 
         bool intersectLookVector(osg::Vec3d& eye, osg::Vec3d& out_target, osg::Vec3d& up) const;
 
@@ -794,22 +800,6 @@ namespace osgEarth { namespace Util
         // sets the camera position by doing a "look at" calculation, converting the center
         // point into a look vector and intersecting the terrain.
         void setByLookAt(const osg::Vec3d& eye, const osg::Vec3d& center, const osg::Vec3d& up);
-
-        // sets the camera position by doing a "look at" calculation, but takes the target point
-        // "as-is" and does not try to find an intersection.
-        void setByLookAtRaw(const osg::Vec3d& eye, const osg::Vec3d& target, const osg::Vec3d& up);
-
-        // checks to see whether the mouse is "moving".
-        bool isMouseMoving();
-
-        // This sets the camera's roll based on your location on the globe.
-        void recalculateRoll();
-
-        // Gets the matrix without a pre-MapNode transform (i.e., map world space)
-        osg::Matrixd getWorldMatrix() const;
-
-        // Gets the inverse matrix without a pre-MapNode transform (i.e., map world space)
-        osg::Matrixd getWorldInverseMatrix() const;
 
     protected:
 
@@ -843,21 +833,10 @@ namespace osgEarth { namespace Util
         // Makes a quaternion from an azimuth and pitch.
         osg::Quat getQuaternion(double azim, double pitch) const;
 
-        /**
-         * Fire a ray from the current eyepoint along the current look vector,
-         * intersect the terrain at the closest point, and reset the matrix parameters
-         * based on that point.
-         */
-        bool recalculateCenterFromLookVector();
-
-        void recalculateCenter(const osg::CoordinateFrame& frame);
-
-        osg::Matrixd getRotation(const osg::Vec3d& center) const;
+        //osg::Matrixd getRotation(const osg::Vec3d& center) const;
         osg::Quat computeCenterRotation(const osg::Vec3d& center) const;
 
         void updateTether(double t);
-
-        void updateSetViewpoint();
 
         bool isMouseClick( const osgGA::GUIEventAdapter* mouse_up_event ) const;
 
@@ -869,20 +848,8 @@ namespace osgEarth { namespace Util
 
         bool established();
 
-        // sets the new center (focal) point and recalculates it's L2W matrix.
-        void setCenter( const osg::Vec3d& center );
-
         // creates a "local-to-world" transform relative to the input point.
         bool createLocalCoordFrame( const osg::Vec3d& worldPos, osg::CoordinateFrame& out_frame ) const;
-
-        // returns an ActionType that would be initiated by the OSG UI event
-        ActionType getActionTypeForEvent( const osgGA::GUIEventAdapter& ea ) const;
-
-    public:
-
-        void recalculateCenter() { recalculateCenter(_centerLocalToWorld); }
-
-        const GeoPoint& centerMap() const { return _centerMap; }
 
     protected:
         typedef osgGA::GUIEventAdapter::TouchData::TouchPoint TouchPoint;
@@ -932,43 +899,76 @@ namespace osgEarth { namespace Util
         double                  _dx;
         double                  _dy;
 
-        // The world coordinate of the Viewpoint focal point.
-        osg::Vec3d              _center;
-        GeoPoint                _centerMap;
-        double                  _centerHeight;
+        struct State
+        {
+            State() :
+                _distance(1.0) { }
 
-        // local2world matrix for the center point.
-        osg::CoordinateFrame    _centerLocalToWorld;
+            OE_PROPERTY(osg::Vec3d, center);
+            OE_PROPERTY(osg::Matrix, centerLocalToWorld);
+            OE_PROPERTY(osg::Quat, rotation);
+            OE_PROPERTY(osg::Quat, centerRotation);
+            OE_PROPERTY(double, distance);
+            OE_PROPERTY(osg::Vec3d, posOffset);
+            OE_PROPERTY(osg::Vec2d, viewOffset);
 
-        // Rotation offset to _rotation when tethering.
-        osg::Quat               _tetherRotation;
+            OE_PROPERTY(osg::Quat, tetherRotation);
+            OE_OPTION(osg::Quat, tetherRotationOffset);
 
-        // The initial offset applied to the tether rotation when orientation-tethering begins.
-        // This is usually just the inverse of the first-calculated _tetherRotation.
-        optional<osg::Quat>     _tetherRotationOffset;
+            OE_PROPERTY(GeoPoint, centerMap);
 
-        // The rotation (heading and pitch) of the camera in the
-        // earth-local frame defined by _centerRotation.
-        osg::Quat               _rotation;
+            OE_PROPERTY(osg::Vec3d, previousUp);
+        };
 
-        // The rotation that makes the camera look down on the focal
-        // point on the earth. This is equivalent to a rotation by
-        // latitude, longitude.
-        osg::Quat               _centerRotation;
+        State _current_state;
 
-        // distance from camera to center of rotation.
-        double                  _distance;
+        const State& getState() const {
+            return _current_state;
+        }
 
-        // XYZ offsets of the focal point in the local tangent plane coordinate system
-        // of the focal point.
-        osg::Vec3d              _posOffset;
+        void applyState(State& value);
 
-        // XY offsets (left/right, down/up) of the focal point in the plane normal to
-        // the view heading.
-        osg::Vec2d              _viewOffset;
+        /**
+         * Fire a ray from the current eyepoint along the current look vector,
+         * intersect the terrain at the closest point, and reset the matrix parameters
+         * based on that point.
+         */
+        bool recalculateCenterFromLookVector(
+            State& state) const;
 
+        void recalculateCenter(
+            const osg::CoordinateFrame& frame,
+            State& state) const;
 
-        osg::Vec3d              _previousUp;
+        // This sets the camera's roll based on your location on the globe.
+        void recalculateRoll(
+            State& state) const;
+
+        void setCenter(
+            const osg::Vec3d& value,
+            State& state) const;
+
+        void setDistance(
+            double value,
+            State& state) const;
+
+        void collisionDetect(
+            State& state) const;
+
+        osg::Matrixd getWorldMatrix(
+            const State& state) const;
+
+        osg::Matrixd getWorldInverseMatrix(
+            const State&) const;
+
+        // sets the camera position by doing a "look at" calculation, but takes the target point
+        // "as-is" and does not try to find an intersection.
+        void setByLookAtRaw(
+            const osg::Vec3d& eye,
+            const osg::Vec3d& target,
+            const osg::Vec3d& up,
+            State& state) const;
+
         osg::ref_ptr<Task>      _task;
         osg::Timer_t            _time_last_frame;
 
@@ -1004,7 +1004,6 @@ namespace osgEarth { namespace Util
 
         void setLookAt(const osg::Vec3d& center, double azim, double pitch, double range, const osg::Vec3d& posoffset);
         void resetLookAt();
-        void collapseTetherRotationIntoRotation();
 
         unsigned _frameCount;
 
@@ -1020,6 +1019,8 @@ namespace osgEarth { namespace Util
 
         double _lastKnownVFOV;
 
+        osg::Polytope _collisionPolytope;
+
         /** updates a camera to switch between prospective and ortho. */
         void updateProjection( osg::Camera* eventCamera );
 
@@ -1027,21 +1028,12 @@ namespace osgEarth { namespace Util
         // returns to earth during a drag
         osg::Vec3d _lastPointOnEarth;
 
-
         osg::ref_ptr< TerrainCallback > _terrainCallback;
-
         // Traversal mask used in established and dtor methods to find MapNode and CoordinateSystemNode
         osg::Node::NodeMask  _findNodeTraversalMask;
-
         osg::ref_ptr<TetherCallback> _tetherCallback;
-
         osg::ref_ptr<UpdateCameraCallback> _updateCameraCallback;
-
-        bool _userWillCallUpdateCamera;
-
         osg::observer_ptr<osg::NodeVisitor> _updateCameraNodeVisitor;
-
-        void collisionDetect();
 
         void ctor_init();
     };

@@ -229,6 +229,7 @@ _supportsNVGL(false)
 #endif
 
         _supportsGLSL = GL2->isGlslSupported;
+        _GLSLversion = GL2->glslLanguageVersion;
 
         _vendor = std::string( reinterpret_cast<const char*>(glGetString(GL_VENDOR)) );
         OE_INFO << LC << "  GPU Vendor:        " << _vendor << std::endl;
@@ -237,7 +238,8 @@ _supportsNVGL(false)
         OE_INFO << LC << "  GPU Renderer:      " << _renderer << std::endl;
 
         _version = std::string( reinterpret_cast<const char*>(glGetString(GL_VERSION)) );
-        OE_INFO << LC << "  GL/Driver Version: " << _version << std::endl;
+        OE_INFO << LC << "  GL/Driver Version: " << _version << 
+            " (" << getGLSLVersionInt() << ")" << std::endl;
 
         // Detect core profile by investigating GL_CONTEXT_PROFILE_MASK
         if ( GL2->glVersion < 3.2f )
@@ -309,7 +311,6 @@ _supportsNVGL(false)
 
         if ( _supportsGLSL )
         {
-			_GLSLversion = GL2->glslLanguageVersion;
             OE_DEBUG << LC << "  GLSL Version = " << getGLSLVersionInt() << std::endl;
         }
 

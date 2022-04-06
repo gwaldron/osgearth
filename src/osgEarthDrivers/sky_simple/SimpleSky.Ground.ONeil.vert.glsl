@@ -33,16 +33,11 @@ float atmos_fScale;
 float atmos_fScaleOverScaleDepth;
 
 out vec3 atmos_color;          // primary sky light color
-out vec3 atmos_atten;          // sky light attenuation factor
-out vec3 atmos_lightDir;       // light direction in view space
-        
+//out vec3 atmos_atten;          // sky light attenuation factor
+out vec3 atmos_lightDir;       // light direction in view space       
 out vec3 atmos_up;             // earth up vector at vertex location (not the normal)
 out float atmos_space;         // [0..1]: camera: 0=inner radius (ground); 1.0=outer radius
-out vec3 atmos_vert; 
-
 out vec3 vp_Normal;             // surface normal (from osgEarth)
-
-out vec3 camera_pos;
 out vec3 earth_center;
 
 // Parameters of each light:
@@ -128,7 +123,7 @@ void atmos_GroundFromSpace(in vec4 vertexVIEW)
     } 	
 
     atmos_color = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun + atmos_fKmESun); 
-    atmos_atten = v3Attenuate; 
+    //atmos_atten = v3Attenuate; 
 } 		
 
 void atmos_GroundFromAtmosphere(in vec4 vertexVIEW) 		
@@ -175,11 +170,8 @@ void atmos_GroundFromAtmosphere(in vec4 vertexVIEW)
     } 		
 
     atmos_color = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun + atmos_fKmESun); 			
-    atmos_atten = v3Attenuate; 
+    //atmos_atten = v3Attenuate; 
 } 
-
-out vec3 camera_world;
-out vec3 vertex_world;
 
 void atmos_vertex_main(inout vec4 vertexVIEW) 
 {
@@ -194,7 +186,7 @@ void atmos_vertex_main(inout vec4 vertexVIEW)
     atmos_fScaleOverScaleDepth = atmos_fScale / RaleighScaleDepth;
 
     atmos_lightDir = normalize(osg_LightSource[0].position.xyz);  // view space
-    atmos_vert = vertexVIEW.xyz; 
+    //atmos_vert = vertexVIEW.xyz; 
 
     atmos_space = max(0.0, (atmos_fCameraHeight-atmos_fInnerRadius)/(atmos_fOuterRadius-atmos_fInnerRadius));
 
@@ -205,12 +197,5 @@ void atmos_vertex_main(inout vec4 vertexVIEW)
     else 
     { 
         atmos_GroundFromAtmosphere(vertexVIEW); 
-    } 
-
-    //vec4 cw = osg_ViewMatrixInverse * vec4(0, 0, 0, 1);
-    //cw /= cw.w;
-    //camera_world = cw.xyz;
-    //vec4 vw = osg_ViewMatrixInverse * vec4(atmos_vert, 1);
-    //vw /= vw.w;
-    //vertex_world = vw.xyz;
+    }     
 }

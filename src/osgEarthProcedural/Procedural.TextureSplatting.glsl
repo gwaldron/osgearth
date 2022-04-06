@@ -84,8 +84,6 @@ in vec4 oe_layer_tilec;
 flat in vec2 splat_tilexy[2];
 in vec2 splat_uv[2];
 
-flat in int maxLevel;
-
 #ifdef OE_SNOW
 in float oe_elev;
 #endif

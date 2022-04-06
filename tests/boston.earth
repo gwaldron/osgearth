@@ -67,15 +67,17 @@ to extruded buildings.
     </FeatureModel>
     
     
-    <FeatureModel name="Streets" features="streets-data">        
+    <FeatureModel name="Streets" features="streets-data">
         <layout crop_features="true" tile_size="1000">
             <level max_range="5000"/>
         </layout>        
         <styles>
             <style type="text/css">
                 default {
-                    stroke:                       #ffff7f7f;
+                    stroke:                       #131313;
                     stroke-width:                 7.5m;
+                    stroke-linejoin:              round;
+                    stroke-linecap:               round;
                     altitude-clamping:            terrain;
                     render-depth-offset-min-bias: 3.6;
                     render-transparent:           true;

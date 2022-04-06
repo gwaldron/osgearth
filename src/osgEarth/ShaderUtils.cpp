@@ -620,3 +620,68 @@ ShaderUtils::installDefaultShader(osg::StateSet* ss)
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
     vp->setFunction("oe_default_fs", fs, VirtualProgram::LOCATION_FRAGMENT_COLORING, 0.0);
 }
+
+
+ShaderInfoLog::ShaderInfoLog(
+    const osg::Program* program,
+    const std::string& log) :
+    _program(program),
+    _log(log)
+{
+
+}
+
+void
+ShaderInfoLog::dumpErrors(
+    osg::State& state) const
+{
+    for (auto i = 0u; i < _program->getNumShaders(); ++i)
+    {
+        auto shader = _program->getShader(i);
+        auto pshader = shader->getPCS(state);
+        std::string log;
+        pshader->getInfoLog(log);
+        //OE_WARN << log << std::endl;
+
+        // split into lines:
+        std::vector<std::string> errors;
+        StringTokenizer(log, errors, "\n", "", false, true);
+
+        // split into lines:
+        std::vector<std::string> lines;
+        StringTokenizer(shader->getShaderSource(), lines, "\n", "", false, false);
+
+        // keep track of same lines (in order)
+        std::stringstream buf;
+        for (int i = 0; i < errors.size(); ++i)
+        {
+            if (errors[i].find(": error") != errors[i].npos)
+            {
+                std::vector<std::string> tokens;
+                StringTokenizer(errors[i], tokens, "(", "", true, true);
+
+                if (tokens.size() >= 2)
+                {
+                    int n = std::atoi(tokens[1].c_str());
+
+                    int start = 0; // std::max(0, n - 3);
+                    int end = lines.size(); // std::min((int)lines.size(), n + 7);
+                    for (int k = start; k < end; ++k)
+                    {
+                        std::string star = (k == n) ? ":>>>" : ":   ";
+                        buf << k << star  << lines[k] << std::endl;
+                    }
+
+                    // just print the first error.
+                    break;
+                }
+            }
+        }
+        std::string msg = buf.str();
+        if (!msg.empty())
+        {
+            OE_WARN << "SHADER " << shader->getName() << " infolog errors: " << std::endl
+                << msg << std::endl;
+        }
+    }
+}

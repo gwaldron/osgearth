@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <vector>
+#include <functional>
 
 namespace osgEarth { namespace Util
 {
@@ -39,8 +40,6 @@ namespace osgEarth { namespace Util
         };
 
         typedef std::vector<Chunk> Chunks;
-
-
 
     public:
         /** Read GLSL into chunks */

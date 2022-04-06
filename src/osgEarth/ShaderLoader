@@ -152,7 +152,7 @@ namespace osgEarth { namespace Util
         static std::string load(
             const std::string&    filename,
             const ShaderPackage&  package,
-            const osgDB::Options* dbOptions =nullptr);
+            const osgDB::Options* dbOptions = nullptr);
 
         /**
          * Utility function that returns the value of #pragma; e.g.,
@@ -186,13 +186,21 @@ namespace osgEarth { namespace Util
         static void configureHeader(
             std::string& in_out_source);
 
+        //! Apply the GLSL header and sort the components for use.
+        //! This should be the last thing you do.
+        static void finalize(
+            std::string& in_out_source);
+
     private:
-        // internal function to load a file but apply
-        // no processing to it
-        static std::string load_source(
+
+        // internal function to load a file but apply no processing to it
+        static std::string load_raw_source(
             const std::string&    filename,
             const ShaderPackage&  package,
             const osgDB::Options* dbOptions);
+
+        static void sort_components(
+            std::string& in_out_source);
 
     };
 } } // namespace osgEarth

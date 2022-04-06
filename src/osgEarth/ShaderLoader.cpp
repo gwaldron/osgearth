@@ -22,6 +22,7 @@
 #include "VirtualProgram"
 #include "Capabilities"
 #include "ShaderFactory"
+#include "GLSLChunker"
 
 #include <osgDB/FileUtils>
 
@@ -169,13 +170,23 @@ namespace
         else if (stage == osg::Shader::FRAGMENT) define = "VP_STAGE_FRAGMENT";
         else define = "UNDEFINED";
 
-        std::vector<std::string> parts = splitAtEndOfLineStartingWith(source, "#version");
+        std::size_t version_pos = source.find("#version");
+        std::size_t extension_pos = source.rfind("#extension");
+
+        std::vector<std::string> parts;
+
+        if (version_pos < extension_pos)
+            parts = splitAtEndOfLineStartingWith(source, "#version");
+        else if (extension_pos >= 0)
+            parts = splitAtEndOfLineStartingWith(source, "#extension");
+
         if (parts.size() == 2)
         {
-            source =
-                parts[0] +
-                "#define " + define + "\n" +
-                parts[1];
+            source = parts[0] + "#define " + define + "\n" + parts[1];
+        }
+        else
+        {
+            source = "#define " + define + "\n" + source;
         }
     }
 
@@ -321,7 +332,7 @@ ShaderLoader::load(
 }
 
 std::string
-ShaderLoader::load_source(
+ShaderLoader::load_raw_source(
     const std::string&    filename,
     const ShaderPackage&  package,
     const osgDB::Options* dbOptions)
@@ -360,11 +371,11 @@ ShaderLoader::load_source(
 
 std::string
 ShaderLoader::load(
-    const std::string&    filename,
-    const ShaderPackage&  package,
+    const std::string& filename,
+    const ShaderPackage& package,
     const osgDB::Options* dbOptions)
 {
-    std::string output = load_source(filename, package, dbOptions);
+    std::string output = load_raw_source(filename, package, dbOptions);
 
     // Bring in include files:
     while (true)
@@ -389,7 +400,7 @@ ShaderLoader::load(
         // don't break the MULTILINE macro if the last line of the include
         // file is a comment.
         std::string included_source = Stringify()
-            << load_source(fileToInclude, package, dbOptions)
+            << load_raw_source(fileToInclude, package, dbOptions)
             << "\n";
 
         Strings::replaceIn(output, statement, included_source);
@@ -436,12 +447,6 @@ ShaderLoader::load(
         Strings::replaceIn(output, statement, newStatement);
     }
 
-    // Install a proper header
-    configureHeader(output);
-
-    // Lastly, remove any CRs
-    Strings::replaceIn(output, "\r", "");
-
     return output;
 }
 
@@ -462,10 +467,11 @@ ShaderLoader::split(const std::string& multisource,
 }
 
 bool
-ShaderLoader::load(VirtualProgram*       vp,
-                   const std::string&    filename,
-                   const ShaderPackage&  package,
-                   const osgDB::Options* dbOptions)
+ShaderLoader::load(
+    VirtualProgram*       vp,
+    const std::string&    filename,
+    const ShaderPackage&  package,
+    const osgDB::Options* dbOptions)
 {
     if ( !vp )
     {
@@ -526,6 +532,7 @@ ShaderLoader::load(VirtualProgram*       vp,
                 osg::Shader::Type type = getShaderTypeFromLocation(f.location.get());
 
                 insertStageDefine(source, type);
+                finalize(source);
 
                 osg::Shader* shader = new osg::Shader(type, source);
                 shader->setName( filename );
@@ -547,6 +554,7 @@ ShaderLoader::load(VirtualProgram*       vp,
                 {
                     std::string new_source = source;
                     insertStageDefine(new_source, types[i]);
+                    finalize(new_source);
                     osg::Shader* shader = new osg::Shader(types[i], new_source);
                     std::string name = Stringify() << filename + "_" + shader->getTypename();
                     shader->setName( name );
@@ -617,19 +625,95 @@ void
 ShaderLoader::configureHeader(
     std::string& in_out_source)
 {
-    // If there is no version string, insert the entire default GLSL header.
-    if (in_out_source.find("#version") == std::string::npos)
-    {
-        in_out_source =
-            ShaderFactory::getGLSLHeader() + "\n" +
-            in_out_source;
-    }
-    else
+    if (in_out_source.find("$GLSL_VERSION_STR") != std::string::npos)
     {
         std::string glv = std::to_string(Capabilities::get().getGLSLVersionInt());
         Strings::replaceIn(in_out_source, "$GLSL_VERSION_STR", glv);
         Strings::replaceIn(in_out_source, "$GLSL_DEFAULT_PRECISION_FLOAT", ""); // back compat
     }
+
+    // replace any #version string with our own.
+    else if (in_out_source.find("#version") != std::string::npos)
+    {
+        GLSLChunker::Chunks input;
+        GLSLChunker().read(in_out_source, input);
+        GLSLChunker::Chunks output;
+        output.reserve(input.size());
+
+        for (auto& c : input)
+        {
+            if (!Strings::startsWith(c.text, "#version"))
+                output.push_back(c);
+        }
+
+        GLSLChunker().write(output, in_out_source);
+
+        in_out_source =
+            ShaderFactory::getGLSLHeader() + "\n" +
+            in_out_source;
+    }
+
+    else
+    {
+        in_out_source =
+            ShaderFactory::getGLSLHeader() + "\n" +
+            in_out_source;
+    }
+}
+
+void
+ShaderLoader::sort_components(
+    std::string& in_out_source)
+{
+    GLSLChunker glsl;
+    GLSLChunker::Chunks input;
+    glsl.read(in_out_source, input);
+
+    GLSLChunker::Chunks versions, extensions, pragmas, code;
+    code.reserve(input.size());
+
+    for (auto& chunk : input)
+    {
+        if (chunk.type == chunk.TYPE_DIRECTIVE)
+        {
+            OE_HARD_ASSERT(chunk.tokens.size() > 0);
+
+            if (chunk.tokens[0] == "#version")
+                versions.push_back(chunk);
+            else if (chunk.tokens[0] == "#extension")
+                extensions.push_back(chunk);
+            else if (chunk.tokens[0] == "#pragma")
+                pragmas.push_back(chunk);
+            else
+                code.push_back(chunk);
+        }
+        else
+        {
+            code.push_back(chunk);
+        }
+    }
+
+    input.clear();
+
+    for (auto& c : versions)
+        input.push_back(c);
+    for (auto& c : extensions)
+        input.push_back(c);
+    for (auto& c : pragmas)
+        input.push_back(c);
+    for (auto& c : code)
+        input.push_back(c);
+
+    glsl.write(input, in_out_source);
+}
+
+void
+ShaderLoader::finalize(
+    std::string& source)
+{
+    Strings::replaceIn(source, "\r", "");
+    configureHeader(source);
+    sort_components(source);
 }
 
 //...................................................................

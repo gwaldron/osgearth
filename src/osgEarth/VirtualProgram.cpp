@@ -1209,8 +1209,12 @@ VirtualProgram::setFunction(
         function._accept = accept;
         ofm.insert(OrderedFunction(ordering, function));
 
+        // final cleanup on the shader source before applying it
+        std::string finalized_source(shaderSource);
+        ShaderLoader::finalize(finalized_source);
+
         // assemble the poly shader. but check a map first for existing shaders.
-        PolyShader* shader = PolyShader::lookUpShader(functionName, shaderSource, location);
+        PolyShader* shader = PolyShader::lookUpShader(functionName, finalized_source, location);
 
         ShaderEntry& entry = _shaderMap[MAKE_SHADER_ID(functionName)];
         entry._shader = shader;
@@ -1518,7 +1522,9 @@ VirtualProgram::apply(osg::State& state) const
             OE_PROFILING_ZONE_NAMED("use");
             OE_PROFILING_ZONE_TEXT(program->getName());
 
-            if (pcp->needsLink())
+            bool needsLink = pcp->needsLink();
+
+            if (needsLink)
             {
                 Registry::programRepo().linkProgram(key, program.get(), pcp, state);
             }
@@ -1547,7 +1553,13 @@ VirtualProgram::apply(osg::State& state) const
                 const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID, true);
                 extensions->glUseProgram(0);
                 state.setLastAppliedProgramObject(0);
-                OE_DEBUG << LC << "Program link failure!" << std::endl;
+
+                if (needsLink)
+                {
+                    OE_WARN << LC << "Program will not link!" << std::endl;
+                    ShaderInfoLog x(pcp->getProgram(), "");
+                    x.dumpErrors(state);
+                }
             }
         }
 

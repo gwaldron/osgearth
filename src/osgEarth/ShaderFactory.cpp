@@ -72,7 +72,7 @@ ShaderFactory::getGLSLHeader()
             }
             else if (version >= 150)
             {
-                buf << "\n#extension GL_ARB_gpu_shader5 : enable"
+                buf // << "\n#extension GL_ARB_gpu_shader5 : enable"
                     << "\n#extension GL_ARB_gpu_shader_int64 : enable";
             }
             else if (version >= 130)

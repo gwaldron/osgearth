@@ -234,3 +234,4 @@ GLSLChunker::replace(Chunks& input, const std::string& pattern, const std::strin
             osgEarth::Util::replaceIn(chunk.tokens[t], pattern, replacement);
     }
 }
+

@@ -401,7 +401,8 @@ namespace osgEarth { namespace Util
 
         void operator()(osg::Object* obj) override
         {
-            _func();
+            if (getKeep())
+                _func();
             setKeep(false);
         }
 

@@ -63,7 +63,7 @@ namespace osgEarth
         public:
             TerrainGUI() : BaseGUI("Terrain"), 
                 _installed(false),
-                _tess(0.0f),
+                _tess(1.0f),
                 _tess_range(150.0f),
                 _measuring(false),
                 _invalidating(false),
@@ -90,7 +90,7 @@ namespace osgEarth
                     if (_mapNode->getTerrainOptions().getGPUTessellation())
                     {
                         //if (ImGui::SliderFloat("Tessellation SSE", &_sse, 5.0f, 50.0f))
-                        ImGui::SliderFloat("Tessellation", &_tess, 0.0f, 8.0f);
+                        ImGui::SliderFloat("Tessellation", &_tess, 1.0f, 8.0f);
                         _tess_u->set(_tess);
                         ImGui::SliderFloat("Tess Range", &_tess_range, 75.0f, 500.0f);
                         _tess_range_u->set(_tess_range);

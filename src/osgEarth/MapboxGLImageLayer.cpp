@@ -786,6 +786,11 @@ ResourceLibrary* MapBoxGL::StyleSheet::loadSpriteLibrary(const URI& sprite)
             }
         }
     }
+    else
+    {
+        OE_WARN << "Failed to load sprites from " << sprite.full() << std::endl;
+    }
+
     return library;
 }
 

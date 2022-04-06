@@ -154,6 +154,10 @@ void MapboxGLGlyphManager::loadFont(const osgEarth::URI& glyphsURI)
             }
         }
     }
+    else
+    {
+        OE_WARN << LC << "Failed to load font from " << glyphsURI.full() << std::endl;
+    }
 
     //std::cout << "Loaded " << numLoaded << " glyphs from " << glyphsURI.full() << std::endl;
     _loadedFonts.insert(glyphsURI.full());

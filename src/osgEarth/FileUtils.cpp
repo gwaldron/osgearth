@@ -179,6 +179,28 @@ osgEarth::Util::isRelativePath(const std::string& fileName)
 std::string
 osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &relativePath)
 {
+    static std::unordered_map<std::string, std::string> s_cache;
+    static std::mutex s_cache_mutex;
+    //static float tries = 0, hits = 0;
+
+    std::string cacheKey = relativeTo + "&" + relativePath;
+
+    std::lock_guard<std::mutex> lock(s_cache_mutex);
+
+    //tries += 1.0f;
+
+    auto i = s_cache.find(cacheKey);
+    if (i != s_cache.end())
+    {
+        //hits += 1.0f;
+        //OE_INFO << "size=" << s_cache.size() <<  " tries=" << tries << " hits=" << (100.*hits/tries) << std::endl;
+        return i->second;
+    }
+
+    // prevent the cache from growing unbounded
+    if (s_cache.size() >= 20000)
+        s_cache.clear();
+
     // result that will go into the cache:
     std::string result;
 
@@ -199,7 +221,12 @@ osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &re
         //Note:  Modified from VPB
 
         //Concatinate the paths together
-        std::string filename = osgDB::concatPaths( osgDB::getFilePath( relativeTo ), relativePath);
+        std::string filename;
+        if ( !osgDB::containsServerAddress( relativeTo ) )
+            filename = osgDB::concatPaths( osgDB::getFilePath( osgDB::getRealPath( relativeTo )), relativePath);
+        else
+            filename = osgDB::concatPaths( osgDB::getFilePath( relativeTo ), relativePath);
+
 
         std::list<std::string> directories;
         int start = 0;
@@ -240,6 +267,8 @@ osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &re
         result = path;
     }
 
+    // cache the result and return it.
+    s_cache[cacheKey] = result;
     return result;
 }
 

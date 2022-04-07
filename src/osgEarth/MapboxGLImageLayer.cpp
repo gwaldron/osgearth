@@ -273,6 +273,9 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
         }
         else if (type() == "vector")
         {
+            std::string profileName = "spherical-mercator";
+            bool isESRIGeodetic = false;
+
             if (!tiles().empty())
             {
                 osg::ref_ptr< XYZFeatureSource > featureSource = new XYZFeatureSource;
@@ -282,8 +285,8 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
                 featureSource->setURL(uri);
                 featureSource->setFormat("pbf");
                 featureSource->setReadOptions(options);
-                // Not necessarily?
-                featureSource->options().profile() = ProfileOptions("spherical-mercator");
+                // It's possible arcgis can specify a non mercator profile right in the source, but I've never seen one of those in the wild so don't know what it might look like.
+                featureSource->options().profile() = ProfileOptions(profileName);
                 if (featureSource->open().isError())
                 {
                     OE_WARN << "[MapBoxGLImageLayer] Failed to open: " << *uri << std::endl;
@@ -302,6 +305,20 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
                 Json::Value root(Json::objectValue);
                 if (reader.parse(data, root, false))
                 {
+                    if (root.isMember("tileInfo"))
+                    {
+                        if (root["tileInfo"].isMember("spatialReference"))
+                        {
+                            unsigned int wkid = root["tileInfo"]["spatialReference"].get("latestWkid", "3857").asUInt();
+                            if (wkid == 4326)
+                            {
+                                // Only ESRI sources have a tileInfo block
+                                profileName = "global-geodetic";
+                                isESRIGeodetic = true;
+                            }
+                        }
+                    }
+
                     if (root.isMember("tiles"))
                     {
                         std::string tilesetFull = tilesURI.full();
@@ -321,9 +338,9 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
                         featureSource->setMaxLevel(22);
                         featureSource->setURL(uri);
                         featureSource->setFormat("pbf");
+                        featureSource->setEsriGeodetic(isESRIGeodetic);
                         featureSource->setReadOptions(options);
-                        // Not necessarily?
-                        featureSource->options().profile() = ProfileOptions("spherical-mercator");
+                        featureSource->options().profile() = ProfileOptions(profileName); 
                         if (featureSource->open().isError())
                         {
                             OE_WARN << "[MapBoxGLImageLayer] Failed to open: " << *uri << std::endl;

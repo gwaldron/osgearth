@@ -1,3 +1,5 @@
+#version 330
+
 in vec3 atmos_v3Direction;
 out vec4 out_FragColor;
 

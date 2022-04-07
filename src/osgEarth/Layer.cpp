@@ -349,6 +349,10 @@ Layer::init()
     {
         osg::Object::setName(options().name().get());
     }
+    else
+    {
+        osg::Object::setName("Unnamed " + std::string(className()));
+    }
 
     _mutex = new Threading::ReadWriteMutex(options().name().isSet() ? options().name().get() : "Unnamed Layer(OE)");
 }

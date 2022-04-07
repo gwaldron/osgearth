@@ -1,3 +1,4 @@
+#version 330
 uniform vec3 moonToSun;
 out vec4 moon_TexCoord;
 out float moon_Lighting;

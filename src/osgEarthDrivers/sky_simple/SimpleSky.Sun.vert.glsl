@@ -1,3 +1,5 @@
+#version 330
+
 out vec3 atmos_v3Direction; 
 
 void main() 

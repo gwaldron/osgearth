@@ -631,17 +631,72 @@ ShaderInfoLog::ShaderInfoLog(
 
 }
 
+namespace
+{
+    void parse_glsl_message(
+        const std::string& input,
+        const std::vector<std::string>& source,
+        //        const std::string& source,
+        unsigned& out_lineno,
+        bool& out_isError,
+        std::string& out_message)
+    {
+        // example:
+        // 9602(22) : error C1121: index: function declaration in non global scope not allowed
+        // filename(lineno) : type code : message
+
+        // parse the message:
+        int filename;
+        int lineno;
+        char type[16];
+        char code[16];
+        char text[1024];
+
+        sscanf(input.c_str(), "%d(%d) : %s %s : %s",
+            &filename,
+            &lineno,
+            type,
+            code,
+            text);
+
+        // if the filename is not 0, find the corresponding #line directive
+        // and count from there.
+        if (filename != 0)
+        {
+            bool done = false;
+            for (unsigned n = 0; n < source.size() && !done; ++n)
+            {
+                std::string line(Strings::trim(source[n]));
+                if (Strings::startsWith(line, "#line"))
+                {
+                    int sub_lineno, sub_filename;
+                    sscanf(line.c_str(), "#line %d %d", &sub_lineno, &sub_filename);
+                    if (sub_filename == filename)
+                    {
+                        lineno = n - sub_lineno + lineno;
+                        done = true;
+                    }
+                }
+            }
+        }
+
+        out_lineno = lineno;
+        out_isError = (std::string(type) == "error");
+        out_message = text;
+    }
+}
+
 void
 ShaderInfoLog::dumpErrors(
     osg::State& state) const
 {
-    for (auto i = 0u; i < _program->getNumShaders(); ++i)
+    bool done = false;
+    for (auto i = 0u; i < _program->getNumShaders() && !done; ++i)
     {
         auto shader = _program->getShader(i);
         auto pshader = shader->getPCS(state);
         std::string log;
         pshader->getInfoLog(log);
-        //OE_WARN << log << std::endl;
 
         // split into lines:
         std::vector<std::string> errors;
@@ -653,28 +708,25 @@ ShaderInfoLog::dumpErrors(
 
         // keep track of same lines (in order)
         std::stringstream buf;
-        for (int i = 0; i < errors.size(); ++i)
+        for (int e = 0; e < errors.size() && !done; ++e)
         {
-            if (errors[i].find(": error") != errors[i].npos)
+            unsigned lineno;
+            bool isError;
+            std::string text;
+
+            parse_glsl_message(errors[e], lines, lineno, isError, text);
+            if (isError)
             {
-                std::vector<std::string> tokens;
-                StringTokenizer(errors[i], tokens, "(", "", true, true);
-
-                if (tokens.size() >= 2)
+                int start = 0; // std::max(0, n - 3);
+                int end = lines.size(); // std::min((int)lines.size(), n + 7);
+                for (int k = start; k < end; ++k)
                 {
-                    int n = std::atoi(tokens[1].c_str());
-
-                    int start = 0; // std::max(0, n - 3);
-                    int end = lines.size(); // std::min((int)lines.size(), n + 7);
-                    for (int k = start; k < end; ++k)
-                    {
-                        std::string star = (k == n) ? ":>>>" : ":   ";
-                        buf << k << star  << lines[k] << std::endl;
-                    }
-
-                    // just print the first error.
-                    break;
+                    std::string star = (k == lineno) ? "**> " : ":   ";
+                    buf << k << star << lines[k] << std::endl;
                 }
+
+                // just print the first error.
+                done = true;
             }
         }
         std::string msg = buf.str();

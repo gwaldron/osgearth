@@ -621,16 +621,52 @@ ShaderLoader::unload(VirtualProgram*       vp,
     return true;
 }
 
+namespace
+{
+    void forEachLine(const std::string& file, std::function<bool(const std::string&)> func)
+    {
+        std::vector<std::string> lines;
+        StringTokenizer(file, lines, "\n", "", true, false);
+        for (auto& line : lines)
+            if (func(line))
+                break;
+    }
+}
+
 void
 ShaderLoader::configureHeader(
     std::string& in_out_source)
 {
     if (in_out_source.find("$GLSL_VERSION_STR") != std::string::npos)
     {
+        // old-style token replacement:
         std::string glv = std::to_string(Capabilities::get().getGLSLVersionInt());
         Strings::replaceIn(in_out_source, "$GLSL_VERSION_STR", glv);
         Strings::replaceIn(in_out_source, "$GLSL_DEFAULT_PRECISION_FLOAT", ""); // back compat
     }
+
+#if 1
+    // if there's already a #version directive, leave the entire header as-is.
+    // otherwise write a new header.
+    else
+    {
+        bool hasVersion = false;
+
+        forEachLine(in_out_source, [&hasVersion](const std::string& line)
+            {
+                hasVersion = Strings::startsWith(Strings::trim(line), "#version");
+                return hasVersion;
+            });
+
+        if (!hasVersion)
+        {
+            in_out_source =
+                ShaderFactory::getGLSLHeader() + "\n" +
+                in_out_source;
+        }
+    }
+
+#else
 
     // replace any #version string with our own.
     else if (in_out_source.find("#version") != std::string::npos)
@@ -659,6 +695,7 @@ ShaderLoader::configureHeader(
             ShaderFactory::getGLSLHeader() + "\n" +
             in_out_source;
     }
+#endif
 }
 
 void

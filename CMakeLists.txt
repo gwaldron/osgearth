@@ -302,7 +302,21 @@ ELSE()
     SET(OSGEARTH_DYNAMIC_OR_STATIC "STATIC")
 ENDIF()
 
-
+#write out config files for vcpkg
+configure_package_config_file(osgEarthConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
+  INSTALL_DESTINATION ${LIB_INSTALL_DIR}/osgearth/cmake
+  )
+  
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
+  VERSION 3.3.0
+  COMPATIBILITY SameMajorVersion )
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
+              ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake )
+		
+		
 # OE Libraries
 ADD_SUBDIRECTORY(src)
 

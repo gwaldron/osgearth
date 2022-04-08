@@ -1,0 +1,57 @@
+set(OSGEARTH_VERSION 3.1.0)
+
+@PACKAGE_INIT@
+
+set(XPREFIX OSGEARTH)
+
+
+
+if (osgearth_USE_STATIC_LIBS)
+    set(XPREFIX ${XPREFIX}_STATIC)
+endif()
+
+set(osgearth_DEFINITIONS ${${XPREFIX}_CFLAGS})
+
+find_path(osgearth_INCLUDE_DIR
+    NAMES OSGEARTH/RTREE.H
+    HINTS ${${XPREFIX}_INCLUDE_DIRS}
+)
+
+set(OSGEARTH_NAMES osgearth)
+
+find_library(osgearth_LIBRARY
+    NAMES ${OSGEARTH_NAMES}
+    HINTS ${${XPREFIX}_LIBRARY_DIRS}
+)
+
+set(osgearth_LIBRARIES    ${osgearth_LIBRARY})
+set(osgearth_LIBRARY_DIRS ${${XPREFIX}_LIBRARY_DIRS})
+set(osgearth_LIBRARY_DIR  ${osgearth_LIBRARY_DIRS})
+set(osgearth_INCLUDE_DIRS ${osgearth_INCLUDE_DIR})
+set(osgearth_LDFLAGS      ${${XPREFIX}_LDFLAGS})
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(osgearth DEFAULT_MSG
+    osgearth_LIBRARY
+    osgearth_INCLUDE_DIR
+)
+
+string (REPLACE ";" " " osgearth_LDFLAGS "${osgearth_LDFLAGS}")
+
+set_target_properties(osgearth
+  PROPERTIES
+  IMPORTED_LOCATION             "${osgearth_LIBRARIES}"
+  INTERFACE_INCLUDE_DIRECTORIES "${osgearth_INCLUDE_DIRS}"
+  INTERFACE_LINK_LIBRARIES      "${osgearth_LDFLAGS}"
+  INTERFACE_COMPILE_OPTIONS     "${osgearth_DEFINITIONS}"
+)
+
+  message(STATUS "osgearth_FOUND: ${osgearth_FOUND}")
+  message(STATUS "osgearth_INCLUDE_DIRS: ${osgearth_INCLUDE_DIRS}")
+  message(STATUS "osgearth_LIBRARIES: ${osgearth_LIBRARIES}")
+  message(STATUS "osgearth_LDFLAGS: ${osgearth_LDFLAGS}")
+  message(STATUS "osgearth_DEFINITIONS: ${osgearth_DEFINITIONS}")
+
+
+
+check_required_components(osgearth)

@@ -303,6 +303,12 @@ ELSE()
 ENDIF()
 
 #write out config files for vcpkg
+
+SET(INSTALL_INCDIR ${CMAKE_INSTALL_PREFIX}/include)
+SET(INSTALL_LIBDIR ${PROJECT_BINARY_DIR}/lib)	
+message(STATUS "INCDIR: ${INSTALL_INCDIR}")
+include(CMakePackageConfigHelpers)
+
 configure_package_config_file(osgEarthConfig.cmake.in
   ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
   INSTALL_DESTINATION ${LIB_INSTALL_DIR}/osgearth/cmake

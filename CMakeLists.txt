@@ -302,6 +302,14 @@ ELSE()
     SET(OSGEARTH_DYNAMIC_OR_STATIC "STATIC")
 ENDIF()
 
+	
+# OE Libraries
+ADD_SUBDIRECTORY(src)
+
+if (OSGEARTH_BUILD_DOCS)
+    ADD_SUBDIRECTORY(docs)
+endif()
+
 #write out config files for vcpkg
 
 SET(INSTALL_INCDIR ${CMAKE_INSTALL_PREFIX}/include)
@@ -321,11 +329,3 @@ write_basic_package_version_file(
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
         DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake )
-		
-		
-# OE Libraries
-ADD_SUBDIRECTORY(src)
-
-if (OSGEARTH_BUILD_DOCS)
-    ADD_SUBDIRECTORY(docs)
-endif()

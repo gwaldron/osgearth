@@ -198,7 +198,7 @@ Color::Color( const std::string& input, Format format )
             unsigned int r = osgEarth::as<unsigned int>(components[0], 0u);
             unsigned int g = osgEarth::as<unsigned int>(components[1], 0u);
             unsigned int b = osgEarth::as<unsigned int>(components[2], 0u);
-            unsigned int a = osgEarth::as<unsigned int>(components[3], 0u);
+            float a = osgEarth::as<float>(components[3], 1.0f);
             set((float)r / 255.0f, (float)g / 255.0f, (float)b / 255.0f, (float)a);
         }
     }

@@ -15,13 +15,13 @@ Next install the dependencies required to build a fully functional osgEarth. Thi
 Install the required dependencies:
 
 ```
-vcpkg install osg:x64-windows gdal:x64-windows curl:x64-windows
+vcpkg install --triplet x64-windows osg gdal curl
 ```
 
 For full functionality, you can install optional dependences as well:
 
 ```
-vcpkg install sqlite3:x64-windows protobuf:x64-windows geos:x64-windows blend2d:x64-windows libwebp:x64-windows basisu:x64-windows draco:x64-windows libzip:x64-windows
+vcpkg install --triplet x64-windows basisu blend2d blosc draco geos glew libwebp libzip protobuf sqlite3
 ```
 
 This will take awhile the first time you run it as this pulls down lots of dependencies, so go get a cup of coffee.

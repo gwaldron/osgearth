@@ -1574,6 +1574,8 @@ EarthManipulator::updateProjection(osg::Camera* eventCamera)
                 ProjectionMatrix::setOrtho(orthoProj, -x, +x, -y, +y, N, F,
                     ProjectionMatrix::getType(proj));
 
+                eventCamera->setProjectionMatrix(orthoProj);
+
                 OE_DEBUG << "ORTHO: "
                     << "ar = " << ar << ", width=" << vp->width() << ", height=" << vp->height()
                     << ", dist = " << _distance << ", vfov=" << _lastKnownVFOV

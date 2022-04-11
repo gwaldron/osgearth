@@ -124,6 +124,12 @@ void MapboxGLGlyphManager::loadFont(const osgEarth::URI& glyphsURI)
     mapboxgl::glyphs::glyphs font;
     std::string original = glyphsURI.getString(_options);
 
+    if (original.empty())
+    {
+        OE_WARN << LC << "Failed to load font from " << glyphsURI.full() << std::endl;
+        return;
+    }
+
     // Get the compressor
     osg::ref_ptr< osgDB::BaseCompressor> compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
 
@@ -156,7 +162,7 @@ void MapboxGLGlyphManager::loadFont(const osgEarth::URI& glyphsURI)
     }
     else
     {
-        OE_WARN << LC << "Failed to load font from " << glyphsURI.full() << std::endl;
+        OE_WARN << LC << "Failed to parse font from " << glyphsURI.full() << std::endl;
     }
 
     //std::cout << "Loaded " << numLoaded << " glyphs from " << glyphsURI.full() << std::endl;

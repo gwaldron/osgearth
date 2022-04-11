@@ -538,46 +538,49 @@ namespace osgEarth {
                 {
                     osg::ref_ptr< ResourceLibrary > library = styleSheet->getResourceLibrary(skinSymbol->library().get());
 
-                    StringExpression expression = skinSymbol->name().get();
-                    std::string iconName = templateReplace(feature, expression.expr());
-
-                    auto skin = library->getSkin(iconName);
-
-                    if (skin)
+                    if (library.valid())
                     {
-                        osg::ref_ptr< osg::Image > image = skin->image().get();
-                        if (!image.valid())
+                        StringExpression expression = skinSymbol->name().get();
+                        std::string iconName = templateReplace(feature, expression.expr());
+
+                        auto skin = library->getSkin(iconName);
+
+                        if (skin)
                         {
-                            image = skin->createImage(nullptr);
-                        }
-                        if (image.valid())
-                        {
-                            // TODO:  Cache the flipped image as a BLImage so we don't need to flip it each time.
-                            osg::ref_ptr< osg::Image > flippedImage = new osg::Image(*image);
-                            flippedImage->flipVertical();
-                            BLRectI iconRect(*skin->imageBiasS() * image->s(), *skin->imageBiasT() * image->t(), *skin->imageScaleS() * image->s(), *skin->imageScaleT() * image->t());
+                            osg::ref_ptr< osg::Image > image = skin->image().get();
+                            if (!image.valid())
+                            {
+                                image = skin->createImage(nullptr);
+                            }
+                            if (image.valid())
+                            {
+                                // TODO:  Cache the flipped image as a BLImage so we don't need to flip it each time.
+                                osg::ref_ptr< osg::Image > flippedImage = new osg::Image(*image);
+                                flippedImage->flipVertical();
+                                BLRectI iconRect(*skin->imageBiasS() * image->s(), *skin->imageBiasT() * image->t(), *skin->imageScaleS() * image->s(), *skin->imageScaleT() * image->t());
 
-                            BLImage sprite;
-                            sprite.createFromData(flippedImage->s(), flippedImage->t(), BL_FORMAT_PRGB32, flippedImage->data(), flippedImage->s() * 4);
+                                BLImage sprite;
+                                sprite.createFromData(flippedImage->s(), flippedImage->t(), BL_FORMAT_PRGB32, flippedImage->data(), flippedImage->s() * 4);
 
-                            ctx.setCompOp(BL_COMP_OP_SRC_OVER);
+                                ctx.setCompOp(BL_COMP_OP_SRC_OVER);
 
-                            feature->getGeometry()->forEachPart([&](const Geometry* part)
-                                {
-                                    // Only label points for now
-                                    for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                                feature->getGeometry()->forEachPart([&](const Geometry* part)
                                     {
-                                        const osg::Vec3d& p0 = *p;
-                                        double x = frame.xf * (p0.x() - frame.xmin);
-                                        double y = frame.yf * (p0.y() - frame.ymin);
-                                        y = ctx.targetHeight() - y;
+                                        // Only label points for now
+                                        for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                                        {
+                                            const osg::Vec3d& p0 = *p;
+                                            double x = frame.xf * (p0.x() - frame.xmin);
+                                            double y = frame.yf * (p0.y() - frame.ymin);
+                                            y = ctx.targetHeight() - y;
 
-                                        ctx.translate(x, y);
-                                        ctx.scale(scale);
-                                        ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
-                                        ctx.resetMatrix();
-                                    }
-                                });
+                                            ctx.translate(x, y);
+                                            ctx.scale(scale);
+                                            ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
+                                            ctx.resetMatrix();
+                                        }
+                                    });
+                            }
                         }
                     }
                 }

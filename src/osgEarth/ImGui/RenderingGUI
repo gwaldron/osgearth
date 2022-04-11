@@ -63,7 +63,9 @@ in vec3 vp_Normal;
 out vec4 frag_out;
 void oeui_render_fb_normals(inout vec4 color) {
     float a = step(0.5, color.a);
-    color.rgb = mix(vec3(1,0,0), vec3(0,0.75,0), (vp_Normal.z+1.0)*0.5);
+    float nz = normalize(vp_Normal).z;
+    //color.rgb = mix(vec3(1,0,0), vec3(0,0.75,0), (nz+1.0)*0.5);
+    color.rgb = mix(vec3(0,0,0), vec3(1,1,1), (nz+1.0)*0.5);
     frag_out = vec4(color.rgb, a);
 }
 )";
@@ -237,12 +239,15 @@ namespace osgEarth
                             setRenderMode(render_model_normals, ri);
                         }
 
-                        static bool s_gpuculldebug = false;
-                        if (ImGui::Checkbox("GPU cull debug view", &s_gpuculldebug)) {
-                            if (s_gpuculldebug)
-                                stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "1");
-                            else
-                                stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "0");
+                        if (GLUtils::useNVGL())
+                        {
+                            static bool s_gpuculldebug = false;
+                            if (ImGui::Checkbox("GPU cull debug view", &s_gpuculldebug)) {
+                                if (s_gpuculldebug)
+                                    stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "1");
+                                else
+                                    stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "0");
+                            }
                         }
 
                         float lod_scale = camera(ri)->getLODScale();
@@ -252,9 +257,9 @@ namespace osgEarth
                         ImGui::TreePop();
                     }
 
-                    if (ImGui::TreeNodeEx("GL Inspector", ImGuiTreeNodeFlags_DefaultOpen))
+                    if (GLUtils::useNVGL())
                     {
-                        if (GLUtils::useNVGL())
+                        if (ImGui::TreeNodeEx("NVGL Inspector", ImGuiTreeNodeFlags_DefaultOpen))
                         {
                             auto glpool = GLObjectPool::get(*ri.getState());
                             auto globjects = glpool->objects();
@@ -286,13 +291,9 @@ namespace osgEarth
                                 }
                                 ImGui::EndTable();
                             }
-                        }
-                        else
-                        {
-                            ImGui::Text("NVGL not active");
-                        }
 
-                        ImGui::TreePop();
+                            ImGui::TreePop();
+                        }
                     }
                 }
                 ImGui::End();

@@ -435,6 +435,9 @@ _supportsNVGL(false)
         OE_DEBUG << LC << buf.str() << std::endl;
 
         _supportsVertexArrayObjects = osg::isGLExtensionOrVersionSupported(id, "GL_ARB_vertex_array_object", 3.0);
+
+        _supportsInt64 = osg::isGLExtensionSupported(id, "GL_ARB_gpu_shader_int64");
+
     }
 }
 

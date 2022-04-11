@@ -157,6 +157,9 @@ namespace osgEarth
 
         /** whether OpenGL supports vertex array objects */
         bool supportsVertexArrayObjects() const { return _supportsVertexArrayObjects; }
+
+        //! Whether the driver support 64-bit integers int GLSL
+        bool supportsInt64() const { return _supportsInt64; }
         
         //! Whether the NVIDIA GL4 extensions for unified memory, including
         //! bindless buffers and draw commands, are available
@@ -208,6 +211,7 @@ namespace osgEarth
         int  _maxTextureBufferSize;
         bool _isCoreProfile;
         bool _supportsVertexArrayObjects;
+        bool _supportsInt64;
         bool _supportsNVGL;
 
     public:

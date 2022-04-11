@@ -28,6 +28,7 @@
 #include <osgEarth/TerrainResources>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
+#include <osgEarth/Capabilities>
 
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
@@ -125,6 +126,12 @@ void
 TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
 {
     VisibleLayer::prepareForRendering(engine);
+
+    if (Capabilities::get().supportsInt64() == false)
+    {
+        setStatus(Status::ResourceUnavailable, "GLSL int64 support required but not available");
+        return;
+    }
 
     if (getLifeMapLayer() == nullptr)
     {

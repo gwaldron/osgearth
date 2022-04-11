@@ -420,10 +420,10 @@ GL3RealizeOperation::operator()(osg::Object* object)
         // perhaps create a reservation system for this.
         state->resetVertexAttributeAlias(false);
 
-#ifdef OSG_GL3_AVAILABLE
+        // We always want to use osg modelview and projection uniforms and vertex attribute aliasing.    
+        // Since we use modern opengl throughout even if OSG isn't explicitly built with GL3.
         state->setUseModelViewAndProjectionUniforms(true);
         state->setUseVertexAttributeAliasing(true);
-#endif
 
 #ifndef OSG_GL_FIXED_FUNCTION_AVAILABLE
         state->setModeValidity(GL_LIGHTING, false);

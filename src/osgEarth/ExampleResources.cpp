@@ -435,11 +435,7 @@ MapNodeHelper::loadWithoutControls(
         if (viewer->getRealizeOperation())
             op->_ops.push_back(viewer->getRealizeOperation());
 
-#ifdef OSG_GL3_AVAILABLE
         GL3RealizeOperation* rop = new GL3RealizeOperation();
-#else
-        CustomRealizeOperation* rop = new GL3RealizeOperation();
-#endif
         if (vsync.isSet())
             rop->setSyncToVBlank(vsync.get());
 

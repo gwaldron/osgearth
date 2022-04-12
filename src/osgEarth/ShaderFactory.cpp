@@ -77,7 +77,7 @@ ShaderFactory::getGLSLHeader()
                     buf << "\n#extension GL_ARB_gpu_shader_int64 : enable";
                 }
 
-                buf << "\n#extension GL_ARB_gpu_shader4 : enable";
+                //buf << "\n#extension GL_ARB_gpu_shader4 : enable";
             }
 #endif
 

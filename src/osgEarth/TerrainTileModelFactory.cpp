@@ -147,15 +147,7 @@ TerrainTileModelFactory::TerrainTileModelFactory(
     const TerrainOptions& options) :
     _options(options)
 {
-    // Create an empty texture that we can use as a placeholder
-    _emptyColorTexture = Texture::create(ImageUtils::createEmptyImage());
-    _emptyColorTexture->label() = LABEL_IMAGERY;
-
-    osg::Image* landCoverImage = LandCover::createImage(1u);
-    ImageUtils::PixelWriter writeLC(landCoverImage);
-    writeLC(osg::Vec4(0,0,0,0), 0, 0);
-    _emptyLandCoverTexture = Texture::create(landCoverImage);
-    _emptyColorTexture->label() = LABEL_COVERAGE;
+    //nop
 }
 
 TerrainTileModel*
@@ -295,19 +287,16 @@ TerrainTileModelFactory::addImageLayer(
         _options.firstLOD() == key.getLOD() &&
         reqs && reqs->fullDataAtFirstLodRequired())
     {
-        tex = _emptyColorTexture;
+        tex = Texture::create(ImageUtils::createEmptyImage());
     }
 
     if (tex)
     {
-        if (tex != _emptyColorTexture)
-        {
-            tex->label() = LABEL_IMAGERY;
+        tex->label() = LABEL_IMAGERY;
 
-            tex->name() =
-                model->key().str() + ":" +
-                (imageLayer->getName().empty() ? "(unnamed image layer)" : imageLayer->getName());
-        }
+        tex->name() =
+            model->key().str() + ":" +
+            (imageLayer->getName().empty() ? "(unnamed image layer)" : imageLayer->getName());
 
         TerrainTileModel::ColorLayer layerModel;
         layerModel.layer() = imageLayer;
@@ -567,11 +556,15 @@ TerrainTileModelFactory::addLandCover(
         _options.firstLOD() == key.getLOD() &&
         reqs && reqs->fullDataAtFirstLodRequired())
     {
-        model->landCover().texture() = _emptyLandCoverTexture;
+        osg::Image* landCoverImage = LandCover::createImage(1u);
+        ImageUtils::PixelWriter writeLC(landCoverImage);
+        writeLC(osg::Vec4(0, 0, 0, 0), 0, 0);
+        model->landCover().texture() = Texture::create(landCoverImage);
     }
 
     if (model->landCover().texture())
     {
+        model->landCover().texture()->label() = LABEL_COVERAGE;
         model->landCover().texture()->name() = model->key().str() + ":landcover";
     }
 

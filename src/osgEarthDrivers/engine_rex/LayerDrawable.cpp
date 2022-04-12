@@ -448,7 +448,7 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
     }
 
     // Apply the the texture arena:
-    if (state.getLastAppliedAttribute(OE_TEXTURE_ARENA_SA_TYPE_ID) != _context->textures())
+    //if (state.getLastAppliedAttribute(OE_TEXTURE_ARENA_SA_TYPE_ID) != _context->textures())
     {
         _context->textures()->apply(state);
         state.haveAppliedAttribute(_context->textures());

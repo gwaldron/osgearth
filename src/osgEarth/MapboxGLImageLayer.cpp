@@ -778,6 +778,24 @@ ResourceLibrary* MapBoxGL::StyleSheet::loadSpriteLibrary(const URI& sprite)
         unsigned int imageWidth = image->s();
         unsigned int imageHeight = image->t();
 
+        // Flip the image and convert the image to BGRA premultiplie alpha for blend2d so it doesn't need to do it each time an icon is rendered.
+        image->flipVertical();
+        ImageUtils::PixelReader imageReader(image.get());
+        ImageUtils::PixelWriter imageWriter(image.get());
+
+        for (unsigned int t = 0; t < image->t(); ++t)
+        {
+            for (unsigned int s = 0; s < image->s(); ++s)
+            {
+                osg::Vec4 color = imageReader(s, t);
+                osg::Vec4 pma(color.b() * color.a(),
+                    color.g() * color.a(),
+                    color.r() * color.a(),
+                    color.a());                
+                imageWriter(pma, s, t);
+            }
+        }
+
         auto data = uri.getString();
         Json::Reader reader;
         Json::Value root(Json::objectValue);
@@ -957,7 +975,7 @@ bool evalFilter(const Json::Value& filter, osgEarth::Feature* feature)
         std::string key = filter[1u].asString();
         const Json::Value& value = filter[2u];
 
-        if (!feature->hasAttr(key)) return false;
+        if (key != "$type" && !feature->hasAttr(key)) return false;
 
         if (key == "$type")
         {

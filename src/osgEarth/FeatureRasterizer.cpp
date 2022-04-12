@@ -554,13 +554,10 @@ namespace osgEarth {
                             }
                             if (image.valid())
                             {
-                                // TODO:  Cache the flipped image as a BLImage so we don't need to flip it each time.
-                                osg::ref_ptr< osg::Image > flippedImage = new osg::Image(*image);
-                                flippedImage->flipVertical();
                                 BLRectI iconRect(*skin->imageBiasS() * image->s(), *skin->imageBiasT() * image->t(), *skin->imageScaleS() * image->s(), *skin->imageScaleT() * image->t());
 
                                 BLImage sprite;
-                                sprite.createFromData(flippedImage->s(), flippedImage->t(), BL_FORMAT_PRGB32, flippedImage->data(), flippedImage->s() * 4);
+                                sprite.createFromData(image->s(), image->t(), BL_FORMAT_PRGB32, image->data(), image->s() * 4);
 
                                 ctx.setCompOp(BL_COMP_OP_SRC_OVER);
 
@@ -581,6 +578,10 @@ namespace osgEarth {
                                         }
                                     });
                             }
+                        }
+                        else
+                        {
+                            //OE_WARN << "Failed to get skin for " << iconName << std::endl;
                         }
                     }
                 }

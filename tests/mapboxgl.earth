@@ -1,0 +1,31 @@
+<!--
+Render MapboxGL maps (https://docs.mapbox.com/mapbox-gl-js/style-spec/)
+These examples use MapboxGL generated from ArcGIS, but you can also load styles generated from Maputnik (https://maputnik.github.io/)
+You need to build osgEarth with blend2d to get proper rasterization.
+-->
+<map name="MapBoxGL">
+    
+    <MapBoxGLImage name="ESRI Base" enabled="false">
+        <url>https://www.arcgis.com/sharing/rest/content/items/5e9b3685f4c24d8781073dd928ebda50/resources/styles/root.json</url>	
+        <profile>spherical-mercator</profile>
+        <tile_size>512</tile_size>
+    </MapBoxGLImage>
+
+    <MapBoxGLImage name="ESRI Reference" enabled="false">
+        <url>https://www.arcgis.com/sharing/rest/content/items/747cb7a5329c478cbe6981076cc879c5/resources/styles/root.json</url>
+        <profile>spherical-mercator</profile> 
+        <tile_size>512</tile_size>	      
+        <!-- Increase the pixel scale so text is bigger -->
+        <pixel_scale>2.0</pixel_scale>	
+    </MapBoxGLImage>
+
+    <MapBoxGLImage name="ESRI OSM" enabled="true">
+        <url>https://www.arcgis.com/sharing/rest/content/items/cabd61a6cfc44843b2ccd6969bb88cf0/resources/styles/root.json</url>
+        <profile>global-geodetic</profile>    
+        <tile_size>512</tile_size> 
+        <!-- Increase the pixel scale so text is bigger -->
+        <pixel_scale>2.0</pixel_scale>	
+    </MapBoxGLImage>  
+
+    <xi:include href="viewpoints.xml"/>
+</map>

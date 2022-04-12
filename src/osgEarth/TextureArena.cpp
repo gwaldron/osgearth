@@ -653,6 +653,14 @@ TextureArena::apply(osg::State& state) const
         }
     }
 
+    const osg::StateAttribute* lastTex = nullptr;
+    if (!gc._toCompile.empty())
+    {
+        // need to save any bound texture so we can reinstate it:
+        lastTex = state.getLastAppliedTextureAttribute(
+            state.getActiveTextureUnit(), osg::StateAttribute::TEXTURE);
+    }
+
     // allocate textures and resident handles
     while(!gc._toCompile.empty())
     {
@@ -726,6 +734,10 @@ TextureArena::apply(osg::State& state) const
     {
         gc._handleBuffer->uploadData(gc._handles);
         gc._dirty = false;
+
+        // reinstate the old bound texture
+        if (lastTex)
+            state.applyTextureAttribute(state.getActiveTextureUnit(), lastTex);
     }
 
     gc._handleBuffer->bindBufferBase(_bindingPoint);

@@ -1057,6 +1057,8 @@ GLTexture::bind(osg::State& state)
     // Inform OSG of the state change
     state.haveAppliedTextureAttribute(
         state.getActiveTextureUnit(), osg::StateAttribute::TEXTURE);
+    state.haveAppliedTextureMode(
+        state.getActiveTextureUnit(), _target);
 }
 
 GLuint64

@@ -41,10 +41,12 @@ namespace osgEarth {
             bool _throwing;
             float _throwDecayRate;
             bool _zoomToMouse;
+            double _vfov, _ar, _zn, _zf;
 
             CameraGUI() :
                 BaseGUI("Camera"),
-                _first(true)
+                _first(true),
+                _vfov(30), _ar(1), _zn(1), _zf(100)
             {
                 EarthManipulator::Settings d;
                 _singleAxisRotation = d.getSingleAxisRotation();
@@ -93,6 +95,20 @@ namespace osgEarth {
                 {
                     //if (ImGui::Checkbox("Single axis continuous rotation", &_singleAxisRotation) || _first)
                     //    s->setSingleAxisRotation(_singleAxisRotation), dirtySettings();
+
+                    osg::Matrix pm = camera(ri)->getProjectionMatrix();
+                    bool ortho = ProjectionMatrix::isOrtho(pm);
+                    if (ImGui::Checkbox("Orthographic", &ortho))
+                    {
+                        if (ortho) {
+                            ProjectionMatrix::getPerspective(pm, _vfov, _ar, _zn, _zf);
+                            ProjectionMatrix::setOrtho(pm, -1, 1, -1, 1, _zn, _zf);
+                        }
+                        else {
+                            ProjectionMatrix::setPerspective(pm, _vfov, _ar, _zn, _zf);
+                        }
+                        camera(ri)->setProjectionMatrix(pm);
+                    }
 
                     if (ImGui::Checkbox("Lock azimuth while panning", &_lockAzimuthWhilePanning) || _first)
                         s->setLockAzimuthWhilePanning(_lockAzimuthWhilePanning), dirtySettings();

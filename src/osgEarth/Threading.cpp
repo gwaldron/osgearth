@@ -513,17 +513,15 @@ JobArena::Metrics JobArena::_allMetrics;
 #define OE_ARENA_DEFAULT_SIZE 2u
 
 JobArena::JobArena(const std::string& name, unsigned concurrency, const Type& type) :
-    _name(name),
+    _name(name.empty()? defaultArenaName() : name),
     _targetConcurrency(concurrency),
     _type(type),
     _done(false),
-    _queueMutex("OE.JobArena[" + name + "].queue"),
-    _quitMutex("OE.JobArena[" + name + "].quit")
+    _queueMutex("OE.JobArena[" + _name + "].queue"),
+    _quitMutex("OE.JobArena[" + _name + "].quit")
 {
     // find a slot in the stats
-    _metrics = _allMetrics.newArena();
-    _metrics->arenaName = name;
-    _metrics->concurrency = 0;
+    _metrics = _allMetrics.getOrCreate(_name);
 
     if (_type == THREAD_POOL)
     {
@@ -900,25 +898,30 @@ JobArena::Metrics::Metrics() :
 }
 
 JobArena::Metrics::Arena::Ptr
-JobArena::Metrics::newArena()
+JobArena::Metrics::getOrCreate(const std::string& name)
 {
-    int new_index = -1;
-    for (int i = 0; i < _arenas.size() && new_index < 0; ++i)
+    for (int i = 0; i < _arenas.size(); ++i)
     {
-        if (_arenas[i] == nullptr)
+        if (_arenas[i] != nullptr && _arenas[i]->arenaName == name)
         {
-            new_index = i;
-            break;
+            return _arenas[i];
         }
     }
-    OE_HARD_ASSERT(new_index >= 0, "Ran out of arena space :(");
 
-    if (new_index > maxArenaIndex)
-        maxArenaIndex = new_index;
+    ++maxArenaIndex;
 
-    auto arena = Arena::Ptr(new Arena);
-    _arenas[new_index] = arena;
-    return arena;
+    if (maxArenaIndex >= _arenas.size())
+    {
+        OE_SOFT_ASSERT(maxArenaIndex >= _arenas.size(),
+            "Ran out of arena space...using arena[0] :(");
+        return _arenas[0];
+    }
+
+    auto new_arena = _arenas[maxArenaIndex] = Arena::Ptr(new Arena);
+    new_arena->arenaName = name;
+    new_arena->concurrency = 0;
+
+    return new_arena;
 }
 
 const JobArena::Metrics::Arena::Ptr

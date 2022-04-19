@@ -223,7 +223,7 @@ namespace osgEarth {
         };
     }
 }
-#endif OSGEARTH_PROCEDURAL_VEGETATION_LAYER_GUI
+#endif // OSGEARTH_PROCEDURAL_VEGETATION_LAYER_GUI
 
 //REGISTER_OSGEARTH_IMGUI(VegetationLayer, []()
 //    {

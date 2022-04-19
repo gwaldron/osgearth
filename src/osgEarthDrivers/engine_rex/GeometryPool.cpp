@@ -597,7 +597,7 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
         de._ebo->bind();
         de._ebo->bufferStorage(_drawElements->getTotalDataSize(), _drawElements->getDataPointer(), 0);
         de._ebo->makeResident();
-        OE_SOFT_ASSERT(de._ebo->address());
+        de._ebo->unbind();
 
         dirty = true;
     }
@@ -614,7 +614,7 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
         gs._vbo->bind();
         gs._vbo->bufferStorage(size, _verts.data());
         gs._vbo->makeResident();
-        OE_SOFT_ASSERT(gs._vbo->address());
+        gs._vbo->unbind();
 
         dirty = true;
     }

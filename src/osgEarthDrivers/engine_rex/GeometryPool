@@ -45,12 +45,14 @@ namespace osgEarth {
     {
         using namespace osgEarth;
 
+        using DrawElementsBase = osg::DrawElementsUShort;
+
         // A DrawElements with a UID.
-        class /* internal */ SharedDrawElements : public osg::DrawElementsUShort
+        class /* internal */ SharedDrawElements : public DrawElementsBase
         {
         public:
             SharedDrawElements(GLenum type) :
-                osg::DrawElementsUShort(type)
+                DrawElementsBase(type)
             {
                 //nop
             }
@@ -62,7 +64,7 @@ namespace osgEarth {
 
             void releaseGLObjects(osg::State* state) const override
             {
-                osg::DrawElementsUShort::releaseGLObjects(state);
+                DrawElementsBase::releaseGLObjects(state);
                 if (state)
                     _gc[state->getContextID()]._ebo = nullptr;
 
@@ -72,7 +74,7 @@ namespace osgEarth {
 
             void resizeGLObjectBuffers(unsigned size) override
             {
-                osg::DrawElementsUShort::resizeGLObjectBuffers(size);
+                DrawElementsBase::resizeGLObjectBuffers(size);
                 _gc.resize(size);
             }
 

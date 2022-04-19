@@ -127,6 +127,16 @@ LayerDrawableGL3::drawImplementation(osg::RenderInfo& ri) const
     }
 
     LayerDrawable::drawImplementation(ri);
+
+    // If set, dirty all OSG state to prevent any leakage - this is sometimes
+    // necessary when doing custom OpenGL within a Drawable.
+    if (_clearOsgState)
+    {
+        // unbind local buffers when finished.
+        auto ext = ri.getState()->get<osg::GLExtensions>();
+        ext->glBindBuffer(GL_ARRAY_BUFFER_ARB, 0);
+        ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
+    }
 }
 
 //.........................................................
@@ -281,7 +291,9 @@ LayerDrawableNVGL::refreshRenderState()
             buf.drawOrder = _surfaceDrawOrder;
         }
 
-        _rs.tiles = std::move(_tiles);
+        _rs.tiles.swap(_tiles);
+        //_rs.tiles = _tiles;
+        _tiles.clear(); // std::move(_tiles);
 
         // This will trigger a GPU upload on the next draw
         _rs.dirty = true;
@@ -301,18 +313,18 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
     // https://on-demand.gputechconf.com/siggraph/2014/presentation/SG4117-OpenGL-Scene-Rendering-Techniques.pdf
     // https://developer.download.nvidia.com/opengl/tutorials/bindless_graphics.pdf
 
-    GCState& gs = _rs.gcState[ri.getContextID()];
     osg::State& state = *ri.getState();
+    auto contextID = state.getContextID();
+    GCState& gs = _rs.gcState[contextID];
 
     if (_rs.tiles.empty())
         return;
 
     bool renderTerrainSurface = (_patchLayer == nullptr);
 
-
     if (gs.tiles == nullptr || !gs.tiles->valid())
     {
-        gs.ext = osg::GLExtensions::Get(state.getContextID(), true);
+        gs.ext = osg::GLExtensions::Get(contextID, true);
 
         gs.tiles = GLBuffer::create(
             GL_SHADER_STORAGE_BUFFER,
@@ -472,18 +484,28 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
 
         gs.vao->bind();
 
-        GLenum primitive =
-            _context->options().gpuTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
+        GLenum primitive_type =
+            _context->options().gpuTessellation() == true ?
+            GL_PATCHES : GL_TRIANGLES;
 
+        GLenum element_type =
+            sizeof(DrawElementsBase::value_type) == sizeof(short) ?
+            GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
+        
         gs.glMultiDrawElementsIndirectBindlessNV(
-            primitive,
-            GL_UNSIGNED_SHORT,
+            primitive_type,
+            element_type,
             nullptr,
             _rs.commands.size(),
             sizeof(DrawElementsIndirectBindlessCommandNV),
             1);
 
         gs.vao->unbind();
+
+        if (_clearOsgState)
+        {
+            gs.commands->unbind();
+        }
     }
 
     else if (_patchLayer && _patchLayer->getRenderer())

@@ -265,11 +265,20 @@ namespace osgEarth
         using Ptr = std::shared_ptr<GLBuffer>;
 
         //! create a new unallocated buffer
-        static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
+        static Ptr create(
+            GLenum target,
+            osg::State& state,
+            const std::string& id = "",
+            const std::string& label = "");
 
         //! create a new buffer with a "size hint" that allows the system to 
         //! try and reuse a discarded buffer
-        static Ptr create(GLenum target, osg::State& state, GLsizei sizeHint, const std::string& label = "");
+        static Ptr create(
+            GLenum target,
+            osg::State& state,
+            GLsizei sizeHint,
+            const std::string& id = "",
+            const std::string& label = "");
 
         //! bind to target()
         void bind() const;
@@ -363,8 +372,8 @@ namespace osgEarth
         void makeNonResident();
 
     protected:
-        GLBuffer(GLenum target, osg::State& state, const std::string& label);
-        void reset(GLenum target, const std::string& label);
+        GLBuffer(GLenum target, osg::State& state, const std::string& id, const std::string& label);
+        void reset(GLenum target, const std::string& id, const std::string& label);
         GLuint _name;
         GLenum _target;
         GLuint64 _address; // bindless GPU address
@@ -404,13 +413,15 @@ namespace osgEarth
 
         static Ptr create(
             GLenum target, 
-            osg::State& state, 
+            osg::State& state,
+            const std::string& id = "",
             const std::string& label = "");
 
         static Ptr create(
             GLenum target,
             osg::State& state,
             const Profile& profileHint,
+            const std::string& id = "",
             const std::string& label = "");
 
         void bind(osg::State& state);
@@ -432,7 +443,11 @@ namespace osgEarth
         void compressedSubImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const void* data) const;
 
     protected:
-        GLTexture(GLenum target, osg::State& state, const std::string& label);
+        GLTexture(
+            GLenum target,
+            osg::State& state,
+            const std::string& id,
+            const std::string& label);
 
     private:
         GLenum _target;
@@ -442,7 +457,7 @@ namespace osgEarth
         std::string _id;
         GLsizei _size;
         Profile _profile;
-        void reset(GLenum, const std::string&, osg::State&);
+        void reset(GLenum, const std::string&, const std::string&, osg::State&);
     };
 
     /**

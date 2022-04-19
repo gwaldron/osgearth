@@ -243,10 +243,10 @@ Texture::compileGLObjects(osg::State& state) const
             target(),
             state,
             profileHint,
+            this->name(),
             label().empty() ? uri()->base() : label());
 
-        // debugging
-        gc._gltexture->id() = uri()->base();
+        OE_SOFT_ASSERT(gc._gltexture->name() != 0, "Oh no, GLTexture name == 0");
 
         // Blit our image to the GPU
         gc._gltexture->bind(state);
@@ -368,6 +368,9 @@ Texture::compileGLObjects(osg::State& state) const
             if (height < 1) height = 1;
         }
 
+        // TODO:
+        // Detect this situation, and find another place to generate the
+        // mipmaps offline. This should never happen here.
         if (numMipLevelsInMemory < numMipLevelsToAllocate)
         {
             OE_PROFILING_ZONE_NAMED("glGenerateMipmap");

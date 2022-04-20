@@ -181,20 +181,41 @@ namespace osgEarth
     class OSGEARTH_EXPORT GLObject
     {
     public:
-        enum Type { VAO, BUFFER, TEXTURE, FBO, QUERY };
         using Ptr = std::shared_ptr<GLObject>;
         using Compatible = std::function<bool(GLObject*)>;
-        virtual const std::string& label() const { return _label; }
-        virtual Type type() const { return _type; }
-        virtual void release() = 0;
-        virtual bool valid() const = 0;
-        virtual GLsizei size() const = 0;
+
+        //! GL object "name" (an integer returned from glGen*)
+        GLuint name() const { return _name; }
+
+        //! category label
+        const std::string& label() const { return _label; }
+
+        //! namespace (GL_BUFFER, GL_TEXTURE, etc)
+        GLenum ns() const { return _ns; }
+
+        //! whether this object can be re-used without reallocation
         bool recyclable() const { return _recyclable; }
+
+        //! true if this object is OK to use
+        bool valid() const { return _name != 0 && _ext != nullptr;  }
+
+        //! OSG extensions API
         osg::GLExtensions* ext() const { return _ext; }
+
+        //! Sets the GL debugging category and unique ID
+        void debugLabel(
+            const std::string& label,
+            const std::string& uniqueid = "");
+
+    public:
+        virtual void release() = 0;
+        virtual GLsizei size() const = 0;
+        
     protected:
-        GLObject(osg::State& state, Type type, const std::string& label);
+        GLObject(GLenum ns, osg::State& state);
+        GLuint _name;
         std::string _label;
-        Type _type;
+        GLenum _ns;
         bool _recyclable;
         osg::GLExtensions* _ext;
         friend class GLObjectPool;
@@ -206,7 +227,7 @@ namespace osgEarth
         using Ptr = std::shared_ptr<GLQuery>;
 
         //! Create a new query object.
-        static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
+        static Ptr create(GLenum target, osg::State& state);
 
         //! Start the query
         void begin();
@@ -224,13 +245,11 @@ namespace osgEarth
 
     public:
         void release() override;
-        bool valid() const override { return _name != 0; }
         GLsizei size() const override { return sizeof(GLuint); }
 
     private:
-        GLQuery(GLenum target, osg::State& state, const std::string& label);
+        GLQuery(GLenum target, osg::State& state);
         GLenum _target;
-        GLuint _name;
         bool _active;
     };
 
@@ -240,7 +259,7 @@ namespace osgEarth
         using Ptr = std::shared_ptr<GLVAO>;
 
         //! Create a new VAO.
-        static Ptr create(osg::State& state, const std::string& label = "");
+        static Ptr create(osg::State& state);
 
         //! Bind the VAO.
         void bind();
@@ -250,12 +269,10 @@ namespace osgEarth
 
     public:
         void release() override;
-        bool valid() const override { return _name != 0; }
         GLsizei size() const override { return sizeof(GLuint); }
 
     private:
-        GLVAO(osg::State& state, const std::string& label = "");
-        GLuint _name;
+        GLVAO(osg::State& state);
     };
 
     //! A buffer object
@@ -264,21 +281,18 @@ namespace osgEarth
     public:
         using Ptr = std::shared_ptr<GLBuffer>;
 
-        //! create a new unallocated buffer
+        //! Creates a new unallocated buffer.
         static Ptr create(
             GLenum target,
-            osg::State& state,
-            const std::string& id = "",
-            const std::string& label = "");
+            osg::State& state);
 
-        //! create a new buffer with a "size hint" that allows the system to 
-        //! try and reuse a discarded buffer
+        //! Creates a new unallocated buffer.
+        //! The "size hint" allows it to potentially be created from recycled
+        //! GPU memory.
         static Ptr create(
             GLenum target,
             osg::State& state,
-            GLsizei sizeHint,
-            const std::string& id = "",
-            const std::string& label = "");
+            GLsizei sizeHint);
 
         //! bind to target()
         void bind() const;
@@ -289,17 +303,11 @@ namespace osgEarth
         //! binds this buffer's target to zero.
         void unbind() const;
 
-        //! GL name of the buffer (an integer)
-        GLuint name() const { return _name; }
-
         //! target to which this buffer is bound
         GLenum target() const { return _target; }
 
         //! allocated size of this buffer, from a call to bufferData or bufferStorage
         GLsizei size() const override { return _size; }
-
-        //! whether this object is ready to use
-        bool valid() const override { return _name != ~0U; }
 
         //! de-allocate and release this buffer
         virtual void release();
@@ -372,9 +380,7 @@ namespace osgEarth
         void makeNonResident();
 
     protected:
-        GLBuffer(GLenum target, osg::State& state, const std::string& id, const std::string& label);
-        void reset(GLenum target, const std::string& id, const std::string& label);
-        GLuint _name;
+        GLBuffer(GLenum target, osg::State& state);
         GLenum _target;
         GLuint64 _address; // bindless GPU address
         mutable GLsizei _size;
@@ -411,29 +417,27 @@ namespace osgEarth
             bool operator == (const Profile& rhs) const;
         };
 
+        //! Creates a new GL texture object.
         static Ptr create(
-            GLenum target, 
-            osg::State& state,
-            const std::string& id = "",
-            const std::string& label = "");
+            GLenum target,
+            osg::State& state);
 
+        //! Creates a new GL texture object.
+        //! The profileHint describes its configuration so it can potentially
+        //! be made from recycled GPU memory.
         static Ptr create(
             GLenum target,
             osg::State& state,
-            const Profile& profileHint,
-            const std::string& id = "",
-            const std::string& label = "");
+            const Profile& profileHint);
 
         void bind(osg::State& state);
         GLuint64 handle(osg::State& state);
-        GLuint name() const { return _name; }
         void makeResident(bool toggle);
         bool isResident() const { return _isResident; }
         void release();
         const Profile& profile() const { return _profile; }
         std::string& id() { return _id; }
         GLsizei size() const override { return _size; }
-        bool valid() const override { return _name != ~0U; }
 
         void storage2D(const Profile& profile);
         void storage3D(const Profile& profile);
@@ -445,13 +449,10 @@ namespace osgEarth
     protected:
         GLTexture(
             GLenum target,
-            osg::State& state,
-            const std::string& id,
-            const std::string& label);
+            osg::State& state);
 
     private:
         GLenum _target;
-        GLuint _name;
         GLuint64 _handle;
         bool _isResident;
         std::string _id;
@@ -471,8 +472,7 @@ namespace osgEarth
         using DrawFunction = std::function<void(osg::State&)>;
 
         static Ptr create(
-            osg::State& state,
-            const std::string& label = "");
+            osg::State& state);
 
         //! Render something to a texture using this FBO.
         GLTexture::Ptr renderToTexture(
@@ -484,12 +484,10 @@ namespace osgEarth
     public: // GLObject
 
         void release() override;
-        bool valid() const override;
         GLsizei size() const override;
 
     protected:
-        GLFBO(osg::State&, const std::string& label);
-        GLuint _name;
+        GLFBO(osg::State&);
     };
 
     /**

@@ -57,6 +57,14 @@ using namespace osgEarth;
 #define GL_NORMALIZE 0x0BA1
 #endif
 
+#ifndef GL_FRAMEBUFFER
+#define GL_FRAMEBUFFER 0x8D40
+#endif
+
+#ifndef GL_RENDERBUFFER
+#define GL_RENDERBUFFER 0x8D41
+#endif
+
 #ifndef GL_BUFFER_GPU_ADDRESS_NV
 #define GL_BUFFER_GPU_ADDRESS_NV 0x8F1D
 #endif
@@ -539,29 +547,37 @@ GLObjectPool::discardAllGLObjects()
 
 
 
-GLObject::GLObject(osg::State& state, Type type, const std::string& label) :
-    _label(label),
-    _type(type),
+GLObject::GLObject(GLenum ns, osg::State& state) :
+    _name(0),
+    _ns(ns),
     _recyclable(false),
     _ext(state.get<osg::GLExtensions>())
 {
     gl.init();
 }
 
+void
+GLObject::debugLabel(const std::string& label, const std::string& uniqueid)
+{
+    _label = label;
 
-GLQuery::GLQuery(GLenum target, osg::State& state, const std::string& label) :
-    GLObject(state, QUERY, label.empty() ? "Unlabeled Query" : label),
+    OE_SOFT_ASSERT_AND_RETURN(valid(), void());
+    std::string temp = uniqueid.empty() ? label : (label + " : " + uniqueid);
+    ext()->debugObjectLabel(ns(), name(), temp);
+}
+
+GLQuery::GLQuery(GLenum target, osg::State& state) :
+    GLObject(GL_QUERY, state),
     _target(target),
-    _name(0),
     _active(false)
 {
-    ext()->glGenQueries(1, &_name);
+    ext()->glGenQueries(1, &_name);    
 }
 
 GLQuery::Ptr
-GLQuery::create(GLenum target, osg::State& state, const std::string& label)
+GLQuery::create(GLenum target, osg::State& state)
 {
-    Ptr result(new GLQuery(target, state, label));
+    Ptr result(new GLQuery(target, state));
     GLObjectPool::get(state)->watch(result);
     return result;
 }
@@ -609,17 +625,16 @@ GLQuery::release()
 }
 
 
-GLVAO::GLVAO(osg::State& state, const std::string& label) :
-    GLObject(state, VAO, label.empty() ? "Unlabaled VAO" : label),
-    _name(0)
+GLVAO::GLVAO(osg::State& state) :
+    GLObject(GL_VERTEX_ARRAY, state)
 {
     ext()->glGenVertexArrays(1, &_name);
 }
 
 GLVAO::Ptr
-GLVAO::create(osg::State& state, const std::string& label)
+GLVAO::create(osg::State& state)
 {
-    Ptr result(new GLVAO(state, label));
+    Ptr result(new GLVAO(state));
     GLObjectPool::get(state)->watch(result);
     return result;
 }
@@ -645,45 +660,21 @@ GLVAO::unbind()
     ext()->glBindVertexArray(0);
 }
 
-GLBuffer::GLBuffer(
-    GLenum target,
-    osg::State& state,
-    const std::string& id,
-    const std::string& label) :
-
-    GLObject(state, BUFFER, label.empty() ? "Unlabeled buffer" : label),
+GLBuffer::GLBuffer(GLenum target, osg::State& state) :
+    GLObject(GL_BUFFER, state),
     _target(target),
-    _name(0),
     _size(0),
     _immutable(false),
     _address(0),
     _isResident(false)
 {
     ext()->glGenBuffers(1, &_name);
-    reset(target, id, label);
-}
-
-void
-GLBuffer::reset(GLenum target, const std::string& id, const std::string& label)
-{
-    _target = target;
-    _label = label;
-
-    if (_name != 0)
-    {
-        bind();
-        ext()->debugObjectLabel(GL_BUFFER, _name, label);
-    }
 }
 
 GLBuffer::Ptr
-GLBuffer::create(
-    GLenum target,
-    osg::State& state,
-    const std::string& id,
-    const std::string& label)
+GLBuffer::create(GLenum target, osg::State& state)
 {
-    Ptr object(new GLBuffer(target, state, id, label));
+    Ptr object(new GLBuffer(target, state));
     GLObjectPool::get(state)->watch(object);
     OE_DEVEL << LC << "GLBuffer::create, name=" << object->name() << std::endl;
     return object;
@@ -693,13 +684,11 @@ GLBuffer::Ptr
 GLBuffer::create(
     GLenum target,
     osg::State& state,
-    GLsizei sizeHint,
-    const std::string& id,
-    const std::string& label)
+    GLsizei sizeHint)
 {
     const GLObject::Compatible comp = [sizeHint](GLObject* obj) {
         return
-            obj->type() == BUFFER &&
+            obj->ns() == GL_BUFFER &&
             obj->recyclable() &&
             obj->size() == sizeHint;
     };
@@ -707,12 +696,12 @@ GLBuffer::create(
     Ptr object = GLObjectPool::get(state)->recycle<GLBuffer>(comp);
     if (object)
     {
-        object->reset(target, id, label);
+        object->_target = target;
         return object;
     }
     else
     {
-        object = create(target, state, id, label);
+        object = create(target, state);
         object->_recyclable = true;
     }
     return object;
@@ -976,49 +965,21 @@ GLTexture::Profile::operator==(const GLTexture::Profile& rhs) const
         _maxAnisotropy == rhs._maxAnisotropy;
 }
 
-GLTexture::GLTexture(
-    GLenum target,
-    osg::State& state,
-    const std::string& id,
-    const std::string& label) :
-
-    GLObject(state, TEXTURE, label.empty() ? "Unlabeled texture" : label),
+GLTexture::GLTexture(GLenum target, osg::State& state) :
+    GLObject(GL_TEXTURE, state),
     _target(target),
-    _name(0),
     _handle(0),
     _isResident(false),
     _profile(target),
     _size(0)
 {
     glGenTextures(1, &_name);
-    reset(target, id, label, state);
-}
-
-void
-GLTexture::reset(
-    GLenum target,
-    const std::string& id,
-    const std::string& label,
-    osg::State& state)
-{
-    _target = target;
-    _label = label;
-
-    if (_name != 0)
-    {
-        bind(state);
-        ext()->debugObjectLabel(GL_TEXTURE, _name, label);
-    }
 }
 
 GLTexture::Ptr
-GLTexture::create(
-    GLenum target,
-    osg::State& state,
-    const std::string& id,
-    const std::string& label)
+GLTexture::create(GLenum target, osg::State& state)
 {
-    Ptr obj(new GLTexture(target, state, id, label));
+    Ptr obj(new GLTexture(target, state));
     GLObjectPool::get(state)->watch(obj);
     OE_DEVEL << LC << "GLTexture::create, name=" << obj->name() << std::endl;
     return obj;
@@ -1028,13 +989,11 @@ GLTexture::Ptr
 GLTexture::create(
     GLenum target, 
     osg::State& state, 
-    const Profile& profileHint,
-    const std::string& id,
-    const std::string& label)
+    const Profile& profileHint)
 {
     const GLObject::Compatible comp = [profileHint](GLObject* obj) {
         return
-            obj->type() == TEXTURE &&
+            obj->ns() == GL_TEXTURE &&
             obj->recyclable() &&
             static_cast<GLTexture*>(obj)->_profile == profileHint;
     };
@@ -1042,12 +1001,11 @@ GLTexture::create(
     Ptr object = GLObjectPool::get(state)->recycle<GLTexture>(comp);
     if (object)
     {
-        object->reset(target, id, label, state);
         return object;
     }
     else
     {
-        object = create(target, state, id, label);
+        object = create(target, state);
         object->_recyclable = true;
     }
     return object;
@@ -1197,16 +1155,15 @@ GLTexture::compressedSubImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff,
 
 
 GLFBO::Ptr
-GLFBO::create(osg::State& state, const std::string& label)
+GLFBO::create(osg::State& state)
 {
-    Ptr object(new GLFBO(state, label));
+    Ptr object(new GLFBO(state));
     GLObjectPool::get(state)->watch(object);
     return object;
 }
 
-GLFBO::GLFBO(osg::State& state, const std::string& label) :
-    GLObject(state, FBO, label),
-    _name(0)
+GLFBO::GLFBO(osg::State& state) :
+    GLObject(GL_FRAMEBUFFER, state)
 {
     ext()->glGenFramebuffers(1, &_name);
 }
@@ -1219,12 +1176,6 @@ GLFBO::release()
         ext()->glDeleteFramebuffers(1, &_name);
         _name = 0;
     }
-}
-
-bool
-GLFBO::valid() const
-{
-    return _name != 0;
 }
 
 GLsizei
@@ -1265,8 +1216,9 @@ GLFBO::renderToTexture(
     GLTexture::Ptr texture = GLTexture::create(
         GL_TEXTURE_2D,
         state,
-        profile,
-        "RTT");
+        profile);
+
+    texture->debugLabel("GLFBO");
 
     // allocate the storage.
     // TODO: use glTexImage2D instead so we can change the 

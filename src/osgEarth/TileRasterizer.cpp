@@ -285,15 +285,19 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
         {
             if (gs.pbo == nullptr)
             {
-                gs.pbo = GLBuffer::create(
-                    GL_PIXEL_PACK_BUFFER_ARB, state, "TileRasterizer");
+                gs.pbo = GLBuffer::create(GL_PIXEL_PACK_BUFFER_ARB, state);
+                gs.pbo->bind();
+                gs.pbo->debugLabel("TileRasterizer");
+                gs.pbo->unbind();
 
 #ifdef USE_CBO
                 // dedicated copy buffer to take advantage of the Fermi+
                 // copy engines. Rumor has it this slows things down on AMD
                 // so we might want to disable it for them
-                gs.cbo = GLBuffer::create(
-                    GL_COPY_WRITE_BUFFER, state, "TileRasterizer");
+                gs.cbo = GLBuffer::create(GL_COPY_WRITE_BUFFER, state);
+                gs.cbo->bind();
+                gs.cbo->debugLabel("TileRasterizer");
+                gs.cbo->unbind();
 #endif
             }
 

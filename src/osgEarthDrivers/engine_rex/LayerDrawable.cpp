@@ -326,10 +326,9 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
     {
         gs.ext = osg::GLExtensions::Get(contextID, true);
 
-        gs.tiles = GLBuffer::create(
-            GL_SHADER_STORAGE_BUFFER,
-            state,
-            "REX Renderer");
+        gs.tiles = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+        gs.tiles->bind();
+        gs.tiles->debugLabel("REX geometry");
 
         // preallocate space for a bunch of tiles (just for fun)
         gs.tiles->bufferData(
@@ -342,16 +341,15 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
     {
         if (gs.commands == nullptr || !gs.commands->valid())
         {
-            gs.commands = GLBuffer::create(
-                GL_DRAW_INDIRECT_BUFFER,
-                state,
-                "REX Renderer");
-
+            gs.commands = GLBuffer::create(GL_DRAW_INDIRECT_BUFFER, state);
+            gs.commands->bind();
+            gs.commands->debugLabel("REX geometry");
             // preallocate space for a bunch of draw commands (just for fun)
             gs.commands->bufferData(
                 512 * sizeof(DrawElementsIndirectBindlessCommandNV),
                 nullptr,
                 GL_DYNAMIC_DRAW);
+            gs.commands->unbind();
 
             osg::setGLExtensionFuncPtr(
                 gs.glMultiDrawElementsIndirectBindlessNV,
@@ -372,10 +370,13 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
 
 
             // Set up a VAO that we'll use to render with bindless NV.
-            gs.vao = GLVAO::create(state, "REX Renderer");
+            gs.vao = GLVAO::create(state);
 
             // Start recording
             gs.vao->bind();
+
+            // after the bind, please
+            gs.vao->debugLabel("REX geometry");
 
             // set up the VAO for NVIDIA bindless buffers
             glEnableClientState_(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
@@ -419,13 +420,12 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
                 buf.morphConstants[(2 * lod) + 1] = one_over_end_minus_start;
             }
 
-            gs.shared = GLBuffer::create(
-                GL_SHADER_STORAGE_BUFFER,
-                state,
-                "REX Renderer");
+            gs.shared = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
 
             gs.shared->bind();
+            gs.shared->debugLabel("REX geometry");
             gs.shared->bufferStorage(sizeof(GL4GlobalData), &buf, 0); // permanent
+            gs.shared->unbind();
         }
     }
 

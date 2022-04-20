@@ -245,7 +245,10 @@ namespace
 
             if (ds._buffer == nullptr)
             {
-                ds._buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state, "Wind buffer");
+                ds._buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state);
+                ds._buffer->bind();
+                ds._buffer->debugLabel("Wind");
+                ds._buffer->unbind();
             }
 
             // upload to GPU

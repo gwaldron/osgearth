@@ -242,14 +242,14 @@ Texture::compileGLObjects(osg::State& state) const
         gc._gltexture = GLTexture::create(
             target(),
             state,
-            profileHint,
-            this->name(),
-            label().empty() ? uri()->base() : label());
+            profileHint);
 
         OE_SOFT_ASSERT(gc._gltexture->name() != 0, "Oh no, GLTexture name == 0");
 
         // Blit our image to the GPU
         gc._gltexture->bind(state);
+
+        gc._gltexture->debugLabel(label(), name());
 
         if (target() == GL_TEXTURE_2D)
         {
@@ -694,12 +694,14 @@ TextureArena::apply(osg::State& state) const
 
     if (gc._handleBuffer == nullptr)
     {
-        std::string bufferName = "TextureArena " + getName();
-
         if (_useUBO)
-            gc._handleBuffer = GLBuffer::create(GL_UNIFORM_BUFFER, state, bufferName);
+            gc._handleBuffer = GLBuffer::create(GL_UNIFORM_BUFFER, state);
         else
-            gc._handleBuffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, bufferName);
+            gc._handleBuffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+
+        gc._handleBuffer->bind();
+        gc._handleBuffer->debugLabel("TextureArena", getName());
+        gc._handleBuffer->unbind();
 
         gc._dirty = true;
     }

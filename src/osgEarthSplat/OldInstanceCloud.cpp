@@ -108,13 +108,14 @@ LegacyInstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsign
         commandBufferSize = align(commandBufferSize, ssboOffsetAlignment);
 
 #if 1
-        commandBuffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state, "oe.ic.cmdbuffer");
+        commandBuffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state);
         commandBuffer->bind();
-        _glBufferStorage(
-            GL_SHADER_STORAGE_BUFFER,
+        commandBuffer->debugLabel("LegacyInstanceCloud");
+        commandBuffer->bufferStorage(
             commandBufferSize,
             nullptr,                 // uninitialized memory
             GL_DYNAMIC_STORAGE_BIT); // so we can reset each frame
+        commandBuffer->unbind();
 #else
         commandBuffer = new GLBuffer();
         ext->glGenBuffers(1, &commandBuffer->_handle);
@@ -135,13 +136,14 @@ LegacyInstanceCloud::InstancingData::allocateGLObjects(osg::State* state, unsign
 
 #if 1
         //renderBuffer = new GLBuffer(GL_SHADER_STORAGE_BUFFER, *state, "oe.ic.renderbuffer");
-        renderBuffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state, "oe.ic.renderbuffer");
+        renderBuffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state);
         renderBuffer->bind();
-        _glBufferStorage(
-            GL_SHADER_STORAGE_BUFFER,
+        renderBuffer->debugLabel("LegacyInstanceCloud");
+        renderBuffer->bufferStorage(
             numTilesAllocated * renderBufferTileSize,
             nullptr,   // uninitialized memory
             0);        // only GPU will write to this buffer
+        renderBuffer->unbind();
 #else
         renderBuffer = new GLBuffer();
         ext->glGenBuffers(1, &renderBuffer->_handle);

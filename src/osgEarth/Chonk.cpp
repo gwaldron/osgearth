@@ -397,14 +397,18 @@ Chonk::getOrCreateCommands(osg::State& state) const
 
     if (gs.vbo == nullptr)
     {
-        gs.vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, "Chonk VBO");
+        gs.vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state);
+        gs.vbo->bind();
+        gs.vbo->debugLabel("Chonk");
         gs.vbo->bufferStorage(
             _vbo_store.size() * sizeof(VertexGPU),
             _vbo_store.data(),
             0); // permanent
         gs.vbo->makeResident();
 
-        gs.ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state, "Chonk EBO");
+        gs.ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
+        gs.ebo->bind();
+        gs.ebo->debugLabel("Chonk");
         gs.ebo->bufferStorage(
             _ebo_store.size() * sizeof(element_t),
             _ebo_store.data(),
@@ -428,6 +432,9 @@ Chonk::getOrCreateCommands(osg::State& state) const
 
             gs.commands.push_back(std::move(command));
         }
+
+        gs.vbo->unbind();
+        gs.ebo->unbind();
     }
 
     return gs.commands;
@@ -644,7 +651,7 @@ ChonkDrawable::update_and_cull_batches(osg::State& state) const
     if (gs._dirty)
     {
         ScopedMutexLock lock(_m);
-        gs.update(_batches, state);
+        gs.update(_batches, this, state);
     }
 
     if (!_mvm.isIdentity())
@@ -765,7 +772,9 @@ ChonkDrawable::accept(osg::PrimitiveFunctor& f) const
 
 
 void
-ChonkDrawable::GCState::initialize(osg::State& state)
+ChonkDrawable::GCState::initialize(
+    const osg::Object* host,
+    osg::State& state)
 {
     _ext = state.get<osg::GLExtensions>();
 
@@ -779,18 +788,30 @@ ChonkDrawable::GCState::initialize(osg::State& state)
     osg::setGLExtensionFuncPtr(gl_VertexAttribLFormat, "glVertexAttribLFormatNV");
 
     // DrawElementsCommand buffer:
-    _commandBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable");
+    _commandBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+    _commandBuf->bind();
+    _commandBuf->debugLabel("Chonk", host->getName());
+    _commandBuf->unbind();
 
     // Per-culling instances:
-    _instanceInputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable");
+    _instanceInputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+    _instanceInputBuf->bind();
+    _instanceInputBuf->debugLabel("Chonk", host->getName());
+    _instanceInputBuf->unbind();
 
     if (_cull)
     {
         // Culled instances (GPU only)
-        _instanceOutputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable");
+        _instanceOutputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+        _instanceOutputBuf->bind();
+        _instanceOutputBuf->debugLabel("Chonk", host->getName());
+        _instanceOutputBuf->unbind();
 
         // Chonk data
-        _chonkBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "ChonkDrawable");
+        _chonkBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+        _chonkBuf->bind();
+        _chonkBuf->debugLabel("Chonk", host->getName());
+        _chonkBuf->unbind();
     }
 
     // Multidraw command:
@@ -804,10 +825,13 @@ ChonkDrawable::GCState::initialize(osg::State& state)
     OE_HARD_ASSERT(glEnableClientState_ != nullptr);
 
     // VAO:
-    _vao = GLVAO::create(state, "ChonkDrawable");
+    _vao = GLVAO::create(state);
 
     // start recording...
     _vao->bind();
+
+    // must call AFTER bind
+    _vao->debugLabel("Chonk", host->getName());
 
     // required in order to use BindlessNV extension
     glEnableClientState_(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
@@ -847,13 +871,14 @@ ChonkDrawable::GCState::initialize(osg::State& state)
 void
 ChonkDrawable::GCState::update(
     const Batches& batches,
+    const osg::Object* host,
     osg::State& state)
 {
     OE_GL_ZONE_NAMED("update");
 
     if (_vao == nullptr)
     {
-        initialize(state);
+        initialize(host, state);
     }
 
     // build a list of draw commands, each of which will 

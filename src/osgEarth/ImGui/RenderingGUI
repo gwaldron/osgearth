@@ -250,43 +250,69 @@ namespace osgEarth
 
                         ImGui::TreePop();
                     }
+                }
+                ImGui::End();
+            }
+        };
 
-                    if (GLUtils::useNVGL())
+
+        class NVGLInspectorGUI : public BaseGUI
+        {
+        public:
+            NVGLInspectorGUI() : BaseGUI("NVGL Inspector")
+            {
+            }
+
+            void load(const Config& conf) override
+            {
+            }
+
+            void save(Config& conf) override
+            {
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!isVisible())
+                    return;
+
+                ImGui::Begin(name(), visible());
+                {
+                    if (!GLUtils::useNVGL())
                     {
-                        if (ImGui::TreeNodeEx("NVGL Inspector", ImGuiTreeNodeFlags_DefaultOpen))
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "NVGL not enabled");
+                    }
+                    else
+                    {
+                        auto glpool = GLObjectPool::get(*ri.getState());
+                        auto globjects = glpool->objects();
+
+                        ImGui::Text("Recycling: %u%%",
+                            int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
+                        int avarice = glpool->getAvarice();
+                        ImGui::Text("Fast"); ImGui::SameLine();
+                        if (ImGui::SliderInt("Slow", &avarice, 10, 0))
+                            glpool->setAvarice(avarice);
+
+                        ImGui::Separator();
+
+                        double glmem = (double)glpool->totalBytes() / 1048576.;
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Memory: %.1lf MB", glmem);
+                        std::map<std::string, std::vector<unsigned>> counts;
+                        for (auto& obj : globjects) {
+                            counts[obj->label()].push_back(obj->size());
+                        }
+                        if (ImGui::BeginTable("globjects", 2))
                         {
-                            auto glpool = GLObjectPool::get(*ri.getState());
-                            auto globjects = glpool->objects();
-
-                            ImGui::Text("Recycling: %u%%",
-                                int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
-                            int avarice = glpool->getAvarice();
-                            ImGui::Text("Quick"); ImGui::SameLine();
-                            if (ImGui::SliderInt("Relaxed", &avarice, 10, 0))
-                                glpool->setAvarice(avarice);
-
-                            ImGui::Separator();
-
-                            double glmem = (double)glpool->totalBytes() / 1048576.;
-                            ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Memory: %.1lf MB", glmem);
-                            std::map<std::string, std::vector<unsigned>> counts;
-                            for (auto& obj : globjects) {
-                                counts[obj->label()].push_back(obj->size());
+                            for (auto& bo : counts) {
+                                unsigned total = 0;
+                                for (auto& c : bo.second) total += c;
+                                ImGui::TableNextColumn();
+                                ImGui::Text("%s", bo.first.c_str());
+                                ImGui::TableNextColumn();
+                                ImGui::Text("(%d) (%.1lf MB)", bo.second.size(), (double)total / (double)1048576.);
                             }
-                            if (ImGui::BeginTable("globjects", 2))
-                            {
-                                for (auto& bo : counts) {
-                                    unsigned total = 0;
-                                    for (auto& c : bo.second) total += c;
-                                    ImGui::TableNextColumn();
-                                    ImGui::Text("%s", bo.first.c_str());
-                                    ImGui::TableNextColumn();
-                                    ImGui::Text("(%d) (%.1lf MB)", bo.second.size(), (double)total / (double)1048576.);
-                                }
-                                ImGui::EndTable();
-                            }
-
-                            ImGui::TreePop();
+                            ImGui::EndTable();
                         }
                     }
                 }

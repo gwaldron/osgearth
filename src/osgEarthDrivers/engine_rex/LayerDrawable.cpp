@@ -127,16 +127,6 @@ LayerDrawableGL3::drawImplementation(osg::RenderInfo& ri) const
     }
 
     LayerDrawable::drawImplementation(ri);
-
-    // If set, dirty all OSG state to prevent any leakage - this is sometimes
-    // necessary when doing custom OpenGL within a Drawable.
-    if (_clearOsgState)
-    {
-        // unbind local buffers when finished.
-        auto ext = ri.getState()->get<osg::GLExtensions>();
-        ext->glBindBuffer(GL_ARRAY_BUFFER_ARB, 0);
-        ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB, 0);
-    }
 }
 
 //.........................................................

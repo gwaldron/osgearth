@@ -243,6 +243,7 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
 
         if (type() == "vector-vtpk")
         {
+#ifdef OSGEARTH_HAVE_MVT
             URI uri(url(), context);
 
             osg::ref_ptr< VTPKFeatureSource > featureSource = new VTPKFeatureSource();
@@ -253,10 +254,13 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
                 OE_WARN << "[MapBoxGLImageLayer] Failed to open: " << url() << std::endl;
             }
             _featureSource = featureSource.get();
+#else
+            OE_WARN << "[MapboxGLImageLayer] Cannot process 'vector-vtpk' because osgEarth was not compiled with Protobuf support" << std::endl;
+#endif
         }
         else if (type() == "vector-mbtiles")
         {
-#ifdef OSGEARTH_HAVE_MVT
+#if defined(OSGEARTH_HAVE_MVT) && defined(OSGEARTH_HAVE_SQLITE3)
             URI uri(url(), context);
 
             osg::ref_ptr< MVTFeatureSource > featureSource = new MVTFeatureSource();
@@ -268,7 +272,7 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
             }
             _featureSource = featureSource.get();
 #else
-            OE_WARN << "[MapboxGLImageLayer] Cannot process 'vector-mbtiles' because osgEarth was not compiled with MVT support" << std::endl;
+            OE_WARN << "[MapboxGLImageLayer] Cannot process 'vector-mbtiles' because osgEarth was not compiled with Protobuf and SQLITE support" << std::endl;
 #endif
         }
         else if (type() == "vector")

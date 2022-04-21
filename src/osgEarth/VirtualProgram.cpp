@@ -953,43 +953,11 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
     // used by the COMPARE_StateAttribute_Parameter macros below.
     COMPARE_StateAttribute_Types(VirtualProgram, sa);
 
-    // compare each parameter in turn against the rhs.
-    COMPARE_StateAttribute_Parameter(_mask);
-    COMPARE_StateAttribute_Parameter(_inherit);
-    COMPARE_StateAttribute_Parameter(_isAbstract);
-
-    // compare the shader maps. Need to lock them while comparing.
-    {
-        //Threading::ScopedReadLock shared( _dataModelMutex );
-        Threading::ScopedMutexLock lock(_dataModelMutex);
-
-        if (_shaderMap.size() < rhs._shaderMap.size()) return -1;
-        if (_shaderMap.size() > rhs._shaderMap.size()) return 1;
-
-        ShaderMap::const_iterator lhsIter = _shaderMap.begin();
-        ShaderMap::const_iterator rhsIter = rhs._shaderMap.begin();
-
-        while (lhsIter != _shaderMap.end())
-        {
-            if (lhsIter->first < rhsIter->first) return -1;
-            if (lhsIter->first > rhsIter->first) return +1;
-
-            const ShaderEntry& lhsEntry = lhsIter->second;
-            const ShaderEntry& rhsEntry = rhsIter->second;
-
-            if (lhsEntry < rhsEntry) return -1;
-            if (rhsEntry < lhsEntry) return  1;
-
-            lhsIter++;
-            rhsIter++;
-        }
-
-        // compare the template settings.
-        int templateCompare = _template->compare(*(rhs.getTemplate()));
-        if (templateCompare != 0) return templateCompare;
-    }
-
-    return 0; // passed all the above comparison macros, must be equal.
+    // Safely compare the objects. Note, this function 
+    // treats the argument as the RHS, so we need to invert
+    // the result before returning it since the argument is
+    // actually our LHS.
+    return -rhs.compare_safe(*this);
 }
 
 void
@@ -1862,6 +1830,47 @@ bool VirtualProgram::getAcceptCallbacksVaryPerFrame() const
 void VirtualProgram::setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerFrame)
 {
     _acceptCallbacksVaryPerFrame = acceptCallbacksVaryPerFrame;
+}
+
+int
+VirtualProgram::compare_safe(const VirtualProgram& rhs) const
+{
+    ScopedMutexLock lock(_dataModelMutex);
+
+    // compare each parameter 
+    COMPARE_StateAttribute_Parameter(_mask);
+    COMPARE_StateAttribute_Parameter(_inherit);
+    COMPARE_StateAttribute_Parameter(_isAbstract);
+
+    if (_shaderMap.size() < rhs._shaderMap.size()) return -1;
+    if (_shaderMap.size() > rhs._shaderMap.size()) return +1;
+
+    ShaderMap::const_iterator lhsIter = _shaderMap.begin();
+    ShaderMap::const_iterator rhsIter = rhs._shaderMap.begin();
+
+    while (lhsIter != _shaderMap.end())
+    {
+        if (lhsIter->first < rhsIter->first) return -1;
+        if (lhsIter->first > rhsIter->first) return +1;
+
+        const ShaderEntry& lhsEntry = lhsIter->second;
+        const ShaderEntry& rhsEntry = rhsIter->second;
+
+        if (lhsEntry < rhsEntry) return -1;
+        if (rhsEntry < lhsEntry) return +1;
+
+        lhsIter++;
+        rhsIter++;
+    }
+
+    // compare the template settings.
+    if (_template.valid() && rhs.getTemplate())
+    {
+        int r = _template->compare(*(rhs.getTemplate()));
+        if (r != 0) return r;
+    }
+
+    return 0;
 }
 
 //.........................................................................

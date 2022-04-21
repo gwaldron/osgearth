@@ -52,7 +52,10 @@ InstanceCloud::CommandBuffer::allocate(
 {
     if (_buf == nullptr)
     {
-        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "InstanceCloud CommandBuffer");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+        _buf->bind();
+        _buf->debugLabel("InstanceCloud");
+        _buf->unbind();
     }
 
     _geom = geom;
@@ -93,7 +96,10 @@ InstanceCloud::TileBuffer::allocate(
 {
     if (_buf == nullptr)
     {
-        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "InstanceCloud TileBuffer");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+        _buf->bind();
+        _buf->debugLabel("InstanceCloud");
+        _buf->unbind();
     }
 
     if (numTiles > 0)
@@ -119,7 +125,10 @@ InstanceCloud::CullBuffer::allocate(
 {
     if (_buf == nullptr)
     {
-        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "InstanceCloud CullBuffer");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+        _buf->bind();
+        _buf->debugLabel("InstanceCloud");
+        _buf->unbind();
     }
 
     // allocate enough space for the data header and all instance refs
@@ -154,7 +163,10 @@ InstanceCloud::InstanceBuffer::allocate(
 {
     if (_buf == nullptr)
     {
-        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "InstanceCloud GenBuffer");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+        _buf->bind();
+        _buf->debugLabel("InstanceCloud");
+        _buf->unbind();
     }
 
     GLsizei size = sizeof(InstanceData) * numTiles * numInstancesPerTile;
@@ -171,7 +183,10 @@ InstanceCloud::RenderBuffer::allocate(
 {
     if (_buf == nullptr)
     {
-        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, "InstanceCloud RenderBuffer");
+        _buf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+        _buf->bind();
+        _buf->debugLabel("InstanceCloud");
+        _buf->unbind();
     }
 
     GLsizei size = numInstances * (sizeof(GLuint)*2); // sizeof RenderLeaf

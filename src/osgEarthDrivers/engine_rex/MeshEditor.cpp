@@ -409,9 +409,12 @@ MeshEditor::createTileMesh(
     de->reserveElements(mesh._triangles.size() * 3);
     for (const auto& tri : mesh._triangles)
     {
-        de->addElement(tri.second.i0);
-        de->addElement(tri.second.i1);
-        de->addElement(tri.second.i2);
+        if (!tri.second.is_2d_degenerate)
+        {
+            de->addElement(tri.second.i0);
+            de->addElement(tri.second.i1);
+            de->addElement(tri.second.i2);
+        }
     }
     sharedGeom->setDrawElements(de);
 

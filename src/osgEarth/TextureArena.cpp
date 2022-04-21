@@ -242,14 +242,14 @@ Texture::compileGLObjects(osg::State& state) const
         gc._gltexture = GLTexture::create(
             target(),
             state,
-            profileHint,
-            label().empty() ? uri()->base() : label());
+            profileHint);
 
-        // debugging
-        gc._gltexture->id() = uri()->base();
+        OE_SOFT_ASSERT(gc._gltexture->name() != 0, "Oh no, GLTexture name == 0");
 
         // Blit our image to the GPU
         gc._gltexture->bind(state);
+
+        gc._gltexture->debugLabel(label(), name());
 
         if (target() == GL_TEXTURE_2D)
         {
@@ -368,6 +368,9 @@ Texture::compileGLObjects(osg::State& state) const
             if (height < 1) height = 1;
         }
 
+        // TODO:
+        // Detect this situation, and find another place to generate the
+        // mipmaps offline. This should never happen here.
         if (numMipLevelsInMemory < numMipLevelsToAllocate)
         {
             OE_PROFILING_ZONE_NAMED("glGenerateMipmap");
@@ -653,6 +656,14 @@ TextureArena::apply(osg::State& state) const
         }
     }
 
+    const osg::StateAttribute* lastTex = nullptr;
+    if (!gc._toCompile.empty())
+    {
+        // need to save any bound texture so we can reinstate it:
+        lastTex = state.getLastAppliedTextureAttribute(
+            state.getActiveTextureUnit(), osg::StateAttribute::TEXTURE);
+    }
+
     // allocate textures and resident handles
     while(!gc._toCompile.empty())
     {
@@ -683,12 +694,14 @@ TextureArena::apply(osg::State& state) const
 
     if (gc._handleBuffer == nullptr)
     {
-        std::string bufferName = "TextureArena " + getName();
-
         if (_useUBO)
-            gc._handleBuffer = GLBuffer::create(GL_UNIFORM_BUFFER, state, bufferName);
+            gc._handleBuffer = GLBuffer::create(GL_UNIFORM_BUFFER, state);
         else
-            gc._handleBuffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, bufferName);
+            gc._handleBuffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+
+        gc._handleBuffer->bind();
+        gc._handleBuffer->debugLabel("TextureArena", getName());
+        gc._handleBuffer->unbind();
 
         gc._dirty = true;
     }
@@ -726,6 +739,10 @@ TextureArena::apply(osg::State& state) const
     {
         gc._handleBuffer->uploadData(gc._handles);
         gc._dirty = false;
+
+        // reinstate the old bound texture
+        if (lastTex)
+            state.applyTextureAttribute(state.getActiveTextureUnit(), lastTex);
     }
 
     gc._handleBuffer->bindBufferBase(_bindingPoint);

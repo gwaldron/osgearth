@@ -593,11 +593,12 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
     if (de._ebo == nullptr || !de._ebo->valid())
     {
         //TODO consider sharing
-        de._ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state, "REX EBO");
+        de._ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
         de._ebo->bind();
+        de._ebo->debugLabel("REX geometry");
         de._ebo->bufferStorage(_drawElements->getTotalDataSize(), _drawElements->getDataPointer(), 0);
         de._ebo->makeResident();
-        OE_HARD_ASSERT(de._ebo->address());
+        de._ebo->unbind();
 
         dirty = true;
     }
@@ -608,13 +609,15 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
         // supply a "size hint" for unconstrained tiles to the GLBuffer so it can try to re-use
         GLsizei size = _verts.size() * sizeof(GL4Vertex);
         if (_hasConstraints)
-            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, "REX VBO");
+            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state);
         else
-            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, size, "REX VBO");
+            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, size);
+
         gs._vbo->bind();
+        gs._vbo->debugLabel("REX geometry");
         gs._vbo->bufferStorage(size, _verts.data());
         gs._vbo->makeResident();
-        OE_HARD_ASSERT(gs._vbo->address());
+        gs._vbo->unbind();
 
         dirty = true;
     }

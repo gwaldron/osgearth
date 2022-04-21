@@ -279,8 +279,8 @@ namespace osgEarth
             mutable std::unordered_map<const void*, PCPState> _pcps;
 
             GCState() : _dirty(true), _cull(true) { }
-            void initialize(osg::State& state);
-            void update(const Batches&, osg::State&);
+            void initialize(const osg::Object* host, osg::State& state);
+            void update(const Batches&, const osg::Object* host, osg::State&);
             void cull(osg::State& state);
             void draw(osg::State& state);
             void release();

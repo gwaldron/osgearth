@@ -182,7 +182,7 @@ namespace osgEarth
             //! Adds all built-in osgEarth GUI panels
             void addAllBuiltInTools(osg::ArgumentParser* args =nullptr)
             {                
-                _menu["Tools"].push_back(BaseGUI::Ptr(new LayersGUI));
+                _menu["Tools"].push_back(GUIPtr(new LayersGUI));
                 _menu["Tools"].push_back(GUIPtr(new ViewpointsGUI));
                 _menu["Tools"].push_back(GUIPtr(new CameraGUI));
                 _menu["Tools"].push_back(GUIPtr(new EphemerisGUI));
@@ -195,6 +195,7 @@ namespace osgEarth
                 _menu["Tools"].push_back(GUIPtr(new TerrainEditGUI));
                 _menu["Tools"].push_back(GUIPtr(new ShaderGUI(args)));
                 _menu["Tools"].push_back(GUIPtr(new RenderingGUI()));
+                _menu["Tools"].push_back(GUIPtr(new NVGLInspectorGUI()));
 
 #ifdef HAVE_OSGEARTHPROCEDURAL
                 _menu["Procedural"].push_back(GUIPtr(new osgEarth::Procedural::LifeMapLayerGUI()));

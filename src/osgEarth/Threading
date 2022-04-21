@@ -852,7 +852,7 @@ namespace osgEarth { namespace Threading
 
         //! Construct a new JobArena
         JobArena(
-            const std::string& name,
+            const std::string& name = "",
             unsigned concurrency = 2u,
             const Type& type = THREAD_POOL);
 
@@ -917,7 +917,7 @@ namespace osgEarth { namespace Threading
             std::atomic<int> maxArenaIndex;
 
             //! create a new arena and return its index
-            Arena::Ptr newArena();
+            Arena::Ptr getOrCreate(const std::string& name);
 
             //! metrics about the arena at index "index"
             const Arena::Ptr arena(int index) const;

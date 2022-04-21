@@ -1086,7 +1086,7 @@ AsyncElevationSampler::AsyncElevationSampler(
     unsigned numThreads) :
 
     _map(map),
-    _arena("oe.AsyncElevationSampler", numThreads)
+    _arena("oe.asyncelevation", numThreads)
 {
     //nop
 }

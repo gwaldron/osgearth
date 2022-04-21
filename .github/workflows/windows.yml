@@ -46,12 +46,12 @@ jobs:
       run: >
         ${{ matrix.mono }} `./vcpkg/vcpkg fetch nuget | tail -n 1`
         sources add
-        -source "https://nuget.pkg.github.com/${{ github.actor }}/index.json"
+        -source "https://nuget.pkg.github.com/gwaldron/index.json"
         -storepasswordincleartext
         -name "GitHub"
-        -username "${{ github.actor }}"
+        -username "gwaldron"
         -password "${{ secrets.GITHUB_TOKEN }}"
-                
+
     - name: Create Build Environment
       run: |
         cmake -E make_directory ${{runner.workspace}}/build

@@ -121,8 +121,8 @@ LayerDrawableGL3::drawImplementation(osg::RenderInfo& ri) const
 
         for (auto& tile : _tiles)
         {
-            tile.apply(ri, _drawState.get());
-            tile.draw(ri);
+            if (tile.apply(ri, _drawState.get()))
+                tile.draw(ri);
         }
     }
 

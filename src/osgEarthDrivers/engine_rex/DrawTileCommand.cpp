@@ -24,7 +24,7 @@ using namespace osgEarth::REX;
 #undef  LC
 #define LC "[DrawTileCommand] "
 
-void
+bool
 DrawTileCommand::apply(
     osg::RenderInfo& ri,
     void* implData) const
@@ -85,9 +85,7 @@ DrawTileCommand::apply(
                 !samplerState._texture.isSetTo(sampler._texture))
             {
                 if (!sampler._texture->dataLoaded())
-                {
-                    return;
-                }
+                    return false;
 
                 state.setActiveTextureUnit((*ds._bindings)[s].unit());
                 sampler._texture->osgTexture()->apply(state);
@@ -133,7 +131,10 @@ DrawTileCommand::apply(
             }
         }
     }
+
+    return true;
 }
+
 void
 DrawTileCommand::debug(
     osg::RenderInfo& ri,

@@ -157,7 +157,7 @@ namespace osgEarth { namespace REX
 
         //! Apply the GL state for this tile (all samplers and uniforms)
         //! in preparation for rendering or computation
-        void apply(
+        bool apply(
             osg::RenderInfo& ri,
             void* implData) const override;
 

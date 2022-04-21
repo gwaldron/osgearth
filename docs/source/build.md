@@ -10,24 +10,6 @@ The documentation here is focused on Windows.
 
 First, download and bootstrap [vcpkg](https://github.com/Microsoft/vcpkg) following the instructions on the page.
 
-Next install the dependencies required to build a fully functional osgEarth. This example assume s 64-bit Windows build; you can alter that to correspond to your platform/architecture of choice.
-
-Install the required dependencies:
-
-```
-vcpkg install --triplet x64-windows osg gdal curl
-```
-
-For full functionality, you can install optional dependences as well:
-
-```
-vcpkg install --triplet x64-windows basisu blend2d blosc draco geos glew libwebp libzip protobuf sqlite3
-```
-
-This will take awhile the first time you run it as this pulls down lots of dependencies, so go get a cup of coffee.
-
-Once all the dependencies are built, you’ll need to actually build osgEarth.
-
 **Step 2 - Clone the repository**
 
 Pull down the source from GitHub and create a ```build``` folder for your out-of-source build. We always recommend doing an out-of-source build to avoid problems down the road!
@@ -51,6 +33,8 @@ Most developers will use a RelWithDebInfo build, like so:
 cmake -S osgearth -B build -G "Visual Studio 15 2017 Win64" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWIN32_USE_MP=ON -DCMAKE_INSTALL_PREFIX=[installroot] -DCMAKE_TOOLCHAIN_FILE=[vcpkgroot]\scripts\buildsystems\vcpkg.cmake
 ```
 
+osgEarth provides a vcpkg.json manifest file that lists all of it's necessary dependencies.  The vcpkg toolchain integration will notice this file and install the necessary dependencies in your build\vcpkg_installed directory.
+
 **Step 4 - Build and install osgEarth**
 
 You can build and install osgEarth on the command line using CMake or you can open up the Visual Studio solution and build it from there.
@@ -64,43 +48,22 @@ cmake --build build --target INSTALL --config RelWithDebInfo
 You’ll need to make sure that the vcpkg dependencies and osgEarth are in your path:
 
 ```
-set PATH=%PATH%;c:\vcpkg\installed\x64-windows\bin
-set PATH=%PATH%;c:\vcpkg\installed\x64-windows\tools\osg
+set PATH=%PATH%;path\to\build\vcpkg_installed\x64-windows\bin
+set PATH=%PATH%;path\to\build\vcpkg_installed\x64-windows\tools\osg
 set PATH=%PATH%;[installroot]
 ```
 
-## Building for OpenGL CORE Profile
+## Building for different OPENGL profiles
+The latest (as of 4/21/2022) version of vcpkg will build OSG with OPENGL_PROFILE=GL3 by default.  This should be sufficient for running osgEarth as it enables all modern OpenGL features and disables the deprecated fixed function pipeline path in OSG.
 
-You may wish to build osgEarth with support for the OpenGL CORE profile. In fact is a requirement for some platforms including Apple OSX and VMWare. Doing to requires that you first build OpenSceneGraph with CORE profile support. The OpenSceneGraph dependency in *vcpkg* does NOT have GLCORE support (at the time of this writing) so you will have to build it yourself. 
+If you wish to build OSG with a different OPENGL_PROFILE such as GLCORE you can use a custom triplet variable by modifying the existing x64-windows.cmake triplet file at path\to\vcpkg\triplets\x64-windows.cmake and adding a new variable to end of the file like this
+```
+set(osg_OPENGL_PROFILE GLCORE)
+```
+When you install osg using vcpkg with this variable set it will build osg against the <GL/glcorearb.h> headers instead of the usual <GL/gl.h> header.
 
-#### Build OpenSceneGraph for GLCORE
-
-1. First, [download the GL CORE include files from Khronos](https://www.khronos.org/registry/OpenGL/api/GL) and place them somewhere on your system. We'll call this the GLCORE folder.
-2. In CMake, set the `OPENGL_PROFILE` property to "GLCORE".
-3. In CMake, set the `GLCORE_GLCOREARB_HEADER` property to the location of the GL folder you downloaded from Khronos. For example, if you include file is at `C:\glcore\GL\glcorearb.h` you should set this property to `C:\glcore`.
-4. In CMake, set the following properties to `ON` :
-   * `OSG_GL3_AVAILABLE`
-5. In CMake, set the following properties to `OFF` :
-   * `OSG_GL1_AVAILABLE`
-   * `OSG_GL2_AVAILABLE`
-   * `OSG_GLES1_AVAILABLE`
-   * `OSG_GLES2_AVAILABLE`
-   * `OSG_GL_DISPLAYLISTS_AVAILABLE`
-   * `OSG_GL_FIXED_FUNCTION_AVAILABLE`
-   * `OSG_GL_MATRICES_AVAILABLE`
-   * `OSG_GL_VERTEX_ARRAY_FUNCS_AVAILABLE`
-   * `OSG_GL_VERTEX_FUNCS_AVAILABLE`
-6. Configure and build OpenSceneGraph.
-
-#### Build osgEarth for GLCORE
-
-Now that you have OSG built with GLCORE support, time to build osgEarth.
-
-1. In CMake, set the `OSGEARTH_GLCORE_INCLUDE_DIR` property to the same folder holding the Khronos include files (the same value of the `GLCORE_GLCOREARB_HEADER` in your OSG build).
-2. Configure and build osgEarth.
-
-Test you build by running this on the command line (Windows)
-
+## Checking for an OpenGL Core Profile Context
+Some situations require you to have an OpenGL Core Profile context.  The ability to create a core context is available when OSG is built with OPENGL_PROFILE=GL3 or GLCORE.  Environments such as Apple OSX and VMWare require it as does debugging with tools like NVidia NSight.  You can check to see if you are running with an OpenGL Core Profile by running a command like this (Windows)
 ```
 set OSG_GL_CONTEXT_VERSION=4.6
 osgearth_version --caps

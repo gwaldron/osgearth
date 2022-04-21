@@ -636,7 +636,7 @@ namespace osgEarth
 
             if (ssbo == nullptr)
             {
-                ssbo = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, typeid(*this).name());
+                ssbo = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
                 _dirty[id] = 1;
             }
 

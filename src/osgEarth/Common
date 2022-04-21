@@ -38,16 +38,10 @@
 #endif
 
 // text inlining macro
+// @deprecated Remove after osgEarth 3.3 (use R instead)
 #define OE_MULTILINE(...) #__VA_ARGS__
 
-// expandable comment for macros (only works in MSVC)
-// TODO: Fails when using Qt - reevaluate later
-//#ifdef _MSC_VER
-#if 0
-#define OE_COMMENT(STR) / ## ** #STR * ## /
-#else
 #define OE_COMMENT(STR)
-#endif
 
 /** osgEarth core */
 namespace osgEarth
@@ -70,13 +64,6 @@ namespace osgEarth
 #endif
 
 #include "osgEarth/BuildConfig.h"
-
-// FINAL keyword for C++11
-#ifdef OSGEARTH_CXX11
-#define OSGEARTH_FINAL final
-#else
-#define OSGEARTH_FINAL
-#endif
 
 // Sringification
 #define OE_STRINGIFY_0(x) #x

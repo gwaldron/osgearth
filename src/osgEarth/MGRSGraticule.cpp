@@ -151,8 +151,6 @@ namespace
                     f->transform(xysrs->getGeographicSRS());
                 }
 
-                // TODO: deal with MultiGeometries!
-
                 Geometry* g = f->getGeometry();
 
                 u_short numPoints = OE_ENCODE_SHORT((u_short)g->size());

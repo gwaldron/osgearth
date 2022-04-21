@@ -1032,7 +1032,7 @@ ElevationLayerVector::populateHeightField(
                         hf->getHeight(c, r) += elevation;
 
                         // Technically this is correct, but the resultin normal maps
-                        // look awful and faceted. TODO
+                        // look awful and faceted.
                         //resolution = osg::minimum(
                         //    resolution,
                         //    (float)contenderKey.getResolution(hf->getNumColumns()).second);

@@ -322,7 +322,6 @@ namespace osgEarth
             if (input.valid())
             {
                 // If this is the first image, just set output to input
-                // (TODO: optimize)
                 if (!output.valid())
                 {
                     output = std::move(input);

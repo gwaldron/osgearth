@@ -1270,7 +1270,6 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
     if ( layerRemoved )
     {
         // release its layer drawable
-        //TODO - for each camera
         _persistent.scoped_lock([&]() {
             for (auto& e : _persistent)
                 e.second._drawables.erase(layerRemoved);

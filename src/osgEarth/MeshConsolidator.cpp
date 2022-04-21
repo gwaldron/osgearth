@@ -22,11 +22,14 @@
 
 #include <osgEarth/MeshConsolidator>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Registry>
+
 #include <osg/TriangleFunctor>
 #include <osg/TriangleIndexFunctor>
 #include <osg/Version>
 #include <osgDB/WriteFile>
 #include <osgUtil/MeshOptimizers>
+
 #include <limits>
 #include <map>
 #include <iterator>
@@ -275,7 +278,6 @@ namespace
             }
         }
 
-        // just for now.... TODO: allow thi later
         if ( geom.getVertexAttribArrayList().size() > 0 )
         {
             return false;
@@ -681,7 +683,7 @@ MeshConsolidator::run( osg::Geode& geode )
     }
 
     // start consolidating the geometries.
-    unsigned targetNumVertsPerGeom = 100000; //TODO: configurable?
+    unsigned targetNumVertsPerGeom = osgEarth::Registry::instance()->getMaxNumberOfVertsPerDrawable();
     DrawableList results;
 
     unsigned numVerts = 0, numColors = 0, numNormals = 0;

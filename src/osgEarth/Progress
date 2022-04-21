@@ -131,22 +131,6 @@ namespace osgEarth
     };
 
     /**
-    * Progress callback that automatically sets the canceled state
-    * if the current thread is an osgDB::DatabasePager thread that
-    * has been canceled.
-    */
-    class OSGEARTH_EXPORT DatabasePagerProgressCallback : public ProgressCallback
-    {
-    public:
-        void* _pagerThread;
-
-        DatabasePagerProgressCallback();
-
-    protected:
-        virtual bool shouldCancel() const override;
-    };
-
-    /**
      * Progress callback that will invoke cancelation if
      * a referenced object gets destructed.
      */

@@ -57,7 +57,7 @@ FeatureElevationLayer::Options::getConfig() const
 
 FeatureElevationLayer::~FeatureElevationLayer()
 {
-    //todo
+    //nop
 }
 
 void

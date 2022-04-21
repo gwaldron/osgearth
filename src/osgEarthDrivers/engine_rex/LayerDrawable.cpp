@@ -85,7 +85,7 @@ LayerDrawable::accept(osg::PrimitiveIndexFunctor& functor) const
 LayerDrawableGL3::LayerDrawableGL3() :
     LayerDrawable()
 {
-    //nop
+    setName("LayerDrawableGL3");
 }
 
 LayerDrawableGL3::~LayerDrawableGL3()
@@ -134,7 +134,7 @@ LayerDrawableGL3::drawImplementation(osg::RenderInfo& ri) const
 LayerDrawableNVGL::LayerDrawableNVGL() :
     LayerDrawable()
 {
-    //nop
+    setName("LayerDrawableNVGL");
 }
 LayerDrawableNVGL::~LayerDrawableNVGL()
 {

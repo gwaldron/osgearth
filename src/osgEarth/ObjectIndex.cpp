@@ -164,8 +164,6 @@ ObjectIndex::tagDrawable(osg::Drawable* drawable, ObjectID id) const
     geom->setVertexAttribArray(_attribLocation, ids);
     ids->setPreserveDataType(true);
 
-    // The tag is actually FeatureID + 1, to preserve "0" as an "empty" value.
-    // TODO: use a ObjectID generator and mapping instead.
     ids->assign( geom->getVertexArray()->getNumElements(), id );
 }
 

@@ -56,7 +56,8 @@ namespace osgEarth
         using RLUT = std::unordered_map<int, T>;
 
         // max out at 255 different indices. Make it a short if you want more.
-        // todo: consider templatizing this?
+        // TODO: consider templatizing this with something like
+        // <typename T, typename Index=unsigned char>
         using Index = unsigned char;
 
         // raster of indices

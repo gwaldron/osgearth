@@ -209,10 +209,6 @@ namespace osgEarth { namespace Util
 
 	/**
      * Utility class for making HTTP requests.
-     *
-     * TODO: This class will actually read data from disk as well, and therefore should
-     * probably be renamed. It analyzes the URI and decides whether to make an  HTTP request
-     * or to read from disk.
      */
     class OSGEARTH_EXPORT HTTPClient
     {
@@ -266,20 +262,16 @@ namespace osgEarth { namespace Util
                 code == ReadResult::RESULT_CANCELED;
         }
 
-        /** Gest the user-agent string that all HTTP requests will use.
-            TODO: This should probably move into the Registry */
+        /** Gets the user-agent string that all HTTP requests will use. */
         static const std::string& getUserAgent();
 
-        /** Sets a user-agent string to use in all HTTP requests.
-            TODO: This should probably move into the Registry */
+        /** Sets a user-agent string to use in all HTTP requests. */
         static void setUserAgent(const std::string& userAgent);
 
-        /** Sets up proxy info to use in all HTTP requests.
-            TODO: This should probably move into the Registry */
+        /** Sets up proxy info to use in all HTTP requests. */
 		static void setProxySettings( const optional<ProxySettings> &proxySettings );
 
-        /** Gets up proxy info to use in all HTTP requests.
-            TODO: This should probably move into the Registry */
+        /** Gets up proxy info to use in all HTTP requests. */
         static const optional<ProxySettings> & getProxySettings();
 
         /**

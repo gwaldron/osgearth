@@ -13,7 +13,7 @@ Demonstrates the use of a file with nodata.  The white circle is a GeoTiff which
         <url>../data/nodata.tif</url>
     </GDALImage>
 
-    <viewpoints>
+    <viewpoints home="0">
         <viewpoint name="NoData" heading="0.0" height="0" lat="5.0" long="15.0" pitch="-75" range="1000000"/>
     </viewpoints>
 </map>

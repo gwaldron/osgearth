@@ -6,7 +6,7 @@ env:
   VCPKG_BINARY_SOURCES : 'clear;nuget,GitHub,readwrite'
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
-  VCPKG_VERSION: 'd417ae59d6e9aa20d9f812b5deb966645c54687d'
+  VCPKG_VERSION: 'bb584d35bba70ca9f1ecaf09ad96ce5d1ff946f8'
 
 jobs:
 
@@ -26,20 +26,8 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
-        
-    - name: vcpkg cache
-      id: vcpkgcache
-      uses: actions/cache@v2
-      with:
-        path: |
-          ${{ matrix.VCPKG_WORKSPACE }}
-          !${{ matrix.VCPKG_WORKSPACE }}/packages
-          !${{ matrix.VCPKG_WORKSPACE }}/buildtrees
-          !${{ matrix.VCPKG_WORKSPACE }}/downloads
-        key: vcpkg-${{ matrix.triplet }}-v2
 
     - name: Installing vcpkg (windows)
-      if: steps.vcpkgcache.outputs.cache-hit != 'true'
       shell: 'bash'
       run: |
         cmake -E make_directory ${{ matrix.VCPKG_WORKSPACE }}
@@ -58,28 +46,11 @@ jobs:
       run: >
         ${{ matrix.mono }} `./vcpkg/vcpkg fetch nuget | tail -n 1`
         sources add
-        -source "https://nuget.pkg.github.com/${{ github.actor }}/index.json"
+        -source "https://nuget.pkg.github.com/gwaldron/index.json"
         -storepasswordincleartext
         -name "GitHub"
-        -username "${{ github.actor }}"
+        -username "gwaldron"
         -password "${{ secrets.GITHUB_TOKEN }}"
-
-    # Omit this step if you're using manifests
-    - name: 'vcpkg package restore'
-      working-directory: ${{ matrix.VCPKG_WORKSPACE }}
-      shell: 'bash'
-      run: >
-        ./vcpkg/vcpkg install osg curl gdal geos sqlite3 protobuf basisu draco glew --triplet ${{ matrix.triplet }}
-
-    - name: 'Upload library build log artifact'
-      uses: actions/upload-artifact@v2
-      if: ${{ failure() }}
-      with:
-        name: osg-log
-        path: |
-          ${{ env.VCPKG_WORKSPACE }}/vcpkg/buildtrees/osg/install-x64-windows-rel-err.log
-          ${{ env.VCPKG_WORKSPACE }}/vcpkg/buildtrees/osg/install-x64-windows-rel-out.log
-        retention-days: 1
 
     - name: Create Build Environment
       run: |

@@ -352,7 +352,7 @@ ElevationPool::getOrCreateRaster(
                 hf.get(),
                 &resolutions,
                 keyToUse,
-                map->getProfileNoVDatum(), // want HAE for terrain building...? TODO
+                map->getProfileNoVDatum(),
                 map->getElevationInterpolation(),
                 progress );
 
@@ -532,9 +532,6 @@ ElevationPool::Envelope::sampleMapCoords(
 
     ScopedAtomicCounter counter(_pool->_workers);
 
-    //TODO: TESTING..?
-    //ws = NULL;
-
     double u, v;
     double rx, ry;
     int tx, ty;
@@ -658,9 +655,6 @@ ElevationPool::sampleMapCoords(
 
     Envelope::QuickCache quickCache;
     Envelope::QuickSampleVars qvars;
-
-    //TODO: TESTING..?
-    //ws = NULL;
 
     unsigned tw, th;
     double rx, ry;

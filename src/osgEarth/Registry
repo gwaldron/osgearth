@@ -153,6 +153,7 @@ namespace osgEarth
 
         /**
          * The default shader generator.
+         * @deprecated REMOVE in 4.0; use ShaderGenerator directly
          */
         ShaderGeneratorProxy getShaderGenerator() const;
         void setShaderGenerator(ShaderGenerator* gen);
@@ -169,6 +170,7 @@ namespace osgEarth
          * A StateSetCache assist in stateset sharing across multiple nodes.
          * Note: A registry-wide SSC is only supported in OSG 3.1.4+. See
          * the Registry.cpp comments for details.
+         * @deprecated REMOVE in 4.0
          */
         StateSetCache* getStateSetCache() const;
         void setStateSetCache( StateSetCache* cache );
@@ -183,11 +185,13 @@ namespace osgEarth
 
         /**
          * Sets a global read callback for URI objects.
+         * @deprecated REMOVE in 4.0
          */
         void setURIReadCallback( URIReadCallback* callback );
 
         /**
          * Gets the global read callback for URI objects.
+         * @deprecated REMOVE in 4.0
          */
         URIReadCallback* getURIReadCallback() const;
 

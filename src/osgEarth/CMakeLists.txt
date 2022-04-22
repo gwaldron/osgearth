@@ -42,8 +42,6 @@ IF(WIN32)
 ENDIF(WIN32)
 
 # Generate the BuildConfig header.
-# TODO: no longer need to do this since C++11 is required
-set(OSGEARTH_CXX11_DEFINE "#define OSGEARTH_CXX11")
 set(OSGEARTH_SOVERSION_VALUE "${OSGEARTH_SOVERSION}")
 set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig.h")
 message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")

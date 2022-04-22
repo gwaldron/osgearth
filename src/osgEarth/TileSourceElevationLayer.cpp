@@ -39,7 +39,6 @@ Config
 TileSourceElevationLayer::Options::getConfig() const
 {
     Config conf = TileLayer::Options::getConfig();
-    // todo: driver?
     return conf;
 }
 //------------------------------------------------------------------------

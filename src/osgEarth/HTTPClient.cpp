@@ -393,8 +393,6 @@ HTTPResponse::getHeadersAsConfig() const
 
 namespace
 {
-    // TODO: consider moving this stuff into the osgEarth::Registry;
-    // don't like it here in the global scope
     // per-thread client map (must be global scope)
     static PerThread<HTTPClient>       s_clientPerThread("HTTPClient(OE)");
 

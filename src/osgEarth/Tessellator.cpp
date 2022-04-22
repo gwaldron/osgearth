@@ -23,8 +23,6 @@
 #include <limits.h>
 #include <osgEarth/Tessellator>
 
-#ifdef OSGEARTH_CXX11
-
 #include <osgEarth/earcut.hpp>
 namespace mapbox {
     namespace util {
@@ -59,8 +57,6 @@ namespace mapbox {
 }
 
 #define USE_EARCUT
-
-#endif
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -365,10 +361,6 @@ Tessellator::tessellateGeometry(osg::Geometry &geom)
 osg::PrimitiveSet*
 Tessellator::tessellatePrimitive(osg::PrimitiveSet* primitive, osg::Vec3Array* vertices)
 {
-    //
-    //TODO: Hnadle more primitive types
-    //
-
     switch(primitive->getType())
     {
     case(osg::PrimitiveSet::DrawArraysPrimitiveType):

@@ -1047,7 +1047,6 @@ void
 GLTexture::makeResident(bool toggle)
 {
     //TODO: does this stall??
-    //if (toggle != ext()->glIsTextureHandleResident(_handle))
     if (_isResident != toggle)
     {
         OE_SOFT_ASSERT_AND_RETURN(_handle != 0, void(), "makeResident() called on invalid handle: " + label() << );

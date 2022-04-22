@@ -133,7 +133,7 @@ namespace osgEarth
 
         virtual int getSequence() const = 0;
 
-        virtual void apply(
+        virtual bool apply(
             osg::RenderInfo& ri,
             void* implData) const = 0;
 

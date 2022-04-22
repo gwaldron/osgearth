@@ -85,7 +85,7 @@ LayerDrawable::accept(osg::PrimitiveIndexFunctor& functor) const
 LayerDrawableGL3::LayerDrawableGL3() :
     LayerDrawable()
 {
-    //nop
+    setName("LayerDrawableGL3");
 }
 
 LayerDrawableGL3::~LayerDrawableGL3()
@@ -121,8 +121,8 @@ LayerDrawableGL3::drawImplementation(osg::RenderInfo& ri) const
 
         for (auto& tile : _tiles)
         {
-            tile.apply(ri, _drawState.get());
-            tile.draw(ri);
+            if (tile.apply(ri, _drawState.get()))
+                tile.draw(ri);
         }
     }
 
@@ -134,7 +134,7 @@ LayerDrawableGL3::drawImplementation(osg::RenderInfo& ri) const
 LayerDrawableNVGL::LayerDrawableNVGL() :
     LayerDrawable()
 {
-    //nop
+    setName("LayerDrawableNVGL");
 }
 LayerDrawableNVGL::~LayerDrawableNVGL()
 {

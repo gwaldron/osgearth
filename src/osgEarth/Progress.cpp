@@ -18,7 +18,6 @@
  */
 
 #include <osgEarth/Progress>
-#include <osgDB/DatabasePager>
 
 using namespace osgEarth;
 
@@ -88,22 +87,3 @@ bool ProgressCallback::reportProgress(double             current,
     return false;
 }
 
-/******************************************************************************/
-
-DatabasePagerProgressCallback::DatabasePagerProgressCallback()
-{
-    // if this is a pager thread, get a handle on it:
-
-    // TODO: figure out a way to do this WITHOUT OpenThreads, since this
-    // is the ONLY reason for the dependency.
-    _pagerThread = dynamic_cast<osgDB::DatabasePager::DatabaseThread*>(
-        OpenThreads::Thread::CurrentThread());
-}
-
-bool
-DatabasePagerProgressCallback::shouldCancel() const
-{
-    return 
-        (ProgressCallback::shouldCancel()) ||
-        (_pagerThread != NULL && static_cast<osgDB::DatabasePager::DatabaseThread*>(_pagerThread)->getDone());
-}

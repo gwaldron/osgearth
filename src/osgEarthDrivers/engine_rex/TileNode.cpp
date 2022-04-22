@@ -843,7 +843,12 @@ TileNode::merge(
                         OE_DEBUG << "no parent pass in my pass. key=" << model->key().str() << std::endl;
                     }
 
-                    pass->sampler(SamplerBinding::COLOR)._futureTexture = colorLayer.texture();
+                    // check whether it's actually a futuretexture.
+                    // if it's not, it is likely an empty texture and we'll ignore it
+                    if (dynamic_cast<FutureTexture*>(colorLayer.texture()->osgTexture().get()))
+                    {
+                        pass->sampler(SamplerBinding::COLOR)._futureTexture = colorLayer.texture();
+                    }
 
                     // require an update pass to process the future texture
                     _imageUpdatesActive = true;

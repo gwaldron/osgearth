@@ -255,8 +255,6 @@ PolygonizeLinesOperator::operator()(
                 prevBufVertPtr = verts->size() - 1;
 
                 // first tex coord:
-                // TODO: revisit. I believe we have them going x = [-1..1] instead of [0..1] -gw
-                //tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
                 tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );
 
                 // first normal

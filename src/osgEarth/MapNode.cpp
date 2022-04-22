@@ -900,6 +900,10 @@ MapNode::traverse( osg::NodeVisitor& nv )
         for(int i=0; i<count; ++i)
             cv->popStateSet();
 
+        //Config c = CullDebugger().dumpRenderBin(cv->getCurrentRenderBin());
+        //OE_INFO << c.toJSON(true) << std::endl;
+        //exit(0);
+
         // after any cull, allow an update traversal.
         _readyForUpdate.exchange(true);
     }

@@ -592,7 +592,6 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
     SharedDrawElements::GCState& de = _drawElements->_gc[gcid];
     if (de._ebo == nullptr || !de._ebo->valid())
     {
-        //TODO consider sharing
         de._ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
         de._ebo->bind();
         de._ebo->debugLabel("REX geometry");

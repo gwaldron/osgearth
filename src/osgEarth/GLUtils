@@ -104,6 +104,12 @@ namespace osgEarth
         static void useNVGL(bool value);
         static bool useNVGL() { return _useNVGL; }
 
+        //! Unique graphics context ID associated with this state
+        //! that is not shared across wglShareLists shared contexts.
+        //! Necessary for using VAOs and bindless buffers/textures
+        //! with shared contexts.
+        static unsigned getUniqueContextID(const osg::State& state);
+
     private:
         static bool _gldebugging;
         static bool _useNVGL;
@@ -176,7 +182,7 @@ namespace osgEarth
         DrawElementsIndirectBindlessCommandNV() :
             cmd(), reserved(0), indexBuffer(), vertexBuffer() { }
     };
-    
+
     //! Base class for GL object containers
     class OSGEARTH_EXPORT GLObject
     {
@@ -294,7 +300,7 @@ namespace osgEarth
             osg::State& state,
             GLsizei sizeHint);
 
-        //! bind to target()
+        //! Bind this buffer to target() in the active context.
         void bind() const;
 
         //! bind to something other than target()
@@ -373,11 +379,13 @@ namespace osgEarth
         //! (for use with bindless buffers only)
         GLuint64 address();
 
-        //! Makes a bindless buffer resident
-        void makeResident();
+        //! Makes a bindless buffer resident within the state's context/
+        //! Note: You must make a bindless buffer resident in each
+        //! graphics context in which you use it (spec).
+        void makeResident(osg::State&);
 
-        //! Make a bindless buffer non-resident
-        void makeNonResident();
+        //! Make a bindless buffer non-resident within the state's context.
+        void makeNonResident(osg::State&);
 
     protected:
         GLBuffer(GLenum target, osg::State& state);
@@ -385,7 +393,7 @@ namespace osgEarth
         GLuint64 _address; // bindless GPU address
         mutable GLsizei _size;
         mutable bool _immutable;
-        bool _isResident;
+        std::vector<bool> _isResident;
     };
 
     //! A texture object with optional resident handle
@@ -430,10 +438,20 @@ namespace osgEarth
             osg::State& state,
             const Profile& profileHint);
 
+        //! Binds this texture to `target`
         void bind(osg::State& state);
+
+        //! Returns the GPU address of a bindless texture
         GLuint64 handle(osg::State& state);
-        void makeResident(bool toggle);
-        bool isResident() const { return _isResident; }
+
+        //! Toggles the bindless texture residency in the unique
+        //! graphics context associated with `state`.
+        void makeResident(const osg::State& state, bool toggle);
+
+        //! Whether the texture is resident in the unique
+        //! graphics context associated with `state`.
+        bool isResident(const osg::State& state) const;
+
         void release();
         const Profile& profile() const { return _profile; }
         std::string& id() { return _id; }
@@ -454,7 +472,7 @@ namespace osgEarth
     private:
         GLenum _target;
         GLuint64 _handle;
-        bool _isResident;
+        std::vector<bool> _isResident;
         std::string _id;
         GLsizei _size;
         Profile _profile;

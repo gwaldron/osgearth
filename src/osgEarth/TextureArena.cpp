@@ -383,7 +383,7 @@ Texture::compileGLObjects(osg::State& state) const
         }
 
         // finally, make it resident.
-        gc._gltexture->makeResident(true);
+        gc._gltexture->makeResident(state, true);
     }
 
     // sync the mod counts.
@@ -397,7 +397,7 @@ Texture::makeResident(const osg::State& state, bool toggle) const
 
     if (gc._gltexture != nullptr)
     {
-        gc._gltexture->makeResident(toggle);
+        gc._gltexture->makeResident(state, toggle);
 
         OE_DEVEL << LC
             << "Texture::makeResident '" << gc._gltexture->id()
@@ -409,7 +409,7 @@ bool
 Texture::isResident(const osg::State& state) const
 {
     GCState& gc = get(state);
-    return (gc._gltexture != nullptr && gc._gltexture->isResident());
+    return (gc._gltexture != nullptr && gc._gltexture->isResident(state));
 }
 
 void

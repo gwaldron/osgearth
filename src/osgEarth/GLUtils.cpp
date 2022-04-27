@@ -164,6 +164,12 @@ GLUtils::useNVGL(bool value)
     }
 }
 
+unsigned
+GLUtils::getUniqueContextID(const osg::State& state)
+{
+    return state.getContextID();
+}
+
 void
 GLUtils::enableGLDebugging()
 {
@@ -551,7 +557,7 @@ GLObject::GLObject(GLenum ns, osg::State& state) :
     _name(0),
     _ns(ns),
     _recyclable(false),
-    _ext(state.get<osg::GLExtensions>())
+    _ext(osg::GLExtensions::Get(GLUtils::getUniqueContextID(state), true))
 {
     gl.init();
 }
@@ -571,7 +577,7 @@ GLQuery::GLQuery(GLenum target, osg::State& state) :
     _target(target),
     _active(false)
 {
-    ext()->glGenQueries(1, &_name);    
+    ext()->glGenQueries(1, &_name);
 }
 
 GLQuery::Ptr
@@ -665,10 +671,17 @@ GLBuffer::GLBuffer(GLenum target, osg::State& state) :
     _target(target),
     _size(0),
     _immutable(false),
-    _address(0),
-    _isResident(false)
+    _address(0)
 {
+    _isResident.assign(64, false);
+
     ext()->glGenBuffers(1, &_name);
+    if (name() == 0)
+    {
+        GLenum e = glGetError();
+        OE_INFO << "OpenGL error " << e << std::endl;
+        OE_HARD_ASSERT(name() != 0);
+    }
 }
 
 GLBuffer::Ptr
@@ -711,7 +724,7 @@ void
 GLBuffer::bind() const
 {
     //OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
-    OE_SOFT_ASSERT_AND_RETURN(_name != 0, void(), "bind() called on invalid/deleted name: " + label() << );
+    OE_SOFT_ASSERT_AND_RETURN(_name != 0, void(), "bind() called on invalid/deleted name: " + _name << );
     ext()->glBindBuffer(_target, _name);
 }
 
@@ -864,11 +877,12 @@ GLBuffer::release()
     {
         OE_DEVEL << LC << "GLBuffer::release, name=" << name() << std::endl;
 
-        makeNonResident();
+        //makeNonResident();
         //OE_DEVEL << "Releasing buffer " << _name << "(" << _label << ")" << std::endl;
         ext()->glDeleteBuffers(1, &_name);
         _name = 0;
         _size = 0;
+        _isResident.assign(_isResident.size(), false);
     }
 }
 
@@ -885,27 +899,31 @@ GLBuffer::address()
 }
 
 void
-GLBuffer::makeResident()
+GLBuffer::makeResident(osg::State& state)
 {
-    if (address() != 0 && !_isResident)
+    int cid = GLUtils::getUniqueContextID(state);
+
+    if (address() != 0 && !_isResident[cid])
     {
         OE_HARD_ASSERT(gl.MakeNamedBufferResidentNV);
         //Currently only GL_READ_ONLY is supported according to the spec
         gl.MakeNamedBufferResidentNV(name(), GL_READ_ONLY_ARB);
-        _isResident = true;
+        _isResident[cid] = true;
     }
 }
 
 void
-GLBuffer::makeNonResident()
+GLBuffer::makeNonResident(osg::State& state)
 {
-    if (_address != 0 && _isResident)
+    int cid = GLUtils::getUniqueContextID(state);
+
+    if (address() != 0 && _isResident[cid])
     {
         OE_HARD_ASSERT(gl.MakeNamedBufferNonResidentNV);
         gl.MakeNamedBufferNonResidentNV(name());
-        _isResident = false;
         // address can be invalidated, so zero it out
         _address = 0;
+        _isResident[cid] = false;
     }
 }
 
@@ -969,11 +987,11 @@ GLTexture::GLTexture(GLenum target, osg::State& state) :
     GLObject(GL_TEXTURE, state),
     _target(target),
     _handle(0),
-    _isResident(false),
     _profile(target),
     _size(0)
 {
     glGenTextures(1, &_name);
+    _isResident.assign(64, false);
 }
 
 GLTexture::Ptr
@@ -1019,10 +1037,6 @@ GLTexture::bind(osg::State& state)
 
     glBindTexture(_target, _name);
 
-    // must be called with a compatible state
-    // (same context under which the texture was created)
-    OE_SOFT_ASSERT(state.getContextID() == _ext->contextID);
-
     // Inform OSG of the state change
     state.haveAppliedTextureAttribute(
         state.getActiveTextureUnit(), osg::StateAttribute::TEXTURE);
@@ -1044,10 +1058,13 @@ GLTexture::handle(osg::State& state)
 }
 
 void
-GLTexture::makeResident(bool toggle)
+GLTexture::makeResident(const osg::State& state, bool toggle)
 {
+    unsigned cid = GLUtils::getUniqueContextID(state);
+    OE_SOFT_ASSERT_AND_RETURN(cid < _isResident.size(), void());
+
     //TODO: does this stall??
-    if (_isResident != toggle)
+    if (_isResident[cid] != toggle)
     {
         OE_SOFT_ASSERT_AND_RETURN(_handle != 0, void(), "makeResident() called on invalid handle: " + label() << );
 
@@ -1058,8 +1075,16 @@ GLTexture::makeResident(bool toggle)
 
         OE_DEVEL << "'" << id() << "' name=" << name() <<" resident=" << (toggle ? "yes" : "no") << std::endl;
 
-        _isResident = toggle;
+        _isResident[cid] = toggle;
     }
+}
+
+bool
+GLTexture::isResident(const osg::State& state) const
+{
+    unsigned cid = GLUtils::getUniqueContextID(state);
+    OE_SOFT_ASSERT_AND_RETURN(cid < _isResident.size(), false);
+    return _isResident[cid];
 }
 
 void
@@ -1068,7 +1093,8 @@ GLTexture::release()
     OE_DEVEL << LC << "GLTexture::release, name=" << name() << std::endl;
     if (_handle != 0)
     {
-        makeResident(false);
+        //makeResident(false);
+        _isResident.assign(_isResident.size(), false);
         _handle = 0;
     }
     if (_name != 0)

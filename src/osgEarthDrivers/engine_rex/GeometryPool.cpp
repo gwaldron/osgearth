@@ -596,11 +596,11 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
         de._ebo->bind();
         de._ebo->debugLabel("REX geometry");
         de._ebo->bufferStorage(_drawElements->getTotalDataSize(), _drawElements->getDataPointer(), 0);
-        de._ebo->makeResident();
         de._ebo->unbind();
 
         dirty = true;
     }
+
 
     GCState& gs = _gc[gcid];
     if (gs._vbo == nullptr || !gs._vbo->valid())
@@ -615,11 +615,14 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
         gs._vbo->bind();
         gs._vbo->debugLabel("REX geometry");
         gs._vbo->bufferStorage(size, _verts.data());
-        gs._vbo->makeResident();
         gs._vbo->unbind();
 
         dirty = true;
     }
+
+    // make them resident in each context separately
+    de._ebo->makeResident(state);
+    gs._vbo->makeResident(state);
 
     if (dirty)
     {
@@ -714,7 +717,10 @@ void SharedGeometry::releaseGLObjects(osg::State* state) const
     if (_neighborNormalArray.valid()) _neighborNormalArray->releaseGLObjects(state);
 
     if (state)
-        _gc[state->getContextID()]._vbo = nullptr;
+    {
+        unsigned cid = GLUtils::getUniqueContextID(*state);
+        _gc[cid]._vbo = nullptr;
+    }
 
     // Do nothing if state is nullptr!
     // Let nature take its course and let the GLObjectPool deal with it

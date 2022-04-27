@@ -404,7 +404,6 @@ Chonk::getOrCreateCommands(osg::State& state) const
             _vbo_store.size() * sizeof(VertexGPU),
             _vbo_store.data(),
             0); // permanent
-        gs.vbo->makeResident();
 
         gs.ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
         gs.ebo->bind();
@@ -413,7 +412,6 @@ Chonk::getOrCreateCommands(osg::State& state) const
             _ebo_store.size() * sizeof(element_t),
             _ebo_store.data(),
             0); // permanent
-        gs.ebo->makeResident();
 
         gs.commands.reserve(_lods.size());
 
@@ -436,6 +434,10 @@ Chonk::getOrCreateCommands(osg::State& state) const
         gs.vbo->unbind();
         gs.ebo->unbind();
     }
+
+    // Bindless buffers must be made resident in each context separately
+    gs.vbo->makeResident(state);
+    gs.ebo->makeResident(state);
 
     return gs.commands;
 }

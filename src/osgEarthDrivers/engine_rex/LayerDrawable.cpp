@@ -298,6 +298,9 @@ LayerDrawableNVGL::RenderState::RenderState()
 void
 LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
 {
+    // work around the GDP makOsg hack (ViewerBase.cpp:894)
+    //ri.getState()->getGraphicsContext()->makeCurrent();
+
     // Research on glMultiDrawElementsIndirectBindlessNV:
     // https://github.com/ychding11/HelloWorld/wiki/Modern-GPU-Driven-Rendering--%28How-to-draw-fast%29
     // https://on-demand.gputechconf.com/siggraph/2014/presentation/SG4117-OpenGL-Scene-Rendering-Techniques.pdf
@@ -520,7 +523,8 @@ LayerDrawableNVGL::releaseGLObjects(osg::State* state) const
     RenderState& cs = _rs;
     if (state)
     {
-        GCState& gs = cs.gcState[state->getContextID()];
+        unsigned cid = GLUtils::getUniqueContextID(*state);
+        GCState& gs = cs.gcState[cid];
         gs.shared = nullptr;
         gs.tiles = nullptr;
         gs.commands = nullptr;

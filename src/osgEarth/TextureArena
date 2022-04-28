@@ -104,9 +104,12 @@ namespace osgEarth
             GCState() : _imageModCount(0) { }
         };
         mutable std::vector<GCState> _gc;
-        GCState& get(const osg::State& s) const {
-            unsigned id = s.getContextID();
-            if (id >= _gc.size()) _gc.resize(id + 1);
+
+        GCState& get(const osg::State& s) const
+        {
+            unsigned id = GLUtils::getSharedContextID(s);
+            if (id >= _gc.size())
+                _gc.resize(id + 1);
             return _gc[id];
         }
 
@@ -194,9 +197,12 @@ namespace osgEarth
             bool _dirty;
         };
         mutable std::vector<GCState> _gc;
-        GCState& get(const osg::State& s) const {
-            unsigned id = s.getContextID();
-            if (id >= _gc.size()) _gc.resize(id + 1);
+
+        GCState& get(const osg::State& s) const
+        {
+            unsigned id = GLUtils::getSharedContextID(s);
+            if (id >= _gc.size())
+                _gc.resize(id + 1);
             return _gc[id];
         }
 

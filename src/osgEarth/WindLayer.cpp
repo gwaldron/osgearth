@@ -313,7 +313,8 @@ namespace
     {
         if (state)
         {
-            GCState& ds = _ds[state->getContextID()];
+            auto cid = GLUtils::getUniqueContextID(*state);
+            GCState& ds = _ds[cid];
             ds._buffer = nullptr;
         }
         else
@@ -348,8 +349,9 @@ namespace
 
         OE_GL_ZONE;
 
-        GCState& ds = _ds[ri.getState()->getContextID()];
-        osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+        auto cid = GLUtils::getUniqueContextID(*ri.getState());
+        GCState& ds = _ds[cid];
+        osg::GLExtensions* ext = osg::GLExtensions::Get(cid, true);
 
         // update buffer with wind data
         streamDataToGPU(ri, ds);

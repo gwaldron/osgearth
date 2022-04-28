@@ -110,7 +110,8 @@ TileRasterizer::Renderer::releaseGLObjects(osg::State* state) const
 
     if (state)
     {
-        GCState& gs = _gs[state->getContextID()];
+        auto cid = GLUtils::getUniqueContextID(*state);
+        GCState& gs = _gs[cid];
         gs.pbo = nullptr;
         gs.query = nullptr;
     }
@@ -278,8 +279,9 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
             return false; // done
         }
 
+        auto cid = GLUtils::getUniqueContextID(state);
         Renderer::Ptr& renderer = job->_renderer;
-        Renderer::GCState& gs = renderer->_gs[state.getContextID()];
+        Renderer::GCState& gs = renderer->_gs[cid];
 
         if (invocation == RENDER)
         {

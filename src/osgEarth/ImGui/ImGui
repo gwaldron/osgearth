@@ -85,25 +85,28 @@ namespace osgEarth
                 //nop
             }
 
-            // convenience function for finding nodes
+            //! convenience function for finding nodes
             template<typename T>
             T* findNode(osg::RenderInfo& ri) const {
                 return osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
             }
 
+            //! convenience function for getting the current view
             inline osgViewer::View* view(osg::RenderInfo& ri) const {
-                return dynamic_cast<osgViewer::View*>(ri.getCurrentCamera()->getView());
+                return dynamic_cast<osgViewer::View*>(ri.getView());
             }
 
+            //! convenience function for getting the current camera
             inline osg::Camera* camera(osg::RenderInfo& ri) const {
                 return ri.getCurrentCamera();
             }
 
+            //! convenience function for getting the topmost stateset
             inline osg::StateSet* stateset(osg::RenderInfo& ri) const {
                 return ri.getCurrentCamera()->getOrCreateStateSet();
             }
 
-            // convenience function for finding nodes
+            //! convenience function for finding nodes
             template<typename T>
             bool findNode(osg::observer_ptr<T>& node, osg::RenderInfo& ri) const {
                 if (!node.valid())
@@ -111,7 +114,7 @@ namespace osgEarth
                 return node.valid();
             }
 
-            // convenience function for finding nodes
+            //! convenience function for finding nodes
             template<typename T>
             bool findNodeOrHide(osg::observer_ptr<T>& node, osg::RenderInfo& ri) {
                 if (!node.valid())

@@ -20,6 +20,7 @@ Release Highlights:
 * New `CoverageLayer` for general-purpose coverage data
 * `SkyNode` has simulation-time tracking for visualizing time-series data
 * Experimental support for NVIDIA-specific GL extensions for bindless rendering
+* Added new blosc osg compressor that is faster than zlib.  Enable by building with blosc support and setting environment variable OSGEARTH_DEFAULT_COMPRESSOR=blosc
 
 
 ## Version 3.2 (August 2021)

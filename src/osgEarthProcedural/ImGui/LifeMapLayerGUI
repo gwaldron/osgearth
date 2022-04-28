@@ -117,7 +117,7 @@ namespace osgEarth {
         };
     }
 }
-#endif OSGEARTH_PROCEDURAL_LIFEMAP_LAYER_GUI
+#endif // OSGEARTH_PROCEDURAL_LIFEMAP_LAYER_GUI
 
 //REGISTER_OSGEARTH_IMGUI(LifeMapLayer, []()
 //    {

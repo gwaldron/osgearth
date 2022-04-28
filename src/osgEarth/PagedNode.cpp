@@ -51,6 +51,7 @@ PagedNode2::PagedNode2() :
     _priorityScale(1.0f),
     _refinePolicy(REFINE_REPLACE),
     _preCompile(true),
+    _revision(0),
     _autoUnload(true),
     _lastRange(FLT_MAX)
 {

@@ -198,6 +198,7 @@ VegetationLayer::init()
 {
     PatchLayer::init();
 
+    _biomeRevision = 0;
     setAcceptCallback(new LayerAcceptor(this));
 
     _requestMultisampling = false;

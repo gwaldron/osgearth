@@ -307,7 +307,7 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
     // https://developer.download.nvidia.com/opengl/tutorials/bindless_graphics.pdf
 
     osg::State& state = *ri.getState();
-    auto contextID = state.getContextID();
+    auto contextID = GLUtils::getUniqueContextID(state); // state.getContextID();
     GCState& gs = _rs.gcState[contextID];
 
     if (_rs.tiles.empty())
@@ -534,6 +534,8 @@ LayerDrawableNVGL::releaseGLObjects(osg::State* state) const
     {
         cs.gcState.setAllElementsTo(GCState());
     }
+
+    cs.dirty = true;
 
     LayerDrawable::releaseGLObjects(state);
 }

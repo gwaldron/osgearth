@@ -393,7 +393,8 @@ Chonk::add(
 const Chonk::DrawCommands&
 Chonk::getOrCreateCommands(osg::State& state) const
 {
-    auto& gs = _gs[state.getContextID()];
+    auto cid = GLUtils::getUniqueContextID(state);
+    auto& gs = _gs[cid];
 
     if (gs.vbo == nullptr)
     {
@@ -648,7 +649,8 @@ ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
 void
 ChonkDrawable::update_and_cull_batches(osg::State& state) const
 {
-    GCState& gs = _gs[state.getContextID()];
+    auto cid = GLUtils::getUniqueContextID(state);
+    GCState& gs = _gs[cid];
 
     if (gs._dirty)
     {
@@ -670,7 +672,8 @@ ChonkDrawable::update_and_cull_batches(osg::State& state) const
 void
 ChonkDrawable::draw_batches(osg::State& state) const
 {
-    GCState& gs = _gs[state.getContextID()];
+    auto cid = GLUtils::getUniqueContextID(state);
+    GCState& gs = _gs[cid];
 
     if (!_mvm.isIdentity())
     {
@@ -724,7 +727,7 @@ void
 ChonkDrawable::releaseGLObjects(osg::State* state) const
 {
     if (state)
-        _gs[state->getContextID()].release();
+        _gs[GLUtils::getUniqueContextID(*state)].release();
     else
         _gs.setAllElementsTo(GCState());
 }
@@ -1161,7 +1164,9 @@ ChonkRenderBin::DrawLeaf::draw(osg::State& state)
 
     if (_first)
     {
-        GLVAO::Ptr vao = d->_gs[state.getContextID()]._vao;
+        // VAOs require a UNIQUE graphics context:
+        auto cid = GLUtils::getUniqueContextID(state);
+        GLVAO::Ptr vao = d->_gs[cid]._vao;
         vao->bind();
         vao->ext()->glMemoryBarrier(
             GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
@@ -1171,7 +1176,9 @@ ChonkRenderBin::DrawLeaf::draw(osg::State& state)
 
     if (_last)
     {
-        GLVAO::Ptr vao = d->_gs[state.getContextID()]._vao;
+        // VAOs require a UNIQUE graphics context:
+        auto cid = GLUtils::getUniqueContextID(state);
+        GLVAO::Ptr vao = d->_gs[cid]._vao;
         vao->unbind();
     }
 

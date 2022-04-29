@@ -105,10 +105,16 @@ namespace osgEarth
         static bool useNVGL() { return _useNVGL; }
 
         //! Unique graphics context ID associated with this state
-        //! that is not shared across wglShareLists shared contexts.
-        //! Necessary for using VAOs and bindless buffers/textures
-        //! with shared contexts.
+        //! and not shared with other states. This is necessary for
+        //! using any GL function that cannot be shared across 
+        //! graphics contexts, such as VAOs or bindless buffer/texture
+        //! residency.
         static unsigned getUniqueContextID(const osg::State& state);
+
+        //! Graphics context ID shared between all states sharing
+        //! the same graphics context. Only use for GL object that can
+        //! be shared by multiple graphics contexts (multi-window setup)
+        static unsigned getSharedContextID(const osg::State& state);
 
     private:
         static bool _gldebugging;
@@ -586,115 +592,6 @@ namespace osgEarth
         virtual void compileGLObjects(osg::State& state) const = 0;
         virtual void resizeGLObjectBuffers(unsigned maxsize) = 0;
         virtual void releaseGLObjects(osg::State* state) const = 0;
-    };
-
-    /**
-     * Helper class that maintains a per-GC GL Buffer that
-     * reflects an in-memory array.
-     * (consider using GLBuffer directly in most cases moving forward)
-     * (might deprecate)
-     */
-    template<typename T>
-    class ArraySSBO : public OSG_GL_API
-    {
-    public:
-        ArraySSBO() : _bindingPoint(0)
-        {
-            _ssbo.resize(16);
-            _dirty.resize(16);
-            _dirty.setAllElementsTo(0);
-        }
-
-        virtual ~ArraySSBO()
-        {
-            for (unsigned i = 0; i < _ssbo.size(); ++i)
-                _ssbo[i] = nullptr;
-        }
-
-        //! Sets the number of elements this object can hold
-        void setMaxNumElements(unsigned value)
-        {
-            if (value > _array.size())
-            {
-                _array.resize(value);
-                dirty();
-            }
-        }
-
-        void setBindingPoint(unsigned value)
-        {
-            _bindingPoint = value;
-        }
-
-        T& operator[](int index)
-        {
-            setMaxNumElements(index+1);
-            return _array[index];
-        }
-
-        void dirty()
-        {
-            _dirty.setAllElementsTo(1);
-        }
-
-        void bind(GLenum target, osg::State& state) const
-        {
-            _ssbo[state.getContextID()]->bind(target);
-        }
-
-    public: // OSG_GL_API
-
-        void apply(osg::State& state) const override
-        {
-            if (_array.empty())
-                return;
-            if (_array.empty())
-                return;
-
-            unsigned id = state.getContextID();
-
-            GLBuffer::Ptr& ssbo = _ssbo[id];
-
-            if (ssbo == nullptr)
-            {
-                ssbo = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
-                _dirty[id] = 1;
-            }
-
-            if (_dirty[id] == 1 && _array.size() > 0)
-            {
-                ssbo->uploadData(sizeof(T)*_array.size(), _array.data());
-                _dirty[id] = 0;
-            }
-
-            ssbo->bindBufferBase(_bindingPoint);
-        }
-
-        void resizeGLObjectBuffers(unsigned maxSize) override
-        {
-            _ssbo.resize(maxSize);
-            _dirty.resize(maxSize);
-            dirty();
-        }
-
-        void releaseGLObjects(osg::State* state) const override
-        {
-            if (state)
-            {
-                _ssbo[state->getContextID()] = nullptr;
-            }
-            else
-            {
-                for (unsigned i = 0; i < _ssbo.size(); ++i)
-                    _ssbo[i] = nullptr;
-            }
-        }
-
-    private:
-        mutable osg::buffered_object<GLBuffer::Ptr> _ssbo;
-        mutable osg::buffered_object<int> _dirty;
-        unsigned _bindingPoint;
-        std::vector<T> _array;
     };
 
     // State attribute containing an object with the OSG GL API

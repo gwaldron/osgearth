@@ -164,8 +164,36 @@ GLUtils::useNVGL(bool value)
     }
 }
 
+namespace
+{
+    struct Mapping {
+        Mapping() : _ptr(nullptr) { }
+        const osg::State* _ptr;
+    };
+    static Mapping s_mappings[1024];
+}
+
 unsigned
 GLUtils::getUniqueContextID(const osg::State& state)
+{
+    // in theory this should never need a mutex..
+    for (int i = 0; i < 1024; ++i)
+    {
+        if (s_mappings[i]._ptr == &state)
+        {
+            return i;
+        }
+        else if (s_mappings[i]._ptr == nullptr)
+        {
+            s_mappings[i]._ptr = &state;
+            return i;
+        }
+    }
+    return 0;
+}
+
+unsigned 
+GLUtils::getSharedContextID(const osg::State& state)
 {
     return state.getContextID();
 }
@@ -469,7 +497,7 @@ GL3RealizeOperation::operator()(osg::Object* object)
 GLObjectPool*
 GLObjectPool::get(osg::State& state)
 {
-    return osg::get<GLObjectPool>(state.getContextID());
+    return osg::get<GLObjectPool>(GLUtils::getSharedContextID(state));
 }
 
 GLObjectPool::GLObjectPool(unsigned cxid) :

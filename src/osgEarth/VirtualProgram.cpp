@@ -1020,7 +1020,8 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
 #ifdef USE_LAST_USED_PROGRAM
     if (state)
     {
-        const osg::Program* p = _lastUsedProgram[state->getContextID()].get();
+        auto cid = GLUtils::getSharedContextID(*state);
+        const osg::Program* p = _lastUsedProgram[cid].get();
         if (p)
             p->releaseGLObjects(state);
     }
@@ -1289,7 +1290,7 @@ VirtualProgram::apply(osg::State& state) const
         return;
     }
 
-    const unsigned contextID = state.getContextID();
+    const unsigned contextID = GLUtils::getSharedContextID(state);
 
     if (_shaderMap.empty() && !_inheritSet)
     {

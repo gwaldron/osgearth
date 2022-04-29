@@ -586,7 +586,7 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
 {
     bool dirty = false;
 
-    unsigned gcid = state.getContextID();
+    unsigned gcid = GLUtils::getSharedContextID(state); // state.getContextID();
 
     // first the drawelements
     SharedDrawElements::GCState& de = _drawElements->_gc[gcid];

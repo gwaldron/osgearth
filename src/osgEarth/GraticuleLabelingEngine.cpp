@@ -20,7 +20,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "GraticuleLabelingEngine"
-#include <osgEarth/EllipsoidIntersector>
 
 #define LC "[GraticuleLabelingEngine] "
 
@@ -212,8 +211,6 @@ GraticuleLabelingEngine::cullTraverse(osgUtil::CullVisitor& nv, CameraData& data
     osg::Matrix MVP = (*nv.getModelViewMatrix()) * cam->getProjectionMatrix();
     osg::Matrix MVPinv;
     MVPinv.invert(MVP);
-
-    //EllipsoidIntersector ellipsoid(_srs->getEllipsoid());
 
     // For each corner, transform the clip coordinates at the near and far
     // planes into world space and intersect that line with the ellipsoid:

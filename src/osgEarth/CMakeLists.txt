@@ -137,7 +137,6 @@ SET(LIB_PUBLIC_HEADERS
     ElevationRanges
     ElevationQuery
     Ellipsoid
-    EllipsoidIntersector
     Endian
     Export
     Extension
@@ -568,7 +567,6 @@ set(TARGET_SRC
     ElevationRanges.cpp
     ElevationQuery.cpp
     Ellipsoid.cpp
-    EllipsoidIntersector.cpp
     Extension.cpp
     FadeEffect.cpp
     FileUtils.cpp

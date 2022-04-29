@@ -1,28 +1,33 @@
 {
-	"name": "osgearth",
-	"version": "3.2",
-	"port-version": 1,
-	"description": "osgEarth - Dynamic map generation toolkit for OpenSceneGraph Copyright 2021 Pelican Mapping.",
-	"homepage": "https://github.com/gwaldron/osgearth",
-	"supports": "!(x86 | wasm32)",
-	"dependencies": [
-	  "basisu",
-	  "blend2d",
-	  "blosc",
-	  "draco",
-	  "geos",
-	  "glew",
-	  "libwebp",
-	  "libzip",
-	  "opengl",
-	  {
-		"name": "osg",
-		"features": [
-		  "plugins"
-		]
-	  },
-	  "protobuf",
-	  "sqlite3",
-	  "tinyxml"	 
-	]
-  }
+    "name": "osgearth",
+    "version-string": "3.3",
+    "builtin-baseline" : "bb584d35bba70ca9f1ecaf09ad96ce5d1ff946f8",
+    "port-version": 1,
+    "description": "osgEarth - 3D Maps and Terrain for OpenSceneGraph - Copyright 2022 Pelican Mapping",
+    "homepage": "https://github.com/gwaldron/osgearth",
+    "supports": "!(x86 | wasm32)",
+    "dependencies": [
+        "basisu",
+        "blend2d",
+        "blosc",
+        "draco",
+        "geos",
+        "glew",
+        "libwebp",
+        "libzip",
+        "opengl",
+        {
+            "name": "osg",
+            "features": [
+                "plugins"
+            ]
+        },
+        "protobuf",
+        "sqlite3",
+        "tinyxml",
+        "rocksdb"
+    ],
+    "overrides" : [
+        { "name": "blend2d", "version-date" : "2021-03-17", "port-version" : 0 }
+    ]
+}

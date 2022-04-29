@@ -86,6 +86,7 @@ Texture::Texture(GLenum target_) :
 
 Texture::Texture(osg::Texture* input) :
     _gc(16),
+    _compress(false),
     _osgTexture(input)
 {
     target() = input->getTextureTarget();
@@ -709,7 +710,9 @@ TextureArena::apply(osg::State& state) const
     // refresh the handles buffer if necessary:
     if (_textures.size() > gc._handles.size())
     {
-        gc._handles.assign(_textures.size(), 0);
+        size_t aligned_size = gc._handleBuffer->align(_textures.size() * sizeof(gc._handles[0]))
+            / sizeof(gc._handles[0]);
+        gc._handles.assign(aligned_size, 0);
         gc._dirty = true;
     }
 

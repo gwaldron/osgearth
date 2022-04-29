@@ -277,7 +277,11 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
             // between the two cameras.
             osg::Matrix lightViewMatInv = osg::Matrix::inverse(lightViewMat);
             _shadowToPrimaryMatrix->set( lightViewMatInv * MV);
-            
+
+            if (_prevProjMatrix.isIdentity())
+            {
+                _prevProjMatrix = *cv->getProjectionMatrix();
+            }
             int i;
             for(i=0; i < (int) _ranges.size()-1; ++i)
             {

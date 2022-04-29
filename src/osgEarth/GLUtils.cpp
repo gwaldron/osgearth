@@ -386,6 +386,16 @@ namespace
             glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &_ssboAlignment);
         return T(_ssboAlignment);
     }
+
+    template<typename T>
+    T getUBOAlignment()
+    {
+        static GLsizei _uboAlignment = -1;
+        if (_uboAlignment < 0)
+            glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &_uboAlignment);
+        return T(_uboAlignment);
+    }
+
 }
 
 void
@@ -769,7 +779,7 @@ void
 GLBuffer::bufferData(GLsizei size, const GLvoid* data, GLbitfield flags) const
 {
     if (_target == GL_SHADER_STORAGE_BUFFER)
-        size = align(size, getSSBOAlignment<GLsizei>());
+        size = ::align(size, getSSBOAlignment<GLsizei>());
 
     if (gl.NamedBufferData)
         gl.NamedBufferData(name(), size, data, flags);
@@ -793,7 +803,7 @@ void
 GLBuffer::bufferStorage(GLsizei size, const GLvoid* data, GLbitfield flags) const
 {
     if (_target == GL_SHADER_STORAGE_BUFFER)
-        size = align(size, getSSBOAlignment<GLsizei>());
+        size = ::align(size, getSSBOAlignment<GLsizei>());
 
     if (recyclable() && size == _size)
     {
@@ -927,6 +937,14 @@ GLBuffer::makeNonResident(osg::State& state)
     }
 }
 
+size_t
+GLBuffer::align(size_t val)
+{
+    if (_target == GL_SHADER_STORAGE_BUFFER)
+        return ::align(val, getSSBOAlignment<size_t>());
+    else
+        return ::align(val, getUBOAlignment<size_t>());
+}
 
 GLTexture::Profile::Profile(GLenum target) :
     osg::Texture::TextureProfile(target),

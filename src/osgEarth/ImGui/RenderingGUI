@@ -83,7 +83,7 @@ void oeui_render_winding_fs(inout vec4 color) {
 #pragma vp_function oeui_render_outlines, fragment_lighting, last
 void oeui_render_outlines(inout vec4 color) {
     float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z))*32.0;
-    color = vec4(mix(vec3(1), color.rgb, clamp(b,0,1)), color.a);
+    color = vec4(mix(1.0-color.rgb, color.rgb, clamp(b,0,1)), color.a);
 }
 )";
 

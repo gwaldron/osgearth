@@ -53,9 +53,10 @@ namespace osgEarth { namespace Util
          * Creates a Shader for each of the stages represented in the function map.
          */
         virtual VirtualProgram::StageMask createMains(
-            const VirtualProgram::FunctionLocationMap&    functions,
-            const VirtualProgram::ShaderMap&          in_shaders,
-            const VirtualProgram::ExtensionsSet&      in_extensions,
+            osg::State& state,
+            const VirtualProgram::FunctionLocationMap& unctions,
+            const VirtualProgram::ShaderMap& in_shaders,
+            const VirtualProgram::ExtensionsSet& in_extensions,
             std::vector< osg::ref_ptr<osg::Shader> >& out_mains) const;
 
         /**

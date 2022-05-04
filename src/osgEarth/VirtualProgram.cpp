@@ -669,6 +669,7 @@ namespace
         VirtualProgram::ShaderVector mains;
 
         VirtualProgram::StageMask stages = Registry::shaderFactory()->createMains(
+            state,
             accumFunctions,
             accumShaderMap,
             extensionsSet,

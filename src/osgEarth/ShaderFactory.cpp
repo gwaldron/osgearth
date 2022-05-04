@@ -175,11 +175,19 @@ namespace
 
 VirtualProgram::StageMask
 ShaderFactory::createMains(
-    const VirtualProgram::FunctionLocationMap&    functions,
-    const VirtualProgram::ShaderMap&          in_shaders,
-    const VirtualProgram::ExtensionsSet&      in_extensions,
+    osg::State& state,
+    const VirtualProgram::FunctionLocationMap& functions,
+    const VirtualProgram::ShaderMap& in_shaders,
+    const VirtualProgram::ExtensionsSet& in_extensions,
     std::vector< osg::ref_ptr<osg::Shader> >& out_shaders) const
 {
+    // We require attribute aliasing and matrix uniforms.
+    OE_SOFT_ASSERT(state.getUseVertexAttributeAliasing(),
+        "OpenSceneGraph vertex attribute aliasing must be enabled");
+
+    OE_SOFT_ASSERT(state.getUseModelViewAndProjectionUniforms(),
+        "OpenSceneGraph matrix uniforms must be enabled");
+
     StageMask stages =
         VirtualProgram::STAGE_VERTEX |
         VirtualProgram::STAGE_FRAGMENT;

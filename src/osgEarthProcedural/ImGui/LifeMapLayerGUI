@@ -2,9 +2,42 @@
 #define OSGEARTH_PROCEDURAL_LIFEMAP_LAYER_GUI
 
 #include <osgEarthProcedural/LifeMapLayer>
+#include <osgEarthProcedural/TextureSplattingLayer>
 #include <osgEarth/ImGui/ImGui>
 
-namespace osgEarth {
+namespace {
+    const char* render_lifemap = R"(
+#version 450
+#pragma vp_function oeiu_render_lifemap, fragment, last
+void oeiu_render_lifemap(inout vec4 color) { color.a = 1.0; }
+)";
+    const char* render_density = R"(
+#version 450
+#pragma vp_function oeui_render_density, fragment, last
+void oeui_render_density(inout vec4 color) { color = vec4(0,color.g,0,1); }
+)";
+
+    const char* render_lush = R"(
+#version 450
+#pragma vp_function oeui_render_lush, fragment, last
+void oeui_render_lush(inout vec4 color) { color = vec4(0,0,color.b, 1); }
+)";
+
+    const char* render_rugged = R"(
+#version 450
+#pragma vp_function oeui_render_rugged, fragment, last
+void oeui_render_rugged(inout vec4 color) { color = vec4(color.r, 0, 0, 1); }
+)";
+
+    const char* render_water = R"(
+#version 450
+#pragma vp_function oeui_render_water, fragment, last
+void oeui_render_water(inout vec4 color) { color = vec4(color.a, 1.0); }
+)";
+}
+
+namespace osgEarth
+{
     namespace Procedural
     {
         using namespace osgEarth;
@@ -13,18 +46,39 @@ namespace osgEarth {
         {
             osg::observer_ptr<MapNode> _mapNode;
             osg::observer_ptr<LifeMapLayer> _lifemap;
+            osg::observer_ptr<TextureSplattingLayer> _splat;
             bool _lifemap_direct;
             float _rugged_power;
             float _dense_power;
             float _lush_power;
+            VirtualProgram* _vp;
+            std::string _renderMode;
 
             LifeMapLayerGUI() : GUI::BaseGUI("Life Map"),
                 _lifemap_direct(false),
                 _rugged_power(1.0f),
                 _dense_power(1.0f),
-                _lush_power(1.0f)
+                _lush_power(1.0f),
+                _vp(nullptr)
             {
                 //nop
+            }
+
+            void setRenderMode(const std::string& mode, osg::RenderInfo& ri)
+            {
+                if (!_vp)
+                    _vp = VirtualProgram::getOrCreate(_lifemap->getOrCreateStateSet());
+
+                if (!_renderMode.empty())
+                    ShaderLoader::unload(_vp, _renderMode);
+                _renderMode = mode;
+                if (!_renderMode.empty())
+                    ShaderLoader::load(_vp, _renderMode);
+
+                bool show = !_renderMode.empty();
+                _lifemap->setVisible(show);
+                if (_splat.valid())
+                    _splat->setVisible(!show);
             }
 
             void draw(osg::RenderInfo& ri) override
@@ -34,7 +88,38 @@ namespace osgEarth {
                 if (!findLayerOrHide(_lifemap, ri))
                     return;
 
+                findLayer(_splat, ri);
+
                 ImGui::Begin("Life Map");
+
+                // render the layer?
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Visualization");
+                ImGui::Indent();
+                {
+                    static int s_renderMode = 0;
+                    int m = 0;
+
+                    if (ImGui::RadioButton("Normal", &s_renderMode, m++)) {
+                        setRenderMode("", ri);
+                    }
+                    if (ImGui::RadioButton("Ruggedness", &s_renderMode, m++)) {
+                        setRenderMode(render_rugged, ri);
+                    }
+                    if (ImGui::RadioButton("Density", &s_renderMode, m++)) {
+                        setRenderMode(render_density, ri);
+                    }
+                    if (ImGui::RadioButton("Lushness", &s_renderMode, m++)) {
+                        setRenderMode(render_lush, ri);
+                    }
+                    // Someday
+                    //if (ImGui::RadioButton("Water", &s_renderMode, m++)) {
+                    //    setRenderMode(render_water, ri);
+                    //}
+                    if (ImGui::RadioButton("All", &s_renderMode, m++)) {
+                        setRenderMode(render_lifemap, ri);
+                    }
+                }
+                ImGui::Unindent();
 
                 // lifemap adjusters
 

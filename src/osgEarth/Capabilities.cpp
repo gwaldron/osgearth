@@ -172,6 +172,12 @@ _isCoreProfile          ( true ),
 _supportsVertexArrayObjects ( false ),
 _supportsNVGL(false)
 {
+    // require OSG be built with GL3 support
+#ifndef OSG_GL3_AVAILABLE
+    OE_WARN << LC << "Warning, OpenSceneGraph does not define OSG_GL3_AVAILABLE; "
+        "the application may not function properly" << std::endl;
+#endif
+
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
 

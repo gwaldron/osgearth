@@ -27,7 +27,6 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
 
-#include <osg/GL>
 #include <osg/LineStipple>
 #include <osg/GraphicsContext>
 #include <osgUtil/IncrementalCompileOperation>
@@ -38,11 +37,6 @@
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
 #include <osg/LineWidth>
 #include <osg/Point>
-#endif
-
-// require OSG be built with GL3 support
-#ifndef OSG_GL3_AVAILABLE
-#warning *** OpenSceneGraph MUST BE BUILD WITH GL3 support (OSG_GL3_AVAILABLE) ***
 #endif
 
 using namespace osgEarth;

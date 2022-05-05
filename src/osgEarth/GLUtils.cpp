@@ -27,6 +27,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
 
+#include <osg/GL>
 #include <osg/LineStipple>
 #include <osg/GraphicsContext>
 #include <osgUtil/IncrementalCompileOperation>
@@ -41,7 +42,7 @@
 
 // require OSG be built with GL3 support
 #ifndef OSG_GL3_AVAILABLE
-#error OpenSceneGraph must be built with GL3 support (OSG_GL3_AVAILABLE)
+#warning *** OpenSceneGraph MUST BE BUILD WITH GL3 support (OSG_GL3_AVAILABLE) ***
 #endif
 
 using namespace osgEarth;

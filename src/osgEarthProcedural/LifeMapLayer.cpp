@@ -292,6 +292,23 @@ LifeMapLayer::closeImplementation()
 }
 
 void
+LifeMapLayer::checkForLayerError(Layer* layer)
+{
+    if (layer && layer->getStatus().isError())
+    {
+        std::string name = layer->getName();
+        if (name.empty())
+            name = Stringify() << "Unnamed " << layer->className();
+
+        std::string msg = Stringify()
+            << "Error in dependent layer \"" << name << "\" : "
+            << layer->getStatus().message();
+
+        setStatus(Status::ResourceUnavailable, msg);
+    }
+}
+
+void
 LifeMapLayer::addedToMap(const Map* map)
 {
     ImageLayer::addedToMap(map);
@@ -312,6 +329,15 @@ LifeMapLayer::addedToMap(const Map* map)
     {
         OE_INFO << LC << "Using biome layer \"" << getBiomeLayer()->getName() << "\"" << std::endl;
     }
+
+    // validate that all dependent layers opened OK, since we do not
+    // want to generate invalid lifemap data.
+    checkForLayerError(getBiomeLayer());
+    checkForLayerError(getMaskLayer());
+    checkForLayerError(getWaterLayer());
+    checkForLayerError(getColorLayer());
+    checkForLayerError(getLandCoverLayer());
+    checkForLayerError(getLandUseLayer());
 
     _map = map;
 }

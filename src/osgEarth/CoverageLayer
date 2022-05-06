@@ -279,7 +279,7 @@ namespace osgEarth
             auto& layer = *i;
             ImageLayer* imageLayer = layer.source().getLayer();
 
-            if (!imageLayer->isOpen())
+            if (imageLayer == nullptr || !imageLayer->isOpen())
                 continue;
 
             GeoCoverage<T> input;

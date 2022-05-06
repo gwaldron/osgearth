@@ -185,6 +185,8 @@ SDFGenerator::createNearestNeighborField(
     GeoImage& nnfield,
     Cancelable* progress) const
 {
+    OE_PROFILING_ZONE;
+
     // Convert pixels to local coordinates relative to the lower-left corner of extent
     if (!nnfield.valid())
     {
@@ -334,9 +336,25 @@ SDFGenerator::NNFSession::renderImplementation(osg::State* state)
     }
 }
 
+inline void readRGFloatPixel(ImageUtils::PixelReader& reader, osg::Vec4& pixel, unsigned int s, unsigned int t, unsigned int r=0)
+{
+    const float* data = (const float*)(reader.data(s, t, r));
+    pixel.x() = float(*data++);
+    pixel.y() = float(*data++);
+}
+
+inline void writeRGFloatPixel(ImageUtils::PixelWriter& writer, osg::Vec4& pixel, unsigned int s, unsigned int t, unsigned int r = 0)
+{
+    float* data = (float*)(writer.data(s, t));
+    *data++ = pixel.x();
+    *data++ = pixel.y();
+}
+
 void
 SDFGenerator::compute_nnf_on_cpu(osg::Image* buf) const
 {
+    OE_PROFILING_ZONE;
+
     // Jump-Flood algorithm for computing discrete voronoi
     // https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
     osg::Vec4f pixel_points_to;
@@ -349,36 +367,37 @@ SDFGenerator::compute_nnf_on_cpu(osg::Image* buf) const
 
     for (int L = n / 2; L >= 1; L /= 2)
     {
-        ImageUtils::ImageIterator iter(readBuf);
-        iter.forEachPixel([&]()
+        for (unsigned int iterT = 0; iterT < buf->t(); ++iterT)
+        {
+            for (unsigned int iterS = 0; iterS < buf->s(); ++iterS)
             {
-                readBuf(pixel_points_to, iter.s(), iter.t());
+                readRGFloatPixel(readBuf, pixel_points_to, iterS, iterT);
 
                 // no data at this pixel yet? skip it; there is nothing to propagate.
                 if (pixel_points_to.x() != NODATA)
                 {
-                    for (int s = iter.s() - L; s <= iter.s() + L; s += L)
+                    for (int s = iterS - L; s <= iterS + L; s += L)
                     {
                         if (s < 0 || s >= readBuf.s())
                             continue;
 
                         remote[0] = (float)s;
 
-                        for (int t = iter.t() - L; t <= iter.t() + L; t += L)
+                        for (int t = iterT - L; t <= iterT + L; t += L)
                         {
                             if (t < 0 || t >= readBuf.t())
                                 continue;
-                            if (s == iter.s() && t == iter.t())
+                            if (s == iterS && t == iterT)
                                 continue;
 
                             remote[1] = (float)t;
 
                             // fetch the coords the remote pixel points to:
-                            readBuf(remote_points_to, s, t);
+                            readRGFloatPixel(readBuf, remote_points_to, s, t);
 
                             if (remote_points_to.x() == NODATA) // remote is unset? Just copy
                             {
-                                writeBuf(pixel_points_to, s, t);
+                                writeRGFloatPixel(writeBuf, pixel_points_to, s, t);
                             }
                             else
                             {
@@ -388,13 +407,13 @@ SDFGenerator::compute_nnf_on_cpu(osg::Image* buf) const
 
                                 if (d_possible < d_existing)
                                 {
-                                    writeBuf(pixel_points_to, s, t);
+                                    writeRGFloatPixel(writeBuf, pixel_points_to, s, t);
                                 }
                             }
                         }
                     }
                 }
             }
-        );
+        }
     }
 }

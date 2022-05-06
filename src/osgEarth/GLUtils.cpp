@@ -39,11 +39,6 @@
 #include <osg/Point>
 #endif
 
-// require OSG be built with GL3 support
-#ifndef OSG_GL3_AVAILABLE
-#error OpenSceneGraph must be built with GL3 support (OSG_GL3_AVAILABLE)
-#endif
-
 using namespace osgEarth;
 
 #define LC "[GLUtils] "

@@ -74,7 +74,7 @@ namespace osgEarth {
 
                 ImGui::Begin("Vegetation", visible());
                 {
-                    if (_veglayer.valid())
+                    if (_veglayer.valid() && _veglayer->isOpen())
                     {
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "LOD scales:");
                         osg::Vec4f sse_scales = _veglayer->getSSEScales();
@@ -110,6 +110,10 @@ namespace osgEarth {
                         if (ImGui::Button("Regenerate Now"))
                             _veglayer->dirty();
                     }
+                    else
+                    {
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Vegetation layer is closed");
+                    }
 
                     ImGui::Separator();
 
@@ -123,8 +127,11 @@ namespace osgEarth {
                         //        _queriedLandCover.dense().get(),
                         //        _queriedLandCover.lush().get());
                         //}
-
-                        if (_biomeUnderMouse.isAvailable())
+                        if (_biomeUnderMouse.isWorking())
+                        {
+                            ImGui::Text("..searching..");
+                        }
+                        else if (_biomeUnderMouse.isAvailable())
                         {
                             const Biome* biome = _biomeUnderMouse.get();
                             if (biome)
@@ -140,9 +147,9 @@ namespace osgEarth {
                                 ImGui::Text("No biome");
                             }
                         }
-                        else if (_biomeUnderMouse.isWorking())
+                        else
                         {
-                            ImGui::Text("..searching..");
+                            ImGui::Text("No biome");
                         }
                     }
 

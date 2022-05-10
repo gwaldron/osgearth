@@ -36,12 +36,15 @@ namespace osgEarth
      * This is largely for internal use and subject to change, so
      * be careful relying on the structure of this object.
      */
-    class TerrainTileNode
+    class TerrainTile
     {
     public:    
         //! TileKey represented by this tile node
         virtual const TileKey& getKey() const = 0;
     };
+
+    //! Synonym
+    using TerrainTileNode = TerrainTile;
 };
 
 #endif // OSGEARTH_TILE_NODE_H

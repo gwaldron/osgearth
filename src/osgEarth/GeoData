@@ -763,6 +763,12 @@ namespace osgEarth
         ImageUtils::PixelReader& getReader() { return _read; };
         const ImageUtils::PixelReader& getReader() const { return _read; }
 
+        //! Read the value of a pixel at a geopoint.
+        bool read(
+            pixel_type& output,
+            const GeoPoint& p,
+            const RasterInterpolation& interp =INTERP_BILINEAR) const;
+
     private:
         GeoExtent _extent;
         Status _status;

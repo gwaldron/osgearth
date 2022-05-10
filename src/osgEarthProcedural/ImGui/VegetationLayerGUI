@@ -278,6 +278,8 @@ namespace osgEarth {
                     {
                         GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
                         TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p.x(), p.y(), tile->getKey().getLOD());
+                        key = _biolayer->getBestAvailableTileKey(key, false);
+                            
                         if (key.valid())
                         {
                             _biomeUnderMouse = Job().dispatch<const Biome*>([&, key, p](Cancelable* c)

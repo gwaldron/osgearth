@@ -220,6 +220,11 @@ namespace osgEarth {
                                             visibleLayer->setAttenuationRange(value);
                                     }
 
+                                    bool visible = visibleLayer->getVisible();
+                                    if (ImGui::Checkbox("Visible", &visible)) {
+                                        visibleLayer->setVisible(visible);
+                                    }                                   
+
                                     bool debugView = visibleLayer->getEnableDebugView();
                                     if (ImGui::Checkbox("Highlight tiles", &debugView)) {
                                         visibleLayer->setEnableDebugView(debugView);
@@ -280,11 +285,33 @@ namespace osgEarth {
                                             srsname = profile->getSRS()->getHorizInitString();
                                         ImGui::TextColored(ImVec4(.8, .8, .8, 1), "%s", srsname.c_str());
                                     }
+
+                                    if (tileLayer->options().minLevel().isSet())
+                                    {
+                                        ImGui::Text("Min level: %d", tileLayer->getMinLevel());
+                                    }
+                                    if (tileLayer->options().maxLevel().isSet())
+                                    {
+                                        ImGui::Text("Max level: %d", tileLayer->getMaxLevel());
+                                    }
+                                    if (tileLayer->options().maxDataLevel().isSet())
+                                    {
+                                        ImGui::Text("Max data level: %d", tileLayer->getMaxDataLevel());
+                                    }
+
+                                    if (tileLayer->options().upsample().isSetTo(true))
+                                    {
+                                        ImGui::Text("Upsampling is ON");
+                                    }
+                                    else if (tileLayer->options().upsample().isSetTo(false))
+                                    {
+                                        ImGui::Text("Upsampling is OFF");
+                                    }
                                 }
                                 const GeoExtent& extent = layer->getExtent();
                                 if (extent.isValid())
                                 {
-                                    ImGui::TextWrapped("W:%.1f  E:%.1f  S:%.1f  N:%.1f",
+                                    ImGui::TextWrapped("W:%.1f E:%.1f S:%.1f N:%.1f",
                                         extent.west(), extent.east(), extent.south(), extent.north());
                                 }
 

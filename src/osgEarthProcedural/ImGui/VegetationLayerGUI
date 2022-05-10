@@ -127,11 +127,22 @@ namespace osgEarth {
                         if (_biomeUnderMouse.isAvailable())
                         {
                             const Biome* biome = _biomeUnderMouse.get();
-                            ImGui::Text("%s", (biome ? biome->name()->c_str() : "No biome"));
+                            if (biome)
+                            {
+                                ImGui::Text("%s", biome->name()->c_str());
+                                ImGui::Text("id=%s parentid=%s index=%d",
+                                    biome->id()->c_str(),
+                                    biome->parentId()->c_str(),
+                                    biome->index());
+                            }
+                            else
+                            {
+                                ImGui::Text("No biome");
+                            }
                         }
                         else if (_biomeUnderMouse.isWorking())
                         {
-                            ImGui::Text("...thinking...");
+                            ImGui::Text("..searching..");
                         }
                     }
 

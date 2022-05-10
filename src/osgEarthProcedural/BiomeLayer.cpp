@@ -407,6 +407,7 @@ BiomeLayer::createImageImplementation(
         GeoImage temp(image.get(), ex);
         GeoImageIterator iter(temp);
         LandCoverSample sample;
+        std::unordered_set<std::string> missing_biomes;
 
         // Use meta-tiling to read coverage data with access to the 
         // neighboring tiles - to support the blend radius.
@@ -497,6 +498,11 @@ BiomeLayer::createImageImplementation(
                                     {
                                         biome_index = mod->index();
                                     }
+                                    else
+                                    {
+                                        missing_biomes.insert(id);
+                                        biome_index = hit->_biome_index;
+                                    }
                                 }
                             }
 
@@ -522,6 +528,16 @@ BiomeLayer::createImageImplementation(
         // This will allow us to page out when all references to a biome
         // expire from the scene
         trackImage(result, key, biome_indices_seen);
+
+        // report any errors
+        if (missing_biomes.empty() == false)
+        {
+            std::ostringstream buf;
+            buf << "Undefined biomes detected: ";
+            for (auto i : missing_biomes)
+                buf << i << ' ';
+            OE_WARN << LC << buf.str() << std::endl;
+        }
 
         // cache:
         {
@@ -557,18 +573,22 @@ BiomeLayer::postCreateImageImplementation(
         osg::Vec4 pixel;
 
         // known format (GL_RED/GL_FLOAT) - traverse manually for speed
-        unsigned size = createdImage.getImage()->s() * createdImage.getImage()->t();
-        const float* ptr = (const float*)(createdImage.getImage()->data());
-        int biome_index;
-
-        for (unsigned i = 0; i < size; ++i)
+        const osg::Image* image = createdImage.getImage();
+        OE_IF_SOFT_ASSERT(image && image->getPixelFormat() == GL_RED && image->getDataType() == GL_FLOAT)
         {
-            biome_index = (int)(*ptr++);
-            if (biome_index > 0)
-                biome_indices_seen.insert(biome_index);
-        }
+            unsigned size = image->s() * image->t();
+            const float* ptr = (const float*)(image->data());
+            int biome_index;
 
-        trackImage(createdImage, key, biome_indices_seen);
+            for (unsigned i = 0; i < size; ++i)
+            {
+                biome_index = (int)(*ptr++);
+                if (biome_index > 0)
+                    biome_indices_seen.insert(biome_index);
+            }
+
+            trackImage(createdImage, key, biome_indices_seen);
+        }
     }
 }
 

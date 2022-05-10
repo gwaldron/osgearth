@@ -47,11 +47,11 @@ namespace
 
         if (ciEquals(loc, "vertex_transform_model_to_view"))
             location = VirtualProgram::LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW;
-        else if (ciEquals(loc, "vertex_model"))
+        else if (ciEquals(loc, "vertex_model") || ciEquals(loc, "model"))
             location = VirtualProgram::LOCATION_VERTEX_MODEL;
-        else if (ciEquals(loc, "vertex_view"))
+        else if (ciEquals(loc, "vertex_view") || ciEquals(loc, "view"))
             location = VirtualProgram::LOCATION_VERTEX_VIEW;
-        else if (ciEquals(loc, "vertex_clip"))
+        else if (ciEquals(loc, "vertex_clip") || ciEquals(loc, "clip"))
             location = VirtualProgram::LOCATION_VERTEX_CLIP;
         else if (ciEquals(loc, "tess_control") || ciEquals(loc, "tessellation_control"))
             location = VirtualProgram::LOCATION_TESS_CONTROL;
@@ -59,11 +59,9 @@ namespace
             location = VirtualProgram::LOCATION_TESS_EVALUATION;
         else if (ciEquals(loc, "vertex_geometry") || ciEquals(loc, "geometry"))
             location = VirtualProgram::LOCATION_GEOMETRY;
-        else if (ciEquals(loc, "fragment"))
+        else if (ciEquals(loc, "fragment") || ciEquals(loc, "fragment_coloring") || ciEquals(loc, "coloring"))
             location = VirtualProgram::LOCATION_FRAGMENT_COLORING;
-        else if (ciEquals(loc, "fragment_coloring"))
-            location = VirtualProgram::LOCATION_FRAGMENT_COLORING;
-        else if (ciEquals(loc, "fragment_lighting"))
+        else if (ciEquals(loc, "fragment_lighting") || ciEquals(loc, "lighting"))
             location = VirtualProgram::LOCATION_FRAGMENT_LIGHTING;
         else if (ciEquals(loc, "fragment_output"))
             location = VirtualProgram::LOCATION_FRAGMENT_OUTPUT;

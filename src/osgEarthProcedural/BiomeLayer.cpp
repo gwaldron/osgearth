@@ -113,6 +113,8 @@ BiomeLayer::init()
     // BiomeLayer is invisible AND shared by default.
     options().visible().setDefault(false);
     options().shared().setDefault(true);
+    options().minFilter().setDefault(osg::Texture::LINEAR);
+    options().magFilter().setDefault(osg::Texture::NEAREST);
     options().textureCompression().setDefault("none");
 
     _pointIndex = nullptr;
@@ -554,13 +556,17 @@ BiomeLayer::postCreateImageImplementation(
         std::set<int> biome_indices_seen;
         osg::Vec4 pixel;
 
-        iter.forEachPixel([&]()
-            {
-                read(pixel, iter.s(), iter.t());
-                int biome_index = (int)pixel.r();
-                if (biome_index > 0)
-                    biome_indices_seen.insert(biome_index);
-            });
+        // known format (GL_RED/GL_FLOAT) - traverse manually for speed
+        unsigned size = createdImage.getImage()->s() * createdImage.getImage()->t();
+        const float* ptr = (const float*)(createdImage.getImage()->data());
+        int biome_index;
+
+        for (unsigned i = 0; i < size; ++i)
+        {
+            biome_index = (int)(*ptr++);
+            if (biome_index > 0)
+                biome_indices_seen.insert(biome_index);
+        }
 
         trackImage(createdImage, key, biome_indices_seen);
     }

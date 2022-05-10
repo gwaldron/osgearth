@@ -260,6 +260,18 @@ namespace osgEarth
             return _coverage->read(value, u, v);
         }
 
+        bool readAtCoords(T& value, double x, double y) const
+        {
+            unsigned xs = (unsigned)((double)(s()-1) * (x - _extent.xMin()) / _extent.width());
+            unsigned yt = (unsigned)((double)(t()-1) * (y - _extent.yMin()) / _extent.height());
+            if (xs >= 0 && xs < s() && yt >= 0 && yt < t())
+            {
+                read(value, xs, yt);
+                return true;
+            }
+            return false;
+        }
+
     private:
         GeoExtent _extent;
         Status _status;

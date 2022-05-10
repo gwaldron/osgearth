@@ -524,8 +524,9 @@ Layer::create(const ConfigOptions& options)
 
     if ( name.empty() )
     {
-        OE_WARN << "[Layer] ILLEGAL- Layer::create requires a valid driver name" << std::endl;
-        return 0L;
+        // fail silently
+        OE_DEBUG << "[Layer] ILLEGAL- Layer::create requires a valid driver name" << std::endl;
+        return nullptr;
     }
 
     // convey the configuration options:

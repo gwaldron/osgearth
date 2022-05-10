@@ -135,6 +135,8 @@ namespace osgEarth { namespace Procedural
         osg::ref_ptr<osg::Image> _noiseFunc;
         LandCoverLayerVector _landCoverLayers;
         osg::ref_ptr<LandCoverDictionary> _landCoverDictionary;
+
+        void checkForLayerError(Layer*);
     };
 
 } } // namespace osgEarth::Procedural

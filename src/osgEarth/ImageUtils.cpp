@@ -489,7 +489,7 @@ ImageUtils::mipmapImage(const osg::Image* input, int minLevelSize)
     int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
 
     // DXT compression has minimum mipmap sizes; enforce those now:    
-    unsigned int minSize = 16;
+    int minSize = 16;
     for (int level = 0; level < numLevels; ++level)
     {
         int level_s = input->s() >> level;
@@ -1045,7 +1045,7 @@ ImageUtils::cropImage(osg::Image* image, unsigned int x, unsigned int y, unsigne
 
     for (int layer = 0; layer < image->r(); ++layer)
     {
-        for (int src_row = y, dst_row = 0; dst_row < height; src_row++, dst_row++)
+        for (unsigned src_row = y, dst_row = 0; dst_row < height; src_row++, dst_row++)
         {
             const void* src_data = image->data(x, src_row, layer);
             void* dst_data = cropped->data(0, dst_row, layer);

@@ -8,30 +8,30 @@
 namespace {
     const char* render_lifemap = R"(
 #version 450
-#pragma vp_function oeiu_render_lifemap, fragment, last
+#pragma vp_function oeiu_render_lifemap, fragment_lighting, last
 void oeiu_render_lifemap(inout vec4 color) { color.a = 1.0; }
 )";
     const char* render_density = R"(
 #version 450
-#pragma vp_function oeui_render_density, fragment, last
+#pragma vp_function oeui_render_density, fragment_lighting, last
 void oeui_render_density(inout vec4 color) { color = vec4(0,color.g,0,1); }
 )";
 
     const char* render_lush = R"(
 #version 450
-#pragma vp_function oeui_render_lush, fragment, last
+#pragma vp_function oeui_render_lush, fragment_lighting, last
 void oeui_render_lush(inout vec4 color) { color = vec4(0,0,color.b, 1); }
 )";
 
     const char* render_rugged = R"(
 #version 450
-#pragma vp_function oeui_render_rugged, fragment, last
+#pragma vp_function oeui_render_rugged, fragment_lighting, last
 void oeui_render_rugged(inout vec4 color) { color = vec4(color.r, 0, 0, 1); }
 )";
 
     const char* render_water = R"(
 #version 450
-#pragma vp_function oeui_render_water, fragment, last
+#pragma vp_function oeui_render_water, fragment_lighting, last
 void oeui_render_water(inout vec4 color) { color = vec4(color.a, 1.0); }
 )";
 }
@@ -94,7 +94,6 @@ namespace osgEarth
 
                 // render the layer?
                 ImGui::TextColored(ImVec4(1, 1, 0, 1), "Visualization");
-                ImGui::Indent();
                 {
                     static int s_renderMode = 0;
                     int m = 0;
@@ -119,12 +118,11 @@ namespace osgEarth
                         setRenderMode(render_lifemap, ri);
                     }
                 }
-                ImGui::Unindent();
 
                 // lifemap adjusters
 
+                ImGui::Separator();
                 ImGui::TextColored(ImVec4(1, 1, 0, 1), "Runtime Adjustments");
-                ImGui::Indent();
 
                 if (ImGui::Checkbox("LifeMap Direct Set", &_lifemap_direct))
                 {
@@ -150,11 +148,8 @@ namespace osgEarth
                 ImGui::SliderFloat(_lifemap_direct ? "Lush" : "Lush multiplier", &_lush_power, 0.0f, lm_max);
                 stateset(ri)->addUniform(new osg::Uniform("lush_power", _lush_power));
 
-                ImGui::Unindent();
                 ImGui::Separator();
-
                 ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator Settings");
-                ImGui::Indent();
 
                 LifeMapLayer::Options& o = _lifemap->options();
 
@@ -194,8 +189,6 @@ namespace osgEarth
                         { _lifemap.get() },
                         GeoExtent::INVALID);
                 }
-
-                ImGui::Unindent();
 
                 ImGui::End();
             }

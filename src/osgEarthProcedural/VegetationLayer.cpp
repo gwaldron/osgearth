@@ -308,14 +308,16 @@ VegetationLayer::dirty()
 void
 VegetationLayer::setSSEScales(const osg::Vec4f& value)
 {
-    _pixelScalesU->set(value);
+    if (_pixelScalesU.valid())
+        _pixelScalesU->set(value);
 }
 
 osg::Vec4f
 VegetationLayer::getSSEScales() const
 {
     osg::Vec4f value;
-    _pixelScalesU->get(value);
+    if (_pixelScalesU.valid())
+        _pixelScalesU->get(value);
     return value;
 }
 

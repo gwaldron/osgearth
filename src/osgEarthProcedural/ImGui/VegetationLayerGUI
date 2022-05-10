@@ -74,7 +74,7 @@ namespace osgEarth {
 
                 ImGui::Begin("Vegetation", visible());
                 {
-                    if (_veglayer.valid())
+                    if (_veglayer.valid() && _veglayer->isOpen())
                     {
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "LOD scales:");
                         osg::Vec4f sse_scales = _veglayer->getSSEScales();
@@ -110,6 +110,10 @@ namespace osgEarth {
                         if (ImGui::Button("Regenerate Now"))
                             _veglayer->dirty();
                     }
+                    else
+                    {
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Vegetation layer is closed");
+                    }
 
                     ImGui::Separator();
 
@@ -123,15 +127,29 @@ namespace osgEarth {
                         //        _queriedLandCover.dense().get(),
                         //        _queriedLandCover.lush().get());
                         //}
-
-                        if (_biomeUnderMouse.isAvailable())
+                        if (_biomeUnderMouse.isWorking())
+                        {
+                            ImGui::Text("..searching..");
+                        }
+                        else if (_biomeUnderMouse.isAvailable())
                         {
                             const Biome* biome = _biomeUnderMouse.get();
-                            ImGui::Text("%s", (biome ? biome->name()->c_str() : "No biome"));
+                            if (biome)
+                            {
+                                ImGui::Text("%s", biome->name()->c_str());
+                                ImGui::Text("id=%s parentid=%s index=%d",
+                                    biome->id()->c_str(),
+                                    biome->parentId()->c_str(),
+                                    biome->index());
+                            }
+                            else
+                            {
+                                ImGui::Text("No biome");
+                            }
                         }
-                        else if (_biomeUnderMouse.isWorking())
+                        else
                         {
-                            ImGui::Text("...thinking...");
+                            ImGui::Text("No biome");
                         }
                     }
 
@@ -267,6 +285,8 @@ namespace osgEarth {
                     {
                         GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
                         TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p.x(), p.y(), tile->getKey().getLOD());
+                        key = _biolayer->getBestAvailableTileKey(key, false);
+                            
                         if (key.valid())
                         {
                             _biomeUnderMouse = Job().dispatch<const Biome*>([&, key, p](Cancelable* c)

@@ -1188,11 +1188,13 @@ FeatureRasterizer::finalize()
     if (_image->getPixelSizeInBits() == 32 &&
         _image->getDataType() == GL_UNSIGNED_BYTE)
     {
+        unsigned int totalSizeInBytes = _image->getTotalSizeInBytes();
+        unsigned char* pixel = _image->data();
+
         if (_implPixelFormat == RF_BGRA)
         {
             //convert from BGRA to RGBA
-            unsigned char* pixel = _image->data();
-            for (unsigned i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+            for (unsigned i = 0; i < totalSizeInBytes; i += 4, pixel += 4)
             {
                 std::swap(pixel[0], pixel[2]);
             }
@@ -1200,8 +1202,7 @@ FeatureRasterizer::finalize()
         else if (_implPixelFormat == RF_ABGR)
         {
             //convert from ABGR to RGBA
-            unsigned char* pixel = _image->data();
-            for (unsigned i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+            for (unsigned i = 0; i < totalSizeInBytes; i += 4, pixel += 4)
             {
                 std::swap(pixel[0], pixel[3]);
                 std::swap(pixel[1], pixel[2]);

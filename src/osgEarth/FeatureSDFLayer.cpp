@@ -412,7 +412,7 @@ FeatureSDFLayer::createImageImplementation(
     // Crop the image so it's the proper extent for the incoming tilekey    
     osg::ref_ptr< osg::Image > sdf = _sdfGenerator.createDistanceField(rasterizedFeatures.getImage(), minPixels, maxPixels);
     GeoImage newSDF(sdf.get(), featuresExtent);
-    GeoImage cropped = newSDF.crop(key.getExtent(), false, getTileSize(), getTileSize(), false);
+    GeoImage cropped = newSDF.crop(key.getExtent(), false, 0, 0, false);
 
 #if 0
     osgDB::makeDirectoryForFile(Stringify() << "out/" << getName() << "/" << key.str() << ".out.png");

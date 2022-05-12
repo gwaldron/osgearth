@@ -439,8 +439,8 @@ namespace osgEarth { namespace Util
                     _image->getMipmapData(m-1) + (s>>m)*_colBytes + (t>>m)*(_rowBytes>>m) + r*(_imageBytes>>m);
             }
 
-            //typedef void (*ReaderFunc)(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m);
-            typedef std::function<void(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m)> ReaderFunc;
+            typedef void (*ReaderFunc)(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m);
+            //typedef std::function<void(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m)> ReaderFunc;
             ReaderFunc _read;
             const osg::Image* _image;
             unsigned _colBytes;

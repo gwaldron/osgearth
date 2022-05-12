@@ -530,6 +530,8 @@ LifeMapLayer::createImageImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
+    OE_PROFILING_ZONE;
+
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
         return GeoImage::INVALID;
@@ -698,267 +700,282 @@ LifeMapLayer::createImageImplementation(
 
     GeoImage result(image.get(), extent);
 
-    GeoImageIterator i(result);
-    i.forEachPixelOnCenter([&]() {
+    {
+        OE_PROFILING_ZONE_NAMED("RasterizeLifeMap");
 
-        osg::Vec4f pixel[NUM_INPUTS];
-        float weight[NUM_INPUTS] = { 0,0,0,0,0 };
-        osg::Vec4f temp;
+        double bu = 0.5 / (double)image->s();
+        double bv = 0.5 / (double)image->t();
 
-        // NOISE contribution
-        if (getUseNoise())
+        for (unsigned int t = 0; t < result.t(); ++t)
         {
-            for (int n = 0; n < 4; ++n)
+            double v = bv + ((double)t * 2.0 * bv);
+            double y = result.getExtent().yMin() + result.getExtent().height() * v;
+
+            for (unsigned int s = 0; s < result.s(); ++s)
             {
-                noiseCoords[n].set(i.u(), i.v());
-                scaleCoordsToRefLOD(noiseCoords[n], key, noiseLOD[n]);
-                getNoise(noise[n], noiseSampler, noiseCoords[n]);
-            }
+                double u = bu + ((double)s * 2.0 * bu);
+                double x = result.getExtent().xMin() + result.getExtent().width() * u;
 
-            pixel[NOISE][LIFEMAP_DENSE] = noise[3][CLUMPY];
-            pixel[NOISE][LIFEMAP_LUSH] = 0.0;
-            pixel[NOISE][LIFEMAP_RUGGED] = noise[2][CLUMPY];
+                osg::Vec4f pixel[NUM_INPUTS];
+                float weight[NUM_INPUTS] = { 0,0,0,0,0 };
+                osg::Vec4f temp;
 
-            weight[NOISE] = getNoiseWeight();
-        }
-
-        // LAND COVER CONTRIBUTION
-        if (getLandCoverLayer() && landcover.valid())
-        {
-            LandCoverSample temp;
-            LandCoverSample sample;
-            int dense_samples = 0;
-            int lush_samples = 0;
-            int rugged_samples = 0;
-            Random prng(key.hash());
-
-            if (equivalent(lc_blur_m, 0.0))
-            {
-                landcover.read(temp, i.s(), i.t());
-
-                pixel[LANDCOVER][LIFEMAP_DENSE] = temp.dense().get();
-                pixel[LANDCOVER][LIFEMAP_LUSH] = temp.lush().get();
-                pixel[LANDCOVER][LIFEMAP_RUGGED] = temp.rugged().get();
-                weight[LANDCOVER] = getLandCoverWeight();
-            }
-            else
-            {
-                // read the landcover with a blurring filter.
-                for (int a = -1; a <= 1; ++a)
+                // NOISE contribution
+                if (getUseNoise())
                 {
-                    for (int b = -1; b <= 1; ++b)
+                    for (int n = 0; n < 4; ++n)
                     {
-                        int ss = a * (int)(lc_blur_m / mpp_x);
-                        int tt = b * (int)(lc_blur_m / mpp_y);
+                        noiseCoords[n].set(u, v);
+                        scaleCoordsToRefLOD(noiseCoords[n], key, noiseLOD[n]);
+                        getNoise(noise[n], noiseSampler, noiseCoords[n]);
+                    }
 
-                        if (landcover.read(temp, i.s() + ss, i.t() + tt))
+                    pixel[NOISE][LIFEMAP_DENSE] = noise[3][CLUMPY];
+                    pixel[NOISE][LIFEMAP_LUSH] = 0.0;
+                    pixel[NOISE][LIFEMAP_RUGGED] = noise[2][CLUMPY];
+
+                    weight[NOISE] = getNoiseWeight();
+                }
+
+                // LAND COVER CONTRIBUTION
+                if (getLandCoverLayer() && landcover.valid())
+                {
+                    LandCoverSample temp;
+                    LandCoverSample sample;
+                    int dense_samples = 0;
+                    int lush_samples = 0;
+                    int rugged_samples = 0;
+                    Random prng(key.hash());
+
+                    if (equivalent(lc_blur_m, 0.0))
+                    {
+                        landcover.read(temp, (int)s, (int)t);
+
+                        pixel[LANDCOVER][LIFEMAP_DENSE] = temp.dense().get();
+                        pixel[LANDCOVER][LIFEMAP_LUSH] = temp.lush().get();
+                        pixel[LANDCOVER][LIFEMAP_RUGGED] = temp.rugged().get();
+                        weight[LANDCOVER] = getLandCoverWeight();
+                    }
+                    else
+                    {
+                        // read the landcover with a blurring filter.
+                        for (int a = -1; a <= 1; ++a)
                         {
-                            if (temp.dense().isSet())
+                            for (int b = -1; b <= 1; ++b)
                             {
-                                sample.dense() = sample.dense().get() + temp.dense().get();
-                                ++dense_samples;
-                            }
+                                int ss = a * (int)(lc_blur_m / mpp_x);
+                                int tt = b * (int)(lc_blur_m / mpp_y);
 
-                            if (temp.lush().isSet())
-                            {
-                                sample.lush() = sample.lush().get() + temp.lush().get();
-                                ++lush_samples;
-                            }
+                                if (landcover.read(temp, (int)s + ss, (int)t + tt))
+                                {
+                                    if (temp.dense().isSet())
+                                    {
+                                        sample.dense() = sample.dense().get() + temp.dense().get();
+                                        ++dense_samples;
+                                    }
 
-                            if (temp.rugged().isSet())
-                            {
-                                sample.rugged() = sample.rugged().get() + temp.rugged().get();
-                                ++rugged_samples;
+                                    if (temp.lush().isSet())
+                                    {
+                                        sample.lush() = sample.lush().get() + temp.lush().get();
+                                        ++lush_samples;
+                                    }
+
+                                    if (temp.rugged().isSet())
+                                    {
+                                        sample.rugged() = sample.rugged().get() + temp.rugged().get();
+                                        ++rugged_samples;
+                                    }
+                                }
                             }
+                        }
+
+                        weight[LANDCOVER] = 0.0f;
+
+                        if (dense_samples > 0)
+                        {
+                            pixel[LANDCOVER][LIFEMAP_DENSE] = sample.dense().get() / (float)dense_samples;
+                            weight[LANDCOVER] = getLandCoverWeight();
+                        }
+                        if (lush_samples > 0)
+                        {
+                            pixel[LANDCOVER][LIFEMAP_LUSH] = sample.lush().get() / (float)lush_samples;
+                            weight[LANDCOVER] = getLandCoverWeight();
+                        }
+                        if (rugged_samples > 0)
+                        {
+                            pixel[LANDCOVER][LIFEMAP_RUGGED] = sample.rugged().get() / (float)rugged_samples;
+                            weight[LANDCOVER] = getLandCoverWeight();
                         }
                     }
                 }
 
-                weight[LANDCOVER] = 0.0f;
-
-                if (dense_samples > 0)
+                // COLOR CONTRIBUTION:
+                if (color.valid())
                 {
-                    pixel[LANDCOVER][LIFEMAP_DENSE] = sample.dense().get() / (float)dense_samples;
-                    weight[LANDCOVER] = getLandCoverWeight();
+                    double uu = u * color_matrix(0, 0) + color_matrix(3, 0);
+                    double vv = v * color_matrix(1, 1) + color_matrix(3, 1);
+                    readColor(temp, uu, vv);
+
+                    // convert to HSL:
+                    Color c(temp.r(), temp.g(), temp.b(), 0.0f);
+                    hsl = c.asHSL();
+
+                    constexpr float red = 0.0f;
+                    constexpr float green = 0.3333333f;
+                    constexpr float blue = 0.6666667f;
+
+                    // amplification factors for greenness and redness,
+                    // obtained empirically
+                    constexpr float green_amp = 2.0f;
+                    constexpr float red_amp = 5.0f;
+
+                    // Set lower limits for saturation and lightness, because
+                    // when these levels get too low, the HUE channel starts to
+                    // introduce math errors that can result in bad color values
+                    // that we do not want. (We determined these empirically
+                    // using an interactive shader.)
+                    constexpr float saturation_threshold = 0.2f;
+                    constexpr float lightness_threshold = 0.03f;
+
+                    // "Greenness" implies vegetation
+                    float dist_to_green = fabs(green - hsl[0]);
+                    if (dist_to_green > 0.5f)
+                        dist_to_green = 1.0f - dist_to_green;
+                    float greenness = 1.0f - 2.0f * dist_to_green;
+
+                    // "redness" implies ruggedness/rock
+                    float dist_to_red = fabs(red - hsl[0]);
+                    if (dist_to_red > 0.5f)
+                        dist_to_red = 1.0f - dist_to_red;
+                    float redness = 1.0f - 2.0f * dist_to_red;
+
+                    if (hsl[1] < saturation_threshold)
+                    {
+                        greenness *= hsl[1] / saturation_threshold;
+                        redness *= hsl[1] / saturation_threshold;
+                    }
+                    if (hsl[2] < lightness_threshold)
+                    {
+                        greenness *= hsl[2] / lightness_threshold;
+                        redness *= hsl[2] / lightness_threshold;
+                    }
+
+                    greenness = pow(greenness, green_amp);
+                    redness = pow(redness, red_amp);
+
+                    float w = options().colorWeight().get();
+
+                    pixel[COLOR][LIFEMAP_DENSE] = greenness;
+                    pixel[COLOR][LIFEMAP_LUSH] = greenness * (1.0 - hsl.z()); // lighter green is less lush.
+                    pixel[COLOR][LIFEMAP_RUGGED] = redness;
+
+                    // if the lightness value is too high, it's white, which is usually
+                    // snow or clouds, and we can't use it for anything meaningful
+                    if (pow(hsl[2], 5.0f) > 0.5f)
+                        weight[COLOR] = 0.0f;
+                    else
+                        weight[COLOR] = getColorWeight(); // * max(greeness, redness) ...???
                 }
-                if (lush_samples > 0)
+
+                // TERRAIN CONTRIBUTION:
+                if (getUseTerrain() && elevTile.valid())
                 {
-                    pixel[LANDCOVER][LIFEMAP_LUSH] = sample.lush().get() / (float)lush_samples;
-                    weight[LANDCOVER] = getLandCoverWeight();
+                    // Establish elevation at this pixel:
+                    elevation = elevTile->getElevation(x, y).elevation().as(Units::METERS);
+
+                    // Normal map at this pixel:
+                    normal = elevTile->getNormal(x, y);
+
+                    // exaggerate the slope value
+                    slope = 1.0 - (normal * up);
+                    float r = decel(slope * options().slopeIntensity().get());
+                    pixel[TERRAIN][LIFEMAP_RUGGED] = r;
+                    pixel[TERRAIN][LIFEMAP_DENSE] = -r;
+                    pixel[TERRAIN][LIFEMAP_LUSH] = -r;
+
+                    weight[TERRAIN] = getTerrainWeight();
                 }
-                if (rugged_samples > 0)
+
+                // LAND USE CONTRIBUTION:
+                if (!landuse.empty())
                 {
-                    pixel[LANDCOVER][LIFEMAP_RUGGED] = sample.rugged().get() / (float)rugged_samples;
-                    weight[LANDCOVER] = getLandCoverWeight();
+                    double xx = x; // +x_jitter * 0.3*(noise[2][CLUMPY] * 2.0 - 1.0);
+                    double yy = y; // +y_jitter * 0.3*(noise[2][SMOOTH] * 2.0 - 1.0);
+
+                    const LifeMapValue* lu = landuse.get(xx, yy, landuse_table);
+                    if (lu)
+                    {
+                        pixel[LANDUSE][LIFEMAP_DENSE] = lu->dense().get();
+                        pixel[LANDUSE][LIFEMAP_LUSH] = lu->lush().get();
+                        pixel[LANDUSE][LIFEMAP_RUGGED] = lu->rugged().get();
+                        weight[LANDUSE] = getLandUseWeight();
+                    }
                 }
+
+                // CONBINE WITH WEIGHTS:
+                osg::Vec4f combined_pixel;
+
+                // first, combine landcover and color by relative weight.
+                if (weight[LANDUSE] > 0.0f)
+                {
+                    combined_pixel = pixel[LANDUSE];
+                }
+                else
+                {
+                    float w2 = weight[LANDCOVER] + weight[COLOR];
+                    if (w2 > 0.0f)
+                    {
+                        combined_pixel =
+                            pixel[LANDCOVER] * weight[LANDCOVER] / w2 +
+                            pixel[COLOR] * weight[COLOR] / w2;
+                    }
+                }
+
+                // apply terrain additively:
+                combined_pixel += pixel[TERRAIN] * weight[TERRAIN];
+
+                // apply the noise additively:
+                combined_pixel += pixel[NOISE] * weight[NOISE];
+
+                // apply the lushness static factor
+                combined_pixel[LIFEMAP_LUSH] *= options().lushFactor().get();
+
+                // MASK CONTRIBUTION (applied to final combined pixel data)
+                if (densityMask.valid())
+                {
+                    double uu = clamp(u * dm_matrix(0, 0) + dm_matrix(3, 0), 0.0, 1.0);
+                    double vv = clamp(v * dm_matrix(1, 1) + dm_matrix(3, 1), 0.0, 1.0);
+                    readDensityMask(temp, uu, vv);
+
+                    combined_pixel[LIFEMAP_DENSE] *= temp.r();
+                    //combined_pixel[LIFEMAP_LUSH] *= temp.r();
+                    //combined_pixel[LIFEMAP_RUGGED] *= temp.r();
+                }
+
+                // WATER MASK
+                if (waterMask.valid())
+                {
+                    double uu = clamp(u * wm_matrix(0, 0) + wm_matrix(3, 0), 0.0, 1.0);
+                    double vv = clamp(v * wm_matrix(1, 1) + wm_matrix(3, 1), 0.0, 1.0);
+                    readWaterMask(temp, uu, vv);
+
+                    combined_pixel[LIFEMAP_DENSE] *= temp.r();
+                    combined_pixel[LIFEMAP_LUSH] *= temp.r();
+                    combined_pixel[LIFEMAP_RUGGED] *= temp.r();
+                    combined_pixel[3] = 1.0f - temp.r();
+                }
+                else combined_pixel[3] = 0.0f;
+
+                // Clamp everything to [0..1] and write it out.
+                for (int i = 0; i < 4; ++i)
+                {
+                    combined_pixel[i] = clamp(combined_pixel[i], 0.0f, 1.0f);
+                }
+
+                write(combined_pixel, s, t);
             }
         }
-
-        // COLOR CONTRIBUTION:
-        if (color.valid())
-        {
-            double uu = i.u() * color_matrix(0, 0) + color_matrix(3, 0);
-            double vv = i.v() * color_matrix(1, 1) + color_matrix(3, 1);
-            readColor(temp, uu, vv);
-
-            // convert to HSL:
-            Color c(temp.r(), temp.g(), temp.b(), 0.0f);
-            hsl = c.asHSL();
-
-            constexpr float red = 0.0f;
-            constexpr float green = 0.3333333f;
-            constexpr float blue = 0.6666667f;
-
-            // amplification factors for greenness and redness,
-            // obtained empirically
-            constexpr float green_amp = 2.0f;
-            constexpr float red_amp = 5.0f;
-
-            // Set lower limits for saturation and lightness, because
-            // when these levels get too low, the HUE channel starts to
-            // introduce math errors that can result in bad color values
-            // that we do not want. (We determined these empirically
-            // using an interactive shader.)
-            constexpr float saturation_threshold = 0.2f;
-            constexpr float lightness_threshold = 0.03f;
-
-            // "Greenness" implies vegetation
-            float dist_to_green = fabs(green - hsl[0]);
-            if (dist_to_green > 0.5f)
-                dist_to_green = 1.0f - dist_to_green;
-            float greenness = 1.0f - 2.0f*dist_to_green;
-
-            // "redness" implies ruggedness/rock
-            float dist_to_red = fabs(red - hsl[0]);
-            if (dist_to_red > 0.5f)
-                dist_to_red = 1.0f - dist_to_red;
-            float redness = 1.0f - 2.0f*dist_to_red;
-
-            if (hsl[1] < saturation_threshold)
-            {
-                greenness *= hsl[1] / saturation_threshold;
-                redness *= hsl[1] / saturation_threshold;
-            }
-            if (hsl[2] < lightness_threshold)
-            {
-                greenness *= hsl[2] / lightness_threshold;
-                redness *= hsl[2] / lightness_threshold;
-            }
-
-            greenness = pow(greenness, green_amp);
-            redness = pow(redness, red_amp);
-
-            float w = options().colorWeight().get();
-
-            pixel[COLOR][LIFEMAP_DENSE] = greenness;
-            pixel[COLOR][LIFEMAP_LUSH] = greenness * (1.0 - hsl.z()); // lighter green is less lush.
-            pixel[COLOR][LIFEMAP_RUGGED] = redness;
-
-            // if the lightness value is too high, it's white, which is usually
-            // snow or clouds, and we can't use it for anything meaningful
-            if (pow(hsl[2], 5.0f) > 0.5f)
-                weight[COLOR] = 0.0f;
-            else
-                weight[COLOR] = getColorWeight(); // * max(greeness, redness) ...???
-        }
-
-        // TERRAIN CONTRIBUTION:
-        if (getUseTerrain() && elevTile.valid())
-        {
-            // Establish elevation at this pixel:
-            elevation = elevTile->getElevation(i.x(), i.y()).elevation().as(Units::METERS);
-
-            // Normal map at this pixel:
-            normal = elevTile->getNormal(i.x(), i.y());
-
-            // exaggerate the slope value
-            slope = 1.0 - (normal*up);
-            float r = decel(slope * options().slopeIntensity().get());
-            pixel[TERRAIN][LIFEMAP_RUGGED] = r;
-            pixel[TERRAIN][LIFEMAP_DENSE] = -r;
-            pixel[TERRAIN][LIFEMAP_LUSH] = -r;
-
-            weight[TERRAIN] = getTerrainWeight();
-        }
-
-        // LAND USE CONTRIBUTION:
-        if (!landuse.empty())
-        {
-            double xx = i.x(); // +x_jitter * 0.3*(noise[2][CLUMPY] * 2.0 - 1.0);
-            double yy = i.y(); // +y_jitter * 0.3*(noise[2][SMOOTH] * 2.0 - 1.0);
-
-            const LifeMapValue* lu = landuse.get(xx, yy, landuse_table);
-            if (lu)
-            {
-                pixel[LANDUSE][LIFEMAP_DENSE] = lu->dense().get();
-                pixel[LANDUSE][LIFEMAP_LUSH] = lu->lush().get();
-                pixel[LANDUSE][LIFEMAP_RUGGED] = lu->rugged().get();
-                weight[LANDUSE] = getLandUseWeight();
-            }
-        }
-
-        // CONBINE WITH WEIGHTS:
-        osg::Vec4f combined_pixel;
-
-        // first, combine landcover and color by relative weight.
-        if (weight[LANDUSE] > 0.0f)
-        {
-            combined_pixel = pixel[LANDUSE];
-        }
-        else
-        {
-            float w2 = weight[LANDCOVER] + weight[COLOR];
-            if (w2 > 0.0f)
-            {
-                combined_pixel =
-                    pixel[LANDCOVER] * weight[LANDCOVER] / w2 +
-                    pixel[COLOR] * weight[COLOR] / w2;
-            }
-        }
-
-        // apply terrain additively:
-        combined_pixel += pixel[TERRAIN] * weight[TERRAIN];
-
-        // apply the noise additively:
-        combined_pixel += pixel[NOISE] * weight[NOISE];
-
-        // apply the lushness static factor
-        combined_pixel[LIFEMAP_LUSH] *= options().lushFactor().get();
-
-        // MASK CONTRIBUTION (applied to final combined pixel data)
-        if (densityMask.valid())
-        {
-            double uu = clamp(i.u() * dm_matrix(0, 0) + dm_matrix(3, 0), 0.0, 1.0);
-            double vv = clamp(i.v() * dm_matrix(1, 1) + dm_matrix(3, 1), 0.0, 1.0);
-            readDensityMask(temp, uu, vv);
-            
-            combined_pixel[LIFEMAP_DENSE] *= temp.r();
-            //combined_pixel[LIFEMAP_LUSH] *= temp.r();
-            //combined_pixel[LIFEMAP_RUGGED] *= temp.r();
-        }
-
-        // WATER MASK
-        if (waterMask.valid())
-        {
-            double uu = clamp(i.u() * wm_matrix(0, 0) + wm_matrix(3, 0), 0.0, 1.0);
-            double vv = clamp(i.v() * wm_matrix(1, 1) + wm_matrix(3, 1), 0.0, 1.0);
-            readWaterMask(temp, uu, vv);
-
-            combined_pixel[LIFEMAP_DENSE] *= temp.r();
-            combined_pixel[LIFEMAP_LUSH] *= temp.r();
-            combined_pixel[LIFEMAP_RUGGED] *= temp.r();
-            combined_pixel[3] = 1.0f - temp.r();
-        }
-        else combined_pixel[3] = 0.0f;
-
-        // Clamp everything to [0..1] and write it out.
-        for (int i = 0; i < 4; ++i)
-        {
-            combined_pixel[i] = clamp(combined_pixel[i], 0.0f, 1.0f);
-        }
-
-        write(combined_pixel, i.s(), i.t());
-    });
+    }
 
     return std::move(result);
 }

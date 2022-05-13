@@ -39,28 +39,6 @@ using namespace osgEarth::Procedural;
 
 REGISTER_OSGEARTH_LAYER(lifemap, LifeMapLayer);
 
-//........................................................................
-
-class GeoImageReader
-{
-public:
-    const GeoImage& _i;
-    const GeoExtent& _ex;
-    ImageUtils::PixelReader _reader;
-    GeoImageReader(const GeoImage& i) : 
-        _i(i), _ex(i.getExtent()), _reader(_i.getImage()) { 
-        _reader.setBilinear(false);
-        _reader.setDenormalize(false);
-    }
-    void read(osg::Vec4& out, double x, double y) {
-        double u = (x - _ex.xMin()) / _ex.width();
-        double v = (y - _ex.yMin()) / _ex.height();
-        _reader(out, u, v);
-    }
-};
-
-//........................................................................
-
 Config
 LifeMapLayer::Options::getConfig() const
 {
@@ -118,42 +96,61 @@ namespace
     constexpr unsigned RANDOM2 = 2;
     constexpr unsigned CLUMPY = 3;
 
-    // raster sampling coordinate scaler
-    void scaleCoordsToRefLOD(osg::Vec2& tc, const TileKey& key, unsigned refLOD)
+
+    class CoordScaler
     {
-        if (key.getLOD() <= refLOD)
-            return;
+    public:
+        CoordScaler(const Profile* profile, unsigned int lod, unsigned int refLOD):
+            _profile(profile),
+            _lod(lod),
+            _refLOD(refLOD)
+        {            
+            _profile->getNumTiles(lod, _tilesX, _tilesY);
 
-        unsigned tilesX, tilesY;
-        key.getProfile()->getNumTiles(key.getLOD(), tilesX, tilesY);
-
-        double dL = (double)(key.getLOD() - refLOD);
-        double factor = exp2(dL);
-        double invFactor = 1.0f/factor;
-
-        double rx = tc.x() * invFactor;
-        double ry = tc.y() * invFactor;
-
-        double tx = (double)key.getTileX();
-        double ty = (double)(tilesY - key.getTileY() - 1);
-
-        double ax = floor(tx * invFactor);
-        double ay = floor(ty * invFactor);
-
-        double bx = ax * factor;
-        double by = ay * factor;
-
-        double cx = bx + factor;
-        double cy = by + factor;
-
-        if (factor >= 1.0f)
-        {
-            rx += (tx-bx)/(cx-bx);
-            ry += (ty-by)/(cy-by);
+            _dL = (double)(lod - refLOD);
+            _factor = exp2(_dL);
+            _invFactor = 1.0f / _factor;
         }
 
-        tc.set(rx, ry);
-    }
+        void scaleCoordsToRefLOD(osg::Vec2& tc, const TileKey& key)
+        {
+            if (key.getLOD() <= _refLOD)
+                return;
+
+            double rx = tc.x() * _invFactor;
+            double ry = tc.y() * _invFactor;
+
+            double tx = (double)key.getTileX();
+            double ty = (double)(_tilesY - key.getTileY() - 1);
+
+            double ax = floor(tx * _invFactor);
+            double ay = floor(ty * _invFactor);
+
+            double bx = ax * _factor;
+            double by = ay * _factor;
+
+            double cx = bx + _factor;
+            double cy = by + _factor;
+
+            if (_factor >= 1.0f)
+            {
+                rx += (tx - bx) / (cx - bx);
+                ry += (ty - by) / (cy - by);
+            }
+
+            tc.set(rx, ry);
+        }
+
+        unsigned int _lod;
+        unsigned int _refLOD;
+        osg::ref_ptr< const Profile > _profile;
+
+        double _dL;
+        double _factor;
+        double _invFactor;
+        unsigned int _tilesX;
+        unsigned int _tilesY;
+    };
 
     void getNoise(
         osg::Vec4& noise,
@@ -681,6 +678,14 @@ LifeMapLayer::createImageImplementation(
     osg::Vec2 noiseCoords[4];
     osg::Vec4 noise[4];
     const unsigned noiseLOD[4] = { 0u, 9u, 13u, 16u };
+    
+    CoordScaler coordScalers[4] = {
+        CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[0]),
+        CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[1]),
+        CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[2]),
+        CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[3])
+    };
+
     ImageUtils::PixelReader noiseSampler(_noiseFunc.get());
     noiseSampler.setBilinear(true);
     noiseSampler.setSampleAsRepeatingTexture(true);
@@ -726,7 +731,7 @@ LifeMapLayer::createImageImplementation(
                     for (int n = 0; n < 4; ++n)
                     {
                         noiseCoords[n].set(u, v);
-                        scaleCoordsToRefLOD(noiseCoords[n], key, noiseLOD[n]);
+                        coordScalers[n].scaleCoordsToRefLOD(noiseCoords[n], key);
                         getNoise(noise[n], noiseSampler, noiseCoords[n]);
                     }
 

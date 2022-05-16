@@ -48,7 +48,7 @@ namespace osgEarth
     {
     public:
         using Ptr = std::shared_ptr<Coverage<T>>;
-
+        
         // maps T to index for duplicate values (std::map so that T doesn't need std::hash)
         using LUT = std::map<T, int>;
 
@@ -186,6 +186,24 @@ namespace osgEarth
             return read(output, s, t);
         }
 
+        const T* read(unsigned s, unsigned t) const
+        {
+            int ptr = t * _width + s;
+            Index i = _pixels[ptr];
+            if (i > 0)
+            {
+                return &_rlut[i];
+            }
+            return nullptr;
+        }
+
+        const T* read(double u, double v) const
+        {
+            unsigned s = (unsigned)((double)(_width - 1) * u);
+            unsigned t = (unsigned)((double)(_height - 1) * v);
+            return read(s, t);
+        }
+
     private:
         Coverage()
         {
@@ -254,6 +272,18 @@ namespace osgEarth
         {
             OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, false);
             return _coverage->read(value, u, v);
+        }
+
+        const T* read(unsigned s, unsigned t) const
+        {
+            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, false);
+            return _coverage->read(s, t);
+        }
+
+        const T* read(double u, double v) const
+        {
+            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, false);
+            return _coverage->read(u, v);
         }
 
         bool readAtCoords(T& value, double x, double y) const

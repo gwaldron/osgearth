@@ -152,7 +152,7 @@ namespace
         unsigned int _tilesY;
     };
 
-    void getNoise(
+    inline void getNoise(
         osg::Vec4& noise,
         ImageUtils::PixelReader& read,
         const osg::Vec2& coords)
@@ -732,7 +732,7 @@ LifeMapLayer::createImageImplementation(
                     {
                         noiseCoords[n].set(u, v);
                         coordScalers[n].scaleCoordsToRefLOD(noiseCoords[n], key);
-                        getNoise(noise[n], noiseSampler, noiseCoords[n]);
+                        getNoise(noise[n], noiseSampler, noiseCoords[n]);        
                     }
 
                     pixel[NOISE][LIFEMAP_DENSE] = noise[3][CLUMPY];
@@ -745,24 +745,26 @@ LifeMapLayer::createImageImplementation(
                 // LAND COVER CONTRIBUTION
                 if (getLandCoverLayer() && landcover.valid())
                 {
-                    LandCoverSample temp;
+                    // Maybe try getting a pointer instead of copying the actual value
+                    // this is the one we're reading.  maybe read a ptr.
+                    //LandCoverSample temp;
+                    const LandCoverSample* temp;
                     LandCoverSample sample;
                     int dense_samples = 0;
                     int lush_samples = 0;
                     int rugged_samples = 0;
-                    Random prng(key.hash());
 
                     if (equivalent(lc_blur_m, 0.0))
                     {
-                        landcover.read(temp, (int)s, (int)t);
+                        temp = landcover.read((int)s, (int)t);
 
-                        pixel[LANDCOVER][LIFEMAP_DENSE] = temp.dense().get();
-                        pixel[LANDCOVER][LIFEMAP_LUSH] = temp.lush().get();
-                        pixel[LANDCOVER][LIFEMAP_RUGGED] = temp.rugged().get();
+                        pixel[LANDCOVER][LIFEMAP_DENSE] = temp->dense().get();
+                        pixel[LANDCOVER][LIFEMAP_LUSH] = temp->lush().get();
+                        pixel[LANDCOVER][LIFEMAP_RUGGED] = temp->rugged().get();
                         weight[LANDCOVER] = getLandCoverWeight();
                     }
                     else
-                    {
+                    {                        
                         // read the landcover with a blurring filter.
                         for (int a = -1; a <= 1; ++a)
                         {
@@ -771,23 +773,25 @@ LifeMapLayer::createImageImplementation(
                                 int ss = a * (int)(lc_blur_m / mpp_x);
                                 int tt = b * (int)(lc_blur_m / mpp_y);
 
-                                if (landcover.read(temp, (int)s + ss, (int)t + tt))
+                                temp = landcover.read((int)s + ss, (int)t + tt);
+
+                                if (temp)
                                 {
-                                    if (temp.dense().isSet())
+                                    if (temp->dense().isSet())
                                     {
-                                        sample.dense() = sample.dense().get() + temp.dense().get();
+                                        sample.dense() = sample.dense().get() + temp->dense().get();
                                         ++dense_samples;
                                     }
 
-                                    if (temp.lush().isSet())
+                                    if (temp->lush().isSet())
                                     {
-                                        sample.lush() = sample.lush().get() + temp.lush().get();
+                                        sample.lush() = sample.lush().get() + temp->lush().get();
                                         ++lush_samples;
                                     }
 
-                                    if (temp.rugged().isSet())
+                                    if (temp->rugged().isSet())
                                     {
-                                        sample.rugged() = sample.rugged().get() + temp.rugged().get();
+                                        sample.rugged() = sample.rugged().get() + temp->rugged().get();
                                         ++rugged_samples;
                                     }
                                 }

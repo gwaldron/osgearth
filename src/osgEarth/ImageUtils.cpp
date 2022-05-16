@@ -1735,9 +1735,10 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(ia->_normalized);
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float l = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float a = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            float l = float(*ptr++) * scale;
+            float a = float(*ptr) * scale;
             out.set(l, l, l, a);
         }
     };
@@ -1747,9 +1748,10 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
+            float scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr   = (T)( c.a() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.r() / scale );
+            *ptr   = (T)( c.a() / scale );
         }
     };
 
@@ -1758,9 +1760,10 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(ia->_normalized);
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
+            float red = float(*ptr++) * scale;
+            float g = float(*ptr++) * scale;
             out.set(red, g, 0.0f, 1.0f);
         }
     };
@@ -1770,9 +1773,10 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
+            float scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.r() / scale );
+            *ptr++ = (T)( c.g() / scale );
         }
     };
 
@@ -1781,10 +1785,11 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(ia->_normalized);
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float b = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            float red = float(*ptr++) * scale;
+            float g = float(*ptr++) * scale;
+            float b = float(*ptr) * scale;
             out.set(red, g, b, 1.0f);
         }
     };
@@ -1794,10 +1799,11 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
+            float scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.b() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.r() / scale );
+            *ptr++ = (T)( c.g() / scale );
+            *ptr++ = (T)( c.b() / scale );
         }
     };
 
@@ -1806,11 +1812,12 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(ia->_normalized);
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float b = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float a = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            float red = float(*ptr++) * scale;
+            float g = float(*ptr++) * scale;
+            float b = float(*ptr++) * scale;
+            float a = float(*ptr) * scale;
             out.set(red, g, b, a);
         }
     };
@@ -1820,11 +1827,12 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.b() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.a() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.r() / scale );
+            *ptr++ = (T)( c.g() / scale );
+            *ptr++ = (T)( c.b() / scale );
+            *ptr++ = (T)( c.a() / scale );
         }
     };
 
@@ -1833,10 +1841,11 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(ia->_normalized);
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float b = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float red = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            float b = float(*ptr++) * scale;
+            float g = float(*ptr++) * scale;
+            float red = float(*ptr) * scale;
             out.set(red, g, b, 1.0f);
         }
     };
@@ -1846,10 +1855,11 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
+            float scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (T)( c.b() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.b() / scale );
+            *ptr++ = (T)( c.g() / scale );
+            *ptr++ = (T)( c.r() / scale );
         }
     };
 
@@ -1858,11 +1868,12 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(ia->_normalized);
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float b = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float a = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            float b = float(*ptr++) * scale;
+            float g = float(*ptr++) * scale;
+            float red = float(*ptr++) * scale;
+            float a = float(*ptr) * scale;
             out.set(red, g, b, a);
         }
     };
@@ -1872,11 +1883,12 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
+            float scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (T)( c.b() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.a() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.b() / scale );
+            *ptr++ = (T)( c.g() / scale );
+            *ptr++ = (T)( c.r() / scale );
+            *ptr++ = (T)( c.a() / scale );
         }
     };
 

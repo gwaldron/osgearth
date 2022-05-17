@@ -26,6 +26,8 @@
 #include <osgEarth/ThreeDTilesLayer>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/MapboxGLImageLayer>
+#include <osgEarth/FeatureModelLayer>
+#include <osgEarth/TerrainConstraintLayer>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osg/Camera>
@@ -42,7 +44,6 @@ namespace osgEarth {
         private:
             osg::observer_ptr<MapNode> _mapNode;
             bool _showDisabled;
-            std::function<bool(const Layer*)> _showPred;
             LayerVector _layers;
             std::vector<bool> _layerExpanded;
             int _mapRevision;
@@ -50,17 +51,55 @@ namespace osgEarth {
             std::unordered_map<Layer*, float> _maxMinRanges;
             std::unordered_map<Layer*, float> _maxAttenRanges;
 
+            std::function<bool(const Layer*)>
+                _showPred,
+                _showVisibleLayers,
+                _showImageLayers,
+                _showTerrainSurfaceLayers,
+                _showFeatureModelLayers,
+                _showConstraintLayers;
+
         public:
             LayersGUI() : BaseGUI("Map"),
                 _showDisabled(false),
                 _mapRevision(-1)
             {
-                _showPred = [this](const Layer* layer)
+                _showVisibleLayers = [this](const Layer* layer)
                 {
                     return
                         dynamic_cast<const VisibleLayer*>(layer) &&
                         layer->getUserProperty("show_in_ui", true);
                 };
+
+                _showImageLayers = [this](const Layer* layer)
+                {
+                    return
+                        dynamic_cast<const ImageLayer*>(layer) &&
+                        layer->getUserProperty("show_in_ui", true);
+                };
+
+                _showTerrainSurfaceLayers = [this](const Layer* layer)
+                {
+                    return
+                        layer->getRenderType() == layer->RENDERTYPE_TERRAIN_SURFACE &&
+                        layer->getUserProperty("show_in_ui", true);
+                };
+
+                _showFeatureModelLayers = [this](const Layer* layer)
+                {
+                    return
+                        dynamic_cast<const FeatureModelLayer*>(layer) &&
+                        layer->getUserProperty("show_in_ui", true);
+                };
+
+                _showConstraintLayers = [this](const Layer* layer)
+                {
+                    return
+                        dynamic_cast<const TerrainConstraintLayer*>(layer) &&
+                        layer->getUserProperty("show_in_ui", true);
+                };
+
+                _showPred = _showVisibleLayers;
             }
 
             //! Sets a predicate that decides whether to include a layer in the GUI
@@ -126,7 +165,38 @@ namespace osgEarth {
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), map->getName().c_str());
                     }
 
-                    if (ImGui::Checkbox("Show All", &_showDisabled)) dirtySettings();
+                    const char* filter_items[] = { "Visible layers", "Image layers", "Terrain surface", "Feature models", "Terrain constraints" };
+                    static int filter_index = 0;
+                    const char* filter_preview_value = filter_items[filter_index];
+                    if (ImGui::BeginCombo("", filter_preview_value))
+                    {
+                        for (int n = 0; n < IM_ARRAYSIZE(filter_items); n++)
+                        {
+                            const bool is_selected = (filter_index == n);
+                            if (ImGui::Selectable(filter_items[n], is_selected))
+                            {
+                                filter_index = n;
+                                switch (filter_index) {
+                                case 1: setShowPredicate(_showImageLayers); break;
+                                case 2: setShowPredicate(_showTerrainSurfaceLayers); break;
+                                case 3: setShowPredicate(_showFeatureModelLayers); break;
+                                case 4: setShowPredicate(_showConstraintLayers); break;
+                                default: setShowPredicate(_showVisibleLayers); break;
+                                }
+                                _mapRevision = -1; // force regen
+                            }
+
+                            // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+                            if (is_selected)
+                                ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::EndCombo();
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Checkbox("Show closed", &_showDisabled))
+                        dirtySettings();
 
                     ImGui::Separator();
 

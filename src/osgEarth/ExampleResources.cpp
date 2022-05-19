@@ -346,6 +346,19 @@ MapNodeHelper::loadWithoutControls(
         myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_NVGL");
     }
 
+    // caching?
+    if (args.read("--cache-only"))
+    {
+        auto cp = Registry::instance()->overrideCachePolicy().get();
+        cp.usage() = CachePolicy::USAGE_CACHE_ONLY;
+        Registry::instance()->setOverrideCachePolicy(cp);
+    }
+
+    if (args.read("--no-cache"))
+    {
+        Registry::instance()->setOverrideCachePolicy(CachePolicy::NO_CACHE);
+    }
+
     // read in the Earth file:
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
 

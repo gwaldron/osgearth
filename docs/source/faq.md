@@ -4,16 +4,7 @@
 
 #### How do I place a 3D object on the map in an Earth File?
 
-There are 2 ways. One is to use a `ModelLayer` like so:
-
-```xml
-<Model name="My Model Layer">
-    <url>location_of_my_3d_model.osgb</url>
-    <location srs="wgs84" lat="34.0" long="-80.4"/>
-</Model>
-```
-
-Another way is to use an `Annotation`. Annotations must live inside an `Annotations` layer. With this approach is that you can model symbology to style your model. This approach looks like this:
+You can place an object as an `Annotation`. Annotations must live inside an `Annotations` layer. With this approach is that you can model symbology to style your model. This approach looks like this:
 ```xml
 <Annotations>
     <Model>
@@ -23,7 +14,15 @@ Another way is to use an `Annotation`. Annotations must live inside an `Annotati
             model-scale: auto;
         </style>
     </Model>
-    ...
+</Annotations>
+```
+
+Another way is to use a `ModelLayer` like so:
+```xml
+<Model name="My Model Layer">
+    <url>location_of_my_3d_model.osgb</url>
+    <location srs="wgs84" lat="34.0" long="-80.4"/>
+</Model>
 ```
 
 Please refer rhe various `feature` earth files in the repository for more information and examples.
@@ -33,24 +32,25 @@ Please refer rhe various `feature` earth files in the repository for more inform
 #### How do I place a 3D model on the map using the API?
 
 The `osgEarth::GeoTransform` class inherits from `osg::Transform` and will convert map coordinates into OSG world coordinates for you. Place an object at a geospatial position like this:
-
 ```c++
 GeoTransform* xform = new GeoTransform();
 GeoPoint point(srs, -121.0, 34.0, 1000.0);
 xform->setPosition(point);
 ```
 
-If you want your object to automatically clamp to the terrain surface, assign a terrain and leave off the altitude:
-
+If you want your object to automatically clamp to the terrain surface, just leave off the altitude:
 ```c++
 GeoTransform* xform = new GeoTransform();
-xform->setTerrain(mapNode->getTerrain());
 GeoPoint point(srs, -121.0, 34.0);
 xform->setPosition(point);
 ```
 
-The `srs` object in these examples is the `SpatialReference` of the coordinates. For standard **WGS84** longitude/latitude coordinates, you can get a spatial reference by calling
+That will work as long as your object is anywhere in the scene graph under the `osgEarth::MapNode`. If your node is *not* under the `MapNode`, you will need to manually tell it where to find the terrain:
+```
+xform->setTerrain(mapNode->getTerrain());
+```
 
+The `srs` object in these examples is the `SpatialReference` of the coordinates. For standard **WGS84** longitude/latitude coordinates, you can get a spatial reference by calling
 ```c++
 auto srs = SpatialReference::get("wgs84");
 ```

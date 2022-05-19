@@ -154,8 +154,11 @@ namespace osgEarth { namespace REX
 
     private:
 
-        // Things maintained on a per-graphics-context basis
-        struct GCState
+        // GL objects maintained entirely on a per-State/GC basis.
+        // Since this is a Drawable, the data here will differ per view
+        // and per camera, and therefore cannot be shared across graphics
+        // contexts no matter what.
+        struct GLObjects : public PerStateGLObjects
         {
             // ssbo containing globally shared constant data
             GLBuffer::Ptr shared;
@@ -188,7 +191,7 @@ namespace osgEarth { namespace REX
             std::vector<GL4Tile> tilebuf;
 
             std::vector<DrawElementsIndirectBindlessCommandNV> commands;
-            osg::buffered_object<GCState> gcState;
+            osg::buffered_object<GLObjects> globjects;
         };
         mutable RenderState _rs;
 

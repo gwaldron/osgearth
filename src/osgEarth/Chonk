@@ -126,14 +126,15 @@ namespace osgEarth
         using DrawCommand = DrawElementsIndirectBindlessCommandNV;
         using DrawCommands = std::vector<DrawCommand>;
 
-        //! Per-GC objects and state
-        struct GCState
+        //! GL objects that can be used across shared GCs
+        //! (because they are static and they are bindless)
+        struct GLObjects : public ShareableGLObjects
         {
             GLBuffer::Ptr vbo;
             GLBuffer::Ptr ebo;
             DrawCommands commands;
         };
-        mutable osg::buffered_object<GCState> _gs;
+        mutable osg::buffered_object<GLObjects> _globjects;
 
         //! Gets (or creates) a draw command, possibly
         //! resolving texture handles and uploading buffers.
@@ -241,7 +242,11 @@ namespace osgEarth
         Batches _batches;
         bool _gpucull;
 
-        struct GCState
+        //! GL objects (and supporting data structures) that must
+        //! be stored and managed for each unique GL state/context,
+        //! since they will differ for each view based on the camera
+        //! location and will potentially change every frame.
+        struct GLObjects : public PerStateGLObjects
         {
             // GPU variant/lod def. Keep me 16-byte aligned.
             struct ChonkLOD
@@ -262,11 +267,11 @@ namespace osgEarth
             std::size_t _numInstances;
             std::size_t _maxNumLODs;
             osg::GLExtensions* _ext;
+            GLVAO::Ptr _vao;
             GLBuffer::Ptr _commandBuf;
             GLBuffer::Ptr _instanceInputBuf;
             GLBuffer::Ptr _instanceOutputBuf;
             GLBuffer::Ptr _chonkBuf;
-            GLVAO::Ptr _vao;
             bool _dirty;
             bool _cull;
             void(GL_APIENTRY * _glMultiDrawElementsIndirectBindlessNV)
@@ -278,14 +283,14 @@ namespace osgEarth
             };
             mutable std::unordered_map<const void*, PCPState> _pcps;
 
-            GCState() : _dirty(true), _cull(true) { }
+            GLObjects() : _dirty(true), _cull(true) { }
             void initialize(const osg::Object* host, osg::State& state);
             void update(const Batches&, const osg::Object* host, osg::State&);
             void cull(osg::State& state);
             void draw(osg::State& state);
             void release();
         };
-        mutable osg::buffered_object<GCState> _gs;
+        mutable osg::buffered_object<GLObjects> _globjects;
         osg::Matrix _mvm;
 
         void update_and_cull_batches(osg::State& state) const;
@@ -304,8 +309,6 @@ namespace osgEarth
         ChonkDrawable(const ChonkDrawable& rhs, const osg::CopyOp&) { }
 
         friend class ChonkRenderBin;
-        //friend class ChonkRenderBin::CullLeaf;
-        //friend class ChonkRenderBin::DrawLeaf;
     };
 
     /**

@@ -67,10 +67,8 @@ namespace osgEarth {
                 DrawElementsBase::releaseGLObjects(state);
                 if (state)
                 {
-                    unsigned cid = GLUtils::getUniqueContextID(*state);
-                    _gc[cid]._ebo = nullptr;
+                    GLObjects::get(_globjects, *state)._ebo = nullptr;
                 }
-
                 // Do nothing if state is nullptr!
                 // Let nature take its course and let the GLObjectPool release it
             }
@@ -78,14 +76,16 @@ namespace osgEarth {
             void resizeGLObjectBuffers(unsigned size) override
             {
                 DrawElementsBase::resizeGLObjectBuffers(size);
-                _gc.resize(size);
+                if (size > _globjects.size())
+                    _globjects.resize(size);
             }
 
-            struct GCState
+            // Shareable because they are static and bindless
+            struct GLObjects : public ShareableGLObjects
             {
-                GLBuffer::Ptr _ebo;
+                GLBuffer::Ptr _ebo; // bindless buffer
             };
-            mutable osg::buffered_object<GCState> _gc;
+            mutable osg::buffered_object<GLObjects> _globjects;
         };
 
         // Adapted from osgTerrain shared geometry class.
@@ -179,12 +179,13 @@ namespace osgEarth {
 
             std::vector<GL4Vertex> _verts;
 
-            struct GCState
+            // Shareable because they are static and bindless
+            struct GLObjects : public ShareableGLObjects
             {
                 DrawElementsIndirectBindlessCommandNV _command;
                 GLBuffer::Ptr _vbo;
             };
-            mutable osg::buffered_object<GCState> _gc;
+            mutable osg::buffered_object<GLObjects> _globjects;
 
         private:
 

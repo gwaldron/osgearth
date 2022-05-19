@@ -174,7 +174,7 @@ namespace
 }
 
 unsigned
-GLUtils::getUniqueContextID(const osg::State& state)
+GLUtils::getUniqueStateID(const osg::State& state)
 {
     // in theory this should never need a mutex..
     for (int i = 0; i < 1024; ++i)
@@ -497,7 +497,9 @@ GL3RealizeOperation::operator()(osg::Object* object)
 GLObjectPool*
 GLObjectPool::get(osg::State& state)
 {
-    return osg::get<GLObjectPool>(GLUtils::getSharedContextID(state));
+    GLObjectPool* pool = osg::get<GLObjectPool>(state.getContextID());
+    pool->track(state.getGraphicsContext());
+    return pool;
 }
 
 GLObjectPool::GLObjectPool(unsigned cxid) :
@@ -508,23 +510,108 @@ GLObjectPool::GLObjectPool(unsigned cxid) :
     _avarice(10.f)
 {
     //nop
+    _gcs.resize(256);
+}
+
+namespace
+{
+    struct GCServicingOperation : public osg::GraphicsOperation
+    {
+        osg::observer_ptr<GLObjectPool> _pool;
+
+        GCServicingOperation(GLObjectPool* pool) :
+            osg::GraphicsOperation("GLObjectPool", true),
+            _pool(pool) { }
+
+        void operator()(osg::GraphicsContext* gc) override
+        {
+            if (_pool.valid())
+                _pool->releaseOrphans(gc);
+            else
+                setKeep(false);
+        }
+    };
 }
 
 void
-GLObjectPool::watch(GLObject::Ptr object)
+GLObjectPool::track(osg::GraphicsContext* gc)
+{
+    unsigned i;
+    for (i = 0; i < _gcs.size() && _gcs[i]._gc != nullptr; ++i)
+    {
+        if (_gcs[i]._gc == gc)
+            return;
+    }
+
+    _gcs[i]._gc = gc;
+    _gcs[i]._operation = new GCServicingOperation(this);
+    gc->add(_gcs[i]._operation.get());
+
+    //auto iter = _non_shared_objects.find(gc);
+    //if (iter == _non_shared_objects.end())
+    //{
+    //    _non_shared_objects.emplace(gc, Collection());
+
+    //    // add this object to the GC's operations thread so it
+    //    // can service it once per frame:
+    //    if (_gc_operation == nullptr)
+    //    {
+    //        _gc_operation = new FlushOperation(this);
+    //    }
+    //    gc->add(_gc_operation.get());
+    //}
+}
+
+//void
+//GLObjectPool::flush(osg::GraphicsContext* gc)
+//{
+//    // This function is invoked by the FlushOperation once per
+//    // frame with the active GC.
+//    // Here we will look for per-state objects (like VAOs and FBOs)
+//    // that may only be deleted in the same GC that created them.
+//    unsigned num = flush(_non_shared_objects[gc]);
+//    if (num > 0)
+//    {
+//        OE_DEBUG << LC << "GC " << (std::uintptr_t)gc << " flushed " << num << " shared objects" << std::endl;
+//    }
+//}
+
+void
+GLObjectPool::watch(GLObject::Ptr object) //, osg::State& state)
 {
     ScopedMutexLock lock(_mutex);
+
     _objects.insert(object);
+
+    //if (object->shareable())
+    //{
+    //    // either this is a shareable object, or we are inserting into
+    //    // a non-shared pool and that is why state is nullptr.
+    //    _objects.insert(object);
+    //}
+    //else
+    //{
+    //    _non_shared_objects[state.getGraphicsContext()].insert(object);
+    //}
 }
 
 void
-GLObjectPool::releaseAll()
+GLObjectPool::releaseGLObjects(osg::State* state)
 {
-    ScopedMutexLock lock(_mutex);
-    for (auto& object : _objects)
-        object->release();
-    _objects.clear();
+    if (state)
+    {
+        GLObjectPool::get(*state)->releaseAll(state->getGraphicsContext());
+    }
 }
+
+//void
+//GLObjectPool::releaseAll()
+//{
+//    ScopedMutexLock lock(_mutex);
+//    for (auto& object : _objects)
+//        object->release();
+//    _objects.clear();
+//}
 
 GLsizeiptr
 GLObjectPool::totalBytes() const
@@ -541,6 +628,60 @@ GLObjectPool::objects() const
 void
 GLObjectPool::flushDeletedGLObjects(double now, double& avail)
 {
+    //flush(_objects);
+}
+
+void
+GLObjectPool::flushAllDeletedGLObjects()
+{
+    deleteAllGLObjects();
+}
+
+void
+GLObjectPool::deleteAllGLObjects()
+{
+    //ScopedMutexLock lock(_mutex);
+    //for (auto& object : _objects)
+    //    object->release();
+    //_objects.clear();
+    //_totalBytes = 0;
+}
+
+void
+GLObjectPool::discardAllGLObjects()
+{
+    //ScopedMutexLock lock(_mutex);
+    //_objects.clear();
+    //_totalBytes = 0;
+}
+
+void
+GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
+{
+    ScopedMutexLock lock(_mutex);
+
+    GLsizeiptr bytes = 0;
+    std::unordered_set<GLObject::Ptr> keep;
+
+    for (auto& object : _objects)
+    {
+        if (object->gc() == gc)
+        {
+            object->release();
+        }
+        else
+        {
+            keep.insert(object);
+            bytes += object->size();
+        }
+    }
+    _objects.swap(keep);
+    _totalBytes = bytes;
+}
+
+void
+GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
+{
     ScopedMutexLock lock(_mutex);
 
     GLsizeiptr bytes = 0;
@@ -550,7 +691,7 @@ GLObjectPool::flushDeletedGLObjects(double now, double& avail)
 
     for (auto& object : _objects)
     {
-        if (object.use_count() == 1 && numReleased < maxNumToRelease)
+        if (object->gc() == gc && object.use_count() == 1 && numReleased < maxNumToRelease)
         {
             object->release();
             ++numReleased;
@@ -565,37 +706,44 @@ GLObjectPool::flushDeletedGLObjects(double now, double& avail)
     _totalBytes = bytes;
 }
 
-void
-GLObjectPool::flushAllDeletedGLObjects()
-{
-    deleteAllGLObjects();
-}
-
-void
-GLObjectPool::deleteAllGLObjects()
+#if 0
+unsigned
+GLObjectPool::flush(GLObjectPool::Collection& objects)
 {
     ScopedMutexLock lock(_mutex);
-    for (auto& object : _objects)
-        object->release();
-    _objects.clear();
-    _totalBytes = 0;
+
+    GLsizeiptr bytes_released = 0;
+    std::unordered_set<GLObject::Ptr> keep;
+    unsigned maxNumToRelease = std::max(1u, (unsigned)pow(4.0f, _avarice));
+    unsigned numReleased = 0u;
+
+    for (auto& object : objects)
+    {
+        if (object.use_count() == 1 && numReleased < maxNumToRelease)
+        {
+            bytes_released += object->size();
+            object->release();
+            ++numReleased;
+        }
+        else
+        {
+            keep.insert(object);
+        }
+    }
+    objects.swap(keep);
+    _totalBytes = _totalBytes - bytes_released;
+
+    return numReleased;
 }
-
-void
-GLObjectPool::discardAllGLObjects()
-{
-    ScopedMutexLock lock(_mutex);
-    _objects.clear();
-    _totalBytes = 0;
-}
-
-
+#endif
 
 GLObject::GLObject(GLenum ns, osg::State& state) :
     _name(0),
     _ns(ns),
     _recyclable(false),
-    _ext(osg::GLExtensions::Get(GLUtils::getUniqueContextID(state), true))
+    _shareable(false),
+    _ext(osg::GLExtensions::Get(state.getContextID(), true)),
+    _gc(state.getGraphicsContext())
 {
     gl.init();
 }
@@ -711,8 +859,6 @@ GLBuffer::GLBuffer(GLenum target, osg::State& state) :
     _immutable(false),
     _address(0)
 {
-    _isResident.assign(64, false);
-
     ext()->glGenBuffers(1, &_name);
     if (name() == 0)
     {
@@ -920,7 +1066,8 @@ GLBuffer::release()
         ext()->glDeleteBuffers(1, &_name);
         _name = 0;
         _size = 0;
-        _isResident.assign(_isResident.size(), false);
+        for (auto& i : _isResident)
+            i.second = false;
     }
 }
 
@@ -939,29 +1086,29 @@ GLBuffer::address()
 void
 GLBuffer::makeResident(osg::State& state)
 {
-    int cid = GLUtils::getUniqueContextID(state);
+    Resident& resident = _isResident[state.getGraphicsContext()];
 
-    if (address() != 0 && !_isResident[cid])
+    if (address() != 0 && resident == false)
     {
         OE_HARD_ASSERT(gl.MakeNamedBufferResidentNV);
         //Currently only GL_READ_ONLY is supported according to the spec
         gl.MakeNamedBufferResidentNV(name(), GL_READ_ONLY_ARB);
-        _isResident[cid] = true;
+        resident = true;
     }
 }
 
 void
 GLBuffer::makeNonResident(osg::State& state)
 {
-    int cid = GLUtils::getUniqueContextID(state);
+    Resident& resident = _isResident[state.getGraphicsContext()];
 
-    if (address() != 0 && _isResident[cid])
+    if (address() != 0 && resident == true)
     {
         OE_HARD_ASSERT(gl.MakeNamedBufferNonResidentNV);
         gl.MakeNamedBufferNonResidentNV(name());
         // address can be invalidated, so zero it out
         _address = 0;
-        _isResident[cid] = false;
+        resident = false;
     }
 }
 
@@ -1037,16 +1184,15 @@ GLTexture::GLTexture(GLenum target, osg::State& state) :
     _size(0)
 {
     glGenTextures(1, &_name);
-    _isResident.assign(64, false);
 }
 
 GLTexture::Ptr
 GLTexture::create(GLenum target, osg::State& state)
 {
-    Ptr obj(new GLTexture(target, state));
-    GLObjectPool::get(state)->watch(obj);
-    OE_DEVEL << LC << "GLTexture::create, name=" << obj->name() << std::endl;
-    return obj;
+    Ptr object(new GLTexture(target, state));
+    GLObjectPool::get(state)->watch(object);
+    OE_DEVEL << LC << "GLTexture::create, name=" << object->name() << std::endl;
+    return object;
 }
 
 GLTexture::Ptr
@@ -1106,11 +1252,10 @@ GLTexture::handle(osg::State& state)
 void
 GLTexture::makeResident(const osg::State& state, bool toggle)
 {
-    unsigned cid = GLUtils::getUniqueContextID(state);
-    OE_SOFT_ASSERT_AND_RETURN(cid < _isResident.size(), void());
+    Resident& resident = _isResident[state.getGraphicsContext()];
 
     //TODO: does this stall??
-    if (_isResident[cid] != toggle)
+    if (resident != toggle)
     {
         OE_SOFT_ASSERT_AND_RETURN(_handle != 0, void(), "makeResident() called on invalid handle: " + label() << );
 
@@ -1121,16 +1266,15 @@ GLTexture::makeResident(const osg::State& state, bool toggle)
 
         OE_DEVEL << "'" << id() << "' name=" << name() <<" resident=" << (toggle ? "yes" : "no") << std::endl;
 
-        _isResident[cid] = toggle;
+        resident = toggle;
     }
 }
 
 bool
 GLTexture::isResident(const osg::State& state) const
 {
-    unsigned cid = GLUtils::getUniqueContextID(state);
-    OE_SOFT_ASSERT_AND_RETURN(cid < _isResident.size(), false);
-    return _isResident[cid];
+    Resident& resident = _isResident[state.getGraphicsContext()];
+    return resident == true;
 }
 
 void
@@ -1139,8 +1283,9 @@ GLTexture::release()
     OE_DEVEL << LC << "GLTexture::release, name=" << name() << std::endl;
     if (_handle != 0)
     {
-        //makeResident(false);
-        _isResident.assign(_isResident.size(), false);
+        for (auto& i : _isResident)
+            i.second = false;
+
         _handle = 0;
     }
     if (_name != 0)

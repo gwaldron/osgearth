@@ -42,7 +42,7 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{ runner.workspace }}/build
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DOSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT=ON -DOSGEARTH_BUILD_PROCEDURAL_NODEKIT=ON
 
     - name: 'Upload cmake configure log artifact'
       uses: actions/upload-artifact@v2

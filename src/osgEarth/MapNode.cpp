@@ -971,7 +971,7 @@ MapNode::releaseGLObjects(osg::State* state) const
     // inform the GL object pools for this context
     if (state)
     {
-        GLObjectPool::get(*state)->releaseAll();
+        GLObjectPool::releaseGLObjects(state);
     }
 
     osg::Group::releaseGLObjects(state);

@@ -104,12 +104,10 @@ namespace osgEarth
         static void useNVGL(bool value);
         static bool useNVGL() { return _useNVGL; }
 
-        //! Unique graphics context ID associated with this state
-        //! and not shared with other states. This is necessary for
-        //! using any GL function that cannot be shared across 
-        //! graphics contexts, such as VAOs or bindless buffer/texture
-        //! residency.
-        static unsigned getUniqueContextID(const osg::State& state);
+        //! Unique ID associated with this State object (and by extension
+        //! its unique graphics context). You can use this to track
+        //! GL objects that cannot be used across shared GCs.
+        static unsigned getUniqueStateID(const osg::State& state);
 
         //! Graphics context ID shared between all states sharing
         //! the same graphics context. Only use for GL object that can
@@ -189,6 +187,24 @@ namespace osgEarth
             cmd(), reserved(0), indexBuffer(), vertexBuffer() { }
     };
 
+    class OSGEARTH_EXPORT PerStateGLObjects
+    {
+    public:
+        template<typename T>
+        static inline T& get(osg::buffered_object<T>& arr, const osg::State& state) {
+            return arr[GLUtils::getUniqueStateID(state)];
+        }
+    };
+
+    class OSGEARTH_EXPORT ShareableGLObjects
+    {
+    public:
+        template<typename T>
+        static inline T& get(osg::buffered_object<T>& arr, const osg::State& state) {
+            return arr[GLUtils::getSharedContextID(state)];
+        }
+    };
+
     //! Base class for GL object containers
     class OSGEARTH_EXPORT GLObject
     {
@@ -208,11 +224,17 @@ namespace osgEarth
         //! whether this object can be re-used without reallocation
         bool recyclable() const { return _recyclable; }
 
+        //! whether this object can be shared between shared GCs
+        bool shareable() const { return _shareable; }
+
         //! true if this object is OK to use
         bool valid() const { return _name != 0 && _ext != nullptr;  }
 
         //! OSG extensions API
         osg::GLExtensions* ext() const { return _ext; }
+
+        //! GC under which this object was created
+        const osg::GraphicsContext* gc() const { return _gc; }
 
         //! Sets the GL debugging category and unique ID
         void debugLabel(
@@ -225,12 +247,21 @@ namespace osgEarth
         
     protected:
         GLObject(GLenum ns, osg::State& state);
-        GLuint _name;
-        std::string _label;
-        GLenum _ns;
-        bool _recyclable;
+        GLuint _name; // GL name assigned on creation
+        std::string _label; // debugging label
+        GLenum _ns; // object namespace
+        bool _shareable; // can this object be shared between GCs?
+        bool _recyclable; // can this object by re-used?
         osg::GLExtensions* _ext;
+        osg::GraphicsContext* _gc;
         friend class GLObjectPool;
+
+        struct Resident {
+            bool _value; Resident() : _value(false) { }
+            Resident& operator = (bool input) { _value = input; return *this; }
+            bool operator == (const bool& rhs) const { return rhs == _value; }
+            bool operator != (const bool& rhs) const { return rhs != _value; }
+        };
     };
 
     class OSGEARTH_EXPORT GLQuery : public GLObject
@@ -402,7 +433,7 @@ namespace osgEarth
         GLuint64 _address; // bindless GPU address
         mutable GLsizei _size;
         mutable bool _immutable;
-        std::vector<bool> _isResident;
+        mutable std::unordered_map<const osg::GraphicsContext*, Resident> _isResident;
     };
 
     //! A texture object with optional resident handle
@@ -481,7 +512,7 @@ namespace osgEarth
     private:
         GLenum _target;
         GLuint64 _handle;
-        std::vector<bool> _isResident;
+        mutable std::unordered_map<const osg::GraphicsContext*, Resident> _isResident;
         std::string _id;
         GLsizei _size;
         Profile _profile;
@@ -533,11 +564,12 @@ namespace osgEarth
         //! by the state object
         static GLObjectPool* get(osg::State& state);
 
+        //! Release all GL objects that were created in the given state's
+        //! graphics context
+        static void releaseGLObjects(osg::State* state);
+
         //! Start watching a GL object for automatic release
         void watch(GLObject::Ptr);
-
-        //! Release all object under watch
-        void releaseAll();
 
         //! Report the total memory size of all objects in the pool
         GLsizeiptr totalBytes() const;
@@ -567,6 +599,10 @@ namespace osgEarth
             return result;
         }
 
+        void releaseOrphans(const osg::GraphicsContext* gc);
+
+    public: //osg::GraphicsObjectManager
+
         void flushDeletedGLObjects(double now, double& avail) override;
         void flushAllDeletedGLObjects() override;
         void deleteAllGLObjects() override;
@@ -580,6 +616,21 @@ namespace osgEarth
         unsigned _hits;
         unsigned _misses;
         unsigned _avarice;
+        //osg::ref_ptr<osg::GraphicsOperation> _gc_operation;
+
+        struct GC {
+            GC() : _gc(nullptr), _operation(nullptr) { }
+            const osg::GraphicsContext* _gc;
+            osg::ref_ptr<osg::GraphicsOperation> _operation;
+        };
+
+        std::vector<GC> _gcs;
+
+        //! Start tracking object lifetime for a GC
+        void track(osg::GraphicsContext*);
+
+        //! Release all objects created in the provided GC
+        void releaseAll(const osg::GraphicsContext*);
     };
 
     /**

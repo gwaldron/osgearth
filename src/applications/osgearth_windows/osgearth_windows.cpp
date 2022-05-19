@@ -139,9 +139,7 @@ struct GCPanel : public GUI::BaseGUI
             if (gc->getState() != nullptr)
             {
                 ImGui::Text("OSG GC ID = %d", gc->getState()->getContextID());
-                ImGui::Indent();
-                if (_app._sharedGC)
-                    ImGui::Text("Unique GC ID = %d", GLUtils::getUniqueContextID(*gc->getState()));
+                ImGui::Text("OSG GC Addr: %0x", (std::uintptr_t)gc);
                 ImGui::Text("Name = %s", gc->getName().c_str());
                 ImGui::Text("Operations = %d", gc->getGraphicsThread() && gc->getGraphicsThread()->getOperationQueue() ? gc->getGraphicsThread()->getOperationQueue()->getNumOperationsInQueue() : 0);
                 ImGui::Text("Size = %d x %d", gc->getTraits() ? gc->getTraits()->width : -1, gc->getTraits() ? gc->getTraits()->height : -1);
@@ -202,7 +200,7 @@ struct ViewerPanel : public GUI::BaseGUI
 
                 if (_app._sharedGC)
                 {
-                    ImGui::Text("Unique GC ID = %d", GLUtils::getUniqueContextID(*state));
+                    ImGui::Text("Unique State ID = %d", GLUtils::getUniqueStateID(*state));
                 }
             }
             else

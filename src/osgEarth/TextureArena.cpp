@@ -58,7 +58,7 @@ Texture::create(osg::Texture* input)
 }
 
 Texture::Texture(GLenum target_) :
-    _gc(16),
+    _globjects(16),
     _compress(true),
     _mipmap(true),
     _clamp(false),
@@ -85,7 +85,7 @@ Texture::Texture(GLenum target_) :
 }
 
 Texture::Texture(osg::Texture* input) :
-    _gc(16),
+    _globjects(16),
     _compress(false),
     _osgTexture(input)
 {
@@ -128,13 +128,13 @@ Texture::~Texture()
 bool
 Texture::isCompiled(const osg::State& state) const
 {
-    return get(state)._gltexture != nullptr;
+    return GLObjects::get(_globjects, state)._gltexture != nullptr;
 }
 
 bool
 Texture::needsCompile(const osg::State& state) const
 {
-    auto& gc = get(state);
+    auto& gc = GLObjects::get(_globjects, state);
 
     bool hasData = dataLoaded();
 
@@ -180,7 +180,7 @@ Texture::compileGLObjects(osg::State& state) const
     OE_HARD_ASSERT(dataLoaded() == true);
 
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
-    Texture::GCState& gc = get(state);
+    auto& gc = GLObjects::get(_globjects, state);
 
     auto image = osgTexture()->getImage(0);
 
@@ -394,7 +394,7 @@ Texture::compileGLObjects(osg::State& state) const
 void
 Texture::makeResident(const osg::State& state, bool toggle) const
 {
-    GCState& gc = get(state);
+    auto& gc = GLObjects::get(_globjects, state);
 
     if (gc._gltexture != nullptr)
     {
@@ -409,15 +409,15 @@ Texture::makeResident(const osg::State& state, bool toggle) const
 bool
 Texture::isResident(const osg::State& state) const
 {
-    GCState& gc = get(state);
+    auto& gc = GLObjects::get(_globjects, state);
     return (gc._gltexture != nullptr && gc._gltexture->isResident(state));
 }
 
 void
 Texture::resizeGLObjectBuffers(unsigned maxSize)
 {
-    if (_gc.size() < maxSize)
-        _gc.resize(maxSize);
+    if (_globjects.size() < maxSize)
+        _globjects.resize(maxSize);
 
     if (osgTexture().valid())
         osgTexture()->resizeGLObjectBuffers(maxSize);
@@ -428,7 +428,7 @@ Texture::releaseGLObjects(osg::State* state) const
 {
     if (state)
     {
-        GCState& gc = get(*state);
+        auto& gc = GLObjects::get(_globjects, *state);
         if (gc._gltexture != nullptr)
         {
             // debugging
@@ -444,10 +444,10 @@ Texture::releaseGLObjects(osg::State* state) const
     else
     {
         // rely on the Releaser to get around to it
-        for(unsigned i=0; i< _gc.size(); ++i)
+        for(unsigned i=0; i< _globjects.size(); ++i)
         {
             // will activate the releaser(s)
-            _gc[i]._gltexture = nullptr;
+            _globjects[i]._gltexture = nullptr;
         }
     }
 
@@ -588,7 +588,7 @@ TextureArena::add(Texture::Ptr tex)
     else
     {
         // is it a pre-existing gltexture? If not, fail.
-        if (tex->_gc.size() == 0)
+        if (tex->_globjects.size() == 0)
             return -1;
     }
 
@@ -617,10 +617,10 @@ TextureArena::add(Texture::Ptr tex)
     }
 
     // add to all existing GCs:
-    for(unsigned i=0; i< _gc.size(); ++i)
+    for(unsigned i=0; i< _globjects.size(); ++i)
     {
-        if (_gc[i]._inUse)
-            _gc[i]._toCompile.push(index);
+        if (_globjects[i]._inUse)
+            _globjects[i]._toCompile.push(index);
     }
 
     if (index < _textures.size())
@@ -641,7 +641,7 @@ TextureArena::apply(osg::State& state) const
 
     OE_PROFILING_ZONE;
 
-    GCState& gc = get(state);
+    GLObjects& gc = GLObjects::get(_globjects, state);
 
     // first time seeing this GC? Prime it by adding all textures!
     if (gc._inUse == false)
@@ -693,7 +693,7 @@ TextureArena::apply(osg::State& state) const
         }
     }
 
-    if (gc._handleBuffer == nullptr)
+    if (gc._handleBuffer == nullptr || !gc._handleBuffer->valid())
     {
         if (_useUBO)
             gc._handleBuffer = GLBuffer::create(GL_UNIFORM_BUFFER, state);
@@ -719,7 +719,10 @@ TextureArena::apply(osg::State& state) const
     unsigned ptr = 0;
     for (auto& tex : _textures)
     {
-        GLTexture* gltex = tex ? tex->get(state)._gltexture.get() : nullptr;
+        GLTexture* gltex = nullptr;
+        if (tex)
+            gltex = Texture::GLObjects::get(tex->_globjects, state)._gltexture.get();
+
         GLuint64 handle = gltex ? gltex->handle(state) : 0ULL;
         unsigned index = _useUBO ? ptr * 2 : ptr; // hack for std140 vec4 alignment
         if (gc._handles[index] != handle)
@@ -763,9 +766,9 @@ TextureArena::resizeGLObjectBuffers(unsigned maxSize)
 {
     ScopedMutexLock lock(_m);
 
-    if (_gc.size() < maxSize)
+    if (_globjects.size() < maxSize)
     {
-        _gc.resize(maxSize);
+        _globjects.resize(maxSize);
     }
 
     for(auto& tex : _textures)
@@ -782,7 +785,8 @@ TextureArena::releaseGLObjects(osg::State* state) const
 
     if (state)
     {
-        GCState& gc = get(*state);
+        auto& gc = GLObjects::get(_globjects, *state);
+
         gc._handleBuffer = nullptr;
         while (!gc._toCompile.empty())
             gc._toCompile.pop();
@@ -804,14 +808,15 @@ TextureArena::releaseGLObjects(osg::State* state) const
                 tex->releaseGLObjects(state);
         }
 
-        for (unsigned i = 0; i < _gc.size(); ++i)
+        for (unsigned i = 0; i < _globjects.size(); ++i)
         {
-            GCState& gc = _gc[i];
+            GLObjects& gc = _globjects[i];
             if(gc._inUse)
             {
                 gc._handleBuffer = nullptr;
                 while (!gc._toCompile.empty())
                     gc._toCompile.pop();
+
                 for (unsigned i = 0; i < _textures.size(); ++i)
                 {
                     if (_textures[i])

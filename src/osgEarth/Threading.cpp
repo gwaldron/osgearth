@@ -603,6 +603,12 @@ JobArena::get(const Type& type_)
     return nullptr;
 }
 
+unsigned
+JobArena::getConcurrency() const
+{
+    return _targetConcurrency;
+}
+
 void
 JobArena::setConcurrency(unsigned value)
 {

@@ -863,6 +863,9 @@ namespace osgEarth { namespace Threading
         //! (Only applies to THREAD_POOL type arenas)
         void setConcurrency(unsigned value);
 
+        //! Get the target concurrency (thread count) 
+        unsigned getConcurrency() const;
+
         //! Discard all queued jobs
         void cancelAll();
 

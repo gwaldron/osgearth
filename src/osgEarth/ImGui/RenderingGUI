@@ -209,47 +209,43 @@ namespace osgEarth
 
                     ImGui::Separator();
 
-                    if (ImGui::TreeNodeEx("Overlays", ImGuiTreeNodeFlags_DefaultOpen))
-                    {
-                        static int s_renderMode = 0;
-                        int m = 0;
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Overlays");
+                    static int s_renderMode = 0;
+                    int m = 0;
 
-                        if (ImGui::RadioButton("Off", &s_renderMode, m++)) {
-                            setRenderMode("", ri);
-                        }
-                        if (ImGui::RadioButton("Wireframe overlay", &s_renderMode, m++)) {
-                            setRenderMode(render_outlines, ri);
-                        }
-                        if (ImGui::RadioButton("Front/backfacing triangles", &s_renderMode, m++)) {
-                            setRenderMode(render_winding, ri);
-                        }
-                        if (ImGui::RadioButton("Normals (front/back)", &s_renderMode, m++)) {
-                            setRenderMode(render_fb_normals, ri);
-                        }
-                        if (ImGui::RadioButton("Normals (view space)", &s_renderMode, m++)) {
-                            setRenderMode(render_view_normals, ri);
-                        }
-                        if (ImGui::RadioButton("Normals (model space)", &s_renderMode, m++)) {
-                            setRenderMode(render_model_normals, ri);
-                        }
-
-                        if (GLUtils::useNVGL())
-                        {
-                            static bool s_gpuculldebug = false;
-                            if (ImGui::Checkbox("GPU cull debug view", &s_gpuculldebug)) {
-                                if (s_gpuculldebug)
-                                    stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "1");
-                                else
-                                    stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "0");
-                            }
-                        }
-
-                        float lod_scale = camera(ri)->getLODScale();
-                        if (ImGui::SliderFloat("LOD Scale", &lod_scale, 0.1f, 4.0f))
-                            camera(ri)->setLODScale(lod_scale);
-
-                        ImGui::TreePop();
+                    if (ImGui::RadioButton("Off", &s_renderMode, m++)) {
+                        setRenderMode("", ri);
                     }
+                    if (ImGui::RadioButton("Wireframe overlay", &s_renderMode, m++)) {
+                        setRenderMode(render_outlines, ri);
+                    }
+                    if (ImGui::RadioButton("Front/backfacing triangles", &s_renderMode, m++)) {
+                        setRenderMode(render_winding, ri);
+                    }
+                    if (ImGui::RadioButton("Normals (front/back)", &s_renderMode, m++)) {
+                        setRenderMode(render_fb_normals, ri);
+                    }
+                    if (ImGui::RadioButton("Normals (view space)", &s_renderMode, m++)) {
+                        setRenderMode(render_view_normals, ri);
+                    }
+                    if (ImGui::RadioButton("Normals (model space)", &s_renderMode, m++)) {
+                        setRenderMode(render_model_normals, ri);
+                    }
+
+                    if (GLUtils::useNVGL())
+                    {
+                        static bool s_gpuculldebug = false;
+                        if (ImGui::Checkbox("GPU cull debug view", &s_gpuculldebug)) {
+                            if (s_gpuculldebug)
+                                stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "1");
+                            else
+                                stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "0");
+                        }
+                    }
+
+                    float lod_scale = camera(ri)->getLODScale();
+                    if (ImGui::SliderFloat("LOD Scale", &lod_scale, 0.1f, 4.0f))
+                        camera(ri)->setLODScale(lod_scale);
                 }
                 ImGui::End();
             }

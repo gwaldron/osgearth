@@ -1080,9 +1080,12 @@ AsyncElevationSampler::AsyncElevationSampler(
     unsigned numThreads) :
 
     _map(map),
-    _arena("oe.asyncelevation", numThreads)
+    _arena(nullptr)
 {
-    //nop
+    _arena = JobArena::get("oe.asyncelevation");
+
+    unsigned c = _arena->getConcurrency();
+    _arena->setConcurrency(std::max(c, numThreads));
 }
 
 Future<ElevationSample>
@@ -1096,7 +1099,7 @@ AsyncElevationSampler::getSample(
     const GeoPoint& point,
     const Distance& resolution)
 {
-    return Job(&_arena).dispatch<ElevationSample>(
+    return Job(_arena).dispatch<ElevationSample>(
         [=](Cancelable* cancelable)
         {
             ElevationSample sample;

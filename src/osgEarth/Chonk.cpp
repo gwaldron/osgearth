@@ -346,7 +346,7 @@ Chonk::create()
 
 Chonk::Chonk()
 {
-    _gs.resize(1); // todo
+    _globjects.resize(1);
 }
 
 bool
@@ -393,10 +393,10 @@ Chonk::add(
 const Chonk::DrawCommands&
 Chonk::getOrCreateCommands(osg::State& state) const
 {
-    auto cid = GLUtils::getUniqueContextID(state);
-    auto& gs = _gs[cid];
+    // all bindless objects that may be used across shared GCs:
+    auto& gs = GLObjects::get(_globjects, state);
 
-    if (gs.vbo == nullptr)
+    if (gs.vbo == nullptr || !gs.vbo->valid())
     {
         gs.vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state);
         gs.vbo->bind();
@@ -604,8 +604,8 @@ ChonkDrawable::add(
         _batches[chonk].push_back(std::move(instance));
 
         // flag all graphics states as requiring an update:
-        for (unsigned i = 0; i < _gs.size(); ++i)
-            _gs[i]._dirty = true;
+        for (unsigned i = 0; i < _globjects.size(); ++i)
+            _globjects[i]._dirty = true;
 
         // flag the bounds for recompute
         dirtyBound();
@@ -649,13 +649,12 @@ ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
 void
 ChonkDrawable::update_and_cull_batches(osg::State& state) const
 {
-    auto cid = GLUtils::getUniqueContextID(state);
-    GCState& gs = _gs[cid];
+    auto& globjects = GLObjects::get(_globjects, state);
 
-    if (gs._dirty)
+    if (globjects._dirty)
     {
         ScopedMutexLock lock(_m);
-        gs.update(_batches, this, state);
+        globjects.update(_batches, this, state);
     }
 
     if (!_mvm.isIdentity())
@@ -665,22 +664,21 @@ ChonkDrawable::update_and_cull_batches(osg::State& state) const
 
     if (_gpucull)
     {
-        gs.cull(state);
+        globjects.cull(state);
     }
 }
 
 void
 ChonkDrawable::draw_batches(osg::State& state) const
 {
-    auto cid = GLUtils::getUniqueContextID(state);
-    GCState& gs = _gs[cid];
+    auto& globjects = GLObjects::get(_globjects, state);
 
     if (!_mvm.isIdentity())
     {
         state.applyModelViewMatrix(_mvm);
     }
 
-    gs.draw(state);
+    globjects.draw(state);
 }
 
 osg::BoundingBox
@@ -720,16 +718,21 @@ ChonkDrawable::computeBound() const
 void
 ChonkDrawable::resizeGLObjectBuffers(unsigned size)
 {
-    _gs.resize(size);
+    if (size > _globjects.size())
+        _globjects.resize(size);
 }
 
 void
 ChonkDrawable::releaseGLObjects(osg::State* state) const
 {
     if (state)
-        _gs[GLUtils::getUniqueContextID(*state)].release();
+    {
+        GLObjects::get(_globjects, *state).release();
+    }
     else
-        _gs.setAllElementsTo(GCState());
+    {
+        _globjects.setAllElementsTo(GLObjects());
+    }
 }
 
 void
@@ -777,7 +780,7 @@ ChonkDrawable::accept(osg::PrimitiveFunctor& f) const
 
 
 void
-ChonkDrawable::GCState::initialize(
+ChonkDrawable::GLObjects::initialize(
     const osg::Object* host,
     osg::State& state)
 {
@@ -874,14 +877,14 @@ ChonkDrawable::GCState::initialize(
 
 
 void
-ChonkDrawable::GCState::update(
+ChonkDrawable::GLObjects::update(
     const Batches& batches,
     const osg::Object* host,
     osg::State& state)
 {
     OE_GL_ZONE_NAMED("update");
 
-    if (_vao == nullptr)
+    if (_vao == nullptr || !_vao->valid())
     {
         initialize(host, state);
     }
@@ -966,7 +969,7 @@ ChonkDrawable::GCState::update(
 }
 
 void
-ChonkDrawable::GCState::cull(osg::State& state)
+ChonkDrawable::GLObjects::cull(osg::State& state)
 {
     if (_commands.empty())
         return;
@@ -1020,7 +1023,7 @@ ChonkDrawable::GCState::cull(osg::State& state)
 }
 
 void
-ChonkDrawable::GCState::draw(osg::State& state)
+ChonkDrawable::GLObjects::draw(osg::State& state)
 {
     OE_GL_ZONE_NAMED("draw");
 
@@ -1051,7 +1054,7 @@ ChonkDrawable::GCState::draw(osg::State& state)
 }
 
 void
-ChonkDrawable::GCState::release()
+ChonkDrawable::GLObjects::release()
 {
     _vao = nullptr;
     _commandBuf = nullptr;
@@ -1160,26 +1163,22 @@ ChonkRenderBin::DrawLeaf::DrawLeaf(osgUtil::RenderLeaf* leaf, bool first, bool l
 void
 ChonkRenderBin::DrawLeaf::draw(osg::State& state)
 {
-    auto d = static_cast<const ChonkDrawable*>(getDrawable());
+    auto drawable = static_cast<const ChonkDrawable*>(getDrawable());
 
     if (_first)
     {
-        // VAOs require a UNIQUE graphics context:
-        auto cid = GLUtils::getUniqueContextID(state);
-        GLVAO::Ptr vao = d->_gs[cid]._vao;
-        vao->bind();
-        vao->ext()->glMemoryBarrier(
+        auto& gl = ChonkDrawable::GLObjects::get(drawable->_globjects, state);
+        gl._vao->bind();
+        gl._vao->ext()->glMemoryBarrier(
             GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
     }
 
-    d->draw_batches(state);
+    drawable->draw_batches(state);
 
     if (_last)
     {
-        // VAOs require a UNIQUE graphics context:
-        auto cid = GLUtils::getUniqueContextID(state);
-        GLVAO::Ptr vao = d->_gs[cid]._vao;
-        vao->unbind();
+        auto& gl = ChonkDrawable::GLObjects::get(drawable->_globjects, state);
+        gl._vao->unbind();
     }
 
 }

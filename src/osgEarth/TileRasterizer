@@ -120,14 +120,14 @@ namespace osgEarth
         };
 
         // separate collection of renderers for each
-        // graphics context:
-        struct GCState
+        // state-based graphics context:
+        struct GLObjects : public PerStateGLObjects
         {
-            using Ptr = std::shared_ptr<GCState>;
+            using Ptr = std::shared_ptr<GLObjects>;
             RoundRobin<Renderer::Ptr> _renderers;
             MutexedQueue<Job::Ptr> _renderQ;
         };
-        mutable osg::buffered_object<GCState::Ptr> _gs;
+        mutable osg::buffered_object<GLObjects::Ptr> _globjects;
 
         // Jobs waiting to run
         MutexedQueue<Job::Ptr> _jobQ;
@@ -144,7 +144,7 @@ namespace osgEarth
         //void preDraw(osg::RenderInfo& ri);
         void postDraw(osg::RenderInfo& ri);
 
-        void install(GCState::Ptr);
+        void install(GLObjects::Ptr);
         osg::ref_ptr<osg::StateSet> _rttStateSet;
         unsigned _width, _height;
     };

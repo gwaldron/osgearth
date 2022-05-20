@@ -586,10 +586,9 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
 {
     bool dirty = false;
 
-    unsigned gcid = GLUtils::getSharedContextID(state); // state.getContextID();
-
     // first the drawelements
-    SharedDrawElements::GCState& de = _drawElements->_gc[gcid];
+    auto& de = SharedDrawElements::GLObjects::get(_drawElements->_globjects, state);
+
     if (de._ebo == nullptr || !de._ebo->valid())
     {
         de._ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
@@ -601,8 +600,8 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
         dirty = true;
     }
 
+    GLObjects& gs = GLObjects::get(_globjects, state);
 
-    GCState& gs = _gc[gcid];
     if (gs._vbo == nullptr || !gs._vbo->valid())
     {
         // supply a "size hint" for unconstrained tiles to the GLBuffer so it can try to re-use
@@ -699,7 +698,8 @@ void SharedGeometry::resizeGLObjectBuffers(unsigned int maxSize)
     if (_neighborArray.valid()) _neighborArray->resizeGLObjectBuffers(maxSize);
     if (_neighborNormalArray.valid()) _neighborNormalArray->resizeGLObjectBuffers(maxSize);
 
-    _gc.resize(maxSize);
+    if (maxSize > _globjects.size())
+        _globjects.resize(maxSize);
 
     if (_drawElements.valid())
         _drawElements->resizeGLObjectBuffers(maxSize);
@@ -718,8 +718,8 @@ void SharedGeometry::releaseGLObjects(osg::State* state) const
 
     if (state)
     {
-        unsigned cid = GLUtils::getUniqueContextID(*state);
-        _gc[cid]._vbo = nullptr;
+        auto& gl = GLObjects::get(_globjects, *state);
+        gl._vbo = nullptr;
     }
 
     // Do nothing if state is nullptr!

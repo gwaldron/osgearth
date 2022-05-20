@@ -170,7 +170,7 @@ TileRasterizer::~TileRasterizer()
 }
 
 void
-TileRasterizer::install(GCState::Ptr gc)
+TileRasterizer::install(GLObjects::Ptr gc)
 {
     for (unsigned i = 0; i < NUM_RENDERERS_PER_GC; ++i)
     {
@@ -224,13 +224,10 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
             OE_HARD_ASSERT(camera->getGraphicsContext());
 
             // find an initialize (if necessary) the GC-specific state for this camera
-            auto cid = GLUtils::getUniqueContextID(
-                *camera->getGraphicsContext()->getState());
-
-            GCState::Ptr& gc = _gs[cid];
+            GLObjects::Ptr& gc = GLObjects::get(_globjects, *camera->getGraphicsContext()->getState());
             if (gc == nullptr)
             {
-                gc = std::make_shared<GCState>();
+                gc = std::make_shared<GLObjects>();
                 install(gc);
             }
 
@@ -264,7 +261,7 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
 void
 TileRasterizer::Renderer::render(osg::State& state)
 {
-    if (_pbo == nullptr)
+    if (_pbo == nullptr || !_pbo->valid())
     {
         _pbo = GLBuffer::create(GL_PIXEL_PACK_BUFFER_ARB, state);
         _pbo->bind();
@@ -378,9 +375,8 @@ TileRasterizer::Renderer::readback(osg::State& state)
 void
 TileRasterizer::postDraw(osg::RenderInfo& ri)
 {
-    auto cid = GLUtils::getUniqueContextID(*ri.getState());
-    GCState& gc = *_gs[cid];
-    Job::Ptr job = gc._renderQ.take_front();
+    GLObjects::Ptr& gc = GLObjects::get(_globjects, *ri.getState());
+    Job::Ptr job = gc->_renderQ.take_front();
     OE_HARD_ASSERT(job != nullptr);
 
     // Check to see if the client still wants the result:
@@ -449,11 +445,11 @@ TileRasterizer::releaseGLObjects(osg::State* state) const
 {
     osg::Node::releaseGLObjects(state);
 
-    for(unsigned i=0; i<_gs.size(); ++i)
+    for(unsigned i=0; i< _globjects.size(); ++i)
     {
-        if (_gs[i])
+        if (_globjects[i])
         {
-            for (auto& r : _gs[i]->_renderers)
+            for (auto& r : _globjects[i]->_renderers)
             {
                 r->releaseGLObjects(state);
             }
@@ -466,19 +462,19 @@ TileRasterizer::resizeGLObjectBuffers(unsigned size)
 {
     osg::Node::resizeGLObjectBuffers(size);
 
-    for (unsigned i = 0; i < _gs.size(); ++i)
+    for (unsigned i = 0; i < _globjects.size(); ++i)
     {
-        if (_gs[i])
+        if (_globjects[i])
         {
-            for (auto& r : _gs[i]->_renderers)
+            for (auto& r : _globjects[i]->_renderers)
             {
                 r->resizeGLObjectBuffers(size);
             }
         }
     }
 
-    if (size > _gs.size())
+    if (size > _globjects.size())
     {
-        _gs.resize(size);
+        _globjects.resize(size);
     }
 }

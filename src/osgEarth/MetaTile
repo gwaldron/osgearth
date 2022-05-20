@@ -356,7 +356,7 @@ namespace osgEarth { namespace Util
     const typename T::pixel_type* MetaTile<T>::read(int s, int t)
     {
         if (_tiles(0, 0)._failed)
-            return false;
+            return nullptr;
 
         // scale and bias the u,v to the real center key
         s = (int)floor((double)s * _scale_bias(0, 0) + _scale_bias(3, 0) * (double)_width);
@@ -370,7 +370,7 @@ namespace osgEarth { namespace Util
 
         // if we already tried to load this tile and failed, bail out
         if (tile._failed)
-            return false;
+            return nullptr;
 
         // if we still need to load this tile, do so
         if (!tile._data.valid() && _createTile != nullptr)
@@ -384,7 +384,7 @@ namespace osgEarth { namespace Util
         }
 
         if (tile._failed)
-            return false;
+            return nullptr;
 
         // tile-local coordinates for sampling:
         if (s < 0) {

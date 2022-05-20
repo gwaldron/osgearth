@@ -97,21 +97,14 @@ namespace osgEarth
         //! or whether we need to load it from the URI
         bool dataLoaded() const;
 
-        struct GCState
+        //! GLObjects are shareable across GCs because they are static and bindless.
+        struct GLObjects : public ShareableGLObjects
         {
             GLTexture::Ptr _gltexture;
             unsigned _imageModCount;
-            GCState() : _imageModCount(0) { }
+            GLObjects() : _imageModCount(0) { }
         };
-        mutable std::vector<GCState> _gc;
-
-        GCState& get(const osg::State& s) const
-        {
-            unsigned id = GLUtils::getSharedContextID(s);
-            if (id >= _gc.size())
-                _gc.resize(id + 1);
-            return _gc[id];
-        }
+        mutable osg::buffered_object<GLObjects> _globjects;
 
         ~Texture();
 
@@ -184,10 +177,10 @@ namespace osgEarth
         //! disable copy
         TextureArena(const TextureArena&, const osg::CopyOp&) { } 
 
-        // Per-GC data
-        struct GCState
+        // GL objects that are per-state because they are not bindless
+        struct GLObjects : public PerStateGLObjects
         {
-            GCState() : _inUse(false) { }
+            GLObjects() : _inUse(false) { }
             bool _inUse;
             std::queue<int> _toCompile;
             TextureVector _toRemove;
@@ -196,15 +189,7 @@ namespace osgEarth
             std::vector<GLuint64> _handles;
             bool _dirty;
         };
-        mutable std::vector<GCState> _gc;
-
-        GCState& get(const osg::State& s) const
-        {
-            unsigned id = GLUtils::getSharedContextID(s);
-            if (id >= _gc.size())
-                _gc.resize(id + 1);
-            return _gc[id];
-        }
+        mutable osg::buffered_object<GLObjects> _globjects;
 
         mutable TextureVector _textures;
         bool _autoRelease;

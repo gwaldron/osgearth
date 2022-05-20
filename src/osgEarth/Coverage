@@ -276,13 +276,13 @@ namespace osgEarth
 
         const T* read(unsigned s, unsigned t) const
         {
-            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, false);
+            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, nullptr);
             return _coverage->read(s, t);
         }
 
         const T* read(double u, double v) const
         {
-            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, false);
+            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, nullptr);
             return _coverage->read(u, v);
         }
 

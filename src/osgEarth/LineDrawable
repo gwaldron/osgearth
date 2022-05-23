@@ -61,6 +61,10 @@ namespace osgEarth
         void setStippleFactor(GLint factor);
         GLint getStippleFactor() const { return _factor; }
 
+        //! Stippling quantization factor (default is 8.0)
+        void setStippleQuantize(GLfloat factor);
+        GLfloat getStippleQuantize() const { return _quantize; }
+
         //! Line smoothing (antialiasing)
         void setLineSmooth(bool value);
         bool getLineSmooth() const { return _smooth; }
@@ -188,6 +192,7 @@ namespace osgEarth
         osg::Vec4 _color;
         GLint _factor;
         GLushort _pattern;
+        GLfloat _quantize;
         float _width;
         bool _smooth;
         unsigned _first;

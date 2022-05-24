@@ -42,6 +42,7 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         
         if(OSGEARTH_BUILD_PROCEDURAL_NODEKIT)
             add_subdirectory(osgearth_exportvegetation)
+            add_subdirectory(osgearth_biome)
             add_subdirectory(osgearth_imposterbaker)
         endif()
         

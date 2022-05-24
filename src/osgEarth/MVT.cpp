@@ -693,7 +693,37 @@ MVTFeatureSource::iterateTiles(int zoomLevel, int limit, int offset, const GeoEx
 const FeatureProfile*
 MVTFeatureSource::createFeatureProfile()
 {
-    const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+    const osgEarth::Profile* profile = nullptr;
+
+    std::string profileStr;
+    getMetaData("profile", profileStr);
+
+    if (!profileStr.empty())
+    {
+        // try to parse it as a JSON config
+        Config pconf;
+        pconf.fromJSON(profileStr);
+        profile = Profile::create(ProfileOptions(pconf));
+
+        // if that didn't work, try parsing it directly
+        if (!profile)
+        {
+            profile = Profile::create(profileStr);
+        }
+
+        if (!profile)
+        {
+            OE_WARN << LC << "Failed to create Profile from string " << profileStr << std::endl;
+        }
+    }
+
+    // Default to spherical mercator if nothing was specified in the profile config.
+    if (!profile)
+    {
+        profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+    }
+
+
     FeatureProfile* result = new FeatureProfile(profile->getExtent());
     computeLevels();
     OE_INFO << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;

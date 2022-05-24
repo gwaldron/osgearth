@@ -212,16 +212,20 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
     {
         if (!_jobQ.empty())
         {
-            const osg::Camera* camera = static_cast<osgUtil::CullVisitor*>(&nv)->getCurrentCamera();
+            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+            if (!cv)
+                return;
 
-            if (CameraUtils::isShadowCamera(camera) ||
+            const osg::Camera* camera = cv->getCurrentCamera();
+
+            if (camera == nullptr ||
+                camera->getGraphicsContext() == nullptr ||
+                CameraUtils::isShadowCamera(camera) ||
                 CameraUtils::isDepthCamera(camera) ||
                 CameraUtils::isPickCamera(camera))
             {
                 return;
             }
-
-            OE_HARD_ASSERT(camera->getGraphicsContext());
 
             // find an initialize (if necessary) the GC-specific state for this camera
             GLObjects::Ptr& gc = GLObjects::get(_globjects, *camera->getGraphicsContext()->getState());

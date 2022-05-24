@@ -102,7 +102,7 @@ namespace osgEarth
         inline GeoCoverage<T> createCoverage(
             const TileKey& key,
             ImageLayer* source,
-            Mappings<T>& mappings,
+            const Mappings<T>& mappings,
             ProgressCallback* progress);
 
     protected: // Layer
@@ -143,7 +143,7 @@ namespace osgEarth
     GeoCoverage<T> CoverageLayer::createCoverage(
         const TileKey& key,
         ImageLayer* source,
-        Mappings<T>& mappings,
+        const Mappings<T>& mappings,
         ProgressCallback* p)
     {
         typename Coverage<T>::Ptr result;
@@ -183,18 +183,8 @@ namespace osgEarth
                             value = (unsigned)pixel.r();
 
                         if (!sample_ptr || value != value_prev)
-                        {                            
-                            // Try to get the value from the existing mappings
+                        {
                             sample_ptr = &mappings.get(value);
-                            if (sample_ptr == &mappings._nodata)
-                            {
-                                // If there isn't a mapping, try to create one dynamically from the value itself.
-                                Config conf;
-                                conf.add("value", value);
-                                T newItem = T(conf);
-                                mappings[value] = newItem;
-                                sample_ptr = &mappings.get(value);
-                            }
                             k = -1;
                         }
 

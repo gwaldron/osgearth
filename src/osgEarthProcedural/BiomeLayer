@@ -91,11 +91,6 @@ namespace osgEarth
             BiomeSample(const Config& conf)
             {
                 conf.get("biome_id", biomeid());
-                if (!biomeid().isSet())
-                {
-                    // Try getting it from a conf key called "value" instead.  This is sort of like a factory pattern
-                    conf.get("value", biomeid());
-                }
             }
 
             bool valid() const {

@@ -316,6 +316,7 @@ namespace osgEarth
             std::shared_ptr<LifeMapValueTable> _landCoverTable;
 
             std::map<int, Biome> _biomes_by_index; // keep ordered by index
+            std::unordered_map<std::string, Biome*> _biomes_by_id; // Fast 
         };
 
 } } // namespace osgEarth::Procedural

@@ -383,6 +383,7 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
         Biome biome(b_conf, &_assets);
         biome._index = _biomeIndexGenerator++;
         _biomes_by_index[biome._index] = std::move(biome);
+        _biomes_by_id[biome._id.get()] = &_biomes_by_index[biome._index];
     }
 
     // resolve the explicit parent biome pointers.
@@ -547,14 +548,8 @@ BiomeCatalog::getBiomeByIndex(int index) const
 const Biome*
 BiomeCatalog::getBiome(const std::string& id) const
 {
-    for (auto& iter : _biomes_by_index)
-    {
-        if (iter.second.id().get() == id)
-        {
-            return &iter.second;
-        }
-    }
-    return nullptr;
+    const auto i = _biomes_by_id.find(id);
+    return i != _biomes_by_id.end() ? i->second : nullptr;    
 }
 
 std::vector<const Biome*>

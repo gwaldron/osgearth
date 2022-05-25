@@ -193,6 +193,15 @@ osg::Node* createDrawables()
     group->addChild(rollStipple);
 
     x += 20;
+    LineDrawable* stippledNoQuantized = new LineDrawable(GL_LINE_STRIP);
+    stippledNoQuantized->setLineWidth(4);
+    stippledNoQuantized->setStipplePattern(0xff00);
+    stippledNoQuantized->setColor(osg::Vec4(1, 0.5, 0.5, 1));
+    stippledNoQuantized->setStippleQuantize(0.0f);
+    addVerts(stippledNoQuantized, x, y);
+    group->addChild(stippledNoQuantized);
+
+    x += 20;
     LineDrawable* rollColor = new LineDrawable(GL_LINE_STRIP);
     rollColor->setLineWidth(4);
     rollColor->setColor(osg::Vec4(1, 1, 0, 1));

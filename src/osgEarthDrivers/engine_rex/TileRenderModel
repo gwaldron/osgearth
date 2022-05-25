@@ -38,7 +38,7 @@ namespace osgEarth { namespace REX
 
     // **** NVGL rendering support ****
 
-#define MAX_NUM_SHARED_SAMPLERS 8
+#define MAX_NUM_SHARED_SAMPLERS 16
 
     // TODO: consider making this a simple UBO instead
     // since it's constant data

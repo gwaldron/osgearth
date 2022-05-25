@@ -329,6 +329,7 @@ namespace osgEarth { namespace Serializers { namespace LineDrawable
 int LineDrawable::PreviousVertexAttrLocation = 9;
 int LineDrawable::NextVertexAttrLocation = 10;
 
+#if 0
 LineDrawable::LineDrawable() :
 osg::Drawable(),
 _mode(GL_LINE_STRIP),
@@ -359,6 +360,7 @@ _colors(NULL)
     if (_useGPU)
         setupShaders();
 }
+#endif
 
 LineDrawable::LineDrawable(GLenum mode) :
 osg::Drawable(),

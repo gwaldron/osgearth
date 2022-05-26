@@ -46,6 +46,7 @@
 #include <osgDB/WriteFile>
 #include <osg/Version>
 #include <iterator>
+#include <osgEarth/Notify>
 
 #define LC "[BuildGeometryFilter] "
 

@@ -18,6 +18,7 @@
  */
 #include <osgEarth/BufferFilter>
 #include <osgEarth/FilterContext>
+#include <osgEarth/Notify>
 
 #define LC "[BufferFilter] "
 

@@ -20,6 +20,7 @@
 #define OSGEARTH_THREADING_UTILS_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Notify>
 #include <atomic>
 #include <functional>
 #include <condition_variable>

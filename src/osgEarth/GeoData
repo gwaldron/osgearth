@@ -32,7 +32,6 @@
 #include <osg/Shape>
 #include <osg/Polytope>
 
-#include <map>
 #include <unordered_map>
 
 namespace osgEarth

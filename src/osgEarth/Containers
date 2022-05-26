@@ -26,6 +26,7 @@
 #include <osgEarth/Threading>
 #include <osg/ref_ptr>
 #include <osg/observer_ptr>
+#include <osg/Math>
 #include <list>
 #include <vector>
 #include <unordered_set>

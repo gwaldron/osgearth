@@ -42,6 +42,7 @@
 #include <osgUtil/CullVisitor>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgShadow/ConvexPolyhedron>
+#include <osgEarth/Notify>
 
 #include <stdlib.h> // getenv
 

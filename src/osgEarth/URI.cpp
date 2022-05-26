@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/URI>
+#include <osgEarth/HTTPClient>
 #include <osgEarth/Cache>
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>

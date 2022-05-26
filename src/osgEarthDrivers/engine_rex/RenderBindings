@@ -26,8 +26,6 @@
 #include <osgEarth/GLUtils>
 #include <osg/Texture>
 #include <osg/Matrix>
-#include <vector>
-#include <map>
 
 namespace osgEarth { namespace REX
 {

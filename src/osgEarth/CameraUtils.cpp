@@ -21,6 +21,7 @@
 */
 #include <osgEarth/CameraUtils>
 #include <osg/Camera>
+#include <osgEarth/Notify>
 
 #define LC "[CameraUtils] "
 

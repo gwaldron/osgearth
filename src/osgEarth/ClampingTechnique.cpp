@@ -22,6 +22,7 @@
 #include <osgEarth/ClampingTechnique>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osgEarth/Shaders>
 #include <osgEarth/CameraUtils>

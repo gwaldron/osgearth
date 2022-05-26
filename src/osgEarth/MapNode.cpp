@@ -35,6 +35,7 @@
 #include <osgEarth/Shaders>
 #include <osgUtil/Optimizer>
 #include <osgDB/DatabasePager>
+#include <osgEarth/HTTPClient>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

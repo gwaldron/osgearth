@@ -20,11 +20,9 @@
 #define OSGEARTH_COMMON_H 1
 
 #include <osgEarth/Export>
-#include <osgEarth/Notify>
 #include <osg/Version>
 #include <osg/ref_ptr>
 #include <osg/Referenced>
-#include <osg/Math>
 #include <memory>
 
 // define the OSG Version checks for older OSG versions

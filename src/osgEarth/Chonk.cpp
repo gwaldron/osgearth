@@ -31,6 +31,7 @@
 #include <osg/LOD>
 #include <osgUtil/Optimizer>
 #include <osgUtil/MeshOptimizers>
+#include <osgEarth/Notify>
 
 #undef LC
 #define LC "[Chonk] "

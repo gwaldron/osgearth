@@ -23,6 +23,7 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/Registry>
 #include <osg/TextureBuffer>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 

@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <vector>
 #include <functional>
+#include <string>
 
 namespace osgEarth { namespace Util
 {

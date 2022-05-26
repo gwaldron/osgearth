@@ -27,6 +27,7 @@
 #include <osgViewer/Version>
 #include <gdal.h>
 #include <sstream>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 

@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
 #include "Ellipsoid"
+#include <osgEarth/Notify>
 
 #define LC "[AutoClip] "
 

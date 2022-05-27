@@ -96,7 +96,7 @@ namespace
             float minOpaqueRange = minRange+attRange;
             float rangeOpacity =
                 minRange >= maxRange ? 1.0 :
-                range >= maxRange || range <= minRange ? 0.0 :
+                range >= maxRange || (minRange > 0.0 && range < minRange) ? 0.0 :
                 range > maxOpaqueRange ? 1.0-((range-maxOpaqueRange)/(maxRange-maxOpaqueRange)) :
                 range < minOpaqueRange && minRange > 0.0 ? ((range-minRange)/(minOpaqueRange-minRange)) :
                 1.0;

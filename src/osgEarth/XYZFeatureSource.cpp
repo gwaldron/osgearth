@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/XYZFeatureSource>
+#include <osgEarth/LayerRegistration>
 #include <osgEarth/OgrUtils>
 #include <osgEarth/GeometryUtils>
 #include <osgEarth/FeatureCursor>

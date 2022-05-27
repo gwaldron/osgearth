@@ -31,6 +31,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Math>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/LayerRegistration>
 #include <osg/BlendFunc>
 #include <osg/Multisample>
 #include <osg/Texture2D>

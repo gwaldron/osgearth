@@ -26,6 +26,7 @@
 #include <osgEarth/Bing>
 #include <osgDB/FileUtils>
 #include <osgEarth/Notify>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib::ThreeDTiles;

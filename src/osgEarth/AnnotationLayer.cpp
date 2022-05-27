@@ -18,6 +18,7 @@
  */
 #include <osgEarth/AnnotationLayer>
 #include <osgEarth/AnnotationRegistry>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 

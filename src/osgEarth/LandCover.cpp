@@ -20,6 +20,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/Registry>
 #include <osg/Texture2D>
+#include <osgEarth/LayerRegistration>
 
 #define LC "[LandCover] "
 

@@ -23,6 +23,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Utils>
+#include <osgEarth/LayerRegistration>
 
 #define LC "[GeodeticGraticule] "
 

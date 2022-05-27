@@ -19,6 +19,7 @@
 #ifdef OSGEARTH_HAVE_FILEGDB
 
 #include <osgEarth/FileGDBFeatureSource>
+#include <osgEarth/LayerRegistration>
 #include "FileGDBAPI.h"
 #include <locale>
 #include <codecvt>

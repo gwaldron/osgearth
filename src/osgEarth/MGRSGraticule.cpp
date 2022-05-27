@@ -22,6 +22,7 @@
 #include <osgEarth/TextSymbolizer>
 #include <osgEarth/TessellateOperator>
 #include <osgEarth/OGRFeatureSource>
+#include <osgEarth/LayerRegistration>
 
 #include <osgEarth/FeatureNode>
 

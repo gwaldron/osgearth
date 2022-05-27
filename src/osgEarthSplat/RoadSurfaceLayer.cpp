@@ -25,6 +25,7 @@
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/Containers>
 #include <osgEarth/Metrics>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;

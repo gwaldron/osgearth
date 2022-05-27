@@ -25,6 +25,7 @@
 #include <osgEarth/CullingUtils>
 #include <osgEarth/GLUtils>
 #include <osgEarth/Text>
+#include <osgEarth/LayerRegistration>
 
 
 #define LC "[UTMGraticule] "

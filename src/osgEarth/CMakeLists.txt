@@ -172,6 +172,7 @@ SET(LIB_PUBLIC_HEADERS
     LandCoverLayer
     Layer
     LayerReference
+    LayerRegistration
     LayerShader
     Lighting
     LineDrawable

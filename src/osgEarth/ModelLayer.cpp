@@ -21,6 +21,7 @@
 #include <osgEarth/GeoTransform>
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
+#include <osgEarth/LayerRegistration>
 
 #include <osg/CullStack>
 #include <osg/Depth>

@@ -20,6 +20,7 @@
 #include <osgEarth/TerrainConstraintLayer>
 #include <osgEarth/Map>
 #include <osgEarth/Progress>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 

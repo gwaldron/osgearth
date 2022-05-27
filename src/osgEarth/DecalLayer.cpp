@@ -23,6 +23,7 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Color>
+#include <osgEarth/LayerRegistration>
 #include <osg/MatrixTransform>
 #include <osg/BlendFunc>
 #include <osg/BlendEquation>

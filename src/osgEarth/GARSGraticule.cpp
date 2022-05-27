@@ -23,6 +23,7 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/Text>
 #include <osgEarth/Registry>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

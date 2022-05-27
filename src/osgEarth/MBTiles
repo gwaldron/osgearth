@@ -25,6 +25,11 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/URI>
 
+namespace osgDB
+{
+    class BaseCompressor;
+}
+
 /**
  * MBTiles - MapBox tile storage specification using SQLite3
  * https://github.com/mapbox/mbtiles-spec

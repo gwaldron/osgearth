@@ -24,6 +24,7 @@
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/Containers>
 #include <osgEarth/Metrics>
+#include <osgEarth/LayerRegistration>
 
 #include <osgDB/WriteFile>
 

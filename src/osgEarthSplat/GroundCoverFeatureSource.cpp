@@ -21,6 +21,7 @@
 */
 #include "GroundCoverFeatureSource"
 #include <osgEarth/ImageUtils>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 using namespace osgEarth::Splat;

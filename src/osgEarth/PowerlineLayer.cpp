@@ -27,6 +27,7 @@
 #include <osgEarth/GeometryUtils>
 #include <osgEarth/Network>
 #include <osgEarth/Math>
+#include <osgEarth/LayerRegistration>
 
 #include <algorithm>
 #include <iterator>

@@ -21,6 +21,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Geometry>
+#include <osgEarth/LayerRegistration>
 #include <osgDB/FileNameUtils>
 #include <osgText/Glyph>
 #include <osgText/Font>

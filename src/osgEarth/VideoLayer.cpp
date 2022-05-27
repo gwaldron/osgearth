@@ -19,6 +19,7 @@
 #include <osgEarth/VideoLayer>
 #include <osg/ImageStream>
 #include <osgEarth/Registry>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 

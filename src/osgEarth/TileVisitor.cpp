@@ -19,7 +19,9 @@
 #include <osgEarth/TileVisitor>
 #include <osgEarth/CacheEstimator>
 #include <osgEarth/FileUtils>
+#include <osgDB/Registry>
 #include <thread>
+#include <fstream>
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,10)
 #include <osg/os_utils>

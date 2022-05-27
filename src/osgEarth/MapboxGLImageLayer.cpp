@@ -24,8 +24,7 @@
 #include <osgEarth/XYZFeatureSource>
 #include <osgEarth/MVT>
 #include <osgEarth/Registry>
-
-#include <osgDB/WriteFile>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 using namespace MapBoxGL;

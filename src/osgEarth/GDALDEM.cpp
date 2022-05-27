@@ -21,6 +21,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/LayerRegistration>
 
 #include <gdal_priv.h> // C++ API
 

@@ -19,6 +19,7 @@
 #include <osgEarth/FractalElevationLayer>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/SimplexNoise>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

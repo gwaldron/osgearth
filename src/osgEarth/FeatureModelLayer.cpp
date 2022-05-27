@@ -18,6 +18,7 @@
  */
 #include <osgEarth/FeatureModelLayer>
 #include <osgEarth/FeatureModelGraph>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 

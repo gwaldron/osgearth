@@ -19,6 +19,7 @@
 #include <osgEarth/TileSourceImageLayer>
 #include <osgEarth/Progress>
 #include <osgEarth/TimeControl>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;

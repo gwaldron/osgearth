@@ -25,6 +25,7 @@
 #include <osgDB/FileUtils>
 #include <osgDB/ReadFile>
 #include <osgEarth/Notify>
+#include <osgEarth/LayerRegistration>
 #include <cstdlib>
 
 using namespace osgEarth;

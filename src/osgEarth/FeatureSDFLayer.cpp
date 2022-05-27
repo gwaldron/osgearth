@@ -18,6 +18,7 @@
  */
 #include "FeatureSDFLayer"
 #include "FeatureRasterizer"
+#include <osgEarth/LayerRegistration>
 #include <osgDB/WriteFile>
 #include <osgDB/FileUtils>
 

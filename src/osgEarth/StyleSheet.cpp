@@ -21,6 +21,7 @@
 */
 #include <osgEarth/StyleSheet>
 #include <osgEarth/CssUtils>
+#include <osgEarth/LayerRegistration>
 #include <algorithm>
 
 #define LC "[StyleSheet] "

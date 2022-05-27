@@ -21,8 +21,10 @@
 */
 
 #include <osg/Notify>
+#include <osg/ArgumentParser>
 #include <osgEarth/TFSPackager>
 #include <osgEarth/OGRFeatureSource>
+#include <iostream>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;

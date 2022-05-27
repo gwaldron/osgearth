@@ -23,6 +23,7 @@
 #include <osgEarth/Containers>
 #include <osgEarth/rtree.h>
 #include <osgEarth/Metrics>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;

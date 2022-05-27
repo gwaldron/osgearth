@@ -21,6 +21,7 @@
 */
 #include "GrassLayer"
 #include "SplatShaders"
+#include <osgEarth/LayerRegistration>
 
 #define LC "[GrassLayer] " << getName() << ": "
 

@@ -24,6 +24,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/MapNode>
+#include <osgEarth/LayerRegistration>
 
 #define LC "[ContourMap] "
 

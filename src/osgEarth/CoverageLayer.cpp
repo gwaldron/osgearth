@@ -1,4 +1,5 @@
 #include "CoverageLayer"
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 

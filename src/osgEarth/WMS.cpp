@@ -22,6 +22,7 @@
 #include <osgEarth/StringUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/TimeSeriesImage>
+#include <osgEarth/LayerRegistration>
 #include <osg/ImageSequence>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>

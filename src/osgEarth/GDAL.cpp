@@ -27,6 +27,7 @@
 #include <osgEarth/LandCover>
 #include <osgEarth/Metrics>
 #include <osgEarth/Color>
+#include <osgEarth/LayerRegistration>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>

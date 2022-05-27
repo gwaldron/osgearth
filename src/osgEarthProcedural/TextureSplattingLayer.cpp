@@ -29,6 +29,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
 #include <osgEarth/Capabilities>
+#include <osgEarth/LayerRegistration>
 
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>

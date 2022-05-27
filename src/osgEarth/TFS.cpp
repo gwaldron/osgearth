@@ -22,6 +22,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarth/Progress>
+#include <osgEarth/LayerRegistration>
 
 #include <osgEarth/Filter>
 #include <osgEarth/BufferFilter>

@@ -23,6 +23,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/LandCover>
 #include <osgEarth/Metrics>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 

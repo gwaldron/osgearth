@@ -22,6 +22,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/LayerRegistration>
 #include <osgDB/FileUtils>
 #include <sstream>
 #include <iomanip>

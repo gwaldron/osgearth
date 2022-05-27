@@ -23,6 +23,7 @@
 #include <osgEarth/LandCover>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgDB/FileUtils>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 using namespace osgEarth::TMS;

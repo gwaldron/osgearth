@@ -22,6 +22,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/URI>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/LayerRegistration>
 
 #include <osgEarth/Filter>
 #include <osgEarth/OgrUtils>

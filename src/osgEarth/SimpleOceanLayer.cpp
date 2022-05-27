@@ -25,6 +25,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Lighting>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/LayerRegistration>
 #include <osg/CullFace>
 #include <osg/Texture2D>
 

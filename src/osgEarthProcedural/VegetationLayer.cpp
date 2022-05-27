@@ -23,6 +23,7 @@
 #include "ProceduralShaders"
 #include "NoiseTextureFactory"
 
+#include <osgEarth/LayerRegistration>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/CameraUtils>
 #include <osgEarth/LineDrawable>

@@ -26,6 +26,7 @@
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
 #include <osg/TriangleIndexFunctor>
+#include <osgDB/FileNameUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;

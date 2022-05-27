@@ -25,6 +25,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/GLUtils>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/LayerRegistration>
 #include <osg/BindImageTexture>
 #include <osg/Texture3D>
 #include <osg/Program>

@@ -22,6 +22,7 @@
 #include <osgEarth/SimplexNoise>
 #include <osgEarth/Progress>
 #include <osgEarth/Random>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

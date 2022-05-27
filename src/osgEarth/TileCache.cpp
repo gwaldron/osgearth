@@ -21,6 +21,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/LayerRegistration>
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;

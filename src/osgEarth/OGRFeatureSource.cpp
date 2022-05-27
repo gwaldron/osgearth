@@ -21,6 +21,7 @@
 #include <osgEarth/GeometryUtils>
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/Filter>
+#include <osgEarth/LayerRegistration>
 
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>

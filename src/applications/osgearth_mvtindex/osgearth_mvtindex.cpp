@@ -24,12 +24,15 @@
 #define OSGEARTH_HAVE_MVT 1
 #define OSGEARTH_HAVE_SQLITE3 1
 
+#include <osg/ArgumentParser>
+#include <osgDB/ObjectWrapper>
 #include <osgEarth/TileKey>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/FeatureCursor>
 #include <osgEarth/OGRFeatureSource>
 #include <osgEarth/Utils>
 #include <osgEarth/MVT>
+
 
 #include <iostream>
 

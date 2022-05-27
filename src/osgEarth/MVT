@@ -24,6 +24,11 @@
 
 #ifdef OSGEARTH_HAVE_MVT
 
+namespace osgDB
+{
+    class BaseCompressor;
+}
+
 namespace osgEarth { namespace MVT 
 {
     //! Reads features from an MVT stream for the specified tile.

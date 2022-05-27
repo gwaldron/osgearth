@@ -19,6 +19,7 @@
 #include <osgEarth/Composite>
 #include <osgEarth/Progress>
 #include <osgEarth/Notify>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 

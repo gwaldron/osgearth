@@ -18,6 +18,7 @@
 */
 #include <osgEarth/TileSourceElevationLayer>
 #include <osgEarth/Progress>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;

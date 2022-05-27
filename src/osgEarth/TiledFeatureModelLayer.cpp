@@ -18,6 +18,7 @@
  */
 #include <osgEarth/TiledFeatureModelLayer>
 #include <osgEarth/TiledFeatureModelGraph>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 

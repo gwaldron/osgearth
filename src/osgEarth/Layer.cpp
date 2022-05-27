@@ -25,6 +25,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TerrainResources>
 #include <osg/StateSet>
+#include <osgDB/Registry>
 
 using namespace osgEarth;
 

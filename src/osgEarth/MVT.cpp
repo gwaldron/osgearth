@@ -20,10 +20,13 @@
 
 #include <osgEarth/MVT>
 
+
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
 #include <osgEarth/GeoData>
 #include <osgEarth/FeatureSource>
+#include <osgEarth/LayerRegistration>
+
 #include <osgDB/Registry>
 #include <list>
 #include <stdio.h>

@@ -23,6 +23,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/TFS>
 #include <osgDB/FileUtils>
+#include <osgDB/FileNameUtils>
 
 #define LC "[TFSPackager] "
 

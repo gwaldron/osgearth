@@ -20,6 +20,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Registry>
 #include <osgEarth/FeatureCursor>
+#include <osgEarth/LayerRegistration>
 
 #define LC "[ImageToFeatureSource] " << getName() << ": "
 

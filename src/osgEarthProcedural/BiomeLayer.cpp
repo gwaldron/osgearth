@@ -22,6 +22,7 @@
 #include "BiomeLayer"
 #include <osgEarth/Random>
 #include <osgEarth/MetaTile>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

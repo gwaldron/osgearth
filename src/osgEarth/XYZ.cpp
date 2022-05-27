@@ -18,6 +18,7 @@
  */
 #include "XYZ"
 #include <osgEarth/Registry>
+#include <osgEarth/LayerRegistration>
 #include <osgEarth/FileUtils>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/ImageToHeightFieldConverter>

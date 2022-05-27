@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
 #include <osgEarth/ThreeDTilesLayer>
+#include <osgEarth/LayerRegistration>
 
 #define LC "[ThreeDTilesLayer] " << getName() << " : "
 

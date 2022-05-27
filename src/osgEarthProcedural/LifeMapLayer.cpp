@@ -27,6 +27,7 @@
 #include <osgEarth/Math>
 #include <osgEarth/MetaTile>
 #include <osgEarth/rtree.h>
+#include <osgEarth/LayerRegistration>
 
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>

@@ -21,6 +21,7 @@
 #include <osgEarth/JsonUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Notify>
+#include <osgEarth/LayerRegistration>
 
 using namespace osgEarth;
 

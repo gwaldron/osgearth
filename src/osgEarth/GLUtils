@@ -29,7 +29,6 @@
 #include <osgEarth/Math>
 #include <osg/StateSet>
 #include <osg/OperationThread>
-#include <osg/GraphicsContext>
 #include <osg/GLObjects>
 #include <osg/Drawable>
 #include <osg/Texture2D>
@@ -46,6 +45,10 @@
 #ifndef GL_DYNAMIC_STORAGE_BIT
 #define GL_DYNAMIC_STORAGE_BIT 0x0100
 #endif
+
+namespace osg {
+    class GraphicsContext;
+}
 
 namespace osgUtil {
     class StateToCompile;

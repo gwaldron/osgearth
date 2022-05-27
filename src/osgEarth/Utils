@@ -37,7 +37,6 @@
 
 #include <string>
 #include <list>
-#include <map>
 #include <typeinfo>
 
 namespace osgEarth { namespace Util

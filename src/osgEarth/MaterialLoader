@@ -25,6 +25,11 @@
 #include <osgEarth/IOTypes>
 #include <osgEarth/URI>
 
+namespace osgDB
+{
+    class Options;
+}
+
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;

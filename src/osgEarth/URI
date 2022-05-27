@@ -25,6 +25,7 @@
 #include <osg/Image>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
+#include <osgDB/Callbacks>
 
 namespace osgUtil
 {
@@ -337,16 +338,12 @@ namespace osgEarth
         /**
          * Loads an alias map from an Options.
          */
-        static URIAliasMap* from( const osgDB::Options* options ) {
-            return options ? const_cast<URIAliasMap*>(static_cast<const URIAliasMap*>(options->getPluginData("osgEarth::URIAliasMap"))) : 0L;
-        }
+        static URIAliasMap* from(const osgDB::Options* options);
 
         /**
          * Stores an alias map in an Options
          */
-        void apply( osgDB::Options* options ) {
-            if ( options ) options->setPluginData("osgEarth::URIAliasMap", this);
-        }
+        void apply(osgDB::Options* options);
 
     protected:
         std::map<std::string,std::string> _map;
@@ -386,18 +383,14 @@ namespace osgEarth
      * make sure the scope of the osgDB::Options does not exceed the scope of
      * the embedded cache!
      */
-    struct /*header-only*/ URIResultCache : public LRUCache<URI, ReadResult>
+    struct OSGEARTH_EXPORT URIResultCache : public LRUCache<URI, ReadResult>
     {
         URIResultCache( bool threadsafe =true )
             : LRUCache<URI,ReadResult>( threadsafe ) { }
 
-        static URIResultCache* from(const osgDB::Options* options) {
-            return options ? const_cast<URIResultCache*>(static_cast<const URIResultCache*>(options->getPluginData("osgEarth::URIResultCache"))) : 0L;
-        }
+        static URIResultCache* from(const osgDB::Options* options);
 
-        void apply( osgDB::Options* options ) {
-            if ( options ) options->setPluginData("osgEarth::URIResultCache", this);
-        }
+        void apply(osgDB::Options* options);
     };
 
 
@@ -407,7 +400,7 @@ namespace osgEarth
      * You can install a post-read callback in a osgDB::Options and the URI
      * class till invoke it on a ReadResult before returning.
      */
-    class /*header-only*/ URIPostReadCallback : public osg::Referenced
+    class OSGEARTH_EXPORT URIPostReadCallback : public osg::Referenced
     {
     public:
         URIPostReadCallback() { }
@@ -416,13 +409,9 @@ namespace osgEarth
         virtual void operator()( ReadResult& result ) =0;
 
     public:
-        void apply(osgDB::Options* options) {
-            if ( options ) options->setPluginData("osgEarth::URIPostReadCallback", this);
-        }
+        void apply(osgDB::Options* options);
 
-        static URIPostReadCallback* from(const osgDB::Options* options) {
-            return options ? const_cast<URIPostReadCallback*>(static_cast<const URIPostReadCallback*>(options->getPluginData("osgEarth::URIPostReadCallback"))) : 0L;
-        }
+        static URIPostReadCallback* from(const osgDB::Options* options);
     };
 
     
@@ -453,7 +442,6 @@ namespace osgEarth
     }
 
     // Config specialization for URIAliasMap
-
     template <> inline
     void Config::set<URIAliasMap>( const std::string& key, const optional<URIAliasMap>& map ) {
         remove( key );

@@ -30,7 +30,6 @@
 #include <sstream>
 #include <locale>
 #include <iomanip>
-#include <map>
 #include <unordered_map>
 #include <set>
 #include <ctype.h>
@@ -327,7 +326,7 @@ namespace osgEarth { namespace Util
         void addQuotes( const std::string& delims, bool keepInTokens =false );
 
     private:
-        using TokenMap = std::map<char,bool>;
+        using TokenMap = std::unordered_map<char,bool>;
         TokenMap _delims;
         TokenMap _quotes;
         bool     _allowEmpties;

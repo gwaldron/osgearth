@@ -705,6 +705,17 @@ URI::readString(const osgDB::Options* dbOptions,
 
 //------------------------------------------------------------------------
 
+URIAliasMap* URIAliasMap::from(const osgDB::Options* options)
+{
+    return options ? const_cast<URIAliasMap*>(static_cast<const URIAliasMap*>(options->getPluginData("osgEarth::URIAliasMap"))) : 0L;
+}
+
+void URIAliasMap::apply(osgDB::Options* options)
+{
+    if (options) options->setPluginData("osgEarth::URIAliasMap", this);
+}
+
+
 void
 URIAliasMap::insert(const std::string& key, const std::string& value)
 {
@@ -777,4 +788,26 @@ URIAliasMapReadCallback::readShader(const std::string& filename, const osgDB::Op
 {
     if (osgDB::Registry::instance()->getReadFileCallback()) return osgDB::Registry::instance()->getReadFileCallback()->readShader(_aliasMap.resolve(filename,_context),options);
     else return osgDB::Registry::instance()->readShaderImplementation(_aliasMap.resolve(filename,_context),options);
+}
+
+//------------------------------------------------------------------------
+
+URIResultCache* URIResultCache::from(const osgDB::Options* options)
+{
+    return options ? const_cast<URIResultCache*>(static_cast<const URIResultCache*>(options->getPluginData("osgEarth::URIResultCache"))) : 0L;
+}
+
+void URIResultCache::apply(osgDB::Options* options)
+{
+    if (options) options->setPluginData("osgEarth::URIResultCache", this);
+}
+
+//------------------------------------------------------------------------
+
+void URIPostReadCallback::apply(osgDB::Options* options) {
+    if (options) options->setPluginData("osgEarth::URIPostReadCallback", this);
+}
+
+URIPostReadCallback* URIPostReadCallback::from(const osgDB::Options* options) {
+    return options ? const_cast<URIPostReadCallback*>(static_cast<const URIPostReadCallback*>(options->getPluginData("osgEarth::URIPostReadCallback"))) : 0L;
 }

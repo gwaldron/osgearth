@@ -27,7 +27,6 @@
 #include <osg/Material>
 #include <osg/observer_ptr>
 #include <osgDB/Options>
-#include <map>
 #include <unordered_map>
 #include <functional>
 

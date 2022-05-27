@@ -26,7 +26,6 @@
 #include <osg/Vec3>
 #include <osg/BoundingBox>
 #include <osg/Array>
-#include <osg/Geometry>
 #include <osg/Matrix>
 
 #include <iterator>
@@ -34,6 +33,11 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+namespace osg
+{
+    class Geometry;
+}
 
 namespace osgEarth
 {

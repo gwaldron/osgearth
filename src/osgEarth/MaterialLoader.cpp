@@ -20,6 +20,7 @@
 */
 #include "MaterialLoader"
 #include <osg/Texture2D>
+#include <osgDB/Options>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

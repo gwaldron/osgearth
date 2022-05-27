@@ -30,7 +30,6 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/Containers>
 #include <sys/types.h>
-#include <map>
 
 // environment variables
 #define OSGEARTH_ENV_CACHE_DRIVER  "OSGEARTH_CACHE_DRIVER"

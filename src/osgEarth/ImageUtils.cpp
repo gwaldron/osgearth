@@ -1757,7 +1757,7 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            float scale = GLTypeTraits<T>::scale(iw->_normalized);
+            double scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (T)( c.r() / scale );
             *ptr   = (T)( c.a() / scale );
@@ -1782,7 +1782,7 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            float scale = GLTypeTraits<T>::scale(iw->_normalized);
+            double scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (T)( c.r() / scale );
             *ptr++ = (T)( c.g() / scale );
@@ -1808,7 +1808,7 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            float scale = GLTypeTraits<T>::scale(iw->_normalized);
+            double scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (T)( c.r() / scale );
             *ptr++ = (T)( c.g() / scale );
@@ -1836,7 +1836,7 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
-            float scale = GLTypeTraits<T>::scale(iw->_normalized);
+            double scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (T)( c.r() / scale );
             *ptr++ = (T)( c.g() / scale );
@@ -1864,7 +1864,7 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            float scale = GLTypeTraits<T>::scale(iw->_normalized);
+            double scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (T)( c.b() / scale );
             *ptr++ = (T)( c.g() / scale );
@@ -1892,7 +1892,7 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            float scale = GLTypeTraits<T>::scale(iw->_normalized);
+            double scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (T)( c.b() / scale );
             *ptr++ = (T)( c.g() / scale );

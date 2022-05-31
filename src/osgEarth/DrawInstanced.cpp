@@ -412,7 +412,6 @@ namespace osgEarth {
     }
 }
 
-
 class MakeInstanceGeometryVisitor : public osg::NodeVisitor
 {
 public:
@@ -421,6 +420,14 @@ public:
         _matrices(matrices)
     {
     }
+
+    struct DC : public osg::Drawable::DrawCallback {
+        void drawImplementation(osg::RenderInfo& ri, const osg::Drawable* drawable) const {
+            drawable->drawImplementation(ri);
+            // prevents a crash
+            ri.getState()->unbindVertexArrayObject();
+        }
+    };
 
     virtual void apply(osg::Geometry& geometry)
     {
@@ -431,6 +438,8 @@ public:
         {
             geometry.getParent(i)->replaceChild(&geometry, instanced.get());
         }
+
+        instanced->setDrawCallback(new DC());
     }
 
     std::vector< osg::Matrixf > _matrices;

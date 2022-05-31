@@ -108,14 +108,14 @@ FeatureModelLayer::init()
 
 void FeatureModelLayer::dirty()
 {
-    //// feature source changed, so the graph needs rebuilding
-    //_graphDirty = true;
+    // feature source changed, so the graph needs rebuilding
+    _graphDirty = true;
 
-    //// create the scene graph
-    //if (isOpen())
-    //{
-    //    create();
-    //}
+    // create the scene graph
+    if (isOpen())
+    {
+        create();
+    }
 }
 
 Config
@@ -282,43 +282,40 @@ FeatureModelLayer::create()
 {
     OE_TEST << LC << "create" << std::endl;
 
-    //if (_graphDirty)
+    if (isOpen() && getFeatureSource() && getStyleSheet() && _session.valid())
     {
-        if (isOpen() && getFeatureSource() && getStyleSheet() && _session.valid())
+        _session->setFeatureSource(getFeatureSource());
+
+        // group that will build all the feature geometry:
+        osg::ref_ptr<FeatureModelGraph> fmg = new FeatureModelGraph(options());
+        fmg->setOwnerName(this->getName());
+        fmg->setSession(_session.get());
+        fmg->setNodeFactory(createFeatureNodeFactory());
+        fmg->setSceneGraphCallbacks(getSceneGraphCallbacks());
+        fmg->setStyleSheet(getStyleSheet());
+
+        // pass though the min/max ranges
+        if (options().maxVisibleRange().isSet())
+            fmg->setMaxRange(options().maxVisibleRange().get());
+        if (options().minVisibleRange().isSet())
+            fmg->setMinRange(options().minVisibleRange().get());
+
+        Status status = fmg->open();
+
+        if (status.isError())
         {
-            _session->setFeatureSource(getFeatureSource());
+            OE_WARN << LC << "ERROR intializing the FMG: " << status.toString() << std::endl;
+            setStatus(status);
+        }
+        else
+        {
+            _root->removeChildren(0, _root->getNumChildren());
+            _root->addChild(fmg);
 
-            // group that will build all the feature geometry:
-            osg::ref_ptr<FeatureModelGraph> fmg = new FeatureModelGraph(options());
-            fmg->setOwnerName(this->getName());
-            fmg->setSession(_session.get());
-            fmg->setNodeFactory(createFeatureNodeFactory());
-            fmg->setSceneGraphCallbacks(getSceneGraphCallbacks());
-            fmg->setStyleSheet(getStyleSheet());
+            // clear the dirty flag.
+            _graphDirty = false;
 
-            // pass though the min/max ranges
-            if (options().maxVisibleRange().isSet())
-                fmg->setMaxRange(options().maxVisibleRange().get());
-            if (options().minVisibleRange().isSet())
-                fmg->setMinRange(options().minVisibleRange().get());
-
-            Status status = fmg->open();
-
-            if (status.isError())
-            {
-                OE_WARN << LC << "ERROR intializing the FMG: " << status.toString() << std::endl;
-                setStatus(status);
-            }
-            else
-            {
-                _root->removeChildren(0, _root->getNumChildren());
-                _root->addChild(fmg);
-
-                // clear the dirty flag.
-                _graphDirty = false;
-
-                setStatus(Status::OK());
-            }
+            setStatus(Status::OK());
         }
     }
 }

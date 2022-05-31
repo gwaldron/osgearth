@@ -401,6 +401,14 @@ FeatureSDFLayer::createImageImplementation(
     // Convert the distances to pixels
     double metersPerPixel = toMeters * (key.getExtent().width() / (double)rasterizedFeatures.getImage()->s());
 
+    // We couldn't compute a valid min/max distance from the features b/c no features were rendered
+    // So initialize it to something reasonable.
+    if (minDistanceMeters == FLT_MAX && maxDistanceMeters == -FLT_MAX)
+    {
+        minDistanceMeters = 0.0f;
+        maxDistanceMeters = 1.0f;
+    }
+
     float minPixels = minDistanceMeters / metersPerPixel;
     float maxPixels = maxDistanceMeters / metersPerPixel;
     // Prevent divide by zero error

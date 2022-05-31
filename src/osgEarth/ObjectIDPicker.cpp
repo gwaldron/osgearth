@@ -22,6 +22,8 @@
 #include "GLUtils"
 #include "Utils"
 #include "CameraUtils"
+#include "VirtualProgram"
+#include "Registry"
 
 #include <osg/BlendFunc>
 

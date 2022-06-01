@@ -767,7 +767,7 @@ namespace osgEarth
      *        return false;
      *    };
      *
-     * Future<MyObject> job = GLPipeline::get()->dispatch<MyObject>(task);
+     * Future<MyObject> job = GLPipeline::get(state)->dispatch<MyObject>(task);
      *
      * Return "true" from the function to request another invocation.
      * Each invocation will increment the "invocation" argument so you 
@@ -791,18 +791,8 @@ namespace osgEarth
             int         invocation)>;
 
     public:
-        //! Gets the default GL pipeline
-        //! This pipeline will run jobs on the application's
-        //! primary graphics context in the main rendering thread.
-        static GLPipeline::Ptr get();
-
-        //! Gets the GL pipeline associated with the given name.
-        //! Job dispatched on this pipeline will run on a dedicated
-        //! thread with its own dedicated graphics context.
-        //! (Keep in mind that GL calls are still serialized by the
-        //! GPU driver.)
-        static GLPipeline::Ptr get(
-            const std::string& name);
+        //! Gets the GL pipeline for a State
+        static GLPipeline::Ptr get(osg::State& state);
 
     private:
         // Internal delegation operation for the GC queue:
@@ -876,32 +866,21 @@ namespace osgEarth
     private:
         osg::ref_ptr<osg::GraphicsContext> _gc;
         static Mutex _mutex;
-        static std::unordered_map<std::string, GLPipeline::Ptr> _lut;
+        static std::unordered_map<osg::State*, GLPipeline::Ptr> _lut;
 
-        struct Dispatcher : public osg::GraphicsThread {
+        struct Dispatcher : public osg::GraphicsOperation
+        {
             Dispatcher(GLPipeline::Ptr);
-            void run() override;
-            void frame();
+            void operator()(osg::GraphicsContext*) override;
             using OpQ = std::queue<osg::ref_ptr<osg::Operation>>;
             OpQ _thisQ;
-            OpQ _nextQ;
             Mutex _queue_mutex;
-            bool _advance_frame;
-            Event _event;
             GLPipeline::WeakPtr _pipeline_ref;
             osg::ref_ptr<osg::GraphicsContext> _myGC;
             void push(osg::Operation*);
         };
 
-        struct SyncPipelineToFrame : public osg::Operation {
-            SyncPipelineToFrame(GLPipeline::Ptr);
-            GLPipeline::WeakPtr _pipeline;
-            void operator()(osg::Object*) override;
-        };
-
         osg::ref_ptr<Dispatcher> _dispatcher;
-        void sync();
-        friend struct SyncPipelineToFrame;
     };
 
     /**
@@ -924,7 +903,7 @@ namespace osgEarth
 
         //! Runs the compute shader and waits for the result
         //! to be read back to the CPU.
-        void execute();
+        void execute(osg::State&);
 
     protected:
         osg::ref_ptr<osg::Image> _image;

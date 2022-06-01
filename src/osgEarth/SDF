@@ -115,9 +115,10 @@ namespace osgEarth { namespace Util
 
     private:
 
-        void compute_nnf_on_gpu(osg::Image* buf) const;
+        //void compute_nnf_on_gpu(osg::Image* buf) const;
         void compute_nnf_on_cpu(osg::Image* buf) const;
 
+#if 0
         struct NNFSession : public ComputeImageSession
         {
         public:
@@ -128,6 +129,7 @@ namespace osgEarth { namespace Util
 
         PerThreadComputeSession<NNFSession> _compute;
         osg::ref_ptr<osg::Program> _program;
+#endif
         bool _useGPU;
 
     };

@@ -98,7 +98,7 @@ namespace osgEarth
             void releaseGLObjects(osg::State*) const;
             void resizeGLObjectBuffers(unsigned);
 
-            void render(osg::State&);
+            void allocate(osg::State&);
             GLuint query(osg::State&);
             osg::ref_ptr<osg::Image> readback(osg::State&);
         };

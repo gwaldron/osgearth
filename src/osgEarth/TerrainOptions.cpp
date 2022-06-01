@@ -18,6 +18,7 @@
  */
 #include <osgEarth/TerrainOptions>
 #include <cstdlib> // for getenv
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 

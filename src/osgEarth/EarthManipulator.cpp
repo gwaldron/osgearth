@@ -1741,6 +1741,8 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                     dy *= _settings->getMouseSensitivity();
                     applyOptionsToDeltas( action, dx, dy );
 
+                    if (dx == 0.0 && dy == 0.0) continue;
+
                     _dx = dx;
                     _dy = dy;
 

@@ -25,6 +25,7 @@
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 using namespace osgEarth::ArcGIS;

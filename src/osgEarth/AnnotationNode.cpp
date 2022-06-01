@@ -29,6 +29,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/GLUtils>
+#include <osgEarth/Notify>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Utils>
 

@@ -24,6 +24,7 @@
 #define OSGEARTH_BOUNDS_H 1
 
 #include <osgEarth/Common>
+#include <string>
 #include <osg/BoundingBox>
 
 namespace osgEarth

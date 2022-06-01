@@ -18,6 +18,7 @@
  */
 #include <osgEarth/AttributesFilter>
 #include <osgEarth/FilterContext>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 

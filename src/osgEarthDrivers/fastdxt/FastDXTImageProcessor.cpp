@@ -19,12 +19,13 @@
 
 #include <osg/Texture>
 #include <osgDB/Registry>
-#include <osg/Notify>
+#include <osgEarth/Notify>
 #include <osg/GLU>
 #include <osgEarth/ImageUtils>
 #include <stdlib.h>
 #include "libdxt.h"
 #include <string.h>
+
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

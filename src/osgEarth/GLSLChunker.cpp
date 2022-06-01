@@ -18,6 +18,7 @@
  */
 #include <osgEarth/GLSLChunker>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

@@ -23,6 +23,8 @@
 #include <osgEarth/Common>
 #include <map>
 #include <unordered_map>
+#include <osg/Timer>
+#include <string>
 
 namespace osgEarth {
     class OSGEARTH_EXPORT NetworkMonitor

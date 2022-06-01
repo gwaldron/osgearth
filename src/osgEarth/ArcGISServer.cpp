@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/JsonUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 

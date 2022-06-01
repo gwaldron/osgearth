@@ -18,6 +18,7 @@
  */
 #include <osgEarth/Composite>
 #include <osgEarth/Progress>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 
@@ -307,6 +308,8 @@ CompositeImageLayer::closeImplementation()
 GeoImage
 CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
+    unsigned size = getTileSize();
+
     Composite::ImageMixVector images;
     images.reserve(_layers.size());
 
@@ -340,21 +343,7 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
         images.push_back(imageInfo);
     }
 
-    // Determine the output texture size to use based on the image that were created.
     unsigned numValidImages = 0;
-    osg::Vec2s textureSize;
-    for (unsigned int i = 0; i < images.size(); i++)
-    {
-        Composite::ImageInfo& info = images[i];
-        if (info.image.valid())
-        {
-            if (numValidImages == 0)
-            {
-                textureSize.set( info.image->s(), info.image->t());
-            }
-            numValidImages++;        
-        }
-    } 
 
     // Create fallback images if we have some valid data but not for all the layers
     if (numValidImages > 0 && numValidImages < images.size())
@@ -390,7 +379,7 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
                 if (image.valid())
                 {
                     bool bilinear = layer->isCoverage() ? false : true;
-                    GeoImage cropped = image.crop( key.getExtent(), true, textureSize.x(), textureSize.y(), bilinear);
+                    GeoImage cropped = image.crop( key.getExtent(), true, size, size, bilinear);
                     info.image = cropped.getImage();
                 }                    
             }
@@ -398,13 +387,21 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
     }
 
     // Now finally create the output image.
-    //Recompute the number of valid images
+    // Recompute the number of valid images and make sure they are all the correct size
     numValidImages = 0;
     for (unsigned int i = 0; i < images.size(); i++)
     {
         Composite::ImageInfo& info = images[i];
         if (info.image.valid())
-            numValidImages++;        
+        {
+            numValidImages++;
+            if (info.image->s() != size || info.image->t() != size)
+            {
+                osg::ref_ptr< osg::Image > resized;
+                ImageUtils::resizeImage(info.image.get(), size, size, resized);
+                info.image = resized;
+            }
+        }
     }    
 
     if ( progress && progress->isCanceled() )

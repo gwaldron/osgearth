@@ -21,6 +21,7 @@
 #include <osgEarth/TextSymbol>
 #include <osgEarth/PlaceNode>
 #include <osgEarth/FeatureIndex>
+#include <osgEarth/Notify>
 
 #define LC "[BuildTextFilter] "
 

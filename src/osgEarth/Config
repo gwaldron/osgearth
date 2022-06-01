@@ -26,10 +26,14 @@
 #include <osg/Version>
 #include <osg/Vec2f>
 #include <osg/Vec3d>
-#include <osgDB/Options>
 #include <list>
 #include <stack>
 #include <istream>
+
+namespace osgDB
+{
+    class Options;
+}
 
 namespace osgEarth
 {

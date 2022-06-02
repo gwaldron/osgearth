@@ -213,7 +213,7 @@ namespace osgEarth { namespace Util
     }
 
     template<typename T>
-    void MetaTile<T>::setCreateTileFunction(MetaTile<T>::CreateTileFunction value)
+    void MetaTile<T>::setCreateTileFunction(typename MetaTile<T>::CreateTileFunction value)
     {
         _createTile = value;
     }

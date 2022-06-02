@@ -152,13 +152,17 @@ BiomeLayer::addedToMap(const Map* map)
     // Initialize the biome creator
     if (getBiomeBaseLayer() && getBiomeBaseLayer()->isOpen())
     {
-        _biomeCreator = std::make_unique< CoverageLayer::CoverageCreator<BiomeSample> >(getBiomeBaseLayer());
+        _biomeCreator = std::unique_ptr< CoverageLayer::CoverageCreator<BiomeSample> >(
+            new CoverageLayer::CoverageCreator<BiomeSample>(getBiomeBaseLayer())
+            );
     }
 
     // Initialize the landcover creator
     if (getLandCoverLayer() && getLandCoverLayer()->isOpen())
     {
-        _landCoverCreator = std::make_unique< CoverageLayer::CoverageCreator<LandCoverSample> >(getLandCoverLayer());        
+        _landCoverCreator = std::unique_ptr< CoverageLayer::CoverageCreator<LandCoverSample> >(
+            new CoverageLayer::CoverageCreator<LandCoverSample>(getLandCoverLayer())
+            );
     }
 }
 

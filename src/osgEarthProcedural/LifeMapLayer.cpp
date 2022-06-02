@@ -339,7 +339,8 @@ LifeMapLayer::addedToMap(const Map* map)
     // Initialize the landcover creator
     if (getLandCoverLayer() && getLandCoverLayer()->isOpen())
     {
-        _landCoverCreator = std::make_unique< CoverageLayer::CoverageCreator<LandCoverSample> >(getLandCoverLayer());
+        _landCoverCreator = std::unique_ptr< CoverageLayer::CoverageCreator<LandCoverSample> >(
+            new CoverageLayer::CoverageCreator<LandCoverSample>(getLandCoverLayer()));
     }
 
     _map = map;

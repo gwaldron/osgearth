@@ -19,6 +19,7 @@
 #include <osgEarth/FeatureSourceIndexNode>
 #include <osgEarth/Registry>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/Metrics>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -90,12 +91,16 @@ _index( index )
 
 FeatureSourceIndexNode::~FeatureSourceIndexNode()
 {
+    OE_PROFILING_ZONE;    
     if ( _index.valid() )
     {
         // must copy and clear the original list first to dereference the RefIDPair instances.
         std::set<FeatureID> fidsToRemove;
         fidsToRemove.insert(KeyIter<FID_to_RefIDPair>(_fids.begin()), KeyIter<FID_to_RefIDPair>(_fids.end()));
         _fids.clear();
+
+        std::string message = Stringify() << "Removing " << fidsToRemove.size();
+        OE_PROFILING_ZONE_TEXT(message.c_str());
 
         OE_DEBUG << LC << "Removing " << fidsToRemove.size() << " fids\n";
         _index->removeFIDs( fidsToRemove.begin(), fidsToRemove.end() );
@@ -126,6 +131,15 @@ FeatureSourceIndexNode::tagNode(osg::Node* node, Feature* feature)
     if ( !feature || !_index.valid() ) return OSGEARTH_OBJECTID_EMPTY;
     RefIDPair* r = _index->tagNode( node, feature );
     if ( r ) _fids[ feature->getFID() ] = r;
+    return r ? r->_oid : OSGEARTH_OBJECTID_EMPTY;
+}
+
+ObjectID
+FeatureSourceIndexNode::tagRange(osg::Drawable* drawable, Feature* feature, unsigned int start, unsigned int count)
+{
+    if (!feature || !_index.valid()) return OSGEARTH_OBJECTID_EMPTY;
+    RefIDPair* r = _index->tagRange(drawable, feature, start, count);
+    if (r) _fids[feature->getFID()] = r;
     return r ? r->_oid : OSGEARTH_OBJECTID_EMPTY;
 }
 
@@ -416,6 +430,39 @@ FeatureSourceIndex::tagAllDrawables(osg::Node* node, Feature* feature)
         _oids[oid] = fid;
 
         if ( _embed )
+        {
+            _embeddedFeatures[fid] = feature;
+        }
+    }
+
+    return p;
+}
+
+RefIDPair*
+FeatureSourceIndex::tagRange(osg::Drawable* drawable, Feature* feature, unsigned int start, unsigned int count)
+{
+    if (!feature) return 0L;
+
+    Threading::ScopedMutexLock lock(_mutex);
+
+    RefIDPair* p = 0L;
+    FeatureID fid = feature->getFID();
+
+    FID_to_RefIDPair::const_iterator f = _fids.find(fid);
+    if (f != _fids.end())
+    {
+        ObjectID oid = f->second->_oid;
+        _masterIndex->tagRange(drawable, oid, start, count);
+        p = f->second.get();
+    }
+    else
+    {
+        ObjectID oid = _masterIndex->tagRange(drawable, this, start, count);
+        p = new RefIDPair(fid, oid);
+        _fids[fid] = p;
+        _oids[oid] = fid;
+
+        if (_embed)
         {
             _embeddedFeatures[fid] = feature;
         }

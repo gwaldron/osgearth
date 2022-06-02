@@ -155,6 +155,12 @@ namespace osgEarth { namespace Util
         SortedGeodeMap                 _lineGroups;
         osg::ref_ptr<osg::StateSet>    _noTextureStateSet;
 
+        typedef std::map < osg::StateSet*, osg::ref_ptr< osg::Geometry> > GeometryMap;
+        GeometryMap                    _wallGeometries;
+        GeometryMap                    _roofGeometries;
+        GeometryMap                    _baselineGeometries;
+
+
         bool                           _mergeGeometry;
         float                          _wallAngleThresh_deg;
         float                          _cosWallAngleThresh;
@@ -200,15 +206,19 @@ namespace osgEarth { namespace Util
                             FilterContext&          cx );
 
         bool buildWallGeometry(const Structure&     structure,
+                               Feature*             feature,
                                osg::Geometry*       walls,
                                const osg::Vec4&     wallColor,
                                const osg::Vec4&     wallBaseColor,
-                               const SkinResource*  wallSkin);
+                               const SkinResource*  wallSkin,
+                               FeatureIndexBuilder* index);
 
         bool buildRoofGeometry(const Structure&     structure,
+                               Feature* feature,
                                osg::Geometry*       roof,
                                const osg::Vec4&     roofColor,
-                               const SkinResource*  roofSkin);
+                               const SkinResource*  roofSkin,
+                               FeatureIndexBuilder* index);
 
         osg::Drawable* buildOutlineGeometry(const Structure& structure);
     };

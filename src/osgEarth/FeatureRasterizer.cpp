@@ -307,32 +307,49 @@ namespace osgEarth {
             return fontFace;
         }
 
-
-        // Simpler than StringExpression for doing template replacement.  Need to fix StringExpression so it supports inline templates as well like road_{number}
         std::string templateReplace(const Feature* feature, const std::string& expression)
         {
             std::string result = expression;
-            for (auto& attr : feature->getAttrs())
+            auto start = result.find('{');
+            auto end = result.find('}');
+            if (start != std::string::npos && end != std::string::npos)
             {
-                std::string replaceText = Stringify() << "{" << attr.first << "}";
-                osgEarth::replaceIn(result, replaceText, attr.second.getString());
+                std::string attribute = result.substr(start + 1, end - start - 1);
+                if (feature->hasAttr(attribute))
+                {
+                    std::string value = feature->getString(attribute);
+                    std::string replaceText = Stringify() << "{" << attribute << "}";
+                    osgEarth::replaceIn(result, replaceText, value);
+                }
+            }
+
+            if (result.find("{") != std::string::npos || result.find("}") != std::string::npos)
+            {
+                OE_INFO << LC << "Failed to replace attributes in template " << expression << std::endl;
+                result = "";
             }
             return result;
         }
 
-        void renderMapboxText(BLContext& ctx, float x, float y, const std::string& text, const TextSymbol* textSymbol, MapboxGLGlyphManager* glyphManager)
+        void renderMapboxText(BLContext& ctx, float x, float y, const std::string& text, const TextSymbol* textSymbol, MapboxGLGlyphManager* glyphManager, float textScale, FeatureRasterizer::SymbolBoundingBoxes& symbolBounds)
         {
             if (!glyphManager)
             {
                 return;
             }
 
-            float resolutionAdjust = 1.5f; // Maybe a scale based on the tilesize?  Probably based on multiple of 256?
-            float fontSize = textSymbol->size()->eval() * resolutionAdjust;
+#if 0
+            // Draw the label position
+            ctx.setFillStyle(BLRgba(0.0, 1.0, 0.0, 1.0));
+            ctx.fillCircle(x, y, 4);
+#endif
+
+            float fontSize = textSymbol->size()->eval() * textScale;
 
             const float ONE_EM = 24.0;
             float scale = fontSize / ONE_EM;
             float baselineOffset = 7.0f;
+            float GLYPH_PADDING = 3.0f;
 
             // Collect a list of glyphs for the text
             std::vector< osg::ref_ptr< MapboxGLGlyphManager::Glyph > > textGlyphs;
@@ -344,15 +361,33 @@ namespace osgEarth {
             float lineWidth = 0.0f;
             float lineHeight = 0.0f;
 
+            osg::BoundingBox bounds;
+
             // Compute the line width and line height
             for (auto& g : textGlyphs)
             {
                 if (g.valid())
                 {
-                    lineWidth += g->advance * scale;
-                    lineHeight += std::max(lineHeight, g->height * scale);
+                    float minX = cursorX + g->left * scale;
+                    float minY = cursorY - g->top * scale;
+                    float maxX = minX + g->width * scale;
+                    float maxY = minY + g->height * scale;
+                    bounds.expandBy(minX, minY, 0.0f);
+                    bounds.expandBy(maxX, minY, 0.0f);
+                    bounds.expandBy(maxX, maxY, 0.0f);
+                    bounds.expandBy(minX, maxY, 0.0f);
+                    cursorX += g->advance * scale;
+                    //ctx.blitImage(BLPoint((double)g->left, (double)(-g->top)), sprite, glyphRect);
+                    //lineWidth += g->advance * scale;
+                    //lineHeight = std::max(lineHeight, (g->height) * scale);
                 }
             }
+
+            lineWidth = bounds.xMax() - bounds.xMin();
+            lineHeight = bounds.yMax() - bounds.yMin();
+
+            cursorX = x;
+            cursorY = y;
 
             // Adjust the cursor based on the alignment
             auto alignment = textSymbol->alignment().get();
@@ -394,6 +429,20 @@ namespace osgEarth {
                 break;
             }            
 
+            float offsetX = x - cursorX;
+            float offsetY = y - cursorY;
+            bounds.xMin() -= offsetX;
+            bounds.yMin() -= offsetY;
+            bounds.xMax() -= offsetX;
+            bounds.yMax() -= offsetY;
+
+            // Don't draw the text if it intersects an existing label.
+            bool intersects = false;
+            if (symbolBounds.intersects2d(bounds))
+            {
+                return;             
+            }
+
             // Render each glyph
             for (unsigned int index = 0; index < textGlyphs.size(); ++index)
             {
@@ -405,14 +454,14 @@ namespace osgEarth {
                 }
 
                 //Write each glyph into the output image.
-                unsigned glyphWidth = g->width + 6;
-                unsigned glyphHeight = g->height + 6;
+                unsigned glyphWidth = g->width + GLYPH_PADDING*2.0;
+                unsigned glyphHeight = g->height + GLYPH_PADDING * 2.0;
 
                 if (g->bitmap.size() > 0)
                 {
                     auto textColor = textSymbol->fill()->color();
 
-                    unsigned int numPixels = (g->width + 6) * (g->height + 6);
+                    unsigned int numPixels = glyphWidth * glyphHeight;
 
                     unsigned char* glyphData = new unsigned char[g->bitmap.size() * 4]{ 0u };
 
@@ -432,14 +481,21 @@ namespace osgEarth {
                     }
 
                     BLImage sprite;
-                    sprite.createFromData(g->width + 6, g->height + 6, BL_FORMAT_PRGB32, glyphData, (g->width + 6) * 4);
+                    sprite.createFromData(glyphWidth, glyphHeight, BL_FORMAT_PRGB32, glyphData, glyphWidth * 4);
 
-                    BLRectI glyphRect(0.0, 0.0, (double)(g->width + 6), (double)(g->height + 6));
+                    BLRectI glyphRect(0.0, 0.0, (double)glyphWidth, (double)glyphHeight);
 
                     ctx.translate(cursorX, cursorY);
                     ctx.scale(scale);
-                    ctx.blitImage(BLPoint((double)g->left, (double)(-g->top)), sprite, glyphRect);
+                    ctx.blitImage(BLPoint((double)g->left - GLYPH_PADDING, (double)(-g->top) - GLYPH_PADDING), sprite, glyphRect);
+                    //ctx.blitImage(BLPoint(0, 0), sprite, glyphRect);
                     ctx.resetMatrix();
+
+#if 0
+                    // Draw the text bounding box
+                    ctx.setStrokeStyle(BLRgba(1.0, 0.0, 0.0, 1.0));
+                    ctx.strokeBox(BLBoxI(bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
+#endif
 
                     delete[] glyphData;
                 }
@@ -447,6 +503,8 @@ namespace osgEarth {
                 // Advance the cursor
                 cursorX += (float)g->advance * scale;
             }
+
+            symbolBounds._bounds.push_back(bounds);
         }
 
         void rasterizeSymbols(
@@ -456,7 +514,9 @@ namespace osgEarth {
             const SkinSymbol* skinSymbol,
             RenderFrame& frame,
             BLContext& ctx,
-            MapboxGLGlyphManager* glyphManager)
+            MapboxGLGlyphManager* glyphManager,
+            float scale,
+            FeatureRasterizer::SymbolBoundingBoxes& symbolBounds)
         {
             OE_HARD_ASSERT(feature != nullptr);
 
@@ -478,45 +538,50 @@ namespace osgEarth {
                 {
                     osg::ref_ptr< ResourceLibrary > library = styleSheet->getResourceLibrary(skinSymbol->library().get());
 
-                    StringExpression expression = skinSymbol->name().get();
-                    std::string iconName = templateReplace(feature, expression.expr());
-
-                    auto skin = library->getSkin(iconName);
-
-                    if (skin)
+                    if (library.valid())
                     {
-                        osg::ref_ptr< osg::Image > image = skin->image().get();
-                        if (!image.valid())
+                        StringExpression expression = skinSymbol->name().get();
+                        std::string iconName = templateReplace(feature, expression.expr());
+
+                        auto skin = library->getSkin(iconName);
+
+                        if (skin)
                         {
-                            image = skin->createImage(nullptr);
-                        }
-                        if (image.valid())
-                        {
-                            // TODO:  Cache the flipped image as a BLImage so we don't need to flip it each time.
-                            osg::ref_ptr< osg::Image > flippedImage = new osg::Image(*image);
-                            flippedImage->flipVertical();
-                            BLRectI iconRect(*skin->imageBiasS() * image->s(), *skin->imageBiasT() * image->t(), *skin->imageScaleS() * image->s(), *skin->imageScaleT() * image->t());
+                            osg::ref_ptr< osg::Image > image = skin->image().get();
+                            if (!image.valid())
+                            {
+                                image = skin->createImage(nullptr);
+                            }
+                            if (image.valid())
+                            {
+                                BLRectI iconRect(*skin->imageBiasS() * image->s(), *skin->imageBiasT() * image->t(), *skin->imageScaleS() * image->s(), *skin->imageScaleT() * image->t());
 
-                            BLImage sprite;
-                            sprite.createFromData(flippedImage->s(), flippedImage->t(), BL_FORMAT_PRGB32, flippedImage->data(), flippedImage->s() * 4);
+                                BLImage sprite;
+                                sprite.createFromData(image->s(), image->t(), BL_FORMAT_PRGB32, image->data(), image->s() * 4);
 
-                            ctx.setCompOp(BL_COMP_OP_SRC_OVER);
+                                ctx.setCompOp(BL_COMP_OP_SRC_OVER);
 
-                            feature->getGeometry()->forEachPart([&](const Geometry* part)
-                                {
-                                    // Only label points for now
-                                    for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                                feature->getGeometry()->forEachPart([&](const Geometry* part)
                                     {
-                                        const osg::Vec3d& p0 = *p;
-                                        double x = frame.xf * (p0.x() - frame.xmin);
-                                        double y = frame.yf * (p0.y() - frame.ymin);
-                                        y = ctx.targetHeight() - y;
+                                        // Only label points for now
+                                        for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                                        {
+                                            const osg::Vec3d& p0 = *p;
+                                            double x = frame.xf * (p0.x() - frame.xmin);
+                                            double y = frame.yf * (p0.y() - frame.ymin);
+                                            y = ctx.targetHeight() - y;
 
-                                        ctx.translate(x, y);
-                                        ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
-                                        ctx.resetMatrix();
-                                    }
-                                });
+                                            ctx.translate(x, y);
+                                            ctx.scale(scale);
+                                            ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
+                                            ctx.resetMatrix();
+                                        }
+                                    });
+                            }
+                        }
+                        else
+                        {
+                            //OE_WARN << "Failed to get skin for " << iconName << std::endl;
                         }
                     }
                 }
@@ -527,7 +592,7 @@ namespace osgEarth {
                 NumericExpression fontSizeExpression = textSymbol->size().get();
                 std::string fontSizeText = templateReplace(feature, fontSizeExpression.expr());
 
-                float fontSize = as<float>(fontSizeText, 12);//feature->eval(fontSizeExpression, session);
+                float fontSize = as<float>(fontSizeText, 12) * scale;//feature->eval(fontSizeExpression, session);
                 font.createFromFace(getOrCreateFontFace(), fontSize);
                 StringExpression expression = textSymbol->content().get();
                 //std::string text = feature->eval(expression, session);
@@ -545,7 +610,7 @@ namespace osgEarth {
                             if (glyphManager)
                             {
                                 // Use the mapboxgl font to render the text.
-                                renderMapboxText(ctx, x, y, text, textSymbol, glyphManager);
+                                renderMapboxText(ctx, x, y, text, textSymbol, glyphManager, scale, symbolBounds);
                             }
                             else
                             {
@@ -621,6 +686,16 @@ MapboxGLGlyphManager* FeatureRasterizer::getGlyphManager() const
 void FeatureRasterizer::setGlyphManager(MapboxGLGlyphManager* glyphManager)
 {
     _glyphManager = glyphManager;
+}
+
+float FeatureRasterizer::getPixelScale() const
+{
+    return _pixelScale;
+}
+
+void FeatureRasterizer::setPixelScale(float pixelScale)
+{
+    _pixelScale = pixelScale;
 }
 
 void
@@ -729,13 +804,25 @@ FeatureRasterizer::render_blend2d(
     }
 
     if (masterText || masterSkin)
-    {       
+    {   
+        // Sort the features based their location.  We do this to ensure that features collected in a metatiling
+        // fashion will always be rendered in the same order when rendered in multiple neighboring tiles
+        // so the decluttering algorithm will work consistently across tiles.
+        FeatureList sortedFeatures(features);
+        sortedFeatures.sort([](const osg::ref_ptr< Feature >& a, const osg::ref_ptr< Feature >& b) {
+            auto centerA = a->getGeometry()->getBounds().center();
+            auto centerB = b->getGeometry()->getBounds().center();
+            if (centerA.x() < centerB.x()) return true;
+            if (centerA.x() > centerB.x()) return false;
+            return centerA.y() < centerB.y();
+        });
+
         // Rasterize the symbols:
-        for (const auto& feature : features)
+        for (const auto& feature : sortedFeatures)
         {
             if (feature->getGeometry())
             {
-                rasterizeSymbols(feature.get(), sheet, masterText, masterSkin, frame, ctx, _glyphManager.get());
+                rasterizeSymbols(feature.get(), sheet, masterText, masterSkin, frame, ctx, _glyphManager.get(), getPixelScale(), _symbolBoundingBoxes);
             }
         }
     }
@@ -1101,11 +1188,13 @@ FeatureRasterizer::finalize()
     if (_image->getPixelSizeInBits() == 32 &&
         _image->getDataType() == GL_UNSIGNED_BYTE)
     {
+        unsigned int totalSizeInBytes = _image->getTotalSizeInBytes();
+        unsigned char* pixel = _image->data();
+
         if (_implPixelFormat == RF_BGRA)
         {
             //convert from BGRA to RGBA
-            unsigned char* pixel = _image->data();
-            for (unsigned i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+            for (unsigned i = 0; i < totalSizeInBytes; i += 4, pixel += 4)
             {
                 std::swap(pixel[0], pixel[2]);
             }
@@ -1113,8 +1202,7 @@ FeatureRasterizer::finalize()
         else if (_implPixelFormat == RF_ABGR)
         {
             //convert from ABGR to RGBA
-            unsigned char* pixel = _image->data();
-            for (unsigned i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+            for (unsigned i = 0; i < totalSizeInBytes; i += 4, pixel += 4)
             {
                 std::swap(pixel[0], pixel[3]);
                 std::swap(pixel[1], pixel[2]);
@@ -1138,6 +1226,152 @@ FeatureStyleSorter::FeatureStyleSorter()
 }
 
 void
+FeatureStyleSorter::sort_usingEmbeddedStyles(
+    const TileKey& key,
+    const Distance& buffer,
+    FeatureFilterChain* filters,
+    Session* session,
+    FeatureStyleSorter::Function processFeaturesForStyle,
+    ProgressCallback* progress) const
+{
+    // Each feature has its own embedded style data, so use that:
+    FilterContext context;
+
+    osg::ref_ptr<FeatureCursor> cursor = session->getFeatureSource()->createFeatureCursor(
+        key,
+        buffer,
+        filters,
+        &context,
+        progress);
+
+    while (cursor.valid() && cursor->hasMore())
+    {
+        osg::ref_ptr< Feature > feature = cursor->nextFeature();
+        if (feature.valid())
+        {
+            FeatureList data;
+            data.push_back(feature);
+            processFeaturesForStyle(feature->style().get(), data, progress);
+        }
+    }
+}
+
+void
+FeatureStyleSorter::sort_usingSelectors(
+    const TileKey& key,
+    const Distance& buffer,
+    FeatureFilterChain* filters,
+    Session* session,
+    FeatureStyleSorter::Function processFeaturesForStyle,
+    ProgressCallback* progress) const
+{
+    FeatureSource* features = session->getFeatureSource();
+
+    Query defaultQuery;
+    defaultQuery.tileKey() = key;
+
+    for (auto& iter : session->styles()->getSelectors())
+    {
+        const StyleSelector& sel = iter.second;
+        if (sel.styleExpression().isSet())
+        {
+            const FeatureProfile* featureProfile = features->getFeatureProfile();
+
+            // establish the working bounds and a context:
+            FilterContext context(session, featureProfile);
+            StringExpression styleExprCopy(sel.styleExpression().get());
+
+            FeatureList features;
+            getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
+            if (!features.empty())
+            {
+                std::unordered_map<std::string, Style> literal_styles;
+                std::map<const Style*, FeatureList> style_buckets;
+
+                for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+                {
+                    Feature* feature = itr->get();
+
+                    const std::string& styleString = feature->eval(styleExprCopy, &context);
+                    if (!styleString.empty() && styleString != "null")
+                    {
+                        // resolve the style:
+                        //Style combinedStyle;
+                        const Style* resolved_style = nullptr;
+
+                        // if the style string begins with an open bracket, it's an inline style definition.
+                        if (styleString.length() > 0 && styleString[0] == '{')
+                        {
+                            Config conf("style", styleString);
+                            conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
+                            conf.set("type", "text/css");
+                            Style& literal_style = literal_styles[conf.toJSON()];
+                            if (literal_style.empty())
+                                literal_style = Style(conf);
+                            resolved_style = &literal_style;
+                        }
+
+                        // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
+                        // style in this case: for style expressions, the user must be explicity about
+                        // default styling; this is because there is no other way to exclude unwanted
+                        // features.
+                        else
+                        {
+                            const Style* selected_style = session->styles()->getStyle(styleString, false);
+                            if (selected_style)
+                                resolved_style = selected_style;
+                        }
+
+                        if (resolved_style)
+                        {
+                            style_buckets[resolved_style].push_back(feature);
+                        }
+                    }
+                }
+
+                for (auto& iter : style_buckets)
+                {
+                    const Style* style = iter.first;
+                    FeatureList& list = iter.second;
+                    processFeaturesForStyle(*style, list, progress);
+                }
+            }
+        }
+        else
+        {
+            const Style* style = session->styles()->getStyle(sel.getSelectedStyleName());
+            Query query = sel.query().get();
+            query.tileKey() = key;
+
+            // Get the features
+            FeatureList features;
+            getFeatures(session, query, buffer, key.getExtent(), filters, features, progress);
+
+            processFeaturesForStyle(*style, features, progress);
+        }
+    }
+}
+
+void
+FeatureStyleSorter::sort_usingOneStyle(
+    const Style& style,
+    const TileKey& key,
+    const Distance& buffer,
+    FeatureFilterChain* filters,
+    Session* session,
+    Function processFeaturesForStyle,
+    ProgressCallback* progress) const
+{
+    Query defaultQuery;
+    defaultQuery.tileKey() = key;
+
+    FeatureList features;
+    getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
+
+    processFeaturesForStyle(style, features, progress);
+}
+
+void
 FeatureStyleSorter::sort(
     const TileKey& key,
     const Distance& buffer,
@@ -1152,139 +1386,52 @@ FeatureStyleSorter::sort(
 
     OE_PROFILING_ZONE;
 
-    Query defaultQuery;
-    defaultQuery.tileKey() = key;
-
-    FeatureSource* features = session->getFeatureSource();
-
-    // figure out if and how to style the geometry.
-    if (features->hasEmbeddedStyles())
+    if (session->getFeatureSource()->hasEmbeddedStyles())
     {
-        // Each feature has its own embedded style data, so use that:
-        FilterContext context;
-
-        osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(
+        sort_usingEmbeddedStyles(
             key,
             buffer,
             filters,
-            &context,
+            session,
+            processFeaturesForStyle,
             progress);
 
-        while (cursor.valid() && cursor->hasMore())
-        {
-            osg::ref_ptr< Feature > feature = cursor->nextFeature();
-            if (feature.valid())
-            {
-                FeatureList data;
-                data.push_back(feature);
-                processFeaturesForStyle(feature->style().get(), data, progress);
-            }
-        }
     }
     else if (session->styles())
     {
         if (session->styles()->getSelectors().size() > 0)
         {
-            for(auto& iter : session->styles()->getSelectors())
-            {
-                const StyleSelector& sel = iter.second;
-                if (sel.styleExpression().isSet())
-                {
-                    const FeatureProfile* featureProfile = features->getFeatureProfile();
+            sort_usingSelectors(
+                key,
+                buffer,
+                filters,
+                session,
+                processFeaturesForStyle,
+                progress);
 
-                    // establish the working bounds and a context:
-                    FilterContext context(session, featureProfile);
-                    StringExpression styleExprCopy(sel.styleExpression().get());
-
-                    FeatureList features;
-                    getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
-                    if (!features.empty())
-                    {
-                        std::unordered_map<std::string, Style> literal_styles;
-                        std::map<const Style*, FeatureList> style_buckets;
-
-                        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
-                        {
-                            Feature* feature = itr->get();
-
-                            const std::string& styleString = feature->eval(styleExprCopy, &context);
-                            if (!styleString.empty() && styleString != "null")
-                            {
-                                // resolve the style:
-                                //Style combinedStyle;
-                                const Style* resolved_style = nullptr;
-
-                                // if the style string begins with an open bracket, it's an inline style definition.
-                                if (styleString.length() > 0 && styleString[0] == '{')
-                                {
-                                    Config conf("style", styleString);
-                                    conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
-                                    conf.set("type", "text/css");
-                                    Style& literal_style = literal_styles[conf.toJSON()];
-                                    if (literal_style.empty())
-                                        literal_style = Style(conf);
-                                    resolved_style = &literal_style;
-                                }
-
-                                // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-                                // style in this case: for style expressions, the user must be explicity about
-                                // default styling; this is because there is no other way to exclude unwanted
-                                // features.
-                                else
-                                {
-                                    const Style* selected_style = session->styles()->getStyle(styleString, false);
-                                    if (selected_style)
-                                        resolved_style = selected_style;
-                                }
-
-                                if (resolved_style)
-                                {
-                                    style_buckets[resolved_style].push_back(feature);
-                                }
-                            }
-                        }
-
-                        for (auto& iter : style_buckets)
-                        {
-                            const Style* style = iter.first;
-                            FeatureList& list = iter.second;
-                            processFeaturesForStyle(*style, list, progress);
-                        }
-                    }
-                }
-                else
-                {
-                    const Style* style = session->styles()->getStyle(sel.getSelectedStyleName());
-                    Query query = sel.query().get();
-                    query.tileKey() = key;
-
-                    // Get the features
-                    FeatureList features;
-                    getFeatures(session, query, buffer, key.getExtent(), filters, features, progress);
-
-                    processFeaturesForStyle(*style, features, progress);
-                }
-            }
         }
         else
         {
-            const Style* style = session->styles()->getDefaultStyle();
-
-            // Get the features
-            FeatureList features;
-            getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
-            
-            processFeaturesForStyle(*style, features, progress);
+            sort_usingOneStyle(
+                *session->styles()->getDefaultStyle(),
+                key,
+                buffer,
+                filters,
+                session,
+                processFeaturesForStyle,
+                progress);
         }
     }
     else
     {
-        FeatureList features;
-        getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
-
-        // Render the features
-        Style emptyStyle;
-        processFeaturesForStyle(emptyStyle, features, progress);
+        sort_usingOneStyle(
+            Style(), // empty style
+            key,
+            buffer,
+            filters,
+            session,
+            processFeaturesForStyle,
+            progress);
     }
 }
 

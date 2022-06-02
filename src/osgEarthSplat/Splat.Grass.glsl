@@ -1,6 +1,3 @@
-#version 460
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_name       Grass VS MODEL
 #pragma vp_entryPoint oe_Grass_VS_MODEL
 #pragma vp_location   vertex_model
@@ -52,9 +49,6 @@ void oe_Grass_VS_MODEL(inout vec4 geom_vertex)
 
 
 [break]
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
-
 #pragma vp_name       Grass Render VS
 #pragma vp_entryPoint oe_Grass_main
 #pragma vp_location   vertex_view
@@ -80,11 +74,11 @@ uniform sampler2D oe_gc_noiseTex;
 #define NOISE_RANDOM_2 2
 #define NOISE_CLUMPY   3
 
-// Stage globals
-vec3 oe_UpVectorView;
-vec4 vp_Color;
-vec3 vp_Normal;
+out vec3 vp_Normal;
+out vec4 vp_Color;
 out vec4 oe_layer_tilec;
+
+vec3 oe_UpVectorView;
 
 // Output texture coordinates to the fragment shader
 out vec3 oe_gc_texCoord;
@@ -283,9 +277,6 @@ void oe_Grass_main(inout vec4 vertex_view)
 
 
 [break]
-#version 430
-#extension GL_ARB_gpu_shader_int64 : enable
-
 #pragma vp_name Grass frag shader
 #pragma vp_entryPoint oe_Grass_FS
 #pragma vp_location fragment
@@ -301,7 +292,7 @@ in vec4 oe_layer_tilec;
 
 in vec3 oe_gc_texCoord;
 flat in uint64_t oe_gc_texHandle;
-vec3 vp_Normal;
+in vec3 vp_Normal;
 
 uniform float oe_gc_maxAlpha;
 uniform int oe_gc_isMultisampled;

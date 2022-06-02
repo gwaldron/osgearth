@@ -1,4 +1,3 @@
-#version $GLSL_VERSION_STR
 #pragma vp_name Wire Lines Vertex Shader Model
 #pragma vp_entryPoint oe_WireLine_VS_MODEL
 #pragma vp_location vertex_model
@@ -8,8 +7,8 @@ uniform float oe_WireDrawable_radius;
 // Set by the InstallCameraUniform callback
 uniform vec3 oe_Camera;
 
-vec3 vp_Normal;
-vec4 vp_Color;
+out vec3 vp_Normal;
+out vec4 vp_Color;
 
 // Scale the wire geometry so it covers at least 1 pixel, and scale
 // the alpha (as coverage) to compensate. We assume that the wire is

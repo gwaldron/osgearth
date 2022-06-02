@@ -1,6 +1,3 @@
-#version 430
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_name       GroundCover model shader VS
 #pragma vp_entryPoint oe_GroundCover_Model_VS
 #pragma vp_location   vertex_model
@@ -44,7 +41,7 @@ out vec3 oe_GroundCover_texCoord;
 // Output that selects the land cover texture from the texture array (non interpolated)
 out float oe_GroundCover_falloff;
 
-vec3 vp_Normal;
+out vec3 vp_Normal;
 
 // MAIN ENTRY POINT  
 void oe_GroundCover_Model_VS(inout vec4 vertex)
@@ -87,8 +84,6 @@ void oe_GroundCover_Model_VS(inout vec4 vertex)
 
 
 [break]
-
-#version $GLSL_VERSION_STR
 #pragma vp_name       GroundCover Model FS
 #pragma vp_entryPoint oe_GroundCover_Model_FS
 #pragma vp_location   fragment_coloring

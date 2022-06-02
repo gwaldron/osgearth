@@ -1,5 +1,3 @@
-#version $GLSL_VERSION_STR
-
 #pragma vp_name Rex Terrain SDK
 
 uniform sampler2D oe_tile_elevationTex;
@@ -60,6 +58,7 @@ vec4 oe_terrain_getNormalAndCurvature()
     return oe_terrain_getNormalAndCurvature(uv_scaledBiased);
 }
 
+#ifndef VP_FRAGMENT_STAGE
 /**
  * Scales repeating texture coordinate such that they are [0..1]
  * at a specific reference tile LOD. 
@@ -101,3 +100,4 @@ vec4 oe_terrain_scaleCoordsAndTileKeyToRefLOD(in vec2 tc, in float refLOD)
 
     return vec4(result, a);
 }
+#endif

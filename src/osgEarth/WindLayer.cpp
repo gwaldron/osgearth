@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "WindLayer"
+#include "Math"
 #include <osgEarth/Shaders>
 #include <osgEarth/StringUtils>
 #include <osgEarth/GeoTransform>
@@ -56,8 +57,8 @@ namespace
         GLfloat speed;
     };
 
-    // GL data that must be stored per-graphics-context
-    struct GCState
+    // GL data that must be stored separately per state
+    struct GLObjects : public PerStateGLObjects
     {
         GLBuffer::Ptr _buffer;
     };
@@ -138,7 +139,7 @@ namespace
         WindDrawable(const osgDB::Options* readOptions);
 
         void setupPerCameraState(const osg::Camera* camera);
-        void streamDataToGPU(osg::RenderInfo& ri, GCState& ds) const;
+        void streamDataToGPU(osg::RenderInfo& ri, GLObjects& globjects) const;
         void updateBuffers(CameraState&, const osg::Camera*);
 
         void drawImplementation(osg::RenderInfo& ri) const override;
@@ -148,7 +149,7 @@ namespace
         osg::ref_ptr<const osgDB::Options> _readOptions;
         osg::ref_ptr<osg::Program> _computeProgram;
         std::vector<osg::ref_ptr<Wind> > _winds;
-        mutable osg::buffered_object<GCState> _ds;
+        mutable osg::buffered_object<GLObjects> _globjects;
         mutable CameraStates _cameraState;
         TextureImageUnitReservation _unitReservation;
     };
@@ -235,20 +236,23 @@ namespace
         cs._sharedStateSet->setDefine("OE_WIND_TEX", "oe_wind_tex");
     }
 
-    void WindDrawable::streamDataToGPU(osg::RenderInfo& ri, GCState& ds) const
+    void WindDrawable::streamDataToGPU(osg::RenderInfo& ri, GLObjects& gl) const
     {
         osg::State* state = ri.getState();
         if (state)
         {
             CameraState& cs = _cameraState.get(ri.getCurrentCamera());
 
-            if (ds._buffer == nullptr)
+            if (gl._buffer == nullptr)
             {
-                ds._buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state, "Wind buffer");
+                gl._buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state);
+                gl._buffer->bind();
+                gl._buffer->debugLabel("Wind");
+                gl._buffer->unbind();
             }
 
             // upload to GPU
-            ds._buffer->uploadData(
+            gl._buffer->uploadData(
                 sizeof(WindData) * (_winds.size() + 1), 
                 cs._windData);
         }
@@ -309,12 +313,12 @@ namespace
     {
         if (state)
         {
-            GCState& ds = _ds[state->getContextID()];
-            ds._buffer = nullptr;
+            auto& gl = GLObjects::get(_globjects, *state);
+            gl._buffer = nullptr;
         }
         else
         {
-            _ds.clear();
+            _globjects.clear();
         }
 
         _cameraState.for_each([&](const CameraState& cs)
@@ -327,7 +331,8 @@ namespace
 
     void WindDrawable::resizeGLObjectBuffers(unsigned maxSize)
     {
-        _ds.resize(maxSize);
+        if (maxSize > _globjects.size())
+            _globjects.resize(maxSize);
 
         _cameraState.for_each([&](CameraState& cs)
             {
@@ -344,20 +349,19 @@ namespace
 
         OE_GL_ZONE;
 
-        GCState& ds = _ds[ri.getState()->getContextID()];
-        osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+        auto& gl = GLObjects::get(_globjects, *ri.getState());
 
         // update buffer with wind data
-        streamDataToGPU(ri, ds);
+        streamDataToGPU(ri, gl);
 
         // activate layout() binding point:
-        ds._buffer->bindBufferBase(0);
+        gl._buffer->bindBufferBase(0);
 
         // run it
-        ext->glDispatchCompute(WIND_DIM_X, WIND_DIM_Y, WIND_DIM_Z);
+        gl._buffer->ext()->glDispatchCompute(WIND_DIM_X, WIND_DIM_Y, WIND_DIM_Z);
 
         // sync the output
-        ext->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        gl._buffer->ext()->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 }
 
@@ -574,10 +578,11 @@ WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
     else
     { 
         double y,a,n,f;
-        camera->getProjectionMatrix().getPerspective(y,a,n,f);
+        ProjectionMatrix::getPerspective(camera->getProjectionMatrix(), y, a, n, f);
 
         // pushing the NEAR out reduces jitter a lot
-        rttProjection.makePerspective(y, a, 5.0, R);
+        ProjectionMatrix::setPerspective(rttProjection, y, a, 5.0, R);
+        //rttProjection.makePerspective(y, a, 5.0, R);
     }
 
     // view to texture:

@@ -258,9 +258,14 @@ Status
 GroundCoverLayer::openImplementation()
 {
     // GL version requirement
-    if (Registry::capabilities().getGLSLVersion() < 4.3f)
+    if (Capabilities::get().getGLSLVersion() < 4.3f)
     {
         return Status(Status::ResourceUnavailable, "Requires GL 4.3+");
+    }
+
+    if (GLUtils::useNVGL())
+    {
+        return Status(Status::ResourceUnavailable, "Layer is not compatible with NVGL");
     }
 
     setAcceptCallback(new LayerAcceptor(this));
@@ -1489,7 +1494,7 @@ GroundCoverLayer::createLUTShader() const
     shader->setName( "GroundCover LUTs" );
     shader->setShaderSource(
         Stringify() 
-        << "#version " GLSL_VERSION_STR "\n"
+        << "#version " << std::to_string(Capabilities::get().getGLSLVersionInt()) << "\n"
         << lutbuf.str() << "\n");
 
     return shader;

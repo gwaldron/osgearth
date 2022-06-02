@@ -27,7 +27,7 @@
     </FlattenedElevation>
 
     <!-- Road surface rendering -->
-    <RoadSurface name="Road Surface" min_level="14" max_data_level="19" shared="true" enabled="false">
+    <RoadSurface name="Road Surface" min_level="14" max_data_level="19" shared="true">
         <features>roads:data</features>
         <buffer_width>15m</buffer_width>
 

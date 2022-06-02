@@ -242,6 +242,27 @@ FeatureSDFLayer::updateSession()
     }
 }
 
+
+/*
+osg::Image* redToRGBA(const osg::Image* image)
+{
+    osg::ref_ptr<osg::Image> out = new osg::Image();
+    out->allocateImage(image->s(), image->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    osg::Vec4f p;
+    ImageUtils::PixelReader read(image);
+    ImageUtils::PixelWriter write(out.get());
+    ImageUtils::ImageIterator i(read);
+    i.forEachPixel([&]()
+        {
+            read(p, i.s(), i.t());
+            p.set(1.0, 1.0, 1.0, p.r());
+            write(p, i.s(), i.t());
+        }
+    );
+    return out.release();
+}
+*/
+
 GeoImage
 FeatureSDFLayer::createImageImplementation(
     const TileKey& key, 
@@ -278,39 +299,55 @@ FeatureSDFLayer::createImageImplementation(
         return GeoImage::INVALID;
     }
 
-    // allocate the final Unit-SDF and initialize it to all one's,
-    // which indicates maximum distance.
-    GeoImage sdf = _sdfGenerator.allocateSDF(
-        getTileSize(),
-        key.getExtent(),
-        GL_RED);
-
     // Rasterizer for rendering features to an image. We are going to make this
     // larger than the final SDF so we can properly calculate distances to features
     // just outside the extent.
-    GeoExtent nnfieldExtent = key.getExtent();
+    GeoExtent featuresExtent = key.getExtent();
 
 #if 1
-    nnfieldExtent.expand(
+    featuresExtent.expand(
         key.getExtent().width(), 
         key.getExtent().height());
 
     FeatureRasterizer rasterizer(
         2 * getTileSize(),
         2 * getTileSize(),
-        nnfieldExtent,
+        featuresExtent,
         Color(1, 1, 1, 0)); // background
 
 #else
     FeatureRasterizer rasterizer(
         getTileSize(),
         getTileSize(),
-        nnfieldExtent,
+        featuresExtent,
         Color(1, 1, 1, 0)); // background
 
 #endif
+
+
+    // Hello! If you are looking at this code, maybe you are wondering
+    // why your SDF layer with multiple styles only seems to be applying
+    // one of those styles. If so, that is because this code is wrong.
+    // It rasterizes all the features to a single image.  Sadly doing 
+    // this makes it so the SDF generator doesn't know which pixels came from
+    // which features, making it impossible to apply different SDF distance
+    // limits to different features.
+    // The correct approach is to NN and SDF each style separately and then
+    // multiply the SDFs together at the end. Someone should do that.
     GeoImage rasterizedFeatures;
-    GeoImage nnfield;
+
+    double toMeters = 1.0;
+    const GeoExtent& sdfExtent = key.getExtent();
+
+    // Poor man's degrees-to-meters conversion    
+    if (sdfExtent.getSRS()->isGeographic())
+    {
+        double LAT = sdfExtent.yMin() >= 0.0 ? sdfExtent.yMin() : sdfExtent.yMax();
+        toMeters = sdfExtent.getSRS()->getEllipsoid().longitudinalDegreesToMeters(1.0, LAT);
+    }
+
+    float minDistanceMeters = FLT_MAX;
+    float maxDistanceMeters = -FLT_MAX;
 
     FeatureStyleSorter::Function rasterizeFeatures = [&](
         const Style& style,
@@ -329,35 +366,23 @@ FeatureSDFLayer::createImageImplementation(
         else
             r_style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
 
+        // Compute the min and max distances across all the styles.
+        float styleMinDist = style.get<RenderSymbol>()->sdfMinDistance()->eval();
+        float styleMaxDist = style.get<RenderSymbol>()->sdfMaxDistance()->eval();
+        if (styleMinDist < minDistanceMeters)
+        {
+            minDistanceMeters = styleMinDist;
+        }
+        if (styleMaxDist > maxDistanceMeters)
+        {
+            maxDistanceMeters = styleMaxDist;
+        }
+
         rasterizer.render(
             features,
             r_style,
             _session->getFeatureSource()->getFeatureProfile(),
             _session->styles());
-    };
-
-    FeatureStyleSorter::Function renderSDF = [&](
-        const Style& style,
-        FeatureList& features,
-        ProgressCallback* progress)
-    {
-        const GeoExtent& sdfExtent = key.getExtent();
-
-        // Poor man's degrees-to-meters conversion
-        double toMeters = 1.0;
-        if (sdfExtent.getSRS()->isGeographic())
-        {
-            double LAT = sdfExtent.yMin() >= 0.0 ? sdfExtent.yMin() : sdfExtent.yMax();
-            toMeters = sdfExtent.getSRS()->getEllipsoid().longitudinalDegreesToMeters(1.0, LAT);
-        }
-
-        _sdfGenerator.createDistanceField(
-            nnfield,
-            sdf,
-            nnfieldExtent.height() * toMeters,
-            style.get<RenderSymbol>()->sdfMinDistance()->eval(),
-            style.get<RenderSymbol>()->sdfMaxDistance()->eval(),
-            progress);
     };
 
     FeatureStyleSorter sorter;
@@ -373,46 +398,38 @@ FeatureSDFLayer::createImageImplementation(
 
     rasterizedFeatures = rasterizer.finalize();
 
-    // create a NN field from the rasterized data:
-    _sdfGenerator.createNearestNeighborField(
-        rasterizedFeatures,
-        options().inverted().get(),
-        nnfield,
-        progress);
+    // Convert the distances to pixels
+    double metersPerPixel = toMeters * (key.getExtent().width() / (double)rasterizedFeatures.getImage()->s());
 
-    // feed the NN field into each feature group to generate an SDF
-    sorter.sort(
-        key,
-        Distance(),
-        _session.get(),
-        _filterChain.get(),
-        renderSDF,
-        progress);
+    // We couldn't compute a valid min/max distance from the features b/c no features were rendered
+    // So initialize it to something reasonable.
+    if (minDistanceMeters == FLT_MAX && maxDistanceMeters == -FLT_MAX)
+    {
+        minDistanceMeters = 0.0f;
+        maxDistanceMeters = 1.0f;
+    }
+
+    float minPixels = minDistanceMeters / metersPerPixel;
+    float maxPixels = maxDistanceMeters / metersPerPixel;
+    // Prevent divide by zero error
+    if (minPixels == maxPixels)
+    {
+        maxPixels += 1;
+    }
+
+    // Crop the image so it's the proper extent for the incoming tilekey    
+    osg::ref_ptr< osg::Image > sdf = _sdfGenerator.createDistanceField(rasterizedFeatures.getImage(), minPixels, maxPixels);
+    GeoImage newSDF(sdf.get(), featuresExtent);
+    GeoImage cropped = newSDF.crop(key.getExtent(), false, 0, 0, false);
 
 #if 0
-    osg::ref_ptr<osg::Image> nn = new osg::Image();
-    nn->allocateImage(nnfield.getImage()->s(), nnfield.getImage()->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    osg::Vec4f p;
-    ImageUtils::PixelReader read_nnf(nnfield.getImage());
-    ImageUtils::PixelWriter write_out(nn.get());
-    ImageUtils::ImageIterator i(read_nnf);
-    i.forEachPixel([&]()
-        {
-            read_nnf(p, i.s(), i.t());
-            p.set(
-                p.x() / (float)(nn->s() - 1),
-                p.y() / (float)(nn->t() - 1),
-                0,
-                1);
-            write_out(p, i.s(), i.t());
-        }
-    );
+    osgDB::makeDirectoryForFile(Stringify() << "out/" << getName() << "/" << key.str() << ".out.png");
+    osgDB::writeImageFile(*rasterizedFeatures.getImage(), Stringify() << "out/" << getName() << "/" << key.str() << ".out.png");
+    osg::ref_ptr < osg::Image > rgba = redToRGBA(sdf);
+    osgDB::writeImageFile(*rgba.get(), Stringify() << "out/" << getName() << "/" << key.str() << ".sdf.png");
+    rgba = redToRGBA(cropped.getImage());
+    osgDB::writeImageFile(*rgba.get(), Stringify() << "out/" << getName() << "/" << key.str() << "_cropped.sdf.png");
 
-    osgDB::makeDirectoryForFile(Stringify() << "out/" << key.str() << ".out.png");
-    osgDB::writeImageFile(*rasterizedFeatures.getImage(), Stringify() << "out/" << key.str() << ".out.png");
-    osgDB::writeImageFile(*nn.get(), Stringify() << "out/" << key.str() << ".nn.png");
-    osgDB::writeImageFile(*sdf.getImage(), Stringify() << "out/" << key.str() << ".sdf.png");
-#endif
-
-    return sdf;
+#endif    
+    return cropped;
 }

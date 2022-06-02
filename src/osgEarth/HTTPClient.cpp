@@ -203,7 +203,8 @@ namespace osgEarth
 HTTPRequest::HTTPRequest( const std::string& url )
 : _url( url )
 {
-    //NOP
+    // Convert spaces to %20.
+    osgEarth::replaceIn(_url, " ", "%20");
 }
 
 HTTPRequest::HTTPRequest( const HTTPRequest& rhs ) :
@@ -392,8 +393,6 @@ HTTPResponse::getHeadersAsConfig() const
 
 namespace
 {
-    // TODO: consider moving this stuff into the osgEarth::Registry;
-    // don't like it here in the global scope
     // per-thread client map (must be global scope)
     static PerThread<HTTPClient>       s_clientPerThread("HTTPClient(OE)");
 

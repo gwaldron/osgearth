@@ -443,7 +443,6 @@ Tileset::create(const std::string& json, const URIContext& uc)
 static VirtualProgram* getOrCreateDebugVirtualProgram()
 {
     char s_debugColoring[] =
-        "#version " GLSL_VERSION_STR "\n"
         "#pragma import_defines(OE_3DTILES_DEBUG)\n"
         "uniform vec4 debugColor;\n"
         "void color( inout vec4 color ) \n"
@@ -457,7 +456,7 @@ static VirtualProgram* getOrCreateDebugVirtualProgram()
     if (!s_debugProgram.valid())
     {
         s_debugProgram = new VirtualProgram();
-        s_debugProgram->setFunction("color", s_debugColoring, ShaderComp::LOCATION_FRAGMENT_LIGHTING);
+        s_debugProgram->setFunction("color", s_debugColoring, VirtualProgram::LOCATION_FRAGMENT_LIGHTING);
     }
     return s_debugProgram.get();
 }
@@ -955,7 +954,7 @@ double ThreeDTileNode::computeScreenSpaceError(osgUtil::CullVisitor* cv)
 {
     double distance = osg::maximum(getDistanceToTile(cv), 0.0000001);
     const osg::Matrix& proj = cv->getCurrentCamera()->getProjectionMatrix();
-    if (proj(3,3)==0.0) // perspective
+    if (ProjectionMatrix::isPerspective(proj))
     {
         double height = cv->getCurrentCamera()->getViewport()->height();
         return (*_tile->geometricError() * height) / (distance * _tileset->getSSEDenominator());
@@ -964,8 +963,8 @@ double ThreeDTileNode::computeScreenSpaceError(osgUtil::CullVisitor* cv)
     {
         const osg::Viewport* vp = cv->getCurrentCamera()->getViewport();
         double L, R, B, T, N, F;
-        proj.getOrtho(L, R, B, T, N, F);
-        double pixelSize = osg::maximum(T-B, R-L) / osg::maximum(vp->width(), vp->height());
+        ProjectionMatrix::getOrtho(proj, L, R, B, T, N, F);
+        double pixelSize = std::max(T-B, R-L) / std::max(vp->width(), vp->height());
         return (*_tile->geometricError()) / pixelSize;
     }
 }
@@ -1452,8 +1451,8 @@ void ThreeDTilesetNode::traverse(osg::NodeVisitor& nv)
 		const osg::Matrix& proj = cv->getCurrentCamera()->getProjectionMatrix();
 		double height = cv->getCurrentCamera()->getViewport()->height();
 		double fovy, ar, zn, zf;
-		proj.getPerspective(fovy, ar, zn, zf);
-		_sseDenominator = 2.0 * tan(0.5 * osg::DegreesToRadians(fovy));
+        ProjectionMatrix::getPerspective(proj, fovy, ar, zn, zf);
+		_sseDenominator = 2.0 * tan(0.5 * deg2rad(fovy));
 	}
 
     osg::Group::traverse(nv);

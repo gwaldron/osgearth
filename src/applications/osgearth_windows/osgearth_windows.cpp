@@ -87,7 +87,7 @@ struct App
         osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(ds.get());
         traits->readDISPLAY();
         if (traits->displayNum < 0) traits->displayNum = 0;
-        traits->screenNum = 1;
+        traits->screenNum = 0;
         traits->x = x;
         traits->y = y;
         traits->width = width;
@@ -127,7 +127,7 @@ struct App
 struct GCPanel : public GUI::BaseGUI
 {
     App& _app;
-    GCPanel(App& app) : GUI::BaseGUI("Graphics Contexts"), _app(app) { }
+    GCPanel(App& app) : GUI::BaseGUI("GCs"), _app(app) { }
 
     void draw(osg::RenderInfo& ri) override
     {
@@ -138,8 +138,8 @@ struct GCPanel : public GUI::BaseGUI
         {
             if (gc->getState() != nullptr)
             {
-                ImGui::Text("Context ID = %d", gc->getState()->getContextID());
-                ImGui::Indent();
+                ImGui::Text("OSG GC ID = %d", gc->getState()->getContextID());
+                ImGui::Text("OSG GC Addr: %0x", (std::uintptr_t)gc);
                 ImGui::Text("Name = %s", gc->getName().c_str());
                 ImGui::Text("Operations = %d", gc->getGraphicsThread() && gc->getGraphicsThread()->getOperationQueue() ? gc->getGraphicsThread()->getOperationQueue()->getNumOperationsInQueue() : 0);
                 ImGui::Text("Size = %d x %d", gc->getTraits() ? gc->getTraits()->width : -1, gc->getTraits() ? gc->getTraits()->height : -1);
@@ -194,7 +194,14 @@ struct ViewerPanel : public GUI::BaseGUI
 
             if (view->getCamera() && view->getCamera()->getGraphicsContext() && view->getCamera()->getGraphicsContext()->getState())
             {
-                ImGui::Text("GC = %d", view->getCamera()->getGraphicsContext()->getState()->getContextID());
+                auto state = view->getCamera()->getGraphicsContext()->getState();
+
+                ImGui::Text("OSG GC ID = %d", GLUtils::getSharedContextID(*state));
+
+                if (_app._sharedGC)
+                {
+                    ImGui::Text("Unique State ID = %d", GLUtils::getUniqueStateID(*state));
+                }
             }
             else
             {

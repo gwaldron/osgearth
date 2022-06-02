@@ -170,6 +170,30 @@ namespace osgEarth { namespace Util
         void install(osg::StateSet* ss, float minAlpha) const;
         void uninstall(osg::StateSet* ss) const;
     };
+
+    /**
+     * Class to parse messages from an info log.
+     */
+    class OSGEARTH_EXPORT ShaderInfoLog
+    {
+    public:
+        ShaderInfoLog(
+            const osg::Program* program,
+            const std::string& log);
+
+        void dumpErrors(
+            osg::State&) const;
+
+    private:
+        osg::ref_ptr<const osg::Program> _program;
+        std::string _log;
+
+        struct Message {
+            unsigned line;
+            unsigned column;
+            std::string message;
+        };
+    };
 } }
 
 #endif // OSGEARTH_SHADER_UTILS_H

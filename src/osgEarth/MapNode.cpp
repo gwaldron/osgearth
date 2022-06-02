@@ -35,6 +35,7 @@
 #include <osgEarth/Shaders>
 #include <osgUtil/Optimizer>
 #include <osgDB/DatabasePager>
+#include <osgEarth/HTTPClient>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -200,6 +201,7 @@ MapNode::Options::getConfig() const
     conf.set( "overlay_resolution_ratio", overlayResolutionRatio() );
     conf.set( "cascade_draping",          useCascadeDraping() );
     conf.set( "draping_render_bin_number",drapingRenderBinNumber() );
+    conf.set("screen_space_error", screenSpaceError());
 
     if (terrain().isSet() && !terrain()->empty())
         conf.set( "terrain", terrain()->getConfig() );
@@ -219,6 +221,7 @@ MapNode::Options::fromConfig(const Config& conf)
     useCascadeDraping().init(false);
     terrain().init(TerrainOptions());
     drapingRenderBinNumber().init(1);
+    screenSpaceError().setDefault(25.0f);
 
     conf.get( "proxy",                    proxySettings() );
     conf.get( "lighting",                 enableLighting() );
@@ -228,6 +231,7 @@ MapNode::Options::fromConfig(const Config& conf)
     conf.get( "overlay_resolution_ratio", overlayResolutionRatio() );
     conf.get( "cascade_draping",          useCascadeDraping() );
     conf.get( "draping_render_bin_number",drapingRenderBinNumber() );
+    conf.get("screen_space_error", screenSpaceError());
 
     if ( conf.hasChild( "terrain" ) )
         terrain() = TerrainOptions( conf.child("terrain") );
@@ -472,26 +476,12 @@ MapNode::open()
     return true;
 }
 
-void
-MapNode::shutdown()
+MapNode::~MapNode()
 {
     releaseGLObjects(nullptr);
 
     if (_terrainEngine)
         _terrainEngine->shutdown();
-
-    if (_map.valid())
-    {
-        LayerVector layers;
-        _map->getLayers(layers);
-        for(auto& layer : layers)
-            layer->close();
-    }
-}
-
-MapNode::~MapNode()
-{
-    shutdown();
 
     if (_mapCallback.valid())
     {
@@ -647,15 +637,14 @@ MapNode::getTerrainEngine() const
 void
 MapNode::setScreenSpaceError(float value)
 {
+    options().screenSpaceError() = value;
     _sseU->set(value);
 }
 
 float
 MapNode::getScreenSpaceError() const
 {
-    float sse;
-    _sseU->get(sse);
-    return sse;
+    return options().screenSpaceError().get();
 }
 
 void
@@ -914,6 +903,10 @@ MapNode::traverse( osg::NodeVisitor& nv )
         for(int i=0; i<count; ++i)
             cv->popStateSet();
 
+        //Config c = CullDebugger().dumpRenderBin(cv->getCurrentRenderBin());
+        //OE_INFO << c.toJSON(true) << std::endl;
+        //exit(0);
+
         // after any cull, allow an update traversal.
         _readyForUpdate.exchange(true);
     }
@@ -925,7 +918,8 @@ MapNode::traverse( osg::NodeVisitor& nv )
         // Ensures only one update will happen per frame loop
         if (_readyForUpdate.exchange(false))
         {
-            JobArena::get(JobArena::UPDATE_TRAVERSAL)->runJobs();
+            // re-enable if we decide to use it.
+            //JobArena::get(JobArena::UPDATE_TRAVERSAL)->runJobs();
         }
 
         // include these in the above condition as well??
@@ -978,7 +972,7 @@ MapNode::releaseGLObjects(osg::State* state) const
     // inform the GL object pools for this context
     if (state)
     {
-        GLObjectPool::get(*state)->releaseAll();
+        GLObjectPool::releaseGLObjects(state);
     }
 
     osg::Group::releaseGLObjects(state);

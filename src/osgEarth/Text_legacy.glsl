@@ -1,4 +1,3 @@
-#version $GLSL_VERSION_STR
 #pragma vp_entryPoint oe_Text_VS
 #pragma vp_location   vertex_view
 
@@ -14,8 +13,6 @@ void oe_Text_VS(inout vec4 position)
 }
 
 [break]
-
-#version $GLSL_VERSION_STR
 #pragma vp_entryPoint oe_Text_FS
 #pragma vp_location   fragment_coloring
 

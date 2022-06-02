@@ -1,19 +1,37 @@
 # Release Notes
 
+## Version 3.3 (April 2022)
+
+Version 3.3 is an incremental bugfix and performance release.
+
+Release Highlights:
+
+* ImGui: updates and improvements to many panels
+* ImGui: better integration of osgEarth ImGui panels into other apps
+* vcpkg build system improvements
+* Performance improvements to normal map generation, texture mipmapping, elevation queries, extruded geometry creation, and job arena
+* New `MapboxGLImageLayer` text label support
+* New `ProjectionMatrix` helper class supports apps that use reverse Z buffer
+* Improved OpenGL/GLSL version detection
+* Refactored `osgEarth::ShaderComp` namespace into `osgEarth::VirtualProgram`
+* Improvements to the `TileRasterizer` for stall-free GPU image readback
+* Renamed `Layer::getEnabled` to `Layer::getOpenAutomatically`
+* Added `kdtree` generation to paged nodes for faster intersections
+* New `CoverageLayer` for general-purpose coverage data
+* `SkyNode` has simulation-time tracking for visualizing time-series data
+* Experimental support for NVIDIA-specific GL extensions for bindless rendering
+* Added new blosc osg compressor that is faster than zlib.  Enable by building with blosc support and setting environment variable OSGEARTH_DEFAULT_COMPRESSOR=blosc
 
 
 ## Version 3.2 (August 2021)
 
-This is primarily a **release** and bug-fix release.
+This is primarily a bug-fix release.
 
 Release Highlights:
 
 * New ImGui integration, including the new `osgearth_imgui` command line tool.
-
 * `ObjectIDPicker`, a more reliable replacement for `RTTPicker`
-
 * `ContourMap` has new for custom color stops in the earth file
-
 * Build system now uses Git Submodules for some inline dependencies.
 
   

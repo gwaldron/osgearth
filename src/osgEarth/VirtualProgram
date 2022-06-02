@@ -33,34 +33,104 @@
 #include <string>
 #include <map>
 
-#if defined(OSG_GLES2_AVAILABLE)
-#    define GLSL_VERSION                 100
-#    define GLSL_VERSION_STR             "100"
-#    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;\nprecision highp int;"
-#elif defined(OSG_GLES3_AVAILABLE)
-#    define GLSL_VERSION                 300
-#    define GLSL_VERSION_STR             "300 es"
-#    define GLSL_DEFAULT_PRECISION_FLOAT "precision highp float;\nprecision highp int;"
-#elif defined(OSG_GL3_AVAILABLE)
-#    define GLSL_VERSION                 330
-#    define GLSL_VERSION_STR             "330"
-#    define GLSL_DEFAULT_PRECISION_FLOAT ""
-#else
-#    define GLSL_VERSION                 330
-#    define GLSL_VERSION_STR             "330 compatibility" 
-#    define GLSL_DEFAULT_PRECISION_FLOAT ""
-#endif
-
 #define OE_USE_HASH_FOR_PROGRAM_KEY
 
 namespace osgEarth
 {
-    /** TODO: refactor into VirtualProgram */
-    namespace ShaderComp
+    namespace Util
     {
+        class /*internal*/ ProgramRepo : public Threading::Mutexed<osg::Referenced>
+        {
+        public:
+            using Key = std::vector<unsigned>;
+
+            // Referenced, b/c more than one ProgramKey can point to the same Entry
+            // (shared program)
+            struct Entry
+            {
+                using Ptr = std::shared_ptr<Entry>;
+                osg::ref_ptr<osg::Program> _program;
+                unsigned _frameLastUsed;
+                std::unordered_set<UID> _users;
+            };
+            using ProgramMap = std::map<Key, Entry::Ptr>;
+
+            //! Search for a program matching the key and return it, adding the user
+            //! to its users list and updating the frame number.
+            osg::ref_ptr<osg::Program> use(const Key& key, unsigned frameNumber, UID user);
+
+            //! Insert a new program into the repo
+            void add(const Key& key, osg::ref_ptr<osg::Program>& inOut, unsigned frameNumber, UID user);
+
+            //! Release anything used by this user
+            void release(UID user, osg::State* state);
+
+            //! Whether to automatically delete a Program after its final user releases it
+            //! Defaults to true
+            void setReleaseUnusedPrograms(bool value);
+
+            //! Filesystem location in which to cache precopmiled shader binaries
+            void setProgramBinaryCacheLocation(const std::string& directory);
+
+            bool isProgramBinaryCachingActive() const;
+
+            //! Prune expired data
+            void prune(unsigned frameNumber, osg::State* state);
+
+            void resizeGLObjectBuffers(unsigned maxSize);
+
+            void releaseGLObjects(osg::State* state) const;
+
+            //! Link a program, attempting to read/write its binary from the cache
+            //! if one is specified
+            void linkProgram(
+                const Key&,
+                osg::Program*, 
+                osg::Program::PerContextProgram*,
+                osg::State&);
+
+            ProgramRepo();
+
+            ~ProgramRepo();
+
+        private:
+            mutable ProgramMap _db;
+            bool _releaseUnusedPrograms;
+            std::string _programBinaryCacheFolder;
+        };
+    }
+}
+
+namespace osgEarth
+{
+    using namespace osgEarth::Util;
+
+    /**
+     * VirtualProgram enables GLSL shader composition within osgEarth. It automatically
+     * assembles shader functions into a full shader program at run time. You can add
+     * or remove functions (injection points) at any time.
+     *
+     * Read about shader composition:
+     * http://docs.osgearth.org/en/latest/developer/shader_composition.html
+     *
+     * VirtualProgram (VP) is an osg::StateAttribute. But unlike most attributes, a VP
+     * will inherit properties from other VPs in the state stack.
+     *
+     * Though the code has evolved quite a bit, VirtualProgram was originally adapted
+     * from the VirtualProgram shader composition work done by Wojciech Lewandowski and
+     * found in OSG's osgvirtualprogram example.
+     *
+     * DO NOT DERIVE FROM VirtualProgram! IT WILL NOT WORK.
+     */
+    class OSGEARTH_EXPORT VirtualProgram final : public osg::StateAttribute
+    {
+    public:
         // User function injection points.
         enum FunctionLocation
         {
+            // custom function to transform from model to view space
+            LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW,
+
             // vertex is in model space (equivalent to gl_Vertex).
             LOCATION_VERTEX_MODEL,
 
@@ -102,7 +172,7 @@ namespace osgEarth
         {
         public:
             // implement this to accept or reject based on the state
-            virtual bool operator()(const osg::State& state) =0;
+            virtual bool operator()(const osg::State& state) = 0;
         protected:
             virtual ~AcceptCallback() { }
         };
@@ -112,36 +182,33 @@ namespace osgEarth
         {
             std::string                  _name;
             osg::ref_ptr<AcceptCallback> _accept; // @deprecated (remove after user support)
-            
+
             // @dperecated (remove after user support)
             bool accept(const osg::State& state) const {
                 return (!_accept.valid()) || (_accept->operator()(state) == true);
             }
         };
 
-        typedef std::pair<float, Function> OrderedFunction;
+        using OrderedFunction = std::pair<float, Function>;
 
         // ordered set of user functions.
-        typedef std::multimap<float, Function> OrderedFunctionMap; // duplicate keys allowed
+        using OrderedFunctionMap = std::multimap<float, Function>; // duplicate keys allowed
 
         // user function sets, categorized by function location.
-        typedef std::map<FunctionLocation, OrderedFunctionMap> FunctionLocationMap;
+        using FunctionLocationMap = std::map<FunctionLocation, OrderedFunctionMap>;
 
         // Mask values that represents which stages a composed shader contains.
         enum StageMaskValues
         {
-            STAGE_VERTEX          = 1 << 0,
-            STAGE_TESSCONTROL     = 1 << 1,
-            STAGE_TESSEVALUATION  = 1 << 2,
-            STAGE_GEOMETRY        = 1 << 3,
-            STAGE_FRAGMENT        = 1 << 4,
-            STAGE_COMPUTE         = 1 << 5
+            STAGE_VERTEX = 1 << 0,
+            STAGE_TESSCONTROL = 1 << 1,
+            STAGE_TESSEVALUATION = 1 << 2,
+            STAGE_GEOMETRY = 1 << 3,
+            STAGE_FRAGMENT = 1 << 4,
+            STAGE_COMPUTE = 1 << 5
         };
-        typedef unsigned StageMask;
-    }
+        using StageMask = unsigned;
 
-    namespace Util
-    {
         /**
          * A Shader that can compile into different stages of the program pipeline
          * depending on which stages are in use. For example, you may designate a
@@ -165,8 +232,8 @@ namespace osgEarth
             const std::string& getName() const { return _name; }
 
             /** Nominal stage at which this shader would run */
-            void setLocation(ShaderComp::FunctionLocation loc);
-            ShaderComp::FunctionLocation getLocation() const { return _location; }
+            void setLocation(VirtualProgram::FunctionLocation loc);
+            VirtualProgram::FunctionLocation getLocation() const { return _location; }
 
             /** Shader source code (unprocessed) */
             void setShaderSource(const std::string& source);
@@ -174,7 +241,7 @@ namespace osgEarth
 
             /** Given a mask of all available stages, return the shader that will run
                 this polyshader in the appropriate stage. */
-            osg::Shader* getShader(ShaderComp::StageMask mask) const;
+            osg::Shader* getShader(unsigned mask) const;
 
             /** The shader in its named stage. */
             osg::Shader* getNominalShader() const { return _nominalShader.get(); }
@@ -193,124 +260,37 @@ namespace osgEarth
 
             virtual void releaseGLObjects(osg::State* state) const;
 
-            static PolyShader * lookUpShader(const std::string & functionName, const std::string & shaderSource, ShaderComp::FunctionLocation location);
+            static PolyShader* lookUpShader(
+                const std::string& functionName,
+                const std::string& shaderSource,
+                VirtualProgram::FunctionLocation location);
 
             static void clearShaderCache();
 
         protected:
             virtual ~PolyShader() { }
 
-            std::string                  _name;
-            std::string                  _source;
-            ShaderComp::FunctionLocation _location;
-            optional<unsigned>           _hash;
+            std::string _name;
+            std::string _source;
+            VirtualProgram::FunctionLocation _location;
+            optional<unsigned> _hash;
 
             // The shader built for the nominal program stage (nominalType)
-            osg::ref_ptr<osg::Shader>    _nominalShader;
+            osg::ref_ptr<osg::Shader> _nominalShader;
 
             // Same shader, but set up for injection into a different stage
-            osg::ref_ptr<osg::Shader>    _geomShader;
-            osg::ref_ptr<osg::Shader>    _tessevalShader;
+            osg::ref_ptr<osg::Shader> _geomShader;
+            osg::ref_ptr<osg::Shader> _tessevalShader;
 
-            bool                         _dirty;
+            bool _dirty;
 
             static Threading::Mutex _cacheMutex;
-            typedef std::map<std::pair<std::string, std::string>, osg::ref_ptr<PolyShader> > PolyShaderCache;
+            using PolyShaderCache = std::map<
+                std::pair<std::string, std::string>,
+                osg::ref_ptr<PolyShader>>;
             static PolyShaderCache _polyShaderCache;
-
         };
 
-#ifdef OE_USE_HASH_FOR_PROGRAM_KEY
-        typedef std::vector<unsigned> ProgramKey;
-#else
-        typedef std::vector<PolyShader*> ProgramKey;
-#endif
-
-
-        class /*internal*/ ProgramRepo : public Threading::Mutexed<osg::Referenced>
-        {
-        public:
-
-            // Referenced, b/c more than one ProgramKey can point to the same Entry
-            // (shared program)
-            struct Entry : public osg::Referenced
-            {
-                osg::ref_ptr<osg::Program> _program;
-                unsigned                   _frameLastUsed;
-                std::set<UID>              _users;
-            };
-
-            typedef std::map<ProgramKey, osg::ref_ptr<Entry> > ProgramMap;
-
-            //! Search for a program matching the key and return it, adding the user
-            //! to its users list and updating the frame number.
-            osg::ref_ptr<osg::Program> use(const ProgramKey& key, unsigned frameNumber, UID user);
-
-            //! Insert a new program into the repo
-            void add(const ProgramKey& key, osg::ref_ptr<osg::Program>& inOut, unsigned frameNumber, UID user);
-
-            //! Release anything used by this user
-            void release(UID user, osg::State* state);
-
-            //! Whether to automatically delete a Program after its final user releases it
-            //! Defaults to true
-            void setReleaseUnusedPrograms(bool value);
-
-            //! Filesystem location in which to cache precopmiled shader binaries
-            void setProgramBinaryCacheLocation(const std::string& directory);
-
-            bool isProgramBinaryCachingActive() const;
-
-            //! Prune expired data
-            void prune(unsigned frameNumber, osg::State* state);
-
-            void resizeGLObjectBuffers(unsigned maxSize);
-
-            void releaseGLObjects(osg::State* state) const;
-
-            //! Link a program, attempting to read/write its binary from the cache
-            //! if one is specified
-            void linkProgram(
-                const ProgramKey&,
-                osg::Program*, 
-                osg::Program::PerContextProgram*,
-                osg::State&);
-
-            ProgramRepo();
-
-            ~ProgramRepo();
-
-        private:
-            mutable ProgramMap _db;
-            bool _releaseUnusedPrograms;
-            std::string _programBinaryCacheFolder;
-        };
-    }
-}
-
-namespace osgEarth
-{
-    using namespace osgEarth::Util;
-
-    /**
-     * VirtualProgram enables GLSL shader composition within osgEarth. It automatically
-     * assembles shader functions into a full shader program at run time. You can add
-     * or remove functions (injection points) at any time.
-     *
-     * Read about shader composition:
-     * http://docs.osgearth.org/en/latest/developer/shader_composition.html
-     *
-     * VirtualProgram (VP) is an osg::StateAttribute. But unlike most attributes, a VP
-     * will inherit properties from other VPs in the state stack.
-     *
-     * Though the code has evolved quite a bit, VirtualProgram was originally adapted
-     * from the VirtualProgram shader composition work done by Wojciech Lewandowski and
-     * found in OSG's osgvirtualprogram example.
-     *
-     * DO NOT DERIVE FROM VirtualProgram! IT WILL NOT WORK.
-     */
-    class OSGEARTH_EXPORT VirtualProgram final : public osg::StateAttribute
-    {
     public:
         static const osg::StateAttribute::Type SA_TYPE;
 
@@ -366,17 +346,17 @@ namespace osgEarth
          *            user-injected functions by default.
          */
         void setFunction( 
-            const std::string&           name,
-            const std::string&           source, 
-            ShaderComp::FunctionLocation location,
-            float                        order =1.0f );
+            const std::string& name,
+            const std::string& source,
+            FunctionLocation location,
+            float order =1.0f );
 
         void setFunction( 
-            const std::string&           name,
-            const std::string&           source, 
-            ShaderComp::FunctionLocation location,
-            ShaderComp::AcceptCallback*  acceptCallback,
-            float                        order =1.0f );
+            const std::string& name,
+            const std::string& source, 
+            FunctionLocation location,
+            AcceptCallback*  acceptCallback,
+            float order =1.0f );
 
         /**
          * Whether this VP should inherit shaders from parent state sets. This is
@@ -496,23 +476,23 @@ namespace osgEarth
         {
             ShaderEntry();
             bool accept(const osg::State& state) const;
-            osg::ref_ptr<PolyShader>                 _shader;
-            osg::StateAttribute::OverrideValue       _overrideValue;
-            osg::ref_ptr<ShaderComp::AcceptCallback> _accept; // @deprecated
+            osg::ref_ptr<PolyShader> _shader;
+            osg::StateAttribute::OverrideValue _overrideValue;
+            osg::ref_ptr<AcceptCallback> _accept; // @deprecated
 
             // not used when using a vector_map, but keep around anyway
             bool operator < (const ShaderEntry& rhs) const;
         };
 
-        typedef unsigned                              ShaderID;
+        using ShaderID = unsigned;
         // vector_map benchmarks much faster than std::map or std::unordered_map in this use case
-        typedef vector_map<ShaderID, ShaderEntry>     ShaderMap;
-        typedef vector_set<std::string>               ExtensionsSet;
-        typedef vector_map<std::string, std::string>  AttribAliasMap;
-        typedef std::pair< std::string, std::string > AttribAlias;
-        typedef std::vector< AttribAlias >            AttribAliasVector;
-        typedef std::pair< const osg::StateAttribute*, osg::StateAttribute::OverrideValue > AttributePair;
-        typedef std::vector< AttributePair > AttrStack;
+        using ShaderMap = vector_map<ShaderID, ShaderEntry>;
+        using ExtensionsSet = vector_set<std::string>;
+        using AttribAliasMap = vector_map<std::string, std::string>;
+        using AttribAlias = std::pair<std::string, std::string>;
+        using AttribAliasVector = std::vector<AttribAlias>;
+        using AttributePair = std::pair<const osg::StateAttribute*, osg::StateAttribute::OverrideValue>;
+        using AttrStack = std::vector<AttributePair>;
 
     public:
         /**
@@ -536,13 +516,15 @@ namespace osgEarth
     public: // INTERNAL USE ONLY
 
         // thread-safe functions map getter
-        void getFunctions( ShaderComp::FunctionLocationMap& out ) const;
+        void getFunctions(FunctionLocationMap& out) const;
 
         // thread-safe shader map copy
-        void getShaderMap( ShaderMap& out ) const;
+        void getShaderMap(ShaderMap& out) const;
 
         // thread-safe shader accumulator
-        void addShadersToAccumulationMap(VirtualProgram::ShaderMap& accumMap, const osg::State& state) const;
+        void addShadersToAccumulationMap(
+            ShaderMap& accumMap,
+            const osg::State& state) const;
 
     protected: // serializable members
 
@@ -555,7 +537,7 @@ namespace osgEarth
 
         // holds the injection points the user has added to this VP.
         // _dataModelMutex protects access to this member.
-        ShaderComp::FunctionLocationMap _functions;
+        FunctionLocationMap _functions;
 
         // whether this VP inherits its state
         bool _inherit;
@@ -571,11 +553,11 @@ namespace osgEarth
         // per-context cached shader map for thread-safe reuse without constant reallocation.
         struct ApplyVars
         {
-            ShaderMap         accumShaderMap;
-            ProgramKey        programKey;
+            ShaderMap accumShaderMap;
+            ProgramRepo::Key programKey;
             AttribBindingList accumAttribBindings;
-            AttribAliasMap    accumAttribAliases;
-            ExtensionsSet     accumExtensions;
+            AttribAliasMap accumAttribAliases;
+            ExtensionsSet accumExtensions;
         };
         mutable osg::buffered_object<ApplyVars> _apply;
 
@@ -587,44 +569,23 @@ namespace osgEarth
         // shared in the scene graph.
         mutable optional<bool> _active;
         bool _inheritSet;
-
         bool _logShaders;
         std::string _logPath;
-
         bool _isAbstract;
-
         UID _id;
-
         AttribAliasMap _attribAliases;
-
         bool _acceptCallbacksVaryPerFrame;
 
         static bool _gldebug;
 
         mutable osg::buffered_object< osg::ref_ptr<osg::Program> > _lastUsedProgram;
 
-        // Mechnism for remembering whether a VP has been applied during the same frame
-        // and with the same attribute stack.
-        struct AttrStackMemory
-        {
-            void remember(const osg::State& state, const AttrStack& rhs, osg::Program* p);
-            osg::Program* recall(const osg::State& state, const AttrStack& rhs);
+        void accumulateFunctions(
+            const osg::State& state,
+            FunctionLocationMap& result ) const;
 
-            struct Item
-            {
-                int frameNumber;
-                AttrStack attrStack;
-                osg::ref_ptr<osg::Program> program;
-            };
-            osg::buffered_object<Item> _item;
-        };
-        mutable AttrStackMemory _vpStackMemory;
-
-        void accumulateFunctions(            
-            const osg::State&                state,
-            ShaderComp::FunctionLocationMap& result ) const;
-
-        const AttribAliasMap& getAttribAliases() const { return _attribAliases; }
+        const AttribAliasMap& getAttribAliases() const { 
+            return _attribAliases; }
 
         // utility function
         static void accumulateShaders(
@@ -637,7 +598,66 @@ namespace osgEarth
             bool&              acceptCallbacksPresent);
 
         bool checkSharing();
+
+        //! Safely compare this VP to another VP.
+        int compare_safe(const VirtualProgram& rhs) const;
+
+    public: // backwards-compability functions
+
+        inline void setFunction(
+            const std::string& name,
+            const std::string& source,
+            unsigned location,
+            float order = 1.0f)
+        {
+            setFunction(name, source, (FunctionLocation)location, order);
+        }
+
+        inline void setFunction(
+            const std::string& name,
+            const std::string& source,
+            unsigned location,
+            AcceptCallback*  acceptCallback,
+            float order = 1.0f)
+        {
+            setFunction(name, source, (FunctionLocation)location, acceptCallback, order);
+        }
     };
+
+    // For backwards compatibility
+    namespace ShaderComp
+    {
+        using FunctionLocation = osgEarth::VirtualProgram::FunctionLocation;
+        using AcceptCallback = osgEarth::VirtualProgram::AcceptCallback;
+        using Function = osgEarth::VirtualProgram::Function;
+        using OrderedFunction = osgEarth::VirtualProgram::OrderedFunction;
+        using OrderedFunctionMap = osgEarth::VirtualProgram::OrderedFunctionMap;
+        using FunctionLocationMap = osgEarth::VirtualProgram::FunctionLocationMap;
+        using StageMask = osgEarth::VirtualProgram::StageMask;
+
+        enum StageMaskValues {
+            STAGE_VERTEX = osgEarth::VirtualProgram::STAGE_VERTEX,
+            STAGE_TESSCONTROL = osgEarth::VirtualProgram::STAGE_TESSCONTROL,
+            STAGE_TESSEVALUATION = osgEarth::VirtualProgram::STAGE_TESSEVALUATION,
+            STAGE_GEOMETRY = osgEarth::VirtualProgram::STAGE_GEOMETRY,
+            STAGE_FRAGMENT = osgEarth::VirtualProgram::STAGE_FRAGMENT,
+            STAGE_COMPUTE = osgEarth::VirtualProgram::STAGE_COMPUTE
+        };
+
+        enum FunctionLocationValues {
+            LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW = osgEarth::VirtualProgram::LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW,
+            LOCATION_VERTEX_MODEL = osgEarth::VirtualProgram::LOCATION_VERTEX_MODEL,
+            LOCATION_VERTEX_VIEW = osgEarth::VirtualProgram::LOCATION_VERTEX_VIEW,
+            LOCATION_VERTEX_CLIP = osgEarth::VirtualProgram::LOCATION_VERTEX_CLIP,
+            LOCATION_TESS_CONTROL = osgEarth::VirtualProgram::LOCATION_TESS_CONTROL,
+            LOCATION_TESS_EVALUATION = osgEarth::VirtualProgram::LOCATION_TESS_EVALUATION,
+            LOCATION_GEOMETRY = osgEarth::VirtualProgram::LOCATION_GEOMETRY,
+            LOCATION_FRAGMENT_COLORING = osgEarth::VirtualProgram::LOCATION_FRAGMENT_COLORING,
+            LOCATION_FRAGMENT_LIGHTING = osgEarth::VirtualProgram::LOCATION_FRAGMENT_LIGHTING,
+            LOCATION_FRAGMENT_OUTPUT = osgEarth::VirtualProgram::LOCATION_FRAGMENT_OUTPUT,
+            LOCATION_UNDEFINED = osgEarth::VirtualProgram::LOCATION_UNDEFINED
+        };
+    }
 
 } // namespace osgEarth
 

@@ -47,24 +47,15 @@ _visibleLayer(0L),
 _imageLayer(0L),
 _patchLayer(0L),
 _clearOsgState(false),
-_draw(true),
-_useIndirectRendering(false)
+_draw(true)
 {
     // Since we refresh the render state in the CULL traversal, we must
     // set the variance to dynamic to prevent overlap with DRAW
     //TODO: Check this.
     setDataVariance(DYNAMIC);
-
     setUseDisplayList(false);
     setUseVertexBufferObjects(true);
     _tiles.reserve(128);
-
-    // set up an arena with "auto release" which means th textures
-    // will automatically get released when all references drop.
-    // TODO: move this to the engine level and share??
-    //_textures = new TextureArena();
-    //_textures->setBindingPoint(29);
-    //_textures->setAutoRelease(true);
 }
 
 LayerDrawable::~LayerDrawable()
@@ -89,76 +80,25 @@ LayerDrawable::accept(osg::PrimitiveIndexFunctor& functor) const
         tile.accept(functor);
 }
 
-namespace
+//.........................................................
+
+LayerDrawableGL3::LayerDrawableGL3() :
+    LayerDrawable()
 {
-    // Hack State so we can dirty the texture attrs without dirtying the other 
-    // attributes (as dirtyAllAttributes() would do).
-    struct StateEx : public osg::State
-    {
-        void dirtyAllTextureAttributes()
-        {
-            for (auto& attr_map : _textureAttributeMapList)
-            {
-                for (auto& attr_entry : attr_map)
-                {
-                    attr_entry.second.last_applied_attribute = 0;
-                    attr_entry.second.changed = true;
-                }
-            }
-        }
-    };
+    setName("LayerDrawableGL3");
+}
+
+LayerDrawableGL3::~LayerDrawableGL3()
+{
+    //nop
 }
 
 void
-LayerDrawable::drawImplementation(osg::RenderInfo& ri) const
+LayerDrawableGL3::drawImplementation(osg::RenderInfo& ri) const
 {
     const char* zone = _layer ? _layer->getName().c_str() : className();
-
-    OE_PROFILING_ZONE;
-    OE_PROFILING_ZONE_TEXT(zone);
     OE_GL_ZONE_NAMED(zone);
 
-    if (_useIndirectRendering)
-    {
-        drawImplementationIndirect(ri);
-    }
-    else
-    {
-        drawImplementationDirect(ri);
-    }
-
-    // If set, dirty all OSG state to prevent any leakage - this is sometimes
-    // necessary when doing custom OpenGL within a Drawable.
-    if (_clearOsgState)
-    {
-        // Dirty the texture attributes so OSG can properly reset them
-        // NOTE: cannot call state.dirtyAllAttributes, because that would invalidate
-        // positional state like light sources!
-        reinterpret_cast<StateEx*>(ri.getState())->dirtyAllTextureAttributes();
-        
-        // make sure any VAO is unbound before unbinind the VBO/EBOs,
-        // as failing to do so will remove the VBO/EBO from the VAO
-        if (ri.getState()->useVertexArrayObject(_useVertexArrayObject))
-        {
-            ri.getState()->unbindVertexArrayObject();
-        }
-
-        // unbind local buffers when finished.
-        // Not necessary if using VAOs?
-        osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
-        ext->glBindBuffer(GL_ARRAY_BUFFER_ARB,0);
-        ext->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
-
-        // gw: no need to do this, in fact it will cause positional attributes
-        // (light clip planes and lights) to immediately be reapplied under the
-        // current MVM, which will by definition be wrong!)
-        //ri.getState()->apply();
-    }
-}
-
-void
-LayerDrawable::drawImplementationDirect(osg::RenderInfo& ri) const
-{
     if (_patchLayer && _patchLayer->getRenderer())
     {
         TileBatch batch(_drawState.get());
@@ -181,34 +121,30 @@ LayerDrawable::drawImplementationDirect(osg::RenderInfo& ri) const
 
         for (auto& tile : _tiles)
         {
-            tile.apply(ri, _drawState.get());
-            tile.draw(ri);
+            if (tile.apply(ri, _drawState.get()))
+                tile.draw(ri);
         }
     }
+
+    LayerDrawable::drawImplementation(ri);
 }
 
-namespace
-{
-    // template to append one array onto another
-    template<typename T> inline void append(T* dest, const T* src)
-    {
-        const T* src_typed = static_cast<const T*>(src);
-        for (unsigned i = 0; i < src->getNumElements(); ++i)
-            dest->push_back((*src)[i]);
-    }
+//.........................................................
 
-    template<typename T> inline void copy(T* dest, const osg::Array* src, unsigned offset)
-    {
-        const T* src_typed = static_cast<const T*>(src);
-        std::copy(src_typed->begin(), src_typed->end(), dest->begin() + offset);
-    }
+LayerDrawableNVGL::LayerDrawableNVGL() :
+    LayerDrawable()
+{
+    setName("LayerDrawableNVGL");
+}
+LayerDrawableNVGL::~LayerDrawableNVGL()
+{
+    //nop
 }
 
 void
-LayerDrawable::accept(osg::NodeVisitor& nv)
+LayerDrawableNVGL::accept(osg::NodeVisitor& nv)
 {
-    if (nv.getVisitorType() == nv.CULL_VISITOR &&
-        _useIndirectRendering)
+    if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
         refreshRenderState();
     }
@@ -217,7 +153,7 @@ LayerDrawable::accept(osg::NodeVisitor& nv)
 }
 
 void
-LayerDrawable::refreshRenderState()
+LayerDrawableNVGL::refreshRenderState()
 {
     OE_PROFILING_ZONE;
 
@@ -254,16 +190,16 @@ LayerDrawable::refreshRenderState()
             if (tile._colorSamplers != nullptr)
             {
                 const Sampler& color = (*tile._colorSamplers)[SamplerBinding::COLOR];
-                if (color._arena_texture != nullptr)
+                if (color._texture != nullptr)
                 {
-                    buf.colorIndex = textures->add(color._arena_texture);
+                    buf.colorIndex = textures->add(color._texture);
                     COPY_MAT4F(color._matrix, buf.colorMat);
                 }
 
                 const Sampler& parent = (*tile._colorSamplers)[SamplerBinding::COLOR_PARENT];
-                if (parent._arena_texture != nullptr)
+                if (parent._texture != nullptr)
                 {
-                    buf.parentIndex = textures->add(parent._arena_texture);
+                    buf.parentIndex = textures->add(parent._texture);
                     COPY_MAT4F(parent._matrix, buf.parentMat);
                 }
             }
@@ -273,13 +209,12 @@ LayerDrawable::refreshRenderState()
             if (tile._sharedSamplers != nullptr /* && is elevation active */)
             {
                 const Sampler& s = (*tile._sharedSamplers)[SamplerBinding::ELEVATION];
-                if (s._arena_texture)
+                if (s._texture)
                 {
-                    s._arena_texture->_compress = false;
-                    s._arena_texture->_mipmap = false;
-                    s._arena_texture->_internalFormat = GL_R32F;
-                    s._arena_texture->_maxAnisotropy = 1.0f;
-                    buf.elevIndex = textures->add(s._arena_texture);
+                    s._texture->compress() = false;
+                    s._texture->mipmap() = false;
+                    s._texture->keepImage() = true; // never discard.. we use it elsewhere
+                    buf.elevIndex = textures->add(s._texture);
                     COPY_MAT4F(s._matrix, buf.elevMat);
                 }
             }
@@ -289,12 +224,12 @@ LayerDrawable::refreshRenderState()
             if (tile._sharedSamplers != nullptr /* && is normalmapping active */)
             {
                 const Sampler& s = (*tile._sharedSamplers)[SamplerBinding::NORMAL];
-                if (s._arena_texture)
+                if (s._texture)
                 {
-                    s._arena_texture->_compress = false;
-                    s._arena_texture->_mipmap = true;
-                    s._arena_texture->_maxAnisotropy = 1.0f;
-                    buf.normalIndex = textures->add(s._arena_texture);
+                    s._texture->compress() = false;
+                    s._texture->mipmap() = true;
+                    s._texture->maxAnisotropy() = 1.0f;
+                    buf.normalIndex = textures->add(s._texture);
                     COPY_MAT4F(s._matrix, buf.normalMat);
                 }
             }
@@ -306,12 +241,12 @@ LayerDrawable::refreshRenderState()
                 if (tile._sharedSamplers != nullptr /* && is normalmapping active */)
                 {
                     const Sampler& s = (*tile._sharedSamplers)[SamplerBinding::LANDCOVER];
-                    if (s._arena_texture)
+                    if (s._texture)
                     {
-                        s._arena_texture->_compress = false;
-                        s._arena_texture->_mipmap = false;
-                        s._arena_texture->_maxAnisotropy = 1.0f;
-                        buf.landcoverIndex = textures->add(s._arena_texture);
+                        s._texture->compress() = false;
+                        s._texture->mipmap() = false;
+                        s._texture->maxAnisotropy() = 1.0f;
+                        buf.landcoverIndex = textures->add(s._texture);
                         COPY_MAT4F(s._matrix, buf.landcoverMat);
                     }
                 }
@@ -323,15 +258,15 @@ LayerDrawable::refreshRenderState()
                 for (unsigned i = SamplerBinding::SHARED; i < tile._sharedSamplers->size(); ++i)
                 {
                     const Sampler& s = (*tile._sharedSamplers)[i];
-                    if (s._arena_texture)
+                    if (s._texture)
                     {
                         int k = i - SamplerBinding::SHARED;
                         if (k < MAX_NUM_SHARED_SAMPLERS)
                         {
-                            s._arena_texture->_compress = false;
-                            s._arena_texture->_mipmap = true;
+                            s._texture->compress() = false;
+                            s._texture->mipmap() = true;
                             //s._arena_texture->_maxAnisotropy = 4.0f;
-                            buf.sharedIndex[k] = textures->add(s._arena_texture);
+                            buf.sharedIndex[k] = textures->add(s._texture);
                             COPY_MAT4F(s._matrix, buf.sharedMat[k]);
                         }
                         else
@@ -346,46 +281,50 @@ LayerDrawable::refreshRenderState()
             buf.drawOrder = _surfaceDrawOrder;
         }
 
-        _rs.tiles = std::move(_tiles);
+        _rs.tiles.swap(_tiles);
+        //_rs.tiles = _tiles;
+        _tiles.clear(); // std::move(_tiles);
 
         // This will trigger a GPU upload on the next draw
         _rs.dirty = true;
     }
 }
 
-LayerDrawable::GL4RenderState::GL4RenderState()
+LayerDrawableNVGL::RenderState::RenderState()
 {
-    gcState.resize(64);
+    globjects.resize(64);
 }
 
 void
-LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
+LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
 {
+    // work around the GDP makOsg hack (ViewerBase.cpp:894)
+    //ri.getState()->getGraphicsContext()->makeCurrent();
+
     // Research on glMultiDrawElementsIndirectBindlessNV:
     // https://github.com/ychding11/HelloWorld/wiki/Modern-GPU-Driven-Rendering--%28How-to-draw-fast%29
     // https://on-demand.gputechconf.com/siggraph/2014/presentation/SG4117-OpenGL-Scene-Rendering-Techniques.pdf
     // https://developer.download.nvidia.com/opengl/tutorials/bindless_graphics.pdf
 
-    GCState& gs = _rs.gcState[ri.getContextID()];
     osg::State& state = *ri.getState();
+    
+    GLObjects& gl = GLObjects::get(_rs.globjects, state);
 
     if (_rs.tiles.empty())
         return;
 
     bool renderTerrainSurface = (_patchLayer == nullptr);
 
-
-    if (gs.tiles == nullptr || !gs.tiles->valid())
+    if (gl.tiles == nullptr || !gl.tiles->valid())
     {
-        gs.ext = osg::GLExtensions::Get(state.getContextID(), true);
+        gl.ext = osg::GLExtensions::Get(state.getContextID(), true);
 
-        gs.tiles = GLBuffer::create(
-            GL_SHADER_STORAGE_BUFFER,
-            state,
-            "REX Renderer");
+        gl.tiles = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+        gl.tiles->bind();
+        gl.tiles->debugLabel("REX geometry");
 
         // preallocate space for a bunch of tiles (just for fun)
-        gs.tiles->bufferData(
+        gl.tiles->bufferData(
             512 * sizeof(GL4Tile),
             nullptr,
             GL_DYNAMIC_DRAW);
@@ -393,30 +332,29 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
     if (renderTerrainSurface)
     {
-        if (gs.commands == nullptr || !gs.commands->valid())
+        if (gl.commands == nullptr || !gl.commands->valid())
         {
-            gs.commands = GLBuffer::create(
-                GL_DRAW_INDIRECT_BUFFER,
-                state,
-                "REX Renderer");
-
+            gl.commands = GLBuffer::create(GL_DRAW_INDIRECT_BUFFER, state);
+            gl.commands->bind();
+            gl.commands->debugLabel("REX geometry");
             // preallocate space for a bunch of draw commands (just for fun)
-            gs.commands->bufferData(
+            gl.commands->bufferData(
                 512 * sizeof(DrawElementsIndirectBindlessCommandNV),
                 nullptr,
                 GL_DYNAMIC_DRAW);
+            gl.commands->unbind();
 
             osg::setGLExtensionFuncPtr(
-                gs.glMultiDrawElementsIndirectBindlessNV,
+                gl.glMultiDrawElementsIndirectBindlessNV,
                 "glMultiDrawElementsIndirectBindlessNV");
-            OE_HARD_ASSERT(gs.glMultiDrawElementsIndirectBindlessNV != nullptr);
+            OE_HARD_ASSERT(gl.glMultiDrawElementsIndirectBindlessNV != nullptr);
 
             // OSG bug: glVertexAttribFormat is mapped to the wrong function :( so
             // we have to look it up fresh.
             osg::setGLExtensionFuncPtr(
-                gs.glVertexAttribFormat,
+                gl.glVertexAttribFormat,
                 "glVertexAttribFormat");
-            OE_HARD_ASSERT(gs.glVertexAttribFormat != nullptr);
+            OE_HARD_ASSERT(gl.glVertexAttribFormat != nullptr);
 
             // Needed for core profile
             void(GL_APIENTRY * glEnableClientState_)(GLenum);
@@ -425,10 +363,13 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
 
 
             // Set up a VAO that we'll use to render with bindless NV.
-            gs.vao = GLVAO::create(state, "REX Renderer");
+            gl.vao = GLVAO::create(state);
 
             // Start recording
-            gs.vao->bind();
+            gl.vao->bind();
+
+            // after the bind, please
+            gl.vao->debugLabel("REX geometry");
 
             // set up the VAO for NVIDIA bindless buffers
             glEnableClientState_(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
@@ -444,20 +385,20 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             };
             for (unsigned location = 0; location < 5; ++location)
             {
-                gs.glVertexAttribFormat(location, 3, GL_FLOAT, GL_FALSE, offsets[location]);
-                gs.ext->glVertexAttribBinding(location, 0);
-                gs.ext->glEnableVertexAttribArray(location);
+                gl.glVertexAttribFormat(location, 3, GL_FLOAT, GL_FALSE, offsets[location]);
+                gl.ext->glVertexAttribBinding(location, 0);
+                gl.ext->glEnableVertexAttribArray(location);
             }
 
             // bind a "dummy buffer" that will record the stride, which is
             // just the size of our vertex structure.
-            gs.ext->glBindVertexBuffer(0, 0, 0, sizeof(GL4Vertex));
+            gl.ext->glBindVertexBuffer(0, 0, 0, sizeof(GL4Vertex));
 
             // Finish recording
-            gs.vao->unbind();
+            gl.vao->unbind();
         }
 
-        if (gs.shared == nullptr || !gs.shared->valid())
+        if (gl.shared == nullptr || !gl.shared->valid())
         {
             GL4GlobalData buf;
 
@@ -472,13 +413,12 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
                 buf.morphConstants[(2 * lod) + 1] = one_over_end_minus_start;
             }
 
-            gs.shared = GLBuffer::create(
-                GL_SHADER_STORAGE_BUFFER,
-                state,
-                "REX Renderer");
+            gl.shared = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
 
-            gs.shared->bind();
-            gs.shared->bufferStorage(sizeof(GL4GlobalData), &buf, 0); // permanent
+            gl.shared->bind();
+            gl.shared->debugLabel("REX geometry");
+            gl.shared->bufferStorage(sizeof(GL4GlobalData), &buf, 0); // permanent
+            gl.shared->unbind();
         }
     }
 
@@ -494,7 +434,7 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
         // will not overlap and corrupt the buffers
 
         // Update the tile data buffer:
-        gs.tiles->uploadData(
+        gl.tiles->uploadData(
             _rs.tiles.size() * sizeof(GL4Tile),
             _rs.tilebuf.data());
 
@@ -505,47 +445,60 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
             for (auto& tile : _rs.tiles)
             {
                 SharedGeometry* geom = tile._geom.get();
-                _rs.commands.push_back(geom->getOrCreateGL4Command(state));
+                _rs.commands.push_back(geom->getOrCreateNVGLCommand(state));
             }
 
-            gs.commands->uploadData(_rs.commands);
+            gl.commands->uploadData(_rs.commands);
         }
     }
 
     // Apply the the texture arena:
-    if (state.getLastAppliedAttribute(OE_TEXTURE_ARENA_SA_TYPE_ID) != _context->textures())
+    //if (state.getLastAppliedAttribute(OE_TEXTURE_ARENA_SA_TYPE_ID) != _context->textures())
     {
         _context->textures()->apply(state);
         state.haveAppliedAttribute(_context->textures());
     }
 
     // Bind the tiles data to its layout(binding=X) in the shader.
-    gs.tiles->bindBufferBase(31);
+    gl.tiles->bindBufferBase(31);
 
 
     if (renderTerrainSurface)
     {
         // Bind the command buffer for rendering.
-        gs.commands->bind();
+        gl.commands->bind();
 
         // Bind the shared data to its layout(binding=X) in the shader.
         // For shared data we only need to do this once per pass
         if (_surfaceDrawOrder == 0)
         {
-            gs.shared->bindBufferBase(30);
+            gl.shared->bindBufferBase(30);
         }
 
-        gs.vao->bind();
+        gl.vao->bind();
 
-        gs.glMultiDrawElementsIndirectBindlessNV(
-            GL_TRIANGLES,
-            GL_UNSIGNED_SHORT,
+        GLenum primitive_type =
+            _context->options().gpuTessellation() == true ?
+            GL_PATCHES : GL_TRIANGLES;
+
+        GLenum element_type =
+            sizeof(DrawElementsBase::value_type) == sizeof(short) ?
+            GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
+        
+        gl.glMultiDrawElementsIndirectBindlessNV(
+            primitive_type,
+            element_type,
             nullptr,
             _rs.commands.size(),
             sizeof(DrawElementsIndirectBindlessCommandNV),
             1);
 
-        gs.vao->unbind();
+        gl.vao->unbind();
+
+        if (_clearOsgState)
+        {
+            gl.commands->unbind();
+        }
     }
 
     else if (_patchLayer && _patchLayer->getRenderer())
@@ -556,37 +509,39 @@ LayerDrawable::drawImplementationIndirect(osg::RenderInfo& ri) const
         TileBatch batch(_drawState.get());
         batch._tiles.reserve(_rs.tiles.size());
         for (auto& tile : _rs.tiles)
+        {
             batch._tiles.push_back(&tile);
+        }
 
         _patchLayer->getRenderer()->draw(ri, batch);
     }
+
+    LayerDrawable::drawImplementation(ri);
 }
 
 void
-LayerDrawable::releaseGLObjects(osg::State* state) const
+LayerDrawableNVGL::releaseGLObjects(osg::State* state) const
 {
-    GL4RenderState& cs = _rs;
     if (state)
     {
-        GCState& gs = cs.gcState[state->getContextID()];
-        gs.shared = nullptr;
-        gs.tiles = nullptr;
-        gs.commands = nullptr;
-        gs.vao = nullptr;
+        GLObjects& gl = GLObjects::get(_rs.globjects, *state);
+        gl.shared = nullptr;
+        gl.tiles = nullptr;
+        gl.commands = nullptr;
+        gl.vao = nullptr;
     }
     else
     {
-        cs.gcState.setAllElementsTo(GCState());
+        _rs.globjects.setAllElementsTo(GLObjects());
     }
 
-    osg::Drawable::releaseGLObjects(state);
+    _rs.dirty = true;
+
+    LayerDrawable::releaseGLObjects(state);
 }
 
 void
-LayerDrawable::resizeGLObjectBuffers(unsigned size)
+LayerDrawableNVGL::resizeGLObjectBuffers(unsigned size)
 {
-    if (_rs.gcState.size() < size)
-        _rs.gcState.resize(size);
-
-    osg::Drawable::resizeGLObjectBuffers(size);
+    LayerDrawable::resizeGLObjectBuffers(size);
 }

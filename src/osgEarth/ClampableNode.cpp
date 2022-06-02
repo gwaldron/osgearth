@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/ClampableNode>
+#include <osgEarth/Notify>
 #include <osgEarth/ClampingTechnique>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>

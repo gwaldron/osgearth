@@ -131,7 +131,7 @@ osg::Node* installMultiPassRendering(osg::Node* node)
         )";
 
     VirtualProgram::getOrCreate(geode->getOrCreateStateSet())->setFunction(
-        "colorize_vs", tri_vs, ShaderComp::LOCATION_VERTEX_VIEW);
+        "colorize_vs", tri_vs, VirtualProgram::LOCATION_VERTEX_VIEW);
 
     return geode;
 }

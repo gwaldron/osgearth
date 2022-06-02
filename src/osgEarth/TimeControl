@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osg/FrameStamp>
 #include <vector>
+#include <string>
 
 namespace osgEarth
 {

@@ -93,6 +93,7 @@ namespace osgEarth
         RefIDPair* tagDrawable    (osg::Drawable* drawable, Feature* feature);
         RefIDPair* tagAllDrawables(osg::Node*     node,     Feature* feature);
         RefIDPair* tagNode        (osg::Node*     node,     Feature* feature);
+        RefIDPair* tagRange       (osg::Drawable* drawable, Feature* feature, unsigned int start, unsigned int count);
 
         // removes a collection of FIDs from the index. If the refcount goes to zero,
         // remove it from the master index as well.
@@ -184,6 +185,7 @@ namespace osgEarth
         ObjectID tagDrawable    (osg::Drawable* drawable, Feature* feature);
         ObjectID tagAllDrawables(osg::Node*     node,     Feature* feature);
         ObjectID tagNode        (osg::Node*     node,     Feature* feature);
+        ObjectID tagRange       (osg::Drawable* drawable, Feature* feature, unsigned int start, unsigned int count);
 
     public: // To support serialization only - do not use directly
 

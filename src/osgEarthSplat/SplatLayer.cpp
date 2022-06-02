@@ -107,23 +107,18 @@ SplatLayer::ZoneSelector::operator()(osg::Node* node, osg::NodeVisitor* nv) cons
                 }
             }
 
-            osg::StateSet* zoneStateSet = 0L;
+            osg::StateSet* zoneStateSet = nullptr;
             Surface* surface = _layer->_zones[zoneIndex]->getSurface();
             if (surface)
             {
                 zoneStateSet = surface->getStateSet();
             }
 
-            if (zoneStateSet == 0L)
-            {
-                OE_FATAL << LC << "ASSERTION FAILURE - zoneStateSet is null\n";
-            }
-            else
-            {            
-                cv->pushStateSet(zoneStateSet);
-                traverse(node, nv);
-                cv->popStateSet();
-            }
+            OE_SOFT_ASSERT_AND_RETURN(zoneStateSet != nullptr, void());
+
+            cv->pushStateSet(zoneStateSet);
+            traverse(node, nv);
+            cv->popStateSet();
         }
     }
     else
@@ -172,6 +167,17 @@ SplatLayer::setLandCoverLayer(LandCoverLayer* layer)
     if (layer) {
         buildStateSets();
     }
+}
+
+Status
+SplatLayer::openImplementation()
+{
+    if (GLUtils::useNVGL())
+    {
+        return Status(Status::ResourceUnavailable, "Layer is not compatible with NVGL");
+    }
+
+    return VisibleLayer::openImplementation();
 }
 
 void

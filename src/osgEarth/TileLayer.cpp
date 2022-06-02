@@ -22,8 +22,15 @@
 #include <osgEarth/URI>
 #include <osgEarth/Map>
 #include <osgEarth/MemCache>
+#include <osgEarth/rtree.h>
 
 using namespace osgEarth;
+using namespace osgEarth::Threading;
+
+namespace
+{
+    using DataExtentsIndex = RTree<DataExtent, double, 2>;
+}
 
 #define LC "[TileLayer] Layer \"" << getName() << "\" "
 
@@ -189,7 +196,10 @@ TileLayer::CacheBinMetadata::getConfig() const
 
 TileLayer::~TileLayer()
 {
-    //nop
+    if (_dataExtentsIndex)
+    {
+        delete static_cast<DataExtentsIndex*>(_dataExtentsIndex);
+    }    
 }
 
 void TileLayer::setMinLevel(unsigned value)
@@ -310,8 +320,9 @@ bool TileLayer::getUpsample() const
 void
 TileLayer::init()
 {
-    Layer::init();
+    VisibleLayer::init();
     _writingRequested = false;
+    _dataExtentsIndex = nullptr;
 }
 
 Status
@@ -482,100 +493,104 @@ TileLayer::getCacheBin(const Profile* profile)
         return 0L;
 
     // does the metadata need initializing?
-    std::string metaKey = getMetadataKey(profile);
+    std::string metaKey = getMetadataKey(profile);    
 
-    Threading::ScopedMutexLock lock(layerMutex());
-
-    CacheBinMetadataMap::iterator i = _cacheBinMetadata.find(metaKey);
-    if (i == _cacheBinMetadata.end())
+    // See if the cache bin metadata is already stored.
     {
-        // read the metadata record from the cache bin:
-        ReadResult rr = bin->readString(metaKey, getReadOptions());
+        ScopedReadLock lock(_data_mutex);
+        if (_cacheBinMetadata.find(metaKey) != _cacheBinMetadata.end())
+            return bin;
+    }
 
-        osg::ref_ptr<CacheBinMetadata> meta;
-        bool metadataOK = false;
+    // We need to update the cache bin metadata
+    ScopedWriteLock lock(_data_mutex);
 
-        if (rr.succeeded())
+    // read the metadata record from the cache bin:
+    ReadResult rr = bin->readString(metaKey, getReadOptions());
+
+    osg::ref_ptr<CacheBinMetadata> meta;
+    bool metadataOK = false;
+
+    if (rr.succeeded())
+    {
+        // Try to parse the metadata record:
+        Config conf;
+        conf.fromJSON(rr.getString());
+        meta = new CacheBinMetadata(conf);
+
+        if (meta->isOK())
         {
-            // Try to parse the metadata record:
-            Config conf;
-            conf.fromJSON(rr.getString());
-            meta = new CacheBinMetadata(conf);
+            metadataOK = true;
 
-            if (meta->isOK())
+            if (cacheSettings->cachePolicy()->isCacheOnly() && !_profile.valid())
             {
-                metadataOK = true;
-
-                if (cacheSettings->cachePolicy()->isCacheOnly() && !_profile.valid())
-                {
-                    // in cacheonly mode, create a profile from the first cache bin accessed
-                    // (they SHOULD all be the same...)
-                    setProfile( Profile::create(meta->_sourceProfile.get()) );
-                    options().tileSize().init(meta->_sourceTileSize.get());
-                }
-
-                bin->setMetadata(meta.get());
+                // in cacheonly mode, create a profile from the first cache bin accessed
+                // (they SHOULD all be the same...)
+                setProfile(Profile::create(meta->_sourceProfile.get()));
+                options().tileSize().init(meta->_sourceTileSize.get());
             }
-            else
-            {
-                OE_WARN << LC << "Metadata appears to be corrupt.\n";
-            }
+
+            bin->setMetadata(meta.get());
+        }
+        else
+        {
+            OE_WARN << LC << "Metadata appears to be corrupt.\n";
+        }
+    }
+
+    if (!metadataOK)
+    {
+        // cache metadata does not exist, so try to create it.
+        if (getProfile())
+        {
+            meta = new CacheBinMetadata();
+
+            // no existing metadata; create some.
+            meta->_cacheBinId = _runtimeCacheId;
+            meta->_sourceName = this->getName();
+            meta->_sourceTileSize = getTileSize();
+            meta->_sourceProfile = getProfile()->toProfileOptions();
+            meta->_cacheProfile = profile->toProfileOptions();
+            meta->_cacheCreateTime = DateTime().asTimeStamp();
+            meta->_dataExtents = getDataExtents();
+
+            // store it in the cache bin.
+            std::string data = meta->getConfig().toJSON(false);
+            osg::ref_ptr<StringObject> temp = new StringObject(data);
+            bin->write(metaKey, temp.get(), getReadOptions());
+
+            bin->setMetadata(meta.get());
         }
 
-        if (!metadataOK)
+        else if (cacheSettings->cachePolicy()->isCacheOnly())
         {
-            // cache metadata does not exist, so try to create it.
-            if ( getProfile() )
-            {
-                meta = new CacheBinMetadata();
+            disable(Stringify() <<
+                "Failed to open a cache for layer "
+                "because cache_only policy is in effect and bin [" << _runtimeCacheId << "] "
+                "could not be located.");
 
-                // no existing metadata; create some.
-                meta->_cacheBinId      = _runtimeCacheId;
-                meta->_sourceName      = this->getName();
-                meta->_sourceTileSize  = getTileSize();
-                meta->_sourceProfile   = getProfile()->toProfileOptions();
-                meta->_cacheProfile    = profile->toProfileOptions();
-                meta->_cacheCreateTime = DateTime().asTimeStamp();
-                meta->_dataExtents     = getDataExtents();
-
-                // store it in the cache bin.
-                std::string data = meta->getConfig().toJSON(false);
-                osg::ref_ptr<StringObject> temp = new StringObject(data);
-                bin->write(metaKey, temp.get(), getReadOptions());
-
-                bin->setMetadata(meta.get());
-            }
-
-            else if ( cacheSettings->cachePolicy()->isCacheOnly() )
-            {
-                disable(Stringify() <<
-                    "Failed to open a cache for layer "
-                    "because cache_only policy is in effect and bin [" << _runtimeCacheId << "] "
-                    "could not be located.");
-
-                return 0L;
-            }
-
-            else
-            {
-                OE_WARN << LC <<
-                    "Failed to create cache bin [" << _runtimeCacheId << "] "
-                    "because there is no valid profile."
-                    << std::endl;
-
-                cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
-                return 0L;
-            }
+            return 0L;
         }
 
-        // If we loaded a profile from the cache metadata, apply the overrides:
-        applyProfileOverrides(_profile);
-
-        if (meta.valid())
+        else
         {
-            _cacheBinMetadata[metaKey] = meta.get();
-            OE_DEBUG << LC << "Established metadata for cache bin [" << _runtimeCacheId << "]" << std::endl;
+            OE_WARN << LC <<
+                "Failed to create cache bin [" << _runtimeCacheId << "] "
+                "because there is no valid profile."
+                << std::endl;
+
+            cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
+            return 0L;
         }
+    }
+
+    // If we loaded a profile from the cache metadata, apply the overrides:
+    applyProfileOverrides(_profile);
+
+    if (meta.valid())
+    {
+        _cacheBinMetadata[metaKey] = meta.get();
+        OE_DEBUG << LC << "Established metadata for cache bin [" << _runtimeCacheId << "]" << std::endl;
     }
 
     return bin;
@@ -591,12 +606,11 @@ TileLayer::CacheBinMetadata*
 TileLayer::getCacheBinMetadata(const Profile* profile)
 {
     if (!profile)
-        return 0L;
+        return nullptr;
 
-    Threading::ScopedMutexLock lock(layerMutex());
-
-    CacheBinMetadataMap::iterator i = _cacheBinMetadata.find(getMetadataKey(profile));
-    return i != _cacheBinMetadata.end() ? i->second.get() : 0L;
+    ScopedReadLock lock(_data_mutex);
+    auto i = _cacheBinMetadata.find(getMetadataKey(profile));
+    return i != _cacheBinMetadata.end() ? i->second.get() : nullptr;
 }
 
 bool
@@ -751,8 +765,14 @@ TileLayer::dataExtents()
 void
 TileLayer::dirtyDataExtents()
 {
-    Threading::ScopedMutexLock lock(layerMutex());
+    ScopedWriteLock lock(_data_mutex);
     _dataExtentsUnion = GeoExtent::INVALID;
+
+    if (_dataExtentsIndex)
+    {
+        delete static_cast<DataExtentsIndex*>(_dataExtentsIndex);
+        _dataExtentsIndex = nullptr;
+    }
 }
 
 const DataExtent&
@@ -762,7 +782,7 @@ TileLayer::getDataExtentsUnion() const
 
     if (_dataExtentsUnion.isInvalid() && !de.empty())
     {
-        Threading::ScopedMutexLock lock(layerMutex());
+        ScopedWriteLock lock(_data_mutex);
         {
             if (_dataExtentsUnion.isInvalid() && !de.empty()) // double-check
             {
@@ -825,11 +845,11 @@ TileLayer::getBestAvailableTileKey(
     if (options().minResolution().isSet() || options().maxResolution().isSet())
     {
         const Profile* profile = getProfile();
-        if ( profile )
+        if (profile)
         {
             // calculate the resolution in the layer's profile, which can
             // be different that the key's profile.
-            double resKey   = key.getExtent().width() / (double)getTileSize();
+            double resKey = key.getExtent().width() / (double)getTileSize();
             double resLayer = key.getProfile()->getSRS()->transformUnits(resKey, profile->getSRS());
 
             if (options().maxResolution().isSet() &&
@@ -865,40 +885,72 @@ TileLayer::getBestAvailableTileKey(
     bool     intersects = false;
     unsigned highestLOD = 0;
 
-    // Check each data extent in turn:
-    for (auto& de : de_list)
+    double a_min[2], a_max[2];
+    // Build the index if needed.
+    if (!_dataExtentsIndex)
     {
-        // check for 2D intersection:
-        if (key.getExtent().intersects(de))
+        ScopedWriteLock lock(_data_mutex);
+        if (!_dataExtentsIndex) // Double check
         {
-            // check that the extent isn't higher-resolution than our key:
-            if ( !de.minLevel().isSet() || localLOD >= (int)de.minLevel().get() )
+            OE_INFO << LC << "Building data extents index with " << getDataExtents().size() << " extents" << std::endl;
+            DataExtentsIndex* dataExtentsIndex = new DataExtentsIndex();
+            for (auto de = getDataExtents().begin(); de != getDataExtents().end(); ++de)
             {
-                // Got an intersetion; now test the LODs:
-                intersects = true;
-
-                // If the maxLevel is not set, there's not enough information
-                // so just assume our key might be good.
-                if ( !de.maxLevel().isSet())
-                {
-                    return localLOD > MDL ? key.createAncestorKey(MDL) : key;
-                }
-
-                // Is our key at a lower or equal LOD than the max key in this extent?
-                // If so, our key is good.
-                else if ( localLOD <= (int)de.maxLevel().get() )
-                {
-                    return localLOD > MDL ? key.createAncestorKey(MDL) : key;
-                }
-
-                // otherwise, record the highest encountered LOD that
-                // intersects our key.
-                else if ( de.maxLevel().get() > highestLOD )
-                {
-                    highestLOD = de.maxLevel().get();
-                }
+                // Build the index in the SRS of this layer
+                GeoExtent extentInLayerSRS = getProfile()->clampAndTransformExtent(*de);
+                a_min[0] = extentInLayerSRS.xMin(), a_min[1] = extentInLayerSRS.yMin();
+                a_max[0] = extentInLayerSRS.xMax(), a_max[1] = extentInLayerSRS.yMax();
+                dataExtentsIndex->Insert(a_min, a_max, *de);
             }
+            _dataExtentsIndex = dataExtentsIndex;
         }
+    }
+
+    // Transform the key extent to the SRS of this layer to do the index search
+    GeoExtent keyExtentInLayerSRS = getProfile()->clampAndTransformExtent(key.getExtent());
+
+    a_min[0] = keyExtentInLayerSRS.xMin(); a_min[1] = keyExtentInLayerSRS.yMin();
+    a_max[0] = keyExtentInLayerSRS.xMax(); a_max[1] = keyExtentInLayerSRS.yMax();
+
+    DataExtentsIndex* index = static_cast<DataExtentsIndex*>(_dataExtentsIndex);
+
+    TileKey bestKey;
+    index->Search(a_min, a_max, [&](const DataExtent& de) {
+        // check that the extent isn't higher-resolution than our key:
+        if (!de.minLevel().isSet() || localLOD >= (int)de.minLevel().get())
+        {
+            // Got an intersetion; now test the LODs:
+            intersects = true;
+
+            // If the maxLevel is not set, there's not enough information
+            // so just assume our key might be good.
+            if (!de.maxLevel().isSet())
+            {
+                bestKey = localLOD > MDL ? key.createAncestorKey(MDL) : key;
+                return false; //Stop searching, we've found a key
+            }
+
+            // Is our key at a lower or equal LOD than the max key in this extent?
+            // If so, our key is good.
+            else if (localLOD <= (int)de.maxLevel().get())
+            {
+                bestKey = localLOD > MDL ? key.createAncestorKey(MDL) : key;
+                return false; //Stop searching, we've found a key
+            }
+
+            // otherwise, record the highest encountered LOD that
+            // intersects our key.
+            else if (de.maxLevel().get() > highestLOD)
+            {
+                highestLOD = de.maxLevel().get();
+            }                        
+        }
+        return true; // Continue searching
+    });
+
+    if (bestKey.valid())
+    {
+        return bestKey;
     }
 
     if ( intersects )

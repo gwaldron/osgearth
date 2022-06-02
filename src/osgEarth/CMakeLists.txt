@@ -42,8 +42,6 @@ IF(WIN32)
 ENDIF(WIN32)
 
 # Generate the BuildConfig header.
-# TODO: no longer need to do this since C++11 is required
-set(OSGEARTH_CXX11_DEFINE "#define OSGEARTH_CXX11")
 set(OSGEARTH_SOVERSION_VALUE "${OSGEARTH_SOVERSION}")
 set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig.h")
 message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
@@ -139,7 +137,6 @@ SET(LIB_PUBLIC_HEADERS
     ElevationRanges
     ElevationQuery
     Ellipsoid
-    EllipsoidIntersector
     Endian
     Export
     Extension
@@ -364,7 +361,7 @@ SET(LIB_PUBLIC_HEADERS
     GeometryCompiler
     GeometryUtils
     ImageToFeatureLayer
-    InstanceCloud.cpp
+    InstanceCloud
     MVT
     OgrUtils
     OGRFeatureSource
@@ -380,7 +377,6 @@ SET(LIB_PUBLIC_HEADERS
     SubstituteModelFilter
     TessellateOperator
     TextSymbolizer
-    TextureArena.cpp
     TFS
     TransformFilter
     WingedEdgeMesh
@@ -550,6 +546,7 @@ set(TARGET_SRC
     Color.cpp
     ColorFilter.cpp
     Composite.cpp
+    Compressors.cpp
     Config.cpp
     CoverageLayer.cpp
     Cube.cpp
@@ -570,7 +567,6 @@ set(TARGET_SRC
     ElevationRanges.cpp
     ElevationQuery.cpp
     Ellipsoid.cpp
-    EllipsoidIntersector.cpp
     Extension.cpp
     FadeEffect.cpp
     FileUtils.cpp
@@ -594,6 +590,7 @@ set(TARGET_SRC
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
     InstanceBuilder.cpp
+    InstanceCloud.cpp
     IntersectionPicker.cpp
     IOTypes.cpp
     JoinPointsLinesFilter.cpp
@@ -663,6 +660,7 @@ set(TARGET_SRC
     TerrainTileModelFactory.cpp
     Tessellator.cpp
     Text.cpp
+    TextureArena.cpp
     TextureBuffer.cpp
     ThreeDTilesLayer.cpp
     TextureBufferSerializer.cpp
@@ -904,6 +902,13 @@ IF(SQLITE3_FOUND)
     INCLUDE_DIRECTORIES(${SQLITE3_INCLUDE_DIR})
     LINK_WITH_VARIABLES(${LIB_NAME} SQLITE3_LIBRARY)
 ENDIF(SQLITE3_FOUND)
+
+# Blosc support?
+IF (BLOSC_FOUND)
+ADD_DEFINITIONS(-DOSGEARTH_HAVE_BLOSC)
+    INCLUDE_DIRECTORIES(${BLOSC_INCLUDE_DIR})
+    LINK_WITH_VARIABLES(${LIB_NAME} BLOSC_LIBRARY)
+ENDIF(BLOSC_FOUND)
 
 # GEOS support?
 IF (GEOS_FOUND)

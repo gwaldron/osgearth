@@ -100,8 +100,23 @@ namespace osgEarth
         //! Pop a GL debugging group
         static void popDebugGroup();
 
+        //! Whether to use NVGL when possible (and if supported)
+        static void useNVGL(bool value);
+        static bool useNVGL() { return _useNVGL; }
+
+        //! Unique ID associated with this State object (and by extension
+        //! its unique graphics context). You can use this to track
+        //! GL objects that cannot be used across shared GCs.
+        static unsigned getUniqueStateID(const osg::State& state);
+
+        //! Graphics context ID shared between all states sharing
+        //! the same graphics context. Only use for GL object that can
+        //! be shared by multiple graphics contexts (multi-window setup)
+        static unsigned getSharedContextID(const osg::State& state);
+
     private:
         static bool _gldebugging;
+        static bool _useNVGL;
     };
 
     /**
@@ -171,28 +186,82 @@ namespace osgEarth
         DrawElementsIndirectBindlessCommandNV() :
             cmd(), reserved(0), indexBuffer(), vertexBuffer() { }
     };
-    
+
+    class OSGEARTH_EXPORT PerStateGLObjects
+    {
+    public:
+        template<typename T>
+        static inline T& get(osg::buffered_object<T>& arr, const osg::State& state) {
+            return arr[GLUtils::getUniqueStateID(state)];
+        }
+    };
+
+    class OSGEARTH_EXPORT ShareableGLObjects
+    {
+    public:
+        template<typename T>
+        static inline T& get(osg::buffered_object<T>& arr, const osg::State& state) {
+            return arr[GLUtils::getSharedContextID(state)];
+        }
+    };
+
     //! Base class for GL object containers
     class OSGEARTH_EXPORT GLObject
     {
     public:
-        enum Type { VAO, BUFFER, TEXTURE, FBO, QUERY };
         using Ptr = std::shared_ptr<GLObject>;
         using Compatible = std::function<bool(GLObject*)>;
-        virtual const std::string& label() const { return _label; }
-        virtual Type type() const { return _type; }
-        virtual void release() = 0;
-        virtual bool valid() const = 0;
-        virtual GLsizei size() const = 0;
+
+        //! GL object "name" (an integer returned from glGen*)
+        GLuint name() const { return _name; }
+
+        //! category label
+        const std::string& label() const { return _label; }
+
+        //! namespace (GL_BUFFER, GL_TEXTURE, etc)
+        GLenum ns() const { return _ns; }
+
+        //! whether this object can be re-used without reallocation
         bool recyclable() const { return _recyclable; }
+
+        //! whether this object can be shared between shared GCs
+        bool shareable() const { return _shareable; }
+
+        //! true if this object is OK to use
+        bool valid() const { return _name != 0 && _ext != nullptr;  }
+
+        //! OSG extensions API
         osg::GLExtensions* ext() const { return _ext; }
+
+        //! GC under which this object was created
+        const osg::GraphicsContext* gc() const { return _gc; }
+
+        //! Sets the GL debugging category and unique ID
+        void debugLabel(
+            const std::string& label,
+            const std::string& uniqueid = "");
+
+    public:
+        virtual void release() = 0;
+        virtual GLsizei size() const = 0;
+        
     protected:
-        GLObject(osg::State& state, Type type, const std::string& label);
-        std::string _label;
-        Type _type;
-        bool _recyclable;
+        GLObject(GLenum ns, osg::State& state);
+        GLuint _name; // GL name assigned on creation
+        std::string _label; // debugging label
+        GLenum _ns; // object namespace
+        bool _shareable; // can this object be shared between GCs?
+        bool _recyclable; // can this object by re-used?
         osg::GLExtensions* _ext;
+        osg::GraphicsContext* _gc;
         friend class GLObjectPool;
+
+        struct Resident {
+            bool _value; Resident() : _value(false) { }
+            Resident& operator = (bool input) { _value = input; return *this; }
+            bool operator == (const bool& rhs) const { return rhs == _value; }
+            bool operator != (const bool& rhs) const { return rhs != _value; }
+        };
     };
 
     class OSGEARTH_EXPORT GLQuery : public GLObject
@@ -201,7 +270,7 @@ namespace osgEarth
         using Ptr = std::shared_ptr<GLQuery>;
 
         //! Create a new query object.
-        static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
+        static Ptr create(GLenum target, osg::State& state);
 
         //! Start the query
         void begin();
@@ -219,13 +288,11 @@ namespace osgEarth
 
     public:
         void release() override;
-        bool valid() const override { return _name != 0; }
         GLsizei size() const override { return sizeof(GLuint); }
 
     private:
-        GLQuery(GLenum target, osg::State& state, const std::string& label);
+        GLQuery(GLenum target, osg::State& state);
         GLenum _target;
-        GLuint _name;
         bool _active;
     };
 
@@ -235,7 +302,7 @@ namespace osgEarth
         using Ptr = std::shared_ptr<GLVAO>;
 
         //! Create a new VAO.
-        static Ptr create(osg::State& state, const std::string& label = "");
+        static Ptr create(osg::State& state);
 
         //! Bind the VAO.
         void bind();
@@ -245,12 +312,10 @@ namespace osgEarth
 
     public:
         void release() override;
-        bool valid() const override { return _name != 0; }
         GLsizei size() const override { return sizeof(GLuint); }
 
     private:
-        GLVAO(osg::State& state, const std::string& label = "");
-        GLuint _name;
+        GLVAO(osg::State& state);
     };
 
     //! A buffer object
@@ -259,14 +324,20 @@ namespace osgEarth
     public:
         using Ptr = std::shared_ptr<GLBuffer>;
 
-        //! create a new unallocated buffer
-        static Ptr create(GLenum target, osg::State& state, const std::string& label = "");
+        //! Creates a new unallocated buffer.
+        static Ptr create(
+            GLenum target,
+            osg::State& state);
 
-        //! create a new buffer with a "size hint" that allows the system to 
-        //! try and reuse a discarded buffer
-        static Ptr create(GLenum target, osg::State& state, GLsizei sizeHint, const std::string& label = "");
+        //! Creates a new unallocated buffer.
+        //! The "size hint" allows it to potentially be created from recycled
+        //! GPU memory.
+        static Ptr create(
+            GLenum target,
+            osg::State& state,
+            GLsizei sizeHint);
 
-        //! bind to target()
+        //! Bind this buffer to target() in the active context.
         void bind() const;
 
         //! bind to something other than target()
@@ -275,17 +346,11 @@ namespace osgEarth
         //! binds this buffer's target to zero.
         void unbind() const;
 
-        //! GL name of the buffer (an integer)
-        GLuint name() const { return _name; }
-
         //! target to which this buffer is bound
         GLenum target() const { return _target; }
 
         //! allocated size of this buffer, from a call to bufferData or bufferStorage
         GLsizei size() const override { return _size; }
-
-        //! whether this object is ready to use
-        bool valid() const override { return _name != ~0U; }
 
         //! de-allocate and release this buffer
         virtual void release();
@@ -351,21 +416,24 @@ namespace osgEarth
         //! (for use with bindless buffers only)
         GLuint64 address();
 
-        //! Makes a bindless buffer resident
-        void makeResident();
+        //! Makes a bindless buffer resident within the state's context/
+        //! Note: You must make a bindless buffer resident in each
+        //! graphics context in which you use it (spec).
+        void makeResident(osg::State&);
 
-        //! Make a bindless buffer non-resident
-        void makeNonResident();
+        //! Make a bindless buffer non-resident within the state's context.
+        void makeNonResident(osg::State&);
+
+        //! Align a value for the storage target.
+        size_t align(size_t val);
 
     protected:
-        GLBuffer(GLenum target, osg::State& state, const std::string& label);
-        void reset(GLenum target, const std::string& label);
-        GLuint _name;
+        GLBuffer(GLenum target, osg::State& state);
         GLenum _target;
         GLuint64 _address; // bindless GPU address
         mutable GLsizei _size;
         mutable bool _immutable;
-        bool _isResident;
+        mutable std::unordered_map<const osg::GraphicsContext*, Resident> _isResident;
     };
 
     //! A texture object with optional resident handle
@@ -397,27 +465,37 @@ namespace osgEarth
             bool operator == (const Profile& rhs) const;
         };
 
+        //! Creates a new GL texture object.
         static Ptr create(
-            GLenum target, 
-            osg::State& state, 
-            const std::string& label = "");
+            GLenum target,
+            osg::State& state);
 
+        //! Creates a new GL texture object.
+        //! The profileHint describes its configuration so it can potentially
+        //! be made from recycled GPU memory.
         static Ptr create(
             GLenum target,
             osg::State& state,
-            const Profile& profileHint,
-            const std::string& label = "");
+            const Profile& profileHint);
 
+        //! Binds this texture to `target`
         void bind(osg::State& state);
+
+        //! Returns the GPU address of a bindless texture
         GLuint64 handle(osg::State& state);
-        GLuint name() const { return _name; }
-        void makeResident(bool toggle);
-        bool isResident() const { return _isResident; }
+
+        //! Toggles the bindless texture residency in the unique
+        //! graphics context associated with `state`.
+        void makeResident(const osg::State& state, bool toggle);
+
+        //! Whether the texture is resident in the unique
+        //! graphics context associated with `state`.
+        bool isResident(const osg::State& state) const;
+
         void release();
         const Profile& profile() const { return _profile; }
         std::string& id() { return _id; }
         GLsizei size() const override { return _size; }
-        bool valid() const override { return _name != ~0U; }
 
         void storage2D(const Profile& profile);
         void storage3D(const Profile& profile);
@@ -427,17 +505,18 @@ namespace osgEarth
         void compressedSubImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const void* data) const;
 
     protected:
-        GLTexture(GLenum target, osg::State& state, const std::string& label);
+        GLTexture(
+            GLenum target,
+            osg::State& state);
 
     private:
         GLenum _target;
-        GLuint _name;
         GLuint64 _handle;
-        bool _isResident;
+        mutable std::unordered_map<const osg::GraphicsContext*, Resident> _isResident;
         std::string _id;
         GLsizei _size;
         Profile _profile;
-        void reset(GLenum, const std::string&, osg::State&);
+        void reset(GLenum, const std::string&, const std::string&, osg::State&);
     };
 
     /**
@@ -451,8 +530,7 @@ namespace osgEarth
         using DrawFunction = std::function<void(osg::State&)>;
 
         static Ptr create(
-            osg::State& state,
-            const std::string& label = "");
+            osg::State& state);
 
         //! Render something to a texture using this FBO.
         GLTexture::Ptr renderToTexture(
@@ -464,12 +542,10 @@ namespace osgEarth
     public: // GLObject
 
         void release() override;
-        bool valid() const override;
         GLsizei size() const override;
 
     protected:
-        GLFBO(osg::State&, const std::string& label);
-        GLuint _name;
+        GLFBO(osg::State&);
     };
 
     /**
@@ -488,11 +564,12 @@ namespace osgEarth
         //! by the state object
         static GLObjectPool* get(osg::State& state);
 
+        //! Release all GL objects that were created in the given state's
+        //! graphics context
+        static void releaseGLObjects(osg::State* state);
+
         //! Start watching a GL object for automatic release
         void watch(GLObject::Ptr);
-
-        //! Release all object under watch
-        void releaseAll();
 
         //! Report the total memory size of all objects in the pool
         GLsizeiptr totalBytes() const;
@@ -522,6 +599,10 @@ namespace osgEarth
             return result;
         }
 
+        void releaseOrphans(const osg::GraphicsContext* gc);
+
+    public: //osg::GraphicsObjectManager
+
         void flushDeletedGLObjects(double now, double& avail) override;
         void flushAllDeletedGLObjects() override;
         void deleteAllGLObjects() override;
@@ -535,6 +616,21 @@ namespace osgEarth
         unsigned _hits;
         unsigned _misses;
         unsigned _avarice;
+        //osg::ref_ptr<osg::GraphicsOperation> _gc_operation;
+
+        struct GC {
+            GC() : _gc(nullptr), _operation(nullptr) { }
+            const osg::GraphicsContext* _gc;
+            osg::ref_ptr<osg::GraphicsOperation> _operation;
+        };
+
+        std::vector<GC> _gcs;
+
+        //! Start tracking object lifetime for a GC
+        void track(osg::GraphicsContext*);
+
+        //! Release all objects created in the provided GC
+        void releaseAll(const osg::GraphicsContext*);
     };
 
     /**
@@ -543,118 +639,10 @@ namespace osgEarth
     class OSGEARTH_EXPORT OSG_GL_API
     {
     public:
-        virtual void apply(osg::State& state) const = 0;
+        virtual void apply(osg::State& state) const { }
+        virtual void compileGLObjects(osg::State& state) const = 0;
         virtual void resizeGLObjectBuffers(unsigned maxsize) = 0;
         virtual void releaseGLObjects(osg::State* state) const = 0;
-    };
-
-    /**
-     * Helper class that maintains a per-GC GL Buffer that
-     * reflects an in-memory array.
-     * (consider using GLBuffer directly in most cases moving forward)
-     * (might deprecate)
-     */
-    template<typename T>
-    class ArraySSBO : public OSG_GL_API
-    {
-    public:
-        ArraySSBO() : _bindingPoint(0)
-        {
-            _ssbo.resize(16);
-            _dirty.resize(16);
-            _dirty.setAllElementsTo(0);
-        }
-
-        virtual ~ArraySSBO()
-        {
-            for (unsigned i = 0; i < _ssbo.size(); ++i)
-                _ssbo[i] = nullptr;
-        }
-
-        //! Sets the number of elements this object can hold
-        void setMaxNumElements(unsigned value)
-        {
-            if (value > _array.size())
-            {
-                _array.resize(value);
-                dirty();
-            }
-        }
-
-        void setBindingPoint(unsigned value)
-        {
-            _bindingPoint = value;
-        }
-
-        T& operator[](int index)
-        {
-            setMaxNumElements(index+1);
-            return _array[index];
-        }
-
-        void dirty()
-        {
-            _dirty.setAllElementsTo(1);
-        }
-
-        void bind(GLenum target, osg::State& state) const
-        {
-            _ssbo[state.getContextID()]->bind(target);
-        }
-
-    public: // OSG_GL_API
-
-        void apply(osg::State& state) const override
-        {
-            if (_array.empty())
-                return;
-            if (_array.empty())
-                return;
-
-            unsigned id = state.getContextID();
-
-            GLBuffer::Ptr& ssbo = _ssbo[id];
-
-            if (ssbo == nullptr)
-            {
-                ssbo = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, typeid(*this).name());
-                _dirty[id] = 1;
-            }
-
-            if (_dirty[id] == 1 && _array.size() > 0)
-            {
-                ssbo->uploadData(sizeof(T)*_array.size(), _array.data());
-                _dirty[id] = 0;
-            }
-
-            ssbo->bindBufferBase(_bindingPoint);
-        }
-
-        void resizeGLObjectBuffers(unsigned maxSize) override
-        {
-            _ssbo.resize(maxSize);
-            _dirty.resize(maxSize);
-            dirty();
-        }
-
-        void releaseGLObjects(osg::State* state) const override
-        {
-            if (state)
-            {
-                _ssbo[state->getContextID()] = nullptr;
-            }
-            else
-            {
-                for (unsigned i = 0; i < _ssbo.size(); ++i)
-                    _ssbo[i] = nullptr;
-            }
-        }
-
-    private:
-        mutable osg::buffered_object<GLBuffer::Ptr> _ssbo;
-        mutable osg::buffered_object<int> _dirty;
-        unsigned _bindingPoint;
-        std::vector<T> _array;
     };
 
     // State attribute containing an object with the OSG GL API
@@ -779,7 +767,7 @@ namespace osgEarth
      *        return false;
      *    };
      *
-     * Future<MyObject> job = GLPipeline::get()->dispatch<MyObject>(task);
+     * Future<MyObject> job = GLPipeline::get(state)->dispatch<MyObject>(task);
      *
      * Return "true" from the function to request another invocation.
      * Each invocation will increment the "invocation" argument so you 
@@ -803,18 +791,8 @@ namespace osgEarth
             int         invocation)>;
 
     public:
-        //! Gets the default GL pipeline
-        //! This pipeline will run jobs on the application's
-        //! primary graphics context in the main rendering thread.
-        static GLPipeline::Ptr get();
-
-        //! Gets the GL pipeline associated with the given name.
-        //! Job dispatched on this pipeline will run on a dedicated
-        //! thread with its own dedicated graphics context.
-        //! (Keep in mind that GL calls are still serialized by the
-        //! GPU driver.)
-        static GLPipeline::Ptr get(
-            const std::string& name);
+        //! Gets the GL pipeline for a State
+        static GLPipeline::Ptr get(osg::State& state);
 
     private:
         // Internal delegation operation for the GC queue:
@@ -888,32 +866,21 @@ namespace osgEarth
     private:
         osg::ref_ptr<osg::GraphicsContext> _gc;
         static Mutex _mutex;
-        static std::unordered_map<std::string, GLPipeline::Ptr> _lut;
+        static std::unordered_map<osg::State*, GLPipeline::Ptr> _lut;
 
-        struct Dispatcher : public osg::GraphicsThread {
+        struct Dispatcher : public osg::GraphicsOperation
+        {
             Dispatcher(GLPipeline::Ptr);
-            void run() override;
-            void frame();
+            void operator()(osg::GraphicsContext*) override;
             using OpQ = std::queue<osg::ref_ptr<osg::Operation>>;
             OpQ _thisQ;
-            OpQ _nextQ;
             Mutex _queue_mutex;
-            bool _advance_frame;
-            Event _event;
             GLPipeline::WeakPtr _pipeline_ref;
             osg::ref_ptr<osg::GraphicsContext> _myGC;
             void push(osg::Operation*);
         };
 
-        struct SyncPipelineToFrame : public osg::Operation {
-            SyncPipelineToFrame(GLPipeline::Ptr);
-            GLPipeline::WeakPtr _pipeline;
-            void operator()(osg::Object*) override;
-        };
-
         osg::ref_ptr<Dispatcher> _dispatcher;
-        void sync();
-        friend struct SyncPipelineToFrame;
     };
 
     /**
@@ -936,7 +903,7 @@ namespace osgEarth
 
         //! Runs the compute shader and waits for the result
         //! to be read back to the CPU.
-        void execute();
+        void execute(osg::State&);
 
     protected:
         osg::ref_ptr<osg::Image> _image;

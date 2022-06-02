@@ -74,50 +74,6 @@ using namespace osgEarth::Util;
 
 namespace
 {
-#ifndef USE_PAGING_MANAGER
-    // callback to force features onto the high-latency queue.
-    struct HighLatencyFileLocationCallback : public osgDB::FileLocationCallback
-    {
-        Location fileLocation(const std::string& filename, const osgDB::Options* options) override
-        {
-            return REMOTE_FILE;
-        }
-
-        bool useFileCache() const { return false; }
-    };
-
-    struct MyProgressCallback : public DatabasePagerProgressCallback
-    {
-        FeatureModelGraph* _graph;
-        osg::ref_ptr<const Session> _session;
-
-        MyProgressCallback(FeatureModelGraph* graph, const Session* session) :
-            DatabasePagerProgressCallback(),
-            _graph(graph),
-            _session(session)
-        {
-            //nop
-        }
-
-        virtual bool shouldCancel() const
-        {
-            bool should =
-                DatabasePagerProgressCallback::shouldCancel() ||
-                !_graph->isActive() ||
-                !_session.valid() ||
-                !_session->hasMap();
-
-            if (should)
-            {
-                OE_DEBUG << "FMG: canceling load on thread " << std::this_thread::get_id() << std::endl;
-            }
-
-            return should;
-        }
-    };
-
-#else
-
     struct MyProgressCallback : public ProgressCallback
     {
         osg::observer_ptr<FeatureModelGraph> _graph;
@@ -146,7 +102,6 @@ namespace
             return done;
         }
     };
-#endif
 
     osg::Node* createBS(const osg::BoundingSphere& bounds)
     {

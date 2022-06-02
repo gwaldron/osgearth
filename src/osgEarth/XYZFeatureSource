@@ -36,6 +36,7 @@ namespace osgEarth
             OE_OPTION(std::string, format);
             OE_OPTION(int, minLevel);
             OE_OPTION(int, maxLevel);
+            OE_OPTION(bool, esriGeodetic);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -59,6 +60,11 @@ namespace osgEarth
         //! Maximum level of detail to access
         void setMaxLevel(const int& value);
         const int& getMaxLevel() const;
+
+        //! Whether this is an ESRI style XYZ source, which needs it's LOD offset by 1 to match 
+        //! the normal global-geodetic profile.
+        void setEsriGeodetic(const bool& value);
+        const bool& getEsriGeodetic() const;
 
     public: // Layer
 

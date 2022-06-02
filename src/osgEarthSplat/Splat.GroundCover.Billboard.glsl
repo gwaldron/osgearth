@@ -1,6 +1,3 @@
-#version 430
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_name       GroundCover vertex shader
 #pragma vp_entryPoint oe_GroundCover_VS
 #pragma vp_location   vertex_view
@@ -48,8 +45,9 @@ uniform mat4 osg_ViewMatrix;
 
 // Stage globals
 vec3 oe_UpVectorView;
-vec4 vp_Color;
-vec3 vp_Normal;
+
+out vec4 vp_Color;
+out vec3 vp_Normal;
 out vec4 oe_layer_tilec;
 // Output grass texture coordinates to the fragment shader
 out vec2 oe_GroundCover_texCoord;
@@ -256,7 +254,6 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
 
 [break]
-#version $GLSL_VERSION_STR
 #pragma vp_name       Land cover billboard texture application
 #pragma vp_entryPoint oe_GroundCover_FS
 #pragma vp_location   fragment_coloring

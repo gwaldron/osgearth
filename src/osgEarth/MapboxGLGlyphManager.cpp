@@ -22,7 +22,11 @@
 #include <osgDB/Registry>
 #include <osgText/String>
 
+#define LC "[MapboxGLGlyphManager] "
+
+#ifdef OSGEARTH_HAVE_PROTOBUF
 #include "glyphs.pb.h"
+#endif
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -85,8 +89,7 @@ MapboxGLGlyphManager::Glyph* MapboxGLGlyphManager::getGlyph(const std::string& f
     buf << range << "-" << range + 255;
     osgEarth::replaceIn(url, "{fontstack}", font);
     osgEarth::replaceIn(url, "{key}", _key);
-    osgEarth::replaceIn(url, "{range}", buf.str());
-    osgEarth::replaceIn(url, " ", "%20");    
+    osgEarth::replaceIn(url, "{range}", buf.str());    
     loadFont(url);
 
     // Try again.
@@ -107,6 +110,7 @@ MapboxGLGlyphManager::Glyph* MapboxGLGlyphManager::getGlyph(const std::string& f
 
 void MapboxGLGlyphManager::loadFont(const osgEarth::URI& glyphsURI)
 {
+#ifdef OSGEARTH_HAVE_PROTOBUF
     auto itr = _loadedFonts.find(glyphsURI.full());
     if (itr != _loadedFonts.end())
     {
@@ -119,6 +123,12 @@ void MapboxGLGlyphManager::loadFont(const osgEarth::URI& glyphsURI)
 
     mapboxgl::glyphs::glyphs font;
     std::string original = glyphsURI.getString(_options);
+
+    if (original.empty())
+    {
+        OE_WARN << LC << "Failed to load font from " << glyphsURI.full() << std::endl;
+        return;
+    }
 
     // Get the compressor
     osg::ref_ptr< osgDB::BaseCompressor> compressor = osgDB::Registry::instance()->getObjectWrapperManager()->findCompressor("zlib");
@@ -150,7 +160,15 @@ void MapboxGLGlyphManager::loadFont(const osgEarth::URI& glyphsURI)
             }
         }
     }
+    else
+    {
+        OE_WARN << LC << "Failed to parse font from " << glyphsURI.full() << std::endl;
+    }
 
     //std::cout << "Loaded " << numLoaded << " glyphs from " << glyphsURI.full() << std::endl;
     _loadedFonts.insert(glyphsURI.full());
+#else
+    OE_WARN << LC << "Protobuf not available; cannot load glyphs" << std::endl;
+    return;
+#endif
 }

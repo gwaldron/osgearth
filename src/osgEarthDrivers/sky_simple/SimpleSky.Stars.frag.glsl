@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_entryPoint oe_Stars_FS
 #pragma vp_location fragment_coloring
 

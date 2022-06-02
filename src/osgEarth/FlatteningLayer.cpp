@@ -358,7 +358,7 @@ namespace
         double denom = 0.0;
         for (unsigned i = 0; i < samples.size(); ++i)
         {
-            if (osg::equivalent(samples[i].D, 0.0)) {
+            if (equivalent(samples[i].D, 0.0)) {
                 numer = samples[i].elev, denom = 1.0;
                 break;
             }
@@ -398,12 +398,12 @@ namespace
         double length2;
         unsigned int geomIndex;
         double AElev = NO_DATA_VALUE;
-        double BElev = NO_DATA_VALUE;;
+        double BElev = NO_DATA_VALUE;
     };
 
-    typedef std::vector< LineSegment > LineSegmentList;
+    using LineSegmentList = std::vector<LineSegment>;
 
-    typedef RTree<unsigned, double, 2> LineSegmentIndex;
+    using LineSegmentIndex = RTree<unsigned, double, 2>;
 
     void buildSegmentList(const MultiGeometry* geom, LineSegmentList& segments, LineSegmentIndex& index)
     {
@@ -449,9 +449,17 @@ namespace
      * source elevation into the heightfield as a starting point, and then sample that
      * modifiable heightfield as we go along.
      */
-    bool integrateLines(const TileKey& key, osg::HeightField* hf, LineSegmentList& segments, LineSegmentIndex& index, const SpatialReference* geomSRS,
-        WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
-        bool fillAllPixels, ProgressCallback* progress)
+    bool integrateLines(
+        const TileKey& key,
+        osg::HeightField* hf, 
+        LineSegmentList& segments, 
+        LineSegmentIndex& index, 
+        const SpatialReference* geomSRS,
+        WidthsList& widths,
+        ElevationPool* pool, 
+        ElevationPool::WorkingSet* workingSet,
+        bool fillAllPixels,
+        ProgressCallback* progress)
     {
         OE_PROFILING_ZONE;
 
@@ -482,11 +490,18 @@ namespace
         {
             P.y() = ex.yMin() + (double)row * row_interval;
 
-            std::vector< unsigned int > hits;
+            std::vector<unsigned> hits;
 
             double searchMin[2] = { ex.xMin() - maxBufferDistance, P.y() - maxBufferDistance };
             double searchMax[2] = { ex.xMax() + maxBufferDistance, P.y() + maxBufferDistance };
-            index.Search(searchMin, searchMax, &hits, ~0u);
+
+            index.Search(
+                searchMin, searchMax,
+                [&hits](const unsigned& hit)
+                {
+                    hits.push_back(hit);
+                    return true;
+                });
 
             // If there are no hits just skip the whole row.
             if (hits.size() == 0)
@@ -526,7 +541,6 @@ namespace
 
                     double t;                 // parameter [0..1] on segment AB
                     double D2;                // shortest distance from point P to segment AB, squared
-                    //double L2 = AB.length2(); // length (squared) of segment AB
                     double L2 = segment.length2; // length (squared) of segment AB
 
                     osg::Vec3d AP = P - A;    // vector from endpoint A to point P
@@ -609,8 +623,10 @@ namespace
 
                 // Remove unnecessary sample points that lie on the endpoint of a segment
                 // that abuts another segment in our list.
-                for (unsigned i = 0; i < samples.size();) {
-                    if (!isSampleValid(&samples[i], samples)) {
+                for (unsigned i = 0; i < samples.size();) 
+                {
+                    if (!isSampleValid(&samples[i], samples))
+                    {
                         samples[i] = samples[samples.size() - 1];
                         samples.resize(samples.size() - 1);
                     }
@@ -622,9 +638,6 @@ namespace
                 // create a new elevation value for our point.
                 if (samples.size() > 0)
                 {
-                    // The original elevation at our point:
-                    //float elevP = pool->getElevation(P.x(), P.y());
-
                     EP.x() = P.x(), EP.y() = P.y();
 
                     elevSample = pool->getSample(EP, workingSet);
@@ -848,6 +861,11 @@ FlatteningLayer::openImplementation()
         setProfile(profile);
     }
 
+    dataExtents().push_back(DataExtent(
+        profile->getExtent(),
+        getMinLevel(),
+        getMaxDataLevel()));
+
     return Status::NoError;
 }
 
@@ -1040,14 +1058,23 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
                 featureKeys.insert(intersectingKeys[i]);
         }
 
-        // Query and collect all the features we need for this tile.
-        for (std::unordered_set<TileKey>::const_iterator i = featureKeys.begin(); i != featureKeys.end(); ++i)
+        unsigned featureCount = 0;
+        std::vector<FeatureList> lists;
+        lists.reserve(featureKeys.size());
+        for (auto featureKey : featureKeys)
         {
-            Query query;
-            query.tileKey() = *i;
+            lists.emplace_back(std::move(const_cast<FlatteningLayer*>(this)->getFeatures(featureKey)));
+            featureCount += lists.back().size();
+        }
+        
+        // preallocate some memory for speed
+        geoms.getComponents().reserve(featureCount);
+        widths.reserve(featureCount);
 
-            FeatureList features = const_cast<FlatteningLayer*>(this)->getFeatures(*i);
-            for (auto& feature: features)
+        // Now collect all the features we need for this tile.
+        for(auto& list : lists)
+        {
+            for(auto& feature : list)
             {
                 double lineWidth = 0.0;
                 double bufferWidth = 0.0;
@@ -1057,30 +1084,33 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
                     lineWidth = feature->eval(lineWidthExpr, session.get());
                 }
 
-                if (options().bufferWidth().isSet())
+                if (lineWidth > 0.0)
                 {
-                    NumericExpression bufferWidthExpr(options().bufferWidth().get());
-                    bufferWidth = feature->eval(bufferWidthExpr, session.get());
+                    if (options().bufferWidth().isSet())
+                    {
+                        NumericExpression bufferWidthExpr(options().bufferWidth().get());
+                        bufferWidth = feature->eval(bufferWidthExpr, session.get());
+                    }
+
+                    // Transform the feature geometry to our working (projected) SRS.
+                    if (needsTransform)
+                        feature->transform(workingSRS);
+
+                    lineWidth = SpatialReference::transformUnits(
+                        Distance(lineWidth, Units::METERS),
+                        featureSRS,
+                        geoExtent.getCentroid().y());
+
+                    bufferWidth = SpatialReference::transformUnits(
+                        Distance(bufferWidth, Units::METERS),
+                        featureSRS,
+                        geoExtent.getCentroid().y());
+
+                    //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
+                    //      in order to discard geometries we don't care about
+                    geoms.getComponents().push_back(feature->getGeometry());
+                    widths.push_back(Widths(bufferWidth, lineWidth));
                 }
-
-                // Transform the feature geometry to our working (projected) SRS.
-                if (needsTransform)
-                    feature->transform(workingSRS);
-
-                lineWidth = SpatialReference::transformUnits(
-                    Distance(lineWidth, Units::METERS),
-                    featureSRS,
-                    geoExtent.getCentroid().y());
-
-                bufferWidth = SpatialReference::transformUnits(
-                    Distance(bufferWidth, Units::METERS),
-                    featureSRS,
-                    geoExtent.getCentroid().y());
-
-                //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
-                //      in order to discard geometries we don't care about
-                geoms.getComponents().push_back(feature->getGeometry());
-                widths.push_back(Widths(bufferWidth, lineWidth));
             }
         }
     }

@@ -546,14 +546,12 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         // fine, although I think it would be proper to clip at the fragment level with 
         // alpha. We shall see.
         const char* warpClip =
-            "#version " GLSL_VERSION_STR "\n"
-            GLSL_DEFAULT_PRECISION_FLOAT "\n"
             "void oe_overlay_warpClip(inout vec4 vclip) { \n"
             "    if (vclip.z > 1.0) vclip.z = vclip.w+1.0; \n"
             "} \n";
         VirtualProgram* rtt_vp = VirtualProgram::getOrCreate(rttStateSet);
         rtt_vp->setName(typeid(*this).name());
-        rtt_vp->setFunction( "oe_overlay_warpClip", warpClip, ShaderComp::LOCATION_VERTEX_CLIP );
+        rtt_vp->setFunction( "oe_overlay_warpClip", warpClip, VirtualProgram::LOCATION_VERTEX_CLIP );
     }
 
     // Assemble the terrain shaders that will apply projective texturing.

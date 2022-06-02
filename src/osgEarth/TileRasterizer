@@ -72,6 +72,7 @@ namespace osgEarth
         void resizeGLObjectBuffers(unsigned) override;
 
     private:
+
         // Object that renders a node with an RTT camera.
         struct Renderer
         {
@@ -79,13 +80,13 @@ namespace osgEarth
             Phase _phase;
 
             using Ptr = std::shared_ptr<Renderer>;
-            struct GCState
-            {
-                GLQuery::Ptr query;
-                GLBuffer::Ptr pbo; // pixel buffer object
-                GLBuffer::Ptr cbo; // copy buffer
-            };
-            mutable osg::buffered_object<GCState> _gs;
+
+            // Since the Renderer is already per-gc,
+            // we do not need to per-gc these objects:
+            mutable GLQuery::Ptr _query; // GL query object
+            mutable GLBuffer::Ptr _pbo; // pixel buffer object
+            mutable GLBuffer::Ptr _cbo; // copy buffer
+
             osg::ref_ptr<osg::Texture2D> _tex;
             osg::ref_ptr<osg::Camera> _rtt;
             UID _uid;
@@ -96,10 +97,11 @@ namespace osgEarth
             //void preDraw(osg::State&);
             void releaseGLObjects(osg::State*) const;
             void resizeGLObjectBuffers(unsigned);
-        };
 
-        // rendering contexts 
-        RoundRobin<Renderer::Ptr> _renderers;
+            void allocate(osg::State&);
+            GLuint query(osg::State&);
+            osg::ref_ptr<osg::Image> readback(osg::State&);
+        };
 
         // One tile-rendering job
         struct Job
@@ -112,16 +114,23 @@ namespace osgEarth
             GeoExtent _extent; // viewport extent of the node
             Renderer::Ptr _renderer; // Rtt camera to use to renderer
 
-            Promise<osg::ref_ptr<osg::Image>> _promise;
+            Promise<Result> _promise;
 
             void useRenderer(Renderer::Ptr);
         };
 
+        // separate collection of renderers for each
+        // state-based graphics context:
+        struct GLObjects : public PerStateGLObjects
+        {
+            using Ptr = std::shared_ptr<GLObjects>;
+            RoundRobin<Renderer::Ptr> _renderers;
+            MutexedQueue<Job::Ptr> _renderQ;
+        };
+        mutable osg::buffered_object<GLObjects::Ptr> _globjects;
+
         // Jobs waiting to run
         MutexedQueue<Job::Ptr> _jobQ;
-
-        // Jobs waiting to render
-        MutexedQueue<Job::Ptr> _renderQ;
 
         // simple adapter to make draw callbacks take lambdas
         struct DrawCallback : public osg::Camera::DrawCallback
@@ -134,6 +143,10 @@ namespace osgEarth
 
         //void preDraw(osg::RenderInfo& ri);
         void postDraw(osg::RenderInfo& ri);
+
+        void install(GLObjects::Ptr);
+        osg::ref_ptr<osg::StateSet> _rttStateSet;
+        unsigned _width, _height;
     };
 
 } // namespace osgEarth

@@ -78,6 +78,8 @@ namespace osgEarth { namespace MVT
         std::vector< osg::ref_ptr< osgEarth::LineString > > lines;
         osg::ref_ptr< osgEarth::LineString > currentLine;
 
+        GeoExtent extent = key.getExtent();
+
         for (int k = 0; k < feature.geometry_size();)
         {
             if (!length)
@@ -105,11 +107,11 @@ namespace osgEarth { namespace MVT
                     x += px;
                     y += py;
 
-                    double width = key.getExtent().width();
-                    double height = key.getExtent().height();
+                    double width = extent.width();
+                    double height = extent.height();
 
-                    double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
-                    double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
+                    double geoX = extent.xMin() + (width/(double)tileres) * (double)x;
+                    double geoY = extent.yMax() - (height/(double)tileres) * (double)y;
 
                     if (currentLine.valid())
                     {
@@ -153,6 +155,8 @@ namespace osgEarth { namespace MVT
 
         osgEarth::PointSet *geometry = new osgEarth::PointSet();
 
+        GeoExtent extent = key.getExtent();
+
         for (int k = 0; k < feature.geometry_size();)
         {
             if (!length)
@@ -174,11 +178,11 @@ namespace osgEarth { namespace MVT
                     x += px;
                     y += py;
 
-                    double width = key.getExtent().width();
-                    double height = key.getExtent().height();
+                    double width = extent.width();
+                    double height = extent.height();
 
-                    double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
-                    double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
+                    double geoX = extent.xMin() + (width/(double)tileres) * (double)x;
+                    double geoY = extent.yMax() - (height/(double)tileres) * (double)y;
                     geometry->push_back(geoX, geoY, 0);
                 }
             }
@@ -212,6 +216,8 @@ namespace osgEarth { namespace MVT
 
         osg::ref_ptr< osgEarth::Ring > currentRing;
 
+        GeoExtent extent = key.getExtent();
+
         for (int k = 0; k < feature.geometry_size();)
         {
             if (!length)
@@ -238,37 +244,32 @@ namespace osgEarth { namespace MVT
                     x += px;
                     y += py;
 
-                    double width = key.getExtent().width();
-                    double height = key.getExtent().height();
+                    double width = extent.width();
+                    double height = extent.height();
 
-                    double geoX = key.getExtent().xMin() + (width/(double)tileres) * (double)x;
-                    double geoY = key.getExtent().yMax() - (height/(double)tileres) * (double)y;
+                    double geoX = extent.xMin() + (width/(double)tileres) * (double)x;
+                    double geoY = extent.yMax() - (height/(double)tileres) * (double)y;
                     currentRing->push_back(geoX, geoY, 0);
                 }
                 else if (cmd == (SEG_CLOSE & ((1 << cmd_bits) - 1)))
-                {
-                    // The orientation is the opposite of what we want for features.  clockwise means exterior ring, counter clockwise means interior
+                {                    
+                    double area = currentRing->getSignedArea2D();
 
-                    // Figure out what to do with the ring based on the orientation of the ring
-                    Geometry::Orientation orientation = currentRing->getOrientation();
                     // Close the ring.
                     currentRing->close();
 
-                    // Clockwise means exterior ring.  Start a new polygon and add the ring.
-                    if (orientation == Geometry::ORIENTATION_CW)
+                    // New polygon
+                    if (area > 0)
                     {
-                        // osgearth orientations are reversed from mvt
                         currentRing->rewind(Geometry::ORIENTATION_CCW);
-
                         currentPolygon = new osgEarth::Polygon(&currentRing->asVector());
                         polygons.push_back(currentPolygon.get());
                     }
-                    else if (orientation == Geometry::ORIENTATION_CCW)
-                    // Counter clockwise means a hole, add it to the existing polygon.
+                    // Hole
+                    else if (area < 0)
                     {
                         if (currentPolygon.valid())
                         {
-                            // osgearth orientations are reversed from mvt
                             currentRing->rewind(Geometry::ORIENTATION_CW);
                             currentPolygon->getHoles().push_back( currentRing );
                         }
@@ -692,7 +693,37 @@ MVTFeatureSource::iterateTiles(int zoomLevel, int limit, int offset, const GeoEx
 const FeatureProfile*
 MVTFeatureSource::createFeatureProfile()
 {
-    const osgEarth::Profile* profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+    const osgEarth::Profile* profile = nullptr;
+
+    std::string profileStr;
+    getMetaData("profile", profileStr);
+
+    if (!profileStr.empty())
+    {
+        // try to parse it as a JSON config
+        Config pconf;
+        pconf.fromJSON(profileStr);
+        profile = Profile::create(ProfileOptions(pconf));
+
+        // if that didn't work, try parsing it directly
+        if (!profile)
+        {
+            profile = Profile::create(profileStr);
+        }
+
+        if (!profile)
+        {
+            OE_WARN << LC << "Failed to create Profile from string " << profileStr << std::endl;
+        }
+    }
+
+    // Default to spherical mercator if nothing was specified in the profile config.
+    if (!profile)
+    {
+        profile = osgEarth::Registry::instance()->getSphericalMercatorProfile();
+    }
+
+
     FeatureProfile* result = new FeatureProfile(profile->getExtent());
     computeLevels();
     OE_INFO << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;

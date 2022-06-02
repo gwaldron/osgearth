@@ -513,24 +513,15 @@ JobArena::Metrics JobArena::_allMetrics;
 #define OE_ARENA_DEFAULT_SIZE 2u
 
 JobArena::JobArena(const std::string& name, unsigned concurrency, const Type& type) :
-    _name(name),
+    _name(name.empty()? defaultArenaName() : name),
     _targetConcurrency(concurrency),
     _type(type),
     _done(false),
-    _queueMutex("OE.JobArena[" + name + "].queue"),
-    _quitMutex("OE.JobArena[" + name + "].quit")
+    _queueMutex("OE.JobArena[" + _name + "].queue"),
+    _quitMutex("OE.JobArena[" + _name + "].quit")
 {
     // find a slot in the stats
-    int new_index = -1;
-    for (int i = 0; i < 512 && new_index < 0; ++i)
-        if (_allMetrics._arenas[i].active == false)
-            new_index = i;
-    _metrics = &_allMetrics._arenas[new_index];
-    _metrics->arenaName = name;
-    _metrics->concurrency = 0;
-    _metrics->active = true;
-    if (new_index >= _allMetrics.maxArenaIndex)
-        _allMetrics.maxArenaIndex = new_index;
+    _metrics = _allMetrics.getOrCreate(_name);
 
     if (_type == THREAD_POOL)
     {
@@ -540,8 +531,6 @@ JobArena::JobArena(const std::string& name, unsigned concurrency, const Type& ty
 
 JobArena::~JobArena()
 {
-    _metrics->free();
-
     if (_type == THREAD_POOL)
     {
         stopThreads();
@@ -612,6 +601,12 @@ JobArena::get(const Type& type_)
     }
 
     return nullptr;
+}
+
+unsigned
+JobArena::getConcurrency() const
+{
+    return _targetConcurrency;
 }
 
 void
@@ -734,16 +729,35 @@ JobArena::runJobs()
 
             if (!_queue.empty() && !_done)
             {
-                // Quickly find the highest priority item in the "queue"
-                std::partial_sort(
-                    _queue.rbegin(), _queue.rbegin() + 1, _queue.rend(),
-                    [](const QueuedJob& lhs, const QueuedJob& rhs) {
-                        return lhs._job.getPriority() > rhs._job.getPriority();
-                    });
-
-                next = std::move(_queue.back());
+                // Find the highest priority item in the queue.
+                // Note: We could use std::partial_sort or std::nth_element,
+                // but benchmarking proves that a simple brute-force search
+                // is always the fastest.
+                // (Benchmark: https://stackoverflow.com/a/20365638/4218920)
+                // Also note: it is indeed possible for the results of 
+                // Job::getPriority() to change during the search. We don't care.
+                int index = -1;
+                float highest_priority = -FLT_MAX;
+                for (unsigned i = 0; i < _queue.size(); ++i)
+                {
+                    if (index < 0 || _queue[i]._job.getPriority() > highest_priority)
+                    {
+                        index = i;
+                        highest_priority = _queue[i]._job.getPriority();
+                    }
+                }
+                
+                next = std::move(_queue[index]);
                 have_next = true;
-                _queue.pop_back();
+                
+                // move the last element into the empty position:
+                if (index < _queue.size()-1)
+                {
+                    _queue[index] = std::move(_queue.back());
+                }
+
+                // and remove the last element.
+                _queue.erase(_queue.end() - 1);
             }
         }
 
@@ -843,15 +857,6 @@ void JobArena::stopThreads()
         }
         _queue.clear();
 
-        //while (_queue.empty() == false)
-        //{
-        //    if (_queue.back()._groupsema != nullptr)
-        //    {
-        //        _queue.back()._groupsema->reset();
-        //    }
-        //    _queue.pop_back();
-        //}
-
         // wake up all threads so they can exit
         _block.notify_all();
     }
@@ -870,12 +875,12 @@ void JobArena::stopThreads()
 
 
 JobArena::Metrics::Metrics() :
-    _arenas(512),
     maxArenaIndex(-1),
     _report(nullptr),
     _reportMinDuration(0)
 {
-    // nop
+    // to prevent thread safety issues
+    _arenas.resize(128);
 
     const char* report_us = ::getenv("OSGEARTH_JOB_REPORT_THRESHOLD");
     if (report_us)
@@ -898,7 +903,34 @@ JobArena::Metrics::Metrics() :
     }
 }
 
-const JobArena::Metrics::Arena&
+JobArena::Metrics::Arena::Ptr
+JobArena::Metrics::getOrCreate(const std::string& name)
+{
+    for (int i = 0; i < _arenas.size(); ++i)
+    {
+        if (_arenas[i] != nullptr && _arenas[i]->arenaName == name)
+        {
+            return _arenas[i];
+        }
+    }
+
+    ++maxArenaIndex;
+
+    if (maxArenaIndex >= _arenas.size())
+    {
+        OE_SOFT_ASSERT(maxArenaIndex >= _arenas.size(),
+            "Ran out of arena space...using arena[0] :(");
+        return _arenas[0];
+    }
+
+    auto new_arena = _arenas[maxArenaIndex] = Arena::Ptr(new Arena);
+    new_arena->arenaName = name;
+    new_arena->concurrency = 0;
+
+    return new_arena;
+}
+
+const JobArena::Metrics::Arena::Ptr
 JobArena::Metrics::arena(int index) const
 {
     return _arenas[index];
@@ -909,8 +941,8 @@ JobArena::Metrics::totalJobsPending() const
 {
     int count = 0;
     for (int i = 0; i <= maxArenaIndex; ++i)
-        if (arena(i).active)
-            count += arena(i).numJobsPending;
+        if (arena(i))
+            count += arena(i)->numJobsPending;
     return count;
 }
 
@@ -919,8 +951,8 @@ JobArena::Metrics::totalJobsRunning() const
 {
     int count = 0;
     for (int i = 0; i <= maxArenaIndex; ++i)
-        if (arena(i).active)
-            count += arena(i).numJobsRunning;
+        if (arena(i))
+            count += arena(i)->numJobsRunning;
     return count;
 }
 
@@ -929,7 +961,7 @@ JobArena::Metrics::totalJobsCanceled() const
 {
     int count = 0;
     for (int i = 0; i <= maxArenaIndex; ++i)
-        if (arena(i).active)
-            count += arena(i).numJobsCanceled;
+        if (arena(i))
+            count += arena(i)->numJobsCanceled;
     return count;
 }

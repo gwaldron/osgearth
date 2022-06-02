@@ -159,11 +159,6 @@ LandCoverLayer::openImplementation()
     // Normally we would collect and store the layer's DataExtents here.
     // Since this is possibly a composited layer with warping, we just
     // let it default so we can oversample the data with warping.
-    // TODO: review this statement
-    //dataExtents() = getSource()->getDataExtents();
-
-    // TODO: review this since we are setting a cache on this layer itself
-    // via the layerHints()
     
     // GW: do we really need this? Probably not
     getSource()->setUpL2Cache(9u);

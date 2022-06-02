@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 uniform vec3 atmos_v3LightDir; 
 uniform mat4 osg_ViewMatrixInverse; 
 

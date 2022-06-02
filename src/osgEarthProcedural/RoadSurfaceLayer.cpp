@@ -20,7 +20,6 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Map>
 #include <osgEarth/TileRasterizer>
-#include <osgEarth/VirtualProgram>
 #include <osgEarth/FilterContext>
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/Containers>

@@ -24,6 +24,7 @@
 #include "TerrainEngineNode"
 #include "GLUtils"
 #include "Chonk"
+#include "Memory"
 
 #include <osgText/Font>
 #include <osgDB/Registry>
@@ -40,6 +41,7 @@ void osgEarth::initialize()
 {
     OE_INFO << "Hello, world." << std::endl;
 
+    // creates a registry and initializes the system caps
     osgEarth::Registry::instance()->getCapabilities();
 
     if (::getenv("OSGEARTH_GL_DEBUG"))
@@ -52,6 +54,11 @@ void osgEarth::initialize()
         GLUtils::enableGLDebugging();
         VirtualProgram::enableGLDebugging();
     }
+
+    if (::getenv("OSGEARTH_USE_NVGL") || ::getenv("OSGEARTH_USE_GL4"))
+    {
+        GLUtils::useNVGL(true);
+    }
 }
 
 osgEarth::UID
@@ -61,6 +68,9 @@ osgEarth::createUID()
     return s_uidGen++;
 }
 
+// private bytes usage at startup.
+std::int64_t osgEarth::g_startupPrivateBytes =
+    osgEarth::Util::Memory::getProcessPrivateUsage();
 
 namespace
 {
@@ -114,9 +124,6 @@ _blacklist("Reg.BlackList(OE)")
     if (::getenv("GDAL_DATA") == NULL)
         OE_INFO << LC << "Note: GDAL_DATA environment variable is not set" << std::endl;
 
-    // generates the basic shader code for the terrain engine and model layers.
-    _shaderLib = new ShaderFactory();
-
     // shader generator used internally by osgEarth. Can be replaced.
     _shaderGen = new ShaderGenerator();
 
@@ -129,9 +136,6 @@ _blacklist("Reg.BlackList(OE)")
 
     if (::getenv("OSGEARTH_DISABLE_UNREF_AFTER_APPLY"))
         _unRefImageDataAfterApply = false;
-
-    // Default object index for tracking scene object by UID.
-    _objectIndex = new ObjectIndex();
 
     // activate KMZ support
     osgDB::Registry::instance()->addArchiveExtension( "kmz" );
@@ -302,8 +306,7 @@ Registry::release()
     _srsCache.clear();
 
     // Shared object index
-    if (_objectIndex.valid())
-        _objectIndex = new ObjectIndex();
+    _objectIndex = nullptr;
 }
 
 Threading::RecursiveMutex& osgEarth::getGDALMutex()
@@ -561,6 +564,12 @@ Registry::initCapabilities()
 ShaderFactory*
 Registry::getShaderFactory() const
 {
+    if (!_shaderLib.valid())
+    {
+        ScopedMutexLock lock(_regMutex);
+        if (!_shaderLib.valid())
+            const_cast<Registry*>(this)->_shaderLib = new ShaderFactory();
+    }
     return _shaderLib.get();
 }
 
@@ -682,6 +691,14 @@ Registry::getProgramRepo()
 ObjectIndex*
 Registry::getObjectIndex() const
 {
+    if (!_objectIndex.valid())
+    {
+        ScopedMutexLock lock(_regMutex);
+        if (!_objectIndex.valid())
+        {
+            _objectIndex = new ObjectIndex();
+        }
+    }
     return _objectIndex.get();
 }
 

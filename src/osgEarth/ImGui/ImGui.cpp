@@ -342,7 +342,11 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
             return false;
         }
     }
-
+    if (firstFrame_)
+    {
+        // imgui is not initialized yet
+        return false;
+    }
     ImGuiIO& io = ImGui::GetIO();
     const bool wantCaptureMouse = io.WantCaptureMouse;
     const bool wantCaptureKeyboard = io.WantCaptureKeyboard;

@@ -24,6 +24,7 @@
 #include <osgEarth/Memory>
 #include <osgEarth/GLUtils>
 #include <osgEarth/ShaderLoader>
+#include <osgEarth/Registry>
 #include <chrono>
 #include <list>
 
@@ -42,11 +43,13 @@ namespace osgEarth
             bool _renderModelNormals;
             bool _renderWinding;
             bool _renderOutlines;
+            bool _showArenaControls;
 
         public:
             SystemGUI() : BaseGUI("System"),
                 _renderViewNormals(false), _renderModelNormals(false),
-                _renderWinding(false), _renderOutlines(false) { }
+                _renderWinding(false), _renderOutlines(false),
+                _showArenaControls(false){ }
 
             void load(const Config& conf) override
             {
@@ -65,38 +68,68 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
-                    ImGui::Text("Mem PB: %u MB", (Memory::getProcessPrivateUsage() / 1048576U));
+                    auto pb = Memory::getProcessPrivateUsage();
+                    ImGui::Text("Mem Alloc: %.1lf MB",
+                        (double)(pb - osgEarth::g_startupPrivateBytes) / 1048576.0);
                     ImGui::SameLine();
-                    ImGui::Text("  WS: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
-
-                    if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 4.0f))
-                        dirtySettings();
+                    ImGui::Text(" Total: %.1lf MB", (double)pb / 1048576.0);
+                    //ImGui::Text("  WS: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
 
                     ImGui::Separator();
 
                     if (ImGui::TreeNodeEx("Job Arenas", ImGuiTreeNodeFlags_DefaultOpen))
                     {
-                        const JobArena::Metrics& m = JobArena::metrics();
+                        ImGui::BeginTable("arenas", 2);
+                        const JobArena::Metrics& m = JobArena::allMetrics();
                         for (int i = 0; i <= m.maxArenaIndex; ++i)
                         {
-                            if (m.arena(i).active)
+                            auto metrics = m.arena(i);
+                            if (metrics)
                             {
-                                ImGui::Text("%s (%d) %d / %d // %d",
-                                    m.arena(i).arenaName.c_str(),
-                                    (int)m.arena(i).concurrency,
-                                    (int)m.arena(i).numJobsRunning,
-                                    (int)m.arena(i).numJobsPending,
-                                    (int)m.arena(i).numJobsCanceled);
+                                ImGui::TableNextColumn();
+                                ImGui::Text("%s",
+                                    metrics->arenaName.c_str());
+
+                                ImGui::TableNextColumn();
+                                ImGui::Text("(%d) %d / %d // %d",
+                                    (int)metrics->concurrency,
+                                    (int)metrics->numJobsRunning,
+                                    (int)metrics->numJobsPending,
+                                    (int)metrics->numJobsCanceled);
+
+                                if (_showArenaControls)
+                                {
+                                    ImGui::TableNextColumn();
+                                    ImGui::Text("  Concurrency:");
+                                    ImGui::TableNextColumn();
+                                    ImGui::PushID(i);
+                                    int concurrency = metrics->concurrency;
+                                    if (ImGui::SliderInt("", &concurrency, 1, 16)) {
+                                        JobArena::get(metrics->arenaName)->setConcurrency(concurrency);
+                                    }
+                                    ImGui::PopID();
+                                    ImGui::Separator();
+                                }
                             }
                         }
+                        ImGui::EndTable();
 
                         ImGui::Separator();
                         ImGui::Text("Total: %d", m.totalJobs());
                         ImGui::SameLine();
                         ImGui::Text(" ICO: %d", GLObjectsCompiler::totalJobs());
+                        ImGui::Checkbox("Show arena controls", &_showArenaControls);
 
                         ImGui::TreePop();
                     }
+
+                    ImGui::Separator();
+
+                    if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 2.0f))
+                        dirtySettings();
+
+                    ImGui::Checkbox("Unref image data after apply",
+                        &Registry::instance()->unRefImageDataAfterApply().mutable_value());
                 }
                 ImGui::End();
             }

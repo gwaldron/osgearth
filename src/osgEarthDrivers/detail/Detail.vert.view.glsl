@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_entryPoint oe_detail_vertexView
 #pragma vp_location   vertex_view
 

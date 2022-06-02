@@ -40,14 +40,12 @@ using namespace osgEarth;
 namespace
 {
     const char* iconVS =
-        "#version " GLSL_VERSION_STR "\n"
         "out vec2 oe_TrackNode_texcoord; \n"
         "void oe_TrackNode_icon_VS(inout vec4 vertex) { \n"
         "    oe_TrackNode_texcoord = gl_MultiTexCoord0.st; \n"
         "} \n";
 
     const char* iconFS =
-        "#version " GLSL_VERSION_STR "\n"
         "in vec2 oe_TrackNode_texcoord; \n"
         "uniform sampler2D oe_TrackNode_tex; \n"
         "void oe_TrackNode_icon_FS(inout vec4 color) { \n"
@@ -140,8 +138,8 @@ TrackNode::construct()
             s_imageStateSet = _imageStateSet = new osg::StateSet();
             VirtualProgram* vp = VirtualProgram::getOrCreate(_imageStateSet.get());
             vp->setName("TrackNode");
-            vp->setFunction("oe_TrackNode_icon_VS", iconVS, ShaderComp::LOCATION_VERTEX_MODEL);
-            vp->setFunction("oe_TrackNode_icon_FS", iconFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            vp->setFunction("oe_TrackNode_icon_VS", iconVS, VirtualProgram::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_TrackNode_icon_FS", iconFS, VirtualProgram::LOCATION_FRAGMENT_COLORING);
             _imageStateSet->addUniform(new osg::Uniform("oe_TrackNode_tex", 0));
         }
     }

@@ -27,11 +27,11 @@ PROJECT(OSGEARTH)
 
 # SDK version number (informational)
 SET(OSGEARTH_MAJOR_VERSION 3)
-SET(OSGEARTH_MINOR_VERSION 2)
+SET(OSGEARTH_MINOR_VERSION 3)
 SET(OSGEARTH_PATCH_VERSION 0)
 
 # Increment this each time the ABI changes
-SET(OSGEARTH_SOVERSION 128)
+SET(OSGEARTH_SOVERSION 136)
 
 # C++11 is required for osgEarth 3.x
 set_property(GLOBAL PROPERTY CXX_STANDARD 11)
@@ -157,6 +157,7 @@ find_package(GLEW)
 find_package(Protobuf)
 find_package(WEBP)
 find_package(Blend2D)
+find_package(blosc)
 
 if(OSGEARTH_ENABLE_PROFILING)
     find_package(Tracy)
@@ -183,6 +184,10 @@ ENDIF(SQLITE3_FOUND)
 IF(draco_FOUND)
     ADD_DEFINITIONS(-DOSGEARTH_HAVE_DRACO)
 ENDIF(draco_FOUND)
+
+if(Protobuf_FOUND)
+    add_definitions(-DOSGEARTH_HAVE_PROTOBUF)
+endif()
 
 # GDAL is the underlying geospatial processing SDK
 IF(GDAL_FOUND)
@@ -297,10 +302,30 @@ ELSE()
     SET(OSGEARTH_DYNAMIC_OR_STATIC "STATIC")
 ENDIF()
 
-
+	
 # OE Libraries
 ADD_SUBDIRECTORY(src)
 
 if (OSGEARTH_BUILD_DOCS)
     ADD_SUBDIRECTORY(docs)
 endif()
+
+#write out config files for vcpkg
+
+SET(INSTALL_INCDIR ${CMAKE_INSTALL_PREFIX}/include)
+SET(INSTALL_LIBDIR ${PROJECT_BINARY_DIR}/lib)	
+message(STATUS "INCDIR: ${INSTALL_INCDIR}")
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(osgEarthConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
+  INSTALL_DESTINATION ${LIB_INSTALL_DIR}/osgearth/cmake
+  )
+  
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
+  VERSION 3.3.0
+  COMPATIBILITY SameMajorVersion )
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
+              ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake )

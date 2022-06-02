@@ -1,12 +1,10 @@
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_function oe_chonk_default_vertex_model, vertex_model, 0.0
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
 struct Instance {
     mat4 xform;
     vec2 local_uv;
-    float fade;
+    uint lod;
     float visibility[4];
     uint first_variant_cmd_index;
 };
@@ -48,16 +46,13 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
     oe_normal_tex = normalmap >= 0 ? textures[normalmap] : 0;
 
 #ifndef OE_IS_SHADOW_CAMERA
-    oe_fade = instances[i].fade;
+    oe_fade = instances[i].visibility[instances[i].lod];
 #else
     oe_fade = 1.0;
 #endif
 }
 
 [break]
-
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_function oe_chonk_default_vertex_view, vertex_view, 0.0
 
 // stage
@@ -80,11 +75,7 @@ void oe_chonk_default_vertex_view(inout vec4 vertex)
     }
 }
 
-
 [break]
-
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_function oe_chonk_default_fragment, fragment, 0.0
 #pragma import_defines(OE_COMPRESSED_NORMAL)
 #pragma import_defines(OE_GPUCULL_DEBUG)
@@ -134,7 +125,8 @@ void oe_chonk_default_fragment(inout vec4 color)
         mat3 tbn = mat3(
             normalize(oe_tangent),
             normalize(cross(vp_Normal, oe_tangent)),
-            normalize(gl_FrontFacing ? vp_Normal : -vp_Normal));
+            vp_Normal);
+            //normalize(gl_FrontFacing ? vp_Normal : -vp_Normal));
 
         vp_Normal = normalize(tbn * n.xyz);
     }

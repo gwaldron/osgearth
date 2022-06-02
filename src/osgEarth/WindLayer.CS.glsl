@@ -42,7 +42,7 @@ void main()
     vec3 totalDirection = vec3(0);
 
     int i;
-    for(i=0; wind[i].speed > 0.0 && i<SAFETY_BAILOUT; ++i)
+    for(i=0; wind[i].speed >= 0.0 && i<SAFETY_BAILOUT; ++i)
     {
         if (wind[i].position.w == 1)
         {

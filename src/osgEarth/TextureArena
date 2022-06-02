@@ -45,39 +45,72 @@ namespace osgEarth
         using Ptr = std::shared_ptr<Texture>;
         using WeakPtr = std::weak_ptr<Texture>;
 
-        //! Create a new texture
-        static Ptr create() {
-            return Ptr(new Texture());
-        }
+        //! Create for a given texture target
+        static Ptr create(
+            osg::Image* image = nullptr,
+            GLenum target = GL_TEXTURE_2D);
 
-        //! Create from an existing GLTexture
-        static Ptr create(GLTexture::Ptr, osg::State&);
+        //! Create from an existing OSG texture instance
+        static Ptr create(
+            osg::Texture* tex);
 
+        //! Make this texture resident as a bindless texture
         void makeResident(const osg::State&, bool toggle) const;
+
+        //! True if the texture is resident in state's context
         bool isResident(const osg::State&) const;
+
+        //! True if the texture has been uploaded to the GPU 
+        //! in the state's context
         bool isCompiled(const osg::State&) const;
+
+        //! Whether we need to compile (or recompile) this texture
+        bool needsCompile(const osg::State&) const;
+
+        //! Wether the underlying image is dynamic
+        //! and needs updates.
+        bool needsUpdates() const;
+
+        //! Update the underlying image if necessary
+        void update(osg::NodeVisitor& nv);
+
+        //! GL memory functions
         void compileGLObjects(osg::State&) const;
         void resizeGLObjectBuffers(unsigned);
         void releaseGLObjects(osg::State*) const;
 
-        optional<URI> _uri;
-        osg::ref_ptr<osg::Image> _image;
-        std::string _label;
-        bool _compress;
-        bool _mipmap;
-        bool _clamp;
-        optional<GLenum> _internalFormat;
-        optional<float> _maxAnisotropy;
+        OE_PROPERTY(std::string, name);
+        OE_PROPERTY(std::string, label);
+        OE_PROPERTY(bool, compress);
+        OE_PROPERTY(bool, mipmap);
+        OE_PROPERTY(bool, clamp);
+        OE_PROPERTY(bool, keepImage);
+        
+        OE_OPTION(URI, uri);
+        OE_OPTION(GLenum, internalFormat);
+        OE_OPTION(float, maxAnisotropy);
 
-        struct GCState
+        OE_PROPERTY(osg::ref_ptr<osg::Texture>, osgTexture);
+        OE_PROPERTY_CONST(GLenum, target);
+
+        //! Whether any actual image data has been loaded into this object,
+        //! or whether we need to load it from the URI
+        bool dataLoaded() const;
+
+        //! GLObjects are shareable across GCs because they are static and bindless.
+        struct GLObjects : public ShareableGLObjects
         {
             GLTexture::Ptr _gltexture;
+            unsigned _imageModCount;
+            GLObjects() : _imageModCount(0) { }
         };
-        mutable osg::buffered_object<GCState> _gs;
-        GCState& get(const osg::State&) const;
+        mutable osg::buffered_object<GLObjects> _globjects;
+
+        ~Texture();
 
     protected:
-        Texture() : _compress(true), _mipmap(true), _clamp(false) { }
+        Texture(GLenum target);
+        Texture(osg::Texture*);
         friend class TextureArena;
     };
 
@@ -123,12 +156,6 @@ namespace osgEarth
 
         //! Find the texture at index i.
         Texture::Ptr find(unsigned index) const;
-
-        //! Makes a texture fully available on the GPU.
-        void activate(Texture::Ptr tex);
-
-        //! Removes the texture from the GPU.
-        void deactivate(Texture::Ptr tex);
         
         //! Number of textures registered
         size_t size() const { return _textures.size(); }
@@ -150,22 +177,19 @@ namespace osgEarth
         //! disable copy
         TextureArena(const TextureArena&, const osg::CopyOp&) { } 
 
-        // Per-GC data
-        struct GCState
+        // GL objects that are per-state because they are not bindless
+        struct GLObjects : public PerStateGLObjects
         {
-            GCState() : _inUse(false) { }
+            GLObjects() : _inUse(false) { }
             bool _inUse;
             std::queue<int> _toCompile;
-            //std::vector<int> _toCompile;
-            TextureVector _toActivate;
-            TextureVector _toDeactivate;
             TextureVector _toRemove;
 
             GLBuffer::Ptr _handleBuffer;
             std::vector<GLuint64> _handles;
             bool _dirty;
         };
-        mutable osg::buffered_object<GCState> _gc;
+        mutable osg::buffered_object<GLObjects> _globjects;
 
         mutable TextureVector _textures;
         bool _autoRelease;

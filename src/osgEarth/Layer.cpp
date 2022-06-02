@@ -338,6 +338,7 @@ Layer::init()
     _status.set(Status::ResourceUnavailable,
         getOpenAutomatically() ? "Layer closed" : "Layer disabled");
     _isClosing = false;
+    _isOpening = false;
 
     // For detecting scene graph changes at runtime
     _sceneGraphCallbacks = new SceneGraphCallbacks(this);
@@ -348,8 +349,12 @@ Layer::init()
     {
         osg::Object::setName(options().name().get());
     }
+    else
+    {
+        osg::Object::setName("Unnamed " + std::string(className()));
+    }
 
-    _mutex = new Threading::Mutex(options().name().isSet() ? options().name().get() : "Unnamed Layer(OE)");
+    _mutex = new Threading::ReadWriteMutex(options().name().isSet() ? options().name().get() : "Unnamed Layer(OE)");
 }
 
 Status
@@ -360,6 +365,8 @@ Layer::open()
     {
         return getStatus();
     }
+
+    Threading::ScopedWriteLock lock(layerMutex());
 
     // be optimistic :)
     _status.set(Status::NoError);
@@ -377,12 +384,13 @@ Layer::open()
         getOrCreateStateSet()->setDefine(options().shaderDefine().get());
     }
 
+    _isOpening = true;
     setStatus(openImplementation());
-
     if (isOpen())
     {
         fireCallback(&LayerCallback::onOpen);
     }
+    _isOpening = false;
 
     return getStatus();
 }
@@ -443,12 +451,14 @@ Layer::closeImplementation()
 
 Status
 Layer::close()
-{
+{    
     if (isOpen())
     {
+        Threading::ScopedWriteLock lock(layerMutex());
         _isClosing = true;
         closeImplementation();
         _status.set(Status::ResourceUnavailable, "Layer closed");
+        _runtimeCacheId = "";
         fireCallback(&LayerCallback::onClose);
         _isClosing = false;
     }
@@ -514,8 +524,9 @@ Layer::create(const ConfigOptions& options)
 
     if ( name.empty() )
     {
-        OE_WARN << "[Layer] ILLEGAL- Layer::create requires a valid driver name" << std::endl;
-        return 0L;
+        // fail silently
+        OE_DEBUG << "[Layer] ILLEGAL- Layer::create requires a valid driver name" << std::endl;
+        return nullptr;
     }
 
     // convey the configuration options:

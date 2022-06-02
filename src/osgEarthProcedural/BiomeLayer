@@ -79,7 +79,30 @@ namespace osgEarth
                 OE_OPTION_LESS(lush, rhs.lush);
                 OE_OPTION_LESS(rugged, rhs.rugged);
                 return false;
+            }       
+        };
+
+        struct BiomeSample
+        {
+            OE_OPTION(std::string, biomeid);
+
+            BiomeSample() { }
+
+            BiomeSample(const Config& conf)
+            {
+                conf.get("biome_id", biomeid());
             }
+
+            bool valid() const {
+                return
+                    (biomeid().isSet() && !biomeid()->empty());
+            }
+
+            bool operator < (const BiomeSample& rhs) const
+            {
+                OE_OPTION_LESS(biomeid, rhs.biomeid);            
+                return false;
+            }            
         };
 
 
@@ -105,11 +128,10 @@ namespace osgEarth
             {
             public:
                 META_LayerOptions(osgEarth, Options, ImageLayer::Options);
-                OE_OPTION_LAYER(FeatureSource, vectorLayer);
-                OE_OPTION_LAYER(CoverageLayer, coverageLayer);
+                OE_OPTION_LAYER(CoverageLayer, landCoverLayer);
+                OE_OPTION_LAYER(CoverageLayer, biomeBaseLayer);
                 OE_OPTION_SHAREDPTR(BiomeCatalog, biomeCatalog);
                 OE_OPTION(float, blendRadius);
-                OE_OPTION(std::string, biomeidField);
                 virtual Config getConfig() const;
             private:
                 void fromConfig(const Config& conf);
@@ -124,11 +146,11 @@ namespace osgEarth
             //! Manager that pages biome assets in and out
             BiomeManager& getBiomeManager() { return _biomeMan; }
 
-            //! Vector layer that deliniates the base biomes
-            FeatureSource* getVectorLayer() const;
+            //! Optional coverage layer that can modify the biome selection
+            CoverageLayer* getLandCoverLayer() const;
 
             //! Optional coverage layer that can modify the biome selection
-            CoverageLayer* getCoverageLayer() const;
+            CoverageLayer* getBiomeBaseLayer() const;
 
             //! Whether to automatically load and unload biomes, or to 
             //! allow the user to manually do so with the setBiome() call.
@@ -165,14 +187,6 @@ namespace osgEarth
                 ProgressCallback* progress) const override;
 
         private:
-
-            // control features for biome selection
-            FeatureList _features;
-
-            // spatial index for _features
-            void* _pointIndex;
-            void* _polygonIndex;
-
             // handles memory residency of biome asset data
             BiomeManager _biomeMan;
 
@@ -189,15 +203,14 @@ namespace osgEarth
                 const TileKey& key,
                 std::set<int>& biomeids) const;
 
-            void loadPointControlSet();
-
-            void loadPolygonControlSet();
-
             using WeakCache = std::unordered_map<
                 TileKey,
                 osg::observer_ptr<osg::Image>>;
 
             mutable Mutexed<WeakCache> _imageCache;
+
+            std::unique_ptr< CoverageLayer::CoverageCreator<LandCoverSample> > _landCoverCreator;
+            std::unique_ptr< CoverageLayer::CoverageCreator<BiomeSample> > _biomeCreator;
 
         protected:
             virtual ~BiomeLayer() { }

@@ -20,6 +20,7 @@
 #define OSGEARTH_THREADING_UTILS_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Notify>
 #include <atomic>
 #include <functional>
 #include <condition_variable>
@@ -157,9 +158,11 @@ namespace osgEarth { namespace Threading
 
     //! Locks a mutex for the duration of the scope
     using ScopedMutexLock = std::lock_guard<BasicLockable>;
+    using ScopedLock = ScopedMutexLock;
 
     //! Locks a recursive mutex for the duration of the scope
     using ScopedRecursiveMutexLock = std::lock_guard<RecursiveMutex>;
+    using ScopedRecursiveLock = ScopedRecursiveMutexLock;
 
     /**
      * Gets the approximate number of available threading contexts.
@@ -290,6 +293,11 @@ namespace osgEarth { namespace Threading
         //! and the Promise was never resolved.
         bool isAbandoned() const {
             return !isAvailable() && _shared.use_count() == 1;
+        }
+
+        //! True if a Promise exists, but has not yet been fulfilled.
+        bool isWorking() const {
+            return !isAvailable() && !isAbandoned();
         }
 
         //! Synonym for isAbandoned. (Canceleble interface)
@@ -452,9 +460,12 @@ namespace osgEarth { namespace Threading
 
         inline void lock(const T& key) {
             std::unique_lock<Mutex> lock(_m);
+            auto thread_id = getCurrentThreadId();
             for (;;) {
-                if (_keys.insert(key).second)
+                auto i = _keys.emplace(key, thread_id);
+                if (i.second)
                     return;
+                OE_HARD_ASSERT(i.first->second != thread_id, "Recursive Gate access attempt");
                 _unlocked.wait(lock);
             }
         }
@@ -472,7 +483,7 @@ namespace osgEarth { namespace Threading
     private:
         Mutex _m;
         std::condition_variable_any _unlocked;
-        std::unordered_set<T> _keys;
+        std::unordered_map<T,unsigned> _keys;
     };
 
     //! Gate the locks for the duration of this object's scope
@@ -538,6 +549,12 @@ namespace osgEarth { namespace Threading
                 _unlocked.notify_one();
         }
 
+        void read_lock(std::function<void()> f) {
+            read_lock();
+            f();
+            read_unlock();
+        }
+
         void write_lock() {
             std::unique_lock<T> lock(_m);
             _unlocked.wait(lock, [&]() { return _writers == 0 && _readers == 0; });
@@ -548,6 +565,12 @@ namespace osgEarth { namespace Threading
             std::unique_lock<T> lock(_m);
             _writers = 0;
             _unlocked.notify_one();
+        }
+
+        void write_lock(std::function<void()> f) {
+            write_lock();
+            f();
+            write_unlock();
         }
 
         void setName(const std::string& name) {
@@ -597,6 +620,7 @@ namespace osgEarth { namespace Threading
         void lock() const { _lockable_mutex.lock(); }
         void unlock() { _lockable_mutex.unlock(); }
         void unlock() const { _lockable_mutex.unlock(); }
+        void lock(std::function<void()> func) { lock(); func(); unlock(); }
         void scoped_lock(std::function<void()> func) { lock(); func(); unlock(); }
         Mutex& mutex() const { return _lockable_mutex; }
         T& operator = (const T& rhs) { return T::operator=(rhs); }
@@ -829,7 +853,7 @@ namespace osgEarth { namespace Threading
 
         //! Construct a new JobArena
         JobArena(
-            const std::string& name,
+            const std::string& name = "",
             unsigned concurrency = 2u,
             const Type& type = THREAD_POOL);
 
@@ -839,6 +863,9 @@ namespace osgEarth { namespace Threading
         //! Set the concurrency of this job arena
         //! (Only applies to THREAD_POOL type arenas)
         void setConcurrency(unsigned value);
+
+        //! Get the target concurrency (thread count) 
+        unsigned getConcurrency() const;
 
         //! Discard all queued jobs
         void cancelAll();
@@ -869,23 +896,21 @@ namespace osgEarth { namespace Threading
         {
         public:
             //! Per-arena metrics. ALWAYS check the "active" flag
-            struct Arena {
-                bool active;
+            struct Arena
+            {
+                using Ptr = std::shared_ptr<Arena>;
                 std::string arenaName;
                 std::atomic<int> concurrency;
                 std::atomic<int> numJobsPending;
                 std::atomic<int> numJobsRunning;
                 std::atomic<int> numJobsCanceled;
 
-                Arena() : active(false), concurrency(0), numJobsPending(0), numJobsRunning(0), numJobsCanceled(0) { }
-                void free() {
-                    active = false, numJobsPending = 0, numJobsRunning = 0,
-                        numJobsCanceled = 0;
-                }
+                Arena() : concurrency(0), numJobsPending(0), numJobsRunning(0), numJobsCanceled(0) { }
             };
 
             //! Report sent to the user reporting function if set
-            struct Report {
+            struct Report
+            {
                 Report(const Job& job_, const std::string& arena_, const std::chrono::steady_clock::duration& duration_)
                     : job(job_), arena(arena_), duration(duration_) { }
                 const Job& job;
@@ -895,8 +920,11 @@ namespace osgEarth { namespace Threading
 
             std::atomic<int> maxArenaIndex;
 
+            //! create a new arena and return its index
+            Arena::Ptr getOrCreate(const std::string& name);
+
             //! metrics about the arena at index "index"
-            const Arena& arena(int index) const;
+            const Arena::Ptr arena(int index) const;
 
             //! Total number of pending jobs across all arenas
             int totalJobsPending() const;
@@ -923,20 +951,24 @@ namespace osgEarth { namespace Threading
 
         private:
             Metrics();
-            std::vector<Arena> _arenas;
+            std::vector<Arena::Ptr> _arenas;
             std::function<void(const Report&)> _report;
             std::chrono::steady_clock::duration _reportMinDuration;
             friend class JobArena;
         };
 
         //! Access to the system-wide job arena metrics
-        static const Metrics& metrics() { return _allMetrics; }
+        static Metrics& allMetrics() { return _allMetrics; }
 
-        public: // INTERNAL
+        //! Metrics object for thie arena
+        Metrics::Arena::Ptr metrics() { return _metrics; }
 
-            //! Run one or more pending jobs.
-            //! Internal function - do not call this directly.
-            void runJobs();
+
+    public: // INTERNAL
+
+        //! Run one or more pending jobs.
+        //! Internal function - do not call this directly.
+        void runJobs();
 
     private:
 
@@ -987,7 +1019,7 @@ namespace osgEarth { namespace Threading
         // threads in the pool
         std::vector<std::thread> _threads;
         // pointer to the stats structure for this arena
-        Metrics::Arena* _metrics;
+        Metrics::Arena::Ptr _metrics;
 
         static Mutex _arenas_mutex;
         static std::unordered_map<std::string, unsigned> _arenaSizes;

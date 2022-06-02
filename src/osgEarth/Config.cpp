@@ -24,6 +24,8 @@
 #include <osgEarth/JsonUtils>
 #include <osgEarth/FileUtils>
 #include <osgDB/FileNameUtils>
+#include <osgEarth/Notify>
+#include <osgDB/Options>
 
 using namespace osgEarth;
 

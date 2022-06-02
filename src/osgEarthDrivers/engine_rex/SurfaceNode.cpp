@@ -100,6 +100,7 @@ namespace
     osg::Drawable* makeSphere(const osg::BoundingSphere& bs)
     {
         osg::Geometry* geom = new osg::Geometry();
+        geom->setName("REX sphere");
         geom->setUseVertexBufferObjects(true);
 
         float r = bs.radius();

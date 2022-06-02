@@ -310,11 +310,13 @@ namespace osgEarth { namespace Util
         /**
          * Creates a copy of the input image with added mipmaps.
          * @param image Input image to generate mipmaps for
+         * @param minLevelSize The smallest mipmap level size to generate
          * @return image with mipmaps. If the input already had mipmaps,
          *   just returns the input pointer (that is why it's const)
          */
         static const osg::Image* mipmapImage(
-            const osg::Image* image);
+            const osg::Image* image,
+            int minLevelSize = 16);
 
         /**
         * Adds mipmaps to an existing image if neccessary
@@ -404,23 +406,23 @@ namespace osgEarth { namespace Util
             inline int t() const { return _image->t(); }
 
             //! Returns a color from an image at pixel (s,t,r,m)
-            osg::Vec4f operator()(int s, int t, int r=0, int m=0) const {
+            inline osg::Vec4f operator()(int s, int t, int r=0, int m=0) const {
                 osg::Vec4f temp;
                 _read(this, temp, s, t, r, m);
                 return temp;
             }
 
-            void operator()(osg::Vec4f& output, int s, int t, int r=0, int m=0) const {
+            inline void operator()(osg::Vec4f& output, int s, int t, int r=0, int m=0) const {
                 _read(this, output, s, t, r, m);
             }
 
             //! Returns a color from an image at pixel (s,t,r,m)
-            osg::Vec4f operator()(unsigned s, unsigned t, unsigned r=0, int m=0) const {
+            inline osg::Vec4f operator()(unsigned s, unsigned t, unsigned r=0, int m=0) const {
                 osg::Vec4f temp;
                 _read(this, temp, s, t, r, m);
                 return temp;
             }
-            void operator()(osg::Vec4f& output, unsigned s, unsigned t, int r=0, int m=0) const {
+            inline void operator()(osg::Vec4f& output, unsigned s, unsigned t, int r=0, int m=0) const {
                 _read(this, output, s, t, r, m);
             }
 
@@ -437,8 +439,8 @@ namespace osgEarth { namespace Util
                     _image->getMipmapData(m-1) + (s>>m)*_colBytes + (t>>m)*(_rowBytes>>m) + r*(_imageBytes>>m);
             }
 
-            //typedef void (*ReaderFunc)(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m);
-            typedef std::function<void(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m)> ReaderFunc;
+            typedef void (*ReaderFunc)(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m);
+            //typedef std::function<void(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m)> ReaderFunc;
             ReaderFunc _read;
             const osg::Image* _image;
             unsigned _colBytes;
@@ -483,11 +485,11 @@ namespace osgEarth { namespace Util
             void assign(const osg::Vec4& c, int r);
 
             /** Writes a color to a pixel. */
-            void operator()(const osg::Vec4& c, int s, int t, int r=0, int m=0) {
+            inline void operator()(const osg::Vec4& c, int s, int t, int r=0, int m=0) {
                 (*_writer)(this, c, s, t, r, m );
             }
 
-            void f(const osg::Vec4& c, float s, float t, int r=0, int m=0) {
+            inline  void f(const osg::Vec4& c, float s, float t, int r=0, int m=0) {
                 this->operator()( c,
                     (int)(s * (float)(_image->s()-1)),
                     (int)(t * (float)(_image->t()-1)),

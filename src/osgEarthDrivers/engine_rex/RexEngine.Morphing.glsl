@@ -1,5 +1,3 @@
-#version $GLSL_VERSION_STR
-
 #pragma vp_name       REX Engine - Morphing
 #pragma vp_entryPoint oe_rex_morph
 #pragma vp_location   vertex_model
@@ -11,13 +9,9 @@
 #pragma import_defines(OE_ELEVATION_CONSTRAINT_TEX)
 #pragma import_defines(OE_ELEVATION_CONSTRAINT_TEX_MATRIX)
 
-// stage
-vec3 vp_Normal;
-
-vec4 oe_layer_tilec;
-
+out vec3 vp_Normal;
+out vec4 oe_layer_tilec;
 out float oe_rex_morphFactor;
-
 flat out int oe_terrain_vertexMarker;
 
 uniform vec2  oe_tile_morph;

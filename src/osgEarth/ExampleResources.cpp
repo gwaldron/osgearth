@@ -335,13 +335,28 @@ MapNodeHelper::loadWithoutControls(
         myReadOptions->setOptionString(str);
     }
 
-    // GL4 rendering?
-    if (args.read("--gl4") || args.read("--use-gl4"))
+    // NVGL4 rendering?
+    if (args.read("--nvgl") || args.read("--gl4") || args.read("--use-gl4"))
     {
+        GLUtils::useNVGL(true);
+
         if (!myReadOptions.valid())
             myReadOptions = new osgDB::Options();
 
-        myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_GL4");
+        myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_NVGL");
+    }
+
+    // caching?
+    if (args.read("--cache-only"))
+    {
+        auto cp = Registry::instance()->overrideCachePolicy().get();
+        cp.usage() = CachePolicy::USAGE_CACHE_ONLY;
+        Registry::instance()->setOverrideCachePolicy(cp);
+    }
+
+    if (args.read("--no-cache"))
+    {
+        Registry::instance()->setOverrideCachePolicy(CachePolicy::NO_CACHE);
     }
 
     // read in the Earth file:
@@ -433,11 +448,7 @@ MapNodeHelper::loadWithoutControls(
         if (viewer->getRealizeOperation())
             op->_ops.push_back(viewer->getRealizeOperation());
 
-#ifdef OSG_GL3_AVAILABLE
         GL3RealizeOperation* rop = new GL3RealizeOperation();
-#else
-        CustomRealizeOperation* rop = new GL3RealizeOperation();
-#endif
         if (vsync.isSet())
             rop->setSyncToVBlank(vsync.get());
 
@@ -472,10 +483,12 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
         myReadOptions->setOptionString(str);
     }
 
-    // GL4 rendering?
-    if (args.read("--gl4") || args.read("--use-gl4"))
+    // NVGL rendering?
+    if (args.read("--nvgl") || args.read("--gl4") || args.read("--use-gl4"))
     {
-        myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_GL4");
+        GLUtils::useNVGL(true);
+
+        myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_NVGL");
     }
 
     // read in the Earth file:

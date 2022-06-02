@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_entryPoint oe_pick_encodeObjectID
 #pragma vp_location   vertex_clip
 
@@ -40,11 +37,6 @@ void oe_pick_encodeObjectID(inout vec4 vertex)
 
 
 [break]
-
-
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_entryPoint oe_pick_renderEncodedObjectID
 #pragma vp_location   fragment_output
 #pragma vp_order      last

@@ -74,14 +74,9 @@ REGISTER_OSGEARTH_LAYER(vegetation, VegetationLayer);
 
 // TODO LIST
 //
-
 //  - BUG: Close/Open VegLayer doesn't work
-
-//  - Move normal map conversion code out of here, and move towards a "MaterialTextureSet"
-//    kind of setup that will support N material textures at once.
 //  - FEATURE: automatically generate billboards? Imposters? Other?
 //  - [IDEA] programmable SSE for models?
-//  - [PERF] thin out distant instances automatically in large tiles
 //  - [PERF] cull by "horizon" .. e.g., the lower you are, the fewer distant trees...?
 //  - variable spacing or clumping by asset...?
 //  - make the noise texture bindless as well? Stick it in the arena? Why not.
@@ -105,7 +100,6 @@ VegetationLayer::Options::getConfig() const
     colorLayer().set(conf, "color_layer");
     biomeLayer().set(conf, "biomes_layer");
 
-    conf.set("color_min_saturation", colorMinSaturation());
     conf.set("alpha_to_coverage", alphaToCoverage());
 
     //TODO: groups
@@ -118,41 +112,31 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 {
     // defaults:
     alphaToCoverage().setDefault(true);
-    maxSSE().setDefault(150.0f);
 
     colorLayer().get(conf, "color_layer");
     biomeLayer().get(conf, "biomes_layer");
 
-    conf.get("color_min_saturation", colorMinSaturation());
     conf.get("alpha_to_coverage", alphaToCoverage());
-    conf.get("max_sse", maxSSE());
 
     // defaults for groups:
     groups().resize(NUM_ASSET_GROUPS);
 
     if (AssetGroup::TREES < NUM_ASSET_GROUPS)
     {
-        groups()[AssetGroup::TREES].enabled() = true;
-        groups()[AssetGroup::TREES].castShadows() = true;
-        groups()[AssetGroup::TREES].maxRange() = 4000.0f;
-        groups()[AssetGroup::TREES].lod() = 14;
-        groups()[AssetGroup::TREES].count() = 4096;
-        //groups()[AssetGroup::TREES].maxRange() = 8000.0f;
-        //groups()[AssetGroup::TREES].lod() = 13;
-        //groups()[AssetGroup::TREES].count() = 16384;
-        groups()[AssetGroup::TREES].spacing() = Distance(15.0f, Units::METERS);
-        groups()[AssetGroup::TREES].maxAlpha() = 0.15f;
+        groups()[AssetGroup::TREES].lod().setDefault(14);
+        groups()[AssetGroup::TREES].enabled().setDefault(true);
+        groups()[AssetGroup::TREES].castShadows().setDefault(true);
+        groups()[AssetGroup::TREES].maxRange().setDefault(4000.0f);
+        groups()[AssetGroup::TREES].density().setDefault(1.0f);
     }
 
     if (AssetGroup::UNDERGROWTH < NUM_ASSET_GROUPS)
     {
-        groups()[AssetGroup::UNDERGROWTH].enabled() = true;
-        groups()[AssetGroup::UNDERGROWTH].castShadows() = false;
-        groups()[AssetGroup::UNDERGROWTH].maxRange() = 75.0f;
-        groups()[AssetGroup::UNDERGROWTH].lod() = 19;
-        groups()[AssetGroup::UNDERGROWTH].count() = 4096;
-        groups()[AssetGroup::UNDERGROWTH].spacing() = Distance(1.0f, Units::METERS);
-        groups()[AssetGroup::UNDERGROWTH].maxAlpha() = 0.75f;
+        groups()[AssetGroup::UNDERGROWTH].lod().setDefault(19);
+        groups()[AssetGroup::UNDERGROWTH].enabled().setDefault(true);
+        groups()[AssetGroup::UNDERGROWTH].castShadows().setDefault(false);
+        groups()[AssetGroup::UNDERGROWTH].maxRange().setDefault(75.0f);
+        groups()[AssetGroup::UNDERGROWTH].density().setDefault(1.0f);
     }
 
     ConfigSet groups_c = conf.child("groups").children();
@@ -170,12 +154,14 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         {
             Group& group = groups()[g];
             group_c.get("enabled", group.enabled());
-            group_c.get("spacing", group.spacing());
             group_c.get("max_range", group.maxRange());
+            group_c.get("density", group.density());
             group_c.get("lod", group.lod());
-            group_c.get("count", group.count());
             group_c.get("cast_shadows", group.castShadows());
-            group_c.get("max_alpha", group.maxAlpha());
+
+            if (group_c.value("lod") == "auto") {
+                group.lod() = 0;
+            }
         }
     }
 }
@@ -183,7 +169,9 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 //........................................................................
 
 bool
-VegetationLayer::LayerAcceptor::acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const
+VegetationLayer::LayerAcceptor::acceptLayer(
+    osg::NodeVisitor& nv,
+    const osg::Camera* camera) const
 {
     // if this is a shadow camera and the layer is configured to cast shadows, accept it.
     if (CameraUtils::isShadowCamera(camera))
@@ -204,7 +192,7 @@ VegetationLayer::LayerAcceptor::acceptLayer(osg::NodeVisitor& nv, const osg::Cam
 bool
 VegetationLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 {
-     return _layer->hasGroupAtLOD(key.getLOD());
+     return _layer->hasEnabledGroupAtLOD(key.getLOD());
 }
 
 //........................................................................
@@ -214,6 +202,7 @@ VegetationLayer::init()
 {
     PatchLayer::init();
 
+    _biomeRevision = 0;
     setAcceptCallback(new LayerAcceptor(this));
 
     _requestMultisampling = false;
@@ -230,7 +219,7 @@ VegetationLayer::openImplementation()
 {
     // GL version requirement
     if (Capabilities::get().getGLSLVersion() < 4.6f ||
-        Capabilities::get().supportsUnifiedNV() == false)
+        Capabilities::get().supportsNVGL() == false)
     {
         return Status(Status::ResourceUnavailable, "Requires NVIDIA GL 4.6");
     }
@@ -304,24 +293,31 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 void
 VegetationLayer::dirty()
 {
-    _tiles.scoped_lock([this]() {
-        _tiles.clear(); });
+    _tiles.scoped_lock([this]()
+        {
+            _tiles.clear(); 
+            _placeholders.clear();
+        });
 
-    _cameraState.scoped_lock([this]() {
-        _cameraState.clear(); });
+    _cameraState.scoped_lock([this]()
+        {
+            _cameraState.clear();
+        });
 }
 
 void
 VegetationLayer::setSSEScales(const osg::Vec4f& value)
 {
-    _pixelScalesU->set(value);
+    if (_pixelScalesU.valid())
+        _pixelScalesU->set(value);
 }
 
 osg::Vec4f
 VegetationLayer::getSSEScales() const
 {
     osg::Vec4f value;
-    _pixelScalesU->get(value);
+    if (_pixelScalesU.valid())
+        _pixelScalesU->get(value);
     return value;
 }
 
@@ -385,12 +381,15 @@ VegetationLayer::getCastShadows() const
 }
 
 bool
-VegetationLayer::hasGroupAtLOD(unsigned lod) const
+VegetationLayer::hasEnabledGroupAtLOD(unsigned lod) const
 {
     for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
     {
-        if (options().groups()[i].lod() == lod)
+        if (options().groups()[i].lod() == lod &&
+            options().groups()[i].enabled() == true)
+        {
             return true;
+        }
     }
     return false;
 }
@@ -519,7 +518,8 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
         for (int g = 0; g < options().groups().size(); ++g)
         {
             Options::Group& group = options().group((AssetGroup::Type)g);
-            if (!group.lod().isSet())
+            if (group.lod() == 0)
+            //if (!group.lod().isSet())
             {
                 unsigned bestLOD = 0;
                 for (unsigned lod = 1; lod <= 99; ++lod)
@@ -595,7 +595,6 @@ VegetationLayer::buildStateSets()
 
     // Custom shaders:
     VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    vp->addGLSLExtension("GL_ARB_gpu_shader_int64");
     ProceduralShaders shaders;
     shaders.load(vp, shaders.Vegetation);
 
@@ -651,6 +650,7 @@ VegetationLayer::configureTrees()
         for (int i = 0; i < parts; ++i)
         {
             geom[i] = new osg::Geometry();
+            geom[i]->setName("Tree impostor");
             geom[i]->setUseVertexBufferObjects(true);
             geom[i]->setUseDisplayList(false);
 
@@ -677,10 +677,11 @@ VegetationLayer::configureTrees()
                     { 0, ymin, b.zMax() }
                 };
 
-                const osg::Vec3f normals[8] = {
-                    {0,-1,0}, {0,-1,0}, {0,-1,0}, {0,-1,0},
-                    {1,0,0}, {1,0,0}, {1,0,0}, {1,0,0}
+                osg::Vec3f normals[8] = {
+                    {-1,0,1}, {1,0,1}, {1,0,2}, {-1,0,2},
+                    {0,-1,1}, {0,1,1}, {0,1,2}, {0,-1,2}
                 };
+                for (int i = 0; i < 8; ++i) normals[i].normalize();
 
                 const osg::Vec2f uvs[8] = {
                     {0,0},{1,0},{1,1},{0,1},
@@ -688,21 +689,23 @@ VegetationLayer::configureTrees()
                 };
 
                 const osg::Vec3f flexors[8] = {
-                    {0,0,0}, {0,0,1}, {1,0,0}, {-1,0,1},
-                    {0,0,0}, {0,0,1}, {0,1,0}, {0,-1,1}
+                    {0,0,0}, {0,0,0}, {1,0,1}, {-1,0,1},
+                    {0,0,0}, {0,0,0}, {0,1,1}, {0,-1,1}
                 };
 
                 geom[i]->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
-                geom[i]->setVertexArray(new osg::Vec3Array(8, verts));
-                geom[i]->setNormalArray(new osg::Vec3Array(8, normals));
-                geom[i]->setColorArray(new osg::Vec4Array(1, colors), osg::Array::BIND_OVERALL);
-                geom[i]->setTexCoordArray(0, new osg::Vec2Array(8, uvs));
-                geom[i]->setTexCoordArray(3, new osg::Vec3Array(8, flexors));
+                geom[i]->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, verts));
+                geom[i]->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, normals));
+                geom[i]->setColorArray(new osg::Vec4Array(osg::Array::BIND_OVERALL, 1, colors));
+                geom[i]->setTexCoordArray(0, new osg::Vec2Array(osg::Array::BIND_PER_VERTEX, 8, uvs));
+                geom[i]->setTexCoordArray(3, new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, flexors));
 
                 if (textures.size() > 0)
                     ss->setTextureAttribute(0, textures[0], 1); // side albedo
-                if (textures.size() > 1)
-                    ss->setTextureAttribute(1, textures[1], 1); // side normal
+
+                // No normal texture support - it looks much better without it.
+                //if (textures.size() > 1)
+                //    ss->setTextureAttribute(1, textures[1], 1); // side normal
             }
             else if (i == 1)
             {
@@ -717,24 +720,29 @@ VegetationLayer::configureTrees()
                     {xmax, ymax, zmid},
                     {xmin, ymax, zmid}
                 };
-                const osg::Vec3f normals[4] = {
-                    {0,0,1}, {0,0,1}, {0,0,1}, {0,0,1}
+                osg::Vec3f normals[4] = {
+                    {-1,-1,2}, {1,-1,2}, {1,1,2}, {-1,1,2}
+                    //{0,0,1}, {0,0,1}, {0,0,1}, {0,0,1}
                 };
+                for (int i = 0; i < 4; ++i) normals[i].normalize();
+
                 const osg::Vec2f uvs[4] = {
                     {0,0}, {1,0}, {1,1}, {0,1}
                 };
 
                 geom[i]->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 6, &indices[0]));
-                geom[i]->setVertexArray(new osg::Vec3Array(4, verts));
-                geom[i]->setNormalArray(new osg::Vec3Array(4, normals));
-                geom[i]->setColorArray(new osg::Vec4Array(1, colors), osg::Array::BIND_OVERALL);
-                geom[i]->setTexCoordArray(0, new osg::Vec2Array(4, uvs));
-                geom[i]->setTexCoordArray(3, new osg::Vec3Array(4)); // flexors
+                geom[i]->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, verts));
+                geom[i]->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, normals));
+                geom[i]->setColorArray(new osg::Vec4Array(osg::Array::BIND_OVERALL, 1, colors));
+                geom[i]->setTexCoordArray(0, new osg::Vec2Array(osg::Array::BIND_PER_VERTEX, 4, uvs));
+                geom[i]->setTexCoordArray(3, new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4)); // flexors
 
                 if (textures.size() > 2)
                     ss->setTextureAttribute(0, textures[2], 1); // top albedo
-                if (textures.size() > 3)
-                    ss->setTextureAttribute(1, textures[3], 1); // top normal
+
+                // No normal texture support - it looks much better without it.
+                //if (textures.size() > 3)
+                //    ss->setTextureAttribute(1, textures[3], 1); // top normal
             }
             group->addChild(geom[i]);
         }
@@ -760,6 +768,7 @@ VegetationLayer::configureGrass()
         constexpr unsigned indiciesPerInstance = 54;
 
         osg::Geometry* out_geom = new osg::Geometry();
+        out_geom->setName("Grass impostor");
         out_geom->setUseVertexBufferObjects(true);
         out_geom->setUseDisplayList(false);
 
@@ -835,9 +844,9 @@ VegetationLayer::configureGrass()
 
         osg::StateSet* ss = out_geom->getOrCreateStateSet();
         if (textures.size() > 0)
-            ss->setTextureAttribute(0, textures[0], 1);
+            ss->setTextureAttribute(0, textures[0], 1); // side albedo
         if (textures.size() > 1)
-            ss->setTextureAttribute(1, textures[1], 1);
+            ss->setTextureAttribute(1, textures[1], 1); // side normal
 
         return out_geom;
     };
@@ -926,14 +935,21 @@ VegetationLayer::reset()
     BiomeManager& biomeMan = getBiomeLayer()->getBiomeManager();
     _biomeRevision = biomeMan.getRevision();
 
-    _assets.scoped_lock([this]() { 
-        _assets.clear(); });
+    _assets.scoped_lock([this]()
+        {
+            _assets.clear();
+        });
 
-    _tiles.scoped_lock([this]() {
-        _tiles.clear(); });
+    _tiles.scoped_lock([this]()
+        {
+            _tiles.clear();
+            _placeholders.clear();
+        });
 
-    _cameraState.scoped_lock([this]() {
-        _cameraState.clear(); });
+    _cameraState.scoped_lock([this]()
+        {
+            _cameraState.clear();
+        });
 }
 
 // random-texture channels
@@ -963,6 +979,7 @@ VegetationLayer::createDrawableAsync(
     return Job().dispatch<osg::ref_ptr<ChonkDrawable>>(function);
 }
 
+
 const std::vector<VegetationLayer::Placement>
 VegetationLayer::getAssetPlacements(
     const TileKey& key,
@@ -979,6 +996,8 @@ VegetationLayer::getAssetPlacements(
     //   - would need to be in a background thread I'm sure
     // - caching
     // etc.
+
+    //bool debug = key.is(14, 6706, 4643);
 
     std::vector<Placement> result;
 
@@ -1014,7 +1033,9 @@ VegetationLayer::getAssetPlacements(
         {
             lifemap = getLifeMapLayer()->createImage(q_key, progress);
             if (lifemap.valid())
+            {
                 key.getExtent().createScaleBias(q_key.getExtent(), lifemap_sb);
+            }
         }
     }
 
@@ -1063,7 +1084,6 @@ VegetationLayer::getAssetPlacements(
         // if it's empty, bail out (and probably return later)
         if (groupAssets.empty())
         {
-            OE_DEBUG << LC << "key=" << key.str() << "; asset list is empty for group " << group << std::endl;
             return std::move(result);
         }
     }
@@ -1075,13 +1095,26 @@ VegetationLayer::getAssetPlacements(
     ImageUtils::PixelReader readNoise(_noiseTex->getImage(0));
     readNoise.setSampleAsRepeatingTexture(true);
 
-    unsigned max_instances = options().group(group).count().get();
-
-    using Index = RTree<double, double, 2>;
+    struct CollisionData 
+    {
+        double x, y, radius;
+    };
+    using Index = RTree<CollisionData, double, 2>;
     Index index;
 
-    std::default_random_engine gen(key.hash());
+    std::minstd_rand0 gen(key.hash());
     std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
+
+    unsigned max_instances = 4096;
+
+    bool allow_overlap = (group == AssetGroup::UNDERGROWTH);
+
+    float packing_density = options().group(group).density().get();
+
+    if (allow_overlap)
+    {
+        max_instances = (unsigned)((float)max_instances * packing_density);
+    }
 
     // reserve some memory, maybe more than we need
     result.reserve(max_instances);
@@ -1097,11 +1130,11 @@ VegetationLayer::getAssetPlacements(
     osg::Vec4f biomemap_value;
     std::vector<double> hits;
     const double s2inv = 1.0 / sqrt(2.0);
-    osg::BoundingBox box;
 
     auto catalog = getBiomeLayer()->getBiomeCatalog();
 
     // determine a local tile bbox size for collisions and uv generation
+    // note. This doesn't take elevation data into account. Does that matter?
     auto& ex = key.getExtent();
     GeoPoint centroid = ex.getCentroid();
     osg::ref_ptr<const SpatialReference> ltp = ex.getSRS()->createTangentPlaneSRS(centroid.vec3d());
@@ -1170,7 +1203,7 @@ VegetationLayer::getAssetPlacements(
         // RNG with normal distribution between approx +1/-1
         std::normal_distribution<float> normal_dist(lush, 1.0f / 6.0f);
         lush = clamp(normal_dist(gen), 0.0f, 1.0f);
-
+        
         int assetIndex = clamp(
             (int)(lush*(float)assetInstances.size()),
             0,
@@ -1182,11 +1215,11 @@ VegetationLayer::getAssetPlacements(
 
         // if there's no geometry... bye
         if (asset->chonk() == nullptr)
+        {
             continue;
+        }
 
-        osg::Vec3f scale(1, 1, 1);
-
-        box = asset->chonk()->getBound();
+        osg::Vec3d scale(1, 1, 1);
 
         // hack. assume an explicit width/height means this is a grass billboard..
         // TODO: find another way.
@@ -1208,7 +1241,7 @@ VegetationLayer::getAssetPlacements(
         }
 
         // allow overlap for "billboard" models (i.e. grasses).
-        bool allow_overlap = isGrass;
+        //bool allow_overlap = isGrass;
 
         // apply instance-specific density adjustment:
         density *= instance.coverage();
@@ -1230,9 +1263,6 @@ VegetationLayer::getAssetPlacements(
             scale *= edge_scale;
         }
 
-        box._min = osg::componentMultiply(box._min, scale);
-        box._max = osg::componentMultiply(box._max, scale);
-
         // tile-local coordinates of the position:
         local.set(
             local_bbox.xMin() + u * local_width,
@@ -1242,24 +1272,47 @@ VegetationLayer::getAssetPlacements(
 
         if (!allow_overlap)
         {
-            // To prevent overlap, write positions and radii
-            // to an r-tree. 
+            // To prevent overlap, write positions and radii to an r-tree. 
             // TODO: consider using a Blend2d raster to update the 
             // density/lifemap raster as we place objects..?
             pass = false;
 
-            float radius = 0.5f*(box.xMax() - box.xMin());
+            // scale the asset bounding box in preparation for collision:
+            const osg::BoundingBoxd assetbbox = asset->boundingBox();
+
+            // radius of the scaled bounding box.
+            double radius = 0.5 * std::max(
+                scale.x() * (assetbbox.xMax() - assetbbox.xMin()),
+                scale.y() * (assetbbox.yMax() - assetbbox.yMin())
+            );
 
             // adjust collision radius based on density.
             // i.e., denser areas allow vegetation to be closer.
-            float search_radius = mix(radius*3.0f, radius*0.25f, density);
+            double density_mix = density * packing_density;
+            double search_radius = mix(radius*3.0f, radius*0.2f, density_mix);
+            double search_radius_2 = search_radius * search_radius;
 
-            if (index.KNNSearch(local.ptr(), &hits, nullptr, 1, search_radius) == 0)
+            bool collision = false;
+
+            auto collision_check = [&local, &search_radius_2, &collision](const CollisionData& c)
             {
-                double r = radius * s2inv;
-                double a_min[2] = { local.x() - r, local.y() - r };
-                double a_max[2] = { local.x() + r, local.y() + r };
-                index.Insert(a_min, a_max, radius);
+                double dx = local.x() - c.x;
+                double dy = local.y() - c.y;
+                double dist2 = (dx * dx + dy * dy) - (c.radius*c.radius);
+                collision = (dist2 < search_radius_2);
+                return !collision; // stop at first collision
+            };
+
+            double a_min[2] = { local.x() - search_radius, local.y() - search_radius };
+            double a_max[2] = { local.x() + search_radius, local.y() + search_radius };
+            
+            index.Search(a_min, a_max, collision_check);
+
+            if (!collision)
+            {
+                a_min[0] = local.x() - radius, a_min[1] = local.y() - radius;
+                a_max[0] = local.x() + radius, a_max[1] = local.y() + radius;
+                index.Insert(a_min, a_max, { local.x(), local.y(), radius });
                 pass = true;
             }
         }
@@ -1268,7 +1321,7 @@ VegetationLayer::getAssetPlacements(
         {
             // good to go, generate a random rotation and record the position.
             float rotation = rand_float(gen) * 3.1415927 * 2.0;
-
+            
             map_points.emplace_back(
                 e.xMin() + u * e.width(), e.yMin() + v * e.height(), 0
             );
@@ -1290,7 +1343,7 @@ VegetationLayer::getAssetPlacements(
         Distance(),
         nullptr,
         nullptr,
-        0.0f); // store zero upon failure
+        0.0f); // store zero upon failure?
 
     // copy the clamped map points back over
     for (std::size_t i = 0; i < map_points.size(); ++i)
@@ -1322,12 +1375,16 @@ VegetationLayer::createDrawable(
 
     for (auto& p : placements)
     {
-        osg::Matrixf xform;
-        xform.makeTranslate(p.localPoint().x(), p.localPoint().y(), p.mapPoint().z());
-        xform.preMultRotate(osg::Quat(p.rotation(), ZAXIS));
-        xform.preMultScale(p.scale());
+        osg::Matrixd xform;
 
-        result->add(p.asset()->chonk(), xform, p.uv());
+        if (p.mapPoint().z() < FLT_MAX)
+        {
+            xform.makeTranslate(p.localPoint().x(), p.localPoint().y(), p.mapPoint().z());
+            xform.preMultRotate(osg::Quat(p.rotation(), ZAXIS));
+            xform.preMultScale(p.scale());
+
+            result->add(p.asset()->chonk(), xform, p.uv());
+        }
     }
 
     return result;
@@ -1373,6 +1430,11 @@ VegetationLayer::cull(
         AssetGroup::Type group = getGroupAtLOD(entry->getKey().getLOD());
         OE_HARD_ASSERT(group != AssetGroup::UNDEFINED);
 
+        if (options().group(group).enabled() == false)
+        {
+            continue;
+        }
+
         if (CameraUtils::isShadowCamera(cv->getCurrentCamera()) &&
             options().group(group).castShadows() == false)
         {
@@ -1380,13 +1442,12 @@ VegetationLayer::cull(
         }
 
         // combine the key and revision to make a Unique ID.
-        TileKeyAndRevision tileId(
+        TileKeyAndRevision rev_tile_key(
             { entry->getKey(), entry->getRevision() }
         );
 
-        // find this camera's view on the tile, createing a slot
-        // if necessary:
-        TileView& view = cs->_views[tileId];
+        // find this camera's view on the tile, creating a slot if necessary:
+        TileView& view = cs->_views[rev_tile_key];
 
         // If this camera doesn't have a view on the tile, establish one:
         if (view._tile == nullptr)
@@ -1396,7 +1457,7 @@ VegetationLayer::cull(
             // createDrawable jobs globally.
             ScopedMutexLock lock(_tiles);
 
-            Tile::Ptr& tile = _tiles[tileId];
+            Tile::Ptr& tile = _tiles[rev_tile_key];
             if (tile == nullptr)
             {
                 // new tile; create and fire off the loading job.
@@ -1410,6 +1471,11 @@ VegetationLayer::cull(
 
             view._tile = tile;
             view._matrix = new osg::RefMatrix();
+
+            // in the meantime, get (or create) a placeholder
+            // based on the same tile key, ignoring the revision;
+            // then swap the new tile in as the next placeholder.
+            view._placeholder = _placeholders[entry->getKey()];
         }
 
         // if the data is ready, cull it:
@@ -1417,10 +1483,21 @@ VegetationLayer::cull(
         {
             view._matrix->set(entry->getModelViewMatrix());
             cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
-
             view._tile->_drawable.get()->accept(nv);
-
             cv->popModelViewMatrix();
+
+            // unref the old placeholder.
+            if (!view._loaded)
+            {
+                view._loaded = true;
+                view._placeholder = nullptr;
+
+                // update the placeholder for this tilekey.
+                _tiles.scoped_lock([&]()
+                    {
+                        _placeholders[entry->getKey()] = view._tile;
+                    });
+            }
         }
 
         // If the job exists but was canceled for some reason,
@@ -1430,9 +1507,19 @@ VegetationLayer::cull(
             view._tile = nullptr;
         }
 
+        // Still loading, so draw a placeholder if we have one.
+        // The placeholder is just an older version of the tile.
+        else if (view._placeholder != nullptr)
+        {
+            view._matrix->set(entry->getModelViewMatrix());
+            cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
+            view._placeholder->_drawable.get()->accept(nv);
+            cv->popModelViewMatrix();
+        }
+
         if (view._tile)
         {
-            active_views[tileId] = view;
+            active_views[rev_tile_key] = view;
         }
     }
 
@@ -1443,7 +1530,8 @@ VegetationLayer::cull(
     // purge unused tiles
     _tiles.scoped_lock([this]()
         {
-            for (auto it = _tiles.begin(); it != _tiles.end(); ) {
+            for (auto it = _tiles.begin(); it != _tiles.end(); )
+            {
                 if (it->second.use_count() == 1)
                     it = _tiles.erase(it);
                 else

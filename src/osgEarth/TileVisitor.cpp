@@ -95,7 +95,8 @@ bool TileVisitor::hasData(const TileKey& key)
         double min[2] = { extent.xMin(), extent.yMin() };
         double max[2] = { extent.xMax(), extent.yMax() };
         std::vector< unsigned int > hits;
-        if (_dataExtentIndex.Search(min, max, &hits, 1) == 0)
+        auto stop_on_any_hit = [](const unsigned&) { return false; }; // stop on any hit
+        if (_dataExtentIndex.Search(min, max, stop_on_any_hit) == 0)
         {
             return false;
         }
@@ -284,7 +285,7 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
     //_numTiles++;
 
     // don't let the task queue get too large...?
-    while (_arena->metrics().totalJobsPending() > 1000)
+    while (JobArena::allMetrics().totalJobsPending() > 1000)
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }

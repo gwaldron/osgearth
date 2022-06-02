@@ -126,12 +126,12 @@ main(int argc, char** argv)
     // create the empty map.
     Map* map = new Map();
 
-    // add a TMS imagery layer:
-    TMSImageLayer* imagery = new TMSImageLayer();
-    imagery->setURL("http://readymap.org/readymap/tiles/1.0.0/7/");
-    map->addLayer( imagery );
+    // add a simple imagery layer using the GDAL driver:
+    GDALImageLayer* imagery = new GDALImageLayer();
+    imagery->setURL("../data/world.tif");
+    map->addLayer(imagery);
 
-    // add a TMS elevation layer:
+    // add a TMS (Tile Map Service) elevation layer:
     TMSElevationLayer* elevation = new TMSElevationLayer();
     elevation->setURL("http://readymap.org/readymap/tiles/1.0.0/116/");
     map->addLayer( elevation );
@@ -180,7 +180,7 @@ main(int argc, char** argv)
     compElev->addLayer(elev2);
     map->addLayer(compElev);
 
-    // mask layer
+    // Terrain Constraint Layer:
     Polygon* maskGeom = new Polygon();
     maskGeom->push_back(osg::Vec3d(-111.0466, 42.0015, 0));
     maskGeom->push_back(osg::Vec3d(-111.0467, 40.9979, 0));
@@ -201,11 +201,11 @@ main(int argc, char** argv)
     }
 
     // put a model on the map atop Pike's Peak, Colorado, USA
-    osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("cow.osgt.(0,0,3).trans.osgearth_shadergen");
+    osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("../data/red_flag.osg.osgearth_shadergen");
     if (model.valid())
     {
         osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform();
-        pat->addCullCallback(new AutoScaleCallback<osg::PositionAttitudeTransform>(5.0));
+        pat->addCullCallback(new AutoScaleCallback<osg::PositionAttitudeTransform>(100));
         pat->addChild(model.get());
 
         GeoTransform* xform = new GeoTransform();

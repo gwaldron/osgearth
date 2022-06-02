@@ -582,42 +582,46 @@ SharedGeometry::~SharedGeometry()
 }
 
 const DrawElementsIndirectBindlessCommandNV&
-SharedGeometry::getOrCreateGL4Command(osg::State& state)
+SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
 {
     bool dirty = false;
 
-    unsigned gcid = state.getContextID();
-
     // first the drawelements
-    SharedDrawElements::GCState& de = _drawElements->_gc[gcid];
+    auto& de = SharedDrawElements::GLObjects::get(_drawElements->_globjects, state);
+
     if (de._ebo == nullptr || !de._ebo->valid())
     {
-        //TODO consider sharing
-        de._ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state, "Rex EBO");
+        de._ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
         de._ebo->bind();
+        de._ebo->debugLabel("REX geometry");
         de._ebo->bufferStorage(_drawElements->getTotalDataSize(), _drawElements->getDataPointer(), 0);
-        de._ebo->makeResident();
-        OE_HARD_ASSERT(de._ebo->address());
+        de._ebo->unbind();
 
         dirty = true;
     }
 
-    GCState& gs = _gc[gcid];
+    GLObjects& gs = GLObjects::get(_globjects, state);
+
     if (gs._vbo == nullptr || !gs._vbo->valid())
     {
         // supply a "size hint" for unconstrained tiles to the GLBuffer so it can try to re-use
         GLsizei size = _verts.size() * sizeof(GL4Vertex);
         if (_hasConstraints)
-            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, "REX VBO");
+            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state);
         else
-            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, size, "REX VBO");
+            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, size);
+
         gs._vbo->bind();
+        gs._vbo->debugLabel("REX geometry");
         gs._vbo->bufferStorage(size, _verts.data());
-        gs._vbo->makeResident();
-        OE_HARD_ASSERT(gs._vbo->address());
+        gs._vbo->unbind();
 
         dirty = true;
     }
+
+    // make them resident in each context separately
+    de._ebo->makeResident(state);
+    gs._vbo->makeResident(state);
 
     if (dirty)
     {
@@ -694,7 +698,8 @@ void SharedGeometry::resizeGLObjectBuffers(unsigned int maxSize)
     if (_neighborArray.valid()) _neighborArray->resizeGLObjectBuffers(maxSize);
     if (_neighborNormalArray.valid()) _neighborNormalArray->resizeGLObjectBuffers(maxSize);
 
-    _gc.resize(maxSize);
+    if (maxSize > _globjects.size())
+        _globjects.resize(maxSize);
 
     if (_drawElements.valid())
         _drawElements->resizeGLObjectBuffers(maxSize);
@@ -712,7 +717,10 @@ void SharedGeometry::releaseGLObjects(osg::State* state) const
     if (_neighborNormalArray.valid()) _neighborNormalArray->releaseGLObjects(state);
 
     if (state)
-        _gc[state->getContextID()]._vbo = nullptr;
+    {
+        auto& gl = GLObjects::get(_globjects, *state);
+        gl._vbo = nullptr;
+    }
 
     // Do nothing if state is nullptr!
     // Let nature take its course and let the GLObjectPool deal with it
@@ -881,6 +889,7 @@ osg::Geometry*
 SharedGeometry::makeOsgGeometry()
 {
     osg::Geometry* geom = new osg::Geometry();
+    geom->setName(typeid(*this).name());
     geom->setUseVertexBufferObjects(true);
     geom->setUseDisplayList(false);
 

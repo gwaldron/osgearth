@@ -76,33 +76,33 @@ namespace
 
     void setFar(osg::Matrix& m, double newFar)
     {
-        if ( osg::equivalent(m(0,3),0.0) && osg::equivalent(m(1,3),0.0) && osg::equivalent(m(2,3),0.0) )
+        if (ProjectionMatrix::isOrtho(m))
         {
-            double l,r,b,t,n,f;
-            m.getOrtho(l,r,b,t,n,f);
-            m.makeOrtho(l,r,b,t,n,newFar);
+            double l, r, b, t, n, f;
+            ProjectionMatrix::getOrtho(m, l, r, b, t, n, f);
+            ProjectionMatrix::setOrtho(m, l, r, b, t, n, newFar);
         }
         else
         {
             double v,a,n,f;
-            m.getPerspective(v,a,n,f);
-            m.makePerspective(v,a,n,newFar);
+            ProjectionMatrix::getPerspective(m, v, a, n, f);
+            ProjectionMatrix::setPerspective(m, v, a, n, newFar);
         }
     }
 
     void clampToNearFar(osg::Matrix& m, double newNear, double newFar)
     {
-        if ( osg::equivalent(m(0,3),0.0) && osg::equivalent(m(1,3),0.0) && osg::equivalent(m(2,3),0.0) )
+        if (ProjectionMatrix::isOrtho(m))
         {
-            double l,r,b,t,n,f;
-            m.getOrtho(l,r,b,t,n,f);
-            m.makeOrtho(l,r,b,t, osg::maximum(n, newNear), osg::minimum(f,newFar));
+            double l, r, b, t, n, f;
+            ProjectionMatrix::getOrtho(m, l, r, b, t, n, f);
+            ProjectionMatrix::setOrtho(m, l, r, b, t, std::max(n, newNear), std::min(f, newFar));
         }
         else
         {
             double v,a,n,f;
-            m.getPerspective(v,a,n,f);
-            m.makePerspective(v,a, osg::maximum(n, newNear), osg::minimum(f, newFar));
+            ProjectionMatrix::getPerspective(m, v, a, n, f);
+            ProjectionMatrix::setPerspective(m, v, a, std::max(n, newNear), std::min(f, newFar));
         }
     }
 
@@ -324,7 +324,6 @@ OverlayDecorator::onGroupChanged(osg::Group* group)
 
     for( unsigned i=0; i<_techniques.size(); ++i )
     {
-        //TODO: change to technique->getActive() or something
         _totalOverlayChildren += _overlayGroups[i]->getNumChildren();
 
         if ( _overlayGroups[i] == group )
@@ -539,8 +538,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     }
 
     // calculate the new RTT matrices. All techniques will share the 
-    // same set. We could probably put these in the "shared" category
-    // and use pointers..todo.
+    // same set.
     osg::Matrix rttViewMatrix, rttProjMatrix;
 
     // for a camera that cares about geometry (like the draping technique) it's important
@@ -575,7 +573,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     }
 
     // Build a polyhedron for the new frustum so we can slice it.
-    // TODO: do we really even need to slice it anymore? consider
     osgShadow::ConvexPolyhedron frustumPH;
     frustumPH.setToUnitFrustum(true, true);
     frustumPH.transform( inverseMVP, MVP );
@@ -672,9 +669,9 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
 #if 0
             // testing "lock to ortho viewport".
             bool lockToOrthoFrustum = false; // experimental
-            if ( lockToOrthoFrustum && osg::equivalent(projMatrix(3,3), 1.0) )
+            if ( lockToOrthoFrustum && ProjectionMatrix::isOrtho(projMatrix))
             {
-                projMatrix.getOrtho(xmin, xmax, ymin, ymax, orthoNear, orthoFar);
+                ProjectionMatrix::getOrtho(projMatrix, xmin, xmax, ymin, ymax, orthoNear, orthoFar);
             }
 
             else
@@ -701,7 +698,9 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
             orthoNear = 0.0; // at the rtt camera
             orthoFar  = _isGeocentric ? rttLen : (rttLen + _maxHeight);
 
-            rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, orthoNear, orthoFar);
+            ProjectionMatrix::setOrtho(rttProjMatrix, xmin, xmax, ymin, ymax, orthoNear, orthoFar,
+                ProjectionMatrix::getType(projMatrix));
+            //rttProjMatrix.makeOrtho(xmin, xmax, ymin, ymax, orthoNear, orthoFar);
 
 
             // Clamp the view frustum's N/F to the visible geometry. This clamped

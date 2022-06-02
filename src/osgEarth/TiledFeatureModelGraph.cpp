@@ -20,6 +20,7 @@
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/FeatureModelSource>
 #include <osgEarth/NetworkMonitor>
+#include <osgEarth/Registry>
 
 using namespace osgEarth;
 

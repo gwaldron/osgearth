@@ -1733,39 +1733,39 @@ GeoExtent(extent)
 }
 
 DataExtent::DataExtent(const GeoExtent& extent, const std::string &description) :
-GeoExtent(extent),
-_minLevel( 0 ),
-_maxLevel( 0 )
+    GeoExtent(extent),
+    _minLevel(0),
+    _maxLevel(19u)
 {
     _description = description;
 }
 
-DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel,  unsigned maxLevel) :
-GeoExtent(extent)
+DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel, unsigned maxLevel) :
+    GeoExtent(extent)
 {
     _minLevel = minLevel;
     _maxLevel = maxLevel;
 }
 
 DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel) :
-GeoExtent(extent),
-_maxLevel( 19u )
+    GeoExtent(extent),
+    _maxLevel(19u)
 {
     _minLevel = minLevel;
 }
 
 DataExtent::DataExtent(const GeoExtent& extent, unsigned minLevel, const std::string &description) :
-GeoExtent(extent),
-_maxLevel( 0 )
+    GeoExtent(extent),
+    _maxLevel(19u)
 {
     _minLevel = minLevel;
     _description = description;
 }
 
-DataExtent::DataExtent(const GeoExtent& extent ) :
-GeoExtent(extent),
-_minLevel( 0 ),
-_maxLevel( 19u )
+DataExtent::DataExtent(const GeoExtent& extent) :
+    GeoExtent(extent),
+    _minLevel(0),
+    _maxLevel(19u)
 {
     //nop
 }
@@ -2171,6 +2171,36 @@ osg::Object*
 GeoImage::getTrackingToken() const
 {
     return _token.get();
+}
+
+bool
+GeoImage::read(
+    GeoImage::pixel_type& output,
+    const GeoPoint& p,
+    const RasterInterpolation& interp) const
+{
+    if (!p.isValid() || !valid())
+    {
+        return false;
+    }
+
+    // transform if necessary
+    if (!p.getSRS()->isHorizEquivalentTo(getSRS()))
+    {
+        return read(output, p.transform(getSRS()), interp);
+    }
+
+    double u = (p.x() - _extent.xMin()) / _extent.width();
+    double v = (p.y() - _extent.yMin()) / _extent.height();
+
+    // out of bounds?
+    if (u < 0.0 || u > 1.0 || v < 0.0 || v > 1.0)
+    {
+        return false;
+    }
+
+    _read(output, u, v);
+    return true;
 }
 
 /***************************************************************************/

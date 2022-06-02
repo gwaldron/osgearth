@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_PROCEDURAL_ZONE
-#define OSGEARTH_PROCEDURAL_ZONE 1
+#ifndef OSGEARTH_SPLAT_ZONE
+#define OSGEARTH_SPLAT_ZONE 1
 
 #include "Export"
 #include "Surface"
@@ -130,4 +130,5 @@ namespace osgEarth { namespace Splat
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Splat::ZoneOptions);
 
-#endif // OSGEARTH_PROCEDURAL_ZONE
+#endif // OSGEARTH_SPLAT_ZONE
+

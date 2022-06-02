@@ -83,7 +83,8 @@ BiomeManager::BiomeManager() :
     _revision(0),
     _refsAndRevision_mutex("BiomeManager.refsAndRevision(OE)"),
     _residentData_mutex("BiomeManager.residentData(OE)"),
-    _lodTransitionPixelScale(8.0f)
+    _lodTransitionPixelScale(8.0f),
+    _locked(false)
 {
     // this arena will hold all the textures for loaded assets.
     _textures = new TextureArena();
@@ -133,11 +134,14 @@ BiomeManager::unref(const Biome* biome)
     if (iter == _refs.end() || iter->second == 0)
         return;
 
-    --iter->second;
-    if (iter->second == 0)
+    if (!_locked)
     {
-        ++_revision;
-        OE_INFO << LC << "Goodbye, " << biome->name().get() << std::endl;
+        --iter->second;
+        if (iter->second == 0)
+        {
+            ++_revision;
+            OE_INFO << LC << "Goodbye, " << biome->name().get() << std::endl;
+        }
     }
 }
 
@@ -210,7 +214,7 @@ BiomeManager::recalculateResidentBiomes()
             {
                 biomes_to_add.push_back(biome);
             }
-            else
+            else if (!_locked)
             {
                 biomes_to_remove.push_back(biome);
             }
@@ -449,13 +453,14 @@ BiomeManager::materializeNewAssets(
                         bbox = residentAsset->boundingBox();
                     }
 
-                    URI sideBB = assetDef->sideBillboardURI().isSet() ?
-                        assetDef->sideBillboardURI().get() :
-                        URI(assetDef->modelURI()->full() + ".side.png", assetDef->modelURI()->context());
+                    URI sideBB;
+                    if (assetDef->sideBillboardURI().isSet())
+                        sideBB = assetDef->sideBillboardURI().get();
+                    else if (assetDef->modelURI().isSet())
+                        sideBB = URI(assetDef->modelURI()->full() + ".side.png", assetDef->modelURI()->context());
 
-                    if (!sideBB.empty()) //assetDef->sideBillboardURI().isSet())
+                    if (!sideBB.empty())
                     {
-                        //const URI& uri = assetDef->sideBillboardURI().get();
                         const URI& uri = sideBB;
 
                         auto ic = texcache.find(uri);
@@ -497,13 +502,15 @@ BiomeManager::materializeNewAssets(
                             }
                         }
 
-                        URI topBB = assetDef->topBillboardURI().isSet() ?
-                            assetDef->topBillboardURI().get() :
-                            URI(assetDef->modelURI()->full() + ".top.png", assetDef->modelURI()->context());
+                        URI topBB;
+                        if (assetDef->topBillboardURI().isSet())
+                            topBB = assetDef->topBillboardURI().get();
+                        else if (assetDef->modelURI().isSet())
+                            topBB = URI(assetDef->modelURI()->full() + ".top.png", assetDef->modelURI()->context());
 
-                        if (!topBB.empty()) //assetDef->topBillboardURI().isSet())
+                        if (!topBB.empty())
                         {
-                            const URI& uri = topBB; // assetDef->topBillboardURI().get();
+                            const URI& uri = topBB;
 
                             auto ic = texcache.find(uri);
                             if (ic != texcache.end())

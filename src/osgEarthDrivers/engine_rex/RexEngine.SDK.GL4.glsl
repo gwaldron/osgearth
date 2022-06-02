@@ -1,4 +1,3 @@
-#version 460
 #pragma include RexEngine.GL4.glsl
 #pragma vp_name Rex Terrain SDK
 /**
@@ -14,16 +13,27 @@ vec4 oe_tile_key;
 
 uniform vec2 oe_tile_elevTexelCoeff;
 
+// Gets the coordinate to use for elevation sampling.
+vec2 oe_terrain_getElevationCoord(in vec2 uv)
+{
+    return uv
+        * oe_tile_elevTexelCoeff.x * oe_tile[oe_tileID].elevMat[0][0]     // scale
+        + oe_tile_elevTexelCoeff.x * oe_tile[oe_tileID].elevMat[3].st     // bias
+        + oe_tile_elevTexelCoeff.y;
+}
+
+// Gets the handle to use for elevation sampling
+uint64_t oe_terrain_getElevationHandle()
+{
+    return oe_terrain_tex[oe_tile[oe_tileID].elevIndex];
+}
+
 // Sample the elevation data at a UV tile coordinate.
 float oe_terrain_getElevation(in vec2 uv)
 {
     // Texel-level scale and bias allow us to sample the elevation texture
     // on texel center instead of edge.
-    vec2 uv_scaledBiased = uv
-        * oe_tile_elevTexelCoeff.x * oe_tile[oe_tileID].elevMat[0][0]     // scale
-        + oe_tile_elevTexelCoeff.x * oe_tile[oe_tileID].elevMat[3].st     // bias
-        + oe_tile_elevTexelCoeff.y;
-
+    vec2 uv_scaledBiased = oe_terrain_getElevationCoord(uv);
     return texture(sampler2D(oe_terrain_tex[oe_tile[oe_tileID].elevIndex]), uv_scaledBiased).r;
 }
 
@@ -85,6 +95,7 @@ vec4 oe_terrain_getNormalAndCurvature(in uint64_t handle, in vec2 uv)
     return vec4(normalize(n.xyz), curv);
 }
 
+#ifndef VP_FRAGMENT_STAGE
 /**
  * Scales repeating texture coordinate such that they are [0..1]
  * at a specific reference tile LOD. 
@@ -126,3 +137,4 @@ vec4 oe_terrain_scaleCoordsAndTileKeyToRefLOD(in vec2 tc, in float refLOD)
 
     return vec4(result, a);
 }
+#endif

@@ -66,7 +66,7 @@ ElevationPool::MapCallbackAdapter::onMapModelChanged(const MapModelChange& c)
 }
 
 ElevationPool::ElevationPool() :
-    _index(NULL),
+    _index(nullptr),
     _tileSize(257),
     _mapDataDirty(true),
     _workers(0),
@@ -80,11 +80,15 @@ ElevationPool::ElevationPool() :
     _mapCallback = new MapCallbackAdapter();
 }
 
-typedef RTree<unsigned, double, 2> MaxLevelIndex;
+namespace
+{
+    using MaxLevelIndex = RTree<unsigned, double, 2>;
+}
 
 ElevationPool::~ElevationPool()
 {
-    setMap(NULL);
+    setMap(nullptr);
+
     if (_index)
         delete static_cast<MaxLevelIndex*>(_index);
 }
@@ -225,15 +229,17 @@ ElevationPool::getLOD(double x, double y) const
 {
     MaxLevelIndex* index = static_cast<MaxLevelIndex*>(_index);
 
-    double minv[2], maxv[2];
-    minv[0] = maxv[0] = x, minv[1] = maxv[1] = y;
-    std::vector<unsigned> hits;
-    index->Search(minv, maxv, &hits, 99);
+    double point[2] = { x, y };
     int maxiestMaxLevel = -1;
-    for(auto h = hits.begin(); h != hits.end(); ++h)
-    {
-        maxiestMaxLevel = osg::maximum(maxiestMaxLevel, (int)*h);
-    }
+
+    index->Search(
+        point, point,
+        [&maxiestMaxLevel](const unsigned& level)
+        {
+            maxiestMaxLevel = std::max(maxiestMaxLevel, (int)level);
+            return true;
+        });
+
     return maxiestMaxLevel;
 }
 
@@ -346,7 +352,7 @@ ElevationPool::getOrCreateRaster(
                 hf.get(),
                 &resolutions,
                 keyToUse,
-                map->getProfileNoVDatum(), // want HAE for terrain building...? TODO
+                map->getProfileNoVDatum(),
                 map->getElevationInterpolation(),
                 progress );
 
@@ -526,9 +532,6 @@ ElevationPool::Envelope::sampleMapCoords(
 
     ScopedAtomicCounter counter(_pool->_workers);
 
-    //TODO: TESTING..?
-    //ws = NULL;
-
     double u, v;
     double rx, ry;
     int tx, ty;
@@ -652,9 +655,6 @@ ElevationPool::sampleMapCoords(
 
     Envelope::QuickCache quickCache;
     Envelope::QuickSampleVars qvars;
-
-    //TODO: TESTING..?
-    //ws = NULL;
 
     unsigned tw, th;
     double rx, ry;
@@ -1080,9 +1080,12 @@ AsyncElevationSampler::AsyncElevationSampler(
     unsigned numThreads) :
 
     _map(map),
-    _arena("oe.AsyncElevationSampler", numThreads)
+    _arena(nullptr)
 {
-    //nop
+    _arena = JobArena::get("oe.asyncelevation");
+
+    unsigned c = _arena->getConcurrency();
+    _arena->setConcurrency(std::max(c, numThreads));
 }
 
 Future<ElevationSample>
@@ -1096,7 +1099,7 @@ AsyncElevationSampler::getSample(
     const GeoPoint& point,
     const Distance& resolution)
 {
-    return Job(&_arena).dispatch<ElevationSample>(
+    return Job(_arena).dispatch<ElevationSample>(
         [=](Cancelable* cancelable)
         {
             ElevationSample sample;

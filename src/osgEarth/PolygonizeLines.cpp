@@ -150,6 +150,7 @@ PolygonizeLinesOperator::operator()(
     bool  autoScale        = minPixelSize > 0.0f;
 
     osg::Geometry* geom  = new osg::Geometry();
+    geom->setName("PolygonizeLines");
     geom->setUseVertexBufferObjects(true);
 
     // Add the input verts to the geometry. This forms the "spine" of the
@@ -254,8 +255,6 @@ PolygonizeLinesOperator::operator()(
                 prevBufVertPtr = verts->size() - 1;
 
                 // first tex coord:
-                // TODO: revisit. I believe we have them going x = [-1..1] instead of [0..1] -gw
-                //tverts->push_back( osg::Vec2f(1.0*side, (*tverts)[i].y()) );
                 tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );
 
                 // first normal
@@ -558,8 +557,6 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
     vp->setName( SHADER_NAME );
 
     const char* vs =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "in vec3 oe_polyline_center; \n"
         "uniform float oe_polyline_scale;  \n"
         "uniform float oe_polyline_min_pixels; \n"
@@ -582,7 +579,7 @@ PolygonizeLinesOperator::installShaders(osg::Node* node) const
         "   vertex_model4.xyz = center.xyz + vector*scale; \n"
         "} \n";
 
-    vp->setFunction( "oe_polyline_scalelines", vs, ShaderComp::LOCATION_VERTEX_MODEL, 0.5f );
+    vp->setFunction( "oe_polyline_scalelines", vs, VirtualProgram::LOCATION_VERTEX_MODEL, 0.5f );
     vp->addBindAttribLocation( "oe_polyline_center", ATTR_LOCATION );
 
     // add the default scaling uniform.

@@ -18,12 +18,14 @@
  */
 #include <osgEarth/ArcGISTilePackage>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/FileUtils>
 #include <osgEarth/MVT>
 #include <osgEarth/Registry>
 #include <osgEarth/JsonUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 using namespace osgEarth::ArcGIS;
@@ -388,8 +390,8 @@ ArcGISTilePackageImageLayer::openImplementation()
 GeoImage
 ArcGISTilePackageImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    std::stringstream buf;
-    buf << options().url()->full() << "/_alllayers/";
+    std::stringstream buf;    
+    buf << osgEarth::getFullPath(options().url()->full(), "/_alllayers/");
     buf << "L" << padLeft(toString<unsigned int>(key.getLevelOfDetail()), 2) << "/";
 
     unsigned int colOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileX() / _bundleSize) * _bundleSize));
@@ -423,7 +425,7 @@ ArcGISTilePackageImageLayer::createImageImplementation(const TileKey& key, Progr
 void
 ArcGISTilePackageImageLayer::readConf()
 {
-    std::string confPath = options().url()->full() + "/conf.xml";
+    std::string confPath = options().url()->full();
 
     osg::ref_ptr<XmlDocument> doc = XmlDocument::load(confPath);
     if (doc.valid())
@@ -464,6 +466,10 @@ ArcGISTilePackageImageLayer::readConf()
         }
 
 
+    }
+    else
+    {
+        OE_WARN << LC << "Failed to load conf file from " << options().url()->full() << ".  Please ensure you are pointing to a valid conf.xml file" << std::endl;
     }
 }
 
@@ -531,7 +537,7 @@ GeoHeightField
 ArcGISTilePackageElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     std::stringstream buf;
-    buf << options().url()->full() << "/_alllayers/";
+    buf << osgEarth::getFullPath(options().url()->full(), "/_alllayers/");
     buf << "L" << padLeft(toString<unsigned int>(key.getLevelOfDetail()), 2) << "/";
 
     unsigned int colOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileX() / _bundleSize) * _bundleSize));
@@ -567,7 +573,7 @@ ArcGISTilePackageElevationLayer::createHeightFieldImplementation(const TileKey& 
 void
 ArcGISTilePackageElevationLayer::readConf()
 {
-    std::string confPath = options().url()->full() + "/conf.xml";
+    std::string confPath = options().url()->full();
 
     osg::ref_ptr<XmlDocument> doc = XmlDocument::load(confPath);
     if (doc.valid())
@@ -606,6 +612,10 @@ ArcGISTilePackageElevationLayer::readConf()
         {
             _storageFormat = STORAGE_FORMAT_COMPACTV2;
         }
+    }
+    else
+    {
+        OE_WARN << LC << "Failed to load conf file from " << options().url()->full() << ".  Please ensure you are pointing to a valid conf.xml file" << std::endl;
     }
 }
 

@@ -464,6 +464,7 @@ HorizonNode::HorizonNode()
     colors->push_back(osg::Vec4(1,0,0,0.5f));
 
     osg::Geometry* geom = new osg::Geometry();
+    geom->setName(typeid(*this).name());
     geom->setUseVertexBufferObjects(true);
 
     geom->setVertexArray(verts);

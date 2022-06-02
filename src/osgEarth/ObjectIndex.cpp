@@ -20,8 +20,11 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarth/ObjectIndex>
-#include <osgEarth/Registry>
+#include "ObjectIndex"
+#include "Capabilities"
+#include "StringUtils"
+#include "VirtualProgram"
+
 #include <osg/Geometry>
 
 using namespace osgEarth;
@@ -36,27 +39,23 @@ using namespace osgEarth;
 
 namespace
 {
-    const char* indexVertexInit =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
+    const char* indexVertexInit = R"(
+        #pragma vp_function oe_index_readObjectID, vertex_model, first
 
-        "#pragma vp_entryPoint oe_index_readObjectID \n"
-        "#pragma vp_location   vertex_model \n"
-        "#pragma vp_order      first \n"
+        uniform uint oe_index_objectid_uniform; // override objectid if > 0
+        in uint      oe_index_objectid_attr;    // Vertex attribute containing the object ID.
+        uint         oe_index_objectid;         // Stage global containing the Object ID.
 
-        "uniform uint oe_index_objectid_uniform; \n"   // override objectid if > 0
-        "in uint      oe_index_objectid_attr; \n"      // Vertex attribute containing the object ID.
-        "uint         oe_index_objectid; \n"           // Stage global containing the Object ID.
-
-        "void oe_index_readObjectID(inout vec4 vertex) \n"
-        "{ \n"
-        "    if ( oe_index_objectid_uniform > 0u ) \n"
-        "        oe_index_objectid = oe_index_objectid_uniform; \n"
-        "    else if ( oe_index_objectid_attr > 0u ) \n"
-        "        oe_index_objectid = oe_index_objectid_attr; \n"
-        "    else \n"
-        "        oe_index_objectid = 0u; \n"
-        "} \n";
+        void oe_index_readObjectID(inout vec4 vertex)
+        {
+            if ( oe_index_objectid_uniform > 0u )
+                oe_index_objectid = oe_index_objectid_uniform;
+            else if ( oe_index_objectid_attr > 0u )
+                oe_index_objectid = oe_index_objectid_attr;
+            else
+                oe_index_objectid = 0u;
+        }
+)";
 }
 
 ObjectIndex::ObjectIndex() :
@@ -68,7 +67,10 @@ _mutex("ObjectIndex(OE)")
     _oidUniformName = "oe_index_objectid_uniform";
 
     // set up the shader package.
-    _shaders.add( "ObjectIndex.vert.glsl", indexVertexInit );
+    std::string source = Stringify()
+        << "#version " << std::to_string(Capabilities::get().getGLSLVersionInt()) << "\n"
+        << indexVertexInit;
+    _shaders.add("ObjectIndex.vert.glsl", source);
 }
 
 bool
@@ -162,10 +164,48 @@ ObjectIndex::tagDrawable(osg::Drawable* drawable, ObjectID id) const
     geom->setVertexAttribArray(_attribLocation, ids);
     ids->setPreserveDataType(true);
 
-    // The tag is actually FeatureID + 1, to preserve "0" as an "empty" value.
-    // TODO: use a ObjectID generator and mapping instead.
     ids->assign( geom->getVertexArray()->getNumElements(), id );
 }
+
+ObjectID
+ObjectIndex::tagRange(osg::Drawable* drawable, osg::Referenced* object, unsigned int start, unsigned int count)
+{
+    Threading::ScopedMutexLock lock(_mutex);
+    ObjectID oid = insertImpl(object);
+    tagRange(drawable, oid, start, count);
+    return oid;
+}
+
+void
+ObjectIndex::tagRange(osg::Drawable* drawable, ObjectID id, unsigned int start, unsigned int count) const
+{
+    if (drawable == 0L)
+        return;
+
+    osg::Geometry* geom = drawable->asGeometry();
+    if (!geom)
+        return;
+
+    ObjectIDArray* ids = dynamic_cast<ObjectIDArray*>(geom->getVertexAttribArray(_attribLocation));
+    if (!ids)
+    {
+        // add a new integer attributer to store the feautre ID per vertex.
+        ids = new ObjectIDArray();
+        ids->setBinding(osg::Array::BIND_PER_VERTEX);
+        ids->setNormalize(false);
+        geom->setVertexAttribArray(_attribLocation, ids);
+        ids->setPreserveDataType(true);
+    }
+
+    for (unsigned int i = 0; i < count; ++i)
+    {
+        (*ids)[start + i] = id;
+    }
+
+    ids->dirty();
+}
+
+
 
 namespace
 {

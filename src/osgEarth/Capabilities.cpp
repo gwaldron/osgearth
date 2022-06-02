@@ -27,6 +27,7 @@
 #include <osgViewer/Version>
 #include <gdal.h>
 #include <sstream>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 
@@ -170,8 +171,14 @@ _supportsTextureBuffer  ( false ),
 _maxTextureBufferSize   ( 0 ),
 _isCoreProfile          ( true ),
 _supportsVertexArrayObjects ( false ),
-_supportsUnifiedNV(false)
+_supportsNVGL(false)
 {
+    // require OSG be built with GL3 support
+#ifndef OSG_GL3_AVAILABLE
+    OE_WARN << LC << "Warning, OpenSceneGraph does not define OSG_GL3_AVAILABLE; "
+        "the application may not function properly" << std::endl;
+#endif
+
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
 
@@ -229,6 +236,7 @@ _supportsUnifiedNV(false)
 #endif
 
         _supportsGLSL = GL2->isGlslSupported;
+        _GLSLversion = GL2->glslLanguageVersion;
 
         _vendor = std::string( reinterpret_cast<const char*>(glGetString(GL_VENDOR)) );
         OE_INFO << LC << "  GPU Vendor:        " << _vendor << std::endl;
@@ -237,7 +245,8 @@ _supportsUnifiedNV(false)
         OE_INFO << LC << "  GPU Renderer:      " << _renderer << std::endl;
 
         _version = std::string( reinterpret_cast<const char*>(glGetString(GL_VERSION)) );
-        OE_INFO << LC << "  GL/Driver Version: " << _version << std::endl;
+        OE_INFO << LC << "  GL/Driver Version: " << _version << 
+            " (" << getGLSLVersionInt() << ")" << std::endl;
 
         // Detect core profile by investigating GL_CONTEXT_PROFILE_MASK
         if ( GL2->glVersion < 3.2f )
@@ -254,17 +263,11 @@ _supportsUnifiedNV(false)
 
         // this extension implies the availability of
         // GL_NV_vertex_buffer_unified_memory (bindless buffers)
-        _supportsUnifiedNV =
+        _supportsNVGL =
             GL2->glVersion >= 4.4f &&
             osg::isGLExtensionSupported(id, "GL_NV_vertex_buffer_unified_memory") &&
             osg::isGLExtensionSupported(id, "GL_NV_shader_buffer_load") &&
             osg::isGLExtensionSupported(id, "GL_NV_bindless_multi_draw_indirect");
-
-        if (_vendor.find("NVIDIA") != std::string::npos)
-        {
-            OE_INFO << LC << "  NVIDIA unified mem:" << SAYBOOL(_supportsUnifiedNV) << std::endl;
-        }
-
 
 #if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
         glGetIntegerv( GL_MAX_TEXTURE_UNITS, &_maxFFPTextureUnits );
@@ -273,6 +276,10 @@ _supportsUnifiedNV(false)
 
         glGetIntegerv( GL_MAX_TEXTURE_IMAGE_UNITS_ARB, &_maxGPUTextureUnits );
         OE_DEBUG << LC << "  Max GPU texture units = " << _maxGPUTextureUnits << std::endl;
+
+        GLint mvoc;
+        glGetIntegerv(GL_MAX_VERTEX_VARYING_COMPONENTS_EXT, &mvoc);
+        OE_DEBUG << LC << "  Max varyings = " << mvoc << std::endl;
 
 #if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
         glGetIntegerv( GL_MAX_TEXTURE_COORDS_ARB, &_maxGPUTextureCoordSets );
@@ -315,7 +322,6 @@ _supportsUnifiedNV(false)
 
         if ( _supportsGLSL )
         {
-			_GLSLversion = GL2->glslLanguageVersion;
             OE_DEBUG << LC << "  GLSL Version = " << getGLSLVersionInt() << std::endl;
         }
 
@@ -436,6 +442,9 @@ _supportsUnifiedNV(false)
         OE_DEBUG << LC << buf.str() << std::endl;
 
         _supportsVertexArrayObjects = osg::isGLExtensionOrVersionSupported(id, "GL_ARB_vertex_array_object", 3.0);
+
+        _supportsInt64 = osg::isGLExtensionSupported(id, "GL_ARB_gpu_shader_int64");
+
     }
 }
 

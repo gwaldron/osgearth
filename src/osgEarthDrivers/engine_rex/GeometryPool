@@ -45,12 +45,14 @@ namespace osgEarth {
     {
         using namespace osgEarth;
 
+        using DrawElementsBase = osg::DrawElementsUShort;
+
         // A DrawElements with a UID.
-        class /* internal */ SharedDrawElements : public osg::DrawElementsUShort
+        class /* internal */ SharedDrawElements : public DrawElementsBase
         {
         public:
             SharedDrawElements(GLenum type) :
-                osg::DrawElementsUShort(type)
+                DrawElementsBase(type)
             {
                 //nop
             }
@@ -62,25 +64,28 @@ namespace osgEarth {
 
             void releaseGLObjects(osg::State* state) const override
             {
-                osg::DrawElementsUShort::releaseGLObjects(state);
+                DrawElementsBase::releaseGLObjects(state);
                 if (state)
-                    _gc[state->getContextID()]._ebo = nullptr;
-
+                {
+                    GLObjects::get(_globjects, *state)._ebo = nullptr;
+                }
                 // Do nothing if state is nullptr!
                 // Let nature take its course and let the GLObjectPool release it
             }
 
             void resizeGLObjectBuffers(unsigned size) override
             {
-                osg::DrawElementsUShort::resizeGLObjectBuffers(size);
-                _gc.resize(size);
+                DrawElementsBase::resizeGLObjectBuffers(size);
+                if (size > _globjects.size())
+                    _globjects.resize(size);
             }
 
-            struct GCState
+            // Shareable because they are static and bindless
+            struct GLObjects : public ShareableGLObjects
             {
-                GLBuffer::Ptr _ebo;
+                GLBuffer::Ptr _ebo; // bindless buffer
             };
-            mutable osg::buffered_object<GCState> _gc;
+            mutable osg::buffered_object<GLObjects> _globjects;
         };
 
         // Adapted from osgTerrain shared geometry class.
@@ -155,7 +160,7 @@ namespace osgEarth {
 
             const osg::BoundingBox& getBoundingBox() const { return osg::Drawable::getBoundingBox(); }
 
-            const DrawElementsIndirectBindlessCommandNV& getOrCreateGL4Command(
+            const DrawElementsIndirectBindlessCommandNV& getOrCreateNVGLCommand(
                 osg::State& state);
 
         protected:
@@ -174,12 +179,13 @@ namespace osgEarth {
 
             std::vector<GL4Vertex> _verts;
 
-            struct GCState
+            // Shareable because they are static and bindless
+            struct GLObjects : public ShareableGLObjects
             {
                 DrawElementsIndirectBindlessCommandNV _command;
                 GLBuffer::Ptr _vbo;
             };
-            mutable osg::buffered_object<GCState> _gc;
+            mutable osg::buffered_object<GLObjects> _globjects;
 
         private:
 

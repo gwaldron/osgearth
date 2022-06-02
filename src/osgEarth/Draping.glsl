@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_entryPoint oe_overlay_vertex
 #pragma vp_location   vertex_view
 
@@ -16,11 +13,6 @@ void oe_overlay_vertex(inout vec4 vertexVIEW)
 
 
 [break]
-
-
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_entryPoint oe_overlay_fragment
 #pragma vp_location   fragment_coloring
 #pragma vp_order      1.1

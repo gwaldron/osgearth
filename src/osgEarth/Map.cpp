@@ -531,7 +531,11 @@ Map::removeLayer(Layer* layer)
 
     layer->removedFromMap(this);
 
-    layer->close();
+    // Close the layer if we opened it.
+    if (layer->getOpenAutomatically())
+    {
+        layer->close();
+    }
 
     if ( layerToRemove.get() )
     {

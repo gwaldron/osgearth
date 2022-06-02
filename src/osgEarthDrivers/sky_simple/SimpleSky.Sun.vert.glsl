@@ -1,5 +1,5 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
+#version 330
+#pragma vp_name SimpleSky Sun vert shader
 
 out vec3 atmos_v3Direction; 
 

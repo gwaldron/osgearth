@@ -50,14 +50,12 @@ namespace
     static Distance default_geometryResolution(5.0, Units::DEGREES);
 
     const char* imageVS =
-        "#version " GLSL_VERSION_STR "\n"
         "out vec2 oe_ImageOverlay_texcoord; \n"
         "void oe_ImageOverlay_VS(inout vec4 vertex) { \n"
         "    oe_ImageOverlay_texcoord = gl_MultiTexCoord0.st; \n"
         "} \n";
 
     const char* imageFS =
-        "#version " GLSL_VERSION_STR "\n"
         "in vec2 oe_ImageOverlay_texcoord; \n"
         "uniform sampler2D oe_ImageOverlay_tex; \n"
         "uniform float oe_ImageOverlay_alpha; \n"
@@ -245,8 +243,8 @@ ImageOverlay::construct()
         {
             _program = new VirtualProgram;
             _program->setInheritShaders(true);
-            _program->setFunction("oe_ImageOverlay_VS", imageVS, ShaderComp::LOCATION_VERTEX_MODEL);
-            _program->setFunction("oe_ImageOverlay_FS", imageFS, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            _program->setFunction("oe_ImageOverlay_VS", imageVS, VirtualProgram::LOCATION_VERTEX_MODEL);
+            _program->setFunction("oe_ImageOverlay_FS", imageFS, VirtualProgram::LOCATION_FRAGMENT_COLORING);
         }
         mutex.unlock();
     }
@@ -368,6 +366,7 @@ osg::Node* ImageOverlay::createNode()
     osg::MatrixTransform* transform = new osg::MatrixTransform;
 
     osg::Geometry* geometry = new osg::Geometry();
+    geometry->setName(typeid(*this).name());
     geometry->setUseVertexBufferObjects(true);
 
     transform->addChild(geometry);

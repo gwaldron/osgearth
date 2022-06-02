@@ -22,6 +22,7 @@
 #include <osgEarth/Clamping>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/LineDrawable>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

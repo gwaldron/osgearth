@@ -1,13 +1,11 @@
-#version 460
-
 #pragma vp_name       GroundCover VS MODEL
 #pragma vp_entryPoint oe_GroundCover_VS_MODEL
 #pragma vp_location   vertex_model
 
 #pragma include Splat.GroundCover.Types.glsl
 
-vec3 vp_Normal;
-vec4 vp_Color;
+out vec3 vp_Normal;
+out vec4 vp_Color;
 
 struct oe_VertexSpec {
     //vec4 model;
@@ -48,9 +46,6 @@ void oe_GroundCover_VS_MODEL(inout vec4 geom_vertex)
 
 
 [break]
-#version 460
-#extension GL_ARB_gpu_shader_int64 : enable
-
 #pragma vp_name       GroundCover VS
 #pragma vp_entryPoint oe_GroundCover_VS
 #pragma vp_location   vertex_view
@@ -83,8 +78,9 @@ uniform sampler2D oe_gc_noiseTex;
 
 // Stage globals
 vec3 oe_UpVectorView;
-vec4 vp_Color;
-vec3 vp_Normal;
+
+out vec4 vp_Color;
+out vec3 vp_Normal;
 out vec4 oe_layer_tilec;
 
 out vec3 oe_gc_texCoord; // Output tx coords
@@ -313,9 +309,6 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
 
 
 [break]
-#version 430
-#extension GL_ARB_gpu_shader_int64 : enable
-
 #pragma vp_name       Land cover billboard texture application
 #pragma vp_entryPoint oe_GroundCover_FS
 #pragma vp_location   fragment_coloring
@@ -326,7 +319,7 @@ uniform float oe_gc_maxAlpha;
 uniform int oe_gc_isMultisampled;
 
 in vec3 oe_gc_texCoord;
-vec3 vp_Normal;
+in vec3 vp_Normal;
 flat in uint64_t oe_gc_texHandle;
 
 flat in uint64_t oe_gc_nmlHandle;

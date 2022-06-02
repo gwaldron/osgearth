@@ -1,5 +1,6 @@
 #version 460
-#extension GL_ARB_gpu_shader_int64 : enable
+#extension GL_NV_gpu_shader5 : enable
+
 #pragma import_defines(OE_GPUCULL_DEBUG)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
@@ -43,7 +44,7 @@ struct Instance
 {
     mat4 xform;
     vec2 local_uv;
-    float fade;
+    uint lod;
     float visibility[4];
     uint first_lod_cmd_index;
 };
@@ -112,17 +113,16 @@ void cull()
     float max_scale = max(xform[0][0], max(xform[1][1], xform[2][2]));
     float r = chonks[v].bs.w * max_scale;
 
-    // Trivially accept (at the highest LOD) anything whose bounding sphere
-    // intersects the near clip plane:
-    bool is_perspective = gl_ProjectionMatrix[3][3] < 0.01;
-    float near = gl_ProjectionMatrix[2][3] / (gl_ProjectionMatrix[2][2] - 1.0);
-    if (is_perspective && -(center_view.z + r) <= near)
+    // Trivially reject low-LOD instances that intersect the near clip plane:
+    if ((lod > 0) && (gl_ProjectionMatrix[3][3] < 0.01)) // is perspective camera
     {
-        if (lod > 0) { // reject all lower LODs
+        float near = gl_ProjectionMatrix[2][3] / (gl_ProjectionMatrix[2][2] - 1.0);
+        if (-(center_view.z + r) <= near)
+        {
             REJECT(REASON_NEARCLIP);
         }
     }
-    else
+
     {
         // find the clip-space MBR and intersect with the clip frustum:
         vec4 LL, UR, temp;
@@ -163,15 +163,6 @@ void cull()
         float pixelSize = max(dims.x, dims.y);
         float pixelSizePad = pixelSize * 0.1;
 
-#if 0
-        float minPixelSize = oe_sse * chonks[v].far_pixel_scale;
-        if (pixelSize < (minPixelSize - pixelSizePad))
-            REJECT(REASON_SSE);
-
-        float maxPixelSize = oe_sse * chonks[v].near_pixel_scale;
-        if (pixelSize > (maxPixelSize + pixelSizePad))
-            REJECT(REASON_SSE);
-#else
         float minPixelSize = oe_sse * chonks[v].far_pixel_scale * oe_lod_scale[lod];
         if (pixelSize < (minPixelSize - pixelSizePad))
             REJECT(REASON_SSE);
@@ -180,7 +171,6 @@ void cull()
         float maxPixelSize = oe_sse * near_scale;
         if (pixelSize > (maxPixelSize + pixelSizePad))
             REJECT(REASON_SSE);
-#endif
 
         if (fade == 1.0)  // good to go, set the proper fade:
         {
@@ -191,6 +181,9 @@ void cull()
         }
 #endif
     }
+
+    if (fade < 0.1)
+        return;
 
     // Pass! Set the visibility for this LOD:
     input_instances[i].visibility[lod] = fade;
@@ -217,7 +210,7 @@ void compact()
 
     // Lazy! Re-using the instance struct for render leaves..
     output_instances[offset + index] = input_instances[i];
-    output_instances[offset + index].fade = fade;
+    output_instances[offset + index].lod = lod; // .fade = fade;
 }
 
 // Entry point.

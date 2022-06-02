@@ -22,6 +22,8 @@
 #include "GLUtils"
 #include "Utils"
 #include "CameraUtils"
+#include "VirtualProgram"
+#include "Registry"
 
 #include <osg/BlendFunc>
 
@@ -295,7 +297,6 @@ ObjectIDPicker::onClick(osg::View* view, float x, float y)
 void
 ObjectIDPicker::traverse(osg::NodeVisitor& nv)
 {
-    //todo: something with the camera parameters?
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
         if (_rtt.valid() && _view.valid())

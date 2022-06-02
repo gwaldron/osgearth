@@ -56,19 +56,19 @@ MonitorUI::update(const osg::FrameStamp* fs)
             << (Memory::getProcessPeakPrivateUsage() / 1048576) << " M");
 
         std::stringstream buf;
-        const JobArena::Metrics& m = JobArena::metrics();
+        const JobArena::Metrics& m = JobArena::allMetrics();
         int pending = 0, running = 0;
         for (int i = 0; i <= m.maxArenaIndex; ++i)
         {
-            if (m.arena(i).active)
+            if (m.arena(i))
             {
-                buf << m.arena(i).arenaName
-                    << " (" << m.arena(i).concurrency << ") "
-                    << m.arena(i).numJobsRunning
+                buf << m.arena(i)->arenaName
+                    << " (" << m.arena(i)->concurrency << ") "
+                    << m.arena(i)->numJobsRunning
                     << " / "
-                    << m.arena(i).numJobsPending
+                    << m.arena(i)->numJobsPending
                     << " // "
-                    << m.arena(i).numJobsCanceled
+                    << m.arena(i)->numJobsCanceled
                     << "\n";
             }
         }

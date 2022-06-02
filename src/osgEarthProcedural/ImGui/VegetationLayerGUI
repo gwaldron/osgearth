@@ -17,17 +17,20 @@ namespace osgEarth {
             float _lodTransitionPixelScale;
             bool _forceGenerate;
             bool _manualBiomes;
+            bool _showBiomeUnderMouse;
             std::unordered_map<const Biome*, bool> _isManualBiomeActive;
             osg::observer_ptr<BiomeLayer> _biolayer;
             osg::observer_ptr<VegetationLayer> _veglayer;
             float _maxMaxRanges[NUM_ASSET_GROUPS];
             osg::observer_ptr<MapNode> _mapNode;
+            Future<const Biome*> _biomeUnderMouse;
 
             VegetationLayerGUI() : GUI::BaseGUI("Vegetation"),
                 _first(true),
                 _lodTransitionPixelScale(0.0f),
                 _forceGenerate(false),
-                _manualBiomes(false)
+                _manualBiomes(false),
+                _showBiomeUnderMouse(false)
             {
                 //nop
             }
@@ -46,62 +49,111 @@ namespace osgEarth {
             {
                 if (!findNodeOrHide<MapNode>(_mapNode, ri))
                     return;
-                if (!findLayerOrHide(_veglayer, ri))
-                    return;
                 if (!findLayerOrHide(_biolayer, ri))
                     return;
+                findLayer(_veglayer, ri);
 
                 if (_first)
                 {
                     _first = false;
-                    for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
-                        _maxMaxRanges[i] = _veglayer->options().groups()[i].maxRange().get() * 2.0f;
+
+                    if (_veglayer.valid())
+                    {
+                        for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
+                            _maxMaxRanges[i] = _veglayer->options().groups()[i].maxRange().get() * 2.0f;
+                    }
 
                     if (_lodTransitionPixelScale == 0.0f)
                         _lodTransitionPixelScale = _biolayer->getBiomeManager().getLODTransitionPixelScale();
                     else
                         _biolayer->getBiomeManager().setLODTransitionPixelScale(_lodTransitionPixelScale);
+
+                    EventRouter::get(view(ri))
+                        .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); });
                 }
 
                 ImGui::Begin("Vegetation", visible());
                 {
-
-                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "LOD scales:");
-                    osg::Vec4f sse_scales = _veglayer->getSSEScales();
-                    if (ImGui::SliderFloat("Near", &sse_scales[0], 0.5f, 2.0f))
-                        _veglayer->setSSEScales(sse_scales);
-                    if (ImGui::SliderFloat("Far", &sse_scales[1], 0.5f, 2.0f))
-                        _veglayer->setSSEScales(sse_scales);
-
-                    if (ImGui::Button("Regenerate"))
-                        _veglayer->dirty();
-
-                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Groups:");
-                    ImGui::Indent();
-                    for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
+                    if (_veglayer.valid() && _veglayer->isOpen())
                     {
-                        ImGui::PushID(i);
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "LOD scales:");
+                        osg::Vec4f sse_scales = _veglayer->getSSEScales();
+                        if (ImGui::SliderFloat("Near", &sse_scales[0], 0.5f, 2.0f))
+                            _veglayer->setSSEScales(sse_scales);
+                        if (ImGui::SliderFloat("Far", &sse_scales[1], 0.5f, 2.0f))
+                            _veglayer->setSSEScales(sse_scales);
 
-                        if (i > 0)
-                            ImGui::Separator();
+                        ImGui::Separator();
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator:");
 
-                        AssetGroup::Type type = (AssetGroup::Type)i;
-
-                        ImGui::Checkbox(
-                            AssetGroup::name(type).c_str(),
-                            &_veglayer->options().group(type).enabled().mutable_value());
-
-                        if (ImGui::SliderFloat(
-                            "Range",
-                            &_veglayer->options().group(type).maxRange().mutable_value(),
-                            0.0f, _maxMaxRanges[i]))
+                        for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
                         {
-                            _veglayer->setMaxRange(type, _veglayer->options().group(type).maxRange().get());
+                            ImGui::PushID(i);
+
+                            if (i > 0)
+                                ImGui::Separator();
+
+                            AssetGroup::Type type = (AssetGroup::Type)i;
+
+                            ImGui::Checkbox(
+                                AssetGroup::name(type).c_str(),
+                                &_veglayer->options().group(type).enabled().mutable_value());
+
+                            ImGui::SliderFloat(
+                                "Density",
+                                &_veglayer->options().group(type).density().mutable_value(),
+                                0.0f, 4.0f);
+
+                            ImGui::PopID();
                         }
 
-                        ImGui::PopID();
+                        if (ImGui::Button("Regenerate Now"))
+                            _veglayer->dirty();
                     }
-                    ImGui::Unindent();
+                    else
+                    {
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Vegetation layer is closed");
+                    }
+
+                    ImGui::Separator();
+
+                    ImGui::Checkbox("Show biome under mouse", &_showBiomeUnderMouse);
+                    if (_showBiomeUnderMouse)
+                    {
+                        //if (_queriedLandCover.valid())
+                        //{
+                        //    ImGui::Text("R=%.2f D=%.2f L=%.2f",
+                        //        _queriedLandCover.rugged().get(),
+                        //        _queriedLandCover.dense().get(),
+                        //        _queriedLandCover.lush().get());
+                        //}
+                        if (_biomeUnderMouse.isWorking())
+                        {
+                            ImGui::Text("..searching..");
+                        }
+                        else if (_biomeUnderMouse.isAvailable())
+                        {
+                            const Biome* biome = _biomeUnderMouse.get();
+                            if (biome)
+                            {
+                                ImGui::Text("%s", biome->name()->c_str());
+                                ImGui::Text("id=%s parentid=%s index=%d",
+                                    biome->id()->c_str(),
+                                    biome->parentId()->c_str(),
+                                    biome->index());
+                            }
+                            else
+                            {
+                                ImGui::Text("No biome");
+                            }
+                        }
+                        else
+                        {
+                            ImGui::Text("No biome");
+                        }
+                    }
+
+                    ImGui::Separator();
 
                     if (ImGui::CollapsingHeader("All Biomes"))
                     {
@@ -221,10 +273,45 @@ namespace osgEarth {
                 if (asset->topBillboardURI().isSet())
                     ImGui::Text("Top BB: %s", asset->topBillboardURI()->base().c_str());
             }
+
+            void onMove(osg::View* view, float x, float y)
+            {
+                if (_showBiomeUnderMouse)
+                {
+                    _biomeUnderMouse.reset();
+
+                    TerrainTile* tile = _mapNode->getTerrain()->getTerrainTileUnderMouse(view, x, y);
+                    if (tile)
+                    {
+                        GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
+                        TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p.x(), p.y(), tile->getKey().getLOD());
+                        key = _biolayer->getBestAvailableTileKey(key, false);
+                            
+                        if (key.valid())
+                        {
+                            _biomeUnderMouse = Job().dispatch<const Biome*>([&, key, p](Cancelable* c)
+                                {
+                                    const Biome* result = nullptr;
+                                    osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(c);
+                                    auto g = _biolayer->createImage(key, prog.get());
+                                    if (g.valid())
+                                    {
+                                        GeoImage::pixel_type pixel;
+                                        g.getReader().setBilinear(false);
+                                        g.read(pixel, p);
+                                        int biome_index = (int)pixel.r();
+                                        result = _biolayer->getBiomeCatalog()->getBiomeByIndex(biome_index);
+                                    }
+                                    return result;
+                                });
+                        }
+                    }
+                }
+            }
         };
     }
 }
-#endif OSGEARTH_PROCEDURAL_VEGETATION_LAYER_GUI
+#endif // OSGEARTH_PROCEDURAL_VEGETATION_LAYER_GUI
 
 //REGISTER_OSGEARTH_IMGUI(VegetationLayer, []()
 //    {

@@ -1,6 +1,4 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
+#version 330
 in vec4 moon_TexCoord;
 in float moon_Lighting;
 uniform sampler2D moonTex;

@@ -326,7 +326,7 @@ namespace osgEarth
 
         osg::observer_ptr<const Map> _map;
         ElevationPool::WorkingSet _ws;
-        JobArena _arena;
+        JobArena* _arena;
     };
 } // namespace
 

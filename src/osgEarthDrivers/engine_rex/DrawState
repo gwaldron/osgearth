@@ -21,6 +21,8 @@
 
 #include "RenderBindings"
 
+#include <osgEarth/TextureArena>
+
 #include <osg/RenderInfo>
 #include <osg/GLExtensions>
 #include <osg/StateSet>
@@ -40,9 +42,9 @@ namespace osgEarth { namespace REX
     {
         SamplerState() : _matrixUL(-1) { }
         std::string _name;
-        optional<osg::Texture*> _texture;    // Texture currently bound
-        optional<osg::Matrixf> _matrix;      // Matrix that is currently set
-        GLint _matrixUL;                     // Matrix uniform location
+        optional<Texture::Ptr> _texture; // Texture currently bound
+        optional<osg::Matrixf> _matrix; // Matrix that is currently set
+        GLint _matrixUL; // Matrix uniform location
 
         void clear() {
             _texture.clear();
@@ -107,24 +109,23 @@ namespace osgEarth { namespace REX
         using Ptr = std::shared_ptr<DrawState>;
         static DrawState::Ptr create();
 
-        using ContextState = std::unordered_map<const void*, ProgramState>;
+        using ProgramStates = std::unordered_map<const void*, ProgramState>;
+        ProgramStates _perProgramStates;
 
         const RenderBindings* _bindings;
         osg::BoundingSphere _bs;
-        osg::BoundingBox    _box;
-        osg::buffered_object<ContextState> _perContextStates;
+        osg::BoundingBox _box;
 
         DrawState() :
             _bindings(0L)
         {
-            _perContextStates.resize(64);
+            //nop
         }
 
         ProgramState& getProgramState(osg::RenderInfo& ri)
         {
-            ContextState& contextState = _perContextStates[ri.getContextID()];
             auto pcp = ri.getState()->getLastAppliedProgramObject();
-            ProgramState& programState = contextState[pcp];
+            ProgramState& programState = _perProgramStates[pcp];
             if (programState._pcp == nullptr)
             {
                 programState.init(pcp, _bindings);
@@ -134,8 +135,7 @@ namespace osgEarth { namespace REX
 
         void resetAll(osg::RenderInfo& ri)
         {
-            ContextState& contextState = _perContextStates[ri.getContextID()];
-            contextState.clear();
+            _perProgramStates.clear();
         }
     };
 

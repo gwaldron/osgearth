@@ -46,6 +46,7 @@
 #include <osgEarth/LabelNode>
 #include <osgEarth/Style>
 #include <osgEarth/ScreenSpaceLayout>
+#include <osgEarth/Math>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
@@ -506,17 +507,19 @@ namespace
             if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
             {
                 osg::Matrix proj = aa.asView()->getCamera()->getProjectionMatrix();
-                if ( proj(3,3) == 0 )
+
+                if (ProjectionMatrix::isPerspective(proj))
                 {
                     OE_NOTICE << "Switching to orthographc.\n";
-                    proj.getPerspective(_vfov, _ar, _zn, _zf);
-                    aa.asView()->getCamera()->setProjectionMatrixAsOrtho(-1, 1, -1, 1, _zn, _zf);
+                    ProjectionMatrix::getPerspective(proj, _vfov, _ar, _zn, _zf);
+                    ProjectionMatrix::setOrtho(proj, -1, 1, -1, 1, _zn, _zf);
                 }
                 else
                 {
                     OE_NOTICE << "Switching to perspective.\n";
-                    aa.asView()->getCamera()->setProjectionMatrixAsPerspective(_vfov, _ar, _zn, _zf);
+                    ProjectionMatrix::setPerspective(proj, _vfov, _ar, _zn, _zf);
                 }
+                aa.asView()->getCamera()->setProjectionMatrix(proj);
                 aa.requestRedraw();
                 return true;
             }

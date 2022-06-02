@@ -39,12 +39,9 @@ namespace osgEarth
     {
     public:
 
-        //! Create new LineDrawable in GL_LINE_STRIP mode
-        LineDrawable();
-
         //! Create a new LineDrawable.
         //! @param[in ] mode GL line mode: GL_LINE_STRIP or GL_LINE_LOOP
-        LineDrawable(GLenum mode);
+        LineDrawable(GLenum mode =GL_LINE_STRIP);
 
         //! Copy constructor
         LineDrawable(const LineDrawable& rhs, const osg::CopyOp& copy);
@@ -60,6 +57,10 @@ namespace osgEarth
         //! Stippling factor for the line (default is 1)
         void setStippleFactor(GLint factor);
         GLint getStippleFactor() const { return _factor; }
+
+        //! Stippling quantization factor (default is 8.0)
+        void setStippleQuantize(GLfloat factor);
+        GLfloat getStippleQuantize() const { return _quantize; }
 
         //! Line smoothing (antialiasing)
         void setLineSmooth(bool value);
@@ -188,6 +189,7 @@ namespace osgEarth
         osg::Vec4 _color;
         GLint _factor;
         GLushort _pattern;
+        GLfloat _quantize;
         float _width;
         bool _smooth;
         unsigned _first;

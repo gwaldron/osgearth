@@ -23,15 +23,20 @@
 #include "TextureSplattingMaterials"
 #include "ProceduralShaders"
 #include "NoiseTextureFactory"
+
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/TerrainResources>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
+#include <osgEarth/Capabilities>
+
 #include <osgUtil/CullVisitor>
 #include <osg/BlendFunc>
 #include <osg/Drawable>
 #include <osgDB/Registry>
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
+
 #include <cstdlib> // getenv
 
 #define LC0 "[TextureSplattingLayer] "
@@ -122,11 +127,27 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
 {
     VisibleLayer::prepareForRendering(engine);
 
+    if (Capabilities::get().supportsInt64() == false)
+    {
+        setStatus(Status::ResourceUnavailable, "GLSL int64 support required but not available");
+        return;
+    }
+
     if (getLifeMapLayer() == nullptr)
     {
         // without a lifemap layer we can't do any splatting
         setStatus(Status::ResourceUnavailable, "No LifeMap data to splat");
         return;
+    }
+
+    // Install a general-purpose noise texture
+    engine->getResources()->reserveTextureImageUnit(_noiseUnit, getName().c_str());
+    if (_noiseUnit.valid())
+    {
+        NoiseTextureFactory ntf;
+        osg::Texture* noise = ntf.create(256u, 4u);
+        getOrCreateStateSet()->setTextureAttribute(_noiseUnit.unit(), noise);
+        getOrCreateStateSet()->addUniform(new osg::Uniform("oe_noise", _noiseUnit.unit()));
     }
 
     // Since we're actually rendering, load the materials for splatting
@@ -253,7 +274,6 @@ TextureSplattingLayer::buildStateSets()
         // Install the texture splatting shader
         VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
         ProceduralShaders terrain_shaders;
-        terrain_shaders.load(vp, terrain_shaders.TextureSplatting);
 
         // Do the layer replacements BEFORE calling load. This way
         // the "oe_use_shared_layer" directive will be able to find the shared layer.

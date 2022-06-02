@@ -51,6 +51,7 @@ PagedNode2::PagedNode2() :
     _priorityScale(1.0f),
     _refinePolicy(REFINE_REPLACE),
     _preCompile(true),
+    _revision(0),
     _autoUnload(true),
     _lastRange(FLT_MAX)
 {
@@ -103,11 +104,8 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
 
     else if (nv.getTraversalMode() == nv.TRAVERSE_ACTIVE_CHILDREN)
     {
-        if (nv.getVisitorType() == nv.INTERSECTION_VISITOR)
-        {
-            traverseChildren(nv);
-        }
-        else
+        // Automatically load during a cull
+        if (nv.getVisitorType() == nv.CULL_VISITOR)
         {
             bool inRange = false;
             float priority = 0.0f;
@@ -153,6 +151,11 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                         child->accept(nv);
                 }
             }
+        }
+        else
+        {
+            // Only traverse the highest res children otherwise
+            traverseChildren(nv);
         }
     }
 }
@@ -376,7 +379,10 @@ PagingManager::PagingManager() :
 {
     setCullingActive(false);
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
-    JobArena::get(PAGEDNODE_ARENA_NAME)->setConcurrency(4u);
+
+    auto arena = JobArena::get(PAGEDNODE_ARENA_NAME);
+    arena->setConcurrency(4u);
+    _metrics = arena->metrics();
 
     // NOTE: this is causing multiple model layers to not appear.
     // Need to debug before using.
@@ -398,7 +404,11 @@ PagingManager::PagingManager() :
 
 PagingManager::~PagingManager()
 {
-    //nop
+    if (_mergeQueue.size() > 0)
+    {
+        _metrics->numJobsRunning.exchange(
+            _metrics->numJobsRunning - _mergeQueue.size());
+    }
 }
 
 void
@@ -433,6 +443,17 @@ PagingManager::traverse(osg::NodeVisitor& nv)
             }
         }
     }
+}
+
+void
+PagingManager::merge(PagedNode2* host)
+{
+    ScopedMutexLock lock(_mergeMutex);
+    ToMerge toMerge;
+    toMerge._node = host;
+    toMerge._revision = host->_revision;
+    _mergeQueue.push(std::move(toMerge));
+    _metrics->numJobsRunning++;
 }
 
 void
@@ -486,5 +507,6 @@ PagingManager::update()
                 ++count;
         }
         _mergeQueue.pop();
+        _metrics->numJobsRunning--;
     }
 }

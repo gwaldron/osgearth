@@ -368,7 +368,7 @@ GeoImage
 ImageLayer::createImage(
     const TileKey& key,
     ProgressCallback* progress)
-{
+{    
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(getName() + " " + key.str());
 
@@ -402,6 +402,7 @@ ImageLayer::createImage(
     const TileKey& key,
     ProgressCallback* progress)
 {
+    Threading::ScopedReadLock lock(layerMutex());
     return createImageImplementation(canvas, key, progress);
 }
 
@@ -534,6 +535,7 @@ ImageLayer::createImageInKeyProfile(
         }
         else
         {
+            Threading::ScopedReadLock lock(layerMutex());
             result = createImageImplementation(key, progress);
         }
     }
@@ -689,7 +691,11 @@ ImageLayer::assembleImage(
                 parentKey.valid() && !image.valid();
                 parentKey.makeParent())
             {
-                image = createImageImplementation( parentKey, progress );
+                {
+                    Threading::ScopedReadLock lock(layerMutex());
+                    image = createImageImplementation(parentKey, progress);
+                }
+
                 if ( image.valid() )
                 {
                     GeoImage cropped;
@@ -763,6 +769,7 @@ ImageLayer::writeImage(const TileKey& key, const osg::Image* image, ProgressCall
     if (getStatus().isError())
         return getStatus();
 
+    Threading::ScopedReadLock lock(layerMutex());
     return writeImageImplementation(key, image, progress);
 }
 
@@ -868,29 +875,21 @@ FutureTexture2D::dispatch() const
         });
 }
 
-bool
-FutureTexture2D::requiresUpdateCall() const
+void
+FutureTexture2D::update()
 {
-    // careful - if we return false here, it may never get called again.
-
     if (_resolved)
     {
-        return false;
+        return;
     }
 
-    if (_result.isCanceled())
+    else if (_result.isCanceled())
     {
         dispatch();
+        return;
     }
 
-    return true;
-}
-
-
-void
-FutureTexture2D::update(osg::NodeVisitor* nv)
-{
-    if (_resolved == false && _result.isAvailable() == true)
+    else if (_result.isAvailable() == true)
     {
         OE_DEBUG<< LC << "Async result available for " << getName() << std::endl;
 
@@ -899,7 +898,7 @@ FutureTexture2D::update(osg::NodeVisitor* nv)
 
         if (geoImage.getStatus().isError())
         {
-            OE_WARN << LC << "Error: " << geoImage.getStatus().message() << std::endl;
+            OE_DEBUG << LC << "Error: " << geoImage.getStatus().message() << std::endl;
             _failed = true;
         }
         else

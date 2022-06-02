@@ -1,25 +1,24 @@
-#version 430
-#extension GL_ARB_gpu_shader_int64 : enable
-
 #pragma vp_name Texture Splatter VV
 #pragma vp_function oe_splat_View, vertex_view
 
 #pragma import_defines(OE_SPLAT_TWEAKS)
 #pragma import_defines(OE_SPLAT_NUM_LEVELS)
+#pragma import_defines(OE_SNOW)
 
 const int levels[2] = int[](14, 19);
 flat out vec2 splat_tilexy[2];
 out vec2 splat_uv[2];
 
 // from REX SDK:
-vec4 oe_terrain_getNormalAndCurvature();
 vec4 oe_terrain_scaleCoordsAndTileKeyToRefLOD(in vec2 tc, in float refLOD);
 
 out vec4 oe_layer_tilec;
-out float splatLevelBlend;
-out float oe_elev;
+out float oe_splat_levelblend;
 
+#ifdef OE_SNOW
+out float oe_elev;
 float oe_terrain_getElevation();
+#endif
 
 #ifdef OE_SPLAT_TWEAKS
 #define tweakable uniform
@@ -39,17 +38,17 @@ void oe_splat_View(inout vec4 vertex_view)
     {
         vec4 uvxy = oe_terrain_scaleCoordsAndTileKeyToRefLOD(oe_layer_tilec.st, levels[i]);
         splat_uv[i] = uvxy.xy;
-        splat_tilexy[i] = uvxy.zw; // floor(oe_tile_key.xy / exp2(oe_tile_key.z - float(levels[i])));
+        splat_tilexy[i] = uvxy.zw;
     }
-    splatLevelBlend = MAP_TO_01(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
+    oe_splat_levelblend = MAP_TO_01(-vertex_view.z, oe_splat_blend_start, oe_splat_blend_end);
 
+#ifdef OE_SNOW
     oe_elev = oe_terrain_getElevation();
+#endif
 }
 
 
 [break]
-#version 430
-#extension GL_ARB_gpu_shader_int64 : enable
 #pragma vp_name Texture Splatter FS
 #pragma vp_function oe_splat_Frag, fragment, 0.8
 
@@ -62,6 +61,7 @@ void oe_splat_View(inout vec4 vertex_view)
 #pragma import_defines(OE_SPLAT_TWEAKS)
 #pragma import_defines(OE_LIFEMAP_DIRECT)
 #pragma import_defines(OE_SPLAT_USE_MTL_GLS_AO)
+#pragma import_defines(OE_SNOW)
 
 layout(binding = 5, std430) buffer SplatTextureArena {
     uint64_t texHandle[];
@@ -75,16 +75,18 @@ uniform float oe_texScale[OE_TEX_DIM_X*OE_TEX_DIM_Y];
 #define SPECIAL 3
 
 in vec3 vp_Normal;
+in vec3 vp_VertexView;
 in vec3 oe_UpVectorView;
-in float splatLevelBlend;
+in float oe_splat_levelblend;
 in vec4 oe_layer_tilec;
 
 #pragma import_defines(OE_SPLAT_NUM_LEVELS)
 flat in vec2 splat_tilexy[2];
 in vec2 splat_uv[2];
 
-flat in int maxLevel;
+#ifdef OE_SNOW
 in float oe_elev;
+#endif
 
 #ifdef OE_SPLAT_TWEAKS
     #define tweakable uniform
@@ -103,10 +105,10 @@ tweakable float oe_snow_min_elev = 1000.0;
 tweakable float oe_snow_max_elev = 3500.0;
 tweakable float oe_splat_blend_rgbh_mix = 0.8;
 tweakable float oe_splat_blend_normal_mix = 0.85;
-tweakable float brightness = 1.0;
-tweakable float contrast = 1.0;
-tweakable float dense_contrast = 0.35;
-tweakable float dense_brightness = -0.5;
+tweakable float oe_splat_brightness = 1.0;
+tweakable float oe_splat_contrast = 1.0;
+tweakable float oe_dense_contrast = 0.35;
+tweakable float oe_dense_brightness = -0.5;
 
 in float oe_layer_opacity;
 
@@ -174,7 +176,8 @@ void get_pixel(out Pixel res, in int index, in vec2 coord)
 
 float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2, in float roughness)
 {
-    float d = mix(1.0, oe_depth, DECEL(roughness, 2.3));
+    //float d = mix(oe_depth, 1.0, clamp((-vp_VertexView.z-500.0) / 500.0, 0.0, 1.0));
+    float d = oe_depth; // mix(1.0, oe_depth, DECEL(roughness, 2.3));
     // https://tinyurl.com/y5nkw2l9
     //float depth = 0.02;
     float ma = max(h1 + a1, h2 + a2) - d;
@@ -190,98 +193,94 @@ void pixmix(out Pixel res, in Pixel p1, in Pixel p2, float m)
     res.material = mix(p1.material, p2.material, m);
 }
 
-void resolveColumn(out Pixel pixel, int level, int x, float yvar)
+void resolveRow(out Pixel result, int level, int row, float xvar)
 {
     Pixel p1, p2;
     vec2 coord;
 
-    // calulate row mixture
-    float yf = yvar * (float(OE_TEX_DIM_Y) - 1.0);
-    float yf_floor = floor(yf);
-    int y = int(yf_floor);
-    float y_mix = yf - yf_floor;
-
-    // calc texture index and read two rows
-    int i = (y*OE_TEX_DIM_X + x);
-    get_coord(coord, i, level);
-    get_pixel(p1, i, coord);
-
-    if (y < OE_TEX_DIM_Y - 1)
-    {
-        i += (OE_TEX_DIM_X); // advance to next row
-        get_coord(coord, i, level);
-    }
-    get_pixel(p2, i, coord);
-
-    // blend with working image using both heightmap and effect:
-    float r = max(p1.material[ROUGHNESS], p2.material[ROUGHNESS]);
-    float m = heightAndEffectMix(p1.rgbh.a, 1.0 - y_mix, p2.rgbh.a, y_mix, r);
-
-    pixmix(pixel, p1, p2, m);
-}
-
-void resolveLevel(out Pixel pixel, int level, float xvar, float yvar)
-{
-    Pixel c1, c2; // adjacent columns
-
-    // calulate col mixture
+    // calulate first column index and mix factor
     float xf = xvar * (float(OE_TEX_DIM_X) - 1.0);
     float xf_floor = floor(xf);
     int x = int(xf_floor);
     float x_mix = xf - xf_floor;
 
-    resolveColumn(c1, level, x, yvar);
+    // texture index:
+    int i = row * OE_TEX_DIM_X + x;
 
-    resolveColumn(c2, level, clamp(x + 1, 0, OE_TEX_DIM_X - 1), yvar);
+    // read both columns:
+    get_coord(coord, i, level);
+    get_pixel(p1, i, coord);
+    i = (i%OE_TEX_DIM_X < OE_TEX_DIM_X) ? i + 1 : i;
+    get_coord(coord, i, level);
+    get_pixel(p2, i, coord);
 
-    // blend with working image using both heightmap and effect:
-    float rr = max(c1.material[ROUGHNESS], c2.material[ROUGHNESS]);
-    float m = heightAndEffectMix(c1.rgbh.a, 1.0 - x_mix, c2.rgbh.a, x_mix, rr);
+    // blend them using both heightmap and roughness:
+    float r = max(p1.material[ROUGHNESS], p2.material[ROUGHNESS]);
+    float m = heightAndEffectMix(p1.rgbh.a, 1.0 - x_mix, p2.rgbh.a, x_mix, r);
+    pixmix(result, p1, p2, m);
+}
+
+void resolveLevel(out Pixel result, int level, float rugged, float lush, float dense)
+{
+    // resolve the substrate (dirt and rocks)
+    Pixel substrate;
+    resolveRow(substrate, level, 0, rugged);
+
+    // resolve the surface texture (greenery and debris)
+    Pixel surface;
+    resolveRow(surface, level, 1, lush);
+
+    // use density to modulate the depth blend between the two.
+    float m = heightAndEffectMix(
+        substrate.rgbh[3], 1.0-dense,
+        surface.rgbh[3], dense,
+        1.0);
 
     if (level == 0)
     {
-        pixmix(pixel, c1, c2, m);
+        pixmix(result, substrate, surface, m);
     }
     else
     {
         Pixel temp;
-        pixmix(temp, c1, c2, m);
+        pixmix(temp, substrate, surface, m);
 
-        float mat_mix = min(splatLevelBlend, oe_splat_blend_rgbh_mix);
-        pixel.rgbh = mix(pixel.rgbh, temp.rgbh, mat_mix);
-        pixel.normal = mix(pixel.normal, temp.normal, min(splatLevelBlend, oe_splat_blend_normal_mix));
-        pixel.material = mix(pixel.material, temp.material, mat_mix);
+        float mat_mix = min(oe_splat_levelblend, oe_splat_blend_rgbh_mix);
+        result.rgbh = mix(result.rgbh, temp.rgbh, mat_mix);
+        result.normal = mix(result.normal, temp.normal, min(oe_splat_levelblend, oe_splat_blend_normal_mix));
+        result.material = mix(result.material, temp.material, mat_mix);
     }
 }
 
 void oe_splat_Frag(inout vec4 quad)
 {
+    // sample the life map and extract the compenents:
     vec4 life = texture(OE_LIFEMAP_TEX, (OE_LIFEMAP_MAT * oe_layer_tilec).st);
-
-    float dense = MODIFY(life[DENSE], dense_power);
-    float lush = MODIFY(life[LUSH], lush_power);
     float rugged = MODIFY(life[RUGGED], rugged_power);
-
+    float lush = MODIFY(life[LUSH], lush_power);
+    float dense = MODIFY(life[DENSE], dense_power);
+    
+    // compute the pixel color:
     Pixel pixel;
-    for (int i = 0; i < OE_SPLAT_NUM_LEVELS; ++i)
+    for (int level = 0; level < OE_SPLAT_NUM_LEVELS; ++level)
     {
-        resolveLevel(pixel, i, rugged, lush);
+        resolveLevel(pixel, level, rugged, lush, dense);
     }
 
+    // apply PBR
     oe_pbr.roughness *= pixel.material[ROUGHNESS];
     oe_pbr.ao *= pow(pixel.material[AO], ao_power);
     oe_pbr.metal = pixel.material[METAL];
 
-    float f_c = contrast + (dense * dense_contrast);
-    float f_b = brightness + (dense * dense_brightness);
-
+    float f_c = oe_splat_contrast + (dense * oe_dense_contrast);
+    float f_b = oe_splat_brightness + (dense * oe_dense_brightness);
     pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*f_c + 0.5) * f_b, 0, 1);
 
     vec3 color = pixel.rgbh.rgb;
 
     // WATER
     float water = life.a;
-    const vec3 water_color = vec3(0.02, 0.05, 0.1); // vec3(0.1, 0.2, 0.4);
+    const vec3 water_color = vec3(0.02, 0.05, 0.1);
     color = mix(color, water_color, water);
     oe_pbr.roughness = mix(oe_pbr.roughness, 0.3, water);
     oe_pbr.ao = mix(oe_pbr.ao, 1.0, water);
@@ -292,15 +291,14 @@ void oe_splat_Frag(inout vec4 quad)
         DECEL(pixel.normal.y, normal_power));
     vp_Normal = mix(normalize(vp_Normal + oe_normalMapTBN * pixel.normal), oe_UpVectorView, water);
 
+#ifdef OE_SNOW
     // SNOW
     float coldness = MAP_TO_01(oe_elev, oe_snow_min_elev, oe_snow_max_elev);
-    float min_snow_cos_angle = 1.0 - SOFTEN(oe_snow*coldness);
-    const float snow_buf = 0.01;
-    float b = min(min_snow_cos_angle + snow_buf, 1.0);
-    float cos_angle = dot(vp_Normal, oe_UpVectorView);
-    float snowiness = (1.0-water)*step(min_snow_cos_angle, cos_angle);
+    float cos_angle = max(0, dot(vp_Normal, oe_UpVectorView));
+    float snowiness = heightAndEffectMix(pixel.rgbh.a, 1.0, oe_snow, cos_angle, 0.0) * (1.0 - water);
     color = mix(color, vec3(1), snowiness);
     oe_pbr.roughness = mix(oe_pbr.roughness, 0.1, snowiness);
+#endif
 
 #ifdef OE_COLOR_LAYER_TEX
     vec3 cltexel = texture(OE_COLOR_LAYER_TEX, (OE_COLOR_LAYER_MAT*oe_layer_tilec).st).rgb;

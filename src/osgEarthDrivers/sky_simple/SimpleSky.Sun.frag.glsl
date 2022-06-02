@@ -1,6 +1,5 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
+#version 330
+#pragma vp_name SimpleSky Sun frag shader
 in vec3 atmos_v3Direction;
 out vec4 out_FragColor;
 

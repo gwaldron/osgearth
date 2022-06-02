@@ -345,11 +345,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         _selectionInfo,
         &_clock);
 
-    if (useGL4())
-    {
-        OE_INFO << LC << "Using NVIDIA GL4 rendering" << std::endl;
-    }
-
     // Calculate the LOD morphing parameters:
     unsigned maxLOD = options().maxLOD().getOrUse(DEFAULT_MAX_LOD);
 
@@ -370,14 +365,11 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     // now that we have a map, set up to recompute the bounds
     dirtyBound();
 
-    // whether to use the GL4/NVIDIA rendering path
-    bool use_gl4 = useGL4();
-
     // preprocess shaders to parse the "oe_use_shared_layer" directive
     // for shared layer samplers
     Registry::instance()->getShaderFactory()->addPreProcessorCallback(
         "RexTerrainEngineNode",
-        [this, use_gl4](std::string& source)
+        [this](std::string& source)
         {
             std::string line;
             std::vector<std::string> tokens;
@@ -392,12 +384,14 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
                 {
                     std::ostringstream buf;
 
-                    if (use_gl4)
+                    if (GLUtils::useNVGL())
                     {
-                        const std::string incGL4 = "#pragma include RexEngine.GL4.glsl";
-                        if (source.find(incGL4) == std::string::npos)
+                        ShadersGL4 sh;
+                        std::string incStrGL4 = ShaderLoader::load(sh.ENGINE_TYPES, sh);
+                        //const std::string incGL4 = "#pragma include RexEngine.GL4.glsl";
+                        if (source.find(incStrGL4) == std::string::npos)
                         {
-                            buf << incGL4 << "\n";
+                            buf << incStrGL4 << "\n";
                         }
 
                         // find the shared index.
@@ -635,7 +629,9 @@ RexTerrainEngineNode::setupRenderBindings()
     color.matrixName()  = "oe_layer_texMatrix";
     color.setDefaultTexture(new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)));
     color.getDefaultTexture()->setName("rex default color");
-    getResources()->reserveTextureImageUnit( color.unit(), "Terrain Color" );
+
+    if (!GLUtils::useNVGL())
+        getResources()->reserveTextureImageUnit( color.unit(), "Terrain Color" );
 
     if(this->elevationTexturesRequired())
     {
@@ -645,7 +641,9 @@ RexTerrainEngineNode::setupRenderBindings()
         elevation.matrixName() = "oe_tile_elevationTexMatrix";
         elevation.setDefaultTexture(osgEarth::createEmptyElevationTexture());
         elevation.getDefaultTexture()->setName("rex default elevation");
-        getResources()->reserveTextureImageUnit(elevation.unit(), "Terrain Elevation");
+
+        if (!GLUtils::useNVGL())
+            getResources()->reserveTextureImageUnit(elevation.unit(), "Terrain Elevation");
     }
 
     if (this->normalTexturesRequired())
@@ -656,7 +654,9 @@ RexTerrainEngineNode::setupRenderBindings()
         normal.matrixName() = "oe_tile_normalTexMatrix";
         normal.setDefaultTexture(osgEarth::createEmptyNormalMapTexture());
         normal.getDefaultTexture()->setName("rex default normalmap");
-        getResources()->reserveTextureImageUnit(normal.unit(), "Terrain Normals");
+
+        if (!GLUtils::useNVGL())
+            getResources()->reserveTextureImageUnit(normal.unit(), "Terrain Normals");
     }
 
     if (this->parentTexturesRequired())
@@ -665,7 +665,9 @@ RexTerrainEngineNode::setupRenderBindings()
         colorParent.usage() = SamplerBinding::COLOR_PARENT;
         colorParent.samplerName() = "oe_layer_texParent";
         colorParent.matrixName() = "oe_layer_texParentMatrix";
-        getResources()->reserveTextureImageUnit(colorParent.unit(), "Terrain Parent Color");
+
+        if (!GLUtils::useNVGL())
+            getResources()->reserveTextureImageUnit(colorParent.unit(), "Terrain Parent Color");
     }
 
     if (this->landCoverTexturesRequired())
@@ -676,21 +678,26 @@ RexTerrainEngineNode::setupRenderBindings()
         landCover.matrixName() = "oe_tile_landCoverTexMatrix";
         landCover.setDefaultTexture(LandCover::createEmptyTexture());
         landCover.getDefaultTexture()->setName("rex default landcover");
-        getResources()->reserveTextureImageUnit(landCover.unit(), "Terrain Land Cover");
         getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX", landCover.samplerName());
         getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX_MATRIX", landCover.matrixName());
+
+        if (!GLUtils::useNVGL())
+            getResources()->reserveTextureImageUnit(landCover.unit(), "Terrain Land Cover");
     }
 
     // Apply a default, empty texture to each render binding.
-    OE_DEBUG << LC << "Render Bindings:\n";
-    for (unsigned i = 0; i < _renderBindings.size(); ++i)
+    if (!GLUtils::useNVGL())
     {
-        SamplerBinding& b = _renderBindings[i];
-        if (b.isActive())
+        OE_DEBUG << LC << "Render Bindings:\n";
+        for (unsigned i = 0; i < _renderBindings.size(); ++i)
         {
-            _terrainSS->addUniform(new osg::Uniform(b.samplerName().c_str(), b.unit()));
-            _terrainSS->setTextureAttribute(b.unit(), b.getDefaultTexture());
-            OE_DEBUG << LC << " > Bound \"" << b.samplerName() << "\" to unit " << b.unit() << "\n";
+            SamplerBinding& b = _renderBindings[i];
+            if (b.isActive())
+            {
+                _terrainSS->addUniform(new osg::Uniform(b.samplerName().c_str(), b.unit()));
+                _terrainSS->setTextureAttribute(b.unit(), b.getDefaultTexture());
+                OE_DEBUG << LC << " > Bound \"" << b.samplerName() << "\" to unit " << b.unit() << "\n";
+            }
         }
     }
 }
@@ -746,7 +753,7 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     // by sorting the draw commands.
     // Skip if using GL4/indirect rendering. Actually seems to hurt?
     // TODO: benchmark this further to see whether it's worthwhile
-    if (!useGL4() &&
+    if (!GLUtils::useNVGL() &&
         getEngineContext()->getGeometryPool()->isEnabled())
     {
         culler._terrain.sortDrawCommands();
@@ -967,7 +974,7 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
         if (fs->getFrameNumber() - iter.second._lastCull.getFrameNumber() > 60)
         {
             _persistent.erase(iter.first);
-            OE_INFO << LC << "Releasing orphaned view data" << std::endl;
+            OE_DEBUG << LC << "Releasing orphaned view data" << std::endl;
             break;
         }
     }
@@ -1043,6 +1050,7 @@ osg::Node* renderHeightField(const GeoHeightField& geoHF)
     mt->setMatrix( local2world );
 
     osg::Geometry* geometry = new osg::Geometry;
+    geometry->setName("REX height field");
     geometry->setUseVertexBufferObjects(true);
 
     osg::Geode* geode = new osg::Geode;
@@ -1172,7 +1180,7 @@ RexTerrainEngineNode::addSurfaceLayer(Layer* layer)
             // for a shared layer, allocate a shared image unit if necessary.
             if ( imageLayer->isShared() )
             {
-                if (!imageLayer->sharedImageUnit().isSet())
+                if (!imageLayer->sharedImageUnit().isSet() && !GLUtils::useNVGL())
                 {
                     int temp;
                     if ( getResources()->reserveTextureImageUnit(temp, imageLayer->getName().c_str()) )
@@ -1187,7 +1195,7 @@ RexTerrainEngineNode::addSurfaceLayer(Layer* layer)
                 }
 
                 // Build a sampler binding for the shared layer.
-                if ( imageLayer->sharedImageUnit().isSet() )
+                if ( imageLayer->sharedImageUnit().isSet() || GLUtils::useNVGL() )
                 {
                     // Find the next empty SHARED slot:
                     unsigned newIndex = SamplerBinding::SHARED;
@@ -1209,7 +1217,7 @@ RexTerrainEngineNode::addSurfaceLayer(Layer* layer)
 
                     // Install an empty texture for this binding at the top of the graph, so that
                     // a texture is always defined even when the data source supplies no real data.
-                    if (newBinding.isActive())
+                    if (newBinding.isActive() && !GLUtils::useNVGL())
                     {
                         osg::ref_ptr<osg::Texture> tex;
                         if (osg::Image* emptyImage = imageLayer->getEmptyImage())
@@ -1262,7 +1270,6 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
     if ( layerRemoved )
     {
         // release its layer drawable
-        //TODO - for each camera
         _persistent.scoped_lock([&]() {
             for (auto& e : _persistent)
                 e.second._drawables.erase(layerRemoved);
@@ -1355,9 +1362,10 @@ RexTerrainEngineNode::updateState()
     else
     {
         // Load up the appropriate shader package:
-        REXShaders& shaders = REXShadersFactory::get(useGL4());
+        REXShaders& shaders = REXShadersFactory::get(GLUtils::useNVGL());
 
         // State that affects any terrain layer (surface, patch, other)
+        // AND compute shaders
         {
             // activate standard mix blending.
             _terrainSS->setAttributeAndModes(
@@ -1368,10 +1376,14 @@ RexTerrainEngineNode::updateState()
             shaders.load(terrainVP, shaders.sdk());
 
             // GL4 rendering?
-            if (useGL4())
+            if (GLUtils::useNVGL())
             {
-                terrainVP->addGLSLExtension("GL_ARB_gpu_shader_int64");
+                _terrainSS->setDefine("OE_USE_GL4");
             }
+
+            // vertex-dimension of each standard terrain tile.
+            _terrainSS->setDefine("OE_TILE_SIZE",
+                std::to_string(options().tileSize().get()));
 
             // uniform that conveys the layer UID to the shaders; necessary
             // for per-layer branching (like color filters)
@@ -1387,6 +1399,18 @@ RexTerrainEngineNode::updateState()
             // uniform that conveys the tile vertex dimensions
             _terrainSS->addUniform(new osg::Uniform(
                 "oe_tile_size", (float)options().tileSize().get()));
+
+            if (this->elevationTexturesRequired())
+            {
+                // Compute an elevation texture sampling scale/bias so we sample elevation data on center
+                // instead of on edge (as we do with color, etc.)
+                float bias = getEngineContext()->getUseTextureBorder() ? 1.5 : 0.5;
+                float size = (float)ELEVATION_TILE_SIZE;
+
+                _terrainSS->addUniform(new osg::Uniform(
+                    "oe_tile_elevTexelCoeff",
+                    osg::Vec2f((size - (2.0*bias)) / size, bias / size)));
+            }
         }
 
 
@@ -1436,15 +1460,6 @@ RexTerrainEngineNode::updateState()
             if (this->elevationTexturesRequired())
             {
                 _surfaceSS->setDefine("OE_TERRAIN_RENDER_ELEVATION");
-
-                float bias = getEngineContext()->getUseTextureBorder() ? 1.5 : 0.5;
-                float size = (float)ELEVATION_TILE_SIZE;
-
-                // Compute an elevation texture sampling scale/bias so we sample elevation data on center
-                // instead of on edge (as we do with color, etc.)
-                _surfaceSS->addUniform(new osg::Uniform(
-                    "oe_tile_elevTexelCoeff",
-                    osg::Vec2f((size - (2.0*bias)) / size, bias / size)));
             }
 
             // Normal mapping
@@ -1472,7 +1487,7 @@ RexTerrainEngineNode::updateState()
                     options().morphImagery() == true)
                 {
                     // GL4 morphing is built into another shader (vert.GL4.glsl)
-                    if (!useGL4())
+                    if (!GLUtils::useNVGL())
                         shaders.load(surfaceVP, shaders.morphing());
 
                     if ((options().morphTerrain() == true && _morphTerrainSupported == true))
@@ -1519,8 +1534,6 @@ RexTerrainEngineNode::installColorFilters(
     {
         // Color filter frag function:
         std::string fs_colorfilters =
-            "#version " GLSL_VERSION_STR "\n"
-            GLSL_DEFAULT_PRECISION_FLOAT "\n"
             "uniform int oe_layer_uid; \n"
             "$COLOR_FILTER_HEAD"
             "void oe_rexEngine_applyFilters(inout vec4 color) \n"
@@ -1574,7 +1587,7 @@ RexTerrainEngineNode::installColorFilters(
             surfaceVP->setFunction(
                 "oe_rexEngine_applyFilters",
                 fs_colorfilters,
-                ShaderComp::LOCATION_FRAGMENT_COLORING,
+                VirtualProgram::LOCATION_FRAGMENT_COLORING,
                 0.6);
         }
     }

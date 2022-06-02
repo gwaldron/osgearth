@@ -18,6 +18,7 @@
  */
 #include <osgEarth/Composite>
 #include <osgEarth/Progress>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 
@@ -119,11 +120,41 @@ CompositeImageLayer::getNode() const
 void
 CompositeImageLayer::addedToMap(const Map* map)
 {
-    for(ImageLayerVector::iterator i = _layers.begin();
-        i != _layers.end();
-        ++i)
+    bool dataExtentsValid = true;
+
+    osg::ref_ptr<const Profile> profile = getProfile();
+
+    for (auto& layer : _layers)
     {
-        i->get()->addedToMap(map);
+        if (layer->isOpen())
+        {
+            layer->addedToMap(map);
+
+            // gather extents                        
+            const DataExtentList& extents = layer->getDataExtents();
+
+            // If even one of the layers' data extents is unknown, the entire composite
+            // must have unknown data extents:
+            if (extents.empty())
+            {
+                dataExtentsValid = false;
+                dataExtents().clear();
+            }
+
+            if (dataExtentsValid)
+            {
+                for (DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j)
+                {
+                    // Convert the data extent to the profile that is actually used by this TileSource
+                    DataExtent dataExtent = *j;
+                    GeoExtent ext = dataExtent.transform(profile->getSRS());
+                    unsigned int minLevel = 0;
+                    unsigned int maxLevel = profile->getEquivalentLOD(layer->getProfile(), *dataExtent.maxLevel());
+                    dataExtent = DataExtent(ext, minLevel, maxLevel);
+                    dataExtents().push_back(dataExtent);
+                }
+            }
+        }
     }
 }
 
@@ -150,8 +181,6 @@ CompositeImageLayer::openImplementation()
         return Status::NoError;
 
     osg::ref_ptr<const Profile> profile = getProfile();
-
-    bool dataExtentsValid = true;
 
     // If the user didn't call addLayer(), try to read them from the options.
     if (_layers.empty())
@@ -213,32 +242,7 @@ CompositeImageLayer::openImplementation()
                     po.vsrsString().unset();
                     profile = Profile::create(po);
                 }
-            }
-
-            // gather extents                        
-            const DataExtentList& extents = layer->getDataExtents();  
-
-            // If even one of the layers' data extents is unknown, the entire composite
-            // must have unknown data extents:
-            if (extents.empty())
-            {
-                dataExtentsValid = false;
-                dataExtents().clear();
-            }
-
-            if (dataExtentsValid)
-            {
-                for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
-                {                
-                    // Convert the data extent to the profile that is actually used by this TileSource
-                    DataExtent dataExtent = *j;                
-                    GeoExtent ext = dataExtent.transform(profile->getSRS());
-                    unsigned int minLevel = 0;
-                    unsigned int maxLevel = profile->getEquivalentLOD(layer->getProfile(), *dataExtent.maxLevel() );                                        
-                    dataExtent = DataExtent(ext, minLevel, maxLevel);                                
-                    dataExtents().push_back( dataExtent );
-                }
-            }
+            }            
 
             // If the sublayer has a Node, add it to the group.
             if (layer->getNode())
@@ -304,6 +308,8 @@ CompositeImageLayer::closeImplementation()
 GeoImage
 CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
+    unsigned size = getTileSize();
+
     Composite::ImageMixVector images;
     images.reserve(_layers.size());
 
@@ -337,21 +343,7 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
         images.push_back(imageInfo);
     }
 
-    // Determine the output texture size to use based on the image that were created.
     unsigned numValidImages = 0;
-    osg::Vec2s textureSize;
-    for (unsigned int i = 0; i < images.size(); i++)
-    {
-        Composite::ImageInfo& info = images[i];
-        if (info.image.valid())
-        {
-            if (numValidImages == 0)
-            {
-                textureSize.set( info.image->s(), info.image->t());
-            }
-            numValidImages++;        
-        }
-    } 
 
     // Create fallback images if we have some valid data but not for all the layers
     if (numValidImages > 0 && numValidImages < images.size())
@@ -387,7 +379,7 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
                 if (image.valid())
                 {
                     bool bilinear = layer->isCoverage() ? false : true;
-                    GeoImage cropped = image.crop( key.getExtent(), true, textureSize.x(), textureSize.y(), bilinear);
+                    GeoImage cropped = image.crop( key.getExtent(), true, size, size, bilinear);
                     info.image = cropped.getImage();
                 }                    
             }
@@ -395,13 +387,21 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
     }
 
     // Now finally create the output image.
-    //Recompute the number of valid images
+    // Recompute the number of valid images and make sure they are all the correct size
     numValidImages = 0;
     for (unsigned int i = 0; i < images.size(); i++)
     {
         Composite::ImageInfo& info = images[i];
         if (info.image.valid())
-            numValidImages++;        
+        {
+            numValidImages++;
+            if (info.image->s() != size || info.image->t() != size)
+            {
+                osg::ref_ptr< osg::Image > resized;
+                ImageUtils::resizeImage(info.image.get(), size, size, resized);
+                info.image = resized;
+            }
+        }
     }    
 
     if ( progress && progress->isCanceled() )
@@ -543,10 +543,40 @@ CompositeElevationLayer::getNode() const
 void
 CompositeElevationLayer::addedToMap(const Map* map)
 {
+    bool dataExtentsValid = true;
+    osg::ref_ptr<const Profile> profile = getProfile();
+
     for (auto& layer : _layers)
     {
         if (layer->isOpen())
+        {
             layer->addedToMap(map);
+
+            // gather extents                        
+            const DataExtentList& extents = layer->getDataExtents();
+
+            // If even one of the layers' data extents is unknown, the entire composite
+            // must have unknown data extents:
+            if (extents.empty())
+            {
+                dataExtentsValid = false;
+                dataExtents().clear();
+            }
+
+            if (dataExtentsValid)
+            {
+                for (DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j)
+                {
+                    // Convert the data extent to the profile that is actually used by this TileSource
+                    DataExtent dataExtent = *j;
+                    GeoExtent ext = dataExtent.transform(profile->getSRS());
+                    unsigned int minLevel = 0;
+                    unsigned int maxLevel = profile->getEquivalentLOD(layer->getProfile(), *dataExtent.maxLevel());
+                    dataExtent = DataExtent(ext, minLevel, maxLevel);
+                    dataExtents().push_back(dataExtent);
+                }
+            }
+        }
     }
 }
 
@@ -572,8 +602,6 @@ CompositeElevationLayer::openImplementation()
         return Status::NoError;
 
     osg::ref_ptr<const Profile> profile;
-
-    bool dataExtentsValid = true;
 
     // If the user didn't call addLayer(), try to read them from the options.
     if (_layers.empty())
@@ -634,32 +662,7 @@ CompositeElevationLayer::openImplementation()
                     po.vsrsString().unset();
                     profile = Profile::create(po);
                 }
-            }
-
-            // gather extents                        
-            const DataExtentList& extents = layer->getDataExtents();  
-
-            // If even one of the layers' data extents is unknown, the entire composite
-            // must have unknown data extents:
-            if (extents.empty())
-            {
-                dataExtentsValid = false;
-                dataExtents().clear();
-            }
-
-            if (dataExtentsValid)
-            {
-                for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
-                {                
-                    // Convert the data extent to the profile that is actually used by this TileSource
-                    DataExtent dataExtent = *j;                
-                    GeoExtent ext = dataExtent.transform(profile->getSRS());
-                    unsigned int minLevel = 0;
-                    unsigned int maxLevel = profile->getEquivalentLOD(layer->getProfile(), *dataExtent.maxLevel() );                                        
-                    dataExtent = DataExtent(ext, minLevel, maxLevel);                                
-                    dataExtents().push_back( dataExtent );
-                }
-            }
+            }            
 
             // If the sublayer has a Node, add it to the group.
             if (layer->getNode())
@@ -808,10 +811,41 @@ CompositeLandCoverLayer::getNode() const
 void
 CompositeLandCoverLayer::addedToMap(const Map* map)
 {
+    bool dataExtentsValid = true;
+
+    osg::ref_ptr<const Profile> profile = getProfile();
+
     for (auto& layer : _layers)
     {
-        if (layer->getOpenAutomatically())
+        if (layer->isOpen())
+        {
             layer->addedToMap(map);
+        }
+
+        // gather extents                        
+        const DataExtentList& extents = layer->getDataExtents();
+
+        // If even one of the layers' data extents is unknown, the entire composite
+        // must have unknown data extents:
+        if (extents.empty())
+        {
+            dataExtentsValid = false;
+            dataExtents().clear();
+        }
+
+        if (dataExtentsValid)
+        {
+            for (DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j)
+            {
+                // Convert the data extent to the profile that is actually used by this TileSource
+                DataExtent dataExtent = *j;
+                GeoExtent ext = dataExtent.transform(profile->getSRS());
+                unsigned int minLevel = 0;
+                unsigned int maxLevel = profile->getEquivalentLOD(layer->getProfile(), *dataExtent.maxLevel());
+                dataExtent = DataExtent(ext, minLevel, maxLevel);
+                dataExtents().push_back(dataExtent);
+            }
+        }
     }
 }
 
@@ -906,32 +940,7 @@ CompositeLandCoverLayer::openImplementation()
                     po.vsrsString().unset();
                     profile = Profile::create(po);
                 }
-            }
-
-            // gather extents                        
-            const DataExtentList& extents = layer->getDataExtents();  
-
-            // If even one of the layers' data extents is unknown, the entire composite
-            // must have unknown data extents:
-            if (extents.empty())
-            {
-                dataExtentsValid = false;
-                dataExtents().clear();
-            }
-
-            if (dataExtentsValid)
-            {
-                for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
-                {                
-                    // Convert the data extent to the profile that is actually used by this TileSource
-                    DataExtent dataExtent = *j;                
-                    GeoExtent ext = dataExtent.transform(profile->getSRS());
-                    unsigned int minLevel = 0;
-                    unsigned int maxLevel = profile->getEquivalentLOD(layer->getProfile(), *dataExtent.maxLevel() );                                        
-                    dataExtent = DataExtent(ext, minLevel, maxLevel);                                
-                    dataExtents().push_back( dataExtent );
-                }
-            }
+            }            
 
             // If the sublayer has a Node, add it to the group.
             if (layer->getNode())

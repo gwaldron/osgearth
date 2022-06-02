@@ -22,6 +22,7 @@
 #include <osgEarth/ClampingTechnique>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
+#include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osgEarth/Shaders>
 #include <osgEarth/CameraUtils>
@@ -228,7 +229,6 @@ ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
     rttVP->setInheritShaders(false);
     
     // attach the terrain to the camera.
-    // todo: should probably protect this with a mutex.....
     params._rttCamera->addChild( _engine ); // the terrain itself.
 
     // assemble the overlay graph stateset.

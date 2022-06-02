@@ -1,6 +1,3 @@
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_name REX Engine - Init Model Space
 #pragma vp_function oe_rex_init_model, vertex_model, first
 
@@ -41,12 +38,11 @@ void oe_rex_init_model(inout vec4 vertexModel)
 
 
 [break]
-#version $GLSL_VERSION_STR
 #pragma vp_name REX Engine - Init View Space
 #pragma vp_function oe_rex_init_view, vertex_view, first
 
 // outputs
-vec3 vp_Normal;
+out vec3 vp_Normal;
 out vec3 oe_UpVectorView;
 
 void oe_rex_init_view(inout vec4 vert_view)

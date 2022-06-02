@@ -16,10 +16,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/CullingUtils>
-#include <osgEarth/LineFunctor>
-#include <osgEarth/VirtualProgram>
-#include <osgEarth/Utils>
+#include "CullingUtils"
+#include "LineFunctor"
+#include "VirtualProgram"
+#include "Utils"
+#include "Math"
+
 #include <osg/TemplatePrimitiveFunctor>
 #include <osgDB/ObjectWrapper>
 
@@ -886,8 +888,6 @@ ProxyCullVisitor::apply(osg::Drawable& drawable)
 namespace
 {
     const char* horizon_vs =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "uniform mat4 osg_ViewMatrix; \n"
         "out float oe_horizon_alpha; \n"
         "void oe_horizon_vertex(inout vec4 VertexVIEW) \n"
@@ -911,8 +911,6 @@ namespace
         "} \n";
 
     const char* horizon_fs =
-        "#version " GLSL_VERSION_STR "\n"
-        GLSL_DEFAULT_PRECISION_FLOAT "\n"
         "in float oe_horizon_alpha; \n"
         "void oe_horizon_fragment(inout vec4 color) \n"
         "{ \n"
@@ -928,8 +926,8 @@ HorizonCullingProgram::install(osg::StateSet* stateset)
     {
         VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
         vp->setName("HorizonCullingProgram");
-        vp->setFunction( "oe_horizon_vertex",   horizon_vs, ShaderComp::LOCATION_VERTEX_VIEW );
-        vp->setFunction( "oe_horizon_fragment", horizon_fs, ShaderComp::LOCATION_FRAGMENT_COLORING );
+        vp->setFunction( "oe_horizon_vertex",   horizon_vs, VirtualProgram::LOCATION_VERTEX_VIEW );
+        vp->setFunction( "oe_horizon_fragment", horizon_fs, VirtualProgram::LOCATION_FRAGMENT_COLORING );
     }
 }
 
@@ -1160,8 +1158,8 @@ InstallCameraUniform::operator()(osg::Node* node, osg::NodeVisitor* nv)
             const osg::Matrixd& proj = camera->getProjectionMatrix();
             if (proj(3, 3) == 1.0) // ortho
             {
-                float L, R, B, T, N, F;
-                proj.getOrtho(L, R, B, T, N, F);
+                double L, R, B, T, N, F;
+                ProjectionMatrix::getOrtho(proj, L, R, B, T, N, F);
                 width = R - L;
                 height = T - B;
             }

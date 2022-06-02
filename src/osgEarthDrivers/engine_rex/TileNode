@@ -55,7 +55,7 @@ namespace osgEarth { namespace REX
      * and four TileNodes representing the LOD+1 quadtree tiles under this tile.
      */
     class TileNode : public osg::Group,
-                     public osgEarth::TerrainTileNode
+                     public osgEarth::TerrainTile
     {
     public:
         TileNode(

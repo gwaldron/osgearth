@@ -325,6 +325,12 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         progress);
 
     GeoImage result = rasterizer->finalize();
+    // If the rasterizer didn't render anything at all return an invalid image
+    if (ImageUtils::isEmptyImage(result.getImage()))
+    {
+        result = GeoImage::INVALID;
+    }
     delete rasterizer;
+
     return result;
 }

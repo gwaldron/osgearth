@@ -349,7 +349,6 @@ Profile::create( const ProfileOptions& options )
 const Profile*
 Profile::create(const std::string& name)
 {
-    // TODO: move the named profiles from Registry into here.
     if ( ciEquals(name, PLATE_CARREE) || ciEquals(name, "plate-carre") || ciEquals(name, "eqc-wgs84") )
     {
         // Yes I know this is not really Plate Carre but it will stand in for now.

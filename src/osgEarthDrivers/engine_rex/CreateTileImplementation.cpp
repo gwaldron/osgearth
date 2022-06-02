@@ -55,7 +55,7 @@ CreateTileImplementation::createTile(
 
     // Dimension of each tile in vertices
     unsigned tileSize = context->options().tileSize().get();
-    TileKey rootkey = area.valid() ? area : model->getKey();
+    TileKey rootkey = area.valid() ? area : model->key();
     const SpatialReference* srs = rootkey.getExtent().getSRS();
 
     // Will hold keys at reference lod to check
@@ -149,7 +149,7 @@ CreateTileImplementation::createTile(
             drawable->setUserDataContainer(udc);
 
             // Burn elevation data into the vertex list
-            if (model->elevationModel().valid())
+            if (model->elevation().texture())
             {
                 // Clone the vertex array since it's shared and we're going to alter it
                 geom->setVertexArray(osg::clone(geom->getVertexArray(), osg::CopyOp::DEEP_COPY_ALL));
@@ -160,13 +160,13 @@ CreateTileImplementation::createTile(
                 osg::Vec3Array* ups = dynamic_cast<osg::Vec3Array*>(geom->getNormalArray());
                 osg::Vec3Array* tileCoords = dynamic_cast<osg::Vec3Array*>(geom->getTexCoordArray(0));
 
-                const osg::HeightField* hf = model->elevationModel()->getHeightField();
-                const osg::RefMatrixf* hfmatrix = model->elevationModel()->getMatrix();
+                const osg::HeightField* hf = model->elevation().heightField();
+                const osg::Matrix& hfmatrix = model->elevation().matrix();
 
                 // Tile coords must be transformed into the local tile's space
                 // for elevation grid lookup:
                 osg::Matrix scaleBias;
-                subkey->getExtent().createScaleBias(model->getKey().getExtent(), scaleBias);
+                subkey->getExtent().createScaleBias(model->key().getExtent(), scaleBias);
 
                 // Apply elevation to each vertex.
                 for (unsigned i = 0; i < verts->size(); ++i)
@@ -180,7 +180,7 @@ CreateTileImplementation::createTile(
                     {
                         osg::Vec3d n = osg::Vec3d(tileCoord.x(), tileCoord.y(), 0);
                         n = n * scaleBias;
-                        if (hfmatrix) n = n * (*hfmatrix);
+                        n = n * hfmatrix;
 
                         float z = HeightFieldUtils::getHeightAtNormalizedLocation(hf, n.x(), n.y());
                         if (z != NO_DATA_VALUE)

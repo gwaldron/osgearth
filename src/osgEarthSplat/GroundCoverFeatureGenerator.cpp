@@ -347,9 +347,9 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     osg::Matrix maskMat;
     if (_masklayer.valid())
     {
-        maskTex = model->getTexture(_masklayer->getUID());
-        osg::RefMatrixf* r = model->getMatrix(_masklayer->getUID());
-        if (r) maskMat = *r;
+        auto tex = model->getTexture(_masklayer->getUID());
+        maskTex = tex ? tex->osgTexture() : nullptr;
+        maskMat = model->getMatrix(_masklayer->getUID());
     }
     ImageUtils::PixelReader maskSampler;
     maskSampler.setTexture(maskTex);
@@ -359,7 +359,8 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     osg::Matrixf lcMat;
     if (_lclayer.valid())
     {
-        lcTex = model->getLandCoverTexture();
+        auto t = model->landCover().texture();
+        if (t) lcTex = t->osgTexture();
         if (!lcTex)
         {
             // TODO: how to handle this?
@@ -367,8 +368,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
         }
         else
         {
-            osg::RefMatrixf* r = model->getLandCoverTextureMatrix();
-            if (r) lcMat = *r;
+            lcMat = model->landCover().matrix();
         }
     }
     ImageUtils::PixelReader lcSampler;
@@ -377,11 +377,10 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     // elevation
     osg::Texture* elevTex = NULL;
     osg::Matrix elevMat;
-    if (model->elevationModel().valid())
+    if (model->elevation().texture())
     {
-        elevTex = model->getElevationTexture();
-        osg::RefMatrixf* r = model->getElevationTextureMatrix();
-        if (r) elevMat = *r;
+        elevTex = model->elevation().texture()->osgTexture();
+        elevMat = model->elevation().matrix();
     }
     ImageUtils::PixelReader elevSampler;
     elevSampler.setTexture(elevTex);

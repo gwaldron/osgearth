@@ -1,8 +1,5 @@
-#version 400
-#pragma vp_name       REX Engine TCS
-#pragma vp_entryPoint oe_rex_TCS
-#pragma vp_location   tess_control
-#pragma vp_order      last
+#pragma vp_name REX Engine TCS
+#pragma vp_function oe_rex_TCS, tess_control, last
 
 layout(vertices=3) out;
 
@@ -10,11 +7,12 @@ uniform float oe_terrain_tess;
 uniform float oe_terrain_tess_range;
 
 // temporary: use lifemap texture from earth file
-uniform sampler2D LIFEMAP_TEX;
-uniform mat4 LIFEMAP_MAT;
-vec4 oe_layer_tilec;
-vec4 vp_Vertex;
-vec3 vp_Normal;
+//#pragma oe_use_shared_layer(LIFEMAP_TEX, LIFEMAP_MAT);
+
+varying vec4 oe_layer_tilec;
+varying vec4 vp_Vertex;
+varying vec3 vp_Normal;
+
 void VP_LoadVertex(in int);
 float oe_terrain_getElevation();
 
@@ -27,6 +25,7 @@ void oe_rex_TCS()
 {
     if (gl_InvocationID == 0)
     {
+#if 0
         // iterator backward so we end up loading vertex 0
         float d[3];
         vec3 v[3];
@@ -59,16 +58,20 @@ void oe_rex_TCS()
         gl_TessLevelOuter[1] = e1;
         gl_TessLevelOuter[2] = e2;
         gl_TessLevelInner[0] = e3;
+#else
+
+        gl_TessLevelOuter[0] = oe_terrain_tess;
+        gl_TessLevelOuter[1] = oe_terrain_tess;
+        gl_TessLevelOuter[2] = oe_terrain_tess;
+        gl_TessLevelInner[0] = oe_terrain_tess;
+#endif
     }
 }
 
 
 [break]
-#version 400
-
-#pragma vp_name       REX Engine TES
-#pragma vp_entryPoint oe_rex_TES
-#pragma vp_location   tess_eval
+#pragma vp_name REX Engine TES
+#pragma vp_function oe_rex_TES, tess_eval
 
 // osgEarth terrain is always CCW winding
 layout(triangles, equal_spacing, ccw) in;
@@ -107,17 +110,9 @@ vec4 VP_Interpolate3(vec4 a, vec4 b, vec4 c)
         dot(gl_TessCoord.xyz, vec3(a.w,b.w,c.w)));
 }
 
-vec3 oe_UpVectorView;
-vec3 vp_Normal;
-
 void oe_rex_TES()
 {
     VP_Interpolate3();
-    
-    // Must re-normalize the normal vector since interpolation was linear?
-    //vp_Normal = normalize(vp_Normal);
-    //oe_UpVectorView = normalize(oe_UpVectorView);
-
     VP_EmitVertex();
 }
 

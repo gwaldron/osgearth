@@ -47,6 +47,7 @@ namespace
         float height = image->t();
 
         osg::Geometry* geometry = new osg::Geometry;
+        geometry->setName("IconResource");
         geometry->setUseVertexBufferObjects(true);
 
         osg::Vec3Array* verts = new osg::Vec3Array(4);

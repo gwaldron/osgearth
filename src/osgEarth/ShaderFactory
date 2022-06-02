@@ -52,10 +52,11 @@ namespace osgEarth { namespace Util
         /**
          * Creates a Shader for each of the stages represented in the function map.
          */
-        virtual ShaderComp::StageMask createMains(
-            const ShaderComp::FunctionLocationMap&    functions,
-            const VirtualProgram::ShaderMap&          in_shaders,
-            const VirtualProgram::ExtensionsSet&      in_extensions,
+        virtual VirtualProgram::StageMask createMains(
+            osg::State& state,
+            const VirtualProgram::FunctionLocationMap& unctions,
+            const VirtualProgram::ShaderMap& in_shaders,
+            const VirtualProgram::ExtensionsSet& in_extensions,
             std::vector< osg::ref_ptr<osg::Shader> >& out_mains) const;
 
         /**
@@ -112,6 +113,10 @@ namespace osgEarth { namespace Util
         //! Remove a callback you installed with a name.
         void removePostProcessorCallback(
             const std::string& name);
+
+        //! Returns a string you can use as your shader header,
+        //! including the #version, precision, and extensions strings.
+        static std::string getGLSLHeader();
 
     protected:
         /** dtor */

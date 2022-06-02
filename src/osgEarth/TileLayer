@@ -291,8 +291,12 @@ namespace osgEarth
         std::string getMetadataKey(const Profile*) const;
 
     private:
+        // general purpose data protector
+        mutable ReadWrite<Mutex> _data_mutex;
+
         DataExtentList _dataExtents;
         mutable DataExtent _dataExtentsUnion;
+        mutable void* _dataExtentsIndex;
 
         // The cache ID used at runtime. This will either be the cacheId found in
         // the TileLayerOptions, or a dynamic cacheID generated at runtime.

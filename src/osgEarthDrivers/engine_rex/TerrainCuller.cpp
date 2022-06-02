@@ -77,7 +77,6 @@ TerrainCuller::reset(
         context->getRenderBindings(),
         frameNum,
         pd,
-        context->useGL4(),
         _cv,
         _context);
 }

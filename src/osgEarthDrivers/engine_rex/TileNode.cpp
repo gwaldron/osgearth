@@ -290,8 +290,8 @@ void
 TileNode::updateElevationRaster()
 {
     const Sampler& elev = _renderModel._sharedSamplers[SamplerBinding::ELEVATION];
-    if (elev._texture.valid())
-        setElevationRaster(elev._texture->getImage(0), elev._matrix);
+    if (elev._texture)
+        setElevationRaster(elev._texture->osgTexture()->getImage(0), elev._matrix);
     else
         setElevationRaster(nullptr, osg::Matrixf::identity());
 }
@@ -584,7 +584,8 @@ TileNode::traverse(osg::NodeVisitor& nv)
         {
             for(int i=0; i<numChildren; ++i)
             {
-                _children[i]->accept( nv );
+                if (_children[i].valid())
+                    _children[i]->accept( nv );
             }
         }
 
@@ -610,39 +611,32 @@ TileNode::update(osg::NodeVisitor& nv)
             // by an "async" image layer that is working in the background
             // to load. Once it is available we can merge it into the real texture
             // slot for rendering.
-            if (sampler._futureTexture.valid())
+            if (sampler._futureTexture)
             {
-                if (sampler._futureTexture->requiresUpdateCall())
-                {
-                    sampler._futureTexture->update(&nv);
-                    ++numUpdatedTotal;
-                }
+                FutureTexture* ft = dynamic_cast<FutureTexture*>(
+                    sampler._futureTexture->osgTexture().get());
 
-                if (sampler._futureTexture->doneLoading())
+                if (ft->succeeded())
                 {
                     sampler._texture = sampler._futureTexture;
+                    sampler._futureTexture = nullptr;
                     sampler._matrix.makeIdentity();
+                    ++numFuturesResolved;
+                }
+                else if (ft->failed())
+                {
                     sampler._futureTexture = nullptr;
                     ++numFuturesResolved;
                 }
 
-                else if (sampler._futureTexture->failed())
-                {
-                    sampler._futureTexture = nullptr;
-                }
+                ++numUpdatedTotal;
             }
 
-            if (sampler.ownsTexture())
+            if (sampler.ownsTexture() && sampler._texture->needsUpdates())
             {
-                for (unsigned i = 0; i < sampler._texture->getNumImages(); ++i)
-                {
-                    osg::Image* image = sampler._texture->getImage(i);
-                    if (image && image->requiresUpdateCall())
-                    {
-                        image->update(&nv);
-                        ++numUpdatedTotal;
-                    }
-                }
+                sampler._texture->update(nv);
+
+                ++numUpdatedTotal;
             }
         }
     }
@@ -686,7 +680,6 @@ TileNode::createChildren()
 
                 auto createChildOperation = [context, tile_weakptr, childkey](Cancelable* state)
                 {
-                    //osg::ref_ptr<TileNode> tile = context->liveTiles()->get(parentkey);
                     osg::ref_ptr<TileNode> tile;
                     if (tile_weakptr.lock(tile) && !state->isCanceled())
                         return tile->createChild(childkey, state);
@@ -786,13 +779,10 @@ TileNode::merge(
     {
         // loop over all the layers included in the new data model and
         // add them to our render model (or update them if they already exist)
-        for(const auto& colorLayerModel : model->colorLayers())
+        for(const auto& colorLayer : model->colorLayers())
         {
-            if (!colorLayerModel.valid())
-                continue;
-
-            const Layer* layer = colorLayerModel->getLayer();
-            if (!layer)
+            auto& layer = colorLayer.layer();
+            if (!layer.valid())
                 continue;
 
             // Look up the parent pass in case we need it
@@ -804,8 +794,8 @@ TileNode::merge(
                 nullptr;
 
             // ImageLayer?
-            TerrainTileImageLayerModel* imageLayerModel = dynamic_cast<TerrainTileImageLayerModel*>(colorLayerModel.get());
-            if (imageLayerModel && imageLayerModel->getTexture())
+            ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer.get());
+            if (imageLayer)
             {
                 bool isNewPass = (pass == nullptr);
                 if (isNewPass)
@@ -816,10 +806,10 @@ TileNode::merge(
                 }
 
                 pass->setSampler(
-                    SamplerBinding::COLOR, 
-                    imageLayerModel->getTexture(), 
-                    *imageLayerModel->getMatrix(), 
-                    imageLayerModel->getRevision());
+                    SamplerBinding::COLOR,
+                    colorLayer.texture(),
+                    colorLayer.matrix(),
+                    colorLayer.revision());
 
                 // If this is a new rendering pass, just copy the color into the color-parent.
                 if (isNewPass && bindings[SamplerBinding::COLOR_PARENT].isActive())
@@ -830,20 +820,10 @@ TileNode::merge(
                 // check to see if this data requires an image update traversal.
                 if (_imageUpdatesActive == false)
                 {
-                    osg::Texture* texture = imageLayerModel->getTexture();
-
-                    for (unsigned i = 0; i < texture->getNumImages(); ++i)
-                    {
-                        const osg::Image* image = texture->getImage(i);
-                        if (image && image->requiresUpdateCall())
-                        {
-                            _imageUpdatesActive = true;
-                            break;
-                        }
-                    }
+                    _imageUpdatesActive = colorLayer.texture()->needsUpdates();
                 }
 
-                if (imageLayerModel->getImageLayer()->getAsyncLoading())
+                if (imageLayer->getAsyncLoading())
                 {
                     if (parentPass)
                     {
@@ -853,7 +833,6 @@ TileNode::merge(
                         {
                             Sampler& colorParent = pass->sampler(SamplerBinding::COLOR_PARENT);
                             colorParent._texture = parentPass->sampler(SamplerBinding::COLOR)._texture;
-                            colorParent._arena_texture = parentPass->sampler(SamplerBinding::COLOR)._arena_texture;
                             colorParent._matrix = parentPass->sampler(SamplerBinding::COLOR)._matrix;
                             colorParent._matrix.preMult(scaleBias[_key.getQuadrant()]);
                         }
@@ -861,11 +840,15 @@ TileNode::merge(
                     else
                     {
                         // note: this can happen with an async layer load
-                        OE_DEBUG << "no parent pass in my pass. key=" << model->getKey().str() << std::endl;
+                        OE_DEBUG << "no parent pass in my pass. key=" << model->key().str() << std::endl;
                     }
 
-                    pass->sampler(SamplerBinding::COLOR)._futureTexture =
-                        dynamic_cast<FutureTexture2D*>(imageLayerModel->getTexture());
+                    // check whether it's actually a futuretexture.
+                    // if it's not, it is likely an empty texture and we'll ignore it
+                    if (dynamic_cast<FutureTexture*>(colorLayer.texture()->osgTexture().get()))
+                    {
+                        pass->sampler(SamplerBinding::COLOR)._futureTexture = colorLayer.texture();
+                    }
 
                     // require an update pass to process the future texture
                     _imageUpdatesActive = true;
@@ -879,7 +862,7 @@ TileNode::merge(
                 if (!pass)
                 {
                     pass = &_renderModel.addPass();
-                    pass->setLayer(colorLayerModel->getLayer());
+                    pass->setLayer(colorLayer.layer().get());
                 }
 
                 uidsLoaded.insert(pass->sourceUID());
@@ -929,12 +912,12 @@ TileNode::merge(
     const SamplerBinding& elevation = bindings[SamplerBinding::ELEVATION];
     if (elevation.isActive())
     {
-        if (model->elevationModel().valid() && model->elevationModel()->getTexture())
+        if (model->elevation().texture())
         {
-            osg::Texture* tex = model->elevationModel()->getTexture();
-            int revision = model->elevationModel()->getRevision();
-
-            _renderModel.setSharedSampler(SamplerBinding::ELEVATION, tex, revision);
+            _renderModel.setSharedSampler(
+                SamplerBinding::ELEVATION,
+                model->elevation().texture(),
+                model->elevation().revision());
 
             updateElevationRaster();
 
@@ -959,23 +942,14 @@ TileNode::merge(
     const SamplerBinding& normals = bindings[SamplerBinding::NORMAL];
     if (normals.isActive())
     {
-        if (model->elevationModel().valid() && model->elevationModel()->getTexture())
+        if (model->normalMap().texture())
         {
-            ElevationTexture* etex = static_cast<ElevationTexture*>(model->elevationModel()->getTexture());
-            if (etex->getNormalMapTexture())
-            {
-                osg::Texture* tex = etex->getNormalMapTexture();
-                int revision = model->elevationModel()->getRevision();
+            _renderModel.setSharedSampler(
+                SamplerBinding::NORMAL,
+                model->normalMap().texture(),
+                model->normalMap().revision());
 
-                if (options().normalizeEdges() == true)
-                {
-                    // keep the normal map around because we might update it later
-                    tex->setUnRefImageDataAfterApply(false);
-                }
-
-                _renderModel.setSharedSampler(SamplerBinding::NORMAL, tex, revision);
-                updateNormalMap();
-            }
+            updateNormalMap();
         }
 
         // If we OWN normal data, requested new data, and didn't get any,
@@ -993,12 +967,12 @@ TileNode::merge(
     const SamplerBinding& landCover = bindings[SamplerBinding::LANDCOVER];
     if (landCover.isActive())
     {
-        if (model->landCoverModel().valid() && model->landCoverModel()->getTexture())
+        if (model->landCover().texture())
         {
-            osg::Texture* tex = model->landCoverModel()->getTexture();
-            int revision = model->landCoverModel()->getRevision();
-        
-            _renderModel.setSharedSampler(SamplerBinding::LANDCOVER, tex, revision);
+            _renderModel.setSharedSampler(
+                SamplerBinding::LANDCOVER,
+                model->landCover().texture(),
+                model->landCover().revision());
         }
 
         else if (
@@ -1014,26 +988,32 @@ TileNode::merge(
     // Other Shared Layers:
     uidsLoaded.clear();
 
-    for(auto& layerModel : model->sharedLayers())
+    for(unsigned index : model->sharedLayerIndices())
     {
-        if (layerModel->getTexture())
+        auto& sharedLayer = model->colorLayers()[index];
+        if (sharedLayer.texture())
         {
             // locate the shared binding corresponding to this layer:
-            UID uid = layerModel->getImageLayer()->getUID();
+            UID uid = sharedLayer.layer()->getUID();
             unsigned bindingIndex = INT_MAX;
             for(unsigned i=SamplerBinding::SHARED; i<bindings.size() && bindingIndex==INT_MAX; ++i)
             {
                 if (bindings[i].isActive() && bindings[i].sourceUID().isSetTo(uid))
                 {
                     bindingIndex = i;
-                }                   
+                }
             }
 
             if (bindingIndex < INT_MAX)
             {
-                osg::Texture* tex = layerModel->getTexture();
-                int revision = layerModel->getRevision();
-                _renderModel.setSharedSampler(bindingIndex, tex, revision);
+                _renderModel.setSharedSampler(
+                    bindingIndex,
+                    sharedLayer.texture(),
+                    sharedLayer.revision());
+                //osg::Texture* tex = layerModel->getTexture();
+                //int revision = layerModel->getRevision();
+                //_renderModel.setSharedSampler(bindingIndex, tex, revision);
+
                 uidsLoaded.insert(uid);
             }
         }
@@ -1080,7 +1060,7 @@ void TileNode::inheritSharedSampler(int binding)
     {
         Sampler& mySampler = _renderModel._sharedSamplers[binding];
         mySampler = parent->_renderModel._sharedSamplers[binding];
-        if (mySampler._texture.valid())
+        if (mySampler._texture)
             mySampler._matrix.preMult(scaleBias[_key.getQuadrant()]);
     }
     else
@@ -1170,17 +1150,15 @@ TileNode::refreshInheritedData(TileNode* parent, const RenderBindings& bindings)
                 newMatrix.preMult(scaleBias[quadrant]);
 
                 // Did something change?
-                if (mySampler._texture.get() != parentColorSampler._texture.get() ||
-                    mySampler._arena_texture != parentColorSampler._arena_texture ||
+                if (mySampler._texture != parentColorSampler._texture ||
                     mySampler._matrix != newMatrix ||
                     mySampler._revision != parentColorSampler._revision)
                 {
-                    if (parentColorSampler._texture.valid() && passInLegalRange(parentPass))
+                    if (parentColorSampler._texture && passInLegalRange(parentPass))
                     {
                         // set the parent-color texture to the parent's color texture
                         // and scale/bias the matrix.
-                        mySampler._texture = parentColorSampler._texture.get();
-                        mySampler._arena_texture = parentColorSampler._arena_texture;
+                        mySampler._texture = parentColorSampler._texture;
                         mySampler._matrix = newMatrix;
                         mySampler._revision = parentColorSampler._revision;
                     }
@@ -1268,12 +1246,15 @@ TileNode::load(TerrainCuller* culler)
 
     // dist priority is in the range [0..1]
     float distance = culler->getDistanceToViewPoint(getBound().center(), true);
-    float maxRange = si.getLOD(0)._visibilityRange;
+    int nextLOD = std::max(0, lod - 1);
+    float maxRange = si.getLOD(nextLOD)._visibilityRange;
     float distPriority = 1.0 - distance/maxRange;
 
     // add them together, and you get tiles sorted first by lodPriority
     // (because of the biggest range), and second by distance.
     float priority = lodPriority + distPriority;
+
+    //OE_WARN << "key " << _key.str() << " pri=" << priority << std::endl;
 
     // set atomically
     _loadPriority = priority;
@@ -1365,7 +1346,7 @@ TileNode::updateNormalMap()
         return;
 
     Sampler& thisNormalMap = _renderModel._sharedSamplers[SamplerBinding::NORMAL];
-    if (thisNormalMap.inheritsTexture() || !thisNormalMap._texture->getImage(0))
+    if (thisNormalMap.inheritsTexture() || !thisNormalMap._texture->osgTexture()->getImage(0))
         return;
 
     if (!_eastNeighbor.valid() || !_southNeighbor.valid())
@@ -1375,11 +1356,11 @@ TileNode::updateNormalMap()
     if (_eastNeighbor.lock(east))
     {
         const Sampler& thatNormalMap = east->_renderModel._sharedSamplers[SamplerBinding::NORMAL];
-        if (thatNormalMap.inheritsTexture() || !thatNormalMap._texture->getImage(0))
+        if (thatNormalMap.inheritsTexture() || !thatNormalMap._texture->osgTexture()->getImage(0))
             return;
 
-        osg::Image* thisImage = thisNormalMap._texture->getImage(0);
-        osg::Image* thatImage = thatNormalMap._texture->getImage(0);
+        osg::Image* thisImage = thisNormalMap._texture->osgTexture()->getImage(0);
+        osg::Image* thatImage = thatNormalMap._texture->osgTexture()->getImage(0);
 
         int width = thisImage->s();
         int height = thisImage->t();
@@ -1408,11 +1389,11 @@ TileNode::updateNormalMap()
     if (_southNeighbor.lock(south))
     {
         const Sampler& thatNormalMap = south->_renderModel._sharedSamplers[SamplerBinding::NORMAL];
-        if (thatNormalMap.inheritsTexture() || !thatNormalMap._texture->getImage(0))
+        if (thatNormalMap.inheritsTexture() || !thatNormalMap._texture->osgTexture()->getImage(0))
             return;
 
-        osg::Image* thisImage = thisNormalMap._texture->getImage(0);
-        osg::Image* thatImage = thatNormalMap._texture->getImage(0);
+        osg::Image* thisImage = thisNormalMap._texture->osgTexture()->getImage(0);
+        osg::Image* thatImage = thatNormalMap._texture->osgTexture()->getImage(0);
 
         int width = thisImage->s();
         int height = thisImage->t();

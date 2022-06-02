@@ -48,7 +48,7 @@ namespace osgEarth
     {
     public:
         using Ptr = std::shared_ptr<Coverage<T>>;
-
+        
         // maps T to index for duplicate values (std::map so that T doesn't need std::hash)
         using LUT = std::map<T, int>;
 
@@ -56,7 +56,8 @@ namespace osgEarth
         using RLUT = std::unordered_map<int, T>;
 
         // max out at 255 different indices. Make it a short if you want more.
-        // todo: consider templatizing this?
+        // TODO: consider templatizing this with something like
+        // <typename T, typename Index=unsigned char>
         using Index = unsigned char;
 
         // raster of indices
@@ -185,6 +186,24 @@ namespace osgEarth
             return read(output, s, t);
         }
 
+        const T* read(unsigned s, unsigned t) const
+        {
+            int ptr = t * _width + s;
+            Index i = _pixels[ptr];
+            if (i > 0)
+            {
+                return &_rlut[i];
+            }
+            return nullptr;
+        }
+
+        const T* read(double u, double v) const
+        {
+            unsigned s = (unsigned)((double)(_width - 1) * u);
+            unsigned t = (unsigned)((double)(_height - 1) * v);
+            return read(s, t);
+        }
+
     private:
         Coverage()
         {
@@ -209,35 +228,31 @@ namespace osgEarth
         //! @param coverage Coverage to include in the geocoverage
         //! @param extent geospatial extent of the coverage data
         GeoCoverage(typename Coverage<T>::Ptr coverage, const GeoExtent& extent)
-            : _coverage(coverage), _extent(extent)
+            : _coverage(coverage), _extent(extent), _valid(true)
         {
             if (coverage == nullptr)
-                _status = Status::ResourceUnavailable;
+                _valid = false;
         }
 
         GeoCoverage()
-            : _status(Status::ResourceUnavailable)
+            : _valid(false)
         {
             //nop
         }
 
-        Status getStatus() const {
-            return _status;
+        inline bool valid() const {
+            return _valid;
         }
 
-        bool valid() const {
-            return _status == STATUS_OK;
-        }
-
-        unsigned s() const {
+        inline unsigned s() const {
             return _coverage ? _coverage->s() : 0u;
         }
 
-        unsigned t() const {
+        inline unsigned t() const {
             return _coverage ? _coverage->t() : 0u;
         }
 
-        unsigned nodataCount() const {
+        inline unsigned nodataCount() const {
             return _coverage ? _coverage->nodataCount() : 0u;
         }
 
@@ -259,9 +274,33 @@ namespace osgEarth
             return _coverage->read(value, u, v);
         }
 
+        const T* read(unsigned s, unsigned t) const
+        {
+            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, nullptr);
+            return _coverage->read(s, t);
+        }
+
+        const T* read(double u, double v) const
+        {
+            OE_SOFT_ASSERT_AND_RETURN(_coverage != nullptr, nullptr);
+            return _coverage->read(u, v);
+        }
+
+        bool readAtCoords(T& value, double x, double y) const
+        {
+            unsigned xs = (unsigned)((double)(s()-1) * (x - _extent.xMin()) / _extent.width());
+            unsigned yt = (unsigned)((double)(t()-1) * (y - _extent.yMin()) / _extent.height());
+            if (xs >= 0 && xs < s() && yt >= 0 && yt < t())
+            {
+                read(value, xs, yt);
+                return true;
+            }
+            return false;
+        }
+
     private:
         GeoExtent _extent;
-        Status _status;
+        bool _valid;
         typename Coverage<T>::Ptr _coverage;
     };
 }

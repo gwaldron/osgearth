@@ -1,5 +1,3 @@
-#version $GLSL_VERSION_STR
-
 #pragma vp_entryPoint oe_GeodeticGraticule_vertex
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
@@ -22,10 +20,6 @@ void oe_GeodeticGraticule_vertex(inout vec4 vertex)
 
 
 [break]
-
-#version $GLSL_VERSION_STR
-$GLSL_DEFAULT_PRECISION_FLOAT
-
 #pragma vp_entryPoint oe_GeodeticGraticule_fragment
 #pragma vp_location   fragment_lighting
 #pragma vp_order      1.1

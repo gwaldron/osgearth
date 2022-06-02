@@ -36,7 +36,23 @@ using namespace MapBoxGL;
 REGISTER_OSGEARTH_LAYER(mapboxglimage, MapBoxGLImageLayer);
 OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, std::string, Key, key);
-OE_LAYER_PROPERTY_IMPL(MapBoxGLImageLayer, bool, DisableText, disableText);
+
+void MapBoxGLImageLayer::setPixelScale(const float& value) {
+    setOptionThatRequiresReopen(options().pixelScale(), value);
+}
+
+const float& MapBoxGLImageLayer::getPixelScale() const {
+    return options().pixelScale().get();
+}
+
+void MapBoxGLImageLayer::setDisableText(const bool& value) {
+    setOptionThatRequiresReopen(options().disableText(), value);
+}
+
+const bool& MapBoxGLImageLayer::getDisableText() const {
+    return options().disableText().get();
+}
+
 
 void getIfSet(const Json::Value& object, const std::string& member, PropertyValue<float>& value)
 {
@@ -227,26 +243,43 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
 
         if (type() == "vector-vtpk")
         {
+#ifdef OSGEARTH_HAVE_MVT
             URI uri(url(), context);
 
             osg::ref_ptr< VTPKFeatureSource > featureSource = new VTPKFeatureSource();
             featureSource->setReadOptions(options);
             featureSource->setURL(uri);
-            featureSource->open();
+            if (featureSource->open().isError())
+            {
+                OE_WARN << "[MapBoxGLImageLayer] Failed to open: " << url() << std::endl;
+            }
             _featureSource = featureSource.get();
+#else
+            OE_WARN << "[MapboxGLImageLayer] Cannot process 'vector-vtpk' because osgEarth was not compiled with Protobuf support" << std::endl;
+#endif
         }
         else if (type() == "vector-mbtiles")
         {
+#if defined(OSGEARTH_HAVE_MVT) && defined(OSGEARTH_HAVE_SQLITE3)
             URI uri(url(), context);
 
             osg::ref_ptr< MVTFeatureSource > featureSource = new MVTFeatureSource();
             featureSource->setReadOptions(options);
             featureSource->setURL(uri);
-            featureSource->open();
+            if (featureSource->open().isError())
+            {
+                OE_WARN << "[MapBoxGLImageLayer] Failed to open: " << url() << std::endl;
+            }
             _featureSource = featureSource.get();
+#else
+            OE_WARN << "[MapboxGLImageLayer] Cannot process 'vector-mbtiles' because osgEarth was not compiled with Protobuf and SQLITE support" << std::endl;
+#endif
         }
         else if (type() == "vector")
         {
+            std::string profileName = "spherical-mercator";
+            bool isESRIGeodetic = false;
+
             if (!tiles().empty())
             {
                 osg::ref_ptr< XYZFeatureSource > featureSource = new XYZFeatureSource;
@@ -256,9 +289,12 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
                 featureSource->setURL(uri);
                 featureSource->setFormat("pbf");
                 featureSource->setReadOptions(options);
-                // Not necessarily?
-                featureSource->options().profile() = ProfileOptions("spherical-mercator");
-                featureSource->open();
+                // It's possible arcgis can specify a non mercator profile right in the source, but I've never seen one of those in the wild so don't know what it might look like.
+                featureSource->options().profile() = ProfileOptions(profileName);
+                if (featureSource->open().isError())
+                {
+                    OE_WARN << "[MapBoxGLImageLayer] Failed to open: " << *uri << std::endl;
+                }
                 _featureSource = featureSource.get();
             }
             else
@@ -273,6 +309,20 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
                 Json::Value root(Json::objectValue);
                 if (reader.parse(data, root, false))
                 {
+                    if (root.isMember("tileInfo"))
+                    {
+                        if (root["tileInfo"].isMember("spatialReference"))
+                        {
+                            unsigned int wkid = root["tileInfo"]["spatialReference"].get("latestWkid", "3857").asUInt();
+                            if (wkid == 4326)
+                            {
+                                // Only ESRI sources have a tileInfo block
+                                profileName = "global-geodetic";
+                                isESRIGeodetic = true;
+                            }
+                        }
+                    }
+
                     if (root.isMember("tiles"))
                     {
                         std::string tilesetFull = tilesURI.full();
@@ -292,21 +342,28 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
                         featureSource->setMaxLevel(22);
                         featureSource->setURL(uri);
                         featureSource->setFormat("pbf");
+                        featureSource->setEsriGeodetic(isESRIGeodetic);
                         featureSource->setReadOptions(options);
-                        // Not necessarily?
-                        featureSource->options().profile() = ProfileOptions("spherical-mercator");
-                        featureSource->open();
+                        featureSource->options().profile() = ProfileOptions(profileName); 
+                        if (featureSource->open().isError())
+                        {
+                            OE_WARN << "[MapBoxGLImageLayer] Failed to open: " << *uri << std::endl;
+                        }
                         _featureSource = featureSource.get();
-                    }                    
+                    }
                 }
             }
+        }
+        else
+        {
+            OE_WARN << "[MapBoxGLImageLayer] Unexpected type: " << type() << std::endl;
         }
     }
 }
 
 
 /*************************/
-Paint::Paint() :    
+Paint::Paint() :
     _fillAntialias(true),
     _visibility("visible")
 {
@@ -406,6 +463,16 @@ const PropertyValue<Color>& Paint::fillColor() const
 PropertyValue<Color>& Paint::fillColor()
 {
     return _fillColor;
+}
+
+const optional<std::string>& Paint::fillPattern() const
+{
+    return _fillPattern;
+}
+
+optional<std::string>& Paint::fillPattern()
+{
+    return _fillPattern;
 }
 
 const PropertyValue<Color>& Paint::lineColor() const
@@ -656,6 +723,7 @@ MapBoxGL::StyleSheet MapBoxGL::StyleSheet::load(const URI& location, const osgDB
                 getIfSet(paint, "background-color", layer.paint().backgroundColor());
                 getIfSet(paint, "background-opacity", layer.paint().backgroundOpacity());
                 getIfSet(paint, "fill-color", layer.paint().fillColor());
+                getIfSet(paint, "fill-pattern", layer.paint().fillPattern());
 
                 getIfSet(paint, "line-color", layer.paint().lineColor());
                 getIfSet(paint, "line-width", layer.paint().lineWidth());
@@ -671,7 +739,7 @@ MapBoxGL::StyleSheet MapBoxGL::StyleSheet::load(const URI& location, const osgDB
                 // TODO:  This is a layout property, not a paint property
                 getIfSet(layout, "text-field", layer.paint().textField());
                 getIfSet(layout, "text-size", layer.paint().textSize());
-                getIfSet(layout, "text-anchor", layer.paint().textAnchor());                
+                getIfSet(layout, "text-anchor", layer.paint().textAnchor());
                 // Just grab the first font for now from the fonts array.
                 if (layout.isMember("text-font"))
                 {
@@ -714,6 +782,24 @@ ResourceLibrary* MapBoxGL::StyleSheet::loadSpriteLibrary(const URI& sprite)
         unsigned int imageWidth = image->s();
         unsigned int imageHeight = image->t();
 
+        // Flip the image and convert the image to BGRA premultiplie alpha for blend2d so it doesn't need to do it each time an icon is rendered.
+        image->flipVertical();
+        ImageUtils::PixelReader imageReader(image.get());
+        ImageUtils::PixelWriter imageWriter(image.get());
+
+        for (unsigned int t = 0; t < image->t(); ++t)
+        {
+            for (unsigned int s = 0; s < image->s(); ++s)
+            {
+                osg::Vec4 color = imageReader(s, t);
+                osg::Vec4 pma(color.b() * color.a(),
+                    color.g() * color.a(),
+                    color.r() * color.a(),
+                    color.a());                
+                imageWriter(pma, s, t);
+            }
+        }
+
         auto data = uri.getString();
         Json::Reader reader;
         Json::Value root(Json::objectValue);
@@ -739,6 +825,11 @@ ResourceLibrary* MapBoxGL::StyleSheet::loadSpriteLibrary(const URI& sprite)
             }
         }
     }
+    else
+    {
+        OE_WARN << "Failed to load sprites from " << sprite.full() << std::endl;
+    }
+
     return library;
 }
 
@@ -749,14 +840,21 @@ MapBoxGLImageLayer::Options::getConfig() const
     Config conf = ImageLayer::Options::getConfig();
     conf.set("url", _url);
     conf.set("key", _key);
+    conf.set("pixel_scale", _pixelScale);
+    conf.set("disable_text", _disableText);
     return conf;
 }
 
 void
 MapBoxGLImageLayer::Options::fromConfig(const Config& conf)
 {
+    pixelScale().setDefault(1.0);
+    disableText().setDefault(false);
+
     conf.get("url", url());
     conf.get("key", key());
+    conf.get("pixel_scale", pixelScale());
+    conf.get("disable_text", disableText());
 }
 
 void
@@ -805,7 +903,7 @@ MapBoxGLImageLayer::removedFromMap(const Map* map)
 
 struct LayeredFeatures
 {
-    std::map< std::string, FeatureList > features;
+    std::unordered_map< std::string, FeatureList > features;
 };
 
 
@@ -881,7 +979,7 @@ bool evalFilter(const Json::Value& filter, osgEarth::Feature* feature)
         std::string key = filter[1u].asString();
         const Json::Value& value = filter[2u];
 
-        if (!feature->hasAttr(key)) return false;
+        if (key != "$type" && !feature->hasAttr(key)) return false;
 
         if (key == "$type")
         {
@@ -1161,6 +1259,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
     FeatureRasterizer featureRasterizer(getTileSize(), getTileSize(), key.getExtent(), backgroundColor);
     featureRasterizer.setGlyphManager(_glyphManager.get());
+    featureRasterizer.setPixelScale(getPixelScale());
 
     osg::ref_ptr< StyleSheet > styleSheet = new StyleSheet;
     if (_styleSheet.spriteLibrary())
@@ -1169,7 +1268,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
     }
     osg::ref_ptr< Session > session = new Session(_map.get(), styleSheet.get(), nullptr, nullptr);
 
-    std::map< std::string, LayeredFeatures > sourceToFeatures;
+    std::unordered_map< std::string, LayeredFeatures > sourceToFeatures;
 
     for (auto& layer : _styleSheet.layers())
     {
@@ -1208,51 +1307,58 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                 TileKey queryKey = key;
                 while (allFeatures.empty() && queryKey.valid())
                 {
-                    // Get all the features from the feature source as well as it's neighbors so we can render labels and icons nicely along the edges
-#if 1
-                    unsigned int numWide, numHigh;
-                    queryKey.getProfile()->getNumTiles(queryKey.getLevelOfDetail(), numWide, numHigh);
+                    // If the requested key isn't valid we avoid requesting the neighbor keys for metatiling and just fallback on the parent key
+                    // to avoid ending up with empty tiles.
+                    bool centerSampleValid = false;
 
-                    for (int x = (int)queryKey.getTileX() - 1; x <= (int)queryKey.getTileX() + 1; ++x)
                     {
-                        for (int y = (int)queryKey.getTileY() - 1; y <= (int)queryKey.getTileY() + 1; ++y)
+                        // Get the features for this tile
+                        osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(queryKey, progress);
+                        if (progress && progress->isCanceled())
                         {
-                            if (x < 0 || x >= numWide || y < 0 || y >= numHigh) continue;
+                            return GeoImage::INVALID;
+                        }
 
-                            TileKey key(queryKey.getLevelOfDetail(), x, y, queryKey.getProfile());
-                            if (key.valid())
+                        if (cursor.valid())
+                        {
+                            cursor->fill(allFeatures);
+                            centerSampleValid = !allFeatures.empty();
+                        }
+                    }
+
+                    if (centerSampleValid)
+                    {
+                        unsigned int numWide, numHigh;
+                        queryKey.getProfile()->getNumTiles(queryKey.getLevelOfDetail(), numWide, numHigh);
+
+                        for (unsigned x = queryKey.getTileX() - 1; x <= queryKey.getTileX() + 1; ++x)
+                        {
+                            for (unsigned y = queryKey.getTileY() - 1; y <= queryKey.getTileY() + 1; ++y)
                             {
-                                osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(key, progress);
-                                if (progress && progress->isCanceled())
-                                {
-                                    return GeoImage::INVALID;
-                                }
+                                if (x < 0 || x >= numWide || y < 0 || y >= numHigh || (x == queryKey.getTileX() && y == queryKey.getTileY())) continue;
 
-                                if (cursor.valid())
+                                TileKey sampleKey(queryKey.getLevelOfDetail(), x, y, queryKey.getProfile());
+
+                                if (key.valid())
                                 {
-                                    cursor->fill(allFeatures);
+                                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(sampleKey, progress);
+                                    if (progress && progress->isCanceled())
+                                    {
+                                        return GeoImage::INVALID;
+                                    }
+
+                                    if (cursor.valid())
+                                    {
+                                        cursor->fill(allFeatures);
+                                    }
                                 }
                             }
                         }
                     }
-#else
-                    // Just get the features for this tile.
-                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(queryKey, progress);
-                    if (progress && progress->isCanceled())
-                    {
-                        return GeoImage::INVALID;
-                    }
-
-
-                    if (cursor.valid())
-                    {
-                        cursor->fill(allFeatures);
-                    }
-#endif
 
                     if (allFeatures.empty())
                     {
-                        queryKey = queryKey.createParentKey();           
+                        queryKey = queryKey.createParentKey();
                         /*
                         if (queryKey.getLevelOfDetail() < featureSource->getFeatureProfile()->getMaxLevel())
                         {
@@ -1277,7 +1383,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
 
             if (layeredFeatures.features.find(layer.sourceLayer()) != layeredFeatures.features.end())
-            {                
+            {
                 // Run any filters on the layer.
                 FeatureList features;
                 if (!layer.filter()._filter.empty())
@@ -1302,6 +1408,11 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
                 if (layer.type() == "fill")
                 {
+                    if (layer.paint().fillPattern().isSet())
+                    {
+                        OE_INFO << LC << "Skipping layer " << layer.id() << " with fill-pattern=" << layer.paint().fillPattern().get() << ".  Fill patterns are not supported" << std::endl;
+                        continue;
+                    }
                     Style style;
                     style.getOrCreateSymbol<PolygonSymbol>()->fill() = Color(layer.paint().fillColor().evaluate(key.getLOD()));
                     featureRasterizer.render(
@@ -1336,11 +1447,11 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                         style.getOrCreateSymbol<TextSymbol>()->fill()->color() = layer.paint().textColor().evaluate(key.getLOD());
                         style.getOrCreateSymbol<TextSymbol>()->halo()->color() = layer.paint().textHaloColor().evaluate(key.getLOD());
                         style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().evaluate(key.getLOD()));
+
+                        TextSymbol::Alignment alignment = TextSymbol::ALIGN_CENTER_CENTER;
                         if (layer.paint().textAnchor().isSet())
                         {
                             std::string anchor = layer.paint().textAnchor().get();
-
-                            TextSymbol::Alignment alignment = TextSymbol::ALIGN_CENTER_CENTER;
                             if (anchor == "center") alignment = TextSymbol::ALIGN_CENTER_CENTER;
                             else if (anchor == "left") alignment = TextSymbol::ALIGN_LEFT_CENTER;
                             else if (anchor == "right") alignment = TextSymbol::ALIGN_RIGHT_CENTER;
@@ -1349,9 +1460,10 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                             else if (anchor == "top-left") alignment = TextSymbol::ALIGN_LEFT_TOP;
                             else if (anchor == "top-right") alignment = TextSymbol::ALIGN_RIGHT_TOP;
                             else if (anchor == "bottom-left") alignment = TextSymbol::ALIGN_LEFT_BOTTOM;
-                            else if (anchor == "bottom-right") alignment = TextSymbol::ALIGN_RIGHT_BOTTOM;
-                            style.getOrCreateSymbol<TextSymbol>()->alignment() = alignment;
+                            else if (anchor == "bottom-right") alignment = TextSymbol::ALIGN_RIGHT_BOTTOM;                        
                         }
+                        style.getOrCreateSymbol<TextSymbol>()->alignment() = alignment;
+
                         if (layer.paint().textFont().isSet())
                         {
                             style.getOrCreateSymbol<TextSymbol>()->font() = layer.paint().textFont().get();

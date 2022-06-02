@@ -1061,14 +1061,12 @@ ImageControl::getImageStateSet()
             s_imageStateSet = stateSet = new osg::StateSet();
 
             const char* vert =
-                "#version " GLSL_VERSION_STR "\n"
                 "out vec2 oe_Controls_texCoord; \n"
                 "void oe_Controls_renderImageVert(inout vec4 vert) { \n"
                 "    oe_Controls_texCoord = gl_MultiTexCoord0.xy; \n"
                 "}\n";
 
             const char* frag =
-                "#version " GLSL_VERSION_STR "\n"
                 "in vec2 oe_Controls_texCoord; \n"
                 "uniform sampler2D oe_Controls_tex; \n"
                 "void oe_Controls_renderImageFrag(inout vec4 color) { \n"
@@ -1079,8 +1077,8 @@ ImageControl::getImageStateSet()
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet.get());
             vp->setName(typeid(*this).name());
             vp->setInheritShaders(false);
-            vp->setFunction("oe_Controls_renderImageVert", vert, ShaderComp::LOCATION_VERTEX_MODEL);
-            vp->setFunction("oe_Controls_renderImageFrag", frag, ShaderComp::LOCATION_FRAGMENT_COLORING);
+            vp->setFunction("oe_Controls_renderImageVert", vert, VirtualProgram::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_Controls_renderImageFrag", frag, VirtualProgram::LOCATION_FRAGMENT_COLORING);
         }
     }
 
@@ -2518,7 +2516,6 @@ _fading        ( true )
 
     osg::StateSet* stateSet = _group->getOrCreateStateSet();
 
-    //TODO: appears to be unused
     osg::Uniform* defaultOpacity = new osg::Uniform( osg::Uniform::FLOAT, "oe_controls_opacity" );
     defaultOpacity->set( 1.0f );
     stateSet->addUniform( defaultOpacity );
@@ -2612,7 +2609,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
 
               if ( node->anchorPoint().isSet() )
               {
-                  //TODO!!
+                  //NYI
               }
               else
               {
@@ -2745,9 +2742,6 @@ ControlCanvas::getOrCreate(osg::View* view)
 
     canvas = new ControlCanvas();
     
-    //TODO: Revisit this after 2.10. We should be connecting ControlCanvas to a Camera,
-    //not a View, because in the case of an MRT or other RTT-camera based setup, this
-    //approach will not work properly.
 #if 1
     osg::Group* group = 0L;
     // ControlCanvas does NOT work as a direct child of the View's camera.

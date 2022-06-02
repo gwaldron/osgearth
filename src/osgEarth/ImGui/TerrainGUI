@@ -199,7 +199,15 @@ namespace osgEarth
                             _measureCursor->setStyle(s);
                         }
                         ImGui::SameLine();
-                        float dist_m = GeoMath::distance(_measureFeature->getGeometry()->asVector());
+                        float dist_m = 0.0f;
+                        auto& vec = _measureFeature->getGeometry()->asVector();
+                        if (_mapNode->getMapSRS()->isGeographic()) {
+                            dist_m = GeoMath::distance(vec);
+                        }
+                        else {
+                            for (unsigned i = 1; i < vec.size(); ++i)
+                                dist_m += (vec[i] - vec[i - 1]).length();
+                        }
                         char buf[64];
                         sprintf(buf, "%.1f m", dist_m);
                         //ImGui::TextColored(ImVec4(1,1,0,1), " %.2f m", dist_m);    

@@ -84,9 +84,17 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip4)
         return;
 
     // Transform the prev and next points in clip space.
-    vec2 currClip = currClip4.xy;
-    vec2 prevClip = (gl_ProjectionMatrix * oe_LineDrawable_prevView).xy;
-    vec2 nextClip = (gl_ProjectionMatrix * oe_LineDrawable_nextView).xy;
+    vec4 prevClip = gl_ProjectionMatrix * oe_LineDrawable_prevView;
+    vec4 nextClip = gl_ProjectionMatrix * oe_LineDrawable_nextView;
+	// use these for calculating stipple dir
+    vec2 currPixel = currClip4.xy;
+    vec2 prevPixel = prevClip.xy;
+    vec2 nextPixel = nextClip.xy;
+    // use these for calculating dir and new currClip4
+    // Transform all points into pixel space
+    vec2 prevDir = ((prevPixel/prevClip.w)+1.0) * 0.5*oe_Camera.xy;
+    vec2 currDir = ((currPixel/currClip4.w)+1.0) * 0.5*oe_Camera.xy;
+    vec2 nextDir = ((nextPixel/nextClip.w)+1.0) * 0.5*oe_Camera.xy;
 
 #ifdef OE_LINE_SMOOTH
     float thickness = floor(oe_GL_LineWidth + 1.0);
@@ -110,21 +118,21 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip4)
     // starting point uses (next - current)
     if (gl_Vertex.xyz == oe_LineDrawable_prev)
     {
-        dir = normalize(nextClip - currClip);
-        stipple_dir = dir;
+        dir = normalize(nextDir - currDir);
+        stipple_dir = normalize(nextPixel - currPixel);
     }
     
     // ending point uses (current - previous)
     else if (gl_Vertex.xyz == oe_LineDrawable_next)
     {
-        dir = normalize(currClip - prevClip);
-        stipple_dir = dir;
+        dir = normalize(currDir - prevDir);
+        stipple_dir = normalize(currPixel - prevPixel);
     }
 
     else
     {
-        vec2 dirIn  = normalize(currClip - prevClip);
-        vec2 dirOut = normalize(nextClip - currClip);
+        vec2 dirIn  = normalize(currDir - prevDir);
+        vec2 dirOut = normalize(nextDir - currDir);
 
         if (dot(dirIn,dirOut) < -0.999999)
         {
@@ -146,7 +154,7 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip4)
                 dir = isStart? dirOut : dirIn;
             }
         }
-        stipple_dir = dirOut;
+        stipple_dir = normalize(nextPixel - currPixel);
     }
 
     // calculate the extrusion vector in pixels
@@ -155,7 +163,7 @@ void oe_LineDrawable_VS_CLIP(inout vec4 currClip4)
 
     // and convert to unit space:
     vec2 extrudeUnit = extrudePixel / oe_Camera.xy;
-        
+
     // calculate the offset in clip space and apply it.
     vec2 offset = extrudeUnit * oe_LineDrawable_lateral;
     currClip4.xy += (offset * currClip4.w);

@@ -117,6 +117,8 @@ BiomeLayer::openImplementation()
         OE_WARN << LC << "No asset catalog found - could be trouble" << std::endl;
     }
 
+    
+
     return Status::OK();
 }
 
@@ -145,6 +147,18 @@ BiomeLayer::addedToMap(const Map* map)
     {
         setStatus(Status::ResourceUnavailable, "No source data available");
         return;
+    }
+
+    // Initialize the biome creator
+    if (getBiomeBaseLayer() && getBiomeBaseLayer()->isOpen())
+    {
+        _biomeCreator = std::make_unique< CoverageLayer::CoverageCreator<BiomeSample> >(getBiomeBaseLayer());
+    }
+
+    // Initialize the landcover creator
+    if (getLandCoverLayer() && getLandCoverLayer()->isOpen())
+    {
+        _landCoverCreator = std::make_unique< CoverageLayer::CoverageCreator<LandCoverSample> >(getLandCoverLayer());        
     }
 }
 
@@ -237,16 +251,18 @@ BiomeLayer::createImageImplementation(
     GeoImageIterator iter(temp);
     std::unordered_set<std::string> missing_biomes;
 
+    
+
     // Use meta-tiling to read coverage data with access to the 
     // neighboring tiles - to support the blend radius.
-    MetaTile<GeoCoverage<LandCoverSample>> landcover;
+    MetaTile<GeoCoverage<LandCoverSample>> landcover;    
 
-    if (getLandCoverLayer() && getLandCoverLayer()->isOpen())
+    if (_landCoverCreator)
     {
         landcover.setCreateTileFunction(
             [&](const TileKey& key, ProgressCallback* p) -> GeoCoverage<LandCoverSample>
             {
-                return getLandCoverLayer()->createCoverage<LandCoverSample>(key, p);
+                return _landCoverCreator->createCoverage(key, p);
             });
 
         landcover.setCenterTileKey(key, progress);
@@ -256,12 +272,12 @@ BiomeLayer::createImageImplementation(
     // neighboring tiles
     MetaTile<GeoCoverage<BiomeSample>> biomeMetaTile;
 
-    if (getBiomeBaseLayer() && getBiomeBaseLayer()->isOpen())
+    if (_biomeCreator)
     {
         biomeMetaTile.setCreateTileFunction(
             [&](const TileKey& key, ProgressCallback* p) -> GeoCoverage<BiomeSample>
-            {
-                return getBiomeBaseLayer()->createCoverage<BiomeSample>(key, p);
+            {            
+                return _biomeCreator->createCoverage(key, p);
             });
 
         biomeMetaTile.setCenterTileKey(key, progress);

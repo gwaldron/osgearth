@@ -136,6 +136,8 @@ namespace osgEarth { namespace Procedural
         LandCoverLayerVector _landCoverLayers;
         osg::ref_ptr<LandCoverDictionary> _landCoverDictionary;
 
+        std::unique_ptr< CoverageLayer::CoverageCreator<LandCoverSample> > _landCoverCreator;
+
         void checkForLayerError(Layer*);
     };
 

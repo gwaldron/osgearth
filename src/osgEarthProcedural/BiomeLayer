@@ -209,6 +209,9 @@ namespace osgEarth
 
             mutable Mutexed<WeakCache> _imageCache;
 
+            std::unique_ptr< CoverageLayer::CoverageCreator<LandCoverSample> > _landCoverCreator;
+            std::unique_ptr< CoverageLayer::CoverageCreator<BiomeSample> > _biomeCreator;
+
         protected:
             virtual ~BiomeLayer() { }
         };

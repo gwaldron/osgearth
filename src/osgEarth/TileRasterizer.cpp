@@ -72,7 +72,7 @@ TileRasterizer::Renderer::Renderer(unsigned width, unsigned height)
     _rtt->setClearColor(osg::Vec4(0, 0, 0, 0));
     _rtt->setClearMask(GL_COLOR_BUFFER_BIT);
     _rtt->setReferenceFrame(osg::Camera::ABSOLUTE_RF);
-    _rtt->setRenderOrder(osg::Camera::PRE_RENDER);
+    _rtt->setRenderOrder(osg::Camera::POST_RENDER);
     _rtt->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
     _rtt->setImplicitBufferAttachmentMask(0, 0);
     _rtt->setSmallFeatureCullingPixelSize(0.0f);
@@ -263,7 +263,7 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
 #define OE_TEST OE_DEBUG
 
 void
-TileRasterizer::Renderer::render(osg::State& state)
+TileRasterizer::Renderer::allocate(osg::State& state)
 {
     if (_pbo == nullptr || !_pbo->valid())
     {
@@ -376,10 +376,14 @@ TileRasterizer::Renderer::readback(osg::State& state)
     return result;
 }
 
+#define INV_QUERY 0
+#define INV_READBACK 1
+
 void
 TileRasterizer::postDraw(osg::RenderInfo& ri)
 {
-    GLObjects::Ptr& gc = GLObjects::get(_globjects, *ri.getState());
+    osg::State& state = *ri.getState();
+    GLObjects::Ptr& gc = GLObjects::get(_globjects, state);
     Job::Ptr job = gc->_renderQ.take_front();
     OE_HARD_ASSERT(job != nullptr);
 
@@ -387,28 +391,19 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
     if (job->_promise.isCanceled())
         return;
 
+    job->_renderer->allocate(state);
+
     // GPU task delegate:
     auto gpu_task = [job](osg::State& state, Promise<Job::Result>& promise, int invocation)
     {
-        // invocations:
-        constexpr int RENDER = 0;
-        constexpr int QUERY = 1;
-        constexpr int READBACK = 2;
-
         if (promise.isAbandoned())
         {
             OE_DEBUG << "Job " << job << " canceled" << std::endl;
             return false; // done
         }
 
-        if (invocation == RENDER)
-        {
-            job->_renderer->render(state);
-            return true; // wait until the next frame (for render/query to finish)
-        }
-
         // is the query still running?
-        else if (invocation == QUERY)
+        if (invocation == INV_QUERY)
         {
             OE_GL_ZONE_NAMED("TileRasterizer/QUERY");
             GLuint samples = job->_renderer->query(state);
@@ -425,7 +420,7 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
             }
         }
 
-        else if (invocation == READBACK)
+        else if (invocation == INV_READBACK)
         {
             OE_GL_ZONE_NAMED("TileRasterizer/READBACK");
 
@@ -440,8 +435,14 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
         OE_HARD_ASSERT(false, "Bad dates.");
     };
 
+
+#if 0
+    if (gpu_task(state, job->_promise, INV_QUERY))
+        gpu_task(state, job->_promise, INV_READBACK);
+#else
     // Queue up our GPU job (using our existing Promise object)
-    GLPipeline::get()->dispatch<Job::Result>(gpu_task, job->_promise);
+    GLPipeline::get(state)->dispatch<Job::Result>(gpu_task, job->_promise);
+#endif
 }
 
 void

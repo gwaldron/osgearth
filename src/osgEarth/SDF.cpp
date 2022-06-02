@@ -116,11 +116,11 @@ SDFGenerator::setUseGPU(bool value)
 {
     _useGPU = value;
 
-    if (_useGPU && !_program.valid())
-    {
-        _program = new osg::Program();
-        _program->addShader(new osg::Shader(osg::Shader::COMPUTE, jfa_cs));
-    }
+    //if (_useGPU && !_program.valid())
+    //{
+    //    _program = new osg::Program();
+    //    _program->addShader(new osg::Shader(osg::Shader::COMPUTE, jfa_cs));
+    //}
 }
 
 GeoImage
@@ -218,12 +218,12 @@ SDFGenerator::createNearestNeighborField(
         }
     );
 
-    if (_useGPU)
-    {
-        // not good, too many barriers
-        compute_nnf_on_gpu(nnimage);
-    }
-    else
+    //if (_useGPU)
+    //{
+    //    // not good, too many barriers
+    //    compute_nnf_on_gpu(nnimage);
+    //}
+    //else
     {
         compute_nnf_on_cpu(nnimage);
     }
@@ -308,6 +308,7 @@ SDFGenerator::createDistanceField(
 }
 
 
+#if 0
 void
 SDFGenerator::compute_nnf_on_gpu(osg::Image* image) const
 {
@@ -335,6 +336,7 @@ SDFGenerator::NNFSession::renderImplementation(osg::State* state)
         ext->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 }
+#endif
 
 /*
 inline void readRGFloatPixel(ImageUtils::PixelReader& reader, osg::Vec4& pixel, unsigned int s, unsigned int t, unsigned int r=0)

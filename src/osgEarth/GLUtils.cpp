@@ -1495,44 +1495,10 @@ GLFBO::renderToTexture(
 #undef LC
 #define LC "[GLPipeline]"
 
-namespace
-{
-    // operation to set the thread's name.
-    struct SetGLPipelineName : public osg::Operation
-    {
-        SetGLPipelineName(const std::string& name) : osg::Operation(name, true), _name(name) { }
-        std::string _name;
-        void operator()(osg::Object*) override {
-            Threading::setThreadName(_name);
-            setKeep(false);
-        }
-    };
-}
-
-
-GLPipeline::SyncPipelineToFrame::SyncPipelineToFrame(GLPipeline::Ptr pipeline) :
-    osg::Operation("SyncPipelineToFrame", true),
-    _pipeline(pipeline)
-{
-    //nop
-}
-
-void
-GLPipeline::SyncPipelineToFrame::operator()(osg::Object*)
-{
-    GLPipeline::Ptr ptr(_pipeline);
-    if (ptr)
-        ptr->sync();
-
-    setKeep(!_pipeline.expired());
-}
-
-
-GLPipeline::Dispatcher::Dispatcher(
-    GLPipeline::Ptr pipeline) :
+GLPipeline::Dispatcher::Dispatcher(GLPipeline::Ptr pipeline) :
+    osg::GraphicsOperation("GLPipelineDispatcher", true),
     _pipeline_ref(pipeline),
-    _myGC(pipeline->_gc),
-    _advance_frame(false)
+    _myGC(pipeline->_gc)
 {
     //nop
 }
@@ -1542,189 +1508,71 @@ GLPipeline::Dispatcher::push(osg::Operation* op)
 {
     _queue_mutex.lock();
     _thisQ.push(op);
-    _event.set();
     _queue_mutex.unlock();
 }
 
 void
-GLPipeline::Dispatcher::run()
+GLPipeline::Dispatcher::operator()(osg::GraphicsContext* gc)
 {
     osg::ref_ptr<osg::FrameStamp> fs = new osg::FrameStamp();
 
-    // make the graphics context current.
-    if (_myGC.valid())
+    if (_pipeline_ref.expired())
     {
-        _myGC->makeCurrent();
-        _myGC->getState()->initializeExtensionProcs();
-        fs->setFrameNumber(0);
-        _myGC->getState()->setFrameStamp(fs.get());
+        setKeep(false);
+        return;
     }
 
-    while (!_pipeline_ref.expired())
+    osg::ref_ptr<osg::Operation> next;
+
+    // check for new job:
+    _queue_mutex.lock();
     {
-        osg::ref_ptr<osg::Operation> next;
-        do
+        if (!_thisQ.empty())
         {
-            // reset:
-            next = nullptr;
-
-            // The timeout is just so we can check on pipeline_ref expiration.
-            // Both the queue and the advance_frame respond to the event trigger.
-            while(
-                !_advance_frame &&
-                !_pipeline_ref.expired() &&
-                !_event.wait(1000));
-
-            // check for new job:
-            _queue_mutex.lock();
-            {
-                if (!_thisQ.empty())
-                {
-                    next = _thisQ.front();
-                    _thisQ.pop();
-                }
-
-                // reset the event if the queue is now empty.
-                if (_thisQ.empty())
-                {
-                    _event.reset();
-                }
-            }
-            _queue_mutex.unlock();
-
-            if (next.valid())
-            {
-                // run it
-                next->operator()(_myGC.get());
-
-                // if keep==true, that means the delegate wishes to run
-                // again for another invocation. In this case we defer it to
-                // the next "frame" as deliniated by the frame-sync. The whole
-                // point of a multi-invocation operation is to let the GPU have
-                // time to complete its async calls between invocations!
-                if (next->getKeep())
-                {
-                    _nextQ.push(next);
-                }
-            }
-
-        } while (next.valid() && !_advance_frame);
-
-        // swap in the next queue..
-        _queue_mutex.lock();
-        {
-            // reset our frame marker
-            _advance_frame = false;
-
-            // increment the frame counter.
-            fs->setFrameNumber(fs->getFrameNumber() + 1);
-
-            while (!_nextQ.empty())
-            {
-                _thisQ.push(_nextQ.front());
-                _nextQ.pop();
-            }
-
-            if (_thisQ.empty())
-                _event.reset();
-            else
-                _event.set();
+            next = _thisQ.front();
+            _thisQ.pop();
         }
-        _queue_mutex.unlock();
     }
+    _queue_mutex.unlock();
 
-    // release operations before the thread stops working
-    while (!_thisQ.empty()) _thisQ.pop();
-    while (!_nextQ.empty()) _nextQ.pop();
-
-    //_operationQueue->releaseAllOperations();
-    if (_myGC.valid())
+    if (next.valid())
     {
-        _myGC->releaseContext();
-    }
+        // run it
+        next->operator()(gc);
 
-    OE_INFO << LC << "dispatcher exiting" << std::endl;
+        // if keep==true, that means the delegate wishes to run
+        // again for another invocation. In this case we defer it to
+        // the next "frame" as deliniated by the frame-sync. The whole
+        // point of a multi-invocation operation is to let the GPU have
+        // time to complete its async calls between invocations!
+        if (next->getKeep())
+        {
+            _thisQ.push(next);
+        }
+    }
 }
 
 //static defs
 Mutex GLPipeline::_mutex("GLPipeline(OE)");
-std::unordered_map<std::string, GLPipeline::Ptr> GLPipeline::_lut;
+std::unordered_map<osg::State*, GLPipeline::Ptr> GLPipeline::_lut;
+
 
 GLPipeline::Ptr
-GLPipeline::get()
-{
-    return get("");
-}
-
-GLPipeline::Ptr
-GLPipeline::get(const std::string& name)
+GLPipeline::get(osg::State& state)
 {
     ScopedMutexLock lock(GLPipeline::_mutex);
-    GLPipeline::Ptr& p = _lut[name];
+    GLPipeline::Ptr& p = _lut[&state];
 
     if (p == nullptr)
     {
-        auto gcs = osg::GraphicsContext::getAllRegisteredGraphicsContexts();
-        for (auto& parent_gc : gcs)
-        {
-            // locate the first non-shared graphics context
-            // and use it as a frame sync.
-            if (parent_gc->getTraits()->sharedContext == nullptr &&
-                parent_gc->isRealized())
-            {
-                p = std::make_shared<GLPipeline>();
-
-                // For the default pipeline (empty name) just attach to
-                // the primary GC and use its operations queue. No frame
-                // sync is necessary since it already supports that.
-                if (name.empty())
-                {
-                    p->_gc = parent_gc;
-                }
-                else
-                {
-                    // Make a new GC with a custom dispatcher thread that
-                    // will "sync up" to the primary GC's frame loop.
-                    osg::ref_ptr<osg::GraphicsContext::Traits> traits =
-                        new osg::GraphicsContext::Traits(*parent_gc->getTraits());
-
-                    // set to pbuffer since we have to realize some kind of 
-                    // surface even though we will not use it
-                    traits->pbuffer = true;
-                    traits->width = 1;
-                    traits->height = 1;
-
-                    // custom dispatcher thread that will frame-sync to the actual 
-                    // visual GC. This is necessary to prevent multi-invocation jobs
-                    // from re-invoking immediately.
-                    p->_gc = osg::GraphicsContext::createGraphicsContext(traits.get());
-                    p->_gc->setName(name);
-                    p->_gc->createGraphicsThread();
-                    p->_gc->realize();
-
-                    p->_dispatcher = new Dispatcher(p);
-                    parent_gc->add(new SyncPipelineToFrame(p));
-
-                    p->_gc->setGraphicsThread(p->_dispatcher.get());
-                    p->_gc->getGraphicsThread()->start();
-                    p->_gc->add(new SetGLPipelineName(name));
-                }
-                break;
-            }
-        }
+        p = std::make_shared<GLPipeline>();
+        p->_gc = state.getGraphicsContext();
+        p->_dispatcher = new Dispatcher(p);
+        state.getGraphicsContext()->add(p->_dispatcher.get());
     }
 
     OE_HARD_ASSERT(p != nullptr, "Cannot find a GC :(");
     return p;
-}
-
-void
-GLPipeline::sync()
-{
-    _dispatcher->_queue_mutex.lock();
-    _dispatcher->_advance_frame = true;
-    _dispatcher->_event.set();
-    _dispatcher->_queue_mutex.unlock();
 }
 
 //........................................................................
@@ -1759,9 +1607,9 @@ ComputeImageSession::setImage(osg::Image* image)
 }
 
 void
-ComputeImageSession::execute()
+ComputeImageSession::execute(osg::State& state)
 {
-    auto job = GLPipeline::get()->dispatch<bool>(
+    auto job = GLPipeline::get(state)->dispatch<bool>(
         [this](osg::State& state, Promise<bool>& promise, int invocation)
         {
             if (invocation == 0)

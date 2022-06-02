@@ -48,10 +48,10 @@ namespace osgEarth { namespace Util
             const std::vector< osg::Matrixf >& getMatrices() const;
             void setMatrices(const std::vector< osg::Matrixf >& matrices);
 
-            virtual bool supports(const osg::PrimitiveFunctor& f) const { return true; }
-            virtual void accept(osg::PrimitiveFunctor& f) const;
+            virtual bool supports(const osg::PrimitiveFunctor& f) const override { return true; }
+            virtual void accept(osg::PrimitiveFunctor& f) const override;
 
-            virtual osg::BoundingBox computeBoundingBox() const;
+            virtual osg::BoundingBox computeBoundingBox() const override;
 
         private:
             std::vector<osg::Matrixf> _matrices;

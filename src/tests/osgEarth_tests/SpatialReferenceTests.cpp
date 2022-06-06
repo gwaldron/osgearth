@@ -198,3 +198,20 @@ TEST_CASE("getGeocentricSRS") {
     REQUIRE(ecef->transform(np_ecef, wgs84, temp));
     REQUIRE(vec_eq(temp, np_wgs84));
 }
+
+TEST_CASE("MFE SRS") {
+    const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+    const SpatialReference* mfe = SpatialReference::get("+proj=eqc +lat_0=21n +lon_0=157w +lat_ts=21n +ellps=WGS84 +units=m");
+    osg::Vec3d p_wgs84, p_mfe;
+    p_mfe.set(1, 2, 3);
+    p_wgs84.set(-157.0, 21.0, 0.0);
+
+    wgs84->transform(p_wgs84, mfe, p_mfe);
+    REQUIRE(p_mfe.x() == 0.0);
+    REQUIRE(p_mfe.y() == 0.0);
+
+    p_wgs84.set(0, 0, 0);
+    mfe->transform(p_mfe, wgs84, p_wgs84);
+    REQUIRE(p_wgs84.x() == -157.0);
+    REQUIRE(p_wgs84.y() == 21.0);
+}

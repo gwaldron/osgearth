@@ -518,7 +518,9 @@ public:
                 geom->setName(typeid(*this).name());
                 geom->setUseVertexBufferObjects(true);
 
-                group->addChild(geom.get());
+                osg::Geode* geode = new osg::Geode;
+                geode->addDrawable(geom);
+                group->addChild(geode);
 
                 // The base color factor of the material
                 osg::Vec4 baseColorFactor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -748,10 +750,8 @@ public:
                     // Generate normals automatically if we're not given any in the file itself.
                     if (!geom->getNormalArray())
                     {
-                        osg::ref_ptr<osg::Geode> tempGeode = new osg::Geode();
-                        tempGeode->addChild(geom);
                         osgUtil::SmoothingVisitor sv;
-                        tempGeode->accept(sv);
+                        geode->accept(sv);
                     }
                 }
 

@@ -99,6 +99,23 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
         }
     }
 
+    void FlattenSceneGraphVisitor::apply(osg::Geometry& geometry)
+    {
+        osg::ref_ptr< osg::StateSet > geomSS = geometry.getStateSet();
+        if (geomSS.valid())
+        {
+            pushStateSet(geomSS.get());
+        }
+
+        GeometryVector& geometries = _geometries[_ssStack];
+        geometries.push_back(&geometry);
+
+        if (geomSS.valid())
+        {
+            popStateSet();
+        }
+    }
+
      void FlattenSceneGraphVisitor::apply(osg::Geode& geode)
     {
         osg::Billboard* billboard = dynamic_cast< osg::Billboard* >(&geode);

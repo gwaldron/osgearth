@@ -814,7 +814,7 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const TileBatch& input)
 {
     _frameLastActive = ri.getState()->getFrameStamp()->getFrameNumber();
 
-    DrawState& ds = _drawStateBuffer[ri.getContextID()];
+    DrawState& ds = _drawStateBuffer[GLUtils::getUniqueStateID(*ri.getState())]; // ri.getContextID()];
     ds._renderer = this;
     osg::State* state = ri.getState();
 
@@ -914,14 +914,12 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const TileBatch& input)
         instancer->endFrame(ri);
     }
 
-    // Clean up and finish
-#if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
-    // Need to unbind our VAO so as not to confuse OSG
+    // Clean up and finish - need to unbind everything so
+    // OSG doesn't get confused.
     ri.getState()->unbindVertexArrayObject();
-
-    //TODO: review this. I don't see why this should be necessary.
-    ri.getState()->setLastAppliedProgramObject(NULL);
-#endif
+    ri.getState()->setLastAppliedProgramObject(nullptr);
+    ri.getState()->unbindElementBufferObject();
+    ri.getState()->unbindVertexArrayObject();
 }
 
 void
@@ -992,7 +990,7 @@ void
 GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const TileState* tile)
 {
     const ZoneSA* sa = ZoneSA::extract(ri.getState());
-    DrawState& ds = _drawStateBuffer[ri.getContextID()];
+    DrawState& ds = _drawStateBuffer[GLUtils::getUniqueStateID(*ri.getState())]; // ri.getContextID()];
     osg::ref_ptr<LegacyInstanceCloud>& instancer = ds._instancers[sa->_obj];
     const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
 
@@ -1040,7 +1038,7 @@ GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
 {
     if (state)
     {
-        DrawState& ds = _drawStateBuffer[state->getContextID()];
+        DrawState& ds = _drawStateBuffer[GLUtils::getUniqueStateID(*state)]; // state->getContextID()];
 
         ds._uniforms.clear();
         ds._lastTileBatchID = -1;

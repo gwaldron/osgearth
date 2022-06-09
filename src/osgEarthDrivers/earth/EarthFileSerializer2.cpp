@@ -540,6 +540,15 @@ EarthFileSerializer2::deserialize(
         mapOptions.merge(ConfigOptions(temp));
     }
 
+    // Check for NVGL override
+    if (conf.hasValue("nvgl"))
+    {
+        GLUtils::useNVGL(conf.value<bool>("nvgl", true));
+        Config temp;
+        temp.add(conf.child("nvgl"));
+        mapOptions.merge(ConfigOptions(temp));
+    }
+
     // Check for profile layer setting
     if (conf.hasValue("profile_layer"))
     {

@@ -33,7 +33,6 @@
 #include <osgDB/ObjectWrapper>
 #include <osgDB/Registry>
 #include <osgUtil/SmoothingVisitor>
-#include <osgUtil/Optimizer>
 #include <osgEarth/Notify>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/URI>
@@ -42,7 +41,6 @@
 #include <osgEarth/ShaderUtils>
 #include <osgEarth/InstanceBuilder>
 #include <osgEarth/StateTransition>
-#include <osgEarth/Math>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -274,17 +272,10 @@ public:
         bool zUp = env.readOptions && env.readOptions->getOptionString().find("gltfZUp") != std::string::npos;
 
         // Rotate y-up to z-up if necessary
-        osg::Group* top = new osg::Group();
         osg::MatrixTransform* transform = new osg::MatrixTransform;
-        top->addChild(transform);
-
         if (!zUp)
         {
-            auto gltf_to_zup =
-                osg::Matrix::rotate(M_PI / 2, osg::Vec3d(0,0,1)) *
-                osg::Matrix::rotate(M_PI / 2, osg::Vec3d(0,1,0));
-
-            transform->setMatrix(gltf_to_zup);
+            transform->setMatrix(osg::Matrixd::rotate(osg::Vec3d(0.0, 1.0, 0.0), osg::Vec3d(0.0, 0.0, 1.0)));
         }
 
         for (unsigned int i = 0; i < model.scenes.size(); i++)
@@ -301,11 +292,11 @@ public:
         }
 
         // Enable backface culling on the nodes
-        top->getOrCreateStateSet()->setAttributeAndModes(new osg::CullFace(osg::CullFace::BACK), osg::StateAttribute::ON);
+        transform->getOrCreateStateSet()->setAttributeAndModes(new osg::CullFace(osg::CullFace::BACK), osg::StateAttribute::ON);
 
         // Find all the StateTransitionNodes that were created and try to establishs links between the nodes.
         osgEarth::FindNodesVisitor<StateTransitionNode> findStateTransitions;
-        top->accept(findStateTransitions);
+        transform->accept(findStateTransitions);
 
         for (auto& st : findStateTransitions._results)
         {
@@ -315,7 +306,7 @@ public:
                 std::string name = stateToNodeName.second;
 
                 // Find the named node
-                osg::Node* node = findNamedNode(top, name);
+                osg::Node* node = findNamedNode(transform, name);
                 if (node)
                 {
                     st->_stateToNode[state] = node;
@@ -327,11 +318,7 @@ public:
             }
         }
 
-        osgUtil::Optimizer opt;
-        transform->setDataVariance(osg::Object::STATIC);
-        opt.optimize(top, osgUtil::Optimizer::FLATTEN_STATIC_TRANSFORMS);
-
-        return top;
+        return transform;
     }
 
 
@@ -531,7 +518,9 @@ public:
                 geom->setName(typeid(*this).name());
                 geom->setUseVertexBufferObjects(true);
 
-                group->addChild(geom.get());
+                osg::Geode* geode = new osg::Geode;
+                geode->addDrawable(geom);
+                group->addChild(geode);
 
                 // The base color factor of the material
                 osg::Vec4 baseColorFactor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -655,22 +644,7 @@ public:
 
                     if (it->first.compare("POSITION") == 0)
                     {
-#if 0
-                        osg::Vec3Array* verts = new osg::Vec3Array(
-                            arrays[it->second]->getNumElements(),
-                            static_cast<const osg::Vec3*>(arrays[it->second]->getDataPointer()));
-
-                        auto gltf_to_zup =
-                            osg::Matrix::rotate(M_PI / 2, osg::Vec3d(0,0,1)) *
-                            osg::Matrix::rotate(M_PI / 2, osg::Vec3d(0,1,0));
-
-                        for(auto& vert : *verts)
-                            vert.set(vert * gltf_to_zup);
-
-                        geom->setVertexArray(verts);
-#else
                         geom->setVertexArray(arrays[it->second].get());
-#endif
                     }
                     else if (it->first.compare("NORMAL") == 0)
                     {
@@ -776,10 +750,8 @@ public:
                     // Generate normals automatically if we're not given any in the file itself.
                     if (!geom->getNormalArray())
                     {
-                        osg::ref_ptr<osg::Geode> tempGeode = new osg::Geode();
-                        tempGeode->addChild(geom);
                         osgUtil::SmoothingVisitor sv;
-                        tempGeode->accept(sv);
+                        geode->accept(sv);
                     }
                 }
 

@@ -1138,11 +1138,41 @@ ImageUtils::createEmptyImage(unsigned int s, unsigned int t, unsigned int r)
     return empty;
 }
 
+namespace
+{
+    // Fast path isEmptyImage that works directly on an GL_RGBA GL_UNSIGNED_BYTE image.
+    static bool isEmptyRGBA(const osg::Image* image, unsigned char alphaThreshold)
+    {
+        const unsigned char* ptr = image->data();
+
+        unsigned int numPixels = image->s() * image->t();
+
+        for (unsigned int i = 0; i < numPixels; ++i)
+        {
+            unsigned char r = *ptr++;
+            unsigned char g = *ptr++;
+            unsigned char b = *ptr++;
+            unsigned char a = *ptr++;
+            if (a > alphaThreshold)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
 bool
 ImageUtils::isEmptyImage(const osg::Image* image, float alphaThreshold)
 {
     if ( !hasAlphaChannel(image) || !PixelReader::supports(image) )
         return false;
+
+    // Use the fast path RGBA function 
+    if (image->getPixelFormat() == GL_RGBA && image->getDataType() == GL_UNSIGNED_BYTE)
+    {
+        return isEmptyRGBA(image, (unsigned char)(alphaThreshold * 255.0f));
+    }
 
     PixelReader read(image);
 

@@ -343,7 +343,16 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
         images.push_back(imageInfo);
     }
 
+    // Compute the number of valid images
     unsigned numValidImages = 0;
+    for (unsigned int i = 0; i < images.size(); i++)
+    {
+        Composite::ImageInfo& info = images[i];
+        if (info.image.valid())
+        {
+            numValidImages++;
+        }
+    }
 
     // Create fallback images if we have some valid data but not for all the layers
     if (numValidImages > 0 && numValidImages < images.size())

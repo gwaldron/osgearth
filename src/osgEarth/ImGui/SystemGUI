@@ -76,10 +76,10 @@ namespace osgEarth
                     //ImGui::Text("  WS: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
 
                     ImGui::Separator();
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Job Arenas:");
 
-                    if (ImGui::TreeNodeEx("Job Arenas", ImGuiTreeNodeFlags_DefaultOpen))
+                    if (ImGui::BeginTable("arenas", 2))
                     {
-                        ImGui::BeginTable("arenas", 2);
                         const JobArena::Metrics& m = JobArena::allMetrics();
                         for (int i = 0; i <= m.maxArenaIndex; ++i)
                         {
@@ -113,15 +113,12 @@ namespace osgEarth
                             }
                         }
                         ImGui::EndTable();
-
-                        ImGui::Separator();
-                        ImGui::Text("Total: %d", m.totalJobs());
-                        ImGui::SameLine();
-                        ImGui::Text(" ICO: %d", GLObjectsCompiler::totalJobs());
-                        ImGui::Checkbox("Show arena controls", &_showArenaControls);
-
-                        ImGui::TreePop();
                     }
+                    ImGui::Separator();
+                    ImGui::Text("Total: %d", JobArena::allMetrics().totalJobs());
+                    ImGui::SameLine();
+                    ImGui::Text(" ICO: %d", GLObjectsCompiler::totalJobs());
+                    ImGui::Checkbox("Advanced arena controls", &_showArenaControls);
 
                     ImGui::Separator();
 

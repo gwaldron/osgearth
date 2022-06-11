@@ -898,9 +898,36 @@ TileLayer::getBestAvailableTileKey(
             {
                 // Build the index in the SRS of this layer
                 GeoExtent extentInLayerSRS = getProfile()->clampAndTransformExtent(*de);
-                a_min[0] = extentInLayerSRS.xMin(), a_min[1] = extentInLayerSRS.yMin();
-                a_max[0] = extentInLayerSRS.xMax(), a_max[1] = extentInLayerSRS.yMax();
-                dataExtentsIndex->Insert(a_min, a_max, *de);
+
+                if (extentInLayerSRS.getSRS()->isGeographic() && extentInLayerSRS.crossesAntimeridian())
+                {
+                    GeoExtent west, east;
+                    extentInLayerSRS.splitAcrossAntimeridian(west, east);
+                    if (west.isValid())
+                    {
+                        DataExtent new_de(west);
+                        new_de.minLevel() = de->minLevel();
+                        new_de.maxLevel() = de->maxLevel();
+                        a_min[0] = new_de.xMin(), a_min[1] = new_de.yMin();
+                        a_max[0] = new_de.xMax(), a_max[1] = new_de.yMax();
+                        dataExtentsIndex->Insert(a_min, a_max, new_de);
+                    }
+                    if (east.isValid())
+                    {
+                        DataExtent new_de(east);
+                        new_de.minLevel() = de->minLevel();
+                        new_de.maxLevel() = de->maxLevel();
+                        a_min[0] = new_de.xMin(), a_min[1] = new_de.yMin();
+                        a_max[0] = new_de.xMax(), a_max[1] = new_de.yMax();
+                        dataExtentsIndex->Insert(a_min, a_max, new_de);
+                    }
+                }
+                else
+                {
+                    a_min[0] = extentInLayerSRS.xMin(), a_min[1] = extentInLayerSRS.yMin();
+                    a_max[0] = extentInLayerSRS.xMax(), a_max[1] = extentInLayerSRS.yMax();
+                    dataExtentsIndex->Insert(a_min, a_max, *de);
+                }
             }
             _dataExtentsIndex = dataExtentsIndex;
         }

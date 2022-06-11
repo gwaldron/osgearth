@@ -36,12 +36,32 @@
 //#define OE_TEST OE_NOTICE
 #define OE_TEST OE_NULL
 
+// Uncomment this to test curl connecting sharing
+//#define OE_CURL_SHARE
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
 namespace osgEarth
 {
     static int s_simResponseCode = -1;
+
+#ifdef OE_CURL_SHARE
+    static CURLSH* CURL_SHARE = nullptr;
+    static Threading::RecursiveMutex CURL_SHARE_MUTEX;
+
+    static void share_lock_cb(CURL* handle, curl_lock_data data,
+        curl_lock_access access, void* userptr)
+    {
+        CURL_SHARE_MUTEX.lock();
+    }
+
+    static void share_unlock_cb(CURL* handle, curl_lock_data data,
+        void* userptr)
+    {
+        CURL_SHARE_MUTEX.unlock();
+    }
+#endif
 
     struct StreamObject
     {
@@ -437,6 +457,10 @@ namespace
             curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
             curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //0=enable.
             curl_easy_setopt( _curl_handle, CURLOPT_FILETIME, true );
+
+#ifdef OE_CURL_SHARE
+            curl_easy_setopt( _curl_handle, CURLOPT_SHARE, CURL_SHARE);
+#endif
 
             // Enable automatic CURL decompression of known types. An empty string will automatically add all supported encoding types that are built into curl.
             // Note that you must have curl built against zlib to support gzip or deflate encoding.
@@ -1375,6 +1399,17 @@ HTTPClient::globalInit()
 {
 #ifndef OSGEARTH_USE_WININET_FOR_HTTP
     curl_global_init(CURL_GLOBAL_ALL);
+
+#ifdef OE_CURL_SHARE
+    CURL_SHARE = curl_share_init();
+    curl_share_setopt(CURL_SHARE, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+    curl_share_setopt(CURL_SHARE, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
+    curl_share_setopt(CURL_SHARE, CURLSHOPT_SHARE, CURL_LOCK_DATA_SSL_SESSION);
+    curl_share_setopt(CURL_SHARE, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
+    curl_share_setopt(CURL_SHARE, CURLSHOPT_LOCKFUNC, share_lock_cb);
+    curl_share_setopt(CURL_SHARE, CURLSHOPT_UNLOCKFUNC, share_unlock_cb);
+#endif
+
 #endif
 }
 

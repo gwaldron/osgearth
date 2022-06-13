@@ -391,7 +391,7 @@ GeoImage
 ArcGISTilePackageImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     std::stringstream buf;    
-    buf << osgEarth::getFullPath(options().url()->full(), "/_alllayers/");
+    buf << osgEarth::getFullPath(options().url()->full(), "_alllayers/");
     buf << "L" << padLeft(toString<unsigned int>(key.getLevelOfDetail()), 2) << "/";
 
     unsigned int colOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileX() / _bundleSize) * _bundleSize));
@@ -537,7 +537,7 @@ GeoHeightField
 ArcGISTilePackageElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     std::stringstream buf;
-    buf << osgEarth::getFullPath(options().url()->full(), "/_alllayers/");
+    buf << osgEarth::getFullPath(options().url()->full(), "_alllayers/");
     buf << "L" << padLeft(toString<unsigned int>(key.getLevelOfDetail()), 2) << "/";
 
     unsigned int colOffset = static_cast<unsigned int>(floor(static_cast<double>(key.getTileX() / _bundleSize) * _bundleSize));

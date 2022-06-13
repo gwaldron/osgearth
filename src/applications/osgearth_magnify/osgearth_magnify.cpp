@@ -25,6 +25,7 @@
 #include <osgEarth/ExampleResources>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/MapNode>
+#include <osgEarth/Math>
 #include <osgUtil/CullVisitor>
 
 #define LC "[magnify] "
@@ -57,31 +58,33 @@ struct App
 
     float computeRangeScale()
     {
-        return 1.0f/_magSlider->getValue();
+        return 1.0f / _magSlider->getValue();
     }
 
     void apply()
     {
-        bool isPerspective = _mainView->getCamera()->getProjectionMatrix()(3,3) == 0.0;
-        if (isPerspective)
+        osg::Matrix proj = _mainView->getCamera()->getProjectionMatrix();
+        if (ProjectionMatrix::isPerspective(proj))
         {
             double vfov, ar, n, f;
-            _mainView->getCamera()->getProjectionMatrixAsPerspective(vfov, ar, n, f);
-            _magView->getCamera()->setProjectionMatrixAsPerspective(vfov * computeRangeScale(), ar, n, f);
+            ProjectionMatrix::getPerspective(proj, vfov, ar, n, f);
+            ProjectionMatrix::setPerspective(proj, vfov * computeRangeScale(), ar, n, f);
         }
         else
         {
             double L, R, B, T, N, F;
             double M, H;
-            _mainView->getCamera()->getProjectionMatrixAsOrtho(L, R, B, T, N, F);
-            M = B+(T-B)/2;
-            H = (T-B)*computeRangeScale()/2;
-            B = M-H, T = M+H;
-            M = L+(R-L)/2;
-            H = (R-L)*computeRangeScale()/2;
-            L = M-H, R = M+H;
-            _magView->getCamera()->setProjectionMatrixAsOrtho(L, R, B, T, N, F);
+            ProjectionMatrix::getOrtho(proj, L, R, B, T, N, F);
+            M = B + (T - B) / 2;
+            H = (T - B)*computeRangeScale() / 2;
+            B = M - H, T = M + H;
+            M = L + (R - L) / 2;
+            H = (R - L)*computeRangeScale() / 2;
+            L = M - H, R = M + H;
+            ProjectionMatrix::setOrtho(proj, L, R, B, T, N, F);
         }
+
+        _magView->getCamera()->setProjectionMatrix(proj);
 
         if (_useLODScale)
         {
@@ -142,7 +145,7 @@ struct MyCullVisitor : public osgUtil::CullVisitor
             // get the eyepoint in world space:
             osg::Matrix viewToWorld;
             viewToWorld.invert(*getModelViewMatrix());
-            osg::Vec3d eye = osg::Vec3d(0,0,0) * viewToWorld;
+            osg::Vec3d eye = osg::Vec3d(0, 0, 0) * viewToWorld;
 
             // store it:
             _eyePointStack.push_back(eye);
@@ -170,8 +173,8 @@ int main(int argc, char** argv)
 {
     osgEarth::initialize();
 
-    osg::ArgumentParser arguments(&argc,argv);
-    if ( arguments.read("--help") )
+    osg::ArgumentParser arguments(&argc, argv);
+    if (arguments.read("--help"))
         return usage(argv[0]);
 
     App app;
@@ -202,6 +205,12 @@ int main(int argc, char** argv)
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (!node) return usage(argv[0]);
 
+    if (arguments.read("--sse"))
+    {
+        app._useLODScale = false;
+        MapNode::get(node)->getTerrainOptions().setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
+    }
+
     // Add a UI to the main view:
     ui::ControlCanvas* canvas = new ui::ControlCanvas();
     ui::Container* ui = createUI(app);
@@ -217,7 +226,7 @@ int main(int argc, char** argv)
 
     viewer.realize();
 
-    while(!viewer.done())
+    while (!viewer.done())
     {
         // sync magnified view to main view
         app._magView->getCamera()->setViewMatrix(app._mainView->getCamera()->getViewMatrix());

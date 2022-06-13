@@ -72,13 +72,11 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                 _maxTilesToUnloadPerFrame, _deadpool);
 
             // Remove them from the scene graph:
-            for(std::vector<osg::observer_ptr<TileNode> >::iterator i = _deadpool.begin();
-                i != _deadpool.end();
-                ++i)
+            for(auto& tile_weakptr : _deadpool)
             {
                 // may be NULL since we're removing scene graph objects as we go!
                 osg::ref_ptr<TileNode> tile;
-                if (!i->lock(tile))
+                if (!tile_weakptr.lock(tile))
                     continue;
 
                 if (tile.valid())

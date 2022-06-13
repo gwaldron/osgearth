@@ -63,6 +63,7 @@ TileNode::TileNode(
     _childrenReady(false),
     _lastTraversalTime(0.0),
     _lastTraversalFrame(0),
+    _lastTraversalRange(FLT_MAX),
     _empty(false), // an "empty" node exists but has no geometry or children
     _imageUpdatesActive(false),
     _doNotExpire(false),
@@ -235,7 +236,7 @@ TileNode::initializeData()
     }
 
     // register me.
-    _context->liveTiles()->add( this );
+    _context->tiles()->add( this );
 
     // tell the world.
     OE_DEBUG << LC << "notify (create) key " << getKey().str() << std::endl;
@@ -263,7 +264,7 @@ TileNode::isDormant() const
     double now = _context->getClock()->getTime();
 
     bool dormant = 
-        frame - _lastTraversalFrame > osg::maximum(options().minExpiryFrames().get(), minMinExpiryFrames) &&
+        frame - _lastTraversalFrame > std::max(options().minExpiryFrames().get(), minMinExpiryFrames) &&
         now - _lastTraversalTime > options().minExpiryTime().get();
 
     return dormant;
@@ -545,8 +546,9 @@ TileNode::traverse(osg::NodeVisitor& nv)
         // update the timestamp so this tile doesn't become dormant.
         _lastTraversalFrame.exchange(_context->getClock()->getFrame());
         _lastTraversalTime = _context->getClock()->getTime();
+        _lastTraversalRange = std::min(_lastTraversalRange, nv.getDistanceToViewPoint(getBound().center(), true));
 
-        _context->liveTiles()->touch(this, nv);
+        _context->tiles()->touch(this, nv);
 
         if (_empty)
         {

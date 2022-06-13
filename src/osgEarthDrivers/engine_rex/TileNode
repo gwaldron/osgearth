@@ -152,6 +152,22 @@ namespace osgEarth { namespace REX
         // and update-traverse
         void update(osg::NodeVisitor& nv);
 
+        int getLastTraversalFrame() const {
+            return _lastTraversalFrame;
+        }
+
+        double getLastTraversalTime() const {
+            return _lastTraversalTime;
+        }
+
+        float getLastTraversalRange() const {
+            return _lastTraversalRange;
+        }
+
+        void resetTraversalRange() {
+            _lastTraversalRange = FLT_MAX;
+        }
+
     public: // osg::Node
 
         osg::BoundingSphere computeBound() const;
@@ -171,6 +187,7 @@ namespace osgEarth { namespace REX
         Threading::Mutex                   _mutex;
         std::atomic<int>                   _lastTraversalFrame;
         double                             _lastTraversalTime;
+        float                              _lastTraversalRange;
         bool                               _childrenReady;
         mutable osg::Vec4f                 _tileKeyValue;
         osg::Vec2f                         _morphConstants;

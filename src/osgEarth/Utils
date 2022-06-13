@@ -276,8 +276,7 @@ namespace osgEarth { namespace Util
 
         SentryTracker()
         {
-            _list.emplace_front(nullptr, nullptr); // the sentry marker
-            _sentryptr = _list.begin();
+            reset();
         }
 
         ~SentryTracker()
@@ -288,6 +287,19 @@ namespace osgEarth { namespace Util
                 if (te)
                     delete te;
             }
+        }
+
+        void reset()
+        {
+            for (auto& e : _list)
+            {
+                Token* te = static_cast<Token*>(e._token);
+                if (te)
+                    delete te;
+            }
+            _list.clear();
+            _list.emplace_front(nullptr, nullptr); // the sentry marker
+            _sentryptr = _list.begin();
         }
 
         List _list;
@@ -318,7 +330,6 @@ namespace osgEarth { namespace Util
         }
 
         inline void flush(
-            float fartherThanRange,
             unsigned maxCount,
             std::function<bool(T& obj)> dispose)
         {

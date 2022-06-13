@@ -21,31 +21,23 @@
 
 #include "Common"
 #include "TileNode"
-#include <osgEarth/Revisioning>
 #include <osgEarth/Threading>
-#include <osgEarth/Containers>
-#include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/FrameClock>
-#include <osgUtil/RenderBin>
+#include <osgEarth/Utils>
 
 namespace osgEarth { namespace REX
 {
     using namespace osgEarth;
 
     /**
-     * Holds a reference to each tile created by the driver.
+     * Keeps track of all the tiles resident in the terrain engine.
      */
-    class TileNodeRegistry : public osg::Referenced
+    class TileNodeRegistry
     {
     public:
-        struct TrackerEntry
-        {
-            TileNode* _tile;
-            double _lastTime;     // last time tile was visited by cull
-            unsigned _lastFrame;  // last frame tile was visited by cull
-            float _lastRange;     // closest distance to tile during last cull
-        };
-        typedef std::list<TrackerEntry*> Tracker;
+        using Ptr = std::shared_ptr<TileNodeRegistry>;
+
+        using Tracker = SentryTracker<TileNode*>;
 
         struct TableEntry
         {
@@ -54,63 +46,26 @@ namespace osgEarth { namespace REX
             // this Tile into an orphan. As an orphan it will expire and eventually
             // be removed anyway, but we need to keep it alive in the meantime...
             osg::ref_ptr<TileNode> _tile;
-            Tracker::iterator _trackerptr;
+            void* _trackerToken;
+            TableEntry() : _trackerToken(nullptr) { }
         };
 
         using TileTable = std::unordered_map<TileKey, TableEntry>;
 
-        // Prototype for a locked tileset operation (see run)
-        struct Operation {
-            virtual void operator()(TileTable& tiles) =0;
-        };
-        struct ConstOperation {
-            virtual void operator()(const TileTable& tiles) const =0;
-        };
-
-        // Operation that runs when another node enters the registry.
-        struct DeferredOperation {
-            virtual void operator()(TileNode* requestingNode, TileNode* expectedNode) const =0;
-        };
-
     public:
-        TileNodeRegistry( const std::string& name );
+        TileNodeRegistry();
 
         //! Sets the frame clock to use
         void setFrameClock(const FrameClock* value) { _clock = value; }
 
-        /* Enabled revisioning on TileNodes, to support incremental update. */
-        void setRevisioningEnabled(bool value);
-
-        //! Sets the LOD of the root tiles
-        void setFirstLOD(unsigned value) { _firstLOD = value; }
-
-        /**
-         * Sets the revision of the map model - the registry will assign this
-         * to TileNodes added with add().
-         *
-         * @param rev        Revision of map
-         * @param setToDirty In addition to update the revision, immediately set
-         *                   all tiles to dirty as well, effectively forcing an
-         *                   update.
-         */
-        void setMapRevision( const Revision& rev, bool setToDirty =false );
-
-        /** Map revision that the reg will assign to new tiles. */
-        const Revision& getMapRevision() const { return _maprev; }
-
-        /**
-         * Whether tiles will listen for their neighbors to arrive in order to
-         * facilitate normal map edge matching.
-         */
+        //! Whether tiles will listen for their neighbors to arrive in order to
+        //! facilitate normal map edge matching.
         void setNotifyNeighbors(bool value);
 
-        /**
-         * Marks all tiles intersecting the extent as dirty. If incremental
-         * update is enabled, they will automatically reload.
-         *
-         * NOTE: Input extent SRS must match the terrain's SRS exactly.
-         *       The method does not check.
-         */
+        //! Marks all tiles intersecting the extent as dirty. If incremental
+        //! update is enabled, they will automatically reload.
+        //! NOTE: Input extent SRS must match the terrain's SRS exactly.
+        //!       The method does not check.
         void setDirty(
             const GeoExtent& extent, 
             unsigned minLevel, 
@@ -145,25 +100,17 @@ namespace osgEarth { namespace REX
         //! Update traversal
         void update(osg::NodeVisitor&);
 
-        //! Get a reference to a specific key if found.
-        //osg::ref_ptr<TileNode> get(const TileKey& key) const;
-
     protected:
 
-        unsigned _firstLOD;
-        bool _revisioningEnabled;
-        Revision _maprev;
-        std::string _name;
         TileTable _tiles;
         Tracker _tracker;
-        Tracker::iterator _sentryptr;
         mutable Threading::Mutex _mutex;
         bool _notifyNeighbors;
         const FrameClock* _clock;
 
+        // for storing neighbor information
         using TileKeySet = std::unordered_set<TileKey>;
         using TileKeyOneToMany = std::unordered_map<TileKey, TileKeySet>;
-
         TileKeyOneToMany _notifiers;
 
         // tile nodes requiring an udpate traversal

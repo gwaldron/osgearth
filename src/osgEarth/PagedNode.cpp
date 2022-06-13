@@ -462,7 +462,6 @@ PagingManager::update()
     ScopedMutexLock lock(_trackerMutex);
 
     _tracker.flush(
-        0.0f,
         _mergesPerFrame,
         [this](osg::ref_ptr<PagedNode2>& node) -> bool
         {

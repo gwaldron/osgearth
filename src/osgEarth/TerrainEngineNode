@@ -179,6 +179,10 @@ namespace osgEarth
 
         //! Access an immutable options API
         virtual const TerrainOptionsAPI getOptions() = 0;
+
+        //! Number of terrain tiles resident in memory 
+        //! (including cached dormant tiles not being rendered)
+        virtual unsigned getNumResidentTiles() const = 0;
     };
 
     /**

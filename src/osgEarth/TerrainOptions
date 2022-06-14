@@ -51,7 +51,7 @@ namespace osgEarth
         OE_OPTION(double, minExpiryTime);
         OE_OPTION(float, minExpiryRange);
         OE_OPTION(unsigned, maxTilesToUnloadPerFrame);
-        OE_OPTION(unsigned, expirationThreshold);
+        OE_OPTION(unsigned, minResidentTiles);
         OE_OPTION(bool, castShadows);
         OE_OPTION(osg::LOD::RangeMode, rangeMode);
         OE_OPTION(float, tilePixelSize);
@@ -67,6 +67,7 @@ namespace osgEarth
         OE_OPTION(std::string, textureCompression);
         OE_OPTION(unsigned, concurrency);
         OE_OPTION(bool, useLandCover);
+
         virtual Config getConfig() const;
     private:
         void fromConfig(const Config&);
@@ -166,9 +167,9 @@ namespace osgEarth
         void setMaxTilesToUnloadPerFrame(const unsigned& value);
         const unsigned& getMaxTilesToUnloadPerFrame() const;
 
-        //! Minimum number of terrain elements to keep in memory before expiring usused data
-        void setExpirationThreshold(const unsigned& value);
-        const unsigned& getExpirationThreshold() const;
+        //! Minimum number of terrain tiles to keep in memory before expiring usused data
+        void setMinResidentTiles(const unsigned& value);
+        const unsigned& getMinResidentTiles() const;
 
         //! Whether the terrain should cast shadows - default is false
         void setCastShadows(const bool& value);

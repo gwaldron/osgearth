@@ -30,12 +30,12 @@ using namespace osgEarth::REX;
 
 
 UnloaderGroup::UnloaderGroup(TileNodeRegistry* tiles) :
-_tiles(tiles),
-_cacheSize(0u),
-_maxAge(0.1),
-_minRange(0.0f),
-_maxTilesToUnloadPerFrame(~0),
-_frameLastUpdated(0u)
+    _tiles(tiles),
+    _minResidentTiles(0u),
+    _maxAge(0.1),
+    _minRange(0.0f),
+    _maxTilesToUnloadPerFrame(~0),
+    _frameLastUpdated(0u)
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 }
@@ -48,7 +48,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
         unsigned frame = _clock->getFrame();
         bool runUpdate = (_frameLastUpdated < frame);
 
-        if (runUpdate)
+        if (runUpdate && _tiles->size() > _minResidentTiles)
         {
             _frameLastUpdated = frame;
 
@@ -69,7 +69,8 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                 oldestAllowableTime,
                 oldestAllowableFrame,
                 _minRange,
-                _maxTilesToUnloadPerFrame, _deadpool);
+                _maxTilesToUnloadPerFrame,
+                _deadpool);
 
             // Remove them from the scene graph:
             for(auto& tile_weakptr : _deadpool)

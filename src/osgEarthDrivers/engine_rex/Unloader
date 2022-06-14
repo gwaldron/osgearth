@@ -22,13 +22,12 @@
 #include "Common"
 #include "TileNode"
 #include <osgEarth/FrameClock>
-#include <osgEarth/Threading>
 #include <osg/Group>
 
 
 namespace osgEarth { namespace REX
 {
-    class TileNodeRegistry; // for UnloaderGroup
+    class TileNodeRegistry;
 
     /**
      * Group-based tile unloader.
@@ -36,23 +35,41 @@ namespace osgEarth { namespace REX
     class UnloaderGroup : public osg::Group
     {
     public:
+        //! Construct an unloader for a registry
         UnloaderGroup(TileNodeRegistry* tiles);
 
-        //! Permit up to this many Tiles to remain in memory even if they are expired
-        void setCacheSize(unsigned t) { _cacheSize = t; }
-        unsigned getCacheSize() const { return _cacheSize; }
-
         //! A Tile must be at least this old before it can be removed:
-        void setMaxAge(double value) { _maxAge = osg::clampAbove(value, 1.0); }
-        double getMaxAge() const { return _maxAge; }
+        void setMaxAge(double value) { 
+            _maxAge = std::max(value, 1.0);
+        }
+        double getMaxAge() const { 
+            return _maxAge;
+        }
 
         //! Maximum number of tiles to expire per frame
-        void setMaxTilesToUnloadPerFrame(unsigned value) { _maxTilesToUnloadPerFrame = value; }
-        unsigned getMaxTilesToUnloadPerFrame() const { return _maxTilesToUnloadPerFrame; }
+        void setMaxTilesToUnloadPerFrame(unsigned value) {
+            _maxTilesToUnloadPerFrame = value;
+        }
+        unsigned getMaxTilesToUnloadPerFrame() const {
+            return _maxTilesToUnloadPerFrame;
+        }
 
         //! A Tile must be at least this far from the camera before it can be unloaded:
-        void setMinimumRange(float value) { _minRange = osg::clampAbove(value, 0.0f); }
-        float getMinimumRange() const { return _minRange; }
+        void setMinimumRange(float value) { 
+            _minRange = std::max(value, 0.0f);
+        }
+        float getMinimumRange() const {
+            return _minRange;
+        }
+
+        //! The engine may keep at least this many tiles in memory 
+        //! before disposing anything
+        void setMinResidentTiles(unsigned value) {
+            _minResidentTiles = value;
+        }
+        unsigned getMinResidentTiles() const {
+            return _minResidentTiles;
+        }
 
         //! Set the frame clock to use
         void setFrameClock(const FrameClock* value) { _clock = value; }
@@ -65,7 +82,7 @@ namespace osgEarth { namespace REX
         void traverse(osg::NodeVisitor& nv);
 
     protected:
-        unsigned _cacheSize;
+        unsigned _minResidentTiles;
         double _maxAge;
         float _minRange;
         unsigned _maxTilesToUnloadPerFrame;

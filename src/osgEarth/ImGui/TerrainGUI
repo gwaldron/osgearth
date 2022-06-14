@@ -87,6 +87,8 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
+                    ImGui::Text("Resident Tiles: %u", _mapNode->getTerrainEngine()->getNumResidentTiles());
+
                     if (_mapNode->getTerrainOptions().getGPUTessellation())
                     {
                         //if (ImGui::SliderFloat("Tessellation SSE", &_sse, 5.0f, 50.0f))

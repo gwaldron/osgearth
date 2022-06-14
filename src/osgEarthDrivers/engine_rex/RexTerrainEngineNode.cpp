@@ -234,6 +234,12 @@ RexTerrainEngineNode::getJobArenaName() const
     return ARENA_LOAD_TILE;
 }
 
+unsigned
+RexTerrainEngineNode::getNumResidentTiles() const
+{
+    return _tiles ? _tiles->size() : 0u;
+}
+
 void
 RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 {
@@ -312,6 +318,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     _unloader->setFrameClock(&_clock);
     _unloader->setMaxAge(options().minExpiryTime().get());
     _unloader->setMaxTilesToUnloadPerFrame(options().maxTilesToUnloadPerFrame().get());
+    _unloader->setMinResidentTiles(options().minResidentTiles().get());
     _unloader->setMinimumRange(options().minExpiryRange().get());
     this->addChild(_unloader.get());
 

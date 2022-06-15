@@ -73,7 +73,7 @@ GrassLayer::loadShaders(VirtualProgram* vp, const osgDB::Options* options) const
 }
 
 osg::Geometry*
-GrassLayer::createParametricGeometry() const    
+GrassLayer::createGeometry() const    
 {
     const unsigned vertsPerInstance = 16;
     const unsigned indiciesPerInstance = 54;

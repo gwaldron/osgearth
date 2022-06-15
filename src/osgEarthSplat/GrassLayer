@@ -45,7 +45,7 @@ namespace osgEarth { namespace Splat
         META_Layer(osgEarth, GrassLayer, Options, GroundCoverLayer, Grass);
 
     public: // Layer
-        virtual void init();
+        virtual void init() override;
 
     protected:
         virtual ~GrassLayer() { }
@@ -54,7 +54,7 @@ namespace osgEarth { namespace Splat
             VirtualProgram* vp,
             const osgDB::Options* options) const override;
 
-        virtual osg::Geometry* createParametricGeometry() const;
+        virtual osg::Geometry* createGeometry() const override;
     };
 
 } } // namespace osgEarth::Splat

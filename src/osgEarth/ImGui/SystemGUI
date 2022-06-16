@@ -117,7 +117,16 @@ namespace osgEarth
                     ImGui::Separator();
                     ImGui::Text("Total: %d", JobArena::allMetrics().totalJobs());
                     ImGui::SameLine();
-                    ImGui::Text(" ICO: %d", GLObjectsCompiler::totalJobs());
+
+                    int icojobs = 0;
+                    auto pager = view(ri)->getDatabasePager();
+                    if (pager) {
+                        auto ico = pager->getIncrementalCompileOperation();
+                        if (ico) {
+                            icojobs = ico->getToCompile().size();
+                        }
+                    }
+                    ImGui::Text(" ICO: %d", icojobs);
                     ImGui::Checkbox("Advanced arena controls", &_showArenaControls);
 
                     ImGui::Separator();

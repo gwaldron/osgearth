@@ -56,6 +56,8 @@ namespace osgEarth { namespace REX
     public:
         void traverse(osg::NodeVisitor& nv) override;
 
+        void releaseGLObjects(osg::State* state) const override;
+
     protected:
         virtual ~Merger();
     private:
@@ -68,8 +70,9 @@ namespace osgEarth { namespace REX
 
         // Queue of GL object compilations to perform per-merge,
         // if an ICO is installed
-        using CompileQueue = std::queue<ToCompile>;
+        using CompileQueue = std::list<ToCompile>;
         CompileQueue _compileQueue;
+        CompileQueue _tempQueue;
 
         // Queue of tile data to merge during UPDATE traversal
         using MergeQueue = std::queue<LoadTileDataOperationPtr>;

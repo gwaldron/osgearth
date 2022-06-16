@@ -90,7 +90,7 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
             toCompile._compiled = glcompiler.compileAsync(
                 dummyNode.get(), state.get(), &nv, nullptr);
 
-            _compileQueue.push(std::move(toCompile));
+            _compileQueue.push_back(std::move(toCompile));
         }
         else
         {
@@ -120,16 +120,16 @@ Merger::traverse(osg::NodeVisitor& nv)
     {
         ScopedMutexLock lock(_mutex);
 
-        // First check the GL compile queue
-        while (!_compileQueue.empty())
+        // Check the GL compile queue
+        // TODO: the ICO will orphan compilesets when a graphics context
+        // gets released. We need to way to tell the ICO to release 
+        // these compilesets so they don't sit in this queue forever.
+        for(auto& next : _compileQueue)
         {
-            ToCompile& next = _compileQueue.front();
-
             if (next._compiled.isAvailable())
             {
                 // compile finished, put it on the merge queue
                 _mergeQueue.emplace(std::move(next._data));
-                _compileQueue.pop();
 
                 // note: no change the metrics since we are just moving from
                 // one queue to another
@@ -137,8 +137,6 @@ Merger::traverse(osg::NodeVisitor& nv)
             else if (next._compiled.isAbandoned())
             {
                 // compile canceled, ditch it
-                _compileQueue.pop();
-
                 if (_metrics)
                 {
                     _metrics->numJobsRunning--;
@@ -147,10 +145,12 @@ Merger::traverse(osg::NodeVisitor& nv)
             }
             else
             {
-                // nothing to do -- bail out
-                break;
+                // not ready - requeue
+                _tempQueue.push_back(std::move(next));
             }
         }
+        _compileQueue.swap(_tempQueue);
+        _tempQueue.clear();
 
         unsigned count = 0u;
         unsigned max_count = _mergesPerFrame;
@@ -189,4 +189,11 @@ Merger::traverse(osg::NodeVisitor& nv)
     }
 
     osg::Node::traverse(nv);
+}
+
+void
+Merger::releaseGLObjects(osg::State* state) const
+{
+    // TODO
+    osg::Node::releaseGLObjects(state);
 }

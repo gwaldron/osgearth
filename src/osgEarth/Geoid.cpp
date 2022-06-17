@@ -46,8 +46,10 @@ Geoid::setHeightField( osg::HeightField* hf )
     _bounds = Bounds(
         _hf->getOrigin().x(),
         _hf->getOrigin().y(),
-        _hf->getOrigin().x() + _hf->getXInterval() * double(_hf->getNumColumns()-1),
-        _hf->getOrigin().y() + _hf->getYInterval() * double(_hf->getNumRows()-1) );
+        0.0,
+        _hf->getOrigin().x() + _hf->getXInterval() * double(_hf->getNumColumns() - 1),
+        _hf->getOrigin().y() + _hf->getYInterval() * double(_hf->getNumRows() - 1),
+        0.0);
     validate();
 }
 
@@ -81,10 +83,12 @@ Geoid::getHeight(double lat_deg, double lon_deg, const RasterInterpolation& inte
 {
     float result = 0.0f;
 
-    if ( _valid && _bounds.contains(lon_deg, lat_deg) )
+    if ( _valid && contains(_bounds, lon_deg, lat_deg))
     {
-        double nlon = (lon_deg-_bounds.xMin())/_bounds.width();
-        double nlat = (lat_deg-_bounds.yMin())/_bounds.height();
+        double width = _bounds.xMax() - _bounds.xMin();
+        double height = _bounds.yMax() - _bounds.yMin();
+        double nlon = (lon_deg-_bounds.xMin())/width;
+        double nlat = (lat_deg-_bounds.yMin())/height;
         result = HeightFieldUtils::getHeightAtNormalizedLocation( _hf.get(), nlon, nlat, interp );
     }
 

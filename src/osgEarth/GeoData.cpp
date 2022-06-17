@@ -1006,7 +1006,7 @@ GeoExtent::bounds() const
 {
     double west, east, south, north;
     getBounds(west, south, east, north);
-    return Bounds( west, south, east, north );
+    return Bounds( west, south, 0, east, north, 0 );
 }
 
 bool
@@ -1074,7 +1074,7 @@ GeoExtent::contains(const Bounds& rhs) const
 {
     return
         isValid() &&
-        rhs.isValid() &&
+        rhs.valid() &&
         contains( rhs.xMin(), rhs.yMin() ) &&
         contains( rhs.xMax(), rhs.yMax() ) &&
         contains( rhs.center() );

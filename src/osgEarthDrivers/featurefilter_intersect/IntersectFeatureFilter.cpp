@@ -120,7 +120,7 @@ public: // FeatureFilter
                     Feature* feature = f->get();
                     if ( feature && feature->getGeometry() )
                     {
-                        osg::Vec2d c = feature->getGeometry()->getBounds().center2d();
+                        osg::Vec3d c = feature->getGeometry()->getBounds().center();
 
                         if ( contains() == true )
                         {

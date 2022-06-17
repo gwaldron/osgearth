@@ -358,7 +358,7 @@ main(int argc, char** argv)
         if (image.valid())
         {
             imageOverlay = new ImageOverlay(mapNode, image.get());
-            imageOverlay->setBounds( Bounds( -100.0, 35.0, -90.0, 40.0) );
+            imageOverlay->setBounds(Bounds(-100.0, 35.0, 0.0, -90.0, 40.0, 0.0));
             annoGroup->addChild( imageOverlay );
 
             editGroup->addChild( new ImageOverlayEditor(imageOverlay) );

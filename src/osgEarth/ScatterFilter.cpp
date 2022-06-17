@@ -53,9 +53,9 @@ ScatterFilter::polyScatter(const Geometry*         input,
         {
             bounds = polygon->getBounds();
 
-            double avglat = bounds.yMin() + 0.5*bounds.height();
-            double h = bounds.height() * 111.32;
-            double w = bounds.width() * 111.32 * sin( 1.57079633 + osg::DegreesToRadians(avglat) );
+            double avglat = bounds.yMin() + 0.5*height(bounds);
+            double h = height(bounds) * 111.32;
+            double w = width(bounds) * 111.32 * sin( 1.57079633 + osg::DegreesToRadians(avglat) );
 
             areaSqKm = w * h;
         }
@@ -63,7 +63,7 @@ ScatterFilter::polyScatter(const Geometry*         input,
         else if ( context.profile()->getSRS()->isProjected() )
         {
             bounds = polygon->getBounds();
-            areaSqKm = (0.001*bounds.width()) * (0.001*bounds.height());
+            areaSqKm = (0.001*width(bounds)) * (0.001*height(bounds));
         }
 
         double zMin = 0.0;
@@ -79,8 +79,8 @@ ScatterFilter::polyScatter(const Geometry*         input,
             // be correct.
             for( unsigned j=0; j<numInstancesInBoundingRect; ++j )
             {
-                double x = bounds.xMin() + _prng.next() * bounds.width();
-                double y = bounds.yMin() + _prng.next() * bounds.height();
+                double x = bounds.xMin() + _prng.next() * width(bounds);
+                double y = bounds.yMin() + _prng.next() * height(bounds);
 
                 bool include = true;
 
@@ -93,11 +93,11 @@ ScatterFilter::polyScatter(const Geometry*         input,
         {
             // regular interval scattering:
             double numInst1D = sqrt((double)numInstancesInBoundingRect);
-            double ar = bounds.width() / bounds.height();
+            double ar = width(bounds) / height(bounds);
             unsigned cols = (unsigned)( numInst1D * ar );
             unsigned rows = (unsigned)( numInst1D / ar );
-            double colInterval = bounds.width() / (double)(cols-1);
-            double rowInterval = bounds.height() / (double)(rows-1);
+            double colInterval = width(bounds) / (double)(cols-1);
+            double rowInterval = height(bounds) / (double)(rows-1);
             double interval = 0.5*(colInterval+rowInterval);
 
             for( double cy=bounds.yMin(); cy<=bounds.yMax(); cy += interval )

@@ -67,7 +67,7 @@ KML_GroundOverlay::build( xml_node<>* node, KMLContext& cx )
         }
 
         im = new ImageOverlay( cx._mapNode, image.get() );
-        im->setBoundsAndRotation( Bounds(west, south, east, north), rotation );
+        im->setBoundsAndRotation( Bounds(west, south, 0, east, north, 0), rotation );
         cx._groupStack.top()->addChild( im );
     }
     else if (llab)
@@ -86,7 +86,7 @@ KML_GroundOverlay::build( xml_node<>* node, KMLContext& cx )
         }
 
         im = new ImageOverlay(cx._mapNode, image.get());
-        im->setBoundsAndRotation(Bounds(west, south, east, north), rotation);
+        im->setBoundsAndRotation(Bounds(west, south, 0, east, north, 0), rotation);
         cx._groupStack.top()->addChild(im);
     }
 

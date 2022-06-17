@@ -592,10 +592,10 @@ osgEarth::Bounds
 ImageOverlay::getBounds() const
 {
     osgEarth::Bounds bounds;
-    bounds.expandBy(_lowerLeft.x(), _lowerLeft.y());
-    bounds.expandBy(_lowerRight.x(), _lowerRight.y());
-    bounds.expandBy(_upperLeft.x(), _upperLeft.y());
-    bounds.expandBy(_upperRight.x(), _upperRight.y());
+    bounds.expandBy(_lowerLeft.x(), _lowerLeft.y(), bounds.zMin());
+    bounds.expandBy(_lowerRight.x(), _lowerRight.y(), bounds.zMin());
+    bounds.expandBy(_upperLeft.x(), _upperLeft.y(), bounds.zMin());
+    bounds.expandBy(_upperRight.x(), _upperRight.y(), bounds.zMin());
     return bounds;
 }
 
@@ -613,11 +613,12 @@ void ImageOverlay::setBounds(const osgEarth::Bounds &b)
     }
     else
     {
+        double w = b.xMax() - b.xMin();
         setCorners(
             osg::Vec2d(b.xMin(), b.yMin()),
-            osg::Vec2d(b.xMin() + b.width(), b.yMin()),
+            osg::Vec2d(b.xMin() + w, b.yMin()),
             osg::Vec2d(b.xMin(), b.yMax()), 
-            osg::Vec2d(b.xMin() + b.width(), b.yMax()));
+            osg::Vec2d(b.xMin() + w, b.yMax()));
     }
 }
 
@@ -632,10 +633,11 @@ ImageOverlay::setBoundsAndRotation(const osgEarth::Bounds& b, const Angular& rot
     }
     else
     {
+        double w = b.xMax() - b.xMin();
         osg::Vec3d ll(b.xMin(), b.yMin(), 0);
         osg::Vec3d ul(b.xMin(), b.yMax(), 0);
-        osg::Vec3d ur(b.xMin() + b.width(), b.yMax(), 0);
-        osg::Vec3d lr(b.xMin() + b.width(), b.yMin(), 0);
+        osg::Vec3d ur(b.xMin() + w, b.yMax(), 0);
+        osg::Vec3d lr(b.xMin() + w, b.yMin(), 0);
 
         osg::Vec3d center = b.center();
         // Rotate around the center point

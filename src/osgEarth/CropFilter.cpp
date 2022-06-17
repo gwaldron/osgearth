@@ -53,7 +53,7 @@ CropFilter::push( FeatureList& input, FilterContext& context )
             if ( featureGeom && featureGeom->isValid() )
             {
                 Bounds bounds = featureGeom->getBounds();
-                if ( bounds.isValid() )
+                if ( bounds.valid() )
                 {
                     osg::Vec3d centroid = bounds.center();
                     if ( extent.contains( centroid.x(), centroid.y() ) )

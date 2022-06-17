@@ -234,7 +234,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
             offsetZ = feature->eval( offsetExpr, &cx );
 
         osgEarth::Bounds bounds = feature->getGeometry()->getBounds();
-        const osg::Vec2d& center = bounds.center2d();
+        const osg::Vec3d center = bounds.center();
         GeoPoint centroid(featureSRS.get(), center.x(), center.y());
         double   centroidElevation = 0.0;
 

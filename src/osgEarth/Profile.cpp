@@ -72,10 +72,12 @@ ProfileOptions::fromConfig( const Config& conf )
     if ( conf.hasValue( "xmin" ) && conf.hasValue( "ymin" ) && conf.hasValue( "xmax" ) && conf.hasValue( "ymax" ) )
     {
         _bounds = Bounds(
-            conf.value<double>( "xmin", 0 ),
-            conf.value<double>( "ymin", 0 ),
-            conf.value<double>( "xmax", 0 ),
-            conf.value<double>( "ymax", 0 ) );
+            conf.value<double>("xmin", 0),
+            conf.value<double>("ymin", 0),
+            0.0,
+            conf.value<double>("xmax", 0),
+            conf.value<double>("ymax", 0),
+            0.0);
     }
 
     conf.get( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
@@ -185,7 +187,7 @@ Profile::create(const SpatialReference* srs)
     if (srs->getBounds(bounds))
     {
         unsigned x = 1, y = 1;
-        float ar = (float)bounds.width() / (float)bounds.height();
+        float ar = (float)width(bounds) / (float)height(bounds);
         if (ar > 1.5f)
         {
             x = (unsigned)::ceil(ar);
@@ -259,7 +261,7 @@ Profile::create(const std::string& srsInitString,
         {
             if (numTilesWideAtLod0 == 0 || numTilesHighAtLod0 == 0)
             {
-                double ar = (bounds.width() / bounds.height());
+                double ar = width(bounds) / height(bounds);
                 if (ar >= 1.0) {
                     int ari = (int)ar;
                     numTilesHighAtLod0 = 1;

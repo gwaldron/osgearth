@@ -788,7 +788,7 @@ void Feature::splitAcrossDateLine(FeatureList& splitFeatures)
             {
                 double offset = minLon - -180.0;
                 double maxLon = minLon + 360.0;
-                Bounds bounds(minLon, -90.0, maxLon, 90.0);
+                Bounds bounds(minLon, -90.0, 0.0, maxLon, 90.0, 0.0);
                 osg::ref_ptr< Geometry > croppedGeometry;
                 if (getGeometry()->crop(bounds, croppedGeometry))
                 {

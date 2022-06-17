@@ -1318,8 +1318,8 @@ ImageUtils::replaceNoDataValues(osg::Image*       target,
     }
 
     float
-        xscale = targetBounds.width()/referenceBounds.width(),
-        yscale = targetBounds.height()/referenceBounds.height();
+        xscale = width(targetBounds)/width(referenceBounds),
+        yscale = height(targetBounds)/height(referenceBounds);
 
     float
         xbias = targetBounds.xMin() - referenceBounds.xMin(),

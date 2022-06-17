@@ -112,8 +112,10 @@ SelectExtentTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
             Bounds bounds(
                 std::min(_mouseDownPoint.x(), point.x()),
                 std::min(_mouseDownPoint.y(), point.y()),
+                0.0,
                 std::max(_mouseDownPoint.x(), point.x()),
-                std::max(_mouseDownPoint.y(), point.y()));
+                std::max(_mouseDownPoint.y(), point.y()),
+                0.0);
             _extent = GeoExtent(_mapNode->getMapSRS(), bounds);
             updateFeature(_extent);
             return true;

@@ -53,8 +53,10 @@ Query::mergeConfig( const Config& conf )
         _bounds = Bounds(
             b.value<double>( "xmin", 0.0 ),
             b.value<double>( "ymin", 0.0 ),
+            0.0,
             b.value<double>( "xmax", 0.0 ),
-            b.value<double>( "ymax", 0.0 ) );
+            b.value<double>( "ymax", 0.0 ),
+            0.0);
     }
 
     conf.get("limit", _limit);
@@ -118,7 +120,7 @@ Query::combineWith( const Query& rhs ) const
     // merge the bounds:
     if ( bounds().isSet() && rhs.bounds().isSet() )
     {
-        merged.bounds() = bounds()->intersectionWith( *rhs.bounds() );
+        merged.bounds() = intersection(*bounds(), *rhs.bounds());
     }
     else if ( bounds().isSet() )
     {

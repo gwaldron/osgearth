@@ -365,7 +365,7 @@ bool
 SpatialReference::getBounds(Bounds& output) const
 {
     output = _bounds;
-    return _bounds.isValid();
+    return _bounds.valid();
 }
 
 void*
@@ -1529,7 +1529,7 @@ SpatialReference::init()
 
     // Guess the appropriate bounds for this SRS.
     int isNorth;
-    _bounds.set(-FLT_MAX, -FLT_MAX, FLT_MAX, FLT_MAX);
+    _bounds.set(-FLT_MAX, -FLT_MAX, 0.0, FLT_MAX, FLT_MAX, 0.0);
 
 #if 0 // this always returns false as of GDAL 3.1.3, so omit until later
 #if GDAL_VERSION_MAJOR >= 3
@@ -1549,18 +1549,18 @@ SpatialReference::init()
     {
         if (isGeographic() || isGeocentric())
         {
-            _bounds.set(-180.0, -90.0, 180.0, 90.0);
+            _bounds.set(-180.0, -90.0, 0.0, 180.0, 90.0, 0.0);
         }
         else if (isMercator() || isSphericalMercator())
         {
-            _bounds.set(MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY);
+            _bounds.set(MERC_MINX, MERC_MINY, 0.0, MERC_MAXX, MERC_MAXY, 0.0);
         }
         else if (OSRGetUTMZone(handle, &isNorth))
         {
             if (isNorth)
-                _bounds.set(166000, 0, 834000, 9330000);
+                _bounds.set(166000, 0, 0.0, 834000, 9330000, 0.0);
             else
-                _bounds.set(166000, 1116915, 834000, 10000000);
+                _bounds.set(166000, 1116915, 0.0, 834000, 10000000, 0.0);
         }
     }
 }

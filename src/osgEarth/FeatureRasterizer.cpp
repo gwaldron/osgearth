@@ -1466,7 +1466,7 @@ FeatureStyleSorter::getFeatures(
         // incorporate the image extent into the feature query for this style:
         Query localQuery = query;
         localQuery.bounds() =
-            query.bounds().isSet() ? query.bounds()->unionWith(queryExtent.bounds()) :
+            query.bounds().isSet() ? unionOf(query.bounds().get(), queryExtent.bounds()) :
             queryExtent.bounds();
 
         FilterContext context(session, session->getFeatureSource()->getFeatureProfile(), queryExtent);

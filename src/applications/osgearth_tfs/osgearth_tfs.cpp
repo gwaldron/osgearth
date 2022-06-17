@@ -177,7 +177,7 @@ int main(int argc, char** argv)
         ext = ext.transform(osgEarth::SpatialReference::create( destSRS ));
     }
 
-    if (bounds.isValid())
+    if (bounds.valid())
     {
         // If a custom bounds was specified use that instead.
         ext = GeoExtent(osgEarth::SpatialReference::create( destSRS ), bounds);

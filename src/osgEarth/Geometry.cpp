@@ -455,9 +455,9 @@ Geometry::localize()
     osg::Vec3d offset;
 
     Bounds bounds = getBounds();
-    if ( bounds.isValid() )
+    if ( bounds.valid() )
     {
-        osg::Vec2d center = bounds.center2d();
+        osg::Vec3d center = bounds.center();
         offset.set( center.x(), center.y(), 0 );
 
         GeometryIterator i( this );

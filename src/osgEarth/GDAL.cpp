@@ -793,7 +793,7 @@ GDAL::Driver::open(
     osg::ref_ptr< SpatialReference > srs = SpatialReference::create(warpedSRSWKT);
 
     // record the data extent in profile space:
-    _bounds = Bounds(minX, minY, maxX, maxY);
+    _bounds = Bounds(minX, minY, 0.0, maxX, maxY, 0.0);
 
     const char* pora = _srcDS->GetMetadataItem("AREA_OR_POINT");
     bool is_area = pora != nullptr && Strings::toLower(std::string(pora)) == "area";
@@ -807,7 +807,7 @@ GDAL::Driver::open(
             _bounds.xMax() -= resolutionX * 0.5;
         }
 
-        if (_bounds.width() > 360)
+        if ((_bounds.xMax() - _bounds.xMin()) > 360.0)
         {
             _bounds.xMin() = -180;
             _bounds.xMax() = 180;
@@ -820,7 +820,7 @@ GDAL::Driver::open(
             _bounds.yMax() -= resolutionY * 0.5;
         }
 
-        if (_bounds.height() > 180)
+        if ((_bounds.yMax() - _bounds.yMin()) > 180)
         {
             _bounds.yMin() = -90;
             _bounds.yMax() = 90;

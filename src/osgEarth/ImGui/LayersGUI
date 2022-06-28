@@ -32,6 +32,20 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osg/Camera>
 
+#define NOMINMAX
+#if defined(__has_include)
+#if __has_include(<third_party/portable-file-dialogs/portable-file-dialogs.h>)
+#include <third_party/portable-file-dialogs/portable-file-dialogs.h>
+#define HAS_PFD
+#endif
+#endif
+
+#include <osgEarth/Registry>
+#include <osgEarth/XYZ>
+#include <osgEarth/TMS>
+#include <osgEarth/GDAL>
+#include <osgEarth/DebugImageLayer>
+
 namespace osgEarth {
     namespace GUI
     {
@@ -50,6 +64,8 @@ namespace osgEarth {
             std::unordered_map<Layer*, float> _maxMaxRanges;
             std::unordered_map<Layer*, float> _maxMinRanges;
             std::unordered_map<Layer*, float> _maxAttenRanges;
+            bool _addTMS = false;
+            bool _addXYZ = false;
 
             std::function<bool(const Layer*)>
                 _showPred,
@@ -118,6 +134,131 @@ namespace osgEarth {
                 conf.set("ShowDisabled", _showDisabled);
             }
 
+            void addTMS()
+            {
+                ImGui::Begin("Add TMS", &_addTMS);
+                static char tmsURL[128] = "http://readymap.org/readymap/tiles/1.0.0/7/";
+                static char name[64] = "New Layer";
+                static bool isElevation = false;
+                ImGui::InputText("Name", name, IM_ARRAYSIZE(name));
+                ImGui::InputText("URL", tmsURL, IM_ARRAYSIZE(tmsURL));
+                ImGui::Checkbox("Treat as Elevation", &isElevation);
+                if (ImGui::Button("OK"))
+                {
+                    if (isElevation)
+                    {
+                        TMSElevationLayer* tms = new TMSElevationLayer;
+                        tms->setName(name);
+                        tms->setURL(tmsURL);
+                        _mapNode->getMap()->addLayer(tms);
+                    }
+                    else
+                    {
+                        TMSImageLayer* tms = new TMSImageLayer;
+                        tms->setName(name);
+                        tms->setURL(tmsURL);
+                        _mapNode->getMap()->addLayer(tms);
+                    }
+                    _addTMS = false;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel"))
+                {
+                    _addTMS = false;
+                }
+                ImGui::End();
+            }
+
+            void addXYZ()
+            {
+                ImGui::Begin("Add XYZ", &_addXYZ);
+                static char xyzURL[128] = "http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png";
+                static char name[64] = "New Layer";
+                static bool isElevation = false;
+                ImGui::InputText("Name", name, IM_ARRAYSIZE(name));
+                ImGui::InputText("URL", xyzURL, IM_ARRAYSIZE(xyzURL));
+
+                static int profile = 1;
+                ImGui::Text("Profile");
+                if (ImGui::RadioButton("Global Geodetic", profile == 0)) { profile = 0; } ImGui::SameLine();
+                if (ImGui::RadioButton("Spherical Mercator", profile == 1)) { profile = 1; }
+
+                ImGui::Checkbox("Treat as Elevation", &isElevation);
+                if (ImGui::Button("OK"))
+                {
+                    if (isElevation)
+                    {
+                        XYZElevationLayer* xyz = new XYZElevationLayer;
+                        xyz->setName(name);
+                        xyz->setURL(xyzURL);
+                        if (profile == 0)      xyz->setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
+                        else if (profile == 1) xyz->setProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile());
+                        _mapNode->getMap()->addLayer(xyz);
+                    }
+                    else
+                    {
+                        XYZImageLayer* xyz = new XYZImageLayer;
+                        xyz->setName(name);
+                        xyz->setURL(xyzURL);
+                        if (profile == 0)      xyz->setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
+                        else if (profile == 1) xyz->setProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile());
+                        xyz->setProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile());
+                        _mapNode->getMap()->addLayer(xyz);
+                    }
+                    _addXYZ = false;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel"))
+                {
+                    _addXYZ = false;
+                }
+                ImGui::End();
+            }
+
+            void usefulLayers()
+            {
+                if (ImGui::BeginMenu("Useful Layers"))
+                {
+                    // ReadyMap Imagery
+                    if (ImGui::MenuItem("ReadyMap Imagery"))
+                    {
+                        TMSImageLayer* readymap = new TMSImageLayer();
+                        readymap->setName("ReadyMap Imagery");
+                        readymap->setURL("http://readymap.org/readymap/tiles/1.0.0/7/");
+                        _mapNode->getMap()->addLayer(readymap);
+                    }
+
+                    // ReadyMap Elevation
+                    if (ImGui::MenuItem("ReadyMap Elevation"))
+                    {
+                        TMSElevationLayer* readymap = new TMSElevationLayer();
+                        readymap->setName("ReadyMap Elevation");
+                        readymap->setURL("http://readymap.org/readymap/tiles/1.0.0/116/");
+                        _mapNode->getMap()->addLayer(readymap);
+                    }
+
+                    // OpenStreetMap
+                    if (ImGui::MenuItem("OpenStreetmap"))
+                    {
+                        XYZImageLayer* osm = new XYZImageLayer();
+                        osm->setName("OpenStreetMap");
+                        osm->setURL("http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png");
+                        osm->setProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile());
+                        osm->setAttribution("&#169;OpenStreetMap contributors");
+                        _mapNode->getMap()->addLayer(osm);
+                    }
+
+                    if (ImGui::MenuItem("Debug"))
+                    {
+                        DebugImageLayer* debugImage = new DebugImageLayer;
+                        debugImage->setName("Debug");
+                        _mapNode->getMap()->addLayer(debugImage);
+                    }
+
+                    ImGui::EndMenu();
+                }
+            }
+
             void draw(osg::RenderInfo& ri) override
             {
                 if (!isVisible())
@@ -158,8 +299,66 @@ namespace osgEarth {
 
                 osg::Camera* camera = ri.getCurrentCamera();
 
-                ImGui::Begin(name(), visible());
+                ImGui::Begin(name(), visible(), ImGuiWindowFlags_MenuBar);
                 {
+                    if (ImGui::BeginMenuBar())
+                    {
+                        if (ImGui::BeginMenu("Add Layer"))
+                        {
+#ifdef HAS_PFD
+                            if (ImGui::MenuItem("Local File"))
+                            {
+                                auto f = pfd::open_file("Choose files to read", pfd::path::home(),
+                                    { "All Files", "*" },
+                                    pfd::opt::multiselect);
+
+                                if (f.result().size() > 0)
+                                {
+                                    auto m = pfd::message("Imagery",
+                                        "Are these files imagery?  Select No for elevation.",
+                                        pfd::choice::yes_no,
+                                        pfd::icon::question);
+                                    bool imagery = m.result() == pfd::button::yes;
+
+                                    _mapNode->getMap()->beginUpdate();
+                                    if (imagery)
+                                    {
+                                        for (auto const& name : f.result())
+                                        {
+                                            GDALImageLayer* gdalImage = new GDALImageLayer;
+                                            gdalImage->setName(osgDB::getSimpleFileName(name));
+                                            gdalImage->setURL(name);
+                                            _mapNode->getMap()->addLayer(gdalImage);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        for (auto const& name : f.result())
+                                        {
+                                            GDALElevationLayer* gdalElevation = new GDALElevationLayer;
+                                            gdalElevation->setName(osgDB::getSimpleFileName(name));
+                                            gdalElevation->setURL(name);
+                                            _mapNode->getMap()->addLayer(gdalElevation);
+                                        }
+                                    }
+                                    _mapNode->getMap()->endUpdate();
+                                }
+                            }
+#endif
+
+                            if (ImGui::MenuItem("TMS")) _addTMS = true;
+                            if (ImGui::MenuItem("XYZ")) _addXYZ = true;
+
+                            usefulLayers();
+
+                            ImGui::EndMenu();
+                        }
+                        ImGui::EndMenuBar();
+                    }
+
+                    if (_addTMS) addTMS();
+                    if (_addXYZ) addXYZ();
+
                     if (map->getName().empty() == false)
                     {
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), map->getName().c_str());
@@ -218,7 +417,7 @@ namespace osgEarth {
                         if (error)
                             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(ImColor(255, 72, 72))), stylePushed = true;
                         else if (!layer->isOpen())
-                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(ImColor(127,127,127))), stylePushed = true;
+                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(ImColor(127, 127, 127))), stylePushed = true;
 
                         osgEarth::VisibleLayer* visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
                         if (visibleLayer)
@@ -293,7 +492,7 @@ namespace osgEarth {
                                     bool visible = visibleLayer->getVisible();
                                     if (ImGui::Checkbox("Visible", &visible)) {
                                         visibleLayer->setVisible(visible);
-                                    }                                   
+                                    }
 
                                     bool debugView = visibleLayer->getEnableDebugView();
                                     if (ImGui::Checkbox("Highlight tiles", &debugView)) {

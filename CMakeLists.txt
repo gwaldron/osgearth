@@ -157,7 +157,7 @@ find_package(GLEW)
 find_package(Protobuf)
 find_package(WEBP)
 find_package(Blend2D)
-find_package(blosc)
+find_package(Blosc)
 
 if(OSGEARTH_ENABLE_PROFILING)
     find_package(Tracy)

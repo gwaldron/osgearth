@@ -88,7 +88,7 @@ in vec2 splat_uv[2];
 in float oe_elev;
 #endif
 
-#ifdef OE_SPLAT_TWEAKS
+#ifdef OE_LIFEMAP_DIRECT
     #define tweakable uniform
 #else
     #define tweakable const

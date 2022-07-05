@@ -338,7 +338,7 @@ TerrainTileModelFactory::addStandaloneImageLayer(
     bool added = false;
     while (keyToUse.valid() && !added)
     {
-        bool added = addImageLayer(model, imageLayer, keyToUse, reqs, progress);
+        added = addImageLayer(model, imageLayer, keyToUse, reqs, progress);
         if (!added)
         {
             TileKey parentKey = keyToUse.createParentKey();

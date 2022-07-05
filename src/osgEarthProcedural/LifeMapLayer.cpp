@@ -764,11 +764,13 @@ LifeMapLayer::createImageImplementation(
                     if (equivalent(lc_blur_m, 0.0))
                     {
                         temp = landcover.read((int)s, (int)t);
-
-                        pixel[LANDCOVER][LIFEMAP_DENSE] = temp->dense().get();
-                        pixel[LANDCOVER][LIFEMAP_LUSH] = temp->lush().get();
-                        pixel[LANDCOVER][LIFEMAP_RUGGED] = temp->rugged().get();
-                        weight[LANDCOVER] = getLandCoverWeight();
+                        if (temp)
+                        {
+                            pixel[LANDCOVER][LIFEMAP_DENSE] = temp->dense().get();
+                            pixel[LANDCOVER][LIFEMAP_LUSH] = temp->lush().get();
+                            pixel[LANDCOVER][LIFEMAP_RUGGED] = temp->rugged().get();
+                            weight[LANDCOVER] = getLandCoverWeight();
+                        }
                     }
                     else
                     {                        

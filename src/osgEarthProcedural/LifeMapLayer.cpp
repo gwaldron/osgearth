@@ -965,9 +965,10 @@ LifeMapLayer::createImageImplementation(
                     double vv = clamp(v * dm_matrix(1, 1) + dm_matrix(3, 1), 0.0, 1.0);
                     readDensityMask(temp, uu, vv);
 
+                    // multiply all 3 so that roads can have a "dirt road" look
                     combined_pixel[LIFEMAP_DENSE] *= temp.r();
-                    //combined_pixel[LIFEMAP_LUSH] *= temp.r();
-                    //combined_pixel[LIFEMAP_RUGGED] *= temp.r();
+                    combined_pixel[LIFEMAP_LUSH] *= temp.r();
+                    combined_pixel[LIFEMAP_RUGGED] *= temp.r();
                 }
 
                 // WATER MASK

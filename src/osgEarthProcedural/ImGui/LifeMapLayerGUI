@@ -127,12 +127,14 @@ namespace osgEarth
                 if (ImGui::Checkbox("LifeMap Direct Set", &_lifemap_direct))
                 {
                     if (_lifemap_direct) {
+                        stateset(ri)->removeDefine("OE_LIFEMAP_DIRECT");
                         stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "1", 0x7);
                         _rugged_power = std::min(_rugged_power, 1.0f);
                         _dense_power = std::min(_dense_power, 1.0f);
                         _lush_power = std::min(_lush_power, 1.0f);
                     }
                     else {
+                        stateset(ri)->removeDefine("OE_LIFEMAP_DIRECT");
                         stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "0", 0x7);
                     }
                 }

@@ -142,34 +142,10 @@ namespace osgEarth
             ProgressCallback* progress);
 
         //! Packs a 3-vec normal into RG (octohedral compression)
-        static inline void pack(const osg::Vec3& normal, osg::Vec4& packed)
-        {
-            // octohodreal normal packing
-            float d = 1.0 / (fabs(normal.x()) + fabs(normal.y()) + fabs(normal.z()));
-            packed.x() = normal.x() * d;
-            packed.y() = normal.y() * d;
-
-            if (normal.z() < 0.0)
-            {
-                packed.x() = (1.0 - fabs(packed.y())) * (packed.x() >= 0.0 ? 1.0 : -1.0);
-                packed.y() = (1.0 - fabs(packed.x())) * (packed.y() >= 0.0 ? 1.0 : -1.0);
-            }
-
-            packed.x() = 0.5f * (packed.x() + 1.0f);
-            packed.y() = 0.5f * (packed.y() + 1.0f);
-        }
+        static void pack(const osg::Vec3& normal, osg::Vec4& packed);
 
         //! Unpacks the RG packed normal into a 3-vec.
-        static inline void unpack(const osg::Vec4& packed, osg::Vec3& normal)
-        {
-            normal.x() = packed.x() * 2.0 - 1.0;
-            normal.y() = packed.y() * 2.0 - 1.0;
-            normal.z() = 1.0 - fabs(normal.x()) - fabs(normal.y());
-            float t = osg::clampBetween(-normal.z(), 0.0f, 1.0f);
-            normal.x() += (normal.x() > 0) ? -t : t;
-            normal.y() += (normal.y() > 0) ? -t : t;
-            normal.normalize();
-        }
+        static void unpack(const osg::Vec4& packed, osg::Vec3& normal);
     };
 
     //! Revisioned key for elevation lookups (internal)

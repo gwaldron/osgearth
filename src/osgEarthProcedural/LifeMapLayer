@@ -51,7 +51,6 @@ namespace osgEarth { namespace Procedural
             OE_OPTION_LAYER(ImageLayer, maskLayer);
             OE_OPTION_LAYER(ImageLayer, waterLayer);
             OE_OPTION_LAYER(CoverageLayer, landCoverLayer);
-            OE_OPTION_LAYER(FeatureSource, landUseLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
 
             OE_OPTION(float, landCoverWeight);
@@ -61,7 +60,6 @@ namespace osgEarth { namespace Procedural
             OE_OPTION(float, slopeCutoff);
             OE_OPTION(float, colorWeight);
             OE_OPTION(float, noiseWeight);
-            OE_OPTION(float, landUseWeight);
             OE_OPTION(float, lushFactor);
 
             virtual Config getConfig() const;
@@ -81,9 +79,6 @@ namespace osgEarth { namespace Procedural
         void setWaterLayer(ImageLayer*);
         ImageLayer* getWaterLayer() const;
 
-        void setLandUseLayer(FeatureSource*);
-        FeatureSource* getLandUseLayer() const;
-
         void setLandCoverLayer(CoverageLayer*);
         CoverageLayer* getLandCoverLayer() const;
 
@@ -97,10 +92,6 @@ namespace osgEarth { namespace Procedural
         void setTerrainWeight(float value);
         float getTerrainWeight() const;
         bool getUseTerrain() const;
-
-        void setLandUseWeight(float value);
-        float getLandUseWeight() const;
-        bool getUseLandUse() const;
 
         void setColorWeight(float value);
         float getColorWeight() const;

@@ -184,30 +184,29 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                 result->_textureScales->setName("oe_texScale");
                 result->_textureScales->setType(osg::Uniform::FLOAT);
                 result->_textureScales->setNumElements(
-                    assets.getLifeMapTextures().size() * tile_height_m.size());
+                    assets.getMaterials().size() * tile_height_m.size());
 
-                if (assets.getLifeMapMatrixHeight() * assets.getLifeMapMatrixWidth() !=
-                    assets.getLifeMapTextures().size())
-                {
-                    OE_WARN << LC0 << "Configuration error: LifeMapTextures count does not match width*height"
-                        << std::endl;
-                    return nullptr;
-                }
-
+                //if (assets.getLifeMapMatrixHeight() * assets.getLifeMapMatrixWidth() !=
+                //    assets.getLifeMapMatrix().size())
+                //{
+                //    OE_WARN << LC0 << "Configuration error: LifeMapTextures count does not match width*height"
+                //        << std::endl;
+                //    return nullptr;
+                //}
                 int ptr0 = 0;
-                int ptr1 = assets.getLifeMapTextures().size();
+                int ptr1 = assets.getMaterials().size();
 
-                for (auto& tex : assets.getLifeMapTextures())
+                for(auto& material : assets.getMaterials())
                 {
                     auto t0 = std::chrono::steady_clock::now();
 
-                    result->_assets.push_back(&tex);
+                    result->_assets.push_back(&material);
 
-                    RGBH_NNRA_Loader::load(tex.uri()->full(), result->_arena.get());
+                    RGBH_NNRA_Loader::load(material.uri()->full(), result->_arena.get());
 
                     auto t1 = std::chrono::steady_clock::now();
 
-                    OE_INFO << LC0 << "Loaded texture " << tex.uri()->base()
+                    OE_INFO << LC0 << "Loaded material " << material.uri()->base()
                         << ", t=" << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << "ms"
                         << std::endl;
 
@@ -217,13 +216,13 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                     // Set up the texture scaling:
                     result->_textureScales->setElement(
                         ptr0++,
-                        (float)(tex.size().isSet() ? tile_height_m[0] / tex.size()->as(Units::METERS) : 1.0f));
+                        (float)(material.size().isSet() ? tile_height_m[0] / material.size()->as(Units::METERS) : 1.0f));
 
                     if (tile_height_m.size() > 1)
                     {
                         result->_textureScales->setElement(
                             ptr1++,
-                            (float)(tex.size().isSet() ? tile_height_m[1] / tex.size()->as(Units::METERS) : 1.0f));
+                            (float)(material.size().isSet() ? tile_height_m[1] / material.size()->as(Units::METERS) : 1.0f));
                     }
                 }
 
@@ -299,7 +298,7 @@ TextureSplattingLayer::buildStateSets()
         {
             const auto& assets = getBiomeLayer()->getBiomeCatalog()->getAssets();
             ss->setDefine("OE_TEX_DIM_X", std::to_string(assets.getLifeMapMatrixWidth()));
-            ss->setDefine("OE_TEX_DIM_Y", std::to_string(assets.getLifeMapMatrixHeight()));
+            //ss->setDefine("OE_TEX_DIM_Y", std::to_string(assets.getLifeMapMatrixHeight()));
         }
 
         ss->setDefine(

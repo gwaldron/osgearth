@@ -53,14 +53,13 @@ void oe_splat_View(inout vec4 vertex_view)
 #pragma vp_function oe_splat_Frag, fragment, 0.8
 
 #pragma oe_use_shared_layer(OE_LIFEMAP_TEX, OE_LIFEMAP_MAT)
-//#pragma oe_use_shared_layer(OE_COLOR_LAYER_TEX, OE_COLOR_LAYER_MAT)
 
 #pragma import_defines(OE_TEX_DIM_X)
-#pragma import_defines(OE_TEX_DIM_Y)
+//#pragma import_defines(OE_TEX_DIM_Y)
+#define OE_TEX_DIM_Y 2
 
 #pragma import_defines(OE_SPLAT_TWEAKS)
 #pragma import_defines(OE_LIFEMAP_DIRECT)
-#pragma import_defines(OE_SPLAT_USE_MTL_GLS_AO)
 #pragma import_defines(OE_SNOW)
 
 layout(binding = 5, std430) buffer SplatTextureArena {
@@ -176,10 +175,8 @@ void get_pixel(out Pixel res, in int index, in vec2 coord)
 
 float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2, in float roughness)
 {
-    //float d = mix(oe_depth, 1.0, clamp((-vp_VertexView.z-500.0) / 500.0, 0.0, 1.0));
-    float d = oe_depth; // mix(1.0, oe_depth, DECEL(roughness, 2.3));
+    float d = oe_depth;
     // https://tinyurl.com/y5nkw2l9
-    //float depth = 0.02;
     float ma = max(h1 + a1, h2 + a2) - d;
     float b1 = max(h1 + a1 - ma, 0.0);
     float b2 = max(h2 + a2 - ma, 0.0);
@@ -220,11 +217,21 @@ void resolveRow(out Pixel result, int level, int row, float xvar)
     pixmix(result, p1, p2, m);
 }
 
-void resolveLevel(out Pixel result, int level, float rugged, float lush, float dense)
+void resolveLevel(out Pixel result, int level, float rugged, float lush, float dense, int material)
 {
     // resolve the substrate (dirt and rocks)
     Pixel substrate;
-    resolveRow(substrate, level, 0, rugged);
+
+    if (material > 0)
+    {
+        vec2 coord;
+        get_coord(coord, material - 1, 0);
+        get_pixel(substrate, material - 1, coord);
+    }
+    else
+    {
+        resolveRow(substrate, level, 0, rugged);
+    }
 
     // resolve the surface texture (greenery and debris)
     Pixel surface;
@@ -255,16 +262,21 @@ void resolveLevel(out Pixel result, int level, float rugged, float lush, float d
 void oe_splat_Frag(inout vec4 quad)
 {
     // sample the life map and extract the compenents:
-    vec4 life = texture(OE_LIFEMAP_TEX, (OE_LIFEMAP_MAT * oe_layer_tilec).st);
+    vec2 c = (OE_LIFEMAP_MAT * oe_layer_tilec).st;
+    vec4 life = texture(OE_LIFEMAP_TEX, c);
     float rugged = MODIFY(life[RUGGED], rugged_power);
     float lush = MODIFY(life[LUSH], lush_power);
     float dense = MODIFY(life[DENSE], dense_power);
-    
+
+    ivec2 tfc = ivec2(min(int(c.x*256.0), 255), min(int(c.y*256.0), 255));
+    vec4 life_i = texelFetch(OE_LIFEMAP_TEX, tfc, 0);
+    int material = int(life_i[3] * 255.0f);
+
     // compute the pixel color:
     Pixel pixel;
     for (int level = 0; level < OE_SPLAT_NUM_LEVELS; ++level)
     {
-        resolveLevel(pixel, level, rugged, lush, dense);
+        resolveLevel(pixel, level, rugged, lush, dense, material);
     }
 
     // apply PBR
@@ -278,33 +290,11 @@ void oe_splat_Frag(inout vec4 quad)
 
     vec3 color = pixel.rgbh.rgb;
 
-    // WATER
-    float water = life.a;
-    const vec3 water_color = vec3(0.02, 0.05, 0.1);
-    color = mix(color, water_color, water);
-    oe_pbr.roughness = mix(oe_pbr.roughness, 0.3, water);
-    oe_pbr.ao = mix(oe_pbr.ao, 1.0, water);
-
     // NORMAL
     pixel.normal.xy = vec2(
         DECEL(pixel.normal.x, normal_power),
         DECEL(pixel.normal.y, normal_power));
-    vp_Normal = mix(normalize(vp_Normal + oe_normalMapTBN * pixel.normal), oe_UpVectorView, water);
-
-#ifdef OE_SNOW
-    // SNOW
-    float coldness = MAP_TO_01(oe_elev, oe_snow_min_elev, oe_snow_max_elev);
-    float cos_angle = max(0, dot(vp_Normal, oe_UpVectorView));
-    float snowiness = heightAndEffectMix(pixel.rgbh.a, 1.0, oe_snow, cos_angle, 0.0) * (1.0 - water);
-    color = mix(color, vec3(1), snowiness);
-    oe_pbr.roughness = mix(oe_pbr.roughness, 0.1, snowiness);
-#endif
-
-#ifdef OE_COLOR_LAYER_TEX
-    vec3 cltexel = texture(OE_COLOR_LAYER_TEX, (OE_COLOR_LAYER_MAT*oe_layer_tilec).st).rgb;
-    vec3 clcolor = clamp(2.0 * cltexel * color, 0.0, 1.0);
-    color = mix(color, clcolor, smoothstep(0.0, 0.5, 1.0 - 0.5*(dense + lush)));
-#endif
+    vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal);
 
     // final color output:
     quad = vec4(color, oe_layer_opacity);

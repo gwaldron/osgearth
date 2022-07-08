@@ -78,7 +78,7 @@ namespace osgEarth { namespace Procedural
             using Ptr = std::shared_ptr<Materials>;
             osg::ref_ptr<TextureArena> _arena;
             osg::ref_ptr<osg::Uniform> _textureScales;
-            std::vector<const LifeMapTextureAsset*> _assets;
+            std::vector<const MaterialAsset*> _assets;
         };
 
         Future<Materials::Ptr> _materialsJob;

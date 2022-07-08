@@ -93,7 +93,7 @@ ModelAsset::getConfig() const
 
 //...................................................................
 
-LifeMapTextureAsset::LifeMapTextureAsset(const Config& conf)
+MaterialAsset::MaterialAsset(const Config& conf)
 {
     conf.get("name", name());
     conf.get("url", uri());
@@ -101,9 +101,9 @@ LifeMapTextureAsset::LifeMapTextureAsset(const Config& conf)
 }
 
 Config
-LifeMapTextureAsset::getConfig() const
+MaterialAsset::getConfig() const
 {
-    Config conf("texture");
+    Config conf("asset");
     conf.set("name", name());
     conf.set("url", uri());
     conf.set("size", size());
@@ -114,20 +114,7 @@ LifeMapTextureAsset::getConfig() const
 
 AssetCatalog::AssetCatalog(const Config& conf)
 {
-    _lifemapMatrixWidth = as<unsigned>(conf.child("lifemaptextures").value("width"), 1);
-    _lifemapMatrixHeight = as<unsigned>(conf.child("lifemaptextures").value("height"), 1);
-
-    ConfigSet texturesConf = conf.child("lifemaptextures").children("texture");
-    for (const auto& c : texturesConf)
-    {
-        _textures.emplace_back(c);
-    }
-    ConfigSet specialConf = conf.child("specialtextures").children("texture");
-    for (const auto& c : specialConf)
-    {
-        _specialTextures.emplace_back(c);
-    }
-
+    // load all model asset defs
     ConfigSet modelassetgroups = conf.child("models").children("group");
     if (modelassetgroups.empty()) modelassetgroups = conf.child("modelassets").children("group");
     for (const auto& c : modelassetgroups)
@@ -145,6 +132,78 @@ AssetCatalog::AssetCatalog(const Config& conf)
             }
         }
     }
+    // load in all materials first into a temporary table
+    std::unordered_map<std::string, MaterialAsset> temp_materials;
+    ConfigSet materialassets = conf.child("materials").children("asset");
+    for (const auto& c : materialassets)
+    {
+        MaterialAsset a(c);
+        if (a.name().isSet())
+            temp_materials[a.name().get()] = std::move(a);
+    }
+
+    // make a list of materials, with the lifemap matrix materials first
+    // so their indices are 'well known' from here on out.
+    std::unordered_set<std::string> added;
+
+    // add substrate textures:
+    ConfigSet substrates = conf.child("lifemapmatrix").child("substrate").children("asset");
+    for (const auto& c : substrates)
+    {
+        auto iter = temp_materials.find(c.value("name"));
+        if (iter != temp_materials.end())
+        {
+            if (added.find(iter->first) == added.end())
+            {
+                _materials.push_back(iter->second);
+                added.emplace(iter->first);
+            }
+            else
+            {
+                OE_WARN << LC << "LifeMapMatrix materials must all be unique!" << std::endl;
+            }
+        }
+        else
+        {
+            OE_WARN << LC << "Unrecognized material asset \"" << iter->second.name().get() << "\" referenced in the lifemap matrix"
+                << std::endl;
+        }
+    }
+
+    // append overlay textures:
+    ConfigSet overlays = conf.child("lifemapmatrix").child("overlay").children("asset");
+    for (const auto& c : overlays)
+    {
+        auto iter = temp_materials.find(c.value("name"));
+        if (iter != temp_materials.end())
+        {
+            if (added.find(iter->first) == added.end())
+            {
+                _materials.push_back(iter->second);
+                added.emplace(iter->first);
+            }
+            else
+            {
+                OE_WARN << LC << "LifeMapMatrix materials must all be unique!" << std::endl;
+            }
+        }
+        else
+        {
+            OE_WARN << LC << "Unrecognized material asset \"" << iter->second.name().get() << "\" referenced in the lifemap matrix" << std::endl;
+        }
+    }
+
+    _lifemapMatrixWidth = _materials.size() / 2;
+
+    // load all the other textures at the end, avoiding dupes
+    for (auto& iter : temp_materials)
+    {
+        if (added.find(iter.first) == added.end())
+        {
+            _materials.push_back(iter.second);
+            added.emplace(iter.first);
+        }
+    }
 }
 
 Config
@@ -153,7 +212,7 @@ AssetCatalog::getConfig() const
     Config conf("AssetCatalog");
 
     //TODO - incomplete/wrong
-
+#if 0
     Config textures("LifeMapTextures");
     for (auto& texture : _textures)
         textures.add(texture.getConfig());
@@ -165,6 +224,7 @@ AssetCatalog::getConfig() const
         specifictextures.add(texture.getConfig());
     if (!specifictextures.empty())
         conf.add(specifictextures);
+#endif
 
     Config models("Models");
     for (auto& model : _models)
@@ -181,12 +241,15 @@ AssetCatalog::getLifeMapMatrixWidth() const
     return _lifemapMatrixWidth;
 }
 
+#if 0
 unsigned
 AssetCatalog::getLifeMapMatrixHeight() const
 {
     return _lifemapMatrixHeight;
 }
+#endif
 
+#if 0
 const std::vector<LifeMapTextureAsset>&
 AssetCatalog::getLifeMapTextures() const
 {
@@ -198,6 +261,7 @@ AssetCatalog::getSpecialTextures() const
 {
     return _specialTextures;
 }
+#endif
 
 const ModelAsset*
 AssetCatalog::getModel(const std::string& name) const
@@ -206,13 +270,24 @@ AssetCatalog::getModel(const std::string& name) const
     return i != _models.end() ? &i->second : nullptr;
 }
 
+const MaterialAsset*
+AssetCatalog::getMaterial(const std::string& name) const
+{
+    for (auto& material : _materials)
+    {
+        if (material.name() == name)
+            return &material;
+    }
+    return nullptr;
+}
+
 bool
 AssetCatalog::empty() const
 {
-    return _models.empty() && _textures.empty();
+    return _models.empty() && _materials.empty();
 }
 
-#if 1
+#if 0
 //...................................................................
 
 LifeMapValue::LifeMapValue(const Config& conf)
@@ -567,7 +642,7 @@ BiomeCatalog::getAssets() const
     return _assets;
 }
 
-#if 1
+#if 0
 const LifeMapValueTable*
 BiomeCatalog::getLandUseTable() const
 {

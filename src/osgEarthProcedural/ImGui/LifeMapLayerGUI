@@ -29,10 +29,10 @@ void oeui_render_lush(inout vec4 color) { color = vec4(0,0,color.b, 1); }
 void oeui_render_rugged(inout vec4 color) { color = vec4(color.r, 0, 0, 1); }
 )";
 
-    const char* render_water = R"(
+    const char* render_alpha = R"(
 #version 450
-#pragma vp_function oeui_render_water, fragment_lighting, last
-void oeui_render_water(inout vec4 color) { color = vec4(color.a, 1.0); }
+#pragma vp_function oeui_render_alpha, fragment_lighting, last
+void oeui_render_alpha(inout vec4 color) { color = vec4(color.a, color.a, color.a, 1.0); }
 )";
 }
 
@@ -110,10 +110,9 @@ namespace osgEarth
                     if (ImGui::RadioButton("Lushness", &s_renderMode, m++)) {
                         setRenderMode(render_lush, ri);
                     }
-                    // Someday
-                    //if (ImGui::RadioButton("Water", &s_renderMode, m++)) {
-                    //    setRenderMode(render_water, ri);
-                    //}
+                    if (ImGui::RadioButton("Material", &s_renderMode, m++)) {
+                        setRenderMode(render_alpha, ri);
+                    }
                     if (ImGui::RadioButton("All", &s_renderMode, m++)) {
                         setRenderMode(render_lifemap, ri);
                     }
@@ -127,12 +126,14 @@ namespace osgEarth
                 if (ImGui::Checkbox("LifeMap Direct Set", &_lifemap_direct))
                 {
                     if (_lifemap_direct) {
+                        stateset(ri)->removeDefine("OE_LIFEMAP_DIRECT");
                         stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "1", 0x7);
                         _rugged_power = std::min(_rugged_power, 1.0f);
                         _dense_power = std::min(_dense_power, 1.0f);
                         _lush_power = std::min(_lush_power, 1.0f);
                     }
                     else {
+                        stateset(ri)->removeDefine("OE_LIFEMAP_DIRECT");
                         stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "0", 0x7);
                     }
                 }
@@ -172,11 +173,6 @@ namespace osgEarth
                 ImGui::SliderFloat("Slope contrib", &o.slopeIntensity().mutable_value(), 1.0f, 10.0f);
                 ImGui::SliderFloat("Slope cutoff", &o.slopeCutoff().mutable_value(), 0.0f, 1.0f);
                 ImGui::Unindent();
-
-                if (_lifemap->getLandUseLayer())
-                {
-                    ImGui::SliderFloat("Land Use contrib", &o.landUseWeight().mutable_value(), 0.0f, 1.0f);
-                }
 
                 ImGui::SliderFloat("Noise contrib", &o.noiseWeight().mutable_value(), 0.0f, 1.0f);
 

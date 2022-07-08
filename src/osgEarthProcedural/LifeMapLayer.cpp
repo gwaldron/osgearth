@@ -48,13 +48,11 @@ LifeMapLayer::Options::getConfig() const
     waterLayer().set(conf, "water_layer");
     colorLayer().set(conf, "color_layer");
     landCoverLayer().set(conf, "coverage_layer");
-    landUseLayer().set(conf, "land_use_layer");
     conf.set("coverage_weight", landCoverWeight());
     conf.set("coverage_blur", landCoverBlur());
     conf.set("terrain_weight", terrainWeight());
     conf.set("color_weight", colorWeight());
     conf.set("noise_weight", noiseWeight());
-    conf.set("land_use_weight", landUseWeight());
     conf.set("lush_factor", lushFactor());
     return conf;
 }
@@ -63,12 +61,11 @@ void
 LifeMapLayer::Options::fromConfig(const Config& conf)
 {
     landCoverWeight().setDefault(1.0f);
-    landCoverBlur().setDefault(Distance(20.0f, Units::METERS));
+    landCoverBlur().setDefault(Distance(0.0f, Units::METERS));
     terrainWeight().setDefault(1.0f);
     slopeIntensity().setDefault(1.0f);
     colorWeight().setDefault(1.0f);
     noiseWeight().setDefault(0.3f);
-    landUseWeight().setDefault(1.0f);
     lushFactor().setDefault(1.9f);
 
     biomeLayer().get(conf, "biomes_layer");
@@ -76,13 +73,11 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
     waterLayer().get(conf, "water_layer");
     colorLayer().get(conf, "color_layer");
     landCoverLayer().get(conf, "coverage_layer");
-    landUseLayer().get(conf, "land_use_layer");
     conf.get("coverage_weight", landCoverWeight());
     conf.get("coverage_blur", landCoverBlur());
     conf.get("terrain_weight", terrainWeight());
     conf.get("color_weight", colorWeight());
     conf.get("noise_weight", noiseWeight());
-    conf.get("land_use_weight", landUseWeight());
     conf.get("lush_factor", lushFactor());
 }
 
@@ -112,7 +107,7 @@ namespace
             _invFactor = 1.0f / _factor;
         }
 
-        void scaleCoordsToRefLOD(osg::Vec2& tc, const TileKey& key)
+        void scaleCoordsToRefLOD(osg::Vec2d& tc, const TileKey& key)
         {
             if (key.getLOD() <= _refLOD)
                 return;
@@ -155,93 +150,12 @@ namespace
     inline void getNoise(
         osg::Vec4& noise,
         ImageUtils::PixelReader& read,
-        const osg::Vec2& coords)
+        const osg::Vec2d& coords)
     {
         read(noise, coords.x(), coords.y());
         noise *= 2.0;
         noise.r() -= 1.0, noise.g() -= 1.0, noise.b() -= 1.0, noise.a() -= 1.0;
     }
-
-    struct LandUseTile
-    {
-        RTree<osg::ref_ptr<Feature>, double, 2> _index;
-        int _size;
-        const SpatialReference* _tilesrs;
-        const SpatialReference* _featuresrs;
-
-        LandUseTile() : _size(0) { }
-
-        bool empty() const { return _size == 0; }
-
-        void load(
-            const TileKey& key, 
-            FeatureSource* fs, 
-            FeatureFilterChain* filters, 
-            const Distance& buffer, 
-            const LifeMapValueTable* table)
-        {
-            _tilesrs = key.getExtent().getSRS();
-            _featuresrs = fs->getFeatureProfile()->getSRS();
-
-            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(key, buffer, filters, nullptr, nullptr);
-            while (cursor.valid() && cursor->hasMore())
-            {
-                Feature* f = cursor->nextFeature();
-
-                if (f->getGeometry()->isPolygon() && (
-                    (table->getValue("landuse." + f->getString("landuse")) ||
-                    (table->getValue("natural." + f->getString("natural"))))))
-                {
-                    //OE_INFO << "landuse=" << f->getString("landuse") << ", natural=" << f->getString("natural") << std::endl;
-                    const GeoExtent& ex = f->getExtent();
-                    double a_min[2] = { ex.xMin(), ex.yMin() };
-                    double a_max[2] = { ex.xMax(), ex.yMax() };
-                    _index.Insert(a_min, a_max, osg::ref_ptr<Feature>(f));
-                    ++_size;
-                }
-            }
-        }
-
-        const LifeMapValue* get(double x, double y, const LifeMapValueTable* table) const
-        {
-            _tilesrs->transform2D(x, y, _featuresrs, x, y);
-
-            constexpr double e = 0.0;
-            double a_min[2] = { x-e, y-e };
-            double a_max[2] = { x+e, y+e };
-
-            std::vector<osg::ref_ptr<Feature>> hits;
-
-            int count = _index.Search(
-                a_min, a_max,
-                [&hits](const osg::ref_ptr<Feature>& f) {
-                    hits.push_back(f);
-                    return true;
-                });
-
-            if (count == 0)
-            {
-                return nullptr;
-            }
-
-            const LifeMapValue* result = nullptr;
-
-            for (const auto& f : hits)
-            {
-                if (f->getGeometry()->contains2D(x, y))
-                {
-                    result = table->getValue("landuse." + f->getString("landuse"));
-                    if (result)
-                        return result;
-
-                    result = table->getValue("natural." + f->getString("natural"));
-                    if (result)
-                        return result;
-                }
-            }
-            return nullptr;
-        }
-    };
 }
 
 //........................................................................
@@ -267,18 +181,13 @@ LifeMapLayer::openImplementation()
         return parent;
 
     options().biomeLayer().open(getReadOptions());
-
     options().maskLayer().open(getReadOptions());
-
     options().waterLayer().open(getReadOptions());
-
     options().colorLayer().open(getReadOptions());
-
     options().landCoverLayer().open(getReadOptions());
 
-    options().landUseLayer().open(getReadOptions());
-
     setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
+
     return Status::OK();
 }
 
@@ -315,7 +224,6 @@ LifeMapLayer::addedToMap(const Map* map)
     options().waterLayer().addedToMap(map);
     options().colorLayer().addedToMap(map);
     options().landCoverLayer().addedToMap(map);
-    options().landUseLayer().addedToMap(map);
 
     // not specified; try to find it
     if (!getBiomeLayer())
@@ -334,7 +242,6 @@ LifeMapLayer::addedToMap(const Map* map)
     checkForLayerError(getWaterLayer());
     checkForLayerError(getColorLayer());
     checkForLayerError(getLandCoverLayer());
-    checkForLayerError(getLandUseLayer());
 
     // Initialize the landcover creator
     if (getLandCoverLayer() && getLandCoverLayer()->isOpen())
@@ -355,7 +262,6 @@ LifeMapLayer::removedFromMap(const Map* map)
     options().waterLayer().removedFromMap(map);
     options().colorLayer().removedFromMap(map);
     options().landCoverLayer().removedFromMap(map);
-    options().landUseLayer().removedFromMap(map);
     ImageLayer::removedFromMap(map);
 }
 
@@ -405,18 +311,6 @@ CoverageLayer*
 LifeMapLayer::getLandCoverLayer() const
 {
     return options().landCoverLayer().getLayer();
-}
-
-void
-LifeMapLayer::setLandUseLayer(FeatureSource* layer)
-{
-    options().landUseLayer().setLayer(layer);
-}
-
-FeatureSource*
-LifeMapLayer::getLandUseLayer() const
-{
-    return options().landUseLayer().getLayer();
 }
 
 void
@@ -486,24 +380,6 @@ LifeMapLayer::getUseColor() const
 }
 
 void
-LifeMapLayer::setLandUseWeight(float value)
-{
-    options().landUseWeight() = value;
-}
-
-float
-LifeMapLayer::getLandUseWeight() const
-{
-    return options().landUseWeight().get();
-}
-
-bool
-LifeMapLayer::getUseLandUse() const
-{
-    return getLandUseWeight() > 0.0f;
-}
-
-void
 LifeMapLayer::setNoiseWeight(float value)
 {
     options().noiseWeight() = value;
@@ -521,13 +397,14 @@ LifeMapLayer::getUseNoise() const
     return getNoiseWeight() > 0.0f;
 }
 
-#define NUM_INPUTS 5
+#define NUM_INPUTS 4
 
 #define NOISE 0
 #define TERRAIN 1
 #define LANDCOVER 2
-#define LANDUSE 3
-#define COLOR 4
+#define COLOR 3
+
+#define NOISE_LEVELS 4
 
 GeoImage
 LifeMapLayer::createImageImplementation(
@@ -549,29 +426,6 @@ LifeMapLayer::createImageImplementation(
     if (elevTile.valid())
     {
         elevTile->generateNormalMap(map.get(), &_workingSet, progress);
-    }
-
-    // if we're using land use data, fetch that now:
-    LandUseTile landuse;
-    const LifeMapValueTable* landuse_table = nullptr;
-
-    TileKey lu_key = key.getLOD() > 14u ? key.createAncestorKey(14u) : key;
-    const GeoExtent& lu_extent = lu_key.getExtent();
-    double x_jitter = lu_extent.width() * 0.1;
-    double y_jitter = lu_extent.height() * 0.1;
-
-    if (getLandUseLayer() && getUseLandUse() && getBiomeLayer() && getBiomeLayer()->getBiomeCatalog())
-    {
-        // the catalog:
-        landuse_table = getBiomeLayer()->getBiomeCatalog()->getLandUseTable();
-
-        // populate the tile with features that exist in the catalog:
-        landuse.load(
-            lu_key,
-            getLandUseLayer(),
-            nullptr, // filters
-            Distance(std::max(x_jitter, y_jitter), lu_extent.getSRS()->getUnits()),
-            landuse_table);
     }
 
     GeoExtent extent = key.getExtent();
@@ -682,11 +536,13 @@ LifeMapLayer::createImageImplementation(
     std::string lu_id;
     osg::Vec4f hsl;
 
-    osg::Vec2 noiseCoords[4];
-    osg::Vec4 noise[4];
-    const unsigned noiseLOD[4] = { 0u, 9u, 13u, 16u };
+    osg::Vec2d noiseCoords[NOISE_LEVELS];
+    osg::Vec4 noise[NOISE_LEVELS];
+    const unsigned noiseLOD[NOISE_LEVELS] = {
+        8u, 10u, 12u, 14u //, 16u // 0u, 9u, 13u, 16u
+    };
     
-    CoordScaler coordScalers[4] = {
+    CoordScaler coordScalers[NOISE_LEVELS] = {
         CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[0]),
         CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[1]),
         CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[2]),
@@ -710,6 +566,17 @@ LifeMapLayer::createImageImplementation(
     double mpp_x = width_m / (double)getTileSize();
     double mpp_y = height_m / (double)getTileSize();
 
+    // landcover material index lookup table:
+    std::unordered_map<std::string, unsigned> materialLUT;
+    if (getBiomeLayer() && getLandCoverLayer() && getUseLandCover())
+    {
+        unsigned ptr = 0;
+        for (auto& material : getBiomeLayer()->getBiomeCatalog()->getAssets().getMaterials())
+        {
+            materialLUT[material.name().get()] = ptr++;
+        }
+    }
+
     GeoImage result(image.get(), extent);
 
     {
@@ -729,22 +596,33 @@ LifeMapLayer::createImageImplementation(
                 double x = result.getExtent().xMin() + result.getExtent().width() * u;
 
                 osg::Vec4f pixel[NUM_INPUTS];
-                float weight[NUM_INPUTS] = { 0,0,0,0,0 };
+                float weight[NUM_INPUTS] = { 0,0,0,0 };
                 osg::Vec4f temp;
+
+                // in case the land cover specifies a custom material.
+                unsigned customMaterialIndex = 0u;
 
                 // NOISE contribution
                 if (getUseNoise())
                 {
-                    for (int n = 0; n < 4; ++n)
+                    for (int n = 0; n < NOISE_LEVELS; ++n)
                     {
-                        noiseCoords[n].set(u, v);
-                        coordScalers[n].scaleCoordsToRefLOD(noiseCoords[n], key);
-                        getNoise(noise[n], noiseSampler, noiseCoords[n]);        
+                        if (key.getLOD() >= coordScalers[n]._refLOD)
+                        {
+                            noiseCoords[n].set(u, v);
+                            coordScalers[n].scaleCoordsToRefLOD(noiseCoords[n], key);
+                            getNoise(noise[n], noiseSampler, noiseCoords[n]);
+
+                            double L = 1.0/pow(2.0, double(n));
+
+                            pixel[NOISE][LIFEMAP_DENSE] += noise[n][CLUMPY] * L; // 3
+                            pixel[NOISE][LIFEMAP_LUSH] = 0.0; // += noise[n][RANDOM] * L; // = 0.0;
+                            pixel[NOISE][LIFEMAP_RUGGED] += noise[n][SMOOTH] * L; // 2
+                        }
                     }
 
-                    pixel[NOISE][LIFEMAP_DENSE] = noise[3][CLUMPY];
-                    pixel[NOISE][LIFEMAP_LUSH] = 0.0;
-                    pixel[NOISE][LIFEMAP_RUGGED] = noise[2][CLUMPY];
+                    pixel[NOISE][LIFEMAP_DENSE] = clamp(pixel[NOISE][LIFEMAP_DENSE], 0.0f, 1.0f);
+                    pixel[NOISE][LIFEMAP_RUGGED] = clamp(pixel[NOISE][LIFEMAP_RUGGED], 0.0f, 1.0f);
 
                     weight[NOISE] = getNoiseWeight();
                 }
@@ -752,9 +630,6 @@ LifeMapLayer::createImageImplementation(
                 // LAND COVER CONTRIBUTION
                 if (getLandCoverLayer() && landcover.valid())
                 {
-                    // Maybe try getting a pointer instead of copying the actual value
-                    // this is the one we're reading.  maybe read a ptr.
-                    //LandCoverSample temp;
                     const LandCoverSample* temp;
                     LandCoverSample sample;
                     int dense_samples = 0;
@@ -764,14 +639,24 @@ LifeMapLayer::createImageImplementation(
                     if (equivalent(lc_blur_m, 0.0))
                     {
                         temp = landcover.read((int)s, (int)t);
+                        if (temp)
+                        {
+                            pixel[LANDCOVER][LIFEMAP_DENSE] = temp->dense().get();
+                            pixel[LANDCOVER][LIFEMAP_LUSH] = temp->lush().get();
+                            pixel[LANDCOVER][LIFEMAP_RUGGED] = temp->rugged().get();
+                            weight[LANDCOVER] = getLandCoverWeight();
 
-                        pixel[LANDCOVER][LIFEMAP_DENSE] = temp->dense().get();
-                        pixel[LANDCOVER][LIFEMAP_LUSH] = temp->lush().get();
-                        pixel[LANDCOVER][LIFEMAP_RUGGED] = temp->rugged().get();
-                        weight[LANDCOVER] = getLandCoverWeight();
+                            if (temp->material().isSet() && getBiomeLayer())
+                            {
+                                // land cover asked for a custom material. Find its index.
+                                auto i = materialLUT.find(temp->material().get());
+                                if (i != materialLUT.end())
+                                    customMaterialIndex = i->second + 1;
+                            }
+                        }
                     }
                     else
-                    {                        
+                    {
                         // read the landcover with a blurring filter.
                         for (int a = -1; a <= 1; ++a)
                         {
@@ -800,6 +685,14 @@ LifeMapLayer::createImageImplementation(
                                     {
                                         sample.rugged() = sample.rugged().get() + temp->rugged().get();
                                         ++rugged_samples;
+                                    }
+
+                                    if (temp->material().isSet() && getBiomeLayer())
+                                    {
+                                        // land cover asked for a custom material. Find its index.
+                                        auto i = materialLUT.find(temp->material().get());
+                                        if (i != materialLUT.end())
+                                            customMaterialIndex = i->second + 1;
                                     }
                                 }
                             }
@@ -912,39 +805,16 @@ LifeMapLayer::createImageImplementation(
                     weight[TERRAIN] = getTerrainWeight();
                 }
 
-                // LAND USE CONTRIBUTION:
-                if (!landuse.empty())
-                {
-                    double xx = x; // +x_jitter * 0.3*(noise[2][CLUMPY] * 2.0 - 1.0);
-                    double yy = y; // +y_jitter * 0.3*(noise[2][SMOOTH] * 2.0 - 1.0);
-
-                    const LifeMapValue* lu = landuse.get(xx, yy, landuse_table);
-                    if (lu)
-                    {
-                        pixel[LANDUSE][LIFEMAP_DENSE] = lu->dense().get();
-                        pixel[LANDUSE][LIFEMAP_LUSH] = lu->lush().get();
-                        pixel[LANDUSE][LIFEMAP_RUGGED] = lu->rugged().get();
-                        weight[LANDUSE] = getLandUseWeight();
-                    }
-                }
-
                 // CONBINE WITH WEIGHTS:
                 osg::Vec4f combined_pixel;
 
                 // first, combine landcover and color by relative weight.
-                if (weight[LANDUSE] > 0.0f)
+                float w2 = weight[LANDCOVER] + weight[COLOR];
+                if (w2 > 0.0f)
                 {
-                    combined_pixel = pixel[LANDUSE];
-                }
-                else
-                {
-                    float w2 = weight[LANDCOVER] + weight[COLOR];
-                    if (w2 > 0.0f)
-                    {
-                        combined_pixel =
-                            pixel[LANDCOVER] * weight[LANDCOVER] / w2 +
-                            pixel[COLOR] * weight[COLOR] / w2;
-                    }
+                    combined_pixel =
+                        pixel[LANDCOVER] * weight[LANDCOVER] / w2 +
+                        pixel[COLOR] * weight[COLOR] / w2;
                 }
 
                 // apply terrain additively:
@@ -963,9 +833,10 @@ LifeMapLayer::createImageImplementation(
                     double vv = clamp(v * dm_matrix(1, 1) + dm_matrix(3, 1), 0.0, 1.0);
                     readDensityMask(temp, uu, vv);
 
+                    // multiply all 3 so that roads can have a "dirt road" look
                     combined_pixel[LIFEMAP_DENSE] *= temp.r();
-                    //combined_pixel[LIFEMAP_LUSH] *= temp.r();
-                    //combined_pixel[LIFEMAP_RUGGED] *= temp.r();
+                    combined_pixel[LIFEMAP_LUSH] *= temp.r();
+                    combined_pixel[LIFEMAP_RUGGED] *= temp.r();
                 }
 
                 // WATER MASK
@@ -981,6 +852,11 @@ LifeMapLayer::createImageImplementation(
                     combined_pixel[3] = 1.0f - temp.r();
                 }
                 else combined_pixel[3] = 0.0f;
+
+                if (customMaterialIndex > 0)
+                {
+                    combined_pixel[3] = (float)customMaterialIndex / 255.0f;
+                }
 
                 // Clamp everything to [0..1] and write it out.
                 for (int i = 0; i < 4; ++i)

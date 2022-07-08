@@ -30,13 +30,6 @@
 #include <osgEarth/FeatureSource>
 #include <osgEarth/CoverageLayer>
 
-#define OE_OPTION_LESS(L,R) \
-    if (L().isSet() && !R().isSet()) return true; \
-    if (R().isSet() && !L().isSet()) return false; \
-    if (L().isSet() && R().isSet()) { \
-        if (L().get() < R().get()) return true; \
-        if (L().get() > R().get()) return false; }
-
 namespace osgEarth
 {
     namespace Procedural
@@ -50,6 +43,7 @@ namespace osgEarth
             OE_OPTION(float, dense);
             OE_OPTION(float, lush);
             OE_OPTION(float, rugged);
+            OE_OPTION(std::string, material);
 
             LandCoverSample() { }
 
@@ -60,6 +54,7 @@ namespace osgEarth
                 conf.get("dense", dense());
                 conf.get("lush", lush());
                 conf.get("rugged", rugged());
+                conf.get("material", material());
             }
 
             bool valid() const {
@@ -68,7 +63,8 @@ namespace osgEarth
                     traits().isSet() ||
                     dense().isSet() ||
                     lush().isSet() ||
-                    rugged().isSet();
+                    rugged().isSet() ||
+                    material().isSet();
             }
 
             bool operator < (const LandCoverSample& rhs) const
@@ -78,6 +74,7 @@ namespace osgEarth
                 OE_OPTION_LESS(dense, rhs.dense);
                 OE_OPTION_LESS(lush, rhs.lush);
                 OE_OPTION_LESS(rugged, rhs.rugged);
+                OE_OPTION_LESS(material, rhs.material);
                 return false;
             }       
         };

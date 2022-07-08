@@ -695,4 +695,11 @@ namespace osgEarth
     public: \
     const TYPE & NAME () const { return _ ## NAME; }
 
+#define OE_OPTION_LESS(L,R) \
+    if (L().isSet() && !R().isSet()) return true; \
+    if (R().isSet() && !L().isSet()) return false; \
+    if (L().isSet() && R().isSet()) { \
+        if (L().get() < R().get()) return true; \
+        if (L().get() > R().get()) return false; }
+
 #endif // OSGEARTH_CONFIG_H

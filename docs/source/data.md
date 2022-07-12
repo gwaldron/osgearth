@@ -54,7 +54,7 @@ For shapefiles, this will generate a ".qix" file that contains the spatial index
 ### Building Tilesets
 Pre-tiling your imagery can speed up load time dramatically, especially over the network. In fact, if you want to serve your data over the network, this is the only way!
 
-```osgearth_conv``` is a low-level conversion tool that comes with osgEarth. One useful application of the tool is tile up a large GeoTIFF (or other input) in a tiled format. Note: this approach only works with drivers that support writing (MBTiles, TMS).
+**[osgearth_conv](osgearth_conv.md)** is a command-line conversion tool that comes with osgEarth. One useful application of the tool is tile up a large GeoTIFF (or other input) in a tiled format. Note: this approach only works with drivers that support writing (MBTiles, TMS).
 
 To make a portable MBTiles file:
 ```

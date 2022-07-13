@@ -205,4 +205,9 @@ These properties apply to all **osgearth_conv** operations.
 | --max-level *integer* | Highest zoom level for which to create tiles. The default value is computed automatically based on the input. |
 | --extents&nbsp;*minlat*&nbsp;*minlong*&nbsp;*maxlat*&nbsp;*maxlong* | Geographic extents (in degrees) for which to generate tiles. |
 | --profile *value* | Forces the output to a specific tiling profile. By default the output will match the geospatial profile of the input data (for example, if the input if spherical mercator, the output will be tiled in a spherical mercator profile). Use this to force something different -- typically `global-geodetic` for data that will run in a whole-earth osgEarth map. |
+| --no-overwrite | By default, running `osgearth_conv` will regenerate and overwrite any existing tiles that were output on a previous run. Use this option to disable that and ignore output tiles that already exist. |
+| --threads *integer* | Using multiple threads can speed up the tile generation process in some cases. A good value to try is 4. |
 
+
+---
+&copy; Copyright 2022 Pelican Mapping

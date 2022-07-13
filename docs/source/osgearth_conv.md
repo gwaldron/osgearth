@@ -27,11 +27,11 @@ osgearth_conv --in driver gdalimage       // read using the GDAL imagery driver
               --out format jpg            // export each tile in JPEG format
 ```
 
-Convert a local GeoTIFF elevation datafile into a local MBTiles database:
+Convert a local DTED elevation datafile into a local MBTiles database:
 ```
 osgearth_conv --in driver gdalelevation       // read elevation data using GDAL
-              --in url mydem.dt1              // location of the input file to read
-              --in vdatum egm96               // tell the GDAL driver our data uses the EGM96 vertical dataum
+              --in url mydem.dt1              // location of the input file to read (DTED1)
+              --in vdatum egm96               // tell the GDAL driver that DTED uses the EGM96 vertical dataum
               --out driver mbtileselevation   // write elevation data to an MBTiles database
               --out filename mydem.mbtiles    // location of the MBTiles database to write
               --out format tiff               // internal file format to use (must be tiff for elevation data)

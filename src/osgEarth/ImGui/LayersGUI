@@ -102,9 +102,6 @@ namespace osgEarth {
                     ImGui::EndTable();
                 }
 
-                if (!selectedWMSLayer)
-                    ImGuiUtil::PushDisabled();
-
                 ImGui::InputText("Name", name, IM_ARRAYSIZE(name));
 
                 if (ImGui::Button("OK"))
@@ -122,9 +119,6 @@ namespace osgEarth {
                     }
                     visible = false;
                 }
-                
-                if (!selectedWMSLayer)
-                    ImGuiUtil::PopDisabled();
 
                 ImGui::SameLine();
                 if (ImGui::Button("Cancel"))

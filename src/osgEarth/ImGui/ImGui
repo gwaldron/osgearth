@@ -288,24 +288,6 @@ namespace ImGuiUtil
             ImGui::Image((void*)(intptr_t)textureObject->_id, ImVec2(w, h), ImVec2(0, flip ? 0 : 1), ImVec2(1, flip ? 1 : 0), ImVec4(1, 1, 1, 1), ImVec4(1, 1, 0, 1));
         }
     }
-
-    // polyfill for ImGui::PushDisabled
-    static void PushDisabled()
-    {
-        ImGuiContext& g = *GImGui;
-        if ((g.CurrentItemFlags & ImGuiItemFlags_Disabled) == 0)
-            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, g.Style.Alpha * 0.6f);
-        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-    }
-
-    // polyfill for ImGui::PopDisabled
-    static void PopDisabled()
-    {
-        ImGuiContext& g = *GImGui;
-        ImGui::PopItemFlag();
-        if ((g.CurrentItemFlags & ImGuiItemFlags_Disabled) == 0)
-            ImGui::PopStyleVar();
-    }
 }
 
 #endif

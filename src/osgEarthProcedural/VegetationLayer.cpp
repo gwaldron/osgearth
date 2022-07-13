@@ -112,11 +112,13 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 {
     // defaults:
     alphaToCoverage().setDefault(true);
+    gravity().setDefault(0.0125f);
 
     colorLayer().get(conf, "color_layer");
-    biomeLayer().get(conf, "biomes_layer");
+    biomeLayer().get(conf, "biomes_layer");    
 
     conf.get("alpha_to_coverage", alphaToCoverage());
+    conf.get("gravity", gravity());
 
     // defaults for groups:
     groups().resize(NUM_ASSET_GROUPS);
@@ -447,6 +449,18 @@ VegetationLayer::getEnabled(AssetGroup::Type type) const
 }
 
 void
+VegetationLayer::setGravity(float value)
+{
+    options().gravity() = value;
+}
+
+float
+VegetationLayer::getGravity() const
+{
+    return options().gravity().get();
+}
+
+void
 VegetationLayer::addedToMap(const Map* map)
 {
     PatchLayer::addedToMap(map);
@@ -759,8 +773,10 @@ VegetationLayer::configureGrass()
 {
     auto& grass = options().group(AssetGroup::UNDERGROWTH);
 
+    float gravity = options().gravity().get();
+
     // functor for generating billboard geometry for grass:
-    grass._createImpostor = [](
+    grass._createImpostor = [gravity](
         const osg::BoundingBox& bbox,
         std::vector<osg::Texture*>& textures)
     {
@@ -818,7 +834,7 @@ VegetationLayer::configureGrass()
         out_geom->setTexCoordArray(3, flex);
 
         const osg::Vec3f face_vec(0, -1, 0);
-        const float gravity = 0.025;
+        //const float gravity = options().grativy().get(); // 0.0; // 0.025;
 
         for (int i = 0; i < 16; ++i)
         {

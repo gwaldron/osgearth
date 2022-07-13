@@ -60,7 +60,7 @@ void oe_splat_View(inout vec4 vertex_view)
 
 #pragma import_defines(OE_SPLAT_TWEAKS)
 #pragma import_defines(OE_LIFEMAP_DIRECT)
-#pragma import_defines(OE_SNOW)
+//#pragma import_defines(OE_SNOW)
 
 layout(binding = 5, std430) buffer SplatTextureArena {
     uint64_t texHandle[];
@@ -108,6 +108,7 @@ tweakable float oe_splat_brightness = 1.0;
 tweakable float oe_splat_contrast = 1.0;
 tweakable float oe_dense_contrast = 0.35;
 tweakable float oe_dense_brightness = -0.5;
+tweakable float oe_lush_brightness = 0.0;
 
 in float oe_layer_opacity;
 
@@ -285,7 +286,7 @@ void oe_splat_Frag(inout vec4 quad)
     oe_pbr.metal = pixel.material[METAL];
 
     float f_c = oe_splat_contrast + (dense * oe_dense_contrast);
-    float f_b = oe_splat_brightness + (dense * oe_dense_brightness);
+    float f_b = oe_splat_brightness + (dense * oe_dense_brightness) + (lush * oe_lush_brightness);
     pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*f_c + 0.5) * f_b, 0, 1);
 
     vec3 color = pixel.rgbh.rgb;

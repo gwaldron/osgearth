@@ -112,8 +112,10 @@ void oe_rex_imageLayer_FS(inout vec4 color)
         // so we can "fade in" an image layer that starts at LOD > 0:
         texelParent = mix(vec4(texel.rgb, 0.0), texelParent, oe_layer_texParentExists);
 
-        // Resolve the final texel color:
-        texel = mix(texel, texelParent, oe_rex_morphFactor);
+        // Resolve the final texel color.
+        // We have to clamp oe_rex_morphFactor here even though it's clamped in the 
+        // vertex shader. Reason unknown.
+        texel = mix(texel, texelParent, clamp(oe_rex_morphFactor, 0.0, 1.0));
 #endif
 
         // intergrate thelayer opacity:

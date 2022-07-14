@@ -152,17 +152,13 @@ BiomeLayer::addedToMap(const Map* map)
     // Initialize the biome creator
     if (getBiomeBaseLayer() && getBiomeBaseLayer()->isOpen())
     {
-        _biomeCreator = std::unique_ptr< CoverageLayer::CoverageCreator<BiomeSample> >(
-            new CoverageLayer::CoverageCreator<BiomeSample>(getBiomeBaseLayer())
-            );
+        _biomeFactory = BiomeSample::Factory::create(getBiomeBaseLayer());
     }
 
     // Initialize the landcover creator
     if (getLandCoverLayer() && getLandCoverLayer()->isOpen())
     {
-        _landCoverCreator = std::unique_ptr< CoverageLayer::CoverageCreator<LandCoverSample> >(
-            new CoverageLayer::CoverageCreator<LandCoverSample>(getLandCoverLayer())
-            );
+        _landCoverFactory = LandCoverSample::Factory::create(getLandCoverLayer());
     }
 }
 
@@ -259,32 +255,28 @@ BiomeLayer::createImageImplementation(
 
     // Use meta-tiling to read coverage data with access to the 
     // neighboring tiles - to support the blend radius.
-    MetaTile<GeoCoverage<LandCoverSample>> landcover;    
+    MetaTile<GeoCoverage<LandCoverSample>> landcoverData;
 
-    if (_landCoverCreator)
+    if (_landCoverFactory)
     {
-        landcover.setCreateTileFunction(
-            [&](const TileKey& key, ProgressCallback* p) -> GeoCoverage<LandCoverSample>
-            {
-                return _landCoverCreator->createCoverage(key, p);
-            });
-
-        landcover.setCenterTileKey(key, progress);
+        auto creator = [&](const TileKey& key, ProgressCallback* p) {
+            return _landCoverFactory->createCoverage(key, p);
+        };
+        landcoverData.setCreateTileFunction(creator);
+        landcoverData.setCenterTileKey(key, progress);
     }
 
     // Use meta-tiling to read biome coverage data with access to the 
     // neighboring tiles
-    MetaTile<GeoCoverage<BiomeSample>> biomeMetaTile;
+    MetaTile<GeoCoverage<BiomeSample>> biomeData;
 
-    if (_biomeCreator)
+    if (_biomeFactory)
     {
-        biomeMetaTile.setCreateTileFunction(
-            [&](const TileKey& key, ProgressCallback* p) -> GeoCoverage<BiomeSample>
-            {            
-                return _biomeCreator->createCoverage(key, p);
-            });
-
-        biomeMetaTile.setCenterTileKey(key, progress);
+        auto creator = [&](const TileKey& key, ProgressCallback* p) {
+            return _biomeFactory->createCoverage(key, p);
+        };
+        biomeData.setCreateTileFunction(creator);
+        biomeData.setCenterTileKey(key, progress);
     }
 
     iter.forEachPixelOnCenter([&]()
@@ -307,9 +299,9 @@ BiomeLayer::createImageImplementation(
             double v = (y - ex.yMin()) / ex.height();
 
             // First try the biome base layer
-            if (biomeMetaTile.valid())
+            if (biomeData.valid())
             {
-                const BiomeSample* sample = biomeMetaTile.read(u, v);
+                const BiomeSample* sample = biomeData.read(u, v);
 
                 if (sample)
                 {
@@ -325,9 +317,9 @@ BiomeLayer::createImageImplementation(
             }
 
             // Next try the landcover layer.
-            if (landcover.valid())
+            if (landcoverData.valid())
             {
-                const LandCoverSample* sample = landcover.read(u, v);
+                const LandCoverSample* sample = landcoverData.read(u, v);
                 if (sample)
                 {
                     if (sample->biomeid().isSet())

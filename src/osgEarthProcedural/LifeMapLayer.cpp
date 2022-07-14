@@ -67,7 +67,7 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
     terrainWeight().setDefault(1.0f);
     slopeIntensity().setDefault(1.0f);
     colorWeight().setDefault(1.0f);
-    noiseWeight().setDefault(0.3f);
+    noiseWeight().setDefault(0.225f);
     lushFactor().setDefault(1.9f);
 
     biomeLayer().get(conf, "biomes_layer");
@@ -248,8 +248,7 @@ LifeMapLayer::addedToMap(const Map* map)
     // Initialize the landcover creator
     if (getLandCoverLayer() && getLandCoverLayer()->isOpen())
     {
-        _landCoverCreator = std::unique_ptr< CoverageLayer::CoverageCreator<LandCoverSample> >(
-            new CoverageLayer::CoverageCreator<LandCoverSample>(getLandCoverLayer()));
+        _landCoverFactory = LandCoverSample::Factory::create(getLandCoverLayer());
     }
 
     _map = map;
@@ -434,14 +433,12 @@ LifeMapLayer::createImageImplementation(
 
     // set up the land cover data metatiler:
     MetaTile<GeoCoverage<LandCoverSample>> landcover;
-    if (_landCoverCreator)
+    if (_landCoverFactory)
     {
-        landcover.setCreateTileFunction(
-            [&](const TileKey& key, ProgressCallback* p) -> GeoCoverage<LandCoverSample>
-            {
-                return _landCoverCreator->createCoverage(key, p);
-            });
-
+        auto creator = [&](const TileKey& key, ProgressCallback* p) {
+            return _landCoverFactory->createCoverage(key, p);
+        };
+        landcover.setCreateTileFunction(creator);
         landcover.setCenterTileKey(key, progress);
     }
 

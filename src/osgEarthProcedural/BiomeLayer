@@ -44,6 +44,7 @@ namespace osgEarth
             OE_OPTION(float, lush);
             OE_OPTION(float, rugged);
             OE_OPTION(std::string, material);
+            OE_OPTION(std::string, soilType);
 
             LandCoverSample() { }
 
@@ -55,6 +56,7 @@ namespace osgEarth
                 conf.get("lush", lush());
                 conf.get("rugged", rugged());
                 conf.get("material", material());
+                conf.get("soiltype", soilType());
             }
 
             bool valid() const {
@@ -64,7 +66,8 @@ namespace osgEarth
                     dense().isSet() ||
                     lush().isSet() ||
                     rugged().isSet() ||
-                    material().isSet();
+                    material().isSet() ||
+                    soilType().isSet();
             }
 
             bool operator < (const LandCoverSample& rhs) const
@@ -75,9 +78,13 @@ namespace osgEarth
                 OE_OPTION_LESS(lush, rhs.lush);
                 OE_OPTION_LESS(rugged, rhs.rugged);
                 OE_OPTION_LESS(material, rhs.material);
+                OE_OPTION_LESS(soilType, rhs.soilType);
                 return false;
-            }       
+            }
+
+            using Factory = CoverageLayer::Factory<LandCoverSample>;
         };
+
 
         struct BiomeSample
         {
@@ -99,7 +106,9 @@ namespace osgEarth
             {
                 OE_OPTION_LESS(biomeid, rhs.biomeid);            
                 return false;
-            }            
+            }
+
+            using Factory = CoverageLayer::Factory<BiomeSample>;
         };
 
 
@@ -206,8 +215,8 @@ namespace osgEarth
 
             mutable Mutexed<WeakCache> _imageCache;
 
-            std::unique_ptr< CoverageLayer::CoverageCreator<LandCoverSample> > _landCoverCreator;
-            std::unique_ptr< CoverageLayer::CoverageCreator<BiomeSample> > _biomeCreator;
+            LandCoverSample::Factory::Ptr _landCoverFactory;
+            BiomeSample::Factory::Ptr _biomeFactory;
 
         protected:
             virtual ~BiomeLayer() { }

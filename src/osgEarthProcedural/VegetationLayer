@@ -58,7 +58,7 @@ namespace osgEarth { namespace Procedural
                 OE_OPTION(bool, enabled);
                 OE_OPTION(unsigned, lod);
                 OE_OPTION(float, maxRange);
-                OE_OPTION(float, density);
+                OE_OPTION(int, instancesPerSqKm);
                 OE_OPTION(bool, castShadows);
 
                 // internal

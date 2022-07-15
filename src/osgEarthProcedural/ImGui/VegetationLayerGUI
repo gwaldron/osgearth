@@ -99,10 +99,12 @@ namespace osgEarth {
                                 AssetGroup::name(type).c_str(),
                                 &_veglayer->options().group(type).enabled().mutable_value());
 
-                            ImGui::SliderFloat(
-                                "Density",
-                                &_veglayer->options().group(type).density().mutable_value(),
-                                0.0f, 4.0f);
+                            ImGui::SliderInt(
+                                "Instances per sqkm",
+                                &_veglayer->options().group(type).instancesPerSqKm().mutable_value(),
+                                1024, 1024000,
+                                "%d",
+                                ImGuiSliderFlags_Logarithmic);
 
                             ImGui::PopID();
                         }

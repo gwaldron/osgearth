@@ -137,10 +137,11 @@ namespace osgEarth { namespace Procedural
 
         //! Gets all the asset placement information for a given
         //! tile within the given asset group.
-        const std::vector<Placement> getAssetPlacements(
+        bool getAssetPlacements(
             const TileKey& key,
             const AssetGroup::Type& group,
             bool loadBiomesOnDemand,
+            std::vector<Placement>& output,
             ProgressCallback* progress) const;
 
     protected:

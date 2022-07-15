@@ -996,24 +996,24 @@ VegetationLayer::createDrawableAsync(
 }
 
 
-const std::vector<VegetationLayer::Placement>
+bool
 VegetationLayer::getAssetPlacements(
     const TileKey& key,
     const AssetGroup::Type& group,
     bool loadBiomesOnDemand,
+    std::vector<VegetationLayer::Placement>& output,
     ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
 
+    //OE_INFO << LC << "Generating assets for tile " << key.str() << std::endl;
+
     //TODO:
-    // - use a noise texture instead of RNG
     // - use "asset size variation" parameter
     // - think about using BLEND2D to rasterize a collision map!
     //   - would need to be in a background thread I'm sure
     // - caching
     // etc.
-
-    //bool debug = key.is(14, 6706, 4643);
 
     std::vector<Placement> result;
 
@@ -1025,16 +1025,23 @@ VegetationLayer::getAssetPlacements(
     if (loadBiomesOnDemand == false)
     {
         ScopedMutexLock lock(_assets);
+
         if (_assets.size() <= group)
-            return std::move(result);
+        {
+            // data is unavailable.
+            return false;
+        }
         else
+        {
             groupAssets = _assets[group]; // shallow copy
+        }
 
         // if it's empty, bail out (and probably return later)
         if (groupAssets.empty())
         {
             OE_DEBUG << LC << "key=" << key.str() << "; asset list is empty for group " << group << std::endl;
-            return std::move(result);
+            //return std::move(result);
+            return false;
         }
     }
 
@@ -1092,7 +1099,7 @@ VegetationLayer::getAssetPlacements(
         {
             ScopedMutexLock lock(_assets);
             if (_assets.size() <= group)
-                return std::move(result);
+                return false;
             else
                 groupAssets = _assets[group]; // shallow copy
         }
@@ -1100,7 +1107,8 @@ VegetationLayer::getAssetPlacements(
         // if it's empty, bail out (and probably return later)
         if (groupAssets.empty())
         {
-            return std::move(result);
+            output = std::move(result);
+            return true;
         }
     }
 
@@ -1366,7 +1374,8 @@ VegetationLayer::getAssetPlacements(
         result[i].mapPoint() = std::move(map_points[i]);
     }
 
-    return std::move(result);
+    output = std::move(result);
+    return true;
 }
 
 osg::ref_ptr<ChonkDrawable>
@@ -1376,11 +1385,21 @@ VegetationLayer::createDrawable(
     const osg::BoundingBox& tile_bbox,
     ProgressCallback* progress) const
 {
-    auto placements = getAssetPlacements(
+    std::vector<VegetationLayer::Placement> placements;
+
+    bool placementsOK = getAssetPlacements(
         key,
         group,
         false,
+        placements,
         progress);
+
+    if (!placementsOK)
+    {
+        // data not available...bail out and return later.
+        progress->cancel();
+        return nullptr;
+    }
 
     const osg::Vec3f ZAXIS(0, 0, 1);
 
@@ -1496,22 +1515,32 @@ VegetationLayer::cull(
         // if the data is ready, cull it:
         if (view._tile->_drawable.isAvailable())
         {
-            view._matrix->set(entry->getModelViewMatrix());
-            cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
-            view._tile->_drawable.get()->accept(nv);
-            cv->popModelViewMatrix();
+            auto drawable = view._tile->_drawable.get();
 
-            // unref the old placeholder.
-            if (!view._loaded)
+            if (drawable.valid())
             {
-                view._loaded = true;
-                view._placeholder = nullptr;
+                view._matrix->set(entry->getModelViewMatrix());
+                cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
+                view._tile->_drawable.get()->accept(nv);
+                cv->popModelViewMatrix();
 
-                // update the placeholder for this tilekey.
-                _tiles.scoped_lock([&]()
-                    {
-                        _placeholders[entry->getKey()] = view._tile;
-                    });
+                // unref the old placeholder.
+                if (!view._loaded)
+                {
+                    view._loaded = true;
+                    view._placeholder = nullptr;
+
+                    // update the placeholder for this tilekey.
+                    _tiles.scoped_lock([&]()
+                        {
+                            _placeholders[entry->getKey()] = view._tile;
+                        });
+                }
+            }
+            else
+            {
+                // creation failed; reset for another try.
+                view._tile = nullptr;
             }
         }
 

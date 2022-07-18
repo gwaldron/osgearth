@@ -27,6 +27,7 @@
 #include <osgEarth/ViewFitter>
 #include <osgEarth/ThreeDTilesLayer>
 #include <osgEarth/EarthManipulator>
+#include <osgEarth/TiledFeatureModelGraph>
 
 #include <osg/io_utils>
 #include <osg/PolygonMode>
@@ -638,7 +639,7 @@ namespace osgEarth
 
                         if (dirty)
                         {
-                            osg::Matrix newMatrix = osg::Matrix::translate(translate) * osg::Matrix::rotate(rot) * osg::Matrixd::scale(scale);
+                            osg::Matrix newMatrix = osg::Matrixd::scale(scale) * osg::Matrix::rotate(rot) * osg::Matrix::translate(translate);
                             matrixTransform->setMatrix(newMatrix);
                         }
                         ImGui::TreePop();
@@ -664,6 +665,101 @@ namespace osgEarth
                         std::string content = threeDTiles->getTile()->content()->getJSON().toStyledString();
                         ImGui::Text("Content");
                         ImGui::TextWrapped(content.c_str());
+                        ImGui::TreePop();
+                    }
+                }
+
+                TiledFeatureModelGraph* tiledFMG = dynamic_cast<TiledFeatureModelGraph*>(node);
+                if (tiledFMG)
+                {
+                    if (ImGui::TreeNode("Tiled Feature Model Graph"))
+                    {
+                        bool dirty = false;
+
+                        // Try to find the transform operation
+                        for (auto o : tiledFMG->getNodeGraph()->operations)
+                        {
+                            TransformOperation* transformOp = dynamic_cast<TransformOperation*>(o.get());
+                            if (transformOp)
+                            {
+                                if (ImGui::TreeNode("Transform"))
+                                {
+                                    osg::Vec3d translate = transformOp->getTransform().getTrans();
+                                    //if (ImGui::DragScalarN("Translation", ImGuiDataType_Double, translate._v, 3))
+                                    if (ImGui::InputScalarN("Translation", ImGuiDataType_Double, translate._v, 3))
+                                    {
+                                        dirty = true;
+                                    }
+
+                                    osg::Quat rot = transformOp->getTransform().getRotate();
+                                    if (ImGui::InputScalarN("Rotation", ImGuiDataType_Double, rot._v, 4))
+                                    {
+                                        dirty = true;
+                                    }
+
+                                    osg::Vec3d scale = transformOp->getTransform().getScale();
+                                    if (ImGui::InputScalarN("Scale", ImGuiDataType_Double, scale._v, 3))
+                                    {
+                                        dirty = true;
+                                    }
+
+
+                                    if (dirty)
+                                    {
+                                        osg::Matrix newMatrix = osg::Matrixd::scale(scale) * osg::Matrix::rotate(rot) * osg::Matrix::translate(translate);
+                                        transformOp->setTransform(newMatrix);
+                                    }
+                                    ImGui::TreePop();
+                                }
+                            }
+
+
+                            SphereOperation* sphereOp = dynamic_cast<SphereOperation*>(o.get());
+                            if (sphereOp)
+                            {
+                                if (ImGui::TreeNode("Sphere"))
+                                {
+#if 0
+                                    float radius = sphereOp->getRadius();
+                                    if (ImGui::InputFloat("Radius", &radius))
+                                    {
+                                        sphereOp->setRadius(radius);
+                                        dirty = true;
+                                    }
+#endif
+
+                                    osg::Vec4 color = sphereOp->getColor();
+                                    if (ImGui::ColorEdit4("Color", (float*)color._v, ImGuiColorEditFlags_NoInputs))
+                                    {
+                                        sphereOp->setColor(color);
+                                        dirty = true;
+                                    }
+
+                                    ImGui::TreePop();
+                                }                                
+                            }
+
+                            FloatValue* floatValue = dynamic_cast<FloatValue*>(o.get());
+                            if (floatValue)
+                            {
+                                if (ImGui::TreeNode("Float Value"))
+                                {
+                                    float value = floatValue->getValue();
+                                    if (ImGui::InputFloat("Value", &value))
+                                    {
+                                        floatValue->setValue(value);
+                                        dirty = true;
+                                    }
+                                    ImGui::TreePop();
+                                }
+                            }
+                        }
+
+                        if (dirty)
+                        {
+                            tiledFMG->dirtyNodeGraph();
+                        }
+                        ImGui::TreePop();
                     }
                 }
 

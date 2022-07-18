@@ -27,8 +27,489 @@
 #include <osgEarth/SimplePager>
 #include <osgEarth/MapNode>
 #include <osgEarth/StyleSheet>
+#include <osgEarth/Registry>
+#include <osgEarth/AnnotationUtils>
+#include <osg/ShapeDrawable>
+#include <osgDB/ReadFile>
+#include <osg/MatrixTransform>
 
 namespace osgEarth {
+
+    class OSGEARTH_EXPORT NodeGraphResult
+    {
+    public:
+        NodeGraphResult()
+        {
+        }
+
+        NodeGraphResult(osg::Node* node):
+            nodeValue(node)
+        {
+        }
+
+        NodeGraphResult(float value) :
+            floatValue(value)
+        {
+        }
+
+        float floatValue;
+        osg::ref_ptr< osg::Node > nodeValue;
+    };
+
+    // Socket or Pin is maybe a better name?
+    class NodeAttribute
+    {
+    public:
+
+        enum AttributeType
+        {
+            NODE,
+            FLOAT,
+            STRING
+        };
+
+        NodeAttribute(const std::string& name, AttributeType type) :
+            _name(name),
+            _type(type)
+        {
+            static std::atomic<int> atomic_id{ 0 };
+            _id = atomic_id.fetch_add(1);
+        }
+
+        int getId() const { return _id; }
+        const std::string& getName() const {
+            return _name;
+        }
+
+        AttributeType getType() const {
+            return _type;
+        }
+        
+
+    private:
+        int _id;
+        std::string _name;
+        AttributeType _type;
+    };
+
+    class NodeGraphOperation;
+
+    class OSGEARTH_EXPORT Link
+    {
+    public:
+        Link(NodeGraphOperation* source, const NodeAttribute* sourceAttribute,
+            NodeGraphOperation* destination, const NodeAttribute* destinationAttribute):
+            _source(source),
+            _sourceAttribute(sourceAttribute),
+            _destination(destination),
+            _destinationAttribute(destinationAttribute)
+        {
+            static std::atomic<int> atomic_id{ 0 };
+            _id = atomic_id.fetch_add(1);
+        }
+
+        const int getId() const {
+            return _id;
+        }
+
+        NodeGraphOperation* _source;
+        //std::string _sourceName;
+        const NodeAttribute* _sourceAttribute;
+
+        NodeGraphOperation* _destination;
+        //std::string _destinationName;
+        const NodeAttribute* _destinationAttribute;
+
+        int _id;
+    };
+
+    class OSGEARTH_EXPORT NodeGraphOperation
+    {
+    public:
+        NodeGraphOperation()
+        {
+            static std::atomic<int> atomic_id{ 0 };
+            _id = atomic_id.fetch_add(1);
+        }
+
+        virtual void execute() = 0;
+
+        int getId() const { return _id; }
+
+        bool ready() const {
+            return _ready;
+        }
+
+        const std::string& getName() const {
+            return _name;
+        }
+
+        void setName(const std::string& name)
+        {
+            _name = name;
+        }
+
+        // Connect an output pin of one node to an input pin on this Operation
+        void connect(const std::string& outputName, NodeGraphOperation* destination, const std::string& destinationName)
+        {
+            auto output = getOutputAttribute(outputName);
+            auto input = destination->getInputAttribute(destinationName);
+            std::cout << "Connecting " << output->getName() << " to " << input->getName() << std::endl;
+            _links.push_back(Link(this, output, destination, input));
+        }
+
+        NodeGraphResult* get_input(const std::string& name)
+        {
+            auto itr = _inputs.find(name);
+            if (itr != _inputs.end())
+            {
+                return &itr->second;
+            }
+            return nullptr;
+        }
+
+        void set_output(const std::string& name, osg::Node* node)
+        {
+            _outputs[name] = node;
+            for (auto &l : _links)
+            {
+                if (l._sourceAttribute->getName() == name)
+                {
+                    l._destination->set_input(l._destinationAttribute->getName(), node);
+                }
+            }
+        }
+
+        void set_output(const std::string& name, float value)
+        {
+            _outputs[name] = value;
+            for (auto& l : _links)
+            {
+                if (l._sourceAttribute->getName() == name)
+                {
+                    l._destination->set_input(l._destinationAttribute->getName(), value);
+                }
+            }
+        }
+
+        void set_input(const std::string& name, osg::Node* node)
+        {
+            _inputs[name] = node;
+        }
+
+        void set_input(const std::string& name, float value)
+        {
+            _inputs[name] = value;
+        }
+
+        void reset()
+        {
+            _inputs.clear();
+            _outputs.clear();
+            _ready = false;
+        }
+
+        const std::vector< NodeAttribute >& getInputAttributes() const
+        {
+            return _inputAttributes;
+        }
+
+        const NodeAttribute* getInputAttribute(const std::string& name) const
+        {
+            for (auto& i : _inputAttributes)
+            {
+                if (i.getName() == name) return &i;
+            }
+            return nullptr;
+        }
+
+        const NodeAttribute* getOutputAttribute(const std::string& name) const
+        {
+            for (auto& i : _outputAttributes)
+            {
+                if (i.getName() == name) return &i;
+            }
+            return nullptr;
+        }
+
+        const std::vector< NodeAttribute >& getOutputAttributes() const
+        {
+            return _outputAttributes;
+        }
+
+        const std::vector< Link >& getLinks() const {
+            return _links;
+        }
+
+        std::vector< Link >& getLinks() {
+            return _links;
+        }
+
+    protected:
+        void addInputAttribute(const std::string& name, NodeAttribute::AttributeType type)
+        {
+            _inputAttributes.emplace_back(name, type);
+        }
+
+        void addOutputAttribute(const std::string& name, NodeAttribute::AttributeType type)
+        {
+            _outputAttributes.emplace_back(name, type);
+        }
+
+        std::map< std::string, NodeGraphResult > _inputs;
+        std::map< std::string, NodeGraphResult > _outputs;
+
+        std::vector< NodeAttribute > _inputAttributes;
+        std::vector< NodeAttribute > _outputAttributes;
+
+        std::vector< Link > _links;
+
+        bool _ready = false;
+
+        std::string _name;
+
+        int _id;
+    };
+
+    class OSGEARTH_EXPORT FloatValue : public NodeGraphOperation
+    {
+    public:
+        FloatValue()
+        {
+            _name = "Float";
+            addOutputAttribute("Value", NodeAttribute::FLOAT);
+        }
+
+        virtual void execute()
+        {
+            set_output("Value", _value);
+            _ready = true;
+        }
+
+        float getValue() const { return _value; }
+        void setValue(float value) { _value = value; }
+
+        float _value = 0.0f;
+    };
+
+
+    class OSGEARTH_EXPORT SphereOperation : public NodeGraphOperation
+    {
+    public:
+        SphereOperation()
+        {
+            _name = "Sphere";
+
+            addInputAttribute("Radius", NodeAttribute::FLOAT);
+            addOutputAttribute("Node", NodeAttribute::NODE);
+        }
+
+        virtual void execute() override
+        {
+            /*
+            osg::Geode* geode = new osg::Geode;
+            osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(osg::Vec3f(0, 0, 0), _radius));
+            sd->setColor(_color);
+            geode->addDrawable(sd);
+            setOutput(geode);
+            */
+            //setOutput(AnnotationUtils::createSphere(_radius, _color));
+
+            auto radius = get_input("Radius");
+            if (radius)
+            {
+                set_output("Node", AnnotationUtils::createSphere(radius->floatValue, _color));
+                _ready = true;
+            }
+        }
+
+        //float getRadius() const { return _radius; }
+        //void setRadius(float radius) { _radius = radius; }
+
+        const osg::Vec4& getColor() const { return _color; }
+        void setColor(osg::Vec4& color) { _color = color; }
+
+        //float _radius = 1000.0f;
+        osg::Vec4 _color = osg::Vec4f(1.0f, 0.0f, 0.0f, 1.0f);
+    };
+
+    class OSGEARTH_EXPORT LoadNodeOperation : public NodeGraphOperation
+    {
+    public:
+        LoadNodeOperation()
+        {
+            _name = "Load Node";
+            addOutputAttribute("Node", NodeAttribute::NODE);
+        }
+
+        LoadNodeOperation(const std::string& filename)
+        {
+            _name = filename;
+            _filename = filename;
+            addOutputAttribute("Node", NodeAttribute::NODE);
+        }
+
+        virtual void execute() override
+        {
+            std::lock_guard<std::mutex> lk(_mutex);
+            if (!_loaded.valid())
+            {
+                _loaded = osgDB::readNodeFile(_filename);
+                osgEarth::Registry::instance()->shaderGenerator().run(_loaded.get());
+            }
+            //setOutput((osg::Node*)_loaded->clone(osg::CopyOp::DEEP_COPY_ALL));
+            set_output("Node", (osg::Node*)_loaded->clone(osg::CopyOp::DEEP_COPY_ALL));
+            _ready = true;
+        }
+
+        std::string getFilename() const { return _filename; }
+        void setFilename(const std::string& filename) { _filename = filename; }
+
+        std::string _filename;
+
+        osg::ref_ptr< osg::Node > _loaded;
+        std::mutex _mutex;
+    };
+
+    class OSGEARTH_EXPORT TransformOperation : public NodeGraphOperation
+    {
+    public:
+        TransformOperation()
+        {
+            _name = "Transform";
+            addInputAttribute("Node", NodeAttribute::NODE);
+            addOutputAttribute("Node", NodeAttribute::NODE);
+        }
+
+        virtual void execute() override
+        {
+            auto nodeInput = get_input("Node");
+            if (nodeInput)
+            {
+                osg::MatrixTransform* mt = new osg::MatrixTransform;
+                mt->setMatrix(_transform);
+                mt->addChild(nodeInput->nodeValue.get());
+                set_output("Node", mt);
+                _ready = true;
+            }
+        }
+
+        const osg::Matrix& getTransform() const { return _transform; }
+        void setTransform(const osg::Matrix& transform) { _transform = transform; }
+
+        osg::Matrix _transform;
+    };
+
+    class OSGEARTH_EXPORT NodeOutputOperation : public NodeGraphOperation
+    {
+    public:
+        NodeOutputOperation()
+        {
+            _name = "Node Output";
+            addInputAttribute("Node", NodeAttribute::NODE);
+        }
+
+        virtual void execute() override
+        {
+            auto i = get_input("Node");
+            if (i)
+            {
+                result = i->nodeValue.get();
+                _ready = true;
+            }
+        }
+
+        osg::ref_ptr< osg::Node > result;
+
+    };
+
+    class OSGEARTH_EXPORT NodeGraph
+    {
+    public:
+        virtual void execute()
+        {
+#if 0
+            // Reset the output pointer
+            _output = nullptr;
+
+            for (auto& op : operations)
+            {
+                // Set the operations 
+                op->setInput(_output.get());
+                op->execute();
+                _output = op->getOutput();
+            }
+#else
+            // The NodeGraph can be ran multiple times during threaded loading for each load.  Maybe it needs cloned or something for reach
+            // execution
+            // Lock it for now.     
+            std::lock_guard< std::mutex > lk(_mutex);
+
+            NodeOutputOperation* outputNode = nullptr;
+            // First reset all the operations and find the output node.
+            for (auto& op : operations)
+            {
+                op->reset();
+
+                if (!outputNode)
+                {
+                    outputNode = dynamic_cast<NodeOutputOperation*>(op.get());
+                }
+            }
+
+            if (!outputNode)
+            {
+                OE_NOTICE << "No NodeOutputOperation found" << std::endl;
+                return;
+            }
+
+            unsigned int numTries = 0;
+            while (!outputNode->ready() && numTries < 5)
+            {
+                for (auto& op : operations)
+                {
+                    op->execute();
+                }
+                numTries++;
+            }
+
+            // In theory there is a final node now.
+            _output = outputNode->result.get();
+
+
+#endif
+        }
+
+        std::vector< std::shared_ptr< NodeGraphOperation > > operations;
+
+        osg::Node* getOutput() const { return _output.get(); }
+        osg::ref_ptr < osg::Node > _output;
+
+        std::mutex _mutex;
+    };
+
+
+    class OSGEARTH_EXPORT NodeGraphNode : public osg::MatrixTransform
+    {
+    public:
+        NodeGraphNode()
+        {
+        }
+
+        void build()
+        {
+            removeChildren(0, getNumChildren());
+            _nodeGraph->execute();
+            if (_nodeGraph->getOutput())
+            {
+                addChild(_nodeGraph->getOutput());
+            }
+        }
+
+        std::shared_ptr< NodeGraph > _nodeGraph;
+    };
+
+
 
     /**
      * A scene graph node that renders tiled feature data.
@@ -46,11 +527,47 @@ namespace osgEarth {
 
         void setOwnerName(const std::string& value);
 
+        std::shared_ptr< NodeGraph > getNodeGraph() { return _nodeGraph; }
+        void setNodeGraph(std::shared_ptr< NodeGraph> nodeGraph)
+        {
+            if (_nodeGraph != nodeGraph)
+            {
+                _nodeGraph = nodeGraph;
+                dirtyNodeGraph();
+            }
+        }
+
+        void dirtyNodeGraph()
+        {
+            std::lock_guard< std::mutex> lk(_nodesMutex);
+            for (auto n : _nodes)
+            {
+                osg::ref_ptr< NodeGraphNode> ng;
+                if (n.lock(ng))
+                {
+                    ng->_nodeGraph = _nodeGraph;
+                    ng->build();
+                }
+            }
+        }
+
+
+        void registerNode(NodeGraphNode* node)
+        {
+            std::lock_guard< std::mutex> lk(_nodesMutex);
+            _nodes.push_back(node);
+        }
+
+        std::mutex _nodesMutex;
+        std::vector< osg::observer_ptr< NodeGraphNode > > _nodes;
+
     public: // SimplePager
 
         virtual osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress) override;
 
     private:
+
+        std::shared_ptr< NodeGraph > _nodeGraph;
 
         osg::ref_ptr < FeatureSource > _features;
         osg::ref_ptr< StyleSheet > _styleSheet;

@@ -65,6 +65,7 @@ namespace osgEarth {
                             {
                                 _viewpoints.push_back(Viewpoint(j));
 
+#if 0
                                 if (key < 9)
                                 {
                                     EventRouter::get(view(ri)).onKeyPress(
@@ -76,6 +77,7 @@ namespace osgEarth {
                                         });
                                     key++;
                                 }
+#endif
                             }
                         }
                     }

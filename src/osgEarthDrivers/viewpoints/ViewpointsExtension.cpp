@@ -59,6 +59,7 @@ namespace
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
         {
+#if 0
             if ( ea.getEventType() == ea.KEYDOWN )
             {
                 if ( !_viewpoints.empty() && _autoRunDelay <= 0.0f )
@@ -125,6 +126,7 @@ namespace
                     }
                 }
             }
+#endif
 
             return false;
         }

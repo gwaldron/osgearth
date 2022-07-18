@@ -22,6 +22,7 @@
 
 #include <osgEarth/ImGui/ImGuiApp>
 #include "backends/imgui_impl_opengl3.h"
+#include "imnodes.h"
 #include <osgEarth/GLUtils>
 
 using namespace osgEarth::GUI;
@@ -150,6 +151,14 @@ static int ConvertFromOSGKey(int key)
 void OsgImGuiHandler::init()
 {
     ImGui::CreateContext();
+    ImNodes::CreateContext();
+
+    ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkDetachWithDragClick);
+    {
+        ImNodesIO& io = ImNodes::GetIO();
+        io.LinkDetachWithModifierClick.Modifier = &ImGui::GetIO().KeyCtrl;
+    }
+
     ImGuiIO& io = ImGui::GetIO();
 
     // Keyboard mapping. ImGui will use those indices to peek into the io.KeyDown[] array.

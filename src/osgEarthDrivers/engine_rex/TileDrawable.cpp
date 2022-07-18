@@ -25,7 +25,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ImageUtils>
-
+#include <osgEarth/Math>
 
 using namespace osg;
 using namespace osgEarth::REX;
@@ -93,8 +93,8 @@ TileDrawable::setElevationRaster(const osg::Image*   image,
     _elevationRaster = image;
     _elevationScaleBias = scaleBias;
 
-    if (osg::equivalent(0.0f, _elevationScaleBias(0,0)) ||
-        osg::equivalent(0.0f, _elevationScaleBias(1,1)))
+    if (equivalent(0.0f, _elevationScaleBias(0,0)) ||
+        equivalent(0.0f, _elevationScaleBias(1,1)))
     {
         OE_WARN << "("<<_key.str()<<") precision error\n";
     }

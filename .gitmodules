@@ -8,3 +8,6 @@
 [submodule "src/third_party/rapidjson"]
 	path = src/third_party/rapidjson
 	url = https://github.com/Tencent/rapidjson.git
+[submodule "src/third_party/imnodes"]
+	path = src/third_party/imnodes
+	url = https://github.com/Nelarius/imnodes.git

@@ -15,6 +15,25 @@ http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
         <profile>spherical-mercator</profile>
         <cache_policy usage="none"/>
     </XYZImage>
+
+    <XYZFeatures name="data:osm-oceans">
+        <url>http://readymap.org/readymap/mbtiles/osm-oceans/{z}/{x}/{-y}.pbf</url>
+        <min_level>0</min_level>
+        <max_level>9</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+    </XYZFeatures>
+
+    <FeatureImage name="Water" features="data:osm-oceans">
+        <profile>spherical-mercator</profile>
+        <styles>
+            <style type="text/css">
+                default {
+                   fill: #ffbf6f;
+                }
+            </style>
+        </styles>
+    </FeatureImage>
     
     <xi:include href="viewpoints_flat.xml"/>
 </map>

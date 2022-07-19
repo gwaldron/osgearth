@@ -22,5 +22,39 @@ http://readymap.org
 		 <vdatum>egm96</vdatum>
 	 </TMSElevation>
 
+	 <XYZFeatures name="data:osm-oceans">
+        <url>http://readymap.org/readymap/mbtiles/osm-oceans/{z}/{x}/{-y}.pbf</url>
+        <min_level>0</min_level>
+        <max_level>10</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+    </XYZFeatures>
+
+    <FeatureImage name="Water"
+        features="data:osm-oceans">
+		<profile>spherical-mercator</profile>
+        <styles>
+            <style type="text/css">
+                default {
+                   fill: #0000ff;
+                }
+            </style>
+        </styles>
+    </FeatureImage>
+
+<!--
+	<FeatureImage name="BadMerc">
+	    <OGRFeatures url="H:/dev/osgearth/data/badmercator.shp"/>
+        <styles>
+            <style type="text/css">
+                default {
+                   fill: #ffbf6f;
+                }
+            </style>
+        </styles>
+    </FeatureImage>
+	-->
+
+
     <xi:include href="viewpoints.xml"/>
 </map>

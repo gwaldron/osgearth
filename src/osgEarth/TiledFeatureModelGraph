@@ -32,6 +32,7 @@
 #include <osg/ShapeDrawable>
 #include <osgDB/ReadFile>
 #include <osg/MatrixTransform>
+#include <osgUtil/Simplifier>
 
 namespace osgEarth {
 
@@ -113,11 +114,9 @@ namespace osgEarth {
         }
 
         NodeGraphOperation* _source;
-        //std::string _sourceName;
         const NodeAttribute* _sourceAttribute;
 
         NodeGraphOperation* _destination;
-        //std::string _destinationName;
         const NodeAttribute* _destinationAttribute;
 
         int _id;
@@ -154,7 +153,6 @@ namespace osgEarth {
         {
             auto output = getOutputAttribute(outputName);
             auto input = destination->getInputAttribute(destinationName);
-            std::cout << "Connecting " << output->getName() << " to " << input->getName() << std::endl;
             _links.push_back(Link(this, output, destination, input));
         }
 
@@ -175,7 +173,7 @@ namespace osgEarth {
             {
                 if (l._sourceAttribute->getName() == name)
                 {
-                    l._destination->set_input(l._destinationAttribute->getName(), node);
+                    l._destination->set_input(l._destinationAttribute->getName(), node);                    
                 }
             }
         }
@@ -195,17 +193,22 @@ namespace osgEarth {
         void set_input(const std::string& name, osg::Node* node)
         {
             _inputs[name] = node;
+            // the input on this node has changed, so dirty it.  This isn't great but it should work.
+            _ready = false;
         }
 
         void set_input(const std::string& name, float value)
         {
             _inputs[name] = value;
+            // the input on this node has changed, so dirty it.  This isn't great but it should work.
+            _ready = false;
         }
 
         void reset()
         {
             _inputs.clear();
             _outputs.clear();
+            _dependencies.clear();
             _ready = false;
         }
 
@@ -245,6 +248,23 @@ namespace osgEarth {
             return _links;
         }
 
+        void addDependency(NodeGraphOperation* dep)
+        {
+            _dependencies.insert(dep);
+        }
+
+        void executeWithDependencies()
+        {
+            // Execute all the dependencies first
+            for (auto& d : _dependencies)
+            {
+                d->executeWithDependencies();
+            }
+
+            // Execute this operation
+            execute();
+        }
+
     protected:
         void addInputAttribute(const std::string& name, NodeAttribute::AttributeType type)
         {
@@ -264,12 +284,14 @@ namespace osgEarth {
 
         std::vector< Link > _links;
 
+        std::set< NodeGraphOperation* > _dependencies;
+
         bool _ready = false;
 
         std::string _name;
 
         int _id;
-    };
+    };    
 
     class OSGEARTH_EXPORT FloatValue : public NodeGraphOperation
     {
@@ -318,8 +340,11 @@ namespace osgEarth {
             auto radius = get_input("Radius");
             if (radius)
             {
-                set_output("Node", AnnotationUtils::createSphere(radius->floatValue, _color));
-                _ready = true;
+                if (radius->floatValue > 0)
+                {
+                    set_output("Node", AnnotationUtils::createSphere(radius->floatValue, _color));
+                    _ready = true;
+                }
             }
         }
 
@@ -357,8 +382,9 @@ namespace osgEarth {
                 _loaded = osgDB::readNodeFile(_filename);
                 osgEarth::Registry::instance()->shaderGenerator().run(_loaded.get());
             }
-            //setOutput((osg::Node*)_loaded->clone(osg::CopyOp::DEEP_COPY_ALL));
-            set_output("Node", (osg::Node*)_loaded->clone(osg::CopyOp::DEEP_COPY_ALL));
+            // Need to consider where to clone geometry, who knows if the node is going to be mucked with later on down the chain.  Who's responsibility should that be?
+            //set_output("Node", (osg::Node*)_loaded->clone(osg::CopyOp::DEEP_COPY_ALL));
+            set_output("Node", _loaded.get());
             _ready = true;
         }
 
@@ -400,6 +426,89 @@ namespace osgEarth {
         osg::Matrix _transform;
     };
 
+    class OSGEARTH_EXPORT SimplifyOperation : public NodeGraphOperation
+    {
+    public:
+        SimplifyOperation()
+        {
+            _name = "Simplify";
+            addInputAttribute("Node", NodeAttribute::NODE);
+            addOutputAttribute("Node", NodeAttribute::NODE);
+        }
+
+        void setSampleRatio(float sampleRatio) { _sampleRatio = sampleRatio; }
+        float getSampleRatio() const { return _sampleRatio; }
+
+        void setMaximumError(float error) { _maximumError = error; }
+        float getMaximumError() const { return _maximumError; }
+
+        void setMaximumLength(float length) { _maximumLength = length; }
+        float getMaximumLength() const { return _maximumLength; }
+
+        void setSmoothing(bool on) { _smoothing = on; }
+        bool getSmoothing() const { return _smoothing; }
+
+        virtual void execute() override
+        {           
+            auto nodeInput = get_input("Node");
+            if (nodeInput)
+            {
+                // We are going to be modifying this node, so clone it before we make changes to the geometry
+                osg::ref_ptr< osg::Node > cloned = (osg::Node*)nodeInput->nodeValue->clone(osg::CopyOp::DEEP_COPY_ALL);
+
+                osgUtil::Simplifier simp(_sampleRatio, _maximumError, _maximumLength);
+                simp.setSmoothing(_smoothing);
+                simp.setDoTriStrip(false);
+
+                cloned->accept(simp);
+
+                set_output("Node", cloned.get());
+                _ready = true;
+            }
+        }
+
+
+        float _maximumLength = 0.0f;
+        float _maximumError = 5000.0;
+        float _sampleRatio = 1.0f;
+        bool _smoothing = true;
+
+    };
+
+
+    class OSGEARTH_EXPORT JoinNodesOperation : public NodeGraphOperation
+    {
+    public:
+        JoinNodesOperation()
+        {
+            _name = "Join Nodes";
+            addInputAttribute("Node1", NodeAttribute::NODE);
+            addInputAttribute("Node2", NodeAttribute::NODE);
+            addInputAttribute("Node3", NodeAttribute::NODE);
+
+            addOutputAttribute("Node", NodeAttribute::NODE);
+        }
+
+        virtual void execute() override
+        {
+            // TODO:  The randomly going over the nodes isn't going to work
+            // we need some dependency graph and need to do them in order.
+            auto node1 = get_input("Node1");
+            auto node2 = get_input("Node2");
+            auto node3 = get_input("Node3");
+
+            if (node1 || node2 || node3)
+            {
+                osg::Group* result = new osg::Group;
+                if (node1) result->addChild(node1->nodeValue.get());
+                if (node2) result->addChild(node2->nodeValue.get());
+                if (node3) result->addChild(node3->nodeValue.get());
+                set_output("Node", result);
+                _ready = true;
+            }
+        }
+    };
+
     class OSGEARTH_EXPORT NodeOutputOperation : public NodeGraphOperation
     {
     public:
@@ -428,18 +537,6 @@ namespace osgEarth {
     public:
         virtual void execute()
         {
-#if 0
-            // Reset the output pointer
-            _output = nullptr;
-
-            for (auto& op : operations)
-            {
-                // Set the operations 
-                op->setInput(_output.get());
-                op->execute();
-                _output = op->getOutput();
-            }
-#else
             // The NodeGraph can be ran multiple times during threaded loading for each load.  Maybe it needs cloned or something for reach
             // execution
             // Lock it for now.     
@@ -463,21 +560,23 @@ namespace osgEarth {
                 return;
             }
 
-            unsigned int numTries = 0;
-            while (!outputNode->ready() && numTries < 5)
+
+            // Build the dependencies.  We could do this at connect/disconnect time instead but this should be fast enough.
+            for (auto &op : operations)
             {
-                for (auto& op : operations)
+                for (auto& link : op->getLinks())
                 {
-                    op->execute();
+                    // Add a dependency for the destination
+                    link._destination->addDependency(op.get());
                 }
-                numTries++;
             }
+
+            // Execute only the output node with it's dependencies
+            outputNode->executeWithDependencies();
 
             // In theory there is a final node now.
             _output = outputNode->result.get();
 
-
-#endif
         }
 
         std::vector< std::shared_ptr< NodeGraphOperation > > operations;

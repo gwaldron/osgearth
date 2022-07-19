@@ -112,7 +112,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 {
     // defaults:
     alphaToCoverage().setDefault(true);
-    gravity().setDefault(0.0125f);
+    gravity().setDefault(0.125f);
 
     colorLayer().get(conf, "color_layer");
     biomeLayer().get(conf, "biomes_layer");    
@@ -736,7 +736,6 @@ VegetationLayer::configureTrees()
                 };
                 osg::Vec3f normals[4] = {
                     {-1,-1,2}, {1,-1,2}, {1,1,2}, {-1,1,2}
-                    //{0,0,1}, {0,0,1}, {0,0,1}, {0,0,1}
                 };
                 for (int i = 0; i < 4; ++i) normals[i].normalize();
 
@@ -834,17 +833,20 @@ VegetationLayer::configureGrass()
         out_geom->setTexCoordArray(3, flex);
 
         const osg::Vec3f face_vec(0, -1, 0);
-        //const float gravity = options().grativy().get(); // 0.0; // 0.025;
 
         for (int i = 0; i < 16; ++i)
         {
-            float bend_power = pow(3.0f*(*uvs)[i].y() + 0.8f, 2.0f);
-            osg::Vec3f bend_vec = face_vec * gravity * bend_power;
-            float bend_len = bend_vec.length();
-            if (bend_len > (*verts)[i].z())
-                bend_vec = (bend_vec/bend_len) * (*verts)[i].z();
+            float bend_power =
+                gravity *
+                accel((*uvs)[i].y());
 
-            (*verts)[i] += bend_vec; // initial gravity bend :)
+            osg::Vec3f bend_target(
+                (*verts)[i].x(),
+                (*verts)[i].y() - (*verts)[i].z(),
+                0.0f);
+
+            (*verts)[i] = mix((*verts)[i], bend_target, bend_power);
+
             if (i < 4) {
                 (*normals)[i] = up;
                 (*flex)[i].set(0, 0, 0); // no flex
@@ -1129,9 +1131,9 @@ VegetationLayer::getAssetPlacements(
     std::minstd_rand0 gen(key.hash());
     std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
 
-    // approxiate area of the tile in km
+    // approximate area of the tile in km
     GeoCircle c = key.getExtent().computeBoundingGeoCircle();
-    double x = c.getRadius()*0.001 * 2.8284271247;
+    double x = 0.001 * c.getRadius() * 2.8284271247;
     double area_sqkm = x * x;
 
     unsigned max_instances = 

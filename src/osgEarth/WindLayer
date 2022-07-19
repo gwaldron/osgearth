@@ -122,6 +122,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<osg::Node> _drawable;
+        osg::ref_ptr<const SpatialReference> _srs;
     };
 
 } // namespace osgEarth

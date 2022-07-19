@@ -140,7 +140,7 @@ namespace
 
         void setupPerCameraState(const osg::Camera* camera);
         void streamDataToGPU(osg::RenderInfo& ri, GLObjects& globjects) const;
-        void updateBuffers(CameraState&, const osg::Camera*);
+        void updateBuffers(CameraState&, const osg::Camera*, const SpatialReference* srs);
 
         void drawImplementation(osg::RenderInfo& ri) const override;
         void releaseGLObjects(osg::State* state) const override;
@@ -258,7 +258,10 @@ namespace
         }
     }
 
-    void WindDrawable::updateBuffers(CameraState& cs, const osg::Camera* camera)
+    void WindDrawable::updateBuffers(
+        CameraState& cs,
+        const osg::Camera* camera,
+        const SpatialReference* srs)
     {
         if (cs._numWindsAllocated < _winds.size()+1)
         {
@@ -289,11 +292,20 @@ namespace
             }
             else // TYPE_DIRECTIONAL
             {
-                // transform from world to camera-view space
-                osg::Vec3f dir;
+                // direction is a local tangent space vector:
+                osg::Vec3d dir;
                 dir.x() = wind->direction()->x();
                 dir.y() = wind->direction()->y();
-                dir = osg::Matrixf::transform3x3(dir, camera->getViewMatrix());
+
+                // transform it from local tangent space to view space:
+                osg::Matrix local2world;
+                srs->createLocalToWorld(
+                    osg::Vec3d(0, 0, 0) * camera->getInverseViewMatrix(),
+                    local2world);
+                dir = osg::Matrixd::transform3x3(
+                    dir,
+                    local2world * camera->getViewMatrix());
+
                 dir.normalize();
 
                 cs._windData[i].direction[0] = dir.x();
@@ -538,6 +550,8 @@ WindLayer::prepareForRendering(TerrainEngine* engine)
     {
         addWind(options().winds()[i].get());
     }
+
+    _srs = engine->getMap()->getSRS();
 }
 
 osg::StateSet*
@@ -594,7 +608,7 @@ WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
     textureToCamView.invert(camViewToTexture);
     cs._texToViewMatrix->set(textureToCamView);
 
-    windDrawable->updateBuffers(cs, camera);
+    windDrawable->updateBuffers(cs, camera, _srs.get());
 
     return cs._sharedStateSet.get();
 }

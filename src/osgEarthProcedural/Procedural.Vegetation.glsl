@@ -62,17 +62,24 @@ void oe_apply_wind(inout vec4 vertex, in vec2 local_uv)
     float flexibility = length(flex);
     if (flexibility > 0.0 && oe_wind_power > 0.0)
     {
+        // sample the wind texture
         vec4 wind = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex));
-        vec3 wind_dir = normalize(wind.rgb * 2 - 1); // view space
+
+        // add noise into the wind speed
         const float rate = 0.01;
-        vec4 noise_moving = textureLod(oe_veg_noise, local_uv + osg_FrameTime * rate, 0);
+        vec4 noise_moving = textureLod(oe_veg_noise, local_uv + sin(osg_FrameTime * rate), 0);
         float speed_var = remap(noise_moving[3], -0.2, 1.4);
         float speed = wind.a * speed_var;
-        vec3 bend_vec = wind_dir * speed;
-        vec3 flex_dir = normalize(gl_NormalMatrix * vec3xform * flex);
-        float flex_planar = abs(dot(wind_dir, flex_dir));
-        flex_planar = 1.0 - (flex_planar*flex_planar);
-        vertex.xyz += bend_vec * flex_planar * flexibility * oe_wind_power;
+
+        // project the wind vector onto the flex plane
+        vec3 wind_vec = normalize(wind.rgb * 2.0 - 1.0) * speed;
+        vec3 flex_plane_normal = normalize(gl_NormalMatrix * vec3xform * flex);
+
+        float dist = dot(wind_vec, flex_plane_normal);
+        vec3 wind_vec_projected = wind_vec - flex_plane_normal * dist;
+
+        // move the vertex within the flex plane
+        vertex.xyz += wind_vec_projected * flexibility * oe_wind_power;
     }
 }
 #endif

@@ -109,15 +109,19 @@ namespace osgEarth { namespace Procedural
         void setUseAlphaToCoverage(bool value);
         bool getUseAlphaToCoverage() const;
 
+        //! Visibility range of the specified asset group
         void setMaxRange(AssetGroup::Type, float);
         float getMaxRange(AssetGroup::Type) const;
 
+        //! Whether to render the specified group
         void setEnabled(AssetGroup::Type, bool);
         bool getEnabled(AssetGroup::Type) const;
 
+        //! LOD/SSE scaling factors (one per group)
         void setSSEScales(const osg::Vec4f& lods);
         osg::Vec4f getSSEScales() const;
 
+        //! Controls the initial "bend" for UNDERGROWTH
         void setGravity(float value);
         float getGravity() const;
 
@@ -137,6 +141,14 @@ namespace osgEarth { namespace Procedural
 
         //! Gets all the asset placement information for a given
         //! tile within the given asset group.
+        //! @param key Tile key for which to generate asset placements
+        //! @param group Group for which to generate placements (e.g. TREES or UNDERGROWTH)
+        //! @param loadBiomesOnDemand When set to true, load the asset models necessary
+        //!   for this tile key immediately if they are not already resident. During a normal
+        //!   runtime frame loop this should be false since biome assets get loaded asynchronously.
+        //!   Set to true if you are loading asset placements without a frame loop.
+        //! @param output Output vector to populate with results
+        //! @param progress Progress/cancelation tracker
         bool getAssetPlacements(
             const TileKey& key,
             const AssetGroup::Type& group,

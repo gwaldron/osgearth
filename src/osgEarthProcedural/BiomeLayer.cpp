@@ -22,6 +22,7 @@
 #include "BiomeLayer"
 #include <osgEarth/Random>
 #include <osgEarth/MetaTile>
+#include <random>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -149,13 +150,13 @@ BiomeLayer::addedToMap(const Map* map)
         return;
     }
 
-    // Initialize the biome creator
+    // Prepare to create samples for the base biome layer
     if (getBiomeBaseLayer() && getBiomeBaseLayer()->isOpen())
     {
         _biomeFactory = BiomeSample::Factory::create(getBiomeBaseLayer());
     }
 
-    // Initialize the landcover creator
+    // Prepare to create samples for the landcover layer
     if (getLandCoverLayer() && getLandCoverLayer()->isOpen())
     {
         _landCoverFactory = LandCoverSample::Factory::create(getLandCoverLayer());
@@ -238,20 +239,20 @@ BiomeLayer::createImageImplementation(
 
     image->setInternalTextureFormat(GL_R16F);
 
-
     ImageUtils::PixelWriter write(image.get());
     osg::Vec4 value;
     float noise = 1.0f;
 
-    Random prng(key.hash());
+    // pseudo-random number generator:
+    std::minstd_rand gen(key.hash());
+    std::uniform_real_distribution<double> prng;
+
     double radius = options().blendRadius().get();
     std::set<int> biome_indices_seen;
     const GeoExtent& ex = key.getExtent();
     GeoImage temp(image.get(), ex);
     GeoImageIterator iter(temp);
     std::unordered_set<std::string> missing_biomes;
-
-    
 
     // Use meta-tiling to read coverage data with access to the 
     // neighboring tiles - to support the blend radius.
@@ -282,7 +283,6 @@ BiomeLayer::createImageImplementation(
     iter.forEachPixelOnCenter([&]()
         {
             int biome_index = 0;
-            std::string traits;
 
             double x = iter.x();
             double y = iter.y();
@@ -290,8 +290,8 @@ BiomeLayer::createImageImplementation(
             // randomly permute the coordinates in order to blend across biomes
             if (radius > temp.getUnitsPerPixel())
             {
-                x += radius * (prng.next() * 2.0 - 1.0);
-                y += radius * (prng.next() * 2.0 - 1.0);
+                x += radius * (prng(gen) * 2.0 - 1.0);
+                y += radius * (prng(gen) * 2.0 - 1.0);
             }
 
             // convert the x,y to u,v
@@ -330,16 +330,10 @@ BiomeLayer::createImageImplementation(
                             biome_index = biome->index();
                         }
                     }
-                    else if (sample->traits().isSet())
-                    {                     
-                        traits = sample->traits().get();
-                    }
 
                     // NB: lifemap values are handled by the LifeMapLayer (ignored here)
                 }
             }
-
-            
 
             // if we found a valid one, insert it into the set
             if (biome_index > 0)

@@ -152,11 +152,16 @@ namespace osgEarth
             //! Manager that pages biome assets in and out
             BiomeManager& getBiomeManager() { return _biomeMan; }
 
-            //! Optional coverage layer that can modify the biome selection
-            CoverageLayer* getLandCoverLayer() const;
-
-            //! Optional coverage layer that can modify the biome selection
+            //! Coverage layer that specifies the base biome ID selection.
+            //! This is a coverage that maps geographic regions to biome IDs.
             CoverageLayer* getBiomeBaseLayer() const;
+
+            //! Coverage layer that can modify the biome ID selection based on
+            //! land cover mappings. This will override a biomeID set by the 
+            //! base biome layer.
+            //! TODO: It is kind of odd to have both the base layer and the
+            //!   land cover layer...consider consolidating.
+            CoverageLayer* getLandCoverLayer() const;
 
             //! Whether to automatically load and unload biomes, or to 
             //! allow the user to manually do so with the setBiome() call.

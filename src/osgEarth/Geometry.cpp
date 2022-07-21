@@ -53,6 +53,25 @@ namespace
         OE_DEBUG << " [GEOS Warning] " << buffer << std::endl;
         va_end(args);
     }
+
+    static bool checkGEOSResult(const char result)
+    {
+        // GEOS functions return 0 for false, 1 for true and 2 for error.
+        // Convert those to a bool with an error resulting in false.
+        if (result == 0)
+        {
+            return false;
+        }
+        else if (result == 1)
+        {
+            return true;
+        }
+        else
+        {
+            OE_WARN << "GEOS encountered an exception" << std::endl;
+            return false;
+        }
+    }
 }
 
 Geometry::Geometry( const Geometry& rhs ) :
@@ -415,7 +434,7 @@ Geometry::intersects(
     GEOSGeometry* otherGeom = GEOS::importGeometry(handle, other);
 
     bool intersects = false;
-    if (inGeom && otherGeom)    intersects = GEOSIntersects_r(handle, inGeom, otherGeom);
+    if (inGeom && otherGeom) intersects = checkGEOSResult(GEOSIntersects_r(handle, inGeom, otherGeom));
 
     //Destroy the geometry
     GEOSGeom_destroy_r(handle, inGeom);

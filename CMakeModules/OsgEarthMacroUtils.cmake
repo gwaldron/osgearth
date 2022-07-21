@@ -428,7 +428,8 @@ MACRO(SETUP_IMGUI_APPLICATION APPLICATION_NAME)
             ${GLEW_INCLUDE_DIR}
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui            
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/examples
-            ${OSGEARTH_SOURCE_DIR}/src/third_party/imnodes
+            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/misc/cpp
+            ${OSGEARTH_SOURCE_DIR}/src/third_party/imnodes            
         )
 
         set(TARGET_LIBRARIES_VARS
@@ -442,6 +443,7 @@ MACRO(SETUP_IMGUI_APPLICATION APPLICATION_NAME)
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_draw.cpp
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_widgets.cpp
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui_tables.cpp
+            ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/misc/cpp/imgui_stdlib.cpp
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/backends/imgui_impl_opengl3.cpp
             ${OSGEARTH_SOURCE_DIR}/src/osgEarth/ImGui/ImGui.cpp
             ${OSGEARTH_SOURCE_DIR}/src/third_party/imnodes/imnodes.cpp

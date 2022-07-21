@@ -34,6 +34,7 @@
 #include <osg/MatrixTransform>
 #include <osgUtil/Simplifier>
 #include <osgEarth/ElevationQuery>
+#include <osgEarth/DrawInstanced>
 
 namespace osgEarth {
 
@@ -673,6 +674,255 @@ namespace osgEarth {
         unsigned int _count = 10;
     };
 
+    class OSGEARTH_EXPORT GetFeaturesOperation : public NodeGraphOperation
+    {
+    public:
+        GetFeaturesOperation()
+        {
+            _name = "Get Features";
+
+            addOutputAttribute("Features", NodeAttribute::FEATURES);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            osg::ref_ptr< FeatureSource > featureSource = context.map->getLayerByName<FeatureSource>(_layerName);
+            if (featureSource.valid())
+            {
+                // Lazy
+                if (context.tileKey.getLevelOfDetail() == 14)
+                {
+                    auto cursor = featureSource->createFeatureCursor(context.tileKey, nullptr);
+                    if (cursor)
+                    {
+                        FeatureList features;
+                        while (cursor->hasMore())
+                        {
+                            osg::ref_ptr< Feature > feature = cursor->nextFeature();
+                            if (context.tileKey.getExtent().contains(feature->getExtent().getCentroid()))
+                            {
+                                features.push_back(feature.get());
+                            }
+                        }                       
+
+                        if (!features.empty())
+                        {
+                            set_output("Features", features);
+                            _ready = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        const std::string& getLayerName() const
+        {
+            return _layerName;
+        }
+
+        void setLayerName(const std::string& layerName)
+        {
+            _layerName = layerName;
+        }
+
+        std::string _layerName;
+    };
+
+    class OSGEARTH_EXPORT FilterFeaturesOperation : public NodeGraphOperation
+    {
+    public:
+        FilterFeaturesOperation()
+        {
+            _name = "Filter Features";
+
+            addInputAttribute("Features", NodeAttribute::FEATURES);
+
+            addOutputAttribute("Passed", NodeAttribute::FEATURES);
+            addOutputAttribute("Failed", NodeAttribute::FEATURES);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            auto in = get_input("Features");
+
+            if (in)
+            {
+                FeatureList passed, failed;
+
+                for (auto& f : in->featuresValue)
+                {
+                    bool keep = false;
+                    if (f->hasAttr(_attribute))
+                    {
+                        if (_value.empty() || _value == "*")
+                        {
+                            keep = true;
+                        }
+                        else
+                        {
+                            std::string v = f->getString(_attribute);
+                            keep = v == _value;
+                        }
+                    }
+
+                    if (keep)
+                    {
+                        passed.push_back(f.get());
+                    }
+                    else
+                    {
+                        failed.push_back(f.get());
+                    }
+                }
+
+                set_output("Passed", passed);
+                set_output("Failed", failed);
+                _ready = true;
+            }
+        }
+
+        const std::string& getAttribute() const
+        {
+            return _attribute;
+        }
+
+        void setAttribute(const std::string& attribute)
+        {
+            _attribute = attribute;
+        }
+
+        const std::string& getValue() const
+        {
+            return _value;
+        }
+
+        void setValue(const std::string& value)
+        {
+            _value = value;
+        }
+
+        std::string _attribute;
+        std::string _value;
+    };
+
+
+    class OSGEARTH_EXPORT PolygonToPointsOperation : public NodeGraphOperation
+    {
+    public:
+        PolygonToPointsOperation()
+        {
+            _name = "Polygons To Points";
+
+            addInputAttribute("Features", NodeAttribute::FEATURES);
+            addOutputAttribute("Features", NodeAttribute::FEATURES);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            auto in = get_input("Features");
+            if (in)
+            {
+                FeatureList points;
+                auto extent = context.tileKey.getExtent();
+
+                if (_random)
+                {
+                    for (unsigned int i = 0; i < _count; ++i)
+                    {                        
+                        double x = extent.xMin() + _prng.next() * extent.width();
+                        double y = extent.yMin() + _prng.next() * extent.height();
+
+                        bool keep = false;
+                        for (auto& feature : in->featuresValue)
+                        {
+                            //if (feature->getGeometry()->isPolygon())
+                            {
+                                feature->transform(SpatialReference::create("wgs84"));
+                                if (feature->getGeometry()->contains2D(x, y))
+                                {
+                                    keep = true;
+                                }
+                            }
+                        }
+
+                        if (keep)
+                        {
+                            PointSet* p = new PointSet;
+                            p->push_back(osg::Vec3d(x, y, 0));
+                            Feature* f = new Feature(p, context.tileKey.getProfile()->getSRS());
+                            points.push_back(f);
+                        }
+                    }
+                }
+                else
+                {
+                    double width = extent.width();
+                    double height = extent.height();
+                    double dx = width / (double)_count;
+                    double dy = height / (double)_count;
+
+                    for (unsigned int c = 0; c < _count; ++c)
+                    {
+                        for (unsigned int r = 0; r < _count; ++r)
+                        {
+                            double x = extent.xMin() + (double)c * dx;
+                            double y = extent.yMin() + (double)r * dy;
+
+                            bool keep = false;
+                            for (auto& feature : in->featuresValue)
+                            {
+                                //if (feature->getGeometry()->isPolygon())
+                                {
+                                    feature->transform(SpatialReference::create("wgs84"));
+                                    if (feature->getGeometry()->contains2D(x, y))
+                                    {
+                                        keep = true;
+                                    }
+                                }
+                            }
+
+                            if (keep)
+                            {
+                                PointSet* p = new PointSet;
+                                p->push_back(osg::Vec3d(x, y, 0));
+                                Feature* f = new Feature(p, context.tileKey.getProfile()->getSRS());
+                                points.push_back(f);
+                            }
+                        }
+                    }                    
+                }    
+
+                set_output("Features", points);
+                _ready = true;
+            }
+        }
+
+        unsigned int getCount() const
+        {
+            return _count;
+        }
+
+        void setCount(unsigned int count)
+        {
+            _count = count;
+        }
+
+        bool getRandom() const
+        {
+            return _random;
+        }
+
+        void setRandom(bool random)
+        {
+            _random = random;
+        }
+
+        bool _random = true;
+        unsigned int _count = 10;
+        Random   _prng;
+    };
+
+
 
     class OSGEARTH_EXPORT ClampPointsOperation : public NodeGraphOperation
     {
@@ -849,7 +1099,11 @@ namespace osgEarth {
                 osg::Matrixd w2l;
                 context.tileKey.getExtent().getCentroid().createWorldToLocal(w2l);    
 
+                osg::ref_ptr< osg::Node > cloned = (osg::Node*)node->nodeValue->clone(osg::CopyOp::DEEP_COPY_ALL);
+
                 osg::Group* result = new osg::Group;
+
+                OE_NOTICE << "Placing " << points->featuresValue.size() << " features" << std::endl;
 
                 // We know the tile is already going to be localized so don't do it twice.
                 for (auto& f : points->featuresValue)
@@ -866,7 +1120,9 @@ namespace osgEarth {
 
                             float scale = _minScale + _prng.next() * (_maxScale - _minScale);
 
+                            // Convert the feature to global geodetic first...
                             GeoPoint pt(f->getSRS(), x, y, z);
+                            pt.transformInPlace(SpatialReference::create("wgs84"));                            
                             osg::Vec3d world;
                             pt.toWorld(world);
 
@@ -875,14 +1131,20 @@ namespace osgEarth {
                             osg::MatrixTransform* mt = new osg::MatrixTransform;
                             osg::Quat rotation = osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0, 0, 1));
                             //mt->setMatrix(osg::Matrixd::translate(local));
+                            // Mark the transform as static so the optimizer can flatten it.
+                            mt->setDataVariance(osg::Object::STATIC);
                             mt->setMatrix(osg::Matrixd::scale(scale, scale, scale) *
                                 osg::Matrix::rotate(rotation) *
                                 osg::Matrix::translate(local));
-                            mt->addChild(node->nodeValue.get());
+                            //mt->addChild(node->nodeValue.get());
+                            mt->addChild(cloned.get());
                             result->addChild(mt);
                         }
                     }
                 }
+
+                DrawInstanced::convertGraphToUseDrawInstanced(result);
+                DrawInstanced::install(result->getOrCreateStateSet());
 
                 set_output("Node", result);
                 _ready = true;

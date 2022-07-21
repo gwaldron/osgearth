@@ -36,7 +36,7 @@ TiledFeatureModelGraph::TiledFeatureModelGraph(const osgEarth::Map* map,
 {    
     _nodeGraph = std::make_shared<NodeGraph>();
     setMinLevel(0);
-    setMaxLevel(16);
+    setMaxLevel(14);
 
 #if 0
     _nodeGraph->operations.push_back(std::make_shared< SphereOperation>());
@@ -53,6 +53,10 @@ TiledFeatureModelGraph::TiledFeatureModelGraph(const osgEarth::Map* map,
     _nodeGraph->operations.push_back(std::make_shared < LoadNodeOperation >("D:/dev/private-data/splat/assets/trees/BlueSpruce/blue_spruce.osgb"));
     _nodeGraph->operations.push_back(std::make_shared < LoadNodeOperation >("D:/dev/private-data/splat/assets/trees/SugarMaple/sugar_maple.osgb"));
     _nodeGraph->operations.push_back(std::make_shared < LoadNodeOperation >("c:/Users/Jason/Downloads/big-boulder/source/boulder.obj"));
+
+    auto getFeatures = std::make_shared < GetFeaturesOperation >();
+    getFeatures->setLayerName("data:osm");
+    _nodeGraph->operations.push_back(getFeatures);
 
     auto cube = std::make_shared < LoadNodeOperation >("cube.obj");
     _nodeGraph->operations.push_back(cube);

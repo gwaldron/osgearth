@@ -290,6 +290,8 @@ void OsgImGuiHandler::render(osg::RenderInfo& ri)
 
         auto dockSpaceId = ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), dockspace_flags);
 
+        glDisable(GL_MULTISAMPLE);
+
         draw(ri);
 
         ImGui::Render();

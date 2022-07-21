@@ -87,18 +87,24 @@ namespace osgEarth
         void createMappings(const SourceLayerOptions&, Mappings<T>& output) const;
 
         /**
-        * CoverageCreator is a utility class that initializes the mappings between the int values and 
+        * Factory is a utility class that initializes the mappings between the int values and 
         * the user-defined datastructure.  Initialize one of these first and call createCoverage on it.
         */
         template<typename T>
-        class CoverageCreator
+        class Factory
         {
         public:
-            CoverageCreator(CoverageLayer* layer) :
+            using Ptr = std::unique_ptr<Factory<T>>;
+
+            static Ptr create(CoverageLayer* layer) {
+                return Ptr(new Factory<T>(layer));
+            }
+
+            Factory(CoverageLayer* layer) :
                 _layer(layer)
             {
                 // Preload the mappings for each layer
-                for (auto &layer : _layer->options().layers())
+                for (auto& layer : _layer->options().layers())
                 {
                     ImageLayer* imageLayer = layer.source().getLayer();
 

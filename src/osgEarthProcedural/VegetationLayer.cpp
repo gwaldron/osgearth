@@ -112,11 +112,13 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 {
     // defaults:
     alphaToCoverage().setDefault(true);
+    gravity().setDefault(0.0125f);
 
     colorLayer().get(conf, "color_layer");
-    biomeLayer().get(conf, "biomes_layer");
+    biomeLayer().get(conf, "biomes_layer");    
 
     conf.get("alpha_to_coverage", alphaToCoverage());
+    conf.get("gravity", gravity());
 
     // defaults for groups:
     groups().resize(NUM_ASSET_GROUPS);
@@ -127,7 +129,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         groups()[AssetGroup::TREES].enabled().setDefault(true);
         groups()[AssetGroup::TREES].castShadows().setDefault(true);
         groups()[AssetGroup::TREES].maxRange().setDefault(4000.0f);
-        groups()[AssetGroup::TREES].density().setDefault(1.0f);
+        groups()[AssetGroup::TREES].instancesPerSqKm().setDefault(16384);
     }
 
     if (AssetGroup::UNDERGROWTH < NUM_ASSET_GROUPS)
@@ -136,7 +138,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         groups()[AssetGroup::UNDERGROWTH].enabled().setDefault(true);
         groups()[AssetGroup::UNDERGROWTH].castShadows().setDefault(false);
         groups()[AssetGroup::UNDERGROWTH].maxRange().setDefault(75.0f);
-        groups()[AssetGroup::UNDERGROWTH].density().setDefault(1.0f);
+        groups()[AssetGroup::UNDERGROWTH].instancesPerSqKm().setDefault(524288);
     }
 
     ConfigSet groups_c = conf.child("groups").children();
@@ -155,7 +157,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
             Group& group = groups()[g];
             group_c.get("enabled", group.enabled());
             group_c.get("max_range", group.maxRange());
-            group_c.get("density", group.density());
+            group_c.get("instances_per_sqkm", group.instancesPerSqKm());
             group_c.get("lod", group.lod());
             group_c.get("cast_shadows", group.castShadows());
 
@@ -444,6 +446,18 @@ VegetationLayer::getEnabled(AssetGroup::Type type) const
 {
     OE_HARD_ASSERT(type < NUM_ASSET_GROUPS);
     return options().group(type).enabled().get();
+}
+
+void
+VegetationLayer::setGravity(float value)
+{
+    options().gravity() = value;
+}
+
+float
+VegetationLayer::getGravity() const
+{
+    return options().gravity().get();
 }
 
 void
@@ -759,8 +773,10 @@ VegetationLayer::configureGrass()
 {
     auto& grass = options().group(AssetGroup::UNDERGROWTH);
 
+    float gravity = options().gravity().get();
+
     // functor for generating billboard geometry for grass:
-    grass._createImpostor = [](
+    grass._createImpostor = [gravity](
         const osg::BoundingBox& bbox,
         std::vector<osg::Texture*>& textures)
     {
@@ -818,7 +834,7 @@ VegetationLayer::configureGrass()
         out_geom->setTexCoordArray(3, flex);
 
         const osg::Vec3f face_vec(0, -1, 0);
-        const float gravity = 0.025;
+        //const float gravity = options().grativy().get(); // 0.0; // 0.025;
 
         for (int i = 0; i < 16; ++i)
         {
@@ -980,24 +996,24 @@ VegetationLayer::createDrawableAsync(
 }
 
 
-const std::vector<VegetationLayer::Placement>
+bool
 VegetationLayer::getAssetPlacements(
     const TileKey& key,
     const AssetGroup::Type& group,
     bool loadBiomesOnDemand,
+    std::vector<VegetationLayer::Placement>& output,
     ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
 
+    //OE_INFO << LC << "Generating assets for tile " << key.str() << std::endl;
+
     //TODO:
-    // - use a noise texture instead of RNG
     // - use "asset size variation" parameter
     // - think about using BLEND2D to rasterize a collision map!
     //   - would need to be in a background thread I'm sure
     // - caching
     // etc.
-
-    //bool debug = key.is(14, 6706, 4643);
 
     std::vector<Placement> result;
 
@@ -1009,16 +1025,23 @@ VegetationLayer::getAssetPlacements(
     if (loadBiomesOnDemand == false)
     {
         ScopedMutexLock lock(_assets);
+
         if (_assets.size() <= group)
-            return std::move(result);
+        {
+            // data is unavailable.
+            return false;
+        }
         else
+        {
             groupAssets = _assets[group]; // shallow copy
+        }
 
         // if it's empty, bail out (and probably return later)
         if (groupAssets.empty())
         {
             OE_DEBUG << LC << "key=" << key.str() << "; asset list is empty for group " << group << std::endl;
-            return std::move(result);
+            //return std::move(result);
+            return false;
         }
     }
 
@@ -1076,7 +1099,7 @@ VegetationLayer::getAssetPlacements(
         {
             ScopedMutexLock lock(_assets);
             if (_assets.size() <= group)
-                return std::move(result);
+                return false;
             else
                 groupAssets = _assets[group]; // shallow copy
         }
@@ -1084,7 +1107,8 @@ VegetationLayer::getAssetPlacements(
         // if it's empty, bail out (and probably return later)
         if (groupAssets.empty())
         {
-            return std::move(result);
+            output = std::move(result);
+            return true;
         }
     }
 
@@ -1105,16 +1129,15 @@ VegetationLayer::getAssetPlacements(
     std::minstd_rand0 gen(key.hash());
     std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
 
-    unsigned max_instances = 4096;
+    // approxiate area of the tile in km
+    GeoCircle c = key.getExtent().computeBoundingGeoCircle();
+    double x = c.getRadius()*0.001 * 2.8284271247;
+    double area_sqkm = x * x;
+
+    unsigned max_instances = 
+        (double)options().group(group).instancesPerSqKm().get() * area_sqkm;
 
     bool allow_overlap = (group == AssetGroup::UNDERGROWTH);
-
-    float packing_density = options().group(group).density().get();
-
-    if (allow_overlap)
-    {
-        max_instances = (unsigned)((float)max_instances * packing_density);
-    }
 
     // reserve some memory, maybe more than we need
     result.reserve(max_instances);
@@ -1288,8 +1311,8 @@ VegetationLayer::getAssetPlacements(
 
             // adjust collision radius based on density.
             // i.e., denser areas allow vegetation to be closer.
-            double density_mix = density * packing_density;
-            double search_radius = mix(radius*3.0f, radius*0.2f, density_mix);
+            double density_mix = density; // *packing_density;
+            double search_radius = mix(radius*3.0f, radius*0.1f, density_mix);
             double search_radius_2 = search_radius * search_radius;
 
             bool collision = false;
@@ -1351,7 +1374,8 @@ VegetationLayer::getAssetPlacements(
         result[i].mapPoint() = std::move(map_points[i]);
     }
 
-    return std::move(result);
+    output = std::move(result);
+    return true;
 }
 
 osg::ref_ptr<ChonkDrawable>
@@ -1361,11 +1385,21 @@ VegetationLayer::createDrawable(
     const osg::BoundingBox& tile_bbox,
     ProgressCallback* progress) const
 {
-    auto placements = getAssetPlacements(
+    std::vector<VegetationLayer::Placement> placements;
+
+    bool placementsOK = getAssetPlacements(
         key,
         group,
         false,
+        placements,
         progress);
+
+    if (!placementsOK)
+    {
+        // data not available...bail out and return later.
+        progress->cancel();
+        return nullptr;
+    }
 
     const osg::Vec3f ZAXIS(0, 0, 1);
 
@@ -1481,22 +1515,32 @@ VegetationLayer::cull(
         // if the data is ready, cull it:
         if (view._tile->_drawable.isAvailable())
         {
-            view._matrix->set(entry->getModelViewMatrix());
-            cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
-            view._tile->_drawable.get()->accept(nv);
-            cv->popModelViewMatrix();
+            auto drawable = view._tile->_drawable.get();
 
-            // unref the old placeholder.
-            if (!view._loaded)
+            if (drawable.valid())
             {
-                view._loaded = true;
-                view._placeholder = nullptr;
+                view._matrix->set(entry->getModelViewMatrix());
+                cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
+                view._tile->_drawable.get()->accept(nv);
+                cv->popModelViewMatrix();
 
-                // update the placeholder for this tilekey.
-                _tiles.scoped_lock([&]()
-                    {
-                        _placeholders[entry->getKey()] = view._tile;
-                    });
+                // unref the old placeholder.
+                if (!view._loaded)
+                {
+                    view._loaded = true;
+                    view._placeholder = nullptr;
+
+                    // update the placeholder for this tilekey.
+                    _tiles.scoped_lock([&]()
+                        {
+                            _placeholders[entry->getKey()] = view._tile;
+                        });
+                }
+            }
+            else
+            {
+                // creation failed; reset for another try.
+                view._tile = nullptr;
             }
         }
 

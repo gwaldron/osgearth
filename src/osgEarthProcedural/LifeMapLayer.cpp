@@ -32,6 +32,8 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 
+#include <random>
+
 #define LC "[LifeMapLayer] " << getName() << ": "
 
 using namespace osgEarth;
@@ -65,7 +67,7 @@ LifeMapLayer::Options::fromConfig(const Config& conf)
     terrainWeight().setDefault(1.0f);
     slopeIntensity().setDefault(1.0f);
     colorWeight().setDefault(1.0f);
-    noiseWeight().setDefault(0.3f);
+    noiseWeight().setDefault(0.225f);
     lushFactor().setDefault(1.9f);
 
     biomeLayer().get(conf, "biomes_layer");
@@ -246,8 +248,7 @@ LifeMapLayer::addedToMap(const Map* map)
     // Initialize the landcover creator
     if (getLandCoverLayer() && getLandCoverLayer()->isOpen())
     {
-        _landCoverCreator = std::unique_ptr< CoverageLayer::CoverageCreator<LandCoverSample> >(
-            new CoverageLayer::CoverageCreator<LandCoverSample>(getLandCoverLayer()));
+        _landCoverFactory = LandCoverSample::Factory::create(getLandCoverLayer());
     }
 
     _map = map;
@@ -404,7 +405,7 @@ LifeMapLayer::getUseNoise() const
 #define LANDCOVER 2
 #define COLOR 3
 
-#define NOISE_LEVELS 4
+#define NOISE_LEVELS 2
 
 GeoImage
 LifeMapLayer::createImageImplementation(
@@ -432,14 +433,12 @@ LifeMapLayer::createImageImplementation(
 
     // set up the land cover data metatiler:
     MetaTile<GeoCoverage<LandCoverSample>> landcover;
-    if (_landCoverCreator)
+    if (_landCoverFactory)
     {
-        landcover.setCreateTileFunction(
-            [&](const TileKey& key, ProgressCallback* p) -> GeoCoverage<LandCoverSample>
-            {
-                return _landCoverCreator->createCoverage(key, p);
-            });
-
+        auto creator = [&](const TileKey& key, ProgressCallback* p) {
+            return _landCoverFactory->createCoverage(key, p);
+        };
+        landcover.setCreateTileFunction(creator);
         landcover.setCenterTileKey(key, progress);
     }
 
@@ -452,7 +451,7 @@ LifeMapLayer::createImageImplementation(
     {
         TileKey dm_key(key);
 
-        while(dm_key.valid() && !densityMask.valid())
+        while (dm_key.valid() && !densityMask.valid())
         {
             densityMask = getMaskLayer()->createImage(dm_key, progress);
             if (!densityMask.valid())
@@ -531,22 +530,24 @@ LifeMapLayer::createImageImplementation(
     float elevation;
     osg::Vec3 normal;
     float slope;
-    const osg::Vec3 up(0,0,1);
-    
+    const osg::Vec3 up(0, 0, 1);
+
     std::string lu_id;
     osg::Vec4f hsl;
 
     osg::Vec2d noiseCoords[NOISE_LEVELS];
     osg::Vec4 noise[NOISE_LEVELS];
-    const unsigned noiseLOD[NOISE_LEVELS] = {
-        8u, 10u, 12u, 14u //, 16u // 0u, 9u, 13u, 16u
-    };
+    const unsigned noiseLOD[NOISE_LEVELS] = { 10u, 14u };
+    //    12u, 13u, 14u, 15u //, 16u // 0u, 9u, 13u, 16u
+    //};
+    const unsigned noisePattern[NOISE_LEVELS] = { RANDOM, CLUMPY };
+        //RANDOM, SMOOTH, CLUMPY, RANDOM2 };
     
     CoordScaler coordScalers[NOISE_LEVELS] = {
         CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[0]),
-        CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[1]),
-        CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[2]),
-        CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[3])
+        CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[1]) //,
+        //CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[2]),
+        //CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[3])
     };
 
     ImageUtils::PixelReader noiseSampler(_noiseFunc.get());
@@ -576,6 +577,8 @@ LifeMapLayer::createImageImplementation(
             materialLUT[material.name().get()] = ptr++;
         }
     }
+
+    std::minstd_rand0 gen(key.hash());
 
     GeoImage result(image.get(), extent);
 
@@ -613,16 +616,21 @@ LifeMapLayer::createImageImplementation(
                             coordScalers[n].scaleCoordsToRefLOD(noiseCoords[n], key);
                             getNoise(noise[n], noiseSampler, noiseCoords[n]);
 
-                            double L = 1.0/pow(2.0, double(n));
+                            //double L = 1.0; // 1.0 / pow(2.0, double(NOISE_LEVELS - 1 - n));
+                            int p = noisePattern[n];
+                            double L = 1.0; //  n == 0 ? 0.25 : 1.0;
 
-                            pixel[NOISE][LIFEMAP_DENSE] += noise[n][CLUMPY] * L; // 3
-                            pixel[NOISE][LIFEMAP_LUSH] = 0.0; // += noise[n][RANDOM] * L; // = 0.0;
-                            pixel[NOISE][LIFEMAP_RUGGED] += noise[n][SMOOTH] * L; // 2
+                            pixel[NOISE][LIFEMAP_DENSE] += noise[n][p] * L; // 3
+                            pixel[NOISE][LIFEMAP_LUSH] = 0.0; // += noise[n][p] * L; // = 0.0;
+
+                            noiseCoords[n].set(v, u);
+                            getNoise(noise[n], noiseSampler, noiseCoords[n]);
+                            pixel[NOISE][LIFEMAP_RUGGED] += noise[n][p] * L; // 2
                         }
                     }
 
-                    pixel[NOISE][LIFEMAP_DENSE] = clamp(pixel[NOISE][LIFEMAP_DENSE], 0.0f, 1.0f);
-                    pixel[NOISE][LIFEMAP_RUGGED] = clamp(pixel[NOISE][LIFEMAP_RUGGED], 0.0f, 1.0f);
+                    //pixel[NOISE][LIFEMAP_DENSE] = clamp(pixel[NOISE][LIFEMAP_DENSE], 0.0f, 1.0f);
+                    //pixel[NOISE][LIFEMAP_RUGGED] = clamp(pixel[NOISE][LIFEMAP_RUGGED], 0.0f, 1.0f);
 
                     weight[NOISE] = getNoiseWeight();
                 }
@@ -641,9 +649,26 @@ LifeMapLayer::createImageImplementation(
                         temp = landcover.read((int)s, (int)t);
                         if (temp)
                         {
+#if 0
+                            // RNG with normal distribution between approx +1/-1
+                            const float coverage_stddev = 1.0f / 12.0f; // 6.0f;
+                            {
+                                std::normal_distribution<float> normal_dist(temp->dense().get(), coverage_stddev);
+                                pixel[LANDCOVER][LIFEMAP_DENSE] = clamp(normal_dist(gen), 0.0f, 1.0f);
+                            }
+                            {
+                                std::normal_distribution<float> normal_dist(temp->lush().get(), coverage_stddev);
+                                pixel[LANDCOVER][LIFEMAP_LUSH] = clamp(normal_dist(gen), 0.0f, 1.0f);
+                            }
+                            {
+                                std::normal_distribution<float> normal_dist(temp->rugged().get(), coverage_stddev);
+                                pixel[LANDCOVER][LIFEMAP_RUGGED] = clamp(normal_dist(gen), 0.0f, 1.0f);
+                            }
+#else
                             pixel[LANDCOVER][LIFEMAP_DENSE] = temp->dense().get();
                             pixel[LANDCOVER][LIFEMAP_LUSH] = temp->lush().get();
                             pixel[LANDCOVER][LIFEMAP_RUGGED] = temp->rugged().get();
+#endif
                             weight[LANDCOVER] = getLandCoverWeight();
 
                             if (temp->material().isSet() && getBiomeLayer())
@@ -833,7 +858,7 @@ LifeMapLayer::createImageImplementation(
                     double vv = clamp(v * dm_matrix(1, 1) + dm_matrix(3, 1), 0.0, 1.0);
                     readDensityMask(temp, uu, vv);
 
-                    // multiply all 3 so that roads can have a "dirt road" look
+                    // multiply all 3 so that roads can have a barren look
                     combined_pixel[LIFEMAP_DENSE] *= temp.r();
                     combined_pixel[LIFEMAP_LUSH] *= temp.r();
                     combined_pixel[LIFEMAP_RUGGED] *= temp.r();

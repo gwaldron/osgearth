@@ -86,11 +86,8 @@ FeatureImageLayer::init()
 {
     ImageLayer::init();
 
-    // Default profile (WGS84) if not set
-    if (!getProfile())
-    {
-        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
-    }
+    // Do not set the profile here. We will try to deduce the profile
+    // once we can open the underlying feature source.
 }
 
 Status
@@ -125,13 +122,17 @@ FeatureImageLayer::establishProfile()
     {
         const FeatureProfile* fp = getFeatureSource()->getFeatureProfile();
 
-        if (fp->getTilingProfile())
+        if (fp && fp->getTilingProfile())
         {
             setProfile(fp->getTilingProfile());
         }
-        else if (fp->getSRS())
+        else if (fp && fp->getSRS())
         {
             setProfile(Profile::create(fp->getSRS()));
+        }
+        else
+        {
+            setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
         }
     }
 }
@@ -222,6 +223,7 @@ FeatureImageLayer::updateSession()
                 unsigned maxLevel = fp->getMaxLevel();
                 if (options().maxDataLevel().isSet())
                     maxLevel = osg::maximum(maxLevel, options().maxDataLevel().get());
+
                 dataExtents().push_back(DataExtent(fp->getTilingProfile()->getExtent(), fp->getFirstLevel(), maxLevel));
             }
             else if (fp->getExtent().isValid() == true)

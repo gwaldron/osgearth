@@ -51,13 +51,14 @@ namespace osgEarth { namespace Procedural
             OE_OPTION_LAYER(ImageLayer, colorLayer);
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION(bool, alphaToCoverage);
+            OE_OPTION(float, gravity);
 
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
                 OE_OPTION(bool, enabled);
                 OE_OPTION(unsigned, lod);
                 OE_OPTION(float, maxRange);
-                OE_OPTION(float, density);
+                OE_OPTION(int, instancesPerSqKm);
                 OE_OPTION(bool, castShadows);
 
                 // internal
@@ -117,6 +118,9 @@ namespace osgEarth { namespace Procedural
         void setSSEScales(const osg::Vec4f& lods);
         osg::Vec4f getSSEScales() const;
 
+        void setGravity(float value);
+        float getGravity() const;
+
         //! Force regeneration of the visible data
         void dirty();
 
@@ -133,10 +137,11 @@ namespace osgEarth { namespace Procedural
 
         //! Gets all the asset placement information for a given
         //! tile within the given asset group.
-        const std::vector<Placement> getAssetPlacements(
+        bool getAssetPlacements(
             const TileKey& key,
             const AssetGroup::Type& group,
             bool loadBiomesOnDemand,
+            std::vector<Placement>& output,
             ProgressCallback* progress) const;
 
     protected:

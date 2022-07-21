@@ -24,9 +24,14 @@ namespace osgEarth {
             float _contrast;
             float _dense_contrast;
             float _dense_brightness;
+            float _lush_brightness;
             float _snow;
             float _snow_min_elev;
             float _snow_max_elev;
+            bool _lifemap_direct;
+            float _rugged_power;
+            float _dense_power;
+            float _lush_power;
 
             TextureSplattingLayerGUI() : GUI::BaseGUI("Texture Splatting")
             {
@@ -42,9 +47,15 @@ namespace osgEarth {
                 _contrast = 1.0f;
                 _dense_contrast = 0.0f;
                 _dense_brightness = 0.0f;
+                _lush_brightness = 0.0f;
                 _snow = 0.0f;
                 _snow_min_elev = 0.0f;
                 _snow_max_elev = 3500.0f;
+
+                _lifemap_direct = false;
+                _rugged_power = 1.0;
+                _dense_power = 1.0;
+                _lush_power = 1.0;
             }
 
             void load(const Config& conf) override
@@ -81,8 +92,11 @@ namespace osgEarth {
                 {
                     // activate tweakable uniforms
                     stateset(ri)->setDataVariance(osg::Object::DYNAMIC);
+                    stateset(ri)->removeDefine("OE_SPLAT_TWEAKS");
                     stateset(ri)->setDefine("OE_SPLAT_TWEAKS", 0x7);
-                    stateset(ri)->setDefine("OE_SNOW", 0x7);
+                    //stateset(ri)->setDefine("OE_SNOW", 0x7);
+                    stateset(ri)->removeDefine("OE_LIFEMAP_DIRECT");
+                    stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "0", 0x7);
                     _installed = true;
                 }
 
@@ -121,6 +135,10 @@ namespace osgEarth {
                     ImGui::SliderFloat("Density brightness boost", &_dense_brightness, -1.0f, 1.0f);
                     stateset(ri)->addUniform(new osg::Uniform("oe_dense_brightness", _dense_brightness), 0x7);
 
+                    ImGui::SliderFloat("Lush brightness adjust", &_lush_brightness, -1.0f, 1.0f);
+                    stateset(ri)->addUniform(new osg::Uniform("oe_lush_brightness", _lush_brightness), 0x7);
+
+#if 0
                     ImGui::SliderFloat("Snow", &_snow, 0.0f, 1.0f);
                     stateset(ri)->addUniform(new osg::Uniform("oe_snow", _snow), 0x7);
 
@@ -129,6 +147,36 @@ namespace osgEarth {
 
                     ImGui::SliderFloat("Snow top elev", &_snow_max_elev, 2500.0f, 5000.0f);
                     stateset(ri)->addUniform(new osg::Uniform("oe_snow_max_elev", _snow_max_elev), 0x7);
+#endif
+
+                    // lifemap adjusters
+                    ImGui::Separator();
+
+                    if (ImGui::Checkbox("LifeMap Direct Set", &_lifemap_direct))
+                    {
+                        if (_lifemap_direct) {
+                            stateset(ri)->removeDefine("OE_LIFEMAP_DIRECT");
+                            stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "1", 0x7);
+                            _rugged_power = std::min(_rugged_power, 1.0f);
+                            _dense_power = std::min(_dense_power, 1.0f);
+                            _lush_power = std::min(_lush_power, 1.0f);
+                        }
+                        else {
+                            stateset(ri)->removeDefine("OE_LIFEMAP_DIRECT");
+                            stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "0", 0x7);
+                        }
+                    }
+
+                    float lm_max = _lifemap_direct ? 1.0f : 4.0f;
+
+                    ImGui::SliderFloat(_lifemap_direct ? "Dense" : "Dense multiplier", &_dense_power, 0.0f, lm_max);
+                    stateset(ri)->getOrCreateUniform("dense_power", osg::Uniform::FLOAT)->set(_dense_power);
+
+                    ImGui::SliderFloat(_lifemap_direct ? "Rugged" : "Rugged multiplier", &_rugged_power, 0.0f, lm_max);
+                    stateset(ri)->getOrCreateUniform("rugged_power", osg::Uniform::FLOAT)->set(_rugged_power);
+
+                    ImGui::SliderFloat(_lifemap_direct ? "Lush" : "Lush multiplier", &_lush_power, 0.0f, lm_max);
+                    stateset(ri)->getOrCreateUniform("lush_power", osg::Uniform::FLOAT)->set(_lush_power);
                 }
                 ImGui::End();
             }

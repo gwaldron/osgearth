@@ -614,7 +614,9 @@ WMS::Driver::fetchTileImage(const TileKey&     key,
     {
         image = out_response.getImage();
     }
-    else if (out_response.errorDetail().empty() == false)
+    else if (
+        out_response.code() != ReadResult::RESULT_NOT_FOUND &&
+        out_response.errorDetail().empty() == false)
     {
         Config conf;
         std::istringstream errorDetailStream(out_response.errorDetail());

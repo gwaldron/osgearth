@@ -33,6 +33,7 @@
 #include <osgDB/ReadFile>
 #include <osg/MatrixTransform>
 #include <osgUtil/Simplifier>
+#include <osgEarth/ElevationQuery>
 
 namespace osgEarth {
 
@@ -53,8 +54,14 @@ namespace osgEarth {
         {
         }
 
+        NodeGraphResult(FeatureList value) :
+            featuresValue(value)
+        {
+        }
+
         float floatValue;
         osg::ref_ptr< osg::Node > nodeValue;
+        FeatureList featuresValue;
     };
 
     // Socket or Pin is maybe a better name?
@@ -66,7 +73,8 @@ namespace osgEarth {
         {
             NODE,
             FLOAT,
-            STRING
+            STRING,
+            FEATURES
         };
 
         NodeAttribute(const std::string& name, AttributeType type) :
@@ -122,6 +130,14 @@ namespace osgEarth {
         int _id;
     };
 
+
+    class OSGEARTH_EXPORT NodeGraphContext
+    {
+    public:
+        osgEarth::TileKey tileKey;
+        const Map* map;
+    };
+
     class OSGEARTH_EXPORT NodeGraphOperation
     {
     public:
@@ -131,7 +147,7 @@ namespace osgEarth {
             _id = atomic_id.fetch_add(1);
         }
 
-        virtual void execute() = 0;
+        virtual void execute(const NodeGraphContext& context) = 0;
 
         int getId() const { return _id; }
 
@@ -190,21 +206,37 @@ namespace osgEarth {
             }
         }
 
+        void set_output(const std::string& name, FeatureList& value)
+        {
+            _outputs[name] = value;
+            for (auto& l : _links)
+            {
+                if (l._sourceAttribute->getName() == name)
+                {
+                    l._destination->set_input(l._destinationAttribute->getName(), value);
+                }
+            }
+        }
+
         void set_input(const std::string& name, osg::Node* node)
         {
             _inputs[name] = node;
-            // the input on this node has changed, so dirty it.  This isn't great but it should work.
             _ready = false;
         }
 
         void set_input(const std::string& name, float value)
         {
             _inputs[name] = value;
-            // the input on this node has changed, so dirty it.  This isn't great but it should work.
             _ready = false;
         }
 
-        void reset()
+        void set_input(const std::string& name, FeatureList& features)
+        {
+            _inputs[name] = features;
+            _ready = false;
+        }
+
+        virtual void reset()
         {
             _inputs.clear();
             _outputs.clear();
@@ -253,16 +285,16 @@ namespace osgEarth {
             _dependencies.insert(dep);
         }
 
-        void executeWithDependencies()
+        void executeWithDependencies(const NodeGraphContext& context)
         {
             // Execute all the dependencies first
             for (auto& d : _dependencies)
             {
-                d->executeWithDependencies();
+                d->executeWithDependencies(context);
             }
 
             // Execute this operation
-            execute();
+            execute(context);
         }
 
     protected:
@@ -302,7 +334,7 @@ namespace osgEarth {
             addOutputAttribute("Value", NodeAttribute::FLOAT);
         }
 
-        virtual void execute()
+        virtual void execute(const NodeGraphContext& context)
         {
             set_output("Value", _value);
             _ready = true;
@@ -326,7 +358,7 @@ namespace osgEarth {
             addOutputAttribute("Node", NodeAttribute::NODE);
         }
 
-        virtual void execute() override
+        virtual void execute(const NodeGraphContext& context) override
         {
             /*
             osg::Geode* geode = new osg::Geode;
@@ -374,7 +406,7 @@ namespace osgEarth {
             addOutputAttribute("Node", NodeAttribute::NODE);
         }
 
-        virtual void execute() override
+        virtual void execute(const NodeGraphContext& context) override
         {
             std::lock_guard<std::mutex> lk(_mutex);
             if (!_loaded.valid())
@@ -407,7 +439,7 @@ namespace osgEarth {
             addOutputAttribute("Node", NodeAttribute::NODE);
         }
 
-        virtual void execute() override
+        virtual void execute(const NodeGraphContext& context) override
         {
             auto nodeInput = get_input("Node");
             if (nodeInput)
@@ -448,7 +480,7 @@ namespace osgEarth {
         void setSmoothing(bool on) { _smoothing = on; }
         bool getSmoothing() const { return _smoothing; }
 
-        virtual void execute() override
+        virtual void execute(const NodeGraphContext& context) override
         {           
             auto nodeInput = get_input("Node");
             if (nodeInput)
@@ -489,7 +521,7 @@ namespace osgEarth {
             addOutputAttribute("Node", NodeAttribute::NODE);
         }
 
-        virtual void execute() override
+        virtual void execute(const NodeGraphContext& context) override
         {
             // TODO:  The randomly going over the nodes isn't going to work
             // we need some dependency graph and need to do them in order.
@@ -509,6 +541,403 @@ namespace osgEarth {
         }
     };
 
+    class OSGEARTH_EXPORT RandomPointsOperation : public NodeGraphOperation
+    {
+    public:
+        RandomPointsOperation()
+        {
+            _name = "Random Points";
+
+            addOutputAttribute("Points", NodeAttribute::FEATURES);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            FeatureList features;
+
+            auto extent = context.tileKey.getExtent();
+
+            for (unsigned int i = 0; i < _count; ++i)
+            {
+                PointSet* p = new PointSet;
+                double x = extent.xMin() + _prng.next() * extent.width();
+                double y = extent.yMin() + _prng.next() * extent.height();
+
+                p->push_back(osg::Vec3d(x, y, 0));
+                Feature* f = new Feature(p, context.tileKey.getProfile()->getSRS());
+                features.push_back(f);
+            }
+
+            set_output("Points", features);
+            _ready = true;
+        }
+
+        unsigned int getCount() const
+        {
+            return _count;
+        }
+
+        void setCount(unsigned int count)
+        {
+            _count = count;
+        }
+
+        unsigned int _count = 10;
+        Random   _prng;
+    };
+
+
+    class OSGEARTH_EXPORT PointsOnEdgeOperation : public NodeGraphOperation
+    {
+    public:
+        PointsOnEdgeOperation()
+        {
+            _name = "Points on Edge";
+
+            addOutputAttribute("Points", NodeAttribute::FEATURES);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            FeatureList features;
+
+            auto extent = context.tileKey.getExtent();
+
+            double width = extent.width();
+            double height = extent.height();
+            double dx = width / (double)_count;
+            double dy = height / (double)_count;
+
+            // Left edge
+            double x = extent.xMin();
+            double y = extent.yMin();            
+            for (unsigned int i = 0; i < _count; ++i)
+            {
+                PointSet* p = new PointSet;                
+                p->push_back(osg::Vec3d(x, y, 0));
+                Feature* f = new Feature(p, context.tileKey.getProfile()->getSRS());
+                features.push_back(f);
+                y += dy;
+            }
+
+            // Right edge
+            x = extent.xMax();
+            y = extent.yMin();            
+            for (unsigned int i = 0; i < _count; ++i)
+            {
+                PointSet* p = new PointSet;
+                p->push_back(osg::Vec3d(x, y, 0));
+                Feature* f = new Feature(p, context.tileKey.getProfile()->getSRS());
+                features.push_back(f);
+                y += dy;
+            }
+
+            // Top edge
+            x = extent.xMin();
+            y = extent.yMax();
+            for (unsigned int i = 0; i < _count; ++i)
+            {
+                PointSet* p = new PointSet;
+                p->push_back(osg::Vec3d(x, y, 0));
+                Feature* f = new Feature(p, context.tileKey.getProfile()->getSRS());
+                features.push_back(f);
+                x += dx;
+            }
+
+            // Bottom edge
+            x = extent.xMin();
+            y = extent.yMin();
+            for (unsigned int i = 0; i < _count; ++i)
+            {
+                PointSet* p = new PointSet;
+                p->push_back(osg::Vec3d(x, y, 0));
+                Feature* f = new Feature(p, context.tileKey.getProfile()->getSRS());
+                features.push_back(f);
+                x += dx;
+            }
+
+            set_output("Points", features);
+            _ready = true;
+        }
+
+        unsigned int getCount() const
+        {
+            return _count;
+        }
+
+        void setCount(unsigned int count)
+        {
+            _count = count;
+        }
+
+        unsigned int _count = 10;
+    };
+
+
+    class OSGEARTH_EXPORT ClampPointsOperation : public NodeGraphOperation
+    {
+    public:
+        ClampPointsOperation()
+        {
+            _name = "Clamp Points";
+
+            addInputAttribute("Points", NodeAttribute::FEATURES);
+            addOutputAttribute("Points", NodeAttribute::FEATURES);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            auto points = get_input("Points");
+            if (points)
+            {
+                osgEarth::Util::ElevationQuery eq(context.map);
+
+                for (auto& f : points->featuresValue)
+                {
+                    GeometryIterator itr(f->getGeometry());
+                    while (itr.hasMore())
+                    {
+                        Geometry* g = itr.next();
+                        for (Geometry::iterator v = g->begin(); v != g->end(); ++v)
+                        {                            
+                            double x = v->x();
+                            double y = v->y();
+                            double z = v->z();
+
+                            GeoPoint pt(f->getSRS(), x, y, z);
+                            z = eq.getElevation(pt);
+                            v->z() = z;                            
+                        }
+                    }
+                }
+                // These are modified in place, this is faster but is destructive to the features from the input
+                set_output("Points", points->featuresValue);
+            }            
+        }
+
+        unsigned int getCount() const
+        {
+            return _count;
+        }
+
+        void setCount(unsigned int count)
+        {
+            _count = count;
+        }
+
+        unsigned int _count = 10;
+        Random   _prng;
+    };
+
+
+    class OSGEARTH_EXPORT CurrentLODOperation : public NodeGraphOperation
+    {
+    public:
+        CurrentLODOperation()
+        {
+            _name = "Current LOD";
+            addOutputAttribute("LOD", NodeAttribute::FLOAT);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            set_output("LOD", context.tileKey.getLevelOfDetail());            
+            _ready = true;
+        }
+    };
+
+    class OSGEARTH_EXPORT ComparisonOperator : public NodeGraphOperation
+    {
+    public:
+
+        enum Comparison
+        {
+            GREATER_THAN,
+            GREATER_THAN_EQUAL,
+            LESS_THAN,
+            LESS_THAN_EQUAL,
+            EQUAL
+        };
+
+        ComparisonOperator()
+        {
+            _name = "Comparison";
+
+            addInputAttribute("Node", NodeAttribute::NODE);
+            addInputAttribute("A", NodeAttribute::FLOAT);
+            addInputAttribute("B", NodeAttribute::FLOAT);
+
+            addOutputAttribute("Passed", NodeAttribute::NODE);
+            addOutputAttribute("Failed", NodeAttribute::NODE);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            auto node = get_input("Node");
+            auto a = get_input("A");
+            auto b = get_input("B");
+
+            if (node && a && b)
+            {
+                bool passed = false;
+                switch (_comparison)
+                {
+                case GREATER_THAN:
+                    passed = a->floatValue > b->floatValue;
+                    break;
+                case GREATER_THAN_EQUAL:
+                    passed = a->floatValue >= b->floatValue;
+                    break;
+                case LESS_THAN:
+                    passed = a->floatValue < b->floatValue;
+                    break;
+                case LESS_THAN_EQUAL:
+                    passed = a->floatValue <= b->floatValue;
+                    break;
+                case EQUAL:
+                    passed = a->floatValue == b->floatValue;
+                    break;
+                default:
+                    break;
+                }
+
+                if (passed)
+                {
+                    set_output("Passed", node->nodeValue);
+                }
+                else
+                {
+                    set_output("Failed", node->nodeValue);
+                }
+                _ready = true;
+            }
+        }
+
+        const Comparison getComparison() const
+        {
+            return _comparison;
+        }
+
+        void setComparison(Comparison comparison)
+        {
+            _comparison = comparison;
+        }
+
+        Comparison _comparison;
+    };
+
+
+    class OSGEARTH_EXPORT PlaceNodesOperation : public NodeGraphOperation
+    {
+    public:
+        PlaceNodesOperation()
+        {
+            _name = "Place Nodes";
+            addInputAttribute("Points", NodeAttribute::FEATURES);
+            addInputAttribute("Node", NodeAttribute::NODE);
+
+            addOutputAttribute("Node", NodeAttribute::NODE);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            auto node = get_input("Node");
+            auto points = get_input("Points");
+
+            if (node && points)
+            {                
+                osg::Matrixd w2l;
+                context.tileKey.getExtent().getCentroid().createWorldToLocal(w2l);    
+
+                osg::Group* result = new osg::Group;
+
+                // We know the tile is already going to be localized so don't do it twice.
+                for (auto& f : points->featuresValue)
+                {
+                    GeometryIterator itr(f->getGeometry());
+                    while (itr.hasMore())
+                    {
+                        Geometry* g = itr.next();
+                        for (Geometry::const_iterator v = g->begin(); v != g->end(); ++v)
+                        {
+                            double x = v->x();
+                            double y = v->y();
+                            double z = v->z();
+
+                            float scale = _minScale + _prng.next() * (_maxScale - _minScale);
+
+                            GeoPoint pt(f->getSRS(), x, y, z);
+                            osg::Vec3d world;
+                            pt.toWorld(world);
+
+                            float heading = _minHeading + _prng.next() * (_maxHeading - _minHeading);
+                            osg::Vec3d local = world * w2l;
+                            osg::MatrixTransform* mt = new osg::MatrixTransform;
+                            osg::Quat rotation = osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0, 0, 1));
+                            //mt->setMatrix(osg::Matrixd::translate(local));
+                            mt->setMatrix(osg::Matrixd::scale(scale, scale, scale) *
+                                osg::Matrix::rotate(rotation) *
+                                osg::Matrix::translate(local));
+                            mt->addChild(node->nodeValue.get());
+                            result->addChild(mt);
+                        }
+                    }
+                }
+
+                set_output("Node", result);
+                _ready = true;
+            }
+        }
+
+        float getMinScale() const
+        {
+            return _minScale;
+        }
+
+        void setMinScale(float minScale)
+        {
+            _minScale = minScale;
+        }
+
+        float getMaxScale() const
+        {
+            return _maxScale;
+        }
+
+        void setMaxScale(float maxScale)
+        {
+            _maxScale = maxScale;
+        }
+
+        float getMinHeading() const
+        {
+            return _minHeading;
+        }
+
+        void setMinHeading(float minHeading)
+        {
+            _minHeading = minHeading;
+        }
+
+        float getMaxHeading() const
+        {
+            return _maxHeading;
+        }
+
+        void setMaxHeading(float maxHeading)
+        {
+            _maxHeading = maxHeading;
+        }
+
+
+    private:
+        float _minScale = 1.0f;
+        float _maxScale = 1.0f;
+        float _minHeading = 0.0f;
+        float _maxHeading= 0.0f;
+        Random   _prng;
+    };
+
     class OSGEARTH_EXPORT NodeOutputOperation : public NodeGraphOperation
     {
     public:
@@ -518,7 +947,7 @@ namespace osgEarth {
             addInputAttribute("Node", NodeAttribute::NODE);
         }
 
-        virtual void execute() override
+        virtual void execute(const NodeGraphContext& context) override
         {
             auto i = get_input("Node");
             if (i)
@@ -528,14 +957,20 @@ namespace osgEarth {
             }
         }
 
-        osg::ref_ptr< osg::Node > result;
+        // Clear out the "result".  This should probably be an output instead of a variable?
+        virtual void reset()
+        {
+            NodeGraphOperation::reset();
+            result = nullptr;
+        }
 
+        osg::ref_ptr< osg::Node > result;
     };
 
     class OSGEARTH_EXPORT NodeGraph
     {
     public:
-        virtual void execute()
+        virtual void execute(const NodeGraphContext& context)
         {
             // The NodeGraph can be ran multiple times during threaded loading for each load.  Maybe it needs cloned or something for reach
             // execution
@@ -572,7 +1007,7 @@ namespace osgEarth {
             }
 
             // Execute only the output node with it's dependencies
-            outputNode->executeWithDependencies();
+            outputNode->executeWithDependencies(context);
 
             // In theory there is a final node now.
             _output = outputNode->result.get();
@@ -584,7 +1019,7 @@ namespace osgEarth {
         osg::Node* getOutput() const { return _output.get(); }
         osg::ref_ptr < osg::Node > _output;
 
-        std::mutex _mutex;
+        std::mutex _mutex;        
     };
 
 
@@ -598,13 +1033,19 @@ namespace osgEarth {
         void build()
         {
             removeChildren(0, getNumChildren());
-            _nodeGraph->execute();
+            NodeGraphContext context;
+            context.tileKey = _tileKey;
+            context.map = _map;
+            _nodeGraph->execute(context);
+
             if (_nodeGraph->getOutput())
             {
                 addChild(_nodeGraph->getOutput());
             }
         }
 
+        TileKey _tileKey;
+        const Map* _map;
         std::shared_ptr< NodeGraph > _nodeGraph;
     };
 
@@ -638,9 +1079,11 @@ namespace osgEarth {
 
         void dirtyNodeGraph()
         {
+            unsigned int i = 0;
             std::lock_guard< std::mutex> lk(_nodesMutex);
             for (auto n : _nodes)
             {
+                OE_NOTICE << "Building " << i++ << " of " << _nodes.size() << " nodes" << std::endl;
                 osg::ref_ptr< NodeGraphNode> ng;
                 if (n.lock(ng))
                 {

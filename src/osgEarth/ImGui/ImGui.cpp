@@ -292,6 +292,8 @@ void OsgImGuiHandler::render(osg::RenderInfo& ri)
     auto camera = ri.getCurrentCamera();
     auto viewport = camera->getViewport();
 
+    glDisable(GL_MULTISAMPLE);
+
     if (show_)
     {
         constexpr ImGuiDockNodeFlags dockspace_flags =

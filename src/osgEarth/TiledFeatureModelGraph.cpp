@@ -35,6 +35,8 @@ TiledFeatureModelGraph::TiledFeatureModelGraph(const osgEarth::Map* map,
     _session(session)
 {    
     _nodeGraph = std::make_shared<NodeGraph>();
+    setMinLevel(0);
+    setMaxLevel(16);
 
 #if 0
     _nodeGraph->operations.push_back(std::make_shared< SphereOperation>());
@@ -47,6 +49,10 @@ TiledFeatureModelGraph::TiledFeatureModelGraph(const osgEarth::Map* map,
     transform->setTransform(osg::Matrixd::scale(1.0f, 1.0f, 1.0f));
     _nodeGraph->operations.push_back(transform);
 #else
+
+    _nodeGraph->operations.push_back(std::make_shared < LoadNodeOperation >("D:/dev/private-data/splat/assets/trees/BlueSpruce/blue_spruce.osgb"));
+    _nodeGraph->operations.push_back(std::make_shared < LoadNodeOperation >("D:/dev/private-data/splat/assets/trees/SugarMaple/sugar_maple.osgb"));
+    _nodeGraph->operations.push_back(std::make_shared < LoadNodeOperation >("c:/Users/Jason/Downloads/big-boulder/source/boulder.obj"));
 
     auto cube = std::make_shared < LoadNodeOperation >("cube.obj");
     _nodeGraph->operations.push_back(cube);
@@ -133,6 +139,8 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
     return mt;
 #else
     NodeGraphNode* mt = new NodeGraphNode;
+    mt->_tileKey = key;
+    mt->_map = _map.get();
     osg::Matrixd l2w;
     key.getExtent().getCentroid().createLocalToWorld(l2w);
     mt->setMatrix(l2w);

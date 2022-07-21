@@ -194,7 +194,7 @@ VegetationLayer::LayerAcceptor::acceptLayer(
 bool
 VegetationLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 {
-     return _layer->hasEnabledGroupAtLOD(key.getLOD());
+    return _layer->hasEnabledGroupAtLOD(key.getLOD());
 }
 
 //........................................................................
@@ -836,17 +836,6 @@ VegetationLayer::configureGrass()
 
         for (int i = 0; i < 16; ++i)
         {
-            float bend_power =
-                gravity *
-                accel((*uvs)[i].y());
-
-            osg::Vec3f bend_target(
-                (*verts)[i].x(),
-                (*verts)[i].y() - (*verts)[i].z(),
-                0.0f);
-
-            (*verts)[i] = mix((*verts)[i], bend_target, bend_power);
-
             if (i < 4) {
                 (*normals)[i] = up;
                 (*flex)[i].set(0, 0, 0); // no flex
@@ -856,7 +845,7 @@ VegetationLayer::configureGrass()
                 (*normals)[i].normalize();
                 (*flex)[i] = ((*verts)[i] - (*verts)[i - 4]);
                 (*flex)[i].normalize();
-                (*flex)[i] *= (*uvs)[i].y();
+                (*flex)[i] *= accel((*uvs)[i].y());
             }
         }
 
@@ -948,10 +937,7 @@ VegetationLayer::reset()
     _lastVisit.setReferenceTime(DBL_MAX);
     _lastVisit.setFrameNumber(~0U);
 
-    OE_SOFT_ASSERT_AND_RETURN(getBiomeLayer(), void());
-
-    BiomeManager& biomeMan = getBiomeLayer()->getBiomeManager();
-    _biomeRevision = biomeMan.getRevision();
+    _biomeRevision = 0;
 
     _assets.scoped_lock([this]()
         {

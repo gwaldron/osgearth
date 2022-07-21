@@ -57,26 +57,51 @@ uniform float oe_wind_power = 1.0;
 
 #define remap(X, LO, HI) (LO + X * (HI - LO))
 
-void oe_apply_wind(inout vec4 vertex, in vec2 local_uv)
+void oe_apply_wind(inout vec4 vertex, in int index)
 {
     float flexibility = length(flex);
     if (flexibility > 0.0 && oe_wind_power > 0.0)
     {
+        const float rate = 24.0;
+        const float s1 = 0.5; // contrib of small motion
+        const float s2 = 4.0; // rate of small motion
+
+        vec3 center = instances[index].xform[3].xyz;
+        vec2 tile_uv = instances[index].local_uv;
+
         // sample the wind texture
         vec4 wind = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex));
 
-        // add noise into the wind speed
-        const float rate = 0.01;
-        vec4 noise_moving = textureLod(oe_veg_noise, local_uv + sin(osg_FrameTime * rate), 0);
-        float speed_var = remap(noise_moving[3], -0.2, 1.4);
-        float speed = wind.a * speed_var;
+        // scale the ambient motion timing based on the wind speed
+        float time = osg_FrameTime * wind.a * rate;
+
+        vec3 wind_vec = normalize(wind.rgb * 2.0 - 1.0);
+
+        vec3 motion_large = vec3(
+            (2.0 * sin(1.0 * center.x + center.y + center.z + time)) + 1.0,
+            (1.0 * sin(2.0 * center.x + center.y + center.z + time)) + 0.5,
+            1.0);
+
+        vec3 small_dir = 2.0 * normalize(textureLod(oe_veg_noise, tile_uv, 0).xyz) - 1.0;
+
+        vec3 motion_small =
+            small_dir *
+            vec3(1, 0.35, 1) *
+            s1 * sin(s2 * (tile_uv.x + tile_uv.y + time));
+
+        //vec3 motion_small = vec3(
+        //    0.05 * sin(16.0 * (dir_noise[1] + time)),
+        //    0.05 * sin(16.0 * (dir_noise[2] + time)),
+        //    1.0);
+
+        vec3 wind_force =
+            wind_vec * wind.a +
+            (motion_large + motion_small) * 0.025;
 
         // project the wind vector onto the flex plane
-        vec3 wind_vec = normalize(wind.rgb * 2.0 - 1.0) * speed;
         vec3 flex_plane_normal = normalize(gl_NormalMatrix * vec3xform * flex);
-
-        float dist = dot(wind_vec, flex_plane_normal);
-        vec3 wind_vec_projected = wind_vec - flex_plane_normal * dist;
+        float dist = dot(wind_force, flex_plane_normal);
+        vec3 wind_vec_projected = wind_force - flex_plane_normal * dist;
 
         // move the vertex within the flex plane
         vertex.xyz += wind_vec_projected * flexibility * oe_wind_power;
@@ -90,7 +115,7 @@ void oe_vegetation_vs_view(inout vec4 vertex)
     oe_lod = instances[i].lod;
 
 #ifdef OE_WIND_TEX
-    oe_apply_wind(vertex, instances[i].local_uv);
+    oe_apply_wind(vertex, i);
 #endif
 }
 

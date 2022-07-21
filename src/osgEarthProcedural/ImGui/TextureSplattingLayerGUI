@@ -60,24 +60,24 @@ namespace osgEarth {
 
             void load(const Config& conf) override
             {
-                conf.get("brightness", _brightness);
-                conf.get("contrast", _contrast);
-                conf.get("dense_contrast", _dense_contrast);
-                conf.get("dense_brightness", _dense_brightness);
-                conf.get("snow", _snow);
-                conf.get("snow_min_elev", _snow_min_elev);
-                conf.get("snow_max_elev", _snow_max_elev);
+                //conf.get("brightness", _brightness);
+                //conf.get("contrast", _contrast);
+                //conf.get("dense_contrast", _dense_contrast);
+                //conf.get("dense_brightness", _dense_brightness);
+                //conf.get("snow", _snow);
+                //conf.get("snow_min_elev", _snow_min_elev);
+                //conf.get("snow_max_elev", _snow_max_elev);
             }
 
             void save(Config& conf) override
             {
-                conf.set("brightness", _brightness);
-                conf.set("contrast", _contrast);
-                conf.set("dense_contrast", _dense_contrast);
-                conf.set("dense_brightness", _dense_brightness);
-                conf.set("snow", _snow);
-                conf.set("snow_min_elev", _snow_min_elev);
-                conf.set("snow_max_elev", _snow_max_elev);
+                //conf.set("brightness", _brightness);
+                //conf.set("contrast", _contrast);
+                //conf.set("dense_contrast", _dense_contrast);
+                //conf.set("dense_brightness", _dense_brightness);
+                //conf.set("snow", _snow);
+                //conf.set("snow_min_elev", _snow_min_elev);
+                //conf.set("snow_max_elev", _snow_max_elev);
             }
 
             void draw(osg::RenderInfo& ri) override
@@ -111,17 +111,20 @@ namespace osgEarth {
                     ImGui::SliderFloat("Displacement depth", &_depth, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
                     stateset(ri)->addUniform(new osg::Uniform("oe_depth", _depth), 0x7);
 
-                    ImGui::SliderFloat("Level blend start (m)", &_blend_start, 0.0f, 5000.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_start", _blend_start), 0x7);
+                    if (_tslayer->options().numLevels() > 1)
+                    {
+                        ImGui::SliderFloat("Level blend start (m)", &_blend_start, 0.0f, 5000.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_start", _blend_start), 0x7);
 
-                    ImGui::SliderFloat("Level blend end (m)", &_blend_end, 0.0f, 5000.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_end", _blend_end), 0x7);
+                        ImGui::SliderFloat("Level blend end (m)", &_blend_end, 0.0f, 5000.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_end", _blend_end), 0x7);
 
-                    ImGui::SliderFloat("RGBH mix", &_blend_rgbh_mix, 0.0f, 1.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_rgbh_mix", _blend_rgbh_mix), 0x7);
+                        ImGui::SliderFloat("RGBH mix", &_blend_rgbh_mix, 0.0f, 1.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_rgbh_mix", _blend_rgbh_mix), 0x7);
 
-                    ImGui::SliderFloat("Normal mix", &_blend_normal_mix, 0.0f, 1.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_normal_mix", _blend_normal_mix), 0x7);
+                        ImGui::SliderFloat("Normal mix", &_blend_normal_mix, 0.0f, 1.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_normal_mix", _blend_normal_mix), 0x7);
+                    }
 
                     ImGui::SliderFloat("Global brightness", &_brightness, 0.0f, 4.0f);
                     stateset(ri)->addUniform(new osg::Uniform("oe_splat_brightness", _brightness), 0x7);

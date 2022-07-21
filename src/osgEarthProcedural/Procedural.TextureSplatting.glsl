@@ -174,7 +174,7 @@ void get_pixel(out Pixel res, in int index, in vec2 coord)
     res.material = vec3(temp[2], temp[3], 0.0); // roughness, ao, metal
 }
 
-float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2, in float roughness)
+float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2)
 {
     float d = oe_depth;
     // https://tinyurl.com/y5nkw2l9
@@ -212,9 +212,8 @@ void resolveRow(out Pixel result, int level, int row, float xvar)
     get_coord(coord, i, level);
     get_pixel(p2, i, coord);
 
-    // blend them using both heightmap and roughness:
-    float r = max(p1.material[ROUGHNESS], p2.material[ROUGHNESS]);
-    float m = heightAndEffectMix(p1.rgbh.a, 1.0 - x_mix, p2.rgbh.a, x_mix, r);
+    // blend them using both heightmap:
+    float m = heightAndEffectMix(p1.rgbh[3], 1.0 - x_mix, p2.rgbh[3], x_mix);
     pixmix(result, p1, p2, m);
 }
 
@@ -240,9 +239,8 @@ void resolveLevel(out Pixel result, int level, float rugged, float lush, float d
 
     // use density to modulate the depth blend between the two.
     float m = heightAndEffectMix(
-        substrate.rgbh[3], 1.0-dense,
-        surface.rgbh[3], dense,
-        1.0);
+        substrate.rgbh[3], 1.0 - dense,
+        surface.rgbh[3], dense);
 
     if (level == 0)
     {

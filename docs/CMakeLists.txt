@@ -23,6 +23,7 @@ set(DOCS_ROOT
     layers.md
     license.md
     mbtiles.md
+    osgearth_conv.md
     releasenotes.md
     requirements.txt
     support.md

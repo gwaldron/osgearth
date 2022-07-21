@@ -262,10 +262,13 @@ VegetationFeatureGenerator::getFeatures(
     if (key.getLOD() != lod)
         return Status(Status::ConfigurationError, "TileKey LOD does not match GroundCoverLayer LOD");
 
-    auto placements = _veglayer->getAssetPlacements(
+    std::vector<VegetationLayer::Placement> placements;
+
+    bool ok = _veglayer->getAssetPlacements(
         key,
         AssetGroup::TREES,
         true,
+        placements,
         nullptr);
 
     for (auto& p : placements)

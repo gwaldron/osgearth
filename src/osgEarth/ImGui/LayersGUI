@@ -66,10 +66,9 @@ namespace osgEarth {
 
                 ImGui::Begin("Add WMS", &visible);
                 ImGui::InputText("URL", url, IM_ARRAYSIZE(url));
-                ImGui::InputText("Name", name, IM_ARRAYSIZE(name));
-                std::string wmsVersion = "1.1.1";
+                const std::string wmsVersion = "1.1.1";
 
-                if (ImGui::Button("Connect"))
+                if (ImGui::Button("Fetch layers from server"))
                 {
                     std::string wmsString = std::string(url);
                     char sep = wmsString.find_first_of('?') == std::string::npos ? '?' : '&';
@@ -81,13 +80,6 @@ namespace osgEarth {
                         std::string("&REQUEST=GetCapabilities");
 
                     capabilities = WMS::CapabilitiesReader::read(capUrl, nullptr);
-                    if (capabilities.valid())
-                    {
-                        for (auto layer : capabilities->getLayers())
-                        {
-                            OE_NOTICE << layer->getName() << std::endl;
-                        }
-                    }
                 }
 
                 static ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
@@ -110,20 +102,24 @@ namespace osgEarth {
                     ImGui::EndTable();
                 }
 
-                if (!selectedWMSLayer) ImGui::PushDisabled();
+                ImGui::InputText("Name", name, IM_ARRAYSIZE(name));
+
                 if (ImGui::Button("OK"))
                 {
                     if (selectedWMSLayer)
                     {
                         WMSImageLayer* wms = new WMSImageLayer;
-                        wms->setName(name);
+                        if (strlen(name) > 0)
+                            wms->setName(name);
+                        else
+                            wms->setName(selectedWMSLayer->getTitle());
                         wms->setURL(url);
                         wms->setLayers(selectedWMSLayer->getName());
                         mapNode->getMap()->addLayer(wms);
                     }
                     visible = false;
                 }
-                if (!selectedWMSLayer) ImGui::PopDisabled();
+
                 ImGui::SameLine();
                 if (ImGui::Button("Cancel"))
                 {
@@ -139,7 +135,7 @@ namespace osgEarth {
                 const bool is_folder = (layer->getLayers().size() > 0);
                 if (is_folder)
                 {
-                    bool open = ImGui::TreeNodeEx(layer->getName().c_str(), ImGuiTreeNodeFlags_SpanFullWidth);
+                    bool open = ImGui::TreeNodeEx(layer->getName().c_str(), ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_DefaultOpen);
                     ImGui::TableNextColumn();
                     ImGui::TextDisabled(layer->getTitle().c_str());
                     ImGui::TableNextColumn();
@@ -155,7 +151,7 @@ namespace osgEarth {
                 }
                 else
                 {
-                    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth;
+                    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_DefaultOpen;
                     if (layer == selectedWMSLayer)
                     {
                         node_flags |= ImGuiTreeNodeFlags_Selected;
@@ -164,6 +160,7 @@ namespace osgEarth {
                     if (ImGui::IsItemClicked())
                     {
                         selectedWMSLayer = layer;
+                        strcpy(name, selectedWMSLayer->getTitle().c_str());
                     }
                     ImGui::TableNextColumn();
                     ImGui::Text(layer->getTitle().c_str());
@@ -174,7 +171,7 @@ namespace osgEarth {
 
             bool visible = false;
             char url[128] = "http://readymap.org/readymap/tiles";
-            char name[64] = "New Layer";
+            char name[1024] = "";
             osg::ref_ptr<WMS::Capabilities> capabilities;
             osg::ref_ptr< WMS::Layer > selectedWMSLayer;
         };

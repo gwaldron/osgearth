@@ -47,18 +47,10 @@ namespace osgEarth
             osg::observer_ptr<MapNode> _mapNode;
             osg::observer_ptr<LifeMapLayer> _lifemap;
             osg::observer_ptr<TextureSplattingLayer> _splat;
-            bool _lifemap_direct;
-            float _rugged_power;
-            float _dense_power;
-            float _lush_power;
             VirtualProgram* _vp;
             std::string _renderMode;
 
             LifeMapLayerGUI() : GUI::BaseGUI("Life Map"),
-                _lifemap_direct(false),
-                _rugged_power(1.0f),
-                _dense_power(1.0f),
-                _lush_power(1.0f),
                 _vp(nullptr)
             {
                 //nop
@@ -117,37 +109,6 @@ namespace osgEarth
                         setRenderMode(render_lifemap, ri);
                     }
                 }
-
-                // lifemap adjusters
-
-                ImGui::Separator();
-                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Runtime Adjustments");
-
-                if (ImGui::Checkbox("LifeMap Direct Set", &_lifemap_direct))
-                {
-                    if (_lifemap_direct) {
-                        stateset(ri)->removeDefine("OE_LIFEMAP_DIRECT");
-                        stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "1", 0x7);
-                        _rugged_power = std::min(_rugged_power, 1.0f);
-                        _dense_power = std::min(_dense_power, 1.0f);
-                        _lush_power = std::min(_lush_power, 1.0f);
-                    }
-                    else {
-                        stateset(ri)->removeDefine("OE_LIFEMAP_DIRECT");
-                        stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "0", 0x7);
-                    }
-                }
-
-                float lm_max = _lifemap_direct ? 1.0f : 4.0f;
-
-                ImGui::SliderFloat(_lifemap_direct ? "Dense" : "Dense multiplier", &_dense_power, 0.0f, lm_max);
-                stateset(ri)->addUniform(new osg::Uniform("dense_power", _dense_power));
-
-                ImGui::SliderFloat(_lifemap_direct ? "Rugged" : "Rugged multiplier", &_rugged_power, 0.0f, lm_max);
-                stateset(ri)->addUniform(new osg::Uniform("rugged_power", _rugged_power));
-
-                ImGui::SliderFloat(_lifemap_direct ? "Lush" : "Lush multiplier", &_lush_power, 0.0f, lm_max);
-                stateset(ri)->addUniform(new osg::Uniform("lush_power", _lush_power));
 
                 ImGui::Separator();
                 ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator Settings");

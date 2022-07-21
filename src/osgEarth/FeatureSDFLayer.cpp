@@ -67,12 +67,6 @@ FeatureSDFLayer::init()
 {
     ImageLayer::init();
 
-    // Default profile (WGS84) if not set
-    if (!getProfile())
-    {
-        //setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
-    }
-
     // The SDF shader is no good. Too many memory barriers.
     //_sdfGenerator.setUseGPU(true);
     _sdfGenerator.setUseGPU(false);

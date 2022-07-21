@@ -17,13 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#include <osgEarth/GeoData>
-#include <osgEarth/GeoMath>
-#include <osgEarth/HeightFieldUtils>
-#include <osgEarth/Registry>
-#include <osgEarth/Terrain>
-#include <osgEarth/GDAL>
-#include <osgEarth/Metrics>
+#include "GeoData"
+#include "GeoMath"
+#include "HeightFieldUtils"
+#include "Registry"
+#include "Terrain"
+#include "GDAL"
+#include "Metrics"
+#include "Math"
+
 #include <osg/BoundingBox>
 
 using namespace osgEarth;
@@ -1513,8 +1515,8 @@ GeoExtent::clamp()
 
     if (isGeographic())
     {
-        _width = osg::clampBetween(_width, 0.0, 360.0);
-        _height = osg::clampBetween(_height, 0.0, 180.0);
+        _width = osgEarth::clamp(_width, 0.0, 360.0);
+        //_height = osg::clampBetween(_height, 0.0, 180.0);
 
         if (south() < -90.0)
         {
@@ -1525,6 +1527,8 @@ GeoExtent::clamp()
         {
             _height -= (north()-90.0);
         }
+
+        _height = osgEarth::clamp(_height, 0.0, 180.0);
     }
 }
 

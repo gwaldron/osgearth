@@ -108,7 +108,7 @@ namespace osgEarth {
                     ImGui::SliderFloat("AO power", &_ao_power, 0.0f, 16.0f);
                     stateset(ri)->addUniform(new osg::Uniform("ao_power", _ao_power), 0x7);
 
-                    ImGui::SliderFloat("Displacement depth", &_depth, 0.001f, 0.3f);
+                    ImGui::SliderFloat("Displacement depth", &_depth, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
                     stateset(ri)->addUniform(new osg::Uniform("oe_depth", _depth), 0x7);
 
                     ImGui::SliderFloat("Level blend start (m)", &_blend_start, 0.0f, 5000.0f);

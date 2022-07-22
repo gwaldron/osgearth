@@ -57,7 +57,7 @@ AssetGroup::name(AssetGroup::Type group)
 ModelAsset::ModelAsset(const Config& conf)
 {
     scale().setDefault(1.0f);
-    stiffness().setDefault(0.0f);
+    stiffness().setDefault(0.5f);
 
     conf.get("url", modelURI());
     conf.get("name", name());

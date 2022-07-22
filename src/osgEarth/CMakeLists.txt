@@ -472,7 +472,7 @@ if(OSGEARTH_ENABLE_IMGUI)
         ImGui/TextureInspectorGUI
         ImGui/ViewpointsGUI
         ImGui/SystemGUI
-        ImGui/EphemerisGUI
+        ImGui/EnvironmentGUI
         ImGui/ShaderGUI
         ImGui/TerrainGUI
         ImGui/TerrainEditGUI

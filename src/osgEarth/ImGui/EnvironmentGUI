@@ -44,14 +44,33 @@ out vec4 frag_out;
 #ifdef OE_WIND_TEX
 uniform sampler3D OE_WIND_TEX;
 uniform mat4 OE_WIND_TEX_MATRIX;
+uniform vec3 oe_Camera;
+uniform float osg_FrameTime;
 #endif
-void oeui_render_wind_texture(inout vec4 color) {
+
+void oeui_render_wind_texture(inout vec4 color)
+{
     frag_out = color;
-#ifdef OE_WIND_TEX
+
+  #ifdef OE_WIND_TEX
     vec4 texel = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX*vec4(viewpos3_wind,1)));
-    vec3 wind = normalize(texel.xyz);
-    frag_out = vec4(wind, 1); //mix(color, wind, 0.8f);
-#endif
+
+    vec3 wind_view = 2.0*texel.xyz - 1.0;
+    vec3 wind_clip = mat3(gl_ProjectionMatrix) * wind_view;
+    vec2 wind_screen = wind_clip.xy * oe_Camera.xy;
+
+    vec2 coord = (gl_FragCoord.xy - 0.5);
+    vec2 rv = normalize(wind_screen);
+    vec2 coordProj = mat2(rv.x, -rv.y, rv.y, rv.x) * coord;
+
+    const float oe_wind_animation_speed = 32.0;
+    int cx = int(coordProj.x - int(osg_FrameTime*oe_wind_animation_speed));
+    int ci = cx % 32;
+    const int stipple = 0x00000001;
+    int pattern32 = 0xffffffff & (stipple & (1 << ci));
+    if (pattern32 != 0)
+        frag_out = vec4(1,1,0,1);
+  #endif
 }
 )";
 }
@@ -64,7 +83,7 @@ namespace osgEarth
         using namespace osgEarth;
         using namespace osgEarth::Util;
 
-        class EphemerisGUI : public BaseGUI
+        class EnvironmentGUI : public BaseGUI
         {
         private:
             osg::observer_ptr<SkyNode> _skyNode;
@@ -84,7 +103,7 @@ namespace osgEarth
             float _wind_power;
 
         public:
-            EphemerisGUI() : BaseGUI("Environment"),
+            EnvironmentGUI() : BaseGUI("Environment"),
                 _ambient(0.033f),
                 _exposure(3.5f),
                 _contrast(1.0f),

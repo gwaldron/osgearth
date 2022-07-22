@@ -802,7 +802,7 @@ BiomeManager::addFlexors(osg::ref_ptr<osg::Node>& node, float stiffness)
                 normalize(lateral_vec) *
                 (lateral_ratio * 3.0f) *
                 (height_ratio * 1.5f) *
-                accel(1.0-stiffness);
+                (1.0-stiffness);
 
             flexors->push_back(flex);
         }

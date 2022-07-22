@@ -55,9 +55,6 @@ uniform sampler2D oe_veg_noise;
 
 uniform float oe_wind_power = 1.0;
 
-uniform float q1;
-uniform float q2;
-
 #define remap(X, LO, HI) (LO + X * (HI - LO))
 
 void oe_apply_wind(inout vec4 vertex, in int index)
@@ -77,14 +74,15 @@ void oe_apply_wind(inout vec4 vertex, in int index)
         // to permute the speed using the clumpy value:
         float time = osg_FrameTime * speed * 0.1;
         vec4 noise = textureLod(oe_veg_noise, tile_uv + time, 0);
-        speed *= mix(0.75, 1.4, noise[3]);
+        speed *= mix(0.75, 1.4, noise[0]);
 
         // integrate some ambient breeze for a swaying motion
         float ambient_seed = center.x + center.y + center.z + osg_FrameTime * 2.0;
-        vec3 ambient_vec = vec3(
+        vec3 ambient = vec3(
             (2.0 * sin(1.0 * ambient_seed)) + 1.0,
             (1.0 * sin(2.0 * ambient_seed)) + 0.5,
             1.0);
+        vec3 ambient_vec = wind_vec * ambient;
 
         // final wind force vector:
         vec3 wind_force =

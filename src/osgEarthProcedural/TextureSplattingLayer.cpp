@@ -57,6 +57,7 @@ TextureSplattingLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
     conf.set("num_levels", numLevels());
+    conf.set("use_hex_tiler", useHexTiler());
     return conf;
 }
 
@@ -64,7 +65,9 @@ void
 TextureSplattingLayer::Options::fromConfig(const Config& conf)
 {
     numLevels().setDefault(1);
+    useHexTiler().setDefault(false);
     conf.get("num_levels", numLevels());
+    conf.get("use_hex_tiler", useHexTiler());
 }
 
 //........................................................................
@@ -304,6 +307,11 @@ TextureSplattingLayer::buildStateSets()
         ss->setDefine(
             "OE_SPLAT_NUM_LEVELS",
             std::to_string(clamp(options().numLevels().get(), 1, 2)));
+
+        if (options().useHexTiler() == true)
+        {
+            ss->setDefine("OE_SPLAT_HEX_TILER", "1");
+        }
     }
 }
 

@@ -33,7 +33,7 @@ namespace osgEarth {
             float _dense_power;
             float _lush_power;
 
-            TextureSplattingLayerGUI() : GUI::BaseGUI("Texture Splatting")
+            TextureSplattingLayerGUI() : GUI::BaseGUI("Splatting")
             {
                 _installed = false;
                 _blend_start = 2500.0f;
@@ -151,6 +151,13 @@ namespace osgEarth {
                     ImGui::SliderFloat("Snow top elev", &_snow_max_elev, 2500.0f, 5000.0f);
                     stateset(ri)->addUniform(new osg::Uniform("oe_snow_max_elev", _snow_max_elev), 0x7);
 #endif
+
+                    if (ImGui::Checkbox("Hex tile optimization", &_tslayer->options().useHexTiler().mutable_value()))
+                    {
+                        stateset(ri)->setDefine("OE_SPLAT_HEX_TILER",
+                            _tslayer->options().useHexTiler() == true ? "1" : "0", 
+                            0x07);
+                    }
 
                     // lifemap adjusters
                     ImGui::Separator();

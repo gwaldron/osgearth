@@ -62,6 +62,8 @@ void oe_splat_View(inout vec4 vertex_view)
 #pragma import_defines(OE_LIFEMAP_DIRECT)
 //#pragma import_defines(OE_SNOW)
 
+#pragma include Procedural.HexTiling.glsl
+
 layout(binding = 5, std430) buffer SplatTextureArena {
     uint64_t texHandle[];
 };
@@ -166,10 +168,26 @@ void get_coord(out vec2 coord, in int index, in int level)
     coord = a + b;
 }
 
+#pragma import_defines(OE_SPLAT_HEX_TILER)
+#ifndef OE_SPLAT_HEX_TILER
+#define OE_SPLAT_HEX_TILER 0
+#endif
+
 void get_pixel(out Pixel res, in int index, in vec2 coord)
 {
+#if OE_SPLAT_HEX_TILER == 1
+    ht_hex2colTex_no_rot(res.rgbh, sampler2D(texHandle[index * 2]), coord);
+    vec4 temp;
+    ht_hex2colTex_no_rot(temp, sampler2D(texHandle[index * 2 + 1]), coord);
+#elif OE_SPLAT_HEX_TILR == 2
+    ht_hex2colTex(res.rgbh, sampler2D(texHandle[index * 2]), coord, 1.0); // hex_rot);
+    vec4 temp;
+    ht_hex2colTex(temp, sampler2D(texHandle[index * 2 + 1]), coord, 1.0); // hex_rot);
+#else
     res.rgbh = texture(sampler2D(texHandle[index * 2]), coord);
     vec4 temp = texture(sampler2D(texHandle[index * 2 + 1]), coord);
+#endif
+
     res.normal = unpackNormal(temp);
     res.material = vec3(temp[2], temp[3], 0.0); // roughness, ao, metal
 }

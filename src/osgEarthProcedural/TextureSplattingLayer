@@ -44,6 +44,7 @@ namespace osgEarth { namespace Procedural
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION_LAYER(LifeMapLayer, lifeMapLayer);
             OE_OPTION(int, numLevels);
+            OE_OPTION(bool, useHexTiler);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

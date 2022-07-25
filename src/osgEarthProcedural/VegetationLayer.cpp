@@ -1187,9 +1187,10 @@ VegetationLayer::getAssetPlacements(
         auto iter = groupAssets.find(biome);
         if (iter == groupAssets.end())
         {
-            OE_WARN << "no assets found for biome " << biome->id().get() << "...skipping" << std::endl;
+            OE_DEBUG << "no assets found for biome " << biome->id().get() << "...skipping" << std::endl;
             //biome = default_biome;
-            continue;
+            return false;
+            //continue;
         }
 
         // sample the noise texture at this (u,v)

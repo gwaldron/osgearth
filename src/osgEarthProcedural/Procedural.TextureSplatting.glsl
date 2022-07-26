@@ -68,7 +68,7 @@ layout(binding = 5, std430) buffer SplatTextureArena {
     uint64_t texHandle[];
 };
 
-uniform float oe_texScale[OE_TEX_DIM_X*OE_TEX_DIM_Y];
+uniform float oe_texScale[128];
 
 #define RUGGED 0
 #define DENSE 1
@@ -179,7 +179,7 @@ void get_pixel(out Pixel res, in int index, in vec2 coord)
     ht_hex2colTex_no_rot(res.rgbh, sampler2D(texHandle[index * 2]), coord);
     vec4 temp;
     ht_hex2colTex_no_rot(temp, sampler2D(texHandle[index * 2 + 1]), coord);
-#elif OE_SPLAT_HEX_TILR == 2
+#elif OE_SPLAT_HEX_TILER == 2
     ht_hex2colTex(res.rgbh, sampler2D(texHandle[index * 2]), coord, 1.0); // hex_rot);
     vec4 temp;
     ht_hex2colTex(temp, sampler2D(texHandle[index * 2 + 1]), coord, 1.0); // hex_rot);
@@ -235,16 +235,16 @@ void resolveRow(out Pixel result, int level, int row, float xvar)
     pixmix(result, p1, p2, m);
 }
 
-void resolveLevel(out Pixel result, int level, float rugged, float lush, float dense, int material)
+void resolveLevel(out Pixel result, int level, float rugged, float lush, float dense, int material_index)
 {
     // resolve the substrate (dirt and rocks)
     Pixel substrate;
 
-    if (material > 0)
+    if (material_index > 0)
     {
         vec2 coord;
-        get_coord(coord, material - 1, 0);
-        get_pixel(substrate, material - 1, coord);
+        get_coord(coord, material_index - 1, 0);
+        get_pixel(substrate, material_index - 1, coord);
     }
     else
     {
@@ -287,13 +287,13 @@ void oe_splat_Frag(inout vec4 quad)
 
     ivec2 tfc = ivec2(min(int(c.x*256.0), 255), min(int(c.y*256.0), 255));
     vec4 life_i = texelFetch(OE_LIFEMAP_TEX, tfc, 0);
-    int material = int(life_i[3] * 255.0f);
+    int material_index = int(life_i[3] * 255.0f);
 
     // compute the pixel color:
     Pixel pixel;
     for (int level = 0; level < OE_SPLAT_NUM_LEVELS; ++level)
     {
-        resolveLevel(pixel, level, rugged, lush, dense, material);
+        resolveLevel(pixel, level, rugged, lush, dense, material_index);
     }
 
     // apply PBR

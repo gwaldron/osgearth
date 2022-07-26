@@ -189,13 +189,6 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                 result->_textureScales->setNumElements(
                     assets.getMaterials().size() * tile_height_m.size());
 
-                //if (assets.getLifeMapMatrixHeight() * assets.getLifeMapMatrixWidth() !=
-                //    assets.getLifeMapMatrix().size())
-                //{
-                //    OE_WARN << LC0 << "Configuration error: LifeMapTextures count does not match width*height"
-                //        << std::endl;
-                //    return nullptr;
-                //}
                 int ptr0 = 0;
                 int ptr1 = assets.getMaterials().size();
 

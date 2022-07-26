@@ -273,6 +273,8 @@ namespace osgEarth {
             {
                 if (asset->modelURI().isSet())
                     ImGui::Text("Model: %s", asset->modelURI()->base().c_str());
+                if (asset->traits().empty() == false)
+                    ImGui::Text("Traits: %s", AssetTraits::toString(asset->traits()).c_str());
                 if (asset->sideBillboardURI().isSet())
                     ImGui::Text("Side BB: %s", asset->sideBillboardURI()->base().c_str());
                 if (asset->topBillboardURI().isSet())

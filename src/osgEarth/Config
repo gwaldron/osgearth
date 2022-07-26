@@ -406,27 +406,27 @@ namespace osgEarth
         _isNumber = false;
     }
     template<> inline void Config::setValue<short>(const short& value) {
-        _defaultValue = Stringify() << value;
+        _defaultValue = std::to_string(value);
         _isNumber = true;
     }
     template<> inline void Config::setValue<unsigned short>(const unsigned short& value) {
-        _defaultValue = Stringify() << value;
+        _defaultValue = std::to_string(value);
         _isNumber = true;
     }
     template<> inline void Config::setValue<int>(const int& value) {
-        _defaultValue = Stringify() << value;
+        _defaultValue = std::to_string(value);
         _isNumber = true;
     }
     template<> inline void Config::setValue<unsigned int>(const unsigned int& value) {
-        _defaultValue = Stringify() << value;
+        _defaultValue = std::to_string(value);
         _isNumber = true;
     }
     template<> inline void Config::setValue<long>(const long& value) {
-        _defaultValue = Stringify() << value;
+        _defaultValue = std::to_string(value);
         _isNumber = true;
     }
     template<> inline void Config::setValue<unsigned long>(const unsigned long& value) {
-        _defaultValue = Stringify() << value;
+        _defaultValue = std::to_string(value);
         _isNumber = true;
     }
     template<> inline void Config::setValue<float>(const float& value) {
@@ -504,6 +504,31 @@ namespace osgEarth
         }
         else
             return false;
+    }
+
+    template<> inline void Config::set(const std::string& key, const std::vector<std::string>& input) {
+        remove(key);
+        if (!input.empty()) {
+            std::ostringstream buf;
+            for(auto i=0; i<input.size(); ++i) {
+                if (i > 0) buf << ',';
+                bool quote = input[i].find(',') != std::string::npos;
+                if (quote) buf << "\"";
+                buf << input[i];
+                if (quote) buf << "\"";
+            }
+            set(key, buf.str());
+        }
+    }
+        
+    template<> inline bool Config::get(const std::string& key, std::vector<std::string>& output) const {
+        if (hasChild(key)) {
+            output.clear();
+            std::vector<std::string> tokens;
+            StringTokenizer(value(key), output, ",", "\"", true, true);
+            return true;
+        }
+        else return false;
     }
 
 

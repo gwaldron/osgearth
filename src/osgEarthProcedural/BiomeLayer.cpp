@@ -282,7 +282,7 @@ BiomeLayer::createImageImplementation(
 
     iter.forEachPixelOnCenter([&]()
         {
-            int biome_index = 0;
+            const Biome* biome = nullptr;
 
             double x = iter.x();
             double y = iter.y();
@@ -307,41 +307,50 @@ BiomeLayer::createImageImplementation(
                 {
                     if (sample->biomeid().isSet())
                     {
-                        const Biome* biome = getBiomeCatalog()->getBiome(sample->biomeid().get());
-                        if (biome)
-                        {
-                            biome_index = biome->index();
-                        }
+                        biome = getBiomeCatalog()->getBiome(sample->biomeid().get());
                     }
                 }
             }
 
-            // Next try the landcover layer.
+            // Next try the landcover layer, which could either override the biome
+            // completely (with a biomeid) or could alter the biome by filtering
+            // with traits.
             if (landcoverData.valid())
             {
                 const LandCoverSample* sample = landcoverData.read(u, v);
                 if (sample)
                 {
+                    // if the biomeid() is set, we are overriding the biome expressly:
                     if (sample->biomeid().isSet())
                     {
-                        const Biome* biome = getBiomeCatalog()->getBiome(sample->biomeid().get());
-                        if (biome)
-                        {
-                            biome_index = biome->index();
-                        }
+                        biome = getBiomeCatalog()->getBiome(sample->biomeid().get());
                     }
 
+                    // If we have a biome, but there are traits set, we need to
+                    // find the implicit biome that incorporates those traits:
+                    if (biome != nullptr && !sample->traits().empty())
+                    {
+                        std::vector<std::string> sorted = sample->traits();
+                        if (sorted.size() > 1)
+                            std::sort(sorted.begin(), sorted.end());
+                        
+                        std::string implicit_biome_id = Stringify()
+                            << biome->id().get() << '.'
+                            << AssetTraits::toString(sorted);
+
+                        biome = getBiomeCatalog()->getBiome(implicit_biome_id);
+
+                        if (biome == nullptr)
+                        {
+                            missing_biomes.insert(implicit_biome_id);
+                        }
+                    }
                     // NB: lifemap values are handled by the LifeMapLayer (ignored here)
                 }
             }
 
-            // if we found a valid one, insert it into the set
-            if (biome_index > 0)
-            {
-                biome_indices_seen.insert(biome_index);
-            }
-
-            // write it to the raster
+            // if we found a valid on
+            int biome_index = biome ? biome->index() : 0;
             value.r() = (float)biome_index;
             write(value, iter.s(), iter.t());
         });
@@ -354,7 +363,7 @@ BiomeLayer::createImageImplementation(
     trackImage(result, key, biome_indices_seen);
 
     // report any errors
-    if (missing_biomes.empty() == false)
+    if (!missing_biomes.empty())
     {
         std::ostringstream buf;
         buf << "Undefined biomes detected: ";
@@ -370,8 +379,6 @@ BiomeLayer::createImageImplementation(
     }
 
     return result;
-
-    return GeoImage::INVALID;
 }
 
 void

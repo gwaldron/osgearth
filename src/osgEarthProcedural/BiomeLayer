@@ -36,15 +36,15 @@ namespace osgEarth
     {
         using namespace osgEarth;
 
-        struct LandCoverSample
+        struct OSGEARTHPROCEDURAL_EXPORT LandCoverSample
         {
             OE_OPTION(std::string, biomeid);
-            OE_OPTION(std::string, traits);
             OE_OPTION(float, dense);
             OE_OPTION(float, lush);
             OE_OPTION(float, rugged);
             OE_OPTION(std::string, material);
             OE_OPTION(std::string, soilType);
+            OE_PROPERTY(std::vector<std::string>, traits);
 
             LandCoverSample() { }
 
@@ -62,7 +62,7 @@ namespace osgEarth
             bool valid() const {
                 return
                     (biomeid().isSet() && !biomeid()->empty()) ||
-                    traits().isSet() ||
+                    !traits().empty() ||
                     dense().isSet() ||
                     lush().isSet() ||
                     rugged().isSet() ||
@@ -73,12 +73,14 @@ namespace osgEarth
             bool operator < (const LandCoverSample& rhs) const
             {
                 OE_OPTION_LESS(biomeid, rhs.biomeid);
-                OE_OPTION_LESS(traits, rhs.traits);
+                //OE_OPTION_LESS(traits, rhs.traits);
                 OE_OPTION_LESS(dense, rhs.dense);
                 OE_OPTION_LESS(lush, rhs.lush);
                 OE_OPTION_LESS(rugged, rhs.rugged);
                 OE_OPTION_LESS(material, rhs.material);
                 OE_OPTION_LESS(soilType, rhs.soilType);
+                if (traits() < rhs.traits()) return true;
+                if (traits() > rhs.traits()) return false;
                 return false;
             }
 
@@ -86,7 +88,7 @@ namespace osgEarth
         };
 
 
-        struct BiomeSample
+        struct OSGEARTHPROCEDURAL_EXPORT BiomeSample
         {
             OE_OPTION(std::string, biomeid);
 

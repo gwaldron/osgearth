@@ -98,7 +98,6 @@ SET(LIB_PUBLIC_HEADERS
     Bing
     Bounds
     Cache
-    CacheEstimator
     CacheBin
     CachePolicy
     CacheSeed
@@ -254,6 +253,7 @@ SET(LIB_PUBLIC_HEADERS
     Text
     TextureBuffer
     ThreeDTilesLayer
+    TileEstimator
     TileKey
     TileLayer
     TileHandler
@@ -531,7 +531,6 @@ set(TARGET_SRC
     Bounds.cpp
     Cache.cpp
     CacheBin.cpp
-    CacheEstimator.cpp
     CachePolicy.cpp
     CacheSeed.cpp
     Callouts.cpp
@@ -664,6 +663,7 @@ set(TARGET_SRC
     TextureBuffer.cpp
     ThreeDTilesLayer.cpp
     TextureBufferSerializer.cpp
+    TileEstimator.cpp
     TileKey.cpp
     TileLayer.cpp
     TileHandler.cpp

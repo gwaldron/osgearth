@@ -16,13 +16,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/CacheEstimator>
+#include <osgEarth/TileEstimator>
 #include <osgEarth/Registry>
 #include <osgEarth/TileKey>
 
 using namespace osgEarth;
 
-CacheEstimator::CacheEstimator():
+TileEstimator::TileEstimator():
 _minLevel (0),
 _maxLevel (12),
 _profile( Profile::create(Profile::GLOBAL_GEODETIC))
@@ -38,13 +38,13 @@ _profile( Profile::create(Profile::GLOBAL_GEODETIC))
 }
 
 void
-CacheEstimator::addExtent( const GeoExtent& value)
+TileEstimator::addExtent( const GeoExtent& value)
 {
     _extents.push_back( value );
 }
 
 unsigned int
-CacheEstimator::getNumTiles() const
+TileEstimator::getNumTiles() const
 {
     unsigned int total = 0;
 
@@ -77,12 +77,12 @@ CacheEstimator::getNumTiles() const
     return total;
 }
 
-double CacheEstimator::getSizeInMB() const
+double TileEstimator::getSizeInMB() const
 {
     return getNumTiles() * _sizeInMBPerTile;
 }
 
-double CacheEstimator::getTotalTimeInSeconds() const
+double TileEstimator::getTotalTimeInSeconds() const
 {
     return getNumTiles() * _timeInSecondsPerTile;
 }

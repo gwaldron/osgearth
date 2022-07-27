@@ -33,8 +33,6 @@
 #include <string>
 #include <map>
 
-#define OE_USE_HASH_FOR_PROGRAM_KEY
-
 namespace osgEarth
 {
     namespace Util
@@ -42,7 +40,8 @@ namespace osgEarth
         class /*internal*/ ProgramRepo : public Threading::Mutexed<osg::Referenced>
         {
         public:
-            using Key = std::vector<unsigned>;
+            // Program key (must be sorted set)
+            using Key = std::set<unsigned>;
 
             // Referenced, b/c more than one ProgramKey can point to the same Entry
             // (shared program)

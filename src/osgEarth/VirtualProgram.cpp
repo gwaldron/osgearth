@@ -299,10 +299,10 @@ ProgramRepo::linkProgram(
         std::stringstream programCacheNameStream;
         programCacheNameStream << program->getName();
         unsigned int hash = 0;
-        for (int i = 0; i < key.size(); i++)
+        for (auto& key_component : key)
         {
             //same as boost hash_combine
-            hash ^= key[i] + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            hash ^= key_component + 0x9e3779b9 + (hash << 6) + (hash >> 2);
         }
         programCacheNameStream << "_" << hash;
 
@@ -678,15 +678,9 @@ namespace
         // build a new "key vector" now that we've changed the shader map.
         // we call is a key vector because it uniquely identifies this shader program
         // based on its accumlated function set.
-        outputKey.reserve(accumShaderMap.size());
-
         for(auto& iter : accumShaderMap)
         {
-#ifdef OE_USE_HASH_FOR_PROGRAM_KEY
-            outputKey.push_back(iter.second._shader->getHash());
-#else
-            outputKey.push_back(iter.second._shader.get());
-#endif
+            outputKey.insert(iter.second._shader->getHash());
         }
 
         // finally, add the mains (AFTER building the key vector .. we don't want or
@@ -1397,11 +1391,7 @@ VirtualProgram::apply(osg::State& state) const
         {
             PolyShader* ps = iter.second._shader.get();
 
-#ifdef OE_USE_HASH_FOR_PROGRAM_KEY
-            local.programKey.push_back(ps->getHash());
-#else
-            local.programKey.push_back(ps);
-#endif
+            local.programKey.insert(ps->getHash());
 
             if (ps->isFragmentStage())
                 ++numFragShaders;

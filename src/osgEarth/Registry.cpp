@@ -33,6 +33,10 @@
 #include <cpl_conv.h>
 #include <cstdlib>
 
+#ifndef OSG_GL3_AVAILABLE
+#error osgEarth requires OpenSceneGraph built with OSG_GL3_AVAILABLE.
+#endif
+
 using namespace osgEarth;
 
 #define LC "[Registry] "

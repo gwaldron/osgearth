@@ -116,6 +116,25 @@ Note: you must do this for each camera.
 
 
 
+#### My Qt/QOpenGLWidget application is not rendering properly. Why?
+
+In your custom `QOpenGLWidget::paintGL()` method, do the following before making any OpenSceneGraph calls:
+
+```c++
+void MyQOpenGLWidget::paintGL()
+{
+   _viewer->getCamera()->getGraphicsContext()->setDefaultFboId(defaultFramebufferObject());
+   ...
+}
+```
+
+In this example `_viewer` refers to an `osgViewer::Viewer`, but any method of accessing the current `osg::Camera` will do.
+
+Here's a more detailed explanation: 
+
+The Qt5 `QOpenGLWidget` renders to an OpenGL framebuffer object (FBO). When you embed an OpenSceneGraph viewer in a `QOpenGLWidget`, OSG does not know about that FBO. It just assumes it's rendering to a display device directly. Some features in osgEarth or OpenSceneGraph also use an FBO for rendering - examples include feature draping and shadowing - and OSG has no way of knowing it needs to reactivate Qt's FBO rendering target afterwards. This can result in a blank display or other rendering issues. Calling `setDefaultFboId` lets OSG know how to reset the rendering target properly.
+
+
 
 ## Community and Support
 

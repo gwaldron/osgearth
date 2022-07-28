@@ -116,6 +116,7 @@ void oe_vegetation_vs_view(inout vec4 vertex)
 #pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 #pragma import_defines(OE_COMPRESSED_NORMAL)
+#pragma import_defines(OE_TWEAKABLE)
 
 in vec2 oe_tex_uv;
 flat in uint64_t oe_albedo_tex;
@@ -123,6 +124,16 @@ flat in uint oe_lod;
 in vec3 vp_VertexView;
 
 #define OE_A2C_ADJUSTMENT 0.275
+
+#ifdef OE_TWEAKABLE
+#define tweakable uniform
+#else
+#define tweakable const
+#endif
+
+tweakable float oe_veg_bbd0 = 0.5;
+tweakable float oe_veg_bbd1 = 0.65;
+
 
 void oe_vegetation_fs(inout vec4 color)
 {
@@ -139,11 +150,8 @@ void oe_vegetation_fs(inout vec4 color)
         vec3 dx = dFdx(vp_VertexView);
         vec3 dy = dFdy(vp_VertexView);
         vec3 fn = normalize(cross(dx, dy));
-        float facey = abs(dot(fn, normalize(vp_VertexView)));
-        const float threshold = 0.5;
-        if (facey < threshold) {
-            color.a *= clamp(pow(facey / threshold, 4.0), 0, 1);
-        }
+        float f = abs(dot(fn, normalize(vp_VertexView)));
+        color.a *= clamp(mix(0, 1, (f - oe_veg_bbd0) / (oe_veg_bbd1 - oe_veg_bbd0)), 0, 1);
     }
 
 #ifdef OE_USE_ALPHA_TO_COVERAGE

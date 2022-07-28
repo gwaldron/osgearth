@@ -70,6 +70,11 @@ namespace osgEarth {
 
                     EventRouter::get(view(ri))
                         .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); });
+
+                    // activate tweakable uniforms
+                    stateset(ri)->setDataVariance(osg::Object::DYNAMIC);
+                    stateset(ri)->removeDefine("OE_TWEAKABLE");
+                    stateset(ri)->setDefine("OE_TWEAKABLE", 0x7);
                 }
 
                 ImGui::Begin("Vegetation", visible());
@@ -82,6 +87,13 @@ namespace osgEarth {
                             _veglayer->setSSEScales(sse_scales);
                         if (ImGui::SliderFloat("Far", &sse_scales[1], 0.5f, 2.0f))
                             _veglayer->setSSEScales(sse_scales);
+
+                        static float bbd0 = 0.5f, bbd1 = 0.65f;
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Billboard cos(angles):");
+                        if (ImGui::SliderFloat("Low", &bbd0, 0.0f, bbd1))
+                            stateset(ri)->addUniform(new osg::Uniform("oe_veg_bbd0", bbd0));
+                        if (ImGui::SliderFloat("High", &bbd1, bbd0, 1.0f))
+                            stateset(ri)->addUniform(new osg::Uniform("oe_veg_bbd1", bbd1));
 
                         ImGui::Separator();
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator:");

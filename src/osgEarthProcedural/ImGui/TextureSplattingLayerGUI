@@ -92,8 +92,9 @@ namespace osgEarth {
                 {
                     // activate tweakable uniforms
                     stateset(ri)->setDataVariance(osg::Object::DYNAMIC);
-                    stateset(ri)->removeDefine("OE_SPLAT_TWEAKS");
-                    stateset(ri)->setDefine("OE_SPLAT_TWEAKS", 0x7);
+                    stateset(ri)->removeDefine("OE_TWEAKABLE");
+                    stateset(ri)->setDefine("OE_TWEAKABLE", 0x7);
+
                     //stateset(ri)->setDefine("OE_SNOW", 0x7);
                     stateset(ri)->removeDefine("OE_LIFEMAP_DIRECT");
                     stateset(ri)->setDefine("OE_LIFEMAP_DIRECT", "0", 0x7);

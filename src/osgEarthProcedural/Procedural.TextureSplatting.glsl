@@ -1,7 +1,7 @@
 #pragma vp_name Texture Splatter VV
 #pragma vp_function oe_splat_View, vertex_view
 
-#pragma import_defines(OE_SPLAT_TWEAKS)
+#pragma import_defines(OE_TWEAKABLE)
 #pragma import_defines(OE_SPLAT_NUM_LEVELS)
 #pragma import_defines(OE_SNOW)
 
@@ -20,7 +20,7 @@ out float oe_elev;
 float oe_terrain_getElevation();
 #endif
 
-#ifdef OE_SPLAT_TWEAKS
+#ifdef OE_TWEAKABLE
 #define tweakable uniform
 #else
 #define tweakable const
@@ -58,7 +58,7 @@ void oe_splat_View(inout vec4 vertex_view)
 //#pragma import_defines(OE_TEX_DIM_Y)
 #define OE_TEX_DIM_Y 2
 
-#pragma import_defines(OE_SPLAT_TWEAKS)
+#pragma import_defines(OE_TWEAKABLE)
 #pragma import_defines(OE_LIFEMAP_DIRECT)
 //#pragma import_defines(OE_SNOW)
 

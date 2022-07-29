@@ -53,7 +53,13 @@ uniform mat4 OE_WIND_TEX_MATRIX;
 uniform float osg_FrameTime;
 uniform sampler2D oe_veg_noise;
 
-uniform float oe_wind_power = 1.0;
+#pragma import_defines(OE_TWEAKABLE)
+#ifdef OE_TWEAKABLE
+#define tweakable uniform
+#else
+#define tweakable const
+#endif
+tweakable float oe_wind_power = 1.0;
 
 #define remap(X, LO, HI) (LO + X * (HI - LO))
 
@@ -116,7 +122,6 @@ void oe_vegetation_vs_view(inout vec4 vertex)
 #pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 #pragma import_defines(OE_COMPRESSED_NORMAL)
-#pragma import_defines(OE_TWEAKABLE)
 
 in vec2 oe_tex_uv;
 flat in uint64_t oe_albedo_tex;
@@ -125,6 +130,7 @@ in vec3 vp_VertexView;
 
 #define OE_A2C_ADJUSTMENT 0.275
 
+#pragma import_defines(OE_TWEAKABLE)
 #ifdef OE_TWEAKABLE
 #define tweakable uniform
 #else
@@ -132,7 +138,7 @@ in vec3 vp_VertexView;
 #endif
 
 tweakable float oe_veg_bbd0 = 0.5;
-tweakable float oe_veg_bbd1 = 0.65;
+tweakable float oe_veg_bbd1 = 0.75;
 
 
 void oe_vegetation_fs(inout vec4 color)

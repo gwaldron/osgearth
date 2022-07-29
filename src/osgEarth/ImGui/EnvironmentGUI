@@ -46,6 +46,16 @@ uniform sampler3D OE_WIND_TEX;
 uniform mat4 OE_WIND_TEX_MATRIX;
 uniform vec3 oe_Camera;
 uniform float osg_FrameTime;
+
+#pragma import_defines(OE_TWEAKABLE)
+#ifdef OE_TWEAKABLE
+#define tweakable uniform
+#else
+#define tweakable const
+#endif
+tweakable float oe_wind_power = 1.0;
+
+#define MAX_WIND_SPEED 50.0
 #endif
 
 void oeui_render_wind_texture(inout vec4 color)
@@ -54,6 +64,7 @@ void oeui_render_wind_texture(inout vec4 color)
 
   #ifdef OE_WIND_TEX
     vec4 texel = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX*vec4(viewpos3_wind,1)));
+    float speed = texel.a * oe_wind_power;
 
     vec3 wind_view = 2.0*texel.xyz - 1.0;
     vec3 wind_clip = mat3(gl_ProjectionMatrix) * wind_view;
@@ -63,13 +74,13 @@ void oeui_render_wind_texture(inout vec4 color)
     vec2 rv = normalize(wind_screen);
     vec2 coordProj = mat2(rv.x, -rv.y, rv.y, rv.x) * coord;
 
-    const float oe_wind_animation_speed = 32.0;
+    const float oe_wind_animation_speed = 2.8 * MAX_WIND_SPEED * speed; // 32.0
     int cx = int(coordProj.x - int(osg_FrameTime*oe_wind_animation_speed));
     int ci = cx % 32;
     const int stipple = 0x00000001;
     int pattern32 = 0xffffffff & (stipple & (1 << ci));
     if (pattern32 != 0)
-        frag_out = vec4(1,1,0,1);
+        frag_out = vec4(0.5,0.5,1,0.5);
   #endif
 }
 )";

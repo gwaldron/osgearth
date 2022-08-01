@@ -53,11 +53,49 @@ AssetGroup::name(AssetGroup::Type group)
         std::string("undefined");
 }
 
+std::vector<std::string>
+AssetTraits::getPermutations(const std::vector<std::string>& input)
+{
+    std::vector<std::string> sorted = input;
+    std::sort(sorted.begin(), sorted.end());
+
+    std::vector<std::string> result;
+
+    std::ostringstream buf;
+
+    for (int first = 0; first < sorted.size(); ++first)
+    {
+        for(int last = first; last < sorted.size(); ++last)
+        {
+            buf.str("");
+            for (int i = first; i <= last; ++i)
+            {
+                if (i > first) buf << ",";
+                buf << sorted[i];
+            }
+            result.push_back(buf.str());
+        }
+    }
+
+    return std::move(result);
+}
+
+std::string
+AssetTraits::toString(const std::vector<std::string>& traits)
+{
+    std::ostringstream buf;
+    for (int i = 0; i < traits.size(); ++i)
+    {
+        if (i > 0) buf << ',';
+        buf << traits[i];
+    }
+    return buf.str();
+}
 
 ModelAsset::ModelAsset(const Config& conf)
 {
     scale().setDefault(1.0f);
-    stiffness().setDefault(0.0f);
+    stiffness().setDefault(0.5f);
 
     conf.get("url", modelURI());
     conf.get("name", name());
@@ -517,7 +555,7 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
         // traverse "up" through the parent biomes to find them all.
         std::unordered_map<
             std::string,
-            std::set<Biome::ModelAssetToUse>[NUM_ASSET_GROUPS]> traits_table;
+            std::set<Biome::ModelAssetToUse>[NUM_ASSET_GROUPS]> lookup_table;
 
         for(const Biome* biome_ptr = &biome; 
             biome_ptr != nullptr;
@@ -529,10 +567,10 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
                 int count = 0;
                 for (auto& asset_ptr : assetsToUse)
                 {
-                    const std::string& traits = asset_ptr.asset()->traits().get();
-                    if (!traits.empty())
+                    auto permutations = AssetTraits::getPermutations(asset_ptr.asset()->traits());
+                    for (auto& permutation : permutations)
                     {
-                        traits_table[traits][g].insert(asset_ptr);
+                        lookup_table[permutation][g].insert(asset_ptr);
                     }
                 }
             }
@@ -540,13 +578,13 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
 
         // for each filter found, make a new subbiome and copy all the corresponding
         // assets to it.
-        for(auto& iter : traits_table)
+        for(auto& iter : lookup_table)
         {
-            const std::string& traits = iter.first;
-            auto& traits_asset_groups = iter.second;
+            const std::string& permutation = iter.first;
+            auto& trait_asset_groups = iter.second;
 
-            // create a new biome for this traits if it doesn't already exist:
-            std::string sub_biome_id = biome.id().get() + "." + traits;
+            // create a new biome for this traits permutation if it doesn't already exist:
+            std::string sub_biome_id = biome.id().get() + "." + permutation;
             const Biome* sub_biome = getBiome(sub_biome_id);
             if (sub_biome == nullptr)
             {
@@ -555,8 +593,10 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
                 Biome& new_biome = _biomes_by_index[new_index];
                 new_biome._index = new_index;
 
+                _biomes_by_id[sub_biome_id] = &new_biome;
                 new_biome.id() = sub_biome_id;
-                new_biome.name() = biome.name().get() + " (" + traits + ")";
+
+                new_biome.name() = biome.name().get() + " (" + permutation + ")";
 
                 // marks this biome as one that was derived from traits data,
                 // not defined by the configuration.
@@ -576,12 +616,12 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
                     const Biome* parent = getBiome(ptr->parentId().get());
                     if (parent)
                     {
-                        // find a selector variation of the natural parent. If found, success.
-                        std::string parent_with_traits_id = parent->id().get() + "." + traits;
-                        const Biome* temp = getBiome(parent_with_traits_id);
+                        // find a traits-variation of the natural parent. If found, success.
+                        std::string parent_with_traits = parent->id().get() + "." + permutation;
+                        const Biome* temp = getBiome(parent_with_traits);
                         if (temp)
                         {
-                            new_biome.parentId() = parent_with_traits_id;
+                            new_biome.parentId() = parent_with_traits;
                             new_biome._parentBiome = temp;
                             break;
                         }
@@ -591,10 +631,10 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
                     ptr = parent;
                 }
 
-                // copy over asset pointers for each asset matching the traits
+                // copy over asset pointers for each asset matching the trait
                 for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
                 {
-                    for (auto& asset_ptr : traits_asset_groups[i])
+                    for (auto& asset_ptr : trait_asset_groups[i])
                     {
                         new_biome._assetsToUse[i].push_back(asset_ptr);
                     }

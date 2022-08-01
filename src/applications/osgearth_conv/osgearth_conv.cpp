@@ -31,6 +31,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/OGRFeatureSource>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/TileEstimator>
 
 #include <osg/ArgumentParser>
 #include <osg/Timer>
@@ -73,7 +74,7 @@ struct ImageLayerTileCopy : public TileHandler
         //nop
     }
 
-    bool handleTile(const TileKey& key, const TileVisitor& tv)
+    bool handleTile(const TileKey& key, const TileVisitor& tv) override
     {
         bool ok = false;
 
@@ -105,9 +106,26 @@ struct ImageLayerTileCopy : public TileHandler
         return ok;
     }
 
-    bool hasData(const TileKey& key) const
+    bool hasData(const TileKey& key) const override
     {
         return _source->mayHaveData(key);
+    }
+
+    unsigned getEstimatedTileCount(
+        const std::vector<GeoExtent>& extents,
+        unsigned minLevel,
+        unsigned maxLevel) const override
+    {
+        TileEstimator e;
+        e.setMinLevel(minLevel);
+        e.setMaxLevel(maxLevel);
+        e.setProfile(_dest->getProfile());
+        for (auto& src_extent : extents)
+        {
+            auto dest_extent = _dest->getProfile()->clampAndTransformExtent(src_extent);
+            e.addExtent(dest_extent);
+        }
+        return e.getNumTiles();
     }
 
     osg::ref_ptr<ImageLayer> _source;
@@ -125,7 +143,7 @@ struct ElevationLayerTileCopy : public TileHandler
         //nop
     }
 
-    bool handleTile(const TileKey& key, const TileVisitor& tv)
+    bool handleTile(const TileKey& key, const TileVisitor& tv) override
     {
         bool ok = false;
 
@@ -156,9 +174,26 @@ struct ElevationLayerTileCopy : public TileHandler
         return ok;
     }
 
-    bool hasData(const TileKey& key) const
+    bool hasData(const TileKey& key) const override
     {
         return _source->mayHaveData(key);
+    }
+
+    unsigned getEstimatedTileCount(
+        const std::vector<GeoExtent>& extents,
+        unsigned minLevel,
+        unsigned maxLevel) const override
+    {
+        TileEstimator e;
+        e.setMinLevel(minLevel);
+        e.setMaxLevel(maxLevel);
+        e.setProfile(_dest->getProfile());
+        for (auto& src_extent : extents)
+        {
+            auto dest_extent = _dest->getProfile()->clampAndTransformExtent(src_extent);
+            e.addExtent(dest_extent);
+        }
+        return e.getNumTiles();
     }
 
     osg::ref_ptr<ElevationLayer> _source;
@@ -187,29 +222,42 @@ struct ProgressReporter : public osgEarth::ProgressCallback
         }
         osg::Timer_t now = osg::Timer::instance()->tick();
 
+        if (total > 0.0f)
+        {
+            float percentage = current / total;
 
+            double timeSoFar = osg::Timer::instance()->delta_s(_start, now);
+            double projectedTotalTime = timeSoFar / percentage;
+            double timeToGo = projectedTotalTime - timeSoFar;
+            double minsToGo = timeToGo / 60.0;
+            double secsToGo = fmod(timeToGo, 60.0);
+            double minsTotal = projectedTotalTime / 60.0;
+            double secsTotal = fmod(projectedTotalTime, 60.0);
 
-        float percentage = current/total;
+            std::cout
+                << std::fixed
+                << std::setprecision(1) << "\r"
+                << (int)current << "/" << (int)total
+                << " " << int(100.0f*percentage) << "% complete, "
+                << (int)minsTotal << "m" << (int)secsTotal << "s projected, "
+                << (int)minsToGo << "m" << (int)secsToGo << "s remaining          "
+                << std::flush;
 
-        double timeSoFar = osg::Timer::instance()->delta_s(_start, now);
-        double projectedTotalTime = timeSoFar/percentage;
-        double timeToGo = projectedTotalTime - timeSoFar;
-        double minsToGo = timeToGo/60.0;
-        double secsToGo = fmod(timeToGo,60.0);
-        double minsTotal = projectedTotalTime/60.0;
-        double secsTotal = fmod(projectedTotalTime,60.0);
+            if (percentage >= 100.0f)
+                std::cout << std::endl;
+        }
+        else
+        {
 
-        std::cout
-            << std::fixed
-            << std::setprecision(1) << "\r"
-            << (int)current << "/" << (int)total
-            << " " << int(100.0f*percentage) << "% complete, "
-            << (int)minsTotal << "m" << (int)secsTotal << "s projected, "
-            << (int)minsToGo << "m" << (int)secsToGo << "s remaining          "
-            << std::flush;
+            double timeSoFar = osg::Timer::instance()->delta_s(_start, now);
 
-        if ( percentage >= 100.0f )
-            std::cout << std::endl;
+            std::cout
+                << std::fixed
+                << std::setprecision(1) << "\r"
+                << (int)current << "/" << (int)total
+                << " " << timeSoFar << "s elapsed"
+                << std::flush;
+        }
 
         return false;
     }
@@ -474,18 +522,19 @@ main(int argc, char** argv)
             overwrite));
     }
 
-    // set the manula extents, if specified:
+    // set the manual extents, if specified:
     bool userSetExtents = false;
     double minlat, minlon, maxlat, maxlon;
     while( args.read("--extents", minlat, minlon, maxlat, maxlon) )
     {
         GeoExtent extent(SpatialReference::get("wgs84"), minlon, minlat, maxlon, maxlat);
-        visitor->addExtent( extent );
+        visitor->addExtentToVisit( extent );
         userSetExtents = true;
     }
 
     // Read in an index shapefile to drive where to tile
     std::string index;
+
     while (args.read("--index", index))
     {
         osg::ref_ptr< OGRFeatureSource > indexFeatures = new OGRFeatureSource;
@@ -502,8 +551,9 @@ main(int argc, char** argv)
             osg::ref_ptr< Feature > feature = cursor->nextFeature();
             osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
             GeoExtent ext(feature->getSRS(), featureBounds);
-            ext = ext.transform(mapNode->getMapSRS());
-            visitor->addDataExtent(ext);
+            ext = input->getProfile()->clampAndTransformExtent(ext);
+
+            visitor->addExtentToDataIndex(ext);
         }
     }
 
@@ -517,18 +567,17 @@ main(int argc, char** argv)
     // figure out the max source level:
     if ( !minLevelSet || !maxLevelSet )
     {
-        for(DataExtentList::const_iterator i = input->getDataExtents().begin();
-            i != input->getDataExtents().end();
-            ++i)
+        for(auto& de : input->getDataExtents())
         {
-            if ( !maxLevelSet && i->maxLevel().isSet() && i->maxLevel().value() > maxLevel )
-                maxLevel = i->maxLevel().value();
-            if ( !minLevelSet && i->minLevel().isSet() && i->minLevel().value() < minLevel )
-                minLevel = i->minLevel().value();
+            if ( !maxLevelSet && de.maxLevel().isSet() && de.maxLevel().get() > maxLevel )
+                maxLevel = de.maxLevel().get();
+
+            if ( !minLevelSet && de.minLevel().isSet() && de.minLevel().get() < minLevel )
+                minLevel = de.minLevel().get();
 
             if (userSetExtents == false)
             {
-                visitor->addExtent(*i);
+                visitor->addExtentToVisit(de);
             }
         }
     }

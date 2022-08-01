@@ -1,8 +1,22 @@
 # FAQ
 
+## Runtime
+
+#### Error: 'gl_ModelViewMatrix is removed after version 140'
+
+osgEarth requires that you link against OpenSceneGraph that was built with support for OpenGL 3+. If you are building OSG yourself, be sure to set the CMake flag `OSG_GL3_AVAILABLE=ON`.
+
+The most common symptom is error messages like this:
+```
+VERTEX Shader "oe_rex_morph" infolog:
+0(94) : error C7616: global variable gl_ModelViewMatrix is removed after version 140
+0(124) : error C7616: global variable gl_MultiTexCoord1 is removed after version 140
+0(125) : error C7616: global variable gl_MultiTexCoord2 is removed after version 140
+```
+
 ## Earth File
 
-#### How do I place a 3D object on the map in an Earth File?
+#### Placing a 3D model in the Earth File
 
 You can place an object as an `Annotation`. Annotations must live inside an `Annotations` layer. With this approach is that you can model symbology to style your model. This approach looks like this:
 ```xml
@@ -29,7 +43,7 @@ Please refer rhe various `feature` earth files in the repository for more inform
 
 ## API
 
-#### How do I place a 3D model on the map using the API?
+#### Placing a 3D model using the API
 
 The `osgEarth::GeoTransform` class inherits from `osg::Transform` and will convert map coordinates into OSG world coordinates for you. Place an object at a geospatial position like this:
 ```c++
@@ -55,8 +69,8 @@ The `srs` object in these examples is the `SpatialReference` of the coordinates.
 auto srs = SpatialReference::get("wgs84");
 ```
 
-
-#### Why does my model have no texture or lighting?
+---
+#### Models have no textures or lighting
 
 Everything under an osgEarth scene graph is rendered with shaders. So, when using your own models (or creating geometry by hand) you need to create shader components in order for them to render properly.
 
@@ -70,8 +84,8 @@ osgEarth::Registry::shaderGenerator().run( myNode );
 After that, your node will contain shader snippets that allows osgEarth to render it properly and for it to work with other osgEarth features like sky lighting.
 
 
-
-#### Why are my Lines or Annotations not rendering?
+---
+#### Lines or Annotations do not render
 
 Lines render using a shader that requires some initial state to be set. You can apply this state to your top-level camera (or anywhere else above the geometry) like so:
 
@@ -104,8 +118,8 @@ GLUtils::setGlobalDefaults(group->getOrCreateStateSet());
 Again: `MapNode` does all this automatically so this is only necessary if you do not place your annotations as descendants of the `MapNode`.
 
 
-
-#### Text annotations (LabelNode, PlaceNode) are not rendering. Why?
+---
+#### Text annotations (LabelNode, PlaceNode) are not rendering
 
 Rendering text requires that you disable OSG's small-feature culling like so:
 
@@ -115,8 +129,27 @@ view->getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 Note: you must do this for each camera.
 
 
+---
+#### Rendering problems when using the Qt QOpenGLWidget
+
+In your custom `QOpenGLWidget::paintGL()` method, do the following before making any OpenSceneGraph calls:
+
+```c++
+void MyQOpenGLWidget::paintGL()
+{
+   _viewer->getCamera()->getGraphicsContext()->setDefaultFboId(defaultFramebufferObject());
+   ...
+}
+```
+
+In this example `_viewer` refers to an `osgViewer::Viewer`, but any method of accessing the current `osg::Camera` will do.
+
+Here's a more detailed explanation: 
+
+The Qt5 `QOpenGLWidget` renders to an OpenGL framebuffer object (FBO). When you embed an OpenSceneGraph viewer in a `QOpenGLWidget`, OSG does not know about that FBO. It just assumes it's rendering to a display device directly. Some features in osgEarth or OpenSceneGraph also use an FBO for rendering - examples include feature draping and shadowing - and OSG has no way of knowing it needs to reactivate Qt's FBO rendering target afterwards. This can result in a blank display or other rendering issues. Calling `setDefaultFboId` lets OSG know how to reset the rendering target properly.
 
 
+---
 ## Community and Support
 
 #### What is the best practice for using GitHub?

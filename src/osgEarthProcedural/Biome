@@ -57,6 +57,20 @@ namespace osgEarth
         };
 
         /**
+         * Holds a collection of asset traits, which can 
+         * "filter" assets into particular biomes.
+         */
+        class OSGEARTHPROCEDURAL_EXPORT AssetTraits
+        {
+        public:
+            static std::vector<std::string>
+                getPermutations(const std::vector<std::string>& traits);
+
+            static std::string
+                toString(const std::vector<std::string>& traits);
+        };
+
+        /**
          * Individual artwork asset that lives in the AssetCatalog.
          * This structure defines the asset only; it does not contain
          * the actual loaded asset data like the 3D model or billboard
@@ -100,8 +114,8 @@ namespace osgEarth
             //! Default is 0.
             OE_OPTION(float, stiffness);
 
-            //! User-defined traits string
-            OE_OPTION(std::string, traits);
+            //! User-defined traits string (comma-delimited)
+            OE_PROPERTY(std::vector<std::string>, traits);
 
             //! Asset group to which this model belongs.
             OE_PROPERTY(AssetGroup::Type, group);

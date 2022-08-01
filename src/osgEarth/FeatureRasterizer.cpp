@@ -69,8 +69,9 @@ namespace osgEarth {
                 do
                 {
                     unsigned char cover = *covers++;
-                    int hasData = cover > 127;
-                    *f++ = hasData ? c.value : NO_DATA_VALUE;
+                    if (cover > 0)
+                        *f = c.value;
+                    f++;
                 } while (--count);
             }
 

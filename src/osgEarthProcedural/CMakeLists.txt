@@ -13,7 +13,8 @@ set(OSGEARTHPROCEDURAL_LIBRARY ${LIB_NAME})
 # shaders:
 set(TARGET_GLSL
     Procedural.Vegetation.glsl
-    Procedural.TextureSplatting.glsl)
+    Procedural.TextureSplatting.glsl
+    Procedural.HexTiling.glsl )
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 

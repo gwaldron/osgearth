@@ -140,7 +140,7 @@ namespace
 
         void setupPerCameraState(const osg::Camera* camera);
         void streamDataToGPU(osg::RenderInfo& ri, GLObjects& globjects) const;
-        void updateBuffers(CameraState&, const osg::Camera*);
+        void updateBuffers(CameraState&, osgUtil::CullVisitor*, const SpatialReference* srs);
 
         void drawImplementation(osg::RenderInfo& ri) const override;
         void releaseGLObjects(osg::State* state) const override;
@@ -258,7 +258,10 @@ namespace
         }
     }
 
-    void WindDrawable::updateBuffers(CameraState& cs, const osg::Camera* camera)
+    void WindDrawable::updateBuffers(
+        CameraState& cs,
+        osgUtil::CullVisitor* cv,
+        const SpatialReference* srs)
     {
         if (cs._numWindsAllocated < _winds.size()+1)
         {
@@ -272,6 +275,13 @@ namespace
             cs._numWindsAllocated = _winds.size()+1;
         }
 
+        const osg::Matrix& vm = cv->getCurrentCamera()->getViewMatrix();
+        const osg::Matrix& mvm = *cv->getModelViewMatrix();
+        const osg::Matrix ivm = cv->getCurrentCamera()->getInverseViewMatrix();
+        const SpatialReference* worldSRS = srs->isGeographic() ? srs->getGeocentricSRS() : srs;
+        osg::Matrix local2world;
+        worldSRS->createLocalToWorld(osg::Vec3d() * ivm, local2world);
+
         size_t i;
         for(i=0; i<_winds.size(); ++i)
         {
@@ -280,7 +290,7 @@ namespace
             if (wind->type() == Wind::TYPE_POINT)
             {
                 // transform from world to camera-view space
-                osg::Vec3d posView =  wind->getPointWorld() * camera->getViewMatrix();
+                osg::Vec3d posView = wind->getPointWorld() * mvm;
 
                 cs._windData[i].position[0] = posView.x();
                 cs._windData[i].position[1] = posView.y();
@@ -289,11 +299,14 @@ namespace
             }
             else // TYPE_DIRECTIONAL
             {
-                // transform from world to camera-view space
-                osg::Vec3f dir;
+                // direction is a local tangent space vector:
+                osg::Vec3d dir;
                 dir.x() = wind->direction()->x();
                 dir.y() = wind->direction()->y();
-                dir = osg::Matrixf::transform3x3(dir, camera->getViewMatrix());
+
+                // transform it from local tangent space to view space:
+                dir = osg::Matrixd::transform3x3(dir, local2world * mvm);
+
                 dir.normalize();
 
                 cs._windData[i].direction[0] = dir.x();
@@ -538,6 +551,8 @@ WindLayer::prepareForRendering(TerrainEngine* engine)
     {
         addWind(options().winds()[i].get());
     }
+
+    _srs = engine->getMap()->getSRS();
 }
 
 osg::StateSet*
@@ -594,7 +609,7 @@ WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
     textureToCamView.invert(camViewToTexture);
     cs._texToViewMatrix->set(textureToCamView);
 
-    windDrawable->updateBuffers(cs, camera);
+    windDrawable->updateBuffers(cs, cv, _srs.get());
 
     return cs._sharedStateSet.get();
 }

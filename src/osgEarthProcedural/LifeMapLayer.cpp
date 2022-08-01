@@ -578,7 +578,7 @@ LifeMapLayer::createImageImplementation(
         }
     }
 
-    std::minstd_rand0 gen(key.hash());
+    std::minstd_rand gen(key.hash());
 
     GeoImage result(image.get(), extent);
 

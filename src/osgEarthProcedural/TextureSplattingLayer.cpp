@@ -57,6 +57,7 @@ TextureSplattingLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
     conf.set("num_levels", numLevels());
+    conf.set("use_hex_tiler", useHexTiler());
     return conf;
 }
 
@@ -64,7 +65,9 @@ void
 TextureSplattingLayer::Options::fromConfig(const Config& conf)
 {
     numLevels().setDefault(1);
+    useHexTiler().setDefault(false);
     conf.get("num_levels", numLevels());
+    conf.get("use_hex_tiler", useHexTiler());
 }
 
 //........................................................................
@@ -186,13 +189,6 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                 result->_textureScales->setNumElements(
                     assets.getMaterials().size() * tile_height_m.size());
 
-                //if (assets.getLifeMapMatrixHeight() * assets.getLifeMapMatrixWidth() !=
-                //    assets.getLifeMapMatrix().size())
-                //{
-                //    OE_WARN << LC0 << "Configuration error: LifeMapTextures count does not match width*height"
-                //        << std::endl;
-                //    return nullptr;
-                //}
                 int ptr0 = 0;
                 int ptr1 = assets.getMaterials().size();
 
@@ -304,6 +300,11 @@ TextureSplattingLayer::buildStateSets()
         ss->setDefine(
             "OE_SPLAT_NUM_LEVELS",
             std::to_string(clamp(options().numLevels().get(), 1, 2)));
+
+        if (options().useHexTiler() == true)
+        {
+            ss->setDefine("OE_SPLAT_HEX_TILER", "1");
+        }
     }
 }
 

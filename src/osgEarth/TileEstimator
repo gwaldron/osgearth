@@ -20,8 +20,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef OSGEARTH_CACHEESTIMATOR_H
-#define OSGEARTH_CACHEESTIMATOR_H 1
+#ifndef OSGEARTH_TileEstimator_H
+#define OSGEARTH_TileEstimator_H 1
 
 #include <osgEarth/Common>
 #include <osgEarth/Profile>
@@ -31,15 +31,14 @@ namespace osgEarth { namespace Util
     using namespace osgEarth;
 
     /**
-     * A simple tool used for estimating the size of a cache seed operation.
-     * This provides a ROUGH estimate intended to provide a quick reality check before performing a cache operation.   
-     * If you see that a cache operation is going to generate 15TB of data and take 10 years to run you might want to think before running
-     * it or at least be prepared to make an extra cup of coffee.
+     * Utility for estimating the size of a tiling operation.
+     * This provides a ROUGH estimate that you can use for progress reporting
+     * or disk use projections.
      */
-    class OSGEARTH_EXPORT CacheEstimator
+    class OSGEARTH_EXPORT TileEstimator
     {
     public:
-        CacheEstimator();
+        TileEstimator();
 
         /**
         * Sets the minimum level to seed to

@@ -112,7 +112,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 {
     // defaults:
     alphaToCoverage().setDefault(true);
-    gravity().setDefault(0.0125f);
+    gravity().setDefault(0.125f);
 
     colorLayer().get(conf, "color_layer");
     biomeLayer().get(conf, "biomes_layer");    
@@ -194,7 +194,7 @@ VegetationLayer::LayerAcceptor::acceptLayer(
 bool
 VegetationLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 {
-     return _layer->hasEnabledGroupAtLOD(key.getLOD());
+    return _layer->hasEnabledGroupAtLOD(key.getLOD());
 }
 
 //........................................................................
@@ -736,7 +736,6 @@ VegetationLayer::configureTrees()
                 };
                 osg::Vec3f normals[4] = {
                     {-1,-1,2}, {1,-1,2}, {1,1,2}, {-1,1,2}
-                    //{0,0,1}, {0,0,1}, {0,0,1}, {0,0,1}
                 };
                 for (int i = 0; i < 4; ++i) normals[i].normalize();
 
@@ -834,17 +833,9 @@ VegetationLayer::configureGrass()
         out_geom->setTexCoordArray(3, flex);
 
         const osg::Vec3f face_vec(0, -1, 0);
-        //const float gravity = options().grativy().get(); // 0.0; // 0.025;
 
         for (int i = 0; i < 16; ++i)
         {
-            float bend_power = pow(3.0f*(*uvs)[i].y() + 0.8f, 2.0f);
-            osg::Vec3f bend_vec = face_vec * gravity * bend_power;
-            float bend_len = bend_vec.length();
-            if (bend_len > (*verts)[i].z())
-                bend_vec = (bend_vec/bend_len) * (*verts)[i].z();
-
-            (*verts)[i] += bend_vec; // initial gravity bend :)
             if (i < 4) {
                 (*normals)[i] = up;
                 (*flex)[i].set(0, 0, 0); // no flex
@@ -854,7 +845,7 @@ VegetationLayer::configureGrass()
                 (*normals)[i].normalize();
                 (*flex)[i] = ((*verts)[i] - (*verts)[i - 4]);
                 (*flex)[i].normalize();
-                (*flex)[i] *= (*uvs)[i].y();
+                (*flex)[i] *= accel((*uvs)[i].y());
             }
         }
 
@@ -946,10 +937,7 @@ VegetationLayer::reset()
     _lastVisit.setReferenceTime(DBL_MAX);
     _lastVisit.setFrameNumber(~0U);
 
-    OE_SOFT_ASSERT_AND_RETURN(getBiomeLayer(), void());
-
-    BiomeManager& biomeMan = getBiomeLayer()->getBiomeManager();
-    _biomeRevision = biomeMan.getRevision();
+    _biomeRevision = 0;
 
     _assets.scoped_lock([this]()
         {
@@ -1129,9 +1117,9 @@ VegetationLayer::getAssetPlacements(
     std::minstd_rand0 gen(key.hash());
     std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
 
-    // approxiate area of the tile in km
+    // approximate area of the tile in km
     GeoCircle c = key.getExtent().computeBoundingGeoCircle();
-    double x = c.getRadius()*0.001 * 2.8284271247;
+    double x = 0.001 * c.getRadius() * 2.8284271247;
     double area_sqkm = x * x;
 
     unsigned max_instances = 
@@ -1199,9 +1187,10 @@ VegetationLayer::getAssetPlacements(
         auto iter = groupAssets.find(biome);
         if (iter == groupAssets.end())
         {
-            OE_WARN << "no assets found for biome " << biome->id().get() << "...skipping" << std::endl;
+            OE_DEBUG << "no assets found for biome " << biome->id().get() << "...skipping" << std::endl;
             //biome = default_biome;
-            continue;
+            return false;
+            //continue;
         }
 
         // sample the noise texture at this (u,v)

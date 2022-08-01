@@ -166,43 +166,36 @@ ElevationTexture::generateNormalMap(
     void* workingSet,
     ProgressCallback* progress)
 {
+    ScopedMutexLock lock(_mutex);
+
     if (!_normalTex.valid())
     {        
-        ScopedMutexLock lock(_mutex);
-
-        // one thread allowed to generate the normal map
-        //static Gate<void*> s_thisGate("OE.ElevTexNormalMap");
-        //ScopedGate<void*> lockThis(s_thisGate, this);
-
-        if (!_normalTex.valid())
-        {
 #ifdef USE_RUGGEDNESS
-            if (!_ruggedness.valid())
-            {
-                _ruggedness = new osg::Image();
-                _ruggedness->allocateImage(_read.s(), _read.t(), 1, GL_RED, GL_UNSIGNED_BYTE);
-                _readRuggedness.setImage(_ruggedness.get());
-                _readRuggedness.setBilinear(true);
-            }
+        if (!_ruggedness.valid())
+        {
+            _ruggedness = new osg::Image();
+            _ruggedness->allocateImage(_read.s(), _read.t(), 1, GL_RED, GL_UNSIGNED_BYTE);
+            _readRuggedness.setImage(_ruggedness.get());
+            _readRuggedness.setBilinear(true);
+        }
 #endif
 
-            NormalMapGenerator gen;
+        NormalMapGenerator gen;
 
-            _normalTex = gen.createNormalMap(
-                getTileKey(),
-                map,
-                workingSet,
-                _ruggedness.get(),
-                progress);
+        _normalTex = gen.createNormalMap(
+            getTileKey(),
+            map,
+            workingSet,
+            _ruggedness.get(),
+            progress);
 
-            if (_normalTex.valid())
-            {
-                // these are pooled, so do not expire them.
-                _normalTex->setUnRefImageDataAfterApply(false);
+        if (_normalTex.valid())
+        {
+            // these are pooled, so do not expire them.
+            _normalTex->setUnRefImageDataAfterApply(false);
 
-                _readNormal.setImage(_normalTex->getImage());
-                _readNormal.setBilinear(true);
-            }
+            _readNormal.setImage(_normalTex->getImage());
+            _readNormal.setBilinear(true);
         }
     }
 }

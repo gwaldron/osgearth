@@ -1,7 +1,7 @@
 #pragma vp_name Texture Splatter VV
 #pragma vp_function oe_splat_View, vertex_view
 
-#pragma import_defines(OE_SPLAT_TWEAKS)
+#pragma import_defines(OE_TWEAKABLE)
 #pragma import_defines(OE_SPLAT_NUM_LEVELS)
 #pragma import_defines(OE_SNOW)
 
@@ -20,7 +20,7 @@ out float oe_elev;
 float oe_terrain_getElevation();
 #endif
 
-#ifdef OE_SPLAT_TWEAKS
+#ifdef OE_TWEAKABLE
 #define tweakable uniform
 #else
 #define tweakable const
@@ -58,15 +58,17 @@ void oe_splat_View(inout vec4 vertex_view)
 //#pragma import_defines(OE_TEX_DIM_Y)
 #define OE_TEX_DIM_Y 2
 
-#pragma import_defines(OE_SPLAT_TWEAKS)
+#pragma import_defines(OE_TWEAKABLE)
 #pragma import_defines(OE_LIFEMAP_DIRECT)
 //#pragma import_defines(OE_SNOW)
+
+#pragma include Procedural.HexTiling.glsl
 
 layout(binding = 5, std430) buffer SplatTextureArena {
     uint64_t texHandle[];
 };
 
-uniform float oe_texScale[OE_TEX_DIM_X*OE_TEX_DIM_Y];
+uniform float oe_texScale[128];
 
 #define RUGGED 0
 #define DENSE 1
@@ -166,15 +168,31 @@ void get_coord(out vec2 coord, in int index, in int level)
     coord = a + b;
 }
 
+#pragma import_defines(OE_SPLAT_HEX_TILER)
+#ifndef OE_SPLAT_HEX_TILER
+#define OE_SPLAT_HEX_TILER 0
+#endif
+
 void get_pixel(out Pixel res, in int index, in vec2 coord)
 {
+#if OE_SPLAT_HEX_TILER == 1
+    ht_hex2colTex_no_rot(res.rgbh, sampler2D(texHandle[index * 2]), coord);
+    vec4 temp;
+    ht_hex2colTex_no_rot(temp, sampler2D(texHandle[index * 2 + 1]), coord);
+#elif OE_SPLAT_HEX_TILER == 2
+    ht_hex2colTex(res.rgbh, sampler2D(texHandle[index * 2]), coord, 1.0); // hex_rot);
+    vec4 temp;
+    ht_hex2colTex(temp, sampler2D(texHandle[index * 2 + 1]), coord, 1.0); // hex_rot);
+#else
     res.rgbh = texture(sampler2D(texHandle[index * 2]), coord);
     vec4 temp = texture(sampler2D(texHandle[index * 2 + 1]), coord);
+#endif
+
     res.normal = unpackNormal(temp);
     res.material = vec3(temp[2], temp[3], 0.0); // roughness, ao, metal
 }
 
-float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2, in float roughness)
+float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2)
 {
     float d = oe_depth;
     // https://tinyurl.com/y5nkw2l9
@@ -212,22 +230,21 @@ void resolveRow(out Pixel result, int level, int row, float xvar)
     get_coord(coord, i, level);
     get_pixel(p2, i, coord);
 
-    // blend them using both heightmap and roughness:
-    float r = max(p1.material[ROUGHNESS], p2.material[ROUGHNESS]);
-    float m = heightAndEffectMix(p1.rgbh.a, 1.0 - x_mix, p2.rgbh.a, x_mix, r);
+    // blend them using both heightmap:
+    float m = heightAndEffectMix(p1.rgbh[3], 1.0 - x_mix, p2.rgbh[3], x_mix);
     pixmix(result, p1, p2, m);
 }
 
-void resolveLevel(out Pixel result, int level, float rugged, float lush, float dense, int material)
+void resolveLevel(out Pixel result, int level, float rugged, float lush, float dense, int material_index)
 {
     // resolve the substrate (dirt and rocks)
     Pixel substrate;
 
-    if (material > 0)
+    if (material_index > 0)
     {
         vec2 coord;
-        get_coord(coord, material - 1, 0);
-        get_pixel(substrate, material - 1, coord);
+        get_coord(coord, material_index - 1, 0);
+        get_pixel(substrate, material_index - 1, coord);
     }
     else
     {
@@ -240,9 +257,8 @@ void resolveLevel(out Pixel result, int level, float rugged, float lush, float d
 
     // use density to modulate the depth blend between the two.
     float m = heightAndEffectMix(
-        substrate.rgbh[3], 1.0-dense,
-        surface.rgbh[3], dense,
-        1.0);
+        substrate.rgbh[3], 1.0 - dense,
+        surface.rgbh[3], dense);
 
     if (level == 0)
     {
@@ -271,13 +287,13 @@ void oe_splat_Frag(inout vec4 quad)
 
     ivec2 tfc = ivec2(min(int(c.x*256.0), 255), min(int(c.y*256.0), 255));
     vec4 life_i = texelFetch(OE_LIFEMAP_TEX, tfc, 0);
-    int material = int(life_i[3] * 255.0f);
+    int material_index = int(life_i[3] * 255.0f);
 
     // compute the pixel color:
     Pixel pixel;
     for (int level = 0; level < OE_SPLAT_NUM_LEVELS; ++level)
     {
-        resolveLevel(pixel, level, rugged, lush, dense, material);
+        resolveLevel(pixel, level, rugged, lush, dense, material_index);
     }
 
     // apply PBR

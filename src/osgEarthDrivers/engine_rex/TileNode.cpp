@@ -682,11 +682,13 @@ TileNode::createChildren()
 
                 auto createChildOperation = [context, tile_weakptr, childkey](Cancelable* state)
                 {
+                    CreateChildResult result;
+
                     osg::ref_ptr<TileNode> tile;
                     if (tile_weakptr.lock(tile) && !state->isCanceled())
-                        return tile->createChild(childkey, state);
-                    else
-                        return (TileNode*)nullptr;
+                        result = tile->createChild(childkey, state);
+
+                    return result;
                 };
 
                 Job job;

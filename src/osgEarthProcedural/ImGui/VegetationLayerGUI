@@ -83,9 +83,9 @@ namespace osgEarth {
                     {
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "LOD scales:");
                         osg::Vec4f sse_scales = _veglayer->getSSEScales();
-                        if (ImGui::SliderFloat("Near", &sse_scales[0], 0.5f, 2.0f))
+                        if (ImGui::SliderFloat("Near", &sse_scales[0], 0.0f, 2.0f))
                             _veglayer->setSSEScales(sse_scales);
-                        if (ImGui::SliderFloat("Far", &sse_scales[1], 0.5f, 2.0f))
+                        if (ImGui::SliderFloat("Far", &sse_scales[1], 0.0f, 2.0f))
                             _veglayer->setSSEScales(sse_scales);
 
                         static float bbd0 = 0.5f, bbd1 = 0.75f;

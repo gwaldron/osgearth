@@ -16,6 +16,7 @@ These are the public layer types native to osgEarth.
 | [Microsoft Bing](bing.html) | ($) Connects to Microsoft Bing service. License key required |
 | [Cesium Ion](cesiumion.html) | ($) Connects to a Cesium Ion server instance. License key required |
 | [ESRI ArcGIS Server](arcgis.html) | ($) Connects to an ESRI ArcGIS Server instance |
+| [MapboxGL](mapboxgl.html) | Rasterizes a MapboxGL map to an image layer. |
 
 
 ## Vector Data

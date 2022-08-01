@@ -6,7 +6,7 @@ These are the public layer types native to osgEarth.
 
 | Data Source | Description |
 | ----------- | ------------|
-| [GDAL](gdal.md) | Loads any imagery format supported by the GDAL library, including GeoTIFF |
+| [GDAL](gdal) | Loads any imagery format supported by the GDAL library, including GeoTIFF |
 | [MBTiles](mbtiles.md) | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
 | [TMS](tms.md) | Connects to a TMS (TileMapService) repository |
 | [WMS](wms.md) | OGC Web Map Service server |

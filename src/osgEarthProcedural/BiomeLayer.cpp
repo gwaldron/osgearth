@@ -84,7 +84,7 @@ BiomeLayer::init()
     // BiomeLayer is invisible AND shared by default.
     options().visible().setDefault(false);
     options().shared().setDefault(true);
-    options().minFilter().setDefault(osg::Texture::LINEAR);
+    options().minFilter().setDefault(osg::Texture::NEAREST);
     options().magFilter().setDefault(osg::Texture::NEAREST);
     options().textureCompression().setDefault("none");
 
@@ -217,6 +217,7 @@ BiomeLayer::createImageImplementation(
         return GeoImage::INVALID;
     }
 
+#if 1
     // check the cache:
     {
         ScopedMutexLock lock(_imageCache);
@@ -227,6 +228,7 @@ BiomeLayer::createImageImplementation(
             return GeoImage(image.get(), key.getExtent());
         }
     }
+#endif
 
     // allocate a 16-bit image so we can represent 32K biomes
     osg::ref_ptr<osg::Image> image = new osg::Image();
@@ -353,6 +355,8 @@ BiomeLayer::createImageImplementation(
             int biome_index = biome ? biome->index() : 0;
             value.r() = (float)biome_index;
             write(value, iter.s(), iter.t());
+
+            biome_indices_seen.insert(biome_index);
         });
 
     GeoImage result(image.get(), key.getExtent());
@@ -366,17 +370,19 @@ BiomeLayer::createImageImplementation(
     if (!missing_biomes.empty())
     {
         std::ostringstream buf;
-        buf << "Undefined biomes detected: ";
+        buf << "Tile " << key.str() << " has biome(s) with no assets: ";
         for (auto i : missing_biomes)
             buf << i << ' ';
         OE_WARN << LC << buf.str() << std::endl;
     }
 
-    // cache:
+#if 1
+    // local cache:
     {
         ScopedMutexLock lock(_imageCache);
         _imageCache[key] = image.get();
     }
+#endif
 
     return result;
 }

@@ -102,24 +102,7 @@ BiomeManager::ref(const Biome* biome)
     if (item.first->second == 1) // ref count of 1 means it's new
     {
         ++_revision;
-        OE_INFO << LC << "Hello, " << biome->name().get() << std::endl;
-    }
-}
-
-void
-BiomeManager::ref(
-    const Biome* biome,
-    const TileKey& key,
-    const GeoImage& image)
-{
-    ScopedMutexLock lock(_refsAndRevision_mutex);
-
-    auto item = _refs.emplace(biome, 0);
-    ++item.first->second;
-    if (item.first->second == 1) // ref count of 1 means it's new
-    {
-        ++_revision;
-        OE_INFO << LC << "Hello, " << biome->name().get() << std::endl;
+        OE_INFO << LC << "Hello, " << biome->name().get() << " (" << biome->index() << ")" << std::endl;
     }
 }
 
@@ -132,17 +115,22 @@ BiomeManager::unref(const Biome* biome)
     
     // silent assertion
     if (iter == _refs.end() || iter->second == 0)
+    {
+        OE_SOFT_ASSERT(iter != _refs.end() && iter->second != 0);
         return;
+    }
 
     if (!_locked)
     {
         --iter->second;
         if (iter->second == 0)
         {
-            ++_revision;
-            OE_INFO << LC << "Goodbye, " << biome->name().get() << std::endl;
+            //++_revision;
+            OE_INFO << LC << "Goodbye, " << biome->name().get() << "(" << biome->index() << ")" << std::endl;
         }
     }
+
+    //OE_INFO << LC << "(" << iter->second << ")" << biome->name().get() << std::endl;
 }
 
 int

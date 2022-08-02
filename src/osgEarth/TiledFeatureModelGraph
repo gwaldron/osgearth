@@ -402,6 +402,50 @@ namespace osgEarth {
         Random   _prng;
     };
 
+    class OSGEARTH_EXPORT OSMHighwaysColorOperation : public NodeGraphOperation
+    {
+    public:
+        OSMHighwaysColorOperation()
+        {
+            _name = "OSM Highways Color";
+            addInputAttribute("Features", NodeAttribute::FEATURES);
+            addOutputAttribute("Color", NodeAttribute::VECTOR);
+        }
+
+        virtual void execute(const NodeGraphContext& context)
+        {
+            auto features = get_input("Features");
+            if (features)
+            {
+                NodeGraphResult result;
+
+                for (auto& f : features->featuresValue)
+                {
+                    osg::Vec4 color(1.0f, 1.0f, 1.0f, 1.0f);
+                    std::string highway = f->getString("highway");
+                    if (highway == "motorway")
+                    {
+                        color = Color("#E990A0");
+                    }
+                    else if (highway == "trunk")
+                    {
+                        color = Color("#FBC0AC");
+                    }
+                    else if (highway == "primary")
+                    {
+                        color = Color("#FDD7A1");
+                    }
+
+                    result.vectorValue.push_back(color);
+                }
+
+
+                set_output("Color", result);
+                _ready = true;
+            }
+        }
+    };
+
 
     class OSGEARTH_EXPORT SphereOperation : public NodeGraphOperation
     {

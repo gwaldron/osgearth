@@ -143,6 +143,11 @@ namespace osgEarth
                                 _fmg->getNodeGraph()->operations.push_back(std::make_shared<FilterFeaturesOperation>());
                             }
 
+                            if (ImGui::MenuItem("OSM Highways Color"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<OSMHighwaysColorOperation>());
+                            }
+
                             if (ImGui::MenuItem("Polygons to Points"))
                             {
                                 _fmg->getNodeGraph()->operations.push_back(std::make_shared<PolygonToPointsOperation>());

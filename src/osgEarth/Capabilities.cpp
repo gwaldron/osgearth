@@ -115,7 +115,7 @@ namespace
             }
             else
             {
-                OE_WARN << LC << "Failed to create graphic window too." << std::endl;
+                OE_WARN << LC << "Failed to realize graphic window - using GL 3.3 default capabilities" << std::endl;
             }
         }
 
@@ -132,46 +132,38 @@ namespace
 const Capabilities&
 Capabilities::get()
 {
-    return osgEarth::Registry::instance()->capabilities();
+    auto registry = osgEarth::Registry::instance();
+    OE_HARD_ASSERT(registry != nullptr);
+    return registry->capabilities();
 }
 
+// Constructor - default are typical settings that we will use
+// in the even
 Capabilities::Capabilities() :
-_maxFFPTextureUnits     ( 1 ),
-_maxGPUTextureUnits     ( 1 ),
-_maxGPUTextureCoordSets ( 1 ),
-_maxGPUAttribs          ( 1 ),
-_maxTextureSize         ( 256 ),
-_maxFastTextureSize     ( 256 ),
-_maxLights              ( 1 ),
-_depthBits              ( 0 ),
-_supportsGLSL           ( false ),
-_GLSLversion            ( 1.0f ),
-_supportsTextureArrays  ( false ),
-_supportsMultiTexture   ( false ),
-_supportsStencilWrap    ( true ),
-_supportsTwoSidedStencil( false ),
-_supportsTexture3D      ( false ),
-_supportsTexture2DLod   ( false ),
-_supportsMipmappedTextureUpdates( false ),
-_supportsDepthPackedStencilBuffer( false ),
-_supportsOcclusionQuery ( false ),
-_supportsDrawInstanced  ( false ),
-_supportsUniformBufferObjects( false ),
-_supportsNonPowerOfTwoTextures( false ),
-_maxUniformBlockSize    ( 0 ),
-_preferDLforStaticGeom  ( true ),
-_numProcessors          ( 1 ),
-_supportsFragDepthWrite ( false ),
-_supportsS3TC           ( false ),
-_supportsPVRTC          ( false ),
-_supportsARBTC          ( false ),
-_supportsETC            ( false ),
-_supportsRGTC           ( false ),
-_supportsTextureBuffer  ( false ),
-_maxTextureBufferSize   ( 0 ),
-_isCoreProfile          ( true ),
-_supportsVertexArrayObjects ( false ),
-_supportsNVGL(false)
+    _maxGPUTextureUnits(32),
+    _maxTextureSize(16384),
+    _maxFastTextureSize(4096),
+    _supportsGLSL(true),
+    _GLSLversion(3.3f),
+    _supportsDepthPackedStencilBuffer(true),
+    _supportsDrawInstanced(true),
+    _supportsNonPowerOfTwoTextures(true),
+    _numProcessors(4),
+    _supportsFragDepthWrite(true),
+    _supportsS3TC(true),
+    _supportsPVRTC(false),
+    _supportsARBTC(false),
+    _supportsETC(false),
+    _supportsRGTC(false),
+    _isGLES(false),
+    _maxTextureBufferSize(16384),
+    _isCoreProfile(false),
+    _supportsVertexArrayObjects(true),
+    _supportsInt64(false),
+    _supportsNVGL(false),
+    _vendor("Unknown"),
+    _renderer("Unknown"),
+    _version("3.30")
 {
     // require OSG be built with GL3 support
 #ifndef OSG_GL3_AVAILABLE
@@ -199,21 +191,39 @@ _supportsNVGL(false)
     _isGLES = false;
 #endif
 
-    // create a graphics context so we can query OpenGL support:
-    osg::GraphicsContext* gc = NULL;
-    unsigned int id = 0;
-#ifndef __ANDROID__
-    MyGraphicsContext mgc;
-    if ( mgc.valid() )
-    {
-        gc = mgc._gc.get();
-        id = gc->getState()->getContextID();
-    }
+    bool isAndroid = false;
+#ifdef __ANDROID__
+    isAndroid = true;
 #endif
 
-#ifndef __ANDROID__
-    if ( gc != NULL )
-#endif
+    // Simulate headless for testing
+    bool isHeadless = (::getenv("OSGEARTH_HEADLESS") != nullptr);
+
+    // create a graphics context so we can query OpenGL support:
+    std::shared_ptr<MyGraphicsContext> myGC;
+    osg::GraphicsContext* gc = nullptr;
+    unsigned int id = 0;
+
+    if (isHeadless)
+    {
+        OE_INFO << LC << "** Simulating headless mode **" << std::endl;
+    }
+    else if (isAndroid)
+    {
+        OE_INFO << LC << "Using defaults for Android" << std::endl;
+    }
+    else
+    {
+        myGC = std::make_shared<MyGraphicsContext>();
+    }
+
+    if (myGC)
+    {
+        gc = myGC->_gc.get();
+        id = gc->getState()->getContextID();
+    }
+
+    if (gc != nullptr)
     {
         OE_INFO << LC << "Capabilities: " << std::endl;
 
@@ -269,32 +279,12 @@ _supportsNVGL(false)
             osg::isGLExtensionSupported(id, "GL_NV_shader_buffer_load") &&
             osg::isGLExtensionSupported(id, "GL_NV_bindless_multi_draw_indirect");
 
-#if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
-        glGetIntegerv( GL_MAX_TEXTURE_UNITS, &_maxFFPTextureUnits );
-        //OE_INFO << LC << "  Max FFP texture units = " << _maxFFPTextureUnits << std::endl;
-#endif
-
         glGetIntegerv( GL_MAX_TEXTURE_IMAGE_UNITS_ARB, &_maxGPUTextureUnits );
         OE_DEBUG << LC << "  Max GPU texture units = " << _maxGPUTextureUnits << std::endl;
 
         GLint mvoc;
         glGetIntegerv(GL_MAX_VERTEX_VARYING_COMPONENTS_EXT, &mvoc);
         OE_DEBUG << LC << "  Max varyings = " << mvoc << std::endl;
-
-#if !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
-        glGetIntegerv( GL_MAX_TEXTURE_COORDS_ARB, &_maxGPUTextureCoordSets );
-#else
-        _maxGPUTextureCoordSets = _maxGPUTextureUnits;
-#endif
-        OE_DEBUG << LC << "  Max GPU texture coord indices = " << _maxGPUTextureCoordSets << std::endl;
-
-        glGetIntegerv( GL_MAX_VERTEX_ATTRIBS, &_maxGPUAttribs );
-        OE_DEBUG << LC << "  Max GPU attributes = " << _maxGPUAttribs << std::endl;
-
-#if !(defined(OSG_GL3_AVAILABLE))
-        glGetIntegerv( GL_DEPTH_BITS, &_depthBits );
-        OE_DEBUG << LC << "  Depth buffer bits = " << _depthBits << std::endl;
-#endif
 
         glGetIntegerv( GL_MAX_TEXTURE_SIZE, &_maxTextureSize );
 #if !defined(OSG_GLES1_AVAILABLE) && !defined(OSG_GLES2_AVAILABLE) && !defined(OSG_GLES3_AVAILABLE)
@@ -313,61 +303,18 @@ _supportsNVGL(false)
 #endif
         OE_DEBUG << LC << "  Max texture size = " << _maxTextureSize << std::endl;
 
-#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
-        glGetIntegerv( GL_MAX_LIGHTS, &_maxLights );
-#else
-        _maxLights = 1;
-#endif
-        OE_DEBUG << LC << "  GLSL = " << SAYBOOL(_supportsGLSL) << std::endl;
-
         if ( _supportsGLSL )
         {
             OE_DEBUG << LC << "  GLSL Version = " << getGLSLVersionInt() << std::endl;
         }
 
-        _supportsTextureArrays =
-            _supportsGLSL &&
-            osg::getGLVersionNumber() >= 2.0f && // hopefully this will detect Intel cards
-            osg::isGLExtensionSupported( id, "GL_EXT_texture_array" );
-        OE_DEBUG << LC << "  Texture arrays = " << SAYBOOL(_supportsTextureArrays) << std::endl;
-
-        _supportsMultiTexture =
-            osg::getGLVersionNumber() >= 1.3f ||
-            osg::isGLExtensionSupported( id, "GL_ARB_multitexture") ||
-            osg::isGLExtensionSupported( id, "GL_EXT_multitexture" );
-        //OE_INFO << LC << "  Multitexturing = " << SAYBOOL(_supportsMultiTexture) << std::endl;
-
-        _supportsStencilWrap = osg::isGLExtensionSupported( id, "GL_EXT_stencil_wrap" );
-        //OE_INFO << LC << "  Stencil wrapping = " << SAYBOOL(_supportsStencilWrap) << std::endl;
-
-        _supportsTwoSidedStencil = osg::isGLExtensionSupported( id, "GL_EXT_stencil_two_side" );
-        //OE_INFO << LC << "  2-sided stencils = " << SAYBOOL(_supportsTwoSidedStencil) << std::endl;
-
         _supportsDepthPackedStencilBuffer = osg::isGLExtensionSupported( id, "GL_EXT_packed_depth_stencil" ) ||
                                             osg::isGLExtensionSupported( id, "GL_OES_packed_depth_stencil" );
-        //OE_INFO << LC << "  depth-packed stencil = " << SAYBOOL(_supportsDepthPackedStencilBuffer) << std::endl;
-
-        _supportsOcclusionQuery = osg::isGLExtensionSupported( id, "GL_ARB_occlusion_query" );
-        //OE_INFO << LC << "  occlusion query = " << SAYBOOL(_supportsOcclusionQuery) << std::endl;
 
         _supportsDrawInstanced =
             _supportsGLSL &&
             osg::isGLExtensionOrVersionSupported( id, "GL_EXT_draw_instanced", 3.1f );
         OE_DEBUG << LC << "  draw instanced = " << SAYBOOL(_supportsDrawInstanced) << std::endl;
-
-        glGetIntegerv( GL_MAX_UNIFORM_BLOCK_SIZE, &_maxUniformBlockSize );
-        //OE_INFO << LC << "  max uniform block size = " << _maxUniformBlockSize << std::endl;
-
-        _supportsUniformBufferObjects =
-            _supportsGLSL &&
-            osg::isGLExtensionOrVersionSupported( id, "GL_ARB_uniform_buffer_object", 2.0f );
-        //OE_INFO << LC << "  uniform buffer objects = " << SAYBOOL(_supportsUniformBufferObjects) << std::endl;
-
-        if ( _supportsUniformBufferObjects && _maxUniformBlockSize == 0 )
-        {
-            OE_DEBUG << LC << "  ...but disabled, since UBO block size reports zero" << std::endl;
-            _supportsUniformBufferObjects = false;
-        }
 
 #if !defined(OSG_GLES3_AVAILABLE)
         _supportsNonPowerOfTwoTextures =
@@ -376,31 +323,6 @@ _supportsNVGL(false)
         _supportsNonPowerOfTwoTextures = true;
 #endif
         //OE_INFO << LC << "  NPOT textures = " << SAYBOOL(_supportsNonPowerOfTwoTextures) << std::endl;
-
-
-#if !defined(OSG_GLES3_AVAILABLE)
-        _supportsTextureBuffer =
-            osg::isGLExtensionOrVersionSupported( id, "GL_ARB_texture_buffer_object", 3.0 ) ||
-            osg::isGLExtensionOrVersionSupported( id, "GL_EXT_texture_buffer_object", 3.0 );
-#else
-        _supportsTextureBuffer = false;
-#endif
-
-        if ( _supportsTextureBuffer )
-        {
-            glGetIntegerv( GL_MAX_TEXTURE_BUFFER_SIZE, &_maxTextureBufferSize );
-        }
-
-        OE_DEBUG << LC << "  Texture buffers = " << SAYBOOL(_supportsTextureBuffer) << std::endl;
-        if ( _supportsTextureBuffer )
-        {
-            OE_DEBUG << LC << "  Texture buffer max size = " << _maxTextureBufferSize << std::endl;
-        }
-
-        bool supportsTransformFeedback =
-            osg::isGLExtensionSupported( id, "GL_ARB_transform_feedback2" );
-        //OE_INFO << LC << "  Transform feedback = " << SAYBOOL(supportsTransformFeedback) << "\n";
-
 
         // Writing to gl_FragDepth is not supported under GLES, is supported under gles3
 #if (defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE))
@@ -414,8 +336,6 @@ _supportsNVGL(false)
 
         // ATI workarounds:
         bool isATI = _vendor.find("ATI ") == 0;
-
-        _supportsMipmappedTextureUpdates = isATI && enableATIworkarounds ? false : true;
 
         _maxFastTextureSize = _maxTextureSize;
 
@@ -444,7 +364,10 @@ _supportsNVGL(false)
         _supportsVertexArrayObjects = osg::isGLExtensionOrVersionSupported(id, "GL_ARB_vertex_array_object", 3.0);
 
         _supportsInt64 = osg::isGLExtensionSupported(id, "GL_ARB_gpu_shader_int64");
-
+    }
+    else
+    {
+        OE_INFO << LC << "No graphics context - falling back on GL 3.3 defaults" << std::endl;
     }
 }
 

@@ -41,17 +41,8 @@ namespace osgEarth
     public:
         static const Capabilities& get();
 
-        /** maximum # of texture units exposed in the fixed-function pipeline */
-        int getMaxFFPTextureUnits() const { return _maxFFPTextureUnits; }
-
         /** maximum # of texture image units exposed in a GPU fragment shader */
         int getMaxGPUTextureUnits() const { return _maxGPUTextureUnits; }
-
-        /** maximum # of texture coordinate indices available in a GPU fragment shader */
-        int getMaxGPUTextureCoordSets() const { return _maxGPUTextureCoordSets; }
-
-        /** maximum # of vertex attributes available in a shader */
-        int getMaxGPUAttribs() const { return _maxGPUAttribs; }
 
         /** maximum supported size (in pixels) of a texture */
         int getMaxTextureSize() const { return _maxTextureSize; }
@@ -59,15 +50,8 @@ namespace osgEarth
         /** maximum texture size that doesn't cause a slowdown (vendor-specific) */
         int getMaxFastTextureSize() const { return _maxFastTextureSize; }
 
-        /** maximum number of openGL lights */
-        int getMaxLights() const { return _maxLights; }
-
-        /** bits in depth buffer */
-        int getDepthBufferBits() const { return _depthBits; }
-
         /** whether the GPU supports shaders. */
-        bool supportsGLSL() const {
-            return _supportsGLSL; }
+        bool supportsGLSL() const { return _supportsGLSL; }
 
         /** whether the GPU supports a minimum GLSL version */
         bool supportsGLSL(float minimumVersion) const {
@@ -95,47 +79,14 @@ namespace osgEarth
         /** the GPU driver version */
         const std::string& getVersion() const { return _version;}
 
-        /** whether the GPU supports texture arrays */
-        bool supportsTextureArrays() const { return _supportsTextureArrays; }
-
-        /** whether the GPU supports OpenGL 3D textures */
-        bool supportsTexture3D() const { return _supportsTexture3D; }
-
-        /** whether the GPU supports OpenGL multi-texturing */
-        bool supportsMultiTexture() const { return _supportsMultiTexture; }
-
-        /** whether the GPU supports OpenGL stencil wrapping extensions */
-        bool supportsStencilWrap() const { return _supportsStencilWrap; }
-
-        /** whether the GPU supports OpenGL the two-sided stenciling extension */
-        bool supportsTwoSidedStencil() const { return _supportsTwoSidedStencil; }
-
-        /** whether the GPU support the texture2dLod() function */
-        bool supportsTexture2DLod() const { return _supportsTexture2DLod; }
-
-        /** whether the GPU properly supports updating an existing texture with a new mipmapped image */
-        bool supportsMipmappedTextureUpdates() const { return _supportsMipmappedTextureUpdates; }
-
         /** whether the GPU supports DEPTH_PACKED_STENCIL buffer */
         bool supportsDepthPackedStencilBuffer() const { return _supportsDepthPackedStencilBuffer; }
-
-        /** whether the GPU supporst occlusion query */
-        bool supportsOcclusionQuery() const { return _supportsOcclusionQuery; }
 
         /** whether the GPU supports DrawInstanced rendering */
         bool supportsDrawInstanced() const { return _supportsDrawInstanced; }
 
-        /** whether the GPU supports Uniform Buffer Objects */
-        bool supportsUniformBufferObjects() const { return _supportsUniformBufferObjects; }
-
         /** whether the GPU can handle non-power-of-two textures. */
         bool supportsNonPowerOfTwoTextures() const { return _supportsNonPowerOfTwoTextures; }
-
-        /** maximum size of a uniform buffer block, in bytes */
-        int getMaxUniformBlockSize() const { return _maxUniformBlockSize; }
-
-        /** whether to prefer display lists over VBOs for static geometry. */
-        bool preferDisplayListsForStaticGeometry() const { return _preferDLforStaticGeom; }
 
         /** number of logical CPUs available. */
         int getNumProcessors() const { return _numProcessors; }
@@ -145,9 +96,6 @@ namespace osgEarth
 
         /** whether the GPU supports a texture compression scheme */
         bool supportsTextureCompression(const osg::Texture::InternalFormatMode& mode) const;
-
-        /** whether texture buffers are supported */
-        bool supportsTextureBuffer() const { return _supportsTextureBuffer; }
 
         /** Maximum size of a texture buffer, when supportsTextureBuffer() is true. */
         int getMaxTextureBufferSize() const { return _maxTextureBufferSize; }
@@ -172,30 +120,14 @@ namespace osgEarth
         virtual ~Capabilities() { }
 
     private:
-        int  _maxFFPTextureUnits;
         int  _maxGPUTextureUnits;
-        int  _maxGPUTextureCoordSets;
-        int  _maxGPUAttribs;
         int  _maxTextureSize;
         int  _maxFastTextureSize;
-        int  _maxLights;
-        int  _depthBits;
         bool _supportsGLSL;
         float _GLSLversion;
-        bool _supportsTextureArrays;
-        bool _supportsTexture3D;
-        bool _supportsMultiTexture;
-        bool _supportsStencilWrap;
-        bool _supportsTwoSidedStencil;
-        bool _supportsTexture2DLod;
-        bool _supportsMipmappedTextureUpdates;
         bool _supportsDepthPackedStencilBuffer;
-        bool _supportsOcclusionQuery;
         bool _supportsDrawInstanced;
-        bool _supportsUniformBufferObjects;
         bool _supportsNonPowerOfTwoTextures;
-        int  _maxUniformBlockSize;
-        bool _preferDLforStaticGeom;
         int  _numProcessors;
         bool _supportsFragDepthWrite;
         std::string _vendor;
@@ -207,7 +139,6 @@ namespace osgEarth
         bool _supportsETC;
         bool _supportsRGTC;
         bool _isGLES;
-        bool _supportsTextureBuffer;
         int  _maxTextureBufferSize;
         bool _isCoreProfile;
         bool _supportsVertexArrayObjects;

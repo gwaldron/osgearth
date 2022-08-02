@@ -35,6 +35,7 @@
 #include <osgUtil/Simplifier>
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/DrawInstanced>
+#include <osgEarth/LineDrawable>
 
 namespace osgEarth {
 
@@ -42,6 +43,14 @@ namespace osgEarth {
     {
     public:
         NodeGraphResult()
+        {
+        }
+
+        NodeGraphResult(const NodeGraphResult& rhs):
+            floatValue(rhs.floatValue),
+            floatValues(rhs.floatValues),
+            nodeValue(rhs.nodeValue),
+            featuresValue(rhs.featuresValue)
         {
         }
 
@@ -60,7 +69,8 @@ namespace osgEarth {
         {
         }
 
-        float floatValue;
+        float floatValue = 0.0f;
+        std::vector< float > floatValues;
         osg::ref_ptr< osg::Node > nodeValue;
         FeatureList featuresValue;
     };
@@ -183,19 +193,7 @@ namespace osgEarth {
             return nullptr;
         }
 
-        void set_output(const std::string& name, osg::Node* node)
-        {
-            _outputs[name] = node;
-            for (auto &l : _links)
-            {
-                if (l._sourceAttribute->getName() == name)
-                {
-                    l._destination->set_input(l._destinationAttribute->getName(), node);                    
-                }
-            }
-        }
-
-        void set_output(const std::string& name, float value)
+        void set_output(const std::string& name, const NodeGraphResult& value)
         {
             _outputs[name] = value;
             for (auto& l : _links)
@@ -207,33 +205,9 @@ namespace osgEarth {
             }
         }
 
-        void set_output(const std::string& name, FeatureList& value)
+        void set_input(const std::string& name, const NodeGraphResult& result)
         {
-            _outputs[name] = value;
-            for (auto& l : _links)
-            {
-                if (l._sourceAttribute->getName() == name)
-                {
-                    l._destination->set_input(l._destinationAttribute->getName(), value);
-                }
-            }
-        }
-
-        void set_input(const std::string& name, osg::Node* node)
-        {
-            _inputs[name] = node;
-            _ready = false;
-        }
-
-        void set_input(const std::string& name, float value)
-        {
-            _inputs[name] = value;
-            _ready = false;
-        }
-
-        void set_input(const std::string& name, FeatureList& features)
-        {
-            _inputs[name] = features;
+            _inputs[name] = result;
             _ready = false;
         }
 
@@ -347,6 +321,45 @@ namespace osgEarth {
         float _value = 0.0f;
     };
 
+    class OSGEARTH_EXPORT RandomValuePerFeature : public NodeGraphOperation
+    {
+    public:
+        RandomValuePerFeature()
+        {
+            _name = "Random Value Per Feature";
+            addInputAttribute("Features", NodeAttribute::FEATURES);
+            addOutputAttribute("Value", NodeAttribute::FLOAT);
+        }
+
+        virtual void execute(const NodeGraphContext& context)
+        {
+            auto features = get_input("Features");
+            if (features)
+            {
+                NodeGraphResult result;
+
+                for (unsigned int i = 0; i < features->featuresValue.size(); ++i)
+                {
+                    float value = _minValue + _prng.next() * (_maxValue - _minValue);
+                    result.floatValues.push_back(value);
+                }
+
+                set_output("Value", result);
+                _ready = true;
+            }            
+        }
+
+        float getMinValue() const { return _minValue; }
+        void setMinValue(float value) { _minValue = value; }
+
+        float getMaxValue() const { return _maxValue; }
+        void setMaxValue(float value) { _maxValue = value; }
+
+        float _minValue = 0.0f;
+        float _maxValue = 1.0f;
+        Random   _prng;
+    };
+
 
     class OSGEARTH_EXPORT SphereOperation : public NodeGraphOperation
     {
@@ -361,15 +374,6 @@ namespace osgEarth {
 
         virtual void execute(const NodeGraphContext& context) override
         {
-            /*
-            osg::Geode* geode = new osg::Geode;
-            osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(osg::Vec3f(0, 0, 0), _radius));
-            sd->setColor(_color);
-            geode->addDrawable(sd);
-            setOutput(geode);
-            */
-            //setOutput(AnnotationUtils::createSphere(_radius, _color));
-
             auto radius = get_input("Radius");
             if (radius)
             {
@@ -381,13 +385,9 @@ namespace osgEarth {
             }
         }
 
-        //float getRadius() const { return _radius; }
-        //void setRadius(float radius) { _radius = radius; }
-
         const osg::Vec4& getColor() const { return _color; }
         void setColor(osg::Vec4& color) { _color = color; }
 
-        //float _radius = 1000.0f;
         osg::Vec4 _color = osg::Vec4f(1.0f, 0.0f, 0.0f, 1.0f);
     };
 
@@ -524,8 +524,6 @@ namespace osgEarth {
 
         virtual void execute(const NodeGraphContext& context) override
         {
-            // TODO:  The randomly going over the nodes isn't going to work
-            // we need some dependency graph and need to do them in order.
             auto node1 = get_input("Node1");
             auto node2 = get_input("Node2");
             auto node3 = get_input("Node3");
@@ -692,7 +690,7 @@ namespace osgEarth {
                 // Lazy
                 if (context.tileKey.getLevelOfDetail() == 14)
                 {
-                    auto cursor = featureSource->createFeatureCursor(context.tileKey, nullptr);
+                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(context.tileKey, nullptr);
                     if (cursor)
                     {
                         FeatureList features;
@@ -1053,11 +1051,11 @@ namespace osgEarth {
 
                 if (passed)
                 {
-                    set_output("Passed", node->nodeValue);
+                    set_output("Passed", node->nodeValue.get());
                 }
                 else
                 {
-                    set_output("Failed", node->nodeValue);
+                    set_output("Failed", node->nodeValue.get());
                 }
                 _ready = true;
             }
@@ -1103,8 +1101,6 @@ namespace osgEarth {
 
                 osg::Group* result = new osg::Group;
 
-                OE_NOTICE << "Placing " << points->featuresValue.size() << " features" << std::endl;
-
                 // We know the tile is already going to be localized so don't do it twice.
                 for (auto& f : points->featuresValue)
                 {
@@ -1130,13 +1126,11 @@ namespace osgEarth {
                             osg::Vec3d local = world * w2l;
                             osg::MatrixTransform* mt = new osg::MatrixTransform;
                             osg::Quat rotation = osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0, 0, 1));
-                            //mt->setMatrix(osg::Matrixd::translate(local));
                             // Mark the transform as static so the optimizer can flatten it.
                             mt->setDataVariance(osg::Object::STATIC);
                             mt->setMatrix(osg::Matrixd::scale(scale, scale, scale) *
                                 osg::Matrix::rotate(rotation) *
                                 osg::Matrix::translate(local));
-                            //mt->addChild(node->nodeValue.get());
                             mt->addChild(cloned.get());
                             result->addChild(mt);
                         }
@@ -1198,6 +1192,104 @@ namespace osgEarth {
         float _minHeading = 0.0f;
         float _maxHeading= 0.0f;
         Random   _prng;
+    };
+
+
+    class OSGEARTH_EXPORT FeaturesToLinesOperation : public NodeGraphOperation
+    {
+    public:
+        FeaturesToLinesOperation()
+        {
+            _name = "Linear Features";
+            addInputAttribute("Features", NodeAttribute::FEATURES);
+            addInputAttribute("Width", NodeAttribute::FLOAT);
+            addOutputAttribute("Node", NodeAttribute::NODE);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            auto lines = get_input("Features");
+            auto width = get_input("Width");
+
+            if (lines)
+            {
+                osg::Matrixd w2l;
+                context.tileKey.getExtent().getCentroid().createWorldToLocal(w2l);
+
+                osg::ref_ptr< LineGroup > result = new LineGroup;
+
+                unsigned int index = 0;
+                // We know the tile is already going to be localized so don't do it twice.
+                for (auto& f : lines->featuresValue)
+                {
+                    GeometryIterator itr(f->getGeometry());
+                    while (itr.hasMore())
+                    {
+                        Geometry* part = itr.next();
+                        // Skip invalid line
+                        if (part->size() < 2)
+                        {
+                            continue;
+                        }
+
+                        // if the underlying geometry is a ring (or a polygon), use a line loop; otherwise
+                        // use a line strip.
+                        bool isRing = (dynamic_cast<Ring*>(part) != 0L);
+
+                        // construct a drawable for the lines
+                        osg::ref_ptr< LineDrawable > drawable = new LineDrawable(isRing ? GL_LINE_LOOP : GL_LINE_STRIP);
+                        float lineWidth = 1.0f;
+
+                        if (width)
+                        {
+                            // They provided a width per feature
+                            if (width->floatValues.size() == lines->featuresValue.size() )
+                            {
+                                lineWidth = width->floatValues[index];
+                            }
+                            // They provided one width for the whole set
+                            else if (width->floatValue > 0.0)
+                            {
+                                lineWidth = width->floatValue;
+                            }
+                        }
+
+                        osg::Vec4f primaryColor = osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f);
+
+                        unsigned int ptIndex = 0;
+                        for (Geometry::const_iterator v = part->begin(); v != part->end(); ++v)
+                        {
+                            double x = v->x();
+                            double y = v->y();
+                            double z = v->z();
+
+                            GeoPoint pt(f->getSRS(), x, y, z);
+                            pt.transformInPlace(SpatialReference::create("wgs84"));
+                            osg::Vec3d world;
+                            pt.toWorld(world);
+
+                            osg::Vec3d local = world * w2l;
+                            drawable->pushVertex(local);
+                            drawable->setColor(ptIndex, primaryColor);
+                            ptIndex++;
+                        }
+
+                        drawable->setLineWidth(lineWidth);
+                        drawable->dirty();
+                        result->addChild(drawable);
+                    }
+                    ++index;
+                }
+
+                if (result.valid())
+                {
+                    result->optimize();
+                }
+
+                set_output("Node", result.get());
+                _ready = true;
+            }
+        }
     };
 
     class OSGEARTH_EXPORT NodeOutputOperation : public NodeGraphOperation

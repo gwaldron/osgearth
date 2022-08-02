@@ -46,11 +46,12 @@ namespace osgEarth {
         {
         }
 
-        NodeGraphResult(const NodeGraphResult& rhs):
+        NodeGraphResult(const NodeGraphResult& rhs) :
             floatValue(rhs.floatValue),
             floatValues(rhs.floatValues),
             nodeValue(rhs.nodeValue),
-            featuresValue(rhs.featuresValue)
+            featuresValue(rhs.featuresValue),
+            vectorValue(rhs.vectorValue)
         {
         }
 
@@ -70,8 +71,9 @@ namespace osgEarth {
         }
 
         float floatValue = 0.0f;
-        std::vector< float > floatValues;
+        std::vector< float > floatValues;        
         osg::ref_ptr< osg::Node > nodeValue;
+        std::vector< osg::Vec4 > vectorValue;
         FeatureList featuresValue;
     };
 
@@ -85,7 +87,8 @@ namespace osgEarth {
             NODE,
             FLOAT,
             STRING,
-            FEATURES
+            FEATURES,
+            VECTOR
         };
 
         NodeAttribute(const std::string& name, AttributeType type) :
@@ -347,6 +350,45 @@ namespace osgEarth {
                 set_output("Value", result);
                 _ready = true;
             }            
+        }
+
+        float getMinValue() const { return _minValue; }
+        void setMinValue(float value) { _minValue = value; }
+
+        float getMaxValue() const { return _maxValue; }
+        void setMaxValue(float value) { _maxValue = value; }
+
+        float _minValue = 0.0f;
+        float _maxValue = 1.0f;
+        Random   _prng;
+    };
+
+    class OSGEARTH_EXPORT RandomColorPerFeature : public NodeGraphOperation
+    {
+    public:
+        RandomColorPerFeature()
+        {
+            _name = "Random Color Per Feature";
+            addInputAttribute("Features", NodeAttribute::FEATURES);
+            addOutputAttribute("Color", NodeAttribute::VECTOR);
+        }
+
+        virtual void execute(const NodeGraphContext& context)
+        {
+            auto features = get_input("Features");
+            if (features)
+            {
+                NodeGraphResult result;
+
+                for (unsigned int i = 0; i < features->featuresValue.size(); ++i)
+                {
+                    osg::Vec4 value(_prng.next(), _prng.next(), _prng.next(), 1.0f);
+                    result.vectorValue.push_back(value);
+                }
+
+                set_output("Color", result);
+                _ready = true;
+            }
         }
 
         float getMinValue() const { return _minValue; }
@@ -1202,6 +1244,7 @@ namespace osgEarth {
         {
             _name = "Linear Features";
             addInputAttribute("Features", NodeAttribute::FEATURES);
+            addInputAttribute("Color", NodeAttribute::VECTOR);
             addInputAttribute("Width", NodeAttribute::FLOAT);
             addOutputAttribute("Node", NodeAttribute::NODE);
         }
@@ -1210,6 +1253,7 @@ namespace osgEarth {
         {
             auto lines = get_input("Features");
             auto width = get_input("Width");
+            auto color = get_input("Color");
 
             if (lines)
             {
@@ -1255,6 +1299,17 @@ namespace osgEarth {
                         }
 
                         osg::Vec4f primaryColor = osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f);
+                        if (color && !color->vectorValue.empty())
+                        {
+                            if (color->vectorValue.size() == lines->featuresValue.size())
+                            {
+                                primaryColor = color->vectorValue[index];
+                            }
+                            else
+                            {
+                                primaryColor = color->vectorValue[0];
+                            }
+                        }
 
                         unsigned int ptIndex = 0;
                         for (Geometry::const_iterator v = part->begin(); v != part->end(); ++v)

@@ -1,0 +1,492 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_NODEGRAPH_GUI
+#define OSGEARTH_IMGUI_NODEGRAPH_GUI
+
+#include "ImGui"
+#include "imgui.h"
+#include "imgui_stdlib.h"
+#include "imnodes.h"
+
+#include <osgEarth/TiledFeatureModelGraph>
+#include <osgEarth/TiledFeatureModelLayer>
+
+namespace osgEarth
+{
+    namespace GUI
+    {
+        using namespace osgEarth;
+
+        class NodeGraphGUI : public BaseGUI
+        {
+        private:
+            osg::observer_ptr< MapNode > _mapNode;
+            osg::observer_ptr< TiledFeatureModelGraph > _fmg;
+
+
+        public:
+            NodeGraphGUI() : BaseGUI("NodeGraph")
+            {
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!isVisible())
+                    return;
+
+                if (!findNodeOrHide(_mapNode, ri))
+                    return;
+
+                if (!_fmg.valid())
+                {
+                    auto layer = _mapNode->getMap()->getLayer<TiledFeatureModelLayer>();
+                    if (layer)
+                    {                        
+                        _fmg = osgEarth::findTopMostNodeOfType<TiledFeatureModelGraph>(layer->getNode());
+                    }
+                }
+
+                if (ImGui::Begin(name(), visible(), ImGuiWindowFlags_MenuBar))
+                {
+                    if (ImGui::BeginMenuBar())
+                    {
+                        if (ImGui::BeginMenu("Add Node"))
+                        {
+                            if (ImGui::MenuItem("Sphere"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<SphereOperation>());
+                            }
+
+                            if (ImGui::MenuItem("Transform"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<TransformOperation>());
+                            }
+
+                            if (ImGui::MenuItem("Float"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<FloatValue>());
+                            }
+
+                            if (ImGui::MenuItem("Join"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<JoinNodesOperation>());
+                            }
+
+                            if (ImGui::MenuItem("Simplify"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<SimplifyOperation>());
+                            }
+
+                            if (ImGui::MenuItem("Random Points"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<RandomPointsOperation>());
+                            }
+
+                            if (ImGui::MenuItem("Points On Edge"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<PointsOnEdgeOperation>());
+                            }
+
+                            if (ImGui::MenuItem("Place Nodes"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<PlaceNodesOperation>());
+                            }
+
+                            if (ImGui::MenuItem("Features to Lines"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<FeaturesToLinesOperation>());
+                            }
+
+                            if (ImGui::MenuItem("Random Value Per Feature"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<RandomValuePerFeature>());
+                            }
+
+                            if (ImGui::MenuItem("Random Color Per Feature"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<RandomColorPerFeature>());
+                            }
+
+                            if (ImGui::MenuItem("Current LOD"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<CurrentLODOperation>());
+                            }
+
+                            if (ImGui::MenuItem("Comparison"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<ComparisonOperator>());
+                            }
+
+                            if (ImGui::MenuItem("Clamp Points"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<ClampPointsOperation>());
+                            }
+
+                            if (ImGui::MenuItem("Filter Features"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<FilterFeaturesOperation>());
+                            }
+
+                            if (ImGui::MenuItem("Polygons to Points"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<PolygonToPointsOperation>());
+                            }
+
+
+
+                            ImGui::EndMenu();
+                        }
+                    }
+                    ImGui::EndMenuBar();
+
+                    ImNodes::BeginNodeEditor();
+
+                    if (_fmg.valid())
+                    {
+                        for (auto& o : _fmg->getNodeGraph()->operations)
+                        {
+                            ImNodes::BeginNode(o->getId());
+                            ImNodes::BeginNodeTitleBar();
+                            ImGui::TextUnformatted(o->getName().c_str());
+                            ImNodes::EndNodeTitleBar();     
+
+                            FloatValue* floatValue = dynamic_cast<FloatValue*>(o.get());
+                            if (floatValue)
+                            {
+                                float v = floatValue->getValue();
+                                ImGui::PushItemWidth(100.0f);
+                                if (ImGui::InputFloat("Value", &v))
+                                {
+                                    floatValue->setValue(v);
+                                    _fmg->dirtyNodeGraph();
+                                }
+                                ImGui::PopItemWidth();
+                            }
+
+                            SphereOperation* sphere = dynamic_cast<SphereOperation*>(o.get());
+                            if (sphere)
+                            {
+                                ImGui::PushItemWidth(100.0f);
+                                osg::Vec4 color = sphere->getColor();
+                                if (ImGui::ColorEdit4("Color", (float*)color._v, ImGuiColorEditFlags_NoInputs))
+                                {
+                                    sphere->setColor(color);
+                                    _fmg->dirtyNodeGraph();
+                                }
+                                ImGui::PopItemWidth();
+                            }
+
+                            SimplifyOperation* simplifyOp = dynamic_cast<SimplifyOperation*>(o.get());
+                            if (simplifyOp)
+                            {
+                                ImGui::PushItemWidth(100.0f);
+                                
+                                bool dirty = false;
+                                float sampleRatio = simplifyOp->getSampleRatio();
+                                if (ImGui::SliderFloat("Sample Ratio", &sampleRatio, 0.1, 1.0f))
+                                {
+                                    simplifyOp->setSampleRatio(sampleRatio);
+                                    dirty = true;
+                                }
+                                
+                                float maximumError = simplifyOp->getMaximumError();
+                                if (ImGui::InputFloat("Maximum Error", &maximumError))
+                                {
+                                    simplifyOp->setMaximumError(maximumError);
+                                    dirty = true;
+                                }
+
+                                float maximumLength = simplifyOp->getMaximumLength();
+                                if (ImGui::InputFloat("Maximum Length", &maximumLength))
+                                {
+                                    simplifyOp->setMaximumLength(maximumLength);
+                                    dirty = true;
+                                }
+
+                                if (dirty)
+                                {
+                                    _fmg->dirtyNodeGraph();
+                                }
+                                
+                                ImGui::PopItemWidth();
+                            }
+
+                            TransformOperation* transformOp = dynamic_cast<TransformOperation*>(o.get());
+                            if (transformOp)
+                            {
+                                ImGui::PushItemWidth(400.0f);
+
+                                bool dirty = false;
+
+                                osg::Vec3d translation, scale;
+                                osg::Quat rotation, so;
+
+                                transformOp->getTransform().decompose(translation, rotation, scale, so);
+                                
+                                //if (ImGui::DragScalarN("Translation", ImGuiDataType_Double, translate._v, 3))
+                                if (ImGui::InputScalarN("Translation", ImGuiDataType_Double, translation._v, 3))
+                                {
+                                    dirty = true;
+                                }
+
+                                if (ImGui::InputScalarN("Rotation", ImGuiDataType_Double, rotation._v, 4))
+                                {
+                                    dirty = true;
+                                }
+
+                                if (ImGui::InputScalarN("Scale", ImGuiDataType_Double, scale._v, 3))
+                                {
+                                    dirty = true;
+                                }
+
+
+                                if (dirty)
+                                {
+                                    osg::Matrix newMatrix = osg::Matrixd::scale(scale) * osg::Matrix::rotate(rotation) * osg::Matrix::translate(translation);
+                                    transformOp->setTransform(newMatrix);
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+                                ImGui::PopItemWidth();
+                            }
+
+
+                            RandomPointsOperation* randomPoints = dynamic_cast<RandomPointsOperation*>(o.get());
+                            if (randomPoints)
+                            {
+                                int count = randomPoints->getCount();
+                                ImGui::PushItemWidth(100.0f);
+                                if (ImGui::InputInt("Count", &count))
+                                {
+                                    randomPoints->setCount(count);;
+                                    _fmg->dirtyNodeGraph();
+                                }
+                                ImGui::PopItemWidth();
+                            }
+
+                            PointsOnEdgeOperation* pointsOnEdge = dynamic_cast<PointsOnEdgeOperation*>(o.get());
+                            if (pointsOnEdge)
+                            {
+                                int count = pointsOnEdge->getCount();
+                                ImGui::PushItemWidth(100.0f);
+                                if (ImGui::InputInt("Count", &count))
+                                {
+                                    pointsOnEdge->setCount(count);;
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+                                ImGui::PopItemWidth();
+                            }
+
+                            ComparisonOperator* comparisonOperator = dynamic_cast<ComparisonOperator*>(o.get());
+                            if (comparisonOperator)
+                            {
+                                ComparisonOperator::Comparison c = comparisonOperator->getComparison();
+                                ImGui::PushItemWidth(100.0f);
+
+                                const char* items[] = { ">", ">=", "<", "<=", "=="};
+                                int item_current = c;
+                                if (ImGui::Combo("Comparison", &item_current, items, IM_ARRAYSIZE(items)))
+                                {
+                                    c = (ComparisonOperator::Comparison)item_current;
+                                    comparisonOperator->setComparison(c);
+                                    _fmg->dirtyNodeGraph();
+                                }
+                                ImGui::PopItemWidth();
+                            }
+
+                            PlaceNodesOperation* placeNodes = dynamic_cast<PlaceNodesOperation*>(o.get());
+                            if (placeNodes)
+                            {
+                                float scale[] = { placeNodes->getMinScale(), placeNodes->getMaxScale() };
+                                ImGui::PushItemWidth(200.0f);
+                                if (ImGui::InputFloat2("Scale Range", scale))
+                                {
+                                    placeNodes->setMinScale(scale[0]);
+                                    placeNodes->setMaxScale(scale[1]);
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+                                float heading[] = { placeNodes->getMinHeading(), placeNodes->getMaxHeading() };
+                                ImGui::PushItemWidth(200.0f);
+                                if (ImGui::InputFloat2("Heading Range", heading))
+                                {
+                                    placeNodes->setMinHeading(heading[0]);
+                                    placeNodes->setMaxHeading(heading[1]);
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+                                ImGui::PopItemWidth();
+                            }
+
+                            RandomValuePerFeature* randomValuePerFeature = dynamic_cast<RandomValuePerFeature*>(o.get());
+                            if (randomValuePerFeature)
+                            {
+                                float range[] = { randomValuePerFeature->getMinValue(), randomValuePerFeature->getMaxValue() };
+                                ImGui::PushItemWidth(200.0f);
+                                if (ImGui::InputFloat2("Scale Range", range))
+                                {
+                                    randomValuePerFeature->setMinValue(range[0]);
+                                    randomValuePerFeature->setMaxValue(range[1]);
+                                    _fmg->dirtyNodeGraph();
+                                }                               
+                                ImGui::PopItemWidth();
+                            }
+
+                            PolygonToPointsOperation* polygonsToPoints = dynamic_cast<PolygonToPointsOperation*>(o.get());
+                            if (polygonsToPoints)
+                            {
+                                bool random = polygonsToPoints->getRandom();
+                                ImGui::PushItemWidth(100.0f);
+                                if (ImGui::Checkbox("Random", &random))
+                                {
+                                    polygonsToPoints->setRandom(random);
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+                                int count = polygonsToPoints->getCount();
+                                ImGui::PushItemWidth(100.0f);
+                                if (ImGui::InputInt("Count", &count))
+                                {
+                                    polygonsToPoints->setCount(count);;
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+                                ImGui::PopItemWidth();
+                            }
+
+                            FilterFeaturesOperation* filterFeatures = dynamic_cast<FilterFeaturesOperation*>(o.get());
+                            if (filterFeatures)
+                            {
+                                ImGui::PushItemWidth(100.0f);
+                                std::string attribute = filterFeatures->getAttribute();                                
+                                if (ImGui::InputText("Attribute", &attribute))
+                                {
+                                    filterFeatures->setAttribute(attribute);
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+                                std::string value = filterFeatures->getValue();
+                                if (ImGui::InputText("Value", &value))
+                                {
+                                    filterFeatures->setValue(value);
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+
+                                ImGui::PopItemWidth();                                                              
+                            }
+
+                            for (auto& attr : o->getInputAttributes())
+                            {
+                                ImNodes::BeginInputAttribute(attr.getId());
+                                ImGui::Text(attr.getName().c_str());
+                                ImNodes::EndInputAttribute();
+                            }
+
+                            for (auto& attr : o->getOutputAttributes())
+                            {
+                                ImNodes::BeginOutputAttribute(attr.getId());
+                                ImGui::Text(attr.getName().c_str());
+                                ImNodes::EndOutputAttribute();
+                            }
+
+
+                            ImNodes::EndNode();
+                        }
+                    }
+
+                    // Draw all the links
+                    for (auto& o : _fmg->getNodeGraph()->operations)
+                    {
+                        for (auto& link : o->getLinks())
+                        {
+                            ImNodes::Link(link.getId(), link._sourceAttribute->getId(), link._destinationAttribute->getId());
+                        }
+                    }
+                    
+                    ImNodes::EndNodeEditor();
+
+                    int start_attr, end_attr;
+                    if (ImNodes::IsLinkCreated(&start_attr, &end_attr))
+                    {
+                        NodeGraphOperation* startOperation = nullptr;
+                        const NodeAttribute* startAttribute = nullptr;
+
+                        NodeGraphOperation* endOperation = nullptr;
+                        const NodeAttribute* endAttribute = nullptr;
+                        
+                        std::cout << "Creating link between " << start_attr << " and " << end_attr << std::endl;
+
+                        // Find the input attribute
+                        for (auto& o : _fmg->getNodeGraph()->operations)
+                        {
+                            for (auto& attr : o->getInputAttributes())
+                            {                             
+                                if (attr.getId() == end_attr)
+                                {
+                                    endOperation = o.get();
+                                    endAttribute = &attr;
+                                }
+                            }
+
+                            for (auto& attr : o->getOutputAttributes())
+                            {
+                                if (attr.getId() == start_attr)
+                                {
+                                    startOperation = o.get();
+                                    startAttribute = &attr;
+                                }
+                            }
+                        }
+
+                        if (startOperation && startAttribute && endOperation && endAttribute)
+                        {
+                            startOperation->connect(startAttribute->getName(), endOperation, endAttribute->getName());
+                        }
+
+
+                        _fmg->dirtyNodeGraph();
+                    }
+
+                    int link_id;
+                    if (ImNodes::IsLinkDestroyed(&link_id))
+                    {
+                        for (auto& o : _fmg->getNodeGraph()->operations)
+                        {
+                            for (auto itr = o->getLinks().begin(); itr != o->getLinks().end(); ++itr)
+                            {
+                                if (itr->getId() == link_id)
+                                {
+                                    o->getLinks().erase(itr);
+
+                                    _fmg->dirtyNodeGraph();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                ImGui::End();
+            }
+        };
+    }
+}
+
+#endif // OSGEARTH_IMGUI_NODEGRAPH_GUI

@@ -277,12 +277,18 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 
         checkForNewAssets();
 
-        Assets newAssets = _newAssets.release();
-        if (!newAssets.empty())
+        if (_newAssets.isAvailable())
         {
             ScopedMutexLock lock(_assets);
-            _assets = std::move(newAssets);
+            _assets = std::move(_newAssets.release());
         }
+
+        //Assets newAssets = _newAssets.release();
+        //if (!newAssets.empty())
+        //{
+        //    ScopedMutexLock lock(_assets);
+        //    _assets = std::move(newAssets);
+        //}
 
         if (_requestMultisampling)
         {
@@ -894,6 +900,9 @@ VegetationLayer::checkForNewAssets() const
             // re-organize the data into a form we can readily use.
             for (auto iter : biomes)
             {
+                if (c && c->isCanceled())
+                    break;
+
                 const Biome* biome = iter.first;
                 auto& instances = iter.second;
 
@@ -924,7 +933,8 @@ VegetationLayer::checkForNewAssets() const
         return result;
     };
 
-    _newAssets = Job().dispatch<Assets>(loadNewAssets);
+    auto arena = JobArena::get("oe.veg");
+    _newAssets = Job(arena).dispatch<Assets>(loadNewAssets);
 
     return true;
 }
@@ -980,7 +990,8 @@ VegetationLayer::createDrawableAsync(
         return layer->createDrawable(key, group, tile_bbox, p.get());
     };
 
-    return Job().dispatch<osg::ref_ptr<ChonkDrawable>>(function);
+    auto arena = JobArena::get("oe.veg");
+    return Job(arena).dispatch<osg::ref_ptr<ChonkDrawable>>(function);
 }
 
 
@@ -1157,6 +1168,8 @@ VegetationLayer::getAssetPlacements(
     double local_height = y1 - y0;
     osg::Vec2d local;
 
+    std::set<const Biome*> empty_biomes;
+
     // Generate random instances within the tile:
     for (unsigned i = 0; i < max_instances; ++i)
     {
@@ -1187,10 +1200,8 @@ VegetationLayer::getAssetPlacements(
         auto iter = groupAssets.find(biome);
         if (iter == groupAssets.end())
         {
-            OE_DEBUG << "no assets found for biome " << biome->id().get() << "...skipping" << std::endl;
-            //biome = default_biome;
-            return false;
-            //continue;
+            empty_biomes.insert(biome);
+            continue;
         }
 
         // sample the noise texture at this (u,v)
@@ -1361,6 +1372,15 @@ VegetationLayer::getAssetPlacements(
     for (std::size_t i = 0; i < map_points.size(); ++i)
     {
         result[i].mapPoint() = std::move(map_points[i]);
+    }
+
+    // print warnings about empty biomes
+    if (!empty_biomes.empty())
+    {
+        for (auto biome : empty_biomes)
+        {
+            OE_WARN << "No assets defined in group " << AssetGroup::name(group) << " for biome " << biome->id().get() << std::endl;
+        }
     }
 
     output = std::move(result);

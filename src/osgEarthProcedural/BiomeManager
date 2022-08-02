@@ -167,11 +167,6 @@ namespace osgEarth
             //! @param biome Biome to activate
             void ref(const Biome* biome);
 
-            void ref(
-                const Biome* biome,
-                const TileKey& key,
-                const GeoImage& image);
-
             //! Tell the manager to decrease the usage count of a biome by one.
             //! If the user count goes to zero, teh manager will release the
             //! biome's instance and free its memory.

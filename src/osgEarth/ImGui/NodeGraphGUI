@@ -103,6 +103,11 @@ namespace osgEarth
                                 _fmg->getNodeGraph()->operations.push_back(std::make_shared<PointsOnEdgeOperation>());
                             }
 
+                            if (ImGui::MenuItem("Gridded Points"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<GriddedPointsOperation>());
+                            }
+
                             if (ImGui::MenuItem("Place Nodes"))
                             {
                                 _fmg->getNodeGraph()->operations.push_back(std::make_shared<PlaceNodesOperation>());
@@ -153,7 +158,10 @@ namespace osgEarth
                                 _fmg->getNodeGraph()->operations.push_back(std::make_shared<PolygonToPointsOperation>());
                             }
 
-
+                            if (ImGui::MenuItem("Image Mask"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<ImageMaskOperation>());
+                            }
 
                             ImGui::EndMenu();
                         }
@@ -194,6 +202,35 @@ namespace osgEarth
                                     sphere->setColor(color);
                                     _fmg->dirtyNodeGraph();
                                 }
+                                ImGui::PopItemWidth();
+                            }
+
+                            ImageMaskOperation* imageMask = dynamic_cast<ImageMaskOperation*>(o.get());
+                            if (imageMask)
+                            {
+                                ImGui::PushItemWidth(100.0f);
+
+                                std::string layerName = imageMask->getLayerName();
+                                if (ImGui::InputText("Layer", &layerName))
+                                {
+                                    imageMask->setLayerName(layerName);
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+                                osg::Vec4 color = imageMask->getColor();
+                                if (ImGui::ColorEdit4("Color", (float*)color._v, ImGuiColorEditFlags_NoInputs))
+                                {
+                                    imageMask->setColor(color);
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+                                float tolerance = imageMask->getTolerance();
+                                if (ImGui::SliderFloat("Tolerance", &tolerance, 0.0f, 1.0f))
+                                {
+                                    imageMask->setTolerance(tolerance);
+                                    _fmg->dirtyNodeGraph();
+                                }
+
                                 ImGui::PopItemWidth();
                             }
 
@@ -280,6 +317,19 @@ namespace osgEarth
                                 if (ImGui::InputInt("Count", &count))
                                 {
                                     randomPoints->setCount(count);;
+                                    _fmg->dirtyNodeGraph();
+                                }
+                                ImGui::PopItemWidth();
+                            }
+
+                            GriddedPointsOperation* griddedPoints = dynamic_cast<GriddedPointsOperation*>(o.get());
+                            if (griddedPoints)
+                            {
+                                int count = griddedPoints->getCount();
+                                ImGui::PushItemWidth(100.0f);
+                                if (ImGui::InputInt("Count", &count))
+                                {
+                                    griddedPoints->setCount(count);;
                                     _fmg->dirtyNodeGraph();
                                 }
                                 ImGui::PopItemWidth();

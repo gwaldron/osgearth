@@ -34,6 +34,7 @@
 #include <osg/MatrixTransform>
 #include <osgUtil/Simplifier>
 #include <osgEarth/ElevationQuery>
+#include <osgEarth/ImageLayer>
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/LineDrawable>
 
@@ -758,6 +759,58 @@ namespace osgEarth {
         unsigned int _count = 10;
     };
 
+    class OSGEARTH_EXPORT GriddedPointsOperation : public NodeGraphOperation
+    {
+    public:
+        GriddedPointsOperation()
+        {
+            _name = "Gridded Points";
+
+            addOutputAttribute("Points", NodeAttribute::FEATURES);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            FeatureList features;
+
+            auto extent = context.tileKey.getExtent();
+
+            double width = extent.width();
+            double height = extent.height();
+            double dx = width / (double)_count;
+            double dy = height / (double)_count;
+
+            for (unsigned int c = 0; c < _count; ++c)
+            {
+                for (unsigned int r = 0; r < _count; ++r)
+                {
+                    double x = extent.xMin() + (double)c * dx;
+                    double y = extent.yMin() + (double)r * dy;
+
+                    PointSet* p = new PointSet;
+                    p->push_back(osg::Vec3d(x, y, 0));
+                    Feature* f = new Feature(p, context.tileKey.getProfile()->getSRS());
+                    features.push_back(f);
+                }
+            }
+
+            set_output("Points", features);
+            _ready = true;
+        }
+
+        unsigned int getCount() const
+        {
+            return _count;
+        }
+
+        void setCount(unsigned int count)
+        {
+            _count = count;
+        }
+
+        unsigned int _count = 5;
+    };
+
     class OSGEARTH_EXPORT GetFeaturesOperation : public NodeGraphOperation
     {
     public:
@@ -1004,6 +1057,61 @@ namespace osgEarth {
         bool _random = true;
         unsigned int _count = 10;
         Random   _prng;
+    };
+
+    class OSGEARTH_EXPORT ImageMaskOperation : public NodeGraphOperation
+    {
+    public:
+        ImageMaskOperation()
+        {
+            _name = "Image Mask Operation";
+            addInputAttribute("Points", NodeAttribute::FEATURES);
+            addOutputAttribute("Points", NodeAttribute::FEATURES);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {            
+            auto points = get_input("Points");
+            if (points)
+            {
+                osg::ref_ptr< ImageLayer > imageLayer = context.map->getLayerByName<ImageLayer>(_layerName);
+                if (imageLayer.valid())
+                {
+                    FeatureList output;
+                    // Create the image for the key
+                    auto image = imageLayer->createImage(context.tileKey);
+                    if (image.valid())
+                    {
+                        for (auto& f : points->featuresValue)
+                        {
+                            osg::Vec4 color;
+                            image.read(color, f->getExtent().getCentroid());
+                            float dist = (osg::Vec3(color.r(), color.g(), color.b()) - osg::Vec3(_color.r(), _color.g(), _color.b())).length();
+                            if (dist < _tolerance)
+                            {
+                                output.push_back(f);
+                            }
+                        }
+                        set_output("Points", output);
+                    }
+                }
+            }
+        }
+
+        const osg::Vec4& getColor() const { return _color; }
+        void setColor(osg::Vec4& color) { _color = color; }
+
+        osg::Vec4 _color = osg::Vec4f(1.0f, 0.0f, 0.0f, 1.0f);
+
+        const std::string& getLayerName() const { return _layerName; }
+        void setLayerName(const std::string& layerName) { _layerName = layerName; }
+
+        std::string _layerName;
+
+        float getTolerance() const { return _tolerance; }
+        void setTolerance(float tolerance) { _tolerance = tolerance; }
+
+        float _tolerance = 0.05f;
     };
 
 

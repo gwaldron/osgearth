@@ -166,7 +166,7 @@ AssetCatalog::AssetCatalog(const Config& conf)
             {
                 ModelAsset asset(m);
                 asset.group() = group;
-                _models[asset.name().get()] = asset;
+                _models[asset.name()] = asset;
             }
         }
     }
@@ -494,9 +494,15 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
     for (const auto& b_conf : biome_defs)
     {
         Biome biome(b_conf, &_assets);
+
         biome._index = _biomeIndexGenerator++;
-        _biomes_by_index[biome._index] = std::move(biome);
-        _biomes_by_id[biome._id.get()] = &_biomes_by_index[biome._index];
+
+        // save these before calling std::move
+        std::string id = biome.id();
+        int index = biome.index();
+
+        _biomes_by_index[index] = std::move(biome);
+        _biomes_by_id[id] = &_biomes_by_index[index];
     }
 
     // resolve the explicit parent biome pointers.
@@ -527,8 +533,8 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
             {
                 std::ostringstream buf;
                 for (auto& bptr : visited)
-                    buf << bptr->id().get() << " -> ";
-                buf << parent->id().get();
+                    buf << bptr->id() << " -> ";
+                buf << parent->id();
                 OE_WARN << LC << "***** I detected a parent loop in the biome catalog: " << buf.str() << std::endl;
                 biome._parentBiome = nullptr;
                 break;
@@ -584,7 +590,7 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
             auto& trait_asset_groups = iter.second;
 
             // create a new biome for this traits permutation if it doesn't already exist:
-            std::string sub_biome_id = biome.id().get() + "." + permutation;
+            std::string sub_biome_id = biome.id() + "." + permutation;
             const Biome* sub_biome = getBiome(sub_biome_id);
             if (sub_biome == nullptr)
             {
@@ -617,7 +623,7 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
                     if (parent)
                     {
                         // find a traits-variation of the natural parent. If found, success.
-                        std::string parent_with_traits = parent->id().get() + "." + permutation;
+                        std::string parent_with_traits = parent->id() + "." + permutation;
                         const Biome* temp = getBiome(parent_with_traits);
                         if (temp)
                         {

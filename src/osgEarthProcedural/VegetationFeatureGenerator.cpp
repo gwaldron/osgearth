@@ -291,7 +291,7 @@ VegetationFeatureGenerator::getFeatures(
         feature->set("height", height * p.scale().z());
         feature->set("rotation", p.rotation());
 
-        feature->set("name", p.asset()->assetDef()->name().get());
+        feature->set("name", p.asset()->assetDef()->name());
 
         // Store any pass-thru properties
         if (!_propNames.empty())

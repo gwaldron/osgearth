@@ -155,7 +155,7 @@ namespace osgEarth {
                             {
                                 ImGui::Text("%s", biome->name()->c_str());
                                 ImGui::Text("id=%s parentid=%s index=%d",
-                                    biome->id()->c_str(),
+                                    biome->id().c_str(),
                                     biome->parentId()->c_str(),
                                     biome->index());
                             }
@@ -202,7 +202,7 @@ namespace osgEarth {
                             {
                                 ImGui::PushID(biome);
                                 char buf[255];
-                                sprintf(buf, "[%s] %s", biome->id()->c_str(), biome->name()->c_str());
+                                sprintf(buf, "[%s] %s", biome->id().c_str(), biome->name()->c_str());
                                 if (ImGui::Checkbox(buf, &_isManualBiomeActive[biome]))
                                 {
                                     if (_isManualBiomeActive[biome])
@@ -223,7 +223,7 @@ namespace osgEarth {
                             for (auto biome : biocat->getBiomes())
                             {
                                 char buf[255];
-                                sprintf(buf, "[%s] %s", biome->id()->c_str(), biome->name()->c_str());
+                                sprintf(buf, "[%s] %s", biome->id().c_str(), biome->name()->c_str());
                                 ImGui::Text(buf);
                             }
                         }
@@ -237,7 +237,7 @@ namespace osgEarth {
                         for (auto biome : biomes)
                         {
                             char buf[255];
-                            sprintf(buf, "[%s] %s", biome->id()->c_str(), biome->name()->c_str());
+                            sprintf(buf, "[%s] %s", biome->id().c_str(), biome->name()->c_str());
                             if (ImGui::TreeNode(buf))
                             {
                                 for (int group = 0; group < NUM_ASSET_GROUPS; ++group)
@@ -248,11 +248,7 @@ namespace osgEarth {
                                     {
                                         for (auto& pointer : biome->getModelAssetsToUse(group))
                                         {
-                                            if (ImGui::TreeNode(pointer.asset()->name()->c_str()))
-                                            {
-                                                drawModelAsset(pointer.asset());
-                                                ImGui::TreePop();
-                                            }
+                                            drawModelAsset(pointer.asset());
                                         }
                                         ImGui::TreePop();
                                     }
@@ -270,11 +266,7 @@ namespace osgEarth {
                         auto assets = bioman.getResidentAssetsIfNotLocked();
                         for (auto& asset : assets)
                         {
-                            if (ImGui::TreeNode(asset->name()->c_str()))
-                            {
-                                drawModelAsset(asset);
-                                ImGui::TreePop();
-                            }
+                            drawModelAsset(asset);
                         }
                     }
                 }
@@ -283,14 +275,23 @@ namespace osgEarth {
 
             void drawModelAsset(const ModelAsset* asset)
             {
-                if (asset->modelURI().isSet())
-                    ImGui::Text("Model: %s", asset->modelURI()->base().c_str());
+                std::string name = asset->name();
                 if (asset->traits().empty() == false)
-                    ImGui::Text("Traits: %s", AssetTraits::toString(asset->traits()).c_str());
-                if (asset->sideBillboardURI().isSet())
-                    ImGui::Text("Side BB: %s", asset->sideBillboardURI()->base().c_str());
-                if (asset->topBillboardURI().isSet())
-                    ImGui::Text("Top BB: %s", asset->topBillboardURI()->base().c_str());
+                    name += " (" + AssetTraits::toString(asset->traits()) + ")";
+
+                if (ImGui::TreeNode(name.c_str()))
+                {
+                    if (asset->modelURI().isSet())
+                        ImGui::Text("Model: %s", asset->modelURI()->base().c_str());
+                    if (asset->sideBillboardURI().isSet())
+                        ImGui::Text("Side BB: %s", asset->sideBillboardURI()->base().c_str());
+                    if (asset->topBillboardURI().isSet())
+                        ImGui::Text("Top BB: %s", asset->topBillboardURI()->base().c_str());
+                    if (asset->traits().empty() == false)
+                        ImGui::Text("Traits: %s", AssetTraits::toString(asset->traits()).c_str());
+
+                    ImGui::TreePop();
+                }
             }
 
             void onMove(osg::View* view, float x, float y)

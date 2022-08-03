@@ -125,6 +125,9 @@ BiomeManager::unref(const Biome* biome)
         --iter->second;
         if (iter->second == 0)
         {
+            // Technically yes, this creates a new revision, but it
+            // would also result in re-loading assets that are already
+            // resident... think on this -gw
             //++_revision;
             OE_INFO << LC << "Goodbye, " << biome->name().get() << "(" << biome->index() << ")" << std::endl;
         }
@@ -241,7 +244,7 @@ BiomeManager::recalculateResidentBiomes()
         for (auto& asset : to_delete)
         {
             _residentModelAssets.erase(asset);
-            OE_DEBUG << LC << "Unloaded asset " << asset->name().get() << std::endl;
+            OE_DEBUG << LC << "Unloaded asset " << asset->name() << std::endl;
         }
     }
 }
@@ -386,7 +389,7 @@ BiomeManager::materializeNewAssets(
                 // First reference to this instance? Populate it:
                 if (residentAsset == nullptr)
                 {
-                    OE_INFO << LC << "  Loading asset " << assetDef->name().get() << std::endl;
+                    OE_INFO << LC << "  Loading asset " << assetDef->name() << std::endl;
 
                     residentAsset = ResidentModelAsset::create();
 

@@ -80,7 +80,7 @@ namespace osgEarth
         {
         public:
             //! Readable name of the asset
-            OE_OPTION(std::string, name);
+            OE_PROPERTY(std::string, name);
 
             //! URI from which to load the asset 3D model
             OE_OPTION(URI, modelURI);
@@ -214,8 +214,13 @@ namespace osgEarth
             Biome(const Config& conf, AssetCatalog* assets);
             Config getConfig() const;
 
-            OE_OPTION(std::string, id);
+            //! Unique identifier of the biome
+            OE_PROPERTY(std::string, id);
+
+            //! Readable name/description of the biome
             OE_OPTION(std::string, name);
+
+            //! Optional identifier of this biome's parent
             OE_OPTION(std::string, parentId);
 
             // points to an asset, adding in some custom parameters.

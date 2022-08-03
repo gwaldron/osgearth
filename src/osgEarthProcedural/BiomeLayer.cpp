@@ -336,9 +336,8 @@ BiomeLayer::createImageImplementation(
                         if (sorted.size() > 1)
                             std::sort(sorted.begin(), sorted.end());
                         
-                        std::string implicit_biome_id = Stringify()
-                            << biome->id().get() << '.'
-                            << AssetTraits::toString(sorted);
+                        std::string implicit_biome_id = 
+                            biome->id() + "." + AssetTraits::toString(sorted);
 
                         biome = getBiomeCatalog()->getBiome(implicit_biome_id);
 

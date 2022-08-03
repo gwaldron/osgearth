@@ -156,7 +156,7 @@ Capabilities::Capabilities() :
     _supportsETC(false),
     _supportsRGTC(false),
     _isGLES(false),
-    _maxTextureBufferSize(16384),
+    _maxTextureBufferSize(INT_MAX),
     _isCoreProfile(false),
     _supportsVertexArrayObjects(true),
     _supportsInt64(false),
@@ -330,6 +330,8 @@ Capabilities::Capabilities() :
 #else
         _supportsFragDepthWrite = true;
 #endif
+
+        glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE, &_maxTextureBufferSize);
 
         // NVIDIA:
         bool isNVIDIA = _vendor.find("NVIDIA") == 0;

@@ -12,6 +12,8 @@ const float ht_g_exp = 7;
 #define M_PI 3.1417927
 #endif
 
+#define HEX_SCALE 3.46410161
+
 // Output:\ weights associated with each hex tile and integer centers
 void ht_TriangleGrid(
     out float w1, out float w2, out float w3,
@@ -19,7 +21,7 @@ void ht_TriangleGrid(
     in vec2 st)
 {
     // Scaling of the input
-    st *= 3.46410161; // 2 * 1.sqrt(3);
+    st *= HEX_SCALE; // 2 * 1.sqrt(3);
 
     // Skew input space into simplex triangle grid
     const mat2 gridToSkewedGrid = mat2(1.0, -0.57735027, 0.0, 1.15470054);
@@ -41,6 +43,35 @@ void ht_TriangleGrid(
     vertex3 = baseId + ivec2(1 - s, s);
 }
 
+// Output:\ weights associated with each hex tile and integer centers
+void ht_TriangleGrid_f(
+    out float w1, out float w2, out float w3,
+    out vec2 vertex1, out vec2 vertex2, out vec2 vertex3,
+    in vec2 st)
+{
+    // Scaling of the input
+    st *= HEX_SCALE; // 2 * 1.sqrt(3);
+
+    // Skew input space into simplex triangle grid
+    const mat2 gridToSkewedGrid = mat2(1.0, -0.57735027, 0.0, 1.15470054);
+    vec2 skewedCoord = mul(gridToSkewedGrid, st);
+
+    vec2 baseId = floor(skewedCoord);
+    vec3 temp = vec3(fract(skewedCoord), 0);
+    temp.z = 1.0 - temp.x - temp.y;
+
+    float s = step(0.0, -temp.z);
+    float s2 = 2 * s - 1;
+
+    w1 = -temp.z*s2;
+    w2 = s - temp.y*s2;
+    w3 = s - temp.x*s2;
+
+    vertex1 = baseId + vec2(s, s);
+    vertex2 = baseId + vec2(s, 1 - s);
+    vertex3 = baseId + vec2(1 - s, s);
+}
+
 vec2 ht_hash(vec2 p)
 {
     vec2 r = mat2(127.1, 311.7, 269.5, 183.3) * p;
@@ -50,8 +81,7 @@ vec2 ht_hash(vec2 p)
 vec2 ht_MakeCenST(ivec2 Vertex)
 {
     mat2 invSkewMat = mat2(1.0, 0.5, 0.0, 1.0 / 1.15470054);
-
-    return mul(invSkewMat, Vertex) / (2 * sqrt(3));
+    return mul(invSkewMat, Vertex) / HEX_SCALE;
 }
 
 mat2 ht_LoadRot2x2(ivec2 idx, float rotStrength)
@@ -83,6 +113,7 @@ vec3 ht_Gain3(vec3 x, float r)
 
     return res.xyz / (res.x + res.y + res.z);
 }
+
 vec3 ht_ProduceHexWeights(vec3 W, ivec2 vertex1, ivec2 vertex2, ivec2 vertex3)
 {
     vec3 res;
@@ -227,37 +258,44 @@ void ht_hex2colTex(
     //weights = ProduceHexWeights(W.xyz, vertex1, vertex2, vertex3);
 }
 
-// Input:\ tex is a texture with color
-// Input:\ r increase contrast when r>0.5
-// Output:\ color is the blended result
-// Output:\ weights shows the weight of each hex tile
-void ht_hex2colTex_no_rot(
+// Hextiling function optimized for no rotations and to properly 
+// interpolate our compressed normals -gw
+void ht_hex2colTex_optimized(
+    in sampler2D color_tex,
+    in sampler2D material_tex,
+    in vec2 st,
     out vec4 color,
-    sampler2D tex,
-    vec2 st)
+    out vec4 material)
 {
-    vec2 dSTdx = dFdx(st), dSTdy = dFdy(st);
+    // Use the same partial derivitives to sample all three locations
+    // to avoid rendering artifacts.
+    vec2 st_ddx = dFdy(st), st_ddy = dFdy(st);
 
     // Get triangle info
-    float w1, w2, w3;
-    ivec2 vertex1, vertex2, vertex3;
-    ht_TriangleGrid(w1, w2, w3, vertex1, vertex2, vertex3, st);
+    vec3 weights;
+    vec2 vertex1, vertex2, vertex3;
+    ht_TriangleGrid_f(weights[0], weights[1], weights[2], vertex1, vertex2, vertex3, st);
 
+    // randomize the sampling offsets:
     vec2 st1 = st + ht_hash(vertex1);
     vec2 st2 = st + ht_hash(vertex2);
     vec2 st3 = st + ht_hash(vertex3);
 
-    vec4 c1 = textureGrad(tex, st1, dSTdx, dSTdy);
-    vec4 c2 = textureGrad(tex, st2, dSTdx, dSTdy);
-    vec4 c3 = textureGrad(tex, st3, dSTdx, dSTdy);
+    vec4 c1 = textureGrad(color_tex, st1, st_ddx, st_ddy);
+    vec4 c2 = textureGrad(color_tex, st2, st_ddx, st_ddy);
+    vec4 c3 = textureGrad(color_tex, st3, st_ddx, st_ddy);
 
-    // use luminance as weight
+    vec4 m1 = textureGrad(material_tex, st1, st_ddx, st_ddy);
+    vec4 m2 = textureGrad(material_tex, st2, st_ddx, st_ddy);
+    vec4 m3 = textureGrad(material_tex, st3, st_ddx, st_ddy);
+
+    // Use color's luminance as weighting factor
     const vec3 Lw = vec3(0.299, 0.587, 0.114);
     vec3 Dw = vec3(dot(c1.xyz, Lw), dot(c2.xyz, Lw), dot(c3.xyz, Lw));
-
     Dw = mix(vec3(1.0), Dw, ht_g_fallOffContrast);
-    vec3 W = Dw * pow(vec3(w1, w2, w3), vec3(ht_g_exp));
+    vec3 W = Dw * pow(weights, vec3(ht_g_exp));
     W /= (W.x + W.y + W.z);
 
     color = W.x * c1 + W.y * c2 + W.z * c3;
+    material = W.x * m1 + W.y * m2 + W.z * m3;
 }

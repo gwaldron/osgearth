@@ -126,17 +126,9 @@ mat3 oe_normalMapTBN;
 #define MODIFY(V,M) clamp((V)*(M), 0.0, 1.0)
 #endif
 
-vec3 unpackNormal(in vec4 p)
-{
-    vec3 n;
-    n.xy = p.xy*2.0 - 1.0;
-    n.z = 1.0 - abs(n.x) - abs(n.y);
-    // unnecessary since Z is never < 0:
-    //float t = clamp(-n.z, 0, 1);
-    //n.x += (n.x > 0)? -t : t;
-    //n.y += (n.y > 0)? -t : t;
-    return normalize(n);
-}
+// optimized uncompressor (assumes Z is never negative)
+#define UNPACK_NORMAL(P,N) N.xy = P*2.0-1.0; N.z = 1.0-abs(N.x)-abs(N.y); N /= length(N)
+
 
 struct Pixel {
     vec4 rgbh;
@@ -175,21 +167,23 @@ void get_coord(out vec2 coord, in int index, in int level)
 
 void get_pixel(out Pixel res, in int index, in vec2 coord)
 {
+    vec4 nnra;
+
 #if OE_SPLAT_HEX_TILER == 1
-    ht_hex2colTex_no_rot(res.rgbh, sampler2D(texHandle[index * 2]), coord);
-    vec4 temp;
-    ht_hex2colTex_no_rot(temp, sampler2D(texHandle[index * 2 + 1]), coord);
-#elif OE_SPLAT_HEX_TILER == 2
-    ht_hex2colTex(res.rgbh, sampler2D(texHandle[index * 2]), coord, 1.0); // hex_rot);
-    vec4 temp;
-    ht_hex2colTex(temp, sampler2D(texHandle[index * 2 + 1]), coord, 1.0); // hex_rot);
+    ht_hex2colTex_optimized(
+        sampler2D(texHandle[index * 2]),
+        sampler2D(texHandle[index * 2 + 1]),
+        coord,
+        res.rgbh,
+        nnra);
+
 #else
     res.rgbh = texture(sampler2D(texHandle[index * 2]), coord);
-    vec4 temp = texture(sampler2D(texHandle[index * 2 + 1]), coord);
+    nnra = texture(sampler2D(texHandle[index * 2 + 1]), coord);
 #endif
 
-    res.normal = unpackNormal(temp);
-    res.material = vec3(temp[2], temp[3], 0.0); // roughness, ao, metal
+    UNPACK_NORMAL(nnra.xy, res.normal);
+    res.material = vec3(nnra[2], nnra[3], 0.0); // roughness, ao, metal
 }
 
 float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2)

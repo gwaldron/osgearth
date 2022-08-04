@@ -217,7 +217,7 @@ Capabilities::Capabilities() :
         myGC = std::make_shared<MyGraphicsContext>();
     }
 
-    if (myGC)
+    if (myGC && myGC->valid())
     {
         gc = myGC->_gc.get();
         id = gc->getState()->getContextID();

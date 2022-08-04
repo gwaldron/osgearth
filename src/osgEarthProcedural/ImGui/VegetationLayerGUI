@@ -88,6 +88,10 @@ namespace osgEarth {
                         if (ImGui::SliderFloat("Far", &sse_scales[1], 0.0f, 2.0f))
                             _veglayer->setSSEScales(sse_scales);
 
+                        static float transition = 0.1f;
+                        if (ImGui::SliderFloat("Transition", &transition, 0.0f, 1.0f))
+                            stateset(ri)->addUniform(new osg::Uniform("oe_chonk_lod_transition_factor", transition));
+
                         static float bbd0 = 0.5f, bbd1 = 0.75f;
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Billboard cos(angles):");
                         if (ImGui::SliderFloat("Low", &bbd0, 0.0f, bbd1))

@@ -1269,9 +1269,6 @@ VegetationLayer::getAssetPlacements(
                 (noise[N_RANDOM_2] * 2.0f - 1.0f));
         }
 
-        // allow overlap for "billboard" models (i.e. grasses).
-        //bool allow_overlap = isGrass;
-
         // apply instance-specific density adjustment:
         density *= instance.coverage();
 

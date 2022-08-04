@@ -140,7 +140,6 @@ in vec3 vp_VertexView;
 tweakable float oe_veg_bbd0 = 0.5;
 tweakable float oe_veg_bbd1 = 0.75;
 
-
 void oe_vegetation_fs(inout vec4 color)
 {
 #ifdef OE_IS_SHADOW_CAMERA

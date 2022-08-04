@@ -37,19 +37,22 @@ flat out uint64_t oe_normal_tex;
 void oe_chonk_default_vertex_model(inout vec4 vertex)
 {
     int i = gl_BaseInstance + gl_InstanceID;
-    vertex = instances[i].xform * vec4(position, 1);
+
+    uint lod = instances[i].lod;
+
+#ifndef OE_IS_SHADOW_CAMERA
+    oe_fade = instances[i].visibility[lod];
+#else
+    oe_fade = 1.0;
+#endif
+
+    vertex = instances[i].xform * vec4(position, 1.0);
     vp_Color = color;
     xform3 = mat3(instances[i].xform);
     vp_Normal = xform3 * normal;
     oe_tex_uv = uv;
     oe_albedo_tex = albedo >= 0 ? textures[albedo] : 0;
     oe_normal_tex = normalmap >= 0 ? textures[normalmap] : 0;
-
-#ifndef OE_IS_SHADOW_CAMERA
-    oe_fade = instances[i].visibility[instances[i].lod];
-#else
-    oe_fade = 1.0;
-#endif
 }
 
 [break]

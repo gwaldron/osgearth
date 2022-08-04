@@ -236,6 +236,7 @@ namespace osgEarth
                     {
                         static bool s_gpuculldebug = false;
                         if (ImGui::Checkbox("GPU cull debug view", &s_gpuculldebug)) {
+                            stateset(ri)->removeDefine("OE_GPUCULL_DEBUG");
                             if (s_gpuculldebug)
                                 stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "1");
                             else

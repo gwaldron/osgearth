@@ -4,6 +4,13 @@
 #pragma import_defines(OE_GPUCULL_DEBUG)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
+#pragma import_defines(OE_TWEAKABLE)
+#ifdef OE_TWEAKABLE
+#define tweakable uniform
+#else
+#define tweakable const
+#endif
+
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 struct DrawElementsIndirectCommand
@@ -36,7 +43,7 @@ struct ChonkLOD
     vec4 bs;
     float far_pixel_scale;
     float near_pixel_scale;
-    uint num_lods;
+    uint num_lods; // chonk-global
     uint total_num_commands; // global
 };
 
@@ -83,6 +90,8 @@ uniform vec4 oe_lod_scale;
 #define REASON_SSE 2.5
 #define REASON_NEARCLIP 3.5
 
+tweakable float oe_chonk_lod_transition_factor = 0.1;
+
 void cull()
 {
     const uint i = gl_GlobalInvocationID.x; // instance
@@ -123,64 +132,62 @@ void cull()
         }
     }
 
-    {
-        // find the clip-space MBR and intersect with the clip frustum:
-        vec4 LL, UR, temp;
-        temp = gl_ProjectionMatrix * (center_view + vec4(-r, -r, -r, 0)); temp /= temp.w;
-        LL = temp; UR = temp;
-        temp = gl_ProjectionMatrix * (center_view + vec4(-r, -r, +r, 0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-        temp = gl_ProjectionMatrix * (center_view + vec4(-r, +r, -r, 0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-        temp = gl_ProjectionMatrix * (center_view + vec4(-r, +r, +r, 0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-        temp = gl_ProjectionMatrix * (center_view + vec4(+r, -r, -r, 0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-        temp = gl_ProjectionMatrix * (center_view + vec4(+r, -r, +r, 0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-        temp = gl_ProjectionMatrix * (center_view + vec4(+r, +r, -r, 0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
-        temp = gl_ProjectionMatrix * (center_view + vec4(+r, +r, +r, 0)); temp /= temp.w;
-        LL = min(LL, temp); UR = max(UR, temp);
+    // find the clip-space MBR and intersect with the clip frustum:
+    vec4 LL, UR, temp;
+    temp = gl_ProjectionMatrix * (center_view + vec4(-r, -r, -r, 0)); temp /= temp.w;
+    LL = temp; UR = temp;
+    temp = gl_ProjectionMatrix * (center_view + vec4(-r, -r, +r, 0)); temp /= temp.w;
+    LL = min(LL, temp); UR = max(UR, temp);
+    temp = gl_ProjectionMatrix * (center_view + vec4(-r, +r, -r, 0)); temp /= temp.w;
+    LL = min(LL, temp); UR = max(UR, temp);
+    temp = gl_ProjectionMatrix * (center_view + vec4(-r, +r, +r, 0)); temp /= temp.w;
+    LL = min(LL, temp); UR = max(UR, temp);
+    temp = gl_ProjectionMatrix * (center_view + vec4(+r, -r, -r, 0)); temp /= temp.w;
+    LL = min(LL, temp); UR = max(UR, temp);
+    temp = gl_ProjectionMatrix * (center_view + vec4(+r, -r, +r, 0)); temp /= temp.w;
+    LL = min(LL, temp); UR = max(UR, temp);
+    temp = gl_ProjectionMatrix * (center_view + vec4(+r, +r, -r, 0)); temp /= temp.w;
+    LL = min(LL, temp); UR = max(UR, temp);
+    temp = gl_ProjectionMatrix * (center_view + vec4(+r, +r, +r, 0)); temp /= temp.w;
+    LL = min(LL, temp); UR = max(UR, temp);
 
 #if OE_GPUCULL_DEBUG
-        float threshold = 0.75;
+    float threshold = 0.75;
 #else
-        float threshold = 1.0;
+    float threshold = 1.0;
 #endif
 
-        if (LL.x > threshold || LL.y > threshold)
-            REJECT(REASON_FRUSTUM);
+    if (LL.x > threshold || LL.y > threshold)
+        REJECT(REASON_FRUSTUM);
 
-        if (UR.x < -threshold || UR.y < -threshold)
-            REJECT(REASON_FRUSTUM);
+    if (UR.x < -threshold || UR.y < -threshold)
+        REJECT(REASON_FRUSTUM);
 
 #ifndef OE_IS_SHADOW_CAMERA
 
-        // OK, it is in view - now check pixel size on screen for this LOD:
-        vec2 dims = 0.5*(UR.xy - LL.xy)*oe_Camera.xy;
+    // OK, it is in view - now check pixel size on screen for this LOD:
+    vec2 dims = 0.5*(UR.xy - LL.xy)*oe_Camera.xy;
 
-        float pixelSize = max(dims.x, dims.y);
-        float pixelSizePad = pixelSize * 0.1;
+    float pixelSize = max(dims.x, dims.y);
+    float pixelSizePad = pixelSize * oe_chonk_lod_transition_factor; // 0.1;
 
-        float minPixelSize = oe_sse * chonks[v].far_pixel_scale * oe_lod_scale[lod];
-        if (pixelSize < (minPixelSize - pixelSizePad))
-            REJECT(REASON_SSE);
+    float minPixelSize = oe_sse * chonks[v].far_pixel_scale * oe_lod_scale[lod];
+    if (pixelSize < (minPixelSize - pixelSizePad))
+        REJECT(REASON_SSE);
 
-        float near_scale = lod > 0 ? chonks[v].near_pixel_scale * oe_lod_scale[lod - 1] : 99999.0;
-        float maxPixelSize = oe_sse * near_scale;
-        if (pixelSize > (maxPixelSize + pixelSizePad))
-            REJECT(REASON_SSE);
+    float near_scale = lod > 0 ? chonks[v].near_pixel_scale * oe_lod_scale[lod - 1] : 99999.0;
+    float maxPixelSize = oe_sse * near_scale;
+    if (pixelSize > (maxPixelSize + pixelSizePad))
+        REJECT(REASON_SSE);
 
-        if (fade == 1.0)  // good to go, set the proper fade:
-        {
-            if (pixelSize > maxPixelSize)
-                fade = 1.0 - (pixelSize - maxPixelSize) / pixelSizePad;
-            else if (pixelSize < minPixelSize)
-                fade = 1.0 - (minPixelSize - pixelSize) / pixelSizePad;
-        }
-#endif
+    if (fade == 1.0)  // good to go, set the proper fade:
+    {
+        if (pixelSize > maxPixelSize)
+            fade = 1.0 - (pixelSize - maxPixelSize) / pixelSizePad;
+        else if (pixelSize < minPixelSize)
+            fade = 1.0 - (minPixelSize - pixelSize) / pixelSizePad;
     }
+#endif
 
     if (fade < 0.1)
         return;
@@ -191,7 +198,9 @@ void cull()
     // Bump all baseInstances following this one:
     const uint cmd_count = chonks[v].total_num_commands;
     for (uint i = v + 1; i < cmd_count; ++i)
+    {
         atomicAdd(commands[i].cmd.baseInstance, 1);
+    }
 }
 
 // Copies the visible instances to a compacted output buffer.
@@ -210,11 +219,12 @@ void compact()
 
     // Lazy! Re-using the instance struct for render leaves..
     output_instances[offset + index] = input_instances[i];
-    output_instances[offset + index].lod = lod; // .fade = fade;
+    output_instances[offset + index].lod = lod;
 }
 
 // Entry point.
 uniform int oe_pass;
+
 void main()
 {
     if (oe_pass == 0)

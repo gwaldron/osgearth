@@ -163,6 +163,11 @@ namespace osgEarth
                                 _fmg->getNodeGraph()->operations.push_back(std::make_shared<ImageMaskOperation>());
                             }
 
+                            if (ImGui::MenuItem("Offset"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<OffsetOperation>());
+                            }
+
                             ImGui::EndMenu();
                         }
                     }
@@ -200,6 +205,19 @@ namespace osgEarth
                                 if (ImGui::ColorEdit4("Color", (float*)color._v, ImGuiColorEditFlags_NoInputs))
                                 {
                                     sphere->setColor(color);
+                                    _fmg->dirtyNodeGraph();
+                                }
+                                ImGui::PopItemWidth();
+                            }
+
+                            OffsetOperation* offset = dynamic_cast<OffsetOperation*>(o.get());
+                            if (offset)
+                            {
+                                ImGui::PushItemWidth(100.0f);
+                                float o = offset->getOffset();
+                                if (ImGui::InputFloat("Offset", &o))
+                                {
+                                    offset->setOffset(o);
                                     _fmg->dirtyNodeGraph();
                                 }
                                 ImGui::PopItemWidth();

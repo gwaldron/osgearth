@@ -1388,6 +1388,52 @@ namespace osgEarth {
         Random   _prng;
     };
 
+    class OSGEARTH_EXPORT OffsetOperation : public NodeGraphOperation
+    {
+    public:
+        OffsetOperation()
+        {
+            _name = "Offset";
+
+            addInputAttribute("Features", NodeAttribute::FEATURES);
+            addOutputAttribute("Features", NodeAttribute::FEATURES);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            auto features = get_input("Features");
+            if (features)
+            {
+                for (auto& f : features->featuresValue)
+                {
+                    GeometryIterator itr(f->getGeometry());
+                    while (itr.hasMore())
+                    {
+                        Geometry* g = itr.next();
+                        for (Geometry::iterator v = g->begin(); v != g->end(); ++v)
+                        {
+                            v->z() += _offset;
+                        }
+                    }
+                }
+                // These are modified in place, this is faster but is destructive to the features from the input
+                set_output("Features", features->featuresValue);
+            }
+        }
+
+        float getOffset() const
+        {
+            return _offset;
+        }
+
+        void setOffset(float offset)
+        {
+            _offset = offset;
+        }
+
+        float _offset = 0.0f;
+    };
+
 
     class OSGEARTH_EXPORT FeaturesToLinesOperation : public NodeGraphOperation
     {

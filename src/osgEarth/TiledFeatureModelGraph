@@ -179,6 +179,15 @@ namespace osgEarth {
             _name = name;
         }
 
+        const std::string& getComment() const {
+            return _comment;
+        }
+
+        void setComment(const std::string& comment)
+        {
+            _comment = comment;
+        }
+
         // Connect an output pin of one node to an input pin on this Operation
         void connect(const std::string& outputName, NodeGraphOperation* destination, const std::string& destinationName)
         {
@@ -300,6 +309,7 @@ namespace osgEarth {
         bool _ready = false;
 
         std::string _name;
+        std::string _comment;
 
         int _id;
     };    

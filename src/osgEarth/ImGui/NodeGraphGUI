@@ -493,6 +493,15 @@ namespace osgEarth
                             }
 
 
+                            ImGui::PushItemWidth(200.0f);
+                            std::string comment = o->getComment();
+                            if (ImGui::InputText("Comment", &comment))
+                            {
+                                o->setComment(comment);
+                            }
+                            ImGui::PopItemWidth();
+
+
                             ImNodes::EndNode();
                         }
                     }

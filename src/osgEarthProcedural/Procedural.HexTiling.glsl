@@ -258,8 +258,10 @@ void ht_hex2colTex(
     //weights = ProduceHexWeights(W.xyz, vertex1, vertex2, vertex3);
 }
 
-// Hextiling function optimized for no rotations and to properly 
-// interpolate our compressed normals -gw
+#define HT_HASH(X) fract(sin(mat2(127.1, 311.7, 269.5, 183.3) * X)*43758.5453)
+
+// Hextiling function optimized for no rotations and to 
+// sample and interpolate both color and material vectors
 void ht_hex2colTex_optimized(
     in sampler2D color_tex,
     in sampler2D material_tex,
@@ -267,10 +269,6 @@ void ht_hex2colTex_optimized(
     out vec4 color,
     out vec4 material)
 {
-    // Use the same partial derivitives to sample all three locations
-    // to avoid rendering artifacts.
-    vec2 st_ddx = dFdy(st), st_ddy = dFdy(st);
-
     // Get triangle info
     vec3 weights;
     vec2 vertex1, vertex2, vertex3;
@@ -281,13 +279,17 @@ void ht_hex2colTex_optimized(
     vec2 st2 = st + ht_hash(vertex2);
     vec2 st3 = st + ht_hash(vertex3);
 
-    vec4 c1 = textureGrad(color_tex, st1, st_ddx, st_ddy);
-    vec4 c2 = textureGrad(color_tex, st2, st_ddx, st_ddy);
-    vec4 c3 = textureGrad(color_tex, st3, st_ddx, st_ddy);
+    // Use the same partial derivitives to sample all three locations
+    // to avoid rendering artifacts.
+    vec2 ddx = dFdx(st), ddy = dFdy(st);
 
-    vec4 m1 = textureGrad(material_tex, st1, st_ddx, st_ddy);
-    vec4 m2 = textureGrad(material_tex, st2, st_ddx, st_ddy);
-    vec4 m3 = textureGrad(material_tex, st3, st_ddx, st_ddy);
+    vec4 c1 = textureGrad(color_tex, st1, ddx, ddy);
+    vec4 c2 = textureGrad(color_tex, st2, ddx, ddy);
+    vec4 c3 = textureGrad(color_tex, st3, ddx, ddy);
+
+    vec4 m1 = textureGrad(material_tex, st1, ddx, ddy);
+    vec4 m2 = textureGrad(material_tex, st2, ddx, ddy);
+    vec4 m3 = textureGrad(material_tex, st3, ddx, ddy);
 
     // Use color's luminance as weighting factor
     const vec3 Lw = vec3(0.299, 0.587, 0.114);

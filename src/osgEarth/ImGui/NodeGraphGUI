@@ -168,6 +168,11 @@ namespace osgEarth
                                 _fmg->getNodeGraph()->operations.push_back(std::make_shared<OffsetOperation>());
                             }
 
+                            if (ImGui::MenuItem("Join"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<JoinOperation>());
+                            }
+
                             ImGui::EndMenu();
                         }
                     }
@@ -249,6 +254,20 @@ namespace osgEarth
                                     _fmg->dirtyNodeGraph();
                                 }
 
+                                ImGui::PopItemWidth();
+                            }
+
+                            JoinOperation* join = dynamic_cast<JoinOperation*>(o.get());
+                            if (join)
+                            {
+                                ImGui::PushItemWidth(100.0f);
+
+                                std::string layerName = join->getLayerName();
+                                if (ImGui::InputText("Layer", &layerName))
+                                {
+                                    join->setLayerName(layerName);
+                                    _fmg->dirtyNodeGraph();
+                                }
                                 ImGui::PopItemWidth();
                             }
 
@@ -433,16 +452,9 @@ namespace osgEarth
                                     _fmg->dirtyNodeGraph();
                                 }
 
-                                int count = polygonsToPoints->getCount();
-                                ImGui::PushItemWidth(100.0f);
-                                if (ImGui::InputInt("Count", &count))
-                                {
-                                    polygonsToPoints->setCount(count);;
-                                    _fmg->dirtyNodeGraph();
-                                }
-
                                 ImGui::PopItemWidth();
                             }
+
 
                             FilterFeaturesOperation* filterFeatures = dynamic_cast<FilterFeaturesOperation*>(o.get());
                             if (filterFeatures)

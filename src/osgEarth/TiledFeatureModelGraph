@@ -950,86 +950,90 @@ namespace osgEarth {
         {
             _name = "Polygons To Points";
 
+            addInputAttribute("Density", NodeAttribute::FLOAT);
             addInputAttribute("Features", NodeAttribute::FEATURES);
             addOutputAttribute("Features", NodeAttribute::FEATURES);
         }
 
         virtual void execute(const NodeGraphContext& context) override
         {
-            auto in = get_input("Features");
+            auto in = get_input("Features");            
             if (in)
             {
-                FeatureList points;
-                auto extent = context.tileKey.getExtent();
+                auto densityInput = get_input("Density");
+                float density = 10.0f;
+                if (densityInput)
+                {
+                    density = densityInput->floatValue;
+                }
 
+                osg::ref_ptr< PointSet > points = new PointSet;
+                osg::ref_ptr< Feature > outputFeature = new Feature(points, osgEarth::SpatialReference::create("wgs84"));
+
+                double areaSqKm = 0.0f;
+                GeoExtent extent = context.tileKey.getExtent();
+                double avglat = extent.yMin() + 0.5 * extent.height();
+                double h = extent.height() * 111.32;
+                double w = extent.width() * 111.32 * sin(1.57079633 + osg::DegreesToRadians(avglat));
+                areaSqKm = w * h;
+
+                unsigned numInstancesInBoundingRect = (unsigned)(areaSqKm * (double)osg::clampAbove(0.1f, density));
                 if (_random)
                 {
-                    for (unsigned int i = 0; i < _count; ++i)
-                    {                        
+                    for (unsigned int i = 0; i < numInstancesInBoundingRect; ++i)
+                    {
                         double x = extent.xMin() + _prng.next() * extent.width();
                         double y = extent.yMin() + _prng.next() * extent.height();
 
                         bool keep = false;
                         for (auto& feature : in->featuresValue)
                         {
-                            //if (feature->getGeometry()->isPolygon())
+                            if (feature->getGeometry()->isPolygon())
                             {
                                 feature->transform(SpatialReference::create("wgs84"));
                                 if (feature->getGeometry()->contains2D(x, y))
                                 {
-                                    keep = true;
+                                    points->push_back(osg::Vec3d(x, y, 0));
+                                    break;
                                 }
                             }
-                        }
-
-                        if (keep)
-                        {
-                            PointSet* p = new PointSet;
-                            p->push_back(osg::Vec3d(x, y, 0));
-                            Feature* f = new Feature(p, context.tileKey.getProfile()->getSRS());
-                            points.push_back(f);
                         }
                     }
                 }
                 else
                 {
-                    double width = extent.width();
-                    double height = extent.height();
-                    double dx = width / (double)_count;
-                    double dy = height / (double)_count;
+                    // regular interval scattering:
+                    double numInst1D = sqrt((double)numInstancesInBoundingRect);
+                    double ar = extent.width() / extent.height();
+                    unsigned cols = (unsigned)(numInst1D * ar);
+                    unsigned rows = (unsigned)(numInst1D / ar);
+                    double colInterval = extent.width() / (double)(cols - 1);
+                    double rowInterval = extent.height() / (double)(rows - 1);
+                    double interval = 0.5 * (colInterval + rowInterval);
 
-                    for (unsigned int c = 0; c < _count; ++c)
+                    for (double cy = extent.yMin(); cy <= extent.yMax(); cy += interval)
                     {
-                        for (unsigned int r = 0; r < _count; ++r)
+                        for (double cx = extent.xMin(); cx <= extent.xMax(); cx += interval)
                         {
-                            double x = extent.xMin() + (double)c * dx;
-                            double y = extent.yMin() + (double)r * dy;
-
-                            bool keep = false;
                             for (auto& feature : in->featuresValue)
                             {
-                                //if (feature->getGeometry()->isPolygon())
+                                if (feature->getGeometry()->isPolygon())
                                 {
                                     feature->transform(SpatialReference::create("wgs84"));
-                                    if (feature->getGeometry()->contains2D(x, y))
+                                    if (feature->getGeometry()->contains2D(cx, cy))
                                     {
-                                        keep = true;
+                                        points->push_back(osg::Vec3d(cx, cy, 0));
+                                        break;
                                     }
                                 }
                             }
-
-                            if (keep)
-                            {
-                                PointSet* p = new PointSet;
-                                p->push_back(osg::Vec3d(x, y, 0));
-                                Feature* f = new Feature(p, context.tileKey.getProfile()->getSRS());
-                                points.push_back(f);
-                            }
                         }
-                    }                    
-                }    
+                    }
+                }
 
-                set_output("Features", points);
+                FeatureList features;
+                features.push_back(outputFeature);
+                set_output("Features", features);
                 _ready = true;
             }
         }
@@ -1057,6 +1061,72 @@ namespace osgEarth {
         bool _random = true;
         unsigned int _count = 10;
         Random   _prng;
+    };
+
+    class OSGEARTH_EXPORT JoinOperation : public NodeGraphOperation
+    {
+    public:
+        JoinOperation()
+        {
+            _name = "Join";
+            addInputAttribute("Features", NodeAttribute::FEATURES);            
+            addOutputAttribute("Features", NodeAttribute::FEATURES);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            osg::ref_ptr< FeatureSource > featureSource = context.map->getLayerByName<FeatureSource>(_layerName);
+            auto features = get_input("Features");
+            if (featureSource.valid() && features && !features->featuresValue.empty())
+            {
+                GeoExtent extentInFeatureSRS = context.tileKey.getExtent().transform(featureSource->getFeatureProfile()->getSRS());
+
+                Query query;
+                query.bounds() = extentInFeatureSRS.bounds();
+                
+                osg::ref_ptr<FeatureCursor> cursor = featureSource->createFeatureCursor(query, nullptr);
+                if (cursor)
+                {
+                    FeatureList boundaries;
+                    cursor->fill(boundaries);
+
+                    auto featuresSRS = features->featuresValue.begin()->get()->getSRS();
+
+                    for (auto& boundary : boundaries)
+                    {
+                        boundary->transform(featuresSRS);
+                    }
+
+                    for (auto& feature : features->featuresValue)
+                    {
+                        if (feature.valid() && feature->getGeometry())
+                        {
+                            for (const auto& boundary : boundaries)
+                            {
+                                if (boundary->getGeometry()->intersects(feature->getGeometry()))
+                                {
+                                    // Copy the attributes from the boundary to the feature (and overwrite)
+                                    for (const auto& attr : boundary->getAttrs())
+                                    {
+                                        feature->set(attr.first, attr.second);
+                                    }
+
+                                    // upon success, don't check any more boundaries:
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                set_output("Features", features->featuresValue);
+                _ready = true;
+            }
+        }
+
+        const std::string& getLayerName() const { return _layerName; }
+        void setLayerName(const std::string& layerName) { _layerName = layerName; }
+        std::string _layerName;
     };
 
     class OSGEARTH_EXPORT ImageMaskOperation : public NodeGraphOperation
@@ -1480,6 +1550,7 @@ namespace osgEarth {
 
                         // construct a drawable for the lines
                         osg::ref_ptr< LineDrawable > drawable = new LineDrawable(isRing ? GL_LINE_LOOP : GL_LINE_STRIP);
+                        drawable->setUseGPU(false);
                         float lineWidth = 1.0f;
 
                         if (width)
@@ -1523,12 +1594,11 @@ namespace osgEarth {
 
                             osg::Vec3d local = world * w2l;
                             drawable->pushVertex(local);
-                            drawable->setColor(ptIndex, primaryColor);
                             ptIndex++;
                         }
-
+                        drawable->setColor(primaryColor);
                         drawable->setLineWidth(lineWidth);
-                        drawable->dirty();
+                        drawable->finish();
                         result->addChild(drawable);
                     }
                     ++index;

@@ -52,7 +52,8 @@ namespace osgEarth {
             floatValues(rhs.floatValues),
             nodeValue(rhs.nodeValue),
             featuresValue(rhs.featuresValue),
-            vectorValue(rhs.vectorValue)
+            vectorValue(rhs.vectorValue),
+            imageValue(rhs.imageValue)
         {
         }
 
@@ -71,11 +72,17 @@ namespace osgEarth {
         {
         }
 
+        NodeGraphResult(const osg::Image* value) :
+            imageValue(value)
+        {
+        }
+
         float floatValue = 0.0f;
         std::vector< float > floatValues;        
         osg::ref_ptr< osg::Node > nodeValue;
         std::vector< osg::Vec4 > vectorValue;
         FeatureList featuresValue;
+        osg::ref_ptr< const osg::Image > imageValue;
     };
 
     // Socket or Pin is maybe a better name?
@@ -89,7 +96,8 @@ namespace osgEarth {
             FLOAT,
             STRING,
             FEATURES,
-            VECTOR
+            VECTOR,
+            IMAGE
         };
 
         NodeAttribute(const std::string& name, AttributeType type) :
@@ -1139,12 +1147,77 @@ namespace osgEarth {
         std::string _layerName;
     };
 
+    class OSGEARTH_EXPORT ImageFromLayerOperation : public NodeGraphOperation
+    {
+    public:
+        ImageFromLayerOperation()
+        {
+            _name = "Image From Layer";            
+            addOutputAttribute("Image", NodeAttribute::IMAGE);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            osg::ref_ptr< ImageLayer > imageLayer = context.map->getLayerByName<ImageLayer>(_layerName);
+            if (imageLayer.valid())
+            {
+                // Create the image for the key
+                auto image = imageLayer->createImage(context.tileKey);
+                if (image.valid())
+                {
+                    set_output("Image", NodeGraphResult(image.getImage()));
+                }
+            }
+        }
+        const std::string& getLayerName() const { return _layerName; }
+        void setLayerName(const std::string& layerName) { _layerName = layerName; }
+
+        std::string _layerName;
+    };
+
+    class OSGEARTH_EXPORT LoadImageOperation : public NodeGraphOperation
+    {
+    public:
+        LoadImageOperation()
+        {
+            _name = "Load Image";
+            addOutputAttribute("Image", NodeAttribute::IMAGE);
+        }
+
+        LoadImageOperation(const std::string& filename)
+        {
+            _name = filename;
+            _filename = filename;
+            addOutputAttribute("Image", NodeAttribute::IMAGE);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            std::lock_guard<std::mutex> lk(_mutex);
+            if (!_loaded.valid())
+            {
+                _loaded = osgDB::readImageFile(_filename);
+            }
+            set_output("Image", _loaded.get());
+            _ready = true;
+        }
+
+        std::string getFilename() const { return _filename; }
+        void setFilename(const std::string& filename) { _filename = filename; }
+
+        std::string _filename;
+
+        osg::ref_ptr< osg::Image > _loaded;
+        std::mutex _mutex;
+    };
+
     class OSGEARTH_EXPORT ImageMaskOperation : public NodeGraphOperation
     {
     public:
         ImageMaskOperation()
         {
-            _name = "Image Mask Operation";
+            _name = "Image Mask";
+            addInputAttribute("Image", NodeAttribute::IMAGE);
             addInputAttribute("Points", NodeAttribute::FEATURES);
             addOutputAttribute("Points", NodeAttribute::FEATURES);
         }
@@ -1152,28 +1225,27 @@ namespace osgEarth {
         virtual void execute(const NodeGraphContext& context) override
         {            
             auto points = get_input("Points");
+            auto image = get_input("Image");
             if (points)
             {
-                osg::ref_ptr< ImageLayer > imageLayer = context.map->getLayerByName<ImageLayer>(_layerName);
-                if (imageLayer.valid())
+                if (image && image->imageValue.valid())
                 {
+                    // Just sample the image across the entire extent of the key, this probably isn't the right move
+                    // but is cool for a demo for now.
+                    GeoImage geoImage(image->imageValue.get(), context.tileKey.getExtent());
                     FeatureList output;
                     // Create the image for the key
-                    auto image = imageLayer->createImage(context.tileKey);
-                    if (image.valid())
+                    for (auto& f : points->featuresValue)
                     {
-                        for (auto& f : points->featuresValue)
+                        osg::Vec4 color;
+                        geoImage.read(color, f->getExtent().getCentroid());
+                        float dist = (osg::Vec3(color.r(), color.g(), color.b()) - osg::Vec3(_color.r(), _color.g(), _color.b())).length();
+                        if (dist < _tolerance)
                         {
-                            osg::Vec4 color;
-                            image.read(color, f->getExtent().getCentroid());
-                            float dist = (osg::Vec3(color.r(), color.g(), color.b()) - osg::Vec3(_color.r(), _color.g(), _color.b())).length();
-                            if (dist < _tolerance)
-                            {
-                                output.push_back(f);
-                            }
+                            output.push_back(f);
                         }
-                        set_output("Points", output);
                     }
+                    set_output("Points", output);
                 }
             }
         }
@@ -1181,7 +1253,7 @@ namespace osgEarth {
         const osg::Vec4& getColor() const { return _color; }
         void setColor(osg::Vec4& color) { _color = color; }
 
-        osg::Vec4 _color = osg::Vec4f(1.0f, 0.0f, 0.0f, 1.0f);
+        osg::Vec4 _color = Color("#AAD3DF");
 
         const std::string& getLayerName() const { return _layerName; }
         void setLayerName(const std::string& layerName) { _layerName = layerName; }

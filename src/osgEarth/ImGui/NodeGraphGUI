@@ -24,6 +24,14 @@
 #include "imgui_stdlib.h"
 #include "imnodes.h"
 
+#if defined(__has_include)
+#if __has_include(<third_party/portable-file-dialogs/portable-file-dialogs.h>)
+#include <third_party/portable-file-dialogs/portable-file-dialogs.h>
+#define HAS_PFD
+#endif
+#endif
+
+
 #include <osgEarth/TiledFeatureModelGraph>
 #include <osgEarth/TiledFeatureModelLayer>
 
@@ -163,6 +171,28 @@ namespace osgEarth
                                 _fmg->getNodeGraph()->operations.push_back(std::make_shared<ImageMaskOperation>());
                             }
 
+                            if (ImGui::MenuItem("Image From Layer"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<ImageFromLayerOperation>());
+                            }
+
+#ifdef HAS_PFD                                
+                            if (ImGui::MenuItem("Load Image"))
+                            {
+                                auto f = pfd::open_file("Image", pfd::path::home(),
+                                    { "All Files", "*" },
+                                    pfd::opt::multiselect);
+
+                                if (f.result().size() > 0)
+                                {
+                                    for (auto const& name : f.result())
+                                    {
+                                        _fmg->getNodeGraph()->operations.push_back(std::make_shared<LoadImageOperation>(name));
+                                    }
+                                }
+                            }
+#endif
+
                             if (ImGui::MenuItem("Offset"))
                             {
                                 _fmg->getNodeGraph()->operations.push_back(std::make_shared<OffsetOperation>());
@@ -233,13 +263,6 @@ namespace osgEarth
                             {
                                 ImGui::PushItemWidth(100.0f);
 
-                                std::string layerName = imageMask->getLayerName();
-                                if (ImGui::InputText("Layer", &layerName))
-                                {
-                                    imageMask->setLayerName(layerName);
-                                    _fmg->dirtyNodeGraph();
-                                }
-
                                 osg::Vec4 color = imageMask->getColor();
                                 if (ImGui::ColorEdit4("Color", (float*)color._v, ImGuiColorEditFlags_NoInputs))
                                 {
@@ -251,6 +274,21 @@ namespace osgEarth
                                 if (ImGui::SliderFloat("Tolerance", &tolerance, 0.0f, 1.0f))
                                 {
                                     imageMask->setTolerance(tolerance);
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+                                ImGui::PopItemWidth();
+                            }
+
+                            ImageFromLayerOperation* imageFromLayer = dynamic_cast<ImageFromLayerOperation*>(o.get());
+                            if (imageFromLayer)
+                            {
+                                ImGui::PushItemWidth(100.0f);
+
+                                std::string layerName = imageFromLayer->getLayerName();
+                                if (ImGui::InputText("Layer", &layerName))
+                                {
+                                    imageFromLayer->setLayerName(layerName);
                                     _fmg->dirtyNodeGraph();
                                 }
 
@@ -493,6 +531,7 @@ namespace osgEarth
                             }
 
 
+#if 0
                             ImGui::PushItemWidth(200.0f);
                             std::string comment = o->getComment();
                             if (ImGui::InputText("Comment", &comment))
@@ -500,6 +539,7 @@ namespace osgEarth
                                 o->setComment(comment);
                             }
                             ImGui::PopItemWidth();
+#endif
 
 
                             ImNodes::EndNode();

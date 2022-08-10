@@ -33,6 +33,8 @@
 #include <osgEarth/LandCoverLayer>
 #include <osgEarth/Chonk>
 
+#include <osgEarth/TiledFeatureModelGraph>
+
 #include <chrono>
 
 namespace osgEarth { namespace Procedural
@@ -138,6 +140,17 @@ namespace osgEarth { namespace Procedural
             OE_PROPERTY(float, rotation);
             OE_PROPERTY(ResidentModelAsset::Ptr, asset);
         };
+
+        struct VegetationInstance
+        {
+            GeoPoint location;
+            std::string assetName;
+        };
+
+        std::unordered_map< TileKey, std::vector< VegetationInstance > > _vegetationInstances;
+        std::mutex _vegetationInstancesMutex;
+
+        void addVegetationInstance(const VegetationInstance& i);
 
         //! Gets all the asset placement information for a given
         //! tile within the given asset group.
@@ -316,6 +329,60 @@ namespace osgEarth { namespace Procedural
         mutable bool _requestMultisampling;
         bool _multisamplingActivated;
         void activateMultisampling();
+    };
+
+    class OSGEARTHPROCEDURAL_EXPORT PlaceVegetationOperation : public NodeGraphOperation
+    {
+    public:
+        PlaceVegetationOperation()
+        {
+            _name = "Place Vegetation";
+            addInputAttribute("Points", NodeAttribute::FEATURES);
+            addOutputAttribute("Node", NodeAttribute::NODE);
+        }
+
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            auto points = get_input("Points");
+
+            if (points)
+            {                
+                VegetationLayer* veg = context.map->getLayer<VegetationLayer>();
+                if (veg)
+                {
+                    // We know the tile is already going to be localized so don't do it twice.
+                    for (auto& f : points->featuresValue)
+                    {
+                        GeometryIterator itr(f->getGeometry());
+                        while (itr.hasMore())
+                        {
+                            Geometry* g = itr.next();
+                            for (Geometry::const_iterator v = g->begin(); v != g->end(); ++v)
+                            {
+                                double x = v->x();
+                                double y = v->y();
+                                double z = v->z();
+                                GeoPoint pt(f->getSRS(), x, y, z);
+                                VegetationLayer::VegetationInstance i;
+                                i.location = pt;
+                                i.assetName = _assetName;
+                                veg->addVegetationInstance(i);
+                            }
+                        }
+                    }
+                }
+
+                // Doesn't really do anything but makes me feel better.
+                osg::Group* result = new osg::Group;
+                set_output("Node", result);
+                _ready = true;
+            }
+        } 
+
+        const std::string& getAssetName() const { return _assetName; }
+        void setAssetName(const std::string& assetName) { _assetName = assetName; }
+
+        std::string _assetName;
     };
 
 } } // namespace osgEarth::Procedural

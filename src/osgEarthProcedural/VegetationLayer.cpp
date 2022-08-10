@@ -194,6 +194,7 @@ VegetationLayer::LayerAcceptor::acceptLayer(
 bool
 VegetationLayer::LayerAcceptor::acceptKey(const TileKey& key) const
 {
+    // TODO:  this is what keeps the patch layer from drawing at all lods, I'm assuming it'll only do it at lod 14 and 19...
     return _layer->hasEnabledGroupAtLOD(key.getLOD());
 }
 
@@ -299,12 +300,22 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 }
 
 void
+VegetationLayer::addVegetationInstance(const VegetationInstance& i)
+{
+    std::lock_guard<std::mutex> lk(_vegetationInstancesMutex);
+    const Profile* profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+    TileKey key = profile->createTileKey(i.location.x(), i.location.y(), 14);
+    _vegetationInstances[key].push_back(i);
+}
+
+void
 VegetationLayer::dirty()
 {
     _tiles.scoped_lock([this]()
         {
             _tiles.clear(); 
             _placeholders.clear();
+            _vegetationInstances.clear();
         });
 
     _cameraState.scoped_lock([this]()
@@ -497,11 +508,13 @@ VegetationLayer::addedToMap(const Map* map)
         return;
     }
 
+    /*
     if (getLifeMapLayer() == nullptr)
     {
         setStatus(Status::ResourceUnavailable, "No LifeMap available in the Map");
         return;
     }
+    */
 }
 
 void
@@ -590,10 +603,14 @@ VegetationLayer::buildStateSets()
         OE_DEBUG << LC << "buildStateSets deferred.. biome layer not available" << std::endl;
         return;
     }
+    
+/*
+    // TODO:  This is the reason the statesets weren't built...
     if (!getLifeMapLayer()) {
         OE_DEBUG << LC << "buildStateSets deferred.. lifemap layer not available" << std::endl;
         return;
     }
+    */
 
     // NEXT assemble the asset group statesets.
     if (AssetGroup::TREES < NUM_ASSET_GROUPS)
@@ -1005,14 +1022,11 @@ VegetationLayer::getAssetPlacements(
 {
     OE_PROFILING_ZONE;
 
-    //OE_INFO << LC << "Generating assets for tile " << key.str() << std::endl;
-
-    //TODO:
-    // - use "asset size variation" parameter
-    // - think about using BLEND2D to rasterize a collision map!
-    //   - would need to be in a background thread I'm sure
-    // - caching
-    // etc.
+    // Just draw the tree layer for now b/c that is where we are storing the vegetation
+    if (group != AssetGroup::TREES)
+    {
+        return false;
+    }
 
     std::vector<Placement> result;
 
@@ -1044,40 +1058,9 @@ VegetationLayer::getAssetPlacements(
         }
     }
 
-    // Load a lifemap raster:
-    GeoImage lifemap;
-    osg::Matrix lifemap_sb;
-    if (getLifeMapLayer())
-    {
-        for (TileKey q_key = key;
-            q_key.valid() && !lifemap.valid();
-            q_key.makeParent())
-        {
-            lifemap = getLifeMapLayer()->createImage(q_key, progress);
-            if (lifemap.valid())
-            {
-                key.getExtent().createScaleBias(q_key.getExtent(), lifemap_sb);
-            }
-        }
-    }
-
-    // Load a biome map raster:
-    GeoImage biomemap;
-    osg::Matrix biomemap_sb;
-    if (getBiomeLayer())
-    {
-        for (TileKey q_key = key;
-            q_key.valid() && !biomemap.valid();
-            q_key.makeParent())
-        {
-            biomemap = getBiomeLayer()->createImage(q_key, progress);
-            if (biomemap.valid())
-            {
-                key.getExtent().createScaleBias(q_key.getExtent(), biomemap_sb);
-                biomemap.getReader().setBilinear(false);
-            }
-        }
-    }
+    // Make sure the biome we want is loaded.
+    auto biome = getBiomeLayer()->getBiomeCatalog()->getBiome("Full");
+    getBiomeLayer()->getBiomeManager().ref(biome);
 
     // If the biome residency is not up to date, do that now
     // after loading the biome map.
@@ -1110,41 +1093,7 @@ VegetationLayer::getAssetPlacements(
             return true;
         }
     }
-
-
-    const Biome* default_biome = groupAssets.begin()->first;
-
-    osg::Vec4f noise;
-    ImageUtils::PixelReader readNoise(_noiseTex->getImage(0));
-    readNoise.setSampleAsRepeatingTexture(true);
-
-    struct CollisionData 
-    {
-        double x, y, radius;
-    };
-    using Index = RTree<CollisionData, double, 2>;
-    Index index;
-
-    std::minstd_rand0 gen(key.hash());
-    std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
-
-    // approximate area of the tile in km
-    GeoCircle c = key.getExtent().computeBoundingGeoCircle();
-    double x = 0.001 * c.getRadius() * 2.8284271247;
-    double area_sqkm = x * x;
-
-    unsigned max_instances = 
-        (double)options().group(group).instancesPerSqKm().get() * area_sqkm;
-
-    bool allow_overlap = (group == AssetGroup::UNDERGROWTH);
-
-    // reserve some memory, maybe more than we need
-    result.reserve(max_instances);
-
-    // store these separately so we can clamp them all in one go
-    std::vector<osg::Vec3d> map_points;
-    map_points.reserve(max_instances);
-
+    
     const GeoExtent& e = key.getExtent();
 
     osg::Matrixf xform;
@@ -1170,71 +1119,136 @@ VegetationLayer::getAssetPlacements(
 
     std::set<const Biome*> empty_biomes;
 
-    // Generate random instances within the tile:
-    for (unsigned i = 0; i < max_instances; ++i)
+#if 0
+    double width = ex.width();
+    double height = ex.height();
+    unsigned int count = 25;
+    double dx = width / (double)count;
+    double dy = height / (double)count;
+
+    // store these separately so we can clamp them all in one go
+    std::vector<osg::Vec3d> map_points;
+    map_points.reserve(count * count);
+    for (unsigned int c = 0; c < count; ++c)
     {
-        // random tile-normalized position:
-        float u = rand_float(gen);
-        float v = rand_float(gen);
-
-        // resolve the biome at this position:
-        const Biome* biome = nullptr;
-        if (biomemap.valid())
+        for (unsigned int r = 0; r < count; ++r)
         {
-            float uu = u * biomemap_sb(0, 0) + biomemap_sb(3, 0);
-            float vv = v * biomemap_sb(1, 1) + biomemap_sb(3, 1);
-            biomemap.getReader()(biomemap_value, uu, vv);
-            int index = (int)biomemap_value.r();
-            biome = catalog->getBiomeByIndex(index);
-            if (!biome)
+            double x = ex.xMin() + (double)c * dx;
+            double y = ex.yMin() + (double)r * dy;
+
+            float u = (float)c / (float)count;
+            float v = (float)r / (float)count;
+
+
+            // fetch the collection of assets belonging to the selected biome:
+            auto iter = groupAssets.find(biome);
+            if (iter == groupAssets.end())
+            {
+                empty_biomes.insert(biome);
                 continue;
-        }
+            }
 
-        if (biome == nullptr)
-        {
-            // not sure this is even possible
-            biome = default_biome;
+            auto& assetInstances = iter->second;
+
+            // Get the first instance
+            auto& instance = assetInstances[0];
+
+            auto& asset = instance.residentAsset();
+
+            // if there's no geometry... bye
+            if (asset->chonk() == nullptr)
+            {
+                continue;
+            }
+
+            osg::Vec3d scale(1, 1, 1);
+
+            // hack. assume an explicit width/height means this is a grass billboard..
+            // TODO: find another way.
+            bool isGrass = asset->assetDef()->width().isSet();
+            if (isGrass)
+            {
+                // Grass imposter geometrh is 1x1, so scale it:
+                scale.set(
+                    asset->assetDef()->width().get(),
+                    asset->assetDef()->width().get(),
+                    asset->assetDef()->height().get());
+            }
+
+            // tile-local coordinates of the position:
+            local.set(
+                local_bbox.xMin() + u * local_width,
+                local_bbox.yMin() + v * local_height);
+
+            float rotation = 0.0f;
+
+            map_points.emplace_back(
+                x, y, 0
+            );
+
+            Placement p;
+            p.localPoint() = local;
+            p.uv().set(u, v);
+            p.scale() = scale;
+            p.rotation() = rotation;
+            p.asset() = asset;
+
+            result.emplace_back(std::move(p));
         }
+    }
+#else
+
+    // Get the instances for this tile
+    std::vector< VegetationInstance > tileInstances;
+    {
+        std::lock_guard<std::mutex> lk(const_cast<VegetationLayer*>(this)->_vegetationInstancesMutex);
+        auto itr = _vegetationInstances.find(key);
+        if (itr != _vegetationInstances.end())
+        {
+            tileInstances = itr->second;
+        }
+    }
+
+    if (tileInstances.empty())
+    {
+        return false;
+    }
+
+    double width = ex.width();
+    double height = ex.height();
+
+    // store these separately so we can clamp them all in one go
+    std::vector<osg::Vec3d> map_points;
+    map_points.reserve(tileInstances.size());
+    for (unsigned int i = 0; i < tileInstances.size(); ++i)
+    {        
+        auto &tileInstance = tileInstances[i];
+
+        float u = (tileInstance.location.x() - ex.xMin()) / ex.width();
+        float v = (tileInstance.location.y() - ex.yMin()) / ex.height();
 
         // fetch the collection of assets belonging to the selected biome:
-        auto iter = groupAssets.find(biome);
-        if (iter == groupAssets.end())
+        auto biomeIter = groupAssets.find(biome);
+        auto& assetInstances = biomeIter->second;
+
+        // Get the first instance
+        //auto& instance = assetInstances[0];
+        ResidentModelAssetInstance* instance = nullptr;
+        for (auto& i : assetInstances)
         {
-            empty_biomes.insert(biome);
+            if (i.residentAsset()->assetDef()->name() == tileInstance.assetName)
+            {
+                instance = &i;
+                break;
+            }
+        }
+        if (instance == nullptr)
+        {
             continue;
         }
 
-        // sample the noise texture at this (u,v)
-        readNoise(noise, u, v);
-
-        // read the life map at this point:
-        float density = 1.0f;
-        float lush = 1.0f;
-        if (lifemap.valid())
-        {
-            float uu = u * lifemap_sb(0, 0) + lifemap_sb(3, 0);
-            float vv = v * lifemap_sb(1, 1) + lifemap_sb(3, 1);
-            lifemap.getReader()(lifemap_value, uu, vv);
-            density = lifemap_value[LIFEMAP_DENSE];
-            lush = lifemap_value[LIFEMAP_LUSH];
-        }
-        if (density < 0.01f)
-            continue;
-
-        auto& assetInstances = iter->second;
-
-        // RNG with normal distribution between approx +1/-1
-        std::normal_distribution<float> normal_dist(lush, 1.0f / 6.0f);
-        lush = clamp(normal_dist(gen), 0.0f, 1.0f);
-        
-        int assetIndex = clamp(
-            (int)(lush*(float)assetInstances.size()),
-            0,
-            (int)assetInstances.size() - 1);
-
-        auto& instance = assetInstances[assetIndex];
-
-        auto& asset = instance.residentAsset();
+        // Find the instance 
+        auto& asset = instance->residentAsset();
 
         // if there's no geometry... bye
         if (asset->chonk() == nullptr)
@@ -1256,117 +1270,35 @@ VegetationLayer::getAssetPlacements(
                 asset->assetDef()->height().get());
         }
 
-        // Apply a size variation with some randomness
-        if (asset->assetDef()->sizeVariation().isSet())
-        {
-            scale *= 1.0 + (asset->assetDef()->sizeVariation().get() *
-                (noise[N_RANDOM_2] * 2.0f - 1.0f));
-        }
-
-        // allow overlap for "billboard" models (i.e. grasses).
-        //bool allow_overlap = isGrass;
-
-        // apply instance-specific density adjustment:
-        density *= instance.coverage();
-
-        // use randomness to apply a density threshold:
-        if (noise[N_SMOOTH] > density)
-            continue;
-        else
-            noise[N_SMOOTH] /= density;
-
-        // For grasses, shrink the instance as the density decreases.
-        // TODO: should we?
-        if (isGrass)
-        {
-            float edge_scale = 1.0f;
-            const float edge_threshold = 0.5f;
-            if (noise[N_SMOOTH] > edge_threshold)
-                edge_scale = 1.0f - ((noise[N_SMOOTH] - edge_threshold) / (1.0f - edge_threshold));
-            scale *= edge_scale;
-        }
-
         // tile-local coordinates of the position:
         local.set(
             local_bbox.xMin() + u * local_width,
             local_bbox.yMin() + v * local_height);
 
-        bool pass = true;
+        float rotation = 0.0f;
 
-        if (!allow_overlap)
-        {
-            // To prevent overlap, write positions and radii to an r-tree. 
-            // TODO: consider using a Blend2d raster to update the 
-            // density/lifemap raster as we place objects..?
-            pass = false;
+        map_points.emplace_back(
+            tileInstance.location.x(), tileInstance.location.y(), 0
+        );
 
-            // scale the asset bounding box in preparation for collision:
-            const osg::BoundingBoxd assetbbox = asset->boundingBox();
+        Placement p;
+        p.localPoint() = local;
+        p.uv().set(u, v);
+        p.scale() = scale;
+        p.rotation() = rotation;
+        p.asset() = asset;
 
-            // radius of the scaled bounding box.
-            double radius = 0.5 * std::max(
-                scale.x() * (assetbbox.xMax() - assetbbox.xMin()),
-                scale.y() * (assetbbox.yMax() - assetbbox.yMin())
-            );
-
-            // adjust collision radius based on density.
-            // i.e., denser areas allow vegetation to be closer.
-            double density_mix = density; // *packing_density;
-            double search_radius = mix(radius*3.0f, radius*0.1f, density_mix);
-            double search_radius_2 = search_radius * search_radius;
-
-            bool collision = false;
-
-            auto collision_check = [&local, &search_radius_2, &collision](const CollisionData& c)
-            {
-                double dx = local.x() - c.x;
-                double dy = local.y() - c.y;
-                double dist2 = (dx * dx + dy * dy) - (c.radius*c.radius);
-                collision = (dist2 < search_radius_2);
-                return !collision; // stop at first collision
-            };
-
-            double a_min[2] = { local.x() - search_radius, local.y() - search_radius };
-            double a_max[2] = { local.x() + search_radius, local.y() + search_radius };
-            
-            index.Search(a_min, a_max, collision_check);
-
-            if (!collision)
-            {
-                a_min[0] = local.x() - radius, a_min[1] = local.y() - radius;
-                a_max[0] = local.x() + radius, a_max[1] = local.y() + radius;
-                index.Insert(a_min, a_max, { local.x(), local.y(), radius });
-                pass = true;
-            }
-        }
-
-        if (pass)
-        {
-            // good to go, generate a random rotation and record the position.
-            float rotation = rand_float(gen) * 3.1415927 * 2.0;
-            
-            map_points.emplace_back(
-                e.xMin() + u * e.width(), e.yMin() + v * e.height(), 0
-            );
-
-            Placement p;
-            p.localPoint() = local;
-            p.uv().set(u, v);
-            p.scale() = scale;
-            p.rotation() = rotation;
-            p.asset() = asset;
-
-            result.emplace_back(std::move(p));
-        }
+        result.emplace_back(std::move(p));
     }
-
+#endif
+    
     // clamp everything to the terrain
     _map->getElevationPool()->sampleMapCoords(
         map_points,
         Distance(),
         nullptr,
         nullptr,
-        0.0f); // store zero upon failure?
+        0.0f); // store zero upon failure?     
 
     // copy the clamped map points back over
     for (std::size_t i = 0; i < map_points.size(); ++i)
@@ -1374,6 +1306,7 @@ VegetationLayer::getAssetPlacements(
         result[i].mapPoint() = std::move(map_points[i]);
     }
 
+    /*
     // print warnings about empty biomes
     if (!empty_biomes.empty())
     {
@@ -1382,6 +1315,7 @@ VegetationLayer::getAssetPlacements(
             OE_WARN << "No assets defined in group " << AssetGroup::name(group) << " for biome " << biome->id().get() << std::endl;
         }
     }
+    */
 
     output = std::move(result);
     return true;
@@ -1438,6 +1372,10 @@ VegetationLayer::cull(
     const TileBatch& batch,
     osg::NodeVisitor& nv) const
 {
+    // Make sure the biome is loaded
+    auto biome = getBiomeLayer()->getBiomeCatalog()->getBiome("Full");
+    getBiomeLayer()->getBiomeManager().ref(biome);
+
     if (_assets.empty())
         return;
 

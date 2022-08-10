@@ -34,6 +34,7 @@
 
 #include <osgEarth/TiledFeatureModelGraph>
 #include <osgEarth/TiledFeatureModelLayer>
+#include <osgEarthProcedural/VegetationLayer>
 
 namespace osgEarth
 {
@@ -119,6 +120,11 @@ namespace osgEarth
                             if (ImGui::MenuItem("Place Nodes"))
                             {
                                 _fmg->getNodeGraph()->operations.push_back(std::make_shared<PlaceNodesOperation>());
+                            }
+
+                            if (ImGui::MenuItem("Place Vegetation"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<osgEarth::Procedural::PlaceVegetationOperation>());
                             }
 
                             if (ImGui::MenuItem("Features to Lines"))
@@ -511,9 +517,20 @@ namespace osgEarth
                                     filterFeatures->setValue(value);
                                     _fmg->dirtyNodeGraph();
                                 }
-
-
                                 ImGui::PopItemWidth();                                                              
+                            }
+
+                            osgEarth::Procedural::PlaceVegetationOperation* placeVeg = dynamic_cast<osgEarth::Procedural::PlaceVegetationOperation*>(o.get());
+                            if (placeVeg)
+                            {
+                                ImGui::PushItemWidth(100.0f);
+                                std::string assetName = placeVeg->getAssetName();
+                                if (ImGui::InputText("Asset", &assetName))
+                                {
+                                    placeVeg->setAssetName(assetName);
+                                    _fmg->dirtyNodeGraph();
+                                }                                
+                                ImGui::PopItemWidth();
                             }
 
                             for (auto& attr : o->getInputAttributes())
@@ -543,8 +560,7 @@ namespace osgEarth
 
 
                             ImNodes::EndNode();
-                        }
-                    }
+                        }                    
 
                     // Draw all the links
                     for (auto& o : _fmg->getNodeGraph()->operations)
@@ -553,6 +569,7 @@ namespace osgEarth
                         {
                             ImNodes::Link(link.getId(), link._sourceAttribute->getId(), link._destinationAttribute->getId());
                         }
+                    }
                     }
                     
                     ImNodes::EndNodeEditor();

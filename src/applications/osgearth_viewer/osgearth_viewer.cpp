@@ -45,10 +45,35 @@ usage(const char* name)
     return 0;
 }
 
+void exiting() {
+    std::cout << "Exit" << std::endl;
+    osg::Referenced::RefCountByType refCounts;
+    osg::Referenced::getRefCountsByType(refCounts);
+    //std::cout << "Got " << refCounts.size() << " counts" << std::endl;
+    std::vector< std::pair< std::string, unsigned int> > counts;
+    for (auto& i : refCounts)
+    {
+        counts.emplace_back(i.first, i.second);
+    }
+
+    std::sort(counts.begin(), counts.end(), [](const std::pair< std::string, unsigned int>& a, const std::pair< std::string, unsigned int>& b) {
+        return a.second > b.second;
+        });
+
+    for (auto& i : counts)
+    {
+        if (i.second > 0)
+        {
+            std::cout << "Type: " << i.second << " Count: " << i.first << std::endl;
+        }
+    }
+}
 
 int
 main(int argc, char** argv)
 {
+    std::atexit(exiting);
+
     osgEarth::initialize();
 
     osg::ArgumentParser arguments(&argc,argv);
@@ -79,10 +104,19 @@ main(int argc, char** argv)
     if ( node )
     {
         viewer.setSceneData( node );
-        return Metrics::run(viewer);
+
+        while (!viewer.done())
+        {
+            viewer.frame();
+        }
+        //return Metrics::run(viewer);
     }
     else
     {
         return usage(argv[0]);
     }
+
+    viewer.setSceneData(nullptr);
+
+    
 }

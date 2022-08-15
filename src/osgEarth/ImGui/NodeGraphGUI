@@ -436,7 +436,7 @@ namespace osgEarth
                                 ComparisonOperator::Comparison c = comparisonOperator->getComparison();
                                 ImGui::PushItemWidth(100.0f);
 
-                                const char* items[] = { ">", ">=", "<", "<=", "=="};
+                                const char* items[] = { ">", ">=", "<", "<=", "==", "!="};
                                 int item_current = c;
                                 if (ImGui::Combo("Comparison", &item_current, items, IM_ARRAYSIZE(items)))
                                 {

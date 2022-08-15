@@ -1350,7 +1350,8 @@ namespace osgEarth {
             GREATER_THAN_EQUAL,
             LESS_THAN,
             LESS_THAN_EQUAL,
-            EQUAL
+            EQUAL,
+            NOT_EQUAL
         };
 
         ComparisonOperator()
@@ -1390,6 +1391,9 @@ namespace osgEarth {
                     break;
                 case EQUAL:
                     passed = a->floatValue == b->floatValue;
+                    break;
+                case NOT_EQUAL:
+                    passed = a->floatValue != b->floatValue;
                     break;
                 default:
                     break;

@@ -183,7 +183,7 @@ namespace osgEarth { namespace REX
         TileKey _key;
         osg::observer_ptr<TileNode> _parentTile;
         osg::ref_ptr<SurfaceNode>          _surface;
-        osg::ref_ptr<EngineContext>        _context;
+        osg::observer_ptr<EngineContext>   _context;
         Threading::Mutex                   _mutex;
         std::atomic<int>                   _lastTraversalFrame;
         double                             _lastTraversalTime;

@@ -65,7 +65,9 @@ tweakable float oe_wind_power = 1.0;
 
 void oe_apply_wind(inout vec4 vertex, in int index)
 {
-    float flexibility = length(flex);
+    // scale the vert's flexibility by the model Z scale factor
+    float flexibility = length(flex) * vec3xform[2][2];
+
     if (flexibility > 0.0 && oe_wind_power > 0.0)
     {
         vec3 center = instances[index].xform[3].xyz;

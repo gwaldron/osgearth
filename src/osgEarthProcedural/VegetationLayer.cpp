@@ -1020,6 +1020,11 @@ VegetationLayer::getAssetPlacements(
     // - caching
     // etc.
 
+    // bail out if the Map has disappeared
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return false;
+
     std::vector<Placement> result;
 
     // Safely copy the instance list. The object is immutable
@@ -1364,7 +1369,7 @@ VegetationLayer::getAssetPlacements(
     }
 
     // clamp everything to the terrain
-    _map->getElevationPool()->sampleMapCoords(
+    map->getElevationPool()->sampleMapCoords(
         map_points,
         Distance(),
         nullptr,

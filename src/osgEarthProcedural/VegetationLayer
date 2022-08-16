@@ -189,7 +189,6 @@ namespace osgEarth { namespace Procedural
         LayerReference<LifeMapLayer> _lifeMapLayer;
         LayerReference<BiomeLayer> _biomeLayer;
         osg::observer_ptr<const Map> _map;
-        osg::ref_ptr<osg::Shader> _cullShader;
 
         void buildStateSets();
         void reset();

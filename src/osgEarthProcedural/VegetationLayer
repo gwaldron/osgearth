@@ -31,7 +31,8 @@
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/LandCoverLayer>
-#include <osgEarth/Chonk>
+
+#include <osg/Drawable>
 
 #include <chrono>
 
@@ -200,7 +201,7 @@ namespace osgEarth { namespace Procedural
         bool checkForNewAssets() const;
 
         // Result of background drawable-creation jobs
-        using FutureDrawable = Future<osg::ref_ptr<ChonkDrawable>>;
+        using FutureDrawable = Future<osg::ref_ptr<osg::Drawable>>;
 
         struct TileKeyAndRevision {
             TileKey key;
@@ -300,12 +301,12 @@ namespace osgEarth { namespace Procedural
         void configureTrees();
         void configureGrass();
 
-        Future<osg::ref_ptr<ChonkDrawable>> createDrawableAsync(
+        Future<osg::ref_ptr<osg::Drawable>> createDrawableAsync(
             const TileKey&,
             const AssetGroup::Type&,
             const osg::BoundingBox& bbox) const;
 
-        osg::ref_ptr<ChonkDrawable> createDrawable(
+        osg::ref_ptr<osg::Drawable> createDrawable(
             const TileKey&,
             const AssetGroup::Type&,
             const osg::BoundingBox& bbox,

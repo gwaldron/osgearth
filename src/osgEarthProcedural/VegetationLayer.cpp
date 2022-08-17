@@ -978,7 +978,7 @@ VegetationLayer::reset()
 #define N_RANDOM_2 2
 #define N_CLUMPY   3
 
-Future<osg::ref_ptr<ChonkDrawable>>
+Future<osg::ref_ptr<osg::Drawable>>
 VegetationLayer::createDrawableAsync(
     const TileKey& key_,
     const AssetGroup::Type& group_,
@@ -990,14 +990,14 @@ VegetationLayer::createDrawableAsync(
     osg::BoundingBox tile_bbox = tile_bbox_;
 
     auto function =
-        [layer, key, group, tile_bbox](Cancelable* c) -> osg::ref_ptr<ChonkDrawable>
+        [layer, key, group, tile_bbox](Cancelable* c) -> osg::ref_ptr<osg::Drawable>
     {
         osg::ref_ptr<ProgressCallback> p = new ProgressCallback(c);
         return layer->createDrawable(key, group, tile_bbox, p.get());
     };
 
     auto arena = JobArena::get("oe.veg");
-    return Job(arena).dispatch<osg::ref_ptr<ChonkDrawable>>(function);
+    return Job(arena).dispatch<osg::ref_ptr<osg::Drawable>>(function);
 }
 
 
@@ -1395,7 +1395,7 @@ VegetationLayer::getAssetPlacements(
     return true;
 }
 
-osg::ref_ptr<ChonkDrawable>
+osg::ref_ptr<osg::Drawable>
 VegetationLayer::createDrawable(
     const TileKey& key,
     const AssetGroup::Type& group,

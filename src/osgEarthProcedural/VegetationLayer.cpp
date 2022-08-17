@@ -631,6 +631,9 @@ VegetationLayer::buildStateSets()
     // Far pixel scale overrides.
     _pixelScalesU = new osg::Uniform("oe_lod_scale", osg::Vec4f(1, 1, 1, 1));
     ss->addUniform(_pixelScalesU.get(), osg::StateAttribute::OVERRIDE | 0x01);
+
+    // activate compressed normal maps
+    ss->setDefine("OE_COMPRESSED_NORMAL");
 }
 
 void

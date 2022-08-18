@@ -13,17 +13,48 @@ namespace osgEarth {
 
         struct VegetationLayerGUI : public osgEarth::GUI::BaseGUI
         {
+            struct PaintHandler : public osgGA::GUIEventHandler
+            {
+                VegetationLayerGUI* _owner;
+
+                PaintHandler(VegetationLayerGUI* owner) :
+                    _owner(owner)
+                {
+                }
+
+                bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+                {
+                    osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+                    if ((ea.getButton() == ea.LEFT_MOUSE_BUTTON && ea.getEventType() == ea.PUSH) || ea.getEventType() == ea.DRAG)
+                    {
+                        return _owner->paintVeg(view, ea.getX(), ea.getY());
+                    }                    
+                    return false;
+                }
+            };
+
             bool _first;
             float _lodTransitionPixelScale;
             bool _forceGenerate;
             bool _manualBiomes;
-            bool _showBiomeUnderMouse;
+            bool _showBiomeUnderMouse;            
             std::unordered_map<const Biome*, bool> _isManualBiomeActive;
             osg::observer_ptr<BiomeLayer> _biolayer;
             osg::observer_ptr<VegetationLayer> _veglayer;
             float _maxMaxRanges[NUM_ASSET_GROUPS];
             osg::observer_ptr<MapNode> _mapNode;
             Future<const Biome*> _biomeUnderMouse;
+
+            bool _painting = false;
+            std::string _paintAsset = "st_sugar_maple";
+            bool _paintRandomAsset = false;
+            float _paintMinScale = 1.0f;
+            float _paintMaxScale = 1.0f;
+            float _paintMinRotation = 0.0f;
+            float _paintMaxRotation = 0.0f;
+            osgEarth::Random _random;
+            // TODO:  Get these from the biome
+            const char* _assetNames[5] = { "st_sugar_maple", "st_euro_linden", "st_sugar_maple", "st_red_oak", "corn"};
 
             VegetationLayerGUI() : GUI::BaseGUI("Vegetation"),
                 _first(true),
@@ -70,6 +101,9 @@ namespace osgEarth {
 
                     EventRouter::get(view(ri))
                         .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); });
+
+                    auto view = dynamic_cast<osgViewer::View*>(ri.getView());
+                    view->addEventHandler(new PaintHandler(this));
 
                     // activate tweakable uniforms
                     stateset(ri)->setDataVariance(osg::Object::DYNAMIC);
@@ -277,6 +311,47 @@ namespace osgEarth {
                             }
                         }
                     }
+
+
+                    ImGui::Separator();
+                    ImGui::Checkbox("Paint", &_painting);                    
+
+                    if (_painting)
+                    {
+                        ImGui::Checkbox("Random Asset", &_paintRandomAsset);
+                        if (!_paintRandomAsset)
+                        {                            
+                            int item_current = 0;
+                            for (int i = 0; i < IM_ARRAYSIZE(_assetNames); ++i)
+                            {
+                                if (_paintAsset == _assetNames[i])
+                                {
+                                    item_current = i;
+                                    break;
+                                }
+                            }
+
+                            if (ImGui::Combo("Asset", &item_current, _assetNames, IM_ARRAYSIZE(_assetNames)))
+                            {
+                                _paintAsset = _assetNames[item_current];
+                            }
+                        }
+
+                        float scale[2] = { _paintMinScale, _paintMaxScale };
+                        if (ImGui::InputFloat2("Scale Range", scale))
+                        {
+                            _paintMinScale = scale[0];
+                            _paintMaxScale = scale[1];
+                        }
+
+                        float rot[2] = { _paintMinRotation, _paintMaxRotation };
+                        if (ImGui::InputFloat2("Rotation Range", rot))
+                        {
+                            _paintMinRotation = rot[0];
+                            _paintMaxRotation = rot[1];
+                        }
+                    }
+
                 }
                 ImGui::End();
             }
@@ -326,6 +401,35 @@ namespace osgEarth {
                         }
                     }
                 }
+            }
+
+            bool paintVeg(osg::View* view, float x, float y)
+            {
+                if (*visible() && _painting)
+                {
+                    GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
+                    if (p.isValid())
+                    {
+                        VegetationLayer::VegetationInstance i;
+                        i.location = p;
+                        if (_paintRandomAsset)
+                        {
+                            unsigned int numAssets = IM_ARRAYSIZE(_assetNames);
+                            unsigned int index = _random.next(4);
+                            i.assetName = _assetNames[index];
+                        }
+                        else
+                        {
+                            i.assetName = _paintAsset;
+                        }
+                        i.scale = _paintMinScale + _random.next() * (_paintMaxScale - _paintMinScale);
+                        i.rotation = osg::DegreesToRadians(_paintMinRotation + _random.next() * (_paintMaxRotation - _paintMinRotation));
+                        _veglayer->addVegetationInstance(i);
+                        _veglayer->dirty();
+                        return true;
+                    }
+                }
+                return false;
             }
         };
     }

@@ -37,6 +37,9 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/DrawInstanced>
 #include <osgEarth/LineDrawable>
+#include <osgDB/FileUtils>
+#include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
 
 namespace osgEarth {
 
@@ -862,6 +865,7 @@ namespace osgEarth {
 
                         if (!features.empty())
                         {
+                            //OE_NOTICE << "Got features for tile " << context.tileKey.str() << std::endl;
                             set_output("Features", features);
                             _ready = true;
                         }
@@ -1465,6 +1469,7 @@ namespace osgEarth {
                             double z = v->z();
 
                             float scale = _minScale + _prng.next() * (_maxScale - _minScale);
+                            float heading = _minHeading + _prng.next() * (_maxHeading - _minHeading);
 
                             // Convert the feature to global geodetic first...
                             GeoPoint pt(f->getSRS(), x, y, z);
@@ -1472,7 +1477,6 @@ namespace osgEarth {
                             osg::Vec3d world;
                             pt.toWorld(world);
 
-                            float heading = _minHeading + _prng.next() * (_maxHeading - _minHeading);
                             osg::Vec3d local = world * w2l;
                             osg::MatrixTransform* mt = new osg::MatrixTransform;
                             osg::Quat rotation = osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0, 0, 1));
@@ -1540,7 +1544,7 @@ namespace osgEarth {
         float _minScale = 1.0f;
         float _maxScale = 1.0f;
         float _minHeading = 0.0f;
-        float _maxHeading= 0.0f;
+        float _maxHeading= 360.0f;
         Random   _prng;
     };
 
@@ -1701,7 +1705,20 @@ namespace osgEarth {
         }
     };
 
-    class OSGEARTH_EXPORT NodeOutputOperation : public NodeGraphOperation
+    class OutputOperation : public NodeGraphOperation
+    {
+    public:
+        // Clear out the "result".  This should probably be an output instead of a variable?
+        virtual void reset()
+        {
+            NodeGraphOperation::reset();
+            result = nullptr;
+        }
+
+        NodeGraphResult* result;
+    };
+
+    class OSGEARTH_EXPORT NodeOutputOperation : public OutputOperation
     {
     public:
         NodeOutputOperation()
@@ -1715,24 +1732,36 @@ namespace osgEarth {
             auto i = get_input("Node");
             if (i)
             {
-                result = i->nodeValue.get();
+                result = i;
                 _ready = true;
             }
         }
+    };
 
-        // Clear out the "result".  This should probably be an output instead of a variable?
-        virtual void reset()
+    class OSGEARTH_EXPORT FeatureOutputOperation : public OutputOperation
+    {
+    public:
+        FeatureOutputOperation()
         {
-            NodeGraphOperation::reset();
-            result = nullptr;
+            _name = "Feature Ouptut";
+            addInputAttribute("Features", NodeAttribute::FEATURES);
         }
 
-        osg::ref_ptr< osg::Node > result;
+        virtual void execute(const NodeGraphContext& context) override
+        {
+            auto i = get_input("Features");
+            if (i)
+            {
+                this->result = i;
+                _ready = true;
+            }
+        }
     };
 
     class OSGEARTH_EXPORT NodeGraph
     {
     public:
+#if 0
         virtual void execute(const NodeGraphContext& context)
         {
             // The NodeGraph can be ran multiple times during threaded loading for each load.  Maybe it needs cloned or something for reach
@@ -1774,13 +1803,57 @@ namespace osgEarth {
 
             // In theory there is a final node now.
             _output = outputNode->result.get();
+        }
+#endif
 
+        template<typename T>
+        NodeGraphResult* execute(const NodeGraphContext& context)
+        {
+            std::lock_guard< std::mutex > lk(_mutex);
+
+            T* outputNode = nullptr;
+            // First reset all the operations and find the output node.
+            for (auto& op : operations)
+            {
+                op->reset();
+
+                if (!outputNode)
+                {
+                    outputNode = dynamic_cast<T*>(op.get());
+                }
+            }
+
+            if (!outputNode)
+            {
+                OE_NOTICE << "No output node" << std::endl;
+                return nullptr;
+            }
+
+            OutputOperation* outputOperation = dynamic_cast<OutputOperation*>(outputNode);
+            if (!outputOperation)
+            {
+                OE_NOTICE << "Node isn't an OutputOperation" << std::endl;
+                return nullptr;
+            }
+
+            // Build the dependencies.  We could do this at connect/disconnect time instead but this should be fast enough.
+            for (auto& op : operations)
+            {
+                for (auto& link : op->getLinks())
+                {
+                    // Add a dependency for the destination
+                    link._destination->addDependency(op.get());
+                }
+            }
+
+            // Execute only the output node with it's dependencies
+            outputNode->executeWithDependencies(context);
+
+            // In theory there is a final node now.
+            return outputOperation->result;
         }
 
         std::vector< std::shared_ptr< NodeGraphOperation > > operations;
-
-        osg::Node* getOutput() const { return _output.get(); }
-        osg::ref_ptr < osg::Node > _output;
 
         std::mutex _mutex;        
     };
@@ -1796,14 +1869,36 @@ namespace osgEarth {
         void build()
         {
             removeChildren(0, getNumChildren());
-            NodeGraphContext context;
-            context.tileKey = _tileKey;
-            context.map = _map;
-            _nodeGraph->execute(context);
 
-            if (_nodeGraph->getOutput())
+            osg::ref_ptr< osg::Node > node;
+#if 0
+            std::string filename = "h:/dev/osgearth/tests/nodegraph/" + _tileKey.str() + ".osgb";
+            node = osgDB::readNodeFile(filename);
+#endif
+
+            if (!node.valid())
             {
-                addChild(_nodeGraph->getOutput());
+                NodeGraphContext context;
+                context.tileKey = _tileKey;
+                context.map = _map;
+                NodeGraphResult* result = _nodeGraph->execute<NodeOutputOperation>(context);
+
+                if (result && result->nodeValue)
+                {
+                    //OE_NOTICE << "Writing node to " << filename << std::endl;
+                    node = result->nodeValue;
+                    //osgDB::makeDirectoryForFile(filename);
+                    //osgDB::writeNodeFile(*node.get(), filename);
+                }
+            }
+            else
+            {
+                //OE_NOTICE << "Read node from " << filename << std::endl;
+            }
+
+            if (node.valid())
+            {
+                addChild(node.get());
             }
         }
 

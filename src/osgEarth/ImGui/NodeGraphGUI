@@ -162,6 +162,11 @@ namespace osgEarth
                                 _fmg->getNodeGraph()->operations.push_back(std::make_shared<FilterFeaturesOperation>());
                             }
 
+                            if (ImGui::MenuItem("Feature Ouptut"))
+                            {
+                                _fmg->getNodeGraph()->operations.push_back(std::make_shared<FeatureOutputOperation>());
+                            }
+
                             if (ImGui::MenuItem("OSM Highways Color"))
                             {
                                 _fmg->getNodeGraph()->operations.push_back(std::make_shared<OSMHighwaysColorOperation>());
@@ -210,6 +215,25 @@ namespace osgEarth
                             }
 
                             ImGui::EndMenu();
+                        }
+
+                        if (ImGui::MenuItem("Export Features"))
+                        {
+                            NodeGraphContext context;
+                            context.map = _mapNode->getMap();
+                            context.tileKey = TileKey(14, 9091, 5773, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
+                            NodeGraphResult* result = _fmg->getNodeGraph()->execute<FeatureOutputOperation>(context);
+                            if (result)
+                            {
+                                for (auto& f : result->featuresValue)
+                                {
+                                    f->transform(osgEarth::SpatialReference::create("wgs84"));
+                                    f->getGeometry()->close();
+                                }
+                                std::ofstream out("H:/dev/osgearth/tests/features.json");
+                                out << osgEarth::Feature::featuresToGeoJSON(result->featuresValue);
+                            } 
+                            //ImGui::EndMenu();
                         }
                     }
                     ImGui::EndMenuBar();
@@ -529,7 +553,28 @@ namespace osgEarth
                                 {
                                     placeVeg->setAssetName(assetName);
                                     _fmg->dirtyNodeGraph();
-                                }                                
+                                }                
+
+                                float scale[] = { placeVeg->getMinScale(), placeVeg->getMaxScale() };
+                                ImGui::PushItemWidth(200.0f);
+                                if (ImGui::InputFloat2("Scale Range", scale))
+                                {
+                                    placeVeg->setMinScale(scale[0]);
+                                    placeVeg->setMaxScale(scale[1]);
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+                                float heading[] = { placeVeg->getMinHeading(), placeVeg->getMaxHeading() };
+                                ImGui::PushItemWidth(200.0f);
+                                if (ImGui::InputFloat2("Heading Range", heading))
+                                {
+                                    placeVeg->setMinHeading(heading[0]);
+                                    placeVeg->setMaxHeading(heading[1]);
+                                    _fmg->dirtyNodeGraph();
+                                }
+
+
+
                                 ImGui::PopItemWidth();
                             }
 

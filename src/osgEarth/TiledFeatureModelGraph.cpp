@@ -142,6 +142,7 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
     mt->addChild(_nodeGraph->getOutput());
     return mt;
 #else
+
     NodeGraphNode* mt = new NodeGraphNode;
     mt->_tileKey = key;
     mt->_map = _map.get();

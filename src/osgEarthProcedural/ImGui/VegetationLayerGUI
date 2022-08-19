@@ -99,6 +99,10 @@ namespace osgEarth {
                         if (ImGui::SliderFloat("High", &bbd1, bbd0, 1.0f))
                             stateset(ri)->addUniform(new osg::Uniform("oe_veg_bbd1", bbd1));
 
+                        static float alphaCutoff = 0.15f;
+                        if (ImGui::SliderFloat("Alpha cutoff", &alphaCutoff, 0.0f, 1.0f))
+                            stateset(ri)->addUniform(new osg::Uniform("oe_veg_alphaCutoff", alphaCutoff));
+
                         ImGui::Separator();
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator:");
 

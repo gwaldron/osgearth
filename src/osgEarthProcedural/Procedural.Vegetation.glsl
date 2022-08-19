@@ -141,6 +141,7 @@ in vec3 vp_VertexView;
 
 tweakable float oe_veg_bbd0 = 0.5;
 tweakable float oe_veg_bbd1 = 0.75;
+tweakable float oe_veg_alphaCutoff = 0.15;
 
 void oe_vegetation_fs(inout vec4 color)
 {
@@ -164,24 +165,25 @@ void oe_vegetation_fs(inout vec4 color)
 #ifdef OE_USE_ALPHA_TO_COVERAGE
 
     // Adjust the alpha based on the calculated mipmap level.
-    // Looks beterr and actually helps performance a bit as well.
+    // Looks better and actually helps performance a bit as well.
+    // https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
     // https://tinyurl.com/fhu4zdxz
     if (oe_albedo_tex > 0UL)
     {
+        //color.a = (color.a - oe_veg_alphaCutoff) / max(fwidth(color.a), 0.0001) + 0.5;
         ivec2 tsize = textureSize(sampler2D(oe_albedo_tex), 0);
         vec2 cf = vec2(float(tsize.x)*oe_tex_uv.s, float(tsize.y)*oe_tex_uv.t);
         vec2 dx_vtc = dFdx(cf);
         vec2 dy_vtc = dFdy(cf);
         float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
         float mml = max(0, 0.5 * log2(delta_max_sqr));
-        color.a *= (1.0 + mml * OE_A2C_ADJUSTMENT);
+        color.a *= (1.0 + mml * oe_veg_alphaCutoff);
     }
 
 #else
     // force alpha to 0 or 1 and threshold it.
-    const float threshold = 0.15;
-    color.a = step(threshold, color.a);
-    if (color.a < threshold)
+    color.a = step(oe_veg_alphaCutoff, color.a);
+    if (color.a < oe_veg_alphaCutoff)
         discard;
 #endif // OE_USE_ALPHA_TO_COVERAGE
 #endif // OE_IS_SHADOW_CAMERA

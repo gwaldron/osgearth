@@ -142,32 +142,23 @@ HTMNode::traverse(osg::NodeVisitor& nv)
 {
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
-        //OE_INFO << getName() << std::endl;
-#if 0
-        if ( _isLeaf )
-        {
-            if (_settings._debugFrame != nv.getFrameStamp()->getFrameNumber())
-            {
-                OE_NOTICE << "Frame " << _settings._debugFrame << ": " << _settings._debugCount << std::endl;
-                _settings._debugCount = 0;
-                _settings._debugFrame = nv.getFrameStamp()->getFrameNumber();
-            }
-            _settings._debugCount += getNumChildren();
-        }
-#endif
-
         const osg::BoundingSphere& bs = getBound();
 
-        float range = nv.getDistanceToViewPoint(bs.center(), true);
         bool inRange = false;
 
-        if (_settings._maxRange.isSet() == false)
+        if (_settings._threshold.getUnits() == Units::PIXELS)
         {
-            inRange = range < (bs.radius() * _settings._rangeFactor.get());
+            osg::CullStack* cs = dynamic_cast<osg::CullStack*>(&nv);
+            if (cs)
+            {
+                float sizeInPixels = cs->clampedPixelSize(getBound()) / cs->getLODScale();
+                inRange = sizeInPixels >= _settings._threshold.as(Units::PIXELS);
+            }
         }
         else
         {
-            inRange = range < (bs.radius() + _settings._maxRange.get());
+            float range = nv.getDistanceToViewPoint(bs.center(), true);
+            inRange = range < (bs.radius() + _settings._threshold.as(Units::METERS));
         }
 
         if ( inRange )
@@ -286,7 +277,7 @@ HTMNode::split()
 HTMGroup::HTMGroup()
 {
     _settings._maxObjectsPerCell = 128;
-    _settings._rangeFactor.init( 7.0f );
+    _settings._threshold = Distance(50.0f, Units::PIXELS);
     _settings._debugGeom = false;
     _settings._minCellSize = 10000;
     _settings._maxCellSize = 500000;

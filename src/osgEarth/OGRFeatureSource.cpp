@@ -623,7 +623,7 @@ OGRFeatureSource::openImplementation()
             }
             else
             {
-                OE_INFO << LC << "Use existing spatial index for " << getName() << std::endl;
+                OE_DEBUG << LC << "Use existing spatial index for " << getName() << std::endl;
             }
         }
 

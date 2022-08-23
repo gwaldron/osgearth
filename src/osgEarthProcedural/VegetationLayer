@@ -132,11 +132,22 @@ namespace osgEarth { namespace Procedural
     public:
         struct Placement
         {
+            //! Location in map coordinates
             OE_PROPERTY(osg::Vec3d, mapPoint);
+
+            //! Location in tile local tangent plane coordinates
             OE_PROPERTY(osg::Vec2d, localPoint);
+
+            //! Location in tile normalized coordinates [0..1]
             OE_PROPERTY(osg::Vec2f, uv);
+
+            //! Scale of asset
             OE_PROPERTY(osg::Vec3f, scale);
+
+            //! Rotation of asset in radians
             OE_PROPERTY(float, rotation);
+
+            //! Pointer to asset model record
             OE_PROPERTY(ResidentModelAsset::Ptr, asset);
         };
 

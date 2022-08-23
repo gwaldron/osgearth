@@ -119,7 +119,7 @@ namespace
 
     // Shader that calculates a modulation color based on the "opacity", i.e. intensity
     const char* opacityModulateFS = R"(
-        const float OE_MODULATION_EXPOSURE = 2.35;
+        const float OE_MODULATION_EXPOSURE = 2.5;
         in float oe_layer_opacity;
         void oe_VisibleLayer_setOpacity(inout vec4 color)
         {

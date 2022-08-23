@@ -226,6 +226,9 @@ Texture::compileGLObjects(osg::State& state) const
                 gpuInternalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
         }
 
+        GLint minFilter = osgTexture()->getFilter(osg::Texture::MIN_FILTER);
+        GLint magFilter = osgTexture()->getFilter(osg::Texture::MAG_FILTER);
+
         // Calculate the size beforehand so we can make the texture recyclable
         GLTexture::Profile profileHint(
             target(),
@@ -233,8 +236,8 @@ Texture::compileGLObjects(osg::State& state) const
             gpuInternalFormat,
             image->s(), image->t(), image->r(),
             0, // border
-            mipmap() ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR,
-            GL_LINEAR,
+            minFilter,
+            magFilter,
             clamp() ? GL_CLAMP_TO_EDGE : GL_REPEAT,
             clamp() ? GL_CLAMP_TO_EDGE : GL_REPEAT,
             clamp() ? GL_CLAMP_TO_EDGE : GL_REPEAT,

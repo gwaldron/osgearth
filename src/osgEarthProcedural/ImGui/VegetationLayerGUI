@@ -125,9 +125,6 @@ namespace osgEarth {
                             ImGui::PopID();
                         }
 
-                        if (ImGui::SliderFloat("Gravity", &_veglayer->options().gravity().mutable_value(), 0.0f, 0.1f))
-                            _veglayer->dirty();
-
                         if (ImGui::Button("Regenerate Now"))
                             _veglayer->dirty();
                     }

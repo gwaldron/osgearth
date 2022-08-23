@@ -79,6 +79,11 @@ namespace osgEarth { namespace Util
             int unit,
             TextureFactory factory);
 
+        //! Sets a context for relative pathnames
+        void setReferrer(const std::string& value) {
+            _referrer = value;
+        }
+
     public: // osg::NodeVisitor
         void apply(osg::Node&) override;
 
@@ -90,6 +95,7 @@ namespace osgEarth { namespace Util
         std::unordered_map<int, TextureFactory> _factories;
         using Cache = std::unordered_map<std::string, osg::ref_ptr<osg::Texture>>;
         Cache _cache;
+        std::string _referrer;
     };
 } }
 

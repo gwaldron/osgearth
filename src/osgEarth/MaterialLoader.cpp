@@ -20,6 +20,7 @@
 */
 #include "MaterialLoader"
 #include <osg/Texture2D>
+#include <osgDB/FileNameUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -76,13 +77,13 @@ MaterialLoader::apply(osg::StateSet* ss)
     if (t == nullptr || t->getImage(0) == nullptr)
         return;
 
-    std::string filename = t->getImage(0)->getFileName();
+    std::string filename = osgDB::getSimpleFileName(t->getImage(0)->getFileName());
 
     for (auto& m : _manglers)
     {
         int unit = m.first;
 
-        // if the unit is already occupies, ignore it
+        // if the unit is already occupied, ignore it
         if (ss->getTextureAttribute(unit, osg::StateAttribute::TEXTURE) != nullptr)
             continue;
 
@@ -96,15 +97,28 @@ MaterialLoader::apply(osg::StateSet* ss)
         else
         {
             MaterialLoader::Mangler& mangler = m.second;
-            URI materialURI(mangler(filename));
+            URI materialURI(mangler(filename), URIContext(_referrer));
+            OE_INFO << LC << "Looking for: " << materialURI.full() << std::endl;
             osg::ref_ptr<osg::Image> image = materialURI.getImage(_options);
             if (image.valid())
             {
                 auto iter = _factories.find(unit);
                 if (iter != _factories.end())
+                {
                     mat_tex = iter->second(image.get());
+                }
                 else
+                {
                     mat_tex = new osg::Texture2D(image);
+                }
+
+                // match the wrap of the albedo texture
+                mat_tex->setFilter(osg::Texture::MIN_FILTER, t->getFilter(osg::Texture::MIN_FILTER));
+                mat_tex->setFilter(osg::Texture::MAG_FILTER, t->getFilter(osg::Texture::MAG_FILTER));
+                mat_tex->setWrap(osg::Texture::WRAP_S, t->getWrap(osg::Texture::WRAP_S));
+                mat_tex->setWrap(osg::Texture::WRAP_T, t->getWrap(osg::Texture::WRAP_T));
+                mat_tex->setWrap(osg::Texture::WRAP_R, t->getWrap(osg::Texture::WRAP_R));
+                mat_tex->setMaxAnisotropy(t->getMaxAnisotropy());
 
                 _cache[filename] = mat_tex;
                 OE_INFO << LC << "..loaded material tex '" << materialURI.base() << "' to unit " << unit << std::endl;

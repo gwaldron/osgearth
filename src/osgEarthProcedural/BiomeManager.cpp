@@ -351,11 +351,15 @@ BiomeManager::materializeNewAssets(
     materialLoader.setTextureFactory(NORMAL_MAP_TEX_UNIT,
         [](osg::Image* image)
         {
+            osg::Texture2D* tex = nullptr;
+
             // compresses the incoming texture if necessary
             if (image->getPixelFormat() != GL_RG)
-                return new osg::Texture2D(convertNormalMapFromRGBToRG(image));
+                tex = new osg::Texture2D(convertNormalMapFromRGBToRG(image));
             else
-                return new osg::Texture2D(image);
+                tex = new osg::Texture2D(image);
+
+            return tex;
         }
     );
 
@@ -422,6 +426,7 @@ BiomeManager::materializeNewAssets(
                                 }
 
                                 // find materials:
+                                materialLoader.setReferrer(uri.full());
                                 residentAsset->model()->accept(materialLoader);
 
                                 // add flexors:

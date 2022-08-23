@@ -631,6 +631,9 @@ VegetationLayer::buildStateSets()
     // Far pixel scale overrides.
     _pixelScalesU = new osg::Uniform("oe_lod_scale", osg::Vec4f(1, 1, 1, 1));
     ss->addUniform(_pixelScalesU.get(), osg::StateAttribute::OVERRIDE | 0x01);
+
+    // activate compressed normal maps
+    ss->setDefine("OE_COMPRESSED_NORMAL");
 }
 
 void
@@ -978,7 +981,7 @@ VegetationLayer::reset()
 #define N_RANDOM_2 2
 #define N_CLUMPY   3
 
-Future<osg::ref_ptr<ChonkDrawable>>
+Future<osg::ref_ptr<osg::Drawable>>
 VegetationLayer::createDrawableAsync(
     const TileKey& key_,
     const AssetGroup::Type& group_,
@@ -990,14 +993,14 @@ VegetationLayer::createDrawableAsync(
     osg::BoundingBox tile_bbox = tile_bbox_;
 
     auto function =
-        [layer, key, group, tile_bbox](Cancelable* c) -> osg::ref_ptr<ChonkDrawable>
+        [layer, key, group, tile_bbox](Cancelable* c) -> osg::ref_ptr<osg::Drawable>
     {
         osg::ref_ptr<ProgressCallback> p = new ProgressCallback(c);
         return layer->createDrawable(key, group, tile_bbox, p.get());
     };
 
     auto arena = JobArena::get("oe.veg");
-    return Job(arena).dispatch<osg::ref_ptr<ChonkDrawable>>(function);
+    return Job(arena).dispatch<osg::ref_ptr<osg::Drawable>>(function);
 }
 
 
@@ -1019,6 +1022,11 @@ VegetationLayer::getAssetPlacements(
     //   - would need to be in a background thread I'm sure
     // - caching
     // etc.
+
+    // bail out if the Map has disappeared
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+        return false;
 
     std::vector<Placement> result;
 
@@ -1364,7 +1372,7 @@ VegetationLayer::getAssetPlacements(
     }
 
     // clamp everything to the terrain
-    _map->getElevationPool()->sampleMapCoords(
+    map->getElevationPool()->sampleMapCoords(
         map_points,
         Distance(),
         nullptr,
@@ -1390,7 +1398,7 @@ VegetationLayer::getAssetPlacements(
     return true;
 }
 
-osg::ref_ptr<ChonkDrawable>
+osg::ref_ptr<osg::Drawable>
 VegetationLayer::createDrawable(
     const TileKey& key,
     const AssetGroup::Type& group,

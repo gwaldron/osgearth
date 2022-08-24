@@ -167,7 +167,7 @@ main(int argc, char** argv)
 
     // find all intersecting tile keys
     std::vector<TileKey> keys;
-    unsigned lod = app.veglayer->options().group(AssetGroup::TREES).lod().get();
+    unsigned lod = app.veglayer->options().group("trees").lod().get();
     app.mapNode->getMap()->getProfile()->getIntersectingTiles(app.extent, lod, keys);
     if (keys.empty())
         return usage(argv[0], "No data in extent");

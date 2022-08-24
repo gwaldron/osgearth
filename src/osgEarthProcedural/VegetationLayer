@@ -61,24 +61,26 @@ namespace osgEarth { namespace Procedural
                 OE_OPTION(float, maxRange);
                 OE_OPTION(int, instancesPerSqKm);
                 OE_OPTION(bool, castShadows);
+                OE_OPTION(bool, allowOverlap);
 
                 // internal
                 osg::ref_ptr<osg::StateSet> _drawStateSet;
                 std::function<osg::Node*(
                     const osg::BoundingBox&,
                     std::vector<osg::Texture*>&)> _createImpostor;
+
+                Group();
             };
-            OE_OPTION_VECTOR(Group, groups);
-            const Group& group(AssetGroup::Type t) const { 
-                return groups()[t];
-            }
-            Group& group(AssetGroup::Type t) {
-                return groups()[t];
-            }
+
+            using GroupMap = vector_map<std::string, Group>;
+            OE_PROPERTY(GroupMap, groups);
+            Group& group(const std::string& name);
+            const Group& group(const std::string& name) const;
 
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
+            Group _emptyGroup;
         };
 
     public:
@@ -98,8 +100,8 @@ namespace osgEarth { namespace Procedural
 
         //! LOD at which to draw ground cover
         bool hasEnabledGroupAtLOD(unsigned lod) const;
-        AssetGroup::Type getGroupAtLOD(unsigned lod) const;
-        unsigned getGroupLOD(AssetGroup::Type) const;
+        std::string getGroupAtLOD(unsigned lod) const;
+        unsigned getGroupLOD(const std::string&) const;
 
         //! Whether any of the vegetation casts shadows on the terrain
         //void setCastShadows(bool value);
@@ -111,12 +113,12 @@ namespace osgEarth { namespace Procedural
         bool getUseAlphaToCoverage() const;
 
         //! Visibility range of the specified asset group
-        void setMaxRange(AssetGroup::Type, float);
-        float getMaxRange(AssetGroup::Type) const;
+        void setMaxRange(const std::string&, float);
+        float getMaxRange(const std::string&) const;
 
         //! Whether to render the specified group
-        void setEnabled(AssetGroup::Type, bool);
-        bool getEnabled(AssetGroup::Type) const;
+        void setEnabled(const std::string&, bool);
+        bool getEnabled(const std::string&) const;
 
         //! LOD/SSE scaling factors (one per group)
         void setSSEScales(const osg::Vec4f& lods);
@@ -163,7 +165,7 @@ namespace osgEarth { namespace Procedural
         //! @param progress Progress/cancelation tracker
         bool getAssetPlacements(
             const TileKey& key,
-            const AssetGroup::Type& group,
+            const std::string& group,
             bool loadBiomesOnDemand,
             std::vector<Placement>& output,
             ProgressCallback* progress) const;
@@ -271,13 +273,15 @@ namespace osgEarth { namespace Procedural
             using Ptr = std::shared_ptr<CameraState>;
 
             using TileViews = std::unordered_map<
-                TileKeyAndRevision, TileView, TileKeyAndRevision>;
+                TileKeyAndRevision,
+                TileView,
+                TileKeyAndRevision>;
 
             // views indexed by the current key+revision
             TileViews _views;
         };
 
-        using CameraStates = std::unordered_map<
+        using CameraStates = vector_map<
             const osg::Camera*, 
             CameraState::Ptr>;
 
@@ -295,7 +299,9 @@ namespace osgEarth { namespace Procedural
             const Biome*,
             std::vector<ResidentModelAssetInstance>>;
 
-        using Assets = std::vector<AssetsByBiome>;
+        using Assets = vector_map<
+            std::string,
+            AssetsByBiome>;
 
         // Asynchronously loading resident asset collection
         mutable Future<Assets> _newAssets;
@@ -309,17 +315,17 @@ namespace osgEarth { namespace Procedural
         // Uniform to scale the SSE
         osg::ref_ptr<osg::Uniform> _pixelScalesU;
 
-        void configureTrees();
-        void configureGrass();
+        void configureGroup(const std::string&);
+        void configureUndergrowth();
 
         Future<osg::ref_ptr<osg::Drawable>> createDrawableAsync(
             const TileKey&,
-            const AssetGroup::Type&,
+            const std::string&,
             const osg::BoundingBox& bbox) const;
 
         osg::ref_ptr<osg::Drawable> createDrawable(
             const TileKey&,
-            const AssetGroup::Type&,
+            const std::string&,
             const osg::BoundingBox& bbox,
             ProgressCallback* c) const;
 

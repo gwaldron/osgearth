@@ -83,6 +83,7 @@ REGISTER_OSGEARTH_LAYER(vegetation, VegetationLayer);
 
 //........................................................................
 
+#if 0
 namespace
 {
     static const std::string s_assetGroupName[2] = {
@@ -90,6 +91,11 @@ namespace
         "undergrowth"
     };
 }
+#endif
+
+#define GROUP_TREES "trees"
+#define GROUP_BUSHES "bushes"
+#define GROUP_UNDERGROWTH "undergrowth"
 
 //........................................................................
 
@@ -120,52 +126,69 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     conf.get("alpha_to_coverage", alphaToCoverage());
     conf.get("gravity", gravity());
 
-    // defaults for groups:
-    groups().resize(NUM_ASSET_GROUPS);
+    // some nice default group settings
+    groups()[GROUP_TREES].lod().setDefault(14);
+    groups()[GROUP_TREES].enabled().setDefault(true);
+    groups()[GROUP_TREES].castShadows().setDefault(true);
+    groups()[GROUP_TREES].maxRange().setDefault(4000.0f);
+    groups()[GROUP_TREES].instancesPerSqKm().setDefault(16384);
+    groups()[GROUP_TREES].allowOverlap().setDefault(false);
 
-    if (AssetGroup::TREES < NUM_ASSET_GROUPS)
-    {
-        groups()[AssetGroup::TREES].lod().setDefault(14);
-        groups()[AssetGroup::TREES].enabled().setDefault(true);
-        groups()[AssetGroup::TREES].castShadows().setDefault(true);
-        groups()[AssetGroup::TREES].maxRange().setDefault(4000.0f);
-        groups()[AssetGroup::TREES].instancesPerSqKm().setDefault(16384);
-    }
+    //groups()[GROUP_BUSHES].lod().setDefault(17);
+    //groups()[GROUP_BUSHES].enabled().setDefault(true);
+    //groups()[GROUP_BUSHES].castShadows().setDefault(true);
+    //groups()[GROUP_BUSHES].maxRange().setDefault(1000.0f);
+    //groups()[GROUP_BUSHES].instancesPerSqKm().setDefault(4096);
+    //groups()[GROUP_BUSHES].allowOverlap().setDefault(true);
 
-    if (AssetGroup::UNDERGROWTH < NUM_ASSET_GROUPS)
-    {
-        groups()[AssetGroup::UNDERGROWTH].lod().setDefault(19);
-        groups()[AssetGroup::UNDERGROWTH].enabled().setDefault(true);
-        groups()[AssetGroup::UNDERGROWTH].castShadows().setDefault(false);
-        groups()[AssetGroup::UNDERGROWTH].maxRange().setDefault(75.0f);
-        groups()[AssetGroup::UNDERGROWTH].instancesPerSqKm().setDefault(524288);
-    }
+    groups()[GROUP_UNDERGROWTH].lod().setDefault(19);
+    groups()[GROUP_UNDERGROWTH].enabled().setDefault(true);
+    groups()[GROUP_UNDERGROWTH].castShadows().setDefault(false);
+    groups()[GROUP_UNDERGROWTH].maxRange().setDefault(75.0f);
+    groups()[GROUP_UNDERGROWTH].instancesPerSqKm().setDefault(524288);
+    groups()[GROUP_UNDERGROWTH].allowOverlap().setDefault(true);
 
     ConfigSet groups_c = conf.child("groups").children();
-    for (auto& group_c : groups_c)
+    for (auto& group_conf : groups_c)
     {
-        int g = -1;
         std::string name;
-        group_c.get("name", name);
-        if (name == AssetGroup::name(AssetGroup::TREES))
-            g = AssetGroup::TREES;
-        else if (name == AssetGroup::name(AssetGroup::UNDERGROWTH)) 
-            g = AssetGroup::UNDERGROWTH;
+        group_conf.get("name", name);
+        Group& group = groups()[name];
+        group_conf.get("enabled", group.enabled());
+        group_conf.get("max_range", group.maxRange());
+        group_conf.get("instances_per_sqkm", group.instancesPerSqKm());
+        group_conf.get("lod", group.lod());
+        group_conf.get("cast_shadows", group.castShadows());
+        group_conf.get("allow_overlap", group.allowOverlap());
 
-        if (g >= 0 && g < NUM_ASSET_GROUPS)
-        {
-            Group& group = groups()[g];
-            group_c.get("enabled", group.enabled());
-            group_c.get("max_range", group.maxRange());
-            group_c.get("instances_per_sqkm", group.instancesPerSqKm());
-            group_c.get("lod", group.lod());
-            group_c.get("cast_shadows", group.castShadows());
-
-            if (group_c.value("lod") == "auto") {
-                group.lod() = 0;
-            }
+        if (group_conf.value("lod") == "auto") {
+            group.lod() = 0;
         }
     }
+}
+
+VegetationLayer::Options::Group&
+VegetationLayer::Options::group(const std::string& name)
+{
+    auto iter = groups().find(name);
+    return iter != groups().end() ? iter->second : _emptyGroup;
+}
+
+const VegetationLayer::Options::Group&
+VegetationLayer::Options::group(const std::string& name) const
+{
+    auto iter = groups().find(name);
+    return iter != groups().end() ? iter->second : _emptyGroup;
+}
+
+VegetationLayer::Options::Group::Group()
+{
+    enabled().setDefault(false);
+    lod().setDefault(0u);
+    maxRange().setDefault(FLT_MAX);
+    instancesPerSqKm().setDefault(4096);
+    castShadows().setDefault(false);
+    allowOverlap().setDefault(false);
 }
 
 //........................................................................
@@ -231,8 +254,9 @@ VegetationLayer::openImplementation()
     // renderer and improve performance. Doing this here (in open) so the
     // user can close a layer, adjust parameters, and re-open if desired
     float max_range = 0.0f;
-    for (auto& group : options().groups())
+    for (auto& group_iter : options().groups())
     {
+        Options::Group& group = group_iter.second;
         max_range = std::max(max_range, group.maxRange().get());
     }
     max_range = std::min(max_range, getMaxVisibleRange());
@@ -380,9 +404,10 @@ VegetationLayer::getUseAlphaToCoverage() const
 bool
 VegetationLayer::getCastShadows() const
 {
-    for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
+    for (auto& iter : options().groups())
     {
-        if (options().groups()[i].castShadows() == true)
+        auto& group = iter.second;
+        if (group.castShadows() == true)
             return true;
     }
     return false;
@@ -391,67 +416,55 @@ VegetationLayer::getCastShadows() const
 bool
 VegetationLayer::hasEnabledGroupAtLOD(unsigned lod) const
 {
-    for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
+    for (auto& iter : options().groups())
     {
-        if (options().groups()[i].lod() == lod &&
-            options().groups()[i].enabled() == true)
-        {
+        auto& group = iter.second;
+        if (group.lod() == lod && group.enabled() == true)
             return true;
-        }
     }
     return false;
 }
 
-AssetGroup::Type
+std::string
 VegetationLayer::getGroupAtLOD(unsigned lod) const
 {
-    for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
+    for (auto& iter : options().groups())
     {
-        if (options().groups()[i].lod() == lod)
-            return (AssetGroup::Type)i;
+        auto& group = iter.second;
+        if (group.lod() == lod)
+            return iter.first;
     }
-    return AssetGroup::UNDEFINED;
+    return false;
 }
 
 unsigned
-VegetationLayer::getGroupLOD(AssetGroup::Type group) const
+VegetationLayer::getGroupLOD(const std::string& name) const
 {
-    if (group > 0 && group < NUM_ASSET_GROUPS)
-        return options().group(group).lod().get();
-    else
-        return 0;
+    return options().group(name).lod().get();
 }
 
 void
-VegetationLayer::setMaxRange(AssetGroup::Type type, float value)
+VegetationLayer::setMaxRange(const std::string& name, float value)
 {
-    OE_HARD_ASSERT(type < NUM_ASSET_GROUPS);
-
-    auto& group = options().group(type);
-    group.maxRange() = value;
+    options().groups()[name].maxRange() = value;
 }
 
 float
-VegetationLayer::getMaxRange(AssetGroup::Type type) const
+VegetationLayer::getMaxRange(const std::string& name) const
 {
-    OE_HARD_ASSERT(type < NUM_ASSET_GROUPS);
-    return options().group(type).maxRange().get();
+    return options().group(name).maxRange().get();
 }
 
 void
-VegetationLayer::setEnabled(AssetGroup::Type type, bool value)
+VegetationLayer::setEnabled(const std::string& name, bool value)
 {
-    OE_HARD_ASSERT(type < NUM_ASSET_GROUPS);
-
-    auto& group = options().group(type);
-    group.enabled() = value;
+    options().groups()[name].enabled() = value;
 }
 
 bool
-VegetationLayer::getEnabled(AssetGroup::Type type) const
+VegetationLayer::getEnabled(const std::string& name) const
 {
-    OE_HARD_ASSERT(type < NUM_ASSET_GROUPS);
-    return options().group(type).enabled().get();
+    return options().group(name).enabled().get();
 }
 
 void
@@ -535,11 +548,10 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
         }
 
         // Compute LOD for each asset group if necessary.
-        for (int g = 0; g < options().groups().size(); ++g)
+        for(auto iter : options().groups())
         {
-            Options::Group& group = options().group((AssetGroup::Type)g);
+            Options::Group& group = iter.second;
             if (group.lod() == 0)
-            //if (!group.lod().isSet())
             {
                 unsigned bestLOD = 0;
                 for (unsigned lod = 1; lod <= 99; ++lod)
@@ -554,7 +566,7 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
                 group.lod() = bestLOD;
 
                 OE_INFO << LC 
-                    << "Rendering asset group" << s_assetGroupName[g] 
+                    << "Rendering asset group" << iter.first
                     << " at terrain level " << bestLOD <<  std::endl;
             }
         }
@@ -596,11 +608,9 @@ VegetationLayer::buildStateSets()
     }
 
     // NEXT assemble the asset group statesets.
-    if (AssetGroup::TREES < NUM_ASSET_GROUPS)
-        configureTrees();
-
-    if (AssetGroup::UNDERGROWTH < NUM_ASSET_GROUPS)
-        configureGrass();
+    configureGroup(GROUP_TREES);
+    configureGroup(GROUP_BUSHES);
+    configureUndergrowth();
 
     osg::StateSet* ss = getOrCreateStateSet();
     ss->setName(typeid(*this).name());
@@ -655,9 +665,9 @@ VegetationLayer::activateMultisampling()
 }
 
 void
-VegetationLayer::configureTrees()
+VegetationLayer::configureGroup(const std::string& groupName)
 {
-    auto& trees = options().group(AssetGroup::TREES);
+    Options::Group& trees = options().groups()[groupName];
 
     // functor for generating cross hatch geometry for trees:
     trees._createImpostor = [](
@@ -778,19 +788,19 @@ VegetationLayer::configureTrees()
     };
 
     getBiomeLayer()->getBiomeManager().setCreateFunction(
-        AssetGroup::TREES,
+        groupName,
         trees._createImpostor);
 }
 
 void
-VegetationLayer::configureGrass()
+VegetationLayer::configureUndergrowth()
 {
-    auto& grass = options().group(AssetGroup::UNDERGROWTH);
+    auto& undergrowth = options().groups()[GROUP_UNDERGROWTH];
 
     float gravity = options().gravity().get();
 
     // functor for generating billboard geometry for grass:
-    grass._createImpostor = [gravity](
+    undergrowth._createImpostor = [gravity](
         const osg::BoundingBox& bbox,
         std::vector<osg::Texture*>& textures)
     {
@@ -874,8 +884,8 @@ VegetationLayer::configureGrass()
     };
 
     getBiomeLayer()->getBiomeManager().setCreateFunction(
-        AssetGroup::UNDERGROWTH,
-        grass._createImpostor);
+        GROUP_UNDERGROWTH,
+        undergrowth._createImpostor);
 }
 
 bool
@@ -898,7 +908,6 @@ VegetationLayer::checkForNewAssets() const
         OE_PROFILING_ZONE_NAMED("VegetationLayer::loadNewAssets(job)");
 
         Assets result;
-        result.resize(NUM_ASSET_GROUPS);
 
         osg::ref_ptr<const VegetationLayer> layer;
         if (layer_weakptr.lock(layer))
@@ -915,12 +924,28 @@ VegetationLayer::checkForNewAssets() const
                 const Biome* biome = iter.first;
                 auto& instances = iter.second;
 
-                for (int group = 0; group < NUM_ASSET_GROUPS; ++group)
+                // first, sort the instances by group:
+                vector_map<
+                    std::string,
+                    std::vector<ResidentModelAssetInstance>> instances_by_group;
+
+                for (auto& instance : instances)
                 {
+                    instances_by_group[instance.residentAsset()->assetDef()->group()]
+                        .push_back(instance);
+                }
+
+                // next, foreach group, calculate the relative weighting by
+                // inserting heavy instances more than once.
+                for(auto iter : instances_by_group)
+                {
+                    auto& group = iter.first;
+                    auto& instances = iter.second;
+
                     float total_weight = 0.0f;
                     float smallest_weight = FLT_MAX;
 
-                    for (auto& instance : instances[group])
+                    for (auto& instance : instances)
                     {
                         total_weight += instance.weight();
                         smallest_weight = std::min(smallest_weight, instance.weight());
@@ -930,7 +955,7 @@ VegetationLayer::checkForNewAssets() const
                     float weight_scale = 1.0f / smallest_weight;
                     total_weight *= weight_scale;
 
-                    for (auto& instance : instances[group])
+                    for (auto& instance : instances)
                     {
                         unsigned num = std::max(1u, (unsigned)(instance.weight() * weight_scale));
                         for(unsigned i=0; i<num; ++i)
@@ -984,12 +1009,12 @@ VegetationLayer::reset()
 Future<osg::ref_ptr<osg::Drawable>>
 VegetationLayer::createDrawableAsync(
     const TileKey& key_,
-    const AssetGroup::Type& group_,
+    const std::string& group_,
     const osg::BoundingBox& tile_bbox_) const
 {
     osg::ref_ptr<const VegetationLayer> layer = this;
     TileKey key = key_;
-    AssetGroup::Type group = group_;
+    const std::string group = group_;
     osg::BoundingBox tile_bbox = tile_bbox_;
 
     auto function =
@@ -1007,26 +1032,23 @@ VegetationLayer::createDrawableAsync(
 bool
 VegetationLayer::getAssetPlacements(
     const TileKey& key,
-    const AssetGroup::Type& group,
+    const std::string& group,
     bool loadBiomesOnDemand,
     std::vector<VegetationLayer::Placement>& output,
     ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
 
-    //OE_INFO << LC << "Generating assets for tile " << key.str() << std::endl;
-
-    //TODO:
-    // - use "asset size variation" parameter
-    // - think about using BLEND2D to rasterize a collision map!
-    //   - would need to be in a background thread I'm sure
-    // - caching
-    // etc.
-
     // bail out if the Map has disappeared
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
         return false;
+
+    // bail out if missing or disabled group
+    const Options::Group& groupOptions = options().group(group);
+    if (groupOptions.enabled() == false)
+        return false;
+
 
     std::vector<Placement> result;
 
@@ -1039,15 +1061,11 @@ VegetationLayer::getAssetPlacements(
     {
         ScopedMutexLock lock(_assets);
 
-        if (_assets.size() <= group)
-        {
-            // data is unavailable.
-            return false;
-        }
+        auto iter = _assets.find(group);
+        if (iter == _assets.end())
+            return false; // data is unavailable.
         else
-        {
-            groupAssets = _assets[group]; // shallow copy
-        }
+            groupAssets = iter->second; //shallow copy
 
         // if it's empty, bail out (and probably return later)
         if (groupAssets.empty())
@@ -1111,10 +1129,11 @@ VegetationLayer::getAssetPlacements(
         // make a shallow copy of assets list safely
         {
             ScopedMutexLock lock(_assets);
-            if (_assets.size() <= group)
+            auto iter = _assets.find(group);
+            if (iter == _assets.end())
                 return false;
             else
-                groupAssets = _assets[group]; // shallow copy
+                groupAssets = iter->second; // shallow copy
         }
 
         // if it's empty, bail out (and probably return later)
@@ -1147,10 +1166,8 @@ VegetationLayer::getAssetPlacements(
     double x = 0.001 * c.getRadius() * 2.8284271247;
     double area_sqkm = x * x;
 
-    unsigned max_instances = 
-        (double)options().group(group).instancesPerSqKm().get() * area_sqkm;
-
-    bool allow_overlap = (group == AssetGroup::UNDERGROWTH);
+    unsigned max_instances = groupOptions.instancesPerSqKm().get() * area_sqkm;
+    bool allow_overlap = groupOptions.allowOverlap().get();
 
     // reserve some memory, maybe more than we need
     result.reserve(max_instances);
@@ -1385,14 +1402,16 @@ VegetationLayer::getAssetPlacements(
         result[i].mapPoint() = std::move(map_points[i]);
     }
 
+#if 0
     // print warnings about empty biomes
     if (!empty_biomes.empty())
     {
         for (auto biome : empty_biomes)
         {
-            OE_WARN << "No assets defined in group " << AssetGroup::name(group) << " for biome " << biome->id() << std::endl;
+            OE_WARN << LC << "No assets defined in group " << AssetGroup::name(group) << " for biome " << biome->id() << std::endl;
         }
     }
+#endif
 
     output = std::move(result);
     return true;
@@ -1401,7 +1420,7 @@ VegetationLayer::getAssetPlacements(
 osg::ref_ptr<osg::Drawable>
 VegetationLayer::createDrawable(
     const TileKey& key,
-    const AssetGroup::Type& group,
+    const std::string& group,
     const osg::BoundingBox& tile_bbox,
     ProgressCallback* progress) const
 {
@@ -1481,8 +1500,8 @@ VegetationLayer::cull(
 
     for (auto& entry : batch.tiles())
     {
-        AssetGroup::Type group = getGroupAtLOD(entry->getKey().getLOD());
-        OE_HARD_ASSERT(group != AssetGroup::UNDEFINED);
+        const std::string& group = getGroupAtLOD(entry->getKey().getLOD());
+
 
         if (options().group(group).enabled() == false)
         {

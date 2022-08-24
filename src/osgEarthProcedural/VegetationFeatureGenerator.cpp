@@ -233,7 +233,7 @@ VegetationFeatureGenerator::getFeatures(const GeoExtent& extent, FeatureList& ou
     if (extent.isInvalid())
         return Status(Status::ConfigurationError, "Invalid extent");
 
-    unsigned lod = _veglayer->options().groups()[AssetGroup::TREES].lod().get();
+    unsigned lod = _veglayer->options().group("trees").lod().get();
 
     std::vector<TileKey> keys;
     _map->getProfile()->getIntersectingTiles(extent, lod, keys);
@@ -257,7 +257,7 @@ VegetationFeatureGenerator::getFeatures(
     const TileKey& key, 
     FeatureList& output) const
 {
-    VegetationLayer::Options::Group& trees = _veglayer->options().groups()[AssetGroup::TREES];
+    VegetationLayer::Options::Group& trees = _veglayer->options().group("trees");
     unsigned lod = trees.lod().get();
     if (key.getLOD() != lod)
         return Status(Status::ConfigurationError, "TileKey LOD does not match GroundCoverLayer LOD");
@@ -266,7 +266,7 @@ VegetationFeatureGenerator::getFeatures(
 
     bool ok = _veglayer->getAssetPlacements(
         key,
-        AssetGroup::TREES,
+        "trees",
         true,
         placements,
         nullptr);

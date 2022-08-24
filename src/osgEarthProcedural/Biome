@@ -39,7 +39,10 @@ namespace osgEarth
          * determine how the system handles them. Right now there are
          * only two types -- trees and undergrowth.
          */
-        #define NUM_ASSET_GROUPS 2
+        using AssetGroup = std::string;
+
+#if 0
+        //#define NUM_ASSET_GROUPS 2
         struct OSGEARTHPROCEDURAL_EXPORT AssetGroup
         {
             enum Type
@@ -55,6 +58,7 @@ namespace osgEarth
             //! Type of the asset group, given the name.
             static Type type(const std::string& name);
         };
+#endif
 
         /**
          * Holds a collection of asset traits, which can 
@@ -118,7 +122,7 @@ namespace osgEarth
             OE_PROPERTY(std::vector<std::string>, traits);
 
             //! Asset group to which this model belongs.
-            OE_PROPERTY(AssetGroup::Type, group);
+            OE_PROPERTY(AssetGroup, group);
 
         public:
             //! Construct an empty model asset definition
@@ -165,9 +169,10 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT AssetCatalog
         {
         public:
-            using Dimensions = std::array<unsigned, 2>;
-
+            //! Construct an empty asset catalog
             AssetCatalog() { }
+
+            //! Deserialize an asset catalog
             AssetCatalog(const Config& conf);
 
             //! Model asset associated with given name
@@ -202,8 +207,7 @@ namespace osgEarth
         };
 
         /** 
-         * Collection of artwork assets that will be used in a particular
-         * geographic resion.
+         * Collection of artwork assets.
          * A biome may have a "parent" biome. This means that if the Biome
          * defines ZERO assets, it will use the parent biome's assets.
          */
@@ -224,13 +228,15 @@ namespace osgEarth
             OE_OPTION(std::string, parentId);
 
             // points to an asset, adding in some custom parameters.
-            struct ModelAssetToUse
+            struct ModelAssetRef
             {
+                using Ptr = std::shared_ptr<ModelAssetRef>;
+
                 // points to the base asset in the catalog
-                using ModelAssetRef = const ModelAsset * ;
+                using ModelAssetPointer = const ModelAsset * ;
 
                 //! Reference to the asset being used
-                OE_PROPERTY(ModelAssetRef, asset);
+                OE_PROPERTY(ModelAssetPointer, asset);
 
                 //! Selection weight compared to other assets (default = 1.0)
                 OE_PROPERTY(float, weight);
@@ -238,28 +244,38 @@ namespace osgEarth
                 //! Coverage percentage when this asset it selected (default = 1.0)
                 OE_PROPERTY(float, coverage);
 
-                bool operator < (const ModelAssetToUse& rhs) const {
+                bool operator < (const ModelAssetRef& rhs) const {
                     return (std::uintptr_t)asset() < (std::uintptr_t)rhs.asset();
                 }
             };
 
-            using ModelAssetsToUse = std::vector<ModelAssetToUse>;
+            using ModelAssetRefs = std::vector<ModelAssetRef::Ptr>;
 
             // A collection of asset pointers for each existing AssetGroup
-            ModelAssetsToUse _assetsToUse[NUM_ASSET_GROUPS];
+            ModelAssetRefs _assetsToUse;
 
             //! Collection of this biome's asset pointers for the specified asset
             //! group, or the assets from the parent biome if this biome's asset
             //! list is empty.
-            const ModelAssetsToUse& getModelAssetsToUse(int group) const;
+            ModelAssetRefs getModelAssets(
+                const std::string& group) const;
+
+            //! Gets the collection of model assets associated with this biome
+            //! irrespective of group
+            const ModelAssetRefs& getModelAssets() const {
+                return _assetsToUse;
+            }
 
             //! The sequential biome index uses in encoded raster data
             //! Note: Starts at 1. Zero means "undefined."
             int index() const { return _index; }
+
+            //! True is this biome contains no asset references
+            bool empty() const;
             
         private:
             int _index;
-            const Biome* _parentBiome;
+            Biome* _parentBiome;
             bool _implicit; // whether this biome really exists or was derived by filters
             friend class BiomeCatalog;
         };
@@ -289,6 +305,8 @@ namespace osgEarth
 
         public:
             Config getConfig() const;
+
+            Biome* getBiome(const std::string& id);
 
             int _biomeIndexGenerator;
             AssetCatalog _assets;

@@ -69,6 +69,15 @@ namespace osgEarth { namespace Util
         inline iterator begin()             { return _container.begin(); }
         inline iterator end()               { return _container.end(); }
 
+        inline iterator find(const KEY& key) {
+            for (unsigned i = 0; i < _container.size(); ++i) {
+                if (_container[i].first == key) {
+                    return _container.begin() + i;
+                }
+            }
+            return _container.end();
+        }
+
         inline const_iterator find(const KEY& key) const {
             for(unsigned i=0; i<_container.size(); ++i) {
                 if (_container[i].first == key) {

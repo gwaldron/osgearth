@@ -111,9 +111,9 @@ namespace osgEarth
             
             using ResidentBiomes = std::unordered_map<
                 const Biome*,
-                ResidentModelAssetInstances[NUM_ASSET_GROUPS]>;
+                ResidentModelAssetInstances>;
             
-            using createImpostorFunction = std::function<
+            using CreateImpostorFunction = std::function<
                 osg::Node*(
                     const osg::BoundingBox& bbox,
                     std::vector<osg::Texture*>&)>;
@@ -145,8 +145,8 @@ namespace osgEarth
             //! Assigns a geometry creation function for an asset group,
             //! for making impostor geometry LODs.
             void setCreateFunction(
-                const AssetGroup::Type group,
-                createImpostorFunction function);
+                const std::string& group,
+                CreateImpostorFunction function);
 
             //! Gets a copy of the currently resident biomes
             //! (which is a snapshot in time)
@@ -186,7 +186,11 @@ namespace osgEarth
             mutable Mutex _residentData_mutex;
             int _revision;
             float _lodTransitionPixelScale;
-            createImpostorFunction _createImpostor[NUM_ASSET_GROUPS];
+
+            vector_map<
+                std::string,
+                CreateImpostorFunction
+            > _createImpostorFunctions;
 
             using BiomeRefs = std::unordered_map<const Biome*, int>;
             BiomeRefs _refs;

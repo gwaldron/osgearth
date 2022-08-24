@@ -2263,10 +2263,8 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, in
     if (!_bilinear)
     {
         // NN sample with clamp-to-edge from mesa in s_texfilter.c
-        const float umin = 1.0f / (2.0f * (float)_image->s());
-        const float vmin = 1.0f / (2.0f * (float)_image->t());
-        int s = u<umin? 0 : u>(1.0f-umin)? _image->s()-1 : (int)floorf(u*(float)_image->s());
-        int t = v<vmin? 0 : v>(1.0f-vmin)? _image->t()-1 : (int)floorf(v*(float)_image->t());
+        unsigned s, t;
+        nnUVtoST(u, v, s, t, _image->s(), _image->t());
         _read(this, out, s, t, r, m);
     }
 
@@ -2382,10 +2380,8 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, 
     if (!_bilinear)
     {
         // NN sample with clamp-to-edge from mesa in s_texfilter.c
-        const double umin = 1.0 / (2.0 * (double)_image->s());
-        const double vmin = 1.0 / (2.0 * (double)_image->t());
-        int s = u<umin ? 0 : u>(1.0 - umin) ? _image->s() - 1 : (int)floorf(u*(double)_image->s());
-        int t = v<vmin ? 0 : v>(1.0 - vmin) ? _image->t() - 1 : (int)floorf(v*(double)_image->t());
+        unsigned s, t;
+        nnUVtoST(u, v, s, t, _image->s(), _image->t());
         _read(this, out, s, t, r, m);
     }
 

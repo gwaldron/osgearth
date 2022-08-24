@@ -20,6 +20,7 @@
 #define OSGEARTH_COVERAGE_H 1
 
 #include <osgEarth/GeoData>
+#include <osgEarth/ImageUtils>
 #include <unordered_map>
 #include <vector>
 #include <map>
@@ -172,18 +173,16 @@ namespace osgEarth
 
         bool read(T& output, unsigned s, unsigned t) const
         {
-            int ptr = t * _width + s;
-            Index i = _pixels[ptr];
-            bool found = (i > 0);
-            if (found) output = _rlut[i];
-            return found;
+            const T* value = read(s, t);
+            if (value) output = *value;
+            return value != nullptr;
         }
 
         bool read(T& output, double u, double v) const
         {
-            unsigned s = (unsigned)((double)(_width - 1) * u);
-            unsigned t = (unsigned)((double)(_height - 1) * v);
-            return read(output, s, t);
+            const T* value = read(u, v);
+            if (value) output = *value;
+            return value != nullptr;
         }
 
         const T* read(unsigned s, unsigned t) const
@@ -199,8 +198,8 @@ namespace osgEarth
 
         const T* read(double u, double v) const
         {
-            unsigned s = (unsigned)((double)(_width - 1) * u);
-            unsigned t = (unsigned)((double)(_height - 1) * v);
+            unsigned s, t;
+            ImageUtils::nnUVtoST(u, v, s, t, _width, _height);
             return read(s, t);
         }
 

@@ -303,7 +303,7 @@ MapNode::init()
     _registry = Registry::instance();
 
     // the default SSE for all supporting geometries
-    _sseU = new osg::Uniform("oe_sse", 50.0f);
+    _sseU = new osg::Uniform("oe_sse", options().screenSpaceError().get());
 
     _readyForUpdate = true;
 }
@@ -637,7 +637,13 @@ MapNode::getTerrainEngine() const
 void
 MapNode::setScreenSpaceError(float value)
 {
+    // global option:
     options().screenSpaceError() = value;
+
+    // update the corresponding terrain option:
+    getTerrainOptions().setScreenSpaceError(value);
+
+    // update the uniform:
     _sseU->set(value);
 }
 

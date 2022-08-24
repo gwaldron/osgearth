@@ -379,7 +379,10 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
                 tileSizeInPixels = _surface->getPixelSizeOnScreen(culler);
             }
         
-            return (tileSizeInPixels > options().tilePixelSize().get());
+            float effectivePixelSize =
+                options().tilePixelSize().get() + options().screenSpaceError().get();
+
+            return (tileSizeInPixels > effectivePixelSize);
         }
 
         // In DISTANCE-TO-EYE mode, use the visibility ranges precomputed in the SelectionInfo.

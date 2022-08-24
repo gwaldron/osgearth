@@ -68,6 +68,8 @@ namespace osgEarth
         OE_OPTION(unsigned, concurrency);
         OE_OPTION(bool, useLandCover);
 
+        OE_OPTION(float, screenSpaceError);
+
         virtual Config getConfig() const;
     private:
         void fromConfig(const Config&);
@@ -239,6 +241,10 @@ namespace osgEarth
         //! Target concurrency of terrain data loading operations. Default = 4.
         void setConcurrency(const unsigned& value);
         const unsigned& getConcurrency() const;
+
+        //! Screen space error for PIXEL SIZE ON SCREEN LOD mode
+        void setScreenSpaceError(const float& value);
+        const float& getScreenSpaceError() const;
 
     public: // Legacy support
 

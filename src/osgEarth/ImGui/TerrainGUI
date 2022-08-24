@@ -89,9 +89,18 @@ namespace osgEarth
                 {
                     ImGui::Text("Resident Tiles: %u", _mapNode->getTerrainEngine()->getNumResidentTiles());
 
+                    osg::LOD::RangeMode mode = _mapNode->getTerrainOptions().getRangeMode();
+                    bool mode_b = (mode == osg::LOD::PIXEL_SIZE_ON_SCREEN);
+                    if (ImGui::Checkbox("Screen space LOD", &mode_b))
+                    {
+                        _mapNode->getTerrainOptions().setRangeMode(
+                            mode_b ? osg::LOD::PIXEL_SIZE_ON_SCREEN :
+                            osg::LOD::DISTANCE_FROM_EYE_POINT);
+                        ImGui::Separator();
+                    }
+
                     if (_mapNode->getTerrainOptions().getGPUTessellation())
                     {
-                        //if (ImGui::SliderFloat("Tessellation SSE", &_sse, 5.0f, 50.0f))
                         ImGui::SliderFloat("Tessellation", &_tess, 1.0f, 8.0f);
                         _tess_u->set(_tess);
                         ImGui::SliderFloat("Tess Range", &_tess_range, 75.0f, 500.0f);

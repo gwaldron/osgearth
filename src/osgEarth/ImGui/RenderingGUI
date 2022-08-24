@@ -99,7 +99,6 @@ namespace osgEarth
         class RenderingGUI : public BaseGUI
         {
         private:
-            float _sse;
             osg::observer_ptr<MapNode> _mapNode;
             using time_point = std::chrono::time_point<std::chrono::steady_clock>;
             time_point _lastFrame;
@@ -115,19 +114,16 @@ namespace osgEarth
 
         public:
             RenderingGUI() : BaseGUI("Rendering"),
-                _sse(0.0f),
                 _frameCounter(0), _time_accum(0),
                 _renderViewNormals(false), _renderModelNormals(false),
                 _renderWinding(false), _renderOutlines(false) { }
 
             void load(const Config& conf) override
             {
-                conf.get("SSE", _sse);
             }
 
             void save(Config& conf) override
             {
-                conf.set("SSE", _sse);
             }                
 
             void setRenderMode(const std::string& mode, osg::RenderInfo& ri)
@@ -198,13 +194,10 @@ namespace osgEarth
                     }
                     ImGui::Separator();
 
-                    if (_sse == 0.0f)
-                        _sse = _mapNode->getScreenSpaceError();
-
-                    if (ImGui::SliderFloat("SSE", &_sse, 1.0f, 200.0f))
+                    float sse = _mapNode->getScreenSpaceError();
+                    if (ImGui::SliderFloat("SSE", &sse, 1.0f, 200.0f))
                     {
-                        _mapNode->setScreenSpaceError(_sse);
-                        dirtySettings();
+                        _mapNode->setScreenSpaceError(sse);
                     }
 
                     ImGui::Separator();

@@ -39,9 +39,9 @@ namespace osgEarth
          * determine how the system handles them. Right now there are
          * only two types -- trees and undergrowth.
          */
+#if 0
         using AssetGroup = std::string;
 
-#if 0
         //#define NUM_ASSET_GROUPS 2
         struct OSGEARTHPROCEDURAL_EXPORT AssetGroup
         {
@@ -122,7 +122,7 @@ namespace osgEarth
             OE_PROPERTY(std::vector<std::string>, traits);
 
             //! Asset group to which this model belongs.
-            OE_PROPERTY(AssetGroup, group);
+            OE_PROPERTY(std::string, group);
 
         public:
             //! Construct an empty model asset definition

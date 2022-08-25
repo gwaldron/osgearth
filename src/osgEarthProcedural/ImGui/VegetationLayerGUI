@@ -137,16 +137,10 @@ namespace osgEarth {
                     ImGui::Checkbox("Show biome under mouse", &_showBiomeUnderMouse);
                     if (_showBiomeUnderMouse)
                     {
-                        //if (_queriedLandCover.valid())
-                        //{
-                        //    ImGui::Text("R=%.2f D=%.2f L=%.2f",
-                        //        _queriedLandCover.rugged().get(),
-                        //        _queriedLandCover.dense().get(),
-                        //        _queriedLandCover.lush().get());
-                        //}
                         if (_biomeUnderMouse.isWorking())
                         {
-                            ImGui::Text("..searching..");
+                            ImGui::Text("...searching..");
+                            ImGui::Text("...");
                         }
                         else if (_biomeUnderMouse.isAvailable())
                         {
@@ -244,11 +238,12 @@ namespace osgEarth {
                                 {
                                     auto& groupName = iter.first;
 
-                                    if (ImGui::TreeNode(groupName.c_str()))
+                                    auto assets = biome->getModelAssets(groupName);
+                                    if (!assets.empty() && ImGui::TreeNode(groupName.c_str()))
                                     {
-                                        for (auto& pointer : biome->getModelAssets(groupName))
+                                        for (auto& asset_ref : assets)
                                         {
-                                            drawModelAsset(pointer->asset());
+                                            drawModelAsset(asset_ref->asset());
                                         }
                                         ImGui::TreePop();
                                     }

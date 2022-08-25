@@ -134,12 +134,12 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_TREES].instancesPerSqKm().setDefault(16384);
     groups()[GROUP_TREES].allowOverlap().setDefault(false);
 
-    //groups()[GROUP_BUSHES].lod().setDefault(17);
-    //groups()[GROUP_BUSHES].enabled().setDefault(true);
-    //groups()[GROUP_BUSHES].castShadows().setDefault(true);
-    //groups()[GROUP_BUSHES].maxRange().setDefault(1000.0f);
-    //groups()[GROUP_BUSHES].instancesPerSqKm().setDefault(4096);
-    //groups()[GROUP_BUSHES].allowOverlap().setDefault(true);
+    groups()[GROUP_BUSHES].lod().setDefault(18);
+    groups()[GROUP_BUSHES].enabled().setDefault(true);
+    groups()[GROUP_BUSHES].castShadows().setDefault(true);
+    groups()[GROUP_BUSHES].maxRange().setDefault(200.0f);
+    groups()[GROUP_BUSHES].instancesPerSqKm().setDefault(4096);
+    groups()[GROUP_BUSHES].allowOverlap().setDefault(true);
 
     groups()[GROUP_UNDERGROWTH].lod().setDefault(19);
     groups()[GROUP_UNDERGROWTH].enabled().setDefault(true);

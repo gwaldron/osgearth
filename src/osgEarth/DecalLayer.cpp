@@ -59,6 +59,51 @@ DecalImageLayer::init()
 
     // Never cache decals
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
+
+    // blending defaults
+    _srcRGB = GL_SRC_ALPHA;
+    _dstRGB = GL_ONE_MINUS_SRC_ALPHA;
+    _srcAlpha = GL_ONE;
+    _dstAlpha = GL_ZERO;
+    _rgbEquation = GL_FUNC_ADD;
+    _alphaEquation = GL_FUNC_ADD;
+}
+
+void
+DecalImageLayer::setBlendFuncs(
+    GLenum srcRGB,
+    GLenum dstRGB,
+    GLenum srcAlpha,
+    GLenum dstAlpha)
+{
+    _srcRGB = srcRGB;
+    _dstRGB = dstRGB;
+    _srcAlpha = srcAlpha;
+    _dstAlpha = dstAlpha;
+}
+
+void
+DecalImageLayer::setBlendEquations(
+    GLenum rgbEquation,
+    GLenum alphaEquation)
+{
+    _rgbEquation = rgbEquation;
+    _alphaEquation = alphaEquation;
+}
+
+namespace
+{
+    template<typename T>
+    inline float get_blend(GLenum blend, const T& src, const T& dst) {
+        return
+            blend == GL_SRC_ALPHA ? src.a() :
+            blend == GL_ONE_MINUS_SRC_ALPHA ? (1.0f - src.a()) :
+            blend == GL_DST_ALPHA ? dst.a() :
+            blend == GL_ONE_MINUS_DST_ALPHA ? (1.0f - dst.a()) :
+            blend == GL_ONE ? 1.0f :
+            blend == GL_ZERO ? 0.0f :
+            1.0f;
+    }
 }
 
 GeoImage
@@ -111,8 +156,8 @@ DecalImageLayer::createImageImplementation(
     ImageUtils::PixelWriter writeOutput(output.get());
     ImageUtils::PixelReader readOutput(output.get());
 
-    osg::Vec4 existingValue;
-    osg::Vec4 value;
+    osg::Vec4 src, dst, out;
+    float srcRGB, dstRGB, srcAlpha, dstAlpha;
 
     for (unsigned d = 0; d < decals.size(); ++d)
     {
@@ -123,42 +168,6 @@ DecalImageLayer::createImageImplementation(
         const GeoExtent& intersection = intersections[d];
         bool normalizeX = decalExtent.crossesAntimeridian();
 
-#if 0
-        GeoImageIterator i(writeOutput, outputExtentInDecalSRS);
-        i.forEachPixelOnCenter(
-            [&]()
-            {
-                double in_v = (i.y() - decalExtent.yMin()) / decalExtent.height();
-                if (in_v < 0.0 || in_v > 1.0)
-                    return;
-
-                double out_x = i.x();
-                if (normalizeX)
-                {
-                    while (out_x < decalExtent.xMin())
-                        out_x += 360.0;
-                    while (out_x > decalExtent.xMax())
-                        out_x -= 360.0;
-                }
-
-                double in_u = (out_x - decalExtent.xMin()) / decalExtent.width();
-
-                if (in_u < 0.0 || in_u > 1.0)
-                    return;
-
-                readOutput(existingValue, i.s(), i.t());
-                readInput(value, in_u, in_v);
-
-                value.r() = value.r()*value.a() + (existingValue.r()*(1.0 - value.a()));
-                value.g() = value.g()*value.a() + (existingValue.g()*(1.0 - value.a()));
-                value.b() = value.b()*value.a() + (existingValue.b()*(1.0 - value.a()));
-                value.a() = osg::maximum(value.a(), existingValue.a());
-
-                writeOutput(value, i.s(), i.t());
-            }
-        );
-
-#else
         for (unsigned t = 0; t < (unsigned)output->t(); ++t)
         {
             double out_v = (double)t / (double)(output->t() - 1);
@@ -187,18 +196,54 @@ DecalImageLayer::createImageImplementation(
                 if (in_u < 0.0 || in_u > 1.0)
                     continue;
 
-                readOutput(existingValue, s, t);
-                readInput(value, in_u, in_v);
+                readOutput(dst, s, t);
+                readInput(src, in_u, in_v);
 
-                value.r() = value.r()*value.a() + (existingValue.r()*(1.0 - value.a()));
-                value.g() = value.g()*value.a() + (existingValue.g()*(1.0 - value.a()));
-                value.b() = value.b()*value.a() + (existingValue.b()*(1.0 - value.a()));
-                value.a() = osg::maximum(value.a(), existingValue.a());
+                srcRGB = get_blend(_srcRGB, src, dst);
+                dstRGB = get_blend(_dstRGB, src, dst);
+                srcAlpha = get_blend(_srcAlpha, src, dst);
+                dstAlpha = get_blend(_dstAlpha, src, dst);
 
-                writeOutput(value, s, t);
+                if (_rgbEquation == GL_FUNC_ADD)
+                {
+                    out.r() = src.r()*srcRGB + dst.r()*dstRGB;
+                    out.g() = src.g()*srcRGB + dst.g()*dstRGB;
+                    out.b() = src.b()*srcRGB + dst.b()*dstRGB;
+                }
+                else if (_rgbEquation == GL_MAX)
+                {
+                    out.r() = std::max(src.r()*srcRGB, dst.r()*dstRGB);
+                    out.g() = std::max(src.g()*srcRGB, dst.g()*dstRGB);
+                    out.b() = std::max(src.b()*srcRGB, dst.b()*dstRGB);
+                }
+                else if (_rgbEquation == GL_MIN)
+                {
+                    out.r() = std::min(src.r()*srcRGB, dst.r()*dstRGB);
+                    out.g() = std::min(src.g()*srcRGB, dst.g()*dstRGB);
+                    out.b() = std::min(src.b()*srcRGB, dst.b()*dstRGB);
+                }
+
+                if (_alphaEquation == GL_FUNC_ADD)
+                {
+                    out.a() = src.a()*srcAlpha + dst.a()*dstAlpha;
+                }
+                else if (_alphaEquation == GL_MAX)
+                {
+                    out.a() = std::max(src.a()*srcAlpha, dst.a()*dstAlpha);
+                }
+                else if (_alphaEquation == GL_MIN)
+                {
+                    out.a() = std::min(src.a()*srcAlpha, dst.a()*dstAlpha);
+                }
+
+                out.r() = clamp(out.r(), 0.0f, 1.0f);
+                out.g() = clamp(out.g(), 0.0f, 1.0f);
+                out.b() = clamp(out.b(), 0.0f, 1.0f);
+                out.a() = clamp(out.a(), 0.0f, 1.0f);
+
+                writeOutput(out, s, t);
             }
         }
-#endif
     }
 
     return GeoImage(output.get(), outputExtent);

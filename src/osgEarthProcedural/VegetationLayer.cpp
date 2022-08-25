@@ -434,7 +434,7 @@ VegetationLayer::getGroupAtLOD(unsigned lod) const
         if (group.lod() == lod)
             return iter.first;
     }
-    return false;
+    return std::string();
 }
 
 unsigned

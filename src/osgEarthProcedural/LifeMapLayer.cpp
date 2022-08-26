@@ -849,7 +849,7 @@ LifeMapLayer::createImageImplementation(
                 combined_pixel += pixel[NOISE] * weight[NOISE];
 
                 // apply the lushness static factor
-                combined_pixel[LIFEMAP_LUSH] *= options().lushFactor().get();
+                //combined_pixel[LIFEMAP_LUSH] *= options().lushFactor().get();
 
                 // MASK CONTRIBUTION (applied to final combined pixel data)
                 if (densityMask.valid())

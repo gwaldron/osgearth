@@ -359,10 +359,10 @@ namespace osgEarth { namespace Util
         static osg::Texture2DArray* makeTexture2DArray(osg::Image* image);
 
         //! Convert u,v [0..1] into s,t [pixels] with nearest neighbor sampling.
-        template<typename IN, typename OUT>
-        static void nnUVtoST(IN u, IN v, OUT& s, OUT& t, unsigned width, unsigned height) {
-            const IN umin = 1.0 / (2.0 * width);
-            const IN vmin = 1.0 / (2.0 * height);
+        template<typename NDCTYPE, typename INDEXTYPE>
+        static void nnUVtoST(NDCTYPE u, NDCTYPE v, INDEXTYPE& s, INDEXTYPE& t, unsigned width, unsigned height) {
+            const NDCTYPE umin = 1.0 / (2.0 * width);
+            const NDCTYPE vmin = 1.0 / (2.0 * height);
             s = u<umin ? 0 : u>(1.0 - umin) ? width - 1 : (int)floor(u*(double)width);
             t = v<vmin ? 0 : v>(1.0 - vmin) ? height - 1 : (int)floor(v*(double)height);
         }

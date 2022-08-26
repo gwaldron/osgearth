@@ -1033,9 +1033,9 @@ ElevationLayerVector::populateHeightField(
 
                         // Technically this is correct, but the resultin normal maps
                         // look awful and faceted.
-                        //resolution = osg::minimum(
-                        //    resolution,
-                        //    (float)contenderKey.getResolution(hf->getNumColumns()).second);
+                        resolution = std::min(
+                            resolution,
+                            (float)contenderKey.getResolution(hf->getNumColumns()).second);
                     }
                 }
 

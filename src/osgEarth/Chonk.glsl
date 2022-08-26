@@ -6,7 +6,7 @@ struct Instance {
     vec2 local_uv;
     uint lod;
     float visibility[4];
-    uint first_variant_cmd_index;
+    uint first_lod_cmd_index;
 };
 layout(binding = 0, std430) buffer Instances {
     Instance instances[];

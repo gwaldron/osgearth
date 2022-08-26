@@ -958,9 +958,11 @@ ChonkDrawable::GLObjects::update(
     {
         _chonkBuf->uploadData(_chonk_lods, GL_STATIC_DRAW);
         
-        // just reserve space if necessary.
-        // this is a NOP if the buffer is already sized properly
-        _instanceOutputBuf->uploadData(_instanceInputBuf->size(), nullptr);
+        // just reserve space if necessary - make sure there's enough space
+        // for 2 LODs for each instance so we can do transitioning!
+        // If someday, we draw more than 2 LODs at a time, we'll need to
+        // up this buffer size!!
+        _instanceOutputBuf->uploadData(_instanceInputBuf->size() * 2, nullptr);
     }
 
     _numInstances = _all_instances.size();

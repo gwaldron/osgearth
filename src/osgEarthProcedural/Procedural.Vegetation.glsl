@@ -5,7 +5,7 @@ struct Instance {
     vec2 local_uv;
     uint lod;
     float visibility[4];
-    uint first_variant_cmd_index;
+    uint first_lod_cmd_index;
 };
 layout(binding = 0, std430) buffer Instances {
     Instance instances[];
@@ -32,7 +32,7 @@ struct Instance {
     vec2 local_uv;
     uint lod;
     float visibility[4];
-    uint first_variant_cmd_index;
+    uint first_lod_cmd_index;
 };
 layout(binding = 0, std430) buffer Instances {
     Instance instances[];
@@ -177,6 +177,7 @@ void oe_vegetation_fs(inout vec4 color)
         vec2 dy_vtc = dFdy(cf);
         float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
         float mml = max(0, 0.5 * log2(delta_max_sqr));
+        
         color.a *= (1.0 + mml * oe_veg_alphaCutoff);
     }
 

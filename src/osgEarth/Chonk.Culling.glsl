@@ -169,19 +169,20 @@ void cull()
     vec2 dims = 0.5*(UR.xy - LL.xy)*oe_Camera.xy;
 
     float pixelSize = max(dims.x, dims.y);
-    float pixelSizePad = pixelSize * oe_chonk_lod_transition_factor; // 0.1;
+    float pixelSizePad = pixelSize * oe_chonk_lod_transition_factor;
 
     float minPixelSize = oe_sse * chonks[v].far_pixel_scale * oe_lod_scale[lod];
     if (pixelSize < (minPixelSize - pixelSizePad))
         REJECT(REASON_SSE);
 
-    float near_scale = lod > 0 ? chonks[v].near_pixel_scale * oe_lod_scale[lod - 1] : 99999.0;
+    float near_scale = lod > 0 ? chonks[v].near_pixel_scale * oe_lod_scale[lod - 1] : 1000.0;
     float maxPixelSize = oe_sse * near_scale;
     if (pixelSize > (maxPixelSize + pixelSizePad))
         REJECT(REASON_SSE);
 
     if (fade == 1.0)  // good to go, set the proper fade:
     {
+        pixelSizePad = max(pixelSizePad, 1.0);
         if (pixelSize > maxPixelSize)
             fade = 1.0 - (pixelSize - maxPixelSize) / pixelSizePad;
         else if (pixelSize < minPixelSize)

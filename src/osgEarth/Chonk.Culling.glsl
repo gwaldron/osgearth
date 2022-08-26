@@ -175,8 +175,11 @@ void cull()
     if (pixelSize < (minPixelSize - pixelSizePad))
         REJECT(REASON_SSE);
 
-    float near_scale = lod > 0 ? chonks[v].near_pixel_scale * oe_lod_scale[lod - 1] : 1000.0;
-    float maxPixelSize = oe_sse * near_scale;
+    float maxPixelSize = 1e7;
+    if (lod > 0) {
+        float near_scale = chonks[v].near_pixel_scale * oe_lod_scale[lod - 1];
+        maxPixelSize = oe_sse * near_scale;
+    }
     if (pixelSize > (maxPixelSize + pixelSizePad))
         REJECT(REASON_SSE);
 

@@ -569,6 +569,8 @@ ArcGISServerImageLayer::openImplementation()
         setProfile(profile);
     }
 
+    dataExtents().push_back(DataExtent(getProfile()->getExtent(), _map_service.getTileInfo().getMinLevel(), _map_service.getTileInfo().getMaxLevel()));
+
     return Status::NoError;
 }
 

@@ -76,9 +76,9 @@ namespace osgEarth
         };
 
         /**
-         * Instance of a model asset within the rendering system.
+         * Instance of a loaded model asset within the rendering system.
          * It is possible to have different instances all refer to the
-         * same model assert, each with with different usage parameters.
+         * same model asset, each with different usage parameters.
          */
         class OSGEARTHPROCEDURAL_EXPORT ResidentModelAssetInstance
         {
@@ -97,7 +97,12 @@ namespace osgEarth
         };
 
         /**
-         * Manages the collection of active Biomes in memory.
+         * Manages the collection of active Biomes and Assets.
+         * This class is responsible for making assets resident when
+         * a containing Biome becomes active, and loading and creating
+         * all the associated geometry and impostor geometry. It will
+         * also unload these resident assets when they are no longer
+         * needed.
          */
         class OSGEARTHPROCEDURAL_EXPORT BiomeManager
         {
@@ -122,7 +127,9 @@ namespace osgEarth
             BiomeManager();
 
             //! Set the SSE pixel scale at which a 3D model should
-            //! transition to an imposter model. Default it 8.0.
+            //! transition to an imposter model. Default is 16.0.
+            //! Example: if the SSE is 20, then the high LOD will start to
+            //! show up at a screen space size of 20*N pixels.
             void setLODTransitionPixelScale(float value);
             float getLODTransitionPixelScale() const;
 
@@ -134,17 +141,17 @@ namespace osgEarth
             //! Collection of all active biomes
             std::vector<const Biome*> getActiveBiomes() const;
 
-            //! Collection of assets loaded into memory (snapshot in time copy)
+            //! Collection of assets loaded into memory (snapshot in time)
             std::vector<const ModelAsset*> getResidentAssets() const;
 
-            //! Called getResidentAssets, but returns immediately with
+            //! Calls getResidentAssets(), but returns immediately with
             //! and empty collection if another thread if holding the lock.
             //! This is useful for monitoring/UIs.
             std::vector<const ModelAsset*> getResidentAssetsIfNotLocked() const;
 
-            //! Assigns a geometry creation function for an asset group,
-            //! for making impostor geometry LODs.
-            void setCreateFunction(
+            //! Assigns a function that will create an "impostor" (low LOD) geometry
+            //! for a particular asset group.
+            void setCreateImpostorFunction(
                 const std::string& group,
                 CreateImpostorFunction function);
 
@@ -218,7 +225,8 @@ namespace osgEarth
             //! wind/deformation support
             void addFlexors(
                 osg::ref_ptr<osg::Node>& node,
-                float stiffness);
+                float stiffness,
+                bool isUndergrowth);
         };
     }
 } // namespace osgEarth::Procedural

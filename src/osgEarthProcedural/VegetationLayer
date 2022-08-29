@@ -315,8 +315,7 @@ namespace osgEarth { namespace Procedural
         // Uniform to scale the SSE
         osg::ref_ptr<osg::Uniform> _pixelScalesU;
 
-        void configureGroup(const std::string&);
-        void configureUndergrowth();
+        void configureImpostor(const std::string&);
 
         Future<osg::ref_ptr<osg::Drawable>> createDrawableAsync(
             const TileKey&,

@@ -83,7 +83,7 @@ BiomeManager::BiomeManager() :
     _revision(0),
     _refsAndRevision_mutex("BiomeManager.refsAndRevision(OE)"),
     _residentData_mutex("BiomeManager.residentData(OE)"),
-    _lodTransitionPixelScale(8.0f),
+    _lodTransitionPixelScale(16.0f),
     _locked(false)
 {
     // this arena will hold all the textures for loaded assets.
@@ -431,7 +431,8 @@ BiomeManager::materializeNewAssets(
                             residentAsset->model()->accept(materialLoader);
 
                             // add flexors:
-                            addFlexors(residentAsset->model(), assetDef->stiffness().get());
+                            bool isUndergrowth = assetDef->group() == "undergrowth";
+                            addFlexors(residentAsset->model(), assetDef->stiffness().get(), isUndergrowth);
 
                             OE_DEBUG << LC << "Loaded model: " << uri.base() << std::endl;
                             modelcache[uri]._node = residentAsset->model().get();
@@ -577,6 +578,13 @@ BiomeManager::materializeNewAssets(
                             residentAsset->impostor() = createImpostor(
                                 bbox,
                                 textures);
+
+                            // if no MAIN model exists, just re-use the impostor as the 
+                            // main model!
+                            if (!residentAsset->model().valid())
+                            {
+                                residentAsset->model() = residentAsset->impostor().get();
+                            }
                         }
                     }
                 }
@@ -584,7 +592,7 @@ BiomeManager::materializeNewAssets(
                 // Finally, chonkify.
                 if (residentAsset->model().valid())
                 {
-                    // models should disappear 8x closer than the SSE:
+                    // Replace impostor with 3D model "N" times closer than the SSE:
                     float far_pixel_scale = getLODTransitionPixelScale();
                     float near_pixel_scale = FLT_MAX;
 
@@ -627,17 +635,11 @@ BiomeManager::materializeNewAssets(
                 assetInstances.push_back(std::move(instance));
             }
         }
-#if 0
-        if (!assetInstances.empty())
-        {
-            asset_groups.insert((AssetGroup::Type)group);
-        }
-#endif
     }
 }
 
 void
-BiomeManager::setCreateFunction(
+BiomeManager::setCreateImpostorFunction(
     const std::string& group,
     BiomeManager::CreateImpostorFunction func)
 {
@@ -775,7 +777,10 @@ namespace
 }
 
 void
-BiomeManager::addFlexors(osg::ref_ptr<osg::Node>& node, float stiffness)
+BiomeManager::addFlexors(
+    osg::ref_ptr<osg::Node>& node,
+    float stiffness,
+    bool isUndergrowth)
 {
     // note: stiffness is [0..1].
 
@@ -783,35 +788,107 @@ BiomeManager::addFlexors(osg::ref_ptr<osg::Node>& node, float stiffness)
     node->accept(cb);
     auto& bbox = cb.getBoundingBox();
 
-    auto addFlexors = [bbox, stiffness](osg::Geometry& geom, const osg::Matrix& l2w)
+    if (isUndergrowth)
     {
-        osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
-        if (!verts) return;
-
-        osg::Vec3Array* flexors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-        flexors->reserve(verts->size());
-        geom.setTexCoordArray(3, flexors);
-
-        osg::Vec3f base(bbox.center().x(), bbox.center().y(), bbox.zMin());
-        float xy_radius = std::max(bbox.xMax() - bbox.xMin(), bbox.yMax() - bbox.yMin());
-
-        for (auto& local_vert : *verts)
+        // for undergrowth, modify the normals so they all point in the skyward
+        // direction of the blade card
+        auto fixNormals = [&bbox](
+            osg::Geometry& geom,
+            unsigned i0, unsigned i1, unsigned i2,
+            const osg::Matrix& l2w)
         {
-            auto vert = local_vert * l2w;
-            osg::Vec3f anchor(0.0f, 0.0f, vert.z());
-            float height_ratio = harden((vert.z() - bbox.zMin()) / (bbox.zMax() - bbox.zMin()));
-            auto lateral_vec = (vert - osg::Vec3f(0, 0, vert.z()));
-            float lateral_ratio = harden(lateral_vec.length() / xy_radius);
-            auto flex =
-                normalize(lateral_vec) *
-                (lateral_ratio * 3.0f) *
-                (height_ratio * 1.5f) *
-                (1.0-stiffness);
+            auto verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
+            if (!verts) return;
 
-            flexors->push_back(flex);
-        }
-    };
+            // make the proper normal array on demand:
+            osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>(geom.getNormalArray());
+            if (!normals || normals->getBinding() != osg::Array::BIND_PER_VERTEX || normals->size() != verts->size())
+            {
+                normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, verts->size());
+                geom.setNormalArray(normals);
+            }
 
-    MyVisitor<osg::Geometry> visitor;
-    visitor.visit(node, addFlexors);
+            // make a flexor array on demand
+            osg::Vec3Array* flexors = dynamic_cast<osg::Vec3Array*>(geom.getTexCoordArray(3));
+            if (!flexors)
+            {
+                flexors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, verts->size());
+                geom.setTexCoordArray(3, flexors);
+            }
+
+            osg::Vec3 v0 = (*verts)[i0] * l2w;
+            osg::Vec3 v1 = (*verts)[i1] * l2w;
+            osg::Vec3 v2 = (*verts)[i2] * l2w;
+
+            osg::Vec3 tri_normal = (v1 - v0) ^ (v2 - v0);
+            tri_normal.normalize();
+
+            const osg::Vec3 zaxis(0, 0, 1);
+            const osg::Vec3 xaxis(1, 0, 0);
+            const osg::Vec3 yaxis(0, 1, 0);
+
+            osg::Vec3 tangent = tri_normal ^ zaxis;
+            osg::Vec3 normal = tri_normal ^ tangent;
+
+            if (normal.z() < 0.0f)
+                normal = -normal;
+
+            normal.normalize();
+
+            // back to local space
+            if (!l2w.isIdentity())
+            {
+                osg::Matrix w2l;
+                w2l.invert(l2w);
+                normal = osg::Matrix::transform3x3(w2l, normal);
+            }
+
+            (*normals)[i0] = normal;
+            (*normals)[i1] = normal;
+            (*normals)[i2] = normal;
+
+            (*flexors)[i0] = normal * accel(v0.z() / bbox.zMax());
+            (*flexors)[i1] = normal * accel(v1.z() / bbox.zMax());
+            (*flexors)[i2] = normal * accel(v2.z() / bbox.zMax());
+
+        };
+
+        TriangleVisitor visitor;
+        visitor.visit(node, fixNormals);
+    }
+
+    else // not undergrorwth (normal tree, bush models)
+    {
+        auto addFlexors = [&bbox, stiffness](osg::Geometry& geom, const osg::Matrix& l2w)
+        {
+            osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
+            if (!verts) return;
+
+            osg::Vec3Array* flexors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+            flexors->reserve(verts->size());
+            geom.setTexCoordArray(3, flexors);
+
+            osg::Vec3f base(bbox.center().x(), bbox.center().y(), bbox.zMin());
+            float xy_radius = std::max(bbox.xMax() - bbox.xMin(), bbox.yMax() - bbox.yMin());
+
+            for (auto& local_vert : *verts)
+            {
+                auto vert = local_vert * l2w;
+                osg::Vec3f anchor(0.0f, 0.0f, vert.z());
+                float height_ratio = harden((vert.z() - bbox.zMin()) / (bbox.zMax() - bbox.zMin()));
+                auto lateral_vec = (vert - osg::Vec3f(0, 0, vert.z()));
+                float lateral_ratio = harden(lateral_vec.length() / xy_radius);
+                auto flex =
+                    normalize(lateral_vec) *
+                    (lateral_ratio * 3.0f) *
+                    (height_ratio * 1.5f) *
+                    (1.0 - stiffness);
+
+                flexors->push_back(flex);
+            }
+        };
+
+        MyVisitor<osg::Geometry> visitor;
+        visitor.visit(node, addFlexors);
+    }
 }

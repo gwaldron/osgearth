@@ -118,13 +118,11 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 {
     // defaults:
     alphaToCoverage().setDefault(true);
-    gravity().setDefault(0.125f);
 
     colorLayer().get(conf, "color_layer");
     biomeLayer().get(conf, "biomes_layer");    
 
     conf.get("alpha_to_coverage", alphaToCoverage());
-    conf.get("gravity", gravity());
 
     // some nice default group settings
     groups()[GROUP_TREES].lod().setDefault(14);
@@ -133,6 +131,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_TREES].maxRange().setDefault(4000.0f);
     groups()[GROUP_TREES].instancesPerSqKm().setDefault(16384);
     groups()[GROUP_TREES].allowOverlap().setDefault(false);
+    groups()[GROUP_TREES].farPixelScale().setDefault(1.0f);
 
     groups()[GROUP_BUSHES].lod().setDefault(18);
     groups()[GROUP_BUSHES].enabled().setDefault(true);
@@ -140,6 +139,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_BUSHES].maxRange().setDefault(200.0f);
     groups()[GROUP_BUSHES].instancesPerSqKm().setDefault(4096);
     groups()[GROUP_BUSHES].allowOverlap().setDefault(false);
+    groups()[GROUP_BUSHES].farPixelScale().setDefault(2.0f);
 
     groups()[GROUP_UNDERGROWTH].lod().setDefault(19);
     groups()[GROUP_UNDERGROWTH].enabled().setDefault(true);
@@ -147,6 +147,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_UNDERGROWTH].maxRange().setDefault(75.0f);
     groups()[GROUP_UNDERGROWTH].instancesPerSqKm().setDefault(524288);
     groups()[GROUP_UNDERGROWTH].allowOverlap().setDefault(false);
+    groups()[GROUP_UNDERGROWTH].farPixelScale().setDefault(3.5f);
 
     ConfigSet groups_c = conf.child("groups").children();
     for (auto& group_conf : groups_c)
@@ -160,6 +161,8 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         group_conf.get("lod", group.lod());
         group_conf.get("cast_shadows", group.castShadows());
         group_conf.get("allow_overlap", group.allowOverlap());
+        group_conf.get("far_pixel_scale", group.farPixelScale());
+        group_conf.get("far_sse_scale", group.farPixelScale());
 
         if (group_conf.value("lod") == "auto") {
             group.lod() = 0;
@@ -468,18 +471,6 @@ VegetationLayer::getEnabled(const std::string& name) const
 }
 
 void
-VegetationLayer::setGravity(float value)
-{
-    options().gravity() = value;
-}
-
-float
-VegetationLayer::getGravity() const
-{
-    return options().gravity().get();
-}
-
-void
 VegetationLayer::addedToMap(const Map* map)
 {
     PatchLayer::addedToMap(map);
@@ -666,16 +657,17 @@ VegetationLayer::activateMultisampling()
 }
 
 void
-VegetationLayer::configureImpostor(const std::string& groupName)
+VegetationLayer::configureImpostor(
+    const std::string& groupName)
 {
     Options::Group& group = options().groups()[groupName];
 
     // functor for generating cross hatch geometry for trees:
-    group._createImpostor = [](
+    group._createImpostor = [&group](
         const osg::BoundingBox& b,
         std::vector<osg::Texture*>& textures)
     {
-        osg::Group* group = new osg::Group();
+        osg::Group* node = new osg::Group();
 
         // one part if we only have side textures;
         // two parts if we also have top textures
@@ -741,7 +733,7 @@ VegetationLayer::configureImpostor(const std::string& groupName)
                 if (textures.size() > 0)
                     ss->setTextureAttribute(0, textures[0], 1); // side albedo
 
-                group->addChild(geom);
+                node->addChild(geom);
 
                 // No normal texture support - it looks much better without it.
                 //if (textures.size() > 1)
@@ -789,10 +781,14 @@ VegetationLayer::configureImpostor(const std::string& groupName)
                 //if (textures.size() > 3)
                 //    ss->setTextureAttribute(1, textures[3], 1); // top normal
 
-                group->addChild(geom);
+                node->addChild(geom);
             }
         }
-        return group;
+
+        BiomeManager::Impostor result;
+        result._node = node;
+        result._farPixelScale = group.farPixelScale().get();
+        return std::move(result);
     };
 
     getBiomeLayer()->getBiomeManager().setCreateImpostorFunction(

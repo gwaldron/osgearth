@@ -456,6 +456,8 @@ BiomeManager::materializeNewAssets(
                     sideBB = assetDef->sideBillboardURI().get();
                 else if (assetDef->modelURI().isSet())
                     sideBB = URI(assetDef->modelURI()->full() + ".side.png", assetDef->modelURI()->context());
+                
+                float impostorFarPixelScale = 1.0f;
 
                 if (!sideBB.empty())
                 {
@@ -575,9 +577,12 @@ BiomeManager::materializeNewAssets(
                                     residentAsset->assetDef()->height().get());
                             }
 
-                            residentAsset->impostor() = createImpostor(
+                            Impostor imp = createImpostor(
                                 bbox,
                                 textures);
+
+                            residentAsset->impostor() = imp._node;
+                            impostorFarPixelScale = imp._farPixelScale;
 
                             // if no MAIN model exists, just re-use the impostor as the 
                             // main model!
@@ -594,6 +599,8 @@ BiomeManager::materializeNewAssets(
                 {
                     // Replace impostor with 3D model "N" times closer than the SSE:
                     float far_pixel_scale = getLODTransitionPixelScale();
+
+                    // Real model can get as close as it wants:
                     float near_pixel_scale = FLT_MAX;
 
                     if (residentAsset->chonk() == nullptr)
@@ -608,7 +615,10 @@ BiomeManager::materializeNewAssets(
 
                 if (residentAsset->impostor().valid())
                 {
-                    float far_pixel_scale = 1.0f;
+                    // Fade out the impostor at this pixel scale (i.e., multiple of SSE)
+                    float far_pixel_scale = impostorFarPixelScale;
+
+                    // Fade the impostor to the 3D model at this pixel scale:
                     float near_pixel_scale = residentAsset->model().valid() ?
                         getLODTransitionPixelScale() : 
                         FLT_MAX;

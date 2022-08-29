@@ -117,9 +117,14 @@ namespace osgEarth
             using ResidentBiomes = std::unordered_map<
                 const Biome*,
                 ResidentModelAssetInstances>;
+
+            struct Impostor {
+                osg::ref_ptr<osg::Node> _node;
+                float _farPixelScale;
+            };
             
             using CreateImpostorFunction = std::function<
-                osg::Node*(
+                Impostor(
                     const osg::BoundingBox& bbox,
                     std::vector<osg::Texture*>&)>;
 

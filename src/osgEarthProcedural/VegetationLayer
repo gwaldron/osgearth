@@ -52,7 +52,6 @@ namespace osgEarth { namespace Procedural
             OE_OPTION_LAYER(ImageLayer, colorLayer);
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION(bool, alphaToCoverage);
-            OE_OPTION(float, gravity);
 
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
@@ -62,12 +61,11 @@ namespace osgEarth { namespace Procedural
                 OE_OPTION(int, instancesPerSqKm);
                 OE_OPTION(bool, castShadows);
                 OE_OPTION(bool, allowOverlap);
+                OE_OPTION(float, farPixelScale);
 
                 // internal
                 osg::ref_ptr<osg::StateSet> _drawStateSet;
-                std::function<osg::Node*(
-                    const osg::BoundingBox&,
-                    std::vector<osg::Texture*>&)> _createImpostor;
+                BiomeManager::CreateImpostorFunction _createImpostor;
 
                 Group();
             };
@@ -315,7 +313,8 @@ namespace osgEarth { namespace Procedural
         // Uniform to scale the SSE
         osg::ref_ptr<osg::Uniform> _pixelScalesU;
 
-        void configureImpostor(const std::string&);
+        void configureImpostor(
+            const std::string& groupName);
 
         Future<osg::ref_ptr<osg::Drawable>> createDrawableAsync(
             const TileKey&,

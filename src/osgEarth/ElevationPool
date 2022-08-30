@@ -214,14 +214,13 @@ namespace osgEarth
             const Distance& resolution,
             WorkingSet* ws =nullptr);
 
-        //! Invalidates all caches in the ElevationPool
-        void clear();
-
     protected:
         //! Destructor
         virtual ~ElevationPool();
 
     private:
+
+        bool needsRefresh();
 
         // weak pointer to the map from whence this pool came
         osg::observer_ptr<const Map> _map;
@@ -244,17 +243,9 @@ namespace osgEarth
 
         //WorkingSet* _L2;
 
-        bool _mapDataDirty;
+        int  _elevationRevision;
 
         Threading::Mutex _refreshMutex;
-
-        struct MapCallbackAdapter : public MapCallback {
-            void onMapModelChanged(const MapModelChange&);
-            ElevationPool* _pool;
-        };
-        friend struct MapCallbackAdapter;
-
-        osg::ref_ptr<MapCallbackAdapter> _mapCallback;
 
         ElevationLayerVector _elevationLayers;
 

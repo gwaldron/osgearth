@@ -58,26 +58,16 @@ ElevationPool::StrongLRU::clear()
         _lru.pop();
 }
 
-
-void
-ElevationPool::MapCallbackAdapter::onMapModelChanged(const MapModelChange& c)
-{
-    _pool->clear();
-}
-
 ElevationPool::ElevationPool() :
     _index(nullptr),
     _tileSize(257),
-    _mapDataDirty(true),
     _workers(0),
     _refreshMutex("OE.ElevPool.RM"),
     _globalLUTMutex("OE.ElevPool.GLUT"),
-    _L2(64u)
+    _L2(64u),
+    _elevationRevision(-1)
 {
     _L2._lru.setName("OE.ElevPool.LRU");
-
-    // adapter for detecting elevation layer changes
-    _mapCallback = new MapCallbackAdapter();
 }
 
 namespace
@@ -94,29 +84,12 @@ ElevationPool::~ElevationPool()
 }
 
 void
-ElevationPool::clear()
-{
-    _mapDataDirty = true;
-}
-
-void
 ElevationPool::setMap(const Map* map)
 {
-    if (map != _map.get())
-    {
-        osg::ref_ptr<const Map> oldMap;
-        if (_map.lock(oldMap))
-        {
-            oldMap->removeMapCallback(_mapCallback.get());
-        }
-    }
-
     _map = map;
 
     if (map)
     {
-        _mapCallback->_pool = this;
-        map->addMapCallback(_mapCallback.get());
         refresh(map);
     }
 }
@@ -136,8 +109,8 @@ ElevationPool::getElevationRevision(const Map* map) const
 
 void
 ElevationPool::sync(const Map* map, WorkingSet* ws)
-{
-    if (_mapDataDirty)
+{    
+    if (needsRefresh())
     {
         OE_PROFILING_ZONE;
 
@@ -145,15 +118,14 @@ ElevationPool::sync(const Map* map, WorkingSet* ws)
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         _refreshMutex.lock();
-        if (_mapDataDirty) // double check
+        if (needsRefresh()) // double check
         {
             refresh(map);
 
             if (ws)
                 ws->_lru.clear();
-
-            _mapDataDirty = false;
         }
+
         _refreshMutex.unlock();
     }
 }
@@ -201,7 +173,7 @@ ElevationPool::refresh(const Map* map)
         // up a max level and use the layer's full extent.
         if (dataExtents.empty())
         {
-            unsigned maxLevel = std::min(layer->getMaxDataLevel(), 12u);
+            unsigned maxLevel = std::min(layer->getMaxDataLevel(), 20u);
 
             GeoExtent ext = layer->getExtent();
             if (!ext.isValid() && layer->getProfile())
@@ -222,6 +194,8 @@ ElevationPool::refresh(const Map* map)
     _globalLUTMutex.write_lock();
     _globalLUT.clear();
     _globalLUTMutex.write_unlock();
+
+    _elevationRevision = getElevationRevision(_map.get());
 }
 
 int
@@ -241,6 +215,12 @@ ElevationPool::getLOD(double x, double y) const
         });
 
     return maxiestMaxLevel;
+}
+
+bool
+ElevationPool::needsRefresh()
+{
+    return getElevationRevision(_map.get()) != _elevationRevision;
 }
 
 ElevationPool::WorkingSet::WorkingSet(unsigned size) :
@@ -660,7 +640,7 @@ ElevationPool::sampleMapCoords(
     double rx, ry;
     int tx, ty;
     int tx_prev = INT_MAX, ty_prev = INT_MAX;
-    float lastRes = -1.0f;
+
     int lod;
     int lod_prev = INT_MAX;
     const Units& units = map->getSRS()->getUnits();
@@ -672,31 +652,17 @@ ElevationPool::sampleMapCoords(
             continue;
 
         {
-            //OE_PROFILING_ZONE_NAMED("createTileKey");
+            //OE_PROFILING_ZONE_NAMED("createTileKey");            
 
-            // Reconsider, b/c an inset could mean we need to re-query the LOD.
-            if ((p.w() >= 0.0f && p.w() != lastRes) ||
-                (lod < 0))
-            {
-                pointRes.set(p.w(), units);
+            pointRes.set(p.w(), units);
 
-                double resolutionInMapUnits = pointRes.asDistance(units, p.y());
+            double resolutionInMapUnits = pointRes.asDistance(units, p.y());
 
-                unsigned maxLOD = profile->getLevelOfDetailForHorizResolution(
-                    resolutionInMapUnits,
-                    ELEVATION_TILE_SIZE);
+            lod = profile->getLevelOfDetailForHorizResolution(
+                resolutionInMapUnits,
+                ELEVATION_TILE_SIZE);
 
-                lod = std::min( getLOD(p.x(), p.y()), (int)maxLOD );
-                if (lod < 0)
-                {
-                    p.z() = failValue;
-                    continue;
-                }
-
-                profile->getNumTiles(lod, tw, th);
-
-                lastRes = p.w();
-            }
+            profile->getNumTiles(lod, tw, th);
 
             rx = (p.x()-pxmin)/pw, ry = (p.y()-pymin)/ph;
             tx = osg::clampBelow((unsigned)(rx * (double)tw), tw-1u ); // TODO: wrap around for geo

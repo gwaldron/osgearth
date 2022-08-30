@@ -1165,7 +1165,8 @@ VegetationLayer::getAssetPlacements(
     Index index;
 
     std::minstd_rand0 gen(key.hash());
-    std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
+    std::uniform_real_distribution<float> rand_float_01(0.0f, 1.0f);
+    std::uniform_int_distribution<> rand_int(0, INT_MAX);
 
     // approximate area of the tile in km
     GeoCircle c = key.getExtent().computeBoundingGeoCircle();
@@ -1205,14 +1206,20 @@ VegetationLayer::getAssetPlacements(
     double local_height = y1 - y0;
     osg::Vec2d local;
 
+    // keep track of biomes with no assets (for a possible error condition?)
     std::set<const Biome*> empty_biomes;
+
+    // indicies of assets selected based on their lushness
+    std::vector<unsigned> assetIndices;
+    // cumulative density function based on asset weights
+    std::vector<float> assetCDF;
 
     // Generate random instances within the tile:
     for (unsigned i = 0; i < max_instances; ++i)
     {
         // random tile-normalized position:
-        float u = rand_float(gen);
-        float v = rand_float(gen);
+        float u = rand_float_01(gen);
+        float v = rand_float_01(gen);
 
         // resolve the biome at this position:
         const Biome* biome = nullptr;
@@ -1263,13 +1270,40 @@ VegetationLayer::getAssetPlacements(
         // RNG with normal distribution between approx +1/-1
         std::normal_distribution<float> normal_dist(lush, 1.0f / 6.0f);
         lush = clamp(normal_dist(gen), 0.0f, 1.0f);
+
+        assetIndices.clear();
+        assetCDF.clear();
+        float cumulativeWeight = 0.0f;
+        for (unsigned i = 0; i < assetInstances.size(); ++i)
+        {
+            float min_lush = assetInstances[i].residentAsset()->assetDef()->minLush().get();
+            float max_lush = assetInstances[i].residentAsset()->assetDef()->maxLush().get();
+
+            if (lush >= min_lush && lush <= max_lush)
+            {
+                assetIndices.push_back(i);
+                cumulativeWeight += assetInstances[i].weight();
+                assetCDF.push_back(cumulativeWeight);
+            }
+        }
+        int assetIndex = 0;
+        if (assetIndices.size() > 1)
+        {
+            float k = rand_float_01(gen) * cumulativeWeight;
+            for (assetIndex = 0;
+                assetIndex < assetCDF.size() - 1 && k > assetCDF[assetIndex];
+                ++assetIndex);
+        }
+        auto& instance = assetInstances[assetIndices[assetIndex]];
         
+#if 0
         int assetIndex = clamp(
             (int)(lush*(float)assetInstances.size()),
             0,
             (int)assetInstances.size() - 1);
 
         auto& instance = assetInstances[assetIndex];
+#endif
 
         auto& asset = instance.residentAsset();
 
@@ -1377,7 +1411,7 @@ VegetationLayer::getAssetPlacements(
         if (pass)
         {
             // good to go, generate a random rotation and record the position.
-            float rotation = rand_float(gen) * 3.1415927 * 2.0;
+            float rotation = rand_float_01(gen) * 3.1415927 * 2.0;
             
             map_points.emplace_back(
                 e.xMin() + u * e.width(), e.yMin() + v * e.height(), 0

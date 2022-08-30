@@ -24,33 +24,6 @@ using namespace osgEarth::Procedural;
 #undef LC
 #define LC "[Biome] "
 
-#if 0
-namespace
-{
-    static std::string asset_group_names[2] = {
-        "trees",
-        "undergrowth"
-    };
-}
-
-AssetGroup::Type
-AssetGroup::type(const std::string& name)
-{
-    if (name == asset_group_names[TREES])
-        return TREES;
-    else if (name == asset_group_names[UNDERGROWTH])
-        return UNDERGROWTH;
-    else
-        return UNDEFINED;
-}
-
-std::string
-AssetGroup::name(AssetGroup::Type group)
-{
-    return asset_group_names[group];
-}
-#endif
-
 std::vector<std::string>
 AssetTraits::getPermutations(const std::vector<std::string>& input)
 {
@@ -94,6 +67,8 @@ ModelAsset::ModelAsset(const Config& conf)
 {
     scale().setDefault(1.0f);
     stiffness().setDefault(0.5f);
+    minLush().setDefault(0.0f);
+    maxLush().setDefault(1.0f);
 
     conf.get("url", modelURI());
     conf.get("name", name());
@@ -104,6 +79,8 @@ ModelAsset::ModelAsset(const Config& conf)
     conf.get("scale", scale());
     conf.get("size_variation", sizeVariation());
     conf.get("stiffness", stiffness());
+    conf.get("min_lush", minLush());
+    conf.get("max_lush", maxLush());
     conf.get("traits", traits());
 
     // save the original so the user can extract user-defined values
@@ -123,6 +100,8 @@ ModelAsset::getConfig() const
     conf.set("scale", scale());
     conf.set("size_variation", sizeVariation());
     conf.set("stiffness", stiffness());
+    conf.set("min_lush", minLush());
+    conf.set("max_lush", maxLush());
     conf.set("traits", traits());
     return conf;
 }

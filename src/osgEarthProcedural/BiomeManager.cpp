@@ -332,11 +332,6 @@ BiomeManager::materializeNewAssets(
     for (auto& iter : _residentBiomes)
     {
         iter.second.clear();
-#if 0
-        auto& groups = iter.second;
-        for (int i = 0; i < NUM_ASSET_GROUPS; ++i)
-            groups[i].clear();
-#endif
     }
 
     // This loader will find material textures and install them on
@@ -644,7 +639,7 @@ BiomeManager::materializeNewAssets(
                 instance.coverage() = asset_ptr->coverage();
                 assetInstances.push_back(std::move(instance));
             }
-        }
+        }   
     }
 }
 

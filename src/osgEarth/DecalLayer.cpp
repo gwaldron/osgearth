@@ -277,6 +277,7 @@ DecalImageLayer::addDecal(const std::string& id, const GeoExtent& extent, const 
     {
         ScopedWriteLock lk(layerMutex());
         dataExtents().push_back(getProfile()->clampAndTransformExtent(extent));
+        dirtyDataExtents();
     }
 
     // data changed so up the revsion.
@@ -301,6 +302,7 @@ DecalImageLayer::removeDecal(const std::string& id)
             dataExtents().clear();
             for (auto& decal : _decalList)
                 dataExtents().push_back(getProfile()->clampAndTransformExtent(decal._extent));
+            dirtyDataExtents();
         }
 
         // data changed so up the revsion.
@@ -329,6 +331,7 @@ DecalImageLayer::clearDecals()
     {
         ScopedWriteLock lk(layerMutex());
         dataExtents().clear();
+        dirtyDataExtents();
     }
     bumpRevision();
 }
@@ -503,6 +506,7 @@ DecalElevationLayer::addDecal(
     {
         ScopedWriteLock lk(layerMutex());
         dataExtents().push_back(getProfile()->clampAndTransformExtent(extent));
+        dirtyDataExtents();
     }   
 
     // data changed so up the revsion.
@@ -561,6 +565,7 @@ DecalElevationLayer::addDecal(
     {
         ScopedWriteLock lk(layerMutex());
         dataExtents().push_back(getProfile()->clampAndTransformExtent(extent));
+        dirtyDataExtents();
     }
 
     // data changed so up the revsion.
@@ -585,6 +590,7 @@ DecalElevationLayer::removeDecal(const std::string& id)
             dataExtents().clear();
             for (auto& decal : _decalList)
                 dataExtents().push_back(getProfile()->clampAndTransformExtent(decal._heightfield.getExtent()));
+            dirtyDataExtents();
         }
 
         // data changed so up the revsion.
@@ -615,6 +621,7 @@ DecalElevationLayer::clearDecals()
     {
         ScopedWriteLock lk(layerMutex());
         dataExtents().clear();
+        dirtyDataExtents();
     }
     bumpRevision();
 }
@@ -769,6 +776,7 @@ DecalLandCoverLayer::addDecal(const std::string& id, const GeoExtent& extent, co
     {
         ScopedWriteLock lk(layerMutex());
         dataExtents().push_back(getProfile()->clampAndTransformExtent(extent));
+        dirtyDataExtents();
     }
 
     // data changed so up the revsion.
@@ -793,6 +801,7 @@ DecalLandCoverLayer::removeDecal(const std::string& id)
             dataExtents().clear();
             for (auto& decal : _decalList)
                 dataExtents().push_back(getProfile()->clampAndTransformExtent(decal._extent));
+            dirtyDataExtents();
         }
 
         // data changed so up the revsion.
@@ -821,6 +830,7 @@ DecalLandCoverLayer::clearDecals()
     {
         ScopedWriteLock lk(layerMutex());
         dataExtents().clear();
+        dirtyDataExtents();
     }
     bumpRevision();
 }

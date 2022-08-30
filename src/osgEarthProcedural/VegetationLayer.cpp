@@ -72,26 +72,7 @@ using namespace osgEarth::Procedural;
 
 REGISTER_OSGEARTH_LAYER(vegetation, VegetationLayer);
 
-// TODO LIST
-//
-//  - BUG: Close/Open VegLayer doesn't work
-//  - FEATURE: automatically generate billboards? Imposters? Other?
-//  - [IDEA] programmable SSE for models?
-//  - [PERF] cull by "horizon" .. e.g., the lower you are, the fewer distant trees...?
-//  - variable spacing or clumping by asset...?
-//  - make the noise texture bindless as well? Stick it in the arena? Why not.
-
 //........................................................................
-
-#if 0
-namespace
-{
-    static const std::string s_assetGroupName[2] = {
-        "trees",
-        "undergrowth"
-    };
-}
-#endif
 
 #define GROUP_TREES "trees"
 #define GROUP_BUSHES "bushes"
@@ -103,7 +84,6 @@ Config
 VegetationLayer::Options::getConfig() const
 {
     Config conf = PatchLayer::Options::getConfig();
-    colorLayer().set(conf, "color_layer");
     biomeLayer().set(conf, "biomes_layer");
 
     conf.set("alpha_to_coverage", alphaToCoverage());
@@ -119,7 +99,6 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     // defaults:
     alphaToCoverage().setDefault(true);
 
-    colorLayer().get(conf, "color_layer");
     biomeLayer().get(conf, "biomes_layer");    
 
     conf.get("alpha_to_coverage", alphaToCoverage());
@@ -130,7 +109,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_TREES].castShadows().setDefault(true);
     groups()[GROUP_TREES].maxRange().setDefault(4000.0f);
     groups()[GROUP_TREES].instancesPerSqKm().setDefault(16384);
-    groups()[GROUP_TREES].allowOverlap().setDefault(false);
+    groups()[GROUP_TREES].overlap().setDefault(0.0f);
     groups()[GROUP_TREES].farPixelScale().setDefault(1.0f);
 
     groups()[GROUP_BUSHES].lod().setDefault(18);
@@ -138,7 +117,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_BUSHES].castShadows().setDefault(false);
     groups()[GROUP_BUSHES].maxRange().setDefault(200.0f);
     groups()[GROUP_BUSHES].instancesPerSqKm().setDefault(4096);
-    groups()[GROUP_BUSHES].allowOverlap().setDefault(false);
+    groups()[GROUP_BUSHES].overlap().setDefault(0.0f);
     groups()[GROUP_BUSHES].farPixelScale().setDefault(2.0f);
 
     groups()[GROUP_UNDERGROWTH].lod().setDefault(19);
@@ -146,7 +125,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_UNDERGROWTH].castShadows().setDefault(false);
     groups()[GROUP_UNDERGROWTH].maxRange().setDefault(75.0f);
     groups()[GROUP_UNDERGROWTH].instancesPerSqKm().setDefault(524288);
-    groups()[GROUP_UNDERGROWTH].allowOverlap().setDefault(false);
+    groups()[GROUP_UNDERGROWTH].overlap().setDefault(0.0f);
     groups()[GROUP_UNDERGROWTH].farPixelScale().setDefault(3.5f);
 
     ConfigSet groups_c = conf.child("groups").children();
@@ -160,7 +139,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
         group_conf.get("instances_per_sqkm", group.instancesPerSqKm());
         group_conf.get("lod", group.lod());
         group_conf.get("cast_shadows", group.castShadows());
-        group_conf.get("allow_overlap", group.allowOverlap());
+        group_conf.get("overlap", group.overlap());
         group_conf.get("far_pixel_scale", group.farPixelScale());
         group_conf.get("far_sse_scale", group.farPixelScale());
 
@@ -191,7 +170,7 @@ VegetationLayer::Options::Group::Group()
     maxRange().setDefault(FLT_MAX);
     instancesPerSqKm().setDefault(4096);
     castShadows().setDefault(false);
-    allowOverlap().setDefault(false);
+    overlap().setDefault(0.0f);
 }
 
 //........................................................................
@@ -381,18 +360,6 @@ VegetationLayer::getLifeMapLayer() const
 }
 
 void
-VegetationLayer::setColorLayer(ImageLayer* value)
-{
-    options().colorLayer().setLayer(value);
-}
-
-ImageLayer*
-VegetationLayer::getColorLayer() const
-{
-    return options().colorLayer().getLayer();
-}
-
-void
 VegetationLayer::setUseAlphaToCoverage(bool value)
 {
     options().alphaToCoverage() = value;
@@ -481,18 +448,6 @@ VegetationLayer::addedToMap(const Map* map)
     if (!getBiomeLayer())
         setBiomeLayer(map->getLayer<BiomeLayer>());
 
-    options().colorLayer().addedToMap(map);
-
-    if (getColorLayer())
-    {
-        OE_INFO << LC << "Color modulation layer is \"" << getColorLayer()->getName() << "\"" << std::endl;
-        if (getColorLayer()->isShared() == false)
-        {
-            OE_WARN << LC << "Color modulation is not shared and is therefore being disabled." << std::endl;
-            options().colorLayer().removedFromMap(map);
-        }
-    }
-
     _map = map;
 
     if (getBiomeLayer() == nullptr)
@@ -512,8 +467,6 @@ void
 VegetationLayer::removedFromMap(const Map* map)
 {
     PatchLayer::removedFromMap(map);
-
-    options().colorLayer().removedFromMap(map);
 }
 
 void
@@ -1174,7 +1127,8 @@ VegetationLayer::getAssetPlacements(
     double area_sqkm = x * x;
 
     unsigned max_instances = groupOptions.instancesPerSqKm().get() * area_sqkm;
-    bool allow_overlap = groupOptions.allowOverlap().get();
+
+    float overlap = clamp(groupOptions.overlap().get(), 0.0f, 1.0f);
 
     // reserve some memory, maybe more than we need
     result.reserve(max_instances);
@@ -1185,11 +1139,9 @@ VegetationLayer::getAssetPlacements(
 
     const GeoExtent& e = key.getExtent();
 
-    osg::Matrixf xform;
     osg::Vec4f lifemap_value;
     osg::Vec4f biomemap_value;
     std::vector<double> hits;
-    const double s2inv = 1.0 / sqrt(2.0);
 
     auto catalog = getBiomeLayer()->getBiomeCatalog();
 
@@ -1361,7 +1313,7 @@ VegetationLayer::getAssetPlacements(
 
         bool pass = true;
 
-        if (!allow_overlap)
+        if (overlap < 1.0f)
         {
             // To prevent overlap, write positions and radii to an r-tree. 
             // TODO: consider using a Blend2d raster to update the 
@@ -1379,8 +1331,7 @@ VegetationLayer::getAssetPlacements(
 
             // adjust collision radius based on density.
             // i.e., denser areas allow vegetation to be closer.
-            double density_mix = density; // *packing_density;
-            double search_radius = mix(radius*3.0f, radius*0.1f, density_mix);
+            double search_radius = mix(radius*3.0f, radius*0.1f, density) * (1.0 - overlap);
             double search_radius_2 = search_radius * search_radius;
 
             bool collision = false;

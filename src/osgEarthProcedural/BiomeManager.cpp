@@ -23,9 +23,9 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/Metrics>
 #include <osgEarth/MaterialLoader>
+#include <osgEarth/Utils>
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
-#include <osg/TriangleIndexFunctor>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
@@ -672,113 +672,6 @@ BiomeManager::getResidentBiomes(
 
 namespace
 {
-    template<class T>
-    struct MyVisitor : public osg::NodeVisitor
-    {
-        using Function = std::function<void(T&, const osg::Matrix&)>;
-        Function _func;
-        std::stack<osg::Matrix> _transformStack;
-
-        MyVisitor() : osg::NodeVisitor()
-        {
-            setTraversalMode(TRAVERSE_ALL_CHILDREN);
-            setNodeMaskOverride(~0);
-            _transformStack.push(osg::Matrix::identity());
-        }
-
-        void apply(osg::Node& node) override
-        {
-            T* n = dynamic_cast<T*>(&node);
-            if (n) _func(*n, _transformStack.top());
-            traverse(node);
-        }
-
-        void apply(osg::Transform& node) override
-        {
-            osg::Matrix m = _transformStack.empty() ? osg::Matrix() : _transformStack.top();
-            node.computeLocalToWorldMatrix(m, this);
-            _transformStack.push(m);
-            apply(static_cast<osg::Group&>(node));
-            _transformStack.pop();
-        }
-
-        void visit(
-            osg::ref_ptr<osg::Node>& node,
-            Function func)
-        {
-            _func = func;
-            node->accept(*this);
-        }
-    };
-
-    template<class T>
-    struct TriangleFullSend {
-        T* _receiver;
-        osg::Geometry* _geom;
-        inline void operator () (unsigned i0, unsigned i1, unsigned i2) {
-            _receiver->triangle(*_geom, i0, i1, i2);
-        }
-    };
-
-    //template<class T>
-    struct TriangleVisitor : public osg::NodeVisitor
-    {        
-        using TriangleFunction = std::function<void(
-            osg::Geometry& geom,
-            unsigned i0,
-            unsigned i1,
-            unsigned i2,
-            const osg::Matrix& l2w)>;
-
-        TriangleFunction _func;
-
-        std::stack<osg::Matrix> _transformStack;
-
-        TriangleVisitor() : osg::NodeVisitor()
-        {
-            setTraversalMode(TRAVERSE_ALL_CHILDREN);
-            setNodeMaskOverride(~0);
-            _transformStack.push(osg::Matrix::identity());
-        }
-
-        void apply(osg::Node& node) override
-        {
-            //T* n = dynamic_cast<T*>(&node);
-            //if (n) _func(*n, _transformStack.top());
-            traverse(node);
-        }
-
-        void apply(osg::Transform& node) override
-        {
-            osg::Matrix m = _transformStack.empty() ? osg::Matrix() : _transformStack.top();
-            node.computeLocalToWorldMatrix(m, this);
-            _transformStack.push(m);
-            apply(static_cast<osg::Group&>(node));
-            _transformStack.pop();
-        }
-
-        void apply(osg::Geometry& geom) override
-        {
-            osg::TriangleIndexFunctor<TriangleFullSend<TriangleVisitor>> _sender;
-            _sender._receiver = this;
-            _sender._geom = &geom;
-            geom.accept(_sender);
-        }
-
-        void visit(
-            osg::ref_ptr<osg::Node>& node,
-            TriangleFunction func)
-        {
-            _func = func;
-            node->accept(*this);
-        }
-
-        void triangle(osg::Geometry& geom, unsigned i0, unsigned i1, unsigned i2)
-        {
-            auto verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
-            _func(geom, i0, i1, i2, _transformStack.top());
-        }
-    };
 }
 
 void
@@ -858,8 +751,8 @@ BiomeManager::addFlexors(
 
         };
 
-        TriangleVisitor visitor;
-        visitor.visit(node, fixNormals);
+        TriangleVisitor visitor(fixNormals);
+        node->accept(visitor);
     }
 
     else // not undergrorwth (normal tree, bush models)
@@ -893,7 +786,7 @@ BiomeManager::addFlexors(
             }
         };
 
-        MyVisitor<osg::Geometry> visitor;
-        visitor.visit(node, addFlexors);
+        TypedNodeVisitor<osg::Geometry> visitor(addFlexors);
+        node->accept(visitor);
     }
 }

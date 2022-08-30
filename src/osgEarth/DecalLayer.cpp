@@ -23,7 +23,6 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Color>
-#include <osg/MatrixTransform>
 #include <osg/BlendFunc>
 #include <osg/BlendEquation>
 
@@ -274,7 +273,11 @@ DecalImageLayer::addDecal(const std::string& id, const GeoExtent& extent, const 
 
     _decalIndex[id] = --_decalList.end();
 
-    _extent.expandToInclude(extent);
+    // Update the data extents
+    {
+        ScopedWriteLock lk(layerMutex());
+        dataExtents().push_back(getProfile()->clampAndTransformExtent(extent));
+    }
 
     // data changed so up the revsion.
     bumpRevision();
@@ -292,9 +295,13 @@ DecalImageLayer::removeDecal(const std::string& id)
         _decalList.erase(i->second);
         _decalIndex.erase(i);
 
-        _extent = GeoExtent();
-        for (auto& decal : _decalList)
-            _extent.expandToInclude(decal._extent);
+        // Rebuild the data extents
+        {
+            ScopedWriteLock lk(layerMutex());
+            dataExtents().clear();
+            for (auto& decal : _decalList)
+                dataExtents().push_back(getProfile()->clampAndTransformExtent(decal._extent));
+        }
 
         // data changed so up the revsion.
         bumpRevision();
@@ -319,7 +326,10 @@ DecalImageLayer::clearDecals()
     Threading::ScopedWriteLock lock(_data_mutex);
     _decalIndex.clear();
     _decalList.clear();
-    _extent = GeoExtent();
+    {
+        ScopedWriteLock lk(layerMutex());
+        dataExtents().clear();
+    }
     bumpRevision();
 }
 
@@ -489,7 +499,11 @@ DecalElevationLayer::addDecal(
 
     _decalIndex[id] = --_decalList.end();
 
-    _extent.expandToInclude(extent);
+    // Update the data extents
+    {
+        ScopedWriteLock lk(layerMutex());
+        dataExtents().push_back(getProfile()->clampAndTransformExtent(extent));
+    }   
 
     // data changed so up the revsion.
     bumpRevision();
@@ -543,7 +557,11 @@ DecalElevationLayer::addDecal(
 
     _decalIndex[id] = --_decalList.end();
 
-    _extent.expandToInclude(extent);
+    // Update the data extents
+    {
+        ScopedWriteLock lk(layerMutex());
+        dataExtents().push_back(getProfile()->clampAndTransformExtent(extent));
+    }
 
     // data changed so up the revsion.
     bumpRevision();
@@ -561,8 +579,13 @@ DecalElevationLayer::removeDecal(const std::string& id)
         _decalList.erase(i->second);
         _decalIndex.erase(i);
 
-        for (auto& decal : _decalList)
-            _extent.expandToInclude(decal._heightfield.getExtent());
+        // Rebuild the data extents
+        {
+            ScopedWriteLock lk(layerMutex());
+            dataExtents().clear();
+            for (auto& decal : _decalList)
+                dataExtents().push_back(getProfile()->clampAndTransformExtent(decal._heightfield.getExtent()));
+        }
 
         // data changed so up the revsion.
         bumpRevision();
@@ -588,7 +611,11 @@ DecalElevationLayer::clearDecals()
     Threading::ScopedWriteLock lock(_data_mutex);
     _decalIndex.clear();
     _decalList.clear();
-    _extent = GeoExtent();
+
+    {
+        ScopedWriteLock lk(layerMutex());
+        dataExtents().clear();
+    }
     bumpRevision();
 }
 
@@ -738,7 +765,11 @@ DecalLandCoverLayer::addDecal(const std::string& id, const GeoExtent& extent, co
 
     _decalIndex[id] = --_decalList.end();
 
-    _extent.expandToInclude(extent);
+    // Update the data extents
+    {
+        ScopedWriteLock lk(layerMutex());
+        dataExtents().push_back(getProfile()->clampAndTransformExtent(extent));
+    }
 
     // data changed so up the revsion.
     bumpRevision();
@@ -756,9 +787,13 @@ DecalLandCoverLayer::removeDecal(const std::string& id)
         _decalList.erase(i->second);
         _decalIndex.erase(i);
 
-        _extent = GeoExtent();
-        for (auto& decal : _decalList)
-            _extent.expandToInclude(decal._extent);
+        // Rebuild the data extents
+        {
+            ScopedWriteLock lk(layerMutex());
+            dataExtents().clear();
+            for (auto& decal : _decalList)
+                dataExtents().push_back(getProfile()->clampAndTransformExtent(decal._extent));
+        }
 
         // data changed so up the revsion.
         bumpRevision();
@@ -783,6 +818,9 @@ DecalLandCoverLayer::clearDecals()
     Threading::ScopedWriteLock lock(_data_mutex);
     _decalIndex.clear();
     _decalList.clear();
-    _extent = GeoExtent();
+    {
+        ScopedWriteLock lk(layerMutex());
+        dataExtents().clear();
+    }
     bumpRevision();
 }

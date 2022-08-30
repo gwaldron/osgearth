@@ -671,9 +671,14 @@ VegetationLayer::configureImpostor(
                     {0,0},{1,0},{1,1},{0,1}
                 };
 
+                //const osg::Vec3f flexors[8] = {
+                //    {0,0,0}, {0,0,0}, {1,0,1}, {-1,0,1},
+                //    {0,0,0}, {0,0,0}, {0,1,1}, {0,-1,1}
+                //};
+
                 const osg::Vec3f flexors[8] = {
-                    {0,0,0}, {0,0,0}, {1,0,1}, {-1,0,1},
-                    {0,0,0}, {0,0,0}, {0,1,1}, {0,-1,1}
+                    {0,0,0}, {0,0,0}, {0,0,1}, {0,0,1},
+                    {0,0,0}, {0,0,0}, {0,0,1}, {0,0,1}
                 };
 
                 geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));

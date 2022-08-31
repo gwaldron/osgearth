@@ -552,7 +552,8 @@ TileLayer::getCacheBin(const Profile* profile)
             meta->_sourceProfile = getProfile()->toProfileOptions();
             meta->_cacheProfile = profile->toProfileOptions();
             meta->_cacheCreateTime = DateTime().asTimeStamp();
-            getDataExtents(meta->_dataExtents);
+            // Use _dataExtents directly here since the _data_mutex is already locked.
+            meta->_dataExtents = _dataExtents;
 
             // store it in the cache bin.
             std::string data = meta->getConfig().toJSON(false);

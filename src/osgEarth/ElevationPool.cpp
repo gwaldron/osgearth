@@ -174,7 +174,7 @@ ElevationPool::refresh(const Map* map)
         // up a max level and use the layer's full extent.
         if (dataExtents.empty())
         {
-            unsigned maxLevel = std::min(layer->getMaxDataLevel(), 20u);
+            unsigned maxLevel = std::min(layer->getMaxDataLevel(), 12u);
 
             GeoExtent ext = layer->getExtent();
             if (!ext.isValid() && layer->getProfile())

@@ -227,10 +227,14 @@ namespace osgEarth
 
                     if (_windLayer.valid())
                     {
-                        if (ImGui::SliderFloat("Wind", &_wind_power, 0.0f, 10.0f, "%.1f") || _first)
+                        ImGui::Separator();
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Wind");
+
+                        if (ImGui::SliderFloat("Speed", &_wind_power, 0.0f, 10.0f, "%.1f") || _first)
                         {
                             stateset(ri)->addUniform(new osg::Uniform("oe_wind_power", _wind_power),
                                 osg::StateAttribute::OVERRIDE | 0x01);
+                            dirtySettings();
                         }
 
                         static bool show_wind = false;

@@ -157,8 +157,8 @@ namespace osgEarth
 
                 out_elevation = new osg::Image();
                 out_elevation->allocateImage(
-                    ELEVATION_TILE_SIZE,
-                    ELEVATION_TILE_SIZE,
+                    256,
+                    256,
                     1,
                     GL_RED,
                     GL_UNSIGNED_BYTE);

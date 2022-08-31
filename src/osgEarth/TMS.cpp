@@ -1159,12 +1159,13 @@ TMSImageLayer::openImplementation()
 
     osg::ref_ptr<const Profile> profile = getProfile();
 
+    DataExtentList dataExtents;
     Status status = _driver.open(
         options().url().get(),
         profile,
         options().format().get(),
         options().coverage().get(),
-        dataExtents(),
+        dataExtents,
         getReadOptions());
 
     if (status.isError())
@@ -1174,6 +1175,8 @@ TMSImageLayer::openImplementation()
     {
         setProfile(profile.get());
     }
+
+    setDataExtents(dataExtents);
 
     return Status::NoError;
 }
@@ -1281,7 +1284,9 @@ TMSElevationLayer::openImplementation()
         return status;
 
     setProfile(_imageLayer->getProfile());
-    dataExtents() = _imageLayer->getDataExtents();
+    DataExtentList dataExtents;
+    _imageLayer->getDataExtents(dataExtents);
+    setDataExtents(dataExtents);
 
     return Status::NoError;
 }

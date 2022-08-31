@@ -116,13 +116,14 @@ MBTilesImageLayer::openImplementation()
 
     osg::ref_ptr<const Profile> profile = getProfile();
 
+    DataExtentList dataExtents;
     Status status = _driver.open(
         getName(),
         options(),
         isWritingRequested(),
         options().format(),
         profile,
-        dataExtents(),
+        dataExtents,
         getReadOptions());
 
     if (status.isError())
@@ -136,13 +137,15 @@ MBTilesImageLayer::openImplementation()
         setProfile(profile.get());
     }
 
+    setDataExtents(dataExtents);
+
     return Status::NoError;
 }
 
 void
 MBTilesImageLayer::setDataExtents(const DataExtentList& values)
 {
-    dataExtents() = values;
+    TileLayer::setDataExtents(values);
 
     if (isWritingRequested())
     {
@@ -229,13 +232,14 @@ MBTilesElevationLayer::openImplementation()
 
     osg::ref_ptr<const Profile> profile = getProfile();
 
+    DataExtentList dataExtents;
     Status status = _driver.open(
         getName(),
         options(),
         isWritingRequested(),
         options().format(),
         profile,
-        dataExtents(),
+        dataExtents,
         getReadOptions());
 
     if (status.isError())
@@ -249,13 +253,15 @@ MBTilesElevationLayer::openImplementation()
         setProfile(profile.get());
     }
 
+    setDataExtents(dataExtents);
+
     return Status::NoError;
 }
 
 void
 MBTilesElevationLayer::setDataExtents(const DataExtentList& values)
 {
-    dataExtents() = values;
+    TileLayer::setDataExtents(values);
 
     if (isWritingRequested())
     {

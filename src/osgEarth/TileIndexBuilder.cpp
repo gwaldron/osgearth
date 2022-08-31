@@ -64,10 +64,13 @@ void TileIndexBuilder::build(const std::string& indexFilename, const SpatialRefe
         layer->setURL(filename);
 
         bool ok = false;
+
+        DataExtentList dataExtents;
+        layer->getDataExtents(dataExtents);
                 
         if ( layer->open().isOK() )
         {
-            for (DataExtentList::const_iterator itr = layer->getDataExtents().begin(); itr != layer->getDataExtents().end(); ++itr)
+            for (DataExtentList::const_iterator itr = dataExtents.begin(); itr != dataExtents.end(); ++itr)
             {
                 // We want the filename as it is relative to the index file                
                 std::string relative = getPathRelative(indexDir, filename);

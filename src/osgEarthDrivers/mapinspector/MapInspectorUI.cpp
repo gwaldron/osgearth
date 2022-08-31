@@ -97,7 +97,8 @@ MapInspectorUI::addTileLayer(TileLayer* layer,
 
     osg::ref_ptr<MultiGeometry> collection = new MultiGeometry();
 
-    const DataExtentList& exlist = layer->getDataExtents();
+    DataExtentList exlist;
+    layer->getDataExtents(exlist);
     if (!exlist.empty())
     {
         for(DataExtentList::const_iterator i = exlist.begin(); i != exlist.end(); ++i)

@@ -1844,11 +1844,12 @@ GDALImageLayer::openImplementation()
 
     GDAL::Driver::Ptr& driver = _drivers[id];
 
+    DataExtentList dataExtents;
     Status s = openOnThisThread(
         this,
         driver,
         &profile,
-        &dataExtents());
+        &dataExtents);
 
     if (s.isError())
         return s;
@@ -1859,6 +1860,8 @@ GDALImageLayer::openImplementation()
         setProfile(profile.get());
     }
 
+    setDataExtents(dataExtents);
+
     return s;
 }
 
@@ -1868,7 +1871,6 @@ GDALImageLayer::closeImplementation()
     // safely shut down all per-thread handles.
     Threading::ScopedMutexLock lock(_driversMutex);
     _drivers.clear();
-    dataExtents().clear();
     return ImageLayer::closeImplementation();
 }
 
@@ -1988,17 +1990,21 @@ GDALElevationLayer::openImplementation()
     // Open the dataset temporarily to query the profile and extents.
     GDAL::Driver::Ptr driver;
 
+    DataExtentList dataExtents;
     Status s = openOnThisThread(
         this,
         driver,
         &profile,
-        &dataExtents());
+        &dataExtents);
 
     if (s.isError())
         return s;
 
     if (profile.valid())
         setProfile(profile.get());
+
+    setDataExtents(dataExtents);
+
 
     return s;
 }
@@ -2009,7 +2015,6 @@ GDALElevationLayer::closeImplementation()
     // safely shut down all per-thread handles.
     Threading::ScopedMutexLock lock(_driversMutex);
     _drivers.clear();
-    dataExtents().clear();
     return ElevationLayer::closeImplementation();
 }
 

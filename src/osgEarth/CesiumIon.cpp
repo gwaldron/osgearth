@@ -192,7 +192,9 @@ CesiumIonImageLayer::openImplementation()
             if (status.isError())
                 return status;
             setProfile(_imageLayer->getProfile());
-            dataExtents() = _imageLayer->getDataExtents();
+            DataExtentList dataExtents;
+            _imageLayer->getDataExtents(dataExtents);
+            setDataExtents(dataExtents);
         }
         else
         {

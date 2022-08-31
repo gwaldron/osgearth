@@ -207,13 +207,6 @@ Map::notifyOnLayerOpenOrClose(Layer* layer)
         newRevision = ++_dataModelRevision;
     }
 
-    // reinitialize the elevation pool:
-    if (dynamic_cast<ElevationLayer*>(layer) ||
-        dynamic_cast<TerrainConstraintLayer*>(layer))
-    {
-        _elevationPool->clear();
-    }
-
     if (layer->isOpen())
     {
         if (getProfile())
@@ -603,13 +596,6 @@ Map::moveLayer(Layer* layer, unsigned newIndex)
         newRevision = ++_dataModelRevision;
     }
 
-    // if this is an elevation layer, invalidate the elevation pool
-    if (dynamic_cast<ElevationLayer*>(layer) ||
-        dynamic_cast<TerrainConstraintLayer*>(layer))
-    {
-        getElevationPool()->clear();
-    }
-
     // a separate block b/c we don't need the mutex
     if ( layer )
     {
@@ -702,15 +688,6 @@ Map::addLayers(const LayerVector& layers)
 void
 Map::installLayerCallbacks(Layer* layer)
 {
-    // If this is an elevation layer, install a callback so we know when
-    // it's enabled state changes:
-    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
-    if (elevationLayer)
-    {
-        // invalidate the elevation pool
-        getElevationPool()->clear();
-    }
-
     // Callback to detect changes in "enabled"
     layer->addCallback(_layerCB.get());
 }
@@ -718,14 +695,6 @@ Map::installLayerCallbacks(Layer* layer)
 void
 Map::uninstallLayerCallbacks(Layer* layer)
 {
-    // undo the things we did in prepareLayer:
-    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
-    if (elevationLayer)
-    {
-        // invalidate the pool
-        getElevationPool()->clear();
-    }
-
     layer->removeCallback(_layerCB.get());
 }
 
@@ -820,9 +789,6 @@ Map::clear()
 
         i->get()->onEndUpdate();
     }
-
-    // Invalidate the elevation pool.
-    getElevationPool()->clear();
 }
 
 const SpatialReference*

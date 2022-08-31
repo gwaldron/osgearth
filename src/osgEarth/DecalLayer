@@ -89,11 +89,6 @@ namespace osgEarth { namespace Contrib
             const TileKey& key,
             ProgressCallback* progress) const override;
 
-        //! Extent for this layer
-        virtual const GeoExtent& getExtent() const override {
-            return _extent;
-        }
-
     protected: // Layer
 
         // post-ctor initialization
@@ -106,7 +101,6 @@ namespace osgEarth { namespace Contrib
             GeoExtent _extent;
             osg::ref_ptr<const osg::Image> _image;
         };
-        GeoExtent _extent;
         mutable ReadWrite<Mutex> _data_mutex;
         std::list<Decal> _decalList;
         using DecalIndex = std::unordered_map<std::string, std::list<Decal>::iterator>;
@@ -181,12 +175,7 @@ namespace osgEarth { namespace Contrib
     public: // ElevationLayer
 
         //! Creates an image for a tile key
-        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
-        
-        //! Extent for this layer
-        virtual const GeoExtent& getExtent() const override {
-            return _extent;
-        }
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;      
 
     protected: // Layer
 
@@ -202,7 +191,6 @@ namespace osgEarth { namespace Contrib
         struct Decal {
             GeoHeightField _heightfield;
         };
-        GeoExtent _extent;
         mutable ReadWrite<Mutex> _data_mutex;
         std::list<Decal> _decalList;
         using DecalIndex = std::unordered_map<std::string, std::list<Decal>::iterator>;
@@ -244,11 +232,6 @@ namespace osgEarth { namespace Contrib
         //! Creates an image for a tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
-        //! Extent for this layer
-        virtual const GeoExtent& getExtent() const override {
-            return _extent;
-        }
-
     protected: // Layer
 
         // post-ctor initialization
@@ -263,7 +246,6 @@ namespace osgEarth { namespace Contrib
             osg::ref_ptr<const osg::Image> _image;
             GeoExtent _extent;
         };
-        GeoExtent _extent;
         mutable ReadWrite<Mutex> _data_mutex;
         std::list<Decal> _decalList;
         using DecalIndex = std::unordered_map<std::string, std::list<Decal>::iterator>;

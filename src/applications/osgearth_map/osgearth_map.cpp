@@ -87,7 +87,7 @@ public:
         setUseCreateTexture();
 
         // Restrict the data extents of this layer to LOD 0 (in this case)
-        dataExtents().push_back(DataExtent(getProfile()->getExtent(), 0, 0));
+        addDataExtent(DataExtent(getProfile()->getExtent(), 0, 0));
 
         return Status::OK();
     }

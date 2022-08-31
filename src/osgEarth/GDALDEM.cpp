@@ -192,7 +192,9 @@ GDALDEMLayer::addedToMap(const Map* map)
     }
 
     setProfile(layer->getProfile());
-    setDataExtents(layer->getDataExtents());
+    DataExtentList dataExtents;
+    layer->getDataExtents(dataExtents);
+    setDataExtents(dataExtents);
 }
 
 void

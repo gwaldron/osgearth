@@ -153,11 +153,10 @@ namespace osgEarth {
                     stateset(ri)->addUniform(new osg::Uniform("oe_snow_max_elev", _snow_max_elev), 0x7);
 #endif
 
-                    if (ImGui::Checkbox("Hex tile splatting", &_tslayer->options().useHexTiler().mutable_value()))
+                    bool hex_tiler = _tslayer->getUseHexTiler();
+                    if (ImGui::Checkbox("Hex tile splatting", &hex_tiler))
                     {
-                        stateset(ri)->setDefine("OE_SPLAT_HEX_TILER",
-                            _tslayer->options().useHexTiler() == true ? "1" : "0", 
-                            0x07);
+                        _tslayer->setUseHexTiler(hex_tiler);
                     }
 
                     // lifemap adjusters

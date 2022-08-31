@@ -80,7 +80,7 @@ vec2 ht_hash(vec2 p)
 
 vec2 ht_MakeCenST(ivec2 Vertex)
 {
-    mat2 invSkewMat = mat2(1.0, 0.5, 0.0, 1.0 / 1.15470054);
+    const mat2 invSkewMat = mat2(1.0, 0.5, 0.0, 1.0 / 1.15470054);
     return mul(invSkewMat, Vertex) / HEX_SCALE;
 }
 
@@ -281,6 +281,36 @@ void ht_hex2colTex_optimized(
 
     // Use the same partial derivitives to sample all three locations
     // to avoid rendering artifacts.
+
+#if 1
+    // Fast way: replace textureGrad by manually calculating the LOD
+    // and using textureLod instead (much faster than textureGrad)
+    // https://solidpixel.github.io/2022/03/27/texture_sampling_tips.html
+
+    ivec2 tex_dim;
+    vec2 ddx, ddy;
+    float lod;
+
+    vec2 st_ddx = dFdx(st), st_ddy = dFdy(st);
+
+    tex_dim = textureSize(color_tex, 0);
+    ddx = st_ddx * float(tex_dim.x), ddy = st_ddy * float(tex_dim.y);
+    lod = 0.5 * log2(max(dot(ddx, ddx), dot(ddy, ddy)));
+
+    vec4 c1 = textureLod(color_tex, st1, lod);
+    vec4 c2 = textureLod(color_tex, st2, lod);
+    vec4 c3 = textureLod(color_tex, st3, lod);
+
+    tex_dim = textureSize(material_tex, 0);
+    ddx = st_ddx * float(tex_dim.x), ddy = st_ddy * float(tex_dim.y);
+    lod = 0.5 * log2(max(dot(ddx, ddx), dot(ddy, ddy)));
+
+    vec4 m1 = textureLod(material_tex, st1, lod);
+    vec4 m2 = textureLod(material_tex, st2, lod);
+    vec4 m3 = textureLod(material_tex, st3, lod);
+#else
+    // Original approach: use textureGrad to supply the same gradient
+    // for each sample point (slow)
     vec2 ddx = dFdx(st), ddy = dFdy(st);
 
     vec4 c1 = textureGrad(color_tex, st1, ddx, ddy);
@@ -290,6 +320,7 @@ void ht_hex2colTex_optimized(
     vec4 m1 = textureGrad(material_tex, st1, ddx, ddy);
     vec4 m2 = textureGrad(material_tex, st2, ddx, ddy);
     vec4 m3 = textureGrad(material_tex, st3, ddx, ddy);
+#endif
 
     // Use color's luminance as weighting factor
     const vec3 Lw = vec3(0.299, 0.587, 0.114);

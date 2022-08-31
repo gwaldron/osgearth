@@ -138,7 +138,7 @@ TileSourceImageLayer::openImplementation()
             // properties to and fro.
             if (!_tileSource->getDataExtents().empty())
             {
-                dataExtents() = _tileSource->getDataExtents();
+                setDataExtents(_tileSource->getDataExtents());
             }
 
             // Set the profile from the TileSource if possible:

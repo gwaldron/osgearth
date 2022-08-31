@@ -552,7 +552,7 @@ TileLayer::getCacheBin(const Profile* profile)
             meta->_sourceProfile = getProfile()->toProfileOptions();
             meta->_cacheProfile = profile->toProfileOptions();
             meta->_cacheCreateTime = DateTime().asTimeStamp();
-            meta->_dataExtents = getDataExtents();
+            getDataExtents(meta->_dataExtents);
 
             // store it in the cache bin.
             std::string data = meta->getConfig().toJSON(false);
@@ -735,37 +735,45 @@ TileLayer::isCached(const TileKey& key) const
     return bin->getRecordStatus( key.str() ) == CacheBin::STATUS_OK;
 }
 
-const DataExtentList&
-TileLayer::getDataExtents() const
+unsigned int TileLayer::getDataExtentsSize() const
 {
+    ScopedReadLock lk(_data_mutex);
+    return _dataExtents.size();
+}
+
+void TileLayer::getDataExtents(DataExtentList& dataExtents) const
+{
+    ScopedReadLock lk(_data_mutex);
     if (!_dataExtents.empty())
     {
-        return _dataExtents;
+        dataExtents = _dataExtents;
     }
 
     else if (!_cacheBinMetadata.empty())
     {
         // There are extents in the cache bin, so use those.
         // The DE's are the same regardless of profile so just use the first one in there.
-        return _cacheBinMetadata.begin()->second->_dataExtents;
-    }
-
-    else
-    {
-        return _dataExtents;
+        dataExtents = _cacheBinMetadata.begin()->second->_dataExtents;
     }
 }
 
-DataExtentList&
-TileLayer::dataExtents()
+void TileLayer::setDataExtents(const DataExtentList& dataExtents)
 {
-    return const_cast<DataExtentList&>(getDataExtents());
+    ScopedWriteLock lk(_data_mutex);
+    _dataExtents = dataExtents;
+    dirtyDataExtents();
+}
+
+void TileLayer::addDataExtent(const DataExtent& dataExtent)
+{
+    ScopedWriteLock lk(_data_mutex);
+    _dataExtents.push_back(dataExtent);
+    dirtyDataExtents();
 }
 
 void
 TileLayer::dirtyDataExtents()
 {
-    ScopedWriteLock lock(_data_mutex);
     _dataExtentsUnion = GeoExtent::INVALID;
 
     if (_dataExtentsIndex)
@@ -778,24 +786,22 @@ TileLayer::dirtyDataExtents()
 const DataExtent&
 TileLayer::getDataExtentsUnion() const
 {
-    const DataExtentList& de = getDataExtents();
-
-    if (_dataExtentsUnion.isInvalid() && !de.empty())
+    if (_dataExtentsUnion.isInvalid() && getDataExtentsSize() > 0)
     {
         ScopedWriteLock lock(_data_mutex);
         {
-            if (_dataExtentsUnion.isInvalid() && !de.empty()) // double-check
+            if (_dataExtentsUnion.isInvalid() && _dataExtents.size() > 0) // double-check
             {
-                _dataExtentsUnion = de[0];
-                for (unsigned int i = 1; i < de.size(); i++)
+                _dataExtentsUnion = _dataExtents[0];
+                for (unsigned int i = 1; i < _dataExtents.size(); i++)
                 {
-                    _dataExtentsUnion.expandToInclude(de[i]);
+                    _dataExtentsUnion.expandToInclude(_dataExtents[i]);
 
-                    if (de[i].minLevel().isSet())
-                        _dataExtentsUnion.minLevel() = std::min(_dataExtentsUnion.minLevel().get(), de[i].minLevel().get());
+                    if (_dataExtents[i].minLevel().isSet())
+                        _dataExtentsUnion.minLevel() = std::min(_dataExtentsUnion.minLevel().get(), _dataExtents[i].minLevel().get());
 
-                    if (de[i].maxLevel().isSet())
-                        _dataExtentsUnion.maxLevel() = std::max(_dataExtentsUnion.maxLevel().get(), de[i].maxLevel().get());
+                    if (_dataExtents[i].maxLevel().isSet())
+                        _dataExtentsUnion.maxLevel() = std::max(_dataExtentsUnion.maxLevel().get(), _dataExtents[i].maxLevel().get());
                 }
 
                 // if upsampling is enabled include the MDL in the union.
@@ -866,11 +872,8 @@ TileLayer::getBestAvailableTileKey(
         }
     }
 
-    // Next check against the data extents.
-    const DataExtentList& de_list = getDataExtents();
-
     // If we have no data extents available, just return the MDL-limited input key.
-    if (de_list.empty())
+    if (getDataExtentsSize() == 0)
     {
         return localLOD > MDL ? key.createAncestorKey(MDL) : key;
     }
@@ -892,9 +895,9 @@ TileLayer::getBestAvailableTileKey(
         ScopedWriteLock lock(_data_mutex);
         if (!_dataExtentsIndex) // Double check
         {
-            OE_INFO << LC << "Building data extents index with " << getDataExtents().size() << " extents" << std::endl;
+            OE_INFO << LC << "Building data extents index with " << _dataExtents.size() << " extents" << std::endl;
             DataExtentsIndex* dataExtentsIndex = new DataExtentsIndex();
-            for (auto de = getDataExtents().begin(); de != getDataExtents().end(); ++de)
+            for (auto de = _dataExtents.begin(); de != _dataExtents.end(); ++de)
             {
                 // Build the index in the SRS of this layer
                 GeoExtent extentInLayerSRS = getProfile()->clampAndTransformExtent(*de);

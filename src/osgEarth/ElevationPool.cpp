@@ -150,7 +150,8 @@ ElevationPool::refresh(const Map* map)
     for(auto i : _elevationLayers)
     {
         const ElevationLayer* layer = i.get();
-        const DataExtentList& dataExtents = layer->getDataExtents();
+        DataExtentList dataExtents;
+        layer->getDataExtents(dataExtents);
 
         for(auto de = dataExtents.begin(); de != dataExtents.end(); ++de)
         {

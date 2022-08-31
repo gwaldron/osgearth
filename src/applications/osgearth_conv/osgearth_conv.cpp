@@ -462,8 +462,10 @@ main(int argc, char** argv)
     }
 
     // Transfomr and copy over the data extents to the output datasource.
+    DataExtentList inputExtents;
+    input->getDataExtents(inputExtents);
     DataExtentList outputExtents;
-    for (DataExtentList::const_iterator itr = input->getDataExtents().begin(); itr != input->getDataExtents().end(); ++itr)
+    for (DataExtentList::const_iterator itr = inputExtents.begin(); itr != inputExtents.end(); ++itr)
     {
         // Convert the data extent to the profile that is actually used by the output tile source
         const DataExtent& inputExtent = *itr;
@@ -567,7 +569,9 @@ main(int argc, char** argv)
     // figure out the max source level:
     if ( !minLevelSet || !maxLevelSet )
     {
-        for(auto& de : input->getDataExtents())
+        DataExtentList dataExtents;
+        input->getDataExtents(dataExtents);
+        for(auto& de : dataExtents)
         {
             if ( !maxLevelSet && de.maxLevel().isSet() && de.maxLevel().get() > maxLevel )
                 maxLevel = de.maxLevel().get();

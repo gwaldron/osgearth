@@ -275,8 +275,7 @@ DecalImageLayer::addDecal(const std::string& id, const GeoExtent& extent, const 
 
     // Update the data extents
     {
-        dataExtents().push_back(getProfile()->clampAndTransformExtent(extent));
-        dirtyDataExtents();
+        addDataExtent(getProfile()->clampAndTransformExtent(extent));
     }
 
     // data changed so up the revsion.
@@ -296,12 +295,10 @@ DecalImageLayer::removeDecal(const std::string& id)
         _decalIndex.erase(i);
 
         // Rebuild the data extents
-        {
-            dataExtents().clear();
-            for (auto& decal : _decalList)
-                dataExtents().push_back(getProfile()->clampAndTransformExtent(decal._extent));
-            dirtyDataExtents();
-        }
+        DataExtentList dataExtents;
+        for (auto& decal : _decalList)
+            dataExtents.push_back(getProfile()->clampAndTransformExtent(decal._extent));
+        setDataExtents(dataExtents);
 
         // data changed so up the revsion.
         bumpRevision();
@@ -326,10 +323,9 @@ DecalImageLayer::clearDecals()
     Threading::ScopedWriteLock lock(_data_mutex);
     _decalIndex.clear();
     _decalList.clear();
-    {
-        dataExtents().clear();
-        dirtyDataExtents();
-    }
+    // Clear the data extents
+    DataExtentList dataExtents;
+    setDataExtents(dataExtents);
     bumpRevision();
 }
 
@@ -500,10 +496,7 @@ DecalElevationLayer::addDecal(
     _decalIndex[id] = --_decalList.end();
 
     // Update the data extents
-    {
-        dataExtents().push_back(getProfile()->clampAndTransformExtent(extent));
-        dirtyDataExtents();
-    }   
+    addDataExtent(getProfile()->clampAndTransformExtent(extent));
 
     // data changed so up the revsion.
     bumpRevision();
@@ -557,11 +550,7 @@ DecalElevationLayer::addDecal(
 
     _decalIndex[id] = --_decalList.end();
 
-    // Update the data extents
-    {
-        dataExtents().push_back(getProfile()->clampAndTransformExtent(extent));
-        dirtyDataExtents();
-    }
+    addDataExtent(getProfile()->clampAndTransformExtent(extent));
 
     // data changed so up the revsion.
     bumpRevision();
@@ -579,13 +568,10 @@ DecalElevationLayer::removeDecal(const std::string& id)
         _decalList.erase(i->second);
         _decalIndex.erase(i);
 
-        // Rebuild the data extents
-        {
-            dataExtents().clear();
-            for (auto& decal : _decalList)
-                dataExtents().push_back(getProfile()->clampAndTransformExtent(decal._heightfield.getExtent()));
-            dirtyDataExtents();
-        }
+        DataExtentList dataExtents;
+        for (auto& decal : _decalList)
+            dataExtents.push_back(getProfile()->clampAndTransformExtent(decal._heightfield.getExtent()));
+        setDataExtents(dataExtents);
 
         // data changed so up the revsion.
         bumpRevision();
@@ -611,11 +597,9 @@ DecalElevationLayer::clearDecals()
     Threading::ScopedWriteLock lock(_data_mutex);
     _decalIndex.clear();
     _decalList.clear();
-
-    {
-        dataExtents().clear();
-        dirtyDataExtents();
-    }
+    // Clear the data extents
+    DataExtentList dataExtents;
+    setDataExtents(dataExtents);
     bumpRevision();
 }
 
@@ -765,11 +749,7 @@ DecalLandCoverLayer::addDecal(const std::string& id, const GeoExtent& extent, co
 
     _decalIndex[id] = --_decalList.end();
 
-    // Update the data extents
-    {
-        dataExtents().push_back(getProfile()->clampAndTransformExtent(extent));
-        dirtyDataExtents();
-    }
+    addDataExtent(getProfile()->clampAndTransformExtent(extent)); 
 
     // data changed so up the revsion.
     bumpRevision();
@@ -787,13 +767,10 @@ DecalLandCoverLayer::removeDecal(const std::string& id)
         _decalList.erase(i->second);
         _decalIndex.erase(i);
 
-        // Rebuild the data extents
-        {
-            dataExtents().clear();
-            for (auto& decal : _decalList)
-                dataExtents().push_back(getProfile()->clampAndTransformExtent(decal._extent));
-            dirtyDataExtents();
-        }
+        DataExtentList dataExtents;
+        for (auto& decal : _decalList)
+            dataExtents.push_back(getProfile()->clampAndTransformExtent(decal._extent));
+        setDataExtents(dataExtents);
 
         // data changed so up the revsion.
         bumpRevision();
@@ -818,9 +795,7 @@ DecalLandCoverLayer::clearDecals()
     Threading::ScopedWriteLock lock(_data_mutex);
     _decalIndex.clear();
     _decalList.clear();
-    {
-        dataExtents().clear();
-        dirtyDataExtents();
-    }
+    DataExtentList dataExtents;
+    setDataExtents(dataExtents);
     bumpRevision();
 }

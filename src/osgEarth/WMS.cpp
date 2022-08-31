@@ -750,9 +750,10 @@ WMSImageLayer::openImplementation()
 
     osg::ref_ptr<const Profile> profile = getProfile();
 
+    DataExtentList dataExtents;
     Status status = driver->open(
         profile,
-        dataExtents());
+        dataExtents);
 
     if (status.isError())
         return status;
@@ -761,6 +762,8 @@ WMSImageLayer::openImplementation()
     {
         setProfile(profile.get());
     }
+
+    setDataExtents(dataExtents);
 
     return Status::NoError;
 }

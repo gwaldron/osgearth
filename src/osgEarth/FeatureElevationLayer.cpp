@@ -117,15 +117,17 @@ FeatureElevationLayer::addedToMap(const Map* map)
     // no airport will still be considered valid for this layer and a tile will be created which we don't want to happen.
     auto profile = getProfile();
     osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(nullptr);
+    DataExtentList dataExtents;
     while (cursor.valid() && cursor->hasMore())
     {
         osg::ref_ptr< Feature > f = cursor->nextFeature();
         if (f && f->getGeometry())
         {
             GeoExtent featureExtent = f->getExtent();
-            dataExtents().push_back(DataExtent(featureExtent.transform(profile->getSRS()), getMinLevel(), getMaxDataLevel()));            
+            dataExtents.push_back(DataExtent(featureExtent.transform(profile->getSRS()), getMinLevel(), getMaxDataLevel()));
         }
     }
+    setDataExtents(dataExtents);
 #endif
 
     setProfile(
@@ -136,8 +138,6 @@ FeatureElevationLayer::addedToMap(const Map* map)
 void
 FeatureElevationLayer::removedFromMap(const Map* map)
 {
-    dataExtents().clear();
-
     options().featureSource().removedFromMap(map);
     ElevationLayer::removedFromMap(map);
 }

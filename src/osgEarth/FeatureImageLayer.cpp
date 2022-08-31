@@ -212,7 +212,7 @@ FeatureImageLayer::updateSession()
     {
         const FeatureProfile* fp = getFeatureSource()->getFeatureProfile();
 
-        dataExtents().clear();
+        DataExtentList dataExtents;
 
         if (fp)
         {
@@ -224,14 +224,16 @@ FeatureImageLayer::updateSession()
                 if (options().maxDataLevel().isSet())
                     maxLevel = osg::maximum(maxLevel, options().maxDataLevel().get());
 
-                dataExtents().push_back(DataExtent(fp->getTilingProfile()->getExtent(), fp->getFirstLevel(), maxLevel));
+                dataExtents.push_back(DataExtent(fp->getTilingProfile()->getExtent(), fp->getFirstLevel(), maxLevel));
             }
             else if (fp->getExtent().isValid() == true)
             {
                 // Use FeatureProfile's GeoExtent
-                dataExtents().push_back(DataExtent(fp->getExtent()));
+                dataExtents.push_back(DataExtent(fp->getExtent()));
             }
         }
+
+        setDataExtents(dataExtents);
 
         _global._session->setFeatureSource(getFeatureSource());
         _global._session->setStyles(getStyleSheet());

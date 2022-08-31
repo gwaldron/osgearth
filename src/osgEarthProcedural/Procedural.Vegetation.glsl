@@ -90,7 +90,7 @@ void oe_apply_wind(inout vec4 vertex, in int index)
             (2.0 * sin(1.0 * ambient_seed)) + 1.0,
             (1.0 * sin(2.0 * ambient_seed)) + 0.5,
             1.0);
-        vec3 ambient_vec = wind_vec * ambient;
+        vec3 ambient_vec = wind_vec * ambient * 0.5;
 
         // final wind force vector:
         vec3 wind_force =

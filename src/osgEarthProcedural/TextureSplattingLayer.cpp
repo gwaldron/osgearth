@@ -65,7 +65,8 @@ void
 TextureSplattingLayer::Options::fromConfig(const Config& conf)
 {
     numLevels().setDefault(1);
-    useHexTiler().setDefault(false);
+    useHexTiler().setDefault(true);
+
     conf.get("num_levels", numLevels());
     conf.get("use_hex_tiler", useHexTiler());
 }
@@ -301,11 +302,23 @@ TextureSplattingLayer::buildStateSets()
             "OE_SPLAT_NUM_LEVELS",
             std::to_string(clamp(options().numLevels().get(), 1, 2)));
 
-        if (options().useHexTiler() == true)
-        {
-            ss->setDefine("OE_SPLAT_HEX_TILER", "1");
-        }
+        setUseHexTiler(options().useHexTiler().get());
     }
+}
+
+void
+TextureSplattingLayer::setUseHexTiler(bool value)
+{
+    options().useHexTiler() = value;
+    auto ss = getOrCreateStateSet();
+    ss->removeDefine("OE_SPLAT_HEX_TILER");
+    ss->setDefine("OE_SPLAT_HEX_TILER", value ? "1" : "0");
+}
+
+bool
+TextureSplattingLayer::getUseHexTiler() const
+{
+    return options().useHexTiler().get();
 }
 
 void

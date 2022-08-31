@@ -118,6 +118,16 @@ namespace osgEarth
             //! Default is 0.
             OE_OPTION(float, stiffness);
 
+            //! Minimum lushness of this asset [0..1] - the asset becomes a 
+            //! candidate for placement if the lifemap's lush value is
+            //! greater than or equal to this value. Default is zero (0).
+            OE_OPTION(float, minLush);
+
+            //! Maximum lushness of this asset [0..1] - the asset becomes a 
+            //! candidate for placement if the lifemap's lush value is
+            //! less than or equal to this value. Default is one (1).
+            OE_OPTION(float, maxLush);
+
             //! User-defined traits string (comma-delimited)
             OE_PROPERTY(std::vector<std::string>, traits);
 

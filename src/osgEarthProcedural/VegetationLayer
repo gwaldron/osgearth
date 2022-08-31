@@ -49,18 +49,34 @@ namespace osgEarth { namespace Procedural
         class OSGEARTHPROCEDURAL_EXPORT Options : public PatchLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, PatchLayer::Options);
-            OE_OPTION_LAYER(ImageLayer, colorLayer);
+
+            //! Biomes layer in the map
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
+
+            //! Whether to render with GL_ALPHA_TO_COVERAGE (default is true)
             OE_OPTION(bool, alphaToCoverage);
 
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
+                //! Whether to render this group at all
                 OE_OPTION(bool, enabled);
+
+                //! Terrain LOD at which to render this group
                 OE_OPTION(unsigned, lod);
+
+                //! Not used
                 OE_OPTION(float, maxRange);
+
+                //! Number of assets to place per square kilometer
                 OE_OPTION(int, instancesPerSqKm);
+
+                //! Whether assets in this group cast shadows
                 OE_OPTION(bool, castShadows);
-                OE_OPTION(bool, allowOverlap);
+
+                //! Percentage of overlap allowed in asset bounding spheres [0..1]
+                OE_OPTION(float, overlap);
+
+                //! SSE scale factor for far visibility
                 OE_OPTION(float, farPixelScale);
 
                 // internal
@@ -92,10 +108,6 @@ namespace osgEarth { namespace Procedural
         void setLifeMapLayer(LifeMapLayer*);
         LifeMapLayer* getLifeMapLayer() const;
 
-        //! Color modulation layer
-        void setColorLayer(ImageLayer* layer);
-        ImageLayer* getColorLayer() const;
-
         //! LOD at which to draw ground cover
         bool hasEnabledGroupAtLOD(unsigned lod) const;
         std::string getGroupAtLOD(unsigned lod) const;
@@ -121,10 +133,6 @@ namespace osgEarth { namespace Procedural
         //! LOD/SSE scaling factors (one per group)
         void setSSEScales(const osg::Vec4f& lods);
         osg::Vec4f getSSEScales() const;
-
-        //! Controls the initial "bend" for UNDERGROWTH
-        void setGravity(float value);
-        float getGravity() const;
 
         //! Force regeneration of the visible data
         void dirty();

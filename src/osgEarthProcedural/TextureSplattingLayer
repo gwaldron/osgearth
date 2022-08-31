@@ -57,6 +57,12 @@ namespace osgEarth { namespace Procedural
 
         LifeMapLayer* getLifeMapLayer() const;
 
+        //! Whether to use a shader that obfuscates the repeating textures 
+        //! found in texture splatting. Incurs a small GPU performance penalty.
+        //! Default is true.
+        void setUseHexTiler(bool value);
+        bool getUseHexTiler() const;
+
     protected:
 
         //! Override post-ctor init

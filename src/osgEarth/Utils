@@ -29,6 +29,7 @@
 #include <osg/Vec3f>
 #include <osg/AutoTransform>
 #include <osg/OperationThread>
+#include <osg/TriangleIndexFunctor>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 #include <osgUtil/CullVisitor>
@@ -39,6 +40,7 @@
 #include <list>
 #include <map>
 #include <typeinfo>
+#include <stack>
 
 namespace osgEarth { namespace Util
 {
@@ -401,7 +403,10 @@ namespace osgEarth { namespace Util
         osg::observer_ptr<T> _obj;
     };
 
-
+    /**
+     * An osg::Operation that runs a user function ONCE and then
+     * disappears
+     */
     struct OneTimer : public osg::Operation
     {
         using Function = std::function<void()>;
@@ -419,6 +424,99 @@ namespace osgEarth { namespace Util
 
     private:
         Function _func;
+    };
+
+
+    /**
+     * Visitor that visits each instace of hte template node type.
+     */
+    template<typename T>
+    struct TypedNodeVisitor : public osg::NodeVisitor
+    {
+        using Function = std::function<void(T&, const osg::Matrix&)>;
+        Function _func;
+        std::stack<osg::Matrix> _transformStack;
+
+        TypedNodeVisitor(const Function& func) :
+            osg::NodeVisitor(),
+            _func(func)
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+            _transformStack.push(osg::Matrix::identity());
+        }
+
+        void apply(osg::Node& node) override
+        {
+            T* n = dynamic_cast<T*>(&node);
+            if (n) _func(*n, _transformStack.top());
+            traverse(node);
+        }
+
+        void apply(osg::Transform& node) override
+        {
+            osg::Matrix m = _transformStack.empty() ? osg::Matrix() : _transformStack.top();
+            node.computeLocalToWorldMatrix(m, this);
+            _transformStack.push(m);
+            apply(static_cast<osg::Group&>(node));
+            _transformStack.pop();
+        }
+    };
+
+    /**
+     * Visitor that visits each triangle in each geometry
+     */
+    struct TriangleVisitor : public osg::NodeVisitor
+    {
+    public:
+        using Function = std::function<void(
+            osg::Geometry& geom,
+            unsigned i0,
+            unsigned i1,
+            unsigned i2,
+            const osg::Matrix& l2w)>;
+
+    public:
+        TriangleVisitor(const Function& func) : 
+            osg::NodeVisitor(),
+            _func(func)
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+            _transformStack.push(osg::Matrix::identity());
+        }
+
+    private:
+        struct TriangleFullSend {
+            TriangleVisitor* _visitor;
+            osg::Geometry* _geom;
+            inline void operator () (unsigned i0, unsigned i1, unsigned i2)
+            {
+                _visitor->_func(*_geom, i0, i1, i2, _visitor->_transformStack.top());
+            }
+        };
+
+    public: // overrides
+        void apply(osg::Transform& node) override
+        {
+            osg::Matrix m = _transformStack.empty() ? osg::Matrix() : _transformStack.top();
+            node.computeLocalToWorldMatrix(m, this);
+            _transformStack.push(m);
+            traverse(node);
+            _transformStack.pop();
+        }
+
+        void apply(osg::Geometry& geom) override
+        {
+            osg::TriangleIndexFunctor<TriangleFullSend> _sender;
+            _sender._visitor = this;
+            _sender._geom = &geom;
+            geom.accept(_sender);
+        }
+
+    private:
+        Function _func;
+        std::stack<osg::Matrix> _transformStack;
     };
 } }
 

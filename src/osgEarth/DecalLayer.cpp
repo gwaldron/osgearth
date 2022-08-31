@@ -137,27 +137,39 @@ DecalImageLayer::createImageImplementation(
     if (decals.empty())
         return canvas;
 
-    osg::ref_ptr<osg::Image> output;
-    
-    if (canvas.valid())
-    {
-        // clones and converts to RGBA8 if necessary
-        output = ImageUtils::convertToRGBA8(canvas.getImage());
-    }
-    else
-    {
-        output = new osg::Image();
-        output->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-        output->setInternalTextureFormat(GL_RGBA8);
-        ::memset(output->data(), 0, output->getTotalSizeInBytes());
-    }
+    osg::ref_ptr<osg::Image> output = new osg::Image();
+    output->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    output->setInternalTextureFormat(GL_RGBA8);
+    ::memset(output->data(), 0, output->getTotalSizeInBytes()); // prob not necessary
 
+    // Canvas reader with the appropriate scale/bias matrix
+    ImageUtils::PixelReader readCanvas(canvas.getImage());
+    osg::Matrix csb;
+    key.getExtent().createScaleBias(canvas.getExtent(), csb);
+
+    // Read and write from the output:
     ImageUtils::PixelWriter writeOutput(output.get());
     ImageUtils::PixelReader readOutput(output.get());
 
     osg::Vec4 src, dst, out;
     float srcRGB, dstRGB, srcAlpha, dstAlpha;
 
+    // start by copying the canvas to the output.
+    for (int t = 0; t < output->t(); ++t)
+    {
+        double v = (double)t / (double)(output->t() - 1);
+        for (int s = 0; s < output->s(); ++s)
+        {
+            double u = (double)s / (double)(output->s() - 1);
+
+            double cu = u * csb(0, 0) + csb(3, 0);
+            double cv = v * csb(1, 1) + csb(3, 1);
+            readCanvas(dst, cu, cv);
+            writeOutput(dst, s, t);
+        }
+    }
+
+    // for each decal...
     for (unsigned d = 0; d < decals.size(); ++d)
     {
         const Decal& decal = decals[d];
@@ -195,9 +207,11 @@ DecalImageLayer::createImageImplementation(
                 if (in_u < 0.0 || in_u > 1.0)
                     continue;
 
-                readOutput(dst, s, t);
+                // read the existing data and the new decal input:
+                readOutput(dst, out_u, out_v);
                 readInput(src, in_u, in_v);
 
+                // figure out how to blend them:
                 srcRGB = get_blend(_srcRGB, src, dst);
                 dstRGB = get_blend(_dstRGB, src, dst);
                 srcAlpha = get_blend(_srcAlpha, src, dst);

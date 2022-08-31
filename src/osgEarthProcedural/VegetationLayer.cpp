@@ -1045,9 +1045,15 @@ VegetationLayer::getAssetPlacements(
     osg::Matrix lifemap_sb;
     if (getLifeMapLayer())
     {
+#if 0
         TileKey bestKey = getLifeMapLayer()->getBestAvailableTileKey(key);
         lifemap = getLifeMapLayer()->createImage(bestKey, progress);
         key.getExtent().createScaleBias(bestKey.getExtent(), lifemap_sb);
+#endif
+
+        lifemap = getLifeMapLayer()->createImage(key, progress);
+        key.getExtent().createScaleBias(lifemap.getExtent(), lifemap_sb);
+
 #if 0
         for (TileKey q_key = key;
             q_key.valid() && !lifemap.valid();

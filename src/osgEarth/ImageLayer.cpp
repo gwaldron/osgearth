@@ -383,9 +383,18 @@ ImageLayer::createImage(
 
     // Post-cache operations:
 
-    for (auto& post : _postLayers)
+    if (!_postLayers.empty())
     {
-        result = post->createImage(result, key, progress);
+        for (auto& post : _postLayers)
+        {
+            if (!result.valid())
+            {
+                TileKey bestKey = getBestAvailableTileKey(key);
+                result = createImageInKeyProfile(bestKey, progress);
+            }
+
+            result = post->createImage(result, key, progress);
+        }
     }
 
     if (result.valid())

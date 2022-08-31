@@ -78,24 +78,15 @@ void oe_apply_wind(inout vec4 vertex, in int index)
         vec3 wind_vec = normalize(wind.rgb * 2.0 - 1.0);
         float speed = wind.a * oe_wind_power;
 
-        // sample the noise texture based on the speed, and use that
-        // to permute the speed using the clumpy value:
+        // Add the flutter experienced by vegetation that snaps in the wind.
+        // Sample the noise texture based on the speed, and use that
+        // to permute the speed.
         float time = osg_FrameTime * speed * 0.1;
         vec4 noise = textureLod(oe_veg_noise, tile_uv + time, 0);
         speed *= mix(0.75, 1.4, noise[0]);
 
-        // integrate some ambient breeze for a swaying motion
-        float ambient_seed = center.x + center.y + center.z + osg_FrameTime * 2.0;
-        vec3 ambient = vec3(
-            (2.0 * sin(1.0 * ambient_seed)) + 1.0,
-            (1.0 * sin(2.0 * ambient_seed)) + 0.5,
-            1.0);
-        vec3 ambient_vec = wind_vec * ambient * 0.5;
-
         // final wind force vector:
-        vec3 wind_force =
-            wind_vec * speed +
-            ambient_vec * min(speed * 0.5, 0.05);
+        vec3 wind_force = wind_vec * speed;
 
         // project the wind vector onto the flex plane
         vec3 flex_plane_normal = normalize(gl_NormalMatrix * vec3xform * flex);

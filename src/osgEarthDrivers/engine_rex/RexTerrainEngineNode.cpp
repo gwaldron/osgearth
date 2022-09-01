@@ -1400,10 +1400,6 @@ RexTerrainEngineNode::updateState()
             _terrainSS->addUniform(new osg::Uniform(
                 "oe_layer_order", (int)0));
 
-            // uniform that conveys the tile vertex dimensions
-            _terrainSS->addUniform(new osg::Uniform(
-                "oe_tile_size", (float)options().tileSize().get()));
-
             if (this->elevationTexturesRequired())
             {
                 // Compute an elevation texture sampling scale/bias so we sample elevation data on center
@@ -1451,8 +1447,8 @@ RexTerrainEngineNode::updateState()
                 shaders.load(surfaceVP, shaders.tessellation());
 
                 // Default tess level
-                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tess", 3.0f));
-                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tess_range", 150.0f));
+                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tess", 2.5f));
+                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tess_range", 75.0f));
 
 #ifdef HAVE_PATCH_PARAMETER
                 // backwards compatibility

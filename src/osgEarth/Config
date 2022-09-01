@@ -27,8 +27,8 @@
 #include <osg/Vec2f>
 #include <osg/Vec3d>
 #include <list>
-#include <stack>
 #include <istream>
+#include <functional>
 
 namespace osgDB
 {
@@ -668,10 +668,16 @@ namespace osgEarth
 //! optional property macro
 #define OE_OPTION(TYPE, NAME) \
     private: \
-    osgEarth::optional< TYPE > _ ## NAME ; \
+      osgEarth::optional< TYPE > _ ## NAME ; \
+      mutable std::vector<std::function<void(const TYPE&)>> _ ## NAME ## _listeners; \
     public: \
-    osgEarth::optional< TYPE >& NAME () { return _ ## NAME; } \
-    const osgEarth::optional< TYPE >& NAME () const { return _ ## NAME; }
+      osgEarth::optional< TYPE >& NAME () { return _ ## NAME; } \
+      const osgEarth::optional< TYPE >& NAME () const { return _ ## NAME; } \
+      void NAME ## Changed (std::function<void(const TYPE&)> f) const { \
+        _ ## NAME ## _listeners.push_back(f); } \
+      void set_ ## NAME (const TYPE& value) { \
+        _ ## NAME = value; \
+        for(auto& notify : _ ## NAME ## _listeners) notify(value); }
 
 //! ref_ptr property macro
 #define OE_OPTION_REFPTR(TYPE, NAME) \
@@ -697,8 +703,8 @@ namespace osgEarth
     std::vector< TYPE >& NAME () { return _ ## NAME; } \
     const std::vector< TYPE >& NAME () const { return _ ## NAME; }
 
-#define OE_PROPERTY_IMPL(CLASS, TYPE, FUNC, OPTION) \
-    void CLASS ::set ## FUNC (const TYPE & value) { options(). OPTION () = value; }\
+#define OE_OPTION_IMPL(CLASS, TYPE, FUNC, OPTION) \
+    void CLASS ::set ## FUNC (const TYPE & value) { options(). set_ ## OPTION (value); }\
     const TYPE & CLASS ::get ## FUNC () const { return options(). OPTION ().get(); }
 
 //! property macro

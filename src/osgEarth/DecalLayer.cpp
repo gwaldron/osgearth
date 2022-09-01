@@ -140,7 +140,7 @@ DecalImageLayer::createImageImplementation(
     osg::ref_ptr<osg::Image> output = new osg::Image();
     output->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
     output->setInternalTextureFormat(GL_RGBA8);
-    ::memset(output->data(), 0, output->getTotalSizeInBytes()); // prob not necessary
+    //::memset(output->data(), 0, output->getTotalSizeInBytes()); // prob not necessary
 
     // Canvas reader with the appropriate scale/bias matrix
     ImageUtils::PixelReader readCanvas(canvas.getImage());
@@ -154,20 +154,17 @@ DecalImageLayer::createImageImplementation(
     osg::Vec4 src, dst, out;
     float srcRGB, dstRGB, srcAlpha, dstAlpha;
 
-    // start by copying the canvas to the output.
-    for (int t = 0; t < output->t(); ++t)
-    {
-        double v = (double)t / (double)(output->t() - 1);
-        for (int s = 0; s < output->s(); ++s)
+    // Start by copying the canvas to the output. Use a scale/bias
+    // since the canvas might be larger (lower resolution) than the
+    // tile we are building.
+    ImageUtils::ImageIterator iter(writeOutput);
+    iter.forEachPixel([&]()
         {
-            double u = (double)s / (double)(output->s() - 1);
-
-            double cu = u * csb(0, 0) + csb(3, 0);
-            double cv = v * csb(1, 1) + csb(3, 1);
+            double cu = iter.u() * csb(0, 0) + csb(3, 0);
+            double cv = iter.v() * csb(1, 1) + csb(3, 1);
             readCanvas(dst, cu, cv);
-            writeOutput(dst, s, t);
-        }
-    }
+            writeOutput(dst, iter.s(), iter.t());
+        });
 
     // for each decal...
     for (unsigned d = 0; d < decals.size(); ++d)
@@ -186,6 +183,7 @@ DecalImageLayer::createImageImplementation(
 
             double in_v = (out_y - decalExtent.yMin()) / decalExtent.height();
 
+            // early out if we're outside the decal's extent
             if (in_v < 0.0 || in_v > 1.0)
                 continue;
 
@@ -204,6 +202,7 @@ DecalImageLayer::createImageImplementation(
 
                 double in_u = (out_x - decalExtent.xMin()) / decalExtent.width();
 
+                // early out if we're outside the decal's extent
                 if (in_u < 0.0 || in_u > 1.0)
                     continue;
 
@@ -217,6 +216,7 @@ DecalImageLayer::createImageImplementation(
                 srcAlpha = get_blend(_srcAlpha, src, dst);
                 dstAlpha = get_blend(_dstAlpha, src, dst);
 
+                // perform the blending based on the blend equation
                 if (_rgbEquation == GL_FUNC_ADD)
                 {
                     out.r() = src.r()*srcRGB + dst.r()*dstRGB;
@@ -249,6 +249,7 @@ DecalImageLayer::createImageImplementation(
                     out.a() = std::min(src.a()*srcAlpha, dst.a()*dstAlpha);
                 }
 
+                // done, clamp and write.
                 out.r() = clamp(out.r(), 0.0f, 1.0f);
                 out.g() = clamp(out.g(), 0.0f, 1.0f);
                 out.b() = clamp(out.b(), 0.0f, 1.0f);
@@ -288,9 +289,7 @@ DecalImageLayer::addDecal(const std::string& id, const GeoExtent& extent, const 
     _decalIndex[id] = --_decalList.end();
 
     // Update the data extents
-    {
-        addDataExtent(getProfile()->clampAndTransformExtent(extent));
-    }
+    addDataExtent(getProfile()->clampAndTransformExtent(extent));
 
     // data changed so up the revsion.
     bumpRevision();
@@ -488,7 +487,8 @@ DecalElevationLayer::addDecal(
         channel == GL_GREEN ? 1u :
         channel == GL_BLUE  ? 2u :
         3u;
-    c = osg::minimum(c, osg::Image::computeNumComponents(image->getPixelFormat())-1u);
+
+    c = std::min(c, osg::Image::computeNumComponents(image->getPixelFormat())-1u);
 
     // scale up the values so that [0...1/2] is below ground
     // and [1/2...1] is above ground.
@@ -545,7 +545,8 @@ DecalElevationLayer::addDecal(
         channel == GL_GREEN ? 1u :
         channel == GL_BLUE  ? 2u :
         3u;
-    c = osg::maximum(c, osg::Image::computeNumComponents(image->getPixelFormat())-1u);
+
+    c = std::min(c, osg::Image::computeNumComponents(image->getPixelFormat())-1u);
 
     osg::Vec4 value;
     for(int t=0; t<read.t(); ++t)

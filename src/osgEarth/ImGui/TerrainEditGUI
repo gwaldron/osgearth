@@ -189,6 +189,7 @@ namespace osgEarth
                     {
                         readSDF(value, lm_iter.s(), lm_iter.t());
                         float dist = clamp(value.r(), 0.0f, 1.0f);
+                        dist = accel(accel(dist));
                         value.set(rugged, dense, lush, (1.0f - dist) * lifemapMix);
                         writeLifeMap(value, lm_iter.s(), lm_iter.t());
                     }

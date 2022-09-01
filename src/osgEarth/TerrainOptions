@@ -45,6 +45,8 @@ namespace osgEarth
         OE_OPTION(bool, compressNormalMaps);
         OE_OPTION(unsigned, minNormalMapLOD);
         OE_OPTION(bool, gpuTessellation);
+        OE_OPTION(float, tessellationLevel);
+        OE_OPTION(float, tessellationRange);
         OE_OPTION(bool, debug);
         OE_OPTION(int, renderBinNumber);
         OE_OPTION(unsigned, minExpiryFrames);
@@ -143,6 +145,14 @@ namespace osgEarth
         //! Whether the terrain engine will be using GPU tessellation shaders.
         void setGPUTessellation(const bool& value);
         const bool& getGPUTessellation() const;
+
+        //! GPU tessellation level
+        void setTessellationLevel(const float& value);
+        const float& getTessellationLevel() const;
+
+        //! Maximum range in meters to apply GPU tessellation
+        void setTessellationRange(const float& value);
+        const float& getTessellationRange() const;
 
         //! Whether to activate debugging mode
         void setDebug(const bool& value);

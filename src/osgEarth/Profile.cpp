@@ -565,14 +565,12 @@ Profile::isHorizEquivalentTo( const Profile* rhs ) const
 void
 Profile::getTileDimensions(unsigned int lod, double& out_width, double& out_height) const
 {
-    out_width  = (_extent.xMax() - _extent.xMin()) / (double)_numTilesWideAtLod0;
-    out_height = (_extent.yMax() - _extent.yMin()) / (double)_numTilesHighAtLod0;
+    out_width  = _extent.width() / (double)_numTilesWideAtLod0;
+    out_height = _extent.height() / (double)_numTilesHighAtLod0;
 
-    for (unsigned int i = 0; i < lod; ++i)
-    {
-        out_width /= 2.0;
-        out_height /= 2.0;
-    }
+    double factor = double(1u << lod);
+    out_width /= (double)factor;
+    out_height /= (double)factor;
 }
 
 void
@@ -581,11 +579,9 @@ Profile::getNumTiles(unsigned int lod, unsigned int& out_tiles_wide, unsigned in
     out_tiles_wide = _numTilesWideAtLod0;
     out_tiles_high = _numTilesHighAtLod0;
 
-    for (unsigned int i = 0; i < lod; ++i)
-    {
-        out_tiles_wide *= 2;
-        out_tiles_high *= 2;
-    }
+    double factor = double(1u << lod);
+    out_tiles_wide *= factor;
+    out_tiles_high *= factor;
 }
 
 unsigned int

@@ -461,74 +461,81 @@ NormalMapGenerator::createNormalMap(
 
     // Generate the normal map directly from the heightfield
     Distance res((float)key.getResolution(centerTexture->getImage()->s()).second, key.getProfile()->getSRS()->getUnits());
-    float dx = res.asDistance(Units::METERS, 0.0);
 
-    const osg::HeightField* centerHF = centerTexture->getHeightField();
-    const osg::HeightField* westHF = westTexture ? westTexture->getHeightField() : nullptr;
-    const osg::HeightField* eastHF = eastTexture ? eastTexture->getHeightField() : nullptr;;
-    const osg::HeightField* southHF = southTexture ? southTexture->getHeightField() : nullptr;;
-    const osg::HeightField* northHF = northTexture ? northTexture->getHeightField() : nullptr;;
+    GeoHeightField centerHF(centerTexture->getHeightField(), centerTexture->getExtent());
+    GeoHeightField westHF(westTexture->getHeightField(), westTexture->getExtent());
+    GeoHeightField eastHF(eastTexture->getHeightField(), eastTexture->getExtent());
+    GeoHeightField northHF(northTexture->getHeightField(), northTexture->getExtent());
+    GeoHeightField southHF(southTexture->getHeightField(), southTexture->getExtent());
 
-    for (unsigned int r = 0; r < centerHF->getNumRows(); ++r)
+    double dx = centerHF.getXInterval();
+    double dy = centerHF.getYInterval();
+
+    for (unsigned int r = 0; r < centerHF.getHeightField()->getNumRows(); ++r)
     {
-        for (unsigned int c = 0; c < centerHF->getNumColumns(); ++c)
+        double y_or_lat = ex.yMin() + dy * (double)r;
+
+        for (unsigned int c = 0; c < centerHF.getHeightField()->getNumColumns(); ++c)
         {
-            osg::Vec3 west(-dx, 0.0f, 0.0f);
-            osg::Vec3 east(dx, 0.0f, 0.0f);
-            osg::Vec3 north(0.0f, dx, 0.0f);
-            osg::Vec3 south(0.0f, -dx, 0.0f);
+            double x = ex.xMin() + dx * (double)c;
+
+            double pixelResolution = centerTexture->getResolution(c, r);
+            res.set(pixelResolution, res.getUnits());
+
+            double offsetX = res.asDistance(Units::METERS, y_or_lat);
+            double offsetY = res.asDistance(Units::METERS, 0.0);
+
+            osg::Vec3 west(-offsetX, 0.0f, 0.0f);
+            osg::Vec3 east(offsetX, 0.0f, 0.0f);
+            osg::Vec3 north(0.0f, offsetY, 0.0f);
+            osg::Vec3 south(0.0f, -offsetY, 0.0f);
+
+            osg::Vec3d westSample(x - pixelResolution, y_or_lat, 0.0);
+            osg::Vec3d eastSample(x + pixelResolution, y_or_lat, 0.0);
+            osg::Vec3d northSample(x, y_or_lat + pixelResolution, 0.0);
+            osg::Vec3d southSample(x, y_or_lat - pixelResolution, 0.0);
 
             // West
-            if (c != 0)
-            {               
-                west.z() = centerHF->getHeight(c - 1, r);
-            }
-            else
+            if (centerHF.getExtent().contains(westSample))
             {
-                if (westHF)
-                {
-                    west.z() = westHF->getHeight(westHF->getNumColumns() -2, r);
-                }
+                west.z() = centerHF.getElevation(westSample.x(), westSample.y());
             }
-            
-            // East
-            if (c < centerHF->getNumColumns() - 1)
+            else if (westHF.getExtent().contains(westSample))
             {
-                east.z() = centerHF->getHeight(c + 1 , r);
-            }
-            else
-            {
-                if (eastHF)
-                {
-                    east.z() = eastHF->getHeight(1, r);
-                }                
+                west.z() = westHF.getElevation(westSample.x(), westSample.y());
             }
 
-            // South
-            if (r != 0)
+            // East
+            if (centerHF.getExtent().contains(eastSample))
             {
-                south.z() = centerHF->getHeight(c, r-1);
+                east.z() = centerHF.getElevation(eastSample.x(), eastSample.y());
             }
-            else
+            else if (eastHF.getExtent().contains(eastSample))
             {
-                if (southHF)
-                {
-                    south.z() = southHF->getHeight(c, southHF->getNumRows() - 2);
-                }
+                east.z() = eastHF.getElevation(eastSample.x(), eastSample.y());
             }
 
             // North
-            if (r < centerHF->getNumRows() - 1)
+            if (centerHF.getExtent().contains(northSample))
             {
-                north.z() = centerHF->getHeight(c, r + 1);
+                north.z() = centerHF.getElevation(northSample.x(), northSample.y());
             }
-            else
+            else if (northHF.getExtent().contains(northSample))
             {
-                if (northHF)
-                {
-                    north.z() = northHF->getHeight(c, 1);
-                }
+                north.z() = northHF.getElevation(northSample.x(), northSample.y());
             }
+
+            // South
+            if (centerHF.getExtent().contains(southSample))
+            {
+                south.z() = centerHF.getElevation(southSample.x(), southSample.y());
+            }
+            else if (southHF.getExtent().contains(southSample))
+            {
+                south.z() = southHF.getElevation(southSample.x(), southSample.y());
+            }
+
+
 
             osg::Vec3 normal = (east - west) ^ (north - south);
             normal.normalize();

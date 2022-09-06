@@ -931,8 +931,13 @@ VegetationLayer::checkForNewAssets() const
         return result;
     };
 
-    auto arena = JobArena::get("oe.veg");
-    _newAssets = Job(arena).dispatch<Assets>(loadNewAssets);
+    // custom thread pool for debugging
+    //auto arena = JobArena::get("oe.veg");
+    //_newAssets = Job(arena).dispatch<Assets>(loadNewAssets);
+
+    Job job;
+    job.setName("VegetationLayer asset loader");
+    _newAssets = job.dispatch<Assets>(loadNewAssets);
 
     return true;
 }
@@ -1045,16 +1050,9 @@ VegetationLayer::getAssetPlacements(
     osg::Matrix lifemap_sb;
     if (getLifeMapLayer())
     {
-#if 0
-        TileKey bestKey = getLifeMapLayer()->getBestAvailableTileKey(key);
-        lifemap = getLifeMapLayer()->createImage(bestKey, progress);
-        key.getExtent().createScaleBias(bestKey.getExtent(), lifemap_sb);
-#endif
-
-        lifemap = getLifeMapLayer()->createImage(key, progress);
-        key.getExtent().createScaleBias(lifemap.getExtent(), lifemap_sb);
-
-#if 0
+        // Cannot use getBestAvailableKey here because lifemap might use
+        // a post-layer for dynamic terrain, and post-layers do not yet
+        // publish dataextents to their hosts
         for (TileKey q_key = key;
             q_key.valid() && !lifemap.valid();
             q_key.makeParent())
@@ -1065,7 +1063,6 @@ VegetationLayer::getAssetPlacements(
                 key.getExtent().createScaleBias(q_key.getExtent(), lifemap_sb);
             }
         }
-#endif
     }
 
     // Load a biome map raster:
@@ -1077,19 +1074,6 @@ VegetationLayer::getAssetPlacements(
         biomemap = getBiomeLayer()->createImage(bestKey, progress);
         key.getExtent().createScaleBias(bestKey.getExtent(), biomemap_sb);
         biomemap.getReader().setBilinear(false);
-#if 0
-        for (TileKey q_key = key;
-            q_key.valid() && !biomemap.valid();
-            q_key.makeParent())
-        {
-            biomemap = getBiomeLayer()->createImage(q_key, progress);
-            if (biomemap.valid())
-            {
-                key.getExtent().createScaleBias(q_key.getExtent(), biomemap_sb);
-                biomemap.getReader().setBilinear(false);
-            }
-        }
-#endif
     }
 
     // If the biome residency is not up to date, do that now

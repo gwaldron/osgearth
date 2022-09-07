@@ -314,9 +314,9 @@ struct ProgressReporter : public osgEarth::ProgressCallback
 int
 main(int argc, char** argv)
 {
-    osg::ArgumentParser args(&argc,argv);
+    osg::ArgumentParser args(&argc, argv);
 
-    if ( argc == 1 )
+    if (argc == 1)
         return usage(argv);
 
     osgDB::readCommandLine(args);
@@ -335,7 +335,7 @@ main(int argc, char** argv)
         dbo->setOptionString(str);
     }
 
-    typedef std::unordered_map<std::string,std::string> KeyValue;
+    typedef std::unordered_map<std::string, std::string> KeyValue;
     std::string key, value;
 
     // There are two paths. Either the user defines a source layer on
@@ -402,7 +402,7 @@ main(int argc, char** argv)
     // Open the input layer:
     input->setReadOptions(dbo.get());
     Status inputStatus = input->open();
-    if ( inputStatus.isError() )
+    if (inputStatus.isError())
     {
         OE_WARN << LC << "Error initializing input: " << inputStatus.message() << std::endl;
         return -1;
@@ -430,10 +430,10 @@ main(int argc, char** argv)
     std::string profileString;
     bool isSameProfile = true;
 
-    if ( args.read("--profile", profileString) )
+    if (args.read("--profile", profileString))
     {
         outputProfile = Profile::create(profileString);
-        if ( !outputProfile.valid() || !outputProfile->isOK() )
+        if (!outputProfile.valid() || !outputProfile->isOK())
         {
             OE_WARN << LC << "Output profile is not recognized" << std::endl;
             return -1;
@@ -447,7 +447,7 @@ main(int argc, char** argv)
 
     // open the output tile source:
     osg::ref_ptr<TileLayer> output = dynamic_cast<TileLayer*>(Layer::create(ConfigOptions(outConf)));
-    if ( !output.valid() )
+    if (!output.valid())
     {
         OE_WARN << LC << "Failed to create output layer" << std::endl;
         return -1;
@@ -459,25 +459,6 @@ main(int argc, char** argv)
     {
         OE_WARN << LC << "Error initializing output: " << outputStatus.message() << std::endl;
         return -1;
-    }
-
-    // Transfomr and copy over the data extents to the output datasource.
-    DataExtentList inputExtents;
-    input->getDataExtents(inputExtents);
-    DataExtentList outputExtents;
-    for (DataExtentList::const_iterator itr = inputExtents.begin(); itr != inputExtents.end(); ++itr)
-    {
-        // Convert the data extent to the profile that is actually used by the output tile source
-        const DataExtent& inputExtent = *itr;
-        GeoExtent outputExtent = outputProfile->clampAndTransformExtent(inputExtent);
-        unsigned int minLevel = 0;
-        unsigned int maxLevel = outputProfile->getEquivalentLOD(input->getProfile(), inputExtent.maxLevel().get());
-        DataExtent result(outputExtent, minLevel, maxLevel);
-        outputExtents.push_back(result);
-    }
-    if (!outputExtents.empty())
-    {
-        output->setDataExtents(outputExtents);
     }
 
     // Dump out some stuff...
@@ -496,7 +477,7 @@ main(int argc, char** argv)
     if (args.read("--threads", numThreads))
     {
         MultithreadedTileVisitor* mtv = new MultithreadedTileVisitor();
-        mtv->setNumThreads( numThreads < 1 ? 1 : numThreads );
+        mtv->setNumThreads(numThreads < 1 ? 1 : numThreads);
         visitor = mtv;
     }
     else
@@ -525,13 +506,12 @@ main(int argc, char** argv)
     }
 
     // set the manual extents, if specified:
-    bool userSetExtents = false;
     double minlat, minlon, maxlat, maxlon;
-    while( args.read("--extents", minlat, minlon, maxlat, maxlon) )
+    GeoExtent userExtent;
+    while (args.read("--extents", minlat, minlon, maxlat, maxlon))
     {
-        GeoExtent extent(SpatialReference::get("wgs84"), minlon, minlat, maxlon, maxlat);
-        visitor->addExtentToVisit( extent );
-        userSetExtents = true;
+        userExtent = GeoExtent(SpatialReference::get("wgs84"), minlon, minlat, maxlon, maxlat);
+        visitor->addExtentToVisit(userExtent);
     }
 
     // Read in an index shapefile to drive where to tile
@@ -543,7 +523,7 @@ main(int argc, char** argv)
         indexFeatures->setURL(index);
         if (indexFeatures->open().isError())
         {
-            OE_WARN <<  "Failed to open index " << index << ": " << indexFeatures->getStatus().toString() << std::endl;
+            OE_WARN << "Failed to open index " << index << ": " << indexFeatures->getStatus().toString() << std::endl;
             return -1;
         }
 
@@ -567,35 +547,80 @@ main(int argc, char** argv)
     bool maxLevelSet = args.read("--max-level", maxLevel);
 
     // figure out the max source level:
-    if ( !minLevelSet || !maxLevelSet )
+    if (!minLevelSet || !maxLevelSet)
     {
         DataExtentList dataExtents;
         input->getDataExtents(dataExtents);
-        for(auto& de : dataExtents)
+        for (auto& de : dataExtents)
         {
-            if ( !maxLevelSet && de.maxLevel().isSet() && de.maxLevel().get() > maxLevel )
+            if (!maxLevelSet && de.maxLevel().isSet() && de.maxLevel().get() > maxLevel)
                 maxLevel = de.maxLevel().get();
 
-            if ( !minLevelSet && de.minLevel().isSet() && de.minLevel().get() < minLevel )
+            if (!minLevelSet && de.minLevel().isSet() && de.minLevel().get() < minLevel)
                 minLevel = de.minLevel().get();
 
-            if (userSetExtents == false)
+            if (userExtent.isInvalid())
             {
                 visitor->addExtentToVisit(de);
             }
         }
     }
 
-    if ( minLevel < ~0 )
+    if (minLevel < ~0)
     {
-        visitor->setMinLevel( minLevel );
+        visitor->setMinLevel(minLevel);
     }
 
-    if ( maxLevel > 0 )
+    if (maxLevel > 0)
     {
-        maxLevel = outputProfile->getEquivalentLOD( input->getProfile(), maxLevel );
-        visitor->setMaxLevel( maxLevel );
+        maxLevel = outputProfile->getEquivalentLOD(input->getProfile(), maxLevel);
+        visitor->setMaxLevel(maxLevel);
         OE_NOTICE << LC << "Calculated max level = " << maxLevel << std::endl;
+    }
+
+    // If we've not added any extents to visit just add the entire input extent
+    if (visitor->getExtentsToVisit().empty())
+    {
+        visitor->addExtentToVisit(input->getProfile()->getExtent());
+    }
+
+    DataExtentList outputExtents;
+    if (userExtent.isInvalid())
+    {
+        // Transform and copy over the data extents to the output datasource.
+        DataExtentList inputExtents;
+        input->getDataExtents(inputExtents);
+
+        for (DataExtentList::const_iterator itr = inputExtents.begin(); itr != inputExtents.end(); ++itr)
+        {
+            // Convert the data extent to the profile that is actually used by the output tile source
+            const DataExtent& inputExtent = *itr;
+            GeoExtent outputExtent = outputProfile->clampAndTransformExtent(inputExtent);
+            DataExtent result(outputExtent, 0, outputProfile->getEquivalentLOD(input->getProfile(), inputExtent.maxLevel().get()));
+            outputExtents.push_back(result);
+        }
+    }
+    else
+    {
+        // Use the user set extents
+        GeoExtent outputExtent = outputProfile->clampAndTransformExtent(userExtent);
+        DataExtent result(outputExtent, outputProfile->getEquivalentLOD(input->getProfile(), minLevel), outputProfile->getEquivalentLOD(input->getProfile(), maxLevel));
+        outputExtents.push_back(result);
+    }
+
+    if (outputExtents.empty())
+    {
+        // The input has no data extents and the user didn't specify an extent, so use the entire output profile's extent
+        DataExtent result(outputProfile->getExtent(),
+                          outputProfile->getEquivalentLOD(input->getProfile(), minLevel),
+                          outputProfile->getEquivalentLOD(input->getProfile(), maxLevel));
+        outputExtents.push_back(result);
+    }
+
+
+    if (!outputExtents.empty())
+    {
+        output->setDataExtents(outputExtents);
     }
 
     // Ready!!!

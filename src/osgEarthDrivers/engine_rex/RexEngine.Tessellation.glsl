@@ -25,7 +25,7 @@ void oe_rex_TCS()
 {
     if (gl_InvocationID == 0)
     {
-#if 0
+#if 1
         // iterator backward so we end up loading vertex 0
         float d[3];
         vec3 v[3];
@@ -33,8 +33,7 @@ void oe_rex_TCS()
         {
             VP_LoadVertex(i);
             v[i] = (gl_ModelViewMatrix * (vp_Vertex + vec4(vp_Normal * oe_terrain_getElevation(), 0.0))).xyz;
-            d[i] = 1.0 - texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st).g;
-            d[i] = oe_terrain_tess * d[i] * d[i] * d[i];
+            d[i] = oe_terrain_tess;
         }
 
         float max_dist = oe_terrain_tess_range;

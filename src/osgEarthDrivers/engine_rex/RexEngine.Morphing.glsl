@@ -6,14 +6,14 @@
 #pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY)
 #pragma import_defines(OE_TERRAIN_RENDER_ELEVATION)
 #pragma import_defines(OE_IS_DEPTH_CAMERA)
+#pragma import_defines(OE_TILE_SIZE)
 
 out vec3 vp_Normal;
 out vec4 oe_layer_tilec;
 out float oe_rex_morphFactor;
 flat out int oe_terrain_vertexMarker;
 
-uniform vec2  oe_tile_morph;
-uniform float oe_tile_size;
+uniform vec2 oe_tile_morph;
 
 uniform vec2 oe_tile_elevTexelCoeff;
 
@@ -76,8 +76,8 @@ void oe_rex_morph(inout vec4 vertexModel)
         vec4 neighborVertexModel = vec4(gl_MultiTexCoord1.xyz, 1.0);
         vec3 neighborNormal = gl_MultiTexCoord2.xyz;
 
-        float halfSize        = (0.5*oe_tile_size)-0.5;
-        float twoOverHalfSize = 2.0/(oe_tile_size-1.0);
+        const float halfSize = (0.5*OE_TILE_SIZE)-0.5;
+        const float twoOverHalfSize = 2.0/(OE_TILE_SIZE-1.0);
         // Either 0 if point should not be morphed (in (x, y)), or the
         // delta to the neighbor point.
         vec2 fractionalPart = fract(oe_layer_tilec.st * halfSize) * twoOverHalfSize;

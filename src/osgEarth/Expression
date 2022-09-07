@@ -25,6 +25,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
+#include <stack>
 
 namespace osgEarth
 {    

@@ -931,10 +931,6 @@ VegetationLayer::checkForNewAssets() const
         return result;
     };
 
-    // custom thread pool for debugging
-    //auto arena = JobArena::get("oe.veg");
-    //_newAssets = Job(arena).dispatch<Assets>(loadNewAssets);
-
     Job job;
     job.setName("VegetationLayer asset loader");
     _newAssets = job.dispatch<Assets>(loadNewAssets);
@@ -993,8 +989,9 @@ VegetationLayer::createDrawableAsync(
         return layer->createDrawable(key, group, tile_bbox, p.get());
     };
 
-    auto arena = JobArena::get("oe.veg");
-    return Job(arena).dispatch<osg::ref_ptr<osg::Drawable>>(function);
+    Job job;
+    job.setName("Vegetation create drawable");
+    return job.dispatch<osg::ref_ptr<osg::Drawable>>(function);
 }
 
 
@@ -1053,14 +1050,14 @@ VegetationLayer::getAssetPlacements(
         // Cannot use getBestAvailableKey here because lifemap might use
         // a post-layer for dynamic terrain, and post-layers do not yet
         // publish dataextents to their hosts
-        for (TileKey q_key = key;
-            q_key.valid() && !lifemap.valid();
-            q_key.makeParent())
+        for (TileKey bestKey = key;
+            bestKey.valid() && !lifemap.valid();
+            bestKey.makeParent())
         {
-            lifemap = getLifeMapLayer()->createImage(q_key, progress);
+            lifemap = getLifeMapLayer()->createImage(bestKey, progress);
             if (lifemap.valid())
             {
-                key.getExtent().createScaleBias(q_key.getExtent(), lifemap_sb);
+                key.getExtent().createScaleBias(lifemap.getExtent(), lifemap_sb);
             }
         }
     }
@@ -1072,7 +1069,7 @@ VegetationLayer::getAssetPlacements(
     {
         TileKey bestKey = getBiomeLayer()->getBestAvailableTileKey(key);
         biomemap = getBiomeLayer()->createImage(bestKey, progress);
-        key.getExtent().createScaleBias(bestKey.getExtent(), biomemap_sb);
+        key.getExtent().createScaleBias(biomemap.getExtent(), biomemap_sb);
         biomemap.getReader().setBilinear(false);
     }
 
@@ -1220,8 +1217,8 @@ VegetationLayer::getAssetPlacements(
             density = lifemap_value[LIFEMAP_DENSE];
             lush = lifemap_value[LIFEMAP_LUSH];
         }
-        if (density < 0.01f)
-            continue;
+        //if (density < 0.01f)
+        //    continue;
 
         auto& assetInstances = iter->second;
 
@@ -1253,16 +1250,6 @@ VegetationLayer::getAssetPlacements(
                 ++assetIndex);
         }
         auto& instance = assetInstances[assetIndices[assetIndex]];
-        
-#if 0
-        int assetIndex = clamp(
-            (int)(lush*(float)assetInstances.size()),
-            0,
-            (int)assetInstances.size() - 1);
-
-        auto& instance = assetInstances[assetIndex];
-#endif
-
         auto& asset = instance.residentAsset();
 
         // if there's no geometry... bye
@@ -1295,6 +1282,7 @@ VegetationLayer::getAssetPlacements(
         // apply instance-specific density adjustment:
         density *= instance.coverage();
 
+#if 0
         // use randomness to apply a density threshold:
         if (noise[N_SMOOTH] > density)
             continue;
@@ -1311,6 +1299,7 @@ VegetationLayer::getAssetPlacements(
                 edge_scale = 1.0f - ((noise[N_SMOOTH] - edge_threshold) / (1.0f - edge_threshold));
             scale *= edge_scale;
         }
+#endif
 
         // tile-local coordinates of the position:
         local.set(
@@ -1337,7 +1326,8 @@ VegetationLayer::getAssetPlacements(
 
             // adjust collision radius based on density.
             // i.e., denser areas allow vegetation to be closer.
-            double search_radius = mix(radius*3.0f, radius*0.1f, density) * (1.0 - overlap);
+            //double search_radius = mix(radius*3.0f, radius*0.1f, density) * (1.0 - overlap);
+            double search_radius = radius * (1.0 - overlap);
             double search_radius_2 = search_radius * search_radius;
 
             bool collision = false;
@@ -1380,10 +1370,34 @@ VegetationLayer::getAssetPlacements(
             p.scale() = scale;
             p.rotation() = rotation;
             p.asset() = asset;
+            p.density() = density;
 
             result.emplace_back(std::move(p));
         }
     }
+
+    // Next, go through and remove assets based on the density 
+    // threshold. We have to do this after the fact so that
+    // lifemap changes don't change existing assets (due to the
+    // collision rtree).
+    int numResults = result.size();
+    for(int i=0; i<numResults; ++i)
+    {
+        Placement& p = result[i];
+
+        // sample the noise texture at this (u,v)
+        //readNoise(noise, p.uv().x(), p.uv().y());
+        
+        if (rand_float_01(gen) > p.density())
+        {
+            result[i] = std::move(result[numResults - 1]);
+            map_points[i] = std::move(map_points[numResults - 1]);
+            --numResults;
+            --i;
+        }
+    }
+    result.resize(numResults);
+    map_points.resize(numResults);
 
     // clamp everything to the terrain
     map->getElevationPool()->sampleMapCoords(

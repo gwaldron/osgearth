@@ -157,6 +157,9 @@ namespace osgEarth { namespace Procedural
 
             //! Pointer to asset model record
             OE_PROPERTY(ResidentModelAsset::Ptr, asset);
+
+            //! Density of the LifeMap at this location
+            OE_PROPERTY(float, density);
         };
 
         //! Gets all the asset placement information for a given

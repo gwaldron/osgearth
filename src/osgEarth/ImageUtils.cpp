@@ -2260,6 +2260,8 @@ namespace {
 void
 ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, int m) const
 {
+    OE_SOFT_ASSERT(_image != nullptr);
+
     if (!_bilinear)
     {
         // NN sample with clamp-to-edge from mesa in s_texfilter.c
@@ -2377,6 +2379,8 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, in
 void
 ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, int m) const
 {
+    OE_SOFT_ASSERT(_image != nullptr);
+
     if (!_bilinear)
     {
         // NN sample with clamp-to-edge from mesa in s_texfilter.c

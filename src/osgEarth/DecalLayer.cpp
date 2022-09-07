@@ -140,12 +140,6 @@ DecalImageLayer::createImageImplementation(
     osg::ref_ptr<osg::Image> output = new osg::Image();
     output->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
     output->setInternalTextureFormat(GL_RGBA8);
-    //::memset(output->data(), 0, output->getTotalSizeInBytes()); // prob not necessary
-
-    // Canvas reader with the appropriate scale/bias matrix
-    ImageUtils::PixelReader readCanvas(canvas.getImage());
-    osg::Matrix csb;
-    key.getExtent().createScaleBias(canvas.getExtent(), csb);
 
     // Read and write from the output:
     ImageUtils::PixelWriter writeOutput(output.get());
@@ -157,14 +151,26 @@ DecalImageLayer::createImageImplementation(
     // Start by copying the canvas to the output. Use a scale/bias
     // since the canvas might be larger (lower resolution) than the
     // tile we are building.
-    ImageUtils::ImageIterator iter(writeOutput);
-    iter.forEachPixel([&]()
-        {
-            double cu = iter.u() * csb(0, 0) + csb(3, 0);
-            double cv = iter.v() * csb(1, 1) + csb(3, 1);
-            readCanvas(dst, cu, cv);
-            writeOutput(dst, iter.s(), iter.t());
-        });
+    if (canvas.valid())
+    {
+        // Canvas reader with the appropriate scale/bias matrix
+        ImageUtils::PixelReader readCanvas(canvas.getImage());
+        osg::Matrix csb;
+        key.getExtent().createScaleBias(canvas.getExtent(), csb);
+
+        ImageUtils::ImageIterator iter(writeOutput);
+        iter.forEachPixel([&]()
+            {
+                double cu = iter.u() * csb(0, 0) + csb(3, 0);
+                double cv = iter.v() * csb(1, 1) + csb(3, 1);
+                readCanvas(dst, cu, cv);
+                writeOutput(dst, iter.s(), iter.t());
+            });
+    }
+    else
+    {
+        ::memset(output->data(), 0, output->getTotalSizeInBytes());
+    }
 
     // for each decal...
     for (unsigned d = 0; d < decals.size(); ++d)

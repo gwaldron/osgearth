@@ -98,7 +98,7 @@ MaterialLoader::apply(osg::StateSet* ss)
         {
             MaterialLoader::Mangler& mangler = m.second;
             URI materialURI(mangler(filename), URIContext(_referrer));
-            OE_INFO << LC << "Looking for: " << materialURI.full() << std::endl;
+            OE_DEBUG << LC << "Looking for: " << materialURI.full() << std::endl;
             osg::ref_ptr<osg::Image> image = materialURI.getImage(_options);
             if (image.valid())
             {

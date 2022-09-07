@@ -1241,6 +1241,13 @@ VegetationLayer::getAssetPlacements(
                 assetCDF.push_back(cumulativeWeight);
             }
         }
+
+        // if there are no assets that match the lushness criteria, move on.
+        if (assetIndices.empty())
+        {
+            continue;
+        }
+
         int assetIndex = 0;
         if (assetIndices.size() > 1)
         {

@@ -173,8 +173,9 @@ LoadTileDataOperation::merge()
         _manifest.inSyncWith(map.get()) == false)
     {
         // wipe the data model, update the revisions, and try again.
-        _manifest.updateRevisions(map.get());
         OE_DEBUG << LC << "Request for tile " << tilenode->getKey().str() << " out of date and will be requeued" << std::endl;
+        _manifest.updateRevisions(map.get());
+        _tilenode->refreshLayers(_manifest);
         return false;
     }
 

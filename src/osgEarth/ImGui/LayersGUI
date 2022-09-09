@@ -47,6 +47,10 @@
 #include <osgEarth/WMS>
 #include <osgEarth/DebugImageLayer>
 
+#ifdef OSGEARTH_HAVE_MBTILES
+#include <osgEarth/MBTiles>
+#endif
+
 namespace osgEarth {
     namespace GUI
     {
@@ -463,29 +467,63 @@ namespace osgEarth {
                                     bool imagery = m.result() == pfd::button::yes;
 
                                     _mapNode->getMap()->beginUpdate();
+
                                     if (imagery)
                                     {
                                         for (auto const& name : f.result())
                                         {
-                                            GDALImageLayer* gdalImage = new GDALImageLayer;
-                                            gdalImage->setName(osgDB::getSimpleFileName(name));
-                                            gdalImage->setURL(name);
-                                            _mapNode->getMap()->addLayer(gdalImage);
+                                            std::string ext = osgDB::getLowerCaseFileExtension(name);
+                                            if (ext == "mbtiles")
+                                            {
+#ifdef OSGEARTH_HAVE_MBTILES
+                                                MBTilesImageLayer* mbtilesImage = new MBTilesImageLayer;
+                                                mbtilesImage->setName(osgDB::getSimpleFileName(name));
+                                                mbtilesImage->setURL(name);
+                                                _mapNode->getMap()->addLayer(mbtilesImage);
+#else
+                                                OE_WARN << "MBTiles driver not available" << std::endl;
+#endif
+                                            }
+                                            else
+
+                                            {
+                                                GDALImageLayer* gdalImage = new GDALImageLayer;
+                                                gdalImage->setName(osgDB::getSimpleFileName(name));
+                                                gdalImage->setURL(name);
+                                                _mapNode->getMap()->addLayer(gdalImage);
+                                            }                                            
                                         }
                                     }
                                     else
                                     {
                                         for (auto const& name : f.result())
                                         {
-                                            GDALElevationLayer* gdalElevation = new GDALElevationLayer;
-                                            gdalElevation->setName(osgDB::getSimpleFileName(name));
-                                            gdalElevation->setURL(name);
-                                            _mapNode->getMap()->addLayer(gdalElevation);
+                                            std::string ext = osgDB::getLowerCaseFileExtension(name);
+                                            if (ext == "mbtiles")
+                                            {
+#ifdef OSGEARTH_HAVE_MBTILES
+                                                MBTilesElevationLayer* mbtilesElevation = new MBTilesElevationLayer;
+                                                mbtilesElevation->setName(osgDB::getSimpleFileName(name));
+                                                mbtilesElevation->setURL(name);
+                                                _mapNode->getMap()->addLayer(mbtilesElevation);
+#else
+                                                OE_WARN << "MBTiles driver not available" << std::endl;
+#endif
+                                            }
+                                            else
+                                            {
+                                                GDALElevationLayer* gdalElevation = new GDALElevationLayer;
+                                                gdalElevation->setName(osgDB::getSimpleFileName(name));
+                                                gdalElevation->setURL(name);
+                                                _mapNode->getMap()->addLayer(gdalElevation);
+                                            }
                                         }
                                     }
                                     _mapNode->getMap()->endUpdate();
                                 }
                             }
+
+
 #endif
 
                             if (ImGui::MenuItem("TMS")) _addTMSDialog.visible = true;

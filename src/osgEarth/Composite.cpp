@@ -124,6 +124,8 @@ CompositeImageLayer::addedToMap(const Map* map)
 
     osg::ref_ptr<const Profile> profile = getProfile();
 
+    DataExtentList outputExtents;
+
     for (auto& layer : _layers)
     {
         if (layer->isOpen())
@@ -133,8 +135,6 @@ CompositeImageLayer::addedToMap(const Map* map)
             // gather extents                        
             DataExtentList inputExtents;
             layer->getDataExtents(inputExtents);
-
-            DataExtentList outputExtents;
 
             // If even one of the layers' data extents is unknown, the entire composite
             // must have unknown data extents:
@@ -155,9 +155,9 @@ CompositeImageLayer::addedToMap(const Map* map)
                     outputExtents.push_back(DataExtent(ext, minLevel, maxLevel));
                 }
             }
-            setDataExtents(outputExtents);
         }
     }
+    setDataExtents(outputExtents);
 }
 
 void
@@ -556,6 +556,8 @@ CompositeElevationLayer::addedToMap(const Map* map)
     bool dataExtentsValid = true;
     osg::ref_ptr<const Profile> profile = getProfile();
 
+    DataExtentList outputExtents;
+
     for (auto& layer : _layers)
     {
         if (layer->isOpen())
@@ -565,7 +567,6 @@ CompositeElevationLayer::addedToMap(const Map* map)
             // gather extents     
             DataExtentList inputExtents;
             layer->getDataExtents(inputExtents);
-            DataExtentList outputExtents;
 
             // If even one of the layers' data extents is unknown, the entire composite
             // must have unknown data extents:
@@ -586,9 +587,9 @@ CompositeElevationLayer::addedToMap(const Map* map)
                     outputExtents.push_back(DataExtent(ext, minLevel, maxLevel));
                 }
             }
-            setDataExtents(outputExtents);
         }
     }
+    setDataExtents(outputExtents);
 }
 
 void
@@ -825,6 +826,8 @@ CompositeLandCoverLayer::addedToMap(const Map* map)
 
     osg::ref_ptr<const Profile> profile = getProfile();
 
+    DataExtentList outputExtents;
+
     for (auto& layer : _layers)
     {
         if (layer->isOpen())
@@ -835,7 +838,6 @@ CompositeLandCoverLayer::addedToMap(const Map* map)
         // gather extents                        
         DataExtentList inputExtents;
         layer->getDataExtents(inputExtents);
-        DataExtentList outputExtents;
 
         // If even one of the layers' data extents is unknown, the entire composite
         // must have unknown data extents:
@@ -856,8 +858,9 @@ CompositeLandCoverLayer::addedToMap(const Map* map)
                 outputExtents.push_back(DataExtent(ext, minLevel, maxLevel));                
             }
         }
-        setDataExtents(outputExtents);
     }
+
+    setDataExtents(outputExtents);
 }
 
 void

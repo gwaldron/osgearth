@@ -85,6 +85,10 @@ namespace osgEarth
         //! contain a normal map.
         osg::Vec3 getNormal(double x, double y) const;
 
+        //! The packed normal at map coordinates, or (0,0,0,0) if the tile does not
+        //! contain a normal map.
+        void getPackedNormal(double x, double y, osg::Vec4& packed);
+
         //! Generates a normal map for this object.
         void generateNormalMap(const Map* map, void* workingSet, ProgressCallback* progress);
 

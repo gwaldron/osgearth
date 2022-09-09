@@ -139,6 +139,21 @@ ElevationTexture::getNormal(double x, double y) const
     return normal;
 }
 
+void
+ElevationTexture::getPackedNormal(double x, double y, osg::Vec4& packed)
+{    
+    if (_normalTex.valid())
+    {
+        double u = (x - getExtent().xMin()) / getExtent().width();
+        double v = (y - getExtent().yMin()) / getExtent().height();
+        _readNormal(packed, u, v);
+    }
+    else
+    {
+        packed.set(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+}
+
 float
 ElevationTexture::getRuggedness(double x, double y) const
 {
@@ -382,6 +397,16 @@ NormalMapGenerator::createNormalMap(
 }
 #else
 
+namespace
+{
+    inline bool fastContains(const GeoExtent& b, const osg::Vec3d& sample)
+    {
+        return
+            sample.x() >= b.xMin() && sample.x() <= b.xMax() &&
+            sample.y() >= b.yMin() && sample.y() <= b.yMax();
+    }
+}
+
 osg::Texture2D*
 NormalMapGenerator::createNormalMap(
     const TileKey& key,
@@ -420,27 +445,35 @@ NormalMapGenerator::createNormalMap(
     if (!centerTexture.valid())
         return NULL;
 
+
     TileKey westKey = key.createNeighborKey(-1, 0);
     TileKey eastKey = key.createNeighborKey(1, 0);
     TileKey northKey = key.createNeighborKey(0, -1);
     TileKey southKey = key.createNeighborKey(0, 1);
+    TileKey parentKey = key.createParentKey();
 
-    osg::ref_ptr<ElevationTexture> westTexture, eastTexture, northTexture, southTexture;
+    osg::ref_ptr<ElevationTexture> westTexture, eastTexture, northTexture, southTexture, parentTexture;
     if (westKey.valid())
     {
-        pool->getTile(westKey, true, westTexture, workingSet, progress);
+        pool->getTile(westKey, false, westTexture, workingSet, progress);
     }
     if (eastKey.valid())
     {
-        pool->getTile(eastKey, true, eastTexture, workingSet, progress);
+        pool->getTile(eastKey, false, eastTexture, workingSet, progress);
     }
     if (southKey.valid())
     {
-        pool->getTile(southKey, true, southTexture, workingSet, progress);
+        pool->getTile(southKey, false, southTexture, workingSet, progress);
     }
     if (northKey.valid())
     {
-        pool->getTile(northKey, true, northTexture, workingSet, progress);
+        pool->getTile(northKey, false, northTexture, workingSet, progress);
+    }
+
+    if (parentKey.valid())
+    {
+        // We always want a parent key, should we have the accept lower lods to true or false?
+        pool->getTile(parentKey, true, parentTexture, workingSet, progress);
     }
 
     if (progress && progress->isCanceled())
@@ -458,15 +491,39 @@ NormalMapGenerator::createNormalMap(
     normalTex->setResizeNonPowerOfTwoHint(false);
     normalTex->setMaxAnisotropy(1.0f);
     normalTex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    normalTex->setUnRefImageDataAfterApply(false);
 
     // Generate the normal map directly from the heightfield
     Distance res((float)key.getResolution(centerTexture->getImage()->s()).second, key.getProfile()->getSRS()->getUnits());
 
     GeoHeightField centerHF(centerTexture->getHeightField(), centerTexture->getExtent());
-    GeoHeightField westHF(westTexture->getHeightField(), westTexture->getExtent());
-    GeoHeightField eastHF(eastTexture->getHeightField(), eastTexture->getExtent());
-    GeoHeightField northHF(northTexture->getHeightField(), northTexture->getExtent());
-    GeoHeightField southHF(southTexture->getHeightField(), southTexture->getExtent());
+
+    GeoHeightField westHF, eastHF, northHF, southHF, parentHF;
+    if (westTexture)
+    {
+        westHF = GeoHeightField(westTexture->getHeightField(), westTexture->getExtent());
+    }
+    if (eastTexture)
+    {
+        eastHF = GeoHeightField(eastTexture->getHeightField(), eastTexture->getExtent());
+    }
+    if (southTexture)
+    {
+        southHF = GeoHeightField(southTexture->getHeightField(), southTexture->getExtent());
+    }
+    if (northTexture)
+    {
+        northHF = GeoHeightField(northTexture->getHeightField(), northTexture->getExtent());
+    }
+    if (parentTexture)
+    {
+        parentHF = GeoHeightField(parentTexture->getHeightField(), parentTexture->getExtent());
+    }
+
+    if (parentTexture)
+    {
+        parentTexture->generateNormalMap(map, ws, nullptr);
+    }
 
     double dx = centerHF.getXInterval();
     double dy = centerHF.getYInterval();
@@ -480,68 +537,103 @@ NormalMapGenerator::createNormalMap(
             double x = ex.xMin() + dx * (double)c;
 
             double pixelResolution = centerTexture->getResolution(c, r);
-            res.set(pixelResolution, res.getUnits());
 
-            double offsetX = res.asDistance(Units::METERS, y_or_lat);
-            double offsetY = res.asDistance(Units::METERS, 0.0);
-
-            osg::Vec3 west(-offsetX, 0.0f, 0.0f);
-            osg::Vec3 east(offsetX, 0.0f, 0.0f);
-            osg::Vec3 north(0.0f, offsetY, 0.0f);
-            osg::Vec3 south(0.0f, -offsetY, 0.0f);
-
-            osg::Vec3d westSample(x - pixelResolution, y_or_lat, 0.0);
-            osg::Vec3d eastSample(x + pixelResolution, y_or_lat, 0.0);
-            osg::Vec3d northSample(x, y_or_lat + pixelResolution, 0.0);
-            osg::Vec3d southSample(x, y_or_lat - pixelResolution, 0.0);
-
-            // West
-            if (centerHF.getExtent().contains(westSample))
+            if (pixelResolution == res.getValue())
             {
-                west.z() = centerHF.getElevation(westSample.x(), westSample.y());
-            }
-            else if (westHF.getExtent().contains(westSample))
-            {
-                west.z() = westHF.getElevation(westSample.x(), westSample.y());
-            }
+                res.set(pixelResolution, res.getUnits());
 
-            // East
-            if (centerHF.getExtent().contains(eastSample))
-            {
-                east.z() = centerHF.getElevation(eastSample.x(), eastSample.y());
-            }
-            else if (eastHF.getExtent().contains(eastSample))
-            {
-                east.z() = eastHF.getElevation(eastSample.x(), eastSample.y());
-            }
+                double offsetX = res.asDistance(Units::METERS, y_or_lat);
+                double offsetY = res.asDistance(Units::METERS, 0.0);
 
-            // North
-            if (centerHF.getExtent().contains(northSample))
-            {
-                north.z() = centerHF.getElevation(northSample.x(), northSample.y());
-            }
-            else if (northHF.getExtent().contains(northSample))
-            {
-                north.z() = northHF.getElevation(northSample.x(), northSample.y());
-            }
+                osg::Vec3 west(-offsetX, 0.0f, 0.0f);
+                osg::Vec3 east(offsetX, 0.0f, 0.0f);
+                osg::Vec3 north(0.0f, offsetY, 0.0f);
+                osg::Vec3 south(0.0f, -offsetY, 0.0f);
 
-            // South
-            if (centerHF.getExtent().contains(southSample))
-            {
-                south.z() = centerHF.getElevation(southSample.x(), southSample.y());
+                osg::Vec3d westSample(x - pixelResolution, y_or_lat, 0.0);
+                osg::Vec3d eastSample(x + pixelResolution, y_or_lat, 0.0);
+                osg::Vec3d northSample(x, y_or_lat + pixelResolution, 0.0);
+                osg::Vec3d southSample(x, y_or_lat - pixelResolution, 0.0);
+
+                // West
+                if (fastContains(centerHF.getExtent(), westSample))
+                {
+                    west.z() = centerHF.getElevation(westSample.x(), westSample.y());
+                }
+                else if (westTexture)
+                {
+                    west.z() = westHF.getElevation(westSample.x(), westSample.y());
+                }
+                else
+                {
+                    west.z() = parentHF.getElevation(westSample.x(), westSample.y());
+                }
+
+                // East                
+                if (fastContains(centerHF.getExtent(), eastSample))
+                {
+                    east.z() = centerHF.getElevation(eastSample.x(), eastSample.y());
+                }
+                else if (eastTexture)
+                {
+                    east.z() = eastHF.getElevation(eastSample.x(), eastSample.y());
+                }
+                else
+                {
+                    east.z() = parentHF.getElevation(eastSample.x(), eastSample.y());
+                }
+
+                // North
+                if (fastContains(centerHF.getExtent(), northSample))
+                {
+                    north.z() = centerHF.getElevation(northSample.x(), northSample.y());
+                }
+                else if (northTexture)
+                {
+                    north.z() = northHF.getElevation(northSample.x(), northSample.y());
+                }
+                else
+                {
+                    north.z() = parentHF.getElevation(northSample.x(), northSample.y());
+                }
+
+                // South
+                if (fastContains(centerHF.getExtent(), southSample))
+                {
+                    south.z() = centerHF.getElevation(southSample.x(), southSample.y());
+                }
+                else if (southTexture)
+                {
+                    south.z() = southHF.getElevation(southSample.x(), southSample.y());
+                }
+                else
+                {
+                    south.z() = parentHF.getElevation(southSample.x(), southSample.y());
+                }
+
+                osg::Vec3 normal = (east - west) ^ (north - south);
+                normal.normalize();
+                osg::Vec4 packed;
+                NormalMapGenerator::pack(normal, packed);
+                write(packed, c, r);
             }
-            else if (southHF.getExtent().contains(southSample))
+            else
             {
-                south.z() = southHF.getElevation(southSample.x(), southSample.y());
+                if (parentTexture)
+                {
+                    osg::Vec4 packed;
+                    parentTexture->getPackedNormal(x, y_or_lat, packed);
+                    write(packed, c, r);
+                }
+                else
+                {
+                    osg::Vec3 normal(1, 0, 0);
+                    normal.normalize();
+                    osg::Vec4 packed;
+                    NormalMapGenerator::pack(normal, packed);
+                    write(packed, c, r);
+                }
             }
-
-
-
-            osg::Vec3 normal = (east - west) ^ (north - south);
-            normal.normalize();
-            osg::Vec4 packed;
-            NormalMapGenerator::pack(normal, packed);
-            write(packed, c, r);
         }
     }
 

@@ -219,7 +219,7 @@ ElevationTexture::generateNormalMap(
 #undef LC
 #define LC "[NormalMapGenerator] "
 
-#if 0
+#if 1
 osg::Texture2D*
 NormalMapGenerator::createNormalMap(
     const TileKey& key,

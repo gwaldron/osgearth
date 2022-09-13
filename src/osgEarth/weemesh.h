@@ -27,11 +27,14 @@ namespace weemesh
         vert_t(value_type a, value_type b, value_type c) : _x(a), _y(b), _z(c) { }
         vert_t(value_type* ptr) : _x(ptr[0]), _y(ptr[1]), _z(ptr[2]) { }
         vert_t(const vert_t& rhs) : _x(rhs.x()), _y(rhs.y()), _z(rhs.z()) { }
-        //vert_t(const osg::Vec3d& rhs) : _x(rhs.x()), _y(rhs.y()), _z(rhs.z()) { }
         bool operator < (const vert_t& rhs) const {
             if (x() < rhs.x()) return true;
             if (x() > rhs.x()) return false;
             return y() < rhs.y();
+            // use this if we move to 3D someday
+            //if (y() < rhs.y()) return true;
+            //if (y() > rhs.y()) return false;
+            //return z() < rhs.z();
         }
         const value_type& operator[](int i) const {
             return i == 0 ? _x : i == 1 ? _y : _z;
@@ -55,16 +58,16 @@ namespace weemesh
             return x()*rhs.y() - rhs.x()*y();
         }
         vert_t normalize2d() const {
-            double len = length();
+            double len = length2d();
             return vert_t(x() / len, y() / len, z());
         }
         void set(value_type a, value_type b, value_type c) {
             _x = a, _y = b, _z = c;
         }
-        value_type length() const {
+        value_type length2d() const {
             return sqrt((_x*_x) + (_y*_y));
         }
-        value_type length2() const {
+        value_type length2d_squared() const {
             return (_x*_x) + (_y*_y);
         }
     };
@@ -78,6 +81,9 @@ namespace weemesh
         return
             equivalent(a.x(), b.x(), epsilon) &&
             equivalent(a.y(), b.y(), epsilon);
+
+        // use this if we move to 3D one day
+        // && equivalent(a.z(), b.z(), epsilon);
     }
 
 
@@ -626,11 +632,34 @@ namespace weemesh
             bool m2 = (mesh._markers[tri.i2] & marker_mask) != 0;
 
             if (m0 && m1)
-                _edges.emplace(edge_t(tri.i0, tri.i1));
+                _edges.emplace(tri.i0, tri.i1);
             if (m1 && m2)
-                _edges.emplace(edge_t(tri.i1, tri.i2));
+                _edges.emplace(tri.i1, tri.i2);
             if (m2 && m0)
-                _edges.emplace(edge_t(tri.i2, tri.i0));
+                _edges.emplace(tri.i2, tri.i0);
+        }
+    };
+
+    // each node paires with a vector of its neighbors, i.e. other
+    // nodes with which is shares an edge.
+    struct neighbors_t
+    {
+        edgeset_t _edgeset;
+        std::unordered_map<int, std::vector<int>> _neighbormap;
+
+        neighbors_t(const mesh_t& mesh) :
+            _edgeset(mesh, ~0)
+        {
+            for (auto& edge : _edgeset._edges)
+            {
+                _neighbormap[edge._i0].push_back(edge._i1);
+                _neighbormap[edge._i1].push_back(edge._i0);
+            }
+        }
+
+        const std::vector<int>& operator()(int vertex_index)
+        {
+            return _neighbormap[vertex_index];
         }
     };
 

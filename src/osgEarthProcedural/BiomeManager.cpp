@@ -24,6 +24,8 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/MaterialLoader>
 #include <osgEarth/Utils>
+#include <osgEarth/weemesh.h>
+#include <osgEarth/MeshConsolidator>
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
 
@@ -300,6 +302,65 @@ namespace
         osg::ref_ptr<osg::Node> _node;
         osg::BoundingBox _modelAABB;
     };
+
+    osg::Geometry* makeDebugModel(osg::Node* node)
+    {
+        auto geom = new osg::Geometry();
+
+        float radius = node->getBound().radius();
+
+        auto out_colors = new osg::Vec4Array(osg::Array::BIND_OVERALL);
+        out_colors->push_back(osg::Vec4(1, 0, 0, 1));
+        geom->setColorArray(out_colors);
+
+        auto out_verts = new osg::Vec3Array();
+        geom->setVertexArray(out_verts);
+
+        auto out_indices = new osg::DrawElementsUShort(GL_TRIANGLES);
+        geom->addPrimitiveSet(out_indices);
+
+        auto geom_functor = [&out_verts, &out_indices, radius](
+            osg::Geometry& geom,
+            const osg::Matrix& local2model)
+        {
+            auto verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
+            OE_SOFT_ASSERT_AND_RETURN(verts, void(), "NO VERTS");
+
+            auto normals = dynamic_cast<osg::Vec3Array*>(geom.getNormalArray());
+            OE_SOFT_ASSERT_AND_RETURN(normals, void(), "NO NORMALS");
+
+            const float x = radius * 0.005f;
+            const float z = x * 7.5f;
+
+            for (int i = 0; i < verts->size(); ++i)
+            {
+                osg::Vec3 vert = (*verts)[i] * local2model;
+                osg::Vec3 normal = osg::Matrix::transform3x3((*normals)[i], local2model);
+
+                osg::Quat zupToNormal;
+                zupToNormal.makeRotate(osg::Vec3(0, 0, 1), normal);
+
+                int start = out_verts->size();
+
+                out_verts->push_back(vert + zupToNormal * (osg::Vec3(-x, -x, 0)));
+                out_verts->push_back(vert + zupToNormal * (osg::Vec3(+x, +x, 0)));
+                out_verts->push_back(vert + zupToNormal * (osg::Vec3(-x, +x, 0)));
+                out_verts->push_back(vert + zupToNormal * (osg::Vec3(+x, -x, 0)));
+                out_verts->push_back(vert + zupToNormal * (osg::Vec3(0, 0, z)));
+
+                out_indices->push_back(start + 0);
+                out_indices->push_back(start + 1);
+                out_indices->push_back(start + 4);
+                out_indices->push_back(start + 2);
+                out_indices->push_back(start + 3);
+                out_indices->push_back(start + 4);
+            }
+        };
+
+        TypedNodeVisitor<osg::Geometry> visitor(geom_functor);
+        node->accept(visitor);
+        return geom;
+    }
 }
 
 void
@@ -601,11 +662,29 @@ BiomeManager::materializeNewAssets(
                     if (residentAsset->chonk() == nullptr)
                         residentAsset->chonk() = Chonk::create();
 
+#if 1
+                    // FOR DEBUGGING - ADD A CHONK THAT VISUALIZES THE NORMALS
+                    osg::ref_ptr<osg::Group> debuggroup = new osg::Group();
+                    debuggroup->addChild(residentAsset->model());
+                    debuggroup->addChild(makeDebugModel(residentAsset->model().get()));
+
+                    if (residentAsset->chonk() == nullptr)
+                        residentAsset->chonk() = Chonk::create();
+
+                    residentAsset->chonk()->add(
+                        debuggroup,
+                        getLODTransitionPixelScale(),
+                        FLT_MAX,
+                        factory);
+
+#else
+
                     residentAsset->chonk()->add(
                         residentAsset->model().get(),
                         far_pixel_scale,
                         near_pixel_scale,
                         factory);
+#endif
                 }
 
                 if (residentAsset->impostor().valid())
@@ -670,16 +749,13 @@ BiomeManager::getResidentBiomes(
     return std::move(result);
 }
 
-namespace
-{
-}
-
 void
 BiomeManager::addFlexors(
     osg::ref_ptr<osg::Node>& node,
     float stiffness,
     bool isUndergrowth)
 {
+    OE_SOFT_ASSERT_AND_RETURN(node.valid(), void(), "Invalid node");
     // note: stiffness is [0..1].
 
     osg::ComputeBoundsVisitor cb;
@@ -692,66 +768,71 @@ BiomeManager::addFlexors(
         // direction of the blade card
         auto fixNormals = [&bbox](
             osg::Geometry& geom,
-            unsigned i0, unsigned i1, unsigned i2,
-            const osg::Matrix& l2w)
+            const osg::Matrix& local2model)
         {
             auto verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
-            if (!verts) return;
+            OE_SOFT_ASSERT_AND_RETURN(verts, void());
 
             // make the proper normal array on demand:
             osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>(geom.getNormalArray());
-            if (!normals || normals->getBinding() != osg::Array::BIND_PER_VERTEX || normals->size() != verts->size())
-            {
-                normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, verts->size());
-                geom.setNormalArray(normals);
-            }
 
             // make a flexor array on demand
-            osg::Vec3Array* flexors = dynamic_cast<osg::Vec3Array*>(geom.getTexCoordArray(3));
-            if (!flexors)
+            osg::Vec3Array* flexors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, verts->size());
+            geom.setTexCoordArray(3, flexors);
+
+            if (normals)
             {
-                flexors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, verts->size());
-                geom.setTexCoordArray(3, flexors);
+                const osg::Vec3 zaxis(0, 0, 1);
+
+                for (int i = 0; i < verts->size(); ++i)
+                {
+                    osg::Vec3 vert_model = (*verts)[i] * local2model;
+                    osg::Vec3 normal_model = osg::Matrix::transform3x3((*normals)[i], local2model);
+
+                    // convert to an "upward" vector for lighting/flexing:
+                    osg::Vec3 tangent = normal_model ^ zaxis;
+                    osg::Vec3 normal = normal_model ^ tangent;
+
+                    if (normal.z() < 0.0f)
+                        normal = -normal;
+
+                    // back to local space
+                    if (!local2model.isIdentity())
+                    {
+                        osg::Matrix inv;
+                        inv.invert(local2model);
+                        normal = osg::Matrix::transform3x3(inv, normal);
+                    }
+
+                    (*normals)[i] = normal;
+
+                    (*flexors)[i] = normal * accel(vert_model.z() / bbox.zMax());
+                }
             }
-
-            osg::Vec3 v0 = (*verts)[i0] * l2w;
-            osg::Vec3 v1 = (*verts)[i1] * l2w;
-            osg::Vec3 v2 = (*verts)[i2] * l2w;
-
-            osg::Vec3 tri_normal = (v1 - v0) ^ (v2 - v0);
-            tri_normal.normalize();
-
-            const osg::Vec3 zaxis(0, 0, 1);
-            const osg::Vec3 xaxis(1, 0, 0);
-            const osg::Vec3 yaxis(0, 1, 0);
-
-            osg::Vec3 tangent = tri_normal ^ zaxis;
-            osg::Vec3 normal = tri_normal ^ tangent;
-
-            if (normal.z() < 0.0f)
-                normal = -normal;
-
-            normal.normalize();
-
-            // back to local space
-            if (!l2w.isIdentity())
+            else
             {
-                osg::Matrix w2l;
-                w2l.invert(l2w);
-                normal = osg::Matrix::transform3x3(w2l, normal);
+                // no normals, so we'll have to make some
+                normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, verts->size());
+                geom.setNormalArray(normals);
+
+                osg::Vec3 normal(0, 0, 1);
+                if (!local2model.isIdentity())
+                {
+                    osg::Matrix inv;
+                    inv.invert(local2model);
+                    normal = osg::Matrix::transform3x3(inv, normal);
+                }
+
+                for (int i = 0; i < verts->size(); ++i)
+                {
+                    osg::Vec3 vert_model = (*verts)[i] * local2model;
+                    (*normals)[i] = normal;
+                    (*flexors)[i] = normal * accel(vert_model.z() / bbox.zMax());
+                }
             }
-
-            (*normals)[i0] = normal;
-            (*normals)[i1] = normal;
-            (*normals)[i2] = normal;
-
-            (*flexors)[i0] = normal * accel(v0.z() / bbox.zMax());
-            (*flexors)[i1] = normal * accel(v1.z() / bbox.zMax());
-            (*flexors)[i2] = normal * accel(v2.z() / bbox.zMax());
-
         };
 
-        TriangleVisitor visitor(fixNormals);
+        TypedNodeVisitor<osg::Geometry> visitor(fixNormals);
         node->accept(visitor);
     }
 

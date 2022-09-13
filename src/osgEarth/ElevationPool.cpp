@@ -169,25 +169,6 @@ ElevationPool::refresh(const Map* map)
 
             index->Insert(a_min, a_max, maxLevel);
         }
-
-        // if the layer doesn't publish dataExtent, the backup plan is to make
-        // up a max level and use the layer's full extent.
-        if (dataExtents.empty())
-        {
-            unsigned maxLevel = std::min(layer->getMaxDataLevel(), 12u);
-
-            GeoExtent ext = layer->getExtent();
-            if (!ext.isValid() && layer->getProfile())
-                ext = layer->getProfile()->getExtent();
-
-            if (ext.isValid())
-            {
-                GeoExtent extentInMapSRS = map->getProfile()->clampAndTransformExtent(ext);
-                a_min[0] = extentInMapSRS.xMin(), a_min[1] = extentInMapSRS.yMin();
-                a_max[0] = extentInMapSRS.xMax(), a_max[1] = extentInMapSRS.yMax();
-                index->Insert(a_min, a_max, maxLevel);
-            }
-        }
     }
 
     _L2.clear();

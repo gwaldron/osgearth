@@ -919,12 +919,6 @@ GeoExtent::operator != ( const GeoExtent& rhs ) const
 }
 
 bool
-GeoExtent::isValid() const
-{
-    return _srs.valid() && _width >= 0.0 && _height >= 0.0;
-}
-
-bool
 GeoExtent::crossesAntimeridian() const
 {
     return _srs.valid() && _srs->isGeographic() && east() < west(); //west()+width() > 180.0;
@@ -2295,7 +2289,7 @@ GeoHeightField::valid() const
 }
 
 float
-GeoHeightField::getElevation(double x, double y) const
+GeoHeightField::getElevation(double x, double y, RasterInterpolation interp) const
 {
     if (!valid())
         return NO_DATA_VALUE;
@@ -2305,7 +2299,7 @@ GeoHeightField::getElevation(double x, double y) const
         x, y,
         _extent.xMin(), _extent.yMin(),
         _heightField->getXInterval(), _heightField->getYInterval(),
-        INTERP_BILINEAR);
+        interp);
 }
 
 bool

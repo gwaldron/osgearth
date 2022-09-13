@@ -498,14 +498,14 @@ SpatialReference::isVertEquivalentTo( const SpatialReference* rhs ) const
 bool
 SpatialReference::_isEquivalentTo( const SpatialReference* rhs, bool considerVDatum ) const
 {
+    if (this == rhs)
+        return true;
+
     if (!valid())
         return false;
 
     if (rhs == nullptr || !rhs->valid())
         return false;
-
-    if ( this == rhs )
-        return true;
 
     if (isGeographic()  != rhs->isGeographic()  ||
         isMercator()    != rhs->isMercator()    ||

@@ -287,6 +287,10 @@ namespace
                     else
                         v.uv.set((*uv3s)[0].x(), (*uv3s)[0].y());
                 }
+                else
+                {
+                    v.uv.set(0.0f, 0.0f);
+                }
 
                 if (flexers)
                 {
@@ -294,6 +298,10 @@ namespace
                         v.flex = (*flexers)[i];
                     else
                         v.flex = (*flexers)[0];
+                }
+                else
+                {
+                    v.flex.set(0, 0, 1);
                 }
 
                 v.albedo = material ? material->albedo : -1;
@@ -306,21 +314,17 @@ namespace
             }
 
             // assemble the elements set
-            for (unsigned i = 0; i < node.getNumPrimitiveSets(); ++i)
+            auto copy_indices = [this, vbo_offset](
+                osg::Geometry& geom,
+                unsigned i0, unsigned i1, unsigned i2,
+                const osg::Matrix& l2w)
             {
-                osg::DrawElements* de = dynamic_cast<osg::DrawElements*>(node.getPrimitiveSet(i));
-                if (de)
-                {
-                    for (unsigned k = 0; k < de->getNumIndices(); ++k)
-                    {
-                        int index = de->getElement(k);
-                        // by using a "model-local" offset here, we can use UShort even
-                        // if our vertex array size exceeds 65535 by storing the 
-                        // baseVertex in our DrawElements structure
-                        _result._ebo_store.push_back(vbo_offset + index);
-                    }
-                }
-            }
+                _result._ebo_store.push_back(vbo_offset + i0);
+                _result._ebo_store.push_back(vbo_offset + i1);
+                _result._ebo_store.push_back(vbo_offset + i2);
+            };
+            TriangleVisitor copy_visitor(copy_indices);
+            node.accept(copy_visitor);
 
             if (pushed) popStateSet();
         }
@@ -474,7 +478,7 @@ ChonkFactory::load(
 {
     OE_PROFILING_ZONE;
 
-    // convert all primitive sets to GL_TRIANGLES
+    // convert all primitive sets to indexed primitives
     osgUtil::Optimizer o;
     o.optimize(node, o.INDEX_MESH);
     

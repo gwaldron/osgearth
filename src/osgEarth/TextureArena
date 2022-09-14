@@ -192,6 +192,7 @@ namespace osgEarth
         mutable osg::buffered_object<GLObjects> _globjects;
 
         mutable TextureVector _textures;
+        std::unordered_map<Texture::Ptr, unsigned int> _textureIndices;
         bool _autoRelease;
         unsigned _bindingPoint;
         bool _useUBO;

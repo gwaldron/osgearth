@@ -497,12 +497,10 @@ TextureArena::find_no_lock(Texture::Ptr tex) const
     if (tex == nullptr)
         return -1;
 
-    for (int i = 0; i < _textures.size(); ++i)
+    auto itr = _textureIndices.find(tex);
+    if (itr != _textureIndices.end())
     {
-        if (_textures[i] == tex)
-        {
-            return i;
-        }
+        return itr->second;
     }
     return -1;
 }
@@ -631,6 +629,8 @@ TextureArena::add(Texture::Ptr tex)
     else
         _textures.push_back(tex);
 
+    _textureIndices[tex] = index;
+
     return index;
 }
 
@@ -687,8 +687,14 @@ TextureArena::apply(osg::State& state) const
     {
         for (Texture::Ptr& tex : _textures)
         {
-            if (tex && tex.use_count() == 1)
+            // Check for use_count() == 2.  1 for the _textures list and 1 for the _textureIndices map.
+            if (tex && tex.use_count() == 2)
             {
+                auto itr = _textureIndices.find(tex);
+                if (itr != _textureIndices.end())
+                {
+                    const_cast<TextureArena*>(this)->_textureIndices.erase(itr);
+                }
                 // TODO: remove it from the arena altogether
                 tex->releaseGLObjects(&state);
                 tex = nullptr;

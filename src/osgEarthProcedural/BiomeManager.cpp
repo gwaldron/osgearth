@@ -662,7 +662,7 @@ BiomeManager::materializeNewAssets(
                     if (residentAsset->chonk() == nullptr)
                         residentAsset->chonk() = Chonk::create();
 
-#if 1
+#if 0
                     // FOR DEBUGGING - ADD A CHONK THAT VISUALIZES THE NORMALS
                     osg::ref_ptr<osg::Group> debuggroup = new osg::Group();
                     debuggroup->addChild(residentAsset->model());

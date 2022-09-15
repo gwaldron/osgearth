@@ -693,7 +693,7 @@ TextureArena::apply(osg::State& state) const
                 auto itr = _textureIndices.find(tex);
                 if (itr != _textureIndices.end())
                 {
-                    const_cast<TextureArena*>(this)->_textureIndices.erase(itr);
+                    _textureIndices.erase(itr);
                 }
                 // TODO: remove it from the arena altogether
                 tex->releaseGLObjects(&state);

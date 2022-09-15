@@ -52,6 +52,9 @@ main(int argc, char** argv)
     viewer.setThreadingModel(viewer.SingleThreaded);
     viewer.setCameraManipulator(new EarthManipulator(arguments));
 
+    // This is normally called by Viewer::run but we are running our frame loop manually so we need to call it here.
+    viewer.setReleaseContextAtEndOfFrameHint(false);
+
     // Call this to enable ImGui rendering.
     // If you use the MapNodeHelper, call this first.
     viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);

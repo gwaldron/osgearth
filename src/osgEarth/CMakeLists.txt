@@ -848,10 +848,26 @@ set(TARGET_SRC
     ${SHADERS_CPP}
 )
 
-# MSVC 2017 and 2019 need /bigobj on debug of ExampleResources. Seemingly not required on MSVC 2022 (1930)
+# MSVC 2017 and 2019 need /bigobj on debug. Seemingly not required on MSVC 2022 (1930)
 if(MSVC AND MSVC_VERSION LESS 1930)
-    # Only set the flag on ExampleResources.cpp, and only in debug mode
-    set_source_files_properties(ExampleResources.cpp PROPERTIES COMPILE_FLAGS "$<$<CONFIG:Debug>:-bigobj>")
+    set_source_files_properties(
+        Controls.cpp
+        ExampleResources.cpp
+        FeatureModelGraph.cpp
+        FeatureModelSource.cpp
+        FeatureNode.cpp
+        GeodeticGraticule.cpp
+        MapboxGLImageLayer.cpp 
+        MGRSGraticule.cpp
+        ObjectIDPicker.cpp
+        PowerlineLayer.cpp
+        SubstituteModelFilter.cpp
+        TerrainEngineNode.cpp
+        TerrainTileModelFactory.cpp
+        TiledFeatureModelGraph.cpp
+        UTMGraticule.cpp
+        PROPERTIES COMPILE_FLAGS "$<$<CONFIG:Debug>:-bigobj>"
+    )
 endif()
 
 IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)

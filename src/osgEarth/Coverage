@@ -203,6 +203,12 @@ namespace osgEarth
             return read(s, t);
         }
 
+        bool hasDataAt(unsigned s, unsigned t) const
+        {
+            int ptr = t * _width + s;
+            return _pixels[ptr] > 0;
+        }
+
     private:
         Coverage()
         {
@@ -295,6 +301,11 @@ namespace osgEarth
                 return true;
             }
             return false;
+        }
+
+        const GeoExtent& getExtent() const
+        {
+            return _extent;
         }
 
     private:

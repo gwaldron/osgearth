@@ -24,7 +24,7 @@ CoverageLayer::SourceLayerOptions::fromConfig(const Config& conf)
 Config
 CoverageLayer::Options::getConfig() const
 {
-    Config conf = Layer::Options::getConfig();
+    Config conf = TileLayer::Options::getConfig();
     conf.set("presets", presets());
     if (_layers.empty() == false)
     {
@@ -54,9 +54,11 @@ CoverageLayer::Options::fromConfig(const Config& conf)
 Status
 CoverageLayer::openImplementation()
 {
-    Status parent = Layer::openImplementation();
+    Status parent = TileLayer::openImplementation();
     if (parent.isError())
         return parent;
+
+    DataExtentList dataExtents;
 
     for (auto& layer : options().layers())
     {
@@ -75,7 +77,14 @@ CoverageLayer::openImplementation()
 
         // Force the image source into coverage mode.
         imageLayer->setCoverage(true);
+
+        // append the component's extents to the overall extents
+        DataExtentList temp;
+        imageLayer->getDataExtents(temp);
+        dataExtents.insert(dataExtents.end(), temp.begin(), temp.end());
     }
+
+    setDataExtents(dataExtents);
 
     return Status::NoError;
 }
@@ -83,7 +92,7 @@ CoverageLayer::openImplementation()
 void
 CoverageLayer::addedToMap(const Map* map)
 {
-    Layer::addedToMap(map);
+    TileLayer::addedToMap(map);
 
     for (auto& layer : options().layers())
     {
@@ -94,7 +103,7 @@ CoverageLayer::addedToMap(const Map* map)
 void
 CoverageLayer::removedFromMap(const Map* map)
 {
-    Layer::removedFromMap(map);
+    TileLayer::removedFromMap(map);
 
     for (auto& layer : options().layers())
     {

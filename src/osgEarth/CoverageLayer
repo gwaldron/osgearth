@@ -43,7 +43,7 @@ namespace osgEarth
      *
      * This is a data-only layer. The terrain engine will not render it.
      */
-    class OSGEARTH_EXPORT CoverageLayer : public Layer
+    class OSGEARTH_EXPORT CoverageLayer : public TileLayer
     {
     public:
         struct SourceLayerOptions : public ConfigOptions
@@ -54,9 +54,9 @@ namespace osgEarth
             void fromConfig(const Config& conf);
         };
 
-        struct OSGEARTH_EXPORT Options : public Layer::Options
+        struct OSGEARTH_EXPORT Options : public TileLayer::Options
         {
-            META_LayerOptions(osgEarth, Options, Layer::Options);
+            META_LayerOptions(osgEarth, Options, TileLayer::Options);
             OE_OPTION(Config, presets);
             OE_OPTION_VECTOR(SourceLayerOptions, layers);
             virtual Config getConfig() const;
@@ -65,7 +65,7 @@ namespace osgEarth
         };
 
     public:
-        META_Layer(osgEarth, CoverageLayer, Options, Layer, Coverage);
+        META_Layer(osgEarth, CoverageLayer, Options, TileLayer, Coverage);
 
         //! Table that holds the mappings from coverage values
         //! to user data structures.
@@ -204,48 +204,44 @@ namespace osgEarth
             }
 
             bool populate(
-                    GeoCoverage<T>&output,
-                    const TileKey & key,
-                    ProgressCallback * progress)
+                GeoCoverage<T>& output,
+                const TileKey& key,
+                ProgressCallback* progress)
             {
-                if (_layer->options().layers().empty())
-                    return false;
+                auto& sources = _layer->options().layers();
 
-                // Special case of one layer - no compositing necessary
-                if (_layer->options().layers().size() == 1)
+                // trivial rejection when no sources are present
+                if (sources.empty())
                 {
-                    auto& layer = _layer->options().layers().front();
-                    if (layer.source().getLayer()->isOpen())
+                    return false;
+                }
+
+                // trivial case of a SINGLE layer, when no compositing
+                // is necessary
+                if (sources.size() == 1)
+                {
+                    auto imageLayer = sources.front().source().getLayer();
+                    if (imageLayer->isOpen())
                     {
-                        output = createCoverage(key, layer.source().getLayer(), progress);
+                        output = createCoverage(key, imageLayer, progress);
                     }
                     return output.valid();
                 }
 
-                bool fallback = false;   // whether to fall back on parent tiles for a component
+                // Compositing is necessary. Collect the best available
+                // coverage from each source, and then composite them based
+                // on their order of appearance.
+                // Iterate backwards since the last source has the highest priority.
+                // If we get a coverage with all valid values, we are finished.
+                std::vector<GeoCoverage<T>> inputs;
 
-                T value;
-
-                // Iterate backwards since the last layer has the highest priority.
-                // If we get an image with all valid values (no NO_DATA), we are finished
-                for (auto i = _layer->options().layers().rbegin();
-                    i != _layer->options().layers().rend();
-                    ++i)
+                for (auto i = sources.rbegin(); i != sources.rend(); ++i)
                 {
-                    auto& layer = *i;
-                    ImageLayer* imageLayer = layer.source().getLayer();
+                    auto imageLayer = i->source().getLayer();
 
-                    if (imageLayer == nullptr || !imageLayer->isOpen())
-                        continue;
-
-                    GeoCoverage<T> input;
-                    osg::Matrixd input_scaleBias;
-
-                    // Fetch the image for the current component. If necessary, fall back on
-                    // ancestor tilekeys until we get a result. This is necessary if we 
-                    // already have some data but there are NO DATA values that need filling.
-                    if (fallback)
+                    if (imageLayer && imageLayer->isOpen())
                     {
+                        GeoCoverage<T> input;
                         TileKey inputKey = key;
 
                         // NB: do not call mayHaveData() on the key, since we want to be sure
@@ -256,80 +252,81 @@ namespace osgEarth
                             imageLayer->isKeyInLegalRange(inputKey))
                         {
                             input = createCoverage(inputKey, imageLayer, progress);
+
                             if (!input.valid())
                                 inputKey.makeParent();
-                            else
-                                key.getExtent().createScaleBias(inputKey.getExtent(), input_scaleBias);
-                        }
-                    }
-                    else
-                    {
-                        if (imageLayer->isKeyInLegalRange(key) &&
-                            imageLayer->mayHaveData(key))
-                        {
-                            input = createCoverage(key, imageLayer, progress);
-                        }
-                    }
-
-                    if (input.valid())
-                    {
-                        // If this is the first image, just set output to input
-                        if (!output.valid())
-                        {
-                            output = std::move(input);
-                            fallback = true;
                         }
 
-                        else
+                        // if we got a valid coverage, add it to the composition list.
+                        if (input.valid())
                         {
-                            // scale and bias to read an ancestor (fallback) tile if necessary.
-                            double
-                                scale = input_scaleBias(0, 0),
-                                sbias = input_scaleBias(3, 0) * (double)input.s(),
-                                tbias = input_scaleBias(3, 1) * (double)input.t();
+                            inputs.emplace_back(std::move(input));
 
-                            // now composite this image under the previous one, 
-                            // accumulating a count of NO_DATA values along the way.
-                            T new_value;
-
-                            for (unsigned t = 0u; t < output.t(); ++t)
-                            {
-                                unsigned tsb = (unsigned)((double)t * scale + tbias);
-                                for (unsigned s = 0u; s < output.s(); ++s)
-                                {
-                                    unsigned ssb = (unsigned)((double)s * scale + sbias);
-                                    if (output.read(value, s, t) == false) // nodata, OK to overwrite:
-                                    {
-                                        if (input.read(new_value, ssb, tsb))
-                                        {
-                                            output.write(new_value, s, t);
-                                        }
-                                    }
-                                }
-
-                                if (progress && progress->isCanceled())
-                                    return false;
-                            }
-                        }
-
-                        // if the output is completely filled with valid data, we are done!
-                        if (output.nodataCount() == 0)
-                        {
-                            break;
+                            // if this coverage is fully populated, we're done
+                            if (inputs.size() > 0 && inputs.back().nodataCount() == 0)
+                                break;
                         }
                     }
                 }
 
-                // If the image is ALL nodata ... return false.
-                if (output.nodataCount() == output.s() * output.t())
+                // Got nothing? bye
+                if (inputs.empty())
                 {
-                    output = GeoCoverage<T>();
                     return false;
                 }
-                else
+
+                // Special case: we found one valid coverage - just return that.
+                if (inputs.size() == 1)
                 {
-                    return output.valid();
+                    // TODO: will the extent always be the same as the input key's extent?
+                    output = std::move(inputs.back());
+                    return true;
                 }
+
+                // Time to composite.
+                // make a new coverage with the same dimensions as our
+                // highest priority input:
+                T value;
+                osg::Matrix scalebias;
+                unsigned width = inputs.front().s();
+                unsigned height = inputs.front().t();
+
+                Coverage<T>::Ptr composite = Coverage<T>::create();
+                composite->allocate(width, height);
+
+                for(int i=0; i<inputs.size(); ++i)
+                {
+                    auto& input = inputs[i];
+
+                    key.getExtent().createScaleBias(input.getExtent(), scalebias);
+                    double scale = scalebias(0, 0);
+                    double bias_s = scalebias(3, 0);
+                    double bias_t = scalebias(3, 1);
+
+                    for (unsigned t = 0u; t < width; ++t)
+                    {
+                        unsigned input_t = (unsigned)((double)t * scale + bias_t);
+                        for (unsigned s = 0u; s < height; ++s)
+                        {
+                            unsigned input_s = (unsigned)((double)s * scale + bias_s);
+
+                            if (i == 0 || composite->hasDataAt(s, t) == false) // nodata, OK to overwrite:
+                            {
+                                if (input.read(value, input_s, input_t)) // true if has data
+                                {
+                                    composite->write(value, s, t);
+                                }
+                            }
+                        }
+                    }
+
+                    if (progress && progress->isCanceled())
+                        return false;
+                }
+
+                // done. wrap it and return it.
+                output = GeoCoverage<T>(composite, key.getExtent());
+                return true;
             }
 
         private:

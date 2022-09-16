@@ -295,6 +295,9 @@ namespace osgEarth {
                             
                         if (key.valid())
                         {
+
+                            OE_INFO << "Querying Biome in " << key.str() << std::endl;
+
                             _biomeUnderMouse = Job().dispatch<const Biome*>([&, key, p](Cancelable* c)
                                 {
                                     const Biome* result = nullptr;

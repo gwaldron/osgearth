@@ -895,7 +895,7 @@ namespace osgEarth { namespace Threading
         class OSGEARTH_EXPORT Metrics
         {
         public:
-            //! Per-arena metrics. ALWAYS check the "active" flag
+            //! Per-arena metrics.
             struct Arena
             {
                 using Ptr = std::shared_ptr<Arena>;

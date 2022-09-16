@@ -65,7 +65,8 @@ ElevationPool::ElevationPool() :
     _refreshMutex("OE.ElevPool.RM"),
     _globalLUTMutex("OE.ElevPool.GLUT"),
     _L2(64u),
-    _elevationRevision(-1)
+    _mapRevision(-1),
+    _elevationHash(0)
 {
     _L2._lru.setName("OE.ElevPool.LRU");
 }
@@ -94,17 +95,20 @@ ElevationPool::setMap(const Map* map)
     }
 }
 
-int
-ElevationPool::getElevationRevision(const Map* map) const
+size_t
+ElevationPool::getElevationHash() const
 {
     // yes, must do this every time because individual
-    // layers can "bump" their revisions (dynamic layers)
-    int revision = map ? static_cast<int>(map->getDataModelRevision()) : 0;
+    // layers can "bump" their revisions (dynamic layers)    
+    size_t hash = hash_value_unsigned(_mapRevision);
 
-    for(auto layer : _elevationLayers)
+    for (auto& layer : _elevationLayers)
         if (layer->isOpen())
-            revision += layer->getRevision();
-    return revision;
+            hash = hash_value_unsigned(hash, layer->getRevision());
+        else
+            hash = hash_value_unsigned(hash, 0u);
+
+    return hash;
 }
 
 void
@@ -139,8 +143,9 @@ ElevationPool::refresh(const Map* map)
 
     if (_index)
         delete static_cast<MaxLevelIndex*>(_index);
-
-    map->getOpenLayers(_elevationLayers);
+    
+    _mapRevision = _map->getOpenLayers(_elevationLayers);
+    _elevationHash = getElevationHash();
 
     MaxLevelIndex* index = new MaxLevelIndex();
     _index = index;
@@ -175,9 +180,7 @@ ElevationPool::refresh(const Map* map)
 
     _globalLUTMutex.write_lock();
     _globalLUT.clear();
-    _globalLUTMutex.write_unlock();
-
-    _elevationRevision = getElevationRevision(_map.get());
+    _globalLUTMutex.write_unlock();    
 }
 
 int
@@ -201,8 +204,16 @@ ElevationPool::getLOD(double x, double y) const
 
 bool
 ElevationPool::needsRefresh()
-{
-    return getElevationRevision(_map.get()) != _elevationRevision;
+{    
+    // Check to see if the overall data model has changed in the map
+    int mapRevision = _map.valid() ? static_cast<int>(_map->getDataModelRevision()) : 0;
+    if (mapRevision != _mapRevision)
+    {
+        return true;
+    }
+
+    // Check to see if any of the elevation layers in our list have changed.
+    return getElevationHash() != _elevationHash;
 }
 
 ElevationPool::WorkingSet::WorkingSet(unsigned size) :
@@ -444,7 +455,7 @@ ElevationPool::prepareEnvelope(
 
     sync(env._map.get(), ws);
 
-    env._key._revision = getElevationRevision(env._map.get());
+    env._key._revision = getElevationHash();
 
     env._raster = nullptr;
     env._cache.clear();
@@ -601,7 +612,7 @@ ElevationPool::sampleMapCoords(
     ScopedAtomicCounter counter(_workers);
 
     Internal::RevElevationKey key;
-    key._revision = getElevationRevision(map.get());
+    key._revision = getElevationHash();
 
     osg::ref_ptr<ElevationTexture> raster;
     osg::Vec4 elev;
@@ -739,7 +750,7 @@ ElevationPool::sampleMapCoords(
     ScopedAtomicCounter counter(_workers);
 
     Internal::RevElevationKey key;
-    key._revision = getElevationRevision(map.get());
+    key._revision = getElevationHash();
 
     osg::ref_ptr<ElevationTexture> raster;
     osg::Vec4 elev;
@@ -881,7 +892,7 @@ ElevationPool::getSample(
     if (lod >= 0)
     {
         key._tilekey = map->getProfile()->createTileKey(p.x(), p.y(), lod);
-        key._revision = getElevationRevision(map);
+        key._revision = getElevationHash();
 
         osg::ref_ptr<ElevationTexture> raster = getOrCreateRaster(
             key,   // key to query
@@ -978,7 +989,7 @@ ElevationPool::getTile(
 
     Internal::RevElevationKey key;
     key._tilekey = tilekey;
-    key._revision = getElevationRevision(map.get());
+    key._revision = getElevationHash();
 
     out_tex = getOrCreateRaster(
         key,

@@ -63,7 +63,7 @@ DrawTileCommand::apply(
     }
 
     // MVM for this tile:
-    state.applyModelViewMatrix(_modelViewMatrix.get());
+    state.applyModelViewMatrix(_modelViewMatrix);
 
     // MVM uniforms for GL3 core:
     if (state.getUseModelViewAndProjectionUniforms())

@@ -178,7 +178,7 @@ LayerDrawableNVGL::refreshRenderState()
 
             // main MVM (double to float is OK)
             for (int i = 0; i < 16; ++i)
-                buf.modelViewMatrix[i] = tile._modelViewMatrix->ptr()[i];
+                buf.modelViewMatrix[i] = tile._modelViewMatrix.ptr()[i];
 
             // Tile key encoding
             for (int i = 0; i < 4; ++i)

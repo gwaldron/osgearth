@@ -59,6 +59,8 @@ main(int argc, char** argv)
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
+    // This is normally called by Viewer::run but we are running our frame loop manually so we need to call it here.
+    viewer.setReleaseContextAtEndOfFrameHint(false);
 
     // Tell the database pager to not modify the unref settings
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );

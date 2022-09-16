@@ -291,7 +291,7 @@ namespace osgEarth
                 unsigned width = inputs.front().s();
                 unsigned height = inputs.front().t();
 
-                Coverage<T>::Ptr composite = Coverage<T>::create();
+                typename Coverage<T>::Ptr composite = Coverage<T>::create();
                 composite->allocate(width, height);
 
                 for(int i=0; i<inputs.size(); ++i)

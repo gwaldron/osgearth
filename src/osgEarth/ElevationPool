@@ -243,7 +243,8 @@ namespace osgEarth
 
         //WorkingSet* _L2;
 
-        int  _elevationRevision;
+        size_t _elevationHash;
+        int  _mapRevision;
 
         Threading::Mutex _refreshMutex;
 
@@ -251,7 +252,7 @@ namespace osgEarth
 
         std::atomic<int> _workers;
 
-        int getElevationRevision(const Map* map) const;
+        size_t getElevationHash() const;
 
         void sync(const Map*, WorkingSet*);
 

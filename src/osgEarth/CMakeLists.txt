@@ -848,10 +848,9 @@ set(TARGET_SRC
     ${SHADERS_CPP}
 )
 
-# MSVC 2017 and 2019 need /bigobj on debug of ExampleResources. Seemingly not required on MSVC 2022 (1930)
+# MSVC 2017 and 2019 need /bigobj on debug build
 if(MSVC AND MSVC_VERSION LESS 1930)
-    # Only set the flag on ExampleResources.cpp, and only in debug mode
-    set_source_files_properties(ExampleResources.cpp PROPERTIES COMPILE_FLAGS "$<$<CONFIG:Debug>:-bigobj>")
+    add_compile_options("$<$<CONFIG:Debug>:/bigobj>")    
 endif()
 
 IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)

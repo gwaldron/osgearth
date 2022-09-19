@@ -93,6 +93,30 @@ VegetationLayer::Options::getConfig() const
     return conf;
 }
 
+namespace
+{
+    void fromGroupConf(
+        const std::string& name,
+        const Config& group_conf,
+        VegetationLayer::Options& options)
+    {
+        if (group_conf.empty())
+            return;
+        VegetationLayer::Options::Group& group = options.groups()[name];
+        group_conf.get("enabled", group.enabled());
+        group_conf.get("max_range", group.maxRange());
+        group_conf.get("instances_per_sqkm", group.instancesPerSqKm());
+        group_conf.get("lod", group.lod());
+        group_conf.get("cast_shadows", group.castShadows());
+        group_conf.get("overlap", group.overlap());
+        group_conf.get("far_pixel_scale", group.farPixelScale());
+        group_conf.get("far_sse_scale", group.farPixelScale());
+        if (group_conf.value("lod") == "auto") {
+            group.lod() = 0;
+        }
+    }
+}
+
 void
 VegetationLayer::Options::fromConfig(const Config& conf)
 {
@@ -111,6 +135,8 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_TREES].instancesPerSqKm().setDefault(16384);
     groups()[GROUP_TREES].overlap().setDefault(0.0f);
     groups()[GROUP_TREES].farPixelScale().setDefault(1.0f);
+    fromGroupConf(GROUP_TREES, conf.child("layers").child(GROUP_TREES), *this);
+    fromGroupConf(GROUP_TREES, conf.child("groups").child(GROUP_TREES), *this);
 
     groups()[GROUP_BUSHES].lod().setDefault(18);
     groups()[GROUP_BUSHES].enabled().setDefault(true);
@@ -119,34 +145,29 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_BUSHES].instancesPerSqKm().setDefault(4096);
     groups()[GROUP_BUSHES].overlap().setDefault(0.0f);
     groups()[GROUP_BUSHES].farPixelScale().setDefault(2.0f);
+    fromGroupConf(GROUP_BUSHES, conf.child("layers").child(GROUP_BUSHES), *this);
+    fromGroupConf(GROUP_BUSHES, conf.child("groups").child(GROUP_BUSHES), *this);
 
     groups()[GROUP_UNDERGROWTH].lod().setDefault(19);
     groups()[GROUP_UNDERGROWTH].enabled().setDefault(true);
     groups()[GROUP_UNDERGROWTH].castShadows().setDefault(false);
     groups()[GROUP_UNDERGROWTH].maxRange().setDefault(75.0f);
     groups()[GROUP_UNDERGROWTH].instancesPerSqKm().setDefault(524288);
-    groups()[GROUP_UNDERGROWTH].overlap().setDefault(0.0f);
+    groups()[GROUP_UNDERGROWTH].overlap().setDefault(1.0f);
     groups()[GROUP_UNDERGROWTH].farPixelScale().setDefault(3.5f);
+    fromGroupConf(GROUP_UNDERGROWTH, conf.child("layers").child(GROUP_UNDERGROWTH), *this);
+    fromGroupConf(GROUP_UNDERGROWTH, conf.child("groups").child(GROUP_UNDERGROWTH), *this);
 
+#if 0
+    // backwards compatible
     ConfigSet groups_c = conf.child("groups").children();
     for (auto& group_conf : groups_c)
     {
         std::string name;
         group_conf.get("name", name);
-        Group& group = groups()[name];
-        group_conf.get("enabled", group.enabled());
-        group_conf.get("max_range", group.maxRange());
-        group_conf.get("instances_per_sqkm", group.instancesPerSqKm());
-        group_conf.get("lod", group.lod());
-        group_conf.get("cast_shadows", group.castShadows());
-        group_conf.get("overlap", group.overlap());
-        group_conf.get("far_pixel_scale", group.farPixelScale());
-        group_conf.get("far_sse_scale", group.farPixelScale());
-
-        if (group_conf.value("lod") == "auto") {
-            group.lod() = 0;
-        }
+        fromGroupConf(name, group_conf, *this);
     }
+#endif
 }
 
 VegetationLayer::Options::Group&
@@ -333,6 +354,21 @@ VegetationLayer::getSSEScales() const
     if (_pixelScalesU.valid())
         _pixelScalesU->get(value);
     return value;
+}
+
+void
+VegetationLayer::setOverlapPercentage(
+    const std::string& groupName,
+    float value)
+{
+    options().group(groupName).overlap() = clamp(value, 0.0f, 1.0f);
+}
+
+float
+VegetationLayer::getOverlapPercentage(
+    const std::string& groupName) const
+{
+    return options().group(groupName).overlap().get();
 }
 
 void

@@ -17,6 +17,9 @@ namespace osgEarth {
             bool _forceGenerate;
             bool _manualBiomes;
             bool _showBiomeUnderMouse;
+            float _farLodScale, _nearLodScale, _lodTransitionFactor;
+            float _bbCosLow, _bbCosHigh;
+            float _alphaCutoff;
             std::unordered_map<const Biome*, bool> _isManualBiomeActive;
             osg::observer_ptr<BiomeLayer> _biolayer;
             osg::observer_ptr<VegetationLayer> _veglayer;
@@ -27,17 +30,35 @@ namespace osgEarth {
                 _first(true),
                 _forceGenerate(false),
                 _manualBiomes(false),
-                _showBiomeUnderMouse(false)
+                _showBiomeUnderMouse(false),
+                _farLodScale(1.0f),
+                _nearLodScale(1.0f),
+                _lodTransitionFactor(0.1f),
+                _alphaCutoff(0.15f),
+                _bbCosLow(0.5f),
+                _bbCosHigh(0.75f)
             {
                 //nop
             }
 
             void load(const Config& conf) override
             {
+                conf.get("farLodScale", _farLodScale);
+                conf.get("nearLodScale", _nearLodScale);
+                conf.get("lodTransitionFactor", _lodTransitionFactor);
+                conf.get("bbCosLow", _bbCosLow);
+                conf.get("bbCosHigh", _bbCosHigh);
+                conf.get("alphaCutoff", _alphaCutoff);
             }
 
             void save(Config& conf) override
             {
+                conf.set("farLodScale", _farLodScale);
+                conf.set("nearLodScale", _nearLodScale);
+                conf.set("lodTransitionFactor", _lodTransitionFactor);
+                conf.set("bbCosLow", _bbCosLow);
+                conf.set("bbCosHigh", _bbCosHigh);
+                conf.set("alphaCutoff", _alphaCutoff);
             }
 
             void draw(osg::RenderInfo& ri) override
@@ -65,7 +86,7 @@ namespace osgEarth {
                 {
                     if (_veglayer.valid() && _veglayer->isOpen())
                     {
-                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "LOD scales:");
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Global SSE scales:");
                         osg::Vec4f sse_scales = _veglayer->getSSEScales();
                         if (ImGui::SliderFloat("Near", &sse_scales[0], 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
                             _veglayer->setSSEScales(sse_scales);
@@ -76,16 +97,14 @@ namespace osgEarth {
                         if (ImGui::SliderFloat("Transition", &transition, 0.0f, 1.0f))
                             stateset(ri)->addUniform(new osg::Uniform("oe_chonk_lod_transition_factor", transition));
 
-                        static float bbd0 = 0.5f, bbd1 = 0.75f;
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Billboard cos(angles):");
-                        if (ImGui::SliderFloat("Low", &bbd0, 0.0f, bbd1))
-                            stateset(ri)->addUniform(new osg::Uniform("oe_veg_bbd0", bbd0));
-                        if (ImGui::SliderFloat("High", &bbd1, bbd0, 1.0f))
-                            stateset(ri)->addUniform(new osg::Uniform("oe_veg_bbd1", bbd1));
+                        if (ImGui::SliderFloat("Low", &_bbCosLow, 0.0f, _bbCosHigh))
+                            stateset(ri)->addUniform(new osg::Uniform("oe_veg_bbd0", _bbCosLow));
+                        if (ImGui::SliderFloat("High", &_bbCosHigh, _bbCosLow, 1.0f))
+                            stateset(ri)->addUniform(new osg::Uniform("oe_veg_bbd1", _bbCosHigh));
 
-                        static float alphaCutoff = 0.15f;
-                        if (ImGui::SliderFloat("Alpha cutoff", &alphaCutoff, 0.0f, 1.0f))
-                            stateset(ri)->addUniform(new osg::Uniform("oe_veg_alphaCutoff", alphaCutoff));
+                        if (ImGui::SliderFloat("Alpha cutoff", &_alphaCutoff, 0.0f, 1.0f))
+                            stateset(ri)->addUniform(new osg::Uniform("oe_veg_alphaCutoff", _alphaCutoff));
 
                         ImGui::Separator();
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator:");
@@ -112,11 +131,21 @@ namespace osgEarth {
                                 "%d",
                                 ImGuiSliderFlags_Logarithmic);
 
+                            ImGui::SliderFloat(
+                                "Overlap percentage",
+                                &groupOptions.overlap().mutable_value(),
+                                0.0f, 1.0f,
+                                "%.1f");
+
                             ImGui::PopID();
                         }
 
-                        if (ImGui::Button("Regenerate Now"))
+                        ImGui::Separator();
+
+                        if (ImGui::Button("Refresh"))
+                        {
                             _veglayer->dirty();
+                        }
                     }
                     else
                     {
@@ -130,8 +159,8 @@ namespace osgEarth {
                     {
                         if (_biomeUnderMouse.isWorking())
                         {
-                            ImGui::Text("...searching..");
-                            ImGui::Text("...");
+                            ImGui::Text("searching...");
+                            ImGui::Text("");
                         }
                         else if (_biomeUnderMouse.isAvailable())
                         {
@@ -295,9 +324,6 @@ namespace osgEarth {
                             
                         if (key.valid())
                         {
-
-                            OE_INFO << "Querying Biome in " << key.str() << std::endl;
-
                             _biomeUnderMouse = Job().dispatch<const Biome*>([&, key, p](Cancelable* c)
                                 {
                                     const Biome* result = nullptr;

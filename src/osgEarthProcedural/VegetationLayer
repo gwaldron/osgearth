@@ -114,7 +114,6 @@ namespace osgEarth { namespace Procedural
         unsigned getGroupLOD(const std::string&) const;
 
         //! Whether any of the vegetation casts shadows on the terrain
-        //void setCastShadows(bool value);
         bool getCastShadows() const;
 
         //! Whether to enable alpha-to-coverage mode.
@@ -123,10 +122,11 @@ namespace osgEarth { namespace Procedural
         bool getUseAlphaToCoverage() const;
 
         //! Visibility range of the specified asset group
+        //! This setting will take effect to next time the layer is opened.
         void setMaxRange(const std::string&, float);
         float getMaxRange(const std::string&) const;
 
-        //! Whether to render the specified group
+        //! Whether to render the named group
         void setEnabled(const std::string&, bool);
         bool getEnabled(const std::string&) const;
 
@@ -134,7 +134,14 @@ namespace osgEarth { namespace Procedural
         void setSSEScales(const osg::Vec4f& lods);
         osg::Vec4f getSSEScales() const;
 
-        //! Force regeneration of the visible data
+        //! Sets the allowable instance overlap percentage for a group.
+        //! Note: call dirty() to refresh after setting this value.
+        //! @param groupName Name of the group for which to set overlap
+        //! @param value Percentage [0..1] of overlap allowed.
+        void setOverlapPercentage(const std::string& group, float value);
+        float getOverlapPercentage(const std::string& group) const;
+
+        //! Force regeneration of all visible data
         void dirty();
 
     public:

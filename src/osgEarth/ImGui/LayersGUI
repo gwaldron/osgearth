@@ -30,6 +30,7 @@
 #include <osgEarth/TerrainConstraintLayer>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/ExampleResources>
 #include <osg/Camera>
 
 #define NOMINMAX
@@ -284,6 +285,7 @@ namespace osgEarth {
             LayerVector _layers;
             std::vector<bool> _layerExpanded;
             int _mapRevision;
+            bool _first;
             std::unordered_map<Layer*, float> _maxMaxRanges;
             std::unordered_map<Layer*, float> _maxMinRanges;
             std::unordered_map<Layer*, float> _maxAttenRanges;
@@ -292,6 +294,9 @@ namespace osgEarth {
             AddWMSDialog _addWMSDialog;
             AddTMSDialog _addTMSDialog;
             AddXYZDialog _addXYZDialog;
+
+            ImageLayer* _queryLayer;
+            Future<osg::Vec4> _imageLayerValueUnderMouse;
 
             std::function<bool(const Layer*)>
                 _showPred,
@@ -305,7 +310,9 @@ namespace osgEarth {
 
             LayersGUI() : BaseGUI("Map"),
                 _showDisabled(false),
-                _mapRevision(-1)
+                _mapRevision(-1),
+                _queryLayer(nullptr),
+                _first(true)
             {
                 _showVisibleLayers = [this](const Layer* layer)
                 {
@@ -412,6 +419,13 @@ namespace osgEarth {
 
                 if (!findNodeOrHide(_mapNode, ri))
                     return;
+
+                if (_first)
+                {
+                    EventRouter::get(view(ri))
+                        .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); });
+                    _first = false;
+                }
 
                 const Map* map = _mapNode->getMap();
 
@@ -767,6 +781,39 @@ namespace osgEarth {
                                         extent.west(), extent.east(), extent.south(), extent.north());
                                 }
 
+                                const DateTimeExtent& dtextent = layer->getDateTimeExtent();
+                                if (dtextent.valid())
+                                {
+                                    ImGui::Text("Time Series:");
+                                    ImGui::Text("  Start = %s", dtextent.getStart().asISO8601().c_str());
+                                    ImGui::Text("  End   = %s", dtextent.getEnd().asISO8601().c_str());
+                                }
+
+                                auto imageLayer = dynamic_cast<ImageLayer*>(layer);
+                                if (imageLayer)
+                                {
+                                    bool queryOn = (_queryLayer == imageLayer);
+                                    if (ImGui::Checkbox("Show value under mouse", &queryOn))
+                                    {
+                                        _queryLayer = queryOn ? imageLayer : nullptr;
+                                    }
+
+                                    if (_queryLayer)
+                                    {
+                                        if (_imageLayerValueUnderMouse.isAvailable())
+                                        {
+                                            osg::Vec4 p = _imageLayerValueUnderMouse.get();
+                                            ImGui::Text("  (%.2f, %.2f, %.2f, %.2f)", p.r(), p.g(), p.b(), p.a());
+                                            p *= 255.0f;
+                                            ImGui::Text("  (%d %d %d %d)", (int)p.r(), (int)p.g(), (int)p.b(), (int)p.a());
+                                        }
+                                        else
+                                        {
+                                            ImGui::Text("  (--, --, --, --)"); ImGui::Text("  (-- -- -- --)");
+                                        }
+                                    }
+                                }
+
                                 if (extent.isValid() ||
                                     (layer->getNode() && layer->getNode()->getBound().valid()))
                                 {
@@ -798,14 +845,6 @@ namespace osgEarth {
                                         }
                                     }
                                 }
-
-                                const DateTimeExtent& dtextent = layer->getDateTimeExtent();
-                                if (dtextent.valid())
-                                {
-                                    ImGui::Text("Time Series:");
-                                    ImGui::Text("  Start = %s", dtextent.getStart().asISO8601().c_str());
-                                    ImGui::Text("  End   = %s", dtextent.getEnd().asISO8601().c_str());
-                                }
                             }
 
                             else if (layer->getStatus().isError() && layer->getStatus().message() != "Layer closed")
@@ -825,6 +864,39 @@ namespace osgEarth {
                     }
                 }
                 ImGui::End();
+            }
+
+
+            void onMove(osg::View* view, float x, float y)
+            {
+                if (_queryLayer)
+                {
+                    _imageLayerValueUnderMouse.reset();
+
+                    TerrainTile* tile = _mapNode->getTerrain()->getTerrainTileUnderMouse(view, x, y);
+                    if (tile)
+                    {
+                        GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
+                        TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p.x(), p.y(), tile->getKey().getLOD());
+                        key = _queryLayer->getBestAvailableTileKey(key, false);
+
+                        if (key.valid())
+                        {
+                            _imageLayerValueUnderMouse = Job().dispatch<osg::Vec4>([this, key, p](Cancelable* c)
+                                {
+                                    osg::Vec4 result(0, 0, 0, 1);
+                                    osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(c);
+                                    auto g = _queryLayer->createImage(key, prog.get());
+                                    if (g.valid())
+                                    {
+                                        g.getReader().setBilinear(false);
+                                        g.read(result, p);
+                                    }
+                                    return result;
+                                });
+                        }
+                    }
+                }
             }
         };
     }

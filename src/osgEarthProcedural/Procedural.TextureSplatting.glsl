@@ -117,7 +117,6 @@ in float oe_layer_opacity;
 mat3 oe_normalMapTBN;
 
 #define MAP_TO_01(VAL,LO,HI) clamp((VAL-LO) / (HI-LO), 0.0, 1.0)
-#define SOFTEN(V) ((V)*(V))
 #define DECEL(V,P) (1.0-pow(1.0-(V),(P)))
 
 #if defined(OE_LIFEMAP_DIRECT) && OE_LIFEMAP_DIRECT
@@ -229,30 +228,32 @@ void resolveRow(out Pixel result, int level, int row, float xvar)
     pixmix(result, p1, p2, m);
 }
 
-void resolveLevel(out Pixel result, int level, float rugged, float lush, float dense, int material_index)
+void resolveLevel(out Pixel result, int level, float rugged, float lush, float dense, int override_material_index)
 {
+    float surface_mix = dense;
+
     // resolve the substrate (dirt and rocks)
     Pixel substrate;
-
-    if (material_index > 0)
-    {
-        vec2 coord;
-        get_coord(coord, material_index - 1, 0);
-        get_pixel(substrate, material_index - 1, coord);
-    }
-    else
-    {
-        resolveRow(substrate, level, 0, rugged);
-    }
+    resolveRow(substrate, level, 0, rugged);
 
     // resolve the surface texture (greenery and debris)
     Pixel surface;
-    resolveRow(surface, level, 1, lush);
+    if (override_material_index > 0)
+    {
+        vec2 coord;
+        get_coord(coord, override_material_index - 1, 0);
+        get_pixel(surface, override_material_index - 1, coord);
+        surface_mix = clamp(1.0 - DECEL(dense, 2.0), 0, 1); //  (rugged + dense + lush), 0, 1);
+    }
+    else
+    {
+        resolveRow(surface, level, 1, lush);
+    }
 
     // use density to modulate the depth blend between the two.
     float m = heightAndEffectMix(
-        substrate.rgbh[3], 1.0 - dense,
-        surface.rgbh[3], dense);
+        substrate.rgbh[3], 1.0 - surface_mix,
+        surface.rgbh[3], surface_mix);
 
     if (level == 0)
     {

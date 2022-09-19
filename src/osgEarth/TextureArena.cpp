@@ -631,6 +631,11 @@ TextureArena::add(Texture::Ptr tex)
 
     _textureIndices[tex] = index;
 
+    if (tex->osgTexture()->getDataVariance() == osg::Object::DYNAMIC)
+    {
+        _dynamicTextures.push_back(index);
+    }
+
     return index;
 }
 
@@ -646,6 +651,10 @@ TextureArena::apply(osg::State& state) const
 
     GLObjects& gc = GLObjects::get(_globjects, state);
 
+    int lastAppliedFrame = _lastAppliedFrame[state.getContextID()];
+
+    bool addDynamicTextures = true;
+
     // first time seeing this GC? Prime it by adding all textures!
     if (gc._inUse == false)
     {
@@ -658,6 +667,20 @@ TextureArena::apply(osg::State& state) const
             if (_textures[i])
                 gc._toCompile.push(i);
         }
+
+        addDynamicTextures = false;
+    }
+
+    if (addDynamicTextures)
+    {
+        for (auto& i : _dynamicTextures)
+        {
+            auto tex = _textures[i];
+            if (tex && tex->needsCompile(state))
+            {
+                gc._toCompile.push(i);
+            }
+        }
     }
 
     const osg::StateAttribute* lastTex = nullptr;
@@ -666,40 +689,6 @@ TextureArena::apply(osg::State& state) const
         // need to save any bound texture so we can reinstate it:
         lastTex = state.getLastAppliedTextureAttribute(
             state.getActiveTextureUnit(), osg::StateAttribute::TEXTURE);
-    }
-
-    // allocate textures and resident handles
-    while(!gc._toCompile.empty())
-    {
-        int index = gc._toCompile.front();
-        gc._toCompile.pop();
-        auto tex = _textures[index];
-        if (tex)
-        {
-            tex->compileGLObjects(state);
-        }
-
-        // mark the GC to re-upload its LUT
-        gc._dirty = true;
-    }
-
-    if (_autoRelease == true)
-    {
-        for (Texture::Ptr& tex : _textures)
-        {
-            // Check for use_count() == 2.  1 for the _textures list and 1 for the _textureIndices map.
-            if (tex && tex.use_count() == 2)
-            {
-                auto itr = _textureIndices.find(tex);
-                if (itr != _textureIndices.end())
-                {
-                    _textureIndices.erase(itr);
-                }
-                // TODO: remove it from the arena altogether
-                tex->releaseGLObjects(&state);
-                tex = nullptr;
-            }
-        }
     }
 
     if (gc._handleBuffer == nullptr || !gc._handleBuffer->valid())
@@ -721,33 +710,78 @@ TextureArena::apply(osg::State& state) const
     {
         size_t aligned_size = gc._handleBuffer->align(_textures.size() * sizeof(gc._handles[0]))
             / sizeof(gc._handles[0]);
-        gc._handles.assign(aligned_size, 0);
+        unsigned int previousSize = gc._handles.size();
+        gc._handles.resize(aligned_size);
+        for (unsigned int i = previousSize; i < aligned_size; ++i)
+        {
+            gc._handles[i] = 0;
+        }
         gc._dirty = true;
     }
 
-    unsigned ptr = 0;
-    for (auto& tex : _textures)
-    {
-        GLTexture* gltex = nullptr;
-        if (tex)
-            gltex = Texture::GLObjects::get(tex->_globjects, state)._gltexture.get();
-
-        GLuint64 handle = gltex ? gltex->handle(state) : 0ULL;
-        unsigned index = _useUBO ? ptr * 2 : ptr; // hack for std140 vec4 alignment
-        if (gc._handles[index] != handle)
+    if (lastAppliedFrame != state.getFrameStamp()->getFrameNumber())
+    {        
+        if (_autoRelease == true)
         {
-            gc._handles[index] = handle;
+            unsigned int ptr = 0;
+            for (Texture::Ptr& tex : _textures)
+            {
+                // Check for use_count() == 2.  1 for the _textures list and 1 for the _textureIndices map.
+                if (tex && tex.use_count() == 2)
+                {
+                    // Remove this textue from the texture indices map
+                    auto indexItr = _textureIndices.find(tex);
+                    if (indexItr != _textureIndices.end())
+                    {
+                        _textureIndices.erase(indexItr);
+                    }
+                    
+                    // Remove this texture from the list of dynamic textures
+                    auto dynamicItr = std::find(_dynamicTextures.begin(), _dynamicTextures.end(), ptr);
+                    if (dynamicItr != _dynamicTextures.end())
+                    {
+                        _dynamicTextures.erase(dynamicItr);
+                    }
+
+                    // TODO: remove it from the arena altogether
+                    tex->releaseGLObjects(&state);                    
+                    tex = nullptr;
+                }
+                ++ptr;
+            }
+        }
+
+        while (!gc._toCompile.empty())
+        {
+            int ptr = gc._toCompile.front();            
+            gc._toCompile.pop();
+            auto tex = _textures[ptr];
+            if (tex)
+            {
+                tex->compileGLObjects(state);
+            }
+
+            GLTexture* gltex = nullptr;
+            if (tex)
+                gltex = Texture::GLObjects::get(tex->_globjects, state)._gltexture.get();
+
+            GLuint64 handle = gltex ? gltex->handle(state) : 0ULL;
+            unsigned index = _useUBO ? ptr * 2 : ptr; // hack for std140 vec4 alignment
+            if (gc._handles[index] != handle)
+            {
+                gc._handles[index] = handle;
+                gc._dirty = true;
+            }
+
+            // mark the GC to re-upload its LUT
             gc._dirty = true;
         }
 
-        // check whether a dynamic texture needs recompile:
-        if (tex && tex->needsCompile(state))
-        {
-            gc._toCompile.push(ptr);
-        }
-
-        ++ptr;
+        _lastAppliedFrame[state.getContextID()] = state.getFrameStamp()->getFrameNumber();
     }
+
+
+
 
     // upload to GPU if it changed:
     if (gc._dirty)
@@ -778,6 +812,11 @@ TextureArena::resizeGLObjectBuffers(unsigned maxSize)
     if (_globjects.size() < maxSize)
     {
         _globjects.resize(maxSize);
+    }
+
+    if (_lastAppliedFrame.size() < maxSize)
+    {
+        _lastAppliedFrame.resize(maxSize);
     }
 
     for(auto& tex : _textures)

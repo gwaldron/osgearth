@@ -26,6 +26,8 @@
 #include <osgEarth/Style>
 #include <osgEarth/Geometry>
 
+// Use the GEOS C API.
+// The GEOS code clearly states that its C++ API is unstable.
 #define GEOS_USE_ONLY_R_API
 #include <geos_c.h>
 

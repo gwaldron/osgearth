@@ -190,9 +190,11 @@ namespace osgEarth
             bool _dirty;
         };
         mutable osg::buffered_object<GLObjects> _globjects;
+        mutable osg::buffered_object<int> _lastAppliedFrame;
 
         mutable TextureVector _textures;
         mutable std::unordered_map<Texture::Ptr, unsigned int> _textureIndices;
+        mutable std::vector<unsigned int> _dynamicTextures;
         bool _autoRelease;
         unsigned _bindingPoint;
         bool _useUBO;

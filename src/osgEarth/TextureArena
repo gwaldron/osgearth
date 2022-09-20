@@ -27,6 +27,7 @@
 #include <osg/buffered_value>
 #include <osg/Image>
 #include <queue>
+#include <atomic>
 
 namespace osgEarth
 {
@@ -44,6 +45,10 @@ namespace osgEarth
     public:
         using Ptr = std::shared_ptr<Texture>;
         using WeakPtr = std::weak_ptr<Texture>;
+
+        //! Internal modification counter so that textures can
+        //! inform the arena of release
+        using ModSensor = std::shared_ptr<std::atomic_int>;
 
         //! Create for a given texture target
         static Ptr create(
@@ -111,6 +116,7 @@ namespace osgEarth
     protected:
         Texture(GLenum target);
         Texture(osg::Texture*);
+        ModSensor _modSensor;
         friend class TextureArena;
     };
 
@@ -180,7 +186,7 @@ namespace osgEarth
         // GL objects that are per-state because they are not bindless
         struct GLObjects : public PerStateGLObjects
         {
-            GLObjects() : _inUse(false) { }
+            GLObjects() : _inUse(false), _lastAppliedFrame(-1) { }
             bool _inUse;
             std::queue<int> _toCompile;
             TextureVector _toRemove;
@@ -188,9 +194,9 @@ namespace osgEarth
             GLBuffer::Ptr _handleBuffer;
             std::vector<GLuint64> _handles;
             bool _dirty;
+            int _lastAppliedFrame;
         };
         mutable osg::buffered_object<GLObjects> _globjects;
-        mutable osg::buffered_object<int> _lastAppliedFrame;
 
         mutable TextureVector _textures;
         mutable std::unordered_map<Texture::Ptr, unsigned int> _textureIndices;
@@ -198,10 +204,14 @@ namespace osgEarth
         bool _autoRelease;
         unsigned _bindingPoint;
         bool _useUBO;
+        Texture::ModSensor _modSensor;
 
         mutable Mutex _m;
 
         int find_no_lock(Texture::Ptr tex) const;
+
+        friend class Texture;
+        void notifyOfTextureRelease(osg::State*) const;
     };
 }
 

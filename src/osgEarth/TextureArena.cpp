@@ -456,6 +456,9 @@ Texture::releaseGLObjects(osg::State* state) const
 
     if (osgTexture().valid())
         osgTexture()->releaseGLObjects(state);
+
+    if (_modSensor)
+        _modSensor->operator++();
 }
 
 
@@ -472,6 +475,10 @@ TextureArena::TextureArena() :
     // Keep this synchronous w.r.t. the render thread since we are
     // going to be changing things on the fly
     setDataVariance(DYNAMIC);
+
+    // Used to detect when the texture makes a change that the
+    // arena needs to be aware of (like releasing GL objects)
+    _modSensor = std::make_shared<std::atomic_int>(0);
 }
 
 TextureArena::~TextureArena()
@@ -535,9 +542,16 @@ TextureArena::add(Texture::Ptr tex)
     if (existingIndex >= 0)
         return existingIndex;
 
+    OE_SOFT_ASSERT_AND_RETURN(tex->_modSensor == nullptr, -1,
+        "Illegal attempt to add a Texture to more than one TextureArena");
+
     // not there - load and prepare the texture while keeping 
     // the arena UNLOCKED
     OE_PROFILING_ZONE;
+
+    // Connect the sensors so the arena can detect GL object release
+    // and schedule recompilation.
+    tex->_modSensor = _modSensor;
 
     auto& osgTex = tex->osgTexture();
 
@@ -603,7 +617,7 @@ TextureArena::add(Texture::Ptr tex)
     {
         for (int i = 0; i < _textures.size(); ++i)
         {
-            if (_textures[i] == nullptr || _textures[i].use_count() == 1)
+            if (_textures[i] == nullptr) // || _textures[i].use_count() == 1)
             {
                 index = i;
                 break;
@@ -651,10 +665,6 @@ TextureArena::apply(osg::State& state) const
 
     GLObjects& gc = GLObjects::get(_globjects, state);
 
-    int lastAppliedFrame = _lastAppliedFrame[state.getContextID()];
-
-    bool addDynamicTextures = true;
-
     // first time seeing this GC? Prime it by adding all textures!
     if (gc._inUse == false)
     {
@@ -667,12 +677,12 @@ TextureArena::apply(osg::State& state) const
             if (_textures[i])
                 gc._toCompile.push(i);
         }
-
-        addDynamicTextures = false;
     }
 
-    if (addDynamicTextures)
+    else
     {
+        // Check any dynamic textures (textures whose images may change
+        // from frame to frame) for recompile.
         for (auto& i : _dynamicTextures)
         {
             auto tex = _textures[i];
@@ -681,14 +691,6 @@ TextureArena::apply(osg::State& state) const
                 gc._toCompile.push(i);
             }
         }
-    }
-
-    const osg::StateAttribute* lastTex = nullptr;
-    if (!gc._toCompile.empty())
-    {
-        // need to save any bound texture so we can reinstate it:
-        lastTex = state.getLastAppliedTextureAttribute(
-            state.getActiveTextureUnit(), osg::StateAttribute::TEXTURE);
     }
 
     if (gc._handleBuffer == nullptr || !gc._handleBuffer->valid())
@@ -710,7 +712,9 @@ TextureArena::apply(osg::State& state) const
     {
         size_t aligned_size = gc._handleBuffer->align(_textures.size() * sizeof(gc._handles[0]))
             / sizeof(gc._handles[0]);
+
         unsigned int previousSize = gc._handles.size();
+
         gc._handles.resize(aligned_size);
         for (unsigned int i = previousSize; i < aligned_size; ++i)
         {
@@ -719,7 +723,7 @@ TextureArena::apply(osg::State& state) const
         gc._dirty = true;
     }
 
-    if (lastAppliedFrame != state.getFrameStamp()->getFrameNumber())
+    if (gc._lastAppliedFrame != state.getFrameStamp()->getFrameNumber())
     {        
         if (_autoRelease == true)
         {
@@ -744,16 +748,43 @@ TextureArena::apply(osg::State& state) const
                     }
 
                     // TODO: remove it from the arena altogether
-                    tex->releaseGLObjects(&state);                    
+                    tex->_modSensor = nullptr;
+                    tex->releaseGLObjects(&state);
                     tex = nullptr;
                 }
                 ++ptr;
             }
         }
 
+        // If we got a modification notice, we need to check all our
+        // textures for recompile. This should be relatively rare,
+        // e.g. only when releaseGLObjects gets called
+        if (_modSensor->exchange(0) != 0)
+        {
+            for (unsigned ptr = 0; ptr < _textures.size(); ++ptr)
+            {
+                auto& tex = _textures[ptr];
+                if (tex && tex->needsCompile(state))
+                {
+                    gc._toCompile.push(ptr);
+                }
+                gc._dirty = true;
+            }
+        }
+
+        // If we are going to compile any textures, we need to save and restore
+        // the OSG texture state...
+        const osg::StateAttribute* savedActiveOsgTexture = nullptr;
+        if (!gc._toCompile.empty())
+        {
+            // need to save any bound texture so we can reinstate it:
+            savedActiveOsgTexture = state.getLastAppliedTextureAttribute(
+                state.getActiveTextureUnit(), osg::StateAttribute::TEXTURE);
+        }
+
         while (!gc._toCompile.empty())
         {
-            int ptr = gc._toCompile.front();            
+            int ptr = gc._toCompile.front();
             gc._toCompile.pop();
             auto tex = _textures[ptr];
             if (tex)
@@ -777,24 +808,43 @@ TextureArena::apply(osg::State& state) const
             gc._dirty = true;
         }
 
-        _lastAppliedFrame[state.getContextID()] = state.getFrameStamp()->getFrameNumber();
+        gc._lastAppliedFrame = state.getFrameStamp()->getFrameNumber();
+
+        // reinstate the old bound texture
+        if (savedActiveOsgTexture)
+        {
+            state.applyTextureAttribute(state.getActiveTextureUnit(), savedActiveOsgTexture);
+        }
     }
-
-
-
 
     // upload to GPU if it changed:
     if (gc._dirty)
     {
         gc._handleBuffer->uploadData(gc._handles);
         gc._dirty = false;
-
-        // reinstate the old bound texture
-        if (lastTex)
-            state.applyTextureAttribute(state.getActiveTextureUnit(), lastTex);
     }
 
     gc._handleBuffer->bindBufferBase(_bindingPoint);
+}
+
+void
+TextureArena::notifyOfTextureRelease(osg::State* state) const
+{
+    ScopedMutexLock lock(_m);
+
+    if (state)
+    {
+        auto& gc = GLObjects::get(_globjects, *state);
+        gc._inUse = false;
+    }
+    else
+    {
+        for (unsigned i = 0; i < _globjects.size(); ++i)
+        {
+            GLObjects& gc = _globjects[i];
+            gc._inUse = false;
+        }
+    }
 }
 
 void
@@ -814,11 +864,6 @@ TextureArena::resizeGLObjectBuffers(unsigned maxSize)
         _globjects.resize(maxSize);
     }
 
-    if (_lastAppliedFrame.size() < maxSize)
-    {
-        _lastAppliedFrame.resize(maxSize);
-    }
-
     for(auto& tex : _textures)
     {
         if (tex)
@@ -836,6 +881,8 @@ TextureArena::releaseGLObjects(osg::State* state) const
         auto& gc = GLObjects::get(_globjects, *state);
 
         gc._handleBuffer = nullptr;
+        gc._handles.resize(0);
+
         while (!gc._toCompile.empty())
             gc._toCompile.pop();
 
@@ -862,6 +909,8 @@ TextureArena::releaseGLObjects(osg::State* state) const
             if(gc._inUse)
             {
                 gc._handleBuffer = nullptr;
+                gc._handles.resize(0);
+
                 while (!gc._toCompile.empty())
                     gc._toCompile.pop();
 

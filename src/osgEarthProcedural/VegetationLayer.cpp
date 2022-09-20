@@ -87,6 +87,7 @@ VegetationLayer::Options::getConfig() const
     biomeLayer().set(conf, "biomes_layer");
 
     conf.set("alpha_to_coverage", alphaToCoverage());
+    conf.set("alpha_cutoff", alphaCutoff());
 
     //TODO: groups
 
@@ -122,10 +123,12 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 {
     // defaults:
     alphaToCoverage().setDefault(true);
+    alphaCutoff().setDefault(0.2f);
 
     biomeLayer().get(conf, "biomes_layer");    
 
     conf.get("alpha_to_coverage", alphaToCoverage());
+    conf.get("alpha_cutoff", alphaCutoff());
 
     // some nice default group settings
     groups()[GROUP_TREES].lod().setDefault(14);
@@ -157,17 +160,6 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_UNDERGROWTH].farPixelScale().setDefault(3.5f);
     fromGroupConf(GROUP_UNDERGROWTH, conf.child("layers").child(GROUP_UNDERGROWTH), *this);
     fromGroupConf(GROUP_UNDERGROWTH, conf.child("groups").child(GROUP_UNDERGROWTH), *this);
-
-#if 0
-    // backwards compatible
-    ConfigSet groups_c = conf.child("groups").children();
-    for (auto& group_conf : groups_c)
-    {
-        std::string name;
-        group_conf.get("name", name);
-        fromGroupConf(name, group_conf, *this);
-    }
-#endif
 }
 
 VegetationLayer::Options::Group&
@@ -369,6 +361,21 @@ VegetationLayer::getOverlapPercentage(
     const std::string& groupName) const
 {
     return options().group(groupName).overlap().get();
+}
+
+void
+VegetationLayer::setAlphaCutoff(float value)
+{
+    value = clamp(value, 0.0f, 1.0f);
+    options().alphaCutoff() = value;
+    getOrCreateStateSet()->getOrCreateUniform(
+        "oe_veg_alphaCutoff", osg::Uniform::FLOAT)->set(value);
+}
+
+float
+VegetationLayer::getAlphaCutoff() const
+{
+    return options().alphaCutoff().get();
 }
 
 void
@@ -625,6 +632,9 @@ VegetationLayer::buildStateSets()
 
     // activate compressed normal maps
     ss->setDefine("OE_COMPRESSED_NORMAL");
+
+    // apply the cutoff uniform
+    setAlphaCutoff(options().alphaCutoff().get());
 }
 
 void

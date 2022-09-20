@@ -56,6 +56,9 @@ namespace osgEarth { namespace Procedural
             //! Whether to render with GL_ALPHA_TO_COVERAGE (default is true)
             OE_OPTION(bool, alphaToCoverage);
 
+            //! Cut off for alpha discard/blend in the shader (0..1]
+            OE_OPTION(float, alphaCutoff);
+
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
                 //! Whether to render this group at all
@@ -140,6 +143,10 @@ namespace osgEarth { namespace Procedural
         //! @param value Percentage [0..1] of overlap allowed.
         void setOverlapPercentage(const std::string& group, float value);
         float getOverlapPercentage(const std::string& group) const;
+
+        //! The threshold for discarding fragments with high alpha
+        void setAlphaCutoff(float value);
+        float getAlphaCutoff() const;
 
         //! Force regeneration of all visible data
         void dirty();

@@ -19,7 +19,6 @@ namespace osgEarth {
             bool _showBiomeUnderMouse;
             float _farLodScale, _nearLodScale, _lodTransitionFactor;
             float _bbCosLow, _bbCosHigh;
-            float _alphaCutoff;
             std::unordered_map<const Biome*, bool> _isManualBiomeActive;
             osg::observer_ptr<BiomeLayer> _biolayer;
             osg::observer_ptr<VegetationLayer> _veglayer;
@@ -34,7 +33,6 @@ namespace osgEarth {
                 _farLodScale(1.0f),
                 _nearLodScale(1.0f),
                 _lodTransitionFactor(0.1f),
-                _alphaCutoff(0.15f),
                 _bbCosLow(0.5f),
                 _bbCosHigh(0.75f)
             {
@@ -48,7 +46,6 @@ namespace osgEarth {
                 conf.get("lodTransitionFactor", _lodTransitionFactor);
                 conf.get("bbCosLow", _bbCosLow);
                 conf.get("bbCosHigh", _bbCosHigh);
-                conf.get("alphaCutoff", _alphaCutoff);
             }
 
             void save(Config& conf) override
@@ -58,7 +55,6 @@ namespace osgEarth {
                 conf.set("lodTransitionFactor", _lodTransitionFactor);
                 conf.set("bbCosLow", _bbCosLow);
                 conf.set("bbCosHigh", _bbCosHigh);
-                conf.set("alphaCutoff", _alphaCutoff);
             }
 
             void draw(osg::RenderInfo& ri) override
@@ -103,8 +99,9 @@ namespace osgEarth {
                         if (ImGui::SliderFloat("High", &_bbCosHigh, _bbCosLow, 1.0f))
                             stateset(ri)->addUniform(new osg::Uniform("oe_veg_bbd1", _bbCosHigh));
 
-                        if (ImGui::SliderFloat("Alpha cutoff", &_alphaCutoff, 0.0f, 1.0f))
-                            stateset(ri)->addUniform(new osg::Uniform("oe_veg_alphaCutoff", _alphaCutoff));
+                        float alphaCutoff = _veglayer->getAlphaCutoff();
+                        if (ImGui::SliderFloat("Alpha cutoff", &alphaCutoff, 0.0f, 1.0f))
+                            _veglayer->setAlphaCutoff(alphaCutoff);
 
                         ImGui::Separator();
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator:");

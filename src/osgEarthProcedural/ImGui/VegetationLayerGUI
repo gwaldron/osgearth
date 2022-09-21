@@ -189,6 +189,7 @@ namespace osgEarth {
                         auto biocat = layer->getBiomeCatalog();
                         auto& bioman = layer->getBiomeManager();
 
+#if 0 // doesn't work ... revisit later
                         if (ImGui::Checkbox("Select biomes manually", &_manualBiomes))
                         {
                             layer->setAutoBiomeManagement(!_manualBiomes);
@@ -204,6 +205,7 @@ namespace osgEarth {
                                 stateset(ri)->setDefine("OE_BIOME_INDEX", "-1", 0x7);
                             }
                         }
+#endif
 
                         ImGui::Separator();
 
@@ -231,7 +233,11 @@ namespace osgEarth {
                         }
                         else
                         {
-                            for (auto biome : biocat->getBiomes())
+                            auto biomes = biocat->getBiomes();
+                            std::sort(biomes.begin(), biomes.end(), [](const Biome* lhs, const Biome* rhs) {
+                                return lhs->id() < rhs->id(); });
+
+                            for (auto biome : biomes)
                             {
                                 char buf[255];
                                 sprintf(buf, "[%s] %s", biome->id().c_str(), biome->name()->c_str());

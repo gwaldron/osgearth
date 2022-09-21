@@ -68,7 +68,10 @@ namespace osgEarth
         {
         public:
             static std::vector<std::string>
-                getPermutations(const std::vector<std::string>& traits);
+                getPermutationStrings(const std::vector<std::string>& traits);
+
+            static std::vector<std::vector<std::string>>
+                getPermutationVectors(const std::vector<std::string>& traits);
 
             static std::string
                 toString(const std::vector<std::string>& traits);

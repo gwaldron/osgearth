@@ -25,7 +25,7 @@ using namespace osgEarth::Procedural;
 #define LC "[Biome] "
 
 std::vector<std::string>
-AssetTraits::getPermutations(const std::vector<std::string>& input)
+AssetTraits::getPermutationStrings(const std::vector<std::string>& input)
 {
     std::vector<std::string> sorted = input;
     std::sort(sorted.begin(), sorted.end());
@@ -45,6 +45,30 @@ AssetTraits::getPermutations(const std::vector<std::string>& input)
                 buf << sorted[i];
             }
             result.push_back(buf.str());
+        }
+    }
+
+    return std::move(result);
+}
+
+std::vector<std::vector<std::string>>
+AssetTraits::getPermutationVectors(const std::vector<std::string>& input)
+{
+    std::vector<std::string> sorted = input;
+    std::sort(sorted.begin(), sorted.end());
+
+    std::vector<std::vector<std::string>> result;
+
+    for (int first = 0; first < sorted.size(); ++first)
+    {
+        for (int last = first; last < sorted.size(); ++last)
+        {
+            std::vector<std::string> temp;
+            for (int i = first; i <= last; ++i)
+            {
+                temp.emplace_back(sorted[i]);
+            }
+            result.emplace_back(std::move(temp));
         }
     }
 
@@ -405,6 +429,138 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
         }
     }
 
+#if 1
+    // Scan the biomes for any assets with traits, and add a
+    // new biome for every possible permutation :(
+
+    // first collect every possible trait from the database into a unique, ordered set.
+    std::set<std::string> traits_set;
+    for (auto& index_and_biome : _biomes_by_index)
+    {
+        Biome& biome = index_and_biome.second;
+        for (auto& asset_ref : biome._assetsToUse)
+        {
+            for (auto& trait : asset_ref->asset()->traits())
+            {
+                traits_set.emplace(trait);
+            }
+        }
+    }
+
+    // now copy that set into a (sorted) vector.
+    std::vector<std::string> traits_vector;
+    traits_vector.insert(traits_vector.end(), traits_set.begin(), traits_set.end());
+
+    // Now get all possible trait permutations across the whole database.
+    // It's a vector of vectors of strings, for example:
+    // input:  ["A", "B", "C"]
+    // output: [ ["A"], ["A", "B"], ["A", "B", "C"], ["B"], ["B", "C"], ["C"] ]
+    auto all_permutations = AssetTraits::getPermutationVectors(traits_vector);
+
+    // now, go through every biome and find any asset with a trait. 
+    // Create an implicit biome for every permutation containing that trait.
+    for (auto& index_and_biome : _biomes_by_index)
+    {
+        Biome& biome = index_and_biome.second;
+
+        // skip implicit biomes since we already processed them
+        if (biome._implicit)
+            continue;
+
+        // Collect all assets with traits so we can make a biome for each.
+        // traverse "up" through the parent biomes to find them all.
+        std::unordered_map<
+            std::string,
+            std::set<Biome::ModelAssetRef::Ptr>
+        > lookup_table;
+
+        for (const Biome* biome_ptr = &biome;
+            biome_ptr != nullptr;
+            biome_ptr = biome_ptr->_parentBiome)
+        {
+            for (auto& asset_ref : biome_ptr->_assetsToUse)
+            {
+                for (auto& asset_trait : asset_ref->asset()->traits())
+                {
+                    // find each global permuatation containing this asset trait
+                    for (auto& perm : all_permutations)
+                    {
+                        if (std::find(perm.begin(), perm.end(), asset_trait) != perm.end())
+                        {
+                            // convert to a string (example: ["A", "B"] -> "A, B")
+                            // and store in the lutter.
+                            std::string perm_str = AssetTraits::toString(perm);
+                            lookup_table[perm_str].emplace(asset_ref);
+                        }
+                    }
+                }
+            }
+        }
+
+        // for each possible combintation traits found, make a new
+        // "implicit" biome and copy all the corresponding assets into it.
+        for (auto& iter : lookup_table)
+        {
+            const std::string& perm_str = iter.first;
+            auto& perm_assets = iter.second;
+
+            // create a new biome for this traits permutation if it doesn't already exist:
+            std::string sub_biome_id = biome.id() + "." + perm_str;
+            const Biome* sub_biome = getBiome(sub_biome_id);
+            if (sub_biome == nullptr)
+            {
+                // lastly, insert it into the index.
+                int new_index = _biomeIndexGenerator++;
+                Biome& new_biome = _biomes_by_index[new_index];
+                new_biome._index = new_index;
+
+                _biomes_by_id[sub_biome_id] = &new_biome;
+                new_biome.id() = sub_biome_id;
+
+                new_biome.name() = biome.name().get() + " (" + perm_str + ")";
+
+                // marks this biome as one that was derived from traits data,
+                // not defined by the configuration.
+                new_biome._implicit = true;
+
+                // By default the parent is unset, but this may change in the
+                // search block that follows. An implicit biome without a 
+                // similarly filtered parent should render nothing.
+                new_biome.parentId().clear();
+
+                // serach "up the chain" to see if there's a parent that can 
+                // support fallback for this particular filter
+                const Biome* ptr = &biome;
+                while (ptr)
+                {
+                    // find the natural parent; if none, bail.
+                    const Biome* parent = getBiome(ptr->parentId().get());
+                    if (parent)
+                    {
+                        // find a traits-variation of the natural parent. If found, success.
+                        std::string parent_with_traits = parent->id() + "." + perm_str;
+                        Biome* temp = getBiome(parent_with_traits);
+                        if (temp)
+                        {
+                            new_biome.parentId() = parent_with_traits;
+                            new_biome._parentBiome = temp;
+                            break;
+                        }
+                    }
+
+                    // if not found, parent up and try again.
+                    ptr = parent;
+                }
+
+                // copy over asset pointers for each asset matching the trait permutation
+                for (auto asset_ptr : perm_assets)
+                {
+                    new_biome._assetsToUse.emplace_back(asset_ptr);
+                }
+            }
+        }
+    }
+#else
     // next, scan the biomes for any assets with traits, and add a
     // new biome for each combination
     for (auto& index_and_biome : _biomes_by_index)
@@ -501,6 +657,7 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
             }
         }
     }
+#endif
 
     // Finally, resolve each biome's asset list by traversing the parent biomes
     // to fill in missing data where necessary. Using a lambda since this is 

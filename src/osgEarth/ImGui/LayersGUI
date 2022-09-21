@@ -798,7 +798,7 @@ namespace osgEarth {
                                         _queryLayer = queryOn ? imageLayer : nullptr;
                                     }
 
-                                    if (_queryLayer)
+                                    if (_queryLayer == imageLayer)
                                     {
                                         if (_imageLayerValueUnderMouse.isAvailable())
                                         {

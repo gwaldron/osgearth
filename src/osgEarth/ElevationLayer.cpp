@@ -56,6 +56,17 @@ ElevationLayer::Options::fromConfig( const Config& conf )
     conf.get("nodata_policy", "default",     _noDataPolicy, NODATA_INTERPOLATE );
     conf.get("nodata_policy", "interpolate", _noDataPolicy, NODATA_INTERPOLATE );
     conf.get("nodata_policy", "msl",         _noDataPolicy, NODATA_MSL );
+
+    // ElevationLayers are special in that visible really maps to whether the layer is open or closed
+    // If a layer is marked as enabled (openAutomatically) but also marked as visible=false set
+    // openAutomatically to false to prevent the layer from being opened at startup.
+    // This prevents a deadlock b/c setVisible is called during the VisibleLayer openImplementation and it
+    // will call setVisible on the Layer there which will result in trying to close the layer while it's opening.
+    // There may be a better way to sync these up but will require a bit of rework.
+    if (*openAutomatically() && !*visible())
+    {
+        openAutomatically() = false;
+    }
 }
 
 //------------------------------------------------------------------------

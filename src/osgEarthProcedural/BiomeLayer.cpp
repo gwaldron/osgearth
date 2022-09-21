@@ -108,26 +108,6 @@ BiomeLayer::openImplementation()
 
     options().landCoverLayer().open(getReadOptions());
 
-    // Inherit data extents from the biome base layer and land cover layer...?
-    DataExtentList dataExtents;
-
-    if (getBiomeBaseLayer())
-    {
-        DataExtentList temp;
-        getBiomeBaseLayer()->getDataExtents(temp);
-        dataExtents.insert(dataExtents.end(), temp.begin(), temp.end());
-    }
-
-    if (getLandCoverLayer())
-    {
-        DataExtentList temp;
-        getLandCoverLayer()->getDataExtents(temp);
-        dataExtents.insert(dataExtents.end(), temp.begin(), temp.end());
-    }
-
-    setDataExtents(dataExtents);
-    
-
     // Warn the poor user if the configuration is missing
     if (getBiomeCatalog() == nullptr)
     {
@@ -181,6 +161,25 @@ BiomeLayer::addedToMap(const Map* map)
     {
         _landCoverFactory = LandCoverSample::Factory::create(getLandCoverLayer());
     }
+
+    // Inherit data extents from the biome base layer and land cover layer...?
+    DataExtentList dataExtents;
+
+    if (getBiomeBaseLayer())
+    {
+        DataExtentList temp;
+        getBiomeBaseLayer()->getDataExtents(temp);
+        dataExtents.insert(dataExtents.end(), temp.begin(), temp.end());
+    }
+
+    if (getLandCoverLayer())
+    {
+        DataExtentList temp;
+        getLandCoverLayer()->getDataExtents(temp);
+        dataExtents.insert(dataExtents.end(), temp.begin(), temp.end());
+    }
+
+    setDataExtents(dataExtents);
 }
 
 void

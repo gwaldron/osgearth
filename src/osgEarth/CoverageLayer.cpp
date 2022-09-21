@@ -56,9 +56,7 @@ CoverageLayer::openImplementation()
 {
     Status parent = TileLayer::openImplementation();
     if (parent.isError())
-        return parent;
-
-    DataExtentList dataExtents;
+        return parent;    
 
     for (auto& layer : options().layers())
     {
@@ -76,15 +74,8 @@ CoverageLayer::openImplementation()
         imageLayer->setUpL2Cache(9u);
 
         // Force the image source into coverage mode.
-        imageLayer->setCoverage(true);
-
-        // append the component's extents to the overall extents
-        DataExtentList temp;
-        imageLayer->getDataExtents(temp);
-        dataExtents.insert(dataExtents.end(), temp.begin(), temp.end());
-    }
-
-    setDataExtents(dataExtents);
+        imageLayer->setCoverage(true);        
+    }    
 
     return Status::NoError;
 }
@@ -94,10 +85,24 @@ CoverageLayer::addedToMap(const Map* map)
 {
     TileLayer::addedToMap(map);
 
+    DataExtentList dataExtents;
+
     for (auto& layer : options().layers())
     {
         layer.source().addedToMap(map);
+
+        // Pull this layer's extents from the coverage layer.
+        ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer.source().getLayer());
+        if (imageLayer)
+        {
+            // append the component's extents to the overall extents
+            DataExtentList temp;
+            imageLayer->getDataExtents(temp);
+            dataExtents.insert(dataExtents.end(), temp.begin(), temp.end());
+        }
     }
+
+    setDataExtents(dataExtents);
 }
 
 void

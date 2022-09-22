@@ -300,13 +300,13 @@ namespace osgEarth
 
                     key.getExtent().createScaleBias(input.getExtent(), scalebias);
                     double scale = scalebias(0, 0);
-                    double bias_s = scalebias(3, 0);
-                    double bias_t = scalebias(3, 1);
+                    double bias_s = scalebias(3, 0) * width;
+                    double bias_t = scalebias(3, 1) * height;
 
-                    for (unsigned t = 0u; t < width; ++t)
+                    for (unsigned t = 0u; t < height; ++t)
                     {
                         unsigned input_t = (unsigned)((double)t * scale + bias_t);
-                        for (unsigned s = 0u; s < height; ++s)
+                        for (unsigned s = 0u; s < width; ++s)
                         {
                             unsigned input_s = (unsigned)((double)s * scale + bias_s);
 

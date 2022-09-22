@@ -120,7 +120,7 @@ namespace osgEarth
 
             struct Impostor {
                 osg::ref_ptr<osg::Node> _node;
-                float _farPixelScale;
+                float _farLODScale;
             };
             
             using CreateImpostorFunction = std::function<

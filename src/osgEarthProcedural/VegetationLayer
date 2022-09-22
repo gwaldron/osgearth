@@ -59,6 +59,24 @@ namespace osgEarth { namespace Procedural
             //! Cut off for alpha discard/blend in the shader (0..1]
             OE_OPTION(float, alphaCutoff);
 
+            //! Angle of view at which a polygon will become transparent
+            OE_OPTION(Angle, impostorLowAngle);
+
+            //! Angle of view at which a polygon will become opaque
+            OE_OPTION(Angle, impostorHighAngle);
+
+            //! Scale factor for LOD-ing the far-away impostor vegetation
+            OE_OPTION(float, farLODScale);
+
+            //! Scale factor for the LOD at which to transition from 
+            //! high-resolution 3D models us close to impostor models
+            //! at distance.
+            OE_OPTION(float, nearLODScale);
+
+            //! Amount of an LOD boundary (from near to far) should be
+            //! used to display a transition between the two LODs [0..1]
+            OE_OPTION(float, lodTransitionPadding);
+
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
                 //! Whether to render this group at all
@@ -79,8 +97,8 @@ namespace osgEarth { namespace Procedural
                 //! Percentage of overlap allowed in asset bounding spheres [0..1]
                 OE_OPTION(float, overlap);
 
-                //! SSE scale factor for far visibility
-                OE_OPTION(float, farPixelScale);
+                //! Base SSE scale factor for far visibility
+                OE_OPTION(float, farLODScale);
 
                 // internal
                 osg::ref_ptr<osg::StateSet> _drawStateSet;
@@ -147,6 +165,21 @@ namespace osgEarth { namespace Procedural
         //! The threshold for discarding fragments with high alpha
         void setAlphaCutoff(float value);
         float getAlphaCutoff() const;
+
+        void setImpostorLowAngle(const Angle& value);
+        const Angle& getImpostorLowAngle() const;
+
+        void setImpostorHighAngle(const Angle& value);
+        const Angle& getImpostorHighAngle() const;
+
+        void setFarLODScale(float value);
+        float getFarLODScale() const;
+
+        void setNearLODScale(float value);
+        float getNearLODScale() const;
+
+        void setLODTransitionPadding(float value);
+        float getLODTransitionPadding() const;
 
         //! Force regeneration of all visible data
         void dirty();

@@ -88,6 +88,11 @@ VegetationLayer::Options::getConfig() const
 
     conf.set("alpha_to_coverage", alphaToCoverage());
     conf.set("alpha_cutoff", alphaCutoff());
+    conf.set("impostor_low_angle", impostorLowAngle());
+    conf.set("impostor_high_angle", impostorHighAngle());
+    conf.set("far_lod_scale", farLODScale());
+    conf.set("near_lod_scale", nearLODScale());
+    conf.set("lod_transition_padding", lodTransitionPadding());
 
     //TODO: groups
 
@@ -110,8 +115,7 @@ namespace
         group_conf.get("lod", group.lod());
         group_conf.get("cast_shadows", group.castShadows());
         group_conf.get("overlap", group.overlap());
-        group_conf.get("far_pixel_scale", group.farPixelScale());
-        group_conf.get("far_sse_scale", group.farPixelScale());
+        group_conf.get("far_lod_scale", group.farLODScale());
         if (group_conf.value("lod") == "auto") {
             group.lod() = 0;
         }
@@ -124,11 +128,21 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     // defaults:
     alphaToCoverage().setDefault(true);
     alphaCutoff().setDefault(0.2f);
+    impostorLowAngle().setDefault(Angle(45.0, Units::DEGREES));
+    impostorHighAngle().setDefault(Angle(67.5, Units::DEGREES));
+    farLODScale().setDefault(1.0f);
+    nearLODScale().setDefault(1.0f);
+    lodTransitionPadding().setDefault(0.5f);
 
-    biomeLayer().get(conf, "biomes_layer");    
+    biomeLayer().get(conf, "biomes_layer");
 
     conf.get("alpha_to_coverage", alphaToCoverage());
     conf.get("alpha_cutoff", alphaCutoff());
+    conf.get("impostor_low_angle", impostorLowAngle());
+    conf.get("impostor_high_angle", impostorHighAngle());
+    conf.get("far_lod_scale", farLODScale());
+    conf.get("near_lod_scale", nearLODScale());
+    conf.get("lod_transition_padding", lodTransitionPadding());
 
     // some nice default group settings
     groups()[GROUP_TREES].lod().setDefault(14);
@@ -137,7 +151,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_TREES].maxRange().setDefault(4000.0f);
     groups()[GROUP_TREES].instancesPerSqKm().setDefault(16384);
     groups()[GROUP_TREES].overlap().setDefault(0.0f);
-    groups()[GROUP_TREES].farPixelScale().setDefault(1.0f);
+    groups()[GROUP_TREES].farLODScale().setDefault(1.0f);
     fromGroupConf(GROUP_TREES, conf.child("layers").child(GROUP_TREES), *this);
     fromGroupConf(GROUP_TREES, conf.child("groups").child(GROUP_TREES), *this);
 
@@ -147,7 +161,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_BUSHES].maxRange().setDefault(200.0f);
     groups()[GROUP_BUSHES].instancesPerSqKm().setDefault(4096);
     groups()[GROUP_BUSHES].overlap().setDefault(0.0f);
-    groups()[GROUP_BUSHES].farPixelScale().setDefault(2.0f);
+    groups()[GROUP_BUSHES].farLODScale().setDefault(2.0f);
     fromGroupConf(GROUP_BUSHES, conf.child("layers").child(GROUP_BUSHES), *this);
     fromGroupConf(GROUP_BUSHES, conf.child("groups").child(GROUP_BUSHES), *this);
 
@@ -157,7 +171,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_UNDERGROWTH].maxRange().setDefault(75.0f);
     groups()[GROUP_UNDERGROWTH].instancesPerSqKm().setDefault(524288);
     groups()[GROUP_UNDERGROWTH].overlap().setDefault(1.0f);
-    groups()[GROUP_UNDERGROWTH].farPixelScale().setDefault(3.5f);
+    groups()[GROUP_UNDERGROWTH].farLODScale().setDefault(3.5f);
     fromGroupConf(GROUP_UNDERGROWTH, conf.child("layers").child(GROUP_UNDERGROWTH), *this);
     fromGroupConf(GROUP_UNDERGROWTH, conf.child("groups").child(GROUP_UNDERGROWTH), *this);
 }
@@ -184,6 +198,7 @@ VegetationLayer::Options::Group::Group()
     instancesPerSqKm().setDefault(4096);
     castShadows().setDefault(false);
     overlap().setDefault(0.0f);
+    farLODScale().setDefault(1.0f);
 }
 
 //........................................................................
@@ -333,19 +348,102 @@ VegetationLayer::dirty()
 }
 
 void
-VegetationLayer::setSSEScales(const osg::Vec4f& value)
+VegetationLayer::setImpostorLowAngle(const Angle& value)
 {
-    if (_pixelScalesU.valid())
-        _pixelScalesU->set(value);
+    if (value != getImpostorLowAngle())
+        options().impostorLowAngle() = value;
+
+    getOrCreateStateSet()->getOrCreateUniform(
+        "oe_veg_bbd0", osg::Uniform::FLOAT)->set(
+            clamp(1.0f - cosf(value.as(Units::RADIANS)), 0.0f, 1.0f));
 }
 
-osg::Vec4f
-VegetationLayer::getSSEScales() const
+const Angle&
+VegetationLayer::getImpostorLowAngle() const
 {
-    osg::Vec4f value;
+    return options().impostorLowAngle().get();
+}
+
+void
+VegetationLayer::setImpostorHighAngle(const Angle& value)
+{
+    if (value != getImpostorHighAngle())
+        options().impostorHighAngle() = value;
+
+    getOrCreateStateSet()->getOrCreateUniform(
+        "oe_veg_bbd1", osg::Uniform::FLOAT)->set(
+            clamp(1.0f-cosf(value.as(Units::RADIANS)), 0.0f, 1.0f));
+}
+
+const Angle&
+VegetationLayer::getImpostorHighAngle() const
+{
+    return options().impostorHighAngle().get();
+}
+
+void
+VegetationLayer::setFarLODScale(float value)
+{
+    if (getFarLODScale() != value)
+        options().farLODScale() = value;
+
     if (_pixelScalesU.valid())
-        _pixelScalesU->get(value);
-    return value;
+    {
+        osg::Vec4f vector;
+        if (_pixelScalesU.valid())
+            _pixelScalesU->get(vector);
+
+        vector[1] = value;
+        _pixelScalesU->set(vector);
+    }
+}
+
+float
+VegetationLayer::getFarLODScale() const
+{
+    return options().farLODScale().get();
+}
+
+void
+VegetationLayer::setNearLODScale(float value)
+{
+    if (getNearLODScale() != value)
+        options().nearLODScale() = value;
+
+    if (_pixelScalesU.valid())
+    {
+        osg::Vec4f vector;
+        if (_pixelScalesU.valid())
+            _pixelScalesU->get(vector);
+
+        vector[0] = value;
+        _pixelScalesU->set(vector);
+    }
+}
+
+float
+VegetationLayer::getNearLODScale() const
+{
+    return options().nearLODScale().get();
+}
+
+void
+VegetationLayer::setLODTransitionPadding(float value)
+{
+    value = clamp(value, 0.0f, 1.0f);
+
+    if (getLODTransitionPadding() != value)
+        options().lodTransitionPadding() = value;
+
+    getOrCreateStateSet()->getOrCreateUniform(
+        "oe_chonk_lod_transition_factor", osg::Uniform::FLOAT)->set(
+            value);
+}
+
+float
+VegetationLayer::getLODTransitionPadding() const
+{
+    return options().lodTransitionPadding().get();
 }
 
 void
@@ -367,7 +465,10 @@ void
 VegetationLayer::setAlphaCutoff(float value)
 {
     value = clamp(value, 0.0f, 1.0f);
-    options().alphaCutoff() = value;
+
+    if (getAlphaCutoff() != value)
+        options().alphaCutoff() = value;
+
     getOrCreateStateSet()->getOrCreateUniform(
         "oe_veg_alphaCutoff", osg::Uniform::FLOAT)->set(value);
 }
@@ -633,8 +734,11 @@ VegetationLayer::buildStateSets()
     // activate compressed normal maps
     ss->setDefine("OE_COMPRESSED_NORMAL");
 
-    // apply the cutoff uniform
+    // apply the various uniform-based options
     setAlphaCutoff(options().alphaCutoff().get());
+    setImpostorLowAngle(options().impostorLowAngle().get());
+    setImpostorHighAngle(options().impostorHighAngle().get());
+    setLODTransitionPadding(options().lodTransitionPadding().get());
 }
 
 void
@@ -791,7 +895,7 @@ VegetationLayer::configureImpostor(
 
         BiomeManager::Impostor result;
         result._node = node;
-        result._farPixelScale = group.farPixelScale().get();
+        result._farLODScale = group.farLODScale().get();
         return std::move(result);
     };
 
@@ -799,104 +903,6 @@ VegetationLayer::configureImpostor(
         groupName,
         group._createImpostor);
 }
-
-#if 0
-void
-VegetationLayer::configureUndergrowth()
-{
-    auto& undergrowth = options().groups()[GROUP_UNDERGROWTH];
-
-    float gravity = options().gravity().get();
-
-    // functor for generating billboard geometry for grass:
-    undergrowth._createImpostor = [gravity](
-        const osg::BoundingBox& bbox,
-        std::vector<osg::Texture*>& textures)
-    {
-        constexpr unsigned vertsPerInstance = 16;
-        constexpr unsigned indiciesPerInstance = 54;
-
-        osg::Geometry* out_geom = new osg::Geometry();
-        out_geom->setName("Grass impostor");
-        out_geom->setUseVertexBufferObjects(true);
-        out_geom->setUseDisplayList(false);
-
-        static const GLushort indices[indiciesPerInstance] = {
-            0,1,4, 4,1,5, 1,2,5, 5,2,6, 2,3,6, 6,3,7,
-            4,5,8, 8,5,9, 5,6,9, 9,6,10, 6,7,10, 10,7,11,
-            8,9,12, 12,9,13, 9,10,13, 13,10,14, 10,11,14, 14,11,15
-        };
-        out_geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, indiciesPerInstance, &indices[0]));
-
-        osg::Vec3Array* verts = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
-        verts->reserve(vertsPerInstance);
-        out_geom->setVertexArray(verts);
-
-        const float th = 1.0f / 3.0f;
-        const float x0 = -0.5f;
-        for (int z = 0; z < 4; ++z)
-        {
-            verts->push_back({ x0+0.0f,    th, float(z)*th });
-            verts->push_back({ x0+th,    0.0f, float(z)*th });
-            verts->push_back({ x0+th+th, 0.0f, float(z)*th });
-            verts->push_back({ x0+1.0f,    th, float(z)*th });
-        }
-
-        osg::Vec2Array* uvs = new osg::Vec2Array(osg::Array::BIND_PER_VERTEX);
-        uvs->reserve(vertsPerInstance);
-        out_geom->setTexCoordArray(0, uvs);
-        for (int z = 0; z < 4; ++z)
-        {
-            uvs->push_back({ 0.0f,    float(z)*th });
-            uvs->push_back({ th,      float(z)*th });
-            uvs->push_back({ th + th, float(z)*th });
-            uvs->push_back({ 1.0f,    float(z)*th });
-        }
-
-        const osg::Vec4f colors[1] = {
-            {1,1,1,1}
-        };
-        out_geom->setColorArray(new osg::Vec4Array(1, colors), osg::Array::BIND_OVERALL);
-
-        osg::Vec3f up(0, 0, 1);
-
-        osg::Vec3Array* normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 16);
-        out_geom->setNormalArray(normals);
-
-        osg::Vec3Array* flex = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 16);
-        out_geom->setTexCoordArray(3, flex);
-
-        const osg::Vec3f face_vec(0, -1, 0);
-
-        for (int i = 0; i < 16; ++i)
-        {
-            if (i < 4) {
-                (*normals)[i] = up;
-                (*flex)[i].set(0, 0, 0); // no flex
-            }
-            else {
-                (*normals)[i] = up + ((*verts)[i] - (*verts)[i % 4]);
-                (*normals)[i].normalize();
-                (*flex)[i] = ((*verts)[i] - (*verts)[i - 4]);
-                (*flex)[i].normalize();
-                (*flex)[i] *= accel((*uvs)[i].y());
-            }
-        }
-
-        osg::StateSet* ss = out_geom->getOrCreateStateSet();
-        if (textures.size() > 0)
-            ss->setTextureAttribute(0, textures[0], 1); // side albedo
-        if (textures.size() > 1)
-            ss->setTextureAttribute(1, textures[1], 1); // side normal
-
-        return out_geom;
-    };
-
-    getBiomeLayer()->getBiomeManager().setCreateFunction(
-        GROUP_UNDERGROWTH,
-        undergrowth._createImpostor);
-}
-#endif
 
 bool
 VegetationLayer::checkForNewAssets() const

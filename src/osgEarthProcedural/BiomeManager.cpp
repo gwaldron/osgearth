@@ -513,7 +513,7 @@ BiomeManager::materializeNewAssets(
                 else if (assetDef->modelURI().isSet())
                     sideBB = URI(assetDef->modelURI()->full() + ".side.png", assetDef->modelURI()->context());
                 
-                float impostorFarPixelScale = 1.0f;
+                float impostorFarLODScale = 1.0f;
 
                 if (!sideBB.empty())
                 {
@@ -638,7 +638,7 @@ BiomeManager::materializeNewAssets(
                                 textures);
 
                             residentAsset->impostor() = imp._node;
-                            impostorFarPixelScale = imp._farPixelScale;
+                            impostorFarLODScale = imp._farLODScale;
 
                             // if no MAIN model exists, just re-use the impostor as the 
                             // main model!
@@ -690,7 +690,7 @@ BiomeManager::materializeNewAssets(
                 if (residentAsset->impostor().valid())
                 {
                     // Fade out the impostor at this pixel scale (i.e., multiple of SSE)
-                    float far_pixel_scale = impostorFarPixelScale;
+                    float far_pixel_scale = impostorFarLODScale;
 
                     // Fade the impostor to the 3D model at this pixel scale:
                     float near_pixel_scale = residentAsset->model().valid() ?

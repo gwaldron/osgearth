@@ -29,32 +29,17 @@ namespace osgEarth {
                 _first(true),
                 _forceGenerate(false),
                 _manualBiomes(false),
-                _showBiomeUnderMouse(false),
-                _farLodScale(1.0f),
-                _nearLodScale(1.0f),
-                _lodTransitionFactor(0.1f),
-                _bbCosLow(0.5f),
-                _bbCosHigh(0.75f)
+                _showBiomeUnderMouse(false)
             {
                 //nop
             }
 
             void load(const Config& conf) override
             {
-                conf.get("farLodScale", _farLodScale);
-                conf.get("nearLodScale", _nearLodScale);
-                conf.get("lodTransitionFactor", _lodTransitionFactor);
-                conf.get("bbCosLow", _bbCosLow);
-                conf.get("bbCosHigh", _bbCosHigh);
             }
 
             void save(Config& conf) override
             {
-                conf.set("farLodScale", _farLodScale);
-                conf.set("nearLodScale", _nearLodScale);
-                conf.set("lodTransitionFactor", _lodTransitionFactor);
-                conf.set("bbCosLow", _bbCosLow);
-                conf.set("bbCosHigh", _bbCosHigh);
             }
 
             void draw(osg::RenderInfo& ri) override
@@ -82,28 +67,39 @@ namespace osgEarth {
                 {
                     if (_veglayer.valid() && _veglayer->isOpen())
                     {
-                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Global SSE scales:");
-                        osg::Vec4f sse_scales = _veglayer->getSSEScales();
-                        if (ImGui::SliderFloat("Near", &sse_scales[0], 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
-                            _veglayer->setSSEScales(sse_scales);
-                        if (ImGui::SliderFloat("Far", &sse_scales[1], 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
-                            _veglayer->setSSEScales(sse_scales);
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Global LOD scales:");
 
-                        static float transition = 0.1f;
-                        if (ImGui::SliderFloat("Transition", &transition, 0.0f, 1.0f))
-                            stateset(ri)->addUniform(new osg::Uniform("oe_chonk_lod_transition_factor", transition));
+                        float near_scale = _veglayer->getNearLODScale();
+                        if (ImGui::SliderFloat("Near", &near_scale, 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+                            _veglayer->setNearLODScale(near_scale);
 
-                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Billboard cos(angles):");
-                        if (ImGui::SliderFloat("Low", &_bbCosLow, 0.0f, _bbCosHigh))
-                            stateset(ri)->addUniform(new osg::Uniform("oe_veg_bbd0", _bbCosLow));
-                        if (ImGui::SliderFloat("High", &_bbCosHigh, _bbCosLow, 1.0f))
-                            stateset(ri)->addUniform(new osg::Uniform("oe_veg_bbd1", _bbCosHigh));
+                        float far_scale = _veglayer->getFarLODScale();
+                        if (ImGui::SliderFloat("Far", &far_scale, 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+                            _veglayer->setFarLODScale(far_scale);
+
+                        float padding = _veglayer->getLODTransitionPadding();
+                        if (ImGui::SliderFloat("LOD transition padding", &padding, 0.0f, 1.0f))
+                            _veglayer->setLODTransitionPadding(padding);
+
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Impostor visibility angles:");
+
+                        float bb_low = _veglayer->getImpostorLowAngle().as(Units::DEGREES);
+                        float bb_high = _veglayer->getImpostorHighAngle().as(Units::DEGREES);
+
+                        if (ImGui::SliderFloat("Low", &bb_low, 0.0f, 90.0f))
+                            _veglayer->setImpostorLowAngle(Angle(bb_low, Units::DEGREES));
+
+                        if (ImGui::SliderFloat("High", &bb_high, 0.0f, 90.0f))
+                            _veglayer->setImpostorHighAngle(Angle(bb_high, Units::DEGREES));
+
+                        ImGui::Separator();
 
                         float alphaCutoff = _veglayer->getAlphaCutoff();
                         if (ImGui::SliderFloat("Alpha cutoff", &alphaCutoff, 0.0f, 1.0f))
                             _veglayer->setAlphaCutoff(alphaCutoff);
 
                         ImGui::Separator();
+
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator:");
 
                         int vi = 0;

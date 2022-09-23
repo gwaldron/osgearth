@@ -263,11 +263,17 @@ VegetationLayer::openImplementation()
     // asset group. This will minimize the number of tiles sent to the
     // renderer and improve performance. Doing this here (in open) so the
     // user can close a layer, adjust parameters, and re-open if desired
+    std::set<int> lods_used;
     float max_range = 0.0f;
     for (auto& group_iter : options().groups())
     {
         Options::Group& group = group_iter.second;
         max_range = std::max(max_range, group.maxRange().get());
+        if (lods_used.insert(group.lod().get()).second == false)
+        {
+            return Status(Status::ConfigurationError,
+                "Illegal configuration: multiple layers at the same LOD");
+        }
     }
     max_range = std::min(max_range, getMaxVisibleRange());
     setMaxVisibleRange(max_range);
@@ -316,13 +322,6 @@ VegetationLayer::update(osg::NodeVisitor& nv)
             ScopedMutexLock lock(_assets);
             _assets = std::move(_newAssets.release());
         }
-
-        //Assets newAssets = _newAssets.release();
-        //if (!newAssets.empty())
-        //{
-        //    ScopedMutexLock lock(_assets);
-        //    _assets = std::move(newAssets);
-        //}
 
         if (_requestMultisampling)
         {
@@ -1624,17 +1623,14 @@ VegetationLayer::cull(
         // if the data is ready, cull it:
         if (view._tile->_drawable.isAvailable())
         {
-            auto drawable = view._tile->_drawable.get();
+            auto& drawable = view._tile->_drawable.get();
 
             if (drawable.valid())
             {
+                // Push the matrix and accept the drawable.
                 view._matrix->set(entry->getModelViewMatrix());
                 cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
-                auto& bound = view._tile->_drawable.get()->getBound();
-                //if (nv.getDistanceToViewPoint(bound.center(), true) - bound.radius() < group.maxRange().get())
-                {
-                    view._tile->_drawable.get()->accept(nv);
-                }
+                drawable->accept(nv);
                 cv->popModelViewMatrix();
 
                 // unref the old placeholder.
@@ -1668,6 +1664,7 @@ VegetationLayer::cull(
         // The placeholder is just an older version of the tile.
         else if (view._placeholder != nullptr)
         {
+            // push the matrix and accept the placeholder.
             view._matrix->set(entry->getModelViewMatrix());
             cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
             view._placeholder->_drawable.get()->accept(nv);
@@ -1684,7 +1681,7 @@ VegetationLayer::cull(
     cs->_views.swap(active_views);
 
 
-    // purge unused tiles
+    // purge unused tiles & placeholders
     _tiles.scoped_lock([this]()
         {
             for (auto it = _tiles.begin(); it != _tiles.end(); )

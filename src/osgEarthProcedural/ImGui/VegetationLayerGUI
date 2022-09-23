@@ -24,6 +24,7 @@ namespace osgEarth {
             osg::observer_ptr<VegetationLayer> _veglayer;
             osg::observer_ptr<MapNode> _mapNode;
             Future<const Biome*> _biomeUnderMouse;
+            TileKey _biomeUnderMouseKey;
 
             VegetationLayerGUI() : GUI::BaseGUI("Vegetation"),
                 _first(true),
@@ -161,10 +162,11 @@ namespace osgEarth {
                             if (biome)
                             {
                                 ImGui::Text("%s", biome->name()->c_str());
-                                ImGui::Text("id=%s parentid=%s index=%d",
+                                ImGui::Text("id=%s parentid=%s index=%d key=%s",
                                     biome->id().c_str(),
                                     biome->parentId()->c_str(),
-                                    biome->index());
+                                    biome->index(),
+                                    _biomeUnderMouseKey.str().c_str());
                             }
                             else
                             {
@@ -323,6 +325,7 @@ namespace osgEarth {
                             
                         if (key.valid())
                         {
+                            _biomeUnderMouseKey = key;
                             _biomeUnderMouse = Job().dispatch<const Biome*>([&, key, p](Cancelable* c)
                                 {
                                     const Biome* result = nullptr;

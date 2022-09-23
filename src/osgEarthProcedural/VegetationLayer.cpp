@@ -1164,11 +1164,7 @@ VegetationLayer::getAssetPlacements(
     ImageUtils::PixelReader readNoise(_noiseTex->getImage(0));
     readNoise.setSampleAsRepeatingTexture(true);
 
-    struct CollisionData 
-    {
-        double x, y, radius;
-    };
-    using Index = RTree<CollisionData, double, 2>;
+    using Index = RTree<int, double, 2>;
     Index index;
 
     std::minstd_rand0 gen(key.hash());
@@ -1374,41 +1370,26 @@ VegetationLayer::getAssetPlacements(
             pass = false;
 
             // scale the asset bounding box in preparation for collision:
-            const osg::BoundingBoxd assetbbox = asset->boundingBox();
+            osg::BoundingBoxd assetbbox = asset->boundingBox();
 
-            // radius of the scaled bounding box.
-            double radius = 0.5 * std::max(
-                scale.x() * (assetbbox.xMax() - assetbbox.xMin()),
-                scale.y() * (assetbbox.yMax() - assetbbox.yMin())
-            );
-
-            // adjust collision radius based on density.
-            // i.e., denser areas allow vegetation to be closer.
-            //double search_radius = mix(radius*3.0f, radius*0.1f, density) * (1.0 - overlap);
-            double search_radius = radius * (1.0 - overlap);
-            double search_radius_2 = search_radius * search_radius;
-
+            // stop at first collision:
             bool collision = false;
-
-            auto collision_check = [&local, &search_radius_2, &collision](const CollisionData& c)
-            {
-                double dx = local.x() - c.x;
-                double dy = local.y() - c.y;
-                double dist2 = (dx * dx + dy * dy) - (c.radius*c.radius);
-                collision = (dist2 < search_radius_2);
-                return !collision; // stop at first collision
+            auto collision_check = [&local, &collision](const int& value) {
+                collision = true;
+                return false;
             };
 
-            double a_min[2] = { local.x() - search_radius, local.y() - search_radius };
-            double a_max[2] = { local.x() + search_radius, local.y() + search_radius };
+            double width = (assetbbox.xMax() - assetbbox.xMin()) * (1.0 - overlap);
+            double height = (assetbbox.yMax() - assetbbox.yMin()) * (1.0 - overlap);
+
+            double a_min[2] = { local.x() - 0.5*width, local.y() - 0.5*height };
+            double a_max[2] = { local.x() + 0.5*width, local.y() + 0.5*height };
             
             index.Search(a_min, a_max, collision_check);
 
             if (!collision)
             {
-                a_min[0] = local.x() - radius, a_min[1] = local.y() - radius;
-                a_max[0] = local.x() + radius, a_max[1] = local.y() + radius;
-                index.Insert(a_min, a_max, { local.x(), local.y(), radius });
+                index.Insert(a_min, a_max, 0);
                 pass = true;
             }
         }

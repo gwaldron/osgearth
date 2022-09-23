@@ -1584,6 +1584,9 @@ VegetationLayer::cull(
             continue;
         }
 
+        const osg::FrameStamp* stamp = nv.getFrameStamp();
+        int currentFrame = stamp->getFrameNumber();
+
         // combine the key and revision to make a Unique ID.
         TileKeyAndRevision rev_tile_key(
             { entry->getKey(), entry->getRevision() }
@@ -1619,6 +1622,7 @@ VegetationLayer::cull(
             // based on the same tile key, ignoring the revision;
             // then swap the new tile in as the next placeholder.
             view._placeholder = _placeholders[entry->getKey()];
+            view._lastFrameDrawn = currentFrame;
         }
 
         // if the data is ready, cull it:
@@ -1628,20 +1632,28 @@ VegetationLayer::cull(
 
             if (drawable.valid())
             {
+                // Push the drawables MVM and accept it:
                 view._matrix->set(entry->getModelViewMatrix());
                 cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
-                auto& bound = view._tile->_drawable.get()->getBound();
-                //if (nv.getDistanceToViewPoint(bound.center(), true) - bound.radius() < group.maxRange().get())
-                {
-                    view._tile->_drawable.get()->accept(nv);
-                }
+                drawable->accept(nv);
                 cv->popModelViewMatrix();
 
                 // unref the old placeholder.
                 if (!view._loaded)
                 {
                     view._loaded = true;
-                    view._placeholder = nullptr;
+
+                    // if there WAS no placeholder, this is a new drawable so
+                    // reset its birthday. (this may not work with multiple cameras...?)
+                    if (view._placeholder == nullptr)
+                    {
+                        view._lastFrameDrawn = 0;
+                    }
+                    else
+                    {
+                        view._lastFrameDrawn = currentFrame;
+                        view._placeholder = nullptr;
+                    }
 
                     // update the placeholder for this tilekey.
                     _tiles.scoped_lock([&]()
@@ -1649,6 +1661,15 @@ VegetationLayer::cull(
                             _placeholders[entry->getKey()] = view._tile;
                         });
                 }
+                
+                // If this tile wasn't drawn last time around, reset its birthday.
+                if ((currentFrame - view._lastFrameDrawn) > 2)
+                {
+                    static_cast<ChonkDrawable*>(drawable.get())->setBirthday(
+                        stamp->getReferenceTime());
+                }
+
+                view._lastFrameDrawn = currentFrame;
             }
             else
             {

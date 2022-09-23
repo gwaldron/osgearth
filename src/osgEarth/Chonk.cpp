@@ -520,7 +520,8 @@ namespace
 ChonkDrawable::ChonkDrawable() :
     osg::Drawable(),
     _proxy_dirty(true),
-    _gpucull(true)
+    _gpucull(true),
+    _birthday(0.0)
 {
     setName(typeid(*this).name());
     setUseDisplayList(false);
@@ -533,6 +534,13 @@ ChonkDrawable::ChonkDrawable() :
 ChonkDrawable::~ChonkDrawable()
 {
     //nop
+}
+
+void
+ChonkDrawable::setBirthday(double value)
+{
+    _birthday = value;
+    dirtyGLObjects();
 }
 
 void
@@ -567,6 +575,14 @@ void
 ChonkDrawable::setUseGPUCulling(bool value)
 {
     _gpucull = value;
+}
+
+void
+ChonkDrawable::dirtyGLObjects()
+{
+    // flag all graphics states as requiring an update:
+    for (unsigned i = 0; i < _globjects.size(); ++i)
+        _globjects[i]._dirty = true;
 }
 
 void
@@ -609,8 +625,7 @@ ChonkDrawable::add(
         _batches[chonk].push_back(std::move(instance));
 
         // flag all graphics states as requiring an update:
-        for (unsigned i = 0; i < _globjects.size(); ++i)
-            _globjects[i]._dirty = true;
+        dirtyGLObjects();
 
         // flag the bounds for recompute
         dirtyBound();
@@ -659,7 +674,7 @@ ChonkDrawable::update_and_cull_batches(osg::State& state) const
     if (globjects._dirty)
     {
         ScopedMutexLock lock(_m);
-        globjects.update(_batches, this, state);
+        globjects.update(_batches, this, _birthday, state);
     }
 
     if (!_mvm.isIdentity())
@@ -885,6 +900,7 @@ void
 ChonkDrawable::GLObjects::update(
     const Batches& batches,
     const osg::Object* host,
+    double birthday,
     osg::State& state)
 {
     OE_GL_ZONE_NAMED("update");
@@ -930,6 +946,7 @@ ChonkDrawable::GLObjects::update(
                 v.far_pixel_scale = chonk->_lods[i].far_pixel_scale;
                 v.near_pixel_scale = chonk->_lods[i].near_pixel_scale;
                 v.num_lods = chonk->_lods.size();
+                v.birthday = birthday;
                 _chonk_lods.push_back(std::move(v));
             }
         }
@@ -1114,37 +1131,6 @@ ChonkRenderBin::ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op)
     _cull_sg->_stateset = _cullSS.get();
 }
 
-namespace
-{
-    void apply_state_with_roberts_blessing(
-        osg::State& state,
-        osgUtil::StateGraph* new_rg,
-        osgUtil::StateGraph* prev_rg)
-    {
-        // mysterious state-fu adapted from osgUtil::RenderLeaf
-        if (prev_rg)
-        {
-            osgUtil::StateGraph* prev_rg_parent = prev_rg->_parent;
-            osgUtil::StateGraph* rg = new_rg;
-            if (prev_rg_parent != rg->_parent)
-            {
-                osgUtil::StateGraph::moveStateGraph(state, prev_rg_parent, rg->_parent);
-                state.apply(rg->getStateSet());
-
-            }
-            else if (rg != prev_rg)
-            {
-                state.apply(rg->getStateSet());
-            }
-        }
-        else
-        {
-            osgUtil::StateGraph::moveStateGraph(state, nullptr, new_rg->_parent);
-            state.apply(new_rg->getStateSet());
-        }
-    }
-}
-
 
 ChonkRenderBin::CullLeaf::CullLeaf(osgUtil::RenderLeaf* leaf) :
     CustomRenderLeaf(leaf)
@@ -1187,7 +1173,6 @@ ChonkRenderBin::DrawLeaf::draw(osg::State& state)
         auto& gl = ChonkDrawable::GLObjects::get(drawable->_globjects, state);
         gl._vao->unbind();
     }
-
 }
 
 void

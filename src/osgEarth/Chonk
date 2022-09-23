@@ -204,6 +204,9 @@ namespace osgEarth
             const osg::Matrixf& xform,
             const osg::Vec2f& local_uv);
 
+        //! Sets the birth time of this object (for fade-in)
+        void setBirthday(double value);
+
         //! Model view matrix to apply before rendering
         //! this drawable. Optional
         void setModelViewMatrix(const osg::Matrix& mvm);
@@ -241,6 +244,7 @@ namespace osgEarth
         using Batches = std::unordered_map<Chonk::Ptr, Instances>;
         Batches _batches;
         bool _gpucull;
+        double _birthday;
 
         //! GL objects (and supporting data structures) that must
         //! be stored and managed for each unique GL state/context,
@@ -255,6 +259,8 @@ namespace osgEarth
                 GLfloat radius;
                 GLfloat far_pixel_scale;
                 GLfloat near_pixel_scale;
+                GLfloat birthday;
+                GLfloat padding[3];
                 GLuint num_lods; // chonk-global
                 GLuint total_num_commands; // global
             };
@@ -285,7 +291,7 @@ namespace osgEarth
 
             GLObjects() : _dirty(true), _cull(true) { }
             void initialize(const osg::Object* host, osg::State& state);
-            void update(const Batches&, const osg::Object* host, osg::State&);
+            void update(const Batches&, const osg::Object* host, double birthday, osg::State&);
             void cull(osg::State& state);
             void draw(osg::State& state);
             void release();
@@ -295,6 +301,8 @@ namespace osgEarth
 
         void update_and_cull_batches(osg::State& state) const;
         void draw_batches(osg::State& state) const;
+
+        void dirtyGLObjects();
 
     public:
         // support intersectors and stats visitors

@@ -799,9 +799,9 @@ BiomeManager::addFlexors(
                     // back to local space
                     if (!local2model.isIdentity())
                     {
-                        osg::Matrix inv;
-                        inv.invert(local2model);
-                        normal = osg::Matrix::transform3x3(inv, normal);
+                        osg::Matrix model2local;
+                        model2local.invert(local2model);
+                        normal = osg::Matrix::transform3x3(model2local, normal);
                     }
 
                     (*normals)[i] = normal;
@@ -818,9 +818,9 @@ BiomeManager::addFlexors(
                 osg::Vec3 normal(0, 0, 1);
                 if (!local2model.isIdentity())
                 {
-                    osg::Matrix inv;
-                    inv.invert(local2model);
-                    normal = osg::Matrix::transform3x3(inv, normal);
+                    osg::Matrix model2local;
+                    model2local.invert(local2model);
+                    normal = osg::Matrix::transform3x3(model2local, normal);
                 }
 
                 for (int i = 0; i < verts->size(); ++i)

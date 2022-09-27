@@ -1604,7 +1604,7 @@ VegetationLayer::cull(
         // if the data is ready, cull it:
         if (view._tile->_drawable.isAvailable())
         {
-            auto& drawable = view._tile->_drawable.get();
+            osg::ref_ptr< osg::Drawable > drawable = view._tile->_drawable.get();
 
             if (drawable.valid())
             {

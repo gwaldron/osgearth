@@ -63,7 +63,8 @@ Texture::Texture(GLenum target_) :
     _mipmap(true),
     _clamp(false),
     _keepImage(true),
-    _target(target_)
+    _target(target_),
+    _host(nullptr)
 {
     // nop
     if (target() == GL_TEXTURE_1D)
@@ -87,7 +88,8 @@ Texture::Texture(GLenum target_) :
 Texture::Texture(osg::Texture* input) :
     _globjects(16),
     _compress(false),
-    _osgTexture(input)
+    _osgTexture(input),
+    _host(nullptr)
 {
     target() = input->getTextureTarget();
 
@@ -429,6 +431,12 @@ Texture::resizeGLObjectBuffers(unsigned maxSize)
 void
 Texture::releaseGLObjects(osg::State* state) const
 {
+    // If this texture has a valid host that means it
+    // belongs to an arena, which will take responsibility
+    // for GL release.
+    if (_host != nullptr)
+        return;
+
     if (state)
     {
         auto& gc = GLObjects::get(_globjects, *state);
@@ -456,9 +464,6 @@ Texture::releaseGLObjects(osg::State* state) const
 
     if (osgTexture().valid())
         osgTexture()->releaseGLObjects(state);
-
-    if (_modSensor)
-        _modSensor->operator++();
 }
 
 
@@ -470,15 +475,12 @@ Texture::releaseGLObjects(osg::State* state) const
 TextureArena::TextureArena() :
     _autoRelease(false),
     _bindingPoint(5u),
-    _useUBO(false)
+    _useUBO(false),
+    _releasePtr(0)
 {
     // Keep this synchronous w.r.t. the render thread since we are
     // going to be changing things on the fly
     setDataVariance(DYNAMIC);
-
-    // Used to detect when the texture makes a change that the
-    // arena needs to be aware of (like releasing GL objects)
-    _modSensor = std::make_shared<std::atomic_int>(0);
 }
 
 TextureArena::~TextureArena()
@@ -542,16 +544,15 @@ TextureArena::add(Texture::Ptr tex)
     if (existingIndex >= 0)
         return existingIndex;
 
-    OE_SOFT_ASSERT_AND_RETURN(tex->_modSensor == nullptr, -1,
+    OE_SOFT_ASSERT_AND_RETURN(tex->_host == nullptr, -1,
         "Illegal attempt to add a Texture to more than one TextureArena");
 
     // not there - load and prepare the texture while keeping 
     // the arena UNLOCKED
     OE_PROFILING_ZONE;
 
-    // Connect the sensors so the arena can detect GL object release
-    // and schedule recompilation.
-    tex->_modSensor = _modSensor;
+    // Mark the texture as having a host (this arena).
+    tex->_host = this;
 
     auto& osgTex = tex->osgTexture();
 
@@ -647,7 +648,7 @@ TextureArena::add(Texture::Ptr tex)
 
     if (tex->osgTexture()->getDataVariance() == osg::Object::DYNAMIC)
     {
-        _dynamicTextures.push_back(index);
+        _dynamicTextures.emplace(index);
     }
 
     return index;
@@ -727,48 +728,30 @@ TextureArena::apply(osg::State& state) const
     {        
         if (_autoRelease == true)
         {
-            unsigned int ptr = 0;
-            for (Texture::Ptr& tex : _textures)
+            OE_PROFILING_ZONE_NAMED("release");
+
+            for(unsigned i=0; i<8; ++i, ++_releasePtr)
             {
+                if (_releasePtr >= _textures.size())
+                    _releasePtr = 0;
+
+                Texture::Ptr& tex = _textures[_releasePtr];
+
                 // Check for use_count() == 2.  1 for the _textures list and 1 for the _textureIndices map.
                 if (tex && tex.use_count() == 2)
                 {
-                    // Remove this textue from the texture indices map
-                    auto indexItr = _textureIndices.find(tex);
-                    if (indexItr != _textureIndices.end())
-                    {
-                        _textureIndices.erase(indexItr);
-                    }
-                    
-                    // Remove this texture from the list of dynamic textures
-                    auto dynamicItr = std::find(_dynamicTextures.begin(), _dynamicTextures.end(), ptr);
-                    if (dynamicItr != _dynamicTextures.end())
-                    {
-                        _dynamicTextures.erase(dynamicItr);
-                    }
+                    // Remove this texture from the texture indices map
+                    _textureIndices.erase(tex);
 
-                    // TODO: remove it from the arena altogether
-                    tex->_modSensor = nullptr;
+                    // Remove this texture from the collection of dynamic textures
+                    _dynamicTextures.erase(_releasePtr);
+
+                    // release the GL objects after nulling out the mod sensor
+                    // (so we don't trip ourselves)
+                    tex->_host = nullptr;
                     tex->releaseGLObjects(&state);
                     tex = nullptr;
                 }
-                ++ptr;
-            }
-        }
-
-        // If we got a modification notice, we need to check all our
-        // textures for recompile. This should be relatively rare,
-        // e.g. only when releaseGLObjects gets called
-        if (_modSensor->exchange(0) != 0)
-        {
-            for (unsigned ptr = 0; ptr < _textures.size(); ++ptr)
-            {
-                auto& tex = _textures[ptr];
-                if (tex && tex->needsCompile(state))
-                {
-                    gc._toCompile.push(ptr);
-                }
-                gc._dirty = true;
             }
         }
 
@@ -782,30 +765,34 @@ TextureArena::apply(osg::State& state) const
                 state.getActiveTextureUnit(), osg::StateAttribute::TEXTURE);
         }
 
-        while (!gc._toCompile.empty())
         {
-            int ptr = gc._toCompile.front();
-            gc._toCompile.pop();
-            auto tex = _textures[ptr];
-            if (tex)
-            {
-                tex->compileGLObjects(state);
-            }
+            OE_PROFILING_ZONE_NAMED("_toCompile");
 
-            GLTexture* gltex = nullptr;
-            if (tex)
-                gltex = Texture::GLObjects::get(tex->_globjects, state)._gltexture.get();
-
-            GLuint64 handle = gltex ? gltex->handle(state) : 0ULL;
-            unsigned index = _useUBO ? ptr * 2 : ptr; // hack for std140 vec4 alignment
-            if (gc._handles[index] != handle)
+            while (!gc._toCompile.empty())
             {
-                gc._handles[index] = handle;
+                int ptr = gc._toCompile.front();
+                gc._toCompile.pop();
+                auto tex = _textures[ptr];
+                if (tex)
+                {
+                    tex->compileGLObjects(state);
+                }
+
+                GLTexture* gltex = nullptr;
+                if (tex)
+                    gltex = Texture::GLObjects::get(tex->_globjects, state)._gltexture.get();
+
+                GLuint64 handle = gltex ? gltex->handle(state) : 0ULL;
+                unsigned index = _useUBO ? ptr * 2 : ptr; // hack for std140 vec4 alignment
+                if (gc._handles[index] != handle)
+                {
+                    gc._handles[index] = handle;
+                    gc._dirty = true;
+                }
+
+                // mark the GC to re-upload its LUT
                 gc._dirty = true;
             }
-
-            // mark the GC to re-upload its LUT
-            gc._dirty = true;
         }
 
         gc._lastAppliedFrame = state.getFrameStamp()->getFrameNumber();

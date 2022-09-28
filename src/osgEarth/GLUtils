@@ -555,7 +555,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT GLObjectPool : public osg::GraphicsObjectManager
     {
     public:
-        using Collection = std::unordered_set<GLObject::Ptr>;
+        using Collection = std::vector< GLObject::Ptr >;
 
         //! construct an object pool under the given graphics context ID
         GLObjectPool(unsigned contextID);

@@ -195,9 +195,9 @@ void cull()
             fade = 1.0 - (minPixelSize - pixelSize) / pixelSizePad;
     }
 
-  #if 1 // testing fade-in over time ...
+  #if 1
     // Fade in new chonks
-    const float fadein_time = 2.0;
+    const float fadein_time = 2.0; // seconds
     float birth = clamp((osg_FrameTime - chonks[v].birthday) / fadein_time, 0.0, 1.0);
     fade *= birth;
   #endif

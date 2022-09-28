@@ -315,7 +315,6 @@ namespace osgEarth { namespace Procedural
             Tile::Ptr _tile;
             Tile::Ptr _placeholder;
             bool _loaded;
-            int _lastFrameDrawn;
             osg::ref_ptr<osg::RefMatrix> _matrix;
             TileView() : _loaded(false) { }
         };

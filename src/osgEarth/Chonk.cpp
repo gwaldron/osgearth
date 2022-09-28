@@ -520,8 +520,7 @@ namespace
 ChonkDrawable::ChonkDrawable() :
     osg::Drawable(),
     _proxy_dirty(true),
-    _gpucull(true),
-    _birthday(0.0)
+    _gpucull(true)
 {
     setName(typeid(*this).name());
     setUseDisplayList(false);
@@ -537,10 +536,10 @@ ChonkDrawable::~ChonkDrawable()
 }
 
 void
-ChonkDrawable::setBirthday(double value)
+ChonkDrawable::markAsSeen(osg::State& state)
 {
-    _birthday = value;
-    dirtyGLObjects();
+    auto& gc = GLObjects::get(_globjects, state);
+    gc._lastFrameSeen = state.getFrameStamp()->getFrameNumber();
 }
 
 void
@@ -671,10 +670,19 @@ ChonkDrawable::update_and_cull_batches(osg::State& state) const
 {
     auto& globjects = GLObjects::get(_globjects, state);
 
+    int frame = state.getFrameStamp()->getFrameNumber();
+
+    if ((frame - globjects._lastFrameSeen) > 1)
+    {
+        globjects._birthday = state.getFrameStamp()->getReferenceTime();
+        globjects._dirty = true;
+    }
+    globjects._lastFrameSeen = frame;
+
     if (globjects._dirty)
     {
         ScopedMutexLock lock(_m);
-        globjects.update(_batches, this, _birthday, state);
+        globjects.update(_batches, this, state);
     }
 
     if (!_mvm.isIdentity())
@@ -798,6 +806,14 @@ ChonkDrawable::accept(osg::PrimitiveFunctor& f) const
     }
 }
 
+ChonkDrawable::GLObjects::GLObjects() :
+    _dirty(true),
+    _cull(true),
+    _birthday(0.0),
+    _lastFrameSeen(0)
+{
+    // nop
+}
 
 void
 ChonkDrawable::GLObjects::initialize(
@@ -900,7 +916,6 @@ void
 ChonkDrawable::GLObjects::update(
     const Batches& batches,
     const osg::Object* host,
-    double birthday,
     osg::State& state)
 {
     OE_GL_ZONE_NAMED("update");
@@ -946,7 +961,7 @@ ChonkDrawable::GLObjects::update(
                 v.far_pixel_scale = chonk->_lods[i].far_pixel_scale;
                 v.near_pixel_scale = chonk->_lods[i].near_pixel_scale;
                 v.num_lods = chonk->_lods.size();
-                v.birthday = birthday;
+                v.birthday = _birthday;
                 _chonk_lods.push_back(std::move(v));
             }
         }

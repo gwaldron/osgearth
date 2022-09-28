@@ -882,6 +882,28 @@ MapBoxGLImageLayer::openImplementation()
     {
         _glyphManager = new MapboxGLGlyphManager(_styleSheet.glyphs().full(), getKey(), getReadOptions());
     }
+    // Compute the data extents
+    if (!_styleSheet.layers().empty())
+    {
+        unsigned int minZoom = UINT_MAX;
+        unsigned int maxZoom = 0;
+        for (auto& l : _styleSheet.layers())
+        {
+            if (l.minZoom() < minZoom)
+            {
+                minZoom = l.minZoom();
+            }
+
+            if (l.maxZoom() > maxZoom)
+            {
+                maxZoom = l.maxZoom();
+            }
+        }
+
+        DataExtentList dataExtents;
+        dataExtents.push_back(DataExtent(getProfile()->getExtent(), minZoom, maxZoom));
+        setDataExtents(dataExtents);        
+    }
 
     return Status::NoError;
 }

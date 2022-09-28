@@ -276,9 +276,10 @@ namespace osgEarth
                 }
 
                 // Special case: we found one valid coverage - just return that.
-                if (inputs.size() == 1)
+                if (inputs.size() == 1 && 
+                    inputs.back().getExtent() == key.getExtent())
                 {
-                    // TODO: will the extent always be the same as the input key's extent?
+
                     output = std::move(inputs.back());
                     return true;
                 }

@@ -46,10 +46,6 @@ namespace osgEarth
         using Ptr = std::shared_ptr<Texture>;
         using WeakPtr = std::weak_ptr<Texture>;
 
-        //! Internal modification counter so that textures can
-        //! inform the arena of release
-        using ModSensor = std::shared_ptr<std::atomic_int>;
-
         //! Create for a given texture target
         static Ptr create(
             osg::Image* image = nullptr,
@@ -116,7 +112,7 @@ namespace osgEarth
     protected:
         Texture(GLenum target);
         Texture(osg::Texture*);
-        ModSensor _modSensor;
+        void* _host;
         friend class TextureArena;
     };
 
@@ -200,11 +196,11 @@ namespace osgEarth
 
         mutable TextureVector _textures;
         mutable std::unordered_map<Texture::Ptr, unsigned int> _textureIndices;
-        mutable std::vector<unsigned int> _dynamicTextures;
+        mutable std::unordered_set<unsigned> _dynamicTextures;
         bool _autoRelease;
         unsigned _bindingPoint;
         bool _useUBO;
-        Texture::ModSensor _modSensor;
+        mutable int _releasePtr;
 
         mutable Mutex _m;
 

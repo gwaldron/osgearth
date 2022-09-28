@@ -580,8 +580,7 @@ void
 GLObjectPool::watch(GLObject::Ptr object) //, osg::State& state)
 {
     ScopedMutexLock lock(_mutex);
-
-    _objects.insert(object);
+    _objects.push_back(object);
 
     //if (object->shareable())
     //{
@@ -661,7 +660,7 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
     ScopedMutexLock lock(_mutex);
 
     GLsizeiptr bytes = 0;
-    std::unordered_set<GLObject::Ptr> keep;
+    GLObjectPool::Collection keep;
 
     for (auto& object : _objects)
     {
@@ -671,7 +670,7 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
         }
         else
         {
-            keep.insert(object);
+            keep.push_back(object);
             bytes += object->size();
         }
     }
@@ -685,24 +684,29 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
     ScopedMutexLock lock(_mutex);
 
     GLsizeiptr bytes = 0;
-    std::unordered_set<GLObject::Ptr> keep;
     unsigned maxNumToRelease = std::max(1u, (unsigned)pow(4.0f, _avarice));
     unsigned numReleased = 0u;
 
-    for (auto& object : _objects)
+    for (unsigned int i = 0; i < _objects.size();)
     {
+        GLObject::Ptr& object = _objects[i];
+
         if (object->gc() == gc && object.use_count() == 1 && numReleased < maxNumToRelease)
         {
+            // Release the object
             object->release();
             ++numReleased;
+            // Move the object at the end of the vector into this slot, making sure not to increment i as we want this object processed next.
+            _objects[i] = std::move(_objects.back());
+            // Reduce the size of the vector by 1.
+            _objects.resize(_objects.size() - 1);
         }
         else
-        {
-            keep.insert(object);
+        {         
             bytes += object->size();
+            ++i;
         }
     }
-    _objects.swap(keep);
     _totalBytes = bytes;
 }
 

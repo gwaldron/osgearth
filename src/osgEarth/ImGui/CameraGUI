@@ -86,10 +86,11 @@ namespace osgEarth {
                     return;
 
                 EarthManipulator* man = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
-                if (!man)
-                    return;
 
-                EarthManipulator::Settings* s = man->getSettings();
+                EarthManipulator::Settings* s = nullptr;
+                
+                if (man)
+                    s = man->getSettings();
 
                 ImGui::Begin(name(), visible());
                 {
@@ -110,24 +111,74 @@ namespace osgEarth {
                         camera(ri)->setProjectionMatrix(pm);
                     }
 
-                    if (ImGui::Checkbox("Lock azimuth while panning", &_lockAzimuthWhilePanning) || _first)
-                        s->setLockAzimuthWhilePanning(_lockAzimuthWhilePanning), dirtySettings();
+                    if (s)
+                    {
+                        if (ImGui::Checkbox("Lock azimuth while panning", &_lockAzimuthWhilePanning) || _first)
+                            s->setLockAzimuthWhilePanning(_lockAzimuthWhilePanning), dirtySettings();
 
-                    if (ImGui::Checkbox("Arc viewpoint transitions", &_arcViewpointTransitions) || _first)
-                        s->setArcViewpointTransitions(_arcViewpointTransitions), dirtySettings();
+                        if (ImGui::Checkbox("Arc viewpoint transitions", &_arcViewpointTransitions) || _first)
+                            s->setArcViewpointTransitions(_arcViewpointTransitions), dirtySettings();
 
-                    if (ImGui::Checkbox("Terrain avoidance", &_terrainAvoidanceEnabled) || _first)
-                        s->setTerrainAvoidanceEnabled(_terrainAvoidanceEnabled), dirtySettings();
+                        if (ImGui::Checkbox("Terrain avoidance", &_terrainAvoidanceEnabled) || _first)
+                            s->setTerrainAvoidanceEnabled(_terrainAvoidanceEnabled), dirtySettings();
 
-                    if (ImGui::Checkbox("Throwing", &_throwing) || _first)
-                        s->setThrowingEnabled(_throwing), dirtySettings();
+                        if (ImGui::Checkbox("Throwing", &_throwing) || _first)
+                            s->setThrowingEnabled(_throwing), dirtySettings();
 
-                    if (_throwing || _first)
-                        if (ImGui::SliderFloat("Decay", &_throwDecayRate, 0.02f, 0.3f) || _first)
-                            s->setThrowDecayRate(_throwDecayRate), dirtySettings();
+                        if (_throwing || _first)
+                            if (ImGui::SliderFloat("Decay", &_throwDecayRate, 0.02f, 0.3f) || _first)
+                                s->setThrowDecayRate(_throwDecayRate), dirtySettings();
 
-                    if (ImGui::Checkbox("Zoom to mouse", &_zoomToMouse) || _first)
-                        s->setZoomToMouse(_zoomToMouse), dirtySettings();
+                        if (ImGui::Checkbox("Zoom to mouse", &_zoomToMouse) || _first)
+                            s->setZoomToMouse(_zoomToMouse), dirtySettings();
+                    }
+
+                    static float magnification_old = 1.0f, magnification_new = 1.0f;
+                    static osg::Matrix ref_proj;
+                    if (ImGui::SliderFloat("Magnification", &magnification_new, 1.0f, 25.0f))
+                    {
+                        auto proj = camera(ri)->getProjectionMatrix();
+                        if (magnification_old == 1.0f ||
+                            ref_proj.isIdentity() ||
+                            ProjectionMatrix::isOrtho(proj) != ProjectionMatrix::isOrtho(ref_proj))
+                        {
+                            ref_proj = proj;
+                        }
+
+                        double rangeScale = 1.0 / magnification_new;
+
+                        osg::Matrix new_proj;
+                        if (ProjectionMatrix::isPerspective(ref_proj))
+                        {
+                            double vfov, ar, n, f;
+                            ProjectionMatrix::getPerspective(ref_proj, vfov, ar, n, f);
+                            ProjectionMatrix::setPerspective(new_proj, vfov * rangeScale, ar, n, f);
+
+                            if (s)
+                                s->setOrthoTracksPerspective(true);
+                        }
+                        else
+                        {
+                            double L, R, B, T, N, F;
+                            double M, H;
+                            ProjectionMatrix::getOrtho(ref_proj, L, R, B, T, N, F);
+                            M = B + (T - B) / 2;
+                            H = (T - B)*rangeScale / 2;
+                            B = M - H, T = M + H;
+                            M = L + (R - L) / 2;
+                            H = (R - L)*rangeScale / 2;
+                            L = M - H, R = M + H;
+                            ProjectionMatrix::setOrtho(new_proj, L, R, B, T, N, F);
+
+                            if (s)
+                                s->setOrthoTracksPerspective(false);
+                        }
+
+                        camera(ri)->setProjectionMatrix(new_proj);
+                        camera(ri)->setLODScale(rangeScale);
+
+                        magnification_old = magnification_new;
+                    }
                 }
 
                 _first = false;

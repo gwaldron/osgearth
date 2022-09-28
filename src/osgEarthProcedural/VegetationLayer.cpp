@@ -263,11 +263,17 @@ VegetationLayer::openImplementation()
     // asset group. This will minimize the number of tiles sent to the
     // renderer and improve performance. Doing this here (in open) so the
     // user can close a layer, adjust parameters, and re-open if desired
+    std::set<int> lods_used;
     float max_range = 0.0f;
     for (auto& group_iter : options().groups())
     {
         Options::Group& group = group_iter.second;
         max_range = std::max(max_range, group.maxRange().get());
+        if (lods_used.insert(group.lod().get()).second == false)
+        {
+            return Status(Status::ConfigurationError,
+                "Illegal configuration: multiple layers at the same LOD");
+        }
     }
     max_range = std::min(max_range, getMaxVisibleRange());
     setMaxVisibleRange(max_range);
@@ -316,13 +322,6 @@ VegetationLayer::update(osg::NodeVisitor& nv)
             ScopedMutexLock lock(_assets);
             _assets = std::move(_newAssets.release());
         }
-
-        //Assets newAssets = _newAssets.release();
-        //if (!newAssets.empty())
-        //{
-        //    ScopedMutexLock lock(_assets);
-        //    _assets = std::move(newAssets);
-        //}
 
         if (_requestMultisampling)
         {
@@ -1165,11 +1164,7 @@ VegetationLayer::getAssetPlacements(
     ImageUtils::PixelReader readNoise(_noiseTex->getImage(0));
     readNoise.setSampleAsRepeatingTexture(true);
 
-    struct CollisionData 
-    {
-        double x, y, radius;
-    };
-    using Index = RTree<CollisionData, double, 2>;
+    using Index = RTree<int, double, 2>;
     Index index;
 
     std::minstd_rand0 gen(key.hash());
@@ -1375,41 +1370,26 @@ VegetationLayer::getAssetPlacements(
             pass = false;
 
             // scale the asset bounding box in preparation for collision:
-            const osg::BoundingBoxd assetbbox = asset->boundingBox();
+            osg::BoundingBoxd assetbbox = asset->boundingBox();
 
-            // radius of the scaled bounding box.
-            double radius = 0.5 * std::max(
-                scale.x() * (assetbbox.xMax() - assetbbox.xMin()),
-                scale.y() * (assetbbox.yMax() - assetbbox.yMin())
-            );
-
-            // adjust collision radius based on density.
-            // i.e., denser areas allow vegetation to be closer.
-            //double search_radius = mix(radius*3.0f, radius*0.1f, density) * (1.0 - overlap);
-            double search_radius = radius * (1.0 - overlap);
-            double search_radius_2 = search_radius * search_radius;
-
+            // stop at first collision:
             bool collision = false;
-
-            auto collision_check = [&local, &search_radius_2, &collision](const CollisionData& c)
-            {
-                double dx = local.x() - c.x;
-                double dy = local.y() - c.y;
-                double dist2 = (dx * dx + dy * dy) - (c.radius*c.radius);
-                collision = (dist2 < search_radius_2);
-                return !collision; // stop at first collision
+            auto collision_check = [&local, &collision](const int& value) {
+                collision = true;
+                return false;
             };
 
-            double a_min[2] = { local.x() - search_radius, local.y() - search_radius };
-            double a_max[2] = { local.x() + search_radius, local.y() + search_radius };
+            double width = (assetbbox.xMax() - assetbbox.xMin()) * (1.0 - overlap);
+            double height = (assetbbox.yMax() - assetbbox.yMin()) * (1.0 - overlap);
+
+            double a_min[2] = { local.x() - 0.5*width, local.y() - 0.5*height };
+            double a_max[2] = { local.x() + 0.5*width, local.y() + 0.5*height };
             
             index.Search(a_min, a_max, collision_check);
 
             if (!collision)
             {
-                a_min[0] = local.x() - radius, a_min[1] = local.y() - radius;
-                a_max[0] = local.x() + radius, a_max[1] = local.y() + radius;
-                index.Insert(a_min, a_max, { local.x(), local.y(), radius });
+                index.Insert(a_min, a_max, 0);
                 pass = true;
             }
         }
@@ -1628,11 +1608,11 @@ VegetationLayer::cull(
         // if the data is ready, cull it:
         if (view._tile->_drawable.isAvailable())
         {
-            auto drawable = view._tile->_drawable.get();
+            osg::ref_ptr< osg::Drawable > drawable = view._tile->_drawable.get();
 
             if (drawable.valid())
             {
-                // Push the drawables MVM and accept it:
+                // Push the matrix and accept the drawable.
                 view._matrix->set(entry->getModelViewMatrix());
                 cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
                 drawable->accept(nv);
@@ -1689,6 +1669,7 @@ VegetationLayer::cull(
         // The placeholder is just an older version of the tile.
         else if (view._placeholder != nullptr)
         {
+            // push the matrix and accept the placeholder.
             view._matrix->set(entry->getModelViewMatrix());
             cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
             view._placeholder->_drawable.get()->accept(nv);
@@ -1705,7 +1686,7 @@ VegetationLayer::cull(
     cs->_views.swap(active_views);
 
 
-    // purge unused tiles
+    // purge unused tiles & placeholders
     _tiles.scoped_lock([this]()
         {
             for (auto it = _tiles.begin(); it != _tiles.end(); )

@@ -123,16 +123,9 @@ in vec3 vp_VertexView;
 
 #define OE_A2C_ADJUSTMENT 0.275
 
-#pragma import_defines(OE_TWEAKABLE)
-#ifdef OE_TWEAKABLE
-#define tweakable uniform
-#else
-#define tweakable const
-#endif
-
-tweakable float oe_veg_bbd0 = 0.5;
-tweakable float oe_veg_bbd1 = 0.75;
-tweakable float oe_veg_alphaCutoff = 0.15;
+uniform float oe_veg_bbd0 = 0.5;
+uniform float oe_veg_bbd1 = 0.75;
+uniform float oe_veg_alphaCutoff = 0.15;
 
 void oe_vegetation_fs(inout vec4 color)
 {

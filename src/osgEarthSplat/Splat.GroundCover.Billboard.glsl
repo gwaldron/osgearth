@@ -194,8 +194,12 @@ void oe_GroundCover_VS(inout vec4 vertex_view)
             float blend = 0.25 + (noise[NOISE_RANDOM_2] * 0.25);
 
             vp_Normal =
-                which == 0 || which == 2 ? mix(-tangentVector, faceNormalVector, blend) :
-                mix(tangentVector, faceNormalVector, blend);
+                which == 0 ? -tangentVector :
+                which == 1 ? tangentVector :
+                which == 2 ? -tangentVector + heightVector :
+                tangentVector + heightVector;
+
+            vp_Normal.z = 0.05 * length(heightVector);
 
             oe_GroundCover_atlasIndex = float(render[gl_InstanceID].sideIndex);
         }

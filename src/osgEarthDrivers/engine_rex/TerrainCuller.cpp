@@ -1,3 +1,4 @@
+
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
@@ -128,7 +129,8 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
                 }            
             }
 
-            DrawTileCommand tile;
+            drawable->_tiles.emplace_back();
+            DrawTileCommand& tile = drawable->_tiles.back();
 
             // install everything we need in the Draw Command:
             tile._colorSamplers = pass ? &(pass->samplers()) : nullptr;
@@ -150,7 +152,6 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             // assign the draw sequence:
             tile._sequence = drawable->_tiles.size();
 
-            drawable->_tiles.emplace_back(std::move(tile));
             return &drawable->_tiles.back();
         }
     }
@@ -248,9 +249,10 @@ TerrainCuller::apply(TileNode& node)
             SurfaceNode* surface = node.getSurfaceNode();
                     
             // push the surface matrix:
-            osg::RefMatrix* matrix = createOrReuseMatrix(*_cv->getModelViewMatrix());
-            surface->computeLocalToWorldMatrix(*matrix,this);
-            _cv->pushModelViewMatrix(matrix, surface->getReferenceFrame());
+            osg::ref_ptr<osg::RefMatrix> matrix = new osg::RefMatrix(*_cv->getModelViewMatrix());
+            //osg::RefMatrix* matrix = createOrReuseMatrix(*_cv->getModelViewMatrix());
+            surface->computeLocalToWorldMatrix(*matrix.get(),this);
+            _cv->pushModelViewMatrix(matrix.get(), surface->getReferenceFrame());
 
             if (!_cv->isCulled(surface->getAlignedBoundingBox()))
             {

@@ -43,6 +43,8 @@ struct ChonkLOD
     vec4 bs;
     float far_pixel_scale;
     float near_pixel_scale;
+    float birthday;
+    float padding[3];
     uint num_lods; // chonk-global
     uint total_num_commands; // global
 };
@@ -79,6 +81,7 @@ layout(binding = 31) buffer InputBuffer
 uniform vec3 oe_Camera;
 uniform float oe_sse;
 uniform vec4 oe_lod_scale;
+uniform float osg_FrameTime;
 
 #if OE_GPUCULL_DEBUG
 //#ifdef OE_GPUCULL_DEBUG
@@ -191,10 +194,18 @@ void cull()
         else if (pixelSize < minPixelSize)
             fade = 1.0 - (minPixelSize - pixelSize) / pixelSizePad;
     }
-#endif
+
+  #if 1
+    // Fade in new chonks
+    const float fadein_time = 2.0; // seconds
+    float birth = clamp((osg_FrameTime - chonks[v].birthday) / fadein_time, 0.0, 1.0);
+    fade *= birth;
+  #endif
 
     if (fade < 0.1)
         return;
+
+#endif // !OE_IS_SHADOW_CAMERA
 
     // Pass! Set the visibility for this LOD:
     input_instances[i].visibility[lod] = fade;

@@ -1590,15 +1590,14 @@ VegetationLayer::cull(
                     entry->getKey(),
                     groupName,
                     entry->getBBox());
+
+                // in the meantime, get (or create) a placeholder
+                // based on the same tile key, ignoring the revision.
+                view._placeholder = _placeholders[entry->getKey()];
             }
 
             view._tile = tile;
             view._matrix = new osg::RefMatrix();
-
-            // in the meantime, get (or create) a placeholder
-            // based on the same tile key, ignoring the revision;
-            // then swap the new tile in as the next placeholder.
-            view._placeholder = _placeholders[entry->getKey()];
         }
 
         // if the data is ready, cull it:
@@ -1618,7 +1617,18 @@ VegetationLayer::cull(
                 if (!view._loaded)
                 {
                     view._loaded = true;
-                    view._placeholder = nullptr;
+
+                    // if there was a placeholder, zero it out and tell the drawable
+                    // not to reset itself.
+                    if (view._placeholder != nullptr)
+                    {
+                        view._placeholder = nullptr;
+
+                        if (cv->getState())
+                        {
+                            static_cast<ChonkDrawable*>(drawable.get())->markAsSeen(*cv->getState());
+                        }
+                    }
 
                     // update the placeholder for this tilekey.
                     _tiles.scoped_lock([&]()

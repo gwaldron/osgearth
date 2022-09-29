@@ -30,11 +30,8 @@
 
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
-#include <osgEarth/LandCoverLayer>
 
 #include <osg/Drawable>
-
-#include <chrono>
 
 namespace osgEarth { namespace Procedural
 {
@@ -150,10 +147,6 @@ namespace osgEarth { namespace Procedural
         //! Whether to render the named group
         void setEnabled(const std::string&, bool);
         bool getEnabled(const std::string&) const;
-
-        //! LOD/SSE scaling factors (one per group)
-        void setSSEScales(const osg::Vec4f& lods);
-        osg::Vec4f getSSEScales() const;
 
         //! Sets the allowable instance overlap percentage for a group.
         //! Note: call dirty() to refresh after setting this value.
@@ -272,9 +265,13 @@ namespace osgEarth { namespace Procedural
         // Result of background drawable-creation jobs
         using FutureDrawable = Future<osg::ref_ptr<osg::Drawable>>;
 
-        struct TileKeyAndRevision {
+        // Combine the TileKey and the data revision into a struct
+        // that uniquely identifies a version of a tile.
+        struct TileKeyAndRevision
+        {
             TileKey key;
             int revision;
+
             bool operator == (const TileKeyAndRevision& rhs) const {
                 return key == rhs.key && revision == rhs.revision;
             }

@@ -204,6 +204,10 @@ namespace osgEarth
             const osg::Matrixf& xform,
             const osg::Vec2f& local_uv);
 
+        //! Marks the drawable as "seen" in the current frame
+        //! so it won't reset its fade-in.
+        void markAsSeen(osg::State& state);
+
         //! Model view matrix to apply before rendering
         //! this drawable. Optional
         void setModelViewMatrix(const osg::Matrix& mvm);
@@ -255,6 +259,8 @@ namespace osgEarth
                 GLfloat radius;
                 GLfloat far_pixel_scale;
                 GLfloat near_pixel_scale;
+                GLfloat birthday;
+                GLfloat padding[3];
                 GLuint num_lods; // chonk-global
                 GLuint total_num_commands; // global
             };
@@ -274,6 +280,8 @@ namespace osgEarth
             GLBuffer::Ptr _chonkBuf;
             bool _dirty;
             bool _cull;
+            double _birthday;
+            int _lastFrameSeen;
             void(GL_APIENTRY * _glMultiDrawElementsIndirectBindlessNV)
                 (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint);
 
@@ -283,7 +291,7 @@ namespace osgEarth
             };
             mutable std::unordered_map<const void*, PCPState> _pcps;
 
-            GLObjects() : _dirty(true), _cull(true) { }
+            GLObjects();
             void initialize(const osg::Object* host, osg::State& state);
             void update(const Batches&, const osg::Object* host, osg::State&);
             void cull(osg::State& state);
@@ -295,6 +303,8 @@ namespace osgEarth
 
         void update_and_cull_batches(osg::State& state) const;
         void draw_batches(osg::State& state) const;
+
+        void dirtyGLObjects();
 
     public:
         // support intersectors and stats visitors

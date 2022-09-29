@@ -771,34 +771,33 @@ ElevationPool::sampleMapCoords(
     double rx, ry;
     int tx, ty;
     int tx_prev = INT_MAX, ty_prev = INT_MAX;
-    float lastRes = -1.0f;
+
     int lod;
     int lod_prev = INT_MAX;
     const Units& units = map->getSRS()->getUnits();
-    Distance pointRes(0.0, units);
 
-    double resolutionInMapUnits = resolution.asDistance(units, points[0].y());
-
-    int maxLOD = profile->getLevelOfDetailForHorizResolution(
-        resolutionInMapUnits,
-        ELEVATION_TILE_SIZE);
-
-    lod = osg::minimum( getLOD(points[0].x(), points[0].y()), (int)maxLOD );
-
-    //TODO: Fix this mess, doesn't work for insets.
-    if (lod < 0)
-        lod = 0;
-
-    profile->getNumTiles(lod, tw, th);
-
-    for(auto& p : points)
+    for (auto& p : points)
     {
         {
             //OE_PROFILING_ZONE_NAMED("createTileKey");
+            double resolutionInMapUnits = resolution.asDistance(units, p.y());
+            int computedLOD = profile->getLevelOfDetailForHorizResolution(
+                resolutionInMapUnits,
+                ELEVATION_TILE_SIZE);
 
-            rx = (p.x()-pxmin)/pw, ry = (p.y()-pymin)/ph;
-            tx = osg::clampBelow((unsigned)(rx * (double)tw), tw-1u ); // TODO: wrap around for geo
-            ty = osg::clampBelow((unsigned)((1.0-ry) * (double)th), th-1u );
+            lod = osg::minimum(getLOD(p.x(), p.y()), (int)computedLOD);
+
+            if (lod < 0)
+            {
+                p.z() = failValue;
+                continue;
+            }
+
+            profile->getNumTiles(lod, tw, th);
+
+            rx = (p.x() - pxmin) / pw, ry = (p.y() - pymin) / ph;
+            tx = osg::clampBelow((unsigned)(rx * (double)tw), tw - 1u); // TODO: wrap around for geo
+            ty = osg::clampBelow((unsigned)((1.0 - ry) * (double)th), th - 1u);
 
             if (lod != lod_prev || tx != tx_prev || ty != ty_prev)
             {
@@ -839,8 +838,8 @@ ElevationPool::sampleMapCoords(
                 //OE_PROFILING_ZONE_NAMED("sample");
                 if (raster.valid())
                 {
-                    u = (p.x() - raster->getExtent().xMin()) /  raster->getExtent().width();
-                    v = (p.y() - raster->getExtent().yMin()) /  raster->getExtent().height();
+                    u = (p.x() - raster->getExtent().xMin()) / raster->getExtent().width();
+                    v = (p.y() - raster->getExtent().yMin()) / raster->getExtent().height();
 
                     // Note: This can happen on the map edges..
                     // TODO: consider looping around for geo and clamping for projected

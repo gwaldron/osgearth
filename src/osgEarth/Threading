@@ -246,13 +246,12 @@ namespace osgEarth { namespace Threading
     class Future : public Cancelable
     {
     public:
-        typedef std::function<void(const T&)> Callback;
+        using Callback = std::function<void(const T&)>;
 
     private:
         // internal structure to track referenced to the result
         struct Container {
             Container() { }
-            //Container(const T& obj) { set(obj); }
             void set(const T& obj) { 
                 ScopedMutexLock lock(_m);
                 _obj = std::move(obj);
@@ -348,7 +347,6 @@ namespace osgEarth { namespace Threading
         void abandon() {
             _shared.reset(new Container());
             _ev.reset(new Event());
-            //_ev->reset();
         }
 
         //! synonym for abandon.
@@ -364,9 +362,15 @@ namespace osgEarth { namespace Threading
             return _shared.use_count();
         }
 
+        //! Function to execute upon a Promise resolving this Future.
+        void whenAvailable(const Callback& cb) {
+            _whenAvailable = cb;
+        }
+
     private:
         std::shared_ptr<Event> _ev;
         std::shared_ptr<Container> _shared;
+        Callback _whenAvailable;
         template<typename U> friend class Promise;
     };
 
@@ -391,11 +395,15 @@ namespace osgEarth { namespace Threading
         void resolve(const T& value) {
             _future._shared->set(value);
             _future._ev->set();
+            if (_future._whenAvailable)
+                _future._whenAvailable(_future.get());
         }
 
         //! Resolve (fulfill) the promise with a default result.
         void resolve() {
             _future._ev->set();
+            if (_future._whenAvailable)
+                _future._whenAvailable(_future.get());
         }
 
         //! True if the promise is resolved and the Future holds a valid result.

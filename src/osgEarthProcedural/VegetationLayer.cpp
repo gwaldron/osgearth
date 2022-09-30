@@ -1044,8 +1044,9 @@ VegetationLayer::createDrawableAsync(
     {
         osg::ref_ptr<ProgressCallback> p = new ProgressCallback(c);
         auto result = layer->createDrawable(key, group, tile_bbox, p.get());
-        asChonkDrawable(result)->setBirthday(
-            framestamp ? framestamp->getReferenceTime() : backup_birthday);
+        if (result.valid())
+            asChonkDrawable(result)->setBirthday(
+                framestamp ? framestamp->getReferenceTime() : backup_birthday);
         return result;
     };
 

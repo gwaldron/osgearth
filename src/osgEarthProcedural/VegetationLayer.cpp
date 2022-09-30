@@ -120,6 +120,12 @@ namespace
             group.lod() = 0;
         }
     }
+
+    template<typename T>
+    inline ChonkDrawable* asChonkDrawable(const osg::ref_ptr<T>& value)
+    {
+        return static_cast<ChonkDrawable*>(value.get());
+    }
 }
 
 void
@@ -148,7 +154,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_TREES].lod().setDefault(14);
     groups()[GROUP_TREES].enabled().setDefault(true);
     groups()[GROUP_TREES].castShadows().setDefault(true);
-    groups()[GROUP_TREES].maxRange().setDefault(4000.0f);
+    groups()[GROUP_TREES].maxRange().setDefault(FLT_MAX); // 4000.0f);
     groups()[GROUP_TREES].instancesPerSqKm().setDefault(16384);
     groups()[GROUP_TREES].overlap().setDefault(0.0f);
     groups()[GROUP_TREES].farLODScale().setDefault(1.0f);
@@ -158,7 +164,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_BUSHES].lod().setDefault(18);
     groups()[GROUP_BUSHES].enabled().setDefault(true);
     groups()[GROUP_BUSHES].castShadows().setDefault(false);
-    groups()[GROUP_BUSHES].maxRange().setDefault(200.0f);
+    groups()[GROUP_BUSHES].maxRange().setDefault(FLT_MAX); // 200.0f);
     groups()[GROUP_BUSHES].instancesPerSqKm().setDefault(4096);
     groups()[GROUP_BUSHES].overlap().setDefault(0.0f);
     groups()[GROUP_BUSHES].farLODScale().setDefault(2.0f);
@@ -168,7 +174,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_UNDERGROWTH].lod().setDefault(19);
     groups()[GROUP_UNDERGROWTH].enabled().setDefault(true);
     groups()[GROUP_UNDERGROWTH].castShadows().setDefault(false);
-    groups()[GROUP_UNDERGROWTH].maxRange().setDefault(75.0f);
+    groups()[GROUP_UNDERGROWTH].maxRange().setDefault(FLT_MAX); // 75.0f);
     groups()[GROUP_UNDERGROWTH].instancesPerSqKm().setDefault(524288);
     groups()[GROUP_UNDERGROWTH].overlap().setDefault(1.0f);
     groups()[GROUP_UNDERGROWTH].farLODScale().setDefault(3.5f);
@@ -1026,18 +1032,23 @@ Future<osg::ref_ptr<osg::Drawable>>
 VegetationLayer::createDrawableAsync(
     const TileKey& key_,
     const std::string& group_,
-    const osg::BoundingBox& tile_bbox_) const
+    const osg::BoundingBox& tile_bbox_,
+    const osg::FrameStamp* framestamp_,
+    double backup_birthday) const
 {
     osg::ref_ptr<const VegetationLayer> layer = this;
     TileKey key = key_;
     const std::string group = group_;
     osg::BoundingBox tile_bbox = tile_bbox_;
+    osg::ref_ptr<const osg::FrameStamp> framestamp = framestamp_;
 
-    auto function =
-        [layer, key, group, tile_bbox](Cancelable* c) -> osg::ref_ptr<osg::Drawable>
+    auto function = [layer, key, group, tile_bbox, framestamp, backup_birthday](Cancelable* c) // -> osg::ref_ptr<osg::Drawable>
     {
         osg::ref_ptr<ProgressCallback> p = new ProgressCallback(c);
-        return layer->createDrawable(key, group, tile_bbox, p.get());
+        auto result = layer->createDrawable(key, group, tile_bbox, p.get());
+        asChonkDrawable(result)->setBirthday(
+            framestamp ? framestamp->getReferenceTime() : backup_birthday);
+        return result;
     };
 
     Job job;
@@ -1569,31 +1580,46 @@ VegetationLayer::cull(
             { entry->getKey(), entry->getRevision() }
         );
 
-        // find this camera's view on the tile, creating a slot if necessary:
+        // find this camera's view on the tile, creating a new 
+        // empty one if necessary:
         TileView& view = cs->_views[rev_tile_key];
 
         // If this camera doesn't have a view on the tile, establish one:
         if (view._tile == nullptr)
         {
             // We don't want more than one camera creating the
-            // same drawable, so this tileJobs table tracks 
-            // createDrawable jobs globally.
+            // same drawable, so this _tiles table tracks tiles globally.
             ScopedMutexLock lock(_tiles);
+
+            // First, find a placeholder based on the same tile key,
+            // ignoring the revision. (Even if we find an existing tile,
+            // that doesn't mean it is ready to render)
+            view._placeholder = _placeholders[entry->getKey()];
 
             Tile::Ptr& tile = _tiles[rev_tile_key];
             if (tile == nullptr)
             {
+                // If the placeholder exists, extact its birthday so we
+                // can pass it along to the new tile we're creating.
+                // This will prevent the new tile from fading in.
+                double birthday = -1.0;
+
+                if (view._placeholder)
+                {
+                    auto phcd = asChonkDrawable(view._placeholder->_drawable.get());
+                    if (phcd)
+                        birthday = phcd->getBirthday();
+                }
+
                 // new tile; create and fire off the loading job.
                 tile = std::make_shared<Tile>();
 
                 tile->_drawable = createDrawableAsync(
                     entry->getKey(),
                     groupName,
-                    entry->getBBox());
-
-                // in the meantime, get (or create) a placeholder
-                // based on the same tile key, ignoring the revision.
-                view._placeholder = _placeholders[entry->getKey()];
+                    entry->getBBox(),
+                    birthday < 0.0 ? cv->getState()->getFrameStamp() : nullptr,
+                    birthday);
             }
 
             view._tile = tile;
@@ -1603,39 +1629,37 @@ VegetationLayer::cull(
         // if the data is ready, cull it:
         if (view._tile->_drawable.isAvailable())
         {
-            osg::ref_ptr< osg::Drawable > drawable = view._tile->_drawable.get();
+            auto drawable = view._tile->_drawable.get();
 
             if (drawable.valid())
             {
+                if (!view._loaded)
+                {
+                    auto cd = asChonkDrawable(drawable);
+
+                    // install the fade range
+                    cd->setFadeNearFar(
+                        entry->getMorphStartRange(),
+                        entry->getMorphEndRange());
+
+                    // release the reference to any placeholder.
+                    view._placeholder = nullptr;
+
+                    // update the placeholder for this tilekey, in preparation for
+                    // the next time the tile revision changes.
+                    _tiles.scoped_lock([&]()
+                        {
+                            _placeholders[entry->getKey()] = view._tile;
+                        });
+
+                    view._loaded = true;
+                }
+
                 // Push the matrix and accept the drawable.
                 view._matrix->set(entry->getModelViewMatrix());
                 cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
                 drawable->accept(nv);
                 cv->popModelViewMatrix();
-
-                // unref the old placeholder.
-                if (!view._loaded)
-                {
-                    view._loaded = true;
-
-                    // if there was a placeholder, zero it out and tell the drawable
-                    // not to reset itself.
-                    if (view._placeholder != nullptr)
-                    {
-                        view._placeholder = nullptr;
-
-                        if (cv->getState())
-                        {
-                            static_cast<ChonkDrawable*>(drawable.get())->markAsSeen(*cv->getState());
-                        }
-                    }
-
-                    // update the placeholder for this tilekey.
-                    _tiles.scoped_lock([&]()
-                        {
-                            _placeholders[entry->getKey()] = view._tile;
-                        });
-                }
             }
             else
             {

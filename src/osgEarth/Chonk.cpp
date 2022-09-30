@@ -520,7 +520,10 @@ namespace
 ChonkDrawable::ChonkDrawable() :
     osg::Drawable(),
     _proxy_dirty(true),
-    _gpucull(true)
+    _gpucull(true),
+    _fadeNear(0.0f),
+    _fadeFar(0.0f),
+    _birthday(-1.0f)
 {
     setName(typeid(*this).name());
     setUseDisplayList(false);
@@ -536,10 +539,24 @@ ChonkDrawable::~ChonkDrawable()
 }
 
 void
-ChonkDrawable::markAsSeen(osg::State& state)
+ChonkDrawable::setBirthday(double value)
 {
-    auto& gc = GLObjects::get(_globjects, state);
-    gc._lastFrameSeen = state.getFrameStamp()->getFrameNumber();
+    _birthday = value;
+    dirtyGLObjects();
+}
+
+double
+ChonkDrawable::getBirthday() const
+{
+    return _birthday;
+}
+
+void
+ChonkDrawable::setFadeNearFar(float nearRange, float farRange)
+{
+    _fadeNear = nearRange;
+    _fadeFar = farRange;
+    dirtyGLObjects();
 }
 
 void
@@ -632,34 +649,6 @@ ChonkDrawable::add(
 }
 
 void
-ChonkDrawable::setModelViewMatrix(const osg::Matrix& value)
-{
-    _mvm = value;
-}
-
-struct StateEx : public osg::State
-{
-    void applyUniforms()
-    {
-        OE_HARD_ASSERT(_lastAppliedProgramObject != nullptr);
-
-        for (auto iter : _uniformMap)
-        {
-            auto& stack = iter.second;
-            if (!stack.uniformVec.empty())
-            {
-                auto& pair = stack.uniformVec.back();
-                _lastAppliedProgramObject->apply(*pair.first);
-                //OE_INFO << "...applied " << iter.first << std::endl;
-            }
-            else {
-               // OE_INFO << "...empty stack for " << iter.first << std::endl;
-            }
-        }
-    }
-};
-
-void
 ChonkDrawable::drawImplementation(osg::RenderInfo& ri) const
 {
     OE_HARD_ASSERT(false, "ChonkRenderBin::drawImplementation should never be called WHAT ARE YOU DOING");
@@ -670,24 +659,11 @@ ChonkDrawable::update_and_cull_batches(osg::State& state) const
 {
     auto& globjects = GLObjects::get(_globjects, state);
 
-    int frame = state.getFrameStamp()->getFrameNumber();
-
-    if ((frame - globjects._lastFrameSeen) > 1)
-    {
-        globjects._birthday = state.getFrameStamp()->getReferenceTime();
-        globjects._dirty = true;
-    }
-    globjects._lastFrameSeen = frame;
-
+    // if something changed, we need to refresh the GPU tables.
     if (globjects._dirty)
     {
         ScopedMutexLock lock(_m);
-        globjects.update(_batches, this, state);
-    }
-
-    if (!_mvm.isIdentity())
-    {
-        state.applyModelViewMatrix(_mvm);
+        globjects.update(_batches, this, _fadeNear, _fadeFar, _birthday, state);
     }
 
     if (_gpucull)
@@ -700,11 +676,6 @@ void
 ChonkDrawable::draw_batches(osg::State& state) const
 {
     auto& globjects = GLObjects::get(_globjects, state);
-
-    if (!_mvm.isIdentity())
-    {
-        state.applyModelViewMatrix(_mvm);
-    }
 
     globjects.draw(state);
 }
@@ -808,9 +779,7 @@ ChonkDrawable::accept(osg::PrimitiveFunctor& f) const
 
 ChonkDrawable::GLObjects::GLObjects() :
     _dirty(true),
-    _cull(true),
-    _birthday(0.0),
-    _lastFrameSeen(0)
+    _cull(true)
 {
     // nop
 }
@@ -916,6 +885,9 @@ void
 ChonkDrawable::GLObjects::update(
     const Batches& batches,
     const osg::Object* host,
+    float fadeNear,
+    float fadeFar,
+    double birthday,
     osg::State& state)
 {
     OE_GL_ZONE_NAMED("update");
@@ -961,7 +933,9 @@ ChonkDrawable::GLObjects::update(
                 v.far_pixel_scale = chonk->_lods[i].far_pixel_scale;
                 v.near_pixel_scale = chonk->_lods[i].near_pixel_scale;
                 v.num_lods = chonk->_lods.size();
-                v.birthday = _birthday;
+                v.birthday = birthday;
+                v.fade_near = fadeNear;
+                v.fade_far = fadeFar;
                 _chonk_lods.push_back(std::move(v));
             }
         }

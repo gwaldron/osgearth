@@ -44,7 +44,9 @@ struct ChonkLOD
     float far_pixel_scale;
     float near_pixel_scale;
     float birthday;
-    float padding[3];
+    float fade_near;
+    float fade_far;
+    float padding[1];
     uint num_lods; // chonk-global
     uint total_num_commands; // global
 };
@@ -195,14 +197,20 @@ void cull()
             fade = 1.0 - (minPixelSize - pixelSize) / pixelSizePad;
     }
 
-  #if 1
-    // Fade in new chonks
+    // Birthday-based fading:
     const float fadein_time = 2.0; // seconds
     float birth = clamp((osg_FrameTime - chonks[v].birthday) / fadein_time, 0.0, 1.0);
     fade *= birth;
-  #endif
 
-    if (fade < 0.1)
+    // Distance-based fading:
+    float fade_range = chonks[v].fade_far - chonks[v].fade_near;
+    if (fade_range > 0.0)
+    {
+        float dist = length(center_view.xyz);
+        fade *= clamp((chonks[v].fade_far - dist) / fade_range, 0.0, 1.0);
+    }
+
+    if (fade < 0.15)
         return;
 
 #endif // !OE_IS_SHADOW_CAMERA

@@ -204,13 +204,13 @@ namespace osgEarth
             const osg::Matrixf& xform,
             const osg::Vec2f& local_uv);
 
-        //! Marks the drawable as "seen" in the current frame
-        //! so it won't reset its fade-in.
-        void markAsSeen(osg::State& state);
+        //! The timestamp at which this drawable was first created.
+        //! Used for new data fade-in.
+        void setBirthday(double value);
+        double getBirthday() const;
 
-        //! Model view matrix to apply before rendering
-        //! this drawable. Optional
-        void setModelViewMatrix(const osg::Matrix& mvm);
+        //! Set the camera distances for distance-based fading.
+        void setFadeNearFar(float nearDist, float farDist);
 
         //! Whether to GPU cull on the per-chonk basis.
         //! Default is true.
@@ -245,6 +245,8 @@ namespace osgEarth
         using Batches = std::unordered_map<Chonk::Ptr, Instances>;
         Batches _batches;
         bool _gpucull;
+        float _fadeNear, _fadeFar;
+        double _birthday;
 
         //! GL objects (and supporting data structures) that must
         //! be stored and managed for each unique GL state/context,
@@ -260,7 +262,9 @@ namespace osgEarth
                 GLfloat far_pixel_scale;
                 GLfloat near_pixel_scale;
                 GLfloat birthday;
-                GLfloat padding[3];
+                GLfloat fade_near;
+                GLfloat fade_far;
+                GLfloat padding[1];
                 GLuint num_lods; // chonk-global
                 GLuint total_num_commands; // global
             };
@@ -280,8 +284,7 @@ namespace osgEarth
             GLBuffer::Ptr _chonkBuf;
             bool _dirty;
             bool _cull;
-            double _birthday;
-            int _lastFrameSeen;
+            //double _birthday;
             void(GL_APIENTRY * _glMultiDrawElementsIndirectBindlessNV)
                 (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint);
 
@@ -292,8 +295,12 @@ namespace osgEarth
             mutable std::unordered_map<const void*, PCPState> _pcps;
 
             GLObjects();
-            void initialize(const osg::Object* host, osg::State& state);
-            void update(const Batches&, const osg::Object* host, osg::State&);
+            void initialize(
+                const osg::Object* host, osg::State& state);
+            void update(
+                const Batches&, const osg::Object* host,
+                float fadeNear, float fadeFar, double birthday,
+                osg::State&);
             void cull(osg::State& state);
             void draw(osg::State& state);
             void release();

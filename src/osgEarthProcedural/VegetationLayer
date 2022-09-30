@@ -305,6 +305,8 @@ namespace osgEarth { namespace Procedural
         // but indexed only by the tile key (no revision) and we 
         // use them to draw the old version of the tile while loading
         // a new revision.
+        // NOTE: this "shares" the _tiles mutex. Only access when the
+        // _tiles mutex is locked.
         mutable Placeholders _placeholders;
 
         // One camera's view on a tile (and its placeholder).
@@ -374,7 +376,9 @@ namespace osgEarth { namespace Procedural
         Future<osg::ref_ptr<osg::Drawable>> createDrawableAsync(
             const TileKey&,
             const std::string&,
-            const osg::BoundingBox& bbox) const;
+            const osg::BoundingBox& bbox,
+            const osg::FrameStamp*,
+            double explicit_birthday) const;
 
         osg::ref_ptr<osg::Drawable> createDrawable(
             const TileKey&,

@@ -133,6 +133,10 @@ namespace osgEarth
 
         virtual int getSequence() const = 0;
 
+        virtual float getMorphStartRange() const = 0;
+
+        virtual float getMorphEndRange() const = 0;
+
         virtual bool apply(
             osg::RenderInfo& ri,
             void* implData) const = 0;

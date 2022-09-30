@@ -250,7 +250,6 @@ TerrainCuller::apply(TileNode& node)
                     
             // push the surface matrix:
             osg::ref_ptr<osg::RefMatrix> matrix = new osg::RefMatrix(*_cv->getModelViewMatrix());
-            //osg::RefMatrix* matrix = createOrReuseMatrix(*_cv->getModelViewMatrix());
             surface->computeLocalToWorldMatrix(*matrix.get(),this);
             _cv->pushModelViewMatrix(matrix.get(), surface->getReferenceFrame());
 
@@ -260,11 +259,16 @@ TerrainCuller::apply(TileNode& node)
                 for(auto patchLayer : _patchLayers)
                 {
 #if 1
+                    float range, morphStart, morphEnd;
+                    getEngineContext()->getSelectionInfo().get(node.getKey(), range, morphStart, morphEnd);
+
                     DrawTileCommand* cmd = addDrawCommand(patchLayer->getUID(), &renderModel, nullptr, &node);
                     if (cmd)
                     {
                         cmd->_drawPatch = true;
                         cmd->_drawCallback = patchLayer->getRenderer();
+                        cmd->_morphStartRange = morphStart;
+                        cmd->_morphEndRange = morphEnd;
                         //cmd->_drawCallback = patchLayer->getDrawCallback();
                     }
 #else

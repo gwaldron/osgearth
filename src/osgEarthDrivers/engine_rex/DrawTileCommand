@@ -76,6 +76,9 @@ namespace osgEarth { namespace REX
         // Distance from camera to center of tile
         float _range;
 
+        // Start and end morphing distances for this tile
+        float _morphStartRange, _morphEndRange;
+
         // Layer order for this tile. i.e., if this is zero, then this command
         // is drawing a tile for the first LayerDrawable.
         int _layerOrder;
@@ -151,7 +154,14 @@ namespace osgEarth { namespace REX
 
         const osg::Matrixd& getLocalToWorld() const override {
             return _localToWorld;
-            //return *_modelViewMatrix.get();
+        }
+
+        float getMorphStartRange() const override {
+            return _morphStartRange;
+        }
+
+        float getMorphEndRange() const override {
+            return _morphEndRange;
         }
 
         //! Apply the GL state for this tile (all samplers and uniforms)

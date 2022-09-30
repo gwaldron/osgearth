@@ -2135,15 +2135,19 @@ namespace
 ImageUtils::PixelReader::PixelReader() :
     _bilinear(false),
     _sampleAsTexture(false),
-    _sampleAsRepeatingTexture(false)
+    _sampleAsRepeatingTexture(false),
+    _image(nullptr),
+    _read(nullptr)
 {
-    setImage(NULL);
+    //nop
 }
 
 ImageUtils::PixelReader::PixelReader(const osg::Image* image) :
     _bilinear(false),
     _sampleAsTexture(false),
-    _sampleAsRepeatingTexture(false)
+    _sampleAsRepeatingTexture(false),
+    _image(nullptr),
+    _read(nullptr)
 {
     setImage(image);
 }
@@ -2152,6 +2156,7 @@ void
 ImageUtils::PixelReader::setImage(const osg::Image* image)
 {
     _image = image;
+
     if (image)
     {
         _normalized = image->getDataType() == GL_UNSIGNED_BYTE;

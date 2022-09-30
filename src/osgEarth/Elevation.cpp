@@ -128,7 +128,8 @@ osg::Vec3
 ElevationTexture::getNormal(double x, double y) const
 {
     osg::Vec3 normal(0,0,1);
-    if (_normalTex.valid())
+
+    if (_readNormal.valid())
     {
         double u = (x - getExtent().xMin()) / getExtent().width();
         double v = (y - getExtent().yMin()) / getExtent().height();
@@ -142,7 +143,7 @@ ElevationTexture::getNormal(double x, double y) const
 void
 ElevationTexture::getPackedNormal(double x, double y, osg::Vec4& packed)
 {    
-    if (_normalTex.valid())
+    if (_readNormal.valid())
     {
         double u = (x - getExtent().xMin()) / getExtent().width();
         double v = (y - getExtent().yMin()) / getExtent().height();
@@ -158,7 +159,7 @@ float
 ElevationTexture::getRuggedness(double x, double y) const
 {
     float result = 0.0f;
-    if (_ruggedness.valid())
+    if (_readRuggedness.valid())
     {
         double u = (x - getExtent().xMin()) / getExtent().width();
         double v = (y - getExtent().yMin()) / getExtent().height();
@@ -209,8 +210,11 @@ ElevationTexture::generateNormalMap(
             // these are pooled, so do not expire them.
             _normalTex->setUnRefImageDataAfterApply(false);
 
-            _readNormal.setImage(_normalTex->getImage());
-            _readNormal.setBilinear(true);
+            if (_normalTex->getImage())
+            {
+                _readNormal.setImage(_normalTex->getImage());
+                _readNormal.setBilinear(true);
+            }
         }
     }
 }

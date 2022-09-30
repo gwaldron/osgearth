@@ -407,6 +407,11 @@ namespace osgEarth { namespace Util
             static bool supports( const osg::Image* image ) {
                 return image && supports(image->getPixelFormat(), image->getDataType() );
             }
+            
+            //! Whether the image is valid and usable
+            bool valid() const {
+                return _image != nullptr && _read != nullptr;
+            }
 
             inline int s() const { return _image->s(); }
             inline int t() const { return _image->t(); }
@@ -446,7 +451,7 @@ namespace osgEarth { namespace Util
             }
 
             typedef void (*ReaderFunc)(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m);
-            //typedef std::function<void(const PixelReader* ia, osg::Vec4f& output, int s, int t, int r, int m)> ReaderFunc;
+
             ReaderFunc _read;
             const osg::Image* _image;
             unsigned _colBytes;

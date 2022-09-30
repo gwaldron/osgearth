@@ -560,6 +560,13 @@ ChonkDrawable::setFadeNearFar(float nearRange, float farRange)
 }
 
 void
+ChonkDrawable::setAlphaCutoff(float value)
+{
+    _alphaCutoff = value;
+    dirtyGLObjects();
+}
+
+void
 ChonkDrawable::installRenderBin(ChonkDrawable* d)
 {
     static osg::ref_ptr<osg::StateSet> s_ss;
@@ -636,7 +643,7 @@ ChonkDrawable::add(
         instance.visibility[0] = 0;
         instance.visibility[1] = 0;
         instance.visibility[2] = 0;
-        instance.visibility[3] = 0;
+        instance.alphaCutoff = 0.0f;
         instance.first_lod_cmd_index = 0;
         _batches[chonk].push_back(std::move(instance));
 
@@ -663,7 +670,7 @@ ChonkDrawable::update_and_cull_batches(osg::State& state) const
     if (globjects._dirty)
     {
         ScopedMutexLock lock(_m);
-        globjects.update(_batches, this, _fadeNear, _fadeFar, _birthday, state);
+        globjects.update(_batches, this, _fadeNear, _fadeFar, _birthday, _alphaCutoff, state);
     }
 
     if (_gpucull)
@@ -888,6 +895,7 @@ ChonkDrawable::GLObjects::update(
     float fadeNear,
     float fadeFar,
     double birthday,
+    float alphaCutoff,
     osg::State& state)
 {
     OE_GL_ZONE_NAMED("update");
@@ -933,6 +941,7 @@ ChonkDrawable::GLObjects::update(
                 v.far_pixel_scale = chonk->_lods[i].far_pixel_scale;
                 v.near_pixel_scale = chonk->_lods[i].near_pixel_scale;
                 v.num_lods = chonk->_lods.size();
+                v.alpha_cutoff = alphaCutoff;
                 v.birthday = birthday;
                 v.fade_near = fadeNear;
                 v.fade_far = fadeFar;

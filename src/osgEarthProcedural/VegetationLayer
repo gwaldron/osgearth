@@ -53,9 +53,6 @@ namespace osgEarth { namespace Procedural
             //! Whether to render with GL_ALPHA_TO_COVERAGE (default is true)
             OE_OPTION(bool, alphaToCoverage);
 
-            //! Cut off for alpha discard/blend in the shader (0..1]
-            OE_OPTION(float, alphaCutoff);
-
             //! Angle of view at which a polygon will become transparent
             OE_OPTION(Angle, impostorLowAngle);
 
@@ -96,6 +93,9 @@ namespace osgEarth { namespace Procedural
 
                 //! Base SSE scale factor for far visibility
                 OE_OPTION(float, farLODScale);
+
+                //! Cut off for alpha discard/blend in the shader (0..1]
+                OE_OPTION(float, alphaCutoff);
 
                 // internal
                 osg::ref_ptr<osg::StateSet> _drawStateSet;
@@ -156,8 +156,8 @@ namespace osgEarth { namespace Procedural
         float getOverlapPercentage(const std::string& group) const;
 
         //! The threshold for discarding fragments with high alpha
-        void setAlphaCutoff(float value);
-        float getAlphaCutoff() const;
+        void setAlphaCutoff(const std::string& group, float value);
+        float getAlphaCutoff(const std::string& group) const;
 
         void setImpostorLowAngle(const Angle& value);
         const Angle& getImpostorLowAngle() const;

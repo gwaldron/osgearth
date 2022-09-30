@@ -1,12 +1,15 @@
 #pragma vp_function oe_vegetation_vs_model, vertex_model
 
-struct Instance {
+struct Instance
+{
     mat4 xform;
     vec2 local_uv;
     uint lod;
-    float visibility[4];
+    float visibility[3]; // per LOD
+    float alpha_cutoff;
     uint first_lod_cmd_index;
 };
+
 layout(binding = 0, std430) buffer Instances {
     Instance instances[];
 };
@@ -27,13 +30,16 @@ void oe_vegetation_vs_model(inout vec4 vertex)
 #pragma import_defines(OE_WIND_TEX)
 #pragma import_defines(OE_WIND_TEX_MATRIX)
 
-struct Instance {
+struct Instance
+{
     mat4 xform;
     vec2 local_uv;
     uint lod;
-    float visibility[4];
+    float visibility[3]; // per LOD
+    float alpha_cutoff;
     uint first_lod_cmd_index;
 };
+
 layout(binding = 0, std430) buffer Instances {
     Instance instances[];
 };
@@ -111,10 +117,8 @@ void oe_vegetation_vs_view(inout vec4 vertex)
 
 
 [break]
-#pragma vp_function oe_vegetation_fs, fragment
-#pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
+#pragma vp_function oe_vegetation_fs, fragment, 0.9
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
-#pragma import_defines(OE_COMPRESSED_NORMAL)
 
 in vec2 oe_tex_uv;
 flat in uint64_t oe_albedo_tex;
@@ -129,10 +133,7 @@ uniform float oe_veg_alphaCutoff = 0.15;
 
 void oe_vegetation_fs(inout vec4 color)
 {
-#ifdef OE_IS_SHADOW_CAMERA
-    if (color.a < 0.15)
-        discard;
-#else
+#ifndef OE_IS_SHADOW_CAMERA
 
     // alpha-down faces that are orthogonal to the view vector.
     // this makes cross-hatch imposters look better.
@@ -146,30 +147,5 @@ void oe_vegetation_fs(inout vec4 color)
         color.a *= clamp(mix(0, 1, (f - oe_veg_bbd0) / (oe_veg_bbd1 - oe_veg_bbd0)), 0, 1);
     }
 
-#ifdef OE_USE_ALPHA_TO_COVERAGE
-
-    // Adjust the alpha based on the calculated mipmap level.
-    // Looks better and actually helps performance a bit as well.
-    // https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f
-    // https://tinyurl.com/fhu4zdxz
-    if (oe_albedo_tex > 0UL)
-    {
-        //color.a = (color.a - oe_veg_alphaCutoff) / max(fwidth(color.a), 0.0001) + 0.5;
-        ivec2 tsize = textureSize(sampler2D(oe_albedo_tex), 0);
-        vec2 cf = vec2(float(tsize.x)*oe_tex_uv.s, float(tsize.y)*oe_tex_uv.t);
-        vec2 dx_vtc = dFdx(cf);
-        vec2 dy_vtc = dFdy(cf);
-        float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
-        float mml = max(0, 0.5 * log2(delta_max_sqr));
-        
-        color.a *= (1.0 + mml * oe_veg_alphaCutoff);
-    }
-
-#else
-    // force alpha to 0 or 1 and threshold it.
-    color.a = step(oe_veg_alphaCutoff, color.a);
-    if (color.a < oe_veg_alphaCutoff)
-        discard;
-#endif // OE_USE_ALPHA_TO_COVERAGE
-#endif // OE_IS_SHADOW_CAMERA
+#endif // !OE_IS_SHADOW_CAMERA
 }

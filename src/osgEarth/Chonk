@@ -212,6 +212,9 @@ namespace osgEarth
         //! Set the camera distances for distance-based fading.
         void setFadeNearFar(float nearDist, float farDist);
 
+        //! Sets the cutoff value for transparency
+        void setAlphaCutoff(float value);
+
         //! Whether to GPU cull on the per-chonk basis.
         //! Default is true.
         void setUseGPUCulling(bool value);
@@ -238,7 +241,8 @@ namespace osgEarth
             osg::Matrixf xform;  // local xform
             osg::Vec2f uv; // tile-local UV
             GLuint lod;
-            float visibility[4]; // per LOD
+            float visibility[3]; // per LOD
+            float alphaCutoff;
             GLuint first_lod_cmd_index;
         };
         using Instances = std::vector<Instance>;
@@ -247,6 +251,7 @@ namespace osgEarth
         bool _gpucull;
         float _fadeNear, _fadeFar;
         double _birthday;
+        float _alphaCutoff;
 
         //! GL objects (and supporting data structures) that must
         //! be stored and managed for each unique GL state/context,
@@ -261,10 +266,10 @@ namespace osgEarth
                 GLfloat radius;
                 GLfloat far_pixel_scale;
                 GLfloat near_pixel_scale;
+                GLfloat alpha_cutoff;
                 GLfloat birthday;
                 GLfloat fade_near;
                 GLfloat fade_far;
-                GLfloat padding[1];
                 GLuint num_lods; // chonk-global
                 GLuint total_num_commands; // global
             };
@@ -284,7 +289,7 @@ namespace osgEarth
             GLBuffer::Ptr _chonkBuf;
             bool _dirty;
             bool _cull;
-            //double _birthday;
+
             void(GL_APIENTRY * _glMultiDrawElementsIndirectBindlessNV)
                 (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint);
 
@@ -299,16 +304,17 @@ namespace osgEarth
                 const osg::Object* host, osg::State& state);
             void update(
                 const Batches&, const osg::Object* host,
-                float fadeNear, float fadeFar, double birthday,
+                float fadeNear, float fadeFar,
+                double birthday, float alphaCutoff,
                 osg::State&);
             void cull(osg::State& state);
             void draw(osg::State& state);
             void release();
         };
         mutable osg::buffered_object<GLObjects> _globjects;
-        osg::Matrix _mvm;
 
         void update_and_cull_batches(osg::State& state) const;
+
         void draw_batches(osg::State& state) const;
 
         void dirtyGLObjects();

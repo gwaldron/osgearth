@@ -43,12 +43,14 @@ struct ChonkLOD
     vec4 bs;
     float far_pixel_scale;
     float near_pixel_scale;
+    // chonk-globals:
+    float alpha_cutoff;
     float birthday;
     float fade_near;
     float fade_far;
-    float padding[1];
-    uint num_lods; // chonk-global
-    uint total_num_commands; // global
+    uint num_lods;
+    // globals:
+    uint total_num_commands;
 };
 
 struct Instance
@@ -56,7 +58,8 @@ struct Instance
     mat4 xform;
     vec2 local_uv;
     uint lod;
-    float visibility[4];
+    float visibility[3]; // per LOD
+    float alpha_cutoff;
     uint first_lod_cmd_index;
 };
 
@@ -217,6 +220,9 @@ void cull()
 
     // Pass! Set the visibility for this LOD:
     input_instances[i].visibility[lod] = fade;
+
+    // Send along the alpha cutoff..
+    input_instances[i].alpha_cutoff = chonks[v].alpha_cutoff;
 
     // Bump all baseInstances following this one:
     const uint cmd_count = chonks[v].total_num_commands;

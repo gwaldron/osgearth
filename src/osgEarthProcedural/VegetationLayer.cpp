@@ -87,7 +87,6 @@ VegetationLayer::Options::getConfig() const
     biomeLayer().set(conf, "biomes_layer");
 
     conf.set("alpha_to_coverage", alphaToCoverage());
-    conf.set("alpha_cutoff", alphaCutoff());
     conf.set("impostor_low_angle", impostorLowAngle());
     conf.set("impostor_high_angle", impostorHighAngle());
     conf.set("far_lod_scale", farLODScale());
@@ -116,6 +115,7 @@ namespace
         group_conf.get("cast_shadows", group.castShadows());
         group_conf.get("overlap", group.overlap());
         group_conf.get("far_lod_scale", group.farLODScale());
+        group_conf.get("alpha_cutoff", group.alphaCutoff());
         if (group_conf.value("lod") == "auto") {
             group.lod() = 0;
         }
@@ -133,7 +133,6 @@ VegetationLayer::Options::fromConfig(const Config& conf)
 {
     // defaults:
     alphaToCoverage().setDefault(true);
-    alphaCutoff().setDefault(0.2f);
     impostorLowAngle().setDefault(Angle(45.0, Units::DEGREES));
     impostorHighAngle().setDefault(Angle(67.5, Units::DEGREES));
     farLODScale().setDefault(1.0f);
@@ -143,7 +142,6 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     biomeLayer().get(conf, "biomes_layer");
 
     conf.get("alpha_to_coverage", alphaToCoverage());
-    conf.get("alpha_cutoff", alphaCutoff());
     conf.get("impostor_low_angle", impostorLowAngle());
     conf.get("impostor_high_angle", impostorHighAngle());
     conf.get("far_lod_scale", farLODScale());
@@ -154,30 +152,33 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_TREES].lod().setDefault(14);
     groups()[GROUP_TREES].enabled().setDefault(true);
     groups()[GROUP_TREES].castShadows().setDefault(true);
-    groups()[GROUP_TREES].maxRange().setDefault(FLT_MAX); // 4000.0f);
+    groups()[GROUP_TREES].maxRange().setDefault(FLT_MAX);
     groups()[GROUP_TREES].instancesPerSqKm().setDefault(16384);
     groups()[GROUP_TREES].overlap().setDefault(0.0f);
     groups()[GROUP_TREES].farLODScale().setDefault(1.0f);
+    groups()[GROUP_TREES].alphaCutoff().setDefault(0.75f);
     fromGroupConf(GROUP_TREES, conf.child("layers").child(GROUP_TREES), *this);
     fromGroupConf(GROUP_TREES, conf.child("groups").child(GROUP_TREES), *this);
 
     groups()[GROUP_BUSHES].lod().setDefault(18);
     groups()[GROUP_BUSHES].enabled().setDefault(true);
     groups()[GROUP_BUSHES].castShadows().setDefault(false);
-    groups()[GROUP_BUSHES].maxRange().setDefault(FLT_MAX); // 200.0f);
+    groups()[GROUP_BUSHES].maxRange().setDefault(FLT_MAX);
     groups()[GROUP_BUSHES].instancesPerSqKm().setDefault(4096);
     groups()[GROUP_BUSHES].overlap().setDefault(0.0f);
-    groups()[GROUP_BUSHES].farLODScale().setDefault(2.0f);
+    groups()[GROUP_BUSHES].farLODScale().setDefault(1.0f);
+    groups()[GROUP_BUSHES].alphaCutoff().setDefault(0.35f);
     fromGroupConf(GROUP_BUSHES, conf.child("layers").child(GROUP_BUSHES), *this);
     fromGroupConf(GROUP_BUSHES, conf.child("groups").child(GROUP_BUSHES), *this);
 
     groups()[GROUP_UNDERGROWTH].lod().setDefault(19);
     groups()[GROUP_UNDERGROWTH].enabled().setDefault(true);
     groups()[GROUP_UNDERGROWTH].castShadows().setDefault(false);
-    groups()[GROUP_UNDERGROWTH].maxRange().setDefault(FLT_MAX); // 75.0f);
-    groups()[GROUP_UNDERGROWTH].instancesPerSqKm().setDefault(524288);
+    groups()[GROUP_UNDERGROWTH].maxRange().setDefault(FLT_MAX); 
+    groups()[GROUP_UNDERGROWTH].instancesPerSqKm().setDefault(500000);
     groups()[GROUP_UNDERGROWTH].overlap().setDefault(1.0f);
-    groups()[GROUP_UNDERGROWTH].farLODScale().setDefault(3.5f);
+    groups()[GROUP_UNDERGROWTH].farLODScale().setDefault(2.0f);
+    groups()[GROUP_UNDERGROWTH].alphaCutoff().setDefault(0.15f);
     fromGroupConf(GROUP_UNDERGROWTH, conf.child("layers").child(GROUP_UNDERGROWTH), *this);
     fromGroupConf(GROUP_UNDERGROWTH, conf.child("groups").child(GROUP_UNDERGROWTH), *this);
 }
@@ -205,6 +206,7 @@ VegetationLayer::Options::Group::Group()
     castShadows().setDefault(false);
     overlap().setDefault(0.0f);
     farLODScale().setDefault(1.0f);
+    alphaCutoff().setDefault(0.2f);
 }
 
 //........................................................................
@@ -467,21 +469,18 @@ VegetationLayer::getOverlapPercentage(
 }
 
 void
-VegetationLayer::setAlphaCutoff(float value)
+VegetationLayer::setAlphaCutoff(
+    const std::string& groupName,
+    float value)
 {
-    value = clamp(value, 0.0f, 1.0f);
-
-    if (getAlphaCutoff() != value)
-        options().alphaCutoff() = value;
-
-    getOrCreateStateSet()->getOrCreateUniform(
-        "oe_veg_alphaCutoff", osg::Uniform::FLOAT)->set(value);
+    options().group(groupName).alphaCutoff() = clamp(value, 0.0f, 1.0f);
 }
 
 float
-VegetationLayer::getAlphaCutoff() const
+VegetationLayer::getAlphaCutoff(
+    const std::string& groupName) const
 {
-    return options().alphaCutoff().get();
+    return options().group(groupName).alphaCutoff().get();
 }
 
 void
@@ -740,7 +739,6 @@ VegetationLayer::buildStateSets()
     ss->setDefine("OE_COMPRESSED_NORMAL");
 
     // apply the various uniform-based options
-    setAlphaCutoff(options().alphaCutoff().get());
     setImpostorLowAngle(options().impostorLowAngle().get());
     setImpostorHighAngle(options().impostorHighAngle().get());
     setLODTransitionPadding(options().lodTransitionPadding().get());
@@ -1434,9 +1432,6 @@ VegetationLayer::getAssetPlacements(
     for(int i=0; i<numResults; ++i)
     {
         Placement& p = result[i];
-
-        // sample the noise texture at this (u,v)
-        //readNoise(noise, p.uv().x(), p.uv().y());
         
         if (rand_float_01(gen) > p.density())
         {
@@ -1641,6 +1636,9 @@ VegetationLayer::cull(
                     cd->setFadeNearFar(
                         entry->getMorphStartRange(),
                         entry->getMorphEndRange());
+
+                    cd->setAlphaCutoff(
+                        group.alphaCutoff().get());                        
 
                     // release the reference to any placeholder.
                     view._placeholder = nullptr;

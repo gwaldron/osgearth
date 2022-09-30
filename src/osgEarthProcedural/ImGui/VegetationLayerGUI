@@ -95,13 +95,7 @@ namespace osgEarth {
 
                         ImGui::Separator();
 
-                        float alphaCutoff = _veglayer->getAlphaCutoff();
-                        if (ImGui::SliderFloat("Alpha cutoff", &alphaCutoff, 0.0f, 1.0f))
-                            _veglayer->setAlphaCutoff(alphaCutoff);
-
-                        ImGui::Separator();
-
-                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator:");
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator (must hit Refresh):");
 
                         int vi = 0;
                         for(auto& iter : _veglayer->options().groups())
@@ -129,7 +123,13 @@ namespace osgEarth {
                                 "Overlap percentage",
                                 &groupOptions.overlap().mutable_value(),
                                 0.0f, 1.0f,
-                                "%.1f");
+                                "%.2f");
+
+                            ImGui::SliderFloat(
+                                "Alpha cutoff",
+                                &groupOptions.alphaCutoff().mutable_value(),
+                                0.0f, 1.0f,
+                                "%.2f");
 
                             ImGui::PopID();
                         }

@@ -56,7 +56,7 @@ CoverageLayer::openImplementation()
 {
     Status parent = TileLayer::openImplementation();
     if (parent.isError())
-        return parent;    
+        return parent;
 
     for (auto& layer : options().layers())
     {
@@ -74,8 +74,19 @@ CoverageLayer::openImplementation()
         imageLayer->setUpL2Cache(9u);
 
         // Force the image source into coverage mode.
-        imageLayer->setCoverage(true);        
-    }    
+        imageLayer->setCoverage(true);
+
+        // inherit a profile from the first component layer, why not.
+        if (getProfile() == nullptr)
+        {
+            setProfile(imageLayer->getProfile());
+        }
+    }
+
+    if (getProfile() == nullptr)
+    {
+        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
+    }
 
     return Status::NoError;
 }

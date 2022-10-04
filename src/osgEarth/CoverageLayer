@@ -111,9 +111,9 @@ namespace osgEarth
                     if (imageLayer == nullptr || !imageLayer->isOpen())
                         continue;
 
-                    Mappings<T> mappings;
+                    Mappings<T>& mappings = _layerToMappings[imageLayer];
                     _layer->createMappings(layer, mappings);
-                    _layerToMappings[imageLayer] = std::move(mappings);
+                    //_layerToMappings[imageLayer] = std::move(mappings);
                 }
             }
 
@@ -146,7 +146,6 @@ namespace osgEarth
                 if (source &&
                     source->isOpen())
                 {
-
                     auto mappingsItr = _layerToMappings.find(source);
                     if (mappingsItr == _layerToMappings.end())
                     {

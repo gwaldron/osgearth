@@ -63,7 +63,7 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
 #pragma vp_function oe_chonk_default_vertex_view, vertex_view, 0.0
 
 // stage
-mat3 xform3;
+mat3 xform3; // set in vertex_model
 
 // output
 out vec3 vp_Normal;
@@ -85,6 +85,7 @@ void oe_chonk_default_vertex_view(inout vec4 vertex)
 [break]
 #pragma vp_function oe_chonk_default_fragment, fragment
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
+#pragma import_defines(OE_IS_DEPTH_CAMERA)
 #pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
 #pragma import_defines(OE_COMPRESSED_NORMAL)
 #pragma import_defines(OE_GPUCULL_DEBUG)
@@ -106,25 +107,25 @@ void oe_chonk_default_fragment(inout vec4 color)
         color *= texel;
     }
 
+#if defined(OE_IS_SHADOW_CAMERA) || defined(OE_IS_DEPTH_CAMERA)
+
+    // force alpha to 0 or 1 and threshold it.
+    color.a = step(oe_alpha_cutoff, color.a * oe_fade);
+    if (color.a < oe_alpha_cutoff)
+        discard;
+
+#else // !OE_IS_SHADOW_CAMERA
+
+  #if OE_GPUCULL_DEBUG
+
     // apply the high fade from the instancer
-#if OE_GPUCULL_DEBUG
     if (oe_fade <= 1.0) color.a *= oe_fade;
     else if (oe_fade <= 2.0) color.rgb = vec3(1, 0, 0);
     else if (oe_fade <= 3.0) color.rgb = vec3(1, 1, 0);
     else if (oe_fade <= 4.0) color.rgb = vec3(0, 1, 0);
     else color.rgb = vec3(1, 0, 1); // should never happen :)
-#else
-    color.a *= oe_fade;
-#endif
 
-#ifdef OE_IS_SHADOW_CAMERA
-
-    if (color.a < 0.15)
-        discard;
-
-#else // if !OE_IS_SHADOW_CAMERA
-
-#ifdef OE_USE_ALPHA_TO_COVERAGE
+  #elif defined(OE_USE_ALPHA_TO_COVERAGE)
 
     // Adjust the alpha based on the calculated mipmap level.
     // Looks better and actually helps performance a bit as well.
@@ -143,36 +144,37 @@ void oe_chonk_default_fragment(inout vec4 color)
         color.a *= (1.0 + miplevel * oe_alpha_cutoff);
     }
 
-#else // if !OE_USE_ALPHA_TO_COVERAGE
+    color.a *= oe_fade;
+
+  #else // if !OE_USE_ALPHA_TO_COVERAGE
 
     // force alpha to 0 or 1 and threshold it.
-    color.a = step(oe_alpha_cutoff, color.a);
+    color.a = step(oe_alpha_cutoff, color.a * oe_fade);
     if (color.a < oe_alpha_cutoff)
         discard;
 
-#endif // OE_USE_ALPHA_TO_COVERAGE
-
+  #endif
 
     if (oe_normal_tex > 0)
     {
         vec4 n = texture(sampler2D(oe_normal_tex), oe_tex_uv);
 
-#ifdef OE_COMPRESSED_NORMAL
+  #ifdef OE_COMPRESSED_NORMAL
         n.xyz = n.xyz*2.0 - 1.0;
         n.z = 1.0 - abs(n.x) - abs(n.y);
         float t = clamp(-n.z, 0, 1);
         n.x += (n.x > 0) ? -t : t;
         n.y += (n.y > 0) ? -t : t;
-#else
+  #else
         n.xyz = normalize(n.xyz*2.0 - 1.0);
-#endif
+  #endif
 
         // construct the TBN
         mat3 tbn = mat3(
             normalize(oe_tangent),
             normalize(cross(vp_Normal, oe_tangent)),
             vp_Normal);
-            //normalize(gl_FrontFacing ? vp_Normal : -vp_Normal));
+        //normalize(gl_FrontFacing ? vp_Normal : -vp_Normal));
 
         vp_Normal = normalize(tbn * n.xyz);
     }

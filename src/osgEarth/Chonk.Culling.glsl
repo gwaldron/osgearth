@@ -213,7 +213,7 @@ void cull()
         fade *= clamp((chonks[v].fade_far - dist) / fade_range, 0.0, 1.0);
     }
 
-    if (fade < 0.15)
+    if (fade < 0.1)
         return;
 
 #endif // !OE_IS_SHADOW_CAMERA

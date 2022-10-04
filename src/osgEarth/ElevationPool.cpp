@@ -61,8 +61,7 @@ ElevationPool::StrongLRU::clear()
 ElevationPool::ElevationPool() :
     _index(nullptr),
     _tileSize(257),
-    _workers(0),
-    _refreshMutex("OE.ElevPool.RM"),
+    _mutex("OE.ElevPool.RM"),
     _globalLUTMutex("OE.ElevPool.GLUT"),
     _L2(64u),
     _mapRevision(-1),
@@ -97,7 +96,7 @@ ElevationPool::setMap(const Map* map)
 
 size_t
 ElevationPool::getElevationHash() const
-{
+{ 
     // yes, must do this every time because individual
     // layers can "bump" their revisions (dynamic layers)    
     size_t hash = hash_value_unsigned(_mapRevision);
@@ -117,26 +116,19 @@ ElevationPool::sync(const Map* map, WorkingSet* ws)
     if (needsRefresh())
     {
         OE_PROFILING_ZONE;
+        
+        refresh(map);
 
-        while(_workers > 0)
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-        _refreshMutex.lock();
-        if (needsRefresh()) // double check
-        {
-            refresh(map);
-
-            if (ws)
-                ws->_lru.clear();
-        }
-
-        _refreshMutex.unlock();
+        if (ws)
+            ws->_lru.clear();
     }
 }
 
 void
 ElevationPool::refresh(const Map* map)
 {
+    ScopedWriteLock lk(_mutex);
+
     _elevationLayers.clear();
 
     OE_DEBUG << LC << "Refreshing EP index" << std::endl;
@@ -205,6 +197,8 @@ ElevationPool::getLOD(double x, double y) const
 bool
 ElevationPool::needsRefresh()
 {    
+    ScopedReadLock lk(_mutex);
+
     // Check to see if the overall data model has changed in the map
     int mapRevision = _map.valid() ? static_cast<int>(_map->getDataModelRevision()) : 0;
     if (mapRevision != _mapRevision)
@@ -503,7 +497,7 @@ ElevationPool::Envelope::sampleMapCoords(
     if (points.empty())
         return -1;
 
-    ScopedAtomicCounter counter(_pool->_workers);
+    ScopedReadLock lk(_pool->_mutex);
 
     double u, v;
     double rx, ry;
@@ -609,7 +603,8 @@ ElevationPool::sampleMapCoords(
         return -1;
 
     sync(map.get(), ws);
-    ScopedAtomicCounter counter(_workers);
+    
+    ScopedReadLock lk(_mutex);
 
     Internal::RevElevationKey key;
     key._revision = getElevationHash();
@@ -747,7 +742,7 @@ ElevationPool::sampleMapCoords(
         return -1;
 
     sync(map.get(), ws);
-    ScopedAtomicCounter counter(_workers);
+    ScopedReadLock lk(_mutex);
 
     Internal::RevElevationKey key;
     key._revision = getElevationHash();
@@ -878,7 +873,7 @@ ElevationPool::getSample(
     // ensure the Pool is in sync with the map
     sync(map, ws);
 
-    ScopedAtomicCounter counter(_workers);
+    ScopedReadLock lk(_mutex);
 
     Internal::RevElevationKey key;
 
@@ -984,7 +979,7 @@ ElevationPool::getTile(
     // ensure we are in sync with the map
     sync(map.get(), ws);
 
-    ScopedAtomicCounter counter(_workers);
+    ScopedReadLock lk(_mutex);
 
     Internal::RevElevationKey key;
     key._tilekey = tilekey;

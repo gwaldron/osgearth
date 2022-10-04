@@ -246,11 +246,9 @@ namespace osgEarth
         size_t _elevationHash;
         int  _mapRevision;
 
-        Threading::Mutex _refreshMutex;
+        Threading::ReadWriteMutex _mutex;
 
-        ElevationLayerVector _elevationLayers;
-
-        std::atomic<int> _workers;
+        ElevationLayerVector _elevationLayers;        
 
         size_t getElevationHash() const;
 

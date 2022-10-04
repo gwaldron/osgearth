@@ -394,15 +394,13 @@ VegetationLayer::setFarLODScale(float value)
     if (getFarLODScale() != value)
         options().farLODScale() = value;
 
-    if (_pixelScalesU.valid())
-    {
-        osg::Vec4f vector;
-        if (_pixelScalesU.valid())
-            _pixelScalesU->get(vector);
+    osg::Vec4f vector(
+        options().nearLODScale().get(),
+        options().farLODScale().get(),
+        1.0f, 1.0f);
 
-        vector[1] = value;
-        _pixelScalesU->set(vector);
-    }
+    osg::Uniform* u = new osg::Uniform("oe_lod_scale", vector);
+    getOrCreateStateSet()->addUniform(u, osg::StateAttribute::OVERRIDE | 0x01);
 }
 
 float
@@ -417,15 +415,13 @@ VegetationLayer::setNearLODScale(float value)
     if (getNearLODScale() != value)
         options().nearLODScale() = value;
 
-    if (_pixelScalesU.valid())
-    {
-        osg::Vec4f vector;
-        if (_pixelScalesU.valid())
-            _pixelScalesU->get(vector);
+    osg::Vec4f vector(
+        options().nearLODScale().get(),
+        options().farLODScale().get(),
+        1.0f, 1.0f);
 
-        vector[0] = value;
-        _pixelScalesU->set(vector);
-    }
+    osg::Uniform* u = new osg::Uniform("oe_lod_scale", vector);
+    getOrCreateStateSet()->addUniform(u, osg::StateAttribute::OVERRIDE | 0x01);
 }
 
 float
@@ -731,14 +727,12 @@ VegetationLayer::buildStateSets()
         activateMultisampling();
     }
 
-    // Far pixel scale overrides.
-    _pixelScalesU = new osg::Uniform("oe_lod_scale", osg::Vec4f(1, 1, 1, 1));
-    ss->addUniform(_pixelScalesU.get(), osg::StateAttribute::OVERRIDE | 0x01);
-
     // activate compressed normal maps
     ss->setDefine("OE_COMPRESSED_NORMAL");
 
     // apply the various uniform-based options
+    setNearLODScale(options().nearLODScale().get());
+    setFarLODScale(options().farLODScale().get());
     setImpostorLowAngle(options().impostorLowAngle().get());
     setImpostorHighAngle(options().impostorHighAngle().get());
     setLODTransitionPadding(options().lodTransitionPadding().get());
@@ -1639,7 +1633,7 @@ VegetationLayer::cull(
                         entry->getMorphEndRange());
 
                     cd->setAlphaCutoff(
-                        group.alphaCutoff().get());                        
+                        group.alphaCutoff().get());
 
                     // release the reference to any placeholder.
                     view._placeholder = nullptr;

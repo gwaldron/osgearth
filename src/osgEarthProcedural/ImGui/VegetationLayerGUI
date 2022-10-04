@@ -17,8 +17,6 @@ namespace osgEarth {
             bool _forceGenerate;
             bool _manualBiomes;
             bool _showBiomeUnderMouse;
-            float _farLodScale, _nearLodScale, _lodTransitionFactor;
-            float _bbCosLow, _bbCosHigh;
             std::unordered_map<const Biome*, bool> _isManualBiomeActive;
             osg::observer_ptr<BiomeLayer> _biolayer;
             osg::observer_ptr<VegetationLayer> _veglayer;
@@ -135,6 +133,15 @@ namespace osgEarth {
                         }
 
                         ImGui::Separator();
+
+                        float blendPerc = _biolayer->getBlendPercentage();
+                        if (ImGui::SliderFloat("Biome Blend Percentage",
+                            &blendPerc,
+                            0.0f, 1.0f,
+                            "%.2f"))
+                        {
+                            _biolayer->setBlendPercentage(blendPerc);
+                        }
 
                         if (ImGui::Button("Refresh"))
                         {

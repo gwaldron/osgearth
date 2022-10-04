@@ -1,31 +1,3 @@
-#pragma vp_function oe_vegetation_vs_model, vertex_model
-
-struct Instance
-{
-    mat4 xform;
-    vec2 local_uv;
-    uint lod;
-    float visibility[3]; // per LOD
-    float alpha_cutoff;
-    uint first_lod_cmd_index;
-};
-
-layout(binding = 0, std430) buffer Instances {
-    Instance instances[];
-};
-
-// stage globals
-mat3 vec3xform;
-
-void oe_vegetation_vs_model(inout vec4 vertex)
-{
-    int i = gl_BaseInstance + gl_InstanceID;
-    vec3xform = mat3(instances[i].xform);
-};
-
-
-[break]
-
 #pragma vp_function oe_vegetation_vs_view, vertex_view
 #pragma import_defines(OE_WIND_TEX)
 #pragma import_defines(OE_WIND_TEX_MATRIX)
@@ -47,11 +19,7 @@ layout(binding = 0, std430) buffer Instances {
 layout(location = 4) in vec3 flex;
 
 // outputs
-flat out uint64_t oe_normal_tex;
 flat out uint oe_lod;
-
-// stage globals
-mat3 vec3xform; // set in model function
 
 #ifdef OE_WIND_TEX
 uniform sampler3D OE_WIND_TEX;
@@ -72,6 +40,9 @@ tweakable float oe_wind_power = 1.0;
 void oe_apply_wind(inout vec4 vertex, in int index)
 {
     // scale the vert's flexibility by the model Z scale factor
+
+    mat3 vec3xform = mat3(instances[index].xform);
+
     float flexibility = length(flex) * vec3xform[2][2];
 
     if (flexibility > 0.0 && oe_wind_power > 0.0)
@@ -120,24 +91,19 @@ void oe_vegetation_vs_view(inout vec4 vertex)
 #pragma vp_function oe_vegetation_fs, fragment, 0.9
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
-in vec2 oe_tex_uv;
-flat in uint64_t oe_albedo_tex;
-flat in uint oe_lod;
+flat in uint oe_lod; // from VS
 in vec3 vp_VertexView;
-
-#define OE_A2C_ADJUSTMENT 0.275
 
 uniform float oe_veg_bbd0 = 0.5;
 uniform float oe_veg_bbd1 = 0.75;
-uniform float oe_veg_alphaCutoff = 0.15;
 
 void oe_vegetation_fs(inout vec4 color)
 {
 #ifndef OE_IS_SHADOW_CAMERA
 
-    // alpha-down faces that are orthogonal to the view vector.
-    // this makes cross-hatch imposters look better.
-    // (only do this for lower lods)
+    // reduce the alpha on faces that are orthogonal to the view vector.
+    // this makes cross-hatch impostors look better.
+    // (only do this for impostor lods)
     if (oe_lod > 0)
     {
         vec3 dx = dFdx(vp_VertexView);

@@ -139,7 +139,8 @@ namespace osgEarth
                 OE_OPTION_LAYER(CoverageLayer, landCoverLayer);
                 OE_OPTION_LAYER(CoverageLayer, biomeBaseLayer);
                 OE_OPTION_SHAREDPTR(BiomeCatalog, biomeCatalog);
-                OE_OPTION(float, blendRadius);
+                OE_OPTION(Distance, blendRadius);
+                OE_OPTION(float, blendPercentage);
                 virtual Config getConfig() const;
             private:
                 void fromConfig(const Config& conf);
@@ -147,6 +148,16 @@ namespace osgEarth
 
         public:
             META_Layer(osgEarthProcedural, BiomeLayer, Options, ImageLayer, Biomes);
+
+            //! Radius around which to randomly permute biome selection
+            const Distance& getBlendRadius() const;
+            void setBlendRadius(const Distance& value);
+
+            //! Percentage (of tile size) by which to blend biome data
+            //! for a natural transitions betwen adjacent biomes.
+            //! [0..1] default is 0.1
+            void setBlendPercentage(float value);
+            float getBlendPercentage() const;
 
             //! The catalog holding all biome information
             std::shared_ptr<const BiomeCatalog> getBiomeCatalog() const;

@@ -845,6 +845,19 @@ namespace osgEarth {
                                         }
                                     }
                                 }
+
+                                if (visibleLayer)
+                                {
+                                    if (ImGui::Button("Invalidate cache"))
+                                    {
+                                        layer->dirty();
+                                        auto cp = layer->getCachePolicy();
+                                        cp.minTime() = DateTime().asTimeStamp();
+                                        layer->setCachePolicy(cp);
+                                        std::vector<const Layer*> layers = { layer };
+                                        _mapNode->getTerrainEngine()->invalidateRegion(layers, GeoExtent());
+                                    }
+                                }
                             }
 
                             else if (layer->getStatus().isError() && layer->getStatus().message() != "Layer closed")

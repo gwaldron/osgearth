@@ -134,16 +134,7 @@ namespace osgEarth {
 
                         ImGui::Separator();
 
-                        float blendPerc = _biolayer->getBlendPercentage();
-                        if (ImGui::SliderFloat("Biome Blend Percentage",
-                            &blendPerc,
-                            0.0f, 1.0f,
-                            "%.2f"))
-                        {
-                            _biolayer->setBlendPercentage(blendPerc);
-                        }
-
-                        if (ImGui::Button("Refresh"))
+                        if (ImGui::Button("Regenerate Vegetation"))
                         {
                             _veglayer->dirty();
                         }
@@ -151,6 +142,27 @@ namespace osgEarth {
                     else
                     {
                         ImGui::TextColored(ImVec4(1, 0, 0, 1), "Vegetation layer is closed");
+                    }
+
+                    ImGui::Separator();
+
+                    float blendPerc = _biolayer->getBlendPercentage();
+                    if (ImGui::SliderFloat("Biome Blend Percentage",
+                        &blendPerc,
+                        0.0f, 1.0f,
+                        "%.2f", ImGuiSliderFlags_Logarithmic))
+                    {
+                        _biolayer->setBlendPercentage(blendPerc);
+                    }
+
+                    if (ImGui::Button("Refresh biomes"))
+                    {
+                        _biolayer->dirty();
+                        auto cp = _biolayer->getCachePolicy();
+                        cp.minTime() = DateTime().asTimeStamp();
+                        _biolayer->setCachePolicy(cp);
+                        std::vector<const Layer*> layers = { _biolayer.get() };
+                        _mapNode->getTerrainEngine()->invalidateRegion(layers, GeoExtent());
                     }
 
                     ImGui::Separator();

@@ -32,6 +32,7 @@ namespace osgEarth {
             float _rugged_power;
             float _dense_power;
             float _lush_power;
+            float _mask_alpha;
 
             TextureSplattingLayerGUI() : GUI::BaseGUI("Splatting")
             {
@@ -56,6 +57,7 @@ namespace osgEarth {
                 _rugged_power = 1.0;
                 _dense_power = 1.0;
                 _lush_power = 1.0;
+                _mask_alpha = 1.0;
             }
 
             void load(const Config& conf) override
@@ -126,6 +128,9 @@ namespace osgEarth {
                         ImGui::SliderFloat("Normal mix", &_blend_normal_mix, 0.0f, 1.0f);
                         stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_normal_mix", _blend_normal_mix), 0x7);
                     }
+
+                    ImGui::SliderFloat("Mask alpha", &_mask_alpha, 0.0f, 1.0f);
+                    stateset(ri)->addUniform(new osg::Uniform("oe_mask_alpha", _mask_alpha), 0x7);
 
                     ImGui::SliderFloat("Global brightness", &_brightness, 0.0f, 4.0f);
                     stateset(ri)->addUniform(new osg::Uniform("oe_splat_brightness", _brightness), 0x7);

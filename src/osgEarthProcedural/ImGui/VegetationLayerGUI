@@ -77,7 +77,7 @@ namespace osgEarth {
                             _veglayer->setFarLODScale(far_scale);
 
                         float padding = _veglayer->getLODTransitionPadding();
-                        if (ImGui::SliderFloat("LOD transition padding", &padding, 0.0f, 1.0f))
+                        if (ImGui::SliderFloat("LOD padding %", &padding, 0.0f, 1.0f))
                             _veglayer->setLODTransitionPadding(padding);
 
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Impostor visibility angles:");
@@ -118,7 +118,7 @@ namespace osgEarth {
                                 ImGuiSliderFlags_Logarithmic);
 
                             ImGui::SliderFloat(
-                                "Overlap percentage",
+                                "Overlap %",
                                 &groupOptions.overlap().mutable_value(),
                                 0.0f, 1.0f,
                                 "%.2f");
@@ -147,7 +147,7 @@ namespace osgEarth {
                     ImGui::Separator();
 
                     float blendPerc = _biolayer->getBlendPercentage();
-                    if (ImGui::SliderFloat("Biome Blend Percentage",
+                    if (ImGui::SliderFloat("Biome feather %",
                         &blendPerc,
                         0.0f, 1.0f,
                         "%.2f", ImGuiSliderFlags_Logarithmic))

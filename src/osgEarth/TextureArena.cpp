@@ -21,6 +21,7 @@
 #include "ImageUtils"
 #include "Math"
 #include "Metrics"
+#include "Utils"
 
 #include <osg/State>
 #include <osg/Texture1D>
@@ -179,6 +180,7 @@ Texture::compileGLObjects(osg::State& state) const
         return;
 
     OE_PROFILING_ZONE;
+    OE_PROFILING_ZONE_TEXT(name().c_str());
     OE_HARD_ASSERT(dataLoaded() == true);
 
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
@@ -472,6 +474,7 @@ Texture::releaseGLObjects(osg::State* state) const
 #undef LC
 #define LC "[TextureArena] "
 
+
 TextureArena::TextureArena() :
     _autoRelease(false),
     _bindingPoint(5u),
@@ -481,6 +484,9 @@ TextureArena::TextureArena() :
     // Keep this synchronous w.r.t. the render thread since we are
     // going to be changing things on the fly
     setDataVariance(DYNAMIC);
+
+    setUpdateCallback(new LambdaCallback<osg::StateAttribute::Callback>(
+        [this](osg::NodeVisitor& nv) { this->update(nv); }));
 }
 
 TextureArena::~TextureArena()
@@ -655,6 +661,13 @@ TextureArena::add(Texture::Ptr tex)
 }
 
 void
+TextureArena::update(osg::NodeVisitor& nv)
+{
+    ScopedMutexLock lock(_m);
+    _toDestruct.clear();
+}
+
+void
 TextureArena::apply(osg::State& state) const
 {
     if (_textures.empty())
@@ -750,6 +763,7 @@ TextureArena::apply(osg::State& state) const
                     // (so we don't trip ourselves)
                     tex->_host = nullptr;
                     tex->releaseGLObjects(&state);
+                    _toDestruct.emplace_back(tex);
                     tex = nullptr;
                 }
             }

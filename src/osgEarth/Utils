@@ -262,7 +262,7 @@ namespace osgEarth { namespace Util
         std::function<void(osg::NodeVisitor&)> _func;
         bool run(osg::Object* object, osg::Object* data) override {
             _func(*reinterpret_cast<osg::NodeVisitor*>(data));
-            return traverse(object, data);
+            return T::traverse(object, data);
         }
     };
 

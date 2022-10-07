@@ -398,14 +398,31 @@ BiomeManager::materializeNewAssets(
     // This loader will find material textures and install them on
     // secondary texture image units.. in this case, normal maps.
     // We can expand this later to include other types of material maps.
+
+    auto getNormalMapFileName = [](const std::string& filename)
+    {
+        const std::string NML = "_NML";
+
+        auto underscore_pos = filename.find_last_of('_');
+        if (underscore_pos != filename.npos)
+        {
+            return
+                filename.substr(0, underscore_pos)
+                + NML
+                + filename.substr(underscore_pos);
+        }
+        else
+        {
+            return
+                osgDB::getNameLessExtension(filename)
+                + NML
+                + osgDB::getFileExtensionIncludingDot(filename);
+        }
+    };
+
     Util::MaterialLoader materialLoader;
 
-    materialLoader.setMangler(NORMAL_MAP_TEX_UNIT,
-        [](const std::string& filename)
-        {
-            return osgDB::getNameLessExtension(filename) + "_NML.png";
-        }
-    );
+    materialLoader.setMangler(NORMAL_MAP_TEX_UNIT, getNormalMapFileName);
 
     materialLoader.setTextureFactory(NORMAL_MAP_TEX_UNIT,
         [](osg::Image* image)
@@ -539,10 +556,7 @@ BiomeManager::materializeNewAssets(
                             for (int i = 0; i < 2 && !normalMap.valid(); ++i)
                             {
                                 // normal map is the same file name but with _NML inserted before the extension
-                                URI normalMapURI(
-                                    osgDB::getNameLessExtension(uri.full()) +
-                                    (i == 0 ? "_NML." : ".normal.") +
-                                    osgDB::getFileExtension(uri.full()));
+                                URI normalMapURI(getNormalMapFileName(uri.full()));
 
                                 // silenty fail if no normal map found.
                                 normalMap = normalMapURI.getImage(readOptions);
@@ -588,10 +602,7 @@ BiomeManager::materializeNewAssets(
                                 for (int i = 0; i < 2 && !normalMap.valid(); ++i)
                                 {
                                     // normal map is the same file name but with _NML inserted before the extension
-                                    URI normalMapURI(
-                                        osgDB::getNameLessExtension(uri.full()) +
-                                        (i == 0 ? "_NML." : ".normal.") +
-                                        osgDB::getFileExtension(uri.full()));
+                                    URI normalMapURI(getNormalMapFileName(uri.full()));
 
                                     // silenty fail if no normal map found.
                                     normalMap = normalMapURI.getImage(readOptions);

@@ -996,6 +996,11 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
         }
     }
     _persistent.unlock();
+
+    // traverse the texture arena since it's not in the scene graph.
+    auto* arena = getEngineContext()->textures();
+    if (arena)
+        arena->update(nv);
 }
 
 void

@@ -761,9 +761,10 @@ VegetationLayer::configureImpostor(
     const std::string& groupName)
 {
     Options::Group& group = options().groups()[groupName];
+    bool isUndergrowth = (groupName == GROUP_UNDERGROWTH);
 
     // functor for generating cross hatch geometry for trees:
-    group._createImpostor = [&group](
+    group._createImpostor = [&group, isUndergrowth](
         const osg::BoundingBox& b,
         std::vector<osg::Texture*>& textures)
     {
@@ -811,17 +812,17 @@ VegetationLayer::configureImpostor(
                     {-1,0,1}, {1,0,1}, {1,0,2}, {-1,0,2},
                     {0,-1,1}, {0,1,1}, {0,1,2}, {0,-1,2}
                 };
-                for (int i = 0; i < 8; ++i) normals[i].normalize();
+                for (auto& n : normals) n.normalize();
+
+                osg::Vec4f bb_normals[8];
+                for (int i = 0; i < 8; ++i) {
+                    bb_normals[i].set(normals[i].x(), normals[i].y(), normals[i].z(), 1.0f);
+                }
 
                 const osg::Vec2f uvs[8] = {
                     {0,0},{1,0},{1,1},{0,1},
                     {0,0},{1,0},{1,1},{0,1}
                 };
-
-                //const osg::Vec3f flexors[8] = {
-                //    {0,0,0}, {0,0,0}, {1,0,1}, {-1,0,1},
-                //    {0,0,0}, {0,0,0}, {0,1,1}, {0,-1,1}
-                //};
 
                 const osg::Vec3f flexors[8] = {
                     {0,0,0}, {0,0,0}, {0,0,1}, {0,0,1},
@@ -830,10 +831,14 @@ VegetationLayer::configureImpostor(
 
                 geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
                 geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, verts));
-                geom->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, normals));
                 geom->setColorArray(new osg::Vec4Array(osg::Array::BIND_OVERALL, 1, colors));
                 geom->setTexCoordArray(0, new osg::Vec2Array(osg::Array::BIND_PER_VERTEX, 8, uvs));
                 geom->setTexCoordArray(3, new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, flexors));
+
+                if (isUndergrowth)
+                    geom->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, normals));
+                else
+                    geom->setNormalArray(new osg::Vec4Array(osg::Array::BIND_PER_VERTEX, 8, bb_normals));
 
                 if (textures.size() > 0)
                     ss->setTextureAttribute(0, textures[0], 1); // side albedo
@@ -841,8 +846,8 @@ VegetationLayer::configureImpostor(
                 node->addChild(geom);
 
                 // No normal texture support - it looks much better without it.
-                //if (textures.size() > 1)
-                //    ss->setTextureAttribute(1, textures[1], 1); // side normal
+                if (textures.size() > 1)
+                    ss->setTextureAttribute(1, textures[1], 1); // side normal
             }
             else if (i == 1 && textures[2] != nullptr)
             {
@@ -883,8 +888,8 @@ VegetationLayer::configureImpostor(
                     ss->setTextureAttribute(0, textures[2], 1); // top albedo
 
                 // No normal texture support - it looks much better without it.
-                //if (textures.size() > 3)
-                //    ss->setTextureAttribute(1, textures[3], 1); // top normal
+                if (textures.size() > 3)
+                    ss->setTextureAttribute(1, textures[3], 1); // top normal
 
                 node->addChild(geom);
             }

@@ -111,6 +111,7 @@ tweakable float oe_splat_contrast = 1.0;
 tweakable float oe_dense_contrast = 0.35;
 tweakable float oe_dense_brightness = -0.5;
 tweakable float oe_lush_brightness = 0.0;
+tweakable float oe_mask_alpha = 1.0;
 
 in float oe_layer_opacity;
 
@@ -308,6 +309,8 @@ void oe_splat_Frag(inout vec4 quad)
         DECEL(pixel.normal.y, normal_power));
     vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal);
 
+    float mask_alpha = mix(clamp(dense + lush + rugged, 0.0, 1.0), 1.0, oe_mask_alpha);
+
     // final color output:
-    quad = vec4(color, oe_layer_opacity);
+    quad = vec4(color, oe_layer_opacity * mask_alpha);
 }

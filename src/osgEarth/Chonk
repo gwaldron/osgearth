@@ -88,7 +88,7 @@ namespace osgEarth
         struct VertexGPU
         {
             osg::Vec3f position;
-            osg::Vec3f normal;
+            osg::Vec4f normal4; // W>0 means to billboard the normals
             osg::Vec4ub color;
             osg::Vec2f uv;
             osg::Vec3f flex;

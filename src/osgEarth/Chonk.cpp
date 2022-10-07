@@ -231,14 +231,16 @@ namespace
 
             auto verts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
             auto colors = dynamic_cast<osg::Vec4Array*>(node.getColorArray());
-            auto normals = dynamic_cast<osg::Vec3Array*>(node.getNormalArray());
-            auto flexers = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(3));
+            auto normals3 = dynamic_cast<osg::Vec3Array*>(node.getNormalArray());
+            auto normals4 = dynamic_cast<osg::Vec4Array*>(node.getNormalArray());
+            auto flexors = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(3));
 
             // support either 2- or 3-component tex coords, but only read the xy components!
             auto uv2s = dynamic_cast<osg::Vec2Array*>(node.getTexCoordArray(0));
             auto uv3s = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(0));
 
             auto& material = _materialStack.top();
+            osg::Vec3f n;
 
             for (unsigned i = 0; i < numVerts; ++i)
             {
@@ -251,53 +253,51 @@ namespace
                 
                 if (colors)
                 {
-                    if (colors->getBinding() == colors->BIND_PER_VERTEX)
-                        v.color = Color((*colors)[i]).asNormalizedRGBA();
-                    else
-                        v.color = Color((*colors)[0]).asNormalizedRGBA();
+                    int k = colors->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                    v.color = Color((*colors)[k]).asNormalizedRGBA();
                 }
                 else
                 {
                     v.color.set(255, 255, 255, 255);
                 }
 
-                if (normals)
+                if (normals3)
                 {
-                    if (normals->getBinding() == normals->BIND_PER_VERTEX)
-                        v.normal = (*normals)[i];
-                    else
-                        v.normal = (*normals)[0];
+                    int k = normals3->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                    n = osg::Matrix::transform3x3((*normals3)[k], _transformStack.top());
+                    v.normal4.set(n.x(), n.y(), n.z(), 0.0f);
+                }
+                else if (normals4)
+                {
+                    int k = normals4->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                    n.set((*normals4)[k].x(), (*normals4)[k].y(), (*normals4)[k].z());
+                    n = osg::Matrix::transform3x3(n, _transformStack.top());
+                    v.normal4.set(n.x(), n.y(), n.z(), (*normals4)[k].w());
                 }
                 else
                 {
-                    v.normal.set(0, 0, 1);
+                    v.normal4.set(0, 0, 1, 0);
                 }
 
                 if (uv2s)
                 {
-                    if (uv2s->getBinding() == normals->BIND_PER_VERTEX)
-                        v.uv = (*uv2s)[i];
-                    else
-                        v.uv = (*uv2s)[0];
+                    int k = uv2s->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                    v.uv = (*uv2s)[k];
                 }
                 else if (uv3s)
                 {
-                    if (uv3s->getBinding() == normals->BIND_PER_VERTEX)
-                        v.uv.set((*uv3s)[i].x(), (*uv3s)[i].y());
-                    else
-                        v.uv.set((*uv3s)[0].x(), (*uv3s)[0].y());
+                    int k = uv3s->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                    v.uv.set((*uv3s)[k].x(), (*uv3s)[k].y());
                 }
                 else
                 {
                     v.uv.set(0.0f, 0.0f);
                 }
 
-                if (flexers)
+                if (flexors)
                 {
-                    if (flexers->getBinding() == flexers->BIND_PER_VERTEX)
-                        v.flex = (*flexers)[i];
-                    else
-                        v.flex = (*flexers)[0];
+                    int k = flexors->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                    v.flex = osg::Matrix::transform3x3((*flexors)[k], _transformStack.top());
                 }
                 else
                 {
@@ -859,7 +859,7 @@ ChonkDrawable::GLObjects::initialize(
 
     const VADef formats[7] = {
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, position)},
-        {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, normal)},
+        {4, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, normal4)},
         {4, GL_UNSIGNED_BYTE, GL_TRUE,  offsetof(Chonk::VertexGPU, color)},
         {2, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, uv)},
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, flex)},

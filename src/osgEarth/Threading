@@ -940,7 +940,7 @@ namespace osgEarth { namespace Threading
             //! Total number of running jobs across all arenas
             int totalJobsRunning() const;
 
-            //! Total number of running jobs across all arenas
+            //! Total number of canceled jobs across all arenas
             int totalJobsCanceled() const;
 
             //! Total number of active jobs in the system

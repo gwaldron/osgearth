@@ -253,6 +253,18 @@ namespace osgEarth { namespace Util
         void apply(osg::Drawable& drawable);
     };
 
+    /**
+     * Adapts an osg::Callback (or derived class) to accept a lambda.
+     */
+    template<typename T>
+    struct LambdaCallback : public T {
+        LambdaCallback(std::function<void(osg::NodeVisitor&)> func) : _func(func) { }
+        std::function<void(osg::NodeVisitor&)> _func;
+        bool run(osg::Object* object, osg::Object* data) override {
+            _func(*reinterpret_cast<osg::NodeVisitor*>(data));
+            return traverse(object, data);
+        }
+    };
 
     /**
      * Tracks usage data by maintaining a sentry-blocked linked list.

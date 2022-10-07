@@ -360,7 +360,7 @@ Chonk::add(
     ChonkFactory& factory)
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
-    OE_HARD_ASSERT(_lods.size() < 4);
+    OE_HARD_ASSERT(_lods.size() < 3);
 
     factory.load(node, *this);
     _lods.push_back({ 0u, _ebo_store.size(), 0.0f, FLT_MAX });
@@ -378,7 +378,7 @@ Chonk::add(
     ChonkFactory& factory)
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
-    OE_HARD_ASSERT(_lods.size() < 4);
+    OE_HARD_ASSERT(_lods.size() < 3);
 
     unsigned offset = _ebo_store.size();
     factory.load(node, *this);

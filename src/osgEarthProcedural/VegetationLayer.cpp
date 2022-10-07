@@ -858,6 +858,7 @@ VegetationLayer::configureImpostor(
                 osg::StateSet* ss = geom->getOrCreateStateSet();
 
                 float zmid = 0.33f*(b.zMax() - b.zMin());
+                //float zmid = 0.5f*(b.zMax() - b.zMin());
 
                 static const GLushort indices[6] = {
                     0,1,2,  2,3,0
@@ -871,7 +872,12 @@ VegetationLayer::configureImpostor(
                 osg::Vec3f normals[4] = {
                     {-1,-1,2}, {1,-1,2}, {1,1,2}, {-1,1,2}
                 };
-                for (int i = 0; i < 4; ++i) normals[i].normalize();
+                for (auto& n : normals) n.normalize();
+
+                osg::Vec4f bb_normals[4];
+                for (int i = 0; i < 4; ++i) {
+                    bb_normals[i].set(normals[i].x(), normals[i].y(), normals[i].z(), 1.0f);
+                }
 
                 const osg::Vec2f uvs[4] = {
                     {0,0}, {1,0}, {1,1}, {0,1}
@@ -879,10 +885,14 @@ VegetationLayer::configureImpostor(
 
                 geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 6, &indices[0]));
                 geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, verts));
-                geom->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, normals));
                 geom->setColorArray(new osg::Vec4Array(osg::Array::BIND_OVERALL, 1, colors));
                 geom->setTexCoordArray(0, new osg::Vec2Array(osg::Array::BIND_PER_VERTEX, 4, uvs));
                 geom->setTexCoordArray(3, new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4)); // flexors
+
+                if (isUndergrowth)
+                    geom->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, normals));
+                else
+                    geom->setNormalArray(new osg::Vec4Array(osg::Array::BIND_PER_VERTEX, 4, bb_normals));
 
                 if (textures.size() > 2)
                     ss->setTextureAttribute(0, textures[2], 1); // top albedo

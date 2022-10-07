@@ -238,7 +238,7 @@ namespace osgEarth
         // Keep me 16-byte aligned
         struct Instance
         {
-            osg::Matrixf xform;  // local xform
+            osg::Matrixf xform; // local xform
             osg::Vec2f uv; // tile-local UV
             GLuint lod;
             float visibility[3]; // per LOD

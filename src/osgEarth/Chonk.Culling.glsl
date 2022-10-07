@@ -221,7 +221,7 @@ void cull()
     // Pass! Set the visibility for this LOD:
     input_instances[i].visibility[lod] = fade;
 
-    // Send along the alpha cutoff..
+    // Send along the other values:
     input_instances[i].alpha_cutoff = chonks[v].alpha_cutoff;
 
     // Bump all baseInstances following this one:

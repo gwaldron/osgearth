@@ -59,6 +59,20 @@ void
 Merger::clear()
 {
     ScopedMutexLock lock(_mutex);
+
+    // Decrement the numJobsRunning stat b/c these jobs in the queues will never actually run.
+    if (_metrics)
+    {
+        for (unsigned int i = 0; i < _mergeQueue.size(); ++i)
+        {
+            _metrics->numJobsRunning--;
+        }
+        for (unsigned int i = 0; i < _compileQueue.size(); ++i)
+        {
+            _metrics->numJobsRunning--;
+        }
+    }
+
     _compileQueue = CompileQueue();
     _mergeQueue = MergeQueue();
 }

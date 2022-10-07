@@ -68,6 +68,7 @@ main(int argc, char** argv)
         // through to other handlers.
         viewer.getEventHandlers().push_front(new GUI::ApplicationGUI(arguments, true));
         viewer.setSceneData(node);
+        node = nullptr;
         return Metrics::run(viewer);
     }
     else

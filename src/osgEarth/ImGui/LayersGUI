@@ -417,6 +417,8 @@ namespace osgEarth {
                 if (!isVisible())
                     return;
 
+                bool mapNodeWasValid = _mapNode.valid();
+
                 if (!findNodeOrHide(_mapNode, ri))
                     return;
 
@@ -430,7 +432,7 @@ namespace osgEarth {
                 const Map* map = _mapNode->getMap();
 
                 Revision rev = map->getDataModelRevision();
-                if (rev != _mapRevision)
+                if (rev != _mapRevision || !mapNodeWasValid)
                 {
                     _layers.clear();
                     _layerExpanded.clear();

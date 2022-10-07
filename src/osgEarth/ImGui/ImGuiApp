@@ -42,6 +42,8 @@
 #include "CameraGUI"
 #include "RenderingGUI"
 
+#include <osgDB/ReadFile>
+
 #ifdef HAVE_OSGEARTHPROCEDURAL
 #include <osgEarthProcedural/ImGui/LifeMapLayerGUI>
 #include <osgEarthProcedural/ImGui/TextureSplattingLayerGUI>
@@ -50,6 +52,13 @@
 
 #ifdef OSGEARTH_HAVE_GEOCODER
 #include "SearchGUI"
+#endif
+
+#if defined(__has_include)
+#if __has_include(<third_party/portable-file-dialogs/portable-file-dialogs.h>)
+#include <third_party/portable-file-dialogs/portable-file-dialogs.h>
+#define HAS_PFD
+#endif
 #endif
 
 namespace osgEarth
@@ -261,7 +270,38 @@ namespace osgEarth
                 if (ImGui::BeginMainMenuBar())
                 {
                     if (ImGui::BeginMenu("File"))
-                    {
+                    {                        
+#ifdef HAS_PFD
+                        if (ImGui::MenuItem("Open Earth File"))
+                        {
+                            auto f = pfd::open_file("Choose files to read", pfd::path::home(),
+                                { "Earth Files", "*.earth", "All Files", "*" },
+                                pfd::opt::none);
+
+                            if (f.result().size() > 0)
+                            {
+                                std::string earthFile = f.result()[0];
+                                osg::ref_ptr< osg::Node > node = osgDB::readNodeFile(earthFile);
+                                if (node.valid())
+                                {
+                                    MapNode* mapNode = MapNode::findMapNode(node);
+                                    osgViewer::View* view = dynamic_cast<osgViewer::View*>(ri.getView());
+                                    if (view && mapNode)
+                                    {
+                                        mapNode->open();
+                                        EarthManipulator* em = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
+                                        if (em)
+                                        {
+                                            em->setNode(nullptr);
+                                            em->setNode(mapNode);
+                                        }
+                                        view->setSceneData(mapNode);
+                                    }
+                                }
+                            }
+                        }
+#endif
+
                         ImGui::MenuItem("ImGui Demo Window", nullptr, &_showDemoWindow);
 
                         if (ImGui::MenuItem("Quit"))

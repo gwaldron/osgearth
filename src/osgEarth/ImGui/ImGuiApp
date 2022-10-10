@@ -281,7 +281,7 @@ namespace osgEarth
                             if (f.result().size() > 0)
                             {
                                 std::string earthFile = f.result()[0];
-                                osg::ref_ptr< osg::Node > node = osgDB::readNodeFile(earthFile);
+                                osg::ref_ptr< osg::Node > node = osgDB::readRefNodeFile(earthFile);
                                 if (node.valid())
                                 {
                                     MapNode* mapNode = MapNode::findMapNode(node);

@@ -59,6 +59,9 @@ namespace osgEarth { namespace Procedural
             //! Angle of view at which a polygon will become opaque
             OE_OPTION(Angle, impostorHighAngle);
 
+            //! Whether to use normal maps on impostor geometries
+            OE_OPTION(bool, useImpostorNormalMaps);
+
             //! Scale factor for LOD-ing the far-away impostor vegetation
             OE_OPTION(float, farLODScale);
 
@@ -173,6 +176,9 @@ namespace osgEarth { namespace Procedural
 
         void setLODTransitionPadding(float value);
         float getLODTransitionPadding() const;
+
+        void setUseImpostorNormalMaps(bool value);
+        bool getUseImpostorNormalMaps() const;
 
         //! Force regeneration of all visible data
         void dirty();

@@ -1,5 +1,7 @@
 #pragma vp_function oe_chonk_default_vertex_model, vertex_model, 0.0
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
+#pragma import_defines(OE_IS_DEPTH_CAMERA)
+#pragma import_defines(OE_CHONK_IGNORE_LOW_LOD_NORMAL_MAPS)
 
 struct Instance
 {
@@ -27,6 +29,7 @@ layout(location = 6) in int normalmap; // todo: material LUT index
 
 // stage global
 mat3 xform3;
+uint chonk_lod;
 
 // outputs
 out vec3 vp_Normal;
@@ -42,13 +45,7 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
 {
     int i = gl_BaseInstance + gl_InstanceID;
 
-    uint lod = instances[i].lod;
-
-#ifndef OE_IS_SHADOW_CAMERA
-    oe_fade = instances[i].visibility[lod];
-#else
-    oe_fade = 1.0;
-#endif
+    chonk_lod = instances[i].lod;
 
     vertex = instances[i].xform * vec4(position, 1.0);
     vp_Color = color;
@@ -56,10 +53,26 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
     vp_Normal = xform3 * normal4.xyz;
     oe_tex_uv = uv;
     oe_albedo_tex = albedo >= 0 ? textures[albedo] : 0;
-    oe_normal_tex = normalmap >= 0 ? textures[normalmap] : 0;
     oe_alpha_cutoff = instances[i].alpha_cutoff;
+    oe_fade = instances[i].visibility[chonk_lod];
 
+#if defined(OE_IS_SHADOW_CAMERA) || defined(OE_IS_DEPTH_CAMERA)
+    oe_fade = 1.0;
+    return;
+#endif
+
+    // stuff we need only for a non-depth or non-shadow camera
     oe_position_vec = xform3 * position.xyz;
+
+#ifdef OE_CHONK_IGNORE_LOW_LOD_NORMAL_MAPS
+    if (chonk_lod > 0)
+    {
+        oe_normal_tex = 0;
+        return;
+    }
+#endif
+
+    oe_normal_tex = normalmap >= 0 ? textures[normalmap] : 0;
 }
 
 
@@ -69,14 +82,15 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
 layout(location = 1) in vec4 normal4;
 
 // stage global
-mat3 xform3; // set in vertex_model
-out vec3 oe_position_vec;
+mat3 xform3; // set in model stage
+uint chonk_lod; // set in model stage
 
 // output
 out vec3 vp_Normal;
 out vec3 oe_tangent;
 flat out bool oe_billboarded_normal;
 flat out uint64_t oe_normal_tex;
+out vec3 oe_position_vec;
 
 void oe_chonk_default_vertex_view(inout vec4 vertex)
 {

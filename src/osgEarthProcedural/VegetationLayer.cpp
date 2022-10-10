@@ -92,6 +92,7 @@ VegetationLayer::Options::getConfig() const
     conf.set("far_lod_scale", farLODScale());
     conf.set("near_lod_scale", nearLODScale());
     conf.set("lod_transition_padding", lodTransitionPadding());
+    conf.set("use_impostor_normal_maps", useImpostorNormalMaps());
 
     //TODO: groups
 
@@ -138,6 +139,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     farLODScale().setDefault(1.0f);
     nearLODScale().setDefault(1.0f);
     lodTransitionPadding().setDefault(0.5f);
+    useImpostorNormalMaps().setDefault(true);
 
     biomeLayer().get(conf, "biomes_layer");
 
@@ -147,6 +149,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     conf.get("far_lod_scale", farLODScale());
     conf.get("near_lod_scale", nearLODScale());
     conf.get("lod_transition_padding", lodTransitionPadding());
+    conf.get("use_impostor_normal_maps", useImpostorNormalMaps());
 
     // some nice default group settings
     groups()[GROUP_TREES].lod().setDefault(14);
@@ -352,6 +355,25 @@ VegetationLayer::dirty()
         {
             _cameraState.clear();
         });
+}
+
+void
+VegetationLayer::setUseImpostorNormalMaps(bool value)
+{
+    if (value != getUseImpostorNormalMaps())
+        options().useImpostorNormalMaps() = value;
+
+    auto ss = getOrCreateStateSet();
+    if (value == false)
+        ss->setDefine("OE_CHONK_IGNORE_LOW_LOD_NORMAL_MAPS", 0x7);
+    else
+        ss->setDefine("OE_CHONK_IGNORE_LOW_LOD_NORMAL_MAPS", 0);
+}
+
+bool
+VegetationLayer::getUseImpostorNormalMaps() const
+{
+    return options().useImpostorNormalMaps().get();
 }
 
 void
@@ -845,7 +867,6 @@ VegetationLayer::configureImpostor(
 
                 node->addChild(geom);
 
-                // No normal texture support - it looks much better without it.
                 if (textures.size() > 1)
                     ss->setTextureAttribute(1, textures[1], 1); // side normal
             }
@@ -897,7 +918,6 @@ VegetationLayer::configureImpostor(
                 if (textures.size() > 2)
                     ss->setTextureAttribute(0, textures[2], 1); // top albedo
 
-                // No normal texture support - it looks much better without it.
                 if (textures.size() > 3)
                     ss->setTextureAttribute(1, textures[3], 1); // top normal
 
@@ -1214,6 +1234,8 @@ VegetationLayer::getAssetPlacements(
 
     auto catalog = getBiomeLayer()->getBiomeCatalog();
 
+    bool scaleWithDensity = (group == GROUP_UNDERGROWTH);
+
     // determine a local tile bbox size for collisions and uv generation
     // note. This doesn't take elevation data into account. Does that matter?
     auto& ex = key.getExtent();
@@ -1333,12 +1355,8 @@ VegetationLayer::getAssetPlacements(
 
         osg::Vec3d scale(1, 1, 1);
 
-        // hack. assume an explicit width/height means this is a grass billboard..
-        // TODO: find another way.
-        bool isGrass = asset->assetDef()->width().isSet();
-        if (isGrass)
+        if (asset->assetDef()->width().isSet())
         {
-            // Grass imposter geometrh is 1x1, so scale it:
             scale.set(
                 asset->assetDef()->width().get(),
                 asset->assetDef()->width().get(),
@@ -1355,24 +1373,13 @@ VegetationLayer::getAssetPlacements(
         // apply instance-specific density adjustment:
         density *= instance.coverage();
 
-#if 0
-        // use randomness to apply a density threshold:
-        if (noise[N_SMOOTH] > density)
-            continue;
-        else
-            noise[N_SMOOTH] /= density;
-
-        // For grasses, shrink the instance as the density decreases.
-        // TODO: should we?
-        if (isGrass)
+        const float edge_threshold = 0.10f;
+        if (scaleWithDensity && density < edge_threshold)
         {
-            float edge_scale = 1.0f;
-            const float edge_threshold = 0.5f;
-            if (noise[N_SMOOTH] > edge_threshold)
-                edge_scale = 1.0f - ((noise[N_SMOOTH] - edge_threshold) / (1.0f - edge_threshold));
-            scale *= edge_scale;
+            float edginess = (density / edge_threshold);
+            scale *= edginess;
         }
-#endif
+
 
         // tile-local coordinates of the position:
         local.set(

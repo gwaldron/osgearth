@@ -80,6 +80,10 @@ namespace osgEarth {
                         if (ImGui::SliderFloat("LOD padding %", &padding, 0.0f, 1.0f))
                             _veglayer->setLODTransitionPadding(padding);
 
+                        bool normalMaps = _veglayer->getUseImpostorNormalMaps();
+                        if (ImGui::Checkbox("Use impostor normal maps", &normalMaps))
+                            _veglayer->setUseImpostorNormalMaps(normalMaps);
+
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Impostor visibility angles:");
 
                         float bb_low = _veglayer->getImpostorLowAngle().as(Units::DEGREES);

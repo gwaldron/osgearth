@@ -91,11 +91,18 @@ void oe_chonk_default_vertex_view(inout vec4 vertex)
 
     if (oe_normal_tex > 0)
     {
-        vec3 ZAXIS = gl_NormalMatrix * vec3(0, 0, 1);
-        if (dot(ZAXIS, vp_Normal) > 0.95)
+        if (oe_billboarded_normal)
+        {
             oe_tangent = gl_NormalMatrix * (xform3 * vec3(1, 0, 0));
+        }
         else
-            oe_tangent = cross(ZAXIS, vp_Normal);
+        {
+            vec3 ZAXIS = gl_NormalMatrix * vec3(0, 0, 1);
+            if (dot(ZAXIS, vp_Normal) > 0.95)
+                oe_tangent = gl_NormalMatrix * (xform3 * vec3(1, 0, 0));
+            else
+                oe_tangent = cross(ZAXIS, vp_Normal);
+        }
     }
 }
 
@@ -198,7 +205,7 @@ void oe_chonk_default_fragment(inout vec4 color)
         const float threshold = 0.25;
         size2d = mix(0.0, threshold, size2d);
         vp_Normal = mix(vec3(0, 0, 1), normalize(v2d), size2d);
-        oe_tangent = cross(vec3(0, 1, 0), vp_Normal);
+        //oe_tangent = cross(vec3(0, 1, 0), vp_Normal);
         flip_backfacing_normal = false;
 
         // This works nicely for normal maps that include the curvature.

@@ -1,7 +1,11 @@
 #pragma vp_function oe_chonk_default_vertex_model, vertex_model, 0.0
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 #pragma import_defines(OE_IS_DEPTH_CAMERA)
-#pragma import_defines(OE_CHONK_IGNORE_LOW_LOD_NORMAL_MAPS)
+#pragma import_defines(OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS)
+
+#ifndef OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS
+#define OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS 99
+#endif
 
 struct Instance
 {
@@ -64,13 +68,12 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
     // stuff we need only for a non-depth or non-shadow camera
     oe_position_vec = xform3 * position.xyz;
 
-#ifdef OE_CHONK_IGNORE_LOW_LOD_NORMAL_MAPS
-    if (chonk_lod > 0)
+    // disable/ignore normal maps as directed:
+    if (chonk_lod > OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS)
     {
         oe_normal_tex = 0;
         return;
     }
-#endif
 
     oe_normal_tex = normalmap >= 0 ? textures[normalmap] : 0;
 }

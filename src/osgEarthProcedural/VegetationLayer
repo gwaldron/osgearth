@@ -176,7 +176,7 @@ namespace osgEarth { namespace Procedural
 
         void setLODTransitionPadding(float value);
         float getLODTransitionPadding() const;
-
+        
         void setUseImpostorNormalMaps(bool value);
         bool getUseImpostorNormalMaps() const;
 

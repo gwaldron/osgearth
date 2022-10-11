@@ -365,9 +365,9 @@ VegetationLayer::setUseImpostorNormalMaps(bool value)
 
     auto ss = getOrCreateStateSet();
     if (value == false)
-        ss->setDefine("OE_CHONK_IGNORE_LOW_LOD_NORMAL_MAPS", 0x7);
+        ss->setDefine("OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS", "0");
     else
-        ss->setDefine("OE_CHONK_IGNORE_LOW_LOD_NORMAL_MAPS", 0);
+        ss->setDefine("OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS", "99");
 }
 
 bool

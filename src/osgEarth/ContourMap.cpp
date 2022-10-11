@@ -151,9 +151,6 @@ ContourMapLayer::init()
 
     xfer->updateImage();
     this->setTransferFunction(xfer);
-
-    // activate opacity support
-    installDefaultOpacityShader();
 }
 
 void

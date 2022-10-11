@@ -101,9 +101,6 @@ FeatureModelLayer::init()
     // TODO: consider removing this in osgEarth 3.3 since it prevents the "render-order"
     // symbol from really working properly
     getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-
-    // activate opacity support
-    installDefaultOpacityShader();
 }
 
 void FeatureModelLayer::dirty()

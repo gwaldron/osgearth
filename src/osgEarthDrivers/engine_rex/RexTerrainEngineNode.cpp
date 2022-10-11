@@ -1534,9 +1534,12 @@ RexTerrainEngineNode::updateState()
                 OSGEARTH_OBJECTID_TERRAIN));
         }
 
-        // STATE for image layers only:
+        // STATE for image layers
         VirtualProgram* vp = VirtualProgram::getOrCreate(_imageLayerSS.get());
         shaders.load(vp, shaders.imagelayer());
+
+        // The above shader will integrate opacity itself.
+        _imageLayerSS->setDefine("OE_SELF_MANAGE_LAYER_OPACITY");
 
         _stateUpdateRequired = false;
     }

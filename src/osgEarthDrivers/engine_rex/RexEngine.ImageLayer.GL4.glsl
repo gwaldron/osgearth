@@ -118,7 +118,7 @@ void oe_rex_imageLayer_FS(inout vec4 color)
 
 #endif
 
-        // intergrate thelayer opacity:
+        // intergrate the layer opacity:
         texel.a = texel.a * oe_layer_opacity;
         color.a = 1.0;
     }

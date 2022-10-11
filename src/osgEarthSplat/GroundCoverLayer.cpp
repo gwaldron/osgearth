@@ -277,11 +277,6 @@ GroundCoverLayer::openImplementation()
     //setRenderer(_renderer.get());
     //setDrawCallback(_renderer.get());
 
-<<<<<<< HEAD
-    installDefaultOpacityShader();
-
-=======
->>>>>>> c1e5fbefb... Clean up VisibleLayer shader installation code and add the 'SELF_MANAGE_LAYER_OPACITY' override
     return PatchLayer::openImplementation();
 }
 

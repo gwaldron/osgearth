@@ -332,7 +332,7 @@ MBTiles::Driver::Driver() :
     _minLevel(0),
     _maxLevel(19),
     _forceRGB(false),
-    _database(NULL),
+    _database(nullptr),
     _mutex("MBTiles Driver(OE)")
 {
     //nop
@@ -340,9 +340,18 @@ MBTiles::Driver::Driver() :
 
 Driver::~Driver()
 {
-    sqlite3* database = (sqlite3*)_database;
-    if (database)
+    closeDatabase();
+}
+
+void
+MBTiles::Driver::closeDatabase()
+{
+    if (_database != nullptr)
+    {
+        sqlite3* database = (sqlite3*)_database;
         sqlite3_close_v2(database);
+        _database = nullptr;
+    }
 }
 
 Status
@@ -396,6 +405,10 @@ MBTiles::Driver::open(
         : (SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX);
 
     sqlite3* database = (sqlite3*)_database;
+
+    // close existing database if open
+    closeDatabase();
+
     sqlite3** dbptr = (sqlite3**)&_database;
     int rc = sqlite3_open_v2(fullFilename.c_str(), dbptr, flags, 0L);
     if (rc != 0)

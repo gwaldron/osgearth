@@ -96,8 +96,8 @@ namespace osgEarth { namespace MBTiles
 
         bool createTables();
         void computeLevels();
-
         int readMaxLevel();
+        void closeDatabase();
     };
 } }
 

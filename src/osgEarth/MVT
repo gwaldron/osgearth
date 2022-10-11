@@ -73,7 +73,8 @@ namespace osgEarth
 
     public: // Layer
 
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
+        virtual Status closeImplementation() override;
 
     protected:
 
@@ -99,6 +100,7 @@ namespace osgEarth
         const FeatureProfile* createFeatureProfile();
         void computeLevels();
         bool getMetaData(const std::string& key, std::string& value);
+        void closeDatabase();
     };
 }
 

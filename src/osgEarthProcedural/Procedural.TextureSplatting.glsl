@@ -109,8 +109,6 @@ tweakable float oe_splat_blend_normal_mix = 0.85;
 tweakable float oe_splat_brightness = 1.0;
 tweakable float oe_splat_contrast = 1.0;
 tweakable float oe_dense_contrast = 1.0;
-tweakable float oe_dense_brightness = 1.0;
-tweakable float oe_lush_brightness = 0.0;
 tweakable float oe_mask_alpha = 1.0;
 
 in float oe_layer_opacity;
@@ -296,10 +294,10 @@ void oe_splat_Frag(inout vec4 quad)
     oe_pbr.roughness = clamp(oe_pbr.roughness * pixel.material[ROUGHNESS], 0.0, 1.0);
     oe_pbr.ao = clamp(oe_pbr.ao * pow(pixel.material[AO], ao_power), 0.0, 1.0);
     oe_pbr.metal = clamp(pixel.material[METAL], 0.0, 1.0);
+    oe_pbr.brightness *= oe_splat_brightness;
+    oe_pbr.contrast *= oe_splat_contrast;
 
-    float f_c = oe_splat_contrast + (dense * (oe_dense_contrast-1.0));
-    float f_b = oe_splat_brightness + (dense * (oe_dense_brightness-1.0)) + (lush * (oe_lush_brightness-1.0));
-    pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*f_c + 0.5) * f_b, 0, 1);
+    //pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*oe_splat_contrast + 0.5) * oe_splat_brightness, 0, 1);
 
     vec3 color = pixel.rgbh.rgb;
 

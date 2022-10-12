@@ -58,7 +58,8 @@ struct Instance
     mat4 xform;
     vec2 local_uv;
     uint lod;
-    float visibility[3]; // per LOD
+    float visibility[2]; // per LOD
+    float radius;
     float alpha_cutoff;
     uint first_lod_cmd_index;
 };
@@ -223,6 +224,9 @@ void cull()
 
     // Send along the other values:
     input_instances[i].alpha_cutoff = chonks[v].alpha_cutoff;
+
+    // Send along the scaled radius of this instance
+    input_instances[i].radius = r;
 
     // Bump all baseInstances following this one:
     const uint cmd_count = chonks[v].total_num_commands;

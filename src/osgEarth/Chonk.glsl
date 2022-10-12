@@ -12,7 +12,8 @@ struct Instance
     mat4 xform;
     vec2 local_uv;
     uint lod;
-    float visibility[3]; // per LOD
+    float visibility[2]; // per LOD
+    float radius;
     float alpha_cutoff;
     uint first_lod_cmd_index;
 };
@@ -66,7 +67,9 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
 #endif
 
     // stuff we need only for a non-depth or non-shadow camera
-    oe_position_vec = xform3 * position.xyz;
+
+    // Position vector scaled by the (scaled) radius of the instance
+    oe_position_vec = (xform3 * position.xyz) / instances[i].radius;
 
     // disable/ignore normal maps as directed:
     if (chonk_lod > OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS)
@@ -103,7 +106,7 @@ void oe_chonk_default_vertex_view(inout vec4 vertex)
     oe_billboarded_normal = normal4.w > 0.0;
     if (oe_billboarded_normal)
     {
-        oe_position_vec = normalize(gl_NormalMatrix * oe_position_vec);
+        oe_position_vec = gl_NormalMatrix * oe_position_vec;
     }
 
     if (oe_normal_tex > 0)
@@ -216,11 +219,11 @@ void oe_chonk_default_fragment(inout vec4 color)
     // Probably, but let's not if it already looks good enough.
     if (oe_billboarded_normal)
     {
-        vec3 v3d = normalize(oe_position_vec);
+        vec3 v3d = oe_position_vec; // do not normalize!
         vec3 v2d = vec3(v3d.x, v3d.y, 0.0);
         float size2d = length(v2d);
-        const float threshold = 0.25;
-        size2d = mix(0.0, threshold, size2d);
+        const float threshold = 0.5;
+        size2d = mix(0.0, threshold, clamp(size2d, 0.0, 1.0));
         vp_Normal = mix(vec3(0, 0, 1), normalize(v2d), size2d);
         //oe_tangent = cross(vec3(0, 1, 0), vp_Normal);
         flip_backfacing_normal = false;

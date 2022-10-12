@@ -7,7 +7,8 @@ struct Instance
     mat4 xform;
     vec2 local_uv;
     uint lod;
-    float visibility[3]; // per LOD
+    float visibility[2]; // per LOD
+    float radius;
     float alpha_cutoff;
     uint first_lod_cmd_index;
 };

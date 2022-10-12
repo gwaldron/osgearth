@@ -241,7 +241,8 @@ namespace osgEarth
             osg::Matrixf xform; // local xform
             osg::Vec2f uv; // tile-local UV
             GLuint lod;
-            float visibility[3]; // per LOD
+            float visibility[2]; // per LOD
+            float radius; // per chonk
             float alphaCutoff;
             GLuint first_lod_cmd_index;
         };

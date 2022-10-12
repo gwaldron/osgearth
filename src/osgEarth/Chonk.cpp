@@ -642,7 +642,7 @@ ChonkDrawable::add(
         instance.lod = 0;
         instance.visibility[0] = 0;
         instance.visibility[1] = 0;
-        instance.visibility[2] = 0;
+        instance.radius = 0.0f;
         instance.alphaCutoff = 0.0f;
         instance.first_lod_cmd_index = 0;
         _batches[chonk].push_back(std::move(instance));

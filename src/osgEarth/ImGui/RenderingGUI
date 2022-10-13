@@ -274,35 +274,42 @@ namespace osgEarth
                     }
                     else
                     {
-                        auto glpool = GLObjectPool::get(*ri.getState());
-                        auto globjects = glpool->objects();
-
-                        ImGui::Text("Recycling: %u%%",
-                            int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
-                        int avarice = glpool->getAvarice();
-                        ImGui::Text("Fast"); ImGui::SameLine();
-                        if (ImGui::SliderInt("Slow", &avarice, 10, 0))
-                            glpool->setAvarice(avarice);
-
-                        ImGui::Separator();
-
-                        double glmem = (double)glpool->totalBytes() / 1048576.;
-                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Memory: %.1lf MB", glmem);
-                        std::map<std::string, std::vector<unsigned>> counts;
-                        for (auto& obj : globjects) {
-                            counts[obj->label()].push_back(obj->size());
-                        }
-                        if (ImGui::BeginTable("globjects", 2))
+                        auto pools = GLObjectPool::getAll();
+                        for (auto& iter : pools)
                         {
-                            for (auto& bo : counts) {
-                                unsigned total = 0;
-                                for (auto& c : bo.second) total += c;
-                                ImGui::TableNextColumn();
-                                ImGui::Text("%s", bo.first.c_str());
-                                ImGui::TableNextColumn();
-                                ImGui::Text("(%d) (%.1lf MB)", bo.second.size(), (double)total / (double)1048576.);
+                            auto cxid = iter.first;
+                            auto glpool = iter.second;
+                            auto globjects = glpool->objects();
+
+                            if (pools.size() > 1)
+                                ImGui::Text("Context %d", cxid);
+                            ImGui::Text("Recycling: %u%%",
+                                int(100 * float(glpool->recycleHits()) / std::max(1.0f, float(glpool->recycleHits() + glpool->recycleMisses()))));
+                            int avarice = glpool->getAvarice();
+                            ImGui::Text("Fast"); ImGui::SameLine();
+                            if (ImGui::SliderInt("Slow", &avarice, 10, 0))
+                                glpool->setAvarice(avarice);
+
+                            double glmem = (double)glpool->totalBytes() / 1048576.;
+                            ImGui::TextColored(ImVec4(1, 1, 0, 1), "GL Memory: %.1lf MB", glmem);
+                            std::map<std::string, std::vector<unsigned>> counts;
+                            for (auto& obj : globjects) {
+                                counts[obj->label()].push_back(obj->size());
                             }
-                            ImGui::EndTable();
+                            if (ImGui::BeginTable("globjects", 2))
+                            {
+                                for (auto& bo : counts) {
+                                    unsigned total = 0;
+                                    for (auto& c : bo.second) total += c;
+                                    ImGui::TableNextColumn();
+                                    ImGui::Text("%s", bo.first.c_str());
+                                    ImGui::TableNextColumn();
+                                    ImGui::Text("(%d) (%.1lf MB)", bo.second.size(), (double)total / (double)1048576.);
+                                }
+                                ImGui::EndTable();
+                            }
+                            if (pools.size() > 1)
+                                ImGui::Separator();
                         }
                     }
                 }

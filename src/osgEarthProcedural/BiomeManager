@@ -69,7 +69,6 @@ namespace osgEarth
 
             //! Bindless geometry chonk
             OE_PROPERTY(Chonk::Ptr, chonk);
-            OE_PROPERTY(std::vector<Texture::Ptr>, textures);
 
         private:
             ResidentModelAsset();
@@ -192,6 +191,10 @@ namespace osgEarth
             void setLocked(bool value) {
                 _locked = value;
             }
+
+            //! Refreshes the resident set and flushes any
+            //! stale memory/textures.
+            void flush();
 
         private:
             mutable Mutex _refsAndRevision_mutex;

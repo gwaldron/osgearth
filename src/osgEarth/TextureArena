@@ -172,6 +172,9 @@ namespace osgEarth
         //! is installed in a StateSet in the traversed scene graph)
         void update(osg::NodeVisitor& nv);
 
+        //! Flush any unused textures immediately from the arena
+        void flush();
+
     public: // StateAttribute
         void apply(osg::State&) const override;
         void compileGLObjects(osg::State&) const override;
@@ -201,7 +204,6 @@ namespace osgEarth
         mutable TextureVector _textures;
         mutable std::unordered_map<Texture::Ptr, unsigned int> _textureIndices;
         mutable std::unordered_set<unsigned> _dynamicTextures;
-        mutable std::vector<Texture::Ptr> _toDestruct;
         bool _autoRelease;
         unsigned _bindingPoint;
         bool _useUBO;
@@ -210,6 +212,7 @@ namespace osgEarth
         mutable Mutex _m;
 
         int find_no_lock(Texture::Ptr tex) const;
+        void purgeTextureIfOrphaned_no_lock(unsigned index);
 
         friend class Texture;
         void notifyOfTextureRelease(osg::State*) const;

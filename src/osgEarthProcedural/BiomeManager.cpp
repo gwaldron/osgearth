@@ -90,6 +90,7 @@ BiomeManager::BiomeManager() :
 {
     // this arena will hold all the textures for loaded assets.
     _textures = new TextureArena();
+    _textures->setAutoRelease(true);
     _textures->setName("Biomes");
     _textures->setBindingPoint(1);
 }
@@ -184,6 +185,15 @@ BiomeManager::reset()
 
     // Resolve the references and unload any resident assets from memory.
     recalculateResidentBiomes();
+}
+
+void
+BiomeManager::flush()
+{
+    recalculateResidentBiomes();
+
+    if (_textures.valid())
+        _textures->flush();
 }
 
 void

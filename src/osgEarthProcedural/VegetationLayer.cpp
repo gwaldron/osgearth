@@ -319,9 +319,14 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 
         if (dt > 5.0 && df > 60)
         {
-            releaseGLObjects(nullptr);
-
             reset();
+
+            if (getBiomeLayer())
+            {
+                getBiomeLayer()->getBiomeManager().flush();
+            }
+
+            releaseGLObjects(nullptr);
 
             OE_INFO << LC << "timed out for inactivity." << std::endl;
         }
@@ -1752,5 +1757,11 @@ VegetationLayer::releaseGLObjects(osg::State* state) const
         auto drawable = tile.second->_drawable.get();
         if (drawable.valid())
             drawable->releaseGLObjects(state);
+    }
+
+    if (getBiomeLayer())
+    {
+        auto textures = getBiomeLayer()->getBiomeManager().getTextures();
+        textures->releaseGLObjects(state);
     }
 }

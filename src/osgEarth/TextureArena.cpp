@@ -661,10 +661,65 @@ TextureArena::add(Texture::Ptr tex)
 }
 
 void
+TextureArena::purgeTextureIfOrphaned_no_lock(unsigned index)
+{
+    OE_SOFT_ASSERT_AND_RETURN(index < _textures.size(), void());
+
+    Texture::Ptr& tex = _textures[index];
+
+    // Check for use_count() == 2.
+    // 1 for the _textures vector and 1 for the _textureIndices map.
+    if (tex && tex.use_count() == 2)
+    {
+        // Remove this texture from the texture indices map
+        _textureIndices.erase(tex);
+
+        // Remove this texture from the collection of dynamic textures
+        _dynamicTextures.erase(index);
+
+        // release the GL objects and zero out the pointer (ref).
+        tex->_host = nullptr;
+        tex->releaseGLObjects(nullptr);
+        tex = nullptr;
+    }
+}
+
+void
 TextureArena::update(osg::NodeVisitor& nv)
 {
+    if (!_autoRelease)
+        return;
+
+    OE_PROFILING_ZONE_NAMED("update/autorelease");
+
     ScopedMutexLock lock(_m);
-    _toDestruct.clear();
+
+    if (_textures.empty())
+        return;
+
+    for (unsigned i = 0; i < 8; ++i, ++_releasePtr)
+    {
+        if (_releasePtr >= _textures.size())
+            _releasePtr = 0;
+
+        purgeTextureIfOrphaned_no_lock(_releasePtr);
+    }
+}
+
+void
+TextureArena::flush()
+{
+    if (!_autoRelease)
+        return;
+
+    OE_PROFILING_ZONE_NAMED("flush");
+
+    ScopedMutexLock lock(_m);
+
+    for(unsigned i=0; i<_textures.size(); ++i)
+    {
+        purgeTextureIfOrphaned_no_lock(i);
+    }
 }
 
 void
@@ -738,37 +793,7 @@ TextureArena::apply(osg::State& state) const
     }
 
     if (gc._lastAppliedFrame != state.getFrameStamp()->getFrameNumber())
-    {        
-        if (_autoRelease == true)
-        {
-            OE_PROFILING_ZONE_NAMED("release");
-
-            for(unsigned i=0; i<8; ++i, ++_releasePtr)
-            {
-                if (_releasePtr >= _textures.size())
-                    _releasePtr = 0;
-
-                Texture::Ptr& tex = _textures[_releasePtr];
-
-                // Check for use_count() == 2.  1 for the _textures list and 1 for the _textureIndices map.
-                if (tex && tex.use_count() == 2)
-                {
-                    // Remove this texture from the texture indices map
-                    _textureIndices.erase(tex);
-
-                    // Remove this texture from the collection of dynamic textures
-                    _dynamicTextures.erase(_releasePtr);
-
-                    // release the GL objects after nulling out the mod sensor
-                    // (so we don't trip ourselves)
-                    tex->_host = nullptr;
-                    tex->releaseGLObjects(&state);
-                    _toDestruct.emplace_back(tex);
-                    tex = nullptr;
-                }
-            }
-        }
-
+    {
         // If we are going to compile any textures, we need to save and restore
         // the OSG texture state...
         const osg::StateAttribute* savedActiveOsgTexture = nullptr;

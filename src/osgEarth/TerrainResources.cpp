@@ -30,7 +30,8 @@ using namespace osgEarth;
 TerrainResources::TerrainResources() :
     _reservedUnitsMutex("TerrainResources(OE)")
 {
-    //nop
+    // Unit 0 cannot be reserved
+    _globallyReservedUnits.insert(0);
 }
 
 bool

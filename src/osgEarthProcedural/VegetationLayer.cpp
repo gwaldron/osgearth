@@ -758,6 +758,7 @@ VegetationLayer::buildStateSets()
     setImpostorLowAngle(options().impostorLowAngle().get());
     setImpostorHighAngle(options().impostorHighAngle().get());
     setLODTransitionPadding(options().lodTransitionPadding().get());
+    setUseImpostorNormalMaps(options().useImpostorNormalMaps().get());
 }
 
 void

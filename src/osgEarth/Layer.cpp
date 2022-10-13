@@ -28,7 +28,7 @@
 
 using namespace osgEarth;
 
-#define LC "[Layer] Layer \"" << getName() << "\" "
+#define LC "[Layer] \"" << getName() << "\" "
 
 //.................................................................
 

@@ -26,7 +26,7 @@
 
 using namespace osgEarth;
 
-#define LC "[VisibleLayer] Layer \"" << getName() << "\" "
+#define LC "[VisibleLayer] \"" << getName() << "\" "
 
 namespace
 {

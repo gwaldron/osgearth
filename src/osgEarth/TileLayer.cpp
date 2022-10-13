@@ -32,7 +32,7 @@ namespace
     using DataExtentsIndex = RTree<DataExtent, double, 2>;
 }
 
-#define LC "[TileLayer] Layer \"" << getName() << "\" "
+#define LC "[TileLayer] \"" << getName() << "\" "
 
 //------------------------------------------------------------------------
 

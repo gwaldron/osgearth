@@ -1746,7 +1746,7 @@ GDAL::Options::writeTo(Config& conf) const
 //......................................................................
 
 #undef LC
-#define LC "[GDAL] Layer \"" << getName() << "\" "
+#define LC "[GDAL] \"" << getName() << "\" "
 
 namespace
 {

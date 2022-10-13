@@ -326,7 +326,7 @@ bool MBTilesElevationLayer::putMetaData(const std::string& name, const std::stri
 //...................................................................
 
 #undef LC
-#define LC "[MBTiles] Layer \"" << _name << "\" "
+#define LC "[MBTiles] \"" << _name << "\" "
 
 MBTiles::Driver::Driver() :
     _minLevel(0),

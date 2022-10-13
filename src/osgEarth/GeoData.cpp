@@ -1362,8 +1362,6 @@ GeoExtent::intersectionSameSRS(const GeoExtent& rhs) const
 
     if ( !intersects(rhs) )
     {
-        OE_DEBUG << "Extents " << toString() << " and " << rhs.toString() << " do not intersect."
-            << std::endl;
         return GeoExtent::INVALID;
     }
 
@@ -1432,10 +1430,6 @@ GeoExtent::intersectionSameSRS(const GeoExtent& rhs) const
     result._height = northTemp - result._south;
 
     result.clamp();
-
-    OE_DEBUG << "Intersection of " << this->toString() << " and " << rhs.toString() << " is: " 
-        << result.toString()
-        << std::endl;
 
     return result;
 }
@@ -1897,8 +1891,6 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
         //If we want an exact crop or they want to specify the output size of the image, use GDAL
         if (exact || width != 0 || height != 0 )
         {
-            OE_DEBUG << "[osgEarth::GeoImage::crop] Performing exact crop" << std::endl;
-
             //Suggest an output image size
             if (width == 0 || height == 0)
             {
@@ -1907,10 +1899,6 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
 
                 width =  osg::maximum(1u, (unsigned int)(extent.width() / xRes));
                 height = osg::maximum(1u, (unsigned int)(extent.height() / yRes));
-                //width =  osg::maximum(1u, (unsigned int)((extent.xMax() - extent.xMin()) / xRes));
-                //height = osg::maximum(1u, (unsigned int)((extent.yMax() - extent.yMin()) / yRes));
-
-                OE_DEBUG << "[osgEarth::GeoImage::crop] Computed output image size " << width << "x" << height << std::endl;
             }
 
             //Note:  Passing in the current SRS simply forces GDAL to not do any warping
@@ -1918,7 +1906,6 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
         }
         else
         {
-            OE_DEBUG << "[osgEarth::GeoImage::crop] Performing non-exact crop " << std::endl;
             //If an exact crop is not desired, we can use the faster image cropping code that does no resampling.
             double destXMin = extent.xMin();
             double destYMin = extent.yMin();

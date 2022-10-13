@@ -37,9 +37,6 @@ using namespace osgEarth::Procedural;
 
 #define NORMAL_MAP_TEX_UNIT 1
 
-#undef OE_DEBUG
-#define OE_DEBUG OE_INFO
-
 //...................................................................
 
 ResidentModelAsset::Ptr
@@ -134,11 +131,9 @@ BiomeManager::unref(const Biome* biome)
             // would also result in re-loading assets that are already
             // resident... think on this -gw
             //++_revision;
-            OE_INFO << LC << "Goodbye, " << biome->name().get() << "(" << biome->index() << ")" << std::endl;
+            OE_DEBUG << LC << "Goodbye, " << biome->name().get() << "(" << biome->index() << ")" << std::endl;
         }
     }
-
-    //OE_INFO << LC << "(" << iter->second << ")" << biome->name().get() << std::endl;
 }
 
 int
@@ -180,7 +175,7 @@ BiomeManager::reset()
         for (auto& iter : _refs)
         {
             const Biome* biome = iter.first;
-            OE_INFO << LC << "Goodbye, " << biome->name().get() << std::endl;
+            OE_DEBUG << LC << "Goodbye, " << biome->name().get() << std::endl;
             iter.second = 0;
         }
 
@@ -472,7 +467,7 @@ BiomeManager::materializeNewAssets(
             // First reference to this instance? Populate it:
             if (residentAsset == nullptr)
             {
-                OE_INFO << LC << "  Loading asset " << assetDef->name() << std::endl;
+                OE_DEBUG << LC << "  Loading asset " << assetDef->name() << std::endl;
 
                 residentAsset = ResidentModelAsset::create();
 

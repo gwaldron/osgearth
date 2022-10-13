@@ -124,7 +124,7 @@ namespace osgEarth
         {
             cancelled = callback->isCanceled() || callback->reportProgress(dlnow, dltotal);
             if (cancelled)
-                OE_DEBUG << "An HTTP request was canceled mid-stream" << std::endl;
+                OE_TEST << "An HTTP request was canceled mid-stream" << std::endl;
         }
         return cancelled;
     }
@@ -524,7 +524,7 @@ namespace
             {
                 proxy_host = proxySettings.get().hostName();
                 proxy_port = toString<int>(proxySettings.get().port());
-                OE_DEBUG << LC << "Read proxy settings from options " << proxy_host << " " << proxy_port << std::endl;
+                OE_TEST << LC << "Read proxy settings from options " << proxy_host << " " << proxy_port << std::endl;
             }
 
             //Try to get the proxy settings from the environment variable
@@ -577,7 +577,6 @@ namespace
             }
             else
             {
-                OE_DEBUG << LC << "Removing proxy settings" << std::endl;
                 curl_easy_setopt( _curl_handle, CURLOPT_PROXY, 0 );
             }
 
@@ -587,7 +586,7 @@ namespace
             {
                 std::string oldURL = url;
                 url = rewriter->rewrite( oldURL );
-                OE_DEBUG << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
+                OE_TEST << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
             }
 
             const osgDB::AuthenticationDetails* details = authenticationMap ?
@@ -743,7 +742,7 @@ namespace
                 if (response.getMimeType().length() > 9 &&
                     ::strstr( response.getMimeType().c_str(), "multipart" ) == response.getMimeType().c_str() )
                 {
-                    OE_DEBUG << LC << "detected multipart data; decoding..." << std::endl;
+                    OE_TEST << LC << "detected multipart data; decoding..." << std::endl;
 
                     //TODO: parse out the "wcs" -- this is WCS-specific
                     if ( !decodeMultipartStream( "wcs", part.get(), response.getParts() ) )
@@ -770,7 +769,7 @@ namespace
 
                 if (res == CURLE_GOT_NOTHING)
                 {
-                    OE_DEBUG << LC << "CURLE_GOT_NOTHING for " << url << std::endl;
+                    OE_TEST << LC << "CURLE_GOT_NOTHING for " << url << std::endl;
                 }
             }
 
@@ -952,7 +951,7 @@ namespace
             {
                 std::string oldURL = url;
                 url = rewriter->rewrite( oldURL );
-                OE_DEBUG << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
+                OE_TEST << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
             }
 
             HINTERNET hInternet = InternetOpen(
@@ -1001,7 +1000,7 @@ namespace
             strncpy(hostName, urlcomp.lpszHostName, urlcomp.dwHostNameLength);
             strncpy(urlPath, urlcomp.lpszUrlPath, urlcomp.dwUrlPathLength);
 
-            OE_DEBUG
+            OE_TEST
                 << "\n"
                 << "Host name = " << hostName << "\n"
                 << "Url path = " << urlcomp.lpszUrlPath << "\n"
@@ -1261,7 +1260,7 @@ HTTPClient::initializeImpl()
     {
         userAgent = std::string(userAgentEnv);
     }
-    OE_DEBUG << LC << "HTTPClient setting userAgent=" << userAgent << std::endl;
+    OE_TEST << LC << "HTTPClient setting userAgent=" << userAgent << std::endl;
 
     //Check for a response-code simulation (for testing)
     const char* simCode = getenv("OSGEARTH_SIMULATE_HTTP_RESPONSE_CODE");
@@ -1292,7 +1291,7 @@ HTTPClient::initializeImpl()
     {
         timeout = osgEarth::as<long>(std::string(timeoutEnv), 0);
     }
-    OE_DEBUG << LC << "Setting timeout to " << timeout << std::endl;
+    OE_TEST << LC << "Setting timeout to " << timeout << std::endl;
 
     long connectTimeout = s_connectTimeout;
     const char* connectTimeoutEnv = getenv("OSGEARTH_HTTP_CONNECTTIMEOUT");
@@ -1300,14 +1299,14 @@ HTTPClient::initializeImpl()
     {
         connectTimeout = osgEarth::as<long>(std::string(connectTimeoutEnv), 0);
     }
-    OE_DEBUG << LC << "Setting connect timeout to " << connectTimeout << std::endl;
+    OE_TEST << LC << "Setting connect timeout to " << connectTimeout << std::endl;
 
     const char* retryDelayEnv = getenv("OSGEARTH_HTTP_RETRY_DELAY");
     if (retryDelayEnv)
     {
         s_retryDelay_s = osgEarth::as<double>(std::string(retryDelayEnv), 0.0);
     }
-    OE_DEBUG << LC << "Setting retry delay to " << s_retryDelay_s << std::endl;
+    OE_TEST << LC << "Setting retry delay to " << s_retryDelay_s << std::endl;
 
     _impl->initialize();
 

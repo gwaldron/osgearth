@@ -31,7 +31,6 @@
 #include <osgEarth/Capabilities>
 
 #include <osgUtil/CullVisitor>
-#include <osg/BlendFunc>
 #include <osg/Drawable>
 #include <osgDB/Registry>
 #include <osgDB/ReadFile>
@@ -43,7 +42,6 @@
 #define LC LC0 << getName() << ": "
 
 #define TEXTURE_ARENA_BINDING_POINT 5
-#define RENDERPARAMS_BINDING_POINT  6
 
 using namespace osgEarth::Procedural;
 

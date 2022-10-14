@@ -163,7 +163,7 @@ namespace
                         arena_tex = Texture::create(tex);
                     }
 
-                    arena_tex->label() = "Chonk Texture";
+                    arena_tex->category() = "Chonk Texture";
 
                     int index = _textures->add(arena_tex);
                     if (index >= 0)
@@ -405,7 +405,7 @@ Chonk::getOrCreateCommands(osg::State& state) const
     {
         gs.vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state);
         gs.vbo->bind();
-        gs.vbo->debugLabel("Chonk");
+        gs.vbo->debugLabel("Chonk", "VBO");
         gs.vbo->bufferStorage(
             _vbo_store.size() * sizeof(VertexGPU),
             _vbo_store.data(),
@@ -413,7 +413,7 @@ Chonk::getOrCreateCommands(osg::State& state) const
 
         gs.ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
         gs.ebo->bind();
-        gs.ebo->debugLabel("Chonk");
+        gs.ebo->debugLabel("Chonk", "EBO");
         gs.ebo->bufferStorage(
             _ebo_store.size() * sizeof(element_t),
             _ebo_store.data(),
@@ -810,13 +810,13 @@ ChonkDrawable::GLObjects::initialize(
     // DrawElementsCommand buffer:
     _commandBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
     _commandBuf->bind();
-    _commandBuf->debugLabel("Chonk", host->getName());
+    _commandBuf->debugLabel("Chonk", "Cmd buf " + host->getName());
     _commandBuf->unbind();
 
     // Per-culling instances:
     _instanceInputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
     _instanceInputBuf->bind();
-    _instanceInputBuf->debugLabel("Chonk", host->getName());
+    _instanceInputBuf->debugLabel("Chonk", "In buf " +host->getName());
     _instanceInputBuf->unbind();
 
     if (_cull)
@@ -824,13 +824,13 @@ ChonkDrawable::GLObjects::initialize(
         // Culled instances (GPU only)
         _instanceOutputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
         _instanceOutputBuf->bind();
-        _instanceOutputBuf->debugLabel("Chonk", host->getName());
+        _instanceOutputBuf->debugLabel("Chonk", "Out buf " + host->getName());
         _instanceOutputBuf->unbind();
 
         // Chonk data
         _chonkBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
         _chonkBuf->bind();
-        _chonkBuf->debugLabel("Chonk", host->getName());
+        _chonkBuf->debugLabel("Chonk", "Chonk buf " + host->getName());
         _chonkBuf->unbind();
     }
 
@@ -851,7 +851,7 @@ ChonkDrawable::GLObjects::initialize(
     _vao->bind();
 
     // must call AFTER bind
-    _vao->debugLabel("Chonk", host->getName());
+    _vao->debugLabel("Chonk", "VAO " + host->getName());
 
     // required in order to use BindlessNV extension
     glEnableClientState_(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);

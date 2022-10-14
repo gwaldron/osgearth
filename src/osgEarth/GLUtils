@@ -215,8 +215,16 @@ namespace osgEarth
         //! GL object "name" (an integer returned from glGen*)
         GLuint name() const { return _name; }
 
-        //! category label
-        const std::string& label() const { return _label; }
+        //! debug category
+        const std::string& category() const { return _category; }
+
+        //! debug uid
+        const std::string& uid() const { return _uid; }
+
+        //! full debug label (unique ID if set)
+        std::string label() const {
+            return category() + (uid().empty() ? "" : (":" + uid()));
+        }
 
         //! namespace (GL_BUFFER, GL_TEXTURE, etc)
         GLenum ns() const { return _ns; }
@@ -238,7 +246,7 @@ namespace osgEarth
 
         //! Sets the GL debugging category and unique ID
         void debugLabel(
-            const std::string& label,
+            const std::string& category,
             const std::string& uniqueid = "");
 
     public:
@@ -248,7 +256,8 @@ namespace osgEarth
     protected:
         GLObject(GLenum ns, osg::State& state);
         GLuint _name; // GL name assigned on creation
-        std::string _label; // debugging label
+        std::string _uid; // debugging unique id (optional)
+        std::string _category; // debugging category (optional)
         GLenum _ns; // object namespace
         bool _shareable; // can this object be shared between GCs?
         bool _recyclable; // can this object by re-used?
@@ -574,6 +583,9 @@ namespace osgEarth
         //! Report the total memory size of all objects in the pool
         GLsizeiptr totalBytes() const;
 
+        //! Get a vector of all extant object pools
+        static std::unordered_map<int, GLObjectPool*> getAll();
+
         //! Set the speed at which the pool will release orphaned objects.
         //! zero is the slowest.
         void setAvarice(unsigned value) { _avarice = value; _hits = 0; _misses = 0; }
@@ -616,7 +628,6 @@ namespace osgEarth
         unsigned _hits;
         unsigned _misses;
         unsigned _avarice;
-        //osg::ref_ptr<osg::GraphicsOperation> _gc_operation;
 
         struct GC {
             GC() : _gc(nullptr), _operation(nullptr) { }
@@ -631,6 +642,9 @@ namespace osgEarth
 
         //! Release all objects created in the provided GC
         void releaseAll(const osg::GraphicsContext*);
+
+    private:
+        static Mutexed<std::vector<GLObjectPool*>> _pools;
     };
 
     /**

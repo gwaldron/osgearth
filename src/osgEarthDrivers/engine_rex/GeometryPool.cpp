@@ -593,7 +593,7 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
     {
         de._ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
         de._ebo->bind();
-        de._ebo->debugLabel("REX geometry");
+        de._ebo->debugLabel("REX geometry", "Shared EBO");
         de._ebo->bufferStorage(_drawElements->getTotalDataSize(), _drawElements->getDataPointer(), 0);
         de._ebo->unbind();
 
@@ -612,7 +612,7 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
             gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, size);
 
         gs._vbo->bind();
-        gs._vbo->debugLabel("REX geometry");
+        gs._vbo->debugLabel("REX geometry", "Shared VBO");
         gs._vbo->bufferStorage(size, _verts.data());
         gs._vbo->unbind();
 

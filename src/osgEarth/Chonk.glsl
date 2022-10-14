@@ -94,24 +94,27 @@ uint chonk_lod; // set in model stage
 // output
 out vec3 vp_Normal;
 out vec3 oe_tangent;
-flat out bool oe_billboarded_normal;
+flat out float oe_billboarded_normal;
 flat out uint64_t oe_normal_tex;
 out vec3 oe_position_vec;
+
+// amount to warp billboarded normals away from the eye [0..1]
+const float oe_chonk_billboarded_normal_threshold = 0.65;
 
 void oe_chonk_default_vertex_view(inout vec4 vertex)
 {
     // process a "billboard" normal: force the normal vector
     // to point at the camera:
     //vp_Normal = mix(vp_Normal, vec3(0, 0, 1), normal4.w);
-    oe_billboarded_normal = normal4.w > 0.0;
-    if (oe_billboarded_normal)
+    oe_billboarded_normal = normal4.w > 0.0 ? oe_chonk_billboarded_normal_threshold : 0.0;
+    if (oe_billboarded_normal > 0.0)
     {
         oe_position_vec = gl_NormalMatrix * oe_position_vec;
     }
 
     if (oe_normal_tex > 0)
     {
-        if (oe_billboarded_normal)
+        if (oe_billboarded_normal > 0.0)
         {
             oe_tangent = gl_NormalMatrix * (xform3 * vec3(1, 0, 0));
         }
@@ -137,7 +140,6 @@ void oe_chonk_default_vertex_view(inout vec4 vertex)
 
 // inputs
 in float oe_fade;
-flat in bool oe_billboarded_normal;
 in vec3 oe_position_vec;
 in vec2 oe_tex_uv;
 in vec3 oe_tangent;
@@ -145,12 +147,13 @@ in vec3 vp_Normal;
 flat in uint64_t oe_albedo_tex;
 flat in uint64_t oe_normal_tex;
 flat in float oe_alpha_cutoff;
+flat in float oe_billboarded_normal;
 
 void oe_chonk_default_fragment(inout vec4 color)
 {
     // billboarded geometry needs to invert the texture coordinates
     // for backfacing geometry.
-    if (oe_billboarded_normal && !gl_FrontFacing)
+    if (oe_billboarded_normal > 0.0 && !gl_FrontFacing)
     {
         oe_tex_uv.s = 1.0 - oe_tex_uv.s;
     }
@@ -217,13 +220,13 @@ void oe_chonk_default_fragment(inout vec4 color)
     // for billboarded normals, adjust the normal so its coverage
     // is a hemisphere facing the viewer. Should we recalculate the TBN here?
     // Probably, but let's not if it already looks good enough.
-    if (oe_billboarded_normal)
+    if (oe_billboarded_normal > 0.0)
     {
         vec3 v3d = oe_position_vec; // do not normalize!
         vec3 v2d = vec3(v3d.x, v3d.y, 0.0);
-        float size2d = length(v2d);
-        const float threshold = 0.5;
-        size2d = mix(0.0, threshold, clamp(size2d, 0.0, 1.0));
+        float size2d = length(v2d) * 1.2021; // adjust for radius, bbox diff
+        //const float threshold = 0.5;
+        size2d = mix(0.0, oe_billboarded_normal, clamp(size2d, 0.0, 1.0));
         vp_Normal = mix(vec3(0, 0, 1), normalize(v2d), size2d);
         //oe_tangent = cross(vec3(0, 1, 0), vp_Normal);
         flip_backfacing_normal = false;

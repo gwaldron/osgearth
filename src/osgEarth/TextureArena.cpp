@@ -257,7 +257,7 @@ Texture::compileGLObjects(osg::State& state) const
         // Blit our image to the GPU
         gc._gltexture->bind(state);
 
-        gc._gltexture->debugLabel(label(), name());
+        gc._gltexture->debugLabel(category(), name());
 
         if (target() == GL_TEXTURE_2D)
         {
@@ -770,7 +770,7 @@ TextureArena::apply(osg::State& state) const
             gc._handleBuffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
 
         gc._handleBuffer->bind();
-        gc._handleBuffer->debugLabel("TextureArena", getName());
+        gc._handleBuffer->debugLabel("TextureArena", "Handle LUT");
         gc._handleBuffer->unbind();
 
         gc._dirty = true;

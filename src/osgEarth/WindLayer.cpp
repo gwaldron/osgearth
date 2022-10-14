@@ -247,7 +247,7 @@ namespace
             {
                 gl._buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state);
                 gl._buffer->bind();
-                gl._buffer->debugLabel("Wind");
+                gl._buffer->debugLabel("Wind", "SSBO");
                 gl._buffer->unbind();
             }
 

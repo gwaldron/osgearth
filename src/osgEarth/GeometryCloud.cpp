@@ -273,7 +273,7 @@ GeometryCloud::pushStateSet(osg::Node& node)
                 if (i == _arenaIndexLUT.end())
                 {
                     Texture::Ptr t = Texture::create(tex);
-                    t->label() = "GeometryCloud texture";
+                    t->category() = "GeometryCloud texture";
 
                     int nextIndex = _texarena->add(t);
                     if (nextIndex >= 0)
@@ -308,7 +308,7 @@ GeometryCloud::pushStateSet(osg::Node& node)
                 {
                     Texture::Ptr t = Texture::create(tex);
                     t->compress() = false; // do not compress normal maps
-                    t->label() = "GeometryCloud texture";
+                    t->category() = "GeometryCloud texture";
 
                     int nextIndex = _texarena->add(t);
                     if (nextIndex >= 0)

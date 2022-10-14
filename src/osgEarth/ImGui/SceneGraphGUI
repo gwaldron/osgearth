@@ -27,9 +27,155 @@
 #include <osgEarth/ViewFitter>
 #include <osgEarth/ThreeDTilesLayer>
 #include <osgEarth/EarthManipulator>
+#include <osgDB/FileUtils>
+#include <osgDB/WriteFile>
+#include <osg/TextureBuffer>
 
 #include <osg/io_utils>
 #include <osg/PolygonMode>
+
+#if defined(__has_include)
+#if __has_include(<third_party/portable-file-dialogs/portable-file-dialogs.h>)
+#include <third_party/portable-file-dialogs/portable-file-dialogs.h>
+#define HAS_PFD
+#endif
+#endif
+
+
+struct PrepareForWriting : public osg::NodeVisitor
+{
+    PrepareForWriting() : osg::NodeVisitor()
+    {
+        setTraversalMode(TRAVERSE_ALL_CHILDREN);
+        setNodeMaskOverride(~0);
+    }
+
+    void apply(osg::Node& node)
+    {
+        apply(node.getStateSet());
+        applyUserData(node);
+        traverse(node);
+    }
+
+    void apply(osg::Drawable& drawable)
+    {
+        apply(drawable.getStateSet());
+        applyUserData(drawable);
+
+        osg::Geometry* geom = drawable.asGeometry();
+        if (geom)
+            apply(geom);
+    }
+
+    void apply(osg::Geometry* geom)
+    {
+        // This detects any NULL vertex attribute arrays and then populates them.
+        // Do this because a NULL VAA will crash the OSG serialization reader (osg 3.4.0)
+        osg::Geometry::ArrayList& arrays = geom->getVertexAttribArrayList();
+        for (osg::Geometry::ArrayList::iterator i = arrays.begin(); i != arrays.end(); ++i)
+        {
+            if (i->get() == 0L)
+            {
+                *i = new osg::FloatArray();
+                i->get()->setBinding(osg::Array::BIND_OFF);
+            }
+        }
+        
+        // Get rid of any kdtree since osg can't serialize it.
+        geom->setShape(nullptr);
+    }
+
+    void apply(osg::StateSet* ss)
+    {
+        if (!ss) return;
+
+        osg::StateSet::AttributeList& a0 = ss->getAttributeList();
+        for (osg::StateSet::AttributeList::iterator i = a0.begin(); i != a0.end(); ++i)
+        {
+            osg::StateAttribute* sa = i->second.first.get();
+            applyUserData(*sa);
+        }
+
+        // Disable the texture image-unref feature so we can share the resource 
+        // across cached tiles.
+        osg::StateSet::TextureAttributeList& a = ss->getTextureAttributeList();
+        for (osg::StateSet::TextureAttributeList::iterator i = a.begin(); i != a.end(); ++i)
+        {
+            osg::StateSet::AttributeList& b = *i;
+            for (osg::StateSet::AttributeList::iterator j = b.begin(); j != b.end(); ++j)
+            {
+                osg::StateAttribute* sa = j->second.first.get();
+                if (sa)
+                {
+                    osg::Texture* tex = dynamic_cast<osg::Texture*>(sa);
+                    if (tex)
+                    {
+                        tex->setUnRefImageDataAfterApply(false);
+                    }
+                    else
+                    {
+                        applyUserData(*sa);
+                    }
+                }
+            }
+        }
+
+        applyUserData(*ss);
+    }
+
+    void applyUserData(osg::Object& object)
+    {
+        object.setUserDataContainer(0L);
+    }
+};
+
+struct WriteExternalImages : public osgEarth::TextureAndImageVisitor
+{
+    std::string _destinationPath;
+
+    WriteExternalImages(const std::string& destinationPath)
+        : TextureAndImageVisitor(),
+        _destinationPath(destinationPath)
+    {
+        setTraversalMode(TRAVERSE_ALL_CHILDREN);
+        setNodeMaskOverride(~0L);
+    }
+
+    void apply(osg::Texture & tex)
+    {
+        if (dynamic_cast<osg::TextureBuffer*>(&tex) != 0L)
+        {
+            // skip texture buffers, they need no prep and 
+            // will be inlined as long as they have a write hint
+            // set to STORE_INLINE.
+        }
+        else
+        {
+            osgEarth::TextureAndImageVisitor::apply(tex);
+        }
+    }
+
+    void apply(osg::Image & image)
+    {
+        std::string path = image.getFileName();
+        if (path.empty())
+        {
+            OE_WARN << "ERROR image with blank filename.\n";
+            return;
+        }
+
+        std::string format = "dds";
+        unsigned int hash = osgEarth::hashString(path);
+        std::string relativeName = Stringify() << "images/" <<  hash << "." << format;
+        std::string filename = osgDB::concatPaths(_destinationPath, relativeName);
+        image.setFileName(relativeName);
+        image.setWriteHint(osg::Image::EXTERNAL_FILE);
+        osg::ref_ptr < osgDB::Options > options = new osgDB::Options;
+        options->setOptionString("ddsNoAutoFlipWrite");
+        osgDB::makeDirectoryForFile(filename);
+        osgDB::writeImageFile(image, filename, options.get());
+    }
+};
 
 namespace osgEarth
 {
@@ -579,6 +725,29 @@ namespace osgEarth
                         }
                     }
                 }
+
+#ifdef HAS_PFD
+                if (ImGui::Button("Export"))
+                {
+                    auto f = pfd::save_file("Save file", pfd::path::home());
+                    if (!f.result().empty())
+                    {
+                        std::string filename = f.result();
+                        osgDB::makeDirectoryForFile(filename);
+
+                        PrepareForWriting prepare;
+                        node->accept(prepare);
+                        std::string path = osgDB::getFilePath(filename);
+
+                        // Maybe make this optional
+                        WriteExternalImages write(path);
+                        node->accept(write);
+
+                        osg::ref_ptr< osgDB::Options > writeOptions = new osgDB::Options;
+                        osgDB::writeNodeFile(*node, filename, writeOptions.get());
+                    }
+                }
+#endif
 
                 bool visible = node->getNodeMask() != 0;
                 if (ImGui::Checkbox("Visible", &visible))

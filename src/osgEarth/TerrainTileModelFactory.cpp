@@ -292,7 +292,7 @@ TerrainTileModelFactory::addImageLayer(
 
     if (tex)
     {
-        tex->label() = LABEL_IMAGERY;
+        tex->category() = LABEL_IMAGERY;
 
         tex->name() =
             model->key().str() + ":" +
@@ -453,7 +453,7 @@ TerrainTileModelFactory::addElevation(
         {
             model->elevation().revision() = combinedRevision;
             model->elevation().texture() = Texture::create(elevTex.get());
-            model->elevation().texture()->label() = LABEL_ELEVATION;
+            model->elevation().texture()->category() = LABEL_ELEVATION;
 
             if (_options.useNormalMaps() == true)
             {
@@ -464,7 +464,7 @@ TerrainTileModelFactory::addElevation(
                 {
                     elevTex->getNormalMapTexture()->setName(key.str() + ":normalmap");
                     model->normalMap().texture() = Texture::create(elevTex->getNormalMapTexture());
-                    model->normalMap().texture()->label() = LABEL_NORMALMAP;
+                    model->normalMap().texture()->category() = LABEL_NORMALMAP;
                 }
             }
 
@@ -564,7 +564,7 @@ TerrainTileModelFactory::addLandCover(
 
     if (model->landCover().texture())
     {
-        model->landCover().texture()->label() = LABEL_COVERAGE;
+        model->landCover().texture()->category() = LABEL_COVERAGE;
         model->landCover().texture()->name() = model->key().str() + ":landcover";
     }
 

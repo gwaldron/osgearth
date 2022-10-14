@@ -269,7 +269,7 @@ TileRasterizer::Renderer::allocate(osg::State& state)
     {
         _pbo = GLBuffer::create(GL_PIXEL_PACK_BUFFER_ARB, state);
         _pbo->bind();
-        _pbo->debugLabel("TileRasterizer");
+        _pbo->debugLabel("TileRasterizer", "GL_PIXEL_PACK_BUFFER_ARB");
         _pbo->unbind();
 
 #ifdef USE_CBO
@@ -278,7 +278,7 @@ TileRasterizer::Renderer::allocate(osg::State& state)
         // so we might want to disable it for them
         _cbo = GLBuffer::create(GL_COPY_WRITE_BUFFER, state);
         _cbo->bind();
-        _cbo->debugLabel("TileRasterizer");
+        _cbo->debugLabel("TileRasterizer", "GL_COPY_WRITE_BUFFER");
         _cbo->unbind();
 #endif
     }

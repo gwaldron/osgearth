@@ -768,13 +768,13 @@ GLObject::GLObject(GLenum ns, osg::State& state) :
 }
 
 void
-GLObject::debugLabel(const std::string& label, const std::string& uniqueid)
+GLObject::debugLabel(const std::string& category, const std::string& uniqueid)
 {
-    _label = label;
+    _category = category;
+    _uid = uniqueid;
 
     OE_SOFT_ASSERT_AND_RETURN(valid(), void());
-    std::string temp = uniqueid.empty() ? label : (label + " : " + uniqueid);
-    ext()->debugObjectLabel(ns(), name(), temp);
+    ext()->debugObjectLabel(ns(), name(), label());
 }
 
 GLQuery::GLQuery(GLenum target, osg::State& state) :
@@ -1309,7 +1309,7 @@ GLTexture::release()
     }
     if (_name != 0)
     {
-        OE_DEVEL << "Releasing texture " << _name << "(" << _label << ")" << std::endl;
+        OE_DEVEL << "Releasing texture " << _name << "(" << label() << ")" << std::endl;
         glDeleteTextures(1, &_name);
         _name = 0;
     }

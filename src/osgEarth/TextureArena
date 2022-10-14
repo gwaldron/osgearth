@@ -81,7 +81,7 @@ namespace osgEarth
         void releaseGLObjects(osg::State*) const;
 
         OE_PROPERTY(std::string, name);
-        OE_PROPERTY(std::string, label);
+        OE_PROPERTY(std::string, category);
         OE_PROPERTY(bool, compress);
         OE_PROPERTY(bool, mipmap);
         OE_PROPERTY(bool, clamp);

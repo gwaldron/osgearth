@@ -36,7 +36,7 @@ layout(location = 3) in vec2 uv;
 layout(location = 4) in vec3 flex;
 layout(location = 5) in int albedo;
 layout(location = 6) in int normalmap;
-layout(location = 7) in int metal_smooth_ao;
+layout(location = 7) in int pbr;
 
 // stage global
 mat3 xform3;
@@ -51,7 +51,7 @@ out vec3 oe_position_vec;
 flat out float oe_alpha_cutoff;
 flat out uint64_t oe_albedo_tex;
 flat out uint64_t oe_normal_tex;
-flat out uint64_t oe_metal_smooth_ao_tex;
+flat out uint64_t oe_pbr_tex;
 
 void oe_chonk_default_vertex_model(inout vec4 vertex)
 {
@@ -85,10 +85,10 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
         oe_normal_tex = textures[normalmap];
     }
 
-    oe_metal_smooth_ao_tex = 0;
-    if (metal_smooth_ao >= 0 && chonk_lod <= OE_CHONK_MAX_LOD_FOR_PBR_MAPS)
+    oe_pbr_tex = 0;
+    if (pbr >= 0 && chonk_lod <= OE_CHONK_MAX_LOD_FOR_PBR_MAPS)
     {
-        oe_metal_smooth_ao_tex = textures[metal_smooth_ao];
+        oe_pbr_tex = textures[pbr];
     }
 }
 
@@ -165,7 +165,7 @@ in vec3 oe_tangent;
 in vec3 vp_Normal;
 flat in uint64_t oe_albedo_tex;
 flat in uint64_t oe_normal_tex;
-flat in uint64_t oe_metal_smooth_ao_tex;
+flat in uint64_t oe_pbr_tex;
 flat in float oe_alpha_cutoff;
 flat in float oe_billboarded_normal;
 
@@ -285,9 +285,9 @@ void oe_chonk_default_fragment(inout vec4 color)
     }
 
     // PBR maps:
-    if (oe_metal_smooth_ao_tex > 0)
+    if (oe_pbr_tex > 0)
     {
-        vec4 texel = texture(sampler2D(oe_metal_smooth_ao_tex), oe_tex_uv);
+        vec4 texel = texture(sampler2D(oe_pbr_tex), oe_tex_uv);
         oe_pbr.metal *= texel[0];
         oe_pbr.roughness *= (1.0 - texel[1]);
         oe_pbr.ao *= texel[2];

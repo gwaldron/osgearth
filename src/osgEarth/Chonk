@@ -43,20 +43,20 @@ namespace osgEarth
         }
 
         // texturearena indexes of material textures
-        int albedo;
-        int normal;
-        int metal_smooth_ao;
+        int albedo_index;
+        int normal_index;
+        int pbr_index;
 
         // store refs to the original textures when the
         // factory objects's texture arena is using auto-release.
         // otherwise they are null.
         Texture::Ptr albedo_tex;
         Texture::Ptr normal_tex;
-        Texture::Ptr metal_smooth_ao_tex;
+        Texture::Ptr pbr_tex;
 
     private:
         ChonkMaterial() : 
-            albedo(-1), normal(-1), metal_smooth_ao(-1) { }
+            albedo_index(-1), normal_index(-1), pbr_index(-1) { }
     };
 
     class ChonkFactory;
@@ -100,12 +100,12 @@ namespace osgEarth
             // TODO: use a material index instead?
             GLint albedo_index;
             GLint normalmap_index;
-            GLint metal_smooth_ao_index;
+            GLint pbr_index;
 
             VertexGPU() : 
                 albedo_index(-1),
                 normalmap_index(-1),
-                metal_smooth_ao_index(-1) {}
+                pbr_index(-1) {}
         };
 
         //! Geometry variant for a given pixel size range

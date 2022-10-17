@@ -84,32 +84,32 @@ namespace
         std::stack<osg::Matrix> _transformStack;
         std::unordered_map<osg::Texture*, Texture::Ptr> _textureLUT;
 
-        const unsigned ALBEDO = 0;
-        const unsigned NORMAL = 1;
-        const unsigned METAL_SMOOTH_AO = 2;
+        const unsigned ALBEDO_UNIT = 0;
+        const unsigned NORMAL_UNIT = 1;
+        const unsigned PBR_UNIT = 2;
 
         ChonkMaterial::Ptr reuseOrCreateMaterial(
             Texture::Ptr albedo_tex,
             Texture::Ptr normal_tex,
-            Texture::Ptr metal_smooth_ao_tex)
+            Texture::Ptr pbr_tex)
         {
-            int albedo = _textures->find(albedo_tex);
-            int normal = _textures->find(normal_tex);
-            int metal_smooth_ao = _textures->find(metal_smooth_ao_tex);
+            int albedo_index = _textures->find(albedo_tex);
+            int normal_index = _textures->find(normal_tex);
+            int pbr_index = _textures->find(pbr_tex);
 
             for (auto& m : _materialCache)
             {
-                if (m->albedo == albedo &&
-                    m->normal == normal &&
-                    m->metal_smooth_ao == metal_smooth_ao)
+                if (m->albedo_index == albedo_index &&
+                    m->normal_index == normal_index &&
+                    m->pbr_index == pbr_index)
                 {
                     return m;
                 }
             }
             auto material = ChonkMaterial::create();
-            material->albedo = albedo;
-            material->normal = normal;
-            material->metal_smooth_ao = metal_smooth_ao;
+            material->albedo_index = albedo_index;
+            material->normal_index = normal_index;
+            material->pbr_index = pbr_index;
 
             // If our arena is in auto-release mode, we need to 
             // store a pointer to each texture we use so they do not
@@ -118,7 +118,7 @@ namespace
             {
                 material->albedo_tex = albedo_tex;
                 material->normal_tex = normal_tex;
-                material->metal_smooth_ao_tex = metal_smooth_ao_tex;
+                material->pbr_tex = pbr_tex;
             }
 
             _materialCache.push_back(material);
@@ -192,14 +192,14 @@ namespace
             bool pushed = false;
             if (stateset)
             {
-                Texture::Ptr albedo_tex = addTexture(ALBEDO, stateset);
-                Texture::Ptr normal_tex = addTexture(NORMAL, stateset);
-                Texture::Ptr msa_tex = addTexture(METAL_SMOOTH_AO, stateset);
+                Texture::Ptr albedo_tex = addTexture(ALBEDO_UNIT, stateset);
+                Texture::Ptr normal_tex = addTexture(NORMAL_UNIT, stateset);
+                Texture::Ptr pbr_tex = addTexture(PBR_UNIT, stateset);
 
                 if (albedo_tex || normal_tex)
                 {
                     ChonkMaterial::Ptr material = reuseOrCreateMaterial(
-                        albedo_tex, normal_tex, msa_tex);
+                        albedo_tex, normal_tex, pbr_tex);
                     _materialStack.push(material);
                     pushed = true;
                 }
@@ -311,9 +311,9 @@ namespace
                     v.flex.set(0, 0, 1);
                 }
 
-                v.albedo_index = material ? material->albedo : -1;
-                v.normalmap_index = material ? material->normal : -1;
-                v.metal_smooth_ao_index = material ? material->metal_smooth_ao : -1;
+                v.albedo_index = material ? material->albedo_index : -1;
+                v.normalmap_index = material ? material->normal_index : -1;
+                v.pbr_index = material ? material->pbr_index : -1;
 
                 _result._vbo_store.emplace_back(std::move(v));
 
@@ -344,8 +344,9 @@ namespace std {
     template<> struct hash<ChonkMaterial> {
         inline size_t operator()(const ChonkMaterial& value) const {
             return hash_value_unsigned(
-                value.albedo,
-                value.normal);
+                value.albedo_index,
+                value.normal_index,
+                value.pbr_index);
         }
     };
 }
@@ -874,7 +875,7 @@ ChonkDrawable::GLObjects::initialize(
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, flex)},
         {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, albedo_index)},
         {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, normalmap_index)},
-        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, metal_smooth_ao_index)}
+        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, pbr_index)}
     };
 
     // configure the format of each vertex attribute in our structure.

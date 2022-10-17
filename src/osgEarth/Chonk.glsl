@@ -190,7 +190,7 @@ void oe_chonk_default_fragment(inout vec4 color)
     if (color.a < oe_alpha_cutoff)
         discard;
 
-#else // !OE_IS_SHADOW_CAMERA
+#else // !OE_IS_SHADOW_CAMERA && !OE_IS_DEPTH_CAMERA
 
   #if OE_GPUCULL_DEBUG
 

@@ -26,6 +26,69 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 
 #undef LC
+#define LC "[MaterialUtils] "
+
+MaterialUtils::Mangler
+MaterialUtils::getDefaultNormalMapNameMangler()
+{
+    static Mangler getNormalMapFileName = [](const std::string& filename)
+    {
+        const std::string pattern = "_NML";
+
+        std::string dot_ext = osgDB::getFileExtensionIncludingDot(filename);
+        if (Strings::ciEquals(dot_ext, ".meif"))
+        {
+            auto underscore_pos = filename.find_last_of('_');
+            if (underscore_pos != filename.npos)
+            {
+                return
+                    filename.substr(0, underscore_pos)
+                    + pattern
+                    + filename.substr(underscore_pos);
+            }
+        }
+
+        return
+            osgDB::getNameLessExtension(filename)
+            + pattern
+            + dot_ext;
+    };
+
+    return getNormalMapFileName;
+}
+
+MaterialUtils::Mangler
+MaterialUtils::getDefaultPBRMapNameMangler()
+{
+    static Mangler getPBRMapFileName = [](const std::string& filename)
+    {
+        const std::string pattern = "_MTL_GLS_AO";
+
+        std::string dot_ext = osgDB::getFileExtensionIncludingDot(filename);
+        if (Strings::ciEquals(dot_ext, ".meif"))
+        {
+            auto underscore_pos = filename.find_last_of('_');
+            if (underscore_pos != filename.npos)
+            {
+                return
+                    filename.substr(0, underscore_pos)
+                    + pattern
+                    + filename.substr(underscore_pos);
+            }
+        }
+
+        return
+            osgDB::getNameLessExtension(filename)
+            + pattern
+            + dot_ext;
+    };
+
+    return getPBRMapFileName;
+}
+
+
+
+#undef LC
 #define LC "[MaterialLoader] "
 
 MaterialLoader::MaterialLoader()

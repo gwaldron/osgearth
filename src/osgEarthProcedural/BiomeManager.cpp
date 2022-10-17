@@ -36,7 +36,7 @@ using namespace osgEarth::Procedural;
 #define LC "[BiomeManager] "
 
 #define NORMAL_MAP_TEX_UNIT 1
-#define METAL_SMOOTH_AO_TEX_UNIT 2
+#define PBR_TEX_UNIT 2
 
 //...................................................................
 
@@ -408,34 +408,15 @@ BiomeManager::materializeNewAssets(
     // secondary texture image units.. in this case, normal maps.
     // We can expand this later to include other types of material maps.
 
+    auto getNormalMapFileName = MaterialUtils::getDefaultNormalMapNameMangler();
+
     Util::MaterialLoader materialLoader;
 
-    auto getNormalMapFileName = [](const std::string& filename)
-    {
-        const std::string pattern = "_NML";
+    materialLoader.setMangler(
+        NORMAL_MAP_TEX_UNIT, getNormalMapFileName);
 
-        std::string dot_ext = osgDB::getFileExtensionIncludingDot(filename);
-        if (Strings::ciEquals(dot_ext, ".meif"))
-        {
-            auto underscore_pos = filename.find_last_of('_');
-            if (underscore_pos != filename.npos)
-            {
-                return
-                    filename.substr(0, underscore_pos)
-                    + pattern
-                    + filename.substr(underscore_pos);
-            }
-        }
-
-        return
-            osgDB::getNameLessExtension(filename)
-            + pattern
-            + dot_ext;
-    };
-
-    materialLoader.setMangler(NORMAL_MAP_TEX_UNIT, getNormalMapFileName);
-
-    materialLoader.setTextureFactory(NORMAL_MAP_TEX_UNIT,
+    materialLoader.setTextureFactory(
+        NORMAL_MAP_TEX_UNIT,
         [](osg::Image* image)
         {
             osg::Texture2D* tex = nullptr;
@@ -450,30 +431,10 @@ BiomeManager::materializeNewAssets(
         }
     );
 
-    auto getMSAMapFileName = [](const std::string& filename)
-    {
-        const std::string pattern = "_MTL_GLS_AO";
+    auto getPBRMapFileName = MaterialUtils::getDefaultPBRMapNameMangler();
 
-        std::string dot_ext = osgDB::getFileExtensionIncludingDot(filename);
-        if (Strings::ciEquals(dot_ext, ".meif"))
-        {
-            auto underscore_pos = filename.find_last_of('_');
-            if (underscore_pos != filename.npos)
-            {
-                return
-                    filename.substr(0, underscore_pos)
-                    + pattern
-                    + filename.substr(underscore_pos);
-            }
-        }
-
-        return
-            osgDB::getNameLessExtension(filename)
-            + pattern
-            + dot_ext;
-    };
-
-    materialLoader.setMangler(METAL_SMOOTH_AO_TEX_UNIT, getMSAMapFileName);
+    materialLoader.setMangler(
+        PBR_TEX_UNIT, getPBRMapFileName);
 
     // Go through the residency list and materialize any model assets
     // that are not already loaded (and present in _residentModelAssets);
@@ -577,7 +538,7 @@ BiomeManager::materializeNewAssets(
                     {
                         residentAsset->sideBillboardTex() = ic->second->sideBillboardTex();
                         residentAsset->sideBillboardNormalMap() = ic->second->sideBillboardNormalMap();
-                        residentAsset->sideBillboardMSAMap() = ic->second->sideBillboardMSAMap();
+                        residentAsset->sideBillboardPBRMap() = ic->second->sideBillboardPBRMap();
                     }
                     else
                     {
@@ -599,19 +560,19 @@ BiomeManager::materializeNewAssets(
                             }
                             else
                             {
-                                OE_WARN << LC << "Failed to load NML: " << normalMapURI.base() << std::endl;
+                                OE_WARN << LC << "Failed to load: " << normalMapURI.base() << std::endl;
                             }
 
-                            URI msaMapURI(getMSAMapFileName(uri.full()));
-                            osg::ref_ptr<osg::Image> msaMap = msaMapURI.getImage(readOptions);
-                            if (msaMap.valid())
+                            URI pbrMapURI(getPBRMapFileName(uri.full()));
+                            osg::ref_ptr<osg::Image> pbrMap = pbrMapURI.getImage(readOptions);
+                            if (pbrMap.valid())
                             {
-                                OE_INFO << LC << "Loaded MSA: " << msaMapURI.base() << std::endl;
-                                residentAsset->sideBillboardMSAMap() = new osg::Texture2D(msaMap);
+                                OE_INFO << LC << "Loaded PBR: " << pbrMapURI.base() << std::endl;
+                                residentAsset->sideBillboardPBRMap() = new osg::Texture2D(pbrMap);
                             }
                             else
                             {
-                                OE_WARN << LC << "Failed to load MSA: " << msaMapURI.base() << std::endl;
+                                OE_WARN << LC << "Failed to load: " << pbrMapURI.base() << std::endl;
                             }
                         }
                         else
@@ -635,7 +596,7 @@ BiomeManager::materializeNewAssets(
                         {
                             residentAsset->topBillboardTex() = ic->second->topBillboardTex();
                             residentAsset->topBillboardNormalMap() = ic->second->topBillboardNormalMap();
-                            residentAsset->topBillboardMSAMap() = ic->second->topBillboardMSAMap();
+                            residentAsset->topBillboardPBRMap() = ic->second->topBillboardPBRMap();
                         }
                         else
                         {
@@ -657,20 +618,20 @@ BiomeManager::materializeNewAssets(
                                 }
                                 else
                                 {
-                                    OE_WARN << LC << "Failed to load NML: " << normalMapURI.base() << std::endl;
+                                    OE_WARN << LC << "Failed to load: " << normalMapURI.base() << std::endl;
                                 }
 
                                 // PBR map:
-                                URI msaMapURI(getMSAMapFileName(uri.full()));
-                                osg::ref_ptr<osg::Image> msaMap = msaMapURI.getImage(readOptions);
-                                if (msaMap.valid())
+                                URI pbrMapURI(getPBRMapFileName(uri.full()));
+                                osg::ref_ptr<osg::Image> pbrMap = pbrMapURI.getImage(readOptions);
+                                if (pbrMap.valid())
                                 {
-                                    OE_INFO << LC << "Loaded MSA: " << msaMapURI.base() << std::endl;
-                                    residentAsset->topBillboardMSAMap() = new osg::Texture2D(msaMap);
+                                    OE_INFO << LC << "Loaded PBR: " << pbrMapURI.base() << std::endl;
+                                    residentAsset->topBillboardPBRMap() = new osg::Texture2D(pbrMap);
                                 }
                                 else
                                 {
-                                    OE_WARN << LC << "Failed to load MSA: " << msaMapURI.base() << std::endl;
+                                    OE_WARN << LC << "Failed to load: " << pbrMapURI.base() << std::endl;
                                 }
                             }
                             else
@@ -683,10 +644,10 @@ BiomeManager::materializeNewAssets(
                     std::vector<osg::Texture*> textures(6);
                     textures[0] = residentAsset->sideBillboardTex().get();
                     textures[1] = residentAsset->sideBillboardNormalMap().get();
-                    textures[2] = residentAsset->sideBillboardMSAMap().get();
+                    textures[2] = residentAsset->sideBillboardPBRMap().get();
                     textures[3] = residentAsset->topBillboardTex().get();
                     textures[4] = residentAsset->topBillboardNormalMap().get();
-                    textures[5] = residentAsset->topBillboardMSAMap().get();
+                    textures[5] = residentAsset->topBillboardPBRMap().get();
 
                     // if this group has an impostor creation function, call it
                     auto iter = _createImpostorFunctions.find(assetDef->group());

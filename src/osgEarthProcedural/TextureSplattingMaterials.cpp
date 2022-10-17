@@ -23,6 +23,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Elevation>
+#include <osgEarth/MaterialLoader>
 #include <osgDB/Registry>
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
@@ -372,16 +373,19 @@ NNRA_Loader::readImageFromSourceData(
     // Try the "vtm" layout next. Files include:
     //   filename_MTL_GLS_AO.png (metal, inverse roughness, ao)
     {
-        URI normalsURI(basename + "_NML." + extension);
-        URI metalGlossAoURI(basename + "_MTL_GLS_AO." + extension);
+        auto getNormalMapFileName = MaterialUtils::getDefaultNormalMapNameMangler();
+        auto getPBRFileName = MaterialUtils::getDefaultPBRMapNameMangler();
 
-        normals = normalsURI.getImage(options);
-        if (!normals.valid())
-            OE_WARN << LC << "Failed to load \"" << normalsURI.full() << "\"" << std::endl;
+        URI normalMapURI(getNormalMapFileName(basename));
+        URI pbrURI(getPBRFileName(basename));
 
-        roughness = metalGlossAoURI.getImage(options);
+        normals = normalMapURI.getImage(options);
         if (!normals.valid())
-            OE_WARN << LC << "Failed to load \"" << metalGlossAoURI.full() << "\"" << std::endl;
+            OE_WARN << LC << "Failed to load \"" << normalMapURI.full() << "\"" << std::endl;
+
+        roughness = pbrURI.getImage(options);
+        if (!normals.valid())
+            OE_WARN << LC << "Failed to load \"" << pbrURI.full() << "\"" << std::endl;
 
         ao = roughness;
 

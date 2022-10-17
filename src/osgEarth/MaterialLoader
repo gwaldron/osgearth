@@ -30,6 +30,19 @@ namespace osgEarth { namespace Util
     using namespace osgEarth;
 
     /**
+     * Built in utilities for dealing with materials
+     */
+    class OSGEARTH_EXPORT MaterialUtils
+    {
+    public:
+        using Mangler = std::function<std::string(const std::string&)>;
+
+        static Mangler getDefaultNormalMapNameMangler();
+
+        static Mangler getDefaultPBRMapNameMangler();
+    };
+
+    /**
      * Loads models and installs material textures alongside
      * the normal albedo textures as directed.
      *

@@ -64,10 +64,10 @@ namespace osgEarth
             //! impostor textures
             OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardTex);
             OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardNormalMap);
-            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardMSAMap);
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardPBRMap);
             OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardTex);
             OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardNormalMap);
-            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardMSAMap);
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardPBRMap);
 
             //! Bindless geometry chonk
             OE_PROPERTY(Chonk::Ptr, chonk);

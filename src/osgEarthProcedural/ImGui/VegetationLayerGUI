@@ -84,6 +84,10 @@ namespace osgEarth {
                         if (ImGui::Checkbox("Use impostor normal maps", &normalMaps))
                             _veglayer->setUseImpostorNormalMaps(normalMaps);
 
+                        bool pbrMaps = _veglayer->getUseImpostorPBRMaps();
+                        if (ImGui::Checkbox("Use impostor PBR maps", &pbrMaps))
+                            _veglayer->setUseImpostorPBRMaps(pbrMaps);
+
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Impostor visibility angles:");
 
                         float bb_low = _veglayer->getImpostorLowAngle().as(Units::DEGREES);

@@ -2,9 +2,14 @@
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 #pragma import_defines(OE_IS_DEPTH_CAMERA)
 #pragma import_defines(OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS)
+#pragma import_defines(OE_CHONK_MAX_LOD_FOR_PBR_MAPS)
 
 #ifndef OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS
 #define OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS 99
+#endif
+
+#ifndef OE_CHONK_MAX_LOD_FOR_PBR_MAPS
+#define OE_CHONK_MAX_LOD_FOR_PBR_MAPS 99
 #endif
 
 struct Instance
@@ -74,15 +79,17 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
     oe_position_vec = (xform3 * position.xyz) / instances[i].radius;
 
     // disable/ignore normal maps as directed:
-    if (chonk_lod > OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS)
+    oe_normal_tex = 0;
+    if (normalmap >= 0 && chonk_lod <= OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS)
     {
-        oe_normal_tex = 0;
-        return;
+        oe_normal_tex = textures[normalmap];
     }
 
-    oe_normal_tex = normalmap >= 0 ? textures[normalmap] : 0;
-
-    oe_metal_smooth_ao_tex = metal_smooth_ao >= 0 ? textures[metal_smooth_ao] : 0;
+    oe_metal_smooth_ao_tex = 0;
+    if (metal_smooth_ao >= 0 && chonk_lod <= OE_CHONK_MAX_LOD_FOR_PBR_MAPS)
+    {
+        oe_metal_smooth_ao_tex = textures[metal_smooth_ao];
+    }
 }
 
 

@@ -412,7 +412,7 @@ BiomeManager::materializeNewAssets(
 
     auto getNormalMapFileName = [](const std::string& filename)
     {
-        const std::string NML = "_NML";
+        const std::string pattern = "_NML";
 
         std::string dot_ext = osgDB::getFileExtensionIncludingDot(filename);
         if (Strings::ciEquals(dot_ext, ".meif"))
@@ -422,14 +422,14 @@ BiomeManager::materializeNewAssets(
             {
                 return
                     filename.substr(0, underscore_pos)
-                    + NML
+                    + pattern
                     + filename.substr(underscore_pos);
             }
         }
 
         return
             osgDB::getNameLessExtension(filename)
-            + NML
+            + pattern
             + dot_ext;
     };
 
@@ -452,7 +452,7 @@ BiomeManager::materializeNewAssets(
 
     auto getMSAMapFileName = [](const std::string& filename)
     {
-        const std::string NML = "_MTL_GLS_AO";
+        const std::string pattern = "_MTL_GLS_AO";
 
         std::string dot_ext = osgDB::getFileExtensionIncludingDot(filename);
         if (Strings::ciEquals(dot_ext, ".meif"))
@@ -462,14 +462,14 @@ BiomeManager::materializeNewAssets(
             {
                 return
                     filename.substr(0, underscore_pos)
-                    + NML
+                    + pattern
                     + filename.substr(underscore_pos);
             }
         }
 
         return
             osgDB::getNameLessExtension(filename)
-            + NML
+            + pattern
             + dot_ext;
     };
 

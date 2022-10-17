@@ -93,6 +93,7 @@ VegetationLayer::Options::getConfig() const
     conf.set("near_lod_scale", nearLODScale());
     conf.set("lod_transition_padding", lodTransitionPadding());
     conf.set("use_impostor_normal_maps", useImpostorNormalMaps());
+    conf.set("use_impostor_pbr_maps", useImpostorPBRMaps());
 
     //TODO: groups
 
@@ -140,6 +141,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     nearLODScale().setDefault(1.0f);
     lodTransitionPadding().setDefault(0.5f);
     useImpostorNormalMaps().setDefault(true);
+    useImpostorPBRMaps().setDefault(true);
 
     biomeLayer().get(conf, "biomes_layer");
 
@@ -150,6 +152,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     conf.get("near_lod_scale", nearLODScale());
     conf.get("lod_transition_padding", lodTransitionPadding());
     conf.get("use_impostor_normal_maps", useImpostorNormalMaps());
+    conf.get("use_impostor_pbr_maps", useImpostorPBRMaps());
 
     // some nice default group settings
     groups()[GROUP_TREES].lod().setDefault(14);
@@ -379,6 +382,25 @@ bool
 VegetationLayer::getUseImpostorNormalMaps() const
 {
     return options().useImpostorNormalMaps().get();
+}
+
+void
+VegetationLayer::setUseImpostorPBRMaps(bool value)
+{
+    if (value != getUseImpostorPBRMaps())
+        options().useImpostorPBRMaps() = value;
+
+    auto ss = getOrCreateStateSet();
+    if (value == false)
+        ss->setDefine("OE_CHONK_MAX_LOD_FOR_PBR_MAPS", "0");
+    else
+        ss->setDefine("OE_CHONK_MAX_LOD_FOR_PBR_MAPS", "99");
+}
+
+bool
+VegetationLayer::getUseImpostorPBRMaps() const
+{
+    return options().useImpostorPBRMaps().get();
 }
 
 void

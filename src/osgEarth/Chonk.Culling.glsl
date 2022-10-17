@@ -114,11 +114,11 @@ void cull()
     if (lod >= chonks[v].num_lods)
         return;
 
-#ifdef OE_IS_SHADOW_CAMERA
-    // only the lowest LOD for shadow-casting.
-    if (lod < chonks[v].num_lods - 1)
-        return;
-#endif
+//#ifdef OE_IS_SHADOW_CAMERA
+//    // only the lowest LOD for shadow-casting.
+//    if (lod < chonks[v].num_lods - 1)
+//        return;
+//#endif
 
     // intialize:
     float fade = 1.0;

@@ -45,15 +45,18 @@ namespace osgEarth
         // texturearena indexes of material textures
         int albedo;
         int normal;
+        int metal_smooth_ao;
 
         // store refs to the original textures when the
         // factory objects's texture arena is using auto-release.
         // otherwise they are null.
         Texture::Ptr albedo_tex;
         Texture::Ptr normal_tex;
+        Texture::Ptr metal_smooth_ao_tex;
 
     private:
-        ChonkMaterial() : albedo(-1), normal(-1) { }
+        ChonkMaterial() : 
+            albedo(-1), normal(-1), metal_smooth_ao(-1) { }
     };
 
     class ChonkFactory;
@@ -93,11 +96,16 @@ namespace osgEarth
             osg::Vec2f uv;
             osg::Vec3f flex;
 
-            // TODO: upgrade to material index
-            GLint albedo;
-            GLint normalmap;
+            // texturearena indexes of materials
+            // TODO: use a material index instead?
+            GLint albedo_index;
+            GLint normalmap_index;
+            GLint metal_smooth_ao_index;
 
-            VertexGPU() : albedo(-1), normalmap(-1) {}
+            VertexGPU() : 
+                albedo_index(-1),
+                normalmap_index(-1),
+                metal_smooth_ao_index(-1) {}
         };
 
         //! Geometry variant for a given pixel size range
@@ -289,7 +297,7 @@ namespace osgEarth
             GLBuffer::Ptr _instanceOutputBuf;
             GLBuffer::Ptr _chonkBuf;
             bool _dirty;
-            bool _cull;
+            bool _gpucull;
 
             void(GL_APIENTRY * _glMultiDrawElementsIndirectBindlessNV)
                 (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint);

@@ -87,6 +87,33 @@ void oeui_render_outlines(inout vec4 color) {
 }
 )";
 
+    const char* render_ao = R"(
+#version 450
+#pragma vp_function oeui_render_ao, fragment_lighting, last
+struct OE_PBR { float roughness, ao, metal, brightness, contrast; } oe_pbr;
+void oeui_render_ao(inout vec4 color) {
+    color = vec4(oe_pbr.ao, oe_pbr.ao, oe_pbr.ao, 1);
+}
+)";
+
+    const char* render_roughness = R"(
+#version 450
+#pragma vp_function oeui_render_roughness, fragment_lighting, last
+struct OE_PBR { float roughness, ao, metal, brightness, contrast; } oe_pbr;
+void oeui_render_roughness(inout vec4 color) {
+    color = vec4(oe_pbr.roughness, oe_pbr.roughness, oe_pbr.roughness, 1);
+}
+)";
+
+    const char* render_metal = R"(
+#version 450
+#pragma vp_function oeui_render_metal, fragment_lighting, last
+struct OE_PBR { float roughness, ao, metal, brightness, contrast; } oe_pbr;
+void oeui_render_metal(inout vec4 color) {
+    color = vec4(oe_pbr.metal, oe_pbr.metal, oe_pbr.metal, 1);
+}
+)";
+
 }
 
 namespace osgEarth
@@ -224,6 +251,15 @@ namespace osgEarth
                     if (ImGui::RadioButton("Normals (model space)", &s_renderMode, m++)) {
                         setRenderMode(render_model_normals, ri);
                     }
+                    if (ImGui::RadioButton("Metal (PBR)", &s_renderMode, m++)) {
+                        setRenderMode(render_metal, ri);
+                    }
+                    if (ImGui::RadioButton("Roughness (PBR)", &s_renderMode, m++)) {
+                        setRenderMode(render_roughness, ri);
+                    }
+                    if (ImGui::RadioButton("AO (PBR)", &s_renderMode, m++)) {
+                        setRenderMode(render_ao, ri);
+                    }
 
                     if (GLUtils::useNVGL())
                     {
@@ -313,28 +349,12 @@ namespace osgEarth
                                             ImGui::TableNextColumn();
                                             ImGui::Text("(%.1lf MB)", (double)obj->size() / (double)1048576.);
                                         }
+                                        ImGui::EndTable();
                                     }
-                                    ImGui::EndTable();
 
                                     ImGui::TreePop();
                                 }
                             }
-#if 0
-                            if (ImGui::BeginTable("globjects", 2))
-                            {
-                                for (auto& cat : categories)
-                                {
-                                    unsigned total = 0;
-                                    for (auto& c : bo.second) total += c->size();
-
-                                    ImGui::TableNextColumn();
-                                    ImGui::Text("%s", bo.first.c_str());
-                                    ImGui::TableNextColumn();
-                                    ImGui::Text("(%d) (%.1lf MB)", bo.second.size(), (double)total / (double)1048576.);
-                                }
-                                ImGui::EndTable();
-                            }
-#endif
                             if (pools.size() > 1)
                                 ImGui::Separator();
                         }

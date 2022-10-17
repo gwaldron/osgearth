@@ -86,18 +86,22 @@ namespace
 
         const unsigned ALBEDO = 0;
         const unsigned NORMAL = 1;
+        const unsigned METAL_SMOOTH_AO = 2;
 
         ChonkMaterial::Ptr reuseOrCreateMaterial(
             Texture::Ptr albedo_tex,
-            Texture::Ptr normal_tex)
+            Texture::Ptr normal_tex,
+            Texture::Ptr metal_smooth_ao_tex)
         {
             int albedo = _textures->find(albedo_tex);
             int normal = _textures->find(normal_tex);
+            int metal_smooth_ao = _textures->find(metal_smooth_ao_tex);
 
             for (auto& m : _materialCache)
             {
                 if (m->albedo == albedo &&
-                    m->normal == normal)
+                    m->normal == normal &&
+                    m->metal_smooth_ao == metal_smooth_ao)
                 {
                     return m;
                 }
@@ -105,6 +109,7 @@ namespace
             auto material = ChonkMaterial::create();
             material->albedo = albedo;
             material->normal = normal;
+            material->metal_smooth_ao = metal_smooth_ao;
 
             // If our arena is in auto-release mode, we need to 
             // store a pointer to each texture we use so they do not
@@ -113,6 +118,7 @@ namespace
             {
                 material->albedo_tex = albedo_tex;
                 material->normal_tex = normal_tex;
+                material->metal_smooth_ao_tex = metal_smooth_ao_tex;
             }
 
             _materialCache.push_back(material);
@@ -130,7 +136,7 @@ namespace
             setNodeMaskOverride(~0);
 
             _materialStack.push(reuseOrCreateMaterial(
-                nullptr, nullptr));
+                nullptr, nullptr, nullptr));
             _transformStack.push(osg::Matrix());
         }
 
@@ -188,11 +194,12 @@ namespace
             {
                 Texture::Ptr albedo_tex = addTexture(ALBEDO, stateset);
                 Texture::Ptr normal_tex = addTexture(NORMAL, stateset);
+                Texture::Ptr msa_tex = addTexture(METAL_SMOOTH_AO, stateset);
 
                 if (albedo_tex || normal_tex)
                 {
                     ChonkMaterial::Ptr material = reuseOrCreateMaterial(
-                        albedo_tex, normal_tex);
+                        albedo_tex, normal_tex, msa_tex);
                     _materialStack.push(material);
                     pushed = true;
                 }
@@ -304,8 +311,9 @@ namespace
                     v.flex.set(0, 0, 1);
                 }
 
-                v.albedo = material ? material->albedo : -1;
-                v.normalmap = material ? material->normal : -1;
+                v.albedo_index = material ? material->albedo : -1;
+                v.normalmap_index = material ? material->normal : -1;
+                v.metal_smooth_ao_index = material ? material->metal_smooth_ao : -1;
 
                 _result._vbo_store.emplace_back(std::move(v));
 
@@ -670,6 +678,7 @@ ChonkDrawable::update_and_cull_batches(osg::State& state) const
     if (globjects._dirty)
     {
         ScopedMutexLock lock(_m);
+        globjects._gpucull = _gpucull;
         globjects.update(_batches, this, _fadeNear, _fadeFar, _birthday, _alphaCutoff, state);
     }
 
@@ -786,7 +795,7 @@ ChonkDrawable::accept(osg::PrimitiveFunctor& f) const
 
 ChonkDrawable::GLObjects::GLObjects() :
     _dirty(true),
-    _cull(true)
+    _gpucull(true)
 {
     // nop
 }
@@ -819,7 +828,7 @@ ChonkDrawable::GLObjects::initialize(
     _instanceInputBuf->debugLabel("Chonk", "In buf " +host->getName());
     _instanceInputBuf->unbind();
 
-    if (_cull)
+    if (_gpucull)
     {
         // Culled instances (GPU only)
         _instanceOutputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
@@ -857,18 +866,19 @@ ChonkDrawable::GLObjects::initialize(
     glEnableClientState_(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
     glEnableClientState_(GL_ELEMENT_ARRAY_UNIFIED_NV);
 
-    const VADef formats[7] = {
+    const VADef formats[8] = {
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, position)},
         {4, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, normal4)},
         {4, GL_UNSIGNED_BYTE, GL_TRUE,  offsetof(Chonk::VertexGPU, color)},
         {2, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, uv)},
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, flex)},
-        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, albedo)},
-        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, normalmap)}
+        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, albedo_index)},
+        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, normalmap_index)},
+        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, metal_smooth_ao_index)}
     };
 
     // configure the format of each vertex attribute in our structure.
-    for (unsigned location = 0; location < 7; ++location)
+    for (unsigned location = 0; location < 8; ++location)
     {
         const VADef& d = formats[location];
         if (d.type == GL_INT || d.type == GL_INT)
@@ -931,7 +941,7 @@ ChonkDrawable::GLObjects::update(
         {
             _commands.emplace_back(lod_commands[i]);
 
-            if (_cull)
+            if (_gpucull)
             {
                 // record the bounding box of this chonk:
                 auto& bs = chonk->getBound();
@@ -967,13 +977,10 @@ ChonkDrawable::GLObjects::update(
         lod.total_num_commands = _commands.size();
     }
 
-    // no need to do this since it gets sent in cull()
-    //_commandBuf->uploadData(_commands);
-
     // Send to the GPU:
     _instanceInputBuf->uploadData(_all_instances, GL_STATIC_DRAW);
 
-    if (_cull)
+    if (_gpucull)
     {
         _chonkBuf->uploadData(_chonk_lods, GL_STATIC_DRAW);
         
@@ -982,6 +989,11 @@ ChonkDrawable::GLObjects::update(
         // If someday, we draw more than 2 LODs at a time, we'll need to
         // up this buffer size!!
         _instanceOutputBuf->uploadData(_instanceInputBuf->size() * 2, nullptr);
+    }
+    else
+    {
+        // no need to do this since it gets sent in cull()
+        _commandBuf->uploadData(_commands);
     }
 
     _numInstances = _all_instances.size();
@@ -1057,7 +1069,7 @@ ChonkDrawable::GLObjects::draw(osg::State& state)
 
     // make the instance LUT visible in the shader
     // (use gl_InstanceID + gl_BaseInstance to access)
-    if (_cull)
+    if (_gpucull)
         _instanceOutputBuf->bindBufferBase(0);
     else
         _instanceInputBuf->bindBufferBase(0);

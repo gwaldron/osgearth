@@ -871,12 +871,15 @@ VegetationLayer::configureImpostor(
                 if (textures.size() > 0)
                     ss->setTextureAttribute(0, textures[0], 1); // side albedo
 
-                node->addChild(geom);
-
                 if (textures.size() > 1)
                     ss->setTextureAttribute(1, textures[1], 1); // side normal
+
+                if (textures.size() > 2)
+                    ss->setTextureAttribute(2, textures[2], 1); // side meta/smooth/ao
+
+                node->addChild(geom);
             }
-            else if (i == 1 && textures[2] != nullptr)
+            else if (i == 1 && textures[3] != nullptr)
             {
                 osg::Geometry* geom = new osg::Geometry();
                 geom->setName("Tree impostor");
@@ -921,11 +924,14 @@ VegetationLayer::configureImpostor(
                 else
                     geom->setNormalArray(new osg::Vec4Array(osg::Array::BIND_PER_VERTEX, 4, bb_normals));
 
-                if (textures.size() > 2)
-                    ss->setTextureAttribute(0, textures[2], 1); // top albedo
-
                 if (textures.size() > 3)
-                    ss->setTextureAttribute(1, textures[3], 1); // top normal
+                    ss->setTextureAttribute(0, textures[3], 1); // top albedo
+
+                if (textures.size() > 4)
+                    ss->setTextureAttribute(1, textures[4], 1); // top normal
+
+                if (textures.size() > 5)
+                    ss->setTextureAttribute(2, textures[5], 1); // top MSA
 
                 node->addChild(geom);
             }

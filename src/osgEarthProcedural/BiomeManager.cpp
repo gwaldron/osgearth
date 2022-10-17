@@ -36,6 +36,7 @@ using namespace osgEarth::Procedural;
 #define LC "[BiomeManager] "
 
 #define NORMAL_MAP_TEX_UNIT 1
+#define METAL_SMOOTH_AO_TEX_UNIT 2
 
 //...................................................................
 
@@ -407,6 +408,8 @@ BiomeManager::materializeNewAssets(
     // secondary texture image units.. in this case, normal maps.
     // We can expand this later to include other types of material maps.
 
+    Util::MaterialLoader materialLoader;
+
     auto getNormalMapFileName = [](const std::string& filename)
     {
         const std::string NML = "_NML";
@@ -430,8 +433,6 @@ BiomeManager::materializeNewAssets(
             + dot_ext;
     };
 
-    Util::MaterialLoader materialLoader;
-
     materialLoader.setMangler(NORMAL_MAP_TEX_UNIT, getNormalMapFileName);
 
     materialLoader.setTextureFactory(NORMAL_MAP_TEX_UNIT,
@@ -448,6 +449,31 @@ BiomeManager::materializeNewAssets(
             return tex;
         }
     );
+
+    auto getMSAMapFileName = [](const std::string& filename)
+    {
+        const std::string NML = "_MTL_GLS_AO";
+
+        std::string dot_ext = osgDB::getFileExtensionIncludingDot(filename);
+        if (Strings::ciEquals(dot_ext, ".meif"))
+        {
+            auto underscore_pos = filename.find_last_of('_');
+            if (underscore_pos != filename.npos)
+            {
+                return
+                    filename.substr(0, underscore_pos)
+                    + NML
+                    + filename.substr(underscore_pos);
+            }
+        }
+
+        return
+            osgDB::getNameLessExtension(filename)
+            + NML
+            + dot_ext;
+    };
+
+    materialLoader.setMangler(METAL_SMOOTH_AO_TEX_UNIT, getMSAMapFileName);
 
     // Go through the residency list and materialize any model assets
     // that are not already loaded (and present in _residentModelAssets);
@@ -551,6 +577,7 @@ BiomeManager::materializeNewAssets(
                     {
                         residentAsset->sideBillboardTex() = ic->second->sideBillboardTex();
                         residentAsset->sideBillboardNormalMap() = ic->second->sideBillboardNormalMap();
+                        residentAsset->sideBillboardMSAMap() = ic->second->sideBillboardMSAMap();
                     }
                     else
                     {
@@ -559,22 +586,32 @@ BiomeManager::materializeNewAssets(
                         {
                             residentAsset->sideBillboardTex() = new osg::Texture2D(image.get());
 
-                            OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
+                            OE_INFO << LC << "Loaded side BB: " << uri.base() << std::endl;
                             texcache[uri] = residentAsset;
 
-                            // normal map is the same file name but with _NML inserted before the extension
+                            // normal map:
                             URI normalMapURI(getNormalMapFileName(uri.full()));
-
-                            // silenty fail if no normal map found.
                             osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
                             if (normalMap.valid())
                             {
-                                OE_DEBUG << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
+                                OE_INFO << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
                                 residentAsset->sideBillboardNormalMap() = new osg::Texture2D(normalMap.get());
                             }
                             else
                             {
                                 OE_WARN << LC << "Failed to load NML: " << normalMapURI.base() << std::endl;
+                            }
+
+                            URI msaMapURI(getMSAMapFileName(uri.full()));
+                            osg::ref_ptr<osg::Image> msaMap = msaMapURI.getImage(readOptions);
+                            if (msaMap.valid())
+                            {
+                                OE_INFO << LC << "Loaded MSA: " << msaMapURI.base() << std::endl;
+                                residentAsset->sideBillboardMSAMap() = new osg::Texture2D(msaMap);
+                            }
+                            else
+                            {
+                                OE_WARN << LC << "Failed to load MSA: " << msaMapURI.base() << std::endl;
                             }
                         }
                         else
@@ -598,6 +635,7 @@ BiomeManager::materializeNewAssets(
                         {
                             residentAsset->topBillboardTex() = ic->second->topBillboardTex();
                             residentAsset->topBillboardNormalMap() = ic->second->topBillboardNormalMap();
+                            residentAsset->topBillboardMSAMap() = ic->second->topBillboardMSAMap();
                         }
                         else
                         {
@@ -606,22 +644,33 @@ BiomeManager::materializeNewAssets(
                             {
                                 residentAsset->topBillboardTex() = new osg::Texture2D(image.get());
 
-                                OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
+                                OE_INFO << LC << "Loaded top BB: " << uri.base() << std::endl;
                                 texcache[uri] = residentAsset;
 
-                                // normal map is the same file name but with _NML inserted before the extension
+                                // normal map:
                                 URI normalMapURI(getNormalMapFileName(uri.full()));
-
-                                // silenty fail if no normal map found.
                                 osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
                                 if (normalMap.valid())
                                 {
-                                    OE_DEBUG << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
+                                    OE_INFO << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
                                     residentAsset->topBillboardNormalMap() = new osg::Texture2D(normalMap.get());
                                 }
                                 else
                                 {
                                     OE_WARN << LC << "Failed to load NML: " << normalMapURI.base() << std::endl;
+                                }
+
+                                // PBR map:
+                                URI msaMapURI(getMSAMapFileName(uri.full()));
+                                osg::ref_ptr<osg::Image> msaMap = msaMapURI.getImage(readOptions);
+                                if (msaMap.valid())
+                                {
+                                    OE_INFO << LC << "Loaded MSA: " << msaMapURI.base() << std::endl;
+                                    residentAsset->topBillboardMSAMap() = new osg::Texture2D(msaMap);
+                                }
+                                else
+                                {
+                                    OE_WARN << LC << "Failed to load MSA: " << msaMapURI.base() << std::endl;
                                 }
                             }
                             else
@@ -631,11 +680,13 @@ BiomeManager::materializeNewAssets(
                         }
                     }
 
-                    std::vector<osg::Texture*> textures(4);
+                    std::vector<osg::Texture*> textures(6);
                     textures[0] = residentAsset->sideBillboardTex().get();
                     textures[1] = residentAsset->sideBillboardNormalMap().get();
-                    textures[2] = residentAsset->topBillboardTex().get();
-                    textures[3] = residentAsset->topBillboardNormalMap().get();
+                    textures[2] = residentAsset->sideBillboardMSAMap().get();
+                    textures[3] = residentAsset->topBillboardTex().get();
+                    textures[4] = residentAsset->topBillboardNormalMap().get();
+                    textures[5] = residentAsset->topBillboardMSAMap().get();
 
                     // if this group has an impostor creation function, call it
                     auto iter = _createImpostorFunctions.find(assetDef->group());

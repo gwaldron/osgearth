@@ -186,6 +186,9 @@ namespace osgEarth { namespace Procedural
         void setUseImpostorPBRMaps(bool value);
         bool getUseImpostorPBRMaps() const;
 
+        //void setNormalAttenuation(float value);
+        //float getNormalAttenuation() const;
+
         //! Force regeneration of all visible data
         void dirty();
 

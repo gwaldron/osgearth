@@ -87,6 +87,8 @@ namespace
         const unsigned ALBEDO_UNIT = 0;
         const unsigned NORMAL_UNIT = 1;
         const unsigned PBR_UNIT = 2;
+        const unsigned NORMAL_TECHNIQUE_SLOT = 6;
+        const unsigned FLEXOR_SLOT = 3;
 
         ChonkMaterial::Ptr reuseOrCreateMaterial(
             Texture::Ptr albedo_tex,
@@ -238,9 +240,10 @@ namespace
 
             auto verts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
             auto colors = dynamic_cast<osg::Vec4Array*>(node.getColorArray());
-            auto normals3 = dynamic_cast<osg::Vec3Array*>(node.getNormalArray());
+            auto normals = dynamic_cast<osg::Vec3Array*>(node.getNormalArray());
+            auto normal_techniques = dynamic_cast<osg::UByteArray*>(node.getVertexAttribArray(NORMAL_TECHNIQUE_SLOT));
             auto normals4 = dynamic_cast<osg::Vec4Array*>(node.getNormalArray());
-            auto flexors = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(3));
+            auto flexors = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(FLEXOR_SLOT));
 
             // support either 2- or 3-component tex coords, but only read the xy components!
             auto uv2s = dynamic_cast<osg::Vec2Array*>(node.getTexCoordArray(0));
@@ -268,22 +271,24 @@ namespace
                     v.color.set(255, 255, 255, 255);
                 }
 
-                if (normals3)
+                if (normals)
                 {
-                    int k = normals3->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                    n = osg::Matrix::transform3x3((*normals3)[k], _transformStack.top());
-                    v.normal4.set(n.x(), n.y(), n.z(), 0.0f);
-                }
-                else if (normals4)
-                {
-                    int k = normals4->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                    n.set((*normals4)[k].x(), (*normals4)[k].y(), (*normals4)[k].z());
-                    n = osg::Matrix::transform3x3(n, _transformStack.top());
-                    v.normal4.set(n.x(), n.y(), n.z(), (*normals4)[k].w());
+                    int k = normals->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                    v.normal = osg::Matrix::transform3x3((*normals)[k], _transformStack.top());
                 }
                 else
                 {
-                    v.normal4.set(0, 0, 1, 0);
+                    v.normal.set(0, 0, 1);
+                }
+
+                if (normal_techniques)
+                {
+                    int k = normal_techniques->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                    v.normal_technique = (*normal_techniques)[k];
+                }
+                else
+                {
+                    v.normal_technique = 0;
                 }
 
                 if (uv2s)
@@ -350,6 +355,11 @@ namespace std {
         }
     };
 }
+
+GLubyte Chonk::NORMAL_TECHNIQUE_DEFAULT = 0;
+GLubyte Chonk::NORMAL_TECHNIQUE_ZAXIS = 1;
+GLubyte Chonk::NORMAL_TECHNIQUE_HEMISPHERE = 2;
+
 
 
 Chonk::Ptr
@@ -867,9 +877,10 @@ ChonkDrawable::GLObjects::initialize(
     glEnableClientState_(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
     glEnableClientState_(GL_ELEMENT_ARRAY_UNIFIED_NV);
 
-    const VADef formats[8] = {
+    const VADef formats[9] = {
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, position)},
-        {4, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, normal4)},
+        {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, normal)},
+        {1, GL_UNSIGNED_BYTE, GL_FALSE, offsetof(Chonk::VertexGPU, normal_technique)},
         {4, GL_UNSIGNED_BYTE, GL_TRUE,  offsetof(Chonk::VertexGPU, color)},
         {2, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, uv)},
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, flex)},
@@ -879,13 +890,22 @@ ChonkDrawable::GLObjects::initialize(
     };
 
     // configure the format of each vertex attribute in our structure.
-    for (unsigned location = 0; location < 8; ++location)
+    for (unsigned location = 0; location < 9; ++location)
     {
         const VADef& d = formats[location];
-        if (d.type == GL_INT || d.type == GL_INT)
+        if ((d.type == GL_INT) ||
+            (d.type == GL_UNSIGNED_INT) ||
+            (d.type == GL_SHORT) ||
+            (d.type == GL_UNSIGNED_SHORT) ||
+            (d.type == GL_BYTE && d.normalize == GL_FALSE) ||
+            (d.type == GL_UNSIGNED_BYTE && d.normalize == GL_FALSE))
+        {
             gl_VertexAttribIFormat(location, d.size, d.type, d.offset);
+        }
         else
+        {
             gl_VertexAttribFormat(location, d.size, d.type, d.normalize, d.offset);
+        }
         _ext->glVertexAttribBinding(location, 0);
         _ext->glEnableVertexAttribArray(location);
     }

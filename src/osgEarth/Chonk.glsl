@@ -30,13 +30,14 @@ layout(binding = 1, std430) buffer TextureArena {
 };
 
 layout(location = 0) in vec3 position;
-layout(location = 1) in vec4 normal4; // xyz=normal, w=billboard?
-layout(location = 2) in vec4 color;
-layout(location = 3) in vec2 uv;
-layout(location = 4) in vec3 flex;
-layout(location = 5) in int albedo;
-layout(location = 6) in int normalmap;
-layout(location = 7) in int pbr;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in uint normal_technique;
+layout(location = 3) in vec4 color;
+layout(location = 4) in vec2 uv;
+layout(location = 5) in vec3 flex;
+layout(location = 6) in int albedo_index;
+layout(location = 7) in int normalmap_index;
+layout(location = 8) in int pbr_index;
 
 // stage global
 mat3 xform3;
@@ -62,11 +63,11 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
     vertex = instances[i].xform * vec4(position, 1.0);
     vp_Color = color;
     xform3 = mat3(instances[i].xform);
-    vp_Normal = xform3 * normal4.xyz;
+    vp_Normal = xform3 * normal;
     oe_tex_uv = uv;
-    oe_albedo_tex = albedo >= 0 ? textures[albedo] : 0;
     oe_alpha_cutoff = instances[i].alpha_cutoff;
     oe_fade = instances[i].visibility[chonk_lod];
+    oe_albedo_tex = albedo_index >= 0 ? textures[albedo_index] : 0;
 
 #if defined(OE_IS_SHADOW_CAMERA) || defined(OE_IS_DEPTH_CAMERA)
     oe_fade = 1.0;
@@ -80,15 +81,15 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
 
     // disable/ignore normal maps as directed:
     oe_normal_tex = 0;
-    if (normalmap >= 0 && chonk_lod <= OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS)
+    if (normalmap_index >= 0 && chonk_lod <= OE_CHONK_MAX_LOD_FOR_NORMAL_MAPS)
     {
-        oe_normal_tex = textures[normalmap];
+        oe_normal_tex = textures[normalmap_index];
     }
 
     oe_pbr_tex = 0;
-    if (pbr >= 0 && chonk_lod <= OE_CHONK_MAX_LOD_FOR_PBR_MAPS)
+    if (pbr_index >= 0 && chonk_lod <= OE_CHONK_MAX_LOD_FOR_PBR_MAPS)
     {
-        oe_pbr_tex = textures[pbr];
+        oe_pbr_tex = textures[pbr_index];
     }
 }
 
@@ -96,7 +97,10 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
 [break]
 #pragma vp_function oe_chonk_default_vertex_view, vertex_view, 0.0
 
-layout(location = 1) in vec4 normal4;
+layout(location = 2) in uint normal_technique;
+#define NT_DEFAULT 0
+#define NT_ZAXIS 1
+#define NT_HEMISPHERE 2 
 
 // stage global
 mat3 xform3; // set in model stage
@@ -105,37 +109,38 @@ uint chonk_lod; // set in model stage
 // output
 out vec3 vp_Normal;
 out vec3 oe_tangent;
-flat out float oe_billboarded_normal;
-flat out uint64_t oe_normal_tex;
 out vec3 oe_position_vec;
+flat out uint oe_normal_technique;
+flat out uint64_t oe_normal_tex;
 
 // amount to warp billboarded normals away from the eye [0..1]
 const float oe_chonk_billboarded_normal_threshold = 0.65;
 
 void oe_chonk_default_vertex_view(inout vec4 vertex)
 {
-    // process a "billboard" normal: force the normal vector
-    // to point at the camera:
-    //vp_Normal = mix(vp_Normal, vec3(0, 0, 1), normal4.w);
-    oe_billboarded_normal = normal4.w > 0.0 ? oe_chonk_billboarded_normal_threshold : 0.0;
-    if (oe_billboarded_normal > 0.0)
+    // propagate to frag shader:
+    oe_normal_technique = normal_technique;
+
+    // for the hemispheric normals we need a 2D position vector.
+    if (oe_normal_technique == NT_HEMISPHERE)
     {
         oe_position_vec = gl_NormalMatrix * oe_position_vec;
     }
 
     if (oe_normal_tex > 0)
     {
-        if (oe_billboarded_normal > 0.0)
-        {
-            oe_tangent = gl_NormalMatrix * (xform3 * vec3(1, 0, 0));
-        }
-        else
+        if (oe_normal_technique == NT_DEFAULT)
         {
             vec3 ZAXIS = gl_NormalMatrix * vec3(0, 0, 1);
             if (dot(ZAXIS, vp_Normal) > 0.95)
                 oe_tangent = gl_NormalMatrix * (xform3 * vec3(1, 0, 0));
             else
                 oe_tangent = cross(ZAXIS, vp_Normal);
+        }
+
+        else
+        {
+            oe_tangent = gl_NormalMatrix * (xform3 * vec3(1, 0, 0));
         }
     }
 }
@@ -158,26 +163,34 @@ struct OE_PBR {
 } oe_pbr;
 
 // inputs
-in float oe_fade;
+in vec3 oe_UpVectorView;
+in vec3 vp_Normal;
+in vec3 oe_tangent;
 in vec3 oe_position_vec;
 in vec2 oe_tex_uv;
-in vec3 oe_tangent;
-in vec3 vp_Normal;
+in float oe_fade;
 flat in uint64_t oe_albedo_tex;
 flat in uint64_t oe_normal_tex;
 flat in uint64_t oe_pbr_tex;
 flat in float oe_alpha_cutoff;
-flat in float oe_billboarded_normal;
+
+flat in uint oe_normal_technique;
+#define NT_DEFAULT 0
+#define NT_ZAXIS 1
+#define NT_HEMISPHERE 2 
+
+uniform float oe_normal_attenuation = 0.65;
 
 void oe_chonk_default_fragment(inout vec4 color)
 {
-    // billboarded geometry needs to invert the texture coordinates
-    // for backfacing geometry.
-    if (oe_billboarded_normal > 0.0 && !gl_FrontFacing)
+    // When simulating normals, we invert the texture coordinates
+    // for backfacing geometry
+    if (oe_normal_technique != NT_DEFAULT && !gl_FrontFacing)
     {
         oe_tex_uv.s = 1.0 - oe_tex_uv.s;
     }
 
+    // Apply the base color:
     if (oe_albedo_tex > 0)
     {
         color *= texture(sampler2D(oe_albedo_tex), oe_tex_uv);
@@ -240,20 +253,16 @@ void oe_chonk_default_fragment(inout vec4 color)
     // for billboarded normals, adjust the normal so its coverage
     // is a hemisphere facing the viewer. Should we recalculate the TBN here?
     // Probably, but let's not if it already looks good enough.
-    if (oe_billboarded_normal > 0.0)
+    if (oe_normal_technique == NT_HEMISPHERE)
     {
         vec3 v3d = oe_position_vec; // do not normalize!
         vec3 v2d = vec3(v3d.x, v3d.y, 0.0);
         float size2d = length(v2d) * 1.2021; // adjust for radius, bbox diff
         //const float threshold = 0.5;
-        size2d = mix(0.0, oe_billboarded_normal, clamp(size2d, 0.0, 1.0));
+        size2d = mix(0.0, oe_normal_attenuation, clamp(size2d, 0.0, 1.0));
         vp_Normal = mix(vec3(0, 0, 1), normalize(v2d), size2d);
         //oe_tangent = cross(vec3(0, 1, 0), vp_Normal);
         flip_backfacing_normal = false;
-
-        // This works nicely for normal maps that include the curvature.
-        //vp_Normal = vec3(0, 0, 1);
-        //oe_tangent = vec3(1, 0, 0);
     }
 
     // If we have a normalmap:
@@ -284,7 +293,13 @@ void oe_chonk_default_fragment(inout vec4 color)
         vp_Normal = normalize(tbn * n.xyz);
     }
 
-    // PBR maps:
+    if (oe_normal_technique == NT_ZAXIS)
+    {
+        vp_Normal = normalize(mix(vp_Normal, gl_NormalMatrix*vec3(0, 0, 1), oe_normal_attenuation));
+        //vp_Normal = mix(vp_Normal, oe_UpVectorView, oe_normal_attenuation);
+    }
+
+    // apply PBR maps:
     if (oe_pbr_tex > 0)
     {
         vec4 texel = texture(sampler2D(oe_pbr_tex), oe_tex_uv);

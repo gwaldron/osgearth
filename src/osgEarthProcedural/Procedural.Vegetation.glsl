@@ -17,7 +17,7 @@ layout(binding = 0, std430) buffer Instances {
     Instance instances[];
 };
 
-layout(location = 4) in vec3 flex;
+layout(location = 5) in vec3 flex;
 
 // outputs
 flat out uint oe_lod;

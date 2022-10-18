@@ -822,7 +822,7 @@ VegetationLayer::configureImpostor(
 
         // one part if we only have side textures;
         // two parts if we also have top textures
-        int parts = textures.size() > 2 ? 2 : 1;
+        int parts = textures.size() > 3 ? 2 : 1;
 
         float xmin = std::min(b.xMin(), b.yMin());
         float ymin = xmin;
@@ -864,11 +864,6 @@ VegetationLayer::configureImpostor(
                 };
                 for (auto& n : normals) n.normalize();
 
-                osg::Vec4f bb_normals[8];
-                for (int i = 0; i < 8; ++i) {
-                    bb_normals[i].set(normals[i].x(), normals[i].y(), normals[i].z(), 1.0f);
-                }
-
                 const osg::Vec2f uvs[8] = {
                     {0,0},{1,0},{1,1},{0,1},
                     {0,0},{1,0},{1,1},{0,1}
@@ -881,14 +876,19 @@ VegetationLayer::configureImpostor(
 
                 geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
                 geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, verts));
+                geom->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, normals));
                 geom->setColorArray(new osg::Vec4Array(osg::Array::BIND_OVERALL, 1, colors));
                 geom->setTexCoordArray(0, new osg::Vec2Array(osg::Array::BIND_PER_VERTEX, 8, uvs));
                 geom->setTexCoordArray(3, new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, flexors));
 
+                auto normal_techniques = new osg::UByteArray(1);
+                normal_techniques->setBinding(osg::Array::BIND_OVERALL);
+                geom->setVertexAttribArray(6, normal_techniques);
+
                 if (isUndergrowth)
-                    geom->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, normals));
+                    (*normal_techniques)[0] = Chonk::NORMAL_TECHNIQUE_ZAXIS;
                 else
-                    geom->setNormalArray(new osg::Vec4Array(osg::Array::BIND_PER_VERTEX, 8, bb_normals));
+                    (*normal_techniques)[0] = Chonk::NORMAL_TECHNIQUE_HEMISPHERE;
 
                 if (textures.size() > 0)
                     ss->setTextureAttribute(0, textures[0], 1); // side albedo
@@ -926,25 +926,24 @@ VegetationLayer::configureImpostor(
                 };
                 for (auto& n : normals) n.normalize();
 
-                osg::Vec4f bb_normals[4];
-                for (int i = 0; i < 4; ++i) {
-                    bb_normals[i].set(normals[i].x(), normals[i].y(), normals[i].z(), 1.0f);
-                }
-
                 const osg::Vec2f uvs[4] = {
                     {0,0}, {1,0}, {1,1}, {0,1}
                 };
 
                 geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 6, &indices[0]));
                 geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, verts));
+                geom->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, normals));
                 geom->setColorArray(new osg::Vec4Array(osg::Array::BIND_OVERALL, 1, colors));
                 geom->setTexCoordArray(0, new osg::Vec2Array(osg::Array::BIND_PER_VERTEX, 4, uvs));
                 geom->setTexCoordArray(3, new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4)); // flexors
 
+                auto normal_techniques = new osg::UByteArray(1);
+                normal_techniques->setBinding(osg::Array::BIND_OVERALL);
+                geom->setVertexAttribArray(6, normal_techniques);
                 if (isUndergrowth)
-                    geom->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, normals));
+                    (*normal_techniques)[0] = Chonk::NORMAL_TECHNIQUE_ZAXIS;
                 else
-                    geom->setNormalArray(new osg::Vec4Array(osg::Array::BIND_PER_VERTEX, 4, bb_normals));
+                    (*normal_techniques)[0] = Chonk::NORMAL_TECHNIQUE_HEMISPHERE;
 
                 if (textures.size() > 3)
                     ss->setTextureAttribute(0, textures[3], 1); // top albedo

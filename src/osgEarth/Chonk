@@ -91,7 +91,8 @@ namespace osgEarth
         struct VertexGPU
         {
             osg::Vec3f position;
-            osg::Vec4f normal4; // W>0 means to billboard the normals
+            osg::Vec3f normal;
+            char normal_technique;
             osg::Vec4ub color;
             osg::Vec2f uv;
             osg::Vec3f flex;
@@ -103,10 +104,15 @@ namespace osgEarth
             GLint pbr_index;
 
             VertexGPU() : 
+                normal_technique(0),
                 albedo_index(-1),
                 normalmap_index(-1),
                 pbr_index(-1) {}
         };
+
+        static GLubyte NORMAL_TECHNIQUE_DEFAULT;
+        static GLubyte NORMAL_TECHNIQUE_ZAXIS;
+        static GLubyte NORMAL_TECHNIQUE_HEMISPHERE;
 
         //! Geometry variant for a given pixel size range
         struct LOD
@@ -124,7 +130,7 @@ namespace osgEarth
         //! Creates a new empty chonk.
         static Ptr create();
 
-        std::vector<ChonkMaterial::Ptr> _materials; // todo: upgrade to material index
+        std::vector<ChonkMaterial::Ptr> _materials;
         std::vector<VertexGPU> _vbo_store;
         std::vector<element_t> _ebo_store;
         std::vector<LOD> _lods;

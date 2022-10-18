@@ -376,17 +376,17 @@ NNRA_Loader::readImageFromSourceData(
         auto getNormalMapFileName = MaterialUtils::getDefaultNormalMapNameMangler();
         auto getPBRFileName = MaterialUtils::getDefaultPBRMapNameMangler();
 
-        URI normalMapURI(getNormalMapFileName(basename));
-        URI pbrURI(getPBRFileName(basename));
-
+        URI normalMapURI(getNormalMapFileName(color_filename));
         normals = normalMapURI.getImage(options);
         if (!normals.valid())
             OE_WARN << LC << "Failed to load \"" << normalMapURI.full() << "\"" << std::endl;
 
+        URI pbrURI(getPBRFileName(color_filename));
         roughness = pbrURI.getImage(options);
-        if (!normals.valid())
+        if (!roughness.valid())
             OE_WARN << LC << "Failed to load \"" << pbrURI.full() << "\"" << std::endl;
 
+        // they share an image
         ao = roughness;
 
         if (normals.valid() || roughness.valid() || ao.valid())

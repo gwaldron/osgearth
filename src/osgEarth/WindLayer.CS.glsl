@@ -63,19 +63,6 @@ void main()
 
     float totalSpeed = length(totalDirection);
 
-    // add in ambient motion to modify the wind slightly
-    float ambient_seed = 
-        gl_WorkGroupID.x + gl_WorkGroupID.y + gl_WorkGroupID.z + 
-        osg_FrameTime * totalSpeed * oe_wind_sway;
-
-    vec3 ambient = vec3(
-        (2.0 * sin(1.0 * ambient_seed)) + 1.0,
-        (1.0 * sin(2.0 * ambient_seed)) + 0.5,
-        1.0);
-
-    totalDirection += ambient;
-
-
     vec4 pixel;
     // RGB holds normalized wind direction
     pixel.rgb = 0.5*(normalize(totalDirection)+1.0);

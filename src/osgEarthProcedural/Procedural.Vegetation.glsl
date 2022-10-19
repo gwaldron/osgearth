@@ -36,8 +36,6 @@ uniform sampler2D oe_veg_noise;
 #endif
 tweakable float oe_wind_power = 1.0;
 
-#define remap(X, LO, HI) (LO + X * (HI - LO))
-
 void oe_apply_wind(inout vec4 vertex, in int index)
 {
     // scale the vert's flexibility by the model Z scale factor
@@ -56,12 +54,9 @@ void oe_apply_wind(inout vec4 vertex, in int index)
         vec3 wind_vec = normalize(wind.rgb * 2.0 - 1.0);
         float speed = wind.a * oe_wind_power;
 
-        // Add the flutter experienced by vegetation that snaps in the wind.
-        // Sample the noise texture based on the speed, and use that
-        // to permute the speed.
-        float time = osg_FrameTime * speed * 0.1;
-        vec4 noise = textureLod(oe_veg_noise, tile_uv + time, 0);
-        speed *= mix(0.75, 1.4, noise[0]);
+        const float rate = 0.05 * speed;
+        vec4 noise_moving = textureLod(oe_veg_noise, tile_uv + osg_FrameTime * rate, 0);
+        speed *= noise_moving[3];
 
         // final wind force vector:
         vec3 wind_force = wind_vec * speed;

@@ -242,7 +242,6 @@ namespace
             auto colors = dynamic_cast<osg::Vec4Array*>(node.getColorArray());
             auto normals = dynamic_cast<osg::Vec3Array*>(node.getNormalArray());
             auto normal_techniques = dynamic_cast<osg::UByteArray*>(node.getVertexAttribArray(NORMAL_TECHNIQUE_SLOT));
-            auto normals4 = dynamic_cast<osg::Vec4Array*>(node.getNormalArray());
             auto flexors = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(FLEXOR_SLOT));
 
             // support either 2- or 3-component tex coords, but only read the xy components!

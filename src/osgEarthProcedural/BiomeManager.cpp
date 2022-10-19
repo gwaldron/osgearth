@@ -870,12 +870,15 @@ BiomeManager::addFlexors(
             osg::Vec3f base(bbox.center().x(), bbox.center().y(), bbox.zMin());
             float xy_radius = std::max(bbox.xMax() - bbox.xMin(), bbox.yMax() - bbox.yMin());
 
+            osg::Matrix w2l;
+            w2l.invert(l2w);
+
             for (auto& local_vert : *verts)
             {
                 auto vert = local_vert * l2w;
                 osg::Vec3f anchor(0.0f, 0.0f, vert.z());
                 float height_ratio = harden((vert.z() - bbox.zMin()) / (bbox.zMax() - bbox.zMin()));
-                auto lateral_vec = (vert - osg::Vec3f(0, 0, vert.z()));
+                auto lateral_vec = (vert - anchor);
                 float lateral_ratio = harden(lateral_vec.length() / xy_radius);
                 auto flex =
                     normalize(lateral_vec) *
@@ -883,6 +886,7 @@ BiomeManager::addFlexors(
                     (height_ratio * 1.5f) *
                     (1.0 - stiffness);
 
+                flex = osg::Matrix::transform3x3(flex, w2l);
                 flexors->push_back(flex);
             }
         };

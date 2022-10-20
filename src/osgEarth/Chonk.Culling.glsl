@@ -4,13 +4,6 @@
 #pragma import_defines(OE_GPUCULL_DEBUG)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 
-#pragma import_defines(OE_TWEAKABLE)
-#ifdef OE_TWEAKABLE
-#define tweakable uniform
-#else
-#define tweakable const
-#endif
-
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 struct DrawElementsIndirectCommand
@@ -88,6 +81,7 @@ uniform vec3 oe_Camera;
 uniform float oe_sse;
 uniform vec4 oe_lod_scale;
 uniform float osg_FrameTime;
+uniform float oe_chonk_lod_transition_factor = 0.1;
 
 #if OE_GPUCULL_DEBUG
 //#ifdef OE_GPUCULL_DEBUG
@@ -98,8 +92,6 @@ uniform float osg_FrameTime;
 #define REASON_FRUSTUM 1.5
 #define REASON_SSE 2.5
 #define REASON_NEARCLIP 3.5
-
-tweakable float oe_chonk_lod_transition_factor = 0.1;
 
 void cull()
 {
@@ -113,12 +105,6 @@ void cull()
     uint v = input_instances[i].first_lod_cmd_index + lod;
     if (lod >= chonks[v].num_lods)
         return;
-
-//#ifdef OE_IS_SHADOW_CAMERA
-//    // only the lowest LOD for shadow-casting.
-//    if (lod < chonks[v].num_lods - 1)
-//        return;
-//#endif
 
     // intialize:
     float fade = 1.0;

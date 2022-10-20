@@ -809,44 +809,24 @@ BiomeManager::addFlexors(
             auto verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
             OE_SOFT_ASSERT_AND_RETURN(verts, void());
 
-            // make the proper normal array on demand:
-            osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>(geom.getNormalArray());
-
-            if (!normals)
-            {
-                OE_WARN << LC << "Model has no normals!" << std::endl;
-                return;
-            }
-
             // make a flexor array on demand
             osg::Vec3Array* flexors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, verts->size());
             geom.setTexCoordArray(3, flexors);
 
             const osg::Vec3 zaxis(0, 0, 1);
+            osg::Matrix model2local;
+            model2local.invert(local2model);
 
             for (int i = 0; i < verts->size(); ++i)
             {
                 osg::Vec3 vert_model = (*verts)[i] * local2model;
-                osg::Vec3 normal_model = osg::Matrix::transform3x3((*normals)[i], local2model);
-
-                // convert to an "upward" vector for lighting/flexing:
-                osg::Vec3 tangent = normal_model ^ zaxis;
-                osg::Vec3 flexor = normal_model ^ tangent;
-
-                if (flexor.z() < 0.0f)
-                    flexor = -flexor;
 
                 // back to local space
-                if (!local2model.isIdentity())
-                {
-                    osg::Matrix model2local;
-                    model2local.invert(local2model);
-                    flexor = osg::Matrix::transform3x3(model2local, flexor);
-                }
-
+                osg::Vec3 flexor = osg::Matrix::transform3x3(zaxis, model2local);
                 (*flexors)[i] = flexor * accel(vert_model.z() / bbox.zMax());
             }
 
+            // apply the "ZAXIS" shading technique
             auto tech = new osg::UByteArray(1, { Chonk::NORMAL_TECHNIQUE_ZAXIS });
             tech->setBinding(osg::Array::BIND_OVERALL);
             geom.setVertexAttribArray(6, tech);

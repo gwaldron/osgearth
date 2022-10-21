@@ -1,6 +1,7 @@
 #pragma vp_function oe_vegetation_vs_view, vertex_view
 #pragma import_defines(OE_WIND_TEX)
 #pragma import_defines(OE_WIND_TEX_MATRIX)
+#pragma import_defines(OE_NOISE_TEX_INDEX)
 
 struct Instance
 {
@@ -16,6 +17,10 @@ struct Instance
 layout(binding = 0, std430) buffer Instances {
     Instance instances[];
 };
+layout(binding = 1, std430) buffer TextureArena {
+    uint64_t textures[];
+};
+#define NOISE_TEX sampler2D(textures[OE_NOISE_TEX_INDEX])
 
 layout(location = 5) in vec3 flex;
 
@@ -26,7 +31,6 @@ flat out uint oe_lod;
 uniform sampler3D OE_WIND_TEX;
 uniform mat4 OE_WIND_TEX_MATRIX;
 uniform float osg_FrameTime;
-uniform sampler2D oe_veg_noise;
 
 #pragma import_defines(OE_TWEAKABLE)
 #ifdef OE_TWEAKABLE
@@ -55,7 +59,7 @@ void oe_apply_wind(inout vec4 vertex, in int index)
         float speed = wind.a * oe_wind_power;
 
         const float rate = 0.05 * speed;
-        vec4 noise_moving = textureLod(oe_veg_noise, tile_uv + osg_FrameTime * rate, 0);
+        vec4 noise_moving = textureLod(NOISE_TEX, tile_uv + osg_FrameTime * rate, 0);
         speed *= noise_moving[3];
 
         // final wind force vector:

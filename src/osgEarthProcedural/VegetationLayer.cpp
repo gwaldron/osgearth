@@ -56,9 +56,6 @@
 
 #define OE_DEVEL OE_DEBUG
 
-//#define ATLAS_SAMPLER "oe_veg_atlas"
-#define NOISE_SAMPLER "oe_veg_noiseTex"
-
 #ifndef GL_MULTISAMPLE
 #define GL_MULTISAMPLE 0x809D
 #endif
@@ -256,6 +253,10 @@ VegetationLayer::init()
 
     _requestMultisampling = false;
     _multisamplingActivated = false;
+
+    // make a 4-channel noise texture to use
+    NoiseTextureFactory noise;
+    _noiseTex = Texture::create(noise.create(256u, 4u));
 }
 
 VegetationLayer::~VegetationLayer()
@@ -293,10 +294,6 @@ VegetationLayer::openImplementation()
     setMaxVisibleRange(max_range);
 
     _lastVisit.setFrameNumber(~0);
-
-    // make a 4-channel noise texture to use
-    NoiseTextureFactory noise;
-    _noiseTex = noise.create(256u, 4u);
 
     return PatchLayer::openImplementation();
 }
@@ -665,6 +662,18 @@ VegetationLayer::removedFromMap(const Map* map)
 void
 VegetationLayer::prepareForRendering(TerrainEngine* engine)
 {
+    if (!getBiomeLayer())
+    {
+        setStatus(Status::ResourceUnavailable, "Biome layer not available");
+        return;
+    }
+
+    if (!getLifeMapLayer())
+    {
+        setStatus(Status::ResourceUnavailable, "LifeMap layer not available");
+        return;
+    }
+
     PatchLayer::prepareForRendering(engine);
 
     _requestMultisampling = false;
@@ -673,17 +682,6 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
     TerrainResources* res = engine->getResources();
     if (res)
     {
-        // Get a binding for the noise texture. This is only used for wind, btw.
-        // Perhaps make this mapnode-level global or stick it in the texture arena.
-        if (_noiseBinding.valid() == false)
-        {
-            if (res->reserveTextureImageUnitForLayer(_noiseBinding, this, "VegLayerNV noise sampler") == false)
-            {
-                setStatus(Status::ResourceUnavailable, "No texture unit available for noise sampler");
-                return;
-            }
-        }
-
         // Compute LOD for each asset group if necessary.
         for(auto iter : options().groups())
         {
@@ -709,7 +707,47 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
         }
     }
 
-    buildStateSets();
+    // Create impostor geometries for each group
+    configureImpostor(GROUP_TREES);
+    configureImpostor(GROUP_BUSHES);
+    configureImpostor(GROUP_UNDERGROWTH);
+
+    // NEXT assemble the asset group statesets.
+    osg::StateSet* ss = getOrCreateStateSet();
+    ss->setName(typeid(*this).name());
+
+    // Backface culling should be off.
+    ss->setMode(GL_CULL_FACE, 0x0 | osg::StateAttribute::PROTECTED);
+
+    // Install the texture arena:
+    TextureArena* textures = getBiomeLayer()->getBiomeManager().getTextures();
+    ss->setAttribute(textures);
+
+    // Custom shaders:
+    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    ProceduralShaders shaders;
+    shaders.load(vp, shaders.Vegetation);
+
+    // noise sampler
+    int index = textures->add(_noiseTex);
+    ss->setDefine("OE_NOISE_TEX_INDEX", std::to_string(index));
+
+    // If multisampling is on, use alpha to coverage.
+    if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
+    {
+        activateMultisampling();
+    }
+
+    // activate compressed normal maps
+    ss->setDefine("OE_COMPRESSED_NORMAL");
+
+    // apply the various uniform-based options
+    setNearLODScale(options().nearLODScale().get());
+    setFarLODScale(options().farLODScale().get());
+    setImpostorLowAngle(options().impostorLowAngle().get());
+    setImpostorHighAngle(options().impostorHighAngle().get());
+    setLODTransitionPadding(options().lodTransitionPadding().get());
+    setUseImpostorNormalMaps(options().useImpostorNormalMaps().get());
 }
 
 namespace
@@ -730,62 +768,6 @@ namespace
             stateset->removeDefine(matrix);
         }
     }
-}
-
-void
-VegetationLayer::buildStateSets()
-{
-    if (!getBiomeLayer()) {
-        OE_DEBUG << LC << "buildStateSets deferred.. biome layer not available" << std::endl;
-        return;
-    }
-    if (!getLifeMapLayer()) {
-        OE_DEBUG << LC << "buildStateSets deferred.. lifemap layer not available" << std::endl;
-        return;
-    }
-
-    // Create impostor geometries for each group
-    configureImpostor(GROUP_TREES);
-    configureImpostor(GROUP_BUSHES);
-    configureImpostor(GROUP_UNDERGROWTH);
-
-    // NEXT assemble the asset group statesets.
-    osg::StateSet* ss = getOrCreateStateSet();
-    ss->setName(typeid(*this).name());
-
-    // Backface culling should be off for impostors.
-    ss->setMode(GL_CULL_FACE, 0x0 | osg::StateAttribute::PROTECTED);
-
-    // Install the texture arena:
-    TextureArena* textures = getBiomeLayer()->getBiomeManager().getTextures();
-    textures->setBindingPoint(1);
-    ss->setAttribute(textures);
-
-    // Custom shaders:
-    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    ProceduralShaders shaders;
-    shaders.load(vp, shaders.Vegetation);
-
-    // bind the noise sampler.
-    ss->setTextureAttribute(_noiseBinding.unit(), _noiseTex.get(), 1);
-    ss->addUniform(new osg::Uniform("oe_veg_noise", _noiseBinding.unit()));
-
-    // If multisampling is on, use alpha to coverage.
-    if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
-    {
-        activateMultisampling();
-    }
-
-    // activate compressed normal maps
-    ss->setDefine("OE_COMPRESSED_NORMAL");
-
-    // apply the various uniform-based options
-    setNearLODScale(options().nearLODScale().get());
-    setFarLODScale(options().farLODScale().get());
-    setImpostorLowAngle(options().impostorLowAngle().get());
-    setImpostorHighAngle(options().impostorHighAngle().get());
-    setLODTransitionPadding(options().lodTransitionPadding().get());
-    setUseImpostorNormalMaps(options().useImpostorNormalMaps().get());
 }
 
 void
@@ -1233,7 +1215,7 @@ VegetationLayer::getAssetPlacements(
     const Biome* default_biome = groupAssets.begin()->first;
 
     osg::Vec4f noise;
-    ImageUtils::PixelReader readNoise(_noiseTex->getImage(0));
+    ImageUtils::PixelReader readNoise(_noiseTex->osgTexture()->getImage(0));
     readNoise.setSampleAsRepeatingTexture(true);
 
     using Index = RTree<int, double, 2>;

@@ -268,7 +268,6 @@ namespace osgEarth { namespace Procedural
         LayerReference<BiomeLayer> _biomeLayer;
         osg::observer_ptr<const Map> _map;
 
-        void buildStateSets();
         void reset();
 
         // call from UPDATE peridoically to see if new biomes
@@ -361,9 +360,8 @@ namespace osgEarth { namespace Procedural
         // So we can timeout the layer and release resources
         mutable osg::FrameStamp _lastVisit;
 
-        // noise texture. Put in the arena? Or global?
-        osg::ref_ptr<osg::Texture> _noiseTex;
-        TextureImageUnitReservation _noiseBinding;
+        // noise texture for wind
+        Texture::Ptr _noiseTex;
 
         using AssetsByBiome = std::unordered_map<
             const Biome*,

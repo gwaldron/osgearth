@@ -116,7 +116,7 @@ MouseCoordsLabelCallback::reset( osg::View* view, MapNode* mapNode )
     if ( _label.valid() )
     {
         _label->setText( "" );
-        _label->setText(Stringify() << "No data  |  " << mapNode->getMapSRS()->getName() );
+        _label->setText("No data  |  " + mapNode->getMapSRS()->getName() );
     }
 }
 

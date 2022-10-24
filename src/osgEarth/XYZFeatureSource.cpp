@@ -343,16 +343,16 @@ XYZFeatureSource::createURL(const Query& query)
         std::string location = _template;
 
         // support OpenLayers template style:
-        replaceIn(location, "${x}", Stringify() << tileX);
-        replaceIn(location, "${y}", Stringify() << tileY);
-        replaceIn(location, "${-y}", Stringify() << inverted_tileY);
-        replaceIn(location, "${z}", Stringify() << level);
+        replaceIn(location, "${x}", std::to_string(tileX));
+        replaceIn(location, "${y}", std::to_string(tileY));
+        replaceIn(location, "${-y}", std::to_string(inverted_tileY));
+        replaceIn(location, "${z}", std::to_string(level));
 
         // failing that, legacy osgearth style:
-        replaceIn(location, "{x}", Stringify() << tileX);
-        replaceIn(location, "{y}", Stringify() << tileY);
-        replaceIn(location, "{-y}", Stringify() << inverted_tileY);
-        replaceIn(location, "{z}", Stringify() << level);
+        replaceIn(location, "{x}", std::to_string(tileX));
+        replaceIn(location, "{y}", std::to_string(tileY));
+        replaceIn(location, "{-y}", std::to_string(inverted_tileY));
+        replaceIn(location, "{z}", std::to_string(level));
 
         std::string cacheKey;
 
@@ -360,7 +360,7 @@ XYZFeatureSource::createURL(const Query& query)
         {
             cacheKey = location;
             unsigned index = (++_rotate_iter) % _rotateChoices.size();
-            replaceIn(location, _rotateString, Stringify() << _rotateChoices[index]);
+            replaceIn(location, _rotateString, std::to_string(_rotateChoices[index]));
         }
 
 

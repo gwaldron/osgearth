@@ -126,7 +126,7 @@ TileSourceElevationLayer::openImplementation()
         {
             std::string s = getReadOptions()->getOptionString();
             if ( !s.empty() )
-                s = Stringify() << osgOptions.get() << " " << s;
+                s = osgOptions.get() + " " + s;
             else
                 s = osgOptions.get();
             getMutableReadOptions()->setOptionString( s );

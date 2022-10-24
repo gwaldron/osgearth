@@ -82,7 +82,7 @@ ThreeDTilesLayer::openImplementation()
     ReadResult rr = _options->url()->readString(readOptions.get());
     if (rr.failed())
     {
-        return Status(Status::ResourceUnavailable, Stringify() << "Error loading tileset: " << rr.errorDetail());
+        return Status(Status::ResourceUnavailable, "Error loading tileset: " + rr.errorDetail());
     }
 
     Tileset* tileset = Tileset::create(rr.getString(), _options->url()->full());

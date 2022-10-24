@@ -281,7 +281,7 @@ TritonHeightMap::setup(CameraLocal& local, const std::string& name)
     local._frameNum = 0u;
 
     local._tex = new osg::Texture2D();
-    local._tex->setName(Stringify() << "Triton HM (" << name << ")");
+    local._tex->setName("Triton HM (" + name + ")");
     local._tex->setTextureSize(_texSize, _texSize);
     local._tex->setInternalFormat( _internalFormat );
     local._tex->setSourceFormat( _sourceFormat );

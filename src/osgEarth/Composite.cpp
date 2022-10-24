@@ -234,7 +234,7 @@ CompositeImageLayer::openImplementation()
                 {
                     return Status(
                         Status::ResourceUnavailable,
-                        Stringify() << "Cannot establish profile for layer " << layer->getName());
+                        "Cannot establish profile for layer " + layer->getName());
                 }
                 else if (profile->getSRS()->getVerticalDatum() != NULL)
                 {
@@ -664,7 +664,7 @@ CompositeElevationLayer::openImplementation()
                 if (!profile.valid())
                 {
                     return Status(Status::ResourceUnavailable, 
-                        Stringify()<<"Cannot establish profile for layer " << layer->getName());
+                        "Cannot establish profile for layer " + layer->getName());
                 }
                 else if (profile->getSRS()->getVerticalDatum() != NULL)
                 {
@@ -944,7 +944,7 @@ CompositeLandCoverLayer::openImplementation()
                 {
                     return Status(
                         Status::ResourceUnavailable, 
-                        Stringify()<<"Cannot establish profile for layer " << layer->getName());
+                        "Cannot establish profile for layer " + layer->getName());
                 }
                 else if (profile->getSRS()->getVerticalDatum() != NULL)
                 {

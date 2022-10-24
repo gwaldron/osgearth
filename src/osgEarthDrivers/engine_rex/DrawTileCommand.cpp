@@ -194,9 +194,9 @@ DrawTileCommand::debug(
 
                     osgDB::writeImageFile(
                         *c.get(),
-                        Stringify() << "out/" << samplerState._name
-                        << "." << ri.getState()->getFrameStamp()->getFrameNumber()
-                        << ".png");
+                        "out/" + samplerState._name +
+                        "." + std::to_string(ri.getState()->getFrameStamp()->getFrameNumber()) +
+                        ".png");
                 }
 #endif
             }

@@ -41,8 +41,8 @@ namespace
 std::string
 Status::toString() const
 {
-    return Stringify()
-        << ((int)_code < 6 ? m[(int)_code] : "Bad error code")
-        << " : "
-        << message();
+    return
+        ((int)_code < 6 ? m[(int)_code] : "Bad error code") +
+        " : " +
+        message();
 }

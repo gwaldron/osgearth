@@ -639,7 +639,7 @@ CascadeDrapingDecorator::CameraLocal::initialize(osg::Camera* camera, CascadeDra
     // bind the projected texture
     _terrainSS->setTextureAttributeAndModes(decorator._unit, tex, 1);
     _terrainSS->getOrCreateUniform("oe_Draping_tex", osg::Uniform::SAMPLER_2D_ARRAY)->set((int)decorator._unit);
-    _terrainSS->setDefine("OE_DRAPING_MAX_CASCADES", Stringify() << decorator._maxCascades);
+    _terrainSS->setDefine("OE_DRAPING_MAX_CASCADES", std::to_string(decorator._maxCascades));
     
     // install the shader program to project a texture on the terrain
     VirtualProgram* drapingShader = VirtualProgram::getOrCreate(_terrainSS.get());

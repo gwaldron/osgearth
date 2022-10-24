@@ -887,7 +887,8 @@ TMS::Driver::open(const URI& uri,
 
         if (!_tileMap.valid())
         {
-            return Status::Error( Status::ResourceUnavailable, Stringify() << "Failed to read configuration from " << uri.full() );
+            return Status::Error( Status::ResourceUnavailable,
+                "Failed to read configuration from " + uri.full() );
         }
 
         OE_DEBUG << LC
@@ -905,7 +906,7 @@ TMS::Driver::open(const URI& uri,
     // Make sure we've established a profile by this point:
     if ( !profile.valid() )
     {
-        return Status::Error( Stringify() << "Failed to establish a profile for " << uri.full() );
+        return Status::Error( "Failed to establish a profile for " + uri.full() );
     }
 
     // resolve the writer

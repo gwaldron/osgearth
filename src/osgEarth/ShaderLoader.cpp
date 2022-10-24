@@ -397,9 +397,9 @@ ShaderLoader::load(
         // load the source of the included file, and append a newline so we
         // don't break the MULTILINE macro if the last line of the include
         // file is a comment.
-        std::string included_source = Stringify()
-            << load_raw_source(fileToInclude, package, dbOptions)
-            << "\n";
+        std::string included_source =
+            load_raw_source(fileToInclude, package, dbOptions) + 
+            "\n";
 
         Strings::replaceIn(output, statement, included_source);
     }    
@@ -438,9 +438,9 @@ ShaderLoader::load(
             d != package._defines.end() &&
             d->second == true;
 
-        std::string newStatement = Stringify()
-            << (defineIt ? "#define " : "#undef ")
-            << varName;
+        std::string newStatement =
+            (defineIt ? "#define " : "#undef ") +
+            varName;
 
         Strings::replaceIn(output, statement, newStatement);
     }
@@ -554,7 +554,7 @@ ShaderLoader::load(
                     insertStageDefine(new_source, types[i]);
                     finalize(new_source);
                     osg::Shader* shader = new osg::Shader(types[i], new_source);
-                    std::string name = Stringify() << filename + "_" + shader->getTypename();
+                    std::string name = filename + "_" + shader->getTypename();
                     shader->setName( name );
                     vp->setShader( name, shader );
                 }

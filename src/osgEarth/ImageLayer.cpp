@@ -230,10 +230,10 @@ ImageLayer::openImplementation()
         _emptyImage = ImageUtils::createEmptyImage();
 
     if (!options().shareTexUniformName().isSet())
-        options().shareTexUniformName().init( Stringify() << "layer_" << getUID() << "_tex" );
+        options().shareTexUniformName().setDefault("layer_" + std::to_string(getUID()) + "_tex" );
 
     if (!options().shareTexMatUniformName().isSet() )
-        options().shareTexMatUniformName().init(Stringify() << options().shareTexUniformName().get() << "_matrix");
+        options().shareTexMatUniformName().setDefault(options().shareTexUniformName().get() + "_matrix");
 
     return Status::NoError;
 }
@@ -865,7 +865,7 @@ FutureTexture2D::dispatch() const
     TileKey key(_key);
 
     Job job(JobArena::get(ARENA_ASYNC_LAYER));
-    job.setName(Stringify() << key.str() << " " << _layer->getName());
+    job.setName(key.str() + " " + _layer->getName());
 
     // prioritize higher LOD tiles.
     job.setPriority(key.getLOD());

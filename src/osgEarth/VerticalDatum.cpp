@@ -231,7 +231,7 @@ VerticalDatumFactory::create( const std::string& init )
 {
     osg::ref_ptr<VerticalDatum> datum;
 
-    std::string driverExt = Stringify() << ".osgearth_vdatum_" << init;
+    std::string driverExt = ".osgearth_vdatum_" + init;
     osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt );
     datum = dynamic_cast<VerticalDatum*>( object.release() );
     if ( !datum )

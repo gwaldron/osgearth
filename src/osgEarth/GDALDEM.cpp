@@ -187,7 +187,7 @@ GDALDEMLayer::addedToMap(const Map* map)
     ElevationLayer* layer = options().elevationLayer().getLayer();
     if (!layer)
     {
-        setStatus(Status::Error(Stringify() << "Failed to get elevaton layer"));
+        setStatus(Status::Error("Failed to get elevaton layer"));
         return;
     }
 
@@ -433,14 +433,14 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
         if (options().azimuth().isSet())
         {
             papsz = CSLAddString(papsz, "-az");
-            std::string arg = Stringify() << *options().azimuth();
+            std::string arg = std::to_string(*options().azimuth());
             papsz = CSLAddString(papsz, arg.c_str());
         }
 
         if (options().lightAltitude().isSet())
         {
             papsz = CSLAddString(papsz, "-alt");
-            std::string arg = Stringify() << *options().lightAltitude();
+            std::string arg = std::to_string(*options().lightAltitude());
             papsz = CSLAddString(papsz, arg.c_str());
         }
 

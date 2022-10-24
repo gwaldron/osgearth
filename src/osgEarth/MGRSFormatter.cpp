@@ -226,7 +226,7 @@ MGRSFormatter::transform( const GeoPoint& input, MGRSCoord& out ) const
         y /= (unsigned)_precision;
     }
 
-    out.gzd  = Stringify() << (zone+1) << gzd;
+    out.gzd  = std::to_string(zone+1) + gzd;
     out.sqid = sqid;
     out.x    = x;
     out.y    = y;

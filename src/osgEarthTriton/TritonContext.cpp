@@ -117,8 +117,8 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
             {
                 const Ellipsoid& ellipsoid = _srs->getEllipsoid();
                 
-                std::string eqRadius = Stringify() << ellipsoid.getRadiusEquator();
-                std::string poRadius = Stringify() << ellipsoid.getRadiusPolar();
+                std::string eqRadius = std::to_string(ellipsoid.getRadiusEquator());
+                std::string poRadius = std::to_string(ellipsoid.getRadiusPolar());
 
                 _environment->SetConfigOption( "equatorial-earth-radius-meters", eqRadius.c_str() );
                 _environment->SetConfigOption( "polar-earth-radius-meters",      poRadius.c_str() );

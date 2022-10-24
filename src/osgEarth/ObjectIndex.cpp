@@ -67,9 +67,9 @@ _mutex("ObjectIndex(OE)")
     _oidUniformName = "oe_index_objectid_uniform";
 
     // set up the shader package.
-    std::string source = Stringify()
-        << "#version " << std::to_string(Capabilities::get().getGLSLVersionInt()) << "\n"
-        << indexVertexInit;
+    std::string source =
+        "#version " + std::to_string(Capabilities::get().getGLSLVersionInt()) + "\n"
+        + indexVertexInit;
     _shaders.add("ObjectIndex.vert.glsl", source);
 }
 

@@ -196,9 +196,9 @@ namespace osgEarth
                 );
 
 #if 0
-                osgDB::writeImageFile(*nnf.getImage(), Stringify() << "out/decal_nnf.png");
-                osgDB::writeImageFile(*sdf.getImage(), Stringify() << "out/decal_sdf.png");
-                osgDB::writeImageFile(*out_lifemap.get(), Stringify() << "out/decal_lifemap.png");
+                osgDB::writeImageFile(*nnf.getImage(), "out/decal_nnf.png");
+                osgDB::writeImageFile(*sdf.getImage(), "out/decal_sdf.png");
+                osgDB::writeImageFile(*out_lifemap.get(), "out/decal_lifemap.png");
 #endif
             }
         };
@@ -332,7 +332,7 @@ namespace osgEarth
             {
                 // ID for the new decal(s). ID's need to be unique in a single decal layer,
                 // but the three different TYPES of layers can share the same ID
-                std::string id = Stringify() << osgEarth::createUID();
+                std::string id = std::to_string(osgEarth::createUID());
                 _undoStack.push(id);
 
                 OE_NOTICE << "Adding decal #" << id << std::endl;

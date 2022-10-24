@@ -319,7 +319,7 @@ namespace osgEarth {
                 if (feature->hasAttr(attribute))
                 {
                     std::string value = feature->getString(attribute);
-                    std::string replaceText = Stringify() << "{" << attribute << "}";
+                    std::string replaceText = "{" + attribute + "}";
                     osgEarth::replaceIn(result, replaceText, value);
                 }
             }

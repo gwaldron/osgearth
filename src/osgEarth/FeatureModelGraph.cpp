@@ -1202,7 +1202,7 @@ FeatureModelGraph::buildSubTilePagedLODs(
                     PolytopeCullCallback* pcc = new PolytopeCullCallback(tileExtentMap, -1000, 2000);
                     childNode->addCullCallback(pcc);
                     s_count++;
-                    Registry::instance()->startActivity("Count", Stringify()<<s_count);
+                    Registry::instance()->startActivity("Count", std::to_string(s_count));
 #endif // USE_POLYTOPE_CULLING
                 }
                 else
@@ -1228,7 +1228,7 @@ namespace
         }
         else
         {
-            std::string b = Stringify() << extent.toString() << level.styleName().get();
+            std::string b = extent.toString() + level.styleName().get();
             return Cache::makeCacheKey(b, "fmg");
         }
     }

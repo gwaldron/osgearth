@@ -239,7 +239,8 @@ ModelLayer::openImplementation()
         }
         else
         {
-            return Status(Status::ServiceUnavailable, Stringify() << "Failed to create driver \"" << driverName << "\"");
+            return Status(Status::ServiceUnavailable,
+                "Failed to create driver \"" + driverName + "\"");
         }
     }
 
@@ -269,7 +270,7 @@ ModelLayer::openImplementation()
             if (rr.failed())
             {
                 return Status(Status::ResourceUnavailable,
-                    Stringify() << "Failed to load model from URL ("<<rr.errorDetail()<<")");
+                    "Failed to load model from URL (" + rr.errorDetail() + ")");
             }
             modelNode = rr.getNode();
         }

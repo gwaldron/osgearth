@@ -645,7 +645,7 @@ ShaderGenerator::apply(osg::PagedLOD& node)
         if (!filename.empty() &&
             osgDB::getLowerCaseFileExtension(filename).compare(SHADERGEN_PL_EXTENSION) != 0 )
         {
-            node.setFileName( i, Stringify() << filename << "." << SHADERGEN_PL_EXTENSION );
+            node.setFileName( i, filename + "." + SHADERGEN_PL_EXTENSION );
         }
         s_mutex.unlock();
     }
@@ -673,7 +673,7 @@ ShaderGenerator::apply(osg::ProxyNode& node)
             if (!filename.empty() &&
                 osgDB::getLowerCaseFileExtension(filename).compare(SHADERGEN_PL_EXTENSION) != 0 )
             {
-                node.setFileName( i, Stringify() << filename << "." << SHADERGEN_PL_EXTENSION );
+                node.setFileName( i, filename + "." + SHADERGEN_PL_EXTENSION );
             }
         }
     }
@@ -985,7 +985,7 @@ ShaderGenerator::apply(osg::TexEnv* texenv, int unit, GenBuffers& buf)
 
         if ( blendingMode == osg::TexEnv::BLEND )
         {
-            std::string texEnvColorUniform = Stringify() << TEXENV_COLOR << unit;
+            std::string texEnvColorUniform = TEXENV_COLOR + std::to_string(unit);
             buf._stateSet
                 ->getOrCreateUniform(texEnvColorUniform, osg::Uniform::FLOAT_VEC4)
                 ->set( texenv->getColor() );
@@ -1129,7 +1129,7 @@ ShaderGenerator::apply(osg::TexMat* texmat, int unit, GenBuffers& buf)
 {
     if ( accept(texmat) )
     {
-        std::string texMatUniform = Stringify() << TEX_MATRIX << unit;
+        std::string texMatUniform = TEX_MATRIX + std::to_string(unit);
 
         buf._viewHead << "uniform mat4 " << texMatUniform << ";\n";
         buf._viewBody << INDENT << TEX_COORD << unit << " = " << texMatUniform << " * " << TEX_COORD<<unit << ";\n";
@@ -1195,7 +1195,7 @@ ShaderGenerator::apply(osg::Texture2DArray* tex, int unit, GenBuffers& buf)
 bool
 ShaderGenerator::apply(osg::TextureCubeMap* tex, int unit, GenBuffers& buf)
 {
-    std::string sampler = Stringify() << SAMPLER << unit;
+    std::string sampler = SAMPLER + std::to_string(unit);
     buf._fragHead << "uniform samplerCube " << sampler << ";\n";
     buf._fragBody << INDENT "texel = texture(" << sampler << ", " TEX_COORD << unit << ".xyz);\n";
     buf._stateSet->getOrCreateUniform( sampler, osg::Uniform::SAMPLER_CUBE )->set( unit );
@@ -1206,7 +1206,7 @@ ShaderGenerator::apply(osg::TextureCubeMap* tex, int unit, GenBuffers& buf)
 bool
 ShaderGenerator::apply(osg::PointSprite* tex, int unit, GenBuffers& buf)
 {
-    std::string sampler = Stringify() << SAMPLER << unit;
+    std::string sampler = SAMPLER + std::to_string(unit);;
     buf._fragHead << "uniform sampler2D " << sampler << ";\n";
     buf._fragBody << INDENT << "texel = texture(" << sampler << ", gl_PointCoord);\n";
     buf._stateSet->getOrCreateUniform( sampler, osg::Uniform::SAMPLER_2D )->set( unit );

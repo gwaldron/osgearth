@@ -413,7 +413,7 @@ namespace
         {
             _feature = feature;
             _parent = parent;
-            std::string styleName = Stringify() << (int)(_size*0.1);
+            std::string styleName = std::to_string((int)(_size*0.1));
             _style = *parent->getStyleSheet()->getStyle(styleName, true);
             addChild(build());
             //setNode(build());
@@ -554,7 +554,7 @@ namespace
     {
         _feature = feature;
         _parent = parent;
-        std::string styleName = Stringify() << (int)(_size);
+        std::string styleName = std::to_string((int)(_size));
         _style = *parent->getStyleSheet()->getStyle(styleName, true);
         addChild(build());
 
@@ -581,7 +581,7 @@ namespace
 
     bool GeomCell::hasChild() const
     {
-        std::string sizeStr = Stringify() << (int)(_size/10);
+        std::string sizeStr = std::to_string((int)(_size / 10));
         return _parent->getStyleSheet()->getStyle(sizeStr, false) != 0L;
     }
 

@@ -29,7 +29,7 @@ KML_LineStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 		std::string color = getValue(node, "color");
         if ( !color.empty() )
         {
-            line->stroke()->color() = Color( Stringify() << "#" << color, Color::ABGR );
+            line->stroke()->color() = Color("#" + color, Color::ABGR);
         }
 		std::string width = getValue(node, "width");
         if ( !width.empty() )

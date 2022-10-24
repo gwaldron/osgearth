@@ -684,10 +684,10 @@ SpatialReference::createTransMercFromLongitude( const Angle& lon ) const
 
     // note. using tmerc with +lat_0 <> 0 is sloooooow.
     std::string datum = getDatumName();
-    std::string horiz = Stringify()
-        << "+proj=tmerc +lat_0=0"
-        << " +lon_0=" << lon.as(Units::DEGREES)
-        << " +datum=" << (!datum.empty() ? "WGS84" : datum);
+    std::string horiz =
+        "+proj=tmerc +lat_0=0"
+        " +lon_0=" + std::to_string(lon.as(Units::DEGREES)) +
+        " +datum=" + (!datum.empty() ? "WGS84" : datum);
 
     return SpatialReference::create( horiz, getVertInitString() );
 }
@@ -701,10 +701,10 @@ SpatialReference::createUTMFromLonLat(const Angle& lon, const Angle& lat) const
     // note. UTM is up to 10% faster than TMERC for the same meridian.
     unsigned zone = 1 + (unsigned)floor((lon.as(Units::DEGREES)+180.0)/6.0);
     std::string datum = getDatumName();
-    std::string horiz = Stringify()
-        << "+proj=utm +zone=" << zone
-        << (lat.as(Units::DEGREES) < 0 ? " +south" : "")
-        << " +datum=" << (!datum.empty() ? "WGS84" : datum);
+    std::string horiz =
+        "+proj=utm +zone=" + std::to_string(zone) +
+        (lat.as(Units::DEGREES) < 0 ? " +south" : "") +
+        " +datum=" + (!datum.empty() ? "WGS84" : datum);
 
     return SpatialReference::create(horiz, getVertInitString());
 }
@@ -1491,7 +1491,7 @@ SpatialReference::init()
         StringTokenizer(_proj4, proj4_tok);
         if (proj4_tok["+proj"] == "utm")
         {
-            _name = Stringify() << "UTM " << proj4_tok["+zone"];
+            _name = "UTM " + proj4_tok["+zone"];
         }
         else
         {

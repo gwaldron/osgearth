@@ -124,7 +124,7 @@ public:
         _model.nodes.push_back(tinygltf::Node());
         tinygltf::Node& gnode = _model.nodes.back();
         int id = _model.nodes.size() - 1;
-        gnode.name = Strings::Stringify() << "_gltfNode_" << id;
+        gnode.name = "_gltfNode_" + std::to_string(id);
         _osgNodeSeqMap[&node] = id;
 
         if (isRoot)

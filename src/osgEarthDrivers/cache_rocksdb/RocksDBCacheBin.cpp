@@ -34,7 +34,7 @@ namespace
 {
     void encodeMeta(const Config& meta, std::string& out)
     {
-        out = Stringify() << meta.toJSON(false);
+        out = meta.toJSON(false);
     }
 
     void decodeMeta(const std::string& in, Config& meta)

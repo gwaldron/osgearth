@@ -565,12 +565,12 @@ TileLayer::getCacheBin(const Profile* profile)
 
         else if (cacheSettings->cachePolicy()->isCacheOnly())
         {
-            disable(Stringify() <<
+            disable(
                 "Failed to open a cache for layer "
-                "because cache_only policy is in effect and bin [" << _runtimeCacheId << "] "
+                "because cache_only policy is in effect and bin [" + _runtimeCacheId + "] "
                 "could not be located.");
 
-            return 0L;
+            return nullptr;
         }
 
         else

@@ -136,7 +136,7 @@ MapInspectorUI::addTileLayer(TileLayer* layer,
         // label:
         std::string text = 
             !layer->getName().empty()? layer->getName() :
-            Stringify() << "Layer " << layer->getUID();
+            "Layer " + std::to_string(layer->getUID());
 
         {
             Style style;

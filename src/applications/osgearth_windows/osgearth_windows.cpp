@@ -173,7 +173,7 @@ struct ViewerPanel : public GUI::BaseGUI
 
         if (ImGui::Button("New view"))
         {
-            std::string name = Stringify() << "View " << _app._viewer.getNumViews();
+            std::string name = "View " + std::to_string(_app._viewer.getNumViews());
             _app.addView(name);
         }
 
@@ -256,7 +256,7 @@ main(int argc, char** argv)
 
     for(int i=0; i<numViews; ++i)
     {
-        app.addView(Stringify() << "View " << i);
+        app.addView("View " + std::to_string(i));
     }
 
     auto view = app._viewer.getView(0);
@@ -271,7 +271,8 @@ main(int argc, char** argv)
     OE_NOTICE << "Press 'n' to create a new view" << std::endl;
     EventRouter::get(view).onKeyPress(EventRouter::KEY_N, [&]() { 
         std::cout << "Creating new view" << std::endl;
-        app.addView(Stringify()<<"View " << app._viewer.getNumViews()); });
+        app.addView("View " + std::to_string(app._viewer.getNumViews()));
+    });
 
     OE_NOTICE << "Press 'r' to call releaseGLObjects" << std::endl;
     EventRouter::get(view).onKeyPress(EventRouter::KEY_R, [&]() { 

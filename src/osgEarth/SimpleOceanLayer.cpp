@@ -185,7 +185,7 @@ SimpleOceanLayer::setSurfaceImage(osg::Image* image)
         ss->setDefine("OE_OCEAN_TEXTURE", "oe_ocean_tex");
         ss->addUniform(new osg::Uniform("oe_ocean_tex", _texReservation.unit()));
 
-        ss->setDefine("OE_OCEAN_TEXTURE_LOD", Stringify() << options().textureLOD().get());
+        ss->setDefine("OE_OCEAN_TEXTURE_LOD", std::to_string(options().textureLOD().get()));
 
         if (image->getFileName().empty() == false)
         {

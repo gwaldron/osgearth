@@ -224,7 +224,7 @@ SkinResource::createImage( const osgDB::Options* dbOptions ) const
     if (_readOptions.isSet())
     {
         osg::ref_ptr<osgDB::Options> ro = Registry::cloneOrCreateOptions(dbOptions);
-        ro->setOptionString(Stringify() << _readOptions.get() << " " << ro->getOptionString());
+        ro->setOptionString(_readOptions.get() + " " + ro->getOptionString());
         result = _imageURI->readImage(ro.get());
     }
     else

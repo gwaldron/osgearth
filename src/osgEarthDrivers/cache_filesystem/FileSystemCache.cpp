@@ -207,8 +207,8 @@ namespace
 
         if (osgDB::makeDirectory(_rootPath) == false)
         {
-            _status.set(Status::ResourceUnavailable, Stringify()
-                << "Failed to create or access folder \"" << _rootPath << "\"");
+            _status.set(Status::ResourceUnavailable,
+                "Failed to create or access folder \"" + _rootPath + "\"");
             return;
         }
         OE_INFO << LC << "Opened a filesystem cache at \"" << _rootPath << "\"\n";
@@ -429,7 +429,7 @@ namespace
             osgDB::Registry::instance()->getReaderWriterForExtension(_options.format().get());
 
         if (!image_rw.valid())
-            return ReadResult(Stringify() << "Unknown image format \"" << _options.format().get() << "\"");
+            return ReadResult("Unknown image format \"" + _options.format().get() + "\"");
 
         osgDB::ReaderWriter::ReadResult r = image_rw->readImage(path, dbo.get());
         //osgDB::ReaderWriter::ReadResult r = _rw->readImage(path, dbo.get());

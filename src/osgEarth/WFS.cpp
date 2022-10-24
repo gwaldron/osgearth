@@ -263,7 +263,8 @@ WFSFeatureSource::openImplementation()
     _capabilities = WFS::CapabilitiesReader::read(capUrl, getReadOptions());
     if (!_capabilities.valid())
     {
-        return Status(Status::ResourceUnavailable, Stringify() << "Failed to read WFS GetCapabilities from \"" << capUrl << "\"");
+        return Status(Status::ResourceUnavailable,
+            "Failed to read WFS GetCapabilities from \"" + capUrl + "\"");
     }
     else
     {

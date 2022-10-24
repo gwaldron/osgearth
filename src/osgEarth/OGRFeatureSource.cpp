@@ -455,7 +455,7 @@ OGRFeatureSource::openImplementation()
         // ..inside a zip file?
         if (osgEarth::endsWith(_source, ".zip", false) || _source.find(".zip/") != std::string::npos)
         {
-            _source = Stringify() << "/vsizip/" << _source;
+            _source = "/vsizip/" + _source;
         }
     }
 
@@ -551,7 +551,8 @@ OGRFeatureSource::openImplementation()
 
         if (!_dsHandle)
         {
-            return Status(Status::ResourceUnavailable, Stringify() << "Failed to open \"" << _source << "\"");
+            return Status(Status::ResourceUnavailable,
+                "Failed to open \"" + _source + "\"");
         }
 
         if (openFlags & GDAL_OF_UPDATE)
@@ -564,7 +565,8 @@ OGRFeatureSource::openImplementation()
         _layerHandle = OGR::openLayer(_dsHandle, options().layer().value());
         if (!_layerHandle)
         {
-            return Status(Status::ResourceUnavailable, Stringify() << "Failed to open layer \"" << options().layer().get() << "\" from \"" << _source << "\"");
+            return Status(Status::ResourceUnavailable,
+                "Failed to open layer \"" + options().layer().get() + "\" from \"" + _source + "\"");
         }
 
         // if the user provided a profile, use that:
@@ -580,26 +582,30 @@ OGRFeatureSource::openImplementation()
             OGRSpatialReferenceH srHandle = OGR_L_GetSpatialRef(_layerHandle);
             if (!srHandle)
             {
-                return Status(Status::ResourceUnavailable, Stringify() << "No spatial reference found in \"" << _source << "\"");
+                return Status(Status::ResourceUnavailable,
+                    "No spatial reference found in \"" + _source + "\"");
             }
 
             osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle(srHandle);
             if (!srs.valid())
             {
-                return Status(Status::ResourceUnavailable, Stringify() << "Unrecognized SRS found in \"" << _source << "\"");
+                return Status(Status::ResourceUnavailable, 
+                    "Unrecognized SRS found in \"" + _source + "\"");
             }
 
             // extract the full extent of the layer:
             OGREnvelope env;
             if (OGR_L_GetExtent(_layerHandle, &env, 1) != OGRERR_NONE)
             {
-                return Status(Status::ResourceUnavailable, Stringify() << "Invalid extent returned from \"" << _source << "\"");
+                return Status(Status::ResourceUnavailable, 
+                    "Invalid extent returned from \"" + _source + "\"");
             }
 
             GeoExtent extent(srs.get(), env.MinX, env.MinY, env.MaxX, env.MaxY);
             if (!extent.isValid())
             {
-                return Status(Status::ResourceUnavailable, Stringify() << "Invalid extent returned from \"" << _source << "\"");
+                return Status(Status::ResourceUnavailable,
+                    "Invalid extent returned from \"" + _source + "\"");
             }
 
             // Made it!
@@ -718,7 +724,7 @@ OGRFeatureSource::create(const FeatureProfile* profile,
         // ..inside a zip file?
         if (osgEarth::endsWith(_source, ".zip", false) || _source.find(".zip/") != std::string::npos)
         {
-            _source = Stringify() << "/vsizip/" << _source;
+            _source = "/vsizip/" + _source;
         }
     }
     // ..or database connection?
@@ -755,7 +761,7 @@ OGRFeatureSource::create(const FeatureProfile* profile,
     if (!_dsHandle)
     {
         std::string msg = CPLGetLastErrorMsg();
-        setStatus(Status(Status::ResourceUnavailable, Stringify() << "Failed to create \"" << _source << "\" ... " << msg));
+        setStatus(Status(Status::ResourceUnavailable, "Failed to create \"" + _source + "\" ... " + msg));
         return getStatus();
     }
 
@@ -767,7 +773,8 @@ OGRFeatureSource::create(const FeatureProfile* profile,
 
     if (!_layerHandle)
     {
-        setStatus(Status(Status::ResourceUnavailable, Stringify() << "Failed to create layer \"" << options().layer().get() << "\" from \"" << _source << "\""));
+        setStatus(Status(Status::ResourceUnavailable, 
+            "Failed to create layer \"" + options().layer().get() + "\" from \"" + _source + "\""));
         return getStatus();
     }
 

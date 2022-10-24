@@ -86,17 +86,17 @@ XYZ::Driver::read(const URI& uri,
     std::string location = _template;
 
     // support OpenLayers template style:
-    replaceIn( location, "${x}", Stringify() << x );
-    replaceIn( location, "${y}", Stringify() << y );
-    replaceIn( location, "${-y}", Stringify() << inverted_y);
-    replaceIn( location, "${z}", Stringify() << key.getLevelOfDetail() );
+    replaceIn(location, "${x}", std::to_string(x));
+    replaceIn(location, "${y}", std::to_string(y));
+    replaceIn( location, "${-y}", std::to_string(inverted_y));
+    replaceIn(location, "${z}", std::to_string(key.getLevelOfDetail()));
 
 
     // failing that, legacy osgearth style:
-    replaceIn( location, "{x}", Stringify() << x );
-    replaceIn( location, "{y}", Stringify() << y );
-    replaceIn( location, "{-y}", Stringify() << inverted_y);
-    replaceIn( location, "{z}", Stringify() << key.getLevelOfDetail() );
+    replaceIn(location, "{x}", std::to_string(x));
+    replaceIn(location, "{y}", std::to_string(y));
+    replaceIn(location, "{-y}", std::to_string(inverted_y));
+    replaceIn(location, "{z}", std::to_string(key.getLevelOfDetail()));
 
     std::string cacheKey;
 
@@ -104,7 +104,7 @@ XYZ::Driver::read(const URI& uri,
     {
         cacheKey = location;
         unsigned index = (++_rotate_iter) % _rotateChoices.size();
-        replaceIn( location, _rotateString, Stringify() << _rotateChoices[index] );
+        replaceIn(location, _rotateString, std::to_string(_rotateChoices[index]));
     }
 
 

@@ -82,7 +82,7 @@ ResourceReleaser::releaseGLObjects(osg::State* state) const
                 osg::Object* object = i->get();
                 object->releaseGLObjects(state);
             }
-            OE_PROFILING_ZONE_TEXT(Stringify() << "Released " << _toRelease.size());
+            OE_PROFILING_ZONE_TEXT("Released " + std::to_string(_toRelease.size()));
             OE_DEBUG << LC << "Released " << _toRelease.size() << " objects\n";
             _toRelease.clear();
         }

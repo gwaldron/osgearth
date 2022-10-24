@@ -82,7 +82,7 @@ HorizonClipPlane::operator()(osg::Node* node, osg::NodeVisitor* nv)
         d.stateSet = new osg::StateSet();
         d.uniform = new osg::Uniform("oe_ClipPlane_plane", osg::Vec4f());
         d.stateSet->addUniform(d.uniform.get());
-        d.stateSet->setDefine("OE_CLIPPLANE_NUM", Stringify() << getClipPlaneNumber());
+        d.stateSet->setDefine("OE_CLIPPLANE_NUM", std::to_string(getClipPlaneNumber()));
 
         VirtualProgram* vp = VirtualProgram::getOrCreate(d.stateSet.get());
         vp->setName("HorizonClipPlane");

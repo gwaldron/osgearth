@@ -413,8 +413,8 @@ MBTiles::Driver::open(
     int rc = sqlite3_open_v2(fullFilename.c_str(), dbptr, flags, 0L);
     if (rc != 0)
     {
-        return Status(Status::ResourceUnavailable, Stringify()
-            << "Database \"" << fullFilename << "\": " << sqlite3_errmsg(database));
+        return Status(Status::ResourceUnavailable,
+            "Database \"" + fullFilename + "\": " + sqlite3_errmsg(database));
     }
 
     // New database setup:
@@ -792,8 +792,8 @@ MBTiles::Driver::write(
     int rc = sqlite3_prepare_v2(database, query.c_str(), -1, &insert, 0L);
     if (rc != SQLITE_OK)
     {
-        return Status(Status::GeneralError, Stringify()
-            << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg(database));
+        return Status(Status::GeneralError,
+            "Failed to prepare SQL: " + query + "; " + sqlite3_errmsg(database));
     }
 
     // bind parameters:
@@ -889,7 +889,7 @@ MBTiles::Driver::putMetaData(const std::string& key, const std::string& value)
 
     // prep the insert statement.
     sqlite3_stmt* insert = 0L;
-    std::string query = Stringify() << "INSERT OR REPLACE INTO metadata (name,value) VALUES (?,?)";
+    std::string query = "INSERT OR REPLACE INTO metadata (name,value) VALUES (?,?)";
     if ( SQLITE_OK != sqlite3_prepare_v2(database, query.c_str(), -1, &insert, 0L) )
     {
         OE_WARN << LC << "Failed to prepare SQL: " << query << "; " << sqlite3_errmsg(database) << std::endl;

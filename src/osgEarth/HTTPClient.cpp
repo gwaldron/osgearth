@@ -915,7 +915,7 @@ namespace
         //Free the buffer.
         LocalFree(messageBuffer);
 
-        message = Stringify() << "[Code " << errorMessageID << "] " << message;
+        message = "[Code " + std::to_string(errorMessageID) + "] " + message;
 
         return message;
     }
@@ -1496,13 +1496,13 @@ HTTPClient::doGet(const HTTPRequest&    request,
                   ProgressCallback*     progress) const
 {
     OE_PROFILING_ZONE;
-    OE_PROFILING_ZONE_TEXT(Stringify() << "url " << request.getURL());
+    OE_PROFILING_ZONE_TEXT("url " + request.getURL());
 
     initialize();
 
     HTTPResponse response = _impl->doGet(request, options, progress);
 
-    OE_PROFILING_ZONE_TEXT(Stringify() << "response_code " << response.getCode());
+    OE_PROFILING_ZONE_TEXT("response_code " + std::to_string(response.getCode()));
     if (response.isCanceled())
     {
         OE_PROFILING_ZONE_TEXT("cancelled");
@@ -1618,7 +1618,7 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
         if (!reader)
         {
             result = ReadResult(ReadResult::RESULT_NO_READER);
-            result.setErrorDetail(Stringify() << "Content-Type=" << response.getMimeType());
+            result.setErrorDetail("Content-Type=" + response.getMimeType());
         }
 
         else
@@ -1825,7 +1825,7 @@ HTTPClient::doReadObject(const HTTPRequest&    request,
         if (!reader)
         {
             result = ReadResult(ReadResult::RESULT_NO_READER);
-            result.setErrorDetail(Stringify() << "Content-Type=" << response.getMimeType());
+            result.setErrorDetail("Content-Type=" + response.getMimeType());
         }
 
         else

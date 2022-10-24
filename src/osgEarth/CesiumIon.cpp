@@ -287,7 +287,7 @@ CesiumIon3DTilesLayer::openImplementation()
     ReadResult rr = serverURI.readString();
     if (rr.failed())
     {
-        return Status(Status::ResourceUnavailable, Stringify() << "Error loading tileset: " << rr.errorDetail());
+        return Status(Status::ResourceUnavailable, "Error loading tileset: " + rr.errorDetail());
     }
 
     //OE_NOTICE << "Read tileset " << rr.getString() << std::endl;

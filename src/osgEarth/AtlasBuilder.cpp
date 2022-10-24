@@ -271,7 +271,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
 
             if ( _debug )
             {
-                std::string name = Stringify() << "image_" << (int)(tab-tabs.begin()) << "_" << r << ".png";
+                std::string name = "image_" +std::to_string((int)(tab-tabs.begin())) + "_" + std::to_string(r) + ".png";
                 osgDB::writeImageFile(*atlasImage, name);
             }
 

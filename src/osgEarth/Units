@@ -304,7 +304,7 @@ namespace osgEarth
         }
 
         std::string asString() const {
-            return Stringify() << _value << _units.getAbbr();
+            return std::to_string(_value) + _units.getAbbr();
         }
 
         virtual std::string asParseableString() const {
@@ -330,7 +330,7 @@ namespace osgEarth
         Angle(const Config& conf) : qualified_double<Angle>(conf, Units::DEGREES) { }
         Angle(const std::string& str) : qualified_double<Angle>(str, Units::DEGREES) { }
         std::string asParseableString() const {
-            if ( _units == Units::DEGREES ) return Stringify() << _value;
+            if (_units == Units::DEGREES) return std::to_string(_value);
             else return asString();
         }
     };

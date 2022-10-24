@@ -182,7 +182,7 @@ namespace
             for( unsigned i=0; i<handler->_viewpoints.size(); ++i )
             {
                 const Viewpoint& vp = handler->_viewpoints[i];
-                Control* num = new LabelControl(Stringify() << (i+1), 16.0f, osg::Vec4f(1,1,0,1));
+                Control* num = new LabelControl(std::to_string(i+1), 16.0f, osg::Vec4f(1,1,0,1));
                 num->setPadding( 4 );
                 grid->setControl( 0, i, num );
 

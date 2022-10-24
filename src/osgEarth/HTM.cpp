@@ -122,7 +122,7 @@ _settings(settings)
         geom->getOrCreateStateSet()->setAttribute(new osg::Program(), osg::StateAttribute::PROTECTED);
 
         osgText::Text* text = new osgText::Text();
-        text->setText(Stringify() << getName() << "\nS=" << geom->getBound().radius()*2.0);
+        text->setText(getName() + "\nS=" + std::to_string(geom->getBound().radius()*2.0));
         text->setPosition((v0+v1+v2)/3 * R);
         text->setCharacterSizeMode(text->SCREEN_COORDS);
         text->setCharacterSize(48);
@@ -236,10 +236,10 @@ HTMNode::split()
 
     // split into four children, each wound CCW
     HTMNode* c[4];
-    c[0] = new HTMNode(_settings, _tri._v[0], w[0], w[2], Stringify()<< getName() << "0");
-    c[1] = new HTMNode(_settings, _tri._v[1], w[1], w[0], Stringify() << getName() << "1");
-    c[2] = new HTMNode(_settings, _tri._v[2], w[2], w[1], Stringify() << getName() << "2");
-    c[3] = new HTMNode(_settings, w[0], w[1], w[2], Stringify() << getName() << "3");
+    c[0] = new HTMNode(_settings, _tri._v[0], w[0], w[2], getName() + "0");
+    c[1] = new HTMNode(_settings, _tri._v[1], w[1], w[0], getName() + "1");
+    c[2] = new HTMNode(_settings, _tri._v[2], w[2], w[1], getName() + "2");
+    c[3] = new HTMNode(_settings, w[0], w[1], w[2], getName() + "3");
     
     if (_settings._storeObjectsInLeavesOnly == true)
     {

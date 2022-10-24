@@ -595,7 +595,7 @@ GDAL::Driver::open(
 
         if (!_srcDS)
         {
-            return Status::Error(Status::ResourceUnavailable, Stringify() << "Failed to open " << input);
+            return Status::Error(Status::ResourceUnavailable, "Failed to open " + input);
         }
     }
     else
@@ -635,8 +635,8 @@ GDAL::Driver::open(
 
     if (!src_srs.valid())
     {
-        return Status::Error(Status::ResourceUnavailable, Stringify()
-            << "Dataset has no spatial reference information (" << source << ")");
+        return Status::Error(Status::ResourceUnavailable,
+            "Dataset has no spatial reference information (" + source + ")");
     }
 
     // These are the actual extents of the data:
@@ -658,8 +658,8 @@ GDAL::Driver::open(
         _profile = Profile::create(src_srs.get());
         if (!_profile.valid())
         {
-            return Status::Error(Status::ResourceUnavailable, Stringify()
-                << "Cannot create geographic Profile from dataset's spatial reference information: " << src_srs->getName());
+            return Status::Error(Status::ResourceUnavailable,
+                "Cannot create geographic Profile from dataset's spatial reference information: " + src_srs->getName());
         }
 
         // no xform an geographic? Match the profile.
@@ -741,8 +741,8 @@ GDAL::Driver::open(
 
         if (!_profile.valid())
         {
-            return Status::Error(Stringify()
-                << "Cannot create projected Profile from dataset's warped spatial reference WKT: " << warpedSRSWKT);
+            return Status::Error(
+                "Cannot create projected Profile from dataset's warped spatial reference WKT: " + warpedSRSWKT);
         }
 
         if (info)

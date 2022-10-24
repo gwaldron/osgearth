@@ -31,7 +31,7 @@ KML_PolyStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 		std::string colorVal = getValue(node, "color");
 		if (!colorVal.empty())
 		{
-			color = Color(Stringify() << "#" << colorVal, Color::ABGR);
+			color = Color("#" + colorVal, Color::ABGR);
             poly->fill()->color() = color;
 		}
 

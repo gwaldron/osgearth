@@ -456,7 +456,7 @@ BiomeLayer::createImageImplementation(
         buf << "Tile " << key.str() << " has biome(s) with no assets: ";
         for (auto i : missing_biomes)
             buf << i << ' ';
-        OE_WARN << LC << buf.str() << std::endl;
+        OE_DEBUG << LC << buf.str() << std::endl;
     }
 
 #if 1
@@ -532,7 +532,7 @@ BiomeLayer::trackImage(
     // This works, but reverses the flow of control, so maybe
     // there is a better solution -gw
     osg::Object* token = new BiomeTrackerToken(std::move(biome_index_set));
-    token->setName(Stringify() << "BiomeLayer " << key.str());
+    token->setName("BiomeLayer " + key.str());
     image.setTrackingToken(token);
     token->addObserver(const_cast<BiomeLayer*>(this));
     _tracker.scoped_lock([&]() { _tracker[token] = key; });

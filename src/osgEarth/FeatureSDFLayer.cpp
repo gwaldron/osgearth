@@ -418,14 +418,5 @@ FeatureSDFLayer::createImageImplementation(
     GeoImage newSDF(sdf.get(), featuresExtent);
     GeoImage cropped = newSDF.crop(key.getExtent(), false, 0, 0, false);
 
-#if 0
-    osgDB::makeDirectoryForFile(Stringify() << "out/" << getName() << "/" << key.str() << ".out.png");
-    osgDB::writeImageFile(*rasterizedFeatures.getImage(), Stringify() << "out/" << getName() << "/" << key.str() << ".out.png");
-    osg::ref_ptr < osg::Image > rgba = redToRGBA(sdf);
-    osgDB::writeImageFile(*rgba.get(), Stringify() << "out/" << getName() << "/" << key.str() << ".sdf.png");
-    rgba = redToRGBA(cropped.getImage());
-    osgDB::writeImageFile(*rgba.get(), Stringify() << "out/" << getName() << "/" << key.str() << "_cropped.sdf.png");
-
-#endif    
     return cropped;
 }

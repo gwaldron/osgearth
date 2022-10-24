@@ -62,7 +62,7 @@ UTMGraticule::UTMData::rebuild(const Profile* profile)
                 -180.0 + double(zone+1)*6.0,
                 -80.0  + double(row+1)*8.0 + yMaxExtra );
 
-            _gzd[ Stringify() << (zone+1) << s_gzdRows[row] ] = cellExtent;
+            _gzd[std::to_string((zone+1)) + s_gzdRows[row] ] = cellExtent;
         }        
     }
 

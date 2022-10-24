@@ -206,7 +206,7 @@ LifeMapLayer::checkForLayerError(Layer* layer)
     {
         std::string name = layer->getName();
         if (name.empty())
-            name = Stringify() << "Unnamed " << layer->className();
+            name = "Unnamed " + std::string(layer->className());
 
         std::string msg = Stringify()
             << "Error in dependent layer \"" << name << "\" : "

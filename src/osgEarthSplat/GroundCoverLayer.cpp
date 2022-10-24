@@ -582,7 +582,7 @@ GroundCoverLayer::buildStateSets()
     }
 
     // adjust the effect of wind with this factor
-    stateset->setDefine("OE_GROUNDCOVER_WIND_SCALE", Stringify() << options().windScale().get());
+    stateset->setDefine("OE_GROUNDCOVER_WIND_SCALE", std::to_string(options().windScale().get()));
 
     osg::Texture* tex = createTextureAtlas();
     stateset->setTextureAttribute(_groundCoverTexBinding.unit(), tex);
@@ -1489,9 +1489,11 @@ GroundCoverLayer::createLUTShader() const
     osg::Shader* shader = new osg::Shader(osg::Shader::COMPUTE);
     shader->setName( "GroundCover LUTs" );
     shader->setShaderSource(
-        Stringify() 
-        << "#version " << std::to_string(Capabilities::get().getGLSLVersionInt()) << "\n"
-        << lutbuf.str() << "\n");
+        "#version " + 
+        std::to_string(Capabilities::get().getGLSLVersionInt()) + 
+        "\n" +
+        lutbuf.str() +
+        "\n");
 
     return shader;
 }

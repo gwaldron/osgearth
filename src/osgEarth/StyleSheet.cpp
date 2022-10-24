@@ -136,7 +136,7 @@ StyleSheet::Options::fromConfig(const Config& conf)
     for (ConfigSet::iterator i = selectors.begin(); i != selectors.end(); ++i)
     {
         StyleSelector s(*i);
-        std::string unique = Stringify() << s.name().get() << ":" << s.styleName().get();
+        std::string unique = s.name().get() + ":" + s.styleName().get();
         _selectors[unique] = s;
     }
 

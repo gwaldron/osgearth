@@ -773,9 +773,9 @@ MapBoxGL::StyleSheet MapBoxGL::StyleSheet::load(const URI& location, const osgDB
 ResourceLibrary* MapBoxGL::StyleSheet::loadSpriteLibrary(const URI& sprite)
 {
     ResourceLibrary* library = nullptr;
-    URI uri(Stringify() << sprite.full() << ".json");
+    URI uri(sprite.full() + ".json");
 
-    URI imagePath(Stringify() << sprite.full() << ".png");
+    URI imagePath(sprite.full() + ".png");
     osg::ref_ptr< osg::Image > image = imagePath.getImage();
     if (image.valid())
     {

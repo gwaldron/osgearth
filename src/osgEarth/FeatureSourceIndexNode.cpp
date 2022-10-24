@@ -99,10 +99,10 @@ FeatureSourceIndexNode::~FeatureSourceIndexNode()
         fidsToRemove.insert(KeyIter<FID_to_RefIDPair>(_fids.begin()), KeyIter<FID_to_RefIDPair>(_fids.end()));
         _fids.clear();
 
-        std::string message = Stringify() << "Removing " << fidsToRemove.size();
+        std::string message = "Removing " + std::to_string(fidsToRemove.size()) + " fids";
         OE_PROFILING_ZONE_TEXT(message.c_str());
 
-        OE_DEBUG << LC << "Removing " << fidsToRemove.size() << " fids\n";
+        OE_DEBUG << LC << message << std::endl;
         _index->removeFIDs( fidsToRemove.begin(), fidsToRemove.end() );
     }
 }

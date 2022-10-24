@@ -175,9 +175,9 @@ createTrackNodes(const SpatialReference* mapSRS, osg::Group* parent, const Track
 
         TrackNode* track = new TrackNode(pos, image.get(), schema);
 
-        track->setFieldValue( FIELD_NAME,     Stringify() << "Track:" << i );
-        track->setFieldValue( FIELD_POSITION, Stringify() << s_format(pos) );
-        track->setFieldValue( FIELD_NUMBER,   Stringify() << (1 + prng.next(9)) );
+        track->setFieldValue(FIELD_NAME, "Track:" + std::to_string(i));
+        track->setFieldValue(FIELD_POSITION, s_format(pos));
+        track->setFieldValue(FIELD_NUMBER, std::to_string(1 + prng.next(9)));
 
         // add a priority
         track->setPriority( float(i) );

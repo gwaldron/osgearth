@@ -221,7 +221,7 @@ LightSourceGL3UniformGenerator::run(osg::Object* obj, osg::Object* data)
             if (numLights) {
                 value = ::atoi(numLights->first.c_str()) + 1;
             }
-            ss->setDefine("OE_NUM_LIGHTS", Stringify() << value, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+            ss->setDefine("OE_NUM_LIGHTS", std::to_string(value), osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
         }
     }
     return traverse(obj, data);

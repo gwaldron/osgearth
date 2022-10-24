@@ -66,7 +66,7 @@ struct PlacerCallback : public MouseCoordsTool::Callback
         osg::Vec3d placeWorld;
         coords.toWorld(placeWorld);
 
-        _place->setText( Stringify() << "Range: " << (int)(eyeWorld-placeWorld).length() << "m" );
+        _place->setText("Range: " + std::to_string((int)(eyeWorld - placeWorld).length()) + "m");
     }
 
     // called when no map coords are found under the mouse

@@ -160,7 +160,7 @@ main(int argc, char** argv)
 
     std::string ext = osgDB::getFileExtension(outfile);
     std::string base = osgDB::getNameLessExtension(outfile);
-    std::string normalMapOutFile = Stringify() << base << "_NML." << ext;
+    std::string normalMapOutFile = base + "_NML." + ext;
 
     int size = 1024;
     arguments.read("--size", size);

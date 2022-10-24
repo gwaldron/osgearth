@@ -179,7 +179,7 @@ ShadowCaster::reinitialize()
 
     // Load the shadowing shaders.
     Shaders package;
-    package.replace("$OE_SHADOW_NUM_SLICES", Stringify()<<numSlices);
+    package.replace("$OE_SHADOW_NUM_SLICES", std::to_string(numSlices));
     package.load(vp, package.ShadowCaster);
 
     // the texture coord generator matrix array (from the caster):

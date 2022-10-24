@@ -518,9 +518,8 @@ ArcGISServerImageLayer::openImplementation()
         OE_INFO << LC << "_map_service.init failed: " << _map_service.getError() << std::endl;
 
         return Status(
-            Status::ResourceUnavailable, Stringify()
-            << "ArcGIS map service initialization failed: "
-            << _map_service.getError());
+            Status::ResourceUnavailable,
+            "ArcGIS map service initialization failed: " + _map_service.getError());
     }
 
     // image format to request:

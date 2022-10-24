@@ -643,7 +643,7 @@ VTPKFeatureSource::openImplementation()
 
     std::ifstream in(rootPath);
     if (!reader.parse(in, root, false))
-        return Status::Error(Stringify() << "Failed to parse " << rootPath);
+        return Status::Error("Failed to parse " + rootPath);
 
     _bundleSize = root["resourceInfo"]["cacheInfo"]["storageInfo"]["packetSize"].asUInt();
     std::string storageFormat = root["resourceInfo"]["cacheInfo"]["storageInfo"]["storageFormat"].asString();

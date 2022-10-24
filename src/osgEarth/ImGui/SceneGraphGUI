@@ -166,7 +166,7 @@ struct WriteExternalImages : public osgEarth::TextureAndImageVisitor
 
         std::string format = "dds";
         unsigned int hash = osgEarth::hashString(path);
-        std::string relativeName = Stringify() << "images/" <<  hash << "." << format;
+        std::string relativeName = "images/" + std::to_string(hash) + "." + format;
         std::string filename = osgDB::concatPaths(_destinationPath, relativeName);
         image.setFileName(relativeName);
         image.setWriteHint(osg::Image::EXTERNAL_FILE);

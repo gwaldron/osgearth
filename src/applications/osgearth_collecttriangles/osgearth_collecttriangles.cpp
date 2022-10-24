@@ -814,7 +814,7 @@ struct AddObserverHandler : public osgGA::GUIEventHandler
                 std::cout << std::setprecision(16) << "Adding observer at " << world << std::endl;
 
                 Observer* observer = new Observer(osg::BoundingSphered(world, query_range));
-                observer->setName(Stringify() << "Observer " << observer_id++);
+                observer->setName("Observer " + std::to_string(observer_id++));
                 observers.push_back(observer);
             }
         }

@@ -1021,7 +1021,7 @@ namespace
         {
             DateTime d = _sky->getDateTime();
             _sky->setDateTime(DateTime((int)value, d.month(), d.day(), d.hours()));
-            _label->setText(Stringify() << (int)value);
+            _label->setText(std::to_string((int)value));
         }
     };
 
@@ -1075,7 +1075,7 @@ ui::Control* SkyControlFactory::create(SkyNode* sky)
         grid->setControl( 0, r, new ui::LabelControl("Year: ", 16) );
         ui::HSliderControl* skyYearSlider = grid->setControl(1, r, new ui::HSliderControl( 1970.0f, 2061.0f, dt.year() ));
         skyYearSlider->setHorizFill( true, 250 );
-        ui::LabelControl* yearLabel = grid->setControl(2, r, new ui::LabelControl(Stringify()<<dt.year()));
+        ui::LabelControl* yearLabel = grid->setControl(2, r, new ui::LabelControl(std::to_string(dt.year())));
         skyYearSlider->addEventHandler( new SkyYearSlider(sky, yearLabel) );
 
         ++r;

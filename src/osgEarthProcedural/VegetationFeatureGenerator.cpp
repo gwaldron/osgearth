@@ -139,7 +139,8 @@ VegetationFeatureGenerator::initialize()
     }
     if (_lifemaplayer->open().isError())
     {
-        _status.set(_lifemaplayer->getStatus().code(), Stringify() << "Opening life map layer: " << _lifemaplayer->getStatus().message());
+        _status.set(_lifemaplayer->getStatus().code(),
+            "Opening life map layer: " + _lifemaplayer->getStatus().message());
         return;
     }
 
@@ -151,14 +152,16 @@ VegetationFeatureGenerator::initialize()
     }
     if (_biomelayer->open().isError())
     {
-        _status.set(_biomelayer->getStatus().code(), Stringify() << "Opening biome layer: " << _biomelayer->getStatus().message());
+        _status.set(_biomelayer->getStatus().code(),
+            "Opening biome layer: " + _biomelayer->getStatus().message());
         return;
     }
 
     // open the groundcover layer
     if (_veglayer->open().isError())
     {
-        _status.set(_veglayer->getStatus().code(), Stringify() << "Opening vegetation layer: " << _veglayer->getStatus().message());
+        _status.set(_veglayer->getStatus().code(), 
+            "Opening vegetation layer: " + _veglayer->getStatus().message());
         return;
     }
 

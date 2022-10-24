@@ -1,0 +1,126 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_XYZ_MODEL_LAYER
+#define OSGEARTH_XYZ_MODEL_LAYER 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Layer>
+#include <osgEarth/LayerReference>
+
+namespace osgEarth {
+    class Map;
+}
+
+namespace osgEarth
+{    
+    /**
+     * Layer that loads a pregenerated quadtree of model files
+     */
+    class OSGEARTH_EXPORT XYZModelLayer : public VisibleLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public VisibleLayer::Options
+                                        
+        {
+        public:
+            // constructors
+            Options();
+            Options(const ConfigOptions& options);
+            OE_OPTION(URI, url);
+            OE_OPTION(bool, additive);
+            OE_OPTION(bool, invertY);
+            OE_OPTION(int, minLevel);
+            OE_OPTION(int, maxLevel);
+            OE_OPTION(ProfileOptions, profile);
+            virtual Config getConfig() const;
+        protected: // LayerOptions
+            virtual void mergeConfig(const Config& conf);        
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, XYZModelLayer, Options, VisibleLayer, XYZModel);
+
+        //! Tiling profile (required)
+        void setProfile(const Profile* profile);
+
+        //! Whether to flip the Y axis for tile indexing
+        void setInvertY(const bool& value);
+        const bool& getInvertY() const;
+
+        //! Base URL for requests
+        void setURL(const URI& value);
+        const URI& getURL() const;
+
+        void setAdditive(const bool& value);
+        const bool& getAdditive() const;
+
+        //! Minimum level of detail to access
+        void setMinLevel(const int& value);
+        const int& getMinLevel() const;
+
+        //! Maximum level of detail to access
+        void setMaxLevel(const int& value);
+        const int& getMaxLevel() const;
+
+        //! Forces a rebuild on this layer.
+        void dirty();    
+
+    public: // Layer
+
+        // opens the layer and returns the status
+        virtual Status openImplementation();
+
+        // closes the layer
+        virtual Status closeImplementation();
+
+        // The Node representing this layer.
+        virtual osg::Node* getNode() const;
+
+        //! Serialization
+        virtual Config getConfig() const;
+
+    protected: // Layer
+        
+        // called by the map when this layer is added
+        virtual void addedToMap(const Map*);
+
+        // called by the map when this layer is removed
+        virtual void removedFromMap(const Map*);
+
+        // post-ctor initialization
+        virtual void init();
+
+    protected:
+
+        virtual ~XYZModelLayer();
+
+    private:
+        osg::ref_ptr<osg::Group> _root;
+        osg::ref_ptr<const Profile> _profile;
+        osg::observer_ptr< const Map > _map;
+        bool _graphDirty;
+        
+        void create();
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_XYZ_MODEL_LAYER

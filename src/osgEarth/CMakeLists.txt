@@ -280,6 +280,8 @@ SET(LIB_PUBLIC_HEADERS
     WMS
     XmlUtils
     XYZ
+    XYZModelGraph
+    XYZModelLayer
 
     ActivityMonitorTool
     AutoClipPlaneHandler
@@ -691,6 +693,8 @@ set(TARGET_SRC
     WMS.cpp
     XmlUtils.cpp
     XYZ.cpp
+    XYZModelGraph.cpp
+    XYZModelLayer.cpp
 
     ActivityMonitorTool.cpp
     AtlasBuilder.cpp

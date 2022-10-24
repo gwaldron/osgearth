@@ -423,9 +423,13 @@ BiomeLayer::createImageImplementation(
                         std::string implicit_biome_id = 
                             biome->id() + "." + AssetTraits::toString(sorted);
 
-                        biome = getBiomeCatalog()->getBiome(implicit_biome_id);
+                        const Biome* implicit_biome = getBiomeCatalog()->getBiome(implicit_biome_id);
 
-                        if (biome == nullptr)
+                        if (implicit_biome)
+                        {
+                            biome = implicit_biome;
+                        }
+                        else
                         {
                             missing_biomes.insert(implicit_biome_id);
                         }
@@ -456,7 +460,7 @@ BiomeLayer::createImageImplementation(
         buf << "Tile " << key.str() << " has biome(s) with no assets: ";
         for (auto i : missing_biomes)
             buf << i << ' ';
-        OE_WARN << LC << buf.str() << std::endl;
+        OE_DEBUG << LC << buf.str() << std::endl;
     }
 
 #if 1

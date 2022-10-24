@@ -62,6 +62,9 @@ namespace osgEarth { namespace Procedural
             //! Whether to use normal maps on impostor geometries
             OE_OPTION(bool, useImpostorNormalMaps);
 
+            //! Whether to use PBR maps on impostor geometries
+            OE_OPTION(bool, useImpostorPBRMaps);
+
             //! Scale factor for LOD-ing the far-away impostor vegetation
             OE_OPTION(float, farLODScale);
 
@@ -180,6 +183,12 @@ namespace osgEarth { namespace Procedural
         void setUseImpostorNormalMaps(bool value);
         bool getUseImpostorNormalMaps() const;
 
+        void setUseImpostorPBRMaps(bool value);
+        bool getUseImpostorPBRMaps() const;
+
+        //void setNormalAttenuation(float value);
+        //float getNormalAttenuation() const;
+
         //! Force regeneration of all visible data
         void dirty();
 
@@ -259,7 +268,6 @@ namespace osgEarth { namespace Procedural
         LayerReference<BiomeLayer> _biomeLayer;
         osg::observer_ptr<const Map> _map;
 
-        void buildStateSets();
         void reset();
 
         // call from UPDATE peridoically to see if new biomes
@@ -352,9 +360,8 @@ namespace osgEarth { namespace Procedural
         // So we can timeout the layer and release resources
         mutable osg::FrameStamp _lastVisit;
 
-        // noise texture. Put in the arena? Or global?
-        osg::ref_ptr<osg::Texture> _noiseTex;
-        TextureImageUnitReservation _noiseBinding;
+        // noise texture for wind
+        Texture::Ptr _noiseTex;
 
         using AssetsByBiome = std::unordered_map<
             const Biome*,

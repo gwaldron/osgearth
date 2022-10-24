@@ -56,9 +56,6 @@
 
 #define OE_DEVEL OE_DEBUG
 
-//#define ATLAS_SAMPLER "oe_veg_atlas"
-#define NOISE_SAMPLER "oe_veg_noiseTex"
-
 #ifndef GL_MULTISAMPLE
 #define GL_MULTISAMPLE 0x809D
 #endif
@@ -93,6 +90,7 @@ VegetationLayer::Options::getConfig() const
     conf.set("near_lod_scale", nearLODScale());
     conf.set("lod_transition_padding", lodTransitionPadding());
     conf.set("use_impostor_normal_maps", useImpostorNormalMaps());
+    conf.set("use_impostor_pbr_maps", useImpostorPBRMaps());
 
     //TODO: groups
 
@@ -140,6 +138,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     nearLODScale().setDefault(1.0f);
     lodTransitionPadding().setDefault(0.5f);
     useImpostorNormalMaps().setDefault(true);
+    useImpostorPBRMaps().setDefault(true);
 
     biomeLayer().get(conf, "biomes_layer");
 
@@ -150,6 +149,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     conf.get("near_lod_scale", nearLODScale());
     conf.get("lod_transition_padding", lodTransitionPadding());
     conf.get("use_impostor_normal_maps", useImpostorNormalMaps());
+    conf.get("use_impostor_pbr_maps", useImpostorPBRMaps());
 
     // some nice default group settings
     groups()[GROUP_TREES].lod().setDefault(14);
@@ -253,6 +253,10 @@ VegetationLayer::init()
 
     _requestMultisampling = false;
     _multisamplingActivated = false;
+
+    // make a 4-channel noise texture to use
+    NoiseTextureFactory noise;
+    _noiseTex = Texture::create(noise.create(256u, 4u));
 }
 
 VegetationLayer::~VegetationLayer()
@@ -290,10 +294,6 @@ VegetationLayer::openImplementation()
     setMaxVisibleRange(max_range);
 
     _lastVisit.setFrameNumber(~0);
-
-    // make a 4-channel noise texture to use
-    NoiseTextureFactory noise;
-    _noiseTex = noise.create(256u, 4u);
 
     return PatchLayer::openImplementation();
 }
@@ -379,6 +379,25 @@ bool
 VegetationLayer::getUseImpostorNormalMaps() const
 {
     return options().useImpostorNormalMaps().get();
+}
+
+void
+VegetationLayer::setUseImpostorPBRMaps(bool value)
+{
+    if (value != getUseImpostorPBRMaps())
+        options().useImpostorPBRMaps() = value;
+
+    auto ss = getOrCreateStateSet();
+    if (value == false)
+        ss->setDefine("OE_CHONK_MAX_LOD_FOR_PBR_MAPS", "0");
+    else
+        ss->setDefine("OE_CHONK_MAX_LOD_FOR_PBR_MAPS", "99");
+}
+
+bool
+VegetationLayer::getUseImpostorPBRMaps() const
+{
+    return options().useImpostorPBRMaps().get();
 }
 
 void
@@ -643,6 +662,18 @@ VegetationLayer::removedFromMap(const Map* map)
 void
 VegetationLayer::prepareForRendering(TerrainEngine* engine)
 {
+    if (!getBiomeLayer())
+    {
+        setStatus(Status::ResourceUnavailable, "Biome layer not available");
+        return;
+    }
+
+    if (!getLifeMapLayer())
+    {
+        setStatus(Status::ResourceUnavailable, "LifeMap layer not available");
+        return;
+    }
+
     PatchLayer::prepareForRendering(engine);
 
     _requestMultisampling = false;
@@ -651,17 +682,6 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
     TerrainResources* res = engine->getResources();
     if (res)
     {
-        // Get a binding for the noise texture. This is only used for wind, btw.
-        // Perhaps make this mapnode-level global or stick it in the texture arena.
-        if (_noiseBinding.valid() == false)
-        {
-            if (res->reserveTextureImageUnitForLayer(_noiseBinding, this, "VegLayerNV noise sampler") == false)
-            {
-                setStatus(Status::ResourceUnavailable, "No texture unit available for noise sampler");
-                return;
-            }
-        }
-
         // Compute LOD for each asset group if necessary.
         for(auto iter : options().groups())
         {
@@ -687,7 +707,47 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
         }
     }
 
-    buildStateSets();
+    // Create impostor geometries for each group
+    configureImpostor(GROUP_TREES);
+    configureImpostor(GROUP_BUSHES);
+    configureImpostor(GROUP_UNDERGROWTH);
+
+    // NEXT assemble the asset group statesets.
+    osg::StateSet* ss = getOrCreateStateSet();
+    ss->setName(typeid(*this).name());
+
+    // Backface culling should be off.
+    ss->setMode(GL_CULL_FACE, 0x0 | osg::StateAttribute::PROTECTED);
+
+    // Install the texture arena:
+    TextureArena* textures = getBiomeLayer()->getBiomeManager().getTextures();
+    ss->setAttribute(textures);
+
+    // Custom shaders:
+    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
+    ProceduralShaders shaders;
+    shaders.load(vp, shaders.Vegetation);
+
+    // noise sampler
+    int index = textures->add(_noiseTex);
+    ss->setDefine("OE_NOISE_TEX_INDEX", std::to_string(index));
+
+    // If multisampling is on, use alpha to coverage.
+    if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
+    {
+        activateMultisampling();
+    }
+
+    // activate compressed normal maps
+    ss->setDefine("OE_COMPRESSED_NORMAL");
+
+    // apply the various uniform-based options
+    setNearLODScale(options().nearLODScale().get());
+    setFarLODScale(options().farLODScale().get());
+    setImpostorLowAngle(options().impostorLowAngle().get());
+    setImpostorHighAngle(options().impostorHighAngle().get());
+    setLODTransitionPadding(options().lodTransitionPadding().get());
+    setUseImpostorNormalMaps(options().useImpostorNormalMaps().get());
 }
 
 namespace
@@ -708,62 +768,6 @@ namespace
             stateset->removeDefine(matrix);
         }
     }
-}
-
-void
-VegetationLayer::buildStateSets()
-{
-    if (!getBiomeLayer()) {
-        OE_DEBUG << LC << "buildStateSets deferred.. biome layer not available" << std::endl;
-        return;
-    }
-    if (!getLifeMapLayer()) {
-        OE_DEBUG << LC << "buildStateSets deferred.. lifemap layer not available" << std::endl;
-        return;
-    }
-
-    // Create impostor geometries for each group
-    configureImpostor(GROUP_TREES);
-    configureImpostor(GROUP_BUSHES);
-    configureImpostor(GROUP_UNDERGROWTH);
-
-    // NEXT assemble the asset group statesets.
-    osg::StateSet* ss = getOrCreateStateSet();
-    ss->setName(typeid(*this).name());
-
-    // Backface culling should be off for impostors.
-    ss->setMode(GL_CULL_FACE, 0x0 | osg::StateAttribute::PROTECTED);
-
-    // Install the texture arena:
-    TextureArena* textures = getBiomeLayer()->getBiomeManager().getTextures();
-    textures->setBindingPoint(1);
-    ss->setAttribute(textures);
-
-    // Custom shaders:
-    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
-    ProceduralShaders shaders;
-    shaders.load(vp, shaders.Vegetation);
-
-    // bind the noise sampler.
-    ss->setTextureAttribute(_noiseBinding.unit(), _noiseTex.get(), 1);
-    ss->addUniform(new osg::Uniform("oe_veg_noise", _noiseBinding.unit()));
-
-    // If multisampling is on, use alpha to coverage.
-    if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
-    {
-        activateMultisampling();
-    }
-
-    // activate compressed normal maps
-    ss->setDefine("OE_COMPRESSED_NORMAL");
-
-    // apply the various uniform-based options
-    setNearLODScale(options().nearLODScale().get());
-    setFarLODScale(options().farLODScale().get());
-    setImpostorLowAngle(options().impostorLowAngle().get());
-    setImpostorHighAngle(options().impostorHighAngle().get());
-    setLODTransitionPadding(options().lodTransitionPadding().get());
-    setUseImpostorNormalMaps(options().useImpostorNormalMaps().get());
 }
 
 void
@@ -800,7 +804,7 @@ VegetationLayer::configureImpostor(
 
         // one part if we only have side textures;
         // two parts if we also have top textures
-        int parts = textures.size() > 2 ? 2 : 1;
+        int parts = textures.size() > 3 ? 2 : 1;
 
         float xmin = std::min(b.xMin(), b.yMin());
         float ymin = xmin;
@@ -842,11 +846,6 @@ VegetationLayer::configureImpostor(
                 };
                 for (auto& n : normals) n.normalize();
 
-                osg::Vec4f bb_normals[8];
-                for (int i = 0; i < 8; ++i) {
-                    bb_normals[i].set(normals[i].x(), normals[i].y(), normals[i].z(), 1.0f);
-                }
-
                 const osg::Vec2f uvs[8] = {
                     {0,0},{1,0},{1,1},{0,1},
                     {0,0},{1,0},{1,1},{0,1}
@@ -859,24 +858,32 @@ VegetationLayer::configureImpostor(
 
                 geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 12, &indices[0]));
                 geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, verts));
+                geom->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, normals));
                 geom->setColorArray(new osg::Vec4Array(osg::Array::BIND_OVERALL, 1, colors));
                 geom->setTexCoordArray(0, new osg::Vec2Array(osg::Array::BIND_PER_VERTEX, 8, uvs));
                 geom->setTexCoordArray(3, new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, flexors));
 
+                auto normal_techniques = new osg::UByteArray(1);
+                normal_techniques->setBinding(osg::Array::BIND_OVERALL);
+                geom->setVertexAttribArray(6, normal_techniques);
+
                 if (isUndergrowth)
-                    geom->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, normals));
+                    (*normal_techniques)[0] = Chonk::NORMAL_TECHNIQUE_ZAXIS;
                 else
-                    geom->setNormalArray(new osg::Vec4Array(osg::Array::BIND_PER_VERTEX, 8, bb_normals));
+                    (*normal_techniques)[0] = Chonk::NORMAL_TECHNIQUE_HEMISPHERE;
 
                 if (textures.size() > 0)
                     ss->setTextureAttribute(0, textures[0], 1); // side albedo
 
-                node->addChild(geom);
-
                 if (textures.size() > 1)
                     ss->setTextureAttribute(1, textures[1], 1); // side normal
+
+                if (textures.size() > 2)
+                    ss->setTextureAttribute(2, textures[2], 1); // side meta/smooth/ao
+
+                node->addChild(geom);
             }
-            else if (i == 1 && textures[2] != nullptr)
+            else if (i == 1 && textures[3] != nullptr)
             {
                 osg::Geometry* geom = new osg::Geometry();
                 geom->setName("Tree impostor");
@@ -901,31 +908,33 @@ VegetationLayer::configureImpostor(
                 };
                 for (auto& n : normals) n.normalize();
 
-                osg::Vec4f bb_normals[4];
-                for (int i = 0; i < 4; ++i) {
-                    bb_normals[i].set(normals[i].x(), normals[i].y(), normals[i].z(), 1.0f);
-                }
-
                 const osg::Vec2f uvs[4] = {
                     {0,0}, {1,0}, {1,1}, {0,1}
                 };
 
                 geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 6, &indices[0]));
                 geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, verts));
+                geom->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, normals));
                 geom->setColorArray(new osg::Vec4Array(osg::Array::BIND_OVERALL, 1, colors));
                 geom->setTexCoordArray(0, new osg::Vec2Array(osg::Array::BIND_PER_VERTEX, 4, uvs));
                 geom->setTexCoordArray(3, new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4)); // flexors
 
+                auto normal_techniques = new osg::UByteArray(1);
+                normal_techniques->setBinding(osg::Array::BIND_OVERALL);
+                geom->setVertexAttribArray(6, normal_techniques);
                 if (isUndergrowth)
-                    geom->setNormalArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 4, normals));
+                    (*normal_techniques)[0] = Chonk::NORMAL_TECHNIQUE_ZAXIS;
                 else
-                    geom->setNormalArray(new osg::Vec4Array(osg::Array::BIND_PER_VERTEX, 4, bb_normals));
-
-                if (textures.size() > 2)
-                    ss->setTextureAttribute(0, textures[2], 1); // top albedo
+                    (*normal_techniques)[0] = Chonk::NORMAL_TECHNIQUE_HEMISPHERE;
 
                 if (textures.size() > 3)
-                    ss->setTextureAttribute(1, textures[3], 1); // top normal
+                    ss->setTextureAttribute(0, textures[3], 1); // top albedo
+
+                if (textures.size() > 4)
+                    ss->setTextureAttribute(1, textures[4], 1); // top normal
+
+                if (textures.size() > 5)
+                    ss->setTextureAttribute(2, textures[5], 1); // top MSA
 
                 node->addChild(geom);
             }
@@ -1206,7 +1215,7 @@ VegetationLayer::getAssetPlacements(
     const Biome* default_biome = groupAssets.begin()->first;
 
     osg::Vec4f noise;
-    ImageUtils::PixelReader readNoise(_noiseTex->getImage(0));
+    ImageUtils::PixelReader readNoise(_noiseTex->osgTexture()->getImage(0));
     readNoise.setSampleAsRepeatingTexture(true);
 
     using Index = RTree<int, double, 2>;

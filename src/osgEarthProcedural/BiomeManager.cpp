@@ -28,6 +28,7 @@
 #include <osgEarth/MeshConsolidator>
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
+#include <osgUtil/SmoothingVisitor>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
@@ -36,6 +37,7 @@ using namespace osgEarth::Procedural;
 #define LC "[BiomeManager] "
 
 #define NORMAL_MAP_TEX_UNIT 1
+#define PBR_TEX_UNIT 2
 
 //...................................................................
 
@@ -407,34 +409,15 @@ BiomeManager::materializeNewAssets(
     // secondary texture image units.. in this case, normal maps.
     // We can expand this later to include other types of material maps.
 
-    auto getNormalMapFileName = [](const std::string& filename)
-    {
-        const std::string NML = "_NML";
-
-        std::string dot_ext = osgDB::getFileExtensionIncludingDot(filename);
-        if (Strings::ciEquals(dot_ext, ".meif"))
-        {
-            auto underscore_pos = filename.find_last_of('_');
-            if (underscore_pos != filename.npos)
-            {
-                return
-                    filename.substr(0, underscore_pos)
-                    + NML
-                    + filename.substr(underscore_pos);
-            }
-        }
-
-        return
-            osgDB::getNameLessExtension(filename)
-            + NML
-            + dot_ext;
-    };
+    auto getNormalMapFileName = MaterialUtils::getDefaultNormalMapNameMangler();
 
     Util::MaterialLoader materialLoader;
 
-    materialLoader.setMangler(NORMAL_MAP_TEX_UNIT, getNormalMapFileName);
+    materialLoader.setMangler(
+        NORMAL_MAP_TEX_UNIT, getNormalMapFileName);
 
-    materialLoader.setTextureFactory(NORMAL_MAP_TEX_UNIT,
+    materialLoader.setTextureFactory(
+        NORMAL_MAP_TEX_UNIT,
         [](osg::Image* image)
         {
             osg::Texture2D* tex = nullptr;
@@ -448,6 +431,11 @@ BiomeManager::materializeNewAssets(
             return tex;
         }
     );
+
+    auto getPBRMapFileName = MaterialUtils::getDefaultPBRMapNameMangler();
+
+    materialLoader.setMangler(
+        PBR_TEX_UNIT, getPBRMapFileName);
 
     // Go through the residency list and materialize any model assets
     // that are not already loaded (and present in _residentModelAssets);
@@ -551,6 +539,7 @@ BiomeManager::materializeNewAssets(
                     {
                         residentAsset->sideBillboardTex() = ic->second->sideBillboardTex();
                         residentAsset->sideBillboardNormalMap() = ic->second->sideBillboardNormalMap();
+                        residentAsset->sideBillboardPBRMap() = ic->second->sideBillboardPBRMap();
                     }
                     else
                     {
@@ -559,22 +548,32 @@ BiomeManager::materializeNewAssets(
                         {
                             residentAsset->sideBillboardTex() = new osg::Texture2D(image.get());
 
-                            OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
+                            OE_INFO << LC << "Loaded side BB: " << uri.base() << std::endl;
                             texcache[uri] = residentAsset;
 
-                            // normal map is the same file name but with _NML inserted before the extension
+                            // normal map:
                             URI normalMapURI(getNormalMapFileName(uri.full()));
-
-                            // silenty fail if no normal map found.
                             osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
                             if (normalMap.valid())
                             {
-                                OE_DEBUG << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
+                                OE_INFO << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
                                 residentAsset->sideBillboardNormalMap() = new osg::Texture2D(normalMap.get());
                             }
                             else
                             {
-                                OE_WARN << LC << "Failed to load NML: " << normalMapURI.base() << std::endl;
+                                OE_WARN << LC << "Failed to load: " << normalMapURI.base() << std::endl;
+                            }
+
+                            URI pbrMapURI(getPBRMapFileName(uri.full()));
+                            osg::ref_ptr<osg::Image> pbrMap = pbrMapURI.getImage(readOptions);
+                            if (pbrMap.valid())
+                            {
+                                OE_INFO << LC << "Loaded PBR: " << pbrMapURI.base() << std::endl;
+                                residentAsset->sideBillboardPBRMap() = new osg::Texture2D(pbrMap);
+                            }
+                            else
+                            {
+                                OE_WARN << LC << "Failed to load: " << pbrMapURI.base() << std::endl;
                             }
                         }
                         else
@@ -598,6 +597,7 @@ BiomeManager::materializeNewAssets(
                         {
                             residentAsset->topBillboardTex() = ic->second->topBillboardTex();
                             residentAsset->topBillboardNormalMap() = ic->second->topBillboardNormalMap();
+                            residentAsset->topBillboardPBRMap() = ic->second->topBillboardPBRMap();
                         }
                         else
                         {
@@ -606,22 +606,33 @@ BiomeManager::materializeNewAssets(
                             {
                                 residentAsset->topBillboardTex() = new osg::Texture2D(image.get());
 
-                                OE_DEBUG << LC << "Loaded BB: " << uri.base() << std::endl;
+                                OE_INFO << LC << "Loaded top BB: " << uri.base() << std::endl;
                                 texcache[uri] = residentAsset;
 
-                                // normal map is the same file name but with _NML inserted before the extension
+                                // normal map:
                                 URI normalMapURI(getNormalMapFileName(uri.full()));
-
-                                // silenty fail if no normal map found.
                                 osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
                                 if (normalMap.valid())
                                 {
-                                    OE_DEBUG << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
+                                    OE_INFO << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
                                     residentAsset->topBillboardNormalMap() = new osg::Texture2D(normalMap.get());
                                 }
                                 else
                                 {
-                                    OE_WARN << LC << "Failed to load NML: " << normalMapURI.base() << std::endl;
+                                    OE_WARN << LC << "Failed to load: " << normalMapURI.base() << std::endl;
+                                }
+
+                                // PBR map:
+                                URI pbrMapURI(getPBRMapFileName(uri.full()));
+                                osg::ref_ptr<osg::Image> pbrMap = pbrMapURI.getImage(readOptions);
+                                if (pbrMap.valid())
+                                {
+                                    OE_INFO << LC << "Loaded PBR: " << pbrMapURI.base() << std::endl;
+                                    residentAsset->topBillboardPBRMap() = new osg::Texture2D(pbrMap);
+                                }
+                                else
+                                {
+                                    OE_WARN << LC << "Failed to load: " << pbrMapURI.base() << std::endl;
                                 }
                             }
                             else
@@ -631,11 +642,13 @@ BiomeManager::materializeNewAssets(
                         }
                     }
 
-                    std::vector<osg::Texture*> textures(4);
+                    std::vector<osg::Texture*> textures(6);
                     textures[0] = residentAsset->sideBillboardTex().get();
                     textures[1] = residentAsset->sideBillboardNormalMap().get();
-                    textures[2] = residentAsset->topBillboardTex().get();
-                    textures[3] = residentAsset->topBillboardNormalMap().get();
+                    textures[2] = residentAsset->sideBillboardPBRMap().get();
+                    textures[3] = residentAsset->topBillboardTex().get();
+                    textures[4] = residentAsset->topBillboardNormalMap().get();
+                    textures[5] = residentAsset->topBillboardPBRMap().get();
 
                     // if this group has an impostor creation function, call it
                     auto iter = _createImpostorFunctions.find(assetDef->group());
@@ -796,63 +809,27 @@ BiomeManager::addFlexors(
             auto verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
             OE_SOFT_ASSERT_AND_RETURN(verts, void());
 
-            // make the proper normal array on demand:
-            osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>(geom.getNormalArray());
-
             // make a flexor array on demand
             osg::Vec3Array* flexors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, verts->size());
             geom.setTexCoordArray(3, flexors);
 
-            if (normals)
+            const osg::Vec3 zaxis(0, 0, 1);
+            osg::Matrix model2local;
+            model2local.invert(local2model);
+
+            for (int i = 0; i < verts->size(); ++i)
             {
-                const osg::Vec3 zaxis(0, 0, 1);
+                osg::Vec3 vert_model = (*verts)[i] * local2model;
 
-                for (int i = 0; i < verts->size(); ++i)
-                {
-                    osg::Vec3 vert_model = (*verts)[i] * local2model;
-                    osg::Vec3 normal_model = osg::Matrix::transform3x3((*normals)[i], local2model);
-
-                    // convert to an "upward" vector for lighting/flexing:
-                    osg::Vec3 tangent = normal_model ^ zaxis;
-                    osg::Vec3 normal = normal_model ^ tangent;
-
-                    if (normal.z() < 0.0f)
-                        normal = -normal;
-
-                    // back to local space
-                    if (!local2model.isIdentity())
-                    {
-                        osg::Matrix model2local;
-                        model2local.invert(local2model);
-                        normal = osg::Matrix::transform3x3(model2local, normal);
-                    }
-
-                    (*normals)[i] = normal;
-
-                    (*flexors)[i] = normal * accel(vert_model.z() / bbox.zMax());
-                }
+                // back to local space
+                osg::Vec3 flexor = osg::Matrix::transform3x3(zaxis, model2local);
+                (*flexors)[i] = flexor * accel(vert_model.z() / bbox.zMax());
             }
-            else
-            {
-                // no normals, so we'll have to make some
-                normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, verts->size());
-                geom.setNormalArray(normals);
 
-                osg::Vec3 normal(0, 0, 1);
-                if (!local2model.isIdentity())
-                {
-                    osg::Matrix model2local;
-                    model2local.invert(local2model);
-                    normal = osg::Matrix::transform3x3(model2local, normal);
-                }
-
-                for (int i = 0; i < verts->size(); ++i)
-                {
-                    osg::Vec3 vert_model = (*verts)[i] * local2model;
-                    (*normals)[i] = normal;
-                    (*flexors)[i] = normal * accel(vert_model.z() / bbox.zMax());
-                }
-            }
+            // apply the "ZAXIS" shading technique
+            auto tech = new osg::UByteArray(1, { Chonk::NORMAL_TECHNIQUE_ZAXIS });
+            tech->setBinding(osg::Array::BIND_OVERALL);
+            geom.setVertexAttribArray(6, tech);
         };
 
         TypedNodeVisitor<osg::Geometry> visitor(fixNormals);
@@ -873,12 +850,15 @@ BiomeManager::addFlexors(
             osg::Vec3f base(bbox.center().x(), bbox.center().y(), bbox.zMin());
             float xy_radius = std::max(bbox.xMax() - bbox.xMin(), bbox.yMax() - bbox.yMin());
 
+            osg::Matrix w2l;
+            w2l.invert(l2w);
+
             for (auto& local_vert : *verts)
             {
                 auto vert = local_vert * l2w;
                 osg::Vec3f anchor(0.0f, 0.0f, vert.z());
                 float height_ratio = harden((vert.z() - bbox.zMin()) / (bbox.zMax() - bbox.zMin()));
-                auto lateral_vec = (vert - osg::Vec3f(0, 0, vert.z()));
+                auto lateral_vec = (vert - anchor);
                 float lateral_ratio = harden(lateral_vec.length() / xy_radius);
                 auto flex =
                     normalize(lateral_vec) *
@@ -886,6 +866,7 @@ BiomeManager::addFlexors(
                     (height_ratio * 1.5f) *
                     (1.0 - stiffness);
 
+                flex = osg::Matrix::transform3x3(flex, w2l);
                 flexors->push_back(flex);
             }
         };

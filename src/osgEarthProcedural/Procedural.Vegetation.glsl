@@ -1,6 +1,7 @@
 #pragma vp_function oe_vegetation_vs_view, vertex_view
 #pragma import_defines(OE_WIND_TEX)
 #pragma import_defines(OE_WIND_TEX_MATRIX)
+#pragma import_defines(OE_NOISE_TEX_INDEX)
 
 struct Instance
 {
@@ -16,8 +17,12 @@ struct Instance
 layout(binding = 0, std430) buffer Instances {
     Instance instances[];
 };
+layout(binding = 1, std430) buffer TextureArena {
+    uint64_t textures[];
+};
+#define NOISE_TEX sampler2D(textures[OE_NOISE_TEX_INDEX])
 
-layout(location = 4) in vec3 flex;
+layout(location = 5) in vec3 flex;
 
 // outputs
 flat out uint oe_lod;
@@ -26,7 +31,6 @@ flat out uint oe_lod;
 uniform sampler3D OE_WIND_TEX;
 uniform mat4 OE_WIND_TEX_MATRIX;
 uniform float osg_FrameTime;
-uniform sampler2D oe_veg_noise;
 
 #pragma import_defines(OE_TWEAKABLE)
 #ifdef OE_TWEAKABLE
@@ -35,8 +39,6 @@ uniform sampler2D oe_veg_noise;
 #define tweakable const
 #endif
 tweakable float oe_wind_power = 1.0;
-
-#define remap(X, LO, HI) (LO + X * (HI - LO))
 
 void oe_apply_wind(inout vec4 vertex, in int index)
 {
@@ -56,12 +58,9 @@ void oe_apply_wind(inout vec4 vertex, in int index)
         vec3 wind_vec = normalize(wind.rgb * 2.0 - 1.0);
         float speed = wind.a * oe_wind_power;
 
-        // Add the flutter experienced by vegetation that snaps in the wind.
-        // Sample the noise texture based on the speed, and use that
-        // to permute the speed.
-        float time = osg_FrameTime * speed * 0.1;
-        vec4 noise = textureLod(oe_veg_noise, tile_uv + time, 0);
-        speed *= mix(0.75, 1.4, noise[0]);
+        const float rate = 0.05 * speed;
+        vec4 noise_moving = textureLod(NOISE_TEX, tile_uv + osg_FrameTime * rate, 0);
+        speed *= noise_moving[3];
 
         // final wind force vector:
         vec3 wind_force = wind_vec * speed;

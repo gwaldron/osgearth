@@ -26,6 +26,69 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 
 #undef LC
+#define LC "[MaterialUtils] "
+
+MaterialUtils::Mangler
+MaterialUtils::getDefaultNormalMapNameMangler()
+{
+    static Mangler getNormalMapFileName = [](const std::string& filename)
+    {
+        const std::string pattern = "_NML";
+
+        std::string dot_ext = osgDB::getFileExtensionIncludingDot(filename);
+        if (Strings::ciEquals(dot_ext, ".meif"))
+        {
+            auto underscore_pos = filename.find_last_of('_');
+            if (underscore_pos != filename.npos)
+            {
+                return
+                    filename.substr(0, underscore_pos)
+                    + pattern
+                    + filename.substr(underscore_pos);
+            }
+        }
+
+        return
+            osgDB::getNameLessExtension(filename)
+            + pattern
+            + dot_ext;
+    };
+
+    return getNormalMapFileName;
+}
+
+MaterialUtils::Mangler
+MaterialUtils::getDefaultPBRMapNameMangler()
+{
+    static Mangler getPBRMapFileName = [](const std::string& filename)
+    {
+        const std::string pattern = "_MTL_GLS_AO";
+
+        std::string dot_ext = osgDB::getFileExtensionIncludingDot(filename);
+        if (Strings::ciEquals(dot_ext, ".meif"))
+        {
+            auto underscore_pos = filename.find_last_of('_');
+            if (underscore_pos != filename.npos)
+            {
+                return
+                    filename.substr(0, underscore_pos)
+                    + pattern
+                    + filename.substr(underscore_pos);
+            }
+        }
+
+        return
+            osgDB::getNameLessExtension(filename)
+            + pattern
+            + dot_ext;
+    };
+
+    return getPBRMapFileName;
+}
+
+
+
+#undef LC
 #define LC "[MaterialLoader] "
 
 MaterialLoader::MaterialLoader()
@@ -87,17 +150,18 @@ MaterialLoader::apply(osg::StateSet* ss)
         if (ss->getTextureAttribute(unit, osg::StateAttribute::TEXTURE) != nullptr)
             continue;
 
+        MaterialLoader::Mangler& mangler = m.second;
+        URI materialURI(mangler(filename), URIContext(_referrer));
+
         // if it's already loaded re-use it
         osg::ref_ptr<osg::Texture> mat_tex;
-        auto cache_iter = _cache.find(filename);
+        auto cache_iter = _cache.find(materialURI.full());
         if (cache_iter != _cache.end())
         {
             mat_tex = cache_iter->second;
         }
         else
         {
-            MaterialLoader::Mangler& mangler = m.second;
-            URI materialURI(mangler(filename), URIContext(_referrer));
             OE_DEBUG << LC << "Looking for: " << materialURI.full() << std::endl;
             osg::ref_ptr<osg::Image> image = materialURI.getImage(_options);
             if (image.valid())
@@ -112,7 +176,7 @@ MaterialLoader::apply(osg::StateSet* ss)
                     mat_tex = new osg::Texture2D(image);
                 }
 
-                // match the wrap of the albedo texture
+                // match the params of the albedo texture
                 mat_tex->setFilter(osg::Texture::MIN_FILTER, t->getFilter(osg::Texture::MIN_FILTER));
                 mat_tex->setFilter(osg::Texture::MAG_FILTER, t->getFilter(osg::Texture::MAG_FILTER));
                 mat_tex->setWrap(osg::Texture::WRAP_S, t->getWrap(osg::Texture::WRAP_S));
@@ -120,7 +184,7 @@ MaterialLoader::apply(osg::StateSet* ss)
                 mat_tex->setWrap(osg::Texture::WRAP_R, t->getWrap(osg::Texture::WRAP_R));
                 mat_tex->setMaxAnisotropy(t->getMaxAnisotropy());
 
-                _cache[filename] = mat_tex;
+                _cache[materialURI.full()] = mat_tex;
                 OE_DEBUG << LC << "..loaded material tex '" << materialURI.base() << "' to unit " << unit << std::endl;
             }
         }   

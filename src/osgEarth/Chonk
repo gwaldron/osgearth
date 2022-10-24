@@ -43,17 +43,20 @@ namespace osgEarth
         }
 
         // texturearena indexes of material textures
-        int albedo;
-        int normal;
+        int albedo_index;
+        int normal_index;
+        int pbr_index;
 
         // store refs to the original textures when the
         // factory objects's texture arena is using auto-release.
         // otherwise they are null.
         Texture::Ptr albedo_tex;
         Texture::Ptr normal_tex;
+        Texture::Ptr pbr_tex;
 
     private:
-        ChonkMaterial() : albedo(-1), normal(-1) { }
+        ChonkMaterial() : 
+            albedo_index(-1), normal_index(-1), pbr_index(-1) { }
     };
 
     class ChonkFactory;
@@ -88,17 +91,28 @@ namespace osgEarth
         struct VertexGPU
         {
             osg::Vec3f position;
-            osg::Vec4f normal4; // W>0 means to billboard the normals
+            osg::Vec3f normal;
+            char normal_technique;
             osg::Vec4ub color;
             osg::Vec2f uv;
             osg::Vec3f flex;
 
-            // TODO: upgrade to material index
-            GLint albedo;
-            GLint normalmap;
+            // texturearena indexes of materials
+            // TODO: use a material index instead?
+            GLint albedo_index;
+            GLint normalmap_index;
+            GLint pbr_index;
 
-            VertexGPU() : albedo(-1), normalmap(-1) {}
+            VertexGPU() : 
+                normal_technique(0),
+                albedo_index(-1),
+                normalmap_index(-1),
+                pbr_index(-1) {}
         };
+
+        static GLubyte NORMAL_TECHNIQUE_DEFAULT;
+        static GLubyte NORMAL_TECHNIQUE_ZAXIS;
+        static GLubyte NORMAL_TECHNIQUE_HEMISPHERE;
 
         //! Geometry variant for a given pixel size range
         struct LOD
@@ -116,7 +130,7 @@ namespace osgEarth
         //! Creates a new empty chonk.
         static Ptr create();
 
-        std::vector<ChonkMaterial::Ptr> _materials; // todo: upgrade to material index
+        std::vector<ChonkMaterial::Ptr> _materials;
         std::vector<VertexGPU> _vbo_store;
         std::vector<element_t> _ebo_store;
         std::vector<LOD> _lods;
@@ -289,7 +303,7 @@ namespace osgEarth
             GLBuffer::Ptr _instanceOutputBuf;
             GLBuffer::Ptr _chonkBuf;
             bool _dirty;
-            bool _cull;
+            bool _gpucull;
 
             void(GL_APIENTRY * _glMultiDrawElementsIndirectBindlessNV)
                 (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint);

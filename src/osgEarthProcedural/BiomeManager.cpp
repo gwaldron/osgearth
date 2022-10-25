@@ -107,7 +107,7 @@ BiomeManager::ref(const Biome* biome)
     if (item.first->second == 1) // ref count of 1 means it's new
     {
         ++_revision;
-        OE_INFO << LC << "Hello, " << biome->name().get() << " (" << biome->index() << ")" << std::endl;
+        OE_DEBUG << LC << "Hello, " << biome->name().get() << " (" << biome->index() << ")" << std::endl;
     }
 }
 
@@ -382,16 +382,9 @@ BiomeManager::materializeNewAssets(
     // exclusive access to the resident dataset
     ScopedMutexLock lock(_residentData_mutex);
 
-    std::set<std::string> asset_groups;
-
-    // Any billboard that doesn't have its own normal map will use this one.
-    osg::ref_ptr<osg::Texture> defaultNormalMap = osgEarth::createEmptyNormalMapTexture();
-
     // Some caches to avoid duplicating data
-    using TextureShareCache = std::map<URI, ResidentModelAsset::Ptr>;
-    TextureShareCache texcache;
-    using ModelCache = std::map<URI, ModelCacheEntry>;
-    ModelCache modelcache;
+    std::map<URI, ResidentModelAsset::Ptr> texcache;
+    std::map<URI, ModelCacheEntry> modelcache;
 
     // Factory for loading chonk data. It will use our texture arena.
     ChonkFactory factory(_textures.get());
@@ -477,11 +470,11 @@ BiomeManager::materializeNewAssets(
                 {
                     const URI& uri = assetDef->modelURI().get();
 
-                    ModelCache::iterator ic = modelcache.find(uri);
-                    if (ic != modelcache.end())
+                    auto cache_iter = modelcache.find(uri);
+                    if (cache_iter != modelcache.end())
                     {
-                        residentAsset->model() = ic->second._node.get();
-                        residentAsset->boundingBox() = ic->second._modelAABB;
+                        residentAsset->model() = cache_iter->second._node.get();
+                        residentAsset->boundingBox() = cache_iter->second._modelAABB;
                     }
                     else
                     {
@@ -798,13 +791,12 @@ BiomeManager::addFlexors(
     node->accept(cb);
     auto& bbox = cb.getBoundingBox();
 
+    TypedNodeVisitor<osg::Geometry>::Function func;
+
     if (isUndergrowth)
     {
-        // for undergrowth, modify the normals so they all point in the skyward
-        // direction of the blade card
-        auto fixNormals = [&bbox](
-            osg::Geometry& geom,
-            const osg::Matrix& local2model)
+        // for undergrowth, create flexors that point skyward. 
+        func = [&bbox](osg::Geometry& geom, const osg::Matrix& local2model)
         {
             auto verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
             OE_SOFT_ASSERT_AND_RETURN(verts, void());
@@ -831,14 +823,11 @@ BiomeManager::addFlexors(
             tech->setBinding(osg::Array::BIND_OVERALL);
             geom.setVertexAttribArray(6, tech);
         };
-
-        TypedNodeVisitor<osg::Geometry> visitor(fixNormals);
-        node->accept(visitor);
     }
 
     else // not undergrorwth (normal tree, bush models)
     {
-        auto addFlexors = [&bbox, stiffness](osg::Geometry& geom, const osg::Matrix& l2w)
+        func = [&bbox, stiffness](osg::Geometry& geom, const osg::Matrix& l2w)
         {
             osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
             if (!verts) return;
@@ -861,7 +850,7 @@ BiomeManager::addFlexors(
                 auto lateral_vec = (vert - anchor);
                 float lateral_ratio = harden(lateral_vec.length() / xy_radius);
                 auto flex =
-                    normalize(lateral_vec) *
+                    mix(normalize(lateral_vec), normalize(vert), height_ratio) *
                     (lateral_ratio * 3.0f) *
                     (height_ratio * 1.5f) *
                     (1.0 - stiffness);
@@ -870,8 +859,8 @@ BiomeManager::addFlexors(
                 flexors->push_back(flex);
             }
         };
-
-        TypedNodeVisitor<osg::Geometry> visitor(addFlexors);
-        node->accept(visitor);
     }
+
+    TypedNodeVisitor<osg::Geometry> visitor(func);
+    node->accept(visitor);
 }

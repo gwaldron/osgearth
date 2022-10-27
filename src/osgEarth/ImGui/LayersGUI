@@ -621,17 +621,21 @@ namespace osgEarth {
                         osgEarth::VisibleLayer* visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
                         if (visibleLayer)
                         {
-                            bool wantOpen = layer->isOpen();
-                            ImGui::Checkbox("", &wantOpen);
-
-                            if (wantOpen && !layer->isOpen())
+                            if (layer->isOpen())
                             {
-                                visibleLayer->setVisible(true);
-                                layer->open();
+                                bool visible = visibleLayer->getVisible();
+                                if (ImGui::Checkbox("", &visible))
+                                {
+                                    visibleLayer->setVisible(visible);
+                                }
                             }
-                            else if (!wantOpen && layer->isOpen())
+                            else // closed? the checkbox will try to open it.
                             {
-                                layer->close();
+                                bool dummy = false;
+                                if (ImGui::Checkbox("", &dummy))
+                                {
+                                    layer->open();
+                                }
                             }
 
                             ImGui::SameLine();
@@ -686,11 +690,6 @@ namespace osgEarth {
                                         float value = visibleLayer->getAttenuationRange();
                                         if (ImGui::SliderFloat("Attenuation range", &value, 0.0f, _maxAttenRanges[layer]))
                                             visibleLayer->setAttenuationRange(value);
-                                    }
-
-                                    bool visible = visibleLayer->getVisible();
-                                    if (ImGui::Checkbox("Visible", &visible)) {
-                                        visibleLayer->setVisible(visible);
                                     }
 
                                     bool debugView = visibleLayer->getEnableDebugView();
@@ -858,6 +857,15 @@ namespace osgEarth {
                                         layer->setCachePolicy(cp);
                                         std::vector<const Layer*> layers = { layer };
                                         _mapNode->getTerrainEngine()->invalidateRegion(layers, GeoExtent());
+                                    }
+
+                                    if (layer->isOpen())
+                                    {
+                                        ImGui::SameLine();
+                                        if (ImGui::Button("Close layer"))
+                                        {
+                                            layer->close();
+                                        }
                                     }
                                 }
                             }

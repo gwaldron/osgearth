@@ -883,9 +883,9 @@ ChonkDrawable::GLObjects::initialize(
         {4, GL_UNSIGNED_BYTE, GL_TRUE,  offsetof(Chonk::VertexGPU, color)},
         {2, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, uv)},
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, flex)},
-        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, albedo_index)},
-        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, normalmap_index)},
-        {1, GL_INT,           GL_FALSE, offsetof(Chonk::VertexGPU, pbr_index)}
+        {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, albedo_index)},
+        {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, normalmap_index)},
+        {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, pbr_index)}
     };
 
     // configure the format of each vertex attribute in our structure.

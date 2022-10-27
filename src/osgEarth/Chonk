@@ -99,9 +99,9 @@ namespace osgEarth
 
             // texturearena indexes of materials
             // TODO: use a material index instead?
-            GLint albedo_index;
-            GLint normalmap_index;
-            GLint pbr_index;
+            GLshort albedo_index;
+            GLshort normalmap_index;
+            GLshort pbr_index;
 
             VertexGPU() : 
                 normal_technique(0),

@@ -22,7 +22,9 @@
 #include "ImGui"
 #include <osgEarth/Ephemeris>
 #include <osgEarth/Sky>
+#include <osgEarth/ShaderLoader>
 #include <osgEarth/Shadowing>
+#include <osgEarth/VirtualProgram>
 #include <osgEarth/WindLayer>
 
 namespace
@@ -180,7 +182,7 @@ namespace osgEarth
                 }
 
                 ImGui::Begin(name(), visible());
-                {   
+                {
                     bool lighting = _skyNode->getLighting();
                     ImGui::Checkbox("Lighting", &lighting);
                     _skyNode->setLighting(lighting);

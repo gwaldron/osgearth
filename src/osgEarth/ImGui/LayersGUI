@@ -33,7 +33,9 @@
 #include <osgEarth/ExampleResources>
 #include <osg/Camera>
 
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #if defined(__has_include)
 #if __has_include(<third_party/portable-file-dialogs/portable-file-dialogs.h>)
 #include <third_party/portable-file-dialogs/portable-file-dialogs.h>
@@ -230,7 +232,7 @@ namespace osgEarth {
             {
                 if (!visible) return;
 
-                ImGui::Begin("Add XYZ", &visible);                
+                ImGui::Begin("Add XYZ", &visible);
                 ImGui::InputText("Name", name, IM_ARRAYSIZE(name));
                 ImGui::InputText("URL", url, IM_ARRAYSIZE(url));
 
@@ -306,7 +308,7 @@ namespace osgEarth {
                 _showFeatureModelLayers,
                 _showConstraintLayers;
 
-        public:            
+        public:
 
             LayersGUI() : BaseGUI("Map"),
                 _showDisabled(false),
@@ -507,7 +509,7 @@ namespace osgEarth {
                                                 gdalImage->setName(osgDB::getSimpleFileName(name));
                                                 gdalImage->setURL(name);
                                                 _mapNode->getMap()->addLayer(gdalImage);
-                                            }                                            
+                                            }
                                         }
                                     }
                                     else
@@ -552,7 +554,7 @@ namespace osgEarth {
                         }
                         ImGui::EndMenuBar();
                     }
-                    
+
                     // Draw the add dialogs
                     _addXYZDialog.draw(_mapNode.get());
                     _addTMSDialog.draw(_mapNode.get());
@@ -621,17 +623,21 @@ namespace osgEarth {
                         osgEarth::VisibleLayer* visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
                         if (visibleLayer)
                         {
-                            bool wantOpen = layer->isOpen();
-                            ImGui::Checkbox("", &wantOpen);
-
-                            if (wantOpen && !layer->isOpen())
+                            if (layer->isOpen())
                             {
-                                visibleLayer->setVisible(true);
-                                layer->open();
+                                bool visible = visibleLayer->getVisible();
+                                if (ImGui::Checkbox("", &visible))
+                                {
+                                    visibleLayer->setVisible(visible);
+                                }
                             }
-                            else if (!wantOpen && layer->isOpen())
+                            else // closed? the checkbox will try to open it.
                             {
-                                layer->close();
+                                bool dummy = false;
+                                if (ImGui::Checkbox("", &dummy))
+                                {
+                                    layer->open();
+                                }
                             }
 
                             ImGui::SameLine();
@@ -686,11 +692,6 @@ namespace osgEarth {
                                         float value = visibleLayer->getAttenuationRange();
                                         if (ImGui::SliderFloat("Attenuation range", &value, 0.0f, _maxAttenRanges[layer]))
                                             visibleLayer->setAttenuationRange(value);
-                                    }
-
-                                    bool visible = visibleLayer->getVisible();
-                                    if (ImGui::Checkbox("Visible", &visible)) {
-                                        visibleLayer->setVisible(visible);
                                     }
 
                                     bool debugView = visibleLayer->getEnableDebugView();
@@ -858,6 +859,15 @@ namespace osgEarth {
                                         layer->setCachePolicy(cp);
                                         std::vector<const Layer*> layers = { layer };
                                         _mapNode->getTerrainEngine()->invalidateRegion(layers, GeoExtent());
+                                    }
+
+                                    if (layer->isOpen())
+                                    {
+                                        ImGui::SameLine();
+                                        if (ImGui::Button("Close layer"))
+                                        {
+                                            layer->close();
+                                        }
                                     }
                                 }
                             }

@@ -58,7 +58,7 @@ namespace osgEarth { namespace Splat
         };
 
     public:
-        META_Layer(osgEarth, GroundCoverLayer, Options, PatchLayer, GroundCover);
+        META_Layer(osgEarthSplat, GroundCoverLayer, Options, PatchLayer, GroundCover);
 
         //! Layer containing required coverage data
         void setLandCoverLayer(LandCoverLayer* landCoverLayer);

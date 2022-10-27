@@ -33,7 +33,9 @@
 #include <osgEarth/ExampleResources>
 #include <osg/Camera>
 
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #if defined(__has_include)
 #if __has_include(<third_party/portable-file-dialogs/portable-file-dialogs.h>)
 #include <third_party/portable-file-dialogs/portable-file-dialogs.h>
@@ -230,7 +232,7 @@ namespace osgEarth {
             {
                 if (!visible) return;
 
-                ImGui::Begin("Add XYZ", &visible);                
+                ImGui::Begin("Add XYZ", &visible);
                 ImGui::InputText("Name", name, IM_ARRAYSIZE(name));
                 ImGui::InputText("URL", url, IM_ARRAYSIZE(url));
 
@@ -306,7 +308,7 @@ namespace osgEarth {
                 _showFeatureModelLayers,
                 _showConstraintLayers;
 
-        public:            
+        public:
 
             LayersGUI() : BaseGUI("Map"),
                 _showDisabled(false),
@@ -507,7 +509,7 @@ namespace osgEarth {
                                                 gdalImage->setName(osgDB::getSimpleFileName(name));
                                                 gdalImage->setURL(name);
                                                 _mapNode->getMap()->addLayer(gdalImage);
-                                            }                                            
+                                            }
                                         }
                                     }
                                     else
@@ -552,7 +554,7 @@ namespace osgEarth {
                         }
                         ImGui::EndMenuBar();
                     }
-                    
+
                     // Draw the add dialogs
                     _addXYZDialog.draw(_mapNode.get());
                     _addTMSDialog.draw(_mapNode.get());

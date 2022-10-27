@@ -593,7 +593,7 @@ namespace osgEarth {
 
                     ImGui::SameLine();
 
-                    if (ImGui::Checkbox("Closed", &_showDisabled))
+                    if (ImGui::Checkbox("Disabled", &_showDisabled))
                         dirtySettings();
 
                     ImGui::Separator();
@@ -642,7 +642,16 @@ namespace osgEarth {
 
                             ImGui::PushID("selectable");
                             bool layerNameClicked = false;
-                            ImGui::Selectable(layer->getName().c_str(), &layerNameClicked);
+                            if (layer->isOpen())
+                            {
+                                ImGui::Selectable(layer->getName().c_str(), &layerNameClicked);
+                            }
+                            else
+                            {
+                                std::string text = layer->getName() + " (closed)";
+                                ImGui::Selectable(text.c_str(), &layerNameClicked);
+                            }
+
                             if (layerNameClicked)
                             {
                                 _layerExpanded[i] = !_layerExpanded[i];

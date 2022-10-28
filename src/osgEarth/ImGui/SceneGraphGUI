@@ -29,6 +29,7 @@
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/StringUtils>
 #include <osgDB/FileUtils>
+#include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osg/TextureBuffer>
 
@@ -746,6 +747,27 @@ namespace osgEarth
 
                         osg::ref_ptr< osgDB::Options > writeOptions = new osgDB::Options;
                         osgDB::writeNodeFile(*node, filename, writeOptions.get());
+                    }
+                }
+
+                osg::Group* group = node->asGroup();
+                if (group)
+                {
+                    if (ImGui::Button("Add Node"))
+                    {
+                        auto f = pfd::open_file("Choose files to read", pfd::path::home(),
+                            { "All Files", "*" },
+                            pfd::opt::multiselect);
+
+                        for (auto const& name : f.result())
+                        {
+                            osg::ref_ptr< osg::Node > node = osgDB::readNodeFile(name);
+                            if (node.valid())
+                            {
+                                Registry::instance()->shaderGenerator().run(node.get());
+                                group->addChild(node.get());
+                            }
+                        }
                     }
                 }
 #endif

@@ -254,6 +254,10 @@ namespace osgEarth { namespace Threading
             Container() { }
             void set(const T& obj) { 
                 ScopedMutexLock lock(_m);
+                _obj = obj;
+            }
+            void set(const T&& obj) {
+                ScopedMutexLock lock(_m);
                 _obj = std::move(obj);
             }
             const T& obj() const {
@@ -309,6 +313,11 @@ namespace osgEarth { namespace Threading
         //! will just get the default object.
         T get() const {
             return _shared->obj();
+        }
+
+        //! Alias for get()
+        const T* operator -> () const {
+            return &(_shared->obj());
         }
 
         //! Same as get(), but if the result is available will reset the

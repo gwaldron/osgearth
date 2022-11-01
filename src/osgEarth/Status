@@ -43,36 +43,50 @@ namespace osgEarth
 
     public:
         Status() : _code(NoError) { }
-        Status(const Status& rhs) : _code(rhs._code), _source(rhs._source), _msg(rhs._msg) { }
+        Status(const Status& rhs) : _code(rhs._code), _msg(rhs._msg) { }
         Status(const Code& code) : _code(code) { }
         Status(const std::string& msg) : _code(GeneralError), _msg(msg) { }
         Status(const Code& code, const std::string& msg) : _code(code), _msg(msg) { }
-        Status(const std::string& source, const std::string& msg) : _code(GeneralError), _source(source), _msg(msg) { }
-        Status(const Code& code, const std::string& source, const std::string& msg) : _code(code), _source(source), _msg(msg) { }
         bool isOK() const { return _code == NoError; }
         bool isError() const { return !isOK(); }
         const Code& code() const { return _code; }
-        const std::string& source() const { return _source; }
         const std::string& message() const { return _msg; }
-        bool operator == (const Status& rhs) const { return _code == rhs._code && _source.compare(rhs._source) == 0 && _msg.compare(rhs._msg) == 0; }
+        bool operator == (const Status& rhs) const { return _code == rhs._code && _msg.compare(rhs._msg) == 0; }
         bool operator != (const Status& rhs) const { return !(*this==rhs); }
         bool const operator ! () const { return isError(); }
         static Status OK() { return Status(); }
         static Status Error(const Code& code) { return Status(code); }
         static Status Error(const std::string& msg) { return Status(msg); }
         static Status Error(const Code& code, const std::string& msg) { return Status(code, msg); }
-        static Status Error(const std::string& owner, const std::string& msg) { return Status(owner, msg); }
-        static Status Error(const Code& code, const std::string& owner, const std::string& msg) { return Status(code, owner, msg); }
-        std::string toString() const;
-        void set(const Code& code) { _code = code, _source = "", _msg = ""; }
-        void set(const Code& code, const std::string& msg) { _code = code, _source = "", _msg = msg; }
+        void set(const Code& code) { _code = code, _msg = ""; }
+        void set(const Code& code, const std::string& msg) { _code = code, _msg = msg; }
+        std::string toString() const {
+            return _codeText[(unsigned)_code < 6 ? (int)_code : 5] + ": " + message();
+        }
     private:
         Code _code;
-        std::string _source;
         std::string _msg;
+        static std::string _codeText[6];
     };
 
     extern OSGEARTH_EXPORT const Status STATUS_OK;
+
+    /**
+     * Generic return value that wraps a value type and a Status.
+     */
+    template<typename T>
+    class Result : public Status
+    {
+    public:
+        Result() : Status() { }
+        Result(const T& val) : _value(val) { }
+        Result(const Status& s) : Status(s) { }
+        const T& value() const { return _value; }
+        const T& get() const { return _value; }
+        const T* operator -> () const { return &_value; }
+    private:
+        T _value;
+    };
 }
 
 #endif // OSGEARTH_STATUS_H

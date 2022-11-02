@@ -634,6 +634,22 @@ Profile::createTileKey( double x, double y, unsigned int level ) const
     }
 }
 
+TileKey
+Profile::createTileKey(const GeoPoint& point, unsigned level) const
+{
+    if (!point.isValid())
+        return TileKey::INVALID;
+
+    if (point.getSRS()->isHorizEquivalentTo(getSRS()))
+    {
+        return createTileKey(point.x(), point.y(), level);
+    }
+    else
+    {
+        return createTileKey(point.transform(getSRS()), level);
+    }
+}
+
 GeoExtent
 Profile::clampAndTransformExtent(const GeoExtent& input, bool* out_clamped) const
 {

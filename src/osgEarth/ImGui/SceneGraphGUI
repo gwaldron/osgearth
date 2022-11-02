@@ -27,7 +27,9 @@
 #include <osgEarth/ViewFitter>
 #include <osgEarth/ThreeDTilesLayer>
 #include <osgEarth/EarthManipulator>
+#include <osgEarth/StringUtils>
 #include <osgDB/FileUtils>
+#include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osg/TextureBuffer>
 
@@ -80,7 +82,7 @@ struct PrepareForWriting : public osg::NodeVisitor
                 i->get()->setBinding(osg::Array::BIND_OFF);
             }
         }
-        
+
         // Get rid of any kdtree since osg can't serialize it.
         geom->setShape(nullptr);
     }
@@ -96,7 +98,7 @@ struct PrepareForWriting : public osg::NodeVisitor
             applyUserData(*sa);
         }
 
-        // Disable the texture image-unref feature so we can share the resource 
+        // Disable the texture image-unref feature so we can share the resource
         // across cached tiles.
         osg::StateSet::TextureAttributeList& a = ss->getTextureAttributeList();
         for (osg::StateSet::TextureAttributeList::iterator i = a.begin(); i != a.end(); ++i)
@@ -145,7 +147,7 @@ struct WriteExternalImages : public osgEarth::TextureAndImageVisitor
     {
         if (dynamic_cast<osg::TextureBuffer*>(&tex) != 0L)
         {
-            // skip texture buffers, they need no prep and 
+            // skip texture buffers, they need no prep and
             // will be inlined as long as they have a write hint
             // set to STORE_INLINE.
         }
@@ -166,7 +168,7 @@ struct WriteExternalImages : public osgEarth::TextureAndImageVisitor
 
         std::string format = "dds";
         unsigned int hash = osgEarth::hashString(path);
-        std::string relativeName = Stringify() << "images/" <<  hash << "." << format;
+        std::string relativeName = osgEarth::Util::Stringify() << "images/" <<  hash << "." << format;
         std::string filename = osgDB::concatPaths(_destinationPath, relativeName);
         image.setFileName(relativeName);
         image.setWriteHint(osg::Image::EXTERNAL_FILE);
@@ -183,7 +185,7 @@ namespace osgEarth
     {
         using namespace osgEarth;
         using namespace osgEarth::Util;
-        
+
         template<typename T>
         std::string printArrayValue(const T* array)
         {
@@ -368,10 +370,10 @@ namespace osgEarth
             }
         }
 
-        
+
 
         static std::string printUniformValue(osg::Uniform* uniform)
-        {            
+        {
             if (uniform->getFloatArray()) return printArrayValue(uniform->getFloatArray());
             if (uniform->getDoubleArray()) return printArrayValue(uniform->getDoubleArray());
             if (uniform->getIntArray()) return printArrayValue(uniform->getIntArray());
@@ -385,7 +387,7 @@ namespace osgEarth
 
         class SceneGraphGUI : public BaseGUI
         {
-        public:            
+        public:
 
             osg::ref_ptr<osg::Node> getSelectedNode()
             {
@@ -435,7 +437,7 @@ namespace osgEarth
                         osg::ref_ptr< osgUtil::PolytopeIntersector> picker = new osgUtil::PolytopeIntersector(osgUtil::Intersector::WINDOW, x - w, y - h, x + w, y + h);
                         picker->setIntersectionLimit(osgUtil::Intersector::LIMIT_NEAREST);
                         osgUtil::IntersectionVisitor iv(picker.get());
-                        // This is a hack, but we set the node mask to something other than 1 << 2 which is what the "selected bounds" node mask is set to to avoid picking it.  
+                        // This is a hack, but we set the node mask to something other than 1 << 2 which is what the "selected bounds" node mask is set to to avoid picking it.
                         // We should rework this later into something more formal so we can add widget type nodes that aren't generally interacted with.
                         iv.setTraversalMask((1 << 1));
                         view->getCamera()->accept(iv);
@@ -485,13 +487,13 @@ namespace osgEarth
                         ImGui::PopStyleColor();
                     }
                     if (ImGui::IsItemClicked())
-                    {                                         
+                    {
                         _owner->setSelectedNodePath(getNodePath());
                     }
                 }
 
                 void apply(osg::Group& node)
-                {   
+                {
                     std::string label = getLabel(node);
                     ImGuiTreeNodeFlags node_flags = base_flags;
                     if (_owner->getSelectedNode() == &node)
@@ -516,7 +518,7 @@ namespace osgEarth
                         ImGui::PopStyleColor();
                     }
                     if (ImGui::IsItemClicked())
-                    {                     
+                    {
                         _owner->setSelectedNodePath(getNodePath());
                     }
                     if (node_open)
@@ -542,7 +544,7 @@ namespace osgEarth
 
                 bool isInSelectedNodePath(osg::Node* node)
                 {
-                    auto selectedNodePaths = _owner->getSelectedNodePath();                    
+                    auto selectedNodePaths = _owner->getSelectedNodePath();
 
                     for (unsigned int i = 0; i < selectedNodePaths.size(); i++)
                     {
@@ -586,10 +588,10 @@ namespace osgEarth
                     }
 
                     auto size = ImGui::GetWindowSize();
-                    
+
                     if (ImGui::CollapsingHeader("Scene"))
                     {
-                        // Change the size based on whether the properties panel is 
+                        // Change the size based on whether the properties panel is
                         ImGui::BeginChild("Scene", ImVec2(0, getSelectedNode() && _propertiesExpanded ? 0.6f * size.y : 0.90f * size.y), false, ImGuiWindowFlags_HorizontalScrollbar);
                         SceneHierarchyVisitor v(this);
                         _node->accept(v);
@@ -642,7 +644,7 @@ namespace osgEarth
                     {
                         nodePath.push_back(refNodePath[i].get());
                     }
-                    
+
                     if (nodePath.back()->asTransform())
                     {
                         nodePath.pop_back();
@@ -662,7 +664,7 @@ namespace osgEarth
 
                             osg::MatrixTransform* center = new osg::MatrixTransform;
                             center->addChild(AnnotationUtils::createBoundingBox(bb, Color::Yellow));
-                            _selectedBounds->addChild(center);                           
+                            _selectedBounds->addChild(center);
 
                             _selectedBounds->setNodeMask(1 << 2);
                             mapNode->addChild(_selectedBounds);
@@ -747,6 +749,27 @@ namespace osgEarth
                         osgDB::writeNodeFile(*node, filename, writeOptions.get());
                     }
                 }
+
+                osg::Group* group = node->asGroup();
+                if (group)
+                {
+                    if (ImGui::Button("Add Node"))
+                    {
+                        auto f = pfd::open_file("Choose files to read", pfd::path::home(),
+                            { "All Files", "*" },
+                            pfd::opt::multiselect);
+
+                        for (auto const& name : f.result())
+                        {
+                            osg::ref_ptr< osg::Node > node = osgDB::readNodeFile(name);
+                            if (node.valid())
+                            {
+                                Registry::instance()->shaderGenerator().run(node.get());
+                                group->addChild(node.get());
+                            }
+                        }
+                    }
+                }
 #endif
 
                 bool visible = node->getNodeMask() != 0;
@@ -762,7 +785,7 @@ namespace osgEarth
 
                     osg::Drawable* drawable = node->asDrawable();
                     if (drawable)
-                    {                        
+                    {
                         osg::BoundingBox bbox = drawable->getBoundingBox();
                         double width = bbox.xMax() - bbox.xMin();
                         double depth = bbox.yMax() - bbox.yMin();
@@ -829,7 +852,7 @@ namespace osgEarth
                 if (threeDTiles)
                 {
                     if (ImGui::TreeNode("3D Tiles"))
-                    {                       
+                    {
                         std::string content = threeDTiles->getTile()->content()->getJSON().toStyledString();
                         ImGui::Text("Content");
                         ImGui::TextWrapped(content.c_str());
@@ -879,7 +902,7 @@ namespace osgEarth
                         if (!stateset->getUniformList().empty())
                         {
                             if (ImGui::TreeNode("Uniforms"))
-                            {       
+                            {
                                 if (ImGui::BeginTable("Uniforms", 3, ImGuiTableFlags_Borders))
                                 {
                                     for (auto& u : stateset->getUniformList())
@@ -899,7 +922,7 @@ namespace osgEarth
                                     ImGui::EndTable();
                                 }
                             }
-                        }                        
+                        }
 
                         ImGui::TreePop();
                     }
@@ -911,7 +934,7 @@ namespace osgEarth
                     if (geometry->getVertexArray())
                     {
                         if (ImGui::TreeNode("verts", "VERTICES %d", geometry->getVertexArray()->getNumElements()))
-                        {                            
+                        {
                             printArrayTable(geometry->getVertexArray());
                             ImGui::TreePop();
                         }

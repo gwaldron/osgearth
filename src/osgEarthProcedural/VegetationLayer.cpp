@@ -1076,7 +1076,8 @@ VegetationLayer::createDrawableAsync(
     const std::string& group_,
     const osg::BoundingBox& tile_bbox_,
     const osg::FrameStamp* framestamp_,
-    double backup_birthday) const
+    double backup_birthday,
+    float range) const
 {
     osg::ref_ptr<const VegetationLayer> layer = this;
     TileKey key = key_;
@@ -1096,6 +1097,7 @@ VegetationLayer::createDrawableAsync(
 
     Job job;
     job.setName("Vegetation create drawable");
+    job.setPriority(-range); // closer is sooner
     return job.dispatch<osg::ref_ptr<osg::Drawable>>(function);
 }
 
@@ -1641,12 +1643,16 @@ VegetationLayer::cull(
                 // new tile; create and fire off the loading job.
                 tile = std::make_shared<Tile>();
 
+                osg::Vec3d center = entry->getBBox().center() * entry->getLocalToWorld();
+                float range = nv.getDistanceToViewPoint(center, true);
+
                 tile->_drawable = createDrawableAsync(
                     entry->getKey(),
                     groupName,
                     entry->getBBox(),
                     birthday < 0.0 ? cv->getState()->getFrameStamp() : nullptr,
-                    birthday);
+                    birthday,
+                    range);
             }
 
             view._tile = tile;

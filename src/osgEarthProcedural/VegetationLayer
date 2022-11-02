@@ -391,7 +391,8 @@ namespace osgEarth { namespace Procedural
             const std::string&,
             const osg::BoundingBox& bbox,
             const osg::FrameStamp*,
-            double explicit_birthday) const;
+            double explicit_birthday,
+            float range) const;
 
         osg::ref_ptr<osg::Drawable> createDrawable(
             const TileKey&,

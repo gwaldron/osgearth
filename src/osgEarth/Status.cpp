@@ -26,23 +26,11 @@ using namespace osgEarth::Util;
 
 const osgEarth::Status osgEarth::STATUS_OK;
 
-namespace
-{
-    const std::string m[] = {
-        "No error",
-        "Resource unavailable",
-        "Service unavailable",
-        "Configuration error",
-        "Assertion failure",
-        "Error"
-    };
-}
-
-std::string
-Status::toString() const
-{
-    return Stringify()
-        << ((int)_code < 6 ? m[(int)_code] : "Bad error code")
-        << " : "
-        << message();
-}
+std::string osgEarth::Status::_codeText[6] = {
+    "No error",
+    "Resource unavailable",
+    "Service unavailable",
+    "Configuration error",
+    "Assertion failure",
+    "Error"
+};

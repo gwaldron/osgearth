@@ -108,6 +108,10 @@ namespace osgEarth
         optional<float>& roundingRatio() { return _roundingRatio; }
         const optional<float>& roundingRatio() const { return _roundingRatio; }
 
+        //! Outline color
+        OE_OPTION(Color, outlineColor);
+        OE_OPTION(Distance, outlineWidth);
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );

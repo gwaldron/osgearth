@@ -2161,8 +2161,7 @@ GeoImage::getTrackingToken() const
 bool
 GeoImage::read(
     GeoImage::pixel_type& output,
-    const GeoPoint& p,
-    const RasterInterpolation& interp) const
+    const GeoPoint& p) const
 {
     if (!p.isValid() || !valid())
     {
@@ -2172,7 +2171,7 @@ GeoImage::read(
     // transform if necessary
     if (!p.getSRS()->isHorizEquivalentTo(getSRS()))
     {
-        return read(output, p.transform(getSRS()), interp);
+        return read(output, p.transform(getSRS()));
     }
 
     double u = (p.x() - _extent.xMin()) / _extent.width();

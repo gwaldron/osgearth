@@ -769,8 +769,7 @@ namespace osgEarth
         //! Read the value of a pixel at a geopoint.
         bool read(
             pixel_type& output,
-            const GeoPoint& p,
-            const RasterInterpolation& interp =INTERP_BILINEAR) const;
+            const GeoPoint& p) const;
 
     private:
         GeoExtent _extent;

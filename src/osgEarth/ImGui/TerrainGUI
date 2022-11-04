@@ -136,7 +136,7 @@ namespace osgEarth
 
                         if (_sample.isAvailable())
                         {
-                            if (_sample.get().elevation().getValue() == NO_DATA_VALUE)
+                            if (_sample->elevation().getValue() == NO_DATA_VALUE)
                             {
                                 ImGui::Text("Elevation: 0.0m");
                                 ImGui::Text("Resolution: n/a (NO DATA)");

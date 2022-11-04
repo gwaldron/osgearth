@@ -167,4 +167,10 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     else if (match(c.key(), "stroke-wire-lines")) {
         style.getOrCreate<LineSymbol>()->useWireLines() = as<bool>(c.value(), false);
     }
+    else if (match(c.key(), "stroke-outline")) {
+        style.getOrCreate<LineSymbol>()->stroke()->outlineColor() = Color(c.value());
+    }
+    else if (match(c.key(), "stroke-outline-width")) {
+        style.getOrCreate<LineSymbol>()->stroke()->outlineWidth() = Distance(c.value());
+    }
 }

@@ -209,15 +209,41 @@ namespace osgEarth {
             ctx.strokePath(path);
         }
 
+        void lineSymbolToBLContext(const LineSymbol* line, BLContext& ctx)
+        {
+            auto cap = BL_STROKE_CAP_ROUND;
+            auto join = BL_STROKE_JOIN_ROUND;
+
+            if (line->stroke().isSet())
+            {
+                if (line->stroke()->lineCap().isSet())
+                {
+                    cap =
+                        line->stroke()->lineCap() == Stroke::LINECAP_FLAT ? BL_STROKE_CAP_BUTT :
+                        line->stroke()->lineCap() == Stroke::LINECAP_SQUARE ? BL_STROKE_CAP_SQUARE :
+                        BL_STROKE_CAP_ROUND;
+                }
+
+                if (line->stroke()->lineJoin().isSet())
+                {
+                    join =
+                        line->stroke()->lineJoin() == Stroke::LINEJOIN_MITRE ? BL_STROKE_JOIN_MITER_BEVEL :
+                        BL_STROKE_JOIN_ROUND;
+                }
+            }
+
+            ctx.setStrokeCaps(cap);
+            ctx.setStrokeJoin(join);
+        }
+
         void rasterizeLines(
             const Geometry* geometry,
-            const LineSymbol* symbol,
+            const Color& color,
             float lineWidth_px,
             RenderFrame& frame,
             BLContext& ctx)
         {
             OE_HARD_ASSERT(geometry != nullptr);
-            OE_HARD_ASSERT(symbol != nullptr);
 
             if (!geometry->isPolygon() && !geometry->isLinear())
             {
@@ -255,42 +281,13 @@ namespace osgEarth {
                 }
             });
 
-            Color color(Color::White);
-            auto cap = BL_STROKE_CAP_ROUND;
-            auto join = BL_STROKE_JOIN_ROUND;
-
-            if (symbol->stroke().isSet())
-            {
-                color = symbol->stroke()->color();
-
-                if (symbol->stroke()->lineCap().isSet())
-                {
-                    cap =
-                        symbol->stroke()->lineCap() == Stroke::LINECAP_FLAT ? BL_STROKE_CAP_BUTT :
-                        symbol->stroke()->lineCap() == Stroke::LINECAP_SQUARE ? BL_STROKE_CAP_SQUARE :
-                        BL_STROKE_CAP_ROUND;
-                }
-
-                if (symbol->stroke()->lineJoin().isSet())
-                {
-                    join =
-                        symbol->stroke()->lineJoin() == Stroke::LINEJOIN_MITRE ? BL_STROKE_JOIN_MITER_BEVEL :
-                        BL_STROKE_JOIN_ROUND;
-                }
-            }
-
-
-
             //BLImage texture;
             //texture.readFromFile("../data/icon.png");
             //BLPattern pattern(texture);
             //ctx.setStrokeStyle(pattern);
 
             ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
-
             ctx.setStrokeWidth(lineWidth_px);
-            ctx.setStrokeCaps(cap);
-            ctx.setStrokeJoin(join);
             ctx.strokePath(path);
         }
 
@@ -750,6 +747,7 @@ FeatureRasterizer::render_blend2d(
     if (masterLine)
     {
         float lineWidth_px = 1.0f;
+        float outlineWidth_px = 0.0f;
 
         // Calculate the line width in pixels:
         if (masterLine->stroke()->width().isSet())
@@ -794,12 +792,62 @@ FeatureRasterizer::render_blend2d(
             }
         }
 
+        if (masterLine->stroke()->outlineWidth().isSet())
+        {
+            auto width = masterLine->stroke()->outlineWidth().get();
+
+            if (width.getUnits() != Units::PIXELS)
+            {
+                double lineWidth_map_south = width.asDistance(
+                    _extent.getSRS()->getUnits(),
+                    _extent.yMin());
+
+                double lineWidth_map_north = width.asDistance(
+                    _extent.getSRS()->getUnits(),
+                    _extent.yMax());
+
+                double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
+                double pixelSize_map = _extent.height() / (double)_image->t();
+                outlineWidth_px = (lineWidth_map / pixelSize_map);
+
+                // enfore a minimum width of one pixel.
+                float minPixels = masterLine->stroke()->minPixels().getOrUse(1.0f);
+                outlineWidth_px = std::max(outlineWidth_px, minPixels);
+            }
+
+            else // pixels already
+            {
+                outlineWidth_px = width.getValue();
+            }
+        }
+
+        lineSymbolToBLContext(masterLine, ctx);
+
         // Rasterize the lines:
+        if (outlineWidth_px > 0.0f)
+        {
+            for (const auto& feature : features)
+            {
+                if (feature->getGeometry())
+                {
+                    rasterizeLines(
+                        feature->getGeometry(),
+                        masterLine->stroke()->outlineColor().get(),
+                        outlineWidth_px,
+                        frame, ctx);
+                }
+            }
+        }
+
         for (const auto& feature : features)
         {
             if (feature->getGeometry())
             {
-                rasterizeLines(feature->getGeometry(), masterLine, lineWidth_px, frame, ctx);
+                rasterizeLines(
+                    feature->getGeometry(),
+                    masterLine->stroke()->color(),
+                    lineWidth_px,
+                    frame, ctx);
             }
         }
     }

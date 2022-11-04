@@ -98,9 +98,7 @@ in float oe_elev;
 tweakable float dense_power = 1.0;
 tweakable float lush_power = 1.0;
 tweakable float rugged_power = 1.0;
-tweakable float normal_power = 1.0;
 tweakable float ao_power = 1.0;
-tweakable float oe_depth = 0.1;
 tweakable float oe_snow = 0.0;
 tweakable float oe_snow_min_elev = 1000.0;
 tweakable float oe_snow_max_elev = 3500.0;
@@ -109,7 +107,11 @@ tweakable float oe_splat_blend_normal_mix = 0.85;
 tweakable float oe_splat_brightness = 1.0;
 tweakable float oe_splat_contrast = 1.0;
 tweakable float oe_dense_contrast = 1.0;
-tweakable float oe_mask_alpha = 1.0;
+
+uniform float oe_normal_power = 1.0;
+uniform float oe_mask_alpha = 0.0;
+uniform float oe_displacement_depth = 0.1;
+
 
 mat3 oe_normalMapTBN;
 
@@ -184,9 +186,8 @@ void get_pixel(out Pixel res, in int index, in vec2 coord)
 
 float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2)
 {
-    float d = oe_depth;
     // https://tinyurl.com/y5nkw2l9
-    float ma = max(h1 + a1, h2 + a2) - d;
+    float ma = max(h1 + a1, h2 + a2) - oe_displacement_depth;
     float b1 = max(h1 + a1 - ma, 0.0);
     float b2 = max(h2 + a2 - ma, 0.0);
     return b2 / (b1 + b2);
@@ -300,13 +301,21 @@ void oe_splat_Frag(inout vec4 quad)
     vec3 color = pixel.rgbh.rgb;
 
     // NORMAL
-    pixel.normal.xy = vec2(
-        DECEL(pixel.normal.x, normal_power),
-        DECEL(pixel.normal.y, normal_power));
+    //pixel.normal = normalize(vec3(
+    //    DECEL(pixel.normal.x, normal_power),
+    //    DECEL(pixel.normal.y, normal_power),
+    //    pixel.normal.z));
+
+    pixel.normal = vec3(
+        DECEL(pixel.normal.x, oe_normal_power),
+        DECEL(pixel.normal.y, oe_normal_power),
+        pixel.normal.z);
+
     vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal);
 
-    float mask_alpha = mix(clamp(dense + lush + rugged, 0.0, 1.0), 1.0, oe_mask_alpha);
+    float composite = DECEL(clamp(dense + lush + rugged, 0.0, 1.0), oe_mask_alpha);
+    float alpha = oe_mask_alpha > 0.0 ? composite : 1.0;
 
     // final color output:
-    quad = vec4(color, mask_alpha);
+    quad = vec4(color, alpha);
 }

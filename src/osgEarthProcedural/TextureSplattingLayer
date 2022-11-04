@@ -45,6 +45,9 @@ namespace osgEarth { namespace Procedural
             OE_OPTION_LAYER(LifeMapLayer, lifeMapLayer);
             OE_OPTION(int, numLevels);
             OE_OPTION(bool, useHexTiler);
+            OE_OPTION(float, normalMapPower);
+            OE_OPTION(float, lifeMapMaskThreshold);
+            OE_OPTION(float, displacementDepth);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -62,6 +65,23 @@ namespace osgEarth { namespace Procedural
         //! Default is true.
         void setUseHexTiler(bool value);
         bool getUseHexTiler() const;
+
+        //! Multiplication power to apply to normal maps, to artificially
+        //! enhance to effect of splatted normals. [0..1] Default is 1.0
+        void setNormalMapPower(float value);
+        float getNormalMapPower() const;
+
+        //! The lifemap threshold (dense+lush+rugged) below which the 
+        //! splatting layer will beome transparent and allow lower layer(s)
+        //! to show through. [0..1] Default = 1.0 (off)
+        void setLifeMapMaskThreshold(float value);
+        float getLifeMapMaskThreshold() const;
+
+        //! Amount by which the textures' displacement map affects
+        //! blending across splatting textures. [0..1, default = 0.1]
+        void setDisplacementDepth(float value);
+        float getDisplacementDepth() const;
+
 
     protected:
 

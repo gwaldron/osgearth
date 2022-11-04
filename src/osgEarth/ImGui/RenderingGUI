@@ -334,7 +334,7 @@ namespace osgEarth
                                     total += obj->size();
 
                                 char header[128];
-                                sprintf(header, "%s (%.1lf MB)", cat.first.c_str(), (double)total / 1048576.);
+                                sprintf(header, "%s (%d @ %.1lf MB)", cat.first.c_str(), (int)cat.second.size(), (double)total / 1048576.);
 
                                 if (ImGui::TreeNode(header))
                                 {

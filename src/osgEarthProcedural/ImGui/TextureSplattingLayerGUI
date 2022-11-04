@@ -17,8 +17,6 @@ namespace osgEarth {
             float _blend_end;
             float _blend_rgbh_mix;
             float _blend_normal_mix;
-            float _depth;
-            float _normal_power;
             float _ao_power;
             float _brightness;
             float _contrast;
@@ -32,7 +30,6 @@ namespace osgEarth {
             float _rugged_power;
             float _dense_power;
             float _lush_power;
-            float _mask_alpha;
 
             TextureSplattingLayerGUI() : GUI::BaseGUI("Splatting")
             {
@@ -41,8 +38,6 @@ namespace osgEarth {
                 _blend_end = 500.0f;
                 _blend_rgbh_mix = 0.85f;
                 _blend_normal_mix = 0.85f;
-                _depth = 0.02f;
-                _normal_power = 1.0f;
                 _ao_power = 1.0f;
                 _brightness = 1.0f;
                 _contrast = 1.0f;
@@ -57,7 +52,6 @@ namespace osgEarth {
                 _rugged_power = 1.0;
                 _dense_power = 1.0;
                 _lush_power = 1.0;
-                _mask_alpha = 1.0;
             }
 
             void load(const Config& conf) override
@@ -105,14 +99,20 @@ namespace osgEarth {
 
                 ImGui::Begin(name(), visible());
                 {
-                    ImGui::SliderFloat("Normal power", &_normal_power, 0.0f, 4.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("normal_power", _normal_power), 0x7);
+                    auto normalPower = _tslayer->getNormalMapPower();
+                    if (ImGui::SliderFloat("Normal power", &normalPower, 0.0f, 4.0f))
+                        _tslayer->setNormalMapPower(normalPower);
+
+                    auto dispacementDepth = _tslayer->getDisplacementDepth();
+                    if (ImGui::SliderFloat("Displacement depth", &dispacementDepth, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+                        _tslayer->setDisplacementDepth(dispacementDepth);
+
+                    auto lifemapthreshold = _tslayer->getLifeMapMaskThreshold();
+                    if (ImGui::SliderFloat("LifeMap threshold", &lifemapthreshold, 0.0f, 10.0f, "%.1f", ImGuiSliderFlags_Logarithmic))
+                        _tslayer->setLifeMapMaskThreshold(lifemapthreshold);
 
                     ImGui::SliderFloat("AO power", &_ao_power, 0.0f, 16.0f);
                     stateset(ri)->addUniform(new osg::Uniform("ao_power", _ao_power), 0x7);
-
-                    ImGui::SliderFloat("Displacement depth", &_depth, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_depth", _depth), 0x7);
 
                     if (_tslayer->options().numLevels() > 1)
                     {
@@ -129,15 +129,13 @@ namespace osgEarth {
                         stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_normal_mix", _blend_normal_mix), 0x7);
                     }
 
-                    ImGui::SliderFloat("Mask alpha", &_mask_alpha, 0.0f, 1.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_mask_alpha", _mask_alpha), 0x7);
-
                     ImGui::SliderFloat("Global brightness", &_brightness, 0.0f, 4.0f);
                     stateset(ri)->addUniform(new osg::Uniform("oe_splat_brightness", _brightness), 0x7);
 
                     ImGui::SliderFloat("Global contrast", &_contrast, 0.0f, 4.0f);
                     stateset(ri)->addUniform(new osg::Uniform("oe_splat_contrast", _contrast), 0x7);
 
+#if 0
                     ImGui::SliderFloat("Density contrast boost", &_dense_contrast, -1.0f, 1.0f);
                     stateset(ri)->addUniform(new osg::Uniform("oe_dense_contrast", _dense_contrast), 0x7);
 
@@ -147,7 +145,6 @@ namespace osgEarth {
                     ImGui::SliderFloat("Lush brightness adjust", &_lush_brightness, -1.0f, 1.0f);
                     stateset(ri)->addUniform(new osg::Uniform("oe_lush_brightness", _lush_brightness), 0x7);
 
-#if 0
                     ImGui::SliderFloat("Snow", &_snow, 0.0f, 1.0f);
                     stateset(ri)->addUniform(new osg::Uniform("oe_snow", _snow), 0x7);
 

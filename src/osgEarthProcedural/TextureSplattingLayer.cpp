@@ -56,6 +56,9 @@ TextureSplattingLayer::Options::getConfig() const
     Config conf = VisibleLayer::Options::getConfig();
     conf.set("num_levels", numLevels());
     conf.set("use_hex_tiler", useHexTiler());
+    conf.set("normalmap_power", normalMapPower());
+    conf.set("lifemap_threshold", lifeMapMaskThreshold());
+    conf.set("displacement_depth", displacementDepth());
     return conf;
 }
 
@@ -64,9 +67,15 @@ TextureSplattingLayer::Options::fromConfig(const Config& conf)
 {
     numLevels().setDefault(1);
     useHexTiler().setDefault(true);
+    normalMapPower().setDefault(1.0f);
+    lifeMapMaskThreshold().setDefault(0.0f);
+    displacementDepth().setDefault(0.1f);
 
     conf.get("num_levels", numLevels());
     conf.get("use_hex_tiler", useHexTiler());
+    conf.get("normalmap_power", normalMapPower());
+    conf.get("lifemap_threshold", lifeMapMaskThreshold());
+    conf.get("displacement_depth", displacementDepth());
 }
 
 //........................................................................
@@ -301,6 +310,9 @@ TextureSplattingLayer::buildStateSets()
             std::to_string(clamp(options().numLevels().get(), 1, 2)));
 
         setUseHexTiler(options().useHexTiler().get());
+        setNormalMapPower(options().normalMapPower().get());
+        setLifeMapMaskThreshold(options().lifeMapMaskThreshold().get());
+        setDisplacementDepth(options().displacementDepth().get());
     }
 }
 
@@ -317,6 +329,54 @@ bool
 TextureSplattingLayer::getUseHexTiler() const
 {
     return options().useHexTiler().get();
+}
+
+void
+TextureSplattingLayer::setNormalMapPower(float value)
+{
+    if (options().normalMapPower().get() != value)
+        options().normalMapPower() = value;
+
+    auto ss = getOrCreateStateSet();
+    ss->getOrCreateUniform("oe_normal_power", osg::Uniform::FLOAT)->set(value);
+}
+
+float
+TextureSplattingLayer::getNormalMapPower() const
+{
+    return options().normalMapPower().get();
+}
+
+void
+TextureSplattingLayer::setLifeMapMaskThreshold(float value)
+{
+    if (getLifeMapMaskThreshold() != value)
+        options().lifeMapMaskThreshold() = value;
+
+    auto ss = getOrCreateStateSet();
+    ss->getOrCreateUniform("oe_mask_alpha", osg::Uniform::FLOAT)->set(value);
+}
+
+float
+TextureSplattingLayer::getLifeMapMaskThreshold() const
+{
+    return options().lifeMapMaskThreshold().get();
+}
+
+void
+TextureSplattingLayer::setDisplacementDepth(float value)
+{
+    if (getDisplacementDepth() != value)
+        options().displacementDepth() = value;
+
+    auto ss = getOrCreateStateSet();
+    ss->getOrCreateUniform("oe_displacement_depth", osg::Uniform::FLOAT)->set(value);
+}
+
+float
+TextureSplattingLayer::getDisplacementDepth() const
+{
+    return options().displacementDepth().get();
 }
 
 void

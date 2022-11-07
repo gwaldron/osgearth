@@ -19,7 +19,6 @@
 #ifndef OSGEARTH_IMGUI_H
 #define OSGEARTH_IMGUI_H 1
 
-#include "imgui.h"
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/GeoData>

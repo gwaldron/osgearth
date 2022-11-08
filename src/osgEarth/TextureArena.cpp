@@ -222,7 +222,7 @@ Texture::compileGLObjects(osg::State& state) const
             pixelFormat == GL_RGB ? GL_RGB8 :
             GL_RGBA8;
 
-        if (compress())
+        if (compress() && !image->isCompressed())
         {
             if (pixelFormat == GL_RGB)
                 gpuInternalFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
@@ -299,7 +299,8 @@ Texture::compileGLObjects(osg::State& state) const
                 GLsizei blockSize; // unused
 
                 osg::Texture::getCompressedSize(
-                    image->getInternalTextureFormat(),
+                    gpuInternalFormat,
+                    //image->getInternalTextureFormat(),
                     width, height, 1,
                     blockSize, mipmapBytes);
             }
@@ -322,7 +323,7 @@ Texture::compileGLObjects(osg::State& state) const
                             mipLevel, // mip level
                             0, 0, // xoffset, yoffset
                             width, height,
-                            image->getInternalTextureFormat(),
+                            gpuInternalFormat, //image->getInternalTextureFormat(),
                             mipmapBytes,
                             dataptr);
                     }
@@ -351,7 +352,7 @@ Texture::compileGLObjects(osg::State& state) const
                             r, // zoffset (array layer)
                             width, height,
                             1, // z size always = 1
-                            image->getInternalTextureFormat(),
+                            gpuInternalFormat, //image->getInternalTextureFormat(),
                             mipmapBytes,
                             dataptr);
                     }

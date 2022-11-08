@@ -738,8 +738,8 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
         activateMultisampling();
     }
 
-    // activate compressed normal maps
-    ss->setDefine("OE_COMPRESSED_NORMAL");
+    // activate compressed normal maps if we want them
+    //ss->setDefine("OE_GL_RG_COMPRESSED_NORMAL");
 
     // apply the various uniform-based options
     setNearLODScale(options().nearLODScale().get());

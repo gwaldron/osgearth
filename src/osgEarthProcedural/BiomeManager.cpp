@@ -59,6 +59,8 @@ namespace
 {
     osg::Image* convertNormalMapFromRGBToRG(const osg::Image* in)
     {
+        OE_SOFT_ASSERT_AND_RETURN(in != nullptr, nullptr);
+
         osg::Image* out = new osg::Image();
         out->allocateImage(in->s(), in->t(), 1, GL_RG, GL_UNSIGNED_BYTE);
         out->setInternalTextureFormat(GL_RG8);
@@ -401,14 +403,16 @@ BiomeManager::materializeNewAssets(
     // This loader will find material textures and install them on
     // secondary texture image units.. in this case, normal maps.
     // We can expand this later to include other types of material maps.
+    Util::MaterialLoader materialLoader;
+
 
     auto getNormalMapFileName = MaterialUtils::getDefaultNormalMapNameMangler();
-
-    Util::MaterialLoader materialLoader;
 
     materialLoader.setMangler(
         NORMAL_MAP_TEX_UNIT, getNormalMapFileName);
 
+#if 0
+    // don't convert to GL_RG compression, b/c normal DXT compression is better
     materialLoader.setTextureFactory(
         NORMAL_MAP_TEX_UNIT,
         [](osg::Image* image)
@@ -416,7 +420,7 @@ BiomeManager::materializeNewAssets(
             osg::Texture2D* tex = nullptr;
 
             // compresses the incoming texture if necessary
-            if (image->getPixelFormat() != GL_RG)
+            if (image->getPixelFormat() != GL_RG && !image->isCompressed())
                 tex = new osg::Texture2D(convertNormalMapFromRGBToRG(image));
             else
                 tex = new osg::Texture2D(image);
@@ -424,6 +428,7 @@ BiomeManager::materializeNewAssets(
             return tex;
         }
     );
+#endif
 
     auto getPBRMapFileName = MaterialUtils::getDefaultPBRMapNameMangler();
 
@@ -541,7 +546,7 @@ BiomeManager::materializeNewAssets(
                         {
                             residentAsset->sideBillboardTex() = new osg::Texture2D(image.get());
 
-                            OE_INFO << LC << "Loaded side BB: " << uri.base() << std::endl;
+                            OE_DEBUG << LC << "Loaded side BB: " << uri.base() << std::endl;
                             texcache[uri] = residentAsset;
 
                             // normal map:
@@ -549,24 +554,24 @@ BiomeManager::materializeNewAssets(
                             osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
                             if (normalMap.valid())
                             {
-                                OE_INFO << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
+                                OE_DEBUG << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
                                 residentAsset->sideBillboardNormalMap() = new osg::Texture2D(normalMap.get());
                             }
                             else
                             {
-                                OE_WARN << LC << "Failed to load: " << normalMapURI.base() << std::endl;
+                                OE_INFO << LC << "Failed to load: " << normalMapURI.base() << std::endl;
                             }
 
                             URI pbrMapURI(getPBRMapFileName(uri.full()));
                             osg::ref_ptr<osg::Image> pbrMap = pbrMapURI.getImage(readOptions);
                             if (pbrMap.valid())
                             {
-                                OE_INFO << LC << "Loaded PBR: " << pbrMapURI.base() << std::endl;
+                                OE_DEBUG << LC << "Loaded PBR: " << pbrMapURI.base() << std::endl;
                                 residentAsset->sideBillboardPBRMap() = new osg::Texture2D(pbrMap);
                             }
                             else
                             {
-                                OE_WARN << LC << "Failed to load: " << pbrMapURI.base() << std::endl;
+                                OE_INFO << LC << "Failed to load: " << pbrMapURI.base() << std::endl;
                             }
                         }
                         else
@@ -599,7 +604,7 @@ BiomeManager::materializeNewAssets(
                             {
                                 residentAsset->topBillboardTex() = new osg::Texture2D(image.get());
 
-                                OE_INFO << LC << "Loaded top BB: " << uri.base() << std::endl;
+                                OE_DEBUG << LC << "Loaded top BB: " << uri.base() << std::endl;
                                 texcache[uri] = residentAsset;
 
                                 // normal map:
@@ -607,12 +612,12 @@ BiomeManager::materializeNewAssets(
                                 osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
                                 if (normalMap.valid())
                                 {
-                                    OE_INFO << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
+                                    OE_DEBUG << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
                                     residentAsset->topBillboardNormalMap() = new osg::Texture2D(normalMap.get());
                                 }
                                 else
                                 {
-                                    OE_WARN << LC << "Failed to load: " << normalMapURI.base() << std::endl;
+                                    OE_INFO << LC << "Failed to load: " << normalMapURI.base() << std::endl;
                                 }
 
                                 // PBR map:
@@ -620,12 +625,12 @@ BiomeManager::materializeNewAssets(
                                 osg::ref_ptr<osg::Image> pbrMap = pbrMapURI.getImage(readOptions);
                                 if (pbrMap.valid())
                                 {
-                                    OE_INFO << LC << "Loaded PBR: " << pbrMapURI.base() << std::endl;
+                                    OE_DEBUG << LC << "Loaded PBR: " << pbrMapURI.base() << std::endl;
                                     residentAsset->topBillboardPBRMap() = new osg::Texture2D(pbrMap);
                                 }
                                 else
                                 {
-                                    OE_WARN << LC << "Failed to load: " << pbrMapURI.base() << std::endl;
+                                    OE_INFO << LC << "Failed to load: " << pbrMapURI.base() << std::endl;
                                 }
                             }
                             else

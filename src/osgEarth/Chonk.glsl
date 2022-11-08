@@ -150,7 +150,7 @@ void oe_chonk_default_vertex_view(inout vec4 vertex)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
 #pragma import_defines(OE_IS_DEPTH_CAMERA)
 #pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
-#pragma import_defines(OE_COMPRESSED_NORMAL)
+#pragma import_defines(OE_GL_RG_COMPRESSED_NORMAL)
 #pragma import_defines(OE_GPUCULL_DEBUG)
 #pragma import_defines(OE_CHONK_SINGLE_SIDED)
 
@@ -274,7 +274,7 @@ void oe_chonk_default_fragment(inout vec4 color)
 
         vec4 n = texture(sampler2D(oe_normal_tex), oe_tex_uv);
 
-  #ifdef OE_COMPRESSED_NORMAL
+  #ifdef OE_GL_RG_COMPRESSED_NORMAL
         n.xyz = n.xyz*2.0 - 1.0;
         n.z = 1.0 - abs(n.x) - abs(n.y);
         float t = clamp(-n.z, 0, 1);

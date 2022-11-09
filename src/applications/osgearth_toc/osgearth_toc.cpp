@@ -276,7 +276,7 @@ main( int argc, char** argv )
     uiRoot->setAbsorbEvents(false);
     createControlPanel(uiRoot);
 
-    osg::Node* loaded = osgEarth::Util::MapNodeHelper().load(arguments, &viewer, uiRoot);
+    auto loaded = osgEarth::Util::MapNodeHelper().load(arguments, &viewer, uiRoot);
     s_mapNode = osgEarth::MapNode::get(loaded);
     if ( !s_mapNode.valid() )
         return -1;

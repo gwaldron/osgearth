@@ -153,7 +153,7 @@ main(int argc, char** argv)
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags
-    osg::Node* earth = MapNodeHelper().load( arguments, &viewer );
+    auto earth = MapNodeHelper().load( arguments, &viewer );
 
     MapNode* mapNode = MapNode::get(earth);
     if (!mapNode)

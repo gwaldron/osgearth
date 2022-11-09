@@ -314,7 +314,7 @@ namespace
     };
 }
 
-osg::Group*
+osg::ref_ptr<osg::Node>
 MapNodeHelper::loadWithoutControls(
     osg::ArgumentParser&   args,
     osgViewer::ViewerBase* viewer) const
@@ -359,21 +359,27 @@ MapNodeHelper::loadWithoutControls(
         Registry::instance()->setOverrideCachePolicy(CachePolicy::NO_CACHE);
     }
 
+    // GL debugging stuff
+    if (args.read("--gldebug") || args.read("--gl-debug"))
+    {
+        GLUtils::enableGLDebugging();
+    }
+
     // read in the Earth file:
-    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
+    osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFiles(args, myReadOptions.get());
 
     // fallback in case none is specified:
     if (!node.valid())
     {
-        OE_WARN << LC << "No valid earth file loaded - aborting" << std::endl;
-        return nullptr;
+        OE_WARN << LC << "No earth file loaded" << std::endl;
+        return node;
     }
 
     osg::ref_ptr<MapNode> mapNode = MapNode::get(node.get());
     if (!mapNode.valid())
     {
         OE_WARN << LC << "Loaded scene graph does not contain a MapNode - aborting" << std::endl;
-        return nullptr;
+        return node;
     }
 
     // GPU tessellation?
@@ -426,13 +432,7 @@ MapNodeHelper::loadWithoutControls(
     if (args.read("--vsync"))
         vsync = true;
     else if (args.read("--novsync"))
-        vsync = false;   
-
-    // GL debugging stuff
-    if (args.read("--gldebug") || args.read("--gl-debug"))
-    {
-        GLUtils::enableGLDebugging();
-    }
+        vsync = false; 
 
     // VP debugging
     if (args.read("--vpdebug") || args.read("--vp-debug"))
@@ -457,15 +457,16 @@ MapNodeHelper::loadWithoutControls(
         viewer->setRealizeOperation(op);
     }
 
-    return root.release();
+    return root;
 }
 
 
-osg::Group*
-MapNodeHelper::load(osg::ArgumentParser&   args,
-                    osgViewer::ViewerBase* viewer,
-                    Container*             userContainer,
-                    const osgDB::Options*  readOptions) const
+osg::ref_ptr<osg::Node>
+MapNodeHelper::load(
+    osg::ArgumentParser&   args,
+    osgViewer::ViewerBase* viewer,
+    Container*             userContainer,
+    const osgDB::Options*  readOptions) const
 {
     // Pause do the user can attach a debugger
     if (args.read("--pause"))
@@ -491,6 +492,12 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
         myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_NVGL");
     }
 
+    // GL debugging stuff
+    if (args.read("--gldebug") || args.read("--gl-debug"))
+    {
+        GLUtils::enableGLDebugging();
+    }
+
     // read in the Earth file:
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
 
@@ -503,15 +510,15 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
 
     osg::ref_ptr<MapNode> mapNode = MapNode::get(node.get());
 
+    if ( !mapNode.valid() )
+    {
+        OE_WARN << LC << "Loaded scene graph does not contain a MapNode" << std::endl;
+        return node;
+    }
+
     if (args.read("--tessellation") || args.read("--tess"))
     {
         mapNode->getTerrainOptions().setGPUTessellation(true);
-    }
-
-    if ( !mapNode.valid() )
-    {
-        OE_WARN << LC << "Loaded scene graph does not contain a MapNode - aborting" << std::endl;
-        return 0L;
     }
 
     // collect the views
@@ -570,12 +577,6 @@ MapNodeHelper::load(osg::ArgumentParser&   args,
         vsync = true;
     else if (args.read("--novsync"))
         vsync = false;
-
-    // GL debugging stuff
-    if (args.read("--gldebug") || args.read("--gl-debug"))
-    {
-        GLUtils::enableGLDebugging();
-    }
 
     // VP debugging
     if (args.read("--vpdebug") || args.read("--vp-debug"))

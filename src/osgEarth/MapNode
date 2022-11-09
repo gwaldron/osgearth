@@ -136,8 +136,9 @@ namespace osgEarth
          * @param travMask
          *      Traversal mask to apply while searching
          */
-        static MapNode* findMapNode( osg::Node* graph, unsigned travMask =~0 );
-        static MapNode* get( osg::Node* graph, unsigned travMask =~0 ) { return findMapNode(graph, travMask); }
+        static MapNode* findMapNode(osg::Node* graph, unsigned travMask = ~0);
+        static MapNode* get(osg::Node* graph, unsigned travMask = ~0) { return findMapNode(graph, travMask); }
+        static MapNode* get(osg::ref_ptr<osg::Node>& graph, unsigned travMask = ~0) { return findMapNode(graph.get(), travMask); }
 
         /**
          * Returns true if the realized terrain model is geocentric, false if

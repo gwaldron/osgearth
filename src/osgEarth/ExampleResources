@@ -69,7 +69,7 @@ namespace osgEarth { namespace Util
          * Loads a map file and processes all the built-in example command line 
          * arguemnts and XML externals. Disables the Controls library.
          */
-        osg::Group* loadWithoutControls(
+        osg::ref_ptr<osg::Node> loadWithoutControls(
             osg::ArgumentParser&   args,
             osgViewer::ViewerBase* viewer) const;
 
@@ -77,14 +77,14 @@ namespace osgEarth { namespace Util
          * Loads a map file and processes all the built-in example command line
          * arguemnts and XML externals.
          */
-        osg::Group* load(
+        osg::ref_ptr<osg::Node> load(
             osg::ArgumentParser&   args,
             osgViewer::ViewerBase* viewer) const
         {
             return load(args, viewer, nullptr, nullptr);
         }
 
-        osg::Group* load(
+        osg::ref_ptr<osg::Node> load(
             osg::ArgumentParser&   args,
             osgViewer::ViewerBase* viewer,
             Container*             userContainer) const
@@ -92,7 +92,7 @@ namespace osgEarth { namespace Util
             return load(args, viewer, userContainer, nullptr);
         }
 
-        osg::Group* load(
+        osg::ref_ptr<osg::Node> load(
             osg::ArgumentParser&   args,
             osgViewer::ViewerBase* viewer,
             Container*             userContainer,

@@ -202,8 +202,8 @@ int main(int argc, char** argv)
     viewer.addView(app._magView);
 
     // load the earth file
-    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
-    if (!node) return usage(argv[0]);
+    auto node = MapNodeHelper().load(arguments, &viewer);
+    if (!node.valid()) return usage(argv[0]);
 
     if (arguments.read("--sse"))
     {

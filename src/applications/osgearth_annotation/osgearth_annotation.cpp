@@ -79,7 +79,7 @@ main(int argc, char** argv)
     root->addChild( node );
 
     // find the map node that we loaded.
-    MapNode* mapNode = MapNode::findMapNode(node);
+    MapNode* mapNode = MapNode::get(node);
     if ( !mapNode )
         return usage(argv);
 

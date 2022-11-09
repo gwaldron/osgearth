@@ -314,8 +314,8 @@ main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
 
-    osg::Node* node = MapNodeHelper().load( arguments, &viewer );
-    if ( node )
+    auto node = MapNodeHelper().load( arguments, &viewer );
+    if ( node.valid() )
     {
         App app;
         createRenderTargets( app, 1280, 1024 );

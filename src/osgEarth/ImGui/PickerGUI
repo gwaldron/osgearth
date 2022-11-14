@@ -22,6 +22,7 @@
 #include "ImGui"
 
 #include <osgEarth/ObjectIDPicker>
+#include <osgEarth/MetadataNode>
 
 namespace osgEarth { namespace GUI
 {
@@ -93,7 +94,7 @@ namespace osgEarth { namespace GUI
                             _pickedFeature = nullptr;
 
                             osg::ref_ptr< MetadataNode > metadata = Registry::objectIndex()->get<MetadataNode>(id);
-                            if (metadata)
+                            if (metadata.valid())
                             {
                                 int index = metadata->getIndexFromObjectID(id);
                                 if (index > 0)

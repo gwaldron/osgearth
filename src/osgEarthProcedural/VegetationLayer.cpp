@@ -798,6 +798,7 @@ VegetationLayer::configureImpostor(
     // functor for generating cross hatch geometry for trees:
     group._createImpostor = [&group, isUndergrowth](
         const osg::BoundingBox& b,
+        float top_billboard_z,
         std::vector<osg::Texture*>& textures)
     {
         osg::Group* node = new osg::Group();
@@ -891,17 +892,14 @@ VegetationLayer::configureImpostor(
                 geom->setUseDisplayList(false);
                 osg::StateSet* ss = geom->getOrCreateStateSet();
 
-                float zmid = 0.33f*(b.zMax() - b.zMin());
-                //float zmid = 0.5f*(b.zMax() - b.zMin());
-
                 static const GLushort indices[6] = {
                     0,1,2,  2,3,0
                 };
                 const osg::Vec3f verts[4] = {
-                    {xmin, ymin, zmid},
-                    {xmax, ymin, zmid},
-                    {xmax, ymax, zmid},
-                    {xmin, ymax, zmid}
+                    {xmin, ymin, top_billboard_z},
+                    {xmax, ymin, top_billboard_z},
+                    {xmax, ymax, top_billboard_z},
+                    {xmin, ymax, top_billboard_z}
                 };
                 osg::Vec3f normals[4] = {
                     {-1,-1,2}, {1,-1,2}, {1,1,2}, {-1,1,2}

@@ -81,6 +81,36 @@ namespace
 
         return out;
     }
+
+    // scan the image for the row with the most alpha.
+    // note: doesn't work on DXT5 b/c we don't have a DXT5 pixelreader yet
+    float computeTopBillboardPosition(const osg::Image* in)
+    {
+        float min_alpha = FLT_MAX;
+        int min_t = 0;
+
+        ImageUtils::PixelReader read(in);
+        read.setBilinear(false);
+        osg::Vec4 pixel;
+
+        for (int t = 0; t < in->t(); ++t)
+        {
+            float row_alpha = 0.0f;
+            for (int s = 0; s < in->s(); ++s)
+            {
+                read(pixel, s, t);
+                row_alpha += pixel.a();
+            }
+
+            if (row_alpha < min_alpha)
+            {
+                min_alpha = row_alpha;
+                min_t = t;
+            }
+        }
+
+        return (float)min_t / (float)(in->t() - 1);
+    }
 }
 
 //...................................................................
@@ -667,8 +697,15 @@ BiomeManager::materializeNewAssets(
                                     residentAsset->assetDef()->height().get());
                             }
 
+                            float top_z = 0.33f * (bbox.zMax() - bbox.zMin());
+                            if (residentAsset->assetDef()->topBillboardHeight().isSet())
+                            {
+                                top_z = residentAsset->assetDef()->topBillboardHeight().value();
+                            }
+
                             Impostor imp = createImpostor(
                                 bbox,
+                                top_z,
                                 textures);
 
                             residentAsset->impostor() = imp._node;

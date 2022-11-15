@@ -127,6 +127,7 @@ namespace osgEarth
             using CreateImpostorFunction = std::function<
                 Impostor(
                     const osg::BoundingBox& bbox,
+                    float top_billboard_z,
                     std::vector<osg::Texture*>&)>;
 
         public:

@@ -35,32 +35,6 @@ namespace osgEarth
         using namespace osgEarth;
 
         /**
-         * AssetGroup organizes assets into a certain type that will
-         * determine how the system handles them. Right now there are
-         * only two types -- trees and undergrowth.
-         */
-#if 0
-        using AssetGroup = std::string;
-
-        //#define NUM_ASSET_GROUPS 2
-        struct OSGEARTHPROCEDURAL_EXPORT AssetGroup
-        {
-            enum Type
-            {
-                UNDEFINED = -1,
-                TREES = 0,
-                UNDERGROWTH = 1
-            };
-
-            //! Readable name of the asset group, given the type
-            static std::string name(Type type);
-
-            //! Type of the asset group, given the name.
-            static Type type(const std::string& name);
-        };
-#endif
-
-        /**
          * Holds a collection of asset traits, which can 
          * "filter" assets into particular biomes.
          */
@@ -98,10 +72,10 @@ namespace osgEarth
             //! URI from which to load a top texture for an impostor
             OE_OPTION(URI, topBillboardURI);
 
-            //! When only billboards are available, width of each billboard
+            //! When only billboards are available, width of each billboard (meters)
             OE_OPTION(float, width);
 
-            //! When only billboards are availalbe, height of each billboard
+            //! When only billboards are availalbe, height of each billboard (meters)
             OE_OPTION(float, height);
 
             //! Static scale to apply to 3D model (no impact on width/height options)
@@ -130,6 +104,11 @@ namespace osgEarth
             //! candidate for placement if the lifemap's lush value is
             //! less than or equal to this value. Default is one (1).
             OE_OPTION(float, maxLush);
+
+            //! Height at which to position the top billboard when
+            //! rendering as an impostor (meters). By default it
+            //! is placed 1/3 up the height of the model.
+            OE_OPTION(float, topBillboardHeight);
 
             //! User-defined traits string (comma-delimited)
             OE_PROPERTY(std::vector<std::string>, traits);

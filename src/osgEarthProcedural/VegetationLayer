@@ -65,6 +65,9 @@ namespace osgEarth { namespace Procedural
             //! Whether to use PBR maps on impostor geometries
             OE_OPTION(bool, useImpostorPBRMaps);
 
+            //! Whether to assume normal maps are RG-compressed
+            OE_OPTION(bool, useRGCompressedNormalMaps);
+
             //! Scale factor for LOD-ing the far-away impostor vegetation
             OE_OPTION(float, farLODScale);
 
@@ -186,8 +189,8 @@ namespace osgEarth { namespace Procedural
         void setUseImpostorPBRMaps(bool value);
         bool getUseImpostorPBRMaps() const;
 
-        //void setNormalAttenuation(float value);
-        //float getNormalAttenuation() const;
+        void setUseRGCompressedNormalMaps(bool value);
+        bool getUseRGCompressedNormalMaps() const;
 
         //! Force regeneration of all visible data
         void dirty();

@@ -441,8 +441,6 @@ BiomeManager::materializeNewAssets(
     materialLoader.setMangler(
         NORMAL_MAP_TEX_UNIT, getNormalMapFileName);
 
-#if 0
-    // don't convert to GL_RG compression, b/c normal DXT compression is better
     materialLoader.setTextureFactory(
         NORMAL_MAP_TEX_UNIT,
         [](osg::Image* image)
@@ -458,7 +456,6 @@ BiomeManager::materializeNewAssets(
             return tex;
         }
     );
-#endif
 
     auto getPBRMapFileName = MaterialUtils::getDefaultPBRMapNameMangler();
 

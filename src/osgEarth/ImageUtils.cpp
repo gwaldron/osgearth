@@ -2006,11 +2006,11 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* pr, osg::Vec4f& out, int s, int t, int r, int m)
         {
-            static const int BLOCK_BYTES = 8;
+            static const int BLOCK_SIZE_BYTES = 8;
 
             unsigned int blocksPerRow = pr->_image->s()/4;
             unsigned int bs = s/4, bt = t/4;
-            unsigned int blockStart = (bt*blocksPerRow+bs) * BLOCK_BYTES;
+            unsigned int blockStart = (bt*blocksPerRow+bs) * BLOCK_SIZE_BYTES;
 
             const GLushort* p = (const GLushort*)(pr->data() + blockStart);
 
@@ -2053,6 +2053,85 @@ namespace
                 index == 0? c0 :
                 index == 1? c1 :
                 index == 2? c2 : c3;
+        }
+    };
+
+    template<>
+    struct ColorReader<GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, GLubyte>
+    {
+        static void read(const ImageUtils::PixelReader* pr, osg::Vec4f& out, int s, int t, int r, int m)
+        {
+            static const int BLOCK_SIZE_BYTES = 16;
+
+            // blocks are 4x4:
+            int blocksPerRow = pr->_image->s() / 4;
+            int bs = s / 4, bt = t / 4;
+            int blockStart = (bt*blocksPerRow + bs) * BLOCK_SIZE_BYTES;
+            int ls = s - 4 * bs, lt = t - 4 * bt;
+            int blockIndex = ls + (4 * lt);
+
+            auto ptr = pr->data() + blockStart;
+            GLfloat a0 = (float)(*(ptr + 0)) / 255.0f;
+            GLfloat a1 = (float)(*(ptr + 1)) / 255.0f;
+            const GLubyte* bits = (ptr + 2);
+            unsigned long ac1 = bits[2] | (bits[3] << 8) | (bits[4] << 16) | (bits[5] << 24);
+            unsigned short ac2 = bits[0] | (bits[1] << 8);
+
+            int ac;
+            if (blockIndex <= 12)
+                ac = (ac2 >> blockIndex) & 0x7;
+            else if (blockIndex == 15)
+                ac = (ac2 >> 15) | ((ac1 << 1) & 0x5);
+            else
+                ac = (ac1 >> (blockIndex - 16)) & 0x7;
+
+            float alpha =
+                ac == 0 ? a0 :
+                ac == 1 ? a1 :
+                a0 > a1 ? (float(8 - ac)*a0 + float(ac - 1)*a1) / 7.0f :
+                ac == 6 ? 0.0f :
+                ac == 7 ? 1.0f :
+                ((float(6 - ac)*a0 + float(ac - 1)*a1)) / 5.0;
+            
+            // color (same as DXT1)
+            const GLushort* p = (const GLushort*)(pr->data() + blockStart + 8);
+
+            GLushort c0p = *p++;
+            osg::Vec4f c0(
+                (float)(c0p >> 11) / 31.0f,
+                (float)((c0p & 0x07E0) >> 5) / 63.0f,
+                (float)((c0p & 0x001F)) / 31.0f,
+                alpha);
+
+            GLushort c1p = *p++;
+            osg::Vec4f c1(
+                (float)(c1p >> 11) / 31.0f,
+                (float)((c1p & 0x07E0) >> 5) / 63.0f,
+                (float)((c1p & 0x001F)) / 31.0f,
+                alpha);
+
+            static const float one_third = 1.0f / 3.0f;
+            static const float two_thirds = 2.0f / 3.0f;
+
+            osg::Vec4f c2, c3;
+            if (c0p > c1p)
+            {
+                c2 = c0 * two_thirds + c1 * one_third;
+                c3 = c0 * one_third + c1 * two_thirds;
+            }
+            else
+            {
+                c2 = c0 * 0.5 + c1 * 0.5;
+                c3.set(0, 0, 0, alpha);
+            }
+
+            unsigned color_lut = *(unsigned*)p;
+            unsigned color_index = (color_lut >> (2 * blockIndex)) & 0x3; // 2-bit index
+
+            out =
+                color_index == 0 ? c0 :
+                color_index == 1 ? c1 :
+                color_index == 2 ? c2 : c3;
         }
     };
 
@@ -2124,6 +2203,9 @@ namespace
             break;
         case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
             return &ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>::read;
+            break;
+        case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
+            return &ColorReader<GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, GLubyte>::read;
             break;
         default:
             return 0L;

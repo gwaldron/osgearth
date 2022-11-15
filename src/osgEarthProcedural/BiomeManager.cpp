@@ -83,11 +83,13 @@ namespace
     }
 
     // scan the image for the row with the most alpha.
-    // note: doesn't work on DXT5 b/c we don't have a DXT5 pixelreader yet
     float computeTopBillboardPosition(const osg::Image* in)
     {
-        float min_alpha = FLT_MAX;
-        int min_t = 0;
+        if (!ImageUtils::PixelReader::supports(in))
+            return -1.0f;
+
+        float max_alpha = -FLT_MAX;
+        int best_t = 0;
 
         ImageUtils::PixelReader read(in);
         read.setBilinear(false);
@@ -102,14 +104,14 @@ namespace
                 row_alpha += pixel.a();
             }
 
-            if (row_alpha < min_alpha)
+            if (row_alpha > max_alpha)
             {
-                min_alpha = row_alpha;
-                min_t = t;
+                max_alpha = row_alpha;
+                best_t = t;
             }
         }
 
-        return (float)min_t / (float)(in->t() - 1);
+        return (float)best_t / (float)(in->t() - 1);
     }
 }
 
@@ -695,9 +697,16 @@ BiomeManager::materializeNewAssets(
                             }
 
                             float top_z = 0.33f * (bbox.zMax() - bbox.zMin());
+
                             if (residentAsset->assetDef()->topBillboardHeight().isSet())
                             {
                                 top_z = residentAsset->assetDef()->topBillboardHeight().value();
+                            }
+                            else if (residentAsset->topBillboardTex().valid())
+                            {
+                                float v = computeTopBillboardPosition(residentAsset->topBillboardTex()->getImage(0));
+                                if (v >= 0.0f)
+                                    top_z = v * (bbox.zMax() - bbox.zMin());
                             }
 
                             Impostor imp = createImpostor(

@@ -67,6 +67,8 @@ namespace osgEarth
         
         META_Node(osgEarth, MetadataNode);
 
+        ~MetadataNode();
+
         ObjectID add(Feature* feature, bool visible = true);
 
         void tagDrawable(osg::Drawable* drawable, ObjectID id) const;

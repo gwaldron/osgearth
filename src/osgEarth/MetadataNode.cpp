@@ -113,6 +113,14 @@ void MetadataNode::tagDrawable(osg::Drawable* drawable, ObjectID id) const
     ids->assign(geom->getVertexArray()->getNumElements(), id+1);
 }
 
+MetadataNode::~MetadataNode()
+{
+    for (auto &i : *_instances)
+    {
+        osgEarth::Registry::instance()->getObjectIndex()->remove(i.objectID);
+    }
+}
+
 void MetadataNode::tagNode(osg::Node* node, ObjectID id) const
 {
     osg::StateSet* stateSet = node->getOrCreateStateSet();
@@ -131,6 +139,7 @@ void MetadataNode::finalize()
     osg::ShaderStorageBufferBinding* ssbb = new osg::ShaderStorageBufferBinding(0, _instances.get());
 
     getOrCreateStateSet()->setAttributeAndModes(ssbb, osg::StateAttribute::ON);
+
 }
 
 unsigned int MetadataNode::getNumFeatures() const

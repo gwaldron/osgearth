@@ -29,6 +29,7 @@
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>
 #include <osgUtil/SmoothingVisitor>
+#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
@@ -88,7 +89,7 @@ namespace
         if (!ImageUtils::PixelReader::supports(in))
             return -1.0f;
 
-        float max_alpha = -FLT_MAX;
+        int max_offset = 0;
         int best_t = 0;
 
         ImageUtils::PixelReader read(in);
@@ -97,16 +98,20 @@ namespace
 
         for (int t = 0; t < in->t(); ++t)
         {
-            float row_alpha = 0.0f;
+            int row_max_offset = 0;
             for (int s = 0; s < in->s(); ++s)
             {
                 read(pixel, s, t);
-                row_alpha += pixel.a();
+                if (pixel.a() > 0.15f)
+                {
+                    int offset = abs((int)s - (int)in->s() / 2);
+                    if (offset > row_max_offset)
+                        row_max_offset = offset;
+                }
             }
-
-            if (row_alpha > max_alpha)
+            if (row_max_offset > max_offset)
             {
-                max_alpha = row_alpha;
+                max_offset = row_max_offset;
                 best_t = t;
             }
         }
@@ -702,9 +707,9 @@ BiomeManager::materializeNewAssets(
                             {
                                 top_z = residentAsset->assetDef()->topBillboardHeight().value();
                             }
-                            else if (residentAsset->topBillboardTex().valid())
+                            else if (residentAsset->sideBillboardTex().valid())
                             {
-                                float v = computeTopBillboardPosition(residentAsset->topBillboardTex()->getImage(0));
+                                float v = computeTopBillboardPosition(residentAsset->sideBillboardTex()->getImage(0));
                                 if (v >= 0.0f)
                                     top_z = v * (bbox.zMax() - bbox.zMin());
                             }

@@ -29,6 +29,7 @@ XYZModelGraph::XYZModelGraph(const osgEarth::Map* map, const Profile* profile, c
     _url(url),
     _invertY(invertY)
 {
+    _statesetCache = new StateSetCache();
 }
 
 void
@@ -76,10 +77,10 @@ XYZModelGraph::createNode(const TileKey& key, ProgressCallback* progress)
     
     osg::ref_ptr< osgDB::Options > options = new osgDB::Options;
     options->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
-    osg::ref_ptr< osg::Node > node = myUri.readNode(options.get()).getNode();
+    osg::ref_ptr< osg::Node > node = myUri.readNode(options.get()).getNode();    
     if (node.valid())
     {
-        osgEarth::Registry::shaderGenerator().run(node.get());        
+        osgEarth::Registry::shaderGenerator().run(node.get(), _statesetCache);
         return node.release();
     }
     return nullptr;

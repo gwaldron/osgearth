@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/SimplePager>
 #include <osgEarth/MapNode>
+#include <osgEarth/StateSetCache>
 
 namespace osgEarth {
 
@@ -44,6 +45,7 @@ namespace osgEarth {
          std::string _ownerName;        
          URI _url;
          bool _invertY;
+         osg::ref_ptr< osgEarth::StateSetCache > _statesetCache;
     };
 }
 

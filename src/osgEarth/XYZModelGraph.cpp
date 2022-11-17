@@ -62,7 +62,6 @@ XYZModelGraph::createNode(const TileKey& key, ProgressCallback* progress)
     }
 
     std::string location = _url.full();
-    OE_NOTICE << "Referrer " << _url.context().referrer() << std::endl;
 
     // support OpenLayers template style:
     replaceIn(location, "${x}", Stringify() << x);

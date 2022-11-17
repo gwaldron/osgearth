@@ -24,11 +24,14 @@
 
 using namespace osgEarth;
 
-XYZModelGraph::XYZModelGraph(const osgEarth::Map* map, const Profile* profile, const URI& url, bool invertY) :
+XYZModelGraph::XYZModelGraph(const osgEarth::Map* map, const Profile* profile, const URI& url, bool invertY, const osgDB::Options* options) :
     SimplePager(map, profile),
     _url(url),
-    _invertY(invertY)
+    _invertY(invertY) 
 {
+    _options = osgEarth::Registry::instance()->cloneOrCreateOptions(options);
+    _options->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
+
     _statesetCache = new StateSetCache();
 }
 
@@ -59,6 +62,7 @@ XYZModelGraph::createNode(const TileKey& key, ProgressCallback* progress)
     }
 
     std::string location = _url.full();
+    OE_NOTICE << "Referrer " << _url.context().referrer() << std::endl;
 
     // support OpenLayers template style:
     replaceIn(location, "${x}", Stringify() << x);
@@ -75,9 +79,7 @@ XYZModelGraph::createNode(const TileKey& key, ProgressCallback* progress)
 
     URI myUri(location, _url.context());
     
-    osg::ref_ptr< osgDB::Options > options = new osgDB::Options;
-    options->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
-    osg::ref_ptr< osg::Node > node = myUri.readNode(options.get()).getNode();    
+    osg::ref_ptr< osg::Node > node = myUri.readNode(_options.get()).getNode();
     if (node.valid())
     {
         osgEarth::Registry::shaderGenerator().run(node.get(), _statesetCache);

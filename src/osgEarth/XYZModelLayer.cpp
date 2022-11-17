@@ -159,6 +159,8 @@ XYZModelLayer::addedToMap(const Map* map)
 
     _map = map;
 
+    _graphDirty = true;
+
     // re-create the graph if necessary.
     create();
 }
@@ -183,7 +185,7 @@ XYZModelLayer::create()
 
     if (_graphDirty && _profile)
     {             
-        osg::ref_ptr<XYZModelGraph> xyzGraph = new XYZModelGraph(_map.get(), _profile.get(), *_options->url(), *_options->invertY());
+        osg::ref_ptr<XYZModelGraph> xyzGraph = new XYZModelGraph(_map.get(), _profile.get(), *_options->url(), *_options->invertY(), getReadOptions());
         xyzGraph->setOwnerName(getName());
         xyzGraph->setAdditive(*_options->additive());
         xyzGraph->setMinLevel(*_options->minLevel());

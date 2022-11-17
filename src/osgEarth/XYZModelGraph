@@ -33,7 +33,7 @@ namespace osgEarth {
     class OSGEARTH_EXPORT XYZModelGraph : public SimplePager
     {
     public:
-         XYZModelGraph(const osgEarth::Map* map, const Profile* profile, const URI& url, bool invertY);
+         XYZModelGraph(const osgEarth::Map* map, const Profile* profile, const URI& url, bool invertY, const osgDB::Options* options);
 
          void setOwnerName(const std::string& value);
 
@@ -46,6 +46,7 @@ namespace osgEarth {
          URI _url;
          bool _invertY;
          osg::ref_ptr< osgEarth::StateSetCache > _statesetCache;
+         osg::ref_ptr< osgDB::Options > _options;
     };
 }
 

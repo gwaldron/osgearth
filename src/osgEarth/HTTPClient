@@ -165,6 +165,9 @@ namespace osgEarth { namespace Util
         void setLastModified(TimeStamp value) { _lastModified = value; }
         TimeStamp getLastModified() const { return _lastModified; }
 
+        bool getFromCache() const { return _fromCache; }
+        void setFromCache(bool fromCache) { _fromCache = fromCache; }
+
         struct Part : public osg::Referenced
         {
             Part() : _size(0) { }
@@ -184,8 +187,10 @@ namespace osgEarth { namespace Util
         double      _duration_s;
         TimeStamp   _lastModified;
         std::string _message;
+        bool        _fromCache;
 
         Config getHeadersAsConfig() const;
+        void setHeadersFromConfig(const Config& conf);
 
         friend class HTTPClient;
     };

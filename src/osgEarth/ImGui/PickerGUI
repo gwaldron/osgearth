@@ -1,0 +1,166 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_IMGUI_PICKER_GUI
+#define OSGEARTH_IMGUI_PICKER_GUI
+
+#include "ImGui"
+
+#include <osgEarth/ObjectIDPicker>
+#include <osgEarth/MetadataNode>
+
+namespace osgEarth { namespace GUI
+{
+    struct PickerGUI : public BaseGUI
+    {
+        PickerGUI() :
+            BaseGUI("Picker")
+        {
+        }
+
+        const char* highlight_shader = R"(
+    #pragma vp_function check_for_highlight, vertex_clip
+    uniform uint objectid_to_highlight;
+    uint oe_index_objectid;      // Stage global containing object id
+    flat out int selected;
+    void check_for_highlight(inout vec4 vertex)
+    {
+        selected = (objectid_to_highlight > 1u && objectid_to_highlight == oe_index_objectid) ? 1 : 0;
+    }
+
+    [break]
+    #pragma vp_function highlight_fragment, fragment
+    flat in int selected;
+    void highlight_fragment(inout vec4 color)
+    {
+        if ( selected == 1 )
+            color.rgb = mix(color.rgb, clamp(vec3(0.5,2.0,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5);
+    }
+)";
+
+        void installHighlighter()
+        {
+            osg::StateSet* stateSet = _mapNode->getOrCreateStateSet();
+            int attrLocation = Registry::objectIndex()->getObjectIDAttribLocation();
+
+            // This shader program will highlight the selected object.
+            VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
+            ShaderLoader::load(vp, highlight_shader);
+
+            // A uniform that will tell the shader which object to highlight:
+            _highlightUniform = new osg::Uniform("objectid_to_highlight", 0u);
+            stateSet->addUniform(_highlightUniform);
+        }
+
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible())
+                return;
+
+            if (ImGui::Begin(name(), visible()))
+            {  
+                if (!_mapNode.valid())
+                    _mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
+
+                if (!_installedPicker)
+                {
+                    _picker = new ObjectIDPicker();
+                    auto view = dynamic_cast<osgViewer::View*>(ri.getView());
+                    _picker->setView(view);  // which view to pick?
+                    _picker->setGraph(_mapNode.get()); // which graph to pick?
+                    _mapNode->addChild(_picker); // put it anywhere in the graph
+
+                    installHighlighter();
+
+                    ObjectIDPicker::Function hover = [&](ObjectID id)
+                    {
+                        if (id > 0)
+                        {
+                            _pickedFeature = nullptr;
+
+                            osg::ref_ptr< MetadataNode > metadata = Registry::objectIndex()->get<MetadataNode>(id);
+                            if (metadata.valid())
+                            {
+                                int index = metadata->getIndexFromObjectID(id);
+                                if (index > 0)
+                                {
+                                    const Feature* feature = metadata->getFeature(index);
+                                    _pickedFeature = feature;
+                                }
+                            }                            
+                            _highlightUniform->set(id);                            
+                        }
+                        else
+                        {
+                            _highlightUniform->set(0u);
+                            _pickedFeature = nullptr;                            
+                        }
+                    };
+
+                    _picker->onHover(hover);
+
+                    ObjectIDPicker::Function click = [&](ObjectID id)
+                    {
+                        if (id > 0)
+                        {                            
+                            osg::ref_ptr< MetadataNode > metadata = Registry::objectIndex()->get<MetadataNode>(id);
+                            if (metadata)
+                            {
+                                int index = metadata->getIndexFromObjectID(id);
+                                if (index > 0)
+                                {
+                                    metadata->setVisible(index, false);
+                                }
+                            }
+                        }                        
+                    };
+
+                    // Call our handler when hovering over the map
+                    _picker->onClick(click);
+
+                    _installedPicker = true;
+                }
+
+                if (_pickedFeature.valid())
+                {
+                    ImGui::Text("Picked Feature:");
+                    ImGui::Indent();
+                    {
+                        ImGui::Text("FID = %ld", _pickedFeature->getFID());
+                        ImGui::Separator();
+                        for (auto& attr : _pickedFeature->getAttrs())
+                        {
+                            ImGui::Separator();
+                            ImGui::TextWrapped("%s = %s", attr.first.c_str(), attr.second.getString().c_str());
+                        }
+                    }
+                    ImGui::Unindent();
+                }
+            }
+            ImGui::End();
+        }
+        
+        osg::observer_ptr<MapNode> _mapNode;
+        bool _installedPicker = false;
+        osgEarth::Util::ObjectIDPicker* _picker;
+        osg::Uniform* _highlightUniform;
+        osg::ref_ptr < const Feature > _pickedFeature;
+    };
+} }
+
+#endif // OSGEARTH_IMGUI_PICKER_GUI

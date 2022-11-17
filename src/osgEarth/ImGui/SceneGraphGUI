@@ -23,6 +23,7 @@
 #include <osgEarth/AnnotationUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/PagedNode>
+#include <osgEarth/MetadataNode>
 #include <osgEarth/Viewpoint>
 #include <osgEarth/ViewFitter>
 #include <osgEarth/ThreeDTilesLayer>
@@ -856,6 +857,100 @@ namespace osgEarth
                         std::string content = threeDTiles->getTile()->content()->getJSON().toStyledString();
                         ImGui::Text("Content");
                         ImGui::TextWrapped(content.c_str());
+                    }
+                }
+
+                osg::Camera* cam = dynamic_cast<osg::Camera*>(node);
+                if (cam)
+                {
+                    if (ImGui::TreeNode("osg::Camera"))
+                    {
+                        const std::string order[3] = { "PRE_RENDER", "NESTED_RENDER", "POST_RENDER" };
+                        const std::string proj[2] = { "PERSP", "ORTHO" };
+                        ImGui::Text("Render order: %s", order[(int)cam->getRenderOrder()]);
+                        ImGui::Text("Projection: %s", proj[ProjectionMatrix::isOrtho(cam->getProjectionMatrix()) ? 1 : 0]);
+                        ImGui::Text("Cull mask: %0x%.8X", cam->getCullMask());
+                        ImGui::Text("Gfx context: %0x%.16X", (std::uintptr_t)cam->getGraphicsContext());
+                        ImGui::Text("Gfx context ID: %d", cam->getGraphicsContext()->getState()->getContextID());
+                        ImGui::TreePop();
+                    }
+                }
+
+                osgEarth::MetadataNode* metadata = dynamic_cast<osgEarth::MetadataNode*>(node);
+                if (metadata)
+                {
+                    if (ImGui::TreeNode("Metadata"))
+                    {
+                        static ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_SizingFixedFit;
+
+                        const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
+
+                        // When using ScrollX or ScrollY we need to specify a size for our table container!
+                        // Otherwise by default the table will fit all available space, like a BeginChild() call.
+                        ImGui::Text("Features %d", metadata->getNumFeatures());
+                        ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 8);
+                        if (ImGui::BeginTable("Features", 4, flags, outer_size))
+                        {
+                            ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
+                            ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_None);
+                            ImGui::TableSetupColumn("Feature ID", ImGuiTableColumnFlags_None);
+                            ImGui::TableSetupColumn("Object ID", ImGuiTableColumnFlags_None);
+                            ImGui::TableSetupColumn("Visible", ImGuiTableColumnFlags_None);
+                            ImGui::TableHeadersRow();
+
+                            ImGuiListClipper clipper;
+                            clipper.Begin(metadata->getNumFeatures());
+                            while (clipper.Step())
+                            {
+                                for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+                                {
+                                    ImGui::PushID(i);
+
+                                    // TODO:  Add feature properties
+                                    ImGui::TableNextRow();
+
+                                    ImGui::TableSetColumnIndex(0);
+                                    ImGui::Text("%d", i);
+
+                                    ImGui::TableSetColumnIndex(1);
+                                    ImGui::Text("%I64d", metadata->getFeature(i)->getFID());
+
+                                    ImGui::TableSetColumnIndex(2);
+                                    ImGui::Text("%I64d", metadata->getObjectID(i));
+
+                                    ImGui::TableSetColumnIndex(3);
+                                    bool visible = metadata->getVisible(i);
+                                    if (ImGui::Checkbox("", &visible))
+                                    {
+                                        metadata->setVisible(i, visible);
+                                    }
+
+#if 0
+                                    ImGui::TableSetColumnIndex(3);
+                                    auto feature = metadata->getFeature(i);
+                                    if (feature)
+                                    {
+                                        std::stringstream buf;
+                                        for (auto& attr : feature->getAttrs())
+                                        {
+                                            buf << attr.first << "=" << attr.second.getString() << std::endl;
+                                        }
+                                        //std::string geojson = feature->getGeoJSON();
+                                        ImGui::Text(buf.str().c_str());
+                                    }
+                                    else
+                                    {
+                                        ImGui::Text("Null feature");
+                                    }
+#endif
+
+                                    ImGui::PopID();
+                                }
+                            }
+                            ImGui::EndTable();
+                        }
+
+                        ImGui::TreePop();
                     }
                 }
 

@@ -35,6 +35,7 @@
 #include "TextureInspectorGUI"
 #include "ViewpointsGUI"
 #include "SystemGUI"
+#include "PickerGUI"
 #include "EnvironmentGUI"
 #include "TerrainGUI"
 #include "TerrainEditGUI"
@@ -200,6 +201,7 @@ namespace osgEarth
                 _menu["Tools"].push_back(GUIPtr(new NetworkMonitorGUI));
                 //_menu["Tools"].push_back(GUIPtr(new NotifyGUI));
                 _menu["Tools"].push_back(GUIPtr(new SceneGraphGUI));
+                _menu["Tools"].push_back(GUIPtr(new PickerGUI));
                 _menu["Tools"].push_back(GUIPtr(new TextureInspectorGUI));
                 _menu["Tools"].push_back(GUIPtr(new TerrainEditGUI));
                 _menu["Tools"].push_back(GUIPtr(new ShaderGUI(args)));

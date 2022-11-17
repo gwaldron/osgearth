@@ -53,6 +53,7 @@ namespace osgEarth { namespace Util
         std::string RTTPicker;
         std::string WindComputer;
         std::string PBR;
+        std::string MetadataNode;
 	};	
 
 } } 

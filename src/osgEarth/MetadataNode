@@ -94,13 +94,15 @@ namespace osgEarth
 
         std::vector< osg::ref_ptr< Feature > > _features;
         osg::ref_ptr < InstanceArray > _instances;
-        osg::ShaderStorageBufferBinding* _ssbb;
     };
 
 } // namespace osgEarth
 
 inline void osgEarth::InstanceArray::accept(unsigned int index, osg::ValueVisitor& av) {}
 inline void osgEarth::InstanceArray::accept(unsigned int index, osg::ConstValueVisitor& av) const {}
+inline void osgEarth::InstanceArray::accept(osg::ArrayVisitor&) {}
+inline void osgEarth::InstanceArray::accept(osg::ConstArrayVisitor&) const {};
+
 
 
 #endif // OSGEARTH_METADATANODE_H

@@ -1541,51 +1541,30 @@ HTTPClient::doGet(const HTTPRequest&    request,
     bool gotFromCache = false;
 
     //Try to read result from the cache.
-    ReadResult result = bin->readString(uri.cacheKey(), options);
-    if (result.succeeded())
+    if (bin)
     {
-        gotFromCache = true;
-
-        expired = cachePolicy->isExpired(result.lastModifiedTime());
-        result.setIsFromCache(true);
-
-        HTTPResponse cacheResponse(HTTPResponse::CATEGORY_SUCCESS);
-        osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
-        part->_stream << result.getString();
-        std::string contentType = result.metadata().value("content-type");
-        cacheResponse.setMimeType(contentType);
-        cacheResponse.getParts().push_back(part);
-        cacheResponse.setHeadersFromConfig(result.metadata());
-        cacheResponse.setFromCache(true);
-
-        /*
-        * // CHECK FOR not modified
-        if ((result.empty() || expired) && cp->usage() != CachePolicy::USAGE_CACHE_ONLY)
+        ReadResult result = bin->readString(uri.cacheKey(), options);
+        if (result.succeeded())
         {
-            ReadResult remoteResult = reader.fromHTTP(uri, remoteOptions.get(), progress, result.lastModifiedTime());
-            if (remoteResult.code() == ReadResult::RESULT_NOT_MODIFIED)
-            {
-                OE_DEBUG << LC << uri.full() << " not modified, using cached result" << std::endl;
-                // Touch the cached item to update it's last modified timestamp so it doesn't expire again immediately.
-                if (bin)
-                    bin->touch(uri.cacheKey());
-            }
-            else
-            {
-                OE_DEBUG << LC << "Got remote result for " << uri.full() << std::endl;
-                result = remoteResult;
-            }
-        }
-        */
-        //return cacheResponse;
+            gotFromCache = true;
 
-        response = cacheResponse;
-    }    
+            expired = cachePolicy->isExpired(result.lastModifiedTime());
+            result.setIsFromCache(true);
+
+            HTTPResponse cacheResponse(HTTPResponse::CATEGORY_SUCCESS);
+            osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
+            part->_stream << result.getString();
+            std::string contentType = result.metadata().value("content-type");
+            cacheResponse.setMimeType(contentType);
+            cacheResponse.getParts().push_back(part);
+            cacheResponse.setHeadersFromConfig(result.metadata());
+            cacheResponse.setFromCache(true);
+            response = cacheResponse;
+        }
+    }
 
     if ((expired || !gotFromCache) && cachePolicy->usage() != CachePolicy::USAGE_CACHE_ONLY)
     {
-        //response = _impl->doGet(request, options, progress);
-
         HTTPResponse remoteResponse = _impl->doGet(request, options, progress);
 
         if (remoteResponse.getCode() == ReadResult::RESULT_NOT_MODIFIED)

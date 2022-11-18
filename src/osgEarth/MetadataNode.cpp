@@ -62,7 +62,7 @@ MetadataNode::MetadataNode(const MetadataNode& rhs, const osg::CopyOp& copyop) :
 
 void MetadataNode::init()
 {
-    _instances = new InstanceArray;
+    _instances = new osg::Vec2uiArray;
 
     osgEarth::VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
 
@@ -84,10 +84,10 @@ ObjectID MetadataNode::add(Feature* feature, bool visible)
     _features.push_back(feature);
 
     // Store the index information
-    Instance instance;
-    instance.visible = visible;
+    osg::Vec2ui instance;
+    instance.y() = visible;
     //instance.objectID = osgEarth::Registry::instance()->getObjectIndex()->insert(feature);
-    instance.objectID = osgEarth::Registry::instance()->getObjectIndex()->insert(this);
+    instance.x() = osgEarth::Registry::instance()->getObjectIndex()->insert(this);
     _instances->push_back(instance);
     _instances->dirty();
 
@@ -117,7 +117,7 @@ MetadataNode::~MetadataNode()
 {
     for (auto &i : *_instances)
     {
-        osgEarth::Registry::instance()->getObjectIndex()->remove(i.objectID);
+        osgEarth::Registry::instance()->getObjectIndex()->remove(i.x());
     }
 }
 
@@ -149,18 +149,18 @@ unsigned int MetadataNode::getNumFeatures() const
 
 bool MetadataNode::getVisible(unsigned int index) const
 {
-    return (*_instances)[index].visible;
+    return (*_instances)[index].y();
 }
 
 void MetadataNode::setVisible(unsigned int index, bool value)
 {
-    (*_instances)[index].visible = value;
+    (*_instances)[index].y() = value;
     _instances->dirty();
 }
 
 ObjectID MetadataNode::getObjectID(unsigned index) const
 {
-    return (*_instances)[index].objectID;
+    return (*_instances)[index].x();
 }
 
 const Feature* MetadataNode::getFeature(unsigned int index) const
@@ -172,7 +172,7 @@ int MetadataNode::getIndexFromObjectID(ObjectID id) const
 {
     for (unsigned int i = 0; i < _instances->size(); ++i)
     {
-        if ((*_instances)[i].objectID == id)
+        if ((*_instances)[i].x() == id)
         {
             return i;
         }
@@ -265,7 +265,7 @@ namespace osgEarth
                             case osgEarth::ATTRTYPE_INT:
                             {
                                 int64_t v = readInt64(is);
-                                feature->set(attrName, v);
+                                feature->set(attrName, static_cast<long long>(v));
                                 break;
                             }
                             case ATTRTYPE_DOUBLEARRAY:

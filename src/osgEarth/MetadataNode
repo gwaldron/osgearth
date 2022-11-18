@@ -28,39 +28,7 @@
 #include <osg/BufferIndexBinding>
 
 namespace osgEarth
-{
-    struct Instance
-    {
-        // Attempt to make osg's value visitor classes happy.
-        operator int() const { return 0; }
-
-        unsigned int objectID;
-        unsigned int visible;
-
-        inline bool operator == (const Instance& rhs) const
-        {
-            return
-                objectID == rhs.objectID &&
-                visible == rhs.visible;
-        }
-
-        inline bool operator != (const Instance& rhs) const
-        {
-            return
-                objectID != rhs.objectID ||
-                visible != rhs.visible;
-        }
-
-        inline bool operator <  (const Instance& rhs) const
-        {
-            if (objectID < rhs.objectID) return true;
-            else if (objectID > rhs.objectID) return false;
-            else return visible < rhs.visible;
-        }
-    };
-
-    typedef osg::TemplateArray<osgEarth::Instance, osg::Array::ByteArrayType, sizeof(osgEarth::Instance), GL_BYTE> InstanceArray;
-
+{   
     class OSGEARTH_EXPORT MetadataNode : public osg::Group
     {
     public:
@@ -96,16 +64,9 @@ namespace osgEarth
         void init();
 
         std::vector< osg::ref_ptr< Feature > > _features;
-        osg::ref_ptr < InstanceArray > _instances;
+        osg::ref_ptr< osg::Vec2uiArray > _instances;
     };
 
 } // namespace osgEarth
-
-inline void osgEarth::InstanceArray::accept(unsigned int index, osg::ValueVisitor& av) {}
-inline void osgEarth::InstanceArray::accept(unsigned int index, osg::ConstValueVisitor& av) const {}
-inline void osgEarth::InstanceArray::accept(osg::ArrayVisitor&) {}
-inline void osgEarth::InstanceArray::accept(osg::ConstArrayVisitor&) const {};
-
-
 
 #endif // OSGEARTH_METADATANODE_H

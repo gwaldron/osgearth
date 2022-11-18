@@ -31,6 +31,9 @@ namespace osgEarth
 {
     struct Instance
     {
+        // Attempt to make osg's value visitor classes happy.
+        operator int() const { return 0; }
+
         unsigned int objectID;
         unsigned int visible;
 

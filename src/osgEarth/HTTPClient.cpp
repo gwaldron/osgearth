@@ -1526,7 +1526,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
     if (cacheSettings)
     {
         cachePolicy = cacheSettings->cachePolicy();
-        if (cachePolicy->isCacheEnabled())
+        if (cacheSettings->isCacheEnabled())
         {
             // Use the global bin instead of the defined cache bin so all URLs are cached to the same place
             bin = cacheSettings->getCache()->getOrCreateDefaultBin();

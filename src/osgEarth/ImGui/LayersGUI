@@ -65,6 +65,8 @@ namespace osgEarth {
         {
             AddWMSDialog()
             {
+                strcpy(url, "http://readymap.org/readymap/tiles");
+                memset(name, 0, sizeof(name));
             }
 
             void draw(osgEarth::MapNode* mapNode)
@@ -177,8 +179,8 @@ namespace osgEarth {
             }
 
             bool visible = false;
-            char url[128] = "http://readymap.org/readymap/tiles";
-            char name[1024] = "";
+            char url[128];
+            char name[1024];
             osg::ref_ptr<WMS::Capabilities> capabilities;
             osg::ref_ptr< WMS::Layer > selectedWMSLayer;
         };
@@ -837,7 +839,7 @@ namespace osgEarth {
                                             }
                                             else
                                             {
-                                                ImGui::Text("%s", _imageLayerValueUnderMouse->message());
+                                                ImGui::Text("%s", _imageLayerValueUnderMouse->message().c_str());
                                             }
                                         }
                                         else

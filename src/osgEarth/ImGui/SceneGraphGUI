@@ -867,8 +867,8 @@ namespace osgEarth
                     {
                         const std::string order[3] = { "PRE_RENDER", "NESTED_RENDER", "POST_RENDER" };
                         const std::string proj[2] = { "PERSP", "ORTHO" };
-                        ImGui::Text("Render order: %s", order[(int)cam->getRenderOrder()]);
-                        ImGui::Text("Projection: %s", proj[ProjectionMatrix::isOrtho(cam->getProjectionMatrix()) ? 1 : 0]);
+                        ImGui::Text("Render order: %s", order[(int)cam->getRenderOrder()].c_str());
+                        ImGui::Text("Projection: %s", proj[ProjectionMatrix::isOrtho(cam->getProjectionMatrix()) ? 1 : 0].c_str());
                         ImGui::Text("Cull mask: %0x%.8X", cam->getCullMask());
                         ImGui::Text("Gfx context: %0x%.16X", (std::uintptr_t)cam->getGraphicsContext());
                         ImGui::Text("Gfx context ID: %d", cam->getGraphicsContext()->getState()->getContextID());

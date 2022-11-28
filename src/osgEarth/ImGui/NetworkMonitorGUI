@@ -32,10 +32,9 @@ namespace osgEarth {
             NetworkMonitorGUI() :
                 BaseGUI("Network Monitor"),
                 _showOnlyActiveRequests(true),
-                _showOnlyFailedRequests(false),
-                _filter("")
+                _showOnlyFailedRequests(false)
             {
-
+                memset(_filter, 0, sizeof(_filter));
             }
 
             void draw(osg::RenderInfo& ri) override

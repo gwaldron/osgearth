@@ -207,7 +207,7 @@ osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &re
 	if (!isRelativePath(relativePath) || relativeTo.empty())
     {
         //OE_NOTICE << relativePath << " is not a relative path " << std::endl;
-        result = relativePath;
+        result = stripRelativePaths(relativePath);
     }
 
     //If they didn't specify a relative path, just return the relativeTo
@@ -227,41 +227,7 @@ osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &re
         else
             filename = osgDB::concatPaths( osgDB::getFilePath( relativeTo ), relativePath);
 
-
-        std::list<std::string> directories;
-        int start = 0;
-        for (unsigned int i = 0; i < filename.size(); ++i)
-        {
-            if (filename[i] == '\\' || filename[i] == '/')
-            {
-                //Get the current directory
-                std::string dir = filename.substr(start, i-start);
-
-                if (dir != "..")
-                {
-                    if (dir != ".")
-                    {
-                      directories.push_back(dir);
-                    }
-                }
-                else if (!directories.empty())
-                {
-                    directories.pop_back();
-                }
-                start = i + 1;
-            }
-        }
-
-        std::string path;
-        for (std::list<std::string>::iterator itr = directories.begin();
-             itr != directories.end();
-             ++itr)
-        {
-            path += *itr;
-            path += "/";
-        }
-
-        path += filename.substr(start, std::string::npos);
+        std::string path = stripRelativePaths(filename);
 
         //OE_NOTICE << "FullPath " << path << std::endl;
         result = path;
@@ -270,6 +236,46 @@ osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &re
     // cache the result and return it.
     s_cache[cacheKey] = result;
     return result;
+}
+
+std::string
+osgEarth::Util::stripRelativePaths(const std::string& filename)
+{
+    std::list<std::string> directories;
+    int start = 0;
+    for (unsigned int i = 0; i < filename.size(); ++i)
+    {
+        if (filename[i] == '\\' || filename[i] == '/')
+        {
+            //Get the current directory
+            std::string dir = filename.substr(start, i - start);
+
+            if (dir != "..")
+            {
+                if (dir != ".")
+                {
+                    directories.push_back(dir);
+                }
+            }
+            else if (!directories.empty())
+            {
+                directories.pop_back();
+            }
+            start = i + 1;
+        }
+    }
+
+    std::string path;
+    for (std::list<std::string>::iterator itr = directories.begin();
+        itr != directories.end();
+        ++itr)
+    {
+        path += *itr;
+        path += "/";
+    }
+
+    path += filename.substr(start, std::string::npos);
+    return path;
 }
 
 // force getFullPath's statics to be initialized at startup

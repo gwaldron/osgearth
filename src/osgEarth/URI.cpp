@@ -178,7 +178,7 @@ _cacheKey(rhs._cacheKey)
 URI::URI( const std::string& location )
 {
     _baseURI = location;
-    _fullURI = location;
+    _fullURI = osgEarth::Util::stripRelativePaths(location);
     ctorCacheKey();
 }
 
@@ -193,7 +193,7 @@ URI::URI( const std::string& location, const URIContext& context )
 URI::URI( const char* location )
 {
     _baseURI = std::string(location);
-    _fullURI = _baseURI;
+    _fullURI = osgEarth::Util::stripRelativePaths(_baseURI);
     ctorCacheKey();
 }
 

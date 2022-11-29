@@ -53,6 +53,12 @@ namespace osgEarth { namespace Util
         const std::string& relativePath );
 
     /**
+     * Removes any . and .. from an absolute path.  For example, if you have an absolute path
+     * of https://server.com/models/../images/texture.png the result will be https://server.com/images/texture.png
+     */
+    extern OSGEARTH_EXPORT std::string stripRelativePaths(const std::string& filename);
+
+    /**
      * whether the given path ends with an Archive.
      */
     extern OSGEARTH_EXPORT bool isArchive(const std::string& path);

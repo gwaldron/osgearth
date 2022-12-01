@@ -596,8 +596,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }
 
     // Build kdtrees to increase intersection speed.
-    osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = new osg::KdTreeBuilder();
-    resultGroup->accept(*kdTreeBuilder.get());
+    if (osgDB::Registry::instance()->getKdTreeBuilder())
+    {
+        osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
+        resultGroup->accept(*kdTreeBuilder.get());
+    }
 
     return resultGroup.release();
 }

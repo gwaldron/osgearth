@@ -469,6 +469,7 @@ if(OSGEARTH_ENABLE_IMGUI)
     set(LIB_PUBLIC_HEADERS_IMGUI
         ImGui/ImGui
         ImGui/ImGuiApp
+        ImGui/ContentBrowserGUI
         ImGui/LayersGUI
         ImGui/NetworkMonitorGUI
         ImGui/NotifyGUI

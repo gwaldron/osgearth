@@ -442,17 +442,20 @@ Chonk::getOrCreateCommands(osg::State& state) const
         // for each variant:
         for (auto& lod : _lods)
         {
-            DrawCommand command;
+            if (gs.ebo->address() != 0 && gs.vbo->address() != 0)
+            {
+                DrawCommand command;
 
-            command.cmd.count = lod.length;
-            command.cmd.firstIndex = lod.offset;
-            command.cmd.instanceCount = 1;
-            command.indexBuffer.address = gs.ebo->address();
-            command.indexBuffer.length = gs.ebo->size();
-            command.vertexBuffer.address = gs.vbo->address();
-            command.vertexBuffer.length = gs.vbo->size();
+                command.cmd.count = lod.length;
+                command.cmd.firstIndex = lod.offset;
+                command.cmd.instanceCount = 1;
+                command.indexBuffer.address = gs.ebo->address();
+                command.indexBuffer.length = gs.ebo->size();
+                command.vertexBuffer.address = gs.vbo->address();
+                command.vertexBuffer.length = gs.vbo->size();
 
-            gs.commands.push_back(std::move(command));
+                gs.commands.push_back(std::move(command));
+            }
         }
 
         gs.vbo->unbind();

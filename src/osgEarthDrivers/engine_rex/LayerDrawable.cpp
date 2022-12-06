@@ -445,7 +445,9 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
             for (auto& tile : _rs.tiles)
             {
                 SharedGeometry* geom = tile._geom.get();
-                _rs.commands.push_back(geom->getOrCreateNVGLCommand(state));
+                auto& command = geom->getOrCreateNVGLCommand(state);
+                if (command.vertexBuffer.address != 0 && command.indexBuffer.address != 0)
+                    _rs.commands.push_back(command);
             }
 
             gl.commands->uploadData(_rs.commands);

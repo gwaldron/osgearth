@@ -29,6 +29,7 @@
 #include <osg/ComputeBoundsVisitor>
 #include <osg/KdTree>
 #include <osgDB/ObjectWrapper>
+#include <osgDB/Registry>
 #include <osgUtil/Optimizer>
 
 #define LC "[DrawInstanced] "
@@ -334,11 +335,14 @@ void InstanceGeometry::setMatrices(const std::vector< osg::Matrixf >& matrices)
     }
     tempGeom->addPrimitiveSet(_meshDrawElements.get());
 
-    osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = new osg::KdTreeBuilder();
-    tempGeom->accept(*kdTreeBuilder.get());
-    if (tempGeom->getShape())
+    if (osgDB::Registry::instance()->getKdTreeBuilder())
     {
-        setShape(tempGeom->getShape());
+        osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
+        tempGeom->accept(*kdTreeBuilder.get());
+        if (tempGeom->getShape())
+        {
+            setShape(tempGeom->getShape());
+        }
     }
 }
 

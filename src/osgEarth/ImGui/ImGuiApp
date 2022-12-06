@@ -25,10 +25,12 @@
 #include "GL/glew.h"
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "misc/cpp/imgui_stdlib.h"
 
 #include "ImGui"
 
 #include "LayersGUI"
+#include "ContentBrowserGUI"
 #include "NetworkMonitorGUI"
 #include "NotifyGUI"
 #include "SceneGraphGUI"
@@ -199,6 +201,7 @@ namespace osgEarth
                 _menu["Tools"].push_back(GUIPtr(new TerrainGUI));
                 _menu["Tools"].push_back(GUIPtr(new SystemGUI));
                 _menu["Tools"].push_back(GUIPtr(new NetworkMonitorGUI));
+                _menu["Tools"].push_back(GUIPtr(new ContentBrowserGUI));
                 //_menu["Tools"].push_back(GUIPtr(new NotifyGUI));
                 _menu["Tools"].push_back(GUIPtr(new SceneGraphGUI));
                 _menu["Tools"].push_back(GUIPtr(new PickerGUI));

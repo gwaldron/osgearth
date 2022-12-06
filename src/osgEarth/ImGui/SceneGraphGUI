@@ -491,6 +491,18 @@ namespace osgEarth
                     {
                         _owner->setSelectedNodePath(getNodePath());
                     }
+                    if (ImGui::BeginDragDropTarget())
+                    {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE"))
+                        {
+                            osg::Texture2D* droppedTexture = *(osg::Texture2D**)payload->Data;
+                            if (droppedTexture)
+                            {
+                                node.getOrCreateStateSet()->setTextureAttributeAndModes(0, droppedTexture, osg::StateAttribute::ON);
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
                 }
 
                 void apply(osg::Group& node)
@@ -522,6 +534,27 @@ namespace osgEarth
                     {
                         _owner->setSelectedNodePath(getNodePath());
                     }
+                    if (ImGui::BeginDragDropTarget())
+                    {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("NODE"))
+                        {
+                            osg::Node* droppedNode = *(osg::Node**)payload->Data;
+                            if (droppedNode)
+                            {
+                                node.addChild(droppedNode);
+                            }
+                        }
+                        else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE"))
+                        {
+                            osg::Texture2D* droppedTexture = *(osg::Texture2D**)payload->Data;
+                            if (droppedTexture)
+                            {
+                                node.getOrCreateStateSet()->setTextureAttributeAndModes(0, droppedTexture, osg::StateAttribute::ON);
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+
                     if (node_open)
                     {
                         traverse(node);
@@ -594,8 +627,9 @@ namespace osgEarth
                     {
                         // Change the size based on whether the properties panel is
                         ImGui::BeginChild("Scene", ImVec2(0, getSelectedNode() && _propertiesExpanded ? 0.6f * size.y : 0.90f * size.y), false, ImGuiWindowFlags_HorizontalScrollbar);
+
                         SceneHierarchyVisitor v(this);
-                        _node->accept(v);
+                        _node->accept(v);                        
 
                         ImGui::EndChild();
                     }
@@ -867,8 +901,8 @@ namespace osgEarth
                     {
                         const std::string order[3] = { "PRE_RENDER", "NESTED_RENDER", "POST_RENDER" };
                         const std::string proj[2] = { "PERSP", "ORTHO" };
-                        ImGui::Text("Render order: %s", order[(int)cam->getRenderOrder()]);
-                        ImGui::Text("Projection: %s", proj[ProjectionMatrix::isOrtho(cam->getProjectionMatrix()) ? 1 : 0]);
+                        ImGui::Text("Render order: %s", order[(int)cam->getRenderOrder()].c_str());
+                        ImGui::Text("Projection: %s", proj[ProjectionMatrix::isOrtho(cam->getProjectionMatrix()) ? 1 : 0].c_str());
                         ImGui::Text("Cull mask: %0x%.8X", cam->getCullMask());
                         ImGui::Text("Gfx context: %0x%.16X", (std::uintptr_t)cam->getGraphicsContext());
                         ImGui::Text("Gfx context ID: %d", cam->getGraphicsContext()->getState()->getContextID());

@@ -90,7 +90,7 @@ namespace osgEarth
                     {
                         float a = 2.0f*(lm_iter.u() - 0.5f);
                         float b = 2.0f*(lm_iter.v() - 0.5f);
-                        float d = clamp(sqrt((a*a) + (b*b)), 0.0f, 1.0f);
+                        float d = clamp(static_cast<float>(sqrt((a*a) + (b*b))), 0.0f, 1.0f);
                         value.set(rugged, dense, lush, (1.0f - (d*d)) * lifemapMix);
 
                         writeLifeMap(value, lm_iter.s(), lm_iter.t());

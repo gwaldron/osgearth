@@ -25,7 +25,7 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-const std::string IOMetadata::CONTENT_TYPE = "Content-Type";
+const std::string IOMetadata::CONTENT_TYPE = "content-type";
 
 //------------------------------------------------------------------------
 

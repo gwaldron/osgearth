@@ -160,8 +160,11 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
     if (node.valid())
     {
         // Build kdtrees to increase intersection speed.
-        osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = new osg::KdTreeBuilder();
-        node->accept(*kdTreeBuilder.get());
+        if (osgDB::Registry::instance()->getKdTreeBuilder())
+        {
+            osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
+            node->accept(*kdTreeBuilder.get());
+        }
 
         pagedNode->addChild(node);
         fire_onCreateNode(key, node.get());

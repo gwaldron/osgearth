@@ -203,6 +203,23 @@ namespace osgEarth
             return buf.str();
         }
 
+        static const char* arrayBindingToString(osg::Array::Binding binding)
+        {
+            switch (binding)
+            {
+            case osg::Array::BIND_PER_VERTEX:
+                return "BIND_PER_VERTEX";
+            case osg::Array::BIND_OVERALL:
+                return "BIND_OVERALL";
+            case osg::Array::BIND_PER_PRIMITIVE_SET:
+                return "BIND_PER_PRIMITIVE_SET";
+            case osg::Array::BIND_OFF:
+                return "BIND_OFF";
+            default:
+                return "BIND_UNDEFINED";
+            }
+        }
+
         template<typename T>
         void printArrayTablePretty(const std::string& name, const T* array)
         {
@@ -214,6 +231,8 @@ namespace osgEarth
             // When using ScrollX or ScrollY we need to specify a size for our table container!
             // Otherwise by default the table will fit all available space, like a BeginChild() call.
             ImGui::Text(typeid(*array).name());
+            ImGui::Text("Binding %s", arrayBindingToString(array->getBinding()));
+            ImGui::Text("Size: %dkb", (unsigned int)(array->getTotalDataSize() / 1024.0f));
             ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 8);
             if (ImGui::BeginTable(name.c_str(), 2, flags, outer_size))
             {
@@ -1087,6 +1106,19 @@ namespace osgEarth
                         }
                     }
 
+                    auto& texCoordArrays = geometry->getTexCoordArrayList();
+                    for (unsigned int i = 0; i < texCoordArrays.size(); ++i)
+                    {
+                        if (texCoordArrays[i].valid())
+                        {
+                            if (ImGui::TreeNode("texcoords", "TexCoords Unit %d %d", i, geometry->getNormalArray()->getNumElements()))
+                            {
+                                printArrayTable(texCoordArrays[i].get());
+                                ImGui::TreePop();
+                            }
+                        }
+                    }
+
                     // Vetex attrib arrays
                     osg::Geometry::ArrayList& arrays = geometry->getVertexAttribArrayList();
                     bool validVertexAttributeArray = false;
@@ -1106,7 +1138,7 @@ namespace osgEarth
                         ImGui::Separator();
                         for (unsigned int i = 0; i < arrays.size(); ++i)
                         {
-                            if (!arrays[i].valid()) continue;
+                            if (!arrays[i].valid() && arrays[i]->getBinding() != osg::Array::BIND_OFF) continue;
 
                             const char* arrayName = "";
 

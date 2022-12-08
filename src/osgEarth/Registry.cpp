@@ -97,7 +97,8 @@ _regMutex("Registry(OE)"),
 _activityMutex("Reg.Activity(OE)"),
 _capsMutex("Reg.Caps(OE)"),
 _srsCache("Reg.SRSCache(OE)"),
-_blacklist("Reg.BlackList(OE)")
+_blacklist("Reg.BlackList(OE)"),
+_maxImageDimension(UINT_MAX)
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -226,6 +227,13 @@ _blacklist("Reg.BlackList(OE)")
     osgUtil::RenderBin::addRenderBinPrototype(
         "ChonkBin",
         new ChonkRenderBin());
+
+    const char* maxDim = getenv("OSGEARTH_MAX_IMAGE_DIMENSION");
+    if (maxDim)
+    {
+        _maxImageDimension = as<unsigned>(maxDim, UINT_MAX);
+        OE_INFO << LC << "Setting max image dim from environment = " << _maxImageDimension << std::endl;
+    }
 }
 
 Registry::~Registry()
@@ -813,6 +821,18 @@ unsigned
 Registry::getMaxNumberOfVertsPerDrawable() const
 {
     return _maxVertsPerDrawable;
+}
+
+unsigned
+Registry::getMaxImageDimension() const
+{
+    return _maxImageDimension;
+}
+
+void
+Registry::setMaxImageDimension(unsigned value)
+{
+    _maxImageDimension = value;
 }
 
 namespace

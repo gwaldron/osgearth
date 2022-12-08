@@ -278,6 +278,14 @@ namespace osgEarth
         unsigned getMaxNumberOfVertsPerDrawable() const;
 
         /**
+         * Maximum dimension (in either axis of images loaded from a URI).
+         * Default is UINT_MAX. This will effectively limit the size of 
+         * texture data throughout osgEarth.
+         */
+        void setMaxImageDimension(unsigned value);
+        unsigned getMaxImageDimension() const;
+
+        /**
          * Release OpenGL resources associated with anything in the reigstry
          */
         void releaseGLObjects(class osg::State*) const;
@@ -353,6 +361,8 @@ namespace osgEarth
         std::set<int> _offLimitsTextureImageUnits;
 
         float _devicePixelRatio;
+
+        unsigned _maxImageDimension;
 
         typedef std::unordered_map<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
         Threading::Mutexed<SRSCache> _srsCache;

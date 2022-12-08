@@ -386,7 +386,7 @@ namespace
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) {
             ReadResult r = cb->readImage(uri, opt);
             if ( r.getImage() ) r.getImage()->setFileName(uri);
-            return r;
+            return postProcess(r);
         }
         ReadResult fromHTTP(const URI& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified ) {
             HTTPRequest req(uri.full());
@@ -398,16 +398,42 @@ namespace
             }
             ReadResult r = HTTPClient::readImage(req, opt, p);
             if ( r.getImage() ) r.getImage()->setFileName( uri.full() );
-            return r;
+            return postProcess(r);
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
             // Call readImageImplementation instead of readImage to bypass any readfile callbacks installed in the registry.
             osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readImageImplementation(uri, opt);
             if (osgRR.validImage()) {
                 osgRR.getImage()->setFileName(uri);
-                return ReadResult(osgRR.takeImage());
+                return postProcess(ReadResult(osgRR.takeImage()));
             }
             else return ReadResult(osgRR.message());
+        }
+        ReadResult postProcess(ReadResult& r) const
+        {
+            unsigned maxdim = Registry::instance()->getMaxImageDimension();
+
+            auto image = r.getImage();
+            if (!image || (image->s() <= (int)maxdim && image->t() <= (int)maxdim))
+                return r;
+            
+            unsigned new_s, new_t;
+            float ar = (float)image->s() / (float)image->t();
+
+            if (image->s() >= image->t()) {
+                new_s = maxdim;
+                new_t = (unsigned)((float)new_s * ar);
+            }
+            else {
+                new_t = maxdim;
+                new_s = (unsigned)((float)new_t / ar);
+            }
+
+            osg::ref_ptr<osg::Image> new_image;
+            if (ImageUtils::resizeImage(image, new_s, new_t, new_image))
+                return ReadResult(new_image.release(), r.metadata());
+            else
+                return r;
         }
     };
 

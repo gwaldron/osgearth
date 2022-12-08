@@ -61,7 +61,8 @@ namespace osgEarth { namespace Procedural
     public:
         static bool load(
             const URI& colorURI,
-            TextureArena* arena);
+            TextureArena* arena,
+            const osgDB::Options* options);
     };
 
 } } // namespace osgEarth::Procedural

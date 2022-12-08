@@ -150,7 +150,8 @@ namespace osgEarth
         //! Adds a texture to the arena. On next apply() GL handles will allocate.
         //! You only need to call this once for each texture.
         //! Returns the index of the texture handle
-        int add(Texture::Ptr tex);
+        int add(Texture::Ptr tex,
+            const osgDB::Options* options = nullptr);
 
         //! Find and return the index of this texture in the arena,
         //! or return -1 if not found.

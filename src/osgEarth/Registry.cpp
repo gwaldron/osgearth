@@ -98,7 +98,7 @@ _activityMutex("Reg.Activity(OE)"),
 _capsMutex("Reg.Caps(OE)"),
 _srsCache("Reg.SRSCache(OE)"),
 _blacklist("Reg.BlackList(OE)"),
-_maxImageDimension(UINT_MAX)
+_maxImageDimension(INT_MAX)
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -228,11 +228,11 @@ _maxImageDimension(UINT_MAX)
         "ChonkBin",
         new ChonkRenderBin());
 
-    const char* maxDim = getenv("OSGEARTH_MAX_IMAGE_DIMENSION");
+    const char* maxDim = getenv("OSGEARTH_MAX_TEXTURE_SIZE");
     if (maxDim)
     {
         _maxImageDimension = as<unsigned>(maxDim, UINT_MAX);
-        OE_INFO << LC << "Setting max image dim from environment = " << _maxImageDimension << std::endl;
+        OE_INFO << LC << "Setting max texture size from environment = " << _maxImageDimension << std::endl;
     }
 }
 
@@ -823,14 +823,14 @@ Registry::getMaxNumberOfVertsPerDrawable() const
     return _maxVertsPerDrawable;
 }
 
-unsigned
-Registry::getMaxImageDimension() const
+int
+Registry::getMaxTextureSize() const
 {
     return _maxImageDimension;
 }
 
 void
-Registry::setMaxImageDimension(unsigned value)
+Registry::setMaxTextureSize(int value)
 {
     _maxImageDimension = value;
 }

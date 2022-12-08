@@ -539,7 +539,7 @@ TextureArena::find(unsigned index) const
 }
 
 int
-TextureArena::add(Texture::Ptr tex)
+TextureArena::add(Texture::Ptr tex, const osgDB::Options* options)
 {
     if (tex == nullptr)
     {

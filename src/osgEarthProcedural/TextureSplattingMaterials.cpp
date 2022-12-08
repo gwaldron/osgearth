@@ -434,13 +434,14 @@ NNRA_Loader::writeImage(
 bool
 RGBH_NNRA_Loader::load(
     const URI& colorURI,
-    TextureArena* arena)
+    TextureArena* arena,
+    const osgDB::Options* options)
 {
     Texture::Ptr rgbh = Texture::create();
     rgbh->category() = "Splatting Material";
     rgbh->uri() = URI(colorURI.full() + ".oe_splat_rgbh");
     rgbh->name() = rgbh->uri()->full();
-    arena->add(rgbh);
+    arena->add(rgbh, options);
 
     // protect the NNRA from compression, b/c it confuses the normal maps
     Texture::Ptr nnra = Texture::create();
@@ -448,6 +449,6 @@ RGBH_NNRA_Loader::load(
     nnra->uri() = URI(colorURI.full() + ".oe_splat_nnra");
     nnra->name() = nnra->uri()->full();
     nnra->compress() = false;
-    arena->add(nnra);
+    arena->add(nnra, options);
     return true;
 }

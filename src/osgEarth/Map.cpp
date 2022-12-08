@@ -61,6 +61,8 @@ Map::Options::getConfig() const
 
     conf.set( "profile_layer", profileLayer() );
 
+    conf.set("osg_options", osgOptionString());
+
     return conf;
 }
 
@@ -87,6 +89,8 @@ Map::Options::fromConfig(const Config& conf)
     conf.get( "elevation_interpolation", "triangulate", elevationInterpolation(), INTERP_TRIANGULATE);
 
     conf.get( "profile_layer", profileLayer() );
+
+    conf.get("osg_options", osgOptionString());
 }
 
 //...................................................................
@@ -151,6 +155,13 @@ Map::init()
     if (!_readOptions.valid())
     {
         _readOptions = new osgDB::Options();
+    }
+
+    if (!options().osgOptionString()->empty())
+    {
+        std::string a = _readOptions->getOptionString();
+        a = options().osgOptionString().get() + " " + a;
+        _readOptions->setOptionString(a);
     }
 
     // put the CacheSettings object in there. We will propogate this throughout

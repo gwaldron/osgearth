@@ -336,6 +336,65 @@ namespace
     //--------------------------------------------------------------------
     // Read functors (used by the doRead method)
 
+    bool isMaxTextureSizeSet(const osgDB::Options* opt, int& maxdim)
+    {
+        maxdim = Registry::instance()->getMaxTextureSize();
+        if (opt)
+        {
+            opt->getUserValue("osgearth.max_texture_size", maxdim);
+
+            if (!opt->getOptionString().empty())
+            {
+                std::vector<std::string> tokens;
+                StringTokenizer(opt->getOptionString(), tokens);
+                for (auto& token : tokens) {
+                    std::vector<std::string> kvp;
+                    StringTokenizer(token, kvp, "=");
+                    if (kvp.size() == 2 && kvp[0] == "osgearth.max_texture_size") {
+                        maxdim = as<int>(kvp[1], maxdim);
+                        break;
+                    }
+                }
+            }
+        }
+        return maxdim < INT_MAX;
+    }
+
+    osg::Image* resize(osg::Image* image, int maxdim)
+    {
+        unsigned new_s, new_t;
+        float ar = (float)image->s() / (float)image->t();
+
+        if (image->s() >= image->t()) {
+            new_s = maxdim;
+            new_t = (int)((float)new_s * ar);
+        }
+        else {
+            new_t = maxdim;
+            new_s = (int)((float)new_t / ar);
+        }
+
+        osg::ref_ptr<osg::Image> new_image;
+        if (ImageUtils::resizeImage(image, new_s, new_t, new_image))
+            return new_image.release();
+        else
+            return image;
+    }
+
+    struct ShrinkTexturesVisitor : public TextureAndImageVisitor {
+        int maxdim;
+        void apply(osg::Texture& texture) {
+            for (int i = 0; i < texture.getNumImages(); ++i) {
+                osg::Image* image = texture.getImage(i);
+                if (image && (image->s() > maxdim || image->t() > maxdim)) {
+                    image = resize(image, maxdim);
+                    if (image)
+                        texture.setImage(i, image);
+                }
+            }
+        }
+    };
+
     struct ReadObject
     {
         bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0); }
@@ -376,6 +435,17 @@ namespace
             if (osgRR.validNode()) return ReadResult(osgRR.takeNode());
             else return ReadResult(osgRR.message());
         }
+        ReadResult postProcess(ReadResult& r, const osgDB::Options* opt) {
+            if (r.getNode() == nullptr)
+                return r;
+            int maxdim;
+            if (isMaxTextureSizeSet(opt, maxdim)) {
+                ShrinkTexturesVisitor v;
+                v.maxdim = maxdim;
+                r.getNode()->accept(v);
+            }
+            return r;
+        }
     };
 
     struct ReadImage
@@ -386,7 +456,7 @@ namespace
         ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) {
             ReadResult r = cb->readImage(uri, opt);
             if ( r.getImage() ) r.getImage()->setFileName(uri);
-            return postProcess(r);
+            return postProcess(r, opt);
         }
         ReadResult fromHTTP(const URI& uri, const osgDB::Options* opt, ProgressCallback* p, TimeStamp lastModified ) {
             HTTPRequest req(uri.full());
@@ -398,40 +468,30 @@ namespace
             }
             ReadResult r = HTTPClient::readImage(req, opt, p);
             if ( r.getImage() ) r.getImage()->setFileName( uri.full() );
-            return postProcess(r);
+            return postProcess(r, opt);
         }
         ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) {
             // Call readImageImplementation instead of readImage to bypass any readfile callbacks installed in the registry.
             osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readImageImplementation(uri, opt);
             if (osgRR.validImage()) {
                 osgRR.getImage()->setFileName(uri);
-                return postProcess(ReadResult(osgRR.takeImage()));
+                return postProcess(ReadResult(osgRR.takeImage()), opt);
             }
             else return ReadResult(osgRR.message());
         }
-        ReadResult postProcess(ReadResult& r) const
+        ReadResult postProcess(ReadResult& r, const osgDB::Options* opt) const
         {
-            unsigned maxdim = Registry::instance()->getMaxImageDimension();
+            int maxdim;
+            if (!isMaxTextureSizeSet(opt, maxdim))
+                return r;
 
             auto image = r.getImage();
-            if (!image || (image->s() <= (int)maxdim && image->t() <= (int)maxdim))
+            if (image == nullptr || (image->s() <= maxdim && image->t() <= maxdim))
                 return r;
             
-            unsigned new_s, new_t;
-            float ar = (float)image->s() / (float)image->t();
-
-            if (image->s() >= image->t()) {
-                new_s = maxdim;
-                new_t = (unsigned)((float)new_s * ar);
-            }
-            else {
-                new_t = maxdim;
-                new_s = (unsigned)((float)new_t / ar);
-            }
-
-            osg::ref_ptr<osg::Image> new_image;
-            if (ImageUtils::resizeImage(image, new_s, new_t, new_image))
-                return ReadResult(new_image.release(), r.metadata());
+            auto new_image = resize(image, maxdim);
+            if (new_image)
+                return ReadResult(new_image, r.metadata());
             else
                 return r;
         }

@@ -71,6 +71,7 @@ TerrainOptions::getConfig() const
     conf.set( "concurrency", concurrency());
     conf.set( "use_land_cover", useLandCover() );
     //conf.set("screen_space_error", screenSpaceError()); // don't serialize me, i'm set by the MapNode
+    conf.set("max_texture_size", maxTextureSize());
 
     conf.set("expiration_range", minExpiryRange()); // legacy
     conf.set("expiration_threshold", minResidentTiles()); // legacy
@@ -117,6 +118,7 @@ TerrainOptions::fromConfig(const Config& conf)
     concurrency().setDefault(4u);
     useLandCover().setDefault(true);
     screenSpaceError().setDefault(0.0f);
+    maxTextureSize().setDefault(UINT_MAX);
 
     conf.get( "tile_size", _tileSize );
     conf.get( "min_tile_range_factor", _minTileRangeFactor );   
@@ -159,6 +161,7 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get( "concurrency", concurrency());
     conf.get( "use_land_cover", useLandCover());
     //conf.get("screen_space_error", screenSpaceError()); // don't serialize me, i'm set by the MapNode
+    conf.get("max_texture_size", maxTextureSize());
 
     conf.get("expiration_range", minExpiryRange()); // legacy
     conf.get("expiration_threshold", minResidentTiles()); // legacy
@@ -223,6 +226,7 @@ OE_OPTION_IMPL(TerrainOptionsAPI, float, PriorityScale, priorityScale);
 OE_OPTION_IMPL(TerrainOptionsAPI, std::string, TextureCompressionMethod, textureCompression);
 OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, Concurrency, concurrency);
 OE_OPTION_IMPL(TerrainOptionsAPI, float, ScreenSpaceError, screenSpaceError);
+OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, MaxTextureSize, maxTextureSize);
 
 void
 TerrainOptionsAPI::setDriver(const std::string& value)

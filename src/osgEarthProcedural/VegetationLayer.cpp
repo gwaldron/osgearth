@@ -730,7 +730,7 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
     shaders.load(vp, shaders.Vegetation);
 
     // noise sampler
-    int index = textures->add(_noiseTex);
+    int index = textures->add(_noiseTex, getReadOptions());
     ss->setDefine("OE_NOISE_TEX_INDEX", std::to_string(index));
 
     // If multisampling is on, use alpha to coverage.

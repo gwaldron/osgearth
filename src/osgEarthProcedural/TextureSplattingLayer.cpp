@@ -180,8 +180,10 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
             tile_height_m.push_back(ex[0].height(Units::METERS));
             tile_height_m.push_back(ex[1].height(Units::METERS));
 
+            osg::ref_ptr<const osgDB::Options> readOptions = getReadOptions();
+
             // Function to load all material textures.
-            auto loadMaterials = [assets, tile_height_m](Cancelable* c) -> Materials::Ptr
+            auto loadMaterials = [assets, tile_height_m, readOptions](Cancelable* c) -> Materials::Ptr
             {
                 Materials::Ptr result = Materials::Ptr(new Materials);
 
@@ -206,7 +208,10 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
 
                     result->_assets.push_back(&material);
 
-                    RGBH_NNRA_Loader::load(material.uri()->full(), result->_arena.get());
+                    RGBH_NNRA_Loader::load(
+                        material.uri()->full(),
+                        result->_arena.get(),
+                        readOptions.get());
 
                     auto t1 = std::chrono::steady_clock::now();
 

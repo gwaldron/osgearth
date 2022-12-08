@@ -69,8 +69,8 @@ namespace osgEarth
         OE_OPTION(std::string, textureCompression);
         OE_OPTION(unsigned, concurrency);
         OE_OPTION(bool, useLandCover);
-
         OE_OPTION(float, screenSpaceError);
+        OE_OPTION(unsigned, maxTextureSize);
 
         virtual Config getConfig() const;
     private:
@@ -255,6 +255,10 @@ namespace osgEarth
         //! Screen space error for PIXEL SIZE ON SCREEN LOD mode
         void setScreenSpaceError(const float& value);
         const float& getScreenSpaceError() const;
+
+        //! Sets a maximum size for textures used by the terrain
+        void setMaxTextureSize(const unsigned& value);
+        const unsigned& getMaxTextureSize() const;
 
     public: // Legacy support
 

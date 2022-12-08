@@ -69,6 +69,10 @@ using namespace osgEarth;
 #define GL_BUFFER_GPU_ADDRESS_NV 0x8F1D
 #endif
 
+#ifndef GL_TEXTURE_SWIZZLE_A
+#define GL_TEXTURE_SWIZZLE_A 0x8E45
+#endif
+
 namespace
 {
     struct
@@ -1334,6 +1338,17 @@ GLTexture::storage2D(const Profile& profile)
         glTexParameteri(_target, GL_TEXTURE_WRAP_S, profile._wrapS);
         glTexParameteri(_target, GL_TEXTURE_WRAP_T, profile._wrapT);
         glTexParameterf(_target, GL_TEXTURE_MAX_ANISOTROPY_EXT, profile._maxAnisotropy);
+        
+        // special trick: signed RGTC1 textures are compressed normals, so
+        // swizzle the A component to be a zero so we can detect them.
+        if (profile._internalFormat == GL_COMPRESSED_SIGNED_RED_RGTC1_EXT ||
+            profile._internalFormat == GL_COMPRESSED_SIGNED_RED_GREEN_RGTC2_EXT ||
+            profile._internalFormat == GL_COMPRESSED_RED_RGTC1_EXT ||
+            profile._internalFormat == GL_COMPRESSED_RED_GREEN_RGTC2_EXT)
+        {
+            glTexParameteri(_target, GL_TEXTURE_SWIZZLE_A, GL_ZERO);
+        }
+
 
         _size = _profile._size;
     }

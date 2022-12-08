@@ -91,7 +91,6 @@ VegetationLayer::Options::getConfig() const
     conf.set("lod_transition_padding", lodTransitionPadding());
     conf.set("use_impostor_normal_maps", useImpostorNormalMaps());
     conf.set("use_impostor_pbr_maps", useImpostorPBRMaps());
-    conf.set("use_rg_compressed_normal_maps", useRGCompressedNormalMaps());
 
     //TODO: groups
 
@@ -152,7 +151,6 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     conf.get("lod_transition_padding", lodTransitionPadding());
     conf.get("use_impostor_normal_maps", useImpostorNormalMaps());
     conf.get("use_impostor_pbr_maps", useImpostorPBRMaps());
-    conf.get("use_rg_compressed_normal_maps", useRGCompressedNormalMaps());
 
     // some nice default group settings
     groups()[GROUP_TREES].lod().setDefault(14);
@@ -401,25 +399,6 @@ bool
 VegetationLayer::getUseImpostorPBRMaps() const
 {
     return options().useImpostorPBRMaps().get();
-}
-
-void
-VegetationLayer::setUseRGCompressedNormalMaps(bool value)
-{
-    if (value != getUseRGCompressedNormalMaps())
-        options().useRGCompressedNormalMaps() = value;
-
-    auto ss = getOrCreateStateSet();
-    if (value == false)
-        ss->removeDefine("OE_GL_RG_COMPRESSED_NORMALS");
-    else
-        ss->setDefine("OE_GL_RG_COMPRESSED_NORMALS");
-}
-
-bool
-VegetationLayer::getUseRGCompressedNormalMaps() const
-{
-    return options().useRGCompressedNormalMaps().get();
 }
 
 void
@@ -767,7 +746,6 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
     setImpostorHighAngle(options().impostorHighAngle().get());
     setLODTransitionPadding(options().lodTransitionPadding().get());
     setUseImpostorNormalMaps(options().useImpostorNormalMaps().get());
-    setUseRGCompressedNormalMaps(options().useRGCompressedNormalMaps().get());
 }
 
 namespace

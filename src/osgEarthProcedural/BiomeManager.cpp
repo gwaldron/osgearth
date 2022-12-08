@@ -448,6 +448,9 @@ BiomeManager::materializeNewAssets(
     materialLoader.setMangler(
         NORMAL_MAP_TEX_UNIT, getNormalMapFileName);
 
+#if 0
+    // don't do this - it will break the auto-compressed-normal detection
+    // in the shader. todo: support RGTC2_EXT instead in PixelWriter.
     materialLoader.setTextureFactory(
         NORMAL_MAP_TEX_UNIT,
         [](osg::Image* image)
@@ -463,6 +466,7 @@ BiomeManager::materializeNewAssets(
             return tex;
         }
     );
+#endif
 
     auto getPBRMapFileName = MaterialUtils::getDefaultPBRMapNameMangler();
 

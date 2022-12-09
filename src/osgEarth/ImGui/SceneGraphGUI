@@ -187,6 +187,110 @@ namespace osgEarth
         using namespace osgEarth;
         using namespace osgEarth::Util;
 
+
+        struct ArrayStats
+        {
+            unsigned int arrayCount = 0;
+            unsigned int elementCount = 0;
+            unsigned int size = 0;
+        };
+
+        struct MemoryStats
+        {
+            void reset()
+            {
+                arrayStats.clear();
+                totalDataSize = 0;
+                totalGeometries = 0;
+                totalPrimitiveSets = 0;
+                computed = false;
+            }
+
+            void addArray(osg::Drawable::AttributeTypes index, const osg::Array* array)
+            {
+                if (array && array->getNumElements() > 0)
+                {
+                    arrayStats[index].arrayCount += 1;
+                    arrayStats[index].elementCount += array->getNumElements();;
+                    arrayStats[index].size += array->getTotalDataSize();
+                    totalDataSize += array->getTotalDataSize();                 
+                }
+                computed = true;
+            }
+
+            void addGeometry(const osg::Geometry& geometry)
+            {
+                if (geometry.getVertexArray())
+                {
+                    addArray(osg::Geometry::VERTICES, geometry.getVertexArray());
+                }
+
+                if (geometry.getNormalArray())
+                {
+                    addArray(osg::Geometry::NORMALS, geometry.getNormalArray());
+                }
+
+                if (geometry.getColorArray())
+                {
+                    addArray(osg::Geometry::COLORS, geometry.getColorArray());
+                }
+
+                if (geometry.getSecondaryColorArray())
+                {
+                    addArray(osg::Geometry::SECONDARY_COLORS, geometry.getSecondaryColorArray());
+                }
+
+                if (geometry.getFogCoordArray())
+                {
+                    addArray(osg::Geometry::FOG_COORDS, geometry.getFogCoordArray());
+                }
+
+                const auto& texCoordArrays = geometry.getTexCoordArrayList();
+                for (unsigned int i = 0; i < texCoordArrays.size(); ++i)
+                {
+                    if (texCoordArrays[i].valid())
+                    {
+                        addArray((osg::Drawable::AttributeTypes)(osg::Geometry::TEXTURE_COORDS_0 + i), texCoordArrays[i].get());
+                    }
+                }
+
+                const osg::Geometry::ArrayList& arrays = geometry.getVertexAttribArrayList();
+                for (unsigned int i = 0; i < arrays.size(); ++i)
+                {
+                    if (arrays[i].valid())
+                    {
+                        addArray((osg::Drawable::AttributeTypes)i, arrays[i].get());
+                    }
+                }
+
+                ++totalGeometries;
+
+                totalPrimitiveSets += geometry.getNumPrimitiveSets();
+            }
+
+            std::unordered_map< osg::Drawable::AttributeTypes, ArrayStats > arrayStats;
+            unsigned int totalDataSize = 0;
+            unsigned int totalGeometries = 0;
+            unsigned int totalPrimitiveSets = 0;
+            bool computed = false;
+        };
+
+        class ComputeMemoryStatsVisitor : public osg::NodeVisitor
+        {
+        public:
+            ComputeMemoryStatsVisitor():
+                osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+            {
+            }
+
+            virtual void apply( osg::Geometry& geometry ) override
+            {
+                stats.addGeometry(geometry);
+            }
+
+            MemoryStats stats;
+        };
+
         template<typename T>
         std::string printArrayValue(const T* array)
         {
@@ -217,6 +321,47 @@ namespace osgEarth
                 return "BIND_OFF";
             default:
                 return "BIND_UNDEFINED";
+            }
+        }
+
+        static const char* attributeTypeToString(osg::Drawable::AttributeType attributeType)
+        {
+            switch (attributeType)
+            {
+            case osg::Drawable::VERTICES:
+                return "VERTICES";
+            case osg::Drawable::WEIGHTS:
+                return "WEIGHTS";
+            case osg::Drawable::NORMALS:
+                return "NORMALS";
+            case osg::Drawable::COLORS:
+                return "COLORS";
+            case osg::Drawable::SECONDARY_COLORS:
+                return "SECONDARY_COLORS";
+            case osg::Drawable::FOG_COORDS:
+                return "FOG_COORDS";
+            case osg::Drawable::ATTRIBUTE_6:
+                return "ATTRIBUTE_6";
+            case osg::Drawable::ATTRIBUTE_7:
+                return "ATTRIBUTE_7";
+            case osg::Drawable::TEXTURE_COORDS_0:
+                return "TEXTURE_COORDS_0";
+            case osg::Drawable::TEXTURE_COORDS_1:
+                return "TEXTURE_COORDS_1";
+            case osg::Drawable::TEXTURE_COORDS_2:
+                return "TEXTURE_COORDS_2";
+            case osg::Drawable::TEXTURE_COORDS_3:
+                return "TEXTURE_COORDS_3";
+            case osg::Drawable::TEXTURE_COORDS_4:
+                return "TEXTURE_COORDS_4";
+            case osg::Drawable::TEXTURE_COORDS_5:
+                return "TEXTURE_COORDS_5";
+            case osg::Drawable::TEXTURE_COORDS_6:
+                return "TEXTURE_COORDS_6";
+            case osg::Drawable::TEXTURE_COORDS_7:
+                return "TEXTURE_COORDS_7";
+            default:
+                return "Uknown Array";
             }
         }
 
@@ -431,6 +576,7 @@ namespace osgEarth
                     _selectedNodePath.push_back(*itr);
                 }
                 _boundsDirty = true;
+                _memoryStats.reset();
             }
 
             struct SelectNodeHandler : public osgGA::GUIEventHandler
@@ -858,6 +1004,42 @@ namespace osgEarth
                     ImGui::TreePop();
                 }
 
+                if (ImGui::TreeNode("Memory Usage"))
+                {
+                    if (_memoryStats.computed)
+                    {
+                        ImGui::Text("Geometry Count: %d", _memoryStats.totalGeometries);
+                        ImGui::Text("PrimitiveSets: %d", _memoryStats.totalPrimitiveSets);
+                        ImGui::Text("Total Data Size %dkb", (unsigned int)(_memoryStats.totalDataSize / 1024.0f));                       
+                        if (ImGui::BeginTable("Memory", 4, ImGuiTableFlags_Borders))
+                        {
+                            ImGui::TableSetupColumn("Attribute");
+                            ImGui::TableSetupColumn("Array Count");
+                            ImGui::TableSetupColumn("Element Count");
+                            ImGui::TableSetupColumn("Size");
+                            ImGui::TableHeadersRow();
+
+                            for (auto& a : _memoryStats.arrayStats)
+                            {
+                                ImGui::TableNextColumn(); ImGui::Text(attributeTypeToString((osg::Drawable::AttributeType)a.first));
+                                ImGui::TableNextColumn(); ImGui::Text("%d", a.second.arrayCount);
+                                ImGui::TableNextColumn(); ImGui::Text("%d", a.second.elementCount);
+                                ImGui::TableNextColumn(); ImGui::Text("%dkb", (unsigned int)(a.second.size / 1024.0f));
+                            }
+                            ImGui::EndTable();
+                        }                        
+                    }
+
+                    if (ImGui::Button("Compute"))
+                    {                        
+                        ComputeMemoryStatsVisitor visitor;
+                        getSelectedNode()->accept(visitor);
+                        _memoryStats = visitor.stats;
+                    }
+
+                    ImGui::TreePop();
+                }
+
                 osg::MatrixTransform* matrixTransform = dynamic_cast<osg::MatrixTransform*>(node);
                 if (matrixTransform)
                 {
@@ -1140,61 +1322,7 @@ namespace osgEarth
                         {
                             if (!arrays[i].valid() && arrays[i]->getBinding() != osg::Array::BIND_OFF) continue;
 
-                            const char* arrayName = "";
-
-                            switch (i)
-                            {
-                            case osg::Drawable::VERTICES:
-                                arrayName = "VERTICES";
-                                break;
-                            case osg::Drawable::WEIGHTS:
-                                arrayName = "WEIGHTS";
-                                break;
-                            case osg::Drawable::NORMALS:
-                                arrayName = "NORMALS";
-                                break;
-                            case osg::Drawable::COLORS:
-                                arrayName = "COLORS";
-                                break;
-                            case osg::Drawable::SECONDARY_COLORS:
-                                arrayName = "SECONDARY_COLORS";
-                                break;
-                            case osg::Drawable::FOG_COORDS:
-                                arrayName = "FOG_COORDS";
-                                break;
-                            case osg::Drawable::ATTRIBUTE_6:
-                                arrayName = "ATTRIBUTE_6";
-                                break;
-                            case osg::Drawable::ATTRIBUTE_7:
-                                arrayName = "ATTRIBUTE_7";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_0:
-                                arrayName = "TEXTURE_COORDS_0";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_1:
-                                arrayName = "TEXTURE_COORDS_1";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_2:
-                                arrayName = "TEXTURE_COORDS_2";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_3:
-                                arrayName = "TEXTURE_COORDS_3";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_4:
-                                arrayName = "TEXTURE_COORDS_4";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_5:
-                                arrayName = "TEXTURE_COORDS_5";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_6:
-                                arrayName = "TEXTURE_COORDS_6";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_7:
-                                arrayName = "TEXTURE_COORDS_7";
-                                break;
-                            default:
-                                arrayName = "Uknown Array";
-                            }
+                            const char* arrayName = attributeTypeToString((osg::Drawable::AttributeType)i);
 
                             if (ImGui::TreeNode(arrayName, "%s %d", arrayName, arrays[i]->getNumElements()))
                             {
@@ -1257,6 +1385,7 @@ namespace osgEarth
             osg::RefNodePath _selectedNodePath;
             bool _propertiesExpanded = true;
             bool _boundsDirty = false;
+            MemoryStats _memoryStats;
         };
     }
 }

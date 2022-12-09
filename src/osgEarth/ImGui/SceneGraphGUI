@@ -201,10 +201,12 @@ namespace osgEarth
             {
                 arrayStats.clear();
                 totalDataSize = 0;
+                totalGeometries = 0;
+                totalPrimitiveSets = 0;
                 computed = false;
             }
 
-            void addArray(osg::Drawable::AttributeTypes index, osg::Array* array)
+            void addArray(osg::Drawable::AttributeTypes index, const osg::Array* array)
             {
                 if (array && array->getNumElements() > 0)
                 {
@@ -216,8 +218,60 @@ namespace osgEarth
                 computed = true;
             }
 
+            void addGeometry(const osg::Geometry& geometry)
+            {
+                if (geometry.getVertexArray())
+                {
+                    addArray(osg::Geometry::VERTICES, geometry.getVertexArray());
+                }
+
+                if (geometry.getNormalArray())
+                {
+                    addArray(osg::Geometry::NORMALS, geometry.getNormalArray());
+                }
+
+                if (geometry.getColorArray())
+                {
+                    addArray(osg::Geometry::COLORS, geometry.getColorArray());
+                }
+
+                if (geometry.getSecondaryColorArray())
+                {
+                    addArray(osg::Geometry::SECONDARY_COLORS, geometry.getSecondaryColorArray());
+                }
+
+                if (geometry.getFogCoordArray())
+                {
+                    addArray(osg::Geometry::FOG_COORDS, geometry.getFogCoordArray());
+                }
+
+                const auto& texCoordArrays = geometry.getTexCoordArrayList();
+                for (unsigned int i = 0; i < texCoordArrays.size(); ++i)
+                {
+                    if (texCoordArrays[i].valid())
+                    {
+                        addArray((osg::Drawable::AttributeTypes)(osg::Geometry::TEXTURE_COORDS_0 + i), texCoordArrays[i].get());
+                    }
+                }
+
+                const osg::Geometry::ArrayList& arrays = geometry.getVertexAttribArrayList();
+                for (unsigned int i = 0; i < arrays.size(); ++i)
+                {
+                    if (arrays[i].valid())
+                    {
+                        addArray((osg::Drawable::AttributeTypes)i, arrays[i].get());
+                    }
+                }
+
+                ++totalGeometries;
+
+                totalPrimitiveSets += geometry.getNumPrimitiveSets();
+            }
+
             std::unordered_map< osg::Drawable::AttributeTypes, ArrayStats > arrayStats;
             unsigned int totalDataSize = 0;
+            unsigned int totalGeometries = 0;
+            unsigned int totalPrimitiveSets = 0;
             bool computed = false;
         };
 
@@ -231,48 +285,7 @@ namespace osgEarth
 
             virtual void apply( osg::Geometry& geometry ) override
             {
-                if (geometry.getVertexArray())
-                {
-                    stats.addArray(osg::Geometry::VERTICES, geometry.getVertexArray());
-                }
-
-                if (geometry.getNormalArray())
-                {
-                    stats.addArray(osg::Geometry::NORMALS, geometry.getNormalArray());
-                }
-
-                if (geometry.getColorArray())
-                {
-                    stats.addArray(osg::Geometry::COLORS, geometry.getColorArray());
-                }
-
-                if (geometry.getSecondaryColorArray())
-                {
-                    stats.addArray(osg::Geometry::SECONDARY_COLORS, geometry.getSecondaryColorArray());
-                }
-
-                if (geometry.getFogCoordArray())
-                {
-                    stats.addArray(osg::Geometry::FOG_COORDS, geometry.getFogCoordArray());
-                }
-
-                auto& texCoordArrays = geometry.getTexCoordArrayList();
-                for (unsigned int i = 0; i < texCoordArrays.size(); ++i)
-                {
-                    if (texCoordArrays[i].valid())
-                    {
-                        stats.addArray((osg::Drawable::AttributeTypes)(osg::Geometry::TEXTURE_COORDS_0 + i), texCoordArrays[i].get());
-                    }
-                }
-
-                osg::Geometry::ArrayList& arrays = geometry.getVertexAttribArrayList();    
-                for (unsigned int i = 0; i < arrays.size(); ++i)
-                {
-                    if (arrays[i].valid())
-                    {
-                        stats.addArray((osg::Drawable::AttributeTypes)i, arrays[i].get());
-                    }
-                }
+                stats.addGeometry(geometry);
             }
 
             MemoryStats stats;
@@ -995,6 +1008,8 @@ namespace osgEarth
                 {
                     if (_memoryStats.computed)
                     {
+                        ImGui::Text("Geometry Count: %d", _memoryStats.totalGeometries);
+                        ImGui::Text("PrimitiveSets: %d", _memoryStats.totalPrimitiveSets);
                         ImGui::Text("Total Data Size %dkb", (unsigned int)(_memoryStats.totalDataSize / 1024.0f));                       
                         if (ImGui::BeginTable("Memory", 4, ImGuiTableFlags_Borders))
                         {

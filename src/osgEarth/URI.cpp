@@ -36,6 +36,11 @@
 #define OE_TEST OE_NULL
 //#define OE_TEST OE_NOTICE
 
+// Only uncomment this is you want to resize textures as they are loaded.
+// Don't uncomment this, ever. So many bad things will happen. Some images
+// like elevation, land cover, etc. are not meant to be resized.
+//#define SUPPORT_MAX_TEXTURE_SIZE
+
 using namespace osgEarth;
 using namespace osgEarth::Threading;
 
@@ -336,30 +341,6 @@ namespace
     //--------------------------------------------------------------------
     // Read functors (used by the doRead method)
 
-    bool isMaxTextureSizeSet(const osgDB::Options* opt, int& maxdim)
-    {
-        maxdim = Registry::instance()->getMaxTextureSize();
-        if (opt)
-        {
-            opt->getUserValue("osgearth.max_texture_size", maxdim);
-
-            if (!opt->getOptionString().empty())
-            {
-                std::vector<std::string> tokens;
-                StringTokenizer(opt->getOptionString(), tokens);
-                for (auto& token : tokens) {
-                    std::vector<std::string> kvp;
-                    StringTokenizer(token, kvp, "=");
-                    if (kvp.size() == 2 && kvp[0] == "osgearth.max_texture_size") {
-                        maxdim = as<int>(kvp[1], maxdim);
-                        break;
-                    }
-                }
-            }
-        }
-        return maxdim < INT_MAX;
-    }
-
     osg::Image* resize(osg::Image* image, int maxdim)
     {
         unsigned new_s, new_t;
@@ -382,14 +363,17 @@ namespace
     }
 
     struct ShrinkTexturesVisitor : public TextureAndImageVisitor {
-        int maxdim;
+        const osgDB::Options* options;
         void apply(osg::Texture& texture) {
             for (int i = 0; i < texture.getNumImages(); ++i) {
                 osg::Image* image = texture.getImage(i);
-                if (image && (image->s() > maxdim || image->t() > maxdim)) {
-                    image = resize(image, maxdim);
-                    if (image)
-                        texture.setImage(i, image);
+                if (image) {
+                    optional<int> maxdim = ImageUtils::getMaxTextureSize(image, options);
+                    if (maxdim.isSet()) {
+                        image = resize(image, maxdim.value());
+                        if (image)
+                            texture.setImage(i, image);
+                    }
                 }
             }
         }
@@ -436,14 +420,15 @@ namespace
             else return ReadResult(osgRR.message());
         }
         ReadResult postProcess(ReadResult& r, const osgDB::Options* opt) {
+#ifdef SUPPORT_MAX_TEXTURE_SIZE
             if (r.getNode() == nullptr)
                 return r;
-            int maxdim;
-            if (isMaxTextureSizeSet(opt, maxdim)) {
+            if (ImageUtils::getMaxTextureSize(nullptr, opt).isSet()) {
                 ShrinkTexturesVisitor v;
-                v.maxdim = maxdim;
+                v.options = opt;
                 r.getNode()->accept(v);
             }
+#endif
             return r;
         }
     };
@@ -481,19 +466,25 @@ namespace
         }
         ReadResult postProcess(ReadResult& r, const osgDB::Options* opt) const
         {
-            int maxdim;
-            if (!isMaxTextureSizeSet(opt, maxdim))
+#ifdef SUPPORT_MAX_TEXTURE_SIZE
+            if (r.getImage() == nullptr)
                 return r;
 
-            auto image = r.getImage();
-            if (image == nullptr || (image->s() <= maxdim && image->t() <= maxdim))
+            auto maxdim = ImageUtils::getMaxTextureSize(r.getImage(), opt);
+            if (!maxdim.isSet())
                 return r;
-            
-            auto new_image = resize(image, maxdim);
+
+            if (r.getImage()->getPixelFormat() != GL_RGB && r.getImage()->getPixelFormat() != GL_RGBA)
+                return r;
+
+            auto new_image = resize(r.getImage(), maxdim.value());
             if (new_image)
                 return ReadResult(new_image, r.metadata());
             else
                 return r;
+#else
+            return r;
+#endif
         }
     };
 

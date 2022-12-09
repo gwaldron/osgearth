@@ -64,6 +64,7 @@ Texture::Texture(GLenum target_) :
     _mipmap(true),
     _clamp(false),
     _keepImage(true),
+    _maxDim(63356),
     _target(target_),
     _host(nullptr)
 {
@@ -89,6 +90,7 @@ Texture::Texture(GLenum target_) :
 Texture::Texture(osg::Texture* input) :
     _globjects(16),
     _compress(false),
+    _maxDim(65536),
     _osgTexture(input),
     _host(nullptr)
 {
@@ -209,7 +211,7 @@ Texture::compileGLObjects(osg::State& state) const
         if (numMipLevelsInMemory <= 1 && mipmap() == true)
         {
             numMipLevelsToAllocate = osg::Image::computeNumberOfMipmapLevels(
-                image->s(), image->t(), image->t());
+                image->s(), image->t(), image->r());
         }
 
         GLenum pixelFormat = image->getPixelFormat();
@@ -233,12 +235,25 @@ Texture::compileGLObjects(osg::State& state) const
         GLint minFilter = osgTexture()->getFilter(osg::Texture::MIN_FILTER);
         GLint magFilter = osgTexture()->getFilter(osg::Texture::MAG_FILTER);
 
+        // set up the first mipmap level to enforce the size limiter (maxDim)
+        unsigned firstMipLevel = 0u;
+        unsigned dim = std::max(image->s(), image->t());
+        while (dim > maxDim())
+        {
+            ++firstMipLevel;
+            dim >>= 1;
+        }
+        firstMipLevel = std::min(firstMipLevel, (numMipLevelsInMemory - 1u));
+        numMipLevelsToAllocate -= firstMipLevel;
+        auto widthToAllocate = std::max(1, image->s() >> firstMipLevel);
+        auto heightToAllocate = std::max(1, image->t() >> firstMipLevel);
+
         // Calculate the size beforehand so we can make the texture recyclable
         GLTexture::Profile profileHint(
             target(),
             numMipLevelsToAllocate,
             gpuInternalFormat,
-            image->s(), image->t(), image->r(),
+            widthToAllocate, heightToAllocate, image->r(),
             0, // border
             minFilter,
             magFilter,
@@ -281,14 +296,14 @@ Texture::compileGLObjects(osg::State& state) const
         bool compressed = image->isCompressed();
 
         glPixelStorei(GL_UNPACK_ALIGNMENT, image->getPacking());
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, image->getRowLength());
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, image->getRowLength() >> firstMipLevel);
 
-        GLsizei width = image->s();
-        GLsizei height = image->t();
+        GLsizei mipLevelWidth = widthToAllocate;
+        GLsizei mipLevelHeight = heightToAllocate;
 
         // Iterate over the in-memory mipmap levels in this layer
         // and download each one
-        for (unsigned mipLevel = 0; mipLevel < numMipLevelsInMemory; ++mipLevel)
+        for (unsigned mipLevel = firstMipLevel; mipLevel < numMipLevelsInMemory; ++mipLevel)
         {
             // Note: getImageSizeInBytes() will return the actual data size 
             // even if the data is compressed.
@@ -300,8 +315,7 @@ Texture::compileGLObjects(osg::State& state) const
 
                 osg::Texture::getCompressedSize(
                     gpuInternalFormat,
-                    //image->getInternalTextureFormat(),
-                    width, height, 1,
+                    mipLevelWidth, mipLevelHeight, 1,
                     blockSize, mipmapBytes);
             }
             else
@@ -320,9 +334,9 @@ Texture::compileGLObjects(osg::State& state) const
                     if (compressed)
                     {
                         gc._gltexture->compressedSubImage2D(
-                            mipLevel, // mip level
+                            mipLevel - firstMipLevel,
                             0, 0, // xoffset, yoffset
-                            width, height,
+                            mipLevelWidth, mipLevelHeight,
                             gpuInternalFormat, //image->getInternalTextureFormat(),
                             mipmapBytes,
                             dataptr);
@@ -330,9 +344,9 @@ Texture::compileGLObjects(osg::State& state) const
                     else
                     {
                         gc._gltexture->subImage2D(
-                            mipLevel, // mip level
+                            mipLevel - firstMipLevel,
                             0, 0, // xoffset, yoffset
-                            width, height,
+                            mipLevelWidth, mipLevelHeight,
                             image->getPixelFormat(),
                             image->getDataType(),
                             dataptr);
@@ -347,22 +361,22 @@ Texture::compileGLObjects(osg::State& state) const
                     if (compressed)
                     {
                         gc._gltexture->compressedSubImage3D(
-                            mipLevel,
+                            mipLevel - firstMipLevel,
                             0, 0, // xoffset, yoffset
                             r, // zoffset (array layer)
-                            width, height,
+                            mipLevelWidth, mipLevelHeight,
                             1, // z size always = 1
-                            gpuInternalFormat, //image->getInternalTextureFormat(),
+                            gpuInternalFormat,
                             mipmapBytes,
                             dataptr);
                     }
                     else
                     {
                         gc._gltexture->subImage3D(
-                            mipLevel, // mip level
+                            mipLevel - firstMipLevel,
                             0, 0, // xoffset, yoffset
                             r, // zoffset (array layer)
-                            width, height,
+                            mipLevelWidth, mipLevelHeight,
                             1, // z size always = 1
                             image->getPixelFormat(),
                             image->getDataType(),
@@ -371,10 +385,10 @@ Texture::compileGLObjects(osg::State& state) const
                 }
             }
 
-            width >>= 1;
-            if (width < 1) width = 1;
-            height >>= 1;
-            if (height < 1) height = 1;
+            mipLevelWidth >>= 1;
+            if (mipLevelWidth < 1) mipLevelWidth = 1;
+            mipLevelHeight >>= 1;
+            if (mipLevelHeight < 1) mipLevelHeight = 1;
         }
 
         // TODO:
@@ -480,7 +494,8 @@ TextureArena::TextureArena() :
     _autoRelease(false),
     _bindingPoint(5u),
     _useUBO(false),
-    _releasePtr(0)
+    _releasePtr(0),
+    _maxDim(65536u)
 {
     // Keep this synchronous w.r.t. the render thread since we are
     // going to be changing things on the fly
@@ -505,6 +520,18 @@ void
 TextureArena::setBindingPoint(unsigned value)
 {
     _bindingPoint = value;
+}
+
+void
+TextureArena::setMaxTextureSize(unsigned value)
+{
+    if (value != _maxDim)
+    {
+        _maxDim = clamp(value, 4u, 65536u);
+
+        // force all textures to recompile with the new value :)
+        releaseGLObjects(nullptr);
+    }
 }
 
 int
@@ -539,7 +566,7 @@ TextureArena::find(unsigned index) const
 }
 
 int
-TextureArena::add(Texture::Ptr tex, const osgDB::Options* options)
+TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
 {
     if (tex == nullptr)
     {
@@ -561,13 +588,16 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* options)
     // Mark the texture as having a host (this arena).
     tex->_host = this;
 
+    // Set the texture size limit if appropriate:
+    tex->maxDim() = std::min(tex->maxDim(), _maxDim);
+
     auto& osgTex = tex->osgTexture();
 
     // load the image if necessary
     if (!tex->dataLoaded() && tex->uri().isSet())
     {
         // TODO support read options for caching
-        osg::ref_ptr<osg::Image> image = tex->_uri->getImage(nullptr);
+        osg::ref_ptr<osg::Image> image = tex->_uri->getImage(readOptions);
         if (image.valid())
         {
             osgTex->setImage(0, image);
@@ -584,6 +614,11 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* options)
 
         // in case we want to cache it later:
         image->setWriteHint(osg::Image::STORE_INLINE);
+
+        if (tex->mipmap() && !image->isMipmap())
+        {
+            ImageUtils::mipmapImageInPlace(image);
+        }
 
         // compress and mipmap:
         if (!image->isCompressed())

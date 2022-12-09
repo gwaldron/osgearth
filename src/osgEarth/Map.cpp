@@ -61,7 +61,7 @@ Map::Options::getConfig() const
 
     conf.set( "profile_layer", profileLayer() );
 
-    conf.set("osg_options", osgOptionString());
+    conf.set("read_options", osgOptionString());
 
     return conf;
 }
@@ -90,7 +90,8 @@ Map::Options::fromConfig(const Config& conf)
 
     conf.get( "profile_layer", profileLayer() );
 
-    conf.get("osg_options", osgOptionString());
+    conf.get("read_options", osgOptionString());
+    conf.get("osg_options", osgOptionString()); // back compat
 }
 
 //...................................................................

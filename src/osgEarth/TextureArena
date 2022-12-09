@@ -86,6 +86,7 @@ namespace osgEarth
         OE_PROPERTY(bool, mipmap);
         OE_PROPERTY(bool, clamp);
         OE_PROPERTY(bool, keepImage);
+        OE_PROPERTY(unsigned, maxDim);
         
         OE_OPTION(URI, uri);
         OE_OPTION(GLenum, internalFormat);
@@ -147,11 +148,16 @@ namespace osgEarth
         //! Sets the GLSL binding point for the arena. Default is 5.
         void setBindingPoint(unsigned value);
 
+        //! Sets the maximum texture size (in one dimension, in pixels)
+        //! to allocate on the GPU.
+        void setMaxTextureSize(unsigned pixels);
+
         //! Adds a texture to the arena. On next apply() GL handles will allocate.
         //! You only need to call this once for each texture.
         //! Returns the index of the texture handle
-        int add(Texture::Ptr tex,
-            const osgDB::Options* options = nullptr);
+        int add(
+            Texture::Ptr tex,
+            const osgDB::Options* readOptions = nullptr);
 
         //! Find and return the index of this texture in the arena,
         //! or return -1 if not found.
@@ -209,6 +215,7 @@ namespace osgEarth
         unsigned _bindingPoint;
         bool _useUBO;
         mutable int _releasePtr;
+        unsigned _maxDim;
 
         mutable Mutex _m;
 

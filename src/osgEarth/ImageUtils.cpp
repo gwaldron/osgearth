@@ -2776,3 +2776,51 @@ TextureAndImageVisitor::apply(osg::StateSet& stateSet)
         }
     }
 }
+
+optional<int>
+ImageUtils::getMaxTextureSize(const osg::Image* image, const osgDB::Options* options)
+{
+    optional<int> out;
+
+    int maxdim = Registry::instance()->getMaxTextureSize();
+    if (maxdim < INT_MAX)
+    {
+        maxdim = std::max(maxdim, 1);
+    }
+
+    else if (options)
+    {
+        if (options->getUserValue("osgearth.max_texture_size", maxdim))
+        {
+            maxdim = std::max(maxdim, 1);
+        }
+
+        else if (!options->getOptionString().empty())
+        {
+            std::vector<std::string> tokens;
+            StringTokenizer(options->getOptionString(), tokens);
+            for (auto& token : tokens)
+            {
+                std::vector<std::string> kvp;
+                StringTokenizer(token, kvp, "=");
+                if (kvp.size() == 2 && kvp[0] == "osgearth.max_texture_size")
+                {
+                    maxdim = std::max(as<int>(kvp[1], maxdim), 1);
+                    break;
+                }
+            }
+        }
+    }
+
+    if (maxdim < INT_MAX)
+    {
+        if (image == nullptr ||
+            image->s() > maxdim ||
+            image->t() > maxdim)
+        {
+            out = maxdim;
+        }
+    }
+
+    return out;
+}

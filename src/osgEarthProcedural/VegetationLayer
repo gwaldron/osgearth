@@ -80,6 +80,9 @@ namespace osgEarth { namespace Procedural
             //! used to display a transition between the two LODs [0..1]
             OE_OPTION(float, lodTransitionPadding);
 
+            //! Maximum texture size to transfer to the GPU
+            OE_OPTION(unsigned, maxTextureSize);
+
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
                 //! Whether to render this group at all

@@ -118,7 +118,7 @@ TerrainOptions::fromConfig(const Config& conf)
     concurrency().setDefault(4u);
     useLandCover().setDefault(true);
     screenSpaceError().setDefault(0.0f);
-    maxTextureSize().setDefault(UINT_MAX);
+    maxTextureSize().setDefault(65536);
 
     conf.get( "tile_size", _tileSize );
     conf.get( "min_tile_range_factor", _minTileRangeFactor );   

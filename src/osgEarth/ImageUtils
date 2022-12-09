@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Bounds>
+#include <osgEarth/optional>
 #include <osg/Image>
 #include <osg/Texture>
 #include <osg/Texture2DArray>
@@ -357,6 +358,10 @@ namespace osgEarth { namespace Util
 
         //! Make an empty 2D texture array
         static osg::Texture2DArray* makeTexture2DArray(osg::Image* image);
+
+        //! If a max texture size is stipulated in the options, and it
+        //! the image supports it, return the size.
+        static optional<int> getMaxTextureSize(const osg::Image*, const osgDB::Options*);
 
         //! Convert u,v [0..1] into s,t [pixels] with nearest neighbor sampling.
         template<typename NDCTYPE, typename INDEXTYPE>

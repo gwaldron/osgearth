@@ -29,6 +29,7 @@
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Shaders>
 #include <osgEarth/Capabilities>
+#include <osgEarth/Registry>
 
 #include <osgUtil/CullVisitor>
 #include <osg/Drawable>
@@ -59,6 +60,7 @@ TextureSplattingLayer::Options::getConfig() const
     conf.set("normalmap_power", normalMapPower());
     conf.set("lifemap_threshold", lifeMapMaskThreshold());
     conf.set("displacement_depth", displacementDepth());
+    conf.set("max_texture_size", maxTextureSize());
     return conf;
 }
 
@@ -70,12 +72,14 @@ TextureSplattingLayer::Options::fromConfig(const Config& conf)
     normalMapPower().setDefault(1.0f);
     lifeMapMaskThreshold().setDefault(0.0f);
     displacementDepth().setDefault(0.1f);
+    maxTextureSize().setDefault(INT_MAX);
 
     conf.get("num_levels", numLevels());
     conf.get("use_hex_tiler", useHexTiler());
     conf.get("normalmap_power", normalMapPower());
     conf.get("lifemap_threshold", lifeMapMaskThreshold());
     conf.get("displacement_depth", displacementDepth());
+    conf.get("max_texture_size", maxTextureSize());
 }
 
 //........................................................................
@@ -182,8 +186,12 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
 
             osg::ref_ptr<const osgDB::Options> readOptions = getReadOptions();
 
+            unsigned maxTextureSize = std::min(
+                (int)options().maxTextureSize().get(),
+                Registry::instance()->getMaxTextureSize());
+
             // Function to load all material textures.
-            auto loadMaterials = [assets, tile_height_m, readOptions](Cancelable* c) -> Materials::Ptr
+            auto loadMaterials = [assets, tile_height_m, readOptions, maxTextureSize](Cancelable* c) -> Materials::Ptr
             {
                 Materials::Ptr result = Materials::Ptr(new Materials);
 
@@ -191,6 +199,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                 result->_arena = new TextureArena();
                 result->_arena->setName("TextureSplattingLayer");
                 result->_arena->setBindingPoint(TEXTURE_ARENA_BINDING_POINT);
+                result->_arena->setMaxTextureSize(maxTextureSize);
 
                 // contains metadata about the textures
                 result->_textureScales = new osg::Uniform();

@@ -48,6 +48,7 @@ namespace osgEarth { namespace Procedural
             OE_OPTION(float, normalMapPower);
             OE_OPTION(float, lifeMapMaskThreshold);
             OE_OPTION(float, displacementDepth);
+            OE_OPTION(unsigned, maxTextureSize);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

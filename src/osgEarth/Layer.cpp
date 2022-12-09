@@ -47,7 +47,7 @@ Layer::Options::getConfig() const
     conf.set("attribution", attribution());
     conf.set("terrain", terrainPatch());
     conf.set("proxy", _proxySettings );
-    conf.set("osg_options", osgOptionString());
+    conf.set("read_options", osgOptionString());
     conf.set("l2_cache_size", l2CacheSize());
 
     for(std::vector<ShaderOptions>::const_iterator i = shaders().begin();
@@ -95,7 +95,8 @@ Layer::Options::fromConfig(const Config& conf)
     conf.get("terrain", terrainPatch());
     conf.get("patch", terrainPatch());
     conf.get("proxy", _proxySettings );
-    conf.get("osg_options", osgOptionString());
+    conf.get("read_options", osgOptionString());
+    conf.get("osg_options", osgOptionString()); // back compat
 }
 
 //.................................................................

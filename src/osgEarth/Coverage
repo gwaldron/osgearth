@@ -185,8 +185,16 @@ namespace osgEarth
             return value != nullptr;
         }
 
+        const T* read(double u, double v) const
+        {
+            unsigned s, t;
+            ImageUtils::nnUVtoST(u, v, s, t, _width, _height);
+            return read(s, t);
+        }
+
         const T* read(unsigned s, unsigned t) const
         {
+            OE_SOFT_ASSERT_AND_RETURN(s < _width && t < _height, nullptr);
             int ptr = t * _width + s;
             Index i = _pixels[ptr];
             if (i > 0)
@@ -196,15 +204,9 @@ namespace osgEarth
             return nullptr;
         }
 
-        const T* read(double u, double v) const
-        {
-            unsigned s, t;
-            ImageUtils::nnUVtoST(u, v, s, t, _width, _height);
-            return read(s, t);
-        }
-
         bool hasDataAt(unsigned s, unsigned t) const
         {
+            OE_SOFT_ASSERT_AND_RETURN(s < _width && t < _height, nullptr);
             int ptr = t * _width + s;
             return _pixels[ptr] > 0;
         }

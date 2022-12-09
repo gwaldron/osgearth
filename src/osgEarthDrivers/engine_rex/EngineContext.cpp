@@ -58,6 +58,14 @@ EngineContext::EngineContext(
     _textures = new TextureArena();
     _textures->setBindingPoint(29); // TODO
     _textures->setAutoRelease(true);
+
+    // texture limiting :(
+    int maxSize = std::min(
+        (int)_options.maxTextureSize().get(),
+        Registry::instance()->getMaxTextureSize());
+
+    _textures->setMaxTextureSize(maxSize);
+    
 }
 
 osg::ref_ptr<const Map>

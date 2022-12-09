@@ -347,7 +347,7 @@ namespace osgEarth
                                             ImGui::TableNextColumn();
                                             ImGui::Text("%s", obj->uid().c_str());
                                             ImGui::TableNextColumn();
-                                            ImGui::Text("(%.1lf MB)", (double)obj->size() / (double)1048576.);
+                                            ImGui::Text("(%.2lf MB)", (double)obj->size() / (double)1048576.);
                                         }
                                         ImGui::EndTable();
                                     }

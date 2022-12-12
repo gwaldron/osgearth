@@ -94,6 +94,23 @@ namespace osgEarth
                             osg::LOD::DISTANCE_FROM_EYE_POINT);
                     }
 
+                    unsigned maxTex = options.getMaxTextureSize();
+                    const char* maxTexItems[] = { "16", "32", "64", "128", "256", "512" };
+                    static int maxTexIndex = 5;
+                    if (ImGui::BeginCombo("Max tex size", maxTexItems[maxTexIndex])) {
+                        for (int n = 0; n < IM_ARRAYSIZE(maxTexItems); n++) {
+                            const bool is_selected = (maxTexIndex == n);
+                            if (ImGui::Selectable(maxTexItems[n], is_selected)) {
+                                maxTexIndex = n;
+                                options.setMaxTextureSize(atoi(maxTexItems[maxTexIndex]));
+                                _mapNode->getTerrainEngine()->dirtyTerrainOptions();
+                            }
+                            if (is_selected)
+                                ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::EndCombo();
+                    }
+
                     if (_mapNode->getTerrainOptions().getGPUTessellation())
                     {
                         ImGui::Separator();

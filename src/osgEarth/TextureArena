@@ -78,7 +78,7 @@ namespace osgEarth
         //! GL memory functions
         void compileGLObjects(osg::State&) const;
         void resizeGLObjectBuffers(unsigned);
-        void releaseGLObjects(osg::State*) const;
+        void releaseGLObjects(osg::State*, bool force=false) const;
 
         OE_PROPERTY(std::string, name);
         OE_PROPERTY(std::string, category);
@@ -192,6 +192,8 @@ namespace osgEarth
     private:
         //! disable copy
         TextureArena(const TextureArena&, const osg::CopyOp&) { } 
+
+        void releaseGLObjects(osg::State*, bool force) const;
 
         // GL objects that are per-state because they are not bindless
         struct GLObjects : public PerStateGLObjects

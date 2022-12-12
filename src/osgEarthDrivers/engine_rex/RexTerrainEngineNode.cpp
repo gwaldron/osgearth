@@ -728,6 +728,16 @@ RexTerrainEngineNode::dirtyState()
 }
 
 void
+RexTerrainEngineNode::dirtyTerrainOptions()
+{
+    auto& arena = getEngineContext()->_textures;
+    if (arena)
+    {
+        arena->setMaxTextureSize(options().maxTextureSize().get());
+    }
+}
+
+void
 RexTerrainEngineNode::cacheAllLayerExtentsInMapSRS()
 {
     // Only call during update

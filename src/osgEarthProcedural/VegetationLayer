@@ -192,6 +192,9 @@ namespace osgEarth { namespace Procedural
         void setUseImpostorPBRMaps(bool value);
         bool getUseImpostorPBRMaps() const;
 
+        void setMaxTextureSize(unsigned value);
+        unsigned getMaxTextureSize() const;
+
         //! Force regeneration of all visible data
         void dirty();
 

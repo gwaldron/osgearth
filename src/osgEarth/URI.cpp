@@ -341,6 +341,7 @@ namespace
     //--------------------------------------------------------------------
     // Read functors (used by the doRead method)
 
+#ifdef SUPPORT_MAX_TEXTURE_SIZE
     osg::Image* resize(osg::Image* image, int maxdim)
     {
         unsigned new_s, new_t;
@@ -378,6 +379,7 @@ namespace
             }
         }
     };
+#endif
 
     struct ReadObject
     {

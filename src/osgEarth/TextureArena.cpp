@@ -446,12 +446,12 @@ Texture::resizeGLObjectBuffers(unsigned maxSize)
 }
 
 void
-Texture::releaseGLObjects(osg::State* state) const
+Texture::releaseGLObjects(osg::State* state, bool force) const
 {
     // If this texture has a valid host that means it
     // belongs to an arena, which will take responsibility
     // for GL release.
-    if (_host != nullptr)
+    if (_host != nullptr && force == false)
         return;
 
     if (state)
@@ -529,8 +529,14 @@ TextureArena::setMaxTextureSize(unsigned value)
     {
         _maxDim = clamp(value, 4u, 65536u);
 
+        // update all textures with the new max dim
+        for (auto& tex : _textures)
+        {
+            tex->maxDim() = _maxDim;
+        }
+
         // force all textures to recompile with the new value :)
-        releaseGLObjects(nullptr);
+        releaseGLObjects(nullptr, true);
     }
 }
 
@@ -936,6 +942,12 @@ TextureArena::resizeGLObjectBuffers(unsigned maxSize)
 void
 TextureArena::releaseGLObjects(osg::State* state) const
 {
+    releaseGLObjects(state, false);
+}
+
+void
+TextureArena::releaseGLObjects(osg::State* state, bool force) const
+{
     ScopedMutexLock lock(_m);
 
     if (state)
@@ -952,7 +964,7 @@ TextureArena::releaseGLObjects(osg::State* state) const
         {
             if (_textures[i])
             {
-                _textures[i]->releaseGLObjects(state);
+                _textures[i]->releaseGLObjects(state, force);
                 gc._toCompile.push(i);
             }
         }
@@ -962,7 +974,7 @@ TextureArena::releaseGLObjects(osg::State* state) const
         for (auto& tex : _textures)
         {
             if (tex)
-                tex->releaseGLObjects(state);
+                tex->releaseGLObjects(state, force);
         }
 
         for (unsigned i = 0; i < _globjects.size(); ++i)
@@ -979,7 +991,9 @@ TextureArena::releaseGLObjects(osg::State* state) const
                 for (unsigned i = 0; i < _textures.size(); ++i)
                 {
                     if (_textures[i])
+                    {
                         gc._toCompile.push(i);
+                    }
                 }
             }
         }

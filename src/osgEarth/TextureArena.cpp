@@ -532,7 +532,8 @@ TextureArena::setMaxTextureSize(unsigned value)
         // update all textures with the new max dim
         for (auto& tex : _textures)
         {
-            tex->maxDim() = _maxDim;
+            if (tex)
+                tex->maxDim() = _maxDim;
         }
 
         // force all textures to recompile with the new value :)

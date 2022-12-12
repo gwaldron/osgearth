@@ -284,6 +284,7 @@ TextureSplattingLayer::buildStateSets()
 
         // Install the texture arena as a state attribute:
         ss->setAttribute(_materials->_arena);
+        _materials->_arena->setMaxTextureSize(options().maxTextureSize().get());
 
         // Install the uniform holding constant texture scales
         ss->addUniform(_materials->_textureScales);
@@ -391,6 +392,25 @@ float
 TextureSplattingLayer::getDisplacementDepth() const
 {
     return options().displacementDepth().get();
+}
+
+void
+TextureSplattingLayer::setMaxTextureSize(unsigned value)
+{
+    if (options().maxTextureSize().get() != value)
+    {
+        options().maxTextureSize() = value;
+        if (_materials && _materials->_arena)
+        {
+            _materials->_arena->setMaxTextureSize(value);
+        }
+    }
+}
+
+unsigned
+TextureSplattingLayer::getMaxTextureSize() const
+{
+    return options().maxTextureSize().value();
 }
 
 void

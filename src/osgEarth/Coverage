@@ -206,7 +206,7 @@ namespace osgEarth
 
         bool hasDataAt(unsigned s, unsigned t) const
         {
-            OE_SOFT_ASSERT_AND_RETURN(s < _width && t < _height, nullptr);
+            OE_SOFT_ASSERT_AND_RETURN(s < _width && t < _height, false);
             int ptr = t * _width + s;
             return _pixels[ptr] > 0;
         }

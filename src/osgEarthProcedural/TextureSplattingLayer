@@ -83,6 +83,10 @@ namespace osgEarth { namespace Procedural
         void setDisplacementDepth(float value);
         float getDisplacementDepth() const;
 
+        //! Sets a maximum size for splatting textures on the GPU
+        void setMaxTextureSize(unsigned value);
+        unsigned getMaxTextureSize() const;
+
 
     protected:
 

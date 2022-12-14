@@ -632,6 +632,26 @@ VegetationLayer::getEnabled(const std::string& name) const
 }
 
 void
+VegetationLayer::setMaxTextureSize(unsigned value)
+{
+    if (value != options().maxTextureSize().value())
+    {
+        if (getBiomeLayer())
+        {
+            options().maxTextureSize() = clamp(value, 1u, 63356u);
+            auto arena = getBiomeLayer()->getBiomeManager().getTextures();
+            arena->setMaxTextureSize(options().maxTextureSize().value());
+        }
+    }
+}
+
+unsigned
+VegetationLayer::getMaxTextureSize() const
+{
+    return options().maxTextureSize().get();
+}
+
+void
 VegetationLayer::addedToMap(const Map* map)
 {
     PatchLayer::addedToMap(map);

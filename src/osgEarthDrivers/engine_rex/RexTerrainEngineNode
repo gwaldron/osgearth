@@ -118,6 +118,8 @@ namespace osgEarth { namespace REX
         
         virtual void dirtyState() override;
 
+        virtual void dirtyTerrainOptions() override;
+
     private:
 
         void update_traverse(osg::NodeVisitor& nv);

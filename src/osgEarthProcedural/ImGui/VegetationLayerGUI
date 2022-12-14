@@ -88,6 +88,22 @@ namespace osgEarth {
                         if (ImGui::Checkbox("Use impostor PBR maps", &pbrMaps))
                             _veglayer->setUseImpostorPBRMaps(pbrMaps);
 
+                        unsigned maxTex = _veglayer->getMaxTextureSize();
+                        const char* maxTexItems[] = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192" };
+                        static int maxTexIndex = 9;
+                        if (ImGui::BeginCombo("Max tex size", maxTexItems[maxTexIndex])) {
+                            for (int n = 0; n < IM_ARRAYSIZE(maxTexItems); n++) {
+                                const bool is_selected = (maxTexIndex == n);
+                                if (ImGui::Selectable(maxTexItems[n], is_selected)) {
+                                    maxTexIndex = n;
+                                    _veglayer->setMaxTextureSize(atoi(maxTexItems[maxTexIndex]));
+                                }
+                                if (is_selected)
+                                    ImGui::SetItemDefaultFocus();
+                            }
+                            ImGui::EndCombo();
+                        }
+
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Impostor visibility angles:");
 
                         float bb_low = _veglayer->getImpostorLowAngle().as(Units::DEGREES);

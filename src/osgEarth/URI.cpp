@@ -462,7 +462,8 @@ namespace
             osgDB::ReaderWriter::ReadResult osgRR = osgDB::Registry::instance()->readImageImplementation(uri, opt);
             if (osgRR.validImage()) {
                 osgRR.getImage()->setFileName(uri);
-                return postProcess(ReadResult(osgRR.takeImage()), opt);
+                ReadResult rr(osgRR.takeImage());
+                return postProcess(rr, opt);
             }
             else return ReadResult(osgRR.message());
         }

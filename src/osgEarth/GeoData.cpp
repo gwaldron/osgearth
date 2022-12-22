@@ -1536,17 +1536,7 @@ GeoExtent::normalizeX(double x) const
             return x;
         }
 
-        if (x < 0.0 || x >= 360.0)
-        {
-            x = fmod(x, 360.0);
-            if (x < 0.0)
-                x += 360.0;
-        }
-        
-        if (x > 180.0)
-        {
-            x -= 360.0;
-        }
+        x = fmod(x + 180, 360) - 180;    
     }
     return x;
 }

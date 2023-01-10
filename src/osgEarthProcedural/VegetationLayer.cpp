@@ -1504,7 +1504,7 @@ VegetationLayer::getAssetPlacements(
 
     // clamp everything to the terrain
     map->getElevationPool()->sampleMapCoords(
-        map_points,
+        map_points.begin(), map_points.end(),
         Distance(),
         nullptr,
         nullptr,

@@ -158,7 +158,7 @@ ElevationQuery::getElevations(std::vector<osg::Vec3d>& points,
         {
             std::vector< osg::Vec3d > mapPoints = points;
             pointsSRS->transform(mapPoints, _map->getSRS());
-            int count = _map->getElevationPool()->sampleMapCoords(mapPoints , Distance(desiredResolution, _map->getSRS()->getUnits()), nullptr, nullptr);
+            int count = _map->getElevationPool()->sampleMapCoords(mapPoints.begin(), mapPoints.end(), Distance(desiredResolution, _map->getSRS()->getUnits()), nullptr, nullptr);
             for (unsigned int i = 0; i < points.size(); ++i)
             {
                 points[i].z() = mapPoints[i].z();
@@ -167,7 +167,7 @@ ElevationQuery::getElevations(std::vector<osg::Vec3d>& points,
         }
         else
         {
-            return _map->getElevationPool()->sampleMapCoords(points, Distance(desiredResolution, _map->getSRS()->getUnits()), nullptr, nullptr) > 0;
+            return _map->getElevationPool()->sampleMapCoords(points.begin(), points.end(), Distance(desiredResolution, _map->getSRS()->getUnits()), nullptr, nullptr) > 0;
         }
     }
 }
@@ -206,7 +206,7 @@ ElevationQuery::getElevations(const std::vector<osg::Vec3d>& points,
         {
             pointsSRS->transform(mapPoints, _map->getSRS());
         }
-        int count = _map->getElevationPool()->sampleMapCoords(mapPoints, Distance(desiredResolution, _map->getSRS()->getUnits()), nullptr, nullptr);
+        int count = _map->getElevationPool()->sampleMapCoords(mapPoints.begin(), mapPoints.end(), Distance(desiredResolution, _map->getSRS()->getUnits()), nullptr, nullptr);
         for (unsigned int i = 0; i < points.size(); ++i)
         {
             out_elevations.push_back(mapPoints[i].z());

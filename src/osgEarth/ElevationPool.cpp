@@ -488,13 +488,14 @@ ElevationPool::prepareEnvelope(
 
 int
 ElevationPool::Envelope::sampleMapCoords(
-    std::vector<osg::Vec3d>& points,
+    std::vector<osg::Vec3d>::iterator begin,
+    std::vector<osg::Vec3d>::iterator end,
     ProgressCallback* progress,
     float failValue)
 {
     OE_PROFILING_ZONE;
 
-    if (points.empty())
+    if (begin == end)
         return -1;
 
     ScopedReadLock lk(_pool->_mutex);
@@ -509,8 +510,10 @@ ElevationPool::Envelope::sampleMapCoords(
     osg::Vec4f elev;
     int count = 0;
 
-    for (auto& p : points)
+    for(auto iter = begin; iter != end; ++iter)
     {
+        auto& p = *iter;
+
         {
             //OE_PROFILING_ZONE_NAMED("createTileKey");
 
@@ -588,14 +591,15 @@ ElevationPool::Envelope::sampleMapCoords(
 
 int
 ElevationPool::sampleMapCoords(
-    std::vector<osg::Vec4d>& points,
+    std::vector<osg::Vec4d>::iterator begin,
+    std::vector<osg::Vec4d>::iterator end,
     WorkingSet* ws,
     ProgressCallback* progress,
     float failValue)
 {
     OE_PROFILING_ZONE;
 
-    if (points.empty())
+    if (begin == end)
         return -1;
 
     osg::ref_ptr<const Map> map;
@@ -634,8 +638,10 @@ ElevationPool::sampleMapCoords(
     const Units& units = map->getSRS()->getUnits();
     Distance pointRes(0.0, units);
 
-    for(auto& p : points)
+    for(auto iter = begin; iter != end; ++iter)
     {
+        auto& p = *iter;
+
         if (p.w() == FLT_MAX)
             continue;
 
@@ -726,7 +732,8 @@ ElevationPool::sampleMapCoords(
 
 int
 ElevationPool::sampleMapCoords(
-    std::vector<osg::Vec3d>& points,
+    std::vector<osg::Vec3d>::iterator begin,
+    std::vector<osg::Vec3d>::iterator end,
     const Distance& resolution,
     WorkingSet* ws,
     ProgressCallback* progress,
@@ -734,7 +741,7 @@ ElevationPool::sampleMapCoords(
 {
     OE_PROFILING_ZONE;
 
-    if (points.empty())
+    if (begin == end)
         return -1;
 
     osg::ref_ptr<const Map> map;
@@ -771,8 +778,9 @@ ElevationPool::sampleMapCoords(
     int lod_prev = INT_MAX;
     const Units& units = map->getSRS()->getUnits();
 
-    for (auto& p : points)
+    for(auto iter = begin; iter != end; ++iter)
     {
+        auto& p = *iter;
         {
             //OE_PROFILING_ZONE_NAMED("createTileKey");
             double resolutionInMapUnits = resolution.asDistance(units, p.y());

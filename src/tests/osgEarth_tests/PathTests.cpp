@@ -54,3 +54,16 @@ TEST_CASE( "getFullPath works" ) {
     REQUIRE(fullPath == "c:/images/vacation.jpg");
 }
 
+TEST_CASE("stripRelativePaths works") {
+    // Basic relative paths should should.
+    std::string fullPath = osgEarth::Util::stripRelativePaths("http://server.com/files/1/2/3/../../../image.png");
+    REQUIRE(fullPath == "http://server.com/files/image.png");
+
+    fullPath = osgEarth::Util::stripRelativePaths("C:/files/1/2/3/../../../image.png");
+    REQUIRE(fullPath == "C:/files/image.png");
+
+    // If you pass in a relative path it should be returned unmodified.
+    fullPath = osgEarth::Util::stripRelativePaths("../data/world.tif");
+    REQUIRE(fullPath == "../data/world.tif");
+}
+

@@ -247,6 +247,12 @@ osgEarth::Util::getFullPath(const std::string& relativeTo, const std::string &re
 std::string
 osgEarth::Util::stripRelativePaths(const std::string& filename)
 {
+    // If they pass in a relative path just return it unmodified
+    if (isRelativePath(filename))
+    {
+        return filename;
+    }
+
     std::list<std::string> directories;
     int start = 0;
     for (unsigned int i = 0; i < filename.size(); ++i)

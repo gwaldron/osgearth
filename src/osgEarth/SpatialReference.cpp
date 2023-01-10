@@ -42,19 +42,25 @@ namespace
         return "";
     } 
 
-    void geodeticToGeocentric(std::vector<osg::Vec3d>& points, const Ellipsoid& em)
+    void geodeticToGeocentric(
+        std::vector<osg::Vec3d>::iterator begin,
+        std::vector<osg::Vec3d>::iterator end,
+        const Ellipsoid& em)
     {
-        for( unsigned i=0; i<points.size(); ++i )
+        for (auto p = begin; p != end; ++p)
         {
-            points[i] = em.geodeticToGeocentric(points[i]);
+            *p = em.geodeticToGeocentric(*p);
         }
     }
 
-    void geocentricToGeodetic(std::vector<osg::Vec3d>& points, const Ellipsoid& em)
+    void geocentricToGeodetic(
+        std::vector<osg::Vec3d>::iterator begin,
+        std::vector<osg::Vec3d>::iterator end,
+        const Ellipsoid& em)
     {
-        for( unsigned i=0; i<points.size(); ++i )
+        for (auto p = begin; p != end; ++p)
         {
-            points[i] = em.geocentricToGeodetic(points[i]);
+            *p = em.geocentricToGeodetic(*p);
         }
     }
 
@@ -822,18 +828,19 @@ SpatialReference::createWorldToLocal(const osg::Vec3d& xyz, osg::Matrixd& out_wo
 
 
 bool
-SpatialReference::transform(const osg::Vec3d&       input,
-                            const SpatialReference* outputSRS,
-                            osg::Vec3d&             output) const
+SpatialReference::transform(
+    const osg::Vec3d& input,
+    const SpatialReference* outputSRS,
+    osg::Vec3d& output) const
 {
-    OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, false);
+    OE_SOFT_ASSERT_AND_RETURN(outputSRS != nullptr, false);
 
     if (!valid())
         return false;
 
     std::vector<osg::Vec3d> v(1, input);
 
-    if ( transform(v, outputSRS) )
+    if (transform(v.begin(), v.end(), outputSRS))
     {
         output = v[0];
         return true;
@@ -843,8 +850,10 @@ SpatialReference::transform(const osg::Vec3d&       input,
 
 
 bool
-SpatialReference::transform(std::vector<osg::Vec3d>& points,
-                            const SpatialReference*  outputSRS) const
+SpatialReference::transform(
+    std::vector<osg::Vec3d>::iterator begin,
+    std::vector<osg::Vec3d>::iterator end,
+    const SpatialReference*  outputSRS) const
 {
     OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, false);
 
@@ -858,22 +867,22 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     bool success = false;
 
     // do the pre-transformation pass:
-    const SpatialReference* inputSRS = preTransform( points );
+    const SpatialReference* inputSRS = preTransform(begin, end);
     if ( !inputSRS )
         return false;
         
     if ( inputSRS->isGeocentric() && !outputSRS->isGeocentric() )
     {
         const SpatialReference* outputGeoSRS = outputSRS->getGeodeticSRS();
-        geocentricToGeodetic(points, outputGeoSRS->getEllipsoid());
-        return outputGeoSRS->transform(points, outputSRS);
+        geocentricToGeodetic(begin, end, outputGeoSRS->getEllipsoid());
+        return outputGeoSRS->transform(begin, end, outputSRS);
     }
 
     else if ( !inputSRS->isGeocentric() && outputSRS->isGeocentric() )
     {
         const SpatialReference* outputGeoSRS = outputSRS->getGeodeticSRS();
-        success = inputSRS->transform(points, outputGeoSRS);
-        geodeticToGeocentric(points, outputGeoSRS->getEllipsoid());
+        success = inputSRS->transform(begin, end, outputGeoSRS);
+        geodeticToGeocentric(begin, end, outputGeoSRS->getEllipsoid());
         return success;
     }
 
@@ -882,13 +891,13 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     bool z_done = false;
     if ( inputSRS->isGeographic() )
     {
-        z_done = inputSRS->transformZ( points, outputSRS, true );
+        z_done = inputSRS->transformZ(begin, end, outputSRS, true );
     }
 
     ThreadLocal& local = getLocal();
 
     // move the xy data into straight arrays that OGR can use
-    unsigned count = points.size();
+    unsigned count = (unsigned)(end - begin); // points.size();
 
     if (count*2 > local._workspaceSize)
     {
@@ -901,13 +910,18 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     double* x = local._workspace;
     double* y = local._workspace + count;
 
-    for( unsigned i=0; i<count; i++ )
+    unsigned i = 0;
+    for (auto iter = begin; iter != end; ++iter, ++i)
     {
-        x[i] = points[i].x();
-        y[i] = points[i].y();
+        x[i] = iter->x(), y[i] = iter->y();
     }
+    //for( unsigned i=0; i<count; i++ )
+    //{
+    //    x[i] = points[i].x();
+    //    y[i] = points[i].y();
+    //}
 
-    success = inputSRS->transformXYPointArrays( local, x, y, count, outputSRS );
+    success = inputSRS->transformXYPointArrays(local, x, y, count, outputSRS);
 
     if ( success )
     {
@@ -919,16 +933,18 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
             // geographic points (like long=180.000003), so this addresses that issue.
             for( unsigned i=0; i<count; i++ )
             {
-                points[i].x() = osg::clampBetween( x[i], -180.0, 180.0 );
-                points[i].y() = osg::clampBetween( y[i],  -90.0,  90.0 );
+                auto& p = *(begin + i);
+                p.x() = clamp( x[i], -180.0, 180.0 );
+                p.y() = clamp( y[i],  -90.0,  90.0 );
             }
         }
         else
         {
             for( unsigned i=0; i<count; i++ )
             {
-                points[i].x() = x[i];
-                points[i].y() = y[i];
+                auto& p = *(begin + i);
+                p.x() = x[i];
+                p.y() = y[i];
             }
         }
     }
@@ -936,13 +952,13 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     if (success)
     {
         // calculate the Zs if we haven't already done so
-        if ( !z_done )
+        if (!z_done)
         {
-            z_done = inputSRS->transformZ( points, outputSRS, outputSRS->isGeographic() );
-        }   
+            z_done = inputSRS->transformZ(begin, end, outputSRS, outputSRS->isGeographic());
+        }
 
         // run the user post-transform code
-        outputSRS->postTransform( points );
+        outputSRS->postTransform(begin, end);
     }
 
     return success;
@@ -1018,9 +1034,11 @@ SpatialReference::transformXYPointArrays(
 
 
 bool
-SpatialReference::transformZ(std::vector<osg::Vec3d>& points,
-                             const SpatialReference*  outputSRS,
-                             bool                     pointsAreLatLong) const
+SpatialReference::transformZ(
+    std::vector<osg::Vec3d>::iterator begin,
+    std::vector<osg::Vec3d>::iterator end,
+    const SpatialReference* outputSRS,
+    bool pointsAreLatLong) const
 {
     OE_SOFT_ASSERT_AND_RETURN(outputSRS!=nullptr, false);
 
@@ -1038,21 +1056,21 @@ SpatialReference::transformZ(std::vector<osg::Vec3d>& points,
 
     if ( isGeographic() || pointsAreLatLong )
     {
-        for( unsigned i=0; i<points.size(); ++i )
+        for(auto p = begin; p != end; ++p)
         {
             if ( _vdatum.valid() )
             {
                 // to HAE:
-                points[i].z() = _vdatum->msl2hae( points[i].y(), points[i].x(), points[i].z() );
+                p->z() = _vdatum->msl2hae(p->y(), p->x(), p->z());
             }
 
             // do the units conversion:
-            points[i].z() = inUnits.convertTo(outUnits, points[i].z());
+            p->z() = inUnits.convertTo(outUnits, p->z());
 
             if ( outVDatum )
             {
                 // to MSL:
-                points[i].z() = outVDatum->hae2msl( points[i].y(), points[i].x(), points[i].z() );
+                p->z() = outVDatum->hae2msl(p->y(), p->x(), p->z());
             }
         }
     }
@@ -1060,24 +1078,25 @@ SpatialReference::transformZ(std::vector<osg::Vec3d>& points,
     else // need to xform input points
     {
         // copy the points and convert them to geographic coordinates (lat/long with the same Z):
-        std::vector<osg::Vec3d> geopoints(points);
-        transform( geopoints, getGeographicSRS() );
+        std::vector<osg::Vec3d> geopoints(begin, end);
+        transform(geopoints.begin(), geopoints.end(), getGeographicSRS());
 
-        for( unsigned i=0; i<geopoints.size(); ++i )
+        unsigned i = 0;
+        for(auto p = begin; p != end; ++p, ++i)
         {
             if ( _vdatum.valid() )
             {
                 // to HAE:
-                points[i].z() = _vdatum->msl2hae( geopoints[i].y(), geopoints[i].x(), points[i].z() );
+                p->z() = _vdatum->msl2hae( geopoints[i].y(), geopoints[i].x(), p->z() );
             }
 
             // do the units conversion:
-            points[i].z() = inUnits.convertTo(outUnits, points[i].z());
+            p->z() = inUnits.convertTo(outUnits, p->z());
 
             if ( outVDatum )
             {
                 // to MSL:
-                points[i].z() = outVDatum->hae2msl( geopoints[i].y(), geopoints[i].x(), points[i].z() );
+                p->z() = outVDatum->hae2msl( geopoints[i].y(), geopoints[i].x(), p->z());
             }
         }
     }

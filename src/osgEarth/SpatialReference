@@ -78,8 +78,9 @@ namespace osgEarth
          * Returns true if ALL transforms succeeded, false if at least one failed.
          */
         virtual bool transform(
-            std::vector<osg::Vec3d>& input,
-            const SpatialReference*  outputSRS ) const;
+            std::vector<osg::Vec3d>::iterator begin,
+            std::vector<osg::Vec3d>::iterator end,
+            const SpatialReference* outputSRS) const;
         
         /**
          * Transform a 2D point directly. (Convenience function)
@@ -402,10 +403,18 @@ namespace osgEarth
             bool considerVDatum =true ) const;
 
         virtual const SpatialReference* preTransform(
-            std::vector<osg::Vec3d>&) const { return this; }
+            std::vector<osg::Vec3d>::iterator begin,
+            std::vector<osg::Vec3d>::iterator end) const
+        { 
+            return this;
+        }
 
         virtual const SpatialReference* postTransform(
-            std::vector<osg::Vec3d>&) const { return this; }
+            std::vector<osg::Vec3d>::iterator begin,
+            std::vector<osg::Vec3d>::iterator end) const
+        {
+            return this;
+        }
 
         bool transformXYPointArrays(
             ThreadLocal& local,
@@ -415,7 +424,8 @@ namespace osgEarth
             const SpatialReference* out_srs) const;
 
         bool transformZ(
-            std::vector<osg::Vec3d>& points,
+            std::vector<osg::Vec3d>::iterator begin,
+            std::vector<osg::Vec3d>::iterator end,
             const SpatialReference*  outputSRS,
             bool                     pointsAreGeodetic) const;
 
@@ -429,6 +439,33 @@ namespace osgEarth
         SpatialReference* fixWKT();
 
         friend class Registry;
+
+
+    public: // DEPRECATED FUNCTIONS
+
+        //! @deprecated - use begin/end variant
+        virtual bool transform(
+            std::vector<osg::Vec3d>& input,
+            const SpatialReference* outputSRS) const
+        {
+            return transform(input.begin(), input.end(), outputSRS);
+        }
+
+        //! @deprecated - use begin/end variant
+        virtual const SpatialReference* preTransform(
+            std::vector<osg::Vec3d>& in) const
+        {
+            return preTransform(in.begin(), in.end());
+        }
+
+        //! @deprecated - use begin/end variant
+        virtual const SpatialReference* postTransform(
+            std::vector<osg::Vec3d>& in) const
+        {
+            return postTransform(in.begin(), in.end());
+        }
+
+
     };
 }
 

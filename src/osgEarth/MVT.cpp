@@ -499,6 +499,12 @@ MVTFeatureSource::init()
     }
 }
 
+MVTFeatureSource::~MVTFeatureSource()
+{
+    // close on destruct in case closeImplementation was never called
+    closeDatabase();
+}
+
 Status
 MVTFeatureSource::openImplementation()
 {

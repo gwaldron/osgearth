@@ -88,7 +88,7 @@ namespace osgEarth
 
     protected:
 
-        virtual ~MVTFeatureSource() { }
+        virtual ~MVTFeatureSource();
 
     private:
         FeatureSchema _schema;

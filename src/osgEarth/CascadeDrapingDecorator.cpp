@@ -59,7 +59,7 @@ using namespace osgEarth::Util;
 //#define USE_ELLIPSOID_INTERSECTIONS
 
 // Enable this to generate an "--activity" readout of all cascade information
-//#define DEBUG_CASCADES
+#define DEBUG_CASCADES
 
 // Enable this to do a terrain intersection before configuring the first cascade
 #define USE_TERRAIN_INTERSECTION
@@ -996,6 +996,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
 
 #ifdef DEBUG_CASCADES
         std::stringstream buf;
+        buf << std::setprecision(7);
 #endif
 
         // Height (Y-span) of the RTT box in meters
@@ -1090,7 +1091,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
             buf << "\n  Texels: " << texels
                 << "\n  Range: " << cascade._box.yMin() << " -> " << cascade._box.yMax()
                 << "\n  Coverage: " << 100*(texels/totalTexels) << "%"
-                << "\n  MetersPerTexel: " << metersPerTexel;            
+                << "\n  MetersPerTexel: " << metersPerTexel; 
 #endif
         }
         
@@ -1136,9 +1137,9 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
     if (_numCascades > 0u)
     {
         cv->pushStateSet(_rttSS.get());
-        for (unsigned i = 0; i < _numCascades; ++i)
+        for (unsigned k = 0; k < _numCascades; ++k)
         {
-            Cascade& c = _cascades[i];
+            Cascade& c = _cascades[k];
             c._rtt->accept(*cv);
         }
         cv->popStateSet(); // _rttSS

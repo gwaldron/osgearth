@@ -269,7 +269,7 @@ SilverLiningContext::updateLocation()
     // Get new local orientation
     osg::Vec3d up = _cameraPos;
     up.normalize();
-    osg::Vec3d north = osg::Vec3d(0, 1, 0);
+    osg::Vec3d north = _srs->isGeographic() ? osg::Vec3d(0, 0, 1) : osg::Vec3d(0, 1, 0);
     osg::Vec3d east = north ^ up;
 
     // Check for edge case of north or south pole

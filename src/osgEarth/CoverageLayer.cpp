@@ -74,7 +74,8 @@ CoverageLayer::openImplementation()
         imageLayer->setUpL2Cache(9u);
 
         // Force the image source into coverage mode.
-        imageLayer->setCoverage(true);
+        imageLayer->options().coverage() = true;
+        //imageLayer->setCoverage(true);
 
         // inherit a profile from the first component layer, why not.
         if (getProfile() == nullptr)

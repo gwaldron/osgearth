@@ -289,8 +289,8 @@ SilverLiningContext::updateLocation()
 
     ::SilverLining::Location loc;
     loc.SetAltitude ( latLonAlt.z() );
-    loc.SetLongitude( latLonAlt.x() ); //osg::DegreesToRadians(latLonAlt.x()) );
-    loc.SetLatitude ( latLonAlt.y() ); //osg::DegreesToRadians(latLonAlt.y()) );
+    loc.SetLongitude( latLonAlt.x() );
+    loc.SetLatitude ( latLonAlt.y() );
 
     _atmosphere->GetConditions()->SetLocation( loc );
 }

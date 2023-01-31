@@ -29,6 +29,9 @@ MeshEditor::MeshEditor(const TileKey& key, unsigned tileSize, const Map* map, Pr
 
     for(auto& layer : layers)
     {
+        if (!layer->isOpen() || !layer->getVisible())
+            continue;
+
         // not to the min LOD yet?
         if (layer->getMinLevel() > key.getLOD())
             continue;

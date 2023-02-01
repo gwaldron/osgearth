@@ -216,7 +216,7 @@ VisibleLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    if (options().visible().isSet() || options().mask().isSet() )
+    if (options().visible().isSet() || options().mask().isSet())
     {
         setVisible(options().visible().get());
     }

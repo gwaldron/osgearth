@@ -35,6 +35,7 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/Chonk>
 #include <osgEarth/rtree.h>
+#include <osgEarth/TerrainConstraintLayer>
 
 #include <osg/BlendFunc>
 #include <osg/Multisample>
@@ -125,6 +126,21 @@ namespace
     inline ChonkDrawable* asChonkDrawable(const osg::ref_ptr<T>& value)
     {
         return static_cast<ChonkDrawable*>(value.get());
+    }
+
+    bool inConstrainedRegion(double x, double y, const std::vector<TerrainConstraint>& constraints)
+    {
+        for (auto& con : constraints)
+        {
+            for (auto& feature : con.features)
+            {
+                if (feature->getGeometry()->contains2D(x, y))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
 
@@ -675,6 +691,13 @@ VegetationLayer::addedToMap(const Map* map)
         setStatus(Status::ResourceUnavailable, "No LifeMap available in the Map");
         return;
     }
+
+    // prepare for querying constraints with holes
+    map->getLayers(_constraintQuery.layers(), [](const Layer* layer)
+        {
+            auto clayer = static_cast<const TerrainConstraintLayer*>(layer);
+            return clayer->getRemoveInterior() == true;
+        });
 }
 
 void
@@ -1204,6 +1227,14 @@ VegetationLayer::getAssetPlacements(
         biomemap.getReader().setBilinear(false);
     }
 
+    // Prepare to deal with holes in the terrain, where we do not want
+    // to place vegetation
+    std::vector<TerrainConstraint> constraints;
+    _constraintQuery.getConstraints(
+        key, 
+        constraints,
+        progress);
+
     // If the biome residency is not up to date, do that now
     // after loading the biome map.
     if (loadBiomesOnDemand)
@@ -1462,23 +1493,27 @@ VegetationLayer::getAssetPlacements(
         }
 
         if (pass)
-        {
-            // good to go, generate a random rotation and record the position.
+        {            
+            osg::Vec3d map_point(e.xMin() + u * e.width(), e.yMin() + v * e.height(), 0);
+
+            // Generate a random rotation and record the position.
+            // Do this before the constraint check to maintain determinism!
             float rotation = rand_float_01(gen) * 3.1415927 * 2.0;
-            
-            map_points.emplace_back(
-                e.xMin() + u * e.width(), e.yMin() + v * e.height(), 0
-            );
+         
+            if (!inConstrainedRegion(map_point.x(), map_point.y(), constraints))
+            {
+                map_points.emplace_back(map_point);
 
-            Placement p;
-            p.localPoint() = local;
-            p.uv().set(u, v);
-            p.scale() = scale;
-            p.rotation() = rotation;
-            p.asset() = asset;
-            p.density() = density;
+                Placement p;
+                p.localPoint() = local;
+                p.uv().set(u, v);
+                p.scale() = scale;
+                p.rotation() = rotation;
+                p.asset() = asset;
+                p.density() = density;
 
-            result.emplace_back(std::move(p));
+                result.emplace_back(std::move(p));
+            }
         }
     }
 

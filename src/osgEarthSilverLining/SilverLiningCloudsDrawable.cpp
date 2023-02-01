@@ -70,6 +70,10 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
             adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetPrecipitationShader(), NULL, "PrecipitationShader"));
             //adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetAtmosphericLimbShader(), NULL, "AtmosphericLimbShader"));
 
+#if ((SILVERLINING_MAJOR_VERSION > 6) || (SILVERLINING_MAJOR_VERSION == 6 && SILVERLINING_MINOR_VERSION >= 24))
+            adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetBillboardShaderInstanced(), NULL, "BillboardShaderInstanced"));
+#endif
+
             SL_VECTOR(unsigned) handles = _SL->getAtmosphere()->GetActivePlanarCloudShaders();
             for(int i=0; i<handles.size(); ++i)          
                 adapters.push_back( new osgEarth::NativeProgramAdapter(state, handles[i], NULL, "PlanarCloudShader"));

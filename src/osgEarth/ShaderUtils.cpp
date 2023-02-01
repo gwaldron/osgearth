@@ -332,7 +332,7 @@ ArrayUniform::attach( const std::string& name, osg::Uniform::Type type, osg::Sta
         _uniform    = new osg::Uniform( type, name, size );
         _uniformAlt = new osg::Uniform( type, name + "[0]", size );
         stateSet->addUniform( _uniform.get() );
-        stateSet->addUniform( _uniformAlt.get() );
+        //stateSet->addUniform( _uniformAlt.get() );
     }
 
     _stateSet = stateSet;
@@ -477,8 +477,8 @@ ArrayUniform::ensureCapacity( unsigned newSize )
         osg::ref_ptr<osg::StateSet> stateSet_safe = _stateSet.get();
         if ( stateSet_safe.valid() )
         {
-            osg::ref_ptr<osg::Uniform> _oldUniform    = _uniform.get();
-            osg::ref_ptr<osg::Uniform> _oldUniformAlt = _oldUniform.get();
+            osg::ref_ptr<osg::Uniform> oldUniform = _uniform.get();
+            osg::ref_ptr<osg::Uniform> oldUniformAlt = _uniformAlt.get();
 
             stateSet_safe->removeUniform( _uniform->getName() );
             stateSet_safe->removeUniform( _uniformAlt->getName() );
@@ -486,22 +486,22 @@ ArrayUniform::ensureCapacity( unsigned newSize )
             _uniform    = new osg::Uniform( _uniform->getType(), _uniform->getName(), newSize );
             _uniformAlt = new osg::Uniform( _uniform->getType(), _uniform->getName() + "[0]", newSize );
 
-            switch (_oldUniform->getType())
+            switch (oldUniform->getType())
             {
             case osg::Uniform::FLOAT:
-                copyElements<float>(_oldUniform, this); break;
+                copyElements<float>(oldUniform.get(), this); break;
             case osg::Uniform::INT:
-                copyElements<int>(_oldUniform, this); break;
+                copyElements<int>(oldUniform.get(), this); break;
             case osg::Uniform::UNSIGNED_INT:
-                copyElements<unsigned>(_oldUniform, this); break;
+                copyElements<unsigned>(oldUniform.get(), this); break;
             case osg::Uniform::FLOAT_VEC3:
-                copyElements<osg::Vec3f>(_oldUniform, this); break;
+                copyElements<osg::Vec3f>(oldUniform.get(), this); break;
             case osg::Uniform::FLOAT_VEC4:
-                copyElements<osg::Vec4f>(_oldUniform, this); break;
+                copyElements<osg::Vec4f>(oldUniform.get(), this); break;
             case osg::Uniform::FLOAT_MAT4:
-                copyElements<osg::Matrixf>(_oldUniform, this); break;
+                copyElements<osg::Matrixf>(oldUniform.get(), this); break;
             case osg::Uniform::BOOL:
-                copyElements<bool>(_oldUniform, this); break;
+                copyElements<bool>(oldUniform.get(), this); break;
             };
 
             stateSet_safe->addUniform( _uniform.get() );

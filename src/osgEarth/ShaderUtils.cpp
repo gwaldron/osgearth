@@ -332,7 +332,7 @@ ArrayUniform::attach( const std::string& name, osg::Uniform::Type type, osg::Sta
         _uniform    = new osg::Uniform( type, name, size );
         _uniformAlt = new osg::Uniform( type, name + "[0]", size );
         stateSet->addUniform( _uniform.get() );
-        //stateSet->addUniform( _uniformAlt.get() );
+        stateSet->addUniform( _uniformAlt.get() );
     }
 
     _stateSet = stateSet;

@@ -1568,8 +1568,6 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
         return NULL;
     }
 
-    //GDAL_SCOPED_LOCK;
-
     //Allocate the heightfield
     osg::ref_ptr<osg::HeightField> hf = new osg::HeightField;
     hf->allocate(tileSize, tileSize);
@@ -1577,7 +1575,7 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
 
     if (intersects(key))
     {
-        GDALResampleAlg resampleAlg = GRA_CubicSpline;
+        GDALResampleAlg resampleAlg = GRA_NearestNeighbour;
         switch (*_gdalOptions.interpolation())
         {
         case INTERP_NEAREST:
@@ -1602,16 +1600,13 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
         psWarpOptions->eResampleAlg = resampleAlg;
         psWarpOptions->hSrcDS = _srcDS;
         psWarpOptions->nBandCount = _srcDS->GetRasterCount();
-        psWarpOptions->panSrcBands =
-            (int*)CPLMalloc(sizeof(int) * psWarpOptions->nBandCount);
-        psWarpOptions->panDstBands =
-            (int*)CPLMalloc(sizeof(int) * psWarpOptions->nBandCount);
+        psWarpOptions->panSrcBands = (int*)CPLMalloc(sizeof(int) * psWarpOptions->nBandCount);
+        psWarpOptions->panDstBands = (int*)CPLMalloc(sizeof(int) * psWarpOptions->nBandCount);
 
         for (short unsigned int i = 0; i < psWarpOptions->nBandCount; ++i) {
             psWarpOptions->panDstBands[i] = psWarpOptions->panSrcBands[i] = i + 1;
         }
 
-        // Create the image to image transformer
         void* transformerArg = GDALCreateGenImgProjTransformer2(_srcDS, NULL, NULL);
         if (transformerArg == NULL) {
             GDALDestroyWarpOptions(psWarpOptions);
@@ -1619,47 +1614,28 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
             return 0;
         }
 
-        // Expanded
+        // Expand the geotransform by half a pixel since we want to neighboring tiles to share edges
         double resolution = key.getExtent().width() / ((double)tileSize - 1);
         double adfGeoTransform[6];
-        adfGeoTransform[0] = key.getExtent().xMin() - resolution;
+        adfGeoTransform[0] = key.getExtent().xMin() - resolution / 2.0;
         adfGeoTransform[1] = resolution;
         adfGeoTransform[2] = 0;
-        adfGeoTransform[3] = key.getExtent().yMax() + resolution;
+        adfGeoTransform[3] = key.getExtent().yMax() + resolution / 2.0;
         adfGeoTransform[4] = 0;
         adfGeoTransform[5] = -resolution;
 
-        // Specify the destination geotransform
         GDALSetGenImgProjTransformerDstGeoTransform(transformerArg, adfGeoTransform);
 
         psWarpOptions->pTransformerArg = transformerArg;
         psWarpOptions->pfnTransformer = GDALGenImgProjTransform;
 
         GDALDatasetH tileDS = GDALCreateWarpedVRT(_srcDS, tileSize, tileSize, adfGeoTransform, psWarpOptions);
-
         GDALSetProjection(tileDS, key.getProfile()->getSRS()->getWKT().c_str());
 
-        resolution = key.getExtent().width() / ((double)tileSize);
-        adfGeoTransform[0] = key.getExtent().xMin();
-        adfGeoTransform[1] = resolution;
-        adfGeoTransform[2] = 0;
-        adfGeoTransform[3] = key.getExtent().yMax();
-        adfGeoTransform[4] = 0;
-        adfGeoTransform[5] = -resolution;
-
-        // Set the geotransform back to what it should actually be.
-        GDALSetGeoTransform(tileDS, adfGeoTransform);
-
         float* heights = new float[tileSize * tileSize];
-        for (unsigned int i = 0; i < tileSize * tileSize; i++)
-        {
-            heights[i] = NO_DATA_VALUE;
-        }
         GDALRasterBand* band = static_cast<GDALRasterBand*>(GDALGetRasterBand(tileDS, 1));
         band->RasterIO(GF_Read, 0, 0, tileSize, tileSize, heights, tileSize, tileSize, GDT_Float32, 0, 0);
 
-        hf = new osg::HeightField();
-        hf->allocate(tileSize, tileSize);
         for (unsigned int c = 0; c < tileSize; c++)
         {
             for (unsigned int r = 0; r < tileSize; r++)
@@ -1687,8 +1663,6 @@ GDAL::Driver::createHeightFieldWithVRT(const TileKey& key,
         {
             GDALDestroyWarpOptions(psWarpOptions);
         }
-
-        // Note:  The transformer is closed in the warped dataset so we don't need to free it ourselves.
     }
     return hf.release();
 }
@@ -1717,6 +1691,7 @@ GDAL::Options::readFrom(const Config& conf)
     conf.get("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
     conf.get("coverage_uses_palette_index", coverageUsesPaletteIndex());
     conf.get("single_threaded", singleThreaded());
+    conf.get("use_vrt", useVRT());
 
     // report on deprecated usage
     const std::string deprecated_keys[] = {
@@ -1811,6 +1786,7 @@ OE_LAYER_PROPERTY_IMPL(GDALImageLayer, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(GDALImageLayer, std::string, Connection, connection);
 OE_LAYER_PROPERTY_IMPL(GDALImageLayer, unsigned, SubDataSet, subDataSet);
 OE_LAYER_PROPERTY_IMPL(GDALImageLayer, RasterInterpolation, Interpolation, interpolation);
+
 
 void GDALImageLayer::setSingleThreaded(bool value) { options().singleThreaded() = value; }
 bool GDALImageLayer::getSingleThreaded() const { return options().singleThreaded().get(); }
@@ -1951,6 +1927,7 @@ OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, std::string, Connection, connection);
 OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, unsigned, SubDataSet, subDataSet);
 OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, RasterInterpolation, Interpolation, interpolation);
+OE_LAYER_PROPERTY_IMPL(GDALElevationLayer, bool, UseVRT, useVRT);
 
 void GDALElevationLayer::setSingleThreaded(bool value) { options().singleThreaded() = value; }
 bool GDALElevationLayer::getSingleThreaded() const { return options().singleThreaded().get(); }
@@ -2070,7 +2047,7 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
                 progress);
         }
         else
-        {
+        {         
             heightfield = driver->createHeightField(
                 key,
                 options().tileSize().get(),

@@ -114,7 +114,12 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
         // Layer marked for drawing?
         if (drawable->_draw)
         {
-            // Cull based on the layer extent.
+            drawable->_tiles.emplace_back();
+            DrawTileCommand& tile = drawable->_tiles.back();
+            tile._intersectsLayerExtent = true;
+
+            // If the tile is outside the layer extent, we MAY or MAY NOT need to
+            // actually render it. Mark it as such.
             if (drawable->_layer)
             {
                 const LayerExtent& le = (*_layerExtents)[drawable->_layer->getUID()];
@@ -125,12 +130,11 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
                     //OE_DEBUG << LC << "Skippping " << drawable->_layer->getName() 
                     //    << " key " << tileNode->getKey().str()
                     //    << " because it was culled by extent." << std::endl;
-                    return 0L;
-                }            
-            }
+                    //return 0L;
 
-            drawable->_tiles.emplace_back();
-            DrawTileCommand& tile = drawable->_tiles.back();
+                    tile._intersectsLayerExtent = false;
+                }
+            }
 
             // install everything we need in the Draw Command:
             tile._colorSamplers = pass ? &(pass->samplers()) : nullptr;

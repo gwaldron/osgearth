@@ -42,6 +42,12 @@ namespace osgEarth { namespace REX
         // Tile key
         const TileKey* _key;
 
+        // True if this tile intersects the extent of its source layer.
+        // We can achieve some optimizations by not rendering tiles outside
+        // of the layer extents in many cases, but we don't know until it's
+        // time to render.
+        bool _intersectsLayerExtent;
+
         // ModelView matrix to apply before rendering this tile
         osg::Matrix _modelViewMatrix;
         osg::Matrix _localToWorld;
@@ -126,6 +132,10 @@ namespace osgEarth { namespace REX
             _layerOrder(INT_MAX),
             _sequence(0),
             _hasConstraints(false) { }
+
+        DrawTileCommand(DrawTileCommand&&) = default;
+        DrawTileCommand& operator = (const DrawTileCommand&) = default;
+        DrawTileCommand& operator = (DrawTileCommand&&) = default;
 
         virtual void accept(osg::PrimitiveFunctor& functor) const;
         virtual void accept(osg::PrimitiveIndexFunctor& functor) const;

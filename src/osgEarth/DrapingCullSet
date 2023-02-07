@@ -63,6 +63,8 @@ namespace osgEarth { namespace Util
 
     private:
         struct FrameData {
+            FrameData() : _acceptFrame(-1) { }
+            int _acceptFrame;
             std::vector<Entry> _entries;
             osg::BoundingSphere _bs;
         };

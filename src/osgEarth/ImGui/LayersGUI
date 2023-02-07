@@ -642,6 +642,7 @@ namespace osgEarth {
                                 bool dummy = false;
                                 if (ImGui::Checkbox("", &dummy))
                                 {
+                                    Registry::instance()->clearBlacklist();
                                     layer->open();
                                 }
                             }

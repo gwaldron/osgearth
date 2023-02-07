@@ -303,7 +303,7 @@ NormalMapGenerator::createNormalMap(
     }
 
     int sampleOK = map->getElevationPool()->sampleMapCoords(
-        points,
+        points.begin(), points.end(),
         workingSet,
         progress);
 

@@ -30,6 +30,7 @@
 
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
+#include <osgEarth/TerrainConstraintLayer>
 
 #include <osg/Drawable>
 
@@ -201,6 +202,12 @@ namespace osgEarth { namespace Procedural
     public:
         struct Placement
         {
+            Placement() = default;
+            Placement(const Placement& rhs) = default;
+            Placement& operator =(Placement&& rhs) = default;
+            Placement(Placement&&) = default;
+            Placement& operator =(const Placement& rhs) = default;
+
             //! Location in map coordinates
             OE_PROPERTY(osg::Vec3d, mapPoint);
 
@@ -410,6 +417,9 @@ namespace osgEarth { namespace Procedural
         mutable bool _requestMultisampling;
         bool _multisamplingActivated;
         void activateMultisampling();
+
+        TerrainConstraintQuery _constraintQuery;
+        Revision _mapRevision;
     };
 
 } } // namespace osgEarth::Procedural

@@ -787,15 +787,15 @@ ResourceLibrary* MapBoxGL::StyleSheet::loadSpriteLibrary(const URI& sprite)
         ImageUtils::PixelReader imageReader(image.get());
         ImageUtils::PixelWriter imageWriter(image.get());
 
-        for (unsigned int t = 0; t < image->t(); ++t)
+        for (int t = 0; t < image->t(); ++t)
         {
-            for (unsigned int s = 0; s < image->s(); ++s)
+            for (int s = 0; s < image->s(); ++s)
             {
                 osg::Vec4 color = imageReader(s, t);
                 osg::Vec4 pma(color.b() * color.a(),
                     color.g() * color.a(),
                     color.r() * color.a(),
-                    color.a());                
+                    color.a());
                 imageWriter(pma, s, t);
             }
         }

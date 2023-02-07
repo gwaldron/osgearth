@@ -479,6 +479,14 @@ EarthManipulator::Settings::bindMultiDrag(ActionType action, const ActionOptions
         Action( action, options ) );
 }
 
+void
+EarthManipulator::Settings::bindTouchDrag(ActionType action, const ActionOptions& options)
+{
+    bind(
+        InputSpec(EarthManipulator::EVENT_TOUCH_DRAG, 0, 0),
+        Action(action, options));
+}
+
 const EarthManipulator::Action&
 EarthManipulator::Settings::getAction(int event_type, int input_mask, int modkey_mask) const
 {
@@ -674,6 +682,7 @@ EarthManipulator::configureDefaultSettings()
     options.clear();
     _settings->bindTwist( ACTION_ROTATE, options );
     _settings->bindMultiDrag( ACTION_ROTATE, options );
+    _settings->bindTouchDrag( ACTION_PAN, options );
 
     //_settings->setThrowingEnabled( false );
     _settings->setLockAzimuthWhilePanning( true );
@@ -2127,8 +2136,8 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
 
     if (_touchPointQueue.size() == 2 )
     {
-        if (_touchPointQueue[0].size()   == 2 &&     // two fingers
-            _touchPointQueue[1].size()   == 2)       // two fingers
+        if (_touchPointQueue[0].size()   >= 2 &&     // two fingers
+            _touchPointQueue[1].size()   >= 2)       // two fingers
         {
             MultiTouchPoint& p0 = _touchPointQueue[0];
             MultiTouchPoint& p1 = _touchPointQueue[1];
@@ -2216,8 +2225,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
             {
                 output.push_back(TouchEvent());
                 TouchEvent& ev = output.back();
-                ev._eventType = EVENT_MOUSE_DRAG;
-                ev._mbmask = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
+                ev._eventType = EVENT_TOUCH_DRAG;
                 ev._dx =  (p1[0].x - p0[0].x) * sens;
                 ev._dy =  (p1[0].y - p0[0].y) * sens;
             }

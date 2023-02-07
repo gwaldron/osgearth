@@ -90,14 +90,17 @@ namespace osgEarth
         class OSGEARTH_EXPORT Envelope
         {
         public:
+
             //! For each point in an array of points, sample the elevation and store
             //! the result in the Z coordinate. Input points must be in the map's SRS.
-            //! @param points Array of points in map coords for which to sample elevation
+            //! @param begin Iterator pointing to beginning of point array
+            //! @param end Iterator pointing to end of point array
             //! @param progress Optional progress callback (can be nullptr)
             //! @param failValue Value to store in Z if the sampling fails
             //! @return Number of valid elevations sampled, or -1 if there was an error
             int sampleMapCoords(
-                std::vector<osg::Vec3d>& points,
+                std::vector<osg::Vec3d>::iterator begin,
+                std::vector<osg::Vec3d>::iterator end,
                 ProgressCallback* progress,
                 float failValue = NO_DATA_VALUE);
 
@@ -177,27 +180,31 @@ namespace osgEarth
         //! For each point in an array of points, sample the elevation and store
         //! the result in the Z coordinate. Input points must be in the map's SRS,
         //! and the sampling resolution is taken from the W coordinate.
-        //! @param points Array of points in map coords for which to sample elevation
+        //! @param begin Iterator pointing to beginning of point array
+        //! @param end Iterator pointing to end of point array
         //! @param ws Optional working set (local cache, can be nullptr)
         //! @param progress Optional progress callback (can be nullptr)
         //! @param failValue Value to store in Z if the sampling fails
         //! @return Number of valid elevations sampled, or -1 if there was an error
         int sampleMapCoords(
-            std::vector<osg::Vec4d>& points,
+            std::vector<osg::Vec4d>::iterator begin,
+            std::vector<osg::Vec4d>::iterator end,
             WorkingSet* ws,
             ProgressCallback* progress,
             float failValue =NO_DATA_VALUE);
-
+        
         //! For each point in an array of points, sample the elevation and store
         //! the result in the Z coordinate. Input points must be in the map's SRS.
-        //! @param points Array of points in map coords for which to sample elevation
+        //! @param begin Iterator pointing to beginning of point array
+        //! @param end Iterator pointing to end of point array
         //! @param resolution Resolution at which to sample the points
         //! @param ws Optional working set (local cache, can be nullptr)
         //! @param progress Optional progress callback (can be nullptr)
         //! @param failValue Value to store in Z if the sampling fails
         //! @return Number of valid elevations sampled, or -1 if there was an error
         int sampleMapCoords(
-            std::vector<osg::Vec3d>& points,
+            std::vector<osg::Vec3d>::iterator begin,
+            std::vector<osg::Vec3d>::iterator end,
             const Distance& resolution,
             WorkingSet* ws,
             ProgressCallback* progress,

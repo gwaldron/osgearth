@@ -348,6 +348,9 @@ TileLayer::openImplementation()
 Status
 TileLayer::closeImplementation()
 {
+    _dataExtents.clear();
+    dirtyDataExtents();
+
     return Layer::closeImplementation();
 }
 

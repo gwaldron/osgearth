@@ -121,10 +121,10 @@ TerrainConstraintLayer::getExtent() const
 void
 TerrainConstraintLayer::setVisible(bool value)
 {
-    VisibleLayer::setVisible(value);
-    if (value)
+    //VisibleLayer::setVisible(value); // do NOT call base class
+    if (value && !isOpen())
         open();
-    else
+    else if (!value && isOpen())
         close();
 }
 
@@ -180,4 +180,85 @@ void
 TerrainConstraintLayer::setMinLevel(unsigned value)
 {
     setOptionThatRequiresReopen(options().minLevel(), value);
+}
+
+
+
+
+void
+TerrainConstraintQuery::setMap(const Map* map)
+{
+    _layers.clear();
+    if (map)
+        map->getOpenLayers(_layers);
+}
+
+void
+TerrainConstraintQuery::addLayer(TerrainConstraintLayer* layer)
+{
+    _layers.push_back(layer);
+}
+
+bool
+TerrainConstraintQuery::getConstraints(
+    const TileKey& key,
+    std::vector<TerrainConstraint>& output,
+    ProgressCallback* progress) const
+{
+    output.clear();
+
+    if (!_layers.empty())
+    {
+        const GeoExtent& keyExtent = key.getExtent();
+
+        for (auto& layer : _layers)
+        {
+            if (!layer->isOpen() || !layer->getVisible())
+                continue;
+
+            // not to the min LOD yet?
+            if (layer->getMinLevel() > key.getLOD())
+                continue;
+
+            // extents don't intersect?
+            if (!layer->getExtent().intersects(keyExtent))
+                continue;
+
+            // For each feature, check that it intersects the tile key,
+            // and then xform it to the correct SRS and clone it for
+            // editing.
+            FeatureSource* fs = layer->getFeatureSource();
+            if (fs)
+            {
+                osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(
+                    key,
+                    layer->getFilters(),
+                    nullptr,
+                    progress);
+
+                if (cursor.valid() && cursor->hasMore())
+                {
+                    TerrainConstraint constraint;
+                    constraint.layer = layer;
+
+                    while (cursor->hasMore())
+                    {
+                        if (progress && progress->isCanceled())
+                            return false;
+
+                        Feature* f = cursor->nextFeature();
+
+                        if (f && f->getExtent().intersects(keyExtent))
+                        {
+                            f->transform(keyExtent.getSRS());
+                            constraint.features.push_back(f);
+                        }
+                    }
+
+                    output.push_back(std::move(constraint));
+                }
+            }
+        }
+    }
+    return true;
 }

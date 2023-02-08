@@ -79,7 +79,7 @@ namespace
                 }
                 for(unsigned i=start; i<nodePaths[0].size(); ++i)
                     p.push_back(nodePaths[0][i]);
-                
+
                 m = osg::computeLocalToWorld(p);
                 //m = osg::computeLocalToWorld( nodePaths[0] );
             }
@@ -479,6 +479,14 @@ EarthManipulator::Settings::bindMultiDrag(ActionType action, const ActionOptions
         Action( action, options ) );
 }
 
+void
+EarthManipulator::Settings::bindTouchDrag(ActionType action, const ActionOptions& options)
+{
+    bind(
+        InputSpec(EarthManipulator::EVENT_TOUCH_DRAG, 0, 0),
+        Action(action, options));
+}
+
 const EarthManipulator::Action&
 EarthManipulator::Settings::getAction(int event_type, int input_mask, int modkey_mask) const
 {
@@ -674,6 +682,7 @@ EarthManipulator::configureDefaultSettings()
     options.clear();
     _settings->bindTwist( ACTION_ROTATE, options );
     _settings->bindMultiDrag( ACTION_ROTATE, options );
+    _settings->bindTouchDrag( ACTION_PAN, options );
 
     //_settings->setThrowingEnabled( false );
     _settings->setLockAzimuthWhilePanning( true );
@@ -1600,7 +1609,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
     //double time_s_now = osg::Timer::instance()->time_s();
     _time_s_now = view->getFrameStamp()->getReferenceTime();
-    
+
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
         if ( _node.valid() )
@@ -1613,7 +1622,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 osg::ref_ptr<MapNode> mapNode;
                 if (_mapNode.lock(mapNode))
                 {
-                    _mapNodeFrame = osg::computeLocalToWorld(mapNode->getParentalNodePaths()[0]); 
+                    _mapNodeFrame = osg::computeLocalToWorld(mapNode->getParentalNodePaths()[0]);
                     _mapNodeFrameInverse.invert(_mapNodeFrame);
                 }
             }
@@ -1690,9 +1699,9 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     // form the current Action based on the event type:
     Action action = ACTION_NULL;
 
-    // if tethering is active, check to see whether the incoming event
+    // if tethering is active, check to see whether the incoming mouse event
     // will break the tether.
-    if (isTethering() && ea.getEventType() != ea.FRAME)
+    if (isTethering() && ea.getEventType() != ea.FRAME && !ea.isMultiTouchEvent())
     {
         const ActionTypeVector& atv = _settings->getBreakTetherActions();
         if ( atv.size() > 0 )
@@ -1730,6 +1739,16 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             for( TouchEvents::iterator i = te.begin(); i != te.end(); ++i )
             {
                 action = _settings->getAction(i->_eventType, i->_mbmask, 0);
+
+                // Deal with tether breaking for touch
+                if (isTethering())
+                {
+                    const ActionTypeVector& atv = _settings->getBreakTetherActions();
+                    if ( std::find(atv.begin(), atv.end(), action._type) != atv.end() )
+                    {
+                        clearViewpoint();
+                    }
+                }
 
                 if (action._type != ACTION_NULL)
                 {
@@ -2127,8 +2146,8 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
 
     if (_touchPointQueue.size() == 2 )
     {
-        if (_touchPointQueue[0].size()   == 2 &&     // two fingers
-            _touchPointQueue[1].size()   == 2)       // two fingers
+        if (_touchPointQueue[0].size()   >= 2 &&     // two fingers
+            _touchPointQueue[1].size()   >= 2)       // two fingers
         {
             MultiTouchPoint& p0 = _touchPointQueue[0];
             MultiTouchPoint& p1 = _touchPointQueue[1];
@@ -2216,8 +2235,7 @@ EarthManipulator::parseTouchEvents( TouchEvents& output )
             {
                 output.push_back(TouchEvent());
                 TouchEvent& ev = output.back();
-                ev._eventType = EVENT_MOUSE_DRAG;
-                ev._mbmask = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
+                ev._eventType = EVENT_TOUCH_DRAG;
                 ev._dx =  (p1[0].x - p0[0].x) * sens;
                 ev._dy =  (p1[0].y - p0[0].y) * sens;
             }
@@ -2356,7 +2374,7 @@ EarthManipulator::updateCamera(osg::Camera& camera)
 
 
     osgGA::CameraManipulator::updateCamera(camera);
-    
+
     // Invoke the callback once the camera's been udpated for the ensuing render:
     if (_updateCameraCallback.valid())
     {
@@ -2667,7 +2685,7 @@ EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
     bool onEarth = true;
     if (_lastPointOnEarth != zero)
     {
-        // Use the start location (for continuous zoom) 
+        // Use the start location (for continuous zoom)
         target = _lastPointOnEarth;
     }
     else
@@ -2695,7 +2713,7 @@ EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
             double ratio = delta/_distance;
 
             // xform target point into the current focal point's local frame,
-            // and adjust the zoom ratio to account for the difference in 
+            // and adjust the zoom ratio to account for the difference in
             // target distance based on the earth's curvature...approximately!
             osg::Vec3d targetInLocalFrame = _centerRotation.conj()*target;
             double crRatio = _center.length() / targetInLocalFrame.z();
@@ -2728,7 +2746,7 @@ EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
             double newDistance = _distance*scale;
             double delta = _distance - newDistance;
             double ratio = delta/_distance;
-            
+
             osg::Vec3d newEye = eye + eyeToTargetVec*delta;
 
             setByLookAt(newEye, newEye+(at-eye), up);

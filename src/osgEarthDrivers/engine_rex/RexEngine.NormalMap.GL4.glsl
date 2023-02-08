@@ -14,9 +14,8 @@ out vec2 oe_normal_uv;
 
 void oe_rex_normalMapVS(inout vec4 unused)
 {
-    oe_normal_handle = 0;
-
 #ifdef OE_TERRAIN_RENDER_NORMAL_MAP
+    oe_normal_handle = 0;
     int normalIndex = oe_tile[oe_tileID].normalIndex;
     if (normalIndex >= 0)
     {
@@ -56,11 +55,13 @@ void oe_rex_normalMapFS(inout vec4 color)
     vec3 tangent = normalize(cross(binormal, oe_UpVectorView));
     oe_normalMapTBN = mat3(tangent, binormal, oe_UpVectorView);
 
+#ifdef OE_TERRAIN_RENDER_NORMAL_MAP
     if (oe_normal_handle > 0)
     {
         vec4 N = oe_terrain_getNormalAndCurvature(oe_normal_handle, oe_normal_uv);
         vp_Normal = normalize( oe_normalMapTBN*N.xyz );
     }
+#endif
 
 #ifdef OE_DEBUG_CURVATURE
     // visualize curvature quantized:

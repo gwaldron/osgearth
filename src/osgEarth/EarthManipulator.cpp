@@ -2142,107 +2142,121 @@ EarthManipulator::addTouchEvents(const osgGA::GUIEventAdapter& ea)
 bool
 EarthManipulator::parseTouchEvents( TouchEvents& output )
 {
-    double sens = this->getSettings()->getTouchSensitivity();
+    // Must have two touch points to continue
+    if (_touchPointQueue.size() != 2)
+        return false;
 
-    if (_touchPointQueue.size() == 2 )
+    const MultiTouchPoint& p0 = _touchPointQueue[0];  // old touch
+    const MultiTouchPoint& p1 = _touchPointQueue[1];  // new touch
+    // Each multi-touch point must have at least one touch
+    if (p0.empty() || p1.empty())
+        return false;
+
+    const double sens = this->getSettings()->getTouchSensitivity();
+
+    // Check for two-finger gestures
+    if (p0.size() >= 2 && p1.size() >= 2)
     {
-        if (_touchPointQueue[0].size()   >= 2 &&     // two fingers
-            _touchPointQueue[1].size()   >= 2)       // two fingers
+        // If the IDs on the two touches do not match, then ignore the event
+        if (p0[0].id != p1[0].id || p0[1].id != p1[1].id)
+            return false;
+
+        // If any of the 4 touches (old/new, t0/t1) is an ended event, then ignore the touch.
+        // We want to accept moved and stationary fingers; beginning fingers are OK too.
+        if (p0[0].phase == osgGA::GUIEventAdapter::TOUCH_ENDED ||
+            p0[1].phase == osgGA::GUIEventAdapter::TOUCH_ENDED ||
+            p1[0].phase == osgGA::GUIEventAdapter::TOUCH_ENDED ||
+            p1[1].phase == osgGA::GUIEventAdapter::TOUCH_ENDED)
+            return false;
+
+        // gather information about what happened:
+        float dx[2], dy[2];
+        for (int i = 0; i < 2; ++i)
         {
-            MultiTouchPoint& p0 = _touchPointQueue[0];
-            MultiTouchPoint& p1 = _touchPointQueue[1];
-
-            if (p0[0].phase != osgGA::GUIEventAdapter::TOUCH_ENDED &&
-                p1[0].phase != osgGA::GUIEventAdapter::TOUCH_ENDED &&
-                p0[1].phase == osgGA::GUIEventAdapter::TOUCH_MOVED &&
-                p1[1].phase == osgGA::GUIEventAdapter::TOUCH_MOVED)
-            {
-                // gather information about what happened:
-                float dx[2], dy[2];
-                for( int i=0; i<2; ++i )
-                {
-                    dx[i] = p1[i].x - p0[i].x;
-                    dy[i] = p1[i].y - p0[i].y;
-                }
-                osg::Vec2f vec0 = osg::Vec2f(p0[1].x,p0[1].y)-osg::Vec2f(p0[0].x,p0[0].y);
-                osg::Vec2f vec1 = osg::Vec2f(p1[1].x,p1[1].y)-osg::Vec2f(p1[0].x,p1[0].y);
-                float deltaDistance = vec1.length() - vec0.length();
-
-                float angle[2];
-                angle[0] = atan2(p0[0].y - p0[1].y, p0[0].x - p0[1].x);
-                angle[1] = atan2(p1[0].y - p1[1].y, p1[0].x - p1[1].x);
-                float da = angle[1] - angle[0];
-
-
-                // Threshold in pixels for determining if a two finger drag happened.
-                float dragThres = 1.0f;
-
-                // now see if that corresponds to any touch events:
-                if (osg::equivalent( vec0.x(), vec1.x(), dragThres) &&
-                    osg::equivalent( vec0.y(), vec1.y(), dragThres))
-                {
-                    // two-finger drag.
-                    output.push_back(TouchEvent());
-                    TouchEvent& ev = output.back();
-                    ev._eventType = EVENT_MULTI_DRAG;
-                    ev._dx = 0.5 * (dx[0]+dx[1]) * sens;
-                    ev._dy = 0.5 * (dy[0]+dy[1]) * sens;
-                }
-                else
-                {
-                    // otherwise it's a pinch and/or a zoom.  You can do them together.
-                    if (fabs(deltaDistance) > (1.0 * 0.0005 / sens ) )
-                    {
-                        // distance between the fingers changed: a pinch.
-                        output.push_back(TouchEvent());
-                        TouchEvent& ev = output.back();
-                        ev._eventType = EVENT_MULTI_PINCH;
-                        ev._dx = 0.0, ev._dy = deltaDistance * -sens;
-                    }
-
-                    if (fabs(da) > (0.01 * 0.0005 / sens) )
-                    {
-                        // angle between vectors changed: a twist.
-                        output.push_back(TouchEvent());
-                        TouchEvent& ev = output.back();
-                        ev._eventType = EVENT_MULTI_TWIST;
-                        ev._dx = da;
-                        //ev._dy = 0.5 * (dy[0]+dy[1]) * _touch_sens;
-                        ev._dy = 0.0;
-                    }
-                }
-            }
+            dx[i] = p1[i].x - p0[i].x;
+            dy[i] = p1[i].y - p0[i].y;
         }
+        osg::Vec2f vec0 = osg::Vec2f(p0[1].x, p0[1].y) - osg::Vec2f(p0[0].x, p0[0].y);
+        osg::Vec2f vec1 = osg::Vec2f(p1[1].x, p1[1].y) - osg::Vec2f(p1[0].x, p1[0].y);
+        float deltaDistance = vec1.length() - vec0.length();
 
-        else if (_touchPointQueue[0].size() >= 1 &&     // one finger
-                 _touchPointQueue[1].size() >= 1)       // one finger
+        float angle[2];
+        angle[0] = atan2(p0[0].y - p0[1].y, p0[0].x - p0[1].x);
+        angle[1] = atan2(p1[0].y - p1[1].y, p1[0].x - p1[1].x);
+        float da = angle[1] - angle[0];
+
+
+        // Threshold in pixels for determining if a two finger drag happened.
+        float dragThres = 1.0f;
+
+        // now see if that corresponds to any touch events:
+        if (osg::equivalent(vec0.x(), vec1.x(), dragThres) &&
+            osg::equivalent(vec0.y(), vec1.y(), dragThres))
         {
-            MultiTouchPoint& p0 = _touchPointQueue[0];
-            MultiTouchPoint& p1 = _touchPointQueue[1];
-
-            if (p1[0].tapCount == 2)
+            // two-finger drag.
+            output.push_back(TouchEvent());
+            TouchEvent& ev = output.back();
+            ev._eventType = EVENT_MULTI_DRAG;
+            ev._dx = 0.5 * (dx[0] + dx[1]) * sens;
+            ev._dy = 0.5 * (dy[0] + dy[1]) * sens;
+        }
+        else
+        {
+            // otherwise it's a pinch and/or a zoom.  You can do them together.
+            if (fabs(deltaDistance) > (1.0 * 0.0005 / sens))
             {
-                // double tap
+                // distance between the fingers changed: a pinch.
                 output.push_back(TouchEvent());
                 TouchEvent& ev = output.back();
-                ev._eventType = EVENT_MOUSE_DOUBLE_CLICK;
-                ev._mbmask = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
-                ev._dx = 0.0;
+                ev._eventType = EVENT_MULTI_PINCH;
+                ev._dx = 0.0, ev._dy = deltaDistance * -sens;
+            }
+
+            if (fabs(da) > (0.01 * 0.0005 / sens))
+            {
+                // angle between vectors changed: a twist.
+                output.push_back(TouchEvent());
+                TouchEvent& ev = output.back();
+                ev._eventType = EVENT_MULTI_TWIST;
+                ev._dx = da;
+                //ev._dy = 0.5 * (dy[0]+dy[1]) * _touch_sens;
                 ev._dy = 0.0;
             }
-            else if ((p0[0].phase != osgGA::GUIEventAdapter::TOUCH_ENDED &&
-                      p1[0].phase == osgGA::GUIEventAdapter::TOUCH_MOVED ))
-            {
-                output.push_back(TouchEvent());
-                TouchEvent& ev = output.back();
-                ev._eventType = EVENT_TOUCH_DRAG;
-                ev._dx =  (p1[0].x - p0[0].x) * sens;
-                ev._dy =  (p1[0].y - p0[0].y) * sens;
-            }
         }
+        return output.size() > 0;
     }
 
-    return output.size() > 0;
+    // At this point there is potential for single-touch action
+
+    // Check for double-tap
+    if (p1[0].tapCount == 2)
+    {
+        output.push_back(TouchEvent());
+        TouchEvent& ev = output.back();
+        ev._eventType = EVENT_MOUSE_DOUBLE_CLICK;
+        ev._mbmask = osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON;
+        ev._dx = 0.0;
+        ev._dy = 0.0;
+        return true;
+    }
+
+    // If the IDs on the old and new touches do not match, then ignore the event
+    if (p0[0].id != p1[0].id)
+        return false;
+
+    // Neither the new nor old touch should be an ended event; ignore if so
+    if ((p0[0].phase != osgGA::GUIEventAdapter::TOUCH_ENDED &&
+        p1[0].phase != osgGA::GUIEventAdapter::TOUCH_ENDED))
+    {
+        output.push_back(TouchEvent());
+        TouchEvent& ev = output.back();
+        ev._eventType = EVENT_TOUCH_DRAG;
+        ev._dx = (p1[0].x - p0[0].x) * sens;
+        ev._dy = (p1[0].y - p0[0].y) * sens;
+        return true;
+    }
+
+    return false;
 }
 
 void

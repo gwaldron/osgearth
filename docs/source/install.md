@@ -12,6 +12,7 @@ Then you must set up your CMake configuration to point at the installed librarie
 
 ### Method 2: Use the vcpkg toolchain
 This approach sets up CMake to use the vcpkg toolchain, automating the installation of dependencies and making them local to your project. First you need a manifest file in your repository that looks like this:
+#### vcpkg.json
 ```json
 {
     "name": "myApp",

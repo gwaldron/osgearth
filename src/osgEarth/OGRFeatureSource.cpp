@@ -502,8 +502,9 @@ OGRFeatureSource::openImplementation()
         if (!ex.isValid())
         {
             // default to WGS84 Lat/Long
-            osg::ref_ptr<const Profile> gg = Profile::create(Profile::GLOBAL_GEODETIC);
-            ex = gg->getExtent();
+            //osg::ref_ptr<const Profile> gg = Profile::create(Profile::GLOBAL_GEODETIC);
+            //ex = gg->getExtent();
+            ex = GeoExtent(SpatialReference::get("wgs84"), _geometry->getBounds());
         }
 
         featureProfile = new FeatureProfile(ex);

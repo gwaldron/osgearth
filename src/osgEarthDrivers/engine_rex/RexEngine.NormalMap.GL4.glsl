@@ -15,8 +15,13 @@ out vec2 oe_normal_uv;
 void oe_rex_normalMapVS(inout vec4 unused)
 {
 #ifdef OE_TERRAIN_RENDER_NORMAL_MAP
-    oe_normal_uv = oe_terrain_getNormalCoords();
-    oe_normal_handle = oe_terrain_tex[oe_tile[oe_tileID].normalIndex];
+    oe_normal_handle = 0;
+    int normalIndex = oe_tile[oe_tileID].normalIndex;
+    if (normalIndex >= 0)
+    {
+        oe_normal_uv = oe_terrain_getNormalCoords();
+        oe_normal_handle =  oe_terrain_tex[normalIndex];
+    }
 #endif
 }
 
@@ -44,13 +49,18 @@ mat3 oe_normalMapTBN;
 
 void oe_rex_normalMapFS(inout vec4 color)
 {
+    vp_Normal = oe_UpVectorView;
+
     vec3 binormal = normalize(gl_NormalMatrix * vec3(0, 1, 0));
     vec3 tangent = normalize(cross(binormal, oe_UpVectorView));
     oe_normalMapTBN = mat3(tangent, binormal, oe_UpVectorView);
 
 #ifdef OE_TERRAIN_RENDER_NORMAL_MAP
-    vec4 N = oe_terrain_getNormalAndCurvature(oe_normal_handle, oe_normal_uv);
-    vp_Normal = normalize( oe_normalMapTBN*N.xyz );
+    if (oe_normal_handle > 0)
+    {
+        vec4 N = oe_terrain_getNormalAndCurvature(oe_normal_handle, oe_normal_uv);
+        vp_Normal = normalize( oe_normalMapTBN*N.xyz );
+    }
 #endif
 
 #ifdef OE_DEBUG_CURVATURE

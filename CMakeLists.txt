@@ -164,7 +164,7 @@ if(OSGEARTH_ENABLE_PROFILING)
 endif()
 
 if(OSGEARTH_BUILD_ZIP_PLUGIN)
-    find_package(LIBZIP)
+    find_package(LibZip)
 endif()
 
 if(OSGEARTH_BUILD_TRITON_NODEKIT)

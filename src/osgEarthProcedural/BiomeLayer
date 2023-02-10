@@ -43,7 +43,7 @@ namespace osgEarth
             OE_OPTION(float, lush);
             OE_OPTION(float, rugged);
             OE_OPTION(std::string, material);
-            OE_OPTION(std::string, soilType);
+            OE_OPTION(std::string, soiltype);
             OE_PROPERTY(std::vector<std::string>, traits);
 
             LandCoverSample() { }
@@ -56,7 +56,7 @@ namespace osgEarth
                 conf.get("lush", lush());
                 conf.get("rugged", rugged());
                 conf.get("material", material());
-                conf.get("soiltype", soilType());
+                conf.get("soiltype", soiltype());
             }
 
             bool valid() const {
@@ -67,7 +67,7 @@ namespace osgEarth
                     lush().isSet() ||
                     rugged().isSet() ||
                     material().isSet() ||
-                    soilType().isSet();
+                    soiltype().isSet();
             }
 
             bool operator < (const LandCoverSample& rhs) const
@@ -78,7 +78,7 @@ namespace osgEarth
                 OE_OPTION_LESS(lush, rhs.lush);
                 OE_OPTION_LESS(rugged, rhs.rugged);
                 OE_OPTION_LESS(material, rhs.material);
-                OE_OPTION_LESS(soilType, rhs.soilType);
+                OE_OPTION_LESS(soiltype, rhs.soiltype);
                 if (traits() < rhs.traits()) return true;
                 if (traits() > rhs.traits()) return false;
                 return false;

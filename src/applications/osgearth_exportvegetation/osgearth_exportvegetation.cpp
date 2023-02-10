@@ -111,7 +111,6 @@ struct App
 
         featureGen.setMap(map);
         featureGen.setLayer(veglayer);
-        featureGen.setFactory(new TerrainTileModelFactory(mapNode->options().terrain().get()));
 
         if (featureGen.getStatus().isError())
             return usage(argv[0], featureGen.getStatus().message());

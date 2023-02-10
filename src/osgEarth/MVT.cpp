@@ -468,6 +468,8 @@ MVTFeatureSourceOptions::getConfig() const
 {
     Config conf = FeatureSource::Options::getConfig();
     conf.set("url", url());
+    conf.set("min_level", _minLevel);
+    conf.set("max_level", _maxLevel);
     return conf;
 }
 
@@ -475,6 +477,8 @@ void
 MVTFeatureSourceOptions::fromConfig(const Config& conf)
 {
     conf.get("url", url());
+    conf.get("min_level", _minLevel);
+    conf.get("max_level", _maxLevel);
 }
 
 //........................................................................
@@ -740,11 +744,18 @@ MVTFeatureSource::createFeatureProfile()
 
 
     FeatureProfile* result = new FeatureProfile(profile->getExtent());
-    computeLevels();
-    OE_INFO << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;
+    if (!options().minLevel().isSet() || !options().maxLevel().isSet())
+    {
+        computeLevels();
+        OE_INFO << LC << "Got levels from database " << _minLevel << ", " << _maxLevel << std::endl;
+    }
+    else
+    {
+        _minLevel = *options().minLevel();
+        _maxLevel = *options().maxLevel();
+        OE_INFO << LC << "Got levels from setting " << _minLevel << ", " << _maxLevel << std::endl;
+    }
 
-
-    // Use the max level for now as the min level.
     result->setFirstLevel(_minLevel);
     result->setMaxLevel(_maxLevel);
     result->setTilingProfile(profile);

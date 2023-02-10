@@ -1,4 +1,6 @@
-# Building osgEarth
+# Building osgEarth from Scratch
+
+Normally it is sufficient to install osgEarth from `vcpkg` and use it in your appplication. However, if you want to contribute to the project or make local modifications, you will need to build osgEarth yourself.
 
 The documentation here is focused on Windows. 
 

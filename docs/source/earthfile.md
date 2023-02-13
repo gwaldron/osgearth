@@ -66,7 +66,7 @@ Now let's add some height field data, also knows as a **DEM** or Digital Elevati
 
     <Viewpoints>
         <Viewpoint name="San Francisco, California">
-            <heading>10/heading>
+            <heading>10</heading>
             <height>4500.0</height>
             <lat>37.5581</lat>
             <long>-122.334</long>

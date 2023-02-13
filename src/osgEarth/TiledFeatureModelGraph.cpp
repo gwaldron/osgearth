@@ -125,18 +125,16 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
         {
             osg::Group* group = new osg::Group;
 
-            typedef std::map< std::string, FeatureList > StyleToFeaturesMap;
-            StyleToFeaturesMap styleToFeatures;
-
             for (StyleSelectors::const_iterator i = _styleSheet->getSelectors().begin();
                 i != _styleSheet->getSelectors().end();
                 ++i)
             {
+                typedef std::map< std::string, FeatureList > StyleToFeaturesMap;
+                StyleToFeaturesMap styleToFeatures;
+
                 // pull the selected style...
                 const StyleSelector& sel = i->second;
 
-                // if the selector uses an expression to select the style name, then we must perform the
-                // query and then SORT the features into style groups.
                 if (sel.styleExpression().isSet())
                 {
                     // establish the working bounds and a context:
@@ -157,28 +155,49 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
                             return nullptr;
                     }
                 }
-            }
 
-            for (StyleToFeaturesMap::iterator itr = styleToFeatures.begin(); itr != styleToFeatures.end(); ++itr)
-            {
-                const Style* style = _styleSheet->getStyle(itr->first);
-                if (style)
+                std::unordered_map<std::string, Style> literal_styles;
+
+                for (StyleToFeaturesMap::iterator itr = styleToFeatures.begin(); itr != styleToFeatures.end(); ++itr)
                 {
-                    osg::Group* styleGroup = factory.getOrCreateStyleGroup(*style, _session.get());
-                    osg::ref_ptr< osg::Node>  styleNode;
-                    osg::ref_ptr< FeatureListCursor> cursor = new FeatureListCursor(itr->second);
-                    Query query;
-                    factory.createOrUpdateNode(cursor.get(), *style, fc, styleNode, query);
-                    if (styleNode.valid())
+                    const std::string& styleString = itr->first;
+                    Style* style = nullptr;
+
+                    if (styleString.length() > 0 && styleString[0] == '{')
                     {
-                        styleGroup->addChild(styleNode);
-                        if (!group->containsNode(styleGroup))
+                        Config conf("style", styleString);
+                        conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
+                        conf.set("type", "text/css");
+                        Style& literal_style = literal_styles[conf.toJSON()];
+                        if (literal_style.empty())
+                            literal_style = Style(conf);
+                        style = &literal_style;
+                    }
+                    else
+                    {
+                        style = _styleSheet->getStyle(styleString);
+                    }
+
+                    if (style)
+                    {
+                        osg::Group* styleGroup = factory.getOrCreateStyleGroup(*style, _session.get());
+                        osg::ref_ptr< osg::Node>  styleNode;
+                        osg::ref_ptr< FeatureListCursor> cursor = new FeatureListCursor(itr->second);
+                        Query query;
+                        factory.createOrUpdateNode(cursor.get(), *style, fc, styleNode, query);
+                        if (styleNode.valid())
                         {
-                            group->addChild(styleGroup);
+                            styleGroup->addChild(styleNode);
+                            if (!group->containsNode(styleGroup))
+                            {
+                                group->addChild(styleGroup);
+                            }
                         }
                     }
                 }
             }
+
+            
             node = group;
         }
         else if (_styleSheet->getDefaultStyle())

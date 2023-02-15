@@ -190,7 +190,7 @@ Horizon::isVisible(const osg::Vec3d& target,
     // eye->center vetor. If the sphere is entirely within the cone, it is occluded
     // by the spheroid (not ellipsoid, sorry)
     // ref: http://www.cbloom.com/3d/techdocs/culling.txt
-    VT = target - _eye;
+    VT = osg::componentMultiply(target - _eye, _scale);
 
     double a = VT * -_eyeUnit;
     double b = a * _coneTan;
@@ -269,7 +269,7 @@ Horizon::isVisible(const osg::Vec3d& eye,
     // eye->center vetor. If the sphere is entirely within the cone, it is occluded
     // by the spheroid (not ellipsoid, sorry)
     // ref: http://www.cbloom.com/3d/techdocs/culling.txt
-    VT = target - eye;
+    VT = osg::componentMultiply(target - eye, _scale);
 
     double VPmag  = VCmag - 1.0/VCmag; // viewer->horizon plane dist (scaled)
     double VHmag  = sqrtf( VHmag2 );

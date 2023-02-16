@@ -51,42 +51,53 @@ namespace osgEarth { namespace Procedural
             //! Biomes layer in the map
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
 
-            //! Whether to render with GL_ALPHA_TO_COVERAGE (default is true)
+            //! Whether to render with GL_ALPHA_TO_COVERAGE
+            //! default = true
             OE_OPTION(bool, alphaToCoverage);
 
             //! Angle of view at which a polygon will become transparent
+            //! default = 45 degrees
             OE_OPTION(Angle, impostorLowAngle);
 
             //! Angle of view at which a polygon will become opaque
+            //! default = 67.5 degrees
             OE_OPTION(Angle, impostorHighAngle);
 
             //! Whether to use normal maps on impostor geometries
+            //! default = true
             OE_OPTION(bool, useImpostorNormalMaps);
 
             //! Whether to use PBR maps on impostor geometries
+            //! default = true
             OE_OPTION(bool, useImpostorPBRMaps);
 
             //! Whether to assume normal maps are RG-compressed
+            //! default = true;
             OE_OPTION(bool, useRGCompressedNormalMaps);
 
             //! Scale factor for LOD-ing the far-away impostor vegetation
+            //! default = 1.0f
             OE_OPTION(float, farLODScale);
 
             //! Scale factor for the LOD at which to transition from 
-            //! high-resolution 3D models us close to impostor models
+            //! high-resolution 3D models up close to impostor models
             //! at distance.
+            //! default = 1.0f
             OE_OPTION(float, nearLODScale);
 
             //! Amount of an LOD boundary (from near to far) should be
             //! used to display a transition between the two LODs [0..1]
+            //! default = 0.5f
             OE_OPTION(float, lodTransitionPadding);
 
             //! Maximum texture size to transfer to the GPU
+            //! default = INT_MAX (no limit)
             OE_OPTION(unsigned, maxTextureSize);
 
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
                 //! Whether to render this group at all
+                //! default = true
                 OE_OPTION(bool, enabled);
 
                 //! Terrain LOD at which to render this group
@@ -96,18 +107,23 @@ namespace osgEarth { namespace Procedural
                 OE_OPTION(float, maxRange);
 
                 //! Number of assets to place per square kilometer
+                //! default = 4096
                 OE_OPTION(int, instancesPerSqKm);
 
                 //! Whether assets in this group cast shadows
+                //! default = false
                 OE_OPTION(bool, castShadows);
 
                 //! Percentage of overlap allowed in asset bounding spheres [0..1]
+                //! default = 0.0f
                 OE_OPTION(float, overlap);
 
                 //! Base SSE scale factor for far visibility
+                //! default = 1.0f
                 OE_OPTION(float, farLODScale);
 
                 //! Cut off for alpha discard/blend in the shader (0..1]
+                //! default = 0.2f
                 OE_OPTION(float, alphaCutoff);
 
                 // internal

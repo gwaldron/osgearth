@@ -128,7 +128,7 @@ namespace osgEarth
         template<typename T>
         Revision getLayers(
             std::vector< osg::ref_ptr<T> >& output,
-            const std::function<bool(const Layer*)>& predicate) const;
+            const std::function<bool(const T*)>& predicate) const;
 
         //! Fills the vector with references to all layers of the specified type.
         //! and returns the corresponding revision number.
@@ -302,7 +302,7 @@ namespace osgEarth
     }
 
     template<typename T>
-    Revision Map::getLayers(std::vector<osg::ref_ptr<T>>& output, const std::function<bool(const Layer*)>& predicate) const {
+    Revision Map::getLayers(std::vector<osg::ref_ptr<T>>& output, const std::function<bool(const T*)>& predicate) const {
         Threading::ScopedReadLock lock(_mapDataMutex);
         for (auto& i : _layers) {
             T* obj = dynamic_cast<T*>(i.get());

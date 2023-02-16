@@ -1,0 +1,742 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#include "TileMesher"
+#include "Locators"
+#include "weemesh.h"
+
+using namespace osgEarth;
+
+TileMesher::TileMesher()
+{
+    //nop
+}
+
+namespace
+{
+    void addSkirtTriangles(unsigned INDEX0, unsigned INDEX1, osg::DrawElements* primset)
+    {
+        primset->addElement((INDEX0));
+        primset->addElement((INDEX0)+1);
+        primset->addElement((INDEX1));
+        primset->addElement((INDEX1));
+        primset->addElement((INDEX0)+1);
+        primset->addElement((INDEX1)+1);
+    }
+
+    void addSkirtDataForIndex(unsigned INDEX, float HEIGHT, TileGeometry& geom)
+    {
+        geom.verts->push_back((*geom.verts)[INDEX]);
+        geom.normals->push_back((*geom.normals)[INDEX]);
+        geom.uvs->push_back((*geom.uvs)[INDEX]);
+        geom.uvs->back().z() = (float)((int)geom.uvs->back().z() | VERTEX_SKIRT);
+        if (geom.vert_neighbors) geom.vert_neighbors->push_back((*geom.vert_neighbors)[INDEX]);
+        if (geom.normal_neighbors) geom.normal_neighbors->push_back((*geom.normal_neighbors)[INDEX]);
+        geom.verts->push_back((*geom.verts)[INDEX] - ((*geom.normals)[INDEX]) * (HEIGHT));
+        geom.normals->push_back((*geom.normals)[INDEX]);
+        geom.uvs->push_back((*geom.uvs)[INDEX]);
+        geom.uvs->back().z() = (float)((int)geom.uvs->back().z() | VERTEX_SKIRT);
+        if (geom.vert_neighbors) geom.vert_neighbors->push_back((*geom.vert_neighbors)[INDEX] - ((*geom.normals)[INDEX]) * (HEIGHT));
+        if (geom.normal_neighbors) geom.normal_neighbors->push_back((*geom.normal_neighbors)[INDEX]);
+    }
+
+    int getMorphNeighborIndexOffset(unsigned col, unsigned row, int rowSize)
+    {
+        if ((col & 0x1) == 1 && (row & 0x1) == 1) return rowSize + 2;
+        if ((row & 0x1) == 1) return rowSize + 1;
+        if ((col & 0x1) == 1) return 2;
+        return 1;
+    }
+}
+
+osg::DrawElements*
+TileMesher::getOrCreateDefaultIndices(const TerrainOptions& options)
+{
+    if (!_defaultIndices.valid())
+    {
+        ScopedMutexLock lock(_mutex);
+        if (!_defaultIndices.valid())
+        {
+            unsigned tileSize = options.tileSize().get();
+            float skirtRatio = options.heightFieldSkirtRatio().get();
+
+            // Attempt to calculate the number of verts in the surface geometry.
+            bool needsSkirt = skirtRatio > 0.0f;
+
+            unsigned numVertsInSurface = (tileSize * tileSize);
+            unsigned numVertsInSkirt = needsSkirt ? (tileSize - 1) * 2u * 4u : 0;
+            unsigned numVerts = numVertsInSurface + numVertsInSkirt;
+            unsigned numIndiciesInSurface = (tileSize - 1) * (tileSize - 1) * 6;
+            unsigned numIncidesInSkirt = skirtRatio > 0.0f ? (tileSize - 1) * 4 * 6 : 0;
+
+            GLenum mode = options.gpuTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
+
+            auto primset = new osg::DrawElementsUInt(mode);
+            primset->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
+
+            // add the elements for the surface:
+            for (unsigned j = 0; j < tileSize - 1; ++j)
+            {
+                for (unsigned i = 0; i < tileSize - 1; ++i)
+                {
+                    int i00 = j * tileSize + i;
+                    int i01 = i00 + tileSize;
+                    int i10 = i00 + 1;
+                    int i11 = i01 + 1;
+
+                    primset->addElement(i01);
+                    primset->addElement(i00);
+                    primset->addElement(i11);
+
+                    primset->addElement(i00);
+                    primset->addElement(i10);
+                    primset->addElement(i11);
+                }
+            }
+
+            if (needsSkirt)
+            {
+                // add the elements for the skirt:
+                int skirtBegin = numVertsInSurface;
+                int skirtEnd = skirtBegin + numVertsInSkirt;
+                int i;
+                for (i = skirtBegin; i < (int)skirtEnd - 3; i += 2)
+                {
+                    addSkirtTriangles(i, i + 2, primset);
+                }
+                addSkirtTriangles(i, skirtBegin, primset);
+            }
+
+            primset->setElementBufferObject(new osg::ElementBufferObject());
+
+            _defaultIndices = primset;
+        }
+    }
+
+    return _defaultIndices.get();
+}
+
+bool
+TileMesher::getEdits(
+    const TileKey& key,
+    const Map* map,
+    Edits& out_edits,
+    Cancelable* progress) const
+{
+    out_edits.clear();
+
+    if (map)
+    {
+        const GeoExtent& keyExtent = key.getExtent();
+
+        ConstraintLayers layers;
+
+        map->getLayers<TerrainConstraintLayer>(layers,
+            [&](const TerrainConstraintLayer* layer)
+            {
+                return
+                    layer->getVisible() &&
+                    layer->getMinLevel() <= key.getLOD() &&
+                    layer->getExtent().intersects(keyExtent);
+            }
+        );
+
+        std::vector<Edit> edits;
+
+        for (auto& layer : layers)
+        {
+            // For each feature, check that it intersects the tile key,
+            // and then xform it to the correct SRS and clone it for
+            // editing.
+            FeatureSource* fs = layer->getFeatureSource();
+            if (fs)
+            {
+                osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(
+                    key,
+                    layer->getFilters(),
+                    nullptr,
+                    nullptr);
+
+                Edit edit;
+
+                while (cursor.valid() && cursor->hasMore())
+                {
+                    if (progress && progress->isCanceled())
+                        return { };
+
+                    Feature* f = cursor->nextFeature();
+
+                    if (f->getExtent().intersects(keyExtent))
+                    {
+                        f->transform(keyExtent.getSRS());
+                        edit.features.push_back(f);
+                    }
+                }
+
+                if (!edit.features.empty())
+                {
+                    edit.layer = layer;
+                    out_edits.emplace_back(std::move(edit));
+                }
+            }
+        }
+    }
+    return !out_edits.empty();
+}
+
+TileGeometry
+TileMesher::createTile(
+    const TileKey& key,
+    const Edits& edits,
+    const TerrainOptions& options,
+    Cancelable* progress) const
+{
+    if (!edits.empty())
+    {
+        return createTileWithEdits(key, options, edits, progress);
+    }
+    else
+    {
+        return createTileStandard(key, options, progress);
+    }
+}
+
+TileGeometry
+TileMesher::createTileStandard(
+    const TileKey& key,
+    const TerrainOptions& options,
+    Cancelable* progress) const
+{
+    // Establish a local reference frame for the tile:
+    osg::Vec3d centerWorld;
+    GeoPoint centroid = key.getExtent().getCentroid();
+    centroid.toWorld(centerWorld);
+
+    osg::Matrix world2local, local2world;
+    centroid.createWorldToLocal(world2local);
+    local2world.invert(world2local);
+
+    unsigned tileSize = options.tileSize().get();
+    float skirtRatio = options.heightFieldSkirtRatio().get();
+
+    // Attempt to calculate the number of verts in the surface geometry.
+    bool needsSkirt = skirtRatio > 0.0f;
+    unsigned numVertsInSurface = (tileSize * tileSize);
+    unsigned numVertsInSkirt = needsSkirt ? (tileSize - 1) * 2u * 4u : 0;
+    unsigned numVerts = numVertsInSurface + numVertsInSkirt;
+    unsigned numIndiciesInSurface = (tileSize - 1) * (tileSize - 1) * 6;
+    unsigned numIncidesInSkirt = skirtRatio > 0.0f ? (tileSize - 1) * 4 * 6 : 0;
+
+    osg::BoundingSphere tileBound;
+
+    // the geometry:
+    TileGeometry geom;
+
+    osg::ref_ptr<osg::VertexBufferObject> vbo = new osg::VertexBufferObject();
+
+    // the initial vertex locations:
+    geom.verts = new osg::Vec3Array();
+    geom.verts->setVertexBufferObject(vbo.get());
+    geom.verts->reserve(numVerts);
+    geom.verts->setBinding(osg::Array::BIND_PER_VERTEX);
+
+    // the surface normals (i.e. extrusion vectors)
+    geom.normals = new osg::Vec3Array();
+    geom.normals->setVertexBufferObject(vbo.get());
+    geom.normals->reserve(numVerts);
+    geom.normals->setBinding(osg::Array::BIND_PER_VERTEX);
+
+    if (options.morphTerrain() == true)
+    {
+        // neighbor positions (for morphing)
+        geom.vert_neighbors = new osg::Vec3Array();
+        geom.vert_neighbors->setBinding(osg::Array::BIND_PER_VERTEX);
+        geom.vert_neighbors->setVertexBufferObject(vbo.get());
+        geom.vert_neighbors->reserve(numVerts);
+
+        geom.normal_neighbors = new osg::Vec3Array();
+        geom.normal_neighbors->setBinding(osg::Array::BIND_PER_VERTEX);
+        geom.normal_neighbors->setVertexBufferObject(vbo.get());
+        geom.normal_neighbors->reserve(numVerts);
+    }
+
+    // tex coord is [0..1] across the tile. The 3rd dimension tracks whether the
+    // vert is masked: 0=yes, 1=no
+    bool populateTexCoords = true;
+    geom.uvs = new osg::Vec3Array();
+    geom.uvs->setBinding(osg::Array::BIND_PER_VERTEX);
+    geom.uvs->setVertexBufferObject(vbo.get());
+    geom.uvs->reserve(numVerts);
+
+#if 0
+    if (editor.hasEdits())
+    {
+        bool tileHasData = editor.createTileMesh(
+            geom.get(),
+            tileSize,
+            skirtRatio,
+            mode,
+            progress);
+
+        if (geom->empty())
+            return nullptr;
+    }
+
+    else // default mesh - no constraints
+#endif
+    {
+        osg::Vec3d unit;
+        osg::Vec3d model;
+        osg::Vec3d modelLTP;
+        osg::Vec3d modelPlusOne;
+        osg::Vec3d normal;
+
+        GeoLocator locator(key.getExtent());
+
+        for (unsigned row = 0; row < tileSize; ++row)
+        {
+            float ny = (float)row / (float)(tileSize - 1);
+            for (unsigned col = 0; col < tileSize; ++col)
+            {
+                float nx = (float)col / (float)(tileSize - 1);
+
+                unit.set(nx, ny, 0.0f);
+                locator.unitToWorld(unit, model);
+                modelLTP = model * world2local;
+                geom.verts->push_back(modelLTP);
+
+                tileBound.expandBy(geom.verts->back());
+
+                if (populateTexCoords)
+                {
+                    // Use the Z coord as a type marker
+                    float marker = VERTEX_VISIBLE;
+                    geom.uvs->push_back(osg::Vec3f(nx, ny, marker));
+                }
+
+                unit.z() = 1.0f;
+                locator.unitToWorld(unit, modelPlusOne);
+                normal = (modelPlusOne * world2local) - modelLTP;
+                normal.normalize();
+                geom.normals->push_back(normal);
+
+                // neighbor:
+                if (geom.vert_neighbors.valid())
+                {
+                    const osg::Vec3& modelNeighborLTP = (*geom.verts)[geom.verts->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
+                    geom.vert_neighbors->push_back(modelNeighborLTP);
+                }
+
+                if (geom.normal_neighbors.valid())
+                {
+                    const osg::Vec3& modelNeighborNormalLTP = (*geom.normals)[geom.normals->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
+                    geom.normal_neighbors->push_back(modelNeighborNormalLTP);
+                }
+            }
+        }
+
+        if (needsSkirt)
+        {
+            // calculate the skirt extrusion height
+            double height = tileBound.radius() * skirtRatio;
+
+            // Normal tile skirt first:
+            unsigned skirtIndex = geom.verts->size();
+
+            // first, create all the skirt verts, normals, and texcoords.
+            for (int c = 0; c < (int)tileSize - 1; ++c)
+                addSkirtDataForIndex(c, height, geom); //south
+
+            for (int r = 0; r < (int)tileSize - 1; ++r)
+                addSkirtDataForIndex(r * tileSize + (tileSize - 1), height, geom); //east
+
+            for (int c = tileSize - 1; c > 0; --c)
+                addSkirtDataForIndex((tileSize - 1) * tileSize + c, height, geom); //north
+
+            for (int r = tileSize - 1; r > 0; --r)
+                addSkirtDataForIndex(r * tileSize, height, geom); //west
+        }
+    }
+
+    return geom;
+}
+
+TileGeometry
+TileMesher::createTileWithEdits(
+    const TileKey& key,
+    const TerrainOptions& options,
+    const Edits& edits,
+    Cancelable* progress) const
+{
+    // Establish a local reference frame for the tile:
+    osg::Vec3d centerWorld;
+    const GeoExtent& keyExtent = key.getExtent();
+    GeoPoint centroid = keyExtent.getCentroid();
+    centroid.toWorld(centerWorld);
+    osg::Matrix world2local, local2world;
+    centroid.createWorldToLocal(world2local);
+    local2world.invert(world2local);
+    GeoLocator locator(keyExtent);
+    const SpatialReference* tileSRS = keyExtent.getSRS();
+    unsigned tileSize = options.tileSize().get();
+    float skirtRatio = options.heightFieldSkirtRatio().get();
+
+    // calculate the bounding box of the tile in local coords,
+    // for culling purposes:
+    osg::Vec3d c[4];
+    double xmin = DBL_MAX, ymin = DBL_MAX, xmax = -DBL_MAX, ymax = -DBL_MAX, zmin = DBL_MAX;
+    locator.unitToWorld(osg::Vec3d(0, 0, 0), c[0]);
+    locator.unitToWorld(osg::Vec3d(1, 0, 0), c[1]);
+    locator.unitToWorld(osg::Vec3d(0, 1, 0), c[2]);
+    locator.unitToWorld(osg::Vec3d(1, 1, 0), c[3]);
+    for (int i = 0; i < 4; ++i) {
+        c[i] = c[i] * world2local;
+        xmin = std::min(xmin, c[i].x()), xmax = std::max(xmax, c[i].x());
+        ymin = std::min(ymin, c[i].y()), ymax = std::max(ymax, c[i].y());
+        zmin = std::min(zmin, c[i].z());
+    }
+
+    TileGeometry geom; // final output.
+
+    weemesh::mesh_t mesh;
+    mesh.set_boundary_marker(VERTEX_BOUNDARY);
+    mesh.set_constraint_marker(VERTEX_CONSTRAINT);
+
+    mesh._verts.reserve(tileSize * tileSize);
+
+    double xscale = -zmin / 0.5 * (xmax - xmin);
+    double yscale = -zmin / 0.5 * (ymax - ymin);
+
+    for (unsigned row = 0; row < tileSize; ++row)
+    {
+        double ny = (double)row / (double)(tileSize - 1);
+        for (unsigned col = 0; col < tileSize; ++col)
+        {
+            double nx = (double)col / (double)(tileSize - 1);
+            osg::Vec3d unit(nx, ny, 0.0);
+            osg::Vec3d model;
+            osg::Vec3d modelLTP;
+
+            locator.unitToWorld(unit, model);
+            modelLTP = model * world2local;
+
+            int marker =
+                VERTEX_VISIBLE; // | VERTEX_CONSTRAINT;
+
+            // mark the perimeter as a boundary (for skirt generation)
+            if (row == 0 || row == tileSize - 1 || col == 0 || col == tileSize - 1)
+                marker |= VERTEX_BOUNDARY;
+
+            int i = mesh.get_or_create_vertex(
+                weemesh::vert_t(modelLTP.x(), modelLTP.y(), modelLTP.z()),
+                marker);
+
+            if (row > 0 && col > 0)
+            {
+                mesh.add_triangle(i, i - 1, i - tileSize - 1);
+                mesh.add_triangle(i, i - tileSize - 1, i - tileSize);
+            }
+        }
+    }
+
+    // keep it real
+    int max_num_triangles = mesh._triangles.size() * 100;
+
+    // Make the edits
+    for (auto& edit : edits)
+    {
+        // we're marking everything as a CONSTRAINT in order to disable morphing.
+        int default_marker =
+            VERTEX_VISIBLE |
+            VERTEX_CONSTRAINT;
+
+        // this will preserve a "burned-in" Z value.
+        if (edit.layer->getHasElevation())
+            default_marker |= VERTEX_HAS_ELEVATION;
+
+        for (auto& feature : edit.features)
+        {
+            GeometryIterator geom_iter(feature->getGeometry(), true);
+            osg::Vec3d world, unit;
+            while (geom_iter.hasMore())
+            {
+                if (mesh._triangles.size() >= max_num_triangles)
+                {
+                    // just stop it
+                    break;
+                }
+
+                Geometry* part = geom_iter.next();
+
+                for (auto& point : *part)
+                {
+                    tileSRS->transformToWorld(point, world);
+                    point = world * world2local;
+                }
+
+                int marker = default_marker;
+
+                if (part->isPointSet())
+                {
+                    for (int i = 0; i < part->size(); ++i)
+                    {
+                        const weemesh::vert_t v((*part)[i].ptr());
+
+                        if (v.x() >= xmin && v.x() <= xmax &&
+                            v.y() >= ymin && v.y() <= ymax)
+                        {
+                            mesh.insert(v, marker);
+                        }
+                    }
+                }
+
+                else
+                {
+                    // marking as BOUNDARY will allow skirt generation on this part
+                    // for polygons with removed interior/exteriors
+                    if (part->isRing() && edit.layer->getRemoveInterior())
+                    {
+                        marker |= VERTEX_BOUNDARY;
+                    }
+
+                    // slice and dice the mesh.
+                    // iterate over segments in the part, closing the loop if it's an open ring.
+                    unsigned i = part->isRing() && part->isOpen() ? 0 : 1;
+                    unsigned j = part->isRing() && part->isOpen() ? part->size() - 1 : 0;
+
+                    for (; i < part->size(); j = i++)
+                    {
+                        const weemesh::vert_t p0((*part)[i].ptr());
+                        const weemesh::vert_t p1((*part)[j].ptr());
+
+                        // cull segment to tile
+                        if ((p0.x() >= xmin || p1.x() >= xmin) &&
+                            (p0.x() <= xmax || p1.x() <= xmax) &&
+                            (p0.y() >= ymin || p1.y() >= ymin) &&
+                            (p0.y() <= ymax || p1.y() <= ymax))
+                        {
+                            mesh.insert(weemesh::segment_t(p0, p1), marker);
+                        }
+                    }
+                }
+            }
+
+            // Find any triangles that we don't want to draw and 
+            // mark them an "unused."
+            if (edit.layer->getRemoveInterior())
+            {
+                // Iterate without holes because Polygon::contains deals with them
+                GeometryIterator mask_iter(
+                    feature->getGeometry(),
+                    false); // don't iterate into polygon holes
+
+                while (mask_iter.hasMore())
+                {
+                    Geometry* part = mask_iter.next();
+                    if (part->isPolygon())
+                    {
+                        std::list<weemesh::triangle_t*> trisToRemove;
+
+                        for (auto& tri_iter : mesh._triangles)
+                        {
+                            weemesh::triangle_t& tri = tri_iter.second;
+                            weemesh::vert_t c = (tri.p0 + tri.p1 + tri.p2) * (1.0 / 3.0);
+
+                            bool inside = part->contains2D(c.x(), c.y());
+
+                            if ((inside == true) && edit.layer->getRemoveInterior())
+                            {
+                                trisToRemove.push_back(&tri);
+
+                                //OPTIONS:
+                                // - remove tri entirely
+                                // - change clamping u/v of elevation;
+                                // - alter elevation offset based on distance from feature;
+                                // - duplicate tris to make water surface+bed
+                                // ... pluggable behavior ?
+                            }
+
+                            // this will remove "sliver" triangles that are coincident with
+                            // the boundary, that would otherwise cause skirts to appear 
+                            // where there are (apparently) no surface.
+                            else if (tri.is_2d_degenerate)
+                            {
+                                trisToRemove.push_back(&tri);
+                            }
+                        }
+
+                        for (auto tri : trisToRemove)
+                        {
+                            mesh.remove_triangle(*tri);
+                        }
+                    }
+                }
+
+                // if ALL triangles are unused, it's an empty tile.
+                if (mesh._triangles.empty())
+                {
+                    //_tileEmpty = true;
+                    geom.hasConstraints = true;
+                    return geom;
+                }
+            }
+        }
+    }
+
+    // We have an edited mesh, now turn it back into something OSG can render.
+
+    geom.verts = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    geom.verts->reserve(mesh._verts.size());
+
+    geom.normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    geom.normals->reserve(mesh._verts.size());
+
+    geom.uvs = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+    geom.uvs->reserve(mesh._verts.size());
+
+    if (options.morphTerrain() == true)
+    {
+        geom.vert_neighbors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+        geom.vert_neighbors->reserve(mesh._verts.size());
+
+        geom.normal_neighbors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
+        geom.normal_neighbors->reserve(mesh._verts.size());
+    }
+
+    osg::Vec3d world;
+    osg::BoundingSphere tileBound;
+
+    int ptr = 0;
+    int original_grid_size = tileSize * tileSize;
+
+    for (auto& vert : mesh._verts)
+    {
+        int marker = mesh.get_marker(vert);
+
+        osg::Vec3d v(vert.x(), vert.y(), vert.z());
+        osg::Vec3d unit;
+        geom.verts->push_back(v);
+        world = v * local2world;
+        locator.worldToUnit(world, unit);
+        if (geom.uvs.valid())
+            geom.uvs->push_back(osg::Vec3f(unit.x(), unit.y(), (float)marker));
+
+        unit.z() += 1.0;
+        osg::Vec3d modelPlusOne;
+        locator.unitToWorld(unit, modelPlusOne);
+        osg::Vec3d normal = (modelPlusOne * world2local) - v;
+        normal.normalize();
+        geom.normals->push_back(normal);
+
+        // assign "neighbors" (for morphing) to any "orignal grid" vertex 
+        // that is NOT marked as a constraint.
+        if (ptr < original_grid_size && !(marker & VERTEX_CONSTRAINT))
+        {
+            int row = (ptr / tileSize);
+            int col = (ptr % tileSize);
+
+            if (geom.vert_neighbors.valid())
+            {
+                geom.vert_neighbors->push_back(
+                    (*geom.verts)[geom.verts->size() - getMorphNeighborIndexOffset(col, row, tileSize)]);
+            }
+
+            if (geom.normal_neighbors.valid())
+            {
+                geom.normal_neighbors->push_back(
+                    (*geom.normals)[geom.normals->size() - getMorphNeighborIndexOffset(col, row, tileSize)]);
+            }
+        }
+
+        else
+        {
+            // all new indices...just copy.
+            if (geom.vert_neighbors)
+                geom.vert_neighbors->push_back(v);
+
+            if (geom.normal_neighbors)
+                geom.normal_neighbors->push_back(normal);
+        }
+
+        tileBound.expandBy(geom.verts->back());
+
+        ++ptr;
+    }
+
+    
+    auto mode = options.gpuTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
+    geom.indices = new osg::DrawElementsUInt(mode);
+    geom.indices->reserveElements(mesh._triangles.size() * 3);
+    for (const auto& tri : mesh._triangles)
+    {
+        if (!tri.second.is_2d_degenerate)
+        {
+            geom.indices->addElement(tri.second.i0);
+            geom.indices->addElement(tri.second.i1);
+            geom.indices->addElement(tri.second.i2);
+        }
+    }
+
+    // make the skirts:
+    if (options.heightFieldSkirtRatio() > 0.0)
+    {
+        double skirtHeight = options.heightFieldSkirtRatio().get() * tileBound.radius();
+
+        // collect all edges marked as boundaries
+        weemesh::edgeset_t boundary_edges(mesh, VERTEX_BOUNDARY);
+
+        // Add the skirt geometry. We don't share verts with the surface mesh
+        // because we need to mark skirts verts so we can conditionally render
+        // skirts in the shader.
+        int mem = geom.verts->size() + boundary_edges._edges.size() * 4;
+        geom.verts->reserve(mem);
+        geom.normals->reserve(mem);
+        geom.uvs->reserve(mem);
+        if (geom.vert_neighbors.valid()) 
+            geom.vert_neighbors->reserve(mem);
+        if (geom.normal_neighbors.valid()) 
+            geom.normal_neighbors->reserve(mem);
+        geom.indices->reserveElements(geom.indices->getNumIndices() + boundary_edges._edges.size() * 6);
+
+        for (auto& edge : boundary_edges._edges)
+        {
+            // bail if we run out of UShort space
+            if (geom.verts->size() + 4 > 0xFFFF)
+                break;
+
+            addSkirtDataForIndex(edge._i0, skirtHeight, geom);
+            addSkirtDataForIndex(edge._i1, skirtHeight, geom);
+            addSkirtTriangles(geom.verts->size() - 4, geom.verts->size() - 2, geom.indices.get());
+        }
+    }
+
+    // Mark the geometry appropriately
+    geom.hasConstraints = (mesh._num_edits > 0);
+
+    auto vbo = new osg::VertexBufferObject();
+    geom.verts->setVertexBufferObject(vbo);
+    geom.normals->setVertexBufferObject(vbo);
+    geom.uvs->setVertexBufferObject(vbo);
+    if (geom.vert_neighbors) geom.vert_neighbors->setVertexBufferObject(vbo);
+    if (geom.normal_neighbors) geom.normal_neighbors->setVertexBufferObject(vbo);
+
+    auto ebo = new osg::ElementBufferObject();
+    if (geom.indices) geom.indices->setElementBufferObject(ebo);
+
+    return geom;
+}

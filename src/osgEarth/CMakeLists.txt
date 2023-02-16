@@ -258,6 +258,7 @@ SET(LIB_PUBLIC_HEADERS
     TileKey
     TileLayer
     TileHandler
+    TileMesher
     TileRasterizer
     TiledFeatureModelGraph
     TiledFeatureModelLayer
@@ -673,6 +674,7 @@ set(TARGET_SRC
     TileKey.cpp
     TileLayer.cpp
     TileHandler.cpp
+    TileMesher.cpp
     TileRasterizer.cpp
     TiledFeatureModelGraph.cpp
     TiledFeatureModelLayer.cpp

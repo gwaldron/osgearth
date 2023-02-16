@@ -1,0 +1,94 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_TILE_MESHER
+#define OSGEARTH_TILE_MESHER 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileKey>
+#include <osgEarth/TerrainConstraintLayer>
+#include <osgEarth/TerrainOptions>
+#include <osgEarth/Feature>
+
+#define VERTEX_VISIBLE       1 // draw it
+#define VERTEX_BOUNDARY      2 // vertex lies on a skirt boundary
+#define VERTEX_HAS_ELEVATION 4 // not subject to elevation texture
+#define VERTEX_SKIRT         8 // it's a skirt vertex (bitmask)
+#define VERTEX_CONSTRAINT   16 // part of a non-morphable constraint
+
+namespace osgEarth
+{
+    struct OSGEARTH_EXPORT TileGeometry
+    {
+        osg::ref_ptr<osg::Vec3Array> verts;
+        osg::ref_ptr<osg::Vec3Array> normals;
+        osg::ref_ptr<osg::Vec3Array> uvs;
+        osg::ref_ptr<osg::Vec3Array> vert_neighbors;
+        osg::ref_ptr<osg::Vec3Array> normal_neighbors;
+        osg::ref_ptr<osg::DrawElements> indices;
+        bool hasConstraints = false;
+    };
+
+    class OSGEARTH_EXPORT TileMesher
+    {
+    public:
+        struct Edit
+        {
+            FeatureList features;
+            osg::ref_ptr<TerrainConstraintLayer> layer;
+        };
+        using Edits = std::vector<Edit>;
+
+        TileMesher();
+
+        bool getEdits(
+            const TileKey& key,
+            const Map* map,
+            Edits& edits,
+            Cancelable* progress) const;
+
+        TileGeometry createTile(
+            const TileKey& key,
+            const Edits& edits,
+            const TerrainOptions& options,
+            Cancelable* progress) const;
+
+        osg::DrawElements* getOrCreateDefaultIndices(
+            const TerrainOptions& options);
+            
+
+    protected:
+        mutable osg::ref_ptr<osg::DrawElements> _defaultIndices;
+        mutable Mutex _mutex;
+
+        using ConstraintLayers = std::vector<osg::ref_ptr<TerrainConstraintLayer>>;
+
+        TileGeometry createTileStandard(
+            const TileKey& key,
+            const TerrainOptions& options,
+            Cancelable* progress) const;
+
+        TileGeometry createTileWithEdits(
+            const TileKey& key,
+            const TerrainOptions& options,
+            const Edits& edits,
+            Cancelable* progress) const;
+    };
+}
+
+#endif // OSGEARTH_TILE_MESHER

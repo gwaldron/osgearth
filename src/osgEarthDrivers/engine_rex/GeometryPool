@@ -20,7 +20,6 @@
 #define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_GEOMETRY_POOL 1
 
 #include "Common"
-#include "MeshEditor"
 #include "TileRenderModel"
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/TileKey>
@@ -28,17 +27,8 @@
 #include <osgEarth/PatchLayer>
 #include <osgEarth/Metrics>
 #include <osgEarth/Math>
+#include <osgEarth/TileMesher>
 #include <osg/Geometry>
-
-//#if OSG_MIN_VERSION_REQUIRED(3,5,9)
-//#define SUPPORTS_VAO 1
-//#endif
-
-#define VERTEX_VISIBLE       1 // draw it
-#define VERTEX_BOUNDARY      2 // vertex lies on a skirt boundary
-#define VERTEX_HAS_ELEVATION 4 // not subject to elevation texture
-#define VERTEX_SKIRT         8 // it's a skirt vertex (bitmask)
-#define VERTEX_CONSTRAINT   16 // part of a non-morphable constraint
 
 namespace osgEarth {
     namespace REX
@@ -202,8 +192,8 @@ namespace osgEarth {
     {
 
         /**
-                 * Hashtable key for unique (and therefore shareable) geometries.
-                 */
+        * Hashtable key for unique (and therefore shareable) geometries.
+        */
         struct GeometryKey
         {
             GeometryKey() :
@@ -357,6 +347,7 @@ namespace osgEarth {
         mutable Threading::Mutex _geometryMapMutex;
         GeometryMap _geometryMap;
         osg::ref_ptr<SharedDrawElements> _defaultPrimSet;
+        TileMesher _mesher;
 
         void createKeyForTileKey(
             const TileKey& tileKey,
@@ -364,12 +355,9 @@ namespace osgEarth {
             GeometryKey&   out) const;
 
         SharedGeometry* createGeometry(
-            const TileKey& tileKey,
-            unsigned tileSize,
-            float skirtRatio,
-            bool gpuTessellation,
-            bool morphTerrain,
-            MeshEditor& meshEditor,
+            const TileKey& key,
+            const TileMesher::Edits& edits,
+            const TerrainOptions& options,
             Cancelable* state) const;
 
         // builds a primitive set to use for any tile without a mask

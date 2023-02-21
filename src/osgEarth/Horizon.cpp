@@ -154,16 +154,16 @@ Horizon::isVisible(const osg::Vec3d& target,
     // ref: https://cesiumjs.org/2013/04/25/Horizon-culling/
 
     // Viewer-to-target vector
-    osg::Vec3d VT;
+    osg::Vec3d VTplusR;
 
     // move the target closer to the horizon plane by "radius".
-    VT = (target + _eyeUnit*radius) - _eye;
+    VTplusR = (target + _eyeUnit*radius) - _eye;
 
     // transform into unit space:
-    VT = osg::componentMultiply( VT, _scale );
+    VTplusR = osg::componentMultiply(VTplusR, _scale );
 
     // If the target is above the eye, it's visible
-    double VTdotVC = VT*_VC;
+    double VTdotVC = VTplusR *_VC;
     if ( VTdotVC <= 0.0 )
     {
         return true;
@@ -190,7 +190,9 @@ Horizon::isVisible(const osg::Vec3d& target,
     // eye->center vetor. If the sphere is entirely within the cone, it is occluded
     // by the spheroid (not ellipsoid, sorry)
     // ref: http://www.cbloom.com/3d/techdocs/culling.txt
-    VT = osg::componentMultiply(target - _eye, _scale);
+    osg::Vec3d VT = target - _eye; 
+    VT = osg::componentMultiply(VT, _scale);
+    radius = (VTplusR - VT).length();
 
     double a = VT * -_eyeUnit;
     double b = a * _coneTan;
@@ -198,7 +200,7 @@ Horizon::isVisible(const osg::Vec3d& target,
     double d = c - b;
     double e = d * _coneCos;
 
-    if ( e > -radius )
+    if ( e > -radius)
     {
         // sphere is at least partially outside the cone (visible)
         return true;
@@ -234,13 +236,13 @@ Horizon::isVisible(const osg::Vec3d& eye,
         eyeUnit->normalize();
         delta.set( eyeUnit.get()*radius );
     }
-    osg::Vec3d VT( target+delta - eye );
+    osg::Vec3d VTplusR( target+delta - eye );
 
     // transform into unit space:
-    VT = osg::componentMultiply( VT, _scale );
+    VTplusR = osg::componentMultiply(VTplusR, _scale );
 
     // If the target is above the eye, it's visible
-    double VTdotVC = VT*VC;
+    double VTdotVC = VTplusR *VC;
     if ( VTdotVC <= 0.0 )
     {
         return true;
@@ -269,7 +271,9 @@ Horizon::isVisible(const osg::Vec3d& eye,
     // eye->center vetor. If the sphere is entirely within the cone, it is occluded
     // by the spheroid (not ellipsoid, sorry)
     // ref: http://www.cbloom.com/3d/techdocs/culling.txt
-    VT = osg::componentMultiply(target - eye, _scale);
+    osg::Vec3d VT = target - _eye;
+    VT = osg::componentMultiply(VT, _scale);
+    radius = (VTplusR - VT).length();
 
     double VPmag  = VCmag - 1.0/VCmag; // viewer->horizon plane dist (scaled)
     double VHmag  = sqrtf( VHmag2 );
@@ -286,7 +290,7 @@ Horizon::isVisible(const osg::Vec3d& eye,
     double d = c - b;
     double e = d * coneCos;
 
-    if ( e > -radius )
+    if ( e > -radius)
     {
         // sphere is at least partially outside the cone (visible)
         return true;

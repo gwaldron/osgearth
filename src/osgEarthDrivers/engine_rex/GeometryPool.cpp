@@ -72,7 +72,7 @@ GeometryPool::getPooledGeometry(
         if (!_defaultPrimSet.valid())
         {
             // convert the mesher's indices to a SharedDrawElements
-            auto indices = _mesher.getOrCreateDefaultIndices(options);
+            auto indices = _mesher.getOrCreateStandardIndices(options);
 
             GLenum mode = options.gpuTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
 

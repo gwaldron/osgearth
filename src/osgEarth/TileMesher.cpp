@@ -22,6 +22,18 @@
 
 using namespace osgEarth;
 
+TileGeometry::TileGeometry(TileGeometry&& m)
+{
+    localToWorld = m.localToWorld; m.localToWorld = osg::Matrix::identity();
+    verts = m.verts; m.verts = { };
+    normals = m.normals; m.normals = { };
+    uvs = m.uvs; m.uvs = { };
+    vert_neighbors = m.vert_neighbors; m.vert_neighbors = { };
+    normal_neighbors = m.normal_neighbors; m.normal_neighbors = { };
+    indices = m.indices; m.indices = { };
+    hasConstraints = m.hasConstraints;
+}
+
 TileMesher::TileMesher()
 {
     //nop
@@ -65,12 +77,12 @@ namespace
 }
 
 osg::DrawElements*
-TileMesher::getOrCreateDefaultIndices(const TerrainOptions& options)
+TileMesher::getOrCreateStandardIndices(const TerrainOptions& options)
 {
-    if (!_defaultIndices.valid())
+    if (!_standardIndices.valid())
     {
         ScopedMutexLock lock(_mutex);
-        if (!_defaultIndices.valid())
+        if (!_standardIndices.valid())
         {
             unsigned tileSize = options.tileSize().get();
             float skirtRatio = options.heightFieldSkirtRatio().get();
@@ -124,11 +136,11 @@ TileMesher::getOrCreateDefaultIndices(const TerrainOptions& options)
 
             primset->setElementBufferObject(new osg::ElementBufferObject());
 
-            _defaultIndices = primset;
+            _standardIndices = primset;
         }
     }
 
-    return _defaultIndices.get();
+    return _standardIndices.get();
 }
 
 bool
@@ -143,7 +155,8 @@ TileMesher::getEdits(
     if (map)
     {
         const GeoExtent& keyExtent = key.getExtent();
-
+        
+        // collect all the constraint layers that intersect our key
         ConstraintLayers layers;
 
         map->getLayers<TerrainConstraintLayer>(layers,
@@ -161,8 +174,7 @@ TileMesher::getEdits(
         for (auto& layer : layers)
         {
             // For each feature, check that it intersects the tile key,
-            // and then xform it to the correct SRS and clone it for
-            // editing.
+            // and then xform it to the correct SRS and store it as an edit
             FeatureSource* fs = layer->getFeatureSource();
             if (fs)
             {
@@ -206,13 +218,13 @@ TileMesher::createTile(
     const TerrainOptions& options,
     Cancelable* progress) const
 {
-    if (!edits.empty())
+    if (edits.empty())
     {
-        return createTileWithEdits(key, options, edits, progress);
+        return createTileStandard(key, options, progress);
     }
     else
     {
-        return createTileStandard(key, options, progress);
+        return createTileWithEdits(key, options, edits, progress);
     }
 }
 
@@ -246,6 +258,7 @@ TileMesher::createTileStandard(
 
     // the geometry:
     TileGeometry geom;
+    geom.localToWorld = local2world;
 
     osg::ref_ptr<osg::VertexBufferObject> vbo = new osg::VertexBufferObject();
 
@@ -283,94 +296,76 @@ TileMesher::createTileStandard(
     geom.uvs->setVertexBufferObject(vbo.get());
     geom.uvs->reserve(numVerts);
 
-#if 0
-    if (editor.hasEdits())
+    osg::Vec3d unit;
+    osg::Vec3d model;
+    osg::Vec3d modelLTP;
+    osg::Vec3d modelPlusOne;
+    osg::Vec3d normal;
+
+    GeoLocator locator(key.getExtent());
+
+    for (unsigned row = 0; row < tileSize; ++row)
     {
-        bool tileHasData = editor.createTileMesh(
-            geom.get(),
-            tileSize,
-            skirtRatio,
-            mode,
-            progress);
-
-        if (geom->empty())
-            return nullptr;
-    }
-
-    else // default mesh - no constraints
-#endif
-    {
-        osg::Vec3d unit;
-        osg::Vec3d model;
-        osg::Vec3d modelLTP;
-        osg::Vec3d modelPlusOne;
-        osg::Vec3d normal;
-
-        GeoLocator locator(key.getExtent());
-
-        for (unsigned row = 0; row < tileSize; ++row)
+        float ny = (float)row / (float)(tileSize - 1);
+        for (unsigned col = 0; col < tileSize; ++col)
         {
-            float ny = (float)row / (float)(tileSize - 1);
-            for (unsigned col = 0; col < tileSize; ++col)
+            float nx = (float)col / (float)(tileSize - 1);
+
+            unit.set(nx, ny, 0.0f);
+            locator.unitToWorld(unit, model);
+            modelLTP = model * world2local;
+            geom.verts->push_back(modelLTP);
+
+            tileBound.expandBy(geom.verts->back());
+
+            if (populateTexCoords)
             {
-                float nx = (float)col / (float)(tileSize - 1);
+                // Use the Z coord as a type marker
+                float marker = VERTEX_VISIBLE;
+                geom.uvs->push_back(osg::Vec3f(nx, ny, marker));
+            }
 
-                unit.set(nx, ny, 0.0f);
-                locator.unitToWorld(unit, model);
-                modelLTP = model * world2local;
-                geom.verts->push_back(modelLTP);
+            unit.z() = 1.0f;
+            locator.unitToWorld(unit, modelPlusOne);
+            normal = (modelPlusOne * world2local) - modelLTP;
+            normal.normalize();
+            geom.normals->push_back(normal);
 
-                tileBound.expandBy(geom.verts->back());
+            // neighbor:
+            if (geom.vert_neighbors.valid())
+            {
+                const osg::Vec3& modelNeighborLTP = (*geom.verts)[geom.verts->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
+                geom.vert_neighbors->push_back(modelNeighborLTP);
+            }
 
-                if (populateTexCoords)
-                {
-                    // Use the Z coord as a type marker
-                    float marker = VERTEX_VISIBLE;
-                    geom.uvs->push_back(osg::Vec3f(nx, ny, marker));
-                }
-
-                unit.z() = 1.0f;
-                locator.unitToWorld(unit, modelPlusOne);
-                normal = (modelPlusOne * world2local) - modelLTP;
-                normal.normalize();
-                geom.normals->push_back(normal);
-
-                // neighbor:
-                if (geom.vert_neighbors.valid())
-                {
-                    const osg::Vec3& modelNeighborLTP = (*geom.verts)[geom.verts->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
-                    geom.vert_neighbors->push_back(modelNeighborLTP);
-                }
-
-                if (geom.normal_neighbors.valid())
-                {
-                    const osg::Vec3& modelNeighborNormalLTP = (*geom.normals)[geom.normals->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
-                    geom.normal_neighbors->push_back(modelNeighborNormalLTP);
-                }
+            if (geom.normal_neighbors.valid())
+            {
+                const osg::Vec3& modelNeighborNormalLTP = (*geom.normals)[geom.normals->size() - getMorphNeighborIndexOffset(col, row, tileSize)];
+                geom.normal_neighbors->push_back(modelNeighborNormalLTP);
             }
         }
+    }
 
-        if (needsSkirt)
-        {
-            // calculate the skirt extrusion height
-            double height = tileBound.radius() * skirtRatio;
+    if (needsSkirt)
+    {
+        // calculate the skirt extrusion height
+        double height = tileBound.radius() * skirtRatio;
 
-            // Normal tile skirt first:
-            unsigned skirtIndex = geom.verts->size();
+        // Normal tile skirt first:
+        unsigned skirtIndex = geom.verts->size();
 
-            // first, create all the skirt verts, normals, and texcoords.
-            for (int c = 0; c < (int)tileSize - 1; ++c)
-                addSkirtDataForIndex(c, height, geom); //south
+        // first, create all the skirt verts, normals, and texcoords.
+        for (int c = 0; c < (int)tileSize - 1; ++c)
+            addSkirtDataForIndex(c, height, geom); //south
 
-            for (int r = 0; r < (int)tileSize - 1; ++r)
-                addSkirtDataForIndex(r * tileSize + (tileSize - 1), height, geom); //east
+        for (int r = 0; r < (int)tileSize - 1; ++r)
+            addSkirtDataForIndex(r * tileSize + (tileSize - 1), height, geom); //east
 
-            for (int c = tileSize - 1; c > 0; --c)
-                addSkirtDataForIndex((tileSize - 1) * tileSize + c, height, geom); //north
+        for (int c = tileSize - 1; c > 0; --c)
+            addSkirtDataForIndex((tileSize - 1) * tileSize + c, height, geom); //north
 
-            for (int r = tileSize - 1; r > 0; --r)
-                addSkirtDataForIndex(r * tileSize, height, geom); //west
-        }
+        for (int r = tileSize - 1; r > 0; --r)
+            addSkirtDataForIndex(r * tileSize, height, geom); //west
     }
 
     return geom;
@@ -412,6 +407,7 @@ TileMesher::createTileWithEdits(
     }
 
     TileGeometry geom; // final output.
+    geom.localToWorld = local2world;
 
     weemesh::mesh_t mesh;
     mesh.set_boundary_marker(VERTEX_BOUNDARY);
@@ -678,7 +674,7 @@ TileMesher::createTileWithEdits(
         ++ptr;
     }
 
-    
+
     auto mode = options.gpuTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
     geom.indices = new osg::DrawElementsUInt(mode);
     geom.indices->reserveElements(mesh._triangles.size() * 3);
@@ -707,9 +703,9 @@ TileMesher::createTileWithEdits(
         geom.verts->reserve(mem);
         geom.normals->reserve(mem);
         geom.uvs->reserve(mem);
-        if (geom.vert_neighbors.valid()) 
+        if (geom.vert_neighbors.valid())
             geom.vert_neighbors->reserve(mem);
-        if (geom.normal_neighbors.valid()) 
+        if (geom.normal_neighbors.valid())
             geom.normal_neighbors->reserve(mem);
         geom.indices->reserveElements(geom.indices->getNumIndices() + boundary_edges._edges.size() * 6);
 

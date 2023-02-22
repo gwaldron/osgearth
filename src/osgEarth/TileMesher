@@ -33,8 +33,12 @@
 
 namespace osgEarth
 {
+    /**
+    * OSG geometry components for a tile, created by the TileMesher.
+    */
     struct OSGEARTH_EXPORT TileGeometry
     {
+        osg::Matrix localToWorld;
         osg::ref_ptr<osg::Vec3Array> verts;
         osg::ref_ptr<osg::Vec3Array> normals;
         osg::ref_ptr<osg::Vec3Array> uvs;
@@ -42,8 +46,15 @@ namespace osgEarth
         osg::ref_ptr<osg::Vec3Array> normal_neighbors;
         osg::ref_ptr<osg::DrawElements> indices;
         bool hasConstraints = false;
+
+        TileGeometry() { }
+        TileGeometry(TileGeometry&& m);
     };
 
+    /**
+    * Creates a mesh for a TileKey, optionally including "edits"
+    * created by constrait feature data.
+    */
     class OSGEARTH_EXPORT TileMesher
     {
     public:
@@ -54,26 +65,43 @@ namespace osgEarth
         };
         using Edits = std::vector<Edit>;
 
+        //! Construct a tile mesher
         TileMesher();
 
+        //! Assemble a collection of Edits from the map for the given tile key.
+        //! Edits are just groups of features that the mesher can use to alter
+        //! the terrain mesh.
+        //! @param key TileKey for whicht o collect edits
+        //! @param map Map from which to get constraint layer features
+        //! @param edits OUTPUT collection of features that will edit a mesh
+        //! @param progress Cancelable interface
+        //! @return True if more than zero edits are created
         bool getEdits(
             const TileKey& key,
             const Map* map,
             Edits& edits,
             Cancelable* progress) const;
 
+        //! Create a tile mesh, optionally with a collection of edits.
+        //! @param key TileKey for which to create the mesh
+        //! @param edits Edits (might be empty) to use to alter the mesh
+        //! @param options Terrain options for the mesher to use
+        //! @param progress Cancelable interface
+        //! @return A tile mesh
         TileGeometry createTile(
             const TileKey& key,
             const Edits& edits,
             const TerrainOptions& options,
             Cancelable* progress) const;
 
-        osg::DrawElements* getOrCreateDefaultIndices(
+        //! Creates a primitive set that represents triangles for
+        //! a tile mesh without any edits.
+        osg::DrawElements* getOrCreateStandardIndices(
             const TerrainOptions& options);
             
 
     protected:
-        mutable osg::ref_ptr<osg::DrawElements> _defaultIndices;
+        mutable osg::ref_ptr<osg::DrawElements> _standardIndices;
         mutable Mutex _mutex;
 
         using ConstraintLayers = std::vector<osg::ref_ptr<TerrainConstraintLayer>>;

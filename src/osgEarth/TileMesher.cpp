@@ -169,6 +169,8 @@ TileMesher::getEdits(
             }
         );
 
+        FilterContext context(new Session(map));
+
         std::vector<Edit> edits;
 
         for (auto& layer : layers)
@@ -181,7 +183,7 @@ TileMesher::getEdits(
                 osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(
                     key,
                     layer->getFilters(),
-                    nullptr,
+                    &context,
                     nullptr);
 
                 Edit edit;
@@ -202,7 +204,9 @@ TileMesher::getEdits(
 
                 if (!edit.features.empty())
                 {
-                    edit.layer = layer;
+                    edit.hasElevation = layer->getHasElevation();
+                    edit.removeInterior = layer->getRemoveInterior();
+                    edit.removeExterior = layer->getRemoveExterior();
                     out_edits.emplace_back(std::move(edit));
                 }
             }
@@ -432,7 +436,7 @@ TileMesher::createTileWithEdits(
             modelLTP = model * world2local;
 
             int marker =
-                VERTEX_VISIBLE; // | VERTEX_CONSTRAINT;
+                VERTEX_VISIBLE;
 
             // mark the perimeter as a boundary (for skirt generation)
             if (row == 0 || row == tileSize - 1 || col == 0 || col == tileSize - 1)
@@ -456,14 +460,16 @@ TileMesher::createTileWithEdits(
     // Make the edits
     for (auto& edit : edits)
     {
-        // we're marking everything as a CONSTRAINT in order to disable morphing.
+        // we're marking all verts CONSTRAINT in order to disable morphing.
         int default_marker =
             VERTEX_VISIBLE |
             VERTEX_CONSTRAINT;
 
         // this will preserve a "burned-in" Z value.
-        if (edit.layer->getHasElevation())
+        if (edit.hasElevation)
+        {
             default_marker |= VERTEX_HAS_ELEVATION;
+        }
 
         for (auto& feature : edit.features)
         {
@@ -505,7 +511,7 @@ TileMesher::createTileWithEdits(
                 {
                     // marking as BOUNDARY will allow skirt generation on this part
                     // for polygons with removed interior/exteriors
-                    if (part->isRing() && edit.layer->getRemoveInterior())
+                    if (part->isRing() && (edit.removeInterior || edit.removeExterior))
                     {
                         marker |= VERTEX_BOUNDARY;
                     }
@@ -532,9 +538,8 @@ TileMesher::createTileWithEdits(
                 }
             }
 
-            // Find any triangles that we don't want to draw and 
-            // mark them an "unused."
-            if (edit.layer->getRemoveInterior())
+            // Process some of the options.
+            if (edit.removeInterior || edit.removeExterior)
             {
                 // Iterate without holes because Polygon::contains deals with them
                 GeometryIterator mask_iter(
@@ -555,7 +560,7 @@ TileMesher::createTileWithEdits(
 
                             bool inside = part->contains2D(c.x(), c.y());
 
-                            if ((inside == true) && edit.layer->getRemoveInterior())
+                            if ((inside == true) && edit.removeInterior)
                             {
                                 trisToRemove.push_back(&tri);
 
@@ -565,6 +570,10 @@ TileMesher::createTileWithEdits(
                                 // - alter elevation offset based on distance from feature;
                                 // - duplicate tris to make water surface+bed
                                 // ... pluggable behavior ?
+                            }
+                            else if ((inside == false) && edit.removeExterior)
+                            {
+                                trisToRemove.push_back(&tri);
                             }
 
                             // this will remove "sliver" triangles that are coincident with
@@ -589,6 +598,28 @@ TileMesher::createTileWithEdits(
                     //_tileEmpty = true;
                     geom.hasConstraints = true;
                     return geom;
+                }
+            }
+
+            if (edit.hasElevation && edit.flatten)
+            {
+                weemesh::vert_t closest;
+
+                // collect every edge that is fully constrained (i.e. part of the input)
+                weemesh::edgeset_t constrained_edges(mesh, VERTEX_HAS_ELEVATION);
+
+                // find every vertex that is UNconstrained and set its elevation to the same value
+                // as that of the closest point on the nearest constrained edge
+                for (int i = 0; i < mesh._verts.size(); ++i)
+                {
+                    if ((mesh._markers[i] & VERTEX_HAS_ELEVATION) == 0)
+                    {
+                        if (constrained_edges.point_on_any_edge_closest_to(mesh._verts[i], mesh, closest))
+                        {
+                            mesh._verts[i].z() = closest.z();
+                            mesh._markers[i] |= (VERTEX_CONSTRAINT | VERTEX_HAS_ELEVATION);
+                        }
+                    }
                 }
             }
         }
@@ -674,7 +705,6 @@ TileMesher::createTileWithEdits(
         ++ptr;
     }
 
-
     auto mode = options.gpuTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
     geom.indices = new osg::DrawElementsUInt(mode);
     geom.indices->reserveElements(mesh._triangles.size() * 3);
@@ -724,15 +754,14 @@ TileMesher::createTileWithEdits(
     // Mark the geometry appropriately
     geom.hasConstraints = (mesh._num_edits > 0);
 
+    // Assign buffer objects
     auto vbo = new osg::VertexBufferObject();
-    geom.verts->setVertexBufferObject(vbo);
-    geom.normals->setVertexBufferObject(vbo);
-    geom.uvs->setVertexBufferObject(vbo);
-    if (geom.vert_neighbors) geom.vert_neighbors->setVertexBufferObject(vbo);
-    if (geom.normal_neighbors) geom.normal_neighbors->setVertexBufferObject(vbo);
+    for (auto& array : { geom.verts, geom.normals, geom.uvs, geom.vert_neighbors, geom.normal_neighbors })
+        if (array)
+            array->setVertexBufferObject(vbo);
 
-    auto ebo = new osg::ElementBufferObject();
-    if (geom.indices) geom.indices->setElementBufferObject(ebo);
+    if (geom.indices)
+        geom.indices->setElementBufferObject(new osg::ElementBufferObject());
 
     return geom;
 }

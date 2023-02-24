@@ -60,6 +60,10 @@ namespace osgEarth
         bool getRemoveInterior() const { return options().removeInterior().get(); }
         void setRemoveInterior(bool value);
 
+        //! Whether the terrain should remove geometry that is interior to polygons
+        bool getRemoveExterior() const { return options().removeExterior().get(); }
+        void setRemoveExterior(bool value);
+
         //! Whether the terrain should perserve the Z value in the feature data
         //! as static elevation
         bool getHasElevation() const { return options().hasElevation().get(); }

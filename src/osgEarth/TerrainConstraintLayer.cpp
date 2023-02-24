@@ -171,6 +171,12 @@ TerrainConstraintLayer::setRemoveInterior(bool value)
 }
 
 void
+TerrainConstraintLayer::setRemoveExterior(bool value)
+{
+    setOptionThatRequiresReopen(options().removeExterior(), value);
+}
+
+void
 TerrainConstraintLayer::setHasElevation(bool value)
 {
     setOptionThatRequiresReopen(options().hasElevation(), value);

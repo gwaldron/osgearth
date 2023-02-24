@@ -61,7 +61,10 @@ namespace osgEarth
         struct Edit
         {
             FeatureList features;
-            osg::ref_ptr<TerrainConstraintLayer> layer;
+            bool hasElevation = false;
+            bool removeInterior = false;
+            bool removeExterior = false;
+            bool flatten = false;
         };
         using Edits = std::vector<Edit>;
 

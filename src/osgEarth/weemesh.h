@@ -74,7 +74,7 @@ namespace weemesh
 
     const vert_t::value_type zero(0.0);
 
-    constexpr vert_t::value_type EPSILON = 1e-6;
+    constexpr vert_t::value_type EPSILON = 1e-3; // 6;
 
     inline bool same_vert(const vert_t& a, const vert_t& b, vert_t::value_type epsilon = EPSILON)
     {
@@ -141,6 +141,11 @@ namespace weemesh
                 clamp(bary[2], 0.0, 1.0) == bary[2];
         }
 
+        // true is index I is in this triangle.
+        inline bool is_vertex(int i) const {
+            return i == i0 || i == i1 || i == i2;
+        }
+
         // true if point P is one of the triangle's verts
         inline bool is_vertex(const vert_t& p, vert_t::value_type e = EPSILON) const
         {
@@ -155,6 +160,21 @@ namespace weemesh
                 return true;
 
             return false;
+        }
+
+        inline int get_vertex(const vert_t& p, vert_t::value_type e = EPSILON) const
+        {
+            if (equivalent(p.x(), p0.x(), e) &&
+                equivalent(p.y(), p0.y(), e))
+                return i0;
+            if (equivalent(p.x(), p1.x(), e) &&
+                equivalent(p.y(), p1.y(), e))
+                return i1;
+            if (equivalent(p.x(), p2.x(), e) &&
+                equivalent(p.y(), p2.y(), e))
+                return i2;
+
+            return -1;
         }
 
         inline bool get_barycentric(const vert_t& p, vert_t& out) const
@@ -308,7 +328,8 @@ namespace weemesh
             return _markers[i];
         }
 
-        // add a new vertex (or lookup a matching one) and return its index
+        // Add a new vertex (or lookup a matching one) and return its index.
+        // If the vertex already exists, update its marker if necessary.
         int get_or_create_vertex(const vert_t& input, int marker)
         {
             int index;
@@ -316,7 +337,7 @@ namespace weemesh
             if (i != _vert_lut.end())
             {
                 index = i->second;
-                _markers[i->second] = marker;
+                _markers[i->second] |= marker;
             }
             else if (_verts.size() + 1 < 0xFFFF)
             {
@@ -358,7 +379,7 @@ namespace weemesh
                 if (tri.is_2d_degenerate)
                     continue;
 
-                if (tri.contains_2d(vert) && !tri.is_vertex(vert))
+                if (tri.contains_2d(vert)) // && !tri.is_vertex(vert))
                 {
                     inside_split(tri, vert, nullptr, marker);
                     // dont't break -- could split two triangles if on edge.
@@ -409,16 +430,16 @@ namespace weemesh
                 // if so, split the triangle into 2 or 3 new ones, and mark
                 // all of its verts as CONSTRAINT so they will not be subject
                 // to morphing.
-                if (tri.contains_2d(seg.first) && !tri.is_vertex(seg.first))
+                if (tri.contains_2d(seg.first)) // && !tri.is_vertex(seg.first))
                 {
-                    inside_split(tri, seg.first, &uid_list, marker);
-                    continue;
+                    if (inside_split(tri, seg.first, &uid_list, marker))
+                        continue;
                 }
 
-                if (tri.contains_2d(seg.second) && !tri.is_vertex(seg.second))
+                if (tri.contains_2d(seg.second)) // && !tri.is_vertex(seg.second))
                 {
-                    inside_split(tri, seg.second, &uid_list, marker);
-                    continue;
+                    if (inside_split(tri, seg.second, &uid_list, marker))
+                        continue;
                 }
 
                 // Next try to intersect the segment with a triangle edge.
@@ -431,6 +452,10 @@ namespace weemesh
                 vert_t out;
                 UID new_uid;
                 int new_i;
+
+                //... WE SHOULD do the whole "update the marker" thing here too, I think ...
+                //... But it's causing an infinite loop ... gw
+
 
                 // does the segment cross first triangle edge?
                 segment_t edge0(tri.p0, tri.p1);
@@ -547,11 +572,17 @@ namespace weemesh
 
         // inserts point "p" into the interior of triangle "tri",
         // adds three new triangles, and removes the original triangle.
-        void inside_split(triangle_t& tri, const vert_t& p, std::list<UID>* uid_list, int new_marker)
+        // return true if a split actual happened
+        bool inside_split(triangle_t& tri, const vert_t& p, std::list<UID>* uid_list, int new_marker)
         {
             int new_i = get_or_create_vertex(p, new_marker);
             if (new_i < 0)
-                return;
+                return false;
+
+            // if this vertex is already one of the triangle's verts, no split is necessary
+            // and we are done.
+            if (tri.is_vertex(new_i))
+                return false;
 
             UID new_uid;
             int new_tris = 0;
@@ -562,7 +593,7 @@ namespace weemesh
             // a degenerate triangle.
             vert_t bary(1, 1, 1);
             if (tri.get_barycentric(p, bary) == false)
-                return;
+                return false;
 
             if (!equivalent(bary[2], 0.0, EPSILON)) {
                 new_uid = add_triangle(tri.i0, tri.i1, new_i);
@@ -596,6 +627,19 @@ namespace weemesh
 
             if (new_tris > 0)
                 remove_triangle(tri);
+
+            return (new_tris > 0);
+        }
+
+        vert_t point_on_edge_closest_to(const edge_t& edge, const vert_t& p) const {
+            const vert_t& e1 = get_vertex(edge._i0);
+            const vert_t& e2 = get_vertex(edge._i1);            
+            vert_t qp = e2 - e1;
+            vert_t xp = p - e1;
+            double u = xp.dot2d(qp) / qp.dot2d(qp);
+            if (u < 0.0) return e1;
+            else if (u > 1.0) return e2;
+            else return e1 + qp * u;
         }
     };
 
@@ -637,6 +681,23 @@ namespace weemesh
                 _edges.emplace(tri.i1, tri.i2);
             if (m2 && m0)
                 _edges.emplace(tri.i2, tri.i0);
+        }
+
+        bool point_on_any_edge_closest_to(const vert_t& p, const mesh_t& mesh, vert_t& closest) const
+        {
+            double min_distance2 = DBL_MAX;
+
+            for (auto& edge : _edges)
+            {
+                vert_t c = mesh.point_on_edge_closest_to(edge, p);
+                auto d2 = (c - p).length2d_squared();
+                if (d2 < min_distance2)
+                {
+                    min_distance2 = d2;
+                    closest = c;
+                }
+            }
+            return min_distance2 < DBL_MAX;
         }
     };
 

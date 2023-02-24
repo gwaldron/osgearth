@@ -41,6 +41,7 @@ XYZFeatureSource::Options::getConfig() const
     conf.set("min_level", _minLevel);
     conf.set("max_level", _maxLevel);
     conf.set("esri_geodetic", _esriGeodetic);
+    conf.set("auto_fallback", _autoFallback);
     return conf;
 }
 
@@ -48,6 +49,7 @@ void
 XYZFeatureSource::Options::fromConfig(const Config& conf)
 {
     format().setDefault("json");
+    autoFallback().setDefault(false);
     esriGeodetic().setDefault(false);
 
     conf.get("url", _url);
@@ -55,6 +57,7 @@ XYZFeatureSource::Options::fromConfig(const Config& conf)
     conf.get("min_level", _minLevel);
     conf.get("max_level", _maxLevel);
     conf.get("esri_geodetic", _esriGeodetic);
+    conf.get("auto_fallback", _autoFallback);
 }
 
 //........................................................................
@@ -66,6 +69,7 @@ OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, std::string, Format, format);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MinLevel, minLevel);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MaxLevel, maxLevel);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, bool, EsriGeodetic, esriGeodetic);
+OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, bool, AutoFallbackToMaxLevel, autoFallback);
 
 Status
 XYZFeatureSource::openImplementation()
@@ -323,7 +327,11 @@ XYZFeatureSource::createURL(const Query& query)
 {
     if (query.tileKey().isSet() && query.tileKey()->valid())
     {
-        const TileKey &key = query.tileKey().get();
+        TileKey key = query.tileKey().get();
+        
+        if ((int)key.getLOD() > getMaxLevel())
+            key = key.createAncestorKey(getMaxLevel());
+
         unsigned int tileX = key.getTileX();
         unsigned int tileY = key.getTileY();
         unsigned int level = key.getLevelOfDetail();

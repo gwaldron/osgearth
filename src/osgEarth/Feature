@@ -121,15 +121,17 @@ namespace osgEarth
         const std::vector<double>& getDoubleArrayValue() const;
     };
 
-    typedef std::map<std::string, AttributeValue, CIStringComp> AttributeTable;
+    using AttributeTable = std::map<std::string, AttributeValue, CIStringComp>;
 
     typedef long long FeatureID;
 
-    typedef std::map< std::string, AttributeType > FeatureSchema;
+    using FeatureSchema = std::map<std::string, AttributeType>;
 
     class Feature;
 
-    typedef std::list< osg::ref_ptr<Feature> > FeatureList;
+    using FeatureList = std::list<osg::ref_ptr<Feature>>;
+
+    using ConstFeatureList = std::list<osg::ref_ptr<const Feature>>;
 
     /**
      * Basic building block of vector feature data.

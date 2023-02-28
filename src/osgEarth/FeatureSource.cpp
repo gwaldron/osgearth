@@ -240,7 +240,7 @@ FeatureSource::getExtent() const
         return Layer::getExtent();
 }
 
-FeatureCursor*
+osg::ref_ptr<FeatureCursor>
 FeatureSource::createFeatureCursor(
     const Query& query,
     ProgressCallback* progress)
@@ -252,7 +252,7 @@ FeatureSource::createFeatureCursor(
         progress);
 }
 
-FeatureCursor*
+osg::ref_ptr<FeatureCursor>
 FeatureSource::createFeatureCursor(
     const Query& query,
     FeatureFilterChain* filters,
@@ -319,7 +319,7 @@ FeatureSource::createFeatureCursor(
     if (cursor.valid() && filters)
         return new FilteredFeatureCursor(cursor.get(), filters, context);
     else
-        return cursor.release();
+        return cursor;
 }
 
 namespace
@@ -358,7 +358,7 @@ namespace
     };
 }
 
-FeatureCursor*
+osg::ref_ptr<FeatureCursor>
 FeatureSource::createFeatureCursor(
     const TileKey& key,
     ProgressCallback* progress)
@@ -371,7 +371,7 @@ FeatureSource::createFeatureCursor(
         progress);
 }
 
-FeatureCursor*
+osg::ref_ptr<FeatureCursor>
 FeatureSource::createFeatureCursor(
     const TileKey& key,
     FeatureFilterChain* filters,
@@ -386,7 +386,7 @@ FeatureSource::createFeatureCursor(
         progress);
 }
 
-FeatureCursor*
+osg::ref_ptr<FeatureCursor>
 FeatureSource::createFeatureCursor(
     const TileKey& key,
     const Distance& buffer,
@@ -423,7 +423,7 @@ FeatureSource::createFeatureCursor(
             return nullptr;
 
         multi->finish();
-        return multi.release();
+        return multi;
     }
 
     else

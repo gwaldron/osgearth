@@ -1032,7 +1032,8 @@ MultiGeometry::getNumGeometries() const
 Bounds
 MultiGeometry::getBounds() const
 {
-    Bounds bounds;
+    Bounds bounds = Geometry::getBounds();
+
     for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
     {
         bounds.expandBy( i->get()->getBounds() );
@@ -1068,6 +1069,13 @@ MultiGeometry::isValid() const
 }
 
 void
+MultiGeometry::open()
+{
+    for (auto& part : _parts)
+        part->open();
+}
+
+void
 MultiGeometry::close()
 {
     for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
@@ -1084,6 +1092,13 @@ MultiGeometry::rewind( Orientation orientation )
     {
         i->get()->rewind( orientation );
     }
+}
+
+void
+MultiGeometry::removeDuplicates()
+{
+    for (auto& part : _parts)
+        part->removeDuplicates();
 }
 
 void

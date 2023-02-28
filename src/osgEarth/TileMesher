@@ -58,13 +58,14 @@ namespace osgEarth
     class OSGEARTH_EXPORT TileMesher
     {
     public:
+        // Represents a single edit operation driven by a feature collection
         struct Edit
         {
             FeatureList features;
-            bool hasElevation = false;
-            bool removeInterior = false;
-            bool removeExterior = false;
-            bool flatten = false;
+            bool hasElevation = false;     // do the features contain valid elevation data in Z?
+            bool removeInterior = false;   // should we remove triangles inside polygons?
+            bool removeExterior = false;   // should we remove triangles outside polygons?
+            bool fillElevations = false;   // should we assign elevations to triangles?
         };
         using Edits = std::vector<Edit>;
 

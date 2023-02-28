@@ -74,7 +74,7 @@ namespace weemesh
 
     const vert_t::value_type zero(0.0);
 
-    constexpr vert_t::value_type EPSILON = 1e-3; // 6;
+    constexpr vert_t::value_type EPSILON = 0.00005; // 1e-3; // 6;
 
     inline bool same_vert(const vert_t& a, const vert_t& b, vert_t::value_type epsilon = EPSILON)
     {
@@ -414,7 +414,7 @@ namespace weemesh
             // splits will just happen on the new triangles later. (That's why
             // every split operation is followed by a "continue" to short-circuit
             // to loop)
-            vert_t::value_type E = 1e-3;
+            vert_t::value_type E = EPSILON; // E = 1e-3;
             std::list<UID> uid_list;
             std::copy(uids.begin(), uids.end(), std::back_inserter(uid_list));
             for (auto uid : uid_list)

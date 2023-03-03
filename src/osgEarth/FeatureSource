@@ -79,74 +79,72 @@ namespace osgEarth
 
     public:
 
-        /**
-         * Creates and initializes a new feature source for writing
-         */
+        //! Creates and initializes a new feature source for writing
         virtual const Status& create(
             const FeatureProfile* profile,
             const FeatureSchema& schema,
             const Geometry::Type& geometryType,
             const osgDB::Options* readOptions);
 
-        /**
-        * Creates a cursor that iterates over all features corresponding to the
-        * specified TileKey. Caller takes ownership of the returned object.
-        */
-        osg::ref_ptr<FeatureCursor> createFeatureCursor(
-            const TileKey& key,
-            ProgressCallback* progress);
+        //! Creates a cursor that iterates over all features.
+        //! @param progress Progress API (optinoal, can be nullptr)
+        //! @return A new cursor
+        FeatureCursor createFeatureCursor(
+            ProgressCallback* progress =nullptr) const;
 
-        /**
-        * Creates a cursor that iterates over all features corresponding to the
-        * specified TileKey, passing them through the specified filter chain.
-        * Caller takes ownership of the returned object.
-        */
-        osg::ref_ptr<FeatureCursor> createFeatureCursor(
+        //! Creates a cursor that iterates over all features corresponding to the
+        //! specified TileKey.
+        //! @param key TileKey for which to create a cursor
+        //! @param progress Progress API (optinoal, can be nullptr)
+        //! @return A new cursor
+        FeatureCursor createFeatureCursor(
             const TileKey& key,
-            FeatureFilterChain* filters,
-            FilterContext* context,
-            ProgressCallback* progress);
+            ProgressCallback* progress) const;
 
-        /**
-        * Creates a cursor that iterates over all features corresponding to the
-        * specified TileKey with a buffer. Caller takes ownership of the returned object.
-        */
-        osg::ref_ptr<FeatureCursor> createFeatureCursor(
+        //! Creates a cursor that iterates over all features corresponding to the
+        //! specified TileKey with a buffer.
+        //! @param key TileKey for which to create a cursor
+        //! @param buffer Buffer around the tilekey's extent to also query
+        //! @param additional_filters Filters to run the results through, in addition to
+        //!   any filters on this FeatureSource itself
+        //! @param context Filtering context (optional, can be nullptr)
+        //! @param progress Progress API (optinoal, can be nullptr)
+        //! @return A new cursor
+        FeatureCursor createFeatureCursor(
             const TileKey& key,
             const Distance& buffer,
-            FeatureFilterChain* filters,
+            const FeatureFilterChain& filters,
             FilterContext* context,
-            ProgressCallback* progress);
+            ProgressCallback* progress) const;
 
-        /**
-         * Creates a cursor that iterates over all the features corresponding to the
-         * specified query. Caller takes ownership of the returned object.
-         */
-        osg::ref_ptr<FeatureCursor> createFeatureCursor(
+        //! Creates a cursor that iterates over all the features corresponding to the
+        //! specified query.
+        //! @param query Feature query details
+        //! @param progress Progress API (optional, can be nullptr)
+        //! @return A new cursor
+        FeatureCursor createFeatureCursor(
             const Query& query,
-            ProgressCallback* progress);
+            ProgressCallback* progress) const;
 
-        /**
-        * Creates a cursor that iterates over all features corresponding to the
-        * specified TileKey, passing them through the specified filter chain.
-        * Caller takes ownership of the returned object.
-        */
-        osg::ref_ptr<FeatureCursor> createFeatureCursor(
+        //! Creates a cursor that iterates over all features corresponding to the
+        //! specified TileKey, passing them through the specified filter chain.
+        //! @param query Feature query details
+        //! @param additional_filters Filters to run the results through, in addition to
+        //!   any filters on this FeatureSource itself
+        //! @param context Filtering context (optional, can be nullptr)
+        //! @param progress Progress API (optinoal, can be nullptr)
+        //! @return A new cursor
+        FeatureCursor createFeatureCursor(
             const Query& query,
-            FeatureFilterChain* filters,
+            const FeatureFilterChain& filters,
             FilterContext* context,
-            ProgressCallback* progress);
-
-        /**
-         * Creates a cursor that iterates over all the features corresponding to the
-         * specified query. Caller takes ownership of the returned object.
-         */
-        osg::ref_ptr<FeatureCursor> createFeatureCursor(ProgressCallback* progress) {
-            return createFeatureCursor(Query(), progress);
-        }
+            ProgressCallback* progress) const;
 
         //! Gets a vector of keys required to cover the input key and
         //! a buffering distance.
+        //! @param TileKey to query
+        //! @param buffer Buffer around the tilekey's extent to also query
+        //! @param output Keys in the feature source's profile
         unsigned getKeys(
             const TileKey& key,
             const Distance& buffer,
@@ -194,7 +192,9 @@ namespace osgEarth
          * @return
          *     The Feature with the given FID or NULL if not found.
          */
-        virtual Feature* getFeature( FeatureID fid ) { return 0L; }
+        virtual osg::ref_ptr<const Feature> getFeature(FeatureID fid) const {
+            return {};
+        }
 
         /**
          * Gets the FeatureSchema for this FeatureSource. If the schema doesn't
@@ -207,7 +207,7 @@ namespace osgEarth
          * @return
          *     True if the feature was inserted, false if not
          */
-        virtual bool insertFeature(Feature* feature) { return false; }
+        virtual bool insertFeature(const Feature* feature) { return false; }
 
         /**
          * Gets the Geometry type of the FeatureSource
@@ -227,7 +227,7 @@ namespace osgEarth
          * Accesses the list of feature filters that will transform features
          * before they are returned in a feature cursor.
          */
-        const FeatureFilterChain* getFilters() const;
+        const FeatureFilterChain& getFilters() const;
 
         /**
          * Adds a feature ID to the blacklist.
@@ -261,26 +261,33 @@ namespace osgEarth
         static FeatureSource* create(const ConfigOptions&);
 
     protected:
+
+        //! Implements the feature cursor creation
+        //! The implementation should NOT apply filters - this is done
+        //! by the owning feature source.
+        virtual FeatureCursorImplementation* createFeatureCursorImplementation(
+            const Query& query,
+            ProgressCallback* progress) const = 0;
+
+        //! DTOR
+        virtual ~FeatureSource() { }
+
+    private:
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         URIContext                         _uriContext;
         mutable Threading::ReadWriteMutex  _blacklistMutex;
         std::unordered_set<FeatureID>      _blacklist;
         unsigned                           _blacklistSize;
-        osg::ref_ptr<FeatureFilterChain>   _filters;
+        FeatureFilterChain _filters;
 
-        typedef LRUCache<TileKey, FeatureList> FeaturesLRU;
-        std::unique_ptr< FeaturesLRU > _featuresCache;
-        Threading::Mutex _featuresCacheMutex;
-
-        //! Implements the feature cursor creation
-        virtual FeatureCursor* createFeatureCursorImplementation(
-            const Query& query,
-            ProgressCallback* progress) =0;
+        using FeaturesLRU = LRUCache<TileKey, FeatureList>;
+        mutable std::unique_ptr<FeaturesLRU> _featuresCache;
 
         /** Convenience function to apply the filters to a FeatureList */
-        void applyFilters(FeatureList& features, const GeoExtent& extent) const;
+        //void applyFilters(FeatureList& features, const GeoExtent& extent) const;
 
-        virtual ~FeatureSource() { }
+
+        friend class FilteredFeatureSource;
     };
 }
 

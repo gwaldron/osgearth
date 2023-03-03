@@ -33,18 +33,18 @@ using namespace osgEarth::Util;
 //----------------------------------------------------------------------------
 
 FeatureProfile::FeatureProfile(const GeoExtent& extent) :
-_extent    ( extent ),
-_firstLevel( 0 ),
-_maxLevel  ( -1 )
+    _extent(extent),
+    _firstLevel(0),
+    _maxLevel(-1)
 {
     //nop
 }
 
 FeatureProfile::FeatureProfile(const Profile* tilingProfile) :
     _tilingProfile(tilingProfile),
-    _extent    (tilingProfile? tilingProfile->getExtent() : GeoExtent::INVALID),
-    _firstLevel( 0 ),
-    _maxLevel  ( -1 )
+    _extent(tilingProfile ? tilingProfile->getExtent() : GeoExtent::INVALID),
+    _firstLevel(0),
+    _maxLevel(-1)
 {
     //nop
 }
@@ -189,34 +189,45 @@ Feature::Feature() :
     //nop
 }
 
-Feature::Feature( FeatureID fid ) :
-_fid( fid ),
-_srs( 0L )
+Feature::Feature(FeatureID fid) :
+    _fid(fid),
+    _srs(0L)
 {
     //NOP
 }
 
-Feature::Feature( Geometry* geom, const SpatialReference* srs, const Style& style, FeatureID fid ) :
-_geom ( geom ),
-_srs  ( srs ),
-_fid  ( fid )
+Feature::Feature(Geometry* geom, const SpatialReference* srs, const Style& style, FeatureID fid) :
+    _geom(geom),
+    _srs(srs),
+    _fid(fid)
 {
-    if ( !style.empty() )
+    if (!style.empty())
         _style = style;
 
     dirty();
 }
 
-Feature::Feature( const Feature& rhs, const osg::CopyOp& copyOp ) :
-_fid      ( rhs._fid ),
-_attrs    ( rhs._attrs ),
-_style    ( rhs._style ),
-_geoInterp( rhs._geoInterp ),
-_srs      ( rhs._srs.get() )
+Feature::Feature(const Feature& rhs, const osg::CopyOp& copyOp) :
+    _fid(rhs._fid),
+    _attrs(rhs._attrs),
+    _style(rhs._style),
+    _geoInterp(rhs._geoInterp),
+    _srs(rhs._srs.get())
 {
-    if ( rhs._geom.valid() )
+    if (rhs._geom.valid())
         _geom = rhs._geom->clone();
 
+    dirty();
+}
+
+Feature::Feature(const Feature& rhs, Geometry* new_geom) :
+    _fid(rhs._fid),
+    _attrs(rhs._attrs),
+    _style(rhs._style),
+    _geoInterp(rhs._geoInterp),
+    _srs(rhs._srs.get())
+{
+    _geom = new_geom;
     dirty();
 }
 
@@ -726,13 +737,13 @@ Feature::getGeoJSON() const
     return Json::FastWriter().write( root );
 }
 
-std::string Feature::featuresToGeoJSON( const FeatureList& features)
+std::string osgEarth::getGeoJSON(const FeatureList& features)
 {
     std::stringstream buf;
 
     buf << "{\"type\": \"FeatureCollection\", \"features\": [";
 
-    FeatureList::const_iterator last = features.end();
+    auto last = features.end();
     last--;
 
     for (FeatureList::const_iterator i = features.begin(); i != features.end(); i++)
@@ -747,10 +758,9 @@ std::string Feature::featuresToGeoJSON( const FeatureList& features)
     buf << "]}";
 
     return buf.str();
-
 }
 
-void Feature::transform( const SpatialReference* srs )
+void Feature::transformInPlace(const SpatialReference* srs)
 {
     if (!getGeometry())
         return;
@@ -771,7 +781,16 @@ void Feature::transform( const SpatialReference* srs )
     setSRS( srs );
 }
 
-void Feature::splitAcrossDateLine(FeatureList& splitFeatures)
+osg::ref_ptr<Feature>
+Feature::transformTo(const SpatialReference* srs) const
+{
+    OE_SOFT_ASSERT_AND_RETURN(_srs.valid() && srs != nullptr, nullptr);
+    auto new_feature = osg::clone(this, osg::CopyOp::DEEP_COPY_ALL);
+    new_feature->transformInPlace(srs);
+    return new_feature;
+}
+
+void Feature::splitAcrossDateLine(FeatureList& splitFeatures) const
 {
     splitFeatures.clear();
 

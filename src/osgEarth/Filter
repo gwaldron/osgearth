@@ -51,19 +51,22 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT FeatureFilter : public Filter
     {
     public:
-        /**
-         * Push a list of features through the filter.
-         */
-        virtual FilterContext push( FeatureList& input, FilterContext& context ) =0;
+        //! Push a list of features through the filter.
+        virtual FilterContext push(FeatureList& features, FilterContext& context) = 0;
 
-        /**
-         * Optionally initialize the filter.
-         */
+        //! Push a list of mutable features through the filter.
+        FilterContext push(MutableFeatureList& features, FilterContext& context)
+        {
+            FeatureList temp = toConst(features);
+            context = push(temp, context);
+            features = toMutable(temp);
+            return context;
+        }
+
+        //! Optionally initialize the filter.
         virtual Status initialize(const osgDB::Options* readOptions) { return Status::OK(); }
 
-        /**
-         * Serialize this FeatureFilter
-         */
+        //! Serialize this FeatureFilter
         virtual Config getConfig() const { return Config(); }
 
     protected:
@@ -72,13 +75,12 @@ namespace osgEarth { namespace Util
         virtual ~FeatureFilter();
     };
 
-    //! Vector of feature filters (ref counted)
-    class OSGEARTH_EXPORT FeatureFilterChain : 
-        public osg::Referenced,
-        public osg::MixinVector<osg::ref_ptr<FeatureFilter> >
+    //! Vector of feature filters
+    class OSGEARTH_EXPORT FeatureFilterChain :
+        public osg::MixinVector<osg::ref_ptr<FeatureFilter>>
     {
     public:
-        static FeatureFilterChain* create(
+        static FeatureFilterChain create(
             const std::vector<ConfigOptions>& filters,
             const osgDB::Options* readOptions);
 
@@ -95,9 +97,9 @@ namespace osgEarth { namespace Util
     {
     public:
         virtual FeatureFilter* create( const Config& conf ) = 0;
-    };    
+    };
 
-    typedef std::list< osg::ref_ptr< FeatureFilterFactory > > FeatureFilterFactoryList;
+    using FeatureFilterFactoryList = std::list<osg::ref_ptr<FeatureFilterFactory>>;
 
     /**
      * A registry of FeatureFilter plugins
@@ -177,7 +179,7 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT FeaturesToNodeFilter : public Filter
     {
     public:
-        virtual osg::Node* push( FeatureList& input, FilterContext& context ) =0;
+        virtual osg::Node* push(FeatureList& input, FilterContext& context) = 0;
 
     public:
         const osg::Matrixd& local2world() const { return _local2world; }

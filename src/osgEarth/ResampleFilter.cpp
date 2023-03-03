@@ -177,18 +177,24 @@ ResampleFilter::push( Feature* input, FilterContext& context )
 
 
 FilterContext
-ResampleFilter::push( FeatureList& input, FilterContext& context )
+ResampleFilter::push(FeatureList& input, FilterContext& context)
 {
-    if ( !isSupported() )
+    if (!isSupported())
     {
         OE_WARN << "ResampleFilter support not enabled" << std::endl;
         return context;
     }
 
+    FeatureList output;
     bool ok = true;
-    for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
-        if ( !push( i->get(), context ) )
+    for (auto& feature : input)
+    {
+        auto new_feature = new Feature(*feature.get());
+        if (!push(new_feature, context))
             ok = false;
+        output.push_back(new_feature);
+    }
 
+    input.swap(output);
     return context;
 }

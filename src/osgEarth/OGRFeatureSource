@@ -89,31 +89,33 @@ namespace osgEarth
 
     protected: // Layer
 
-        virtual void init();
+        void init() override;
 
-        virtual Status openImplementation();
+        Status openImplementation() override;
 
-        virtual Status closeImplementation();
+        Status closeImplementation() override;
 
     public: // FeatureSource
 
-        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);        
+        FeatureCursorImplementation* createFeatureCursorImplementation(
+            const Query& query,
+            ProgressCallback* progress) const override;
 
-        virtual bool deleteFeature(FeatureID fid);
+        bool deleteFeature(FeatureID fid);
 
-        virtual int getFeatureCount() const;
+        int getFeatureCount() const;
 
-        virtual bool supportsGetFeature() const;
+        bool supportsGetFeature() const override;
 
-        virtual Feature* getFeature( FeatureID fid );
+        osg::ref_ptr<const Feature> getFeature(FeatureID fid) const override;
 
-        virtual bool isWritable() const;
+        bool isWritable() const override;
 
-        virtual const FeatureSchema& getSchema() const;
+        const FeatureSchema& getSchema() const override;
     
-        virtual bool insertFeature(Feature* feature);
+        bool insertFeature(const Feature* feature) override;
 
-        virtual osgEarth::Geometry::Type getGeometryType() const;
+        osgEarth::Geometry::Type getGeometryType() const override;
 
         const Status& create(
                 const FeatureProfile* profile,
@@ -153,35 +155,34 @@ namespace osgEarth
     namespace OGR
     {
         //! Internal class - do not use directly
-        class OGRFeatureCursor : public FeatureCursor
+        class OGRFeatureCursorImpl : public FeatureCursorImplementation
         {
         public:
             //! Create a feature cursor that can query data from a layer.
-            OGRFeatureCursor(
-                void*                     dsHandle,
-                void*                     layerHandle,
-                const FeatureSource*      source,
-                const FeatureProfile*     profile,
-                const Query&              query,
-                const FeatureFilterChain* filters,
-                bool                      rewindPolygons,
-                unsigned                  chunkSize,
-                ProgressCallback*         progress
-                );
+            OGRFeatureCursorImpl(
+                void* dsHandle,
+                void* layerHandle,
+                const FeatureSource* source,
+                const FeatureProfile* profile,
+                const Query& query,
+                bool rewindPolygons,
+                unsigned chunkSize,
+                ProgressCallback* progress
+            );
 
             //! Create a feature cursor that will just iterate over
             //! the results in a prepopulated result set.
-            OGRFeatureCursor(
+            OGRFeatureCursorImpl(
                 void* resultSet,
                 const FeatureProfile* featureProfile);
 
         public: // FeatureCursor
 
             bool hasMore() const;
-            Feature* nextFeature();
+            osg::ref_ptr<const Feature> nextFeature() override;
 
         protected:
-            virtual ~OGRFeatureCursor();
+            virtual ~OGRFeatureCursorImpl();
 
         private:
             void* _dsHandle;
@@ -193,9 +194,9 @@ namespace osgEarth
             void* _nextHandleToQueue;
             osg::ref_ptr<const FeatureSource> _source;
             osg::ref_ptr<const FeatureProfile> _profile;
-            std::queue< osg::ref_ptr<Feature> > _queue;
-            osg::ref_ptr<Feature> _lastFeatureReturned;
-            osg::ref_ptr<const FeatureFilterChain> _filters;
+            std::queue< osg::ref_ptr<const Feature> > _queue;
+            osg::ref_ptr<const Feature> _lastFeatureReturned;
+            FeatureFilterChain _filters;
             bool _resultSetEndReached;
             bool _rewindPolygons;
 
@@ -203,7 +204,6 @@ namespace osgEarth
             void readChunk();
         };
     }
-
 
 } // namespace osgEarth
 

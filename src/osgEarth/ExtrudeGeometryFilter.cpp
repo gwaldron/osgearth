@@ -343,7 +343,8 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
 
         // Step 1 - Create the real corners and transform them into our target SRS.
         Corners corners;
-        for(Geometry::const_iterator m = part->begin(); m != part->end(); ++m)
+        auto end = part->isOpen() ? part->end() : part->end() - 1;
+        for(Geometry::const_iterator m = part->begin(); m != end; ++m)
         {
             Corners::iterator corner = corners.insert(corners.end(), Corner());
             
@@ -528,7 +529,7 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
 
 bool
 ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
-                                         Feature* feature,
+                                         const Feature* feature,
                                          osg::Geometry*       walls,
                                          const osg::Vec4&     wallColor,
                                          const osg::Vec4&     wallBaseColor,
@@ -754,7 +755,7 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
 
 bool
 ExtrudeGeometryFilter::buildRoofGeometry(const Structure&     structure,
-                                         Feature* feature,
+                                         const Feature* feature,
                                          osg::Geometry*       roof,                                         
                                          const osg::Vec4&     roofColor,
                                          const SkinResource*  roofSkin,
@@ -1058,7 +1059,7 @@ void
 ExtrudeGeometryFilter::addDrawable(osg::Drawable*       drawable,
                                    osg::StateSet*       stateSet,
                                    const std::string&   name,
-                                   Feature*             feature,
+                                   const Feature*       feature,
                                    FeatureIndexBuilder* index )
 {
     // find the geode for the active stateset, creating a new one if necessary. NULL is a 
@@ -1095,10 +1096,8 @@ ExtrudeGeometryFilter::addDrawable(osg::Drawable*       drawable,
 bool
 ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 {
-    for( FeatureList::iterator f = features.begin(); f != features.end(); ++f )
+    for(auto& input : features)
     {
-        Feature* input = f->get();
-
         // run a symbol script if present.
         if (_polySymbol.valid() && _polySymbol->script().isSet())
         {
@@ -1119,27 +1118,27 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
         if (input->getGeometry() == 0L)
             continue;
 
+        // calculate the extrusion height:
+        float height;
+
+        if (_heightCallback.valid())
+        {
+            height = _heightCallback->operator()(input.get(), context);
+        }
+        else if (_heightExpr.isSet())
+        {
+            height = input->eval(_heightExpr.mutable_value(), &context);
+        }
+        else
+        {
+            height = *_extrusionSymbol->height();
+        }
+
         // iterator over the parts.
-        GeometryIterator iter( input->getGeometry(), false );
+        ConstGeometryIterator iter( input->getGeometry(), false );
         while( iter.hasMore() )
         {
-            Geometry* part = iter.next();
-
-            // calculate the extrusion height:
-            float height;
-
-            if (_heightCallback.valid())
-            {
-                height = _heightCallback->operator()(input, context);
-            }
-            else if (_heightExpr.isSet())
-            {
-                height = input->eval(_heightExpr.mutable_value(), &context);
-            }
-            else
-            {
-                height = *_extrusionSymbol->height();
-            }
+            auto part = iter.next();
 
             // Set up for feature naming and feature indexing:
             std::string name;
@@ -1153,7 +1152,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             SkinResource* wallSkin = 0L;
             if (_wallSkinSymbol.valid())
             {
-                unsigned int wallRand = f->get()->getFID() + (_wallSkinSymbol.valid() ? *_wallSkinSymbol->randomSeed() : 0);
+                unsigned int wallRand = input->getFID() + (_wallSkinSymbol.valid() ? *_wallSkinSymbol->randomSeed() : 0);
 
                 if (_wallResLib.valid())
                 {
@@ -1177,7 +1176,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             SkinResource* roofSkin = 0L;
             if (_roofSkinSymbol.valid())
             {
-                unsigned int roofRand = f->get()->getFID() + (_roofSkinSymbol.valid() ? *_roofSkinSymbol->randomSeed() : 0);
+                unsigned int roofRand = input->getFID() + (_roofSkinSymbol.valid() ? *_roofSkinSymbol->randomSeed() : 0);
 
                 if (_roofResLib.valid())
                 {
@@ -1204,7 +1203,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 walls->setName("Walls");
                 walls->setUseVertexBufferObjects(true);
                 _wallGeometries[wallStateSet.get()] = walls.get();
-                addDrawable(walls.get(), wallStateSet.get(), name, input, context.featureIndex());                
+                addDrawable(walls.get(), wallStateSet.get(), name, input.get(), context.featureIndex());                
             }
 
             osg::ref_ptr<osg::Geometry> rooflines = 0L;
@@ -1213,7 +1212,8 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
             if (part->getType() == Geometry::TYPE_POLYGON)
             {
-                part->rewind(osgEarth::Geometry::ORIENTATION_CCW);
+                // removed: this should happen at the feature source now.
+                //part->rewind(osgEarth::Geometry::ORIENTATION_CCW);
 
                 rooflines = _roofGeometries[roofStateSet.get()];
                 if (!rooflines.valid())
@@ -1226,7 +1226,8 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 }
 
                 // prep the shapes by making sure all polys are open:
-                static_cast<Polygon*>(part)->open();
+                // NO: this is guaranteed by the feature source policy now
+                //static_cast<Polygon*>(part)->open();
             }
 
             // make a base cap if we're doing stencil volumes.

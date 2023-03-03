@@ -35,7 +35,7 @@ namespace osgEarth
         class OSGEARTH_EXPORT Implementation : public osg::Referenced
         {
         public:
-            virtual Status search(const std::string& input, osg::ref_ptr<FeatureCursor>& output) = 0;
+            virtual Status search(const std::string& input, FeatureCursor& output) = 0;
 
             virtual void setServiceOption(const std::string& name, const std::string& value) =0;
         };
@@ -44,9 +44,9 @@ namespace osgEarth
         struct OutputData
         {
             OutputData() { }
-            OutputData(const Status& status, FeatureCursor* cursor) : _status(status), _cursor(cursor) { }
+            OutputData(const Status& status, const FeatureCursor& cursor) : _status(status), _cursor(cursor) { }
             Status _status;
-            osg::ref_ptr<FeatureCursor> _cursor;
+            FeatureCursor _cursor;
         };
 
         //! Result object returned from a geocoding attempt
@@ -57,10 +57,10 @@ namespace osgEarth
             Status getStatus();
 
             //! Cursor for iterating over the geocoding results
-            FeatureCursor* getFeatures();
+            FeatureCursor getFeatures();
 
             //! Internal constructors
-            Results(const Status& status, FeatureCursor* cursor);
+            Results(const Status& status, FeatureCursor& cursor);
             Results(Future<OutputData> future);
             Results(const OutputData& results);
         };

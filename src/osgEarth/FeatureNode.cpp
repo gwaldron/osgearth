@@ -47,7 +47,7 @@
 
 using namespace osgEarth;
 
-FeatureNode::FeatureNode(Feature* feature,
+FeatureNode::FeatureNode(const Feature* feature,
                          const Style& in_style,
                          const GeometryCompilerOptions& options,
                          StyleSheet* styleSheet) :
@@ -294,16 +294,16 @@ void FeatureNode::setIndex(FeatureIndexBuilder* index)
     }
 }
 
-Feature* FeatureNode::getFeature()
+const Feature* FeatureNode::getFeature() const
 {
     if (_features.size() == 1)
     {
         return _features.front().get();
     }
-    return 0;
+    return nullptr;
 }
 
-void FeatureNode::setFeature(Feature* feature)
+void FeatureNode::setFeature(const Feature* feature)
 {
     _features.clear();
     if (feature)
@@ -446,7 +446,7 @@ FeatureNode::getConfig() const
     {
         // Write out a single feature for now.
 
-        Feature* feature = _features.begin()->get();
+        const Feature* feature = _features.begin()->get();
 
         conf.set("name", getName());
 

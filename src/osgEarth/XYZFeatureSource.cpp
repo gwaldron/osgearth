@@ -20,7 +20,6 @@
 #include <osgEarth/OgrUtils>
 #include <osgEarth/GeometryUtils>
 #include <osgEarth/FeatureCursor>
-#include <osgEarth/Filter>
 #include <osgEarth/MVT>
 #include <osgEarth/Registry>
 #include <osgEarth/Metrics>
@@ -127,12 +126,12 @@ XYZFeatureSource::init()
 }
 
 
-FeatureCursor*
-XYZFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+FeatureCursorImplementation*
+XYZFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
 
-    FeatureCursor* result = 0L;
+    FeatureCursorImplementation* result = nullptr;
 
     URI uri = createURL(query);
     if (uri.empty()) return 0;
@@ -147,7 +146,7 @@ XYZFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 
     bool dataOK = false;
 
-    FeatureList features;
+    MutableFeatureList features;
     if (!buffer.empty())
     {
         // Get the mime-type from the metadata record if possible
@@ -170,39 +169,24 @@ XYZFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
     }
 
-    //If we have any filters, process them here before the cursor is created
-    if (getFilters() && !getFilters()->empty() && !features.empty())
-    {
-        FilterContext cx;
-        cx.setProfile(getFeatureProfile());
-        cx.extent() = query.tileKey()->getExtent();
-
-        for (FeatureFilterChain::const_iterator i = getFilters()->begin(); i != getFilters()->end(); ++i)
-        {
-            FeatureFilter* filter = i->get();
-            cx = filter->push(features, cx);
-        }
-    }
-
     // If we have any features and we have an fid attribute, override the fid of the features
     if (options().fidAttribute().isSet())
     {
-        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+        for(auto& feature : features)
         {
-            std::string attr = itr->get()->getString(options().fidAttribute().get());
+            std::string attr = feature->getString(options().fidAttribute().get());
             FeatureID fid = as<FeatureID>(attr, 0);
-            itr->get()->setFID(fid);
+            feature->setFID(fid);
         }
     }
 
-    //result = new FeatureListCursor(features);
-    result = dataOK ? new FeatureListCursor(features) : 0L;
+    result = dataOK ? new FeatureListCursorImpl(toConst(features)) : nullptr;
 
     return result;
 }
 
 bool
-XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features)
+XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, MutableFeatureList& features) const
 {
     if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream" || mimeType == "application/octet-stream")
     {
@@ -258,7 +242,7 @@ XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
                 if (feat_handle)
                 {
                     osg::ref_ptr<Feature> f = OgrUtils::createFeature(feat_handle, getFeatureProfile(), *_options->rewindPolygons());
-                    if (f.valid() && !isBlacklisted(f->getFID()))
+                    if (f.valid() && f->getGeometry() && !isBlacklisted(f->getFID()))
                     {
                         features.push_back(f.release());
                     }
@@ -323,7 +307,7 @@ XYZFeatureSource::isJSON(const std::string& mime) const
 }
 
 URI
-XYZFeatureSource::createURL(const Query& query)
+XYZFeatureSource::createURL(const Query& query) const
 {
     if (query.tileKey().isSet() && query.tileKey()->valid())
     {
@@ -351,16 +335,16 @@ XYZFeatureSource::createURL(const Query& query)
         std::string location = _template;
 
         // support OpenLayers template style:
-        replaceIn(location, "${x}", Stringify() << tileX);
-        replaceIn(location, "${y}", Stringify() << tileY);
-        replaceIn(location, "${-y}", Stringify() << inverted_tileY);
-        replaceIn(location, "${z}", Stringify() << level);
+        replaceIn(location, "${x}", std::to_string(tileX));
+        replaceIn(location, "${y}", std::to_string(tileY));
+        replaceIn(location, "${-y}", std::to_string(inverted_tileY));
+        replaceIn(location, "${z}", std::to_string(level));
 
         // failing that, legacy osgearth style:
-        replaceIn(location, "{x}", Stringify() << tileX);
-        replaceIn(location, "{y}", Stringify() << tileY);
-        replaceIn(location, "{-y}", Stringify() << inverted_tileY);
-        replaceIn(location, "{z}", Stringify() << level);
+        replaceIn(location, "{x}", std::to_string(tileX));
+        replaceIn(location, "{y}", std::to_string(tileY));
+        replaceIn(location, "{-y}", std::to_string(inverted_tileY));
+        replaceIn(location, "{z}", std::to_string(level));
 
         std::string cacheKey;
 

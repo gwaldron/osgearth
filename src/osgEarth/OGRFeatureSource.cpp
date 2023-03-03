@@ -62,9 +62,11 @@ namespace osgEarth { namespace OGR
      */
     inline bool validateGeometry( Geometry* geometry )
     {        
-        if (!geometry) return false;
+        if (!geometry)
+            return false;
 
-        if (!geometry->isValid()) return false;
+        if (!geometry->isValid())
+            return false;
 
         for (Geometry::iterator i = geometry->begin(); i != geometry->end(); ++i)
         {
@@ -78,24 +80,24 @@ namespace osgEarth { namespace OGR
                 return false;
             }
         }
+
+        geometry->normalize();
+
         return true;
     }
 } }
 
 //........................................................................
 
-OGR::OGRFeatureCursor::OGRFeatureCursor(
+OGR::OGRFeatureCursorImpl::OGRFeatureCursorImpl(
     OGRDataSourceH dsHandle,
     OGRLayerH layerHandle,
     const FeatureSource* source,
     const FeatureProfile* profile,
     const Query& query,
-    const FeatureFilterChain* filters,
     bool rewindPolygons,
     unsigned chunkSize,
     ProgressCallback* progress) :
-
-FeatureCursor     ( progress ),
 _source           ( source ),
 _dsHandle         ( dsHandle ),
 _layerHandle      ( layerHandle ),
@@ -106,7 +108,6 @@ _chunkSize        ( chunkSize == 0u ? 500u : chunkSize ),
 _nextHandleToQueue( 0L ),
 _resultSetEndReached(false),
 _profile          ( profile ),
-_filters          ( filters ),
 _rewindPolygons   ( rewindPolygons )
 {
     std::string expr;
@@ -200,8 +201,7 @@ _rewindPolygons   ( rewindPolygons )
     readChunk();
 }
 
-OGR::OGRFeatureCursor::OGRFeatureCursor(OGRLayerH resultSetHandle, const FeatureProfile* profile) :
-    FeatureCursor(NULL),
+OGR::OGRFeatureCursorImpl::OGRFeatureCursorImpl(OGRLayerH resultSetHandle, const FeatureProfile* profile) :
     _resultSetHandle(resultSetHandle),
     _profile(profile),
     _dsHandle(NULL),
@@ -219,7 +219,7 @@ OGR::OGRFeatureCursor::OGRFeatureCursor(OGRLayerH resultSetHandle, const Feature
     readChunk();
 }
 
-OGR::OGRFeatureCursor::~OGRFeatureCursor()
+OGR::OGRFeatureCursorImpl::~OGRFeatureCursorImpl()
 {
     if ( _nextHandleToQueue )
         OGR_F_Destroy( _nextHandleToQueue );
@@ -235,13 +235,13 @@ OGR::OGRFeatureCursor::~OGRFeatureCursor()
 }
 
 bool
-OGR::OGRFeatureCursor::hasMore() const
+OGR::OGRFeatureCursorImpl::hasMore() const
 {
     return _resultSetHandle && _queue.size() > 0;
 }
 
-Feature*
-OGR::OGRFeatureCursor::nextFeature()
+osg::ref_ptr<const Feature>
+OGR::OGRFeatureCursorImpl::nextFeature()
 {
     if ( !hasMore() )
         return 0L;
@@ -261,37 +261,28 @@ OGR::OGRFeatureCursor::nextFeature()
 // reads a chunk of features into a memory cache; do this for performance
 // and to avoid needing the OGR Mutex every time
 void
-OGR::OGRFeatureCursor::readChunk()
+OGR::OGRFeatureCursorImpl::readChunk()
 {
     if ( !_resultSetHandle )
         return;
     
     while( _queue.size() < _chunkSize && !_resultSetEndReached )
     {
-        FeatureList filterList;
-        while( filterList.size() < _chunkSize && !_resultSetEndReached )
+        FeatureList features;
+        while(features.size() < _chunkSize && !_resultSetEndReached )
         {
             OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
             if ( handle )
             {
-                /*
-                // Crop the geometry by the spatial filter.  Could be useful for tiling.
-                if (_spatialFilter)
-                {
-                    OGRGeometryH geomRef = OGR_F_GetGeometryRef(handle);
-                    OGRGeometryH intersection = OGR_G_Intersection(geomRef, _spatialFilter);
-                    OGR_F_SetGeometry(handle, intersection);
-                }
-                */
                 osg::ref_ptr<Feature> feature = OgrUtils::createFeature( handle, _profile.get(), _rewindPolygons);
 
-                if (feature.valid())
+                if (feature.valid() && feature->getGeometry())
                 {
                     if (_source == NULL || !_source->isBlacklisted(feature->getFID()))
                     {
                         if (validateGeometry( feature->getGeometry() ))
                         {
-                            filterList.push_back( feature.release() );
+                            features.push_back( feature.release() );
                         }
                         else
                         {
@@ -315,30 +306,12 @@ OGR::OGRFeatureCursor::readChunk()
             }
         }
 
-        // preprocess the features using the filter list:
-        if ( _filters.valid() && !_filters->empty() )
+        for (auto& feature : features)
         {
-            FilterContext cx;
-            cx.setProfile( _profile.get() );
-            if (_query.bounds().isSet())
+            if (feature.valid() && feature->getGeometry())
             {
-                cx.extent() = GeoExtent(_profile->getSRS(), _query.bounds().get());
+                _queue.push(feature.get());
             }
-            else
-            {
-                cx.extent() = _profile->getExtent();
-            }
-
-            for( FeatureFilterChain::const_iterator i = _filters->begin(); i != _filters->end(); ++i )
-            {
-                FeatureFilter* filter = i->get();
-                cx = filter->push( filterList, cx );
-            }
-        }
-
-        for(FeatureList::const_iterator i = filterList.begin(); i != filterList.end(); ++i)
-        {
-            _queue.push( i->get() );
         }
     }
 
@@ -468,10 +441,16 @@ OGRFeatureSource::openImplementation()
     else if (!_geometry.valid())
     {
         // ..or inline geometry?
-        _geometry =
+        auto geom =
             options().geometryConfig().isSet() ? parseGeometry(*options().geometryConfig()) :
             options().geometryUrl().isSet() ? parseGeometryUrl(*options().geometryUrl(), getReadOptions()) :
             0L;
+
+        if (geom)
+        {
+            geom->normalize();
+            _geometry = geom;
+        }
     }
 
     // If nothing was set, we're done
@@ -481,7 +460,7 @@ OGRFeatureSource::openImplementation()
     }
 
     // Try to open the datasource and establish a feature profile.        
-    FeatureProfile* featureProfile = 0L;
+    FeatureProfile* featureProfile = nullptr;
 
     // see if we have a custom profile.
     if (options().profile().isSet() && !_profile.valid())
@@ -807,15 +786,21 @@ OGRFeatureSource::buildSpatialIndex()
    }
 }
 
-FeatureCursor*
-OGRFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+FeatureCursorImplementation*
+OGRFeatureSource::createFeatureCursorImplementation(
+    const Query& query,
+    ProgressCallback* progress) const
 {
     if (_geometry.valid())
     {
-        return new GeometryFeatureCursor(
+        auto f = new Feature(
             _geometry->clone(),
-            getFeatureProfile(),
-            getFilters());
+            getFeatureProfile() != nullptr ? getFeatureProfile()->getSRS() : nullptr);
+
+        if (getFeatureProfile() && getFeatureProfile()->geoInterp().isSet())
+            f->geoInterp() = getFeatureProfile()->geoInterp().get();
+
+        return new FeatureListCursorImpl(FeatureList{ f });
     }
     else
     {
@@ -854,13 +839,12 @@ OGRFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
             OE_DEBUG << newQuery.getConfig().toJSON(true) << std::endl;
 
             // cursor is responsible for the OGR handles.
-            return new OGR::OGRFeatureCursor(
+            return new OGR::OGRFeatureCursorImpl(
                 dsHandle,
                 layerHandle,
                 this,
                 getFeatureProfile(),
                 newQuery,
-                getFilters(),
                 _options->rewindPolygons().get(),
                 0, // default chunksize
                 progress
@@ -873,7 +857,7 @@ OGRFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
                 OGRReleaseDataSource(dsHandle);
             }
 
-            return 0L;
+            return { };
         }
     }
 }
@@ -904,10 +888,10 @@ OGRFeatureSource::supportsGetFeature() const
     return true;
 }
 
-Feature*
-OGRFeatureSource::getFeature(FeatureID fid)
+osg::ref_ptr<const Feature>
+OGRFeatureSource::getFeature(FeatureID fid) const
 {
-    Feature* result = NULL;
+    osg::ref_ptr<Feature> result;
 
     if (_layerHandle && !isBlacklisted(fid))
     {
@@ -915,9 +899,14 @@ OGRFeatureSource::getFeature(FeatureID fid)
         if (handle)
         {
             result = OgrUtils::createFeature(handle, getFeatureProfile(), *_options->rewindPolygons());
+            if (result->getGeometry())
+            {
+                result->getGeometry()->normalize();
+            }
             OGR_F_Destroy(handle);
         }
     }
+
     return result;
 }
 
@@ -934,7 +923,7 @@ OGRFeatureSource::getSchema() const
 }
 
 bool
-OGRFeatureSource::insertFeature(Feature* feature)
+OGRFeatureSource::insertFeature(const Feature* feature)
 {
     OGRFeatureH feature_handle = OGR_F_Create(OGR_L_GetLayerDefn(_layerHandle));
     if (feature_handle)

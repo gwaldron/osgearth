@@ -87,24 +87,20 @@ FilteredFeatureSource::getFeatureSource() const
     return options().featureSource().getLayer();
 }
 
-FeatureCursor* FilteredFeatureSource::createFeatureCursorImplementation(
+FeatureCursorImplementation*
+FilteredFeatureSource::createFeatureCursorImplementation(
     const Query& query,
-    ProgressCallback* progress)
+    ProgressCallback* progress) const
 {
     if (getFeatureSource())
     {
-        osg::ref_ptr< FeatureCursor > cursor = getFeatureSource()->createFeatureCursor(query, progress);
-        if (cursor.valid())
+        auto impl = getFeatureSource()->createFeatureCursorImplementation(query, progress);
+        if (impl && !_filters.empty())
         {
-            if (_filters.valid())
-            {
-                return new FilteredFeatureCursor(cursor.get(), _filters);
-            }
-            else
-            {
-                return cursor.release();
-            }
-        }             
+            FeatureCursor temp(impl);
+            return new FilteredFeatureCursorImpl(temp, _filters, nullptr);
+        }
+        else return impl;
     }
     return nullptr;
 }

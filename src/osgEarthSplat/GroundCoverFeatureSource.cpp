@@ -121,8 +121,8 @@ GroundCoverFeatureSource::getGroundCoverLayer() const
     return options().groundCoverLayer().getLayer();
 }
 
-FeatureCursor*
-GroundCoverFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+FeatureCursorImplementation*
+GroundCoverFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     if (getStatus().isError())
         return NULL;
@@ -131,7 +131,7 @@ GroundCoverFeatureSource::createFeatureCursorImplementation(const Query& query, 
     {
         FeatureList output;
         _gen.getFeatures(query.tileKey().get(), output);
-        return new FeatureListCursor(output);
+        return new FeatureListCursorImpl(output);
     }
     else
     {

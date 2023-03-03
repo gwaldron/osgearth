@@ -182,24 +182,24 @@ TileMesher::getEdits(
             {
                 Edit edit;
                 
-                osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(
+                auto cursor = fs->createFeatureCursor(
                     key,
+                    { }, // no buffer
                     layer->getFilters(),
                     &context,
                     nullptr);
 
-                while (cursor.valid() && cursor->hasMore())
+                while (cursor.hasMore())
                 {
                     if (progress && progress->isCanceled())
                         return { };
 
-                    Feature* f = cursor->nextFeature();
+                    auto f = cursor.nextFeature();
 
                     if (f->getExtent().intersects(keyExtent))
                     {
-                        edit.features.push_back(osg::clone(f, osg::CopyOp::DEEP_COPY_ALL));
-                        edit.features.back()->transform(map->getSRS()); // keyExtent.getSRS()->getGeocentricSRS());
-                        //edit.features.push_back(f);
+                        // clone and transform
+                        edit.features.push_back(f->transformTo(map->getSRS()));
                     }
                 }
 
@@ -467,7 +467,7 @@ TileMesher::createTileWithEdits(
             GeometryIterator geom_iter(feature->getGeometry(), true);
             while (geom_iter.hasMore())
             {
-                Geometry* part = geom_iter.next();
+                auto part = geom_iter.next();
 
                 // transform the constraint (in place) from world coordinates
                 // to tile-local coordinates

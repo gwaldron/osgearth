@@ -80,25 +80,26 @@ namespace osgEarth { namespace Util
      * This filter will resample line segments so they are between
      * the min and max specified length.
      */
-    class OSGEARTH_EXPORT ResampleFilter : public FeatureFilter,
-                                                   public ResampleFilterOptions
+    class OSGEARTH_EXPORT ResampleFilter : 
+        public FeatureFilter,
+        public ResampleFilterOptions
     {
     public:
         // Call this determine whether this filter is available.
-        static bool isSupported();    
+        static bool isSupported();
 
     public:
         ResampleFilter();
-        ResampleFilter( double minLength, double maxLength );
-        ResampleFilter( const Config& conf );
+        ResampleFilter(double minLength, double maxLength);
+        ResampleFilter(const Config& conf);
 
         virtual ~ResampleFilter() { }
 
     public:
-        virtual FilterContext push( FeatureList& input, FilterContext& context );
+        FilterContext push(FeatureList& input, FilterContext& context) override;
 
     protected:
-        bool push( Feature* input, FilterContext& context );
+        bool push(Feature* input, FilterContext& context);
     };
 } }
 

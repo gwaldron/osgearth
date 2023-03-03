@@ -155,11 +155,18 @@ osg::Vec3d getVec3d(double* val)
     return osg::Vec3d(val[0], val[1], val[2]);
 }
 
-void calculateGeometryHeading(Feature* input, FilterContext& context)
+void calculateGeometryHeading(const Feature* input, std::vector<double>& headings, FilterContext& context)
 {
     if (input->hasAttr("node-headings"))
-        return;
-    std::vector<double> headings;
+    {
+        auto src = input->getDoubleArray("node-headings");
+        if (src) {
+            headings.reserve(src->size());
+            std::copy(src->begin(), src->end(), std::back_inserter(headings));
+            return;
+        }
+    }
+    //std::vector<double> headings;
     const SpatialReference* targetSRS = 0L;
     if (context.getSession()->isMapGeocentric())
     {
@@ -169,10 +176,10 @@ void calculateGeometryHeading(Feature* input, FilterContext& context)
     {
         targetSRS = context.profile()->getSRS()->getGeocentricSRS();
     }
-    GeometryIterator gi( input->getGeometry(), false );
+    ConstGeometryIterator gi( input->getGeometry(), false );
     while( gi.hasMore() )
     {
-        Geometry* geom = gi.next();
+        const Geometry* geom = gi.next();
         if (geom->getType() != Geometry::TYPE_LINESTRING)
             break;
         std::vector<osg::Vec3d> worldPts(geom->size());
@@ -235,10 +242,10 @@ void calculateGeometryHeading(Feature* input, FilterContext& context)
             headings.push_back(osg::RadiansToDegrees(heading));
         }
     }
-    if (!headings.empty())
-    {
-        input->setSwap("node-headings", headings);
-    }
+    //if (!headings.empty())
+    //{
+    //    input->setSwap("node-headings", headings);
+    //}
 }
 }
 
@@ -282,10 +289,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
         scaleZEx  = *modelSymbol->scaleZ();
     }
 
-    for( FeatureList::const_iterator f = features.begin(); f != features.end(); ++f )
+    for(auto& input : features)
     {
-        Feature* input = f->get();
-
         // Run a feature pre-processing script.
         if ( symbol->script().isSet() )
         {
@@ -295,9 +300,10 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
         // calculate the orientation of each element of the feature
 		// geometry, if needed.
+        std::vector<double> headingArray;
         if ( modelSymbol && modelSymbol->orientationFromFeature().get() )
         {
-            calculateGeometryHeading(input, context);
+            calculateGeometryHeading(input, headingArray, context);
         }
 		// evaluate the instance URI expression:
 		const std::string& st = input->eval(uriEx, &context);
@@ -344,16 +350,11 @@ SubstituteModelFilter::process(const FeatureList&           features,
         scaleMatrix = osg::Matrix::scale( scaleVec );
         
         osg::Matrixd headingRotation;
-        const std::vector<double>* headingArray = 0L;
         if ( modelSymbol )
         {
             if ( modelSymbol->orientationFromFeature().get() )
             {
-                if (input->hasAttr("node-headings"))
-                {
-                    headingArray = input->getDoubleArray("node-headings");
-                }
-                else if (input->hasAttr("heading"))
+                if (headingArray.empty() && input->hasAttr("heading"))
                 {
                     float heading = input->getDouble("heading");
                     headingRotation.makeRotate( osg::Quat(osg::DegreesToRadians(heading), osg::Vec3(0,0,1)) );
@@ -397,19 +398,23 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
         if ( model.valid() )
         {
-            GeometryIterator gi( input->getGeometry(), false );
+            ConstGeometryIterator gi( input->getGeometry(), false );
             int pointIdx = 0;
             while( gi.hasMore() )
             {
-                Geometry* geom = gi.next();
+                const Geometry* geom = gi.next();
+                std::vector<osg::Vec3d> verts_xformed;
+                const std::vector<osg::Vec3d>* verts_ptr = &geom->asVector();
 
                 // if necessary, transform the points to the target SRS:
                 if ( !makeECEF && !targetSRS->isEquivalentTo(context.profile()->getSRS()) )
                 {
-                    context.profile()->getSRS()->transform( geom->asVector(), targetSRS );
+                    verts_xformed = geom->asVector();
+                    context.profile()->getSRS()->transform(verts_xformed, targetSRS);
+                    verts_ptr = &verts_xformed;
                 }
 
-                for( unsigned i=0; i<geom->size(); ++i )
+                for( unsigned i=0; i< verts_ptr->size(); ++i )
                 {
                     osg::Matrixd mat;
 
@@ -444,13 +449,13 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
                     scaleMatrix = osg::Matrix::scale( scaleVec );
 
-                    if ( modelSymbol && headingArray && geom->getType() == Geometry::TYPE_LINESTRING)
+                    if ( modelSymbol && !headingArray.empty() && geom->getType() == Geometry::TYPE_LINESTRING)
                     {
-                        headingRotation.makeRotate(osg::Quat(osg::DegreesToRadians((*headingArray)[pointIdx++]),
+                        headingRotation.makeRotate(osg::Quat(osg::DegreesToRadians(headingArray[pointIdx++]),
                                                              osg::Vec3(0,0,1)));
                     }
 
-                    osg::Vec3d point = (*geom)[i];
+                    osg::Vec3d point = (*verts_ptr)[i];
                     if ( makeECEF )
                     {
                         // the "rotation" element lets us re-orient the instance to ensure it's pointing up. We

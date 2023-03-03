@@ -31,21 +31,24 @@ CentroidFilter::CentroidFilter()
 }
 
 FilterContext
-CentroidFilter::push(FeatureList& features, FilterContext& context )
+CentroidFilter::push(FeatureList& features, FilterContext& context)
 {
-    for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
-    {
-        Feature* f = i->get();
-        
-        Geometry* geom = f->getGeometry();
+    FeatureList output;
+
+    for(auto& feature : features)
+    {        
+        auto geom = feature->getGeometry();
         if ( !geom )
             continue;
 
         PointSet* newGeom = new PointSet();
-        newGeom->push_back( geom->getBounds().center() );
+        newGeom->push_back(geom->getBounds().center());
 
-        f->setGeometry( newGeom );
+        auto new_feature = new Feature(*feature);
+        new_feature->setGeometry(newGeom);
+        output.emplace_back(new_feature);
     }
 
+    features.swap(output);
     return context;
 }

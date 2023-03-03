@@ -82,7 +82,7 @@ namespace osgEarth
 
     public: // FeatureIndex
 
-        Feature* getFeature(ObjectID oid) const;
+        osg::ref_ptr<const Feature> getFeature(ObjectID oid) const;
 
         ObjectID getObjectID(FeatureID fid) const;
 
@@ -90,10 +90,10 @@ namespace osgEarth
 
     public: // Functions called by FeatureSourceIndexNode
 
-        RefIDPair* tagDrawable    (osg::Drawable* drawable, Feature* feature);
-        RefIDPair* tagAllDrawables(osg::Node*     node,     Feature* feature);
-        RefIDPair* tagNode        (osg::Node*     node,     Feature* feature);
-        RefIDPair* tagRange       (osg::Drawable* drawable, Feature* feature, unsigned int start, unsigned int count);
+        RefIDPair* tagDrawable(osg::Drawable* drawable, const Feature* feature);
+        RefIDPair* tagAllDrawables(osg::Node* node, const Feature* feature);
+        RefIDPair* tagNode(osg::Node* node, const Feature* feature);
+        RefIDPair* tagRange(osg::Drawable* drawable, const Feature* feature, unsigned int start, unsigned int count);
 
         // removes a collection of FIDs from the index. If the refcount goes to zero,
         // remove it from the master index as well.
@@ -121,7 +121,7 @@ namespace osgEarth
         using OID_to_OID = std::unordered_map<ObjectID, ObjectID>;
         using OID_to_FID = std::unordered_map<ObjectID, FeatureID>; // was OIDMap
         using FID_to_RefIDPair = std::unordered_map<FeatureID, osg::ref_ptr<RefIDPair>>; // was FIDMap
-        using FID_to_Feature = std::unordered_map<FeatureID, osg::ref_ptr<Feature>>; // was FeatureMap
+        using FID_to_Feature = std::unordered_map<FeatureID, osg::ref_ptr<const Feature>>; // was FeatureMap
 
     protected:
         virtual ~FeatureSourceIndex();
@@ -182,10 +182,10 @@ namespace osgEarth
 
     public: // FeatureIndexBuilder
 
-        ObjectID tagDrawable    (osg::Drawable* drawable, Feature* feature);
-        ObjectID tagAllDrawables(osg::Node*     node,     Feature* feature);
-        ObjectID tagNode        (osg::Node*     node,     Feature* feature);
-        ObjectID tagRange       (osg::Drawable* drawable, Feature* feature, unsigned int start, unsigned int count);
+        ObjectID tagDrawable(osg::Drawable* drawable, const Feature* feature);
+        ObjectID tagAllDrawables(osg::Node* node, const Feature* feature);
+        ObjectID tagNode(osg::Node* node, const Feature* feature);
+        ObjectID tagRange(osg::Drawable* drawable, const Feature* feature, unsigned int start, unsigned int count);
 
     public: // To support serialization only - do not use directly
 

@@ -23,9 +23,6 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/Progress>
 
-#include <osgEarth/Filter>
-#include <osgEarth/BufferFilter>
-#include <osgEarth/ScaleFilter>
 #include <osgEarth/MVT>
 #include <osgEarth/OgrUtils>
 #include <osgEarth/FeatureCursor>
@@ -260,12 +257,10 @@ TFSFeatureSource::openImplementation()
 }
 
 
-FeatureCursor*
-TFSFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+FeatureCursorImplementation*
+TFSFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
-
-    FeatureCursor* result = 0L;
 
     std::string url = createURL(query);
 
@@ -284,7 +279,7 @@ TFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 
     bool dataOK = false;
 
-    FeatureList features;
+    MutableFeatureList features;
     if (!buffer.empty())
     {
         // Get the mime-type from the metadata record if possible
@@ -304,38 +299,23 @@ TFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
     }
 
-    //If we have any filters, process them here before the cursor is created
-    if (getFilters() && !getFilters()->empty() && !features.empty())
-    {
-        FilterContext cx;
-        cx.setProfile(getFeatureProfile());
-        cx.extent() = query.tileKey()->getExtent();
-
-        for (FeatureFilterChain::const_iterator i = getFilters()->begin(); i != getFilters()->end(); ++i)
-        {
-            FeatureFilter* filter = i->get();
-            cx = filter->push(features, cx);
-        }
-    }
-
     // If we have any features and we have an fid attribute, override the fid of the features
     if (options().fidAttribute().isSet())
     {
-        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+        for(auto& feature : features)
         {
-            std::string attr = itr->get()->getString(options().fidAttribute().get());
+            std::string attr = feature->getString(options().fidAttribute().get());
             FeatureID fid = as<FeatureID>(attr, 0);
-            itr->get()->setFID(fid);
+            feature->setFID(fid);
         }
     }
 
-    result = new FeatureListCursor(features);
-    return result;
+    return new FeatureListCursorImpl(toConst(features));
 }
 
 
 bool
-TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features)
+TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, MutableFeatureList& features) const
 {
     if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream")
     {
@@ -391,7 +371,7 @@ TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
                 if (feat_handle)
                 {
                     osg::ref_ptr<Feature> f = OgrUtils::createFeature(feat_handle, getFeatureProfile(), *_options->rewindPolygons());
-                    if (f.valid() && !isBlacklisted(f->getFID()))
+                    if (f.valid() && f->getGeometry() && !isBlacklisted(f->getFID()))
                     {
                         features.push_back(f.release());
                     }
@@ -409,7 +389,7 @@ TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
 
 
 std::string
-TFSFeatureSource::getExtensionForMimeType(const std::string& mime)
+TFSFeatureSource::getExtensionForMimeType(const std::string& mime) const
 {
     //OGR is particular sometimes about the extension of files when it's reading them so it's good to have
     //the temp file have an appropriate extension
@@ -456,7 +436,7 @@ TFSFeatureSource::isJSON(const std::string& mime) const
 }
 
 std::string
-TFSFeatureSource::createURL(const Query& query)
+TFSFeatureSource::createURL(const Query& query) const
 {
     if (query.tileKey().isSet() && query.tileKey()->valid())
     {

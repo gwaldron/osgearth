@@ -29,18 +29,60 @@
 
 namespace osgEarth
 {
+    class FeatureCursorInterface
+    {
+    public:
+        //! Whether a call to nextFeature() will return a valid feature
+        virtual bool hasMore() const = 0;
+
+        //! The next feature, or nullptr if empty
+        virtual osg::ref_ptr<const Feature> nextFeature() = 0;
+    };
+
     /**
      * A cursor that lets you iterate over a collection of features returned 
      * from a feature query performed on a FeatureStore.
      */
-    class OSGEARTH_EXPORT FeatureCursor : public osg::Referenced
+    class OSGEARTH_EXPORT FeatureCursorImplementation : public FeatureCursorInterface
     {
     public:
         //! Whether a call to nextFeature() will return a valid feature
-        virtual bool hasMore() const =0;
+        virtual bool hasMore() const = 0;
 
         //! The next feature, or nullptr if empty
-        virtual Feature* nextFeature() =0;
+        virtual osg::ref_ptr<const Feature> nextFeature() = 0;
+
+        //! Progress callback
+        virtual ProgressCallback* getProgress() const {
+            return nullptr;
+        }
+    };
+
+    /**
+     * A cursor that lets you iterate over a collection of features returned
+     * from a feature query performed on a FeatureStore.
+     */
+    class OSGEARTH_EXPORT FeatureCursor
+    {
+    public:
+        //! Construct an invalid cursor.
+        FeatureCursor();
+
+        //! Construct a cursor based on the provided implementation
+        //! @param impl Implementation object
+        FeatureCursor(FeatureCursorImplementation* impl);
+
+        //! Construct a cursor that will iterator over a feature list in memory.
+        FeatureCursor(const FeatureList& list);
+
+        //! Assign an implementation to this cursor
+        void set(FeatureCursorImplementation* impl);
+
+        //! Whether a call to nextFeature() will return a valid feature
+        bool hasMore() const;
+
+        //! The next feature, or nullptr if empty
+        osg::ref_ptr<const Feature> nextFeature();
 
         //! Copy all features to the list
         void fill(FeatureList& output);
@@ -48,40 +90,34 @@ namespace osgEarth
         //! Copy all features to the list that pass the predicate
         void fill(FeatureList& output, std::function<bool(const Feature*)> predicate);
 
-        //! Progress callback to check for cancelation
-        ProgressCallback* getProgress() const { return _progress.get(); }
+        //! Pass the function call along to the implementation so you can call
+        //! cursor->hasMore() and cursor->nextFeature() per legacy usage.
+        inline FeatureCursorInterface* operator -> () {
+            return _impl.get();
+        }
 
-    protected:
-
-        FeatureCursor(ProgressCallback* progress);
-
-        virtual ~FeatureCursor();
-
-        osg::ref_ptr<ProgressCallback> _progress;
+    private:
+        std::shared_ptr<FeatureCursorImplementation> _impl;
     };
 
     /**
      * A simple cursor implementation that returns features from an in-memory
      * feature list.
      */
-    class OSGEARTH_EXPORT FeatureListCursor : public FeatureCursor
+    class OSGEARTH_EXPORT FeatureListCursorImpl : public FeatureCursorImplementation
     {
     public:
-        FeatureListCursor(const FeatureList& input);
+        FeatureListCursorImpl(const FeatureList& input);
 
     public: // FeatureCursor
-        virtual bool hasMore() const;
-        virtual Feature* nextFeature();
+        bool hasMore() const override;
+        osg::ref_ptr<const Feature> nextFeature() override;
 
-    protected:
-        
-        virtual ~FeatureListCursor();
-
-        FeatureList           _features;
+        FeatureList _features;
         FeatureList::iterator _iter;
-        bool                  _clone;
     };
 
+#if 0
     /**
      * A simple cursor that returns each Geometry wrapped in a feature.
      */
@@ -92,8 +128,8 @@ namespace osgEarth
         GeometryFeatureCursor( Geometry* geom, const FeatureProfile* fp, const FeatureFilterChain* filters );
 
     public: // FeatureCursor
-        virtual bool hasMore() const;
-        virtual Feature* nextFeature();
+        bool hasMore() const override;
+        osg::ref_ptr<const Feature> nextFeature() override;
 
     protected:
         virtual ~GeometryFeatureCursor();
@@ -102,31 +138,28 @@ namespace osgEarth
         osg::ref_ptr<const FeatureFilterChain> _filterChain;
         osg::ref_ptr<Feature> _lastFeature;
     };
+#endif
 
     /**
      * FeatureCursor wrapper that runs incoming features through a filter chain
      */
-    class OSGEARTH_EXPORT FilteredFeatureCursor : public FeatureCursor
+    class OSGEARTH_EXPORT FilteredFeatureCursorImpl : public FeatureCursorImplementation
     {
     public:
-        FilteredFeatureCursor(
-            FeatureCursor* cursor,
-            FeatureFilterChain* chain);
-
-        FilteredFeatureCursor(
-            FeatureCursor* cursor,
-            FeatureFilterChain* chain,
+        FilteredFeatureCursorImpl(
+            FeatureCursor& cursor,
+            const FeatureFilterChain& chain,
             FilterContext* context);
 
-        virtual bool hasMore() const;
-        virtual Feature* nextFeature();
+        bool hasMore() const override;
+        osg::ref_ptr<const Feature> nextFeature() override;
 
     protected:
-        virtual ~FilteredFeatureCursor() { }
+        virtual ~FilteredFeatureCursorImpl() { }
 
     private:
-        osg::ref_ptr<FeatureCursor> _cursor;
-        osg::ref_ptr<FeatureFilterChain> _chain;
+        mutable FeatureCursor _cursor;
+        FeatureFilterChain _chain;
         FilterContext* _user_cx;
         mutable FeatureList _cache;
     };

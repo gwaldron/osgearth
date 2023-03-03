@@ -111,9 +111,8 @@ namespace
         {
             // Read source data into an array:
             FeatureList sqids;
-            osg::ref_ptr<FeatureCursor> sqid_cursor = sqid_fs->createFeatureCursor(Query::ALL,0L);
-            if (sqid_cursor.valid() && sqid_cursor->hasMore())
-                sqid_cursor->fill(sqids);
+            auto sqid_cursor = sqid_fs->createFeatureCursor(Query::ALL,0L);
+            sqid_cursor.fill(sqids);
 
             // Open the output stream:
             std::ofstream out(uri.full().c_str(), std::ostream::out | std::ostream::binary);
@@ -127,7 +126,7 @@ namespace
 
             for (FeatureList::iterator i = sqids.begin(); i != sqids.end(); ++i)
             {
-                Feature* f = i->get();
+                auto f = i->get();
 
                 std::string gzd = f->getString("GZD");
                 out.write(gzd.c_str(), 3);
@@ -144,14 +143,15 @@ namespace
                 //GeoExtent extent(f->getSRS(), f->getGeometry()->getBounds());
 
                 // Transform into a local XY SRS for simplification:
-                if (f->getGeometry()->size() > 0)
+                osg::ref_ptr<Feature> mf = osg::clone(f, osg::CopyOp::DEEP_COPY_ALL);
+                if (mf->getGeometry()->size() > 0)
                 {
-                    f->transform(xysrs);
-                    simplify(f->getGeometry()->asVector());
-                    f->transform(xysrs->getGeographicSRS());
+                    mf->transformInPlace(xysrs);
+                    simplify(mf->getGeometry()->asVector());
+                    mf->transformInPlace(xysrs->getGeographicSRS());
                 }
 
-                Geometry* g = f->getGeometry();
+                Geometry* g = mf->getGeometry();
 
                 u_short numPoints = OE_ENCODE_SHORT((u_short)g->size());
                 out.write(reinterpret_cast<const char*>(&numPoints), sizeof(u_short));
@@ -398,7 +398,7 @@ namespace
     {
         double _size;
         const MGRSGraticule* _parent;
-        osg::ref_ptr<Feature> _feature;
+        osg::ref_ptr<const Feature> _feature;
         Style _style;
         GeoExtent _extent;
         osg::ref_ptr<const SpatialReference> _utm;
@@ -409,7 +409,7 @@ namespace
             _parent = NULL;
         }
 
-        void setupData(Feature* feature, const MGRSGraticule* parent)
+        void setupData(const Feature* feature, const MGRSGraticule* parent)
         {
             _feature = feature;
             _parent = parent;
@@ -452,7 +452,7 @@ namespace
                     polygon->push_back(x, y);
 
                     osg::ref_ptr<Feature> f = new Feature(polygon.get(), _utm.get());
-                    f->transform(_feature->getSRS());
+                    f->transformInPlace(_feature->getSRS());
 
                     osg::ref_ptr<Geometry> croppedGeom;
                     if (f->getGeometry()->crop(_extent.bounds(), croppedGeom))
@@ -462,7 +462,6 @@ namespace
                         f->set("northing", y);
                         GeomCell* child = new GeomCell(interval);
                         child->setupData(f.get(), _parent);
-                        //child->setupPaging();
                         group->addChild(child);
                     }                 
                 }
@@ -516,7 +515,7 @@ namespace
             }
 
             osg::ref_ptr<Feature> f = new Feature(grid.get(), _utm.get());
-            f->transform(_feature->getSRS());
+            f->transformInPlace(_feature->getSRS());
 
             osg::ref_ptr<Geometry> croppedGeom;
             if (f->getGeometry()->crop(_extent.bounds(), croppedGeom))
@@ -613,7 +612,7 @@ namespace
     //! Geometry for a single SQID 100km cell and its children
     struct SQID100kmCell : public PagedNode2
     {
-        osg::ref_ptr<Feature> _feature;
+        osg::ref_ptr<const Feature> _feature;
         const MGRSGraticule* _parent;
         Style _style;
 
@@ -623,7 +622,7 @@ namespace
             setName(name);
         }
 
-        void setupData(Feature* feature, const MGRSGraticule* parent)
+        void setupData(const Feature* feature, const MGRSGraticule* parent)
         {
             _feature = feature;
             _parent = parent;
@@ -720,11 +719,10 @@ namespace
         {
             osg::Group* group = new osg::Group();
 
-            for (FeatureList::const_iterator f = _sqidFeatures.begin(); f != _sqidFeatures.end(); ++f)
+            for(auto& feature : _sqidFeatures)
             {
-                Feature* feature = f->get();
                 SQID100kmCell* geom = new SQID100kmCell(feature->getString("sqid"));
-                geom->setupData(feature, _parent);
+                geom->setupData(feature.get(), _parent);
                 group->addChild(geom);
                 
                 GeoExtent extent(feature->getSRS(), feature->getGeometry()->getBounds());
@@ -1112,14 +1110,14 @@ MGRSGraticule::rebuild()
         // build the GZD feature set
         FeatureList gzdFeatures;
         loadGZDFeatures(map->getSRS()->getGeographicSRS(), gzdFeatures);
-        osg::ref_ptr<FeatureListCursor> gzd_cursor = new FeatureListCursor(gzdFeatures);
+        FeatureCursor gzd_cursor(gzdFeatures);
 
         unsigned count = 0u;
 
         // generate the top level GZD cells
-        while (gzd_cursor.valid() && gzd_cursor->hasMore())
+        while (gzd_cursor.hasMore())
         {
-            osg::ref_ptr<Feature> feature = gzd_cursor->nextFeature();
+            auto feature = gzd_cursor->nextFeature();
             std::string gzd = feature->getString("gzd");
 
             // pre-generate all the GZD labels - OSG bug workaround

@@ -54,8 +54,8 @@ namespace osgEarth { namespace Util
         double                             _maxRes;
         std::string                        _maxZAttr, _minZAttr, _terrainZAttr;
 
-        void pushAndClamp( FeatureList& input, FilterContext& cx );
-        void pushAndDontClamp( FeatureList& input, FilterContext& cx );
+        void pushAndClamp(MutableFeatureList& input, FilterContext& cx);
+        void pushAndDontClamp(MutableFeatureList& input, FilterContext& cx);
     };
 } }
 

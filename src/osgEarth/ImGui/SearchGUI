@@ -38,7 +38,7 @@ namespace osgEarth {
             SearchGUI() :
                 BaseGUI("Search"),
                 _search(""),
-                _results(Status::Code::ServiceUnavailable, 0)
+                _results(Status::Code::ServiceUnavailable, FeatureCursor())
             {
             }
 
@@ -78,9 +78,9 @@ namespace osgEarth {
                 {
                     if (_results.getStatus().isOK())
                     {
-                        _results.getFeatures()->fill(_features);
+                        _results.getFeatures().fill(_features);
                     }
-                    _results = Geocoder::Results(Status::Code::ServiceUnavailable, 0);
+                    _results = Geocoder::Results(Status::Code::ServiceUnavailable, FeatureCursor());
                 }
 
                 else if (_results.isWorking())
@@ -88,14 +88,13 @@ namespace osgEarth {
                     ImGui::Text("Searching...");
                 }
 
-                for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
+                for(auto& feature : _features)
                 {
                     bool selected = false;
-                    Feature* feature = itr->get();
                     if (feature->getGeometry())
                     {
                         ImGui::Separator();
-                        std::string displayName = itr->get()->getString("display_name");
+                        std::string displayName = feature->getString("display_name");
                         ImGui::Selectable(displayName.c_str(), &selected);
                         if (selected)
                         {

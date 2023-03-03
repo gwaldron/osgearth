@@ -57,9 +57,7 @@ namespace osgEarth
         Geometry( int capacity =0 );
         Geometry( const Geometry& rhs );
         Geometry( const Vec3dVector* toCopy );
-
-        /** dtor - intentionally public */
-        virtual ~Geometry();
+        virtual ~Geometry() { }
 
     public:
         enum Type {
@@ -73,9 +71,9 @@ namespace osgEarth
         };
 
         enum Orientation {
-            ORIENTATION_CCW,
-            ORIENTATION_CW,
-            ORIENTATION_DEGENERATE
+            ORIENTATION_CCW = -1,
+            ORIENTATION_DEGENERATE = 0,
+            ORIENTATION_CW = 1
         };
 
         static std::string toString( Type t ) {
@@ -96,6 +94,10 @@ namespace osgEarth
         static bool hasBufferOperation();
 
     public:
+        //! Normalizes the geometry by ensuring that all rings are open
+        //! and wound to the proper orientation.
+        virtual void normalize() { }
+
         /**
          * Gets the total number of points in this geometry.
          */
@@ -212,35 +214,26 @@ namespace osgEarth
          */
         void delocalize( const osg::Vec3d& offset );
 
-        /**
-         * Reorders the points in the geometry so that, if the last point was connected
-         * to the first in a ring, they would be would in the specified direction.
-         */
-        virtual void rewind( Orientation ori );
+        //! Reorders the points in a closed geometry (ring or polygon) so that
+        //! they follow the specified direction.
+        virtual void rewind(Orientation ori) { }
 
-        /**
-         * Makes the last point the same as the first point. Suitable for rings and polygons.
-         */
-        virtual void close();
+        //! Makes the last point the same as the first point (rings and polygons)
+        virtual void close() { }
 
+        //! Removes a final point that is equal to the first point.
         virtual void open() { }
 
-        /**
-         * Removes consecutive duplicates in the geometry to prepare for tessellation.
-         */
+        //! Removes consecutive duplicates in the geometry.
         virtual void removeDuplicates();
 
-        /**
-         * Removes any colinear points, i.e. points that can be safely removed without
-         * affecting the shape/area of the geometry.
-         */
+        //! Removes any colinear points, i.e. points that can be safely removed without
+        //! affecting the shape/area of the geometry.
         virtual void removeColinearPoints();
 
-        /**
-         * Get the winding orientation of the geometry (if you consider the last point
-         * to connect back to the first in a ring.)
-         */
-        Orientation getOrientation() const;
+        //! Get the winding orientation of the geometry (if you consider the last point
+        //! to connect back to the first in a ring.)
+        virtual Orientation getOrientation() const { return ORIENTATION_DEGENERATE; }
 
         //! Whether a closed geometry contains the 2D point
         virtual bool contains2D(double x, double y) const { return false; }
@@ -276,6 +269,8 @@ namespace osgEarth
         virtual bool isPointSet() const { return getComponentType()==TYPE_POINT || getComponentType()==TYPE_POINTSET; }
         virtual bool isLineString() const { return getComponentType() == TYPE_LINESTRING; }
         virtual bool isOpen() const { return true; }
+
+        static Geometry* makeValid(const Geometry*);
     protected:
     };
 
@@ -287,14 +282,9 @@ namespace osgEarth
     class OSGEARTH_EXPORT PointSet : public Geometry
     {
     public:
-        PointSet( int capacity =0 ) : Geometry( capacity ) { }
-        PointSet( const Vec3dVector* toCopy ) : Geometry( toCopy ) { }
-        PointSet( const PointSet& rhs );
-
-        /** dtor */
-        virtual ~PointSet();
-
-        virtual void close() override;
+        PointSet(int capacity = 0) : Geometry(capacity) { }
+        PointSet(const Vec3dVector* toCopy) : Geometry(toCopy) { }
+        PointSet(const PointSet& rhs);
 
     public:
         virtual Type getType() const override { return Geometry::TYPE_POINTSET; }
@@ -309,9 +299,6 @@ namespace osgEarth
         Point(int capacity = 0) : PointSet(capacity) { }
         Point(const Vec3dVector* toCopy) : PointSet(toCopy) { }
         Point(const Point& rhs);
-
-        /** dtor */
-        virtual ~Point();
 
         void set(const osg::Vec3d& value);
 
@@ -329,19 +316,14 @@ namespace osgEarth
         LineString( const LineString& rhs );
         LineString( const Vec3dVector* toCopy );
 
-        /** dtor */
-        virtual ~LineString();
-
         bool getSegment(double length, osg::Vec3d& start, osg::Vec3d& end);
-
-        virtual void close() override;
 
         virtual double getSignedDistance2D(
             const osg::Vec3d& point) const override;
 
     public:
-        virtual Type getType() const { return Geometry::TYPE_LINESTRING; }
-        virtual bool isValid() const { return size() >= 2; }
+        Type getType() const override { return Geometry::TYPE_LINESTRING; }
+        bool isValid() const override { return size() >= 2; }
     };
 
     /**
@@ -356,35 +338,36 @@ namespace osgEarth
         Ring( const Ring& ring );
         Ring( const Vec3dVector* toCopy );
 
-        /** dtor */
-        virtual ~Ring();
-
         // override
-        virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
+        Geometry* cloneAs(const Geometry::Type& newType) const override;
 
         // tests whether the point falls within the ring
-        virtual bool contains2D( double x, double y ) const override;
+        bool contains2D( double x, double y ) const override;
+
+        // gets the length of the ring (override)
+        double getLength() const override;
+
+        // ensures that the first and last points are not idential.
+        //void open() override;
+
+        // ensures that the first and last points are identical.
+        void close() override;
+
+        // whether the ring is open (i.e. first and last points are different)
+        bool isOpen() const override;
+
+        // opens and winds the ring in the specified direction
+        void rewind(Orientation ori) override;
+
+        double getSignedDistance2D(
+            const osg::Vec3d& a) const override;
+
+        void normalize() override;
 
         // gets the signed area of a part that is known to be open.
         virtual double getSignedArea2D() const;
 
-        // gets the length of the ring (override)
-        virtual double getLength() const;
-
-        // ensures that the first and last points are not idential.
-        virtual void open() override;
-
-        // ensures that the first and last points are identical.
-        virtual void close() override;
-
-        // whether the ring is open (i.e. first and last points are different)
-        virtual bool isOpen() const override;
-
-        // opens and winds the ring in the specified direction
-        virtual void rewind( Orientation ori );
-
-        virtual double getSignedDistance2D(
-            const osg::Vec3d& a) const override;
+        Orientation getOrientation() const;
 
     public:
         virtual Type getType() const { return Geometry::TYPE_RING; }
@@ -401,32 +384,31 @@ namespace osgEarth
     class OSGEARTH_EXPORT Polygon : public Ring
     {
     public:
-        Polygon( int capacity =0 ) : Ring( capacity ) { }
-        Polygon( const Polygon& rhs );
-        Polygon( const Vec3dVector* toCopy );
-
-        /** dtor */
-        virtual ~Polygon();
+        Polygon(int capacity = 0) : Ring(capacity) { }
+        Polygon(const Polygon& rhs);
+        Polygon(const Vec3dVector* toCopy);
 
     public:
-        virtual Type getType() const { return Geometry::TYPE_POLYGON; }
-        virtual int getTotalPointCount() const;
+        Type getType() const override { return Geometry::TYPE_POLYGON; }
+        int getTotalPointCount() const override;
 
-        virtual unsigned getNumGeometries() const { return 1 + _holes.size(); }
+        unsigned getNumGeometries() const { return 1 + _holes.size(); }
 
         // tests whether the point falls within the polygon (but not its holes)
-        virtual bool contains2D( double x, double y ) const override;
+        bool contains2D( double x, double y ) const override;
 
-        virtual void open();
+        //! Close the polygon and its holes.
+        void close() override;
 
-        virtual void close();
+        //! Remove duplicates in teh polygon and its holes
+        void removeDuplicates() override;
 
-        virtual void removeDuplicates();
+        void removeColinearPoints() override;
 
-        virtual void removeColinearPoints();
-
-        virtual double getSignedDistance2D(
+        double getSignedDistance2D(
             const osg::Vec3d& a) const override;
+
+        void normalize() override;
 
     public:
         RingCollection& getHoles() { return _holes; }
@@ -443,37 +425,32 @@ namespace osgEarth
     {
     public:
         MultiGeometry() { }
-        MultiGeometry( const GeometryCollection& parts );
-        MultiGeometry( const MultiGeometry& rhs );
-
-        /** dtor */
-        virtual ~MultiGeometry();
+        MultiGeometry(const GeometryCollection& parts);
+        MultiGeometry(const MultiGeometry& rhs);
 
     public:
-        virtual Type getType() const  override { return Geometry::TYPE_MULTI; }
-        virtual Type getComponentType() const override;
-        virtual int getTotalPointCount() const override;
-        virtual unsigned getNumComponents() const override { return _parts.size(); }
+        Type getType() const  override { return Geometry::TYPE_MULTI; }
+        Type getComponentType() const override;
+        int getTotalPointCount() const override;
+        unsigned getNumComponents() const override { return _parts.size(); }
 
-        virtual unsigned getNumGeometries() const override;
+        unsigned getNumGeometries() const override;
 
         // gets the combined length of all parts
-        virtual double getLength() const override;
+        double getLength() const override;
 
         // override
-        virtual Geometry* cloneAs( const Geometry::Type& newType ) const override;
-        virtual bool isValid() const override;
-        virtual Bounds getBounds() const override;
-        virtual void rewind( Orientation ori ) override;
+        Geometry* cloneAs( const Geometry::Type& newType ) const override;
+        bool isValid() const override;
+        Bounds getBounds() const override;
         void removeDuplicates() override;
-        virtual void removeColinearPoints() override;
-        void open() override;
-        virtual void close() override;
-
-        virtual double getSignedDistance2D(
+        void removeColinearPoints() override;
+        void close() override;
+        void normalize() override;
+        double getSignedDistance2D(
             const osg::Vec3d& a) const override;
 
-        virtual bool contains2D(double x, double y) const override;
+        bool contains2D(double x, double y) const override;
 
     public:
         GeometryCollection& getComponents() { return _parts; }

@@ -933,10 +933,10 @@ FlatteningLayer::getFeatures(const TileKey& key)
     query.tileKey() = key;
 
     FeatureList features;
-    osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, _filterChain.get(), nullptr, nullptr);
-    if (cursor.valid())
+    auto cursor = getFeatureSource()->createFeatureCursor(query, _filterChain, nullptr, nullptr);
+    cursor.fill(features);
+    if (!features.empty())
     {
-        cursor->fill(features);
         _featuresCache.insert(key, features);
     }
     return features;
@@ -1059,11 +1059,12 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         }
 
         unsigned featureCount = 0;
-        std::vector<FeatureList> lists;
+        std::vector<MutableFeatureList> lists;
         lists.reserve(featureKeys.size());
         for (auto featureKey : featureKeys)
         {
-            lists.emplace_back(std::move(const_cast<FlatteningLayer*>(this)->getFeatures(featureKey)));
+            auto features = const_cast<FlatteningLayer*>(this)->getFeatures(featureKey);
+            lists.emplace_back(toMutable(features));
             featureCount += lists.back().size();
         }
         
@@ -1094,7 +1095,7 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
 
                     // Transform the feature geometry to our working (projected) SRS.
                     if (needsTransform)
-                        feature->transform(workingSRS);
+                        feature->transformInPlace(workingSRS);
 
                     lineWidth = SpatialReference::transformUnits(
                         Distance(lineWidth, Units::METERS),
@@ -1121,16 +1122,16 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         Query query;
         query.bounds() = queryExtent.bounds();
 
-        osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(
+        auto cursor = getFeatureSource()->createFeatureCursor(
             query,
-            _filterChain.get(),
+            _filterChain,
             nullptr,
             progress);
 
         // Run the query and fill the list.
-        while (cursor.valid() && cursor->hasMore())
+        while (cursor.hasMore())
         {
-            Feature* feature = cursor->nextFeature();
+            auto feature = cursor.nextFeature();
 
             double lineWidth = 0.0;
             double bufferWidth = 0.0;
@@ -1146,10 +1147,6 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
                 bufferWidth = feature->eval(bufferWidthExpr, session.get());
             }
 
-            // Transform the feature geometry to our working (projected) SRS.
-            if (needsTransform)
-                feature->transform(workingSRS);
-
             lineWidth = SpatialReference::transformUnits(
                 Distance(lineWidth, Units::METERS),
                 featureSRS,
@@ -1162,12 +1159,19 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
 
             // Transform the feature geometry to our working (projected) SRS.
             if (needsTransform)
-                feature->transform(workingSRS);
+            {
+                auto x_feature = feature->transformTo(workingSRS);
+                geoms.getComponents().push_back(x_feature->getGeometry());
+            }
+            else
+            {
+                // promise we won't edit it
+                geoms.getComponents().push_back(const_cast<Geometry*>(feature->getGeometry()));
+            }
 
             //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
             //      in order to discard geometries we don't care about
 
-            geoms.getComponents().push_back(feature->getGeometry());
             widths.push_back(Widths(bufferWidth, lineWidth));
         }
     }

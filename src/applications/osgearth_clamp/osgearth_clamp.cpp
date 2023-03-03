@@ -113,10 +113,10 @@ struct App
 
         GeoPoint point(input->getFeatureProfile()->getSRS(),0,0,0);
 
-        osg::ref_ptr<FeatureCursor> cursor = input->createFeatureCursor(Query(), NULL);
+        auto cursor = input->createFeatureCursor(Query(), NULL);
         while(cursor->hasMore())
         {
-            Feature* f = cursor->nextFeature();
+            auto f = cursor->nextFeature();
             GeoExtent e = f->getExtent();
 
             ElevationSample sample = map->getElevationPool()->getSample(
@@ -127,7 +127,8 @@ struct App
             if (value == NO_DATA_VALUE)
                 value = 0.0f;
 
-            f->set(attrName, value);
+            Feature* ncf = const_cast<Feature*>(f.get());
+            ncf->set(attrName, value);
 
             output->insertFeature(f);
 

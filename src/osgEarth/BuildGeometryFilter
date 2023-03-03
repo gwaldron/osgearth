@@ -113,7 +113,7 @@ namespace osgEarth { namespace Util
         optional<bool>             _useOSGTessellator;
         
         void tileAndBuildPolygon(
-            Geometry*               input,
+            const Geometry*         input,
             const SpatialReference* featureSRS,
             const SpatialReference* mapSRS,
             bool                    makeECEF,
@@ -122,7 +122,7 @@ namespace osgEarth { namespace Util
             const osg::Matrixd      &world2local);
         
         void buildPolygon(
-            Geometry*               input,
+            const Geometry*         input,
             const SpatialReference* featureSRS,
             const SpatialReference* mapSRS,
             bool                    makeECEF,

@@ -83,9 +83,13 @@ namespace osgEarth
 
     public: // FeatureLayer
 
-        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);        
+        FeatureCursorImplementation* createFeatureCursorImplementation(
+            const Query& query,
+            ProgressCallback* progress) const override;
         
-        virtual const FeatureSchema& getSchema() const { return _schema; }
+        const FeatureSchema& getSchema() const override {
+            return _schema;
+        }
 
     protected:
 
@@ -97,13 +101,13 @@ namespace osgEarth
         std::string _rotateChoices;
         std::string _rotateString;
         std::string::size_type _rotateStart, _rotateEnd;
-        std::atomic_int _rotate_iter;
+        mutable std::atomic_int _rotate_iter;
         
-        bool getFeatures( const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features);
+        bool getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, MutableFeatureList& features) const;
         std::string getExtensionForMimeType(const std::string& mime);
         bool isGML( const std::string& mime ) const;
         bool isJSON( const std::string& mime ) const;
-        URI createURL(const Query& query);
+        URI createURL(const Query& query) const;
     };
 } // namespace osgEarth
 

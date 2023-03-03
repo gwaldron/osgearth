@@ -115,7 +115,7 @@ namespace osgEarth { namespace Contrib
         FeaturesLRU _featuresCache;
         Threading::Mutex _featuresCacheMutex;
 
-        osg::ref_ptr<FeatureFilterChain> _filterChain;
+        FeatureFilterChain _filterChain;
     };
 
 } }

@@ -72,6 +72,41 @@ namespace
             return false;
         }
     }
+
+    static Geometry* makeValid_GEOS(const Geometry* geom)
+    {
+        static Mutex m;
+        ScopedMutexLock lock(m);
+
+#ifdef OSGEARTH_HAVE_GEOS
+        Geometry* output = nullptr;
+        GEOSContextHandle_t handle = initGEOS_r(OSGEARTH_WarningHandler, OSGEARTH_GEOSErrorHandler);
+        GEOSGeometry* inGeom = GEOS::importGeometry(handle, geom);
+        if (inGeom)
+        {
+            GEOSMakeValidParams* params = GEOSMakeValidParams_create_r(handle);
+            GEOSGeometry* outGeom = GEOSMakeValidWithParams_r(handle, inGeom, params);
+            if (outGeom)
+            {
+                output = GEOS::exportGeometry(handle, outGeom);
+                GEOSGeom_destroy_r(handle, outGeom);
+            }
+            GEOSMakeValidParams_destroy_r(handle, params);
+        }
+        GEOSGeom_destroy_r(handle, inGeom);
+        finishGEOS_r(handle);
+        return output;
+#else
+        output = geom->clone();
+        output->normalize();
+        return output;
+#endif
+    }
+}
+
+Geometry* Geometry::makeValid(const Geometry* in)
+{
+    return makeValid_GEOS(in);
 }
 
 Geometry::Geometry( const Geometry& rhs ) :
@@ -90,10 +125,6 @@ Geometry::Geometry( const Vec3dVector* data )
 {
     reserve( data->size() );
     insert( begin(), data->begin(), data->end() );
-}
-
-Geometry::~Geometry()
-{
 }
 
 int
@@ -230,6 +261,7 @@ Geometry::buffer(double distance,
             GEOSGeom_destroy_r(handle, outGeom);
         }
 
+        GEOSBufferParams_destroy_r(handle, geosBufferParams);
         GEOSGeom_destroy_r(handle, inGeom);
     }
 
@@ -507,33 +539,19 @@ Geometry::delocalize( const osg::Vec3d& offset )
     }
 }
 
-void
-Geometry::rewind( Orientation orientation )
-{
-    Orientation current = getOrientation();
-    if ( current != orientation && current != ORIENTATION_DEGENERATE && orientation != ORIENTATION_DEGENERATE )
-    {
-        std::reverse( begin(), end() );
-    }
-}
-
 void Geometry::removeDuplicates()
 {
     if (size() > 1)
     {
-        osg::Vec3d v = front();
-        for (Geometry::iterator itr = begin(); itr != end(); )
+        Vec3dVector temp;
+        temp.reserve(size());
+        temp.push_back(front());
+        for (unsigned i = 1, j = 0; i < size(); j = i++)
         {
-            if (itr != begin() && v == *itr)
-            {
-                itr = erase(itr);
-            }
-            else
-            {
-                v = *itr;
-                itr++;
-            }
+            if ((*this)[i] != (*this)[j])
+                temp.push_back((*this)[i]);
         }
+        this->swap(temp);
     }
 }
 
@@ -561,54 +579,6 @@ Geometry::removeColinearPoints()
     }
 }
 
-Geometry::Orientation
-Geometry::getOrientation() const
-{
-    // adjust for a non-open ring:
-    int n = size();
-    if ( n > 0 && front() == back() )
-        n--;
-
-    if ( n < 3 )
-        return Geometry::ORIENTATION_DEGENERATE;
-
-    // copy the open vec:
-    std::vector<osg::Vec3d> v;
-    v.reserve( n );
-    std::copy( begin(), begin()+n, std::back_inserter(v) );
-
-    int rmin = 0;
-    double xmin = v[0].x();
-    double ymin = v[0].y();
-    v[0].z() = 0;
-    for( int i=1; i<n; ++i ) {
-        double x = v[i].x();
-        double y = v[i].y();
-        v[i].z() = 0;
-        if ( y > ymin )
-            continue;
-        if ( y == ymin ) {
-            if (x  < xmin )
-                continue;
-        }
-        rmin = i;
-        xmin = x;
-        ymin = y;
-    }
-
-    int rmin_less_1 = rmin-1 >= 0 ? rmin-1 : n-1;
-    int rmin_plus_1 = rmin+1 < n ? rmin+1 : 0;
-
-    osg::Vec3 in = v[rmin] - v[rmin_less_1]; in.normalize();
-    osg::Vec3 out = v[rmin_plus_1] - v[rmin]; out.normalize();
-    osg::Vec3 cross = in ^ out;
-
-    return
-        cross.z() < 0.0 ? Geometry::ORIENTATION_CW :
-        cross.z() > 0.0 ? Geometry::ORIENTATION_CCW :
-        Geometry::ORIENTATION_DEGENERATE;
-}
-
 double
 Geometry::getLength() const
 {
@@ -623,14 +593,6 @@ Geometry::getLength() const
         length += (next - current).length();
     }
     return length;
-}
-
-// ensures that the first and last points are idential.
-void
-Geometry::close()
-{
-    if ( size() > 0 && front() != back() )
-        push_back( front() );
 }
 
 void
@@ -649,21 +611,12 @@ Geometry::forEachPart(bool includePolygonHoles, const std::function<void(const G
 
 //----------------------------------------------------------------------------
 
-PointSet::PointSet( const PointSet& rhs ) :
-Geometry( rhs )
+PointSet::PointSet(const PointSet& rhs) :
+    Geometry(rhs)
 {
     //nop
 }
 
-PointSet::~PointSet()
-{
-}
-
-void
-PointSet::close()
-{
-    //NOP. Don't close point sets..
-}
 
 //----------------------------------------------------------------------------
 
@@ -671,10 +624,6 @@ Point::Point(const Point& rhs) :
     PointSet(rhs)
 {
     //nop
-}
-
-Point::~Point()
-{
 }
 
 void
@@ -686,20 +635,16 @@ Point::set(const osg::Vec3d& value)
 
 //----------------------------------------------------------------------------
 
-LineString::LineString( const LineString& rhs ) :
-Geometry( rhs )
+LineString::LineString(const LineString& rhs) :
+    Geometry(rhs)
 {
     //nop
 }
 
-LineString::LineString( const Vec3dVector* data ) :
-Geometry( data )
+LineString::LineString(const Vec3dVector* data) :
+    Geometry(data)
 {
     //nop
-}
-
-LineString::~LineString()
-{
 }
 
 bool
@@ -721,12 +666,6 @@ LineString::getSegment(double length, osg::Vec3d& start, osg::Vec3d& end)
     return false;
 }
 
-void
-LineString::close()
-{
-    //NOP - dont' close line strings.
-}
-
 double
 LineString::getSignedDistance2D(
     const osg::Vec3d& a) const
@@ -746,33 +685,47 @@ LineString::getSignedDistance2D(
 
 //----------------------------------------------------------------------------
 
-Ring::Ring( const Ring& rhs ) :
-Geometry( rhs )
+Ring::Ring(const Ring& rhs) :
+    Geometry(rhs)
 {
     //nop
 }
 
-Ring::Ring( const Vec3dVector* data ) :
-Geometry( data )
+Ring::Ring(const Vec3dVector* data) :
+    Geometry(data)
 {
-    open();
+    // rings must be closed (last point == first point)
+    close();
 }
 
-Ring::~Ring()
+void
+Ring::rewind(Orientation orientation)
 {
+    Orientation current = getOrientation();
+    if (current != orientation && current != ORIENTATION_DEGENERATE && orientation != ORIENTATION_DEGENERATE)
+    {
+        std::reverse(begin(), end());
+    }
+}
+
+void
+Ring::normalize()
+{
+    close();
+    rewind(Orientation::ORIENTATION_CCW);
 }
 
 Geometry*
-Ring::cloneAs( const Geometry::Type& newType ) const
+Ring::cloneAs(const Geometry::Type& newType) const
 {
-    if ( newType == TYPE_LINESTRING )
+    if (newType == TYPE_LINESTRING)
     {
-        LineString* line = new LineString( &this->asVector() );
-        if ( line->size() > 1 && line->front() != line->back() )
-            line->push_back( front() );
+        LineString* line = new LineString(&this->asVector());
+        if (line->size() > 1 && line->front() != line->back())
+            line->push_back(front());
         return line;
     }
-    else return Geometry::cloneAs( newType );
+    else return Geometry::cloneAs(newType);
 }
 
 double
@@ -789,18 +742,12 @@ Ring::getLength() const
     return length;
 }
 
-// ensures that the first and last points are not idential.
-void
-Ring::open()
-{
-    while( size() > 2 && front() == back() )
-        erase( end()-1 );
-}
-
+// ensures that the first and last points are identical.
 void
 Ring::close()
 {
-    Geometry::close();
+    if (size() > 0 && front() != back())
+        push_back(front());
 }
 
 // whether the ring is open.
@@ -810,27 +757,36 @@ Ring::isOpen() const
     return size() > 1 && front() != back();
 }
 
+Geometry::Orientation
+Ring::getOrientation() const
+{
+    return
+        size() < (isOpen() ? 3 : 4) ? ORIENTATION_DEGENERATE :
+        getSignedArea2D() >= 0.0 ? ORIENTATION_CCW :
+        ORIENTATION_CW;
+}
+
 // gets the signed area.
 double
 Ring::getSignedArea2D() const
 {
     // Computes area based on the surveyors formula
-    const_cast<Ring*>(this)->open();
-
-    unsigned int n = size();
     double area = 0.0;
-    int j = n - 1;
-    for (int i = 0; i < n; i++)
+    if (isOpen())
     {
-        area += ((*this)[j].x() + (*this)[i].x()) * ((*this)[j].y() - (*this)[i].y());
-        j = i;
+        for (int i = size() - 1, j = 0; j < size(); i = j++)
+            area += ((*this)[i].x() * (*this)[j].y()) - ((*this)[i].y() * (*this)[j].x());
     }
-    return area / 2.0;
+    else
+    {
+        for (int i = 0; i < size() - 1; ++i)
+            area += ((*this)[i].x() * (*this)[i + 1].y()) - ((*this)[i].y() * (*this)[i + 1].x());
+    }
+    return 0.5 * area;
 }
 
 double
-Ring::getSignedDistance2D(
-    const osg::Vec3d& a) const
+Ring::getSignedDistance2D(const osg::Vec3d& a) const
 {
     Segment2d seg;
     double r = DBL_MAX;
@@ -849,28 +805,20 @@ Ring::getSignedDistance2D(
     return contains2D(a.x(), a.y()) ? -r : r;
 }
 
-// opens and rewinds the polygon to the specified orientation.
-void
-Ring::rewind( Orientation orientation )
-{
-    open();
-    Geometry::rewind( orientation );
-}
-
 // point-in-polygon test
 bool
-Ring::contains2D( double x, double y ) const
+Ring::contains2D(double x, double y) const
 {
     bool result = false;
     const Ring& poly = *this;
-    bool is_open = isOpen();
+    bool is_open = size() > 0 && front() != back();
     unsigned i = is_open ? 0 : 1;
     unsigned j = is_open ? size() - 1 : 0;
-    for( ; i<size(); j = i++ )
+    for (; i < size(); j = i++)
     {
         if ((((poly[i].y() <= y) && (y < poly[j].y())) ||
-             ((poly[j].y() <= y) && (y < poly[i].y()))) &&
-            (x < (poly[j].x()-poly[i].x()) * (y-poly[i].y())/(poly[j].y()-poly[i].y())+poly[i].x()))
+            ((poly[j].y() <= y) && (y < poly[i].y()))) &&
+            (x < (poly[j].x() - poly[i].x()) * (y - poly[i].y()) / (poly[j].y() - poly[i].y()) + poly[i].x()))
         {
             result = !result;
         }
@@ -880,34 +828,48 @@ Ring::contains2D( double x, double y ) const
 
 //----------------------------------------------------------------------------
 
-Polygon::Polygon( const Polygon& rhs ) :
-Ring( rhs )
+Polygon::Polygon(const Polygon& rhs) :
+    Ring(rhs)
 {
     for (auto& hole : rhs._holes)
         _holes.push_back(new Ring(&hole->asVector()));
 }
 
-Polygon::Polygon( const Vec3dVector* data ) :
-Ring( data )
+Polygon::Polygon(const Vec3dVector* data) :
+    Ring(data)
 {
-    //nop
+    normalize();
 }
 
-Polygon::~Polygon()
+void
+Polygon::normalize()
 {
+    removeDuplicates();
+
+    // ensure outer and all inner rings are closed
+    close();
+
+    // rewind outer to CCW
+    rewind(Orientation::ORIENTATION_CCW);
+
+    // wind inner holds to CW
+    for (auto& hole : _holes)
+    {
+        hole->rewind(Orientation::ORIENTATION_CW);
+    }
 }
 
 int
 Polygon::getTotalPointCount() const
 {
     int total = Ring::getTotalPointCount();
-    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
-        total += i->get()->getTotalPointCount();
+    for (auto& hole : _holes)
+        total += hole->getTotalPointCount();
     return total;
 }
 
 bool
-Polygon::contains2D( double x, double y ) const
+Polygon::contains2D(double x, double y) const
 {
     // first check the outer ring
     if ( !Ring::contains2D(x, y) )
@@ -915,50 +877,39 @@ Polygon::contains2D( double x, double y ) const
 
     // then check each inner ring (holes). Point has to be inside the outer ring,
     // but NOT inside any of the holes
-    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
-    {
-        if ( i->get()->contains2D(x, y) )
+    for (auto& hole : _holes)
+        if (hole->contains2D(x, y))
             return false;
-    }
 
     return true;
-}
-
-void
-Polygon::open()
-{
-    Ring::open();
-    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
-        (*i)->open();
 }
 
 void
 Polygon::close()
 {
     Ring::close();
-    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
-        (*i)->close();
+    for (auto& hole : _holes)
+        hole->close();
 }
 
 void
 Polygon::removeDuplicates()
 {
     Ring::removeDuplicates();
-    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
-        (*i)->removeDuplicates();
+    for (auto& hole : _holes)
+        hole->removeDuplicates();
 }
 
 void
 Polygon::removeColinearPoints()
 {
     Ring::removeColinearPoints();
-    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
-        (*i)->removeColinearPoints();
+    for (auto& hole : _holes)
+        hole->removeColinearPoints();
 }
 
 double
-Polygon::getSignedDistance2D(
-    const osg::Vec3d& a) const
+Polygon::getSignedDistance2D(const osg::Vec3d& a) const
 {
     Segment2d seg;
     double r = DBL_MAX;
@@ -973,21 +924,24 @@ Polygon::getSignedDistance2D(
 
 //----------------------------------------------------------------------------
 
-MultiGeometry::MultiGeometry( const MultiGeometry& rhs ) :
-Geometry( rhs )
+MultiGeometry::MultiGeometry(const MultiGeometry& rhs) :
+    Geometry(rhs)
 {
-    for( GeometryCollection::const_iterator i = rhs._parts.begin(); i != rhs._parts.end(); ++i )
-        _parts.push_back( i->get()->clone() );
+    for (auto& part : _parts)
+        _parts.push_back(part->clone());
 }
 
-MultiGeometry::MultiGeometry( const GeometryCollection& parts ) :
-_parts( parts )
+MultiGeometry::MultiGeometry(const GeometryCollection& parts) :
+    _parts(parts)
 {
     //nop
 }
 
-MultiGeometry::~MultiGeometry()
+void
+MultiGeometry::normalize()
 {
+    for (auto& part : _parts)
+        part->normalize();
 }
 
 Geometry::Type
@@ -1006,8 +960,8 @@ int
 MultiGeometry::getTotalPointCount() const
 {
     int total = 0;
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-        total += i->get()->getTotalPointCount();
+    for (auto& part : _parts)
+        total += part->getTotalPointCount();
     return total;
 }
 
@@ -1015,8 +969,8 @@ double
 MultiGeometry::getLength() const
 {
     double total = 0.0;
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-        total += i->get()->getLength();
+    for (auto& part : _parts)
+        total += part->getLength();
     return total;
 }
 
@@ -1024,8 +978,8 @@ unsigned
 MultiGeometry::getNumGeometries() const
 {
     unsigned total = 0;
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-        total += i->get()->getNumGeometries();
+    for (auto& part : _parts)
+        total += part->getNumGeometries();
     return total;
 }
 
@@ -1034,21 +988,22 @@ MultiGeometry::getBounds() const
 {
     Bounds bounds = Geometry::getBounds();
 
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
+    for (auto& part : _parts)
     {
-        bounds.expandBy( i->get()->getBounds() );
+        bounds.expandBy(part->getBounds());
     }
     return bounds;
 }
 
 Geometry*
-MultiGeometry::cloneAs( const Geometry::Type& newType ) const
+MultiGeometry::cloneAs(const Geometry::Type& newType) const
 {
     MultiGeometry* multi = new MultiGeometry();
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
+    for (auto& part : _parts)
     {
-        Geometry* part = i->get()->cloneAs( i->get()->getType() );
-        if ( part ) multi->getComponents().push_back( part );
+        Geometry* new_part = part->cloneAs(part->getType());
+        if (new_part)
+            multi->getComponents().push_back(new_part);
     }
     return multi;
 }
@@ -1060,38 +1015,18 @@ MultiGeometry::isValid() const
         return false;
 
     bool valid = true;
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end() && valid; ++i )
-    {
-        if ( !i->get()->isValid() )
-            valid = false;
-    }
-    return valid;
-}
-
-void
-MultiGeometry::open()
-{
     for (auto& part : _parts)
-        part->open();
+        if (!part->isValid())
+            valid = false;
+
+    return valid;
 }
 
 void
 MultiGeometry::close()
 {
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-    {
-        i->get()->close();
-    }
-}
-
-// opens and rewinds the polygon to the specified orientation.
-void
-MultiGeometry::rewind( Orientation orientation )
-{
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-    {
-        i->get()->rewind( orientation );
-    }
+    for (auto& part : _parts)
+        part->close();
 }
 
 void
@@ -1104,10 +1039,8 @@ MultiGeometry::removeDuplicates()
 void
 MultiGeometry::removeColinearPoints()
 {
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-    {
-        i->get()->removeColinearPoints();
-    }
+    for (auto& part : _parts)
+        part->removeColinearPoints();
 }
 
 double
@@ -1135,14 +1068,14 @@ MultiGeometry::contains2D(double x, double y) const
 
 //----------------------------------------------------------------------------
 
-GeometryIterator::GeometryIterator( Geometry* geom, bool holes ) :
-_next( 0L ),
-_traverseMulti( true ),
-_traversePolyHoles( holes )
+GeometryIterator::GeometryIterator(Geometry* geom, bool holes) :
+    _next(0L),
+    _traverseMulti(true),
+    _traversePolyHoles(holes)
 {
-    if ( geom )
+    if (geom)
     {
-        _stack.push( geom );
+        _stack.push(geom);
         fetchNext();
     }
 }

@@ -113,8 +113,10 @@ ImageToFeatureSource::removedFromMap(const Map* map)
     options().image().removedFromMap(map);
 }
 
-FeatureCursor*
-ImageToFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+FeatureCursorImplementation*
+ImageToFeatureSource::createFeatureCursorImplementation(
+    const Query& query,
+    ProgressCallback* progress) const
 {
     TileKey key = *query.tileKey();
 
@@ -198,7 +200,7 @@ ImageToFeatureSource::createFeatureCursorImplementation(const Query& query, Prog
             if (!features.empty())
             {
                 //OE_NOTICE << LC << "Returning " << features.size() << " features" << std::endl;
-                return new FeatureListCursor(features);
+                return new FeatureListCursorImpl(features);
             }
         }
     }

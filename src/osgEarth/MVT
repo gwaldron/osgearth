@@ -30,7 +30,7 @@ namespace osgEarth { namespace MVT
     extern OSGEARTH_EXPORT bool readTile(
         std::istream&  in,
         const TileKey& key,
-        FeatureList&   features);
+        MutableFeatureList& features);
 
     // Internal serialization options
     class OSGEARTH_EXPORT MVTFeatureSourceOptions : public FeatureSource::Options
@@ -92,9 +92,11 @@ namespace osgEarth
 
     public: // FeatureSource
 
-        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);        
+        FeatureCursorImplementation* createFeatureCursorImplementation(
+            const Query& query,
+            ProgressCallback* progress) const override;
         
-        virtual const FeatureSchema& getSchema() const { return _schema; }
+        const FeatureSchema& getSchema() const override { return _schema; }
 
     protected:
 

@@ -236,32 +236,40 @@ TerrainConstraintQuery::getConstraints(
             FeatureSource* fs = layer->getFeatureSource();
             if (fs)
             {
-                osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(
+                auto cursor = fs->createFeatureCursor(
                     key,
+                    { }, // no buffer
                     layer->getFilters(),
                     nullptr,
                     progress);
 
-                if (cursor.valid() && cursor->hasMore())
+                if (cursor.hasMore())
                 {
                     TerrainConstraint constraint;
                     constraint.layer = layer;
 
-                    while (cursor->hasMore())
+                    while (cursor.hasMore())
                     {
                         if (progress && progress->isCanceled())
                             return false;
 
-                        Feature* f = cursor->nextFeature();
+                        auto f = cursor.nextFeature();
 
-                        if (f && f->getExtent().intersects(keyExtent))
+                        if (f.valid() && f->getExtent().intersects(keyExtent))
                         {
-                            f->transform(keyExtent.getSRS());
+                            if (!f->getSRS()->isEquivalentTo(keyExtent.getSRS()))
+                            {
+                                f = f->transformTo(keyExtent.getSRS());
+                            }
+
                             constraint.features.push_back(f);
                         }
                     }
 
-                    output.push_back(std::move(constraint));
+                    if (!constraint.features.empty())
+                    {
+                        output.push_back(std::move(constraint));
+                    }
                 }
             }
         }

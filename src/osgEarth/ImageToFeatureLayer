@@ -62,9 +62,9 @@ namespace osgEarth
 
     public: // FeatureLayer
         
-        virtual FeatureCursor* createFeatureCursorImplementation(
+        FeatureCursorImplementation* createFeatureCursorImplementation(
             const Query& query,
-            ProgressCallback* progress);
+            ProgressCallback* progress) const override;
 
     public: // Layer
 

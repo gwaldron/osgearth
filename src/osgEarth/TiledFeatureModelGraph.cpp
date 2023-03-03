@@ -49,7 +49,7 @@ TiledFeatureModelGraph::TiledFeatureModelGraph(const osgEarth::Map* map,
 }
 
 void
-TiledFeatureModelGraph::setFilterChain(FeatureFilterChain* chain)
+TiledFeatureModelGraph::setFilterChain(const FeatureFilterChain& chain)
 {
     _filterChain = chain;
 }
@@ -61,14 +61,14 @@ TiledFeatureModelGraph::setOwnerName(const std::string& value)
 }
 
 
-FeatureCursor*
+FeatureCursor
 TiledFeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const
 {
     NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
-    FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
-    if (cursor && _filterChain.valid())
+    auto cursor = fs->createFeatureCursor(query, progress);
+    if (!_filterChain.empty())
     {
-        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), &cx);
+        cursor.set(new FilteredFeatureCursorImpl(cursor, _filterChain, &cx));
     }
     return cursor;
 }
@@ -106,20 +106,20 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
     if (progress && progress->isCanceled())
         return nullptr;
 
-    osg::ref_ptr< FeatureCursor > cursor = _features->createFeatureCursor(
+    auto cursor = _features->createFeatureCursor(
         query,
-        _filterChain.get(),
+        _filterChain,
         &fc,
         progress);
 
     osg::ref_ptr<osg::Node> node = new osg::Group;
-    if (cursor)
+    if (cursor.hasMore())
     {
         if (progress && progress->isCanceled())
             return nullptr;
 
         FeatureList features;
-        cursor->fill(features);
+        cursor.fill(features);
 
         if (_styleSheet->getSelectors().size() > 0)
         {
@@ -139,11 +139,10 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
                 {
                     // establish the working bounds and a context:
                     StringExpression styleExprCopy(sel.styleExpression().get());
-                    for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
-                    {
-                        Feature* feature = itr->get();
 
-                        feature->set("level", (long long)key.getLevelOfDetail());
+                    for(auto& feature : features)
+                    {
+                        //feature->set("level", (long long)key.getLevelOfDetail());
 
                         const std::string& styleString = feature->eval(styleExprCopy, &fc);
                         if (!styleString.empty() && styleString != "null")
@@ -182,9 +181,9 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
                     {
                         osg::Group* styleGroup = factory.getOrCreateStyleGroup(*style, _session.get());
                         osg::ref_ptr< osg::Node>  styleNode;
-                        osg::ref_ptr< FeatureListCursor> cursor = new FeatureListCursor(itr->second);
+                        FeatureCursor cursor(itr->second);
                         Query query;
-                        factory.createOrUpdateNode(cursor.get(), *style, fc, styleNode, query);
+                        factory.createOrUpdateNode(cursor, *style, fc, styleNode, query);
                         if (styleNode.valid())
                         {
                             styleGroup->addChild(styleNode);
@@ -202,11 +201,11 @@ TiledFeatureModelGraph::createNode(const TileKey& key, ProgressCallback* progres
         }
         else if (_styleSheet->getDefaultStyle())
         {
-            osg::ref_ptr< FeatureListCursor> cursor = new FeatureListCursor(features);
+            FeatureCursor cursor(features);
             osg::ref_ptr< osg::Group > group = new osg::Group;
             osg::ref_ptr< osg::Group > styleGroup = factory.getOrCreateStyleGroup(*_styleSheet->getDefaultStyle(), _session.get());
             osg::ref_ptr< osg::Node>  styleNode;
-            factory.createOrUpdateNode(cursor.get(), *_styleSheet->getDefaultStyle(), fc, styleNode, query);
+            factory.createOrUpdateNode(cursor, *_styleSheet->getDefaultStyle(), fc, styleNode, query);
             if (styleNode.valid())
             {
                 group->addChild(styleGroup);

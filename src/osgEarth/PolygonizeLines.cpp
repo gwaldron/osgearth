@@ -635,16 +635,14 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
     osg::Geode* geode = new PixelScalingGeode(); //osg::Geode();
 
     // iterate over all features.
-    for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
+    for(auto& f : input)
     {
-        Feature* f = i->get();
-
         // iterate over all the feature's geometry parts. We will treat
         // them as lines strings.
-        GeometryIterator parts( f->getGeometry(), false );
+        ConstGeometryIterator parts( f->getGeometry(), false );
         while( parts.hasMore() )
         {
-            Geometry* part = parts.next();
+            const Geometry* part = parts.next();
 
             // skip empty geometry
             if ( part->size() == 0 )
@@ -652,19 +650,19 @@ PolygonizeLinesFilter::push(FeatureList& input, FilterContext& cx)
 
             // transform the geometry into the target SRS and localize it about 
             // a local reference point.
-            osg::Vec3Array* verts   = new osg::Vec3Array();
+            osg::Vec3Array* verts = new osg::Vec3Array();
             osg::Vec3Array* normals = new osg::Vec3Array();
-            transformAndLocalize( part->asVector(), featureSRS, verts, normals, mapSRS, _world2local, makeECEF );
+            transformAndLocalize(part->asVector(), featureSRS, verts, normals, mapSRS, _world2local, makeECEF);
 
             // turn the lines into polygons.
-            osg::Geometry* geom = polygonize( verts, normals );
+            osg::Geometry* geom = polygonize(verts, normals);
 
             // install.
-            geode->addDrawable( geom );
+            geode->addDrawable(geom);
 
             // record the geometry's primitive set(s) in the index:
-            if ( cx.featureIndex() )
-                cx.featureIndex()->tagDrawable( geom, f );
+            if (cx.featureIndex())
+                cx.featureIndex()->tagDrawable(geom, f);
         }
     }
 

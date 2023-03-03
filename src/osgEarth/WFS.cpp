@@ -313,9 +313,8 @@ WFSFeatureSource::openImplementation()
 }
 
 
-
 void
-WFSFeatureSource::saveResponse(const std::string buffer, const std::string& filename)
+WFSFeatureSource::saveResponse(const std::string buffer, const std::string& filename) const
 {
     std::ofstream fout;
     fout.open(filename.c_str(), std::ios::out | std::ios::binary);
@@ -324,7 +323,7 @@ WFSFeatureSource::saveResponse(const std::string buffer, const std::string& file
 }
 
 bool
-WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mimeType, FeatureList& features)
+WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mimeType, MutableFeatureList& features) const
 {
     // Unnecessary - dataset is created and destroyed locally
     //OGR_SCOPED_LOCK;
@@ -406,7 +405,7 @@ WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mime
 
 
 std::string
-WFSFeatureSource::getExtensionForMimeType(const std::string& mime)
+WFSFeatureSource::getExtensionForMimeType(const std::string& mime) const
 {
     //OGR is particular sometimes about the extension of files when it's reading them so it's good to have
     //the temp file have an appropriate extension
@@ -504,11 +503,9 @@ WFSFeatureSource::createURL(const Query& query) const
     return str;
 }
 
-FeatureCursor*
-WFSFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+FeatureCursorImplementation*
+WFSFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
-    FeatureCursor* result = 0L;
-
     std::string url = createURL(query);
 
     OE_DEBUG << LC << url << std::endl;
@@ -522,7 +519,8 @@ WFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 
     bool dataOK = false;
 
-    FeatureList features;
+    MutableFeatureList features;
+
     if (!buffer.empty())
     {
         // Get the mime-type from the metadata record if possible
@@ -535,31 +533,16 @@ WFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
     }
 
-    //If we have any filters, process them here before the cursor is created
-    if (getFilters() && !getFilters()->empty() && !features.empty())
-    {
-        FilterContext cx;
-        cx.setProfile(getFeatureProfile());
-
-        for (FeatureFilterChain::const_iterator i = getFilters()->begin(); i != getFilters()->end(); ++i)
-        {
-            FeatureFilter* filter = i->get();
-            cx = filter->push(features, cx);
-        }
-    }
-
     // If we have any features and we have an fid attribute, override the fid of the features
     if (options().fidAttribute().isSet())
     {
-        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+        for(auto& feature : features)
         {
-            std::string attr = itr->get()->getString(options().fidAttribute().get());
+            std::string attr = feature->getString(options().fidAttribute().get());
             FeatureID fid = as<FeatureID>(attr, 0);
-            itr->get()->setFID(fid);
+            feature->setFID(fid);
         }
     }
 
-    result = dataOK ? new FeatureListCursor(features) : 0L;
-
-    return result;
+    return dataOK ? new FeatureListCursorImpl(toConst(features)) : nullptr;
 }

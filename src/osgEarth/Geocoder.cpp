@@ -28,11 +28,11 @@ using namespace osgEarth::Util;
 
 namespace
 {
-    class OGRGeocodeResultCursor : public OGR::OGRFeatureCursor
+    class OGRGeocodeResultCursor : public OGR::OGRFeatureCursorImpl
     {
     public:
         OGRGeocodeResultCursor(OGRLayerH layerHandle, const FeatureProfile* profile) :
-            OGR::OGRFeatureCursor(layerHandle, profile)
+            OGR::OGRFeatureCursorImpl(layerHandle, profile)
         {
             _geocodeResultHandle = layerHandle;
         }
@@ -53,7 +53,7 @@ namespace
         virtual ~OGRGeocodeImplementation();
 
     public: // GeocoderImplementation
-        Status search(const std::string& input, osg::ref_ptr<FeatureCursor>& output);
+        Status search(const std::string& input, FeatureCursor& output) override;
 
         void setServiceOption(const std::string& key, const std::string& value);
 
@@ -108,7 +108,7 @@ namespace
         reset();
     }
 
-    Status OGRGeocodeImplementation::search(const std::string& input,  osg::ref_ptr<FeatureCursor>& output)
+    Status OGRGeocodeImplementation::search(const std::string& input, FeatureCursor& output)
     {
         OGRLayerH layerHandle = OGRGeocode(_session, input.c_str(), NULL, NULL);
         if (!layerHandle)
@@ -121,7 +121,7 @@ namespace
         GeoExtent extent(srs.get(), -180, -90, 180, 90);
 
         osg::ref_ptr<FeatureProfile> profile = new FeatureProfile(extent);
-        output = new OGRGeocodeResultCursor(layerHandle, profile.get());
+        output.set(new OGRGeocodeResultCursor(layerHandle, profile.get()));
 
         return Status::OK();
     }
@@ -146,9 +146,9 @@ namespace
             OE_PROFILING_ZONE_NAMED("Geocode");
             if (!_promise.isAbandoned())
             {
-                osg::ref_ptr<FeatureCursor> cursor;
+                FeatureCursor cursor;
                 Status status = _impl->search(_input, cursor);
-                _promise.resolve(Geocoder::OutputData(status, cursor.get()));
+                _promise.resolve(Geocoder::OutputData(status, cursor));
             }
         }
     };
@@ -173,9 +173,9 @@ Geocoder::search(const std::string& input, const osgDB::Options* io_options)
     {
         auto geocode = [=](Cancelable* progress)
         {
-            osg::ref_ptr<FeatureCursor> cursor;
+            FeatureCursor cursor;
             Status status = _impl->search(input, cursor);
-            return OutputData(status, cursor.release());
+            return OutputData(status, cursor);
         };
 
         std::shared_ptr<JobArena> arena;
@@ -193,7 +193,7 @@ Geocoder::search(const std::string& input, const osgDB::Options* io_options)
     {
         return Geocoder::Results(
             Status(Status::ServiceUnavailable, "No geocoder implementation installed"),
-            NULL);
+            FeatureCursor());
     }
 }
 
@@ -206,7 +206,7 @@ Geocoder::setImplementation(Geocoder::Implementation* impl)
     }
 }
 
-Geocoder::Results::Results(const Status& status, FeatureCursor* cursor) :
+Geocoder::Results::Results(const Status& status, FeatureCursor& cursor) :
     FutureResult(Geocoder::OutputData(status, cursor))
 {
     //NOP - error status
@@ -232,10 +232,10 @@ Geocoder::Results::getStatus()
         Status(Status::ServiceUnavailable, "Operation canceled");
 }
 
-FeatureCursor*
+FeatureCursor
 Geocoder::Results::getFeatures()
 {
     return _future.isAvailable() ?
-        _future.get()._cursor.get() :
+        _future.get()._cursor :
         nullptr;
 }

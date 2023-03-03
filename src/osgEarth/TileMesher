@@ -61,7 +61,7 @@ namespace osgEarth
         // Represents a single edit operation driven by a feature collection
         struct Edit
         {
-            FeatureList features;
+            MutableFeatureList features;
             bool hasElevation = false;     // do the features contain valid elevation data in Z?
             bool removeInterior = false;   // should we remove triangles inside polygons?
             bool removeExterior = false;   // should we remove triangles outside polygons?

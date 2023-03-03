@@ -87,14 +87,14 @@ TessellateOperator::tessellateGeo( const osg::Vec3d& p0, const osg::Vec3d& p1, u
 //------------------------------------------------------------------------
 
 TessellateOperator::TessellateOperator() :
-_numPartitions( 20 ),
-_defaultInterp( GEOINTERP_GREAT_CIRCLE )
+    _numPartitions(20),
+    _defaultInterp(GEOINTERP_GREAT_CIRCLE)
 {
     //nop
 }
 
 void
-TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
+TessellateOperator::operator()(Feature* feature, FilterContext& context) const
 {
     if (_numPartitions <= 1 ||
         !feature || 
@@ -171,8 +171,13 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
 FilterContext
 TessellateOperator::push(FeatureList& input, FilterContext& context) const
 {
-    for (FeatureList::iterator i = input.begin(); i != input.end(); ++i) {
-        operator()(i->get(), context);
+    FeatureList output;
+    for (auto& feature : input)
+    {
+        Feature* new_feature = new Feature(*feature.get());
+        operator()(new_feature, context);
+        output.push_back(new_feature);
     }
+    input.swap(output);
     return context;
 }

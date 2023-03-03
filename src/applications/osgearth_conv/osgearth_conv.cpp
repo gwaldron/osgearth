@@ -527,10 +527,10 @@ main(int argc, char** argv)
             return -1;
         }
 
-        osg::ref_ptr< FeatureCursor > cursor = indexFeatures->createFeatureCursor(0);
-        while (cursor.valid() && cursor->hasMore())
+        auto cursor = indexFeatures->createFeatureCursor();
+        while (cursor->hasMore())
         {
-            osg::ref_ptr< Feature > feature = cursor->nextFeature();
+            auto feature = cursor->nextFeature();
             osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
             GeoExtent ext(feature->getSRS(), featureBounds);
             ext = input->getProfile()->clampAndTransformExtent(ext);

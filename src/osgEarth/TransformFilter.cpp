@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#if 0
 #include <osgEarth/TransformFilter>
 #include <osgEarth/Feature>
 #include <osgEarth/FilterContext>
@@ -130,11 +131,21 @@ TransformFilter::push( FeatureList& input, FilterContext& incx )
 {
     _bbox = osg::BoundingBoxd();
 
+    FeatureList output;
+
     // first transform all the points into the output SRS, collecting a bounding box as we go:
     bool ok = true;
-    for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
-        if ( !push( i->get(), incx ) )
-            ok = false;
+
+    for (auto& feature : input)
+    {
+        feature = push(feature.get(), incx);
+        if (feature.valid())
+            output.push_back(feature);
+    }
+
+    //for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
+    //    if ( !push( i->get(), incx ) )
+    //        ok = false;
 
     FilterContext outcx( incx );
 
@@ -165,3 +176,4 @@ TransformFilter::push( FeatureList& input, FilterContext& incx )
 
     return outcx;
 }
+#endif

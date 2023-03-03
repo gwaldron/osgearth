@@ -138,10 +138,8 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
         makeECEF   = context.getOutputSRS()->isGeographic();
     }
 
-    for( FeatureList::iterator f = features.begin(); f != features.end(); ++f )
+    for(auto& input : features)
     {
-        Feature* input = f->get();
-
         // access the polygon symbol, and bail out if there isn't one
         const PolygonSymbol* poly =
             input->style().isSet() && input->style()->has<PolygonSymbol>() ? input->style()->get<PolygonSymbol>() :
@@ -162,12 +160,12 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
         if (input->getGeometry() == 0L)
             continue;
 
-        GeometryIterator parts( input->getGeometry(), false );
+        ConstGeometryIterator parts( input->getGeometry(), false );
         while( parts.hasMore() )
         {
-            Geometry* part = parts.next();
+            const Geometry* part = parts.next();
 
-            part->removeDuplicates();
+            //part->removeDuplicates();
 
             // skip geometry that is invalid for a polygon
             if ( part->size() < 3 ) {
@@ -315,9 +313,8 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
     TextureToGeodeMap geodes;
 
     // iterate over all features.
-    for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
+    for(auto& input : features)
     {
-        Feature* input = i->get();
         // extract the required line symbol; bail out if not found.
         const LineSymbol* line =
             input->style().isSet() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
@@ -401,16 +398,20 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
 
         // iterate over all the feature's geometry parts. We will treat
         // them as lines strings.
-        GeometryIterator parts( input->getGeometry(), true );
+        ConstGeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
         {
-            Geometry* part = parts.next();
+            osg::ref_ptr<const Geometry> part = parts.next();
 
             // if the underlying geometry is a ring (or a polygon), close it so the
             // polygonizer will generate a closed loop.
-            Ring* ring = dynamic_cast<Ring*>(part);
-            if ( ring )
-                ring->close();
+            const Ring* ring = dynamic_cast<const Ring*>(part.get());
+            if (ring && ring->isOpen())
+            {
+                osg::ref_ptr<Geometry> closed_part = part->clone();
+                closed_part->close();
+                part = closed_part.get();
+            }
 
             // skip invalid geometry
             if ( part->size() < 2 )
@@ -511,10 +512,8 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
         _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU;
 
     // For each input feature:
-    for (FeatureList::iterator f = features.begin(); f != features.end(); ++f)
+    for(auto& input : features)
     {
-        Feature* input = f->get();
-
         // extract the required line symbol; bail out if not found.
         const LineSymbol* line =
             input->style().isSet() && input->style()->has<LineSymbol>() ? input->style()->get<LineSymbol>() :
@@ -531,10 +530,10 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
             input->eval( temp, &context );
         }
 
-        GeometryIterator parts( input->getGeometry(), true );
+        ConstGeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
         {
-            Geometry* part = parts.next();
+            auto part = parts.next();
 
             // skip invalid geometry for lines.
             if ( part->size() < 2 )
@@ -542,7 +541,7 @@ BuildGeometryFilter::processLines(FeatureList& features, FilterContext& context)
 
             // if the underlying geometry is a ring (or a polygon), use a line loop; otherwise
             // use a line strip.
-            bool isRing = (dynamic_cast<Ring*>(part) != 0L);
+            bool isRing = (dynamic_cast<const Ring*>(part) != 0L);
 
             // resolve the color:
             osg::Vec4f primaryColor = line->stroke()->color();
@@ -649,14 +648,12 @@ BuildGeometryFilter::processPoints(FeatureList& features, FilterContext& context
         _style.has<AltitudeSymbol>() &&
         _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU;
 
-    for( FeatureList::iterator f = features.begin(); f != features.end(); ++f )
+    for(auto& input : features)
     {
-        Feature* input = f->get();
-
-        GeometryIterator parts( input->getGeometry(), true );
+        ConstGeometryIterator parts( input->getGeometry(), true );
         while( parts.hasMore() )
         {
-            Geometry* part = parts.next();
+            auto part = parts.next();
 
             // extract the required point symbol; bail out if not found.
             const PointSymbol* point =
@@ -975,7 +972,7 @@ namespace
 
 void
 BuildGeometryFilter::tileAndBuildPolygon(
-    Geometry*               input,
+    const Geometry*         input,
     const SpatialReference* inputSRS,
     const SpatialReference* outputSRS,
     bool                    makeECEF,
@@ -1234,7 +1231,7 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
 
 // builds and tessellates a polygon (with or without holes)
 void
-BuildGeometryFilter::buildPolygon(Geometry*               ring,
+BuildGeometryFilter::buildPolygon(const Geometry*         ring,
                                   const SpatialReference* featureSRS,
                                   const SpatialReference* outputSRS,
                                   bool                    makeECEF,
@@ -1244,12 +1241,19 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
     if ( !ring->isValid() )
         return;
 
-    ring->rewind(osgEarth::Geometry::ORIENTATION_CCW);
+    if (ring->getOrientation() != osgEarth::Geometry::ORIENTATION_CCW)
+    {
+        osg::ref_ptr<Geometry> ccw = ring->clone();
+        ccw->rewind(osgEarth::Geometry::ORIENTATION_CCW);
+        buildPolygon(ccw.get(), featureSRS, outputSRS, makeECEF, osgGeom, world2local);
+        return;
+    }
+    //ring->rewind(osgEarth::Geometry::ORIENTATION_CCW);
 
     osg::ref_ptr<osg::Vec3Array> allPoints = new osg::Vec3Array();
     transformAndLocalize( ring->asVector(), featureSRS, allPoints.get(), outputSRS, world2local, makeECEF );
 
-    Polygon* poly = dynamic_cast<Polygon*>(ring);
+    const Polygon* poly = dynamic_cast<const Polygon*>(ring);
     if ( poly )
     {
         RingCollection ordered(poly->getHoles().begin(), poly->getHoles().end());
@@ -1494,9 +1498,8 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     // Split features across the dateline if necessary
     if (context.getOutputSRS() && !context.getOutputSRS()->isGeographic())
     {
-        for(FeatureList::iterator itr = input.begin(); itr != input.end(); ++itr)
+        for(auto& f : input)
         {
-            Feature* f = itr->get();
             FeatureList tmpSplit;
             f->splitAcrossDateLine(tmpSplit);
             splitFeatures.insert(splitFeatures.end(), tmpSplit.begin(), tmpSplit.end());
@@ -1508,10 +1511,8 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         std::copy(input.begin(), input.end(), std::back_inserter(splitFeatures));
     }
 
-    for(FeatureList::iterator i = splitFeatures.begin(); i != splitFeatures.end(); ++i)
+    for(auto& f : splitFeatures)
     {
-        Feature* f = i->get();
-
         // first consider the overall style:
         bool has_polysymbol     = poly != 0L;
         bool has_linesymbol     = line != 0L && line->stroke()->widthUnits() == Units::PIXELS;
@@ -1540,60 +1541,60 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         }
 
         // if no style is set, use the geometry type:
-        if ( !has_polysymbol && !has_linesymbol && !has_polylinesymbol && !has_pointsymbol && f->getGeometry() )
+        if (!has_polysymbol && !has_linesymbol && !has_polylinesymbol && !has_pointsymbol && f->getGeometry())
         {
-            switch( f->getGeometry()->getComponentType() )
+            Feature* new_f = nullptr;
+            switch (f->getGeometry()->getComponentType())
             {
             default:
             case Geometry::TYPE_LINESTRING:
             case Geometry::TYPE_RING:
-                f->style()->add( new LineSymbol() );
+                new_f = f->clone();
+                new_f->style()->add(new LineSymbol());
+                f = new_f;
                 has_linesymbol = true;
                 break;
 
             case Geometry::TYPE_POINT:
             case Geometry::TYPE_POINTSET:
-                f->style()->add( new PointSymbol() );
+                new_f = f->clone();
+                new_f->style()->add(new PointSymbol());
+                f = new_f;
                 has_pointsymbol = true;
                 break;
 
             case Geometry::TYPE_POLYGON:
-                f->style()->add( new PolygonSymbol() );
+                new_f = f->clone();
+                new_f->style()->add(new PolygonSymbol());
+                f = new_f;
                 has_polysymbol = true;
                 break;
             }
         }
 
-        if ( has_polysymbol )
+        if (has_polysymbol)
         {
-#if 0 // Placeholder. We probably need this, but let's wait and see
-            // split polygons that cross the andimeridian:
-            if (f->getSRS()->isGeographic() &&
-                f->calculateExtent().crossesAntimeridian())
-            {
-                FeatureList temp;
-                f->splitAcrossDateLine(temp);
-                std::copy(temp.begin(), temp.end(), std::back_inserter(polygons));
-            }
-            else
-#endif
-            {
-                polygons.push_back( f );
-            }
+            polygons.push_back(f);
         }
 
-        if ( has_linesymbol )
-            lines.push_back( f );
+        if (has_linesymbol)
+        {
+            lines.push_back(f);
+        }
 
         if ( has_wirelinessymbol)
         {
             wireLines.push_back( f);
         }
-        else if ( has_polylinesymbol )
-            polygonizedLines.push_back( f );
+        else if (has_polylinesymbol)
+        {
+            polygonizedLines.push_back(f);
+        }
 
-        if ( has_pointsymbol )
-            points.push_back( f );
+        if (has_pointsymbol)
+        {
+            points.push_back(f);
+        }
     }
 
     // process them separately.

@@ -171,14 +171,14 @@ class PowerlineFeatureNodeFactory : public GeomFeatureNodeFactory
 public:
     PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles);
 
-    bool createOrUpdateNode(FeatureCursor* cursor, const Style& style,
+    bool createOrUpdateNode(FeatureCursor& cursor, const Style& style,
                             const FilterContext& context,
                             osg::ref_ptr<osg::Node>& node,
                             const Query& query);
 private:
     FeatureList makeCableFeatures(FeatureList& powerFeatures, FeatureList& towerFeatures,
                                   FilterContext& cx, const Query& query, const Style& style);
-    PowerlineLayer::ModelOptions evalTowerModel(Feature* f, const FilterContext& context);
+    PowerlineLayer::ModelOptions evalTowerModel(const Feature* f, const FilterContext& context);
     std::string _lineSourceLayer;
     FeatureSource::Options _lineSource;
     bool _point_features;
@@ -265,7 +265,7 @@ namespace
         }        
     }
     
-    Feature* getPointFeature(PointMap& pointMap, const osg::Vec3d& key)
+    const Feature* getPointFeature(PointMap& pointMap, const osg::Vec3d& key)
     {
         PointMap::iterator itr = findPoint(pointMap, key);
         if (itr == pointMap.end())
@@ -333,11 +333,11 @@ namespace
                     Query newQuery(query);
                     newQuery.bounds().unset();
                     newQuery.tileKey() = neighborKey;
-                    FeatureCursor* cursor = session->getFeatureSource()->createFeatureCursor(newQuery, 0L);
+                    auto cursor = session->getFeatureSource()->createFeatureCursor(newQuery, 0L);
                     while (cursor->hasMore())
                     {
-                        Feature* feature = cursor->nextFeature();
-                        Geometry* geom = feature->getGeometry();
+                        auto feature = cursor->nextFeature();
+                        auto geom = feature->getGeometry();
                         if (geom->getType() == Geometry::TYPE_LINESTRING)
                         {
                             result.push_back(feature);
@@ -611,7 +611,7 @@ osg::Matrixd getLocalToWorld(const osg::Vec3d& geodeticPt,
 
 namespace
 {
-    bool evalStyle(Feature* f, FilterContext& context, const StringExpression& styleExpr, Style& combinedStyle)
+    bool evalStyle(const Feature* f, FilterContext& context, const StringExpression& styleExpr, Style& combinedStyle)
     {
         StyleSheet* sheet = context.getSession()->styles();
         // See if multiple selectors become necessary
@@ -690,7 +690,7 @@ namespace
     }
 }
 
-PowerlineLayer::ModelOptions PowerlineFeatureNodeFactory::evalTowerModel(Feature *f, const FilterContext& cx)
+PowerlineLayer::ModelOptions PowerlineFeatureNodeFactory::evalTowerModel(const Feature *f, const FilterContext& cx)
 {
     if (_powerlineOptions.lineExpr().isSet())
     {
@@ -759,14 +759,13 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
         linesNetwork.buildNetwork();
     }
     PointMap pointMap;
-    for (FeatureList::iterator i = towerFeatures.begin(); i != towerFeatures.end(); ++i)
+    for(auto& feature : towerFeatures)
     {
-        Feature* feature = i->get();
-        Geometry* geom = feature->getGeometry();
-        for(Geometry::iterator i = geom->begin(); i != geom->end(); ++i)
+        const Geometry* geom = feature->getGeometry();
+        for(Geometry::const_iterator i = geom->begin(); i != geom->end(); ++i)
         {
             const osg::Vec3d& pt = *i;
-            getPoint(pointMap, pt) = PointEntry(feature);
+            getPoint(pointMap, pt) = PointEntry(feature->clone());
         }
     }
 
@@ -788,10 +787,9 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
         cableExprCopy = _cableExpr.get();
     }
 
-    for (FeatureList::iterator i = powerFeatures.begin(); i != powerFeatures.end(); ++i)
+    for(auto& feature : powerFeatures)
     {
-        Feature* feature = i->get();
-        Geometry* geom = feature->getGeometry();
+        auto geom = feature->getGeometry();
         if (geom->getType() == Geometry::TYPE_LINESTRING)
         {
             const int size = geom->size();
@@ -885,14 +883,14 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
     return result;
 }
 
-bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, const Style& style,
+bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor& cursor, const Style& style,
                                                      const FilterContext& context,
                                                      osg::ref_ptr<osg::Node>& node,
                                                      const Query& query)
 {
     FilterContext sharedCX = context;
     FeatureList workingSet; 
-    cursor->fill(workingSet);
+    cursor.fill(workingSet);
 
     Style cableStyle;
     if (!_cableExpr.isSet())
@@ -940,10 +938,9 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     }
     localCX = pointsLinesFilter.push(workingSet, sharedCX);
     Style towerStyle;
-    for(FeatureList::iterator i = workingSet.begin(); i != workingSet.end(); ++i)
+    for(auto& feature : workingSet)
     {
-        Feature* feature = i->get();
-        Geometry* geom = feature->getGeometry();
+        const Geometry* geom = feature->getGeometry();
         if (geom->getType() == Geometry::TYPE_POINTSET
             || geom->getType() == Geometry::TYPE_POINT)
         {
@@ -951,7 +948,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         }
     }
     osg::ref_ptr<osg::Node> pointsNode;
-    osg::ref_ptr<FeatureListCursor> listCursor = new FeatureListCursor(pointSet);
+    FeatureCursor listCursor(pointSet);
     StyleSheet* sheet = context.getSession()->styles();
     // The tower model should come from the "model" attribute of
     // tower_model if it is not specified in the tower model style
@@ -972,7 +969,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         while (listCursor->hasMore())
         {
             osg::ref_ptr<osg::Node> pointsNode;
-            Feature* f = listCursor->nextFeature();
+            auto f = listCursor->nextFeature();
 
             if (useSelectorExp)
             {
@@ -1016,11 +1013,12 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
             if (!combinedStyle.empty())
             {
                 osg::ref_ptr<osg::Node> towerNode;
-                osg::ref_ptr<Feature> featureRef(f);
-                FeatureList flist = {featureRef};
-                osg::ref_ptr<FeatureListCursor> towerCursor = new FeatureListCursor(flist);
+                osg::ref_ptr<const Feature> featureRef(f);
+                FeatureList flist;
+                flist.push_back(featureRef);
+                FeatureCursor towerCursor(flist);
                 // See comment below
-                GeomFeatureNodeFactory::createOrUpdateNode(towerCursor.get(), combinedStyle, localCX, towerNode, query);
+                GeomFeatureNodeFactory::createOrUpdateNode(towerCursor, combinedStyle, localCX, towerNode, query);
                 towersNode->addChild(towerNode.get());
             }
         }
@@ -1044,7 +1042,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         }
         // This has the side effect of updating the elevations of the point features according to the
         // model style sheet. We rely on this in makeCableFeatures().
-        GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), combinedStyle, localCX, pointsNode, query);
+        GeomFeatureNodeFactory::createOrUpdateNode(listCursor, combinedStyle, localCX, pointsNode, query);
     }
 
     osg::ref_ptr<osg::Group> results(new osg::Group);
@@ -1055,12 +1053,12 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     GeometryCompiler compiler;
     if (_cableExpr.isSet())
     {
-        for (FeatureList::iterator i = cableFeatures.begin(); i != cableFeatures.end(); ++i)
+        for(auto& feature : cableFeatures)
         {
             Style localStyle;
-            evalStyle(i->get(), localCX, _cableExpr.get(), localStyle);
+            evalStyle(feature.get(), localCX, _cableExpr.get(), localStyle);
             setCableStyleDefaults(localStyle);
-            osg::Node* cable = compiler.compile(i->get(), localStyle, localCX);
+            osg::Node* cable = compiler.compile(feature.get(), localStyle, localCX);
             results->addChild(cable);
         }
     }

@@ -53,7 +53,7 @@ namespace osgEarth { namespace ArcGIS
         osg::Image* readImage(const TileKey& key, const osgDB::ReaderWriter* rw);
         osg::Image* readImage(unsigned int index, const osgDB::ReaderWriter* rw);
 
-        void readFeatures(const TileKey& key, FeatureList& features);
+        void readFeatures(const TileKey& key, MutableFeatureList& features);
 
     protected:
         std::string _bundleFile;
@@ -84,7 +84,7 @@ namespace osgEarth { namespace ArcGIS
 
         osg::Image* readImage(unsigned int index, const osgDB::ReaderWriter* rw);
 
-        void readFeatures(const TileKey& key, FeatureList& features);
+        void readFeatures(const TileKey& key, MutableFeatureList& features);
 
 
     protected:
@@ -234,15 +234,17 @@ namespace osgEarth
 
     public: // Layer
 
-        virtual Status openImplementation();
+        Status openImplementation() override;
 
     protected:
 
-        virtual void init();
+        void init() override;
 
     public: // FeatureSource
 
-        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);
+        FeatureCursorImplementation* createFeatureCursorImplementation(
+            const Query& query,
+            ProgressCallback* progress) const override;
 
     protected:
 

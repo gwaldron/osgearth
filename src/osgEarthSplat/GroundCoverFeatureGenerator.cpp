@@ -101,14 +101,6 @@ namespace
             }
         }
     }
-
-    // custom featurelist cursor that lets us populate the list directly
-    class MyFeatureListCursor : public FeatureListCursor
-    {
-    public:
-        MyFeatureListCursor() : FeatureListCursor(FeatureList()) { }
-        FeatureList& features() { return _features; }
-    };
 }
 
 //...................................................................

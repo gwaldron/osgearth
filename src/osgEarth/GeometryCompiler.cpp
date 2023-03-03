@@ -165,31 +165,31 @@ _options( options )
 }
 
 osg::Node*
-GeometryCompiler::compile(Geometry*             geometry,
+GeometryCompiler::compile(const Geometry* geometry,
                           const Style&          style,
                           const FilterContext&  context)
 {
-    osg::ref_ptr<Feature> f = new Feature(geometry, 0L); // no SRS!
+    osg::ref_ptr<const Feature> f = new Feature(const_cast<Geometry*>(geometry), nullptr); // no SRS!
     return compile(f.get(), style, context);
 }
 
 osg::Node*
-GeometryCompiler::compile(Geometry*             geometry,
+GeometryCompiler::compile(const Geometry* geometry,
                           const Style&          style)
 {
-    osg::ref_ptr<Feature> f = new Feature(geometry, 0L); // no SRS!
+    osg::ref_ptr<const Feature> f = new Feature(const_cast<Geometry*>(geometry), nullptr); // no SRS!
     return compile(f.get(), style, FilterContext(0L) );
 }
 
 osg::Node*
-GeometryCompiler::compile(Geometry*             geometry,
+GeometryCompiler::compile(const Geometry* geometry,
                           const FilterContext&  context)
 {
     return compile( geometry, Style(), context );
 }
 
 osg::Node*
-GeometryCompiler::compile(Feature*              feature,
+GeometryCompiler::compile(const Feature* feature,
                           const Style&          style,
                           const FilterContext&  context)
 {
@@ -199,21 +199,21 @@ GeometryCompiler::compile(Feature*              feature,
 }
 
 osg::Node*
-GeometryCompiler::compile(Feature*              feature,
+GeometryCompiler::compile(const Feature* feature,
                           const FilterContext&  context)
 {
     return compile(feature, *feature->style(), context);
 }
 
 osg::Node*
-GeometryCompiler::compile(FeatureCursor*        cursor,
+GeometryCompiler::compile(FeatureCursor&        cursor,
                           const Style&          style,
                           const FilterContext&  context)
 
 {
     // start by making a working copy of the feature set
     FeatureList workingSet;
-    cursor->fill( workingSet );
+    cursor.fill( workingSet );
 
     return compile(workingSet, style, context);
 }
@@ -285,8 +285,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // first feature.
     if ( !point && !line && !polygon && !extrusion && !text && !model && !icon && workingSet.size() > 0 )
     {
-        Feature* first = workingSet.begin()->get();
-        Geometry* geom = first->getGeometry();
+        const Feature* first = workingSet.begin()->get();
+        const Geometry* geom = first->getGeometry();
         if ( geom )
         {
             switch( geom->getComponentType() )

@@ -32,7 +32,7 @@ namespace
 {
     PlaceNode* makePlaceNode(
         FilterContext&     context,
-        Feature*           feature, 
+        const Feature*     feature, 
         const Style&       style )
     {
         osg::Vec3d center = feature->getGeometry()->getBounds().center();
@@ -105,10 +105,9 @@ namespace
         NumericExpression iconHeadingExpr ( icon ? *icon->heading()  : NumericExpression() );
         NumericExpression vertOffsetExpr  ( alt  ? *alt->verticalOffset() : NumericExpression() );
 
-        for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
+        for(auto& feature : input)
         {
-            Feature* feature = i->get();
-            if ( !feature )
+            if (!feature.valid())
                 continue;
 
             // run a symbol script if present.
@@ -164,7 +163,7 @@ namespace
 
             PlaceNode* node = makePlaceNode(
                 context,
-                feature,
+                feature.get(),
                 tempStyle);
 
             if ( node )

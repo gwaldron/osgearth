@@ -174,7 +174,7 @@ osg::Image* BundleReader::readImage(unsigned int index, const osgDB::ReaderWrite
     return 0;
 }
 
-void BundleReader::readFeatures(const TileKey& key, FeatureList& features)
+void BundleReader::readFeatures(const TileKey& key, MutableFeatureList& features)
 {
 #ifdef OSGEARTH_HAVE_MVT
     // Figure out the index for the tilekey
@@ -297,7 +297,7 @@ osg::Image* BundleReader2::readImage(unsigned int index, const osgDB::ReaderWrit
     return 0;
 }
 
-void BundleReader2::readFeatures(const TileKey& key, FeatureList& features)
+void BundleReader2::readFeatures(const TileKey& key, MutableFeatureList& features)
 {
 #ifdef OSGEARTH_HAVE_MVT
     unsigned int col = key.getTileX() - _colOffset;
@@ -715,8 +715,8 @@ VTPKFeatureSource::computeMinMaxLevel(unsigned int &min, unsigned int &max)
     }
 }
 
-FeatureCursor*
-VTPKFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+FeatureCursorImplementation*
+VTPKFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     if (!query.tileKey().isSet())
     {
@@ -747,7 +747,7 @@ VTPKFeatureSource::createFeatureCursorImplementation(const Query& query, Progres
     buf << "R" << padLeft(toHex(rowOffset), 4) << "C" << padLeft(toHex(colOffset), 4);
     buf << ".bundle";
 
-    FeatureList features;
+    MutableFeatureList features;
     std::string bundleFile = buf.str();
     if (osgDB::fileExists(bundleFile))
     {
@@ -765,7 +765,7 @@ VTPKFeatureSource::createFeatureCursorImplementation(const Query& query, Progres
 
     if (!features.empty())
     {
-        return new FeatureListCursor(features);
+        return new FeatureListCursorImpl(toConst(features));
     }
     return nullptr;
 }

@@ -115,8 +115,7 @@ namespace osgEarth {
             while (gi.hasMore())
             {
                 const Geometry* g = gi.next();
-
-                for (Geometry::const_iterator p = g->begin(); p != g->end(); p++)
+                for (auto p = g->begin(); p != g->end(); p++)
                 {
                     const osg::Vec3d& p0 = *p;
                     double x0 = frame.xf*(p0.x() - frame.xmin);
@@ -146,8 +145,8 @@ namespace osgEarth {
             while (gi.hasMore())
             {
                 const Geometry* g = gi.next();
-
-                for (Geometry::const_iterator p = g->begin(); p != g->end(); p++)
+                auto end = g->isOpen() ? g->end() : g->end() - 1;
+                for (auto p = g->begin(); p != end; p++)
                 {
                     const osg::Vec3d& p0 = *p;
                     double x0 = frame.xf*(p0.x() - frame.xmin);
@@ -184,7 +183,8 @@ namespace osgEarth {
 
             geometry->forEachPart([&](const Geometry* part)
             {
-                for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                auto end = part->isOpen() ? part->end() : part->end() - 1;                    
+                for (auto p = part->begin(); p != end; p++)
                 {
                     const osg::Vec3d& p0 = *p;
                     double x = frame.xf*(p0.x() - frame.xmin);
@@ -256,7 +256,7 @@ namespace osgEarth {
 
             geometry->forEachPart(true, [&](const Geometry* part)
             {
-                for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                for (auto p = part->begin(); p != part->end(); p++)
                 {
                     const osg::Vec3d& p0 = *p;
                     double x = frame.xf*(p0.x() - frame.xmin);
@@ -269,16 +269,16 @@ namespace osgEarth {
                         path.lineTo(x, y);
                 }
 
-                if ((part->getType() == Geometry::TYPE_RING || part->getType() == Geometry::TYPE_POLYGON) &&
-                    (part->front() != part->back()))
-                {
-                    const osg::Vec3d& p0 = part->front();
-                    double x = frame.xf*(p0.x() - frame.xmin);
-                    double y = frame.yf*(p0.y() - frame.ymin);
-                    y = ctx.targetHeight() - y;
+                //if ((part->getType() == Geometry::TYPE_RING || part->getType() == Geometry::TYPE_POLYGON) &&
+                //    (part->front() != part->back()))
+                //{
+                //    const osg::Vec3d& p0 = part->front();
+                //    double x = frame.xf*(p0.x() - frame.xmin);
+                //    double y = frame.yf*(p0.y() - frame.ymin);
+                //    y = ctx.targetHeight() - y;
 
-                    path.lineTo(x, y);
-                }
+                //    path.lineTo(x, y);
+                //}
             });
 
             //BLImage texture;
@@ -561,8 +561,9 @@ namespace osgEarth {
 
                                 feature->getGeometry()->forEachPart([&](const Geometry* part)
                                     {
+                                        auto end = part->isOpen() ? part->end() : part->end() - 1;
                                         // Only label points for now
-                                        for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                                        for (auto p = part->begin(); p != end; p++)
                                         {
                                             const osg::Vec3d& p0 = *p;
                                             double x = frame.xf * (p0.x() - frame.xmin);
@@ -598,7 +599,9 @@ namespace osgEarth {
 
                 feature->getGeometry()->forEachPart([&](const Geometry* part)
                     {
-                        for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                        auto end = part->isOpen() ? part->end() : part->end() - 1;
+
+                        for (auto p = part->begin(); p != end; p++)
                         {
                             const osg::Vec3d& p0 = *p;
                             double x = frame.xf * (p0.x() - frame.xmin);
@@ -858,7 +861,7 @@ FeatureRasterizer::render_blend2d(
         // fashion will always be rendered in the same order when rendered in multiple neighboring tiles
         // so the decluttering algorithm will work consistently across tiles.
         FeatureList sortedFeatures(features);
-        sortedFeatures.sort([](const osg::ref_ptr< Feature >& a, const osg::ref_ptr< Feature >& b) {
+        sortedFeatures.sort([](const osg::ref_ptr<const Feature>& a, const osg::ref_ptr<const Feature>& b) {
             auto centerA = a->getGeometry()->getBounds().center();
             auto centerB = b->getGeometry()->getBounds().center();
             if (centerA.x() < centerB.x()) return true;
@@ -907,8 +910,8 @@ FeatureRasterizer::render_agglite(
     frame.yf = (double)_image->t() / _extent.height();
 
     // sort into bins, making a copy for lines that require buffering.
-    FeatureList polygons;
-    FeatureList lines;
+    MutableFeatureList polygons;
+    MutableFeatureList lines;
 
     FilterContext context;
     const SpatialReference* featureSRS = features.front()->getSRS();
@@ -962,19 +965,19 @@ FeatureRasterizer::render_agglite(
 
             if (addPolygon)
             {
-                polygons.push_back(f);
+                polygons.push_back(f->clone());
             }
 
             if (addLineOrOutline)
             {
                 // Use the GeometryIterator to get all the geometries so we can
                 // clone the lines as rings
-                GeometryIterator gi(f->getGeometry());
+                ConstGeometryIterator gi(f->getGeometry());
                 while (gi.hasMore())
                 {
-                    Geometry* geom = gi.next();
+                    const Geometry* geom = gi.next();
                     Feature* newFeature = new Feature(*f.get());
-                    newFeature->setGeometry(geom);
+                    newFeature->setGeometry(geom->clone());
                     if (!newFeature->getGeometry()->isLinear())
                     {
                         newFeature->setGeometry(newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING));
@@ -1009,7 +1012,7 @@ FeatureRasterizer::render_agglite(
         // operation taking forever on very high-res input data.
         ResampleFilter resample;
         resample.minLength() = osg::minimum(xres, yres);
-        context = resample.push(lines, context);
+        context = resample.push(toConst(lines), context);
 
         // now run the buffer operation on all lines:
         BufferFilter buffer;
@@ -1066,15 +1069,15 @@ FeatureRasterizer::render_agglite(
         }
 
         buffer.distance() = lineWidth * 0.5;   // since the distance is for one side
-        buffer.push(lines, context);
+        buffer.push(toConst(lines), context);
     }
 
     // Transform the features into the map's SRS:
     for (auto& polygon : polygons)
-        polygon->transform(_extent.getSRS());
+        polygon->transformInPlace(_extent.getSRS());
 
     for (auto& line : lines)
-        line->transform(_extent.getSRS());
+        line->transformInPlace(_extent.getSRS());
 
     // set up the AGG renderer:
     agg::rendering_buffer rbuf(
@@ -1255,21 +1258,27 @@ FeatureRasterizer::render(
     const SpatialReference* featureSRS = features.front()->getSRS();
     OE_SOFT_ASSERT_AND_RETURN(featureSRS != nullptr, void());
 
+    FeatureList to_render;
+
     // Transform to map SRS:
     if (!featureSRS->isHorizEquivalentTo(_extent.getSRS()))
     {
         OE_PROFILING_ZONE_NAMED("Transform");
         for (auto& feature : features)
-            feature->transform(_extent.getSRS());
+            to_render.push_back(feature->transformTo(_extent.getSRS()));
+    }
+    else
+    {
+        to_render = features;
     }
 
 #ifdef USE_BLEND2D
     if (style.get<CoverageSymbol>())
-        render_agglite(features, style, profile, sheet);
+        render_agglite(to_render, style, profile, sheet);
     else
-        render_blend2d(features, style, profile, sheet);
+        render_blend2d(to_render, style, profile, sheet);
 #else
-    render_agglite(features, style, profile, sheet);
+    render_agglite(to_render, style, profile, sheet);
 #endif
 }
 
@@ -1320,7 +1329,7 @@ void
 FeatureStyleSorter::sort_usingEmbeddedStyles(
     const TileKey& key,
     const Distance& buffer,
-    FeatureFilterChain* filters,
+    const FeatureFilterChain& filters,
     Session* session,
     FeatureStyleSorter::Function processFeaturesForStyle,
     ProgressCallback* progress) const
@@ -1328,16 +1337,16 @@ FeatureStyleSorter::sort_usingEmbeddedStyles(
     // Each feature has its own embedded style data, so use that:
     FilterContext context;
 
-    osg::ref_ptr<FeatureCursor> cursor = session->getFeatureSource()->createFeatureCursor(
+    auto cursor = session->getFeatureSource()->createFeatureCursor(
         key,
         buffer,
         filters,
         &context,
         progress);
 
-    while (cursor.valid() && cursor->hasMore())
+    while (cursor.hasMore())
     {
-        osg::ref_ptr< Feature > feature = cursor->nextFeature();
+        auto feature = cursor.nextFeature();
         if (feature.valid())
         {
             FeatureList data;
@@ -1351,7 +1360,7 @@ void
 FeatureStyleSorter::sort_usingSelectors(
     const TileKey& key,
     const Distance& buffer,
-    FeatureFilterChain* filters,
+    const FeatureFilterChain& filters,
     Session* session,
     FeatureStyleSorter::Function processFeaturesForStyle,
     ProgressCallback* progress) const
@@ -1379,10 +1388,8 @@ FeatureStyleSorter::sort_usingSelectors(
                 std::unordered_map<std::string, Style> literal_styles;
                 std::map<const Style*, FeatureList> style_buckets;
 
-                for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+                for(auto& feature : features)
                 {
-                    Feature* feature = itr->get();
-
                     const std::string& styleString = feature->eval(styleExprCopy, &context);
                     if (!styleString.empty() && styleString != "null")
                     {
@@ -1448,7 +1455,7 @@ FeatureStyleSorter::sort_usingOneStyle(
     const Style& style,
     const TileKey& key,
     const Distance& buffer,
-    FeatureFilterChain* filters,
+    const FeatureFilterChain& filters,
     Session* session,
     Function processFeaturesForStyle,
     ProgressCallback* progress) const
@@ -1467,7 +1474,7 @@ FeatureStyleSorter::sort(
     const TileKey& key,
     const Distance& buffer,
     Session* session,
-    FeatureFilterChain* filters,
+    const FeatureFilterChain& filters,
     Function processFeaturesForStyle,
     ProgressCallback* progress) const
 {
@@ -1532,7 +1539,7 @@ FeatureStyleSorter::getFeatures(
     const Query& query,
     const Distance& buffer,
     const GeoExtent& workingExtent,
-    FeatureFilterChain* filters,
+    const FeatureFilterChain& filters,
     FeatureList& features,
     ProgressCallback* progress) const
 {
@@ -1569,7 +1576,7 @@ FeatureStyleSorter::getFeatures(
             if (progress && progress->isCanceled())
                 break;
 
-            osg::ref_ptr<FeatureCursor> cursor;
+            FeatureCursor cursor;
             
             if (localQuery.tileKey().isSet())
             {
@@ -1589,9 +1596,9 @@ FeatureStyleSorter::getFeatures(
                     progress);
             }
 
-            while (cursor.valid() && cursor->hasMore())
+            while (cursor.hasMore())
             {
-                Feature* feature = cursor->nextFeature();
+                auto feature = cursor.nextFeature();
                 if (feature->getGeometry())
                 {
                     features.push_back(feature);

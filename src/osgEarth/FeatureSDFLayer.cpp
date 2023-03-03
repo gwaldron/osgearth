@@ -388,7 +388,7 @@ FeatureSDFLayer::createImageImplementation(
         key,
         Distance(key.getExtent().width() / 2.0, key.getExtent().getSRS()->getUnits()),
         _session.get(), 
-        _filterChain.get(), 
+        _filterChain, 
         rasterizeFeatures, 
         progress);
 

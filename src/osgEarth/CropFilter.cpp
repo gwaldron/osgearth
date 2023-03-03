@@ -37,38 +37,31 @@ CropFilter::push( FeatureList& input, FilterContext& context )
         return context;
     }
 
-    const GeoExtent& extent = *context.extent();
+    FeatureList output;
 
-    GeoExtent newExtent( extent.getSRS() );
+    const GeoExtent& extent = *context.extent();
+    GeoExtent newExtent(extent.getSRS());
 
     if ( _method == METHOD_CENTROID )
     {
-        for( FeatureList::iterator i = input.begin(); i != input.end();  )
+        for (auto& feature : input)
         {
-            bool keepFeature = false;
+            const Geometry* featureGeom = feature->getGeometry();
 
-            Feature* feature = i->get();
-            Geometry* featureGeom = feature->getGeometry();
-
-            if ( featureGeom && featureGeom->isValid() )
+            if (featureGeom && featureGeom->isValid())
             {
                 Bounds bounds = featureGeom->getBounds();
-                if ( bounds.valid() )
+                if (bounds.valid())
                 {
                     osg::Vec3d centroid = bounds.center();
-                    if ( extent.contains( centroid.x(), centroid.y() ) )
+                    if (extent.contains(centroid.x(), centroid.y()))
                     {
-                        keepFeature = true;
-                        newExtent.expandToInclude( bounds.xMin(), bounds.yMin() );
-                        newExtent.expandToInclude( bounds.xMax(), bounds.yMax() );
+                        output.push_back(feature);
+                        newExtent.expandToInclude(bounds.xMin(), bounds.yMin());
+                        newExtent.expandToInclude(bounds.xMax(), bounds.yMax());
                     }
                 }
             }
-
-            if ( keepFeature )
-                ++i;
-            else
-                i = input.erase( i );
         }
     }
 
@@ -79,13 +72,9 @@ CropFilter::push( FeatureList& input, FilterContext& context )
         // create the intersection polygon:
         osg::ref_ptr<Polygon> poly;
         
-        for( FeatureList::iterator i = input.begin(); i != input.end();  )
+        for(auto& feature : input)
         {
-            bool keepFeature = false;
-
-            Feature* feature = i->get();
-
-            Geometry* featureGeom = feature->getGeometry();
+            const Geometry* featureGeom = feature->getGeometry();
             if ( featureGeom && featureGeom->isValid() )
             {
                 // test for trivial acceptance:
@@ -95,41 +84,36 @@ CropFilter::push( FeatureList& input, FilterContext& context )
                     //nop
                 }
 
-                else if ( extent.contains(featureExtent) )
+                else if (extent.contains(featureExtent))
                 {
-                    keepFeature = true;
                     newExtent.expandToInclude(featureExtent);
+                    output.push_back(feature);
                 }
 
                 // then move on to the cropping operation:
                 else
                 {
-                    if ( !poly.valid() )
+                    if (!poly.valid())
                     {
                         poly = new Polygon();
-                        poly->push_back( osg::Vec3d( extent.xMin(), extent.yMin(), 0 ));
-                        poly->push_back( osg::Vec3d( extent.xMax(), extent.yMin(), 0 ));
-                        poly->push_back( osg::Vec3d( extent.xMax(), extent.yMax(), 0 ));
-                        poly->push_back( osg::Vec3d( extent.xMin(), extent.yMax(), 0 ));
+                        poly->push_back(osg::Vec3d(extent.xMin(), extent.yMin(), 0));
+                        poly->push_back(osg::Vec3d(extent.xMax(), extent.yMin(), 0));
+                        poly->push_back(osg::Vec3d(extent.xMax(), extent.yMax(), 0));
+                        poly->push_back(osg::Vec3d(extent.xMin(), extent.yMax(), 0));
                     }
 
                     osg::ref_ptr<Geometry> croppedGeometry;
-                    if ( featureGeom->crop( poly.get(), croppedGeometry ) )
+                    if (featureGeom->crop(poly.get(), croppedGeometry))
                     {
-                        if ( croppedGeometry->isValid() )
+                        if (croppedGeometry->isValid())
                         {
-                            feature->setGeometry( croppedGeometry.get() );
-                            keepFeature = true;
+                            auto cropped_feature = new Feature(*feature.get(), croppedGeometry.get());
+                            output.push_back(cropped_feature);
                             newExtent.expandToInclude(GeoExtent(newExtent.getSRS(), croppedGeometry->getBounds()));
                         }
                     }
                 }
             }
-
-            if ( keepFeature )
-                ++i;
-            else
-                i = input.erase( i );
         }  
 
 #else // OSGEARTH_HAVE_GEOS
@@ -143,5 +127,6 @@ CropFilter::push( FeatureList& input, FilterContext& context )
     FilterContext newContext = context;
     newContext.extent() = newExtent;
 
+    input.swap(output);
     return newContext;
 }

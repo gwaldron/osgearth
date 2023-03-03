@@ -175,10 +175,10 @@ void JoinPointsLinesFilter::getLineFeatures(const GeoExtent& extent, FeatureList
     query.bounds() = localExtent.bounds();
     if (localExtent.intersects( fs->getFeatureProfile()->getExtent()))
     {
-        osg::ref_ptr< FeatureCursor > cursor = fs->createFeatureCursor( query, 0L);
+        auto cursor = fs->createFeatureCursor( query, 0L);
         while (cursor->hasMore())
         {
-            Feature* feature = cursor->nextFeature();
+            auto feature = cursor->nextFeature();
             if (feature->getGeometry()->getType() == Geometry::TYPE_LINESTRING)
             {
                 features.push_back(feature);
@@ -189,24 +189,33 @@ void JoinPointsLinesFilter::getLineFeatures(const GeoExtent& extent, FeatureList
 FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& context)
 {
     PointMap pointMap;
+
+    MutableFeatureList output;
         
-    for(FeatureList::iterator i = input.begin(); i != input.end(); ++i)
+    for(auto& feature : input)
     {
-        Feature* feature = i->get();
-        Geometry* geom = feature->getGeometry();
+        const Geometry* geom = feature->getGeometry();
         if (geom->getType() == Geometry::TYPE_POINT || geom->getType() == Geometry::TYPE_POINTSET)
         {
+            auto new_feature = new Feature(*feature.get());
+            output.push_back(new_feature);
+
             // Are there multiple points? Does it matter?
-            for(Geometry::iterator i = geom->begin(); i != geom->end(); ++i)
+            for(Geometry::const_iterator i = geom->begin(); i != geom->end(); ++i)
             {
                 const osg::Vec3d& pt = *i;
-                pointMap[pt] = PointEntry(feature);
+                pointMap[pt] = PointEntry(new_feature);
             }
         }
+        else
+        {
+            // unsafe, BUT we promise not the modify these :)
+            output.push_back(const_cast<Feature*>(feature.get()));
+        }
     }
-    for (FeatureList::iterator i = input.begin(); i != input.end(); ++i)
+
+    for(auto& feature : output)
     {
-        Feature* feature = i->get();
         Geometry* geom = feature->getGeometry();
         if (geom->getType() != Geometry::TYPE_LINESTRING)
             continue;
@@ -245,20 +254,21 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
     {
         targetSRS = context.profile()->getSRS()->getGeocentricSRS();
     }
+
     for(PointMap::iterator i = pointMap.begin(); i != pointMap.end(); ++i)
     {        
         PointEntry& entry = i->second;
-        Feature* pointFeature = entry.pointFeature.get();
-        if (!pointFeature)
+        osg::ref_ptr<Feature> pointFeature = entry.pointFeature.get();
+        if (!pointFeature.valid())
         {
             Point* geom = new Point;
             geom->set(i->first);
             pointFeature = new Feature(geom, entry.lineFeatures.front()->getSRS(), Style(), 0L);
             input.push_back(pointFeature);
         }
-        for(FeatureList::iterator i = entry.lineFeatures.begin(); i != entry.lineFeatures.end(); ++i)
+
+        for(auto& lineFeature : entry.lineFeatures)
         {
-            Feature* lineFeature = i->get();
             const AttributeTable& attrTable = lineFeature->getAttrs();
             for(AttributeTable::const_iterator j = attrTable.begin(); j != attrTable.end(); ++j)
             {

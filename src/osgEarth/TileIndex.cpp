@@ -110,11 +110,11 @@ TileIndex::getFiles(const osgEarth::GeoExtent& extent, std::vector< std::string 
 
     GeoExtent transformed = extent.transform( _features->getFeatureProfile()->getSRS() );
     query.bounds() = transformed.bounds();
-    osg::ref_ptr< osgEarth::FeatureCursor> cursor = _features->createFeatureCursor( query, 0L );
+    auto cursor = _features->createFeatureCursor( query, 0L );
 
     while (cursor->hasMore())
     {
-        osg::ref_ptr< osgEarth::Feature> feature = cursor->nextFeature();
+        auto feature = cursor->nextFeature();
         if (feature.valid())
         {
             std::string location = getFullPath(_filename, feature->getString("location"));
@@ -132,11 +132,11 @@ bool TileIndex::add( const std::string& filename, const GeoExtent& extent )
     polygon->push_back( osg::Vec3d(extent.bounds().xMin(), extent.bounds().yMax(), 0) );
     polygon->push_back( osg::Vec3d(extent.bounds().xMin(), extent.bounds().yMin(), 0) );
    
-    osg::ref_ptr< Feature > feature = new Feature( polygon.get(), extent.getSRS()  );
+    osg::ref_ptr<Feature> feature = new Feature( polygon.get(), extent.getSRS()  );
     feature->set("location", filename );
     
     const SpatialReference* wgs84 = SpatialReference::create("epsg:4326");
-    feature->transform( wgs84 );
+    feature->transformInPlace( wgs84 );
 
     return _features->insertFeature( feature.get() );    
     return true;

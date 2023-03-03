@@ -45,11 +45,11 @@ FeatureFilter::~FeatureFilter()
 #undef LC
 #define LC "[FeatureFilterChain] "
 
-FeatureFilterChain*
+FeatureFilterChain
 FeatureFilterChain::create(const std::vector<ConfigOptions>& filters, const osgDB::Options* readOptions)
 {
     // Create and initialize the filters.
-    FeatureFilterChain* chain = NULL;
+    FeatureFilterChain chain;
 
     for(unsigned i=0; i<filters.size(); ++i)
     {
@@ -57,14 +57,11 @@ FeatureFilterChain::create(const std::vector<ConfigOptions>& filters, const osgD
         FeatureFilter* filter = FeatureFilterRegistry::instance()->create( conf.getConfig(), 0L );
         if ( filter )
         {
-            if (chain == NULL)
-                chain = new FeatureFilterChain();
-
-            chain->push_back( filter );
+            chain.push_back( filter );
             Status s = filter->initialize(readOptions);
             if (s.isError())
             {
-                chain->_status = s;
+                chain._status = s;
                 OE_WARN << LC << "Filter problem: " << filter->getName() << " : " << s.message() << std::endl;
                 break;
             }

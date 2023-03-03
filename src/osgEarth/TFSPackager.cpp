@@ -115,20 +115,20 @@ namespace
     class AddFeatureVisitor : public FeatureTileVisitor
     {
     public:
-        AddFeatureVisitor( Feature* feature, int maxFeatures, int firstLevel, int maxLevel, CropFilter::Method cropMethod):
-          _feature( feature ),
-              _maxFeatures( maxFeatures ),      
-              _maxLevel( maxLevel ),
-              _firstLevel( firstLevel ),
-              _added(false),
-              _numAdded( 0 ),
-              _levelAdded(-1),
-              _cropMethod( cropMethod )
-          {
+        AddFeatureVisitor(const Feature* feature, int maxFeatures, int firstLevel, int maxLevel, CropFilter::Method cropMethod) :
+            _feature(feature),
+            _maxFeatures(maxFeatures),
+            _maxLevel(maxLevel),
+            _firstLevel(firstLevel),
+            _added(false),
+            _numAdded(0),
+            _levelAdded(-1),
+            _cropMethod(cropMethod)
+        {
 
-          }
+        }
 
-          virtual void traverse( FeatureTile* tile)
+        virtual void traverse(FeatureTile* tile)
           {        
               if (_added && _cropMethod != CropFilter::METHOD_CROPPING) return;
 
@@ -204,7 +204,7 @@ namespace
 
 
 
-          osg::ref_ptr< Feature > _feature;
+          osg::ref_ptr<const Feature> _feature;
     };
 
 
@@ -212,14 +212,14 @@ namespace
     class WriteFeaturesVisitor : public FeatureTileVisitor
     {
     public:
-        WriteFeaturesVisitor(FeatureSource* features, const std::string& dest, CropFilter::Method cropMethod, const SpatialReference* srs):
-          _dest( dest ),
-              _features( features ),
-              _cropMethod( cropMethod ),
-              _srs( srs )
-          {
+        WriteFeaturesVisitor(FeatureSource* source, const std::string& dest, CropFilter::Method cropMethod, const SpatialReference* srs) :
+            _dest(dest),
+            _features(source),
+            _cropMethod(cropMethod),
+            _srs(srs)
+        {
 
-          }
+        }
 
           virtual void traverse( FeatureTile* tile)
           {
@@ -227,22 +227,21 @@ namespace
               {                 
                   //Actually load up the features
                   FeatureList features;
-                  for (FeatureIDList::const_iterator i = tile->getFeatures().begin(); i != tile->getFeatures().end(); i++)
-                  {
-                      Feature* f = _features->getFeature( *i );                  
 
-                      if (f)
+                  for(auto& id : tile->getFeatures())
+                  {
+                      auto f = _features->getFeature(id);
+                      if (f.valid())
                       {
                           //Reproject the feature to the dest SRS if it's not already
-                          if (!f->getSRS()->isEquivalentTo( _srs.get() ) )
-                          {
-                              f->transform( _srs.get() );
-                          }
-                          features.push_back( f );
+                          if (!f->getSRS()->isEquivalentTo(_srs.get()))
+                              features.push_back(f->transformTo(_srs.get()));
+                          else
+                              features.push_back(f);                          
                       }
                       else
                       {
-                          OE_NOTICE << "couldn't get feature " << *i << std::endl;
+                          OE_NOTICE << "couldn't get feature " << id << std::endl;
                       }
                   }
 
@@ -252,7 +251,7 @@ namespace
                   context.extent() = tile->getExtent();
                   cropFilter.push( features, context );
 
-                  std::string contents = Feature::featuresToGeoJSON( features );
+                  std::string contents = getGeoJSON(features);
                   std::stringstream buf;
                   int x =  tile->getKey().getTileX();
                   unsigned int numRows, numCols;
@@ -325,21 +324,22 @@ TFSPackager::package( FeatureSource* features, const std::string& destination, c
 
 
     osg::ref_ptr< FeatureTile > root = new FeatureTile( rootKey );
+
     //Loop through all the features and try to insert them into the quadtree
-    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor( _query, 0L ); // TODO: progress.
+    auto cursor = features->createFeatureCursor( _query, 0L ); // TODO: progress.
     int added = 0;
     int failed = 0;
     int skipped = 0;
     int highestLevel = 0;
 
-    while (cursor.valid() && cursor->hasMore())
+    while (cursor.hasMore())
     {        
-        osg::ref_ptr< Feature > feature = cursor->nextFeature();
+        auto feature = cursor.nextFeature();
 
         //Reproject the feature to the dest SRS if it's not already
         if (!feature->getSRS()->isEquivalentTo( _srs.get() ) )
         {
-            feature->transform( _srs.get() );
+            feature = feature->transformTo( _srs.get() );
         }
 
         if (feature->getGeometry() && feature->getGeometry()->getBounds().valid() && feature->getGeometry()->isValid())

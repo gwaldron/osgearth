@@ -929,7 +929,7 @@ struct LayeredFeatures
 };
 
 
-bool evalFilter(const Json::Value& filter, osgEarth::Feature* feature)
+bool evalFilter(const Json::Value& filter, const osgEarth::Feature* feature)
 {
     if (!filter.isArray())
     {
@@ -1335,15 +1335,15 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
                     {
                         // Get the features for this tile
-                        osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(queryKey, progress);
+                        auto cursor = featureSource->createFeatureCursor(queryKey, progress);
                         if (progress && progress->isCanceled())
                         {
                             return GeoImage::INVALID;
                         }
 
-                        if (cursor.valid())
+                        if (cursor.hasMore())
                         {
-                            cursor->fill(allFeatures);
+                            cursor.fill(allFeatures);
                             centerSampleValid = !allFeatures.empty();
                         }
                     }
@@ -1363,15 +1363,16 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
                                 if (key.valid())
                                 {
-                                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(sampleKey, progress);
+                                    auto cursor = featureSource->createFeatureCursor(sampleKey, progress);
+                                    
                                     if (progress && progress->isCanceled())
                                     {
                                         return GeoImage::INVALID;
                                     }
 
-                                    if (cursor.valid())
+                                    if (cursor.hasMore())
                                     {
-                                        cursor->fill(allFeatures);
+                                        cursor.fill(allFeatures);
                                     }
                                 }
                             }
@@ -1381,13 +1382,6 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                     if (allFeatures.empty())
                     {
                         queryKey = queryKey.createParentKey();
-                        /*
-                        if (queryKey.getLevelOfDetail() < featureSource->getFeatureProfile()->getMaxLevel())
-                        {
-                            std::cout << "Not underzooming " << key.str() << " to " << queryKey.str() << " with a max level of " << featureSource->getFeatureProfile()->getMaxLevel() << std::endl;
-                            break;
-                        }
-                        */
                     }
                 }
 

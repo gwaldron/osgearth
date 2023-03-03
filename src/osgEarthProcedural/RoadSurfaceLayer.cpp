@@ -198,7 +198,7 @@ namespace
 {
     typedef std::vector< std::pair< Style, FeatureList > > StyleToFeatures;
 
-    void addFeatureToMap(Feature* feature, const Style& style, StyleToFeatures& map)
+    void addFeatureToMap(const Feature* feature, const Style& style, StyleToFeatures& map)
     {
         bool added = false;
 
@@ -220,7 +220,7 @@ namespace
         {
             FeatureList list;
             list.push_back(feature);
-            map.push_back(std::pair< Style, FeatureList>(style, list));
+            map.push_back(std::pair<Style, FeatureList>(style, list));
         }
     }
 
@@ -242,10 +242,8 @@ namespace
                     // establish the working bounds and a context:
                     StringExpression styleExprCopy(sel.styleExpression().get());
 
-                    for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+                    for(auto& feature : features)
                     {
-                        Feature* feature = itr->get();
-
                         // resolve the style:
                         Style combinedStyle;
 
@@ -284,7 +282,7 @@ namespace
 
                         if (!combinedStyle.empty())
                         {
-                            addFeatureToMap(feature, combinedStyle, map);
+                            addFeatureToMap(feature.get(), combinedStyle, map);
                         }
 
                     }
@@ -294,9 +292,8 @@ namespace
         else
         {
             const Style* style = styles->getDefaultStyle();
-            for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+            for(auto& feature : features)
             {
-                Feature* feature = itr->get();
                 // resolve the style:
                 if (feature->style().isSet())
                 {
@@ -453,7 +450,7 @@ RoadSurfaceLayer::getFeatures(
 
     // Collect all the features, using a small LRU cache and a
     // Gate to optimize fetching and sharing with other threads
-    osg::ref_ptr<FeatureCursor> cursor;
+    FeatureCursor cursor;
 
     for (const auto& subkey : keys)
     {
@@ -477,10 +474,10 @@ RoadSurfaceLayer::getFeatures(
             }
             else
             {
-                cursor = fs->createFeatureCursor(subkey, _filterChain.get(), nullptr, progress);
-                if (cursor.valid())
+                cursor = fs->createFeatureCursor(subkey, {}, _filterChain, nullptr, progress);
+                if (cursor.hasMore())
                 {
-                    cursor->fill(
+                    cursor.fill(
                         sublist, 
                         [](const Feature* f) { return f->getGeometry()->isLinear(); });
 
@@ -489,9 +486,6 @@ RoadSurfaceLayer::getFeatures(
             }
         }
 
-        // Clone features onto the end of the output list.
-        // We must always clone since osgEarth modifies the feature data
-        for (auto& f : sublist)
-            output.push_back(osg::clone(f.get(), osg::CopyOp::DEEP_COPY_ALL));
+        std::copy(sublist.begin(), sublist.end(), std::back_inserter(output));
     }
 }

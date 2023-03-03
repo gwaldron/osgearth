@@ -46,7 +46,7 @@ namespace osgEarth
          * Construct a new FeatureNode from a single Feature.
          */
         FeatureNode(
-            Feature* feature,
+            const Feature* feature,
             const Style& style = Style(),
             const GeometryCompilerOptions& options = GeometryCompilerOptions(),
             StyleSheet* styleSheet = 0);
@@ -68,12 +68,12 @@ namespace osgEarth
         /**
          * Utility that lets you work on this FeatureNode as a single Feature instead of a list
          */
-        Feature* getFeature();
+        const Feature* getFeature() const;
 
         /**
          * Sets the contents of this FeatureNode to a single feature.
          */
-        void setFeature(Feature* feature);
+        void setFeature(const Feature* feature);
 
         /**
          * Gets the StyleSheet for the session.

@@ -1501,20 +1501,21 @@ FeatureModelGraph::buildTile(
     }
 }
 
-FeatureCursor*
+FeatureCursor
 FeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const
 {
     NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
-    FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
-    if (cursor && _filterChain.valid())
+    FeatureCursor cursor = fs->createFeatureCursor(query, progress);
+    if (!_filterChain.empty())
     {
-        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), &cx);
+        cursor.set(new FilteredFeatureCursorImpl(cursor, _filterChain, &cx));
     }
     return cursor;
 }
 
 osg::Group*
-FeatureModelGraph::build(const Style&          defaultStyle,
+FeatureModelGraph::build(
+    const Style&          defaultStyle,
     const Query&          baseQuery,
     const GeoExtent&      workingExtent,
     FeatureIndexBuilder*  index,
@@ -1537,20 +1538,19 @@ FeatureModelGraph::build(const Style&          defaultStyle,
         FilterContext context(_session.get(), featureProfile, workingExtent, index);
 
         // each feature has its own style, so use that and ignore the style catalog.
-        osg::ref_ptr<FeatureCursor> cursor = source->createFeatureCursor(
+        auto cursor = source->createFeatureCursor(
             baseQuery,
-            _filterChain.get(),
+            _filterChain,
             &context,
             progress);
 
-        while (cursor.valid() && cursor->hasMore())
+        while (cursor.hasMore())
         {
-            Feature* feature = cursor->nextFeature();
-            if (feature)
+            auto feature = cursor.nextFeature();
+            if (feature.valid())
             {
-                FeatureList list;
-                list.push_back(feature);
-                osg::ref_ptr<FeatureCursor> cursor = new FeatureListCursor(list);
+                FeatureList list{ feature };
+                FeatureCursor singlecursor(list);
 
                 // note: gridding is not supported for embedded styles.
                 osg::ref_ptr<osg::Node> node;
@@ -1566,7 +1566,7 @@ FeatureModelGraph::build(const Style&          defaultStyle,
                     }
                 }
 
-                if ( createOrUpdateNode(cursor.get(), *feature->style(), context, readOptions, node, baseQuery))
+                if ( createOrUpdateNode(singlecursor, *feature->style(), context, readOptions, node, baseQuery))
                 {
                     if (node.valid())
                     {
@@ -1659,12 +1659,13 @@ FeatureModelGraph::build(const Style&          defaultStyle,
 }
 
 bool
-FeatureModelGraph::createOrUpdateNode(FeatureCursor*           cursor,
-                                      const Style&             style,
-                                      FilterContext&           context,
-                                      const osgDB::Options*    readOptions,
-                                      osg::ref_ptr<osg::Node>& output,
-                                      const Query&             query)
+FeatureModelGraph::createOrUpdateNode(
+    FeatureCursor& cursor,
+    const Style& style,
+    FilterContext& context,
+    const osgDB::Options* readOptions,
+    osg::ref_ptr<osg::Node>& output,
+    const Query& query)
 {
     bool ok = _factory->createOrUpdateNode(cursor, style, context, output, query);
     return ok;
@@ -1674,7 +1675,8 @@ FeatureModelGraph::createOrUpdateNode(FeatureCursor*           cursor,
  * Builds a collection of style groups by processing a StyleSelector.
  */
 void
-FeatureModelGraph::buildStyleGroups(const StyleSelector*  selector,
+FeatureModelGraph::buildStyleGroups(
+    const StyleSelector*  selector,
     const Query&          baseQuery,
     FeatureIndexBuilder*  index,
     osg::Group*           parent,
@@ -1742,22 +1744,22 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
     FilterContext context(_session.get(), featureProfile, GeoExtent(featureProfile->getSRS(), bounds), index);
 
     // query the feature source:
-    osg::ref_ptr<FeatureCursor> cursor = _session->getFeatureSource()->createFeatureCursor(
+    auto cursor = _session->getFeatureSource()->createFeatureCursor(
         query,
-        _filterChain.get(),
+        _filterChain,
         &context,
         progress);
 
-    if (!cursor.valid())
+    if (!cursor.hasMore())
         return;
 
     StringExpression styleExprCopy(styleExpr);
 
     // visit each feature and run the expression to sort it into a bin.
     std::map<std::string, FeatureList> styleBins;
-    while (cursor->hasMore())
+    while (cursor.hasMore())
     {
-        osg::ref_ptr<Feature> feature = cursor->nextFeature();
+        auto feature = cursor.nextFeature();
         if (feature.valid())
         {
             const std::string& styleString = feature->eval(styleExprCopy, &context);
@@ -1859,9 +1861,9 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
     if (workingSet.size() > 0)
     {
         osg::ref_ptr<osg::Node> node;
-        osg::ref_ptr<FeatureCursor> newCursor = new FeatureListCursor(workingSet);
+        FeatureCursor newCursor(workingSet);
 
-        if ( createOrUpdateNode( newCursor.get(), style, context, readOptions, node, query ) )
+        if (createOrUpdateNode(newCursor, style, context, readOptions, node, query))
         {
             if (!styleGroup)
                 styleGroup = getOrCreateStyleGroupFromFactory(style);
@@ -1897,27 +1899,25 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
     FilterContext context(_session.get(), featureProfile, GeoExtent(featureProfile->getSRS(), cellBounds), index);
 
     // query the feature source:
-    osg::ref_ptr<FeatureCursor> cursor = _session->getFeatureSource()->createFeatureCursor(
+    auto cursor = _session->getFeatureSource()->createFeatureCursor(
         query,
-        _filterChain.get(),
+        _filterChain,
         &context,
         progress);
 
-    if (cursor.valid() && cursor->hasMore())
+    if (cursor.hasMore())
     {
-
         // start by culling our feature list to the working extent. By default, this is done by
         // checking feature centroids. But the user can override this to crop feature geometry to
         // the cell boundaries.
         FeatureList workingSet;
-        cursor->fill(workingSet);
+        cursor.fill(workingSet);
 
         if (progress && progress->isCanceled())
             return NULL;
 
         styleGroup = createStyleGroup(style, workingSet, context, readOptions, query);
     }
-
 
     return styleGroup;
 }

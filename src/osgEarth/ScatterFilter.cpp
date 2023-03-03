@@ -176,7 +176,7 @@ ScatterFilter::lineScatter(const Geometry*         input,
 }
 
 FilterContext
-ScatterFilter::push(FeatureList& features, FilterContext& context )
+ScatterFilter::push(FeatureList& input, FilterContext& context )
 {
     if ( !isSupported() ) {
         OE_WARN << LC << "support for this filter is not enabled" << std::endl;
@@ -186,11 +186,11 @@ ScatterFilter::push(FeatureList& features, FilterContext& context )
     // seed the random number generator so the randomness is the same each time
     _prng = Random( _randomSeed, Random::METHOD_FAST );
 
-    for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
-    {
-        Feature* f = i->get();
-        
-        Geometry* geom = f->getGeometry();
+    FeatureList output;
+
+    for(auto& f : input)
+    {        
+        const Geometry* geom = f->getGeometry();
         if ( !geom )
             continue;
 
@@ -213,8 +213,11 @@ ScatterFilter::push(FeatureList& features, FilterContext& context )
         }
 
         // replace the source geometry with the scattered points.
-        f->setGeometry( points.get() );
+        output.push_back(new Feature(*f, points.get()));
+        output.push_back(f);
+        //f->setGeometry( points.get() );
     }
 
+    input.swap(output);
     return context;
 }

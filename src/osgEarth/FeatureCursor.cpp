@@ -25,23 +25,37 @@ using namespace osgEarth;
 
 //---------------------------------------------------------------------------
 
-FeatureCursor::FeatureCursor(ProgressCallback* progress) :
-_progress(progress)
+FeatureCursor::FeatureCursor()
 {
-    //nop
+    // initialize to an empty set
+    set(new FeatureListCursorImpl(FeatureList()));
 }
 
-FeatureCursor::~FeatureCursor()
+FeatureCursor::FeatureCursor(FeatureCursorImplementation* impl)
 {
-    //nop
+    set(impl);
+}
+
+FeatureCursor::FeatureCursor(const FeatureList& list)
+{
+    _impl = std::make_shared<FeatureListCursorImpl>(list);
+}
+
+void
+FeatureCursor::set(FeatureCursorImplementation* impl)
+{
+    if (impl)
+        _impl = std::shared_ptr<FeatureCursorImplementation>(impl);
+    else
+        _impl = std::make_shared<FeatureListCursorImpl>(FeatureList()); // empty set
 }
 
 void
 FeatureCursor::fill(FeatureList& list)
 {
-    while( hasMore() )
+    while (hasMore())
     {
-        list.push_back( nextFeature() );
+        list.push_back(nextFeature());
     }
 }
 
@@ -52,135 +66,61 @@ FeatureCursor::fill(
 {
     while (hasMore())
     {
-        osg::ref_ptr<Feature> f = nextFeature();
+        osg::ref_ptr<const Feature> f = nextFeature();
         if (predicate(f.get()))
             list.push_back(f);
     }
 }
 
+bool
+FeatureCursor::hasMore() const
+{
+    return _impl ? _impl->hasMore() : false;
+}
+
+osg::ref_ptr<const Feature>
+FeatureCursor::nextFeature()
+{
+    return _impl ? _impl->nextFeature() : nullptr;
+}
+
 //---------------------------------------------------------------------------
 
-FeatureListCursor::FeatureListCursor(const FeatureList& features) :
-FeatureCursor(0L),
-_features( features ),
-_clone   ( false )
+FeatureListCursorImpl::FeatureListCursorImpl(const FeatureList& features) :
+    _features(features)
 {
     _iter = _features.begin();
 }
 
-FeatureListCursor::~FeatureListCursor()
-{
-    //nop
-}
-
 bool
-FeatureListCursor::hasMore() const
+FeatureListCursorImpl::hasMore() const
 {
     return _iter != _features.end();
 }
 
-Feature*
-FeatureListCursor::nextFeature()
+osg::ref_ptr<const Feature>
+FeatureListCursorImpl::nextFeature()
 {
-    Feature* r = _iter->get();
+    auto feature = *_iter;
     _iter++;
-    return _clone ? osg::clone(r, osg::CopyOp::DEEP_COPY_ALL) : r;
+    return feature;
 }
 
 //---------------------------------------------------------------------------
 
-GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom) :
-FeatureCursor(NULL),
-_geom( geom )
-{
-    //nop
-}
-
-GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom,
-                                             const FeatureProfile* fp,
-                                             const FeatureFilterChain* filters) :
-FeatureCursor(NULL),
-_geom          ( geom ),
-_featureProfile( fp ),
-_filterChain   ( filters )
-{
-    //nop
-}
-
-GeometryFeatureCursor::~GeometryFeatureCursor()
+FilteredFeatureCursorImpl::FilteredFeatureCursorImpl(
+    FeatureCursor& cursor,
+    const FeatureFilterChain& chain,
+    FilterContext* cx) :
+    _cursor(cursor),
+    _chain(chain),
+    _user_cx(cx)
 {
     //nop
 }
 
 bool
-GeometryFeatureCursor::hasMore() const
-{
-    return _geom.valid();
-}
-
-Feature*
-GeometryFeatureCursor::nextFeature()
-{
-    if ( hasMore() )
-    {        
-        _lastFeature = new Feature( _geom.get(), _featureProfile.valid() ? _featureProfile->getSRS() : 0L );
-
-        if ( _featureProfile && _featureProfile->geoInterp().isSet() )
-            _lastFeature->geoInterp() = _featureProfile->geoInterp().get();
-
-        FilterContext cx;
-        cx.setProfile( _featureProfile.get() );
-
-        FeatureList list;
-        list.push_back( _lastFeature.get() );
-
-        if (_filterChain.valid())
-        {
-            for( FeatureFilterChain::const_iterator i = _filterChain->begin(); i != _filterChain->end(); ++i )
-            {
-                cx = i->get()->push( list, cx );
-            }
-        }
-
-        if ( list.empty() )
-        {
-            _lastFeature = 0L;
-        }
-
-        _geom = 0L;
-    }
-
-    return _lastFeature.get();
-}
-
-//---------------------------------------------------------------------------
-
-FilteredFeatureCursor::FilteredFeatureCursor(
-    FeatureCursor* cursor,
-    FeatureFilterChain* chain) :
-
-    FeatureCursor(cursor ? cursor->getProgress() : nullptr),
-    _cursor(cursor),
-    _chain(chain),
-    _user_cx(nullptr)
-{
-    //nop
-}
-FilteredFeatureCursor::FilteredFeatureCursor(
-    FeatureCursor* cursor,
-    FeatureFilterChain* chain,
-    FilterContext* context) :
-
-    FeatureCursor(cursor->getProgress()),
-    _cursor(cursor),
-    _chain(chain),
-    _user_cx(context)
-{
-    //nop
-}
-
-bool
-FilteredFeatureCursor::hasMore() const
+FilteredFeatureCursorImpl::hasMore() const
 {
     if (!_cache.empty())
         return true;
@@ -192,30 +132,28 @@ FilteredFeatureCursor::hasMore() const
 
     while(_cursor->hasMore() && _cache.size() < chunkSize)
     {
-        FeatureList local;
+        FeatureList features;
 
-        while(_cursor->hasMore() && local.size() < chunkSize)
+        while(_cursor->hasMore() && features.size() < chunkSize)
         {
-            local.push_back(_cursor->nextFeature());
+            features.push_back(_cursor->nextFeature());
         }
 
-        for(FeatureFilterChain::const_iterator filter = _chain->begin();
-            filter != _chain->end();
-            ++filter)
+        for (auto& filter : _chain)
         {
-            cx = filter->get()->push(local, cx);
+            cx = filter->push(features, cx);
         }
 
-        std::copy(local.begin(), local.end(), std::back_inserter(_cache));
+        std::copy(features.begin(), features.end(), std::back_inserter(_cache));
     }
 
     return !_cache.empty();
 }
 
-Feature*
-FilteredFeatureCursor::nextFeature()
+osg::ref_ptr<const Feature>
+FilteredFeatureCursorImpl::nextFeature()
 {
-    Feature* feature = _cache.front().release();
+    auto feature = _cache.front();
     _cache.pop_front();
     return feature;
 }

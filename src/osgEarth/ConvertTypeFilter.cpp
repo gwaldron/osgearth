@@ -75,15 +75,22 @@ ConvertTypeFilter::push( FeatureList& input, FilterContext& context )
         return context;
     }
 
-    bool ok = true;
-    for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
+    FeatureList output;
+
+    for(auto& feature : input)
     {
-        Feature* input = i->get();
-        if ( input && input->getGeometry() && input->getGeometry()->getComponentType() != _toType )
+        if (feature.valid())
         {
-            input->setGeometry( input->getGeometry()->cloneAs(_toType) );
+            if (feature->getGeometry() && feature->getGeometry()->getComponentType() != _toType)
+            {
+                output.push_back(new Feature(*feature.get(), feature->getGeometry()->cloneAs(_toType)));
+            }
+            else
+            {
+                output.push_back(feature);
+            }
         }
     }
-
+    output.swap(input);
     return context;
 }

@@ -47,7 +47,7 @@ AltitudeFilter::setPropertiesFromStyle( const Style& style )
 }
 
 FilterContext
-AltitudeFilter::push( FeatureList& features, FilterContext& cx )
+AltitudeFilter::push(FeatureList& features, FilterContext& cx)
 {
     OE_PROFILING_ZONE;
 
@@ -58,16 +58,19 @@ AltitudeFilter::push( FeatureList& features, FilterContext& cx )
         cx.getSession()        != 0L                               &&
         cx.profile()           != 0L;
 
-    if ( clampToMap )
-        pushAndClamp( features, cx );
-    else
-        pushAndDontClamp( features, cx );
+    MutableFeatureList mutables = toMutable(features);
 
+    if ( clampToMap )
+        pushAndClamp(mutables, cx );
+    else
+        pushAndDontClamp(mutables, cx );
+
+    features = toConst(mutables);
     return cx;
 }
 
 void
-AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
+AltitudeFilter::pushAndDontClamp(MutableFeatureList& features, FilterContext& cx )
 {
     OE_PROFILING_ZONE;
 
@@ -87,10 +90,8 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         gpuClamping && 
         _altitude->clamping() == _altitude->CLAMP_TO_TERRAIN;
 
-    for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
-    {
-        Feature* feature = i->get();
-        
+    for(auto& feature : features)
+    {        
         // run a symbol script if present.
         if ( _altitude.valid() && _altitude->script().isSet() )
         {
@@ -151,7 +152,7 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
 }
 
 void
-AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
+AltitudeFilter::pushAndClamp(MutableFeatureList& features, FilterContext& cx )
 {
     unsigned total = 0;
 
@@ -207,10 +208,8 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
             Distance(_maxRes, map->getSRS()->getUnits()));
     }
 
-    for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
-    {
-        Feature* feature = i->get();
-        
+    for(auto& feature : features)
+    {        
         // run a symbol script if present.
         if ( _altitude.valid() && _altitude->script().isSet() )
         {

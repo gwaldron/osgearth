@@ -198,7 +198,7 @@ _options( options )
 }
 
 bool GeomFeatureNodeFactory::createOrUpdateNode(
-    FeatureCursor*            features,
+    FeatureCursor&            features,
     const Style&              style,
     const FilterContext&      context,
     osg::ref_ptr<osg::Node>&  node,

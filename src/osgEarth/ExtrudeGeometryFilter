@@ -48,7 +48,7 @@ namespace osgEarth { namespace Util
     public:
         struct HeightCallback : public osg::Referenced
         {
-            virtual float operator()( Feature* input, const FilterContext& cx ) =0;
+            virtual float operator()(const Feature* input, const FilterContext& cx) =0;
         };
 
     public:
@@ -189,7 +189,7 @@ namespace osgEarth { namespace Util
             osg::Drawable*       drawable, 
             osg::StateSet*       stateSet, 
             const std::string&   name,
-            Feature*             feature,
+            const Feature*       feature,
             FeatureIndexBuilder* index);
         
         bool process( 
@@ -206,7 +206,7 @@ namespace osgEarth { namespace Util
                             FilterContext&          cx );
 
         bool buildWallGeometry(const Structure&     structure,
-                               Feature*             feature,
+                               const Feature*       feature,
                                osg::Geometry*       walls,
                                const osg::Vec4&     wallColor,
                                const osg::Vec4&     wallBaseColor,
@@ -214,7 +214,7 @@ namespace osgEarth { namespace Util
                                FeatureIndexBuilder* index);
 
         bool buildRoofGeometry(const Structure&     structure,
-                               Feature* feature,
+                               const Feature*       feature,
                                osg::Geometry*       roof,
                                const osg::Vec4&     roofColor,
                                const SkinResource*  roofSkin,

@@ -252,7 +252,26 @@ namespace osgEarth { namespace MVT
                     currentRing->push_back(geoX, geoY, 0);
                 }
                 else if (cmd == (SEG_CLOSE & ((1 << cmd_bits) - 1)))
-                {                    
+                {
+                    auto ori = currentRing->getOrientation();
+
+                    if (ori == Geometry::ORIENTATION_CCW)
+                    {
+                        // New polygon
+                        currentPolygon = new osgEarth::Polygon(&currentRing->asVector());
+                        polygons.push_back(currentPolygon.get());
+                    }
+                    else
+                    {
+                        // New hole in the current polygon
+                        if (currentPolygon.valid())
+                        {
+                            currentPolygon->getHoles().push_back(currentRing);
+                        }
+                    }
+                    currentRing = nullptr;
+
+#if 0
                     double area = currentRing->getSignedArea2D();
 
                     // Close the ring.
@@ -283,6 +302,7 @@ namespace osgEarth { namespace MVT
 
                     // Start a new ring
                     currentRing = 0;
+#endif
                 }
             }
         }
@@ -311,7 +331,7 @@ namespace osgEarth { namespace MVT
         }
     }
 
-    bool readTile(std::istream& in, const TileKey& key, FeatureList& features)
+    bool readTile(std::istream& in, const TileKey& key, MutableFeatureList& features)
     {
         features.clear();
 
@@ -330,7 +350,6 @@ namespace osgEarth { namespace MVT
         {
             value = original;
         }
-
 
         mapnik::vector::tile tile;
 
@@ -443,6 +462,7 @@ namespace osgEarth { namespace MVT
 
                     if (geometry)
                     {
+                        geometry->normalize();
                         oeFeature->setGeometry( geometry.get() );
                         features.push_back(oeFeature.get());
                     }
@@ -540,8 +560,8 @@ MVTFeatureSource::closeImplementation()
     return FeatureSource::closeImplementation();
 }
 
-FeatureCursor*
-MVTFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+FeatureCursorImplementation*
+MVTFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     if (!query.tileKey().isSet())
     {
@@ -578,7 +598,7 @@ MVTFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 
     rc = sqlite3_step(select);
 
-    FeatureList features;
+    MutableFeatureList features;
 
     if (rc == SQLITE_ROW)
     {
@@ -597,27 +617,24 @@ MVTFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 
     sqlite3_finalize(select);
 
-    // apply filters before returning.
-    applyFilters(features, query.tileKey()->getExtent());
-
     // If we have any features and we have an fid attribute, override the fid of the features
     if (options().fidAttribute().isSet())
     {
-        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+        for(auto& feature : features)
         {
-            std::string attr = itr->get()->getString(options().fidAttribute().get());
+            std::string attr = feature->getString(options().fidAttribute().get());
             FeatureID fid = as<FeatureID>(attr, 0);
-            itr->get()->setFID(fid);
+            feature->setFID(fid);
         }
     }
 
     if (!features.empty())
     {
         //OE_NOTICE << "Returning " << features.size() << " features" << std::endl;
-        return new FeatureListCursor(features);
+        return new FeatureListCursorImpl(toConst(features));
     }
 
-    return 0;
+    return nullptr;
 }
 
 void
@@ -678,30 +695,29 @@ MVTFeatureSource::iterateTiles(int zoomLevel, int limit, int offset, const GeoEx
         std::string dataBuffer(data, dataLen);
         std::stringstream in(dataBuffer);
 
-        FeatureList features;
-
-        // If we have any features and we have an fid attribute, override the fid of the features
-        if (options().fidAttribute().isSet())
-        {
-            for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
-            {
-                std::string attr = itr->get()->getString(options().fidAttribute().get());
-                FeatureID fid = as<long>(attr, 0);
-                itr->get()->setFID(fid);
-
-            }
-        }
-
+        MutableFeatureList features;
 
         MVT::readTile(in, key, features);
 
         // apply filters before returning.
-        applyFilters(features, key.getExtent());
+        //applyFilters(toConst(features), key.getExtent());
+
+        // If we have any features and we have an fid attribute, override the fid of the features
+        if (options().fidAttribute().isSet())
+        {
+            for(auto& feature : features)
+            {
+                std::string attr = feature->getString(options().fidAttribute().get());
+                FeatureID fid = as<long>(attr, 0);
+                feature->setFID(fid);
+            }
+        }
+
 
         if (features.size() > 0)
         {
             //tiles[key] = features;
-            callback(key, features, context);
+            callback(key, toConst(features), context);
         }
     }
 

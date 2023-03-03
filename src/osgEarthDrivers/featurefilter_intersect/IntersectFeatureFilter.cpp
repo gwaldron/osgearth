@@ -70,18 +70,15 @@ public: // FeatureFilter
     /**
      * Gets all the features that intersect the extent
      */
-    void getFeatures(const GeoExtent& extent, FeatureList& features, ProgressCallback* progress)
+    void getFeatures(const GeoExtent& extent, FeatureList& features, ProgressCallback* progress) const
     {
         GeoExtent localExtent = extent.transform( _featureSource->getFeatureProfile()->getSRS() );
         Query query;
         query.bounds() = localExtent.bounds();
         if (localExtent.intersects( _featureSource->getFeatureProfile()->getExtent()))
         {
-            osg::ref_ptr< FeatureCursor > cursor = _featureSource->createFeatureCursor(query, progress);
-            if (cursor)
-            {
-                cursor->fill( features );
-            }
+            auto cursor = _featureSource->createFeatureCursor(query, progress);
+            cursor.fill(features);
         }     
     }
 
@@ -92,14 +89,13 @@ public: // FeatureFilter
             osg::ref_ptr<ProgressCallback> progress = new ProgressCallback();
 
             // Get any features that intersect this query.
-            FeatureList boundaries;
-            getFeatures(context.extent().get(), boundaries, progress.get());
-            
+            FeatureList boundaries_in;
+            getFeatures(context.extent().get(), boundaries_in, progress.get());
             
             // The list of output features
             FeatureList output;
 
-            if (boundaries.empty())
+            if (boundaries_in.empty())
             {
                 // No intersecting features.  If contains is false, then just the output to the input.
                 if (contains() == false)
@@ -110,14 +106,19 @@ public: // FeatureFilter
             else
             {
                 // Transform the boundaries into the coordinate system of the features
-                for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
+                FeatureList boundaries;
+                auto srs = context.profile()->getSRS();
+
+                for (auto& boundary : boundaries_in)
                 {
-                    itr->get()->transform( context.profile()->getSRS() );
+                    if (!boundary->getSRS()->isEquivalentTo(context.profile()->getSRS()))
+                        boundaries.push_back(boundary->transformTo(context.profile()->getSRS()));
+                    else
+                        boundaries.push_back(boundary);
                 }
 
-                for(FeatureList::const_iterator f = input.begin(); f != input.end(); ++f)
+                for(auto& feature : input)
                 {
-                    Feature* feature = f->get();
                     if ( feature && feature->getGeometry() )
                     {
                         osg::Vec3d c = feature->getGeometry()->getBounds().center();
@@ -127,12 +128,12 @@ public: // FeatureFilter
                             // coarsest:
                             if (_featureSource->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
                             {
-                                for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
+                                for(auto& boundary : boundaries)
                                 {
-                                    Ring* ring = dynamic_cast< Ring*>(itr->get()->getGeometry());
+                                    const Ring* ring = dynamic_cast<const Ring*>(boundary->getGeometry());
                                     if (ring && ring->contains2D(c.x(), c.y()))
                                     {
-                                        output.push_back( feature );
+                                        output.push_back(feature);
                                     }
                                 }                        
                             }
@@ -145,9 +146,9 @@ public: // FeatureFilter
                             // coarsest:
                             if (_featureSource->getFeatureProfile()->getExtent().contains(GeoPoint(feature->getSRS(), c.x(), c.y())))
                             {
-                                for (FeatureList::iterator itr = boundaries.begin(); itr != boundaries.end(); ++itr)
+                                for (auto& boundary : boundaries)
                                 {
-                                    Ring* ring = dynamic_cast< Ring*>(itr->get()->getGeometry());
+                                    const Ring* ring = dynamic_cast<const Ring*>(boundary->getGeometry());
                                     if (ring && ring->contains2D(c.x(), c.y()))
                                     {                             
                                         contained = true;
@@ -166,7 +167,7 @@ public: // FeatureFilter
 
             OE_DEBUG << LC << "Allowed " << output.size() << " out of " << input.size() << " features\n";
 
-            input = output;
+            input.swap(output);
         }
 
         return context;

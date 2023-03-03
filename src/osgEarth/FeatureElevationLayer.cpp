@@ -116,12 +116,12 @@ FeatureElevationLayer::addedToMap(const Map* map)
     // in the world.  The extent is the entire world, but it's actually very sparsley covered so tiles in the middle of nowhere with
     // no airport will still be considered valid for this layer and a tile will be created which we don't want to happen.
     auto profile = getProfile();
-    osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(nullptr);
+    auto cursor = features->createFeatureCursor(Query(), nullptr);
     DataExtentList dataExtents;
-    while (cursor.valid() && cursor->hasMore())
+    while (cursor.hasMore())
     {
-        osg::ref_ptr< Feature > f = cursor->nextFeature();
-        if (f && f->getGeometry())
+        auto f = cursor.nextFeature();
+        if (f.valid() && f->getGeometry())
         {
             GeoExtent featureExtent = f->getExtent();
             dataExtents.push_back(DataExtent(featureExtent.transform(profile->getSRS()), getMinLevel(), getMaxDataLevel()));
@@ -169,10 +169,10 @@ FeatureElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
     query.bounds() = extentInFeatureSRS.bounds();
 
     FeatureList featureList;
-    osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(query, progress);
-    while (cursor.valid() && cursor->hasMore())
+    auto cursor = features->createFeatureCursor(query, progress);
+    while (cursor.hasMore())
     {
-        Feature* f = cursor->nextFeature();
+        const Feature* f = cursor.nextFeature();
         if (f && f->getGeometry())
             featureList.push_back(f);
     }
@@ -207,7 +207,7 @@ FeatureElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
                 if (progress && progress->isCanceled())
                     return GeoHeightField::INVALID;
 
-                osgEarth::Polygon* boundary = dynamic_cast<osgEarth::Polygon*>((*f)->getGeometry());
+                auto boundary = dynamic_cast<const osgEarth::Polygon*>((*f)->getGeometry());
 
                 if (!boundary)
                 {

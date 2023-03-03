@@ -108,7 +108,7 @@ FeatureSourceIndexNode::~FeatureSourceIndexNode()
 }
 
 ObjectID
-FeatureSourceIndexNode::tagDrawable(osg::Drawable* drawable, Feature* feature)
+FeatureSourceIndexNode::tagDrawable(osg::Drawable* drawable, const Feature* feature)
 {
     if ( !feature || !_index.valid() ) return OSGEARTH_OBJECTID_EMPTY;
     RefIDPair* r = _index->tagDrawable( drawable, feature );
@@ -117,7 +117,7 @@ FeatureSourceIndexNode::tagDrawable(osg::Drawable* drawable, Feature* feature)
 }
 
 ObjectID
-FeatureSourceIndexNode::tagAllDrawables(osg::Node* node, Feature* feature)
+FeatureSourceIndexNode::tagAllDrawables(osg::Node* node, const Feature* feature)
 {
     if ( !feature || !_index.valid() ) return OSGEARTH_OBJECTID_EMPTY;
     RefIDPair* r = _index->tagAllDrawables( node, feature );
@@ -126,7 +126,7 @@ FeatureSourceIndexNode::tagAllDrawables(osg::Node* node, Feature* feature)
 }
 
 ObjectID
-FeatureSourceIndexNode::tagNode(osg::Node* node, Feature* feature)
+FeatureSourceIndexNode::tagNode(osg::Node* node, const Feature* feature)
 {
     if ( !feature || !_index.valid() ) return OSGEARTH_OBJECTID_EMPTY;
     RefIDPair* r = _index->tagNode( node, feature );
@@ -135,7 +135,7 @@ FeatureSourceIndexNode::tagNode(osg::Node* node, Feature* feature)
 }
 
 ObjectID
-FeatureSourceIndexNode::tagRange(osg::Drawable* drawable, Feature* feature, unsigned int start, unsigned int count)
+FeatureSourceIndexNode::tagRange(osg::Drawable* drawable, const Feature* feature, unsigned int start, unsigned int count)
 {
     if (!feature || !_index.valid()) return OSGEARTH_OBJECTID_EMPTY;
     RefIDPair* r = _index->tagRange(drawable, feature, start, count);
@@ -373,7 +373,7 @@ FeatureSourceIndex::~FeatureSourceIndex()
 }
 
 RefIDPair*
-FeatureSourceIndex::tagDrawable(osg::Drawable* drawable, Feature* feature)
+FeatureSourceIndex::tagDrawable(osg::Drawable* drawable, const Feature* feature)
 {
     if ( !feature ) return 0L;
 
@@ -406,7 +406,7 @@ FeatureSourceIndex::tagDrawable(osg::Drawable* drawable, Feature* feature)
 }
 
 RefIDPair*
-FeatureSourceIndex::tagAllDrawables(osg::Node* node, Feature* feature)
+FeatureSourceIndex::tagAllDrawables(osg::Node* node, const Feature* feature)
 {
     if ( !feature ) return 0L;
 
@@ -439,7 +439,7 @@ FeatureSourceIndex::tagAllDrawables(osg::Node* node, Feature* feature)
 }
 
 RefIDPair*
-FeatureSourceIndex::tagRange(osg::Drawable* drawable, Feature* feature, unsigned int start, unsigned int count)
+FeatureSourceIndex::tagRange(osg::Drawable* drawable, const Feature* feature, unsigned int start, unsigned int count)
 {
     if (!feature) return 0L;
 
@@ -472,7 +472,7 @@ FeatureSourceIndex::tagRange(osg::Drawable* drawable, Feature* feature, unsigned
 }
 
 RefIDPair*
-FeatureSourceIndex::tagNode(osg::Node* node, Feature* feature)
+FeatureSourceIndex::tagNode(osg::Node* node, const Feature* feature)
 {
     if ( !feature ) return 0L;
 
@@ -507,10 +507,10 @@ FeatureSourceIndex::tagNode(osg::Node* node, Feature* feature)
     return p;
 }
 
-Feature*
+osg::ref_ptr<const Feature>
 FeatureSourceIndex::getFeature(ObjectID oid) const
 {
-    Feature* feature = 0L;
+    osg::ref_ptr<const Feature> feature;
     Threading::ScopedMutexLock lock(_mutex);
     OID_to_FID::const_iterator i = _oids.find( oid );
     if ( i != _oids.end() )

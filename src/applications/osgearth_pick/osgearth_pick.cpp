@@ -57,7 +57,7 @@ struct App
     osgEarth::Util::ObjectIDPicker* picker;
     osg::Uniform* highlightUniform;
 
-    osg::ref_ptr<Feature> _pickedFeature;
+    osg::ref_ptr<const Feature> _pickedFeature;
     osg::ref_ptr<AnnotationNode> _pickedAnno;
 };
 
@@ -297,7 +297,7 @@ main(int argc, char** argv)
             {
                 // Got a pick:
                 FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>(id).get();
-                Feature* feature = index ? index->getFeature(id) : 0L;
+                osg::ref_ptr<const Feature> feature = index ? index->getFeature(id) : nullptr;
                 app._pickedFeature = feature;
                 app._pickedAnno = Registry::objectIndex()->get<AnnotationNode>(id).get();
                 app.highlightUniform->set(id);

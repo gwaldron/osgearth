@@ -59,14 +59,21 @@ public:
 
     virtual FilterContext push( FeatureList& input, FilterContext& context )
     {
-        for (FeatureList::iterator itr = input.begin(); itr != input.end(); itr++)
+        FeatureList output;
+
+        for(auto& feature : input)
         {
             //Change the value of the attribute
             if (_key.isSet() && _value.isSet())
             {
-                itr->get()->set(*_key, std::string(*_value));
+                auto f = feature->clone();
+                f->set(*_key, std::string(*_value));
+                output.push_back(f);
             }
+            else output.push_back(feature);
         }
+
+        input.swap(output);
         return context;
     }
 

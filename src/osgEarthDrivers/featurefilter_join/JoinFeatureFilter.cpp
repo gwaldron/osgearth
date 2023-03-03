@@ -79,25 +79,23 @@ public: // FeatureFilter
             Query query;
             query.bounds() = extentInFeatureSRS.bounds();
 
-            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor( query, progress );
-            if (cursor)
-            {
-                cursor->fill( features );
-            }
+            auto cursor = fs->createFeatureCursor( query, progress );
+            cursor.fill( features );
         }     
     }
 
     //! Joins the boundaries attributes into the features by doing a
     //! spatial intersection.
-    void combine(FeatureList& boundaries, FeatureList& input, FilterContext& context) const
+    void combine(FeatureList& boundaries_safe, FeatureList& input, FeatureList& output, FilterContext& context) const
     {
         OE_PROFILING_ZONE;
 
         // Transform the boundaries into the coordinate system of the features
         // for fast intersection testing
+        MutableFeatureList boundaries = toMutable(boundaries_safe);
         for (auto& boundary : boundaries)
         {
-            boundary->transform(context.profile()->getSRS());
+            boundary->transformInPlace(context.profile()->getSRS());
         }
 
         // For each feature, check for a spatial join:
@@ -109,15 +107,25 @@ public: // FeatureFilter
                 {
                     if (boundary->getGeometry()->intersects(feature->getGeometry()))
                     {
+                        auto f = feature->clone();
+
                         // Copy the attributes from the boundary to the feature (and overwrite)
                         for (const auto& attr : boundary->getAttrs())
                         {
-                            feature->set(attr.first, attr.second);
+                            f->set(attr.first, attr.second);
                         }
 
                         // upon success, don't check any more boundaries:
+                        output.push_back(f);
+                        feature = nullptr;
                         break;
                     }
+                }
+
+                // not found; just push original feature
+                if (feature.valid())
+                {
+                    output.push_back(feature);
                 }
             }
         }
@@ -130,14 +138,18 @@ public: // FeatureFilter
 
         if (featureSource().getLayer())
         {
+            FeatureList output;
+
             // Get any features that intersect this query.
             FeatureList boundaries;
             getFeatures(context.extent().get(), boundaries, nullptr); // TODO: progress...
 
             if (!boundaries.empty())
             {
-                combine(boundaries, input, context);
+                combine(boundaries, input, output, context);
             }
+
+            input.swap(output);
         }
 
         return context;

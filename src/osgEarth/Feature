@@ -125,13 +125,9 @@ namespace osgEarth
 
     typedef long long FeatureID;
 
+    //class FeatureList;
+
     using FeatureSchema = std::map<std::string, AttributeType>;
-
-    class Feature;
-
-    using FeatureList = std::list<osg::ref_ptr<Feature>>;
-
-    using ConstFeatureList = std::list<osg::ref_ptr<const Feature>>;
 
     /**
      * Basic building block of vector feature data.
@@ -139,11 +135,20 @@ namespace osgEarth
     class OSGEARTH_EXPORT Feature : public osg::Object
     {
     public:
+        //! Construct a new feature from geometry, srs, and optionally style info.
+        Feature(Geometry* geom, const SpatialReference* srs, const Style& style = Style(), FeatureID fid = 0LL);
 
-        Feature( Geometry* geom, const SpatialReference* srs, const Style& style =Style(), FeatureID fid =0LL );
+        //! Clone an existing feature
+        Feature(const Feature& rhs, const osg::CopyOp& copyop = osg::CopyOp::DEEP_COPY_ALL);
 
-        /** Copy contructor */
-        Feature( const Feature& rhs, const osg::CopyOp& copyop =osg::CopyOp::DEEP_COPY_ALL );
+        //! Clone an existing feature's attributes and SRS, but assign 
+        //! a new geometry.
+        Feature(const Feature& rhs, Geometry* new_geom);
+
+        //! Clone this feature
+        Feature* clone() const {
+            return new Feature(*this);
+        }
 
         META_Object( osgEarth, Feature );
 
@@ -250,19 +255,17 @@ namespace osgEarth
         /** Gets a GeoJSON representation of this Feature */
         std::string getGeoJSON() const;
 
-        /** Gets a FeatureList as a GeoJSON FeatureCollection */
-        static std::string featuresToGeoJSON(const FeatureList& features);
-
     public:
-        /**
-         * Transforms this Feature to the given SpatialReference
-         */
-        void transform( const SpatialReference* srs );
+        //! Transforms this Feature to the given SpatialReference
+        void transformInPlace(const SpatialReference* srs);
 
-        /**
-         * Splits this feature into multiple features if it is a geodetic feature and cross the date line.
-         */
-        void splitAcrossDateLine(FeatureList& splitFeatures);
+        //! Return a clone of the feature with transformed geometry.
+        //! @param srs Target spatial reference
+        //! @return Feature in target SRS
+        osg::ref_ptr<Feature> transformTo(const SpatialReference* srs) const;
+
+        //! Splits this feature into multiple features if it is a geodetic feature and cross the date line.
+        void splitAcrossDateLine(std::list<osg::ref_ptr<const Feature>>& splitFeatures) const;
 
     protected:
 
@@ -281,6 +284,74 @@ namespace osgEarth
 
         void dirty();
     };
+
+#if 1
+    using MutableFeatureList = std::list<osg::ref_ptr<Feature>>;
+    using FeatureList = std::list<osg::ref_ptr<const Feature>>;
+
+    inline FeatureList toConst(const MutableFeatureList& rhs)
+    {
+        FeatureList output;
+        for (auto& f : rhs) output.push_back(f);
+        return std::move(output);
+    }
+
+    inline MutableFeatureList toMutable(const FeatureList& rhs)
+    {
+        MutableFeatureList output;
+        for (auto& f : rhs) output.push_back(f->clone());
+        return std::move(output);
+    }
+
+    extern OSGEARTH_EXPORT std::string getGeoJSON(const FeatureList& rhs);
+#else
+    class OSGEARTH_EXPORT MutableFeatureList : public std::list<osg::ref_ptr<Feature>>
+    {
+    public:
+        MutableFeatureList() { }
+        MutableFeatureList(const MutableFeatureList& rhs) = default;
+        MutableFeatureList(MutableFeatureList&& rhs) = default;
+        MutableFeatureList& operator = (const MutableFeatureList&) = default;
+        MutableFeatureList& operator = (MutableFeatureList&&) = default;
+        inline MutableFeatureList(const FeatureList& m);
+        inline MutableFeatureList& operator = (const FeatureList& m);
+    };
+
+    class OSGEARTH_EXPORT FeatureList : public std::list<osg::ref_ptr<const Feature>>
+    {
+        using super = std::list<osg::ref_ptr<const Feature>>;
+    public:
+        FeatureList() { }
+        FeatureList(const FeatureList& rhs) : super(rhs) { }
+        FeatureList(const MutableFeatureList& m) : super() {
+            *this = m;
+        }
+        FeatureList& operator = (const MutableFeatureList& m) {
+            clear();
+            for (auto& f : m) push_back(f.get());
+            return* this;
+        }
+        virtual ~FeatureList() { }
+
+        //! Gets a FeatureList as a GeoJSON FeatureCollection
+        std::string getGeoJSON() const;
+
+        template<typename A, typename B, typename FUNC>
+        static inline void copy(const A& from, B& to, FUNC& func) {
+            for (auto& E : from)
+                to.push_back(func(E.get()));
+        }
+    };
+
+    MutableFeatureList::MutableFeatureList(const FeatureList& m) {
+        for (auto& f : m) push_back(new Feature(*f.get()));
+    }
+    MutableFeatureList& MutableFeatureList::operator = (const FeatureList& m) {
+        clear();
+        for (auto& f : m) push_back(new Feature(*f.get()));
+        return *this;
+    }
+#endif
 
 } // namespace osgEarth
 

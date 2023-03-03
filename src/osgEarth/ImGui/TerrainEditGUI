@@ -111,10 +111,10 @@ namespace osgEarth
                 osg::ref_ptr<osg::Image>& out_lifemap,
                 GeoExtent& out_extent)
             {
-                osg::ref_ptr<Feature> feature = osg::clone(in_feature, osg::CopyOp::DEEP_COPY_ALL);
+                osg::ref_ptr<Feature> feature = in_feature->clone();
                 GeoPoint center = feature->getExtent().getCentroid();
                 center = center.toLocalTangentPlane();
-                feature->transform(center.getSRS());
+                feature->transformInPlace(center.getSRS());
 
                 out_extent = feature->getExtent();
 
@@ -128,7 +128,8 @@ namespace osgEarth
                     out_extent.expand(-diff, 0.0);
 
 
-                FeatureList features { feature };
+                FeatureList features;
+                features.push_back(feature);
 
                 SDFGenerator sdfgen;
                 sdfgen.setUseGPU(false);

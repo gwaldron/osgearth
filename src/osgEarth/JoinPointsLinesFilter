@@ -91,7 +91,7 @@ namespace osgEarth { namespace Util
             {}
         PointEntry() : PointEntry(0L) {}
         osg::ref_ptr<Feature> pointFeature;
-        FeatureList lineFeatures;
+        MutableFeatureList lineFeatures;
         osg::Vec3d previous;
         osg::Vec3d next;
     };

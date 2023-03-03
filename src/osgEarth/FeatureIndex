@@ -33,7 +33,7 @@ namespace osgEarth
     {
     public:
         /** Get a feature given an object id. */
-        virtual Feature* getFeature(ObjectID oid) const =0;
+        virtual osg::ref_ptr<const Feature> getFeature(ObjectID oid) const =0;
 
         /** Get the object ID corresponding to a feature ID. */
         virtual ObjectID getObjectID(FeatureID fid) const =0;
@@ -45,7 +45,7 @@ namespace osgEarth
     /**
      * Interface for building a Feature Index.
      */
-    class OSGEARTH_EXPORT FeatureIndexBuilder : public ObjectIndexBuilder<Feature>
+    class OSGEARTH_EXPORT FeatureIndexBuilder : public ObjectIndexBuilder<const Feature>
     {
         //empty
     };

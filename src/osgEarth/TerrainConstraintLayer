@@ -79,8 +79,8 @@ namespace osgEarth
         //! Visibility toggle from VisibleLayer
         virtual void setVisible(bool value) override;
 
-        FeatureFilterChain* getFilters() const {
-            return _filterchain.get();
+        const FeatureFilterChain& getFilters() const {
+            return _filterchain;
         }
 
     protected:
@@ -100,7 +100,7 @@ namespace osgEarth
 
         void create();
 
-        osg::ref_ptr<FeatureFilterChain> _filterchain;
+        FeatureFilterChain _filterchain;
     };
 
     //! A single constraint (set of features from a given layer with properties)

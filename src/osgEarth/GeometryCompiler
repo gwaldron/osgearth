@@ -167,36 +167,36 @@ namespace osgEarth
 
         /** Compiles a collection of features into an OSG scene graph. */
         osg::Node* compile(
-            FeatureCursor*        input,
-            const Style&          style,
-            const FilterContext&  context);
+            FeatureCursor& input,
+            const Style& style,
+            const FilterContext& context);
 
         osg::Node* compile(
-            Feature*              input,
-            const Style&          style,
-            const FilterContext&  context);
+            const Feature* input,
+            const Style& style,
+            const FilterContext& context);
 
         osg::Node* compile(
-            Feature*              input,
-            const FilterContext&  context);
+            const Feature* input,
+            const FilterContext& context);
 
         osg::Node* compile(
-            Geometry*             geom,
-            const Style&          style,
-            const FilterContext&  context);
+            const Geometry* geom,
+            const Style& style,
+            const FilterContext& context);
 
         osg::Node* compile(
-            Geometry*             geom,
-            const Style&          style);
+            const Geometry* geom,
+            const Style& style);
 
         osg::Node* compile(
-            Geometry*             geom,
-            const FilterContext&  context);
+            const Geometry* geom,
+            const FilterContext& context);
 
         osg::Node* compile(
-            FeatureList&          mungeableInput,
-            const Style&          style,
-            const FilterContext&  context);
+            FeatureList& features,
+            const Style& style,
+            const FilterContext& context);
 
     protected:
         GeometryCompilerOptions _options;

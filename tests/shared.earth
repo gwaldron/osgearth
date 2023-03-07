@@ -1,0 +1,28 @@
+<!--
+Demo of shared layers. This will render the earth imagery without the oceans.
+It will work with either GL3 or NVGL terrain rendering.
+Note the use of the oe_use_shared_layer pragma to call out the shared names.
+-->
+<map>
+    <TMSImage name="ocean_mask" visible="false" shared="true">
+        <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
+        <shared_sampler>mask_tex</shared_sampler>
+        <shared_matrix>mask_mat</shared_matrix>
+    </TMSImage>
+    <TMSImage name="imagery">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <shader>
+            <![CDATA[
+            #pragma vp_function mask_me, fragment    
+            #pragma oe_use_shared_layer(mask_tex, mask_mat)
+            in vec4 oe_layer_tilec;
+            
+            void mask_me(inout vec4 color)
+            {
+                vec4 mask = texture(mask_tex, (mask_mat*oe_layer_tilec).st);
+                if (mask.a > 0.75)
+                    discard;
+            }
+        ]]></shader>
+    </TMSImage>
+</map>

@@ -108,16 +108,21 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT BiomeManager
         {
         public:
-            using ResidentModelAssets = std::unordered_map<
-                const ModelAsset*,
+            using ResidentModelAssetsByName = std::map<
+                std::string, // name
                 ResidentModelAsset::Ptr>;
 
             using ResidentModelAssetInstances = 
                 std::vector<ResidentModelAssetInstance>;
+
+            struct ResidentBiome {
+                const Biome* biome;
+                ResidentModelAssetInstances instances;
+            };
             
-            using ResidentBiomes = std::unordered_map<
-                const Biome*,
-                ResidentModelAssetInstances>;
+            using ResidentBiomesById = std::map<
+                std::string, // biome id
+                ResidentBiome>;
 
             struct Impostor {
                 osg::ref_ptr<osg::Node> _node;
@@ -164,7 +169,7 @@ namespace osgEarth
 
             //! Gets a copy of the currently resident biomes
             //! (which is a snapshot in time)
-            ResidentBiomes getResidentBiomes(
+            ResidentBiomesById getResidentBiomes(
                 const osgDB::Options*);
 
             //! The texture arena containing all textures loaded
@@ -210,15 +215,15 @@ namespace osgEarth
                 CreateImpostorFunction
             > _createImpostorFunctions;
 
-            using BiomeRefs = std::unordered_map<const Biome*, int>;
+            using BiomeRefs = std::map<const Biome*, int>;
             BiomeRefs _refs;
             bool _locked;
 
             // all currently loaded model assets (regardless of biome)
-            ResidentModelAssets _residentModelAssets;
+            ResidentModelAssetsByName _residentModelAssets;
 
             // all model asset usage records, sorted by biome
-            ResidentBiomes _residentBiomes;
+            ResidentBiomesById _residentBiomes;
 
             // texture arena that holds all the textures for 
             // loaded assets.

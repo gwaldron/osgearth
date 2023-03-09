@@ -270,19 +270,20 @@ BiomeManager::recalculateResidentBiomes()
         // add biomes that might need adding
         for (auto biome : biomes_to_add)
         {
-            auto& dummy = _residentBiomes[biome];
+            auto& entry = _residentBiomes[biome->id()];
+            entry.biome = biome;
         }
 
         // get rid of biomes we no longer need.
         for (auto biome : biomes_to_remove)
         {
-            _residentBiomes.erase(biome);
+            _residentBiomes.erase(biome->id());
         }
 
 
         // finally, update the collection of resident assets to
         // reflect the reference counts.
-        std::list<const ModelAsset*> to_delete;
+        std::list<std::string> to_delete;
 
         for (auto& entry : _residentModelAssets)
         {
@@ -292,10 +293,10 @@ BiomeManager::recalculateResidentBiomes()
             }
         }
 
-        for (auto& asset : to_delete)
+        for (auto& asset_name : to_delete)
         {
-            _residentModelAssets.erase(asset);
-            OE_DEBUG << LC << "Unloaded asset " << asset->name() << std::endl;
+            _residentModelAssets.erase(asset_name);
+            OE_DEBUG << LC << "Unloaded asset " << asset_name << std::endl;
         }
     }
 }
@@ -323,8 +324,11 @@ BiomeManager::getResidentAssets() const
     ScopedMutexLock lock(_residentData_mutex);
 
     result.reserve(_residentModelAssets.size());
+
     for (auto& entry : _residentModelAssets)
-        result.push_back(entry.first);
+    {
+        result.push_back(entry.second->assetDef());
+    }
 
     return std::move(result);
 }
@@ -337,8 +341,9 @@ BiomeManager::getResidentAssetsIfNotLocked() const
     {
         result.reserve(_residentModelAssets.size());
         for (auto& entry : _residentModelAssets)
-            result.push_back(entry.first);
-
+        {
+            result.push_back(entry.second->assetDef());
+        }
         _residentData_mutex.unlock();
     }
     return std::move(result);
@@ -434,7 +439,7 @@ BiomeManager::materializeNewAssets(
     OE_DEBUG << LC << "Found " << _residentBiomes.size() << " resident biomes..." << std::endl;
     for (auto& iter : _residentBiomes)
     {
-        iter.second.clear();
+        iter.second.instances.clear();
     }
 
     // This loader will find material textures and install them on
@@ -478,12 +483,12 @@ BiomeManager::materializeNewAssets(
     // Along the way, build the instances for each biome.
     for (auto& e : _residentBiomes)
     {
-        const Biome* biome = e.first;
+        const Biome* biome = e.second.biome;
 
         auto& assetsToUse = biome->getModelAssets();
 
         // this is the collection of instances we're going to populate
-        ResidentModelAssetInstances& assetInstances = e.second;
+        ResidentModelAssetInstances& assetInstances = e.second.instances;
 
         // The group points to multiple assets, which we will analyze and load.
         for (auto& asset_ptr : assetsToUse)
@@ -496,7 +501,7 @@ BiomeManager::materializeNewAssets(
 
             // Look up this model asset. If it's already in the resident set,
             // do nothing; otherwise make it resident by loading all the data.
-            ResidentModelAsset::Ptr& residentAsset = _residentModelAssets[assetDef];
+            ResidentModelAsset::Ptr& residentAsset = _residentModelAssets[assetDef->name()];
 
             // First reference to this instance? Populate it:
             if (residentAsset == nullptr)
@@ -541,13 +546,19 @@ BiomeManager::materializeNewAssets(
                             bool isUndergrowth = assetDef->group() == "undergrowth";
                             addFlexors(residentAsset->model(), assetDef->stiffness().get(), isUndergrowth);
 
-                            OE_DEBUG << LC << "Loaded model: " << uri.base() << std::endl;
                             modelcache[uri]._node = residentAsset->model().get();
 
                             osg::ComputeBoundsVisitor cbv;
                             residentAsset->model()->accept(cbv);
                             residentAsset->boundingBox() = cbv.getBoundingBox();
                             modelcache[uri]._modelAABB = residentAsset->boundingBox();
+
+                            OE_WARN << LC << "Loaded model: " << uri.base() << 
+                                " with bbox " << residentAsset->boundingBox().xMin() << " "
+                                << residentAsset->boundingBox().yMin() << " "
+                                << residentAsset->boundingBox().xMax() << " "
+                                << residentAsset->boundingBox().yMax() <<
+                                std::endl;
                         }
                         else
                         {
@@ -817,9 +828,8 @@ BiomeManager::setCreateImpostorFunction(
     _createImpostorFunctions[group] = func;
 }
 
-BiomeManager::ResidentBiomes
-BiomeManager::getResidentBiomes(
-    const osgDB::Options* readOptions)
+BiomeManager::ResidentBiomesById
+BiomeManager::getResidentBiomes(const osgDB::Options* readOptions)
 {
     OE_PROFILING_ZONE;
 
@@ -830,7 +840,7 @@ BiomeManager::getResidentBiomes(
     materializeNewAssets(readOptions);
 
     // Make a copy:
-    ResidentBiomes result = _residentBiomes;
+    ResidentBiomesById result = _residentBiomes;
 
     return std::move(result);
 }

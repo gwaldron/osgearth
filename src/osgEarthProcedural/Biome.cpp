@@ -93,6 +93,10 @@ ModelAsset::ModelAsset(const Config& conf)
     stiffness().setDefault(0.5f);
     minLush().setDefault(0.0f);
     maxLush().setDefault(1.0f);
+    sizeVariation().setDefault(0.0f);
+    width().setDefault(0.0f);
+    height().setDefault(0.0f);
+    topBillboardHeight().setDefault(0.0f);
 
     conf.get("url", modelURI());
     conf.get("name", name());
@@ -170,7 +174,7 @@ AssetCatalog::AssetCatalog(const Config& conf)
         }
     }
     // load in all materials first into a temporary table
-    std::unordered_map<std::string, MaterialAsset> temp_materials;
+    std::map<std::string, MaterialAsset> temp_materials; // use map since we're iterating
     ConfigSet materialassets = conf.child("materials").children("asset");
     for (const auto& c : materialassets)
     {
@@ -361,6 +365,13 @@ Biome::empty() const
     return _assetsToUse.empty();
 }
 
+Biome::ModelAssetRef::ModelAssetRef()
+{
+    weight() = 1.0f;
+    coverage() = 1.0f;
+    asset() = nullptr;
+}
+
 //..........................................................
 
 BiomeCatalog::BiomeCatalog(const Config& conf) :
@@ -470,7 +481,7 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
 
         // Collect all assets with traits so we can make a biome for each.
         // traverse "up" through the parent biomes to find them all.
-        std::unordered_map<
+        std::map<
             std::string,
             std::set<Biome::ModelAssetRef::Ptr>
         > lookup_table;
@@ -558,6 +569,14 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
                 {
                     new_biome._assetsToUse.emplace_back(asset_ptr);
                 }
+
+                // sort the assets list by asset name so it is deterministic!
+                std::sort(
+                    new_biome._assetsToUse.begin(),
+                    new_biome._assetsToUse.end(),
+                    [](const Biome::ModelAssetRef::Ptr& lhs, const Biome::ModelAssetRef::Ptr& rhs) {
+                        return lhs->asset()->name() < rhs->asset()->name();
+                    });
             }
         }
     }

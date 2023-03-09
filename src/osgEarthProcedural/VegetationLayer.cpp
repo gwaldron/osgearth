@@ -94,7 +94,17 @@ VegetationLayer::Options::getConfig() const
     conf.set("use_impostor_pbr_maps", useImpostorPBRMaps());
     conf.set("max_texture_size", maxTextureSize());
 
-    //TODO: groups
+    Config layers("layers");
+    for (auto group_name : { GROUP_TREES, GROUP_BUSHES, GROUP_UNDERGROWTH })
+    {
+        auto group_conf = group(group_name).getConfig();
+        if (!group_conf.empty())
+        {
+            layers.add(group_name, group_conf);
+        }
+    }
+    if (!layers.empty())
+        conf.add(layers);
 
     return conf;
 }
@@ -230,6 +240,21 @@ VegetationLayer::Options::Group::Group()
     overlap().setDefault(0.0f);
     farLODScale().setDefault(1.0f);
     alphaCutoff().setDefault(0.2f);
+}
+
+Config
+VegetationLayer::Options::Group::getConfig() const
+{
+    Config conf;
+    conf.set("enabled", enabled());
+    conf.set("max_range", maxRange());
+    conf.set("instances_per_sqkm", instancesPerSqKm());
+    conf.set("lod", lod());
+    conf.set("cast_shadows", castShadows());
+    conf.set("overlap", overlap());
+    conf.set("far_lod_scale", farLODScale());
+    conf.set("alpha_cutoff", alphaCutoff());
+    return conf;
 }
 
 //........................................................................
@@ -1013,16 +1038,16 @@ VegetationLayer::checkForNewAssets() const
 
     osg::observer_ptr<const VegetationLayer> layer_weakptr(this);
 
-    auto loadNewAssets = [layer_weakptr](Cancelable* c) -> Assets
+    auto loadNewAssets = [layer_weakptr](Cancelable* c) -> AssetsByGroup
     {
         OE_PROFILING_ZONE_NAMED("VegetationLayer::loadNewAssets(job)");
 
-        Assets result;
+        AssetsByGroup result;
 
         osg::ref_ptr<const VegetationLayer> layer;
         if (layer_weakptr.lock(layer))
         {
-            BiomeManager::ResidentBiomes biomes = layer->getBiomeLayer()->getBiomeManager().getResidentBiomes(
+            BiomeManager::ResidentBiomesById biomes = layer->getBiomeLayer()->getBiomeManager().getResidentBiomes(
                 layer->getReadOptions());
 
             // re-organize the data into a form we can readily use.
@@ -1031,8 +1056,8 @@ VegetationLayer::checkForNewAssets() const
                 if (c && c->isCanceled())
                     break;
 
-                const Biome* biome = iter.first;
-                auto& instances = iter.second;
+                const Biome* biome = iter.second.biome;
+                auto& instances = iter.second.instances;
 
                 // first, sort the instances by group:
                 vector_map<
@@ -1068,8 +1093,15 @@ VegetationLayer::checkForNewAssets() const
                     for (auto& instance : instances)
                     {
                         unsigned num = std::max(1u, (unsigned)(instance.weight() * weight_scale));
-                        for(unsigned i=0; i<num; ++i)
-                            result[group][biome].push_back(instance);
+
+                        auto& biome_assets = result[group][biome->id()];
+                        biome_assets.biome = biome;
+
+                        biome_assets.instances.reserve(num);
+                        for (unsigned i = 0; i < num; ++i)
+                        {
+                            biome_assets.instances.push_back(instance);
+                        }
                     }
                 }
             }
@@ -1079,7 +1111,7 @@ VegetationLayer::checkForNewAssets() const
 
     Job job;
     job.setName("VegetationLayer asset loader");
-    _newAssets = job.dispatch<Assets>(loadNewAssets);
+    _newAssets = job.dispatch<AssetsByGroup>(loadNewAssets);
 
     return true;
 }
@@ -1148,6 +1180,9 @@ VegetationLayer::createDrawableAsync(
     return job.dispatch<osg::ref_ptr<osg::Drawable>>(function);
 }
 
+#undef RAND
+//#define RAND() rand_float_01(gen)
+#define RAND() prng.next()
 
 bool
 VegetationLayer::getAssetPlacements(
@@ -1169,13 +1204,12 @@ VegetationLayer::getAssetPlacements(
     if (groupOptions.enabled() == false)
         return false;
 
-
     std::vector<Placement> result;
 
     // Safely copy the instance list. The object is immutable
     // once we get to this point, since all assets are materialized
     // by the biome manager.
-    AssetsByBiome groupAssets;
+    AssetsByBiomeId groupAssets;
 
     if (loadBiomesOnDemand == false)
     {
@@ -1242,7 +1276,7 @@ VegetationLayer::getAssetPlacements(
         if (checkForNewAssets() == true)
         {
             _newAssets.join(progress);
-            Assets newAssets = _newAssets.release();
+            AssetsByGroup newAssets = _newAssets.release();
             if (!newAssets.empty())
             {
                 ScopedMutexLock lock(_assets);
@@ -1268,8 +1302,7 @@ VegetationLayer::getAssetPlacements(
         }
     }
 
-
-    const Biome* default_biome = groupAssets.begin()->first;
+    const Biome* default_biome = groupAssets.begin()->second.biome;
 
     osg::Vec4f noise;
     ImageUtils::PixelReader readNoise(_noiseTex->osgTexture()->getImage(0));
@@ -1280,7 +1313,7 @@ VegetationLayer::getAssetPlacements(
 
     std::minstd_rand0 gen(key.hash());
     std::uniform_real_distribution<float> rand_float_01(0.0f, 1.0f);
-    std::uniform_int_distribution<> rand_int(0, INT_MAX);
+    Random prng(0);
 
     // approximate area of the tile in km
     GeoCircle c = key.getExtent().computeBoundingGeoCircle();
@@ -1319,13 +1352,13 @@ VegetationLayer::getAssetPlacements(
     osg::BoundingBox local_bbox(x0, y0, 0, x1, y1, 0);
     double local_width = x1 - x0;
     double local_height = y1 - y0;
-    osg::Vec2d local;
 
     // keep track of biomes with no assets (for a possible error condition?)
     std::set<const Biome*> empty_biomes;
 
     // indicies of assets selected based on their lushness
     std::vector<unsigned> assetIndices;
+
     // cumulative density function based on asset weights
     std::vector<float> assetCDF;
 
@@ -1333,8 +1366,8 @@ VegetationLayer::getAssetPlacements(
     for (unsigned i = 0; i < max_instances; ++i)
     {
         // random tile-normalized position:
-        float u = rand_float_01(gen);
-        float v = rand_float_01(gen);
+        float u = RAND();
+        float v = RAND();
 
         // resolve the biome at this position:
         const Biome* biome = nullptr;
@@ -1356,12 +1389,13 @@ VegetationLayer::getAssetPlacements(
         }
 
         // fetch the collection of assets belonging to the selected biome:
-        auto iter = groupAssets.find(biome);
+        auto iter = groupAssets.find(biome->id());
         if (iter == groupAssets.end())
         {
             empty_biomes.insert(biome);
             continue;
         }
+        ResidentBiomeModelAssetInstances& biome_assets = iter->second;
 
         // sample the noise texture at this (u,v)
         readNoise(noise, u, v);
@@ -1380,9 +1414,9 @@ VegetationLayer::getAssetPlacements(
         //if (density < 0.01f)
         //    continue;
 
-        auto& assetInstances = iter->second;
+        auto& assetInstances = biome_assets.instances;
 
-        // RNG with normal distribution between approx +1/-1
+        // RNG with normal distribution between approx lush-1..lush+1
         std::normal_distribution<float> normal_dist(lush, 1.0f / 6.0f);
         lush = clamp(normal_dist(gen), 0.0f, 1.0f);
 
@@ -1411,7 +1445,7 @@ VegetationLayer::getAssetPlacements(
         int assetIndex = 0;
         if (assetIndices.size() > 1)
         {
-            float k = rand_float_01(gen) * cumulativeWeight;
+            float k = RAND() * cumulativeWeight;
             for (assetIndex = 0;
                 assetIndex < assetCDF.size() - 1 && k > assetCDF[assetIndex];
                 ++assetIndex);
@@ -1452,9 +1486,8 @@ VegetationLayer::getAssetPlacements(
             scale *= edginess;
         }
 
-
         // tile-local coordinates of the position:
-        local.set(
+        osg::Vec2d local(
             local_bbox.xMin() + u * local_width,
             local_bbox.yMin() + v * local_height);
 
@@ -1468,24 +1501,13 @@ VegetationLayer::getAssetPlacements(
             pass = false;
 
             // scale the asset bounding box in preparation for collision:
-            osg::BoundingBoxd assetbbox = asset->boundingBox();
+            const osg::BoundingBox& abb = asset->boundingBox();
 
-            // stop at first collision:
-            bool collision = false;
-            auto collision_check = [&local, &collision](const int& value) {
-                collision = true;
-                return false;
-            };
-
-            double width = (assetbbox.xMax() - assetbbox.xMin()) * (1.0 - overlap);
-            double height = (assetbbox.yMax() - assetbbox.yMin()) * (1.0 - overlap);
-
-            double a_min[2] = { local.x() - 0.5*width, local.y() - 0.5*height };
-            double a_max[2] = { local.x() + 0.5*width, local.y() + 0.5*height };
+            double so = 1.0 - overlap;
+            double a_min[2] = { local.x() + abb.xMin() * so, local.y() + abb.yMin() * so };
+            double a_max[2] = { local.x() + abb.xMax() * so, local.y() + abb.yMax() * so };
             
-            index.Search(a_min, a_max, collision_check);
-
-            if (!collision)
+            if (index.Search(a_min, a_max, nullptr) == 0)
             {
                 index.Insert(a_min, a_max, 0);
                 pass = true;
@@ -1493,12 +1515,12 @@ VegetationLayer::getAssetPlacements(
         }
 
         if (pass)
-        {            
+        {
             osg::Vec3d map_point(e.xMin() + u * e.width(), e.yMin() + v * e.height(), 0);
 
             // Generate a random rotation and record the position.
             // Do this before the constraint check to maintain determinism!
-            float rotation = rand_float_01(gen) * 3.1415927 * 2.0;
+            float rotation = RAND() * 3.1415927 * 2.0;
          
             if (!inConstrainedRegion(map_point.x(), map_point.y(), constraints))
             {
@@ -1526,7 +1548,7 @@ VegetationLayer::getAssetPlacements(
     {
         Placement& p = result[i];
         
-        if (rand_float_01(gen) > p.density())
+        if (RAND() > p.density())
         {
             result[i] = std::move(result[numResults - 1]);
             map_points[i] = std::move(map_points[numResults - 1]);

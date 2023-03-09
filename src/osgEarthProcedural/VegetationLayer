@@ -130,6 +130,8 @@ namespace osgEarth { namespace Procedural
                 osg::ref_ptr<osg::StateSet> _drawStateSet;
                 BiomeManager::CreateImpostorFunction _createImpostor;
 
+                Config getConfig() const;
+
                 Group();
             };
 
@@ -392,19 +394,24 @@ namespace osgEarth { namespace Procedural
         // noise texture for wind
         Texture::Ptr _noiseTex;
 
-        using AssetsByBiome = std::unordered_map<
-            const Biome*,
-            std::vector<ResidentModelAssetInstance>>;
+        struct ResidentBiomeModelAssetInstances {
+            const Biome* biome;
+            std::vector<ResidentModelAssetInstance> instances;
+        };
 
-        using Assets = vector_map<
-            std::string,
-            AssetsByBiome>;
+        using AssetsByBiomeId = std::unordered_map<
+            std::string, //id
+            ResidentBiomeModelAssetInstances>;
+
+        using AssetsByGroup = vector_map<
+            std::string, // group name
+            AssetsByBiomeId>;
 
         // Asynchronously loading resident asset collection
-        mutable Future<Assets> _newAssets;
+        mutable Future<AssetsByGroup> _newAssets;
 
         // Resident asset collection (created by the BiomeManager)
-        mutable Mutexed<Assets> _assets;
+        mutable Mutexed<AssetsByGroup> _assets;
 
         // Track biome changes so we can reload as necessary
         mutable std::atomic_int _biomeRevision;

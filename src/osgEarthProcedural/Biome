@@ -193,7 +193,8 @@ namespace osgEarth
             Config getConfig() const;
 
         protected:
-            std::unordered_map<std::string, ModelAsset> _models;
+            // use std::map for consistent iteration
+            std::map<std::string, ModelAsset> _models;
             unsigned _lifemapMatrixWidth;
             std::vector<MaterialAsset> _materials;
         };
@@ -220,8 +221,10 @@ namespace osgEarth
             OE_OPTION(std::string, parentId);
 
             // points to an asset, adding in some custom parameters.
-            struct ModelAssetRef
+            struct OSGEARTHPROCEDURAL_EXPORT ModelAssetRef
             {
+                ModelAssetRef();
+
                 using Ptr = std::shared_ptr<ModelAssetRef>;
 
                 // points to the base asset in the catalog
@@ -304,7 +307,7 @@ namespace osgEarth
             AssetCatalog _assets;
 
             std::map<int, Biome> _biomes_by_index; // keep ordered by index
-            std::unordered_map<std::string, Biome*> _biomes_by_id; // Fast 
+            std::map<std::string, Biome*> _biomes_by_id; // keep ordered for determinism
         };
 
 } } // namespace osgEarth::Procedural

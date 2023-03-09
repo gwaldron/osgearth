@@ -30,39 +30,6 @@ using namespace osgEarth::Procedural;
 
 #define LC "[VegetationFeatureGenerator] "
 
-//...................................................................
-
-namespace
-{
-    //// GLSL fract
-    //inline float fract(float x)
-    //{
-    //    return fmodf(x, 1.0f);
-    //}
-
-    //// GLSL clamp
-    //inline float clamp(float x, float m0, float m1)
-    //{
-    //    return osg::clampBetween(x, m0, m1);
-    //}
-
-    // Sample a texture with a scale/bias matrix
-    inline void sample(osg::Vec4f& output, ImageUtils::PixelReader& texture, const osg::Matrixf& matrix, float u, float v)
-    {
-        u = clamp(u*matrix(0, 0) + matrix(3, 0), 0.0f, 1.0f);
-        v = clamp(v*matrix(1, 1) + matrix(3, 1), 0.0f, 1.0f);
-        return texture(output, u, v);
-    }
-
-    // Noise channels
-    const int NOISE_SMOOTH = 0;
-    const int NOISE_RANDOM = 1;
-    const int NOISE_RANDOM_2 = 2;
-    const int NOISE_CLUMPY = 3;
-}
-
-//...................................................................
-
 VegetationFeatureGenerator::VegetationFeatureGenerator() :
     _status(Status::ConfigurationError)
 {
@@ -199,8 +166,7 @@ VegetationFeatureGenerator::getFeatures(
 
         feature->set("width", width * std::max(p.scale().x(), p.scale().y()));
         feature->set("height", height * p.scale().z());
-        feature->set("rotation", p.rotation());
-
+        feature->set("rotation", p.rotation() * 180.0f / M_PI);
         feature->set("name", p.asset()->assetDef()->name());
 
         // Store any pass-thru properties

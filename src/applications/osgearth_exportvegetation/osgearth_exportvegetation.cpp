@@ -121,6 +121,7 @@ struct App
         outSchema["elevation"] = ATTRTYPE_DOUBLE;
         outSchema["width"] = ATTRTYPE_DOUBLE;
         outSchema["height"] = ATTRTYPE_DOUBLE;
+        outSchema["rotation"] = ATTRTYPE_DOUBLE;
 
         std::string prop;
         while(arguments.read("--include-asset-property", prop))

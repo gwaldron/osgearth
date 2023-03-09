@@ -263,14 +263,19 @@ ShaderPreProcessor::applySupportForNoFFP(osg::Shader* shader)
 }
 #endif
 
-std::unordered_map<std::string, std::function<void(std::string& source)>> ShaderPreProcessor::_pre_callbacks;
-std::unordered_map<std::string, std::function<void(osg::Shader*)>> ShaderPreProcessor::_post_callbacks;
+std::unordered_map<std::string, ShaderPreProcessor::PreCallbackInfo> ShaderPreProcessor::_pre_callbacks;
+std::unordered_map<std::string, ShaderPreProcessor::PostCallbackInfo> ShaderPreProcessor::_post_callbacks;
 
 void
 ShaderPreProcessor::runPre(std::string& source)
 {
     for (auto& callback : _pre_callbacks)
-        callback.second(source);
+    {
+        osg::ref_ptr<osg::Referenced> host_safe;
+        callback.second.host.lock(host_safe);
+        if (host_safe.valid())
+            callback.second.function(source, host_safe.get());
+    }
 }
 
 void
@@ -282,7 +287,12 @@ ShaderPreProcessor::runPost(osg::Shader* shader)
 
         // Run post-callbacks
         for (auto& callback : _post_callbacks)
-            callback.second(shader);
+        {
+            osg::ref_ptr<osg::Referenced> host_safe;
+            callback.second.host.lock(host_safe);
+            if (host_safe.valid())
+                callback.second.function(shader, host_safe.get());
+        }
 
         std::string source = shader->getShaderSource();
 

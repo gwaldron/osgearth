@@ -372,10 +372,15 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     // preprocess shaders to parse the "oe_use_shared_layer" directive
     // for shared layer samplers
+
     Registry::instance()->getShaderFactory()->addPreProcessorCallback(
         "RexTerrainEngineNode",
-        [this](std::string& source)
+        this,
+        [](std::string& source, osg::Referenced* host)
         {
+            RexTerrainEngineNode* rex = dynamic_cast<RexTerrainEngineNode*>(host);
+            if (!rex) return;
+
             std::string line;
             std::vector<std::string> tokens;
 
@@ -401,7 +406,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
                         // find the shared index.
                         int index = -1;
-                        const RenderBindings& bindings = this->_renderBindings;
+                        const RenderBindings& bindings = rex->_renderBindings;
                         for (int i = SamplerBinding::SHARED; i < (int)bindings.size() && index < 0; ++i)
                         {
                             if (bindings[i].samplerName() == tokens[0])

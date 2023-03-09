@@ -85,14 +85,16 @@ namespace osgEarth { namespace Util
         //! Install a shader post-processing callback
         //! This will run on each shader before it gets included
         void addPreProcessorCallback(
-            std::function<void(std::string&)>);
+            osg::Referenced* host,
+            std::function<void(std::string&, osg::Referenced*)>);
 
         //! Install a shader post-processing callback with a name
         //! that you can use to remove it later.
         //! This will run on each shader before it gets included
         void addPreProcessorCallback(
             const std::string& name,
-            std::function<void(std::string&)>);
+            osg::Referenced* host,
+            std::function<void(std::string&, osg::Referenced*)>);
 
         //! Remove a callback you installed with a name.
         void removePreProcessorCallback(
@@ -101,14 +103,16 @@ namespace osgEarth { namespace Util
         //! Install a shader post-processing callback
         //! This will run on each shader before it gets included
         void addPostProcessorCallback(
-            std::function<void(osg::Shader*)>);
+            osg::Referenced* host,
+            std::function<void(osg::Shader*, osg::Referenced*)>);
 
         //! Install a shader post-processing callback with a name
         //! that you can use to remove it later.
         //! This will run on each shader before it gets included
         void addPostProcessorCallback(
             const std::string& name,
-            std::function<void(osg::Shader*)>);
+            osg::Referenced* host,
+            std::function<void(osg::Shader*, osg::Referenced*)>);
 
         //! Remove a callback you installed with a name.
         void removePostProcessorCallback(

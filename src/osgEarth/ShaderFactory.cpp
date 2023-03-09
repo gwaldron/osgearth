@@ -96,20 +96,22 @@ ShaderFactory::clearProcessorCallbacks()
 
 void
 ShaderFactory::addPreProcessorCallback(
-    std::function<void(std::string&) > cb)
+    osg::Referenced* host,
+    std::function<void(std::string&, osg::Referenced*) > cb)
 {
     static int nameGen = 0;
     std::ostringstream name;
     name << "__oesf_" << nameGen++;
-    addPreProcessorCallback(name.str(), cb);
+    addPreProcessorCallback(name.str(), host, cb);
 }
 
 void
 ShaderFactory::addPreProcessorCallback(
     const std::string& name,
-    std::function<void(std::string&)> cb)
+    osg::Referenced* host,
+    std::function<void(std::string&, osg::Referenced*)> cb)
 {    
-    ShaderPreProcessor::_pre_callbacks[name] = cb;
+    ShaderPreProcessor::_pre_callbacks[name] = { host, cb };
 }
 
 void
@@ -120,20 +122,22 @@ ShaderFactory::removePreProcessorCallback(const std::string& name)
 
 void
 ShaderFactory::addPostProcessorCallback(
-    std::function<void(osg::Shader*)> cb)
+    osg::Referenced* host,
+    std::function<void(osg::Shader*, osg::Referenced*)> cb)
 {
     static int nameGen = 0;
     std::ostringstream name;
     name << "__oesf_" << nameGen++;
-    addPostProcessorCallback(name.str(), cb);
+    addPostProcessorCallback(name.str(), host, cb);
 }
 
 void
 ShaderFactory::addPostProcessorCallback(
     const std::string& name,
-    std::function<void(osg::Shader*)> cb)
+    osg::Referenced* host,
+    std::function<void(osg::Shader*, osg::Referenced*)> cb)
 {
-    ShaderPreProcessor::_post_callbacks[name] = cb;
+    ShaderPreProcessor::_post_callbacks[name] = { host, cb };
 }
 
 void

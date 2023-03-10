@@ -243,11 +243,11 @@ struct ProgressReporter : public osgEarth::ProgressCallback
             double secsToGo = fmod(timeToGoRemainder, secondsPerMinute);
             
             double projectedTotalTimeRemainder = projectedTotalTime;
-            double daysTotal = ProjectedTotalTimeRemainder / secondsPerDay;
+            double daysTotal = projectedTotalTimeRemainder / secondsPerDay;
             projectedTotalTimeRemainder = fmod(projectedTotalTimeRemainder, secondsPerDay);
             double hoursTotal = projectedTotalTimeRemainder / secondsPerHour;
             projectedTotalTimeRemainder = fmod(projectedTotalTimeRemainder, secondsPerHour);
-            double minsTotal = projectedTimeRemainder / secondsPerMinute;
+            double minsTotal = projectedTotalTimeRemainder / secondsPerMinute;
             double secsTotal = fmod(projectedTotalTimeRemainder, secondsPerMinute);
             
             std::cout

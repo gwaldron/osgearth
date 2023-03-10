@@ -231,7 +231,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
             double timeToGo = projectedTotalTime - timeSoFar;
             
             constexpr double secondsPerMinute = 60.0;
-            constexpr double secondsPerHour = secondsPerMinute * 60.0
+            constexpr double secondsPerHour = secondsPerMinute * 60.0;
             constexpr double secondsPerDay = secondsPerHour * 24.0;
             
             double timeToGoRemainder = timeToGo;

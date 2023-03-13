@@ -221,10 +221,17 @@ namespace osgEarth
                     }
                     ImGui::Separator();
 
-                    float sse = _mapNode->getScreenSpaceError();
-                    if (ImGui::SliderFloat("SSE", &sse, 1.0f, 200.0f))
+                    if (ImGuiLTable::Begin("LOD"))
                     {
-                        _mapNode->setScreenSpaceError(sse);
+                        float sse = _mapNode->getScreenSpaceError();
+                        if (ImGuiLTable::SliderFloat("SSE", &sse, 1.0f, 200.0f))
+                            _mapNode->setScreenSpaceError(sse);
+
+                        float lod_scale = camera(ri)->getLODScale();
+                        if (ImGuiLTable::SliderFloat("LOD Scale", &lod_scale, 0.1f, 4.0f))
+                            camera(ri)->setLODScale(lod_scale);
+
+                        ImGuiLTable::End();
                     }
 
                     ImGui::Separator();
@@ -272,10 +279,6 @@ namespace osgEarth
                                 stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "0");
                         }
                     }
-
-                    float lod_scale = camera(ri)->getLODScale();
-                    if (ImGui::SliderFloat("LOD Scale", &lod_scale, 0.1f, 4.0f))
-                        camera(ri)->setLODScale(lod_scale);
                 }
                 ImGui::End();
             }

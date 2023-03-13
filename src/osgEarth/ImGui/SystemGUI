@@ -131,8 +131,13 @@ namespace osgEarth
 
                     ImGui::Separator();
 
-                    if (ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 2.0f))
-                        dirtySettings();
+                    if (ImGuiLTable::Begin("FontScale"))
+                    {
+                        if (ImGuiLTable::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 2.0f))
+                            dirtySettings();
+
+                        ImGuiLTable::End();
+                    }
 
                     ImGui::Checkbox("Unref image data after apply",
                         &Registry::instance()->unRefImageDataAfterApply().mutable_value());

@@ -275,13 +275,17 @@ namespace osgEarth
                     if (_placingDitch)
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Click points; press ENTER to finish");
 
-                    ImGui::Separator();
-                    ImGui::SliderFloat("Width(m)", &_width, 1.0f, 50.0f);
-                    ImGui::SliderFloat("Height(m)", &_height, -10.0f, 10.0f);
-                    ImGui::SliderFloat("Rugged", &_rugged, 0.0f, 1.0f);
-                    ImGui::SliderFloat("Dense", &_dense, 0.0f, 1.0f);
-                    ImGui::SliderFloat("Lush", &_lush, 0.0f, 1.0f);
-                    ImGui::SliderFloat("Mix", &_lifemapMix, 0.0f, 1.0f);
+                    if (ImGuiLTable::Begin("TerrainEdit"))
+                    {
+                        ImGuiLTable::SliderFloat("Width(m)", &_width, 1.0f, 50.0f);
+                        ImGuiLTable::SliderFloat("Height(m)", &_height, -10.0f, 10.0f);
+                        ImGuiLTable::SliderFloat("Rugged", &_rugged, 0.0f, 1.0f);
+                        ImGuiLTable::SliderFloat("Dense", &_dense, 0.0f, 1.0f);
+                        ImGuiLTable::SliderFloat("Lush", &_lush, 0.0f, 1.0f);
+                        ImGuiLTable::SliderFloat("Mix", &_lifemapMix, 0.0f, 1.0f);
+
+                        ImGuiLTable::End();
+                    }
                     ImGui::Separator();
                     if (ImGui::Button("Undo") && _undoStack.size()>0)
                     {

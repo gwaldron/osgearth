@@ -244,6 +244,116 @@ namespace osgEarth
 #define REGISTER_OSGEARTH_IMGUI(NAME, FACTORY) \
     namespace osgEarth { namespace GUI { static osgEarth::GUI::GUIFactory::Delegate __oe_regimgui_ ## NAME ( #NAME , FACTORY ); } }
 
+namespace ImGuiLTable
+{
+    static bool Begin(const char* name)
+    {
+        bool ok = ImGui::BeginTable(name, 2, ImGuiTableFlags_SizingFixedFit);
+        if (ok) {
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_WidthStretch);
+        }
+        return ok;
+    }
+
+    static bool SliderFloat(const char* label, float* v, float v_min, float v_max)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::SliderFloat(s.c_str(), v, v_min, v_max);
+    }
+
+    static bool SliderFloat(const char* label, float* v, float v_min, float v_max, const char* format, ImGuiSliderFlags flags)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::SliderFloat(s.c_str(), v, v_min, v_max, format, flags);
+    }
+
+    static bool SliderInt(const char* label, int* v, int v_min, int v_max)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::SliderInt(s.c_str(), v, v_min, v_max);
+    }
+
+    static bool SliderInt(const char* label, int* v, int v_min, int v_max, const char* format, ImGuiSliderFlags flags)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::SliderInt(s.c_str(), v, v_min, v_max, format, flags);
+    }
+
+    static bool Checkbox(const char* label, bool* v)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::Checkbox(s.c_str(), v);
+    }
+
+    static bool BeginCombo(const char* label, const char* defaultItem)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::BeginCombo(s.c_str(), defaultItem);
+    }
+
+    static void EndCombo()
+    {
+        return ImGui::EndCombo();
+    }
+
+    static bool InputFloat(const char* label, float* v)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::InputFloat(s.c_str(), v);
+    }
+
+    template<typename...Args>
+    static void Text(const char* label, const char* format, Args...args)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        ImGui::Text(format, args...);
+    }
+
+    static void Section(const char* label)
+    {
+        ImGui::TableNextColumn();
+        ImGui::TextColored(ImVec4(1, 1, 0, 1), label);
+        ImGui::TableNextColumn();
+    }
+
+    static void End()
+    {
+        ImGui::EndTable();
+    }
+}
+
 namespace ImGuiUtil
 {
     static void Texture(osg::Texture2D* texture, osg::RenderInfo& renderInfo, unsigned int width = 0, unsigned int height = 0)

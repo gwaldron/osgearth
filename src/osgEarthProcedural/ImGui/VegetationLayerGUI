@@ -66,99 +66,97 @@ namespace osgEarth {
                 {
                     if (_veglayer.valid() && _veglayer->isOpen())
                     {
-                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Global LOD scales:");
-
-                        float near_scale = _veglayer->getNearLODScale();
-                        if (ImGui::SliderFloat("Near", &near_scale, 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
-                            _veglayer->setNearLODScale(near_scale);
-
-                        float far_scale = _veglayer->getFarLODScale();
-                        if (ImGui::SliderFloat("Far", &far_scale, 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
-                            _veglayer->setFarLODScale(far_scale);
-
-                        float padding = _veglayer->getLODTransitionPadding();
-                        if (ImGui::SliderFloat("LOD padding %", &padding, 0.0f, 1.0f))
-                            _veglayer->setLODTransitionPadding(padding);
-
-                        bool normalMaps = _veglayer->getUseImpostorNormalMaps();
-                        if (ImGui::Checkbox("Use impostor normal maps", &normalMaps))
-                            _veglayer->setUseImpostorNormalMaps(normalMaps);
-
-                        bool pbrMaps = _veglayer->getUseImpostorPBRMaps();
-                        if (ImGui::Checkbox("Use impostor PBR maps", &pbrMaps))
-                            _veglayer->setUseImpostorPBRMaps(pbrMaps);
-
-                        unsigned maxTex = _veglayer->getMaxTextureSize();
-                        const char* maxTexItems[] = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192" };
-                        static int maxTexIndex = 9;
-                        if (ImGui::BeginCombo("Max tex size", maxTexItems[maxTexIndex])) {
-                            for (int n = 0; n < IM_ARRAYSIZE(maxTexItems); n++) {
-                                const bool is_selected = (maxTexIndex == n);
-                                if (ImGui::Selectable(maxTexItems[n], is_selected)) {
-                                    maxTexIndex = n;
-                                    _veglayer->setMaxTextureSize(atoi(maxTexItems[maxTexIndex]));
-                                }
-                                if (is_selected)
-                                    ImGui::SetItemDefaultFocus();
-                            }
-                            ImGui::EndCombo();
-                        }
-
-                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Impostor visibility angles:");
-
-                        float bb_low = _veglayer->getImpostorLowAngle().as(Units::DEGREES);
-                        float bb_high = _veglayer->getImpostorHighAngle().as(Units::DEGREES);
-
-                        if (ImGui::SliderFloat("Low", &bb_low, 0.0f, 90.0f))
-                            _veglayer->setImpostorLowAngle(Angle(bb_low, Units::DEGREES));
-
-                        if (ImGui::SliderFloat("High", &bb_high, 0.0f, 90.0f))
-                            _veglayer->setImpostorHighAngle(Angle(bb_high, Units::DEGREES));
-
-                        ImGui::Separator();
-
-                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator (must hit Refresh):");
-
-                        int vi = 0;
-                        for(auto& iter : _veglayer->options().groups())
+                        if (ImGuiLTable::Begin("VegetationDetails"))
                         {
-                            auto& groupName = iter.first;
-                            auto& groupOptions = iter.second;
+                            float near_scale = _veglayer->getNearLODScale();
+                            if (ImGuiLTable::SliderFloat("Near LOD scale", &near_scale, 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+                                _veglayer->setNearLODScale(near_scale);
 
-                            ImGui::PushID(vi++);
+                            float far_scale = _veglayer->getFarLODScale();
+                            if (ImGuiLTable::SliderFloat("Far LOD scale", &far_scale, 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+                                _veglayer->setFarLODScale(far_scale);
 
-                            if (vi > 1)
-                                ImGui::Separator();
+                            float padding = _veglayer->getLODTransitionPadding();
+                            if (ImGuiLTable::SliderFloat("LOD padding", &padding, 0.0f, 1.0f))
+                                _veglayer->setLODTransitionPadding(padding);
 
-                            ImGui::Checkbox(
-                                groupName.c_str(),
-                                &groupOptions.enabled().mutable_value());
+                            float bb_low = _veglayer->getImpostorLowAngle().as(Units::DEGREES);
+                            if (ImGuiLTable::SliderFloat("Low impostor angle", &bb_low, 0.0f, 90.0f))
+                                _veglayer->setImpostorLowAngle(Angle(bb_low, Units::DEGREES));
 
-                            ImGui::SliderInt(
-                                "Instances per sqkm",
-                                &groupOptions.instancesPerSqKm().mutable_value(),
-                                1024, 1024000,
-                                "%d",
-                                ImGuiSliderFlags_Logarithmic);
+                            float bb_high = _veglayer->getImpostorHighAngle().as(Units::DEGREES);
+                            if (ImGuiLTable::SliderFloat("High impostor angle", &bb_high, 0.0f, 90.0f))
+                                _veglayer->setImpostorHighAngle(Angle(bb_high, Units::DEGREES));
 
-                            ImGui::SliderFloat(
-                                "Overlap %",
-                                &groupOptions.overlap().mutable_value(),
-                                0.0f, 1.0f,
-                                "%.2f");
+                            bool normalMaps = _veglayer->getUseImpostorNormalMaps();
+                            if (ImGuiLTable::Checkbox("Use impostor normal maps", &normalMaps))
+                                _veglayer->setUseImpostorNormalMaps(normalMaps);
 
-                            ImGui::SliderFloat(
-                                "Alpha cutoff",
-                                &groupOptions.alphaCutoff().mutable_value(),
-                                0.0f, 1.0f,
-                                "%.2f");
+                            bool pbrMaps = _veglayer->getUseImpostorPBRMaps();
+                            if (ImGuiLTable::Checkbox("Use impostor PBR maps", &pbrMaps))
+                                _veglayer->setUseImpostorPBRMaps(pbrMaps);
 
-                            ImGui::PopID();
+                            unsigned maxTex = _veglayer->getMaxTextureSize();
+                            const char* maxTexItems[] = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192" };
+                            static int maxTexIndex = 9;
+                            if (ImGuiLTable::BeginCombo("Max tex size", maxTexItems[maxTexIndex])) {
+                                for (int n = 0; n < IM_ARRAYSIZE(maxTexItems); n++) {
+                                    const bool is_selected = (maxTexIndex == n);
+                                    if (ImGui::Selectable(maxTexItems[n], is_selected)) {
+                                        maxTexIndex = n;
+                                        _veglayer->setMaxTextureSize(atoi(maxTexItems[maxTexIndex]));
+                                    }
+                                    if (is_selected)
+                                        ImGui::SetItemDefaultFocus();
+                                }
+                                ImGuiLTable::EndCombo();
+                            }
+
+                            ImGui::Separator();
+                            ImGuiLTable::Section("Layers:");
+                            int vi = 0;
+                            for (auto& iter : _veglayer->options().groups())
+                            {
+                                auto& groupName = iter.first;
+                                auto& groupOptions = iter.second;
+
+                                ImGui::PushID(vi++);
+
+                                if (vi > 1)
+                                    ImGui::Separator();
+
+                                ImGuiLTable::Checkbox(
+                                    groupName.c_str(),
+                                    &groupOptions.enabled().mutable_value());
+
+                                ImGuiLTable::SliderInt(
+                                    "  Instances per sqkm",
+                                    &groupOptions.instancesPerSqKm().mutable_value(),
+                                    1024, 1024000,
+                                    "%d",
+                                    ImGuiSliderFlags_Logarithmic);
+
+                                ImGuiLTable::SliderFloat(
+                                    "  Overlap %",
+                                    &groupOptions.overlap().mutable_value(),
+                                    0.0f, 1.0f,
+                                    "%.2f", 0);
+
+                                ImGuiLTable::SliderFloat(
+                                    "  Alpha cutoff",
+                                    &groupOptions.alphaCutoff().mutable_value(),
+                                    0.0f, 1.0f,
+                                    "%.2f", 0);
+
+                                ImGui::PopID();
+                            }
+
+                            ImGuiLTable::End();
                         }
 
                         ImGui::Separator();
 
-                        if (ImGui::Button("Regenerate Vegetation"))
+                        if (ImGui::Button("Regenerate"))
                         {
                             _veglayer->dirty();
                         }
@@ -169,14 +167,19 @@ namespace osgEarth {
                     }
 
                     ImGui::Separator();
+                    ImGuiLTable::Section("Biomes:");
 
-                    float blendPerc = _biolayer->getBlendPercentage();
-                    if (ImGui::SliderFloat("Biome feather %",
-                        &blendPerc,
-                        0.0f, 1.0f,
-                        "%.2f", ImGuiSliderFlags_Logarithmic))
+                    if (ImGuiLTable::Begin("VegBlend"))
                     {
-                        _biolayer->setBlendPercentage(blendPerc);
+                        float blendPerc = _biolayer->getBlendPercentage();
+                        if (ImGuiLTable::SliderFloat("Biome feather %",
+                            &blendPerc,
+                            0.0f, 1.0f,
+                            "%.2f", ImGuiSliderFlags_Logarithmic))
+                        {
+                            _biolayer->setBlendPercentage(blendPerc);
+                        }
+                        ImGuiLTable::End();
                     }
 
                     if (ImGui::Button("Refresh biomes"))
@@ -188,8 +191,6 @@ namespace osgEarth {
                         std::vector<const Layer*> layers = { _biolayer.get() };
                         _mapNode->getTerrainEngine()->invalidateRegion(layers, GeoExtent());
                     }
-
-                    ImGui::Separator();
 
                     ImGui::Checkbox("Show biome under mouse", &_showBiomeUnderMouse);
                     if (_showBiomeUnderMouse)

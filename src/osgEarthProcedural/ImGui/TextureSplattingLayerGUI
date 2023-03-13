@@ -99,61 +99,66 @@ namespace osgEarth {
 
                 ImGui::Begin(name(), visible());
                 {
-                    auto normalPower = _tslayer->getNormalMapPower();
-                    if (ImGui::SliderFloat("Normal power", &normalPower, 0.0f, 4.0f))
-                        _tslayer->setNormalMapPower(normalPower);
-
-                    auto dispacementDepth = _tslayer->getDisplacementDepth();
-                    if (ImGui::SliderFloat("Displacement depth", &dispacementDepth, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
-                        _tslayer->setDisplacementDepth(dispacementDepth);
-
-                    auto lifemapthreshold = _tslayer->getLifeMapMaskThreshold();
-                    if (ImGui::SliderFloat("LifeMap threshold", &lifemapthreshold, 0.0f, 10.0f, "%.1f", ImGuiSliderFlags_Logarithmic))
-                        _tslayer->setLifeMapMaskThreshold(lifemapthreshold);
-
-                    ImGui::SliderFloat("AO power", &_ao_power, 0.0f, 16.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("ao_power", _ao_power), 0x7);
-
-                    if (_tslayer->options().numLevels() > 1)
+                    if (ImGuiLTable::Begin("Splat"))
                     {
-                        ImGui::SliderFloat("Level blend start (m)", &_blend_start, 0.0f, 5000.0f);
-                        stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_start", _blend_start), 0x7);
+                        auto normalPower = _tslayer->getNormalMapPower();
+                        if (ImGuiLTable::SliderFloat("Normal power", &normalPower, 0.0f, 4.0f, "%.1f", 0))
+                            _tslayer->setNormalMapPower(normalPower);
 
-                        ImGui::SliderFloat("Level blend end (m)", &_blend_end, 0.0f, 5000.0f);
-                        stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_end", _blend_end), 0x7);
+                        auto dispacementDepth = _tslayer->getDisplacementDepth();
+                        if (ImGuiLTable::SliderFloat("Displacement depth", &dispacementDepth, 0.0f, 1.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+                            _tslayer->setDisplacementDepth(dispacementDepth);
 
-                        ImGui::SliderFloat("RGBH mix", &_blend_rgbh_mix, 0.0f, 1.0f);
-                        stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_rgbh_mix", _blend_rgbh_mix), 0x7);
+                        auto lifemapthreshold = _tslayer->getLifeMapMaskThreshold();
+                        if (ImGuiLTable::SliderFloat("LifeMap threshold", &lifemapthreshold, 0.0f, 10.0f, "%.1f", ImGuiSliderFlags_Logarithmic))
+                            _tslayer->setLifeMapMaskThreshold(lifemapthreshold);
 
-                        ImGui::SliderFloat("Normal mix", &_blend_normal_mix, 0.0f, 1.0f);
-                        stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_normal_mix", _blend_normal_mix), 0x7);
-                    }
+                        ImGuiLTable::SliderFloat("AO power", &_ao_power, 0.0f, 16.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("ao_power", _ao_power), 0x7);
 
-                    ImGui::SliderFloat("Global brightness", &_brightness, 0.0f, 4.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_splat_brightness", _brightness), 0x7);
+                        if (_tslayer->options().numLevels() > 1)
+                        {
+                            ImGuiLTable::SliderFloat("Level blend start (m)", &_blend_start, 0.0f, 5000.0f);
+                            stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_start", _blend_start), 0x7);
 
-                    ImGui::SliderFloat("Global contrast", &_contrast, 0.0f, 4.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_splat_contrast", _contrast), 0x7);
+                            ImGuiLTable::SliderFloat("Level blend end (m)", &_blend_end, 0.0f, 5000.0f);
+                            stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_end", _blend_end), 0x7);
+
+                            ImGuiLTable::SliderFloat("RGBH mix", &_blend_rgbh_mix, 0.0f, 1.0f);
+                            stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_rgbh_mix", _blend_rgbh_mix), 0x7);
+
+                            ImGuiLTable::SliderFloat("Normal mix", &_blend_normal_mix, 0.0f, 1.0f);
+                            stateset(ri)->addUniform(new osg::Uniform("oe_splat_blend_normal_mix", _blend_normal_mix), 0x7);
+                        }
+
+                        ImGuiLTable::SliderFloat("Global brightness", &_brightness, 0.0f, 4.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("oe_splat_brightness", _brightness), 0x7);
+
+                        ImGuiLTable::SliderFloat("Global contrast", &_contrast, 0.0f, 4.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("oe_splat_contrast", _contrast), 0x7);
 
 #if 0
-                    ImGui::SliderFloat("Density contrast boost", &_dense_contrast, -1.0f, 1.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_dense_contrast", _dense_contrast), 0x7);
+                        ImGuiLTable::SliderFloat("Density contrast boost", &_dense_contrast, -1.0f, 1.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("oe_dense_contrast", _dense_contrast), 0x7);
 
-                    ImGui::SliderFloat("Density brightness boost", &_dense_brightness, -1.0f, 1.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_dense_brightness", _dense_brightness), 0x7);
+                        ImGuiLTable::SliderFloat("Density brightness boost", &_dense_brightness, -1.0f, 1.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("oe_dense_brightness", _dense_brightness), 0x7);
 
-                    ImGui::SliderFloat("Lush brightness adjust", &_lush_brightness, -1.0f, 1.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_lush_brightness", _lush_brightness), 0x7);
+                        ImGuiLTable::SliderFloat("Lush brightness adjust", &_lush_brightness, -1.0f, 1.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("oe_lush_brightness", _lush_brightness), 0x7);
 
-                    ImGui::SliderFloat("Snow", &_snow, 0.0f, 1.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_snow", _snow), 0x7);
+                        ImGuiLTable::SliderFloat("Snow", &_snow, 0.0f, 1.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("oe_snow", _snow), 0x7);
 
-                    ImGui::SliderFloat("Snow bottom elev", &_snow_min_elev, 0.0f, 2500.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_snow_min_elev", _snow_min_elev), 0x7);
+                        ImGuiLTable::SliderFloat("Snow bottom elev", &_snow_min_elev, 0.0f, 2500.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("oe_snow_min_elev", _snow_min_elev), 0x7);
 
-                    ImGui::SliderFloat("Snow top elev", &_snow_max_elev, 2500.0f, 5000.0f);
-                    stateset(ri)->addUniform(new osg::Uniform("oe_snow_max_elev", _snow_max_elev), 0x7);
+                        ImGuiLTable::SliderFloat("Snow top elev", &_snow_max_elev, 2500.0f, 5000.0f);
+                        stateset(ri)->addUniform(new osg::Uniform("oe_snow_max_elev", _snow_max_elev), 0x7);
 #endif
+
+                        ImGuiLTable::End();
+                    }
 
                     bool hex_tiler = _tslayer->getUseHexTiler();
                     if (ImGui::Checkbox("Hex tile splatting", &hex_tiler))
@@ -181,15 +186,19 @@ namespace osgEarth {
 
                     float lm_max = _lifemap_direct ? 1.0f : 4.0f;
 
-                    ImGui::SliderFloat(_lifemap_direct ? "Dense" : "Dense multiplier", &_dense_power, 0.0f, lm_max);
-                    stateset(ri)->getOrCreateUniform("dense_power", osg::Uniform::FLOAT)->set(_dense_power);
+                    if (ImGuiLTable::Begin("LifeMapAdjust"))
+                    {
+                        ImGuiLTable::SliderFloat(_lifemap_direct ? "Dense" : "Dense multiplier", &_dense_power, 0.0f, lm_max);
+                        stateset(ri)->getOrCreateUniform("dense_power", osg::Uniform::FLOAT)->set(_dense_power);
 
-                    ImGui::SliderFloat(_lifemap_direct ? "Rugged" : "Rugged multiplier", &_rugged_power, 0.0f, lm_max);
-                    stateset(ri)->getOrCreateUniform("rugged_power", osg::Uniform::FLOAT)->set(_rugged_power);
+                        ImGuiLTable::SliderFloat(_lifemap_direct ? "Rugged" : "Rugged multiplier", &_rugged_power, 0.0f, lm_max);
+                        stateset(ri)->getOrCreateUniform("rugged_power", osg::Uniform::FLOAT)->set(_rugged_power);
 
-                    ImGui::SliderFloat(_lifemap_direct ? "Lush" : "Lush multiplier", &_lush_power, 0.0f, lm_max);
-                    stateset(ri)->getOrCreateUniform("lush_power", osg::Uniform::FLOAT)->set(_lush_power);
+                        ImGuiLTable::SliderFloat(_lifemap_direct ? "Lush" : "Lush multiplier", &_lush_power, 0.0f, lm_max);
+                        stateset(ri)->getOrCreateUniform("lush_power", osg::Uniform::FLOAT)->set(_lush_power);
 
+                        ImGuiLTable::End();
+                    }
                     unsigned maxTex = _tslayer->getMaxTextureSize();
                     const char* maxTexItems[] = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192" };
                     static int maxTexIndex = 9;
@@ -212,9 +221,3 @@ namespace osgEarth {
     }
 }
 #endif // OSGEARTH_PROCEDURAL_TEXTURESPLATTING_LAYER_GUI
-
-//REGISTER_OSGEARTH_IMGUI(TextureSplattingLayer, []()
-//    {
-//        return new osgEarth::Procedural::TextureSplattingLayerGUI();
-//    }
-//)

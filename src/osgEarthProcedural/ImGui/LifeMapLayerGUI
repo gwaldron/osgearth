@@ -128,32 +128,34 @@ namespace osgEarth
                     }
                 }
 
-                ImGui::Separator();
-                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Generator Settings");
-
                 LifeMapLayer::Options& o = _lifemap->options();
 
-                ImGui::TextColored(ImVec4(1, 1, 0, 1), "LifeMap contributions levels:");
                 ImGui::Separator();
-                ImGui::SliderFloat("Coverage contrib", &o.landCoverWeight().mutable_value(), 0.0f, 1.0f);
-                ImGui::Indent();
-                float value = o.landCoverBlur()->as(Units::METERS);
-                if (ImGui::SliderFloat("Coverage blur (m)", &value, 0.0f, 100.0f))
-                    o.landCoverBlur()->set(value, Units::METERS);
-                ImGui::Unindent();
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "LifeMap Generator levels:");
 
-                if (_lifemap->getColorLayer())
+                if (ImGuiLTable::Begin("LifeMap"))
                 {
-                    ImGui::SliderFloat("Imagery color contrib", &o.colorWeight().mutable_value(), 0.0f, 1.0f);
+                    ImGuiLTable::SliderFloat("Coverage contrib", &o.landCoverWeight().mutable_value(), 0.0f, 1.0f);
+                    if (o.landCoverWeight().value() > 0.0f)
+                    {
+                        float value = o.landCoverBlur()->as(Units::METERS);
+                        if (ImGuiLTable::SliderFloat("Coverage blur (m)", &value, 0.0f, 100.0f))
+                            o.landCoverBlur()->set(value, Units::METERS);
+                    }
+
+                    if (_lifemap->getColorLayer())
+                    {
+                        ImGuiLTable::SliderFloat("Imagery color contrib", &o.colorWeight().mutable_value(), 0.0f, 1.0f);
+                    }
+
+                    ImGuiLTable::SliderFloat("Terrain contrib", &o.terrainWeight().mutable_value(), 0.0f, 1.0f);
+                    //ImGuiLTable::SliderFloat("Slope contrib", &o.slopeIntensity().mutable_value(), 1.0f, 10.0f);
+                    //ImGuiLTable::SliderFloat("Slope cutoff", &o.slopeCutoff().mutable_value(), 0.0f, 1.0f);
+
+                    ImGuiLTable::SliderFloat("Noise contrib", &o.noiseWeight().mutable_value(), 0.0f, 1.0f);
+
+                    ImGuiLTable::End();
                 }
-
-                ImGui::SliderFloat("Terrain contrib", &o.terrainWeight().mutable_value(), 0.0f, 1.0f);
-                ImGui::Indent();
-                ImGui::SliderFloat("Slope contrib", &o.slopeIntensity().mutable_value(), 1.0f, 10.0f);
-                ImGui::SliderFloat("Slope cutoff", &o.slopeCutoff().mutable_value(), 0.0f, 1.0f);
-                ImGui::Unindent();
-
-                ImGui::SliderFloat("Noise contrib", &o.noiseWeight().mutable_value(), 0.0f, 1.0f);
 
                 if (ImGui::Button("Apply Changes"))
                 {

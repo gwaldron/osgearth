@@ -197,22 +197,24 @@ namespace osgEarth {
                         ImGuiLTable::SliderFloat(_lifemap_direct ? "Lush" : "Lush multiplier", &_lush_power, 0.0f, lm_max);
                         stateset(ri)->getOrCreateUniform("lush_power", osg::Uniform::FLOAT)->set(_lush_power);
 
-                        ImGuiLTable::End();
-                    }
-                    unsigned maxTex = _tslayer->getMaxTextureSize();
-                    const char* maxTexItems[] = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192" };
-                    static int maxTexIndex = 9;
-                    if (ImGui::BeginCombo("Max tex size", maxTexItems[maxTexIndex])) {
-                        for (int n = 0; n < IM_ARRAYSIZE(maxTexItems); n++) {
-                            const bool is_selected = (maxTexIndex == n);
-                            if (ImGui::Selectable(maxTexItems[n], is_selected)) {
-                                maxTexIndex = n;
-                                _tslayer->setMaxTextureSize(atoi(maxTexItems[maxTexIndex]));
+                        unsigned maxTex = _tslayer->getMaxTextureSize();
+                        const char* maxTexItems[] = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192", "16384" };
+                        unsigned maxTexIndex = 0;
+                        for (maxTexIndex = 0; maxTex > (unsigned)::atoi(maxTexItems[maxTexIndex]) && maxTexIndex < IM_ARRAYSIZE(maxTexItems)-1; ++maxTexIndex);
+                        if (ImGuiLTable::BeginCombo("Max tex size", maxTexItems[maxTexIndex])) {
+                            for (int n = 0; n < IM_ARRAYSIZE(maxTexItems); n++) {
+                                const bool is_selected = (maxTexIndex == n);
+                                if (ImGui::Selectable(maxTexItems[n], is_selected)) {
+                                    maxTexIndex = n;
+                                    _tslayer->setMaxTextureSize(atoi(maxTexItems[maxTexIndex]));
+                                }
+                                if (is_selected)
+                                    ImGui::SetItemDefaultFocus();
                             }
-                            if (is_selected)
-                                ImGui::SetItemDefaultFocus();
+                            ImGuiLTable::EndCombo();
                         }
-                        ImGui::EndCombo();
+
+                        ImGuiLTable::End();
                     }
                 }
                 ImGui::End();

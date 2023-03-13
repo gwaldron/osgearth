@@ -256,6 +256,7 @@ RadialLineOfSightNode::compute_line(osg::Node* node)
 
     //Get the "side" vector
     osg::Vec3d side = isProjected ? osg::Vec3d(1,0,0) : up ^ osg::Vec3d(0,0,1);
+    side.normalize();
 
     //Get the number of spokes
     double delta = osg::PI * 2.0 / (double)_numSpokes;
@@ -401,6 +402,7 @@ RadialLineOfSightNode::compute_fill(osg::Node* node)
 
     //Get the "side" vector
     osg::Vec3d side = isProjected ? osg::Vec3d(1,0,0) : up ^ osg::Vec3d(0,0,1);
+    side.normalize();
 
     //Get the number of spokes
     double delta = osg::PI * 2.0 / (double)_numSpokes;

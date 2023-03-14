@@ -129,6 +129,7 @@ in vec3 vp_Normal;
 in vec3 oe_position_vec;
 in vec3 oe_position_view;
 in vec2 oe_tex_uv;
+in vec3 oe_UpVectorView;
 in float oe_fade;
 flat in uint64_t oe_albedo_tex;
 flat in uint64_t oe_normal_tex;
@@ -262,6 +263,7 @@ void oe_chonk_default_fragment(inout vec4 color)
 
     //pixel_normal = vec3(0, 0, 1); // testing
 
+
     mat3 TBN = make_tbn(
         normalize(normal_view),
         oe_position_view,
@@ -272,8 +274,9 @@ void oe_chonk_default_fragment(inout vec4 color)
     if (oe_normal_technique == NT_ZAXIS)
     {
         // attenuate the normal to a z-up orientation
+        vec3 world_up = gl_NormalMatrix * vec3(0,0,1);
         vec3 face_up = TBN[1].xyz;
-        vp_Normal = normalize(mix(vp_Normal, face_up, oe_normal_attenuation));
+        vp_Normal = normalize(mix(world_up, face_up, 0.25));
     }
 
     if (oe_pbr_tex > 0)

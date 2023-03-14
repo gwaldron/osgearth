@@ -915,11 +915,18 @@ VegetationLayer::configureImpostor(
                     { 0, ymin, b.zMax() }
                 };
 
+#if 0
                 osg::Vec3f normals[8] = {
                     {-1,0,1}, {1,0,1}, {1,0,2}, {-1,0,2},
                     {0,-1,1}, {0,1,1}, {0,1,2}, {0,-1,2}
                 };
                 for (auto& n : normals) n.normalize();
+#else
+                osg::Vec3f normals[8] = {
+                    {0,1,0}, {0,1,0}, {0,1,0}, {0,1,0},
+                    {1,0,0}, {1,0,0}, {1,0,0}, {1,0,0}
+                };
+#endif
 
                 const osg::Vec2f uvs[8] = {
                     {0,0},{1,0},{1,1},{0,1},

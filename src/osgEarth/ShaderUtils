@@ -77,11 +77,11 @@ namespace osgEarth { namespace Util
         };
 
         static std::unordered_map<
-            std::string, 
+            UID,
             PreCallbackInfo> _pre_callbacks;
 
         static std::unordered_map<
-            std::string,
+            UID,
             PostCallbackInfo> _post_callbacks;
     };
 

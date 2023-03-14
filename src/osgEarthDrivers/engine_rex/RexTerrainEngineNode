@@ -200,6 +200,7 @@ namespace osgEarth { namespace REX
         unsigned _frameLastUpdated;
         FrameClock _clock;
         std::atomic_bool _updatedThisFrame;
+        UID _ppUID;
 
         void installColorFilters(VirtualProgram*);
     };

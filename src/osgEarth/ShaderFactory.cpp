@@ -22,6 +22,7 @@
 #include "Capabilities"
 #include "GLUtils"
 #include "Threading"
+#include "Registry"
 
 #include <sstream>
 
@@ -94,56 +95,34 @@ ShaderFactory::clearProcessorCallbacks()
     ShaderPreProcessor::_post_callbacks.clear();
 }
 
-void
+UID
 ShaderFactory::addPreProcessorCallback(
-    osg::Referenced* host,
-    std::function<void(std::string&, osg::Referenced*) > cb)
-{
-    static int nameGen = 0;
-    std::ostringstream name;
-    name << "__oesf_" << nameGen++;
-    addPreProcessorCallback(name.str(), host, cb);
-}
-
-void
-ShaderFactory::addPreProcessorCallback(
-    const std::string& name,
     osg::Referenced* host,
     std::function<void(std::string&, osg::Referenced*)> cb)
-{    
-    ShaderPreProcessor::_pre_callbacks[name] = { host, cb };
+{  
+    UID uid = osgEarth::createUID();
+    ShaderPreProcessor::_pre_callbacks[uid] = { host, cb };
 }
 
 void
-ShaderFactory::removePreProcessorCallback(const std::string& name)
+ShaderFactory::removePreProcessorCallback(UID uid)
 {
-    ShaderPreProcessor::_pre_callbacks.erase(name);
+    ShaderPreProcessor::_pre_callbacks.erase(uid);
 }
 
-void
+UID
 ShaderFactory::addPostProcessorCallback(
     osg::Referenced* host,
     std::function<void(osg::Shader*, osg::Referenced*)> cb)
 {
-    static int nameGen = 0;
-    std::ostringstream name;
-    name << "__oesf_" << nameGen++;
-    addPostProcessorCallback(name.str(), host, cb);
+    UID uid = osgEarth::createUID();
+    ShaderPreProcessor::_post_callbacks[uid] = { host, cb };
 }
 
 void
-ShaderFactory::addPostProcessorCallback(
-    const std::string& name,
-    osg::Referenced* host,
-    std::function<void(osg::Shader*, osg::Referenced*)> cb)
+ShaderFactory::removePostProcessorCallback(UID uid)
 {
-    ShaderPreProcessor::_post_callbacks[name] = { host, cb };
-}
-
-void
-ShaderFactory::removePostProcessorCallback(const std::string& name)
-{
-    ShaderPreProcessor::_post_callbacks.erase(name);
+    ShaderPreProcessor::_post_callbacks.erase(uid);
 }
 
 

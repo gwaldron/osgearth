@@ -134,7 +134,8 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     _stateUpdateRequired  ( false ),
     _renderModelUpdateRequired( false ),
     _morphTerrainSupported(true),
-    _frameLastUpdated(0u)
+    _frameLastUpdated(0u),
+    _ppUID(0)
 {
     // activate update traversals for this node.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
@@ -176,7 +177,8 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
 
 RexTerrainEngineNode::~RexTerrainEngineNode()
 {
-    OE_DEBUG << LC << "~RexTerrainEngineNode\n";
+    if (_ppUID > 0)
+        Registry::instance()->getShaderFactory()->removePreProcessorCallback(_ppUID);
 }
 
 void
@@ -372,9 +374,12 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     // preprocess shaders to parse the "oe_use_shared_layer" directive
     // for shared layer samplers
+    if (_ppUID > 0)
+    {
+        Registry::instance()->getShaderFactory()->removePreProcessorCallback(_ppUID);
+    }
 
-    Registry::instance()->getShaderFactory()->addPreProcessorCallback(
-        "RexTerrainEngineNode",
+    _ppUID = Registry::instance()->getShaderFactory()->addPreProcessorCallback(
         this,
         [](std::string& source, osg::Referenced* host)
         {

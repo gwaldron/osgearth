@@ -932,6 +932,13 @@ namespace osgEarth {
                         ImGui::Separator();
                     }
                 }
+
+                if (ImGui::Button("Refresh"))
+                {
+                    _mapNode = nullptr;
+                    _mapRevision = 0;
+                }
+
                 ImGui::End();
             }
 

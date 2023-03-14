@@ -263,8 +263,8 @@ ShaderPreProcessor::applySupportForNoFFP(osg::Shader* shader)
 }
 #endif
 
-std::unordered_map<std::string, ShaderPreProcessor::PreCallbackInfo> ShaderPreProcessor::_pre_callbacks;
-std::unordered_map<std::string, ShaderPreProcessor::PostCallbackInfo> ShaderPreProcessor::_post_callbacks;
+std::unordered_map<UID, ShaderPreProcessor::PreCallbackInfo> ShaderPreProcessor::_pre_callbacks;
+std::unordered_map<UID, ShaderPreProcessor::PostCallbackInfo> ShaderPreProcessor::_post_callbacks;
 
 void
 ShaderPreProcessor::runPre(std::string& source)

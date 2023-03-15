@@ -102,6 +102,7 @@ ShaderFactory::addPreProcessorCallback(
 {  
     UID uid = osgEarth::createUID();
     ShaderPreProcessor::_pre_callbacks[uid] = { host, cb };
+    return uid;
 }
 
 void
@@ -117,6 +118,7 @@ ShaderFactory::addPostProcessorCallback(
 {
     UID uid = osgEarth::createUID();
     ShaderPreProcessor::_post_callbacks[uid] = { host, cb };
+    return uid;
 }
 
 void

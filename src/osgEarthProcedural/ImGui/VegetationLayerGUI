@@ -4,6 +4,8 @@
 #include <osgEarthProcedural/Export>
 #include <osgEarthProcedural/VegetationLayer>
 #include <osgEarthProcedural/BiomeLayer>
+#include <osgEarthProcedural/VegetationFeatureGenerator>
+#include <osgEarth/FeatureNode>
 #include <osgEarth/ImGui/ImGui>
 
 namespace osgEarth {
@@ -17,18 +19,21 @@ namespace osgEarth {
             bool _forceGenerate;
             bool _manualBiomes;
             bool _showBiomeUnderMouse;
+            bool _showPlacements;
             std::unordered_map<const Biome*, bool> _isManualBiomeActive;
             osg::observer_ptr<BiomeLayer> _biolayer;
             osg::observer_ptr<VegetationLayer> _veglayer;
             osg::observer_ptr<MapNode> _mapNode;
             Future<const Biome*> _biomeUnderMouse;
             TileKey _biomeUnderMouseKey;
+            osg::ref_ptr<FeatureNode> _placementNode;
 
             VegetationLayerGUI() : GUI::BaseGUI("Vegetation"),
                 _first(true),
                 _forceGenerate(false),
                 _manualBiomes(false),
-                _showBiomeUnderMouse(false)
+                _showBiomeUnderMouse(false),
+                _showPlacements(false)
             {
                 //nop
             }
@@ -224,6 +229,43 @@ namespace osgEarth {
                         }
                     }
 
+                    if (ImGui::Checkbox("Show asset bounding boxes", &_showPlacements))
+                    {
+                        if (_showPlacements)
+                        {
+                            auto vp = camera(ri)->getViewport();
+                            GeoPoint p = _mapNode->getGeoPointUnderMouse(view(ri), 0.5f*vp->width(), 0.5f*vp->height());
+                            if (p.isValid())
+                            {
+                                auto lod = _veglayer->options().group("trees").lod().get();
+                                TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p, lod);
+                                VegetationFeatureGenerator gen;
+                                gen.setMap(_mapNode->getMap());
+                                gen.setLayer(_veglayer.get());
+                                FeatureList features;
+                                gen.getFeatures(key.getExtent(), features);
+
+                                Style s;
+                                s.getOrCreate<ModelSymbol>()->url()->setLiteral("D:/data/splat/assets/models/unitbox.osg");
+                                s.getOrCreate<ModelSymbol>()->scaleX() = NumericExpression("feature.properties.width");
+                                s.getOrCreate<ModelSymbol>()->scaleY() = NumericExpression("feature.properties.width");
+                                s.getOrCreate<ModelSymbol>()->scaleZ() = NumericExpression("feature.properties.height");
+
+                                if (_placementNode.valid())
+                                    _placementNode->getParent(0)->removeChild(_placementNode.get());
+
+                                _placementNode = new FeatureNode(features, s);
+                                _mapNode->addChild(_placementNode);
+                            }
+                        }
+                        else if (_placementNode.valid())
+                        {
+                            if (_placementNode.valid())
+                                _placementNode->getParent(0)->removeChild(_placementNode.get());
+                            _placementNode = nullptr;
+                        }
+                    }
+
                     ImGui::Separator();
 
                     if (ImGui::CollapsingHeader("All Biomes"))
@@ -300,7 +342,7 @@ namespace osgEarth {
                             sprintf(buf, "[%s] %s", biome->id().c_str(), biome->name()->c_str());
                             if (ImGui::TreeNode(buf))
                             {
-                                for(auto& iter : _veglayer->options().groups())
+                                for (auto& iter : _veglayer->options().groups())
                                 {
                                     auto& groupName = iter.first;
 
@@ -367,7 +409,7 @@ namespace osgEarth {
                         GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
                         TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p.x(), p.y(), tile->getKey().getLOD());
                         key = _biolayer->getBestAvailableTileKey(key, false);
-                            
+
                         if (key.valid())
                         {
                             _biomeUnderMouseKey = key;

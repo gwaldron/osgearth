@@ -229,18 +229,34 @@ struct ProgressReporter : public osgEarth::ProgressCallback
             double timeSoFar = osg::Timer::instance()->delta_s(_start, now);
             double projectedTotalTime = timeSoFar / percentage;
             double timeToGo = projectedTotalTime - timeSoFar;
-            double minsToGo = timeToGo / 60.0;
-            double secsToGo = fmod(timeToGo, 60.0);
-            double minsTotal = projectedTotalTime / 60.0;
-            double secsTotal = fmod(projectedTotalTime, 60.0);
-
+            
+            constexpr double secondsPerMinute = 60.0;
+            constexpr double secondsPerHour = secondsPerMinute * 60.0;
+            constexpr double secondsPerDay = secondsPerHour * 24.0;
+            
+            double timeToGoRemainder = timeToGo;
+            double daysToGo = timeToGoRemainder / secondsPerDay;
+            timeToGoRemainder = fmod(timeToGoRemainder, secondsPerDay);
+            double hoursToGo = timeToGoRemainder / secondsPerHour;
+            timeToGoRemainder = fmod(timeToGoRemainder, secondsPerHour);
+            double minsToGo = timeToGoRemainder / secondsPerMinute;
+            double secsToGo = fmod(timeToGoRemainder, secondsPerMinute);
+            
+            double projectedTotalTimeRemainder = projectedTotalTime;
+            double daysTotal = projectedTotalTimeRemainder / secondsPerDay;
+            projectedTotalTimeRemainder = fmod(projectedTotalTimeRemainder, secondsPerDay);
+            double hoursTotal = projectedTotalTimeRemainder / secondsPerHour;
+            projectedTotalTimeRemainder = fmod(projectedTotalTimeRemainder, secondsPerHour);
+            double minsTotal = projectedTotalTimeRemainder / secondsPerMinute;
+            double secsTotal = fmod(projectedTotalTimeRemainder, secondsPerMinute);
+            
             std::cout
                 << std::fixed
                 << std::setprecision(1) << "\r"
                 << (int)current << "/" << (int)total
                 << " " << int(100.0f*percentage) << "% complete, "
-                << (int)minsTotal << "m" << (int)secsTotal << "s projected, "
-                << (int)minsToGo << "m" << (int)secsToGo << "s remaining          "
+                << (int)daysTotal << "d" << (int)hoursTotal << "h" << (int)minsTotal << "m" << (int)secsTotal << "s projected, "
+                << (int)daysToGo << "d" << (int)hoursToGo << "h" << (int)minsToGo << "m" << (int)secsToGo << "s remaining          "
                 << std::flush;
 
             if (percentage >= 100.0f)

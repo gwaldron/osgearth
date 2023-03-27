@@ -23,7 +23,14 @@ find_library(osgEarth_LIBRARY
     HINTS ${${XPREFIX}_LIBRARY_DIRS}
 )
 
+set(OSGEARTH_NAMES osgEarthd)
+find_library(osgEarth_LIBRARY_DEBUG
+    NAMES ${OSGEARTH_NAMES}
+    HINTS ${${XPREFIX}_LIBRARY_DIRS}
+)
+
 set(osgEarth_LIBRARIES    ${osgEarth_LIBRARY})
+set(osgEarth_LIBRARIES_DEBUG    ${osgEarth_LIBRARY_DEBUG})
 set(osgEarth_LIBRARY_DIRS ${${XPREFIX}_LIBRARY_DIRS})
 set(osgEarth_LIBRARY_DIR  ${osgEarth_LIBRARY_DIRS})
 set(osgEarth_INCLUDE_DIRS ${osgEarth_INCLUDE_DIR})
@@ -32,6 +39,7 @@ set(osgEarth_LDFLAGS      ${${XPREFIX}_LDFLAGS})
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(osgEarth DEFAULT_MSG
     osgEarth_LIBRARY
+	osgEarth_LIBRARY_DEBUG    
     osgEarth_INCLUDE_DIR
 )
 
@@ -52,6 +60,7 @@ endif()
 message(STATUS "osgEarth_FOUND: ${osgEarth_FOUND}")
 message(STATUS "osgEarth_INCLUDE_DIRS: ${osgEarth_INCLUDE_DIRS}")
 message(STATUS "osgEarth_LIBRARIES: ${osgEarth_LIBRARIES}")
+message(STATUS "osgEarth_LIBRARIES_DEBUG: ${osgEarth_LIBRARIES_DEBUG}")
 message(STATUS "osgEarth_LDFLAGS: ${osgEarth_LDFLAGS}")
 message(STATUS "osgEarth_DEFINITIONS: ${osgEarth_DEFINITIONS}")
 

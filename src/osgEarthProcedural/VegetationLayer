@@ -94,6 +94,9 @@ namespace osgEarth { namespace Procedural
             //! default = INT_MAX (no limit)
             OE_OPTION(unsigned, maxTextureSize);
 
+            //! OSG render bin number for vegetation render bins
+            OE_OPTION(int, renderBinNumber);
+
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
                 //! Whether to render this group at all

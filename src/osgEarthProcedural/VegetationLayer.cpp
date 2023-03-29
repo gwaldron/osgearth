@@ -93,6 +93,7 @@ VegetationLayer::Options::getConfig() const
     conf.set("use_impostor_normal_maps", useImpostorNormalMaps());
     conf.set("use_impostor_pbr_maps", useImpostorPBRMaps());
     conf.set("max_texture_size", maxTextureSize());
+    conf.set("render_bin_number", renderBinNumber());
 
     Config layers("layers");
     for (auto group_name : { GROUP_TREES, GROUP_BUSHES, GROUP_UNDERGROWTH })
@@ -168,6 +169,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     useImpostorPBRMaps().setDefault(true);
     useRGCompressedNormalMaps().setDefault(true);
     maxTextureSize().setDefault(INT_MAX);
+    renderBinNumber().setDefault(3);
 
     biomeLayer().get(conf, "biomes_layer");
 
@@ -180,6 +182,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     conf.get("use_impostor_normal_maps", useImpostorNormalMaps());
     conf.get("use_impostor_pbr_maps", useImpostorPBRMaps());
     conf.get("max_texture_size", maxTextureSize());
+    conf.get("render_bin_number", renderBinNumber());
 
     // some nice default group settings
     groups()[GROUP_TREES].lod().setDefault(14);
@@ -1621,7 +1624,13 @@ VegetationLayer::createDrawable(
     const osg::Vec3f ZAXIS(0, 0, 1);
 
     // finally, assemble the drawable.
-    osg::ref_ptr<ChonkDrawable> result = new ChonkDrawable();
+    osg::ref_ptr<ChonkDrawable> result;
+
+    if (options().renderBinNumber().isSet())
+        result = new ChonkDrawable(options().renderBinNumber().value());
+    else
+        result = new ChonkDrawable();
+
     result->setName(key.str() + " Vegetation");
 
     for (auto& p : placements)

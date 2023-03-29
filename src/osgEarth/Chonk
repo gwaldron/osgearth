@@ -200,7 +200,9 @@ namespace osgEarth
         using Vector = std::vector<osg::ref_ptr<ChonkDrawable>>;
 
     public:
-        ChonkDrawable();
+        //! Construct a default drawable
+        //! @param renderBinNumber OSG render bin number for the drawable
+        ChonkDrawable(int render_bin_number = 3);
 
         //! Adds one instance of a chonk to the drawable.
         void add(Chonk::Ptr value);
@@ -233,7 +235,11 @@ namespace osgEarth
         //! Default is true.
         void setUseGPUCulling(bool value);
 
-        //! Installs a basic chonk-rendering shader on a stateset.
+        //! Render bin number to use for this drawable
+        void setRenderBinNumber(int value);
+        int getRenderBinNumber() const;
+
+        //! Installs a basic chonk-rendering shader on a drawable.
         static void installRenderBin(ChonkDrawable*);
 
     public:
@@ -267,6 +273,7 @@ namespace osgEarth
         float _fadeNear, _fadeFar;
         double _birthday;
         float _alphaCutoff;
+        int _renderBinNumber;
 
         //! GL objects (and supporting data structures) that must
         //! be stored and managed for each unique GL state/context,

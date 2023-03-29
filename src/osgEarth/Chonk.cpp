@@ -538,13 +538,14 @@ namespace
     };
 }
 
-ChonkDrawable::ChonkDrawable() :
+ChonkDrawable::ChonkDrawable(int renderBinNumber) :
     osg::Drawable(),
     _proxy_dirty(true),
     _gpucull(true),
     _fadeNear(0.0f),
     _fadeFar(0.0f),
-    _birthday(-1.0f)
+    _birthday(-1.0f),
+    _renderBinNumber(renderBinNumber)
 {
     setName(typeid(*this).name());
     setUseDisplayList(false);
@@ -557,6 +558,19 @@ ChonkDrawable::ChonkDrawable() :
 ChonkDrawable::~ChonkDrawable()
 {
     //nop
+}
+
+void
+ChonkDrawable::setRenderBinNumber(int value)
+{
+    _renderBinNumber = value;
+    installRenderBin(this);
+}
+
+int
+ChonkDrawable::getRenderBinNumber() const
+{
+    return _renderBinNumber;
 }
 
 void
@@ -590,29 +604,37 @@ ChonkDrawable::setAlphaCutoff(float value)
 void
 ChonkDrawable::installRenderBin(ChonkDrawable* d)
 {
-    static osg::ref_ptr<osg::StateSet> s_ss;
-    static osg::ref_ptr<VirtualProgram> s_vp;
-    static Mutex s_mutex;
+    // map of render bin number to stateset
+    static vector_map<int, osg::ref_ptr<osg::StateSet>> s_stateSets;
 
-    if (!s_vp.valid())
+    // globally shared VP
+    static osg::ref_ptr<VirtualProgram> s_vp;
+
+    static Mutex s_mutex;
+    ScopedMutexLock lock(s_mutex);
+
+    auto& ss = s_stateSets[d->getRenderBinNumber()];
+    if (!ss.valid())
     {
-        ScopedMutexLock lock(s_mutex);
+        ss = new osg::StateSet();
+        ss->setDataVariance(ss->STATIC);
+        ss->setRenderBinDetails(d->getRenderBinNumber(), "ChonkBin",
+            (osg::StateSet::RenderBinMode)(ss->USE_RENDERBIN_DETAILS | ss->PROTECTED_RENDERBIN_DETAILS));
+        
+        // create the (shared) shader program if necessary:
         if (!s_vp.valid())
         {
-            s_ss = new osg::StateSet();
-            s_ss->setDataVariance(s_ss->STATIC);
-            s_ss->setRenderBinDetails(818, "ChonkBin", (osg::StateSet::RenderBinMode)
-                (osg::StateSet::USE_RENDERBIN_DETAILS | osg::StateSet::PROTECTED_RENDERBIN_DETAILS));
-
-            s_vp = VirtualProgram::getOrCreate(s_ss.get());
+            s_vp = new VirtualProgram();
+            s_vp->setInheritShaders(true);
             s_vp->setName("ChonkDrawable");
-
             Shaders pkg;
             pkg.load(s_vp.get(), pkg.Chonk);
         }
+
+        ss->setAttribute(s_vp);
     }
 
-    d->setStateSet(s_ss.get());    
+    d->setStateSet(ss);
 }
 
 void

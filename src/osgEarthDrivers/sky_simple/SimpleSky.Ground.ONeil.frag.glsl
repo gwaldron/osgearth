@@ -100,7 +100,6 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 
 vec3 FresnelSchlick(float cosTheta, vec3 F0)
 {
-    //return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
     return F0 + (1.0 - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
 }
 
@@ -111,10 +110,10 @@ void atmos_fragment_main_pbr(inout vec4 color)
     return;
 #endif
 
-    vec3 albedo = color.rgb;
+    // SRGB to linear for PBR compute:
+    vec3 albedo = pow(color.rgb, vec3(2.2));
 
     vec3 N = normalize(vp_Normal);
-    //vec3 N = normalize(gl_FrontFacing ? vp_Normal : -vp_Normal);
     vec3 V = normalize(-vp_VertexView);
 
     vec3 F0 = vec3(0.04);
@@ -159,17 +158,19 @@ void atmos_fragment_main_pbr(inout vec4 color)
     color.rgb = color.rgb / (color.rgb + vec3(1.0));
 
     // boost:
-    color.rgb *= 2.2;
+    //color.rgb *= 2.2;
 
     // add in the haze
-    color.rgb += atmos_color;
+    color.rgb += pow(atmos_color, vec3(2.2)); // add in the (SRGB) color
 
     // exposure:
     color.rgb = 1.0 - exp(-oe_sky_exposure * color.rgb);
-    //color.rgb = 1.0 - exp(-oe_sky_exposure * 0.33 * color.rgb);
 
     // brightness and contrast
     color.rgb = ((color.rgb - 0.5)*oe_pbr.contrast + 0.5) * oe_pbr.brightness;
+
+    // linear back to SRGB
+    color.rgb = pow(color.rgb, vec3(1.0/2.2));
 }
 
 #else

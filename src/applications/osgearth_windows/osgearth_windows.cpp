@@ -61,7 +61,7 @@ struct App
         _viewer(args),
         _size(800)
     {
-        _viewer.setThreadingModel(_viewer.SingleThreaded);
+        //_viewer.setThreadingModel(_viewer.SingleThreaded);
         _sharedGC = args.read("--shared");
     }
 
@@ -261,12 +261,15 @@ main(int argc, char** argv)
 
     auto view = app._viewer.getView(0);
 
-    // install the Gui.
-    GUI::ApplicationGUI* gui = new GUI::ApplicationGUI();
-    gui->addAllBuiltInTools();
-    gui->add(new ViewerPanel(app), true);
-    gui->add(new GCPanel(app), true);
-    view->getEventHandlers().push_front(gui);
+    if (arguments.read("--gui"))
+    {
+        // install the Gui.
+        GUI::ApplicationGUI* gui = new GUI::ApplicationGUI();
+        gui->addAllBuiltInTools();
+        gui->add(new ViewerPanel(app), true);
+        gui->add(new GCPanel(app), true);
+        view->getEventHandlers().push_front(gui);
+    }
 
     OE_NOTICE << "Press 'n' to create a new view" << std::endl;
     EventRouter::get(view).onKeyPress(EventRouter::KEY_N, [&]() { 
@@ -288,7 +291,7 @@ main(int argc, char** argv)
             // Set the scene data to null before the View is destroyed when the vector is cleared outside of this loop to prevent
             // osg from sending down a releaseGLObjects with a null state on camera destruction.  We want
             // releaseGLObjects to get called on the view that is being removed, not all of them.
-            app._viewsToRemove[i]->setSceneData(nullptr);         
+            app._viewsToRemove[i]->setSceneData(nullptr);
         }
         app._viewsToRemove.clear();
 

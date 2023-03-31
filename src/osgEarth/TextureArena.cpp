@@ -580,8 +580,13 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
         OE_SOFT_ASSERT_AND_RETURN(tex != nullptr, -1);
     }
 
+    // Lock the respository - we do that early because if you have multiple
+    // views/gcs, it's very possible that both will try to add the same
+    // texture in parallel.
+    ScopedMutexLock lock(_m);
+
     // First check whether it's already there; if so, return the index.
-    int existingIndex = find(tex);
+    int existingIndex = find_no_lock(tex);
     if (existingIndex >= 0)
         return existingIndex;
 
@@ -656,9 +661,6 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
         if (tex->_globjects.size() == 0)
             return -1;
     }
-
-    // Now, lock the repo and find a place for it.
-    ScopedMutexLock lock(_m);
 
     int index = -1;
 

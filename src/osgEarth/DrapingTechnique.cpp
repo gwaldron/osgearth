@@ -507,7 +507,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         if (Registry::capabilities().supportsGLSL(140u))
         {
             //Blend Func Separate is only available on OpenGL 1.4 and above
-            blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            blendFunc = new osg::BlendFunc(GL_SRC_COLOR, GL_ONE_MINUS_SRC_COLOR, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         }
         else
         {

@@ -2002,6 +2002,81 @@ namespace
     };
 
     template<>
+    struct ColorReader<GL_COMPRESSED_RED_GREEN_RGTC2_EXT, float>
+    {
+        // RGTC2 == BC5
+        // https://learn.microsoft.com/en-us/windows/win32/direct3d10/d3d10-graphics-programming-guide-resources-block-compression#bc5
+        static void read(const ImageUtils::PixelReader* pr, osg::Vec4f& out, int s, int t, int r, int m)
+        {
+            static const int BLOCK_SIZE_BYTES = 16;
+
+            unsigned blocksPerRow = pr->_image->s() / 4;
+            unsigned bs = s / 4, bt = t / 4;
+            unsigned blockStart = (bt * blocksPerRow + bs) * BLOCK_SIZE_BYTES;
+            int ls = s - 4 * bs, lt = t - 4 * bt;
+            int index = ls + (4 * lt);
+
+            const std::uint64_t* block_ptr = (const std::uint64_t*)(pr->data() + blockStart);
+
+            for (int n = 0; n <= 1; n++)
+            {
+                const std::uint64_t& block = *block_ptr++;
+
+                int i = (block >> (16 + (3 * index))) & 0x07;
+
+                float palette[2] = {
+                    float((block >> 0) & 0xFF) / 255.0f,
+                    float((block >> 8) & 0xFF) / 255.0f
+                };
+
+                out[n] =
+                    i == 0 ? palette[0] :
+                    i == 1 ? palette[1] :
+                    palette[0] > palette[1] ? (palette[0] * (float)(8 - i) + palette[1] * (float)(i - 1)) / 7.0f :
+                    i == 6 ? 0.0f :
+                    i == 7 ? 1.0f :
+                    (palette[0] * (float)(6 - i) + palette[1] * (float)(i - 1)) / 5.0f;
+            }
+
+            out[2] = 0.0;
+            out[3] = 1.0;
+
+#if 0 // decodes an entire block - left here as a reference
+                float palette[8];
+                palette[0] = float((block >> 0) & 0xFF) / 255.0f;
+                palette[1] = float((block >> 8) & 0xFF) / 255.0f;
+
+                if (palette[0] > palette[1]) {
+                    palette[2] = (6.0f * palette[0] + 1.0f * palette[1]) / 7.0f;
+                    palette[3] = (5.0f * palette[0] + 2.0f * palette[1]) / 7.0f;
+                    palette[4] = (4.0f * palette[0] + 3.0f * palette[1]) / 7.0f;
+                    palette[5] = (3.0f * palette[0] + 4.0f * palette[1]) / 7.0f;
+                    palette[6] = (2.0f * palette[0] + 5.0f * palette[1]) / 7.0f;
+                    palette[7] = (1.0f * palette[0] + 6.0f * palette[1]) / 7.0f;
+                }
+                else {
+                    palette[2] = (4.0f * palette[0] + 1.0 * palette[1]) / 5.0f;
+                    palette[3] = (3.0f * palette[0] + 2.0 * palette[1]) / 5.0f;
+                    palette[4] = (2.0f * palette[0] + 3.0 * palette[1]) / 5.0f;
+                    palette[5] = (1.0f * palette[0] + 4.0 * palette[1]) / 5.0f;
+                    palette[6] = 0.0f;
+                    palette[7] = 1.0f;
+                }
+
+                // decodes the whole block of indices (left here for reference)
+                int indices[16];
+                block >>= 16;
+                for (int i = 0; i < 16; ++i) {
+                    indices[i] = block & 0x07;
+                    block >>= 3;
+                }
+
+                out[n] = palette[indices[i]];
+#endif
+        }
+    };
+
+    template<>
     struct ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>
     {
         static void read(const ImageUtils::PixelReader* pr, osg::Vec4f& out, int s, int t, int r, int m)
@@ -2206,6 +2281,9 @@ namespace
             break;
         case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
             return &ColorReader<GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, GLubyte>::read;
+            break;
+        case GL_COMPRESSED_RED_GREEN_RGTC2_EXT:
+            return &ColorReader<GL_COMPRESSED_RED_GREEN_RGTC2_EXT, float>::read;
             break;
         default:
             return 0L;

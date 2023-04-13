@@ -19,7 +19,8 @@
 #ifndef OSGEARTH_IMGUI_TERRAIN_EDIT_GUI
 #define OSGEARTH_IMGUI_TERRAIN_EDIT_GUI
 
-#include "ImGui"
+#include <osgEarthProcedural/LifeMapLayer>
+#include <osgEarth/ImGui/ImGui>
 #include <osgEarth/DecalLayer>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
@@ -32,12 +33,13 @@
 
 namespace osgEarth
 {
-    namespace GUI
+    namespace Procedural
     {
         using namespace osgEarth;
         using namespace osgEarth::Contrib;
         using namespace osgEarth::Threading;
         using namespace osgEarth::Util;
+        using namespace osgEarth::GUI;
 
         struct CraterRenderer
         {
@@ -48,7 +50,8 @@ namespace osgEarth
                 float lifemapMix,
                 GeoExtent& out_extent,
                 osg::ref_ptr<osg::Image>& out_elevation,
-                osg::ref_ptr<osg::Image>& out_lifemap)
+                osg::ref_ptr<osg::Image>& out_lifemap,
+                osg::ref_ptr<osg::Image>& out_landcover)
             {
                 GeoPoint local = center.toLocalTangentPlane();
                 out_extent = GeoExtent(local.getSRS());
@@ -96,6 +99,28 @@ namespace osgEarth
                         writeLifeMap(value, lm_iter.s(), lm_iter.t());
                     }
                 );
+
+                out_landcover = new osg::Image();
+                out_landcover->allocateImage(256, 256, 1, GL_RED, GL_UNSIGNED_BYTE); // GL_RED, GL_FLOAT);
+                ImageUtils::PixelWriter writeLandCover(out_landcover.get());
+                ImageUtils::ImageIterator lc_iter(writeLandCover);
+                lc_iter.forEachPixel([&]()
+                    {
+                        float r = 2.0f / 255.0f;
+                        float a = 2.0f * (lc_iter.u() - 0.5f);
+                        float b = 2.0f * (lc_iter.v() - 0.5f);
+                        float d = clamp(static_cast<float>(sqrt((a * a) + (b * b))), 0.0f, 1.0f);
+                        //if (d < 1.0f)
+                        {
+                            value.r() = r;
+                            writeLandCover(value, lc_iter.s(), lc_iter.t());
+                        }
+                    }
+                );
+
+                //static int shmoo = 0;
+                //std::string f = "out/out" + std::to_string(shmoo++) + ".png";
+                //osgDB::writeImageFile(*out_landcover.get(), f);
             }
         };
 
@@ -211,6 +236,7 @@ namespace osgEarth
             osg::observer_ptr<MapNode> _mapNode;
             osg::ref_ptr<DecalElevationLayer> _elevDecal;
             osg::ref_ptr<DecalImageLayer> _lifemapDecal;
+            osg::ref_ptr<DecalImageLayer> _landcoverDecal;
             std::vector<const Layer*> _layersToRefresh;
             unsigned _minLevel;
             std::stack<std::string> _undoStack;
@@ -292,6 +318,7 @@ namespace osgEarth
                         GeoExtent ex = _elevDecal->getDecalExtent(_undoStack.top());
                         _elevDecal->removeDecal(_undoStack.top());
                         _lifemapDecal->removeDecal(_undoStack.top());
+                        _landcoverDecal->removeDecal(_undoStack.top());
                         _undoStack.pop();
                         _mapNode->getTerrainEngine()->invalidateRegion(
                             _layersToRefresh, ex, _minLevel, INT_MAX);
@@ -301,6 +328,7 @@ namespace osgEarth
                     {
                         _elevDecal->clearDecals();
                         _lifemapDecal->clearDecals();
+                        _landcoverDecal->clearDecals();
                         _mapNode->getTerrainEngine()->invalidateRegion(
                             _layersToRefresh, GeoExtent::INVALID, _minLevel, INT_MAX);
                     }
@@ -316,6 +344,7 @@ namespace osgEarth
                 GeoExtent extent;
                 osg::ref_ptr<osg::Image> elevation;
                 osg::ref_ptr<osg::Image> lifemap;
+                osg::ref_ptr<osg::Image> landcover;
 
                 CraterRenderer::render(
                     center,
@@ -324,14 +353,16 @@ namespace osgEarth
                     _lifemapMix,
                     extent,
                     elevation,
-                    lifemap);
+                    lifemap,
+                    landcover);
 
-                addDecals(elevation, lifemap, extent);
+                addDecals(elevation, lifemap, landcover, extent);
             }
 
             void addDecals(
                 osg::ref_ptr<osg::Image>& elevation,
                 osg::ref_ptr<osg::Image>& lifemap,
+                osg::ref_ptr<osg::Image>& landcover,
                 const GeoExtent& extent)
             {
                 // ID for the new decal(s). ID's need to be unique in a single decal layer,
@@ -349,6 +380,11 @@ namespace osgEarth
                 if (_lifemapDecal.valid() && lifemap.valid())
                 {
                     _lifemapDecal->addDecal(id, extent, lifemap.get());
+                }
+
+                if (_landcoverDecal.valid() && landcover.valid())
+                {
+                    _landcoverDecal->addDecal(id, extent, landcover.get());
                 }
 
                 // Tell the terrain engine to regenerate the effected area.
@@ -432,7 +468,7 @@ namespace osgEarth
                 {
                     _ditchCursor->setNodeMask(0);
 
-                    osg::ref_ptr<osg::Image> elevation, lifemap;  
+                    osg::ref_ptr<osg::Image> elevation, lifemap, landcover;
                     GeoExtent extent;
 
                     DitchRenderer dr;
@@ -443,9 +479,10 @@ namespace osgEarth
                         _lifemapMix,
                         elevation,
                         lifemap,
+                        // landcover,
                         extent);
 
-                    addDecals(elevation, lifemap, extent);
+                    addDecals(elevation, lifemap, landcover, extent);
                 }
 
                 cancelDrawing();
@@ -486,19 +523,19 @@ namespace osgEarth
                     GL_ONE);
 
                 // If there is a LifeMapLayer, append to it as a Post, otherwise standalone decal.
-                std::vector<osg::ref_ptr<Layer>> lifemaplayers;
-                _mapNode->getMap()->getLayers(lifemaplayers,
-                    [&](const Layer* layer) {
-                        return (std::string(layer->className()) == "LifeMapLayer");
-                    });
-
-                ImageLayer* lm = dynamic_cast<ImageLayer*>(
-                    lifemaplayers.empty() ? nullptr : lifemaplayers.front().get());
-
+                LifeMapLayer* lm = _mapNode->getMap()->getLayer<LifeMapLayer>();
                 if (lm)
                 {
                     lm->addPostLayer(_lifemapDecal.get());
                     _layersToRefresh.push_back(lm);
+
+                    // If there's a coverage layer with a decal, find it.
+                    auto coverage = lm->getLandCoverLayer();
+                    if (coverage)
+                    {
+                        _landcoverDecal = dynamic_cast<DecalImageLayer*>(coverage->getSourceLayerByName("decal"));
+                        _layersToRefresh.push_back(_landcoverDecal.get());
+                    }
                 }
                 else
                 {

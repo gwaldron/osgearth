@@ -62,6 +62,7 @@ if(OSGEARTH_ENABLE_IMGUI)
     set(LIB_PUBLIC_HEADERS_IMGUI
         ImGui/LifeMapLayerGUI
         ImGui/VegetationLayerGUI
+        ImGui/TerrainEditGUI
         ImGui/TextureSplattingLayerGUI
         )    
 endif()

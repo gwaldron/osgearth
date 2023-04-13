@@ -483,7 +483,6 @@ if(OSGEARTH_ENABLE_IMGUI)
         ImGui/EnvironmentGUI
         ImGui/ShaderGUI
         ImGui/TerrainGUI
-        ImGui/TerrainEditGUI
         ImGui/CameraGUI
         ImGui/RenderingGUI
         )

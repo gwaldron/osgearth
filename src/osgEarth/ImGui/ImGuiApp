@@ -40,7 +40,6 @@
 #include "PickerGUI"
 #include "EnvironmentGUI"
 #include "TerrainGUI"
-#include "TerrainEditGUI"
 #include "ShaderGUI"
 #include "CameraGUI"
 #include "RenderingGUI"
@@ -49,6 +48,7 @@
 
 #ifdef HAVE_OSGEARTHPROCEDURAL
 #include <osgEarthProcedural/ImGui/LifeMapLayerGUI>
+#include <osgEarthProcedural/ImGui/TerrainEditGUI>
 #include <osgEarthProcedural/ImGui/TextureSplattingLayerGUI>
 #include <osgEarthProcedural/ImGui/VegetationLayerGUI>
 #endif
@@ -206,13 +206,13 @@ namespace osgEarth
                 _menu["Tools"].push_back(GUIPtr(new SceneGraphGUI));
                 _menu["Tools"].push_back(GUIPtr(new PickerGUI));
                 _menu["Tools"].push_back(GUIPtr(new TextureInspectorGUI));
-                _menu["Tools"].push_back(GUIPtr(new TerrainEditGUI));
                 _menu["Tools"].push_back(GUIPtr(new ShaderGUI(args)));
                 _menu["Tools"].push_back(GUIPtr(new RenderingGUI()));
                 _menu["Tools"].push_back(GUIPtr(new NVGLInspectorGUI()));
 
 #ifdef HAVE_OSGEARTHPROCEDURAL
                 _menu["Procedural"].push_back(GUIPtr(new osgEarth::Procedural::LifeMapLayerGUI()));
+                _menu["Procedural"].push_back(GUIPtr(new osgEarth::Procedural::TerrainEditGUI));
                 _menu["Procedural"].push_back(GUIPtr(new osgEarth::Procedural::TextureSplattingLayerGUI()));
                 _menu["Procedural"].push_back(GUIPtr(new osgEarth::Procedural::VegetationLayerGUI()));
 #endif

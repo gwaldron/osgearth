@@ -360,6 +360,8 @@ GeoPoint::transformResolution(const Distance& resolution, const Units& outUnits)
 bool
 GeoPoint::makeGeographic()
 {
+    if (!_srs)
+        return false;
     if (_srs->isGeographic())
         return true;
     else

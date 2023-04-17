@@ -263,6 +263,9 @@ namespace osgEarth
         //! Sets up a small data cache if necessary.
         void setUpL2Cache(unsigned minSize =0u);
 
+        //! Call this if you call dataExtents() and modify it.
+        void dirtyDataExtents();
+
     protected: // Layer
 
         virtual void init() override;
@@ -277,9 +280,6 @@ namespace osgEarth
 
         //! Gets or create a caching bin to use with data in the supplied profile
         CacheBin* getCacheBin(const Profile* profile);
-
-        //! Call this if you call dataExtents() and modify it.
-        void dirtyDataExtents();
 
     protected:
 

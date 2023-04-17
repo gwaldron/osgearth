@@ -101,7 +101,7 @@ namespace osgEarth
                 );
 
                 out_landcover = new osg::Image();
-                out_landcover->allocateImage(256, 256, 1, GL_RED, GL_UNSIGNED_BYTE); // GL_RED, GL_FLOAT);
+                out_landcover->allocateImage(256, 256, 1, GL_RED, GL_UNSIGNED_BYTE);
                 ImageUtils::PixelWriter writeLandCover(out_landcover.get());
                 ImageUtils::ImageIterator lc_iter(writeLandCover);
                 lc_iter.forEachPixel([&]()
@@ -110,6 +110,7 @@ namespace osgEarth
                         float a = 2.0f * (lc_iter.u() - 0.5f);
                         float b = 2.0f * (lc_iter.v() - 0.5f);
                         float d = clamp(static_cast<float>(sqrt((a * a) + (b * b))), 0.0f, 1.0f);
+                        //TODO uncomment me for a nice circle
                         //if (d < 1.0f)
                         {
                             value.r() = r;
@@ -523,18 +524,17 @@ namespace osgEarth
                     GL_ONE);
 
                 // If there is a LifeMapLayer, append to it as a Post, otherwise standalone decal.
-                LifeMapLayer* lm = _mapNode->getMap()->getLayer<LifeMapLayer>();
-                if (lm)
+                LifeMapLayer* lifemap = _mapNode->getMap()->getLayer<LifeMapLayer>();
+                if (lifemap)
                 {
-                    lm->addPostLayer(_lifemapDecal.get());
-                    _layersToRefresh.push_back(lm);
+                    lifemap->addPostLayer(_lifemapDecal.get());
+                    _layersToRefresh.push_back(lifemap);
 
                     // If there's a coverage layer with a decal, find it.
-                    auto coverage = lm->getLandCoverLayer();
+                    auto coverage = lifemap->getLandCoverLayer();
                     if (coverage)
                     {
                         _landcoverDecal = dynamic_cast<DecalImageLayer*>(coverage->getSourceLayerByName("decal"));
-                        _layersToRefresh.push_back(_landcoverDecal.get());
                     }
                 }
                 else

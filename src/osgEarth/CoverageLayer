@@ -86,6 +86,10 @@ namespace osgEarth
         template<typename T>
         void createMappings(const SourceLayerOptions&, Mappings<T>& output) const;
 
+        //! Find one of the source layers in this coverage.
+        //! @return The source layer, or nullptr if we cannot find it
+        ImageLayer* getSourceLayerByName(const std::string& name) const;
+
         /**
         * Factory is a utility class that initializes the mappings between the int values and 
         * the user-defined datastructure.  Initialize one of these first and call createCoverage on it.
@@ -113,7 +117,6 @@ namespace osgEarth
 
                     Mappings<T>& mappings = _layerToMappings[imageLayer];
                     _layer->createMappings(layer, mappings);
-                    //_layerToMappings[imageLayer] = std::move(mappings);
                 }
             }
 
@@ -214,7 +217,7 @@ namespace osgEarth
                 {
                     return false;
                 }
-
+                
                 // trivial case of a SINGLE layer, when no compositing
                 // is necessary
                 if (sources.size() == 1)
@@ -233,6 +236,7 @@ namespace osgEarth
                 // Iterate backwards since the last source has the highest priority.
                 // If we get a coverage with all valid values, we are finished.
                 std::vector<GeoCoverage<T>> inputs;
+                bool fallback = false;
 
                 for (auto i = sources.rbegin(); i != sources.rend(); ++i)
                 {
@@ -243,27 +247,44 @@ namespace osgEarth
                         GeoCoverage<T> input;
                         TileKey inputKey = key;
 
-                        // NB: do not call mayHaveData() on the key, since we want to be sure
-                        // to fail and fall back until we get data.
-                        while (
-                            input.valid() == false &&
-                            inputKey.valid() &&
-                            imageLayer->isKeyInLegalRange(inputKey))
+                        if (fallback)
                         {
-                            input = createCoverage(inputKey, imageLayer, progress);
+                            // this path is taken when we already have a partial tile from
+                            // a higher priority layer, and need to fill in the empty samples
+                            // from other lower priority layers.
+                            
+                            // NB: do not call mayHaveData() on the key, since we want to be sure
+                            // to fail and fall back until we get data.
+                            while (
+                                input.valid() == false &&
+                                inputKey.valid() &&
+                                imageLayer->isKeyInLegalRange(inputKey))
+                            {
+                                input = createCoverage(inputKey, imageLayer, progress);
 
-                            if (!input.valid())
-                                inputKey.makeParent();
+                                if (!input.valid())
+                                    inputKey.makeParent();
+                            }
+                        }
+                        else
+                        {
+                            // this path is taken when we have no data at all yet.
+                            input = createCoverage(inputKey, imageLayer, progress);
                         }
 
                         // if we got a valid coverage, add it to the composition list.
                         if (input.valid())
                         {
-                            inputs.emplace_back(std::move(input));
+                            if (!input.empty())
+                            {
+                                fallback = true;
 
-                            // if this coverage is fully populated, we're done
-                            if (inputs.size() > 0 && inputs.back().nodataCount() == 0)
-                                break;
+                                inputs.emplace_back(std::move(input));
+
+                                // if this coverage is fully populated, we're done
+                                if (inputs.back().nodataCount() == 0)
+                                    break;
+                            }
                         }
                     }
                 }

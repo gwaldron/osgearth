@@ -106,12 +106,6 @@ namespace osgEarth
             _valid_count = 0;
         }
 
-        //! true if contains any valid data
-        bool valid() const
-        {
-            return _valid_count > 0;
-        }
-
         //! raster width
         unsigned s() const
         {
@@ -128,6 +122,12 @@ namespace osgEarth
         unsigned nodataCount() const
         {
             return (_width*_height) - _valid_count;
+        }
+
+        //! Is this coverage empty?
+        bool empty() const
+        {
+            return _valid_count == 0;
         }
 
         //! Write a value to a pixel.
@@ -261,6 +261,10 @@ namespace osgEarth
 
         inline unsigned nodataCount() const {
             return _coverage ? _coverage->nodataCount() : 0u;
+        }
+
+        inline unsigned empty() const {
+            return _coverage ? _coverage->empty() : true;
         }
 
         void write(const T& value, unsigned s, unsigned t)

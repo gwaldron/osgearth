@@ -114,7 +114,11 @@ CoverageLayer::addedToMap(const Map* map)
         }
     }
 
-    setDataExtents(dataExtents);
+    // We commented this out because it is causing coverage data that changes
+    // (such as a decal layer) to malfunction. For now we just want it working;
+    // later we can invesitgate and try to repair it. Omitting this will not
+    // affect functionality but it might degrade load performance. -g
+    //setDataExtents(dataExtents);
 }
 
 void
@@ -126,4 +130,17 @@ CoverageLayer::removedFromMap(const Map* map)
     {
         layer.source().removedFromMap(map);
     }
+}
+
+ImageLayer*
+CoverageLayer::getSourceLayerByName(const std::string& name) const
+{
+    for (auto& layer : options().layers())
+    {
+        if (layer.source().getLayer() && layer.source().getLayer()->getName() == name)
+        {
+            return layer.source().getLayer();
+        }
+    }
+    return nullptr;
 }

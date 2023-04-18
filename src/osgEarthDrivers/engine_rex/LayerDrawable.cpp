@@ -342,7 +342,8 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
 
     if (gl.tiles == nullptr || !gl.tiles->valid())
     {
-        gl.ext = osg::GLExtensions::Get(state.getContextID(), true);
+        auto cid = GLUtils::getSharedContextID(state);
+        gl.ext = osg::GLExtensions::Get(cid, true);
 
         gl.tiles = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
         gl.tiles->bind();

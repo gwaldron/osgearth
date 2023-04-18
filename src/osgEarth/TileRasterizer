@@ -119,8 +119,7 @@ namespace osgEarth
             void useRenderer(Renderer::Ptr);
         };
 
-        // separate collection of renderers for each
-        // state-based graphics context:
+        // separate collection of renderers for each state-based graphics context
         struct GLObjects : public PerStateGLObjects
         {
             using Ptr = std::shared_ptr<GLObjects>;

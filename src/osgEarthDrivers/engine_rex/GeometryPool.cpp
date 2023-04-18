@@ -519,7 +519,7 @@ SharedGeometry::drawVertexArraysImplementation(osg::RenderInfo& renderInfo) cons
     // if we're using a VAO, bind the EBO to the VAO here.
     if (usingVAOs)
     {
-        osg::GLBufferObject* ebo = _drawElements->getOrCreateGLBufferObject(state.getContextID());
+        osg::GLBufferObject* ebo = _drawElements->getOrCreateGLBufferObject(GLUtils::getSharedContextID(state));
         if (ebo)
         {
             state.bindElementBufferObject(ebo);
@@ -537,11 +537,11 @@ SharedGeometry::drawPrimitivesImplementation(osg::RenderInfo& renderInfo) const
         return;
 
     osg::State& state = *renderInfo.getState();
-    GLenum primitiveType = _ptype[state.getContextID()];
+    GLenum primitiveType = _ptype[GLUtils::getSharedContextID(state)];
 
     const void* indices;
     bool usingVAO = state.useVertexArrayObject(_useVertexArrayObject);
-    osg::GLBufferObject* ebo = _drawElements->getOrCreateGLBufferObject(state.getContextID());
+    osg::GLBufferObject* ebo = _drawElements->getOrCreateGLBufferObject(GLUtils::getSharedContextID(state));
 
     if (usingVAO)
     {

@@ -57,7 +57,8 @@ namespace
         GLfloat speed;
     };
 
-    // GL data that must be stored separately per state
+    // GL data that must be stored separately per state since it will
+    // differ by camera/view and changes every frame
     struct GLObjects : public PerStateGLObjects
     {
         GLBuffer::Ptr _buffer;

@@ -71,7 +71,7 @@ namespace osgEarth {
             }
 
             // Shareable because they are static and bindless
-            struct GLObjects : public ShareableGLObjects
+            struct GLObjects : public BindlessShareableGLObjects
             {
                 GLBuffer::Ptr _ebo; // bindless buffer
             };
@@ -170,7 +170,7 @@ namespace osgEarth {
             std::vector<GL4Vertex> _verts;
 
             // Shareable because they are static and bindless
-            struct GLObjects : public ShareableGLObjects
+            struct GLObjects : public BindlessShareableGLObjects
             {
                 DrawElementsIndirectBindlessCommandNV _command;
                 GLBuffer::Ptr _vbo;

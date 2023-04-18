@@ -119,6 +119,9 @@ option(OSGEARTH_BUILD_DOCS "Include the documentation folder" ON)
 option(OSGEARTH_ENABLE_PROFILING "Enable profiling with Tracy" OFF)
 option(OSGEARTH_ENABLE_GEOCODER "Enable the geocoder (GDAL/OGR must be built with geocoder support)" OFF)
 
+option(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT "Assume the use of a single GL context for all GL objects (advanced)" ON)
+mark_as_advanced(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
+
 # ........................................................................
 # Dependencies
 
@@ -206,6 +209,10 @@ endif()
 
 if(OSGEARTH_ENABLE_GEOCODER)
     add_definitions(-DOSGEARTH_HAVE_GEOCODER)
+endif()
+
+if(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
+    add_definitions(-DOSGEARTH_SINGLE_GL_CONTEXT)
 endif()
 
 # Protobuf enables the MVT (Mapnik Vector Tiles) format

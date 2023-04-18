@@ -25,6 +25,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/Terrain>
+#include <osgEarth/GLUtils>
 
 #include <osg/Texture2D>
 #include <osg/RenderInfo>
@@ -359,7 +360,7 @@ namespace ImGuiUtil
     static void Texture(osg::Texture2D* texture, osg::RenderInfo& renderInfo, unsigned int width = 0, unsigned int height = 0)
     {
         // Get the context id
-        const unsigned int contextID = renderInfo.getState()->getContextID();
+        const unsigned int contextID = osgEarth::GLUtils::getSharedContextID(*renderInfo.getState());
 
         // Apply the texture
         texture->apply(*renderInfo.getState());

@@ -142,7 +142,7 @@ namespace osgEarth
 
         //! GL objects that can be used across shared GCs
         //! (because they are static and they are bindless)
-        struct GLObjects : public ShareableGLObjects
+        struct GLObjects : public BindlessShareableGLObjects
         {
             GLBuffer::Ptr vbo;
             GLBuffer::Ptr ebo;
@@ -276,7 +276,7 @@ namespace osgEarth
         int _renderBinNumber;
 
         //! GL objects (and supporting data structures) that must
-        //! be stored and managed for each unique GL state/context,
+        //! be stored and managed for each unique OSG state,
         //! since they will differ for each view based on the camera
         //! location and will potentially change every frame.
         struct GLObjects : public PerStateGLObjects

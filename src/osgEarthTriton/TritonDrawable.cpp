@@ -136,7 +136,8 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     }
     ::Triton::Camera* tritonCam = local._tritonCam;
 
-    osgEarth::NativeProgramAdapterCollection& adapters = _adapters[ state->getContextID() ];
+    auto cid = GLUtils::getSharedContextID(*state);
+    osgEarth::NativeProgramAdapterCollection& adapters = _adapters[cid];
     if ( adapters.empty() )
     {
         OE_INFO << LC << "Initializing Triton program adapters" << std::endl;
@@ -257,7 +258,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
             // Grab the cube map from our sky box and give it to Triton to use as an _environment map
             // GLenum texture = renderInfo.getState()->getLastAppliedTextureAttribute( _stage, osg::StateAttribute::TEXTURE );
             environment->SetEnvironmentMap(
-                (::Triton::TextureHandle)_cubeMap->getTextureObject( state->getContextID() )->id(),
+                (::Triton::TextureHandle)_cubeMap->getTextureObject(cid)->id(),
                 transformFromYUpToZUpCubeMapCoords );
 
             if( _planarReflectionMap.valid() && _planarReflectionProjection.valid() )
@@ -270,7 +271,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
                     p(2,0), p(2,1), p(2,2) );
 
                 environment->SetPlanarReflectionMap(
-                    (::Triton::TextureHandle)_planarReflectionMap->getTextureObject( state->getContextID() )->id(),
+                    (::Triton::TextureHandle)_planarReflectionMap->getTextureObject(cid)->id(),
                     planarProjection,
                     0.125 );
             }
@@ -279,7 +280,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         // Draw the ocean for the current time sample
         if ( _TRITON->getOcean() )
         {
-            osg::GLExtensions* ext = osg::GLExtensions::Get(state->getContextID(), true);
+            osg::GLExtensions* ext = osg::GLExtensions::Get(cid, true);
 
             bool writeDepth = true;
             const osg::Depth* depth = static_cast<const osg::Depth*>(state->getLastAppliedAttribute(osg::StateAttribute::DEPTH));

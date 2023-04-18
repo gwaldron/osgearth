@@ -100,7 +100,7 @@ namespace osgEarth
         bool dataLoaded() const;
 
         //! GLObjects are shareable across GCs because they are static and bindless.
-        struct GLObjects : public ShareableGLObjects
+        struct GLObjects : public BindlessShareableGLObjects
         {
             GLTexture::Ptr _gltexture;
             unsigned _imageModCount;
@@ -195,8 +195,8 @@ namespace osgEarth
 
         void releaseGLObjects(osg::State*, bool force) const;
 
-        // GL objects that are per-state because they are not bindless
-        struct GLObjects : public PerStateGLObjects
+        // GL objects that can be shared across contexts
+        struct GLObjects : public BindlessShareableGLObjects
         {
             GLObjects() : _inUse(false), _lastAppliedFrame(-1) { }
             bool _inUse;

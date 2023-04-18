@@ -61,7 +61,8 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 	    osg::State* state = renderInfo.getState();
 
         // adapt the SL shaders so they can accept OSG uniforms:
-        osgEarth::NativeProgramAdapterCollection& adapters = _adapters[ state->getContextID() ]; // thread safe.
+        auto cid = GLUtils::getSharedContextID(*state);
+        osgEarth::NativeProgramAdapterCollection& adapters = _adapters[cid]; // thread safe.
         if ( adapters.empty() )
         {
             adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetSkyShader(), NULL, "SkyShader"));

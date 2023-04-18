@@ -187,6 +187,8 @@ namespace osgEarth
             cmd(), reserved(0), indexBuffer(), vertexBuffer() { }
     };
 
+    //! template for fetching an object that is stored per-State; this would typically
+    //! be something that needs different data for each camera/view.
     class OSGEARTH_EXPORT PerStateGLObjects
     {
     public:
@@ -196,7 +198,9 @@ namespace osgEarth
         }
     };
 
-    class OSGEARTH_EXPORT ShareableGLObjects
+    //! template for fetching an object that is shareable across GL context
+    //! because it is bindless
+    class OSGEARTH_EXPORT BindlessShareableGLObjects
     {
     public:
         template<typename T>
@@ -442,7 +446,12 @@ namespace osgEarth
         GLuint64 _address; // bindless GPU address
         mutable GLsizei _size;
         mutable bool _immutable;
+
+#ifdef OSGEARTH_SINGLE_GL_CONTEXT
+        mutable Resident _isResident;
+#else
         mutable std::unordered_map<const osg::GraphicsContext*, Resident> _isResident;
+#endif
     };
 
     //! A texture object with optional resident handle
@@ -519,13 +528,18 @@ namespace osgEarth
             osg::State& state);
 
     private:
+        void reset(GLenum, const std::string&, const std::string&, osg::State&);
         GLenum _target;
         GLuint64 _handle;
-        mutable std::unordered_map<const osg::GraphicsContext*, Resident> _isResident;
         std::string _id;
         GLsizei _size;
         Profile _profile;
-        void reset(GLenum, const std::string&, const std::string&, osg::State&);
+
+#ifdef OSGEARTH_SINGLE_GL_CONTEXT
+        mutable Resident _isResident;
+#else
+        mutable std::unordered_map<const osg::GraphicsContext*, Resident> _isResident;
+#endif
     };
 
     /**

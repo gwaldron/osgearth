@@ -21,6 +21,7 @@
 #include <osg/Drawable>
 #include <osg/Texture2D>
 #include <osg/Texture3D>
+#include <osgEarth/GLUtils>
 #include <osgEarth/TerrainResources>
 #include "eb_atmosphere_model.h"
 
@@ -119,8 +120,9 @@ namespace Bruneton
             setWrap(WRAP_R, CLAMP_TO_EDGE);
         }
         void apply(osg::State& state) const override {
-            if (getTextureObject(state.getContextID()) == nullptr) {
-                const_cast<WrapTexture2D*>(this)->setTextureObject(state.getContextID(),
+            auto cid = osgEarth::GLUtils::getSharedContextID(state);
+            if (getTextureObject(cid) == nullptr) {
+                const_cast<WrapTexture2D*>(this)->setTextureObject(cid,
                     new osg::Texture::TextureObject(
                         const_cast<WrapTexture2D*>(this),
                         _internal->id(),
@@ -146,8 +148,9 @@ namespace Bruneton
             setWrap(WRAP_R, CLAMP_TO_EDGE);
         }
         void apply(osg::State& state) const override {
-            if (getTextureObject(state.getContextID()) == nullptr) {
-                const_cast<WrapTexture3D*>(this)->setTextureObject(state.getContextID(),
+            auto cid = osgEarth::GLUtils::getSharedContextID(state);
+            if (getTextureObject(cid) == nullptr) {
+                const_cast<WrapTexture3D*>(this)->setTextureObject(cid,
                     new osg::Texture::TextureObject(
                         const_cast<WrapTexture3D*>(this),
                         _internal->id(),

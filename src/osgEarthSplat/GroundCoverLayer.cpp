@@ -927,7 +927,8 @@ GroundCoverLayer::Renderer::applyLocalState(osg::RenderInfo& ri, DrawState& ds)
     if (!pcp)
         return;
 
-    osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
+    auto cid = GLUtils::getSharedContextID(*ri.getState());
+    osg::GLExtensions* ext = osg::GLExtensions::Get(cid, true);
 
     UniformState& u = ds._uniforms[pcp];
 
@@ -988,7 +989,7 @@ void
 GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const TileState* tile)
 {
     const ZoneSA* sa = ZoneSA::extract(ri.getState());
-    DrawState& ds = _drawStateBuffer[GLUtils::getUniqueStateID(*ri.getState())]; // ri.getContextID()];
+    DrawState& ds = _drawStateBuffer[GLUtils::getUniqueStateID(*ri.getState())];
     osg::ref_ptr<LegacyInstanceCloud>& instancer = ds._instancers[sa->_obj];
     const osg::Program::PerContextProgram* pcp = ri.getState()->getLastAppliedProgramObject();
 
@@ -998,7 +999,8 @@ GroundCoverLayer::Renderer::visitTile(osg::RenderInfo& ri, const TileState* tile
 
     if (_pass == 0) // COMPUTE shader
     {
-        osg::GLExtensions* ext = osg::GLExtensions::Get(ri.getContextID(), true);
+        auto cid = GLUtils::getSharedContextID(*ri.getState());
+        osg::GLExtensions* ext = osg::GLExtensions::Get(cid, true);
 
         if (u._computeDataUL >= 0)
         {
@@ -1036,7 +1038,7 @@ GroundCoverLayer::Renderer::releaseGLObjects(osg::State* state) const
 {
     if (state)
     {
-        DrawState& ds = _drawStateBuffer[GLUtils::getUniqueStateID(*state)]; // state->getContextID()];
+        DrawState& ds = _drawStateBuffer[GLUtils::getUniqueStateID(*state)];
 
         ds._uniforms.clear();
         ds._lastTileBatchID = -1;

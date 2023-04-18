@@ -209,7 +209,8 @@ DrawTileCommand::draw(osg::RenderInfo& ri) const
 {
     OE_SOFT_ASSERT_AND_RETURN(_geom.valid(), void());
 
-    _geom->_ptype[ri.getContextID()] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode();
+    auto cid = GLUtils::getSharedContextID(*ri.getState());
+    _geom->_ptype[cid] = _drawPatch ? GL_PATCHES : _geom->getDrawElements()->getMode();
     _geom->draw(ri);
 }
 

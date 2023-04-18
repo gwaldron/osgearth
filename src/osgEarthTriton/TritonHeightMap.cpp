@@ -222,7 +222,8 @@ TritonHeightMap::getBestFBOConfig(osg::State& state, GLint& out_internalFormat, 
 #endif
     
 
-    osg::GLExtensions* ext = osg::GLExtensions::Get(state.getContextID(), true);
+    auto cid = GLUtils::getSharedContextID(state);
+    osg::GLExtensions* ext = osg::GLExtensions::Get(cid, true);
 
     osg::State::CheckForGLErrors check = state.getCheckForGLErrors();
     state.setCheckForGLErrors(state.NEVER_CHECK_GL_ERRORS);
@@ -425,7 +426,8 @@ TritonHeightMap::getTextureAndMatrix(osg::RenderInfo& ri, GLint& out_texName, os
     if (ri.getState()->getFrameStamp()->getFrameNumber() > local._frameNum)
         return false;
 
-    osg::Texture::TextureObject* obj = local._tex->getTextureObject(ri.getContextID());
+    auto cid = GLUtils::getSharedContextID(*ri.getState());
+    osg::Texture::TextureObject* obj = local._tex->getTextureObject(cid);
     if (!obj)
         return false;
 

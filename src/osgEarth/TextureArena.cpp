@@ -837,7 +837,14 @@ TextureArena::apply(osg::State& state) const
         gc._dirty = true;
     }
 
+#if !defined(OSGEARTH_SINGLE_GL_CONTEXT)
+
+    // only apply once per frame per state.
+    // (This is disabled in single-context mode so that it always runs)
+
     if (gc._lastAppliedFrame != state.getFrameStamp()->getFrameNumber())
+
+#endif
     {
         // If we are going to compile any textures, we need to save and restore
         // the OSG texture state...

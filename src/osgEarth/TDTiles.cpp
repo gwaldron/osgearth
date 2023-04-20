@@ -600,7 +600,8 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     _options(options),
     _trackerItrValid(false),
     _lastCulledFrameNumber(0),
-    _lastCulledFrameTime(0.0f)
+    _lastCulledFrameTime(0.0f),
+    _refine(REFINE_ADD)
 {
     OE_PROFILING_ZONE;
     if (_tile->content().isSet())

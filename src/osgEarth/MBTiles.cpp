@@ -413,6 +413,9 @@ MBTiles::Driver::open(
     int rc = sqlite3_open_v2(fullFilename.c_str(), dbptr, flags, 0L);
     if (rc != 0)
     {
+        if (!osgDB::fileExists(fullFilename))
+            return Status(Status::ResourceUnavailable, Stringify() << fullFilename << " File Not Found");
+        
         return Status(Status::ResourceUnavailable, Stringify()
             << "Database \"" << fullFilename << "\": " << sqlite3_errmsg(database));
     }

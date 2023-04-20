@@ -510,7 +510,7 @@ ENDIF (NOT TINYXML_FOUND)
 
 
 SET(VERSION_GIT_SOURCE "")
-find_package(git)
+find_package(Git)
 if (GIT_FOUND)
     option(OSGEARTH_EMBED_GIT_SHA "Encode the SHA in the Version header code" OFF)
     if(OSGEARTH_EMBED_GIT_SHA)

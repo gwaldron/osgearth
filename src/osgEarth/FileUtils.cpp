@@ -98,9 +98,14 @@
     // Unfortunately, we can't use the label MAC_OS_X_VERSION_10_4
     // for older OS's like Jaguar, Panther since they are not defined,
     // so I am going to hardcode the number.
-    #if (MAC_OS_X_VERSION_MAX_ALLOWED <= 1040)
+    #if (MAC_OS_X_VERSION_MAX_ALLOWED <= 1040 )
         #define stat64 stat
     #endif
+
+    #if MAC_OS_X_VERSION_MAX_ALLOWED >= 101300 && __DARWIN_ONLY_64_BIT_INO_T
+        #define stat64 stat
+    #endif
+
 #elif defined(__CYGWIN__) || defined(__FreeBSD__) || (defined(__hpux) && !defined(_LARGEFILE64_SOURCE))
     #define stat64 stat
 #endif

@@ -44,7 +44,6 @@
 #endif
 #endif
 
-
 struct PrepareForWriting : public osg::NodeVisitor
 {
     PrepareForWriting() : osg::NodeVisitor()
@@ -268,7 +267,7 @@ namespace osgEarth
                 totalPrimitiveSets += geometry.getNumPrimitiveSets();
             }
 
-            std::unordered_map< osg::Drawable::AttributeTypes, ArrayStats > arrayStats;
+            std::map< osg::Drawable::AttributeTypes, ArrayStats > arrayStats;
             unsigned int totalDataSize = 0;
             unsigned int totalGeometries = 0;
             unsigned int totalPrimitiveSets = 0;

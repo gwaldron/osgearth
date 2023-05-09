@@ -1292,7 +1292,7 @@ namespace osgEarth
                     {
                         if (texCoordArrays[i].valid())
                         {
-                            if (ImGui::TreeNode("texcoords", "TexCoords Unit %d %d", i, geometry->getNormalArray()->getNumElements()))
+                            if (ImGui::TreeNode("texcoords", "TexCoords Unit %d %d", i, texCoordArrays[i]->getNumElements()))
                             {
                                 printArrayTable(texCoordArrays[i].get());
                                 ImGui::TreePop();

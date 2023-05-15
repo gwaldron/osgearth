@@ -43,6 +43,7 @@
 #include "ShaderGUI"
 #include "CameraGUI"
 #include "RenderingGUI"
+#include "AnnotationsGUI"
 
 #include <osgDB/ReadFile>
 
@@ -201,6 +202,7 @@ namespace osgEarth
                 _menu["Tools"].push_back(GUIPtr(new TerrainGUI));
                 _menu["Tools"].push_back(GUIPtr(new SystemGUI));
                 _menu["Tools"].push_back(GUIPtr(new NetworkMonitorGUI));
+                _menu["Tools"].push_back(GUIPtr(new AnnotationsGUI()));
                 _menu["Tools"].push_back(GUIPtr(new ContentBrowserGUI));
                 //_menu["Tools"].push_back(GUIPtr(new NotifyGUI));
                 _menu["Tools"].push_back(GUIPtr(new SceneGraphGUI));

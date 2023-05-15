@@ -121,7 +121,7 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                 AnnotationNode* modelNode   = 0L;
 
                 // one coordinate? It's a place marker or a label.
-                if ( (model || icon || text) && geom->getTotalPointCount() == 1 )
+                if (geom->getTotalPointCount() == 1)
                 {
                     // if there's a model, render that - models do NOT get labels.
                     if ( model )
@@ -159,7 +159,7 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                     // is there an icon?
                     if ( icon )
                     {
-                        PlaceNode* placeNode = new PlaceNode( position );
+                        PlaceNode* placeNode = new PlaceNode(position);
                         placeNode->setStyle(style, cx._dbOptions.get());
                         iconNode = placeNode;
                     }
@@ -167,7 +167,7 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                     else if ( !model && text && !name.empty() )
                     {
                         // note: models do not get labels.
-                        iconNode = new LabelNode();
+                        iconNode = new LabelNode(position);
                         iconNode->setStyle(style);
                     }
                 }

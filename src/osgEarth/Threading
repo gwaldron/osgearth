@@ -548,10 +548,10 @@ namespace osgEarth { namespace Threading
     {
     public:
         ReadWrite() :
-            _readers(0u), _writers(0u) { }
+            _writers(0u), _readers(0u) { }
 
         ReadWrite(const std::string& name) :
-            _m(name), _readers(0u), _writers(0u) { }
+            _m(name), _writers(0u), _readers(0u) { }
 
         void read_lock() {
             std::unique_lock<T> lock(_m);
@@ -783,15 +783,15 @@ namespace osgEarth { namespace Threading
 
         //! Construct a new blank job
         Job() :
-            _arena(nullptr), _group(nullptr), _priority(0.0f) { }
+            _priority(0.0f), _arena(nullptr), _group(nullptr) { }
 
         //! Construct a new job in the specified arena
         Job(JobArena* arena) :
-            _arena(arena), _group(nullptr), _priority(0.0f) { }
+            _priority(0.0f), _arena(arena), _group(nullptr) { }
 
         //! Construct a new job in the specified arena and job group
         Job(JobArena* arena, JobGroup* group) :
-            _arena(arena), _group(group), _priority(0.0f) { }
+            _priority(0.0f), _arena(arena), _group(group) { }
 
         //! Name of this job
         void setName(const std::string& value) {

@@ -196,6 +196,7 @@ MapNode::Options::getConfig() const
     conf.set( "proxy",                    proxySettings() );
     conf.set( "lighting",                 enableLighting() );
     conf.set( "overlay_blending",         overlayBlending() );
+    conf.set( "overlay_blending_source",  overlayBlendingSource());
     conf.set( "overlay_texture_size",     overlayTextureSize() );
     conf.set( "overlay_mipmapping",       overlayMipMapping() );
     conf.set( "overlay_resolution_ratio", overlayResolutionRatio() );
@@ -215,6 +216,7 @@ MapNode::Options::fromConfig(const Config& conf)
     proxySettings().init(ProxySettings());
     enableLighting().init(true);
     overlayBlending().init(true);
+    overlayBlendingSource().init("alpha");
     overlayMipMapping().init(false);
     overlayTextureSize().init(4096);
     overlayResolutionRatio().init(3.0f);
@@ -226,6 +228,7 @@ MapNode::Options::fromConfig(const Config& conf)
     conf.get( "proxy",                    proxySettings() );
     conf.get( "lighting",                 enableLighting() );
     conf.get( "overlay_blending",         overlayBlending() );
+    conf.get( "overlay_blending_source",  overlayBlendingSource());
     conf.get( "overlay_texture_size",     overlayTextureSize() );
     conf.get( "overlay_mipmapping",       overlayMipMapping() );
     conf.get( "overlay_resolution_ratio", overlayResolutionRatio() );
@@ -390,6 +393,11 @@ MapNode::open()
 
         if ( options().overlayBlending().isSet() )
             draping->setOverlayBlending( options().overlayBlending().get() );
+
+        if (options().overlayBlendingSource().isSetTo("color"))
+            draping->setOverlayBlendingParams(GL_SRC_COLOR, GL_ONE_MINUS_SRC_COLOR);
+        else if (options().overlayBlendingSource().isSetTo("alpha"))
+            draping->setOverlayBlendingParams(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         if ( envOverlayTextureSize )
             draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );

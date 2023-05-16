@@ -87,6 +87,12 @@ namespace osgEarth { namespace Util
         bool getOverlayBlending() const { return _rttBlending; }
 
         /**
+        * Set the blending function sources to use when overlay blending is true.
+        * Defaults are GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
+        */
+        void setOverlayBlendingParams(GLenum src, GLenum dst);
+
+        /**
          * Whether to attach the RTT to camera to the stencil buffer.  Default = false.
          * Some older cards don't have very good support 
          */
@@ -133,6 +139,8 @@ namespace osgEarth { namespace Util
         bool                          _rttBlending;
         bool                          _attachStencil;
         double                        _maxFarNearRatio;
+        GLenum _overlaySource = GL_SRC_ALPHA;
+        GLenum _overlayDestination = GL_ONE_MINUS_SRC_ALPHA;
 
         mutable std::shared_ptr<DrapingManager> _drapingManager;
         std::shared_ptr<DrapingManager>& getDrapingManager() { return _drapingManager; }

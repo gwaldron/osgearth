@@ -15,6 +15,7 @@ class ReaderWriterZIP : public osgDB::ReaderWriter
         {
             supportsExtension("zip","Zip archive format");
             supportsExtension("3tz", "3D tiles zip archive format");
+            //supportsExtension("kmz", "KMZ");
             osgDB::Registry::instance()->addArchiveExtension("zip");
         }
 
@@ -22,10 +23,10 @@ class ReaderWriterZIP : public osgDB::ReaderWriter
 
 
         virtual ReadResult openArchive(const std::string& file,ArchiveStatus /*status*/, unsigned int /*indexBlockSize*/ = 4096, const Options* options = NULL) const
-        {
-
+        {            
             std::string ext = osgDB::getLowerCaseFileExtension(file);
-            if (!acceptsExtension(ext)) return ReadResult::FILE_NOT_HANDLED;
+            bool ignore_extension = (options && options->getPluginStringData("ignore_extension") == "true");
+            if (!ignore_extension && !acceptsExtension(ext)) return ReadResult::FILE_NOT_HANDLED;
 
             std::string fileName = osgDB::findDataFile(file, options);
             if (fileName.empty())

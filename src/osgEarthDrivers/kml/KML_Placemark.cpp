@@ -250,7 +250,9 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
 
                         // If this feature node is map-clamped, we most likely need a depth-offset
                         // shader to prevent z-fighting with the terrain.
-                        if (alt && alt->clamping() == alt->CLAMP_TO_TERRAIN && alt->technique() == alt->TECHNIQUE_MAP)
+                        if (alt && 
+                            alt->clamping() == alt->CLAMP_TO_TERRAIN && 
+                            (alt->technique() == alt->TECHNIQUE_MAP || alt->technique() == alt->TECHNIQUE_SCENE))
                         {
                             DepthOffsetGroup* g = new DepthOffsetGroup();
                             g->addChild( featureNode );

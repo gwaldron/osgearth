@@ -49,17 +49,17 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         //osgDB::Registry::instance()->addFileExtensionAlias("kmz", "zip"); 
     }
 
-    osgDB::ReaderWriter::ReadResult readObject(const std::string& url, const osgDB::Options* options) const
+    osgDB::ReaderWriter::ReadResult readObject(const std::string& url, const osgDB::Options* options) const override
     {
         return readNode( url, options );
     }
 
-    osgDB::ReaderWriter::ReadResult readObject(std::istream& in, const osgDB::Options* dbOptions ) const
+    osgDB::ReaderWriter::ReadResult readObject(std::istream& in, const osgDB::Options* dbOptions ) const override
     {
         return readNode(in, dbOptions);
     }
 
-    osgDB::ReaderWriter::ReadResult readNode(const std::string& url, const osgDB::Options* dbOptions) const
+    osgDB::ReaderWriter::ReadResult readNode(const std::string& url, const osgDB::Options* dbOptions) const override
     {
         std::string ext = osgDB::getLowerCaseFileExtension(url);
         if ( !acceptsExtension(ext) )
@@ -73,13 +73,14 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         else
         {
             // propagate the source URI along to the stream reader
+            OE_INFO << LC << "Reading KML from " << url << std::endl;
             osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
             URIContext(url).store( myOptions.get() );
             return readNode( URIStream(url), myOptions.get() );
         }
     }
 
-    osgDB::ReaderWriter::ReadResult readNode(std::istream& in, const osgDB::Options* options ) const
+    osgDB::ReaderWriter::ReadResult readNode(std::istream& in, const osgDB::Options* options ) const override
     {
         if ( !options )
             return ReadResult("Missing required MapNode option");
@@ -100,7 +101,7 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         return ReadResult(node);
     }
 
-    osgDB::ReaderWriter::ReadResult openArchive(const std::string& url, ArchiveStatus status, unsigned blockSizeHint, const osgDB::Options* options =0L) const
+    osgDB::ReaderWriter::ReadResult openArchive(const std::string& url, ArchiveStatus status, unsigned blockSizeHint, const osgDB::Options* options =0L) const override
     {
         if ( osgDB::getLowerCaseFileExtension(url) == "kmz" )
         {

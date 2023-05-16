@@ -78,7 +78,7 @@ private:
 
     osg::ref_ptr<osgDB::Archive> _zip;
 
-    bool isAcceptable(const std::string& filename, const osgDB::Options* options) const;
+    std::string resolve(const std::string& filename) const;
 };
 
 

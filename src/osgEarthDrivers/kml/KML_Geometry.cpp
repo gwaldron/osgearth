@@ -183,7 +183,7 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
     }
 
     // clamp to ground mode:
-    if ( am == "clampToGround" )
+    if ( am == "clampToGround" || am == "clampToSeaFloor" )
     {
         if ( _extrude )
         {
@@ -195,9 +195,9 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
         }
         else if ( isLine)
         {
-            alt->technique() = alt->TECHNIQUE_DRAPE; // or could be GPU.
+            alt->technique() = alt->TECHNIQUE_SCENE;
         }
-        else // line or point
+        else // point
         {
             alt->technique() = alt->TECHNIQUE_SCENE;
         }
@@ -209,7 +209,7 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
     // "relativeToGround" means the coordinates' Z values are relative to the Z of the
     // terrain at that point. NOTE: GE flattens rooftops in this mode when extrude=1,
     // which seems wrong..
-    else if ( am == "relativeToGround" )
+    else if ( am == "relativeToGround" || am == "relativeToSeaFloor" )
     {
         alt->clamping() = alt->CLAMP_RELATIVE_TO_TERRAIN;
 
@@ -242,6 +242,11 @@ KML_Geometry::parseStyle( xml_node<>* node, KMLContext& cx, Style& style )
     else if ( am == "absolute" )
     {
         alt->clamping() = AltitudeSymbol::CLAMP_ABSOLUTE;
+    }
+
+    else if (!am.empty())
+    {
+        OE_WARN << LC << "KML altitudeMode \"" << am << "\" is invalid" << std::endl;
     }
 
     if ( _extrude )

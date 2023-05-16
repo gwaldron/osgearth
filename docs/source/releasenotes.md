@@ -1,5 +1,22 @@
 # Release Notes
 
+## Version 3.4 (May 2023)
+
+Version 3.4 is an incremental bugfix and maintenance release.
+
+Release Highlights:
+
+* Require OSG_GL3_AVAILABLE in OpenSceneGraph build
+* Improved vcpkg build support
+* Updates to the GLTF loader
+* New Draco plugin
+* Stroke outlines for FeatureImageLayer
+* ImGui tool updates
+* Performance updates to the ElevationPool
+* NVIDIA-specific GL extensions (NVGL) for terrain rendering
+* Improvements to sky lighting model
+* KML loader bugfixes
+
 ## Version 3.3 (April 2022)
 
 Version 3.3 is an incremental bugfix and performance release.

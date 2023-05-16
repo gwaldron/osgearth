@@ -25,6 +25,10 @@ This will clone the repository into a folder called `osgearth` and pull down all
 
 **Step 3 - Configure CMake**
 
+On Windows, you can run the provided script `bootstrap-vcpkg.bat` to configure your CMake build. This can take a while since it needs to download and build all your dependencies.
+
+Otherwise, follow these steps:
+
 vcpkg provides a CMake toolchain file that helps osgEarth find all of its dependencies.
 
 Note: You’ll need to specify a different build directory based on your build configuration (Release, RelWIthDebInfo, Debug) and specify the build type using ```-DCMAKE_BUILD_TYPE```. This is because some dependencies of osgEarth don’t pick up both debug and release versions without specifying the build type. Hopefully this will be fixed in future CMake versions.

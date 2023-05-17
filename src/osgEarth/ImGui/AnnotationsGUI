@@ -38,7 +38,7 @@ namespace
 
         void apply(osg::Node& node) override
         {
-            auto data = dynamic_cast<AnnotationData*>(node.getUserData());
+            auto data = dynamic_cast<osgEarth::AnnotationData*>(node.getUserData());
             if (data)
             {
                 node.setNodeMask(mask);
@@ -50,7 +50,7 @@ namespace
 
     struct GetAnnotations : public osg::NodeVisitor
     {
-        EarthManipulator* manip = nullptr;
+        osgEarth::EarthManipulator* manip = nullptr;
 
         GetAnnotations()
         {
@@ -60,7 +60,7 @@ namespace
 
         void apply(osg::Node& node) override
         {
-            auto data = dynamic_cast<AnnotationData*>(node.getUserData());
+            auto data = dynamic_cast<osgEarth::AnnotationData*>(node.getUserData());
             if (data)
             {
                 ImGui::PushID((std::uintptr_t)data);
@@ -130,7 +130,7 @@ namespace osgEarth
                 ImGui::Begin(name(), visible());
                 {
                     GetAnnotations getannos;
-                    getannos.manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                    getannos.manip = dynamic_cast<osgEarth::EarthManipulator*>(view(ri)->getCameraManipulator());
                     camera(ri)->accept(getannos);
                 }
                 ImGui::End();

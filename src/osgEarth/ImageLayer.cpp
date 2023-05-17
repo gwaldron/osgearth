@@ -235,6 +235,18 @@ ImageLayer::openImplementation()
     if (!options().shareTexMatUniformName().isSet() )
         options().shareTexMatUniformName().init(Stringify() << options().shareTexUniformName().get() << "_matrix");
 
+    if (options().noDataImageFilename().isSet())
+    {
+        _nodataImage = options().noDataImageFilename()->getImage();
+        if (!_nodataImage.valid())
+        {
+            OE_WARN << LC << "Failed to load the 'no-data' image from \""
+                << options().noDataImageFilename()->full()
+                << "\""
+                << std::endl;
+        }
+    }
+
     return Status::NoError;
 }
 
@@ -560,8 +572,17 @@ ImageLayer::createImageInKeyProfile(
         return GeoImage::INVALID;
     }
 
-    if (result.valid())
+    // Check against a no-data image.
+    if (result.valid() && _nodataImage.valid())
     {
+        if (ImageUtils::areEquivalent(result.getImage(), _nodataImage.get()))
+        {
+            return GeoImage::INVALID;
+        }
+    }
+
+    if (result.valid())
+    {        
         // invoke user callbacks
         invoke_onCreate(key, result);
 

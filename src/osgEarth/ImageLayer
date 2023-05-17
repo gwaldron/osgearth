@@ -286,6 +286,8 @@ namespace osgEarth
         Mutexed<std::vector<osg::ref_ptr<ImageLayer>>> _postLayers;
 
         Gate<TileKey> _sentry;
+
+        osg::ref_ptr<osg::Image> _nodataImage;
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;

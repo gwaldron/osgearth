@@ -260,7 +260,7 @@ LayerDrawableNVGL::refreshRenderState()
             }
 
             // LandCover sampler:
-            if (_context->options().useLandCover() == true)
+            if (_context->options().getUseLandCover() == true)
             {
                 buf.landcoverIndex = -1;
                 if (tile._sharedSamplers != nullptr /* && is normalmapping active */)
@@ -506,7 +506,7 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
         gl.vao->bind();
 
         GLenum primitive_type =
-            _context->options().gpuTessellation() == true ?
+            _context->options().getGPUTessellation() == true ?
             GL_PATCHES : GL_TRIANGLES;
 
         GLenum element_type =

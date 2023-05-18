@@ -310,7 +310,7 @@ namespace osgEarth {
             const TileKey& tileKey,
             unsigned tileSize,
             const Map* map,
-            const TerrainOptions& options,
+            const TerrainOptionsAPI& options,
             osg::ref_ptr<SharedGeometry>& out,
             Cancelable* state);
 
@@ -354,21 +354,14 @@ namespace osgEarth {
             unsigned       size,
             GeometryKey&   out) const;
 
-        SharedGeometry* createGeometry(
+        osg::ref_ptr<SharedGeometry> createGeometry(
             const TileKey& key,
             const TileMesher::Edits& edits,
-            const TerrainOptions& options,
+            const TerrainOptionsAPI& options,
             Cancelable* state) const;
 
-        // builds a primitive set to use for any tile without a mask
-        SharedDrawElements* createPrimitiveSet(
-            unsigned tileSize,
-            float skirtRatio,
-            bool UseGpuTessellation) const;
-
-        void tessellateSurface(
-            unsigned tileSize,
-            osg::DrawElements* primSet) const;
+        osg::ref_ptr<SharedGeometry> convertTileMeshToSharedGeometry(
+            const TileMesh& mesh) const;
 
         bool _enabled;
         bool _debug;

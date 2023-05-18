@@ -17,13 +17,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "GeometryPool"
-#include <osgEarth/Locators>
-#include <osgEarth/NodeUtils>
-#include <osgEarth/TopologyGraph>
 #include <osgEarth/Metrics>
-#include <osgEarth/Registry>
-#include <osg/Point>
-#include <osgUtil/MeshOptimizers>
+#include <osgEarth/NodeUtils>
+#include <osgEarth/TerrainMeshLayer>
 #include <cstdlib> // for getenv
 
 using namespace osgEarth;
@@ -58,14 +54,10 @@ GeometryPool::getPooledGeometry(
     const TileKey& tileKey,
     unsigned tileSize,
     const Map* map,
-    const TerrainOptions& options,
+    const TerrainOptionsAPI& options,
     osg::ref_ptr<SharedGeometry>& out,
     Cancelable* progress)
 {
-    // convert to a unique-geometry key:
-    GeometryKey geomKey;
-    createKeyForTileKey( tileKey, tileSize, geomKey );
-
     // make our globally shared EBO if we need it
     {
         Threading::ScopedMutexLock lock(_geometryMapMutex);
@@ -74,7 +66,7 @@ GeometryPool::getPooledGeometry(
             // convert the mesher's indices to a SharedDrawElements
             auto indices = _mesher.getOrCreateStandardIndices(options);
 
-            GLenum mode = options.gpuTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
+            GLenum mode = options.getGPUTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
 
             _defaultPrimSet = new SharedDrawElements(mode);
 
@@ -84,6 +76,29 @@ GeometryPool::getPooledGeometry(
             _defaultPrimSet->setElementBufferObject(new osg::ElementBufferObject());
         }
     }
+
+    // First check the map for a terrain mesh layer. If one exists
+    // simply pull the final tile mesh from there.
+    // TODO: support adding additional constraints to the mesh layer
+    // result? Or should the mesh layer itself worry aboug that?
+    if (map)
+    {
+        auto meshlayer = map->getLayer<TerrainMeshLayer>();
+        if (meshlayer)
+        {
+            auto mesh = meshlayer->createTile(tileKey, nullptr);
+            out = convertTileMeshToSharedGeometry(mesh);
+            if (out.valid())
+            {
+                // done!
+                return;
+            }
+        }
+    }
+
+    // convert to a unique-geometry key:
+    GeometryKey geomKey;
+    createKeyForTileKey( tileKey, tileSize, geomKey );
 
     // see if there are any constraints:
     TileMesher::Edits edits;
@@ -144,34 +159,27 @@ GeometryPool::createKeyForTileKey(const TileKey& tileKey,
     out.size = tileSize;
 }
 
-SharedGeometry*
-GeometryPool::createGeometry(
-    const TileKey& tileKey,
-    const TileMesher::Edits& edits,
-    const TerrainOptions& options,
-    Cancelable* progress) const
+osg::ref_ptr<SharedGeometry>
+GeometryPool::convertTileMeshToSharedGeometry(const TileMesh& mesh) const
 {
-    OE_PROFILING_ZONE;
-
-    TileGeometry geom = _mesher.createTile(tileKey, edits, options, progress);
-
-    if (!geom.verts.valid())
+    if (!mesh.verts.valid())
         return nullptr;
 
     osg::ref_ptr<SharedGeometry> shared = new SharedGeometry();
-    shared->setVertexArray(geom.verts);
-    shared->setNormalArray(geom.normals);
-    shared->setTexCoordArray(geom.uvs);
-    shared->setNeighborArray(geom.vert_neighbors);
-    shared->setNeighborNormalArray(geom.normal_neighbors);
 
-    if (geom.indices.valid())
+    shared->setVertexArray(mesh.verts);
+    shared->setNormalArray(mesh.normals);
+    shared->setTexCoordArray(mesh.uvs);
+    shared->setNeighborArray(mesh.vert_neighbors);
+    shared->setNeighborNormalArray(mesh.normal_neighbors);
+
+    if (mesh.indices.valid())
     {
-        auto de = new SharedDrawElements(geom.indices->getMode());
+        auto de = new SharedDrawElements(mesh.indices->getMode());
         de->setElementBufferObject(new osg::ElementBufferObject());
-        de->reserveElements(geom.indices->getNumIndices());
-        for (auto i = 0u; i < geom.indices->getNumIndices(); ++i)
-            de->addElement(geom.indices->getElement(i));
+        de->reserveElements(mesh.indices->getNumIndices());
+        for (auto i = 0u; i < mesh.indices->getNumIndices(); ++i)
+            de->addElement(mesh.indices->getElement(i));
         shared->setDrawElements(de);
     }
     else
@@ -180,7 +188,7 @@ GeometryPool::createGeometry(
         shared->setDrawElements(_defaultPrimSet);
     }
 
-    shared->setHasConstraints(geom.hasConstraints);
+    shared->setHasConstraints(mesh.hasConstraints);
 
     // if we are using GL4, create the GL4 tile model.
     if (/*using GL4*/true)
@@ -207,7 +215,20 @@ GeometryPool::createGeometry(
         }
     }
 
-    return shared.release();
+    return shared;
+}
+
+osg::ref_ptr<SharedGeometry>
+GeometryPool::createGeometry(
+    const TileKey& tileKey,
+    const TileMesher::Edits& edits,
+    const TerrainOptionsAPI& options,
+    Cancelable* progress) const
+{
+    OE_PROFILING_ZONE;
+
+    auto mesh = _mesher.createTile(tileKey, edits, options, progress);
+    return convertTileMeshToSharedGeometry(mesh);
 }
 
 void

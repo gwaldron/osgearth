@@ -185,7 +185,7 @@ TerrainOptions::fromConfig(const Config& conf)
 //...................................................................
 
 TerrainOptionsAPI::TerrainOptionsAPI(TerrainOptions* optionsPtr) :
-_ptr(optionsPtr)
+    _ptr(optionsPtr)
 {
     //nop
 }

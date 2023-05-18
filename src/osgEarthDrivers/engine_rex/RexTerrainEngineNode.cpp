@@ -348,7 +348,6 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         _merger.get(),
         _tiles,
         _renderBindings,
-        options(),
         _selectionInfo,
         &_clock);
 

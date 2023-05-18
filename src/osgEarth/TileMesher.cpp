@@ -22,7 +22,7 @@
 
 using namespace osgEarth;
 
-TileGeometry::TileGeometry(TileGeometry&& m)
+TileMesh::TileMesh(TileMesh&& m)
 {
     localToWorld = m.localToWorld; m.localToWorld = osg::Matrix::identity();
     verts = m.verts; m.verts = { };
@@ -51,7 +51,7 @@ namespace
         primset->addElement((INDEX1)+1);
     }
 
-    void addSkirtDataForIndex(unsigned INDEX, float HEIGHT, TileGeometry& geom)
+    void addSkirtDataForIndex(unsigned INDEX, float HEIGHT, TileMesh& geom)
     {
         geom.verts->push_back((*geom.verts)[INDEX]);
         geom.normals->push_back((*geom.normals)[INDEX]);
@@ -77,15 +77,15 @@ namespace
 }
 
 osg::DrawElements*
-TileMesher::getOrCreateStandardIndices(const TerrainOptions& options)
+TileMesher::getOrCreateStandardIndices(const TerrainOptionsAPI& options) const
 {
     if (!_standardIndices.valid())
     {
         ScopedMutexLock lock(_mutex);
         if (!_standardIndices.valid())
         {
-            unsigned tileSize = options.tileSize().get();
-            float skirtRatio = options.heightFieldSkirtRatio().get();
+            unsigned tileSize = options.getTileSize();
+            float skirtRatio = options.getHeightFieldSkirtRatio();
 
             // Attempt to calculate the number of verts in the surface geometry.
             bool needsSkirt = skirtRatio > 0.0f;
@@ -96,7 +96,7 @@ TileMesher::getOrCreateStandardIndices(const TerrainOptions& options)
             unsigned numIndiciesInSurface = (tileSize - 1) * (tileSize - 1) * 6;
             unsigned numIncidesInSkirt = skirtRatio > 0.0f ? (tileSize - 1) * 4 * 6 : 0;
 
-            GLenum mode = options.gpuTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
+            GLenum mode = options.getGPUTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
 
             auto primset = new osg::DrawElementsUInt(mode);
             primset->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
@@ -216,11 +216,11 @@ TileMesher::getEdits(
     return !out_edits.empty();
 }
 
-TileGeometry
+TileMesh
 TileMesher::createTile(
     const TileKey& key,
     const Edits& edits,
-    const TerrainOptions& options,
+    const TerrainOptionsAPI& options,
     Cancelable* progress) const
 {
     if (edits.empty())
@@ -233,10 +233,10 @@ TileMesher::createTile(
     }
 }
 
-TileGeometry
+TileMesh
 TileMesher::createTileStandard(
     const TileKey& key,
-    const TerrainOptions& options,
+    const TerrainOptionsAPI& options,
     Cancelable* progress) const
 {
     // Establish a local reference frame for the tile:
@@ -245,8 +245,8 @@ TileMesher::createTileStandard(
     centroid_world.createWorldToLocal(world2local);
     local2world.invert(world2local);
 
-    unsigned tileSize = options.tileSize().get();
-    float skirtRatio = options.heightFieldSkirtRatio().get();
+    unsigned tileSize = options.getTileSize();
+    float skirtRatio = options.getHeightFieldSkirtRatio();
 
     // Attempt to calculate the number of verts in the surface geometry.
     bool needsSkirt = skirtRatio > 0.0f;
@@ -259,7 +259,7 @@ TileMesher::createTileStandard(
     osg::BoundingSphere tileBound;
 
     // the geometry:
-    TileGeometry geom;
+    TileMesh geom;
     geom.localToWorld = local2world;
 
     osg::ref_ptr<osg::VertexBufferObject> vbo = new osg::VertexBufferObject();
@@ -276,7 +276,7 @@ TileMesher::createTileStandard(
     geom.normals->reserve(numVerts);
     geom.normals->setBinding(osg::Array::BIND_PER_VERTEX);
 
-    if (options.morphTerrain() == true)
+    if (options.getMorphTerrain() == true)
     {
         // neighbor positions (for morphing)
         geom.vert_neighbors = new osg::Vec3Array();
@@ -370,13 +370,15 @@ TileMesher::createTileStandard(
             addSkirtDataForIndex(r * tileSize, height, geom); //west
     }
 
+    //geom.indices = getOrCreateStandardIndices(options);
+
     return geom;
 }
 
-TileGeometry
+TileMesh
 TileMesher::createTileWithEdits(
     const TileKey& key,
-    const TerrainOptions& options,
+    const TerrainOptionsAPI& options,
     const Edits& edits,
     Cancelable* progress) const
 {
@@ -391,8 +393,8 @@ TileMesher::createTileWithEdits(
     
     GeoLocator locator(keyExtent);
 
-    unsigned tileSize = options.tileSize().get();
-    float skirtRatio = options.heightFieldSkirtRatio().get();
+    unsigned tileSize = options.getTileSize();
+    float skirtRatio = options.getHeightFieldSkirtRatio();
 
     // calculate the bounding box of the tile in local coords,
     // for culling purposes:
@@ -410,7 +412,7 @@ TileMesher::createTileWithEdits(
     }
     Bounds localBounds(xmin, ymin, -FLT_MAX, xmax, ymax, FLT_MAX);
 
-    TileGeometry geom; // final output.
+    TileMesh geom; // final output.
     geom.localToWorld = local2world;
 
     weemesh::mesh_t mesh;
@@ -675,7 +677,7 @@ TileMesher::createTileWithEdits(
             }
         }
     }
-    // Time to assemble the resulting TileGeometry structure.
+    // Time to assemble the resulting TileMesh structure.
    
     // TODO:
     // This geometry/index set is now sparse. Any verts that were
@@ -692,7 +694,7 @@ TileMesher::createTileWithEdits(
     geom.uvs = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
     geom.uvs->reserve(mesh._verts.size());
 
-    if (options.morphTerrain() == true)
+    if (options.getMorphTerrain())
     {
         geom.vert_neighbors = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
         geom.vert_neighbors->reserve(mesh._verts.size());
@@ -763,7 +765,7 @@ TileMesher::createTileWithEdits(
     }
 
     // the index set, discarding any degenerate triangles.
-    auto mode = options.gpuTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
+    auto mode = options.getGPUTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
     geom.indices = new osg::DrawElementsUInt(mode);
     geom.indices->reserveElements(mesh._triangles.size() * 3);
     for (const auto& tri : mesh._triangles)
@@ -777,9 +779,9 @@ TileMesher::createTileWithEdits(
     }
 
     // make the skirts:
-    if (options.heightFieldSkirtRatio() > 0.0)
+    if (options.getHeightFieldSkirtRatio() > 0.0)
     {
-        double skirtHeight = options.heightFieldSkirtRatio().get() * tileBound.radius();
+        double skirtHeight = options.getHeightFieldSkirtRatio() * tileBound.radius();
 
         // collect all edges marked as boundaries
         weemesh::edgeset_t boundary_edges(mesh, VERTEX_BOUNDARY);

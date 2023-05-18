@@ -34,9 +34,9 @@
 namespace osgEarth
 {
     /**
-    * OSG geometry components for a tile, created by the TileMesher.
+    * Geometry components for a tile (created by the TileMesher).
     */
-    struct OSGEARTH_EXPORT TileGeometry
+    struct OSGEARTH_EXPORT TileMesh
     {
         osg::Matrix localToWorld;
         osg::ref_ptr<osg::Vec3Array> verts;
@@ -47,8 +47,8 @@ namespace osgEarth
         osg::ref_ptr<osg::DrawElements> indices;
         bool hasConstraints = false;
 
-        TileGeometry() { }
-        TileGeometry(TileGeometry&& m);
+        TileMesh() { }
+        TileMesh(TileMesh&& m);
     };
 
     /**
@@ -92,16 +92,16 @@ namespace osgEarth
         //! @param options Terrain options for the mesher to use
         //! @param progress Cancelable interface
         //! @return A tile mesh
-        TileGeometry createTile(
+        TileMesh createTile(
             const TileKey& key,
             const Edits& edits,
-            const TerrainOptions& options,
+            const TerrainOptionsAPI& options,
             Cancelable* progress) const;
 
         //! Creates a primitive set that represents triangles for
         //! a tile mesh without any edits.
         osg::DrawElements* getOrCreateStandardIndices(
-            const TerrainOptions& options);
+            const TerrainOptionsAPI& options) const;
             
 
     protected:
@@ -110,14 +110,14 @@ namespace osgEarth
 
         using ConstraintLayers = std::vector<osg::ref_ptr<TerrainConstraintLayer>>;
 
-        TileGeometry createTileStandard(
+        TileMesh createTileStandard(
             const TileKey& key,
-            const TerrainOptions& options,
+            const TerrainOptionsAPI& options,
             Cancelable* progress) const;
 
-        TileGeometry createTileWithEdits(
+        TileMesh createTileWithEdits(
             const TileKey& key,
-            const TerrainOptions& options,
+            const TerrainOptionsAPI& options,
             const Edits& edits,
             Cancelable* progress) const;
     };

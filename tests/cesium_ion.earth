@@ -6,8 +6,14 @@ Set your Cesium Ion access key in the OSGEARTH_CESIUMION_KEY environment variabl
 
 <map name="Cesium Ion">
 
+    <!--
     <CesiumIonImage name="cesiumion bluemarble">
         <asset_id>3845</asset_id>
+    </CesiumIonImage>
+    -->
+
+    <CesiumIonImage name="bing satellite">
+        <asset_id>2</asset_id>
     </CesiumIonImage>
 
     <CesiumIonTerrainMesh name="cesium world terrain">

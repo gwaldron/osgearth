@@ -610,12 +610,20 @@ TileMesh CesiumIonTerrainMeshLayer::createTileImplementation(
 
     URI tileURI(Stringify() << _assetURI.full() << key.getLevelOfDetail() << "/" << x << "/" << y << ".terrain", _assetURI.context());
 
-    auto result = tileURI.readString(getReadOptions(), progress);
-    if (result.succeeded())
+    osgEarth::ReadResult result;
+    for (unsigned int i = 0; i < 4; ++i)
     {
-        std::string data = result.getString();
-        std::stringstream buf(data);
-        return quantizedMeshToTileMesh(key, buf);
+        result = tileURI.readString(getReadOptions(), progress);
+        if (result.succeeded())
+        {
+            std::string data = result.getString();
+            std::stringstream buf(data);
+            return quantizedMeshToTileMesh(key, buf);
+        }
+        else
+        {
+            //OE_NOTICE << "Request for " << tileURI.full() << " failed attempt=" << i << std::endl;
+        }
     }
 
     TileMesh invalid;

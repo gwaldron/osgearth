@@ -51,7 +51,7 @@ TerrainMeshLayer::Options::getConfig() const
 void
 TerrainMeshLayer::init()
 {
-    //nop
+    TileLayer::init();
 }
 
 Status

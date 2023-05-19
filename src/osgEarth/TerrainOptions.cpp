@@ -184,10 +184,26 @@ TerrainOptions::fromConfig(const Config& conf)
 
 //...................................................................
 
+namespace
+{
+    static TerrainOptions __default_to;
+}
+
+TerrainOptionsAPI::TerrainOptionsAPI() :
+    _ptr(&__default_to)
+{
+    //nop
+}
 TerrainOptionsAPI::TerrainOptionsAPI(TerrainOptions* optionsPtr) :
     _ptr(optionsPtr)
 {
-    //nop
+    OE_HARD_ASSERT(_ptr != nullptr);
+}
+
+TerrainOptionsAPI::TerrainOptionsAPI(const TerrainOptionsAPI& rhs) :
+    _ptr(rhs._ptr)
+{
+    OE_HARD_ASSERT(_ptr != nullptr);
 }
 
 OE_OPTION_IMPL(TerrainOptionsAPI, int, TileSize, tileSize);

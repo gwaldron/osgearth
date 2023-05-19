@@ -589,8 +589,7 @@ RexTerrainEngineNode::refresh(bool forceDirty)
                 _engineContext.get(),
                 nullptr); // progress
 
-            // Next, build the surface geometry for the node.
-            //tileNode->create( keys[i], 0L, _engineContext.get(), nullptr );
+            // Root nodes never expire
             tileNode->setDoNotExpire(true);
 
             // Add it to the scene graph

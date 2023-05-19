@@ -71,6 +71,9 @@ namespace osgEarth
 
         //! Construct a tile mesher
         TileMesher();
+        
+        //! Configure this mesher with some terrain options
+        void setTerrainOptions(const TerrainOptionsAPI& options);
 
         //! Assemble a collection of Edits from the map for the given tile key.
         //! Edits are just groups of features that the mesher can use to alter
@@ -95,29 +98,26 @@ namespace osgEarth
         TileMesh createTile(
             const TileKey& key,
             const Edits& edits,
-            const TerrainOptionsAPI& options,
             Cancelable* progress) const;
 
         //! Creates a primitive set that represents triangles for
         //! a tile mesh without any edits.
-        osg::DrawElements* getOrCreateStandardIndices(
-            const TerrainOptionsAPI& options) const;
+        osg::DrawElements* getOrCreateStandardIndices() const;
             
 
     protected:
         mutable osg::ref_ptr<osg::DrawElements> _standardIndices;
         mutable Mutex _mutex;
+        TerrainOptionsAPI _options;
 
         using ConstraintLayers = std::vector<osg::ref_ptr<TerrainConstraintLayer>>;
 
         TileMesh createTileStandard(
             const TileKey& key,
-            const TerrainOptionsAPI& options,
             Cancelable* progress) const;
 
         TileMesh createTileWithEdits(
             const TileKey& key,
-            const TerrainOptionsAPI& options,
             const Edits& edits,
             Cancelable* progress) const;
     };

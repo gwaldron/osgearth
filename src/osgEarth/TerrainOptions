@@ -260,7 +260,9 @@ namespace osgEarth
         void setMaxTextureSize(const unsigned& value);
         const unsigned& getMaxTextureSize() const;
 
-        TerrainOptionsAPI(TerrainOptions* = nullptr);
+        TerrainOptionsAPI();
+        TerrainOptionsAPI(TerrainOptions*);
+        TerrainOptionsAPI(const TerrainOptionsAPI&);
 
     public: // Legacy support
 

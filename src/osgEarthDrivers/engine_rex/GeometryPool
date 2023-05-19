@@ -347,18 +347,11 @@ namespace osgEarth {
         mutable Threading::Mutex _geometryMapMutex;
         GeometryMap _geometryMap;
         osg::ref_ptr<SharedDrawElements> _defaultPrimSet;
-        TileMesher _mesher;
 
         void createKeyForTileKey(
             const TileKey& tileKey,
             unsigned       size,
             GeometryKey&   out) const;
-
-        osg::ref_ptr<SharedGeometry> createGeometry(
-            const TileKey& key,
-            const TileMesher::Edits& edits,
-            const TerrainOptionsAPI& options,
-            Cancelable* state) const;
 
         osg::ref_ptr<SharedGeometry> convertTileMeshToSharedGeometry(
             const TileMesh& mesh) const;

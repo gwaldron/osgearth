@@ -51,7 +51,7 @@ TerrainMeshLayer::Options::getConfig() const
 void
 TerrainMeshLayer::init()
 {
-    //nop
+    TileLayer::init();
 }
 
 Status
@@ -76,19 +76,21 @@ TerrainMeshLayer::openImplementation()
 void
 TerrainMeshLayer::addedToMap(const Map* map)
 {
+    TileLayer::addedToMap(map);
     _map = map;
 }
 
 void
-TerrainMeshLayer::removedFromMap(const Map*)
+TerrainMeshLayer::removedFromMap(const Map* map)
 {
+    TileLayer::removedFromMap(map);
     _map = nullptr;
 }
 
 void
 TerrainMeshLayer::prepareForRendering(TerrainEngine* engine)
 {
-    _terrainOptions = engine->getOptions();
+    _engine = engine;
 }
 
 URI
@@ -145,9 +147,25 @@ TerrainMeshLayer::createTileImplementation(
     const TileKey& key,
     ProgressCallback* progress) const
 {
+    // Set up a tile mesher:
     TileMesher mesher;
-    TileMesh mesh = mesher.createTile(key, {}, _terrainOptions, progress);
+    if (_engine)
+        mesher.setTerrainOptions(_engine->getOptions());
+
+    // process any constraints:
+    TileMesher::Edits edits;
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
+    {
+        mesher.getEdits(key, map.get(), edits, progress);
+    }
+
+    // create the mesh
+    TileMesh mesh = mesher.createTile(key, edits, progress);
     if (!mesh.indices.valid())
-        mesh.indices = mesher.getOrCreateStandardIndices({});
+    {
+        mesh.indices = mesher.getOrCreateStandardIndices();
+    }
+
     return mesh;
 }

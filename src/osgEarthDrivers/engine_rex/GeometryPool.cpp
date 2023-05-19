@@ -58,13 +58,16 @@ GeometryPool::getPooledGeometry(
     osg::ref_ptr<SharedGeometry>& out,
     Cancelable* progress)
 {
+    TileMesher mesher;
+    mesher.setTerrainOptions(options);
+
     // make our globally shared EBO if we need it
     {
         Threading::ScopedMutexLock lock(_geometryMapMutex);
         if (!_defaultPrimSet.valid())
         {
             // convert the mesher's indices to a SharedDrawElements
-            auto indices = _mesher.getOrCreateStandardIndices(options);
+            auto indices = mesher.getOrCreateStandardIndices();
 
             GLenum mode = options.getGPUTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
 
@@ -98,11 +101,11 @@ GeometryPool::getPooledGeometry(
 
     // convert to a unique-geometry key:
     GeometryKey geomKey;
-    createKeyForTileKey( tileKey, tileSize, geomKey );
+    createKeyForTileKey(tileKey, tileSize, geomKey);
 
     // see if there are any constraints:
     TileMesher::Edits edits;
-    _mesher.getEdits(tileKey, map, edits, progress);
+    mesher.getEdits(tileKey, map, edits, progress);
 
     if ( _enabled )
     {
@@ -124,11 +127,8 @@ GeometryPool::getPooledGeometry(
 
         if (!out.valid())
         {
-            out = createGeometry(
-                tileKey,
-                edits,
-                options,
-                progress);
+            auto mesh = mesher.createTile(tileKey, edits, progress);
+            out = convertTileMeshToSharedGeometry(mesh);
 
             // only store as a shared geometry if there are no constraints.
             if (out.valid() && !out->hasConstraints())
@@ -141,11 +141,8 @@ GeometryPool::getPooledGeometry(
 
     else
     {
-        out = createGeometry(
-            tileKey,
-            edits,
-            options,
-            progress);
+        auto mesh = mesher.createTile(tileKey, edits, progress);
+        out = convertTileMeshToSharedGeometry(mesh);
     }
 }
 
@@ -216,19 +213,6 @@ GeometryPool::convertTileMeshToSharedGeometry(const TileMesh& mesh) const
     }
 
     return shared;
-}
-
-osg::ref_ptr<SharedGeometry>
-GeometryPool::createGeometry(
-    const TileKey& tileKey,
-    const TileMesher::Edits& edits,
-    const TerrainOptionsAPI& options,
-    Cancelable* progress) const
-{
-    OE_PROFILING_ZONE;
-
-    auto mesh = _mesher.createTile(tileKey, edits, options, progress);
-    return convertTileMeshToSharedGeometry(mesh);
 }
 
 void

@@ -80,18 +80,18 @@ namespace osgEarth
         //! Open the layer for reading.
         Status openImplementation() override;
 
-        //! Connect to the terrain engine
-        void prepareForRendering(TerrainEngine*) override;
-
         //! Called when this layer is added to a map (after open)
         void addedToMap(const Map*) override;
         void removedFromMap(const Map*) override;
+
+        //! Called when this layer is added to a map node
+        void prepareForRendering(TerrainEngine*) override;
 
     private:
         std::string _template;
         std::string _rotateString, _rotateChoices;
         osg::observer_ptr<const Map> _map;
-        TerrainOptionsAPI _terrainOptions;
+        TerrainEngine* _engine;
         mutable std::atomic_int _rotateIter;
         URI createURI(const TileKey& key) const;
     };

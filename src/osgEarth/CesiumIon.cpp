@@ -620,6 +620,7 @@ TileMesh CesiumIonTerrainMeshLayer::createTileImplementation(
             std::stringstream buf(data);
             auto mesh = quantizedMeshToTileMesh(key, buf);
             applyConstraints(key, mesh);
+            return mesh;
         }
         else
         {

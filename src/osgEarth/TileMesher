@@ -48,7 +48,9 @@ namespace osgEarth
         bool hasConstraints = false;
 
         TileMesh() { }
+        TileMesh(const TileMesh& m);
         TileMesh(TileMesh&& m);
+        TileMesh& operator = (const TileMesh&);
     };
 
     /**
@@ -95,8 +97,18 @@ namespace osgEarth
         //! @param options Terrain options for the mesher to use
         //! @param progress Cancelable interface
         //! @return A tile mesh
-        TileMesh createTile(
+        TileMesh createMesh(
             const TileKey& key,
+            const Edits& edits,
+            Cancelable* progress) const;
+
+        //! Apply edits to an existing mesh and return a new mesh.
+        //! @param mesh Input mesh
+        //! @param edits Edits to apply to alter the mesh
+        //! @return A tile mesh
+        TileMesh createMesh(
+            const TileKey& key,
+            const TileMesh& input,
             const Edits& edits,
             Cancelable* progress) const;
 
@@ -112,12 +124,13 @@ namespace osgEarth
 
         using ConstraintLayers = std::vector<osg::ref_ptr<TerrainConstraintLayer>>;
 
-        TileMesh createTileStandard(
+        TileMesh createMeshStandard(
             const TileKey& key,
             Cancelable* progress) const;
 
-        TileMesh createTileWithEdits(
+        TileMesh createMeshWithEdits(
             const TileKey& key,
+            const TileMesh& mesh,
             const Edits& edits,
             Cancelable* progress) const;
     };

@@ -562,7 +562,7 @@ TileMesh quantizedMeshToTileMesh(const osgEarth::TileKey& key, std::stringstream
         modelLTP = model * world2local;
 
         int default_marker = VERTEX_VISIBLE | VERTEX_CONSTRAINT | VERTEX_HAS_ELEVATION;
-        (*texCoords)[i].set(osg::Vec3(s, t, default_marker));        
+        (*texCoords)[i].set(osg::Vec3(s, t, (float)default_marker));
         (*verts)[i].set(modelLTP);
 
         // Request oct encoded normals?
@@ -615,7 +615,12 @@ TileMesh CesiumIonTerrainMeshLayer::createTileImplementation(
     {
         std::string data = result.getString();
         std::stringstream buf(data);
-        return quantizedMeshToTileMesh(key, buf);
+
+        auto mesh = quantizedMeshToTileMesh(key, buf);
+
+        applyConstraints(key, mesh);
+
+        return mesh;
     }
 
     TileMesh invalid;

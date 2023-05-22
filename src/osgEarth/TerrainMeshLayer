@@ -87,6 +87,8 @@ namespace osgEarth
         //! Called when this layer is added to a map node
         void prepareForRendering(TerrainEngine*) override;
 
+        void applyConstraints(const TileKey& key, TileMesh& mesh) const;
+
     private:
         std::string _template;
         std::string _rotateString, _rotateChoices;

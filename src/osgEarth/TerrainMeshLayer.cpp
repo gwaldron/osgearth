@@ -161,11 +161,32 @@ TerrainMeshLayer::createTileImplementation(
     }
 
     // create the mesh
-    TileMesh mesh = mesher.createTile(key, edits, progress);
+    TileMesh mesh = mesher.createMesh(key, edits, progress);
     if (!mesh.indices.valid())
     {
+
         mesh.indices = mesher.getOrCreateStandardIndices();
     }
 
     return mesh;
+}
+
+void
+TerrainMeshLayer::applyConstraints(const TileKey& key, TileMesh& mesh) const
+{
+    TileMesher mesher;
+    if (_engine)
+        mesher.setTerrainOptions(_engine->getOptions());
+
+    // process any constraints:
+    TileMesher::Edits edits;
+    osg::ref_ptr<const Map> map;
+    if (_map.lock(map))
+    {
+        mesher.getEdits(key, map.get(), edits, nullptr);
+        if (!edits.empty())
+        {
+            mesh = mesher.createMesh(key, mesh, edits, nullptr);
+        }
+    }
 }

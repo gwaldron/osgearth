@@ -127,7 +127,7 @@ GeometryPool::getPooledGeometry(
 
         if (!out.valid())
         {
-            auto mesh = mesher.createTile(tileKey, edits, progress);
+            auto mesh = mesher.createMesh(tileKey, edits, progress);
             out = convertTileMeshToSharedGeometry(mesh);
 
             // only store as a shared geometry if there are no constraints.
@@ -141,7 +141,7 @@ GeometryPool::getPooledGeometry(
 
     else
     {
-        auto mesh = mesher.createTile(tileKey, edits, progress);
+        auto mesh = mesher.createMesh(tileKey, edits, progress);
         out = convertTileMeshToSharedGeometry(mesh);
     }
 }

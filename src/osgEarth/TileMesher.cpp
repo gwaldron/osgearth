@@ -22,6 +22,25 @@
 
 using namespace osgEarth;
 
+TileMesh::TileMesh(const TileMesh& m)
+{
+    this->operator=(m);
+}
+
+TileMesh&
+TileMesh::operator=(const TileMesh& m)
+{
+    localToWorld = m.localToWorld;
+    verts = m.verts;
+    normals = m.normals;
+    uvs = m.uvs;
+    vert_neighbors = m.vert_neighbors;
+    normal_neighbors = m.normal_neighbors;
+    indices = m.indices;
+    hasConstraints = m.hasConstraints;
+    return *this;
+}
+
 TileMesh::TileMesh(TileMesh&& m)
 {
     localToWorld = m.localToWorld; m.localToWorld = osg::Matrix::identity();
@@ -223,25 +242,33 @@ TileMesher::getEdits(
 }
 
 TileMesh
-TileMesher::createTile(
-    const TileKey& key,
-    const Edits& edits,
-    Cancelable* progress) const
+TileMesher::createMesh(const TileKey& key, const Edits& edits, Cancelable* progress) const
 {
     if (edits.empty())
     {
-        return createTileStandard(key, progress);
+        return createMeshStandard(key, progress);
     }
     else
     {
-        return createTileWithEdits(key, edits, progress);
+        return createMeshWithEdits(key, {}, edits, progress);
     }
 }
 
 TileMesh
-TileMesher::createTileStandard(
-    const TileKey& key,
-    Cancelable* progress) const
+TileMesher::createMesh(const TileKey& key, const TileMesh& mesh, const Edits& edits, Cancelable* progress) const
+{
+    if (edits.empty())
+    {
+        return mesh;
+    }
+    else
+    {
+        return createMeshWithEdits(key, mesh, edits, progress);
+    }
+}
+
+TileMesh
+TileMesher::createMeshStandard(const TileKey& key, Cancelable* progress) const
 {
     // Establish a local reference frame for the tile:
     GeoPoint centroid_world = key.getExtent().getCentroid();
@@ -379,9 +406,79 @@ TileMesher::createTileStandard(
     return geom;
 }
 
+namespace
+{
+    void build_regular_gridded_mesh(weemesh::mesh_t& mesh, unsigned tileSize, const GeoLocator& locator, const osg::Matrix& world2local)
+    {
+        mesh.set_boundary_marker(VERTEX_BOUNDARY);
+        mesh.set_constraint_marker(VERTEX_CONSTRAINT);
+        mesh.set_has_elevation_marker(VERTEX_HAS_ELEVATION);
+
+        mesh._verts.reserve(tileSize * tileSize);
+
+        for (unsigned row = 0; row < tileSize; ++row)
+        {
+            double ny = (double)row / (double)(tileSize - 1);
+            for (unsigned col = 0; col < tileSize; ++col)
+            {
+                double nx = (double)col / (double)(tileSize - 1);
+                osg::Vec3d unit(nx, ny, 0.0);
+                osg::Vec3d model;
+                osg::Vec3d modelLTP;
+
+                locator.unitToWorld(unit, model);
+                modelLTP = model * world2local;
+
+                int marker = VERTEX_VISIBLE;
+
+                // mark the perimeter as a boundary (for skirt generation)
+                if (row == 0 || row == tileSize - 1 || col == 0 || col == tileSize - 1)
+                    marker |= VERTEX_BOUNDARY;
+
+                int i = mesh.get_or_create_vertex(
+                    weemesh::vert_t(modelLTP.x(), modelLTP.y(), modelLTP.z()),
+                    marker);
+
+                if (row > 0 && col > 0)
+                {
+                    mesh.add_triangle(i, i - 1, i - tileSize - 1);
+                    mesh.add_triangle(i, i - tileSize - 1, i - tileSize);
+                }
+            }
+        }
+    }
+
+    void load_mesh(weemesh::mesh_t& mesh, const TileMesh& input)
+    {
+        mesh.set_boundary_marker(VERTEX_BOUNDARY);
+        mesh.set_constraint_marker(VERTEX_CONSTRAINT);
+        mesh.set_has_elevation_marker(VERTEX_HAS_ELEVATION);
+
+        mesh._verts.reserve(input.verts->getNumElements());
+
+        for (unsigned i = 0; i < input.indices->getNumIndices(); i += 3)
+        {
+            auto i1 = input.indices->getElement(i);
+            auto i2 = input.indices->getElement(i + 1);
+            auto i3 = input.indices->getElement(i + 2);
+
+            int marker1 = (int)(*input.uvs)[i1].z();
+            int marker2 = (int)(*input.uvs)[i2].z();
+            int marker3 = (int)(*input.uvs)[i3].z();
+
+            auto v1 = mesh.get_or_create_vertex(weemesh::vert_t((*input.verts)[i1].x(), (*input.verts)[i1].y(), (*input.verts)[i1].z()), marker1);
+            auto v2 = mesh.get_or_create_vertex(weemesh::vert_t((*input.verts)[i2].x(), (*input.verts)[i2].y(), (*input.verts)[i2].z()), marker2);
+            auto v3 = mesh.get_or_create_vertex(weemesh::vert_t((*input.verts)[i3].x(), (*input.verts)[i3].y(), (*input.verts)[i3].z()), marker3);
+
+            mesh.add_triangle(v1, v2, v3);
+        }
+    }
+}
+
 TileMesh
-TileMesher::createTileWithEdits(
+TileMesher::createMeshWithEdits(
     const TileKey& key,
+    const TileMesh& input_mesh,
     const Edits& edits,
     Cancelable* progress) const
 {
@@ -419,43 +516,15 @@ TileMesher::createTileWithEdits(
     geom.localToWorld = local2world;
 
     weemesh::mesh_t mesh;
-    mesh.set_boundary_marker(VERTEX_BOUNDARY);
-    mesh.set_constraint_marker(VERTEX_CONSTRAINT);
 
-    mesh._verts.reserve(tileSize * tileSize);
 
-    double xscale = -zmin / 0.5 * (xmax - xmin);
-    double yscale = -zmin / 0.5 * (ymax - ymin);
-
-    for (unsigned row = 0; row < tileSize; ++row)
+    if (input_mesh.verts.valid())
     {
-        double ny = (double)row / (double)(tileSize - 1);
-        for (unsigned col = 0; col < tileSize; ++col)
-        {
-            double nx = (double)col / (double)(tileSize - 1);
-            osg::Vec3d unit(nx, ny, 0.0);
-            osg::Vec3d model;
-            osg::Vec3d modelLTP;
-
-            locator.unitToWorld(unit, model);
-            modelLTP = model * world2local;
-
-            int marker = VERTEX_VISIBLE;
-
-            // mark the perimeter as a boundary (for skirt generation)
-            if (row == 0 || row == tileSize - 1 || col == 0 || col == tileSize - 1)
-                marker |= VERTEX_BOUNDARY;
-
-            int i = mesh.get_or_create_vertex(
-                weemesh::vert_t(modelLTP.x(), modelLTP.y(), modelLTP.z()),
-                marker);
-
-            if (row > 0 && col > 0)
-            {
-                mesh.add_triangle(i, i - 1, i - tileSize - 1);
-                mesh.add_triangle(i, i - tileSize - 1, i - tileSize);
-            }
-        }
+        load_mesh(mesh, input_mesh);
+    }
+    else
+    {
+        build_regular_gridded_mesh(mesh, tileSize, locator, world2local);
     }
 
     // keep it real

@@ -666,7 +666,7 @@ namespace
 
                 // If the request failed with an unrecoverable error,
                 // blacklist so we don't waste time on it again
-                if (result.failed())
+                if (result.failed() && result.code() == ReadResult::RESULT_NOT_FOUND)
                 {
                     osgEarth::Registry::instance()->blacklist(inputURI.full());
                 }

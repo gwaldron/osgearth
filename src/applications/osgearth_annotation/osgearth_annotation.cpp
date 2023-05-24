@@ -72,7 +72,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     // load an earth file and parse demo arguments
-    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
+    auto node = MapNodeHelper().load(arguments, &viewer);
     if ( !node )
         return usage(argv);
 

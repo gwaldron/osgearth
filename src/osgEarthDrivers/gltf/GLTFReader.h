@@ -344,7 +344,8 @@ public:
                 mat.set(node.matrix.data());
                 mt->setMatrix(mat);
             }
-            else
+
+            if (mt->getMatrix().isIdentity())
             {
                 osg::Matrixd scale, translation, rotation;
                 if (node.scale.size() == 3)

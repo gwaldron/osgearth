@@ -24,6 +24,7 @@
 #include <osgEarth/Cache>
 #include <osgEarth/CacheBin>
 #include <osgEarth/URI>
+#include <osgEarth/FileUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
 #include <curl/curl.h>
@@ -1652,8 +1653,10 @@ namespace
     {
         osgDB::ReaderWriter* reader = 0L;
 
+        std::string urlMinusQueryParams = removeQueryParams(url);
         // try extension first:
-        std::string ext = osgDB::getFileExtension( url );
+
+        std::string ext = osgDB::getFileExtension(urlMinusQueryParams);
         if ( !ext.empty() )
         {
             reader = osgDB::Registry::instance()->getReaderWriterForExtension( ext );

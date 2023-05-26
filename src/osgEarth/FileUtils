@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/DateTime>
 #include <vector>
+#include <map>
 
 namespace osgEarth { namespace Util
 {
@@ -57,6 +58,16 @@ namespace osgEarth { namespace Util
      * of https://server.com/models/../images/texture.png the result will be https://server.com/images/texture.png
      */
     extern OSGEARTH_EXPORT std::string stripRelativePaths(const std::string& filename);
+
+    /**
+     * Removes any query parameters from a URL
+     */
+    extern OSGEARTH_EXPORT std::string removeQueryParams(const std::string& url);
+
+    /**
+     * Extracts all the query params from a URL into a std::map
+     */
+    extern OSGEARTH_EXPORT std::map<std::string, std::string> extractQueryParams(const std::string& url);
 
     /**
      * whether the given path ends with an Archive.

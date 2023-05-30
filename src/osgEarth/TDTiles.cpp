@@ -929,8 +929,8 @@ void ThreeDTileNode::requestContent(ICO* ico)
         URI uri(_tile->content()->uri()->base(), context);
 
         NetworkMonitor::ScopedRequestLayer layerRequest(_tileset->getOwnerName());
-
-        if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
+        
+        if (osgEarth::Strings::endsWith(osgEarth::removeQueryParams(_tile->content()->uri()->base()), ".json"))
         {
             // "json" extension = external tileset:
             _contentFuture = readTilesetAsync(_tileset, uri, localOptions.get());

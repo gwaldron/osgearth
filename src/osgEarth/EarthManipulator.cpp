@@ -2750,6 +2750,8 @@ EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
         {
             // projected map. This will a simple linear interpolation
             // of the eyepoint along the path between the eye and the target.
+            recalculateCenterFromLookVector();
+
             osg::Vec3d eye, at, up;
             getWorldInverseMatrix().getLookAt(eye, at, up);
 
@@ -2770,8 +2772,9 @@ EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
     else
     {
         // if the user's mouse isn't over the earth, just zoom in to the center of the screen
+        recalculateCenterFromLookVector();
         double scale = 1.0f + dy;
-        setDistance( _distance * scale );
+        setDistance(_distance * scale);
         collisionDetect();
     }
 }

@@ -54,7 +54,7 @@ CreateTileImplementation::createTile(
     }
 
     // Dimension of each tile in vertices
-    unsigned tileSize = context->options().tileSize().get();
+    unsigned tileSize = context->options().getTileSize();
     TileKey rootkey = area.valid() ? area : model->key();
     const SpatialReference* srs = rootkey.getExtent().getSRS();
 

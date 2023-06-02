@@ -1,0 +1,106 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_TERRAIN_MESH_LAYER_H
+#define OSGEARTH_TERRAIN_MESH_LAYER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/TileLayer>
+#include <osgEarth/TileMesher>
+
+namespace osgEarth
+{
+    /**
+     * Layer providing meshed terrain files (TileMesh)
+     */
+    class OSGEARTH_EXPORT TerrainMeshLayer : public TileLayer
+    {
+    public: // Serialization
+        class OSGEARTH_EXPORT Options : public TileLayer::Options {
+        public:
+            META_LayerOptions(osgEarth, Options, TileLayer::Options);
+            OE_OPTION(URI, uri);
+            OE_OPTION(bool, invertY);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, TerrainMeshLayer, Options, TileLayer, terrainmesh);
+
+        //! URI from which to fetch terrain mesh tiles
+        void setURI(const URI& value) {
+            options().uri() = value;
+        }
+
+        //! URI from which to fetch terrain mesh tiles
+        const optional<URI>& getURI() const { 
+            return options().uri(); 
+        }
+
+    public: // methods
+
+        //! Creates an image for the given tile key.
+        //! @param key TileKey for which to create an image
+        //! @param progress Optional progress/cancelation callback
+        TileMesh createTile(
+            const TileKey& key,
+            ProgressCallback* progress) const;
+
+    protected:
+
+        //! Override to create a tile mesh in a subclass implementation.
+        //! Default implementation simply uses the default tile mesher.
+        virtual TileMesh createTileImplementation(
+            const TileKey& key,
+            ProgressCallback* progress) const;
+
+    protected: // Layer
+
+        void init() override;
+
+        //! Open the layer for reading.
+        Status openImplementation() override;
+
+        //! Called when this layer is added to a map (after open)
+        void addedToMap(const Map*) override;
+        void removedFromMap(const Map*) override;
+
+        //! Called when this layer is added to a map node
+        void prepareForRendering(TerrainEngine*) override;
+
+        void applyConstraints(const TileKey& key, TileMesh& mesh) const;
+
+    private:
+        std::string _template;
+        std::string _rotateString, _rotateChoices;
+        osg::observer_ptr<const Map> _map;
+        TerrainEngine* _engine;
+        mutable std::atomic_int _rotateIter;
+        URI createURI(const TileKey& key) const;
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TerrainMeshLayer::Options);
+
+
+#endif // OSGEARTH_TERRAIN_MESH_LAYER_H

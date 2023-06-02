@@ -246,6 +246,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainOptions
     TerrainEngineNode
     TerrainEngineRequirements
+    TerrainMeshLayer
     TerrainResources
     TerrainTileModel
     TerrainTileModelFactory
@@ -662,6 +663,7 @@ set(TARGET_SRC
     Terrain.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp
+    TerrainMeshLayer.cpp
     TerrainResources.cpp
     TerrainTileModel.cpp
     TerrainTileModelFactory.cpp

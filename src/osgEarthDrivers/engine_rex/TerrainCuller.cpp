@@ -59,7 +59,7 @@ TerrainCuller::reset(
     // skip surface nodes is this is a shadow camera and shadowing is disabled.
     _acceptSurfaceNodes =
         CameraUtils::isShadowCamera(_cv->getCurrentCamera()) == false ||
-        context->options().castShadows() == true;
+        context->options().getCastShadows() == true;
 
     setCullingMode(_cv->getCullingMode());
     setFrameStamp(new osg::FrameStamp(*_cv->getFrameStamp()));

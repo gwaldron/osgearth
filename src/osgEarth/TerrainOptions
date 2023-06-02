@@ -260,6 +260,10 @@ namespace osgEarth
         void setMaxTextureSize(const unsigned& value);
         const unsigned& getMaxTextureSize() const;
 
+        TerrainOptionsAPI();
+        TerrainOptionsAPI(TerrainOptions*);
+        TerrainOptionsAPI(const TerrainOptionsAPI&);
+
     public: // Legacy support
 
         //! Sets the name of the terrain engine driver to use
@@ -268,7 +272,6 @@ namespace osgEarth
     private:
         friend class MapNode;
         friend class TerrainEngineNode;
-        TerrainOptionsAPI(TerrainOptions*);
         TerrainOptions* _ptr;
         TerrainOptions& options() { return *_ptr; }
         const TerrainOptions& options() const { return *_ptr; }

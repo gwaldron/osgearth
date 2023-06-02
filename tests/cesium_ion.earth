@@ -1,13 +1,25 @@
 <!-- 
 Cesium Ion Driver
-Access image layers from the Cesium Ion service, available at https://cesium.com
+Access layers from the Cesium Ion service, available at https://cesium.com
+Set your Cesium Ion access key in the OSGEARTH_CESIUMION_KEY environment variable.
 -->
 
 <map name="Cesium Ion">
- 
+
+    <!--
     <CesiumIonImage name="cesiumion bluemarble">
         <asset_id>3845</asset_id>
-        <token>YOUR-TOKEN_HERE</token>
     </CesiumIonImage>
+    -->
+
+    <CesiumIonImage name="bing satellite">
+        <asset_id>2</asset_id>
+    </CesiumIonImage>
+
+    <CesiumIonTerrainMesh name="cesium world terrain">
+        <asset_id>1</asset_id>
+    </CesiumIonTerrainMesh>
+
+    <xi:include href="viewpoints.xml"/>
 
 </map>

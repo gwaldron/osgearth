@@ -30,7 +30,8 @@
 #include <osgEarth/TileMesher>
 #include <osg/Geometry>
 
-namespace osgEarth {
+namespace osgEarth
+{
     namespace REX
     {
         using namespace osgEarth;
@@ -183,13 +184,7 @@ namespace osgEarth {
             friend class GeometryPool;
             mutable osg::buffered_object<GLenum> _ptype;
         };
-    }
-}
 
-
-namespace osgEarth {
-    namespace REX
-    {
 
         /**
         * Hashtable key for unique (and therefore shareable) geometries.
@@ -262,7 +257,8 @@ namespace osgEarth {
     }
 }
 
-namespace std {
+namespace std
+{
     // std::hash specialization for GeometryKey
     template<> struct hash<osgEarth::REX::GeometryKey> {
         inline size_t operator()(const osgEarth::REX::GeometryKey& key) const {
@@ -275,7 +271,8 @@ namespace std {
 }
 
 
-namespace osgEarth {
+namespace osgEarth
+{
     namespace REX
     {
     /**
@@ -294,81 +291,48 @@ namespace osgEarth {
     class GeometryPool : public osg::Group
     {
     public:
-        /** Construct the geometry pool */
+        //! Construct the geometry pool
         GeometryPool();
 
-    public:
-        
-
-        typedef std::unordered_map<GeometryKey, osg::ref_ptr<SharedGeometry>> GeometryMap;
-
-        /**
-         * Gets the Geometry associated with a tile key, creating a new one if
-         * necessary and storing it in the pool.
-         */
+        //! Gets the Geometry associated with a tile key, creating a new one if
+        //! necessary and storing it in the pool.
         void getPooledGeometry(
             const TileKey& tileKey,
             unsigned tileSize,
             const Map* map,
-            const TerrainOptions& options,
+            const TerrainOptionsAPI& options,
             osg::ref_ptr<SharedGeometry>& out,
             Cancelable* state);
 
-        /**
-         * The number of elements (incides) in the terrain skirt, if applicable
-         */
-        int getNumSkirtElements(
-            unsigned tileSize,
-            float skirtRatio) const;
-
-        /**
-         * Are we doing pooling?
-         */
+        //! Are we doing pooling?
         bool isEnabled() const { return _enabled; }
 
-        /**
-         * Clear and reset the pool.
-         */
+        //! Clear and reset the pool.
         void clear();
+
+    public: // osg::Node
+
+        //! Perform an update traversal to check for unused resources
+        void traverse(osg::NodeVisitor& nv);
 
         void resizeGLObjectBuffers(unsigned maxsize);
         void releaseGLObjects(osg::State* state) const;
 
-
-    public: // osg::Node
-
-        /** Perform an update traversal to check for unused resources. */
-        void traverse(osg::NodeVisitor& nv);
-
     protected:
-        virtual ~GeometryPool() { }
+        using GeometryMap = std::unordered_map<GeometryKey, osg::ref_ptr<SharedGeometry>>;
 
         mutable Threading::Gate<GeometryKey> _keygate;
         mutable Threading::Mutex _geometryMapMutex;
         GeometryMap _geometryMap;
         osg::ref_ptr<SharedDrawElements> _defaultPrimSet;
-        TileMesher _mesher;
 
         void createKeyForTileKey(
             const TileKey& tileKey,
             unsigned       size,
             GeometryKey&   out) const;
 
-        SharedGeometry* createGeometry(
-            const TileKey& key,
-            const TileMesher::Edits& edits,
-            const TerrainOptions& options,
-            Cancelable* state) const;
-
-        // builds a primitive set to use for any tile without a mask
-        SharedDrawElements* createPrimitiveSet(
-            unsigned tileSize,
-            float skirtRatio,
-            bool UseGpuTessellation) const;
-
-        void tessellateSurface(
-            unsigned tileSize,
-            osg::DrawElements* primSet) const;
+        osg::ref_ptr<SharedGeometry> convertTileMeshToSharedGeometry(
+            const TileMesh& mesh) const;
 
         bool _enabled;
         bool _debug;

@@ -34,9 +34,9 @@
 namespace osgEarth
 {
     /**
-    * OSG geometry components for a tile, created by the TileMesher.
+    * Geometry components for a tile (created by the TileMesher).
     */
-    struct OSGEARTH_EXPORT TileGeometry
+    struct OSGEARTH_EXPORT TileMesh
     {
         osg::Matrix localToWorld;
         osg::ref_ptr<osg::Vec3Array> verts;
@@ -47,8 +47,10 @@ namespace osgEarth
         osg::ref_ptr<osg::DrawElements> indices;
         bool hasConstraints = false;
 
-        TileGeometry() { }
-        TileGeometry(TileGeometry&& m);
+        TileMesh() { }
+        TileMesh(const TileMesh& m);
+        TileMesh(TileMesh&& m);
+        TileMesh& operator = (const TileMesh&);
     };
 
     /**
@@ -71,6 +73,9 @@ namespace osgEarth
 
         //! Construct a tile mesher
         TileMesher();
+        
+        //! Configure this mesher with some terrain options
+        void setTerrainOptions(const TerrainOptionsAPI& options);
 
         //! Assemble a collection of Edits from the map for the given tile key.
         //! Edits are just groups of features that the mesher can use to alter
@@ -88,36 +93,47 @@ namespace osgEarth
 
         //! Create a tile mesh, optionally with a collection of edits.
         //! @param key TileKey for which to create the mesh
-        //! @param edits Edits (might be empty) to use to alter the mesh
+        //! @param edits Edits to apply to alter the mesh, usually generated
+        //!   by calling getEdits(). If empty, the method will return a regular
+        //!   gridded mesh.
         //! @param options Terrain options for the mesher to use
         //! @param progress Cancelable interface
         //! @return A tile mesh
-        TileGeometry createTile(
+        TileMesh createMesh(
             const TileKey& key,
             const Edits& edits,
-            const TerrainOptions& options,
+            Cancelable* progress) const;
+
+        //! Apply edits to an existing mesh and return a new mesh.
+        //! @param mesh Input mesh
+        //! @param edits Edits to apply to alter the mesh, usually generated
+        //!   by calling getEdits()
+        //! @return A tile mesh
+        TileMesh createMesh(
+            const TileKey& key,
+            const TileMesh& input,
+            const Edits& edits,
             Cancelable* progress) const;
 
         //! Creates a primitive set that represents triangles for
         //! a tile mesh without any edits.
-        osg::DrawElements* getOrCreateStandardIndices(
-            const TerrainOptions& options);
+        osg::DrawElements* getOrCreateStandardIndices() const;
             
 
     protected:
         mutable osg::ref_ptr<osg::DrawElements> _standardIndices;
         mutable Mutex _mutex;
+        TerrainOptionsAPI _options;
 
         using ConstraintLayers = std::vector<osg::ref_ptr<TerrainConstraintLayer>>;
 
-        TileGeometry createTileStandard(
+        TileMesh createMeshStandard(
             const TileKey& key,
-            const TerrainOptions& options,
             Cancelable* progress) const;
 
-        TileGeometry createTileWithEdits(
+        TileMesh createMeshWithEdits(
             const TileKey& key,
-            const TerrainOptions& options,
+            const TileMesh& mesh,
             const Edits& edits,
             Cancelable* progress) const;
     };

@@ -12,7 +12,26 @@ The documentation here is focused on Windows.
 
 First, download and bootstrap [vcpkg](https://github.com/Microsoft/vcpkg) following the instructions on the page.
 
-**Step 2 - Clone the repository**
+**Step 2 - Set the osg_OPENGL_PROFILE triplet variable to GL3**
+
+Next, you will need to set a triplet variable to ensure that osg will be built with modern OpenGL features enabled that osgEarth requires.
+
+The latest (as of 6/6/2023) version of vcpkg will build OSG with OPENGL_PROFILE=GL2 by default.  This is not sufficient for running osgEarth as it does not enable all modern OpenGL features that osgEarth requires and keeps the deprecated fixed function pipeline path in OSG.
+
+Open your existing x64-windows.cmake triplet file at path\to\vcpkg\triplets\x64-windows.cmake and add this line to the end of the file.
+```
+set(osg_OPENGL_PROFILE GL3)
+```
+
+This will build osg with modern OpenGL features and remove the fixed function pipeline.
+
+If you wish to build OSG with a different OPENGL_PROFILE such as GLCORE you can set the osg_OPENGL_PROFILE to GLCORE like this
+```
+set(osg_OPENGL_PROFILE GLCORE)
+```
+When you install osg using vcpkg with this variable set it will build osg against the <GL/glcorearb.h> headers instead of the usual <GL/gl.h> header.
+
+**Step 3 - Clone the repository**
 
 Pull down the source from GitHub and create a ```build``` folder for your out-of-source build. We always recommend doing an out-of-source build to avoid problems down the road!
 
@@ -23,7 +42,7 @@ mkdir build
 
 This will clone the repository into a folder called `osgearth` and pull down all the submodules.
 
-**Step 3 - Configure CMake**
+**Step 4 - Configure CMake**
 
 On Windows, you can run the provided script `bootstrap-vcpkg.bat` to configure your CMake build. This can take a while since it needs to download and build all your dependencies.
 
@@ -41,7 +60,7 @@ cmake -S osgearth -B build -G "Visual Studio 15 2017 Win64" -DCMAKE_BUILD_TYPE=R
 
 osgEarth provides a vcpkg.json manifest file that lists all of it's necessary dependencies.  The vcpkg toolchain integration will notice this file and install the necessary dependencies in your build\vcpkg_installed directory.
 
-**Step 4 - Build and install osgEarth**
+**Step 5 - Build and install osgEarth**
 
 You can build and install osgEarth on the command line using CMake or you can open up the Visual Studio solution and build it from there.
 
@@ -49,7 +68,7 @@ You can build and install osgEarth on the command line using CMake or you can op
 cmake --build build --target INSTALL --config RelWithDebInfo
 ```
 
-**Step 5 - Set up your runtime environment**
+**Step 6 - Set up your runtime environment**
 
 You’ll need to make sure that the vcpkg dependencies and osgEarth are in your path:
 
@@ -58,15 +77,6 @@ set PATH=%PATH%;path\to\build\vcpkg_installed\x64-windows\bin
 set PATH=%PATH%;path\to\build\vcpkg_installed\x64-windows\tools\osg
 set PATH=%PATH%;[installroot]
 ```
-
-## Building for different OPENGL profiles
-The latest (as of 4/21/2022) version of vcpkg will build OSG with OPENGL_PROFILE=GL3 by default.  This should be sufficient for running osgEarth as it enables all modern OpenGL features and disables the deprecated fixed function pipeline path in OSG.
-
-If you wish to build OSG with a different OPENGL_PROFILE such as GLCORE you can use a custom triplet variable by modifying the existing x64-windows.cmake triplet file at path\to\vcpkg\triplets\x64-windows.cmake and adding a new variable to end of the file like this
-```
-set(osg_OPENGL_PROFILE GLCORE)
-```
-When you install osg using vcpkg with this variable set it will build osg against the <GL/glcorearb.h> headers instead of the usual <GL/gl.h> header.
 
 ## Checking for an OpenGL Core Profile Context
 Some situations require you to have an OpenGL Core Profile context.  The ability to create a core context is available when OSG is built with OPENGL_PROFILE=GL3 or GLCORE.  Environments such as Apple OSX and VMWare require it as does debugging with tools like NVidia NSight.  You can check to see if you are running with an OpenGL Core Profile by running a command like this (Windows)

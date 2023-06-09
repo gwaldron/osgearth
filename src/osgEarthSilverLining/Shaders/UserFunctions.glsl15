@@ -1,3 +1,4 @@
+#ifdef BILLBOARD_SHADER
 // Hook to override computation of fog on clouds
 // fogExponent is squared to determine the blending of clouds with the background
 // fogBlend is used for blending fogColor with the cloud color.
@@ -17,36 +18,43 @@ void overrideBillboardColor(in vec3 eyePosition, in vec4 modelPos, in vec4 fogge
 {
 
 }
+#endif
 
+#ifdef SKY_SHADER
 // Override the vertex color of a point on the sky box. The position in world space (relative to the camera) is given, as is
 // our sky color before and after applying fog.
 void overrideSkyColor(in vec3 vertexPos, in float fogDensity, in vec4 preFogColor, inout vec4 finalColor)
 {
 
 }
+#endif
 
-
+#ifdef CIRRUS_SHADER
 // Overrides colors of cirrus and cirrocumulus clouds
 void overrideCirrusLighting(in vec3 lightColor, in vec3 fogColor, in float fogBlend, in float alpha, inout vec4 finalColor)
 {
 
 }
+#endif
 
+#ifdef STARS_SHADER
 // Override the star colors.
 void overrideStars(in vec4 worldPos, in float magnitude, in vec4 starColor, in vec4 fogColor, in float fogDensity, inout vec4 finalColor)
 {
 
 }
+#endif
 
+#ifdef STRATOCUMULUS_SHADER
 // override the color calculation for the Stratus clouds.
 // finalColor = vec4(color.x, color.y, color.z, color.w * fadeAndDisplacementFactor);
 void overrideStratocumulusColor(inout vec4 finalColor)
 {
 
 }
+#endif
 
 // osgEarth
-
 #if __VERSION__ > 140
     out float oe_LogDepth_clipz;
 #else
@@ -54,7 +62,7 @@ void overrideStratocumulusColor(inout vec4 finalColor)
 #endif
 uniform mat4 osg_ProjectionMatrix;
 
-vec4 oe_LogDepth_vert(in vec4 clip)
+vec4 oe_logdepth_vert(in vec4 clip)
 {
     if (osg_ProjectionMatrix[3][3] == 0) // perspective only
     {
@@ -78,6 +86,5 @@ vec4 oe_LogDepth_vert(in vec4 clip)
 // Useful for implementing logarithmic depth buffers etc.
 vec4 overridePosition(in vec4 position)
 {
-    return oe_LogDepth_vert(position);
-    //return position;
+    return oe_logdepth_vert(position);
 }

@@ -54,14 +54,9 @@ void overrideStratocumulusColor(inout vec4 finalColor)
 }
 #endif
 
-// osgEarth
-#if __VERSION__ > 140
-    out float oe_LogDepth_clipz;
-#else
-    varying float oe_LogDepth_clipz;
-#endif
-uniform mat4 osg_ProjectionMatrix;
 
+// osgEarth log depth buffer
+uniform mat4 osg_ProjectionMatrix;
 vec4 oe_logdepth_vert(in vec4 clip)
 {
     if (osg_ProjectionMatrix[3][3] == 0) // perspective only
@@ -69,15 +64,8 @@ vec4 oe_logdepth_vert(in vec4 clip)
         mat4 clip2view = inverse(osg_ProjectionMatrix);
         vec4 farPoint = clip2view * vec4(0,0,1,1);
         float FAR = -farPoint.z / farPoint.w;
-
-        const float C = 0.001;
-        float FC = 1.0 / log(FAR*C + 1);
-        oe_LogDepth_clipz = log(max(1e-6, clip.w*C + 1.0))*FC;
-        clip.z = (2.0*oe_LogDepth_clipz - 1.0)*clip.w;
-    }
-    else
-    {
-        oe_LogDepth_clipz = -1.0;
+        float FC = 2.0 / log2(FAR + 1);
+        clip.z = (log2(max(1e-6, clip.w+1.0))*FC - 1.0) * clip.w;
     }
     return clip;
 }

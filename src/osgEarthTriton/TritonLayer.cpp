@@ -255,6 +255,7 @@ TritonLayer::Options::fromConfig(const osgEarth::Config& conf)
     _renderBinNumber.init(12);
     _maxAltitude.init(50000);
 
+    conf.get("user", _user);
     conf.get("license_code", _licenseCode);
     conf.get("resource_path", _resourcePath);
     conf.get("use_height_map", _useHeightMap);
@@ -268,6 +269,7 @@ osgEarth::Config
 TritonLayer::Options::getConfig() const
 {
     osgEarth::Config conf = osgEarth::VisibleLayer::Options::getConfig();
+    conf.set("user", _user);
     conf.set("license_code", _licenseCode);
     conf.set("resource_path", _resourcePath);
     conf.set("use_height_map", _useHeightMap);

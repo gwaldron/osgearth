@@ -1,4 +1,5 @@
 // user-vert-functions.glsl
+#extension GL_ARB_gpu_shader5: enable
 
 float user_get_depth( in vec3 worldPos )
 {

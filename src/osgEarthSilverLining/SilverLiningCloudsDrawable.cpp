@@ -80,9 +80,12 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
             for (auto& handle : _SL->getAtmosphere()->GetActivePlanarCloudShaders())
                 adapters.push_back( new osgEarth::NativeProgramAdapter(state, handle, nullptr, Stringify() << "PlanarCloudShader" << handle));
 
+#if (SILVERLINING_MAJOR_VERSION >= 6)
             for (auto& handle : _SL->getAtmosphere()->GetUserShaders())
                 adapters.push_back(new osgEarth::NativeProgramAdapter(state, handle, nullptr, Stringify() << "UserShader" << handle));
+#endif
         }
+
         adapters.apply( state );
 
         // invoke the user callback if it exists

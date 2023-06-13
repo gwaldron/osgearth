@@ -52,6 +52,8 @@ void
 TerrainMeshLayer::init()
 {
     TileLayer::init();
+
+    setRenderType(RENDERTYPE_NONE);
 }
 
 Status

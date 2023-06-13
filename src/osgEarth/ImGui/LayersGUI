@@ -913,6 +913,13 @@ namespace osgEarth {
                                             layer->close();
                                         }
                                     }
+
+                                    ImGui::SameLine();
+                                    if (ImGui::Button("Dump config"))
+                                    {
+                                        auto conf = layer->getConfig();
+                                        std::cout << conf.toJSON(true) << std::endl;
+                                    }
                                 }
                             }
 

@@ -552,8 +552,12 @@ WindLayer::prepareForRendering(TerrainEngine* engine)
     {
         addWind(options().winds()[i].get());
     }
+}
 
-    _srs = engine->getMap()->getSRS();
+void
+WindLayer::addedToMap(const Map* map)
+{
+    _srs = map->getSRS();
 }
 
 osg::StateSet*

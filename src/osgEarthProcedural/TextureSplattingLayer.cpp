@@ -125,6 +125,8 @@ TextureSplattingLayer::addedToMap(const Map* map)
             options().lifeMapLayer().setLayer(layer);
     }
 
+    _mapProfile = map->getProfile();
+
     buildStateSets();
 }
 
@@ -177,8 +179,8 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
             const AssetCatalog& assets = biome_cat->getAssets();
 
             std::vector<GeoExtent> ex;
-            ex.push_back(engine->getMap()->getProfile()->calculateExtent(14, 0, 0));
-            ex.push_back(engine->getMap()->getProfile()->calculateExtent(19, 0, 0));
+            ex.push_back(_mapProfile->calculateExtent(14, 0, 0));
+            ex.push_back(_mapProfile->calculateExtent(19, 0, 0));
 
             std::vector<double> tile_height_m;
             tile_height_m.push_back(ex[0].height(Units::METERS));

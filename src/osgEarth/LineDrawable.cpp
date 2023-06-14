@@ -1335,17 +1335,56 @@ LineDrawable::accept(osg::NodeVisitor& nv)
                 initialize();
         }
 
+        // Since we are hiding the Geometry below this "phantom" drawable,
+        // we must duplicate what OSG would normally do with the various
+        // visitors here so that statesets and callbacks all continue to 
+        // work as usual.
+
         osgUtil::CullVisitor* cv = shade? Culling::asCullVisitor(nv) : 0L;
+        auto stateset = getStateSet();
 
         nv.pushOntoNodePath(this);
 
-        if (cv)
+        if (cv) // CULL_VISITOR
+        {
+            // push the global GPU shader stateset
             cv->pushStateSet(_gpuStateSet.get());
 
-        nv.apply(*this);
+            // and push this drawable's local stateset
+            if (stateset) cv->pushStateSet(stateset);
 
-        if (cv)
+            // handle cull callbacks
+            if (getCullCallback())
+                getCullCallback()->run(this, &nv);
+            else
+                traverse(nv);
+
+            // pop them both
+            if (stateset) cv->popStateSet();
             cv->popStateSet();
+        }
+
+        else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+        {
+            // simulate the behavior in UpdateVisitor::apply
+            if (stateset && stateset->requiresUpdateTraversal())
+            {
+                stateset->runUpdateCallbacks(&nv);
+            }
+
+            auto callback = getUpdateCallback();
+            if (callback) callback->run(this, &nv);
+            else if (getNumChildrenRequiringUpdateTraversal() > 0)
+            {
+                traverse(nv);
+            }
+        }
+
+        else
+        {
+            // other visitor types (intersect, compute bound, etc)
+            traverse(nv);
+        }
 
         nv.popFromNodePath();
     }

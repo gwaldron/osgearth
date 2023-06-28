@@ -475,6 +475,10 @@ MapNodeHelper::load(
         ::getchar();
     }
 
+    if (!readOptions) {
+        readOptions = osgDB::Registry::instance()->getOptions();
+    }
+
     osg::ref_ptr<osgDB::Options> myReadOptions = Registry::cloneOrCreateOptions(readOptions);
 
     // pass through OSG options

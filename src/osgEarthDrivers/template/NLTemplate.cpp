@@ -17,6 +17,9 @@ enum {
     TOKEN_TEXT,
     TOKEN_BLOCK,
     TOKEN_ENDBLOCK,
+    TOKEN_IF,
+    TOKEN_ENDIF,
+    TOKEN_ELSE,
     TOKEN_INCLUDE,
     TOKEN_VAR
 };
@@ -36,6 +39,7 @@ static inline bool alphanum( const char c ) {
     ( c == '-' ) ||
     ( c == '@' ) ||
     ( c == '/' ) ||
+    (c == '!') ||
     ( c == '\\' );
 }
 
@@ -133,6 +137,12 @@ Token Tokenizer::next() {
     static const char * s_block = "block";
     static const char * s_include = "include";
     static const long s_endblock_len = strlen( s_endblock );
+
+    static const char* s_endif = "{% endif %}";
+    static const char* s_if = "if";
+    static const long s_endif_len = strlen(s_endif);
+    static const char* s_else = "{% else %}";
+    static const long s_else_len = strlen(s_else);
     
     if ( peeking ) {
         peeking = false;
@@ -157,7 +167,20 @@ a:
         } else if ( !strncmp( s_endblock, text + pos, s_endblock_len ) ) {
             peek.type = TOKEN_ENDBLOCK;
             pos += s_endblock_len;
-        } else if ( ( m = match_tag_with_param( s_include, text + pos, peek.value ) ) > 0 ) {
+        }
+        else if ((m = match_tag_with_param(s_if, text + pos, peek.value)) > 0) {
+            peek.type = TOKEN_IF;
+            pos += m;
+        }
+        else if (!strncmp(s_else, text + pos, s_else_len)) {
+            peek.type = TOKEN_ELSE;
+            pos += s_else_len;
+        }
+        else if (!strncmp(s_endif, text + pos, s_endif_len)) {
+            peek.type = TOKEN_ENDIF;
+            pos += s_endif_len;
+        }
+        else if ( ( m = match_tag_with_param( s_include, text + pos, peek.value ) ) > 0 ) {
             peek.type = TOKEN_INCLUDE;
             pos += m;
         } else if ( ( m = match_var( text + pos, peek.value ) ) > 0 ) {
@@ -257,9 +280,9 @@ Fragment *Node::copy() const {
 }
 
 
-void Node::render( Output & output, const Dictionary & ) const {
+void Node::render( Output & output, const Dictionary &dictionary ) const {
     for ( size_t i=0; i < fragments.size(); i++ ) {
-        fragments[ i ]->render( output, *this );
+        fragments[ i ]->render( output, dictionary);
     }
 }
 
@@ -339,6 +362,43 @@ void Block::render( Output & output, const Dictionary & ) const {
     }
 }
 
+//
+Conditional::Conditional(const string& condition) : condition(condition){
+}
+
+
+Fragment* Conditional::copy() const {
+    Conditional* conditional = new Conditional(condition);
+    return conditional;
+}
+
+
+Conditional::~Conditional() {
+}
+
+void Conditional::render(Output& output, const Dictionary& dictionary) const {
+    std::string cond = condition;
+
+    int exclamations = 0;
+    size_t index = 0;
+
+    bool negate = false;
+
+    // Handle any number of !'s at the start of the condition.
+    while (index < cond.size() && cond[index] == '!') {
+        negate = !negate;
+        index++;
+    }
+
+    cond = cond.substr(index);
+
+    std::string value = dictionary.find(cond);
+
+    if (!negate && (!value.empty() && value != "false") ||
+        (negate && (value.empty() || value == "false"))) {
+        Node::render(output, dictionary);
+    }
+}
 
 Output::~Output() {
 }
@@ -417,6 +477,7 @@ void Template::load_recursive( const char *name, vector<Tokenizer*> & files, vec
     loader.setReferrer( referrer );      
 
     bool done = false;
+
     while( !done ) {
         Token token = files.back()->next();
         switch ( token.type ) {
@@ -430,6 +491,29 @@ void Template::load_recursive( const char *name, vector<Tokenizer*> & files, vec
             }
                 break;
             case TOKEN_ENDBLOCK:
+                nodes.pop_back();
+                break;
+            case TOKEN_IF: {
+                Conditional* conditional = new Conditional(token.value);
+                nodes.back()->fragments.push_back(conditional);
+                nodes.push_back(conditional);
+            }
+                break;
+            case TOKEN_ELSE: {
+                Conditional* conditional = dynamic_cast<Conditional*>(nodes.back());
+                if (!conditional) {
+                    std::cout << "Found {% else %} without matching {% if %}" << std::endl;
+                    return;
+                }
+                // Pop the if
+                nodes.pop_back();
+
+                Conditional* elseNode = new Conditional("!" + conditional->condition);
+                nodes.back()->fragments.push_back(elseNode);
+                nodes.push_back(elseNode);
+                }
+                break;
+            case TOKEN_ENDIF:
                 nodes.pop_back();
                 break;
             case TOKEN_VAR:

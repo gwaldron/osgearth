@@ -117,6 +117,15 @@ public:
     void render( Output & output, const Dictionary & dictionary ) const;
 };
 
+class Conditional : public Node {
+public:
+    Conditional(const std::string& condition);
+    ~Conditional();
+    Fragment* copy() const;
+    void render(Output& output, const Dictionary& dictionary) const;
+    const std::string condition;
+};
+
 
 
 class OutputStdout : public Output {

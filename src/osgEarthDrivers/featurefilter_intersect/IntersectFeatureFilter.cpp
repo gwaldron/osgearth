@@ -54,16 +54,6 @@ public: // FeatureFilter
 
     Status initialize(const osgDB::Options* readOptions)
     {
-        // Load the feature source containing the intersection geometry.
-        _featureSource = FeatureSource::create(featureSourceEmbeddedOptions().get());
-        if ( !_featureSource.valid() )
-            return Status::Error(Status::ServiceUnavailable, "Failed to create features source");
-
-        _featureSource->setReadOptions(readOptions);
-        const Status& s = _featureSource->open();
-        if (s.isError())
-            return s;
-
         return Status::OK();
     }
 
@@ -87,6 +77,16 @@ public: // FeatureFilter
 
     FilterContext push(FeatureList& input, FilterContext& context)
     {
+        // Move this initialization code from initialize to here so that we have access to the map
+        // so we can call addedToMap on the feature source.  This allows us to use layer referencing 
+        // within the filters.  This might be worth revisiting later and see if we should have filters have an addedToMap or pass in the 
+        // map during initialize instead.  For now this gets layer referencing working in intersect filters.
+        if (!_featureSource.valid() && context.getSession())
+        {            
+            this->featureSource().addedToMap(context.getSession()->getMap());
+            _featureSource = featureSource().getLayer();
+        }        
+
         if (_featureSource.valid())
         {
             osg::ref_ptr<ProgressCallback> progress = new ProgressCallback();

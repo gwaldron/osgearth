@@ -1795,10 +1795,18 @@ bool GDALImageLayer::getSingleThreaded() const { return options().singleThreaded
 void
 GDALImageLayer::init()
 {
-    // Initialize the image layer (always first)
+    // if there's no name, derive it from the URL.
+    if (!options().name().isSet() && options().url().isSet())
+    {
+        options().name() = options().url()->base();
+    }
+
+    // Initialize the image layer
     ImageLayer::init();
+
     _driversMutex.setName("OE.GDALImageLayer.drivers");
     _singleThreadingMutex.setName("OE.GDALImageLayer.st");
+
 }
 
 Status

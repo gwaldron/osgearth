@@ -1315,6 +1315,12 @@ LineDrawable::setupShaders()
 }
 
 void
+LineDrawable::traverse(osg::NodeVisitor& nv)
+{
+    _geom->accept(nv);
+}
+
+void
 LineDrawable::accept(osg::NodeVisitor& nv)
 {
     if (nv.validNodeMask(*this))
@@ -1366,14 +1372,17 @@ LineDrawable::accept(osg::NodeVisitor& nv)
 
         else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
         {
-            // simulate the behavior in UpdateVisitor::apply
             if (stateset && stateset->requiresUpdateTraversal())
             {
                 stateset->runUpdateCallbacks(&nv);
             }
 
+            // simulate the behavior in UpdateVisitor::apply
             auto callback = getUpdateCallback();
-            if (callback) callback->run(this, &nv);
+            if (callback)
+            {
+                callback->run(this, &nv);
+            }
             else if (getNumChildrenRequiringUpdateTraversal() > 0)
             {
                 traverse(nv);
@@ -1383,7 +1392,8 @@ LineDrawable::accept(osg::NodeVisitor& nv)
         else
         {
             // other visitor types (intersect, compute bound, etc)
-            traverse(nv);
+            // call apply here to invoke the default usual Node::accept() behavior.
+            nv.apply(*this);
         }
 
         nv.popFromNodePath();

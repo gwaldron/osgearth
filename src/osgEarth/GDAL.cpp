@@ -395,13 +395,14 @@ namespace osgEarth
         }
 
         // GDALRasterBand::RasterIO helper method
-        bool rasterIO(GDALRasterBand *band,
+        bool rasterIO(
+            GDALRasterBand* band,
             GDALRWFlag eRWFlag,
-            int nXOff,
-            int nYOff,
-            int nXSize,
-            int nYSize,
-            void *pData,
+            double dXOff,
+            double dYOff,
+            double dXSize,
+            double dYSize,
+            void* pData,
             int nBufXSize,
             int nBufYSize,
             GDALDataType eBufType,
@@ -410,7 +411,6 @@ namespace osgEarth
             RasterInterpolation interpolation = INTERP_NEAREST
         )
         {
-#if GDAL_VERSION_2_0_OR_NEWER
             GDALRasterIOExtraArg psExtraArg;
 
             // defaults to GRIORA_NearestNeighbour
@@ -435,14 +435,15 @@ namespace osgEarth
                 break;
             }
 
-            CPLErr err = band->RasterIO(eRWFlag, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace, &psExtraArg);
-#else
-            if (interpolation != INTERP_NEAREST)
-            {
-                OE_DEBUG << "RasterIO falling back to INTERP_NEAREST.\n";
-            }
-            CPLErr err = band->RasterIO(eRWFlag, nXOff, nYOff, nXSize, nYSize, pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace);
-#endif
+            // pass in double extents instead of int
+            psExtraArg.bFloatingPointWindowValidity = TRUE;
+            psExtraArg.dfXOff = dXOff;
+            psExtraArg.dfYOff = dYOff;
+            psExtraArg.dfXSize = dXSize;
+            psExtraArg.dfYSize = dYSize;
+
+            CPLErr err = band->RasterIO(eRWFlag, floor(dXOff), floor(dYOff), ceil(dXSize), ceil(dYSize), pData, nBufXSize, nBufYSize, eBufType, nPixelSpace, nLineSpace, &psExtraArg);
+
             if (err != CE_None)
             {
                 //OE_WARN << LC << "RasterIO failed.\n";
@@ -955,7 +956,7 @@ GDAL::Driver::getInterpolatedValue(GDALRasterBand* band, double x, double y, boo
 
     if (gdalOptions().interpolation() == INTERP_NEAREST)
     {
-        rasterIO(band, GF_Read, (int)osg::round(c), (int)osg::round(r), 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
+        rasterIO(band, GF_Read, osg::round(c), osg::round(r), 1, 1, &result, 1, 1, GDT_Float32, 0, 0);
         if (!isValidValue(result, band))
         {
             return NO_DATA_VALUE;
@@ -1096,22 +1097,37 @@ GDAL::Driver::createImage(const TileKey& key,
     geoToPixel(west, intersection.yMax(), src_min_x, src_min_y);
     geoToPixel(east, intersection.yMin(), src_max_x, src_max_y);
 
+    double src_width = src_max_x - src_min_x;
+    double src_height = src_max_y - src_min_y;
+
+#if 0
     // Convert the doubles to integers.  We floor the mins and ceil the maximums to give the widest window possible.
-    src_min_x = floor(src_min_x);
-    src_min_y = floor(src_min_y);
-    src_max_x = ceil(src_max_x);
-    src_max_y = ceil(src_max_y);
+    double q_src_min_x = floor(src_min_x);
+    double q_src_min_y = floor(src_min_y);
+    double q_src_max_x = ceil(src_max_x);
+    double q_src_max_y = ceil(src_max_y);
 
-    int off_x = (int)(src_min_x);
-    int off_y = (int)(src_min_y);
-    int width = (int)(src_max_x - src_min_x);
-    int height = (int)(src_max_y - src_min_y);
-
+    int off_x = (int)(q_src_min_x);
+    int off_y = (int)(q_src_min_y);
+    int width = (int)(q_src_max_x - q_src_min_x);
+    int height = (int)(q_src_max_y - q_src_min_y);
+#endif
 
     int rasterWidth = _warpedDS->GetRasterXSize();
     int rasterHeight = _warpedDS->GetRasterYSize();
 
+    if (src_min_x + src_width > (double)rasterWidth)
+    {
+        src_width = (double)rasterWidth - src_min_x;
+    }
+
+    if (src_min_y + src_height > (double)rasterHeight)
+    {
+        src_height = (double)rasterHeight - src_min_y;
+    }
+
     // clamp the rasterio bounds so they don't go out of bounds
+#if 0
     if (off_x + width > rasterWidth)
         width = rasterWidth - off_x;
 
@@ -1122,13 +1138,13 @@ GDAL::Driver::createImage(const TileKey& key,
     {
         OE_WARN << LC << "Read window outside of bounds of dataset.  Source Dimensions=" << rasterWidth << "x" << rasterHeight << " Read Window=" << off_x << ", " << off_y << " " << width << "x" << height << std::endl;
     }
+#endif
 
     // Determine the destination window
 
     // Compute the offsets in geo coordinates of the intersection from the TileKey
     double offset_left = intersection.xMin() - xmin;
     double offset_top = ymax - intersection.yMax();
-
 
     int target_width = (int)ceil((intersection.width() / key.getExtent().width())*(double)tileSize);
     int target_height = (int)ceil((intersection.height() / key.getExtent().height())*(double)tileSize);
@@ -1139,7 +1155,7 @@ GDAL::Driver::createImage(const TileKey& key,
     double dx = (xmax - xmin) / (double)(tileSize - 1);
     double dy = (ymax - ymin) / (double)(tileSize - 1);
 
-    OE_DEBUG << LC << "ReadWindow " << off_x << "," << off_y << " " << width << "x" << height << std::endl;
+    //OE_DEBUG << LC << "ReadWindow " << off_x << "," << off_y << " " << width << "x" << height << std::endl;
     OE_DEBUG << LC << "DestWindow " << tile_offset_left << "," << tile_offset_top << " " << target_width << "x" << target_height << std::endl;
 
 
@@ -1212,13 +1228,13 @@ GDAL::Driver::createImage(const TileKey& key,
         image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
         memset(image->data(), 0, image->getImageSizeInBytes());
 
-        rasterIO(bandRed, GF_Read, off_x, off_y, width, height, red, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
-        rasterIO(bandGreen, GF_Read, off_x, off_y, width, height, green, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
-        rasterIO(bandBlue, GF_Read, off_x, off_y, width, height, blue, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
+        rasterIO(bandRed, GF_Read, src_min_x, src_min_y, src_width, src_height, red, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
+        rasterIO(bandGreen, GF_Read, src_min_x, src_min_y, src_width, src_height, green, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
+        rasterIO(bandBlue, GF_Read, src_min_x, src_min_y, src_width, src_height, blue, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
 
         if (bandAlpha)
         {
-            rasterIO(bandAlpha, GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
+            rasterIO(bandAlpha, GF_Read, src_min_x, src_min_y, src_width, src_height, alpha, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
         }
 
         for (int src_row = 0, dst_row = tile_offset_top;
@@ -1283,7 +1299,7 @@ GDAL::Driver::createImage(const TileKey& key,
             if (!success)
                 nodata = NO_DATA_VALUE; //getNoDataValue(); //getOptions().noDataValue().get();
 
-            if (rasterIO(bandGray, GF_Read, off_x, off_y, width, height, data, target_width, target_height, gdalDataType, 0, 0, INTERP_NEAREST))
+            if (rasterIO(bandGray, GF_Read, src_min_x, src_min_y, src_width, src_height, data, target_width, target_height, gdalDataType, 0, 0, INTERP_NEAREST))
             {
                 // copy from data to image.
                 for (int src_row = 0, dst_row = tile_offset_top; src_row < target_height; src_row++, dst_row++)
@@ -1329,11 +1345,11 @@ GDAL::Driver::createImage(const TileKey& key,
             memset(image->data(), 0, image->getImageSizeInBytes());
 
 
-            rasterIO(bandGray, GF_Read, off_x, off_y, width, height, gray, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
+            rasterIO(bandGray, GF_Read, src_min_x, src_min_y, src_width, src_height, gray, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
 
             if (bandAlpha)
             {
-                rasterIO(bandAlpha, GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
+                rasterIO(bandAlpha, GF_Read, src_min_x, src_min_y, src_width, src_height, alpha, target_width, target_height, GDT_Byte, 0, 0, gdalOptions().interpolation().get());
             }
 
             for (int src_row = 0, dst_row = tile_offset_top;
@@ -1386,7 +1402,7 @@ GDAL::Driver::createImage(const TileKey& key,
             memset(image->data(), 0, image->getImageSizeInBytes());
         }
 
-        rasterIO(bandPalette, GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0, INTERP_NEAREST);
+        rasterIO(bandPalette, GF_Read, src_min_x, src_min_y, src_width, src_height, palette, target_width, target_height, GDT_Byte, 0, 0, INTERP_NEAREST);
 
         ImageUtils::PixelWriter write(image.get());
 
@@ -1795,11 +1811,9 @@ bool GDALImageLayer::getSingleThreaded() const { return options().singleThreaded
 void
 GDALImageLayer::init()
 {
-    // if there's no name, derive it from the URL.
+    // If no name is set, default it to the value of the URL
     if (!options().name().isSet() && options().url().isSet())
-    {
-        options().name() = options().url()->base();
-    }
+        options().name().setDefault(options().url()->base());
 
     // Initialize the image layer
     ImageLayer::init();

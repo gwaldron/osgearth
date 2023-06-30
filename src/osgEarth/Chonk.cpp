@@ -87,8 +87,9 @@ namespace
         const unsigned ALBEDO_UNIT = 0;
         const unsigned NORMAL_UNIT = 1;
         const unsigned PBR_UNIT = 2;
-        const unsigned NORMAL_TECHNIQUE_SLOT = 6;
         const unsigned FLEXOR_SLOT = 3;
+        const unsigned NORMAL_TECHNIQUE_SLOT = 6;
+        const unsigned EXTENDED_MATERIAL_SLOT = 7;
 
         ChonkMaterial::Ptr reuseOrCreateMaterial(
             Texture::Ptr albedo_tex,
@@ -243,6 +244,7 @@ namespace
             auto normals = dynamic_cast<osg::Vec3Array*>(node.getNormalArray());
             auto normal_techniques = dynamic_cast<osg::UByteArray*>(node.getVertexAttribArray(NORMAL_TECHNIQUE_SLOT));
             auto flexors = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(FLEXOR_SLOT));
+            auto extended_material = dynamic_cast<osg::ShortArray*>(node.getVertexAttribArray(EXTENDED_MATERIAL_SLOT));
 
             // support either 2- or 3-component tex coords, but only read the xy components!
             auto uv2s = dynamic_cast<osg::Vec2Array*>(node.getTexCoordArray(0));
@@ -288,6 +290,16 @@ namespace
                 else
                 {
                     v.normal_technique = 0;
+                }
+
+                if (extended_material)
+                {
+                    int k = extended_material->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                    v.extended_material = (*extended_material)[k];
+                }
+                else
+                {
+                    v.extended_material = -1;
                 }
 
                 if (uv2s)
@@ -901,7 +913,7 @@ ChonkDrawable::GLObjects::initialize(
     glEnableClientState_(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
     glEnableClientState_(GL_ELEMENT_ARRAY_UNIFIED_NV);
 
-    const VADef formats[9] = {
+    const VADef formats[10] = {
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, position)},
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, normal)},
         {1, GL_UNSIGNED_BYTE, GL_FALSE, offsetof(Chonk::VertexGPU, normal_technique)},
@@ -910,11 +922,12 @@ ChonkDrawable::GLObjects::initialize(
         {3, GL_FLOAT,         GL_FALSE, offsetof(Chonk::VertexGPU, flex)},
         {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, albedo_index)},
         {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, normalmap_index)},
-        {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, pbr_index)}
+        {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, pbr_index)},
+        {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, extended_material)}
     };
 
     // configure the format of each vertex attribute in our structure.
-    for (unsigned location = 0; location < 9; ++location)
+    for (unsigned location = 0; location < 10; ++location)
     {
         const VADef& d = formats[location];
         if ((d.type == GL_INT) ||

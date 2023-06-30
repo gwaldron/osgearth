@@ -102,12 +102,14 @@ namespace osgEarth
             GLshort albedo_index;
             GLshort normalmap_index;
             GLshort pbr_index;
+            GLshort extended_material;
 
             VertexGPU() : 
                 normal_technique(0),
                 albedo_index(-1),
                 normalmap_index(-1),
-                pbr_index(-1) {}
+                pbr_index(-1),
+                extended_material(-1){}
         };
 
         static GLubyte NORMAL_TECHNIQUE_DEFAULT;

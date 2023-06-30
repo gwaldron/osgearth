@@ -1100,19 +1100,6 @@ GDAL::Driver::createImage(const TileKey& key,
     double src_width = src_max_x - src_min_x;
     double src_height = src_max_y - src_min_y;
 
-#if 0
-    // Convert the doubles to integers.  We floor the mins and ceil the maximums to give the widest window possible.
-    double q_src_min_x = floor(src_min_x);
-    double q_src_min_y = floor(src_min_y);
-    double q_src_max_x = ceil(src_max_x);
-    double q_src_max_y = ceil(src_max_y);
-
-    int off_x = (int)(q_src_min_x);
-    int off_y = (int)(q_src_min_y);
-    int width = (int)(q_src_max_x - q_src_min_x);
-    int height = (int)(q_src_max_y - q_src_min_y);
-#endif
-
     int rasterWidth = _warpedDS->GetRasterXSize();
     int rasterHeight = _warpedDS->GetRasterYSize();
 
@@ -1125,20 +1112,6 @@ GDAL::Driver::createImage(const TileKey& key,
     {
         src_height = (double)rasterHeight - src_min_y;
     }
-
-    // clamp the rasterio bounds so they don't go out of bounds
-#if 0
-    if (off_x + width > rasterWidth)
-        width = rasterWidth - off_x;
-
-    if (off_y + height > rasterHeight)
-        height = rasterHeight - off_x;
-
-    if (off_x + width > rasterWidth || off_y + height > rasterHeight)
-    {
-        OE_WARN << LC << "Read window outside of bounds of dataset.  Source Dimensions=" << rasterWidth << "x" << rasterHeight << " Read Window=" << off_x << ", " << off_y << " " << width << "x" << height << std::endl;
-    }
-#endif
 
     // Determine the destination window
 
@@ -1160,11 +1133,10 @@ GDAL::Driver::createImage(const TileKey& key,
 
 
     //Return if parameters are out of range.
-    if (width <= 0 || height <= 0 || target_width <= 0 || target_height <= 0)
+    if (src_width <= 0.0 || src_height <= 0.0 || target_width <= 0 || target_height <= 0)
     {
         return 0;
     }
-
 
 
     GDALRasterBand* bandRed = findBandByColorInterp(_warpedDS, GCI_RedBand);

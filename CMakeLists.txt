@@ -27,11 +27,11 @@ PROJECT(OSGEARTH)
 
 # SDK version number (informational)
 SET(OSGEARTH_MAJOR_VERSION 3)
-SET(OSGEARTH_MINOR_VERSION 2)
+SET(OSGEARTH_MINOR_VERSION 4)
 SET(OSGEARTH_PATCH_VERSION 0)
 
 # Increment this each time the ABI changes
-SET(OSGEARTH_SOVERSION 132)
+SET(OSGEARTH_SOVERSION 148)
 
 # C++11 is required for osgEarth 3.x
 set_property(GLOBAL PROPERTY CXX_STANDARD 11)
@@ -119,6 +119,9 @@ option(OSGEARTH_BUILD_DOCS "Include the documentation folder" ON)
 option(OSGEARTH_ENABLE_PROFILING "Enable profiling with Tracy" OFF)
 option(OSGEARTH_ENABLE_GEOCODER "Enable the geocoder (GDAL/OGR must be built with geocoder support)" OFF)
 
+option(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT "Assume the use of a single GL context for all GL objects (advanced)" ON)
+mark_as_advanced(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
+
 # ........................................................................
 # Dependencies
 
@@ -157,14 +160,14 @@ find_package(GLEW)
 find_package(Protobuf)
 find_package(WEBP)
 find_package(Blend2D)
-find_package(blosc)
+find_package(Blosc)
 
 if(OSGEARTH_ENABLE_PROFILING)
     find_package(Tracy)
 endif()
 
 if(OSGEARTH_BUILD_ZIP_PLUGIN)
-    find_package(LIBZIP)
+    find_package(LibZip)
 endif()
 
 if(OSGEARTH_BUILD_TRITON_NODEKIT)
@@ -185,6 +188,10 @@ IF(draco_FOUND)
     ADD_DEFINITIONS(-DOSGEARTH_HAVE_DRACO)
 ENDIF(draco_FOUND)
 
+if(Protobuf_FOUND)
+    add_definitions(-DOSGEARTH_HAVE_PROTOBUF)
+endif()
+
 # GDAL is the underlying geospatial processing SDK
 IF(GDAL_FOUND)
     message(STATUS "Found GDAL ${GDAL_VERSION}" )
@@ -202,6 +209,10 @@ endif()
 
 if(OSGEARTH_ENABLE_GEOCODER)
     add_definitions(-DOSGEARTH_HAVE_GEOCODER)
+endif()
+
+if(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
+    add_definitions(-DOSGEARTH_SINGLE_GL_CONTEXT)
 endif()
 
 # Protobuf enables the MVT (Mapnik Vector Tiles) format
@@ -298,10 +309,30 @@ ELSE()
     SET(OSGEARTH_DYNAMIC_OR_STATIC "STATIC")
 ENDIF()
 
-
+	
 # OE Libraries
 ADD_SUBDIRECTORY(src)
 
 if (OSGEARTH_BUILD_DOCS)
     ADD_SUBDIRECTORY(docs)
 endif()
+
+#write out config files for vcpkg
+
+SET(INSTALL_INCDIR ${CMAKE_INSTALL_PREFIX}/include)
+SET(INSTALL_LIBDIR ${PROJECT_BINARY_DIR}/lib)	
+message(STATUS "INCDIR: ${INSTALL_INCDIR}")
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(osgEarthConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
+  INSTALL_DESTINATION ${LIB_INSTALL_DIR}/osgearth/cmake
+  )
+  
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
+  VERSION 3.3.0
+  COMPATIBILITY SameMajorVersion )
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
+              ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake )

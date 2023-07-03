@@ -787,8 +787,8 @@ int main(int argc, char** argv)
     // UI:
     Container* help = createHelp(&viewer);
 
-    osg::Node* earthNode = MapNodeHelper().load( arguments, &viewer, help );
-    if (!earthNode)
+    auto earthNode = MapNodeHelper().load( arguments, &viewer, help );
+    if (!earthNode.valid())
     {
         OE_WARN << "Unable to load earth model." << std::endl;
         return -1;
@@ -797,7 +797,9 @@ int main(int argc, char** argv)
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
 
-    osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
+    osgEarth::MapNode* mapNode = osgEarth::MapNode::get( earthNode );
+    if (!mapNode)
+        return -1;
 
     // user model?
     osg::ref_ptr<osg::Node> model;

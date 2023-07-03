@@ -23,6 +23,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Elevation>
+#include <osgEarth/MaterialLoader>
 #include <osgDB/Registry>
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
@@ -155,12 +156,27 @@ namespace
                 {
                     readNormals(normal, iter.u(), iter.v());
 
-                    normal3.set(
-                        normal_scale.x() * (normal.x()*2.0 - 1.0),
-                        normal_scale.y() * (normal.y()*2.0 - 1.0),
-                        normal_scale.z() * (normal.z()*2.0 - 1.0));
+                    if (normals->getPixelFormat() == GL_COMPRESSED_RED_GREEN_RGTC2_EXT)
+                    {
+                        //NormalMapGenerator::unpack(normal, normal3);
+                        // do nothing
+                        packed.x() = normal.x();
+                        packed.y() = normal.y();
+                    }
+                    else
+                    {
+                        normal3.set(
+                            normal_scale.x() * (normal.x() * 2.0 - 1.0),
+                            normal_scale.y() * (normal.y() * 2.0 - 1.0),
+                            normal_scale.z() * (normal.z() * 2.0 - 1.0));
+
+                        NormalMapGenerator::pack(normal3, packed);
+                    }
                 }
-                NormalMapGenerator::pack(normal3, packed);
+                else
+                {
+                    NormalMapGenerator::pack(normal3, packed);
+                }
 
                 if (roughness.valid())
                 {
@@ -372,17 +388,20 @@ NNRA_Loader::readImageFromSourceData(
     // Try the "vtm" layout next. Files include:
     //   filename_MTL_GLS_AO.png (metal, inverse roughness, ao)
     {
-        URI normalsURI(basename + "_NML." + extension);
-        URI metalGlossAoURI(basename + "_MTL_GLS_AO." + extension);
+        auto getNormalMapFileName = MaterialUtils::getDefaultNormalMapNameMangler();
+        auto getPBRFileName = MaterialUtils::getDefaultPBRMapNameMangler();
 
-        normals = normalsURI.getImage(options);
+        URI normalMapURI(getNormalMapFileName(color_filename));
+        normals = normalMapURI.getImage(options);
         if (!normals.valid())
-            OE_WARN << LC << "Failed to load \"" << normalsURI.full() << "\"" << std::endl;
+            OE_WARN << LC << "Failed to load \"" << normalMapURI.full() << "\"" << std::endl;
 
-        roughness = metalGlossAoURI.getImage(options);
-        if (!normals.valid())
-            OE_WARN << LC << "Failed to load \"" << metalGlossAoURI.full() << "\"" << std::endl;
+        URI pbrURI(getPBRFileName(color_filename));
+        roughness = pbrURI.getImage(options);
+        if (!roughness.valid())
+            OE_WARN << LC << "Failed to load \"" << pbrURI.full() << "\"" << std::endl;
 
+        // they share an image
         ao = roughness;
 
         if (normals.valid() || roughness.valid() || ao.valid())
@@ -430,18 +449,21 @@ NNRA_Loader::writeImage(
 bool
 RGBH_NNRA_Loader::load(
     const URI& colorURI,
-    TextureArena* arena)
+    TextureArena* arena,
+    const osgDB::Options* options)
 {
     Texture::Ptr rgbh = Texture::create();
-    rgbh->label() = "Splatting Material";
+    rgbh->category() = "Splatting Material";
     rgbh->uri() = URI(colorURI.full() + ".oe_splat_rgbh");
-    arena->add(rgbh);
+    rgbh->name() = rgbh->uri()->full();
+    arena->add(rgbh, options);
 
     // protect the NNRA from compression, b/c it confuses the normal maps
     Texture::Ptr nnra = Texture::create();
-    nnra->label() = "Splatting Material";
+    nnra->category() = "Splatting Material";
     nnra->uri() = URI(colorURI.full() + ".oe_splat_nnra");
+    nnra->name() = nnra->uri()->full();
     nnra->compress() = false;
-    arena->add(nnra);
+    arena->add(nnra, options);
     return true;
 }

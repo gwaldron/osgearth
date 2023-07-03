@@ -23,13 +23,161 @@
 #include <osgEarth/AnnotationUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/PagedNode>
+#include <osgEarth/MetadataNode>
 #include <osgEarth/Viewpoint>
 #include <osgEarth/ViewFitter>
 #include <osgEarth/ThreeDTilesLayer>
 #include <osgEarth/EarthManipulator>
+#include <osgEarth/StringUtils>
+#include <osgDB/FileUtils>
+#include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
+#include <osg/TextureBuffer>
 
 #include <osg/io_utils>
 #include <osg/PolygonMode>
+
+#if defined(__has_include)
+#if __has_include(<third_party/portable-file-dialogs/portable-file-dialogs.h>)
+#include <third_party/portable-file-dialogs/portable-file-dialogs.h>
+#define HAS_PFD
+#endif
+#endif
+
+struct PrepareForWriting : public osg::NodeVisitor
+{
+    PrepareForWriting() : osg::NodeVisitor()
+    {
+        setTraversalMode(TRAVERSE_ALL_CHILDREN);
+        setNodeMaskOverride(~0);
+    }
+
+    void apply(osg::Node& node)
+    {
+        apply(node.getStateSet());
+        applyUserData(node);
+        traverse(node);
+    }
+
+    void apply(osg::Drawable& drawable)
+    {
+        apply(drawable.getStateSet());
+        applyUserData(drawable);
+
+        osg::Geometry* geom = drawable.asGeometry();
+        if (geom)
+            apply(geom);
+    }
+
+    void apply(osg::Geometry* geom)
+    {
+        // This detects any NULL vertex attribute arrays and then populates them.
+        // Do this because a NULL VAA will crash the OSG serialization reader (osg 3.4.0)
+        osg::Geometry::ArrayList& arrays = geom->getVertexAttribArrayList();
+        for (osg::Geometry::ArrayList::iterator i = arrays.begin(); i != arrays.end(); ++i)
+        {
+            if (i->get() == 0L)
+            {
+                *i = new osg::FloatArray();
+                i->get()->setBinding(osg::Array::BIND_OFF);
+            }
+        }
+
+        // Get rid of any kdtree since osg can't serialize it.
+        geom->setShape(nullptr);
+    }
+
+    void apply(osg::StateSet* ss)
+    {
+        if (!ss) return;
+
+        osg::StateSet::AttributeList& a0 = ss->getAttributeList();
+        for (osg::StateSet::AttributeList::iterator i = a0.begin(); i != a0.end(); ++i)
+        {
+            osg::StateAttribute* sa = i->second.first.get();
+            applyUserData(*sa);
+        }
+
+        // Disable the texture image-unref feature so we can share the resource
+        // across cached tiles.
+        osg::StateSet::TextureAttributeList& a = ss->getTextureAttributeList();
+        for (osg::StateSet::TextureAttributeList::iterator i = a.begin(); i != a.end(); ++i)
+        {
+            osg::StateSet::AttributeList& b = *i;
+            for (osg::StateSet::AttributeList::iterator j = b.begin(); j != b.end(); ++j)
+            {
+                osg::StateAttribute* sa = j->second.first.get();
+                if (sa)
+                {
+                    osg::Texture* tex = dynamic_cast<osg::Texture*>(sa);
+                    if (tex)
+                    {
+                        tex->setUnRefImageDataAfterApply(false);
+                    }
+                    else
+                    {
+                        applyUserData(*sa);
+                    }
+                }
+            }
+        }
+
+        applyUserData(*ss);
+    }
+
+    void applyUserData(osg::Object& object)
+    {
+        object.setUserDataContainer(0L);
+    }
+};
+
+struct WriteExternalImages : public osgEarth::TextureAndImageVisitor
+{
+    std::string _destinationPath;
+
+    WriteExternalImages(const std::string& destinationPath)
+        : TextureAndImageVisitor(),
+        _destinationPath(destinationPath)
+    {
+        setTraversalMode(TRAVERSE_ALL_CHILDREN);
+        setNodeMaskOverride(~0L);
+    }
+
+    void apply(osg::Texture & tex)
+    {
+        if (dynamic_cast<osg::TextureBuffer*>(&tex) != 0L)
+        {
+            // skip texture buffers, they need no prep and
+            // will be inlined as long as they have a write hint
+            // set to STORE_INLINE.
+        }
+        else
+        {
+            osgEarth::TextureAndImageVisitor::apply(tex);
+        }
+    }
+
+    void apply(osg::Image & image)
+    {
+        std::string path = image.getFileName();
+        if (path.empty())
+        {
+            OE_WARN << "ERROR image with blank filename.\n";
+            return;
+        }
+
+        std::string format = "dds";
+        unsigned int hash = osgEarth::hashString(path);
+        std::string relativeName = osgEarth::Util::Stringify() << "images/" <<  hash << "." << format;
+        std::string filename = osgDB::concatPaths(_destinationPath, relativeName);
+        image.setFileName(relativeName);
+        image.setWriteHint(osg::Image::EXTERNAL_FILE);
+        osg::ref_ptr < osgDB::Options > options = new osgDB::Options;
+        options->setOptionString("ddsNoAutoFlipWrite");
+        osgDB::makeDirectoryForFile(filename);
+        osgDB::writeImageFile(image, filename, options.get());
+    }
+};
 
 namespace osgEarth
 {
@@ -37,7 +185,111 @@ namespace osgEarth
     {
         using namespace osgEarth;
         using namespace osgEarth::Util;
-        
+
+
+        struct ArrayStats
+        {
+            unsigned int arrayCount = 0;
+            unsigned int elementCount = 0;
+            unsigned int size = 0;
+        };
+
+        struct MemoryStats
+        {
+            void reset()
+            {
+                arrayStats.clear();
+                totalDataSize = 0;
+                totalGeometries = 0;
+                totalPrimitiveSets = 0;
+                computed = false;
+            }
+
+            void addArray(osg::Drawable::AttributeTypes index, const osg::Array* array)
+            {
+                if (array && array->getNumElements() > 0)
+                {
+                    arrayStats[index].arrayCount += 1;
+                    arrayStats[index].elementCount += array->getNumElements();;
+                    arrayStats[index].size += array->getTotalDataSize();
+                    totalDataSize += array->getTotalDataSize();                 
+                }
+                computed = true;
+            }
+
+            void addGeometry(const osg::Geometry& geometry)
+            {
+                if (geometry.getVertexArray())
+                {
+                    addArray(osg::Geometry::VERTICES, geometry.getVertexArray());
+                }
+
+                if (geometry.getNormalArray())
+                {
+                    addArray(osg::Geometry::NORMALS, geometry.getNormalArray());
+                }
+
+                if (geometry.getColorArray())
+                {
+                    addArray(osg::Geometry::COLORS, geometry.getColorArray());
+                }
+
+                if (geometry.getSecondaryColorArray())
+                {
+                    addArray(osg::Geometry::SECONDARY_COLORS, geometry.getSecondaryColorArray());
+                }
+
+                if (geometry.getFogCoordArray())
+                {
+                    addArray(osg::Geometry::FOG_COORDS, geometry.getFogCoordArray());
+                }
+
+                const auto& texCoordArrays = geometry.getTexCoordArrayList();
+                for (unsigned int i = 0; i < texCoordArrays.size(); ++i)
+                {
+                    if (texCoordArrays[i].valid())
+                    {
+                        addArray((osg::Drawable::AttributeTypes)(osg::Geometry::TEXTURE_COORDS_0 + i), texCoordArrays[i].get());
+                    }
+                }
+
+                const osg::Geometry::ArrayList& arrays = geometry.getVertexAttribArrayList();
+                for (unsigned int i = 0; i < arrays.size(); ++i)
+                {
+                    if (arrays[i].valid())
+                    {
+                        addArray((osg::Drawable::AttributeTypes)i, arrays[i].get());
+                    }
+                }
+
+                ++totalGeometries;
+
+                totalPrimitiveSets += geometry.getNumPrimitiveSets();
+            }
+
+            std::map< osg::Drawable::AttributeTypes, ArrayStats > arrayStats;
+            unsigned int totalDataSize = 0;
+            unsigned int totalGeometries = 0;
+            unsigned int totalPrimitiveSets = 0;
+            bool computed = false;
+        };
+
+        class ComputeMemoryStatsVisitor : public osg::NodeVisitor
+        {
+        public:
+            ComputeMemoryStatsVisitor():
+                osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+            {
+            }
+
+            virtual void apply( osg::Geometry& geometry ) override
+            {
+                stats.addGeometry(geometry);
+            }
+
+            MemoryStats stats;
+        };
+
         template<typename T>
         std::string printArrayValue(const T* array)
         {
@@ -54,6 +306,64 @@ namespace osgEarth
             return buf.str();
         }
 
+        static const char* arrayBindingToString(osg::Array::Binding binding)
+        {
+            switch (binding)
+            {
+            case osg::Array::BIND_PER_VERTEX:
+                return "BIND_PER_VERTEX";
+            case osg::Array::BIND_OVERALL:
+                return "BIND_OVERALL";
+            case osg::Array::BIND_PER_PRIMITIVE_SET:
+                return "BIND_PER_PRIMITIVE_SET";
+            case osg::Array::BIND_OFF:
+                return "BIND_OFF";
+            default:
+                return "BIND_UNDEFINED";
+            }
+        }
+
+        static const char* attributeTypeToString(osg::Drawable::AttributeType attributeType)
+        {
+            switch (attributeType)
+            {
+            case osg::Drawable::VERTICES:
+                return "VERTICES";
+            case osg::Drawable::WEIGHTS:
+                return "WEIGHTS";
+            case osg::Drawable::NORMALS:
+                return "NORMALS";
+            case osg::Drawable::COLORS:
+                return "COLORS";
+            case osg::Drawable::SECONDARY_COLORS:
+                return "SECONDARY_COLORS";
+            case osg::Drawable::FOG_COORDS:
+                return "FOG_COORDS";
+            case osg::Drawable::ATTRIBUTE_6:
+                return "ATTRIBUTE_6";
+            case osg::Drawable::ATTRIBUTE_7:
+                return "ATTRIBUTE_7";
+            case osg::Drawable::TEXTURE_COORDS_0:
+                return "TEXTURE_COORDS_0";
+            case osg::Drawable::TEXTURE_COORDS_1:
+                return "TEXTURE_COORDS_1";
+            case osg::Drawable::TEXTURE_COORDS_2:
+                return "TEXTURE_COORDS_2";
+            case osg::Drawable::TEXTURE_COORDS_3:
+                return "TEXTURE_COORDS_3";
+            case osg::Drawable::TEXTURE_COORDS_4:
+                return "TEXTURE_COORDS_4";
+            case osg::Drawable::TEXTURE_COORDS_5:
+                return "TEXTURE_COORDS_5";
+            case osg::Drawable::TEXTURE_COORDS_6:
+                return "TEXTURE_COORDS_6";
+            case osg::Drawable::TEXTURE_COORDS_7:
+                return "TEXTURE_COORDS_7";
+            default:
+                return "Uknown Array";
+            }
+        }
+
         template<typename T>
         void printArrayTablePretty(const std::string& name, const T* array)
         {
@@ -65,6 +375,8 @@ namespace osgEarth
             // When using ScrollX or ScrollY we need to specify a size for our table container!
             // Otherwise by default the table will fit all available space, like a BeginChild() call.
             ImGui::Text(typeid(*array).name());
+            ImGui::Text("Binding %s", arrayBindingToString(array->getBinding()));
+            ImGui::Text("Size: %dkb", (unsigned int)(array->getTotalDataSize() / 1024.0f));
             ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 8);
             if (ImGui::BeginTable(name.c_str(), 2, flags, outer_size))
             {
@@ -222,10 +534,10 @@ namespace osgEarth
             }
         }
 
-        
+
 
         static std::string printUniformValue(osg::Uniform* uniform)
-        {            
+        {
             if (uniform->getFloatArray()) return printArrayValue(uniform->getFloatArray());
             if (uniform->getDoubleArray()) return printArrayValue(uniform->getDoubleArray());
             if (uniform->getIntArray()) return printArrayValue(uniform->getIntArray());
@@ -239,7 +551,7 @@ namespace osgEarth
 
         class SceneGraphGUI : public BaseGUI
         {
-        public:            
+        public:
 
             osg::ref_ptr<osg::Node> getSelectedNode()
             {
@@ -263,6 +575,7 @@ namespace osgEarth
                     _selectedNodePath.push_back(*itr);
                 }
                 _boundsDirty = true;
+                _memoryStats.reset();
             }
 
             struct SelectNodeHandler : public osgGA::GUIEventHandler
@@ -289,7 +602,7 @@ namespace osgEarth
                         osg::ref_ptr< osgUtil::PolytopeIntersector> picker = new osgUtil::PolytopeIntersector(osgUtil::Intersector::WINDOW, x - w, y - h, x + w, y + h);
                         picker->setIntersectionLimit(osgUtil::Intersector::LIMIT_NEAREST);
                         osgUtil::IntersectionVisitor iv(picker.get());
-                        // This is a hack, but we set the node mask to something other than 1 << 2 which is what the "selected bounds" node mask is set to to avoid picking it.  
+                        // This is a hack, but we set the node mask to something other than 1 << 2 which is what the "selected bounds" node mask is set to to avoid picking it.
                         // We should rework this later into something more formal so we can add widget type nodes that aren't generally interacted with.
                         iv.setTraversalMask((1 << 1));
                         view->getCamera()->accept(iv);
@@ -339,13 +652,25 @@ namespace osgEarth
                         ImGui::PopStyleColor();
                     }
                     if (ImGui::IsItemClicked())
-                    {                                         
+                    {
                         _owner->setSelectedNodePath(getNodePath());
+                    }
+                    if (ImGui::BeginDragDropTarget())
+                    {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE"))
+                        {
+                            osg::Texture2D* droppedTexture = *(osg::Texture2D**)payload->Data;
+                            if (droppedTexture)
+                            {
+                                node.getOrCreateStateSet()->setTextureAttributeAndModes(0, droppedTexture, osg::StateAttribute::ON);
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
                     }
                 }
 
                 void apply(osg::Group& node)
-                {   
+                {
                     std::string label = getLabel(node);
                     ImGuiTreeNodeFlags node_flags = base_flags;
                     if (_owner->getSelectedNode() == &node)
@@ -370,9 +695,30 @@ namespace osgEarth
                         ImGui::PopStyleColor();
                     }
                     if (ImGui::IsItemClicked())
-                    {                     
+                    {
                         _owner->setSelectedNodePath(getNodePath());
                     }
+                    if (ImGui::BeginDragDropTarget())
+                    {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("NODE"))
+                        {
+                            osg::Node* droppedNode = *(osg::Node**)payload->Data;
+                            if (droppedNode)
+                            {
+                                node.addChild(droppedNode);
+                            }
+                        }
+                        else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE"))
+                        {
+                            osg::Texture2D* droppedTexture = *(osg::Texture2D**)payload->Data;
+                            if (droppedTexture)
+                            {
+                                node.getOrCreateStateSet()->setTextureAttributeAndModes(0, droppedTexture, osg::StateAttribute::ON);
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+
                     if (node_open)
                     {
                         traverse(node);
@@ -396,7 +742,7 @@ namespace osgEarth
 
                 bool isInSelectedNodePath(osg::Node* node)
                 {
-                    auto selectedNodePaths = _owner->getSelectedNodePath();                    
+                    auto selectedNodePaths = _owner->getSelectedNodePath();
 
                     for (unsigned int i = 0; i < selectedNodePaths.size(); i++)
                     {
@@ -440,13 +786,14 @@ namespace osgEarth
                     }
 
                     auto size = ImGui::GetWindowSize();
-                    
+
                     if (ImGui::CollapsingHeader("Scene"))
                     {
-                        // Change the size based on whether the properties panel is 
+                        // Change the size based on whether the properties panel is
                         ImGui::BeginChild("Scene", ImVec2(0, getSelectedNode() && _propertiesExpanded ? 0.6f * size.y : 0.90f * size.y), false, ImGuiWindowFlags_HorizontalScrollbar);
+
                         SceneHierarchyVisitor v(this);
-                        _node->accept(v);
+                        _node->accept(v);                        
 
                         ImGui::EndChild();
                     }
@@ -468,8 +815,6 @@ namespace osgEarth
                 // If they closed the tool deselect the node.
                 if (!isVisible() && getSelectedNode())
                 {
-                    // TODO:
-                    //setSelectedNode(nullptr);
                     osg::NodePath empty;
                     setSelectedNodePath(empty);
                 }
@@ -498,7 +843,7 @@ namespace osgEarth
                     {
                         nodePath.push_back(refNodePath[i].get());
                     }
-                    
+
                     if (nodePath.back()->asTransform())
                     {
                         nodePath.pop_back();
@@ -518,7 +863,7 @@ namespace osgEarth
 
                             osg::MatrixTransform* center = new osg::MatrixTransform;
                             center->addChild(AnnotationUtils::createBoundingBox(bb, Color::Yellow));
-                            _selectedBounds->addChild(center);                           
+                            _selectedBounds->addChild(center);
 
                             _selectedBounds->setNodeMask(1 << 2);
                             mapNode->addChild(_selectedBounds);
@@ -582,6 +927,50 @@ namespace osgEarth
                     }
                 }
 
+#ifdef HAS_PFD
+                if (ImGui::Button("Export"))
+                {
+                    auto f = pfd::save_file("Save file", pfd::path::home());
+                    if (!f.result().empty())
+                    {
+                        std::string filename = f.result();
+                        osgDB::makeDirectoryForFile(filename);
+
+                        PrepareForWriting prepare;
+                        node->accept(prepare);
+                        std::string path = osgDB::getFilePath(filename);
+
+                        // Maybe make this optional
+                        WriteExternalImages write(path);
+                        node->accept(write);
+
+                        osg::ref_ptr< osgDB::Options > writeOptions = new osgDB::Options;
+                        osgDB::writeNodeFile(*node, filename, writeOptions.get());
+                    }
+                }
+
+                osg::Group* group = node->asGroup();
+                if (group)
+                {
+                    if (ImGui::Button("Add Node"))
+                    {
+                        auto f = pfd::open_file("Choose files to read", pfd::path::home(),
+                            { "All Files", "*" },
+                            pfd::opt::multiselect);
+
+                        for (auto const& name : f.result())
+                        {
+                            osg::ref_ptr< osg::Node > node = osgDB::readNodeFile(name);
+                            if (node.valid())
+                            {
+                                Registry::instance()->shaderGenerator().run(node.get());
+                                group->addChild(node.get());
+                            }
+                        }
+                    }
+                }
+#endif
+
                 bool visible = node->getNodeMask() != 0;
                 if (ImGui::Checkbox("Visible", &visible))
                 {
@@ -595,7 +984,7 @@ namespace osgEarth
 
                     osg::Drawable* drawable = node->asDrawable();
                     if (drawable)
-                    {                        
+                    {
                         osg::BoundingBox bbox = drawable->getBoundingBox();
                         double width = bbox.xMax() - bbox.xMin();
                         double depth = bbox.yMax() - bbox.yMin();
@@ -610,6 +999,42 @@ namespace osgEarth
                     }
 
                     ImGui::Text("Reference count %d", node->referenceCount());
+
+                    ImGui::TreePop();
+                }
+
+                if (ImGui::TreeNode("Memory Usage"))
+                {
+                    if (_memoryStats.computed)
+                    {
+                        ImGui::Text("Geometry Count: %d", _memoryStats.totalGeometries);
+                        ImGui::Text("PrimitiveSets: %d", _memoryStats.totalPrimitiveSets);
+                        ImGui::Text("Total Data Size %dkb", (unsigned int)(_memoryStats.totalDataSize / 1024.0f));                       
+                        if (ImGui::BeginTable("Memory", 4, ImGuiTableFlags_Borders))
+                        {
+                            ImGui::TableSetupColumn("Attribute");
+                            ImGui::TableSetupColumn("Array Count");
+                            ImGui::TableSetupColumn("Element Count");
+                            ImGui::TableSetupColumn("Size");
+                            ImGui::TableHeadersRow();
+
+                            for (auto& a : _memoryStats.arrayStats)
+                            {
+                                ImGui::TableNextColumn(); ImGui::Text(attributeTypeToString((osg::Drawable::AttributeType)a.first));
+                                ImGui::TableNextColumn(); ImGui::Text("%d", a.second.arrayCount);
+                                ImGui::TableNextColumn(); ImGui::Text("%d", a.second.elementCount);
+                                ImGui::TableNextColumn(); ImGui::Text("%dkb", (unsigned int)(a.second.size / 1024.0f));
+                            }
+                            ImGui::EndTable();
+                        }                        
+                    }
+
+                    if (ImGui::Button("Compute"))
+                    {                        
+                        ComputeMemoryStatsVisitor visitor;
+                        getSelectedNode()->accept(visitor);
+                        _memoryStats = visitor.stats;
+                    }
 
                     ImGui::TreePop();
                 }
@@ -662,10 +1087,104 @@ namespace osgEarth
                 if (threeDTiles)
                 {
                     if (ImGui::TreeNode("3D Tiles"))
-                    {                       
+                    {
                         std::string content = threeDTiles->getTile()->content()->getJSON().toStyledString();
                         ImGui::Text("Content");
                         ImGui::TextWrapped(content.c_str());
+                    }
+                }
+
+                osg::Camera* cam = dynamic_cast<osg::Camera*>(node);
+                if (cam)
+                {
+                    if (ImGui::TreeNode("osg::Camera"))
+                    {
+                        const std::string order[3] = { "PRE_RENDER", "NESTED_RENDER", "POST_RENDER" };
+                        const std::string proj[2] = { "PERSP", "ORTHO" };
+                        ImGui::Text("Render order: %s", order[(int)cam->getRenderOrder()].c_str());
+                        ImGui::Text("Projection: %s", proj[ProjectionMatrix::isOrtho(cam->getProjectionMatrix()) ? 1 : 0].c_str());
+                        ImGui::Text("Cull mask: %0x%.8X", cam->getCullMask());
+                        ImGui::Text("Gfx context: %0x%.16X", (std::uintptr_t)cam->getGraphicsContext());
+                        ImGui::Text("Gfx context ID: %d", cam->getGraphicsContext()->getState()->getContextID());
+                        ImGui::TreePop();
+                    }
+                }
+
+                osgEarth::MetadataNode* metadata = dynamic_cast<osgEarth::MetadataNode*>(node);
+                if (metadata)
+                {
+                    if (ImGui::TreeNode("Metadata"))
+                    {
+                        static ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_SizingFixedFit;
+
+                        const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
+
+                        // When using ScrollX or ScrollY we need to specify a size for our table container!
+                        // Otherwise by default the table will fit all available space, like a BeginChild() call.
+                        ImGui::Text("Features %d", metadata->getNumFeatures());
+                        ImVec2 outer_size = ImVec2(0.0f, TEXT_BASE_HEIGHT * 8);
+                        if (ImGui::BeginTable("Features", 4, flags, outer_size))
+                        {
+                            ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
+                            ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_None);
+                            ImGui::TableSetupColumn("Feature ID", ImGuiTableColumnFlags_None);
+                            ImGui::TableSetupColumn("Object ID", ImGuiTableColumnFlags_None);
+                            ImGui::TableSetupColumn("Visible", ImGuiTableColumnFlags_None);
+                            ImGui::TableHeadersRow();
+
+                            ImGuiListClipper clipper;
+                            clipper.Begin(metadata->getNumFeatures());
+                            while (clipper.Step())
+                            {
+                                for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+                                {
+                                    ImGui::PushID(i);
+
+                                    // TODO:  Add feature properties
+                                    ImGui::TableNextRow();
+
+                                    ImGui::TableSetColumnIndex(0);
+                                    ImGui::Text("%d", i);
+
+                                    ImGui::TableSetColumnIndex(1);
+                                    ImGui::Text("%I64d", metadata->getFeature(i)->getFID());
+
+                                    ImGui::TableSetColumnIndex(2);
+                                    ImGui::Text("%I64d", metadata->getObjectID(i));
+
+                                    ImGui::TableSetColumnIndex(3);
+                                    bool visible = metadata->getVisible(i);
+                                    if (ImGui::Checkbox("", &visible))
+                                    {
+                                        metadata->setVisible(i, visible);
+                                    }
+
+#if 0
+                                    ImGui::TableSetColumnIndex(3);
+                                    auto feature = metadata->getFeature(i);
+                                    if (feature)
+                                    {
+                                        std::stringstream buf;
+                                        for (auto& attr : feature->getAttrs())
+                                        {
+                                            buf << attr.first << "=" << attr.second.getString() << std::endl;
+                                        }
+                                        //std::string geojson = feature->getGeoJSON();
+                                        ImGui::Text(buf.str().c_str());
+                                    }
+                                    else
+                                    {
+                                        ImGui::Text("Null feature");
+                                    }
+#endif
+
+                                    ImGui::PopID();
+                                }
+                            }
+                            ImGui::EndTable();
+                        }
+
+                        ImGui::TreePop();
                     }
                 }
 
@@ -712,7 +1231,7 @@ namespace osgEarth
                         if (!stateset->getUniformList().empty())
                         {
                             if (ImGui::TreeNode("Uniforms"))
-                            {       
+                            {
                                 if (ImGui::BeginTable("Uniforms", 3, ImGuiTableFlags_Borders))
                                 {
                                     for (auto& u : stateset->getUniformList())
@@ -732,7 +1251,7 @@ namespace osgEarth
                                     ImGui::EndTable();
                                 }
                             }
-                        }                        
+                        }
 
                         ImGui::TreePop();
                     }
@@ -744,7 +1263,7 @@ namespace osgEarth
                     if (geometry->getVertexArray())
                     {
                         if (ImGui::TreeNode("verts", "VERTICES %d", geometry->getVertexArray()->getNumElements()))
-                        {                            
+                        {
                             printArrayTable(geometry->getVertexArray());
                             ImGui::TreePop();
                         }
@@ -768,6 +1287,19 @@ namespace osgEarth
                         }
                     }
 
+                    auto& texCoordArrays = geometry->getTexCoordArrayList();
+                    for (unsigned int i = 0; i < texCoordArrays.size(); ++i)
+                    {
+                        if (texCoordArrays[i].valid())
+                        {
+                            if (ImGui::TreeNode("texcoords", "TexCoords Unit %d %d", i, texCoordArrays[i]->getNumElements()))
+                            {
+                                printArrayTable(texCoordArrays[i].get());
+                                ImGui::TreePop();
+                            }
+                        }
+                    }
+
                     // Vetex attrib arrays
                     osg::Geometry::ArrayList& arrays = geometry->getVertexAttribArrayList();
                     bool validVertexAttributeArray = false;
@@ -787,63 +1319,9 @@ namespace osgEarth
                         ImGui::Separator();
                         for (unsigned int i = 0; i < arrays.size(); ++i)
                         {
-                            if (!arrays[i].valid()) continue;
+                            if (!arrays[i].valid() && arrays[i]->getBinding() != osg::Array::BIND_OFF) continue;
 
-                            const char* arrayName = "";
-
-                            switch (i)
-                            {
-                            case osg::Drawable::VERTICES:
-                                arrayName = "VERTICES";
-                                break;
-                            case osg::Drawable::WEIGHTS:
-                                arrayName = "WEIGHTS";
-                                break;
-                            case osg::Drawable::NORMALS:
-                                arrayName = "NORMALS";
-                                break;
-                            case osg::Drawable::COLORS:
-                                arrayName = "COLORS";
-                                break;
-                            case osg::Drawable::SECONDARY_COLORS:
-                                arrayName = "SECONDARY_COLORS";
-                                break;
-                            case osg::Drawable::FOG_COORDS:
-                                arrayName = "FOG_COORDS";
-                                break;
-                            case osg::Drawable::ATTRIBUTE_6:
-                                arrayName = "ATTRIBUTE_6";
-                                break;
-                            case osg::Drawable::ATTRIBUTE_7:
-                                arrayName = "ATTRIBUTE_7";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_0:
-                                arrayName = "TEXTURE_COORDS_0";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_1:
-                                arrayName = "TEXTURE_COORDS_1";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_2:
-                                arrayName = "TEXTURE_COORDS_2";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_3:
-                                arrayName = "TEXTURE_COORDS_3";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_4:
-                                arrayName = "TEXTURE_COORDS_4";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_5:
-                                arrayName = "TEXTURE_COORDS_5";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_6:
-                                arrayName = "TEXTURE_COORDS_6";
-                                break;
-                            case osg::Drawable::TEXTURE_COORDS_7:
-                                arrayName = "TEXTURE_COORDS_7";
-                                break;
-                            default:
-                                arrayName = "Uknown Array";
-                            }
+                            const char* arrayName = attributeTypeToString((osg::Drawable::AttributeType)i);
 
                             if (ImGui::TreeNode(arrayName, "%s %d", arrayName, arrays[i]->getNumElements()))
                             {
@@ -906,6 +1384,7 @@ namespace osgEarth
             osg::RefNodePath _selectedNodePath;
             bool _propertiesExpanded = true;
             bool _boundsDirty = false;
+            MemoryStats _memoryStats;
         };
     }
 }

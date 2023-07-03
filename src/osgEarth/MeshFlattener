@@ -46,6 +46,7 @@ namespace osgEarth { namespace Util
         virtual void apply(osg::Node& node);
 
         virtual void apply(osg::Geode& geode);
+        virtual void apply(osg::Geometry& geometry);
 
         void pushStateSet(osg::StateSet* stateSet);
 

@@ -96,8 +96,8 @@ namespace osgEarth { namespace MBTiles
 
         bool createTables();
         void computeLevels();
-
         int readMaxLevel();
+        void closeDatabase();
     };
 } }
 
@@ -148,7 +148,7 @@ namespace osgEarth
         virtual Status writeImageImplementation(const TileKey& key, const osg::Image* image, ProgressCallback* progress) const override;
 
         //! Assigns data extents to this layer (if open for writing).
-        virtual void setDataExtents(const DataExtentList&);
+        virtual void setDataExtents(const DataExtentList&) override;
 
     public:
         //! Gets the value of the metadata key
@@ -215,7 +215,7 @@ namespace osgEarth
         virtual Status writeHeightFieldImplementation(const TileKey& key, const osg::HeightField* hf, ProgressCallback* progress) const override;
 
         //! Assigns data extents to this layer (if open for writing).
-        virtual void setDataExtents(const DataExtentList&);
+        virtual void setDataExtents(const DataExtentList&) override;
 
     public:
         //! Gets the value of the metadata key

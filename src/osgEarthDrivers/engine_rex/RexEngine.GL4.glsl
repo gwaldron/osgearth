@@ -1,3 +1,5 @@
+#define MAX_NUM_SHARED_SAMPLERS 16
+
 struct oe_rex_Shared {
     vec2 morphConstants[19];
     float padding[2];
@@ -10,13 +12,13 @@ struct oe_rex_Tile {
     mat4 elevMat;
     mat4 normalMat;
     mat4 landcoverMat;
-    mat4 sharedMat[8];
+    mat4 sharedMat[MAX_NUM_SHARED_SAMPLERS];
     int colorIndex;
     int parentIndex;
     int elevIndex;
     int normalIndex;
     int landcoverIndex;
-    int sharedIndex[8];
+    int sharedIndex[MAX_NUM_SHARED_SAMPLERS];
     int drawOrder;
     float padding[2];
 };

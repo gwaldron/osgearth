@@ -32,7 +32,6 @@
 #include <osg/Shape>
 #include <osg/Polytope>
 
-#include <map>
 #include <unordered_map>
 
 namespace osgEarth
@@ -433,8 +432,12 @@ namespace osgEarth
         void getBounds(double& xmin, double& ymin, double& xmax, double& ymax) const;
 
         /** True if this object defines a real, valid extent with positive area */
-        bool isValid() const;
-        bool isInvalid() const { return !isValid(); }
+        inline bool isValid() const
+        {
+            return _srs.valid() && _width >= 0.0 && _height >= 0.0;
+        }
+
+        inline bool isInvalid() const { return !isValid(); }
 
         /**
          * If this extent crosses the international date line, populates two extents, one for
@@ -763,6 +766,11 @@ namespace osgEarth
         ImageUtils::PixelReader& getReader() { return _read; };
         const ImageUtils::PixelReader& getReader() const { return _read; }
 
+        //! Read the value of a pixel at a geopoint.
+        bool read(
+            pixel_type& output,
+            const GeoPoint& p) const;
+
     private:
         GeoExtent _extent;
         Status _status;
@@ -850,7 +858,7 @@ namespace osgEarth
             float&                  out_elevation) const;
 
         //! Gets the elevation at a point (must be in the same SRS; bilinear interpolation)
-        float getElevation(double x, double y) const;
+        float getElevation(double x, double y, RasterInterpolation interp = INTERP_BILINEAR) const;
 
         /**
          * Subsamples the heightfield, returning a new heightfield corresponding to

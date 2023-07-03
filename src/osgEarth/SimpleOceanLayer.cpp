@@ -119,8 +119,6 @@ SimpleOceanLayer::init()
     setColor(options().color().get());
     setMaxAltitude(options().maxAltitude().get());
     setSeaLevel(0.0f); // option?
-
-    installDefaultOpacityShader();
 }
 
 Config

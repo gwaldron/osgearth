@@ -27,33 +27,29 @@ using namespace osgEarth;
 
 #define LC "[EngineContext] "
 
-//#define PROFILE 1
+EngineContext::EngineContext(
+    const Map*                     map,
+    TerrainEngineNode*             terrainEngine,
+    GeometryPool*                  geometryPool,
+    Merger*                        merger,
+    TileNodeRegistry::Ptr          tiles,
+    const RenderBindings&          renderBindings,
+    const SelectionInfo&           selectionInfo,
+    const FrameClock*              clock) :
 
-//..............................................................
-
-
-EngineContext::EngineContext(const Map*                     map,
-                             TerrainEngineNode*             terrainEngine,
-                             GeometryPool*                  geometryPool,
-                             Merger*                        merger,
-                             TileNodeRegistry*              liveTiles,
-                             const RenderBindings&          renderBindings,
-                             const TerrainOptions&          options,
-                             const SelectionInfo&           selectionInfo,
-                             const FrameClock*              clock) :
-_map           ( map ),
-_terrainEngine ( terrainEngine ),
-_geometryPool  ( geometryPool ),
-_merger        ( merger ),
-_liveTiles     ( liveTiles ),
-_renderBindings( renderBindings ),
-_options       ( options ),
-_selectionInfo ( selectionInfo ),
-_tick(0),
-_tilesLastCull(0),
-_clock(clock)
+    _map(map),
+    _terrainEngine(terrainEngine),
+    _geometryPool(geometryPool),
+    _merger(merger),
+    _tiles(tiles),
+    _renderBindings(renderBindings),
+    _options(terrainEngine->getOptions()),
+    _selectionInfo(selectionInfo),
+    _tick(0),
+    _tilesLastCull(0),
+    _clock(clock)
 {
-    _expirationRange2 = _options.minExpiryRange().get() * _options.minExpiryRange().get();
+    _expirationRange2 = _options.getMinExpiryRange() * _options.getMinExpiryRange();
     _bboxCB = new ModifyBoundingBoxCallback(this);
 
     // create a bindless texture arena and set it to automatically
@@ -61,6 +57,14 @@ _clock(clock)
     _textures = new TextureArena();
     _textures->setBindingPoint(29); // TODO
     _textures->setAutoRelease(true);
+
+    // texture limiting :(
+    int maxSize = std::min(
+        (int)_options.getMaxTextureSize(),
+        Registry::instance()->getMaxTextureSize());
+
+    _textures->setMaxTextureSize(maxSize);
+    
 }
 
 osg::ref_ptr<const Map>

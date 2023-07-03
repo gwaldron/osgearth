@@ -30,26 +30,21 @@
 #include <osgEarth/FeatureSource>
 #include <osgEarth/CoverageLayer>
 
-#define OE_OPTION_LESS(L,R) \
-    if (L().isSet() && !R().isSet()) return true; \
-    if (R().isSet() && !L().isSet()) return false; \
-    if (L().isSet() && R().isSet()) { \
-        if (L().get() < R().get()) return true; \
-        if (L().get() > R().get()) return false; }
-
 namespace osgEarth
 {
     namespace Procedural
     {
         using namespace osgEarth;
 
-        struct LandCoverSample
+        struct OSGEARTHPROCEDURAL_EXPORT LandCoverSample
         {
             OE_OPTION(std::string, biomeid);
-            OE_OPTION(std::string, traits);
             OE_OPTION(float, dense);
             OE_OPTION(float, lush);
             OE_OPTION(float, rugged);
+            OE_OPTION(std::string, material);
+            OE_OPTION(std::string, soiltype);
+            OE_PROPERTY(std::vector<std::string>, traits);
 
             LandCoverSample() { }
 
@@ -60,26 +55,62 @@ namespace osgEarth
                 conf.get("dense", dense());
                 conf.get("lush", lush());
                 conf.get("rugged", rugged());
+                conf.get("material", material());
+                conf.get("soiltype", soiltype());
             }
 
             bool valid() const {
                 return
                     (biomeid().isSet() && !biomeid()->empty()) ||
-                    traits().isSet() ||
+                    !traits().empty() ||
                     dense().isSet() ||
                     lush().isSet() ||
-                    rugged().isSet();
+                    rugged().isSet() ||
+                    material().isSet() ||
+                    soiltype().isSet();
             }
 
             bool operator < (const LandCoverSample& rhs) const
             {
                 OE_OPTION_LESS(biomeid, rhs.biomeid);
-                OE_OPTION_LESS(traits, rhs.traits);
+                //OE_OPTION_LESS(traits, rhs.traits);
                 OE_OPTION_LESS(dense, rhs.dense);
                 OE_OPTION_LESS(lush, rhs.lush);
                 OE_OPTION_LESS(rugged, rhs.rugged);
+                OE_OPTION_LESS(material, rhs.material);
+                OE_OPTION_LESS(soiltype, rhs.soiltype);
+                if (traits() < rhs.traits()) return true;
+                if (traits() > rhs.traits()) return false;
                 return false;
             }
+
+            using Factory = CoverageLayer::Factory<LandCoverSample>;
+        };
+
+
+        struct OSGEARTHPROCEDURAL_EXPORT BiomeSample
+        {
+            OE_OPTION(std::string, biomeid);
+
+            BiomeSample() { }
+
+            BiomeSample(const Config& conf)
+            {
+                conf.get("biome_id", biomeid());
+            }
+
+            bool valid() const {
+                return
+                    (biomeid().isSet() && !biomeid()->empty());
+            }
+
+            bool operator < (const BiomeSample& rhs) const
+            {
+                OE_OPTION_LESS(biomeid, rhs.biomeid);            
+                return false;
+            }
+
+            using Factory = CoverageLayer::Factory<BiomeSample>;
         };
 
 
@@ -105,11 +136,11 @@ namespace osgEarth
             {
             public:
                 META_LayerOptions(osgEarth, Options, ImageLayer::Options);
-                OE_OPTION_LAYER(FeatureSource, vectorLayer);
-                OE_OPTION_LAYER(CoverageLayer, coverageLayer);
+                OE_OPTION_LAYER(CoverageLayer, landCoverLayer);
+                OE_OPTION_LAYER(CoverageLayer, biomeBaseLayer);
                 OE_OPTION_SHAREDPTR(BiomeCatalog, biomeCatalog);
-                OE_OPTION(float, blendRadius);
-                OE_OPTION(std::string, biomeidField);
+                OE_OPTION(Distance, blendRadius);
+                OE_OPTION(float, blendPercentage);
                 virtual Config getConfig() const;
             private:
                 void fromConfig(const Config& conf);
@@ -118,17 +149,32 @@ namespace osgEarth
         public:
             META_Layer(osgEarthProcedural, BiomeLayer, Options, ImageLayer, Biomes);
 
+            //! Radius around which to randomly permute biome selection
+            const Distance& getBlendRadius() const;
+            void setBlendRadius(const Distance& value);
+
+            //! Percentage (of tile size) by which to blend biome data
+            //! for a natural transitions betwen adjacent biomes.
+            //! [0..1] default is 0.1
+            void setBlendPercentage(float value);
+            float getBlendPercentage() const;
+
             //! The catalog holding all biome information
             std::shared_ptr<const BiomeCatalog> getBiomeCatalog() const;
 
             //! Manager that pages biome assets in and out
             BiomeManager& getBiomeManager() { return _biomeMan; }
 
-            //! Vector layer that deliniates the base biomes
-            FeatureSource* getVectorLayer() const;
+            //! Coverage layer that specifies the base biome ID selection.
+            //! This is a coverage that maps geographic regions to biome IDs.
+            CoverageLayer* getBiomeBaseLayer() const;
 
-            //! Optional coverage layer that can modify the biome selection
-            CoverageLayer* getCoverageLayer() const;
+            //! Coverage layer that can modify the biome ID selection based on
+            //! land cover mappings. This will override a biomeID set by the 
+            //! base biome layer.
+            //! TODO: It is kind of odd to have both the base layer and the
+            //!   land cover layer...consider consolidating.
+            CoverageLayer* getLandCoverLayer() const;
 
             //! Whether to automatically load and unload biomes, or to 
             //! allow the user to manually do so with the setBiome() call.
@@ -165,14 +211,6 @@ namespace osgEarth
                 ProgressCallback* progress) const override;
 
         private:
-
-            // control features for biome selection
-            FeatureList _features;
-
-            // spatial index for _features
-            void* _pointIndex;
-            void* _polygonIndex;
-
             // handles memory residency of biome asset data
             BiomeManager _biomeMan;
 
@@ -189,15 +227,14 @@ namespace osgEarth
                 const TileKey& key,
                 std::set<int>& biomeids) const;
 
-            void loadPointControlSet();
-
-            void loadPolygonControlSet();
-
             using WeakCache = std::unordered_map<
                 TileKey,
                 osg::observer_ptr<osg::Image>>;
 
             mutable Mutexed<WeakCache> _imageCache;
+
+            LandCoverSample::Factory::Ptr _landCoverFactory;
+            BiomeSample::Factory::Ptr _biomeFactory;
 
         protected:
             virtual ~BiomeLayer() { }

@@ -63,6 +63,7 @@ TileNode::TileNode(
     _childrenReady(false),
     _lastTraversalTime(0.0),
     _lastTraversalFrame(0),
+    _lastTraversalRange(FLT_MAX),
     _empty(false), // an "empty" node exists but has no geometry or children
     _imageUpdatesActive(false),
     _doNotExpire(false),
@@ -134,7 +135,7 @@ TileNode::createGeometry(Cancelable* progress)
 
     _empty = false;
 
-    unsigned tileSize = options().tileSize().get();
+    unsigned tileSize = _context->options().getTileSize();
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<SharedGeometry> geom;
@@ -143,7 +144,7 @@ TileNode::createGeometry(Cancelable* progress)
         _key,
         tileSize,
         map.get(),
-        options(),
+        _context->options(),
         geom,
         progress);
 
@@ -235,7 +236,7 @@ TileNode::initializeData()
     }
 
     // register me.
-    _context->liveTiles()->add( this );
+    _context->tiles()->add( this );
 
     // tell the world.
     OE_DEBUG << LC << "notify (create) key " << getKey().str() << std::endl;
@@ -262,9 +263,9 @@ TileNode::isDormant() const
     unsigned frame = _context->getClock()->getFrame();
     double now = _context->getClock()->getTime();
 
-    bool dormant = 
-        frame - _lastTraversalFrame > osg::maximum(options().minExpiryFrames().get(), minMinExpiryFrames) &&
-        now - _lastTraversalTime > options().minExpiryTime().get();
+    bool dormant =
+        frame - _lastTraversalFrame > std::max(_context->options().getMinExpiryFrames(), minMinExpiryFrames) &&
+        now - _lastTraversalTime > _context->options().getMinExpiryTime();
 
     return dormant;
 }
@@ -364,7 +365,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
     {
         // In PSOS mode, subdivide when the on-screen size of a tile exceeds the maximum
         // allowable on-screen tile size in pixels.
-        if (options().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+        if (_context->options().getRangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
         {
             float tileSizeInPixels = -1.0;
 
@@ -378,7 +379,10 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
                 tileSizeInPixels = _surface->getPixelSizeOnScreen(culler);
             }
         
-            return (tileSizeInPixels > options().tilePixelSize().get());
+            float effectivePixelSize =
+                _context->options().getTilePixelSize() + _context->options().getScreenSpaceError();
+
+            return (tileSizeInPixels > effectivePixelSize);
         }
 
         // In DISTANCE-TO-EYE mode, use the visibility ranges precomputed in the SelectionInfo.
@@ -440,10 +444,10 @@ TileNode::cull(TerrainCuller* culler)
     bool canCreateChildren = childrenInRange;
 
     // whether it is OK to load data (if necessary)
-    bool canLoadData = 
+    bool canLoadData =
         _doNotExpire ||
-        _key.getLOD() == options().firstLOD().get() ||
-        _key.getLOD() >= options().minLOD().get();
+        _key.getLOD() == _context->options().getFirstLOD() ||
+        _key.getLOD() >= _context->options().getMinLOD();
 
     // whether to accept the current surface node and not the children.
     bool canAcceptSurface = false;
@@ -460,7 +464,7 @@ TileNode::cull(TerrainCuller* culler)
     else
     {
         // Don't load data OR geometry in progressive mode until the parent is up to date
-        if (options().progressive() == true)
+        if (_context->options().getProgressive() == true)
         {
             TileNode* parent = getParentTile();
             if (parent && parent->dirty() && parent->nextLoadIsProgressive())
@@ -545,8 +549,9 @@ TileNode::traverse(osg::NodeVisitor& nv)
         // update the timestamp so this tile doesn't become dormant.
         _lastTraversalFrame.exchange(_context->getClock()->getFrame());
         _lastTraversalTime = _context->getClock()->getTime();
+        _lastTraversalRange = std::min(_lastTraversalRange, nv.getDistanceToViewPoint(getBound().center(), true));
 
-        _context->liveTiles()->touch(this, nv);
+        _context->tiles()->touch(this, nv);
 
         if (_empty)
         {
@@ -680,11 +685,13 @@ TileNode::createChildren()
 
                 auto createChildOperation = [context, tile_weakptr, childkey](Cancelable* state)
                 {
+                    CreateChildResult result;
+
                     osg::ref_ptr<TileNode> tile;
                     if (tile_weakptr.lock(tile) && !state->isCanceled())
-                        return tile->createChild(childkey, state);
-                    else
-                        return (TileNode*)nullptr;
+                        result = tile->createChild(childkey, state);
+
+                    return result;
                 };
 
                 Job job;
@@ -843,7 +850,12 @@ TileNode::merge(
                         OE_DEBUG << "no parent pass in my pass. key=" << model->key().str() << std::endl;
                     }
 
-                    pass->sampler(SamplerBinding::COLOR)._futureTexture = colorLayer.texture();
+                    // check whether it's actually a futuretexture.
+                    // if it's not, it is likely an empty texture and we'll ignore it
+                    if (dynamic_cast<FutureTexture*>(colorLayer.texture()->osgTexture().get()))
+                    {
+                        pass->sampler(SamplerBinding::COLOR)._futureTexture = colorLayer.texture();
+                    }
 
                     // require an update pass to process the future texture
                     _imageUpdatesActive = true;
@@ -1322,7 +1334,7 @@ TileNode::removeSubTiles()
 void
 TileNode::notifyOfArrival(TileNode* that)
 {
-    if (options().normalizeEdges() == true)
+    if (_context->options().getNormalizeEdges() == true)
     {
         if (_key.createNeighborKey(1, 0) == that->getKey())
             _eastNeighbor = that;
@@ -1337,7 +1349,7 @@ TileNode::notifyOfArrival(TileNode* that)
 void
 TileNode::updateNormalMap()
 {
-    if (options().normalizeEdges() == false)
+    if (_context->options().getNormalizeEdges() == false)
         return;
 
     Sampler& thisNormalMap = _renderModel._sharedSamplers[SamplerBinding::NORMAL];
@@ -1415,16 +1427,16 @@ TileNode::updateNormalMap()
     //OE_INFO << LC << _key.str() << " : updated normal map.\n";
 }
 
-const TerrainOptions&
-TileNode::options() const
-{
-    return _context->options();
-}
+//const TerrainOptions&
+//TileNode::options() const
+//{
+//    return _context->options();
+//}
 
 bool
 TileNode::nextLoadIsProgressive() const
 {
     return
-        (options().progressive() == true) &&
+        (_context->options().getProgressive()) &&
         (_nextLoadManifestPtr == nullptr) || (!_nextLoadManifestPtr->progressive().isSetTo(false));
 }

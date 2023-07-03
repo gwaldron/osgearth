@@ -51,10 +51,10 @@ ScaleFilter::push( FeatureList& input, FilterContext& cx )
                 Geometry* geom = scale_iter.next();
                 for( osg::Vec3dArray::iterator v = geom->begin(); v != geom->end(); v++ )
                 {
-                    double xr = (v->x() - envelope.xMin()) / envelope.width();
+                    double xr = (v->x() - envelope.xMin()) / width(envelope);
                     v->x() += (xr - 0.5) * _scale;
 
-                    double yr = (v->y() - envelope.yMin()) / envelope.height();
+                    double yr = (v->y() - envelope.yMin()) / height(envelope);
                     v->y() += (yr - 0.5) * _scale;
                 }
             }

@@ -186,6 +186,21 @@ osgEarth Sample - Annotations
                 text-geographic-course:  0;
             </style>
         </label>
+
+<!-- DEFECT
+        <feature name="Antimeridian polygon">
+            <srs>wgs84</srs>
+            <geometry>
+                POLYGON((-160 -30 0, 150 -20 0, 160 -45 0, -150 -40 0))
+            </geometry>
+            <style type="text/css">
+                stroke: #00ff00;
+                stroke-width: 3;
+                stroke-tessellation-size: 100km;
+            </style>
+        </feature>
+        <label text="Antimeridian polygon" lat="-30" long="-180"/>
+-->
         
     </annotations>
 </map>

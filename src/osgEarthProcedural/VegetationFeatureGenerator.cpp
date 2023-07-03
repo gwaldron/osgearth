@@ -30,42 +30,8 @@ using namespace osgEarth::Procedural;
 
 #define LC "[VegetationFeatureGenerator] "
 
-//...................................................................
-
-namespace
-{
-    //// GLSL fract
-    //inline float fract(float x)
-    //{
-    //    return fmodf(x, 1.0f);
-    //}
-
-    //// GLSL clamp
-    //inline float clamp(float x, float m0, float m1)
-    //{
-    //    return osg::clampBetween(x, m0, m1);
-    //}
-
-    // Sample a texture with a scale/bias matrix
-    inline void sample(osg::Vec4f& output, ImageUtils::PixelReader& texture, const osg::Matrixf& matrix, float u, float v)
-    {
-        u = clamp(u*matrix(0, 0) + matrix(3, 0), 0.0f, 1.0f);
-        v = clamp(v*matrix(1, 1) + matrix(3, 1), 0.0f, 1.0f);
-        return texture(output, u, v);
-    }
-
-    // Noise channels
-    const int NOISE_SMOOTH = 0;
-    const int NOISE_RANDOM = 1;
-    const int NOISE_RANDOM_2 = 2;
-    const int NOISE_CLUMPY = 3;
-}
-
-//...................................................................
-
 VegetationFeatureGenerator::VegetationFeatureGenerator() :
-    _status(Status::ConfigurationError),
-    _sizeCache("OE.VegetationFeatureGenerator.modelSizeCache")
+    _status(Status::ConfigurationError)
 {
     //nop
 }
@@ -74,13 +40,6 @@ void
 VegetationFeatureGenerator::setMap(const Map* map)
 {
     _map = map;
-    initialize();
-}
-
-void
-VegetationFeatureGenerator::setFactory(TerrainTileModelFactory* value)
-{
-    _factory = value;
     initialize();
 }
 
@@ -118,40 +77,14 @@ VegetationFeatureGenerator::initialize()
         return;
     }
 
-    if (!_factory.valid())
+    if (!_veglayer.valid())
     {
-        _status.set(Status::ConfigurationError, "Missing required TerrainTileModelFactory");
-        return;
+        _veglayer = _map->getLayer<VegetationLayer>();
     }
 
     if (!_veglayer.valid())
     {
         _status.set(Status::ConfigurationError, "Missing VegetationLayer");
-        return;
-    }
-
-    // find a lifemap layer
-    _lifemaplayer = _map->getLayer<LifeMapLayer>();
-    if (!_lifemaplayer.valid())
-    {
-        _status.set(Status::ConfigurationError, "Missing required LifeMapLayer");
-        return;
-    }
-    if (_lifemaplayer->open().isError())
-    {
-        _status.set(_lifemaplayer->getStatus().code(), Stringify() << "Opening life map layer: " << _lifemaplayer->getStatus().message());
-        return;
-    }
-
-    _biomelayer = _map->getLayer<BiomeLayer>();
-    if (!_biomelayer.valid())
-    {
-        _status.set(Status::ConfigurationError, "Missing required BiomeLayer");
-        return;
-    }
-    if (_biomelayer->open().isError())
-    {
-        _status.set(_biomelayer->getStatus().code(), Stringify() << "Opening biome layer: " << _biomelayer->getStatus().message());
         return;
     }
 
@@ -161,62 +94,6 @@ VegetationFeatureGenerator::initialize()
         _status.set(_veglayer->getStatus().code(), Stringify() << "Opening vegetation layer: " << _veglayer->getStatus().message());
         return;
     }
-
-#if 0
-    // make sure the lifemap intersects the LOD of the GC layer
-    if (_veglayer->getLOD() < _lifemaplayer->getMinLevel() ||
-        _veglayer->getLOD() > _lifemaplayer->getMaxLevel())
-    {
-        _status.set(
-            Status::ResourceUnavailable,
-            "GC Layer LOD is outside the min/max LOD of your LifeMap layer");
-        return;
-    }
-#endif
-
-    // open the active elevation layers
-    ElevationLayerVector elevLayers;   
-    _map->getLayers(elevLayers, [](const Layer* layer) { 
-        return layer->getOpenAutomatically();
-        });
-
-    if (elevLayers.empty() == false)
-    {
-        for(ElevationLayerVector::iterator i = elevLayers.begin();
-            i != elevLayers.end();
-            ++i)
-        {
-            Layer* layer = i->get();
-            Status s = layer->open();
-            if (s.isError())
-            {
-                _status.set(s.code(),
-                    Stringify() << "Opening elevation layer \""
-                    << layer->getName() << "\" : " << s.message());
-                return;
-            }
-        }
-    }
-
-    // disable texture compression for layers we intend to sample on CPU
-    if (_lifemaplayer.valid())
-        _lifemaplayer->options().textureCompression() = "none";
-    if (_biomelayer.valid())
-        _biomelayer->options().textureCompression() = "none";
-
-    // create noise texture
-    NoiseTextureFactory noise;
-    _noiseTexture = noise.create(256u, 4u);
-
-    // layers we're going to request
-    if (_lifemaplayer.valid())
-        _manifest.insert(_lifemaplayer.get());
-    if (_biomelayer.valid())
-        _manifest.insert(_biomelayer.get());
-    if (_veglayer.valid())
-        _manifest.insert(_veglayer.get());
-    for (auto& i : elevLayers)
-        _manifest.insert(i.get());
 
     _status.set(Status::NoError);
 }
@@ -233,7 +110,7 @@ VegetationFeatureGenerator::getFeatures(const GeoExtent& extent, FeatureList& ou
     if (extent.isInvalid())
         return Status(Status::ConfigurationError, "Invalid extent");
 
-    unsigned lod = _veglayer->options().groups()[AssetGroup::TREES].lod().get();
+    unsigned lod = _veglayer->options().group("trees").lod().get();
 
     std::vector<TileKey> keys;
     _map->getProfile()->getIntersectingTiles(extent, lod, keys);
@@ -257,15 +134,18 @@ VegetationFeatureGenerator::getFeatures(
     const TileKey& key, 
     FeatureList& output) const
 {
-    VegetationLayer::Options::Group& trees = _veglayer->options().groups()[AssetGroup::TREES];
+    VegetationLayer::Options::Group& trees = _veglayer->options().group("trees");
     unsigned lod = trees.lod().get();
     if (key.getLOD() != lod)
-        return Status(Status::ConfigurationError, "TileKey LOD does not match GroundCoverLayer LOD");
+        return Status(Status::ConfigurationError, "TileKey LOD does not match Vegetation group LOD");
 
-    auto placements = _veglayer->getAssetPlacements(
+    std::vector<VegetationLayer::Placement> placements;
+
+    bool ok = _veglayer->getAssetPlacements(
         key,
-        AssetGroup::TREES,
+        "trees",
         true,
+        placements,
         nullptr);
 
     for (auto& p : placements)
@@ -286,9 +166,8 @@ VegetationFeatureGenerator::getFeatures(
 
         feature->set("width", width * std::max(p.scale().x(), p.scale().y()));
         feature->set("height", height * p.scale().z());
-        feature->set("rotation", p.rotation());
-
-        feature->set("name", p.asset()->assetDef()->name().get());
+        feature->set("rotation", p.rotation() * 180.0f / M_PI);
+        feature->set("name", p.asset()->assetDef()->name());
 
         // Store any pass-thru properties
         if (!_propNames.empty())

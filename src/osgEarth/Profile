@@ -249,6 +249,12 @@ namespace osgEarth
          */
         TileKey createTileKey( double x, double y, unsigned int level ) const;
 
+        //! Creates a tile key for a tile that contains the input location.
+        //! @param point Point at which to create the tile key
+        //! @param lod LOD at which to create the tile key
+        //! @return tile key containing the point
+        TileKey createTileKey(const GeoPoint& point, unsigned level) const;
+
         /**
          * Returns a readable description of the profile.
          */

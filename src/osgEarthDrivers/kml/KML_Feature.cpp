@@ -52,8 +52,10 @@ KML_Feature::build( xml_node<>* node, KMLContext& cx, osg::Node* working )
     {
         // parse the visibility to show/hide the item by default:
 		std::string visibility = getValue(node, "visibility");
-        if ( !visibility.empty() )
-            working->setNodeMask( as<int>(visibility, 1) == 1 ? ~0 : 0 );
+        if (visibility == "1" || ciEquals(visibility, "true"))
+            working->setNodeMask(~0);
+        else if (visibility == "0" || ciEquals(visibility, "false"))
+            working->setNodeMask(0);
 
         // parse a "LookAt" element (stores a viewpoint)
         AnnotationData* anno = getOrCreateAnnotationData(working);

@@ -42,6 +42,7 @@
 #include <osgUtil/CullVisitor>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgShadow/ConvexPolyhedron>
+#include <osgEarth/Notify>
 
 #include <stdlib.h> // getenv
 
@@ -58,7 +59,7 @@ using namespace osgEarth::Util;
 //#define USE_ELLIPSOID_INTERSECTIONS
 
 // Enable this to generate an "--activity" readout of all cascade information
-//#define DEBUG_CASCADES
+#define DEBUG_CASCADES
 
 // Enable this to do a terrain intersection before configuring the first cascade
 #define USE_TERRAIN_INTERSECTION
@@ -978,7 +979,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
         // so we can increase the resolution of the near cascade if necessary.
         optional<double> firstYMax(rttBox.yMax());
 
-#ifdef USE_TERRAIN_INTERSECTIONS
+#ifdef USE_TERRAIN_INTERSECTION
         if (rttBox.yMin() >= 0.0)
         {
             osg::Vec3d camFar = osg::Vec3d(0,0,1) * iCamMVP;
@@ -995,6 +996,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
 
 #ifdef DEBUG_CASCADES
         std::stringstream buf;
+        buf << std::setprecision(7);
 #endif
 
         // Height (Y-span) of the RTT box in meters
@@ -1089,7 +1091,7 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
             buf << "\n  Texels: " << texels
                 << "\n  Range: " << cascade._box.yMin() << " -> " << cascade._box.yMax()
                 << "\n  Coverage: " << 100*(texels/totalTexels) << "%"
-                << "\n  MetersPerTexel: " << metersPerTexel;            
+                << "\n  MetersPerTexel: " << metersPerTexel; 
 #endif
         }
         
@@ -1135,9 +1137,9 @@ CascadeDrapingDecorator::CameraLocal::traverse(osgUtil::CullVisitor* cv, Cascade
     if (_numCascades > 0u)
     {
         cv->pushStateSet(_rttSS.get());
-        for (unsigned i = 0; i < _numCascades; ++i)
+        for (unsigned k = 0; k < _numCascades; ++k)
         {
-            Cascade& c = _cascades[i];
+            Cascade& c = _cascades[k];
             c._rtt->accept(*cv);
         }
         cv->popStateSet(); // _rttSS

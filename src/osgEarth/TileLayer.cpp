@@ -32,7 +32,7 @@ namespace
     using DataExtentsIndex = RTree<DataExtent, double, 2>;
 }
 
-#define LC "[TileLayer] Layer \"" << getName() << "\" "
+#define LC "[TileLayer] \"" << getName() << "\" "
 
 //------------------------------------------------------------------------
 
@@ -320,7 +320,7 @@ bool TileLayer::getUpsample() const
 void
 TileLayer::init()
 {
-    Layer::init();
+    VisibleLayer::init();
     _writingRequested = false;
     _dataExtentsIndex = nullptr;
 }
@@ -348,6 +348,9 @@ TileLayer::openImplementation()
 Status
 TileLayer::closeImplementation()
 {
+    _dataExtents.clear();
+    dirtyDataExtents();
+
     return Layer::closeImplementation();
 }
 
@@ -552,7 +555,8 @@ TileLayer::getCacheBin(const Profile* profile)
             meta->_sourceProfile = getProfile()->toProfileOptions();
             meta->_cacheProfile = profile->toProfileOptions();
             meta->_cacheCreateTime = DateTime().asTimeStamp();
-            meta->_dataExtents = getDataExtents();
+            // Use _dataExtents directly here since the _data_mutex is already locked.
+            meta->_dataExtents = _dataExtents;
 
             // store it in the cache bin.
             std::string data = meta->getConfig().toJSON(false);
@@ -735,37 +739,45 @@ TileLayer::isCached(const TileKey& key) const
     return bin->getRecordStatus( key.str() ) == CacheBin::STATUS_OK;
 }
 
-const DataExtentList&
-TileLayer::getDataExtents() const
+unsigned int TileLayer::getDataExtentsSize() const
 {
+    ScopedReadLock lk(_data_mutex);
+    return _dataExtents.size();
+}
+
+void TileLayer::getDataExtents(DataExtentList& dataExtents) const
+{
+    ScopedReadLock lk(_data_mutex);
     if (!_dataExtents.empty())
     {
-        return _dataExtents;
+        dataExtents = _dataExtents;
     }
 
     else if (!_cacheBinMetadata.empty())
     {
         // There are extents in the cache bin, so use those.
         // The DE's are the same regardless of profile so just use the first one in there.
-        return _cacheBinMetadata.begin()->second->_dataExtents;
-    }
-
-    else
-    {
-        return _dataExtents;
+        dataExtents = _cacheBinMetadata.begin()->second->_dataExtents;
     }
 }
 
-DataExtentList&
-TileLayer::dataExtents()
+void TileLayer::setDataExtents(const DataExtentList& dataExtents)
 {
-    return const_cast<DataExtentList&>(getDataExtents());
+    ScopedWriteLock lk(_data_mutex);
+    _dataExtents = dataExtents;
+    dirtyDataExtents();
+}
+
+void TileLayer::addDataExtent(const DataExtent& dataExtent)
+{
+    ScopedWriteLock lk(_data_mutex);
+    _dataExtents.push_back(dataExtent);
+    dirtyDataExtents();
 }
 
 void
 TileLayer::dirtyDataExtents()
 {
-    ScopedWriteLock lock(_data_mutex);
     _dataExtentsUnion = GeoExtent::INVALID;
 
     if (_dataExtentsIndex)
@@ -778,24 +790,22 @@ TileLayer::dirtyDataExtents()
 const DataExtent&
 TileLayer::getDataExtentsUnion() const
 {
-    const DataExtentList& de = getDataExtents();
-
-    if (_dataExtentsUnion.isInvalid() && !de.empty())
+    if (_dataExtentsUnion.isInvalid() && getDataExtentsSize() > 0)
     {
         ScopedWriteLock lock(_data_mutex);
         {
-            if (_dataExtentsUnion.isInvalid() && !de.empty()) // double-check
+            if (_dataExtentsUnion.isInvalid() && _dataExtents.size() > 0) // double-check
             {
-                _dataExtentsUnion = de[0];
-                for (unsigned int i = 1; i < de.size(); i++)
+                _dataExtentsUnion = _dataExtents[0];
+                for (unsigned int i = 1; i < _dataExtents.size(); i++)
                 {
-                    _dataExtentsUnion.expandToInclude(de[i]);
+                    _dataExtentsUnion.expandToInclude(_dataExtents[i]);
 
-                    if (de[i].minLevel().isSet())
-                        _dataExtentsUnion.minLevel() = std::min(_dataExtentsUnion.minLevel().get(), de[i].minLevel().get());
+                    if (_dataExtents[i].minLevel().isSet())
+                        _dataExtentsUnion.minLevel() = std::min(_dataExtentsUnion.minLevel().get(), _dataExtents[i].minLevel().get());
 
-                    if (de[i].maxLevel().isSet())
-                        _dataExtentsUnion.maxLevel() = std::max(_dataExtentsUnion.maxLevel().get(), de[i].maxLevel().get());
+                    if (_dataExtents[i].maxLevel().isSet())
+                        _dataExtentsUnion.maxLevel() = std::max(_dataExtentsUnion.maxLevel().get(), _dataExtents[i].maxLevel().get());
                 }
 
                 // if upsampling is enabled include the MDL in the union.
@@ -866,11 +876,8 @@ TileLayer::getBestAvailableTileKey(
         }
     }
 
-    // Next check against the data extents.
-    const DataExtentList& de_list = getDataExtents();
-
     // If we have no data extents available, just return the MDL-limited input key.
-    if (de_list.empty())
+    if (getDataExtentsSize() == 0)
     {
         return localLOD > MDL ? key.createAncestorKey(MDL) : key;
     }
@@ -892,20 +899,52 @@ TileLayer::getBestAvailableTileKey(
         ScopedWriteLock lock(_data_mutex);
         if (!_dataExtentsIndex) // Double check
         {
-            OE_INFO << LC << "Building data extents index with " << getDataExtents().size() << " extents" << std::endl;
+            OE_INFO << LC << "Building data extents index with " << _dataExtents.size() << " extents" << std::endl;
             DataExtentsIndex* dataExtentsIndex = new DataExtentsIndex();
-            for (auto de = getDataExtents().begin(); de != getDataExtents().end(); ++de)
+            for (auto de = _dataExtents.begin(); de != _dataExtents.end(); ++de)
             {
-                a_min[0] = de->xMin(), a_min[1] = de->yMin();
-                a_max[0] = de->xMax(), a_max[1] = de->yMax();
-                dataExtentsIndex->Insert(a_min, a_max, *de);
+                // Build the index in the SRS of this layer
+                GeoExtent extentInLayerSRS = getProfile()->clampAndTransformExtent(*de);
+
+                if (extentInLayerSRS.getSRS()->isGeographic() && extentInLayerSRS.crossesAntimeridian())
+                {
+                    GeoExtent west, east;
+                    extentInLayerSRS.splitAcrossAntimeridian(west, east);
+                    if (west.isValid())
+                    {
+                        DataExtent new_de(west);
+                        new_de.minLevel() = de->minLevel();
+                        new_de.maxLevel() = de->maxLevel();
+                        a_min[0] = new_de.xMin(), a_min[1] = new_de.yMin();
+                        a_max[0] = new_de.xMax(), a_max[1] = new_de.yMax();
+                        dataExtentsIndex->Insert(a_min, a_max, new_de);
+                    }
+                    if (east.isValid())
+                    {
+                        DataExtent new_de(east);
+                        new_de.minLevel() = de->minLevel();
+                        new_de.maxLevel() = de->maxLevel();
+                        a_min[0] = new_de.xMin(), a_min[1] = new_de.yMin();
+                        a_max[0] = new_de.xMax(), a_max[1] = new_de.yMax();
+                        dataExtentsIndex->Insert(a_min, a_max, new_de);
+                    }
+                }
+                else
+                {
+                    a_min[0] = extentInLayerSRS.xMin(), a_min[1] = extentInLayerSRS.yMin();
+                    a_max[0] = extentInLayerSRS.xMax(), a_max[1] = extentInLayerSRS.yMax();
+                    dataExtentsIndex->Insert(a_min, a_max, *de);
+                }
             }
             _dataExtentsIndex = dataExtentsIndex;
         }
     }
 
-    a_min[0] = key.getExtent().xMin(); a_min[1] = key.getExtent().yMin();
-    a_max[0] = key.getExtent().xMax(); a_max[1] = key.getExtent().yMax();
+    // Transform the key extent to the SRS of this layer to do the index search
+    GeoExtent keyExtentInLayerSRS = getProfile()->clampAndTransformExtent(key.getExtent());
+
+    a_min[0] = keyExtentInLayerSRS.xMin(); a_min[1] = keyExtentInLayerSRS.yMin();
+    a_max[0] = keyExtentInLayerSRS.xMax(); a_max[1] = keyExtentInLayerSRS.yMax();
 
     DataExtentsIndex* index = static_cast<DataExtentsIndex*>(_dataExtentsIndex);
 

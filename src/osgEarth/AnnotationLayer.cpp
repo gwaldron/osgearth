@@ -48,8 +48,6 @@ AnnotationLayer::init()
     _root = new osg::Group();
 
     deserialize();
-
-    installDefaultOpacityShader();
 }
 
 osg::Node*

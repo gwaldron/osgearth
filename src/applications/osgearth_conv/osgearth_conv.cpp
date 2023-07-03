@@ -31,6 +31,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/OGRFeatureSource>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/TileEstimator>
 
 #include <osg/ArgumentParser>
 #include <osg/Timer>
@@ -73,7 +74,7 @@ struct ImageLayerTileCopy : public TileHandler
         //nop
     }
 
-    bool handleTile(const TileKey& key, const TileVisitor& tv)
+    bool handleTile(const TileKey& key, const TileVisitor& tv) override
     {
         bool ok = false;
 
@@ -105,9 +106,26 @@ struct ImageLayerTileCopy : public TileHandler
         return ok;
     }
 
-    bool hasData(const TileKey& key) const
+    bool hasData(const TileKey& key) const override
     {
         return _source->mayHaveData(key);
+    }
+
+    unsigned getEstimatedTileCount(
+        const std::vector<GeoExtent>& extents,
+        unsigned minLevel,
+        unsigned maxLevel) const override
+    {
+        TileEstimator e;
+        e.setMinLevel(minLevel);
+        e.setMaxLevel(maxLevel);
+        e.setProfile(_dest->getProfile());
+        for (auto& src_extent : extents)
+        {
+            auto dest_extent = _dest->getProfile()->clampAndTransformExtent(src_extent);
+            e.addExtent(dest_extent);
+        }
+        return e.getNumTiles();
     }
 
     osg::ref_ptr<ImageLayer> _source;
@@ -125,7 +143,7 @@ struct ElevationLayerTileCopy : public TileHandler
         //nop
     }
 
-    bool handleTile(const TileKey& key, const TileVisitor& tv)
+    bool handleTile(const TileKey& key, const TileVisitor& tv) override
     {
         bool ok = false;
 
@@ -156,9 +174,26 @@ struct ElevationLayerTileCopy : public TileHandler
         return ok;
     }
 
-    bool hasData(const TileKey& key) const
+    bool hasData(const TileKey& key) const override
     {
         return _source->mayHaveData(key);
+    }
+
+    unsigned getEstimatedTileCount(
+        const std::vector<GeoExtent>& extents,
+        unsigned minLevel,
+        unsigned maxLevel) const override
+    {
+        TileEstimator e;
+        e.setMinLevel(minLevel);
+        e.setMaxLevel(maxLevel);
+        e.setProfile(_dest->getProfile());
+        for (auto& src_extent : extents)
+        {
+            auto dest_extent = _dest->getProfile()->clampAndTransformExtent(src_extent);
+            e.addExtent(dest_extent);
+        }
+        return e.getNumTiles();
     }
 
     osg::ref_ptr<ElevationLayer> _source;
@@ -187,29 +222,58 @@ struct ProgressReporter : public osgEarth::ProgressCallback
         }
         osg::Timer_t now = osg::Timer::instance()->tick();
 
+        if (total > 0.0f)
+        {
+            float percentage = current / total;
 
+            double timeSoFar = osg::Timer::instance()->delta_s(_start, now);
+            double projectedTotalTime = timeSoFar / percentage;
+            double timeToGo = projectedTotalTime - timeSoFar;
+            
+            constexpr double secondsPerMinute = 60.0;
+            constexpr double secondsPerHour = secondsPerMinute * 60.0;
+            constexpr double secondsPerDay = secondsPerHour * 24.0;
+            
+            double timeToGoRemainder = timeToGo;
+            double daysToGo = timeToGoRemainder / secondsPerDay;
+            timeToGoRemainder = fmod(timeToGoRemainder, secondsPerDay);
+            double hoursToGo = timeToGoRemainder / secondsPerHour;
+            timeToGoRemainder = fmod(timeToGoRemainder, secondsPerHour);
+            double minsToGo = timeToGoRemainder / secondsPerMinute;
+            double secsToGo = fmod(timeToGoRemainder, secondsPerMinute);
+            
+            double projectedTotalTimeRemainder = projectedTotalTime;
+            double daysTotal = projectedTotalTimeRemainder / secondsPerDay;
+            projectedTotalTimeRemainder = fmod(projectedTotalTimeRemainder, secondsPerDay);
+            double hoursTotal = projectedTotalTimeRemainder / secondsPerHour;
+            projectedTotalTimeRemainder = fmod(projectedTotalTimeRemainder, secondsPerHour);
+            double minsTotal = projectedTotalTimeRemainder / secondsPerMinute;
+            double secsTotal = fmod(projectedTotalTimeRemainder, secondsPerMinute);
+            
+            std::cout
+                << std::fixed
+                << std::setprecision(1) << "\r"
+                << (int)current << "/" << (int)total
+                << " " << int(100.0f*percentage) << "% complete, "
+                << (int)daysTotal << "d" << (int)hoursTotal << "h" << (int)minsTotal << "m" << (int)secsTotal << "s projected, "
+                << (int)daysToGo << "d" << (int)hoursToGo << "h" << (int)minsToGo << "m" << (int)secsToGo << "s remaining          "
+                << std::flush;
 
-        float percentage = current/total;
+            if (percentage >= 100.0f)
+                std::cout << std::endl;
+        }
+        else
+        {
 
-        double timeSoFar = osg::Timer::instance()->delta_s(_start, now);
-        double projectedTotalTime = timeSoFar/percentage;
-        double timeToGo = projectedTotalTime - timeSoFar;
-        double minsToGo = timeToGo/60.0;
-        double secsToGo = fmod(timeToGo,60.0);
-        double minsTotal = projectedTotalTime/60.0;
-        double secsTotal = fmod(projectedTotalTime,60.0);
+            double timeSoFar = osg::Timer::instance()->delta_s(_start, now);
 
-        std::cout
-            << std::fixed
-            << std::setprecision(1) << "\r"
-            << (int)current << "/" << (int)total
-            << " " << int(100.0f*percentage) << "% complete, "
-            << (int)minsTotal << "m" << (int)secsTotal << "s projected, "
-            << (int)minsToGo << "m" << (int)secsToGo << "s remaining          "
-            << std::flush;
-
-        if ( percentage >= 100.0f )
-            std::cout << std::endl;
+            std::cout
+                << std::fixed
+                << std::setprecision(1) << "\r"
+                << (int)current << "/" << (int)total
+                << " " << timeSoFar << "s elapsed"
+                << std::flush;
+        }
 
         return false;
     }
@@ -266,9 +330,9 @@ struct ProgressReporter : public osgEarth::ProgressCallback
 int
 main(int argc, char** argv)
 {
-    osg::ArgumentParser args(&argc,argv);
+    osg::ArgumentParser args(&argc, argv);
 
-    if ( argc == 1 )
+    if (argc == 1)
         return usage(argv);
 
     osgDB::readCommandLine(args);
@@ -287,7 +351,7 @@ main(int argc, char** argv)
         dbo->setOptionString(str);
     }
 
-    typedef std::unordered_map<std::string,std::string> KeyValue;
+    typedef std::unordered_map<std::string, std::string> KeyValue;
     std::string key, value;
 
     // There are two paths. Either the user defines a source layer on
@@ -354,7 +418,7 @@ main(int argc, char** argv)
     // Open the input layer:
     input->setReadOptions(dbo.get());
     Status inputStatus = input->open();
-    if ( inputStatus.isError() )
+    if (inputStatus.isError())
     {
         OE_WARN << LC << "Error initializing input: " << inputStatus.message() << std::endl;
         return -1;
@@ -382,10 +446,10 @@ main(int argc, char** argv)
     std::string profileString;
     bool isSameProfile = true;
 
-    if ( args.read("--profile", profileString) )
+    if (args.read("--profile", profileString))
     {
         outputProfile = Profile::create(profileString);
-        if ( !outputProfile.valid() || !outputProfile->isOK() )
+        if (!outputProfile.valid() || !outputProfile->isOK())
         {
             OE_WARN << LC << "Output profile is not recognized" << std::endl;
             return -1;
@@ -399,7 +463,7 @@ main(int argc, char** argv)
 
     // open the output tile source:
     osg::ref_ptr<TileLayer> output = dynamic_cast<TileLayer*>(Layer::create(ConfigOptions(outConf)));
-    if ( !output.valid() )
+    if (!output.valid())
     {
         OE_WARN << LC << "Failed to create output layer" << std::endl;
         return -1;
@@ -411,23 +475,6 @@ main(int argc, char** argv)
     {
         OE_WARN << LC << "Error initializing output: " << outputStatus.message() << std::endl;
         return -1;
-    }
-
-    // Transfomr and copy over the data extents to the output datasource.
-    DataExtentList outputExtents;
-    for (DataExtentList::const_iterator itr = input->getDataExtents().begin(); itr != input->getDataExtents().end(); ++itr)
-    {
-        // Convert the data extent to the profile that is actually used by the output tile source
-        const DataExtent& inputExtent = *itr;
-        GeoExtent outputExtent = outputProfile->clampAndTransformExtent(inputExtent);
-        unsigned int minLevel = 0;
-        unsigned int maxLevel = outputProfile->getEquivalentLOD(input->getProfile(), inputExtent.maxLevel().get());
-        DataExtent result(outputExtent, minLevel, maxLevel);
-        outputExtents.push_back(result);
-    }
-    if (!outputExtents.empty())
-    {
-        output->setDataExtents(outputExtents);
     }
 
     // Dump out some stuff...
@@ -446,7 +493,7 @@ main(int argc, char** argv)
     if (args.read("--threads", numThreads))
     {
         MultithreadedTileVisitor* mtv = new MultithreadedTileVisitor();
-        mtv->setNumThreads( numThreads < 1 ? 1 : numThreads );
+        mtv->setNumThreads(numThreads < 1 ? 1 : numThreads);
         visitor = mtv;
     }
     else
@@ -474,25 +521,25 @@ main(int argc, char** argv)
             overwrite));
     }
 
-    // set the manula extents, if specified:
-    bool userSetExtents = false;
+    // set the manual extents, if specified:
     double minlat, minlon, maxlat, maxlon;
-    while( args.read("--extents", minlat, minlon, maxlat, maxlon) )
+    GeoExtent userExtent;
+    while (args.read("--extents", minlat, minlon, maxlat, maxlon))
     {
-        GeoExtent extent(SpatialReference::get("wgs84"), minlon, minlat, maxlon, maxlat);
-        visitor->addExtent( extent );
-        userSetExtents = true;
+        userExtent = GeoExtent(SpatialReference::get("wgs84"), minlon, minlat, maxlon, maxlat);
+        visitor->addExtentToVisit(userExtent);
     }
 
     // Read in an index shapefile to drive where to tile
     std::string index;
+
     while (args.read("--index", index))
     {
         osg::ref_ptr< OGRFeatureSource > indexFeatures = new OGRFeatureSource;
         indexFeatures->setURL(index);
         if (indexFeatures->open().isError())
         {
-            OE_WARN <<  "Failed to open index " << index << ": " << indexFeatures->getStatus().toString() << std::endl;
+            OE_WARN << "Failed to open index " << index << ": " << indexFeatures->getStatus().toString() << std::endl;
             return -1;
         }
 
@@ -502,8 +549,9 @@ main(int argc, char** argv)
             osg::ref_ptr< Feature > feature = cursor->nextFeature();
             osgEarth::Bounds featureBounds = feature->getGeometry()->getBounds();
             GeoExtent ext(feature->getSRS(), featureBounds);
-            ext = ext.transform(mapNode->getMapSRS());
-            visitor->addDataExtent(ext);
+            ext = input->getProfile()->clampAndTransformExtent(ext);
+
+            visitor->addExtentToDataIndex(ext);
         }
     }
 
@@ -515,34 +563,80 @@ main(int argc, char** argv)
     bool maxLevelSet = args.read("--max-level", maxLevel);
 
     // figure out the max source level:
-    if ( !minLevelSet || !maxLevelSet )
+    if (!minLevelSet || !maxLevelSet)
     {
-        for(DataExtentList::const_iterator i = input->getDataExtents().begin();
-            i != input->getDataExtents().end();
-            ++i)
+        DataExtentList dataExtents;
+        input->getDataExtents(dataExtents);
+        for (auto& de : dataExtents)
         {
-            if ( !maxLevelSet && i->maxLevel().isSet() && i->maxLevel().value() > maxLevel )
-                maxLevel = i->maxLevel().value();
-            if ( !minLevelSet && i->minLevel().isSet() && i->minLevel().value() < minLevel )
-                minLevel = i->minLevel().value();
+            if (!maxLevelSet && de.maxLevel().isSet() && de.maxLevel().get() > maxLevel)
+                maxLevel = de.maxLevel().get();
 
-            if (userSetExtents == false)
+            if (!minLevelSet && de.minLevel().isSet() && de.minLevel().get() < minLevel)
+                minLevel = de.minLevel().get();
+
+            if (userExtent.isInvalid())
             {
-                visitor->addExtent(*i);
+                visitor->addExtentToVisit(de);
             }
         }
     }
 
-    if ( minLevel < ~0 )
+    if (minLevel < ~0)
     {
-        visitor->setMinLevel( minLevel );
+        visitor->setMinLevel(minLevel);
     }
 
-    if ( maxLevel > 0 )
+    if (maxLevel > 0)
     {
-        maxLevel = outputProfile->getEquivalentLOD( input->getProfile(), maxLevel );
-        visitor->setMaxLevel( maxLevel );
+        maxLevel = outputProfile->getEquivalentLOD(input->getProfile(), maxLevel);
+        visitor->setMaxLevel(maxLevel);
         OE_NOTICE << LC << "Calculated max level = " << maxLevel << std::endl;
+    }
+
+    // If we've not added any extents to visit just add the entire input extent
+    if (visitor->getExtentsToVisit().empty())
+    {
+        visitor->addExtentToVisit(input->getProfile()->getExtent());
+    }
+
+    DataExtentList outputExtents;
+    if (userExtent.isInvalid())
+    {
+        // Transform and copy over the data extents to the output datasource.
+        DataExtentList inputExtents;
+        input->getDataExtents(inputExtents);
+
+        for (DataExtentList::const_iterator itr = inputExtents.begin(); itr != inputExtents.end(); ++itr)
+        {
+            // Convert the data extent to the profile that is actually used by the output tile source
+            const DataExtent& inputExtent = *itr;
+            GeoExtent outputExtent = outputProfile->clampAndTransformExtent(inputExtent);
+            DataExtent result(outputExtent, 0, outputProfile->getEquivalentLOD(input->getProfile(), inputExtent.maxLevel().get()));
+            outputExtents.push_back(result);
+        }
+    }
+    else
+    {
+        // Use the user set extents
+        GeoExtent outputExtent = outputProfile->clampAndTransformExtent(userExtent);
+        DataExtent result(outputExtent, outputProfile->getEquivalentLOD(input->getProfile(), minLevel), outputProfile->getEquivalentLOD(input->getProfile(), maxLevel));
+        outputExtents.push_back(result);
+    }
+
+    if (outputExtents.empty())
+    {
+        // The input has no data extents and the user didn't specify an extent, so use the entire output profile's extent
+        DataExtent result(outputProfile->getExtent(),
+                          outputProfile->getEquivalentLOD(input->getProfile(), minLevel),
+                          outputProfile->getEquivalentLOD(input->getProfile(), maxLevel));
+        outputExtents.push_back(result);
+    }
+
+
+    if (!outputExtents.empty())
+    {
+        output->setDataExtents(outputExtents);
     }
 
     // Ready!!!

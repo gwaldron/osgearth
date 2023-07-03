@@ -46,9 +46,6 @@ namespace osgEarth { namespace Procedural
         //! Sets the map in which to find layers (required)
         void setMap(const Map* map);
 
-        //! Sets the model factory to use (required)
-        void setFactory(TerrainTileModelFactory* factory);
-
         //! Sets the vegetation layer from which to generate features (required)
         void setLayer(VegetationLayer* layer);
 
@@ -70,12 +67,7 @@ namespace osgEarth { namespace Procedural
     private:
         Status _status;
         osg::ref_ptr<const Map> _map;
-        osg::ref_ptr<TerrainTileModelFactory> _factory;
         osg::ref_ptr<VegetationLayer> _veglayer;
-        osg::ref_ptr<LifeMapLayer> _lifemaplayer;
-        osg::ref_ptr<BiomeLayer> _biomelayer;
-        osg::ref_ptr<osg::Texture> _noiseTexture;
-        CreateTileManifest _manifest;
         std::vector<std::string> _propNames;
         typedef std::unordered_map<const ModelAsset*, osg::BoundingBoxf> SizeCache;
         mutable Threading::Mutexed<SizeCache> _sizeCache;

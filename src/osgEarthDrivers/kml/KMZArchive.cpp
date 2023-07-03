@@ -84,6 +84,20 @@ _archiveURI( archiveURI )
     osg::ref_ptr<osgDB::ReaderWriter> zipRW = osgDB::Registry::instance()->getReaderWriterForExtension("zip");
     if ( zipRW.valid() )
     {
+#if 1
+        auto local_options = osgEarth::Registry::cloneOrCreateOptions(dbOptions);
+        local_options->setPluginStringData("ignore_extension", "true");
+        ReadResult r = zipRW->openArchive(localURI.full(), osgDB::ReaderWriter::READ, 4096U, local_options);
+        if (r.success())
+        {
+            _zip = r.takeArchive();
+        }
+        else
+        {
+            OE_WARN << LC << "Failed to open archive at \"" << localURI.full() << "\"\n";
+            OE_WARN << LC << "Message = " << r.message() << "\n";
+        }
+#else   
         std::ifstream fin(localURI.full().c_str(), std::ios::binary|std::ios::in);
         if ( fin.is_open() )
         {
@@ -108,6 +122,7 @@ _archiveURI( archiveURI )
         {
             OE_WARN << LC << "Failed to read archive from \"" << localURI.full() << "\"\n";
         }
+#endif
     }
     else
     {
@@ -174,17 +189,35 @@ KMZArchive::getDirectoryContents(const std::string& dirName) const
 osgDB::ReaderWriter::ReadResult
 KMZArchive::readImage(const std::string& filename, const osgDB::Options* options) const
 {
-    return _zip.valid() ? _zip->readImage(filename, options) : ReadResult::FILE_NOT_HANDLED;
+    return _zip.valid() ? _zip->readImage(resolve(filename), options) : ReadResult::FILE_NOT_HANDLED;
 }
 
 osgDB::ReaderWriter::ReadResult
 KMZArchive::readNode(const std::string& filename, const osgDB::Options* options) const
 {
-    return _zip.valid() ? _zip->readNode(filename, options) : ReadResult::FILE_NOT_HANDLED;
+    return _zip.valid() ? _zip->readNode(resolve(filename), options) : ReadResult::FILE_NOT_HANDLED;
 }
 
 osgDB::ReaderWriter::ReadResult
 KMZArchive::readObject(const std::string& filename, const osgDB::Options* options) const
 {
-    return _zip.valid() ? _zip->readObject(filename, options) : ReadResult::FILE_NOT_HANDLED;
+    return _zip.valid() ? _zip->readObject(resolve(filename), options) : ReadResult::FILE_NOT_HANDLED;
+}
+
+std::string
+KMZArchive::resolve(const std::string& filename) const
+{
+    // if the file is not in the archive AND it's the default name,
+    // instead use the first file in the archive.
+    if (_zip.valid() && !fileExists(filename) && filename == getMasterFileName())
+    {
+        FileNameList names;
+        getFileNames(names);
+        if (names.size() > 0)
+        {
+            return names.front();
+        }
+    }
+
+    return filename;
 }

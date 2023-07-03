@@ -86,11 +86,8 @@ FeatureImageLayer::init()
 {
     ImageLayer::init();
 
-    // Default profile (WGS84) if not set
-    if (!getProfile())
-    {
-        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
-    }
+    // Do not set the profile here. We will try to deduce the profile
+    // once we can open the underlying feature source.
 }
 
 Status
@@ -125,13 +122,17 @@ FeatureImageLayer::establishProfile()
     {
         const FeatureProfile* fp = getFeatureSource()->getFeatureProfile();
 
-        if (fp->getTilingProfile())
+        if (fp && fp->getTilingProfile())
         {
             setProfile(fp->getTilingProfile());
         }
-        else if (fp->getSRS())
+        else if (fp && fp->getSRS())
         {
             setProfile(Profile::create(fp->getSRS()));
+        }
+        else
+        {
+            setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
         }
     }
 }
@@ -211,7 +212,7 @@ FeatureImageLayer::updateSession()
     {
         const FeatureProfile* fp = getFeatureSource()->getFeatureProfile();
 
-        dataExtents().clear();
+        DataExtentList dataExtents;
 
         if (fp)
         {
@@ -222,14 +223,17 @@ FeatureImageLayer::updateSession()
                 unsigned maxLevel = fp->getMaxLevel();
                 if (options().maxDataLevel().isSet())
                     maxLevel = osg::maximum(maxLevel, options().maxDataLevel().get());
-                dataExtents().push_back(DataExtent(fp->getTilingProfile()->getExtent(), fp->getFirstLevel(), maxLevel));
+
+                dataExtents.push_back(DataExtent(fp->getTilingProfile()->getExtent(), fp->getFirstLevel(), maxLevel));
             }
             else if (fp->getExtent().isValid() == true)
             {
                 // Use FeatureProfile's GeoExtent
-                dataExtents().push_back(DataExtent(fp->getExtent()));
+                dataExtents.push_back(DataExtent(fp->getExtent()));
             }
         }
+
+        setDataExtents(dataExtents);
 
         _global._session->setFeatureSource(getFeatureSource());
         _global._session->setStyles(getStyleSheet());
@@ -325,6 +329,21 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         progress);
 
     GeoImage result = rasterizer->finalize();
+
+#if 0
+    // If the rasterizer didn't render anything at all return an invalid image
+    // This was originally added to avoid caching images where the server had an error and returned no features
+    // and also to just save on disk space for transparent images.
+    // However, this is causing areas that are actually empty to fall back on parent tiles
+    // which is incorrect.  For example, using the osm highways multilevel 
+    // vector tile dataset will try to render roads at level 14, find no roads (b/c there aren't any in a tile) and then
+    // will try level 13, 12, etc until it finally gets to a tile that contains "some" road data.
+    if (ImageUtils::isEmptyImage(result.getImage()))
+    {
+        result = GeoImage::INVALID;
+    }
+#endif
     delete rasterizer;
+
     return result;
 }

@@ -450,23 +450,25 @@ namespace osgEarth
         virtual ~MultiGeometry();
 
     public:
-        virtual Type getType() const { return Geometry::TYPE_MULTI; }
-        virtual Type getComponentType() const;
-        virtual int getTotalPointCount() const;
-        virtual unsigned getNumComponents() const { return _parts.size(); }
+        virtual Type getType() const  override { return Geometry::TYPE_MULTI; }
+        virtual Type getComponentType() const override;
+        virtual int getTotalPointCount() const override;
+        virtual unsigned getNumComponents() const override { return _parts.size(); }
 
-        virtual unsigned getNumGeometries() const;
+        virtual unsigned getNumGeometries() const override;
 
         // gets the combined length of all parts
-        virtual double getLength() const;
+        virtual double getLength() const override;
 
         // override
-        virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
-        virtual bool isValid() const;
-        virtual Bounds getBounds() const;
-        virtual void rewind( Orientation ori );
-        virtual void removeColinearPoints();
-        virtual void close();
+        virtual Geometry* cloneAs( const Geometry::Type& newType ) const override;
+        virtual bool isValid() const override;
+        virtual Bounds getBounds() const override;
+        virtual void rewind( Orientation ori ) override;
+        void removeDuplicates() override;
+        virtual void removeColinearPoints() override;
+        void open() override;
+        virtual void close() override;
 
         virtual double getSignedDistance2D(
             const osg::Vec3d& a) const override;

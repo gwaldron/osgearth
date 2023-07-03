@@ -198,19 +198,24 @@ namespace osgEarth
 
         /**
          * Data Extents reported for this layer are copied into output.
-         * Returns true on success, false is there are no extents to report.
          */
-        virtual const DataExtentList& getDataExtents() const;
+        virtual void getDataExtents(DataExtentList& dataExtents) const;
+
+        /**
+        * Gets the number of data extents on the layer.
+        */
+        unsigned int getDataExtentsSize() const;
 
         /**
          * Gets an extent that is the union of all the extents in getDataExtents().
          */
         const DataExtent& getDataExtentsUnion() const;
 
-        //! Assign a data extents collection to the layer if applicable.
-        //! This method may not be supported, or may only work for a layer that has
-        //! opened for writing.
-        virtual void setDataExtents(const DataExtentList&) { }
+        //! Assign a data extents collection to the layer
+        virtual void setDataExtents(const DataExtentList& dataExtents);
+
+        //! Adds a DataExent to this layer.
+        void addDataExtent(const DataExtent& dataExtent);
 
     public: // Layer interface
 
@@ -258,6 +263,9 @@ namespace osgEarth
         //! Sets up a small data cache if necessary.
         void setUpL2Cache(unsigned minSize =0u);
 
+        //! Call this if you call dataExtents() and modify it.
+        void dirtyDataExtents();
+
     protected: // Layer
 
         virtual void init() override;
@@ -272,12 +280,6 @@ namespace osgEarth
 
         //! Gets or create a caching bin to use with data in the supplied profile
         CacheBin* getCacheBin(const Profile* profile);
-
-        //! Mutable access to the data extents for this layer
-        DataExtentList& dataExtents();
-
-        //! Call this if you call dataExtents() and modify it.
-        void dirtyDataExtents();
 
     protected:
 

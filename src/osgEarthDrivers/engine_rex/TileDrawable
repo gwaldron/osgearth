@@ -34,6 +34,11 @@ namespace osgEarth { namespace REX
 {
     class EngineContext;
 
+    /**
+     * Callback that allows the layers in a Map to alter the
+     * tile's perceived bounding box. This is here to support 
+     * layers that may perform GPU vertex modification.
+     */
     struct ModifyBoundingBoxCallback : public osg::Referenced
     {
         ModifyBoundingBoxCallback(EngineContext* context);
@@ -47,13 +52,13 @@ namespace osgEarth { namespace REX
      * computation, statistics, etc.)
      * 
      * NOTE: TileDrawable does not actually render anything!
-     * The TerrainRenderData object does all the rendering of tiles.
+     * It is merely a "proxy" to support intersections, etc.
      *
      * Instead, it exposes various osg::Drawable Functors for traversing
      * the terrain's geometry. It also hold a pointer to the tile's elevation
      * raster so it can properly reflect the elevation data in the texture.
      */
-    class TileDrawable : public osg::Drawable //, public PatchLayer::GeometryArrayProvider
+    class TileDrawable : public osg::Drawable
     {
     public:
         // underlying geometry, possibly shared between this tile and other.
@@ -65,7 +70,7 @@ namespace osgEarth { namespace REX
         const TileKey _key;
 
         osg::ref_ptr<const osg::Image> _elevationRaster;
-        osg::Matrixf                   _elevationScaleBias;
+        osg::Matrixf _elevationScaleBias;
 
         // cached 3D mesh of the terrain tile (derived from the elevation raster)
         std::vector<osg::Vec3> _mesh;
@@ -75,11 +80,15 @@ namespace osgEarth { namespace REX
 
     public:
         
-        // construct a new TileDrawable that fronts an osg::Geometry
+        //! construct a new TileDrawable that maintains the in-memory mesh
+        //! for intersection testing
         TileDrawable(
             const TileKey& key,
             SharedGeometry* geometry,
-            int            tileSize);
+            int tileSize);
+
+        //! destructor
+        virtual ~TileDrawable();
 
     public:
 
@@ -105,43 +114,23 @@ namespace osgEarth { namespace REX
 
         // These methods defer functors (like stats collection) to the underlying
         // (possibly shared) geometry instance.
-        bool supports(const osg::Drawable::AttributeFunctor& f) const { return true; }
-        void accept(osg::Drawable::AttributeFunctor& f) { if ( _geom.valid() ) _geom->accept(f); }
+        bool supports(const osg::Drawable::AttributeFunctor& f) const override { return true; }
+        void accept(osg::Drawable::AttributeFunctor& f) override { if ( _geom.valid() ) _geom->accept(f); }
 
-        bool supports(const osg::Drawable::ConstAttributeFunctor& f) const { return true; }
-        void accept(osg::Drawable::ConstAttributeFunctor& f) const { if ( _geom.valid() ) _geom->accept(f); }
+        bool supports(const osg::Drawable::ConstAttributeFunctor& f) const override { return true; }
+        void accept(osg::Drawable::ConstAttributeFunctor& f) const override { if ( _geom.valid() ) _geom->accept(f); }
 
-        bool supports(const osg::PrimitiveFunctor& f) const { return true; }
-        void accept(osg::PrimitiveFunctor& f) const;
+        bool supports(const osg::PrimitiveFunctor& f) const override { return true; }
+        void accept(osg::PrimitiveFunctor& f) const override;
         
         /** indexed functor is NOT supported since we need to apply elevation dynamically */
-        bool supports(const osg::PrimitiveIndexFunctor& f) const { return false; }
+        bool supports(const osg::PrimitiveIndexFunctor& f) const override { return false; }
 
-        osg::BoundingSphere computeBound() const;
-        osg::BoundingBox computeBoundingBox() const;
+        osg::BoundingSphere computeBound() const override;
+        osg::BoundingBox computeBoundingBox() const override;
 
-    public: // GeometryArrayProvider interface
-
-        const osg::Array* getVertexArray() const { return _geom->getVertexArray(); }
-        const osg::Array* getNormalArray() const { return _geom->getNormalArray(); }
-        const osg::Array* getTexCoordArray() const { return _geom->getTexCoordArray(); }
-        const osg::BoundingBox& getBoundingBox() const { return osg::Drawable::getBoundingBox(); }
-
-        void resizeGLObjectBuffers(unsigned maxsize);
-        void releaseGLObjects(osg::State* state) const;
-
-    public:
-        META_Object(osgEarth, TileDrawable);
-        TileDrawable() : osg::Drawable(), _tileSize(0), _bboxCB(NULL), _bboxRadius(0.0) {}
-        TileDrawable(const TileDrawable& rhs, const osg::CopyOp& cop) 
-         : osg::Drawable(rhs, cop)
-         , _tileSize(rhs._tileSize)
-         , _mesh(rhs._mesh)
-         , _bboxCB(rhs._bboxCB)
-         , _bboxRadius(rhs._bboxRadius)
-        {}
-
-        virtual ~TileDrawable();
+        void resizeGLObjectBuffers(unsigned maxsize) override;
+        void releaseGLObjects(osg::State* state) const override;
     };
 
 } } // namespace osgEarth::REX

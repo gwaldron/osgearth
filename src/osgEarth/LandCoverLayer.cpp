@@ -159,11 +159,6 @@ LandCoverLayer::openImplementation()
     // Normally we would collect and store the layer's DataExtents here.
     // Since this is possibly a composited layer with warping, we just
     // let it default so we can oversample the data with warping.
-    // TODO: review this statement
-    //dataExtents() = getSource()->getDataExtents();
-
-    // TODO: review this since we are setting a cache on this layer itself
-    // via the layerHints()
     
     // GW: do we really need this? Probably not
     getSource()->setUpL2Cache(9u);
@@ -290,6 +285,8 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         osg::ref_ptr<osg::Image> output = LandCover::createImage(getTileSize());
 
         ImageUtils::PixelReader read(img.getImage());
+        read.setBilinear(false);
+
         ImageUtils::PixelWriter write(output.get());
 
         osg::Vec4 pixel;
@@ -301,7 +298,9 @@ LandCoverLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         {
             for (int s = 0; s < output->s(); ++s)
             {
-                read(pixel, s, t);
+                float u = (float)s / (float)(output->s() - 1);
+                float v = (float)t / (float)(output->t() - 1);
+                read(pixel, u, v);
 
                 wrotePixel = false;
 

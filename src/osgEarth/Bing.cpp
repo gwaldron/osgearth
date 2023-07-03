@@ -24,6 +24,7 @@
 #include <osgEarth/Progress>
 #include <osgDB/FileUtils>
 #include <osgDB/ReadFile>
+#include <osgEarth/Notify>
 #include <cstdlib>
 
 using namespace osgEarth;

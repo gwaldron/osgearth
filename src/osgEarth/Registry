@@ -153,6 +153,7 @@ namespace osgEarth
 
         /**
          * The default shader generator.
+         * @deprecated REMOVE in 4.0; use ShaderGenerator directly
          */
         ShaderGeneratorProxy getShaderGenerator() const;
         void setShaderGenerator(ShaderGenerator* gen);
@@ -169,6 +170,7 @@ namespace osgEarth
          * A StateSetCache assist in stateset sharing across multiple nodes.
          * Note: A registry-wide SSC is only supported in OSG 3.1.4+. See
          * the Registry.cpp comments for details.
+         * @deprecated REMOVE in 4.0
          */
         StateSetCache* getStateSetCache() const;
         void setStateSetCache( StateSetCache* cache );
@@ -183,11 +185,13 @@ namespace osgEarth
 
         /**
          * Sets a global read callback for URI objects.
+         * @deprecated REMOVE in 4.0
          */
         void setURIReadCallback( URIReadCallback* callback );
 
         /**
          * Gets the global read callback for URI objects.
+         * @deprecated REMOVE in 4.0
          */
         URIReadCallback* getURIReadCallback() const;
 
@@ -274,6 +278,14 @@ namespace osgEarth
         unsigned getMaxNumberOfVertsPerDrawable() const;
 
         /**
+         * Maximum dimension (in either axis of images loaded from a URI).
+         * Default is UINT_MAX. This will effectively limit the size of 
+         * texture data throughout osgEarth.
+         */
+        void setMaxTextureSize(int value);
+        int getMaxTextureSize() const;
+
+        /**
          * Release OpenGL resources associated with anything in the reigstry
          */
         void releaseGLObjects(class osg::State*) const;
@@ -349,6 +361,8 @@ namespace osgEarth
         std::set<int> _offLimitsTextureImageUnits;
 
         float _devicePixelRatio;
+
+        unsigned _maxImageDimension;
 
         typedef std::unordered_map<SpatialReference::Key, osg::ref_ptr<SpatialReference> > SRSCache;
         Threading::Mutexed<SRSCache> _srsCache;

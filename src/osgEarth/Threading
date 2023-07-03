@@ -20,6 +20,7 @@
 #define OSGEARTH_THREADING_UTILS_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Notify>
 #include <atomic>
 #include <functional>
 #include <condition_variable>
@@ -245,14 +246,17 @@ namespace osgEarth { namespace Threading
     class Future : public Cancelable
     {
     public:
-        typedef std::function<void(const T&)> Callback;
+        using Callback = std::function<void(const T&)>;
 
     private:
         // internal structure to track referenced to the result
         struct Container {
             Container() { }
-            //Container(const T& obj) { set(obj); }
             void set(const T& obj) { 
+                ScopedMutexLock lock(_m);
+                _obj = obj;
+            }
+            void set(const T&& obj) {
                 ScopedMutexLock lock(_m);
                 _obj = std::move(obj);
             }
@@ -311,6 +315,11 @@ namespace osgEarth { namespace Threading
             return _shared->obj();
         }
 
+        //! Alias for get()
+        const T* operator -> () const {
+            return &(_shared->obj());
+        }
+
         //! Same as get(), but if the result is available will reset the
         //! future before returning the result object.
         T release() {
@@ -347,7 +356,6 @@ namespace osgEarth { namespace Threading
         void abandon() {
             _shared.reset(new Container());
             _ev.reset(new Event());
-            //_ev->reset();
         }
 
         //! synonym for abandon.
@@ -363,9 +371,15 @@ namespace osgEarth { namespace Threading
             return _shared.use_count();
         }
 
+        //! Function to execute upon a Promise resolving this Future.
+        void whenAvailable(const Callback& cb) {
+            _whenAvailable = cb;
+        }
+
     private:
         std::shared_ptr<Event> _ev;
         std::shared_ptr<Container> _shared;
+        Callback _whenAvailable;
         template<typename U> friend class Promise;
     };
 
@@ -390,11 +404,15 @@ namespace osgEarth { namespace Threading
         void resolve(const T& value) {
             _future._shared->set(value);
             _future._ev->set();
+            if (_future._whenAvailable)
+                _future._whenAvailable(_future.get());
         }
 
         //! Resolve (fulfill) the promise with a default result.
         void resolve() {
             _future._ev->set();
+            if (_future._whenAvailable)
+                _future._whenAvailable(_future.get());
         }
 
         //! True if the promise is resolved and the Future holds a valid result.
@@ -530,10 +548,10 @@ namespace osgEarth { namespace Threading
     {
     public:
         ReadWrite() :
-            _readers(0u), _writers(0u) { }
+            _writers(0u), _readers(0u) { }
 
         ReadWrite(const std::string& name) :
-            _m(name), _readers(0u), _writers(0u) { }
+            _m(name), _writers(0u), _readers(0u) { }
 
         void read_lock() {
             std::unique_lock<T> lock(_m);
@@ -765,15 +783,15 @@ namespace osgEarth { namespace Threading
 
         //! Construct a new blank job
         Job() :
-            _arena(nullptr), _group(nullptr), _priority(0.0f) { }
+            _priority(0.0f), _arena(nullptr), _group(nullptr) { }
 
         //! Construct a new job in the specified arena
         Job(JobArena* arena) :
-            _arena(arena), _group(nullptr), _priority(0.0f) { }
+            _priority(0.0f), _arena(arena), _group(nullptr) { }
 
         //! Construct a new job in the specified arena and job group
         Job(JobArena* arena, JobGroup* group) :
-            _arena(arena), _group(group), _priority(0.0f) { }
+            _priority(0.0f), _arena(arena), _group(group) { }
 
         //! Name of this job
         void setName(const std::string& value) {
@@ -852,7 +870,7 @@ namespace osgEarth { namespace Threading
 
         //! Construct a new JobArena
         JobArena(
-            const std::string& name,
+            const std::string& name = "",
             unsigned concurrency = 2u,
             const Type& type = THREAD_POOL);
 
@@ -862,6 +880,9 @@ namespace osgEarth { namespace Threading
         //! Set the concurrency of this job arena
         //! (Only applies to THREAD_POOL type arenas)
         void setConcurrency(unsigned value);
+
+        //! Get the target concurrency (thread count) 
+        unsigned getConcurrency() const;
 
         //! Discard all queued jobs
         void cancelAll();
@@ -891,7 +912,7 @@ namespace osgEarth { namespace Threading
         class OSGEARTH_EXPORT Metrics
         {
         public:
-            //! Per-arena metrics. ALWAYS check the "active" flag
+            //! Per-arena metrics.
             struct Arena
             {
                 using Ptr = std::shared_ptr<Arena>;
@@ -917,7 +938,7 @@ namespace osgEarth { namespace Threading
             std::atomic<int> maxArenaIndex;
 
             //! create a new arena and return its index
-            Arena::Ptr newArena();
+            Arena::Ptr getOrCreate(const std::string& name);
 
             //! metrics about the arena at index "index"
             const Arena::Ptr arena(int index) const;
@@ -928,7 +949,7 @@ namespace osgEarth { namespace Threading
             //! Total number of running jobs across all arenas
             int totalJobsRunning() const;
 
-            //! Total number of running jobs across all arenas
+            //! Total number of canceled jobs across all arenas
             int totalJobsCanceled() const;
 
             //! Total number of active jobs in the system

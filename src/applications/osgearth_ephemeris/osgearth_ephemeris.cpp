@@ -123,13 +123,15 @@ main(int argc, char** argv)
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags
-    osg::Node* node = MapNodeHelper().load( arguments, &viewer );
-    if ( node )
+    auto node = MapNodeHelper().load( arguments, &viewer );
+    if (node.valid())
     {
         osg::Group* root = new osg::Group();
         root->addChild( node );
 
         MapNode* mapNode = MapNode::get(node);
+        if (!mapNode)
+            return usage(argv[0]);
 
         app.sunPos = new PlaceNode("Sun", Style(), mark.get());
         app.sunPos->setDynamic(true);

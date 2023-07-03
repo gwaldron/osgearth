@@ -21,6 +21,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgUtil/Optimizer>
+#include <osgEarth/Notify>
 
 #define LC "[AtlasBuilder] "
 

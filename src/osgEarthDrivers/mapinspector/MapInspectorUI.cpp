@@ -97,7 +97,8 @@ MapInspectorUI::addTileLayer(TileLayer* layer,
 
     osg::ref_ptr<MultiGeometry> collection = new MultiGeometry();
 
-    const DataExtentList& exlist = layer->getDataExtents();
+    DataExtentList exlist;
+    layer->getDataExtents(exlist);
     if (!exlist.empty())
     {
         for(DataExtentList::const_iterator i = exlist.begin(); i != exlist.end(); ++i)
@@ -144,7 +145,7 @@ MapInspectorUI::addTileLayer(TileLayer* layer,
             ts->declutter() = true;
             ts->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
         
-            osg::Vec2d center = collection->getBounds().center2d();
+            osg::Vec3d center = collection->getBounds().center();
             GeoPoint position(layer->getProfile()->getSRS(), center.x(), center.y(), 0.0, ALTMODE_ABSOLUTE);
 
             LabelNode* label = new LabelNode(text, style);

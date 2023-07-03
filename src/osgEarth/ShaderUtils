@@ -66,13 +66,23 @@ namespace osgEarth { namespace Util
 
         static void runPost(osg::Shader* shader);
 
-        static std::unordered_map<
-            std::string, 
-            std::function<void(std::string&)>> _pre_callbacks;
+        struct PreCallbackInfo {
+            osg::observer_ptr<osg::Referenced> host;
+            std::function<void(std::string& source, osg::Referenced* host)> function;
+        };
+
+        struct PostCallbackInfo {
+            osg::observer_ptr<osg::Referenced> host;
+            std::function<void(osg::Shader*, osg::Referenced* host)> function;
+        };
 
         static std::unordered_map<
-            std::string,
-            std::function<void(osg::Shader*)>> _post_callbacks;
+            UID,
+            PreCallbackInfo> _pre_callbacks;
+
+        static std::unordered_map<
+            UID,
+            PostCallbackInfo> _post_callbacks;
     };
 
     /**
@@ -169,6 +179,30 @@ namespace osgEarth { namespace Util
     public:
         void install(osg::StateSet* ss, float minAlpha) const;
         void uninstall(osg::StateSet* ss) const;
+    };
+
+    /**
+     * Class to parse messages from an info log.
+     */
+    class OSGEARTH_EXPORT ShaderInfoLog
+    {
+    public:
+        ShaderInfoLog(
+            const osg::Program* program,
+            const std::string& log);
+
+        void dumpErrors(
+            osg::State&) const;
+
+    private:
+        osg::ref_ptr<const osg::Program> _program;
+        std::string _log;
+
+        struct Message {
+            unsigned line;
+            unsigned column;
+            std::string message;
+        };
     };
 } }
 

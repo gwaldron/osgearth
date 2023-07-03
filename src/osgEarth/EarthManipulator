@@ -79,7 +79,8 @@ namespace osgEarth { namespace Util
             EVENT_MOUSE_CLICK        = osgGA::GUIEventAdapter::USER << 1,
             EVENT_MULTI_DRAG         = osgGA::GUIEventAdapter::USER << 2,   // drag with 2 fingers
             EVENT_MULTI_PINCH        = osgGA::GUIEventAdapter::USER << 3,   // pinch with 2 fingers
-            EVENT_MULTI_TWIST        = osgGA::GUIEventAdapter::USER << 4    // drag 2 fingers in different directions
+            EVENT_MULTI_TWIST        = osgGA::GUIEventAdapter::USER << 4,   // drag 2 fingers in different directions
+            EVENT_TOUCH_DRAG         = osgGA::GUIEventAdapter::USER << 5    // drag 1 finger or pen with touch-screen
         };
 
         /** Bindable mouse buttons. */
@@ -338,6 +339,9 @@ namespace osgEarth { namespace Util
 
 
             void bindMultiDrag(
+                ActionType action, const ActionOptions& =ActionOptions() );
+
+            void bindTouchDrag(
                 ActionType action, const ActionOptions& =ActionOptions() );
 
             /**

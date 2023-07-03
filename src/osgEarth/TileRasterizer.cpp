@@ -55,7 +55,7 @@ using namespace osgEarth::Util;
 
 // This is the number of renders to use. This number is chosen 
 // to accomodate a round robin setup in multi-threaded OSG mode.
-#define NUM_RENDERERS 4
+#define NUM_RENDERERS_PER_GC 3
 
 TileRasterizer::Renderer::Renderer(unsigned width, unsigned height)
 {
@@ -108,16 +108,9 @@ TileRasterizer::Renderer::releaseGLObjects(osg::State* state) const
     if (_tex.valid())
         _tex->releaseGLObjects(state);
 
-    if (state)
-    {
-        GCState& gs = _gs[state->getContextID()];
-        gs.pbo = nullptr;
-        gs.query = nullptr;
-    }
-    else
-    {
-        _gs.setAllElementsTo(GCState());
-    }
+    _query = nullptr;
+    _pbo = nullptr;
+    _cbo = nullptr;
 }
 
 void
@@ -128,8 +121,6 @@ TileRasterizer::Renderer::resizeGLObjectBuffers(unsigned size)
 
     if (_tex.valid())
         _tex->resizeGLObjectBuffers(size);
-
-    _gs.resize(size);
 }
 
 void
@@ -151,7 +142,9 @@ TileRasterizer::Job::useRenderer(TileRasterizer::Renderer::Ptr renderer)
     renderer->_phase = Renderer::RENDER;
 }
 
-TileRasterizer::TileRasterizer(unsigned width, unsigned height)
+TileRasterizer::TileRasterizer(unsigned width, unsigned height) :
+    _width(width),
+    _height(height)
 {
     setCullingActive(false);
 
@@ -163,26 +156,11 @@ TileRasterizer::TileRasterizer(unsigned width, unsigned height)
     vp->setName(typeid(*this).name());
     vp->setInheritShaders(false);
 
-    for (unsigned i = 0; i < NUM_RENDERERS; ++i)
-    {
-        Renderer::Ptr r = std::make_shared<Renderer>(width, height);
-
-        r->_uid = osgEarth::createUID();
-
-        osg::StateSet* ss = r->_rtt->getOrCreateStateSet();
-        GLUtils::setLighting(ss, 0);
-        ss->setAttributeAndModes(blend, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
-        ss->setAttributeAndModes(cullface, 0);
-        ss->setAttribute(vp);
-
-        //r->_rtt->setPreDrawCallback(new DrawCallback(
-        //    [this](osg::RenderInfo& ri) {this->preDraw(ri); }));
-
-        r->_rtt->setPostDrawCallback(new DrawCallback(
-            [this](osg::RenderInfo& ri) {this->postDraw(ri); }));
-
-        _renderers.add(r);
-    }
+    _rttStateSet = new osg::StateSet();
+    GLUtils::setLighting(_rttStateSet.get(), 0);
+    _rttStateSet->setAttributeAndModes(blend, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
+    _rttStateSet->setAttributeAndModes(cullface, 0);
+    _rttStateSet->setAttribute(vp);
 }
 
 
@@ -191,7 +169,24 @@ TileRasterizer::~TileRasterizer()
     //nop
 }
 
-Future<osg::ref_ptr<osg::Image>>
+void
+TileRasterizer::install(GLObjects::Ptr gc)
+{
+    for (unsigned i = 0; i < NUM_RENDERERS_PER_GC; ++i)
+    {
+        Renderer::Ptr r = std::make_shared<Renderer>(_width, _height);
+
+        r->_uid = osgEarth::createUID();
+        r->_rtt->getOrCreateStateSet()->merge(*_rttStateSet.get());
+
+        r->_rtt->setPostDrawCallback(new DrawCallback(
+            [this](osg::RenderInfo& ri) {this->postDraw(ri); }));
+
+        gc->_renderers.add(r);
+    }
+}
+
+Future<TileRasterizer::Job::Result>
 TileRasterizer::render(osg::Node* node, const GeoExtent& extent)
 {
     // make a new job and push it on the queue.
@@ -210,10 +205,6 @@ TileRasterizer::render(osg::Node* node, const GeoExtent& extent)
     return result;
 }
 
-#define OE_SERIALIZE_SCOPE \
-    static osgEarth::Threading::Mutex _oe_s_serialized_scope_mutex; \
-    osgEarth::Threading::ScopedMutexLock _oe_s_serialized_scope_lock(_oe_s_serialized_scope_mutex)
-
 void
 TileRasterizer::traverse(osg::NodeVisitor& nv)
 {
@@ -221,30 +212,47 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
     {
         if (!_jobQ.empty())
         {
-            const osg::Camera* camera = static_cast<osgUtil::CullVisitor*>(&nv)->getCurrentCamera();
-            if (CameraUtils::isShadowCamera(camera) ||
+            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+            if (!cv)
+                return;
+
+            const osg::Camera* camera = cv->getCurrentCamera();
+
+            if (camera == nullptr ||
+                camera->getGraphicsContext() == nullptr ||
+                CameraUtils::isShadowCamera(camera) ||
                 CameraUtils::isDepthCamera(camera) ||
                 CameraUtils::isPickCamera(camera))
             {
                 return;
             }
 
-            OE_SERIALIZE_SCOPE;
+            // find an initialize (if necessary) the GC-specific state for this camera
+            GLObjects::Ptr& gc = GLObjects::get(_globjects, *camera->getGraphicsContext()->getState());
+            if (gc == nullptr)
+            {
+                gc = std::make_shared<GLObjects>();
+                install(gc);
+            }
 
+            // Find the next unused renderer. If it is in use, just bail out
+            // and come back next time.
+            Renderer::Ptr renderer = gc->_renderers.next();
+            if (renderer.use_count() != 2)
+                return;
+
+            // Ready the next job:
             Job::Ptr job = _jobQ.take_front();
             if (job)
             {
-                auto renderer = _renderers.next();
-                OE_SOFT_ASSERT(renderer.use_count() == 2);
-
                 // assign a context to this job:
                 job->useRenderer(renderer);
 
                 // cull the RTT:
-                job->_renderer->_rtt->accept(nv);
+                renderer->_rtt->accept(nv);
 
                 // queue for rendering.
-                _renderQ.push(job);
+                gc->_renderQ.push(job);
             }
         }
     }
@@ -255,108 +263,153 @@ TileRasterizer::traverse(osg::NodeVisitor& nv)
 #define OE_TEST OE_DEBUG
 
 void
+TileRasterizer::Renderer::allocate(osg::State& state)
+{
+    if (_pbo == nullptr || !_pbo->valid())
+    {
+        _pbo = GLBuffer::create(GL_PIXEL_PACK_BUFFER_ARB, state);
+        _pbo->bind();
+        _pbo->debugLabel("TileRasterizer", "GL_PIXEL_PACK_BUFFER_ARB");
+        _pbo->unbind();
+
+#ifdef USE_CBO
+        // dedicated copy buffer to take advantage of the Fermi+
+        // copy engines. Rumor has it this slows things down on AMD
+        // so we might want to disable it for them
+        _cbo = GLBuffer::create(GL_COPY_WRITE_BUFFER, state);
+        _cbo->bind();
+        _cbo->debugLabel("TileRasterizer", "GL_COPY_WRITE_BUFFER");
+        _cbo->unbind();
+#endif
+    }
+
+    if (_pbo->size() < _dataSize)
+    {
+        if (_cbo)
+        {
+            // when using a copy engine, GL_STATIC_COPY ensures a GPU->GPU
+            // transfer to the copy buffer for later fast readback.
+            _cbo->bind();
+            _cbo->bufferData(_dataSize, nullptr, GL_STATIC_COPY);
+            _cbo->unbind();
+
+            _cbo->bind();
+            _cbo->bufferData(_dataSize, nullptr, GL_STREAM_READ);
+            _cbo->unbind();
+        }
+        else
+        {
+            _pbo->bind();
+            _pbo->bufferData(_dataSize, nullptr, GL_STREAM_READ);
+            _pbo->unbind();
+        }
+    }
+}
+
+GLuint
+TileRasterizer::Renderer::query(osg::State& state)
+{
+    GLuint samples = 1;
+
+    if (_query)
+        _query->getResult(&samples);
+
+    if (samples > 0)
+    {
+        // make the target texture current so we can read it back.
+        _tex->apply(state);
+
+        // begin the asynchronous transfer from texture to PBO
+        _pbo->bind();
+
+        // should return immediately
+        glGetTexImage(
+            _tex->getTextureTarget(),
+            0, // mip level
+            _tex->getSourceFormat(),
+            _tex->getSourceType(),
+            nullptr);
+
+        if (_cbo)
+        {
+            // two-stage copy speeds things up on fermi allegedly
+            _cbo->bind();
+            _pbo->copyBufferSubData(_cbo, 0, 0, _dataSize);
+            _cbo->unbind();
+        }
+
+        _pbo->unbind();
+    }
+
+    return samples;
+}
+
+osg::ref_ptr<osg::Image>
+TileRasterizer::Renderer::readback(osg::State& state)
+{
+    osg::ref_ptr<osg::Image> result = createImage();
+
+    GLBuffer::Ptr readback_buf =
+        _cbo ? _cbo :
+        _pbo;
+
+    readback_buf->bind();
+
+    void* ptr = readback_buf->map(GL_READ_ONLY_ARB);
+    if (ptr)
+    {
+        ::memcpy(
+            result->data(),
+            ptr,
+            _dataSize);
+
+        readback_buf->unmap();
+    }
+    else
+    {
+        // Error. Unable to map a pointer to the PBO. Massive fail.
+        OE_SOFT_ASSERT(ptr != nullptr, "glMapBuffer failed to map to PBO");
+    }
+
+    readback_buf->unbind();
+
+    return result;
+}
+
+#define INV_QUERY 0
+#define INV_READBACK 1
+
+void
 TileRasterizer::postDraw(osg::RenderInfo& ri)
 {
-    Job::Ptr job = _renderQ.take_front();
+    osg::State& state = *ri.getState();
+    GLObjects::Ptr& gc = GLObjects::get(_globjects, state);
+    Job::Ptr job = gc->_renderQ.take_front();
     OE_HARD_ASSERT(job != nullptr);
 
     // Check to see if the client still wants the result:
     if (job->_promise.isCanceled())
         return;
 
+    job->_renderer->allocate(state);
+
     // GPU task delegate:
     auto gpu_task = [job](osg::State& state, Promise<Job::Result>& promise, int invocation)
     {
-        // invocations:
-        constexpr int RENDER = 0;
-        constexpr int QUERY = 1;
-        constexpr int READBACK = 2;
-
         if (promise.isAbandoned())
         {
             OE_DEBUG << "Job " << job << " canceled" << std::endl;
             return false; // done
         }
 
-        Renderer::Ptr& renderer = job->_renderer;
-        Renderer::GCState& gs = renderer->_gs[state.getContextID()];
-
-        if (invocation == RENDER)
-        {
-            if (gs.pbo == nullptr)
-            {
-                gs.pbo = GLBuffer::create(
-                    GL_PIXEL_PACK_BUFFER_ARB, state, "TileRasterizer");
-
-#ifdef USE_CBO
-                // dedicated copy buffer to take advantage of the Fermi+
-                // copy engines. Rumor has it this slows things down on AMD
-                // so we might want to disable it for them
-                gs.cbo = GLBuffer::create(
-                    GL_COPY_WRITE_BUFFER, state, "TileRasterizer");
-#endif
-            }
-
-            if (gs.pbo->size() < renderer->_dataSize)
-            {
-                if (gs.cbo)
-                {
-                    // when using a copy engine, GL_STATIC_COPY ensures a GPU->GPU
-                    // transfer to the copy buffer for later fast readback.
-                    gs.pbo->bind();
-                    gs.pbo->bufferData(renderer->_dataSize, nullptr, GL_STATIC_COPY);
-                    gs.pbo->unbind();
-
-                    gs.cbo->bind();
-                    gs.cbo->bufferData(renderer->_dataSize, nullptr, GL_STREAM_READ);
-                    gs.cbo->unbind();
-                }
-                else
-                {
-                    gs.pbo->bind();
-                    gs.pbo->bufferData(renderer->_dataSize, nullptr, GL_STREAM_READ);
-                    gs.pbo->unbind();
-                }
-            }
-
-            return true; // wait until the next frame (for render/query to finish)
-        }
-
         // is the query still running?
-        else if (invocation == QUERY)
+        if (invocation == INV_QUERY)
         {
             OE_GL_ZONE_NAMED("TileRasterizer/QUERY");
-
-            GLuint samples = 1;
-            if (gs.query)
-                gs.query->getResult(&samples);
+            GLuint samples = job->_renderer->query(state);
 
             if (samples > 0)
             {
-                // make the target texture current so we can read it back.
-                renderer->_tex->apply(state);
-
-                // begin the asynchronous transfer from texture to PBO
-                gs.pbo->bind();
-
-                // should return immediately
-                glGetTexImage(
-                    renderer->_tex->getTextureTarget(),
-                    0, // mip level
-                    renderer->_tex->getSourceFormat(),
-                    renderer->_tex->getSourceType(),
-                    nullptr);
-
-                if (gs.cbo)
-                {
-                    // two-stage copy speeds things up on fermi allegedly
-                    gs.cbo->bind();
-                    gs.pbo->copyBufferSubData(gs.cbo, 0, 0, renderer->_dataSize);
-                    gs.cbo->unbind();
-                }
-
-                gs.pbo->unbind();
-
                 return true; // come back later when the results are ready.
             }
             else
@@ -367,35 +420,11 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
             }
         }
 
-        else if (invocation == READBACK)
+        else if (invocation == INV_READBACK)
         {
             OE_GL_ZONE_NAMED("TileRasterizer/READBACK");
 
-            osg::ref_ptr<osg::Image> result = renderer->createImage();
-
-            GLBuffer::Ptr readback_buf =
-                gs.cbo ? gs.cbo :
-                gs.pbo;
-
-            readback_buf->bind();
-
-            void* ptr = readback_buf->map(GL_READ_ONLY_ARB);
-            if (ptr)
-            {
-                ::memcpy(
-                    result->data(),
-                    ptr,
-                    renderer->_dataSize);
-
-                readback_buf->unmap();
-            }
-            else
-            {
-                // Error. Unable to map a pointer to the PBO. Massive fail.
-                OE_SOFT_ASSERT(ptr != nullptr, "glMapBuffer failed to map to PBO");
-            }
-
-            readback_buf->unbind();
+            Job::Result result = job->_renderer->readback(state);
 
             // all done:
             promise.resolve(result);
@@ -407,8 +436,13 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
     };
 
 
+#if 0
+    if (gpu_task(state, job->_promise, INV_QUERY))
+        gpu_task(state, job->_promise, INV_READBACK);
+#else
     // Queue up our GPU job (using our existing Promise object)
-    GLPipeline::get()->dispatch<Job::Result>(gpu_task, job->_promise);
+    GLPipeline::get(state)->dispatch<Job::Result>(gpu_task, job->_promise);
+#endif
 }
 
 void
@@ -416,9 +450,15 @@ TileRasterizer::releaseGLObjects(osg::State* state) const
 {
     osg::Node::releaseGLObjects(state);
 
-    for (auto& r : _renderers)
+    for(unsigned i=0; i< _globjects.size(); ++i)
     {
-        r->releaseGLObjects(state);
+        if (_globjects[i])
+        {
+            for (auto& r : _globjects[i]->_renderers)
+            {
+                r->releaseGLObjects(state);
+            }
+        }
     }
 }
 
@@ -427,8 +467,19 @@ TileRasterizer::resizeGLObjectBuffers(unsigned size)
 {
     osg::Node::resizeGLObjectBuffers(size);
 
-    for (auto& r : _renderers)
+    for (unsigned i = 0; i < _globjects.size(); ++i)
     {
-        r->resizeGLObjectBuffers(size);
+        if (_globjects[i])
+        {
+            for (auto& r : _globjects[i]->_renderers)
+            {
+                r->resizeGLObjectBuffers(size);
+            }
+        }
+    }
+
+    if (size > _globjects.size())
+    {
+        _globjects.resize(size);
     }
 }

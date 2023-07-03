@@ -7,7 +7,7 @@
 
 SET(GEOS_DIR "" CACHE PATH "Root directory of GEOS distribution")
 
-FIND_PATH(GEOS_INCLUDE_DIR geos/geom/Geometry.h
+FIND_PATH(GEOS_INCLUDE_DIR geos_c.h 
   PATHS
     ${GEOS_DIR}
     $ENV{GEOS_DIR}
@@ -15,7 +15,7 @@ FIND_PATH(GEOS_INCLUDE_DIR geos/geom/Geometry.h
   PATH_SUFFIXES include
 )
 
-FIND_PATH(GEOS_INCLUDE_DIR geos/geom/Geometry.h
+FIND_PATH(GEOS_INCLUDE_DIR geos_c.h
   PATHS
     /usr/local/include/geos
     /usr/local/include/GEOS

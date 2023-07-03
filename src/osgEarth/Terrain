@@ -28,6 +28,7 @@
 namespace osgEarth
 {
     class Terrain;
+    class TerrainTile;
     class SpatialReference;
 
     /**
@@ -177,6 +178,27 @@ namespace osgEarth
          */
         const SpatialReference* getSRS() const { return _profile->getSRS(); }
 
+        /**
+         * Returns the world coordinates under the mouse.
+         * @param view
+         *      View in which to do the query
+         * @param mx, my
+         *      Mouse coordinates
+         * @param out_coords
+         *      Stores the world coordinates under the mouse (when returning true)
+         */
+        bool getWorldCoordsUnderMouse(
+            osg::View*  view,
+            float       mx,
+            float       my,
+            osg::Vec3d& out_world) const;
+
+        //! Terrain Tile node under the mouse
+        TerrainTile* getTerrainTileUnderMouse(
+            osg::View*  view,
+            float       mx,
+            float       my) const;
+
 
     public: // TerrainResolver interface
 
@@ -211,23 +233,6 @@ namespace osgEarth
             double                  y,
             double*                 out_heightAboveMSL,
             double*                 out_heightAboveEllipsoid =0L) const;
-
-    public:
-
-        /**
-         * Returns the world coordinates under the mouse.
-         * @param view
-         *      View in which to do the query
-         * @param mx, my
-         *      Mouse coordinates
-         * @param out_coords 
-         *      Stores the world coordinates under the mouse (when returning true)
-         */
-        bool getWorldCoordsUnderMouse(
-            osg::View*  view,
-            float       mx,
-            float       my,
-            osg::Vec3d& out_world ) const;
 
     public:
         /**

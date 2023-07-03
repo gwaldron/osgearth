@@ -354,8 +354,8 @@ main(int argc, char** argv)
     app.timeLabel = container->addControl(new LabelControl());
 
     // Load an earth file
-    osg::Node* earth = MapNodeHelper().load(arguments, &viewer, container);
-    if (earth)
+    auto earth = MapNodeHelper().load(arguments, &viewer, container);
+    if (earth.valid() && MapNode::get(earth))
     {
         // New scene graph root
         osg::Group* root = new osg::Group();

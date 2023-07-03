@@ -20,7 +20,6 @@
 #define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_GEOMETRY_POOL 1
 
 #include "Common"
-#include "MeshEditor"
 #include "TileRenderModel"
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/TileKey>
@@ -28,29 +27,23 @@
 #include <osgEarth/PatchLayer>
 #include <osgEarth/Metrics>
 #include <osgEarth/Math>
+#include <osgEarth/TileMesher>
 #include <osg/Geometry>
 
-//#if OSG_MIN_VERSION_REQUIRED(3,5,9)
-//#define SUPPORTS_VAO 1
-//#endif
-
-#define VERTEX_VISIBLE       1 // draw it
-#define VERTEX_BOUNDARY      2 // vertex lies on a skirt boundary
-#define VERTEX_HAS_ELEVATION 4 // not subject to elevation texture
-#define VERTEX_SKIRT         8 // it's a skirt vertex (bitmask)
-#define VERTEX_CONSTRAINT   16 // part of a non-morphable constraint
-
-namespace osgEarth {
+namespace osgEarth
+{
     namespace REX
     {
         using namespace osgEarth;
 
+        using DrawElementsBase = osg::DrawElementsUShort;
+
         // A DrawElements with a UID.
-        class /* internal */ SharedDrawElements : public osg::DrawElementsUShort
+        class /* internal */ SharedDrawElements : public DrawElementsBase
         {
         public:
             SharedDrawElements(GLenum type) :
-                osg::DrawElementsUShort(type)
+                DrawElementsBase(type)
             {
                 //nop
             }
@@ -62,25 +55,28 @@ namespace osgEarth {
 
             void releaseGLObjects(osg::State* state) const override
             {
-                osg::DrawElementsUShort::releaseGLObjects(state);
+                DrawElementsBase::releaseGLObjects(state);
                 if (state)
-                    _gc[state->getContextID()]._ebo = nullptr;
-
+                {
+                    GLObjects::get(_globjects, *state)._ebo = nullptr;
+                }
                 // Do nothing if state is nullptr!
                 // Let nature take its course and let the GLObjectPool release it
             }
 
             void resizeGLObjectBuffers(unsigned size) override
             {
-                osg::DrawElementsUShort::resizeGLObjectBuffers(size);
-                _gc.resize(size);
+                DrawElementsBase::resizeGLObjectBuffers(size);
+                if (size > _globjects.size())
+                    _globjects.resize(size);
             }
 
-            struct GCState
+            // Shareable because they are static and bindless
+            struct GLObjects : public BindlessShareableGLObjects
             {
-                GLBuffer::Ptr _ebo;
+                GLBuffer::Ptr _ebo; // bindless buffer
             };
-            mutable osg::buffered_object<GCState> _gc;
+            mutable osg::buffered_object<GLObjects> _globjects;
         };
 
         // Adapted from osgTerrain shared geometry class.
@@ -174,12 +170,13 @@ namespace osgEarth {
 
             std::vector<GL4Vertex> _verts;
 
-            struct GCState
+            // Shareable because they are static and bindless
+            struct GLObjects : public BindlessShareableGLObjects
             {
                 DrawElementsIndirectBindlessCommandNV _command;
                 GLBuffer::Ptr _vbo;
             };
-            mutable osg::buffered_object<GCState> _gc;
+            mutable osg::buffered_object<GLObjects> _globjects;
 
         private:
 
@@ -187,17 +184,11 @@ namespace osgEarth {
             friend class GeometryPool;
             mutable osg::buffered_object<GLenum> _ptype;
         };
-    }
-}
 
-
-namespace osgEarth {
-    namespace REX
-    {
 
         /**
-                 * Hashtable key for unique (and therefore shareable) geometries.
-                 */
+        * Hashtable key for unique (and therefore shareable) geometries.
+        */
         struct GeometryKey
         {
             GeometryKey() :
@@ -266,7 +257,8 @@ namespace osgEarth {
     }
 }
 
-namespace std {
+namespace std
+{
     // std::hash specialization for GeometryKey
     template<> struct hash<osgEarth::REX::GeometryKey> {
         inline size_t operator()(const osgEarth::REX::GeometryKey& key) const {
@@ -279,7 +271,8 @@ namespace std {
 }
 
 
-namespace osgEarth {
+namespace osgEarth
+{
     namespace REX
     {
     /**
@@ -298,54 +291,35 @@ namespace osgEarth {
     class GeometryPool : public osg::Group
     {
     public:
-        /** Construct the geometry pool */
+        //! Construct the geometry pool
         GeometryPool();
 
-    public:
-        
-
-        typedef std::unordered_map<GeometryKey, osg::ref_ptr<SharedGeometry>> GeometryMap;
-
-        /**
-         * Gets the Geometry associated with a tile key, creating a new one if
-         * necessary and storing it in the pool.
-         */
+        //! Gets the Geometry associated with a tile key, creating a new one if
+        //! necessary and storing it in the pool.
         void getPooledGeometry(
             const TileKey& tileKey,
             unsigned tileSize,
             const Map* map,
-            const TerrainOptions& options,
+            const TerrainOptionsAPI& options,
             osg::ref_ptr<SharedGeometry>& out,
             Cancelable* state);
 
-        /**
-         * The number of elements (incides) in the terrain skirt, if applicable
-         */
-        int getNumSkirtElements(
-            unsigned tileSize,
-            float skirtRatio) const;
-
-        /**
-         * Are we doing pooling?
-         */
+        //! Are we doing pooling?
         bool isEnabled() const { return _enabled; }
 
-        /**
-         * Clear and reset the pool.
-         */
+        //! Clear and reset the pool.
         void clear();
+
+    public: // osg::Node
+
+        //! Perform an update traversal to check for unused resources
+        void traverse(osg::NodeVisitor& nv);
 
         void resizeGLObjectBuffers(unsigned maxsize);
         void releaseGLObjects(osg::State* state) const;
 
-
-    public: // osg::Node
-
-        /** Perform an update traversal to check for unused resources. */
-        void traverse(osg::NodeVisitor& nv);
-
     protected:
-        virtual ~GeometryPool() { }
+        using GeometryMap = std::unordered_map<GeometryKey, osg::ref_ptr<SharedGeometry>>;
 
         mutable Threading::Gate<GeometryKey> _keygate;
         mutable Threading::Mutex _geometryMapMutex;
@@ -357,24 +331,8 @@ namespace osgEarth {
             unsigned       size,
             GeometryKey&   out) const;
 
-        SharedGeometry* createGeometry(
-            const TileKey& tileKey,
-            unsigned tileSize,
-            float skirtRatio,
-            bool gpuTessellation,
-            bool morphTerrain,
-            MeshEditor& meshEditor,
-            Cancelable* state) const;
-
-        // builds a primitive set to use for any tile without a mask
-        SharedDrawElements* createPrimitiveSet(
-            unsigned tileSize,
-            float skirtRatio,
-            bool UseGpuTessellation) const;
-
-        void tessellateSurface(
-            unsigned tileSize,
-            osg::DrawElements* primSet) const;
+        osg::ref_ptr<SharedGeometry> convertTileMeshToSharedGeometry(
+            const TileMesh& mesh) const;
 
         bool _enabled;
         bool _debug;

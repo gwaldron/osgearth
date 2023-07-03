@@ -116,11 +116,11 @@ SDFGenerator::setUseGPU(bool value)
 {
     _useGPU = value;
 
-    if (_useGPU && !_program.valid())
-    {
-        _program = new osg::Program();
-        _program->addShader(new osg::Shader(osg::Shader::COMPUTE, jfa_cs));
-    }
+    //if (_useGPU && !_program.valid())
+    //{
+    //    _program = new osg::Program();
+    //    _program->addShader(new osg::Shader(osg::Shader::COMPUTE, jfa_cs));
+    //}
 }
 
 GeoImage
@@ -185,6 +185,8 @@ SDFGenerator::createNearestNeighborField(
     GeoImage& nnfield,
     Cancelable* progress) const
 {
+    OE_PROFILING_ZONE;
+
     // Convert pixels to local coordinates relative to the lower-left corner of extent
     if (!nnfield.valid())
     {
@@ -216,12 +218,12 @@ SDFGenerator::createNearestNeighborField(
         }
     );
 
-    if (_useGPU)
-    {
-        // not good, too many barriers
-        compute_nnf_on_gpu(nnimage);
-    }
-    else
+    //if (_useGPU)
+    //{
+    //    // not good, too many barriers
+    //    compute_nnf_on_gpu(nnimage);
+    //}
+    //else
     {
         compute_nnf_on_cpu(nnimage);
     }
@@ -306,6 +308,7 @@ SDFGenerator::createDistanceField(
 }
 
 
+#if 0
 void
 SDFGenerator::compute_nnf_on_gpu(osg::Image* image) const
 {
@@ -333,52 +336,93 @@ SDFGenerator::NNFSession::renderImplementation(osg::State* state)
         ext->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 }
+#endif
+
+/*
+inline void readRGFloatPixel(ImageUtils::PixelReader& reader, osg::Vec4& pixel, unsigned int s, unsigned int t, unsigned int r=0)
+{
+    const float* data = (const float*)(reader.data(s, t, r));
+    pixel.x() = float(*data++);
+    pixel.y() = float(*data++);
+}
+
+inline void writeRGFloatPixel(ImageUtils::PixelWriter& writer, osg::Vec4& pixel, unsigned int s, unsigned int t, unsigned int r = 0)
+{
+    float* data = (float*)(writer.data(s, t, r));
+    *data++ = pixel.x();
+    *data++ = pixel.y();
+}
+*/
+
+inline void readRGFloatPixel(float* grid, unsigned int w, unsigned int h, osg::Vec4& pixel, unsigned int s, unsigned int t)
+{
+    float *data = &grid[(t * w + s) * 2];
+    pixel.x() = *data++;
+    pixel.y() = *data++;
+}
+
+inline void writeRGFloatPixel(float* grid, unsigned int w, unsigned int h, osg::Vec4& pixel, unsigned int s, unsigned int t)
+{
+    float* data = &grid[(t * w + s) * 2];
+    *data++ = pixel.x();
+    *data++ = pixel.y();
+}
 
 void
 SDFGenerator::compute_nnf_on_cpu(osg::Image* buf) const
 {
+    OE_PROFILING_ZONE;
+
     // Jump-Flood algorithm for computing discrete voronoi
     // https://www.comp.nus.edu.sg/~tants/jfa/i3d06.pdf
     osg::Vec4f pixel_points_to;
     osg::Vec4f remote;
     osg::Vec4f remote_points_to;
-    ImageUtils::PixelReader readBuf(buf);
-    ImageUtils::PixelWriter writeBuf(buf);
+
+    // There are many read/write accesses in a tight loop in this algorithm so it is much faster to access
+    // the raw image data directly by pointer using a known format (GL_RG float) rather than use the PixelReader functions.
+    
+    //ImageUtils::PixelReader readBuf(buf);
+    //ImageUtils::PixelWriter writeBuf(buf);
     int n = buf->s();
     constexpr float NODATA = 32767;
 
+    unsigned int imageWidth = buf->s();
+    unsigned int imageHeight = buf->t();
+    float* imageData = (float*)(buf->data());
+
     for (int L = n / 2; L >= 1; L /= 2)
     {
-        ImageUtils::ImageIterator iter(readBuf);
-        iter.forEachPixel([&]()
+        for (unsigned int iterT = 0; iterT < buf->t(); ++iterT)
+        {
+            for (unsigned int iterS = 0; iterS < buf->s(); ++iterS)
             {
-                readBuf(pixel_points_to, iter.s(), iter.t());
+                readRGFloatPixel(imageData, imageWidth, imageHeight, pixel_points_to, iterS, iterT);
 
                 // no data at this pixel yet? skip it; there is nothing to propagate.
                 if (pixel_points_to.x() != NODATA)
                 {
-                    for (int s = iter.s() - L; s <= iter.s() + L; s += L)
+                    for (int s = iterS - L; s <= iterS + L; s += L)
                     {
-                        if (s < 0 || s >= readBuf.s())
+                        if (s < 0 || s >= buf->s())
                             continue;
 
                         remote[0] = (float)s;
 
-                        for (int t = iter.t() - L; t <= iter.t() + L; t += L)
+                        for (int t = iterT - L; t <= iterT + L; t += L)
                         {
-                            if (t < 0 || t >= readBuf.t())
+                            if (t < 0 || t >= buf->t())
                                 continue;
-                            if (s == iter.s() && t == iter.t())
+                            if (s == iterS && t == iterT)
                                 continue;
 
                             remote[1] = (float)t;
 
-                            // fetch the coords the remote pixel points to:
-                            readBuf(remote_points_to, s, t);
+                            readRGFloatPixel(imageData, imageWidth, imageHeight, remote_points_to, s, t);
 
                             if (remote_points_to.x() == NODATA) // remote is unset? Just copy
                             {
-                                writeBuf(pixel_points_to, s, t);
+                                writeRGFloatPixel(imageData, imageWidth, imageHeight, pixel_points_to, s, t);
                             }
                             else
                             {
@@ -388,13 +432,144 @@ SDFGenerator::compute_nnf_on_cpu(osg::Image* buf) const
 
                                 if (d_possible < d_existing)
                                 {
-                                    writeBuf(pixel_points_to, s, t);
+                                    writeRGFloatPixel(imageData, imageWidth, imageHeight, pixel_points_to, s, t);
                                 }
                             }
                         }
                     }
                 }
             }
-        );
+        }
     }
+}
+
+#define INF 1E20
+
+//! Compute the 1d distance transform
+//! @param f Array of values to compute the distance transform function
+//! @param d Temporary work array of size at least n
+//! @param v Temporary work array of size at least n
+//! @param z Temporary work array of size at least n + 1
+//! @param n The size of f
+static void edt1d(const float* f, float* d, int* v, float* z, unsigned int n) {
+    int k = 0;
+    v[0] = 0;
+    z[0] = -INF;
+    z[1] = INF;
+    for (int q = 1; q <= n - 1; ++q) {
+        float s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+        while (s <= z[k]) {
+            k--;
+            s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+        }
+        k++;
+        v[k] = q;
+        z[k] = s;
+        z[k + 1] = INF;
+    }
+
+    k = 0;
+    for (int q = 0; q <= n - 1; ++q) {
+        while (z[k + 1] < q)
+            k++;
+        int r = v[k];
+        d[q] = (q - r) * (q - r) + f[r];
+    }
+}
+
+//! Compute the 2d distance transform of a grid of floats
+//! @param grid A 2d grid of floats
+//! @param width The width of the grid
+//! @param height The height of the grid
+void edt2d(float* grid, unsigned int width, unsigned int height)
+{
+    unsigned int maxLength = std::max(width, height);
+    float* f = new float[maxLength];
+    float* d = new float[maxLength];
+    int* v = new int[maxLength];
+    float* z = new float[maxLength + 1u];
+
+    // process columns
+    for (int x = 0; x < width; ++x) {
+        for (int y = 0; y < height; ++y) {
+            f[y] = grid[width * y + x];
+        }
+        // Do the distance transform.
+        edt1d(f, d, v, z, height);
+        // Copy d back into the grid
+        for (int y = 0; y < height; ++y) {
+            grid[width * y + x] = d[y];
+        }        
+    }
+
+    // process rows
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            f[x] = grid[width * y + x];
+        }
+
+        // Do the distance transform
+        edt1d(f, d, v, z, width);
+
+        // Copy d back into the grid
+        for (int x = 0; x < width; ++x) {
+            grid[width * y + x] = d[x];
+        }
+    }
+
+    delete[] f;
+    delete[] d;
+    delete[] v;
+    delete[] z;
+}
+
+osg::Image* SDFGenerator::createDistanceField(const osg::Image* image, float minPixels, float maxPixels) const
+{
+    OE_PROFILING_ZONE;
+
+    ImageUtils::PixelReader read(image);
+
+    unsigned int width = image->s();
+    unsigned int height = image->t();
+
+    // Initialize the grid to INF
+    std::vector<float> grid(width * height, INF);
+
+    // Mark pixels with alpha > 0 as having a distance of 0
+    for (unsigned int y = 0; y < height; ++y) {
+        for (unsigned int x = 0; x < width; ++x) {
+            osg::Vec4 pixel;
+            read(pixel, x, y);
+            float a = pixel.a();
+            if (a > 0.0f) {
+                grid[y * width + x] = 0;
+            }
+        }
+    }
+
+    // Compute the distance transform
+    edt2d(grid.data(), width, height);
+
+    // Copy the distance transform back into the image
+    osg::ref_ptr<osg::Image> sdf = new osg::Image();
+    sdf->allocateImage(width, height, 1, GL_RED, GL_UNSIGNED_BYTE);
+    sdf->setInternalTextureFormat(GL_R8);
+
+    osg::Vec4 p;
+
+    ImageUtils::PixelWriter write(sdf.get());
+    write.assign(Color(1, 1, 1, 1));
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            // The distance computed is the square distance, so take the square root here to get the actual distance
+            float d = sqrt(grid[width * y + x]);
+            // Remap the value between 0 and 1
+            float value = unitremap(d, minPixels, maxPixels);
+            p.set(value, 1.0, 1.0, 1.0);
+            write(p, x, y);
+        }
+    }
+    return sdf.release();
 }

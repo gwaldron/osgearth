@@ -72,14 +72,14 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     // load an earth file and parse demo arguments
-    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
+    auto node = MapNodeHelper().load(arguments, &viewer);
     if ( !node )
         return usage(argv);
 
     root->addChild( node );
 
     // find the map node that we loaded.
-    MapNode* mapNode = MapNode::findMapNode(node);
+    MapNode* mapNode = MapNode::get(node);
     if ( !mapNode )
         return usage(argv);
 
@@ -358,7 +358,7 @@ main(int argc, char** argv)
         if (image.valid())
         {
             imageOverlay = new ImageOverlay(mapNode, image.get());
-            imageOverlay->setBounds( Bounds( -100.0, 35.0, -90.0, 40.0) );
+            imageOverlay->setBounds(Bounds(-100.0, 35.0, 0.0, -90.0, 40.0, 0.0));
             annoGroup->addChild( imageOverlay );
 
             editGroup->addChild( new ImageOverlayEditor(imageOverlay) );

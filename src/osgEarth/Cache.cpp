@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
 #include "sha1.hpp"
+#include <osgEarth/Notify>
 
 #include <osgDB/ReadFile>
 

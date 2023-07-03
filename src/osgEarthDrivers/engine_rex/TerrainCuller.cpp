@@ -1,3 +1,4 @@
+
 /* -*-c++-*- */
 /* osgEarth - Geospatial SDK for OpenSceneGraph
  * Copyright 2008-2014 Pelican Mapping
@@ -58,7 +59,7 @@ TerrainCuller::reset(
     // skip surface nodes is this is a shadow camera and shadowing is disabled.
     _acceptSurfaceNodes =
         CameraUtils::isShadowCamera(_cv->getCurrentCamera()) == false ||
-        context->options().castShadows() == true;
+        context->options().getCastShadows() == true;
 
     setCullingMode(_cv->getCullingMode());
     setFrameStamp(new osg::FrameStamp(*_cv->getFrameStamp()));
@@ -113,7 +114,12 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
         // Layer marked for drawing?
         if (drawable->_draw)
         {
-            // Cull based on the layer extent.
+            drawable->_tiles.emplace_back();
+            DrawTileCommand& tile = drawable->_tiles.back();
+            tile._intersectsLayerExtent = true;
+
+            // If the tile is outside the layer extent, we MAY or MAY NOT need to
+            // actually render it. Mark it as such.
             if (drawable->_layer)
             {
                 const LayerExtent& le = (*_layerExtents)[drawable->_layer->getUID()];
@@ -124,17 +130,17 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
                     //OE_DEBUG << LC << "Skippping " << drawable->_layer->getName() 
                     //    << " key " << tileNode->getKey().str()
                     //    << " because it was culled by extent." << std::endl;
-                    return 0L;
-                }            
-            }
+                    //return 0L;
 
-            DrawTileCommand tile;
+                    tile._intersectsLayerExtent = false;
+                }
+            }
 
             // install everything we need in the Draw Command:
             tile._colorSamplers = pass ? &(pass->samplers()) : nullptr;
             tile._sharedSamplers = &model->_sharedSamplers;
-            tile._modelViewMatrix = _cv->getModelViewMatrix();
-            tile._localToWorld = new osg::RefMatrix(surface->getMatrix());
+            tile._modelViewMatrix = *_cv->getModelViewMatrix();
+            tile._localToWorld = surface->getMatrix();
             tile._keyValue = tileNode->getTileKeyValue();
             tile._geom = surface->getDrawable()->_geom.get();
             tile._tile = surface->getDrawable();
@@ -150,7 +156,6 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
             // assign the draw sequence:
             tile._sequence = drawable->_tiles.size();
 
-            drawable->_tiles.emplace_back(std::move(tile));
             return &drawable->_tiles.back();
         }
     }
@@ -248,9 +253,9 @@ TerrainCuller::apply(TileNode& node)
             SurfaceNode* surface = node.getSurfaceNode();
                     
             // push the surface matrix:
-            osg::RefMatrix* matrix = createOrReuseMatrix(*_cv->getModelViewMatrix());
-            surface->computeLocalToWorldMatrix(*matrix,this);
-            _cv->pushModelViewMatrix(matrix, surface->getReferenceFrame());
+            osg::ref_ptr<osg::RefMatrix> matrix = new osg::RefMatrix(*_cv->getModelViewMatrix());
+            surface->computeLocalToWorldMatrix(*matrix.get(),this);
+            _cv->pushModelViewMatrix(matrix.get(), surface->getReferenceFrame());
 
             if (!_cv->isCulled(surface->getAlignedBoundingBox()))
             {
@@ -258,11 +263,16 @@ TerrainCuller::apply(TileNode& node)
                 for(auto patchLayer : _patchLayers)
                 {
 #if 1
+                    float range, morphStart, morphEnd;
+                    getEngineContext()->getSelectionInfo().get(node.getKey(), range, morphStart, morphEnd);
+
                     DrawTileCommand* cmd = addDrawCommand(patchLayer->getUID(), &renderModel, nullptr, &node);
                     if (cmd)
                     {
                         cmd->_drawPatch = true;
                         cmd->_drawCallback = patchLayer->getRenderer();
+                        cmd->_morphStartRange = morphStart;
+                        cmd->_morphEndRange = morphEnd;
                         //cmd->_drawCallback = patchLayer->getDrawCallback();
                     }
 #else

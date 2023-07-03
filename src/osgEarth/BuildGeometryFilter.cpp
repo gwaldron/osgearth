@@ -46,6 +46,7 @@
 #include <osgDB/WriteFile>
 #include <osg/Version>
 #include <iterator>
+#include <osgEarth/Notify>
 
 #define LC "[BuildGeometryFilter] "
 
@@ -826,8 +827,8 @@ namespace
         out.clear();
 
         Bounds b = geometry->getBounds();
-        double tw = b.width() / (double)numCols;
-        double th = b.height() / (double)numRows;
+        double tw = width(b) / (double)numCols;
+        double th = height(b) / (double)numRows;
 
         // Get the average Z, since GEOS will set teh Z of new verts to that of the cropping polygon,
         // which is stupid but that's how it is.

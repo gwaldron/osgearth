@@ -1,0 +1,53 @@
+/* --*-c++-*-- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_XYZ_MODEL_GRAPH_H
+#define OSGEARTH_XYZ_MODEL_GRAPH_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/SimplePager>
+#include <osgEarth/MapNode>
+#include <osgEarth/StateSetCache>
+
+namespace osgEarth {
+
+    /**
+     * A scene graph node that loads pre-tiled quadtree model data.
+     */
+    class OSGEARTH_EXPORT XYZModelGraph : public SimplePager
+    {
+    public:
+         XYZModelGraph(const osgEarth::Map* map, const Profile* profile, const URI& url, bool invertY, const osgDB::Options* options);
+
+         void setOwnerName(const std::string& value);
+
+    public: // SimplePager
+
+         virtual osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress) override;
+
+    private:
+         std::string _ownerName;        
+         URI _url;
+         bool _invertY;
+         osg::ref_ptr< osgEarth::StateSetCache > _statesetCache;
+         osg::ref_ptr< osgDB::Options > _options;
+    };
+}
+
+#endif // OSGEARTH_XYZ_MODEL_GRAPH_H

@@ -450,6 +450,49 @@ ImageUtils::bicubicUpsample(const osg::Image* source,
     return true;
 }
 
+// helper function for calculating memory requirements and mipmap offsets of an
+// image without mipmaps.
+//
+// In OpenGL, the dimensions of map[n+1] are max(floor(s[n] / 2), 1),
+// max(floor(t[n] / 2), 1). This means that, in order to account for rectangular
+// maps, we cannot just divide the storage by 4 at each step.
+//
+// minSide - minimum for at least one side
+// minLevelSize - final minimum for both sides
+
+int computeMipmapMemory(const osg::Image* input, osg::Image::MipmapDataType& mipOffsets,
+                        int minSide, int minLevelSize)
+{
+    const int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
+    int imageSizeBytes = input->getTotalSizeInBytes();
+    // offset vector does not include level 0 (the full-resolution level)
+    mipOffsets.reserve(numLevels-1);
+
+    // calculate memory requirements:
+    int totalSizeBytes = imageSizeBytes;
+    int s = input->s();
+    int t = input->t();
+    for(int i = 1; i < numLevels; ++i)
+    {
+        if ((s < minLevelSize || t < minLevelSize)
+            || (s < minSide && t < minSide))
+            break;
+        mipOffsets.push_back(totalSizeBytes);
+        if (s > 1)
+        {
+            s >>= 1;
+            imageSizeBytes >>= 1;
+        }
+        if (t > 1)
+        {
+            t >>= 1;
+            imageSizeBytes >>= 1;
+        }
+        totalSizeBytes += imageSizeBytes;
+    }
+    return totalSizeBytes;
+}
+
 const osg::Image*
 ImageUtils::mipmapImage(const osg::Image* input, int minLevelSize)
 {
@@ -486,40 +529,14 @@ ImageUtils::mipmapImage(const osg::Image* input, int minLevelSize)
     }
 
     // first, build the image that will hold all the mipmap levels.
-    int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
-
-    // DXT compression has minimum mipmap sizes; enforce those now:    
-    unsigned int minSize = 16;
-    for (int level = 0; level < numLevels; ++level)
-    {
-        int level_s = input->s() >> level;
-        int level_t = input->t() >> level;
-
-        if (level_s < minLevelSize || level_t < minLevelSize)
-        {
-            numLevels = level;
-            break;
-        }
-
-        if (level_s < minSize && level_t < minSize)
-        {
-            numLevels = level;
-        }
-    }
-
+    // DXT compression has minimum mipmap sizes
+    int minSize = 16;
     int imageSizeBytes = input->getTotalSizeInBytes();
 
     // offset vector does not include level 0 (the full-resolution level)
     osg::Image::MipmapDataType mipOffsets;
-    mipOffsets.reserve(numLevels-1);
-
-    // calculate memory requirements:
-    int totalSizeBytes = imageSizeBytes;
-    for( int i=1; i<numLevels; ++i )
-    {
-        mipOffsets.push_back(totalSizeBytes);
-        totalSizeBytes += (imageSizeBytes >> i);
-    }
+    const int totalSizeBytes = computeMipmapMemory(input, mipOffsets, minSize, minLevelSize);
+    const int numLevels = mipOffsets.size() + 1;
 
     osg::Image* output = new osg::Image();
     output->setName(input->getName());
@@ -558,8 +575,8 @@ ImageUtils::mipmapImage(const osg::Image* input, int minLevelSize)
             output->t(),
             output->getDataType(),
             output->data(),
-            output->s() >> level,
-            output->t() >> level,
+            std::max(output->s() >> level, 1),
+            std::max(output->t() >> level, 1),
             output->getDataType(),
             output->getMipmapData(level));
 #else
@@ -619,20 +636,12 @@ ImageUtils::mipmapImageInPlace(osg::Image* input)
     }
 
     // first, build the image that will hold all the mipmap levels.
-    int numLevels = osg::Image::computeNumberOfMipmapLevels(input->s(), input->t(), input->r());
     int imageSizeBytes = input->getTotalSizeInBytes();
 
     // offset vector does not include level 0 (the full-resolution level)
     osg::Image::MipmapDataType mipOffsets;
-    mipOffsets.reserve(numLevels-1);
-
-    // calculate memory requirements:
-    int totalSizeBytes = imageSizeBytes;
-    for( int i=1; i<numLevels; ++i )
-    {
-        mipOffsets.push_back(totalSizeBytes);
-        totalSizeBytes += (imageSizeBytes >> i);
-    }
+    const int totalSizeBytes = computeMipmapMemory(input, mipOffsets, 4, 4);
+    const int numLevels = mipOffsets.size() + 1;
 
     // allocate space for the new data and copy over level 0 of the old data
     unsigned char* newData = new unsigned char[totalSizeBytes];
@@ -666,8 +675,8 @@ ImageUtils::mipmapImageInPlace(osg::Image* input)
             input->t(),
             input->getDataType(),
             input->data(),
-            input->s() >> level,
-            input->t() >> level,
+            std::max(input->s() >> level, 1),
+            std::max(input->t() >> level, 1),
             input->getDataType(),
             input->getMipmapData(level));
     }
@@ -1045,7 +1054,7 @@ ImageUtils::cropImage(osg::Image* image, unsigned int x, unsigned int y, unsigne
 
     for (int layer = 0; layer < image->r(); ++layer)
     {
-        for (int src_row = y, dst_row = 0; dst_row < height; src_row++, dst_row++)
+        for (unsigned src_row = y, dst_row = 0; dst_row < height; src_row++, dst_row++)
         {
             const void* src_data = image->data(x, src_row, layer);
             void* dst_data = cropped->data(0, dst_row, layer);
@@ -1129,11 +1138,41 @@ ImageUtils::createEmptyImage(unsigned int s, unsigned int t, unsigned int r)
     return empty;
 }
 
+namespace
+{
+    // Fast path isEmptyImage that works directly on an GL_RGBA GL_UNSIGNED_BYTE image.
+    static bool isEmptyRGBA(const osg::Image* image, unsigned char alphaThreshold)
+    {
+        const unsigned char* ptr = image->data();
+
+        unsigned int numPixels = image->s() * image->t();
+
+        for (unsigned int i = 0; i < numPixels; ++i)
+        {
+            unsigned char r = *ptr++;
+            unsigned char g = *ptr++;
+            unsigned char b = *ptr++;
+            unsigned char a = *ptr++;
+            if (a > alphaThreshold)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
 bool
 ImageUtils::isEmptyImage(const osg::Image* image, float alphaThreshold)
 {
     if ( !hasAlphaChannel(image) || !PixelReader::supports(image) )
         return false;
+
+    // Use the fast path RGBA function 
+    if (image->getPixelFormat() == GL_RGBA && image->getDataType() == GL_UNSIGNED_BYTE)
+    {
+        return isEmptyRGBA(image, (unsigned char)(alphaThreshold * 255.0f));
+    }
 
     PixelReader read(image);
 
@@ -1279,8 +1318,8 @@ ImageUtils::replaceNoDataValues(osg::Image*       target,
     }
 
     float
-        xscale = targetBounds.width()/referenceBounds.width(),
-        yscale = targetBounds.height()/referenceBounds.height();
+        xscale = width(targetBounds)/width(referenceBounds),
+        yscale = height(targetBounds)/height(referenceBounds);
 
     float
         xbias = targetBounds.xMin() - referenceBounds.xMin(),
@@ -1735,9 +1774,10 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(ia->_normalized);
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float l = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float a = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            float l = float(*ptr++) * scale;
+            float a = float(*ptr) * scale;
             out.set(l, l, l, a);
         }
     };
@@ -1747,9 +1787,10 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
+            double scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr   = (T)( c.a() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.r() / scale );
+            *ptr   = (T)( c.a() / scale );
         }
     };
 
@@ -1758,9 +1799,10 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(ia->_normalized);
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
+            float red = float(*ptr++) * scale;
+            float g = float(*ptr++) * scale;
             out.set(red, g, 0.0f, 1.0f);
         }
     };
@@ -1770,9 +1812,10 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
+            double scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.r() / scale );
+            *ptr++ = (T)( c.g() / scale );
         }
     };
 
@@ -1781,10 +1824,11 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(ia->_normalized);
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float b = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            float red = float(*ptr++) * scale;
+            float g = float(*ptr++) * scale;
+            float b = float(*ptr) * scale;
             out.set(red, g, b, 1.0f);
         }
     };
@@ -1794,10 +1838,11 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
+            double scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.b() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.r() / scale );
+            *ptr++ = (T)( c.g() / scale );
+            *ptr++ = (T)( c.b() / scale );
         }
     };
 
@@ -1806,11 +1851,12 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(ia->_normalized);
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float b = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float a = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            float red = float(*ptr++) * scale;
+            float g = float(*ptr++) * scale;
+            float b = float(*ptr++) * scale;
+            float a = float(*ptr) * scale;
             out.set(red, g, b, a);
         }
     };
@@ -1820,11 +1866,12 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
+            double scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.b() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.a() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.r() / scale );
+            *ptr++ = (T)( c.g() / scale );
+            *ptr++ = (T)( c.b() / scale );
+            *ptr++ = (T)( c.a() / scale );
         }
     };
 
@@ -1833,10 +1880,11 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(ia->_normalized);
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float b = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float red = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            float b = float(*ptr++) * scale;
+            float g = float(*ptr++) * scale;
+            float red = float(*ptr) * scale;
             out.set(red, g, b, 1.0f);
         }
     };
@@ -1846,10 +1894,11 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
+            double scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (T)( c.b() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.b() / scale );
+            *ptr++ = (T)( c.g() / scale );
+            *ptr++ = (T)( c.r() / scale );
         }
     };
 
@@ -1858,11 +1907,12 @@ namespace
     {
         static void read(const ImageUtils::PixelReader* ia, osg::Vec4f& out, int s, int t, int r, int m)
         {
+            float scale = GLTypeTraits<T>::scale(ia->_normalized);
             const T* ptr = (const T*)ia->data(s, t, r, m);
-            float b = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float g = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float red = float(*ptr++) * GLTypeTraits<T>::scale(ia->_normalized);
-            float a = float(*ptr) * GLTypeTraits<T>::scale(ia->_normalized);
+            float b = float(*ptr++) * scale;
+            float g = float(*ptr++) * scale;
+            float red = float(*ptr++) * scale;
+            float a = float(*ptr) * scale;
             out.set(red, g, b, a);
         }
     };
@@ -1872,11 +1922,12 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
+            double scale = GLTypeTraits<T>::scale(iw->_normalized);
             T* ptr = (T*)iw->data(s, t, r, m);
-            *ptr++ = (T)( c.b() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.g() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.r() / GLTypeTraits<T>::scale(iw->_normalized) );
-            *ptr++ = (T)( c.a() / GLTypeTraits<T>::scale(iw->_normalized) );
+            *ptr++ = (T)( c.b() / scale );
+            *ptr++ = (T)( c.g() / scale );
+            *ptr++ = (T)( c.r() / scale );
+            *ptr++ = (T)( c.a() / scale );
         }
     };
 
@@ -1951,15 +2002,90 @@ namespace
     };
 
     template<>
+    struct ColorReader<GL_COMPRESSED_RED_GREEN_RGTC2_EXT, float>
+    {
+        // RGTC2 == BC5
+        // https://learn.microsoft.com/en-us/windows/win32/direct3d10/d3d10-graphics-programming-guide-resources-block-compression#bc5
+        static void read(const ImageUtils::PixelReader* pr, osg::Vec4f& out, int s, int t, int r, int m)
+        {
+            static const int BLOCK_SIZE_BYTES = 16;
+
+            unsigned blocksPerRow = pr->_image->s() / 4;
+            unsigned bs = s / 4, bt = t / 4;
+            unsigned blockStart = (bt * blocksPerRow + bs) * BLOCK_SIZE_BYTES;
+            int ls = s - 4 * bs, lt = t - 4 * bt;
+            int index = ls + (4 * lt);
+
+            const std::uint64_t* block_ptr = (const std::uint64_t*)(pr->data() + blockStart);
+
+            for (int n = 0; n <= 1; n++)
+            {
+                const std::uint64_t& block = *block_ptr++;
+
+                int i = (block >> (16 + (3 * index))) & 0x07;
+
+                float palette[2] = {
+                    float((block >> 0) & 0xFF) / 255.0f,
+                    float((block >> 8) & 0xFF) / 255.0f
+                };
+
+                out[n] =
+                    i == 0 ? palette[0] :
+                    i == 1 ? palette[1] :
+                    palette[0] > palette[1] ? (palette[0] * (float)(8 - i) + palette[1] * (float)(i - 1)) / 7.0f :
+                    i == 6 ? 0.0f :
+                    i == 7 ? 1.0f :
+                    (palette[0] * (float)(6 - i) + palette[1] * (float)(i - 1)) / 5.0f;
+            }
+
+            out[2] = 0.0;
+            out[3] = 1.0;
+
+#if 0 // decodes an entire block - left here as a reference
+                float palette[8];
+                palette[0] = float((block >> 0) & 0xFF) / 255.0f;
+                palette[1] = float((block >> 8) & 0xFF) / 255.0f;
+
+                if (palette[0] > palette[1]) {
+                    palette[2] = (6.0f * palette[0] + 1.0f * palette[1]) / 7.0f;
+                    palette[3] = (5.0f * palette[0] + 2.0f * palette[1]) / 7.0f;
+                    palette[4] = (4.0f * palette[0] + 3.0f * palette[1]) / 7.0f;
+                    palette[5] = (3.0f * palette[0] + 4.0f * palette[1]) / 7.0f;
+                    palette[6] = (2.0f * palette[0] + 5.0f * palette[1]) / 7.0f;
+                    palette[7] = (1.0f * palette[0] + 6.0f * palette[1]) / 7.0f;
+                }
+                else {
+                    palette[2] = (4.0f * palette[0] + 1.0 * palette[1]) / 5.0f;
+                    palette[3] = (3.0f * palette[0] + 2.0 * palette[1]) / 5.0f;
+                    palette[4] = (2.0f * palette[0] + 3.0 * palette[1]) / 5.0f;
+                    palette[5] = (1.0f * palette[0] + 4.0 * palette[1]) / 5.0f;
+                    palette[6] = 0.0f;
+                    palette[7] = 1.0f;
+                }
+
+                // decodes the whole block of indices (left here for reference)
+                int indices[16];
+                block >>= 16;
+                for (int i = 0; i < 16; ++i) {
+                    indices[i] = block & 0x07;
+                    block >>= 3;
+                }
+
+                out[n] = palette[indices[i]];
+#endif
+        }
+    };
+
+    template<>
     struct ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>
     {
         static void read(const ImageUtils::PixelReader* pr, osg::Vec4f& out, int s, int t, int r, int m)
         {
-            static const int BLOCK_BYTES = 8;
+            static const int BLOCK_SIZE_BYTES = 8;
 
             unsigned int blocksPerRow = pr->_image->s()/4;
             unsigned int bs = s/4, bt = t/4;
-            unsigned int blockStart = (bt*blocksPerRow+bs) * BLOCK_BYTES;
+            unsigned int blockStart = (bt*blocksPerRow+bs) * BLOCK_SIZE_BYTES;
 
             const GLushort* p = (const GLushort*)(pr->data() + blockStart);
 
@@ -2002,6 +2128,85 @@ namespace
                 index == 0? c0 :
                 index == 1? c1 :
                 index == 2? c2 : c3;
+        }
+    };
+
+    template<>
+    struct ColorReader<GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, GLubyte>
+    {
+        static void read(const ImageUtils::PixelReader* pr, osg::Vec4f& out, int s, int t, int r, int m)
+        {
+            static const int BLOCK_SIZE_BYTES = 16;
+
+            // blocks are 4x4:
+            int blocksPerRow = pr->_image->s() / 4;
+            int bs = s / 4, bt = t / 4;
+            int blockStart = (bt*blocksPerRow + bs) * BLOCK_SIZE_BYTES;
+            int ls = s - 4 * bs, lt = t - 4 * bt;
+            int blockIndex = ls + (4 * lt);
+
+            auto ptr = pr->data() + blockStart;
+            GLfloat a0 = (float)(*(ptr + 0)) / 255.0f;
+            GLfloat a1 = (float)(*(ptr + 1)) / 255.0f;
+            const GLubyte* bits = (ptr + 2);
+            unsigned long ac1 = bits[2] | (bits[3] << 8) | (bits[4] << 16) | (bits[5] << 24);
+            unsigned short ac2 = bits[0] | (bits[1] << 8);
+
+            int ac;
+            if (blockIndex <= 12)
+                ac = (ac2 >> blockIndex) & 0x7;
+            else if (blockIndex == 15)
+                ac = (ac2 >> 15) | ((ac1 << 1) & 0x5);
+            else
+                ac = (ac1 >> (blockIndex - 16)) & 0x7;
+
+            float alpha =
+                ac == 0 ? a0 :
+                ac == 1 ? a1 :
+                a0 > a1 ? (float(8 - ac)*a0 + float(ac - 1)*a1) / 7.0f :
+                ac == 6 ? 0.0f :
+                ac == 7 ? 1.0f :
+                ((float(6 - ac)*a0 + float(ac - 1)*a1)) / 5.0;
+            
+            // color (same as DXT1)
+            const GLushort* p = (const GLushort*)(pr->data() + blockStart + 8);
+
+            GLushort c0p = *p++;
+            osg::Vec4f c0(
+                (float)(c0p >> 11) / 31.0f,
+                (float)((c0p & 0x07E0) >> 5) / 63.0f,
+                (float)((c0p & 0x001F)) / 31.0f,
+                alpha);
+
+            GLushort c1p = *p++;
+            osg::Vec4f c1(
+                (float)(c1p >> 11) / 31.0f,
+                (float)((c1p & 0x07E0) >> 5) / 63.0f,
+                (float)((c1p & 0x001F)) / 31.0f,
+                alpha);
+
+            static const float one_third = 1.0f / 3.0f;
+            static const float two_thirds = 2.0f / 3.0f;
+
+            osg::Vec4f c2, c3;
+            if (c0p > c1p)
+            {
+                c2 = c0 * two_thirds + c1 * one_third;
+                c3 = c0 * one_third + c1 * two_thirds;
+            }
+            else
+            {
+                c2 = c0 * 0.5 + c1 * 0.5;
+                c3.set(0, 0, 0, alpha);
+            }
+
+            unsigned color_lut = *(unsigned*)p;
+            unsigned color_index = (color_lut >> (2 * blockIndex)) & 0x3; // 2-bit index
+
+            out =
+                color_index == 0 ? c0 :
+                color_index == 1 ? c1 :
+                color_index == 2 ? c2 : c3;
         }
     };
 
@@ -2074,6 +2279,12 @@ namespace
         case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
             return &ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>::read;
             break;
+        case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
+            return &ColorReader<GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, GLubyte>::read;
+            break;
+        case GL_COMPRESSED_RED_GREEN_RGTC2_EXT:
+            return &ColorReader<GL_COMPRESSED_RED_GREEN_RGTC2_EXT, float>::read;
+            break;
         default:
             return 0L;
             break;
@@ -2084,15 +2295,19 @@ namespace
 ImageUtils::PixelReader::PixelReader() :
     _bilinear(false),
     _sampleAsTexture(false),
-    _sampleAsRepeatingTexture(false)
+    _sampleAsRepeatingTexture(false),
+    _image(nullptr),
+    _read(nullptr)
 {
-    setImage(NULL);
+    //nop
 }
 
 ImageUtils::PixelReader::PixelReader(const osg::Image* image) :
     _bilinear(false),
     _sampleAsTexture(false),
-    _sampleAsRepeatingTexture(false)
+    _sampleAsRepeatingTexture(false),
+    _image(nullptr),
+    _read(nullptr)
 {
     setImage(image);
 }
@@ -2101,6 +2316,7 @@ void
 ImageUtils::PixelReader::setImage(const osg::Image* image)
 {
     _image = image;
+
     if (image)
     {
         _normalized = image->getDataType() == GL_UNSIGNED_BYTE;
@@ -2209,13 +2425,13 @@ namespace {
 void
 ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, int m) const
 {
+    OE_SOFT_ASSERT(_image != nullptr);
+
     if (!_bilinear)
     {
         // NN sample with clamp-to-edge from mesa in s_texfilter.c
-        const float umin = 1.0f / (2.0f * (float)_image->s());
-        const float vmin = 1.0f / (2.0f * (float)_image->t());
-        int s = u<umin? 0 : u>(1.0f-umin)? _image->s()-1 : (int)floorf(u*(float)_image->s());
-        int t = v<vmin? 0 : v>(1.0f-vmin)? _image->t()-1 : (int)floorf(v*(float)_image->t());
+        unsigned s, t;
+        nnUVtoST(u, v, s, t, _image->s(), _image->t());
         _read(this, out, s, t, r, m);
     }
 
@@ -2328,13 +2544,13 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, float u, float v, int r, in
 void
 ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, int m) const
 {
+    OE_SOFT_ASSERT(_image != nullptr);
+
     if (!_bilinear)
     {
         // NN sample with clamp-to-edge from mesa in s_texfilter.c
-        const double umin = 1.0 / (2.0 * (double)_image->s());
-        const double vmin = 1.0 / (2.0 * (double)_image->t());
-        int s = u<umin ? 0 : u>(1.0 - umin) ? _image->s() - 1 : (int)floorf(u*(double)_image->s());
-        int t = v<vmin ? 0 : v>(1.0 - vmin) ? _image->t() - 1 : (int)floorf(v*(double)_image->t());
+        unsigned s, t;
+        nnUVtoST(u, v, s, t, _image->s(), _image->t());
         _read(this, out, s, t, r, m);
     }
 
@@ -2637,4 +2853,52 @@ TextureAndImageVisitor::apply(osg::StateSet& stateSet)
             }
         }
     }
+}
+
+optional<int>
+ImageUtils::getMaxTextureSize(const osg::Image* image, const osgDB::Options* options)
+{
+    optional<int> out;
+
+    int maxdim = Registry::instance()->getMaxTextureSize();
+    if (maxdim < INT_MAX)
+    {
+        maxdim = std::max(maxdim, 1);
+    }
+
+    else if (options)
+    {
+        if (options->getUserValue("osgearth.max_texture_size", maxdim))
+        {
+            maxdim = std::max(maxdim, 1);
+        }
+
+        else if (!options->getOptionString().empty())
+        {
+            std::vector<std::string> tokens;
+            StringTokenizer(options->getOptionString(), tokens);
+            for (auto& token : tokens)
+            {
+                std::vector<std::string> kvp;
+                StringTokenizer(token, kvp, "=");
+                if (kvp.size() == 2 && kvp[0] == "osgearth.max_texture_size")
+                {
+                    maxdim = std::max(as<int>(kvp[1], maxdim), 1);
+                    break;
+                }
+            }
+        }
+    }
+
+    if (maxdim < INT_MAX)
+    {
+        if (image == nullptr ||
+            image->s() > maxdim ||
+            image->t() > maxdim)
+        {
+            out = maxdim;
+        }
+    }
+
+    return out;
 }

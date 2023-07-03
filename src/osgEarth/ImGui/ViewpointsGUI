@@ -21,6 +21,8 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/Viewpoint>
+#include <osgEarth/XmlUtils>
+#include <osgEarth/ExampleResources>
 
 namespace osgEarth {
     namespace GUI
@@ -32,10 +34,14 @@ namespace osgEarth {
         {
             osg::observer_ptr<MapNode> _mapNode;
             float _duration;
+            bool _initialized;
+            std::vector<Viewpoint> _viewpoints;
 
-            ViewpointsGUI() : 
+            ViewpointsGUI() :
                 BaseGUI("Viewpoints"),
-                _scannedForViewpoints(false) { }
+                _initialized(false)
+            {
+            }
 
             void draw(osg::RenderInfo& ri)
             {
@@ -45,31 +51,41 @@ namespace osgEarth {
                 if (!findNodeOrHide(_mapNode, ri))
                     return;
 
-                if (!_scannedForViewpoints)
+
+                if (!_initialized)
                 {
                     Config conf = _mapNode->getConfig();
-                    for (ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i)
+                    for (auto& i : conf.children())
                     {
-                        if (i->key() == "viewpoints")
+                        if (i.key() == "viewpoints")
                         {
-                            _duration = i->value("time", 1.0f);
-                            const ConfigSet& children = i->children("viewpoint");
-                            if (children.size() > 0)
+                            _duration = i.value("time", 1.0f);
+                            auto key = 0;
+                            for(auto& j : i.children("viewpoint"))
                             {
-                                for (ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i)
+                                _viewpoints.push_back(Viewpoint(j));
+
+                                if (key < 9)
                                 {
-                                    _viewpoints.push_back(Viewpoint(*i));
+                                    EventRouter::get(view(ri)).onKeyPress(
+                                        (osgGA::GUIEventAdapter::KeySymbol)((int)osgGA::GUIEventAdapter::KEY_1 + key),
+                                        [&, key]() {
+                                            auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                                            if (manip)
+                                                manip->setViewpoint(_viewpoints[key]);
+                                        });
+                                    key++;
                                 }
                             }
                         }
                     }
-                    _scannedForViewpoints = true;
+
+                    _initialized = true;
                 }
 
                 ImGui::Begin(name(), visible());
                 {
                     OE_SOFT_ASSERT_AND_RETURN(view(ri), void());
-
                     auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
 
                     if (!manip)
@@ -100,12 +116,20 @@ namespace osgEarth {
                         ImGui::PopID();
                         ImGui::Separator();
                     }
+
+                    if (ImGui::Button("Print current viewpoint as XML"))
+                    {
+                        auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                        if (manip)
+                        {
+                            Util::XmlDocument xml(manip->getViewpoint().getConfig());
+                            xml.store(std::cout);
+                            std::cout << std::endl;
+                        }
+                    }
                 }
                 ImGui::End();
             }
-
-            bool _scannedForViewpoints;
-            std::vector<Viewpoint> _viewpoints;
         };
     }
 }

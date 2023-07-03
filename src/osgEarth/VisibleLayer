@@ -116,10 +116,6 @@ namespace osgEarth
 
         void fireCallback(VisibleLayerCallback::MethodPtr);
 
-        //! Subclass can call this to install a default shader for applying
-        //! opacity when the layer doesn't handle it itself
-        void installDefaultOpacityShader();
-
     private:
         osg::ref_ptr<osg::Uniform> _opacityU;
         osg::ref_ptr<osg::Uniform> _rangeU;

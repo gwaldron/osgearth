@@ -225,11 +225,12 @@ XYZImageLayer::openImplementation()
 
     osg::ref_ptr<const Profile> profile = getProfile();
 
+    DataExtentList dataExtents;
     Status status = _driver.open(
         options().url().get(),
         profile,
         options().format().get(),
-        dataExtents(),
+        dataExtents,
         getReadOptions());
 
     if (status.isError())
@@ -239,6 +240,8 @@ XYZImageLayer::openImplementation()
     {
         setProfile(profile.get());
     }
+
+    setDataExtents(dataExtents);
 
     return Status::NoError;
 }

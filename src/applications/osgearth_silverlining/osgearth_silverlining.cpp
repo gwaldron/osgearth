@@ -179,8 +179,8 @@ main(int argc, char** argv)
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
-    osg::Group* node = MapNodeHelper().load(arguments, &viewer, createUI());
-    if ( node )
+    auto node = MapNodeHelper().load(arguments, &viewer, createUI());
+    if (node.valid() && MapNode::get(node))
     {
         // Make sure we don't already have a sky.
         SkyNode* skyNode = osgEarth::findTopMostNodeOfType<SkyNode>(node);

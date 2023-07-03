@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TileVisitor>
-#include <osgEarth/CacheEstimator>
+#include <osgEarth/TileEstimator>
 #include <osgEarth/FileUtils>
 #include <thread>
 
@@ -57,12 +57,14 @@ void TileVisitor::resetProgress()
     _processed = 0;
 }
 
-void TileVisitor::addExtent( const GeoExtent& extent )
+void
+TileVisitor::addExtentToVisit( const GeoExtent& extent )
 {
-    _extents.push_back( extent );
+    _extentsToVisit.push_back( extent );
 }
 
-void TileVisitor::addDataExtent(const GeoExtent& extent)
+void
+TileVisitor::addExtentToDataIndex(const GeoExtent& extent)
 {
     double min[2] = { extent.xMin(), extent.yMin() };
     double max[2] = { extent.xMax(), extent.yMax() };
@@ -71,17 +73,14 @@ void TileVisitor::addDataExtent(const GeoExtent& extent)
 
 bool TileVisitor::intersects( const GeoExtent& extent )
 {
-    if (_extents.empty()) return true;
-    else
+    for (auto& e : _extentsToVisit)
     {
-        for (unsigned int i = 0; i < _extents.size(); ++i)
+        if (e.intersects(extent))
         {
-            if (_extents[i].intersects( extent ))
-            {
-                return true;
-            }
+            return true;
         }
     }
+
     return false;
 }
 
@@ -105,7 +104,7 @@ bool TileVisitor::hasData(const TileKey& key)
     // Check the tile handler
     if (_tileHandler.valid())
     {
-        _tileHandler->hasData(key);
+        return _tileHandler->hasData(key);
     }
 
     return true;
@@ -142,16 +141,17 @@ void TileVisitor::run( const Profile* mapProfile )
 
 void TileVisitor::estimate()
 {
-    //Estimate the number of tiles
-    CacheEstimator est;
-    est.setMinLevel( _minLevel );
-    est.setMaxLevel( _maxLevel );
-    est.setProfile( _profile.get() );
-    for (unsigned int i = 0; i < _extents.size(); i++)
+    if (_tileHandler.valid())
     {
-        est.addExtent( _extents[ i ] );
+        _total = _tileHandler->getEstimatedTileCount(
+            _extentsToVisit,
+            _minLevel,
+            _maxLevel);
     }
-    _total = est.getNumTiles();
+    else
+    {
+        _total = 0;
+    }
 }
 
 void TileVisitor::processKey( const TileKey& key )
@@ -206,6 +206,7 @@ void TileVisitor::incrementProgress(unsigned int amount)
         Threading::ScopedMutexLock lk(_progressMutex );
         _processed += amount;
     }
+
     if (_progress.valid())
     {
         // If report progress returns true then mark the task as being cancelled.

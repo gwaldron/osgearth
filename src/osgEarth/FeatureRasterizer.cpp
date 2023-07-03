@@ -69,8 +69,9 @@ namespace osgEarth {
                 do
                 {
                     unsigned char cover = *covers++;
-                    int hasData = cover > 127;
-                    *f++ = hasData ? c.value : NO_DATA_VALUE;
+                    if (cover > 0)
+                        *f = c.value;
+                    f++;
                 } while (--count);
             }
 
@@ -208,15 +209,41 @@ namespace osgEarth {
             ctx.strokePath(path);
         }
 
+        void lineSymbolToBLContext(const LineSymbol* line, BLContext& ctx)
+        {
+            auto cap = BL_STROKE_CAP_ROUND;
+            auto join = BL_STROKE_JOIN_ROUND;
+
+            if (line->stroke().isSet())
+            {
+                if (line->stroke()->lineCap().isSet())
+                {
+                    cap =
+                        line->stroke()->lineCap() == Stroke::LINECAP_FLAT ? BL_STROKE_CAP_BUTT :
+                        line->stroke()->lineCap() == Stroke::LINECAP_SQUARE ? BL_STROKE_CAP_SQUARE :
+                        BL_STROKE_CAP_ROUND;
+                }
+
+                if (line->stroke()->lineJoin().isSet())
+                {
+                    join =
+                        line->stroke()->lineJoin() == Stroke::LINEJOIN_MITRE ? BL_STROKE_JOIN_MITER_BEVEL :
+                        BL_STROKE_JOIN_ROUND;
+                }
+            }
+
+            ctx.setStrokeCaps(cap);
+            ctx.setStrokeJoin(join);
+        }
+
         void rasterizeLines(
             const Geometry* geometry,
-            const LineSymbol* symbol,
+            const Color& color,
             float lineWidth_px,
             RenderFrame& frame,
             BLContext& ctx)
         {
             OE_HARD_ASSERT(geometry != nullptr);
-            OE_HARD_ASSERT(symbol != nullptr);
 
             if (!geometry->isPolygon() && !geometry->isLinear())
             {
@@ -254,42 +281,13 @@ namespace osgEarth {
                 }
             });
 
-            Color color(Color::White);
-            auto cap = BL_STROKE_CAP_ROUND;
-            auto join = BL_STROKE_JOIN_ROUND;
-
-            if (symbol->stroke().isSet())
-            {
-                color = symbol->stroke()->color();
-
-                if (symbol->stroke()->lineCap().isSet())
-                {
-                    cap =
-                        symbol->stroke()->lineCap() == Stroke::LINECAP_FLAT ? BL_STROKE_CAP_BUTT :
-                        symbol->stroke()->lineCap() == Stroke::LINECAP_SQUARE ? BL_STROKE_CAP_SQUARE :
-                        BL_STROKE_CAP_ROUND;
-                }
-
-                if (symbol->stroke()->lineJoin().isSet())
-                {
-                    join =
-                        symbol->stroke()->lineJoin() == Stroke::LINEJOIN_MITRE ? BL_STROKE_JOIN_MITER_BEVEL :
-                        BL_STROKE_JOIN_ROUND;
-                }
-            }
-
-
-
             //BLImage texture;
             //texture.readFromFile("../data/icon.png");
             //BLPattern pattern(texture);
             //ctx.setStrokeStyle(pattern);
 
             ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
-
             ctx.setStrokeWidth(lineWidth_px);
-            ctx.setStrokeCaps(cap);
-            ctx.setStrokeJoin(join);
             ctx.strokePath(path);
         }
 
@@ -538,46 +536,50 @@ namespace osgEarth {
                 {
                     osg::ref_ptr< ResourceLibrary > library = styleSheet->getResourceLibrary(skinSymbol->library().get());
 
-                    StringExpression expression = skinSymbol->name().get();
-                    std::string iconName = templateReplace(feature, expression.expr());
-
-                    auto skin = library->getSkin(iconName);
-
-                    if (skin)
+                    if (library.valid())
                     {
-                        osg::ref_ptr< osg::Image > image = skin->image().get();
-                        if (!image.valid())
+                        StringExpression expression = skinSymbol->name().get();
+                        std::string iconName = templateReplace(feature, expression.expr());
+
+                        auto skin = library->getSkin(iconName);
+
+                        if (skin)
                         {
-                            image = skin->createImage(nullptr);
-                        }
-                        if (image.valid())
-                        {
-                            // TODO:  Cache the flipped image as a BLImage so we don't need to flip it each time.
-                            osg::ref_ptr< osg::Image > flippedImage = new osg::Image(*image);
-                            flippedImage->flipVertical();
-                            BLRectI iconRect(*skin->imageBiasS() * image->s(), *skin->imageBiasT() * image->t(), *skin->imageScaleS() * image->s(), *skin->imageScaleT() * image->t());
+                            osg::ref_ptr< osg::Image > image = skin->image().get();
+                            if (!image.valid())
+                            {
+                                image = skin->createImage(nullptr);
+                            }
+                            if (image.valid())
+                            {
+                                BLRectI iconRect(*skin->imageBiasS() * image->s(), *skin->imageBiasT() * image->t(), *skin->imageScaleS() * image->s(), *skin->imageScaleT() * image->t());
 
-                            BLImage sprite;
-                            sprite.createFromData(flippedImage->s(), flippedImage->t(), BL_FORMAT_PRGB32, flippedImage->data(), flippedImage->s() * 4);
+                                BLImage sprite;
+                                sprite.createFromData(image->s(), image->t(), BL_FORMAT_PRGB32, image->data(), image->s() * 4);
 
-                            ctx.setCompOp(BL_COMP_OP_SRC_OVER);
+                                ctx.setCompOp(BL_COMP_OP_SRC_OVER);
 
-                            feature->getGeometry()->forEachPart([&](const Geometry* part)
-                                {
-                                    // Only label points for now
-                                    for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                                feature->getGeometry()->forEachPart([&](const Geometry* part)
                                     {
-                                        const osg::Vec3d& p0 = *p;
-                                        double x = frame.xf * (p0.x() - frame.xmin);
-                                        double y = frame.yf * (p0.y() - frame.ymin);
-                                        y = ctx.targetHeight() - y;
+                                        // Only label points for now
+                                        for (Geometry::const_iterator p = part->begin(); p != part->end(); p++)
+                                        {
+                                            const osg::Vec3d& p0 = *p;
+                                            double x = frame.xf * (p0.x() - frame.xmin);
+                                            double y = frame.yf * (p0.y() - frame.ymin);
+                                            y = ctx.targetHeight() - y;
 
-                                        ctx.translate(x, y);
-                                        ctx.scale(scale);
-                                        ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
-                                        ctx.resetMatrix();
-                                    }
-                                });
+                                            ctx.translate(x, y);
+                                            ctx.scale(scale);
+                                            ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
+                                            ctx.resetMatrix();
+                                        }
+                                    });
+                            }
+                        }
+                        else
+                        {
+                            //OE_WARN << "Failed to get skin for " << iconName << std::endl;
                         }
                     }
                 }
@@ -745,6 +747,7 @@ FeatureRasterizer::render_blend2d(
     if (masterLine)
     {
         float lineWidth_px = 1.0f;
+        float outlineWidth_px = 0.0f;
 
         // Calculate the line width in pixels:
         if (masterLine->stroke()->width().isSet())
@@ -789,12 +792,62 @@ FeatureRasterizer::render_blend2d(
             }
         }
 
+        if (masterLine->stroke()->outlineWidth().isSet())
+        {
+            auto width = masterLine->stroke()->outlineWidth().get();
+
+            if (width.getUnits() != Units::PIXELS)
+            {
+                double lineWidth_map_south = width.asDistance(
+                    _extent.getSRS()->getUnits(),
+                    _extent.yMin());
+
+                double lineWidth_map_north = width.asDistance(
+                    _extent.getSRS()->getUnits(),
+                    _extent.yMax());
+
+                double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
+                double pixelSize_map = _extent.height() / (double)_image->t();
+                outlineWidth_px = (lineWidth_map / pixelSize_map);
+
+                // enfore a minimum width of one pixel.
+                float minPixels = masterLine->stroke()->minPixels().getOrUse(1.0f);
+                outlineWidth_px = std::max(outlineWidth_px, minPixels);
+            }
+
+            else // pixels already
+            {
+                outlineWidth_px = width.getValue();
+            }
+        }
+
+        lineSymbolToBLContext(masterLine, ctx);
+
         // Rasterize the lines:
+        if (outlineWidth_px > 0.0f)
+        {
+            for (const auto& feature : features)
+            {
+                if (feature->getGeometry())
+                {
+                    rasterizeLines(
+                        feature->getGeometry(),
+                        masterLine->stroke()->outlineColor().get(),
+                        outlineWidth_px,
+                        frame, ctx);
+                }
+            }
+        }
+
         for (const auto& feature : features)
         {
             if (feature->getGeometry())
             {
-                rasterizeLines(feature->getGeometry(), masterLine, lineWidth_px, frame, ctx);
+                rasterizeLines(
+                    feature->getGeometry(),
+                    masterLine->stroke()->color(),
+                    lineWidth_px,
+                    frame, ctx);
             }
         }
     }
@@ -840,9 +893,9 @@ FeatureRasterizer::render_agglite(
     _inverted = false;
 
     // find the symbology:
-    const LineSymbol* masterLine = style.getSymbol<LineSymbol>();
-    const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
-    const CoverageSymbol* masterCov = style.getSymbol<CoverageSymbol>();
+    const LineSymbol* globalLineSymbol = style.getSymbol<LineSymbol>();
+    const PolygonSymbol* globalPolySymbol = style.getSymbol<PolygonSymbol>();
+    const CoverageSymbol* globalCovSymbol = style.getSymbol<CoverageSymbol>();
 
     // Converts coordinates to image space (s,t):
     RenderFrame frame;
@@ -862,52 +915,79 @@ FeatureRasterizer::render_agglite(
 
     OE_SOFT_ASSERT_AND_RETURN(featureSRS != nullptr, void());
 
-    for (FeatureList::const_iterator f = features.begin(); f != features.end(); ++f)
+    for(auto& f : features)
     {
-        if (f->get()->getGeometry())
+        const LineSymbol* lineSymbol = globalLineSymbol;
+        const PolygonSymbol* polySymbol = globalPolySymbol;
+        const CoverageSymbol* covSymbol = globalCovSymbol;
+
+        if (f->getGeometry())
         {
-            bool hasPoly = false;
-            bool hasLine = false;
+            bool addPolygon = false;
+            bool addLineOrOutline = false;
 
-            if (f->get()->getGeometry()->isPolygon())
+            // first see if the feature has overriding symbols:
+            if (f->style()->has<PolygonSymbol>())
+                polySymbol = f->style()->get<PolygonSymbol>();
+
+            if (f->style()->has<LineSymbol>())
+                lineSymbol = f->style()->get<LineSymbol>();
+
+            if (f->style()->has<CoverageSymbol>())
+                covSymbol = f->style()->get<CoverageSymbol>();
+
+            // if it's a polygon and we have a polygon symbol, queue it
+            if (f->getGeometry()->isPolygon())
             {
-                if (masterPoly || f->get()->style()->has<PolygonSymbol>())
+                if (polySymbol || covSymbol)
                 {
-                    polygons.push_back(f->get());
-                    hasPoly = true;
+                    addPolygon = true;
+                }
+
+                else if (lineSymbol || covSymbol)
+                {
+                    addLineOrOutline = true;
                 }
             }
 
-            if (f->get()->getGeometry()->isPolygon() || f->get()->getGeometry()->isLinear())
+            // polygons can use the line symbol for an outline, so polygons AND lines 
+            // can get queued as lines:
+            else if (f->getGeometry()->isLinear())
             {
-                if (masterLine || f->get()->style()->has<LineSymbol>())
+                if (lineSymbol || covSymbol)
                 {
-                    // Use the GeometryIterator to get all the geometries so we can clone them as rings
-                    GeometryIterator gi(f->get()->getGeometry());
-                    while (gi.hasMore())
+                    addLineOrOutline = true;
+                }
+            }
+
+            if (addPolygon)
+            {
+                polygons.push_back(f);
+            }
+
+            if (addLineOrOutline)
+            {
+                // Use the GeometryIterator to get all the geometries so we can
+                // clone the lines as rings
+                GeometryIterator gi(f->getGeometry());
+                while (gi.hasMore())
+                {
+                    Geometry* geom = gi.next();
+                    Feature* newFeature = new Feature(*f.get());
+                    newFeature->setGeometry(geom);
+                    if (!newFeature->getGeometry()->isLinear())
                     {
-                        Geometry* geom = gi.next();
-                        // Create a new feature for each geometry
-                        Feature* newFeature = new Feature(*f->get());
-                        newFeature->setGeometry(geom);
-                        if (!newFeature->getGeometry()->isLinear())
-                        {
-                            newFeature->setGeometry(newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING));
-                        }
-                        lines.push_back(newFeature);
-                        hasLine = true;
+                        newFeature->setGeometry(newFeature->getGeometry()->cloneAs(Geometry::TYPE_RING));
                     }
+                    lines.push_back(newFeature);
                 }
             }
 
-            // if there are no geometry symbols but there is a coverage symbol, default to polygons.
-            if (!hasLine && !hasPoly)
-            {
-                if (masterCov || f->get()->style()->has<CoverageSymbol>())
-                {
-                    polygons.push_back(f->get());
-                }
-            }
+            //// if there are no geometry symbols but there is a coverage symbol, default to polygons.
+            //if (!hasLine && !hasPoly && covSymbol != nullptr)
+            //{
+            //    polygons.push_back(f);
+            //}
         }
     }
 
@@ -927,12 +1007,9 @@ FeatureRasterizer::render_agglite(
         // downsample the line data so that it is no higher resolution than to image to which
         // we intend to rasterize it. If you don't do this, you run the risk of the buffer
         // operation taking forever on very high-res input data.
-        {
-            OE_PROFILING_ZONE;
-            ResampleFilter resample;
-            resample.minLength() = osg::minimum(xres, yres);
-            context = resample.push(lines, context);
-        }
+        ResampleFilter resample;
+        resample.minLength() = osg::minimum(xres, yres);
+        context = resample.push(lines, context);
 
         // now run the buffer operation on all lines:
         BufferFilter buffer;
@@ -941,20 +1018,20 @@ FeatureRasterizer::render_agglite(
         double pixelWidth = imageExtentInFeatureSRS.width() / (double)_image->s();
         double lineWidth = pixelWidth;
 
-        if (masterLine)
+        if (globalLineSymbol)
         {
-            buffer.capStyle() = masterLine->stroke()->lineCap().value();
+            buffer.capStyle() = globalLineSymbol->stroke()->lineCap().value();
 
-            if (masterLine->stroke()->width().isSet())
+            if (globalLineSymbol->stroke()->width().isSet())
             {
-                lineWidth = masterLine->stroke()->width().value();
+                lineWidth = globalLineSymbol->stroke()->width().value();
 
                 // if the width units are specified, process them:
-                if (masterLine->stroke()->widthUnits().isSet() &&
-                    masterLine->stroke()->widthUnits().get() != Units::PIXELS)
+                if (globalLineSymbol->stroke()->widthUnits().isSet() &&
+                    globalLineSymbol->stroke()->widthUnits().get() != Units::PIXELS)
                 {
                     const Units& featureUnits = featureSRS->getUnits();
-                    const Units& strokeUnits = masterLine->stroke()->widthUnits().value();
+                    const Units& strokeUnits = globalLineSymbol->stroke()->widthUnits().value();
 
                     // if the units are different than those of the feature data, we need to
                     // do a units conversion.
@@ -969,7 +1046,7 @@ FeatureRasterizer::render_agglite(
                         {
                             // linear to angular? approximate degrees per meter at the
                             // latitude of the tile's centroid.
-                            double lineWidthM = masterLine->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
+                            double lineWidthM = globalLineSymbol->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
                             double mPerDegAtEquatorInv = 360.0 / (featureSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI);
                             GeoPoint ll = _extent.getCentroid();
                             lineWidth = lineWidthM * mPerDegAtEquatorInv * cos(osg::DegreesToRadians(ll.y()));
@@ -977,7 +1054,7 @@ FeatureRasterizer::render_agglite(
                     }
 
                     // enfore a minimum width of one pixel.
-                    float minPixels = masterLine->stroke()->minPixels().getOrUse(1.0f);
+                    float minPixels = globalLineSymbol->stroke()->minPixels().getOrUse(1.0f);
                     lineWidth = osg::clampAbove(lineWidth, pixelWidth*minPixels);
                 }
 
@@ -988,28 +1065,25 @@ FeatureRasterizer::render_agglite(
             }
         }
 
-        OE_PROFILING_ZONE_NAMED("Buffer");
         buffer.distance() = lineWidth * 0.5;   // since the distance is for one side
         buffer.push(lines, context);
     }
 
     // Transform the features into the map's SRS:
-    {
-        OE_PROFILING_ZONE_NAMED("Transform");
-        for (auto& polygon : polygons)
-            polygon->transform(_extent.getSRS());
-        for (auto& line : lines)
-            line->transform(_extent.getSRS());
-    }
+    for (auto& polygon : polygons)
+        polygon->transform(_extent.getSRS());
+
+    for (auto& line : lines)
+        line->transform(_extent.getSRS());
 
     // set up the AGG renderer:
-    agg::rendering_buffer rbuf(_image->data(), _image->s(), _image->t(), _image->s() * 4);
+    agg::rendering_buffer rbuf(
+        _image->data(),
+        _image->s(), _image->t(),
+        _image->s() * 4);
 
     // Create the renderer and the rasterizer
     agg::rasterizer ras;
-
-    //ras.gamma(options().gamma().get());
-
     ras.filling_rule(agg::fill_even_odd);
 
     // construct an extent for cropping the geometry to our tile.
@@ -1044,103 +1118,124 @@ FeatureRasterizer::render_agglite(
 
     // If there's a coverage symbol, make a copy of the expressions so we can evaluate them
     optional<NumericExpression> covValue;
-    const CoverageSymbol* covsym = style.get<CoverageSymbol>();
-    if (covsym && covsym->valueExpression().isSet())
-        covValue = covsym->valueExpression().get();
-
+    const CoverageSymbol* covSymbol = style.get<CoverageSymbol>();
+    if (covSymbol && covSymbol->valueExpression().isSet())
     {
-        OE_PROFILING_ZONE_NAMED("Crop/Render");
+        covValue = covSymbol->valueExpression().get();
+    }
 
-        // render the polygons
-        for (FeatureList::iterator i = polygons.begin(); i != polygons.end(); i++)
+    // render the polygons
+    for (auto& feature : polygons)
+    {
+        Geometry* geometry = feature->getGeometry();
+
+        osg::ref_ptr<Geometry> croppedGeometry;
+        if (geometry->crop(cropPoly.get(), croppedGeometry))
         {
-            Feature*  feature = i->get();
+            if (covValue.isSet())
+            {
+                float value = feature->eval(covValue.mutable_value(), &context);
+                rasterizeCoverage_agglite(croppedGeometry.get(), value, frame, ras, rbuf);
+            }
+            else
+            {
+                const PolygonSymbol* poly =
+                    feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
+                    globalPolySymbol;
+
+                Color color = poly ? poly->fill()->color() : Color::White;
+                rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
+            }
+        }
+    }
+
+    for (auto& feature : lines)
+    {
+        Geometry* geometry = feature->getGeometry();
+
+        osg::ref_ptr<Geometry> croppedGeometry;
+        if (geometry->crop(cropPoly.get(), croppedGeometry))
+        {
+            if (covValue.isSet())
+            {
+                float value = feature->eval(covValue.mutable_value(), &context);
+                rasterizeCoverage_agglite(croppedGeometry.get(), value, frame, ras, rbuf);
+            }
+            else
+            {
+                const LineSymbol* line =
+                    feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
+                    globalLineSymbol;
+
+                osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);
+                rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
+            }
+        }
+    }
+
+#if 0
+    if (!lines.empty())
+    {
+        float lineWidth = globalLineSymbol->stroke()->width().value();
+        lineWidth = globalLineSymbol->stroke()->width().value();
+        GeoExtent imageExtentInFeatureSRS = _extent.transform(featureSRS);
+        double pixelWidth = imageExtentInFeatureSRS.width() / (double)_image->s();
+
+        // if the width units are specified, process them:
+        if (globalLineSymbol->stroke()->widthUnits().isSet() &&
+            globalLineSymbol->stroke()->widthUnits().get() != Units::PIXELS)
+        {
+            const Units& featureUnits = featureSRS->getUnits();
+            const Units& strokeUnits = globalLineSymbol->stroke()->widthUnits().value();
+
+            // if the units are different than those of the feature data, we need to
+            // do a units conversion.
+            if (featureUnits != strokeUnits)
+            {
+                if (Units::canConvert(strokeUnits, featureUnits))
+                {
+                    // linear to linear, no problem
+                    lineWidth = strokeUnits.convertTo(featureUnits, lineWidth);
+                }
+                else if (strokeUnits.isLinear() && featureUnits.isAngular())
+                {
+                    // linear to angular? approximate degrees per meter at the
+                    // latitude of the tile's centroid.
+                    double lineWidthM = globalLineSymbol->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
+                    double mPerDegAtEquatorInv = 360.0 / (featureSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI);
+                    double lon, lat;
+                    _extent.getCentroid(lon, lat);
+                    lineWidth = lineWidthM * mPerDegAtEquatorInv * cos(osg::DegreesToRadians(lat));
+                }
+            }
+
+            // enfore a minimum width of one pixel.
+            float minPixels = globalLineSymbol->stroke()->minPixels().getOrUse(1.0f);
+            lineWidth = osg::clampAbove(lineWidth, (float)pixelWidth*minPixels);
+        }
+
+        else // pixels
+        {
+            lineWidth *= pixelWidth;
+        }
+
+        for (auto& feature : lines)
+        {
             Geometry* geometry = feature->getGeometry();
 
             osg::ref_ptr<Geometry> croppedGeometry;
             if (geometry->crop(cropPoly.get(), croppedGeometry))
             {
-                if (!covValue.isSet())
-                {
-                    const PolygonSymbol* poly =
-                        feature->style().isSet() && feature->style()->has<PolygonSymbol>() ? feature->style()->get<PolygonSymbol>() :
-                        masterPoly;
+                const LineSymbol* line =
+                    feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
+                    globalLineSymbol;
 
-                    Color color = poly ? poly->fill()->color() : Color::White;
-                    rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
-                }
-                else
-                {
-                    float value = feature->eval(covValue.mutable_value(), &context);
-                    rasterizeCoverage_agglite(croppedGeometry.get(), value, frame, ras, rbuf);
-                }
-            }
-        }
-
-
-        if (!lines.empty())
-        {
-            float lineWidth = masterLine->stroke()->width().value();
-            lineWidth = masterLine->stroke()->width().value();
-            GeoExtent imageExtentInFeatureSRS = _extent.transform(featureSRS);
-            double pixelWidth = imageExtentInFeatureSRS.width() / (double)_image->s();
-
-            // if the width units are specified, process them:
-            if (masterLine->stroke()->widthUnits().isSet() &&
-                masterLine->stroke()->widthUnits().get() != Units::PIXELS)
-            {
-                const Units& featureUnits = featureSRS->getUnits();
-                const Units& strokeUnits = masterLine->stroke()->widthUnits().value();
-
-                // if the units are different than those of the feature data, we need to
-                // do a units conversion.
-                if (featureUnits != strokeUnits)
-                {
-                    if (Units::canConvert(strokeUnits, featureUnits))
-                    {
-                        // linear to linear, no problem
-                        lineWidth = strokeUnits.convertTo(featureUnits, lineWidth);
-                    }
-                    else if (strokeUnits.isLinear() && featureUnits.isAngular())
-                    {
-                        // linear to angular? approximate degrees per meter at the
-                        // latitude of the tile's centroid.
-                        double lineWidthM = masterLine->stroke()->widthUnits()->convertTo(Units::METERS, lineWidth);
-                        double mPerDegAtEquatorInv = 360.0 / (featureSRS->getEllipsoid().getRadiusEquator() * 2.0 * osg::PI);
-                        double lon, lat;
-                        _extent.getCentroid(lon, lat);
-                        lineWidth = lineWidthM * mPerDegAtEquatorInv * cos(osg::DegreesToRadians(lat));
-                    }
-                }
-
-                // enfore a minimum width of one pixel.
-                float minPixels = masterLine->stroke()->minPixels().getOrUse(1.0f);
-                lineWidth = osg::clampAbove(lineWidth, (float)pixelWidth*minPixels);
-            }
-
-            else // pixels
-            {
-                lineWidth *= pixelWidth;
-            }
-
-            for (FeatureList::iterator i = lines.begin(); i != lines.end(); i++)
-            {
-                Feature*  feature = i->get();
-                Geometry* geometry = feature->getGeometry();
-
-                osg::ref_ptr<Geometry> croppedGeometry;
-                if (geometry->crop(cropPoly.get(), croppedGeometry))
-                {
-                    const LineSymbol* line =
-                        feature->style().isSet() && feature->style()->has<LineSymbol>() ? feature->style()->get<LineSymbol>() :
-                        masterLine;
-
-                    osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);
-                    rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
-                }
+                osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);
+                rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
             }
         }
     }
+#endif
 }
 
 void
@@ -1184,11 +1279,13 @@ FeatureRasterizer::finalize()
     if (_image->getPixelSizeInBits() == 32 &&
         _image->getDataType() == GL_UNSIGNED_BYTE)
     {
+        unsigned int totalSizeInBytes = _image->getTotalSizeInBytes();
+        unsigned char* pixel = _image->data();
+
         if (_implPixelFormat == RF_BGRA)
         {
             //convert from BGRA to RGBA
-            unsigned char* pixel = _image->data();
-            for (unsigned i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+            for (unsigned i = 0; i < totalSizeInBytes; i += 4, pixel += 4)
             {
                 std::swap(pixel[0], pixel[2]);
             }
@@ -1196,8 +1293,7 @@ FeatureRasterizer::finalize()
         else if (_implPixelFormat == RF_ABGR)
         {
             //convert from ABGR to RGBA
-            unsigned char* pixel = _image->data();
-            for (unsigned i = 0; i < _image->getTotalSizeInBytes(); i += 4, pixel += 4)
+            for (unsigned i = 0; i < totalSizeInBytes; i += 4, pixel += 4)
             {
                 std::swap(pixel[0], pixel[3]);
                 std::swap(pixel[1], pixel[2]);
@@ -1461,7 +1557,7 @@ FeatureStyleSorter::getFeatures(
         // incorporate the image extent into the feature query for this style:
         Query localQuery = query;
         localQuery.bounds() =
-            query.bounds().isSet() ? query.bounds()->unionWith(queryExtent.bounds()) :
+            query.bounds().isSet() ? unionOf(query.bounds().get(), queryExtent.bounds()) :
             queryExtent.bounds();
 
         FilterContext context(session, session->getFeatureSource()->getFeatureProfile(), queryExtent);

@@ -61,7 +61,7 @@ struct App
         _viewer(args),
         _size(800)
     {
-        _viewer.setThreadingModel(_viewer.SingleThreaded);
+        //_viewer.setThreadingModel(_viewer.SingleThreaded);
         _sharedGC = args.read("--shared");
     }
 
@@ -87,7 +87,7 @@ struct App
         osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(ds.get());
         traits->readDISPLAY();
         if (traits->displayNum < 0) traits->displayNum = 0;
-        traits->screenNum = 1;
+        traits->screenNum = 0;
         traits->x = x;
         traits->y = y;
         traits->width = width;
@@ -127,7 +127,7 @@ struct App
 struct GCPanel : public GUI::BaseGUI
 {
     App& _app;
-    GCPanel(App& app) : GUI::BaseGUI("Graphics Contexts"), _app(app) { }
+    GCPanel(App& app) : GUI::BaseGUI("GCs"), _app(app) { }
 
     void draw(osg::RenderInfo& ri) override
     {
@@ -138,8 +138,8 @@ struct GCPanel : public GUI::BaseGUI
         {
             if (gc->getState() != nullptr)
             {
-                ImGui::Text("Context ID = %d", gc->getState()->getContextID());
-                ImGui::Indent();
+                ImGui::Text("OSG GC ID = %d", gc->getState()->getContextID());
+                ImGui::Text("OSG GC Addr: %0x", (std::uintptr_t)gc);
                 ImGui::Text("Name = %s", gc->getName().c_str());
                 ImGui::Text("Operations = %d", gc->getGraphicsThread() && gc->getGraphicsThread()->getOperationQueue() ? gc->getGraphicsThread()->getOperationQueue()->getNumOperationsInQueue() : 0);
                 ImGui::Text("Size = %d x %d", gc->getTraits() ? gc->getTraits()->width : -1, gc->getTraits() ? gc->getTraits()->height : -1);
@@ -194,7 +194,14 @@ struct ViewerPanel : public GUI::BaseGUI
 
             if (view->getCamera() && view->getCamera()->getGraphicsContext() && view->getCamera()->getGraphicsContext()->getState())
             {
-                ImGui::Text("GC = %d", view->getCamera()->getGraphicsContext()->getState()->getContextID());
+                auto state = view->getCamera()->getGraphicsContext()->getState();
+
+                ImGui::Text("OSG GC ID = %d", GLUtils::getSharedContextID(*state));
+
+                if (_app._sharedGC)
+                {
+                    ImGui::Text("Unique State ID = %d", GLUtils::getUniqueStateID(*state));
+                }
             }
             else
             {
@@ -254,12 +261,15 @@ main(int argc, char** argv)
 
     auto view = app._viewer.getView(0);
 
-    // install the Gui.
-    GUI::ApplicationGUI* gui = new GUI::ApplicationGUI();
-    gui->addAllBuiltInTools();
-    gui->add(new ViewerPanel(app), true);
-    gui->add(new GCPanel(app), true);
-    view->getEventHandlers().push_front(gui);
+    if (arguments.read("--gui"))
+    {
+        // install the Gui.
+        GUI::ApplicationGUI* gui = new GUI::ApplicationGUI();
+        gui->addAllBuiltInTools();
+        gui->add(new ViewerPanel(app), true);
+        gui->add(new GCPanel(app), true);
+        view->getEventHandlers().push_front(gui);
+    }
 
     OE_NOTICE << "Press 'n' to create a new view" << std::endl;
     EventRouter::get(view).onKeyPress(EventRouter::KEY_N, [&]() { 
@@ -281,7 +291,7 @@ main(int argc, char** argv)
             // Set the scene data to null before the View is destroyed when the vector is cleared outside of this loop to prevent
             // osg from sending down a releaseGLObjects with a null state on camera destruction.  We want
             // releaseGLObjects to get called on the view that is being removed, not all of them.
-            app._viewsToRemove[i]->setSceneData(nullptr);         
+            app._viewsToRemove[i]->setSceneData(nullptr);
         }
         app._viewsToRemove.clear();
 

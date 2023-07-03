@@ -71,21 +71,23 @@ namespace osgEarth
                 _lod == rhs._lod &&
                 _x == rhs._x &&
                 _y == rhs._y &&
-                _profile->isHorizEquivalentTo(rhs._profile.get());
+                (_profile.valid() ? _profile->isHorizEquivalentTo(rhs._profile.get()) : true);
         }
 
         /** Compare two tilekeys for inequality */
         inline bool operator != (const TileKey& rhs) const {
-            return 
+            return
                 valid() != rhs.valid() ||
                 _lod != rhs._lod ||
                 _x != rhs._x ||
                 _y != rhs._y ||
-                !_profile->isEquivalentTo(rhs._profile.get());
+                (_profile.valid() ? !_profile->isEquivalentTo(rhs._profile.get()) : false);
         }
 
         /** Sorts tilekeys, ignoring profiles */
         inline bool operator < (const TileKey& rhs) const {
+            if (!rhs.valid()) return false;
+            if (!valid()) return true;
             if (_lod < rhs._lod) return true;
             if (_lod > rhs._lod) return false;
             if (_x < rhs._x) return true;

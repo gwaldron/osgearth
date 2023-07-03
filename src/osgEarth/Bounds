@@ -30,38 +30,32 @@ namespace osgEarth
 {  
     class SpatialReference;
 
-    /**
-     * An "anonymous" bounding extent (i.e., no geo reference information)
-     */
-    class OSGEARTH_EXPORT Bounds : public osg::BoundingBoxImpl<osg::Vec3d>
-    {
-    public:
-        Bounds();
-        Bounds(double xmin, double ymin, double xmax, double ymax );
+    using Bounds = osg::BoundingBoxd;
 
-        /** dtor */
-        virtual ~Bounds() { }
+    inline double width(const Bounds& b) {
+        return b.xMax() - b.xMin();
+    }
 
-        double width() const;
-        double height() const;
-        double depth() const;
-        bool contains(double x, double y ) const;
-        bool contains(const Bounds& rhs) const;
-        Bounds unionWith(const Bounds& rhs) const; 
-        Bounds intersectionWith(const Bounds& rhs) const;
-        void expandBy( double x, double y );
-        void expandBy( double x, double y, double z );
-        void expandBy( const Bounds& rhs );
-        osg::Vec2d center2d() const;
-        double radius2d() const;
-        double area2d() const;
-        std::string toString() const;
-        bool isValid() const;
-        bool isEmpty() const { return !isValid(); }
-        void transform( const SpatialReference* fromSRS, const SpatialReference* toSRS );
-        void set(double xmin, double ymin, double xmax, double ymax);
-        void set(double xmin, double ymin, double zmin, double xmax, double ymax, double zmax); // compat
-    };
+    inline double height(const Bounds& b) {
+        return b.yMax() - b.yMin();
+    }
+
+    inline double area2d(const Bounds& b) {
+        return b.valid() ? width(b) * height(b) : -1.0;
+    }
+
+    inline bool contains(const Bounds& b, double x, double y) {
+        return
+            b.valid() &&
+            x >= b.xMin() && x <= b.xMax() &&
+            y >= b.yMin() && y <= b.yMax();
+    }
+
+    extern OSGEARTH_EXPORT bool contains(const Bounds& lhs, const Bounds& rhs);
+
+    extern OSGEARTH_EXPORT Bounds intersection(const Bounds& lhs, const Bounds& rhs);
+
+    extern OSGEARTH_EXPORT Bounds unionOf(const Bounds& lhs, const Bounds& rhs);
 }
 
 #endif // OSGEARTH_BOUNDS_H

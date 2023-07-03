@@ -299,10 +299,10 @@ ProgramRepo::linkProgram(
         std::stringstream programCacheNameStream;
         programCacheNameStream << program->getName();
         unsigned int hash = 0;
-        for (int i = 0; i < key.size(); i++)
+        for (auto& key_component : key)
         {
             //same as boost hash_combine
-            hash ^= key[i] + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+            hash ^= key_component + 0x9e3779b9 + (hash << 6) + (hash >> 2);
         }
         programCacheNameStream << "_" << hash;
 
@@ -669,6 +669,7 @@ namespace
         VirtualProgram::ShaderVector mains;
 
         VirtualProgram::StageMask stages = Registry::shaderFactory()->createMains(
+            state,
             accumFunctions,
             accumShaderMap,
             extensionsSet,
@@ -677,15 +678,9 @@ namespace
         // build a new "key vector" now that we've changed the shader map.
         // we call is a key vector because it uniquely identifies this shader program
         // based on its accumlated function set.
-        outputKey.reserve(accumShaderMap.size());
-
         for(auto& iter : accumShaderMap)
         {
-#ifdef OE_USE_HASH_FOR_PROGRAM_KEY
-            outputKey.push_back(iter.second._shader->getHash());
-#else
-            outputKey.push_back(iter.second._shader.get());
-#endif
+            outputKey.insert(iter.second._shader->getHash());
         }
 
         // finally, add the mains (AFTER building the key vector .. we don't want or
@@ -953,43 +948,11 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
     // used by the COMPARE_StateAttribute_Parameter macros below.
     COMPARE_StateAttribute_Types(VirtualProgram, sa);
 
-    // compare each parameter in turn against the rhs.
-    COMPARE_StateAttribute_Parameter(_mask);
-    COMPARE_StateAttribute_Parameter(_inherit);
-    COMPARE_StateAttribute_Parameter(_isAbstract);
-
-    // compare the shader maps. Need to lock them while comparing.
-    {
-        //Threading::ScopedReadLock shared( _dataModelMutex );
-        Threading::ScopedMutexLock lock(_dataModelMutex);
-
-        if (_shaderMap.size() < rhs._shaderMap.size()) return -1;
-        if (_shaderMap.size() > rhs._shaderMap.size()) return 1;
-
-        ShaderMap::const_iterator lhsIter = _shaderMap.begin();
-        ShaderMap::const_iterator rhsIter = rhs._shaderMap.begin();
-
-        while (lhsIter != _shaderMap.end())
-        {
-            if (lhsIter->first < rhsIter->first) return -1;
-            if (lhsIter->first > rhsIter->first) return +1;
-
-            const ShaderEntry& lhsEntry = lhsIter->second;
-            const ShaderEntry& rhsEntry = rhsIter->second;
-
-            if (lhsEntry < rhsEntry) return -1;
-            if (rhsEntry < lhsEntry) return  1;
-
-            lhsIter++;
-            rhsIter++;
-        }
-
-        // compare the template settings.
-        int templateCompare = _template->compare(*(rhs.getTemplate()));
-        if (templateCompare != 0) return templateCompare;
-    }
-
-    return 0; // passed all the above comparison macros, must be equal.
+    // Safely compare the objects. Note, this function 
+    // treats the argument as the RHS, so we need to invert
+    // the result before returning it since the argument is
+    // actually our LHS.
+    return -rhs.compare_safe(*this);
 }
 
 void
@@ -1052,7 +1015,8 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
 #ifdef USE_LAST_USED_PROGRAM
     if (state)
     {
-        const osg::Program* p = _lastUsedProgram[state->getContextID()].get();
+        auto cid = GLUtils::getSharedContextID(*state);
+        const osg::Program* p = _lastUsedProgram[cid].get();
         if (p)
             p->releaseGLObjects(state);
     }
@@ -1209,8 +1173,12 @@ VirtualProgram::setFunction(
         function._accept = accept;
         ofm.insert(OrderedFunction(ordering, function));
 
+        // final cleanup on the shader source before applying it
+        std::string finalized_source(shaderSource);
+        ShaderLoader::finalize(finalized_source);
+
         // assemble the poly shader. but check a map first for existing shaders.
-        PolyShader* shader = PolyShader::lookUpShader(functionName, shaderSource, location);
+        PolyShader* shader = PolyShader::lookUpShader(functionName, finalized_source, location);
 
         ShaderEntry& entry = _shaderMap[MAKE_SHADER_ID(functionName)];
         entry._shader = shader;
@@ -1317,7 +1285,7 @@ VirtualProgram::apply(osg::State& state) const
         return;
     }
 
-    const unsigned contextID = state.getContextID();
+    const unsigned contextID = GLUtils::getSharedContextID(state);
 
     if (_shaderMap.empty() && !_inheritSet)
     {
@@ -1423,11 +1391,7 @@ VirtualProgram::apply(osg::State& state) const
         {
             PolyShader* ps = iter.second._shader.get();
 
-#ifdef OE_USE_HASH_FOR_PROGRAM_KEY
-            local.programKey.push_back(ps->getHash());
-#else
-            local.programKey.push_back(ps);
-#endif
+            local.programKey.insert(ps->getHash());
 
             if (ps->isFragmentStage())
                 ++numFragShaders;
@@ -1518,7 +1482,9 @@ VirtualProgram::apply(osg::State& state) const
             OE_PROFILING_ZONE_NAMED("use");
             OE_PROFILING_ZONE_TEXT(program->getName());
 
-            if (pcp->needsLink())
+            bool needsLink = pcp->needsLink();
+
+            if (needsLink)
             {
                 Registry::programRepo().linkProgram(key, program.get(), pcp, state);
             }
@@ -1547,7 +1513,13 @@ VirtualProgram::apply(osg::State& state) const
                 const osg::GL2Extensions* extensions = osg::GL2Extensions::Get(contextID, true);
                 extensions->glUseProgram(0);
                 state.setLastAppliedProgramObject(0);
-                OE_DEBUG << LC << "Program link failure!" << std::endl;
+
+                if (needsLink)
+                {
+                    OE_WARN << LC << "Program will not link!" << std::endl;
+                    ShaderInfoLog x(pcp->getProgram(), "");
+                    x.dumpErrors(state);
+                }
             }
         }
 
@@ -1850,6 +1822,47 @@ bool VirtualProgram::getAcceptCallbacksVaryPerFrame() const
 void VirtualProgram::setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerFrame)
 {
     _acceptCallbacksVaryPerFrame = acceptCallbacksVaryPerFrame;
+}
+
+int
+VirtualProgram::compare_safe(const VirtualProgram& rhs) const
+{
+    ScopedMutexLock lock(_dataModelMutex);
+
+    // compare each parameter 
+    COMPARE_StateAttribute_Parameter(_mask);
+    COMPARE_StateAttribute_Parameter(_inherit);
+    COMPARE_StateAttribute_Parameter(_isAbstract);
+
+    if (_shaderMap.size() < rhs._shaderMap.size()) return -1;
+    if (_shaderMap.size() > rhs._shaderMap.size()) return +1;
+
+    ShaderMap::const_iterator lhsIter = _shaderMap.begin();
+    ShaderMap::const_iterator rhsIter = rhs._shaderMap.begin();
+
+    while (lhsIter != _shaderMap.end())
+    {
+        if (lhsIter->first < rhsIter->first) return -1;
+        if (lhsIter->first > rhsIter->first) return +1;
+
+        const ShaderEntry& lhsEntry = lhsIter->second;
+        const ShaderEntry& rhsEntry = rhsIter->second;
+
+        if (lhsEntry < rhsEntry) return -1;
+        if (rhsEntry < lhsEntry) return +1;
+
+        lhsIter++;
+        rhsIter++;
+    }
+
+    // compare the template settings.
+    if (_template.valid() && rhs.getTemplate())
+    {
+        int r = _template->compare(*(rhs.getTemplate()));
+        if (r != 0) return r;
+    }
+
+    return 0;
 }
 
 //.........................................................................

@@ -26,38 +26,23 @@ using namespace osgEarth;
 #define LC "[TileNodeRegistry] "
 
 #define OE_TEST OE_NULL
-//#define OE_TEST OE_INFO
 
 #define SENTRY_VALUE nullptr
-
-// mutex-protect tile registry function. We need this for 
-// multi-window setups where there are parallel cull traversals.
-#define USE_MUTEX
 
 #define PROFILING_REX_TILES "Live Terrain Tiles"
 
 //----------------------------------------------------------------------------
 
-TileNodeRegistry::TileNodeRegistry(const std::string& name) :
-_name              ( name ),
-_revisioningEnabled( false ),
-_notifyNeighbors   ( false ),
-_firstLOD          ( 0u ),
-_mutex("TileNodeRegistry(OE)")
+TileNodeRegistry::TileNodeRegistry() :
+    _notifyNeighbors(false),
+    _mutex("TileNodeRegistry(OE)")
 {
-    _tracker.push_front(SENTRY_VALUE);
-    _sentryptr = _tracker.begin();
+    //nop
 }
 
 TileNodeRegistry::~TileNodeRegistry()
 {
-    releaseAll(NULL);
-}
-
-void
-TileNodeRegistry::setRevisioningEnabled(bool value)
-{
-    _revisioningEnabled = value;
+    releaseAll(nullptr);
 }
 
 void
@@ -67,40 +52,13 @@ TileNodeRegistry::setNotifyNeighbors(bool value)
 }
 
 void
-TileNodeRegistry::setMapRevision(const Revision& rev,
-                                 bool            setToDirty)
+TileNodeRegistry::setDirty(
+    const GeoExtent& extent,
+    unsigned minLevel,
+    unsigned maxLevel,
+    const CreateTileManifest& manifest)
 {
-    if ( _revisioningEnabled )
-    {
-        if ( _maprev != rev || setToDirty )
-        {
-            _mutex.lock();
-
-            if ( _maprev != rev || setToDirty )
-            {
-                _maprev = rev;
-
-                for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
-                {
-                    if ( setToDirty )
-                    {
-                        i->second._tile->refreshAllLayers();
-                    }
-                }
-            }
-
-            _mutex.unlock();
-        }
-    }
-}
-
-void
-TileNodeRegistry::setDirty(const GeoExtent& extent,
-                           unsigned         minLevel,
-                           unsigned         maxLevel,
-                           const CreateTileManifest& manifest)
-{
-    _mutex.lock();
+    ScopedMutexLock lock(_mutex);
     
     for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
     {
@@ -113,51 +71,18 @@ TileNodeRegistry::setDirty(const GeoExtent& extent,
             i->second._tile->refreshLayers(manifest);
         }
     }
-
-    _mutex.unlock();
 }
 
 void
 TileNodeRegistry::add(TileNode* tile)
 {
-    _mutex.lock();
+    ScopedMutexLock lock(_mutex);
 
-    // It is possible that a Tile with the same key is already in the registry. 
-    // This can happen when a Tile's ancestor gets unloaded, orphaning
-    // the registry records for its descendants, but the orphaned record has
-    // not yet itself been removed by the Unloader. So we have to check!
+    auto& entry = _tiles[tile->getKey()];
+    entry._tile = tile;
+    bool recyclingOrphan = entry._trackerToken != nullptr;
+    entry._trackerToken = _tracker.use(tile, nullptr);
 
-    bool recyclingOrphan = false;
-    TrackerEntry* se;
-    TableEntry* te;
-
-    TileTable::iterator i = _tiles.find(tile->getKey());
-    if (i != _tiles.end())
-    {
-        // found an orphan! Reuse and overwrite it.
-        recyclingOrphan = true;
-        te = &i->second;
-        se = (*te->_trackerptr);
-        _tracker.erase(te->_trackerptr); // since we need to move it to the front
-        OE_DEBUG << "Reused orphaned tile record " << tile->getKey().str() << std::endl;
-    }
-    else
-    {
-        te = &_tiles[tile->getKey()];
-        se = new TrackerEntry();
-    }
-
-    // init the tracker entry and place it at the front of the tracker:
-    se->_tile = tile;
-    se->_lastTime = DBL_MAX;
-    se->_lastFrame = ~0;
-    se->_lastRange = FLT_MAX;
-    _tracker.push_front(se);
-
-    // init the table entry:
-    te->_tile = tile;
-    te->_trackerptr = _tracker.begin();
-    
     // Start waiting on our neighbors.
     // (If we're recycling and orphaned record, we need to remove old listeners first)
     if (_notifyNeighbors)
@@ -191,17 +116,17 @@ TileNodeRegistry::add(TileNode* tile)
             _notifiers.erase( notifier );
         }
 
-        OE_DEBUG << LC << _name 
+        OE_DEBUG << LC
             << ": tiles=" << _tiles.size()
             << ", notifiers=" << _notifiers.size()
             << std::endl;
     }
-
-    _mutex.unlock();
 }
 
 void
-TileNodeRegistry::startListeningFor(const TileKey& tileToWaitFor, TileNode* waiter)
+TileNodeRegistry::startListeningFor(
+    const TileKey& tileToWaitFor,
+    TileNode* waiter)
 {
     // ASSUME EXCLUSIVE LOCK
 
@@ -223,7 +148,9 @@ TileNodeRegistry::startListeningFor(const TileKey& tileToWaitFor, TileNode* wait
 }
 
 void
-TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, const TileKey& waiterKey)
+TileNodeRegistry::stopListeningFor(
+    const TileKey& tileToWaitFor,
+    const TileKey& waiterKey)
 {
     // ASSUME EXCLUSIVE LOCK
 
@@ -244,9 +171,7 @@ TileNodeRegistry::stopListeningFor(const TileKey& tileToWaitFor, const TileKey& 
 void
 TileNodeRegistry::releaseAll(osg::State* state)
 {
-#ifdef USE_MUTEX
     ScopedMutexLock lock(_mutex);
-#endif
 
     for (auto& tile : _tiles)
     {
@@ -254,14 +179,7 @@ TileNodeRegistry::releaseAll(osg::State* state)
     }
     _tiles.clear();
 
-    for (Tracker::iterator i = _tracker.begin(); i != _tracker.end(); ++i)
-    {
-        TrackerEntry* e = *i;
-        delete e;
-    }
-    _tracker.clear();
-    _tracker.push_front(SENTRY_VALUE);
-    _sentryptr = _tracker.begin();
+    _tracker.reset();
 
     _notifiers.clear();
 
@@ -273,48 +191,24 @@ TileNodeRegistry::releaseAll(osg::State* state)
 void
 TileNodeRegistry::touch(TileNode* tile, osg::NodeVisitor& nv)
 {
-#ifdef USE_MUTEX
     ScopedMutexLock lock(_mutex);
-#endif
 
-    // Find the tracker for this tile and update its timestamp
     TileTable::iterator i = _tiles.find(tile->getKey());
-    if (i != _tiles.end())
+
+    OE_SOFT_ASSERT_AND_RETURN(i != _tiles.end(), void());
+
+    _tracker.use(tile, i->second._trackerToken);
+
+    if (tile->updateRequired())
     {
-        TableEntry& e = i->second;
-        TrackerEntry* se = (*e._trackerptr);
-        se->_lastTime = _clock->getTime();
-        se->_lastFrame = _clock->getFrame();
-
-        const osg::BoundingSphere& bs = tile->getBound();
-        float range = nv.getDistanceToViewPoint(bs.center(), true) - bs.radius();
-        se->_lastRange = osg::minimum(se->_lastRange, range);
-
-        // Move the tracker to the front of the list (ahead of the sentry).
-        // Once a cull traversal is complete, all visited tiles will be
-        // in front of the sentry, leaving all non-visited tiles behind it.
-        _tracker.erase(e._trackerptr);
-        _tracker.push_front(se);
-        e._trackerptr = _tracker.begin();
-
-        // Does it need an update traversal?
-        if (tile->updateRequired())
-        {
-            _tilesToUpdate.push_back(tile->getKey());
-        }
-    }
-    else
-    {
-        OE_WARN << LC << "UPDATE FAILED - TILE " << tile->getKey().str() << " not in TILE TABLE!" << std::endl;
+        _tilesToUpdate.push_back(tile->getKey());
     }
 }
 
 void
 TileNodeRegistry::update(osg::NodeVisitor& nv)
 {
-#ifdef USE_MUTEX
     ScopedMutexLock lock(_mutex);
-#endif
 
     if (!_tilesToUpdate.empty())
     {
@@ -350,28 +244,21 @@ TileNodeRegistry::collectDormantTiles(
     unsigned maxTiles,
     std::vector<osg::observer_ptr<TileNode>>& output)
 {
-#ifdef USE_MUTEX
     ScopedMutexLock lock(_mutex);
-#endif
 
     unsigned count = 0u;
 
-    // After cull, all visited tiles are in front of the sentry, and all
-    // non-visited tiles are behind it. Start at the sentry position and
-    // iterate over the non-visited tiles, checking them for deletion.
-    Tracker::iterator i = _sentryptr;
-    Tracker::iterator tmp;
-    for(++i; i != _tracker.end() && count < maxTiles; ++i)
+    const auto disposeTile = [&](TileNode* tile) -> bool
     {
-        TrackerEntry* se = *i;
+        OE_SOFT_ASSERT_AND_RETURN(tile != nullptr, true);
 
-        const TileKey& key = se->_tile->getKey();
+        const TileKey& key = tile->getKey();
 
-        if (se->_tile->getDoNotExpire() == false &&
-            se->_lastTime < oldestAllowableTime &&
-            se->_lastFrame < oldestAllowableFrame &&
-            se->_lastRange > farthestAllowableRange &&
-            se->_tile->areSiblingsDormant())
+        if (tile->getDoNotExpire() == false &&
+            tile->getLastTraversalTime() < oldestAllowableTime &&
+            tile->getLastTraversalFrame() < oldestAllowableFrame &&
+            tile->getLastTraversalRange() > farthestAllowableRange &&
+            tile->areSiblingsDormant())
         {
             if (_notifyNeighbors)
             {
@@ -380,53 +267,21 @@ TileNodeRegistry::collectDormantTiles(
                 stopListeningFor(key.createNeighborKey(0, 1), key);
             }
 
-            // back up the iterator so we can safely erase the tracker entry:
-            tmp = i;
-            --i;
+            output.push_back(tile);
 
-            // put the tile on the output list:
-            output.push_back(se->_tile);
-
-            // remove it from the main tile table:
             _tiles.erase(key);
 
-            // remove it from the tracker list:
-            _tracker.erase(tmp);
-            delete se;
-
-            ++count;
+            return true; // dispose it
         }
         else
         {
-            // reset the range in preparation for the next frame.
-            se->_lastRange = FLT_MAX;
-        }
-    }
+            tile->resetTraversalRange();
 
-    // reset the sentry.
-    _tracker.erase(_sentryptr);
-    _tracker.push_front(SENTRY_VALUE);
-    _sentryptr =_tracker.begin();
+            return false; // keep it
+        }
+    };
+    
+    _tracker.flush(maxTiles, disposeTile);
 
     OE_PROFILING_PLOT(PROFILING_REX_TILES, (float)(_tiles.size()));
 }
-
-#if 0
-osg::ref_ptr<TileNode>
-TileNodeRegistry::get(const TileKey& key) const
-{
-#ifdef USE_MUTEX
-    ScopedMutexLock lock(_mutex);
-#endif
-
-    osg::ref_ptr<TileNode> result;
-
-    auto iter = _tiles.find(key);
-    if (iter != _tiles.end())
-    {
-        result = iter->second._tile.get();
-    }
-
-    return result;
-}
-#endif

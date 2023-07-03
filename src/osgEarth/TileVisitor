@@ -39,39 +39,35 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT TileVisitor : public osg::Referenced
     {
     public:
+        using HasDataCallback = std::function<bool(const TileKey&)>;
 
         TileVisitor();
 
         TileVisitor(TileHandler* handler);
 
-        /**
-        * Sets the minimum level to visit
-        */
+        //! Sets the minimum level to visit
         void setMinLevel(const unsigned int& minLevel) {_minLevel = minLevel;}
 
-        /**
-        * Gets the minimum level to visit
-        */
+        //! Gets the minimum level to visit
         const unsigned int getMinLevel() const {return _minLevel;}
 
-        /**
-        * Sets the maximum level to visit
-        */
+        //! Sets the maximum level to visit
         void setMaxLevel(const unsigned int& maxLevel) {_maxLevel = maxLevel;}
 
-        /**
-        * Gets the maximum level to visit
-        */
+        //! Gets the maximum level to visit
         const unsigned int getMaxLevel() const {return _maxLevel;}
 
+        //! Add an extent of input tiles to visit.
+        void addExtentToVisit( const GeoExtent& extent );
 
-        /**
-        * Extents to visit
-        */
-        void addExtent( const GeoExtent& extent );
-        const std::vector< GeoExtent >& getExtents() const { return _extents; }
+        //! Get the collection of all input extents to visit
+        const std::vector< GeoExtent >& getExtentsToVisit() const {
+            return _extentsToVisit;
+        }
 
-        void addDataExtent(const GeoExtent& extent);
+        //! Adds an entry to data extent index; this lets you assign 
+        //! detailed data extents to the visitor.
+        void addExtentToDataIndex(const GeoExtent& extent);
 
         virtual void run(const Profile* mapProfile);
 
@@ -101,12 +97,12 @@ namespace osgEarth { namespace Util
         unsigned int _minLevel;
         unsigned int _maxLevel;
 
-        // The extents to process
-        std::vector< GeoExtent > _extents;
-
         // An index of areas that might have data.  This is an accleration structure to avoid processing areas that might not have data.
-        typedef RTree<unsigned, double, 2> ExtentIndex;
-        ExtentIndex _dataExtentIndex;
+        using DataIndex = RTree<unsigned, double, 2>;
+        DataIndex _dataExtentIndex;
+
+        // The extents to process
+        std::vector< GeoExtent > _extentsToVisit;
 
         osg::ref_ptr< TileHandler > _tileHandler;
 
@@ -115,6 +111,8 @@ namespace osgEarth { namespace Util
         osg::ref_ptr< const Profile > _profile;
 
         osgEarth::Threading::Mutex _progressMutex;
+
+        HasDataCallback _hasData;
 
         unsigned int _total;
         unsigned int _processed;

@@ -80,8 +80,8 @@ main(int argc, char** argv)
 
 
     // load an earth file and parse demo arguments
-    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
-    if ( !node )
+    auto node = MapNodeHelper().load(arguments, &viewer);
+    if ( !node.valid() )
         return usage(argv);
 
     // find the map node that we loaded.

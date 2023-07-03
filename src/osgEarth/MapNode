@@ -27,10 +27,14 @@
 #include <osgEarth/Map>
 #include <osgEarth/Extension>
 #include <osgEarth/TerrainOptions>
-#include <osgEarth/Registry>
 
 namespace osg {
     class View;
+}
+
+namespace osgEarth
+{
+    class Registry;
 }
 
 namespace osgEarth
@@ -62,12 +66,14 @@ namespace osgEarth
             OE_OPTION(ProxySettings, proxySettings);
             OE_OPTION(bool, enableLighting);
             OE_OPTION(bool, overlayBlending);
+            OE_OPTION(bool, overlayBlendingSource);
             OE_OPTION(unsigned, overlayTextureSize);
             OE_OPTION(bool, overlayMipMapping);
             OE_OPTION(float, overlayResolutionRatio);
             OE_OPTION(bool, useCascadeDraping);
             OE_OPTION(TerrainOptions, terrain);
             OE_OPTION(int, drapingRenderBinNumber);
+            OE_OPTION(float, screenSpaceError);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -131,8 +137,9 @@ namespace osgEarth
          * @param travMask
          *      Traversal mask to apply while searching
          */
-        static MapNode* findMapNode( osg::Node* graph, unsigned travMask =~0 );
-        static MapNode* get( osg::Node* graph, unsigned travMask =~0 ) { return findMapNode(graph, travMask); }
+        static MapNode* findMapNode(osg::Node* graph, unsigned travMask = ~0);
+        static MapNode* get(osg::Node* graph, unsigned travMask = ~0) { return findMapNode(graph, travMask); }
+        static MapNode* get(osg::ref_ptr<osg::Node>& graph, unsigned travMask = ~0) { return findMapNode(graph.get(), travMask); }
 
         /**
          * Returns true if the realized terrain model is geocentric, false if
@@ -245,11 +252,14 @@ namespace osgEarth
         osg::Group*        _layerNodes;
         unsigned           _lastNumBlacklistedFilenames;
         Config             _externalConf;
-        TerrainEngineNode* _terrainEngine;
         osg::Group*        _terrainGroup;
         std::shared_ptr<DrapingManager> _drapingManager;
         ClampingManager*   _clampingManager;
         std::atomic<bool>  _readyForUpdate;
+
+        // yes, this must be a ref_ptr so observers can point to it
+        // in setMap().
+        osg::ref_ptr<TerrainEngineNode> _terrainEngine;
 
         std::vector< osg::ref_ptr<Extension> > _extensions;
 

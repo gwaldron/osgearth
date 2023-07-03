@@ -60,6 +60,10 @@ namespace osgEarth
         bool getRemoveInterior() const { return options().removeInterior().get(); }
         void setRemoveInterior(bool value);
 
+        //! Whether the terrain should remove geometry that is interior to polygons
+        bool getRemoveExterior() const { return options().removeExterior().get(); }
+        void setRemoveExterior(bool value);
+
         //! Whether the terrain should perserve the Z value in the feature data
         //! as static elevation
         bool getHasElevation() const { return options().hasElevation().get(); }
@@ -98,6 +102,42 @@ namespace osgEarth
 
         osg::ref_ptr<FeatureFilterChain> _filterchain;
     };
+
+    //! A single constraint (set of features from a given layer with properties)
+    struct TerrainConstraint
+    {
+        FeatureList features;
+        osg::ref_ptr<TerrainConstraintLayer> layer;
+    };
+
+    /**
+    * Object you can use to query the map for constraints that
+    * intersect a tile key.
+    */
+    class OSGEARTH_EXPORT TerrainConstraintQuery
+    {
+    public:
+        //! Sets the query to use all constraint layers in the map
+        void setMap(const Map* map);
+
+        //! Adds a single constraint layer
+        void addLayer(TerrainConstraintLayer* layer);
+
+        //! Layers to query
+        std::vector<osg::ref_ptr<TerrainConstraintLayer>>& layers() {
+            return _layers;
+        }
+
+        //! Fetches all constraints intersecting the given tilekey
+        bool getConstraints(
+            const TileKey& key,
+            std::vector<TerrainConstraint>& output,
+            ProgressCallback* progress) const;
+
+    private:
+        std::vector<osg::ref_ptr<TerrainConstraintLayer>> _layers;
+    };
+
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TerrainConstraintLayer::Options);

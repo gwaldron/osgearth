@@ -54,9 +54,8 @@ namespace osgEarth { namespace REX
             TerrainEngineNode*                  engine,
             GeometryPool*                       geometryPool,
             Merger*                             merger,
-            TileNodeRegistry*                   liveTiles,
+            TileNodeRegistry::Ptr               tiles,
             const RenderBindings&               renderBindings,
-            const TerrainOptions&               options,
             const SelectionInfo&                selectionInfo,
             const FrameClock*                   clock);
         
@@ -71,11 +70,11 @@ namespace osgEarth { namespace REX
         // only call this variant when it's safe to do so (update, cull).
         osg::ref_ptr<TerrainEngineNode> getEngine() { return osg::ref_ptr<TerrainEngineNode>(_terrainEngine); }
 
-        TileNodeRegistry* liveTiles() const { return _liveTiles; }
+        TileNodeRegistry::Ptr tiles() const { return _tiles; }
 
         const SelectionInfo& getSelectionInfo() const { return _selectionInfo; }
 
-        const TerrainOptions& options() const { return _options; }
+        const TerrainOptionsAPI& options() const { return _options; }
 
         ProgressCallback* progress() const { return _progress.get(); }
 
@@ -97,8 +96,8 @@ namespace osgEarth { namespace REX
         
         osg::observer_ptr<TerrainEngineNode>  _terrainEngine;
         osg::observer_ptr<const Map>          _map;
-        TileNodeRegistry*                     _liveTiles;
-        const TerrainOptions&                 _options;
+        TileNodeRegistry::Ptr                 _tiles;
+        TerrainOptionsAPI                     _options;
         const RenderBindings&                 _renderBindings;
         GeometryPool*                         _geometryPool;
         Merger*                               _merger;

@@ -90,5 +90,8 @@ namespace osgEarth { namespace Util
 
         PBR = "PBR.glsl";
         _sources[PBR] = @PBR.glsl@;
+
+		MetadataNode = "MetadataNode.glsl";
+		_sources[MetadataNode] = @MetadataNode.glsl@;
     }
 } }

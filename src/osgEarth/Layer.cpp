@@ -28,7 +28,7 @@
 
 using namespace osgEarth;
 
-#define LC "[Layer] Layer \"" << getName() << "\" "
+#define LC "[Layer] \"" << getName() << "\" "
 
 //.................................................................
 
@@ -47,7 +47,7 @@ Layer::Options::getConfig() const
     conf.set("attribution", attribution());
     conf.set("terrain", terrainPatch());
     conf.set("proxy", _proxySettings );
-    conf.set("osg_options", osgOptionString());
+    conf.set("read_options", osgOptionString());
     conf.set("l2_cache_size", l2CacheSize());
 
     for(std::vector<ShaderOptions>::const_iterator i = shaders().begin();
@@ -95,7 +95,8 @@ Layer::Options::fromConfig(const Config& conf)
     conf.get("terrain", terrainPatch());
     conf.get("patch", terrainPatch());
     conf.get("proxy", _proxySettings );
-    conf.get("osg_options", osgOptionString());
+    conf.get("read_options", osgOptionString());
+    conf.get("osg_options", osgOptionString()); // back compat
 }
 
 //.................................................................
@@ -345,9 +346,14 @@ Layer::init()
 
     // Copy the layer options name into the Object name.
     // This happens here AND in open.
-    if (options().name().isSet())
+    if (osg::Object::getName().empty())
     {
         osg::Object::setName(options().name().get());
+    }
+
+    if (osg::Object::getName().empty())
+    {
+        osg::Object::setName("Unnamed " + std::string(className()));
     }
 
     _mutex = new Threading::ReadWriteMutex(options().name().isSet() ? options().name().get() : "Unnamed Layer(OE)");
@@ -520,8 +526,9 @@ Layer::create(const ConfigOptions& options)
 
     if ( name.empty() )
     {
-        OE_WARN << "[Layer] ILLEGAL- Layer::create requires a valid driver name" << std::endl;
-        return 0L;
+        // fail silently
+        OE_DEBUG << "[Layer] ILLEGAL- Layer::create requires a valid driver name" << std::endl;
+        return nullptr;
     }
 
     // convey the configuration options:

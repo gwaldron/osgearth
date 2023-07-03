@@ -29,6 +29,7 @@
 #include <osg/ComputeBoundsVisitor>
 #include <osg/KdTree>
 #include <osgDB/ObjectWrapper>
+#include <osgDB/Registry>
 #include <osgUtil/Optimizer>
 
 #define LC "[DrawInstanced] "
@@ -334,11 +335,14 @@ void InstanceGeometry::setMatrices(const std::vector< osg::Matrixf >& matrices)
     }
     tempGeom->addPrimitiveSet(_meshDrawElements.get());
 
-    osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = new osg::KdTreeBuilder();
-    tempGeom->accept(*kdTreeBuilder.get());
-    if (tempGeom->getShape())
+    if (osgDB::Registry::instance()->getKdTreeBuilder())
     {
-        setShape(tempGeom->getShape());
+        osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
+        tempGeom->accept(*kdTreeBuilder.get());
+        if (tempGeom->getShape())
+        {
+            setShape(tempGeom->getShape());
+        }
     }
 }
 
@@ -412,7 +416,6 @@ namespace osgEarth {
     }
 }
 
-
 class MakeInstanceGeometryVisitor : public osg::NodeVisitor
 {
 public:
@@ -421,6 +424,14 @@ public:
         _matrices(matrices)
     {
     }
+
+    struct DC : public osg::Drawable::DrawCallback {
+        void drawImplementation(osg::RenderInfo& ri, const osg::Drawable* drawable) const {
+            drawable->drawImplementation(ri);
+            // prevents a crash
+            ri.getState()->unbindVertexArrayObject();
+        }
+    };
 
     virtual void apply(osg::Geometry& geometry)
     {
@@ -431,6 +442,8 @@ public:
         {
             geometry.getParent(i)->replaceChild(&geometry, instanced.get());
         }
+
+        instanced->setDrawCallback(new DC());
     }
 
     std::vector< osg::Matrixf > _matrices;
@@ -565,17 +578,24 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         posTBO->setInternalFormat( GL_RGBA32F_ARB );
         posTBO->setUnRefImageDataAfterApply( false );
 
+        // Make a higher level group to run the Optimizer on in case the node itself is a Transform
+        // as the FlattenStaticTransformsDuplicatingSharedSubgraphsVisitor doesn't work correctly when the node itself 
+        // is a Transform
+        osg::ref_ptr< osg::Group > grp = new osg::Group;
+        grp->addChild(node);
+
         // Flatten any transforms in the node graph:
         MakeTransformsStatic makeStatic;
-        node->accept(makeStatic);
+        grp->accept(makeStatic);
+
         osgUtil::Optimizer::FlattenStaticTransformsDuplicatingSharedSubgraphsVisitor flatten;
-        node->accept(flatten);
+        grp->accept(flatten);
 
         // Convert the node's primitive sets to use "draw-instanced" rendering; at the
         // same time, assign our computed bounding box as the static bounds for all
         // geometries. (As DI's they cannot report bounds naturally.)
         ConvertToDrawInstanced cdi(numInstancesToStore, true, posTBO, 0);
-        node->accept( cdi );
+        grp->accept( cdi );
 
         // Bind the TBO sampler:
         osg::StateSet* stateset = instanceGroup->getOrCreateStateSet();
@@ -586,7 +606,7 @@ DrawInstanced::convertGraphToUseDrawInstanced( osg::Group* parent )
         ShaderGenerator::setIgnoreHint(posTBO, true);
 
 		// add the node as a child:
-        instanceGroup->addChild( node );
+        instanceGroup->addChild(grp);
 
         MakeInstanceGeometryVisitor makeInstanced(matrices);
         instanceGroup->accept(makeInstanced);

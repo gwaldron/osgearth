@@ -22,6 +22,7 @@
 #include "Capabilities"
 #include "GLUtils"
 #include "Threading"
+#include "Registry"
 
 #include <sstream>
 
@@ -70,14 +71,14 @@ ShaderFactory::getGLSLHeader()
             {
                 buf << "\n#extension GL_NV_gpu_shader5 : enable";
             }
-            else if (version >= 150)
-            {
-                buf << "\n#extension GL_ARB_gpu_shader5 : enable"
-                    << "\n#extension GL_ARB_gpu_shader_int64 : enable";
-            }
             else if (version >= 130)
             {
-                buf << "\n#extension GL_ARB_gpu_shader4 : enable";
+                if (Capabilities::get().supportsInt64())
+                {
+                    buf << "\n#extension GL_ARB_gpu_shader_int64 : enable";
+                }
+
+                //buf << "\n#extension GL_ARB_gpu_shader4 : enable";
             }
 #endif
 
@@ -94,52 +95,36 @@ ShaderFactory::clearProcessorCallbacks()
     ShaderPreProcessor::_post_callbacks.clear();
 }
 
-void
+UID
 ShaderFactory::addPreProcessorCallback(
-    std::function<void(std::string&) > cb)
+    osg::Referenced* host,
+    std::function<void(std::string&, osg::Referenced*)> cb)
+{  
+    UID uid = osgEarth::createUID();
+    ShaderPreProcessor::_pre_callbacks[uid] = { host, cb };
+    return uid;
+}
+
+void
+ShaderFactory::removePreProcessorCallback(UID uid)
 {
-    static int nameGen = 0;
-    std::ostringstream name;
-    name << "__oesf_" << nameGen++;
-    addPreProcessorCallback(name.str(), cb);
+    ShaderPreProcessor::_pre_callbacks.erase(uid);
 }
 
-void
-ShaderFactory::addPreProcessorCallback(
-    const std::string& name,
-    std::function<void(std::string&)> cb)
-{    
-    ShaderPreProcessor::_pre_callbacks[name] = cb;
-}
-
-void
-ShaderFactory::removePreProcessorCallback(const std::string& name)
-{
-    ShaderPreProcessor::_pre_callbacks.erase(name);
-}
-
-void
+UID
 ShaderFactory::addPostProcessorCallback(
-    std::function<void(osg::Shader*)> cb)
+    osg::Referenced* host,
+    std::function<void(osg::Shader*, osg::Referenced*)> cb)
 {
-    static int nameGen = 0;
-    std::ostringstream name;
-    name << "__oesf_" << nameGen++;
-    addPostProcessorCallback(name.str(), cb);
+    UID uid = osgEarth::createUID();
+    ShaderPreProcessor::_post_callbacks[uid] = { host, cb };
+    return uid;
 }
 
 void
-ShaderFactory::addPostProcessorCallback(
-    const std::string& name,
-    std::function<void(osg::Shader*)> cb)
+ShaderFactory::removePostProcessorCallback(UID uid)
 {
-    ShaderPreProcessor::_post_callbacks[name] = cb;
-}
-
-void
-ShaderFactory::removePostProcessorCallback(const std::string& name)
-{
-    ShaderPreProcessor::_post_callbacks.erase(name);
+    ShaderPreProcessor::_post_callbacks.erase(uid);
 }
 
 
@@ -175,11 +160,19 @@ namespace
 
 VirtualProgram::StageMask
 ShaderFactory::createMains(
-    const VirtualProgram::FunctionLocationMap&    functions,
-    const VirtualProgram::ShaderMap&          in_shaders,
-    const VirtualProgram::ExtensionsSet&      in_extensions,
+    osg::State& state,
+    const VirtualProgram::FunctionLocationMap& functions,
+    const VirtualProgram::ShaderMap& in_shaders,
+    const VirtualProgram::ExtensionsSet& in_extensions,
     std::vector< osg::ref_ptr<osg::Shader> >& out_shaders) const
 {
+    // We require attribute aliasing and matrix uniforms.
+    OE_SOFT_ASSERT(state.getUseVertexAttributeAliasing(),
+        "OpenSceneGraph vertex attribute aliasing must be enabled");
+
+    OE_SOFT_ASSERT(state.getUseModelViewAndProjectionUniforms(),
+        "OpenSceneGraph matrix uniforms must be enabled");
+
     StageMask stages =
         VirtualProgram::STAGE_VERTEX |
         VirtualProgram::STAGE_FRAGMENT;

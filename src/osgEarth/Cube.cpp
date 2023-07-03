@@ -394,28 +394,28 @@ CubeSpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
                                            double&                 in_out_ymax ) const
 {
     // input bounds:
-    Bounds inBounds(in_out_xmin, in_out_ymin, in_out_xmax, in_out_ymax);
+    Bounds inBounds(in_out_xmin, in_out_ymin, 0, in_out_xmax, in_out_ymax, 0);
 
     Bounds outBounds;
 
     // for each CUBE face, find the intersection of the input bounds and that face.
     for (int face = 0; face < 6; ++face)
     {
-        Bounds faceBounds( (double)(face), 0.0, (double)(face+1), 1.0);
+        Bounds faceBounds((double)(face), 0.0, 0.0, (double)(face + 1), 1.0, 0.0);
 
-        Bounds intersection = faceBounds.intersectionWith(inBounds);
+        Bounds isect = intersection(faceBounds, inBounds);
 
         // if they intersect (with a non-zero area; abutting doesn't count in this case)
         // transform the intersection and include in the result.
-        if (intersection.isValid() && intersection.area2d() > 0.0)
+        if (isect.valid() && area2d(isect) > 0.0)
         {
             double
-                xmin = intersection.xMin(), ymin = intersection.yMin(),
-                xmax = intersection.xMax(), ymax = intersection.yMax();
+                xmin = isect.xMin(), ymin = isect.yMin(),
+                xmax = isect.xMax(), ymax = isect.yMax();
 
             if (transformInFaceExtentToMBR(to_srs, face, xmin, ymin, xmax, ymax))
             {
-                outBounds.expandBy(Bounds(xmin, ymin, xmax, ymax));
+                outBounds.expandBy(Bounds(xmin, ymin, 0.0, xmax, ymax, 0.0));
             }
         }
     }

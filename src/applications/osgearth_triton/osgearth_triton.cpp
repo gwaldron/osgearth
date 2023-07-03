@@ -303,8 +303,8 @@ main(int argc, char** argv)
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
-    osg::Group* node = osgEarth::Util::MapNodeHelper().load(arguments, &viewer, createUI());
-    if ( node )
+    auto node = osgEarth::Util::MapNodeHelper().load(arguments, &viewer, createUI());
+    if (node.valid() && MapNode::get(node))
     {
         viewer.setSceneData( node );
 

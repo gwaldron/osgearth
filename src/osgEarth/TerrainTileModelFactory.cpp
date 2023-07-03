@@ -31,10 +31,10 @@
 
 using namespace osgEarth;
 
-#define LABEL_IMAGERY "Terrain imagery"
-#define LABEL_NORMALMAP "Terrain normalmap"
-#define LABEL_ELEVATION "Terrain elevation"
-#define LABEL_COVERAGE "Terrain coverage"
+#define LABEL_IMAGERY "REX textures"
+#define LABEL_NORMALMAP "REX textures"
+#define LABEL_ELEVATION "REX textures"
+#define LABEL_COVERAGE "REX textures"
 
 //.........................................................................
 
@@ -147,15 +147,7 @@ TerrainTileModelFactory::TerrainTileModelFactory(
     const TerrainOptions& options) :
     _options(options)
 {
-    // Create an empty texture that we can use as a placeholder
-    _emptyColorTexture = Texture::create(ImageUtils::createEmptyImage());
-    _emptyColorTexture->label() = LABEL_IMAGERY;
-
-    osg::Image* landCoverImage = LandCover::createImage(1u);
-    ImageUtils::PixelWriter writeLC(landCoverImage);
-    writeLC(osg::Vec4(0,0,0,0), 0, 0);
-    _emptyLandCoverTexture = Texture::create(landCoverImage);
-    _emptyColorTexture->label() = LABEL_COVERAGE;
+    //nop
 }
 
 TerrainTileModel*
@@ -295,19 +287,16 @@ TerrainTileModelFactory::addImageLayer(
         _options.firstLOD() == key.getLOD() &&
         reqs && reqs->fullDataAtFirstLodRequired())
     {
-        tex = _emptyColorTexture;
+        tex = Texture::create(ImageUtils::createEmptyImage());
     }
 
     if (tex)
     {
-        if (tex != _emptyColorTexture)
-        {
-            tex->label() = LABEL_IMAGERY;
+        tex->category() = LABEL_IMAGERY;
 
-            tex->name() =
-                model->key().str() + ":" +
-                (imageLayer->getName().empty() ? "(unnamed image layer)" : imageLayer->getName());
-        }
+        tex->name() =
+            model->key().str() + ":" +
+            (imageLayer->getName().empty() ? "(unnamed image layer)" : imageLayer->getName());
 
         TerrainTileModel::ColorLayer layerModel;
         layerModel.layer() = imageLayer;
@@ -349,7 +338,7 @@ TerrainTileModelFactory::addStandaloneImageLayer(
     bool added = false;
     while (keyToUse.valid() && !added)
     {
-        bool added = addImageLayer(model, imageLayer, keyToUse, reqs, progress);
+        added = addImageLayer(model, imageLayer, keyToUse, reqs, progress);
         if (!added)
         {
             TileKey parentKey = keyToUse.createParentKey();
@@ -464,7 +453,7 @@ TerrainTileModelFactory::addElevation(
         {
             model->elevation().revision() = combinedRevision;
             model->elevation().texture() = Texture::create(elevTex.get());
-            model->elevation().texture()->label() = LABEL_ELEVATION;
+            model->elevation().texture()->category() = LABEL_ELEVATION;
 
             if (_options.useNormalMaps() == true)
             {
@@ -475,7 +464,7 @@ TerrainTileModelFactory::addElevation(
                 {
                     elevTex->getNormalMapTexture()->setName(key.str() + ":normalmap");
                     model->normalMap().texture() = Texture::create(elevTex->getNormalMapTexture());
-                    model->normalMap().texture()->label() = LABEL_NORMALMAP;
+                    model->normalMap().texture()->category() = LABEL_NORMALMAP;
                 }
             }
 
@@ -567,11 +556,15 @@ TerrainTileModelFactory::addLandCover(
         _options.firstLOD() == key.getLOD() &&
         reqs && reqs->fullDataAtFirstLodRequired())
     {
-        model->landCover().texture() = _emptyLandCoverTexture;
+        osg::Image* landCoverImage = LandCover::createImage(1u);
+        ImageUtils::PixelWriter writeLC(landCoverImage);
+        writeLC(osg::Vec4(0, 0, 0, 0), 0, 0);
+        model->landCover().texture() = Texture::create(landCoverImage);
     }
 
     if (model->landCover().texture())
     {
+        model->landCover().texture()->category() = LABEL_COVERAGE;
         model->landCover().texture()->name() = model->key().str() + ":landcover";
     }
 

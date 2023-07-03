@@ -324,7 +324,6 @@ OverlayDecorator::onGroupChanged(osg::Group* group)
 
     for( unsigned i=0; i<_techniques.size(); ++i )
     {
-        //TODO: change to technique->getActive() or something
         _totalOverlayChildren += _overlayGroups[i]->getNumChildren();
 
         if ( _overlayGroups[i] == group )
@@ -539,8 +538,7 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     }
 
     // calculate the new RTT matrices. All techniques will share the 
-    // same set. We could probably put these in the "shared" category
-    // and use pointers..todo.
+    // same set.
     osg::Matrix rttViewMatrix, rttProjMatrix;
 
     // for a camera that cares about geometry (like the draping technique) it's important
@@ -575,7 +573,6 @@ OverlayDecorator::cullTerrainAndCalculateRTTParams(osgUtil::CullVisitor* cv,
     }
 
     // Build a polyhedron for the new frustum so we can slice it.
-    // TODO: do we really even need to slice it anymore? consider
     osgShadow::ConvexPolyhedron frustumPH;
     frustumPH.setToUnitFrustum(true, true);
     frustumPH.transform( inverseMVP, MVP );

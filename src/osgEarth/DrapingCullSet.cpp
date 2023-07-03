@@ -92,6 +92,16 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
         if (nv.getFrameStamp() == nullptr)
             return;
 
+        while (!_data.empty())
+        {
+            if (_data.begin()->second._acceptFrame >= 0 &&
+                _data.rbegin()->second._acceptFrame != nv.getFrameStamp()->getFrameNumber())
+            {
+                _data.erase(_data.begin());
+            }
+            else break;
+        }
+
         if (_data.empty())
             return;
 
@@ -102,6 +112,7 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
         const osg::NodePath& nvPath = nv.getNodePath();
 
         FrameData& data = _data.rbegin()->second;
+        data._acceptFrame = nv.getFrameStamp()->getFrameNumber();
 
         for(auto& entry : data._entries)
         {
@@ -166,7 +177,5 @@ DrapingCullSet::accept(osg::NodeVisitor& nv)
                 cv->popModelViewMatrix();
             }
         }
-
-        _data.erase(--_data.end());
     }
 }

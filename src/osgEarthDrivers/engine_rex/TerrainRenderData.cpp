@@ -125,7 +125,8 @@ TerrainRenderData::reset(
         }
     }
 
-    // Include a "blank" layer for missing data.
+    // Include a "blank" layer for missing data. We should only need this if
+    // no layers get rendered at all.
     addLayerDrawable(nullptr);
 }
 

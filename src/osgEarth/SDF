@@ -106,11 +106,19 @@ namespace osgEarth { namespace Util
         //! and you are willing to shunt the processing to the GPU.
         void setUseGPU(bool value);
 
+        //! Computes the distance field from an image using the technique described in http://cs.brown.edu/people/pfelzens/papers/dt-final.pdf
+        //! A great visualization of this algorithm is at https://observablehq.com/@mourner/fast-distance-transform
+        //! @param image The image to compute the distance field from with an alpha value of 0 indicating empty pixels
+        //! @param minPixels Pixel distances <= minPixels are encoded as 0.0
+        //! @param maxPixels Pixel distances >= maxPixels are encoded as 1.0
+        osg::Image* createDistanceField(const osg::Image* image, float minPixels, float maxPixels) const;
+
     private:
 
-        void compute_nnf_on_gpu(osg::Image* buf) const;
+        //void compute_nnf_on_gpu(osg::Image* buf) const;
         void compute_nnf_on_cpu(osg::Image* buf) const;
 
+#if 0
         struct NNFSession : public ComputeImageSession
         {
         public:
@@ -121,6 +129,7 @@ namespace osgEarth { namespace Util
 
         PerThreadComputeSession<NNFSession> _compute;
         osg::ref_ptr<osg::Program> _program;
+#endif
         bool _useGPU;
 
     };

@@ -57,8 +57,9 @@ namespace
         GLfloat speed;
     };
 
-    // GL data that must be stored per-graphics-context
-    struct GCState
+    // GL data that must be stored separately per state since it will
+    // differ by camera/view and changes every frame
+    struct GLObjects : public PerStateGLObjects
     {
         GLBuffer::Ptr _buffer;
     };
@@ -139,8 +140,8 @@ namespace
         WindDrawable(const osgDB::Options* readOptions);
 
         void setupPerCameraState(const osg::Camera* camera);
-        void streamDataToGPU(osg::RenderInfo& ri, GCState& ds) const;
-        void updateBuffers(CameraState&, const osg::Camera*);
+        void streamDataToGPU(osg::RenderInfo& ri, GLObjects& globjects) const;
+        void updateBuffers(CameraState&, osgUtil::CullVisitor*, const SpatialReference* srs);
 
         void drawImplementation(osg::RenderInfo& ri) const override;
         void releaseGLObjects(osg::State* state) const override;
@@ -149,7 +150,7 @@ namespace
         osg::ref_ptr<const osgDB::Options> _readOptions;
         osg::ref_ptr<osg::Program> _computeProgram;
         std::vector<osg::ref_ptr<Wind> > _winds;
-        mutable osg::buffered_object<GCState> _ds;
+        mutable osg::buffered_object<GLObjects> _globjects;
         mutable CameraStates _cameraState;
         TextureImageUnitReservation _unitReservation;
     };
@@ -236,26 +237,32 @@ namespace
         cs._sharedStateSet->setDefine("OE_WIND_TEX", "oe_wind_tex");
     }
 
-    void WindDrawable::streamDataToGPU(osg::RenderInfo& ri, GCState& ds) const
+    void WindDrawable::streamDataToGPU(osg::RenderInfo& ri, GLObjects& gl) const
     {
         osg::State* state = ri.getState();
         if (state)
         {
             CameraState& cs = _cameraState.get(ri.getCurrentCamera());
 
-            if (ds._buffer == nullptr)
+            if (gl._buffer == nullptr)
             {
-                ds._buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state, "Wind buffer");
+                gl._buffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, *state);
+                gl._buffer->bind();
+                gl._buffer->debugLabel("Wind", "SSBO");
+                gl._buffer->unbind();
             }
 
             // upload to GPU
-            ds._buffer->uploadData(
+            gl._buffer->uploadData(
                 sizeof(WindData) * (_winds.size() + 1), 
                 cs._windData);
         }
     }
 
-    void WindDrawable::updateBuffers(CameraState& cs, const osg::Camera* camera)
+    void WindDrawable::updateBuffers(
+        CameraState& cs,
+        osgUtil::CullVisitor* cv,
+        const SpatialReference* srs)
     {
         if (cs._numWindsAllocated < _winds.size()+1)
         {
@@ -269,6 +276,13 @@ namespace
             cs._numWindsAllocated = _winds.size()+1;
         }
 
+        const osg::Matrix& vm = cv->getCurrentCamera()->getViewMatrix();
+        const osg::Matrix& mvm = *cv->getModelViewMatrix();
+        const osg::Matrix ivm = cv->getCurrentCamera()->getInverseViewMatrix();
+        const SpatialReference* worldSRS = srs->isGeographic() ? srs->getGeocentricSRS() : srs;
+        osg::Matrix local2world;
+        worldSRS->createLocalToWorld(osg::Vec3d() * ivm, local2world);
+
         size_t i;
         for(i=0; i<_winds.size(); ++i)
         {
@@ -277,7 +291,7 @@ namespace
             if (wind->type() == Wind::TYPE_POINT)
             {
                 // transform from world to camera-view space
-                osg::Vec3d posView =  wind->getPointWorld() * camera->getViewMatrix();
+                osg::Vec3d posView = wind->getPointWorld() * mvm;
 
                 cs._windData[i].position[0] = posView.x();
                 cs._windData[i].position[1] = posView.y();
@@ -286,11 +300,14 @@ namespace
             }
             else // TYPE_DIRECTIONAL
             {
-                // transform from world to camera-view space
-                osg::Vec3f dir;
+                // direction is a local tangent space vector:
+                osg::Vec3d dir;
                 dir.x() = wind->direction()->x();
                 dir.y() = wind->direction()->y();
-                dir = osg::Matrixf::transform3x3(dir, camera->getViewMatrix());
+
+                // transform it from local tangent space to view space:
+                dir = osg::Matrixd::transform3x3(dir, local2world * mvm);
+
                 dir.normalize();
 
                 cs._windData[i].direction[0] = dir.x();
@@ -310,12 +327,12 @@ namespace
     {
         if (state)
         {
-            GCState& ds = _ds[state->getContextID()];
-            ds._buffer = nullptr;
+            auto& gl = GLObjects::get(_globjects, *state);
+            gl._buffer = nullptr;
         }
         else
         {
-            _ds.clear();
+            _globjects.clear();
         }
 
         _cameraState.for_each([&](const CameraState& cs)
@@ -328,7 +345,8 @@ namespace
 
     void WindDrawable::resizeGLObjectBuffers(unsigned maxSize)
     {
-        _ds.resize(maxSize);
+        if (maxSize > _globjects.size())
+            _globjects.resize(maxSize);
 
         _cameraState.for_each([&](CameraState& cs)
             {
@@ -345,20 +363,19 @@ namespace
 
         OE_GL_ZONE;
 
-        GCState& ds = _ds[ri.getState()->getContextID()];
-        osg::GLExtensions* ext = ri.getState()->get<osg::GLExtensions>();
+        auto& gl = GLObjects::get(_globjects, *ri.getState());
 
         // update buffer with wind data
-        streamDataToGPU(ri, ds);
+        streamDataToGPU(ri, gl);
 
         // activate layout() binding point:
-        ds._buffer->bindBufferBase(0);
+        gl._buffer->bindBufferBase(0);
 
         // run it
-        ext->glDispatchCompute(WIND_DIM_X, WIND_DIM_Y, WIND_DIM_Z);
+        gl._buffer->ext()->glDispatchCompute(WIND_DIM_X, WIND_DIM_Y, WIND_DIM_Z);
 
         // sync the output
-        ext->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        gl._buffer->ext()->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     }
 }
 
@@ -537,6 +554,12 @@ WindLayer::prepareForRendering(TerrainEngine* engine)
     }
 }
 
+void
+WindLayer::addedToMap(const Map* map)
+{
+    _srs = map->getSRS();
+}
+
 osg::StateSet*
 WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
 {
@@ -591,7 +614,7 @@ WindLayer::getSharedStateSet(osg::NodeVisitor* nv) const
     textureToCamView.invert(camViewToTexture);
     cs._texToViewMatrix->set(textureToCamView);
 
-    windDrawable->updateBuffers(cs, camera);
+    windDrawable->updateBuffers(cs, cv, _srs.get());
 
     return cs._sharedStateSet.get();
 }

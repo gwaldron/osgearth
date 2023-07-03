@@ -101,7 +101,6 @@ ModelSource::createNode(const Map*        map,
 
     osg::Node* node = createNodeImplementation(map, progress);
 
-    //TODO: consider moving this logic up into MapNode.
     if ( node && getSceneGraphCallbacks() )
     {
         getSceneGraphCallbacks()->firePreMergeNode(node);

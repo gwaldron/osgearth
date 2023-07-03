@@ -42,10 +42,15 @@ namespace osgEarth { namespace REX
         // Tile key
         const TileKey* _key;
 
-        // ModelView matrix to apply before rendering this tile
-        osg::ref_ptr<const osg::RefMatrix> _modelViewMatrix;
+        // True if this tile intersects the extent of its source layer.
+        // We can achieve some optimizations by not rendering tiles outside
+        // of the layer extents in many cases, but we don't know until it's
+        // time to render.
+        bool _intersectsLayerExtent;
 
-        osg::ref_ptr<const osg::RefMatrix> _localToWorld;
+        // ModelView matrix to apply before rendering this tile
+        osg::Matrix _modelViewMatrix;
+        osg::Matrix _localToWorld;
 
         // Samplers that are shared between all rendering passes
         const Samplers* _sharedSamplers;
@@ -77,6 +82,9 @@ namespace osgEarth { namespace REX
         // Distance from camera to center of tile
         float _range;
 
+        // Start and end morphing distances for this tile
+        float _morphStartRange, _morphEndRange;
+
         // Layer order for this tile. i.e., if this is zero, then this command
         // is drawing a tile for the first LayerDrawable.
         int _layerOrder;
@@ -107,7 +115,7 @@ namespace osgEarth { namespace REX
                 // same revision
                 _tileRevision == rhs._tileRevision &&
                 // same matrix
-                *_modelViewMatrix == *rhs._modelViewMatrix &&
+                _modelViewMatrix == rhs._modelViewMatrix &&
                 // same underlying geometry pointer - this is important
                 // if we're doing bindless NV rendering and have to 
                 // use a different GPU buffer address.
@@ -124,6 +132,10 @@ namespace osgEarth { namespace REX
             _layerOrder(INT_MAX),
             _sequence(0),
             _hasConstraints(false) { }
+
+        DrawTileCommand(DrawTileCommand&&) = default;
+        DrawTileCommand& operator = (const DrawTileCommand&) = default;
+        DrawTileCommand& operator = (DrawTileCommand&&) = default;
 
         virtual void accept(osg::PrimitiveFunctor& functor) const;
         virtual void accept(osg::PrimitiveIndexFunctor& functor) const;
@@ -147,17 +159,24 @@ namespace osgEarth { namespace REX
         }
 
         const osg::Matrix& getModelViewMatrix() const override {
-            return *_modelViewMatrix.get();
+            return _modelViewMatrix;
         }
 
-        const osg::RefMatrix* getLocalToWorld() const override {
+        const osg::Matrixd& getLocalToWorld() const override {
             return _localToWorld;
-            //return *_modelViewMatrix.get();
+        }
+
+        float getMorphStartRange() const override {
+            return _morphStartRange;
+        }
+
+        float getMorphEndRange() const override {
+            return _morphEndRange;
         }
 
         //! Apply the GL state for this tile (all samplers and uniforms)
         //! in preparation for rendering or computation
-        void apply(
+        bool apply(
             osg::RenderInfo& ri,
             void* implData) const override;
 

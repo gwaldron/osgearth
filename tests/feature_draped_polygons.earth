@@ -7,15 +7,18 @@ on the map using the overlay technique.
 It also shows the "selector" technique of using SQL queries to selectively style
 the feature data.
 -->
-
 <map name="Feature Overlay Demo">
-
+    <options>
+        <overlay_blending>false</overlay_blending>
+    </options>
     <GDALImage name="Imagery">
         <url>../data/world.tif</url>
     </GDALImage>
-    
     <FeatureModel name="Countries" features="world-data" opacity="0.8">
-        <styles>        
+        <layout tile_size="500000" crop_features="true" paged="true">
+            <level max_range="1e10"/>
+        </layout>
+        <styles>
             <style type="text/css">
                 base {
                    render-depth-test:  false;
@@ -37,40 +40,33 @@ the feature data.
                    fill: #80ff80;
                 }                                      
             </style>
-        
             <selector class="p1">
                 <query>
                     <expr><![CDATA[ POP <= 14045470 ]]></expr>
                 </query>
             </selector>
-        
             <selector class="p2">
                 <query>
                     <expr><![CDATA[ POP > 14045470 and POP <= 43410900 ]]></expr>
                 </query>
             </selector>
-            
             <selector class="p3">
                 <query>
                     <expr><![CDATA[ POP > 43410900 and POP <= 97228750 ]]></expr>
                 </query>
             </selector>
-            
             <selector class="p4">
                 <query>
                     <expr><![CDATA[ POP > 97228750 and POP <= 258833000 ]]></expr>
                 </query>
             </selector>
-            
             <selector class="p5">
                 <query>
                     <expr><![CDATA[ POP > 258833000 ]]></expr>
                 </query>
             </selector>
-            
-        </styles>        
+        </styles>
     </FeatureModel>
-    
     <OGRFeatures name="world-data">
         <url>../data/world.shp</url>
         <filters>

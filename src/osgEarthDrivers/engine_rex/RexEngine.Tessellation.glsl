@@ -1,7 +1,5 @@
-#pragma vp_name       REX Engine TCS
-#pragma vp_entryPoint oe_rex_TCS
-#pragma vp_location   tess_control
-#pragma vp_order      last
+#pragma vp_name REX Engine TCS
+#pragma vp_function oe_rex_TCS, tess_control, last
 
 layout(vertices=3) out;
 
@@ -27,7 +25,7 @@ void oe_rex_TCS()
 {
     if (gl_InvocationID == 0)
     {
-#if 0
+#if 1
         // iterator backward so we end up loading vertex 0
         float d[3];
         vec3 v[3];
@@ -35,8 +33,7 @@ void oe_rex_TCS()
         {
             VP_LoadVertex(i);
             v[i] = (gl_ModelViewMatrix * (vp_Vertex + vec4(vp_Normal * oe_terrain_getElevation(), 0.0))).xyz;
-            d[i] = 1.0 - texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st).g;
-            d[i] = oe_terrain_tess * d[i] * d[i] * d[i];
+            d[i] = oe_terrain_tess;
         }
 
         float max_dist = oe_terrain_tess_range;
@@ -72,9 +69,8 @@ void oe_rex_TCS()
 
 
 [break]
-#pragma vp_name       REX Engine TES
-#pragma vp_entryPoint oe_rex_TES
-#pragma vp_location   tess_eval
+#pragma vp_name REX Engine TES
+#pragma vp_function oe_rex_TES, tess_eval
 
 // osgEarth terrain is always CCW winding
 layout(triangles, equal_spacing, ccw) in;
@@ -113,17 +109,9 @@ vec4 VP_Interpolate3(vec4 a, vec4 b, vec4 c)
         dot(gl_TessCoord.xyz, vec3(a.w,b.w,c.w)));
 }
 
-varying vec3 oe_UpVectorView;
-varying vec3 vp_Normal;
-
 void oe_rex_TES()
 {
     VP_Interpolate3();
-    
-    // Must re-normalize the normal vector since interpolation was linear?
-    //vp_Normal = normalize(vp_Normal);
-    //oe_UpVectorView = normalize(oe_UpVectorView);
-
     VP_EmitVertex();
 }
 

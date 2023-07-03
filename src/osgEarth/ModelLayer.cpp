@@ -209,7 +209,6 @@ void
 ModelLayer::init()
 {
     VisibleLayer::init();
-    installDefaultOpacityShader();
     _root = new osg::Group();
     _root->setName(getName());
 }
@@ -334,6 +333,11 @@ ModelLayer::openImplementation()
                 plod->setMinRange(minRange);
                 plod->setMaxRange(maxRange);
 
+                // FIXME: Tries to set the PagedNode center based on a GeoPoint; 
+                // if said GeoPoint has an ALTMODE_RELATIVE it will fail to resolve and
+                // will print the ILLEGAL toWorld message.
+                // Options: (a) Use a terrain callback to set the Z value (b) use ElevationRanges
+                // (c) use a ModelNode instead
                 osg::Vec3d center;
                 if (options().location().isSet())
                 {

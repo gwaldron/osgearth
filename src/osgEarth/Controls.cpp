@@ -2516,7 +2516,6 @@ _fading        ( true )
 
     osg::StateSet* stateSet = _group->getOrCreateStateSet();
 
-    //TODO: appears to be unused
     osg::Uniform* defaultOpacity = new osg::Uniform( osg::Uniform::FLOAT, "oe_controls_opacity" );
     defaultOpacity->set( 1.0f );
     stateSet->addUniform( defaultOpacity );
@@ -2610,7 +2609,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
 
               if ( node->anchorPoint().isSet() )
               {
-                  //TODO!!
+                  //NYI
               }
               else
               {
@@ -2743,9 +2742,6 @@ ControlCanvas::getOrCreate(osg::View* view)
 
     canvas = new ControlCanvas();
     
-    //TODO: Revisit this after 2.10. We should be connecting ControlCanvas to a Camera,
-    //not a View, because in the case of an MRT or other RTT-camera based setup, this
-    //approach will not work properly.
 #if 1
     osg::Group* group = 0L;
     // ControlCanvas does NOT work as a direct child of the View's camera.

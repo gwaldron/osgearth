@@ -32,7 +32,8 @@ namespace osgEarth { namespace Procedural
 
         std::string
             TextureSplatting,
-            Vegetation;
+            Vegetation,
+            HexTiling;
 	};
 	
 } } // namespace osgEarth::Procedural

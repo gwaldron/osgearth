@@ -1,0 +1,142 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_TILE_MESHER
+#define OSGEARTH_TILE_MESHER 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileKey>
+#include <osgEarth/TerrainConstraintLayer>
+#include <osgEarth/TerrainOptions>
+#include <osgEarth/Feature>
+
+#define VERTEX_VISIBLE       1 // draw it
+#define VERTEX_BOUNDARY      2 // vertex lies on a skirt boundary
+#define VERTEX_HAS_ELEVATION 4 // not subject to elevation texture
+#define VERTEX_SKIRT         8 // it's a skirt vertex (bitmask)
+#define VERTEX_CONSTRAINT   16 // part of a non-morphable constraint
+
+namespace osgEarth
+{
+    /**
+    * Geometry components for a tile (created by the TileMesher).
+    */
+    struct OSGEARTH_EXPORT TileMesh
+    {
+        osg::Matrix localToWorld;
+        osg::ref_ptr<osg::Vec3Array> verts;
+        osg::ref_ptr<osg::Vec3Array> normals;
+        osg::ref_ptr<osg::Vec3Array> uvs;
+        osg::ref_ptr<osg::Vec3Array> vert_neighbors;
+        osg::ref_ptr<osg::Vec3Array> normal_neighbors;
+        osg::ref_ptr<osg::DrawElements> indices;
+        bool hasConstraints = false;
+
+        TileMesh() { }
+        TileMesh(const TileMesh& m);
+        TileMesh(TileMesh&& m);
+        TileMesh& operator = (const TileMesh&);
+    };
+
+    /**
+    * Creates a mesh for a TileKey, optionally including "edits"
+    * created by constrait feature data.
+    */
+    class OSGEARTH_EXPORT TileMesher
+    {
+    public:
+        // Represents a single edit operation driven by a feature collection
+        struct Edit
+        {
+            FeatureList features;
+            bool hasElevation = false;     // do the features contain valid elevation data in Z?
+            bool removeInterior = false;   // should we remove triangles inside polygons?
+            bool removeExterior = false;   // should we remove triangles outside polygons?
+            bool fillElevations = false;   // should we assign elevations to triangles?
+        };
+        using Edits = std::vector<Edit>;
+
+        //! Construct a tile mesher
+        TileMesher();
+        
+        //! Configure this mesher with some terrain options
+        void setTerrainOptions(const TerrainOptionsAPI& options);
+
+        //! Assemble a collection of Edits from the map for the given tile key.
+        //! Edits are just groups of features that the mesher can use to alter
+        //! the terrain mesh.
+        //! @param key TileKey for whicht o collect edits
+        //! @param map Map from which to get constraint layer features
+        //! @param edits OUTPUT collection of features that will edit a mesh
+        //! @param progress Cancelable interface
+        //! @return True if more than zero edits are created
+        bool getEdits(
+            const TileKey& key,
+            const Map* map,
+            Edits& edits,
+            Cancelable* progress) const;
+
+        //! Create a tile mesh, optionally with a collection of edits.
+        //! @param key TileKey for which to create the mesh
+        //! @param edits Edits to apply to alter the mesh, usually generated
+        //!   by calling getEdits(). If empty, the method will return a regular
+        //!   gridded mesh.
+        //! @param options Terrain options for the mesher to use
+        //! @param progress Cancelable interface
+        //! @return A tile mesh
+        TileMesh createMesh(
+            const TileKey& key,
+            const Edits& edits,
+            Cancelable* progress) const;
+
+        //! Apply edits to an existing mesh and return a new mesh.
+        //! @param mesh Input mesh
+        //! @param edits Edits to apply to alter the mesh, usually generated
+        //!   by calling getEdits()
+        //! @return A tile mesh
+        TileMesh createMesh(
+            const TileKey& key,
+            const TileMesh& input,
+            const Edits& edits,
+            Cancelable* progress) const;
+
+        //! Creates a primitive set that represents triangles for
+        //! a tile mesh without any edits.
+        osg::DrawElements* getOrCreateStandardIndices() const;
+            
+
+    protected:
+        mutable osg::ref_ptr<osg::DrawElements> _standardIndices;
+        mutable Mutex _mutex;
+        TerrainOptionsAPI _options;
+
+        using ConstraintLayers = std::vector<osg::ref_ptr<TerrainConstraintLayer>>;
+
+        TileMesh createMeshStandard(
+            const TileKey& key,
+            Cancelable* progress) const;
+
+        TileMesh createMeshWithEdits(
+            const TileKey& key,
+            const TileMesh& mesh,
+            const Edits& edits,
+            Cancelable* progress) const;
+    };
+}
+
+#endif // OSGEARTH_TILE_MESHER

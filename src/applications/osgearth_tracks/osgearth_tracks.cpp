@@ -293,9 +293,9 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator );
 
     // load a map from an earth file.
-    osg::Node* earth = MapNodeHelper().load(arguments, &viewer, createControls(&viewer));
+    auto earth = MapNodeHelper().load(arguments, &viewer, createControls(&viewer));
 
-    MapNode* mapNode = MapNode::findMapNode(earth);
+    MapNode* mapNode = MapNode::get(earth);
     if ( !mapNode )
         return usage("Missing required .earth file" );
 

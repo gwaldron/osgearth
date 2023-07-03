@@ -14,8 +14,8 @@ in vec3 atmos_color;       // atmospheric lighting color
 in vec3 atmos_atten;       // atmospheric lighting attenuation factor
 in vec3 atmos_up;          // earth up vector at fragment (in view coords)
 in float atmos_space;      // camera altitude (0=ground, 1=atmos outer radius)
-in vec3 atmos_vert;
 in vec3 vp_Normal; // surface normal (from osgEarth)
+in vec3 vp_VertexView; // from osgEarth
 
 // frag stage global PBR parameters
 #ifdef OE_USE_PBR
@@ -100,7 +100,6 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 
 vec3 FresnelSchlick(float cosTheta, vec3 F0)
 {
-    //return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
     return F0 + (1.0 - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
 }
 
@@ -111,11 +110,11 @@ void atmos_fragment_main_pbr(inout vec4 color)
     return;
 #endif
 
-    vec3 albedo = color.rgb;
+    // SRGB to linear for PBR compute:
+    vec3 albedo = pow(color.rgb, vec3(2.2));
 
     vec3 N = normalize(vp_Normal);
-    //vec3 N = normalize(gl_FrontFacing ? vp_Normal : -vp_Normal);
-    vec3 V = normalize(-atmos_vert);
+    vec3 V = normalize(-vp_VertexView);
 
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, albedo, vec3(oe_pbr.metal));
@@ -125,13 +124,13 @@ void atmos_fragment_main_pbr(inout vec4 color)
     for (int i = 0; i < OE_NUM_LIGHTS; ++i)
     {
         // per-light radiance:
-        vec3 L = normalize(osg_LightSource[i].position.xyz - atmos_vert);
+        vec3 L = normalize(osg_LightSource[i].position.xyz - vp_VertexView);
         vec3 H = normalize(V + L);
         //float distance = length(osg_LightSource[i].position.xyz - atmos_vert);
         //float attenuation = 1.0 / (distance * distance);
         vec3 radiance = vec3(1.0); // osg_LightSource[i].diffuse.rgb * attenuation;
 
-        radiance *= atmos_atten;
+        //radiance *= atmos_atten;
 
         // cook-torrance BRDF:
         float NDF = DistributionGGX(N, H, oe_pbr.roughness);
@@ -159,17 +158,19 @@ void atmos_fragment_main_pbr(inout vec4 color)
     color.rgb = color.rgb / (color.rgb + vec3(1.0));
 
     // boost:
-    color.rgb *= 2.2;
+    //color.rgb *= 2.2;
 
     // add in the haze
-    color.rgb += atmos_color;
+    color.rgb += pow(atmos_color, vec3(2.2)); // add in the (SRGB) color
 
     // exposure:
     color.rgb = 1.0 - exp(-oe_sky_exposure * color.rgb);
-    //color.rgb = 1.0 - exp(-oe_sky_exposure * 0.33 * color.rgb);
 
     // brightness and contrast
     color.rgb = ((color.rgb - 0.5)*oe_pbr.contrast + 0.5) * oe_pbr.brightness;
+
+    // linear back to SRGB
+    color.rgb = pow(color.rgb, vec3(1.0/2.2));
 }
 
 #else
@@ -209,13 +210,13 @@ void atmos_fragment_material(inout vec4 color)
             vec3 L = normalize(osg_LightSource[i].position.xyz);
 
             // V is the normalized vertex-to-camera vector.
-            vec3 V = -normalize(atmos_vert);
+            vec3 V = -normalize(vp_VertexView);
 
             // point or spot light:
             if (osg_LightSource[i].position.w != 0.0)
             {
                 // VLu is the unnormalized vertex-to-light vector
-                vec3 Lu = osg_LightSource[i].position.xyz - atmos_vert;
+                vec3 Lu = osg_LightSource[i].position.xyz - vp_VertexView;
 
                 // calculate attenuation:
                 float distance = length(Lu);

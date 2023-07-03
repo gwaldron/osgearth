@@ -507,11 +507,11 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
         if (Registry::capabilities().supportsGLSL(140u))
         {
             //Blend Func Separate is only available on OpenGL 1.4 and above
-            blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            blendFunc = new osg::BlendFunc(_overlaySource, _overlayDestination, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         }
         else
         {
-            blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            blendFunc = new osg::BlendFunc(_overlaySource, _overlayDestination);
         }
 
         rttStateSet->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
@@ -712,6 +712,13 @@ DrapingTechnique::setOverlayBlending( bool value )
         if ( _rttBlending )
             OE_INFO << LC << "Overlay blending " << (value?"enabled":"disabled")<< std::endl;
     }
+}
+
+void
+DrapingTechnique::setOverlayBlendingParams(GLenum src, GLenum dst)
+{
+    _overlaySource = src;
+    _overlayDestination = dst;
 }
 
 bool

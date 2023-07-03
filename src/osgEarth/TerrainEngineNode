@@ -179,6 +179,13 @@ namespace osgEarth
 
         //! Access an immutable options API
         virtual const TerrainOptionsAPI getOptions() = 0;
+
+        //! Number of terrain tiles resident in memory 
+        //! (including cached dormant tiles not being rendered)
+        virtual unsigned getNumResidentTiles() const = 0;
+
+        //! Tell the engine you updates options.
+        virtual void dirtyTerrainOptions() = 0;
     };
 
     /**
@@ -286,6 +293,8 @@ namespace osgEarth
         const TerrainOptionsAPI getOptions() override {
             return TerrainOptionsAPI(&_options);
         }
+
+        virtual void dirtyTerrainOptions() { }
 
     public:
         class OSGEARTH_EXPORT ModifyTileBoundingBoxCallback : public osg::Referenced

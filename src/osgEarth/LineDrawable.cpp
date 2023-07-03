@@ -321,6 +321,7 @@ namespace osgEarth { namespace Serializers { namespace LineDrawable
         ADD_FLOAT_SERIALIZER( LineWidth, 1.0f );
         ADD_UINT_SERIALIZER( First, 0u );
         ADD_UINT_SERIALIZER( Count, 0u );
+        ADD_FLOAT_SERIALIZER(StippleQuantize, 8.0f);
     }
 } } }
 
@@ -328,12 +329,14 @@ namespace osgEarth { namespace Serializers { namespace LineDrawable
 int LineDrawable::PreviousVertexAttrLocation = 9;
 int LineDrawable::NextVertexAttrLocation = 10;
 
+#if 0
 LineDrawable::LineDrawable() :
 osg::Drawable(),
 _mode(GL_LINE_STRIP),
 _useGPU(true),
 _factor(1),
 _pattern(0xFFFF),
+_quantize(8.0f),
 _color(1, 1, 1, 1),
 _width(1.0f),
 _smooth(false),
@@ -357,6 +360,7 @@ _colors(NULL)
     if (_useGPU)
         setupShaders();
 }
+#endif
 
 LineDrawable::LineDrawable(GLenum mode) :
 osg::Drawable(),
@@ -364,6 +368,7 @@ _mode(mode),
 _useGPU(true),
 _factor(1),
 _pattern(0xFFFF),
+_quantize(8.0f),
 _color(1,1,1,1),
 _width(1.0f),
 _smooth(false),
@@ -399,6 +404,7 @@ _useGPU(rhs._useGPU),
 _color(rhs._color),
 _factor(rhs._factor),
 _pattern(rhs._pattern),
+_quantize(rhs._quantize),
 _width(rhs._width),
 _smooth(rhs._smooth),
 _first(rhs._first),
@@ -529,6 +535,16 @@ LineDrawable::setStippleFactor(GLint factor)
     {
         _factor = factor;
         GLUtils::setLineStipple(getOrCreateStateSet(), _factor, _pattern, 1);
+    }
+}
+
+void
+LineDrawable::setStippleQuantize(GLfloat value)
+{
+    if (_quantize != value)
+    {
+        _quantize = value;
+        getOrCreateStateSet()->setDefine("OE_LINE_QUANTIZE", std::to_string(_quantize));
     }
 }
 
@@ -1299,6 +1315,12 @@ LineDrawable::setupShaders()
 }
 
 void
+LineDrawable::traverse(osg::NodeVisitor& nv)
+{
+    _geom->accept(nv);
+}
+
+void
 LineDrawable::accept(osg::NodeVisitor& nv)
 {
     if (nv.validNodeMask(*this))
@@ -1319,17 +1341,60 @@ LineDrawable::accept(osg::NodeVisitor& nv)
                 initialize();
         }
 
+        // Since we are hiding the Geometry below this "phantom" drawable,
+        // we must duplicate what OSG would normally do with the various
+        // visitors here so that statesets and callbacks all continue to 
+        // work as usual.
+
         osgUtil::CullVisitor* cv = shade? Culling::asCullVisitor(nv) : 0L;
+        auto stateset = getStateSet();
 
         nv.pushOntoNodePath(this);
 
-        if (cv)
+        if (cv) // CULL_VISITOR
+        {
+            // push the global GPU shader stateset
             cv->pushStateSet(_gpuStateSet.get());
 
-        nv.apply(*this);
+            // and push this drawable's local stateset
+            if (stateset) cv->pushStateSet(stateset);
 
-        if (cv)
+            // handle cull callbacks
+            if (getCullCallback())
+                getCullCallback()->run(this, &nv);
+            else
+                traverse(nv);
+
+            // pop them both
+            if (stateset) cv->popStateSet();
             cv->popStateSet();
+        }
+
+        else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
+        {
+            if (stateset && stateset->requiresUpdateTraversal())
+            {
+                stateset->runUpdateCallbacks(&nv);
+            }
+
+            // simulate the behavior in UpdateVisitor::apply
+            auto callback = getUpdateCallback();
+            if (callback)
+            {
+                callback->run(this, &nv);
+            }
+            else if (getNumChildrenRequiringUpdateTraversal() > 0)
+            {
+                traverse(nv);
+            }
+        }
+
+        else
+        {
+            // other visitor types (intersect, compute bound, etc)
+            // call apply here to invoke the default usual Node::accept() behavior.
+            nv.apply(*this);
+        }
 
         nv.popFromNodePath();
     }

@@ -19,7 +19,7 @@ Here is a very simple earth file that you can find in the `tests` folder of the 
 This map contains one layer that points to a local GeoTIFF file. In this case, the location is relative to the location of the earth file itself. You can see this map by running one of the osgEarth command line tools:
 
 ```
-osgearth_toc simple.earth
+osgearth_imgui simple.earth
 ```
 
 That's it! It is that easy to get a map up and running.
@@ -66,7 +66,7 @@ Now let's add some height field data, also knows as a **DEM** or Digital Elevati
 
     <Viewpoints>
         <Viewpoint name="San Francisco, California">
-            <heading>10/heading>
+            <heading>10</heading>
             <height>4500.0</height>
             <lat>37.5581</lat>
             <long>-122.334</long>

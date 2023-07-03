@@ -12,7 +12,6 @@ set(TARGET_GLSL
     RexEngine.vert.GL4.glsl
     RexEngine.ImageLayer.GL4.glsl
     RexEngine.NormalMap.GL4.glsl
-    RexEngine.Morphing.GL4.glsl
     RexEngine.Tessellation.GL4.glsl
     RexEngine.SDK.GL4.glsl
     RexEngine.GL4.glsl)
@@ -36,7 +35,6 @@ SET(TARGET_SRC
     RexTerrainEngineDriver.cpp
     LayerDrawable.cpp
     LoadTileData.cpp
-    MeshEditor.cpp
 	SelectionInfo.cpp
     SurfaceNode.cpp
     TerrainCuller.cpp
@@ -60,7 +58,6 @@ SET(TARGET_H
     RexTerrainEngineNode
     LayerDrawable
     LoadTileData
-    MeshEditor
     RenderBindings
     SurfaceNode
     TerrainCuller

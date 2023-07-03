@@ -53,7 +53,7 @@ namespace
         "uniform sampler2D oe_PlaceNode_tex; \n"
         "void oe_PlaceNode_icon_FS(inout vec4 color) \n"
         "{ \n"
-        "    color = texture(oe_PlaceNode_tex, oe_PlaceNode_texcoord); \n"
+        "    color = color * texture(oe_PlaceNode_tex, oe_PlaceNode_texcoord); \n"
         "} \n";
 }
 

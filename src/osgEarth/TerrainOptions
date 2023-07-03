@@ -45,13 +45,15 @@ namespace osgEarth
         OE_OPTION(bool, compressNormalMaps);
         OE_OPTION(unsigned, minNormalMapLOD);
         OE_OPTION(bool, gpuTessellation);
+        OE_OPTION(float, tessellationLevel);
+        OE_OPTION(float, tessellationRange);
         OE_OPTION(bool, debug);
         OE_OPTION(int, renderBinNumber);
         OE_OPTION(unsigned, minExpiryFrames);
         OE_OPTION(double, minExpiryTime);
         OE_OPTION(float, minExpiryRange);
         OE_OPTION(unsigned, maxTilesToUnloadPerFrame);
-        OE_OPTION(unsigned, expirationThreshold);
+        OE_OPTION(unsigned, minResidentTiles);
         OE_OPTION(bool, castShadows);
         OE_OPTION(osg::LOD::RangeMode, rangeMode);
         OE_OPTION(float, tilePixelSize);
@@ -67,6 +69,9 @@ namespace osgEarth
         OE_OPTION(std::string, textureCompression);
         OE_OPTION(unsigned, concurrency);
         OE_OPTION(bool, useLandCover);
+        OE_OPTION(float, screenSpaceError);
+        OE_OPTION(unsigned, maxTextureSize);
+
         virtual Config getConfig() const;
     private:
         void fromConfig(const Config&);
@@ -141,6 +146,14 @@ namespace osgEarth
         void setGPUTessellation(const bool& value);
         const bool& getGPUTessellation() const;
 
+        //! GPU tessellation level
+        void setTessellationLevel(const float& value);
+        const float& getTessellationLevel() const;
+
+        //! Maximum range in meters to apply GPU tessellation
+        void setTessellationRange(const float& value);
+        const float& getTessellationRange() const;
+
         //! Whether to activate debugging mode
         void setDebug(const bool& value);
         const bool& getDebug() const;
@@ -166,9 +179,9 @@ namespace osgEarth
         void setMaxTilesToUnloadPerFrame(const unsigned& value);
         const unsigned& getMaxTilesToUnloadPerFrame() const;
 
-        //! Minimum number of terrain elements to keep in memory before expiring usused data
-        void setExpirationThreshold(const unsigned& value);
-        const unsigned& getExpirationThreshold() const;
+        //! Minimum number of terrain tiles to keep in memory before expiring usused data
+        void setMinResidentTiles(const unsigned& value);
+        const unsigned& getMinResidentTiles() const;
 
         //! Whether the terrain should cast shadows - default is false
         void setCastShadows(const bool& value);
@@ -239,6 +252,18 @@ namespace osgEarth
         void setConcurrency(const unsigned& value);
         const unsigned& getConcurrency() const;
 
+        //! Screen space error for PIXEL SIZE ON SCREEN LOD mode
+        void setScreenSpaceError(const float& value);
+        const float& getScreenSpaceError() const;
+
+        //! Sets a maximum size for textures used by the terrain
+        void setMaxTextureSize(const unsigned& value);
+        const unsigned& getMaxTextureSize() const;
+
+        TerrainOptionsAPI();
+        TerrainOptionsAPI(TerrainOptions*);
+        TerrainOptionsAPI(const TerrainOptionsAPI&);
+
     public: // Legacy support
 
         //! Sets the name of the terrain engine driver to use
@@ -247,7 +272,6 @@ namespace osgEarth
     private:
         friend class MapNode;
         friend class TerrainEngineNode;
-        TerrainOptionsAPI(TerrainOptions*);
         TerrainOptions* _ptr;
         TerrainOptions& options() { return *_ptr; }
         const TerrainOptions& options() const { return *_ptr; }

@@ -44,6 +44,11 @@ namespace osgEarth { namespace Procedural
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION_LAYER(LifeMapLayer, lifeMapLayer);
             OE_OPTION(int, numLevels);
+            OE_OPTION(bool, useHexTiler);
+            OE_OPTION(float, normalMapPower);
+            OE_OPTION(float, lifeMapMaskThreshold);
+            OE_OPTION(float, displacementDepth);
+            OE_OPTION(unsigned, maxTextureSize);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -56,19 +61,46 @@ namespace osgEarth { namespace Procedural
 
         LifeMapLayer* getLifeMapLayer() const;
 
+        //! Whether to use a shader that obfuscates the repeating textures 
+        //! found in texture splatting. Incurs a small GPU performance penalty.
+        //! Default is true.
+        void setUseHexTiler(bool value);
+        bool getUseHexTiler() const;
+
+        //! Multiplication power to apply to normal maps, to artificially
+        //! enhance to effect of splatted normals. [0..1] Default is 1.0
+        void setNormalMapPower(float value);
+        float getNormalMapPower() const;
+
+        //! The lifemap threshold (dense+lush+rugged) below which the 
+        //! splatting layer will beome transparent and allow lower layer(s)
+        //! to show through. [0..1] Default = 1.0 (off)
+        void setLifeMapMaskThreshold(float value);
+        float getLifeMapMaskThreshold() const;
+
+        //! Amount by which the textures' displacement map affects
+        //! blending across splatting textures. [0..1, default = 0.1]
+        void setDisplacementDepth(float value);
+        float getDisplacementDepth() const;
+
+        //! Sets a maximum size for splatting textures on the GPU
+        void setMaxTextureSize(unsigned value);
+        unsigned getMaxTextureSize() const;
+
+
     protected:
 
         //! Override post-ctor init
-        virtual void init() override;
-        virtual void prepareForRendering(TerrainEngine* engine) override;
+        void init() override;
+        void prepareForRendering(TerrainEngine* engine) override;
 
     public:
 
-        virtual void addedToMap(const Map* map) override;
-        virtual void removedFromMap(const Map* map) override;
-        virtual void update(osg::NodeVisitor&) override;
-        virtual void resizeGLObjectBuffers(unsigned maxSize) override;
-        virtual void releaseGLObjects(osg::State* state) const override;
+        void addedToMap(const Map* map) override;
+        void removedFromMap(const Map* map) override;
+        void update(osg::NodeVisitor&) override;
+        void resizeGLObjectBuffers(unsigned maxSize) override;
+        void releaseGLObjects(osg::State* state) const override;
 
     protected:
         virtual ~TextureSplattingLayer() { }
@@ -78,9 +110,10 @@ namespace osgEarth { namespace Procedural
             using Ptr = std::shared_ptr<Materials>;
             osg::ref_ptr<TextureArena> _arena;
             osg::ref_ptr<osg::Uniform> _textureScales;
-            std::vector<const LifeMapTextureAsset*> _assets;
+            std::vector<const MaterialAsset*> _assets;
         };
 
+        osg::ref_ptr<const Profile> _mapProfile;
         Future<Materials::Ptr> _materialsJob;
         Materials::Ptr _materials;
         TextureImageUnitReservation _noiseUnit;

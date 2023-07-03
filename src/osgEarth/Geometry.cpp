@@ -53,6 +53,25 @@ namespace
         OE_DEBUG << " [GEOS Warning] " << buffer << std::endl;
         va_end(args);
     }
+
+    static bool checkGEOSResult(const char result)
+    {
+        // GEOS functions return 0 for false, 1 for true and 2 for error.
+        // Convert those to a bool with an error resulting in false.
+        if (result == 0)
+        {
+            return false;
+        }
+        else if (result == 1)
+        {
+            return true;
+        }
+        else
+        {
+            OE_WARN << "GEOS encountered an exception" << std::endl;
+            return false;
+        }
+    }
 }
 
 Geometry::Geometry( const Geometry& rhs ) :
@@ -415,7 +434,7 @@ Geometry::intersects(
     GEOSGeometry* otherGeom = GEOS::importGeometry(handle, other);
 
     bool intersects = false;
-    if (inGeom && otherGeom)    intersects = GEOSIntersects_r(handle, inGeom, otherGeom);
+    if (inGeom && otherGeom) intersects = checkGEOSResult(GEOSIntersects_r(handle, inGeom, otherGeom));
 
     //Destroy the geometry
     GEOSGeom_destroy_r(handle, inGeom);
@@ -455,9 +474,9 @@ Geometry::localize()
     osg::Vec3d offset;
 
     Bounds bounds = getBounds();
-    if ( bounds.isValid() )
+    if ( bounds.valid() )
     {
-        osg::Vec2d center = bounds.center2d();
+        osg::Vec3d center = bounds.center();
         offset.set( center.x(), center.y(), 0 );
 
         GeometryIterator i( this );
@@ -1013,7 +1032,8 @@ MultiGeometry::getNumGeometries() const
 Bounds
 MultiGeometry::getBounds() const
 {
-    Bounds bounds;
+    Bounds bounds = Geometry::getBounds();
+
     for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
     {
         bounds.expandBy( i->get()->getBounds() );
@@ -1049,6 +1069,13 @@ MultiGeometry::isValid() const
 }
 
 void
+MultiGeometry::open()
+{
+    for (auto& part : _parts)
+        part->open();
+}
+
+void
 MultiGeometry::close()
 {
     for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
@@ -1065,6 +1092,13 @@ MultiGeometry::rewind( Orientation orientation )
     {
         i->get()->rewind( orientation );
     }
+}
+
+void
+MultiGeometry::removeDuplicates()
+{
+    for (auto& part : _parts)
+        part->removeDuplicates();
 }
 
 void

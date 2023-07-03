@@ -129,6 +129,12 @@ namespace osgEarth { namespace Util
         inline bool read(typename T::pixel_type& output, double u, double v);
         inline bool read(typename T::pixel_type& output, int s, int t);
 
+        //! Read the value of a pixel of unit coordinates [u,v] relative to
+        //! the center tile of the meta and return a pointer to the
+        //! underlying data value instead of copying it to avoid expensive data copies.
+        inline const typename T::pixel_type* read(double u, double v);
+        inline const typename T::pixel_type* read(int s, int t);
+
         //! The scale&bias of the tile relative to the key originally passed
         //! to setCenterTileKey
         inline const osg::Matrix& getScaleBias() const {
@@ -207,7 +213,7 @@ namespace osgEarth { namespace Util
     }
 
     template<typename T>
-    void MetaTile<T>::setCreateTileFunction(MetaTile<T>::CreateTileFunction value)
+    void MetaTile<T>::setCreateTileFunction(typename MetaTile<T>::CreateTileFunction value)
     {
         _createTile = value;
     }
@@ -252,6 +258,48 @@ namespace osgEarth { namespace Util
         v = v - (double)y;
 
         return tile._data.read(output, u, v);
+    }
+
+    template<typename T>
+    const typename T::pixel_type* MetaTile<T>::read(double u, double v)
+    {
+        // scale and bias the u,v to the real center key
+        u = u * _scale_bias(0, 0) + _scale_bias(3, 0);
+        v = v * _scale_bias(1, 1) + _scale_bias(3, 1);
+
+        // tile number:
+        // TODO: when this hits an exact boundary (i.e. 1.0) which is the
+        // correct tile to choose? The actual answer is that when using 
+        // metatile, you should probably always use forEachPixelOnCenter
+        // which will never land on a boundary exactly. -gw
+        int x = (int)::floor(u);
+        int y = (int)::floor(v);
+
+        Tile& tile = _tiles(x, y);
+
+        // if we already tried to load this tile and failed, bail out
+        if (tile._failed)
+            return nullptr;
+
+        // if we still need to load this tile, do so
+        if (!tile._data.valid() && _createTile != nullptr)
+        {
+            TileKey key = _centerKey.createNeighborKey(x, -y);
+            tile._data = _createTile(key, nullptr);
+            if (!tile._data.valid())
+            {
+                tile._failed = true;
+            }
+        }
+
+        if (tile._failed)
+            return nullptr;
+
+        // tile-local coordinates for sampling:
+        u = u - (double)x;
+        v = v - (double)y;
+
+        return tile._data.read(u, v);
     }
 
     template<typename T>
@@ -302,6 +350,56 @@ namespace osgEarth { namespace Util
         else t = t % _height;
 
         return tile._data.read(output, (unsigned)s, (unsigned)t);
+    }
+
+    template<typename T>
+    const typename T::pixel_type* MetaTile<T>::read(int s, int t)
+    {
+        if (_tiles(0, 0)._failed)
+            return nullptr;
+
+        // scale and bias the u,v to the real center key
+        s = (int)floor((double)s * _scale_bias(0, 0) + _scale_bias(3, 0) * (double)_width);
+        t = (int)floor((double)t * _scale_bias(1, 1) + _scale_bias(3, 1) * (double)_height);
+
+        // tile number:
+        int x = (int)::floor((double)s / (double)_width);
+        int y = (int)::floor((double)t / (double)_height);
+
+        Tile& tile = _tiles(x, y);
+
+        // if we already tried to load this tile and failed, bail out
+        if (tile._failed)
+            return nullptr;
+
+        // if we still need to load this tile, do so
+        if (!tile._data.valid() && _createTile != nullptr)
+        {
+            TileKey key = _centerKey.createNeighborKey(x, -y);
+            tile._data = _createTile(key, nullptr);
+            if (!tile._data.valid())
+            {
+                tile._failed = true;
+            }
+        }
+
+        if (tile._failed)
+            return nullptr;
+
+        // tile-local coordinates for sampling:
+        if (s < 0) {
+            s = s % _width;
+            if (s < 0) s += _width;
+        }
+        else s = s % _width;
+
+        if (t < 0) {
+            t = t % _height;
+            if (t < 0) t += _height;
+        }
+        else t = t % _height;
+
+        return tile._data.read((unsigned)s, (unsigned)t);
     }
 
 } }

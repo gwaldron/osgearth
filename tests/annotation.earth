@@ -3,6 +3,10 @@ osgEarth Sample - Annotations
 -->
 <map name="Annotations Demo">
 
+    <options>
+        <overlay_blending_source>alpha</overlay_blending_source>
+    </options>
+
     <xi:include href="readymap_imagery.xml"/>
     <xi:include href="readymap_elevation.xml"/>
 
@@ -183,6 +187,13 @@ osgEarth Sample - Annotations
         </imageoverlay>
         <label text="ImageOverlay" lat="26" long="-81"/>
 
+        <imageoverlay>
+            <url>../data/fractal.png</url>
+            <alpha>0.75</alpha>
+            <geometry>POLYGON((-81 28, -80.5 28, -80.5 28.5, -81 28.5))</geometry>
+        </imageoverlay>
+        <label text="ImageOverlay(alpha)" lat="28" long="-81"/>
+
         <local_geometry name="3D geometry">
             <geometry>
                 POLYGON((0 0 0, -25000 0 45000, 0 0 75000, 25000 0 45000))
@@ -219,6 +230,20 @@ osgEarth Sample - Annotations
                 text-geographic-course:  0;
             </style>
         </label>
+
+        <feature name="Antimeridian polygon">
+            <srs>wgs84</srs>
+            <geometry>
+                POLYGON((-160 -30 0, 150 -20 0, 160 -45 0, -150 -40 0))
+            </geometry>
+            <style type="text/css">
+                stroke: #00ff00;
+                stroke-width: 3;
+                stroke-tessellation-size: 100km;
+            </style>
+        </feature>
+        <label text="Antimeridian polygon" lat="-30" long="-180"/>
+
 
     </Annotations>
 </map>

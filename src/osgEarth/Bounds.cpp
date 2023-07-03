@@ -17,50 +17,63 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Bounds>
-#include <osgEarth/SpatialReference>
 
 using namespace osgEarth;
 
-#define LC "[Bounds] "
-
 //------------------------------------------------------------------------
 
-
-Bounds::Bounds() :
-osg::BoundingBoxImpl<osg::Vec3d>( DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX )
+Bounds
+osgEarth::intersection(const Bounds& lhs, const Bounds& rhs)
 {
-    //nop
+    if (lhs.valid() && !rhs.valid()) return lhs;
+    if (!lhs.valid() && rhs.valid()) return rhs;
+
+    if (contains(lhs, rhs)) return rhs;
+    if (contains(rhs, lhs)) return lhs;
+
+    if (!lhs.intersects(rhs)) return Bounds();
+
+    double xmin, xmax, ymin, ymax, zmin, zmax;
+
+    xmin = (lhs.xMin() > rhs.xMin() && lhs.xMin() < rhs.xMax()) ? lhs.xMin() : rhs.xMin();
+    xmax = (lhs.xMax() > rhs.xMin() && lhs.xMax() < rhs.xMax()) ? lhs.xMax() : rhs.xMax();
+    ymin = (lhs.yMin() > rhs.yMin() && lhs.yMin() < rhs.yMax()) ? lhs.yMin() : rhs.yMin();
+    ymax = (lhs.yMax() > rhs.yMin() && lhs.yMax() < rhs.yMax()) ? lhs.yMax() : rhs.yMax();
+    zmin = (lhs.zMin() > rhs.zMin() && lhs.zMin() < rhs.zMax()) ? lhs.zMin() : rhs.zMin();
+    zmax = (lhs.zMax() > rhs.zMin() && lhs.zMax() < rhs.zMax()) ? lhs.zMax() : rhs.zMax();
+
+    return Bounds(xmin, ymin, zmin, xmax, ymax, zmax);
 }
 
-Bounds::Bounds(double xmin, double ymin, double xmax, double ymax ) :
-osg::BoundingBoxImpl<osg::Vec3d>( xmin, ymin, -DBL_MAX, xmax, ymax, DBL_MAX )
+Bounds
+osgEarth::unionOf(const Bounds& lhs, const Bounds& rhs)
 {
-    //nop
+    if (lhs.valid() && !rhs.valid()) return lhs;
+    if (!lhs.valid() && rhs.valid()) return rhs;
+
+    Bounds u;
+    if (lhs.intersects(rhs))
+    {
+        u.xMin() = lhs.xMin() >= rhs.xMin() && lhs.xMin() <= rhs.xMax() ? lhs.xMin() : rhs.xMin();
+        u.xMax() = lhs.xMax() >= rhs.xMin() && lhs.xMax() <= rhs.xMax() ? lhs.xMax() : rhs.xMax();
+        u.yMin() = lhs.yMin() >= rhs.yMin() && lhs.yMin() <= rhs.yMax() ? lhs.yMin() : rhs.yMin();
+        u.yMax() = lhs.yMax() >= rhs.yMin() && lhs.yMax() <= rhs.yMax() ? lhs.yMax() : rhs.yMax();
+        u.zMin() = lhs.zMin() >= rhs.zMin() && lhs.zMin() <= rhs.zMax() ? lhs.zMin() : rhs.zMin();
+        u.zMax() = lhs.zMax() >= rhs.zMin() && lhs.zMax() <= rhs.zMax() ? lhs.zMax() : rhs.zMax();
+    }
+    return u;
 }
 
 bool
-Bounds::isValid() const
-{
-    return xMin() <= xMax() && yMin() <= yMax();
-}
-
-bool 
-Bounds::contains(double x, double y ) const
+osgEarth::contains(const Bounds& lhs, const Bounds& rhs)
 {
     return 
-        isValid() &&
-        x >= xMin() && x <= xMax() && y >= yMin() && y <= yMax();
+        lhs.valid() && rhs.valid() &&
+        lhs.xMin() <= rhs.xMin() && lhs.xMax() >= rhs.xMax() &&
+        lhs.yMin() <= rhs.yMin() && lhs.yMax() >= rhs.yMax();
 }
 
-bool
-Bounds::contains(const Bounds& rhs) const
-{
-    return 
-        isValid() && rhs.isValid() && 
-        xMin() <= rhs.xMin() && xMax() >= rhs.xMax() &&
-        yMin() <= rhs.yMin() && yMax() >= rhs.yMax();
-}
-
+#if 0
 void
 Bounds::expandBy( double x, double y )
 {
@@ -172,3 +185,4 @@ Bounds::set(double xmin, double ymin, double zmin, double xmax, double ymax, dou
 {
     osg::BoundingBoxd::set(xmin, ymin, zmin, xmax, ymax, zmax);
 }
+#endif

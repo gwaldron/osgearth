@@ -241,12 +241,15 @@ main(int argc, char** argv)
         mainView->setCameraManipulator( new osgGA::AnimationPathManipulator(pathfile) );
     }
 
-    osg::Node* node = MapNodeHelper().load( arguments, &viewer );
-    if ( node )
+    auto node = MapNodeHelper().load( arguments, &viewer );
+    if ( node.valid())
     {
         mainView->setSceneData( node );
 
         app._mapNode = MapNode::get(node);
+        if (!app._mapNode)
+            return -1;
+
         app._overlayCam = overlayView->getCamera();
         ui::ControlCanvas::get(mainView)->addControl(makeUI(app));
 

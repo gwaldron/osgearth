@@ -13,7 +13,8 @@ set(OSGEARTHPROCEDURAL_LIBRARY ${LIB_NAME})
 # shaders:
 set(TARGET_GLSL
     Procedural.Vegetation.glsl
-    Procedural.TextureSplatting.glsl)
+    Procedural.TextureSplatting.glsl
+    Procedural.HexTiling.glsl )
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -61,6 +62,7 @@ if(OSGEARTH_ENABLE_IMGUI)
     set(LIB_PUBLIC_HEADERS_IMGUI
         ImGui/LifeMapLayerGUI
         ImGui/VegetationLayerGUI
+        ImGui/TerrainEditGUI
         ImGui/TextureSplattingLayerGUI
         )    
 endif()

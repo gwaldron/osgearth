@@ -342,9 +342,9 @@ namespace osgEarth
         struct Setup {
             Setup() : 
                 type(INIT_PROJ), 
-                srcHandle(nullptr),
                 geocentric(false), 
-                cube(false) { }
+                cube(false),
+                srcHandle(nullptr) { }
             InitType    type;
             std::string horiz;
             std::string vert;

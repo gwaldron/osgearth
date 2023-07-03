@@ -9,4 +9,7 @@ osgEarth::Procedural::ProceduralShaders::ProceduralShaders()
 
     Vegetation = "Procedural.Vegetation.glsl";
     _sources[Vegetation] = @Procedural.Vegetation.glsl@;
+
+    HexTiling = "Procedural.HexTiling.glsl";
+    _sources[HexTiling] = @Procedural.HexTiling.glsl@;
 }

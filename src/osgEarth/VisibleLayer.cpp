@@ -26,7 +26,7 @@
 
 using namespace osgEarth;
 
-#define LC "[VisibleLayer] Layer \"" << getName() << "\" "
+#define LC "[VisibleLayer] \"" << getName() << "\" "
 
 namespace
 {
@@ -74,7 +74,7 @@ namespace
         out float oe_layer_opacity;
         void oe_VisibleLayer_initOpacity(inout vec4 vertex)
         {
-            oe_layer_opacity = oe_VisibleLayer_opacityUniform;
+            oe_layer_opacity = clamp(oe_VisibleLayer_opacityUniform, 0.0, 1.0);
         }
     )";
 
@@ -96,11 +96,12 @@ namespace
             float minOpaqueRange = minRange+attRange;
             float rangeOpacity =
                 minRange >= maxRange ? 1.0 :
-                range >= maxRange || range <= minRange ? 0.0 :
+                range >= maxRange || (minRange > 0.0 && range < minRange) ? 0.0 :
                 range > maxOpaqueRange ? 1.0-((range-maxOpaqueRange)/(maxRange-maxOpaqueRange)) :
                 range < minOpaqueRange && minRange > 0.0 ? ((range-minRange)/(minOpaqueRange-minRange)) :
                 1.0;
             oe_layer_opacity *= rangeOpacity;
+            oe_layer_opacity = clamp(oe_layer_opacity, 0.0, 1.0);
           #endif
         }
     )";
@@ -108,38 +109,41 @@ namespace
     // Shader that calculates a modulation color based on the "opacity", i.e. intensity
     const char* opacityInterpolateFS = R"(
         #pragma import_defines(OE_USE_ALPHA_TO_COVERAGE)
+        #pragma import_defines(OE_SELF_MANAGE_LAYER_OPACITY)
         in float oe_layer_opacity;
         void oe_VisibleLayer_setOpacity(inout vec4 color)
         {
-          #ifndef OE_USE_ALPHA_TO_COVERAGE
-            color.a *= oe_layer_opacity;
+          #if defined(OE_SELF_MANAGE_LAYER_OPACITY) || defined(OE_USE_ALPHA_TO_COVERAGE)
+            return;
           #endif
+
+          color.a *= oe_layer_opacity;
         }
     )";
 
     // Shader that calculates a modulation color based on the "opacity", i.e. intensity
     const char* opacityModulateFS = R"(
-        const float OE_MODULATION_EXPOSURE = 2.35;
+        const float OE_MODULATION_EXPOSURE = 2.5;
         in float oe_layer_opacity;
         void oe_VisibleLayer_setOpacity(inout vec4 color)
         {
             vec3 rgbHi = color.rgb * OE_MODULATION_EXPOSURE;
-            color.rgb = mix(vec3(1), rgbHi, oe_layer_opacity);
+            color.rgb = clamp(mix(vec3(1), rgbHi, oe_layer_opacity), 0.0, 1.0);
             color.a = 1.0;
             oe_layer_opacity = 1.0;
         }
     )";
 
     const char* debugViewFS = R"(
-#extension GL_NV_fragment_shader_barycentric : enable
-#pragma vp_function oe_vl_debug, fragment_output
-out vec4 frag_out;
-void oe_vl_debug(inout vec4 color) {
-    float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z))*32.0;
-    vec4 debug_color = mix(vec4(1,0,0,1), color, 0.35);
-    frag_out = mix(vec4(1,0,0,1), debug_color, clamp(b,0,1));
-}
-)";
+        #extension GL_NV_fragment_shader_barycentric : enable
+        #pragma vp_function oe_vl_debug, fragment_output
+        out vec4 frag_out;
+        void oe_vl_debug(inout vec4 color) {
+            float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z))*32.0;
+            vec4 debug_color = mix(vec4(1,0,0,1), color, 0.35);
+            frag_out = mix(vec4(1,0,0,1), debug_color, clamp(b,0,1));
+        }
+    )";
 
 }
 
@@ -201,6 +205,7 @@ VisibleLayer::init()
         VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
         vp->setName(className());
         vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, VirtualProgram::LOCATION_FRAGMENT_COLORING, 1.1f);
+        //vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, VirtualProgram::LOCATION_FRAGMENT_COLORING, FLT_MAX);
     }
 }
 
@@ -211,7 +216,7 @@ VisibleLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    if (options().visible().isSet() || options().mask().isSet() )
+    if (options().visible().isSet() || options().mask().isSet())
     {
         setVisible(options().visible().get());
     }
@@ -462,19 +467,6 @@ VisibleLayer::fireCallback(VisibleLayerCallback::MethodPtr method)
         VisibleLayerCallback* cb = dynamic_cast<VisibleLayerCallback*>(i->get());
         if (cb) (cb->*method)(this);
     }
-}
-
-void
-VisibleLayer::installDefaultOpacityShader()
-{
-    // Moved this to init().
-
-    //if (options().blend() == BLEND_INTERPOLATE)
-    //{
-    //    VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
-    //    vp->setName("VisibleLayer");
-    //    vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, VirtualProgram::LOCATION_FRAGMENT_COLORING, 1.1f);
-    //}
 }
 
 void

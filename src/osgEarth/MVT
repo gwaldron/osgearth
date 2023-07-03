@@ -38,6 +38,8 @@ namespace osgEarth { namespace MVT
     public:
         META_LayerOptions(osgEarth, MVTFeatureSourceOptions, FeatureSource::Options);
         OE_OPTION(URI, url);
+        OE_OPTION(int, minLevel);
+        OE_OPTION(int, maxLevel);
         virtual Config getConfig() const;
     private:
         void fromConfig(const Config& conf);
@@ -65,6 +67,14 @@ namespace osgEarth
         void setURL(const URI& value);
         const URI& getURL() const;
 
+        //! Minimum level of detail to access
+        void setMinLevel(const int& value);
+        const int& getMinLevel() const;
+
+        //! Maximum level of detail to access
+        void setMaxLevel(const int& value);
+        const int& getMaxLevel() const;
+
         typedef void(*FeatureTileCallback)(const TileKey& key, const FeatureList& features, void* context);
         /**
         * Iterates over the tiles in the mbtiles dataset
@@ -73,7 +83,8 @@ namespace osgEarth
 
     public: // Layer
 
-        virtual Status openImplementation();
+        virtual Status openImplementation() override;
+        virtual Status closeImplementation() override;
 
     protected:
 
@@ -87,7 +98,7 @@ namespace osgEarth
 
     protected:
 
-        virtual ~MVTFeatureSource() { }
+        virtual ~MVTFeatureSource();
 
     private:
         FeatureSchema _schema;
@@ -99,6 +110,7 @@ namespace osgEarth
         const FeatureProfile* createFeatureProfile();
         void computeLevels();
         bool getMetaData(const std::string& key, std::string& value);
+        void closeDatabase();
     };
 }
 

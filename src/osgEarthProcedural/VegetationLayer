@@ -30,10 +30,9 @@
 
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
-#include <osgEarth/LandCoverLayer>
-#include <osgEarth/Chonk>
+#include <osgEarth/TerrainConstraintLayer>
 
-#include <chrono>
+#include <osg/Drawable>
 
 namespace osgEarth { namespace Procedural
 {
@@ -48,35 +47,106 @@ namespace osgEarth { namespace Procedural
         class OSGEARTHPROCEDURAL_EXPORT Options : public PatchLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, PatchLayer::Options);
-            OE_OPTION_LAYER(ImageLayer, colorLayer);
+
+            //! Biomes layer in the map
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
+
+            //! Whether to render with GL_ALPHA_TO_COVERAGE
+            //! default = true
             OE_OPTION(bool, alphaToCoverage);
+
+            //! Angle of view at which a polygon will become transparent
+            //! default = 45 degrees
+            OE_OPTION(Angle, impostorLowAngle);
+
+            //! Angle of view at which a polygon will become opaque
+            //! default = 67.5 degrees
+            OE_OPTION(Angle, impostorHighAngle);
+
+            //! Whether to use normal maps on impostor geometries
+            //! default = true
+            OE_OPTION(bool, useImpostorNormalMaps);
+
+            //! Whether to use PBR maps on impostor geometries
+            //! default = true
+            OE_OPTION(bool, useImpostorPBRMaps);
+
+            //! Whether to assume normal maps are RG-compressed
+            //! default = true;
+            OE_OPTION(bool, useRGCompressedNormalMaps);
+
+            //! Scale factor for LOD-ing the far-away impostor vegetation
+            //! default = 1.0f
+            OE_OPTION(float, farLODScale);
+
+            //! Scale factor for the LOD at which to transition from 
+            //! high-resolution 3D models up close to impostor models
+            //! at distance.
+            //! default = 1.0f
+            OE_OPTION(float, nearLODScale);
+
+            //! Amount of an LOD boundary (from near to far) should be
+            //! used to display a transition between the two LODs [0..1]
+            //! default = 0.5f
+            OE_OPTION(float, lodTransitionPadding);
+
+            //! Maximum texture size to transfer to the GPU
+            //! default = INT_MAX (no limit)
+            OE_OPTION(unsigned, maxTextureSize);
+
+            //! OSG render bin number for vegetation render bins
+            OE_OPTION(int, renderBinNumber);
 
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
+                //! Whether to render this group at all
+                //! default = true
                 OE_OPTION(bool, enabled);
+
+                //! Terrain LOD at which to render this group
                 OE_OPTION(unsigned, lod);
+
+                //! Not used
                 OE_OPTION(float, maxRange);
-                OE_OPTION(float, density);
+
+                //! Number of assets to place per square kilometer
+                //! default = 4096
+                OE_OPTION(int, instancesPerSqKm);
+
+                //! Whether assets in this group cast shadows
+                //! default = false
                 OE_OPTION(bool, castShadows);
+
+                //! Percentage of overlap allowed in asset bounding spheres [0..1]
+                //! default = 0.0f
+                OE_OPTION(float, overlap);
+
+                //! Base SSE scale factor for far visibility
+                //! default = 1.0f
+                OE_OPTION(float, farLODScale);
+
+                //! Cut off for alpha discard/blend in the shader (0..1]
+                //! default = 0.2f
+                OE_OPTION(float, alphaCutoff);
 
                 // internal
                 osg::ref_ptr<osg::StateSet> _drawStateSet;
-                std::function<osg::Node*(
-                    const osg::BoundingBox&,
-                    std::vector<osg::Texture*>&)> _createImpostor;
+                BiomeManager::CreateImpostorFunction _createImpostor;
+
+                Config getConfig() const;
+
+                Group();
             };
-            OE_OPTION_VECTOR(Group, groups);
-            const Group& group(AssetGroup::Type t) const { 
-                return groups()[t];
-            }
-            Group& group(AssetGroup::Type t) {
-                return groups()[t];
-            }
+
+            using GroupMap = vector_map<std::string, Group>;
+            OE_PROPERTY(GroupMap, groups);
+            Group& group(const std::string& name);
+            const Group& group(const std::string& name) const;
 
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
+            Group _emptyGroup;
         };
 
     public:
@@ -90,17 +160,12 @@ namespace osgEarth { namespace Procedural
         void setLifeMapLayer(LifeMapLayer*);
         LifeMapLayer* getLifeMapLayer() const;
 
-        //! Color modulation layer
-        void setColorLayer(ImageLayer* layer);
-        ImageLayer* getColorLayer() const;
-
         //! LOD at which to draw ground cover
         bool hasEnabledGroupAtLOD(unsigned lod) const;
-        AssetGroup::Type getGroupAtLOD(unsigned lod) const;
-        unsigned getGroupLOD(AssetGroup::Type) const;
+        std::string getGroupAtLOD(unsigned lod) const;
+        unsigned getGroupLOD(const std::string&) const;
 
         //! Whether any of the vegetation casts shadows on the terrain
-        //void setCastShadows(bool value);
         bool getCastShadows() const;
 
         //! Whether to enable alpha-to-coverage mode.
@@ -108,35 +173,99 @@ namespace osgEarth { namespace Procedural
         void setUseAlphaToCoverage(bool value);
         bool getUseAlphaToCoverage() const;
 
-        void setMaxRange(AssetGroup::Type, float);
-        float getMaxRange(AssetGroup::Type) const;
+        //! Visibility range of the specified asset group
+        //! This setting will take effect to next time the layer is opened.
+        void setMaxRange(const std::string&, float);
+        float getMaxRange(const std::string&) const;
 
-        void setEnabled(AssetGroup::Type, bool);
-        bool getEnabled(AssetGroup::Type) const;
+        //! Whether to render the named group
+        void setEnabled(const std::string&, bool);
+        bool getEnabled(const std::string&) const;
 
-        void setSSEScales(const osg::Vec4f& lods);
-        osg::Vec4f getSSEScales() const;
+        //! Sets the allowable instance overlap percentage for a group.
+        //! Note: call dirty() to refresh after setting this value.
+        //! @param groupName Name of the group for which to set overlap
+        //! @param value Percentage [0..1] of overlap allowed.
+        void setOverlapPercentage(const std::string& group, float value);
+        float getOverlapPercentage(const std::string& group) const;
 
-        //! Force regeneration of the visible data
+        //! The threshold for discarding fragments with high alpha
+        void setAlphaCutoff(const std::string& group, float value);
+        float getAlphaCutoff(const std::string& group) const;
+
+        void setImpostorLowAngle(const Angle& value);
+        const Angle& getImpostorLowAngle() const;
+
+        void setImpostorHighAngle(const Angle& value);
+        const Angle& getImpostorHighAngle() const;
+
+        void setFarLODScale(float value);
+        float getFarLODScale() const;
+
+        void setNearLODScale(float value);
+        float getNearLODScale() const;
+
+        void setLODTransitionPadding(float value);
+        float getLODTransitionPadding() const;
+        
+        void setUseImpostorNormalMaps(bool value);
+        bool getUseImpostorNormalMaps() const;
+
+        void setUseImpostorPBRMaps(bool value);
+        bool getUseImpostorPBRMaps() const;
+
+        void setMaxTextureSize(unsigned value);
+        unsigned getMaxTextureSize() const;
+
+        //! Force regeneration of all visible data
         void dirty();
 
     public:
         struct Placement
         {
+            Placement() = default;
+            Placement(const Placement& rhs) = default;
+            Placement& operator =(Placement&& rhs) = default;
+            Placement(Placement&&) = default;
+            Placement& operator =(const Placement& rhs) = default;
+
+            //! Location in map coordinates
             OE_PROPERTY(osg::Vec3d, mapPoint);
+
+            //! Location in tile local tangent plane coordinates
             OE_PROPERTY(osg::Vec2d, localPoint);
+
+            //! Location in tile normalized coordinates [0..1]
             OE_PROPERTY(osg::Vec2f, uv);
+
+            //! Scale of asset
             OE_PROPERTY(osg::Vec3f, scale);
+
+            //! Rotation of asset in radians
             OE_PROPERTY(float, rotation);
+
+            //! Pointer to asset model record
             OE_PROPERTY(ResidentModelAsset::Ptr, asset);
+
+            //! Density of the LifeMap at this location
+            OE_PROPERTY(float, density);
         };
 
         //! Gets all the asset placement information for a given
         //! tile within the given asset group.
-        const std::vector<Placement> getAssetPlacements(
+        //! @param key Tile key for which to generate asset placements
+        //! @param group Group for which to generate placements (e.g. TREES or UNDERGROWTH)
+        //! @param loadBiomesOnDemand When set to true, load the asset models necessary
+        //!   for this tile key immediately if they are not already resident. During a normal
+        //!   runtime frame loop this should be false since biome assets get loaded asynchronously.
+        //!   Set to true if you are loading asset placements without a frame loop.
+        //! @param output Output vector to populate with results
+        //! @param progress Progress/cancelation tracker
+        bool getAssetPlacements(
             const TileKey& key,
-            const AssetGroup::Type& group,
+            const std::string& group,
             bool loadBiomesOnDemand,
+            std::vector<Placement>& output,
             ProgressCallback* progress) const;
 
     protected:
@@ -172,9 +301,7 @@ namespace osgEarth { namespace Procedural
         LayerReference<LifeMapLayer> _lifeMapLayer;
         LayerReference<BiomeLayer> _biomeLayer;
         osg::observer_ptr<const Map> _map;
-        osg::ref_ptr<osg::Shader> _cullShader;
 
-        void buildStateSets();
         void reset();
 
         // call from UPDATE peridoically to see if new biomes
@@ -184,11 +311,15 @@ namespace osgEarth { namespace Procedural
         bool checkForNewAssets() const;
 
         // Result of background drawable-creation jobs
-        using FutureDrawable = Future<osg::ref_ptr<ChonkDrawable>>;
+        using FutureDrawable = Future<osg::ref_ptr<osg::Drawable>>;
 
-        struct TileKeyAndRevision {
+        // Combine the TileKey and the data revision into a struct
+        // that uniquely identifies a version of a tile.
+        struct TileKeyAndRevision
+        {
             TileKey key;
             int revision;
+
             bool operator == (const TileKeyAndRevision& rhs) const {
                 return key == rhs.key && revision == rhs.revision;
             }
@@ -222,6 +353,8 @@ namespace osgEarth { namespace Procedural
         // but indexed only by the tile key (no revision) and we 
         // use them to draw the old version of the tile while loading
         // a new revision.
+        // NOTE: this "shares" the _tiles mutex. Only access when the
+        // _tiles mutex is locked.
         mutable Placeholders _placeholders;
 
         // One camera's view on a tile (and its placeholder).
@@ -243,13 +376,15 @@ namespace osgEarth { namespace Procedural
             using Ptr = std::shared_ptr<CameraState>;
 
             using TileViews = std::unordered_map<
-                TileKeyAndRevision, TileView, TileKeyAndRevision>;
+                TileKeyAndRevision,
+                TileView,
+                TileKeyAndRevision>;
 
             // views indexed by the current key+revision
             TileViews _views;
         };
 
-        using CameraStates = std::unordered_map<
+        using CameraStates = vector_map<
             const osg::Camera*, 
             CameraState::Ptr>;
 
@@ -259,21 +394,27 @@ namespace osgEarth { namespace Procedural
         // So we can timeout the layer and release resources
         mutable osg::FrameStamp _lastVisit;
 
-        // noise texture. Put in the arena? Or global?
-        osg::ref_ptr<osg::Texture> _noiseTex;
-        TextureImageUnitReservation _noiseBinding;
+        // noise texture for wind
+        Texture::Ptr _noiseTex;
 
-        using AssetsByBiome = std::unordered_map<
-            const Biome*,
-            std::vector<ResidentModelAssetInstance>>;
+        struct ResidentBiomeModelAssetInstances {
+            const Biome* biome;
+            std::vector<ResidentModelAssetInstance> instances;
+        };
 
-        using Assets = std::vector<AssetsByBiome>;
+        using AssetsByBiomeId = std::unordered_map<
+            std::string, //id
+            ResidentBiomeModelAssetInstances>;
+
+        using AssetsByGroup = vector_map<
+            std::string, // group name
+            AssetsByBiomeId>;
 
         // Asynchronously loading resident asset collection
-        mutable Future<Assets> _newAssets;
+        mutable Future<AssetsByGroup> _newAssets;
 
         // Resident asset collection (created by the BiomeManager)
-        mutable Mutexed<Assets> _assets;
+        mutable Mutexed<AssetsByGroup> _assets;
 
         // Track biome changes so we can reload as necessary
         mutable std::atomic_int _biomeRevision;
@@ -281,17 +422,20 @@ namespace osgEarth { namespace Procedural
         // Uniform to scale the SSE
         osg::ref_ptr<osg::Uniform> _pixelScalesU;
 
-        void configureTrees();
-        void configureGrass();
+        void configureImpostor(
+            const std::string& groupName);
 
-        Future<osg::ref_ptr<ChonkDrawable>> createDrawableAsync(
+        Future<osg::ref_ptr<osg::Drawable>> createDrawableAsync(
             const TileKey&,
-            const AssetGroup::Type&,
-            const osg::BoundingBox& bbox) const;
+            const std::string&,
+            const osg::BoundingBox& bbox,
+            const osg::FrameStamp*,
+            double explicit_birthday,
+            float range) const;
 
-        osg::ref_ptr<ChonkDrawable> createDrawable(
+        osg::ref_ptr<osg::Drawable> createDrawable(
             const TileKey&,
-            const AssetGroup::Type&,
+            const std::string&,
             const osg::BoundingBox& bbox,
             ProgressCallback* c) const;
 
@@ -299,6 +443,9 @@ namespace osgEarth { namespace Procedural
         mutable bool _requestMultisampling;
         bool _multisamplingActivated;
         void activateMultisampling();
+
+        TerrainConstraintQuery _constraintQuery;
+        Revision _mapRevision;
     };
 
 } } // namespace osgEarth::Procedural

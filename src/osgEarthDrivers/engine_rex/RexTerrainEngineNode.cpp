@@ -134,7 +134,8 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     _stateUpdateRequired  ( false ),
     _renderModelUpdateRequired( false ),
     _morphTerrainSupported(true),
-    _frameLastUpdated(0u)
+    _frameLastUpdated(0u),
+    _ppUID(0)
 {
     // activate update traversals for this node.
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
@@ -176,7 +177,8 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
 
 RexTerrainEngineNode::~RexTerrainEngineNode()
 {
-    OE_DEBUG << LC << "~RexTerrainEngineNode\n";
+    if (_ppUID > 0)
+        Registry::instance()->getShaderFactory()->removePreProcessorCallback(_ppUID);
 }
 
 void
@@ -234,6 +236,12 @@ RexTerrainEngineNode::getJobArenaName() const
     return ARENA_LOAD_TILE;
 }
 
+unsigned
+RexTerrainEngineNode::getNumResidentTiles() const
+{
+    return _tiles ? _tiles->size() : 0u;
+}
+
 void
 RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 {
@@ -287,11 +295,9 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     // if requested in the options. Revision tracking lets the registry notify all
     // live tiles of the current map revision so they can inrementally update
     // themselves if necessary.
-    _liveTiles = new TileNodeRegistry("live");
-    _liveTiles->setFrameClock(&_clock);
-    _liveTiles->setMapRevision(map->getDataModelRevision());
-    _liveTiles->setNotifyNeighbors(options().normalizeEdges() == true);
-    _liveTiles->setFirstLOD(options().firstLOD().get());
+    _tiles = std::make_shared<TileNodeRegistry>();
+    _tiles->setFrameClock(&_clock);
+    _tiles->setNotifyNeighbors(options().normalizeEdges() == true);
 
     // A shared geometry pool.
     _geometryPool = new GeometryPool();
@@ -310,10 +316,11 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     JobArena::setConcurrency(ARENA_LOAD_TILE, concurrency);
 
     // Make a tile unloader
-    _unloader = new UnloaderGroup(_liveTiles.get());
+    _unloader = new UnloaderGroup(_tiles.get());
     _unloader->setFrameClock(&_clock);
     _unloader->setMaxAge(options().minExpiryTime().get());
     _unloader->setMaxTilesToUnloadPerFrame(options().maxTilesToUnloadPerFrame().get());
+    _unloader->setMinResidentTiles(options().minResidentTiles().get());
     _unloader->setMinimumRange(options().minExpiryRange().get());
     this->addChild(_unloader.get());
 
@@ -339,9 +346,8 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
         this, // engine
         _geometryPool.get(),
         _merger.get(),
-        _liveTiles.get(),
+        _tiles,
         _renderBindings,
-        options(),
         _selectionInfo,
         &_clock);
 
@@ -367,10 +373,18 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
     // preprocess shaders to parse the "oe_use_shared_layer" directive
     // for shared layer samplers
-    Registry::instance()->getShaderFactory()->addPreProcessorCallback(
-        "RexTerrainEngineNode",
-        [this](std::string& source)
+    if (_ppUID > 0)
+    {
+        Registry::instance()->getShaderFactory()->removePreProcessorCallback(_ppUID);
+    }
+
+    _ppUID = Registry::instance()->getShaderFactory()->addPreProcessorCallback(
+        this,
+        [](std::string& source, osg::Referenced* host)
         {
+            RexTerrainEngineNode* rex = dynamic_cast<RexTerrainEngineNode*>(host);
+            if (!rex) return;
+
             std::string line;
             std::vector<std::string> tokens;
 
@@ -396,7 +410,7 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
 
                         // find the shared index.
                         int index = -1;
-                        const RenderBindings& bindings = this->_renderBindings;
+                        const RenderBindings& bindings = rex->_renderBindings;
                         for (int i = SamplerBinding::SHARED; i < (int)bindings.size() && index < 0; ++i)
                         {
                             if (bindings[i].samplerName() == tokens[0])
@@ -430,6 +444,18 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
             }
         }
     );
+
+    options().tessellationLevelChanged([&](const float& value)
+        {
+            getSurfaceStateSet()->getOrCreateUniform(
+                "oe_terrain_tess", osg::Uniform::FLOAT)->set(value);
+        });
+
+    options().tessellationRangeChanged([&](const float& value)
+        {
+            getSurfaceStateSet()->getOrCreateUniform(
+                "oe_terrain_tess_range", osg::Uniform::FLOAT)->set(value);
+        });
 }
 
 
@@ -445,7 +471,7 @@ RexTerrainEngineNode::invalidateRegion(
     unsigned         minLevel,
     unsigned         maxLevel)
 {
-    if ( _liveTiles.valid() )
+    if (_tiles)
     {
         GeoExtent extentLocal = extent;
 
@@ -468,7 +494,7 @@ RexTerrainEngineNode::invalidateRegion(
             manifest.insert(i->get());
         }
 
-        _liveTiles->setDirty(extentLocal, minLevel, maxLevel, manifest);
+        _tiles->setDirty(extentLocal, minLevel, maxLevel, manifest);
     }
 }
 
@@ -479,7 +505,7 @@ RexTerrainEngineNode::invalidateRegion(
     unsigned minLevel,
     unsigned maxLevel)
 {
-    if ( _liveTiles.valid() )
+    if (_tiles)
     {
         GeoExtent extentLocal = extent;
 
@@ -504,7 +530,7 @@ RexTerrainEngineNode::invalidateRegion(
             }
         }
 
-        _liveTiles->setDirty(extentLocal, minLevel, maxLevel, manifest);
+        _tiles->setDirty(extentLocal, minLevel, maxLevel, manifest);
     }
 }
 
@@ -529,9 +555,9 @@ RexTerrainEngineNode::refresh(bool forceDirty)
         _merger->clear();
 
         // clear out the tile registry:
-        if (_liveTiles.valid())
+        if (_tiles)
         {
-            _liveTiles->releaseAll(nullptr);
+            _tiles->releaseAll(nullptr);
         }
 
         // scrub the geometry pool:
@@ -563,8 +589,7 @@ RexTerrainEngineNode::refresh(bool forceDirty)
                 _engineContext.get(),
                 nullptr); // progress
 
-            // Next, build the surface geometry for the node.
-            //tileNode->create( keys[i], 0L, _engineContext.get(), nullptr );
+            // Root nodes never expire
             tileNode->setDoNotExpire(true);
 
             // Add it to the scene graph
@@ -708,6 +733,16 @@ RexTerrainEngineNode::dirtyState()
     // TODO: perhaps defer this until the next update traversal so we don't
     // reinitialize the state multiple times unnecessarily.
     updateState();
+}
+
+void
+RexTerrainEngineNode::dirtyTerrainOptions()
+{
+    auto& arena = getEngineContext()->_textures;
+    if (arena)
+    {
+        arena->setMaxTextureSize(options().maxTextureSize().get());
+    }
 }
 
 void
@@ -964,7 +999,7 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
     }
 
     // Call update on the tile registry
-    _liveTiles->update(nv);
+    _tiles->update(nv);
 
     // check on the persistent data cache
     _persistent.lock();
@@ -979,6 +1014,11 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
         }
     }
     _persistent.unlock();
+
+    // traverse the texture arena since it's not in the scene graph.
+    auto* arena = getEngineContext()->textures();
+    if (arena)
+        arena->update(nv);
 }
 
 void
@@ -1108,7 +1148,6 @@ RexTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 
     else
     {
-        _liveTiles->setMapRevision(getMap()->getDataModelRevision());
 
         // dispatch the change handler
         if ( change.getLayer() )
@@ -1270,7 +1309,6 @@ RexTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
     if ( layerRemoved )
     {
         // release its layer drawable
-        //TODO - for each camera
         _persistent.scoped_lock([&]() {
             for (auto& e : _persistent)
                 e.second._drawables.erase(layerRemoved);
@@ -1397,10 +1435,6 @@ RexTerrainEngineNode::updateState()
             _terrainSS->addUniform(new osg::Uniform(
                 "oe_layer_order", (int)0));
 
-            // uniform that conveys the tile vertex dimensions
-            _terrainSS->addUniform(new osg::Uniform(
-                "oe_tile_size", (float)options().tileSize().get()));
-
             if (this->elevationTexturesRequired())
             {
                 // Compute an elevation texture sampling scale/bias so we sample elevation data on center
@@ -1448,8 +1482,8 @@ RexTerrainEngineNode::updateState()
                 shaders.load(surfaceVP, shaders.tessellation());
 
                 // Default tess level
-                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tess", 3.0f));
-                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tess_range", 150.0f));
+                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tess", options().tessellationLevel().get()));
+                _surfaceSS->addUniform(new osg::Uniform("oe_terrain_tess_range", options().tessellationRange().get()));
 
 #ifdef HAVE_PATCH_PARAMETER
                 // backwards compatibility
@@ -1518,9 +1552,12 @@ RexTerrainEngineNode::updateState()
                 OSGEARTH_OBJECTID_TERRAIN));
         }
 
-        // STATE for image layers only:
+        // STATE for image layers
         VirtualProgram* vp = VirtualProgram::getOrCreate(_imageLayerSS.get());
         shaders.load(vp, shaders.imagelayer());
+
+        // The above shader will integrate opacity itself.
+        _imageLayerSS->setDefine("OE_SELF_MANAGE_LAYER_OPACITY");
 
         _stateUpdateRequired = false;
     }

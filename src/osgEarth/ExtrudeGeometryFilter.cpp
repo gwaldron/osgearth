@@ -256,7 +256,7 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
         }
     }
 
-    osg::Vec2d c = input->getBounds().center2d();
+    osg::Vec3d c = input->getBounds().center();
     osg::Vec3d centroid(c.x(), c.y(), minLoc.z());
 
     if (srs.valid() && mapSRS.valid())
@@ -282,14 +282,12 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
         // coordinate system in order to properly generate tex coords.
         if ( srs && srs->isGeographic() )
         {
-            osg::Vec2d geogCenter = roofBounds.center2d();
-
-            // This sometimes fails with the aerodrom stuff. No idea why -gw.
-            //roofProjSRS = srs->createUTMFromLonLat( Angle(geogCenter.x()), Angle(geogCenter.y()) );
             roofProjSRS = SpatialReference::create("spherical-mercator");
             if ( roofProjSRS.valid() )
             {
-                roofBounds.transform( srs.get(), roofProjSRS.get() );
+                GeoExtent roofExtent(srs.get(), roofBounds);
+                roofExtent = roofExtent.transform(roofProjSRS.get());
+                //roofBounds.transform( srs.get(), roofProjSRS.get() );
                 osg::ref_ptr<Geometry> projectedInput = input->clone();
                 srs->transform( projectedInput->asVector(), roofProjSRS.get() );
                 roofRotation = getApparentRotation( projectedInput.get() );
@@ -306,8 +304,10 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
         if ( !roofSkin->isTiled().value() )
         {
             //note: non-tiled roofs don't really work atm.
-            roofTexSpanX = cosR*roofBounds.width() - sinR*roofBounds.height();
-            roofTexSpanY = sinR*roofBounds.width() + cosR*roofBounds.height();
+            double w = roofBounds.xMax() - roofBounds.xMin();
+            double h = roofBounds.yMax() - roofBounds.yMin();
+            roofTexSpanX = cosR*w - sinR*h;
+            roofTexSpanY = sinR*w + cosR*h;
         }
         else
         {

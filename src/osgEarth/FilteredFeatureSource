@@ -1,0 +1,70 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_FILTERED_FEATURE_SOURCE_H
+#define OSGEARTH_FILTERED_FEATURE_SOURCE_H 1
+
+#include <osgEarth/FeatureSource>
+#include <osgEarth/LayerReference>
+
+namespace osgEarth
+{    
+
+    /**
+     * Feature Layer that acts as a pass through to another feature source but applies a filter list to it.
+     * This can be useful for limiting network requests to an online source.  For example you could have
+     * an OSM layer that contains everything in OSM but then separate FilterFeatures layers
+     * that filter out buildings for one and roads for another.
+     */
+    class OSGEARTH_EXPORT FilteredFeatureSource : public FeatureSource
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public FeatureSource::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, FeatureSource::Options);
+            OE_OPTION_LAYER(FeatureSource, featureSource);
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, FilteredFeatureSource, Options, FeatureSource, FilteredFeatures);
+
+        //! The feature source from which to read geometry.
+        void setFeatureSource(FeatureSource* layer);
+        FeatureSource* getFeatureSource() const;
+
+        virtual Status openImplementation();
+
+        virtual void addedToMap(const Map*);
+
+        virtual void removedFromMap(const Map*);
+
+    protected:   
+        virtual FeatureCursor* createFeatureCursorImplementation(
+            const Query& query,
+            ProgressCallback* progress);        
+    }; 
+}
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FilteredFeatureSource::Options);
+
+#endif // OSGEARTH_FILTERED_FEATURE_SOURCE_H

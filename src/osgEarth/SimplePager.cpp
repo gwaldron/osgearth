@@ -34,11 +34,11 @@ _mutex("SimplePager(OE)")
 {
     if (map)
     {
-        _mapProfile = Profile::create(Profile::GLOBAL_GEODETIC);
+        _mapProfile = map->getProfile();
     }
     else
     {
-        _mapProfile = map->getProfile();
+        _mapProfile = Profile::create(Profile::GLOBAL_GEODETIC);
     }
 }
 
@@ -67,14 +67,15 @@ osg::BoundingSphered SimplePager::getBounds(const TileKey& key) const
     // TODO:  This is very similar to the code in FeatureModelGraph::getBoundInWorldCoords, consolidate it at some point.
     GeoExtent workingExtent;
 
-    if (key.getProfile()->getSRS()->isGeographic())
-    {
-        workingExtent = key.getExtent();
-    }
-    else
-    {
-        workingExtent = _mapProfile->clampAndTransformExtent(key.getExtent());
-    }
+    workingExtent = _mapProfile->clampAndTransformExtent(key.getExtent());
+    //if (key.getProfile()->getSRS()->isGeographic())
+    //{
+    //    workingExtent = key.getExtent();
+    //}
+    //else
+    //{
+    //    workingExtent = _mapProfile->clampAndTransformExtent(key.getExtent());
+    //}
 
     GeoPoint center = workingExtent.getCentroid();
     unsigned lod = _mapProfile->getLOD(workingExtent.height());
@@ -160,8 +161,11 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
     if (node.valid())
     {
         // Build kdtrees to increase intersection speed.
-        osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = new osg::KdTreeBuilder();
-        node->accept(*kdTreeBuilder.get());
+        if (osgDB::Registry::instance()->getKdTreeBuilder())
+        {
+            osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
+            node->accept(*kdTreeBuilder.get());
+        }
 
         pagedNode->addChild(node);
         fire_onCreateNode(key, node.get());
@@ -171,7 +175,7 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
     pagedNode->setRadius(tileRadius);
 
     // Assume geocentric for now.
-    if (true)
+    if (_mapProfile->getSRS()->isGeographic())
     {
         const GeoExtent& ccExtent = key.getExtent();
         if (ccExtent.isValid())

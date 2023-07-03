@@ -59,6 +59,23 @@ namespace osgEarth { namespace Contrib
         //! Removes all decals
         void clearDecals();
 
+        //! Set blend functions
+        //! Supported values are
+        //! GL_ONE, GL_ZERO, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+        //! GL_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA
+        void setBlendFuncs(
+            GLenum sourceFactor,
+            GLenum destFactor,
+            GLenum alphaSourceFactor,
+            GLenum alphaDestFactor);
+
+        //! Set blend equation
+        //! Supported values are
+        //! GL_FUNC_ADD, GL_FUNC_MIN, GL_FUNC_MAX
+        void setBlendEquations(
+            GLenum rgbEquation,
+            GLenum alphaEquation);
+
     public: // ImageLayer
 
         //! Creates an image for a tile key
@@ -72,11 +89,6 @@ namespace osgEarth { namespace Contrib
             const TileKey& key,
             ProgressCallback* progress) const override;
 
-        //! Extent for this layer
-        virtual const GeoExtent& getExtent() const override {
-            return _extent;
-        }
-
     protected: // Layer
 
         // post-ctor initialization
@@ -89,11 +101,11 @@ namespace osgEarth { namespace Contrib
             GeoExtent _extent;
             osg::ref_ptr<const osg::Image> _image;
         };
-        GeoExtent _extent;
         mutable ReadWrite<Mutex> _data_mutex;
         std::list<Decal> _decalList;
         using DecalIndex = std::unordered_map<std::string, std::list<Decal>::iterator>;
         DecalIndex _decalIndex;
+        GLenum _srcRGB, _dstRGB, _srcAlpha, _dstAlpha, _rgbEquation, _alphaEquation;
     };
 
     /**
@@ -163,12 +175,7 @@ namespace osgEarth { namespace Contrib
     public: // ElevationLayer
 
         //! Creates an image for a tile key
-        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
-        
-        //! Extent for this layer
-        virtual const GeoExtent& getExtent() const override {
-            return _extent;
-        }
+        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;      
 
     protected: // Layer
 
@@ -184,7 +191,6 @@ namespace osgEarth { namespace Contrib
         struct Decal {
             GeoHeightField _heightfield;
         };
-        GeoExtent _extent;
         mutable ReadWrite<Mutex> _data_mutex;
         std::list<Decal> _decalList;
         using DecalIndex = std::unordered_map<std::string, std::list<Decal>::iterator>;
@@ -226,11 +232,6 @@ namespace osgEarth { namespace Contrib
         //! Creates an image for a tile key
         virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
 
-        //! Extent for this layer
-        virtual const GeoExtent& getExtent() const override {
-            return _extent;
-        }
-
     protected: // Layer
 
         // post-ctor initialization
@@ -245,7 +246,6 @@ namespace osgEarth { namespace Contrib
             osg::ref_ptr<const osg::Image> _image;
             GeoExtent _extent;
         };
-        GeoExtent _extent;
         mutable ReadWrite<Mutex> _data_mutex;
         std::list<Decal> _decalList;
         using DecalIndex = std::unordered_map<std::string, std::list<Decal>::iterator>;

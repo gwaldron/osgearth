@@ -27,6 +27,7 @@
 #include <osg/buffered_value>
 #include <osg/Image>
 #include <queue>
+#include <atomic>
 
 namespace osgEarth
 {
@@ -77,14 +78,15 @@ namespace osgEarth
         //! GL memory functions
         void compileGLObjects(osg::State&) const;
         void resizeGLObjectBuffers(unsigned);
-        void releaseGLObjects(osg::State*) const;
+        void releaseGLObjects(osg::State*, bool force=false) const;
 
         OE_PROPERTY(std::string, name);
-        OE_PROPERTY(std::string, label);
+        OE_PROPERTY(std::string, category);
         OE_PROPERTY(bool, compress);
         OE_PROPERTY(bool, mipmap);
         OE_PROPERTY(bool, clamp);
         OE_PROPERTY(bool, keepImage);
+        OE_PROPERTY(unsigned, maxDim);
         
         OE_OPTION(URI, uri);
         OE_OPTION(GLenum, internalFormat);
@@ -97,24 +99,21 @@ namespace osgEarth
         //! or whether we need to load it from the URI
         bool dataLoaded() const;
 
-        struct GCState
+        //! GLObjects are shareable across GCs because they are static and bindless.
+        struct GLObjects : public BindlessShareableGLObjects
         {
             GLTexture::Ptr _gltexture;
             unsigned _imageModCount;
-            GCState() : _imageModCount(0) { }
+            GLObjects() : _imageModCount(0) { }
         };
-        mutable std::vector<GCState> _gc;
-        GCState& get(const osg::State& s) const {
-            unsigned id = s.getContextID();
-            if (id >= _gc.size()) _gc.resize(id + 1);
-            return _gc[id];
-        }
+        mutable osg::buffered_object<GLObjects> _globjects;
 
         ~Texture();
 
     protected:
         Texture(GLenum target);
         Texture(osg::Texture*);
+        void* _host;
         friend class TextureArena;
     };
 
@@ -149,10 +148,16 @@ namespace osgEarth
         //! Sets the GLSL binding point for the arena. Default is 5.
         void setBindingPoint(unsigned value);
 
+        //! Sets the maximum texture size (in one dimension, in pixels)
+        //! to allocate on the GPU.
+        void setMaxTextureSize(unsigned pixels);
+
         //! Adds a texture to the arena. On next apply() GL handles will allocate.
         //! You only need to call this once for each texture.
         //! Returns the index of the texture handle
-        int add(Texture::Ptr tex);
+        int add(
+            Texture::Ptr tex,
+            const osgDB::Options* readOptions = nullptr);
 
         //! Find and return the index of this texture in the arena,
         //! or return -1 if not found.
@@ -170,6 +175,13 @@ namespace osgEarth
         //! destruct
         virtual ~TextureArena();
 
+        //! Update traversal (called automatically if this TexturArena
+        //! is installed in a StateSet in the traversed scene graph)
+        void update(osg::NodeVisitor& nv);
+
+        //! Flush any unused textures immediately from the arena
+        void flush();
+
     public: // StateAttribute
         void apply(osg::State&) const override;
         void compileGLObjects(osg::State&) const override;
@@ -181,10 +193,12 @@ namespace osgEarth
         //! disable copy
         TextureArena(const TextureArena&, const osg::CopyOp&) { } 
 
-        // Per-GC data
-        struct GCState
+        void releaseGLObjects(osg::State*, bool force) const;
+
+        // GL objects that can be shared across contexts
+        struct GLObjects : public BindlessShareableGLObjects
         {
-            GCState() : _inUse(false) { }
+            GLObjects() : _inUse(false), _lastAppliedFrame(-1) { }
             bool _inUse;
             std::queue<int> _toCompile;
             TextureVector _toRemove;
@@ -192,22 +206,26 @@ namespace osgEarth
             GLBuffer::Ptr _handleBuffer;
             std::vector<GLuint64> _handles;
             bool _dirty;
+            int _lastAppliedFrame;
         };
-        mutable std::vector<GCState> _gc;
-        GCState& get(const osg::State& s) const {
-            unsigned id = s.getContextID();
-            if (id >= _gc.size()) _gc.resize(id + 1);
-            return _gc[id];
-        }
+        mutable osg::buffered_object<GLObjects> _globjects;
 
         mutable TextureVector _textures;
+        mutable std::unordered_map<Texture::Ptr, unsigned int> _textureIndices;
+        mutable std::unordered_set<unsigned> _dynamicTextures;
         bool _autoRelease;
         unsigned _bindingPoint;
         bool _useUBO;
+        mutable int _releasePtr;
+        unsigned _maxDim;
 
         mutable Mutex _m;
 
         int find_no_lock(Texture::Ptr tex) const;
+        void purgeTextureIfOrphaned_no_lock(unsigned index);
+
+        friend class Texture;
+        void notifyOfTextureRelease(osg::State*) const;
     };
 }
 

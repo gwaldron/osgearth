@@ -19,13 +19,14 @@
 #ifndef OSGEARTH_NATIVE_PROGRAM_ADAPTER
 #define OSGEARTH_NATIVE_PROGRAM_ADAPTER
 
+#include "Common"
+#include "GLUtils"
+
 #include <osg/State>
 #include <osg/Uniform>
 #include <osg/GL2Extensions>
 #include <osg/Referenced>
 #include <osg/MixinVector>
-#include <osgEarth/Notify>
-#include <osgEarth/Common>
 #include <unordered_map>
 #include <vector>
 
@@ -51,7 +52,8 @@ namespace osgEarth { namespace Util
             OE_LOCAL << LC << "Create adapter for glProgram " << name << " (handle=" << handle << ")" << std::endl;
 
             _handle = handle;
-            _ext    = osg::GL2Extensions::Get( state->getContextID(), true );
+            if (state)
+                _ext = osg::GL2Extensions::Get(GLUtils::getSharedContextID(*state), true);
 
             GLint   numUniforms = 0;
             GLsizei maxLen      = 0;

@@ -20,17 +20,12 @@
 #define OSGEARTH_URI 1
 
 #include <osgEarth/Common>
-#include <osgEarth/CacheBin>
-#include <osgEarth/CachePolicy>
 #include <osgEarth/Containers>
 #include <osgEarth/IOTypes>
-#include <osgEarth/HTTPClient>
-#include <osgEarth/Threading>
 #include <osg/Image>
 #include <osg/Node>
+#include <osgDB/Options>
 #include <osgDB/ReaderWriter>
-#include <iostream>
-#include <sstream>
 
 namespace osgUtil
 {

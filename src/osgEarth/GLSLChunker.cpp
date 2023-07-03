@@ -18,6 +18,7 @@
  */
 #include <osgEarth/GLSLChunker>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -234,3 +235,4 @@ GLSLChunker::replace(Chunks& input, const std::string& pattern, const std::strin
             osgEarth::Util::replaceIn(chunk.tokens[t], pattern, replacement);
     }
 }
+

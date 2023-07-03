@@ -276,8 +276,8 @@ main(int argc, char** argv)
     app.viewer.setCameraManipulator( new EarthManipulator() );
 
     // Load up the earth file.
-    osg::Node* node = MapNodeHelper().loadWithoutControls(arguments, &app.viewer);
-    if ( node )
+    auto node = MapNodeHelper().loadWithoutControls(arguments, &app.viewer);
+    if ( node.valid() )
     {
         GUI::ApplicationGUI* gui = new GUI::ApplicationGUI(true);
         gui->add("Demo", new PickerGUI(app), true);

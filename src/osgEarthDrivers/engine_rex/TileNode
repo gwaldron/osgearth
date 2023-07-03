@@ -55,7 +55,7 @@ namespace osgEarth { namespace REX
      * and four TileNodes representing the LOD+1 quadtree tiles under this tile.
      */
     class TileNode : public osg::Group,
-                     public osgEarth::TerrainTileNode
+                     public osgEarth::TerrainTile
     {
     public:
         TileNode(
@@ -152,6 +152,22 @@ namespace osgEarth { namespace REX
         // and update-traverse
         void update(osg::NodeVisitor& nv);
 
+        int getLastTraversalFrame() const {
+            return _lastTraversalFrame;
+        }
+
+        double getLastTraversalTime() const {
+            return _lastTraversalTime;
+        }
+
+        float getLastTraversalRange() const {
+            return _lastTraversalRange;
+        }
+
+        void resetTraversalRange() {
+            _lastTraversalRange = FLT_MAX;
+        }
+
     public: // osg::Node
 
         osg::BoundingSphere computeBound() const;
@@ -167,10 +183,11 @@ namespace osgEarth { namespace REX
         TileKey _key;
         osg::observer_ptr<TileNode> _parentTile;
         osg::ref_ptr<SurfaceNode>          _surface;
-        osg::ref_ptr<EngineContext>        _context;
+        osg::observer_ptr<EngineContext>   _context;
         Threading::Mutex                   _mutex;
         std::atomic<int>                   _lastTraversalFrame;
         double                             _lastTraversalTime;
+        float                              _lastTraversalRange;
         bool                               _childrenReady;
         mutable osg::Vec4f                 _tileKeyValue;
         osg::Vec2f                         _morphConstants;
@@ -229,7 +246,7 @@ namespace osgEarth { namespace REX
         // Inherit one shared sampler from parent tile if possible
         void inheritSharedSampler(int binding);
 
-        const TerrainOptions& options() const;
+        //const TerrainOptions& options() const;
     };
 
 } } // namespace osgEarth::REX

@@ -93,6 +93,9 @@ namespace osgEarth { namespace REX
         //! Name of the job arena used to load terrain tiles
         std::string getJobArenaName() const override;
 
+        //! Number of resident terrain tiles
+        unsigned getNumResidentTiles() const override;
+
     public: // osg::Node
 
         void traverse(osg::NodeVisitor& nv) override;
@@ -114,6 +117,8 @@ namespace osgEarth { namespace REX
         virtual void updateTextureCombining() override { updateState(); }
         
         virtual void dirtyState() override;
+
+        virtual void dirtyTerrainOptions() override;
 
     private:
 
@@ -161,8 +166,7 @@ namespace osgEarth { namespace REX
         LayerExtentMap _cachedLayerExtents;
         bool _cachedLayerExtentsComputeRequired;
 
-        // node registry is shared across all threads.
-        osg::ref_ptr<TileNodeRegistry> _liveTiles; // tiles in the scene graph.
+        TileNodeRegistry::Ptr _tiles; // tiles in the scene graph.
      
         EngineContext* getEngineContext() const { return _engineContext.get(); }
         osg::ref_ptr< EngineContext > _engineContext;
@@ -196,6 +200,7 @@ namespace osgEarth { namespace REX
         unsigned _frameLastUpdated;
         FrameClock _clock;
         std::atomic_bool _updatedThisFrame;
+        UID _ppUID;
 
         void installColorFilters(VirtualProgram*);
     };

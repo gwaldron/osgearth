@@ -43,7 +43,6 @@ _options( options )
 osg::Node*
 KMLReader::read( std::istream& in, const osgDB::Options* dbOptions )
 {
-    OE_INFO << LC << "Loading KML.." << std::endl;
     // pull the URI context out of the DB options:
     URIContext context(dbOptions);
 

@@ -42,8 +42,6 @@ IF(WIN32)
 ENDIF(WIN32)
 
 # Generate the BuildConfig header.
-# TODO: no longer need to do this since C++11 is required
-set(OSGEARTH_CXX11_DEFINE "#define OSGEARTH_CXX11")
 set(OSGEARTH_SOVERSION_VALUE "${OSGEARTH_SOVERSION}")
 set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig.h")
 message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
@@ -65,6 +63,7 @@ set(TARGET_GLSL
     GPUClamping.lib.glsl
     Instancing.glsl
     LineDrawable.glsl
+    MetadataNode.glsl
     WireLines.glsl
     PhongLighting.glsl
     PointDrawable.glsl
@@ -100,7 +99,6 @@ SET(LIB_PUBLIC_HEADERS
     Bing
     Bounds
     Cache
-    CacheEstimator
     CacheBin
     CachePolicy
     CacheSeed
@@ -139,7 +137,6 @@ SET(LIB_PUBLIC_HEADERS
     ElevationRanges
     ElevationQuery
     Ellipsoid
-    EllipsoidIntersector
     Endian
     Export
     Extension
@@ -249,6 +246,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainOptions
     TerrainEngineNode
     TerrainEngineRequirements
+    TerrainMeshLayer
     TerrainResources
     TerrainTileModel
     TerrainTileModelFactory
@@ -257,9 +255,11 @@ SET(LIB_PUBLIC_HEADERS
     Text
     TextureBuffer
     ThreeDTilesLayer
+    TileEstimator
     TileKey
     TileLayer
     TileHandler
+    TileMesher
     TileRasterizer
     TiledFeatureModelGraph
     TiledFeatureModelLayer
@@ -283,6 +283,8 @@ SET(LIB_PUBLIC_HEADERS
     WMS
     XmlUtils
     XYZ
+    XYZModelGraph
+    XYZModelLayer
 
     ActivityMonitorTool
     AutoClipPlaneHandler
@@ -361,10 +363,12 @@ SET(LIB_PUBLIC_HEADERS
     FeatureSourceIndexNode
     Filter
     FilterContext
+    FilteredFeatureSource
     GeometryCompiler
     GeometryUtils
     ImageToFeatureLayer
     InstanceCloud
+    MetadataNode
     MVT
     OgrUtils
     OGRFeatureSource
@@ -467,18 +471,20 @@ if(OSGEARTH_ENABLE_IMGUI)
     set(LIB_PUBLIC_HEADERS_IMGUI
         ImGui/ImGui
         ImGui/ImGuiApp
+        ImGui/AnnotationsGUI
+        ImGui/ContentBrowserGUI
         ImGui/LayersGUI
         ImGui/NetworkMonitorGUI
         ImGui/NotifyGUI
+        ImGui/PickerGUI
         ImGui/SceneGraphGUI
         ImGui/SearchGUI
         ImGui/TextureInspectorGUI
         ImGui/ViewpointsGUI
         ImGui/SystemGUI
-        ImGui/EphemerisGUI
+        ImGui/EnvironmentGUI
         ImGui/ShaderGUI
         ImGui/TerrainGUI
-        ImGui/TerrainEditGUI
         ImGui/CameraGUI
         ImGui/RenderingGUI
         )
@@ -506,7 +512,7 @@ ENDIF (NOT TINYXML_FOUND)
 
 
 SET(VERSION_GIT_SOURCE "")
-find_package(git)
+find_package(Git)
 if (GIT_FOUND)
     option(OSGEARTH_EMBED_GIT_SHA "Encode the SHA in the Version header code" OFF)
     if(OSGEARTH_EMBED_GIT_SHA)
@@ -534,7 +540,6 @@ set(TARGET_SRC
     Bounds.cpp
     Cache.cpp
     CacheBin.cpp
-    CacheEstimator.cpp
     CachePolicy.cpp
     CacheSeed.cpp
     Callouts.cpp
@@ -570,7 +575,6 @@ set(TARGET_SRC
     ElevationRanges.cpp
     ElevationQuery.cpp
     Ellipsoid.cpp
-    EllipsoidIntersector.cpp
     Extension.cpp
     FadeEffect.cpp
     FileUtils.cpp
@@ -659,6 +663,7 @@ set(TARGET_SRC
     Terrain.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp
+    TerrainMeshLayer.cpp
     TerrainResources.cpp
     TerrainTileModel.cpp
     TerrainTileModelFactory.cpp
@@ -668,9 +673,11 @@ set(TARGET_SRC
     TextureBuffer.cpp
     ThreeDTilesLayer.cpp
     TextureBufferSerializer.cpp
+    TileEstimator.cpp
     TileKey.cpp
     TileLayer.cpp
     TileHandler.cpp
+    TileMesher.cpp
     TileRasterizer.cpp
     TiledFeatureModelGraph.cpp
     TiledFeatureModelLayer.cpp
@@ -694,6 +701,8 @@ set(TARGET_SRC
     WMS.cpp
     XmlUtils.cpp
     XYZ.cpp
+    XYZModelGraph.cpp
+    XYZModelLayer.cpp
 
     ActivityMonitorTool.cpp
     AtlasBuilder.cpp
@@ -762,10 +771,12 @@ set(TARGET_SRC
     FeatureSourceIndexNode.cpp
     Filter.cpp
     FilterContext.cpp
+    FilteredFeatureSource.cpp
     GeometryCompiler.cpp
     GeometryUtils.cpp
     ImageToFeatureLayer.cpp
     MVT.cpp
+    MetadataNode.cpp
     OgrUtils.cpp
     OGRFeatureSource.cpp
     PolygonizeLines.cpp
@@ -851,6 +862,11 @@ set(TARGET_SRC
 
     ${SHADERS_CPP}
 )
+
+# MSVC 2017 and 2019 need /bigobj on debug build
+if(MSVC AND MSVC_VERSION LESS 1930)
+    add_compile_options("$<$<CONFIG:Debug>:/bigobj>")    
+endif()
 
 IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
   IF(NOT OUT_OF_SOURCE_BUILD)

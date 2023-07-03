@@ -614,7 +614,9 @@ WMS::Driver::fetchTileImage(const TileKey&     key,
     {
         image = out_response.getImage();
     }
-    else if (out_response.errorDetail().empty() == false)
+    else if (
+        out_response.code() != ReadResult::RESULT_NOT_FOUND &&
+        out_response.errorDetail().empty() == false)
     {
         Config conf;
         std::istringstream errorDetailStream(out_response.errorDetail());
@@ -748,9 +750,10 @@ WMSImageLayer::openImplementation()
 
     osg::ref_ptr<const Profile> profile = getProfile();
 
+    DataExtentList dataExtents;
     Status status = driver->open(
         profile,
-        dataExtents());
+        dataExtents);
 
     if (status.isError())
         return status;
@@ -759,6 +762,8 @@ WMSImageLayer::openImplementation()
     {
         setProfile(profile.get());
     }
+
+    setDataExtents(dataExtents);
 
     return Status::NoError;
 }

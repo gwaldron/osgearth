@@ -75,7 +75,6 @@ class TemplateReaderWriter: public osgDB::ReaderWriter
                 std::istringstream iss(options->getOptionString());
                 std::string opt;
                 while (iss >> opt) {
-                    opt = osgDB::convertToLowerCase(opt);
                     std::size_t eqInd = opt.find('=');
                     std::string key = opt.substr(0, eqInd);
                     std::string value = opt.substr(eqInd + 1);

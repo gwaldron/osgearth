@@ -21,6 +21,10 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/Version>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Cache>
+#include <osgEarth/CacheBin>
+#include <osgEarth/URI>
+#include <osgEarth/FileUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
 #include <curl/curl.h>
@@ -36,12 +40,32 @@
 //#define OE_TEST OE_NOTICE
 #define OE_TEST OE_NULL
 
+// Uncomment this to test curl connecting sharing
+//#define OE_CURL_SHARE
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
 namespace osgEarth
 {
     static int s_simResponseCode = -1;
+
+#ifdef OE_CURL_SHARE
+    static CURLSH* CURL_SHARE = nullptr;
+    static Threading::RecursiveMutex CURL_SHARE_MUTEX;
+
+    static void share_lock_cb(CURL* handle, curl_lock_data data,
+        curl_lock_access access, void* userptr)
+    {
+        CURL_SHARE_MUTEX.lock();
+    }
+
+    static void share_unlock_cb(CURL* handle, curl_lock_data data,
+        void* userptr)
+    {
+        CURL_SHARE_MUTEX.unlock();
+    }
+#endif
 
     struct StreamObject
     {
@@ -104,7 +128,7 @@ namespace osgEarth
         {
             cancelled = callback->isCanceled() || callback->reportProgress(dlnow, dltotal);
             if (cancelled)
-                OE_DEBUG << "An HTTP request was canceled mid-stream" << std::endl;
+                OE_TEST << "An HTTP request was canceled mid-stream" << std::endl;
         }
         return cancelled;
     }
@@ -299,7 +323,8 @@ HTTPResponse::HTTPResponse( long _code ) :
 _response_code( _code ),
 _canceled(false),
 _duration_s(0.0),
-_lastModified(0u)
+_lastModified(0u),
+_fromCache(false)
 {
     _parts.reserve(1);
 }
@@ -310,7 +335,8 @@ _parts( rhs._parts ),
 _mimeType( rhs._mimeType ),
 _canceled( rhs._canceled ),
 _duration_s(0.0),
-_lastModified(0u)
+_lastModified(0u),
+_fromCache(rhs._fromCache)
 {
     //nop
 }
@@ -378,10 +404,22 @@ HTTPResponse::getHeadersAsConfig() const
     {
         for( Headers::const_iterator i = _parts[0]->_headers.begin(); i != _parts[0]->_headers.end(); ++i )
         {
-            conf.set(i->first, i->second);
+            conf.set(osgEarth::toLower(i->first), i->second);
         }
     }
     return conf;
+}
+
+void
+HTTPResponse::setHeadersFromConfig(const Config& conf)
+{
+    if (_parts.size() > 0)
+    {
+        for (auto& i : conf.children())
+        {
+            _parts[0]->_headers[i.key()] = i.value();
+        }
+    }
 }
 
 /****************************************************************************/
@@ -393,8 +431,6 @@ HTTPResponse::getHeadersAsConfig() const
 
 namespace
 {
-    // TODO: consider moving this stuff into the osgEarth::Registry;
-    // don't like it here in the global scope
     // per-thread client map (must be global scope)
     static PerThread<HTTPClient>       s_clientPerThread("HTTPClient(OE)");
 
@@ -439,6 +475,10 @@ namespace
             curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSFUNCTION, &CurlProgressCallback);
             curl_easy_setopt( _curl_handle, CURLOPT_NOPROGRESS, (void*)0 ); //0=enable.
             curl_easy_setopt( _curl_handle, CURLOPT_FILETIME, true );
+
+#ifdef OE_CURL_SHARE
+            curl_easy_setopt( _curl_handle, CURLOPT_SHARE, CURL_SHARE);
+#endif
 
             // Enable automatic CURL decompression of known types. An empty string will automatically add all supported encoding types that are built into curl.
             // Note that you must have curl built against zlib to support gzip or deflate encoding.
@@ -502,7 +542,7 @@ namespace
             {
                 proxy_host = proxySettings.get().hostName();
                 proxy_port = toString<int>(proxySettings.get().port());
-                OE_DEBUG << LC << "Read proxy settings from options " << proxy_host << " " << proxy_port << std::endl;
+                OE_TEST << LC << "Read proxy settings from options " << proxy_host << " " << proxy_port << std::endl;
             }
 
             //Try to get the proxy settings from the environment variable
@@ -555,7 +595,6 @@ namespace
             }
             else
             {
-                OE_DEBUG << LC << "Removing proxy settings" << std::endl;
                 curl_easy_setopt( _curl_handle, CURLOPT_PROXY, 0 );
             }
 
@@ -565,7 +604,7 @@ namespace
             {
                 std::string oldURL = url;
                 url = rewriter->rewrite( oldURL );
-                OE_DEBUG << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
+                OE_TEST << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
             }
 
             const osgDB::AuthenticationDetails* details = authenticationMap ?
@@ -721,7 +760,7 @@ namespace
                 if (response.getMimeType().length() > 9 &&
                     ::strstr( response.getMimeType().c_str(), "multipart" ) == response.getMimeType().c_str() )
                 {
-                    OE_DEBUG << LC << "detected multipart data; decoding..." << std::endl;
+                    OE_TEST << LC << "detected multipart data; decoding..." << std::endl;
 
                     //TODO: parse out the "wcs" -- this is WCS-specific
                     if ( !decodeMultipartStream( "wcs", part.get(), response.getParts() ) )
@@ -748,7 +787,7 @@ namespace
 
                 if (res == CURLE_GOT_NOTHING)
                 {
-                    OE_DEBUG << LC << "CURLE_GOT_NOTHING for " << url << std::endl;
+                    OE_TEST << LC << "CURLE_GOT_NOTHING for " << url << std::endl;
                 }
             }
 
@@ -930,7 +969,7 @@ namespace
             {
                 std::string oldURL = url;
                 url = rewriter->rewrite( oldURL );
-                OE_DEBUG << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
+                OE_TEST << LC << "Rewrote URL " << oldURL << " to " << url << std::endl;
             }
 
             HINTERNET hInternet = InternetOpen(
@@ -979,7 +1018,7 @@ namespace
             strncpy(hostName, urlcomp.lpszHostName, urlcomp.dwHostNameLength);
             strncpy(urlPath, urlcomp.lpszUrlPath, urlcomp.dwUrlPathLength);
 
-            OE_DEBUG
+            OE_TEST
                 << "\n"
                 << "Host name = " << hostName << "\n"
                 << "Url path = " << urlcomp.lpszUrlPath << "\n"
@@ -1239,7 +1278,7 @@ HTTPClient::initializeImpl()
     {
         userAgent = std::string(userAgentEnv);
     }
-    OE_DEBUG << LC << "HTTPClient setting userAgent=" << userAgent << std::endl;
+    OE_TEST << LC << "HTTPClient setting userAgent=" << userAgent << std::endl;
 
     //Check for a response-code simulation (for testing)
     const char* simCode = getenv("OSGEARTH_SIMULATE_HTTP_RESPONSE_CODE");
@@ -1270,7 +1309,7 @@ HTTPClient::initializeImpl()
     {
         timeout = osgEarth::as<long>(std::string(timeoutEnv), 0);
     }
-    OE_DEBUG << LC << "Setting timeout to " << timeout << std::endl;
+    OE_TEST << LC << "Setting timeout to " << timeout << std::endl;
 
     long connectTimeout = s_connectTimeout;
     const char* connectTimeoutEnv = getenv("OSGEARTH_HTTP_CONNECTTIMEOUT");
@@ -1278,14 +1317,14 @@ HTTPClient::initializeImpl()
     {
         connectTimeout = osgEarth::as<long>(std::string(connectTimeoutEnv), 0);
     }
-    OE_DEBUG << LC << "Setting connect timeout to " << connectTimeout << std::endl;
+    OE_TEST << LC << "Setting connect timeout to " << connectTimeout << std::endl;
 
     const char* retryDelayEnv = getenv("OSGEARTH_HTTP_RETRY_DELAY");
     if (retryDelayEnv)
     {
         s_retryDelay_s = osgEarth::as<double>(std::string(retryDelayEnv), 0.0);
     }
-    OE_DEBUG << LC << "Setting retry delay to " << s_retryDelay_s << std::endl;
+    OE_TEST << LC << "Setting retry delay to " << s_retryDelay_s << std::endl;
 
     _impl->initialize();
 
@@ -1377,6 +1416,17 @@ HTTPClient::globalInit()
 {
 #ifndef OSGEARTH_USE_WININET_FOR_HTTP
     curl_global_init(CURL_GLOBAL_ALL);
+
+#ifdef OE_CURL_SHARE
+    CURL_SHARE = curl_share_init();
+    curl_share_setopt(CURL_SHARE, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+    curl_share_setopt(CURL_SHARE, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
+    curl_share_setopt(CURL_SHARE, CURLSHOPT_SHARE, CURL_LOCK_DATA_SSL_SESSION);
+    curl_share_setopt(CURL_SHARE, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
+    curl_share_setopt(CURL_SHARE, CURLSHOPT_LOCKFUNC, share_lock_cb);
+    curl_share_setopt(CURL_SHARE, CURLSHOPT_UNLOCKFUNC, share_unlock_cb);
+#endif
+
 #endif
 }
 
@@ -1468,12 +1518,92 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
     initialize();
 
-    HTTPResponse response = _impl->doGet(request, options, progress);
+    URI uri(request.getURL());
 
-    OE_PROFILING_ZONE_TEXT(Stringify() << "response_code " << response.getCode());
-    if (response.isCanceled())
+    // URL caching
+    CacheBin* bin = nullptr;
+    CacheSettings* cacheSettings = CacheSettings::get(options);
+    osgEarth::optional<CachePolicy> cachePolicy;
+    if (cacheSettings)
     {
-        OE_PROFILING_ZONE_TEXT("cancelled");
+        cachePolicy = cacheSettings->cachePolicy();
+        if (cacheSettings->isCacheEnabled())
+        {
+            // Use the global bin instead of the defined cache bin so all URLs are cached to the same place
+            bin = cacheSettings->getCache()->getOrCreateDefaultBin();
+            //bin = cacheSettings->getCacheBin();
+        }
+    }
+
+    bool expired = false;
+
+    HTTPResponse response;
+
+    bool gotFromCache = false;
+
+    //Try to read result from the cache.
+    if (bin)
+    {
+        ReadResult result = bin->readString(uri.cacheKey(), options);
+        if (result.succeeded())
+        {            
+            gotFromCache = true;
+
+            // If the cache-control header contains no-cache that means that it's ok to store the result in the cache, but it must be requested
+            // from the server each time it is it requested.
+            bool noCache = false;
+            std::string cacheControl = result.metadata().value("cache-control");
+            if (cacheControl.find_first_of("no-cache") != std::string::npos)
+            {
+                noCache = true;
+            }
+
+            expired = noCache || cachePolicy->isExpired(result.lastModifiedTime());
+            result.setIsFromCache(true);            
+
+            HTTPResponse cacheResponse(HTTPResponse::CATEGORY_SUCCESS);
+            osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
+            part->_stream << result.getString();
+            std::string contentType = result.metadata().value("content-type");
+            cacheResponse.setMimeType(contentType);
+            cacheResponse.getParts().push_back(part);
+            cacheResponse.setHeadersFromConfig(result.metadata());
+            cacheResponse.setFromCache(true);
+            response = cacheResponse;
+        }
+    }
+
+    if ((expired || !gotFromCache) && cachePolicy->usage() != CachePolicy::USAGE_CACHE_ONLY)
+    {
+        HTTPResponse remoteResponse = _impl->doGet(request, options, progress);
+
+        if (remoteResponse.getCode() == ReadResult::RESULT_NOT_MODIFIED)
+        {
+            OE_DEBUG << LC << uri.full() << " not modified, using cached result" << std::endl;
+            // Touch the cached item to update it's last modified timestamp so it doesn't expire again immediately.
+            if (bin)
+                bin->touch(uri.cacheKey());
+        }
+        else
+        {
+            OE_DEBUG << LC << "Got remote result for " << uri.full() << std::endl;
+            response = remoteResponse;
+
+            if (response.isOK())
+            {
+                if (bin != nullptr)
+                {
+                    osg::ref_ptr< StringObject> stringObject = new StringObject(response.getPartAsString(0));
+                    bin->write(uri.cacheKey(), stringObject, response.getHeadersAsConfig(), options);
+                }
+            }
+        }
+
+        OE_PROFILING_ZONE_TEXT(Stringify() << "response_code " << response.getCode());
+        if (response.isCanceled())
+        {
+            OE_PROFILING_ZONE_TEXT("cancelled");
+        }        
     }
     return response;
 }
@@ -1523,8 +1653,10 @@ namespace
     {
         osgDB::ReaderWriter* reader = 0L;
 
+        std::string urlMinusQueryParams = removeQueryParams(url);
         // try extension first:
-        std::string ext = osgDB::getFileExtension( url );
+
+        std::string ext = osgDB::getFileExtension(urlMinusQueryParams);
         if ( !ext.empty() )
         {
             reader = osgDB::Registry::instance()->getReaderWriterForExtension( ext );
@@ -1671,6 +1803,7 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
 
     // encode headers
     result.setMetadata( response.getHeadersAsConfig() );
+    result.setIsFromCache(response.getFromCache());
 
     // set the source name
     if ( result.getImage() )
@@ -1772,6 +1905,7 @@ HTTPClient::doReadNode(const HTTPRequest&    request,
 
     // encode headers
     result.setMetadata( response.getHeadersAsConfig() );
+    result.setIsFromCache(response.getFromCache());
 
     return result;
 }
@@ -1934,6 +2068,7 @@ HTTPClient::doReadString(const HTTPRequest&    request,
 
     // encode headers
     result.setMetadata( response.getHeadersAsConfig() );
+    result.setIsFromCache(response.getFromCache());
 
     // last-modified (file time)
     result.setLastModifiedTime( response._lastModified );

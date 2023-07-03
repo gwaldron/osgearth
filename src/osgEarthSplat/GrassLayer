@@ -25,39 +25,41 @@
 #include "GroundCoverLayer"
 #include <osgEarth/LayerReference>
 
-namespace osgEarth { namespace Splat
-{
-    using namespace osgEarth;
-
-    //! Layer that renders grass.
-    class OSGEARTHSPLAT_EXPORT GrassLayer : public GroundCoverLayer
+namespace osgEarth {
+    namespace Splat
     {
-    public:
-        class OSGEARTHSPLAT_EXPORT Options : public GroundCoverLayer::Options {
+        using namespace osgEarth;
+
+        //! Layer that renders grass.
+        class OSGEARTHSPLAT_EXPORT GrassLayer : public GroundCoverLayer
+        {
         public:
-            META_LayerOptions(osgEarth, Options, GroundCoverLayer::Options);
-            virtual Config getConfig() const;
-        private:
-            void fromConfig(const Config& conf);
+            class OSGEARTHSPLAT_EXPORT Options : public GroundCoverLayer::Options {
+            public:
+                META_LayerOptions(osgEarth, Options, GroundCoverLayer::Options);
+                virtual Config getConfig() const;
+            private:
+                void fromConfig(const Config& conf);
+            };
+
+        public:
+            META_Layer(osgEarth, GrassLayer, Options, GroundCoverLayer, Grass);
+
+        public: // Layer
+            virtual void init();
+
+        protected:
+            virtual ~GrassLayer() { }
+
+            virtual void loadShaders(
+                VirtualProgram* vp,
+                const osgDB::Options* options) const override;
+
+            virtual osg::Geometry* createGeometry() const override;
         };
 
-    public:
-        META_Layer(osgEarth, GrassLayer, Options, GroundCoverLayer, Grass);
-
-    public: // Layer
-        virtual void init();
-
-    protected:
-        virtual ~GrassLayer() { }
-
-        virtual void loadRenderingShaders(
-            VirtualProgram* vp, 
-            const osgDB::Options* options) const;
-
-        virtual osg::Geometry* createParametricGeometry() const;
-    };
-
-} } // namespace osgEarth::Splat
+    }
+} // namespace osgEarth::Splat
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Splat::GrassLayer::Options);
 
 #endif // OSGEARTH_SPLAT_GRASS_LAYER_H

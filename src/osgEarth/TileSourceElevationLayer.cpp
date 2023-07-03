@@ -39,7 +39,6 @@ Config
 TileSourceElevationLayer::Options::getConfig() const
 {
     Config conf = TileLayer::Options::getConfig();
-    // todo: driver?
     return conf;
 }
 //------------------------------------------------------------------------
@@ -90,7 +89,8 @@ TileSourceElevationLayer::getOrCreatePreCacheOp() const
 {
     if ( !_preCacheOp.valid() )
     {
-        Threading::ScopedWriteLock lock(layerMutex());
+        static Mutex s_mutex;
+        Threading::ScopedLock lock(s_mutex);
         if ( !_preCacheOp.valid() )
         {
             _preCacheOp = new NormalizeNoDataValues(this);
@@ -185,7 +185,7 @@ TileSourceElevationLayer::openImplementation()
             // properties to and fro.
             if (!_tileSource->getDataExtents().empty())
             {
-                dataExtents() = _tileSource->getDataExtents();
+                setDataExtents(_tileSource->getDataExtents());
             }
 
             // Set the profile from the TileSource if possible:

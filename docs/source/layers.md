@@ -6,25 +6,26 @@ These are the public layer types native to osgEarth.
 
 | Data Source | Description |
 | ----------- | ------------|
-| [GDAL](gdal.md) | Loads any imagery format supported by the GDAL library, including GeoTIFF |
-| [MBTiles](mbtiles.md) | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
-| [TMS](tms.md) | Connects to a TMS (TileMapService) repository |
-| [WMS](wms.md) | OGC Web Map Service server |
-| [XYZ](xyz.md) | Reads data in standard XYZ format (no metadata) |
-| [Composite](composite.md) | Combines multiple image layers into a single map layer |
-| [ContourMap](contourmap.md) | Renders a colored representation of the elevation data in the map |
-| [Microsoft Bing](bing.md) | ($) Connects to Microsoft Bing service. License key required |
-| [Cesium Ion](cesiumion.md) | ($) Connects to a Cesium Ion server instance. License key required |
-| [ESRI ArcGIS Server](arcgis.md) | ($) Connects to an ESRI ArcGIS Server instance |
+| [GDAL](gdal.html) | Loads any imagery format supported by the GDAL library, including GeoTIFF |
+| [MBTiles](mbtiles.html) | Reads imagery tiles from an MBTiles (MapBox Tiles) database file |
+| [TMS](tms.html) | Connects to a TMS (TileMapService) repository |
+| [WMS](wms.html) | OGC Web Map Service server |
+| [XYZ](xyz.html) | Reads data in standard XYZ format (no metadata) |
+| [Composite](composite.html) | Combines multiple image layers into a single map layer |
+| [ContourMap](contourmap.html) | Renders a colored representation of the elevation data in the map |
+| [Microsoft Bing](bing.html) | ($) Connects to Microsoft Bing service. License key required |
+| [Cesium Ion](cesiumion.html) | ($) Connects to a Cesium Ion server instance. License key required |
+| [ESRI ArcGIS Server](arcgis.html) | ($) Connects to an ESRI ArcGIS Server instance |
+| [MapboxGL](mapboxgl.html) | Rasterizes a MapboxGL map to an image layer. |
 
 
 ## Vector Data
 
 | Earth File        | Description                                                  |
 | ----------------- | ------------------------------------------------------------ |
-| [FeatureImage](featureimage.md) | Rasterizes vector data into an image layer                   |
-| [FeatureModel](featuremodel.md) | Renders vector data as *OpenSceneGraph* geometry             |
-| [TiledFeatureModel](tiledfeaturemodel.md) | Like a `FeatureModel` layer, but optimized for pre-tiled vector datasets |
+| [FeatureImage](featureimage.html) | Rasterizes vector data into an image layer                   |
+| [FeatureModel](featuremodel.html) | Renders vector data as *OpenSceneGraph* geometry             |
+| [TiledFeatureModel](tiledfeaturemodel.html) | Like a `FeatureModel` layer, but optimized for pre-tiled vector datasets |
 
 
 

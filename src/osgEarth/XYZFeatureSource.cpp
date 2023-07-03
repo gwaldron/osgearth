@@ -40,6 +40,8 @@ XYZFeatureSource::Options::getConfig() const
     conf.set("format", _format);
     conf.set("min_level", _minLevel);
     conf.set("max_level", _maxLevel);
+    conf.set("esri_geodetic", _esriGeodetic);
+    conf.set("auto_fallback", _autoFallback);
     return conf;
 }
 
@@ -47,11 +49,15 @@ void
 XYZFeatureSource::Options::fromConfig(const Config& conf)
 {
     format().setDefault("json");
+    autoFallback().setDefault(false);
+    esriGeodetic().setDefault(false);
 
     conf.get("url", _url);
     conf.get("format", _format);
     conf.get("min_level", _minLevel);
     conf.get("max_level", _maxLevel);
+    conf.get("esri_geodetic", _esriGeodetic);
+    conf.get("auto_fallback", _autoFallback);
 }
 
 //........................................................................
@@ -62,6 +68,8 @@ OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, std::string, Format, format);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MinLevel, minLevel);
 OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, int, MaxLevel, maxLevel);
+OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, bool, EsriGeodetic, esriGeodetic);
+OE_LAYER_PROPERTY_IMPL(XYZFeatureSource, bool, AutoFallbackToMaxLevel, autoFallback);
 
 Status
 XYZFeatureSource::openImplementation()
@@ -319,10 +327,22 @@ XYZFeatureSource::createURL(const Query& query)
 {
     if (query.tileKey().isSet() && query.tileKey()->valid())
     {
-        const TileKey &key = query.tileKey().get();
+        TileKey key = query.tileKey().get();
+        
+        if ((int)key.getLOD() > getMaxLevel())
+            key = key.createAncestorKey(getMaxLevel());
+
         unsigned int tileX = key.getTileX();
         unsigned int tileY = key.getTileY();
         unsigned int level = key.getLevelOfDetail();
+
+        // ESRI geodetic sources have an odd geodetic profile which has level 0 as a 360x360 single tile which then splits into a quadtree
+        // The tiling scheme matches up exactly with osgEarth's global geodetic profile if you increment the level by 1, treating ESRI's level 1
+        // as our level 0.
+        if (*options().esriGeodetic())
+        {
+            level += 1;
+        }
 
         unsigned int numRows, numCols;
         key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
@@ -334,13 +354,13 @@ XYZFeatureSource::createURL(const Query& query)
         replaceIn(location, "${x}", Stringify() << tileX);
         replaceIn(location, "${y}", Stringify() << tileY);
         replaceIn(location, "${-y}", Stringify() << inverted_tileY);
-        replaceIn(location, "${z}", Stringify() << key.getLevelOfDetail());
+        replaceIn(location, "${z}", Stringify() << level);
 
         // failing that, legacy osgearth style:
         replaceIn(location, "{x}", Stringify() << tileX);
         replaceIn(location, "{y}", Stringify() << tileY);
         replaceIn(location, "{-y}", Stringify() << inverted_tileY);
-        replaceIn(location, "{z}", Stringify() << key.getLevelOfDetail());
+        replaceIn(location, "{z}", Stringify() << level);
 
         std::string cacheKey;
 

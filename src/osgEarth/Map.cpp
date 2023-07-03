@@ -61,6 +61,8 @@ Map::Options::getConfig() const
 
     conf.set( "profile_layer", profileLayer() );
 
+    conf.set("read_options", osgOptionString());
+
     return conf;
 }
 
@@ -87,6 +89,9 @@ Map::Options::fromConfig(const Config& conf)
     conf.get( "elevation_interpolation", "triangulate", elevationInterpolation(), INTERP_TRIANGULATE);
 
     conf.get( "profile_layer", profileLayer() );
+
+    conf.get("read_options", osgOptionString());
+    conf.get("osg_options", osgOptionString()); // back compat
 }
 
 //...................................................................
@@ -153,6 +158,13 @@ Map::init()
         _readOptions = new osgDB::Options();
     }
 
+    if (!options().osgOptionString()->empty())
+    {
+        std::string a = _readOptions->getOptionString();
+        a = options().osgOptionString().get() + " " + a;
+        _readOptions->setOptionString(a);
+    }
+
     // put the CacheSettings object in there. We will propogate this throughout
     // the data model and the renderer. These will be stored in the readOptions
     // (and ONLY there)
@@ -205,13 +217,6 @@ Map::notifyOnLayerOpenOrClose(Layer* layer)
     {
         Threading::ScopedWriteLock lock(_mapDataMutex);
         newRevision = ++_dataModelRevision;
-    }
-
-    // reinitialize the elevation pool:
-    if (dynamic_cast<ElevationLayer*>(layer) ||
-        dynamic_cast<TerrainConstraintLayer*>(layer))
-    {
-        _elevationPool->clear();
     }
 
     if (layer->isOpen())
@@ -603,13 +608,6 @@ Map::moveLayer(Layer* layer, unsigned newIndex)
         newRevision = ++_dataModelRevision;
     }
 
-    // if this is an elevation layer, invalidate the elevation pool
-    if (dynamic_cast<ElevationLayer*>(layer) ||
-        dynamic_cast<TerrainConstraintLayer*>(layer))
-    {
-        getElevationPool()->clear();
-    }
-
     // a separate block b/c we don't need the mutex
     if ( layer )
     {
@@ -702,15 +700,6 @@ Map::addLayers(const LayerVector& layers)
 void
 Map::installLayerCallbacks(Layer* layer)
 {
-    // If this is an elevation layer, install a callback so we know when
-    // it's enabled state changes:
-    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
-    if (elevationLayer)
-    {
-        // invalidate the elevation pool
-        getElevationPool()->clear();
-    }
-
     // Callback to detect changes in "enabled"
     layer->addCallback(_layerCB.get());
 }
@@ -718,14 +707,6 @@ Map::installLayerCallbacks(Layer* layer)
 void
 Map::uninstallLayerCallbacks(Layer* layer)
 {
-    // undo the things we did in prepareLayer:
-    ElevationLayer* elevationLayer = dynamic_cast<ElevationLayer*>(layer);
-    if (elevationLayer)
-    {
-        // invalidate the pool
-        getElevationPool()->clear();
-    }
-
     layer->removeCallback(_layerCB.get());
 }
 
@@ -820,9 +801,6 @@ Map::clear()
 
         i->get()->onEndUpdate();
     }
-
-    // Invalidate the elevation pool.
-    getElevationPool()->clear();
 }
 
 const SpatialReference*

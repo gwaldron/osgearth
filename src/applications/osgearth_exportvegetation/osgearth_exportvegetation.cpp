@@ -111,7 +111,6 @@ struct App
 
         featureGen.setMap(map);
         featureGen.setLayer(veglayer);
-        featureGen.setFactory(new TerrainTileModelFactory(mapNode->options().terrain().get()));
 
         if (featureGen.getStatus().isError())
             return usage(argv[0], featureGen.getStatus().message());
@@ -122,6 +121,7 @@ struct App
         outSchema["elevation"] = ATTRTYPE_DOUBLE;
         outSchema["width"] = ATTRTYPE_DOUBLE;
         outSchema["height"] = ATTRTYPE_DOUBLE;
+        outSchema["rotation"] = ATTRTYPE_DOUBLE;
 
         std::string prop;
         while(arguments.read("--include-asset-property", prop))
@@ -167,7 +167,7 @@ main(int argc, char** argv)
 
     // find all intersecting tile keys
     std::vector<TileKey> keys;
-    unsigned lod = app.veglayer->options().group(AssetGroup::TREES).lod().get();
+    unsigned lod = app.veglayer->options().group("trees").lod().get();
     app.mapNode->getMap()->getProfile()->getIntersectingTiles(app.extent, lod, keys);
     if (keys.empty())
         return usage(argv[0], "No data in extent");

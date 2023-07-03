@@ -600,7 +600,8 @@ ThreeDTileNode::ThreeDTileNode(ThreeDTilesetNode* tileset, Tile* tile, bool imme
     _options(options),
     _trackerItrValid(false),
     _lastCulledFrameNumber(0),
-    _lastCulledFrameTime(0.0f)
+    _lastCulledFrameTime(0.0f),
+    _refine(REFINE_ADD)
 {
     OE_PROFILING_ZONE;
     if (_tile->content().isSet())
@@ -928,8 +929,8 @@ void ThreeDTileNode::requestContent(ICO* ico)
         URI uri(_tile->content()->uri()->base(), context);
 
         NetworkMonitor::ScopedRequestLayer layerRequest(_tileset->getOwnerName());
-
-        if (osgEarth::Strings::endsWith(_tile->content()->uri()->base(), ".json"))
+        
+        if (osgEarth::Strings::endsWith(osgEarth::removeQueryParams(_tile->content()->uri()->base()), ".json"))
         {
             // "json" extension = external tileset:
             _contentFuture = readTilesetAsync(_tileset, uri, localOptions.get());

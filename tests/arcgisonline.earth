@@ -5,7 +5,7 @@ Please note that this information is for educational purposes only, and
 that use of ESRI's online maps may be subject to certain terms and
 adibing my them is your responsibility!
 
-http://services.arcgisonline.com/arcgis/sdk/rest/index.html
+https://services.arcgisonline.com/arcgis/sdk/rest/index.html
 -->
 
 <Map name="Demo: ArcGIS Server">
@@ -19,20 +19,20 @@ http://services.arcgisonline.com/arcgis/sdk/rest/index.html
     -->
 
     <ArcGISServerImage name="World Imagery">
-        <url>http://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/</url>
-        <nodata_image>http://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
+        <url>https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/</url>
+        <nodata_image>https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/100/0/0.jpeg</nodata_image>
     </ArcGISServerImage>
 
     <ArcGISServerImage name="Transportation" enabled="false">
-        <url>http://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer</url>
+        <url>https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer</url>
     </ArcGISServerImage>
 
     <ArcGISServerImage name="Shaded Relief" enabled="false">
-        <url>http://services.arcgisonline.com/arcgis/rest/services/World_Shaded_Relief/MapServer</url>
+        <url>https://services.arcgisonline.com/arcgis/rest/services/World_Shaded_Relief/MapServer</url>
     </ArcGISServerImage>
 
     <ArcGISServerElevation name="Elevation layer" max_data_level="13" enabled="true">
-        <url>http://services.arcgisonline.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer</url>
+        <url>https://services.arcgisonline.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer</url>
     </ArcGISServerElevation>
     
     <!-- <Debug/>     -->

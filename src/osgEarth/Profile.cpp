@@ -72,10 +72,12 @@ ProfileOptions::fromConfig( const Config& conf )
     if ( conf.hasValue( "xmin" ) && conf.hasValue( "ymin" ) && conf.hasValue( "xmax" ) && conf.hasValue( "ymax" ) )
     {
         _bounds = Bounds(
-            conf.value<double>( "xmin", 0 ),
-            conf.value<double>( "ymin", 0 ),
-            conf.value<double>( "xmax", 0 ),
-            conf.value<double>( "ymax", 0 ) );
+            conf.value<double>("xmin", 0),
+            conf.value<double>("ymin", 0),
+            0.0,
+            conf.value<double>("xmax", 0),
+            conf.value<double>("ymax", 0),
+            0.0);
     }
 
     conf.get( "num_tiles_wide_at_lod_0", _numTilesWideAtLod0 );
@@ -185,7 +187,7 @@ Profile::create(const SpatialReference* srs)
     if (srs->getBounds(bounds))
     {
         unsigned x = 1, y = 1;
-        float ar = (float)bounds.width() / (float)bounds.height();
+        float ar = (float)width(bounds) / (float)height(bounds);
         if (ar > 1.5f)
         {
             x = (unsigned)::ceil(ar);
@@ -259,7 +261,7 @@ Profile::create(const std::string& srsInitString,
         {
             if (numTilesWideAtLod0 == 0 || numTilesHighAtLod0 == 0)
             {
-                double ar = (bounds.width() / bounds.height());
+                double ar = width(bounds) / height(bounds);
                 if (ar >= 1.0) {
                     int ari = (int)ar;
                     numTilesHighAtLod0 = 1;
@@ -349,7 +351,6 @@ Profile::create( const ProfileOptions& options )
 const Profile*
 Profile::create(const std::string& name)
 {
-    // TODO: move the named profiles from Registry into here.
     if ( ciEquals(name, PLATE_CARREE) || ciEquals(name, "plate-carre") || ciEquals(name, "eqc-wgs84") )
     {
         // Yes I know this is not really Plate Carre but it will stand in for now.
@@ -564,14 +565,12 @@ Profile::isHorizEquivalentTo( const Profile* rhs ) const
 void
 Profile::getTileDimensions(unsigned int lod, double& out_width, double& out_height) const
 {
-    out_width  = (_extent.xMax() - _extent.xMin()) / (double)_numTilesWideAtLod0;
-    out_height = (_extent.yMax() - _extent.yMin()) / (double)_numTilesHighAtLod0;
+    out_width  = _extent.width() / (double)_numTilesWideAtLod0;
+    out_height = _extent.height() / (double)_numTilesHighAtLod0;
 
-    for (unsigned int i = 0; i < lod; ++i)
-    {
-        out_width /= 2.0;
-        out_height /= 2.0;
-    }
+    double factor = double(1u << lod);
+    out_width /= (double)factor;
+    out_height /= (double)factor;
 }
 
 void
@@ -580,11 +579,9 @@ Profile::getNumTiles(unsigned int lod, unsigned int& out_tiles_wide, unsigned in
     out_tiles_wide = _numTilesWideAtLod0;
     out_tiles_high = _numTilesHighAtLod0;
 
-    for (unsigned int i = 0; i < lod; ++i)
-    {
-        out_tiles_wide *= 2;
-        out_tiles_high *= 2;
-    }
+    double factor = double(1u << lod);
+    out_tiles_wide *= factor;
+    out_tiles_high *= factor;
 }
 
 unsigned int
@@ -634,6 +631,22 @@ Profile::createTileKey( double x, double y, unsigned int level ) const
     else
     {
         return TileKey::INVALID;
+    }
+}
+
+TileKey
+Profile::createTileKey(const GeoPoint& point, unsigned level) const
+{
+    if (!point.isValid())
+        return TileKey::INVALID;
+
+    if (point.getSRS()->isHorizEquivalentTo(getSRS()))
+    {
+        return createTileKey(point.x(), point.y(), level);
+    }
+    else
+    {
+        return createTileKey(point.transform(getSRS()), level);
     }
 }
 

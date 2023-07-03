@@ -109,14 +109,16 @@ void oe_rex_imageLayer_FS(inout vec4 color)
 
         if (oe_parent_handle != 0UL)
         {
-            // sample the parent texture and blend for the morphing:
+            // sample the parent texture and blend for the morphing.
+            // We have to clamp oe_rex_morphFactor here even though it's clamped in the 
+            // vertex shader. Reason unknown.
             vec4 texelParent = texture(sampler2D(oe_parent_handle), oe_parent_uv);
-            texel = mix(texel, texelParent, oe_rex_morphFactor);
+            texel = mix(texel, texelParent, clamp(oe_rex_morphFactor, 0.0, 1.0));
         }
 
 #endif
 
-        // intergrate thelayer opacity:
+        // intergrate the layer opacity:
         texel.a = texel.a * oe_layer_opacity;
         color.a = 1.0;
     }

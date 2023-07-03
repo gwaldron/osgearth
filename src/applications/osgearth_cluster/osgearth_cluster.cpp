@@ -300,7 +300,10 @@ main(int argc, char** argv)
     osg::Node* node = MapNodeHelper().load(arguments, &viewer);
     if (node)
     {
-        MapNode* mapNode = MapNode::findMapNode(node);
+        MapNode* mapNode = MapNode::get(node);
+        if (!mapNode)
+            return usage(argv[0]);
+
         osg::NodeList nodes;
 
         //GeoExtent extent(SpatialReference::create("wgs84"), -180, -90, 180, 90);

@@ -1,0 +1,72 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_METADATANODE_H
+#define OSGEARTH_METADATANODE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Feature>
+#include <osgEarth/ObjectIndex>
+#include <osg/Group>
+#include <osg/Array>
+#include <osg/BufferIndexBinding>
+
+namespace osgEarth
+{   
+    class OSGEARTH_EXPORT MetadataNode : public osg::Group
+    {
+    public:
+        MetadataNode();
+
+        MetadataNode(const MetadataNode& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+        
+        META_Node(osgEarth, MetadataNode);
+
+        ~MetadataNode();
+
+        ObjectID add(Feature* feature, bool visible = true);
+
+        void tagDrawable(osg::Drawable* drawable, ObjectID id) const;
+
+        void tagNode(osg::Node* node, ObjectID id) const;
+
+        void finalize();
+
+        unsigned int getNumFeatures() const;
+
+        bool getVisible(unsigned int index) const;
+
+        void setVisible(unsigned int index, bool value);
+
+        ObjectID getObjectID(unsigned index) const;
+
+        const Feature* getFeature(unsigned int index) const;
+
+        int getIndexFromObjectID(ObjectID id) const;
+
+    protected:
+        void init();
+
+        std::vector< osg::ref_ptr< Feature > > _features;
+        osg::ref_ptr< osg::Vec2uiArray > _instances;
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_METADATANODE_H

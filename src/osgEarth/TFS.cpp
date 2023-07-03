@@ -163,19 +163,23 @@ TFSFeatureSourceOptions::getConfig() const
     conf.set("invert_y", _invertY);
     conf.set("min_level", _minLevel);
     conf.set("max_level", _maxLevel);
+    conf.set("auto_fallback", _autoFallback);
     return conf;
 }
 
 void
 TFSFeatureSourceOptions::fromConfig(const Config& conf)
 {
-    format().init("json");
+    format().setDefault("json");
+    autoFallback().setDefault(false);
+    invertY().setDefault(false);
 
     conf.get("url", _url);
     conf.get("format", _format);
     conf.get("invert_y", _invertY);
     conf.get("min_level", _minLevel);
     conf.get("max_level", _maxLevel);
+    conf.get("auto_fallback", _autoFallback);
 }
 
 //........................................................................
@@ -187,6 +191,7 @@ OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, std::string, Format, format);
 OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, bool, InvertY, invertY);
 OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, int, MinLevel, minLevel);
 OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, int, MaxLevel, maxLevel);
+OE_LAYER_PROPERTY_IMPL(TFSFeatureSource, bool, AutoFallbackToMaxLevel, autoFallback);
 
 void
 TFSFeatureSource::init()
@@ -453,9 +458,13 @@ TFSFeatureSource::isJSON(const std::string& mime) const
 std::string
 TFSFeatureSource::createURL(const Query& query)
 {
-    if (query.tileKey().isSet())
+    if (query.tileKey().isSet() && query.tileKey()->valid())
     {
-        const TileKey& key = query.tileKey().get();
+        TileKey key = query.tileKey().get();
+
+        if ((int)key.getLOD() > getMaxLevel())
+            key = key.createAncestorKey(getMaxLevel());
+
         unsigned int tileX = key.getTileX();
         unsigned int tileY = key.getTileY();
         unsigned int level = key.getLevelOfDetail();

@@ -1,3 +1,5 @@
+#version 430
+
 // local work matrix
 layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 
@@ -22,11 +24,8 @@ layout(binding=0, std430) readonly buffer BufferData {
 
 // matrix that transforms from texture space back to camera view space
 uniform mat4 oe_wind_texToViewMatrix;
-
-//const float one_over_log_10 = 1.0/log(10.0);
-//float log10(in float x) {
-//    return log(x) * one_over_log_10;
-//}
+uniform float osg_FrameTime;
+const float oe_wind_sway = 0.25;
 
 void main()
 {
@@ -40,7 +39,7 @@ void main()
     vec3 totalDirection = vec3(0);
 
     int i;
-    for(i=0; wind[i].speed > 0.0 && i<SAFETY_BAILOUT; ++i)
+    for(i=0; wind[i].speed >= 0.0 && i<SAFETY_BAILOUT; ++i)
     {
         if (wind[i].position.w == 1)
         {
@@ -53,7 +52,6 @@ void main()
             // speed attenuation
             float speed = wind[i].speed;
             speed = max(speed - length(dir), 0.0); // linearly interpolates for low-res textures
-            //speed = max(speed - 10.0*log10(dot(dir,dir)), 0.0); // good, but doesn't linearly interpolate!
             totalDirection += normalize(dir) * speed;
         }
         else
@@ -63,21 +61,17 @@ void main()
         }
     }
 
-    vec4 pixel;
+    float totalSpeed = length(totalDirection);
 
+    vec4 pixel;
     // RGB holds normalized wind direction
     pixel.rgb = 0.5*(normalize(totalDirection)+1.0);
 
     // A holds normalized wind speed
-    //pixel.a = length(totalDirection) / MAX_WIND_SPEED;
-    pixel.a = min(length(totalDirection), MAX_WIND_SPEED) / MAX_WIND_SPEED;
+    pixel.a = min(totalSpeed, MAX_WIND_SPEED) / MAX_WIND_SPEED;
 
     if (i==SAFETY_BAILOUT)
         pixel = vec4(1,0,0,1);
-
-    // basic testing
-    //vec2 uv = vec2(float(pixelCoords.x)/63.0, float(pixelCoords.y)/63.0);
-    //pixel.rg = uv;
 
     imageStore(oe_wind_tex, ivec3(gl_WorkGroupID), pixel);
 }

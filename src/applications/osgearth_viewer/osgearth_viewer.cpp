@@ -26,6 +26,10 @@
 #include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
 #include <osgEarth/Threading>
+#include <osgEarth/ShaderGenerator>
+#include <osgDB/ReadFile>
+#include <osgGA/TrackballManipulator>
+#include <osgUtil/Optimizer>
 #include <iostream>
 
 #include <osgEarth/Metrics>
@@ -59,6 +63,8 @@ main(int argc, char** argv)
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);
+    // This is normally called by Viewer::run but we are running our frame loop manually so we need to call it here.
+    viewer.setReleaseContextAtEndOfFrameHint(false);
 
     // Tell the database pager to not modify the unref settings
     viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
@@ -74,15 +80,23 @@ main(int argc, char** argv)
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     // load an earth file, and support all or our example command-line options
-    // and earth file <external> tags
-    osg::Node* node = MapNodeHelper().load(arguments, &viewer);
-    if ( node )
+    auto node = MapNodeHelper().load(arguments, &viewer);
+    if (node.valid())
     {
         viewer.setSceneData( node );
+        
+        if (!MapNode::get(node))
+        {
+            // not an earth file? Just view as a normal OSG node or image
+            viewer.setCameraManipulator(new osgGA::TrackballManipulator);
+            osgUtil::Optimizer opt;
+            opt.optimize(node, osgUtil::Optimizer::INDEX_MESH);
+            ShaderGenerator gen;
+            node->accept(gen);
+        }
+
         return Metrics::run(viewer);
     }
-    else
-    {
-        return usage(argv[0]);
-    }
+
+    return usage(argv[0]);
 }

@@ -27,6 +27,7 @@
 #include <osgEarth/GeometryCloud>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Chonk>
+#include <osgEarth/Capabilities>
 
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -43,6 +44,12 @@ using namespace osgEarth::Util;
 int main_NV(int argc, char** argv)
 {
     osgEarth::initialize();
+
+    if (!Capabilities::get().supportsNVGL()) {
+        OE_WARN << "This app requires NVIDIA GL extensions" << std::endl;
+        return -1;
+    }
+
     osg::ArgumentParser arguments(&argc, argv);
 
     osgViewer::Viewer viewer(arguments);
@@ -110,6 +117,12 @@ int main_NV(int argc, char** argv)
 
         float radius = chonk->getBound().radius();
         spacing = std::max(spacing, radius*2.01f);
+    }
+
+    if (chonks.empty())
+    {
+        OE_WARN << "No models loaded." << std::endl;
+        return -1;
     }
 
     for (int x = 0; x < size; ++x) {

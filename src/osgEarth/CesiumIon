@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/TerrainMeshLayer>
 #include <osgEarth/ThreeDTilesLayer>
 #include <osgEarth/URI>
 
@@ -65,7 +66,7 @@ namespace osgEarth
         };
 
     public:
-        META_Layer(osgEarth, CesiumIonImageLayer, Options, ImageLayer, XYZImage);
+        META_Layer(osgEarth, CesiumIonImageLayer, Options, ImageLayer, CesiumIonImage);
 
     public:
         //! Base URL for requests
@@ -104,6 +105,68 @@ namespace osgEarth
         osg::ref_ptr< ImageLayer > _imageLayer;
 
         std::string _key;
+    };
+
+    /**
+     * Elevation layer connection to a Cesium ION server.
+     */
+    class OSGEARTH_EXPORT CesiumIonTerrainMeshLayer : public TerrainMeshLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public TerrainMeshLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, TerrainMeshLayer::Options);
+            OE_OPTION(URI, server);
+            OE_OPTION(std::string, assetId);
+            OE_OPTION(std::string, token);
+            static Config getMetadata();
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, CesiumIonTerrainMeshLayer, Options, TerrainMeshLayer, CesiumIonTerrainMesh);
+
+    public:
+        //! Base URL for requests
+        void setServer(const URI& value);
+        const URI& getServer() const;
+
+        //! Asset identifier
+        void setAssetId(const std::string& value);
+        const std::string& getAssetId() const;
+
+        //! Auth token
+        void setToken(const std::string& value);
+        const std::string& getToken() const;
+
+    public: // Layer
+
+        //! Establishes a connection to the TMS repository
+        virtual Status openImplementation() override;
+
+        virtual Status closeImplementation() override;
+
+        virtual TileMesh createTileImplementation(
+            const TileKey& key,
+            ProgressCallback* progress) const override;
+
+    protected: // Layer
+
+        //! Called by constructors
+        virtual void init();
+
+    protected:
+
+        //! Destructor
+        virtual ~CesiumIonTerrainMeshLayer() { }
+
+    private:
+
+        URI _assetURI;
+        std::string _key;        
     };
 
     /**

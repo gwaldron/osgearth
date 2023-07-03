@@ -10,10 +10,9 @@ uniform vec2 oe_tile_elevTexelCoeff;
 uniform mat4 oe_tile_elevationTexMatrix;
 
 // stage globals
-vec4 oe_layer_tilec;
-
-out vec2 oe_normalMapCoords;
-out vec3 oe_normalMapBinormal;
+out vec4 oe_layer_tilec;
+out vec2 oe_normal_uv;
+out vec3 oe_normal_binormal;
 
 void oe_rex_normalMapVS(inout vec4 unused)
 {
@@ -29,13 +28,13 @@ void oe_rex_normalMapVS(inout vec4 unused)
     //    + oe_tile_elevTexelCoeff.x * oe_tile_normalTexMatrix[3].st
     //    + oe_tile_elevTexelCoeff.y;
 
-    oe_normalMapCoords = oe_layer_tilec.st
+    oe_normal_uv = oe_layer_tilec.st
         * oe_tile_elevTexelCoeff.x * oe_tile_elevationTexMatrix[0][0]
         + oe_tile_elevTexelCoeff.x * oe_tile_elevationTexMatrix[3].st
         + oe_tile_elevTexelCoeff.y;
 
     // send the bi-normal to the fragment shader
-    oe_normalMapBinormal = normalize(gl_NormalMatrix * vec3(0, 1, 0));
+    oe_normal_binormal = normalize(gl_NormalMatrix * vec3(0, 1, 0));
 }
 
 
@@ -56,8 +55,8 @@ uniform sampler2D oe_tile_normalTex;
 
 in vec3 vp_Normal;
 in vec3 oe_UpVectorView;
-in vec2 oe_normalMapCoords;
-in vec3 oe_normalMapBinormal;
+in vec2 oe_normal_uv;
+in vec3 oe_normal_binormal;
 
 // global
 mat3 oe_normalMapTBN;
@@ -68,22 +67,22 @@ void oe_rex_normalMapFS(inout vec4 color)
     return;
 #endif
 
-    vec4 normalAndCurvature = oe_terrain_getNormalAndCurvature(oe_normalMapCoords);
+    vec4 N = oe_terrain_getNormalAndCurvature(oe_normal_uv);
 
-    vec3 tangent = normalize(cross(oe_normalMapBinormal, oe_UpVectorView));
-    oe_normalMapTBN = mat3(tangent, oe_normalMapBinormal, oe_UpVectorView);
-    vp_Normal = normalize(oe_normalMapTBN*normalAndCurvature.xyz);
+    vec3 tangent = normalize(cross(oe_normal_binormal, oe_UpVectorView));
+    oe_normalMapTBN = mat3(tangent, oe_normal_binormal, oe_UpVectorView);
+    vp_Normal = normalize(oe_normalMapTBN*N.xyz);
 
 #ifdef OE_DEBUG_CURVATURE
     // visualize curvature quantized:
     color.rgba = vec4(0, 0, 0, 1);
-    float curvature = normalAndCurvature.w;
+    float curvature = N.w;
     if (curvature > 0.0) color.r = curvature;
     if (curvature < 0.0) color.g = -curvature;
 #endif
 
 #ifdef OE_DEBUG_NORMALS
     // visualize normals:
-    color.rgb = (normalAndCurvature.xyz + 1.0)*0.5;
+    color.rgb = (N.xyz + 1.0)*0.5;
 #endif
 }

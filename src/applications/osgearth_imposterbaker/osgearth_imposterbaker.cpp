@@ -132,6 +132,7 @@ in vec3 modelNormal;
 out vec4 encodedNormal;
 void normalMapFS(inout vec4 color) {
     vec3 N = normalize(gl_FrontFacing ? modelNormal : -modelNormal);
+    N = mix(N, vec3(0,0,1), 0.5);
     encodedNormal = vec4((N.xyz+1.0)*0.5, 1.0);
 }
 )";
@@ -159,7 +160,7 @@ main(int argc, char** argv)
 
     std::string ext = osgDB::getFileExtension(outfile);
     std::string base = osgDB::getNameLessExtension(outfile);
-    std::string normalMapOutFile = Stringify() << base << ".normal." << ext;
+    std::string normalMapOutFile = Stringify() << base << "_NML." << ext;
 
     int size = 1024;
     arguments.read("--size", size);

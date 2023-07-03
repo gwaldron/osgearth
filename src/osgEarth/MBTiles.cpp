@@ -116,13 +116,14 @@ MBTilesImageLayer::openImplementation()
 
     osg::ref_ptr<const Profile> profile = getProfile();
 
+    DataExtentList dataExtents;
     Status status = _driver.open(
         getName(),
         options(),
         isWritingRequested(),
         options().format(),
         profile,
-        dataExtents(),
+        dataExtents,
         getReadOptions());
 
     if (status.isError())
@@ -136,13 +137,15 @@ MBTilesImageLayer::openImplementation()
         setProfile(profile.get());
     }
 
+    setDataExtents(dataExtents);
+
     return Status::NoError;
 }
 
 void
 MBTilesImageLayer::setDataExtents(const DataExtentList& values)
 {
-    dataExtents() = values;
+    TileLayer::setDataExtents(values);
 
     if (isWritingRequested())
     {
@@ -229,13 +232,14 @@ MBTilesElevationLayer::openImplementation()
 
     osg::ref_ptr<const Profile> profile = getProfile();
 
+    DataExtentList dataExtents;
     Status status = _driver.open(
         getName(),
         options(),
         isWritingRequested(),
         options().format(),
         profile,
-        dataExtents(),
+        dataExtents,
         getReadOptions());
 
     if (status.isError())
@@ -249,13 +253,15 @@ MBTilesElevationLayer::openImplementation()
         setProfile(profile.get());
     }
 
+    setDataExtents(dataExtents);
+
     return Status::NoError;
 }
 
 void
 MBTilesElevationLayer::setDataExtents(const DataExtentList& values)
 {
-    dataExtents() = values;
+    TileLayer::setDataExtents(values);
 
     if (isWritingRequested())
     {
@@ -320,13 +326,13 @@ bool MBTilesElevationLayer::putMetaData(const std::string& name, const std::stri
 //...................................................................
 
 #undef LC
-#define LC "[MBTiles] Layer \"" << _name << "\" "
+#define LC "[MBTiles] \"" << _name << "\" "
 
 MBTiles::Driver::Driver() :
     _minLevel(0),
     _maxLevel(19),
     _forceRGB(false),
-    _database(NULL),
+    _database(nullptr),
     _mutex("MBTiles Driver(OE)")
 {
     //nop
@@ -334,9 +340,18 @@ MBTiles::Driver::Driver() :
 
 Driver::~Driver()
 {
-    sqlite3* database = (sqlite3*)_database;
-    if (database)
+    closeDatabase();
+}
+
+void
+MBTiles::Driver::closeDatabase()
+{
+    if (_database != nullptr)
+    {
+        sqlite3* database = (sqlite3*)_database;
         sqlite3_close_v2(database);
+        _database = nullptr;
+    }
 }
 
 Status
@@ -390,10 +405,17 @@ MBTiles::Driver::open(
         : (SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX);
 
     sqlite3* database = (sqlite3*)_database;
+
+    // close existing database if open
+    closeDatabase();
+
     sqlite3** dbptr = (sqlite3**)&_database;
     int rc = sqlite3_open_v2(fullFilename.c_str(), dbptr, flags, 0L);
     if (rc != 0)
     {
+        if (!osgDB::fileExists(fullFilename))
+            return Status(Status::ResourceUnavailable, Stringify() << fullFilename << " File Not Found");
+        
         return Status(Status::ResourceUnavailable, Stringify()
             << "Database \"" << fullFilename << "\": " << sqlite3_errmsg(database));
     }

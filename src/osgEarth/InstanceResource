@@ -53,6 +53,10 @@ namespace osgEarth { namespace Util
         optional<URI>& uri() { return _uri; }
         const optional<URI>& uri() const { return _uri; }
 
+        //! For programmaticly set nodes only
+        osg::ref_ptr<osg::Node>& node() { return _node; }
+        const osg::ref_ptr<osg::Node>& node() const { return _node; }
+
     public: // serialization methods
 
         virtual Config getConfig() const;
@@ -62,7 +66,8 @@ namespace osgEarth { namespace Util
         /** Constructs a new resource. */
         InstanceResource( const Config& conf =Config() );
 
-        optional<URI>  _uri;
+        optional<URI> _uri;
+        osg::ref_ptr<osg::Node> _node;
 
         virtual osg::Node* createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions ) const =0;
     };

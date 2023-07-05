@@ -113,7 +113,6 @@ SubstituteModelFilter::findResource(const URI&            uri,
                                     osg::ref_ptr<InstanceResource>& output )
 {
     // be careful about refptrs here since _instanceCache is an LRU.
-
     InstanceCache::Record rec;
     if ( _instanceCache.get(uri, rec) )
     {
@@ -129,8 +128,16 @@ SubstituteModelFilter::findResource(const URI&            uri,
     {
         // create it on the fly:
         output = symbol->createResource();
-        output->uri() = uri;
-        _instanceCache.insert( uri, output.get() );
+        
+        if (!uri.empty())
+        {
+            output->uri() = uri;
+            _instanceCache.insert(uri, output.get());
+        }
+        else if (symbol->asModel())
+        {
+            output->node() = symbol->asModel()->getModel();
+        }
     }
 
     // failed to find the instance.

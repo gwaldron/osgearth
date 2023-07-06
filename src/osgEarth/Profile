@@ -152,6 +152,10 @@ namespace osgEarth
         static const Profile* create(
             const std::string& name);
 
+        static const Profile* create_with_vdatum(
+            const std::string& name,
+            const std::string& vsrsString);
+
         /**
          * Returns true if the profile is properly initialized.
          */

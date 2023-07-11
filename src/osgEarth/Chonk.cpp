@@ -1135,6 +1135,7 @@ ChonkDrawable::GLObjects::draw(osg::State& state)
 void
 ChonkDrawable::GLObjects::release()
 {
+    _ext = nullptr;
     _vao = nullptr;
     _commandBuf = nullptr;
     _instanceInputBuf = nullptr;
@@ -1273,4 +1274,12 @@ ChonkRenderBin::drawImplementation(
 
     // dispatch.
     osgUtil::RenderBin::drawImplementation(ri, previous);
+}
+
+void
+ChonkRenderBin::releaseSharedGLObjects(osg::State* state)
+{
+    auto proto = static_cast<ChonkRenderBin*>(osgUtil::RenderBin::getRenderBinPrototype("ChonkBin"));
+    if (proto->_cullSS.valid())
+        proto->_cullSS->releaseGLObjects(state);
 }

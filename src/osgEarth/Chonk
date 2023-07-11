@@ -376,6 +376,8 @@ namespace osgEarth
         virtual const char* libraryName() const override { return "osgEarth"; }
         virtual const char* className() const override { return "ChonkRenderBin"; }
 
+        static void releaseSharedGLObjects(osg::State* state);
+
     private:
         osg::ref_ptr<osg::StateSet> _cullSS;
 

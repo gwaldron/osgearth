@@ -738,11 +738,26 @@ RexTerrainEngineNode::dirtyState()
 void
 RexTerrainEngineNode::dirtyTerrainOptions()
 {
+    TerrainEngineNode::dirtyTerrainOptions();
+
     auto& arena = getEngineContext()->_textures;
     if (arena)
     {
         arena->setMaxTextureSize(options().maxTextureSize().get());
     }
+
+    _tiles->setNotifyNeighbors(options().normalizeEdges() == true);
+    _merger->setMergesPerFrame(options().mergesPerFrame().get());
+
+    if (options().concurrency().isSet())
+    {
+        JobArena::setConcurrency(ARENA_LOAD_TILE, options().concurrency().get());
+    }
+
+    _unloader->setMaxAge(options().minExpiryTime().get());
+    _unloader->setMaxTilesToUnloadPerFrame(options().maxTilesToUnloadPerFrame().get());
+    _unloader->setMinResidentTiles(options().minResidentTiles().get());
+    _unloader->setMinimumRange(options().minExpiryRange().get());
 }
 
 void

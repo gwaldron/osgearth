@@ -779,6 +779,13 @@ namespace osgEarth {
                                         if (srsname == "unknown")
                                             srsname = profile->getSRS()->getHorizInitString();
                                         ImGui::TextColored(ImVec4(.8, .8, .8, 1), "%s", srsname.c_str());
+
+                                        if (elevationLayer)
+                                        {
+                                            auto vdatum = profile->getSRS()->getVertInitString();
+                                            if (vdatum.empty()) vdatum = "geodetic (hae)";
+                                            ImGui::TextColored(ImVec4(1, .8, .8, 1), "Vertical datum: %s", vdatum.c_str());
+                                        }
                                     }
 
                                     if (tileLayer->options().minLevel().isSet())

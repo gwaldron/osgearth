@@ -1,3 +1,7 @@
+#pragma vp_name osgEarth Hex Tiling Library
+
+#ifdef VP_STAGE_FRAGMENT
+
 // Adapted and ported to GLSL from:
 // https://github.com/mmikk/hextile-demo
 
@@ -164,10 +168,11 @@ vec2 ht_sampleDeriv(sampler2D nmap, vec2 st, vec2 dSTdx, vec2 dSTdy)
 // Output:\ weights shows the weight of each hex tile
 void bumphex2derivNMap(
     out vec2 deriv, out vec3 weights,
-    sampler2D nmap, vec2 st,
+    sampler2D nmap, in vec2 st,
     float rotStrength, float r)
 {
-    vec2 dSTdx = dFdx(st), dSTdy = dFdy(st);
+    vec2 dSTdx = dFdx(st);
+    vec2 dSTdy = dFdy(st);
 
     // Get triangle info
     float w1, w2, w3;
@@ -210,16 +215,17 @@ void bumphex2derivNMap(
     weights = ht_ProduceHexWeights(W.xyz, vertex1, vertex2, vertex3);
 }
 
+float ht_get_lod(in ivec2 dim, in vec2 x, in vec2 y)
+{
+    vec2 ddx = x * float(dim.x), ddy = y * float(dim.y);
+    return 0.5 * log2(max(dot(ddx, ddx), dot(ddy, ddy)));
+}
 
-// Input:\ tex is a texture with color
-// Input:\ r increase contrast when r>0.5
-// Output:\ color is the blended result
-// Output:\ weights shows the weight of each hex tile
-void ht_hex2colTex(
-    out vec4 color,
-    sampler2D tex,
-    vec2 st,
-    float rotStrength)
+// tex = sampler to sample
+// st = texture coordinates
+// rotStrength = amount of rotation offset
+// transStrength = amount of translation offset
+vec4 ht_hex2col(in sampler2D tex, in vec2 st, in float rotStrength, in float transStength)
 {
     vec2 dSTdx = dFdx(st), dSTdy = dFdy(st);
 
@@ -236,14 +242,18 @@ void ht_hex2colTex(
     vec2 cen2 = ht_MakeCenST(vertex2);
     vec2 cen3 = ht_MakeCenST(vertex3);
 
-    vec2 st1 = mul(st - cen1, rot1) + cen1 + ht_hash(vertex1);
-    vec2 st2 = mul(st - cen2, rot2) + cen2 + ht_hash(vertex2);
-    vec2 st3 = mul(st - cen3, rot3) + cen3 + ht_hash(vertex3);
+    vec2 st1 = mul(st - cen1, rot1) + cen1 + ht_hash(vertex1) * transStength;
+    vec2 st2 = mul(st - cen2, rot2) + cen2 + ht_hash(vertex2) * transStength;
+    vec2 st3 = mul(st - cen3, rot3) + cen3 + ht_hash(vertex3) * transStength;
 
-    // Fetch input
-    vec4 c1 = textureGrad(tex, st1, dSTdx*rot1, dSTdy*rot1);
-    vec4 c2 = textureGrad(tex, st2, dSTdx*rot2, dSTdy*rot2);
-    vec4 c3 = textureGrad(tex, st3, dSTdx*rot3, dSTdy*rot3);
+    ivec2 dim = textureSize(tex, 0);
+    vec4 c1 = textureLod(tex, st1, ht_get_lod(dim, dSTdx*rot1, dSTdy*rot1));
+    vec4 c2 = textureLod(tex, st2, ht_get_lod(dim, dSTdx*rot2, dSTdy*rot2));
+    vec4 c3 = textureLod(tex, st3, ht_get_lod(dim, dSTdx*rot3, dSTdy*rot3));
+
+    //vec4 c1 = textureGrad(tex, st1, dSTdx*rot1, dSTdy*rot1);
+    //vec4 c2 = textureGrad(tex, st2, dSTdx*rot2, dSTdy*rot2);
+    //vec4 c3 = textureGrad(tex, st3, dSTdx*rot3, dSTdy*rot3);
 
     // use luminance as weight
     const vec3 Lw = vec3(0.299, 0.587, 0.114);
@@ -254,11 +264,11 @@ void ht_hex2colTex(
     W /= (W.x + W.y + W.z);
     //if (r != 0.5) W = Gain3(W, r);
 
-    color = W.x * c1 + W.y * c2 + W.z * c3;
+    vec4 color = W.x * c1 + W.y * c2 + W.z * c3;
     //weights = ProduceHexWeights(W.xyz, vertex1, vertex2, vertex3);
-}
 
-#define HT_HASH(X) fract(sin(mat2(127.1, 311.7, 269.5, 183.3) * X)*43758.5453)
+    return color;
+}
 
 // Hextiling function optimized for no rotations and to 
 // sample and interpolate both color and material vectors
@@ -267,7 +277,8 @@ void ht_hex2colTex_optimized(
     in sampler2D material_tex,
     in vec2 st,
     out vec4 color,
-    out vec4 material)
+    out vec4 material,
+    inout vec3 weighting)
 {
     // Get triangle info
     vec3 weights;
@@ -322,13 +333,20 @@ void ht_hex2colTex_optimized(
     vec4 m3 = textureGrad(material_tex, st3, ddx, ddy);
 #endif
 
-    // Use color's luminance as weighting factor
-    const vec3 Lw = vec3(0.299, 0.587, 0.114);
-    vec3 Dw = vec3(dot(c1.xyz, Lw), dot(c2.xyz, Lw), dot(c3.xyz, Lw));
-    Dw = mix(vec3(1.0), Dw, ht_g_fallOffContrast);
-    vec3 W = Dw * pow(weights, vec3(ht_g_exp));
-    W /= (W.x + W.y + W.z);
+    vec3 W = weighting;
+    if (W == vec3(0))
+    {
+        // Use color's luminance as weighting factor
+        const vec3 Lw = vec3(0.299, 0.587, 0.114);
+        vec3 Dw = vec3(dot(c1.xyz, Lw), dot(c2.xyz, Lw), dot(c3.xyz, Lw));
+        Dw = mix(vec3(1.0), Dw, ht_g_fallOffContrast);
+        W = Dw * pow(weights, vec3(ht_g_exp));
+        W /= (W.x + W.y + W.z);
+    }
 
+    weighting = W;
     color = W.x * c1 + W.y * c2 + W.z * c3;
     material = W.x * m1 + W.y * m2 + W.z * m3;
 }
+
+#endif // VP_STAGE_FRAGMENT

@@ -880,6 +880,10 @@ VegetationLayer::configureImpostor(
     {
         osg::Group* node = new osg::Group();
 
+        // Checked externally using URIPostReadCallback. This allows a user
+        // to know if they are processing the imposter or a model.
+        node->setName("Impostor");
+
         // one part if we only have side textures;
         // two parts if we also have top textures
         int parts = textures.size() > 3 ? 2 : 1;

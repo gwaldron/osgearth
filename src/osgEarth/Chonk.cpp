@@ -87,32 +87,44 @@ namespace
         const unsigned ALBEDO_UNIT = 0;
         const unsigned NORMAL_UNIT = 1;
         const unsigned PBR_UNIT = 2;
+        const unsigned MAT1_UNIT = Chonk::MATERIAL1_TEXTURE_UNIT;
+        const unsigned MAT2_UNIT = Chonk::MATERIAL2_TEXTURE_UNIT;
+
         const unsigned FLEXOR_SLOT = 3;
         const unsigned NORMAL_TECHNIQUE_SLOT = 6;
-        const unsigned EXTENDED_MATERIAL_SLOT = 7;
+        const unsigned EXTENDED_MATERIAL_SLOT = Chonk::MATERIAL_VERTEX_SLOT;
 
         ChonkMaterial::Ptr reuseOrCreateMaterial(
             Texture::Ptr albedo_tex,
             Texture::Ptr normal_tex,
-            Texture::Ptr pbr_tex)
+            Texture::Ptr pbr_tex,
+            Texture::Ptr mat1_tex,
+            Texture::Ptr mat2_tex)
         {
             int albedo_index = _textures->find(albedo_tex);
             int normal_index = _textures->find(normal_tex);
             int pbr_index = _textures->find(pbr_tex);
+            int mat1_index = _textures->find(mat1_tex);
+            int mat2_index = _textures->find(mat2_tex);
 
             for (auto& m : _materialCache)
             {
                 if (m->albedo_index == albedo_index &&
                     m->normal_index == normal_index &&
-                    m->pbr_index == pbr_index)
+                    m->pbr_index == pbr_index &&
+                    m->material1_index == mat1_index &&
+                    m->material2_index == mat2_index )
                 {
                     return m;
                 }
             }
+
             auto material = ChonkMaterial::create();
             material->albedo_index = albedo_index;
             material->normal_index = normal_index;
             material->pbr_index = pbr_index;
+            material->material1_index = mat1_index;
+            material->material2_index = mat2_index;
 
             // If our arena is in auto-release mode, we need to 
             // store a pointer to each texture we use so they do not
@@ -122,6 +134,8 @@ namespace
                 material->albedo_tex = albedo_tex;
                 material->normal_tex = normal_tex;
                 material->pbr_tex = pbr_tex;
+                material->material1_tex = mat1_tex;
+                material->material2_tex = mat2_tex;
             }
 
             _materialCache.push_back(material);
@@ -139,7 +153,7 @@ namespace
             setNodeMaskOverride(~0);
 
             _materialStack.push(reuseOrCreateMaterial(
-                nullptr, nullptr, nullptr));
+                nullptr, nullptr, nullptr, nullptr, nullptr));
             _transformStack.push(osg::Matrix());
         }
 
@@ -198,11 +212,13 @@ namespace
                 Texture::Ptr albedo_tex = addTexture(ALBEDO_UNIT, stateset);
                 Texture::Ptr normal_tex = addTexture(NORMAL_UNIT, stateset);
                 Texture::Ptr pbr_tex = addTexture(PBR_UNIT, stateset);
+                Texture::Ptr material_tex1 = addTexture(MAT1_UNIT, stateset);
+                Texture::Ptr material_tex2 = addTexture(MAT2_UNIT, stateset);
 
                 if (albedo_tex || normal_tex)
                 {
                     ChonkMaterial::Ptr material = reuseOrCreateMaterial(
-                        albedo_tex, normal_tex, pbr_tex);
+                        albedo_tex, normal_tex, pbr_tex, material_tex1, material_tex2);
                     _materialStack.push(material);
                     pushed = true;
                 }
@@ -292,16 +308,6 @@ namespace
                     v.normal_technique = 0;
                 }
 
-                if (extended_material)
-                {
-                    int k = extended_material->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                    v.extended_material = (*extended_material)[k];
-                }
-                else
-                {
-                    v.extended_material = -1;
-                }
-
                 if (uv2s)
                 {
                     int k = uv2s->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
@@ -330,6 +336,16 @@ namespace
                 v.albedo_index = material ? material->albedo_index : -1;
                 v.normalmap_index = material ? material->normal_index : -1;
                 v.pbr_index = material ? material->pbr_index : -1;
+
+                // prioritize material textures over vertex material ids.
+                v.extended_materials = material ? osg::Vec2s(material->material1_index, material->material2_index) : osg::Vec2s(-1, -1);
+
+                // fallback is to use vertex stream to simulate material ids.
+                if (extended_material && v.extended_materials.x() == -1 && v.extended_materials.y() == -1)
+                {
+                   int k = extended_material->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                   v.extended_materials = osg::Vec2s( (*extended_material)[k], -1 );
+                }
 
                 _result._vbo_store.emplace_back(std::move(v));
 
@@ -362,7 +378,9 @@ namespace std {
             return hash_value_unsigned(
                 value.albedo_index,
                 value.normal_index,
-                value.pbr_index);
+                value.pbr_index,
+                value.material1_index,
+                value.material2_index);
         }
     };
 }
@@ -371,7 +389,9 @@ GLubyte Chonk::NORMAL_TECHNIQUE_DEFAULT = 0;
 GLubyte Chonk::NORMAL_TECHNIQUE_ZAXIS = 1;
 GLubyte Chonk::NORMAL_TECHNIQUE_HEMISPHERE = 2;
 
-
+unsigned Chonk::MATERIAL1_TEXTURE_UNIT = 3;
+unsigned Chonk::MATERIAL2_TEXTURE_UNIT = 4;
+unsigned Chonk::MATERIAL_VERTEX_SLOT = 7;
 
 Chonk::Ptr
 Chonk::create()
@@ -923,7 +943,7 @@ ChonkDrawable::GLObjects::initialize(
         {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, albedo_index)},
         {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, normalmap_index)},
         {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, pbr_index)},
-        {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, extended_material)}
+        {2, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, extended_materials)}
     };
 
     // configure the format of each vertex attribute in our structure.

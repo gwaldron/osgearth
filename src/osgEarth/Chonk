@@ -46,6 +46,8 @@ namespace osgEarth
         int albedo_index;
         int normal_index;
         int pbr_index;
+        int material1_index;
+        int material2_index;
 
         // store refs to the original textures when the
         // factory objects's texture arena is using auto-release.
@@ -53,10 +55,16 @@ namespace osgEarth
         Texture::Ptr albedo_tex;
         Texture::Ptr normal_tex;
         Texture::Ptr pbr_tex;
+        Texture::Ptr material1_tex;
+        Texture::Ptr material2_tex;
 
     private:
-        ChonkMaterial() : 
-            albedo_index(-1), normal_index(-1), pbr_index(-1) { }
+        ChonkMaterial() :
+            albedo_index(-1),
+            normal_index(-1),
+            pbr_index(-1),
+            material1_index(-1),
+            material2_index(-1){}
     };
 
     class ChonkFactory;
@@ -102,19 +110,23 @@ namespace osgEarth
             GLshort albedo_index;
             GLshort normalmap_index;
             GLshort pbr_index;
-            GLshort extended_material;
+            osg::Vec2s extended_materials;
 
             VertexGPU() : 
                 normal_technique(0),
                 albedo_index(-1),
                 normalmap_index(-1),
                 pbr_index(-1),
-                extended_material(-1){}
+                extended_materials(-1,-1){}
         };
 
         static GLubyte NORMAL_TECHNIQUE_DEFAULT;
         static GLubyte NORMAL_TECHNIQUE_ZAXIS;
         static GLubyte NORMAL_TECHNIQUE_HEMISPHERE;
+
+        static unsigned MATERIAL_VERTEX_SLOT;
+        static unsigned MATERIAL1_TEXTURE_UNIT;
+        static unsigned MATERIAL2_TEXTURE_UNIT;
 
         //! Geometry variant for a given pixel size range
         struct LOD

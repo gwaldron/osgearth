@@ -1,0 +1,95 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2012 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_CESIUM_ASSET_ACCESSOR_H
+#define OSGEARTH_CESIUM_ASSET_ACCESSOR_H
+
+#include <CesiumAsync/IAssetAccessor.h>
+#include <CesiumAsync/IAssetResponse.h>
+
+namespace osgEarth {
+    namespace Cesium
+    {
+        using namespace osgEarth;
+
+        class AssetResponse : public CesiumAsync::IAssetResponse
+        {
+        public:
+            virtual uint16_t statusCode() const override;
+
+            virtual std::string contentType() const override;
+
+            virtual const CesiumAsync::HttpHeaders& headers() const override;
+
+            virtual gsl::span<const std::byte> data() const override;
+
+            uint16_t _statusCode = 0;
+            std::string _contentType;
+            CesiumAsync::HttpHeaders _headers;
+            std::vector<std::byte> _result;
+        };
+
+        class AssetRequest : public CesiumAsync::IAssetRequest
+        {
+        public:
+
+            AssetRequest(const std::string& method, const std::string& url, const std::vector<CesiumAsync::IAssetAccessor::THeader>& headers);
+
+            virtual const std::string& method() const;
+            
+            virtual const std::string& url() const;
+
+            virtual const CesiumAsync::HttpHeaders& headers() const;
+     
+            virtual const CesiumAsync::IAssetResponse* response() const;
+
+            void setResponse(std::unique_ptr< AssetResponse > response);
+
+            std::string _method;
+            std::string _url;
+            CesiumAsync::HttpHeaders _headers;
+            std::unique_ptr<AssetResponse> _response;
+        };
+
+        class AssetAccessor : public CesiumAsync::IAssetAccessor
+        {
+        public:
+            virtual CesiumAsync::Future<std::shared_ptr<CesiumAsync::IAssetRequest>>
+                get(const CesiumAsync::AsyncSystem& asyncSystem,
+                    const std::string& url,
+                    const std::vector<CesiumAsync::IAssetAccessor::THeader>& headers)
+                override;
+
+            virtual CesiumAsync::Future<std::shared_ptr<CesiumAsync::IAssetRequest>>
+                request(
+                    const CesiumAsync::AsyncSystem& asyncSystem,
+                    const std::string& verb,
+                    const std::string& url,
+                    const std::vector<CesiumAsync::IAssetAccessor::THeader>& headers,
+                    const gsl::span<const std::byte>& contentPayload) override;
+
+            virtual void tick() noexcept override;
+        };
+    }
+}
+
+
+#endif

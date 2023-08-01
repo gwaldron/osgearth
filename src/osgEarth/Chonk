@@ -32,6 +32,9 @@
 #include <unordered_set>
 #include <unordered_map>
 
+// Usage hint to signal which textures are external materials. Currently only two slots are supported [0, 1]
+#define CHONK_HINT_EXTENDED_MATERIAL_SLOT "osgEarth.Chonk.ExtendedMaterial.Slot"
+
 namespace osgEarth
 {
     class OSGEARTH_EXPORT ChonkMaterial
@@ -125,8 +128,6 @@ namespace osgEarth
         static GLubyte NORMAL_TECHNIQUE_HEMISPHERE;
 
         static unsigned MATERIAL_VERTEX_SLOT;
-        static unsigned MATERIAL1_TEXTURE_UNIT;
-        static unsigned MATERIAL2_TEXTURE_UNIT;
 
         //! Geometry variant for a given pixel size range
         struct LOD

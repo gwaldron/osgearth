@@ -87,8 +87,9 @@ namespace
         const unsigned ALBEDO_UNIT = 0;
         const unsigned NORMAL_UNIT = 1;
         const unsigned PBR_UNIT = 2;
-        const unsigned MAT1_UNIT = Chonk::MATERIAL1_TEXTURE_UNIT;
-        const unsigned MAT2_UNIT = Chonk::MATERIAL2_TEXTURE_UNIT;
+
+        const unsigned MAT1_SLOT = 0;
+        const unsigned MAT2_SLOT = 1;
 
         const unsigned FLEXOR_SLOT = 3;
         const unsigned NORMAL_TECHNIQUE_SLOT = 6;
@@ -203,6 +204,26 @@ namespace
             return arena_tex;
         }
 
+        // find texture with CHONK_HINT_EXTENDED_MATERIAL_SLOT set to the target slot
+        Texture::Ptr findExternalTexture(unsigned slot, osg::StateSet* stateset)
+        {
+           const unsigned count = static_cast<unsigned>(stateset->getTextureAttributeList().size() );
+
+           for (unsigned index = 0; index < count; ++index)
+           {
+              osg::Texture* tex = dynamic_cast<osg::Texture*>(
+                 stateset->getTextureAttribute(index, osg::StateAttribute::TEXTURE));
+
+              int value = -1;
+              if (tex && tex->getUserValue(CHONK_HINT_EXTENDED_MATERIAL_SLOT, value) && value == slot )
+              {
+                 return addTexture(index, stateset);
+              }
+           }
+
+           return nullptr;
+        }
+
         // record materials, and return true if we pushed one.
         bool pushStateSet(osg::StateSet* stateset)
         {
@@ -212,8 +233,8 @@ namespace
                 Texture::Ptr albedo_tex = addTexture(ALBEDO_UNIT, stateset);
                 Texture::Ptr normal_tex = addTexture(NORMAL_UNIT, stateset);
                 Texture::Ptr pbr_tex = addTexture(PBR_UNIT, stateset);
-                Texture::Ptr material_tex1 = addTexture(MAT1_UNIT, stateset);
-                Texture::Ptr material_tex2 = addTexture(MAT2_UNIT, stateset);
+                Texture::Ptr material_tex1 = findExternalTexture(MAT1_SLOT, stateset);
+                Texture::Ptr material_tex2 = findExternalTexture(MAT2_SLOT, stateset);
 
                 if (albedo_tex || normal_tex)
                 {
@@ -389,8 +410,6 @@ GLubyte Chonk::NORMAL_TECHNIQUE_DEFAULT = 0;
 GLubyte Chonk::NORMAL_TECHNIQUE_ZAXIS = 1;
 GLubyte Chonk::NORMAL_TECHNIQUE_HEMISPHERE = 2;
 
-unsigned Chonk::MATERIAL1_TEXTURE_UNIT = 3;
-unsigned Chonk::MATERIAL2_TEXTURE_UNIT = 4;
 unsigned Chonk::MATERIAL_VERTEX_SLOT = 7;
 
 Chonk::Ptr

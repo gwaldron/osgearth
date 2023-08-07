@@ -40,6 +40,10 @@ FeatureFilter::~FeatureFilter()
 {
 }
 
+void FeatureFilter::addedToMap(const class Map*)
+{
+}
+
 /********************************************************************************/
 
 #undef LC

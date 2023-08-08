@@ -42,12 +42,26 @@ using namespace osgEarth;
 
 #define OE_DEVEL OE_DEBUG
 
+//#define DEEP_CLONE_IMAGE
+
+#ifdef OSGEARTH_SINGLE_GL_CONTEXT
+#define MAX_CONTEXTS 1
+#else
+#define MAX_CONTEXTS 16
+#endif
+
 Texture::Ptr
 Texture::create(osg::Image* image, GLenum target)
 {
     Texture::Ptr object(new Texture(target));
     if (image)
+    {
+#ifdef DEEP_CLONE_IMAGE
+        object->osgTexture()->setImage(0, osg::clone(image, osg::CopyOp::DEEP_COPY_ALL));
+#else
         object->osgTexture()->setImage(0, image);
+#endif
+    }
     return object;
 }
 
@@ -59,7 +73,7 @@ Texture::create(osg::Texture* input)
 }
 
 Texture::Texture(GLenum target_) :
-    _globjects(16),
+    _globjects(MAX_CONTEXTS),
     _compress(true),
     _mipmap(true),
     _clamp(false),
@@ -80,20 +94,23 @@ Texture::Texture(GLenum target_) :
     else {
         OE_HARD_ASSERT(false, "Invalid texture target");
     }
-    if (osgTexture().valid())
-        osgTexture()->setUnRefImageDataAfterApply(
-            Registry::instance()->unRefImageDataAfterApply().get());
 
-    keepImage() = !Registry::instance()->unRefImageDataAfterApply().get();
+    osgTexture()->setUnRefImageDataAfterApply(false);
+    keepImage() = true;
 }
 
 Texture::Texture(osg::Texture* input) :
-    _globjects(16),
+    _globjects(MAX_CONTEXTS),
     _compress(false),
     _maxDim(65536),
-    _osgTexture(input),
     _host(nullptr)
 {
+#ifdef DEEP_CLONE_IMAGE
+    _osgTexture = osg::clone(input, osg::CopyOp::DEEP_COPY_ALL);
+#else
+    _osgTexture = input;
+#endif
+
     target() = input->getTextureTarget();
 
     mipmap() =
@@ -122,7 +139,8 @@ Texture::Texture(osg::Texture* input) :
         uri() = URI(input->getImage(0)->getFileName());
     }
 
-    keepImage() = !Registry::instance()->unRefImageDataAfterApply().get();
+    osgTexture()->setUnRefImageDataAfterApply(false);
+    keepImage() = true; // !Registry::instance()->unRefImageDataAfterApply().get();
 }
 
 Texture::~Texture()
@@ -133,7 +151,8 @@ Texture::~Texture()
 bool
 Texture::isCompiled(const osg::State& state) const
 {
-    return GLObjects::get(_globjects, state)._gltexture != nullptr;
+    auto gltex = GLObjects::get(_globjects, state)._gltexture;
+    return gltex != nullptr && gltex->valid();
 }
 
 bool
@@ -143,7 +162,7 @@ Texture::needsCompile(const osg::State& state) const
 
     bool hasData = dataLoaded();
 
-    if (gc._gltexture == nullptr && hasData == true)
+    if ((gc._gltexture == nullptr || !gc._gltexture->valid()) && hasData == true)
         return true;
 
     if (hasData == false)
@@ -191,7 +210,7 @@ Texture::compileGLObjects(osg::State& state) const
     auto image = osgTexture()->getImage(0);
 
     // make sure we need to compile this
-    if (gc._gltexture != nullptr)
+    if (gc._gltexture != nullptr && gc._gltexture->valid())
     {
         // hmm, it's already compiled. Does it need a recompile 
         // because of a modified image?
@@ -289,9 +308,9 @@ Texture::compileGLObjects(osg::State& state) const
 
         // debugging
         OE_DEVEL << LC
-            << "Texture::compileGLObjects '" << gc._gltexture->id()
-            << "' name=" << gc._gltexture->name()
-            << " handle=" << gc._gltexture->handle(state) << std::endl;
+            << "Texture::compileGLObjects '" << name() << "'" << std::endl; // << gc._gltexture->id() << "'" << std::endl;
+            //<< "' name=" << gc._gltexture->name()
+            //<< " handle=" << gc._gltexture->handle(state) << std::endl;
 
         bool compressed = image->isCompressed();
 
@@ -330,6 +349,8 @@ Texture::compileGLObjects(osg::State& state) const
                 {
                     unsigned char* dataptr =
                         image->getMipmapData(mipLevel);
+
+
 
                     if (compressed)
                     {
@@ -418,7 +439,7 @@ Texture::makeResident(const osg::State& state, bool toggle) const
 {
     auto& gc = GLObjects::get(_globjects, state);
 
-    if (gc._gltexture != nullptr)
+    if (gc._gltexture != nullptr && gc._gltexture->valid())
     {
         gc._gltexture->makeResident(state, toggle);
 
@@ -460,19 +481,20 @@ Texture::releaseGLObjects(osg::State* state, bool force) const
         if (gc._gltexture != nullptr)
         {
             // debugging
-            OE_DEVEL << LC 
-                << "Texture::releaseGLObjects '" << gc._gltexture->id()
-                << "' name=" << gc._gltexture->name()
-                << " handle=" << gc._gltexture->handle(*state) << std::endl;
+            OE_DEVEL << LC
+                << "Texture::releaseGLObjects '" << name() << "'" << std::endl;
+            //<< "' name=" << gc._gltexture->name()
+            //<< " handle=" << gc._gltexture->handle(*state) << std::endl;
 
-            // will activate the releaser
+        // will activate the releaser
+            gc._gltexture->release(); // redundant?
             gc._gltexture = nullptr;
         }
     }
     else
     {
         // rely on the Releaser to get around to it
-        for(unsigned i=0; i< _globjects.size(); ++i)
+        for (unsigned i = 0; i < _globjects.size(); ++i)
         {
             // will activate the releaser(s)
             _globjects[i]._gltexture = nullptr;
@@ -684,7 +706,7 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
     }
 
     // add to all existing GCs:
-    for(unsigned i=0; i< _globjects.size(); ++i)
+    for (unsigned i = 0; i < _globjects.size(); ++i)
     {
         if (_globjects[i]._inUse)
             _globjects[i]._toCompile.push(index);
@@ -761,7 +783,7 @@ TextureArena::flush()
 
     ScopedMutexLock lock(_m);
 
-    for(unsigned i=0; i<_textures.size(); ++i)
+    for (unsigned i = 0; i < _textures.size(); ++i)
     {
         purgeTextureIfOrphaned_no_lock(i);
     }
@@ -818,14 +840,17 @@ TextureArena::apply(osg::State& state) const
         gc._handleBuffer->debugLabel("TextureArena", "Handle LUT");
         gc._handleBuffer->unbind();
 
-        gc._dirty = true;
+        // zero out all the handles so we can re-upload them
+        for (auto& handle : gc._handles)
+            handle = 0;
+
+        gc._handleBufferDirty = true;
     }
 
     // refresh the handles buffer if necessary:
     if (_textures.size() > gc._handles.size())
     {
-        size_t aligned_size = gc._handleBuffer->align(_textures.size() * sizeof(gc._handles[0]))
-            / sizeof(gc._handles[0]);
+        size_t aligned_size = gc._handleBuffer->align(_textures.size() * sizeof(GLuint64)) / sizeof(GLuint64);
 
         unsigned int previousSize = gc._handles.size();
 
@@ -834,7 +859,7 @@ TextureArena::apply(osg::State& state) const
         {
             gc._handles[i] = 0;
         }
-        gc._dirty = true;
+        gc._handleBufferDirty = true;
     }
 
 #if !defined(OSGEARTH_SINGLE_GL_CONTEXT)
@@ -878,11 +903,10 @@ TextureArena::apply(osg::State& state) const
                 if (gc._handles[index] != handle)
                 {
                     gc._handles[index] = handle;
-                    gc._dirty = true;
                 }
 
                 // mark the GC to re-upload its LUT
-                gc._dirty = true;
+                gc._handleBufferDirty = true;
             }
         }
 
@@ -896,10 +920,10 @@ TextureArena::apply(osg::State& state) const
     }
 
     // upload to GPU if it changed:
-    if (gc._dirty)
+    if (gc._handleBufferDirty)
     {
         gc._handleBuffer->uploadData(gc._handles);
-        gc._dirty = false;
+        gc._handleBufferDirty = false;
     }
 
     gc._handleBuffer->bindBufferBase(_bindingPoint);
@@ -942,7 +966,7 @@ TextureArena::resizeGLObjectBuffers(unsigned maxSize)
         _globjects.resize(maxSize);
     }
 
-    for(auto& tex : _textures)
+    for (auto& tex : _textures)
     {
         if (tex)
             tex->resizeGLObjectBuffers(maxSize);
@@ -959,6 +983,8 @@ void
 TextureArena::releaseGLObjects(osg::State* state, bool force) const
 {
     ScopedMutexLock lock(_m);
+
+    OE_DEVEL << LC << "releaseGLObjects on arena " << getName() << std::endl;
 
     if (state)
     {
@@ -990,7 +1016,7 @@ TextureArena::releaseGLObjects(osg::State* state, bool force) const
         for (unsigned i = 0; i < _globjects.size(); ++i)
         {
             GLObjects& gc = _globjects[i];
-            if(gc._inUse)
+            if (gc._inUse)
             {
                 gc._handleBuffer = nullptr;
                 gc._handles.resize(0);

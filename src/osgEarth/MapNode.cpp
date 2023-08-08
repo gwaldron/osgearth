@@ -33,6 +33,7 @@
 #include <osgEarth/MapNodeObserver>
 #include <osgEarth/Utils>
 #include <osgEarth/Shaders>
+#include <osgEarth/Chonk>
 #include <osgUtil/Optimizer>
 #include <osgDB/DatabasePager>
 #include <osgEarth/HTTPClient>
@@ -977,11 +978,7 @@ MapNode::releaseGLObjects(osg::State* state) const
     for(const osg::Callback* ec = getEventCallback(); ec; ec = ec->getNestedCallback())
         ec->releaseGLObjects(state);
 
-    // inform the GL object pools for this context
-    if (state)
-    {
-        GLObjectPool::releaseGLObjects(state);
-    }
+    ChonkRenderBin::releaseSharedGLObjects(state);
 
     osg::Group::releaseGLObjects(state);
 }

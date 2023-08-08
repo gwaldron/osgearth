@@ -213,7 +213,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                 int ptr0 = 0;
                 int ptr1 = assets.getMaterials().size();
 
-                for(auto& material : assets.getMaterials())
+                for (auto& material : assets.getMaterials())
                 {
                     auto t0 = std::chrono::steady_clock::now();
 
@@ -306,8 +306,8 @@ TextureSplattingLayer::buildStateSets()
             getLifeMapLayer()->getSharedTextureMatrixUniformName());
 
         terrain_shaders.load(
-            vp, 
-            terrain_shaders.TextureSplatting, 
+            vp,
+            terrain_shaders.TextureSplatting,
             getReadOptions());
 
         // General purpose define indicating that this layer sets PBR values.
@@ -419,10 +419,16 @@ void
 TextureSplattingLayer::resizeGLObjectBuffers(unsigned maxSize)
 {
     VisibleLayer::resizeGLObjectBuffers(maxSize);
+
+    if (_materials && _materials->_arena.valid())
+        _materials->_arena->resizeGLObjectBuffers(maxSize);
 }
 
 void
 TextureSplattingLayer::releaseGLObjects(osg::State* state) const
 {
     VisibleLayer::releaseGLObjects(state);
+
+    if (_materials && _materials->_arena.valid())
+        _materials->_arena->releaseGLObjects(state);
 }

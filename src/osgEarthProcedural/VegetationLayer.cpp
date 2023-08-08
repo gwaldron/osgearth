@@ -210,7 +210,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_UNDERGROWTH].lod().setDefault(19);
     groups()[GROUP_UNDERGROWTH].enabled().setDefault(true);
     groups()[GROUP_UNDERGROWTH].castShadows().setDefault(false);
-    groups()[GROUP_UNDERGROWTH].maxRange().setDefault(FLT_MAX); 
+    groups()[GROUP_UNDERGROWTH].maxRange().setDefault(FLT_MAX);
     groups()[GROUP_UNDERGROWTH].instancesPerSqKm().setDefault(500000);
     groups()[GROUP_UNDERGROWTH].overlap().setDefault(1.0f);
     groups()[GROUP_UNDERGROWTH].farLODScale().setDefault(2.0f);
@@ -269,7 +269,7 @@ VegetationLayer::LayerAcceptor::acceptLayer(
 {
     // if this is a shadow camera and the layer is configured to cast shadows, accept it.
     if (CameraUtils::isShadowCamera(camera))
-    {        
+    {
         return _layer->getCastShadows();
     }
 
@@ -400,7 +400,7 @@ VegetationLayer::dirty()
 {
     _tiles.scoped_lock([this]()
         {
-            _tiles.clear(); 
+            _tiles.clear();
             _placeholders.clear();
         });
 
@@ -473,7 +473,7 @@ VegetationLayer::setImpostorHighAngle(const Angle& value)
 
     getOrCreateStateSet()->getOrCreateUniform(
         "oe_veg_bbd1", osg::Uniform::FLOAT)->set(
-            clamp(1.0f-cosf(value.as(Units::RADIANS)), 0.0f, 1.0f));
+            clamp(1.0f - cosf(value.as(Units::RADIANS)), 0.0f, 1.0f));
 }
 
 const Angle&
@@ -758,7 +758,7 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
     if (res)
     {
         // Compute LOD for each asset group if necessary.
-        for(auto iter : options().groups())
+        for (auto iter : options().groups())
         {
             Options::Group& group = iter.second;
             if (group.lod() == 0)
@@ -775,9 +775,9 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
                 }
                 group.lod() = bestLOD;
 
-                OE_INFO << LC 
+                OE_INFO << LC
                     << "Rendering asset group" << iter.first
-                    << " at terrain level " << bestLOD <<  std::endl;
+                    << " at terrain level " << bestLOD << std::endl;
             }
         }
     }
@@ -795,7 +795,7 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
     ss->setMode(GL_CULL_FACE, 0x0 | osg::StateAttribute::PROTECTED);
 
     // Install the texture arena:
-    TextureArena* textures = getBiomeLayer()->getBiomeManager().getTextures();    
+    TextureArena* textures = getBiomeLayer()->getBiomeManager().getTextures();
     ss->setAttribute(textures);
 
     // Apply a maximum GPU texture size
@@ -834,7 +834,7 @@ namespace
         ImageLayer* layer,
         const std::string& sampler,
         const std::string& matrix,
-        osg::StateSet* stateset )
+        osg::StateSet* stateset)
     {
         if (layer) {
             stateset->setDefine(sampler, layer->getSharedTextureUniformName());
@@ -880,6 +880,10 @@ VegetationLayer::configureImpostor(
     {
         osg::Group* node = new osg::Group();
 
+        // Checked externally using URIPostReadCallback. This allows a user
+        // to know if they are processing the imposter or a model.
+        node->setName("Impostor");
+
         // one part if we only have side textures;
         // two parts if we also have top textures
         int parts = textures.size() > 3 ? 2 : 1;
@@ -888,7 +892,7 @@ VegetationLayer::configureImpostor(
         float ymin = xmin;
         float xmax = std::max(b.xMax(), b.yMax());
         float ymax = xmax;
-        
+
         const osg::Vec4f colors[1] = {
             {1,1,1,1}
         };
@@ -1082,7 +1086,7 @@ VegetationLayer::checkForNewAssets() const
 
                 // next, foreach group, calculate the relative weighting by
                 // inserting heavy instances more than once.
-                for(auto iter : instances_by_group)
+                for (auto iter : instances_by_group)
                 {
                     auto& group = iter.first;
                     auto& instances = iter.second;
@@ -1275,7 +1279,7 @@ VegetationLayer::getAssetPlacements(
     // to place vegetation
     std::vector<TerrainConstraint> constraints;
     _constraintQuery.getConstraints(
-        key, 
+        key,
         constraints,
         progress);
 
@@ -1516,7 +1520,7 @@ VegetationLayer::getAssetPlacements(
             double so = 1.0 - overlap;
             double a_min[2] = { local.x() + abb.xMin() * so, local.y() + abb.yMin() * so };
             double a_max[2] = { local.x() + abb.xMax() * so, local.y() + abb.yMax() * so };
-            
+
             if (index.Search(a_min, a_max, nullptr) == 0)
             {
                 index.Insert(a_min, a_max, 0);
@@ -1531,7 +1535,7 @@ VegetationLayer::getAssetPlacements(
             // Generate a random rotation and record the position.
             // Do this before the constraint check to maintain determinism!
             float rotation = RAND() * 3.1415927 * 2.0;
-         
+
             if (!inConstrainedRegion(map_point.x(), map_point.y(), constraints))
             {
                 map_points.emplace_back(map_point);
@@ -1554,10 +1558,10 @@ VegetationLayer::getAssetPlacements(
     // lifemap changes don't change existing assets (due to the
     // collision rtree).
     int numResults = result.size();
-    for(int i=0; i<numResults; ++i)
+    for (int i = 0; i < numResults; ++i)
     {
         Placement& p = result[i];
-        
+
         if (RAND() > p.density())
         {
             result[i] = std::move(result[numResults - 1]);
@@ -1651,9 +1655,7 @@ VegetationLayer::createDrawable(
 }
 
 void
-VegetationLayer::cull(
-    const TileBatch& batch,
-    osg::NodeVisitor& nv) const
+VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
 {
     if (_assets.empty())
         return;
@@ -1862,18 +1864,5 @@ VegetationLayer::releaseGLObjects(osg::State* state) const
 {
     PatchLayer::releaseGLObjects(state);
 
-    ScopedMutexLock lock(_tiles);
-
-    for (auto& tile : _tiles)
-    {
-        auto drawable = tile.second->_drawable.get();
-        if (drawable.valid())
-            drawable->releaseGLObjects(state);
-    }
-
-    if (getBiomeLayer())
-    {
-        auto textures = getBiomeLayer()->getBiomeManager().getTextures();
-        textures->releaseGLObjects(state);
-    }
+    const_cast<VegetationLayer*>(this)->dirty();
 }

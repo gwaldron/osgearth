@@ -28,14 +28,14 @@ using namespace osgEarth;
 #define LC "[EngineContext] "
 
 EngineContext::EngineContext(
-    const Map*                     map,
-    TerrainEngineNode*             terrainEngine,
-    GeometryPool*                  geometryPool,
-    Merger*                        merger,
+    const Map* map,
+    TerrainEngineNode* terrainEngine,
+    GeometryPool* geometryPool,
+    Merger* merger,
     TileNodeRegistry::Ptr          tiles,
-    const RenderBindings&          renderBindings,
-    const SelectionInfo&           selectionInfo,
-    const FrameClock*              clock) :
+    const RenderBindings& renderBindings,
+    const SelectionInfo& selectionInfo,
+    const FrameClock* clock) :
 
     _map(map),
     _terrainEngine(terrainEngine),
@@ -55,6 +55,7 @@ EngineContext::EngineContext(
     // create a bindless texture arena and set it to automatically
     // release textures that the terrain no longer references.
     _textures = new TextureArena();
+    _textures->setName("REX Terrain Engine");
     _textures->setBindingPoint(29); // TODO
     _textures->setAutoRelease(true);
 
@@ -64,7 +65,7 @@ EngineContext::EngineContext(
         Registry::instance()->getMaxTextureSize());
 
     _textures->setMaxTextureSize(maxSize);
-    
+
 }
 
 osg::ref_ptr<const Map>

@@ -531,6 +531,15 @@ FeatureModelGraph::open()
     // Create a filter chain if necessary
     _filterChain = FeatureFilterChain::create(_options.filters(), NULL);
 
+    // Call addedToMap on all of the FeatureFilters
+    if (_filterChain.valid() && !_filterChain->empty() && _session->getMap())
+    {
+        for (auto filter = _filterChain->begin(); filter != _filterChain->end(); ++filter)
+        {
+            filter->get()->addedToMap(_session->getMap());
+        }
+    }
+
     // world-space bounds of the feature layer
     _fullWorldBound = getBoundInWorldCoords(_usableMapExtent);
 

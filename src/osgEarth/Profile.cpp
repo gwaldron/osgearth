@@ -296,7 +296,9 @@ Profile::create( const ProfileOptions& options )
     // Check for a "well known named" profile:
     if ( options.namedProfile().isSet() )
     {
-        result = Profile::create(options.namedProfile().get());
+        result = Profile::create_with_vdatum(
+            options.namedProfile().get(),
+            options.vsrsString().get());
     }
 
     // Next check for a user-defined extents:
@@ -351,12 +353,18 @@ Profile::create( const ProfileOptions& options )
 const Profile*
 Profile::create(const std::string& name)
 {
+    return create_with_vdatum(name, {});
+}
+
+const Profile*
+Profile::create_with_vdatum(const std::string& name, const std::string& vsrsString)
+{
     if ( ciEquals(name, PLATE_CARREE) || ciEquals(name, "plate-carre") || ciEquals(name, "eqc-wgs84") )
     {
         // Yes I know this is not really Plate Carre but it will stand in for now.
         osg::Vec3d ex;
-        const SpatialReference* plateCarre = SpatialReference::get("plate-carre");
-        const SpatialReference* wgs84 = SpatialReference::get("wgs84");
+        const SpatialReference* plateCarre = SpatialReference::get("plate-carre", vsrsString);
+        const SpatialReference* wgs84 = SpatialReference::get("wgs84", vsrsString);
         wgs84->transform(osg::Vec3d(180,90,0), plateCarre, ex);
 
         return Profile::create(PLATE_CARREE, plateCarre, -ex.x(), -ex.y(), ex.x(), ex.y(), 2u, 1u);
@@ -365,7 +373,7 @@ Profile::create(const std::string& name)
     {
         return create(
             GLOBAL_GEODETIC,
-            SpatialReference::create("wgs84"),
+            SpatialReference::create("wgs84", vsrsString),
             -180.0, -90.0, 180.0, 90.0,
             2, 1);
     }
@@ -373,7 +381,7 @@ Profile::create(const std::string& name)
     {
         return create(
             GLOBAL_MERCATOR,
-            SpatialReference::create("global-mercator"),
+            SpatialReference::create("global-mercator", vsrsString),
             MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
             1, 1);
     }
@@ -381,13 +389,13 @@ Profile::create(const std::string& name)
     {
         return create(
             SPHERICAL_MERCATOR,
-            SpatialReference::create("spherical-mercator"),
+            SpatialReference::create("spherical-mercator", vsrsString),
             MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY,
             1, 1);
     }
     else
     {
-        return create(name, "");
+        return create(name, vsrsString);
     }
 }
 
@@ -488,6 +496,8 @@ Profile::toProfileOptions() const
     if (_wellKnownName.empty() == false)
     {
         op.namedProfile() = _wellKnownName;
+        if (!getSRS()->getVertInitString().empty())
+            op.vsrsString() = getSRS()->getVertInitString();
     }
     else
     {

@@ -71,6 +71,9 @@ namespace osgEarth
         //! Extents of this layer, if known
         virtual const GeoExtent& getExtent() const override;
 
+        //! Called when the layer is added to the Map
+        virtual void addedToMap(const class Map*) override;
+
     public: // Layer
 
         virtual void init();

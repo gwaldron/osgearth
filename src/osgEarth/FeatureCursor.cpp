@@ -169,14 +169,25 @@ FilteredFeatureCursor::FilteredFeatureCursor(
 FilteredFeatureCursor::FilteredFeatureCursor(
     FeatureCursor* cursor,
     FeatureFilterChain* chain,
-    FilterContext* context) :
+    FilterContext* context,
+    bool ownsContext
+    ) :
 
     FeatureCursor(cursor->getProgress()),
     _cursor(cursor),
     _chain(chain),
-    _user_cx(context)
+    _user_cx(context),
+    _ownsContext(ownsContext)
 {
     //nop
+}
+
+FilteredFeatureCursor::~FilteredFeatureCursor()
+{
+    if (_user_cx && _ownsContext)
+    {
+        delete _user_cx;
+    }
 }
 
 bool

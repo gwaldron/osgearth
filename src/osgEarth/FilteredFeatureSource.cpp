@@ -56,7 +56,9 @@ void FilteredFeatureSource::addedToMap(const Map* map)
     if (getFeatureSource())
     {
         setFeatureProfile(getFeatureSource()->getFeatureProfile());
-    }    
+    }
+
+    FeatureSource::addedToMap(map);
 }
 
 void FilteredFeatureSource::removedFromMap(const Map* map)
@@ -98,7 +100,21 @@ FeatureCursor* FilteredFeatureSource::createFeatureCursorImplementation(
         {
             if (_filters.valid())
             {
-                return new FilteredFeatureCursor(cursor.get(), _filters);
+                FilterContext* cx = new FilterContext;
+                cx->setProfile(getFeatureProfile());
+                if (query.tileKey().isSet())
+                {
+                    cx->extent() = query.tileKey()->getExtent();
+                }
+                else if (query.bounds().isSet())
+                {
+                    cx->extent() = GeoExtent(getFeatureProfile()->getSRS(), query.bounds().get());
+                }
+                else
+                {
+                    cx->extent() = getFeatureProfile()->getExtent();
+                }
+                return new FilteredFeatureCursor(cursor.get(), _filters, cx, true);
             }
             else
             {

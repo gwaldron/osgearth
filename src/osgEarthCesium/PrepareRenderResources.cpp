@@ -92,7 +92,8 @@ public:
 
         //matrix.set(glm::value_ptr(_transform));
         root->setMatrix(matrix);
-
+        
+        /*
         for (auto& scene : _model->scenes)
         {
             for (int node : scene.nodes)
@@ -100,9 +101,17 @@ public:
                 root->addChild(createNode(_model->nodes[node]));
             }
         }
+        */
+
+        for (auto itr = _model->nodes.begin(); itr != _model->nodes.end(); ++itr)
+        {
+            root->addChild(createNode(*itr));
+        }
 
         osgEarth::Registry::shaderGenerator().run(root);
-        return root;
+        osg::Group* container = new osg::Group;
+        container->addChild(root);
+        return container;
     }
 
     osg::Node* createNode(const CesiumGltf::Node& node)
@@ -345,6 +354,17 @@ public:
                 {
                     geom->setTexCoordArray(1, osgArray);
                 }
+
+                // Look for Cesium Overlay texture coordinates.
+                const std::string CESIUM_OVERLAY = "_CESIUMOVERLAY_";
+                if (osgEarth::startsWith(name, CESIUM_OVERLAY))
+                {
+                    int index = std::stoi(name.substr(CESIUM_OVERLAY.length()));
+
+                    // Not sure how many overlays or tex coords we should support.  For now we'll support 2 texture coords and two overlays so stick the 
+                    // overlay texture coordinates at an index of index + 2.  Revisit this later.
+                    geom->setTexCoordArray(index + 2, osgArray);
+                }
             }
 
             // If there is no color array just add one
@@ -568,6 +588,48 @@ void PrepareRendererResources::freeRaster(
     }
 }
 
+const char* raster_overlay_vs = R"(
+            #version 330
+            out vec4 oe_raster_overlay_coords;
+            uniform int oe_raster_overlay_coord;
+            void raster_overlay_model(inout vec4 vertex)
+            {
+                switch (oe_raster_overlay_coord) {
+                    case 0:
+                        oe_raster_overlay_coords = gl_MultiTexCoord0;
+                        break;
+                    case 1:
+                        oe_raster_overlay_coords = gl_MultiTexCoord1;
+                        break;
+                    case 2:
+                        oe_raster_overlay_coords = gl_MultiTexCoord2;
+                        break;
+                    case 3:
+                        oe_raster_overlay_coords = gl_MultiTexCoord3;
+                        break;
+                }
+            }
+        )";
+
+const char* raster_overlay_fs = R"(
+            #version 330
+            in vec4 oe_raster_overlay_coords;
+            uniform sampler2D oe_raster_overlay_sampler;
+            uniform vec4 oe_translation_scale;
+            
+            void raster_overlay_color(inout vec4 color)
+            {
+                vec4 texel;
+                vec2 trans = oe_translation_scale.xy;
+                vec2 scale = oe_translation_scale.zw;
+
+                vec2 texcoords = oe_raster_overlay_coords.xy * scale + trans;
+                texcoords.t = 1.0 - texcoords.t;
+                texel = texture(oe_raster_overlay_sampler, texcoords);
+                color = color * texel;
+            }
+        )";
+
 void PrepareRendererResources::attachRasterInMainThread(
     const Cesium3DTilesSelection::Tile& tile,
     int32_t overlayTextureCoordinateID,
@@ -588,7 +650,7 @@ void PrepareRendererResources::attachRasterInMainThread(
     MainThreadResult* renderResult = reinterpret_cast<MainThreadResult*>(renderContent->getRenderResources());
     if (renderResult)
     {
-        // TODO:  This doesn't work correctly, need to take into account the translation and offset
+        int overlayUnit = overlayTextureCoordinateID + 2;
         osg::StateSet* stateset = renderResult->node->getOrCreateStateSet();
         osg::Texture2D* osgTexture = new osg::Texture2D(loadMainThreadResult->image.get());
         osgTexture->setResizeNonPowerOfTwoHint(false);
@@ -597,7 +659,18 @@ void PrepareRendererResources::attachRasterInMainThread(
         osgTexture->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR);
         osgTexture->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)osg::Texture::CLAMP_TO_EDGE);
         osgTexture->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)osg::Texture::CLAMP_TO_EDGE);
-        stateset->setTextureAttributeAndModes(overlayTextureCoordinateID, osgTexture, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+        stateset->setTextureAttributeAndModes(overlayUnit, osgTexture, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+
+
+        stateset->getOrCreateUniform("oe_raster_overlay_coord", osg::Uniform::INT)->set(overlayUnit);        
+        stateset->getOrCreateUniform("oe_raster_overlay_sampler", osg::Uniform::SAMPLER_2D)->set(overlayUnit);
+
+        osg::Uniform* uniform_and_scale = new osg::Uniform("oe_translation_scale", osg::Vec4f(translation.x, translation.y, scale.x, scale.y));
+        stateset->addUniform(uniform_and_scale);
+
+        VirtualProgram::getOrCreate(stateset)->setFunction("raster_overlay_color", raster_overlay_fs, VirtualProgram::LOCATION_FRAGMENT_COLORING);
+        VirtualProgram::getOrCreate(stateset)->setFunction("raster_overlay_model", raster_overlay_vs, VirtualProgram::LOCATION_VERTEX_MODEL);
+
     }
 }
 

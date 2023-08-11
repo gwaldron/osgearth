@@ -93,19 +93,22 @@ public:
         //matrix.set(glm::value_ptr(_transform));
         root->setMatrix(matrix);
         
-        /*
-        for (auto& scene : _model->scenes)
+        if (!_model->scenes.empty())
         {
-            for (int node : scene.nodes)
+            for (auto& scene : _model->scenes)
             {
-                root->addChild(createNode(_model->nodes[node]));
+                for (int node : scene.nodes)
+                {
+                    root->addChild(createNode(_model->nodes[node]));
+                }
             }
         }
-        */
-
-        for (auto itr = _model->nodes.begin(); itr != _model->nodes.end(); ++itr)
+        else
         {
-            root->addChild(createNode(*itr));
+            for (auto itr = _model->nodes.begin(); itr != _model->nodes.end(); ++itr)
+            {
+                root->addChild(createNode(*itr));
+            }
         }
 
         osgEarth::Registry::shaderGenerator().run(root);

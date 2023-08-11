@@ -97,7 +97,7 @@ public:
     std::unique_ptr<Context> context;
 };
 
-CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID)
+CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, std::vector<int> overlays)
 { 
     CesiumAsync::AsyncSystem asyncSystem(Context::instance().taskProcessor);
     Cesium3DTilesSelection::TilesetExternals externals{
@@ -106,6 +106,15 @@ CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID)
 
     Cesium3DTilesSelection::TilesetOptions options;
     Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, assetID, getCesiumIonKey(), options);
+
+    // TODO:  This needs reworked, just a quick way to get overlays working to test.
+    for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
+    {
+        Cesium3DTilesSelection::RasterOverlayOptions rasterOptions;
+        const auto ionRasterOverlay = new Cesium3DTilesSelection::IonRasterOverlay("", 2, getCesiumIonKey(), rasterOptions);
+        tileset->getOverlays().add(ionRasterOverlay);
+    }    
+    _tileset = tileset;
 
     setCullingActive(false);
 }

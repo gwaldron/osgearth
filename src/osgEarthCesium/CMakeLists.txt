@@ -8,14 +8,20 @@ ENDIF()
 
 set(TARGET_SRC
     AssetAccessor.cpp
+    CesiumCreditsNode.cpp
     CesiumTilesetNode.cpp
+    Context.cpp
     PrepareRenderResources.cpp
+    Settings.cpp
     TaskProcessor.cpp    
 )
 	
 set(LIB_PUBLIC_HEADERS
     CesiumTilesetNode
+    CesiumCreditsNode
+    Context
 	Export
+    Settings
     )
 	
 SET(TARGET_H

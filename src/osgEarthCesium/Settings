@@ -19,27 +19,19 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_CESIUM_TILESETNODE_H
-#define OSGEARTH_CESIUM_TILESETNODE_H
+#ifndef OSGEARTH_CESIUM_SETTINGS_H
+#define OSGEARTH_CESIUM_SETTINGS_H
 
 #include "Export"
-#include <osg/Group>
+#include <string>
 
-namespace osgEarth { namespace Cesium
-{
-    using namespace osgEarth;
-
-    class OSGEARTHCESIUM_EXPORT CesiumTilesetNode : public osg::Group
+namespace osgEarth {
+    namespace Cesium
     {
-    public:
-        CesiumTilesetNode(unsigned int assetID, std::vector<int> overlays = std::vector<int>());
-        CesiumTilesetNode(const std::string& url);
-
-        virtual void traverse(osg::NodeVisitor& nv);
-    private:        
-        void* _tileset = nullptr;
-    };
-} }
+        OSGEARTHCESIUM_EXPORT std::string  getCesiumIonKey();
+        void OSGEARTHCESIUM_EXPORT setCesiumIonKey(const std::string& key);
+    }
+}
 
 
-#endif // OSGEARTH_CESIUM_TILESETNODE_H
+#endif // OSGEARTH_CESIUM_SETTINGS_H

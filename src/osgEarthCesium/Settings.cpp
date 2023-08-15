@@ -19,27 +19,18 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_CESIUM_TILESETNODE_H
-#define OSGEARTH_CESIUM_TILESETNODE_H
 
-#include "Export"
-#include <osg/Group>
+#include "Settings"
 
-namespace osgEarth { namespace Cesium
+// TODO:  Replace this with the default key from Cesium
+static std::string CESIUM_KEY = "";
+
+std::string  osgEarth::Cesium::getCesiumIonKey()
 {
-    using namespace osgEarth;
+    return CESIUM_KEY;
+}
 
-    class OSGEARTHCESIUM_EXPORT CesiumTilesetNode : public osg::Group
-    {
-    public:
-        CesiumTilesetNode(unsigned int assetID, std::vector<int> overlays = std::vector<int>());
-        CesiumTilesetNode(const std::string& url);
-
-        virtual void traverse(osg::NodeVisitor& nv);
-    private:        
-        void* _tileset = nullptr;
-    };
-} }
-
-
-#endif // OSGEARTH_CESIUM_TILESETNODE_H
+void osgEarth::Cesium::setCesiumIonKey(const std::string& key)
+{
+    CESIUM_KEY = key;
+}

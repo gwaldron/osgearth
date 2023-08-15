@@ -20,82 +20,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "CesiumTilesetNode"
-
-#include <CesiumGltf/Material.h>
-
-#include "AssetAccessor"
-#include "PrepareRenderResources"
-#include "TaskProcessor"
+#include "Context"
+#include "Settings"
 
 #include <osgEarth/Notify>
 #include <osgUtil/CullVisitor>
 
-#include <gsl/gsl>
-#include <Cesium3DTilesSelection/GltfUtilities.h>
-#include <Cesium3DTilesSelection/registerAllTileContentTypes.h>
-#include <CesiumGltf/AccessorView.h>
-#include <Cesium3DTilesSelection/Tileset.h>
-#include <Cesium3DTilesSelection/IonRasterOverlay.h>
-
-#include <glm/gtc/type_ptr.hpp>
-
-#include <spdlog/spdlog.h>
-#include <mutex>
 
 using namespace osgEarth::Cesium;
-
-// TODO:  Replace this with the default key from Cesium
-static std::string CESIUM_KEY = "";
-
-std::string osgEarth::Cesium::getCesiumIonKey()
-{
-    return CESIUM_KEY;
-}
-
-void osgEarth::Cesium::setCesiumIonKey(const std::string& key)
-{
-    CESIUM_KEY = key;
-}
-
-class Context
-{
-public:
-
-    Context()
-    {
-        Cesium3DTilesSelection::registerAllTileContentTypes();
-        assetAccessor = std::make_shared<AssetAccessor>();
-        taskProcessor = std::make_shared<TaskProcessor>();
-        prepareRenderResources = std::make_shared< PrepareRendererResources >();
-        logger = spdlog::default_logger();        
-        creditSystem = std::make_shared<Cesium3DTilesSelection::CreditSystem>();
-
-        // Get the key from an environment variable
-        const char* key = ::getenv("OSGEARTH_CESIUMION_KEY");
-        if (key)
-        {
-            setCesiumIonKey(std::string(key));
-        }
-    }
-
-    ~Context()
-    {
-    }
-
-    static Context& instance()
-    {
-        static Context s_context;
-        return s_context;
-    }
-
-    std::shared_ptr< PrepareRendererResources > prepareRenderResources;
-    std::shared_ptr<AssetAccessor> assetAccessor;
-    std::shared_ptr<TaskProcessor> taskProcessor;
-    std::shared_ptr< spdlog::logger > logger;
-    std::shared_ptr< Cesium3DTilesSelection::CreditSystem > creditSystem;
-
-    std::unique_ptr<Context> context;
-};
 
 CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, std::vector<int> overlays)
 { 
@@ -172,7 +104,6 @@ CesiumTilesetNode::traverse(osg::NodeVisitor& nv)
                 }
             }
         }
-
     }
     else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {        

@@ -19,27 +19,36 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_CESIUM_TILESETNODE_H
-#define OSGEARTH_CESIUM_TILESETNODE_H
 
-#include "Export"
-#include <osg/Group>
+#include "Context"
+#include "Settings"
 
-namespace osgEarth { namespace Cesium
+using namespace osgEarth::Cesium;
+
+Context::Context()
 {
-    using namespace osgEarth;
+    Cesium3DTilesSelection::registerAllTileContentTypes();
+    assetAccessor = std::make_shared<AssetAccessor>();
+    taskProcessor = std::make_shared<TaskProcessor>();
+    prepareRenderResources = std::make_shared< PrepareRendererResources >();
+    logger = spdlog::default_logger();
+    creditSystem = std::make_shared<Cesium3DTilesSelection::CreditSystem>();
 
-    class OSGEARTHCESIUM_EXPORT CesiumTilesetNode : public osg::Group
+    // Get the key from an environment variable
+    const char* key = ::getenv("OSGEARTH_CESIUMION_KEY");
+    if (key)
     {
-    public:
-        CesiumTilesetNode(unsigned int assetID, std::vector<int> overlays = std::vector<int>());
-        CesiumTilesetNode(const std::string& url);
+        setCesiumIonKey(std::string(key));
+        //CESIUM_KEY = std::string(key);
+    }
+}
 
-        virtual void traverse(osg::NodeVisitor& nv);
-    private:        
-        void* _tileset = nullptr;
-    };
-} }
+Context::~Context()
+{
+}
 
-
-#endif // OSGEARTH_CESIUM_TILESETNODE_H
+Context& Context::instance()
+{
+    static Context s_context;
+    return s_context;
+}

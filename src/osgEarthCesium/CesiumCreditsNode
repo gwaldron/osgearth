@@ -19,27 +19,40 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_CESIUM_TILESETNODE_H
-#define OSGEARTH_CESIUM_TILESETNODE_H
+#ifndef OSGEARTH_CESIUM_CREDITSNODE_H
+#define OSGEARTH_CESIUM_CREDITSNODE_H
 
 #include "Export"
 #include <osg/Group>
+#include <osg/View>
+#include <osg/Texture2D>
 
-namespace osgEarth { namespace Cesium
-{
-    using namespace osgEarth;
-
-    class OSGEARTHCESIUM_EXPORT CesiumTilesetNode : public osg::Group
+namespace osgEarth {
+    namespace Cesium
     {
-    public:
-        CesiumTilesetNode(unsigned int assetID, std::vector<int> overlays = std::vector<int>());
-        CesiumTilesetNode(const std::string& url);
+        using namespace osgEarth;
 
-        virtual void traverse(osg::NodeVisitor& nv);
-    private:        
-        void* _tileset = nullptr;
-    };
-} }
+        class OSGEARTHCESIUM_EXPORT CesiumCreditsNode : public osg::Group
+        {
+        public:
+            CesiumCreditsNode(osg::View* view);
+            virtual void traverse(osg::NodeVisitor& nv);
+
+            void startCredits();
+            void endCredits();
+
+        private:
+
+            osg::Texture2D* getOrCreateTexture(const std::string& url);
+            std::map< std::string, osg::ref_ptr< osg::Texture2D > > _textureCache;
 
 
-#endif // OSGEARTH_CESIUM_TILESETNODE_H
+            std::vector< std::string > _credits;
+            osg::Camera* _camera;
+            osg::observer_ptr< osg::View > _view;
+        };
+    }
+}
+
+
+#endif // OSGEARTH_CESIUM_CREDITSNODE_H

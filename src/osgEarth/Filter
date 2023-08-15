@@ -66,6 +66,11 @@ namespace osgEarth { namespace Util
          */
         virtual Config getConfig() const { return Config(); }
 
+        /**
+         * Called when the FeatureFilter is added to the map.
+         */
+        virtual void addedToMap(const class Map*);
+
     protected:
         FeatureFilter() { }
         FeatureFilter(const FeatureFilter& rhs, const osg::CopyOp& c) : Filter(rhs, c) { }

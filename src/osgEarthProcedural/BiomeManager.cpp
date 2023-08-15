@@ -734,6 +734,15 @@ BiomeManager::materializeNewAssets(
                                 top_z,
                                 textures);
 
+                            // post-process if there's a post-URI callback.
+                            // This is so the Impostor can have extended materials injected.
+                            URIPostReadCallback* post = URIPostReadCallback::from(readOptions);
+                            if (post)
+                            {
+                               ReadResult result(imp._node);
+                               (*post)(result);
+                            }
+
                             residentAsset->impostor() = imp._node;
                             impostorFarLODScale = imp._farLODScale;
 

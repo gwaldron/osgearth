@@ -162,13 +162,13 @@ CesiumCreditsNode::CesiumCreditsNode(osg::View* view)
     addChild(_camera);
 }
 
-void CesiumCreditsNode::startCredits()
+void CesiumCreditsNode::nextFrame()
 {
     auto creditSystem = Context::instance().creditSystem;
     creditSystem->startNextFrame();
 }
 
-void CesiumCreditsNode::endCredits()
+void CesiumCreditsNode::updateCredits()
 {
     std::vector< ParsedCredit > parsedCredits;
 
@@ -268,6 +268,10 @@ void CesiumCreditsNode::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
     {
+        // Get the credits from the previous frame.
+        updateCredits();
+        // Tell Cesium to start collecting new credits
+        nextFrame();
         auto vp = _view->getCamera()->getViewport();
         if (vp)
         {

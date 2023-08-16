@@ -37,11 +37,12 @@ namespace osgEarth {
         public:
             CesiumCreditsNode(osg::View* view);
             virtual void traverse(osg::NodeVisitor& nv);
-
-            void startCredits();
-            void endCredits();
+            
 
         private:
+
+            void nextFrame();
+            void updateCredits();
 
             osg::Texture2D* getOrCreateTexture(const std::string& url);
             std::map< std::string, osg::ref_ptr< osg::Texture2D > > _textureCache;

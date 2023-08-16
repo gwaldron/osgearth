@@ -6,6 +6,9 @@ ELSE ()
     ADD_DEFINITIONS(-DOSGEARTHCESIUM_LIBRARY_STATIC)
 ENDIF()
 
+# Add definitions for linking against async++ and spdlog.  Found in the cesium-omniverse project.
+ADD_DEFINITIONS(-DSPDLOG_COMPILED_LIB -DLIBASYNC_STATIC)
+
 set(TARGET_SRC
     AssetAccessor.cpp
     CesiumCreditsNode.cpp

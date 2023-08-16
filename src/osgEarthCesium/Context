@@ -67,4 +67,4 @@ namespace osgEarth {
 }
 
 
-#endif // OSGEARTH_CESIUM_CREDITSNODE_H
+#endif // OSGEARTH_CESIUM_CONTEXT_H

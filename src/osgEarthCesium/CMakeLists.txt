@@ -10,6 +10,7 @@ set(TARGET_SRC
     AssetAccessor.cpp
     CesiumCreditsNode.cpp
     CesiumTilesetNode.cpp
+    CesiumLayer.cpp
     Context.cpp
     PrepareRenderResources.cpp
     Settings.cpp
@@ -19,6 +20,7 @@ set(TARGET_SRC
 set(LIB_PUBLIC_HEADERS
     CesiumTilesetNode
     CesiumCreditsNode
+    CesiumLayer
     Context
 	Export
     Settings

@@ -1,0 +1,85 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_CESIUM_LAYER_H
+#define OSGEARTH_CESIUM_LAYER_H
+
+#include "Export"
+#include <osgEarth/VisibleLayer>
+#include <osgEarth/URI>
+#include "CesiumTilesetNode"
+
+namespace osgEarth
+{
+    namespace Cesium
+    {        
+        class OSGEARTHCESIUM_EXPORT CesiumNative3DTilesLayer : public VisibleLayer
+        {
+        public: // serialization
+            class OSGEARTHCESIUM_EXPORT Options : public VisibleLayer::Options {
+            public:
+                META_LayerOptions(osgEarthCesium, Options, VisibleLayer::Options);
+                OE_OPTION(URI, url);
+                OE_OPTION(unsigned int, assetId);
+                OE_OPTION(std::string, token);
+                virtual Config getConfig() const;
+            private:
+                void fromConfig(const Config& conf);
+            };
+
+        public:
+            META_Layer(osgEarthCesium, CesiumNative3DTilesLayer, Options, VisibleLayer, CesiumNative3DTiles);
+
+        public:
+            void setURL(const URI& value);
+            const URI& getURL() const;
+
+            //! Asset identifier
+            void setAssetId(unsigned int value);
+            unsigned int getAssetId() const;
+
+            //! Auth token
+            void setToken(const std::string& value);
+            const std::string& getToken() const;
+
+        public: // Layer
+
+            //! Open the layer and return its status
+            virtual Status openImplementation();
+
+            //! Node created by this model layer
+            virtual osg::Node* getNode() const;
+
+        protected: // Layer
+
+            //! post-ctor initialization
+            virtual void init();
+
+            virtual ~CesiumNative3DTilesLayer();
+
+            std::string _key;
+
+            osg::ref_ptr< osgEarth::Cesium::CesiumTilesetNode > _tilesetNode;
+        };
+    }
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Cesium::CesiumNative3DTilesLayer::Options);
+
+#endif // OSGEARTH_CESIUM_LAYER_H

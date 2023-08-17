@@ -36,6 +36,7 @@ CesiumNative3DTilesLayer::Options::getConfig() const
     conf.set("url", _url);
     conf.set("asset_id", _assetId);
     conf.set("token", _token);
+    conf.set("raster_overlay", _rasterOverlay);
 
     return conf;
 }
@@ -46,6 +47,7 @@ CesiumNative3DTilesLayer::Options::fromConfig(const Config& conf)
     conf.get("url", _url);
     conf.get("asset_id", _assetId);
     conf.get("token", _token);
+    conf.get("raster_overlay", _rasterOverlay);
 }
 
 //........................................................................
@@ -81,7 +83,12 @@ CesiumNative3DTilesLayer::openImplementation()
     }
     else if (_options->assetId().isSet())
     {
-        _tilesetNode = new CesiumTilesetNode(*_options->assetId());
+        std::vector<int> overlays;
+        if (_options->rasterOverlay().isSet())
+        {
+            overlays.push_back(*_options->rasterOverlay());
+        }
+        _tilesetNode = new CesiumTilesetNode(*_options->assetId(), overlays);
     }
 
     if (!_tilesetNode.valid())
@@ -100,6 +107,16 @@ unsigned int CesiumNative3DTilesLayer::getAssetId() const
 void CesiumNative3DTilesLayer::setAssetId(unsigned int assetID)
 {
     options().assetId() = assetID;
+}
+
+int CesiumNative3DTilesLayer::getRasterOverlay() const
+{
+    return *options().rasterOverlay();
+}
+
+void CesiumNative3DTilesLayer::setRasterOverlay(int rasterOverlay)
+{
+    options().rasterOverlay() = rasterOverlay;
 }
 
 osg::Node*

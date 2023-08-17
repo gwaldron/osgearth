@@ -38,6 +38,7 @@ namespace osgEarth
                 OE_OPTION(URI, url);
                 OE_OPTION(unsigned int, assetId);
                 OE_OPTION(std::string, token);
+                OE_OPTION(int, rasterOverlay);
                 virtual Config getConfig() const;
             private:
                 void fromConfig(const Config& conf);
@@ -57,6 +58,10 @@ namespace osgEarth
             //! Auth token
             void setToken(const std::string& value);
             const std::string& getToken() const;
+
+            //! Raster overlay to drape over this 3d tileset
+            void setRasterOverlay(int value);
+            int getRasterOverlay() const;
 
         public: // Layer
 

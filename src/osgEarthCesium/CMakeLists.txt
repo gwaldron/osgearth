@@ -38,11 +38,20 @@ SET(TARGET_H
     TaskProcessor    
 	)
 
+# ImGui headers:
+if(OSGEARTH_ENABLE_IMGUI)
+    set(LIB_PUBLIC_HEADERS_IMGUI
+        ImGui/CesiumIonGUI        
+        )    
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 
-ADD_LIBRARY(${LIB_NAME}
+ADD_LIBRARY(
+    ${LIB_NAME}
     ${OSGEARTH_DYNAMIC_OR_STATIC}
     ${TARGET_H}
+    ${LIB_PUBLIC_HEADERS_IMGUI}
     ${TARGET_SRC}
     ${TARGET_GLSL}
     ${TARGET_IN}

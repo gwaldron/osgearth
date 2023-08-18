@@ -54,6 +54,10 @@
 #include <osgEarthProcedural/ImGui/VegetationLayerGUI>
 #endif
 
+#ifdef HAVE_OSGEARTHCESIUM
+#include <osgEarthCesium/ImGui/CesiumIonGUI>
+#endif
+
 #ifdef OSGEARTH_HAVE_GEOCODER
 #include "SearchGUI"
 #endif
@@ -218,6 +222,11 @@ namespace osgEarth
                 _menu["Procedural"].push_back(GUIPtr(new osgEarth::Procedural::TextureSplattingLayerGUI()));
                 _menu["Procedural"].push_back(GUIPtr(new osgEarth::Procedural::VegetationLayerGUI()));
 #endif
+
+#ifdef HAVE_OSGEARTHCESIUM
+                _menu["Tools"].push_back(GUIPtr(new osgEarth::Cesium::CesiumIonGUI()));
+#endif
+
 
 #ifdef OSGEARTH_HAVE_GEOCODER
                 _menu["Tools"].push_back(GUIPtr(new SearchGUI));

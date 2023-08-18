@@ -35,6 +35,7 @@
 #include <CesiumGltf/AccessorView.h>
 #include <Cesium3DTilesSelection/Tileset.h>
 #include <Cesium3DTilesSelection/IonRasterOverlay.h>
+#include <CesiumAsync/AsyncSystem.h>
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -54,13 +55,13 @@ namespace osgEarth {
             ~Context();
 
             static Context& instance();
-
+            
             std::shared_ptr< PrepareRendererResources > prepareRenderResources;
             std::shared_ptr<AssetAccessor> assetAccessor;
             std::shared_ptr<TaskProcessor> taskProcessor;
             std::shared_ptr< spdlog::logger > logger;
             std::shared_ptr< Cesium3DTilesSelection::CreditSystem > creditSystem;
-
+            CesiumAsync::AsyncSystem asyncSystem;
             std::unique_ptr<Context> context;
         };
     }

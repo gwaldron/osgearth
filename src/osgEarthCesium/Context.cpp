@@ -23,24 +23,19 @@
 #include "Context"
 #include "Settings"
 
+#include <CesiumIonClient/Connection.h>
+
 using namespace osgEarth::Cesium;
 
-Context::Context()
+Context::Context():
+    taskProcessor(std::make_shared<TaskProcessor>()),
+    asyncSystem(taskProcessor)
 {
     Cesium3DTilesSelection::registerAllTileContentTypes();
     assetAccessor = std::make_shared<AssetAccessor>();
-    taskProcessor = std::make_shared<TaskProcessor>();
     prepareRenderResources = std::make_shared< PrepareRendererResources >();
     logger = spdlog::default_logger();
-    creditSystem = std::make_shared<Cesium3DTilesSelection::CreditSystem>();
-
-    // Get the key from an environment variable
-    const char* key = ::getenv("OSGEARTH_CESIUMION_KEY");
-    if (key)
-    {
-        setCesiumIonKey(std::string(key));
-        //CESIUM_KEY = std::string(key);
-    }
+    creditSystem = std::make_shared<Cesium3DTilesSelection::CreditSystem>();    
 }
 
 Context::~Context()

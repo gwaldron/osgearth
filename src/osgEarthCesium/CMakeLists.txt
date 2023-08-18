@@ -11,6 +11,7 @@ ADD_DEFINITIONS(-DSPDLOG_COMPILED_LIB -DLIBASYNC_STATIC)
 
 set(TARGET_SRC
     AssetAccessor.cpp
+    CesiumIon.cpp
     CesiumCreditsNode.cpp
     CesiumTilesetNode.cpp
     CesiumLayer.cpp
@@ -24,6 +25,7 @@ set(LIB_PUBLIC_HEADERS
     CesiumTilesetNode
     CesiumCreditsNode
     CesiumLayer
+    CesiumIon
     Context
 	Export
     Settings

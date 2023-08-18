@@ -20,36 +20,39 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#include "CesiumIon"
+
+#include "Context"
 #include "Settings"
+#include <CesiumIonClient/Connection.h>
 
-// TODO:  Replace this with the default key from Cesium
-static std::string CESIUM_KEY = "";
+using namespace osgEarth::Cesium;
+using namespace CesiumIonClient;
 
-namespace
+CesiumIon::CesiumIon()
 {
-    class ReadKey
-    {
-    public:
-        ReadKey()
+    refresh();
+}
+
+void CesiumIon::refresh()
+{
+    Connection connection(Context::instance().asyncSystem, Context::instance().assetAccessor, getCesiumIonKey());
+    connection.assets().thenInMainThread([this](Response<Assets>&& result) {
+        assets.clear();
+
+        for (auto& a : result.value->items)
         {
-            // Get the key from an environment variable
-            const char* key = ::getenv("OSGEARTH_CESIUMION_KEY");
-            if (key)
-            {
-                osgEarth::Cesium::setCesiumIonKey(std::string(key));
-            }
+            CesiumIonAsset asset;
+            asset.attribution = a.attribution;
+            asset.bytes = a.bytes;
+            asset.dateAdded = a.dateAdded;
+            asset.description = a.description;
+            asset.id = a.id;
+            asset.name = a.name;
+            asset.percentComplete = a.percentComplete;
+            asset.status = a.status;
+            asset.type = a.type;
+            assets.emplace_back(std::move(asset));
         }
-    };
-}
-
-static ReadKey s_READKEY;
-
-std::string  osgEarth::Cesium::getCesiumIonKey()
-{
-    return CESIUM_KEY;
-}
-
-void osgEarth::Cesium::setCesiumIonKey(const std::string& key)
-{
-    CESIUM_KEY = key;
+     });
 }

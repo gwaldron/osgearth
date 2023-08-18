@@ -26,14 +26,12 @@
 #include <osgEarth/Notify>
 #include <osgUtil/CullVisitor>
 
-
 using namespace osgEarth::Cesium;
 
 CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, std::vector<int> overlays)
 { 
-    CesiumAsync::AsyncSystem asyncSystem(Context::instance().taskProcessor);
     Cesium3DTilesSelection::TilesetExternals externals{
-        Context::instance().assetAccessor, Context::instance().prepareRenderResources, asyncSystem, Context::instance().creditSystem, Context::instance().logger, nullptr
+        Context::instance().assetAccessor, Context::instance().prepareRenderResources, Context::instance().asyncSystem, Context::instance().creditSystem, Context::instance().logger, nullptr
     };
 
     Cesium3DTilesSelection::TilesetOptions options;
@@ -48,14 +46,13 @@ CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, std::vector<int> over
     }    
     _tileset = tileset;
 
-    setCullingActive(false);
+    setCullingActive(false);    
 }
 
 CesiumTilesetNode::CesiumTilesetNode(const std::string& url)
 {
-    CesiumAsync::AsyncSystem asyncSystem(Context::instance().taskProcessor);
     Cesium3DTilesSelection::TilesetExternals externals{
-        Context::instance().assetAccessor, Context::instance().prepareRenderResources, asyncSystem, Context::instance().creditSystem, Context::instance().logger, nullptr
+        Context::instance().assetAccessor, Context::instance().prepareRenderResources, Context::instance().asyncSystem, Context::instance().creditSystem, Context::instance().logger, nullptr
     };
 
     Cesium3DTilesSelection::TilesetOptions options;

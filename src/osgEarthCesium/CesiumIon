@@ -19,8 +19,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_CESIUMION_H
-#define OSGEARTH_CESIUMION_H
+#ifndef OSGEARTH_CESIUM_CESIUMION_H
+#define OSGEARTH_CESIUM_CESIUMION_H
 
 #include "Export"
 #include <vector>
@@ -57,4 +57,4 @@ namespace osgEarth {
 }
 
 
-#endif // OSGEARTH_CESIUMION_H
+#endif

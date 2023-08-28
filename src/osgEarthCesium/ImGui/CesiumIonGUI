@@ -22,6 +22,7 @@
 #include <osgEarth/ImGui/ImGui>
 #include <osgEarthCesium/CesiumIon>
 #include <osgEarthCesium/CesiumLayer>
+#include <osgEarth/CesiumIon>
 #include <osgEarth/MapNode>
 
 namespace osgEarth {
@@ -98,6 +99,20 @@ namespace osgEarth {
                             osgEarth::Cesium::CesiumNative3DTilesLayer* layer = new osgEarth::Cesium::CesiumNative3DTilesLayer;
                             layer->setName(asset.name);
                             layer->setAssetId(asset.id);
+                            _mapNode->getMap()->addLayer(layer);
+                        }
+                        else if (asset.type == "IMAGERY")
+                        {
+                            osgEarth::CesiumIonImageLayer *layer = new osgEarth::CesiumIonImageLayer;
+                            layer->setAssetId(osgEarth::Stringify() << asset.id);
+                            layer->setName(asset.name);
+                            _mapNode->getMap()->addLayer(layer);
+                        }
+                        else if (asset.type == "TERRAIN")
+                        {
+                            osgEarth::CesiumIonTerrainMeshLayer* layer = new osgEarth::CesiumIonTerrainMeshLayer;
+                            layer->setAssetId(osgEarth::Stringify() << asset.id);
+                            layer->setName(asset.name);
                             _mapNode->getMap()->addLayer(layer);
                         }
                     }

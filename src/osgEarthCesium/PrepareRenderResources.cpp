@@ -440,6 +440,11 @@ public:
                 }
                 }
             }
+            else
+            {
+                // If there are no primitives and we have a vertex array assume it is a point cloud.
+                geom->addPrimitiveSet(new osg::DrawArrays(GL_POINTS, 0, geom->getVertexArray()->getNumElements()));
+            }
 
 
             if (primitive.material >= 0 && primitive.material < _model->materials.size())

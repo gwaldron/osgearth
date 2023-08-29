@@ -25,6 +25,7 @@
 
 #include <osgEarth/Notify>
 #include <osgUtil/CullVisitor>
+#include <Cesium3DTilesSelection/BoundingVolume.h>
 
 using namespace osgEarth::Cesium;
 
@@ -37,7 +38,6 @@ CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, std::vector<int> over
     Cesium3DTilesSelection::TilesetOptions options;
     Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, assetID, getCesiumIonKey(), options);
 
-    // TODO:  This needs reworked, just a quick way to get overlays working to test.
     for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
     {
         Cesium3DTilesSelection::RasterOverlayOptions rasterOptions;
@@ -108,4 +108,22 @@ CesiumTilesetNode::traverse(osg::NodeVisitor& nv)
     }
 
     osg::Group::traverse(nv);
+}
+
+osg::BoundingSphere CesiumTilesetNode::computeBound() const
+{
+    if (_tileset)
+    {
+        Cesium3DTilesSelection::Tileset* tileset = (Cesium3DTilesSelection::Tileset*)_tileset;
+        auto rootTile = tileset->getRootTile();
+        if (rootTile)
+        {
+            auto bbox = Cesium3DTilesSelection::getOrientedBoundingBoxFromBoundingVolume(rootTile->getBoundingVolume());
+            auto& center = bbox.getCenter();
+            auto& lengths = bbox.getLengths();
+            float radius = std::max(lengths.x, std::max(lengths.y, lengths.z));
+            return osg::BoundingSphere(osg::Vec3(center.x, center.y, center.z), radius);
+        }
+    }
+    return osg::BoundingSphere();
 }

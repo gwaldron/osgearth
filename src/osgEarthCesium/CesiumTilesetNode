@@ -36,6 +36,8 @@ namespace osgEarth { namespace Cesium
         CesiumTilesetNode(const std::string& url);
 
         virtual void traverse(osg::NodeVisitor& nv);
+
+        osg::BoundingSphere computeBound() const override;
     private:        
         void* _tileset = nullptr;
     };

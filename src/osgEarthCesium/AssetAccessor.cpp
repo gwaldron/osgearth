@@ -90,7 +90,6 @@ AssetAccessor::get(const CesiumAsync::AsyncSystem& asyncSystem,
     const std::string& url,
     const std::vector<CesiumAsync::IAssetAccessor::THeader>& headers)
 {
-    OE_NOTICE << "get " << url << std::endl;
     auto request = std::make_shared<AssetRequest>("GET", url, headers);
     return asyncSystem.createFuture<std::shared_ptr<CesiumAsync::IAssetRequest>>(
         [&](const auto& promise)
@@ -140,7 +139,6 @@ AssetAccessor::request(
     const std::vector<CesiumAsync::IAssetAccessor::THeader>& headers,
     const gsl::span<const std::byte>& contentPayload)
 {
-    //std::cout << "request " << url << std::endl;
     auto request = std::make_shared<AssetRequest>(verb, url, headers);
     return asyncSystem.createFuture<std::shared_ptr<CesiumAsync::IAssetRequest>>(
         [&](const auto& promise)
@@ -151,5 +149,4 @@ AssetAccessor::request(
 
 void AssetAccessor::tick() noexcept
 {
-    OE_NOTICE << "tick()" << std::endl;
 }

@@ -29,19 +29,22 @@
 
 using namespace osgEarth::Cesium;
 
-CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, std::vector<int> overlays)
+CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, float maximumScreenSpaceError, std::vector<int> overlays)
 { 
     Cesium3DTilesSelection::TilesetExternals externals{
         Context::instance().assetAccessor, Context::instance().prepareRenderResources, Context::instance().asyncSystem, Context::instance().creditSystem, Context::instance().logger, nullptr
     };
 
     Cesium3DTilesSelection::TilesetOptions options;
+    options.forbidHoles = true;
+    options.enableOcclusionCulling = false;
+    options.maximumScreenSpaceError = maximumScreenSpaceError;
     Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, assetID, getCesiumIonKey(), options);
 
     for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
     {
         Cesium3DTilesSelection::RasterOverlayOptions rasterOptions;
-        const auto ionRasterOverlay = new Cesium3DTilesSelection::IonRasterOverlay("", 2, getCesiumIonKey(), rasterOptions);
+        const auto ionRasterOverlay = new Cesium3DTilesSelection::IonRasterOverlay("", *overlay, getCesiumIonKey(), rasterOptions);
         tileset->getOverlays().add(ionRasterOverlay);
     }    
     _tileset = tileset;
@@ -49,17 +52,37 @@ CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, std::vector<int> over
     setCullingActive(false);    
 }
 
-CesiumTilesetNode::CesiumTilesetNode(const std::string& url)
+CesiumTilesetNode::CesiumTilesetNode(const std::string& url, float maximumScreenSpaceError, std::vector<int> overlays)
 {
     Cesium3DTilesSelection::TilesetExternals externals{
         Context::instance().assetAccessor, Context::instance().prepareRenderResources, Context::instance().asyncSystem, Context::instance().creditSystem, Context::instance().logger, nullptr
     };
 
     Cesium3DTilesSelection::TilesetOptions options;
+    options.forbidHoles = true;
+    options.enableOcclusionCulling = false;
+    options.maximumScreenSpaceError = maximumScreenSpaceError;
     Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, url, options);
+    for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
+    {
+        Cesium3DTilesSelection::RasterOverlayOptions rasterOptions;
+        const auto ionRasterOverlay = new Cesium3DTilesSelection::IonRasterOverlay("", *overlay, getCesiumIonKey(), rasterOptions);
+        tileset->getOverlays().add(ionRasterOverlay);
+    }
     _tileset = tileset;
-
     setCullingActive(false);
+}
+
+float CesiumTilesetNode::getMaximumScreenSpaceError() const
+{
+    Cesium3DTilesSelection::Tileset* tileset = (Cesium3DTilesSelection::Tileset*)_tileset;
+    return tileset->getOptions().maximumScreenSpaceError;
+}
+
+void CesiumTilesetNode::setMaximumScreenSpaceError(float maximumScreenSpaceError)
+{
+    Cesium3DTilesSelection::Tileset* tileset = (Cesium3DTilesSelection::Tileset*)_tileset;
+    tileset->getOptions().maximumScreenSpaceError = maximumScreenSpaceError;
 }
 
 void

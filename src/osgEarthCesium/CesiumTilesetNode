@@ -32,12 +32,16 @@ namespace osgEarth { namespace Cesium
     class OSGEARTHCESIUM_EXPORT CesiumTilesetNode : public osg::Group
     {
     public:
-        CesiumTilesetNode(unsigned int assetID, std::vector<int> overlays = std::vector<int>());
-        CesiumTilesetNode(const std::string& url);
+        CesiumTilesetNode(unsigned int assetID, float maximumScreenSpaceError = 16.0f, std::vector<int> overlays = std::vector<int>());
+        CesiumTilesetNode(const std::string& url, float maximumScreenSpaceError = 16.0f, std::vector<int> overlays = std::vector<int>());
 
         virtual void traverse(osg::NodeVisitor& nv);
 
         osg::BoundingSphere computeBound() const override;
+
+        float getMaximumScreenSpaceError() const;
+        void setMaximumScreenSpaceError(float maximumScreenSpaceError);
+
     private:        
         void* _tileset = nullptr;
     };

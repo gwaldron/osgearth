@@ -33,6 +33,10 @@
 #include <osgEarth/ExampleResources>
 #include <osg/Camera>
 
+#ifdef HAVE_OSGEARTHCESIUM
+#include <osgEarthCesium/CesiumLayer>
+#endif
+
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -722,6 +726,23 @@ namespace osgEarth {
                                             visibleLayer->setColorBlending(modulate ? BLEND_MODULATE : BLEND_INTERPOLATE);
                                     }
 
+#ifdef HAVE_OSGEARTHCESIUM
+                                    auto cesiumNativeLayer = dynamic_cast<osgEarth::Cesium::CesiumNative3DTilesLayer*>(layer);
+                                    if (cesiumNativeLayer)
+                                    {
+                                        if (ImGuiLTable::Begin("Cesium Native"))
+                                        {
+                                            float sse = cesiumNativeLayer->getMaximumScreenSpaceError();
+                                            ImGui::PushID("sse");
+                                            ImGuiLTable::SliderFloat("SSE", &sse, 0.0f, 50.0f);
+                                            cesiumNativeLayer->setMaximumScreenSpaceError(sse);
+                                            ImGui::PopID();
+
+                                            ImGuiLTable::End();
+                                        }
+                                    }
+#endif
+
                                     auto threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(layer);
                                     if (threedTiles)
                                     {
@@ -748,6 +769,8 @@ namespace osgEarth {
                                         threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
                                         ImGui::PopID();
                                     }
+
+#
 
                                     auto mapboxGLLayer = dynamic_cast<MapBoxGLImageLayer*>(layer);
                                     if (mapboxGLLayer)

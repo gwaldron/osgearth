@@ -39,6 +39,7 @@ namespace osgEarth
                 OE_OPTION(unsigned int, assetId);
                 OE_OPTION(std::string, token);
                 OE_OPTION(int, rasterOverlay);
+                OE_OPTION(float, maximumScreenSpaceError);
                 virtual Config getConfig() const;
             private:
                 void fromConfig(const Config& conf);
@@ -62,6 +63,10 @@ namespace osgEarth
             //! Raster overlay to drape over this 3d tileset
             void setRasterOverlay(int value);
             int getRasterOverlay() const;
+
+            //! The maximum screen space error for this layer
+            float getMaximumScreenSpaceError() const;
+            void setMaximumScreenSpaceError(float maximumScreenSpaceError);
 
         public: // Layer
 

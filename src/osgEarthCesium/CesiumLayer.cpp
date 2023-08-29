@@ -37,6 +37,7 @@ CesiumNative3DTilesLayer::Options::getConfig() const
     conf.set("asset_id", _assetId);
     conf.set("token", _token);
     conf.set("raster_overlay", _rasterOverlay);
+    conf.set("max_sse", _maximumScreenSpaceError);
 
     return conf;
 }
@@ -44,10 +45,12 @@ CesiumNative3DTilesLayer::Options::getConfig() const
 void
 CesiumNative3DTilesLayer::Options::fromConfig(const Config& conf)
 {
+    _maximumScreenSpaceError.setDefault(16.0f);
     conf.get("url", _url);
     conf.get("asset_id", _assetId);
     conf.get("token", _token);
     conf.get("raster_overlay", _rasterOverlay);
+    conf.get("max_sse", _maximumScreenSpaceError);
 }
 
 //........................................................................
@@ -79,7 +82,12 @@ CesiumNative3DTilesLayer::openImplementation()
 
     if (_options->url().isSet())
     {
-        _tilesetNode = new CesiumTilesetNode(_options->url()->full());
+        std::vector<int> overlays;
+        if (_options->rasterOverlay().isSet())
+        {
+            overlays.push_back(*_options->rasterOverlay());
+        }
+        _tilesetNode = new CesiumTilesetNode(_options->url()->full(), *_options->maximumScreenSpaceError(), overlays);
     }
     else if (_options->assetId().isSet())
     {
@@ -88,7 +96,7 @@ CesiumNative3DTilesLayer::openImplementation()
         {
             overlays.push_back(*_options->rasterOverlay());
         }
-        _tilesetNode = new CesiumTilesetNode(*_options->assetId(), overlays);
+        _tilesetNode = new CesiumTilesetNode(*_options->assetId(), *_options->maximumScreenSpaceError(), overlays);
     }
 
     if (!_tilesetNode.valid())
@@ -123,4 +131,20 @@ osg::Node*
 CesiumNative3DTilesLayer::getNode() const
 {
     return _tilesetNode.get();
+}
+
+float
+CesiumNative3DTilesLayer::getMaximumScreenSpaceError() const
+{
+    return *options().maximumScreenSpaceError();
+}
+
+void
+CesiumNative3DTilesLayer::setMaximumScreenSpaceError(float maximumScreenSpaceError)
+{
+    options().maximumScreenSpaceError() = maximumScreenSpaceError;
+    if (_tilesetNode)
+    {
+        _tilesetNode->setMaximumScreenSpaceError(maximumScreenSpaceError);
+    }
 }

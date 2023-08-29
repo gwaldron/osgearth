@@ -25,12 +25,113 @@
 
 #include <osg/Texture2D>
 #include <osg/Geometry>
+#include <osgEarth/ImageUtils>
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osg/MatrixTransform>
 #include <glm/gtc/type_ptr.hpp>
 
 using namespace osgEarth::Cesium;
+
+namespace
+{
+
+    osg::Image* getOsgImage(CesiumGltf::ImageCesium& image)
+    {
+        GLenum format = GL_RGB;
+        GLenum texFormat = GL_RGB8;
+        GLenum type = GL_UNSIGNED_BYTE;
+
+        switch (image.compressedPixelFormat)
+        {
+        case CesiumGltf::GpuCompressedPixelFormat::NONE:
+            switch (image.channels)
+            {
+            case 1:
+                format = GL_R;
+                texFormat = GL_R8;
+                break;
+            case 2:
+                format = GL_RG;
+                texFormat = GL_RG8;
+                break;
+            case 3:
+                format = GL_RGB;
+                texFormat = GL_RGB8;
+                break;
+            case 4:
+                format = GL_RGBA;
+                texFormat = GL_RGBA8;
+                break;
+            }
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::ETC1_RGB:
+            format = GL_RGB;
+            texFormat = GL_ETC1_RGB8_OES;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::ETC2_RGBA:
+            format = GL_RGBA;
+            texFormat = GL_COMPRESSED_RGBA8_ETC2_EAC;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::BC1_RGB:
+            format = GL_RGB;
+            texFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::BC3_RGBA:
+            format = GL_RGB;
+            texFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::BC4_R:
+            format = GL_R;
+            texFormat = GL_COMPRESSED_RED_RGTC1_EXT;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::BC5_RG:
+            format = GL_RG;
+            texFormat = GL_COMPRESSED_RED_GREEN_RGTC2_EXT;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::BC7_RGBA:
+            OE_NOTICE << "Unsuported compressed format BC7_RGBA" << std::endl;
+            return nullptr;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::PVRTC1_4_RGB:
+            format = GL_RGB;
+            texFormat = GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::PVRTC1_4_RGBA:
+            format = GL_RGBA;
+            texFormat = GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::ASTC_4x4_RGBA:
+            format = GL_RGBA;
+            texFormat = GL_KHR_texture_compression_astc_hdr;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::PVRTC2_4_RGB:
+            OE_NOTICE << "Unsuported compressed format PVRTC2_4_RGB" << std::endl;
+            return nullptr;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::PVRTC2_4_RGBA:
+            OE_NOTICE << "Unsuported compressed format PVRTC2_4_RGBA" << std::endl;
+            return nullptr;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::ETC2_EAC_R11:
+            format = GL_R;
+            texFormat = GL_COMPRESSED_R11_EAC;
+            break;
+        case CesiumGltf::GpuCompressedPixelFormat::ETC2_EAC_RG11:
+            format = GL_RG;
+            texFormat = GL_COMPRESSED_RG11_EAC;
+            break;
+        default:
+            break;
+        }
+
+        osg::Image* osgImage = new osg::Image;
+        unsigned char* imgData = new unsigned char[image.pixelData.size()];
+        memcpy(imgData, &image.pixelData[0], image.pixelData.size());
+        osgImage->setImage(image.width, image.height, 1, texFormat, format, type, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
+        return osgImage;
+    }
+}
 
 
 LoadThreadResult::LoadThreadResult()
@@ -297,23 +398,7 @@ public:
             // Load the image
             auto& image = _model->images[texture.source].cesium;
 
-            osg::Image* osgImage = nullptr;
-            if (image.compressedPixelFormat == CesiumGltf::GpuCompressedPixelFormat::NONE)
-            {
-                // TODO:  Handle other channel counts
-                GLenum format = GL_RGB, texFormat = GL_RGB8;
-                if (image.channels == 4) format = GL_RGBA, texFormat = GL_RGBA8;
-
-                osgImage = new osg::Image;
-                //OE_NOTICE << "Loading image of size " << image.width << "x" << image.height << " components = " << image.component << " totalSize=" << image.image.size() << std::endl;
-                unsigned char* imgData = new unsigned char[image.pixelData.size()];
-                memcpy(imgData, &image.pixelData[0], image.pixelData.size());
-                osgImage->setImage(image.width, image.height, 1, texFormat, format, GL_UNSIGNED_BYTE, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
-            }
-            else
-            {
-                OE_NOTICE << "TODO:  Compressed textures" << std::endl;
-            }
+            osg::Image* osgImage = getOsgImage(image);
 
             if (osgImage)
             {
@@ -544,14 +629,7 @@ void* PrepareRendererResources::prepareRasterInLoadThread(
     CesiumGltf::ImageCesium& image,
     const std::any& rendererOptions)
 {
-    osg::Image* osgImage = new osg::Image;
-    // TODO:  Handle other channel counts and make this a generic function.
-    GLenum format = GL_RGB, texFormat = GL_RGB8;
-    if (image.channels == 4) format = GL_RGBA, texFormat = GL_RGBA8;
-
-    unsigned char* imgData = new unsigned char[image.pixelData.size()];
-    memcpy(imgData, &image.pixelData[0], image.pixelData.size());
-    osgImage->setImage(image.width, image.height, 1, texFormat, format, GL_UNSIGNED_BYTE, imgData, osg::Image::AllocationMode::USE_NEW_DELETE);
+    osg::Image* osgImage = getOsgImage(image);
 
     LoadRasterThreadResult* result = new LoadRasterThreadResult;
     result->image = osgImage;

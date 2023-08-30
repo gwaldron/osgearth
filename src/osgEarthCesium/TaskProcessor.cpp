@@ -37,6 +37,18 @@ TaskProcessor::~TaskProcessor()
 {
 }
 
+void TaskProcessor::shutdown()
+{    
+    // Wait for all jobs to finish
+    auto metrics = JobArena::get(CESIUM_ARENA_NAME)->metrics();
+    unsigned int totalJobs = metrics->numJobsPending + metrics->numJobsRunning;
+    while (totalJobs != 0)
+    {
+        std::this_thread::yield();        
+        totalJobs = metrics->numJobsPending + metrics->numJobsRunning;
+    }
+}
+
 void TaskProcessor::startTask(std::function<void()> f)
 {
     auto delegate = [this, f](Cancelable*) {

@@ -21,6 +21,7 @@
 */
 
 #include "Settings"
+#include "Context"
 
 // TODO:  Replace this with the default key from Cesium
 static std::string CESIUM_KEY = "";
@@ -52,4 +53,9 @@ std::string  osgEarth::Cesium::getCesiumIonKey()
 void osgEarth::Cesium::setCesiumIonKey(const std::string& key)
 {
     CESIUM_KEY = key;
+}
+
+void osgEarth::Cesium::shutdown()
+{
+    Context::instance().shutdown();
 }

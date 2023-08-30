@@ -54,6 +54,8 @@ namespace osgEarth {
 
             ~Context();
 
+            void shutdown();
+
             static Context& instance();
             
             std::shared_ptr< PrepareRendererResources > prepareRenderResources;

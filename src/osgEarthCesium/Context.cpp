@@ -42,6 +42,16 @@ Context::~Context()
 {
 }
 
+void Context::shutdown()
+{
+    // Shutdown the task processor
+    taskProcessor->shutdown();
+
+    // Finish off any main thread jobs
+    assetAccessor->tick();
+    asyncSystem.dispatchMainThreadTasks();
+}
+
 Context& Context::instance()
 {
     static Context s_context;

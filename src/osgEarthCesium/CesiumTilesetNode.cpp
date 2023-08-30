@@ -73,6 +73,13 @@ CesiumTilesetNode::CesiumTilesetNode(const std::string& url, float maximumScreen
     setCullingActive(false);
 }
 
+
+CesiumTilesetNode::~CesiumTilesetNode()
+{
+    Cesium3DTilesSelection::Tileset* tileset = (Cesium3DTilesSelection::Tileset*)_tileset;
+    delete tileset;
+}
+
 float CesiumTilesetNode::getMaximumScreenSpaceError() const
 {
     Cesium3DTilesSelection::Tileset* tileset = (Cesium3DTilesSelection::Tileset*)_tileset;

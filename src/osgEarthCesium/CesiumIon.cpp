@@ -40,19 +40,22 @@ void CesiumIon::refresh()
     connection.assets().thenInMainThread([this](Response<Assets>&& result) {
         assets.clear();
 
-        for (auto& a : result.value->items)
+        if (result.value.has_value())
         {
-            CesiumIonAsset asset;
-            asset.attribution = a.attribution;
-            asset.bytes = a.bytes;
-            asset.dateAdded = a.dateAdded;
-            asset.description = a.description;
-            asset.id = a.id;
-            asset.name = a.name;
-            asset.percentComplete = a.percentComplete;
-            asset.status = a.status;
-            asset.type = a.type;
-            assets.emplace_back(std::move(asset));
+            for (auto& a : result.value->items)
+            {
+                CesiumIonAsset asset;
+                asset.attribution = a.attribution;
+                asset.bytes = a.bytes;
+                asset.dateAdded = a.dateAdded;
+                asset.description = a.description;
+                asset.id = a.id;
+                asset.name = a.name;
+                asset.percentComplete = a.percentComplete;
+                asset.status = a.status;
+                asset.type = a.type;
+                assets.emplace_back(std::move(asset));
+            }
         }
      });
 }

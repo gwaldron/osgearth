@@ -35,6 +35,8 @@ namespace osgEarth { namespace Cesium
         CesiumTilesetNode(unsigned int assetID, float maximumScreenSpaceError = 16.0f, std::vector<int> overlays = std::vector<int>());
         CesiumTilesetNode(const std::string& url, float maximumScreenSpaceError = 16.0f, std::vector<int> overlays = std::vector<int>());
 
+        ~CesiumTilesetNode();
+
         virtual void traverse(osg::NodeVisitor& nv);
 
         osg::BoundingSphere computeBound() const override;

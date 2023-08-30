@@ -30,6 +30,8 @@ namespace osgEarth {
     {
         OSGEARTHCESIUM_EXPORT std::string  getCesiumIonKey();
         void OSGEARTHCESIUM_EXPORT setCesiumIonKey(const std::string& key);
+
+        OSGEARTHCESIUM_EXPORT void shutdown();
     }
 }
 

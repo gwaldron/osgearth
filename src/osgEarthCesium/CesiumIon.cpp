@@ -37,8 +37,13 @@ CesiumIon::CesiumIon()
 void CesiumIon::refresh()
 {
     Connection connection(Context::instance().asyncSystem, Context::instance().assetAccessor, getCesiumIonKey());
-    connection.assets().thenInMainThread([this](Response<Assets>&& result) {
+
+    bool loaded = false;
+
+    connection.assets().thenInMainThread([&](Response<Assets>&& result) {
         assets.clear();
+
+        loaded = true;
 
         if (result.value.has_value())
         {
@@ -58,4 +63,10 @@ void CesiumIon::refresh()
             }
         }
      });
+
+    // Wait for the assets to be loaded.
+    while (!loaded)
+    {
+        Context::instance().asyncSystem.dispatchMainThreadTasks();
+    }    
 }

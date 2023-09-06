@@ -5,8 +5,8 @@
 // Adapted and ported to GLSL from:
 // https://github.com/mmikk/hextile-demo
 
-const float ht_g_fallOffContrast = 0.6;
-const float ht_g_exp = 7;
+float ht_g_fallOffContrast = 0.6;
+float ht_g_exp = 7;
 
 #ifndef mul
 #define mul(X, Y) ((X)*(Y))
@@ -28,7 +28,7 @@ void ht_TriangleGrid(
     st *= HEX_SCALE; // 2 * 1.sqrt(3);
 
     // Skew input space into simplex triangle grid
-    const mat2 gridToSkewedGrid = mat2(1.0, -0.57735027, 0.0, 1.15470054);
+    mat2 gridToSkewedGrid = mat2(1.0, -0.57735027, 0.0, 1.15470054);
     vec2 skewedCoord = mul(gridToSkewedGrid, st);
 
     ivec2 baseId = ivec2(floor(skewedCoord));
@@ -57,7 +57,7 @@ void ht_TriangleGrid_f(
     st *= HEX_SCALE; // 2 * 1.sqrt(3);
 
     // Skew input space into simplex triangle grid
-    const mat2 gridToSkewedGrid = mat2(1.0, -0.57735027, 0.0, 1.15470054);
+    mat2 gridToSkewedGrid = mat2(1.0, -0.57735027, 0.0, 1.15470054);
     vec2 skewedCoord = mul(gridToSkewedGrid, st);
 
     vec2 baseId = floor(skewedCoord);
@@ -84,7 +84,7 @@ vec2 ht_hash(vec2 p)
 
 vec2 ht_MakeCenST(ivec2 Vertex)
 {
-    const mat2 invSkewMat = mat2(1.0, 0.5, 0.0, 1.0 / 1.15470054);
+    mat2 invSkewMat = mat2(1.0, 0.5, 0.0, 1.0 / 1.15470054);
     return mul(invSkewMat, Vertex) / HEX_SCALE;
 }
 
@@ -141,16 +141,16 @@ vec3 ht_ProduceHexWeights(vec3 W, ivec2 vertex1, ivec2 vertex2, ivec2 vertex3)
 // Output: convert vM to a derivative.
 vec2 ht_TspaceNormalToDerivative(in vec3 vM)
 {
-    const float scale = 1.0 / 128.0;
+    float scale = 1.0 / 128.0;
 
     // Ensure vM delivers a positive third component using abs() and
     // constrain vM.z so the range of the derivative is [-128; 128].
-    const vec3 vMa = abs(vM);
-    const float z_ma = max(vMa.z, scale*max(vMa.x, vMa.y));
+    vec3 vMa = abs(vM);
+    float z_ma = max(vMa.z, scale*max(vMa.x, vMa.y));
 
     // Set to match positive vertical texture coordinate axis.
-    const bool gFlipVertDeriv = true;
-    const float s = gFlipVertDeriv ? -1.0 : 1.0;
+    bool gFlipVertDeriv = true;
+    float s = gFlipVertDeriv ? -1.0 : 1.0;
     return -vec2(vM.x, s*vM.y) / z_ma;
 }
 
@@ -256,7 +256,7 @@ vec4 ht_hex2col(in sampler2D tex, in vec2 st, in float rotStrength, in float tra
     //vec4 c3 = textureGrad(tex, st3, dSTdx*rot3, dSTdy*rot3);
 
     // use luminance as weight
-    const vec3 Lw = vec3(0.299, 0.587, 0.114);
+    vec3 Lw = vec3(0.299, 0.587, 0.114);
     vec3 Dw = vec3(dot(c1.xyz, Lw), dot(c2.xyz, Lw), dot(c3.xyz, Lw));
 
     Dw = mix(vec3(1.0), Dw, ht_g_fallOffContrast);	// 0.6
@@ -337,7 +337,7 @@ void ht_hex2colTex_optimized(
     if (W == vec3(0))
     {
         // Use color's luminance as weighting factor
-        const vec3 Lw = vec3(0.299, 0.587, 0.114);
+        vec3 Lw = vec3(0.299, 0.587, 0.114);
         vec3 Dw = vec3(dot(c1.xyz, Lw), dot(c2.xyz, Lw), dot(c3.xyz, Lw));
         Dw = mix(vec3(1.0), Dw, ht_g_fallOffContrast);
         W = Dw * pow(weights, vec3(ht_g_exp));

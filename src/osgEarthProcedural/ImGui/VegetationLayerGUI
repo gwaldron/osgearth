@@ -8,7 +8,8 @@
 #include <osgEarth/FeatureNode>
 #include <osgEarth/ImGui/ImGui>
 
-namespace osgEarth {
+namespace osgEarth
+{
     namespace Procedural
     {
         using namespace osgEarth;
@@ -20,6 +21,8 @@ namespace osgEarth {
             bool _manualBiomes;
             bool _showBiomeUnderMouse;
             bool _showPlacements;
+            bool _simulateTreePlacement = false;
+            std::string _simulateTreePlacementOutput;
             std::unordered_map<const Biome*, bool> _isManualBiomeActive;
             osg::observer_ptr<BiomeLayer> _biolayer;
             osg::observer_ptr<VegetationLayer> _veglayer;
@@ -229,14 +232,62 @@ namespace osgEarth {
                         }
                     }
 
+                    static std::map<const Biome*, unsigned> biomeCounts;
+
                     if (ImGui::Checkbox("Show asset bounding boxes", &_showPlacements))
                     {
                         if (_showPlacements)
                         {
+                            biomeCounts.clear();
+
                             auto vp = camera(ri)->getViewport();
                             GeoPoint p = _mapNode->getGeoPointUnderMouse(view(ri), 0.5f*vp->width(), 0.5f*vp->height());
                             if (p.isValid())
                             {
+                                auto lod = _veglayer->options().group("trees").lod().get();
+                                TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p, lod);
+                                
+                                std::vector<VegetationLayer::Placement> placements;
+
+                                _veglayer->getAssetPlacements(
+                                    key,
+                                    "trees",
+                                    true,
+                                    placements,
+                                    nullptr);
+
+                                FeatureList features;
+                                
+                                for (auto& p : placements)
+                                {
+                                    // record the asset's position and properties as a point feature:
+                                    Point* point = new Point();
+                                    point->push_back(p.mapPoint());
+
+                                    osg::ref_ptr<Feature> feature = new Feature(point, key.getExtent().getSRS());
+                                    feature->set("elevation", p.mapPoint().z());
+
+                                    float width = std::max(
+                                        p.asset()->boundingBox().xMax() - p.asset()->boundingBox().xMin(),
+                                        p.asset()->boundingBox().yMax() - p.asset()->boundingBox().yMin());
+
+                                    float height =
+                                        p.asset()->boundingBox().zMax() - p.asset()->boundingBox().zMin();
+
+                                    feature->set("width", width * std::max(p.scale().x(), p.scale().y()));
+                                    feature->set("height", height * p.scale().z());
+                                    feature->set("rotation", p.rotation() * 180.0f / M_PI);
+                                    feature->set("name", p.asset()->assetDef()->name());
+
+                                    features.push_back(feature.get());
+
+                                    if (biomeCounts.find(p.biome) == biomeCounts.end())
+                                        biomeCounts[p.biome] = 0;
+                                    else
+                                        biomeCounts[p.biome]++;
+                                }
+
+#if 0
                                 auto lod = _veglayer->options().group("trees").lod().get();
                                 TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p, lod);
                                 VegetationFeatureGenerator gen;
@@ -244,6 +295,7 @@ namespace osgEarth {
                                 gen.setLayer(_veglayer.get());
                                 FeatureList features;
                                 gen.getFeatures(key.getExtent(), features);
+#endif
 
                                 Style s;
                                 s.getOrCreate<ModelSymbol>()->url()->setLiteral("D:/data/splat/assets/models/unitbox.osg");
@@ -264,6 +316,21 @@ namespace osgEarth {
                                 _placementNode->getParent(0)->removeChild(_placementNode.get());
                             _placementNode = nullptr;
                         }
+                    }
+
+                    if (_showPlacements)
+                    {
+                        for (auto iter : biomeCounts)
+                        {
+                            std::string biome_name = iter.first ? iter.first->name().get() : "null";
+                            ImGui::Text("(%ld) %s", iter.second, biome_name.c_str());
+                        }
+                    }
+
+                    ImGui::Checkbox("Simulate tree placement under mouse", &_simulateTreePlacement);
+                    if (_simulateTreePlacement)
+                    {
+                        ImGui::TextWrapped(_simulateTreePlacementOutput.c_str());
                     }
 
                     ImGui::Separator();
@@ -430,6 +497,16 @@ namespace osgEarth {
                                 });
                         }
                     }
+                }
+
+                if (_simulateTreePlacement)
+                {
+                    GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
+                    _simulateTreePlacementOutput = _veglayer->simulateAssetPlacement(p, "trees");
+                }
+                else
+                {
+                    _simulateTreePlacementOutput = {};
                 }
             }
         };

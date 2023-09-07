@@ -1547,6 +1547,7 @@ VegetationLayer::getAssetPlacements(
                 p.rotation() = rotation;
                 p.asset() = asset;
                 p.density() = density;
+                p.biome = biome;
 
                 result.emplace_back(std::move(p));
             }
@@ -1601,6 +1602,222 @@ VegetationLayer::getAssetPlacements(
     output = std::move(result);
     return true;
 }
+
+
+#if 1
+std::string
+VegetationLayer::simulateAssetPlacement(
+    const GeoPoint& point,
+    const std::string& group) const
+{
+    const bool loadBiomesOnDemand = true;
+    ProgressCallback* progress = nullptr;
+
+    std::stringstream log;
+
+    // bail out if the Map has disappeared
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
+    {
+        log << "Map pointer is null" << std::endl;
+        return log.str();
+    }
+
+    // bail out if missing or disabled group
+    const Options::Group& groupOptions = options().group(group);
+    if (groupOptions.enabled() == false)
+    {
+        log << "Group " << group << " is disabled - abort" << std::endl;
+        return log.str();
+    }
+
+
+    TileKey key = map->getProfile()->createTileKey(point, groupOptions.lod().get());
+    log << "Resolved to tile key " << key.str() << std::endl;
+
+    std::vector<Placement> result;
+
+    // Safely copy the instance list. The object is immutable
+    // once we get to this point, since all assets are materialized
+    // by the biome manager.
+    AssetsByBiomeId groupAssets;
+
+    if (loadBiomesOnDemand == false)
+    {
+        ScopedMutexLock lock(_assets);
+
+        auto iter = _assets.find(group);
+        if (iter == _assets.end())
+            return false; // data is unavailable.
+        else
+            groupAssets = iter->second; //shallow copy
+
+        // if it's empty, bail out (and probably return later)
+        if (groupAssets.empty())
+        {
+            log << "Asset list is empty for group " << group << " - abort" << std::endl;
+            return log.str();
+        }
+    }
+
+    // Load a lifemap raster:
+    GeoImage lifemap;
+    osg::Matrix lifemap_sb;
+    if (getLifeMapLayer())
+    {
+        // Cannot use getBestAvailableKey here because lifemap might use
+        // a post-layer for dynamic terrain, and post-layers do not yet
+        // publish dataextents to their hosts
+        for (TileKey bestKey = key;
+            bestKey.valid() && !lifemap.valid();
+            bestKey.makeParent())
+        {
+            lifemap = getLifeMapLayer()->createImage(bestKey, progress);
+            if (lifemap.valid())
+            {
+                key.getExtent().createScaleBias(lifemap.getExtent(), lifemap_sb);
+                log << "Sampled lifemap at LOD " << bestKey.getLOD() << std::endl;
+            }
+        }
+    }
+
+    // Load a biome map raster:
+    GeoImage biomemap;
+    osg::Matrix biomemap_sb;
+    if (getBiomeLayer())
+    {
+        TileKey maxKey = key; // map->getProfile()->createTileKey(point, 19);
+        TileKey bestKey = getBiomeLayer()->getBestAvailableTileKey(maxKey);
+        biomemap = getBiomeLayer()->createImage(bestKey, progress);
+        key.getExtent().createScaleBias(biomemap.getExtent(), biomemap_sb);
+        biomemap.getReader().setBilinear(false);
+        log << "Sampled biomemap at LOD " << bestKey.getLOD() << std::endl;
+    }
+
+    // Prepare to deal with holes in the terrain, where we do not want
+    // to place vegetation
+    std::vector<TerrainConstraint> constraints;
+    _constraintQuery.getConstraints(key, constraints, progress);
+
+    // If the biome residency is not up to date, do that now
+    // after loading the biome map.
+    if (loadBiomesOnDemand)
+    {
+        if (checkForNewAssets() == true)
+        {
+            _newAssets.join(progress);
+            AssetsByGroup newAssets = _newAssets.release();
+            if (!newAssets.empty())
+            {
+                ScopedMutexLock lock(_assets);
+                _assets = std::move(newAssets);
+            }
+        }
+
+        // make a shallow copy of assets list safely
+        {
+            ScopedMutexLock lock(_assets);
+            auto iter = _assets.find(group);
+            if (iter == _assets.end())
+                return false;
+            else
+                groupAssets = iter->second; // shallow copy
+        }
+
+        // if it's empty, bail out (and probably return later)
+        if (groupAssets.empty())
+        {
+            log << "Asset group " << group << " is empty when loading biomes on demand - abort" << std::endl;
+            return log.str();
+        }
+    }
+
+    const Biome* default_biome = groupAssets.begin()->second.biome;
+
+    osg::Vec4f noise;
+    ImageUtils::PixelReader readNoise(_noiseTex->osgTexture()->getImage(0));
+    readNoise.setSampleAsRepeatingTexture(true);
+
+    // indicies of assets selected based on their lushness
+    std::vector<unsigned> assetIndices;
+
+    // cumulative density function based on asset weights
+    std::vector<float> assetCDF;
+
+
+    auto catalog = getBiomeLayer()->getBiomeCatalog();
+    auto& ex = key.getExtent();
+    osg::Vec4f lifemap_value;
+    osg::Vec4f biomemap_value;
+
+    // random tile-normalized position:
+    float u = (point.x() - ex.xMin()) / ex.width();
+    float v = (point.y() - ex.yMin()) / ex.height();
+
+    log << "Tile uv = " << u << ", " << v << std::endl;
+
+    // resolve the biome at this position:
+    const Biome* biome = nullptr;
+    if (biomemap.valid())
+    {
+        float uu = u * biomemap_sb(0, 0) + biomemap_sb(3, 0);
+        float vv = v * biomemap_sb(1, 1) + biomemap_sb(3, 1);
+        biomemap.getReader()(biomemap_value, uu, vv);
+        int index = (int)biomemap_value.r();
+        biome = catalog->getBiomeByIndex(index);
+        if (!biome)
+        {
+            log << "No biome at those coordinates" << std::endl;
+            return log.str();
+        }
+    }
+
+    log << "Biome: " << biome->id() << " - " << biome->name().get() << std::endl;
+
+    // fetch the collection of assets belonging to the selected biome:
+    auto iter = groupAssets.find(biome->id());
+    if (iter == groupAssets.end())
+    {
+        log << "Biome contains no " << group << std::endl;
+        return log.str();
+    }
+
+    // sample the noise texture at this (u,v)
+    readNoise(noise, u, v);
+
+    // read the life map at this point:
+    float density = 1.0f;
+    float lush = 1.0f;
+    if (lifemap.valid())
+    {
+        float uu = u * lifemap_sb(0, 0) + lifemap_sb(3, 0);
+        float vv = v * lifemap_sb(1, 1) + lifemap_sb(3, 1);
+        lifemap.getReader()(lifemap_value, uu, vv);
+        density = lifemap_value[LIFEMAP_DENSE];
+        lush = lifemap_value[LIFEMAP_LUSH];
+    }
+
+    log << "Density=" << density << "  Lush=" << lush << std::endl;
+
+    ResidentBiomeModelAssetInstances& biome_assets = iter->second;
+
+    log << "Candidate assets: " << std::endl;
+    for (auto& ai : biome_assets.instances)
+    {
+        log << "> " << ai.residentAsset()->assetDef()->name()
+            << " weight=" << ai.weight()
+            << " fill=" << ai.coverage()
+            << " lush=[" << ai.residentAsset()->assetDef()->minLush().get() << ", "
+            << ai.residentAsset()->assetDef()->maxLush().get() << "]"
+            << std::endl;
+    }
+
+    if (density == 0.0f)
+        log << "NOTE: density is zero, no asset placed." << std::endl;
+
+    return log.str();
+}
+#endif
 
 osg::ref_ptr<osg::Drawable>
 VegetationLayer::createDrawable(

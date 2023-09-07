@@ -537,11 +537,11 @@ BiomeCatalog::BiomeCatalog(const Config& conf) :
 
                 // By default the parent is unset, but this may change in the
                 // search block that follows. An implicit biome without a 
-                // similarly filtered parent should render nothing.
+                // similarly trait-ed parent should render nothing.
                 new_biome.parentId().clear();
 
                 // serach "up the chain" to see if there's a parent that can 
-                // support fallback for this particular filter
+                // support fallback for this particular trait
                 const Biome* ptr = &biome;
                 while (ptr)
                 {

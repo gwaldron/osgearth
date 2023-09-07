@@ -224,6 +224,19 @@ TFSFeatureSource::openImplementation()
         {
             fp->geoInterp() = options().geoInterp().get();
         }
+
+        // If not overridden by the layer, use the TFS min/max levels
+        // Otherwise, only level 0 will ever be loaded
+        if (!options().minLevel().isSet())
+        {
+            setMinLevel(fp->getFirstLevel());
+        }
+
+        if (!options().maxLevel().isSet())
+        {
+            setMaxLevel(fp->getMaxLevel());
+        }
+
     }
     else
     {

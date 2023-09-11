@@ -18,6 +18,7 @@
  */
 #include <osgEarth/LayerShader>
 #include <osgEarth/ShaderLoader>
+#include <osgEarth/ShaderUtils>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/Color>
 #include <osgEarth/Layer>
@@ -142,7 +143,9 @@ LayerShader::install(Layer* layer, TerrainResources* res)
     vp->setName(layer->getName());
     ShaderPackage package;
     package.add("", _options.code());
-    package.loadAll(vp, layer->getReadOptions());
+
+    ShaderLoader::load(vp, "", package, layer->getReadOptions());
+    //package.loadAll(vp, layer->getReadOptions());
 
     for (int i = 0; i < _options.samplers().size(); ++i)
     {

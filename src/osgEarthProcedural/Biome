@@ -271,7 +271,7 @@ namespace osgEarth
         private:
             int _index;
             Biome* _parentBiome;
-            bool _implicit; // whether this biome really exists or was derived by filters
+            bool _implicit; // whether this biome really exists or was derived by traits
             friend class BiomeCatalog;
         };
 

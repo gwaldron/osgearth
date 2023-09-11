@@ -334,16 +334,14 @@ MapNode::open()
         HTTPClient::setProxySettings( options().proxySettings().get() );
     }
 
-    // load and attach the terrain engine.
-    _terrainEngine = TerrainEngineNode::create(options().terrain().get());
-
     // Install a callback that lets this MapNode know about any changes
     // to the map, and invoke it manually now so they start out in sync.
     _mapCallback = new MapNodeMapCallbackProxy(this);
     _map->addMapCallback( _mapCallback.get() );
     _mapCallback->invokeOnLayerAdded(_map.get());
 
-    // Give the terrain engine a map to render.
+    // load and attach the terrain engine.
+    _terrainEngine = TerrainEngineNode::create(options().terrain().get());
     if ( _terrainEngine )
     {
         _terrainEngine->setMap(_map.get(), options().terrain().get());
@@ -352,6 +350,12 @@ MapNode::open()
     {
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
     }
+
+    // now that the terrain engine exists, we can invoke the rendering callback
+    LayerVector layers;
+    _map->getLayers(layers, [&](const Layer* layer) { return layer->isOpen(); });
+    for (auto& layer : layers)
+        layer->invoke_prepareForRendering(getTerrainEngine());
 
     // initialize terrain-level lighting:
     if ( options().terrain()->enableLighting().isSet() )
@@ -446,9 +450,12 @@ MapNode::open()
     VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
     vp->setName(className());
     Shaders shaders;
+
     shaders.load(vp, shaders.PBR);
     stateset->setDefine("OE_USE_PBR");
 
+    shaders.load(vp, shaders.HexTilingLib);
+    stateset->setDefine("OE_HAVE_HEX_TILING");
 
     dirtyBound();
 
@@ -768,7 +775,8 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     if (!layer || !layer->isOpen())
         return;
 
-    layer->invoke_prepareForRendering(getTerrainEngine());
+    if (getTerrainEngine())
+        layer->invoke_prepareForRendering(getTerrainEngine());
 
     // Create the layer's node, if it has one:
     osg::Node* node = layer->getNode();

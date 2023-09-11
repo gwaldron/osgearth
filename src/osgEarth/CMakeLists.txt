@@ -61,6 +61,7 @@ set(TARGET_GLSL
     DrawInstancedAttribute.glsl
     GPUClamping.glsl
     GPUClamping.lib.glsl
+    HexTiling.glsl
     Instancing.glsl
     LineDrawable.glsl
     MetadataNode.glsl

@@ -23,6 +23,13 @@ endif(COMMAND cmake_policy)
 SET_PROPERTY( GLOBAL PROPERTY USE_FOLDERS ON )
 SET_PROPERTY( GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets" )
 
+# if using vcpkg, configure overlays
+if (${CMAKE_TOOLCHAIN_FILE} MATCHES ".*vcpkg.cmake.*")
+    message(STATUS "Building with vcpkg toolchain.")
+    set(USING_VCPKG ON)
+    set(VCPKG_OVERLAY_TRIPLETS ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/triplets)
+endif()
+
 PROJECT(OSGEARTH)
 
 # SDK version number (informational)

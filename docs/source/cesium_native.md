@@ -103,12 +103,7 @@ main(int argc, char** argv)
 
         auto creditsNode = new osgEarth::Cesium::CesiumCreditsNode(&viewer);
         root->addChild(creditsNode);
-        while (!viewer.done())
-        {
-            creditsNode->startCredits();
-            viewer.frame();
-            creditsNode->endCredits();            
-        }
+        return viewer.run();
     }
 
     return 0;

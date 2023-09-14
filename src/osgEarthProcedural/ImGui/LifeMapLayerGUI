@@ -139,7 +139,7 @@ namespace osgEarth
                     if (o.landCoverWeight().value() > 0.0f)
                     {
                         float value = o.landCoverBlur()->as(Units::METERS);
-                        if (ImGuiLTable::SliderFloat("Coverage blur (m)", &value, 0.0f, 100.0f))
+                        if (ImGuiLTable::SliderFloat("Coverage blur (m)", &value, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
                             o.landCoverBlur()->set(value, Units::METERS);
                     }
 

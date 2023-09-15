@@ -19,6 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "CesiumLayer"
+#include "Settings"
 
 #include <osgEarth/Registry>
 
@@ -80,6 +81,13 @@ CesiumNative3DTilesLayer::openImplementation()
 
     osg::ref_ptr< osgDB::Options > readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(this->getReadOptions());
 
+    std::string token = options().token().get();
+    if (token.empty())
+    {
+        token = getCesiumIonKey();
+
+    }
+
     if (_options->url().isSet())
     {
         std::vector<int> overlays;
@@ -87,7 +95,7 @@ CesiumNative3DTilesLayer::openImplementation()
         {
             overlays.push_back(*_options->rasterOverlay());
         }
-        _tilesetNode = new CesiumTilesetNode(_options->url()->full(), *_options->maximumScreenSpaceError(), overlays);
+        _tilesetNode = new CesiumTilesetNode(_options->url()->full(), token, *_options->maximumScreenSpaceError(), overlays);
     }
     else if (_options->assetId().isSet())
     {
@@ -96,7 +104,7 @@ CesiumNative3DTilesLayer::openImplementation()
         {
             overlays.push_back(*_options->rasterOverlay());
         }
-        _tilesetNode = new CesiumTilesetNode(*_options->assetId(), *_options->maximumScreenSpaceError(), overlays);
+        _tilesetNode = new CesiumTilesetNode(*_options->assetId(), token, *_options->maximumScreenSpaceError(), overlays);
     }
 
     if (!_tilesetNode.valid())

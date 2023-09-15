@@ -23,6 +23,7 @@
 
 #include <osgEarth/Notify>
 #include <osgEarth/URI>
+#include <osgEarth/Registry>
 
 using namespace osgEarth;
 using namespace osgEarth::Cesium;
@@ -85,25 +86,35 @@ gsl::span<const std::byte> AssetResponse::data() const
 
 /**********************************************/
 
+AssetAccessor::AssetAccessor()
+{
+    _options = new osgDB::Options;
+    _cacheSettings = new CacheSettings;
+    _cacheSettings->setCache(Registry::instance()->getDefaultCache());
+    _cacheSettings->store(_options.get());
+}
+
 CesiumAsync::Future<std::shared_ptr<CesiumAsync::IAssetRequest>>
 AssetAccessor::get(const CesiumAsync::AsyncSystem& asyncSystem,
     const std::string& url,
     const std::vector<CesiumAsync::IAssetAccessor::THeader>& headers)
 {
+    osg::ref_ptr<osgDB::Options> options = _options.get();
     auto request = std::make_shared<AssetRequest>("GET", url, headers);
     return asyncSystem.createFuture<std::shared_ptr<CesiumAsync::IAssetRequest>>(
         [&](const auto& promise)
         {
-            asyncSystem.runInWorkerThread([promise, request, url, headers]() {
+            asyncSystem.runInWorkerThread([promise, request, url, headers, options]() {
                 // This should run in another thread.
                 URIContext uriContext;
                 for (auto header : headers)
                 {
                     uriContext.addHeader(header.first, header.second);
                 }
-
+                
                 URI uri(url, uriContext);
-                auto httpResponse = uri.readString();
+
+                auto httpResponse = uri.readString(options.get());
                 std::unique_ptr< AssetResponse > response = std::make_unique< AssetResponse >();
 
                 if (httpResponse.code() == ReadResult::RESULT_OK)

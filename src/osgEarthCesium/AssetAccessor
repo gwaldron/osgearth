@@ -24,6 +24,8 @@
 
 #include <CesiumAsync/IAssetAccessor.h>
 #include <CesiumAsync/IAssetResponse.h>
+#include <osgDB/Options>
+#include <osgEarth/Cache>
 
 namespace osgEarth {
     namespace Cesium
@@ -72,6 +74,8 @@ namespace osgEarth {
         class AssetAccessor : public CesiumAsync::IAssetAccessor
         {
         public:
+            AssetAccessor();
+
             virtual CesiumAsync::Future<std::shared_ptr<CesiumAsync::IAssetRequest>>
                 get(const CesiumAsync::AsyncSystem& asyncSystem,
                     const std::string& url,
@@ -87,6 +91,10 @@ namespace osgEarth {
                     const gsl::span<const std::byte>& contentPayload) override;
 
             virtual void tick() noexcept override;
+
+        private:
+            osg::ref_ptr< osgDB::Options > _options;
+            osg::ref_ptr<CacheSettings> _cacheSettings;
         };
     }
 }

@@ -234,6 +234,13 @@ FeatureModelLayer::getExtent() const
         s_invalid;
 }
 
+unsigned
+FeatureModelLayer::residentTiles() const
+{
+    auto fmg = findTopMostNodeOfType<FeatureModelGraph>(_root.get());
+    return fmg ? (unsigned)fmg->loadedTiles : 0u;
+}
+
 void
 FeatureModelLayer::addedToMap(const Map* map)
 {

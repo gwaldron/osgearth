@@ -111,6 +111,8 @@ namespace osgEarth
         //! Serialization
         virtual Config getConfig() const;
 
+        unsigned residentTiles() const;
+
     protected: // Layer
         
         // called by the map when this layer is added

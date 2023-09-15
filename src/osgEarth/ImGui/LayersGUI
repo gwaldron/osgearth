@@ -833,6 +833,13 @@ namespace osgEarth {
                                         ImGui::Text("Upsampling is OFF");
                                     }
                                 }
+
+                                auto fml = dynamic_cast<FeatureModelLayer*>(layer);
+                                if (fml)
+                                {
+                                    ImGui::Text("Resident tiles: %u", fml->residentTiles());
+                                }
+
                                 const GeoExtent& extent = layer->getExtent();
                                 if (extent.isValid())
                                 {

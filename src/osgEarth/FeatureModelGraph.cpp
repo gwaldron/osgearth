@@ -1501,6 +1501,11 @@ FeatureModelGraph::buildTile(
             }
         }
 
+        if (group.valid() && group->getBound().valid())
+        {
+            group->getOrCreateUserDataContainer()->addUserObject(new Util::TrackerTag(loadedTiles));
+        }
+
         return group;
     }
 

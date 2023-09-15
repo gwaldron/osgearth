@@ -47,6 +47,26 @@ namespace osgEarth { namespace Util
     using namespace osgEarth::Threading;
 
     /**
+    * Tracking object - place this in a user data container to track the
+    * construction and destruction of objects.
+    */
+    struct TrackerTag : public osg::Object
+    {
+        META_Object(osgEarth, TrackerTag);
+
+        std::atomic_int* _count;
+
+        TrackerTag() : _count(nullptr) { }
+        TrackerTag(const TrackerTag& rhs, const osg::CopyOp&) : _count(rhs._count) { }
+        TrackerTag(std::atomic_int& count) : _count(&count) {
+            ++(*_count);
+        }
+        ~TrackerTag() {
+            --(*_count);
+        }
+    };
+
+    /**
      * Utility for storing observables in an osg::Object
      */
     class ObjectStorage

@@ -7,7 +7,7 @@ set VCPKG_TOOLCHAIN_FILE=%VCPKG_DIR%\scripts\buildsystems\vcpkg.cmake
 
 if not exist %VCPKG_TOOLCHAIN_FILE% (
     set ERROR_MSG=Please set the VCPKG_DIR environment variable to your vcpkg install location
-    goto usage
+    goto :usage
 )
 
 :: Argument parser from: https://stackoverflow.com/a/8162578
@@ -59,21 +59,30 @@ echo Architecture = %ARCHITECTURE%
 choice /C:YN /M Continue?
 if ERRORLEVEL == 2 goto :usage
 
-if not exist "%SOURCE_DIR%\vcpkg.json" (
-    set ERROR_MSG=No vcpkg.json found in source folder. Run this script from the root folder of the git repository
+set MANIFEST_DIR="%SOURCE_DIR%\vcpkg"
+
+if not exist "%MANIFEST_DIR%\vcpkg.json" (
+    set ERROR_MSG=No vcpkg.json manifest found. Run this script from the root folder of the git repository
     goto usage
 )
 
 :: Run CMAKE
 mkdir %BUILD_DIR%
+
+if exist %BUILD_DIR%\CMakeCache.txt (
+    del %BUILD_DIR%\CMakeCache.txt
+)
+
 cmake ^
     -S "%SOURCE_DIR%" ^
     -B "%BUILD_DIR%" ^
     -G "%COMPILER%" ^
     -A %ARCHITECTURE% ^
     -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
-    -DCMAKE_INSTALL_PREFIX="%INSTALL_DIR%"
-    
+    -DCMAKE_INSTALL_PREFIX="%INSTALL_DIR%" ^
+    -DCMAKE_TOOLCHAIN_FILE=%VCPKG_TOOLCHAIN_FILE% ^
+    -DVCPKG_MANIFEST_DIR="%MANIFEST_DIR%"
+
 goto end
 
 :usage

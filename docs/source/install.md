@@ -1,7 +1,18 @@
 # Getting started with osgEarth
 
 ## Installation
-The easiest way to install and use osgEarth is with the `vcpkg` package manager. There are two ways to go about it.
+The easiest way to install and use osgEarth is with the `vcpkg` package manager. There are two ways to go about it. But first...
+
+### Update the OpenSceneGraph vcpkg build
+OsgEarth depends on the OpenSceneGraph (OSG) SDK. OSG is available through vcpkg, but the confiruation is for OpenGL 2 and osgEarth needs to use OpenGL 3. So we need to make a simple change.
+
+In the folder where you installed `vcpkg`, find the file `ports/osg/portfile.cmake`, and locate this block:
+```
+if(NOT DEFINED osg_OPENGL_PROFILE)
+    set(osg_OPENGL_PROFILE "GL2")
+endif()
+```
+Set the `osg_OPENGL_PROFILE` variable to `GL3`. You are now good to go.
 
 ### Method 1: Do it manually
 You can install osgEarth manually using this command:

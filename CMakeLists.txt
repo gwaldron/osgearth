@@ -103,7 +103,6 @@ INCLUDE(oe_osx)
 INCLUDE(oe_unix)
 INCLUDE(oe_win32)
 
-
 # ........................................................................
 # Optional build targets
 
@@ -113,6 +112,7 @@ option(OSGEARTH_BUILD_TESTS "Build the osgEarth unit tests" ON)
 
 option(OSGEARTH_BUILD_PROCEDURAL_NODEKIT "Build the procedural terrain nodekit (osgEarthProcedural)" OFF)
 option(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT "Build the legacy procedural nodekit (osgEarthSplat)" OFF)
+option(OSGEARTH_BUILD_CESIUM_NODEKIT "Build the Cesium nodekit (osgEarthCesium)" OFF)
 option(OSGEARTH_BUILD_TRITON_NODEKIT "Build support for SunDog Triton SDK" OFF)
 option(OSGEARTH_BUILD_SILVERLINING_NODEKIT "Build support for SunDog SilverLining SDK" OFF)
 option(OSGEARTH_BUILD_LEVELDB_CACHE "Build the LevelDB cache plugin" OFF)
@@ -168,7 +168,10 @@ find_package(Protobuf)
 find_package(WEBP)
 find_package(Blend2D)
 find_package(Blosc)
-find_package(CesiumNative)
+
+if(OSGEARTH_BUILD_CESIUM_NODEKIT)
+    find_package(CesiumNative)
+endif()
 
 if(OSGEARTH_ENABLE_PROFILING)
     find_package(Tracy)

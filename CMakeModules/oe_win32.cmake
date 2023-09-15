@@ -11,15 +11,9 @@ IF(WIN32 AND NOT ANDROID)
   #ENDIF()    
 
   IF(MSVC)
-        # This option is to enable the /MP switch for Visual Studio 2005 and above compilers
-        OPTION(WIN32_USE_MP "Set to ON to build multiprocessor option (/MP)" OFF)
-        MARK_AS_ADVANCED(WIN32_USE_MP)
-        IF(WIN32_USE_MP)
-            SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
-        ENDIF(WIN32_USE_MP)
-
-        # More MSVC specific compilation flags
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
         ADD_DEFINITIONS(-D_SCL_SECURE_NO_WARNINGS)
         ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE)
     ENDIF(MSVC)
+    
 ENDIF(WIN32 AND NOT ANDROID)

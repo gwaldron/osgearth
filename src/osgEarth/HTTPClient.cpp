@@ -1553,7 +1553,7 @@ HTTPClient::doGet(const HTTPRequest&    request,
             // from the server each time it is it requested.
             bool noCache = false;
             std::string cacheControl = result.metadata().value("cache-control");
-            if (cacheControl.find_first_of("no-cache") != std::string::npos)
+            if (cacheControl.find("no-cache") != std::string::npos)
             {
                 noCache = true;
             }

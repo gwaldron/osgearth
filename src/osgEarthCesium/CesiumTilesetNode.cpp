@@ -29,7 +29,7 @@
 
 using namespace osgEarth::Cesium;
 
-CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, float maximumScreenSpaceError, std::vector<int> overlays)
+CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, const std::string& token, float maximumScreenSpaceError, std::vector<int> overlays)
 { 
     Cesium3DTilesSelection::TilesetExternals externals{
         Context::instance().assetAccessor, Context::instance().prepareRenderResources, Context::instance().asyncSystem, Context::instance().creditSystem, Context::instance().logger, nullptr
@@ -39,12 +39,12 @@ CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, float maximumScreenSp
     options.forbidHoles = true;
     options.enableOcclusionCulling = false;
     options.maximumScreenSpaceError = maximumScreenSpaceError;
-    Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, assetID, getCesiumIonKey(), options);
+    Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, assetID, token, options);
 
     for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
     {
         Cesium3DTilesSelection::RasterOverlayOptions rasterOptions;
-        const auto ionRasterOverlay = new Cesium3DTilesSelection::IonRasterOverlay("", *overlay, getCesiumIonKey(), rasterOptions);
+        const auto ionRasterOverlay = new Cesium3DTilesSelection::IonRasterOverlay("", *overlay, token, rasterOptions);
         tileset->getOverlays().add(ionRasterOverlay);
     }    
     _tileset = tileset;
@@ -52,7 +52,7 @@ CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, float maximumScreenSp
     setCullingActive(false);    
 }
 
-CesiumTilesetNode::CesiumTilesetNode(const std::string& url, float maximumScreenSpaceError, std::vector<int> overlays)
+CesiumTilesetNode::CesiumTilesetNode(const std::string& url, const std::string& token, float maximumScreenSpaceError, std::vector<int> overlays)
 {
     Cesium3DTilesSelection::TilesetExternals externals{
         Context::instance().assetAccessor, Context::instance().prepareRenderResources, Context::instance().asyncSystem, Context::instance().creditSystem, Context::instance().logger, nullptr
@@ -66,7 +66,7 @@ CesiumTilesetNode::CesiumTilesetNode(const std::string& url, float maximumScreen
     for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
     {
         Cesium3DTilesSelection::RasterOverlayOptions rasterOptions;
-        const auto ionRasterOverlay = new Cesium3DTilesSelection::IonRasterOverlay("", *overlay, getCesiumIonKey(), rasterOptions);
+        const auto ionRasterOverlay = new Cesium3DTilesSelection::IonRasterOverlay("", *overlay, token, rasterOptions);
         tileset->getOverlays().add(ionRasterOverlay);
     }
     _tileset = tileset;

@@ -32,8 +32,8 @@ namespace osgEarth { namespace Cesium
     class OSGEARTHCESIUM_EXPORT CesiumTilesetNode : public osg::Group
     {
     public:
-        CesiumTilesetNode(unsigned int assetID, float maximumScreenSpaceError = 16.0f, std::vector<int> overlays = std::vector<int>());
-        CesiumTilesetNode(const std::string& url, float maximumScreenSpaceError = 16.0f, std::vector<int> overlays = std::vector<int>());
+        CesiumTilesetNode(unsigned int assetID, const std::string& token = "", float maximumScreenSpaceError = 16.0f, std::vector<int> overlays = std::vector<int>());
+        CesiumTilesetNode(const std::string& url, const std::string& token = "", float maximumScreenSpaceError = 16.0f, std::vector<int> overlays = std::vector<int>());
 
         ~CesiumTilesetNode();
 

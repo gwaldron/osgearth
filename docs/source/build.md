@@ -78,6 +78,9 @@ set PATH=%PATH%;path\to\build\vcpkg_installed\x64-windows\tools\osg
 set PATH=%PATH%;[installroot]
 ```
 
+## Building with support for cesium-native
+See documentation at [here](cesium_native.html) for building osgEarth with support for cesium-native.
+
 ## Checking for an OpenGL Core Profile Context
 Some situations require you to have an OpenGL Core Profile context.  The ability to create a core context is available when OSG is built with OPENGL_PROFILE=GL3 or GLCORE.  Environments such as Apple OSX and VMWare require it as does debugging with tools like NVidia NSight.  You can check to see if you are running with an OpenGL Core Profile by running a command like this (Windows)
 ```

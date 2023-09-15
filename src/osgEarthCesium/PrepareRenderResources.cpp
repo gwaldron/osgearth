@@ -29,6 +29,7 @@
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osg/MatrixTransform>
+#include <osgUtil/SmoothingVisitor>
 #include <glm/gtc/type_ptr.hpp>
 
 using namespace osgEarth::Cesium;
@@ -467,6 +468,13 @@ public:
                 geom->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
             }
 
+            // Generate normals automatically if we're not given any in the file itself.
+            if (!geom->getNormalArray())
+            {
+                osgUtil::SmoothingVisitor sv;
+                geode->accept(sv);
+            }
+
 
             if (primitive.indices >= 0)
             {
@@ -766,6 +774,4 @@ void PrepareRendererResources::detachRasterInMainThread(
     const Cesium3DTilesSelection::RasterOverlayTile& rasterTile,
     void* pMainThreadRendererResources) noexcept
 {
-    // TODO:
-    OE_NOTICE << "detachRasterInMainThread" << std::endl;
 }

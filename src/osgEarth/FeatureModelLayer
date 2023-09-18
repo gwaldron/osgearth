@@ -27,6 +27,7 @@
 #include <osgEarth/Style>
 #include <osgEarth/Layer>
 #include <osgEarth/LayerReference>
+#include <osgEarth/Utils>
 
 namespace osgEarth {
     class Map;
@@ -39,7 +40,9 @@ namespace osgEarth
     /**
      * Layer that creates a scene graph from feature data and symbology.
      */
-    class OSGEARTH_EXPORT FeatureModelLayer : public VisibleLayer
+    class OSGEARTH_EXPORT FeatureModelLayer : 
+        public VisibleLayer,
+        public KeyValueReporter
     {
     public: // serialization
         class OSGEARTH_EXPORT Options : public VisibleLayer::Options,
@@ -111,7 +114,9 @@ namespace osgEarth
         //! Serialization
         virtual Config getConfig() const;
 
-        unsigned residentTiles() const;
+    public: // key value reporter
+
+        KeyValueReport keyValueReport() const override;
 
     protected: // Layer
         

@@ -834,10 +834,13 @@ namespace osgEarth {
                                     }
                                 }
 
-                                auto fml = dynamic_cast<FeatureModelLayer*>(layer);
-                                if (fml)
+                                auto kvr = dynamic_cast<KeyValueReporter*>(layer);
+                                if (kvr)
                                 {
-                                    ImGui::Text("Resident tiles: %u", fml->residentTiles());
+                                    for (auto& kv : kvr->keyValueReport())
+                                    {
+                                        ImGui::Text((kv.first + ": " + kv.second).c_str());
+                                    }
                                 }
 
                                 const GeoExtent& extent = layer->getExtent();

@@ -409,7 +409,8 @@ FeatureModelGraph::FeatureModelGraph(const FeatureModelOptions& options) :
     _featureExtentClamped(false),
     _useTiledSource(false),
     _blacklistMutex("FMG BlackList(OE)"),
-    _isActive(false)
+    _isActive(false),
+    loadedTiles(0)
 {
     //NOP
 }

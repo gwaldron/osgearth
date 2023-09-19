@@ -40,9 +40,7 @@ namespace osgEarth
     /**
      * Layer that creates a scene graph from feature data and symbology.
      */
-    class OSGEARTH_EXPORT FeatureModelLayer : 
-        public VisibleLayer,
-        public KeyValueReporter
+    class OSGEARTH_EXPORT FeatureModelLayer : public VisibleLayer
     {
     public: // serialization
         class OSGEARTH_EXPORT Options : public VisibleLayer::Options,
@@ -116,7 +114,7 @@ namespace osgEarth
 
     public: // key value reporter
 
-        KeyValueReport keyValueReport() const override;
+        Stats reportStats() const override;
 
     protected: // Layer
         

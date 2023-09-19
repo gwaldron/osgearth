@@ -67,17 +67,6 @@ namespace osgEarth { namespace Util
     };
 
     /**
-    * Interface for a class that can report key/value information
-    * usually for introspection or debugging.
-    */
-    class KeyValueReporter
-    {
-    public: 
-        using KeyValueReport = std::vector<std::pair<std::string, std::string>>;
-        virtual KeyValueReport keyValueReport() const = 0;
-    };
-
-    /**
      * Utility for storing observables in an osg::Object
      */
     class ObjectStorage

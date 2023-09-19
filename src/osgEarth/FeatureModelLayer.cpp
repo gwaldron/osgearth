@@ -234,13 +234,13 @@ FeatureModelLayer::getExtent() const
         s_invalid;
 }
 
-KeyValueReporter::KeyValueReport
-FeatureModelLayer::keyValueReport() const
+Layer::Stats
+FeatureModelLayer::reportStats() const
 {
     auto fmg = findTopMostNodeOfType<FeatureModelGraph>(_root.get());
     if (fmg)
     {
-        KeyValueReport result;
+        Layer::Stats result;
         result.push_back({ "Resident tiles", std::to_string((unsigned)fmg->loadedTiles) });
         return result;
     }

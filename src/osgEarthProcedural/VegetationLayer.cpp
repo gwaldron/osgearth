@@ -355,6 +355,14 @@ VegetationLayer::closeImplementation()
     return PatchLayer::closeImplementation();
 }
 
+Layer::Stats
+VegetationLayer::reportStats() const
+{
+    Layer::Stats report;
+    report.push_back({ "Resident tiles", std::to_string(_tiles.size()) });
+    return report;
+}
+
 void
 VegetationLayer::update(osg::NodeVisitor& nv)
 {
@@ -1648,7 +1656,10 @@ VegetationLayer::simulateAssetPlacement(
 
         auto iter = _assets.find(group);
         if (iter == _assets.end())
-            return false; // data is unavailable.
+        {
+            log << "No assets" << std::endl;
+            return log.str();
+        }
         else
             groupAssets = iter->second; //shallow copy
 
@@ -1719,7 +1730,10 @@ VegetationLayer::simulateAssetPlacement(
             ScopedMutexLock lock(_assets);
             auto iter = _assets.find(group);
             if (iter == _assets.end())
-                return false;
+            {
+                log << "No assets" << std::endl;
+                return log.str();
+            }
             else
                 groupAssets = iter->second; // shallow copy
         }

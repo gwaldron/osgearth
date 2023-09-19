@@ -220,6 +220,8 @@ namespace osgEarth { namespace Procedural
         //! Force regeneration of all visible data
         void dirty();
 
+        Stats reportStats() const override;
+
     public:
         struct Placement
         {

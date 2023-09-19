@@ -523,6 +523,10 @@ namespace osgEarth
         const Layer::Options& options_original() const { return *_options0; }
         virtual const char* getConfigKey() const { return "layer" ; }
 
+        //! A layer can report statistics for debugging by overriding this function
+        using Stats = std::vector<std::pair<std::string, std::string>>;
+        virtual Stats reportStats() const { return {}; }
+
     private:
         Layer::Options * _options;
         Layer::Options   _optionsConcrete;

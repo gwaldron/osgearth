@@ -548,7 +548,7 @@ namespace osgEarth
     void Layer::setOptionThatRequiresReopen(T& target, const V& value) {
         if (target != value) {
             bool wasOpen = isOpen();
-            if (wasOpen && !isOpening() && !isClosing()) close();
+            if (wasOpen && !isOpening() && !isClosing()) close(); // so if a map is in the process of opening and an option is changed, this might not apply until re-opening again without notice
             target = value;
             if (wasOpen && !isOpening() && !isClosing()) open();
         }
@@ -557,7 +557,7 @@ namespace osgEarth
     void Layer::resetOptionThatRequiresReopen(T& target) {
         if (target.isSet()) {
             bool wasOpen = isOpen();
-            if (wasOpen && !isOpening() && !isClosing()) close();
+            if (wasOpen && !isOpening() && !isClosing()) close(); // same
             target.unset();
             if (wasOpen && !isOpening() && !isClosing()) open();
         }

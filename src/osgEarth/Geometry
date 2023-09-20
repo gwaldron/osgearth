@@ -198,6 +198,7 @@ namespace osgEarth
         //! to this geometry.
         //! A negative distance indicates that the point is interior
         //! to a ring or polygon.
+        //! Make sure to input a vector with z component zero! (or actually this series of function should be rewritten to drop the z component, the returned distance is the 3d distance with sign signaling interior or exterior in 2d!)
         virtual double getSignedDistance2D(
             const osg::Vec3d& point) const;
 
@@ -335,7 +336,8 @@ namespace osgEarth
         bool getSegment(double length, osg::Vec3d& start, osg::Vec3d& end);
 
         virtual void close() override;
-
+        
+        //! Make sure to input a vector with z component zero! (or actually this series of function should be rewritten to drop the z component, the returned distance is the 3d signed distance!)
         virtual double getSignedDistance2D(
             const osg::Vec3d& point) const override;
 
@@ -383,6 +385,7 @@ namespace osgEarth
         // opens and winds the ring in the specified direction
         virtual void rewind( Orientation ori );
 
+        //! Make sure to input a vector with z component zero! (or actually this series of function should be rewritten to drop the z component, the returned distance is the 3d signed distance!)
         virtual double getSignedDistance2D(
             const osg::Vec3d& a) const override;
 
@@ -425,6 +428,7 @@ namespace osgEarth
 
         virtual void removeColinearPoints();
 
+        //! Make sure to input a vector with z component zero! (or actually this series of function should be rewritten to drop the z component, the returned distance is the 3d signed distance!)
         virtual double getSignedDistance2D(
             const osg::Vec3d& a) const override;
 
@@ -470,6 +474,7 @@ namespace osgEarth
         void open() override;
         virtual void close() override;
 
+        //! Make sure to input a vector with z component zero! (or actually this series of function should be rewritten to drop the z component, the returned distance is the 3d signed distance!)
         virtual double getSignedDistance2D(
             const osg::Vec3d& a) const override;
 

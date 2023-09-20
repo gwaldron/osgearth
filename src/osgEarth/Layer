@@ -164,7 +164,7 @@ namespace osgEarth
      * to establish the standard options framework.
      *
      * When you create a Layer, init() is called. Do all one-time construction
-     * activity where.
+     * activity there.
      *
      * When you add a Layer to a Map, the follow methods are called in order:
      *

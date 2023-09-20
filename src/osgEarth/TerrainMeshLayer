@@ -58,8 +58,8 @@ namespace osgEarth
 
     public: // methods
 
-        //! Creates an image for the given tile key.
-        //! @param key TileKey for which to create an image
+        //! Creates a tile mesh for the given tile key.
+        //! @param key TileKey for which to create a tile mesh
         //! @param progress Optional progress/cancelation callback
         TileMesh createTile(
             const TileKey& key,

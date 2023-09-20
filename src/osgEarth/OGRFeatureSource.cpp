@@ -185,7 +185,7 @@ _rewindPolygons   ( rewindPolygons )
 
         _spatialFilter = OGR_G_CreateGeometry(wkbPolygon);
         OGR_G_AddGeometryDirectly(_spatialFilter, ring);
-        // note: "Directly" above means _spatialFilter takes ownership if ring handle
+        // note: "Directly" above means _spatialFilter takes ownership of ring handle
     }
 
 

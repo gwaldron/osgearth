@@ -85,7 +85,7 @@ namespace
 	}
 
     // Config tags that we handle specially (versus just letting the plugin mechanism
-    // take take of them)
+    // take care of them)
     bool isReservedWord(const std::string& k)
     {
         return

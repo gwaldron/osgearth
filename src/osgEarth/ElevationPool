@@ -270,7 +270,7 @@ namespace osgEarth
             WorkingSet* ws,
             ProgressCallback* progress);
 
-        //! Best LOD this a point, or -1 if no data in index
+        //! Best LOD if this a point, or -1 if no data in index
         int getLOD(double x, double y) const;
 
         osg::ref_ptr<ElevationTexture> getOrCreateRaster(

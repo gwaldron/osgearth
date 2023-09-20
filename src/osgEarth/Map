@@ -123,7 +123,7 @@ namespace osgEarth
         template<typename T>
         Revision getOpenLayers(std::vector< osg::ref_ptr<T> >& output) const;
 
-        //! Fills the vector with references to all layers satisflying the predicate
+        //! Fills the vector with references to all layers satisfying the predicate
         //! and returns the corresponding revision number.
         template<typename T>
         Revision getLayers(
@@ -142,7 +142,7 @@ namespace osgEarth
             osg::MixinVector<osg::ref_ptr<T>>& output,
             const std::function<bool(const Layer*)>& predicate) const;
 
-        //! Fills the vector with references to all layers of the specified type.
+        //! Fills the vector with references to all open layers of the specified type.
         //! and returns the corresponding revision number.
         template<typename T>
         Revision getOpenLayers(osg::MixinVector< osg::ref_ptr<T> >& output) const;
@@ -177,7 +177,7 @@ namespace osgEarth
         const std::string& getMapName() const { return _name; }
 
         //! Cache for this Map. Set to NULL for no cache.
-        //! Only call this during intiailization.
+        //! Only call this during initialization.
         void setCache( Cache* cache );
         Cache* getCache() const;
 
@@ -207,7 +207,7 @@ namespace osgEarth
         //! List of attribution strings to be displayed by the application
         void getAttributions(StringSet& attributions) const;
 
-        //! Number of layers marked as terrain pathes
+        //! Number of layers marked as terrain patches
         int getNumTerrainPatchLayers() const;
 
     protected:
@@ -238,7 +238,7 @@ namespace osgEarth
             const Map::Options& options,
             const osgDB::Options* readOptions);
 
-        //! Ready-only access to the serialization options for this map
+        //! Read-only access to the serialization options for this map
         const Options& options() const { return _optionsConcrete; }
 
     private:

@@ -124,7 +124,7 @@ namespace osgEarth
         virtual GeoHeightField createHeightFieldImplementation(const TileKey&, ProgressCallback* progress) const
             { return GeoHeightField::INVALID; }
 
-        //! Subalss can override this to enable writing heightfields.
+        //! Subclass can override this to enable writing heightfields.
         virtual Status writeHeightFieldImplementation(
             const TileKey& key,
             const osg::HeightField* hf,

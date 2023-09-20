@@ -73,10 +73,10 @@ namespace osgEarth
         //! Get the coordinate frame at the geocentric point
         osg::Matrix geodeticToCoordFrame(const osg::Vec3d& xyz) const;
 
-        //! Converts degrees to meters at a given latitide
+        //! Converts degrees to meters at a given latitude
         double longitudinalDegreesToMeters(double value, double lat_deg = 0.0) const;
 
-        //! Converts meters to degrees at a given latitide
+        //! Converts meters to degrees at a given latitude
         double metersToLongitudinalDegrees(double value, double lat_deg =0.0) const;
 
         //! Geodesic distance in meters from one lat/long to another

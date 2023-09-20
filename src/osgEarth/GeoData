@@ -298,7 +298,7 @@ namespace osgEarth
 
 
     /**
-     * A simple circular bounding area consiting of a GeoPoint and a linear radius.
+     * A simple circular bounding area consisting of a GeoPoint and a linear radius.
      */
      class OSGEARTH_EXPORT GeoCircle
      {
@@ -451,7 +451,7 @@ namespace osgEarth
          *
          * NOTE! It is possible that the target SRS will not be able to accomadate the
          * extents of the source SRS. (For example, transforming a full WGS84 extent
-         * to Mercator will resultin an error since Mercator does not cover the entire
+         * to Mercator will result in an error since Mercator does not cover the entire
          * globe.) Consider using Profile:clampAndTransformExtent() instead of using
          * this method directly.
          */
@@ -834,7 +834,7 @@ namespace osgEarth
          * @param srs
          *      Spatial reference of the query coordinates. (If you pass in NULL, the method
          *      will assume that the SRS is equivalent to that of the GeoHeightField. Be sure
-         *      this is case of you will get incorrect results.)
+         *      this is the case or you will get incorrect results.)
          * @param x, y
          *      Coordinates at which to query the elevation value.
          * @param interp

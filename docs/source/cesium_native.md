@@ -21,7 +21,7 @@ cmake --build build --config RelWithDebInfo --install
 
 The cesium-native libraries and headers are now located at cesium-native/install
 
-You can follow the instructions for building osgEarth [here](install.html) but when you configure cmake pass in -DCESIUM_NATIVE_DIR=/path/to/cesium-native/install so that osgEarth knows how to find the cesium-native libraries and headers.
+You can follow the instructions for building osgEarth [here](install.html) but when you configure cmake pass in -DCESIUM_NATIVE_DIR=/path/to/cesium-native/install and -DOSGEARTH_BUILD_CESIUM_NODEKIT=ON so that osgEarth knows how to find the cesium-native libraries and headers.
 
 This will build the osgEarthCesium nodekit of osgEarth.
 

@@ -35,6 +35,10 @@
 #define GL_TEXTURE_2D_ARRAY 0x8C1A
 #endif
 
+// This is typically a bad idea because you could be altering a texture
+// that's in use in another thread for CPU-side sampling. So don't do it
+// #define COMPRESS_TEXTURES_ON_DEMAND
+
 using namespace osgEarth;
 
 #undef LC
@@ -414,7 +418,7 @@ Texture::compileGLObjects(osg::State& state) const
 
         // TODO:
         // Detect this situation, and find another place to generate the
-        // mipmaps offline. This should never happen here.
+        // mipmaps offline.
         if (numMipLevelsInMemory < numMipLevelsToAllocate)
         {
             OE_PROFILING_ZONE_NAMED("glGenerateMipmap");
@@ -649,10 +653,12 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
         // in case we want to cache it later:
         image->setWriteHint(osg::Image::STORE_INLINE);
 
+#ifdef COMPRESS_AND_MIPMAP_ON_DEMAND
         if (tex->mipmap() && !image->isMipmap())
         {
             ImageUtils::mipmapImageInPlace(image);
         }
+#endif
 
         // compress and mipmap:
         if (!image->isCompressed())
@@ -671,10 +677,12 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
                 image->setInternalTextureFormat(internalFormat);
             }
 
+#ifdef COMPRESS_AND_MIPMAP_ON_DEMAND
             if (tex->_compress)
             {
                 ImageUtils::compressImageInPlace(image);
             }
+#endif
         }
     }
     else

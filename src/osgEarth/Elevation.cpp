@@ -390,12 +390,13 @@ NormalMapGenerator::createNormalMap(
 
     normalTex->setInternalFormat(GL_RG8);
     normalTex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-    normalTex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
+    normalTex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
     normalTex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
     normalTex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
     normalTex->setResizeNonPowerOfTwoHint(false);
     normalTex->setMaxAnisotropy(1.0f);
     normalTex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    ImageUtils::mipmapImageInPlace(image.get());
 
     return normalTex;
 }

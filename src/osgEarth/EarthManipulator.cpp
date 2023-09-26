@@ -634,6 +634,7 @@ EarthManipulator::configureDefaultSettings()
 
     options.clear();
     options.add( OPTION_CONTINUOUS, true );
+    options.add(OPTION_SCALE_Y, 5.0);
 
     // zoom as you hold the right button:
     _settings->bindMouse( ACTION_ZOOM, osgGA::GUIEventAdapter::RIGHT_MOUSE_BUTTON, 0L, options );

@@ -156,5 +156,13 @@
         <height>614.0726152313873</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
-
+    <viewpoint name="Kilo2">
+        <heading>-5.97814e-06</heading>
+        <pitch>-88.9999</pitch>
+        <range>4185.64m</range>
+        <long>-117.3492928130499</long>
+        <lat>33.34190250682511</lat>
+        <height>73.99633575323969</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+    </viewpoint>
 </viewpoints>

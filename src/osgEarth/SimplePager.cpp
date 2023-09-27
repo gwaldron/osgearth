@@ -23,6 +23,8 @@ SimplePager::SimplePager(const osgEarth::Map* map, const osgEarth::Profile* prof
 _map(map),
 _profile( profile ),
 _rangeFactor( 6.0 ),
+_useRange(true),
+_minPixel(0.0),
 _additive(false),
 _minLevel(0),
 _maxLevel(30),
@@ -235,8 +237,11 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
         loadRange = (float)(tileRadius * _rangeFactor);
         pagedNode->setRefinePolicy(_additive ? REFINE_ADD : REFINE_REPLACE);
     }
-
-    pagedNode->setMaxRange(loadRange);
+    
+    if (_useRange)
+        pagedNode->setMaxRange(loadRange);
+    else
+        pagedNode->setMinPixels(_minPixel);
 
     //OE_INFO << "PagedNode2: key="<<key.str()<<" hasChildren=" << hasChildren << ", range=" << loadRange << std::endl;
 

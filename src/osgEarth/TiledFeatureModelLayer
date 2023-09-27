@@ -52,6 +52,7 @@ namespace osgEarth
             Options(const ConfigOptions& options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
             OE_OPTION(bool, additive);
+            OE_OPTION(float, minPixel);
             virtual Config getConfig() const;
         protected: // LayerOptions
             virtual void mergeConfig(const Config& conf);        
@@ -78,6 +79,9 @@ namespace osgEarth
 
         void setAdditive(const bool& value);
         const bool& getAdditive() const;
+
+        void setMinPixel(const float& value);
+        const float& getMinPixel() const;
 
         //! Forces a rebuild on this FeatureModelLayer.
         void dirty();    

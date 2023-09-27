@@ -71,6 +71,9 @@ FeatureDisplayLayout::FeatureDisplayLayout( const Config& conf ) :
 _tileSizeFactor( 3.5f ),
 _minRange      ( 0.0f ),
 _maxRange      ( 0.0f ),
+_minPixels     ( 0.0f ),
+_maxPixels     ( 0.0f ),
+_useRange      ( true ),
 _cropFeatures  ( false ),
 _priorityOffset( 0.0f ),
 _priorityScale ( 1.0f ),
@@ -91,6 +94,9 @@ FeatureDisplayLayout::fromConfig( const Config& conf )
     conf.get( "min_expiry_time",  _minExpiryTime );
     conf.get( "min_range",        _minRange );
     conf.get( "max_range",        _maxRange );
+    conf.get( "min_pixels",       _minPixels);
+    conf.get( "max_pixels",       _maxPixels);
+    conf.get( "use_range",        _useRange);
     conf.get("paged", _paged);
     ConfigSet children = conf.children( "level" );
     for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
@@ -109,6 +115,9 @@ FeatureDisplayLayout::getConfig() const
     conf.set( "min_expiry_time",  _minExpiryTime );
     conf.set( "min_range",        _minRange );
     conf.set( "max_range",        _maxRange );
+    conf.set( "min_pixels",       _minPixels );
+    conf.set( "max_pixels",       _maxPixels );
+    conf.set( "use_range",        _useRange );
     conf.set("paged", _paged);
     for( Levels::const_iterator i = _levels.begin(); i != _levels.end(); ++i )
         conf.add( i->second.getConfig() );

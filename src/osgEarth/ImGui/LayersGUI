@@ -777,15 +777,12 @@ namespace osgEarth
                                 {
                                     ImGui::Text("Upsampling is OFF");
                                 }
-                            }
-
-                            auto kvr = dynamic_cast<KeyValueReporter*>(layer);
-                            if (kvr)
+                            }                                
+                            
+                            auto report = layer->reportStats();
+                            for (auto& kv : report)
                             {
-                                for (auto& kv : kvr->keyValueReport())
-                                {
-                                    ImGui::Text((kv.first + ": " + kv.second).c_str());
-                                }
+                                ImGui::Text((kv.first + ": " + kv.second).c_str());
                             }
 
                             const GeoExtent& extent = layer->getExtent();

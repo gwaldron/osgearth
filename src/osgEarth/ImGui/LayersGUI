@@ -309,7 +309,7 @@ namespace osgEarth
             std::unordered_map<Layer*, float> _maxMinRanges;
             std::unordered_map<Layer*, float> _maxAttenRanges;
             bool _addXYZ = false;
-            ImageLayer* _queryLayer = nullptr;
+            ImageLayer* _mouseOverImageLayer = nullptr;
 
             static const int NUM_CATS = 8;
 
@@ -343,6 +343,7 @@ namespace osgEarth
             using ValueUnderMouse = struct {
                 osg::Vec4 pixel;
                 GLenum pixelFormat;
+                GLenum dataType;
             };
             Future<Result<ValueUnderMouse>> _imageLayerValueUnderMouse;
 
@@ -803,31 +804,53 @@ namespace osgEarth
                             auto imageLayer = dynamic_cast<ImageLayer*>(layer);
                             if (imageLayer)
                             {
-                                bool queryOn = (_queryLayer == imageLayer);
+                                bool queryOn = (_mouseOverImageLayer == imageLayer);
                                 if (ImGui::Checkbox("Show value under mouse", &queryOn))
                                 {
-                                    _queryLayer = queryOn ? imageLayer : nullptr;
+                                    _mouseOverImageLayer = queryOn ? imageLayer : nullptr;
                                 }
 
-                                if (_queryLayer == imageLayer)
+                                if (_mouseOverImageLayer == imageLayer)
                                 {
                                     if (_imageLayerValueUnderMouse.isAvailable())
                                     {
                                         if (_imageLayerValueUnderMouse->isOK())
                                         {
                                             auto& value = _imageLayerValueUnderMouse->value();
-                                            if (value.pixelFormat == GL_RGBA)
+                                            if (value.dataType == GL_UNSIGNED_BYTE)
                                             {
                                                 auto& p = value.pixel;
-                                                ImGui::Text("  (%.2f %.2f %.2f %.2f)", p.r(), p.g(), p.b(), p.a());
-                                                ImGui::Text("  (%.2X %.2X %.2X %.2X)",
-                                                    (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()), (int)(255.0f * p.a()));
+                                                if (value.pixelFormat == GL_RED)
+                                                {
+                                                    ImGui::Text(" f32 (%.2f)", p.r());
+                                                    ImGui::Text(" int (%d)", (int)(255.f * p.r()));
+                                                    ImGui::Text(" hex (%.2X)", (int)(255.f * p.r()));
+                                                }
+                                                if (value.pixelFormat == GL_RG)
+                                                {
+                                                    ImGui::Text(" f32 (%.2f %.2f)", p.r(), p.g());
+                                                    ImGui::Text(" int (%d %d)", (int)(255.f * p.r()), (int)(255.f * p.g()));
+                                                    ImGui::Text(" hex (%.2X %.2X)", (int)(255.f * p.r()), (int)(255.f * p.g()));
+                                                }
+                                                else if (value.pixelFormat == GL_RGB)
+                                                {
+                                                    ImGui::Text(" f32 (%.2f %.2f %.2f)", p.r(), p.g(), p.b());
+                                                    ImGui::Text(" int (%d %d %d)", (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()));
+                                                    ImGui::Text(" hex (%.2X %.2X %.2X)", (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()));
+                                                }
+                                                else
+                                                {
+                                                    ImGui::Text(" f32 (%.2f %.2f %.2f %.2f)", p.r(), p.g(), p.b(), p.a());
+                                                    ImGui::Text(" int (%d %d %d %d)", (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()), (int)(255.0f * p.a()));
+                                                    ImGui::Text(" hex (%.2X %.2X %.2X %.2X)", (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()), (int)(255.0f * p.a()));
+                                                }
                                             }
-                                            else
+                                            else if (value.dataType == GL_FLOAT)
                                             {
                                                 int v = (int)value.pixel.r();
-                                                ImGui::Text("  (%d)", v);
-                                                ImGui::Text("  (%#.8X)", v);
+                                                ImGui::Text(" f32 (%0.4f)", value.pixel.r());
+                                                ImGui::Text(" int (%d)", v);
+                                                ImGui::Text(" hex (%#.8X)", v);
                                             }
                                         }
                                         else
@@ -846,7 +869,7 @@ namespace osgEarth
                             if (extent.isValid() ||
                                 (layer->getNode() && layer->getNode()->getBound().valid()))
                             {
-                                if (ImGui::Button("Zoom to layer"))
+                                if (ImGui::Button("Find"))
                                 {
                                     if (extent.isValid())
                                     {
@@ -877,7 +900,7 @@ namespace osgEarth
 
                             if (visibleLayer)
                             {
-                                if (ImGui::Button("Invalidate cache"))
+                                if (ImGui::Button("Invalidate"))
                                 {
                                     layer->dirty();
                                     auto cp = layer->getCachePolicy();
@@ -890,14 +913,14 @@ namespace osgEarth
                                 if (layer->isOpen())
                                 {
                                     ImGui::SameLine();
-                                    if (ImGui::Button("Close layer"))
+                                    if (ImGui::Button("Close"))
                                     {
                                         layer->close();
                                     }
                                 }
 
                                 ImGui::SameLine();
-                                if (ImGui::Button("Dump config"))
+                                if (ImGui::Button("Dump"))
                                 {
                                     auto conf = layer->getConfig();
                                     std::cout << conf.toJSON(true) << std::endl;
@@ -1064,7 +1087,7 @@ namespace osgEarth
 
             void onMove(osg::View* view, float x, float y)
             {
-                if (_queryLayer)
+                if (_mouseOverImageLayer)
                 {
                     _imageLayerValueUnderMouse.reset();
 
@@ -1072,8 +1095,8 @@ namespace osgEarth
                     if (tile)
                     {
                         GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
-                        TileKey key = _queryLayer->getProfile()->createTileKey(p, tile->getKey().getLOD());
-                        key = _queryLayer->getBestAvailableTileKey(key);
+                        TileKey key = _mouseOverImageLayer->getProfile()->createTileKey(p, tile->getKey().getLOD());
+                        key = _mouseOverImageLayer->getBestAvailableTileKey(key);
 
                         if (key.valid())
                         {
@@ -1081,13 +1104,14 @@ namespace osgEarth
                                 {
                                     ValueUnderMouse value;
                                     osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(c);
-                                    GeoImage g = _queryLayer->createImage(key, prog.get());
+                                    GeoImage g = _mouseOverImageLayer->createImage(key, prog.get());
                                     if (g.valid())
                                     {
                                         g.getReader().setBilinear(false);
                                         if (g.read(value.pixel, p))
                                         {
                                             value.pixelFormat = g.getImage()->getPixelFormat();
+                                            value.dataType = g.getImage()->getDataType();
                                             return Result<ValueUnderMouse>(value);
                                         }
                                     }

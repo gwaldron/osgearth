@@ -1,95 +1,66 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.7 FATAL_ERROR)
 
-if(COMMAND cmake_policy)
-    # Works around warnings libraries linked against that don't
-    # have absolute paths (e.g. -lpthreads)
-    cmake_policy(SET CMP0003 NEW)
+# VCPKG customization ....................................................
 
-    # Qt5 qt5_use_modules usage was causing "Policy CMP0043 is not set: Ignore COMPILE_DEFINITIONS_<Config> properties." warnings
-    cmake_policy(SET CMP0043 NEW)
-
-    # Double colon in target name means IMPORTED (and not ALIAS or IMPORTED).
-    # Fixes a warning when cache_rocksdb links to target "RocksDB::rocksdb"
-    cmake_policy(SET CMP0028 NEW)
-    
-    # Defaults find_package to using *_ROOT, which did not become the default
-    # policy until CMake 3.12
-    if (POLICY CMP0074)
-        cmake_policy(SET CMP0074 NEW)
-    endif()
-endif(COMMAND cmake_policy)
-
-# Set up CMake to use Solution Folders in Visual Studio.
-SET_PROPERTY( GLOBAL PROPERTY USE_FOLDERS ON )
-SET_PROPERTY( GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets" )
-
-# if using vcpkg, configure overlays
 if (${CMAKE_TOOLCHAIN_FILE} MATCHES ".*vcpkg.cmake.*")
     message(STATUS "Building with vcpkg toolchain.")
     set(USING_VCPKG ON)
     set(VCPKG_OVERLAY_TRIPLETS ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/triplets)
 endif()
 
-PROJECT(OSGEARTH)
+
+# Project setup ..........................................................
+
+project(OSGEARTH)
 
 # SDK version number (informational)
-SET(OSGEARTH_MAJOR_VERSION 3)
-SET(OSGEARTH_MINOR_VERSION 4)
-SET(OSGEARTH_PATCH_VERSION 0)
+set(OSGEARTH_MAJOR_VERSION 3)
+set(OSGEARTH_MINOR_VERSION 4)
+set(OSGEARTH_PATCH_VERSION 0)
+set(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
 
 # Increment this each time the ABI changes
-SET(OSGEARTH_SOVERSION 148)
+set(OSGEARTH_SOVERSION 148)
 
-# C++11 is required for osgEarth 3.x
+# Require C++11
 set_property(GLOBAL PROPERTY CXX_STANDARD 11)
 set_property(GLOBAL PROPERTY CXX_STANDARD_REQUIRED ON)
-
-# Assign a custom prefix if necessary.
-SET(OSGEARTH_PLUGIN_PREFIX "")
-
-IF (CYGWIN)
-    SET(OSGEARTH_PLUGIN_PREFIX "cygwin_")
-ENDIF()
-
-IF(MINGW)
-    SET(OSGEARTH_PLUGIN_PREFIX "mingw_")
-ENDIF()
 
 # Detect out-of-source build. You should always do an out-of-source build!
 if (NOT "${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
     SET(OUT_OF_SOURCE_BUILD 1)
 endif()
 
-SET(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
+
+# IDE configuration ......................................................
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets")
 
 
-# Assign SONAMEs to the shared libraries on Linux
-SET(OSGEARTH_SONAMES TRUE)
+# Search Locations .......................................................
 
-# Good place to look for dependencies (e.g., vcpkg)
-SET(OSGEARTH_DEPENDENCY_DIR "" CACHE PATH "Folder to search for dependencies (e.g., vcpkg/installed/x64-windows)")
+# Expose CMAKE_INCLUDE_PATH and CMAKE_LIBARY_PATH to the GUI so users
+# may set these values without needing to manipulate the environment.
+set(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
+set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
+set(CMAKE_PREFIX_PATH  ${CMAKE_PREFIX_PATH}  CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
 
-IF(OSGEARTH_DEPENDENCY_DIR)
+set(OSGEARTH_DEPENDENCY_DIR "" CACHE PATH "Folder to search for dependencies (e.g., vcpkg/installed/x64-windows)")
+if(OSGEARTH_DEPENDENCY_DIR)
     LIST(APPEND CMAKE_INCLUDE_PATH ${OSGEARTH_DEPENDENCY_DIR}/include)
     LIST(APPEND CMAKE_LIBRARY_PATH ${OSGEARTH_DEPENDENCY_DIR}/lib)
-ENDIF()
+endif()
 
 # We have some custom .cmake scripts not in the official distribution.
-SET(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${OSGEARTH_SOURCE_DIR}/CMakeModules;${OSGEARTH_DEPENDENCY_DIR}")
-
-# Whether to compile for GLES (mobile/web)
-SET(OSGEARTH_USE_GLES FALSE)
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${OSGEARTH_SOURCE_DIR}/CMakeModules;${OSGEARTH_DEPENDENCY_DIR}")
 
 # Special folder for build-time generated include files
 set(OSGEARTH_BUILDTIME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/build_include")
 include_directories(${OSGEARTH_BUILDTIME_INCLUDE_DIR})
 
 # Third-party sources included in the osgEarth repo
-SET(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
-
-# Ensure and configure C++11 compiler support.
-INCLUDE(CXX11)
-check_for_cxx11_compiler(CXX11_AVAILABLE)
+set(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
 
 # Location of GLCORE headers if you are using GLCORE
 set(OSGEARTH_GLCORE_INCLUDE_DIR CACHE PATH "For OpenGL CORE Profile, location of the GLCORE header files")
@@ -97,19 +68,20 @@ if (OSGEARTH_GLCORE_INCLUDE_DIR)
     include_directories(${OSGEARTH_GLCORE_INCLUDE_DIR})
 endif()
 
-# Platform-specific settings
-INCLUDE(oe_ios)
-INCLUDE(oe_osx)
-INCLUDE(oe_unix)
-INCLUDE(oe_win32)
 
-# ........................................................................
-# Optional build targets
+# Platform-specific settings ............................................
+
+include(oe_ios)
+include(oe_osx)
+include(oe_unix)
+include(oe_win32)
+
+
+# Build options ..........................................................
 
 option(OSGEARTH_BUILD_TOOLS "Build the osgEarth command-line tools" ON)
 option(OSGEARTH_BUILD_EXAMPLES "Build the osgEarth example applications" ON)
 option(OSGEARTH_BUILD_TESTS "Build the osgEarth unit tests" ON)
-
 option(OSGEARTH_BUILD_PROCEDURAL_NODEKIT "Build the procedural terrain nodekit (osgEarthProcedural)" OFF)
 option(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT "Build the legacy procedural nodekit (osgEarthSplat)" OFF)
 option(OSGEARTH_BUILD_CESIUM_NODEKIT "Build the Cesium nodekit (osgEarthCesium)" OFF)
@@ -119,28 +91,22 @@ option(OSGEARTH_BUILD_LEVELDB_CACHE "Build the LevelDB cache plugin" OFF)
 option(OSGEARTH_BUILD_ROCKSDB_CACHE "Build the RocksDB cache plugin" OFF)
 option(OSGEARTH_BUILD_ZIP_PLUGIN "Build osgEarth's zip plugin based on libzip" ON)
 option(OSGEARTH_BUILD_DOCS "Include the documentation folder" ON)
-
-# ........................................................................
-# Optional features
-
 option(OSGEARTH_ENABLE_PROFILING "Enable profiling with Tracy" OFF)
 option(OSGEARTH_ENABLE_GEOCODER "Enable the geocoder (GDAL/OGR must be built with geocoder support)" OFF)
-
 option(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT "Assume the use of a single GL context for all GL objects (advanced)" ON)
+option(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when installing (default=inlined shaders)" OFF)
+
+mark_as_advanced(OSGEARTH_BUILD_TESTS)
+mark_as_advanced(OSGEARTH_BUILD_LEVELDB_CACHE)
+mark_as_advanced(OSGEARTH_BUILD_DOCS)
+mark_as_advanced(OSGEARTH_ENABLE_PROFILING)
 mark_as_advanced(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
-
-# ........................................................................
-# Dependencies
-
-# Mobile/GLES:
-IF (OSGEARTH_USE_GLES)
-    find_package(OpenGLES)
-ELSE ()
-    find_package(OpenGL)
-ENDIF (OSGEARTH_USE_GLES)
+mark_as_advanced(OSGEARTH_INSTALL_SHADERS)
 
 
-# Update git submodules in case the user didn't do it already
+# Dependencies ...........................................................
+
+# Update git submodules
 # https://cliutils.gitlab.io/modern-cmake/chapters/projects/submodule.html
 find_package(Git QUIET)
 if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
@@ -154,6 +120,7 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
 endif()
 
 # required
+find_package(OpenGL REQUIRED)
 find_package(OSG REQUIRED)
 find_package(CURL REQUIRED)
 find_package(GDAL REQUIRED)
@@ -173,6 +140,14 @@ if(OSGEARTH_BUILD_CESIUM_NODEKIT)
     find_package(CesiumNative)
 endif()
 
+if(OSGEARTH_BUILD_TRITON_NODEKIT)
+    find_package(Triton)
+endif()
+
+if(OSGEARTH_BUILD_SILVERLINING_NODEKIT)
+    find_package(SilverLining)
+endif()
+
 if(OSGEARTH_ENABLE_PROFILING)
     find_package(Tracy)
 endif()
@@ -181,37 +156,35 @@ if(OSGEARTH_BUILD_ZIP_PLUGIN)
     find_package(LibZip)
 endif()
 
-if(OSGEARTH_BUILD_TRITON_NODEKIT)
-    find_package(Triton QUIET)
-endif()
+set(WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use external Duktape instead of inlining it")
+if(WITH_EXTERNAL_DUKTAPE)
+    find_package(Duktape)
+endif(WITH_EXTERNAL_DUKTAPE)
 
-if(OSGEARTH_BUILD_SILVERLINING_NODEKIT)
-    find_package(SilverLining QUIET)
-endif()
+set(WITH_EXTERNAL_TINYXML FALSE CACHE BOOL "Use external TinyXML instead of inlining it")
+if(WITH_EXTERNAL_TINYXML)
+    find_package(TinyXML)
+endif(WITH_EXTERNAL_TINYXML)
+
 
 # Sqlite enables the MBTiles format:
-IF(SQLITE3_FOUND)
+if(SQLITE3_FOUND)
     ADD_DEFINITIONS(-DOSGEARTH_HAVE_MBTILES)
-ENDIF(SQLITE3_FOUND)
+endif(SQLITE3_FOUND)
 
 # DRACO enables geometry compression sometimes used in glTF:
-IF(draco_FOUND)
+if(draco_FOUND)
     ADD_DEFINITIONS(-DOSGEARTH_HAVE_DRACO)
-ENDIF(draco_FOUND)
+endif(draco_FOUND)
 
 if(Protobuf_FOUND)
     add_definitions(-DOSGEARTH_HAVE_PROTOBUF)
 endif()
 
-# GDAL is the underlying geospatial processing SDK
-IF(GDAL_FOUND)
-    message(STATUS "Found GDAL ${GDAL_VERSION}" )
-ENDIF(GDAL_FOUND)
-
 # Tracy is a profiler
-IF(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
+if(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
     ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
-ENDIF()
+endif()
 
 if(GLEW_FOUND AND EXISTS "${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui.cpp")
     set(OSGEARTH_ENABLE_IMGUI 1)
@@ -227,123 +200,101 @@ if(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
 endif()
 
 # Protobuf enables the MVT (Mapnik Vector Tiles) format
-SET (PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
+set(PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
 
-# Duktape is the JavaScript interpreter
-SET (WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use bundled or system wide version of Duktape")
-IF (WITH_EXTERNAL_DUKTAPE)
-    find_package(Duktape)
-ENDIF (WITH_EXTERNAL_DUKTAPE)
+include(OsgEarthMacroUtils)
 
-# Whether to install shaders (glsl files).
-# If true, shaders install into a resources folder. If false, they are inlined in the
-# code and you cannot tweak them after install.
-OPTION(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when doing a Make INSTALL" OFF)
-
-# TinyXML is an XML parsing library
-SET (WITH_EXTERNAL_TINYXML FALSE CACHE BOOL "Use bundled or system wide version of TinyXML")
-IF (WITH_EXTERNAL_TINYXML)
-    find_package(TinyXML)
-ENDIF (WITH_EXTERNAL_TINYXML)
-
-# postfix settings for various configs
-SET(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a Debug postfix, usually d on windows")
-SET(CMAKE_RELEASE_POSTFIX "" CACHE STRING "add a Release postfix, usually empty on windows")
-SET(CMAKE_RELWITHDEBINFO_POSTFIX "" CACHE STRING "add a RelWithDebInfo postfix, usually empty on windows")
-SET(CMAKE_MINSIZEREL_POSTFIX "s" CACHE STRING "add a MinSizeRel postfix, usually empty on windows")
-
-INCLUDE(OsgEarthMacroUtils)
-
-# OpenSceneGraph is the 3D rendering toolkit
+# Detect the OSG version so we can append it to plugin DLLs just like OSG does.
 DETECT_OSG_VERSION()
-
-IF (NOT OPENSCENEGRAPH_VERSION)
-	SET(OPENSCENEGRAPH_VERSION ${OPENSCENEGRAPH_MAJOR_VERSION}.${OPENSCENEGRAPH_MINOR_VERSION}.${OPENSCENEGRAPH_PATCH_VERSION})
-ENDIF(NOT OPENSCENEGRAPH_VERSION)
+if(NOT OPENSCENEGRAPH_VERSION)
+	set(OPENSCENEGRAPH_VERSION ${OPENSCENEGRAPH_MAJOR_VERSION}.${OPENSCENEGRAPH_MINOR_VERSION}.${OPENSCENEGRAPH_PATCH_VERSION})
+endif(NOT OPENSCENEGRAPH_VERSION)
 
 if(OPENSCENEGRAPH_VERSION)
     message(STATUS "Found OSG version ${OPENSCENEGRAPH_VERSION}")
 endif()
 
 # Make the headers visible to everything
-INCLUDE_DIRECTORIES(
+include_directories(
     ${OSGEARTH_SOURCE_DIR}/src
     ${OSG_INCLUDE_DIR}
     ${OSG_GEN_INCLUDE_DIR}
 )
 
 
-################################################################################
-# Create bin and lib directories if required
+# Linking & Intallation ..................................................
 
-IF("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
-   FILE(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin ${CMAKE_BINARY_DIR}/lib)
-ENDIF("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
+# Assign SONAMEs to the shared libraries on Linux
+set(OSGEARTH_SONAMES TRUE)
 
+# postfix settings for various configs
+set(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a Debug postfix, usually d on windows")
+set(CMAKE_RELEASE_POSTFIX "" CACHE STRING "add a Release postfix, usually empty on windows")
+set(CMAKE_RELWITHDEBINFO_POSTFIX "" CACHE STRING "add a RelWithDebInfo postfix, usually empty on windows")
+set(CMAKE_MINSIZEREL_POSTFIX "s" CACHE STRING "add a MinSizeRel postfix, usually empty on windows")
 
+if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
+   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin ${CMAKE_BINARY_DIR}/lib)
+endif("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
 
-################################################################################
-# Installation target
+if(UNIX AND NOT WIN32 AND NOT APPLE AND NOT ANDROID)
+  if(CMAKE_SIZEOF_VOID_P MATCHES "8")
+      set(LIB_POSTFIX "64" CACHE STRING "suffix for 32/64 dir placement")
+      mark_as_advanced(LIB_POSTFIX)
+  endif(CMAKE_SIZEOF_VOID_P MATCHES "8")
+endif(UNIX AND NOT WIN32 AND NOT APPLE AND NOT ANDROID)
+if(NOT DEFINED LIB_POSTFIX)
+    set(LIB_POSTFIX "")
+endif(NOT DEFINED LIB_POSTFIX)
 
-IF(UNIX AND NOT WIN32 AND NOT APPLE AND NOT ANDROID)
-  IF(CMAKE_SIZEOF_VOID_P MATCHES "8")
-      SET(LIB_POSTFIX "64" CACHE STRING "suffix for 32/64 dir placement")
-      MARK_AS_ADVANCED(LIB_POSTFIX)
-  ENDIF(CMAKE_SIZEOF_VOID_P MATCHES "8")
-ENDIF(UNIX AND NOT WIN32 AND NOT APPLE AND NOT ANDROID)
-IF(NOT DEFINED LIB_POSTFIX)
-    SET(LIB_POSTFIX "")
-ENDIF(NOT DEFINED LIB_POSTFIX)
+set(OUTPUT_BINDIR ${PROJECT_BINARY_DIR}/bin)
+make_directory(${OUTPUT_BINDIR})
+set(EXECUTABLE_OUTPUT_PATH ${OUTPUT_BINDIR})
 
-SET(OUTPUT_BINDIR ${PROJECT_BINARY_DIR}/bin)
-MAKE_DIRECTORY(${OUTPUT_BINDIR})
-SET(EXECUTABLE_OUTPUT_PATH ${OUTPUT_BINDIR})
+set(OUTPUT_LIBDIR ${PROJECT_BINARY_DIR}/lib)
+make_directory(${OUTPUT_LIBDIR})
+set(LIBRARY_OUTPUT_PATH ${OUTPUT_LIBDIR})
 
-SET(OUTPUT_LIBDIR ${PROJECT_BINARY_DIR}/lib)
-MAKE_DIRECTORY(${OUTPUT_LIBDIR})
-SET(LIBRARY_OUTPUT_PATH ${OUTPUT_LIBDIR})
-
-LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${OUTPUT_LIBDIR} )
-
-
-# Expose CMAKE_INCLUDE_PATH and CMAKE_LIBARY_PATH to the GUI so users
-# may set these values without needing to manipulate the environment.
-SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
-SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
-SET(CMAKE_PREFIX_PATH  ${CMAKE_PREFIX_PATH}  CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
+link_directories( ${LINK_DIRECTORIES} ${OUTPUT_LIBDIR} )
 
 # Dynamic vs Static Linking
-OPTION(OSGEARTH_BUILD_SHARED_LIBS "ON to build shared libraries; OFF to build static libraries." ON)
-IF(OSGEARTH_BUILD_SHARED_LIBS)
-    SET(OSGEARTH_DYNAMIC_OR_STATIC "SHARED")
-ELSE()
-    SET(OSGEARTH_DYNAMIC_OR_STATIC "STATIC")
-ENDIF()
-
-	
-# OE Libraries
-ADD_SUBDIRECTORY(src)
-
-if (OSGEARTH_BUILD_DOCS)
-    ADD_SUBDIRECTORY(docs)
+option(OSGEARTH_BUILD_SHARED_LIBS "ON to build shared libraries; OFF to build static libraries." ON)
+if(OSGEARTH_BUILD_SHARED_LIBS)
+    set(OSGEARTH_DYNAMIC_OR_STATIC "SHARED")
+else()
+    set(OSGEARTH_DYNAMIC_OR_STATIC "STATIC")
 endif()
 
-#write out config files for vcpkg
 
-SET(INSTALL_INCDIR ${CMAKE_INSTALL_PREFIX}/include)
-SET(INSTALL_LIBDIR ${PROJECT_BINARY_DIR}/lib)	
+# Source code ............................................................
+
+add_subdirectory(src)
+
+if(OSGEARTH_BUILD_DOCS)
+    add_subdirectory(docs)
+endif()
+
+
+# VCPkg Config File Creation .............................................
+
+set(INSTALL_INCDIR ${CMAKE_INSTALL_PREFIX}/include)
+set(INSTALL_LIBDIR ${PROJECT_BINARY_DIR}/lib)	
 message(STATUS "INCDIR: ${INSTALL_INCDIR}")
 include(CMakePackageConfigHelpers)
 
-configure_package_config_file(osgEarthConfig.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
-  INSTALL_DESTINATION ${LIB_INSTALL_DIR}/osgearth/cmake
-  )
+configure_package_config_file(
+    osgEarthConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
+    INSTALL_DESTINATION ${LIB_INSTALL_DIR}/osgearth/cmake)
   
 write_basic_package_version_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
-  VERSION 3.3.0
-  COMPATIBILITY SameMajorVersion )
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
-              ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake )
+    ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
+    VERSION 3.4.0
+    COMPATIBILITY SameMajorVersion)
+  
+install(
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
+    DESTINATION
+        ${CMAKE_INSTALL_PREFIX}/cmake )

@@ -1827,6 +1827,9 @@ GeoImage::GeoImage(Threading::Future<osg::ref_ptr<osg::Image>> fimage, const Geo
 bool
 GeoImage::valid() const 
 {
+    if (_status.isError())
+        return false;
+
     if (!_extent.isValid())
         return false;
 

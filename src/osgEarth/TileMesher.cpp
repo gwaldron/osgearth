@@ -223,8 +223,7 @@ TileMesher::getEdits(
                     if (f->getExtent().intersects(keyExtent))
                     {
                         edit.features.push_back(osg::clone(f, osg::CopyOp::DEEP_COPY_ALL));
-                        edit.features.back()->transform(map->getSRS()); // keyExtent.getSRS()->getGeocentricSRS());
-                        //edit.features.push_back(f);
+                        edit.features.back()->transform(map->getSRS());
                     }
                 }
 

@@ -1,19 +1,18 @@
 # Windows stuff
 
-IF(WIN32 AND NOT ANDROID)
+if(WIN32 AND NOT ANDROID)
+    if(MSVC)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+        add_definitions(-D_SCL_SECURE_NO_WARNINGS)
+        add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
+    endif(MSVC)    
+endif(WIN32 AND NOT ANDROID)
 
-  # GW: no longer required (keep for posterity)
-  # GL CORE Profile build (OSG must also be built with it)
-  # FIND_PACKAGE(GLCORE)
-  #IF(GLCORE_FOUND)
-  #    INCLUDE_DIRECTORIES( ${GLCORE_INCLUDE_DIR} )
-  #    message(status "Found GLCORE headers at ${GLCORE_INCLUDE_DIR}")
-  #ENDIF()    
+# Custom plugin prefixes
+if (CYGWIN)
+    SET(OSGEARTH_PLUGIN_PREFIX "cygwin_")
+endif()
 
-  IF(MSVC)
-        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
-        ADD_DEFINITIONS(-D_SCL_SECURE_NO_WARNINGS)
-        ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE)
-    ENDIF(MSVC)
-    
-ENDIF(WIN32 AND NOT ANDROID)
+if(MINGW)
+    SET(OSGEARTH_PLUGIN_PREFIX "mingw_")
+endif()

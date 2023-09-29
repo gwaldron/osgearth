@@ -1,7 +1,7 @@
 #define MAX_NUM_SHARED_SAMPLERS 16
 
 struct oe_rex_Shared {
-    vec2 morphConstants[19];
+    vec2 morphConstants[20]; // TODO: define this
     float padding[2];
 };
 struct oe_rex_Tile {

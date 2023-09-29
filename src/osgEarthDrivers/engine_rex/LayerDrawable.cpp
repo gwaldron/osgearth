@@ -430,7 +430,7 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
 
             // Encode morphing constants, one per LOD
             const SelectionInfo& info = _context->getSelectionInfo();
-            for (unsigned lod = 0; lod < 19; ++lod)
+            for (unsigned lod = 0; lod < info.getNumLODs(); ++lod)
             {
                 float end = info.getLOD(lod)._morphEnd;
                 float start = info.getLOD(lod)._morphStart;

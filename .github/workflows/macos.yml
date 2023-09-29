@@ -13,9 +13,9 @@ jobs:
 
     strategy:
       matrix:
-        os: ['macos-12']
+        os: ['macos-13']
         include:
-          - os: 'macos-12'
+          - os: 'macos-13'
             triplet: 'x64-macosx'
 
     steps:
@@ -45,7 +45,7 @@ jobs:
       shell: bash
       working-directory: ${{ runner.workspace }}/build
       run: |
-        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DOSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT=ON -DOSGEARTH_BUILD_PROCEDURAL_NODEKIT=ON -DCMAKE_CXX_STANDARD:STRING=14 -DCMAKE_CXX_STANDARD_REQUIRED:BOOL=ON -DCMAKE_CXX_EXTENSIONS:BOOL=OFF -GXcode -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/vcpkg
+        cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DOSGEARTH_BUILD_TESTS=OFF -DOSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT=ON -DOSGEARTH_BUILD_PROCEDURAL_NODEKIT=ON -DCMAKE_CXX_STANDARD:STRING=17 -DCMAKE_CXX_STANDARD_REQUIRED:BOOL=ON -GXcode -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/vcpkg
 
     - name: 'Upload cmake configure log artifact'
       uses: actions/upload-artifact@v2

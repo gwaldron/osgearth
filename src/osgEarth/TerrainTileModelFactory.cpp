@@ -423,7 +423,7 @@ TerrainTileModelFactory::addElevation(
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT("Elevation");
 
-    bool needElevation = manifest.includesElevation();
+    bool needElevation = manifest.includesElevation() || manifest.includesConstraints();
     ElevationLayerVector layers;
     map->getLayers(layers);
 

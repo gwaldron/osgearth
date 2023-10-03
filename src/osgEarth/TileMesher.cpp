@@ -188,6 +188,7 @@ TileMesher::getEdits(
             [&](const TerrainConstraintLayer* layer)
             {
                 return
+                    layer->isOpen() &&
                     layer->getVisible() &&
                     layer->getMinLevel() <= key.getLOD() &&
                     layer->getExtent().intersects(keyExtent);

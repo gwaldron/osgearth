@@ -19,6 +19,7 @@
 #include "TerrainMeshLayer"
 #include "TileMesher"
 #include "TerrainEngineNode"
+#include "TerrainConstraintLayer"
 
 using namespace osgEarth;
 
@@ -155,18 +156,20 @@ TerrainMeshLayer::createTileImplementation(
         mesher.setTerrainOptions(_engine->getOptions());
 
     // process any constraints:
-    TileMesher::Edits edits;
+    MeshConstraints edits;
+
+    //TileMesher::Edits edits;
     osg::ref_ptr<const Map> map;
     if (_map.lock(map))
     {
-        mesher.getEdits(key, map.get(), edits, progress);
+        TerrainConstraintQuery query(map.get());
+        query.getConstraints(key, edits, progress);
     }
 
     // create the mesh
     TileMesh mesh = mesher.createMesh(key, edits, progress);
     if (!mesh.indices.valid())
     {
-
         mesh.indices = mesher.getOrCreateStandardIndices();
     }
 
@@ -181,12 +184,13 @@ TerrainMeshLayer::applyConstraints(const TileKey& key, TileMesh& mesh) const
         mesher.setTerrainOptions(_engine->getOptions());
 
     // process any constraints:
-    TileMesher::Edits edits;
+    MeshConstraints edits;
+
     osg::ref_ptr<const Map> map;
     if (_map.lock(map))
     {
-        mesher.getEdits(key, map.get(), edits, nullptr);
-        if (!edits.empty())
+        TerrainConstraintQuery query(map.get());
+        if (query.getConstraints(key, edits, {}))
         {
             mesh = mesher.createMesh(key, mesh, edits, nullptr);
         }

@@ -188,36 +188,79 @@ TerrainConstraintLayer::setMinLevel(unsigned value)
     setOptionThatRequiresReopen(options().minLevel(), value);
 }
 
-
-
-
-void
-TerrainConstraintQuery::setMap(const Map* map)
+MeshConstraint
+TerrainConstraintLayer::getConstraint(const TileKey& key, FilterContext* context, ProgressCallback* progress) const
 {
-    _layers.clear();
-    if (map)
-        map->getOpenLayers(_layers);
+    const GeoExtent& keyExtent = key.getExtent();
+
+    if (!isOpen() ||
+        !getVisible() ||
+        getMinLevel() > key.getLOD() ||
+        !getExtent().intersects(keyExtent) ||
+        !getFeatureSource())
+    {
+        return {};
+    }
+
+    osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(
+        key,
+        getFilters(),
+        context,
+        progress);
+
+    if (cursor.valid() && cursor->hasMore())
+    {
+        MeshConstraint result;
+
+        result.hasElevation = getHasElevation();
+        result.removeExterior = getRemoveExterior();
+        result.removeInterior = getRemoveInterior();
+
+        while (cursor->hasMore())
+        {
+            if (progress && progress->isCanceled())
+                return { };
+
+            Feature* f = cursor->nextFeature();
+
+            if (f && f->getExtent().intersects(keyExtent))
+            {
+                f->transform(keyExtent.getSRS());
+                result.features.emplace_back(f);
+            }
+        }
+
+        return result;
+    }
+
+    return { };
 }
 
+
+
 void
-TerrainConstraintQuery::addLayer(TerrainConstraintLayer* layer)
+TerrainConstraintQuery::setup(const Map* map)
 {
-    _layers.push_back(layer);
+    layers.clear();
+    if (map)
+    {
+        map->getOpenLayers(layers);
+    }
 }
 
 bool
 TerrainConstraintQuery::getConstraints(
     const TileKey& key,
-    std::vector<TerrainConstraint>& output,
+    MeshConstraints& output,
     ProgressCallback* progress) const
 {
     output.clear();
 
-    if (!_layers.empty())
+    if (!layers.empty())
     {
         const GeoExtent& keyExtent = key.getExtent();
 
-        for (auto& layer : _layers)
+        for (auto& layer : layers)
         {
             if (!layer->isOpen() || !layer->getVisible())
                 continue;
@@ -244,8 +287,10 @@ TerrainConstraintQuery::getConstraints(
 
                 if (cursor.valid() && cursor->hasMore())
                 {
-                    TerrainConstraint constraint;
-                    constraint.layer = layer;
+                    MeshConstraint constraint;
+                    constraint.hasElevation = layer->getHasElevation();
+                    constraint.removeExterior = layer->getRemoveExterior();
+                    constraint.removeInterior = layer->getRemoveInterior();
 
                     while (cursor->hasMore())
                     {
@@ -266,5 +311,6 @@ TerrainConstraintQuery::getConstraints(
             }
         }
     }
-    return true;
+
+    return !output.empty();
 }

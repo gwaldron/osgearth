@@ -168,81 +168,8 @@ TileMesher::getOrCreateStandardIndices() const
     return _standardIndices.get();
 }
 
-bool
-TileMesher::getEdits(
-    const TileKey& key,
-    const Map* map,
-    Edits& out_edits,
-    Cancelable* progress) const
-{
-    out_edits.clear();
-
-    if (map)
-    {
-        const GeoExtent& keyExtent = key.getExtent();
-        
-        // collect all the constraint layers that intersect our key
-        ConstraintLayers layers;
-
-        map->getLayers<TerrainConstraintLayer>(layers,
-            [&](const TerrainConstraintLayer* layer)
-            {
-                return
-                    layer->isOpen() &&
-                    layer->getVisible() &&
-                    layer->getMinLevel() <= key.getLOD() &&
-                    layer->getExtent().intersects(keyExtent);
-            }
-        );
-
-        FilterContext context(new Session(map));
-
-        std::vector<Edit> edits;
-
-        for (auto& layer : layers)
-        {
-            // For each feature, check that it intersects the tile key,
-            // and then xform it to the correct SRS and store it as an edit
-            FeatureSource* fs = layer->getFeatureSource();
-            if (fs)
-            {
-                Edit edit;
-                
-                osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(
-                    key,
-                    layer->getFilters(),
-                    &context,
-                    nullptr);
-
-                while (cursor.valid() && cursor->hasMore())
-                {
-                    if (progress && progress->isCanceled())
-                        return { };
-
-                    Feature* f = cursor->nextFeature();
-
-                    if (f->getExtent().intersects(keyExtent))
-                    {
-                        edit.features.push_back(osg::clone(f, osg::CopyOp::DEEP_COPY_ALL));
-                        edit.features.back()->transform(map->getSRS());
-                    }
-                }
-
-                if (!edit.features.empty())
-                {
-                    edit.hasElevation = layer->getHasElevation();
-                    edit.removeInterior = layer->getRemoveInterior();
-                    edit.removeExterior = layer->getRemoveExterior();
-                    out_edits.emplace_back(std::move(edit));
-                }
-            }
-        }
-    }
-    return !out_edits.empty();
-}
-
 TileMesh
-TileMesher::createMesh(const TileKey& key, const Edits& edits, Cancelable* progress) const
+TileMesher::createMesh(const TileKey& key, const MeshConstraints& edits, Cancelable* progress) const
 {
     if (edits.empty())
     {
@@ -250,12 +177,12 @@ TileMesher::createMesh(const TileKey& key, const Edits& edits, Cancelable* progr
     }
     else
     {
-        return createMeshWithEdits(key, {}, edits, progress);
+        return createMeshWithConstraints(key, {}, edits, progress);
     }
 }
 
 TileMesh
-TileMesher::createMesh(const TileKey& key, const TileMesh& mesh, const Edits& edits, Cancelable* progress) const
+TileMesher::createMesh(const TileKey& key, const TileMesh& mesh, const MeshConstraints& edits, Cancelable* progress) const
 {
     if (edits.empty())
     {
@@ -263,7 +190,7 @@ TileMesher::createMesh(const TileKey& key, const TileMesh& mesh, const Edits& ed
     }
     else
     {
-        return createMeshWithEdits(key, mesh, edits, progress);
+        return createMeshWithConstraints(key, mesh, edits, progress);
     }
 }
 
@@ -476,10 +403,10 @@ namespace
 }
 
 TileMesh
-TileMesher::createMeshWithEdits(
+TileMesher::createMeshWithConstraints(
     const TileKey& key,
     const TileMesh& input_mesh,
-    const Edits& edits,
+    const MeshConstraints& edits,
     Cancelable* progress) const
 {
     auto& keyExtent = key.getExtent();

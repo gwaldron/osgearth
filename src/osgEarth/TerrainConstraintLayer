@@ -24,6 +24,7 @@
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/LayerReference>
+#include <osgEarth/TileMesher>
 
 namespace osgEarth
 {
@@ -83,6 +84,11 @@ namespace osgEarth
             return _filterchain.get();
         }
 
+        MeshConstraint getConstraint(
+            const TileKey& key,
+            FilterContext* context,
+            ProgressCallback* progress) const;
+
     protected:
 
         virtual Status openImplementation() override;
@@ -117,25 +123,20 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainConstraintQuery
     {
     public:
-        //! Sets the query to use all constraint layers in the map
-        void setMap(const Map* map);
+        std::vector<osg::ref_ptr<TerrainConstraintLayer>> layers;
 
-        //! Adds a single constraint layer
-        void addLayer(TerrainConstraintLayer* layer);
-
-        //! Layers to query
-        std::vector<osg::ref_ptr<TerrainConstraintLayer>>& layers() {
-            return _layers;
+        TerrainConstraintQuery(const Map* map = {}) {
+            if (map) setup(map);
         }
+
+        //! Sets the query to use all constraint layers in the map
+        void setup(const Map* map);
 
         //! Fetches all constraints intersecting the given tilekey
         bool getConstraints(
             const TileKey& key,
-            std::vector<TerrainConstraint>& output,
+            MeshConstraints& output,
             ProgressCallback* progress) const;
-
-    private:
-        std::vector<osg::ref_ptr<TerrainConstraintLayer>> _layers;
     };
 
 } // namespace osgEarth

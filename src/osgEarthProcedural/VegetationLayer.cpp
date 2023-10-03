@@ -139,7 +139,7 @@ namespace
         return static_cast<ChonkDrawable*>(value.get());
     }
 
-    bool inConstrainedRegion(double x, double y, const std::vector<TerrainConstraint>& constraints)
+    bool inConstrainedRegion(double x, double y, const std::vector<MeshConstraint>& constraints)
     {
         for (auto& con : constraints)
         {
@@ -729,7 +729,7 @@ VegetationLayer::addedToMap(const Map* map)
     }
 
     // prepare for querying constraints with holes
-    map->getLayers<TerrainConstraintLayer>(_constraintQuery.layers(), [](const TerrainConstraintLayer* layer)
+    map->getLayers<TerrainConstraintLayer>(_constraintQuery.layers, [](const TerrainConstraintLayer* layer)
         {
             auto clayer = static_cast<const TerrainConstraintLayer*>(layer);
             return clayer->getRemoveInterior() == true;
@@ -1285,7 +1285,8 @@ VegetationLayer::getAssetPlacements(
 
     // Prepare to deal with holes in the terrain, where we do not want
     // to place vegetation
-    std::vector<TerrainConstraint> constraints;
+    MeshConstraints constraints;
+
     _constraintQuery.getConstraints(
         key,
         constraints,
@@ -1707,7 +1708,7 @@ VegetationLayer::simulateAssetPlacement(
 
     // Prepare to deal with holes in the terrain, where we do not want
     // to place vegetation
-    std::vector<TerrainConstraint> constraints;
+    std::vector<MeshConstraint> constraints;
     _constraintQuery.getConstraints(key, constraints, progress);
 
     // If the biome residency is not up to date, do that now

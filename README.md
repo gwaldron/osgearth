@@ -1,10 +1,10 @@
 osgEarth - 3D Mapping Engine & C++ SDK
 
-![Windows](https://github.com/gwaldron/osgearth/workflows/windows-x64-Release/badge.svg)
+![Windows](https://github.com/gwaldron/osgearth/actions/workflows/windows.yml/badge.svg)
 
-![Linux](https://github.com/gwaldron/osgearth/workflows/linux-x64/badge.svg)
+![Linux](https://github.com/gwaldron/osgearth/actions/workflows/linux.yml/badge.svg)
 
-![OSX](https://github.com/gwaldron/osgearth/workflows/macosx-x64/badge.svg)
+![OSX](https://github.com/gwaldron/osgearth/actions/workflows/macos.yml/badge.svg)
 
 
 ## Welcome to osgEarth!

@@ -67,6 +67,23 @@ http://readymap.org
         </styles>
     </FeatureModel>
 
+    <FeatureModel name="Road Polygons" open="false">
+        <profile>spherical-mercator</profile>
+        <features>roads-data</features>
+        <styles>
+            <style type="text/css">
+                default {
+                    stroke: #ffffff;
+                    stroke-width: 20m;
+                    render-depth-test: false;
+                    render-order: 2;
+                    render-depth-offset: true;
+                    stroke-image: "'../data/road.png'";
+                }
+            </style>
+        </styles>
+    </FeatureModel>
+
     <XYZFeatures name="roads-data">
         <url>http://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
         <min_level>14</min_level>

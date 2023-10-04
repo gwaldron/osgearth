@@ -578,6 +578,9 @@ TileMesher::createMeshWithConstraints(
         std::unordered_set<weemesh::triangle_t*> insiders;
         std::unordered_set<weemesh::triangle_t*> insiders_to_remove;
         std::unordered_set<weemesh::triangle_t*> outsiders_to_possibly_remove;
+        weemesh::vert_t centroid;
+        const double one_third = 1.0 / 3.0;
+        std::vector<weemesh::triangle_t*> tris;
 
         for (auto& edit : edits)
         {
@@ -593,26 +596,49 @@ TileMesher::createMeshWithConstraints(
 
                         // Note: the part was already transformed in a previous step.
 
-                        if (part->isPolygon() && part->getBounds().intersects(localBounds))
+                        auto& bb = part->getBounds();
+                        if (part->isPolygon() && bb.intersects(localBounds))
                         {
-                            for (auto& tri_iter : mesh._triangles)
+                            if (edit.removeExterior)
                             {
-                                weemesh::triangle_t& tri = tri_iter.second;
-                                weemesh::vert_t c = (tri.p0 + tri.p1 + tri.p2) * (1.0 / 3.0);
-
-                                bool inside = part->contains2D(c.x(), c.y());
-
-                                if (inside)
+                                // expensive path, much check ALL triangles when removing exterior.
+                                for (auto& tri_iter : mesh._triangles)
                                 {
-                                    insiders.insert(&tri);
-                                    if (edit.removeInterior)
+                                    weemesh::triangle_t* tri = &tri_iter.second;
+
+                                    bool inside = part->contains2D(tri->centroid.x(), tri->centroid.y());
+
+                                    if (inside)
                                     {
-                                        insiders_to_remove.insert(&tri);
+                                        insiders.insert(tri);
+                                        if (edit.removeInterior)
+                                        {
+                                            insiders_to_remove.insert(tri);
+                                        }
+                                    }
+                                    else if (edit.removeExterior)
+                                    {
+                                        outsiders_to_possibly_remove.insert(tri);
                                     }
                                 }
-                                else if (edit.removeExterior)
+                            }
+                            else
+                            {
+                                // fast path when we are NOT removing exterior tris.
+                                mesh.get_triangles(bb.xMin(), bb.yMin(), bb.xMax(), bb.yMax(), tris);
+
+                                for (auto tri : tris)
                                 {
-                                    outsiders_to_possibly_remove.insert(&tri);
+                                    bool inside = part->contains2D(tri->centroid.x(), tri->centroid.y());
+
+                                    if (inside)
+                                    {
+                                        insiders.insert(tri);
+                                        if (edit.removeInterior)
+                                        {
+                                            insiders_to_remove.insert(tri);
+                                        }
+                                    }
                                 }
                             }
                         }

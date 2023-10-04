@@ -126,6 +126,7 @@ namespace weemesh
     {
         UID uid; // unique id
         vert_t p0, p1, p2; // vertices
+        vert_t centroid;
         unsigned i0, i1, i2; // indices
         vert_t::value_type a_min[2]; // bbox min
         vert_t::value_type a_max[2]; // bbox max
@@ -276,6 +277,8 @@ namespace weemesh
             ++_num_edits;
         }
 
+        const double one_third = 1.0 / 3.0;
+
         // add new triangle to the mesh from 3 indices
         UID add_triangle(int i0, int i1, int i2)
         {
@@ -295,6 +298,7 @@ namespace weemesh
             tri.a_min[1] = std::min(tri.p0.y(), std::min(tri.p1.y(), tri.p2.y()));
             tri.a_max[0] = std::max(tri.p0.x(), std::max(tri.p1.x(), tri.p2.x()));
             tri.a_max[1] = std::max(tri.p0.y(), std::max(tri.p1.y(), tri.p2.y()));
+            tri.centroid = (tri.p0 + tri.p1 + tri.p2) * one_third;
 
             // "2d_degenerate" means that either a) at least 2 points are coincident, or
             // b) at least two edges are basically coincident (in the XY plane)
@@ -363,6 +367,18 @@ namespace weemesh
             }
 
             return index;
+        }
+
+        // fetch a pointer to each triangle that intersects the bounding box
+        unsigned get_triangles(vert_t::value_type xmin, vert_t::value_type ymin, vert_t::value_type xmax, vert_t::value_type ymax,
+            std::vector<triangle_t*>& output)
+        {
+            output.clear();
+            vert_t::value_type a_min[2] = { xmin, ymin };
+            vert_t::value_type a_max[2] = { xmax, ymax };
+            _spatial_index.Search(a_min, a_max, [&](const UID& uid) {
+                output.emplace_back(&_triangles[uid]); return true;  });
+            return output.size();
         }
 
         // insert a point into the mesh, cutting triangles as necessary

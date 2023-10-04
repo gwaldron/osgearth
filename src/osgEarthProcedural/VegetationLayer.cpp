@@ -1530,7 +1530,7 @@ VegetationLayer::getAssetPlacements(
             double a_min[2] = { local.x() + abb.xMin() * so, local.y() + abb.yMin() * so };
             double a_max[2] = { local.x() + abb.xMax() * so, local.y() + abb.yMax() * so };
 
-            if (index.Search(a_min, a_max, nullptr) == 0)
+            if (index.Search(a_min, a_max) == 0)
             {
                 index.Insert(a_min, a_max, 0);
                 pass = true;

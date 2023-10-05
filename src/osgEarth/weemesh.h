@@ -4,6 +4,9 @@
 #include <climits>
 #include <map>
 #include <unordered_map>
+#include <iterator>
+#include <set>
+#include <unordered_set>
 
 #define marker_is_set(INDEX, BITS) ((markers[INDEX] & BITS) != 0)
 #define marker_not_set(INDEX, BITS) ((markers[INDEX] & BITS) == 0)
@@ -15,8 +18,11 @@ namespace weemesh
 
     using UID = std::uint32_t;
 
+    constexpr double EPSILON = 0.00005;
+    //constexpr double EPSILON = 0.005;
+
     template<typename T>
-    inline bool equivalent(T a, T b, T epsilon = 1e-6)
+    inline bool equivalent(T a, T b, T epsilon = EPSILON)
     {
         double d = b - a;
         return d < static_cast<T>(0.0) ? d >= -epsilon : d <= epsilon;
@@ -102,8 +108,6 @@ namespace weemesh
     };
 
     const vert_t::value_type zero(0.0);
-
-    constexpr vert_t::value_type EPSILON = 0.00005; // 1e-3; // 6;
 
     inline bool same_vert(const vert_t& a, const vert_t& b, vert_t::value_type epsilon = EPSILON)
     {
@@ -986,12 +990,4 @@ namespace weemesh
             }
         }
     };
-
-    int getMorphNeighborIndexOffset(unsigned col, unsigned row, int rowSize)
-    {
-        if ((col & 0x1) == 1 && (row & 0x1) == 1) return rowSize + 2;
-        if ((row & 0x1) == 1)                   return rowSize + 1;
-        if ((col & 0x1) == 1)                   return 2;
-        return 1;
-    }
 }

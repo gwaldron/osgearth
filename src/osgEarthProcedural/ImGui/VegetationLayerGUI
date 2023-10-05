@@ -30,6 +30,7 @@ namespace osgEarth
             Future<const Biome*> _biomeUnderMouse;
             TileKey _biomeUnderMouseKey;
             osg::ref_ptr<FeatureNode> _placementNode;
+            TileKey _showPlacementsLastTileKey;
 
             VegetationLayerGUI() : GUI::BaseGUI("Vegetation"),
                 _first(true),
@@ -234,19 +235,21 @@ namespace osgEarth
 
                     static std::map<const Biome*, unsigned> biomeCounts;
 
-                    if (ImGui::Checkbox("Show asset bounding boxes", &_showPlacements))
+                    ImGui::Checkbox("Show asset bounding boxes", &_showPlacements);
+                    if (_showPlacements)
                     {
-                        if (_showPlacements)
-                        {
-                            biomeCounts.clear();
+                        biomeCounts.clear();
 
-                            auto vp = camera(ri)->getViewport();
-                            GeoPoint p = _mapNode->getGeoPointUnderMouse(view(ri), 0.5f*vp->width(), 0.5f*vp->height());
-                            if (p.isValid())
+                        auto vp = camera(ri)->getViewport();
+                        GeoPoint p = _mapNode->getGeoPointUnderMouse(view(ri), 0.5f*vp->width(), 0.5f*vp->height());
+                        if (p.isValid())
+                        {
+                            auto lod = _veglayer->options().group("trees").lod().get();
+                            TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p, lod);
+                            if (key != _showPlacementsLastTileKey)
                             {
-                                auto lod = _veglayer->options().group("trees").lod().get();
-                                TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p, lod);
-                                
+                                _showPlacementsLastTileKey = key;
+
                                 std::vector<VegetationLayer::Placement> placements;
 
                                 _veglayer->getAssetPlacements(
@@ -257,7 +260,7 @@ namespace osgEarth
                                     nullptr);
 
                                 FeatureList features;
-                                
+
                                 for (auto& p : placements)
                                 {
                                     // record the asset's position and properties as a point feature:
@@ -287,16 +290,6 @@ namespace osgEarth
                                         biomeCounts[p.biome]++;
                                 }
 
-#if 0
-                                auto lod = _veglayer->options().group("trees").lod().get();
-                                TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p, lod);
-                                VegetationFeatureGenerator gen;
-                                gen.setMap(_mapNode->getMap());
-                                gen.setLayer(_veglayer.get());
-                                FeatureList features;
-                                gen.getFeatures(key.getExtent(), features);
-#endif
-
                                 Style s;
                                 s.getOrCreate<ModelSymbol>()->url()->setLiteral("D:/data/splat/assets/models/unitbox.osg");
                                 s.getOrCreate<ModelSymbol>()->scaleX() = NumericExpression("feature.properties.width");
@@ -310,21 +303,19 @@ namespace osgEarth
                                 _mapNode->addChild(_placementNode);
                             }
                         }
-                        else if (_placementNode.valid())
-                        {
-                            if (_placementNode.valid())
-                                _placementNode->getParent(0)->removeChild(_placementNode.get());
-                            _placementNode = nullptr;
-                        }
-                    }
 
-                    if (_showPlacements)
-                    {
                         for (auto iter : biomeCounts)
                         {
                             std::string biome_name = iter.first ? iter.first->name().get() : "null";
                             ImGui::Text("(%ld) %s", iter.second, biome_name.c_str());
                         }
+                    }
+                    else if (_placementNode.valid())
+                    {
+                        if (_placementNode.valid())
+                            _placementNode->getParent(0)->removeChild(_placementNode.get());
+                        _placementNode = nullptr;
+                        _showPlacementsLastTileKey = {};
                     }
 
                     ImGui::Checkbox("Simulate tree placement under mouse", &_simulateTreePlacement);

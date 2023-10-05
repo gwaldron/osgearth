@@ -201,3 +201,9 @@ XYZModelLayer::create()
         setStatus(Status::OK());
     }
 }
+
+Util::SimplePager*
+XYZModelLayer::getPager() const
+{
+    return osgEarth::findTopMostNodeOfType<Util::SimplePager>(_root.get());
+}

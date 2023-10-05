@@ -25,10 +25,13 @@
 
 namespace osgEarth {
     class Map;
+    namespace Util {
+        class SimplePager;
+    }
 }
 
 namespace osgEarth
-{    
+{  
     /**
      * Layer that loads a pregenerated quadtree of model files
      */
@@ -60,6 +63,7 @@ namespace osgEarth
 
         //! Tiling profile (required)
         void setProfile(const Profile* profile);
+        const Profile* getProfile() const { return _profile.get(); }
 
         //! Whether to flip the Y axis for tile indexing
         void setInvertY(const bool& value);
@@ -81,7 +85,10 @@ namespace osgEarth
         const int& getMaxLevel() const;
 
         //! Forces a rebuild on this layer.
-        void dirty();    
+        void dirty();
+
+        //! Access the underlying node pager
+        SimplePager* getPager() const;
 
     public: // Layer
 
@@ -97,7 +104,7 @@ namespace osgEarth
         //! Serialization
         virtual Config getConfig() const;
 
-    protected: // Layer
+    public: // Layer
         
         // called by the map when this layer is added
         virtual void addedToMap(const Map*);

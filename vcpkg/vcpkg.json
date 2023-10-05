@@ -11,17 +11,15 @@
         "blend2d",
         "blosc",
         "draco",
+        { "name": "gdal",
+          "default-features": false,
+          "features": [ "recommended-features" ] },
         "geos",
         "glew",
         "libwebp",
         "libzip",
         "opengl",
-        {
-            "name": "osg",
-            "features": [
-                "plugins"
-            ]
-        },
+        "osg",
         "protobuf",
         "sqlite3",
         "tinyxml",

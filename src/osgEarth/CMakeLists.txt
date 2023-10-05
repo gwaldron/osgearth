@@ -387,7 +387,6 @@ SET(LIB_PUBLIC_HEADERS
     TextSymbolizer
     TFS
     TransformFilter
-    WingedEdgeMesh
     WireLines
     XYZFeatureSource
     WFS

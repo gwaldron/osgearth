@@ -93,6 +93,8 @@ main(int argc, char** argv)
             opt.optimize(node, osgUtil::Optimizer::INDEX_MESH);
             ShaderGenerator gen;
             node->accept(gen);
+
+            MapNodeHelper().configureView(&viewer);
         }
 
         return Metrics::run(viewer);

@@ -79,26 +79,25 @@ namespace osgEarth
 
         //! Create a tile mesh, optionally with a collection of edits.
         //! @param key TileKey for which to create the mesh
-        //! @param edits Edits to apply to alter the mesh, usually generated
-        //!   by calling getEdits(). If empty, the method will return a regular
-        //!   gridded mesh.
-        //! @param options Terrain options for the mesher to use
-        //! @param progress Cancelable interface
+        //! @param constraints Constraints to apply to alter the mesh.
+        //!     If empty, the method will return a regular gridded mesh.
+        //! @param progress Cancelation interface
         //! @return A tile mesh
         TileMesh createMesh(
             const TileKey& key,
-            const MeshConstraints& edits,
+            const MeshConstraints& constraints,
             Cancelable* progress) const;
 
         //! Apply edits to an existing mesh and return a new mesh.
-        //! @param mesh Input mesh
-        //! @param edits Edits to apply to alter the mesh, usually generated
-        //!   by calling getEdits()
+        //! @param key TileKey for which to create the mesh
+        //! @param input Existing mesh to constrain
+        //! @param constraints Constraints to apply to alter the existing mesh
+        //! @param progress Cancelation interface
         //! @return A tile mesh
         TileMesh createMesh(
             const TileKey& key,
             const TileMesh& input,
-            const MeshConstraints& edits,
+            const MeshConstraints& constraints,
             Cancelable* progress) const;
 
         //! Creates a primitive set that represents triangles for

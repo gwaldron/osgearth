@@ -90,7 +90,8 @@ GeometryPool::getPooledGeometry(
         auto meshlayer = map->getLayer<TerrainMeshLayer>();
         if (meshlayer)
         {
-            auto mesh = meshlayer->createTile(tileKey, nullptr);
+            osg::ref_ptr<ProgressCallback> p = new ProgressCallback(progress);
+            auto mesh = meshlayer->createTile(tileKey, p);
             out = convertTileMeshToSharedGeometry(mesh);
             if (out.valid())
             {

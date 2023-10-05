@@ -90,13 +90,9 @@ namespace osgEarth
         void applyConstraints(const TileKey& key, TileMesh& mesh) const;
 
     private:
-        std::string _template;
-        std::string _rotateString, _rotateChoices;
         osg::observer_ptr<const Map> _map;
         TerrainEngine* _engine = nullptr;
-        mutable std::atomic_int _rotateIter;
-        URI createURI(const TileKey& key) const;
-    };
+};
 
 } // namespace osgEarth
 

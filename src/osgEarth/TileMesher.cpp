@@ -407,7 +407,7 @@ TileMesher::createMeshWithConstraints(
     const TileKey& key,
     const TileMesh& input_mesh,
     const MeshConstraints& edits,
-    Cancelable* progress) const
+    Cancelable* cancelable) const
 {
     auto& keyExtent = key.getExtent();
     auto tileSRS = keyExtent.getSRS();
@@ -465,6 +465,8 @@ TileMesher::createMeshWithConstraints(
         osg::Vec3d world;
         for (auto& feature : edit.features)
         {
+            feature->transform(tileSRS);
+
             GeometryIterator geom_iter(feature->getGeometry(), true);
             while (geom_iter.hasMore())
             {
@@ -560,6 +562,9 @@ TileMesher::createMeshWithConstraints(
                         }
                     }
                 }
+
+                if (cancelable && cancelable->isCanceled())
+                    return {};
             }
         }
     }
@@ -621,7 +626,7 @@ TileMesher::createMeshWithConstraints(
                                     }
                                 }
                             }
-                            else
+                            else // removeInterior ONLY
                             {
                                 // fast path when we are NOT removing exterior tris.
                                 mesh.get_triangles(bb.xMin(), bb.yMin(), bb.xMax(), bb.yMax(), tris);
@@ -629,18 +634,16 @@ TileMesher::createMeshWithConstraints(
                                 for (auto tri : tris)
                                 {
                                     bool inside = part->contains2D(tri->centroid.x, tri->centroid.y);
-
                                     if (inside)
                                     {
-                                        insiders.insert(tri);
-                                        if (edit.removeInterior)
-                                        {
-                                            insiders_to_remove.insert(tri);
-                                        }
+                                        insiders_to_remove.insert(tri);
                                     }
                                 }
                             }
                         }
+
+                        if (cancelable && cancelable->isCanceled())
+                            return {};
                     }
                 }
             }

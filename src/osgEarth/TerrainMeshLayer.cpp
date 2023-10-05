@@ -20,6 +20,10 @@
 #include "TileMesher"
 #include "TerrainEngineNode"
 #include "TerrainConstraintLayer"
+#include "Utils"
+
+#include "XYZModelLayer"
+#include "SimplePager"
 
 using namespace osgEarth;
 
@@ -63,16 +67,6 @@ TerrainMeshLayer::openImplementation()
     auto s = TileLayer::openImplementation();
     if (s.isError()) return s;
 
-    // Set up a rotating element in the template
-    _template = options().uri()->full();
-    auto start = _template.find('[');
-    auto end = _template.find(']');
-    if (start != std::string::npos && end != std::string::npos && end - start > 1)
-    {
-        _rotateString = _template.substr(start, end - start + 1);
-        _rotateChoices = _template.substr(start + 1, end - start - 1);
-    }
-
     return STATUS_OK;
 }
 
@@ -96,59 +90,15 @@ TerrainMeshLayer::prepareForRendering(TerrainEngine* engine)
     _engine = engine;
 }
 
-URI
-TerrainMeshLayer::createURI(const TileKey& key) const
-{
-    unsigned x, y;
-    key.getTileXY(x, y);
-    unsigned cols = 0, rows = 0;
-    key.getProfile()->getNumTiles(key.getLevelOfDetail(), cols, rows);
-    unsigned inverted_y = rows - y - 1;
-
-    if (options().invertY() == true)
-    {
-        y = inverted_y;
-    }
-
-    std::string location = _template;
-
-    // support OpenLayers template style:
-    replaceIn(location, "${x}", std::to_string(x));
-    replaceIn(location, "${y}", std::to_string(y));
-    replaceIn(location, "${-y}", std::to_string(inverted_y));
-    replaceIn(location, "${z}", std::to_string(key.getLevelOfDetail()));
-
-    // failing that, legacy osgearth style:
-    replaceIn(location, "{x}", std::to_string(x));
-    replaceIn(location, "{y}", std::to_string(y));
-    replaceIn(location, "{-y}", std::to_string(inverted_y));
-    replaceIn(location, "{z}", std::to_string(key.getLevelOfDetail()));
-
-    std::string cacheKey;
-
-    if (!_rotateChoices.empty())
-    {
-        cacheKey = location;
-        unsigned index = (++_rotateIter) % _rotateChoices.size();
-        replaceIn(location, _rotateString, Stringify() << _rotateChoices[index]);
-    }
-
-    return URI(location, options().uri()->context());
-}
-
 TileMesh
-TerrainMeshLayer::createTile(
-    const TileKey& key,
-    ProgressCallback* progress) const
+TerrainMeshLayer::createTile(const TileKey& key, ProgressCallback* progress) const
 {
     //TODO: caching
     return createTileImplementation(key, progress);
 }
 
 TileMesh
-TerrainMeshLayer::createTileImplementation(
-    const TileKey& key,
-    ProgressCallback* progress) const
+TerrainMeshLayer::createTileImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     // Set up a tile mesher:
     TileMesher mesher;
@@ -158,7 +108,6 @@ TerrainMeshLayer::createTileImplementation(
     // process any constraints:
     MeshConstraints edits;
 
-    //TileMesher::Edits edits;
     osg::ref_ptr<const Map> map;
     if (_map.lock(map))
     {
@@ -179,16 +128,15 @@ TerrainMeshLayer::createTileImplementation(
 void
 TerrainMeshLayer::applyConstraints(const TileKey& key, TileMesh& mesh) const
 {
-    TileMesher mesher;
-    if (_engine)
-        mesher.setTerrainOptions(_engine->getOptions());
-
-    // process any constraints:
-    MeshConstraints edits;
-
     osg::ref_ptr<const Map> map;
     if (_map.lock(map))
     {
+        TileMesher mesher;
+        if (_engine)
+            mesher.setTerrainOptions(_engine->getOptions());
+
+        MeshConstraints edits;
+
         TerrainConstraintQuery query(map.get());
         if (query.getConstraints(key, edits, {}))
         {

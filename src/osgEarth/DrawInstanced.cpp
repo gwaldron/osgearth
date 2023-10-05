@@ -24,13 +24,16 @@
 #include <osgEarth/Shaders>
 #include <osgEarth/ObjectIndex>
 #include <osgEarth/TextureBuffer>
-#include <osg/TriangleIndexFunctor>
 
+#include <osg/TriangleFunctor>
+#include <osg/TriangleIndexFunctor>
 #include <osg/ComputeBoundsVisitor>
 #include <osg/KdTree>
 #include <osgDB/ObjectWrapper>
 #include <osgDB/Registry>
 #include <osgUtil/Optimizer>
+
+#include <osgDB/WriteFile>
 
 #define LC "[DrawInstanced] "
 
@@ -276,92 +279,112 @@ const std::vector< osg::Matrixf >& InstanceGeometry::getMatrices() const
     return _matrices;
 }
 
-struct IndexCollector
+namespace
 {
-    std::vector< unsigned int > indices;
-
-    void operator()(unsigned i0, unsigned i1, unsigned i2)
+    // Triangle functor that collects all triangles for all instance matrices
+    // into a single vertex/index list pair. It also eliminates duplicate verts
+    // if it finds any.
+    struct Mesher
     {
-        indices.push_back(i0);
-        indices.push_back(i1);
-        indices.push_back(i2);
-    }
-};
+        const std::vector<osg::Matrixf>* matrices;
+        osg::Vec3Array* verts;
+        osg::DrawElementsUInt* indices;
+        std::map<osg::Vec3f, unsigned> verts_unique;
+
+        Mesher()
+        {
+            verts = new osg::Vec3Array();
+            indices = new osg::DrawElementsUInt(GL_TRIANGLES);
+        }
+
+        void operator()(const osg::Vec3f& v0, const osg::Vec3f& v1, const osg::Vec3f& v2)
+        {
+            for (auto& matrix : *matrices)
+            {
+                for (auto& v : { v0, v1, v2 })
+                {
+                    auto v_final = v * matrix;
+                    auto a = verts_unique.insert({ v_final, verts->size() });
+                    if (a.second) verts->push_back(v_final);
+                    indices->push_back(a.first->second);
+                }
+            }
+        }
+    };
+}
 
 void InstanceGeometry::setMatrices(const std::vector< osg::Matrixf >& matrices)
 {
     _matrices = matrices;
-    _mesh.clear();
+    _mesh = nullptr;
 
-    // Create a copy of all the verts for each instance transformed by it's matrix.
-    const osg::Vec3Array* verts = dynamic_cast<const osg::Vec3Array*>(getVertexArray());
-    if (verts)
+    const osg::Vec3Array* instance_verts = dynamic_cast<const osg::Vec3Array*>(getVertexArray());
+    if (!instance_verts)
     {
-        _mesh.reserve(verts->size() * _matrices.size());
-        for (unsigned int matrixIndex = 0; matrixIndex < _matrices.size(); ++matrixIndex)
-        {
-            for (unsigned int i = 0; i < verts->size(); ++i)
-            {
-                _mesh.push_back((*verts)[i] * _matrices[matrixIndex]);
-            }
-        }
+        return void();
     }
 
-    dirtyBound();
+    // Collect all the triangles for the proxy mesh
+    osg::TriangleFunctor<Mesher> mesher;
+    mesher.matrices = &matrices;
+    
+    // Pre-allocate space
+    mesher.verts->reserve(instance_verts->size() * matrices.size());
+    unsigned total_indices = 0;
+    for (auto& ps : getPrimitiveSetList())
+        total_indices += ps->getNumIndices();
+    mesher.indices->reserve(total_indices * matrices.size());
 
-    // Make a temporary geometry to build kdtrees on and copy the shape over
-    osg::ref_ptr< osg::Geometry > tempGeom = new osg::Geometry;
-    osg::Vec3Array* tempVerts = new osg::Vec3Array;
-    tempVerts->reserve(_mesh.size());
-    for (unsigned int i = 0; i < _mesh.size(); i++)
-    {
-        tempVerts->push_back(_mesh[i]);
-    }
-    tempGeom->setVertexArray(tempVerts);
+    this->accept(mesher);
 
-    // Create an indexed version of the geometry so we can create one big primitive set for the kdtree builder to work on.
-    // We also use this draw elements in the accept(PrimitiveFunctor) function to simulate this instanced geometry being a bunch of triangles
-    osg::TriangleIndexFunctor< IndexCollector > collector;
-    asGeometry()->accept(collector);
-
-    _meshDrawElements = new osg::DrawElementsUInt(GL_TRIANGLES);
-    for (unsigned int i = 0; i < _matrices.size(); i++)
-    {
-        unsigned int offset = i * verts->size();
-        for (auto i : collector.indices)
-        {
-            _meshDrawElements->push_back(offset + i);
-        }
-    }
-    tempGeom->addPrimitiveSet(_meshDrawElements.get());
+    // Make a new proxy mesh:
+    _mesh = new osg::Geometry();
+    _mesh->setVertexArray(mesher.verts);
+    _mesh->addPrimitiveSet(mesher.indices);
 
     if (osgDB::Registry::instance()->getKdTreeBuilder())
     {
         osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
-        tempGeom->accept(*kdTreeBuilder.get());
-        if (tempGeom->getShape())
+        _mesh->accept(*kdTreeBuilder.get());
+        if (_mesh->getShape())
         {
-            setShape(tempGeom->getShape());
+            setShape(_mesh->getShape());
         }
     }
+
+    dirtyBound();
 }
 
 void InstanceGeometry::accept(osg::PrimitiveFunctor& f) const
 {
-    f.setVertexArray(_mesh.size(), _mesh.data());
-    _meshDrawElements->accept(f);
+    if (_mesh.valid())
+    {
+        _mesh->accept(f);
+    }
+    else
+    {
+        osg::Geometry::accept(f);
+    }
 }
 
+void InstanceGeometry::accept(osg::PrimitiveIndexFunctor & f) const
+{
+    if (_mesh.valid())
+    {
+        _mesh->accept(f);
+    }
+    else
+    {
+        osg::Geometry::accept(f);
+    }
+}
 
 osg::BoundingBox InstanceGeometry::computeBoundingBox() const
 {
     osg::BoundingBox bbox;
-    if (!_mesh.empty())
+    if (_mesh.valid())
     {
-        for (unsigned int i = 0; i < _mesh.size(); ++i)
-        {
-            bbox.expandBy(_mesh[i]);
-        }
+        bbox = _mesh->computeBoundingBox();
     }
     return bbox;
 }

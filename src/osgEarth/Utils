@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Threading>
+#include <osgEarth/DrawInstanced>
 
 #include <osg/Vec3f>
 #include <osg/AutoTransform>
@@ -540,9 +541,12 @@ namespace osgEarth { namespace Util
 
         void apply(osg::Geometry& geom) override
         {
+            auto instanced_geom = dynamic_cast<Util::DrawInstanced::InstanceGeometry*>(&geom);
+            auto geom_to_use = instanced_geom ? instanced_geom->getProxyGeometry() : &geom;
+
             osg::TriangleIndexFunctor<TriangleFullSend> _sender;
             _sender._visitor = this;
-            _sender._geom = &geom;
+            _sender._geom = geom_to_use;
             geom.accept(_sender);
         }
 

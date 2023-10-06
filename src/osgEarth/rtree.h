@@ -100,7 +100,7 @@ public:
     using DefaultCallbackType = std::function<bool(const DATATYPE&)>;
     template<typename CALLBACK_TYPE = DefaultCallbackType>
     int Search(const ELEMTYPE a_min[NUMDIMS], const ELEMTYPE a_max[NUMDIMS],
-        CALLBACK_TYPE callback = [&](const DATATYPE&) { return true; }) const;
+        CALLBACK_TYPE callback = [](const DATATYPE&) { return true; }) const;
 
     /// Remove all entries from tree
     void RemoveAll();

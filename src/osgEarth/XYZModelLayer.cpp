@@ -190,6 +190,7 @@ XYZModelLayer::create()
         xyzGraph->setAdditive(*_options->additive());
         xyzGraph->setMinLevel(*_options->minLevel());
         xyzGraph->setMaxLevel(*_options->maxLevel());
+        xyzGraph->setSceneGraphCallbacks(getSceneGraphCallbacks());
         xyzGraph->build();
 
         _root->removeChildren(0, _root->getNumChildren());

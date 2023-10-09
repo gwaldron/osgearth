@@ -48,8 +48,11 @@ GeometryCompilerOptions(options)
 void TiledFeatureModelLayer::Options::fromConfig(const Config& conf)
 {
     additive().setDefault(false);
+    minPixel().setDefault(512.0);
 
     conf.get("additive", additive());
+    conf.get("min_pixel", minPixel());
+
     featureSource().get(conf, "features");
 }
 
@@ -65,6 +68,7 @@ TiledFeatureModelLayer::Options::getConfig() const
     conf.merge(gcConf);
 
     conf.set("additive", additive());
+    conf.set("min_pixel", minPixel());
 
     featureSource().set(conf, "features");
 
@@ -82,6 +86,7 @@ void TiledFeatureModelLayer::Options::mergeConfig(const Config& conf)
 OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, bool, AlphaBlending, alphaBlending);
 OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, bool, EnableLighting, enableLighting);
 OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, bool, Additive, additive);
+OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, float, MinPixel, minPixel);
 
 TiledFeatureModelLayer::~TiledFeatureModelLayer()
 {
@@ -267,6 +272,11 @@ TiledFeatureModelLayer::create()
             fmg->setOwnerName(getName());
             fmg->setFilterChain(chain.get());
             fmg->setAdditive(*_options->additive());
+            if (_options->minPixel().isSet())
+            {
+                fmg->setMinPixel(_options->minPixel().get());
+            }
+
             fmg->build();
 
             _root->removeChildren(0, _root->getNumChildren());

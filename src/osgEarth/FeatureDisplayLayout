@@ -117,6 +117,27 @@ namespace osgEarth
          const optional<float>& minRange() const { return _minRange; }
 
         /**
+         * Whether features are loaded based on range.  If not, pixels on screen
+         * is used.  Default = range
+         */
+         optional<bool>& useRange() { return _useRange; }
+         const optional<bool>& useRange() const { return _useRange; }
+
+        /**
+         * When using pixel size on screen instead of range, this specifies the maximum
+         * number of pixels at which to display the feature at a given LOD
+         */
+         optional<float>& maxPixels() { return _maxPixels;}
+         const optional<float>& maxPixels() const { return _maxPixels;}
+
+        /**
+         * When using pixel size on screen instead of range, this specifies the minimum
+         * number of pixels at which to display the feature at a given LOD
+         */
+         optional<float>& minPixels() { return _minPixels; }
+         const optional<float>& minPixels() const { return _minPixels; }
+
+        /**
          * Whether to crop geometry to fit within the cell extents when chopping
          * a feature level up into grid cells. By default, this is false, meaning 
          * that a feature whose centroid falls within the cell will be included.
@@ -184,6 +205,9 @@ namespace osgEarth
         optional<float> _tileSizeFactor;
         optional<float> _minRange;
         optional<float> _maxRange;
+        optional<float> _minPixels;
+        optional<float> _maxPixels;
+        optional<bool>  _useRange;
         optional<bool>  _cropFeatures;
         optional<float> _priorityOffset;
         optional<float> _priorityScale;

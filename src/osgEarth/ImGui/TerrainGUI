@@ -91,9 +91,16 @@ namespace osgEarth
                         bool mode_b = (mode == osg::LOD::PIXEL_SIZE_ON_SCREEN);
                         if (ImGuiLTable::Checkbox("Screen space LOD", &mode_b))
                         {
-                            _mapNode->getTerrainOptions().setRangeMode(
-                                mode_b ? osg::LOD::PIXEL_SIZE_ON_SCREEN :
-                                osg::LOD::DISTANCE_FROM_EYE_POINT);
+                            _mapNode->getTerrainOptions().setRangeMode(mode_b ? osg::LOD::PIXEL_SIZE_ON_SCREEN : osg::LOD::DISTANCE_FROM_EYE_POINT);
+                        }
+
+                        if (_mapNode->getTerrainOptions().getRangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+                        {
+                            float tilePixelSize = _mapNode->getTerrainOptions().getTilePixelSize();
+                            if (ImGuiLTable::SliderFloat("Effective pixel size:", &tilePixelSize, 64.0f, 1024.0f))
+                            {
+                                _mapNode->getTerrainOptions().setTilePixelSize(tilePixelSize);
+                            }
                         }
 
                         unsigned maxTex = options.getMaxTextureSize();

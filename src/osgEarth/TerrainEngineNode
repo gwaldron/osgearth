@@ -178,7 +178,7 @@ namespace osgEarth
         virtual std::string getJobArenaName() const { return ""; }
 
         //! Access an immutable options API
-        virtual const TerrainOptionsAPI getOptions() = 0;
+        virtual TerrainOptionsAPI getOptions() = 0;
 
         //! Number of terrain tiles resident in memory 
         //! (including cached dormant tiles not being rendered)
@@ -290,7 +290,7 @@ namespace osgEarth
             return this;
         }
 
-        const TerrainOptionsAPI getOptions() override {
+        TerrainOptionsAPI getOptions() override {
             return TerrainOptionsAPI(&_options);
         }
 
@@ -360,9 +360,9 @@ namespace osgEarth
         virtual void updateTextureCombining() { }
 
     private:
-        osg::ref_ptr<Terrain>              _terrainInterface;
-        unsigned                           _dirtyCount;
-        bool                               _updateScheduled;
+        osg::ref_ptr<Terrain> _terrainInterface;
+        unsigned _dirtyCount;
+        bool _updateScheduled;
         TerrainOptions _options;
 
         typedef std::vector<osg::ref_ptr<TerrainEffect> > TerrainEffectVector;

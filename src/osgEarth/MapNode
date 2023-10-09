@@ -118,8 +118,7 @@ namespace osgEarth
         const bool& getEnableLighting() const;
 
         //! Access to the terrain-specific options API.
-        TerrainOptionsAPI& getTerrainOptions();
-        const TerrainOptionsAPI& getTerrainOptions() const;
+        TerrainOptionsAPI getTerrainOptions();
 
         //! Spatial Reference System of the underlying map.
         const SpatialReference* getMapSRS() const;
@@ -289,7 +288,7 @@ namespace osgEarth
     private:
         Options _optionsConcrete;
         Options& options() { return _optionsConcrete; }
-        TerrainOptionsAPI _terrainOptionsAPI;
+
     public:
         const Options& options() const { return _optionsConcrete; }
     };

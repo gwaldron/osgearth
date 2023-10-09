@@ -99,7 +99,7 @@ TerrainOptions::fromConfig(const Config& conf)
     renderBinNumber().setDefault(0);
     castShadows().setDefault(false);
     rangeMode().setDefault(osg::LOD::DISTANCE_FROM_EYE_POINT);
-    tilePixelSize().setDefault(256);
+    tilePixelSize().setDefault(512);
     minExpiryFrames().setDefault(0);
     minExpiryTime().setDefault(0.0);
     minExpiryRange().setDefault(0.0f);

@@ -244,31 +244,27 @@ MapNode::Options::fromConfig(const Config& conf)
 //....................................................................
 
 MapNode::MapNode() :
-_map( new Map() ),
-_terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
+_map( new Map() )
 {
     init();
 }
 
 MapNode::MapNode( Map* map ) :
-_map( map ? map : new Map() ),
-_terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
+_map( map ? map : new Map() )
 {
     init();
 }
 
 MapNode::MapNode(const MapNode::Options& options ) :
 _map( new Map() ),
-_optionsConcrete(options),
-_terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
+_optionsConcrete(options)
 {
     init();
 }
 
 MapNode::MapNode(Map* map, const MapNode::Options& options) :
 _map( map? map : new Map() ),
-_optionsConcrete(options),
-_terrainOptionsAPI(&_optionsConcrete.terrain().mutable_value())
+_optionsConcrete(options)
 {
     init();
 }
@@ -611,16 +607,13 @@ MapNode::getMapSRS() const
         0L;
 }
 
-TerrainOptionsAPI&
+TerrainOptionsAPI
 MapNode::getTerrainOptions()
 {
-    return _terrainOptionsAPI;
-}
-
-const TerrainOptionsAPI&
-MapNode::getTerrainOptions() const
-{
-    return _terrainOptionsAPI;
+    if (_terrainEngine.valid())
+        return _terrainEngine->getOptions();
+    else
+        return TerrainOptionsAPI(&_optionsConcrete.terrain().mutable_value());
 }
 
 Terrain*

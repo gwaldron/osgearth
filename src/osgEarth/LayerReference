@@ -60,6 +60,12 @@ namespace osgEarth
             return _layer.get();
         }
 
+        //! Whether this reference is set at all.
+        bool isSet() const
+        {
+            return _layer.valid() || _embeddedOptions.isSet() || _externalLayerName.isSet();
+        }
+
         //! Whether the user called setLayer to establish the reference
         //! (as opposed to finding it in an embedded options or in the map)
         bool isSetByUser() const 

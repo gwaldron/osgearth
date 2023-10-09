@@ -57,7 +57,7 @@ GeometryPool::getPooledGeometry(
     const Map* map,
     const TerrainOptionsAPI& options,
     osg::ref_ptr<SharedGeometry>& out,
-    Cancelable* progress)
+    Cancelable* cancelable)
 {
     TileMesher mesher;
     mesher.setTerrainOptions(options);
@@ -81,6 +81,8 @@ GeometryPool::getPooledGeometry(
         }
     }
 
+    osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(cancelable);
+
     // First check the map for a terrain mesh layer. If one exists
     // simply pull the final tile mesh from there.
     // TODO: support adding additional constraints to the mesh layer
@@ -90,8 +92,7 @@ GeometryPool::getPooledGeometry(
         auto meshlayer = map->getLayer<TerrainMeshLayer>();
         if (meshlayer)
         {
-            osg::ref_ptr<ProgressCallback> p = new ProgressCallback(progress);
-            auto mesh = meshlayer->createTile(tileKey, p);
+            auto mesh = meshlayer->createTile(tileKey, progress);
             out = convertTileMeshToSharedGeometry(mesh);
             if (out.valid())
             {
@@ -108,8 +109,7 @@ GeometryPool::getPooledGeometry(
     // see if there are any constraints:
     TerrainConstraintQuery query(map);
     MeshConstraints edits;
-    query.getConstraints(tileKey, edits, nullptr);
-    //mesher.getEdits(tileKey, map, edits, progress);
+    query.getConstraints(tileKey, edits, progress);
 
     if ( _enabled )
     {

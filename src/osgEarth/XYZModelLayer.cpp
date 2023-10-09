@@ -30,18 +30,6 @@ REGISTER_OSGEARTH_LAYER(XYZModel, XYZModelLayer);
 
 //...........................................................................
 
-XYZModelLayer::Options::Options() :
-VisibleLayer::Options()
-{
-    fromConfig(_conf);
-}
-
-XYZModelLayer::Options::Options(const ConfigOptions& options) :
-VisibleLayer::Options(options)
-{
-    fromConfig(_conf);
-}
-
 void XYZModelLayer::Options::fromConfig(const Config& conf)
 {
     invertY().setDefault(false);
@@ -57,7 +45,7 @@ void XYZModelLayer::Options::fromConfig(const Config& conf)
 Config
 XYZModelLayer::Options::getConfig() const
 {
-    Config conf = VisibleLayer::Options::getConfig();
+    Config conf = TiledModelLayer::Options::getConfig();
     conf.set("additive", additive());
     conf.set("url", url());
     conf.set("min_level", minLevel());
@@ -67,18 +55,31 @@ XYZModelLayer::Options::getConfig() const
     return conf;
 }
 
-void XYZModelLayer::Options::mergeConfig(const Config& conf)
-{
-    VisibleLayer::Options::mergeConfig(conf);
-    fromConfig(conf);
-}
-
 //...........................................................................
 
 OE_LAYER_PROPERTY_IMPL(XYZModelLayer, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(XYZModelLayer, bool, Additive, additive);
-OE_LAYER_PROPERTY_IMPL(XYZModelLayer, int, MinLevel, minLevel);
-OE_LAYER_PROPERTY_IMPL(XYZModelLayer, int, MaxLevel, maxLevel);
+
+void
+XYZModelLayer::setMinLevel(unsigned value) {
+    options().minLevel() = value;
+}
+
+unsigned
+XYZModelLayer::getMinLevel() const {
+    return options().minLevel().get();
+}
+
+void
+XYZModelLayer::setMaxLevel(unsigned value) {
+    options().maxLevel() = value;
+}
+
+unsigned
+XYZModelLayer::getMaxLevel() const {
+    return options().maxLevel().get();
+}
+
 
 XYZModelLayer::~XYZModelLayer()
 {
@@ -97,7 +98,7 @@ void XYZModelLayer::setProfile(const Profile* profile)
 void
 XYZModelLayer::init()
 {
-    VisibleLayer::init();
+    TiledModelLayer::init();
 
     _root = new osg::Group();
 
@@ -122,7 +123,7 @@ void XYZModelLayer::dirty()
 Config
 XYZModelLayer::getConfig() const
 {
-    Config conf = VisibleLayer::getConfig();
+    Config conf = TiledModelLayer::getConfig();
     return conf;
 }
 
@@ -135,7 +136,7 @@ XYZModelLayer::getNode() const
 Status
 XYZModelLayer::openImplementation()
 {
-    Status parent = VisibleLayer::openImplementation();
+    Status parent = TiledModelLayer::openImplementation();
     if (parent.isError())
         return parent;
 
@@ -155,7 +156,7 @@ void
 XYZModelLayer::addedToMap(const Map* map)
 {
     OE_TEST << LC << "addedToMap" << std::endl;
-    VisibleLayer::addedToMap(map);
+    TiledModelLayer::addedToMap(map);
 
     _map = map;
 
@@ -168,7 +169,7 @@ XYZModelLayer::addedToMap(const Map* map)
 void
 XYZModelLayer::removedFromMap(const Map* map)
 {
-    VisibleLayer::removedFromMap(map);
+    TiledModelLayer::removedFromMap(map);
 
     if (_root.valid())
     {
@@ -203,8 +204,12 @@ XYZModelLayer::create()
     }
 }
 
-Util::SimplePager*
-XYZModelLayer::getPager() const
+osg::ref_ptr<osg::Node>
+XYZModelLayer::createTileImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    return osgEarth::findTopMostNodeOfType<Util::SimplePager>(_root.get());
+    auto pager = osgEarth::findTopMostNodeOfType<Util::SimplePager>(_root.get());
+    if (pager)
+        return pager->createNode(key, progress);
+    else
+        return {};
 }

@@ -13,13 +13,19 @@ http://readymap.org
 -->
 <Map name="Roads Test">
 
-    <TMSImage name="readymap_imagery" driver="tms" visible="true" opacity="0.5">
+    <options>
+        <terrain skirt_ratio="0.005" gpu_tessellation="false"/>
+    </options>
+        
+    <TMSImage name="readymap_imagery" driver="tms" visible="true" opacity="0.8">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
+    
+    <xi:include href="readymap_elevation.xml"/>
 
     <DebugImage name="Tilekeys" open="false"/>
 
-    <RoadSurface name="ROadSurface" min_level="14" max_data_level="18">
+    <RoadSurface name="ROadSurface" min_level="14" max_data_level="18" open="false">
         <cache_policy usage="no_cache"/>
         <tile_size>512</tile_size>
         <features>roads-data</features>
@@ -67,22 +73,25 @@ http://readymap.org
         </styles>
     </FeatureModel>
 
-    <FeatureModel name="Road Polygons" open="false">
+    <TiledFeatureModel name="Road Polygons" open="true">
         <profile>spherical-mercator</profile>
         <features>roads-data</features>
         <styles>
             <style type="text/css">
                 default {
                     stroke: #ffffff;
-                    stroke-width: 20m;
+                    stroke-width: 8m;
+                    stroke-linejoin: miter;
+                    stroke-linecap: flat;
                     render-depth-test: false;
                     render-order: 2;
                     render-depth-offset: true;
                     stroke-image: "'../data/road.png'";
+                    altitude-clamping: terrain;
                 }
             </style>
         </styles>
-    </FeatureModel>
+    </TiledFeatureModel>
 
     <XYZFeatures name="roads-data">
         <url>http://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
@@ -94,18 +103,26 @@ http://readymap.org
             <script language="javascript">
                 <![CDATA[ ("highway" in feature.properties) ]]>
             </script>
+            <resample max_length="10"/>
         </filters>
     </XYZFeatures>
+    
+    <TerrainConstraint name="road constraints" open="false">
+        <min_level>16</min_level>
+        <model>Road Polygons</model>
+        <has_elevation>true</has_elevation>
+        <remove_interior>true</remove_interior>
+    </TerrainConstraint>
 
     <viewpoints>
         <viewpoint name="45 Lat">
-            <heading>-1.6803</heading>
-            <pitch>-89.8584</pitch>
-            <range>135.785m</range>
-            <long>-121.629455948385</long>
-            <lat>46.76105148181426</lat>
-            <height>0.0005331700667738915</height>
-            <srs>+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs </srs>
+            <heading>-27.1632</heading>
+            <pitch>-27.8402</pitch>
+            <range>266.039m</range>
+            <long>-121.6349038968369</long>
+            <lat>46.76597267039175</lat>
+            <height>921.1276175510138</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
         </viewpoint>
         <viewpoint name="Equator">
             <heading>-2.31914e-008</heading>

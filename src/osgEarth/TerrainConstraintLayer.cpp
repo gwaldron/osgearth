@@ -20,6 +20,8 @@
 #include <osgEarth/TerrainConstraintLayer>
 #include <osgEarth/Map>
 #include <osgEarth/Progress>
+#include <osgEarth/Utils>
+#include <osgEarth/SimplePager>
 
 using namespace osgEarth;
 
@@ -43,6 +45,7 @@ TerrainConstraintLayer::Options::fromConfig(const Config& conf)
     }
 
     featureSource().get(conf, "features");
+    model().get(conf, "model");
     conf.get("remove_interior", removeInterior());
     conf.get("remove_exterior", removeExterior());
     conf.get("has_elevation", hasElevation());
@@ -58,6 +61,7 @@ TerrainConstraintLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
     featureSource().set(conf, "features");
+    model().set(conf, "model");
     conf.set("remove_interior", removeInterior());
     conf.set("remove_exterior", removeExterior());
     conf.set("has_elevation", hasElevation());
@@ -74,6 +78,44 @@ TerrainConstraintLayer::Options::getConfig() const
 }
 
 //........................................................................
+
+namespace
+{
+    void addNode(osg::Node* node, const SpatialReference* map_srs, MeshConstraint& constraint)
+    {
+        const osg::Vec3d zup(0, 0, 1);
+        const SpatialReference* ecef = map_srs->getGeocentricSRS();
+
+        auto multipolygon = new MultiGeometry();
+        auto feature = new Feature(multipolygon, map_srs);
+        constraint.features.emplace_back(feature);
+
+        auto functor = [&](osg::Geometry& geom, unsigned i0, unsigned i1, unsigned i2, const osg::Matrix& xform)
+            {
+                auto verts = dynamic_cast<osg::Vec3Array*>(geom.getVertexArray());
+                osg::Vec3d v[3] = { (*verts)[i0], (*verts)[i1], (*verts)[i2] };
+
+                for (unsigned i = 0; i < 3; ++i)
+                {
+                    v[i] = v[i] * xform; // to ECEF
+                    ecef->transform(v[i], map_srs, v[i]); // to Map SRS
+
+                    // zero out elevation if necessary
+                    if (constraint.hasElevation == false)
+                        v[i].z() = 0.0;
+                }
+
+                osg::ref_ptr<osgEarth::Polygon> poly = new osgEarth::Polygon();
+                poly->push_back(v[0]);
+                poly->push_back(v[1]);
+                poly->push_back(v[2]);
+                multipolygon->getComponents().push_back(poly);
+            };
+
+        TriangleVisitor visitor(functor);
+        node->accept(visitor);
+    }
+}
 
 void
 TerrainConstraintLayer::setFeatureSource(FeatureSource* layer)
@@ -100,9 +142,24 @@ TerrainConstraintLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    Status fsStatus = options().featureSource().open(getReadOptions());
-    if (fsStatus.isError())
-        return fsStatus;
+    if (!options().featureSource().isSet() && !options().model().isSet())
+    {
+        return Status(Status::ConfigurationError, "Missing either features or model constraint source");
+    }
+
+    if (options().featureSource().isSet())
+    {
+        Status fsStatus = options().featureSource().open(getReadOptions());
+        if (fsStatus.isError())
+            return fsStatus;
+    }
+
+    if (options().model().isSet())
+    {
+        Status modelStatus = options().model().open(getReadOptions());
+        if (modelStatus.isError())
+            return modelStatus;
+    }
 
     _filterchain = FeatureFilterChain::create(
         options().filters(),
@@ -114,8 +171,12 @@ TerrainConstraintLayer::openImplementation()
 const GeoExtent&
 TerrainConstraintLayer::getExtent() const
 {
-    return getFeatureSource() ?
-        getFeatureSource()->getExtent() : Layer::getExtent();
+    if (getFeatureSource())
+        return getFeatureSource()->getExtent();
+    else if (options().model().getLayer())
+        return options().model().getLayer()->getExtent();
+    else
+        return Layer::getExtent();
 }
 
 void
@@ -134,6 +195,7 @@ TerrainConstraintLayer::addedToMap(const Map* map)
     OE_DEBUG << LC << "addedToMap\n";
     VisibleLayer::addedToMap(map);
     options().featureSource().addedToMap(map);
+    options().model().addedToMap(map);
     create();
 }
 
@@ -141,27 +203,32 @@ void
 TerrainConstraintLayer::removedFromMap(const Map* map)
 {
     options().featureSource().removedFromMap(map);
+    options().model().removedFromMap(map);
     VisibleLayer::removedFromMap(map);
 }
 
 void
 TerrainConstraintLayer::create()
 {
-    FeatureSource* fs = getFeatureSource();
-
-    if (!fs)
-    {
-        setStatus(Status(Status::ConfigurationError, "No feature source available"));
-        return;
-    }
-
-    if (!fs->getFeatureProfile())
-    {
-        setStatus(Status(Status::ConfigurationError, "Feature source cannot report profile (is it open?)"));
-        return;
-    }
-
     setStatus(Status::OK());
+
+    FeatureSource* fs = getFeatureSource();
+    if (fs)
+    {
+        if (!fs->getFeatureProfile())
+        {
+            setStatus(Status(Status::ConfigurationError, "Feature source cannot report profile (is it open?)"));
+        }
+        return;
+    }
+
+    auto* model = options().model().getLayer();
+    if (model)
+    {
+        return;
+    }
+
+    setStatus(Status(Status::ConfigurationError, "No data source available"));
 }
 
 void
@@ -188,20 +255,9 @@ TerrainConstraintLayer::setMinLevel(unsigned value)
     setOptionThatRequiresReopen(options().minLevel(), value);
 }
 
-MeshConstraint
-TerrainConstraintLayer::getConstraint(const TileKey& key, FilterContext* context, ProgressCallback* progress) const
+void
+TerrainConstraintLayer::getFeatureConstraint(const TileKey& key, FilterContext* context, MeshConstraint& constraint, ProgressCallback* progress) const
 {
-    const GeoExtent& keyExtent = key.getExtent();
-
-    if (!isOpen() ||
-        !getVisible() ||
-        getMinLevel() > key.getLOD() ||
-        !getExtent().intersects(keyExtent) ||
-        !getFeatureSource())
-    {
-        return {};
-    }
-
     osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(
         key,
         getFilters(),
@@ -210,30 +266,68 @@ TerrainConstraintLayer::getConstraint(const TileKey& key, FilterContext* context
 
     if (cursor.valid() && cursor->hasMore())
     {
-        MeshConstraint result;
-
-        result.hasElevation = getHasElevation();
-        result.removeExterior = getRemoveExterior();
-        result.removeInterior = getRemoveInterior();
+        const GeoExtent& keyExtent = key.getExtent();
 
         while (cursor->hasMore())
         {
             if (progress && progress->isCanceled())
-                return { };
+                return;
 
             Feature* f = cursor->nextFeature();
 
             if (f && f->getExtent().intersects(keyExtent))
             {
                 f->transform(keyExtent.getSRS());
-                result.features.emplace_back(f);
+                constraint.features.emplace_back(f);
             }
         }
+    }
+}
 
-        return result;
+void
+TerrainConstraintLayer::getModelConstraint(const TileKey& key, MeshConstraint& constraint, ProgressCallback* progress) const
+{
+    auto layer = options().model().getLayer();
+    OE_SOFT_ASSERT_AND_RETURN(layer, void());
+
+    auto layer_profile = layer->getProfile();
+    OE_SOFT_ASSERT_AND_RETURN(layer_profile, void());
+
+    osg::ref_ptr<osg::Node> node = layer->createTile(key, progress);
+    if (node.valid())
+    {
+        addNode(node.get(),key.getProfile()->getSRS(), constraint);
+    }
+}
+
+
+MeshConstraint
+TerrainConstraintLayer::getConstraint(const TileKey& key, FilterContext* context, ProgressCallback* progress) const
+{
+
+    if (!isOpen() || !getVisible() || getMinLevel() > key.getLOD())
+        return {};
+
+    const GeoExtent& keyExtent = key.getExtent();
+    if (getExtent().isValid() && !getExtent().intersects(keyExtent))
+        return {};
+
+    MeshConstraint result;
+    result.hasElevation = getHasElevation();
+    result.removeExterior = getRemoveExterior();
+    result.removeInterior = getRemoveInterior();
+
+    if (options().model().getLayer())
+    {
+        getModelConstraint(key, result, progress);
     }
 
-    return { };
+    else if (getFeatureSource())
+    {
+        getFeatureConstraint(key, context, result, progress);
+    }
+
+    return result;
 }
 
 
@@ -262,52 +356,10 @@ TerrainConstraintQuery::getConstraints(
 
         for (auto& layer : layers)
         {
-            if (!layer->isOpen() || !layer->getVisible())
-                continue;
-
-            // not to the min LOD yet?
-            if (layer->getMinLevel() > key.getLOD())
-                continue;
-
-            // extents don't intersect?
-            if (!layer->getExtent().intersects(keyExtent))
-                continue;
-
-            // For each feature, check that it intersects the tile key,
-            // and then xform it to the correct SRS and clone it for
-            // editing.
-            FeatureSource* fs = layer->getFeatureSource();
-            if (fs)
+            auto constraint = layer->getConstraint(key, nullptr, progress);
+            if (!constraint.features.empty())
             {
-                osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(
-                    key,
-                    layer->getFilters(),
-                    nullptr,
-                    progress);
-
-                if (cursor.valid() && cursor->hasMore())
-                {
-                    MeshConstraint constraint;
-                    constraint.hasElevation = layer->getHasElevation();
-                    constraint.removeExterior = layer->getRemoveExterior();
-                    constraint.removeInterior = layer->getRemoveInterior();
-
-                    while (cursor->hasMore())
-                    {
-                        if (progress && progress->isCanceled())
-                            return false;
-
-                        Feature* f = cursor->nextFeature();
-
-                        if (f && f->getExtent().intersects(keyExtent))
-                        {
-                            f->transform(keyExtent.getSRS());
-                            constraint.features.push_back(f);
-                        }
-                    }
-
-                    output.push_back(std::move(constraint));
-                }
+                output.push_back(std::move(constraint));
             }
         }
     }

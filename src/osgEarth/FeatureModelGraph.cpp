@@ -850,6 +850,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
                 // Clamp the min value to avoid extreme underwater values.
                 minElevation = osg::maximum(min, (short)-500);
                 // Add a little bit extra of extra height to account for feature data.
+                // Add a little bit extra of extra height to account for feature data.
                 maxElevation = max + 100.0f;
             }
         }
@@ -1452,6 +1453,11 @@ FeatureModelGraph::buildTile(
         else if (_options.nodeCaching() == true)
         {
             writeTileToCache(cacheKey, group.get(), readOptions);
+        }
+
+        if (group->getBound().valid())
+        {
+//          osgDB::writeNodeFile(*group, "out/road_" + std::to_string(key->hash()) + ".osgb");
         }
     }
 

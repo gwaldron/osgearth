@@ -18,8 +18,8 @@ namespace weemesh
 
     using UID = std::uint32_t;
 
-    constexpr double EPSILON = 0.00005;
-    //constexpr double EPSILON = 0.005;
+    //constexpr double EPSILON = 0.00005;
+    constexpr double EPSILON = 0.005;
 
     template<typename T>
     inline bool equivalent(T a, T b, T epsilon = EPSILON)

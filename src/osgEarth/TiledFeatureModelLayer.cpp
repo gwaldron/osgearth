@@ -30,17 +30,17 @@ REGISTER_OSGEARTH_LAYER(TiledFeatureModel, TiledFeatureModelLayer);
 //...........................................................................
 
 TiledFeatureModelLayer::Options::Options() :
-VisibleLayer::Options(),
-FeatureModelOptions(),
-GeometryCompilerOptions()
+    TiledModelLayer::Options(),
+    FeatureModelOptions(),
+    GeometryCompilerOptions()
 {
     fromConfig(_conf);
 }
 
 TiledFeatureModelLayer::Options::Options(const ConfigOptions& options) :
-VisibleLayer::Options(options),
-FeatureModelOptions(options),
-GeometryCompilerOptions(options)
+    TiledModelLayer::Options(options),
+    FeatureModelOptions(options),
+    GeometryCompilerOptions(options)
 {
     fromConfig(_conf);
 }
@@ -48,7 +48,6 @@ GeometryCompilerOptions(options)
 void TiledFeatureModelLayer::Options::fromConfig(const Config& conf)
 {
     additive().setDefault(false);
-
     conf.get("additive", additive());
     featureSource().get(conf, "features");
 }
@@ -56,7 +55,7 @@ void TiledFeatureModelLayer::Options::fromConfig(const Config& conf)
 Config
 TiledFeatureModelLayer::Options::getConfig() const
 {
-    Config conf = VisibleLayer::Options::getConfig();
+    Config conf = TiledModelLayer::Options::getConfig();
 
     Config fmConf = FeatureModelOptions::getConfig();
     conf.merge(fmConf);
@@ -73,7 +72,7 @@ TiledFeatureModelLayer::Options::getConfig() const
 
 void TiledFeatureModelLayer::Options::mergeConfig(const Config& conf)
 {
-    VisibleLayer::Options::mergeConfig(conf);
+    TiledModelLayer::Options::mergeConfig(conf);
     fromConfig(conf);
 }
 
@@ -91,7 +90,7 @@ TiledFeatureModelLayer::~TiledFeatureModelLayer()
 void
 TiledFeatureModelLayer::init()
 {
-    VisibleLayer::init();
+    TiledModelLayer::init();
 
     _root = new osg::Group();
 
@@ -117,7 +116,7 @@ void TiledFeatureModelLayer::dirty()
 Config
 TiledFeatureModelLayer::getConfig() const
 {
-    Config conf = VisibleLayer::getConfig();
+    Config conf = TiledModelLayer::getConfig();
     return conf;
 }
 
@@ -169,7 +168,7 @@ TiledFeatureModelLayer::getNode() const
 Status
 TiledFeatureModelLayer::openImplementation()
 {
-    Status parent = VisibleLayer::openImplementation();
+    Status parent = TiledModelLayer::openImplementation();
     if (parent.isError())
         return parent;
 
@@ -208,7 +207,7 @@ void
 TiledFeatureModelLayer::addedToMap(const Map* map)
 {
     OE_TEST << LC << "addedToMap" << std::endl;
-    VisibleLayer::addedToMap(map);
+    TiledModelLayer::addedToMap(map);
 
     options().featureSource().addedToMap(map);
     options().styleSheet().addedToMap(map);
@@ -231,7 +230,7 @@ TiledFeatureModelLayer::addedToMap(const Map* map)
 void
 TiledFeatureModelLayer::removedFromMap(const Map* map)
 {
-    VisibleLayer::removedFromMap(map);
+    TiledModelLayer::removedFromMap(map);
 
     options().featureSource().removedFromMap(map);
     options().styleSheet().removedFromMap(map);
@@ -279,4 +278,37 @@ TiledFeatureModelLayer::create()
 
         }
     }
+}
+
+osg::ref_ptr<osg::Node>
+TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCallback* progress) const
+{
+    osg::ref_ptr<osg::Node> result;
+    auto fmg = osgEarth::findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
+    if (fmg)
+    {
+        result = fmg->createNode(key, progress);
+    }
+    return result;
+}
+
+const Profile*
+TiledFeatureModelLayer::getProfile() const
+{
+    auto fmg = osgEarth::findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
+    return fmg ? fmg->getProfile() : nullptr;
+}
+
+unsigned
+TiledFeatureModelLayer::getMinLevel() const
+{
+    auto fmg = osgEarth::findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
+    return fmg ? fmg->getMinLevel() : 0u;
+}
+
+unsigned
+TiledFeatureModelLayer::getMaxLevel() const
+{
+    auto fmg = osgEarth::findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
+    return fmg ? fmg->getMaxLevel() : 99u;
 }

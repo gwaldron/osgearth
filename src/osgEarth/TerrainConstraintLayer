@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/FeatureSource>
+#include <osgEarth/TiledModelLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/TileMesher>
 
@@ -40,6 +41,7 @@ namespace osgEarth
         public:
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_LAYER(TiledModelLayer, model);
             OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION(bool, removeInterior);
             OE_OPTION(bool, removeExterior);
@@ -84,6 +86,7 @@ namespace osgEarth
             return _filterchain.get();
         }
 
+        //! Return a constraint object 
         MeshConstraint getConstraint(
             const TileKey& key,
             FilterContext* context,
@@ -107,6 +110,17 @@ namespace osgEarth
         void create();
 
         osg::ref_ptr<FeatureFilterChain> _filterchain;
+
+        void getFeatureConstraint(
+            const TileKey& key,
+            FilterContext* context,
+            MeshConstraint& constraint,
+            ProgressCallback* progress) const;
+
+        void getModelConstraint(
+            const TileKey& key,
+            MeshConstraint& constraint,
+            ProgressCallback* progress) const;
     };
 
     //! A single constraint (set of features from a given layer with properties)

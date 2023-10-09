@@ -27,6 +27,7 @@
 #include <osgEarth/Style>
 #include <osgEarth/Layer>
 #include <osgEarth/LayerReference>
+#include <osgEarth/TiledModelLayer>
 
 namespace osgEarth {
     class Map;
@@ -39,10 +40,10 @@ namespace osgEarth
     /**
      * Layer that creates a scene graph from feature data and symbology.
      */
-    class OSGEARTH_EXPORT TiledFeatureModelLayer : public VisibleLayer
+    class OSGEARTH_EXPORT TiledFeatureModelLayer : public TiledModelLayer
     {
     public: // serialization
-        class OSGEARTH_EXPORT Options : public VisibleLayer::Options,
+        class OSGEARTH_EXPORT Options : public TiledModelLayer::Options,
                                         public FeatureModelOptions,
                                         public GeometryCompilerOptions
         {
@@ -60,7 +61,7 @@ namespace osgEarth
         };
 
     public:
-        META_Layer(osgEarth, TiledFeatureModelLayer, Options, VisibleLayer, TiledFeatureModel);
+        META_Layer(osgEarth, TiledFeatureModelLayer, Options, TiledModelLayer, TiledFeatureModel);
 
         //! The feature source from which to read geometry.
         void setFeatureSource(FeatureSource* layer);
@@ -99,6 +100,17 @@ namespace osgEarth
         //! Serialization
         virtual Config getConfig() const;
 
+    public: // TiledModelLayer
+
+        //! Tiling profile of this layer
+        const Profile* getProfile() const override;
+
+        //! Minimum available LOD of tiles
+        unsigned getMinLevel() const override;
+
+        //! Maximum available LOD of tiles
+        unsigned getMaxLevel() const override;
+
     protected: // Layer
         
         // called by the map when this layer is added
@@ -109,6 +121,10 @@ namespace osgEarth
 
         // post-ctor initialization
         virtual void init();
+
+    protected: // TiledModelLayer
+
+        osg::ref_ptr<osg::Node> createTileImplementation(const TileKey&, ProgressCallback*) const override;
 
     protected:
 

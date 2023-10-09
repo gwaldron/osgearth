@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Layer>
 #include <osgEarth/LayerReference>
+#include <osgEarth/TiledModelLayer>
 
 namespace osgEarth {
     class Map;
@@ -35,16 +36,13 @@ namespace osgEarth
     /**
      * Layer that loads a pregenerated quadtree of model files
      */
-    class OSGEARTH_EXPORT XYZModelLayer : public VisibleLayer
+    class OSGEARTH_EXPORT XYZModelLayer : public TiledModelLayer
     {
     public: // serialization
-        class OSGEARTH_EXPORT Options : public VisibleLayer::Options
-                                        
+        class OSGEARTH_EXPORT Options : public TiledModelLayer::Options                         
         {
         public:
-            // constructors
-            Options();
-            Options(const ConfigOptions& options);
+            META_LayerOptions(osgEarth, Options, TiledModelLayer::Options);
             OE_OPTION(URI, url);
             OE_OPTION(bool, additive);
             OE_OPTION(bool, invertY);
@@ -52,18 +50,16 @@ namespace osgEarth
             OE_OPTION(int, maxLevel);
             OE_OPTION(ProfileOptions, profile);
             virtual Config getConfig() const;
-        protected: // LayerOptions
-            virtual void mergeConfig(const Config& conf);        
         private:
             void fromConfig(const Config& conf);
         };
 
     public:
-        META_Layer(osgEarth, XYZModelLayer, Options, VisibleLayer, XYZModel);
+        META_Layer(osgEarth, XYZModelLayer, Options, TiledModelLayer, XYZModel);
 
         //! Tiling profile (required)
         void setProfile(const Profile* profile);
-        const Profile* getProfile() const { return _profile.get(); }
+        const Profile* getProfile() const override { return _profile.get(); }
 
         //! Whether to flip the Y axis for tile indexing
         void setInvertY(const bool& value);
@@ -77,18 +73,15 @@ namespace osgEarth
         const bool& getAdditive() const;
 
         //! Minimum level of detail to access
-        void setMinLevel(const int& value);
-        const int& getMinLevel() const;
+        void setMinLevel(unsigned value);
+        unsigned getMinLevel() const override;
 
         //! Maximum level of detail to access
-        void setMaxLevel(const int& value);
-        const int& getMaxLevel() const;
+        void setMaxLevel(unsigned value);
+        unsigned getMaxLevel() const override;
 
         //! Forces a rebuild on this layer.
         void dirty();
-
-        //! Access the underlying node pager
-        SimplePager* getPager() const;
 
     public: // Layer
 
@@ -114,6 +107,10 @@ namespace osgEarth
 
         // post-ctor initialization
         virtual void init();
+
+    protected: // TiledModelLayer
+
+        osg::ref_ptr<osg::Node> createTileImplementation(const TileKey&, ProgressCallback*) const override;
 
     protected:
 

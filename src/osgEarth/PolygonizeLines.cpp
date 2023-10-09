@@ -243,6 +243,7 @@ PolygonizeLinesOperator::operator()(
 
             // scale the buffering vector to half the stroke width.
             osg::Vec3 bufVec = bufVecUnit * halfWidth;
+            bufVec.z() = 0.0; //100923
 
             // calculate the starting buffered vertex
             osg::Vec3 bufVert = (*verts)[i] + bufVec;
@@ -277,8 +278,8 @@ PolygonizeLinesOperator::operator()(
                     {
                         osg::Vec3 v;
                         float a = step * (float)j;
-                        //rotate( circlevec, -(side)*a, (*normals)[i], v );
                         rotate( circlevec, -(side)*a, up, v );
+                        v.z() = 0.0; // 100923
 
                         verts->push_back( (*verts)[i] + v );
                         addTri( ebo, i, verts->size()-2, verts->size()-1, side );
@@ -340,8 +341,9 @@ PolygonizeLinesOperator::operator()(
                         // special case of colinearity.
                         osg::Vec3 isect;
 
-                        if ( interesctRays(prevBufVert, prevDir, nextBufVert, -dir, up, isect) )//(*normals)[i], isect) )
+                        if ( interesctRays(prevBufVert, prevDir, nextBufVert, -dir, up, isect) )
                         {
+                            isect.z() = bufVert.z();
                             verts->push_back(isect);
                             addedVertex = true;
                         }
@@ -385,7 +387,7 @@ PolygonizeLinesOperator::operator()(
                         osg::Vec3 v;
                         float a = step * (float)j;
                         rotate( circlevec, side*a, up, v );
-                        //rotate( circlevec, side*a, (*normals)[i], v );
+                        //v.z() = 0.0; // 100923
 
                         verts->push_back( (*verts)[i] + v );
                         addTri( ebo, i, verts->size()-1, verts->size()-2, side );
@@ -429,6 +431,7 @@ PolygonizeLinesOperator::operator()(
                 float a = step * (float)j;
                 //rotate( circlevec, (side)*a, (*normals)[i], v );
                 rotate( circlevec, (side)*a, up, v );
+                v.z() = 0.0; // 100923
                 verts->push_back( (*verts)[i] + v );
                 addTri( ebo, i, verts->size()-1, verts->size()-2, side );
                 tverts->push_back( osg::Vec2f(tx, (*tverts)[i].y()) );

@@ -72,7 +72,7 @@ void oeui_render_fb_normals(inout vec4 color) {
 #pragma vp_function oeui_render_winding_fs, fragment_lighting, last
 void oeui_render_winding_fs(inout vec4 color) {
     color.rgb = gl_FrontFacing ? vec3(0,0.75,0) : vec3(1,0,0);
-    float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z))*32.0;
+    float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z))*48.0;
     color = vec4(mix(vec3(1), color.rgb, clamp(b,0,1)), 1.0);
 }
 )";
@@ -82,8 +82,9 @@ void oeui_render_winding_fs(inout vec4 color) {
 #extension GL_NV_fragment_shader_barycentric : enable
 #pragma vp_function oeui_render_outlines, fragment_lighting, last
 void oeui_render_outlines(inout vec4 color) {
-    float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z))*32.0;
-    color = vec4(mix(1.0-color.rgb, color.rgb, clamp(b,0,1)), color.a);
+    float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z))*48.0;        
+    vec3 line_color = clamp(color.rgb*1.5, 0.0, 1.0);
+    color = vec4(mix(line_color, color.rgb, clamp(b,0,1)), color.a);
 }
 )";
 

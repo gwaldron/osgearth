@@ -1,19 +1,19 @@
 #pragma vp_name osgEarth Hex Tiling Library
 
-#ifdef VP_STAGE_FRAGMENT
-
 // Adapted and ported to GLSL from:
 // https://github.com/mmikk/hextile-demo
 
 float ht_g_fallOffContrast = 0.6;
 float ht_g_exp = 7;
 
+#ifdef VP_STAGE_FRAGMENT
+
 #ifndef mul
 #define mul(X, Y) ((X)*(Y))
 #endif
 
 #ifndef M_PI
-#define M_PI 3.1417927
+#define M_PI 3.1415927
 #endif
 
 #define HEX_SCALE 3.46410161

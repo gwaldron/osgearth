@@ -600,7 +600,7 @@ TileMesher::createMeshWithConstraints(
 
                         // Note: the part was already transformed in a previous step.
 
-                        auto& bb = part->getBounds();
+                        const auto& bb = part->getBounds();
                         if (part->isPolygon() && bb.intersects(localBounds))
                         {
                             if (edit.removeExterior)

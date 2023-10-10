@@ -18,11 +18,10 @@ namespace weemesh
 
     using UID = std::uint32_t;
 
-    //constexpr double EPSILON = 0.00005;
-    constexpr double EPSILON = 0.005;
+    constexpr double DEFAULT_EPSILON = 0.00025;// 0.001;
 
     template<typename T>
-    inline bool equivalent(T a, T b, T epsilon = EPSILON)
+    inline bool equivalent(T a, T b, T epsilon)
     {
         double d = b - a;
         return d < static_cast<T>(0.0) ? d >= -epsilon : d <= epsilon;
@@ -61,10 +60,6 @@ namespace weemesh
             if (x < rhs.x) return true;
             if (x > rhs.x) return false;
             return y < rhs.y;
-            // use this if we move to 3D someday
-            //if (y < rhs.y) return true;
-            //if (y > rhs.y) return false;
-            //return z < rhs.z;
         }
         const value_type& operator[](int i) const {
             return i == 0 ? x : i == 1 ? y : z;
@@ -109,14 +104,11 @@ namespace weemesh
 
     const vert_t::value_type zero(0.0);
 
-    inline bool same_vert(const vert_t& a, const vert_t& b, vert_t::value_type epsilon = EPSILON)
+    inline bool same_vert(const vert_t& a, const vert_t& b, vert_t::value_type epsilon)
     {
         return
             equivalent(a.x, b.x, epsilon) &&
             equivalent(a.y, b.y, epsilon);
-
-        // use this if we move to 3D one day
-        // && equivalent(a.z, b.z, epsilon);
     }
 
 
@@ -143,7 +135,7 @@ namespace weemesh
             vert_t s = rhs.second - rhs.first;
             vert_t::value_type det = r.cross2d(s);
 
-            if (equivalent(det, zero))
+            if (equivalent(det, zero, 1e-5))
                 return false;
 
             vert_t diff = rhs.first - first;
@@ -167,10 +159,10 @@ namespace weemesh
 
         // true if the triangle contains point P (in xy) within
         // a certain tolerance.
-        inline bool contains_2d(const vert_t& P) const
+        inline bool contains_2d(const vert_t& P, vert_t::value_type epsilon) const
         {
             vert_t bary;
-            if (!get_barycentric(P, bary))
+            if (!get_barycentric(P, bary, epsilon))
                 return false;
 
             return
@@ -185,37 +177,37 @@ namespace weemesh
         }
 
         // true if point P is one of the triangle's verts
-        inline bool is_vertex(const vert_t& p, vert_t::value_type e = EPSILON) const
+        inline bool is_vertex(const vert_t& p, vert_t::value_type epsilon) const
         {
-            if (equivalent(p.x, p0.x, e) &&
-                equivalent(p.y, p0.y, e))
+            if (equivalent(p.x, p0.x, epsilon) &&
+                equivalent(p.y, p0.y, epsilon))
                 return true;
-            if (equivalent(p.x, p1.x, e) &&
-                equivalent(p.y, p1.y, e))
+            if (equivalent(p.x, p1.x, epsilon) &&
+                equivalent(p.y, p1.y, epsilon))
                 return true;
-            if (equivalent(p.x, p2.x, e) &&
-                equivalent(p.y, p2.y, e))
+            if (equivalent(p.x, p2.x, epsilon) &&
+                equivalent(p.y, p2.y, epsilon))
                 return true;
 
             return false;
         }
 
-        inline int get_vertex(const vert_t& p, vert_t::value_type e = EPSILON) const
+        inline int get_vertex(const vert_t& p, vert_t::value_type epsilon) const
         {
-            if (equivalent(p.x, p0.x, e) &&
-                equivalent(p.y, p0.y, e))
+            if (equivalent(p.x, p0.x, epsilon) &&
+                equivalent(p.y, p0.y, epsilon))
                 return i0;
-            if (equivalent(p.x, p1.x, e) &&
-                equivalent(p.y, p1.y, e))
+            if (equivalent(p.x, p1.x, epsilon) &&
+                equivalent(p.y, p1.y, epsilon))
                 return i1;
-            if (equivalent(p.x, p2.x, e) &&
-                equivalent(p.y, p2.y, e))
+            if (equivalent(p.x, p2.x, epsilon) &&
+                equivalent(p.y, p2.y, epsilon))
                 return i2;
 
             return -1;
         }
 
-        inline bool get_barycentric(const vert_t& p, vert_t& out) const
+        inline bool get_barycentric(const vert_t& p, vert_t& out, vert_t::value_type epsilon) const
         {
             vert_t v0 = p1 - p0, v1 = p2 - p0, v2 = p - p0;
             vert_t::value_type d00 = v0.dot2d(v0);
@@ -226,7 +218,7 @@ namespace weemesh
             vert_t::value_type denom = d00 * d11 - d01 * d01;
 
             // means that one of more of the triangles points are coincident:
-            if (equivalent(denom, 0.0))
+            if (equivalent(denom, 0.0, epsilon))
                 return false;
 
             out.y = (d11 * d20 - d01 * d21) / denom;
@@ -264,24 +256,21 @@ namespace weemesh
     // connected mesh of triangles, verts, and associated markers
     struct mesh_t
     {
-        int uidgen;
+        int uidgen = 0;
         std::unordered_map<UID, triangle_t> triangles;
         vert_array_t verts;
         std::vector<int> markers;
+        vert_t::value_type epsilon = DEFAULT_EPSILON;
+
 
         spatial_index_t _spatial_index;
         vert_table_t _vert_lut;
-        int _num_edits;
-        int _boundary_marker;
-        int _constraint_marker;
-        int _has_elevation_marker;
+        int _num_edits = 0;
+        int _boundary_marker = 1;
+        int _constraint_marker = 16;
+        int _has_elevation_marker = 4;
 
-        mesh_t() :
-            uidgen(0),
-            _num_edits(0),
-            _boundary_marker(1),
-            _constraint_marker(16),
-            _has_elevation_marker(4)
+        mesh_t()
         {
             //nop
         }
@@ -336,14 +325,13 @@ namespace weemesh
 
             // "2d_degenerate" means that either a) at least 2 points are coincident, or
             // b) at least two edges are basically coincident (in the XY plane)
-            constexpr vert_t::value_type E = 0.0005;
             tri.is_2d_degenerate =
-                same_vert(tri.p0, tri.p1, E) ||
-                same_vert(tri.p1, tri.p2, E) ||
-                same_vert(tri.p2, tri.p0, E) ||
-                same_vert((tri.p1 - tri.p0).normalize2d(), (tri.p2 - tri.p0).normalize2d(), E) ||
-                same_vert((tri.p2 - tri.p1).normalize2d(), (tri.p0 - tri.p1).normalize2d(), E) ||
-                same_vert((tri.p0 - tri.p2).normalize2d(), (tri.p1 - tri.p2).normalize2d(), E);
+                same_vert(tri.p0, tri.p1, epsilon) ||
+                same_vert(tri.p1, tri.p2, epsilon) ||
+                same_vert(tri.p2, tri.p0, epsilon) ||
+                same_vert((tri.p1 - tri.p0).normalize2d(), (tri.p2 - tri.p0).normalize2d(), epsilon) ||
+                same_vert((tri.p2 - tri.p1).normalize2d(), (tri.p0 - tri.p1).normalize2d(), epsilon) ||
+                same_vert((tri.p0 - tri.p2).normalize2d(), (tri.p1 - tri.p2).normalize2d(), epsilon);
 
             triangles.emplace(uid, tri);
             _spatial_index.Insert(tri.a_min, tri.a_max, uid);
@@ -445,7 +433,7 @@ namespace weemesh
                 if (tri.is_2d_degenerate)
                     continue;
 
-                if (tri.contains_2d(vert))
+                if (tri.contains_2d(vert, epsilon))
                 {
                     inside_split(tri, vert, nullptr, marker);
                     // dont't break -- could split two triangles if on edge.
@@ -480,7 +468,7 @@ namespace weemesh
             // splits will just happen on the new triangles later. (That's why
             // every split operation is followed by a "continue" to short-circuit
             // to loop)
-            vert_t::value_type E = EPSILON; // E = 1e-3;
+            //vert_t::value_type E = epsilon; // EPSILON; // E = 1e-3;
             std::list<UID> uid_list;
             std::copy(uids.begin(), uids.end(), std::back_inserter(uid_list));
             for (auto uid : uid_list)
@@ -496,13 +484,13 @@ namespace weemesh
                 // if so, split the triangle into 2 or 3 new ones, and mark
                 // all of its verts as CONSTRAINT so they will not be subject
                 // to morphing.
-                if (tri.contains_2d(seg.first))
+                if (tri.contains_2d(seg.first, epsilon))
                 {
                     if (inside_split(tri, seg.first, &uid_list, marker))
                         continue;
                 }
 
-                if (tri.contains_2d(seg.second))
+                if (tri.contains_2d(seg.second, epsilon))
                 {
                     if (inside_split(tri, seg.second, &uid_list, marker))
                         continue;
@@ -526,7 +514,7 @@ namespace weemesh
 
                 // does the segment cross first triangle edge?
                 segment_t edge0(tri.p0, tri.p1);
-                if (seg.intersect(edge0, out, u) && !tri.is_vertex(out, E))
+                if (seg.intersect(edge0, out, u) && !tri.is_vertex(out, epsilon))
                 {
                     int new_marker = marker;
                     if ((markers[tri.i0] & _boundary_marker) && (markers[tri.i1] & _boundary_marker))
@@ -571,7 +559,7 @@ namespace weemesh
 
                 // does the segment cross second triangle edge?
                 segment_t edge1(tri.p1, tri.p2);
-                if (seg.intersect(edge1, out, u) && !tri.is_vertex(out, E))
+                if (seg.intersect(edge1, out, u) && !tri.is_vertex(out, epsilon))
                 {
                     int new_marker = marker;
                     if ((markers[tri.i1] & _boundary_marker) && (markers[tri.i2] & _boundary_marker))
@@ -616,7 +604,7 @@ namespace weemesh
 
                 // does the segment cross third triangle edge?
                 segment_t edge2(tri.p2, tri.p0);
-                if (seg.intersect(edge2, out, u) && !tri.is_vertex(out, E))
+                if (seg.intersect(edge2, out, u) && !tri.is_vertex(out, epsilon))
                 {
                     int new_marker = marker;
                     if ((markers[tri.i2] & _boundary_marker) && (markers[tri.i0] & _boundary_marker))
@@ -678,15 +666,15 @@ namespace weemesh
             UID new_uid;
             int new_tris = 0;
 
-            // calculate the barycenric coordinates of the new point
+            // calculate the barycentric coordinates of the new point
             // within the target triangle so we can detect any split
             // that occurs right on an edge and then bypass creating
             // a degenerate triangle.
             vert_t bary(1, 1, 1);
-            if (tri.get_barycentric(p, bary) == false)
+            if (tri.get_barycentric(p, bary, epsilon) == false)
                 return false;
 
-            if (!equivalent(bary[2], 0.0, EPSILON)) {
+            if (!equivalent(bary[2], 0.0, epsilon)) {
                 new_uid = add_triangle(tri.i0, tri.i1, new_i);
                 if (new_uid >= 0 && uid_list) {
                     markers[tri.i0] |= _constraint_marker;
@@ -696,7 +684,7 @@ namespace weemesh
                 }
             }
 
-            if (!equivalent(bary[0], 0.0, EPSILON)) {
+            if (!equivalent(bary[0], 0.0, epsilon)) {
                 new_uid = add_triangle(tri.i1, tri.i2, new_i);
                 if (new_uid >= 0 && uid_list) {
                     markers[tri.i1] |= _constraint_marker;
@@ -706,7 +694,7 @@ namespace weemesh
                 }
             }
 
-            if (!equivalent(bary[1], 0.0, EPSILON)) {
+            if (!equivalent(bary[1], 0.0, epsilon)) {
                 new_uid = add_triangle(tri.i2, tri.i0, new_i);
                 if (new_uid >= 0 && uid_list) {
                     markers[tri.i2] |= _constraint_marker;

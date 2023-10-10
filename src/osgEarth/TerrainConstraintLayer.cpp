@@ -135,6 +135,24 @@ TerrainConstraintLayer::getFeatureSource() const
     return options().featureSource().getLayer();
 }
 
+void
+TerrainConstraintLayer::setModelLayer(TiledModelLayer* value)
+{
+    if (value != getModelLayer())
+    {
+        bool is_open = isOpen();
+        if (is_open) close();
+        options().model().setLayer(value);
+        if (is_open) open();
+    }
+}
+
+TiledModelLayer*
+TerrainConstraintLayer::getModelLayer() const
+{
+    return options().model().getLayer();
+}
+
 Status
 TerrainConstraintLayer::openImplementation()
 {

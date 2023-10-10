@@ -26,9 +26,6 @@
 
 namespace osgEarth {
     class Map;
-    namespace Util {
-        class SimplePager;
-    }
 }
 
 namespace osgEarth
@@ -39,9 +36,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT XYZModelLayer : public TiledModelLayer
     {
     public: // serialization
-        class OSGEARTH_EXPORT Options : public TiledModelLayer::Options                         
+        struct OSGEARTH_EXPORT Options : public TiledModelLayer::Options                         
         {
-        public:
             META_LayerOptions(osgEarth, Options, TiledModelLayer::Options);
             OE_OPTION(URI, url);
             OE_OPTION(bool, additive);
@@ -49,8 +45,7 @@ namespace osgEarth
             OE_OPTION(int, minLevel);
             OE_OPTION(int, maxLevel);
             OE_OPTION(ProfileOptions, profile);
-            virtual Config getConfig() const;
-        private:
+            Config getConfig() const override;
             void fromConfig(const Config& conf);
         };
 
@@ -62,6 +57,7 @@ namespace osgEarth
         const Profile* getProfile() const override { return _profile.get(); }
 
         //! Whether to flip the Y axis for tile indexing
+        //! TODO: do we need this? Since the URL supports ${-y}?
         void setInvertY(const bool& value);
         const bool& getInvertY() const;
 
@@ -69,6 +65,7 @@ namespace osgEarth
         void setURL(const URI& value);
         const URI& getURL() const;
 
+        //! Whether new LODs should be added to the scene (true) or replace existing ones (false)
         void setAdditive(const bool& value);
         const bool& getAdditive() const;
 
@@ -85,31 +82,32 @@ namespace osgEarth
 
     public: // Layer
 
-        // opens the layer and returns the status
-        virtual Status openImplementation();
+        //! opens the layer and returns the status
+        Status openImplementation() override;
 
-        // closes the layer
-        virtual Status closeImplementation();
+        //! closes the layer
+        Status closeImplementation() override;
 
-        // The Node representing this layer.
-        virtual osg::Node* getNode() const;
+        //! The Node representing this layer.
+        osg::Node* getNode() const override;
 
         //! Serialization
-        virtual Config getConfig() const;
+        Config getConfig() const override;
 
     public: // Layer
         
-        // called by the map when this layer is added
-        virtual void addedToMap(const Map*);
+        //! called by the map when this layer is added
+        void addedToMap(const Map*) override;
 
-        // called by the map when this layer is removed
-        virtual void removedFromMap(const Map*);
+        //! called by the map when this layer is removed
+        void removedFromMap(const Map*) override;
 
-        // post-ctor initialization
-        virtual void init();
+        //! post-ctor initialization
+        void init() override;
 
     protected: // TiledModelLayer
 
+        //! Creates an OSG node from a tile key.
         osg::ref_ptr<osg::Node> createTileImplementation(const TileKey&, ProgressCallback*) const override;
 
     protected:

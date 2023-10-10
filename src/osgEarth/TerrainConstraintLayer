@@ -30,15 +30,15 @@
 namespace osgEarth
 {
     /**
-     * Provides feature data to the terrain engine to use for
-     * customizing the surface mesh.
+     * Provides data to the terrain engine to use for customizing the surface mesh.
+     * This layer type is used to constrain the terrain surface based on either
+     * a collection of features OR tiled model data.
      */
     class OSGEARTH_EXPORT TerrainConstraintLayer : public VisibleLayer
     {
     public: // serialization
-        class OSGEARTH_EXPORT Options : public VisibleLayer::Options
+        struct OSGEARTH_EXPORT Options : public VisibleLayer::Options
         {
-        public:
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
             OE_OPTION_LAYER(TiledModelLayer, model);
@@ -47,17 +47,22 @@ namespace osgEarth
             OE_OPTION(bool, removeExterior);
             OE_OPTION(bool, hasElevation);
             OE_OPTION(unsigned, minLevel);
-            virtual Config getConfig() const;
-        private:
+            Config getConfig() const override;
             void fromConfig( const Config& conf );
         };
 
     public:
         META_Layer(osgEarth, TerrainConstraintLayer, Options, VisibleLayer, TerrainConstraint);
 
-        //! Source of the feature data
+        //! Feature data to use for creating terrain constraints
+        //! Use this OR setModelLayer, but not both.
         void setFeatureSource(FeatureSource* features);
         FeatureSource* getFeatureSource() const;
+
+        //! Model data to use for creating terrain constraints
+        //! Use this OR setFeatureSource(), but not both.
+        void setModelLayer(TiledModelLayer* model);
+        TiledModelLayer* getModelLayer() const;
 
         //! Whether the terrain should remove geometry that is interior to polygons
         bool getRemoveInterior() const { return options().removeInterior().get(); }
@@ -76,17 +81,20 @@ namespace osgEarth
         unsigned getMinLevel() const { return options().minLevel().get(); }
         void setMinLevel(unsigned value);
 
-        //! Geospatial extent of this layer's data
-        virtual const GeoExtent& getExtent() const override;
+        //! Geospatial extent of this layer's data, if known.
+        const GeoExtent& getExtent() const override;
 
         //! Visibility toggle from VisibleLayer
-        virtual void setVisible(bool value) override;
+        void setVisible(bool value) override;
 
-        FeatureFilterChain* getFilters() const {
-            return _filterchain.get();
-        }
+        //! Feature filters to use when querying the feature source, if applicable.
+        FeatureFilterChain* getFilters() const { return _filterchain.get(); }
 
-        //! Return a constraint object 
+        //! Return a constraint object for a given tile key.
+        //! @param key The tile key
+        //! @param context The filter context, or nullptr if not applicable
+        //! @param progress A progress callback to check for user cancellation
+        //! @return A constraint object
         MeshConstraint getConstraint(
             const TileKey& key,
             FilterContext* context,
@@ -94,11 +102,11 @@ namespace osgEarth
 
     protected:
 
-        virtual Status openImplementation() override;
+        Status openImplementation() override;
 
-        virtual void addedToMap(const Map*) override;
+        void addedToMap(const Map*) override;
 
-        virtual void removedFromMap(const Map*) override;
+        void removedFromMap(const Map*) override;
 
     protected:
 
@@ -121,13 +129,6 @@ namespace osgEarth
             const TileKey& key,
             MeshConstraint& constraint,
             ProgressCallback* progress) const;
-    };
-
-    //! A single constraint (set of features from a given layer with properties)
-    struct TerrainConstraint
-    {
-        FeatureList features;
-        osg::ref_ptr<TerrainConstraintLayer> layer;
     };
 
     /**

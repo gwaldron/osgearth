@@ -81,7 +81,7 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
-                    TerrainOptionsAPI& options = _mapNode->getTerrainOptions();
+                    auto options = _mapNode->getTerrainOptions();
 
                     if (ImGuiLTable::Begin("terraingui"))
                     {

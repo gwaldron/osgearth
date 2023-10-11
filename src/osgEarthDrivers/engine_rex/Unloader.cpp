@@ -29,12 +29,13 @@
 using namespace osgEarth::REX;
 
 
-UnloaderGroup::UnloaderGroup(TileNodeRegistry* tiles) :
+UnloaderGroup::UnloaderGroup(TileNodeRegistry* tiles, const TerrainOptionsAPI& api) :
+    _options(api),
     _tiles(tiles),
-    _minResidentTiles(0u),
-    _maxAge(0.1),
-    _minRange(0.0f),
-    _maxTilesToUnloadPerFrame(~0),
+    //_minResidentTiles(0u),
+    //_maxAge(0.1),
+    //_minRange(0.0f),
+    //_maxTilesToUnloadPerFrame(~0),
     _frameLastUpdated(0u)
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
@@ -48,7 +49,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
         unsigned frame = _clock->getFrame();
         bool runUpdate = (_frameLastUpdated < frame);
 
-        if (runUpdate && _tiles->size() > _minResidentTiles)
+        if (runUpdate && _tiles->size() > _options.getMinResidentTiles())
         {
             _frameLastUpdated = frame;
 
@@ -60,7 +61,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
 
             // Have to enforce both the time delay AND a frame delay since the frames can
             // stop while the time rolls on (e.g., if you are dragging the window)
-            double oldestAllowableTime = now - _maxAge;
+            double oldestAllowableTime = now - _options.getMinExpiryTime();
             unsigned oldestAllowableFrame = osg::maximum(frame, 3u) - 3u;
 
             // Remove them from the registry:
@@ -68,8 +69,8 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
                 nv,
                 oldestAllowableTime,
                 oldestAllowableFrame,
-                _minRange,
-                _maxTilesToUnloadPerFrame,
+                _options.getMinExpiryRange(),
+                _options.getMaxTilesToUnloadPerFrame(),
                 _deadpool);
 
             // Remove them from the scene graph:

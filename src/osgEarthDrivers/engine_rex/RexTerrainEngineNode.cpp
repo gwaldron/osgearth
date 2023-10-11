@@ -319,12 +319,8 @@ RexTerrainEngineNode::setMap(const Map* map, const TerrainOptions& inOptions)
     JobArena::setConcurrency(ARENA_LOAD_TILE, concurrency);
 
     // Make a tile unloader
-    _unloader = new UnloaderGroup(_tiles.get());
+    _unloader = new UnloaderGroup(_tiles.get(), getOptions());
     _unloader->setFrameClock(&_clock);
-    _unloader->setMaxAge(options().minExpiryTime().get());
-    _unloader->setMaxTilesToUnloadPerFrame(options().maxTilesToUnloadPerFrame().get());
-    _unloader->setMinResidentTiles(options().minResidentTiles().get());
-    _unloader->setMinimumRange(options().minExpiryRange().get());
     this->addChild(_unloader.get());
 
     // Initialize the core render bindings.
@@ -756,11 +752,6 @@ RexTerrainEngineNode::dirtyTerrainOptions()
     {
         JobArena::setConcurrency(ARENA_LOAD_TILE, options().concurrency().get());
     }
-
-    _unloader->setMaxAge(options().minExpiryTime().get());
-    _unloader->setMaxTilesToUnloadPerFrame(options().maxTilesToUnloadPerFrame().get());
-    _unloader->setMinResidentTiles(options().minResidentTiles().get());
-    _unloader->setMinimumRange(options().minExpiryRange().get());
 }
 
 void

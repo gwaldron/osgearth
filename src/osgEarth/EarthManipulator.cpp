@@ -2696,6 +2696,9 @@ EarthManipulator::zoom( double dx, double dy, osg::View* in_view )
     if ( !camera )
         return;
 
+    if ( !recalculateCenterFromLookVector() )
+        return;
+
     // reset the "remembered start location" if we're just starting a continuous zoom
     static osg::Vec3d zero(0,0,0);
     if (_last_action._type != ACTION_ZOOM)
@@ -3373,6 +3376,9 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         camera = view->getCamera();
 
     if ( !camera )
+        return;
+
+    if ( !recalculateCenterFromLookVector() )
         return;
 
     osg::Matrix viewMat = camera->getViewMatrix();

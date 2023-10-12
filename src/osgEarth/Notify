@@ -46,13 +46,27 @@ namespace osgEarth
 
     inline std::ostream& notify(void) { return osgEarth::notify(osg::INFO); }
 
+
 #define OE_NOTIFY( X,Y ) if(osgEarth::isNotifyEnabled( X )) osgEarth::notify( X ) << Y
+
+#ifdef HAVE_SPDLOG
+#define OE_CRITICAL OE_NOTIFY(osg::ALWAYS,"")
+#define OE_FATAL OE_NOTIFY(osg::FATAL,"")
+#define OE_WARN OE_NOTIFY(osg::WARN,"")
+#define OE_NOTICE OE_NOTIFY(osg::NOTICE,"")
+#define OE_INFO OE_NOTIFY(osg::INFO,"")
+#define OE_INFO_CONTINUE OE_NOTIFY(osg::INFO, "")
+#define OE_DEBUG OE_NOTIFY(osg::DEBUG_INFO,"")
+#else
+#define OE_CRITICAL OE_NOTIFY(osg::ALWAYS,"[osgEarth]**")
 #define OE_FATAL OE_NOTIFY(osg::FATAL,"[osgEarth]* ")
 #define OE_WARN OE_NOTIFY(osg::WARN,"[osgEarth]* ")
 #define OE_NOTICE OE_NOTIFY(osg::NOTICE,"[osgEarth]  ")
 #define OE_INFO OE_NOTIFY(osg::INFO,"[osgEarth]  ")
 #define OE_INFO_CONTINUE OE_NOTIFY(osg::INFO, "")
 #define OE_DEBUG OE_NOTIFY(osg::DEBUG_INFO,"[osgEarth]  ")
+#endif
+
 #define OE_NULL if(false) osgEarth::notify(osg::ALWAYS)
 
 #define OE_START_TIMER(VAR) osg::Timer_t VAR##_oe_timer = osg::Timer::instance()->tick()

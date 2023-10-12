@@ -135,6 +135,7 @@ find_package(Protobuf)
 find_package(WEBP)
 find_package(Blend2D)
 find_package(Blosc)
+find_package(spdlog)
 
 if(OSGEARTH_BUILD_CESIUM_NODEKIT)
     find_package(CesiumNative)
@@ -166,6 +167,11 @@ if(WITH_EXTERNAL_TINYXML)
     find_package(TinyXML)
 endif(WITH_EXTERNAL_TINYXML)
 
+
+# Logging SDK
+if(spdlog_FOUND)
+    add_definitions(-DHAVE_SPDLOG)
+endif()
 
 # Sqlite enables the MBTiles format:
 if(SQLITE3_FOUND)

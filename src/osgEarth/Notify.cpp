@@ -17,13 +17,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Notify>
-
+#include <osgEarth/StringUtils>
 #include <osg/ApplicationUsage>
 #include <osg/ref_ptr>
 #include <sstream>
 #include <iostream>
-
 #include <stdlib.h>
+
+#ifdef HAVE_SPDLOG
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#endif
 
 #define OSGEARTH_INIT_SINGLETON_PROXY(ProxyName, Func) static struct ProxyName{ ProxyName() { Func; } } s_##ProxyName;
 
@@ -87,12 +91,12 @@ struct NotifyStreamBuffer : public std::stringbuf
 
 private:
 
-    int sync()
+    int sync() override
     {
         sputc(0); // string termination
         if (_handler.valid())
             _handler->notify(_severity, pbase());
-        pubseekpos(0, std::ios_base::out); // or str(std::string())
+        pubseekpos(0, std::ios_base::out);
         return 0;
     }
 
@@ -137,6 +141,55 @@ namespace
 {
     static osg::ApplicationUsageProxy Notify_e0(osg::ApplicationUsage::ENVIRONMENTAL_VARIABLE, "OSGEARTH_NOTIFY_LEVEL <mode>", "FATAL | WARN | NOTICE | DEBUG_INFO | DEBUG_FP | DEBUG | INFO | ALWAYS");
 
+#ifdef HAVE_SPDLOG
+    struct SpdLogNotifyHandler : public osg::NotifyHandler
+    {
+        SpdLogNotifyHandler()
+        {
+            _logger = spdlog::stdout_color_mt("osgearth");
+            _logger->set_pattern("%^[%n %l]%$ %v");
+            _logger->set_level(spdlog::level::debug);
+        }
+
+        void notify(osg::NotifySeverity severity, const char *message)
+        {
+            std::string buf(message);
+            std::vector<std::string> parts;
+            Util::StringTokenizer(buf, parts, "\n");
+
+            for (auto& part : parts)
+            {
+                switch (severity)
+                {
+                case osg::ALWAYS:
+                    _logger->critical(part);
+                    break;
+                case osg::FATAL:
+                    _logger->critical(part);
+                    break;
+                case osg::WARN:
+                    _logger->warn(part);
+                    break;
+                case osg::NOTICE:
+                    _logger->info(part);
+                    break;
+                case osg::DEBUG_INFO:
+                    _logger->debug(part);
+                    break;
+                case osg::DEBUG_FP:
+                    _logger->debug(part);
+                    break;
+                case osg::INFO:
+                    _logger->info(part);
+                    break;
+                }
+            }
+        }
+
+        std::shared_ptr<spdlog::logger> _logger;
+    };
+#endif
+
     struct NotifySingleton
     {
         NotifySingleton()
@@ -176,7 +229,13 @@ namespace
             // Setup standard notify handler
             NotifyStreamBuffer *buffer = dynamic_cast<NotifyStreamBuffer *>(_notifyStream.rdbuf());
             if (buffer && !buffer->getNotifyHandler())
+            {
+#ifdef HAVE_SPDLOG
+                buffer->setNotifyHandler(new SpdLogNotifyHandler);
+#else
                 buffer->setNotifyHandler(new osg::StandardNotifyHandler);
+#endif
+            }
         }
 
         osg::NotifySeverity _notifyLevel;

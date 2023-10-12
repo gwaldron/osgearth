@@ -23,6 +23,7 @@
         "protobuf",
         "sqlite3",
         "tinyxml",
-        "rocksdb"
+        "rocksdb",
+        "spdlog"
     ]
 }

@@ -31,7 +31,7 @@
 
 using namespace osgEarth;
 
-#define LC "[ImageLayer] \"" << getName() << "\" "
+#define LC "[" << className() << "] \"" << getName() << "\" "
 
 // TESTING
 //#undef  OE_DEBUG

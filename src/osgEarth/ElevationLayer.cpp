@@ -26,7 +26,7 @@
 
 using namespace osgEarth;
 
-#define LC "[ElevationLayer] \"" << getName() << "\" : "
+#define LC "[" << className() << "] \"" << getName() << "\" "
 
 //#define ANALYZE
 

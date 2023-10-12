@@ -28,7 +28,7 @@
 
 using namespace osgEarth;
 
-#define LC "[Layer] \"" << getName() << "\" "
+#define LC "[" << className() << "] " << getName() << "\" "
 
 //.................................................................
 
@@ -428,13 +428,13 @@ Layer::openImplementation()
         CacheBin* bin = _cacheSettings->getCache()->addBin(_runtimeCacheId);
         if (bin)
         {
-            OE_INFO << LC << "Cache bin is [" << _runtimeCacheId << "]\n";
+            OE_INFO << LC << "Cache bin is [" << _runtimeCacheId << "]" << std::endl;
             _cacheSettings->setCacheBin(bin);
         }
         else
         {
             // failed to create the bin, so fall back on no cache mode.
-            OE_WARN << LC << "Failed to open a cache bin [" << _runtimeCacheId << "], disabling caching\n";
+            OE_WARN << LC << "Failed to open a cache bin [" << _runtimeCacheId << "], disabling caching" << std::endl;
             _cacheSettings->cachePolicy() = CachePolicy::NO_CACHE;
         }
     }
@@ -486,7 +486,10 @@ Layer::invoke_prepareForRendering(TerrainEngine* engine)
 
     // deprecation path; call this in case some older layer is still
     // implementing it.
-    setTerrainResources(engine->getResources());
+    if (engine)
+    {
+        setTerrainResources(engine->getResources());
+    }
 }
 
 void

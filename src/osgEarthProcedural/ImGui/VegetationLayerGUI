@@ -267,7 +267,7 @@ namespace osgEarth
                         biomeCounts.clear();
 
                         auto vp = camera(ri)->getViewport();
-                        GeoPoint p = _mapNode->getGeoPointUnderMouse(view(ri), 0.5f*vp->width(), 0.5f*vp->height());
+                        GeoPoint p = _mapNode->getGeoPointUnderMouse(view(ri), vp->x()+0.5f*vp->width(), vp->y()+0.5f*vp->height());
                         if (p.isValid())
                         {
                             auto lod = _veglayer->options().group(group_name).lod().get();

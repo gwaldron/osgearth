@@ -147,6 +147,14 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
     if (Capabilities::get().supportsInt64() == false)
     {
         setStatus(Status::ResourceUnavailable, "GLSL int64 support required but not available");
+        OE_WARN << LC << getStatus().message() << std::endl;
+        return;
+    }
+
+    if (Capabilities::get().getGLSLVersion() < 4.6f || Capabilities::get().supportsNVGL() == false)
+    {
+        setStatus(Status::ResourceUnavailable, "GLSL 4.6+ required but not available");
+        OE_WARN << LC << getStatus().message() << std::endl;
         return;
     }
 

@@ -299,9 +299,6 @@ VegetationLayer::init()
     _biomeRevision = 0;
     setAcceptCallback(new LayerAcceptor(this));
 
-    _requestMultisampling = false;
-    _multisamplingActivated = false;
-
     // make a 4-channel noise texture to use
     NoiseTextureFactory noise;
     _noiseTex = Texture::create(noise.create(256u, 4u));
@@ -316,10 +313,11 @@ Status
 VegetationLayer::openImplementation()
 {
     // GL version requirement
-    if (Capabilities::get().getGLSLVersion() < 4.6f ||
-        Capabilities::get().supportsNVGL() == false)
+    if (Capabilities::get().getGLSLVersion() < 4.6f ||  Capabilities::get().supportsNVGL() == false)
     {
-        return Status(Status::ResourceUnavailable, "Requires NVIDIA GL 4.6");
+        _renderingSupported = false;
+        OE_WARN << LC << "Rendering will be disabled - requires NVIDIA GL 4.6" << std::endl;
+        //return Status(Status::ResourceUnavailable, "Requires NVIDIA GL 4.6");
     }
 
     // Clamp the layer's max visible range the maximum range of the farthest
@@ -727,13 +725,6 @@ VegetationLayer::addedToMap(const Map* map)
         setStatus(Status::ResourceUnavailable, "No LifeMap available in the Map");
         return;
     }
-
-    // prepare for querying constraints with holes
-    map->getLayers<TerrainConstraintLayer>(_constraintQuery.layers, [](const TerrainConstraintLayer* layer)
-        {
-            auto clayer = static_cast<const TerrainConstraintLayer*>(layer);
-            return clayer->getRemoveInterior() == true;
-        });
 }
 
 void
@@ -874,8 +865,7 @@ VegetationLayer::activateMultisampling()
 }
 
 void
-VegetationLayer::configureImpostor(
-    const std::string& groupName)
+VegetationLayer::configureImpostor(const std::string& groupName)
 {
     Options::Group& group = options().groups()[groupName];
     bool isUndergrowth = (groupName == GROUP_UNDERGROWTH);
@@ -930,18 +920,10 @@ VegetationLayer::configureImpostor(
                     { 0, ymin, b.zMax() }
                 };
 
-#if 0
-                osg::Vec3f normals[8] = {
-                    {-1,0,1}, {1,0,1}, {1,0,2}, {-1,0,2},
-                    {0,-1,1}, {0,1,1}, {0,1,2}, {0,-1,2}
-                };
-                for (auto& n : normals) n.normalize();
-#else
                 osg::Vec3f normals[8] = {
                     {0,1,0}, {0,1,0}, {0,1,0}, {0,1,0},
                     {1,0,0}, {1,0,0}, {1,0,0}, {1,0,0}
                 };
-#endif
 
                 const osg::Vec2f uvs[8] = {
                     {0,0},{1,0},{1,1},{0,1},
@@ -1037,7 +1019,7 @@ VegetationLayer::configureImpostor(
         BiomeManager::Impostor result;
         result._node = node;
         result._farLODScale = group.farLODScale().get();
-        return std::move(result);
+        return result;
     };
 
     getBiomeLayer()->getBiomeManager().setCreateImpostorFunction(
@@ -1203,7 +1185,6 @@ VegetationLayer::createDrawableAsync(
 }
 
 #undef RAND
-//#define RAND() rand_float_01(gen)
 #define RAND() prng.next()
 
 bool
@@ -1285,12 +1266,15 @@ VegetationLayer::getAssetPlacements(
 
     // Prepare to deal with holes in the terrain, where we do not want
     // to place vegetation
-    MeshConstraints constraints;
+    TerrainConstraintQuery query;
+    map->getLayers<TerrainConstraintLayer>(query.layers, [](const TerrainConstraintLayer* layer)
+        {
+            auto clayer = static_cast<const TerrainConstraintLayer*>(layer);
+            return clayer->getRemoveInterior() == true;
+        });
 
-    _constraintQuery.getConstraints(
-        key,
-        constraints,
-        progress);
+    MeshConstraints constraints;
+    query.getConstraints(key, constraints, progress);
 
     // If the biome residency is not up to date, do that now
     // after loading the biome map.
@@ -1613,11 +1597,8 @@ VegetationLayer::getAssetPlacements(
 }
 
 
-#if 1
 std::string
-VegetationLayer::simulateAssetPlacement(
-    const GeoPoint& point,
-    const std::string& group) const
+VegetationLayer::simulateAssetPlacement(const GeoPoint& point, const std::string& group) const
 {
     const bool loadBiomesOnDemand = true;
     ProgressCallback* progress = nullptr;
@@ -1698,7 +1679,7 @@ VegetationLayer::simulateAssetPlacement(
     osg::Matrix biomemap_sb;
     if (getBiomeLayer())
     {
-        TileKey maxKey = key; // map->getProfile()->createTileKey(point, 19);
+        TileKey maxKey = key;
         TileKey bestKey = getBiomeLayer()->getBestAvailableTileKey(maxKey);
         biomemap = getBiomeLayer()->createImage(bestKey, progress);
         key.getExtent().createScaleBias(biomemap.getExtent(), biomemap_sb);
@@ -1708,8 +1689,14 @@ VegetationLayer::simulateAssetPlacement(
 
     // Prepare to deal with holes in the terrain, where we do not want
     // to place vegetation
-    std::vector<MeshConstraint> constraints;
-    _constraintQuery.getConstraints(key, constraints, progress);
+    TerrainConstraintQuery query;
+    map->getLayers<TerrainConstraintLayer>(query.layers, [](const TerrainConstraintLayer* layer)
+        {
+            auto clayer = static_cast<const TerrainConstraintLayer*>(layer);
+            return clayer->getRemoveInterior() == true;
+        });
+    MeshConstraints constraints;
+    query.getConstraints(key, constraints, progress);
 
     // If the biome residency is not up to date, do that now
     // after loading the biome map.
@@ -1832,7 +1819,6 @@ VegetationLayer::simulateAssetPlacement(
 
     return log.str();
 }
-#endif
 
 osg::ref_ptr<osg::Drawable>
 VegetationLayer::createDrawable(
@@ -1889,6 +1875,11 @@ VegetationLayer::createDrawable(
 void
 VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
 {
+    // bail out if we cannot render due to insufficient GL version
+    if (!_renderingSupported)
+        return;
+
+    // bail out if there are no assets to render
     if (_assets.empty())
         return;
 

@@ -30,7 +30,6 @@
 
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
-#include <osgEarth/TerrainConstraintLayer>
 
 #include <osg/Drawable>
 
@@ -450,12 +449,11 @@ namespace osgEarth { namespace Procedural
             ProgressCallback* c) const;
 
         // Things that help us detect the presence of multisampling
-        mutable bool _requestMultisampling;
-        bool _multisamplingActivated;
-        void activateMultisampling();
+        mutable bool _requestMultisampling = false;
+        bool _multisamplingActivated = false;
+        bool _renderingSupported = true;
 
-        TerrainConstraintQuery _constraintQuery;
-        Revision _mapRevision;
+        void activateMultisampling();
     };
 
 } } // namespace osgEarth::Procedural

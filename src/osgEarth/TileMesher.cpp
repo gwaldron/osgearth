@@ -444,7 +444,7 @@ TileMesher::createMeshWithConstraints(
 
     weemesh::mesh_t mesh;
 
-
+    // if we have an input mesh, use it. Otherwise, build a regular gridded mesh.
     if (input_mesh.verts.valid())
     {
         load_mesh(mesh, input_mesh);

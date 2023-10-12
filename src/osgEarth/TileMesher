@@ -32,7 +32,9 @@
 
 namespace osgEarth
 {
-    // Represents a single edit operation driven by a feature collection
+    /**
+     * Represents a single edit operation driven by a feature collection
+     */
     struct MeshConstraint
     {
         FeatureList features;
@@ -46,6 +48,7 @@ namespace osgEarth
         MeshConstraint(MeshConstraint&& rhs) = default;
     };
 
+    //! Collection of mesh constraints
     using MeshConstraints = std::vector<MeshConstraint>;
 
     /**

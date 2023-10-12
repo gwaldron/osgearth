@@ -31,6 +31,7 @@ namespace osgEarth
             TileKey _biomeUnderMouseKey;
             osg::ref_ptr<FeatureNode> _placementNode;
             TileKey _showPlacementsLastTileKey;
+            osg::ref_ptr<osg::Geometry> _boxgeom;
 
             VegetationLayerGUI() : GUI::BaseGUI("Vegetation"),
                 _first(true),
@@ -39,7 +40,17 @@ namespace osgEarth
                 _showBiomeUnderMouse(false),
                 _showPlacements(false)
             {
-                //nop
+                _boxgeom = new osg::Geometry();
+                _boxgeom->setUseVertexBufferObjects(true);
+                const osg::Vec3 verts_data[8] = { {-0.5, -0.5, 0.0}, {0.5, -0.5, 0.0}, {0.5, 0.5, 0.0}, {-0.5, 0.5, 0.0},
+                    {-0.5, -0.5, 1.0}, {0.5, -0.5, 1.0}, {0.5, 0.5, 1.0}, {-0.5, 0.5, 1.0} };
+                _boxgeom->setVertexArray(new osg::Vec3Array(8, verts_data));
+                const GLubyte indices[24] = { 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7 };
+                _boxgeom->addPrimitiveSet(new osg::DrawElementsUByte(GL_LINES, 24, indices));
+                const osg::Vec4 color(1.0f, 1.0f, 0.5f, 1.0);
+                _boxgeom->setColorArray(new osg::Vec4Array(1, &color));
+                _boxgeom->setColorBinding(osg::Geometry::BIND_OVERALL);
+                _boxgeom->getOrCreateStateSet()->setMode(GL_BLEND, 1);
             }
 
             void load(const Config& conf) override
@@ -238,13 +249,28 @@ namespace osgEarth
                     ImGui::Checkbox("Show asset bounding boxes", &_showPlacements);
                     if (_showPlacements)
                     {
+                        const char* group_items[] = { "trees", "bushes", "undergrowth" };
+                        static unsigned group_item = 0;
+                        ImGui::SameLine();
+                        if (ImGuiLTable::BeginCombo("Group", group_items[group_item])) {
+                            for (int n = 0; n < IM_ARRAYSIZE(group_items); n++) {
+                                const bool is_selected = (group_item == n);
+                                if (ImGui::Selectable(group_items[n], is_selected))
+                                    group_item = n;
+                                if (is_selected)
+                                    ImGui::SetItemDefaultFocus();
+                            }
+                            ImGuiLTable::EndCombo();
+                        }
+                        const char* group_name = group_items[group_item];
+
                         biomeCounts.clear();
 
                         auto vp = camera(ri)->getViewport();
                         GeoPoint p = _mapNode->getGeoPointUnderMouse(view(ri), 0.5f*vp->width(), 0.5f*vp->height());
                         if (p.isValid())
                         {
-                            auto lod = _veglayer->options().group("trees").lod().get();
+                            auto lod = _veglayer->options().group(group_name).lod().get();
                             TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p, lod);
                             if (key != _showPlacementsLastTileKey)
                             {
@@ -254,7 +280,7 @@ namespace osgEarth
 
                                 _veglayer->getAssetPlacements(
                                     key,
-                                    "trees",
+                                    group_name,
                                     true,
                                     placements,
                                     nullptr);
@@ -291,7 +317,7 @@ namespace osgEarth
                                 }
 
                                 Style s;
-                                s.getOrCreate<ModelSymbol>()->url()->setLiteral("D:/data/splat/assets/models/unitbox.osg");
+                                s.getOrCreate<ModelSymbol>()->setModel(_boxgeom.get());
                                 s.getOrCreate<ModelSymbol>()->scaleX() = NumericExpression("feature.properties.width");
                                 s.getOrCreate<ModelSymbol>()->scaleY() = NumericExpression("feature.properties.width");
                                 s.getOrCreate<ModelSymbol>()->scaleZ() = NumericExpression("feature.properties.height");

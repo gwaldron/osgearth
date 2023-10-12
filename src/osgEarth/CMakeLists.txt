@@ -186,7 +186,6 @@ SET(LIB_PUBLIC_HEADERS
     MapboxGLImageLayer
     MapboxGLGlyphManager
     MapCallback
-    MapInfo
     MapModelChange
     MapNode
     MapNodeObserver
@@ -616,7 +615,6 @@ set(TARGET_SRC
     MapboxGLImageLayer.cpp
     MapboxGLGlyphManager.cpp
     MapCallback.cpp
-    MapInfo.cpp
     MapNode.cpp
     MaterialLoader.cpp
     MemCache.cpp

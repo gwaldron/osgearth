@@ -87,6 +87,14 @@ namespace osgEarth
                     {
                         ImGuiLTable::Text("Resident Tiles", "%u", _mapNode->getTerrainEngine()->getNumResidentTiles());
 
+                        auto terrain_options = _mapNode->getTerrainOptions();
+
+                        int max_lod = terrain_options.getMaxLOD();
+                        if (ImGuiLTable::SliderInt("Max LOD", &max_lod, 0, 20))
+                        {
+                            terrain_options.setMaxLOD(max_lod);
+                        }
+
                         osg::LOD::RangeMode mode = options.getRangeMode();
                         bool mode_b = (mode == osg::LOD::PIXEL_SIZE_ON_SCREEN);
                         if (ImGuiLTable::Checkbox("Screen space LOD", &mode_b))

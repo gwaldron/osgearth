@@ -227,18 +227,18 @@ namespace osgEarth
 
     public: // osg::Object
 
-        virtual const char* libraryName() const { return "osgEarth"; }
-        virtual const char* className() const { return "MapNode"; }
+        const char* libraryName() const override { return "osgEarth"; }
+        const char* className() const override { return "MapNode"; }
 
     public: //override osg::Node
 
-        virtual osg::BoundingSphere computeBound() const;
+        osg::BoundingSphere computeBound() const override;
 
-        virtual void traverse( class osg::NodeVisitor& nv );
+        void traverse(class osg::NodeVisitor& nv) override;
 
-        virtual void resizeGLObjectBuffers(unsigned maxSize);
+        void resizeGLObjectBuffers(unsigned maxSize) override;
 
-        virtual void releaseGLObjects(osg::State* state) const;
+        void releaseGLObjects(osg::State* state) const override;
 
     protected:    
 

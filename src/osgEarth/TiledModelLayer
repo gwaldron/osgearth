@@ -27,34 +27,41 @@ namespace osgEarth
     class ProgressCallback;
 
     /**
-     * Layer (or other objevct) that creates a scene graph from a TileKey
+     * Layer that creates a scene graph from a tiled data source.
+     * This class is abstract; subclasses must implement createTileImplementation().
      */
     class OSGEARTH_EXPORT TiledModelLayer : public VisibleLayer
     {
     public:
-        class OSGEARTH_EXPORT Options : public VisibleLayer::Options
+        // options serialization
+        struct OSGEARTH_EXPORT Options : public VisibleLayer::Options
         {
-        public:
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
-            //OE_OPTION(unsigned, minLevel);
-            //OE_OPTION(unsigned, maxLevel);
             virtual Config getConfig() const;
-        private:
             void fromConfig(const Config& conf);
         };
 
     public:
         META_Layer_Abstract(osgEarth, TiledModelLayer, Options, VisibleLayer);
 
+        //! Create an OSG node from a tile key.
+        //! @param key The tile key.
+        //! @param  progress A progress callback
         osg::ref_ptr<osg::Node> createTile(const TileKey& key, ProgressCallback* progress) const;
 
+        //! Profile of the underlying tiled data source.
         virtual const Profile* getProfile() const = 0;
 
+        //! Minimum available LOD of the underlying tiled data source.
         virtual unsigned getMinLevel() const = 0;
 
+        //! Maximum available LOD of the underlying tiled data source.
         virtual unsigned getMaxLevel() const = 0;
 
     protected:
+        //! Subclasses must implement this to create a tile.
+        //! @param key The tile key, in the underlying tiled data source's profile.
+        //! @param progress A progress callback that can be checked for user cancellation.
         virtual osg::ref_ptr<osg::Node> createTileImplementation(const TileKey& key, ProgressCallback* progress) const = 0;
     };
 }

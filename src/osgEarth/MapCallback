@@ -29,11 +29,6 @@ namespace osgEarth
     class Layer;
     struct MapModelChange;
 
-    namespace Util
-    {
-        class MapInfo;
-    }
-
     /**
      * Callback that the Map object uses to notify listeners of map data model changes.
      */

@@ -22,7 +22,6 @@
 #include <osgEarth/FeatureSourceIndexNode>
 #include <osgEarth/FilterContext>
 
-#include <osgEarth/MapInfo>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ElevationLOD>

@@ -113,6 +113,11 @@ namespace osgEarth
             //! User-defined traits string (comma-delimited)
             OE_PROPERTY(std::vector<std::string>, traits);
 
+            //! If true, this asset will ONLY be used in a biome that
+            //! explicity inherits this asset's traits from land cover
+            //! data. Default = false.
+            OE_OPTION(bool, traitsRequired);
+
             //! Asset group to which this model belongs.
             OE_PROPERTY(std::string, group);
 

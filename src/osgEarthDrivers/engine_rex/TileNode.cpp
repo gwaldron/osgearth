@@ -361,7 +361,9 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
 
     EngineContext* context = culler->getEngineContext();
     
-    if (currLOD < selectionInfo.getNumLODs() && currLOD != selectionInfo.getNumLODs()-1)
+    if (currLOD < selectionInfo.getNumLODs() && 
+        currLOD != selectionInfo.getNumLODs()-1 &&
+        currLOD < _context->options().getMaxLOD())
     {
         // In PSOS mode, subdivide when the on-screen size of a tile exceeds the maximum
         // allowable on-screen tile size in pixels.

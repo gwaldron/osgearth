@@ -25,7 +25,6 @@
 #include "TileDrawable"
 #include "TileRenderModel"
 
-#include <osgEarth/MapInfo>
 #include <osgEarth/Horizon>
 #include <osg/MatrixTransform>
 #include <osg/BoundingBox>

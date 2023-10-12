@@ -36,56 +36,16 @@ namespace osgEarth { namespace REX
     {
     public:
         //! Construct an unloader for a registry
-        UnloaderGroup(TileNodeRegistry* tiles);
-
-        //! A Tile must be at least this old before it can be removed:
-        void setMaxAge(double value) { 
-            _maxAge = std::max(value, 1.0);
-        }
-        double getMaxAge() const { 
-            return _maxAge;
-        }
-
-        //! Maximum number of tiles to expire per frame
-        void setMaxTilesToUnloadPerFrame(unsigned value) {
-            _maxTilesToUnloadPerFrame = value;
-        }
-        unsigned getMaxTilesToUnloadPerFrame() const {
-            return _maxTilesToUnloadPerFrame;
-        }
-
-        //! A Tile must be at least this far from the camera before it can be unloaded:
-        void setMinimumRange(float value) { 
-            _minRange = std::max(value, 0.0f);
-        }
-        float getMinimumRange() const {
-            return _minRange;
-        }
-
-        //! The engine may keep at least this many tiles in memory 
-        //! before disposing anything
-        void setMinResidentTiles(unsigned value) {
-            _minResidentTiles = value;
-        }
-        unsigned getMinResidentTiles() const {
-            return _minResidentTiles;
-        }
+        UnloaderGroup(TileNodeRegistry* tiles, const TerrainOptionsAPI& options);
 
         //! Set the frame clock to use
         void setFrameClock(const FrameClock* value) { _clock = value; }
 
-    public: // Unloader
-
-        //void unloadChildren(const std::vector<TileKey>& keys);
-
     public: // osg::Node
-        void traverse(osg::NodeVisitor& nv);
+        void traverse(osg::NodeVisitor& nv) override;
 
     protected:
-        unsigned _minResidentTiles;
-        double _maxAge;
-        float _minRange;
-        unsigned _maxTilesToUnloadPerFrame;
+        TerrainOptionsAPI _options;
         TileNodeRegistry* _tiles;
         std::vector<osg::observer_ptr<TileNode> > _deadpool;
         unsigned _frameLastUpdated;

@@ -269,7 +269,6 @@ namespace osgEarth
         void uninstallLayerCallbacks(Layer*);
 
         void init();
-        friend class MapInfo;
         Options _optionsConcrete;
         Options& options() { return _optionsConcrete; }
     };

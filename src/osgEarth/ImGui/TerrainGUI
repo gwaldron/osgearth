@@ -81,6 +81,13 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
+                    if (!_mapNode->getTerrainEngine())
+                    {
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "No terrain engine");
+                        ImGui::End();
+                        return;
+                    }
+
                     auto options = _mapNode->getTerrainOptions();
 
                     if (ImGuiLTable::Begin("terraingui"))
@@ -89,9 +96,13 @@ namespace osgEarth
 
                         auto terrain_options = _mapNode->getTerrainOptions();
 
-                        int max_lod = terrain_options.getMaxLOD();
-                        if (ImGuiLTable::SliderInt("Max LOD", &max_lod, 0, 20))
+                        static int max_max_lod = -1;
+                        static unsigned u32_one = 1;
+                        unsigned max_lod = terrain_options.getMaxLOD();
+                        if (max_max_lod < 0) max_max_lod = max_lod;
+                        if (ImGuiLTable::InputScalar("Max LOD", ImGuiDataType_U32, &max_lod, &u32_one, nullptr, "%u"))
                         {
+                            max_lod = clamp(max_lod, 0u, (unsigned)max_max_lod);
                             terrain_options.setMaxLOD(max_lod);
                         }
 

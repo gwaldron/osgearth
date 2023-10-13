@@ -31,7 +31,8 @@ namespace osgEarth
             TileKey _biomeUnderMouseKey;
             osg::ref_ptr<FeatureNode> _placementNode;
             TileKey _showPlacementsLastTileKey;
-            osg::ref_ptr<osg::Geometry> _boxgeom;
+            osg::ref_ptr<osg::Node> _boxgeom;
+            GeoPoint _pointUnderMouse;
 
             VegetationLayerGUI() : GUI::BaseGUI("Vegetation"),
                 _first(true),
@@ -40,17 +41,19 @@ namespace osgEarth
                 _showBiomeUnderMouse(false),
                 _showPlacements(false)
             {
-                _boxgeom = new osg::Geometry();
-                _boxgeom->setUseVertexBufferObjects(true);
+                auto geom = new osg::Geometry();
+                geom->setUseVertexBufferObjects(true);
+                geom->setUseDisplayList(false);
                 const osg::Vec3 verts_data[8] = { {-0.5, -0.5, 0.0}, {0.5, -0.5, 0.0}, {0.5, 0.5, 0.0}, {-0.5, 0.5, 0.0},
                     {-0.5, -0.5, 1.0}, {0.5, -0.5, 1.0}, {0.5, 0.5, 1.0}, {-0.5, 0.5, 1.0} };
-                _boxgeom->setVertexArray(new osg::Vec3Array(8, verts_data));
-                const GLubyte indices[24] = { 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7 };
-                _boxgeom->addPrimitiveSet(new osg::DrawElementsUByte(GL_LINES, 24, indices));
+                geom->setVertexArray(new osg::Vec3Array(8, verts_data));
+                const GLushort indices[24] = { 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7 };
+                geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_LINES, 24, indices));
                 const osg::Vec4 color(1.0f, 1.0f, 0.5f, 1.0);
-                _boxgeom->setColorArray(new osg::Vec4Array(1, &color));
-                _boxgeom->setColorBinding(osg::Geometry::BIND_OVERALL);
-                _boxgeom->getOrCreateStateSet()->setMode(GL_BLEND, 1);
+                geom->setColorArray(new osg::Vec4Array(1, &color));
+                geom->setColorBinding(osg::Geometry::BIND_OVERALL);
+
+                _boxgeom = geom;
             }
 
             void load(const Config& conf) override
@@ -266,8 +269,7 @@ namespace osgEarth
 
                         biomeCounts.clear();
 
-                        auto vp = camera(ri)->getViewport();
-                        GeoPoint p = _mapNode->getGeoPointUnderMouse(view(ri), vp->x()+0.5f*vp->width(), vp->y()+0.5f*vp->height());
+                        auto& p = _pointUnderMouse;
                         if (p.isValid())
                         {
                             auto lod = _veglayer->options().group(group_name).lod().get();
@@ -296,12 +298,17 @@ namespace osgEarth
                                     osg::ref_ptr<Feature> feature = new Feature(point, key.getExtent().getSRS());
                                     feature->set("elevation", p.mapPoint().z());
 
-                                    float width = std::max(
-                                        p.asset()->boundingBox().xMax() - p.asset()->boundingBox().xMin(),
-                                        p.asset()->boundingBox().yMax() - p.asset()->boundingBox().yMin());
+                                    float width = 1.0f, height = 1.0f;
+                                    auto& bbox = p.asset()->boundingBox();
+                                    if (bbox.valid())
+                                    {
+                                        width = std::max(
+                                            p.asset()->boundingBox().xMax() - p.asset()->boundingBox().xMin(),
+                                            p.asset()->boundingBox().yMax() - p.asset()->boundingBox().yMin());
 
-                                    float height =
-                                        p.asset()->boundingBox().zMax() - p.asset()->boundingBox().zMin();
+                                        height =
+                                            p.asset()->boundingBox().zMax() - p.asset()->boundingBox().zMin();
+                                    }
 
                                     feature->set("width", width * std::max(p.scale().x(), p.scale().y()));
                                     feature->set("height", height * p.scale().z());
@@ -483,6 +490,11 @@ namespace osgEarth
 
             void onMove(osg::View* view, float x, float y)
             {
+                if (_showBiomeUnderMouse || _showPlacements || _simulateTreePlacement)
+                {
+                    _pointUnderMouse = _mapNode->getGeoPointUnderMouse(view, x, y);
+                }
+
                 if (_showBiomeUnderMouse)
                 {
                     _biomeUnderMouse.reset();
@@ -490,7 +502,7 @@ namespace osgEarth
                     TerrainTile* tile = _mapNode->getTerrain()->getTerrainTileUnderMouse(view, x, y);
                     if (tile)
                     {
-                        GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
+                        auto& p = _pointUnderMouse;
                         TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p.x(), p.y(), tile->getKey().getLOD());
                         key = _biolayer->getBestAvailableTileKey(key, false);
 
@@ -518,7 +530,7 @@ namespace osgEarth
 
                 if (_simulateTreePlacement)
                 {
-                    GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
+                    auto& p = _pointUnderMouse;
                     _simulateTreePlacementOutput = _veglayer->simulateAssetPlacement(p, "trees");
                 }
                 else
@@ -530,9 +542,3 @@ namespace osgEarth
     }
 }
 #endif // OSGEARTH_PROCEDURAL_VEGETATION_LAYER_GUI
-
-//REGISTER_OSGEARTH_IMGUI(VegetationLayer, []()
-//    {
-//        return new osgEarth::Procedural::VegetationLayerGUI();
-//    }
-//)

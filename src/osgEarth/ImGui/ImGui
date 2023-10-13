@@ -349,6 +349,16 @@ namespace ImGuiLTable
         ImGui::TableNextColumn();
     }
 
+    static bool InputScalar(const char* label, ImGuiDataType data_type, void* p_data, const void* p_step, const void* p_step_fast, const char* format, ImGuiInputTextFlags flags = 0)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::InputScalar(s.c_str(), data_type, p_data, p_step, p_step_fast, format, flags);
+    }
+
     static void End()
     {
         ImGui::EndTable();

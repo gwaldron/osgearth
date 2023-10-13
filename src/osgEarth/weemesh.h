@@ -18,7 +18,7 @@ namespace weemesh
 
     using UID = std::uint32_t;
 
-    constexpr double DEFAULT_EPSILON = 0.00025;// 0.001;
+    constexpr double DEFAULT_EPSILON = 0.00015;
 
     template<typename T>
     inline bool equivalent(T a, T b, T epsilon)
@@ -161,6 +161,7 @@ namespace weemesh
         // a certain tolerance.
         inline bool contains_2d(const vert_t& P, vert_t::value_type epsilon) const
         {
+#if 0
             vert_t bary;
             if (!get_barycentric(P, bary, epsilon))
                 return false;
@@ -169,6 +170,12 @@ namespace weemesh
                 clamp(bary[0], 0.0, 1.0) == bary[0] &&
                 clamp(bary[1], 0.0, 1.0) == bary[1] &&
                 clamp(bary[2], 0.0, 1.0) == bary[2];
+#else
+            auto AB = p1 - p0, BC = p2 - p1, CA = p0 - p2;
+            auto AP = P - p0, BP = P - p1, CP = P - p2;
+            auto c1 = AB.cross2d(AP), c2 = BC.cross2d(BP), c3 = CA.cross2d(CP);
+            return (c1 >= 0 && c2 >= 0 && c3 >= 0) || (c1 <= 0 && c2 <= 0 && c3 <= 0);
+#endif
         }
 
         // true is index I is in this triangle.
@@ -468,7 +475,6 @@ namespace weemesh
             // splits will just happen on the new triangles later. (That's why
             // every split operation is followed by a "continue" to short-circuit
             // to loop)
-            //vert_t::value_type E = epsilon; // EPSILON; // E = 1e-3;
             std::list<UID> uid_list;
             std::copy(uids.begin(), uids.end(), std::back_inserter(uid_list));
             for (auto uid : uid_list)
@@ -507,10 +513,6 @@ namespace weemesh
                 vert_t::value_type u;
                 UID new_uid;
                 int new_i;
-
-                //... WE SHOULD do the whole "update the marker" thing here too, I think ...
-                //... But it's causing an infinite loop ... gw
-
 
                 // does the segment cross first triangle edge?
                 segment_t edge0(tri.p0, tri.p1);

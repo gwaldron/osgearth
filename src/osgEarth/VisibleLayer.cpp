@@ -218,7 +218,7 @@ VisibleLayer::openImplementation()
 
     if (options().visible().isSet() || options().mask().isSet())
     {
-        setVisible(options().visible().get());
+        updateNodeMasks();
     }
 
     return Status::NoError;
@@ -242,11 +242,27 @@ VisibleLayer::setVisible(bool value)
 {
     options().visible() = value;
 
+    updateNodeMasks();
+
+    fireCallback(&VisibleLayerCallback::onVisibleChanged);
+
+    if (_visibleTiedToOpen)
+    {
+        if (value && !isOpen())
+            open();
+        else if (!value && isOpen())
+            close();
+    }
+}
+
+void
+VisibleLayer::updateNodeMasks()
+{
     // if this layer has a scene graph node, toggle its node mask
     osg::Node* node = getNode();
     if (node)
     {
-        if (value == true)
+        if (options().visible() == true)
         {
             if (_noDrawCallback.valid())
             {
@@ -263,8 +279,6 @@ VisibleLayer::setVisible(bool value)
             }
         }
     }
-
-    fireCallback(&VisibleLayerCallback::onVisibleChanged);
 }
 
 void
@@ -296,9 +310,7 @@ VisibleLayer::setMask(osg::Node::NodeMask mask)
 {
     // Set the new mask value
     options().mask() = mask;
-
-    // Call setVisible to make sure the mask gets applied to a node if necessary
-    setVisible(options().visible().get());
+    updateNodeMasks();
 }
 
 osg::Node::NodeMask
@@ -316,7 +328,10 @@ VisibleLayer::setDefaultMask(osg::Node::NodeMask mask)
 bool
 VisibleLayer::getVisible() const
 {
-    return options().visible().get();
+    if (_visibleTiedToOpen)
+        return isOpen();
+    else
+        return options().visible().get();
 }
 
 void

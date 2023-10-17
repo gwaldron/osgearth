@@ -69,7 +69,7 @@ namespace osgEarth
 
     public:
         //! Whether to draw this layer.
-        virtual void setVisible(bool value);
+        void setVisible(bool value);
         bool getVisible() const;
 
         //! Opacity with which to draw this layer
@@ -116,6 +116,8 @@ namespace osgEarth
 
         void fireCallback(VisibleLayerCallback::MethodPtr);
 
+        bool _visibleTiedToOpen = false;
+
     private:
         osg::ref_ptr<osg::Uniform> _opacityU;
         osg::ref_ptr<osg::Uniform> _rangeU;
@@ -123,6 +125,7 @@ namespace osgEarth
         bool _minMaxRangeShaderAdded;
         void initializeUniforms();
         void initializeMinMaxRangeShader();
+        void updateNodeMasks();
     };
 
     typedef std::vector< osg::ref_ptr<VisibleLayer> > VisibleLayerVector;

@@ -104,6 +104,9 @@ ElevationLayer::init()
 {
     TileLayer::init();
 
+    // open and visible are the same thing for elevation layers
+    _visibleTiedToOpen = true;
+
     _sentry.setName("ElevationLayer " + getName());
 
     // override with a different default tile size since elevation
@@ -129,15 +132,15 @@ ElevationLayer::init()
     setRenderType(RENDERTYPE_NONE);
 }
 
-void
-ElevationLayer::setVisible(bool value)
-{
-    VisibleLayer::setVisible(value);
-    if (value)
-        open();
-    else
-        close();
-}
+//void
+//ElevationLayer::setVisible(bool value)
+//{
+//    VisibleLayer::setVisible(value);
+//    if (value)
+//        open();
+//    else
+//        close();
+//}
 
 void
 ElevationLayer::setVerticalDatum(const std::string& value)

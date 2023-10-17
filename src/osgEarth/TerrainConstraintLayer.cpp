@@ -153,6 +153,15 @@ TerrainConstraintLayer::getModelLayer() const
     return options().model().getLayer();
 }
 
+void
+TerrainConstraintLayer::init()
+{
+    VisibleLayer::init();
+
+    // open and visible are the same thing for constraint layers layers
+    _visibleTiedToOpen = true;
+}
+
 Status
 TerrainConstraintLayer::openImplementation()
 {
@@ -197,15 +206,15 @@ TerrainConstraintLayer::getExtent() const
         return Layer::getExtent();
 }
 
-void
-TerrainConstraintLayer::setVisible(bool value)
-{
-    //VisibleLayer::setVisible(value); // do NOT call base class
-    if (value && !isOpen())
-        open();
-    else if (!value && isOpen())
-        close();
-}
+//void
+//TerrainConstraintLayer::setVisible(bool value)
+//{
+//    //VisibleLayer::setVisible(value); // do NOT call base class
+//    if (value && !isOpen())
+//        open();
+//    else if (!value && isOpen())
+//        close();
+//}
 
 void
 TerrainConstraintLayer::addedToMap(const Map* map)

@@ -85,7 +85,7 @@ namespace osgEarth
         const GeoExtent& getExtent() const override;
 
         //! Visibility toggle from VisibleLayer
-        void setVisible(bool value) override;
+        //void setVisible(bool value) override;
 
         //! Feature filters to use when querying the feature source, if applicable.
         FeatureFilterChain* getFilters() const { return _filterchain.get(); }
@@ -101,6 +101,8 @@ namespace osgEarth
             ProgressCallback* progress) const;
 
     protected:
+
+        void init() override;
 
         Status openImplementation() override;
 

@@ -3,7 +3,7 @@
     <biomes>
 
         <biome classes="grassland" fill="1" source="clipartmax.com">
-            <asset url="clipart974730_dry.png" width="0.8" height="0.5" size_variation="0.5" selection_weight="3"/>
+            <asset url="clipart974730.png" width="0.8" height="0.5" size_variation="0.5" selection_weight="3"/>
             <asset url="clipart974730_2.png" width="0.6" height="0.8" size_variation="1" selection_weight="10"/>
             <asset url="clipart28163.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
             <asset url="clipart2383752.png" width="0.5" height="0.9" size_variation="0.2" selection_weight="1"/>
@@ -11,7 +11,7 @@
 
         <biome classes="forest" fill="0.5" source="clipartmax.com">
             <asset url="clipart974730_2.png" width="0.5" height="0.6" size_variation="0.8" weight="11"/>
-            <asset url="clipart974730_dry.png" width="0.8" height="0.5" size_variation="0.5" />
+            <asset url="clipart974730.png" width="0.8" height="0.5" size_variation="0.5" />
         </biome>
 
         <biome classes="savanna" fill="0.3" source="clipartmax.com">

@@ -81,7 +81,14 @@ namespace
 {
     void CPL_STDCALL myCPLErrorHandler(CPLErr errClass, int errNum, const char* msg)
     {
-        OE_DEBUG << "[GDAL] " << msg << " (error " << errNum << ")" << std::endl;
+        if (errClass == CE_Warning)
+        {
+            OE_INFO << "GDAL warning: " << msg << " (error " << errNum << ")" << std::endl;
+        }
+        else if (errClass > CE_Warning)
+        {
+            OE_WARN << "GDAL failure: " << msg << " (error " << errNum << ")" << std::endl;
+        }
     }
 }
 

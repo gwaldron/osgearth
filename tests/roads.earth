@@ -23,24 +23,9 @@ http://readymap.org
     
     <xi:include href="readymap_elevation.xml"/>
 
-    <DebugImage name="Tilekeys" open="false"/>
+    <DebugImage name="TileKey debug" open="false"/>
 
-    <RoadSurface name="ROadSurface" min_level="14" max_data_level="18" open="false">
-        <cache_policy usage="no_cache"/>
-        <tile_size>512</tile_size>
-        <features>roads-data</features>
-        <styles>
-            <style type="text/css">
-                default {
-                   stroke: #ffffff;
-                   stroke-width: 20m;
-                   stroke-image: "'../data/road.png'";
-                }
-            </style>
-        </styles>
-    </RoadSurface>
-
-    <FeatureModel name="Road verts" open="false">
+    <FeatureModel name="Road center-line verts" open="false">
         <profile>spherical-mercator</profile>
         <features>roads-data</features>
         <styles>
@@ -50,30 +35,32 @@ http://readymap.org
                     point-size: 12;
                     stroke: #ffff00;
                     stroke-width: 2px;
-                    render-depth-test: false;
                     render-order: 1;
+                    render-depth-offset: true;
+                    altitude-clamping: terrain;
                 }
             </style>
         </styles>
     </FeatureModel>
 
-    <FeatureModel name="Road skeleton" open="false">
+    <FeatureModel name="Road center-line" open="true">
         <profile>spherical-mercator</profile>
         <features>roads-data</features>
         <styles>
             <style type="text/css">
                 default {
                     stroke: #00ffff7f;
-                    stroke-width: 20m;
-                    render-depth-test: false;
-                    render-order: 2;
+                    stroke-width: 8m;
+                    stroke-linejoin: miter;
+                    stroke-linecap: flat;
                     render-depth-offset: true;
+                    altitude-clamping: terrain;
                 }
             </style>
         </styles>
     </FeatureModel>
 
-    <TiledFeatureModel name="Road Polygons" open="true">
+    <TiledFeatureModel name="Road surface - mesh" open="false">
         <profile>spherical-mercator</profile>
         <features>roads-data</features>
         <styles>
@@ -83,15 +70,28 @@ http://readymap.org
                     stroke-width: 8m;
                     stroke-linejoin: miter;
                     stroke-linecap: flat;
-                    render-depth-test: false;
-                    render-order: 2;
-                    render-depth-offset: true;
                     stroke-image: "'../data/road.png'";
+                    render-depth-offset: true;
                     altitude-clamping: terrain;
                 }
             </style>
         </styles>
     </TiledFeatureModel>
+
+    <RoadSurface name="Road surface - rasterized" min_level="14" max_data_level="18" open="false">
+        <cache_policy usage="no_cache"/>
+        <tile_size>512</tile_size>
+        <features>roads-data</features>
+        <styles>
+            <style type="text/css">
+                default {
+                   stroke: #ffffff;
+                   stroke-width: 8m;
+                   stroke-image: "'../data/road.png'";
+                }
+            </style>
+        </styles>
+    </RoadSurface>
 
     <XYZFeatures name="roads-data">
         <url>http://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
@@ -107,12 +107,18 @@ http://readymap.org
         </filters>
     </XYZFeatures>
     
-    <TerrainConstraint name="road constraints" open="false">
+    <TerrainConstraint name="Road Constraints" open="false">
         <min_level>16</min_level>
-        <model>Road Polygons</model>
+        <model>Road surface - mesh</model>
         <has_elevation>true</has_elevation>
         <remove_interior>true</remove_interior>
     </TerrainConstraint>
+    
+    <FlattenedElevation name="Road flattening" min_level="14" max_data_level="14">
+        <features>roads-data</features>
+        <line_width>8.0</line_width>
+        <buffer_width>20.0</buffer_width>
+    </FlattenedElevation>
 
     <viewpoints>
         <viewpoint name="45 Lat">

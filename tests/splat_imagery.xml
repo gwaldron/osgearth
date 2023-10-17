@@ -1,9 +1,0 @@
-<SplatImage name="Splat Imagery">
-    <zones>
-        <zone name="default">
-            <surface>
-                <catalog>../data/splat/splat_catalog.xml</catalog>
-            </surface>
-        </zone>
-    </zones>
-</SplatImage>

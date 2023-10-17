@@ -512,8 +512,6 @@ BiomeManager::materializeNewAssets(
 
                 residentAsset->assetDef() = assetDef;
 
-                osg::BoundingBox bbox;
-
                 if (assetDef->modelURI().isSet())
                 {
                     const URI& uri = assetDef->modelURI().get();
@@ -527,6 +525,7 @@ BiomeManager::materializeNewAssets(
                     else
                     {
                         residentAsset->model() = uri.getNode(readOptions);
+
                         if (residentAsset->model().valid())
                         {
                             // apply a static scale:
@@ -565,8 +564,20 @@ BiomeManager::materializeNewAssets(
                             OE_WARN << LC << "Failed to load model " << uri.full() << std::endl;
                         }
                     }
+                }
 
-                    bbox = residentAsset->boundingBox();
+                // If the width is expressly set (height is optional) we will use it to override any
+                // bounding box computed by the model.
+                if (assetDef->width().isSet() || !residentAsset->boundingBox().valid())
+                {
+                    double width = assetDef->width().get();
+
+                    double height =
+                        assetDef->height().isSet() ? assetDef->height().get() :
+                        residentAsset->boundingBox().valid() ? residentAsset->boundingBox().zMax() :
+                        assetDef->height().get();
+
+                    residentAsset->boundingBox().set(-width, -width, 0.0, width, width, height);
                 }
 
                 URI sideBB;
@@ -705,16 +716,7 @@ BiomeManager::materializeNewAssets(
 
                         if (createImpostor != nullptr)
                         {
-                            if (!bbox.valid())
-                            {
-                                bbox.set(
-                                    -residentAsset->assetDef()->width().get(),
-                                    -residentAsset->assetDef()->width().get(),
-                                    0,
-                                    residentAsset->assetDef()->width().get(),
-                                    residentAsset->assetDef()->width().get(),
-                                    residentAsset->assetDef()->height().get());
-                            }
+                            auto& bbox = residentAsset->boundingBox();
 
                             float top_z = 0.33f * (bbox.zMax() - bbox.zMin());
 
@@ -726,7 +728,9 @@ BiomeManager::materializeNewAssets(
                             {
                                 float v = computeTopBillboardPosition(residentAsset->sideBillboardTex()->getImage(0));
                                 if (v >= 0.0f)
+                                {
                                     top_z = v * (bbox.zMax() - bbox.zMin());
+                                }
                             }
 
                             Impostor imp = createImpostor(

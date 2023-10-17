@@ -1468,14 +1468,6 @@ VegetationLayer::getAssetPlacements(
 
         osg::Vec3d scale(1, 1, 1);
 
-        if (asset->assetDef()->width().isSet())
-        {
-            scale.set(
-                asset->assetDef()->width().get(),
-                asset->assetDef()->width().get(),
-                asset->assetDef()->height().get());
-        }
-
         // Apply a size variation with some randomness
         if (asset->assetDef()->sizeVariation().isSet())
         {
@@ -1508,11 +1500,11 @@ VegetationLayer::getAssetPlacements(
             pass = false;
 
             // scale the asset bounding box in preparation for collision:
-            const osg::BoundingBox& abb = asset->boundingBox();
+            const osg::BoundingBox& aabb = asset->boundingBox();
 
-            double so = 1.0 - overlap;
-            double a_min[2] = { local.x() + abb.xMin() * so, local.y() + abb.yMin() * so };
-            double a_max[2] = { local.x() + abb.xMax() * so, local.y() + abb.yMax() * so };
+            double so = (1.0 - overlap);
+            double a_min[2] = { local.x() + aabb.xMin() * scale.x() * so, local.y() + aabb.yMin() * scale.x() * so };
+            double a_max[2] = { local.x() + aabb.xMax() * scale.y() * so, local.y() + aabb.yMax() * scale.y() * so };
 
             if (index.Search(a_min, a_max) == 0)
             {

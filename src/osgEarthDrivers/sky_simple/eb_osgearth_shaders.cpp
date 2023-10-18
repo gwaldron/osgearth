@@ -10,6 +10,8 @@ header = R"(
 
 pbr = R"(
 
+uniform float oe_sky_maxAmbientIntensity = 0.75;
+
 // https://learnopengl.com/PBR/Lighting
 
 //const float PI = 3.14159265359;
@@ -97,6 +99,9 @@ void atmos_pbr_spec(in vec3 vertex_dir, in vec3 vert_to_light, in vec3 N, inout 
 
     // Original equation for reference
     //vec3 Lo = (kD * albedo / PI + specular) * radiance * NdotL;
+    
+    // ambient intensity based on time of day
+    ambience = clamp(ambience + vec3(oe_sky_maxAmbientIntensity*NdotL), 0.0, 1.0);
 
     COLOR = Lo;
 }

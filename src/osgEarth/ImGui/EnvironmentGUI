@@ -102,32 +102,21 @@ namespace osgEarth
             osg::observer_ptr<SkyNode> _skyNode;
             osg::observer_ptr<ShadowCaster> _shadowCaster;
             osg::observer_ptr<WindLayer> _windLayer;
-            bool _showDetails;
+            bool _showDetails = false;
             float _hour;
             int _day, _month, _year;
-            float _exposure;
-            float _contrast;
-            float _gamma;
-            float _ambient;
-            bool _first;
-            bool _shadows;
-            float _haze_cutoff, _haze_strength;
-            float _shadow_darkness, _shadow_blur;
-            float _wind_power;
+            float _exposure = 3.5f;
+            float _contrast = 1.0f;
+            float _ambient = 0.033f;
+            float _max_ambient_intensity = 0.75;
+            bool _first = true;
+            bool _shadows = false;
+            float _haze_cutoff = 0.0f, _haze_strength = 16.0f;
+            float _shadow_darkness = 0.5f, _shadow_blur = 0.001f;
+            float _wind_power = 1.0f;
 
         public:
-            EnvironmentGUI() : BaseGUI("Environment"),
-                _ambient(0.033f),
-                _exposure(3.5f),
-                _contrast(1.0f),
-                _haze_cutoff(0.0f),
-                _haze_strength(16.0f),
-                _showDetails(false),
-                _shadows(false),
-                _shadow_darkness(0.5f),
-                _shadow_blur(0.001f),
-                _wind_power(1.0f),
-                _first(true)
+            EnvironmentGUI() : BaseGUI("Environment")
             {
                 DateTime now;
                 _hour = now.hours(), _day = now.day(), _month = now.month(), _year = now.year();
@@ -219,8 +208,11 @@ namespace osgEarth
                             if (ImGuiLTable::SliderFloat("Exposure", &_exposure, 1.0f, 10.0f)) dirtySettings();
                             _skyNode->getOrCreateStateSet()->getOrCreateUniform("oe_sky_exposure", osg::Uniform::FLOAT)->set(_exposure);
 
-                            if (ImGuiLTable::SliderFloat("Ambient", &_ambient, 0.0f, 1.0f)) dirtySettings();
+                            if (ImGuiLTable::SliderFloat("Ambient min", &_ambient, 0.0f, 1.0f)) dirtySettings();
                             _skyNode->getSunLight()->setAmbient(osg::Vec4(_ambient, _ambient, _ambient, 1.0f));
+
+                            if (ImGuiLTable::SliderFloat("Ambient max", &_max_ambient_intensity, 0.0f, 1.0f)) dirtySettings();
+                            _skyNode->getOrCreateStateSet()->getOrCreateUniform("oe_sky_maxAmbientIntensity", osg::Uniform::FLOAT)->set(_max_ambient_intensity);
                         }
                         else
                         {

@@ -584,6 +584,7 @@ SimpleSkyNode::makeSceneLighting()
             //TODO: api
             stateset->getOrCreateUniform("atmos_haze_cutoff", osg::Uniform::FLOAT)->set(0.0f);
             stateset->getOrCreateUniform("atmos_haze_strength", osg::Uniform::FLOAT)->set(1.0f);
+            stateset->getOrCreateUniform("oe_sky_maxAmbientIntensity", osg::Uniform::FLOAT)->set(_options.maxAmbientIntensity().get());
         }
         else if (_useONeil)
         {
@@ -591,6 +592,7 @@ SimpleSkyNode::makeSceneLighting()
             OE_INFO << LC << "Using O'Neil lighting" << std::endl;
             pkg.load(vp, pkg.Ground_ONeil_Frag);
             stateset->getOrCreateUniform("oe_sky_ambientBoostFactor", osg::Uniform::FLOAT)->set(_options.daytimeAmbientBoost().get());
+            stateset->getOrCreateUniform("oe_sky_maxAmbientIntensity", osg::Uniform::FLOAT)->set(_options.maxAmbientIntensity().get());
         }
         else if (_usePhong)
         {

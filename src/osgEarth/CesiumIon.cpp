@@ -116,12 +116,11 @@ CesiumIonImageLayer::Options::fromConfig(const Config& conf)
 Config
 CesiumIonImageLayer::Options::getMetadata()
 {
-    return Config::readJSON( OE_MULTILINE(
-        { "name" : "CesiumIon Service",
-            "properties": [
-            ]
-        }
-    ) );
+    return Config::readJSON(R"( {
+        "name" : "CesiumIon Service",
+        "properties" : [
+        ]
+    } )");
 }
 
 REGISTER_OSGEARTH_LAYER(cesiumionimage, CesiumIonImageLayer);
@@ -342,12 +341,11 @@ CesiumIonTerrainMeshLayer::Options::fromConfig(const Config& conf)
 Config
 CesiumIonTerrainMeshLayer::Options::getMetadata()
 {
-    return Config::readJSON(OE_MULTILINE(
+    return Config::readJSON(R"(
         { "name" : "CesiumIon Service",
             "properties" : [
             ]
-        }
-    ));
+        })");    
 }
 
 REGISTER_OSGEARTH_LAYER(cesiumionterrainmesh, CesiumIonTerrainMeshLayer);

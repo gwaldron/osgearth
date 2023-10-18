@@ -41,13 +41,11 @@ IF(WIN32)
     LIST(APPEND TARGET_EXTERNAL_LIBRARIES psapi)
 ENDIF(WIN32)
 
-# Generate the BuildConfig header.
-set(OSGEARTH_SOVERSION_VALUE "${OSGEARTH_SOVERSION}")
-set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig.h")
-message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
-configure_file(
-    BuildConfig.h.in
-    ${OSGEARTH_BUILDCONFIG_HEADER})
+# Generate the Version header.
+# set(OSGEARTH_SOVERSION_VALUE "${OSGEARTH_SOVERSION}")
+set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version")
+message(STATUS "Creating ${OSGEARTH_VERSION_HEADER}")
+configure_file(Version.in ${OSGEARTH_VERSION_HEADER})
 
 # Name all the library files
 SET(LIB_NAME osgEarth)
@@ -84,7 +82,7 @@ set(TARGET_GLSL
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
 set(TARGET_IN
-    BuildConfig.h.in
+    Version.in
     Shaders.cpp.in)
 
 configure_shaders(
@@ -275,7 +273,7 @@ SET(LIB_PUBLIC_HEADERS
     Units
     URI
     Utils
-    Version
+    #Version
     VerticalDatum
     VideoLayer
     Viewpoint
@@ -464,7 +462,7 @@ SET(LIB_PUBLIC_HEADERS
 
     SDF
 
-    ${OSGEARTH_BUILDCONFIG_HEADER}
+    ${OSGEARTH_VERSION_HEADER}
 )
 
 if(OSGEARTH_ENABLE_IMGUI)

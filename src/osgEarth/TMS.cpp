@@ -1093,15 +1093,15 @@ TMS::Driver::resolveWriter(const std::string& format)
 Config
 TMS::Options::getMetadata()
 {
-    return Config::readJSON(OE_MULTILINE(
-      { "name" : "TMS (Tile Map Service)",
+    return Config::readJSON(R"(
+      { "name" : "TMS Tile Map Service",
         "properties" : [
           { "name": "url", "description" : "Location of the TMS repository", "type" : "string", "default" : "" },
           { "name": "tms_type", "description" : "Set to 'google' to invert the Y index", "type" : "string", "default" : "" },
-          { "name": "format", "description" : "Image format to assume (e.g. jpeg, png)", "type" : "string", "default" : "" }
+          { "name": "format", "description" : "Image format to assume", "type" : "string", "default" : "" }
         ]
       }
-    ));
+      )");
 }
 
 void

@@ -443,7 +443,6 @@ TileMesher::createMeshWithConstraints(
     geom.localToWorld = local2world;
 
     weemesh::mesh_t mesh;
-    mesh.epsilon = 0.00015;
 
     // if we have an input mesh, use it. Otherwise, build a regular gridded mesh.
     if (input_mesh.verts.valid())

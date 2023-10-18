@@ -361,63 +361,66 @@ MapNode::open()
             options().terrain()->enableLighting().get() ? 1 : 0 );
     }
 
-    // a decorator for draped geometry (projected texturing)
-    OverlayDecorator* overlayDecorator = new OverlayDecorator();
-    _terrainGroup->addChild(overlayDecorator);
-
-    // install the Clamping technique for overlays:
-    ClampingTechnique* clamping = new ClampingTechnique();
-    overlayDecorator->addTechnique(clamping);
-    _clampingManager = &clamping->getClampingManager();
-
-    bool envUseCascadedDraping = (::getenv("OSGEARTH_USE_CASCADE_DRAPING") != 0L);
-    if (envUseCascadedDraping || options().useCascadeDraping() == true)
+    if (_terrainEngine.valid())
     {
-        CascadeDrapingDecorator* cascadeDrapingDecorator = new CascadeDrapingDecorator(getMapSRS(), _terrainEngine->getResources());
-        overlayDecorator->addChild(cascadeDrapingDecorator);
-        _drapingManager = cascadeDrapingDecorator->getDrapingManager();
-        cascadeDrapingDecorator->addChild(_terrainEngine);
+        // a decorator for draped geometry (projected texturing)
+        OverlayDecorator* overlayDecorator = new OverlayDecorator();
+        _terrainGroup->addChild(overlayDecorator);
+
+        // install the Clamping technique for overlays:
+        ClampingTechnique* clamping = new ClampingTechnique();
+        overlayDecorator->addTechnique(clamping);
+        _clampingManager = &clamping->getClampingManager();
+
+        bool envUseCascadedDraping = (::getenv("OSGEARTH_USE_CASCADE_DRAPING") != 0L);
+        if (envUseCascadedDraping || options().useCascadeDraping() == true)
+        {
+            CascadeDrapingDecorator* cascadeDrapingDecorator = new CascadeDrapingDecorator(getMapSRS(), _terrainEngine->getResources());
+            overlayDecorator->addChild(cascadeDrapingDecorator);
+            _drapingManager = cascadeDrapingDecorator->getDrapingManager();
+            cascadeDrapingDecorator->addChild(_terrainEngine);
+        }
+
+        else
+        {
+            // simple draping - faster but less accurate
+
+            DrapingTechnique* draping = new DrapingTechnique();
+
+            const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
+
+            if (options().overlayBlending().isSet())
+                draping->setOverlayBlending(options().overlayBlending().get());
+
+            if (options().overlayBlendingSource().isSetTo("color"))
+                draping->setOverlayBlendingParams(GL_SRC_COLOR, GL_ONE_MINUS_SRC_COLOR);
+            else if (options().overlayBlendingSource().isSetTo("alpha"))
+                draping->setOverlayBlendingParams(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+            if (envOverlayTextureSize)
+                draping->setTextureSize(as<int>(envOverlayTextureSize, 1024));
+
+            else if (options().overlayTextureSize().isSet())
+                draping->setTextureSize(options().overlayTextureSize().get());
+
+            if (options().overlayMipMapping().isSet())
+                draping->setMipMapping(options().overlayMipMapping().get());
+
+            if (options().overlayResolutionRatio().isSet())
+                draping->setResolutionRatio(options().overlayResolutionRatio().get());
+
+            draping->reestablish(_terrainEngine);
+            overlayDecorator->addTechnique(draping);
+            _drapingManager = draping->getDrapingManager();
+
+            if (options().drapingRenderBinNumber().isSet())
+                _drapingManager->setRenderBinNumber(options().drapingRenderBinNumber().get());
+
+            overlayDecorator->addChild(_terrainEngine);
+        }
+
+        overlayDecorator->setTerrainEngine(_terrainEngine);
     }
-
-    else
-    {
-        // simple draping - faster but less accurate
-
-        DrapingTechnique* draping = new DrapingTechnique();
-
-        const char* envOverlayTextureSize = ::getenv("OSGEARTH_OVERLAY_TEXTURE_SIZE");
-
-        if ( options().overlayBlending().isSet() )
-            draping->setOverlayBlending( options().overlayBlending().get() );
-
-        if (options().overlayBlendingSource().isSetTo("color"))
-            draping->setOverlayBlendingParams(GL_SRC_COLOR, GL_ONE_MINUS_SRC_COLOR);
-        else if (options().overlayBlendingSource().isSetTo("alpha"))
-            draping->setOverlayBlendingParams(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        if ( envOverlayTextureSize )
-            draping->setTextureSize( as<int>(envOverlayTextureSize, 1024) );
-
-        else if ( options().overlayTextureSize().isSet() )
-            draping->setTextureSize( options().overlayTextureSize().get() );
-
-        if ( options().overlayMipMapping().isSet() )
-            draping->setMipMapping( options().overlayMipMapping().get() );
-
-        if ( options().overlayResolutionRatio().isSet() )
-            draping->setResolutionRatio( options().overlayResolutionRatio().get() );
-
-        draping->reestablish( _terrainEngine );
-        overlayDecorator->addTechnique( draping );
-        _drapingManager = draping->getDrapingManager();
-
-        if ( options().drapingRenderBinNumber().isSet() )
-            _drapingManager->setRenderBinNumber( options().drapingRenderBinNumber().get() );
-
-        overlayDecorator->addChild(_terrainEngine);
-    }    
-
-    overlayDecorator->setTerrainEngine(_terrainEngine);
 
     osg::StateSet* stateset = getOrCreateStateSet();
     stateset->setName("MapNode");

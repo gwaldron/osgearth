@@ -481,6 +481,20 @@ namespace weemesh
             {
                 triangle_t& tri = triangles[uid];
 
+                // check whether the triangle contains either endpoint on this segment
+                // already. If so, update the markers.
+                auto i_first = tri.get_vertex(seg.first, epsilon);
+                if (i_first >= 0)
+                    markers[i_first] |= marker;
+
+                auto i_second = tri.get_vertex(seg.second, epsilon);
+                if (i_second >= 0)
+                    markers[i_second] |= marker;
+
+                // if the exact segment already exists, we are done.
+                if (i_first >= 0 && i_second >= 0)
+                    continue;
+
                 // skip triangles that are "degenerate" in 2D. We will keep them
                 // because they may NOT be degenerate in 3D (e.g. steep slopes).
                 if (tri.is_2d_degenerate)

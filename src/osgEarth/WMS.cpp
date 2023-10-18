@@ -340,8 +340,8 @@ WMS::CapabilitiesReader::read(std::istream &in)
 Config
 WMS::WMSImageLayerOptions::getMetadata()
 {
-    return Config::readJSON( OE_MULTILINE(
-        { "name" : "WMS (OGC Web Map Service)",
+    return Config::readJSON( R"(
+        { "name" : "WMS OGC Web Map Service",
           "properties": [
             { "name": "url", "description": "Location of the TMS repository", "type": "string", "default": "" },
             { "name": "capabilities_url", "description": "Special URL for requesting capabilities data", "type": "string", "default": "" },
@@ -356,7 +356,7 @@ WMS::WMSImageLayerOptions::getMetadata()
             { "name": "times", "description", "List of timestamps for WMS-T", "type": "string", "default": "" },
           ]
         }
-    ) );
+    )" );
 }
 
 Config

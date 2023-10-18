@@ -31,13 +31,13 @@ using namespace osgEarth::Contrib;
 Config
 SkyViewImageLayer::Options::getMetadata()
 {
-    return Config::readJSON(OE_MULTILINE(
+    return Config::readJSON(R"(
         { "name" : "SkyView",
           "properties" : [
             { "name": "image", "description" : "Image layer to render", "type" : "ImageLayer", "default" : "" },
           ]
         }
-    ));
+    )");
 }
 
 Config

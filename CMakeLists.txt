@@ -15,12 +15,12 @@ project(OSGEARTH)
 
 # SDK version number (informational)
 set(OSGEARTH_MAJOR_VERSION 3)
-set(OSGEARTH_MINOR_VERSION 4)
+set(OSGEARTH_MINOR_VERSION 5)
 set(OSGEARTH_PATCH_VERSION 0)
 set(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
 
 # Increment this each time the ABI changes
-set(OSGEARTH_SOVERSION 148)
+set(OSGEARTH_SOVERSION 149)
 
 # Require C++11
 set_property(GLOBAL PROPERTY CXX_STANDARD 11)
@@ -81,7 +81,7 @@ include(oe_win32)
 
 option(OSGEARTH_BUILD_TOOLS "Build the osgEarth command-line tools" ON)
 option(OSGEARTH_BUILD_EXAMPLES "Build the osgEarth example applications" ON)
-option(OSGEARTH_BUILD_TESTS "Build the osgEarth unit tests" ON)
+option(OSGEARTH_BUILD_TESTS "Build the osgEarth unit tests" OFF)
 option(OSGEARTH_BUILD_PROCEDURAL_NODEKIT "Build the procedural terrain nodekit (osgEarthProcedural)" OFF)
 option(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT "Build the legacy procedural nodekit (osgEarthSplat)" OFF)
 option(OSGEARTH_BUILD_CESIUM_NODEKIT "Build the Cesium nodekit (osgEarthCesium)" OFF)
@@ -94,7 +94,7 @@ option(OSGEARTH_BUILD_DOCS "Include the documentation folder" ON)
 option(OSGEARTH_ENABLE_PROFILING "Enable profiling with Tracy" OFF)
 option(OSGEARTH_ENABLE_GEOCODER "Enable the geocoder (GDAL/OGR must be built with geocoder support)" OFF)
 option(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT "Assume the use of a single GL context for all GL objects (advanced)" ON)
-option(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when installing (default=inlined shaders)" OFF)
+option(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when installing (OFF=inlined shaders)" OFF)
 
 mark_as_advanced(OSGEARTH_BUILD_TESTS)
 mark_as_advanced(OSGEARTH_BUILD_LEVELDB_CACHE)

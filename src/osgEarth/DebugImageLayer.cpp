@@ -83,14 +83,13 @@ namespace osgEarth { namespace Debug
 Config
 DebugImageLayer::Options::getMetadata()
 {
-    return Config::readJSON( OE_MULTILINE(
+    return Config::readJSON(R"(
         { "name" : "Debug",
           "properties": [
             { "name": "color_code", "description": "", "type": "string", "default": "" },
             { "name": "invert_y", "description": "Whether to invert the tilekey Y coordinate", "type": "boolean", "default": "false" },
           ]
-        }
-    ) );
+        } )");
 }
 
 Config

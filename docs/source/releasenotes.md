@@ -1,5 +1,15 @@
 # Release Notes
 
+## Version 3.5 (October 2023)
+
+Highlights:
+
+* New osgEarthCesium nodekit using the cesium-native SDK for 3D-Tiles integration
+* Upgrades to the TerrainConstraintLayer for better meshing, performance, and support for 3D model constraints
+* Integrated spdlog library for nicer logging (optional dependency)
+* Various updates to the osgearth_imgui panels
+* Updated Triton and Silverlining shader sets
+
 ## Version 3.4 (May 2023)
 
 Version 3.4 is an incremental bugfix and maintenance release.

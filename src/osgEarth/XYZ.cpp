@@ -142,15 +142,15 @@ XYZImageLayerOptions::fromConfig(const Config& conf)
 Config
 XYZImageLayerOptions::getMetadata()
 {
-    return Config::readJSON( OE_MULTILINE(
+    return Config::readJSON( R"(
         { "name" : "XYZ Image Tile Service",
             "properties": [
             { "name": "url",      "description": "Location of the TMS repository", "type": "string", "default": "" },
             { "name": "invert_y", "description": "Set to true invert the Y index", "type": "bool", "default": "false" },
-            { "name": "format",   "description": "Image format to assume (e.g. jpeg, png)", "type": "string", "default": "" }
+            { "name": "format",   "description": "Image format to assume", "type": "string", "default": "" }
             ]
         }
-    ) );
+    )" );
 }
 
 //........................................................................
@@ -178,16 +178,16 @@ XYZElevationLayerOptions::fromConfig(const Config& conf)
 Config
 XYZElevationLayerOptions::getMetadata()
 {
-    return Config::readJSON( OE_MULTILINE(
+    return Config::readJSON( R"(
         { "name" : "XYZ Elevation Tile Service",
             "properties": [
             { "name": "url",      "description": "Location of the TMS repository", "type": "string", "default": "" },
             { "name": "invert_y", "description": "Set to true invert the Y index", "type": "bool", "default": "false" },
-            { "name": "format",   "description": "Image format to assume (e.g. jpeg, png)", "type": "string", "default": "" },
-            { "name": "elevation_encoding", "description": "How elevation is encoded (mapbox, e.g.)", "type": "string", "default": "" }
+            { "name": "format",   "description": "Image format to assume", "type": "string", "default": "" },
+            { "name": "elevation_encoding", "description": "How elevation is encoded", "type": "string", "default": "" }
             ]
         }
-    ) );
+    )" );
 }
 
 //........................................................................

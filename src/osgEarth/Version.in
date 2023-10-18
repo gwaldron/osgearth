@@ -27,11 +27,10 @@
 
 extern "C" {
 
-#define OSGEARTH_MAJOR_VERSION    3
-#define OSGEARTH_MINOR_VERSION    4
-#define OSGEARTH_PATCH_VERSION    0
-
-#include "osgEarth/BuildConfig.h"
+#define OSGEARTH_MAJOR_VERSION @OSGEARTH_MAJOR_VERSION@
+#define OSGEARTH_MINOR_VERSION @OSGEARTH_MINOR_VERSION@
+#define OSGEARTH_PATCH_VERSION @OSGEARTH_PATCH_VERSION@
+#define OSGEARTH_SOVERSION @OSGEARTH_SOVERSION@
 
 /* Convenience macro that can be used to decide whether a feature is present or not i.e.
  * #if OSGEARTH_MIN_VERSION_REQUIRED(1,4,0)
@@ -44,33 +43,18 @@ extern "C" {
 #define OSGEARTH_VERSION_GREATER_THAN(MAJOR, MINOR, PATCH) ((OSGEARTH_MAJOR_VERSION>MAJOR) || (OSGEARTH_MAJOR_VERSION==MAJOR && (OSGEARTH_MINOR_VERSION>MINOR || (OSGEARTH_MINOR_VERSION==MINOR && OSGEARTH_PATCH_VERSION>PATCH))))
 #define OSGEARTH_VERSION_GREATER_OR_EQUAL(MAJOR, MINOR, PATCH) ((OSGEARTH_MAJOR_VERSION>MAJOR) || (OSGEARTH_MAJOR_VERSION==MAJOR && (OSGEARTH_MINOR_VERSION>MINOR || (OSGEARTH_MINOR_VERSION==MINOR && OSGEARTH_PATCH_VERSION>=PATCH))))
 
-/** embedded GIT SHA1 */
+//! Embeds the git SHA1 hash into the library. This is used for version reporting.
 #ifdef OSGEARTH_EMBED_GIT_SHA
     extern OSGEARTH_EXPORT const char* osgEarthGitSHA1();
 #endif
 
-/**
-  * osgEarthGetVersion() returns the library version number.
-  * Numbering convention : OSGEARTH-1.0 will return 1.0 from osgEarthGetVersion.
-  *
-  * This C function can be also used to check for the existence of the OSGEARTH
-  * library using autoconf and its m4 macro AC_CHECK_LIB.
-  *
-  * Here is the code to add to your configure.in:
- \verbatim
- #
- # Check for the OSGEARTH (OSG) library
- #
- AC_CHECK_LIB(osg, osgEarthGetVersion, ,
-    [AC_MSG_ERROR(OSGEARTH library not found. See http://www.osgearth.org)],)
- \endverbatim
-*/
+//! Returns the osgEarth version number in human-friendly form.
 extern OSGEARTH_EXPORT const char* osgEarthGetVersion();
 
-/** The osgGetSOVersion() method returns the OSGEARTH shared object version number. */
+//! Returns the ABI/SO version number in string form.
 extern OSGEARTH_EXPORT const char* osgEarthGetSOVersion();
 
-/** The osgGetLibraryName() method returns the library name in human-friendly form. */
+//! Returns the library name "osgEarth".
 extern OSGEARTH_EXPORT const char* osgEarthGetLibraryName();
 
 #define OSGEARTH_VERSION_RELEASE OSGEARTH_VERSION_PATCH

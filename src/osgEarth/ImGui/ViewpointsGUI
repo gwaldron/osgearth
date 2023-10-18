@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_IMGUI_VIEWPOINTS_GUI
 #define OSGEARTH_IMGUI_VIEWPOINTS_GUI
 
+#include "ImGui"
 #include <osgEarth/MapNode>
 #include <osgEarth/Viewpoint>
 #include <osgEarth/XmlUtils>
@@ -61,10 +62,11 @@ namespace osgEarth {
                         {
                             _duration = i.value("time", 1.0f);
                             auto key = 0;
-                            for(auto& j : i.children("viewpoint"))
+                            for (auto& j : i.children("viewpoint"))
                             {
                                 _viewpoints.push_back(Viewpoint(j));
 
+#if 0 // works, but conflicts with the ViewpointsExtension :)
                                 if (key < 9)
                                 {
                                     EventRouter::get(view(ri)).onKeyPress(
@@ -76,6 +78,7 @@ namespace osgEarth {
                                         });
                                     key++;
                                 }
+#endif
                             }
                         }
                     }
@@ -83,52 +86,69 @@ namespace osgEarth {
                     _initialized = true;
                 }
 
-                ImGui::Begin(name(), visible());
+                if (ImGui::Begin(name(), visible()))
                 {
                     OE_SOFT_ASSERT_AND_RETURN(view(ri), void());
                     auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
-
-                    if (!manip)
-                        ImGui::TextColored(ImVec4(1,.9,.9,1), "(Viewpoints not active)");
-
-                    if (_viewpoints.empty())
-                        ImGui::TextColored(ImVec4(1, .9, .9, 1), "No viewpoints");
-
-                    for (auto& vp : _viewpoints)
+                    if (manip)
                     {
-                        ImGui::PushID(&vp);
-                        bool selected = false;
-                        std::string name = vp.name().get();
-                        if (name.empty())
+                        if (_viewpoints.empty())
+                            ImGui::TextColored(ImVec4(1, .9, .9, 1), "No viewpoints");
+
+                        for (auto& vp : _viewpoints)
                         {
-                            name = "<no name>";
+                            ImGui::PushID(&vp);
+                            bool selected = false;
+                            std::string name = vp.name().get();
+                            if (name.empty())
+                            {
+                                name = "<no name>";
+                            }
+                            if (manip)
+                            {
+                                ImGui::Selectable(name.c_str(), &selected);
+                                if (selected)
+                                    manip->setViewpoint(vp, _duration);
+                            }
+                            else
+                            {
+                                ImGui::TextColored(ImVec4(.5, .5, .5, 1), name.c_str());
+                            }
+                            ImGui::PopID();
+                            ImGui::Separator();
                         }
-                        if (manip)
-                        {
-                            ImGui::Selectable(name.c_str(), &selected);
-                            if (selected)
-                                manip->setViewpoint(vp, _duration);
-                        }
-                        else
-                        {
-                            ImGui::TextColored(ImVec4(.5,.5,.5,1), name.c_str());
-                        }
-                        ImGui::PopID();
+
                         ImGui::Separator();
-                    }
 
-                    if (ImGui::Button("Print current viewpoint as XML"))
-                    {
-                        auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
-                        if (manip)
+                        ImGuiLTable::Begin("viewpoints-settings");
                         {
+                            double xmin, xmax;
+                            manip->getSettings()->getAutoViewpointDurationLimits(xmin, xmax);
+                            if (ImGuiLTable::SliderDouble("Min fly time (s)", &xmin, 0.0, 4.0, "%.1lf"))
+                                manip->getSettings()->setAutoViewpointDurationLimits(xmin, xmax);
+                            if (ImGuiLTable::SliderDouble("Max fly time (s)", &xmax, xmin, 10.0, "%.1lf"))
+                                manip->getSettings()->setAutoViewpointDurationLimits(xmin, xmax);
+                        }
+                        ImGuiLTable::End();
+
+                        static bool show_xml = false;
+                        ImGui::Checkbox("XML dump", &show_xml);
+                        if (show_xml)
+                        {
+                            std::stringstream buf;
                             Util::XmlDocument xml(manip->getViewpoint().getConfig());
-                            xml.store(std::cout);
-                            std::cout << std::endl;
+                            xml.store(buf);
+                            std::string xml_str = buf.str();
+                            xml_str = xml_str.substr(xml_str.find("<viewpoint>"));
+                            ImGui::InputTextMultiline("##vp_xml", (char*)xml_str.c_str(), xml_str.size(), ImVec2(-1, -1), ImGuiInputTextFlags_ReadOnly);
                         }
                     }
+                    else
+                    {
+                        ImGui::TextColored(ImVec4(1, .9, .9, 1), "(Viewpoints not active)");
+                    }
+                    ImGui::End();
                 }
-                ImGui::End();
             }
         };
     }

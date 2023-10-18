@@ -1,31 +1,22 @@
 <?xml version="1.0" ?>
-<viewpoints time="1.5">
-    <viewpoint>
-        <heading>8.806974516644791</heading>
-        <height>4465.397310772911</height>
-        <lat>37.55814749233749</lat>
-        <long>-122.334535784141</long>
-        <name>San Francisco, California</name>
-        <pitch>-34.79540299384382</pitch>
-        <range>78142.53643278375</range>
+<viewpoints>
+    <viewpoint name="Mt Saint Helens">
+        <heading>38.7144</heading>
+        <pitch>-16.5932</pitch>
+        <range>27784.4m</range>
+        <long>-122.1783922007742</long>
+        <lat>46.26669980080434</lat>
+        <height>1103.579998404719</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
     </viewpoint>
     <viewpoint>
         <heading>17.33521725357022</heading>
         <height>2462.60273069609</height>
         <lat>46.82181702111031</lat>
         <long>-121.7814936386096</long>
-        <name>Mt Rainier, Washington</name>
+        <name>Mt Rainier</name>
         <pitch>-21.29241356548601</pitch>
         <range>23926.75258864516</range>
-    </viewpoint>
-    <viewpoint name="Mt Whitney, CA">
-        <heading>-10.1722</heading>
-        <pitch>-30.6795</pitch>
-        <range>10034.5m</range>
-        <long>-118.2936168720471</long>
-        <lat>36.57474451155277</lat>
-        <height>4234.804840335622</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
     <viewpoint>
         <heading>-72.70835146844568</heading>
@@ -37,7 +28,7 @@
         <range>13611.24948464565</range>
     </viewpoint>
     <viewpoint>
-        <name>Grand Canyon, US</name>
+        <name>Grand Canyon</name>
         <heading>-0.8051</heading>
         <pitch>-21.5398</pitch>
         <range>28203.1m</range>
@@ -47,16 +38,16 @@
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
     <viewpoint name="Sahara Desert">
-        <heading>-121.443</heading>
-        <pitch>-11.05</pitch>
-        <range>131.491m</range>
-        <long>12.87702838363237</long>
-        <lat>25.33350237523004</lat>
-        <height>666.3695949940011</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        <heading>-121.37</heading>
+        <pitch>-11.2494</pitch>
+        <range>14568m</range>
+        <long>12.85790518927135</long>
+        <lat>25.30076063533988</lat>
+        <height>643.3327136170119</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
     </viewpoint>
     <viewpoint>
-        <name>Hallstatt, Austria</name>
+        <name>Hallstatt</name>
         <heading>-21.36</heading>
         <pitch>-35.0965</pitch>
         <range>14786m</range>
@@ -65,60 +56,33 @@
         <height>502.9998890347779</height>
     </viewpoint>
     <viewpoint>
-        <name>Castel Gandolfo, Italy</name>
-        <heading>99.4295</heading>
-        <pitch>-21.0981</pitch>
-        <range>2140.85m</range>
-        <long>12.66202808744844</long>
-        <lat>41.75146324723777</lat>
-        <height>340.4633435951546</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        <name>Castel Gandolfo</name>
+        <heading>111.96</heading>
+        <pitch>-13.0742</pitch>
+        <range>4296.89m</range>
+        <long>12.66116827312502</long>
+        <lat>41.75440141710527</lat>
+        <height>340.4608940472826</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
     </viewpoint>
     <viewpoint>
-        <name>Sion, Switzerland</name>
-        <heading>77.5248</heading>
-        <pitch>-13.3381</pitch>
-        <range>1333.35m</range>
-        <long>7.275357552703459</long>
-        <lat>46.19243759376418</lat>
-        <height>683.0508383652195</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
-    </viewpoint>
-    <viewpoint name="Lake Anna, VA">
-        <heading>49.7937</heading>
-        <pitch>-26.6006</pitch>
-        <range>57.9473m</range>
-        <long>-77.755348526353</long>
-        <lat>38.04641758070872</lat>
-        <height>42.46923910733312</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
-    </viewpoint>
-    <viewpoint name="Wooded path/road">
-        <heading>34.4312</heading>
-        <pitch>-16.2989</pitch>
-        <range>66.1984m</range>
-        <long>-121.6193310135399</long>
-        <lat>46.66096138267813</lat>
-        <height>357.5176040958613</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
-    </viewpoint>
-    <viewpoint name="Duck, NC (Beach)">
-        <heading>-65.3262</heading>
-        <pitch>-32.1928</pitch>
-        <range>84.6626m</range>
-        <long>-75.76722964595007</long>
-        <lat>36.2183042666146</lat>
-        <height>-40.40036714822054</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        <name>Sion</name>
+        <heading>56.9871</heading>
+        <pitch>-11.165</pitch>
+        <range>4136.16m</range>
+        <long>7.285408955688748</long>
+        <lat>46.20564340401928</lat>
+        <height>533.4425292843953</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
     </viewpoint>
     <viewpoint name="Quilotoa Lake">
-        <heading>44.2873</heading>
-        <pitch>-27.5639</pitch>
-        <range>1731.74m</range>
-        <long>-78.90770900060492</long>
-        <lat>-0.861917594231788</lat>
-        <height>3529.603598460555</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+        <heading>59.7275</heading>
+        <pitch>-15.6577</pitch>
+        <range>13806.2m</range>
+        <long>-78.88765976722279</long>
+        <lat>-0.8457417820864883</lat>
+        <height>3530.116631868295</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
     </viewpoint>
     <viewpoint name="Sonoma">
         <heading>-19.7694</heading>
@@ -138,31 +102,13 @@
         <height>2686.409382589161</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
     </viewpoint>
-    <viewpoint name="Big Schloss">
-        <heading>169.243</heading>
-        <pitch>-28.2287</pitch>
-        <range>345.368m</range>
-        <long>-78.66579949472357</long>
-        <lat>38.94076285334965</lat>
-        <height>822.951564357616</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
-    </viewpoint>
-    <viewpoint name="Uluru, Australia">
-        <heading>-1.18119</heading>
-        <pitch>-53.6318</pitch>
-        <range>1985.36m</range>
-        <long>131.0341405855624</long>
-        <lat>-25.34910343183637</lat>
-        <height>614.0726152313873</height>
-        <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
-    </viewpoint>
-    <viewpoint name="Kilo2">
-        <heading>-5.97814e-06</heading>
-        <pitch>-88.9999</pitch>
-        <range>4185.64m</range>
-        <long>-117.3492928130499</long>
-        <lat>33.34190250682511</lat>
-        <height>73.99633575323969</height>
+    <viewpoint name="Uluru">
+        <heading>25.0068</heading>
+        <pitch>-22.0497</pitch>
+        <range>6946.77m</range>
+        <long>131.0325742056094</long>
+        <lat>-25.34751837532118</lat>
+        <height>723.1286411993206</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
     </viewpoint>
 </viewpoints>

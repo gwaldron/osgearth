@@ -1300,7 +1300,7 @@ HTTPClient::initializeImpl()
     if ( ::getenv("OSGEARTH_HTTP_DEBUG") )
     {
         s_HTTP_DEBUG = true;
-        OE_WARN << LC << "HTTP debugging enabled" << std::endl;
+        OE_INFO << LC << "HTTP debugging enabled" << std::endl;
     }
 
     long timeout = s_timeout;
@@ -1676,8 +1676,6 @@ namespace
         {
             std::istringstream stream(response.getPartAsString(0));
             reader = ImageUtils::getReaderWriterForStream(stream);
-            if (reader)
-                OE_INFO << LC << "Stream detected image data of type " << reader->getName() << std::endl;
         }
 
         if ( !reader && s_HTTP_DEBUG )

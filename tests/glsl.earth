@@ -6,17 +6,30 @@ osgEarth Sample - Per-layer GLSL shader injection
     <GDALImage name="world-tiff">
         <url>../data/world.tif</url>
         <shader>
-          <uniform name="gamma" value="2.2"/>
           <![CDATA[
-            #version 330
-            #pragma vp_entryPoint gammaCorrection
-            #pragma vp_location   fragment
-            uniform float gamma;
+            #pragma vp_function cycle_monochrome, fragment
             uniform float osg_FrameTime;
-            void gammaCorrection(inout vec4 color)
+            
+            vec3 rgb_to_ycbcr(in vec3 rgb)
             {
-                if (int(osg_FrameTime) % 2 == 1)
-                    color.rgb = pow(color.rgb, vec3(1.0/gamma));
+                float y = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+                return vec3(y, (rgb.b - y) * 0.565, (rgb.r - y) * 0.713);
+            }
+            
+            vec3 ycbcr_to_rgb(in vec3 ycc)
+            {
+                return vec3(ycc.x + 1.403 * ycc.z, ycc.x - 0.344 * ycc.y - 0.714 * ycc.z, ycc.x + 1.770 * ycc.y);
+            }
+            
+            void cycle_monochrome(inout vec4 color)
+            {
+                float line = (0.5*(1.0+sin(2.0*osg_FrameTime)))*10.0;
+                if (gl_FragCoord.x < gl_FragCoord.y*line)
+                {
+                    vec3 ycbcr = rgb_to_ycbcr(color.rgb);
+                    ycbcr[1] = ycbcr[2] = 0.0;
+                    color.rgb = ycbcr_to_rgb(ycbcr.xyz);
+                }
             }            
           ]]>
         </shader>

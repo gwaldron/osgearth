@@ -13,7 +13,7 @@ to extruded buildings.
     
     <xi:include href="readymap_elevation.xml"/>
       
-    <FeatureModel name="Buildings" max_range="20000">
+    <FeatureModel name="Buildings" max_range="20000" pickable="true">
          
         <OGRFeatures name="buildings">
             <url>../data/boston_buildings_utm19.shp</url>

@@ -205,7 +205,6 @@ VisibleLayer::init()
         VirtualProgram* vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
         vp->setName(className());
         vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, VirtualProgram::LOCATION_FRAGMENT_COLORING, 1.1f);
-        //vp->setFunction("oe_VisibleLayer_setOpacity", opacityInterpolateFS, VirtualProgram::LOCATION_FRAGMENT_COLORING, FLT_MAX);
     }
 }
 
@@ -240,18 +239,21 @@ VisibleLayer::prepareForRendering(TerrainEngine* engine)
 void
 VisibleLayer::setVisible(bool value)
 {
-    options().visible() = value;
-
-    updateNodeMasks();
-
-    fireCallback(&VisibleLayerCallback::onVisibleChanged);
-
-    if (_visibleTiedToOpen)
+    if (_canSetVisible)
     {
-        if (value && !isOpen())
-            open();
-        else if (!value && isOpen())
-            close();
+        options().visible() = value;
+
+        updateNodeMasks();
+
+        fireCallback(&VisibleLayerCallback::onVisibleChanged);
+
+        if (_visibleTiedToOpen)
+        {
+            if (value && !isOpen())
+                open();
+            else if (!value && isOpen())
+                close();
+        }
     }
 }
 

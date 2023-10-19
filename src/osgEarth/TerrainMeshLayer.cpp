@@ -45,7 +45,7 @@ void TerrainMeshLayer::Options::fromConfig(const Config& conf)
 Config
 TerrainMeshLayer::Options::getConfig() const
 {
-    Config conf = TileLayer::Options::getConfig();
+    Config conf = super::getConfig();
     conf.set("url", uri());
     conf.set("invert_y", invertY());
     return conf;
@@ -56,16 +56,18 @@ TerrainMeshLayer::Options::getConfig() const
 void
 TerrainMeshLayer::init()
 {
-    TileLayer::init();
+    super::init();
 
     setRenderType(RENDERTYPE_NONE);
+
+    // layer is always visible:
+    _canSetVisible = false;
 }
 
 Status
 TerrainMeshLayer::openImplementation()
 {
-    auto s = TileLayer::openImplementation();
-    if (s.isError()) return s;
+    OE_RETURN_STATUS_ON_ERROR(super::openImplementation());
 
     return STATUS_OK;
 }
@@ -73,14 +75,14 @@ TerrainMeshLayer::openImplementation()
 void
 TerrainMeshLayer::addedToMap(const Map* map)
 {
-    TileLayer::addedToMap(map);
+    super::addedToMap(map);
     _map = map;
 }
 
 void
 TerrainMeshLayer::removedFromMap(const Map* map)
 {
-    TileLayer::removedFromMap(map);
+    super::removedFromMap(map);
     _map = nullptr;
 }
 

@@ -117,6 +117,7 @@ namespace osgEarth
         void fireCallback(VisibleLayerCallback::MethodPtr);
 
         bool _visibleTiedToOpen = false;
+        bool _canSetVisible = true;
 
     private:
         osg::ref_ptr<osg::Uniform> _opacityU;

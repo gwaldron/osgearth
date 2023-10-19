@@ -3,13 +3,22 @@ osgEarth Sample - OpenStreetMap Features
 -->
 <map name="Worldwide OSM feature data">
     
-    <xi:include href="readymap_imagery.xml"/>
+    <XYZImage name="OSM Imagery">
+        <url>http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="none"/>
+        <attribution>&#169;OpenStreetMap contributors</attribution>
+    </XYZImage>
+    
     <xi:include href="readymap_elevation.xml"/>
     
     <xi:include href="osm_data.xml"/>    
 
     <xi:include href="osm_buildings.xml"/>
-    <!-- <xi:include href="osm_roads.xml"/> -->
 
     <xi:include href="viewpoints.xml"/>
+    
+    <options>
+        <terrain lod_method="screen_space" tile_pixel_size="350"/>
+    </options>
 </map>

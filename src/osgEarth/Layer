@@ -47,6 +47,7 @@ namespace osgDB {
             SUPERCLASS ::mergeConfig(conf); \
             fromConfig(conf); \
         } \
+        using super = SUPERCLASS; \
     public: \
         OE_COMMENT("Construct empty layer options") \
         MYCLASS () : SUPERCLASS() { fromConfig(_conf); } \
@@ -66,6 +67,7 @@ namespace osgDB {
         const OPTIONS * _options0; \
         const OPTIONS   _optionsConcrete0; \
         MYCLASS ( const MYCLASS& rhs, const osg::CopyOp& op ) { } \
+        using super = SUPERCLASS; \
     protected: \
         OE_COMMENT("Construct a new layer with default options") \
         MYCLASS (OPTIONS* optr, const OPTIONS* optr0) : \
@@ -125,6 +127,7 @@ namespace osgDB {
             _options(optr), \
             _options0(optr0) { } \
         MYCLASS () : SUPERCLASS () { } \
+        using super = SUPERCLASS; \
     public: \
         OE_COMMENT("Mutable options for this layer") \
         OPTIONS& options() { return *_options; } \

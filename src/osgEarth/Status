@@ -89,4 +89,7 @@ namespace osgEarth
     };
 }
 
+#define OE_RETURN_STATUS_ON_ERROR(F) \
+    { osgEarth::Status s = F; if (s.isError()) return s; }
+
 #endif // OSGEARTH_STATUS_H

@@ -393,6 +393,15 @@ namespace ImGuiLTable
 
 namespace ImGuiUtil
 {
+    template<typename... Args>
+    static void TextCentered(const char* format, Args&&... args)
+    {
+        char buf[1024];
+        sprintf(buf, format, args...);
+        ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcTextSize(buf).x) * 0.5f);
+        ImGui::Text(buf);
+    }
+
     static void Texture(osg::Texture2D* texture, osg::RenderInfo& renderInfo, unsigned int width = 0, unsigned int height = 0)
     {
         // Get the context id

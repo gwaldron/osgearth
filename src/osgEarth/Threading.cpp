@@ -803,7 +803,7 @@ JobArena::runJobs()
             // See if we no longer need this thread because the
             // target concurrency has been reduced
             ScopedMutexLock quitLock(_quitMutex);
-            if (_targetConcurrency < _metrics->concurrency)
+            if ((int)_targetConcurrency < _metrics->concurrency)
             {
                 _metrics->concurrency--;
                 break;
@@ -820,7 +820,7 @@ JobArena::startThreads()
     OE_INFO << LC << "Arena \"" << _name << "\" concurrency=" << _targetConcurrency << std::endl;
 
     // Not enough? Start up more
-    while(_metrics->concurrency < _targetConcurrency)
+    while(_metrics->concurrency < (int)_targetConcurrency)
     {
         _metrics->concurrency++;
 

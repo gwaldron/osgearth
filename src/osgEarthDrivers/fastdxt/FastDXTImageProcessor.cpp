@@ -129,7 +129,7 @@ public:
 
             // interate over mipmap levels:
             unsigned int numLevels = mipmapped->getNumMipmapLevels();
-            for (int level = 0; level < numLevels; ++level)
+            for (unsigned level = 0; level < numLevels; ++level)
             {
                 int level_s = sourceImage->s() >> level;
                 int level_t = sourceImage->t() >> level;

@@ -256,7 +256,7 @@ TileNodeRegistry::collectDormantTiles(
 
         if (tile->getDoNotExpire() == false &&
             tile->getLastTraversalTime() < oldestAllowableTime &&
-            tile->getLastTraversalFrame() < oldestAllowableFrame &&
+            tile->getLastTraversalFrame() < (int)oldestAllowableFrame &&
             tile->getLastTraversalRange() > farthestAllowableRange &&
             tile->areSiblingsDormant())
         {

@@ -490,11 +490,11 @@ GeometryValidator::apply(osg::Geometry& geom)
         osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(pset);
         if ( da )
         {
-            if ( da->getFirst() >= numVerts )
+            if ( da->getFirst() >= (GLint)numVerts )
             {
                 OE_NOTICE << LC << "DrawArrays: first > numVerts" << std::endl;
             }
-            if ( da->getFirst()+da->getCount() > numVerts )
+            if ( da->getFirst()+da->getCount() > (GLint)numVerts )
             {
                 OE_NOTICE << LC << "DrawArrays: first/count out of bounds" << std::endl;
             }

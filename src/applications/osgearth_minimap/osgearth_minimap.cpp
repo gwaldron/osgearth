@@ -50,7 +50,7 @@ MapNode* makeMiniMapNode( )
     map->addLayer(osm);
 
     TerrainOptions terrainOptions;
-    terrainOptions.rangeMode() = osg::LOD::PIXEL_SIZE_ON_SCREEN;
+    terrainOptions.lodMethod() = TerrainLODMethod::SCREEN_SPACE;
 
     MapNode::Options mapNodeOptions;
     mapNodeOptions.terrain() = terrainOptions;

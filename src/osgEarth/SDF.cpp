@@ -393,9 +393,9 @@ SDFGenerator::compute_nnf_on_cpu(osg::Image* buf) const
 
     for (int L = n / 2; L >= 1; L /= 2)
     {
-        for (unsigned int iterT = 0; iterT < buf->t(); ++iterT)
+        for (int iterT = 0; iterT < buf->t(); ++iterT)
         {
-            for (unsigned int iterS = 0; iterS < buf->s(); ++iterS)
+            for (int iterS = 0; iterS < buf->s(); ++iterS)
             {
                 readRGFloatPixel(imageData, imageWidth, imageHeight, pixel_points_to, iterS, iterT);
 
@@ -456,7 +456,7 @@ static void edt1d(const float* f, float* d, int* v, float* z, unsigned int n) {
     v[0] = 0;
     z[0] = -INF;
     z[1] = INF;
-    for (int q = 1; q <= n - 1; ++q) {
+    for (int q = 1; q <= (int)(n - 1); ++q) {
         float s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
         while (s <= z[k]) {
             k--;
@@ -469,7 +469,7 @@ static void edt1d(const float* f, float* d, int* v, float* z, unsigned int n) {
     }
 
     k = 0;
-    for (int q = 0; q <= n - 1; ++q) {
+    for (int q = 0; q <= (int)(n - 1); ++q) {
         while (z[k + 1] < q)
             k++;
         int r = v[k];
@@ -490,21 +490,21 @@ void edt2d(float* grid, unsigned int width, unsigned int height)
     float* z = new float[maxLength + 1u];
 
     // process columns
-    for (int x = 0; x < width; ++x) {
-        for (int y = 0; y < height; ++y) {
+    for (unsigned x = 0; x < width; ++x) {
+        for (unsigned y = 0; y < height; ++y) {
             f[y] = grid[width * y + x];
         }
         // Do the distance transform.
         edt1d(f, d, v, z, height);
         // Copy d back into the grid
-        for (int y = 0; y < height; ++y) {
+        for (unsigned y = 0; y < height; ++y) {
             grid[width * y + x] = d[y];
         }        
     }
 
     // process rows
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
+    for (unsigned y = 0; y < height; ++y) {
+        for (unsigned x = 0; x < width; ++x) {
             f[x] = grid[width * y + x];
         }
 
@@ -512,7 +512,7 @@ void edt2d(float* grid, unsigned int width, unsigned int height)
         edt1d(f, d, v, z, width);
 
         // Copy d back into the grid
-        for (int x = 0; x < width; ++x) {
+        for (unsigned x = 0; x < width; ++x) {
             grid[width * y + x] = d[x];
         }
     }
@@ -559,9 +559,9 @@ osg::Image* SDFGenerator::createDistanceField(const osg::Image* image, float min
 
     ImageUtils::PixelWriter write(sdf.get());
     write.assign(Color(1, 1, 1, 1));
-    for (int y = 0; y < height; ++y)
+    for (unsigned y = 0; y < height; ++y)
     {
-        for (int x = 0; x < width; ++x)
+        for (unsigned x = 0; x < width; ++x)
         {
             // The distance computed is the square distance, so take the square root here to get the actual distance
             float d = sqrt(grid[width * y + x]);

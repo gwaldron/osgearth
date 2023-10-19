@@ -21,7 +21,9 @@ SET(TARGET_COMMON_LIBRARIES
 # Folder name for plugins
 SET(OSGEARTH_PLUGINS_FOLDER Plugins)
 
-add_subdirectory(basis)
+if(BASISU_FOUND)
+    add_subdirectory(basis)
+endif()
 add_subdirectory(bumpmap)
 add_subdirectory(cache_filesystem)
 add_subdirectory(colorramp)

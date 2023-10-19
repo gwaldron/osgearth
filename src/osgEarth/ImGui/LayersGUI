@@ -469,20 +469,11 @@ namespace osgEarth
                                 drawLayers(layers, ri);
                                 ImGui::TreePop();
                             }
-
-                            //ImGui::TextColored(ImVec4(0,1,1,1), std::string(_layerCatName[cat] + " Layers").c_str());
-                            //drawLayers(layers, ri);
                         }
                     }
                     else
                     {
                         drawLayers(_layers, ri);
-                    }
-
-                    if (ImGui::Button("Refresh"))
-                    {
-                        _mapNode = nullptr;
-                        _mapRevision = 0;
                     }
 
                     ImGui::End();
@@ -702,10 +693,6 @@ namespace osgEarth
                                 if (ImGuiLTable::Checkbox("Highlight", &debugView)) {
                                     visibleLayer->setEnableDebugView(debugView);
                                 }
-
-                                bool modulate = visibleLayer->getColorBlending() == BLEND_MODULATE;
-                                if (ImGuiLTable::Checkbox("Modulate", &modulate))
-                                    visibleLayer->setColorBlending(modulate ? BLEND_MODULATE : BLEND_INTERPOLATE);
                             }
 
 #ifdef HAVE_OSGEARTHCESIUM

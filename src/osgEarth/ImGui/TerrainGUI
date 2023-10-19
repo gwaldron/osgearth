@@ -28,6 +28,7 @@
 #include <osgEarth/LabelNode>
 #include <osgEarth/SelectExtentTool>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/GLUtils>
 #include <chrono>
 #include <list>
 
@@ -94,53 +95,54 @@ namespace osgEarth
                     {
                         ImGuiLTable::Text("Resident Tiles", "%u", _mapNode->getTerrainEngine()->getNumResidentTiles());
 
-                        auto terrain_options = _mapNode->getTerrainOptions();
-
                         static int max_max_lod = -1;
                         static unsigned u32_one = 1;
-                        unsigned max_lod = terrain_options.getMaxLOD();
+                        unsigned max_lod = options.getMaxLOD();
                         if (max_max_lod < 0) max_max_lod = max_lod;
                         if (ImGuiLTable::InputScalar("Max LOD", ImGuiDataType_U32, &max_lod, &u32_one, nullptr, "%u"))
                         {
                             max_lod = clamp(max_lod, 0u, (unsigned)max_max_lod);
-                            terrain_options.setMaxLOD(max_lod);
+                            options.setMaxLOD(max_lod);
                         }
 
-                        osg::LOD::RangeMode mode = options.getRangeMode();
-                        bool mode_b = (mode == osg::LOD::PIXEL_SIZE_ON_SCREEN);
-                        if (ImGuiLTable::Checkbox("Screen space LOD", &mode_b))
+                        TerrainLODMethod method = options.getLODMethod();
+                        bool method_b = (method == TerrainLODMethod::SCREEN_SPACE);
+                        if (ImGuiLTable::Checkbox("Screen space LOD", &method_b))
                         {
-                            _mapNode->getTerrainOptions().setRangeMode(mode_b ? osg::LOD::PIXEL_SIZE_ON_SCREEN : osg::LOD::DISTANCE_FROM_EYE_POINT);
+                            options.setLODMethod(method_b ? TerrainLODMethod::SCREEN_SPACE : TerrainLODMethod::CAMERA_DISTANCE);
                         }
 
-                        if (_mapNode->getTerrainOptions().getRangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+                        if (options.getLODMethod() == TerrainLODMethod::SCREEN_SPACE)
                         {
-                            float tilePixelSize = _mapNode->getTerrainOptions().getTilePixelSize();
-                            if (ImGuiLTable::SliderFloat("Effective pixel size:", &tilePixelSize, 64.0f, 1024.0f))
+                            float tilePixelSize = options.getTilePixelSize();
+                            if (ImGuiLTable::SliderFloat("  Pixels/tile:", &tilePixelSize, 64.0f, 1024.0f))
                             {
-                                _mapNode->getTerrainOptions().setTilePixelSize(tilePixelSize);
+                                options.setTilePixelSize(tilePixelSize);
                             }
                         }
 
-                        unsigned maxTex = options.getMaxTextureSize();
-                        const char* maxTexItems[] = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192", "16384" };
-                        unsigned maxTexIndex = 0;
-                        for (maxTexIndex = 0; maxTex > (unsigned)::atoi(maxTexItems[maxTexIndex]) && maxTexIndex < IM_ARRAYSIZE(maxTexItems) - 1; ++maxTexIndex);
-                        if (ImGuiLTable::BeginCombo("Max tex size", maxTexItems[maxTexIndex])) {
-                            for (int n = 0; n < IM_ARRAYSIZE(maxTexItems); n++) {
-                                const bool is_selected = (maxTexIndex == n);
-                                if (ImGui::Selectable(maxTexItems[n], is_selected)) {
-                                    maxTexIndex = n;
-                                    options.setMaxTextureSize(atoi(maxTexItems[maxTexIndex]));
-                                    _mapNode->getTerrainEngine()->dirtyTerrainOptions();
+                        if (GLUtils::useNVGL())
+                        {
+                            unsigned maxTex = options.getMaxTextureSize();
+                            const char* maxTexItems[] = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192", "16384" };
+                            unsigned maxTexIndex = 0;
+                            for (maxTexIndex = 0; maxTex > (unsigned)::atoi(maxTexItems[maxTexIndex]) && maxTexIndex < IM_ARRAYSIZE(maxTexItems) - 1; ++maxTexIndex);
+                            if (ImGuiLTable::BeginCombo("Max tex size", maxTexItems[maxTexIndex])) {
+                                for (int n = 0; n < IM_ARRAYSIZE(maxTexItems); n++) {
+                                    const bool is_selected = (maxTexIndex == n);
+                                    if (ImGui::Selectable(maxTexItems[n], is_selected)) {
+                                        maxTexIndex = n;
+                                        options.setMaxTextureSize(atoi(maxTexItems[maxTexIndex]));
+                                        _mapNode->getTerrainEngine()->dirtyTerrainOptions();
+                                    }
+                                    if (is_selected)
+                                        ImGui::SetItemDefaultFocus();
                                 }
-                                if (is_selected)
-                                    ImGui::SetItemDefaultFocus();
+                                ImGuiLTable::EndCombo();
                             }
-                            ImGuiLTable::EndCombo();
                         }
 
-                        if (_mapNode->getTerrainOptions().getGPUTessellation())
+                        if (options.getGPUTessellation())
                         {
                             ImGui::Separator();
                             ImGuiLTable::Section("Tessellation");
@@ -154,10 +156,16 @@ namespace osgEarth
                                 options.setTessellationRange(range);
                         }
 
+                        unsigned threads = options.getConcurrency();
+                        if (ImGuiLTable::SliderInt("Load threads", (int*)&threads, 1, 16))
+                        {
+                            options.setConcurrency(threads);
+                            _mapNode->getTerrainEngine()->dirtyTerrainOptions();
+                        }
+
                         ImGuiLTable::End();
                     }
 
-                    ImGui::Separator();
                     GeoPoint mp;
                     if (_mapNode->getGeoPointUnderMouse(view(ri), _x, _y, mp))
                     {

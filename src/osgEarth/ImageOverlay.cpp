@@ -376,13 +376,13 @@ osg::Node* ImageOverlay::createNode()
 
     osgEarth::Bounds bounds;
 
-    double minX = osg::minimum(_lowerLeft.x(), osg::minimum(_lowerRight.x(), osg::minimum(_upperLeft.x(), _upperRight.x())));
-    double minY = osg::minimum(_lowerLeft.y(), osg::minimum(_lowerRight.y(), osg::minimum(_upperLeft.y(), _upperRight.y())));
-    double maxX = osg::maximum(_lowerLeft.x(), osg::maximum(_lowerRight.x(), osg::maximum(_upperLeft.x(), _upperRight.x())));
-    double maxY = osg::maximum(_lowerLeft.y(), osg::maximum(_lowerRight.y(), osg::maximum(_upperLeft.y(), _upperRight.y())));
+    double minX = std::min(_lowerLeft.x(), std::min(_lowerRight.x(), std::min(_upperLeft.x(), _upperRight.x())));
+    double minY = std::min(_lowerLeft.y(), std::min(_lowerRight.y(), std::min(_upperLeft.y(), _upperRight.y())));
+    double maxX = std::max(_lowerLeft.x(), std::max(_lowerRight.x(), std::max(_upperLeft.x(), _upperRight.x())));
+    double maxY = std::max(_lowerLeft.y(), std::max(_lowerRight.y(), std::max(_upperLeft.y(), _upperRight.y())));
 
-    int numCols = osg::maximum(2, (int)((maxX - minX) / targetDegrees) + 1);
-    int numRows = osg::maximum(2, (int)((maxY - minY) / targetDegrees) + 1);
+    unsigned numCols = std::max(2, (int)((maxX - minX) / targetDegrees) + 1);
+    unsigned numRows = std::max(2, (int)((maxY - minY) / targetDegrees) + 1);
 
     float dx = 1.0 / (float)(numCols - 1);
     float dy = 1.0 / (float)(numRows - 1);

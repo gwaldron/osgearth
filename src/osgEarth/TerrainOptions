@@ -29,6 +29,13 @@
 
 namespace osgEarth
 {
+    //! Method to use when determining when to switch terrain levels of detail.
+    enum class TerrainLODMethod
+    {
+        CAMERA_DISTANCE = osg::LOD::DISTANCE_FROM_EYE_POINT,
+        SCREEN_SPACE = osg::LOD::PIXEL_SIZE_ON_SCREEN
+    };
+
     // Options structure for a terrain engine (internal)
     class OSGEARTH_EXPORT TerrainOptions : public DriverConfigOptions
     {
@@ -55,7 +62,7 @@ namespace osgEarth
         OE_OPTION(unsigned, maxTilesToUnloadPerFrame);
         OE_OPTION(unsigned, minResidentTiles);
         OE_OPTION(bool, castShadows);
-        OE_OPTION(osg::LOD::RangeMode, rangeMode);
+        OE_OPTION(TerrainLODMethod, lodMethod);
         OE_OPTION(float, tilePixelSize);
         OE_OPTION(float, heightFieldSkirtRatio);
         OE_OPTION(Color, color);
@@ -188,9 +195,9 @@ namespace osgEarth
         const bool& getCastShadows() const;
 
         //! Mode to use when calculating LOD switching distances.
-        //! Choices are DISTANCE_FROM_EYE_POINT (default) or PIXEL_SIZE_ON_SCREEN
-        void setRangeMode(const osg::LOD::RangeMode& value);
-        const osg::LOD::RangeMode& getRangeMode() const;
+        //! Choices are TerrainLODMode::CAMERA_DISTANCE (default) or TerrainLODMode::SCREEN_SPACE
+        void setLODMethod(const TerrainLODMethod& value);
+        const TerrainLODMethod& getLODMethod() const;
 
         //! Size of the tile, in pixels, when using rangeMode = PIXEL_SIZE_ON_SCREEN
         void setTilePixelSize(const float& value);

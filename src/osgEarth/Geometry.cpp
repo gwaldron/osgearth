@@ -820,7 +820,7 @@ Ring::getSignedArea2D() const
     unsigned int n = size();
     double area = 0.0;
     int j = n - 1;
-    for (int i = 0; i < n; i++)
+    for (unsigned i = 0; i < n; i++)
     {
         area += ((*this)[j].x() + (*this)[i].x()) * ((*this)[j].y() - (*this)[i].y());
         j = i;

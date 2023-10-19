@@ -112,7 +112,7 @@ namespace osgEarth { namespace REX
 
     protected: // TerrainEngineNode protected
 
-        virtual void setMap(const Map* map, const TerrainOptions& options) override;
+        virtual void onSetMap() override;
 
         virtual void updateTextureCombining() override { updateState(); }
         
@@ -148,14 +148,7 @@ namespace osgEarth { namespace REX
         //! Recompute all cached layer extents
         void cacheAllLayerExtentsInMapSRS();
 
-        //! computes the heightfield sample size required to match the vertices at the highest
-        //! level of detail in rex if a tile key was requested at the given level of detail.
-        unsigned int computeSampleSize(unsigned int levelOfDetail);
-
     private:
-        const TerrainOptions* _terrainOptions;
-        const TerrainOptions& options() const { return *_terrainOptions; }
-
         UID _uid;
         bool _batchUpdateInProgress;
         bool _refreshRequired;

@@ -208,7 +208,7 @@ int main(int argc, char** argv)
     if (arguments.read("--sse"))
     {
         app._useLODScale = false;
-        MapNode::get(node)->getTerrainOptions().setRangeMode(osg::LOD::PIXEL_SIZE_ON_SCREEN);
+        MapNode::get(node)->getTerrainOptions().setLODMethod(TerrainLODMethod::SCREEN_SPACE);
     }
 
     // Add a UI to the main view:

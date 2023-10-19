@@ -286,14 +286,18 @@ namespace osgEarth
 
         void setComputeRangeCallback(ComputeRangeCallback* computeRangeCallback) override;
 
+        //! Return the top level node associated with the terrain.
         osg::Node* getNode() override {
             return this;
         }
 
+        //! API for accessing or changing terrain options.
+        //! You should call dirtyTerrainOptions() after changing the options.
         TerrainOptionsAPI getOptions() override {
-            return TerrainOptionsAPI(&_options);
+            return TerrainOptionsAPI(&_optionsConcrete);
         }
 
+        //! Subclass may override this to do something when the terrain options change
         virtual void dirtyTerrainOptions() { }
 
     public:
@@ -333,7 +337,10 @@ namespace osgEarth
         friend class TerrainEngineNodeFactory;
 
         //! Assigns a map to render
-        virtual void setMap(const Map* map, const TerrainOptions& options);
+        void setMap(const Map* map, const TerrainOptions& options);
+
+        //! Subclass runs this after a call to setMap.
+        virtual void onSetMap() { }
 
         // signals that a redraw is needed because something changed.
         virtual void requestRedraw();
@@ -363,7 +370,7 @@ namespace osgEarth
         osg::ref_ptr<Terrain> _terrainInterface;
         unsigned _dirtyCount;
         bool _updateScheduled;
-        TerrainOptions _options;
+        TerrainOptions _optionsConcrete;
 
         typedef std::vector<osg::ref_ptr<TerrainEffect> > TerrainEffectVector;
         TerrainEffectVector effects_;

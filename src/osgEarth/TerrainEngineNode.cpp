@@ -84,15 +84,15 @@ TerrainEngineNode::getResources() const
 
 
 TerrainEngineNode::TerrainEngineNode() :
-_dirtyCount              ( 0 ),
-_requireElevationTextures( false ),
-_requireNormalTextures   ( false ),
-_requireLandCoverTextures( false ),
-_requireParentTextures   ( false ),
-_requireElevationBorder  ( false ),
-_requireFullDataAtFirstLOD( false ),
-_updateScheduled( false ),
-_createTileModelCallbacksMutex(OE_MUTEX_NAME)
+    _dirtyCount(0),
+    _requireElevationTextures(false),
+    _requireNormalTextures(false),
+    _requireLandCoverTextures(false),
+    _requireParentTextures(false),
+    _requireElevationBorder(false),
+    _requireFullDataAtFirstLOD(false),
+    _updateScheduled(false),
+    _createTileModelCallbacksMutex(OE_MUTEX_NAME)
 {
     // register for event traversals so we can properly reset the dirtyCount
     ADJUST_EVENT_TRAV_COUNT(this, 1);
@@ -142,7 +142,7 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
     _map = map;
 
     // store a const copy of the terrain options
-    _options = options;
+    _optionsConcrete = options;
 
     // Create a terrain utility interface. This interface can be used
     // to query the in-memory terrain graph, subscribe to tile events, etc.
@@ -174,6 +174,9 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
             this->setEllipsoidModel(nullptr);
         }
     }
+
+    // invoke the callback for a subclass to do its thing
+    onSetMap();
 }
 
 osg::BoundingSphere

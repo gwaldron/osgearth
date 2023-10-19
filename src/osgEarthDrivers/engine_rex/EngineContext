@@ -50,15 +50,15 @@ namespace osgEarth { namespace REX
     {
     public:
         EngineContext(
-            const Map*                          map,
-            TerrainEngineNode*                  engine,
-            GeometryPool*                       geometryPool,
-            Merger*                             merger,
-            TileNodeRegistry::Ptr               tiles,
-            const RenderBindings&               renderBindings,
-            const SelectionInfo&                selectionInfo,
-            const FrameClock*                   clock);
-        
+            const Map* map,
+            TerrainEngineNode* engine,
+            GeometryPool* geometryPool,
+            Merger* merger,
+            TileNodeRegistry::Ptr tiles,
+            const RenderBindings& renderBindings,
+            const SelectionInfo& selectionInfo,
+            const FrameClock* clock);
+
         Merger* getMerger() const { return _merger; }
 
         const RenderBindings& getRenderBindings() const { return _renderBindings; }

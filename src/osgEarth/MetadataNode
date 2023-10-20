@@ -28,40 +28,40 @@
 #include <osg/BufferIndexBinding>
 
 namespace osgEarth
-{   
+{
     class OSGEARTH_EXPORT MetadataNode : public osg::Group
     {
     public:
         MetadataNode();
 
         MetadataNode(const MetadataNode& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
-        
+
         META_Node(osgEarth, MetadataNode);
 
-        ~MetadataNode();
+        virtual ~MetadataNode();
 
-        ObjectID add(Feature* feature, bool visible = true);
+        virtual ObjectID add(Feature* feature, bool visible = true);
 
-        void tagDrawable(osg::Drawable* drawable, ObjectID id) const;
+        virtual void tagDrawable(osg::Drawable* drawable, ObjectID id) const;
 
-        void tagNode(osg::Node* node, ObjectID id) const;
+        virtual void tagNode(osg::Node* node, ObjectID id) const;
 
-        void finalize();
+        virtual void finalize();
 
-        unsigned int getNumFeatures() const;
+        virtual unsigned int getNumFeatures() const;
 
-        bool getVisible(unsigned int index) const;
+        virtual bool getVisible(unsigned int index) const;
 
-        void setVisible(unsigned int index, bool value);
+        virtual void setVisible(unsigned int index, bool value);
 
-        ObjectID getObjectID(unsigned index) const;
+        virtual ObjectID getObjectID(unsigned index) const;
 
-        const Feature* getFeature(unsigned int index) const;
+        virtual const Feature* getFeature(unsigned int index) const;
 
-        int getIndexFromObjectID(ObjectID id) const;
+        virtual int getIndexFromObjectID(ObjectID id) const;
 
     protected:
-        void init();
+        virtual void init();
 
         std::vector< osg::ref_ptr< Feature > > _features;
         osg::ref_ptr< osg::Vec2uiArray > _instances;

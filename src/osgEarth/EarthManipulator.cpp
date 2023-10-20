@@ -685,7 +685,6 @@ EarthManipulator::configureDefaultSettings()
     _settings->bindMultiDrag( ACTION_ROTATE, options );
     _settings->bindTouchDrag( ACTION_PAN, options );
 
-    //_settings->setThrowingEnabled( false );
     _settings->setLockAzimuthWhilePanning( true );
 }
 
@@ -1363,8 +1362,6 @@ void EarthManipulator::collisionDetect()
             setByLookAtRaw(ip + adjVector * eps, _center, eyeUp);
             _rotation = rotation;
         }
-
-        //OE_INFO << "hit at " << ip.x() << ", " << ip.y() << ", " << ip.z() << "\n";
     }
 }
 
@@ -1608,7 +1605,6 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
     osg::View* view = aa.asView();
 
-    //double time_s_now = osg::Timer::instance()->time_s();
     _time_s_now = view->getFrameStamp()->getReferenceTime();
 
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
@@ -1645,8 +1641,8 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             {
                 double decayFactor = 1.0 - _settings->getThrowDecayRate();
 
-                _throw_dx = osg::absolute(_throw_dx) > osg::absolute(_dx * 0.01) ? _throw_dx * decayFactor : 0.0;
-                _throw_dy = osg::absolute(_throw_dy) > osg::absolute(_dy * 0.01) ? _throw_dy * decayFactor : 0.0;
+                _throw_dx = std::abs(_throw_dx) > std::abs(_dx * 0.01) ? _throw_dx * decayFactor : 0.0;
+                _throw_dy = std::abs(_throw_dy) > std::abs(_dy * 0.01) ? _throw_dy * decayFactor : 0.0;
 
                 if (_throw_dx == 0.0 && _throw_dy == 0.0)
                     _thrown = false;
@@ -2610,15 +2606,6 @@ EarthManipulator::rotate( double dx, double dy )
     double minp = osg::DegreesToRadians( osg::clampAbove(_settings->getMinPitch(), -89.9) );
     double maxp = osg::DegreesToRadians( osg::clampBelow(_settings->getMaxPitch(),  89.9) );
 
-#if 0
-    OE_NOTICE << LC
-        << "LocalPitch=" << osg::RadiansToDegrees(_local_pitch)
-        << ", dy=" << osg::RadiansToDegrees(dy)
-        << ", dy+lp=" << osg::RadiansToDegrees(_local_pitch+dy)
-        << ", limits=" << osg::RadiansToDegrees(minp) << "," << osg::RadiansToDegrees(maxp)
-        << std::endl;
-#endif
-
     // clamp pitch range:
     double oldPitch;
     getEulerAngles( _rotation, 0L, &oldPitch );
@@ -3080,8 +3067,6 @@ EarthManipulator::recalculateRoll()
 
     if (sideVector.length()<0.1)
     {
-        //OE_INFO<<"Side vector short "<<sideVector.length()<<std::endl;
-
         sideVector = upVector^localUp;
         sideVector.normalize();
 
@@ -3420,7 +3405,6 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         osg::Vec3d earthOrigin = zero * viewMat;
         const osg::Vec3d endDrag = calcTangentPoint(zero, earthOrigin, radiusEquator, winpt);
         worldEndDrag = endDrag * viewMatInv;
-        //OE_INFO << "tangent: " << worldEndDrag << "\n";
     }
 
     if (_srs->isGeographic())

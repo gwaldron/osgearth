@@ -43,26 +43,22 @@ namespace osgEarth
         {
         private:
             osg::observer_ptr<MapNode> _mapNode;
-            bool _installed;
-            float _x, _y;
-            float _ax, _ay;
             std::unique_ptr<AsyncElevationSampler> _sampler;
             Future<ElevationSample> _sample;
-            bool _measuring;
             osg::ref_ptr<FeatureNode> _measureCursor;
             osg::ref_ptr<Feature> _measureFeature;
             osg::ref_ptr<LabelNode> _measureLabel;
-            bool _clamp_measure;
-            float _measureDist;
             osg::ref_ptr<Contrib::SelectExtentTool> _invalidateTool;
-            bool _invalidating;
+            float _x = 0.0f, _y = 0.0f;
+            float _ax = 0.0f, _ay = 0.0f;
+            float _measureDist = 0.0f;
+            bool _installed = false;
+            bool _measuring = false;
+            bool _clamp_measure = true;
+            bool _invalidating = false;
 
         public:
-            TerrainGUI() : BaseGUI("Terrain"), 
-                _installed(false),
-                _measuring(false),
-                _invalidating(false),
-                _clamp_measure(true) { }
+            TerrainGUI() : BaseGUI("Terrain") { }
 
             void load(const Config& conf) override
             {
@@ -280,7 +276,6 @@ namespace osgEarth
                         }
                         char buf[64];
                         sprintf(buf, "%.1f m", dist_m);
-                        //ImGui::TextColored(ImVec4(1,1,0,1), " %.2f m", dist_m);    
                         _measureLabel->setText(buf);
                         GeoPoint labelPos = _measureFeature->getExtent().getCentroid();
                         labelPos.altitudeMode() = ALTMODE_RELATIVE;
@@ -303,8 +298,8 @@ namespace osgEarth
             void install(osg::RenderInfo& ri)
             {
                 EventRouter::get(view(ri))
-                    .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); })
-                    .onClick([&](osg::View* v, float x, float y) { onClick(v, x, y); });
+                    .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); }, false)
+                    .onClick([&](osg::View* v, float x, float y) { onClick(v, x, y); }, false);
 
                 _sampler = std::unique_ptr<AsyncElevationSampler>(new AsyncElevationSampler(_mapNode->getMap()));
 

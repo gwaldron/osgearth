@@ -131,8 +131,10 @@ namespace osgEarth {
                                 s->setThrowingEnabled(_throwing), dirtySettings();
 
                             if (_throwing || _first)
+                            {
                                 if (ImGuiLTable::SliderFloat("Decay", &_throwDecayRate, 0.02f, 0.3f) || _first)
                                     s->setThrowDecayRate(_throwDecayRate), dirtySettings();
+                            }
                         }
 
                         static float magnification_old = 1.0f, magnification_new = 1.0f;

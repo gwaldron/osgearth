@@ -22,166 +22,175 @@
 #include <osgEarth/Sky>
 #include <osgEarth/URI>
 
-namespace osgEarth { namespace SimpleSky
-{
-    using namespace osgEarth;
-
-    /**
-     * Options for creating a simple sky.
-     */
-    class SimpleSkyOptions : public SkyOptions
+namespace osgEarth {
+    namespace SimpleSky
     {
-    public:
-        SimpleSkyOptions(const ConfigOptions& options = ConfigOptions()) :
-            SkyOptions(options),
-            _atmosphericLighting(true),
-            _exposure(3.3f),
-            _daytimeAmbientBoost(5.0f),
-            _allowWireframe(false),
-            _starSize(14.0f),
-            _moonScale(2.0f),
-            _maxAmbientIntensity(0.75f),
-            _moonImageURI("moon_1024x512.jpg"),
-            _sunVisible(true),
-            _moonVisible(true),
-            _starsVisible(true),
-            _atmosphereVisible(true),
-            _pbr(true),
-            _eb(false)
+        using namespace osgEarth;
+
+        /**
+         * Options for creating a simple sky.
+         */
+        class SimpleSkyOptions : public SkyOptions
         {
-            setDriver("simple");
-            fromConfig( _conf );
-        }
-        virtual ~SimpleSkyOptions() { }
+        public:
+            SimpleSkyOptions(const ConfigOptions& options = ConfigOptions()) :
+                SkyOptions(options),
+                _atmosphericLighting(true),
+                _exposure(3.3f),
+                _daytimeAmbientBoost(5.0f),
+                _allowWireframe(false),
+                _starSize(14.0f),
+                _moonScale(2.0f),
+                _maxAmbientIntensity(0.75f),
+                _moonImageURI("moon_1024x512.jpg"),
+                _sunVisible(true),
+                _moonVisible(true),
+                _starsVisible(true),
+                _atmosphereVisible(true),
+                _pbr(true),
+                _eb(false)
+            {
+                setDriver("simple");
+                fromConfig(_conf);
+            }
+            virtual ~SimpleSkyOptions() { }
 
-    public: // properties
+        public: // properties
 
-        /** Use advanced atmospheric lighting on the terrain (instead of simple shading) */
-        optional<bool>& atmosphericLighting() { return _atmosphericLighting; }
-        const optional<bool>& atmosphericLighting() const { return _atmosphericLighting; }
+            /** Use advanced atmospheric lighting on the terrain (instead of simple shading) */
+            optional<bool>& atmosphericLighting() { return _atmosphericLighting; }
+            const optional<bool>& atmosphericLighting() const { return _atmosphericLighting; }
 
-        /** Exposure factor for simulated HDR ground lighting. Default is in CTOR */
-        optional<float>& exposure() { return _exposure; }
-        const optional<float>& exposure() const { return _exposure; }
+            /** Exposure factor for simulated HDR ground lighting. Default is in CTOR */
+            optional<float>& exposure() { return _exposure; }
+            const optional<float>& exposure() const { return _exposure; }
 
-        /** Factor for boosting the ambient lighting of the sun during the daytime. Without
-          * this, geometry like buildings or steep hillsides can be lit only based on their
-          * normals and can appear too dark during the daytime.
-          * 0=off, 2-10 are reasonable values. */
-        optional<float>& daytimeAmbientBoost() { return _daytimeAmbientBoost; }
-        const optional<float>& daytimeAmbientBoost() const { return _daytimeAmbientBoost; }
+            /** Factor for boosting the ambient lighting of the sun during the daytime. Without
+              * this, geometry like buildings or steep hillsides can be lit only based on their
+              * normals and can appear too dark during the daytime.
+              * 0=off, 2-10 are reasonable values. */
+            optional<float>& daytimeAmbientBoost() { return _daytimeAmbientBoost; }
+            const optional<float>& daytimeAmbientBoost() const { return _daytimeAmbientBoost; }
 
-        //! Maximum ambient value at high noon. Default=0.75
-        optional<float>& maxAmbientIntensity() { return _maxAmbientIntensity; }
-        const optional<float>& maxAmbientIntensity() const { return _maxAmbientIntensity; }
+            //! Maximum ambient value at high noon. Default=0.75
+            optional<float>& maxAmbientIntensity() { return _maxAmbientIntensity; }
+            const optional<float>& maxAmbientIntensity() const { return _maxAmbientIntensity; }
 
-        /** replacement star definition file */
-        optional<std::string>& starFile() { return _starFile; }
-        const optional<std::string>& starFile() const { return _starFile; }
+            /** replacement star definition file */
+            optional<std::string>& starFile() { return _starFile; }
+            const optional<std::string>& starFile() const { return _starFile; }
 
-        //! Point size to use for stars (default=14)
-        optional<float>& starSize() { return _starSize; }
-        const optional<float>& starSize() const { return _starSize; }
+            /** starfield image URI */
+            optional<URI>& starImageURI() { return _starImageURI; }
+            const optional<URI>& starImageURI() const { return _starImageURI; }
 
-        /** Whether to permit wireframe/point polygonmode rendering. Default is false. */
-        optional<bool>& allowWireframe() { return _allowWireframe; }
-        const optional<bool>& allowWireframe() const { return _allowWireframe; }
+            //! Point size to use for stars (default=14)
+            optional<float>& starSize() { return _starSize; }
+            const optional<float>& starSize() const { return _starSize; }
 
-		/** Whether the Sun is visible. This has no effect on lighting. */
-        optional<bool>& sunVisible() { return _sunVisible; }
-        const optional<bool>& sunVisible() const { return _sunVisible; }
+            /** Whether to permit wireframe/point polygonmode rendering. Default is false. */
+            optional<bool>& allowWireframe() { return _allowWireframe; }
+            const optional<bool>& allowWireframe() const { return _allowWireframe; }
 
-        /** Whether the Moon is visible */
-        optional<bool>& moonVisible() { return _moonVisible; }
-        const optional<bool>& moonVisible() const { return _moonVisible; }
+            /** Whether the Sun is visible. This has no effect on lighting. */
+            optional<bool>& sunVisible() { return _sunVisible; }
+            const optional<bool>& sunVisible() const { return _sunVisible; }
 
-        /** Whether the stars are visible */
-        optional<bool>& starsVisible() { return _starsVisible; }
-        const optional<bool>& starsVisible() const { return _starsVisible; }
+            /** Whether the Moon is visible */
+            optional<bool>& moonVisible() { return _moonVisible; }
+            const optional<bool>& moonVisible() const { return _moonVisible; }
 
-        /** Whether the Earth's atmosphere is visible */
-        optional<bool>& atmosphereVisible() { return _atmosphereVisible; }
-        const optional<bool>& atmosphereVisible() const { return _atmosphereVisible; }
+            /** Whether the stars are visible */
+            optional<bool>& starsVisible() { return _starsVisible; }
+            const optional<bool>& starsVisible() const { return _starsVisible; }
 
-        /** Scale factor for the moon to compensate for apparent/expected size. Default=2.0 */
-        optional<float>& moonScale() { return _moonScale; }
-        const optional<float>& moonScale() const { return _moonScale; }
+            /** Whether the Earth's atmosphere is visible */
+            optional<bool>& atmosphereVisible() { return _atmosphereVisible; }
+            const optional<bool>& atmosphereVisible() const { return _atmosphereVisible; }
 
-        /** URI of texture to load for moon */
-        optional<URI>& moonImageURI() { return _moonImageURI; }
-        const optional<URI>& moonImageURI() const { return _moonImageURI; }
+            /** Scale factor for the moon to compensate for apparent/expected size. Default=2.0 */
+            optional<float>& moonScale() { return _moonScale; }
+            const optional<float>& moonScale() const { return _moonScale; }
 
-        //! Whether to use PBR lighting calculations (instead of Phong)
-        optional<bool>& usePBR() { return _pbr; }
-        const optional<bool>& usePBR() const { return _pbr; }
+            /** URI of texture to load for moon */
+            optional<URI>& moonImageURI() { return _moonImageURI; }
+            const optional<URI>& moonImageURI() const { return _moonImageURI; }
 
-        optional<bool>& useEB() { return _eb; }
-        const optional<bool>& useEB() const { return _eb; }
+            //! Whether to use PBR lighting calculations (instead of Phong)
+            optional<bool>& usePBR() { return _pbr; }
+            const optional<bool>& usePBR() const { return _pbr; }
 
-    public:
-        Config getConfig() const {
-            Config conf = SkyOptions::getConfig();
-            conf.set("atmospheric_lighting", _atmosphericLighting);
-            conf.set("exposure", _exposure);
-            conf.set("daytime_ambient_boost", _daytimeAmbientBoost);
-            conf.set("max_ambient_intensity", _maxAmbientIntensity);
-            conf.set("star_file", _starFile);
-            conf.set("star_size", _starSize);
-            conf.set("allow_wireframe", _allowWireframe);
-			conf.set("sun_visible", _sunVisible);
-            conf.set("moon_visible", _moonVisible);
-            conf.set("stars_visible", _starsVisible);
-            conf.set("atmosphere_visible", _atmosphereVisible);
-            conf.set("moon_scale", _moonScale);
-            conf.set("moon_image", _moonImageURI);
-            conf.set("pbr", _pbr);
-            conf.set("eb", _eb);
-            return conf;
-        }
+            optional<bool>& useEB() { return _eb; }
+            const optional<bool>& useEB() const { return _eb; }
 
-    protected:
-        void mergeConfig( const Config& conf ) {
-            SkyOptions::mergeConfig( conf );
-            fromConfig(conf);
-        }
+        public:
+            Config getConfig() const {
+                Config conf = SkyOptions::getConfig();
+                conf.set("atmospheric_lighting", _atmosphericLighting);
+                conf.set("exposure", _exposure);
+                conf.set("daytime_ambient_boost", _daytimeAmbientBoost);
+                conf.set("max_ambient_intensity", _maxAmbientIntensity);
+                conf.set("star_file", _starFile);
+                conf.set("star_size", _starSize);
+                conf.set("star_image", _starImageURI);
+                conf.set("allow_wireframe", _allowWireframe);
+                conf.set("sun_visible", _sunVisible);
+                conf.set("moon_visible", _moonVisible);
+                conf.set("stars_visible", _starsVisible);
+                conf.set("atmosphere_visible", _atmosphereVisible);
+                conf.set("moon_scale", _moonScale);
+                conf.set("moon_image", _moonImageURI);
+                conf.set("pbr", _pbr);
+                conf.set("eb", _eb);
+                return conf;
+            }
 
-    private:
-        void fromConfig( const Config& conf ) {
-            conf.get("atmospheric_lighting", _atmosphericLighting);
-            conf.get("exposure", _exposure);
-            conf.get("daytime_ambient_boost", _daytimeAmbientBoost);
-            conf.get("max_ambient_intensity", _maxAmbientIntensity);
-            conf.get("star_file", _starFile);
-            conf.get("star_size", _starSize);
-            conf.get("allow_wireframe", _allowWireframe);
-			conf.get("sun_visible", _sunVisible);
-            conf.get("moon_visible", _moonVisible);
-            conf.get("stars_visible", _starsVisible);
-            conf.get("atmosphere_visible", _atmosphereVisible);
-            conf.get("moon_scale", _moonScale);
-            conf.get("moon_image", _moonImageURI);
-            conf.get("pbr", _pbr);
-            conf.get("eb", _eb);
-        }
+        protected:
+            void mergeConfig(const Config& conf) {
+                SkyOptions::mergeConfig(conf);
+                fromConfig(conf);
+            }
 
-        optional<bool>        _atmosphericLighting;
-        optional<float>       _exposure;
-        optional<float>       _daytimeAmbientBoost;
-        optional<float>       _maxAmbientIntensity;
-        optional<std::string> _starFile;
-        optional<float>       _starSize;
-        optional<bool>        _allowWireframe;
-        optional<bool>        _sunVisible;
-        optional<bool>        _moonVisible;
-        optional<bool>        _starsVisible;
-        optional<bool>        _atmosphereVisible;
-        optional<float>       _moonScale;
-        optional<URI>         _moonImageURI;
-        optional<bool>        _pbr;
-        optional<bool> _eb;
-    };
+        private:
+            void fromConfig(const Config& conf) {
+                conf.get("atmospheric_lighting", _atmosphericLighting);
+                conf.get("exposure", _exposure);
+                conf.get("daytime_ambient_boost", _daytimeAmbientBoost);
+                conf.get("max_ambient_intensity", _maxAmbientIntensity);
+                conf.get("star_file", _starFile);
+                conf.get("star_size", _starSize);
+                conf.get("star_image", _starImageURI);
+                conf.get("allow_wireframe", _allowWireframe);
+                conf.get("sun_visible", _sunVisible);
+                conf.get("moon_visible", _moonVisible);
+                conf.get("stars_visible", _starsVisible);
+                conf.get("atmosphere_visible", _atmosphereVisible);
+                conf.get("moon_scale", _moonScale);
+                conf.get("moon_image", _moonImageURI);
+                conf.get("pbr", _pbr);
+                conf.get("eb", _eb);
+            }
 
-} } // namespace osgEarth::SimpleSky
+            optional<bool>        _atmosphericLighting;
+            optional<float>       _exposure;
+            optional<float>       _daytimeAmbientBoost;
+            optional<float>       _maxAmbientIntensity;
+            optional<std::string> _starFile;
+            optional<float>       _starSize;
+            optional<URI>         _starImageURI;
+            optional<bool>        _allowWireframe;
+            optional<bool>        _sunVisible;
+            optional<bool>        _moonVisible;
+            optional<bool>        _starsVisible;
+            optional<bool>        _atmosphereVisible;
+            optional<float>       _moonScale;
+            optional<URI>         _moonImageURI;
+            optional<bool>        _pbr;
+            optional<bool> _eb;
+        };
+
+    }
+} // namespace osgEarth::SimpleSky
 
 #endif // OSGEARTH_DRIVER_SIMPLE_SKY_OPTIONS
 

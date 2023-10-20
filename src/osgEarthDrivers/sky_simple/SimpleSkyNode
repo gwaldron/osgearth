@@ -27,104 +27,107 @@ namespace osg {
     class Light;
 }
 
-namespace osgEarth { namespace SimpleSky
-{
-    using namespace osgEarth;
-    using namespace osgEarth::Util;
-
-    /**
-     * Node that roots the silverlining adapter.
-     */
-    class SimpleSkyNode : public SkyNode
+namespace osgEarth {
+    namespace SimpleSky
     {
-    public:
-        SimpleSkyNode(const SimpleSkyOptions& options);
+        using namespace osgEarth;
+        using namespace osgEarth::Util;
 
-    public: // SkyNode
-
-        osg::Light* getSunLight() const { return _light.get(); }
-
-        void attach(osg::View* view, int lightNum);
-
-        void onSetEphemeris();
-        void onSetDateTime();
-        void onSetSunVisible();
-        void onSetMoonVisible();
-        void onSetStarsVisible();
-        void onSetAtmosphereVisible();
-
-    public: // osg::Object
-
-        void releaseGLObjects(osg::State* state) const;
-        void resizeGLObjectBuffers(unsigned maxSize);
-
-    public: // osg::Node
-
-        void traverse(osg::NodeVisitor&);
-
-        osg::BoundingSphere computeBound() const;
-
-    protected:
-        virtual ~SimpleSkyNode() { }
-
-    private:
-        /** Sets the sun's position as a latitude and longitude. */
-        //void setSunPosition(double lat_degrees, double lon_degrees, osg::View* view);
-
-        struct StarData
+        /**
+         * Node that roots the silverlining adapter.
+         */
+        class SimpleSkyNode : public SkyNode
         {
-            std::string name;
-            double right_ascension;
-            double declination;
-            double magnitude;
-            
-            StarData() : right_ascension(0.0), declination(0.0), magnitude(0.0) { }
-            StarData( std::stringstream &ss );
+        public:
+            SimpleSkyNode(const SimpleSkyOptions& options);
+
+        public: // SkyNode
+
+            osg::Light* getSunLight() const { return _light.get(); }
+
+            void attach(osg::View* view, int lightNum);
+
+            void onSetEphemeris();
+            void onSetDateTime();
+            void onSetSunVisible();
+            void onSetMoonVisible();
+            void onSetStarsVisible();
+            void onSetAtmosphereVisible();
+
+        public: // osg::Object
+
+            void releaseGLObjects(osg::State* state) const;
+            void resizeGLObjectBuffers(unsigned maxSize);
+
+        public: // osg::Node
+
+            void traverse(osg::NodeVisitor&);
+
+            osg::BoundingSphere computeBound() const;
+
+        protected:
+            virtual ~SimpleSkyNode() { }
+
+        private:
+            /** Sets the sun's position as a latitude and longitude. */
+            //void setSunPosition(double lat_degrees, double lon_degrees, osg::View* view);
+
+            struct StarData
+            {
+                std::string name;
+                double right_ascension;
+                double declination;
+                double magnitude;
+
+                StarData() : right_ascension(0.0), declination(0.0), magnitude(0.0) { }
+                StarData(std::stringstream& ss);
+            };
+
+            osg::ref_ptr<osg::Light>   _light;
+            osg::ref_ptr<osg::Uniform> _lightPosUniform;
+
+            osg::ref_ptr<osg::MatrixTransform> _sunXform;
+            osg::ref_ptr<osg::MatrixTransform> _moonXform;
+            osg::ref_ptr<osg::MatrixTransform> _starsXform;
+
+            osg::ref_ptr<osg::Group> _cullContainer;
+
+            float _innerRadius, _outerRadius, _sunDistance, _starRadius, _minStarMagnitude;
+            osg::ref_ptr<osg::Node> _sun, _stars, _atmosphere, _moon;
+            osg::ref_ptr<osg::Uniform> _starAlpha;
+            osg::ref_ptr<osg::Uniform> _starPointSize;
+
+            osg::ref_ptr<PhongLightingEffect> _phong;
+
+            Ellipsoid _ellipsoid;
+
+            SimpleSkyOptions _options;
+
+            bool _useBruneton;
+            bool _useONeil;
+            bool _usePBR;
+            bool _usePhong;
+
+            mutable Mutex _eb_mutex;
+            mutable osg::ref_ptr<osg::Drawable> _eb_drawable;
+            bool _eb_initialized;
+
+            void construct();
+
+            void makeSceneLighting();
+            void makeAtmosphere(const Ellipsoid&);
+            void makeSun();
+            void makeMoon();
+
+            void makeStars();
+            osg::Node* buildStarGeometry(const std::vector<StarData>& stars);
+            osg::Node* buildStarImageGeometry(const Ellipsoid& em, osg::Image* image);
+            void getDefaultStars(std::vector<StarData>& out_stars);
+            bool parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars);
+
+            void setSunPosition(const osg::Vec3d& pos);
+            void setMoonPosition(const osg::Vec3d& pos);
         };
 
-        osg::ref_ptr<osg::Light>   _light;
-        osg::ref_ptr<osg::Uniform> _lightPosUniform;
-        
-        osg::ref_ptr<osg::MatrixTransform> _sunXform;
-        osg::ref_ptr<osg::MatrixTransform> _moonXform;
-        osg::ref_ptr<osg::MatrixTransform> _starsXform;
-
-        osg::ref_ptr<osg::Group> _cullContainer;
-
-        float _innerRadius, _outerRadius, _sunDistance, _starRadius, _minStarMagnitude;
-        osg::ref_ptr<osg::Node> _sun, _stars, _atmosphere, _moon;
-        osg::ref_ptr<osg::Uniform> _starAlpha;
-        osg::ref_ptr<osg::Uniform> _starPointSize;
-
-        osg::ref_ptr<PhongLightingEffect> _phong;
-
-        Ellipsoid _ellipsoid;
-
-		SimpleSkyOptions _options;
-
-        bool _useBruneton;
-        bool _useONeil;
-        bool _usePBR;
-        bool _usePhong;
-
-        mutable Mutex _eb_mutex;
-        mutable osg::ref_ptr<osg::Drawable> _eb_drawable;
-        bool _eb_initialized;
-
-        void construct();
-
-        void makeSceneLighting();
-        void makeAtmosphere(const Ellipsoid&);
-        void makeSun();
-        void makeMoon();
-
-        void makeStars();
-        osg::Node* buildStarGeometry(const std::vector<StarData>& stars);
-        void getDefaultStars(std::vector<StarData>& out_stars);
-        bool parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars);
-
-        void setSunPosition(const osg::Vec3d& pos);
-        void setMoonPosition(const osg::Vec3d& pos);
-    };
-
-} } // namespace osgEarth::SimpleSky
+    }
+} // namespace osgEarth::SimpleSky

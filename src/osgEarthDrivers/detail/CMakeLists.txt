@@ -32,6 +32,8 @@ set(TARGET_H
 	${LIB_PUBLIC_HEADERS}
 	DetailShaders
 	)
+
+SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OPENTHREADS_LIBRARY) 
 	
 setup_plugin(osgearth_detail)
 

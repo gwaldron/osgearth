@@ -6,6 +6,7 @@ SET(TARGET_H
     JoinFeatureFilterOptions
 )
 
+SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OPENTHREADS_LIBRARY) 
 SETUP_PLUGIN(osgearth_featurefilter_join)
 
 # to install public driver includes:

@@ -72,11 +72,14 @@ IF (TRACY_FOUND)
     LINK_WITH_VARIABLES(${LIB_NAME} TRACY_LIBRARY)
 ENDIF(TRACY_FOUND)
 
-INCLUDE_DIRECTORIES(${CESIUM_NATIVE_INCLUDE_DIR})
+# Include the Cesium Native headers BEFORE anything else to ensure that dependencies that might be duplicated like spdlog are included from the Cesium Native headers.
+INCLUDE_DIRECTORIES(BEFORE ${CESIUM_NATIVE_INCLUDE_DIR})
+
 LINK_WITH_VARIABLES(${LIB_NAME}
                     OSG_LIBRARY
                     OSGUTIL_LIBRARY
                     OSGDB_LIBRARY
+                    OSGTEXT_LIBRARY
                     CESIUM_NATIVE_3DTILES_LIBRARY                    
                     CESIUM_NATIVE_3DTILES_SELECTION_LIBRARY
                     CESIUM_NATIVE_UTILITY_LIBRARY

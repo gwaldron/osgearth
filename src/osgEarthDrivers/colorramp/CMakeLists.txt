@@ -4,11 +4,11 @@ SET(TARGET_H
 SET(TARGET_SRC 
     ColorRampTileSource.cpp
 )
-SETUP_PLUGIN(osgearth_colorramp)
 
+SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OPENTHREADS_LIBRARY) 
+SETUP_PLUGIN(osgearth_colorramp)
 
 # to install public driver includes:
 SET(LIB_NAME colorramp)
 SET(LIB_PUBLIC_HEADERS ColorRampOptions)
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
-

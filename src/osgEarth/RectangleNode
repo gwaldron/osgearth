@@ -23,7 +23,7 @@
 #ifndef OSGEARTH_ANNOTATION_RECTANGLE_NODE_H
 #define OSGEARTH_ANNOTATION_RECTANGLE_NODE_H 1
 
-#include <osgEarth/GeoPositionNode>
+#include <osgEarth/LocalGeometryNode>
 #include <osgEarth/Style>
 #include <osgEarth/MapNode>
 #include <osgEarth/Units>
@@ -33,7 +33,7 @@ namespace osgEarth
     /**
      * Rectangle annotation.
      */
-    class OSGEARTH_EXPORT RectangleNode : public GeoPositionNode
+    class OSGEARTH_EXPORT RectangleNode : public LocalGeometryNode
     {
     public:
         enum Corner
@@ -130,7 +130,7 @@ namespace osgEarth
         RectangleNode(const RectangleNode& rhs, const osg::CopyOp& op) { }
 
         void construct();
-        void compile();
+        void buildGeometry();
 
         Style  _style;
         Linear _width;

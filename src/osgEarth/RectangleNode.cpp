@@ -35,7 +35,7 @@
 using namespace osgEarth;
 
 RectangleNode::RectangleNode() :
-GeoPositionNode()
+    LocalGeometryNode()
 {
     construct();
 
@@ -45,7 +45,7 @@ RectangleNode::RectangleNode(const GeoPoint&   position,
                              const Linear&     width,
                              const Linear&     height,
                              const Style&      style) :
-GeoPositionNode()
+    LocalGeometryNode()
 {
     construct();
 
@@ -55,7 +55,7 @@ GeoPositionNode()
 
     setPosition(position);
 
-    compile();
+    buildGeometry();
 }
 
 void
@@ -96,7 +96,7 @@ RectangleNode::setSize( const Linear& width, const Linear& height)
     {
         _width = width;
         _height = height;
-        compile();
+        buildGeometry();
     }
 }
 
@@ -110,7 +110,7 @@ void
 RectangleNode::setStyle( const Style& style )
 {
     _style = style;
-    compile();
+    buildGeometry();
 }
 
 
@@ -348,28 +348,14 @@ RectangleNode::setCorner( Corner corner, const GeoPoint& location)
 
 
 void
-RectangleNode::compile()
-{    
-    // clear out old node:
-    osg::Group* pat = getPositionAttitudeTransform();
-    pat->removeChildren(0, pat->getNumChildren());
-
+RectangleNode::buildGeometry()
+{ 
     // construct a local-origin circle.
     GeometryFactory factory;    
-    Geometry* geom = factory.createRectangle(osg::Vec3d(0,0,0), _width, _height);
-    if ( geom )
+    osg::ref_ptr<Geometry> geom = factory.createRectangle(osg::Vec3d(0,0,0), _width, _height);
+    if (geom.valid())
     {
-        GeometryCompiler compiler;
-        osg::ref_ptr<osg::Node> node = compiler.compile( geom, _style, FilterContext() );
-        if ( node )
-        {
-            node = AnnotationUtils::installOverlayParent( node.get(), _style );
-            getPositionAttitudeTransform()->addChild( node.get() );
-        }
-
-        setDefaultLighting( false );
-
-        applyRenderSymbology( _style );
+        setGeometry(geom.get());
     }
 }
 
@@ -382,7 +368,7 @@ OSGEARTH_REGISTER_ANNOTATION( rectangle, osgEarth::RectangleNode );
 
 RectangleNode::RectangleNode(const Config&         conf,
                              const osgDB::Options* dbOptions) :
-GeoPositionNode(conf, dbOptions)
+    LocalGeometryNode(conf, dbOptions)
 {
     construct();
 
@@ -390,13 +376,13 @@ GeoPositionNode(conf, dbOptions)
     conf.get( "height", _height );
     conf.get( "style",  _style );
 
-    compile();
+    buildGeometry();
 }
 
 Config
 RectangleNode::getConfig() const
 {
-    Config conf = GeoPositionNode::getConfig();
+    Config conf = LocalGeometryNode::getConfig();
     conf.key() = "rectangle";
 
     conf.set( "width",  _width );

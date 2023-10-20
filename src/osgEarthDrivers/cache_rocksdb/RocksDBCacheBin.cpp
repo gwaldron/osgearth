@@ -581,7 +581,7 @@ RocksDBCacheBin::compact()
         return false;
 
     // This could take a while.
-    _db->CompactRange(0L, 0L);
+    _db->CompactRange({}, nullptr, nullptr);
 
     return false;
 }

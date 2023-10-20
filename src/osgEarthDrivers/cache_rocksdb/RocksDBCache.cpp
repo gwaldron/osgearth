@@ -234,7 +234,7 @@ RocksDBCacheImpl::compact()
     if ( !_db )
         return false;
 
-    _db->CompactRange(0L, 0L);
+    _db->CompactRange({}, nullptr, nullptr);
 
     return true;
 }

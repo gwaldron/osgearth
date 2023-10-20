@@ -181,19 +181,28 @@ FeatureNode::build()
         _attachPoint->addChild( node );
 
         // Draped (projected) geometry
+        // Note - once we create a DrapeableNode, we keep it around instead of
+        // creating a new one; if we make a new once each time it will cause flickering
+        // because of how the draping system works.
         if ( ap.draping )
         {
-            DrapeableNode* d = new DrapeableNode();
-            d->addChild( _attachPoint );
-            this->addChild( d );
+            if (_drapeableNode)
+                _drapeableNode->removeChildren(0, _drapeableNode->getNumChildren());
+            else
+                _drapeableNode = new DrapeableNode();
+            _drapeableNode->addChild( _attachPoint );
+            this->addChild(_drapeableNode);
         }
 
         // GPU-clamped geometry
         else if ( ap.gpuClamping )
         {
-            ClampableNode* clampable = new ClampableNode();
-            clampable->addChild( _attachPoint );
-            this->addChild( clampable );
+            if (_clampableNode)
+                _clampableNode->removeChildren(0, _clampableNode->getNumChildren());
+            else
+                _clampableNode = new ClampableNode();
+            _clampableNode->addChild( _attachPoint );
+            this->addChild(_clampableNode);
         }
 
         else

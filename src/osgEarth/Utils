@@ -277,7 +277,7 @@ namespace osgEarth { namespace Util
     /**
      * Adapts an osg::Callback (or derived class) to accept a lambda.
      */
-    template<typename T>
+    template<typename T = osg::Callback>
     struct LambdaCallback : public T {
         LambdaCallback(std::function<void(osg::NodeVisitor&)> func) : _func(func) { }
         std::function<void(osg::NodeVisitor&)> _func;

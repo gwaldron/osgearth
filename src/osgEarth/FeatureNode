@@ -29,13 +29,14 @@
 #include <osgEarth/Feature>
 #include <osgEarth/GeometryCompiler>
 #include <osg/Polytope>
+#include <osgEarth/DrapeableNode>
+#include <osgEarth/ClampableNode>
 
 namespace osgEarth
 {
     /**
-     * Renders a single feature. Since no feature profile is provided,
-     * the feature must contain geometry that is in the same SRS as the map.
-     * The feature must also include the Style you wish to use.
+     * Renders a collection of Features.
+     * If you change the feature geometry, you must call dirty() to refresh the node.
      */
     class OSGEARTH_EXPORT FeatureNode : public AnnotationNode
     {
@@ -106,7 +107,7 @@ namespace osgEarth
         void setGeometryCompilerOptions(GeometryCompilerOptions& options);
 
         /**
-         * Call init to force a rebuild of this FeatureNode.  If you modify the features in the features list or add/remove features
+         * Force a rebuild of this FeatureNode.  If you modify the features in the features list or add/remove features
          * call this function to rebuild the node.
          */
         void dirty();
@@ -127,11 +128,11 @@ namespace osgEarth
 
     public: // osg::Node
 
-        virtual void traverse(osg::NodeVisitor&);
+        void traverse(osg::NodeVisitor&) override;
 
     public: // MapNodeObserver
 
-        virtual void setMapNode( MapNode* mapNode );
+        void setMapNode(MapNode* mapNode) override;
 
     public:
 
@@ -142,38 +143,38 @@ namespace osgEarth
 
         virtual ~FeatureNode() { }
 
-        FeatureList                  _features;
-        GeometryCompilerOptions      _options;
-        osg::Group*                  _attachPoint;
-        osg::Polytope                _featurePolytope;
-        Style                        _style;
-        bool                         _needsRebuild;
-        GeoExtent                    _extent;
+        using ClampCallback = TerrainCallbackAdapter<FeatureNode>;
 
-        typedef TerrainCallbackAdapter<FeatureNode> ClampCallback;
+        FeatureList _features;
+        GeometryCompilerOptions _options;
+        osg::Group* _attachPoint = nullptr;
+        osg::Polytope _featurePolytope;
+        Style _style;
+        GeoExtent _extent;
         osg::ref_ptr<ClampCallback> _clampCallback;
-        bool _clampDirty;
         GeometryClamper::LocalData _clamperData;
+        osg::ref_ptr<DrapeableNode> _drapeableNode;
+        osg::ref_ptr<ClampableNode> _clampableNode;
+        osg::ref_ptr<osg::Node> _compiled;
+        osg::ref_ptr<StyleSheet>_styleSheet;
+        bool _needsRebuild = true;
+        bool _clampDirty = false;
+        FeatureIndexBuilder* _index = nullptr;
 
-        osg::ref_ptr< osg::Node >    _compiled;
+        //! Default subclass constructor
+        FeatureNode() { }
 
-        osg::ref_ptr< StyleSheet >   _styleSheet;
-
-        FeatureIndexBuilder* _index;
-
-        FeatureNode() : _attachPoint(NULL), _needsRebuild(true), _clampDirty(false), _index(NULL) { }
+        //! Default subclass copy constructor
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op)
-         : _attachPoint(rhs._attachPoint)
-         , _needsRebuild(rhs._needsRebuild)
-         , _clampDirty(rhs._clampDirty)
-         , _index(rhs._index)
+            : _attachPoint(rhs._attachPoint)
+            , _needsRebuild(rhs._needsRebuild)
+            , _clampDirty(rhs._clampDirty)
+            , _index(rhs._index)
         { }
 
         void clamp(osg::Node* graph, const Terrain* terrain);
 
         void build();
-
-        //void construct();
 
     public:
 

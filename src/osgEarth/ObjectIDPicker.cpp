@@ -126,7 +126,8 @@ ObjectIDPicker::setView(osgViewer::View* view)
                 {
                     if (me.valid())
                         me->onClick(view, x, y);
-                }
+                },
+                false // don't eat the event
             );
 
             // if we have no graph, install one by default

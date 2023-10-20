@@ -287,9 +287,9 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
             {
                 GeoExtent roofExtent(srs.get(), roofBounds);
                 roofExtent = roofExtent.transform(roofProjSRS.get());
-                //roofBounds.transform( srs.get(), roofProjSRS.get() );
                 osg::ref_ptr<Geometry> projectedInput = input->clone();
                 srs->transform( projectedInput->asVector(), roofProjSRS.get() );
+                roofBounds = projectedInput->getBounds();
                 roofRotation = getApparentRotation( projectedInput.get() );
             }
         }

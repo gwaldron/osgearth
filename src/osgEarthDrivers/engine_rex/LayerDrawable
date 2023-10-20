@@ -50,40 +50,40 @@ namespace osgEarth { namespace REX
         DrawTileCommands _tiles;
 
         // Determines whether to use the default surface shader program
-        Layer::RenderType _renderType;
+        Layer::RenderType _renderType = Layer::RENDERTYPE_TERRAIN_SURFACE;
 
         // Pointer back to the actual Map layer, if there is one
-        const Layer* _layer;
+        const Layer* _layer = nullptr;
 
         // If _layer is a VisibleLayer, this will be set as well, otherwise nullptr
-        const VisibleLayer* _visibleLayer;
+        const VisibleLayer* _visibleLayer = nullptr;
 
         // If _layer is an ImageLayer, this will be set as well, otherwise nullptr
-        const ImageLayer* _imageLayer;
+        const ImageLayer* _imageLayer = nullptr;
 
         // If _layer is a PatchLayer, this will be set, otherwise nullptr
-        const PatchLayer* _patchLayer;
+        const PatchLayer* _patchLayer = nullptr;
 
         // Layer render order, which is pushed into a Uniform at render time.
         // This value is assigned at cull time by RexTerrainEngineNode.
-        int _drawOrder;
+        int _drawOrder = 0;
 
         // Layer render order (only terrain surface layers)
-        int _surfaceDrawOrder;
+        int _surfaceDrawOrder = 0;
 
         // The last layer to render will have this flag set, which will
         // prompt the render to dirty the osg::State to prevent corruption.
         // This flag is set at cull time by RexTerrainEngineNode.
-        bool _clearOsgState;
+        bool _clearOsgState = false;
 
         // Reference the terrain-wide state
         DrawState::Ptr _drawState;
 
         // Whether to render this layer.
-        bool _draw;
+        bool _draw = true;
 
         // shared context
-        class EngineContext* _context;
+        class EngineContext* _context = nullptr;
 
     public: // osg::Drawable
         

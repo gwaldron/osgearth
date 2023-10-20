@@ -38,16 +38,7 @@ using namespace osgEarth::REX;
 
 
 
-LayerDrawable::LayerDrawable() :
-_renderType(Layer::RENDERTYPE_TERRAIN_SURFACE),
-_drawOrder(0),
-_surfaceDrawOrder(0),
-_layer(0L),
-_visibleLayer(0L),
-_imageLayer(0L),
-_patchLayer(0L),
-_clearOsgState(false),
-_draw(true)
+LayerDrawable::LayerDrawable()
 {
     // Since we refresh the render state in the CULL traversal, we must
     // set the variance to dynamic to prevent overlap with DRAW

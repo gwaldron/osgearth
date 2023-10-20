@@ -102,9 +102,14 @@ namespace osgEarth { namespace REX
         // to minimze overdraw.
         bool operator < (const DrawTileCommand& rhs) const
         {
-            if (_range > rhs._range) return false;
-            if (_range < rhs._range) return true;
+            // using LOD seems to be slightly faster than using range, probably
+            // because we also get nice grouping of shared geometry tiles that way.
+            if (_key->getLOD() > rhs._key->getLOD()) return true;
+            if (_key->getLOD() < rhs._key->getLOD()) return false;
             return _geom.get() < rhs._geom.get();
+            //if (_range < rhs._range) return true;
+            //if (_range > rhs._range) return false;
+            //return _geom.get() < rhs._geom.get();
         }
 
         bool operator == (const DrawTileCommand& rhs) const

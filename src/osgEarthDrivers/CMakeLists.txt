@@ -57,9 +57,7 @@ if(OSGEARTH_BUILD_LEVELDB_CACHE)
     add_subdirectory(cache_leveldb)
 endif()
 
-if(OSGEARTH_BUILD_ROCKSDB_CACHE)
-    add_subdirectory(cache_rocksdb)
-endif()
+add_subdirectory(cache_rocksdb)
 
 IF(NOT APPLE AND NOT ANDROID)
     add_subdirectory(fastdxt)

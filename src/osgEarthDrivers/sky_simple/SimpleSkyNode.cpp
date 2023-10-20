@@ -117,20 +117,22 @@ namespace
 
         osg::DrawElementsUShort* el = new osg::DrawElementsUShort(GL_TRIANGLES);
         el->reserve(latSegments * lonSegments * 6);
+        int row_size = lonSegments + 1;
 
         for (int y = 0; y <= latSegments; ++y)
         {
-            double lat = -90.0 + segmentSize * (double)y;
+            double lat = clamp(-90.0 + segmentSize * (double)y, -90.0, 90.0);
+
             for (int x = 0; x <= lonSegments; ++x)
             {
-                double lon = -180.0 + segmentSize * (double)x;
+                double lon = clamp(-180.0 + segmentSize * (double)x, -180.0, 180.0);
                 osg::Vec3 g = ellipsoid.geodeticToGeocentric(osg::Vec3d(lon, lat, hae));
                 verts->push_back(g);
 
                 if (genTexCoords)
                 {
-                    double s = (-lon + 180) / 360.0;
-                    double t = (lat + 90.0) / 180.0;
+                    float s = 0.5 + (1.0 - ((lon + 180) / 360.0));
+                    float t = (lat + 90.0) / 180.0;
                     texCoords->push_back(osg::Vec2(s, t));
                 }
 
@@ -146,13 +148,13 @@ namespace
                 {
                     int x_plus_1 = x + 1; // x < lonSegments - 1 ? x + 1 : 0;
                     int y_plus_1 = y + 1;
-                    el->push_back(y * lonSegments + x);
-                    el->push_back(y * lonSegments + x_plus_1);
-                    el->push_back(y_plus_1 * lonSegments + x);
+                    el->push_back(y * row_size + x);
+                    el->push_back(y * row_size + x_plus_1);
+                    el->push_back(y_plus_1 * row_size + x);
 
-                    el->push_back(y * lonSegments + x_plus_1);
-                    el->push_back(y_plus_1 * lonSegments + x_plus_1);
-                    el->push_back(y_plus_1 * lonSegments + x);
+                    el->push_back(y * row_size + x_plus_1);
+                    el->push_back(y_plus_1 * row_size + x_plus_1);
+                    el->push_back(y_plus_1 * row_size + x);
                 }
             }
         }
@@ -850,9 +852,24 @@ SimpleSkyNode::makeStars()
 
     _starRadius = 20000.0 * (_sunDistance > 0.0 ? _sunDistance : _outerRadius);
 
+    URI starImageURI;
+
     if (_options.starImageURI().isSet())
     {
-        auto image = _options.starImageURI()->getImage();
+        starImageURI = _options.starImageURI().get();
+    }
+    else
+    {
+        const char* temp = ::getenv("OSGEARTH_STAR_IMAGE_URI");
+        if (temp)
+        {
+            starImageURI = std::string(temp);
+        }
+    }
+
+    if (!starImageURI.empty())
+    {
+        auto image = starImageURI.getImage();
         if (image)
         {
             Ellipsoid stars_em(_starRadius, _starRadius);
@@ -860,7 +877,7 @@ SimpleSkyNode::makeStars()
         }
         else
         {
-            OE_WARN << LC << "Failed to load starfield image from " << _options.starImageURI()->full() << std::endl;
+            OE_WARN << LC << "Failed to load starfield image from " << starImageURI.full() << std::endl;
         }
     }
 
@@ -980,27 +997,51 @@ SimpleSkyNode::buildStarImageGeometry(const Ellipsoid& em, osg::Image* image)
     ss->setAttributeAndModes(new osg::BlendFunc(GL_ONE, GL_ONE), osg::StateAttribute::ON);
 
     auto texture = new osg::Texture2D(image);
-    texture->setWrap(texture->WRAP_S, texture->CLAMP_TO_EDGE);
-    texture->setWrap(texture->WRAP_T, texture->CLAMP_TO_EDGE);
-    ss->setAttributeAndModes(texture, 1);
+    texture->setWrap(texture->WRAP_S, texture->REPEAT);
+    texture->setWrap(texture->WRAP_T, texture->REPEAT);
+    ss->setAttribute(texture, 1);
     ss->addUniform(new osg::Uniform("starTex", 0));
 
     const char* vs = R"(
-        #version 330
-        out vec2 texcoord;
-        void main() { texcoord = gl_MultiTexCoord0.st; gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; }
-     )";
+        out vec3 star_data;
+        uniform mat4 osg_ViewMatrixInverse;
+        uniform vec3 atmos_v3LightDir;
+        float stars_remap(float V,float L,float H,float A,float B) {
+            float vr = (clamp(V, L, H)-L)/(H-L); 
+            return A + vr * (B-A); 
+        }
+        void stars_vert(inout vec4 vert) {
+            vert.z = vert.w;
+            star_data.st = gl_MultiTexCoord0.st;
+            vec3 eye = osg_ViewMatrixInverse[3].xyz;
+            float hae = length(eye) - 6378137.0; 
+            float highness = stars_remap(hae, 25000.0, 150000.0, 0.0, 1.0);
+            eye = normalize(eye); 
+            // darkness: visibility increase as the sun goes around the other side of the earth
+            float cosa = dot(eye, atmos_v3LightDir);
+            float darkness = 1.0-stars_remap(dot(eye, atmos_v3LightDir), -0.25, 0.0, 0.0, 1.0); 
+            star_data.z = clamp(highness + darkness, 0.0, 1.0);
+        }
+    )";
     const char* fs = R"(
-        #version 330
-        in vec2 texcoord;
+        in vec3 star_data;
         uniform sampler2D starTex;
-        void main() { gl_FragColor = texture(starTex, texcoord); }
+        void stars_frag(inout vec4 color) { 
+            color = texture(starTex, star_data.st);
+            color *= star_data.z;
+        }
     )";
 
-    auto program = new osg::Program();
-    program->addShader(new osg::Shader(osg::Shader::VERTEX, vs));
-    program->addShader(new osg::Shader(osg::Shader::FRAGMENT, fs));
-    ss->setAttribute(program, 1);
+    auto vp = VirtualProgram::getOrCreate(ss);
+    vp->setName("SimpleSky Stars");
+    vp->setInheritShaders(false);
+    vp->setFunction("stars_vert", vs, vp->LOCATION_VERTEX_CLIP);
+    vp->setFunction("stars_frag", fs, vp->LOCATION_FRAGMENT_COLORING);
+
+    //auto program = new osg::Program();
+    //program->addShader(new osg::Shader(osg::Shader::VERTEX, vs));
+    //program->addShader(new osg::Shader(osg::Shader::FRAGMENT, fs));
+    //ss->setAttribute(program, 1);
 
     // A separate camera isolates the projection matrix calculations.
     auto cam = new osg::Camera();

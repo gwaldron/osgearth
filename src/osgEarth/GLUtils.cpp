@@ -401,6 +401,7 @@ namespace
 #define GL_DEBUG_GROUP_STACK_DEPTH        0x826D
 #endif
 
+    GL_APIENTRY
     void s_oe_gldebugproc(
         GLenum source,
         GLenum type,

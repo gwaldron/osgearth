@@ -908,7 +908,7 @@ INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR} ${CURL_INCLUDE_DIR} ${OSG_INCLUDE_DIR} )
 
 # spdlog support?
 if (spdlog_FOUND)
-    link_internal(${LIB_NAME} spdlog::spdlog)
+    TARGET_LINK_LIBRARIES(${LIB_NAME} PRIVATE spdlog::spdlog)
     message(STATUS "Linking osgEarth with spdlog")
 endif()
 

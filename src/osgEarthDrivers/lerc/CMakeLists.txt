@@ -1,4 +1,6 @@
-INCLUDE_DIRECTORIES( ../../third_party/lerc/include )
+INCLUDE_DIRECTORIES(BEFORE ../../third_party/lerc/include )
+
+SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OPENTHREADS_LIBRARY) 
 
 SET(TARGET_SRC
     ReaderWriterLERC.cpp

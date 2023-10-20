@@ -57,6 +57,8 @@ set(INCLUDED_SRC_FILES
     eb_compute_shaders.cpp
     eb_osgearth_shaders.cpp)
 
+SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OPENTHREADS_LIBRARY OPENGL_gl_LIBRARY) 
+
 setup_plugin(osgearth_sky_simple)
 
 source_group( "Inline Shaders" FILES ${INCLUDED_SRC_FILES})

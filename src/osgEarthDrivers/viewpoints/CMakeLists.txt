@@ -11,6 +11,8 @@ SET(LIB_PUBLIC_HEADERS
 	
 SET(TARGET_H
 	${LIB_PUBLIC_HEADERS} )
+
+SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGGA_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY) 	
 	
 setup_plugin(osgearth_viewpoints)
 
@@ -18,4 +20,3 @@ setup_plugin(osgearth_viewpoints)
 SET(LIB_NAME viewpoints)
 
 #INCLUDE(ModuleInstallOsgEarthExtensionIncludes OPTIONAL)
-

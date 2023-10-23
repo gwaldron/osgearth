@@ -249,16 +249,17 @@ namespace osgEarth
 
                         if (fallback)
                         {
-                            // this path is taken when we already have a partial tile from
+                            // This path runs when we already have a partial tile from
                             // a higher priority layer, and need to fill in the empty samples
                             // from other lower priority layers.
-                            
-                            // NB: do not call mayHaveData() on the key, since we want to be sure
-                            // to fail and fall back until we get data.
-                            while (
-                                input.valid() == false &&
-                                inputKey.valid() &&
-                                imageLayer->isKeyInLegalRange(inputKey))
+                            // NB: layer->mayHaveData() is insufficient here. We want to be sure
+                            // to fail and fall back until we get data, and mayHaveData() will return
+                            // false if our LOD exceeds that of the source layer. Instead we just query
+                            // the "best available" key and start the search from there if that
+                            // key is valid. (It will be invalid, for example, if the extents don't intersect.)
+                            inputKey = imageLayer->getBestAvailableTileKey(inputKey);
+
+                            while (inputKey.valid() && !input.valid() && imageLayer->isKeyInLegalRange(inputKey))
                             {
                                 input = createCoverage(inputKey, imageLayer, progress);
 
@@ -266,9 +267,9 @@ namespace osgEarth
                                     inputKey.makeParent();
                             }
                         }
-                        else
+                        else if (imageLayer->mayHaveData(inputKey))
                         {
-                            // this path is taken when we have no data at all yet.
+                            // This path runs when we have no data at all yet.
                             input = createCoverage(inputKey, imageLayer, progress);
                         }
 

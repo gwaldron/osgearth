@@ -47,7 +47,7 @@ namespace osgEarth
         META_Layer(osgEarth, AnnotationLayer, Options, VisibleLayer, Annotations);
 
         //! Adds an annotation to the layer
-        void addChild(AnnotationNode*);
+        void addChild(osg::Node*);
 
         //! Gets the group to which you can add annotations
         osg::Group* getGroup() const;

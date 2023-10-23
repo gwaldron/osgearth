@@ -66,7 +66,8 @@ KML_GroundOverlay::build( xml_node<>* node, KMLContext& cx )
             return;
         }
 
-        im = new ImageOverlay( cx._mapNode, image.get() );
+        //im = new ImageOverlay( cx._mapNode, image.get() );
+        im = new ImageOverlay(nullptr, image.get());
         im->setBoundsAndRotation( Bounds(west, south, 0, east, north, 0), rotation );
         cx._groupStack.top()->addChild( im );
     }
@@ -85,7 +86,7 @@ KML_GroundOverlay::build( xml_node<>* node, KMLContext& cx )
             return;
         }
 
-        im = new ImageOverlay(cx._mapNode, image.get());
+        im = new ImageOverlay(nullptr, image.get());
         im->setBoundsAndRotation(Bounds(west, south, 0, east, north, 0), rotation);
         cx._groupStack.top()->addChild(im);
     }
@@ -105,7 +106,7 @@ KML_GroundOverlay::build( xml_node<>* node, KMLContext& cx )
             }
 
             const Geometry& p = *(g._geom.get());
-            im = new ImageOverlay( cx._mapNode, image.get() );
+            im = new ImageOverlay(nullptr, image.get() );
             im->setCorners( 
                 osg::Vec2d( p[0].x(), p[0].y() ),
                 osg::Vec2d( p[1].x(), p[1].y() ),

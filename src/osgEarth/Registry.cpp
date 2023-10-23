@@ -175,6 +175,11 @@ _maxImageDimension(INT_MAX)
     if ( !zipLib.empty() )
         osgDB::Registry::instance()->loadLibrary( zipLib );
 
+    // pre-load KML/KMZ plugin so that we can use it in URIs
+    std::string kmzLib = osgDB::Registry::instance()->createLibraryNameForExtension("kml");
+    if (!kmzLib.empty())
+        osgDB::Registry::instance()->loadLibrary(kmzLib);
+
     _defaultOptions = new osgDB::Options();
 
     const char* teStr = ::getenv(OSGEARTH_ENV_TERRAIN_ENGINE_DRIVER);

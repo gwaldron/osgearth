@@ -82,14 +82,9 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
 
     osgDB::ReaderWriter::ReadResult readNode(std::istream& in, const osgDB::Options* options ) const override
     {
-        if ( !options )
-            return ReadResult("Missing required MapNode option");
-
-        // this plugin requires that you pass in a MapNode* in options.
+        // this plugin can receive an optional MapNode* in options.
         MapNode* mapNode = const_cast<MapNode*>(
             static_cast<const MapNode*>( options->getPluginData("osgEarth::MapNode")) );
-        if ( !mapNode )
-            return ReadResult("Missing required MapNode option");
 
         // grab the KMLOptions if present
         const KML::KMLOptions* kmlOptions =

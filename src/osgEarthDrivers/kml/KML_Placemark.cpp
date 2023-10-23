@@ -126,7 +126,7 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                     // if there's a model, render that - models do NOT get labels.
                     if ( model )
                     {
-                        ModelNode* node = new ModelNode( cx._mapNode, style, cx._dbOptions.get() );
+                        ModelNode* node = new ModelNode(nullptr, style, cx._dbOptions.get() );
                         node->setPosition( position );
 
                         // model scale:
@@ -186,7 +186,7 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
 
                     Feature* feature = new Feature(geom, cx._srs.get(), style);
                     featureNode = new FeatureNode(feature );
-                    featureNode->setMapNode( cx._mapNode );
+                    //featureNode->setMapNode( cx._mapNode );
                 }
 
                 if ( iconNode )

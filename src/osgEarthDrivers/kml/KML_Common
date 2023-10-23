@@ -22,7 +22,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/URI>
-#include <osgEarth/MapNode>
 #include <osgEarth/SpatialReference>
 #include <osgEarth/Style>
 #include <osgEarth/StyleSheet>
@@ -73,7 +72,6 @@ namespace osgEarth_kml
 
     struct KMLContext
     {
-        MapNode*                              _mapNode;         // reference map node
         const KMLOptions*                     _options;         // user options
         osg::ref_ptr<StyleSheet>              _sheet;           // entire style sheet
         Style                                 _activeStyle;     // currently active style

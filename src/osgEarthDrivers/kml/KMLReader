@@ -52,8 +52,8 @@ namespace osgEarth_kml
         osg::Node* read( xml_document<>& doc, const osgDB::Options* dbOptions );
 
     private:
-        MapNode*          _mapNode;
-        const KMLOptions* _options;
+        MapNode* _mapNode = nullptr;
+        const KMLOptions* _options = nullptr;
     };
 
 } // namespace osgEarth_kml

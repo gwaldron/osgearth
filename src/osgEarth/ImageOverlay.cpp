@@ -220,9 +220,11 @@ _draped(true)
 {        
     construct();
 
-    ImageOverlay::setMapNode(mapNode);
-
-    compile();
+    if (mapNode)
+    {
+        ImageOverlay::setMapNode(mapNode);
+        compile();
+    }
 }
 
 void
@@ -360,6 +362,8 @@ namespace
 
 osg::Node* ImageOverlay::createNode()
 {
+    OE_SOFT_ASSERT_AND_RETURN(getMapNode(), new osg::Group());
+
     const SpatialReference* mapSRS = getMapNode()->getMapSRS();
     auto geoSRS = mapSRS->getGeodeticSRS();
 
@@ -451,9 +455,6 @@ osg::Node* ImageOverlay::createNode()
             de->push_back(lr);  de->push_back(ur); de->push_back(ul);
         }
     }
-
-
-
 
     return transform;
 }

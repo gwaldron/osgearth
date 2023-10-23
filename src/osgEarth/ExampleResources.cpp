@@ -28,6 +28,7 @@
 #include <osgEarth/ActivityMonitorTool>
 #include <osgEarth/LogarithmicDepthBuffer>
 #include <osgEarth/SimpleOceanLayer>
+#include <osgEarth/AnnotationLayer>
 
 #include <osgEarth/AnnotationData>
 #include <osgEarth/TerrainEngineNode>
@@ -690,7 +691,8 @@ MapNodeHelper::parse(
         defaultText->halo() = Stroke(0.3,0.3,0.3,1.0);
         kml_options.defaultTextSymbol() = defaultText;
 
-        osg::Node* kml = KML::load( URI(kmlFile), mapNode, kml_options );
+        URI kmlFileURI( kmlFile );
+        osg::Node* kml = KML::load(kmlFileURI, mapNode, kml_options );
         if ( kml )
         {
             if (kmlUI)
@@ -702,7 +704,12 @@ MapNodeHelper::parse(
                     mainContainer->addControl( c );
                 }
             }
-            mapNode->addChild( kml );
+            
+            auto kmllayer = new AnnotationLayer();
+            kmllayer->setName(kmlFileURI.base());
+            kmllayer->addChild(kml);
+
+            mapNode->getMap()->addLayer(kmllayer);
         }
         else
         {

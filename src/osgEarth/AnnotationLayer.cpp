@@ -63,7 +63,7 @@ AnnotationLayer::getGroup() const
 }
 
 void
-AnnotationLayer::addChild(AnnotationNode* node)
+AnnotationLayer::addChild(osg::Node* node)
 {
     _root->addChild(node);
 }

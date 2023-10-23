@@ -99,6 +99,7 @@ namespace osgEarth
         class EnvironmentGUI : public BaseGUI
         {
         private:
+            osg::observer_ptr<MapNode> _mapNode;
             osg::observer_ptr<SkyNode> _skyNode;
             osg::observer_ptr<ShadowCaster> _shadowCaster;
             osg::observer_ptr<WindLayer> _windLayer;
@@ -116,7 +117,7 @@ namespace osgEarth
             float _wind_power = 1.0f;
 
         public:
-            EnvironmentGUI() : BaseGUI("Environment")
+            EnvironmentGUI() : BaseGUI("Sky")
             {
                 DateTime now;
                 _hour = now.hours(), _day = now.day(), _month = now.month(), _year = now.year();
@@ -153,25 +154,41 @@ namespace osgEarth
 
             void draw(osg::RenderInfo& ri) override
             {
-                if (!isVisible() || !findNodeOrHide(_skyNode, ri))
+                if (!findNodeOrHide(_mapNode, ri))
                     return;
 
-                if (_first)
+                if (ImGui::Begin(name(), visible()))
                 {
-                    findNode(_shadowCaster, ri);
-                    if (_shadowCaster.valid())
-                        _shadows = _shadowCaster->getEnabled();
+                    if (!findNode(_skyNode, ri))
+                    {
+                        ImGui::Text("No Sky installed.");
+                        if (ImGui::Button("Install"))
+                        {
+                            auto sky = SkyNode::create();
+                            auto parent = _mapNode->getParent(0);
+                            sky->addChild(_mapNode.get());
+                            parent->addChild(sky);
+                            parent->removeChild(_mapNode.get());
+                            sky->attach(view(ri));
+                        }
+                        ImGui::End();
+                        return;
+                    }
 
-                    findLayer(_windLayer, ri);
+                    if (_first)
+                    {
+                        findNode(_shadowCaster, ri);
+                        if (_shadowCaster.valid())
+                            _shadows = _shadowCaster->getEnabled();
 
-                    _skyNode->setDateTime(DateTime(_year, _month, _day, _hour));
+                        findLayer(_windLayer, ri);
 
-                    // so we can visualize tiume-series layers.
-                    _skyNode->setSimulationTimeTracksDateTime(true);
-                }
+                        _skyNode->setDateTime(DateTime(_year, _month, _day, _hour));
 
-                ImGui::Begin(name(), visible());
-                {
+                        // so we can visualize tiume-series layers.
+                        _skyNode->setSimulationTimeTracksDateTime(true);
+                    }
+
                     bool lighting = _skyNode->getLighting();
                     ImGui::Checkbox("Lighting", &lighting);
                     _skyNode->setLighting(lighting);
@@ -312,10 +329,10 @@ namespace osgEarth
 
                         ImGuiLTable::End();
                     }
+
+                    _first = false;
                 }
                 ImGui::End();
-
-                _first = false;
             }
         };
     }

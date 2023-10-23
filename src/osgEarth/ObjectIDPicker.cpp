@@ -105,6 +105,8 @@ ObjectIDPicker::~ObjectIDPicker()
 void
 ObjectIDPicker::setView(osgViewer::View* view)
 {
+    OE_SOFT_ASSERT_AND_RETURN(_rttSize >= 1, void());
+
     if (view != _view.get())
     {
         _view = view;

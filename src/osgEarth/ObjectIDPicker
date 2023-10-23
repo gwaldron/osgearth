@@ -53,6 +53,10 @@ namespace osgEarth { namespace Util
         void setBuffer(int value) { _buffer = value; }
         int getBuffer() const { return _buffer; }
 
+        //! Size of the RTT image (pixels per side) - must call before setView()
+        void setRTTSize(int value) { _rttSize = value; }
+        int getRTTSize() const { return _rttSize; }
+
         using Function = std::function<void(ObjectID)>;
 
         //! Function to call when the user hovers an object

@@ -20,7 +20,7 @@ import sys, os
 
 # Markdown support
 #from recommonmark.parser import CommonMarkParser
-from recommonmark.transform import AutoStructify
+#from recommonmark.transform import AutoStructify
 
 # -- General configuration -----------------------------------------------------
 
@@ -240,7 +240,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'osgEarth', u'osgEarth Documentation',
-   u'Pelican Mapping', 'osgEarth', 'One line description of project.',
+   u'Pelican Mapping', 'osgEarth', 'Geospatial SDK for OpenSceneGraph',
    'Miscellaneous'),
 ]
 
@@ -259,4 +259,4 @@ def setup(app):
     #app.add_config_value('recommonmark_config', {
     #    'enable_auto_toc_tree': True,
     #}, True)
-    app.add_transform(AutoStructify)
+    #app.add_transform(AutoStructify)

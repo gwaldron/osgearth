@@ -21,6 +21,7 @@
 
 #include "ImGui"
 #include <osgEarth/AnnotationData>
+#include <osgEarth/ViewFitter>
 #include <osg/NodeVisitor>
 
 namespace
@@ -51,6 +52,8 @@ namespace
     struct GetAnnotations : public osg::NodeVisitor
     {
         osgEarth::EarthManipulator* manip = nullptr;
+        const osgEarth::SpatialReference* srs = nullptr;
+        osg::Camera* camera = nullptr;
 
         GetAnnotations()
         {
@@ -60,7 +63,9 @@ namespace
 
         void apply(osg::Node& node) override
         {
+            auto anode = dynamic_cast<osgEarth::AnnotationNode*>(&node);
             auto data = dynamic_cast<osgEarth::AnnotationData*>(node.getUserData());
+
             if (data)
             {
                 ImGui::PushID((std::uintptr_t)data);
@@ -86,10 +91,38 @@ namespace
 
                 ImGui::Indent();
             }
+            else if (anode)
+            {
+                ImGui::PushID((std::uintptr_t)data);
+
+                auto name = anode->getName();
+                if (name.empty()) name = "[" + std::string(anode->className()) + "]";
+
+                bool visible = node.getNodeMask() != 0;
+                if (ImGui::Checkbox("", &visible))
+                {
+                    SetAnnotationNodeMask set(visible ? ~0 : 0);
+                    node.accept(set);
+                }
+                ImGui::SameLine();
+                bool is_selected = false;
+                if (ImGui::Selectable(name.c_str(), &is_selected) && manip)
+                {
+                    ViewFitter fitter(srs, camera);
+                    Viewpoint vp;
+                    fitter.createViewpoint(anode, vp);
+                    manip->setViewpoint(vp);
+                }
+
+                ImGui::PopID();
+
+                ImGui::Indent();
+
+            }
 
             traverse(node);
 
-            if (data)
+            if (data || anode)
             {
                 ImGui::Unindent();
             }
@@ -131,6 +164,8 @@ namespace osgEarth
                 {
                     GetAnnotations getannos;
                     getannos.manip = dynamic_cast<osgEarth::EarthManipulator*>(view(ri)->getCameraManipulator());
+                    getannos.srs = _mapNode->getMapSRS();
+                    getannos.camera = camera(ri);
                     camera(ri)->accept(getannos);
                 }
                 ImGui::End();

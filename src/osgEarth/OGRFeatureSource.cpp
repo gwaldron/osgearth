@@ -698,6 +698,35 @@ OGRFeatureSource::openImplementation()
     return Status::NoError;
 }
 
+void
+OGRFeatureSource::dirty()
+{
+    if (_profile.valid())
+    {
+        setFeatureProfile(new FeatureProfile(_profile->getExtent()));
+    }
+    else if (_geometry.valid())
+    {
+        // if the user specified explicit geometry, use that and the calculated
+        // extent of the geometry to derive a profile.
+        GeoExtent ex;
+        if (_profile.valid())
+        {
+            ex = GeoExtent(_profile->getSRS(), _geometry->getBounds());
+        }
+
+        if (!ex.isValid())
+        {
+            // default to WGS84 Lat/Long
+            //osg::ref_ptr<const Profile> gg = Profile::create(Profile::GLOBAL_GEODETIC);
+            //ex = gg->getExtent();
+            ex = GeoExtent(SpatialReference::get("wgs84"), _geometry->getBounds());
+        }
+
+        setFeatureProfile(new FeatureProfile(ex));
+    }
+}
+
 const Status&
 OGRFeatureSource::create(const FeatureProfile* profile,
                          const FeatureSchema& schema,

@@ -123,6 +123,10 @@ namespace osgEarth
 
         virtual void buildSpatialIndex();
 
+        //! Call this if the underlying geometry changes and we need to
+        //! recompute the profile.
+        void dirty() override;
+
     protected:
 
         virtual ~OGRFeatureSource();

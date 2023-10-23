@@ -111,7 +111,12 @@ void FeatureModelLayer::dirty()
     // create the scene graph
     if (isOpen())
     {
-        create();
+        if (getFeatureSource())
+        {
+            // tell the source to recompute its profile, etc.
+            getFeatureSource()->dirty();
+            create();
+        }
     }
 }
 

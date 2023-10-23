@@ -705,7 +705,7 @@ FeatureModelGraph::open()
             _lodmap.resize(lod + 1, 0L);
             _lodmap[lod] = level;
 
-            OE_INFO << LC << _session->getFeatureSource()->getName()
+            OE_DEBUG << LC << _session->getFeatureSource()->getName()
                 << ": No levels specified, so adding one for LOD=" << lod 
                 << ", maxRange=" << maxRange.get()
                 << std::endl;

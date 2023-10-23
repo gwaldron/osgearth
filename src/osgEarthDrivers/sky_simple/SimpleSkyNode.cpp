@@ -758,7 +758,7 @@ SimpleSkyNode::makeMoon()
         texture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
         texture->setResizeNonPowerOfTwoHint(false);
         texture->setUnRefImageDataAfterApply(false);
-        stateSet->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
+        stateSet->setTextureAttribute(0, texture, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
         stateSet->addUniform(new osg::Uniform("moonTex", 0));
 
 #ifdef OSG_GL3_AVAILABLE

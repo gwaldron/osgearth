@@ -118,6 +118,7 @@ namespace osgEarth {
                             ImGui::Separator();
                         }
 
+#if 0
                         ImGui::Separator();
 
                         ImGuiLTable::Begin("viewpoints-settings");
@@ -130,6 +131,7 @@ namespace osgEarth {
                                 manip->getSettings()->setAutoViewpointDurationLimits(xmin, xmax);
                         }
                         ImGuiLTable::End();
+#endif
 
                         static bool show_xml = false;
                         ImGui::Checkbox("XML dump", &show_xml);

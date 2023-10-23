@@ -210,7 +210,7 @@ namespace osgEarth
                 _menu["Tools"].push_back(GUIPtr(new ContentBrowserGUI));
                 //_menu["Tools"].push_back(GUIPtr(new NotifyGUI));
                 _menu["Tools"].push_back(GUIPtr(new SceneGraphGUI));
-                _menu["Tools"].push_back(GUIPtr(new PickerGUI));
+                //_menu["Tools"].push_back(GUIPtr(new PickerGUI));
                 _menu["Tools"].push_back(GUIPtr(new TextureInspectorGUI));
                 _menu["Tools"].push_back(GUIPtr(new ShaderGUI(args)));
                 _menu["Tools"].push_back(GUIPtr(new RenderingGUI()));

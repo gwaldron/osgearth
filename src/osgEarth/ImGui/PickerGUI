@@ -154,12 +154,12 @@ namespace osgEarth { namespace GUI
             }
             ImGui::End();
         }
-        
+
         osg::observer_ptr<MapNode> _mapNode;
         bool _installedPicker = false;
         osgEarth::Util::ObjectIDPicker* _picker;
         osg::Uniform* _highlightUniform;
-        osg::ref_ptr < const Feature > _pickedFeature;
+        osg::ref_ptr<const Feature> _pickedFeature;
     };
 } }
 

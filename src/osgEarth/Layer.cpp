@@ -50,11 +50,10 @@ Layer::Options::getConfig() const
     conf.set("read_options", osgOptionString());
     conf.set("l2_cache_size", l2CacheSize());
 
-    for(std::vector<ShaderOptions>::const_iterator i = shaders().begin();
-        i != shaders().end();
-        ++i)
+    conf.remove("shader");
+    for(auto& shader : shaders())
     {
-        conf.add("shader", i->getConfig());
+        conf.add("shader", shader.getConfig());
     }
 
     return conf;
@@ -89,8 +88,8 @@ Layer::Options::fromConfig(const Config& conf)
     conf.get("shader_define", shaderDefine());
 
     const ConfigSet& shadersConf = conf.children("shader");
-    for(ConfigSet::const_iterator i = shadersConf.begin(); i != shadersConf.end(); ++i)
-        shaders().push_back(ShaderOptions(*i));
+    for (auto& shaderConf : shadersConf)
+        shaders().push_back(ShaderOptions(shaderConf));
 
     conf.get("terrain", terrainPatch());
     conf.get("patch", terrainPatch());

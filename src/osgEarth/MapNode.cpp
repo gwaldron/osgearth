@@ -537,16 +537,16 @@ MapNode::getConfig() const
     const Map* cmap = _map.get();
     Config optionsConf = cmap->options().getConfig();
     optionsConf.merge( options().getConfig() );
-    mapConf.add( "options", optionsConf );
+    if (!optionsConf.empty())
+    {
+        mapConf.add("options", optionsConf);
+    }
 
     // the layers
     LayerVector layers;
     _map->getLayers(layers);
-
-    for (LayerVector::const_iterator i = layers.begin(); i != layers.end(); ++i)
+    for(auto& layer : layers)
     {
-        const Layer* layer = i->get();
-
         Config layerConf = layer->getConfig();
         if (!layerConf.empty() && !layerConf.key().empty())
         {

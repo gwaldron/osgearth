@@ -21,6 +21,7 @@
 
 #include "ImGui"
 #include <osgEarth/AnnotationData>
+#include <osgEarth/AnnotationNode>
 #include <osgEarth/ViewFitter>
 #include <osg/NodeVisitor>
 
@@ -108,8 +109,8 @@ namespace
                 bool is_selected = false;
                 if (ImGui::Selectable(name.c_str(), &is_selected) && manip)
                 {
-                    ViewFitter fitter(srs, camera);
-                    Viewpoint vp;
+                    osgEarth::Util::ViewFitter fitter(srs, camera);
+                    osgEarth::Viewpoint vp;
                     fitter.createViewpoint(anode, vp);
                     manip->setViewpoint(vp);
                 }

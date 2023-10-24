@@ -294,7 +294,7 @@ configure_package_config_file(
   
 write_basic_package_version_file(
     ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
-    VERSION 3.4.0
+    VERSION ${OSGEARTH_VERSION}
     COMPATIBILITY SameMajorVersion)
   
 install(

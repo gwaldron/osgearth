@@ -175,6 +175,13 @@ TerrainEngineNode::setMap(const Map* map, const TerrainOptions& options)
         }
     }
 
+    // Hide the terrain engine if it's marked as not visible.  This is mostly used when
+    // rendering whole earth layers like Google Earth tiles and you don't want to see the globe.
+    if (!*options.visible())
+    {
+        setNodeMask(0);
+    }
+
     // invoke the callback for a subclass to do its thing
     onSetMap();
 }

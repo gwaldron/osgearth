@@ -35,9 +35,7 @@ CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, const std::string& to
         Context::instance().assetAccessor, Context::instance().prepareRenderResources, Context::instance().asyncSystem, Context::instance().creditSystem, Context::instance().logger, nullptr
     };
 
-    Cesium3DTilesSelection::TilesetOptions options;
-    options.forbidHoles = true;
-    options.enableOcclusionCulling = false;
+    Cesium3DTilesSelection::TilesetOptions options;    
     options.maximumScreenSpaceError = maximumScreenSpaceError;
     Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, assetID, token, options);
 
@@ -60,7 +58,6 @@ CesiumTilesetNode::CesiumTilesetNode(const std::string& url, const std::string& 
 
     Cesium3DTilesSelection::TilesetOptions options;
     options.forbidHoles = true;
-    options.enableOcclusionCulling = false;
     options.maximumScreenSpaceError = maximumScreenSpaceError;
     Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, url, options);
     for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
@@ -90,6 +87,18 @@ void CesiumTilesetNode::setMaximumScreenSpaceError(float maximumScreenSpaceError
 {
     Cesium3DTilesSelection::Tileset* tileset = (Cesium3DTilesSelection::Tileset*)_tileset;
     tileset->getOptions().maximumScreenSpaceError = maximumScreenSpaceError;
+}
+
+bool CesiumTilesetNode::getForbidHoles() const
+{
+    Cesium3DTilesSelection::Tileset* tileset = (Cesium3DTilesSelection::Tileset*)_tileset;
+    return tileset->getOptions().forbidHoles;
+}
+
+void CesiumTilesetNode::setForbidHoles(bool forbidHoles)
+{
+    Cesium3DTilesSelection::Tileset* tileset = (Cesium3DTilesSelection::Tileset*)_tileset;
+    tileset->getOptions().forbidHoles = forbidHoles;
 }
 
 void

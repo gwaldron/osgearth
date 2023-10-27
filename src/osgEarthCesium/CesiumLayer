@@ -40,6 +40,8 @@ namespace osgEarth
                 OE_OPTION(std::string, token);
                 OE_OPTION(int, rasterOverlay);
                 OE_OPTION(float, maximumScreenSpaceError);
+                OE_OPTION(bool, forbidHoles);
+
                 virtual Config getConfig() const;
             private:
                 void fromConfig(const Config& conf);
@@ -67,6 +69,10 @@ namespace osgEarth
             //! The maximum screen space error for this layer
             float getMaximumScreenSpaceError() const;
             void setMaximumScreenSpaceError(float maximumScreenSpaceError);
+
+            //! Whether to forbid holes
+            bool getForbidHoles() const;
+            void setForbidHoles(bool forbidHoles);
 
         public: // Layer
 

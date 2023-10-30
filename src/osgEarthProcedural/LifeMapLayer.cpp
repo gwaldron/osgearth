@@ -178,7 +178,7 @@ LifeMapLayer::init()
 Status
 LifeMapLayer::openImplementation() 
 {
-    Status parent = ImageLayer::openImplementation();
+    Status parent = super::openImplementation();
     if (parent.isError())
         return parent;
 
@@ -196,7 +196,7 @@ LifeMapLayer::openImplementation()
 Status
 LifeMapLayer::closeImplementation()
 {
-    return ImageLayer::closeImplementation();
+    return super::closeImplementation();
 }
 
 void
@@ -219,7 +219,7 @@ LifeMapLayer::checkForLayerError(Layer* layer)
 void
 LifeMapLayer::addedToMap(const Map* map)
 {
-    ImageLayer::addedToMap(map);
+    super::addedToMap(map);
 
     options().biomeLayer().addedToMap(map);
     options().maskLayer().addedToMap(map);
@@ -263,7 +263,7 @@ LifeMapLayer::removedFromMap(const Map* map)
     options().waterLayer().removedFromMap(map);
     options().colorLayer().removedFromMap(map);
     options().landCoverLayer().removedFromMap(map);
-    ImageLayer::removedFromMap(map);
+    super::removedFromMap(map);
 }
 
 void

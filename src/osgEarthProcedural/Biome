@@ -26,7 +26,6 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/LandCover>
 #include <osgEarth/GLUtils>
-#include <osg/BoundingBox>
 
 namespace osgEarth
 {

@@ -552,7 +552,7 @@ BiomeManager::materializeNewAssets(
                             residentAsset->boundingBox() = cbv.getBoundingBox();
                             modelcache[uri]._modelAABB = residentAsset->boundingBox();
 
-                            OE_INFO << LC << "Loaded model: " << uri.base() << 
+                            OE_DEBUG << LC << "Loaded model: " << uri.base() << 
                                 " with bbox " << residentAsset->boundingBox().xMin() << " "
                                 << residentAsset->boundingBox().yMin() << " "
                                 << residentAsset->boundingBox().xMax() << " "

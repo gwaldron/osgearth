@@ -135,6 +135,7 @@ namespace osgEarth
                 float lifemapMix,
                 osg::ref_ptr<osg::Image>& out_elevation,
                 osg::ref_ptr<osg::Image>& out_lifemap,
+                osg::ref_ptr<osg::Image>& out_landcover,
                 GeoExtent& out_extent)
             {
                 osg::ref_ptr<Feature> feature = osg::clone(in_feature, osg::CopyOp::DEEP_COPY_ALL);
@@ -154,43 +155,23 @@ namespace osgEarth
                     out_extent.expand(-diff, 0.0);
 
 
-                FeatureList features { feature };
+                FeatureList features{ feature };
 
                 SDFGenerator sdfgen;
                 sdfgen.setUseGPU(false);
 
                 GeoImage nnf;
-                sdfgen.createNearestNeighborField(
-                    features,
-                    256,
-                    out_extent,
-                    false,
-                    nnf,
-                    nullptr);
+                sdfgen.createNearestNeighborField(features, 256, out_extent, false, nnf, nullptr);
 
-                GeoImage sdf = sdfgen.allocateSDF(
-                    256,
-                    out_extent);
-
-                sdfgen.createDistanceField(
-                    nnf,
-                    sdf,
-                    out_extent.height(),
-                    0.25f * width,
-                    0.5f * width,
-                    nullptr);
-
+                const float min_dist = 0.25f * width;
+                const float max_dist = 0.5f * width;
+                GeoImage sdf = sdfgen.allocateSDF(256, out_extent);
+                sdfgen.createDistanceField(nnf, sdf, out_extent.height(), min_dist, max_dist, nullptr);
 
                 out_elevation = new osg::Image();
-                out_elevation->allocateImage(
-                    256,
-                    256,
-                    1,
-                    GL_RED,
-                    GL_UNSIGNED_BYTE);
+                out_elevation->allocateImage(256, 256, 1, GL_RED, GL_UNSIGNED_BYTE);
 
                 ImageUtils::PixelReader readSDF(sdf.getImage());
-
                 ImageUtils::PixelWriter writeElevation(out_elevation.get());
                 ImageUtils::ImageIterator e_iter(writeElevation);
                 osg::Vec4 value;
@@ -202,12 +183,7 @@ namespace osgEarth
                 );
 
                 out_lifemap = new osg::Image();
-                out_lifemap->allocateImage(
-                    256,
-                    256,
-                    1,
-                    GL_RGBA,
-                    GL_UNSIGNED_BYTE);
+                out_lifemap->allocateImage(256, 256, 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
                 ImageUtils::PixelWriter writeLifeMap(out_lifemap.get());
                 ImageUtils::ImageIterator lm_iter(writeLifeMap);
@@ -233,39 +209,31 @@ namespace osgEarth
         class TerrainEditGUI : public BaseGUI
         {
         private:
-            bool _installed;
+            bool _installed = false;
+            unsigned _minLevel = 10u;
+            bool _placingCrater = false;
+            bool _placingDitch = false;
+            float _craterRadius = 1.0f;
+            float _width = 5.0f;
+            float _height = -3.0f;
+            float _rugged = 0.75f;
+            float _dense = 0.0f;
+            float _lush = 0.0f;
+            float _lifemapMix = 1.0f;
             osg::observer_ptr<MapNode> _mapNode;
             osg::ref_ptr<DecalElevationLayer> _elevDecal;
             osg::ref_ptr<DecalImageLayer> _lifemapDecal;
             osg::ref_ptr<DecalImageLayer> _landcoverDecal;
             std::vector<const Layer*> _layersToRefresh;
-            unsigned _minLevel;
             std::stack<std::string> _undoStack;
-            bool _placingCrater;
-            float _craterRadius;
-            bool _placingDitch;
-            float _width;
-            float _height;
-            float _rugged;
-            float _dense;
-            float _lush;
-            float _lifemapMix;
             osg::ref_ptr<CircleNode> _craterCursor;
             osg::ref_ptr<FeatureNode> _ditchCursor;
             osg::ref_ptr<Feature> _ditchFeature;
 
         public:
-            TerrainEditGUI() : BaseGUI("Terrain Editing"),
-                _installed(false),
-                _placingCrater(false),
-                _placingDitch(false),
-                _width(5.0f),
-                _height(-3.0f),
-                _rugged(0.75f),
-                _dense(0.0f),
-                _lush(0.0f),
-                _lifemapMix(1.0f),
-                _minLevel(10u) { }
+            TerrainEditGUI() : BaseGUI("Terrain Editing")
+            {
+            }
 
             void load(const Config& conf) override
             {
@@ -282,6 +250,7 @@ namespace osgEarth
 
                 if (!_installed)
                 {
+                    // first time through, install the event handlers and add the decal layers
                     auto event_view = view(ri);
                     view(ri)->getViewerBase()->addUpdateOperation(new OneTimer([this, event_view]()
                         {
@@ -292,7 +261,7 @@ namespace osgEarth
                     return;
                 }
 
-                ImGui::Begin(name(), visible());
+                if (ImGui::Begin(name(), visible()))
                 {
                     ImGui::Checkbox("Place a crater", &_placingCrater);
                     if (_placingCrater)
@@ -310,34 +279,40 @@ namespace osgEarth
                         ImGuiLTable::SliderFloat("Dense", &_dense, 0.0f, 1.0f);
                         ImGuiLTable::SliderFloat("Lush", &_lush, 0.0f, 1.0f);
                         ImGuiLTable::SliderFloat("Mix", &_lifemapMix, 0.0f, 1.0f);
-
                         ImGuiLTable::End();
                     }
+
                     ImGui::Separator();
-                    if (ImGui::Button("Undo") && _undoStack.size()>0)
-                    {
-                        GeoExtent ex = _elevDecal->getDecalExtent(_undoStack.top());
-                        _elevDecal->removeDecal(_undoStack.top());
-                        _lifemapDecal->removeDecal(_undoStack.top());
-                        _landcoverDecal->removeDecal(_undoStack.top());
-                        _undoStack.pop();
-                        _mapNode->getTerrainEngine()->invalidateRegion(
-                            _layersToRefresh, ex, _minLevel, INT_MAX);
-                    }
+                    if (ImGui::Button("Undo") && _undoStack.size() > 0)
+                        undo();
+
                     ImGui::SameLine();
                     if (ImGui::Button("Clear All"))
-                    {
-                        _elevDecal->clearDecals();
-                        _lifemapDecal->clearDecals();
-                        _landcoverDecal->clearDecals();
-                        _mapNode->getTerrainEngine()->invalidateRegion(
-                            _layersToRefresh, GeoExtent::INVALID, _minLevel, INT_MAX);
-                    }
+                        clear();
 
                     if (_placingCrater && _placingDitch)
                         _placingCrater = false;
+
+                    ImGui::End();
                 }
-                ImGui::End();
+            }
+
+            void undo()
+            {
+                GeoExtent ex = _elevDecal->getDecalExtent(_undoStack.top());
+                _elevDecal->removeDecal(_undoStack.top());
+                _lifemapDecal->removeDecal(_undoStack.top());
+                _landcoverDecal->removeDecal(_undoStack.top());
+                _undoStack.pop();
+                _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, ex, _minLevel, INT_MAX);
+            }
+
+            void clear()
+            {
+                _elevDecal->clearDecals();
+                _lifemapDecal->clearDecals();
+                _landcoverDecal->clearDecals();
+                _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, GeoExtent::INVALID, _minLevel, INT_MAX);
             }
 
             void addCrater(const GeoPoint& center)
@@ -480,7 +455,7 @@ namespace osgEarth
                         _lifemapMix,
                         elevation,
                         lifemap,
-                        // landcover,
+                        landcover,
                         extent);
 
                     addDecals(elevation, lifemap, landcover, extent);

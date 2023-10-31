@@ -1447,7 +1447,6 @@ VegetationLayer::getAssetPlacements(
         // RNG with normal distribution between approx lush-1..lush+1
         // Note: moved this earlier in the loop to make it deterministic
         //std::normal_distribution<float> normal_dist(lush, 1.0f / 6.0f);
-        //lush = clamp(normal_dist(gen), 0.0f, 1.0f);
         lush = clamp(lush + lush_offset, 0.0f, 1.0f);
 
         assetIndices.clear();

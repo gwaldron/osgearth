@@ -493,10 +493,10 @@ namespace osgEarth
                 // lifemap data needs special blending treatment on the A channel
                 // since this contains material override data.
                 _lifemapDecal->setBlendFuncs(
-                    GL_SRC_ALPHA,
-                    GL_ONE_MINUS_SRC_ALPHA,
-                    GL_ZERO,
-                    GL_ONE);
+                    GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                    GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                    GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                    GL_ZERO, GL_ONE);
 
                 // If there is a LifeMapLayer, append to it as a Post, otherwise standalone decal.
                 LifeMapLayer* lifemap = _mapNode->getMap()->getLayer<LifeMapLayer>();

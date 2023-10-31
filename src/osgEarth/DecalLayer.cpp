@@ -60,34 +60,44 @@ DecalImageLayer::init()
     layerHints().cachePolicy() = CachePolicy::NO_CACHE;
 
     // blending defaults
-    _srcRGB = GL_SRC_ALPHA;
-    _dstRGB = GL_ONE_MINUS_SRC_ALPHA;
-    _srcAlpha = GL_ONE;
-    _dstAlpha = GL_ZERO;
-    _rgbEquation = GL_FUNC_ADD;
-    _alphaEquation = GL_FUNC_ADD;
+    _src[0] = GL_SRC_ALPHA;
+    _dst[0] = GL_ONE_MINUS_SRC_ALPHA;
+    _src[1] = GL_SRC_ALPHA;
+    _dst[1] = GL_ONE_MINUS_SRC_ALPHA;
+    _src[2] = GL_SRC_ALPHA;
+    _dst[2] = GL_ONE_MINUS_SRC_ALPHA;
+    _src[3] = GL_ONE;
+    _dst[3] = GL_ZERO;
+    _equation[0] = GL_FUNC_ADD;
+    _equation[1] = GL_FUNC_ADD;
+    _equation[2] = GL_FUNC_ADD;
+    _equation[3] = GL_FUNC_ADD;
 }
 
 void
 DecalImageLayer::setBlendFuncs(
-    GLenum srcRGB,
-    GLenum dstRGB,
-    GLenum srcAlpha,
-    GLenum dstAlpha)
+    GLenum R_source, GLenum R_dest,
+    GLenum G_source, GLenum G_dest,
+    GLenum B_source, GLenum B_dest,
+    GLenum A_source, GLenum A_dest)
 {
-    _srcRGB = srcRGB;
-    _dstRGB = dstRGB;
-    _srcAlpha = srcAlpha;
-    _dstAlpha = dstAlpha;
+    _src[0] = R_source; _dst[0] = R_dest;
+    _src[1] = G_source; _dst[1] = G_dest;
+    _src[2] = B_source; _dst[2] = B_dest;
+    _src[3] = A_source; _dst[3] = A_dest;
 }
 
 void
 DecalImageLayer::setBlendEquations(
-    GLenum rgbEquation,
-    GLenum alphaEquation)
+    GLenum R_equation,
+    GLenum G_equation,
+    GLenum B_equation,
+    GLenum A_equation)
 {
-    _rgbEquation = rgbEquation;
-    _alphaEquation = alphaEquation;
+    _equation[0] = R_equation;
+    _equation[1] = G_equation;
+    _equation[2] = B_equation;
+    _equation[3] = A_equation;
 }
 
 namespace
@@ -146,7 +156,6 @@ DecalImageLayer::createImageImplementation(
     ImageUtils::PixelReader readOutput(output.get());
 
     osg::Vec4 src, dst, out;
-    float srcRGB, dstRGB, srcAlpha, dstAlpha;
 
     // Start by copying the canvas to the output. Use a scale/bias
     // since the canvas might be larger (lower resolution) than the
@@ -217,49 +226,26 @@ DecalImageLayer::createImageImplementation(
                 readInput(src, in_u, in_v);
 
                 // figure out how to blend them:
-                srcRGB = get_blend(_srcRGB, src, dst);
-                dstRGB = get_blend(_dstRGB, src, dst);
-                srcAlpha = get_blend(_srcAlpha, src, dst);
-                dstAlpha = get_blend(_dstAlpha, src, dst);
+                for (int n = 0; n < 4; ++n)
+                {
+                    float sf = get_blend(_src[n], src, dst);
+                    float df = get_blend(_dst[n], src, dst);
 
-                // perform the blending based on the blend equation
-                if (_rgbEquation == GL_FUNC_ADD)
-                {
-                    out.r() = src.r()*srcRGB + dst.r()*dstRGB;
-                    out.g() = src.g()*srcRGB + dst.g()*dstRGB;
-                    out.b() = src.b()*srcRGB + dst.b()*dstRGB;
-                }
-                else if (_rgbEquation == GL_MAX)
-                {
-                    out.r() = std::max(src.r()*srcRGB, dst.r()*dstRGB);
-                    out.g() = std::max(src.g()*srcRGB, dst.g()*dstRGB);
-                    out.b() = std::max(src.b()*srcRGB, dst.b()*dstRGB);
-                }
-                else if (_rgbEquation == GL_MIN)
-                {
-                    out.r() = std::min(src.r()*srcRGB, dst.r()*dstRGB);
-                    out.g() = std::min(src.g()*srcRGB, dst.g()*dstRGB);
-                    out.b() = std::min(src.b()*srcRGB, dst.b()*dstRGB);
-                }
+                    if (_equation[n] == GL_FUNC_ADD)
+                    {
+                        out[n] = src[n] * sf + dst[n] * df;
+                    }
+                    else if (_equation[n] == GL_MAX)
+                    {
+                        out[n] = std::max(src[n] * sf, dst[n] * df);
+                    }
+                    else if (_equation[n] == GL_MIN)
+                    {
+                        out[n] = std::min(src[n] * sf, dst[n] * df);
+                    }
 
-                if (_alphaEquation == GL_FUNC_ADD)
-                {
-                    out.a() = src.a()*srcAlpha + dst.a()*dstAlpha;
+                    out[n] = clamp(out[n], 0.0f, 1.0f);
                 }
-                else if (_alphaEquation == GL_MAX)
-                {
-                    out.a() = std::max(src.a()*srcAlpha, dst.a()*dstAlpha);
-                }
-                else if (_alphaEquation == GL_MIN)
-                {
-                    out.a() = std::min(src.a()*srcAlpha, dst.a()*dstAlpha);
-                }
-
-                // done, clamp and write.
-                out.r() = clamp(out.r(), 0.0f, 1.0f);
-                out.g() = clamp(out.g(), 0.0f, 1.0f);
-                out.b() = clamp(out.b(), 0.0f, 1.0f);
-                out.a() = clamp(out.a(), 0.0f, 1.0f);
 
                 writeOutput(out, s, t);
             }

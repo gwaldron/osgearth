@@ -160,8 +160,6 @@ namespace osgEarth { namespace Util
         static double const G4;
 
         unsigned char permMod12[512];
-        //bool permMod12Computed;
-        void ComputePermMod12();
 
         // This method is a *lot* faster than using (int)Math.floor(x)
         inline static int FastFloor(double x);

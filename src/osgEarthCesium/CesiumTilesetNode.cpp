@@ -37,6 +37,7 @@ CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, const std::string& to
 
     Cesium3DTilesSelection::TilesetOptions options;    
     options.maximumScreenSpaceError = maximumScreenSpaceError;
+    options.contentOptions.generateMissingNormalsSmooth = true;
     Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, assetID, token, options);
 
     for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
@@ -58,6 +59,7 @@ CesiumTilesetNode::CesiumTilesetNode(const std::string& url, const std::string& 
 
     Cesium3DTilesSelection::TilesetOptions options;
     options.maximumScreenSpaceError = maximumScreenSpaceError;
+    options.contentOptions.generateMissingNormalsSmooth = true;
     Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, url, options);
     for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
     {

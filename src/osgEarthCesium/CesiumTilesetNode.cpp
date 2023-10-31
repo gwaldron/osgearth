@@ -57,7 +57,6 @@ CesiumTilesetNode::CesiumTilesetNode(const std::string& url, const std::string& 
     };
 
     Cesium3DTilesSelection::TilesetOptions options;
-    options.forbidHoles = true;
     options.maximumScreenSpaceError = maximumScreenSpaceError;
     Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, url, options);
     for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)

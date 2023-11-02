@@ -95,13 +95,18 @@ ElevationPool::setMap(const Map* map)
 }
 
 size_t
-ElevationPool::getElevationHash() const
+ElevationPool::getElevationHash(WorkingSet* ws) const
 { 
     // yes, must do this every time because individual
     // layers can "bump" their revisions (dynamic layers)    
     size_t hash = hash_value_unsigned(_mapRevision);
 
-    for (auto& layer : _elevationLayers)
+    // using the working set or the baseline?
+    auto& layers =
+        (ws && ws->_elevationLayers.size() > 0) ? ws->_elevationLayers :
+        this->_elevationLayers;
+
+    for (auto& layer : layers)
         if (layer->isOpen())
             hash = hash_value_unsigned(hash, layer->getRevision());
         else
@@ -137,7 +142,7 @@ ElevationPool::refresh(const Map* map)
         delete static_cast<MaxLevelIndex*>(_index);
     
     _mapRevision = _map->getOpenLayers(_elevationLayers);
-    _elevationHash = getElevationHash();
+    _elevationHash = getElevationHash(nullptr);
 
     MaxLevelIndex* index = new MaxLevelIndex();
     _index = index;
@@ -207,7 +212,7 @@ ElevationPool::needsRefresh()
     }
 
     // Check to see if any of the elevation layers in our list have changed.
-    return getElevationHash() != _elevationHash;
+    return getElevationHash(nullptr) != _elevationHash;
 }
 
 ElevationPool::WorkingSet::WorkingSet(unsigned size) :
@@ -449,7 +454,7 @@ ElevationPool::prepareEnvelope(
 
     sync(env._map.get(), ws);
 
-    env._key._revision = getElevationHash();
+    env._key._revision = getElevationHash(ws);
 
     env._raster = nullptr;
     env._cache.clear();
@@ -611,7 +616,7 @@ ElevationPool::sampleMapCoords(
     ScopedReadLock lk(_mutex);
 
     Internal::RevElevationKey key;
-    key._revision = getElevationHash();
+    key._revision = getElevationHash(ws);
 
     osg::ref_ptr<ElevationTexture> raster;
     osg::Vec4 elev;
@@ -752,7 +757,7 @@ ElevationPool::sampleMapCoords(
     ScopedReadLock lk(_mutex);
 
     Internal::RevElevationKey key;
-    key._revision = getElevationHash();
+    key._revision = getElevationHash(ws);
 
     osg::ref_ptr<ElevationTexture> raster;
     osg::Vec4 elev;
@@ -894,7 +899,7 @@ ElevationPool::getSample(
     if (lod >= 0)
     {
         key._tilekey = map->getProfile()->createTileKey(p.x(), p.y(), lod);
-        key._revision = getElevationHash();
+        key._revision = getElevationHash(ws);
 
         osg::ref_ptr<ElevationTexture> raster = getOrCreateRaster(
             key,   // key to query
@@ -991,7 +996,7 @@ ElevationPool::getTile(
 
     Internal::RevElevationKey key;
     key._tilekey = tilekey;
-    key._revision = getElevationHash();
+    key._revision = getElevationHash(ws);
 
     out_tex = getOrCreateRaster(
         key,

@@ -257,7 +257,7 @@ namespace osgEarth
 
         ElevationLayerVector _elevationLayers;        
 
-        size_t getElevationHash() const;
+        size_t getElevationHash(WorkingSet*) const;
 
         void sync(const Map*, WorkingSet*);
 

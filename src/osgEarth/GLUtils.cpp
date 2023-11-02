@@ -45,7 +45,7 @@ using namespace osgEarth;
 
 //#define USE_RECYCLING
 
-#define OE_DEVEL OE_DEBUG 
+#define OE_DEVEL OE_DEBUG
 
 #ifndef GL_LINE_SMOOTH
 #define GL_LINE_SMOOTH 0x0B20
@@ -401,7 +401,7 @@ namespace
 #define GL_DEBUG_GROUP_STACK_DEPTH        0x826D
 #endif
 
-    void s_oe_gldebugproc(
+    void GL_APIENTRY s_oe_gldebugproc(
         GLenum source,
         GLenum type,
         GLuint id,
@@ -486,7 +486,7 @@ GL3RealizeOperation::operator()(osg::Object* object)
         // perhaps create a reservation system for this.
         state->resetVertexAttributeAlias(false);
 
-        // We always want to use osg modelview and projection uniforms and vertex attribute aliasing.    
+        // We always want to use osg modelview and projection uniforms and vertex attribute aliasing.
         // Since we use modern opengl throughout even if OSG isn't explicitly built with GL3.
         state->setUseModelViewAndProjectionUniforms(true);
         state->setUseVertexAttributeAliasing(true);
@@ -1520,7 +1520,7 @@ GLFBO::renderToTexture(
     texture->debugLabel("GLFBO");
 
     // allocate the storage.
-    // TODO: use glTexImage2D instead so we can change the 
+    // TODO: use glTexImage2D instead so we can change the
     // mipmapping filters later?
     texture->storage2D(profile);
 

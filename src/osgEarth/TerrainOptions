@@ -78,6 +78,7 @@ namespace osgEarth
         OE_OPTION(bool, useLandCover);
         OE_OPTION(float, screenSpaceError);
         OE_OPTION(unsigned, maxTextureSize);
+        OE_OPTION(bool, visible);
 
         virtual Config getConfig() const;
     private:
@@ -266,6 +267,10 @@ namespace osgEarth
         //! Sets a maximum size for textures used by the terrain
         void setMaxTextureSize(const unsigned& value);
         const unsigned& getMaxTextureSize() const;
+
+        //! Whether to render the terrain
+        void setVisible(const bool& value);
+        const bool& getVisible() const;
 
         TerrainOptionsAPI();
         TerrainOptionsAPI(TerrainOptions*);

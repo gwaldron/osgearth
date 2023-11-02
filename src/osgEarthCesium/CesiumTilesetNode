@@ -44,6 +44,9 @@ namespace osgEarth { namespace Cesium
         float getMaximumScreenSpaceError() const;
         void setMaximumScreenSpaceError(float maximumScreenSpaceError);
 
+        bool getForbidHoles() const;
+        void setForbidHoles(bool forbidHoles);
+
     private:        
         void* _tileset = nullptr;
     };

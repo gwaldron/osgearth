@@ -144,7 +144,7 @@ namespace
         void operator()(osg::Object*)
         {
             OE_PROFILING_ZONE_NAMED("Geocode");
-            if (!_promise.isAbandoned())
+            if (!_promise.empty())
             {
                 osg::ref_ptr<FeatureCursor> cursor;
                 Status status = _impl->search(_input, cursor);
@@ -227,15 +227,15 @@ Geocoder::Results::Results(const Geocoder::OutputData& data) :
 Status
 Geocoder::Results::getStatus()
 {
-    return _future.isAvailable() ?
-        _future.get()._status :
+    return _future.available() ?
+        _future.value()._status :
         Status(Status::ServiceUnavailable, "Operation canceled");
 }
 
 FeatureCursor*
 Geocoder::Results::getFeatures()
 {
-    return _future.isAvailable() ?
-        _future.get()._cursor.get() :
+    return _future.available() ?
+        _future.value()._cursor.get() :
         nullptr;
 }

@@ -140,7 +140,7 @@ Merger::traverse(osg::NodeVisitor& nv)
         // these compilesets so they don't sit in this queue forever.
         for(auto& next : _compileQueue)
         {
-            if (next._compiled.isAvailable())
+            if (next._compiled.available())
             {
                 // compile finished, put it on the merge queue
                 _mergeQueue.emplace(std::move(next._data));
@@ -148,7 +148,7 @@ Merger::traverse(osg::NodeVisitor& nv)
                 // note: no change the metrics since we are just moving from
                 // one queue to another
             }
-            else if (next._compiled.isAbandoned())
+            else if (next._compiled.empty())
             {
                 // compile canceled, ditch it
                 if (_metrics)
@@ -177,7 +177,7 @@ Merger::traverse(osg::NodeVisitor& nv)
 
             if (next != nullptr)
             {
-                if (next->_result.isAvailable())
+                if (next->_result.available())
                 {
                     next->merge();
                 }

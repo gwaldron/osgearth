@@ -144,7 +144,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 for (auto& child : _children)
                 {
                     osg::Node* compiled =
-                        _compiled.isAvailable() ? _compiled.get().get() :
+                        _compiled.empty() ? _compiled.value().get() :
                         nullptr;
 
                     if (child.get() != compiled)
@@ -165,9 +165,9 @@ PagedNode2::traverseChildren(osg::NodeVisitor& nv)
 {
     if (_refinePolicy == REFINE_REPLACE &&
         _merged == true &&
-        _compiled.get().valid())
+        _compiled.value().valid())
     {
-        _compiled.get()->accept(nv);
+        _compiled.value()->accept(nv);
     }
     else
     {
@@ -202,13 +202,13 @@ PagedNode2::merge(int revision)
         // This is called from PagingManager.
         // We're in the UPDATE traversal.
         OE_SOFT_ASSERT_AND_RETURN(_merged == false, false);
-        OE_SOFT_ASSERT_AND_RETURN(_compiled.isAvailable(), false);
-        OE_SOFT_ASSERT_AND_RETURN(_compiled.get().valid(), false);
+        OE_SOFT_ASSERT_AND_RETURN(_compiled.available(), false);
+        OE_SOFT_ASSERT_AND_RETURN(_compiled.value().valid(), false);
 
-        addChild(_compiled.get());
+        addChild(_compiled.value());
 
         if (_callbacks.valid())
-            _callbacks->firePostMergeNode(_compiled.get().get());
+            _callbacks->firePostMergeNode(_compiled.value().get());
 
         _merged = true;
         _failed = false;
@@ -230,10 +230,10 @@ PagedNode2::computeBound() const
 
         if (_loadTriggered == true &&
             _merged == false &&
-            _loaded.isAvailable() &&
-            _loaded.get()._node.valid() )
+            _loaded.available() &&
+            _loaded.value()._node.valid() )
         {
-            bs.expandBy(_loaded.get()._node->computeBound());
+            bs.expandBy(_loaded.value()._node->computeBound());
         }
 
         return bs;
@@ -293,10 +293,10 @@ void PagedNode2::load(float priority, const osg::Object* host)
     }
 
     else if (
-        _loaded.isAvailable() &&
+        _loaded.available() &&
         _compileTriggered.exchange(true) == false)
     {
-        if (_loaded.get()._node.valid())
+        if (_loaded.value()._node.valid())
         {
             dirtyBound();
 
@@ -307,8 +307,8 @@ void PagedNode2::load(float priority, const osg::Object* host)
                 osg::ref_ptr<ProgressCallback> p = new ObserverProgressCallback(this);
 
                 _compiled = compiler.compileAsync(
-                    _loaded.get()._node,
-                    _loaded.get()._state.get(),
+                    _loaded.value()._node,
+                    _loaded.value()._state.get(),
                     host,
                     p.get());
             }
@@ -316,8 +316,8 @@ void PagedNode2::load(float priority, const osg::Object* host)
             {
                 // resolve immediately
                 Promise<osg::ref_ptr<osg::Node>> promise;
-                _compiled = promise.getFuture();
-                promise.resolve(_loaded.get()._node);
+                _compiled = promise; // .getFuture();
+                promise.resolve(_loaded.value()._node);
             }
         }
         else
@@ -331,7 +331,7 @@ void PagedNode2::load(float priority, const osg::Object* host)
         _loaded.abandon();
     }
     else if (
-        _compiled.isAvailable() &&
+        _compiled.available() &&
         _pagingManager != nullptr &&
         _mergeTriggered.exchange(true) == false)
     {
@@ -347,9 +347,9 @@ void PagedNode2::unload()
     //{
     //    _compiled.get()->releaseGLObjects(nullptr);
     //}
-    if (_compiled.isAvailable() && _compiled.get().valid())
+    if (_compiled.available() && _compiled.value().valid())
     {
-        removeChild(_compiled.get());
+        removeChild(_compiled.value());
     }
     _compiled.abandon();
     _loaded.abandon();

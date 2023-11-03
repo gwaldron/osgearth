@@ -795,7 +795,7 @@ namespace osgEarth
 
                                 if (_mouseOverImageLayer == imageLayer)
                                 {
-                                    if (_imageLayerValueUnderMouse.isAvailable())
+                                    if (_imageLayerValueUnderMouse.available())
                                     {
                                         if (_imageLayerValueUnderMouse->isOK())
                                         {

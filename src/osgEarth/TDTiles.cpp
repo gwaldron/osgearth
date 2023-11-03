@@ -878,9 +878,9 @@ bool ThreeDTileNode::isContentReady()
 void ThreeDTileNode::resolveContent()
 {
     // Resolve the future
-    if (!_content.valid() && _requestedContent && _contentFuture.isAvailable())
+    if (!_content.valid() && _requestedContent && _contentFuture.available())
     {
-        _content = _contentFuture.get();
+        _content = _contentFuture.value();
 
         if (_content.valid())
         {

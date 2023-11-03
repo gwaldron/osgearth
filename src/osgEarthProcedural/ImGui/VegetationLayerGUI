@@ -219,14 +219,14 @@ namespace osgEarth
                     ImGui::Checkbox("Show biome under mouse", &_showBiomeUnderMouse);
                     if (_showBiomeUnderMouse)
                     {
-                        if (_biomeUnderMouse.isWorking())
+                        if (_biomeUnderMouse.working())
                         {
                             ImGui::Text("searching...");
                             ImGui::Text("");
                         }
-                        else if (_biomeUnderMouse.isAvailable())
+                        else if (_biomeUnderMouse.available())
                         {
-                            const Biome* biome = _biomeUnderMouse.get();
+                            const Biome* biome = _biomeUnderMouse.value();
                             if (biome)
                             {
                                 ImGui::Text("%s", biome->name()->c_str());

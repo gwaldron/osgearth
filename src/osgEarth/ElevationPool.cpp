@@ -1025,7 +1025,7 @@ namespace osgEarth { namespace Internal
 
         void operator()(osg::Object*)
         {
-            if (!_promise.isAbandoned())
+            if (!_promise.empty())
             {
                 osg::ref_ptr<const Map> map;
                 if (_map.lock(map))

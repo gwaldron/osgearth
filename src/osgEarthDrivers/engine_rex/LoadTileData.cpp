@@ -123,7 +123,7 @@ LoadTileDataOperation::dispatch(bool async)
     else
     {
         Promise<LoadResult> promise;
-        _result = promise.getFuture();
+        _result = promise; // .getFuture();
         promise.resolve(load(nullptr));
     }
 
@@ -153,17 +153,17 @@ LoadTileDataOperation::merge()
 
     // no data model at all - done
     // GW: should never happen.
-    if (!_result.isAvailable())
+    if (!_result.available())
     {
         OE_WARN << tilenode->getKey().str() << " bailing out of merge b/c data model is NULL" << std::endl;
         return false;
     }
 
-    OE_SOFT_ASSERT_AND_RETURN(_result.isAvailable(), false);
+    OE_SOFT_ASSERT_AND_RETURN(_result.available(), false);
 
     OE_PROFILING_ZONE;
 
-    const osg::ref_ptr<TerrainTileModel>& model = _result.get();
+    const osg::ref_ptr<TerrainTileModel>& model = _result.value(); //.get();
 
     // Check the map data revision and scan the manifest and see if any
     // revisions don't match the revisions in the original manifest.

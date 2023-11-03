@@ -1845,7 +1845,7 @@ GeoImage::GeoImage(Threading::Future<osg::ref_ptr<osg::Image>> fimage, const Geo
 {
     _future = fimage;
 
-    if (_future->isAbandoned())
+    if (_future->empty())
     {
         _status.set(Status::ResourceUnavailable, "Async request canceled");
     }
@@ -1865,14 +1865,14 @@ GeoImage::valid() const
         return false;
 
     return
-        (_future.isSet() && !_future->isAbandoned()) ||
+        (_future.isSet() && !_future->empty()) ||
         _myimage.valid();
 }
 
 const osg::Image*
 GeoImage::getImage() const
 {
-    return _future.isSet() && _future->isAvailable() ?
+    return _future.isSet() && _future->empty() ?
         _future->join().get() :
         _myimage.get();
 }

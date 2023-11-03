@@ -1832,7 +1832,7 @@ GLObjectsCompiler::compileAsync(
                 auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
                 compileSet->buildCompileMap(ico->getContextSet(), *state.get());
                 ICOCallback* callback = new ICOCallback(node, _jobsActive);
-                result = callback->_promise.getFuture();
+                result = callback->_promise; // .getFuture();
                 compileSet->_compileCompletedCallback = callback;
                 _jobsActive++;
                 ico->add(compileSet, false);
@@ -1844,7 +1844,7 @@ GLObjectsCompiler::compileAsync(
         {
             // no ICO available - just resolve the future immediately
             Promise<osg::ref_ptr<osg::Node>> promise;
-            result = promise.getFuture();
+            result = promise; // .getFuture();
             promise.resolve(node);
         }
     }
@@ -1873,7 +1873,7 @@ GLObjectsCompiler::compileAsync(
             auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
             compileSet->buildCompileMap(ico->getContextSet(), *state);
             ICOCallback* callback = new ICOCallback(node, _jobsActive);
-            result = callback->_promise.getFuture();
+            result = callback->_promise; // .getFuture();
             compileSet->_compileCompletedCallback = callback;
             _jobsActive++;
             ico->add(compileSet, false);
@@ -1885,7 +1885,7 @@ GLObjectsCompiler::compileAsync(
     {
         // no ICO available - just resolve the future immediately
         Promise<osg::ref_ptr<osg::Node>> promise;
-        result = promise.getFuture();
+        result = promise; // .getFuture();
         promise.resolve(node);
     }
 
@@ -1901,7 +1901,7 @@ GLObjectsCompiler::compileNow(
 {
     if (node)
     {
-        Future<osg::ref_ptr<osg::Node>> result = compileAsync(node, host, progress);
+        auto result = compileAsync(node, host, progress);
         result.join(progress);
     }
 }

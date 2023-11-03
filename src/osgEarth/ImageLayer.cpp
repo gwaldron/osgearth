@@ -919,12 +919,12 @@ FutureTexture2D::update()
         return;
     }
 
-    else if (_result.isAvailable() == true)
+    else if (_result.empty() == true)
     {
         OE_DEBUG<< LC << "Async result available for " << getName() << std::endl;
 
         // fetch the result
-        GeoImage geoImage = _result.get();
+        GeoImage geoImage = _result.value();
 
         if (geoImage.getStatus().isError())
         {

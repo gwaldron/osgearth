@@ -23,6 +23,7 @@
 #include <osgEarth/Notify>
 #include <atomic>
 #include <functional>
+#include <chrono>
 #include <condition_variable>
 #include <vector>
 #include <unordered_map>
@@ -182,6 +183,7 @@ namespace osgEarth { namespace Threading
     {
     public:
         virtual bool isCanceled() const = 0;
+        bool canceled() const { return isCanceled(); }
     };
 
     /**
@@ -203,29 +205,67 @@ namespace osgEarth { namespace Threading
     {
     public:
         //! Construct a new event
-        Event();
+        Event() : _set(false) { }
 
         //! DTOR
-        ~Event();
+        ~Event() {
+            _set = false;
+            for (int i = 0; i < 255; ++i)  // workaround buggy broadcast
+                _cond.notify_all();
+        }
 
         //! Block until the event is set, then return true.
-        bool wait();
+        inline bool wait() {
+            while (!_set) {
+                std::unique_lock<std::mutex> lock(_m);
+                if (!_set)
+                    _cond.wait(lock);
+            }
+            return _set;
+        }
 
         //! Block until the event is set or the timout expires.
         //! Return true if the event has set, otherwise false.
-        bool wait(unsigned timeout_ms);
+        template<typename T>
+        inline bool wait(T timeout) {
+            if (!_set) {
+                std::unique_lock<std::mutex> lock(_m);
+                if (!_set)
+                    _cond.wait_for(lock, timeout);
+            }
+            return _set;
+        }
 
-        //! Like wait(), but resets the state and always returns true.
-        bool waitAndReset();
+        //! Block until the event is set; then reset it.
+        inline bool waitAndReset() {
+            std::unique_lock<std::mutex> lock(_m);
+            if (!_set)
+                _cond.wait(lock);
+            _set = false;
+            return true;
+        }
 
         //! Set the event state, causing any waiters to unblock.
-        void set();
+        inline void set() {
+            if (!_set) {
+                std::unique_lock<std::mutex> lock(_m);
+                if (!_set) {
+                    _set = true;
+                    _cond.notify_all();
+                }
+            }
+        }
 
         //! Reset (unset) the event state; new waiters will block until set() is called.
-        void reset();
+        inline void reset() {
+            std::unique_lock<std::mutex> lock(_m);
+            _set = false;
+        }
 
         //! Whether the event state is set (waiters will not block).
-        inline bool isSet() const { return _set; }
+        inline bool isSet() const {
+            return _set;
+        }
 
     protected:
         std::mutex _m; // do not use Mutex, we never want tracking
@@ -234,97 +274,79 @@ namespace osgEarth { namespace Threading
     };
 
     /**
-     * Future is the consumer-side interface to an asynchronous operation.
+     * Future holds the future result of an asynchronous operation.
      *
      * Usage:
-     *   Producer (usually an asynchronous function call) creates a Promise<T>
-     *   and immediately returns promise.getFuture(). The Consumer then performs other
-     *   work, and eventually (or immediately) checks isAvailable() for a result or
-     *   isAbandoned() for cancelation.
+     *   Producer (usually an asynchronous function call) creates a Future<T>
+     *   (the promise of a future result) and immediately returns it. The Consumer
+     *   then performs other work, and eventually (or immediately) checks available()
+     *   for a result or canceled() for cancelation. If availabile() is true,
+     *   Consumer calls value() to fetch the valid result.
+     * 
+     *   As long as at least two equivalent Future object (i.e. Futures pointing to the
+     *   same internal shared data) exist, the Future is considered valid. Once
+     *   that count goes to one, the Future is either available (the value is ready)
+     *   or empty (i.e., canceled or abandoned).
      */
     template<typename T>
     class Future : public Cancelable
     {
-    public:
-        using Callback = std::function<void(const T&)>;
-
     private:
-        // internal structure to track referenced to the result
-        struct Container {
-            Container() { }
-            void set(const T& obj) { 
-                ScopedMutexLock lock(_m);
-                _obj = obj;
-            }
-            void set(const T&& obj) {
-                ScopedMutexLock lock(_m);
-                _obj = std::move(obj);
-            }
-            const T& obj() const {
-                ScopedMutexLock lock(_m);
-                return _obj;
-            }
+        // internal structure to track references to the result
+        // One instance of this is shared among all Future instances
+        // created from the copy constructor.
+        struct Shared
+        {
             T _obj;
-            mutable Mutex _m;
+            mutable Event _ev;
         };
 
     public:
         //! Blank CTOR
         Future() {
-            _ev = std::make_shared<Event>();
-            _shared = std::make_shared<Container>();
+            _shared = std::make_shared<Shared>();
         }
 
-        //! Copy CTOR
-        Future(const Future& rhs) :
-            _ev(rhs._ev),
-            _shared(rhs._shared) { }
+        Future(const Future& rhs) = default;
 
-        //! Assignment
-        Future<T>& operator = (const Future<T>& rhs) {
-            _ev = rhs._ev;
-            _shared = rhs._shared;
-            return *this;
+        //! True is this Future is unused and not connected to any other Future
+        bool empty() const {
+            return !available() && _shared.use_count() == 1;
         }
 
         //! True if the promise was resolved and a result if available.
-        bool isAvailable() const {
-            return _ev->isSet();
+        bool available() const {
+            return _shared->_ev.isSet();
         }
 
-        //! True if the Promise that generated this Future no longer exists
-        //! and the Promise was never resolved.
-        bool isAbandoned() const {
-            return !isAvailable() && _shared.use_count() == 1;
+        //! True if a promise exists, but has not yet been resolved;
+        //! Presumably the asynchronous task is still working.
+        bool working() const {
+            return !empty() && !available();
         }
 
-        //! True if a Promise exists, but has not yet been fulfilled.
-        bool isWorking() const {
-            return !isAvailable() && !isAbandoned();
-        }
-
-        //! Synonym for isAbandoned. (Canceleble interface)
+        //! Synonym for empty() - Cancelable interface
         bool isCanceled() const override {
-            return isAbandoned();
+            return empty();
         }
 
         //! Deference the result object. Make sure you check isAvailable()
         //! to check that the future was actually resolved; otherwise you
         //! will just get the default object.
-        T get() const {
-            return _shared->obj();
+        T value() const {
+            return _shared->_obj;
         }
 
-        //! Alias for get()
+        //! Dereference this object to const pointer to the result.
         const T* operator -> () const {
-            return &(_shared->obj());
+            return &_shared->_obj;
         }
 
-        //! Same as get(), but if the result is available will reset the
+        //! Same as value(), but if the result is available will reset the
         //! future before returning the result object.
         T release() {
-            bool avail = isAvailable();
-            T result = get();
+            bool avail = available();
+            T result = value();
             if (avail)
                 reset();
             return result;
@@ -334,28 +356,34 @@ namespace osgEarth { namespace Threading
         //! then returns the result object.
         T join() const {
             while (
-                !isAbandoned() &&
-                !_ev->wait(1u));
-            return get();
+                !empty() &&
+                !_shared->_ev.wait(std::chrono::milliseconds(1)));
+            return value();
         }
 
         //! Blocks until the result becomes available or the future is abandoned
         //! or a cancelation flag is set; then returns the result object.
-        T join(const Cancelable* cancelable) const {
-            while (
-                !isAvailable() &&
-                !isAbandoned() &&
-                !(cancelable && cancelable->isCanceled()))
+        T join(const Cancelable& p) const {
+            while (working() && !p.canceled())
             {
-                _ev->wait(1u);
+                _shared->_ev.wait(std::chrono::milliseconds(1));
             }
-            return get();
+            return value();
+        }
+
+        //! Blocks until the result becomes available or the future is abandoned
+        //! or a cancelation flag is set; then returns the result object.
+        T join(Cancelable* p) const {
+            while (working() && (p == nullptr || !p->canceled()))
+            {
+                _shared->_ev.wait(std::chrono::milliseconds(1));
+            }
+            return value();
         }
 
         //! Release reference to a promise, resetting this future to its default state
         void abandon() {
-            _shared.reset(new Container());
-            _ev.reset(new Event());
+            _shared.reset(new Shared());
         }
 
         //! synonym for abandon.
@@ -363,75 +391,36 @@ namespace osgEarth { namespace Threading
             abandon();
         }
 
+        //! Resolve (fulfill) the promise with the provided result value.
+        void resolve(const T& value) {
+            _shared->_obj = value;
+            _shared->_ev.set();
+        }
+
+        //! Resolve (fulfill) the promise with an rvalue
+        void resolve(T&& value) {
+            _shared->_obj = std::move(value);
+            _shared->_ev.set();
+        }
+
+        //! Resolve (fulfill) the promise with a default result
+        void resolve() {
+            _shared->_ev.set();
+        }
+
         //! The number of objects, including this one, that
-        //! refernece the shared container. if this method
+        //! reference the shared container. If this method
         //! returns 1, that means this is the only object with
         //! access to the data. This method will never return zero.
         unsigned refs() const {
             return _shared.use_count();
         }
 
-        //! Function to execute upon a Promise resolving this Future.
-        void whenAvailable(const Callback& cb) {
-            _whenAvailable = cb;
-        }
-
     private:
-        std::shared_ptr<Event> _ev;
-        std::shared_ptr<Container> _shared;
-        Callback _whenAvailable;
-        template<typename U> friend class Promise;
+        std::shared_ptr<Shared> _shared;
     };
 
-    /**
-     * Promise is the producer-side interface to an asynchronous operation.
-     *
-     * Usage: The code that initiates an asychronous operation creates a Promise
-     *   object, dispatches the asynchronous code, and immediately returns
-     *   Promise.getFuture(). The caller can then call future.get() to block until
-     *   the result is available.
-     */
-    template<typename T>
-    class Promise : public Cancelable
-    {
-    public:
-        Promise() { }
-
-        //! This promise's future result.
-        Future<T> getFuture() const { return _future; }
-
-        //! Resolve (fulfill) the promise with the provided result value.
-        void resolve(const T& value) {
-            _future._shared->set(value);
-            _future._ev->set();
-            if (_future._whenAvailable)
-                _future._whenAvailable(_future.get());
-        }
-
-        //! Resolve (fulfill) the promise with a default result.
-        void resolve() {
-            _future._ev->set();
-            if (_future._whenAvailable)
-                _future._whenAvailable(_future.get());
-        }
-
-        //! True if the promise is resolved and the Future holds a valid result.
-        bool isResolved() const {
-            return _future._ev->isSet();
-        }
-
-        //! True is there are no Future objects waiting on this Promise.
-        bool isAbandoned() const {
-            return _future._shared.use_count() == 1;
-        }
-
-        bool isCanceled() const override {
-            return isAbandoned();
-        }
-
-    private:
-        Future<T> _future;
-    };
+    template<class T> using Promise = Future<T>;
 
     /**
      * Convenience base class for representing a Result object that may be
@@ -442,11 +431,11 @@ namespace osgEarth { namespace Threading
     {
     public:
         bool isReady() const { 
-            return _future.isAvailable() || _future.isAbandoned();
+            return _future.available() || _future.empty();
         }
 
         bool isWorking() const {
-            return !_future.isAvailable() && !_future.isAbandoned();
+            return !_future.available() && !_future.empty();
         }
 
     protected:
@@ -456,7 +445,7 @@ namespace osgEarth { namespace Threading
         //! Immediate synchronous resolve constructor
         FutureResult(const T& data) {
             Promise<T> p;
-            _future = p.getFuture();
+            _future = p; // .getFuture();
             p.resolve(data);
         }
 
@@ -1058,10 +1047,10 @@ namespace osgEarth { namespace Threading
         std::function<T(Cancelable*)> function) const
     {
         Promise<T> promise;
-        Future<T> future = promise.getFuture();
+        Future<T> future = promise; // .getFuture();
         JobArena::Delegate delegate = [function, promise]() mutable
         {
-            bool good = !promise.isAbandoned();
+            bool good = !promise.empty();
             if (good)
                 promise.resolve(function(&promise));
             return good;

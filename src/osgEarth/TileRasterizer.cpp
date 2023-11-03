@@ -196,7 +196,7 @@ TileRasterizer::render(osg::Node* node, const GeoExtent& extent)
     job->_extent = extent;
 
     // retrieve the future so we can return it to the caller:
-    Future<Job::Result> result = job->_promise.getFuture();
+    Future<Job::Result> result = job->_promise; // .getFuture();
 
     // put it on the queue:
     _jobQ.push(job);
@@ -396,7 +396,7 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
     // GPU task delegate:
     auto gpu_task = [job](osg::State& state, Promise<Job::Result>& promise, int invocation)
     {
-        if (promise.isAbandoned())
+        if (promise.empty())
         {
             OE_DEBUG << "Job " << job << " canceled" << std::endl;
             return false; // done

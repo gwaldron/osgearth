@@ -399,7 +399,11 @@ namespace osgEarth
             std::string preset_name;
             if (child.get("value", value))
             {
-                if (child.get("preset", preset_name))
+                if (value == 0u)
+                {
+                    OE_WARN << "[CoverageLayer] " << getName() << " : Illegal value 0 in mapping (zero is reserved for 'no data'); skipping." << std::endl;
+                }
+                else if (child.get("preset", preset_name))
                 {
                     const Config& p = presets.get(preset_name);
                     Config temp = child;

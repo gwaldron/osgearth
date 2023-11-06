@@ -32,7 +32,7 @@ namespace
     using DataExtentsIndex = RTree<DataExtent, double, 2>;
 }
 
-#define LC "[" << className() << "] " << getName() << "\" "
+#define LC "[" << className() << "] \"" << getName() << "\" "
 
 //------------------------------------------------------------------------
 

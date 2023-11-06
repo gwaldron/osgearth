@@ -34,7 +34,7 @@
 
 #include <random>
 
-#define LC "[LifeMapLayer] " << getName() << ": "
+#define LC "[" << className() << "] \"" << getName() << "\" "
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;

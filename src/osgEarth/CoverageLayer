@@ -26,6 +26,7 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/Progress>
 #include <osgEarth/Coverage>
+#include <osgEarth/Cache>
 
 namespace osgEarth
 {
@@ -129,8 +130,103 @@ namespace osgEarth
                 OE_PROFILING_ZONE_TEXT(_layer->getName() + " " + key.str());
 
                 GeoCoverage<T> result;
-                populate(result, key, progress);
+
+                if (!readFromCache(key, result, progress))
+                {
+                    populate(result, key, progress);
+                    writeToCache(key, result, progress);
+                }
+
                 return result;
+            }
+
+            inline bool readFromCache(const TileKey& key, GeoCoverage<T>& result, ProgressCallback* p)
+            {
+                if (_layer->_memCache.valid())
+                {
+                    char memCacheKey[64];
+                    sprintf(memCacheKey, "%d/%s/%s", _layer->getRevision(), key.str().c_str(), key.getProfile()->getHorizSignature().c_str());
+                    CacheBin* bin = _layer->_memCache->getOrCreateDefaultBin();
+                    ReadResult r = bin->readObject(memCacheKey, nullptr);
+                    if (r.succeeded())
+                    {
+                        result = GeoCoverage<T>(Coverage<T>::create(), key.getExtent());
+                        Config conf;
+                        conf.fromJSON(r.getString());
+                        result.setConfig(conf);
+                        OE_DEBUG << _layer->getName() << " " << key.str() << " read from mem cache" << std::endl;
+                        return true;
+                    }
+                }
+
+                CacheBin* cacheBin = _layer->getCacheBin(key.getProfile());
+                const CachePolicy& policy = _layer->getCacheSettings()->cachePolicy().get();
+                if (!policy.isCacheOnly() && !_layer->getProfile())
+                {
+                    _layer->disable("Could not establish a valid profile");
+                    return false;
+                }
+
+                // First, attempt to read from the cache. Since the cached data is stored in the
+                // map profile, we can try this first.
+                if (cacheBin && policy.isCacheReadable())
+                {
+                    // the cache key combines the Key and the horizontal profile.
+                    std::string cacheKey = Cache::makeCacheKey(key.str() + "-" + key.getProfile()->getHorizSignature(), "coverage");
+                    ReadResult r = cacheBin->readString(cacheKey, nullptr);
+                    if (r.succeeded() && !policy.isExpired(r.lastModifiedTime()))
+                    {
+                        result = GeoCoverage<T>(Coverage<T>::create(), key.getExtent());
+                        Config conf;
+                        conf.fromJSON(r.getString());
+                        result.setConfig(conf);
+                        OE_DEBUG << _layer->getName() << " " << key.str() << " read from disk cache" << std::endl;
+                        return true;
+                    }
+                }
+
+                // The data was not in the cache. If we are cache-only, fail sliently
+                if (policy.isCacheOnly())
+                {
+                    // If it's cache only and we have an expired but cached image, just return it.
+                    return !result.empty();
+                }
+
+                return result.valid();
+            }
+
+            inline void writeToCache(const TileKey& key, const GeoCoverage<T>& result, ProgressCallback* p)
+            {
+                if (result.empty())
+                    return;
+
+                osg::ref_ptr<StringObject> so;
+
+                if (_layer->_memCache.valid())
+                {
+                    char memCacheKey[64];
+                    sprintf(memCacheKey, "%d/%s/%s", _layer->getRevision(), key.str().c_str(), key.getProfile()->getHorizSignature().c_str());
+                    CacheBin* bin = _layer->_memCache->getOrCreateDefaultBin();
+                    Config conf = result.getConfig();
+                    so = new StringObject(conf.toJSON(false));
+                    bin->write(memCacheKey, so.get(), nullptr);
+                    OE_DEBUG << _layer->getName() << " " << key.str() << " write to mem cache" << std::endl;
+                }
+
+                // If we got a result, the cache is valid and we are caching in the map profile,
+                // write to the map cache.
+                CacheBin* cacheBin = _layer->getCacheBin(key.getProfile());
+                const CachePolicy& policy = _layer->getCacheSettings()->cachePolicy().get();
+                if (cacheBin && policy.isCacheWriteable())
+                {
+                    std::string cacheKey = Cache::makeCacheKey(key.str()+"-"+key.getProfile()->getHorizSignature(), "coverage");
+                    if (!so.valid()) {
+                        Config conf = result.getConfig();
+                        so = new StringObject(conf.toJSON(false));
+                    }
+                    cacheBin->write(cacheKey, so.get(), nullptr);
+                    OE_DEBUG << _layer->getName() << " " << key.str() << " write to disk cache" << std::endl;
+                }
             }
 
         private:

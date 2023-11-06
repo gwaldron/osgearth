@@ -59,6 +59,19 @@ namespace osgEarth
                 conf.get("soiltype", soiltype());
             }
 
+            Config getConfig() const
+            {
+                Config conf;
+                conf.set("biome_id", biomeid());
+                conf.set("traits", traits());
+                conf.set("dense", dense());
+                conf.set("lush", lush());
+                conf.set("rugged", rugged());
+                conf.set("material", material());
+                conf.set("soiltype", soiltype());
+                return conf;
+            }
+
             bool valid() const {
                 return
                     (biomeid().isSet() && !biomeid()->empty()) ||
@@ -97,6 +110,14 @@ namespace osgEarth
             BiomeSample(const Config& conf)
             {
                 conf.get("biome_id", biomeid());
+            }
+
+            Config getConfig() const
+
+            {
+                Config conf;
+                conf.set("biome_id", biomeid());
+                return conf;
             }
 
             bool valid() const {

@@ -583,8 +583,13 @@ namespace osgEarth
          * extents. Otherwise returns false.
          */
         bool isWholeEarth() const;
+
     public:
         static GeoExtent INVALID;
+
+    public: // config
+        Config getConfig() const;
+        void fromConfig(const Config& conf);
 
     private:
         double _west, _width, _south, _height;

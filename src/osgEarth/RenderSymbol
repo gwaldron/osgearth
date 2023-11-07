@@ -85,6 +85,10 @@ namespace osgEarth
         optional<Angle>& maxCreaseAngle() { return _maxCreaseAngle; }
         const optional<Angle>& maxCreaseAngle() const { return _maxCreaseAngle; }
 
+        /** maximum angle at which to tessellate geometry when curving it to the earth's surface */
+        optional<Angle>& maxTessAngle() { return _maxTessAngle; }
+        const optional<Angle>& maxTessAngle() const { return _maxTessAngle; }
+
         /** maximum visibility altitude */
         optional<Distance>& maxAltitude() { return _maxAltitude; }
         const optional<Distance>& maxAltitude() const { return _maxAltitude; }
@@ -118,6 +122,7 @@ namespace osgEarth
         optional<bool>               _transparent;
         optional<bool>               _decal;
         optional<Angle>              _maxCreaseAngle;
+        optional<Angle>              _maxTessAngle;
         optional<Distance>           _maxAltitude;
         optional<Distance>           _geometricError;
         optional<NumericExpression>  _sdfMinDistance;

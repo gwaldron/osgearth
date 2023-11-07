@@ -7,10 +7,7 @@ on the map using the overlay technique.
 It also shows the "selector" technique of using SQL queries to selectively style
 the feature data.
 -->
-<map name="Feature Draped Polygons">
-    <options>
-        <overlay_blending>false</overlay_blending>
-    </options>
+<map name="Feature Polygons">
     <GDALImage name="Imagery">
         <url>../data/world.tif</url>
     </GDALImage>
@@ -18,7 +15,8 @@ the feature data.
         <styles>
             <style type="text/css">
                 base {
-                   altitude-clamping: terrain-drape;
+                   render-depth-offset: true;
+                   altitude-offset: 2500.0;
                 }                
                 p1 : base {
                    fill: #ffff80;

@@ -39,7 +39,8 @@ RenderSymbol::RenderSymbol(const RenderSymbol& rhs, const osg::CopyOp& copyop) :
     _maxAltitude(rhs._maxAltitude),
     _geometricError(rhs._geometricError),
     _sdfMinDistance(rhs._sdfMinDistance),
-    _sdfMaxDistance(rhs._sdfMaxDistance)
+    _sdfMaxDistance(rhs._sdfMaxDistance),
+    _maxTessAngle(rhs._maxTessAngle)
 {
     //nop
 }
@@ -55,6 +56,7 @@ RenderSymbol::RenderSymbol(const Config& conf) :
     _transparent(false),
     _decal(false),
     _maxCreaseAngle(Angle(0.0, Units::DEGREES)),
+    _maxTessAngle(Angle(1.0, Units::DEGREES)),
     _maxAltitude(Distance(FLT_MAX, Units::METERS)),
     _geometricError(Distance(0.0, Units::METERS)),
     _sdfMinDistance(0.0),
@@ -79,6 +81,7 @@ RenderSymbol::getConfig() const
     conf.set( "transparent",      _transparent );
     conf.set( "decal",            _decal);
     conf.set( "max_crease_angle", _maxCreaseAngle);
+    conf.set( "max_tess_angle",   _maxTessAngle);
     conf.set( "max_altitude",     _maxAltitude);
     conf.set( "geometric_error",  _geometricError );
     conf.set( "sdf_min_distance", _sdfMinDistance);
@@ -100,6 +103,7 @@ RenderSymbol::mergeConfig( const Config& conf )
     conf.get( "transparent",      _transparent );
     conf.get( "decal",            _decal);
     conf.get( "max_crease_angle", _maxCreaseAngle);
+    conf.get( "max_tess_angle",   _maxTessAngle);
     conf.get( "max_altitude",     _maxAltitude);
     conf.get( "geometric_error",  _geometricError);
     conf.get( "sdf_min_distance", _sdfMinDistance);
@@ -169,6 +173,11 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
         float value; Units units;
         if (Units::parse(c.value(), value, units, Units::METERS))
             style.getOrCreate<RenderSymbol>()->maxCreaseAngle() = Angle(value, units);
+    }
+    else if (match(c.key(), "render-max-tess-angle")) {
+        float value; Units units;
+        if (Units::parse(c.value(), value, units, Units::METERS))
+            style.getOrCreate<RenderSymbol>()->maxTessAngle() = Angle(value, units);
     }
     else if (match(c.key(), "render-max-altitude")) {
         float value; Units units;

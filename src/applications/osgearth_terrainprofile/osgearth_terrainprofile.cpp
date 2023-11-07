@@ -108,24 +108,28 @@ public:
         _distanceMinLabel->setFont( font.get() );
         _distanceMinLabel->setAlignment(osgText::TextBase::LEFT_BOTTOM);
         _distanceMinLabel->setColor(textColor);
+        _distanceMinLabel->setDataVariance(osg::Object::DYNAMIC);
 
         _distanceMaxLabel = new osgText::Text();
         _distanceMaxLabel->setCharacterSize( textSize );
         _distanceMaxLabel->setFont( font.get() );
         _distanceMaxLabel->setAlignment(osgText::TextBase::RIGHT_BOTTOM);
         _distanceMaxLabel->setColor(textColor);
+        _distanceMaxLabel->setDataVariance(osg::Object::DYNAMIC);
 
         _elevationMinLabel = new osgText::Text();
         _elevationMinLabel->setCharacterSize( textSize );
         _elevationMinLabel->setFont( font.get() );
         _elevationMinLabel->setAlignment(osgText::TextBase::RIGHT_BOTTOM);
         _elevationMinLabel->setColor(textColor);
+        _elevationMinLabel->setDataVariance(osg::Object::DYNAMIC);
 
         _elevationMaxLabel = new osgText::Text();
         _elevationMaxLabel->setCharacterSize( textSize );
         _elevationMaxLabel->setFont( font.get() );
         _elevationMaxLabel->setAlignment(osgText::TextBase::RIGHT_TOP);
         _elevationMaxLabel->setColor(textColor);
+        _elevationMaxLabel->setDataVariance(osg::Object::DYNAMIC);
     }
 
     ~TerrainProfileGraph()

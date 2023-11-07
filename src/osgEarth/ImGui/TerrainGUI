@@ -301,7 +301,7 @@ namespace osgEarth
                     .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); }, false)
                     .onClick([&](osg::View* v, float x, float y) { onClick(v, x, y); }, false);
 
-                _sampler = std::unique_ptr<AsyncElevationSampler>(new AsyncElevationSampler(_mapNode->getMap()));
+                _sampler = std::unique_ptr<AsyncElevationSampler>(new AsyncElevationSampler(_mapNode->getMap(), 1u));
 
                 Style measureStyle;
                 measureStyle.getOrCreate<LineSymbol>()->stroke()->width() = 4.0f;

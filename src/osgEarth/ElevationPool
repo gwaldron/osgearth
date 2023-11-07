@@ -300,7 +300,7 @@ namespace osgEarth
         //! @param threads Number of threads the sampler should use
         AsyncElevationSampler(
             const Map* map,
-            unsigned threads =1u);
+            unsigned threads =0u);
 
         //! Destructor
         virtual ~AsyncElevationSampler() { }

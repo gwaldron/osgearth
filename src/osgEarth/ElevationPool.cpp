@@ -1049,9 +1049,7 @@ AsyncElevationSampler::AsyncElevationSampler(
     _arena(nullptr)
 {
     _arena = JobArena::get("oe.asyncelevation");
-
-    unsigned c = _arena->getConcurrency();
-    _arena->setConcurrency(std::max(c, numThreads));
+    _arena->setConcurrency(numThreads > 0 ? numThreads : _arena->getConcurrency());
 }
 
 Future<ElevationSample>

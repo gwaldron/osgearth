@@ -96,6 +96,9 @@ namespace osgEarth { namespace Procedural
             //! OSG render bin number for vegetation render bins
             OE_OPTION(int, renderBinNumber);
 
+            //! Number of threads to use for background loading
+            OE_OPTION(unsigned, threads);
+
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
                 //! Whether to render this group at all

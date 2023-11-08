@@ -66,14 +66,24 @@ namespace
         {
             auto anode = dynamic_cast<osgEarth::AnnotationNode*>(&node);
             auto data = dynamic_cast<osgEarth::AnnotationData*>(node.getUserData());
+            std::string name;
 
             if (data)
             {
                 ImGui::PushID((std::uintptr_t)data);
 
-                auto name = data->getName();
-                auto vp = data->getViewpoint();
+                name = data->getName();
+                auto vp_ptr = data->getViewpoint();
                 auto desc = data->getDescription();
+
+                Viewpoint vp;
+                if (vp_ptr) vp = *vp_ptr;
+
+                if (!vp.valid())
+                {
+                    osgEarth::Util::ViewFitter fitter(srs, camera);
+                    fitter.createViewpoint(&node, vp);
+                }
 
                 bool visible = node.getNodeMask() != 0;
                 if (ImGui::Checkbox("", &visible))
@@ -83,9 +93,9 @@ namespace
                 }
                 ImGui::SameLine();
                 bool is_selected = false;
-                if (ImGui::Selectable(name.c_str(), &is_selected) && manip && vp)
+                if (ImGui::Selectable(name.c_str(), &is_selected) && manip && vp.valid())
                 {
-                    manip->setViewpoint(*vp);
+                    manip->setViewpoint(vp);
                 }
 
                 ImGui::PopID();
@@ -96,7 +106,7 @@ namespace
             {
                 ImGui::PushID((std::uintptr_t)data);
 
-                auto name = anode->getName();
+                name = anode->getName();
                 if (name.empty()) name = "[" + std::string(anode->className()) + "]";
 
                 bool visible = node.getNodeMask() != 0;
@@ -118,7 +128,6 @@ namespace
                 ImGui::PopID();
 
                 ImGui::Indent();
-
             }
 
             traverse(node);

@@ -1030,8 +1030,11 @@ BuildGeometryFilter::tileAndBuildPolygon(
     // hard copy so we can project the values
     osg::ref_ptr<Geometry> proj = input->clone();
 
+    auto render = _style.get<RenderSymbol>();
 
-    if (outputSRS && outputSRS->isGeographic())
+    // weemesh path ONLY happens if maxTessAngle is set for now.
+    // We will keep it this way until testing is complete -gw
+    if (outputSRS && outputSRS->isGeographic() && render && render->maxTessAngle().isSet())
     {
         // weemesh triangulation approach (from Rocky)
 
@@ -1041,7 +1044,6 @@ BuildGeometryFilter::tileAndBuildPolygon(
 
         // Meshed triangles will be at a maximum this many degrees across in size,
         // to help follow the curvature of the earth.
-        auto render = _style.get<RenderSymbol>();
         const double resolution_degrees = render ? render->maxTessAngle()->as(Units::DEGREES): 1.0;
 
         // some conversions we will need:

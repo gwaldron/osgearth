@@ -260,7 +260,7 @@ namespace osgEarth { namespace Util
     inline std::vector<osg::ref_ptr<osg::Node>> findSiblings(osg::Node* node)
     {
         std::vector<osg::ref_ptr<osg::Node>> output;
-        if (node)
+        if (node && node->getNumParents() > 0)
         {
             auto parent = node->getParent(0);
             for(unsigned i=0; i<parent->getNumChildren(); ++i)

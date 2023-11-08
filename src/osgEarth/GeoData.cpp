@@ -1872,7 +1872,7 @@ GeoImage::valid() const
 const osg::Image*
 GeoImage::getImage() const
 {
-    return _future.isSet() && _future->empty() ?
+    return _future.isSet() && _future->available() ?
         _future->join().get() :
         _myimage.get();
 }

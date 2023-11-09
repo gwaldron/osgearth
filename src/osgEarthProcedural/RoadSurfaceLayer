@@ -109,7 +109,7 @@ namespace osgEarth { namespace Procedural
         osg::ref_ptr<TileRasterizer> _rasterizer;
     };
 
-} } // namespace osgEarth::Splat
+} } // namespace osgEarth::Procedural
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Procedural::RoadSurfaceLayer::Options);
 

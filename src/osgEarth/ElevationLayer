@@ -35,8 +35,8 @@ namespace osgEarth
         public:
             META_LayerOptions(osgEarth, Options, TileLayer::Options);
             OE_OPTION(std::string, verticalDatum);
-            OE_OPTION(bool, offset);
-            OE_OPTION(ElevationNoDataPolicy, noDataPolicy);
+            OE_OPTION(bool, offset, false);
+            OE_OPTION(ElevationNoDataPolicy, noDataPolicy, NODATA_INTERPOLATE);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );

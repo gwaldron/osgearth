@@ -47,9 +47,6 @@ ElevationLayer::Options::getConfig() const
 void
 ElevationLayer::Options::fromConfig( const Config& conf )
 {
-    _offset.init( false );
-    _noDataPolicy.init( NODATA_INTERPOLATE );
-
     conf.get("vdatum", verticalDatum() );
     conf.get("vsrs", verticalDatum() );    // back compat
     conf.get("offset", offset() );

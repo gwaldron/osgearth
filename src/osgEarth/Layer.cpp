@@ -62,10 +62,6 @@ Layer::Options::getConfig() const
 void
 Layer::Options::fromConfig(const Config& conf)
 {
-    // defaults:
-    openAutomatically().setDefault(true);
-    terrainPatch().setDefault(false);
-
     conf.get("name", name());
     conf.get("open", openAutomatically()); // back compat
     conf.get("enabled", openAutomatically());

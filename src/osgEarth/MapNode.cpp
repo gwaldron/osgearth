@@ -44,8 +44,6 @@ using namespace osgEarth::Contrib;
 
 #define LC "[MapNode] "
 
-//---------------------------------------------------------------------------
-
 namespace
 {
     /**
@@ -214,18 +212,6 @@ MapNode::Options::getConfig() const
 void
 MapNode::Options::fromConfig(const Config& conf)
 {
-    proxySettings().init(ProxySettings());
-    enableLighting().init(true);
-    overlayBlending().init(true);
-    overlayBlendingSource().init("alpha");
-    overlayMipMapping().init(false);
-    overlayTextureSize().init(4096);
-    overlayResolutionRatio().init(3.0f);
-    useCascadeDraping().init(false);
-    terrain().init(TerrainOptions());
-    drapingRenderBinNumber().init(1);
-    screenSpaceError().setDefault(25.0f);
-
     conf.get( "proxy",                    proxySettings() );
     conf.get( "lighting",                 enableLighting() );
     conf.get( "overlay_blending",         overlayBlending() );

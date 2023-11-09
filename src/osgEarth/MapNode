@@ -63,17 +63,17 @@ namespace osgEarth
         class OSGEARTH_EXPORT Options : public ConfigOptions {
         public:
             META_ConfigOptions(osgEarth, Options, ConfigOptions);
-            OE_OPTION(ProxySettings, proxySettings);
-            OE_OPTION(bool, enableLighting);
-            OE_OPTION(bool, overlayBlending);
-            OE_OPTION(bool, overlayBlendingSource);
-            OE_OPTION(unsigned, overlayTextureSize);
-            OE_OPTION(bool, overlayMipMapping);
-            OE_OPTION(float, overlayResolutionRatio);
-            OE_OPTION(bool, useCascadeDraping);
+            OE_OPTION(int, drapingRenderBinNumber, 1);
+            OE_OPTION(bool, enableLighting, true);
+            OE_OPTION(bool, overlayBlending, true);
+            OE_OPTION(bool, overlayMipMapping, false);
+            OE_OPTION(bool, useCascadeDraping, false);
+            OE_OPTION(float, overlayResolutionRatio, 3.0f);
+            OE_OPTION(float, screenSpaceError, 25.0f);
+            OE_OPTION(unsigned, overlayTextureSize, 4096);
+            OE_OPTION(std::string, overlayBlendingSource, "alpha");
             OE_OPTION(TerrainOptions, terrain);
-            OE_OPTION(int, drapingRenderBinNumber);
-            OE_OPTION(float, screenSpaceError);
+            OE_OPTION(ProxySettings, proxySettings);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

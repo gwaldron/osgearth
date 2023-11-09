@@ -59,15 +59,6 @@ TileLayer::Options::getConfig() const
 void
 TileLayer::Options::fromConfig(const Config& conf)
 {
-    _minLevel.init( 0 );
-    _maxLevel.init( 23 );
-    _maxDataLevel.init( 99 );
-    _tileSize.init( 256 );
-    _noDataValue.init( -32767.0f ); // SHRT_MIN
-    _minValidValue.init( -32766.0f ); // -(2^15 - 2)
-    _maxValidValue.init( 32767.0f );
-    upsample().setDefault(false);
-
     conf.get( "min_level", _minLevel );
     conf.get( "max_level", _maxLevel );
     conf.get( "min_resolution", _minResolution );
@@ -85,20 +76,20 @@ TileLayer::Options::fromConfig(const Config& conf)
 //------------------------------------------------------------------------
 
 TileLayer::CacheBinMetadata::CacheBinMetadata() :
-_valid(false)
+    _valid(false)
 {
     //nop
 }
 
 TileLayer::CacheBinMetadata::CacheBinMetadata(const TileLayer::CacheBinMetadata& rhs) :
-_valid          ( rhs._valid ),
-_cacheBinId     ( rhs._cacheBinId ),
-_sourceName     ( rhs._sourceName ),
-_sourceDriver   ( rhs._sourceDriver ),
-_sourceTileSize ( rhs._sourceTileSize ),
-_sourceProfile  ( rhs._sourceProfile ),
-_cacheProfile   ( rhs._cacheProfile ),
-_cacheCreateTime( rhs._cacheCreateTime )
+    _valid(rhs._valid),
+    _cacheBinId(rhs._cacheBinId),
+    _sourceName(rhs._sourceName),
+    _sourceDriver(rhs._sourceDriver),
+    _sourceTileSize(rhs._sourceTileSize),
+    _sourceProfile(rhs._sourceProfile),
+    _cacheProfile(rhs._cacheProfile),
+    _cacheCreateTime(rhs._cacheCreateTime)
 {
     //nop
 }

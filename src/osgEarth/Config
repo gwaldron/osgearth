@@ -666,7 +666,9 @@ namespace osgEarth
         MYCLASS (const ConfigOptions& opt) : SUPERCLASS(opt) { fromConfig(_conf); }
 
 //! optional property macro
-#define OE_OPTION(TYPE, NAME) \
+#define OE_OPTION_0_ARGS()
+#define OE_OPTION_1_ARGS()
+#define OE_OPTION_2_ARGS(TYPE, NAME) \
     private: \
       osgEarth::optional< TYPE > _ ## NAME ; \
       mutable std::vector<std::function<void(const TYPE&)>> _ ## NAME ## _listeners; \
@@ -678,6 +680,27 @@ namespace osgEarth
       void set_ ## NAME (const TYPE& value) { \
         _ ## NAME = value; \
         for(auto& notify : _ ## NAME ## _listeners) notify(value); }
+
+#define OE_OPTION_3_ARGS(TYPE, NAME, DEFAULT_VALUE) \
+    private: \
+      osgEarth::optional< TYPE > _ ## NAME {DEFAULT_VALUE}; \
+      mutable std::vector<std::function<void(const TYPE&)>> _ ## NAME ## _listeners; \
+    public: \
+      osgEarth::optional< TYPE >& NAME () { return _ ## NAME; } \
+      const osgEarth::optional< TYPE >& NAME () const { return _ ## NAME; } \
+      void NAME ## Changed (std::function<void(const TYPE&)> f) const { \
+        _ ## NAME ## _listeners.push_back(f); } \
+      void set_ ## NAME (const TYPE& value) { \
+        _ ## NAME = value; \
+        for(auto& notify : _ ## NAME ## _listeners) notify(value); }
+
+// https://stackoverflow.com/a/28074198
+#define OE_OPTION_FUNC_CHOOSER(_f1, _f2, _f3, _f4, ...) _f4
+#define OE_OPTION_FUNC_RECOMPOSER(ARGS) OE_OPTION_FUNC_CHOOSER ARGS
+#define OE_OPTION_CHOOSE_FROM_ARG_COUNT(...) OE_OPTION_FUNC_RECOMPOSER((__VA_ARGS__, OE_OPTION_3_ARGS, OE_OPTION_2_ARGS, OE_OPTION_1_ARGS, ))
+#define OE_OPTION_NO_ARG_EXPANDER() ,,OE_OPTION_0_ARGS
+#define OE_OPTION_MACRO_CHOOSER(...) OE_OPTION_CHOOSE_FROM_ARG_COUNT(OE_OPTION_NO_ARG_EXPANDER __VA_ARGS__ ())
+#define OE_OPTION(...) OE_OPTION_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
 //! ref_ptr property macro
 #define OE_OPTION_REFPTR(TYPE, NAME) \

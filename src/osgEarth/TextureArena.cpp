@@ -169,9 +169,6 @@ Texture::needsCompile(const osg::State& state) const
     if ((gc._gltexture == nullptr || !gc._gltexture->valid()) && hasData == true)
         return true;
 
-    if (hasData == false)
-        return false;
-
     return (osgTexture()->getImage(0)->getModifiedCount() != gc._imageModCount);
 }
 
@@ -198,15 +195,15 @@ Texture::dataLoaded() const
         osgTexture()->getImage(0) != nullptr;
 }
 
-void
+bool
 Texture::compileGLObjects(osg::State& state) const
 {
     if (!needsCompile(state))
-        return;
+        return false;
 
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(name().c_str());
-    OE_HARD_ASSERT(dataLoaded() == true);
+    OE_SOFT_ASSERT_AND_RETURN(dataLoaded() == true, false);
 
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
     auto& gc = GLObjects::get(_globjects, state);
@@ -218,9 +215,8 @@ Texture::compileGLObjects(osg::State& state) const
     {
         // hmm, it's already compiled. Does it need a recompile 
         // because of a modified image?
-
         if (gc._imageModCount == image->getModifiedCount())
-            return; // nope
+            return false; // nope
     }
 
     if (target() == GL_TEXTURE_2D)
@@ -351,10 +347,7 @@ Texture::compileGLObjects(osg::State& state) const
             {
                 if (target() == GL_TEXTURE_2D)
                 {
-                    unsigned char* dataptr =
-                        image->getMipmapData(mipLevel);
-
-
+                    unsigned char* dataptr = image->getMipmapData(mipLevel);
 
                     if (compressed)
                     {
@@ -436,6 +429,8 @@ Texture::compileGLObjects(osg::State& state) const
 
     // sync the mod counts.
     gc._imageModCount = image->getModifiedCount();
+
+    return true;
 }
 
 void
@@ -479,18 +474,20 @@ Texture::releaseGLObjects(osg::State* state, bool force) const
     if (_host != nullptr && force == false)
         return;
 
+    OE_DEVEL << "RELEASING = " << name() << std::endl;
+
     if (state)
     {
         auto& gc = GLObjects::get(_globjects, *state);
         if (gc._gltexture != nullptr)
         {
             // debugging
-            OE_DEVEL << LC
-                << "Texture::releaseGLObjects '" << name() << "'" << std::endl;
+            //OE_DEVEL << LC
+            //    << "Texture::releaseGLObjects '" << name() << "'" << std::endl;
             //<< "' name=" << gc._gltexture->name()
             //<< " handle=" << gc._gltexture->handle(*state) << std::endl;
 
-        // will activate the releaser
+            // will activate the releaser
             gc._gltexture->release(); // redundant?
             gc._gltexture = nullptr;
         }
@@ -699,7 +696,7 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
     {
         for (int i = 0; i < _textures.size(); ++i)
         {
-            if (_textures[i] == nullptr) // || _textures[i].use_count() == 1)
+            if (_textures[i] == nullptr)
             {
                 index = i;
                 break;
@@ -716,7 +713,7 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
     // add to all existing GCs:
     for (unsigned i = 0; i < _globjects.size(); ++i)
     {
-        if (_globjects[i]._inUse)
+        if (_globjects[i]._inUse)        
             _globjects[i]._toCompile.push(index);
     }
 
@@ -881,16 +878,15 @@ TextureArena::apply(osg::State& state) const
     {
         // If we are going to compile any textures, we need to save and restore
         // the OSG texture state...
-        const osg::StateAttribute* savedActiveOsgTexture = nullptr;
         if (!gc._toCompile.empty())
         {
-            // need to save any bound texture so we can reinstate it:
-            savedActiveOsgTexture = state.getLastAppliedTextureAttribute(
-                state.getActiveTextureUnit(), osg::StateAttribute::TEXTURE);
-        }
-
-        {
             OE_PROFILING_ZONE_NAMED("_toCompile");
+
+            // need to save any bound texture so we can reinstate it:
+            auto savedActiveOsgTexture = state.getLastAppliedTextureAttribute(
+                state.getActiveTextureUnit(), osg::StateAttribute::TEXTURE);
+
+            unsigned num_compiled = 0;
 
             while (!gc._toCompile.empty())
             {
@@ -899,7 +895,11 @@ TextureArena::apply(osg::State& state) const
                 auto tex = _textures[ptr];
                 if (tex)
                 {
-                    tex->compileGLObjects(state);
+                    if (tex->compileGLObjects(state))
+                    {
+                        ++num_compiled;
+                        OE_DEVEL << "Compiled on demand = " << tex->name() << " " << (std::uintptr_t)tex.get() << std::endl;
+                    }
                 }
 
                 GLTexture* gltex = nullptr;
@@ -911,20 +911,20 @@ TextureArena::apply(osg::State& state) const
                 if (gc._handles[index] != handle)
                 {
                     gc._handles[index] = handle;
-                }
 
-                // mark the GC to re-upload its LUT
-                gc._handleBufferDirty = true;
+                    // mark the GC to re-upload its LUT
+                    gc._handleBufferDirty = true;
+                }
+            }
+
+            // reinstate the old bound texture
+            if (savedActiveOsgTexture)
+            {
+                state.applyTextureAttribute(state.getActiveTextureUnit(), savedActiveOsgTexture);
             }
         }
 
         gc._lastAppliedFrame = state.getFrameStamp()->getFrameNumber();
-
-        // reinstate the old bound texture
-        if (savedActiveOsgTexture)
-        {
-            state.applyTextureAttribute(state.getActiveTextureUnit(), savedActiveOsgTexture);
-        }
     }
 
     // upload to GPU if it changed:
@@ -992,7 +992,7 @@ TextureArena::releaseGLObjects(osg::State* state, bool force) const
 {
     ScopedMutexLock lock(_m);
 
-    OE_DEVEL << LC << "releaseGLObjects on arena " << getName() << std::endl;
+    //OE_DEVEL << LC << "releaseGLObjects on arena " << getName() << std::endl;
 
     if (state)
     {

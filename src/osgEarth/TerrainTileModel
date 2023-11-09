@@ -112,7 +112,8 @@ namespace osgEarth
         //!   that will be managed by a TextureArena
         void getStateToCompile(
             osgUtil::StateToCompile& out,
-            bool bindless) const;
+            bool bindless,
+            osg::Object* token) const;
 
     protected:
         bool _requiresUpdateTraverse;

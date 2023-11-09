@@ -598,6 +598,7 @@ namespace osgEarth { namespace Util
     {
         PerObjectMap() { }
         PerObjectMap(const std::string& name) : _mutex(name) { }
+        bool threadsafe = true;
 
         DATA& get(KEY k)
         {
@@ -634,6 +635,7 @@ namespace osgEarth { namespace Util
     {
         PerObjectFastMap() { }
         PerObjectFastMap(const std::string& name) : _mutex(name) { }
+        bool threadsafe = true;
 
         struct Functor {
             virtual void operator()(DATA& data) =0;
@@ -645,7 +647,7 @@ namespace osgEarth { namespace Util
 
         DATA& get(KEY k)
         {
-            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            osgEarth::Threading::ScopedLockIf lock(_mutex, threadsafe);
             typename std::unordered_map<KEY,DATA>::iterator i = _data.find(k);
             if ( i != _data.end() )
                 return i->second;
@@ -655,47 +657,47 @@ namespace osgEarth { namespace Util
 
         void remove(KEY k)
         {
-            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            osgEarth::Threading::ScopedLockIf lock(_mutex, threadsafe);
             _data.erase( k );
         }
 
         void forEach(Functor& functor)
         {
-            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            osgEarth::Threading::ScopedLockIf lock(_mutex, threadsafe);
             for (typename std::unordered_map<KEY, DATA>::iterator i = _data.begin(); i != _data.end(); ++i)
                 functor.operator()(i->second);
         }
 
         void forEach(std::function<void(DATA&)> functor)
         {
-            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            osgEarth::Threading::ScopedLockIf lock(_mutex, _threthreadsafeadsafe);
             for (auto& entry : _data)
                 functor(entry.second);
         }
 
         void forEach(ConstFunctor& functor) const
         {
-            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            osgEarth::Threading::ScopedLockIf lock(_mutex, threadsafe);
             for (typename std::unordered_map<KEY, DATA>::const_iterator i = _data.begin(); i != _data.end(); ++i)
                 functor.operator()(i->second);
         }
 
         void forEach(std::function<void(const DATA&)> functor) const
         {
-            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            osgEarth::Threading::ScopedLockIf lock(_mutex, threadsafe);
             for (auto& entry : _data)
                 functor(entry.second);
         }
 
         unsigned size() const
         {
-            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            osgEarth::Threading::ScopedLockIf lock(_mutex, threadsafe);
             return _data.size();
         }
 
         void clear()
         {
-            osgEarth::Threading::ScopedMutexLock lock(_mutex);
+            osgEarth::Threading::ScopedLockIf lock(_mutex, threadsafe);
             _data.clear();
         }
 

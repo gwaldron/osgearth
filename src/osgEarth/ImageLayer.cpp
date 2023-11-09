@@ -954,13 +954,13 @@ FutureTexture2D::update()
         return;
     }
 
-    else if (_result.isCanceled())
+    else if (_result.canceled())
     {
         dispatch();
         return;
     }
 
-    else if (_result.empty() == true)
+    else if (_result.available())
     {
         OE_DEBUG<< LC << "Async result available for " << getName() << std::endl;
 

@@ -61,7 +61,9 @@ HorizonClipPlane::HorizonClipPlane(const Ellipsoid& em) :
     _num(0u),
     _data(OE_MUTEX_NAME)
 {
-    //nop
+#ifdef OSGEARTH_SINGLE_THREADED_OSG
+    _data.threadsafe = false;
+#endif
 }
 
 void

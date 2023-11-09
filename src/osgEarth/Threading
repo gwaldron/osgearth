@@ -161,6 +161,18 @@ namespace osgEarth { namespace Threading
     using ScopedMutexLock = std::lock_guard<BasicLockable>;
     using ScopedLock = ScopedMutexLock;
 
+    struct ScopedMutexLockIf {
+        ScopedMutexLockIf(BasicLockable& lock, bool condition) : _lock(lock), _condition(condition) {
+            if (_condition) _lock.lock();
+        }
+        ~ScopedMutexLockIf() {
+            if (_condition) _lock.unlock();
+        }
+        BasicLockable& _lock;
+        bool _condition;
+    };
+    using ScopedLockIf = ScopedMutexLockIf;
+
     //! Locks a recursive mutex for the duration of the scope
     using ScopedRecursiveMutexLock = std::lock_guard<RecursiveMutex>;
     using ScopedRecursiveLock = ScopedRecursiveMutexLock;
@@ -329,11 +341,14 @@ namespace osgEarth { namespace Threading
         bool isCanceled() const override {
             return empty();
         }
+        bool canceled() const {
+            return empty();
+        }
 
-        //! Deference the result object. Make sure you check isAvailable()
+        //! Deference the result object. Make sure you check available()
         //! to check that the future was actually resolved; otherwise you
         //! will just get the default object.
-        T value() const {
+        const T& value() const {
             return _shared->_obj;
         }
 

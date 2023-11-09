@@ -130,7 +130,8 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             if (inRange)
             {
                 // load paged child if necessary
-                load(priority, &nv);
+                if (!_merged)
+                    load(priority, &nv);
 
                 // traverse children
                 traverseChildren(nv);
@@ -144,7 +145,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 for (auto& child : _children)
                 {
                     osg::Node* compiled =
-                        _compiled.empty() ? _compiled.value().get() :
+                        _compiled.available() ? _compiled.value().get() :
                         nullptr;
 
                     if (child.get() != compiled)
@@ -240,7 +241,8 @@ PagedNode2::computeBound() const
     }
 }
 
-void PagedNode2::load(float priority, const osg::Object* host)
+void
+PagedNode2::load(float priority, const osg::Object* host)
 {
     if (_loadTriggered.exchange(true) == false)
     {
@@ -287,6 +289,7 @@ void PagedNode2::load(float priority, const osg::Object* host)
         {
             // There is no load function so go all the way to the end of the state machine.
             _failed = true;
+            _merged = false;
             _compileTriggered.exchange(true);
             _mergeTriggered.exchange(true);
         }
@@ -384,22 +387,9 @@ PagingManager::PagingManager() :
     arena->setConcurrency(4u);
     _metrics = arena->metrics();
 
-    // NOTE: this is causing multiple model layers to not appear.
-    // Need to debug before using.
-    //osg::observer_ptr<PagingManager> pm_ptr(this);
-    //_updateFunc = [pm_ptr](Cancelable*) mutable
-    //{
-    //    osg::ref_ptr<PagingManager> pm(pm_ptr);
-    //    if (pm.valid())
-    //    {
-    //        pm->update();
-    //        Job(JobArena::get(JobArena::UPDATE_TRAVERSAL))
-    //            .dispatch(pm->_updateFunc);
-    //    }
-    //};
-
-    //Job(JobArena::get(JobArena::UPDATE_TRAVERSAL))
-    //    .dispatch(_updateFunc);
+#ifdef OSGEARTH_SINGLE_THREADED_OSG
+    _threadsafe = false;
+#endif
 }
 
 PagingManager::~PagingManager()
@@ -433,7 +423,8 @@ PagingManager::traverse(osg::NodeVisitor& nv)
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
         // After culling is complete, update all of the ranges for all of the node
-        ScopedMutexLock lock(_trackerMutex); // unnecessary?
+        ScopedLockIf lock(_trackerMutex, _threadsafe);
+
         for (auto& entry : _tracker._list)
         {
             if (entry._data.valid())
@@ -448,7 +439,8 @@ PagingManager::traverse(osg::NodeVisitor& nv)
 void
 PagingManager::merge(PagedNode2* host)
 {
-    ScopedMutexLock lock(_mergeMutex);
+    ScopedLockIf lock(_mergeMutex, _threadsafe);
+
     ToMerge toMerge;
     toMerge._node = host;
     toMerge._revision = host->_revision;
@@ -459,7 +451,7 @@ PagingManager::merge(PagedNode2* host)
 void
 PagingManager::update()
 {
-    ScopedMutexLock lock(_trackerMutex);
+    ScopedLockIf lock(_trackerMutex, _threadsafe);
 
     _tracker.flush(
         _mergesPerFrame,

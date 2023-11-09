@@ -97,11 +97,11 @@ namespace
     class CoordScaler
     {
     public:
-        CoordScaler(const Profile* profile, unsigned int lod, unsigned int refLOD):
+        CoordScaler(const Profile* profile, unsigned int lod, unsigned int refLOD) :
             _profile(profile),
             _lod(lod),
             _refLOD(refLOD)
-        {            
+        {
             _profile->getNumTiles(lod, _tilesX, _tilesY);
 
             _dL = (double)(lod - refLOD);
@@ -423,10 +423,11 @@ LifeMapLayer::createImageImplementation(
     ElevationPool* ep = map->getElevationPool();
     ep->getTile(key, true, elevTile, &_workingSet, progress);
 
-    // ensure we have a normal map for slopes and curvatures:
-    if (elevTile.valid() && getTerrainWeight() > 0.0f)
-    {
-        elevTile->generateNormalMap(map.get(), &_workingSet, progress);
+        // ensure we have a normal map for slopes and curvatures:
+        if (elevTile.valid() && getTerrainWeight() > 0.0f)
+        {
+            elevTile->generateNormalMap(map.get(), &_workingSet, progress);
+        }
     }
 
     GeoExtent extent = key.getExtent();

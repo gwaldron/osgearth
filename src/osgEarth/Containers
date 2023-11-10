@@ -670,7 +670,7 @@ namespace osgEarth { namespace Util
 
         void forEach(std::function<void(DATA&)> functor)
         {
-            osgEarth::Threading::ScopedLockIf lock(_mutex, _threthreadsafeadsafe);
+            osgEarth::Threading::ScopedLockIf lock(_mutex, threadsafe);
             for (auto& entry : _data)
                 functor(entry.second);
         }

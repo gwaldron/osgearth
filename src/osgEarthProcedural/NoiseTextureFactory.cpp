@@ -75,8 +75,9 @@ NoiseTextureFactory::createImage(unsigned dim, unsigned chans) const
     const float L[4] = { 2.2f,  1.0f,  1.0f, 4.0f };
 
     // seed = 0 so it is deterministic
-    std::default_random_engine gen(0);
-    std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
+    Random prng(0);
+    //std::default_random_engine gen(0);
+    //std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
     
     for(unsigned k=0; k<chans; ++k)
     {
@@ -108,7 +109,7 @@ NoiseTextureFactory::createImage(unsigned dim, unsigned chans) const
 
                 if ( k == 1 || k == 2 )
                 {
-                    n = rand_float(gen); // (float)random.next();
+                    n = prng.next();
                 }
                 else
                 {

@@ -44,6 +44,14 @@ RoadSurfaceLayer::Options::getConfig() const
     featureSource().set(conf, "features");
     styleSheet().set(conf, "styles");
     conf.set("buffer_width", featureBufferWidth());
+
+    if (filters().empty() == false)
+    {
+        Config temp;
+        for (unsigned i = 0; i < filters().size(); ++i)
+            temp.add(filters()[i].getConfig());
+        conf.set("filters", temp);
+    }
     return conf;
 }
 
@@ -53,6 +61,10 @@ RoadSurfaceLayer::Options::fromConfig(const Config& conf)
     featureSource().get(conf, "features");
     styleSheet().get(conf, "styles");
     conf.get("buffer_width", featureBufferWidth());
+
+    const Config& filtersConf = conf.child("filters");
+    for (ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
+        filters().push_back(ConfigOptions(*i));
 }
 
 //........................................................................
@@ -71,6 +83,8 @@ void
 RoadSurfaceLayer::init()
 {
     ImageLayer::init();
+
+    _keygate.setName("RoadSurfaceLayer " + getName());
 
     // Generate Mercator tiles by default.
     setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
@@ -104,6 +118,10 @@ RoadSurfaceLayer::openImplementation()
             getTileSize(),
             getTileSize());
     }
+
+    _filterChain = FeatureFilterChain::create(
+        options().filters(),
+        getReadOptions());
 
     return Status::NoError;
 }
@@ -205,7 +223,7 @@ namespace
         }
     }
 
-    void sortFeaturesIntoStyleGroups(StyleSheet* styles, FeatureList& features, FilterContext &context, StyleToFeatures& map)
+    void sortFeaturesIntoStyleGroups(StyleSheet* styles, FeatureList& features, FilterContext& context, StyleToFeatures& map)
     {
         if (styles == nullptr)
             return;
@@ -358,7 +376,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         // Set the LTP as our output SRS.
         // The geometry compiler will transform all our features into the
         // LTP so we can render using an orthographic camera (TileRasterizer)
-        FilterContext fc(session.get(), featureProfile, featureExtent);
+        FilterContext fc(session.get(), featureProfile.get(), featureExtent);
         fc.setOutputSRS(outputExtent.getSRS());
 
         // compile the features into a node.
@@ -383,6 +401,22 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
 
         if (group && group->getBound().valid())
         {
+            // Make sure there's actually geometry to render in the output extent
+            // since rasterization is expensive!
+            osg::Polytope polytope;
+            outputExtent.createPolytope(polytope);
+
+            osg::ref_ptr<osgUtil::PolytopeIntersector> intersector = new osgUtil::PolytopeIntersector(polytope);
+            osgUtil::IntersectionVisitor visitor(intersector);
+            group->accept(visitor);
+
+            if (intersector->getIntersections().empty())
+            {
+                OE_DEBUG << LC << "RSL: skipped an EMPTY bounds without rasterizing :) for " << key.str() << std::endl;
+                return GeoImage::INVALID;
+            }
+
+
             OE_PROFILING_ZONE_NAMED("Rasterize");
 
             group->setName(key.str());
@@ -397,12 +431,26 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             );
 
             // Immediately blocks on the result.
-            const osg::ref_ptr<osg::Image>& image = result.join(local_progress);
+            // That is OK - we are hopefully in a loading thread.
+            osg::ref_ptr<osg::Image> image = result.join(local_progress.get());
 
+            // Empty image means the texture did not render anything
             if (image.valid() && image->data() != nullptr)
-                return GeoImage(image.get(), key.getExtent());
+            {
+                if (!ImageUtils::isEmptyImage(image.get()))
+                {
+                    return GeoImage(image.get(), key.getExtent());
+                }
+                else
+                {
+                    OE_DEBUG << LC << "RSL: skipped an EMPTY image result for " << key.str() << std::endl;
+                    return GeoImage::INVALID;
+                }
+            }
             else
+            {
                 return GeoImage::INVALID;
+            }
         }
     }
 
@@ -450,11 +498,13 @@ RoadSurfaceLayer::getFeatures(
             }
             else
             {
-                cursor = fs->createFeatureCursor(subkey, progress);
+                cursor = fs->createFeatureCursor(subkey, _filterChain.get(), nullptr, progress);
                 if (cursor.valid())
                 {
-                    cursor->fill(sublist);
-                    //TODO: run script filter(s) on output
+                    cursor->fill(
+                        sublist,
+                        [](const Feature* f) { return f->getGeometry()->isLinear(); });
+
                     _lru->insert(subkey, sublist);
                 }
             }
@@ -462,10 +512,7 @@ RoadSurfaceLayer::getFeatures(
 
         // Clone features onto the end of the output list.
         // We must always clone since osgEarth modifies the feature data
-        std::transform(
-            sublist.begin(),
-            sublist.end(),
-            std::back_inserter(output),
-            [](osg::ref_ptr< Feature > f) { return osg::clone(f.get(), osg::CopyOp::DEEP_COPY_ALL); });
+        for (auto& f : sublist)
+            output.push_back(osg::clone(f.get(), osg::CopyOp::DEEP_COPY_ALL));
     }
 }

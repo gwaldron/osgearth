@@ -32,7 +32,9 @@ DrapingManager::DrapingManager() :
     _sets(OE_MUTEX_NAME),
     _renderBinNum(1)
 {
-    //nop
+#ifdef OSGEARTH_SINGLE_THREADED_OSG
+    _sets.threadsafe = false;
+#endif
 }
 
 DrapingCullSet&

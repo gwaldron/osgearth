@@ -57,6 +57,7 @@ namespace osgEarth
          * a valid tracked node.
          */
         bool isValid() const;
+        bool valid() const { return isValid(); }
 
         /**
          * Gets or sets the name of the viewpoint.

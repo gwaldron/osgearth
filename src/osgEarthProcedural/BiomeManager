@@ -21,6 +21,7 @@
 
 #include <osgEarthProcedural/Biome>
 #include <osgEarth/Chonk>
+#include <osg/BoundingBox>
 
 namespace osgEarth
 {

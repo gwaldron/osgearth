@@ -53,10 +53,20 @@ Status FilteredFeatureSource::openImplementation()
 void FilteredFeatureSource::addedToMap(const Map* map)
 {
     options().featureSource().addedToMap(map);
-    if (getFeatureSource())
+
+    if (!getFeatureSource())
     {
-        setFeatureProfile(getFeatureSource()->getFeatureProfile());
+        setStatus(Status(Status::ResourceUnavailable, "Cannot find feature source"));
+        return;
     }
+
+    if (!getFeatureSource()->getFeatureProfile())
+    {
+        setStatus(Status(Status::ConfigurationError, "Feature source does not report a valid profile"));
+        return;
+    }
+
+    setFeatureProfile(getFeatureSource()->getFeatureProfile());
 
     FeatureSource::addedToMap(map);
 }
@@ -93,7 +103,7 @@ FeatureCursor* FilteredFeatureSource::createFeatureCursorImplementation(
     const Query& query,
     ProgressCallback* progress)
 {
-    if (getFeatureSource())
+    if (isOpen() && getFeatureSource())
     {
         osg::ref_ptr< FeatureCursor > cursor = getFeatureSource()->createFeatureCursor(query, progress);
         if (cursor.valid())

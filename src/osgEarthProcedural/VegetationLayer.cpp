@@ -55,6 +55,8 @@
 
 #define LC "[VegetationLayer] " << getName() << ": "
 
+#define JOB_ARENA_VEGETATION "oe.vegetation"
+
 #define OE_DEVEL OE_DEBUG
 
 #ifndef GL_MULTISAMPLE
@@ -94,6 +96,7 @@ VegetationLayer::Options::getConfig() const
     conf.set("use_impostor_pbr_maps", useImpostorPBRMaps());
     conf.set("max_texture_size", maxTextureSize());
     conf.set("render_bin_number", renderBinNumber());
+    conf.set("threads", threads());
 
     Config layers("layers");
     for (auto group_name : { GROUP_TREES, GROUP_BUSHES, GROUP_UNDERGROWTH })
@@ -170,6 +173,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     useRGCompressedNormalMaps().setDefault(true);
     maxTextureSize().setDefault(INT_MAX);
     renderBinNumber().setDefault(3);
+    threads().setDefault(2u);
 
     biomeLayer().get(conf, "biomes_layer");
 
@@ -183,6 +187,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     conf.get("use_impostor_pbr_maps", useImpostorPBRMaps());
     conf.get("max_texture_size", maxTextureSize());
     conf.get("render_bin_number", renderBinNumber());
+    conf.get("threads", threads());
 
     // some nice default group settings
     groups()[GROUP_TREES].lod().setDefault(14);
@@ -387,7 +392,7 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 
         checkForNewAssets();
 
-        if (_newAssets.isAvailable())
+        if (_newAssets.available())
         {
             ScopedMutexLock lock(_assets);
             _assets = std::move(_newAssets.release());
@@ -824,6 +829,9 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
     setImpostorHighAngle(options().impostorHighAngle().get());
     setLODTransitionPadding(options().lodTransitionPadding().get());
     setUseImpostorNormalMaps(options().useImpostorNormalMaps().get());
+
+    // configure the thread pool
+    JobArena::setConcurrency(JOB_ARENA_VEGETATION, options().threads().get());
 }
 
 namespace
@@ -1115,6 +1123,7 @@ VegetationLayer::checkForNewAssets() const
 
     Job job;
     job.setName("VegetationLayer asset loader");
+    job.setArena(JOB_ARENA_VEGETATION);
     _newAssets = job.dispatch<AssetsByGroup>(loadNewAssets);
 
     return true;
@@ -1180,6 +1189,7 @@ VegetationLayer::createDrawableAsync(
 
     Job job;
     job.setName("Vegetation create drawable");
+    job.setArena(JOB_ARENA_VEGETATION);
     job.setPriority(-range); // closer is sooner
     return job.dispatch<osg::ref_ptr<osg::Drawable>>(function);
 }
@@ -1267,7 +1277,7 @@ VegetationLayer::getAssetPlacements(
     // Prepare to deal with holes in the terrain, where we do not want
     // to place vegetation
     TerrainConstraintQuery query;
-    map->getLayers<TerrainConstraintLayer>(query.layers, [](const TerrainConstraintLayer* layer)
+    map->getLayers<TerrainConstraintLayer>(query.layers, [](const auto* layer)
         {
             auto clayer = static_cast<const TerrainConstraintLayer*>(layer);
             return clayer->getRemoveInterior() == true;
@@ -1318,8 +1328,7 @@ VegetationLayer::getAssetPlacements(
     using Index = RTree<int, double, 2>;
     Index index;
 
-    std::minstd_rand0 gen(key.hash());
-    std::uniform_real_distribution<float> rand_float_01(0.0f, 1.0f);
+    std::default_random_engine gen(key.hash());
     Random prng(0);
 
     // approximate area of the tile in km
@@ -1369,12 +1378,32 @@ VegetationLayer::getAssetPlacements(
     // cumulative density function based on asset weights
     std::vector<float> assetCDF;
 
+
+    //TEMP - DEBUGGING DETERMINISTIC BEHAVIOR.
+    bool debug = false; // key.is(14, 17117, 4120);
+    if (debug) {
+        OE_INFO << LC << "---" << std::endl;
+        OE_INFO << LC << "Attempting to place " << max_instances << std::endl;
+    }
+
+    // normal distribution for lushness
+    std::normal_distribution<float> normal_dist(0.0f, 1.0f / 6.0f);
+
     // Generate random instances within the tile:
     for (unsigned i = 0; i < max_instances; ++i)
     {
+        // perform all random number generations first to preserve determinism
+        // in the even of an early loop break.
+
         // random tile-normalized position:
         float u = RAND();
         float v = RAND();
+
+        float asset_index_rand = RAND();
+        float rotation_rand = RAND();
+        float normal_rand = RAND();
+        float lush_offset = normal_dist(gen);
+
 
         // resolve the biome at this position:
         const Biome* biome = nullptr;
@@ -1386,7 +1415,10 @@ VegetationLayer::getAssetPlacements(
             int index = (int)biomemap_value.r();
             biome = catalog->getBiomeByIndex(index);
             if (!biome)
+            {
+                if (debug) OE_INFO << LC << "Instance " << i << " has invalid biome index " << index << std::endl;
                 continue;
+            }
         }
 
         if (biome == nullptr)
@@ -1400,6 +1432,7 @@ VegetationLayer::getAssetPlacements(
         if (iter == groupAssets.end())
         {
             empty_biomes.insert(biome);
+            if (debug) OE_INFO << LC << "Instance " << i << " has no assets for biome " << biome->id() << std::endl;
             continue;
         }
         ResidentBiomeModelAssetInstances& biome_assets = iter->second;
@@ -1418,14 +1451,13 @@ VegetationLayer::getAssetPlacements(
             density = lifemap_value[LIFEMAP_DENSE];
             lush = lifemap_value[LIFEMAP_LUSH];
         }
-        //if (density < 0.01f)
-        //    continue;
 
         auto& assetInstances = biome_assets.instances;
 
         // RNG with normal distribution between approx lush-1..lush+1
-        std::normal_distribution<float> normal_dist(lush, 1.0f / 6.0f);
-        lush = clamp(normal_dist(gen), 0.0f, 1.0f);
+        // Note: moved this earlier in the loop to make it deterministic
+        //std::normal_distribution<float> normal_dist(lush, 1.0f / 6.0f);
+        lush = clamp(lush + lush_offset, 0.0f, 1.0f);
 
         assetIndices.clear();
         assetCDF.clear();
@@ -1446,13 +1478,14 @@ VegetationLayer::getAssetPlacements(
         // if there are no assets that match the lushness criteria, move on.
         if (assetIndices.empty())
         {
+            if (debug) OE_INFO << LC << "Instance " << i << " has no assets for lushness " << lush << std::endl;
             continue;
         }
 
         int assetIndex = 0;
         if (assetIndices.size() > 1)
         {
-            float k = RAND() * cumulativeWeight;
+            float k = asset_index_rand * cumulativeWeight;
             for (assetIndex = 0;
                 assetIndex < assetCDF.size() - 1 && k > assetCDF[assetIndex];
                 ++assetIndex);
@@ -1463,6 +1496,7 @@ VegetationLayer::getAssetPlacements(
         // if there's no geometry... bye
         if (asset->chonk() == nullptr)
         {
+            if (debug) OE_INFO << LC << "Instance " << i << " has no geometry" << std::endl;
             continue;
         }
 
@@ -1478,12 +1512,16 @@ VegetationLayer::getAssetPlacements(
         // apply instance-specific density adjustment:
         density *= instance.coverage();
 
+#if 0
+        // Removed, because this is causing the placement to go non-deterministic
+        // for some reason that I have not yet identified.
         const float edge_threshold = 0.10f;
         if (scaleWithDensity && density < edge_threshold)
         {
             float edginess = (density / edge_threshold);
             scale *= edginess;
         }
+#endif
 
         // tile-local coordinates of the position:
         osg::Vec2d local(
@@ -1500,12 +1538,12 @@ VegetationLayer::getAssetPlacements(
             pass = false;
 
             // scale the asset bounding box in preparation for collision:
-            const osg::BoundingBox& aabb = asset->boundingBox();
+            const auto& aabb = asset->boundingBox();
 
             double so = (1.0 - overlap);
-            double a_min[2] = { local.x() + aabb.xMin() * scale.x() * so, local.y() + aabb.yMin() * scale.x() * so };
-            double a_max[2] = { local.x() + aabb.xMax() * scale.y() * so, local.y() + aabb.yMax() * scale.y() * so };
-
+            double a_min[2] = { local.x() + aabb.xMin() * scale.x() * so, local.y() + aabb.yMin() * scale.y() * so };
+            double a_max[2] = { local.x() + aabb.xMax() * scale.x() * so, local.y() + aabb.yMax() * scale.y() * so };
+            
             if (index.Search(a_min, a_max) == 0)
             {
                 index.Insert(a_min, a_max, 0);
@@ -1517,10 +1555,6 @@ VegetationLayer::getAssetPlacements(
         {
             osg::Vec3d map_point(e.xMin() + u * e.width(), e.yMin() + v * e.height(), 0);
 
-            // Generate a random rotation and record the position.
-            // Do this before the constraint check to maintain determinism!
-            float rotation = RAND() * 3.1415927 * 2.0;
-
             if (!inConstrainedRegion(map_point.x(), map_point.y(), constraints))
             {
                 map_points.emplace_back(map_point);
@@ -1529,12 +1563,16 @@ VegetationLayer::getAssetPlacements(
                 p.localPoint() = local;
                 p.uv().set(u, v);
                 p.scale() = scale;
-                p.rotation() = rotation;
+                p.rotation() = rotation_rand * 3.1415927 * 2.0;
                 p.asset() = asset;
                 p.density() = density;
                 p.biome = biome;
 
                 result.emplace_back(std::move(p));
+            }
+            else
+            {
+                if (debug) OE_INFO << LC << "Instance " << i << " is in a constrained region" << std::endl;
             }
         }
     }
@@ -1543,21 +1581,31 @@ VegetationLayer::getAssetPlacements(
     // threshold. We have to do this after the fact so that
     // lifemap changes don't change existing assets (due to the
     // collision rtree).
-    int numResults = result.size();
-    for (int i = 0; i < numResults; ++i)
+    if (debug) OE_INFO << LC << (max_instances - result.size()) << " instances removed due to overlap" << std::endl;
+
+    std::vector<Placement> result_culled;
+    result_culled.reserve(result.size());
+
+    std::vector<osg::Vec3d> map_points_culled;
+    map_points_culled.reserve(result.size());
+
+    for (int i = 0; i < result.size(); ++i)
     {
         Placement& p = result[i];
 
-        if (RAND() > p.density())
+        if (RAND() <= p.density())
         {
-            result[i] = std::move(result[numResults - 1]);
-            map_points[i] = std::move(map_points[numResults - 1]);
-            --numResults;
-            --i;
+            result_culled.emplace_back(std::move(p));
+            map_points_culled.emplace_back(std::move(map_points[i]));
         }
     }
-    result.resize(numResults);
-    map_points.resize(numResults);
+
+    if (debug) OE_INFO << LC << (result.size()-result_culled.size()) << " instances removed due to density" << std::endl;
+
+    std::swap(result, result_culled);
+    std::swap(map_points, map_points_culled);
+
+    if (debug) OE_INFO << LC << "Final instance count = " << result.size() << std::endl;
 
     // clamp everything to the terrain
     map->getElevationPool()->sampleMapCoords(
@@ -1949,7 +1997,7 @@ VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
 
                 if (view._placeholder)
                 {
-                    auto phcd = asChonkDrawable(view._placeholder->_drawable.get());
+                    auto phcd = asChonkDrawable(view._placeholder->_drawable.value());
                     if (phcd)
                         birthday = phcd->getBirthday();
                 }
@@ -1974,9 +2022,9 @@ VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
         }
 
         // if the data is ready, cull it:
-        if (view._tile->_drawable.isAvailable())
+        if (view._tile->_drawable.available())
         {
-            auto drawable = view._tile->_drawable.get();
+            auto drawable = view._tile->_drawable.value();
 
             if (drawable.valid())
             {
@@ -2020,7 +2068,7 @@ VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
 
         // If the job exists but was canceled for some reason,
         // Reset this view so it will try again later.
-        else if (view._tile->_drawable.isAbandoned())
+        else if (view._tile->_drawable.empty())
         {
             view._tile = nullptr;
         }
@@ -2032,7 +2080,7 @@ VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
             // push the matrix and accept the placeholder.
             view._matrix->set(entry->getModelViewMatrix());
             cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
-            view._placeholder->_drawable.get()->accept(nv);
+            view._placeholder->_drawable.value()->accept(nv);
             cv->popModelViewMatrix();
         }
 
@@ -2068,7 +2116,7 @@ VegetationLayer::resizeGLObjectBuffers(unsigned maxSize)
 
     for (auto& tile : _tiles)
     {
-        auto drawable = tile.second->_drawable.get();
+        auto drawable = tile.second->_drawable.value();
         if (drawable.valid())
             drawable->resizeGLObjectBuffers(maxSize);
     }

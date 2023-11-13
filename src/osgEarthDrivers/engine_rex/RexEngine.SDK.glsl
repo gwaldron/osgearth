@@ -58,7 +58,6 @@ vec4 oe_terrain_getNormalAndCurvature()
     return oe_terrain_getNormalAndCurvature(uv_scaledBiased);
 }
 
-#ifndef VP_STAGE_FRAGMENT
 /**
  * Scales repeating texture coordinate such that they are [0..1]
  * at a specific reference tile LOD. 
@@ -100,4 +99,4 @@ vec4 oe_terrain_scaleCoordsAndTileKeyToRefLOD(in vec2 tc, in float refLOD)
 
     return vec4(result, a);
 }
-#endif
+

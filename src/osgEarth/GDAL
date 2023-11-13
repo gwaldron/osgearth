@@ -67,12 +67,12 @@ namespace osgEarth {
             Options(const ConfigOptions& input);
             OE_OPTION(URI, url);
             OE_OPTION(std::string, connection);
-            OE_OPTION(unsigned, subDataSet);
-            OE_OPTION(RasterInterpolation, interpolation);
+            OE_OPTION(unsigned, subDataSet, 0u);
+            OE_OPTION(RasterInterpolation, interpolation, INTERP_AVERAGE);
             OE_OPTION(ProfileOptions, warpProfile);
-            OE_OPTION(bool, useVRT);
-            OE_OPTION(bool, coverageUsesPaletteIndex);
-            OE_OPTION(bool, singleThreaded);
+            OE_OPTION(bool, useVRT, false);
+            OE_OPTION(bool, coverageUsesPaletteIndex, true);
+            OE_OPTION(bool, singleThreaded, false);
 
             void readFrom(const Config& conf);
             void writeTo(Config& conf) const;

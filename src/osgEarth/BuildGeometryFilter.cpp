@@ -47,6 +47,7 @@
 #include <osg/Version>
 #include <iterator>
 #include <osgEarth/Notify>
+#include "weemesh.h"
 
 #define LC "[BuildGeometryFilter] "
 
@@ -973,6 +974,43 @@ namespace
 
 #ifdef USE_GNOMONIC_TESSELLATION
 
+namespace
+{   
+    // Transforms a range of points from geographic (long lat) to gnomonic coordinates
+    // around a centroid with an optional scale.
+    template<class T>
+    void geo_to_gnomonic(T& p, const T& centroid, double scale)
+    {
+        double lon0 = deg2rad(centroid[0]);
+        double lat0 = deg2rad(centroid[1]);
+
+        double lon = deg2rad(p[0]);
+        double lat = deg2rad(p[1]);
+        double d = sin(lat0) * sin(lat) + cos(lat0) * cos(lat) * cos(lon - lon0);
+        p[0] = scale * (cos(lat) * sin(lon - lon0)) / d;
+        p[1] = scale * (cos(lat0) * sin(lat) - sin(lat0) * cos(lat) * cos(lon - lon0)) / d;
+    }
+
+    // Transforms a range of points from gnomonic coordinates around a centroid with a
+    // given scale to geographic (long lat) coordinates.
+    template<class T1, class T2>
+    void gnomonic_to_geo(T1& p, const T2& centroid, double scale)
+    {
+        double lon0 = deg2rad(centroid[0]);
+        double lat0 = deg2rad(centroid[1]);
+
+        double x = p[0] / scale, y = p[1] / scale;
+        double rho = sqrt(x * x + y * y);
+        double c = atan(rho);
+
+        double lat = asin(cos(c) * sin(lat0) + (y * sin(c) * cos(lat0) / rho));
+        double lon = lon0 + atan((x * sin(c)) / (rho * cos(lat0) * cos(c) - y * sin(lat0) * sin(c)));
+
+        p[0] = rad2deg(lon);
+        p[1] = rad2deg(lat);
+    }
+}
+
 void
 BuildGeometryFilter::tileAndBuildPolygon(
     Geometry*               input,
@@ -992,120 +1030,265 @@ BuildGeometryFilter::tileAndBuildPolygon(
     // hard copy so we can project the values
     osg::ref_ptr<Geometry> proj = input->clone();
 
-    Tessellator::Plane plane = Tessellator::PLANE_XY;
+    auto render = _style.get<RenderSymbol>();
 
-    if (outputSRS)
+    // weemesh path ONLY happens if maxTessAngle is set for now.
+    // We will keep it this way until testing is complete -gw
+    if (outputSRS && outputSRS->isGeographic() && render && render->maxTessAngle().isSet())
     {
-        // for geographic data we need to project into 2D before tessellating:
-        if (outputSRS->isGeographic())
+        // weemesh triangulation approach (from Rocky)
+
+        // scales our local gnomonic coordinates so they are the same order of magnitude as
+        // weemesh's default epsilon values:
+        const double gnomonic_scale = 1000.0;
+
+        // Meshed triangles will be at a maximum this many degrees across in size,
+        // to help follow the curvature of the earth.
+        const double resolution_degrees = render ? render->maxTessAngle()->as(Units::DEGREES): 1.0;
+
+        // some conversions we will need:
+        auto feature_geo = inputSRS;
+
+        // centroid for use with the gnomonic projection:
+        osg::Vec3d centroid = input->getBounds().center();
+        inputSRS->transform(centroid, outputSRS, centroid); // to geographic
+
+        // transform to gnomonic. We are not using SRS/PROJ for the gnomonic projection
+        // because it would require creating a new SRS for each and every feature (because
+        // of the centroid) and that is way too slow.
+        auto local_geom = proj; // working copy
+        Bounds local_ex;
+        double z = -DBL_MAX;
+        GeometryIterator iter(local_geom.get());
+        while (iter.hasMore())
         {
-            osg::Vec3d temp;
-            osg::BoundingBoxd ecef_bb;
-
-            bool allOnEquator = true;
-            GeometryIterator xform_iter(proj.get(), true);
-            while (xform_iter.hasMore())
+            auto part = iter.next();
+            inputSRS->transform(part->asVector(), outputSRS); // to geographic
+            for (auto& p : *part)
             {
-                Geometry* part = xform_iter.next();
-                part->open();
-                for (osg::Vec3d& p : *part)
-                {
-                    inputSRS->transform(p, outputSRS, temp);
-                    if (temp.y() != 0.0)
-                    {
-                        allOnEquator = false;
-                    }
-                    outputSRS->transformToWorld(temp, p);
-                    ecef_bb.expandBy(p);
-                }
-            }
-
-            const osg::Vec3d& center = ecef_bb.center();
-
-            GeometryIterator proj_iter(proj.get(), true);
-            while (proj_iter.hasMore())
-            {
-                Geometry* part = proj_iter.next();
-                for (osg::Vec3d& p : *part)
-                {
-                    // The gnomonic equation won't provide any variation in y values if all of the coordinates are on the equator, so
-                    // adjust the point slightly up from the equator if all points lie on the equator.
-                    if (allOnEquator)
-                    {
-                        p.z() += 0.0000001;
-                    }
-                    ecef_to_gnomonic(p, center, outputSRS->getEllipsoid());
-                }
+                geo_to_gnomonic(p, centroid, gnomonic_scale);
+                local_ex.expandBy(p);
+                z = std::max(z, p.z());
             }
         }
 
+        // start with a weemesh covering the feature extent.
+        weemesh::mesh_t m;
+        const int marker = 0;
+        double xspan = gnomonic_scale * resolution_degrees * 3.14159 / 180.0;
+        double yspan = gnomonic_scale * resolution_degrees * 3.14159 / 180.0;
+        double width = (local_ex.xMax() - local_ex.xMin());
+        double height = (local_ex.yMax() - local_ex.yMin());
+        int cols = std::max(2, (int)(width / xspan));
+        int rows = std::max(2, (int)(height / yspan));
+        for (int row = 0; row < rows; ++row)
+        {
+            double v = (double)row / (double)(rows - 1);
+            double y = local_ex.yMin() + v * height;
+
+            for (int col = 0; col < cols; ++col)
+            {
+                double u = (double)col / (double)(cols - 1);
+                double x = local_ex.xMin() + u * width;
+                m.get_or_create_vertex_from_vec3(weemesh::vert_t{ x, y, z }, marker | m._has_elevation_marker);
+            }
+        }
+
+        for (int row = 0; row < rows - 1; ++row)
+        {
+            for (int col = 0; col < cols - 1; ++col)
+            {
+                int k = row * cols + col;
+                m.add_triangle(k, k + 1, k + cols);
+                m.add_triangle(k + 1, k + cols + 1, k + cols);
+            }
+        }
+
+        // next, apply the segments of the polygon to slice the mesh into triangles.
+        ConstGeometryIterator segment_iter(local_geom.get());
+        while (segment_iter.hasMore())
+        {
+            auto part = segment_iter.next();
+            for (unsigned i = 0; i < part->size(); ++i)
+            {
+                unsigned j = (i == part->size() - 1) ? 0 : i + 1;
+                weemesh::vert_t a((*part)[i].x(), (*part)[i].y(), (*part)[i].z());
+                weemesh::vert_t b((*part)[j].x(), (*part)[j].y(), (*part)[j].z());
+                m.insert(weemesh::segment_t{ a, b }, marker);
+            }
+        }
+
+        // next we need to remove all the exterior triangles.
+        std::unordered_set<weemesh::triangle_t*> insiders;
+        std::unordered_set<weemesh::triangle_t*> outsiders;
+        ConstGeometryIterator remove_iter(local_geom.get(), false);
+        while (remove_iter.hasMore())
+        {
+            auto part = remove_iter.next();
+
+            for (auto& tri_iter : m.triangles)
+            {
+                weemesh::triangle_t& tri = tri_iter.second;
+                auto c = (tri.p0 + tri.p1 + tri.p2) * (1.0 / 3.0); // centroid
+                bool inside = part->contains2D(c.x, c.y);
+                if (inside)
+                    insiders.insert(&tri);
+                else
+                    outsiders.insert(&tri);
+            }
+        }
+        for (auto tri : outsiders)
+        {
+            if (insiders.count(tri) == 0)
+            {
+                m.remove_triangle(*tri);
+            }
+        }
+
+        // Finally we convert from gnomonic back to localized tile coordinates.
+        osg::ref_ptr<osg::Vec3Array> new_verts = new osg::Vec3Array();
+        new_verts->reserve(m.verts.size());
+        osg::Vec3d temp;
+        for (auto& v : m.verts)
+        {
+            gnomonic_to_geo(v, centroid, gnomonic_scale); // to geographic
+            outputSRS->transformToWorld(osg::Vec3d(v.x, v.y, v.z), temp); // to ECEF
+            new_verts->push_back(temp * world2local); // localized to tile
+        }
+
+        // Assemble the final geometry.
+        auto de = new osg::DrawElementsUInt(GL_TRIANGLES);
+        de->reserve(m.triangles.size() * 3);
+        for (auto& tri : m.triangles)
+        {
+            de->addElement(tri.second.i0);
+            de->addElement(tri.second.i1);
+            de->addElement(tri.second.i2);
+        }
+
+        osgGeom->setVertexArray(new_verts.get());
+        osgGeom->removePrimitiveSet(0, osgGeom->getNumPrimitiveSets());
+        osgGeom->addPrimitiveSet(de);
+    }
+
+    else
+    {
+        // original tesselation approach
+        Tessellator::Plane plane = Tessellator::PLANE_XY;
+
+        if (outputSRS)
+        {
+            // for geographic data we need to project into 2D before tessellating:
+            if (outputSRS->isGeographic())
+            {
+                osg::Vec3d temp;
+                osg::BoundingBoxd ecef_bb;
+
+                bool allOnEquator = true;
+                GeometryIterator xform_iter(proj.get(), true);
+                while (xform_iter.hasMore())
+                {
+                    Geometry* part = xform_iter.next();
+                    part->open();
+                    for (osg::Vec3d& p : *part)
+                    {
+                        inputSRS->transform(p, outputSRS, temp);
+                        if (temp.y() != 0.0)
+                        {
+                            allOnEquator = false;
+                        }
+                        outputSRS->transformToWorld(temp, p);
+                        ecef_bb.expandBy(p);
+                    }
+                }
+
+                const osg::Vec3d& center = ecef_bb.center();
+
+                GeometryIterator proj_iter(proj.get(), true);
+                while (proj_iter.hasMore())
+                {
+                    Geometry* part = proj_iter.next();
+                    for (osg::Vec3d& p : *part)
+                    {
+                        // The gnomonic equation won't provide any variation in y values if all of the coordinates are on the equator, so
+                        // adjust the point slightly up from the equator if all points lie on the equator.
+                        if (allOnEquator)
+                        {
+                            p.z() += 0.0000001;
+                        }
+                        ecef_to_gnomonic(p, center, outputSRS->getEllipsoid());
+                    }
+                }
+            }
+
+            else
+            {
+                GeometryIterator xform_iter(proj.get(), true);
+                while (xform_iter.hasMore())
+                {
+                    Geometry* part = xform_iter.next();
+                    part->open();
+                    inputSRS->transform(part->asVector(), outputSRS);
+                }
+            }
+        }
         else
         {
-            GeometryIterator xform_iter(proj.get(), true);
-            while (xform_iter.hasMore())
-            {
-                Geometry* part = xform_iter.next();
-                part->open();
-                inputSRS->transform(part->asVector(), outputSRS);
-            }
+            // with no SRS, we need to automatically figure out what 
+            // is the closest plane for tessellation
+            plane = Tessellator::PLANE_AUTO;
         }
-    }
-    else
-    {
-        // with no SRS, we need to automatically figure out what 
-        // is the closest plane for tessellation
-        plane = Tessellator::PLANE_AUTO;
-    }
 
-    // tessellate
-    Tessellator tess;
+        // tessellate
+        Tessellator tess;
 
-    std::vector<uint32_t> indices;
-    if (tess.tessellate2D(proj.get(), indices, plane) == false)
-        return;
+        std::vector<uint32_t> indices;
+        if (tess.tessellate2D(proj.get(), indices, plane) == false)
+            return;
 
-    if (indices.empty())
-        return;
+        if (indices.empty())
+            return;
 
-    int offset = verts->size();
+        int offset = verts->size();
 
-    osg::Vec3d temp, vert;
+        osg::Vec3d temp, vert;
 
-    if (outputSRS && outputSRS->isGeographic())
-    {
-        ConstGeometryIterator verts_iter(input, true);
-        while (verts_iter.hasMore())
+        if (outputSRS && outputSRS->isGeographic())
         {
-            const Geometry* part = verts_iter.next();
-            for (const auto& p : *part)
+            ConstGeometryIterator verts_iter(input, true);
+            while (verts_iter.hasMore())
             {
-                inputSRS->transform(p, outputSRS, temp);
-                outputSRS->transformToWorld(temp, vert);
-                vert = vert * world2local;
-                verts->push_back(vert);
+                const Geometry* part = verts_iter.next();
+                for (const auto& p : *part)
+                {
+                    inputSRS->transform(p, outputSRS, temp);
+                    outputSRS->transformToWorld(temp, vert);
+                    vert = vert * world2local;
+                    verts->push_back(vert);
+                }
             }
         }
-    }
-    else
-    {
-        ConstGeometryIterator verts_iter(proj.get(), true);
-        while (verts_iter.hasMore())
+        else
         {
-            const Geometry* part = verts_iter.next();
-            for (const auto& p : *part)
+            ConstGeometryIterator verts_iter(proj.get(), true);
+            while (verts_iter.hasMore())
             {
-                verts->push_back(p * world2local);
+                const Geometry* part = verts_iter.next();
+                for (const auto& p : *part)
+                {
+                    verts->push_back(p * world2local);
+                }
             }
         }
+
+        osg::DrawElements* de = new osg::DrawElementsUInt(
+            GL_TRIANGLES,
+            indices.size(),
+            &indices[0]);
+
+        osgGeom->setVertexArray(verts.get());
+        osgGeom->addPrimitiveSet(de);
     }
-
-    osg::DrawElements* de = new osg::DrawElementsUInt(
-        GL_TRIANGLES,
-        indices.size(),
-        &indices[0]);
-
-    osgGeom->setVertexArray(verts.get());
-    osgGeom->addPrimitiveSet(de);
 }
 
 #else

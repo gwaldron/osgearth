@@ -244,11 +244,12 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT PagingManager : public osg::Group
     {
     public:
-
         PagingManager();
 
-        inline void* use(PagedNode2* node, void* token) {
-            ScopedMutexLock lock(_trackerMutex);
+        //! Subordinates call this to inform the paging manager they are still alive.
+        void* use(PagedNode2* node, void* token)
+        {
+            ScopedLockIf lock(_trackerMutex, _threadsafe);
             return _tracker.use(node, token);
         }
 
@@ -263,6 +264,7 @@ namespace osgEarth { namespace Util
         void traverse(osg::NodeVisitor& nv);
 
     private:
+        bool _threadsafe = true;
         Mutex _trackerMutex;
         SentryTracker<osg::ref_ptr<PagedNode2>> _tracker;
         std::list<PagedNode2*> _trash;

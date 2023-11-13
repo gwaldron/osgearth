@@ -26,6 +26,7 @@
 #include <osgEarth/TimeSeriesImage>
 #include <osgEarth/Random>
 #include <osgEarth/MetaTile>
+#include <osgEarth/Utils>
 #include <osg/ImageStream>
 #include <cinttypes>
 
@@ -42,14 +43,6 @@ using namespace osgEarth;
 void
 ImageLayer::Options::fromConfig(const Config& conf)
 {
-    _transparentColor.setDefault( osg::Vec4ub(0,0,0,0) );
-    _minFilter.setDefault( osg::Texture::LINEAR_MIPMAP_LINEAR );
-    _magFilter.setDefault( osg::Texture::LINEAR );
-    _textureCompression.setDefault("");
-    _shared.setDefault( false );
-    _coverage.setDefault( false );
-    _reprojectedTileSize.setDefault( 256 );
-
     conf.get( "nodata_image",   _noDataImageFilename );
     conf.get( "shared",         _shared );
     conf.get( "coverage",       _coverage );
@@ -427,10 +420,33 @@ ImageLayer::createImage(
     return createImageImplementation(canvas, key, progress);
 }
 
+struct Hooks
+{
+    static void put(osgDB::Options* read_options, std::shared_ptr<Hooks> hooks)
+    {
+        ObjectStorage::set(read_options, hooks);
+    }
+
+    static std::shared_ptr<Hooks> get(const osgDB::Options* read_options)
+    {
+        std::shared_ptr<Hooks> hooks;
+        ObjectStorage::get(read_options, hooks);
+        return hooks;
+    }
+
+    ReadResult pre_read(Layer* layer, const TileKey& key, ProgressCallback* progress)
+    {
+        return ReadResult(ReadResult::RESULT_OK);
+    }
+
+    ReadResult post_read(Layer* layer, const TileKey& key, const GeoImage& data, ProgressCallback* progress)
+    {
+        return ReadResult(ReadResult::RESULT_OK);
+    }
+};
+
 GeoImage
-ImageLayer::createImageInKeyProfile(
-    const TileKey& key,
-    ProgressCallback* progress)
+ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progress)
 {
     // If the layer is disabled, bail out.
     if ( !isOpen() )
@@ -454,6 +470,21 @@ ImageLayer::createImageInKeyProfile(
 
     GeoImage result;
 
+#if HOOKS
+    auto hooks = Hooks::get(getReadOptions());
+    if (hooks)
+    {
+        auto rr = hooks->pre_read(this, key, progress);
+        auto image = rr.releaseImage();
+        auto status = hooks->prehook_image(this, key, progress, result);
+        if (status.isError())
+            return GeoImage(status);
+        else if (result.valid())
+            return result;
+    }
+#endif
+
+#if 1
     OE_DEBUG << LC << "create image for \"" << key.str() << "\", ext= "
         << key.getExtent().toString() << std::endl;
 
@@ -530,20 +561,19 @@ ImageLayer::createImageInKeyProfile(
             return GeoImage::INVALID;
         }
     }
+#endif
 
     if (key.getProfile()->isHorizEquivalentTo(getProfile()))
     {
         bool createUpsampledImage = false;
 
-        if (getUpsample() &&
-            getMaxDataLevel() > key.getLOD())
+        if (getUpsample() == true && getMaxDataLevel() > key.getLOD())
         {
             TileKey best = getBestAvailableTileKey(key, false);
             if (best.valid())
             {
                 TileKey best_upsampled = getBestAvailableTileKey(key, true);
-                if (best_upsampled.valid() &&
-                    best.getLOD() < best_upsampled.getLOD())
+                if (best_upsampled.valid() && best.getLOD() < best_upsampled.getLOD())
                 {
                     createUpsampledImage = true;
                 }
@@ -586,6 +616,16 @@ ImageLayer::createImageInKeyProfile(
         // invoke user callbacks
         invoke_onCreate(key, result);
 
+#if HOOKS
+        if (hooks)
+        {
+            auto status = hooks->posthook_image(this, key, result, progress, result);
+            if (status.isError())
+                return GeoImage(status);
+        }
+#endif
+
+#if 1
         if (_memCache.valid())
         {
             CacheBin* bin = _memCache->getOrCreateDefaultBin();
@@ -615,6 +655,7 @@ ImageLayer::createImageInKeyProfile(
             OE_DEBUG << LC << "Using cached but expired image for " << key.str() << std::endl;
             result = GeoImage( cachedImage.get(), key.getExtent());
         }
+#endif
     }
 
     return result;
@@ -913,18 +954,18 @@ FutureTexture2D::update()
         return;
     }
 
-    else if (_result.isCanceled())
+    else if (_result.canceled())
     {
         dispatch();
         return;
     }
 
-    else if (_result.isAvailable() == true)
+    else if (_result.available())
     {
         OE_DEBUG<< LC << "Async result available for " << getName() << std::endl;
 
         // fetch the result
-        GeoImage geoImage = _result.get();
+        GeoImage geoImage = _result.value();
 
         if (geoImage.getStatus().isError())
         {

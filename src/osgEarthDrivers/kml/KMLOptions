@@ -68,8 +68,16 @@ namespace osgEarth { namespace KML
         const optional<osg::Quat>& modelRotation() const { return _modelRotation; }
 
     public:
-        KMLOptions() : _declutter( true ), _iconBaseScale( 1.0f ), _iconMaxSize(32), _modelScale(1.0f) { }
+        KMLOptions() : _declutter(true), _iconBaseScale(1.0f), _iconMaxSize(32), _modelScale(1.0f)
+        {
+            _defaultTextSymbol = new TextSymbol();
+            _defaultTextSymbol->size() = 18.0f;
+            _defaultTextSymbol->halo() = Stroke(0.3f, 0.3f, 0.3f, 1.0f);
 
+            _defaultIconSymbol = new IconSymbol();
+            _defaultIconSymbol->url()->setLiteral("https://github.com/gwaldron/osgearth/blob/master/data/placemark32.png?raw=true");
+        }
+    
         virtual ~KMLOptions() { }
 
     protected:

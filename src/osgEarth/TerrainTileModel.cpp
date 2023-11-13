@@ -27,15 +27,32 @@ using namespace osgEarth;
 namespace
 {
     // adapter that lets us compile a Texture::Ptr using the ICO
-    struct TextureAdapter : public osg::Texture2D
+    struct TextureICOAdapter : public osg::Texture2D
     {
         osgEarth::Texture::Ptr _tex;
-        TextureAdapter(osgEarth::Texture::Ptr value) : _tex(value) { }
+        osg::observer_ptr<osg::Object> _token;
+        bool _hasToken = false;
+
+        TextureICOAdapter(osgEarth::Texture::Ptr value, osg::Object* cancelation_token) : 
+            _tex(value), _token(cancelation_token), _hasToken(cancelation_token != nullptr) { }
 
         // apply is called by the ICO for textures (not compileGLObjects)
-        void apply(osg::State& state) const override {
+        void apply(osg::State& state) const override
+        {
+            // cancelation check:
+            if (_hasToken && !_token.valid())
+            {
+                //OE_WARN << "Canceled ICO for " << _tex->name() << std::endl;
+                return;
+            }
+
             if (_tex)
-                _tex->compileGLObjects(state);
+            {
+                if (_tex->compileGLObjects(state))
+                {
+                    //OE_WARN << "Compiled ICO = " << _tex->name() << (std::uintptr_t)_tex.get() << std::endl;
+                }
+            }
         }
     };
 }
@@ -62,16 +79,14 @@ TerrainTileModel::TerrainTileModel(
 }
 
 void
-TerrainTileModel::getStateToCompile(
-    osgUtil::StateToCompile& out,
-    bool bindless) const
+TerrainTileModel::getStateToCompile(osgUtil::StateToCompile& out, bool bindless, osg::Object* token) const
 {
     for (auto& colorLayer : colorLayers())
     {
         if (colorLayer.texture())
         {
             out._textures.insert(bindless ?
-                new TextureAdapter(colorLayer.texture()) :
+                new TextureICOAdapter(colorLayer.texture(), token) :
                 colorLayer.texture()->osgTexture().get());
         }
     }
@@ -79,21 +94,21 @@ TerrainTileModel::getStateToCompile(
     if (normalMap().texture())
     {
         out._textures.insert(bindless ?
-            new TextureAdapter(normalMap().texture()) :
+            new TextureICOAdapter(normalMap().texture(), token) :
             normalMap().texture()->osgTexture().get());
     }
 
     if (elevation().texture())
     {
         out._textures.insert(bindless ?
-            new TextureAdapter(elevation().texture()) :
+            new TextureICOAdapter(elevation().texture(), token) :
             elevation().texture()->osgTexture().get());
     }
 
     if (landCover().texture())
     {
         out._textures.insert(bindless ?
-            new TextureAdapter(landCover().texture()) :
+            new TextureICOAdapter(landCover().texture(), token) :
             landCover().texture()->osgTexture().get());
     }
 }

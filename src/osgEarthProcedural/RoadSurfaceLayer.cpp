@@ -402,6 +402,22 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
 
         if (group && group->getBound().valid())
         {
+            // Make sure there's actually geometry to render in the output extent
+            // since rasterization is expensive!
+            osg::Polytope polytope;
+            outputExtent.createPolytope(polytope);
+
+            osg::ref_ptr<osgUtil::PolytopeIntersector> intersector = new osgUtil::PolytopeIntersector(polytope);
+            osgUtil::IntersectionVisitor visitor(intersector);
+            group->accept(visitor);
+
+            if (intersector->getIntersections().empty())
+            {
+                OE_DEBUG << LC << "RSL: skipped an EMPTY bounds without rasterizing :) for " << key.str() << std::endl;
+                return GeoImage::INVALID;
+            }
+
+
             OE_PROFILING_ZONE_NAMED("Rasterize");
 
             group->setName(key.str());
@@ -420,11 +436,17 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             osg::ref_ptr<osg::Image> image = result.join(local_progress.get());
 
             // Empty image means the texture did not render anything
-            if (image.valid()
-                && image->data() != nullptr &&
-                !ImageUtils::isEmptyImage(image.get()))
+            if (image.valid() && image->data() != nullptr)
             {
-                return GeoImage(image.get(), key.getExtent());
+                if (!ImageUtils::isEmptyImage(image.get()))
+                {
+                    return GeoImage(image.get(), key.getExtent());
+                }
+                else
+                {
+                    OE_DEBUG << LC << "RSL: skipped an EMPTY image result for " << key.str() << std::endl;
+                    return GeoImage::INVALID;
+                }
             }
             else
             {

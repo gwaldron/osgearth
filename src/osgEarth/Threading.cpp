@@ -289,6 +289,7 @@ unsigned osgEarth::Threading::getConcurrency()
 
 //...................................................................
 
+#if 0
 Event::Event() :
 _set(false)
 {
@@ -352,7 +353,7 @@ void Event::reset()
     std::lock_guard<std::mutex> lock(_m);
     _set = false;
 }
-
+#endif
 
 void
 osgEarth::Threading::setThreadName(const std::string& name)

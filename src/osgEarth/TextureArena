@@ -76,7 +76,8 @@ namespace osgEarth
         void update(osg::NodeVisitor& nv);
 
         //! GL memory functions
-        void compileGLObjects(osg::State&) const;
+        //! Returns true if the object needed compiling and was compiled.
+        bool compileGLObjects(osg::State&) const;
         void resizeGLObjectBuffers(unsigned);
         void releaseGLObjects(osg::State*, bool force = false) const;
 
@@ -103,8 +104,7 @@ namespace osgEarth
         struct GLObjects : public BindlessShareableGLObjects
         {
             GLTexture::Ptr _gltexture;
-            unsigned _imageModCount;
-            GLObjects() : _imageModCount(0) { }
+            unsigned _imageModCount = 0u;
         };
         mutable osg::buffered_object<GLObjects> _globjects;
 

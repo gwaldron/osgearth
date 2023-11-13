@@ -169,9 +169,9 @@ namespace osgEarth
 
                 ImGui::Separator();
                 ImGui::Checkbox("Show lifemap under mouse", &_showLifemapUnderMouse);
-                if (_showLifemapUnderMouse && _lifemapUnderMouse.isAvailable())
+                if (_showLifemapUnderMouse && _lifemapUnderMouse.available())
                 {
-                    osg::Vec4 pixel = _lifemapUnderMouse.get();
+                    osg::Vec4 pixel = _lifemapUnderMouse.value();
                     ImGui::Text("R=%.2f D=%.2f L=%.2f M=%d",
                         pixel.r(),
                         pixel.g(),
@@ -183,9 +183,9 @@ namespace osgEarth
                 {
                     ImGui::Separator();
                     ImGui::Checkbox("Show landcover under mouse", &_showLandcoverUnderMouse);
-                    if (_showLandcoverUnderMouse && _landcoverUnderMouse.isAvailable())
+                    if (_showLandcoverUnderMouse && _landcoverUnderMouse.available())
                     {
-                        LandCoverSample sample = _landcoverUnderMouse.get();
+                        LandCoverSample sample = _landcoverUnderMouse.value();
                         if (sample.biomeid().isSet())
                             ImGui::Text("biome_id = %s", sample.biomeid().get());
                         if (sample.dense().isSet())

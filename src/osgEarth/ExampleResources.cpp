@@ -28,15 +28,13 @@
 #include <osgEarth/ActivityMonitorTool>
 #include <osgEarth/LogarithmicDepthBuffer>
 #include <osgEarth/SimpleOceanLayer>
-#include <osgEarth/AnnotationLayer>
+#include <osgEarth/Registry>
 
 #include <osgEarth/AnnotationData>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/GLUtils>
 #include <osgEarth/CullingUtils>
-
-#include <osgEarthDrivers/kml/KML>
 
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
@@ -383,6 +381,14 @@ MapNodeHelper::loadWithoutControls(
         return node;
     }
 
+    // move any mapnode siblings under the mapnode.
+    auto siblings = findSiblings(mapNode.get());
+    for (auto& sibling : siblings)
+    {
+        mapNode->addChild(sibling);
+        sibling->getParent(0)->removeChild(sibling);
+    }
+
     // GPU tessellation?
     if (args.read("--tessellation") || args.read("--tess"))
     {
@@ -630,10 +636,6 @@ MapNodeHelper::parse(
     bool showActivity  = useControls && args.read("--activity");
     bool useLogDepth2  = args.read("--logdepth2");
     bool useLogDepth   = !args.read("--nologdepth") && !useLogDepth2; //args.read("--logdepth");
-    bool kmlUI         = useControls && args.read("--kmlui");
-
-    std::string kmlFile;
-    args.read( "--kml", kmlFile );
 
     // animation path:
     std::string animpath;
@@ -674,47 +676,6 @@ MapNodeHelper::parse(
 
         // Add an event handler to toggle the canvas with a key press;
         view->addEventHandler(new ToggleCanvasEventHandler(canvas, 'y'));
-    }
-
-    // Loading KML from the command line:
-    if ( !kmlFile.empty() && mapNode )
-    {
-        KML::KMLOptions kml_options;
-        kml_options.declutter() = true;
-
-        // set up a default icon for point placemarks:
-        IconSymbol* defaultIcon = new IconSymbol();
-        defaultIcon->url()->setLiteral(KML_PUSHPIN_URL);
-        kml_options.defaultIconSymbol() = defaultIcon;
-
-        TextSymbol* defaultText = new TextSymbol();
-        defaultText->halo() = Stroke(0.3,0.3,0.3,1.0);
-        kml_options.defaultTextSymbol() = defaultText;
-
-        URI kmlFileURI( kmlFile );
-        osg::Node* kml = KML::load(kmlFileURI, mapNode, kml_options );
-        if ( kml )
-        {
-            if (kmlUI)
-            {
-                Control* c = AnnotationGraphControlFactory().create(kml, view);
-                if ( c )
-                {
-                    c->setVertAlign( Control::ALIGN_TOP );
-                    mainContainer->addControl( c );
-                }
-            }
-            
-            auto kmllayer = new AnnotationLayer();
-            kmllayer->setName(kmlFileURI.base());
-            kmllayer->addChild(kml);
-
-            mapNode->getMap()->addLayer(kmllayer);
-        }
-        else
-        {
-            OE_NOTICE << "Failed to load " << kmlFile << std::endl;
-        }
     }
 
     // Configure the mouse coordinate readout:
@@ -963,9 +924,6 @@ MapNodeHelper::usage() const
 {
     return Stringify()
         << "  --sky                         : add a sky model\n"
-        << "  --kml <file.kml>              : load a KML or KMZ file\n"
-        << "  --kmlui                       : display a UI for toggling nodes loaded with --kml\n"
-        << "  --coords                      : display map coords under mouse\n"
         << "  --ortho                       : use an orthographic camera\n"
         << "  --logdepth                    : activates the logarithmic depth buffer\n"
         << "  --logdepth2                   : activates logarithmic depth buffer with per-fragment interpolation\n"

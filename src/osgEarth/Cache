@@ -156,7 +156,7 @@ OSGEARTH_SPECIALIZE_CONFIG(osgEarth::CacheOptions);
 
 namespace osgEarth
 {
-    typedef PerObjectRefMap<std::string, CacheBin> ThreadSafeCacheBinMap;
+    using ThreadSafeCacheBinMap = PerObjectRefMap<std::string, CacheBin>;
 
     /**
      * Cache is a container for local storage of keyed data elements.

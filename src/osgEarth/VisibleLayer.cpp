@@ -167,15 +167,6 @@ VisibleLayer::Options::getConfig() const
 void
 VisibleLayer::Options::fromConfig(const Config& conf)
 {
-    _visible.init( true );
-    _opacity.init( 1.0f );
-    _minVisibleRange.init( 0.0 );
-    _maxVisibleRange.init( FLT_MAX );
-    _attenuationRange.init(0.0f);
-    _blend.init( BLEND_INTERPOLATE );
-    _mask.init(DEFAULT_LAYER_MASK);
-    debugView().setDefault(false);
-
     conf.get( "visible", _visible );
     conf.get( "opacity", _opacity);
     conf.get( "min_range", _minVisibleRange );

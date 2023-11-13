@@ -219,7 +219,7 @@ namespace osgEarth
                         auto year = mark.year();
                         auto hour = mark.hours();
 
-                        if (ImGuiLTable::SliderDouble("Hour", &hour, 0.0f, 24.0f))
+                        if (ImGuiLTable::SliderDouble("Hour (UTC)", &hour, 0.0f, 24.0f))
                             dirtySettings();
 
                         if (_showDetails)

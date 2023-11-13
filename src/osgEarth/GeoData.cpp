@@ -787,6 +787,37 @@ _height(rhs._height)
     //NOP
 }
 
+Config
+GeoExtent::getConfig() const
+{
+    Config conf("geoextent");
+    if (isValid()) {
+        conf.set("west", west());
+        conf.set("south", south());
+        conf.set("east", east());
+        conf.set("north", north());
+        conf.set("srs", getSRS()->getHorizInitString());
+        conf.set("vdatum", getSRS()->getVertInitString());
+    }
+    return conf;
+}
+
+void
+GeoExtent::fromConfig(const Config& conf)
+{
+    double west, south, east, north;
+    conf.get("west", west);
+    conf.get("south", south);
+    conf.get("east", east);
+    conf.get("north", north);
+    std::string srs;
+    conf.get("srs", srs);
+    std::string vdatum;
+    conf.get("vdatum", vdatum);
+    _srs = SpatialReference::create(srs, vdatum);
+    set(west, south, east, north);
+}
+
 bool
 GeoExtent::isGeographic() const
 {
@@ -1814,7 +1845,7 @@ GeoImage::GeoImage(Threading::Future<osg::ref_ptr<osg::Image>> fimage, const Geo
 {
     _future = fimage;
 
-    if (_future->isAbandoned())
+    if (_future->empty())
     {
         _status.set(Status::ResourceUnavailable, "Async request canceled");
     }
@@ -1834,14 +1865,14 @@ GeoImage::valid() const
         return false;
 
     return
-        (_future.isSet() && !_future->isAbandoned()) ||
+        (_future.isSet() && !_future->empty()) ||
         _myimage.valid();
 }
 
 const osg::Image*
 GeoImage::getImage() const
 {
-    return _future.isSet() && _future->isAvailable() ?
+    return _future.isSet() && _future->available() ?
         _future->join().get() :
         _myimage.get();
 }

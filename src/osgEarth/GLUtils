@@ -871,7 +871,7 @@ namespace osgEarth
         Future<T> dispatch(Delegate<T> delegate)
         {
             auto operation = new DelegateOperation<T>(delegate);
-            Future<T> future = operation->_promise.getFuture();
+            Future<T> future = operation->_promise; // .getFuture();
             if (_dispatcher.valid())
                 _dispatcher->push(operation);
             else

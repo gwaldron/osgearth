@@ -712,7 +712,7 @@ TileNode::createChildren()
 
             for (int i = 0; i < 4; ++i)
             {
-                if (_createChildResults[i].isAvailable())
+                if (_createChildResults[i].available())
                     ++numChildrenReady;
             }
 
@@ -720,7 +720,7 @@ TileNode::createChildren()
             {
                 for (int i = 0; i < 4; ++i)
                 {
-                    osg::ref_ptr<TileNode> child = _createChildResults[i].get();
+                    osg::ref_ptr<TileNode> child = _createChildResults[i].value();
                     addChild(child);
                     child->initializeData();
                     child->refreshAllLayers();
@@ -1275,14 +1275,14 @@ TileNode::load(TerrainCuller* culler)
     {
         LoadTileDataOperationPtr& op = _loadQueue.front();
 
-        if (op->_result.isAbandoned())
+        if (op->_result.empty())
         {
             // Actually this means that the task has not yet been dispatched,
             // so assign the priority and do it now.
             op->dispatch();
         }
 
-        else if (op->_result.isAvailable())
+        else if (op->_result.available())
         {
             // The task completed, so submit it to the merger.
             // (We can't merge here in the CULL traversal)

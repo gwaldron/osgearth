@@ -130,7 +130,8 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             if (inRange)
             {
                 // load paged child if necessary
-                load(priority, &nv);
+                if (!_merged)
+                    load(priority, &nv);
 
                 // traverse children
                 traverseChildren(nv);
@@ -144,7 +145,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 for (auto& child : _children)
                 {
                     osg::Node* compiled =
-                        _compiled.isAvailable() ? _compiled.get().get() :
+                        _compiled.available() ? _compiled.value().get() :
                         nullptr;
 
                     if (child.get() != compiled)
@@ -165,9 +166,9 @@ PagedNode2::traverseChildren(osg::NodeVisitor& nv)
 {
     if (_refinePolicy == REFINE_REPLACE &&
         _merged == true &&
-        _compiled.get().valid())
+        _compiled.value().valid())
     {
-        _compiled.get()->accept(nv);
+        _compiled.value()->accept(nv);
     }
     else
     {
@@ -202,13 +203,13 @@ PagedNode2::merge(int revision)
         // This is called from PagingManager.
         // We're in the UPDATE traversal.
         OE_SOFT_ASSERT_AND_RETURN(_merged == false, false);
-        OE_SOFT_ASSERT_AND_RETURN(_compiled.isAvailable(), false);
-        OE_SOFT_ASSERT_AND_RETURN(_compiled.get().valid(), false);
+        OE_SOFT_ASSERT_AND_RETURN(_compiled.available(), false);
+        OE_SOFT_ASSERT_AND_RETURN(_compiled.value().valid(), false);
 
-        addChild(_compiled.get());
+        addChild(_compiled.value());
 
         if (_callbacks.valid())
-            _callbacks->firePostMergeNode(_compiled.get().get());
+            _callbacks->firePostMergeNode(_compiled.value().get());
 
         _merged = true;
         _failed = false;
@@ -230,17 +231,18 @@ PagedNode2::computeBound() const
 
         if (_loadTriggered == true &&
             _merged == false &&
-            _loaded.isAvailable() &&
-            _loaded.get()._node.valid() )
+            _loaded.available() &&
+            _loaded.value()._node.valid() )
         {
-            bs.expandBy(_loaded.get()._node->computeBound());
+            bs.expandBy(_loaded.value()._node->computeBound());
         }
 
         return bs;
     }
 }
 
-void PagedNode2::load(float priority, const osg::Object* host)
+void
+PagedNode2::load(float priority, const osg::Object* host)
 {
     if (_loadTriggered.exchange(true) == false)
     {
@@ -287,16 +289,17 @@ void PagedNode2::load(float priority, const osg::Object* host)
         {
             // There is no load function so go all the way to the end of the state machine.
             _failed = true;
+            _merged = false;
             _compileTriggered.exchange(true);
             _mergeTriggered.exchange(true);
         }
     }
 
     else if (
-        _loaded.isAvailable() &&
+        _loaded.available() &&
         _compileTriggered.exchange(true) == false)
     {
-        if (_loaded.get()._node.valid())
+        if (_loaded.value()._node.valid())
         {
             dirtyBound();
 
@@ -307,8 +310,8 @@ void PagedNode2::load(float priority, const osg::Object* host)
                 osg::ref_ptr<ProgressCallback> p = new ObserverProgressCallback(this);
 
                 _compiled = compiler.compileAsync(
-                    _loaded.get()._node,
-                    _loaded.get()._state.get(),
+                    _loaded.value()._node,
+                    _loaded.value()._state.get(),
                     host,
                     p.get());
             }
@@ -316,8 +319,8 @@ void PagedNode2::load(float priority, const osg::Object* host)
             {
                 // resolve immediately
                 Promise<osg::ref_ptr<osg::Node>> promise;
-                _compiled = promise.getFuture();
-                promise.resolve(_loaded.get()._node);
+                _compiled = promise; // .getFuture();
+                promise.resolve(_loaded.value()._node);
             }
         }
         else
@@ -331,7 +334,7 @@ void PagedNode2::load(float priority, const osg::Object* host)
         _loaded.abandon();
     }
     else if (
-        _compiled.isAvailable() &&
+        _compiled.available() &&
         _pagingManager != nullptr &&
         _mergeTriggered.exchange(true) == false)
     {
@@ -347,9 +350,9 @@ void PagedNode2::unload()
     //{
     //    _compiled.get()->releaseGLObjects(nullptr);
     //}
-    if (_compiled.isAvailable() && _compiled.get().valid())
+    if (_compiled.available() && _compiled.value().valid())
     {
-        removeChild(_compiled.get());
+        removeChild(_compiled.value());
     }
     _compiled.abandon();
     _loaded.abandon();
@@ -384,22 +387,9 @@ PagingManager::PagingManager() :
     arena->setConcurrency(4u);
     _metrics = arena->metrics();
 
-    // NOTE: this is causing multiple model layers to not appear.
-    // Need to debug before using.
-    //osg::observer_ptr<PagingManager> pm_ptr(this);
-    //_updateFunc = [pm_ptr](Cancelable*) mutable
-    //{
-    //    osg::ref_ptr<PagingManager> pm(pm_ptr);
-    //    if (pm.valid())
-    //    {
-    //        pm->update();
-    //        Job(JobArena::get(JobArena::UPDATE_TRAVERSAL))
-    //            .dispatch(pm->_updateFunc);
-    //    }
-    //};
-
-    //Job(JobArena::get(JobArena::UPDATE_TRAVERSAL))
-    //    .dispatch(_updateFunc);
+#ifdef OSGEARTH_SINGLE_THREADED_OSG
+    _threadsafe = false;
+#endif
 }
 
 PagingManager::~PagingManager()
@@ -433,7 +423,8 @@ PagingManager::traverse(osg::NodeVisitor& nv)
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
         // After culling is complete, update all of the ranges for all of the node
-        ScopedMutexLock lock(_trackerMutex); // unnecessary?
+        ScopedLockIf lock(_trackerMutex, _threadsafe);
+
         for (auto& entry : _tracker._list)
         {
             if (entry._data.valid())
@@ -448,7 +439,8 @@ PagingManager::traverse(osg::NodeVisitor& nv)
 void
 PagingManager::merge(PagedNode2* host)
 {
-    ScopedMutexLock lock(_mergeMutex);
+    ScopedLockIf lock(_mergeMutex, _threadsafe);
+
     ToMerge toMerge;
     toMerge._node = host;
     toMerge._revision = host->_revision;
@@ -459,7 +451,7 @@ PagingManager::merge(PagedNode2* host)
 void
 PagingManager::update()
 {
-    ScopedMutexLock lock(_trackerMutex);
+    ScopedLockIf lock(_trackerMutex, _threadsafe);
 
     _tracker.flush(
         _mergesPerFrame,

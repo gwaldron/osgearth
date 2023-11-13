@@ -1664,11 +1664,6 @@ GDAL::Options::Options(const ConfigOptions& input)
 void
 GDAL::Options::readFrom(const Config& conf)
 {
-    _interpolation.init(INTERP_AVERAGE);
-    _useVRT.init(false);
-    coverageUsesPaletteIndex().setDefault(true);
-    singleThreaded().setDefault(false);
-
     conf.get("url", _url);
     conf.get("connection", _connection);
     conf.get("subdataset", _subDataSet);

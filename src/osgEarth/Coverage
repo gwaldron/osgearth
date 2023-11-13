@@ -211,6 +211,73 @@ namespace osgEarth
             return _pixels[ptr] > 0;
         }
 
+        Config getConfig() const
+        {
+            Config root("coverage");
+            root.set("width", _width);
+            root.set("height", _height);
+
+            Config values("values");
+            for (auto& entry : _lut)
+            {
+                Config value_conf = entry.first.getConfig();
+                value_conf.set("__coverage_index", entry.second);
+                values.add(value_conf);
+            }
+            root.add(values);
+
+            std::ostringstream pixels_string;
+            int count = 0;
+            int last_value = -1;
+            for(auto& pixel : _pixels)
+            {
+                if (last_value >= 0 && pixel != last_value) {
+                    pixels_string << (int)count << ' ' << (int)last_value << ' ';
+                    count = 0;
+                }
+                last_value = pixel;
+                ++count;
+            }
+            if (count > 0) {
+                pixels_string << (int)count << ' ' << (int)last_value;
+            }
+            root.add(Config("pixels", pixels_string.str()));
+
+            return root;
+        }
+
+        void setConfig(const Config& root)
+        {
+            unsigned w = 256, h = 256;
+            root.get("width", w);
+            root.get("height", h);
+            allocate(w, h);
+
+            Config values = root.child("values");
+            for (auto& value_conf : values.children())
+            {
+                T value(value_conf);
+                int index;
+                value_conf.get("__coverage_index", index);
+                _lut[value] = index;
+                _rlut[index] = value;
+            }
+
+            std::string pixels_string = root.value("pixels");
+            std::istringstream pixels_stream(pixels_string);
+            int count, pixel;
+            int ptr = 0;
+            while (!pixels_stream.eof() && ptr < (int)(w*h))
+            {
+                pixels_stream >> count >> pixel;
+                for (int i = 0; i < count; ++i) {
+                    _pixels[ptr++] = pixel;
+                    if (pixel > 0)
+                        ++_valid_count;
+                }
+            }
+        }
+
     private:
         Coverage()
         {
@@ -299,19 +366,50 @@ namespace osgEarth
 
         bool readAtCoords(T& value, double x, double y) const
         {
-            unsigned xs = (unsigned)((double)(s()-1) * (x - _extent.xMin()) / _extent.width());
-            unsigned yt = (unsigned)((double)(t()-1) * (y - _extent.yMin()) / _extent.height());
-            if (xs >= 0 && xs < s() && yt >= 0 && yt < t())
+            if (_extent.contains(x, y))
             {
-                read(value, xs, yt);
-                return true;
+                unsigned xs = (unsigned)((double)(s() - 1) * (x - _extent.xMin()) / _extent.width());
+                unsigned yt = (unsigned)((double)(t() - 1) * (y - _extent.yMin()) / _extent.height());
+                if (xs >= 0 && xs < s() && yt >= 0 && yt < t())
+                {
+                    read(value, xs, yt);
+                    return true;
+                }
             }
             return false;
+        }
+        
+        const T* readAtCoords(double x, double y) const
+        {
+            if (_extent.contains(x, y))
+            {
+                unsigned xs = (unsigned)((double)(s() - 1) * (x - _extent.xMin()) / _extent.width());
+                unsigned yt = (unsigned)((double)(t() - 1) * (y - _extent.yMin()) / _extent.height());
+                if (xs >= 0 && xs < s() && yt >= 0 && yt < t())
+                {
+                    return read(xs, yt);
+                }
+            }
+            return nullptr;
         }
 
         const GeoExtent& getExtent() const
         {
             return _extent;
+        }
+
+        Config getConfig() const
+        {
+            Config root("geocoverage");
+            root.set("extent", _extent.getConfig());
+            root.add(_coverage->getConfig());
+            return root;
+        }
+
+        void setConfig(const Config& in)
+        {
+            _extent.fromConfig(in.child("extent"));
+            _coverage->setConfig(in.child("coverage"));
         }
 
     private:

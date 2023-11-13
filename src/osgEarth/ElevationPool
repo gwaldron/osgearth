@@ -257,7 +257,7 @@ namespace osgEarth
 
         ElevationLayerVector _elevationLayers;        
 
-        size_t getElevationHash() const;
+        size_t getElevationHash(WorkingSet*) const;
 
         void sync(const Map*, WorkingSet*);
 
@@ -300,7 +300,7 @@ namespace osgEarth
         //! @param threads Number of threads the sampler should use
         AsyncElevationSampler(
             const Map* map,
-            unsigned threads =1u);
+            unsigned threads =0u);
 
         //! Destructor
         virtual ~AsyncElevationSampler() { }

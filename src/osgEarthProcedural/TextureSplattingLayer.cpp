@@ -278,7 +278,7 @@ void
 TextureSplattingLayer::update(osg::NodeVisitor& nv)
 {
     // once the materials are loaded, install them and build the state set.
-    if (_materials == nullptr && _materialsJob.isAvailable())
+    if (_materials == nullptr && _materialsJob.available())
     {
         _materials = _materialsJob.release();
         buildStateSets();

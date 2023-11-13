@@ -44,7 +44,7 @@ namespace osgEarth { namespace REX
     // since it's constant data
     struct GL4GlobalData // align to 16 bytes (std430)
     {
-        float morphConstants[19 * 2]; //TODO
+        float morphConstants[98];
         float padding2[2];
     };
 

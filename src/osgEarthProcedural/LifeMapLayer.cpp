@@ -34,7 +34,7 @@
 
 #include <random>
 
-#define LC "[LifeMapLayer] " << getName() << ": "
+#define LC "[" << className() << "] \"" << getName() << "\" "
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
@@ -97,11 +97,11 @@ namespace
     class CoordScaler
     {
     public:
-        CoordScaler(const Profile* profile, unsigned int lod, unsigned int refLOD):
+        CoordScaler(const Profile* profile, unsigned int lod, unsigned int refLOD) :
             _profile(profile),
             _lod(lod),
             _refLOD(refLOD)
-        {            
+        {
             _profile->getNumTiles(lod, _tilesX, _tilesY);
 
             _dL = (double)(lod - refLOD);
@@ -178,7 +178,7 @@ LifeMapLayer::init()
 Status
 LifeMapLayer::openImplementation() 
 {
-    Status parent = ImageLayer::openImplementation();
+    Status parent = super::openImplementation();
     if (parent.isError())
         return parent;
 
@@ -196,7 +196,7 @@ LifeMapLayer::openImplementation()
 Status
 LifeMapLayer::closeImplementation()
 {
-    return ImageLayer::closeImplementation();
+    return super::closeImplementation();
 }
 
 void
@@ -219,7 +219,7 @@ LifeMapLayer::checkForLayerError(Layer* layer)
 void
 LifeMapLayer::addedToMap(const Map* map)
 {
-    ImageLayer::addedToMap(map);
+    super::addedToMap(map);
 
     options().biomeLayer().addedToMap(map);
     options().maskLayer().addedToMap(map);
@@ -263,7 +263,7 @@ LifeMapLayer::removedFromMap(const Map* map)
     options().waterLayer().removedFromMap(map);
     options().colorLayer().removedFromMap(map);
     options().landCoverLayer().removedFromMap(map);
-    ImageLayer::removedFromMap(map);
+    super::removedFromMap(map);
 }
 
 void
@@ -424,7 +424,7 @@ LifeMapLayer::createImageImplementation(
     ep->getTile(key, true, elevTile, &_workingSet, progress);
 
     // ensure we have a normal map for slopes and curvatures:
-    if (elevTile.valid())
+    if (elevTile.valid() && getTerrainWeight() > 0.0f)
     {
         elevTile->generateNormalMap(map.get(), &_workingSet, progress);
     }

@@ -186,17 +186,17 @@ namespace osgEarth
         public:
             META_LayerOptions(osgEarth, Options, ConfigOptions);
             OE_OPTION(std::string, name);
-            OE_OPTION(bool, openAutomatically);
+            OE_OPTION(bool, openAutomatically, true);
+            OE_OPTION(bool, terrainPatch, false);
             OE_OPTION(std::string, cacheId);
             OE_OPTION(CachePolicy, cachePolicy);
             OE_OPTION(std::string, shaderDefine);
-            OE_OPTION(bool, terrainPatch);
             OE_OPTION(std::string, attribution);
             OE_OPTION(ShaderOptions, shader);
             OE_OPTION_VECTOR(ShaderOptions, shaders);
             OE_OPTION(ProxySettings, proxySettings);
             OE_OPTION(std::string, osgOptionString);
-            OE_OPTION(unsigned int, l2CacheSize);
+            OE_OPTION(unsigned, l2CacheSize, 0u);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

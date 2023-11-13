@@ -48,16 +48,16 @@ namespace osgEarth
         class OSGEARTH_EXPORT Options : public VisibleLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
-            OE_OPTION(unsigned, minLevel);
+            OE_OPTION(unsigned, minLevel, 0u);
+            OE_OPTION(unsigned, maxLevel, 23u);
+            OE_OPTION(unsigned, maxDataLevel, 99u);
             OE_OPTION(double, minResolution);
-            OE_OPTION(unsigned, maxLevel);
             OE_OPTION(double, maxResolution);
-            OE_OPTION(unsigned, maxDataLevel);
-            OE_OPTION(unsigned, tileSize);
-            OE_OPTION(float, noDataValue);
-            OE_OPTION(float, minValidValue);
-            OE_OPTION(float, maxValidValue);
-            OE_OPTION(bool, upsample);
+            OE_OPTION(unsigned, tileSize, 256u);
+            OE_OPTION(float, noDataValue, -32767.0f); // SHRT_MIN
+            OE_OPTION(float, minValidValue, -32766.0f); // -(2^15 - 2)
+            OE_OPTION(float, maxValidValue, 32767.0f); // 2^15 - 1
+            OE_OPTION(bool, upsample, false);
             OE_OPTION(ProfileOptions, profile);
             virtual Config getConfig() const;
         private:

@@ -188,7 +188,7 @@ namespace osgEarth
                         ImGui::Text("Distance from camera: %.1lf m", dist);
                         ImGui::Text("Camera radius: %.1lf m", eye.length());
 
-                        if (_sample.isAvailable())
+                        if (_sample.available())
                         {
                             if (_sample->elevation().getValue() == NO_DATA_VALUE)
                             {
@@ -197,26 +197,26 @@ namespace osgEarth
                             }
                             else
                             {
-                                Distance cartRes = mp.transformResolution(_sample.get().resolution(), Units::METERS);
+                                Distance cartRes = mp.transformResolution(_sample.value().resolution(), Units::METERS);
                                 const VerticalDatum* egm96 = VerticalDatum::get("egm96");
                                 if (egm96)
                                 {
-                                    double egm96z = _sample.get().elevation().getValue();
+                                    double egm96z = _sample.value().elevation().getValue();
                                     VerticalDatum::transform(
                                         mp.getSRS()->getVerticalDatum(),
                                         egm96,
                                         mp.y(), mp.x(),
                                         egm96z);
-                                    Distance elevEGM96(egm96z, _sample.get().elevation().getUnits());
+                                    Distance elevEGM96(egm96z, _sample.value().elevation().getUnits());
 
                                     ImGui::Text("Elevation: %s MSL / %s HAE",
                                         elevEGM96.asParseableString().c_str(),
-                                        _sample.get().elevation().asParseableString().c_str());
+                                        _sample.value().elevation().asParseableString().c_str());
                                 }
                                 else
                                 {
                                     ImGui::Text("Elevation: %s HAE",
-                                        _sample.get().elevation().asParseableString().c_str());
+                                        _sample.value().elevation().asParseableString().c_str());
                                 }
 
                                 ImGui::Text("Resolution: %s",
@@ -301,7 +301,7 @@ namespace osgEarth
                     .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); }, false)
                     .onClick([&](osg::View* v, float x, float y) { onClick(v, x, y); }, false);
 
-                _sampler = std::unique_ptr<AsyncElevationSampler>(new AsyncElevationSampler(_mapNode->getMap()));
+                _sampler = std::unique_ptr<AsyncElevationSampler>(new AsyncElevationSampler(_mapNode->getMap(), 1u));
 
                 Style measureStyle;
                 measureStyle.getOrCreate<LineSymbol>()->stroke()->width() = 4.0f;

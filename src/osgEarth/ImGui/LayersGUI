@@ -302,7 +302,6 @@ namespace osgEarth
             bool _showDisabled = false;
             bool _sortByCat = false;
             LayerVector _layers;
-            //std::vector<bool> _layerExpanded;
             std::unordered_map<Layer*, bool> _layerExpanded;
             int _mapRevision = -1;
             bool _first = true;
@@ -445,6 +444,9 @@ namespace osgEarth
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), _mapNode->getMap()->getName().c_str());
                     }
 
+                    ImGui::SameLine();
+
+                    ImGui::Text("(%d)", _layers.size());
                     ImGui::SameLine();
 
                     if (ImGui::Checkbox("Sort", &_sortByCat))
@@ -696,7 +698,7 @@ namespace osgEarth
                             }
 
 #ifdef HAVE_OSGEARTHCESIUM
-                             auto cesiumNativeLayer = dynamic_cast<osgEarth::Cesium::CesiumNative3DTilesLayer*>(layer);
+                            auto cesiumNativeLayer = dynamic_cast<osgEarth::Cesium::CesiumNative3DTilesLayer*>(layer);
                             if (cesiumNativeLayer)
                             {
                                 float sse = cesiumNativeLayer->getMaximumScreenSpaceError();
@@ -793,7 +795,7 @@ namespace osgEarth
 
                                 if (_mouseOverImageLayer == imageLayer)
                                 {
-                                    if (_imageLayerValueUnderMouse.isAvailable())
+                                    if (_imageLayerValueUnderMouse.available())
                                     {
                                         if (_imageLayerValueUnderMouse->isOK())
                                         {

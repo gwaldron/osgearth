@@ -30,6 +30,7 @@
 #include <osgEarth/TileEstimator>
 #include <osgEarth/SimplePager>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/MaterialLoader>
 #include <osgDB/WriteFile>
 #include <osgDB/FileUtils>
 #include <osg/TextureBuffer>
@@ -159,10 +160,12 @@ struct PrepareForWriting : public osg::NodeVisitor
 struct WriteExternalImages : public osgEarth::TextureAndImageVisitor
 {
     std::string _destinationPath;
+    std::string _imageFormat;
 
-    WriteExternalImages(const std::string& destinationPath)
+    WriteExternalImages(const std::string& destinationPath, std::string& imageFormat)
         : TextureAndImageVisitor(),
-        _destinationPath(destinationPath)
+        _destinationPath(destinationPath),
+        _imageFormat(imageFormat)
     {
         setTraversalMode(TRAVERSE_ALL_CHILDREN);
         setNodeMaskOverride(~0L);
@@ -193,7 +196,16 @@ struct WriteExternalImages : public osgEarth::TextureAndImageVisitor
 
         if (image.getWriteHint() != osg::Image::EXTERNAL_FILE)
         {
-            std::string format = "dds";
+            auto getNormalMapFileName = MaterialUtils::getDefaultNormalMapNameMangler();
+            auto getPBRFileName = MaterialUtils::getDefaultPBRMapNameMangler();
+
+            URI normalMapURI(getNormalMapFileName(path));
+            osg::ref_ptr< osg::Image > normals = normalMapURI.getImage();
+
+            URI pbrURI(getPBRFileName(path));
+            osg::ref_ptr< osg::Image > pbr = pbrURI.getImage();
+
+            std::string format = _imageFormat;
             unsigned int hash = osgEarth::hashString(path);
 
             std::string relativeName = Stringify() << "../../images/" << hash << "." << format;
@@ -203,11 +215,32 @@ struct WriteExternalImages : public osgEarth::TextureAndImageVisitor
             image.setFileName(relativeName);
             image.setWriteHint(osg::Image::EXTERNAL_FILE);
             osg::ref_ptr < osgDB::Options > options = new osgDB::Options;
-            options->setOptionString("ddsNoAutoFlipWrite");
+            if (format == "dds")
+            {
+                options->setOptionString("ddsNoAutoFlipWrite");
+            }
             osgDB::makeDirectoryForFile(filename);
             if (!osgDB::fileExists(filename))
             {
                 osgDB::writeImageFile(image, filename, options.get());
+            }
+
+            if (normals.valid())
+            {
+                std::string normalFilename = getNormalMapFileName(filename);
+                if (!osgDB::fileExists(normalFilename))
+                {
+                    osgDB::writeImageFile(*normals, normalFilename, options.get());
+                }
+            }
+
+            if (pbr.valid())
+            {
+                std::string pbrFilename = getPBRFileName(filename);
+                if (!osgDB::fileExists(pbrFilename))
+                {
+                    osgDB::writeImageFile(*pbr, pbrFilename, options.get());
+                }
             }
         }
     }
@@ -215,11 +248,12 @@ struct WriteExternalImages : public osgEarth::TextureAndImageVisitor
 
 struct CreateTileHandler : public TileHandler
 {
-    CreateTileHandler(SimplePager* simplePager, bool overwrite, std::string& path, std::string& ext)
+    CreateTileHandler(SimplePager* simplePager, bool overwrite, std::string& path, std::string& ext, std::string& imageFormat)
         :_simplePager(simplePager),
          _overwrite(overwrite),
         _path(path),
-        _ext(ext)
+        _ext(ext),
+        _imageFormat(imageFormat)
     {
         if (::getenv(OSGEARTH_ENV_DEFAULT_COMPRESSOR) != 0L)
         {
@@ -250,7 +284,7 @@ struct CreateTileHandler : public TileHandler
                 std::string path = osgDB::getFilePath(filename);
 
                 // Maybe make this optional
-                WriteExternalImages write(path);
+                WriteExternalImages write(path, _imageFormat);
                 node->accept(write);
 
                 osg::ref_ptr< osgDB::Options > options = new osgDB::Options;
@@ -290,6 +324,7 @@ struct CreateTileHandler : public TileHandler
     std::string _compressorName;
     std::string _path;
     std::string _ext;
+    std::string _imageFormat;
 };
 
 
@@ -518,7 +553,10 @@ main(int argc, char** argv)
     std::string ext = "osgb";
     args.read("--ext", ext);
 
-    visitor->setTileHandler(new CreateTileHandler(simplePager, overwrite, path, ext));
+    std::string imageFormat = "dds";
+    args.read("--image-format", imageFormat);
+
+    visitor->setTileHandler(new CreateTileHandler(simplePager, overwrite, path, ext, imageFormat));
 
     // set the manual extents, if specified:
     double minlat, minlon, maxlat, maxlon;

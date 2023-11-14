@@ -508,6 +508,7 @@ GDAL::Driver::open(
     const std::string& name,
     const GDAL::Options& options,
     unsigned tileSize,
+    const Profile* fallback_profile,
     DataExtentList* layerDataExtents,
     const osgDB::Options* readOptions)
 {
@@ -636,8 +637,17 @@ GDAL::Driver::open(
 
     if (!src_srs.valid())
     {
-        return Status::Error(Status::ResourceUnavailable, Stringify()
-            << "Dataset has no spatial reference information (" << source << ")");
+        if (fallback_profile)
+        {
+            _profile = fallback_profile;
+            src_srs = fallback_profile->getSRS();
+            OE_INFO << LC << "Using fallback profile " << fallback_profile->toString() << std::endl;
+        }
+        else
+        {
+            return Status::Error(Status::ResourceUnavailable,
+                "Dataset has no spatial reference information (" + source + ")");
+        }
     }
 
     // These are the actual extents of the data:
@@ -656,7 +666,11 @@ GDAL::Driver::open(
     if (src_srs->isGeographic())
     {
         OE_DEBUG << INDENT << "Creating Profile from source's geographic SRS: " << src_srs->getName() << std::endl;
-        _profile = Profile::create(src_srs.get());
+        if (!_profile)
+        {
+            _profile = Profile::create(src_srs.get());
+        }
+
         if (!_profile.valid())
         {
             return Status::Error(Status::ResourceUnavailable, Stringify()
@@ -713,9 +727,6 @@ GDAL::Driver::open(
     {
         _warpedDS = _srcDS;
         warpedSRSWKT = src_srs->getWKT();
-
-        // re-read the extents from the new DS:
-        _warpedDS->GetGeoTransform(_geotransform);
     }
 
     if (!_warpedDS)
@@ -1675,6 +1686,7 @@ GDAL::Options::readFrom(const Config& conf)
     conf.get("coverage_uses_palette_index", coverageUsesPaletteIndex());
     conf.get("single_threaded", singleThreaded());
     conf.get("use_vrt", useVRT());
+    conf.get("fallback_profile", fallbackProfile());
 
     // report on deprecated usage
     const std::string deprecated_keys[] = {
@@ -1699,6 +1711,7 @@ GDAL::Options::writeTo(Config& conf) const
     conf.set("interpolation", "cubicspline", _interpolation, osgEarth::INTERP_CUBICSPLINE);
     conf.set("coverage_uses_palette_index", coverageUsesPaletteIndex());
     conf.set("single_threaded", singleThreaded());
+    conf.set("fallback_profile", fallbackProfile());
 }
 
 //......................................................................
@@ -1712,7 +1725,7 @@ namespace
     Status openOnThisThread(
         const T* layer,
         GDAL::Driver::Ptr& driver,
-        osg::ref_ptr<const Profile>* profile = nullptr,
+        osg::ref_ptr<const Profile>* in_out_profile = nullptr,
         DataExtentList* out_dataExtents = nullptr)
     {
         driver = std::make_shared<GDAL::Driver>();
@@ -1730,15 +1743,16 @@ namespace
             layer->getName(),
             layer->options(),
             layer->options().tileSize().get(),
+            in_out_profile ? in_out_profile->get() : nullptr,
             out_dataExtents,
             layer->getReadOptions());
 
         if (status.isError())
             return status;
 
-        if (driver->getProfile() && profile != nullptr)
+        if (driver->getProfile() && in_out_profile != nullptr)
         {
-            *profile = driver->getProfile();
+            *in_out_profile = driver->getProfile();
         }
 
         return Status::NoError;
@@ -1800,6 +1814,15 @@ GDALImageLayer::openImplementation()
     unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
 
     osg::ref_ptr<const Profile> profile;
+
+    if (options().fallbackProfile().isSet())
+    {
+        profile = Profile::create(options().fallbackProfile().get());
+        if (!profile.valid())
+        {
+            return Status(Status::ConfigurationError, "Override profile is not valid");
+        }
+    }
 
     // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
     // So we just encapsulate the entire setup once per thread.
@@ -1863,7 +1886,8 @@ GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         {
             // calling openImpl with NULL params limits the setup
             // since we already called this during openImplementation
-            openOnThisThread(this, test_driver);
+            osg::ref_ptr<const Profile> profile = getProfile();
+            openOnThisThread(this, test_driver, &profile);
         }
 
         // assign to a ref_ptr to continue
@@ -2008,11 +2032,8 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
         {
             // calling openImpl with NULL params limits the setup
             // since we already called this during openImplementation
-            openOnThisThread(
-                this,
-                test_driver,
-                nullptr,
-                nullptr);
+            osg::ref_ptr<const Profile> profile = getProfile();
+            openOnThisThread(this, test_driver, &profile);
         }
 
         // assign to a ref_ptr to continue

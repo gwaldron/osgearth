@@ -73,6 +73,7 @@ namespace osgEarth {
             OE_OPTION(bool, useVRT, false);
             OE_OPTION(bool, coverageUsesPaletteIndex, true);
             OE_OPTION(bool, singleThreaded, false);
+            OE_OPTION(ProfileOptions, fallbackProfile);
 
             void readFrom(const Config& conf);
             void writeTo(Config& conf) const;
@@ -113,6 +114,7 @@ namespace osgEarth {
                 const std::string& name,
                 const GDAL::Options& options,
                 unsigned tileSize,
+                const Profile* fallback_profile,
                 DataExtentList* out_dataExtents,
                 const osgDB::Options* readOptions);
 

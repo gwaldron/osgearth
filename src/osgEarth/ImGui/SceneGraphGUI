@@ -33,6 +33,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osg/TextureBuffer>
+#include <osg/ComputeBoundsVisitor>
 
 #include <osg/io_utils>
 #include <osg/PolygonMode>
@@ -186,6 +187,9 @@ namespace osgEarth
         using namespace osgEarth;
         using namespace osgEarth::Util;
 
+
+        static bool hideEmptyPagedNodes = false;
+        static std::unordered_map<osg::Node*, bool> hasGeom;
 
         struct ArrayStats
         {
@@ -671,6 +675,21 @@ namespace osgEarth
 
                 void apply(osg::Group& node)
                 {
+                    if (hideEmptyPagedNodes)
+                    {
+                        auto pagedNode = dynamic_cast<osgEarth::PagedNode2*>(&node);
+                        if (pagedNode) {
+                            auto i = hasGeom.emplace(&node, false);
+                            if (i.second) { // new
+                                osg::ComputeBoundsVisitor cb;
+                                node.accept(cb);
+                                osg::BoundingBox bb = cb.getBoundingBox();
+                                i.first->second = bb.valid();
+                            }
+                            if (!i.first->second) return;
+                        }
+                    }
+
                     std::string label = getLabel(node);
                     ImGuiTreeNodeFlags node_flags = base_flags;
                     if (_owner->getSelectedNode() == &node)
@@ -1336,6 +1355,9 @@ namespace osgEarth
                         ImGui::Text("%s Mode=%s Primitives=%d Instances=%d", typeid(*p.get()).name(), GLModeToString(p->getMode()), p->getNumPrimitives(), p->getNumInstances());
                     }
                 }
+
+                ImGui::Separator();
+                ImGui::Checkbox("Hide empty PagedNodes", &hideEmptyPagedNodes);
             }
 
             const char* GLModeToString(GLenum mode)

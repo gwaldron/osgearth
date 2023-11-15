@@ -44,6 +44,7 @@ namespace osgEarth
             OE_OPTION(bool, invertY);
             OE_OPTION(int, minLevel);
             OE_OPTION(int, maxLevel);
+            OE_OPTION(float, rangeFactor);
             OE_OPTION(ProfileOptions, profile);
             Config getConfig() const override;
             void fromConfig(const Config& conf);
@@ -76,6 +77,10 @@ namespace osgEarth
         //! Maximum level of detail to access
         void setMaxLevel(unsigned value);
         unsigned getMaxLevel() const override;
+
+        //! The range factor.  Default is 6
+        void setRangeFactor(float value);
+        float getRangeFactor() const;
 
         //! Forces a rebuild on this layer.
         void dirty();

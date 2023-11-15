@@ -34,11 +34,13 @@ void XYZModelLayer::Options::fromConfig(const Config& conf)
 {
     invertY().setDefault(false);
     additive().setDefault(false);
+    rangeFactor().setDefault(6.0);
 
     conf.get("additive", additive());
     conf.get("url", url());
     conf.get("min_level", minLevel());
     conf.get("max_level", maxLevel());
+    conf.get("range_factor", rangeFactor());
     conf.get("profile", profile());
 }
 
@@ -51,6 +53,7 @@ XYZModelLayer::Options::getConfig() const
     conf.set("min_level", minLevel());
     conf.set("max_level", maxLevel());
     conf.set("profile", profile());
+    conf.set("range_factor", rangeFactor());
 
     return conf;
 }
@@ -78,6 +81,18 @@ XYZModelLayer::setMaxLevel(unsigned value) {
 unsigned
 XYZModelLayer::getMaxLevel() const {
     return options().maxLevel().get();
+}
+
+void
+XYZModelLayer::setRangeFactor(float value)
+{
+    options().rangeFactor() = value;
+}
+
+float
+XYZModelLayer::getRangeFactor() const
+{
+    return options().rangeFactor().get();
 }
 
 
@@ -191,6 +206,7 @@ XYZModelLayer::create()
         xyzGraph->setAdditive(*_options->additive());
         xyzGraph->setMinLevel(*_options->minLevel());
         xyzGraph->setMaxLevel(*_options->maxLevel());
+        xyzGraph->setRangeFactor(*_options->rangeFactor());
         xyzGraph->setSceneGraphCallbacks(getSceneGraphCallbacks());
         xyzGraph->build();
 

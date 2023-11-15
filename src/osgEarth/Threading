@@ -594,6 +594,13 @@ namespace osgEarth { namespace Threading
             write_unlock();
         }
 
+        void upgrade_to_write_lock() {
+            std::unique_lock<T> lock(_m);
+            _unlocked.wait(lock, [&]() { return _writers == 0 && _readers == 1; });
+            --_readers;
+            ++_writers;
+        }
+
         void setName(const std::string& name) {
             _m.setName(name);
         }
@@ -616,9 +623,16 @@ namespace osgEarth { namespace Threading
     template<typename T>
     struct ScopedRead {
         ScopedRead( ReadWrite<T>& lock ) : _lock(lock) { _lock.read_lock(); }
-        ~ScopedRead() { _lock.read_unlock(); }
+        void upgradeToWriteLock() { _lock.upgrade_to_write_lock(); _upgraded = true; }
+        ~ScopedRead() {
+            if (_upgraded)
+                _lock.write_unlock();
+            else
+                _lock.read_unlock();
+        }
     private:
         ReadWrite<T>& _lock;
+        bool _upgraded = false;
     };
 
     typedef ReadWrite<Mutex> ReadWriteMutex;
@@ -806,10 +820,12 @@ namespace osgEarth { namespace Threading
         }
 
         //! Set the job arena in which to run this Job.
-        void setArena(JobArena* arena) {
-            _arena = arena;
+        //void setArena(JobArena* arena) {
+        //    _arena = arena;
+        //}
+        void setArena(const std::string& value) {
+            _arenaName = value;
         }
-        inline void setArena(const std::string& arenaName);
 
         //! Static priority
         void setPriority(float value) {
@@ -850,6 +866,7 @@ namespace osgEarth { namespace Threading
     private:
         std::string _name;
         float _priority;
+        std::string _arenaName;
         JobArena* _arena;
         JobGroup* _group;
         std::function<float()> _priorityFunc;
@@ -888,8 +905,13 @@ namespace osgEarth { namespace Threading
         //! Get the target concurrency (thread count) 
         unsigned getConcurrency() const;
 
-        //! Discard all queued jobs
-        void cancelAll();
+        //! Discard all queued jobs. The arena will continue to run and
+        //! to accept new job.
+        void cancelAllPendingJobs();
+
+        //! Stop all thread pools across all arenas. All arenas will stop
+        //! running their threads and will not accept any more jobs.
+        static void stopAllThreads();
 
     public: // statics
 
@@ -997,7 +1019,9 @@ namespace osgEarth { namespace Threading
 
         void stopThreads();
 
-        static void shutdownAll();
+        void joinThreads();
+
+        //static void shutdownAll();
 
         using Delegate = std::function<bool()>;
 
@@ -1005,9 +1029,7 @@ namespace osgEarth { namespace Threading
         //! Use Job::dispatch to run jobs (no need to call this directly)
         //! @param job Job details
         //! @param delegate Function to execute
-        void dispatch(
-            const Job& job,
-            Delegate& delegate);
+        void dispatch(const Job& job, Delegate& delegate);
 
         struct QueuedJob {
             QueuedJob() { }
@@ -1042,7 +1064,7 @@ namespace osgEarth { namespace Threading
         // pointer to the stats structure for this arena
         Metrics::Arena::Ptr _metrics;
 
-        static Mutex _arenas_mutex;
+        static ReadWriteMutex _arenas_mutex;
         static std::unordered_map<std::string, unsigned> _arenaSizes;
         static std::unordered_map<std::string, std::shared_ptr<JobArena>> _arenas;
         static std::string _defaultArenaName;
@@ -1051,39 +1073,35 @@ namespace osgEarth { namespace Threading
         friend class Job; // allow access to private dispatch method
     };
 
-    // Job inlines
-    void Job::setArena(const std::string& arenaName)
-    {
-        setArena(JobArena::get(arenaName));
-    }
-
     template<typename T>
-    Future<T> Job::dispatch(
-        std::function<T(Cancelable*)> function) const
+    Future<T> Job::dispatch(std::function<T(Cancelable*)> function) const
     {
         Promise<T> promise;
         Future<T> future = promise; // .getFuture();
         JobArena::Delegate delegate = [function, promise]() mutable
-        {
-            bool good = !promise.empty();
-            if (good)
-                promise.resolve(function(&promise));
-            return good;
-        };
-        JobArena* arena = _arena ? _arena : JobArena::get("");
+            {
+                bool good = !promise.empty();
+                if (good)
+                    promise.resolve(function(&promise));
+                return good;
+            };
+        JobArena* arena = JobArena::get(_arenaName);
         arena->dispatch(*this, delegate);
         return std::move(future);
     }
 
-    void Job::dispatch(
-        std::function<void(Cancelable*)> function) const
+    void Job::dispatch(std::function<void(Cancelable*)> function) const
     {
-        JobArena* arena = _arena ? _arena : JobArena::get("");
-        JobArena::Delegate delegate = [function]() {
-            function(nullptr);
-            return true;
-        };
-        arena->dispatch(*this, delegate);
+        JobArena* arena = JobArena::get(_arenaName);
+        if (arena)
+        {
+            JobArena::Delegate delegate = [function]()
+                {
+                    function(nullptr);
+                    return true;
+                };
+            arena->dispatch(*this, delegate);
+        }
     }
 
 } } // namepsace osgEarth::Threading

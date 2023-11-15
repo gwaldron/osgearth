@@ -505,7 +505,7 @@ JobGroup::join(Cancelable* cancelable)
 #define LC "[JobArena] "
 
 // JobArena statics:
-Mutex JobArena::_arenas_mutex("OE:JobArena");
+ReadWriteMutex JobArena::_arenas_mutex("OE:JobArena");
 std::unordered_map<std::string, std::shared_ptr<JobArena>> JobArena::_arenas;
 std::unordered_map<std::string, unsigned> JobArena::_arenaSizes;
 std::string JobArena::_defaultArenaName = "oe.general";
@@ -535,6 +535,7 @@ JobArena::~JobArena()
     if (_type == THREAD_POOL)
     {
         stopThreads();
+        joinThreads();
     }
 }
 
@@ -545,24 +546,36 @@ JobArena::defaultArenaName()
 }
 
 void
-JobArena::shutdownAll()
+JobArena::stopAllThreads()
 {
-    ScopedMutexLock lock(_arenas_mutex);
-    OE_INFO << LC << "Shutting down all job arenas." << std::endl;
-    _arenas.clear();
+    ScopedReadLock lock(_arenas_mutex);
+    
+    for (auto iter : _arenas)
+        iter.second->stopThreads();
+
+    for (auto iter : _arenas)
+        iter.second->joinThreads();
 }
 
 JobArena*
 JobArena::get(const std::string& name_)
 {
-    ScopedMutexLock lock(_arenas_mutex);
-
     if (_arenas.empty())
     {
-        std::atexit(JobArena::shutdownAll);
+        std::atexit(JobArena::stopAllThreads);
     }
 
     std::string name(name_.empty() ? "oe.general" : name_);
+
+    ScopedReadLock lock(_arenas_mutex);
+
+    auto iter = _arenas.find(name);
+    if (iter != _arenas.end())
+    {
+        return iter->second.get();
+    }
+
+    lock.upgradeToWriteLock();
 
     std::shared_ptr<JobArena>& arena = _arenas[name];
     if (arena == nullptr)
@@ -575,6 +588,7 @@ JobArena::get(const std::string& name_)
     return arena.get();
 }
 
+#if 0
 JobArena*
 JobArena::get(const Type& type_)
 {
@@ -587,7 +601,7 @@ JobArena::get(const Type& type_)
 
     if (_arenas.empty())
     {
-        std::atexit(JobArena::shutdownAll);
+        std::atexit(JobArena::stopAllThreads);
     }
 
     if (type_ == UPDATE_TRAVERSAL)
@@ -603,6 +617,7 @@ JobArena::get(const Type& type_)
 
     return nullptr;
 }
+#endif
 
 unsigned
 JobArena::getConcurrency() const
@@ -621,6 +636,7 @@ JobArena::setConcurrency(unsigned value)
         startThreads();
     }
 }
+
 void
 JobArena::setConcurrency(const std::string& name, unsigned value)
 {
@@ -629,7 +645,8 @@ JobArena::setConcurrency(const std::string& name, unsigned value)
 
     value = std::max(value, 1u);
 
-    ScopedMutexLock lock(_arenas_mutex);
+    ScopedReadLock lock(_arenas_mutex);
+
     if (_arenaSizes[name] != value)
     {
         _arenaSizes[name] = value;
@@ -645,7 +662,7 @@ JobArena::setConcurrency(const std::string& name, unsigned value)
 }
 
 void
-JobArena::cancelAll()
+JobArena::cancelAllPendingJobs()
 {
     std::lock_guard<Mutex> lock(_queueMutex);
     _queue.clear();
@@ -654,9 +671,7 @@ JobArena::cancelAll()
 }
 
 void
-JobArena::dispatch(
-    const Job& job,
-    Delegate& delegate)
+JobArena::dispatch(const Job& job, Delegate& delegate)
 {
     // If we have a group semaphore, acquire it BEFORE queuing the job
     JobGroup* group = job.getGroup();
@@ -861,7 +876,10 @@ void JobArena::stopThreads()
         // wake up all threads so they can exit
         _block.notify_all();
     }
+}
 
+void JobArena::joinThreads()
+{
     // wait for them to exit
     for (unsigned i = 0; i < _threads.size(); ++i)
     {
@@ -869,6 +887,11 @@ void JobArena::stopThreads()
         {
             _threads[i].join();
         }
+    }
+
+    if (_threads.size() > 0)
+    {
+        OE_INFO << LC << "\"" << _name << "\" " << std::to_string(_threads.size()) << " threads stopped." << std::endl;
     }
 
     _threads.clear();

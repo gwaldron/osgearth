@@ -425,9 +425,17 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
                 group.release(),
                 outputExtent);
 
+            // Since we join on the rasterizer future immediately, we need to make sure
+            // the join cancels properly with a custom cancel predicate that checks for
+            // the existence and status of the host layer.
+            osg::observer_ptr<const Layer> layer(this);
+
             osg::ref_ptr<ProgressCallback> local_progress = new ProgressCallback(
                 progress,
-                [&]() { return !isOpen(); }
+                [layer]() {
+                    osg::ref_ptr<const Layer> safe;
+                    return !layer.lock(safe) || !safe->isOpen();
+                }
             );
 
             // Immediately blocks on the result.

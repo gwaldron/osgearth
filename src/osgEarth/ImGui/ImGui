@@ -385,6 +385,24 @@ namespace ImGuiLTable
         return ImGui::InputScalar(s.c_str(), data_type, p_data, p_step, p_step_fast, format, flags);
     }
 
+    static bool ColorEdit3(const char* label, float col[3], ImGuiColorEditFlags flags = 0)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        return ImGui::ColorEdit3(label, col, flags);
+    }
+
+    static bool ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flags = 0)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        return ImGui::ColorEdit4(label, col, flags);
+    }
+
     static void End()
     {
         ImGui::EndTable();

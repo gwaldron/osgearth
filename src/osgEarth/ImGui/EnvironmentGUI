@@ -243,6 +243,12 @@ namespace osgEarth
 
                             if (ImGuiLTable::SliderFloat("Ambient max", &_max_ambient_intensity, 0.0f, 1.0f)) dirtySettings();
                             _skyNode->getOrCreateStateSet()->getOrCreateUniform("oe_sky_maxAmbientIntensity", osg::Uniform::FLOAT)->set(_max_ambient_intensity);
+
+                            auto diffuse_color = _skyNode->getSunLight()->getDiffuse();
+                            if (ImGuiLTable::ColorEdit3("Diffuse color", &diffuse_color[0], ImGuiColorEditFlags_Float)) {
+                                _skyNode->getSunLight()->setDiffuse(diffuse_color);
+                                dirtySettings();
+                            }
                         }
                         else
                         {
@@ -301,12 +307,10 @@ namespace osgEarth
                             ImGuiLTable::Checkbox("Sun", &sun_visible);
                             _skyNode->setSunVisible(sun_visible);
 
-                            //ImGui::SameLine();
                             bool moon_visible = _skyNode->getMoonVisible();
                             ImGuiLTable::Checkbox("Moon", &moon_visible);
                             _skyNode->setMoonVisible(moon_visible);
 
-                            //ImGui::SameLine();
                             bool stars_visible = _skyNode->getStarsVisible();
                             ImGuiLTable::Checkbox("Stars", &stars_visible);
                             _skyNode->setStarsVisible(stars_visible);

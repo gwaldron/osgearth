@@ -230,9 +230,9 @@ SimpleSkyNode::construct()
 
     _light = new LightGL3(0);
     _light->setPosition(osg::Vec4f(0.0f, 0.0f, 1.0f, 0.0f));
-    _light->setAmbient(osg::Vec4f(0.1f, 0.1f, 0.1f, 1.0f));
+    _light->setAmbient(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f));
     _light->setDiffuse(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f));
-    _light->setSpecular(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f));
+    _light->setSpecular(osg::Vec4f(1.0f, 1.0f, 1.0f, 1.0f)); // does nothing in PBR mode
 
     // install the Sun as a lightsource.
     osg::LightSource* lightSource = new osg::LightSource();

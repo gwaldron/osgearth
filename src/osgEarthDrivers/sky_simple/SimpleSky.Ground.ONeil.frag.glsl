@@ -130,9 +130,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
         vec3 H = normalize(V + L);
         //float distance = length(osg_LightSource[i].position.xyz - atmos_vert);
         //float attenuation = 1.0 / (distance * distance);
-        vec3 radiance = vec3(1.0); // osg_LightSource[i].diffuse.rgb * attenuation;
-
-        //radiance *= atmos_atten;
+        vec3 radiance = osg_LightSource[i].diffuse.rgb; // * attenuation
 
         // cook-torrance BRDF:
         float NDF = DistributionGGX(N, H, oe_pbr.roughness);

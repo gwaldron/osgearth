@@ -29,12 +29,14 @@ namespace
     // adapter that lets us compile a Texture::Ptr using the ICO
     struct TextureICOAdapter : public osg::Texture2D
     {
-        osgEarth::Texture::Ptr _tex;
+        osgEarth::Texture::WeakPtr _tex_weak;
         osg::observer_ptr<osg::Object> _token;
         bool _hasToken = false;
 
-        TextureICOAdapter(osgEarth::Texture::Ptr value, osg::Object* cancelation_token) : 
-            _tex(value), _token(cancelation_token), _hasToken(cancelation_token != nullptr) { }
+        TextureICOAdapter(osgEarth::Texture::Ptr value, osg::Object* cancelation_token) :
+            _tex_weak(value),
+            _token(cancelation_token),
+            _hasToken(cancelation_token != nullptr) { }
 
         // apply is called by the ICO for textures (not compileGLObjects)
         void apply(osg::State& state) const override
@@ -46,9 +48,10 @@ namespace
                 return;
             }
 
-            if (_tex)
+            osgEarth::Texture::Ptr tex = _tex_weak.lock();
+            if (tex)
             {
-                if (_tex->compileGLObjects(state))
+                if (tex->compileGLObjects(state))
                 {
                     //OE_WARN << "Compiled ICO = " << _tex->name() << (std::uintptr_t)_tex.get() << std::endl;
                 }

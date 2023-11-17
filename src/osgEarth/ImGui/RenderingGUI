@@ -326,6 +326,10 @@ namespace osgEarth
 
                             double glmem = (double)glpool->totalBytes() / 1048576.;
                             ImGui::TextColored(ImVec4(1, 1, 0, 1), "NVGL Memory: %.1lf MB", glmem);
+                            ImGui::SameLine();
+                            static bool sort_by_size = false;
+                            ImGui::Checkbox("Sort by size", &sort_by_size);
+
                             std::map<std::string, std::list<GLObject::Ptr>> categories;
                             for (auto& obj : globjects) {
                                 categories[obj->category()].emplace_back(obj);
@@ -340,18 +344,27 @@ namespace osgEarth
                                 char header[128];
                                 sprintf(header, "%s (%d @ %.1lf MB)", cat.first.c_str(), (int)cat.second.size(), (double)total / 1048576.);
 
+                                if (sort_by_size)
+                                {
+                                    cat.second.sort([](const auto& lhs, const auto& rhs) {
+                                        return lhs->size() > rhs->size();
+                                        });
+                                }
+
                                 if (ImGui::TreeNode(header))
                                 {
-                                    if (ImGui::BeginTable("globj", 3, ImGuiTableFlags_SizingFixedFit))
+                                    ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders;
+                                    flags &= ~ImGuiTableFlags_BordersOuter;
+                                    if (ImGui::BeginTable("globj", 3, flags))
                                     {
                                         for (auto& obj : cat.second)
                                         {
                                             ImGui::TableNextColumn();
-                                            ImGui::Text("(%d)", obj->name());
+                                            ImGui::Text("%6.2lf MB", (double)obj->size() / (double)1048576.);
                                             ImGui::TableNextColumn();
                                             ImGui::Text("%s", obj->uid().c_str());
                                             ImGui::TableNextColumn();
-                                            ImGui::Text("(%.2lf MB)", (double)obj->size() / (double)1048576.);
+                                            ImGui::Text("(%d)", obj->name());
                                         }
                                         ImGui::EndTable();
                                     }

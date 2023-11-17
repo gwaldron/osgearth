@@ -890,6 +890,12 @@ VirtualProgram::VirtualProgram(unsigned mask) :
 #ifdef PREALLOCATE_APPLY_VARS
     _apply.resize(MAX_CONTEXTS);
 #endif
+
+#if 0 // Good, but needs more testing
+#ifdef OSGEARTH_SINGLE_THREADED_OSG
+    _useDataModelMutex = false;
+#endif
+#endif
 }
 
 
@@ -958,14 +964,14 @@ VirtualProgram::compare(const osg::StateAttribute& sa) const
 void
 VirtualProgram::addBindAttribLocation(const std::string& name, GLuint index)
 {
-    ScopedMutexLock lock(_dataModelMutex);
+    ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
     _attribBindingList[name] = index;
 }
 
 void
 VirtualProgram::removeBindAttribLocation(const std::string& name)
 {
-    ScopedMutexLock lock(_dataModelMutex);
+    ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
     _attribBindingList.erase(name);
 }
 
@@ -1036,7 +1042,7 @@ VirtualProgram::releaseGLObjects(osg::State* state) const
 VirtualProgram::PolyShader*
 VirtualProgram::getPolyShader(const std::string& shaderID) const
 {
-    ScopedMutexLock readonly(_dataModelMutex);
+    ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
     ShaderMap::const_iterator i = _shaderMap.find(MAKE_SHADER_ID(shaderID));
     const ShaderEntry* entry = i != _shaderMap.end() ? &i->second : NULL;
     return entry ? entry->_shader.get() : 0L;
@@ -1068,8 +1074,7 @@ VirtualProgram::setShader(
 
     // lock the data model and insert the new shader.
     {
-        ScopedMutexLock lock(_dataModelMutex);
-
+        ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
         ShaderEntry& entry = _shaderMap[MAKE_SHADER_ID(shaderID)];
         entry._shader = pshader;
         entry._overrideValue = ov;
@@ -1105,7 +1110,7 @@ VirtualProgram::setShader(
 
     // lock the data model while changing it.
     {
-        ScopedMutexLock lock(_dataModelMutex);
+        ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
 
         checkSharing();
 
@@ -1145,7 +1150,7 @@ VirtualProgram::setFunction(
 
     // lock the functions map while iterating and then modifying it:
     {
-        ScopedMutexLock lock(_dataModelMutex);
+        ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
 
         checkSharing();
 
@@ -1191,7 +1196,7 @@ VirtualProgram::setFunction(
 bool
 VirtualProgram::addGLSLExtension(const std::string& extension)
 {
-    ScopedMutexLock lock(_dataModelMutex);
+    ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
     std::pair<ExtensionsSet::const_iterator, bool> insertPair = _globalExtensions.insert(extension);
     return insertPair.second;
 }
@@ -1199,7 +1204,7 @@ VirtualProgram::addGLSLExtension(const std::string& extension)
 bool
 VirtualProgram::hasGLSLExtension(const std::string& extension) const
 {
-    ScopedMutexLock lock(_dataModelMutex);
+    ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
     bool doesHave = _globalExtensions.find(extension) != _globalExtensions.end();
     return doesHave;
 }
@@ -1207,7 +1212,7 @@ VirtualProgram::hasGLSLExtension(const std::string& extension) const
 bool
 VirtualProgram::removeGLSLExtension(const std::string& extension)
 {
-    ScopedMutexLock lock(_dataModelMutex);
+    ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
     ExtensionsSet::size_type erased = _globalExtensions.erase(extension);
     return erased > 0;
 }
@@ -1216,7 +1221,7 @@ void
 VirtualProgram::removeShader(const std::string& shaderID)
 {
     // lock te functions map while making changes:
-    ScopedMutexLock lock(_dataModelMutex);
+    ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
 
     _shaderMap.erase(MAKE_SHADER_ID(shaderID));
 
@@ -1361,7 +1366,7 @@ VirtualProgram::apply(osg::State& state) const
 
         // Next, add the data from this VP.
         {
-            _dataModelMutex.lock();
+            ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
 
             for (auto& iter : _shaderMap)
             {
@@ -1375,8 +1380,6 @@ VirtualProgram::apply(osg::State& state) const
             local.accumAttribBindings.insert(abl.begin(), abl.end());
 
             local.accumExtensions.insert(_globalExtensions.begin(), _globalExtensions.end());
-
-            _dataModelMutex.unlock();
         }
 
         // next, assemble a list of the shaders in the map so we can use it as our
@@ -1466,7 +1469,7 @@ VirtualProgram::apply(osg::State& state) const
 #endif
         }
         Registry::programRepo().unlock();
-        key = local.programKey;
+        key.swap(local.programKey);
     }
 
     // finally, apply the program attribute.
@@ -1546,7 +1549,7 @@ VirtualProgram::getFunctions(
     VirtualProgram::FunctionLocationMap& out) const
 {
     // make a safe copy of the functions map.
-    ScopedMutexLock lock(_dataModelMutex);
+    ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
     out = _functions;
 }
 
@@ -1554,7 +1557,7 @@ void
 VirtualProgram::getShaderMap(ShaderMap& out) const
 {
     // make a safe copy of the functions map.
-    ScopedMutexLock lock(_dataModelMutex);
+    ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
     out = _shaderMap;
 }
 
@@ -1638,7 +1641,7 @@ VirtualProgram::accumulateFunctions(
 
     // add the local ones too:
     {
-        ScopedMutexLock lock(_dataModelMutex);
+        ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
 
         for (auto& j : _functions)
         {
@@ -1735,10 +1738,11 @@ VirtualProgram::accumulateShaders(
 }
 
 void
-VirtualProgram::addShadersToAccumulationMap(VirtualProgram::ShaderMap& accumMap,
+VirtualProgram::addShadersToAccumulationMap(
+    VirtualProgram::ShaderMap& accumMap,
     const osg::State&          state) const
 {
-    ScopedLock lock( _dataModelMutex );
+    ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
 
     for (auto& iter : _shaderMap)
     {
@@ -1827,7 +1831,7 @@ void VirtualProgram::setAcceptCallbacksVaryPerFrame(bool acceptCallbacksVaryPerF
 int
 VirtualProgram::compare_safe(const VirtualProgram& rhs) const
 {
-    ScopedMutexLock lock(_dataModelMutex);
+    ScopedLockIf lock(_dataModelMutex, _useDataModelMutex);
 
     // compare each parameter 
     COMPARE_StateAttribute_Parameter(_mask);

@@ -562,6 +562,7 @@ namespace osgEarth
 
         // protects access to the data members, which may be accessed by other VPs in the state stack.
         mutable Threading::Mutex _dataModelMutex;
+        bool _useDataModelMutex = true;
 
         // The program cache holds an osg::Program instance for each collection of shaders
         // that comprises this VP. There can be multiple programs in the cache if the VP is

@@ -31,6 +31,7 @@
 #include <osg/AutoTransform>
 #include <osg/OperationThread>
 #include <osg/TriangleIndexFunctor>
+#include <osg/MatrixTransform>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 #include <osgUtil/CullVisitor>
@@ -55,15 +56,15 @@ namespace osgEarth { namespace Util
     {
         META_Object(osgEarth, TrackerTag);
 
-        std::atomic_int* _count;
+        std::shared_ptr<std::atomic_int> _count;
 
         TrackerTag() : _count(nullptr) { }
         TrackerTag(const TrackerTag& rhs, const osg::CopyOp&) : _count(rhs._count) { }
-        TrackerTag(std::atomic_int& count) : _count(&count) {
+        TrackerTag(std::shared_ptr<std::atomic_int> count) : _count(count) {
             ++(*_count);
         }
         ~TrackerTag() {
-            --(*_count);
+            if (_count) --(*_count);
         }
     };
 

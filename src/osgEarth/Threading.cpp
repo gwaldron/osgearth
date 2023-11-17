@@ -510,6 +510,7 @@ std::unordered_map<std::string, std::shared_ptr<JobArena>> JobArena::_arenas;
 std::unordered_map<std::string, unsigned> JobArena::_arenaSizes;
 std::string JobArena::_defaultArenaName = "oe.general";
 JobArena::Metrics JobArena::_allMetrics;
+bool JobArena::_alive = true;
 
 #define OE_ARENA_DEFAULT_SIZE 2u
 
@@ -539,6 +540,12 @@ JobArena::~JobArena()
     }
 }
 
+bool
+JobArena::alive()
+{
+    return _alive;
+}
+
 const std::string&
 JobArena::defaultArenaName()
 {
@@ -548,8 +555,10 @@ JobArena::defaultArenaName()
 void
 JobArena::stopAllThreads()
 {
+    _alive = false;
+
     ScopedReadLock lock(_arenas_mutex);
-    
+
     for (auto iter : _arenas)
         iter.second->stopThreads();
 

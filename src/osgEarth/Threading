@@ -928,6 +928,9 @@ namespace osgEarth { namespace Threading
         //! Name of the arena to use when none is specified
         static const std::string& defaultArenaName();
 
+        //! Whether the job system is alive; this is true until you call stopAllThreads().
+        static bool alive();
+
     public:
 
         /**
@@ -1069,6 +1072,7 @@ namespace osgEarth { namespace Threading
         static std::unordered_map<std::string, std::shared_ptr<JobArena>> _arenas;
         static std::string _defaultArenaName;
         static Metrics _allMetrics;
+        static bool _alive;
 
         friend class Job; // allow access to private dispatch method
     };

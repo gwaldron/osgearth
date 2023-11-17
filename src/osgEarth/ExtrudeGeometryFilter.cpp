@@ -1478,12 +1478,5 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
 #endif
     }
 
-    Counter counter;
-    group->accept(counter);
-    if (counter._numVerts > 4000000)
-    {
-        OE_WARN << LC << "Node has " << counter._numVerts << " verts." << std::endl;
-    }
-
     return group;
 }

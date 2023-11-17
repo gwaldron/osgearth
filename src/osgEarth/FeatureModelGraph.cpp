@@ -37,6 +37,7 @@
 #include <osgEarth/LineDrawable>
 #include <osgEarth/NetworkMonitor>
 #include <osgEarth/PagedNode>
+#include <osgEarth/Chonk>
 
 #include <osg/CullFace>
 #include <osg/PagedLOD>
@@ -409,9 +410,20 @@ FeatureModelGraph::FeatureModelGraph(const FeatureModelOptions& options) :
     _useTiledSource(false),
     _blacklistMutex("FMG BlackList(OE)"),
     _isActive(false),
-    loadedTiles(0)
+    loadedTiles(std::make_shared<std::atomic_int>(0))
 {
-    //NOP
+    //nop
+}
+
+void
+FeatureModelGraph::setUseNVGL(bool value)
+{
+    if (value == true && GLUtils::useNVGL())
+    {
+        _textures = new TextureArena();
+        _textures->setBindingPoint(1);
+        getOrCreateStateSet()->setAttribute(_textures, 1);
+    }
 }
 
 void
@@ -803,6 +815,11 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
             workingExtent = map->getProfile()->clampAndTransformExtent(extent);
         else
             workingExtent = extent.transform(map->getSRS()); // _usableMapExtent.getSRS() );
+    }
+
+    if (!workingExtent.isValid())
+    {
+        return {};
     }
 
 #if 0
@@ -1534,7 +1551,8 @@ FeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const Quer
 }
 
 osg::Group*
-FeatureModelGraph::build(const Style&          defaultStyle,
+FeatureModelGraph::build(
+    const Style&          defaultStyle,
     const Query&          baseQuery,
     const GeoExtent&      workingExtent,
     FeatureIndexBuilder*  index,
@@ -1687,6 +1705,62 @@ FeatureModelGraph::createOrUpdateNode(FeatureCursor*           cursor,
                                       const Query&             query)
 {
     bool ok = _factory->createOrUpdateNode(cursor, style, context, output, query);
+
+    if (ok && _textures.valid() && output.valid())
+    {
+        // simple caching function to share textures across requests
+        static std::mutex cache_mutex;
+        const auto cache_function = [&](osg::Texture* osgTex, bool& isNew)
+            {
+                std::lock_guard<std::mutex> lock(cache_mutex);
+                auto it = this->_texturesCache.find(osgTex);
+                if (it != _texturesCache.end())
+                {
+                    isNew = false;
+                    return it->second;
+                }
+                else
+                {
+                    isNew = true;
+                    auto t = Texture::create(osgTex);
+                    _texturesCache[osgTex] = t;
+                    return t;
+                }
+            };
+
+        auto xform = findTopMostNodeOfType<osg::MatrixTransform>(output.get());
+        auto root = xform && xform->getNumChildren() > 0 ? xform->getChild(0) : output.get();
+
+
+        // Convert the geometry into chonks
+        ChonkFactory factory(_textures);
+        factory.setGetOrCreateFunction(cache_function);
+
+        osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();
+        if (xform)
+        {
+            for (unsigned i = 0; i < xform->getNumChildren(); ++i)
+            {
+                auto chonk = Chonk::create();
+                if (chonk->add(xform->getChild(i), factory))
+                    drawable->add(chonk);
+            }
+            xform->removeChildren(0, xform->getNumChildren());
+            xform->addChild(drawable);
+            output = xform;
+        }
+        else
+        {
+            auto chonk = Chonk::create();
+            if (chonk->add(output.get(), factory))
+            {
+                drawable->add(chonk);
+                output = drawable;
+            }
+        }
+
+    }
+
     return ok;
 }
 

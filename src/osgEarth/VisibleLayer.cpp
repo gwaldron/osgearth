@@ -161,6 +161,7 @@ VisibleLayer::Options::getConfig() const
     conf.set( "attenuation_range", attenuationRange() );
     conf.set( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
     conf.set( "blend", "modulate", _blend, BLEND_MODULATE );
+    conf.set( "nvgl", useNVGL() );
     return conf;
 }
 
@@ -175,6 +176,7 @@ VisibleLayer::Options::fromConfig(const Config& conf)
     conf.get( "mask", _mask );
     conf.get( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
     conf.get( "blend", "modulate", _blend, BLEND_MODULATE );
+    conf.get( "nvgl", useNVGL());
 }
 
 //........................................................................

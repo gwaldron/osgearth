@@ -41,16 +41,17 @@ namespace osgEarth
     {
     public:
         using Ptr = std::shared_ptr<ChonkMaterial>;
+
         static Ptr create() {
             return Ptr(new ChonkMaterial);
         }
 
         // texturearena indexes of material textures
-        int albedo_index;
-        int normal_index;
-        int pbr_index;
-        int material1_index;
-        int material2_index;
+        int albedo_index = -1;
+        int normal_index = -1;
+        int pbr_index = -1;
+        int material1_index = -1;
+        int material2_index = -1;
 
         // store refs to the original textures when the
         // factory objects's texture arena is using auto-release.
@@ -62,12 +63,8 @@ namespace osgEarth
         Texture::Ptr material2_tex;
 
     private:
-        ChonkMaterial() :
-            albedo_index(-1),
-            normal_index(-1),
-            pbr_index(-1),
-            material1_index(-1),
-            material2_index(-1){}
+        //! hidden to force use of create()
+        ChonkMaterial() { }
     };
 
     class ChonkFactory;
@@ -103,24 +100,17 @@ namespace osgEarth
         {
             osg::Vec3f position;
             osg::Vec3f normal;
-            char normal_technique;
+            char normal_technique = (char)0;
             osg::Vec4ub color;
             osg::Vec2f uv;
             osg::Vec3f flex;
 
             // texturearena indexes of materials
             // TODO: use a material index instead?
-            GLshort albedo_index;
-            GLshort normalmap_index;
-            GLshort pbr_index;
-            osg::Vec2s extended_materials;
-
-            VertexGPU() : 
-                normal_technique(0),
-                albedo_index(-1),
-                normalmap_index(-1),
-                pbr_index(-1),
-                extended_materials(-1,-1){}
+            GLshort albedo_index = -1;
+            GLshort normalmap_index = -1;
+            GLshort pbr_index = -1;
+            osg::Vec2s extended_material_index = osg::Vec2s(-1, -1);
         };
 
         static GLubyte NORMAL_TECHNIQUE_DEFAULT;
@@ -284,11 +274,11 @@ namespace osgEarth
         using Instances = std::vector<Instance>;
         using Batches = std::unordered_map<Chonk::Ptr, Instances>;
         Batches _batches;
-        bool _gpucull;
-        float _fadeNear, _fadeFar;
-        double _birthday;
-        float _alphaCutoff;
-        int _renderBinNumber;
+        bool _gpucull = true;
+        float _fadeNear = 0.0f, _fadeFar = 0.0f;
+        double _birthday = -1.0;
+        float _alphaCutoff = 0.0f;
+        int _renderBinNumber = 0;
 
         //! GL objects (and supporting data structures) that must
         //! be stored and managed for each unique OSG state,
@@ -324,19 +314,17 @@ namespace osgEarth
             GLBuffer::Ptr _instanceInputBuf;
             GLBuffer::Ptr _instanceOutputBuf;
             GLBuffer::Ptr _chonkBuf;
-            bool _dirty;
-            bool _gpucull;
+            bool _dirty = true;
+            bool _gpucull = true;
 
             void(GL_APIENTRY * _glMultiDrawElementsIndirectBindlessNV)
                 (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint);
 
             struct PCPState {
-                GLint _passUL;
-                PCPState() : _passUL(-1) { }
+                GLint _passUL = -1;
             };
             mutable std::unordered_map<const void*, PCPState> _pcps;
 
-            GLObjects();
             void initialize(
                 const osg::Object* host, osg::State& state);
             void update(
@@ -362,7 +350,7 @@ namespace osgEarth
         virtual void accept(osg::PrimitiveFunctor&) const override;
 
     private:
-        mutable bool _proxy_dirty;
+        mutable bool _proxy_dirty = true;
         mutable std::vector<osg::Vec3f> _proxy_verts;
         mutable std::vector<GLuint> _proxy_indices;
         void refreshProxy() const;

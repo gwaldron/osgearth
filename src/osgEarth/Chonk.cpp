@@ -45,9 +45,10 @@ namespace
      */
     struct Counter : public osg::NodeVisitor
     {
-        Counter() :
-            _numVerts(0),
-            _numElements(0)
+        unsigned _numVerts = 0u;
+        unsigned _numElements = 0u;
+
+        Counter()
         {
             // Use the "active chidren" mode to only bring in default switch
             // and osgSim::MultiSwitch children for now. -gw
@@ -58,16 +59,28 @@ namespace
         void apply(osg::Geometry& node) override
         {
             auto verts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
-            if (verts) _numVerts += verts->size();
+            if (verts)
+            {
+                _numVerts += verts->size();
+            }
             
-            for (unsigned i = 0; i < node.getNumPrimitiveSets(); ++i) {
+            for (unsigned i = 0; i < node.getNumPrimitiveSets(); ++i)
+            {
                 auto p = node.getPrimitiveSet(i);
-                if (p) _numElements += p->getNumIndices();
+                if (p)
+                {
+                    if (p->getMode() == p->TRIANGLES ||
+                        p->getMode() == p->TRIANGLES_ADJACENCY ||
+                        p->getMode() == p->TRIANGLE_FAN ||
+                        p->getMode() == p->TRIANGLE_STRIP ||
+                        p->getMode() == p->QUADS ||
+                        p->getMode() == p->QUAD_STRIP)
+                    {
+                        _numElements += p->getNumIndices();
+                    }
+                }
             }
         }
-
-        unsigned _numVerts;
-        unsigned _numElements;
     };
 
     /**
@@ -359,13 +372,13 @@ namespace
                 v.pbr_index = material ? material->pbr_index : -1;
 
                 // prioritize material textures over vertex material ids.
-                v.extended_materials = material ? osg::Vec2s(material->material1_index, material->material2_index) : osg::Vec2s(-1, -1);
+                v.extended_material_index = material ? osg::Vec2s(material->material1_index, material->material2_index) : osg::Vec2s(-1, -1);
 
                 // fallback is to use vertex stream to simulate material ids.
-                if (extended_material && v.extended_materials.x() == -1 && v.extended_materials.y() == -1)
+                if (extended_material && v.extended_material_index[0] == -1 && v.extended_material_index[1] == -1)
                 {
                    int k = extended_material->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                   v.extended_materials = osg::Vec2s( (*extended_material)[k], -1 );
+                   v.extended_material_index = osg::Vec2s( (*extended_material)[k], -1 );
                 }
 
                 _result._vbo_store.emplace_back(std::move(v));
@@ -380,9 +393,9 @@ namespace
                 unsigned i0, unsigned i1, unsigned i2,
                 const osg::Matrix& l2w)
             {
-                _result._ebo_store.push_back(vbo_offset + i0);
-                _result._ebo_store.push_back(vbo_offset + i1);
-                _result._ebo_store.push_back(vbo_offset + i2);
+                _result._ebo_store.emplace_back(vbo_offset + i0);
+                _result._ebo_store.emplace_back(vbo_offset + i1);
+                _result._ebo_store.emplace_back(vbo_offset + i2);
             };
             TriangleVisitor copy_visitor(copy_indices);
             node.accept(copy_visitor);
@@ -424,9 +437,7 @@ Chonk::Chonk()
 }
 
 bool
-Chonk::add(
-    osg::Node* node,
-    ChonkFactory& factory)
+Chonk::add(osg::Node* node, ChonkFactory& factory)
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
     OE_HARD_ASSERT(_lods.size() < 3);
@@ -544,9 +555,7 @@ ChonkFactory::setGetOrCreateFunction(GetOrCreateFunction value)
 }
 
 void
-ChonkFactory::load(
-    osg::Node* node,
-    Chonk& chonk)
+ChonkFactory::load(osg::Node* node, Chonk& chonk)
 {
     OE_PROFILING_ZONE;
 
@@ -591,11 +600,6 @@ namespace
 
 ChonkDrawable::ChonkDrawable(int renderBinNumber) :
     osg::Drawable(),
-    _proxy_dirty(true),
-    _gpucull(true),
-    _fadeNear(0.0f),
-    _fadeFar(0.0f),
-    _birthday(-1.0f),
     _renderBinNumber(renderBinNumber)
 {
     setName(typeid(*this).name());
@@ -703,8 +707,7 @@ ChonkDrawable::dirtyGLObjects()
 }
 
 void
-ChonkDrawable::add(
-    Chonk::Ptr value)
+ChonkDrawable::add(Chonk::Ptr value)
 {
     static const osg::Matrixf s_identity_xform;
     static const osg::Vec2f s_def_uv(0.0f, 0.0f);
@@ -712,19 +715,14 @@ ChonkDrawable::add(
 }
 
 void
-ChonkDrawable::add(
-    Chonk::Ptr value,
-    const osg::Matrixf& xform)
+ChonkDrawable::add(Chonk::Ptr value, const osg::Matrixf& xform)
 {
     static const osg::Vec2f s_def_uv(0.0f, 0.0f);
     add(value, xform, s_def_uv);
 }
 
 void
-ChonkDrawable::add(
-    Chonk::Ptr chonk,
-    const osg::Matrixf& xform,
-    const osg::Vec2f& local_uv)
+ChonkDrawable::add(Chonk::Ptr chonk, const osg::Matrixf& xform, const osg::Vec2f& local_uv)
 {
     if (chonk)
     {
@@ -739,7 +737,8 @@ ChonkDrawable::add(
         instance.radius = 0.0f;
         instance.alphaCutoff = 0.0f;
         instance.first_lod_cmd_index = 0;
-        _batches[chonk].push_back(std::move(instance));
+
+        _batches[chonk].emplace_back(std::move(instance));
 
         // flag all graphics states as requiring an update:
         dirtyGLObjects();
@@ -879,17 +878,8 @@ ChonkDrawable::accept(osg::PrimitiveFunctor& f) const
     }
 }
 
-ChonkDrawable::GLObjects::GLObjects() :
-    _dirty(true),
-    _gpucull(true)
-{
-    // nop
-}
-
 void
-ChonkDrawable::GLObjects::initialize(
-    const osg::Object* host,
-    osg::State& state)
+ChonkDrawable::GLObjects::initialize(const osg::Object* host, osg::State& state)
 {
     _ext = state.get<osg::GLExtensions>();
 
@@ -962,7 +952,7 @@ ChonkDrawable::GLObjects::initialize(
         {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, albedo_index)},
         {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, normalmap_index)},
         {1, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, pbr_index)},
-        {2, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, extended_materials)}
+        {2, GL_SHORT,         GL_FALSE, offsetof(Chonk::VertexGPU, extended_material_index)}
     };
 
     // configure the format of each vertex attribute in our structure.
@@ -1042,6 +1032,7 @@ ChonkDrawable::GLObjects::update(
             {
                 // record the bounding box of this chonk:
                 auto& bs = chonk->getBound();
+
                 ChonkLOD v;
                 v.center = bs.center();
                 v.radius = bs.radius();
@@ -1052,7 +1043,8 @@ ChonkDrawable::GLObjects::update(
                 v.birthday = birthday;
                 v.fade_near = fadeNear;
                 v.fade_far = fadeFar;
-                _chonk_lods.push_back(std::move(v));
+
+                _chonk_lods.emplace_back(std::move(v));
             }
         }
 
@@ -1135,7 +1127,7 @@ ChonkDrawable::GLObjects::cull(osg::State& state)
 
     // 2-pass culling compute. 
     // Note. I tried separating this out so that all "pass ones"
-    // would run, and thena ll "pass twos" afterwards, in an attempt
+    // would run, and then all "pass twos" afterwards, in an attempt
     // to avoid the memory barrier and multiple uniform sets.
     // It was slower. Maybe because if was offset by having to 
     // double-set the the matrix uniforms and the bindBufferBase

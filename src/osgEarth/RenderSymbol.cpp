@@ -176,7 +176,7 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
     }
     else if (match(c.key(), "render-max-tess-angle")) {
         float value; Units units;
-        if (Units::parse(c.value(), value, units, Units::METERS))
+        if (Units::parse(c.value(), value, units, Units::DEGREES))
             style.getOrCreate<RenderSymbol>()->maxTessAngle() = Angle(value, units);
     }
     else if (match(c.key(), "render-max-altitude")) {

@@ -15,7 +15,8 @@ the feature data.
         <styles>
             <style type="text/css">
                 base {
-                   render-depth-offset: true;
+                   render-depth-offset-auto: true;
+                   render-max-tess-angle: 0.5;
                    altitude-offset: 2500.0;
                 }                
                 p1 : base {

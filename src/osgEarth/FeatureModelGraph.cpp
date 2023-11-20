@@ -1758,8 +1758,13 @@ FeatureModelGraph::createOrUpdateNode(FeatureCursor*           cursor,
                 _texturesCache, _texturesCacheMutex));
 
         osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();
+        
+        // culling by osg tile will be sufficient here.
+        drawable->setUseGPUCulling(false);
+
         if (xform)
         {
+
             for (unsigned i = 0; i < xform->getNumChildren(); ++i)
             {
                 drawable->add(xform->getChild(i), factory);

@@ -129,4 +129,13 @@
         <height>-12.0398843260482</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
     </viewpoint>
+    <viewpoint name="Toronto">
+        <heading>0.109355</heading>
+        <pitch>-20.3288</pitch>
+        <range>4697.58m</range>
+        <long>-79.3900928274749</long>
+        <lat>43.65526709145713</lat>
+        <height>72.19622826110572</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+    </viewpoint>
 </viewpoints>

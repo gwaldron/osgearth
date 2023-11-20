@@ -195,9 +195,9 @@ void oe_chonk_default_fragment(inout vec4 color)
 
     // apply the high fade from the instancer
     if (oe_fade <= 1.0) color.a *= oe_fade;
-    else if (oe_fade <= 2.0) color.rgb = vec3(1, 0, 0);
-    else if (oe_fade <= 3.0) color.rgb = vec3(1, 1, 0);
-    else if (oe_fade <= 4.0) color.rgb = vec3(0, 1, 0);
+    else if (oe_fade <= 2.0) color.rgb = vec3(1, 0, 0); // REASON_FRUSTUM
+    else if (oe_fade <= 3.0) color.rgb = vec3(1, 1, 0); // REASON_SSE
+    else if (oe_fade <= 4.0) color.rgb = vec3(0, 1, 0); // REASON_NEARCLIP
     else color.rgb = vec3(1, 0, 1); // should never happen :)
 
 #elif defined(OE_USE_ALPHA_TO_COVERAGE)

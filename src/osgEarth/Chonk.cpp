@@ -1275,6 +1275,8 @@ ChonkDrawable::GLObjects::draw(osg::State& state)
     else
         _instanceInputBuf->bindBufferBase(0);
 
+    _ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // ...maybe
+
     GLenum elementType = sizeof(Chonk::element_t) == sizeof(GLushort) ?
         GL_UNSIGNED_SHORT :
         GL_UNSIGNED_INT;

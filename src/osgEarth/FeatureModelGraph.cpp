@@ -1716,38 +1716,6 @@ FeatureModelGraph::createOrUpdateNode(FeatureCursor*           cursor,
 
     if (ok && _textures.valid() && output.valid())
     {
-        // simple caching function to share textures across requests
-        static std::mutex cache_mutex;
-
-        const auto cache_function = [&](osg::Texture* osgTex, bool& isNew)
-            {
-                std::lock_guard<std::mutex> lock(cache_mutex);
-                auto* image = osgTex->getImage(0);
-                for (auto iter = _texturesCache.begin(); iter != _texturesCache.end(); )
-                {
-                    Texture::Ptr cache_entry = iter->lock();
-                    if (cache_entry)
-                    {
-                        if (ImageUtils::areEquivalent(image, cache_entry->osgTexture()->getImage(0)))
-                        {
-                            isNew = false;
-                            return cache_entry;
-                        }
-                        ++iter;
-                    }
-                    else
-                    {
-                        // dead entry, remove it
-                        iter = _texturesCache.erase(iter);
-                    }
-                }
-
-                isNew = true;
-                auto new_texture = Texture::create(osgTex);
-                _texturesCache.emplace_back(Texture::WeakPtr(new_texture));
-                return new_texture;
-            };
-
         auto xform = findTopMostNodeOfType<osg::MatrixTransform>(output.get());
 
         // Convert the geometry into chonks
@@ -1759,12 +1727,8 @@ FeatureModelGraph::createOrUpdateNode(FeatureCursor*           cursor,
 
         osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();
         
-        // culling by osg tile will be sufficient here.
-        drawable->setUseGPUCulling(false);
-
         if (xform)
         {
-
             for (unsigned i = 0; i < xform->getNumChildren(); ++i)
             {
                 drawable->add(xform->getChild(i), factory);

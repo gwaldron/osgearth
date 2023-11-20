@@ -194,12 +194,14 @@ namespace osgEarth
         bool load(
             osg::Node* node,
             Chonk* chonk, 
-            float far_pixel_scale = 0.0f,
-            float near_pixel_scale = FLT_MAX);
+            float far_pixel_scale,
+            float near_pixel_scale);
 
         bool load(
             osg::Node* node,
-            ChonkDrawable* drawable);
+            ChonkDrawable* drawable,
+            float far_pixel_scale,
+            float near_pixel_scale);
 
         /**
         * Stock "getOrCreate" function for the ChonkFactory that works on
@@ -225,8 +227,14 @@ namespace osgEarth
         //! @param renderBinNumber OSG render bin number for the drawable
         ChonkDrawable(int render_bin_number = 3);
 
-        //! Adds a node to the drawable.
-        bool add(osg::Node* node, ChonkFactory& factory);
+        //! Adds a node to the drawable. This method will rip all the geometry
+        //! from the node, find any instances, and assemble everything into
+        //! this drawable.
+        bool add(
+            osg::Node* node,
+            ChonkFactory& factory,
+            float far_pixel_scale = 1.0f,
+            float near_pixel_scale = FLT_MAX);
 
         //! Adds one instance of a chonk to the drawable.
         void add(Chonk::Ptr value);

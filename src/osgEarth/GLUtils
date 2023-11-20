@@ -144,47 +144,37 @@ namespace osgEarth
     //! A draw command for indirect rendering
     struct DrawElementsIndirectCommand
     {
-        GLuint  count;          // how many indices comprise this draw command
-        GLuint  instanceCount;  // how many instances of the geometry to draw
-        GLuint  firstIndex;     // index of the first element in the EBO to use
-        GLuint  baseVertex;     // offset to add to each element index (lets us use USHORT even when >65535 verts)
-        GLuint  baseInstance;   // offset to instance # when fetching vertex attrs (does NOT affect gl_InstanceID)
-
-        DrawElementsIndirectCommand() :
-            count(0), instanceCount(1), firstIndex(0), baseVertex(0), baseInstance(0) { }
+        GLuint  count = 0;          // how many indices comprise this draw command
+        GLuint  instanceCount = 1;  // how many instances of the geometry to draw
+        GLuint  firstIndex = 0;     // index of the first element in the EBO to use
+        GLuint  baseVertex = 0;     // offset to add to each element index (lets us use USHORT even when >65535 verts)
+        GLuint  baseInstance = 0;   // offset to instance # when fetching vertex attrs (does NOT affect gl_InstanceID)
     };
 
     //! A dispatch command for indirect compute
     struct DispatchIndirectCommand
     {
-        GLuint num_groups_x;
-        GLuint num_groups_y;
-        GLuint num_groups_z;
-
-        DispatchIndirectCommand() : num_groups_x(1), num_groups_y(0), num_groups_z(0) { }
+        GLuint num_groups_x = 1;
+        GLuint num_groups_y = 0;
+        GLuint num_groups_z = 0;
     };
 
     //! A pointer record for bindless buffer usage
     struct BindlessPtrNV
     {
-        GLuint index;      // unused
-        GLuint reserved;   // unused
-        GLuint64 address;  // GPU address of bindless buffer
-        GLuint64 length;   // length in bytes of bindless buffer
-
-        BindlessPtrNV() : index(0), reserved(0), address(0), length(0) { }
+        GLuint index = 0;      // unused
+        GLuint reserved = 0;   // unused
+        GLuint64 address = 0;  // GPU address of bindless buffer
+        GLuint64 length = 0;   // length in bytes of bindless buffer
     };
 
     //! A draw command for NVIDIA bindless buffer draws with a single VBO
     struct DrawElementsIndirectBindlessCommandNV
     {
         DrawElementsIndirectCommand cmd;
-        GLuint reserved;
+        GLuint reserved = 0;
         BindlessPtrNV indexBuffer;
         BindlessPtrNV vertexBuffer;
-
-        DrawElementsIndirectBindlessCommandNV() :
-            cmd(), reserved(0), indexBuffer(), vertexBuffer() { }
     };
 
     //! template for fetching an object that is stored per-State; this would typically

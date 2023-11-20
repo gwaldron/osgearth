@@ -169,7 +169,7 @@ Texture::needsCompile(const osg::State& state) const
     if ((gc._gltexture == nullptr || !gc._gltexture->valid()) && hasData == true)
         return true;
 
-    return (osgTexture()->getImage(0)->getModifiedCount() != gc._imageModCount);
+    return hasData && (osgTexture()->getImage(0)->getModifiedCount() != gc._imageModCount);
 }
 
 bool
@@ -183,7 +183,10 @@ Texture::needsUpdates() const
 void
 Texture::update(osg::NodeVisitor& nv)
 {
-    osgTexture()->getImage(0)->update(&nv);
+    if (dataLoaded())
+    {
+        osgTexture()->getImage(0)->update(&nv);
+    }
 }
 
 bool

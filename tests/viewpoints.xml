@@ -138,4 +138,13 @@
         <height>72.19622826110572</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
     </viewpoint>
+    <viewpoint name="CULL ISSUE">
+  <heading>0.252151</heading>
+  <pitch>-50.4646</pitch>
+  <range>1081.05m</range>
+  <long>-117.1638458565494</long>
+  <lat>32.71773276857689</lat>
+  <height>-6.852578997612</height>
+  <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+</viewpoint>
 </viewpoints>

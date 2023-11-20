@@ -40,8 +40,19 @@
 
 using namespace osgEarth;
 
+#define MAX_NEAR_PIXEL_SCALE FLT_MAX
+
 namespace
 {
+    struct SendIndices
+    {
+        std::function<void(unsigned i0, unsigned i1, unsigned i2)> func;
+
+        void operator()(unsigned i0, unsigned i1, unsigned i2) const {
+            func(i0, i1, i2);
+        }
+    };
+
     /**
      * Visitor that counts the verts and elements in a scene graph.
      */
@@ -101,6 +112,8 @@ namespace
     {
         Chonk* _chonk = nullptr;
         ChonkDrawable* _drawable = nullptr; // optional.
+        float _far_pixel_scale = 0.0f;
+        float _near_pixel_scale = MAX_NEAR_PIXEL_SCALE;
         TextureArena* _textures;
         ChonkFactory::GetOrCreateFunction _getOrCreateTexture;
         std::list<ChonkMaterial::Ptr> _materialCache;
@@ -171,11 +184,14 @@ namespace
         // Pointer to the "current base chonk" is required.
         // Pointer to the IG chonk vector is optional; populate this if you want the ripper to rip InstanceGeometry nodes
         //   and add them to the vector.
-        Ripper(Chonk* chonk, ChonkDrawable* drawable, TextureArena* textures, ChonkFactory::GetOrCreateFunction func) :
+        Ripper(Chonk* chonk, ChonkDrawable* drawable, TextureArena* textures, ChonkFactory::GetOrCreateFunction func,
+            float far_pixel_scale, float near_pixel_scale) :
             _chonk(chonk),
             _drawable(drawable),
             _textures(textures),
-            _getOrCreateTexture(func)
+            _getOrCreateTexture(func),
+            _far_pixel_scale(far_pixel_scale),
+            _near_pixel_scale(near_pixel_scale)
         {
             // Use the "active chidren" mode to only bring in default switch
             // and osgSim::MultiSwitch children for now. -gw
@@ -304,6 +320,7 @@ namespace
             bool pushed = pushStateSet(node.getStateSet());
 
             Chonk* chonk = _chonk;
+            osg::Matrixd matrix = _transformStack.top();
 
             // If this an instanced geometry, create a new chonk for it and
             // let the code below rip to that new chonk. Afterwards we will add that
@@ -324,6 +341,7 @@ namespace
                 }
 
                 chonk = ig_chonk.get();
+                matrix = osg::Matrixd::identity();
             }
 
             // rip the geometry into our chonk.
@@ -353,7 +371,7 @@ namespace
 
                     if (verts)
                     {
-                        v.position = (*verts)[i] * _transformStack.top();
+                        v.position = (*verts)[i] * matrix;
                     }
 
                     if (colors)
@@ -369,7 +387,7 @@ namespace
                     if (normals)
                     {
                         int k = normals->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                        v.normal = osg::Matrix::transform3x3((*normals)[k], _transformStack.top());
+                        v.normal = osg::Matrix::transform3x3((*normals)[k], matrix);
                     }
                     else
                     {
@@ -404,7 +422,7 @@ namespace
                     if (flexors)
                     {
                         int k = flexors->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                        v.flex = osg::Matrix::transform3x3((*flexors)[k], _transformStack.top());
+                        v.flex = osg::Matrix::transform3x3((*flexors)[k], matrix);
                     }
                     else
                     {
@@ -432,10 +450,7 @@ namespace
                 }
 
                 // assemble the elements set
-                auto copy_indices = [this, chonk, vbo_offset](
-                    osg::Geometry& geom,
-                    unsigned i0, unsigned i1, unsigned i2,
-                    const osg::Matrix& l2w)
+                auto copy_indices = [this, chonk, vbo_offset](unsigned i0, unsigned i1, unsigned i2)
                     {
                         if (vbo_offset + i0 >= chonk->_vbo_store.size() ||
                             vbo_offset + i1 >= chonk->_vbo_store.size() ||
@@ -449,14 +464,19 @@ namespace
                         chonk->_ebo_store.emplace_back(vbo_offset + i1);
                         chonk->_ebo_store.emplace_back(vbo_offset + i2);
                     };
-                osg::ref_ptr<osg::Geometry> raw_geom = new osg::Geometry(node, osg::CopyOp::SHALLOW_COPY);
-                TriangleVisitor copy_visitor(copy_indices);
-                raw_geom->accept(copy_visitor);
+
+                // we have to clone the geometry in order to get the indices.
+                osg::ref_ptr<osg::Geometry> simple = new osg::Geometry(node, osg::CopyOp::SHALLOW_COPY);
+                osg::TriangleIndexFunctor<SendIndices> sender;
+                sender.func = copy_indices;
+                simple->accept(sender);
             }
 
             if (_drawable && ig_chonk && ig)
             {
-                ig_chonk->_lods.push_back({ 0u, chonk->_ebo_store.size(), 0.0f, FLT_MAX });
+                ig_chonk->_lods.push_back({ 0u, ig_chonk->_ebo_store.size(), 
+                    _far_pixel_scale, std::min(_near_pixel_scale, MAX_NEAR_PIXEL_SCALE) });
+
                 ig_chonk->_box.init();
 
                 for(auto matrix : ig->getMatrices())
@@ -509,7 +529,7 @@ Chonk::add(osg::Node* node, ChonkFactory& factory)
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
     OE_HARD_ASSERT(_lods.size() < 3);
 
-    return factory.load(node, this);
+    return factory.load(node, this, 1.0f, MAX_NEAR_PIXEL_SCALE);
 }
 
 bool
@@ -562,6 +582,8 @@ Chonk::getOrCreateCommands(osg::State& state) const
                 command.cmd.count = lod.length;
                 command.cmd.firstIndex = lod.offset;
                 command.cmd.instanceCount = 1;
+                command.cmd.baseInstance = 0;
+                command.cmd.baseVertex = 0;
                 command.indexBuffer.address = gs.ebo->address();
                 command.indexBuffer.length = gs.ebo->size();
                 command.vertexBuffer.address = gs.vbo->address();
@@ -613,8 +635,8 @@ ChonkFactory::load(osg::Node* node, Chonk* chonk, float far_pixel_scale, float n
     OE_PROFILING_ZONE;
 
     // convert all primitive sets to indexed primitives
-    osgUtil::Optimizer o;
-    o.optimize(node, o.INDEX_MESH);
+    //osgUtil::Optimizer o;
+    //o.optimize(node, o.INDEX_MESH);
     
     // first count up the memory we need and allocate it
     Counter counter;
@@ -626,13 +648,14 @@ ChonkFactory::load(osg::Node* node, Chonk* chonk, float far_pixel_scale, float n
     unsigned offset = chonk->_ebo_store.size();
 
     // rip geometry and textures into a new Asset object
-    Ripper ripper(chonk, nullptr, _textures.get(), _getOrCreateTexture);
+    Ripper ripper(chonk, nullptr, _textures.get(), _getOrCreateTexture, far_pixel_scale, near_pixel_scale);
     node->accept(ripper);
 
     // dirty its bounding box
     if (chonk->_ebo_store.size() > 0)
     {
-        chonk->_lods.push_back({ offset, chonk->_ebo_store.size(), far_pixel_scale, near_pixel_scale });
+        chonk->_lods.push_back({ offset, chonk->_ebo_store.size(),
+            far_pixel_scale, std::min(near_pixel_scale, MAX_NEAR_PIXEL_SCALE) });
     }
     chonk->_box.init();
 
@@ -640,7 +663,7 @@ ChonkFactory::load(osg::Node* node, Chonk* chonk, float far_pixel_scale, float n
 }
 
 bool
-ChonkFactory::load(osg::Node* node, ChonkDrawable* drawable)
+ChonkFactory::load(osg::Node* node, ChonkDrawable* drawable, float far_pixel_scale, float near_pixel_scale)
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
     OE_SOFT_ASSERT_AND_RETURN(drawable != nullptr, false);
@@ -662,12 +685,13 @@ ChonkFactory::load(osg::Node* node, ChonkDrawable* drawable)
         chonk->_ebo_store.reserve(counter._numElements);
     }
 
-    Ripper ripper(chonk.get(), drawable, _textures.get(), _getOrCreateTexture);
+    Ripper ripper(chonk.get(), drawable, _textures.get(), _getOrCreateTexture, far_pixel_scale, near_pixel_scale);
     node->accept(ripper);
 
     if (chonk && !chonk->_ebo_store.empty())
     {
-        chonk->_lods.push_back({ 0u, chonk->_ebo_store.size(), 0.0f, FLT_MAX });
+        chonk->_lods.push_back({ 0u, chonk->_ebo_store.size(),
+            far_pixel_scale, std::min(near_pixel_scale, MAX_NEAR_PIXEL_SCALE) });
         chonk->_box.init();
         drawable->add(chonk);
     }
@@ -677,7 +701,7 @@ ChonkFactory::load(osg::Node* node, ChonkDrawable* drawable)
 
 
 bool
-ChonkDrawable::add(osg::Node* node, ChonkFactory& factory)
+ChonkDrawable::add(osg::Node* node, ChonkFactory& factory, float far_pixel_scale, float near_pixel_scale)
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
     OE_PROFILING_ZONE;
@@ -686,7 +710,7 @@ ChonkDrawable::add(osg::Node* node, ChonkFactory& factory)
     //osgUtil::Optimizer o;
     //o.optimize(node, o.INDEX_MESH);
 
-    return factory.load(node, this);
+    return factory.load(node, this, far_pixel_scale, near_pixel_scale);
 }
 
 
@@ -1193,7 +1217,7 @@ ChonkDrawable::GLObjects::update(
     }
     else
     {
-        // no need to do this since it gets sent in cull()
+        // need to do this since it gets sent in cull() when gpu culling is on.
         _commandBuf->uploadData(_commands);
     }
 

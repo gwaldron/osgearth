@@ -81,7 +81,7 @@ uniform vec3 oe_Camera;
 uniform float oe_sse;
 uniform vec4 oe_lod_scale;
 uniform float osg_FrameTime;
-uniform float oe_chonk_lod_transition_factor = 0.1;
+uniform float oe_chonk_lod_transition_factor = 0.0;
 
 #if OE_GPUCULL_DEBUG
 //#ifdef OE_GPUCULL_DEBUG
@@ -170,13 +170,15 @@ void cull()
     if (pixelSize < (minPixelSize - pixelSizePad))
         REJECT(REASON_SSE);
 
-    float maxPixelSize = 1e7;
-    if (lod > 0) {
+    float maxPixelSize = 3e38; // 1e10;
+    if (lod > 0)
+    {
         float near_scale = chonks[v].near_pixel_scale * oe_lod_scale[lod - 1];
         maxPixelSize = oe_sse * near_scale;
+
+        if (pixelSize > (maxPixelSize + pixelSizePad))
+            REJECT(REASON_SSE);
     }
-    if (pixelSize > (maxPixelSize + pixelSizePad))
-        REJECT(REASON_SSE);
 
     if (fade == 1.0)  // good to go, set the proper fade:
     {
@@ -248,6 +250,6 @@ void main()
 {
     if (oe_pass == 0)
         cull();
-    else
+    else // if (oe_pass == 1)
         compact();
 }

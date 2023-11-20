@@ -1089,14 +1089,15 @@ namespace osgEarth { namespace Threading
                     promise.resolve(function(&promise));
                 return good;
             };
-        JobArena* arena = JobArena::get(_arenaName);
-        arena->dispatch(*this, delegate);
+        auto name = _arena ? _arena->_name : _arenaName;
+        JobArena::get(name)->dispatch(*this, delegate);
         return std::move(future);
     }
 
     void Job::dispatch(std::function<void(Cancelable*)> function) const
     {
-        JobArena* arena = JobArena::get(_arenaName);
+        auto name = _arena ? _arena->_name : _arenaName;
+        JobArena* arena = JobArena::get(name);
         if (arena)
         {
             JobArena::Delegate delegate = [function]()

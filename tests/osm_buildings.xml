@@ -1,5 +1,5 @@
 <FeatureModel name="OSM Buildings" features="data:osm">
-    <pickable>true</pickable>
+    <pickable>false</pickable>
     <node_caching>true</node_caching>
     <max_range>15000</max_range>
     <attenuation_range>2000</attenuation_range>
@@ -9,7 +9,8 @@
     </filters>
     <styles>          
         <library name="us_resources">
-            <url>../data/resources/textures_us/catalog_atlas.osgb.xml</url>
+            <!-- <url>../data/resources/textures_us/catalog_atlas.osgb.xml</url> -->
+            <url>../data/resources/textures_us/catalog.xml</url>
         </library>
         
         <style type="text/css">

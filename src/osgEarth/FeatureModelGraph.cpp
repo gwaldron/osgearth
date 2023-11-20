@@ -418,11 +418,19 @@ FeatureModelGraph::FeatureModelGraph(const FeatureModelOptions& options) :
 void
 FeatureModelGraph::setUseNVGL(bool value)
 {
-    if (value == true && GLUtils::useNVGL())
+    if (value == true && GLUtils::useNVGL() && !_textures.valid())
     {
         _textures = new TextureArena();
-        _textures->setBindingPoint(1);
         getOrCreateStateSet()->setAttribute(_textures, 1);
+
+        // auto release requires that we install this update callback!
+        _textures->setAutoRelease(true);
+
+        addUpdateCallback(new LambdaCallback<>([this](osg::NodeVisitor& nv)
+            {
+                _textures->update(nv);
+                return true;
+            }));
     }
 }
 
@@ -1710,40 +1718,51 @@ FeatureModelGraph::createOrUpdateNode(FeatureCursor*           cursor,
     {
         // simple caching function to share textures across requests
         static std::mutex cache_mutex;
+
         const auto cache_function = [&](osg::Texture* osgTex, bool& isNew)
             {
                 std::lock_guard<std::mutex> lock(cache_mutex);
-                auto it = this->_texturesCache.find(osgTex);
-                if (it != _texturesCache.end())
+                auto* image = osgTex->getImage(0);
+                for (auto iter = _texturesCache.begin(); iter != _texturesCache.end(); )
                 {
-                    isNew = false;
-                    return it->second;
+                    Texture::Ptr cache_entry = iter->lock();
+                    if (cache_entry)
+                    {
+                        if (ImageUtils::areEquivalent(image, cache_entry->osgTexture()->getImage(0)))
+                        {
+                            isNew = false;
+                            return cache_entry;
+                        }
+                        ++iter;
+                    }
+                    else
+                    {
+                        // dead entry, remove it
+                        iter = _texturesCache.erase(iter);
+                    }
                 }
-                else
-                {
-                    isNew = true;
-                    auto t = Texture::create(osgTex);
-                    _texturesCache[osgTex] = t;
-                    return t;
-                }
+
+                isNew = true;
+                auto new_texture = Texture::create(osgTex);
+                _texturesCache.emplace_back(Texture::WeakPtr(new_texture));
+                return new_texture;
             };
 
         auto xform = findTopMostNodeOfType<osg::MatrixTransform>(output.get());
-        auto root = xform && xform->getNumChildren() > 0 ? xform->getChild(0) : output.get();
-
 
         // Convert the geometry into chonks
         ChonkFactory factory(_textures);
-        factory.setGetOrCreateFunction(cache_function);
+
+        factory.setGetOrCreateFunction(
+            ChonkFactory::createWeakTextureCacheFunction(
+                _texturesCache, _texturesCacheMutex));
 
         osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();
         if (xform)
         {
             for (unsigned i = 0; i < xform->getNumChildren(); ++i)
             {
-                auto chonk = Chonk::create();
-                if (chonk->add(xform->getChild(i), factory))
-                    drawable->add(chonk);
+                drawable->add(xform->getChild(i), factory);
             }
             xform->removeChildren(0, xform->getNumChildren());
             xform->addChild(drawable);
@@ -1751,14 +1770,11 @@ FeatureModelGraph::createOrUpdateNode(FeatureCursor*           cursor,
         }
         else
         {
-            auto chonk = Chonk::create();
-            if (chonk->add(output.get(), factory))
+            if (drawable->add(output.get(), factory))
             {
-                drawable->add(chonk);
                 output = drawable;
             }
         }
-
     }
 
     return ok;

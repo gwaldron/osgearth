@@ -111,4 +111,22 @@
         <height>723.1286411993206</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
     </viewpoint>
+    <viewpoint name="San Diego">
+        <heading>-16.4329</heading>
+        <pitch>-14.0265</pitch>
+        <range>3472.89m</range>
+        <long>-117.161746837086</long>
+        <lat>32.71525054676937</lat>
+        <height>-8.165950482711196</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+    </viewpoint>
+    <viewpoint name="NYC">
+        <heading>-154.559</heading>
+        <pitch>-13.2848</pitch>
+        <range>1682.73m</range>
+        <long>-73.95631112584063</long>
+        <lat>40.79957700485529</lat>
+        <height>-12.0398843260482</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+    </viewpoint>
 </viewpoints>

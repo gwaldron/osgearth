@@ -208,6 +208,7 @@ XYZModelLayer::create()
         xyzGraph->setMaxLevel(*_options->maxLevel());
         xyzGraph->setRangeFactor(*_options->rangeFactor());
         xyzGraph->setSceneGraphCallbacks(getSceneGraphCallbacks());
+        xyzGraph->setUseNVGL(options().useNVGL().get());
         xyzGraph->build();
 
         _root->removeChildren(0, _root->getNumChildren());

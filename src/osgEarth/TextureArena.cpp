@@ -513,12 +513,7 @@ Texture::releaseGLObjects(osg::State* state, bool force) const
 #define LC "[TextureArena] "
 
 
-TextureArena::TextureArena() :
-    _autoRelease(false),
-    _bindingPoint(5u),
-    _useUBO(false),
-    _releasePtr(0),
-    _maxDim(65536u)
+TextureArena::TextureArena()
 {
     // Keep this synchronous w.r.t. the render thread since we are
     // going to be changing things on the fly

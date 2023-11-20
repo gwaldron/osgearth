@@ -26,6 +26,8 @@
 #include "VirtualProgram"
 #include "Shaders"
 #include "Utils"
+#include "NodeUtils"
+#include "DrawInstanced"
 
 #include <osg/Switch>
 #include <osg/LOD>
@@ -58,6 +60,14 @@ namespace
 
         void apply(osg::Geometry& node) override
         {
+            auto instanced = dynamic_cast<DrawInstanced::InstanceGeometry*>(&node);
+            if (instanced)
+            {
+                return; // skip these.
+                //apply(*instanced);
+                //return;
+            }
+
             auto verts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
             if (verts)
             {
@@ -89,7 +99,8 @@ namespace
      */
     struct Ripper : public osg::NodeVisitor
     {
-        Chonk& _result;
+        Chonk* _chonk = nullptr;
+        ChonkDrawable* _drawable = nullptr; // optional.
         TextureArena* _textures;
         ChonkFactory::GetOrCreateFunction _getOrCreateTexture;
         std::list<ChonkMaterial::Ptr> _materialCache;
@@ -156,8 +167,13 @@ namespace
             return material;
         }
 
-        Ripper(Chonk& chonk, TextureArena* textures, ChonkFactory::GetOrCreateFunction func) :
-            _result(chonk),
+        // Constructor.
+        // Pointer to the "current base chonk" is required.
+        // Pointer to the IG chonk vector is optional; populate this if you want the ripper to rip InstanceGeometry nodes
+        //   and add them to the vector.
+        Ripper(Chonk* chonk, ChonkDrawable* drawable, TextureArena* textures, ChonkFactory::GetOrCreateFunction func) :
+            _chonk(chonk),
+            _drawable(drawable),
             _textures(textures),
             _getOrCreateTexture(func)
         {
@@ -166,8 +182,7 @@ namespace
             setTraversalMode(TRAVERSE_ACTIVE_CHILDREN);
             setNodeMaskOverride(~0);
 
-            _materialStack.push(reuseOrCreateMaterial(
-                nullptr, nullptr, nullptr, nullptr, nullptr));
+            _materialStack.push(reuseOrCreateMaterial(nullptr, nullptr, nullptr, nullptr, nullptr));
             _transformStack.push(osg::Matrix());
         }
 
@@ -176,8 +191,11 @@ namespace
         // adds a teture to the arena and returns its index
         Texture::Ptr addTexture(unsigned slot, osg::StateSet* stateset)
         {
-            if (!_textures)
-                return nullptr;
+            OE_SOFT_ASSERT_AND_RETURN(_textures != nullptr, {});
+
+            // if the slot isn't mapped, bail out
+            if (slot < 0)
+                return {};
 
             Texture::Ptr arena_tex;
 
@@ -285,120 +303,169 @@ namespace
         {
             bool pushed = pushStateSet(node.getStateSet());
 
-            unsigned numVerts = node.getVertexArray()->getNumElements();
+            Chonk* chonk = _chonk;
 
-            unsigned vbo_offset = _result._vbo_store.size();
-
-            auto verts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
-            auto colors = dynamic_cast<osg::Vec4Array*>(node.getColorArray());
-            auto normals = dynamic_cast<osg::Vec3Array*>(node.getNormalArray());
-            auto normal_techniques = dynamic_cast<osg::UByteArray*>(node.getVertexAttribArray(NORMAL_TECHNIQUE_SLOT));
-            auto flexors = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(FLEXOR_SLOT));
-            auto extended_material = dynamic_cast<osg::ShortArray*>(node.getVertexAttribArray(EXTENDED_MATERIAL_SLOT));
-
-            // support either 2- or 3-component tex coords, but only read the xy components!
-            auto uv2s = dynamic_cast<osg::Vec2Array*>(node.getTexCoordArray(0));
-            auto uv3s = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(0));
-
-            auto& material = _materialStack.top();
-            osg::Vec3f n;
-
-            for (unsigned i = 0; i < numVerts; ++i)
+            // If this an instanced geometry, create a new chonk for it and
+            // let the code below rip to that new chonk. Afterwards we will add that
+            // new chonk to the drawable with each instance matrix.
+            Chonk::Ptr ig_chonk;
+            auto ig = dynamic_cast<DrawInstanced::InstanceGeometry*>(&node);
+            if (_drawable && ig)
             {
-                Chonk::VertexGPU v;
+                ig_chonk = Chonk::create();
 
-                if (verts)
+                // preallocate for speed:
+                Counter counter;
+                node.accept(counter);
+                if (counter._numElements > 0 && counter._numVerts > 0)
                 {
-                    v.position = (*verts)[i] * _transformStack.top();
-                }
-                
-                if (colors)
-                {
-                    int k = colors->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                    v.color = Color((*colors)[k]).asNormalizedRGBA();
-                }
-                else
-                {
-                    v.color.set(255, 255, 255, 255);
+                    ig_chonk->_vbo_store.reserve(counter._numVerts);
+                    ig_chonk->_ebo_store.reserve(counter._numElements);
                 }
 
-                if (normals)
-                {
-                    int k = normals->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                    v.normal = osg::Matrix::transform3x3((*normals)[k], _transformStack.top());
-                }
-                else
-                {
-                    v.normal.set(0, 0, 1);
-                }
-
-                if (normal_techniques)
-                {
-                    int k = normal_techniques->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                    v.normal_technique = (*normal_techniques)[k];
-                }
-                else
-                {
-                    v.normal_technique = 0;
-                }
-
-                if (uv2s)
-                {
-                    int k = uv2s->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                    v.uv = (*uv2s)[k];
-                }
-                else if (uv3s)
-                {
-                    int k = uv3s->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                    v.uv.set((*uv3s)[k].x(), (*uv3s)[k].y());
-                }
-                else
-                {
-                    v.uv.set(0.0f, 0.0f);
-                }
-
-                if (flexors)
-                {
-                    int k = flexors->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                    v.flex = osg::Matrix::transform3x3((*flexors)[k], _transformStack.top());
-                }
-                else
-                {
-                    v.flex.set(0, 0, 1);
-                }
-
-                v.albedo_index = material ? material->albedo_index : -1;
-                v.normalmap_index = material ? material->normal_index : -1;
-                v.pbr_index = material ? material->pbr_index : -1;
-
-                // prioritize material textures over vertex material ids.
-                v.extended_material_index = material ? osg::Vec2s(material->material1_index, material->material2_index) : osg::Vec2s(-1, -1);
-
-                // fallback is to use vertex stream to simulate material ids.
-                if (extended_material && v.extended_material_index[0] == -1 && v.extended_material_index[1] == -1)
-                {
-                   int k = extended_material->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
-                   v.extended_material_index = osg::Vec2s( (*extended_material)[k], -1 );
-                }
-
-                _result._vbo_store.emplace_back(std::move(v));
-
-                // per-vert materials:
-                _result._materials.push_back(_materialStack.top());
+                chonk = ig_chonk.get();
             }
 
-            // assemble the elements set
-            auto copy_indices = [this, vbo_offset](
-                osg::Geometry& geom,
-                unsigned i0, unsigned i1, unsigned i2,
-                const osg::Matrix& l2w)
+            // rip the geometry into our chonk.
+            if (chonk)
             {
-                _result._ebo_store.emplace_back(vbo_offset + i0);
-                _result._ebo_store.emplace_back(vbo_offset + i1);
-                _result._ebo_store.emplace_back(vbo_offset + i2);
-            };
-            TriangleVisitor copy_visitor(copy_indices);
-            node.accept(copy_visitor);
+                unsigned numVerts = node.getVertexArray()->getNumElements();
+
+                unsigned vbo_offset = chonk->_vbo_store.size();
+
+                auto verts = dynamic_cast<osg::Vec3Array*>(node.getVertexArray());
+                auto colors = dynamic_cast<osg::Vec4Array*>(node.getColorArray());
+                auto normals = dynamic_cast<osg::Vec3Array*>(node.getNormalArray());
+                auto normal_techniques = dynamic_cast<osg::UByteArray*>(node.getVertexAttribArray(NORMAL_TECHNIQUE_SLOT));
+                auto flexors = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(FLEXOR_SLOT));
+                auto extended_material = dynamic_cast<osg::ShortArray*>(node.getVertexAttribArray(EXTENDED_MATERIAL_SLOT));
+
+                // support either 2- or 3-component tex coords, but only read the xy components!
+                auto uv2s = dynamic_cast<osg::Vec2Array*>(node.getTexCoordArray(0));
+                auto uv3s = dynamic_cast<osg::Vec3Array*>(node.getTexCoordArray(0));
+
+                auto& material = _materialStack.top();
+                osg::Vec3f n;
+
+                for (unsigned i = 0; i < numVerts; ++i)
+                {
+                    Chonk::VertexGPU v;
+
+                    if (verts)
+                    {
+                        v.position = (*verts)[i] * _transformStack.top();
+                    }
+
+                    if (colors)
+                    {
+                        int k = colors->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                        v.color = Color((*colors)[k]).asNormalizedRGBA();
+                    }
+                    else
+                    {
+                        v.color.set(255, 255, 255, 255);
+                    }
+
+                    if (normals)
+                    {
+                        int k = normals->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                        v.normal = osg::Matrix::transform3x3((*normals)[k], _transformStack.top());
+                    }
+                    else
+                    {
+                        v.normal.set(0, 0, 1);
+                    }
+
+                    if (normal_techniques)
+                    {
+                        int k = normal_techniques->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                        v.normal_technique = (*normal_techniques)[k];
+                    }
+                    else
+                    {
+                        v.normal_technique = 0;
+                    }
+
+                    if (uv2s)
+                    {
+                        int k = uv2s->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                        v.uv = (*uv2s)[k];
+                    }
+                    else if (uv3s)
+                    {
+                        int k = uv3s->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                        v.uv.set((*uv3s)[k].x(), (*uv3s)[k].y());
+                    }
+                    else
+                    {
+                        v.uv.set(0.0f, 0.0f);
+                    }
+
+                    if (flexors)
+                    {
+                        int k = flexors->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                        v.flex = osg::Matrix::transform3x3((*flexors)[k], _transformStack.top());
+                    }
+                    else
+                    {
+                        v.flex.set(0, 0, 1);
+                    }
+
+                    v.albedo_index = material ? material->albedo_index : -1;
+                    v.normalmap_index = material ? material->normal_index : -1;
+                    v.pbr_index = material ? material->pbr_index : -1;
+
+                    // prioritize material textures over vertex material ids.
+                    v.extended_material_index = material ? osg::Vec2s(material->material1_index, material->material2_index) : osg::Vec2s(-1, -1);
+
+                    // fallback is to use vertex stream to simulate material ids.
+                    if (extended_material && v.extended_material_index[0] == -1 && v.extended_material_index[1] == -1)
+                    {
+                        int k = extended_material->getBinding() == osg::Array::BIND_PER_VERTEX ? i : 0;
+                        v.extended_material_index = osg::Vec2s((*extended_material)[k], -1);
+                    }
+
+                    chonk->_vbo_store.emplace_back(std::move(v));
+
+                    // per-vert materials:
+                    chonk->_materials.push_back(_materialStack.top());
+                }
+
+                // assemble the elements set
+                auto copy_indices = [this, chonk, vbo_offset](
+                    osg::Geometry& geom,
+                    unsigned i0, unsigned i1, unsigned i2,
+                    const osg::Matrix& l2w)
+                    {
+                        if (vbo_offset + i0 >= chonk->_vbo_store.size() ||
+                            vbo_offset + i1 >= chonk->_vbo_store.size() ||
+                            vbo_offset + i2 >= chonk->_vbo_store.size())
+                        {
+                            OE_WARN << LC << "Index out of range" << std::endl;
+                            return;
+                        }
+
+                        chonk->_ebo_store.emplace_back(vbo_offset + i0);
+                        chonk->_ebo_store.emplace_back(vbo_offset + i1);
+                        chonk->_ebo_store.emplace_back(vbo_offset + i2);
+                    };
+                osg::ref_ptr<osg::Geometry> raw_geom = new osg::Geometry(node, osg::CopyOp::SHALLOW_COPY);
+                TriangleVisitor copy_visitor(copy_indices);
+                raw_geom->accept(copy_visitor);
+            }
+
+            if (_drawable && ig_chonk && ig)
+            {
+                ig_chonk->_lods.push_back({ 0u, chonk->_ebo_store.size(), 0.0f, FLT_MAX });
+                ig_chonk->_box.init();
+
+                for(auto matrix : ig->getMatrices())
+                {
+                    float* ptr = matrix.ptr();
+                    ptr[3] = ptr[7] = ptr[11] = 0.0f; ptr[15] = 1.0f; // strip the object ID!
+                    _drawable->add(ig_chonk, matrix * _transformStack.top());
+                }
+            }
 
             if (pushed) popStateSet();
         }
@@ -442,12 +509,7 @@ Chonk::add(osg::Node* node, ChonkFactory& factory)
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
     OE_HARD_ASSERT(_lods.size() < 3);
 
-    factory.load(node, *this);
-    _lods.push_back({ 0u, _ebo_store.size(), 0.0f, FLT_MAX });
-
-    _box.init();
-
-    return true;
+    return factory.load(node, this);
 }
 
 bool
@@ -460,19 +522,8 @@ Chonk::add(
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
     OE_HARD_ASSERT(_lods.size() < 3);
 
-    unsigned offset = _ebo_store.size();
-    factory.load(node, *this);
-    _lods.push_back({
-        offset,
-        (_ebo_store.size() - offset), // length of new variant
-        far_pixel_scale,
-        near_pixel_scale });
-
-    _box.init();
-
-    OE_DEBUG << LC << "Added LOD with " << (_ebo_store.size() - offset) / 3 << " triangles" << std::endl;
-
-    return true;
+    //unsigned offset = _ebo_store.size();
+    return factory.load(node, this, far_pixel_scale, near_pixel_scale);
 }
 
 const Chonk::DrawCommands&
@@ -554,9 +605,11 @@ ChonkFactory::setGetOrCreateFunction(GetOrCreateFunction value)
     _getOrCreateTexture = value;
 }
 
-void
-ChonkFactory::load(osg::Node* node, Chonk& chonk)
+bool
+ChonkFactory::load(osg::Node* node, Chonk* chonk, float far_pixel_scale, float near_pixel_scale)
 {
+    OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
+    OE_SOFT_ASSERT_AND_RETURN(chonk != nullptr, false);
     OE_PROFILING_ZONE;
 
     // convert all primitive sets to indexed primitives
@@ -566,15 +619,74 @@ ChonkFactory::load(osg::Node* node, Chonk& chonk)
     // first count up the memory we need and allocate it
     Counter counter;
     node->accept(counter);
-    chonk._vbo_store.reserve(counter._numVerts);
-    chonk._ebo_store.reserve(counter._numElements);
+
+    chonk->_vbo_store.reserve(chonk->_vbo_store.size() + counter._numVerts);
+    chonk->_ebo_store.reserve(chonk->_ebo_store.size() + counter._numElements);
+
+    unsigned offset = chonk->_ebo_store.size();
 
     // rip geometry and textures into a new Asset object
-    Ripper ripper(chonk, _textures.get(), _getOrCreateTexture);
+    Ripper ripper(chonk, nullptr, _textures.get(), _getOrCreateTexture);
     node->accept(ripper);
 
     // dirty its bounding box
-    chonk._box.init();
+    if (chonk->_ebo_store.size() > 0)
+    {
+        chonk->_lods.push_back({ offset, chonk->_ebo_store.size(), far_pixel_scale, near_pixel_scale });
+    }
+    chonk->_box.init();
+
+    return (counter._numVerts > 0 && counter._numElements > 0);
+}
+
+bool
+ChonkFactory::load(osg::Node* node, ChonkDrawable* drawable)
+{
+    OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
+    OE_SOFT_ASSERT_AND_RETURN(drawable != nullptr, false);
+    OE_PROFILING_ZONE;
+
+    // convert all primitive sets to indexed primitives
+    //osgUtil::Optimizer o;
+    //o.optimize(node, o.INDEX_MESH);
+
+    Chonk::Ptr chonk;
+
+    // first count up the memory we need and allocate it
+    Counter counter;
+    node->accept(counter);
+    if (counter._numElements > 0 && counter._numVerts > 0)
+    {
+        chonk = Chonk::create();
+        chonk->_vbo_store.reserve(counter._numVerts);
+        chonk->_ebo_store.reserve(counter._numElements);
+    }
+
+    Ripper ripper(chonk.get(), drawable, _textures.get(), _getOrCreateTexture);
+    node->accept(ripper);
+
+    if (chonk && !chonk->_ebo_store.empty())
+    {
+        chonk->_lods.push_back({ 0u, chonk->_ebo_store.size(), 0.0f, FLT_MAX });
+        chonk->_box.init();
+        drawable->add(chonk);
+    }
+
+    return true;
+}
+
+
+bool
+ChonkDrawable::add(osg::Node* node, ChonkFactory& factory)
+{
+    OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
+    OE_PROFILING_ZONE;
+
+    // convert all primitive sets to indexed primitives
+    //osgUtil::Optimizer o;
+    //o.optimize(node, o.INDEX_MESH);
+
+    return factory.load(node, this);
 }
 
 
@@ -1326,4 +1438,39 @@ ChonkRenderBin::releaseSharedGLObjects(osg::State* state)
     auto proto = static_cast<ChonkRenderBin*>(osgUtil::RenderBin::getRenderBinPrototype("ChonkBin"));
     if (proto->_cullSS.valid())
         proto->_cullSS->releaseGLObjects(state);
+}
+
+
+ChonkFactory::GetOrCreateFunction ChonkFactory::createWeakTextureCacheFunction(
+    std::vector<Texture::WeakPtr>& cache,
+    std::mutex& cache_mutex)
+{
+    return [&cache, &cache_mutex](osg::Texture* osgTex, bool& isNew)
+        {
+            std::lock_guard<std::mutex> lock(cache_mutex);
+            auto* image = osgTex->getImage(0);
+            for (auto iter = cache.begin(); iter != cache.end(); )
+            {
+                Texture::Ptr cache_entry = iter->lock();
+                if (cache_entry)
+                {
+                    if (ImageUtils::areEquivalent(image, cache_entry->osgTexture()->getImage(0)))
+                    {
+                        isNew = false;
+                        return cache_entry;
+                    }
+                    ++iter;
+                }
+                else
+                {
+                    // dead entry, remove it
+                    iter = cache.erase(iter);
+                }
+            }
+
+            isNew = true;
+            auto new_texture = Texture::create(osgTex);
+            cache.emplace_back(Texture::WeakPtr(new_texture));
+            return new_texture;
+        };
 }

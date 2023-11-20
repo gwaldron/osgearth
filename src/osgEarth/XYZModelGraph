@@ -24,6 +24,10 @@
 #include <osgEarth/SimplePager>
 #include <osgEarth/MapNode>
 #include <osgEarth/StateSetCache>
+#include <osgEarth/TextureArena>
+
+#include <unordered_map>
+#include <unordered_set>
 
 namespace osgEarth {
 
@@ -37,6 +41,9 @@ namespace osgEarth {
 
          void setOwnerName(const std::string& value);
 
+         //! Whether to attempt to use NVGL extensions
+         void setUseNVGL(bool value);
+
     public: // SimplePager
 
          virtual osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress) override;
@@ -47,6 +54,9 @@ namespace osgEarth {
          bool _invertY;
          osg::ref_ptr< osgEarth::StateSetCache > _statesetCache;
          osg::ref_ptr< osgDB::Options > _options;
+         osg::ref_ptr< TextureArena > _textures;
+         mutable std::vector<Texture::WeakPtr> _texturesCache;
+         mutable std::mutex _texturesCacheMutex;
     };
 }
 

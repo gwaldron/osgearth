@@ -14,11 +14,19 @@ osgEarth Sample - OpenStreetMap Features
     
     <xi:include href="osm_data.xml"/>    
 
-    <xi:include href="osm_buildings.xml"/>
+    <xi:include href="osm_buildings.xml" nvgl="true" open="false" name="FMG Buildings"/>
+        
+
+    <XYZModel name="Freshly Baked Buildings" open="false">
+        <url>https://pelican-public.s3.amazonaws.com/buildings_mak/{z}/{x}/{y}.osgb</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+    </XYZModel>
 
     <xi:include href="viewpoints.xml"/>
     
     <options>
-        <terrain lod_method="screen_space" tile_pixel_size="350"/>
+        <!-- <terrain lod_method="screen_space" tile_pixel_size="350"/> -->
     </options>
 </map>

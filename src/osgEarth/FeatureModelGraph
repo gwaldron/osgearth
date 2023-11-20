@@ -212,7 +212,8 @@ namespace osgEarth { namespace Util
         optional<float> _minRange;
         optional<float> _maxRange;
         osg::ref_ptr<TextureArena> _textures;
-        std::unordered_map<osg::Texture*, Texture::Ptr> _texturesCache;
+        mutable std::vector<Texture::WeakPtr> _texturesCache;
+        mutable std::mutex _texturesCacheMutex;
 
         std::atomic_int _cacheReads;
         std::atomic_int _cacheHits;

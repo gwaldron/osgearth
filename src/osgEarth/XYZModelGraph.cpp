@@ -20,6 +20,9 @@
 #include <osgEarth/NetworkMonitor>
 #include <osgEarth/Registry>
 #include <osgEarth/Metrics>
+#include <osgEarth/Chonk>
+#include <osgEarth/NodeUtils>
+#include <osgEarth/Utils>
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
@@ -33,6 +36,25 @@ XYZModelGraph::XYZModelGraph(const osgEarth::Map* map, const Profile* profile, c
     _options->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
 
     _statesetCache = new StateSetCache();
+}
+
+void
+XYZModelGraph::setUseNVGL(bool value)
+{
+    if (value == true && GLUtils::useNVGL() && !_textures.valid())
+    {
+        _textures = new TextureArena();
+        getOrCreateStateSet()->setAttribute(_textures, 1);
+
+        // auto release requires that we install this update callback!
+        _textures->setAutoRelease(true);
+
+        addUpdateCallback(new LambdaCallback<>([this](osg::NodeVisitor& nv)
+            {
+                _textures->update(nv);
+                return true;
+            }));
+    }
 }
 
 void
@@ -81,7 +103,73 @@ XYZModelGraph::createNode(const TileKey& key, ProgressCallback* progress)
     osg::ref_ptr< osg::Node > node = myUri.readNode(_options.get()).getNode();
     if (node.valid())
     {
-        osgEarth::Registry::shaderGenerator().run(node.get(), _statesetCache);
+        if (_textures.valid())
+        {
+            // simple caching function to share textures across requests
+            static std::mutex cache_mutex;
+
+            const auto cache_function = [&](osg::Texture* osgTex, bool& isNew)
+                {
+                    std::lock_guard<std::mutex> lock(cache_mutex);
+                    auto* image = osgTex->getImage(0);
+                    for (auto iter = _texturesCache.begin(); iter != _texturesCache.end(); )
+                    {
+                        Texture::Ptr cache_entry = iter->lock();
+                        if (cache_entry)
+                        {
+                            if (ImageUtils::areEquivalent(image, cache_entry->osgTexture()->getImage(0)))
+                            {
+                                isNew = false;
+                                return cache_entry;
+                            }
+                            ++iter;
+                        }
+                        else
+                        {
+                            // dead entry, remove it
+                            iter = _texturesCache.erase(iter);
+                        }
+                    }
+
+                    isNew = true;
+                    auto new_texture = Texture::create(osgTex);
+                    _texturesCache.emplace_back(Texture::WeakPtr(new_texture));
+                    return new_texture;
+                };
+
+
+            auto xform = findTopMostNodeOfType<osg::MatrixTransform>(node.get());
+
+            // Convert the geometry into chonks
+            ChonkFactory factory(_textures);
+
+            factory.setGetOrCreateFunction(
+                ChonkFactory::createWeakTextureCacheFunction(
+                    _texturesCache, _texturesCacheMutex));
+
+            osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();
+            if (xform)
+            {
+                for (unsigned i = 0; i < xform->getNumChildren(); ++i)
+                {
+                    drawable->add(xform->getChild(i), factory);
+                }
+                xform->removeChildren(0, xform->getNumChildren());
+                xform->addChild(drawable);
+                node = xform;
+            }
+            else
+            {
+                if (drawable->add(node.get(), factory))
+                {
+                    node = drawable;
+                }
+            }
+        }
+        else
+        {
+            osgEarth::Registry::shaderGenerator().run(node.get(), _statesetCache);
+        }
         return node.release();
     }
     return nullptr;

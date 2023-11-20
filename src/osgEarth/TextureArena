@@ -212,11 +212,12 @@ namespace osgEarth
         mutable TextureVector _textures;
         mutable std::unordered_map<Texture::Ptr, unsigned int> _textureIndices;
         mutable std::unordered_set<unsigned> _dynamicTextures;
-        bool _autoRelease;
-        unsigned _bindingPoint;
-        bool _useUBO;
-        mutable int _releasePtr;
-        unsigned _maxDim;
+
+        bool _autoRelease = false;
+        unsigned _bindingPoint = 1u;
+        bool _useUBO = false;
+        mutable int _releasePtr = 0;
+        unsigned _maxDim = 65536u;
 
         mutable Mutex _m;
 

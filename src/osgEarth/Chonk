@@ -78,10 +78,12 @@ namespace osgEarth
     {
     public:
         using element_t = GLuint;
+        using Ptr = std::shared_ptr<Chonk>;
+        using WeakPtr = std::weak_ptr<Chonk>;
 
         //! Adds a node.
         bool add(
-            osg::Node*,
+            osg::Node* node,
             ChonkFactory& factory);
 
         //! Adds a node with screen-space-error limits.
@@ -129,8 +131,6 @@ namespace osgEarth
         };
 
     public:
-        using Ptr = std::shared_ptr<Chonk>;
-        using WeakPtr = std::weak_ptr<Chonk>;
 
         //! Creates a new empty chonk.
         static Ptr create();
@@ -175,6 +175,10 @@ namespace osgEarth
         using GetOrCreateFunction =
             std::function<Texture::Ptr(osg::Texture* osgTex, bool& isNew)>;
 
+        osg::ref_ptr<TextureArena> _textures;
+
+        GetOrCreateFunction _getOrCreateTexture;
+
     public:
         ChonkFactory(
             TextureArena* textures);
@@ -183,15 +187,27 @@ namespace osgEarth
         //! creating new ones. Good for sharing data across invocations.
         void setGetOrCreateFunction(GetOrCreateFunction);
 
-        //! Adds a node and generates an asset drawable for it.
-        //! The asset will upload to the GPU on the next call to apply.
-        void load(
+        //! For the given node, this method populates the provided Chonk wit
+        //! its geometry. If the factory finds any InstancedGeometry's along
+        //! the way it will create a Chonk for each one in out_instances.
+        //! Returns false if the node contained no geometry.
+        bool load(
             osg::Node* node,
-            Chonk& chonk);
+            Chonk* chonk, 
+            float far_pixel_scale = 0.0f,
+            float near_pixel_scale = FLT_MAX);
 
-    private:
-        osg::ref_ptr<TextureArena> _textures;
-        GetOrCreateFunction _getOrCreateTexture;
+        bool load(
+            osg::Node* node,
+            ChonkDrawable* drawable);
+
+        /**
+        * Stock "getOrCreate" function for the ChonkFactory that works on
+        * a vector of Weak pointers.
+        */
+        static GetOrCreateFunction createWeakTextureCacheFunction(
+            std::vector<Texture::WeakPtr>& cache,
+            std::mutex& cache_mutex);
     };
 
     /**
@@ -208,6 +224,9 @@ namespace osgEarth
         //! Construct a default drawable
         //! @param renderBinNumber OSG render bin number for the drawable
         ChonkDrawable(int render_bin_number = 3);
+
+        //! Adds a node to the drawable.
+        bool add(osg::Node* node, ChonkFactory& factory);
 
         //! Adds one instance of a chonk to the drawable.
         void add(Chonk::Ptr value);
@@ -246,6 +265,11 @@ namespace osgEarth
 
         //! Installs a basic chonk-rendering shader on a drawable.
         static void installRenderBin(ChonkDrawable*);
+
+        //! Whether this drawable contains any geometry
+        bool empty() const {
+            return _batches.empty();
+        }
 
     public:
 

@@ -1308,9 +1308,13 @@ EarthManipulator::clearViewpoint()
     _setVP0.unset();
     _setVP1.unset();
 
+    if (breakingTether)
+    {
+        collapseTetherRotationIntoRotation();
+    }
+
     // Restore the matrix values in a neutral state.
     recalculateCenterFromLookVector();
-    //resetLookAt();
 
     // Fire the callback to indicate a tethering break.
     if ( _tetherCallback.valid() && breakingTether )

@@ -479,10 +479,9 @@ namespace
 
                 ig_chonk->_box.init();
 
-                for(auto matrix : ig->getMatrices())
+                for(const auto& encoded_matrix : ig->getMatrices())
                 {
-                    float* ptr = matrix.ptr();
-                    ptr[3] = ptr[7] = ptr[11] = 0.0f; ptr[15] = 1.0f; // strip the object ID!
+                    auto matrix = ig->decodeMatrix(encoded_matrix);
                     _drawable->add(ig_chonk, matrix * _transformStack.top());
                 }
             }
@@ -1467,7 +1466,7 @@ ChonkRenderBin::releaseSharedGLObjects(osg::State* state)
 }
 
 
-ChonkFactory::GetOrCreateFunction ChonkFactory::createWeakTextureCacheFunction(
+ChonkFactory::GetOrCreateFunction ChonkFactory::getWeakTextureCacheFunction(
     std::vector<Texture::WeakPtr>& cache,
     std::mutex& cache_mutex)
 {

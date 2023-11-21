@@ -279,6 +279,14 @@ const std::vector< osg::Matrixf >& InstanceGeometry::getMatrices() const
     return _matrices;
 }
 
+osg::Matrixf InstanceGeometry::decodeMatrix(const osg::Matrixf& m)
+{
+    osg::Matrixf out = m;
+    float* p = out.ptr();
+    p[3] = p[7] = p[11] = 0.0f, p[15] = 1.0f;
+    return out;
+}
+
 namespace
 {
     // Triangle functor that collects all triangles for all instance matrices
@@ -299,8 +307,10 @@ namespace
 
         void operator()(const osg::Vec3f& v0, const osg::Vec3f& v1, const osg::Vec3f& v2)
         {
-            for (auto& matrix : *matrices)
+            for (const auto& encoded_matrix : *matrices) // make a mutable copy
             {
+                auto matrix = InstanceGeometry::decodeMatrix(encoded_matrix);
+
                 for (auto& v : { v0, v1, v2 })
                 {
                     auto v_final = v * matrix;

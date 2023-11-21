@@ -24,6 +24,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
 #include <osgDB/ReadFile>
+#include <osg/BlendFunc>
 
 using namespace osgEarth;
 
@@ -54,6 +55,10 @@ XYZModelGraph::setUseNVGL(bool value)
                 _textures->update(nv);
                 return true;
             }));
+
+        getOrCreateStateSet()->setAttributeAndModes(
+            new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
+            osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
     }
 }
 
@@ -111,7 +116,7 @@ XYZModelGraph::createNode(const TileKey& key, ProgressCallback* progress)
             ChonkFactory factory(_textures);
 
             factory.setGetOrCreateFunction(
-                ChonkFactory::createWeakTextureCacheFunction(
+                ChonkFactory::getWeakTextureCacheFunction(
                     _texturesCache, _texturesCacheMutex));
 
             osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();

@@ -204,10 +204,11 @@ namespace osgEarth
             float near_pixel_scale);
 
         /**
-        * Stock "getOrCreate" function for the ChonkFactory that works on
-        * a vector of Weak pointers.
+        * Stock "getOrCreateTexture" function for the ChonkFactory that works on
+        * a vector of Weak pointers. Use this or provide your own or don't use
+        * one at all.
         */
-        static GetOrCreateFunction createWeakTextureCacheFunction(
+        static GetOrCreateFunction getWeakTextureCacheFunction(
             std::vector<Texture::WeakPtr>& cache,
             std::mutex& cache_mutex);
     };

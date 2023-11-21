@@ -1722,7 +1722,7 @@ FeatureModelGraph::createOrUpdateNode(FeatureCursor*           cursor,
         ChonkFactory factory(_textures);
 
         factory.setGetOrCreateFunction(
-            ChonkFactory::createWeakTextureCacheFunction(
+            ChonkFactory::getWeakTextureCacheFunction(
                 _texturesCache, _texturesCacheMutex));
 
         osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();

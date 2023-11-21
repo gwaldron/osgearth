@@ -45,8 +45,22 @@ namespace osgEarth { namespace Util
             InstanceGeometry(const InstanceGeometry&, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
             META_Node(osgEarth::Util::DrawInstanced, InstanceGeometry);
 
+            //! Positioning matrices for each instance. 
+            //! NOTE that each matrix includes an embedded object ID - do not use it directly;
+            //! call decodeMatrix() to extract it.
             const std::vector< osg::Matrixf >& getMatrices() const;
             void setMatrices(const std::vector< osg::Matrixf >& matrices);
+
+            //! Decodes an encoded matrix into one you can use for math.
+            static osg::Matrixf decodeMatrix(const osg::Matrixf& matrix);
+
+            //! A mesh comprising all geometry instances; you can use this for intersection
+            //! or bounds testing
+            osg::Geometry* getProxyGeometry() const {
+                return _mesh;
+            }
+
+        public: // osg::Geometry
 
             bool supports(const osg::PrimitiveFunctor& f) const override { return true; }
             void accept(osg::PrimitiveFunctor& f) const override;
@@ -55,10 +69,6 @@ namespace osgEarth { namespace Util
             void accept(osg::PrimitiveIndexFunctor& f) const override;
 
             osg::BoundingBox computeBoundingBox() const override;
-
-            osg::Geometry* getProxyGeometry() const {
-                return _mesh;
-            }
 
         private:
             std::vector<osg::Matrixf> _matrices;

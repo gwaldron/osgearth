@@ -192,6 +192,30 @@ namespace osgEarth { namespace Util
         std::vector<T*> _results;
     };
 
+    template<typename T, typename FUNC>
+    struct NodeFunctorVisitor : public osg::NodeVisitor
+    {
+        NodeFunctorVisitor(FUNC& func) : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _func(func) { }
+
+        void apply(osg::Node& node) override
+        {
+            T* result = dynamic_cast<T*>( &node );
+            if ( result )
+                _func( result );
+            traverse(node);
+        }
+
+        FUNC _func;
+    };  
+
+    template<typename T, typename FUNC>
+    inline void forEachNodeOfType(osg::Node* root, FUNC& functor)
+    {
+        NodeFunctorVisitor<T, FUNC> visitor(functor);
+        if (root)
+            root->accept( visitor );
+    }
+
     /**
      * Searchs the scene graph downward starting at [node] and returns the first node found
      * that matches the template parameter type.

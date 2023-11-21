@@ -113,7 +113,7 @@ void XYZModelLayer::setProfile(const Profile* profile)
 void
 XYZModelLayer::init()
 {
-    TiledModelLayer::init();
+    super::init();
 
     _root = new osg::Group();
 
@@ -151,7 +151,7 @@ XYZModelLayer::getNode() const
 Status
 XYZModelLayer::openImplementation()
 {
-    Status parent = TiledModelLayer::openImplementation();
+    Status parent = super::openImplementation();
     if (parent.isError())
         return parent;
 
@@ -171,7 +171,7 @@ void
 XYZModelLayer::addedToMap(const Map* map)
 {
     OE_TEST << LC << "addedToMap" << std::endl;
-    TiledModelLayer::addedToMap(map);
+    super::addedToMap(map);
 
     _map = map;
 
@@ -184,7 +184,7 @@ XYZModelLayer::addedToMap(const Map* map)
 void
 XYZModelLayer::removedFromMap(const Map* map)
 {
-    TiledModelLayer::removedFromMap(map);
+    super::removedFromMap(map);
 
     if (_root.valid())
     {

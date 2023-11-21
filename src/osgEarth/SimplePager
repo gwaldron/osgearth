@@ -59,6 +59,9 @@ namespace osgEarth { namespace Util
         float getRangeFactor() const { return _rangeFactor; }
         void setRangeFactor(float value) { _rangeFactor = value; }
 
+        float getMaxRange() const { return _maxRange; }
+        void setMaxRange(float value);
+
         float getPriorityScale() const { return _priorityScale; }
         void setPriorityScale(float value) { _priorityScale = value; }
 
@@ -120,6 +123,7 @@ namespace osgEarth { namespace Util
 
         bool _additive;
         double _rangeFactor;
+        float _maxRange = FLT_MAX;
         unsigned int _minLevel;
         unsigned int _maxLevel;
         osg::ref_ptr<const Profile> _profile;

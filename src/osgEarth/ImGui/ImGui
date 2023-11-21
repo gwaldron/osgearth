@@ -403,6 +403,16 @@ namespace ImGuiLTable
         return ImGui::ColorEdit4(label, col, flags);
     }
 
+    static void PlotLines(const char* label, float(*getter)(void*, int), void* data, int values_count, int values_offset, const char* overlay = nullptr,
+        float scale_min = FLT_MAX, float scale_max = FLT_MAX)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        ImGui::PlotLines("", getter, data, values_count, values_offset, overlay, scale_min, scale_max);
+    }
+
     static void End()
     {
         ImGui::EndTable();

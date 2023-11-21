@@ -6,6 +6,7 @@
 #include <osgEarth/PagedNode>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/ElevationRanges>
+#include <osgEarth/NodeUtils>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osg/ShapeDrawable>
@@ -50,6 +51,16 @@ void SimplePager::setEnableCancelation(bool value)
 bool SimplePager::getEnableCancelation() const
 {
     return _canCancel;
+}
+
+void SimplePager::setMaxRange(float value)
+{
+    _maxRange = value;
+
+    forEachNodeOfType<PagedNode2>(this, [&](PagedNode2* node)
+    {
+        node->setMaxRange(value);
+    });
 }
 
 void SimplePager::setDone()
@@ -232,11 +243,13 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
                 return result;
             }
         );
+
         loadRange = (float)(tileRadius * _rangeFactor);
+
         pagedNode->setRefinePolicy(_additive ? REFINE_ADD : REFINE_REPLACE);
     }
 
-    pagedNode->setMaxRange(loadRange);
+    pagedNode->setMaxRange(std::min(loadRange, _maxRange));
 
     //OE_INFO << "PagedNode2: key="<<key.str()<<" hasChildren=" << hasChildren << ", range=" << loadRange << std::endl;
 

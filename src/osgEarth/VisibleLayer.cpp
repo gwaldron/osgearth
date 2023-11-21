@@ -19,7 +19,9 @@
 #include "VisibleLayer"
 #include "VirtualProgram"
 #include "Utils"
+#include "NodeUtils"
 #include "ShaderLoader"
+#include "SimplePager"
 
 #include <osg/BlendFunc>
 #include <osgUtil/RenderBin>
@@ -442,7 +444,14 @@ VisibleLayer::setMaxVisibleRange( float maxVisibleRange )
         (float)options().minVisibleRange().get(),
         (float)options().maxVisibleRange().get(),
         (float)options().attenuationRange().get()));
-    fireCallback( &VisibleLayerCallback::onVisibleRangeChanged );
+
+    forEachNodeOfType<SimplePager>(getNode(), 
+        [&](SimplePager* node) {
+            node->setMaxRange(maxVisibleRange);
+        }
+    );
+
+    fireCallback(&VisibleLayerCallback::onVisibleRangeChanged);
 }
 
 float

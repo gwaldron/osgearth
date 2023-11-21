@@ -435,7 +435,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
                 progress,
                 [layer]() {
                     osg::ref_ptr<const Layer> safe;
-                    return !layer.lock(safe) || !safe->isOpen();
+                    return !layer.lock(safe) || !safe->isOpen() || !JobArena::alive();
                 }
             );
 

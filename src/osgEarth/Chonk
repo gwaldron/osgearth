@@ -68,6 +68,7 @@ namespace osgEarth
     };
 
     class ChonkFactory;
+    class ChonkDrawable;
 
     /**
      * A bindless rendering unit comprised of one VBO and one EBO.

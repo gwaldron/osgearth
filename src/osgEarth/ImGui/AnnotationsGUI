@@ -76,7 +76,7 @@ namespace
                 auto vp_ptr = data->getViewpoint();
                 auto desc = data->getDescription();
 
-                Viewpoint vp;
+                osgEarth::Viewpoint vp;
                 if (vp_ptr) vp = *vp_ptr;
 
                 if (!vp.valid())

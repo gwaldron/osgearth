@@ -195,7 +195,7 @@ namespace osgEarth { namespace Util
     template<typename T, typename FUNC>
     struct NodeFunctorVisitor : public osg::NodeVisitor
     {
-        NodeFunctorVisitor(FUNC& func) : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _func(func) { }
+        NodeFunctorVisitor(const FUNC& func) : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _func(func) { }
 
         void apply(osg::Node& node) override
         {
@@ -209,7 +209,7 @@ namespace osgEarth { namespace Util
     };  
 
     template<typename T, typename FUNC>
-    inline void forEachNodeOfType(osg::Node* root, FUNC& functor)
+    inline void forEachNodeOfType(osg::Node* root, const FUNC& functor)
     {
         NodeFunctorVisitor<T, FUNC> visitor(functor);
         if (root)

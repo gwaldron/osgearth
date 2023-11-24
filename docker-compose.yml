@@ -1,0 +1,34 @@
+services:
+  OpenSceneGraph:
+    image: 'osgearth:latest'
+    container_name: osgearth
+    runtime: nvidia
+    cap_add:
+      - SYS_ADMIN
+      - SYS_RAWIO
+    devices:
+      - /dev/fuse:/dev/fuse
+    security_opt:
+      - apparmor:unconfined
+    privileged: true
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      DISPLAY: $DISPLAY
+      NVIDIA_DRIVER_CAPABILITIES: all
+      HOSTNAME: osgearth
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - "UID=1000"
+        - "GID=1000"

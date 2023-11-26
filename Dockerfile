@@ -31,7 +31,7 @@ RUN apt install -y wget build-essential autoconf locate apt-file libspdlog-dev  
     libxcursor-dev libxtst-dev libxrandr-dev libgtk3.0-cil-dev libcurl4-openssl-dev         \
     libomp-dev libstdc++6 ninja-build libboost-all-dev gdal-bin gdal-data                   \
     libgdal-dev libgeos-dev libgeos++-dev librocksdb-dev freeglut3-dev libglu1-mesa-dev     \
-    libx11-xcb-dev '^libxcb.*-dev' libxrender-dev libxi-dev libxkbcommon-dev                \
+    libx11-xcb-dev '^libxcb.*-dev' libxrender-dev libxi-dev libxkbcommon-dev libglew-dev    \
     libxkbcommon-x11-dev libxinerama1 libxrandr2 protobuf-compiler libprotobuf-dev          \
     ffmpeg libavformat-dev libavdevice-dev libavcodec-dev libavutil-dev libswscale-dev      \
     libsdl1.2-dev libsdl2-dev libgtkgl2.0-dev libgtkglext1-dev libjasper-dev libasio-dev    \
@@ -84,15 +84,15 @@ ARG fbx_zlib_lib=libz.so
 RUN apt update && apt upgrade -y && apt build-dep -y openscenegraph
 
 ARG OSG_DIR=/opt/OpenSceneGraph
-ARG OSG_TAG=OpenSceneGraph-3.6.5
 WORKDIR ${HOME}/gitrepo
-RUN git clone -b ${OSG_TAG} https://github.com/openscenegraph/OpenSceneGraph.git        && \
+RUN git clone https://github.com/openscenegraph/OpenSceneGraph.git                      && \
     mkdir OpenSceneGraph/build && cd OpenSceneGraph/build                               && \
     cmake -DOSG_GL3_AVAILABLE=ON -DOSG_GL1_AVAILABLE=OFF -DOSG_GL2_AVAILABLE=OFF           \
           -DOSG_GLES1_AVAILABLE=OFF -DOSG_GLES2_AVAILABLE=OFF -DOSG_GLES3_AVAILABLE=OFF    \
           -DOSG_GL_DISPLAYLISTS_AVAILABLE=OFF -DOSG_GL_FIXED_FUNCTION_AVAILABLE=OFF        \
           -DOSG_GL_MATRICES_AVAILABLE=OFF -DOSG_GL_VERTEX_ARRAY_FUNCS_AVAILABLE=OFF        \
           -DOSG_GL_VERTEX_FUNCS_AVAILABLE=OFF -DOPENGL_PROFILE=GL3                         \
+          -DOSG_GL_CONTEXT_VERSION=4.6                                                     \
           -DFBX_INCLUDE_DIR="$fbx_include" -DFBX_LIBRARY="$fbx_lib_release"                \
           -DFBX_LIBRARY_DEBUG="$fbx_lib_debug" -DFBX_XML2_LIBRARY="$fbx_xml_lib"           \
           -DFBX_ZLIB_LIBRARY="$fbx_zlib_lib"                                               \
@@ -100,6 +100,16 @@ RUN git clone -b ${OSG_TAG} https://github.com/openscenegraph/OpenSceneGraph.git
     cmake --build . --parallel 4 --target install
 ENV LD_LIBRARY_PATH /opt/OpenSceneGraph/lib:$LD_LIBRARY_PATH
 
+# Install Draco
+ARG DRACO_DIR=/opt/Draco
+WORKDIR ${HOME}/gitrepo
+RUN git clone https://github.com/google/draco.git                               && \
+    mkdir draco/build && cd draco/build                                         && \
+    cmake -DCMAKE_INSTALL_PREFIX=${DRACO_DIR} -DCMAKE_BUILD_TYPE=Release ..     && \
+    cmake --build . --parallel 4 --target install
+ENV LD_LIBRARY_PATH ${DRACO_DIR}/lib:$LD_LIBRARY_PATH
+
+# Install OsgEarth
 ARG OSGEARTH_DIR=/opt/osgearth
 COPY . ${HOME}/gitrepo/osgearth
 WORKDIR ${HOME}/gitrepo

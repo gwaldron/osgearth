@@ -53,13 +53,11 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
-    osgEarth::initialize();
-
     osg::ArgumentParser arguments(&argc,argv);
-
-    // help?
     if ( arguments.read("--help") )
         return usage(argv[0]);
+
+    osgEarth::initialize(arguments);
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);

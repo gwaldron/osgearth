@@ -163,7 +163,7 @@ void cull()
     // OK, it is in view - now check pixel size on screen for this LOD:
     vec2 dims = 0.5*(UR.xy - LL.xy)*oe_Camera.xy;
 
-    float pixelSize = max(dims.x, dims.y);
+    float pixelSize = min(dims.x, dims.y);
     float pixelSizePad = pixelSize * oe_chonk_lod_transition_factor;
 
     float minPixelSize = oe_sse * chonks[v].far_pixel_scale * oe_lod_scale[lod];

@@ -6,17 +6,17 @@ The documentation here is focused on Windows.
 
 ## Building with vcpkg
 
-[vcpkg](https://github.com/Microsoft/vcpkg) is an extremely useful package manager. It works on Windows, Linux and MacOS but for this guide we will focus on Windows.
+[vcpkg](https://github.com/Microsoft/vcpkg) is a package manager. It works on Windows, Linux and MacOS but for this guide we will focus on Windows.
 
 **Step 1 - Configure vcpkg**
 
 First, download and bootstrap [vcpkg](https://github.com/Microsoft/vcpkg) following the instructions on the page.
 
-**Step 2 - Set the osg_OPENGL_PROFILE triplet variable to GL3**
+**Step 2 - (Optional) Configure the osg_OPENGL_PROFILE triplet variable**
 
-Next, you will need to set a triplet variable to ensure that osg will be built with modern OpenGL features enabled that osgEarth requires.
+You can configure OSG to build in GL3 or GLCORE mode if you require it. Some platforms (like OSX or VMWare) require a GLCORE build.
 
-The latest (as of 6/6/2023) version of vcpkg will build OSG with OPENGL_PROFILE=GL2 by default.  This is not sufficient for running osgEarth as it does not enable all modern OpenGL features that osgEarth requires and keeps the deprecated fixed function pipeline path in OSG.
+The latest (as of 6/6/2023) version of vcpkg will build OSG with OPENGL_PROFILE=GL2 by default.  This is sufficient for running many osgEarth applications, but if you run into trouble with newer features, try a GL3 or GLCORE build instead.
 
 Open your existing x64-windows.cmake triplet file at path\to\vcpkg\triplets\x64-windows.cmake and add this line to the end of the file.
 ```

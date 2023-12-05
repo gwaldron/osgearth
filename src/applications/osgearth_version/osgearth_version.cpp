@@ -77,7 +77,7 @@ int main( int argc, char** argv)
     else if (arguments.read("--caps"))
     {
         osgEarth::setNotifyLevel(osg::INFO);
-        osgEarth::Registry::instance()->getCapabilities();
+        osgEarth::initialize(arguments);
     }
 
     else

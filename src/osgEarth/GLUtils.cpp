@@ -417,6 +417,15 @@ namespace
         {
             const std::string& s = severities[severity - GL_DEBUG_SEVERITY_HIGH];
             OE_WARN << "GL (" << s << ", " << source << ") -- " << message << std::endl;
+
+            std::stringstream buf;
+            CallStack stack;
+            for(unsigned i=1; i<stack.symbols.size(); ++i)
+            {
+                buf << " -> " << stack.symbols[i];
+                if (stack.symbols[i] == "main") break;
+            }
+            OE_WARN << "Call stack:" << buf.str() << std::endl;
         }
     }
 

@@ -123,14 +123,14 @@ GenerateGL3LightingUniforms::apply(osg::LightSource& lightSource)
             lightSource.addCullCallback(new LightSourceGL3UniformGenerator());
         }
 
-#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
+//#if !defined(OSG_GL_FIXED_FUNCTION_AVAILABLE)
         // If there's no FFP, we need to replace the Light with a LightGL3 to prevent
         // error messages on the console.
         if (dynamic_cast<LightGL3*>(lightSource.getLight()) == 0L)
         {
             lightSource.setLight(new LightGL3(*lightSource.getLight()));
         }
-#endif
+//#endif
     }
 
     apply(static_cast<osg::Node&>(lightSource));

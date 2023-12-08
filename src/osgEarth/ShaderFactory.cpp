@@ -168,10 +168,10 @@ ShaderFactory::createMains(
 {
     // We require attribute aliasing and matrix uniforms.
     OE_SOFT_ASSERT(state.getUseVertexAttributeAliasing(),
-        "OpenSceneGraph vertex attribute aliasing must be enabled");
+        "OpenSceneGraph vertex attribute aliasing must be enabled. Consider installing the GL3RealizeOperation in your viewer.");
 
     OE_SOFT_ASSERT(state.getUseModelViewAndProjectionUniforms(),
-        "OpenSceneGraph matrix uniforms must be enabled");
+        "OpenSceneGraph matrix uniforms must be enabled. Consider installing the GL3RealizeOperation in your viewer.");
 
     StageMask stages =
         VirtualProgram::STAGE_VERTEX |

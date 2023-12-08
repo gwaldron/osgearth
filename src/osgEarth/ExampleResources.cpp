@@ -364,6 +364,49 @@ MapNodeHelper::loadWithoutControls(
         GLUtils::enableGLDebugging();
     }
 
+    // collect the views
+    osgViewer::Viewer::Views views;
+    if (viewer)
+    {
+        viewer->getViews(views);
+    }
+
+    // configures each view with some stock goodies
+    for (auto view : views)
+    {
+        configureView(view);
+    }
+
+    // vsync on/off?
+    optional<bool> vsync;
+    if (args.read("--vsync"))
+        vsync = true;
+    else if (args.read("--novsync"))
+        vsync = false;
+
+    // VP debugging
+    if (args.read("--vpdebug") || args.read("--vp-debug"))
+    {
+        GLUtils::enableGLDebugging();
+        VirtualProgram::enableGLDebugging();
+    }
+
+    if (viewer)
+    {
+        MultiRealizeOperation* op = new MultiRealizeOperation();
+
+        if (viewer->getRealizeOperation())
+            op->_ops.push_back(viewer->getRealizeOperation());
+
+        GL3RealizeOperation* rop = new GL3RealizeOperation();
+        if (vsync.isSet())
+            rop->setSyncToVBlank(vsync.get());
+
+        op->_ops.push_back(rop);
+
+        viewer->setRealizeOperation(op);
+    }
+
     // read in the Earth file:
     osg::ref_ptr<osg::Node> node = osgDB::readRefNodeFiles(args, myReadOptions.get());
 
@@ -395,13 +438,6 @@ MapNodeHelper::loadWithoutControls(
         mapNode->getTerrainOptions().setGPUTessellation(true);
     }
 
-    // collect the views
-    osgViewer::Viewer::Views views;
-    if (viewer)
-    {
-        viewer->getViews(views);
-    }
-
     // a root node to hold everything:
     osg::ref_ptr<osg::Group> root = new osg::Group();
     root->addChild(node);
@@ -426,42 +462,6 @@ MapNodeHelper::loadWithoutControls(
             osgEarth::insertGroup(g, mapNode->getParent(0));
             OE_INFO << "LOD Scale set to: " << lodscale << std::endl;
         }
-    }
-
-    // configures each view with some stock goodies
-    for (auto view : views)
-    {
-        configureView(view);
-    }
-
-    // vsync on/off?
-    optional<bool> vsync;
-    if (args.read("--vsync"))
-        vsync = true;
-    else if (args.read("--novsync"))
-        vsync = false; 
-
-    // VP debugging
-    if (args.read("--vpdebug") || args.read("--vp-debug"))
-    {
-        GLUtils::enableGLDebugging();
-        VirtualProgram::enableGLDebugging();
-    }
-
-    if (viewer)
-    {
-        MultiRealizeOperation* op = new MultiRealizeOperation();
-
-        if (viewer->getRealizeOperation())
-            op->_ops.push_back(viewer->getRealizeOperation());
-
-        GL3RealizeOperation* rop = new GL3RealizeOperation();
-        if (vsync.isSet())
-            rop->setSyncToVBlank(vsync.get());
-
-        op->_ops.push_back(rop);
-
-        viewer->setRealizeOperation(op);
     }
 
     return root;
@@ -509,6 +509,50 @@ MapNodeHelper::load(
         GLUtils::enableGLDebugging();
     }
 
+    // collect the views
+    osgViewer::Viewer::Views views;
+    if (viewer)
+    {
+        viewer->getViews(views);
+    }
+
+    // configures each view with some stock goodies
+    for (osgViewer::Viewer::Views::iterator view = views.begin(); view != views.end(); ++view)
+    {
+        configureView(*view);
+    }
+
+    // vsync on/off?
+    optional<bool> vsync;
+    if (args.read("--vsync"))
+        vsync = true;
+    else if (args.read("--novsync"))
+        vsync = false;
+
+    // VP debugging
+    if (args.read("--vpdebug") || args.read("--vp-debug"))
+    {
+        GLUtils::enableGLDebugging();
+        VirtualProgram::enableGLDebugging();
+    }
+
+    if (viewer)
+    {
+        MultiRealizeOperation* op = new MultiRealizeOperation();
+
+        if (viewer->getRealizeOperation())
+            op->_ops.push_back(viewer->getRealizeOperation());
+
+        GL3RealizeOperation* rop = new GL3RealizeOperation();
+
+        if (vsync.isSet())
+            rop->setSyncToVBlank(vsync.get());
+
+        op->_ops.push_back(rop);
+
+        viewer->setRealizeOperation(op);
+    }
+
     // read in the Earth file:
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
 
@@ -530,13 +574,6 @@ MapNodeHelper::load(
     if (args.read("--tessellation") || args.read("--tess"))
     {
         mapNode->getTerrainOptions().setGPUTessellation(true);
-    }
-
-    // collect the views
-    osgViewer::Viewer::Views views;
-    if (viewer)
-    {
-        viewer->getViews(views);
     }
 
     // warn about not having an earth manip
@@ -574,46 +611,6 @@ MapNodeHelper::load(
             osgEarth::insertGroup(g, mapNode->getParent(0));
             OE_NOTICE << "LOD Scale set to: " << lodscale << std::endl;
         }
-    }
-
-    // configures each view with some stock goodies
-    for (osgViewer::Viewer::Views::iterator view = views.begin(); view != views.end(); ++view)
-    {
-        configureView( *view );
-    }
-
-    // vsync on/off?
-    optional<bool> vsync;
-    if (args.read("--vsync"))
-        vsync = true;
-    else if (args.read("--novsync"))
-        vsync = false;
-
-    // VP debugging
-    if (args.read("--vpdebug") || args.read("--vp-debug"))
-    {
-        GLUtils::enableGLDebugging();
-        VirtualProgram::enableGLDebugging();
-    }
-
-    if (viewer)
-    {
-        MultiRealizeOperation* op = new MultiRealizeOperation();
-
-        if (viewer->getRealizeOperation())
-            op->_ops.push_back(viewer->getRealizeOperation());
-
-#ifdef OSG_GL3_AVAILABLE
-        GL3RealizeOperation* rop = new GL3RealizeOperation();
-#else
-        CustomRealizeOperation* rop = new GL3RealizeOperation();
-#endif
-        if (vsync.isSet())
-            rop->setSyncToVBlank(vsync.get());
-
-        op->_ops.push_back(rop);
-
-        viewer->setRealizeOperation(op);
     }
 
     return root;

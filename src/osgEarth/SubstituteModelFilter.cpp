@@ -262,7 +262,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
     // first, go through the features and build the model cache. Apply the model matrix' scale
     // factor to any AutoTransforms directly (cloning them as necessary)
-    std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
+    std::map< std::pair<std::string, float>, osg::ref_ptr<osg::Node> > uniqueModels;
 
     // URI cache speeds up URI creation since it can be slow.
     std::unordered_map<std::string, URI> uriCache;
@@ -307,12 +307,28 @@ SubstituteModelFilter::process(const FeatureList&           features,
             calculateGeometryHeading(input, context);
         }
 		// evaluate the instance URI expression:
-		const std::string& st = input->eval(uriEx, &context);
-		URI& instanceURI = uriCache[st];
-		if(instanceURI.empty()) // Create a map, to reuse URI's, since they take a long time to create
-		{
-			instanceURI = URI( st, uriEx.uriContext() );
-		}
+        std::string resourceKey;
+        if (symbol->url().isSet())
+        {
+            resourceKey = input->eval(uriEx, &context);
+        }
+        else if (modelSymbol && modelSymbol->getModel())
+        {
+            resourceKey = Stringify() << modelSymbol->getModel();
+        }
+        else if (iconSymbol && iconSymbol->getImage())
+        {
+            resourceKey = Stringify() << iconSymbol->getImage();
+        }
+        URI instanceURI;
+        if (symbol->url().isSet())
+        {
+            instanceURI = uriCache[resourceKey];
+            if (instanceURI.empty()) // Create a map, to reuse URI's, since they take a long time to create
+            {
+                instanceURI = URI(resourceKey, uriEx.uriContext());
+            }
+        }
 
         // find the corresponding marker in the cache
         osg::ref_ptr<InstanceResource> instance;
@@ -374,7 +390,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
 
         // now that we have a marker source, create a node for it
-        std::pair<URI,float> key( instanceURI, iconSymbol? scale : 1.0f ); //use 1.0 for models, since we don't want unique models based on scaling
+        std::pair<std::string,float> key( resourceKey, iconSymbol? scale : 1.0f ); //use 1.0 for models, since we don't want unique models based on scaling
 
         // cache nodes per instance.
         osg::ref_ptr<osg::Node>& model = uniqueModels[key];

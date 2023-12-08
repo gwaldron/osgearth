@@ -27,6 +27,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Threading>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/PhongLightingEffect>
 #include <osgDB/ReadFile>
 #include <osgGA/TrackballManipulator>
 #include <osgUtil/Optimizer>
@@ -78,21 +79,29 @@ main(int argc, char** argv)
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     // load an earth file, and support all or our example command-line options
-    auto node = MapNodeHelper().load(arguments, &viewer);
+    auto node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
     if (node.valid())
     {
-        viewer.setSceneData( node );
-        
-        if (!MapNode::get(node))
+        if (MapNode::get(node))
         {
-            // not an earth file? Just view as a normal OSG node or image
+            viewer.setSceneData(node);
+        }
+        else
+        {
+            // not an earth file? Just view as a normal OSG node or image with basic lighting
             viewer.setCameraManipulator(new osgGA::TrackballManipulator);
-            osgUtil::Optimizer opt;
-            opt.optimize(node, osgUtil::Optimizer::INDEX_MESH);
-            ShaderGenerator gen;
-            node->accept(gen);
 
-            MapNodeHelper().configureView(&viewer);
+            osg::LightSource* sunLS = new osg::LightSource();
+            sunLS->getLight()->setPosition(osg::Vec4d(1, -1, 1, 0));
+            auto group = new osg::Group();
+            group->addChild(sunLS);
+            group->addChild(node);
+            auto phong = new PhongLightingEffect();
+            phong->attach(group->getOrCreateStateSet());
+            ShaderGenerator gen;
+            gen.run(group);
+
+            viewer.setSceneData(group);
         }
 
         return Metrics::run(viewer);

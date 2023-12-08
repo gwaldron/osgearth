@@ -712,3 +712,66 @@ CustomRenderLeaf::render(osg::RenderInfo& renderInfo, osgUtil::RenderLeaf* previ
         state.decrementDynamicObjectCount();
     }
 }
+
+//.....
+
+#ifdef WIN32
+#include <Windows.h>
+#include <dbghelp.h>
+#pragma comment(lib, "dbghelp.lib")
+#elif defined(__GNUC__)
+#include <execinfo.h>
+#include <cstdlib>
+#include <cstring>
+#include <cxxabi.h>
+#endif
+
+CallStack::CallStack()
+{
+#ifdef WIN32
+    HANDLE process = GetCurrentProcess();
+    SymInitialize(process, NULL, TRUE);
+
+    void* stack[100];
+    WORD frames = CaptureStackBackTrace(0, 100, stack, NULL);
+
+    SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+    symbol->MaxNameLen = 255;
+    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+
+    for (int i = 0; i < frames; i++)
+    {
+        SymFromAddr(process, (DWORD64)(stack[i]), 0, symbol);
+        symbols.emplace_back(symbol->Name);
+    }
+
+    free(symbol);
+#else
+    auto trim = [](const char* in, std::string& out)
+        {
+            std::string temp(in);
+            auto start = temp.find_first_of('(');
+            auto end = temp.find_first_of('+', start);
+            out = temp.substr(start + 1, end - 1 - start);
+        };
+
+    void* stack[100];
+    int frames = backtrace(stack, 100);
+    char** bt = backtrace_symbols(stack, frames);
+    for (int i = 0; i < frames; ++i)
+    {
+        std::string buf;
+        int status = -1;
+        trim(bt[i], buf);
+        char* demangled = abi::__cxa_demangle(buf.c_str(), nullptr, nullptr, &status);
+        if (status == 0) {
+            buf = demangled;
+            free(demangled);
+        }
+        symbols.emplace_back(buf);
+        if (buf == "main")
+            break;
+    }
+    free(bt);
+#endif
+}

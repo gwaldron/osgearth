@@ -1173,8 +1173,8 @@ BuildGeometryFilter::tileAndBuildPolygon(
 
     else
     {
-        // original tesselation approach
-        Tessellator::Plane plane = Tessellator::PLANE_XY;
+        // original tesselation approach: automatically figure out closest plane
+        Tessellator::Plane plane = Tessellator::PLANE_AUTO;
 
         if (outputSRS)
         {
@@ -1231,12 +1231,6 @@ BuildGeometryFilter::tileAndBuildPolygon(
                     inputSRS->transform(part->asVector(), outputSRS);
                 }
             }
-        }
-        else
-        {
-            // with no SRS, we need to automatically figure out what 
-            // is the closest plane for tessellation
-            plane = Tessellator::PLANE_AUTO;
         }
 
         // tessellate

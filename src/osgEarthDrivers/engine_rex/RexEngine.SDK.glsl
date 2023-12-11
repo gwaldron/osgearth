@@ -1,5 +1,7 @@
 #pragma vp_name Rex Terrain SDK
 
+#pragma import_defines(OE_TERRAIN_MORPH_GEOMETRY)
+
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4 oe_tile_elevationTexMatrix;
 uniform sampler2D oe_tile_normalTex;
@@ -13,8 +15,14 @@ uniform vec2 oe_tile_elevTexelCoeff;
 
 // Stage global
 vec4 oe_tile_key;
+vec4 oe_layer_tilec;
 
+// Mesa driver bug work-around: When morph is disabled, use the gl_MultiTexCoord0 directly
+#ifdef OE_TERRAIN_MORPH_GEOMETRY
+#define TERRAIN_UV oe_layer_tilec
+#else
 #define TERRAIN_UV gl_MultiTexCoord0
+#endif
 
 // Sample the elevation data at a UV tile coordinate.
 float oe_terrain_getElevation(in vec2 uv)

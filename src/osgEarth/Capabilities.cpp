@@ -161,6 +161,7 @@ Capabilities::Capabilities() :
     _supportsVertexArrayObjects(true),
     _supportsInt64(false),
     _supportsNVGL(false),
+    _supportsTerrainMorph(true),
     _vendor("Unknown"),
     _renderer("Unknown"),
     _version("3.30")
@@ -249,7 +250,7 @@ Capabilities::Capabilities() :
         OE_INFO << LC << "GPU Renderer:      " << _renderer << std::endl;
 
         _version = std::string( reinterpret_cast<const char*>(glGetString(GL_VERSION)) );
-        OE_INFO << LC << "GL/Driver Version: " << _version << 
+        OE_INFO << LC << "GL/Driver Version: " << _version <<
             " (" << getGLSLVersionInt() << ")" << std::endl;
 
         // Detect core profile by investigating GL_CONTEXT_PROFILE_MASK
@@ -333,11 +334,16 @@ Capabilities::Capabilities() :
         // ATI workarounds:
         bool isATI = _vendor.find("ATI ") == 0;
 
+        // Mesa Work-around. Version 23.1.4 of the Mesa driver is experiencing issues with passing
+        // texture coordinates around in some cases that is impacting terrain morphing. See #2383.
+        if (_version.find("Mesa 23.1.4") != std::string::npos)
+            _supportsTerrainMorph = false;
+
         _maxFastTextureSize = _maxTextureSize;
 
         //OE_INFO << LC << "  Max Fast Texture Size = " << _maxFastTextureSize << std::endl;
 
-        // tetxure compression
+        // texture compression
         std::stringstream buf;
         buf << "Compression = ";
         _supportsARBTC = osg::isGLExtensionSupported( id, "GL_ARB_texture_compression" );

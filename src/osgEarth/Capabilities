@@ -108,10 +108,13 @@ namespace osgEarth
 
         //! Whether the driver support 64-bit integers int GLSL
         bool supportsInt64() const { return _supportsInt64; }
-        
+
         //! Whether the NVIDIA GL4 extensions for unified memory, including
         //! bindless buffers and draw commands, are available
         bool supportsNVGL() const { return _supportsNVGL; }
+
+        /** Whether terrain morphing is supported in the shader */
+        bool supportsTerrainMorph() const { return _supportsTerrainMorph; }
 
     protected:
         Capabilities();
@@ -144,6 +147,7 @@ namespace osgEarth
         bool _supportsVertexArrayObjects;
         bool _supportsInt64;
         bool _supportsNVGL;
+        bool _supportsTerrainMorph;
 
     public:
         friend class Registry;

@@ -250,7 +250,7 @@ RexTerrainEngineNode::onSetMap()
 {
     OE_SOFT_ASSERT_AND_RETURN(_map.valid(), void());
 
-    _morphingSupported = true;
+    _morphingSupported = Capabilities::get().supportsTerrainMorph();
     auto options = getOptions();
     if (options.getLODMethod() ==TerrainLODMethod::SCREEN_SPACE)
     {

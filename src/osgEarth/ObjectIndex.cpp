@@ -197,11 +197,16 @@ ObjectIndex::tagRange(osg::Drawable* drawable, ObjectID id, unsigned int start, 
         ids->setPreserveDataType(true);
     }
 
+    if (ids->size() < start + count)
+    {
+        ids->resize(start + count);
+    }
+
     for (unsigned int i = 0; i < count; ++i)
     {
         (*ids)[start + i] = id;
     }
-
+    
     ids->dirty();
 }
 

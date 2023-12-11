@@ -26,6 +26,7 @@
 #include "Chonk"
 #include "Memory"
 
+#include <osg/ArgumentParser>
 #include <osgText/Font>
 #include <osgDB/Registry>
 
@@ -64,6 +65,12 @@ void osgEarth::initialize()
     {
         GLUtils::useNVGL(true);
     }
+}
+
+void osgEarth::initialize(osg::ArgumentParser& args)
+{
+    osg::DisplaySettings::instance()->readCommandLine(args);
+    initialize();
 }
 
 osgEarth::UID

@@ -24,6 +24,10 @@
 #include <osg/Referenced>
 #include <memory>
 
+namespace osg {
+    class ArgumentParser;
+}
+
 #define OE_COMMENT(STR)
 
 /** osgEarth core */
@@ -35,6 +39,8 @@ namespace osgEarth
     //! Global initializer for osgEarth - call this if you are setting up
     //! windows and views prior to using osgEarth
     extern OSGEARTH_EXPORT void initialize();
+
+    extern OSGEARTH_EXPORT void initialize(osg::ArgumentParser&);
 
     //! Generate an application-wide unique identifier.
     extern OSGEARTH_EXPORT UID createUID();

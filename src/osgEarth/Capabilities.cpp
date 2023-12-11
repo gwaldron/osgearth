@@ -65,7 +65,7 @@ namespace
 	        si.readDISPLAY();
 	        si.setUndefinedScreenDetailsToDefaultScreen();
 
-            osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
+            osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(osg::DisplaySettings::instance());
     	    traits->hostName = si.hostName;
 	        traits->displayNum = si.displayNum;
 	        traits->screenNum = si.screenNum;
@@ -77,13 +77,15 @@ namespace
             traits->doubleBuffer = false;
             traits->sharedContext = 0;
             traits->pbuffer = false;
+
+            // Note: these only work when OSG_GL3_FEATURES is defined (since GL < 3 just gives you the highest version context it can)
             traits->glContextVersion = osg::DisplaySettings::instance()->getGLContextVersion();
             traits->glContextProfileMask = osg::DisplaySettings::instance()->getGLContextProfileMask();
 
             // Intel graphics adapters dont' support pbuffers, and some of their drivers crash when
             // you try to create them. So by default we will only use the unmapped/pbuffer method
             // upon special request.
-            if ( getenv( "OSGEARTH_USE_PBUFFER_TEST" ) )
+            if ( getenv( "OSGEARTH_USE_PBUFFER_TEST") )
             {
                 traits->pbuffer = true;
                 OE_INFO << LC << "Activating pbuffer test for graphics capabilities" << std::endl;
@@ -166,9 +168,9 @@ Capabilities::Capabilities() :
     _renderer("Unknown"),
     _version("3.30")
 {
-    // require OSG be built with GL3 support
+    // Prefer OSG to be built with GL3 support
 #ifndef OSG_GL3_AVAILABLE
-    OE_WARN << LC << "Warning, OpenSceneGraph does not define OSG_GL3_AVAILABLE; "
+    OE_DEBUG << LC << "Warning, OpenSceneGraph does not define OSG_GL3_AVAILABLE; "
         "the application may not function properly" << std::endl;
 #endif
 
@@ -230,27 +232,40 @@ Capabilities::Capabilities() :
 
         OE_INFO << LC << "osgEarth Version:  " << osgEarthGetVersion() << std::endl;
 
+#ifdef GDAL_RELEASE_NAME
+        OE_INFO << LC << "GDAL Version:      " << GDAL_RELEASE_NAME << std::endl;
+#endif
+
 #ifdef OSGEARTH_EMBED_GIT_SHA
         OE_INFO << LC << "osgEarth HEAD SHA: " << osgEarthGitSHA1() << std::endl;
 #endif
 
         OE_INFO << LC << "OSG Version:       " << osgGetVersion() << std::endl;
 
-#ifdef GDAL_RELEASE_NAME
-        OE_INFO << LC << "GDAL Version:      " << GDAL_RELEASE_NAME << std::endl;
+#if OSG_GL3_FEATURES
+        OE_INFO << LC << "OSG GL3 Features:  yes" << std::endl;
+#else
+        OE_INFO << LC << "OSG GL3 Features:  no" << std::endl;
 #endif
+#ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
+        OE_INFO << LC << "OSG FFP Available: yes" << std::endl;
+#else
+        OE_INFO << LC << "OSG FFP Available: no" << std::endl;
+#endif
+
+        OE_INFO << LC << "CPU Cores:         " << _numProcessors << std::endl;
 
         _supportsGLSL = GL2->isGlslSupported;
         _GLSLversion = GL2->glslLanguageVersion;
 
         _vendor = std::string( reinterpret_cast<const char*>(glGetString(GL_VENDOR)) );
-        OE_INFO << LC << "GPU Vendor:        " << _vendor << std::endl;
+        OE_DEBUG << LC << "GPU Vendor:        " << _vendor << std::endl;
 
         _renderer = std::string( reinterpret_cast<const char*>(glGetString(GL_RENDERER)) );
         OE_INFO << LC << "GPU Renderer:      " << _renderer << std::endl;
 
         _version = std::string( reinterpret_cast<const char*>(glGetString(GL_VERSION)) );
-        OE_INFO << LC << "GL/Driver Version: " << _version <<
+        OE_INFO << LC << "GL Context/Driver: " << _version << 
             " (" << getGLSLVersionInt() << ")" << std::endl;
 
         // Detect core profile by investigating GL_CONTEXT_PROFILE_MASK
@@ -264,7 +279,7 @@ Capabilities::Capabilities() :
             glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &profileMask);
             _isCoreProfile = ((profileMask & GL_CONTEXT_CORE_PROFILE_BIT) != 0);
         }
-        OE_INFO << LC << "GL Core Profile:   " << SAYBOOL(_isCoreProfile) << std::endl;
+        OE_INFO << LC << "GL CORE Profile:   " << SAYBOOL(_isCoreProfile) << std::endl;
 
         // this extension implies the availability of
         // GL_NV_vertex_buffer_unified_memory (bindless buffers)

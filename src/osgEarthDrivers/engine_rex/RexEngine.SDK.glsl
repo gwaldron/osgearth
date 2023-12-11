@@ -12,8 +12,9 @@ uniform mat4 oe_tile_normalTexMatrix;
 uniform vec2 oe_tile_elevTexelCoeff;
 
 // Stage global
-vec4 oe_layer_tilec;
 vec4 oe_tile_key;
+
+#define TERRAIN_UV gl_MultiTexCoord0
 
 // Sample the elevation data at a UV tile coordinate.
 float oe_terrain_getElevation(in vec2 uv)
@@ -31,7 +32,7 @@ float oe_terrain_getElevation(in vec2 uv)
 // Read the elevation at the build-in tile coordinates (convenience)
 float oe_terrain_getElevation()
 {
-    return oe_terrain_getElevation(oe_layer_tilec.st);
+    return oe_terrain_getElevation(TERRAIN_UV.st);
 }
 
 // Read the normal vector and curvature at resolved UV tile coordinates.
@@ -50,7 +51,7 @@ vec4 oe_terrain_getNormalAndCurvature(in vec2 uv_scaledBiased)
 
 vec4 oe_terrain_getNormalAndCurvature()
 {
-    vec2 uv_scaledBiased = oe_layer_tilec.st
+    vec2 uv_scaledBiased = TERRAIN_UV.st
         * oe_tile_elevTexelCoeff.x * oe_tile_normalTexMatrix[0][0]
         + oe_tile_elevTexelCoeff.x * oe_tile_normalTexMatrix[3].st
         + oe_tile_elevTexelCoeff.y;

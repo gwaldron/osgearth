@@ -19,11 +19,31 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
-#ifndef OSGEARTH_VERSION
-#define OSGEARTH_VERSION 1
+#pragma once
 
 #include <osgEarth/Export>
+
+namespace osgEarth
+{
+    struct Version
+    {
+        int v[3] = { 0, 0, 0 };
+        inline bool lessThan(int major, int minor, int patch) const {
+            return v[0] < major || (v[0] == major && (v[1] < minor || (v[1] == minor && v[2] < patch)));
+        }
+        inline bool lessThanOrEqualTo(int major, int minor, int patch) const {
+            return v[0] < major || (v[0] == major && (v[1] < minor || (v[1] == minor && v[2] <= patch)));
+        }
+        inline bool greaterThan(int major, int minor, int patch) const {
+            return v[0] > major || (v[0] == major && (v[1] > minor || (v[1] == minor && v[2] > patch)));
+        }
+        inline bool greaterThanOrEqualTo(int major, int minor, int patch) const {
+            return v[0] > major || (v[0] == major && (v[1] > minor || (v[1] == minor && v[2] >= patch)));
+        }
+    };
+
+    OSGEARTH_EXPORT Version parseVersion(const char*);
+}
 
 extern "C" {
 
@@ -61,4 +81,3 @@ extern OSGEARTH_EXPORT const char* osgEarthGetLibraryName();
 #define OSGEARTH_VERSION_REVISION 0
 }
 
-#endif

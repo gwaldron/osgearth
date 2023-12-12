@@ -73,3 +73,10 @@ extern "C" {
     }
 
 }
+
+osgEarth::Version osgEarth::parseVersion(const char* in)
+{
+    osgEarth::Version v;
+    sscanf(in, "%d.%d.%d", &v.major, &v.minor, &v.patch);
+    return v;
+}

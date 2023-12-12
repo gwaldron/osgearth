@@ -1566,7 +1566,7 @@ GeoExtent::area() const
 double
 GeoExtent::normalizeX(double x) const
 {
-    if (is_valid(x) && _srs.valid() && _srs->isGeographic())
+    if (is_valid(x) && isValid() && _srs->isGeographic())
     {
         if (fabs(x) <= 180.0)
         {

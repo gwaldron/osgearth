@@ -27,18 +27,39 @@ namespace osgEarth
 {
     struct Version
     {
-        int v[3] = { 0, 0, 0 };
+        int major = 0, minor = 0, patch = 0;
+
+        inline bool lessThan(const Version& rhs) const {
+            return major < rhs.major ||
+                (major == rhs.major && minor < rhs.minor) ||
+                (major == rhs.major && minor == rhs.minor && patch < rhs.patch);
+        }
         inline bool lessThan(int major, int minor, int patch) const {
-            return v[0] < major || (v[0] == major && (v[1] < minor || (v[1] == minor && v[2] < patch)));
+            return this->lessThan(Version{ major, minor, patch });
+        }
+        inline bool lessThanOrEqualTo(const Version& rhs) const {
+            return major < rhs.major ||
+                (major == rhs.major && minor < rhs.minor) ||
+                (major == rhs.major && minor == rhs.minor && patch <= rhs.patch);
         }
         inline bool lessThanOrEqualTo(int major, int minor, int patch) const {
-            return v[0] < major || (v[0] == major && (v[1] < minor || (v[1] == minor && v[2] <= patch)));
+            return this->lessThanOrEqualTo(Version{ major, minor, patch });
+        }
+        inline bool greaterThan(const Version& rhs) const {
+            return major > rhs.major ||
+                (major == rhs.major && minor > rhs.minor) ||
+                (major == rhs.major && minor == rhs.minor && patch > rhs.patch);
         }
         inline bool greaterThan(int major, int minor, int patch) const {
-            return v[0] > major || (v[0] == major && (v[1] > minor || (v[1] == minor && v[2] > patch)));
+            return this->greaterThan(Version{ major, minor, patch });
+        }
+        inline bool greaterThanOrEqualTo(const Version& rhs) const {
+            return major > rhs.major ||
+                (major == rhs.major && minor > rhs.minor) ||
+                (major == rhs.major && minor == rhs.minor && patch >= rhs.patch);
         }
         inline bool greaterThanOrEqualTo(int major, int minor, int patch) const {
-            return v[0] > major || (v[0] == major && (v[1] > minor || (v[1] == minor && v[2] >= patch)));
+            return this->greaterThanOrEqualTo(Version{ major, minor, patch });
         }
     };
 

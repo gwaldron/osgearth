@@ -263,13 +263,17 @@ RexTerrainEngineNode::onSetMap()
     // There is an (apparent) bug in the mesa 23.1.4 driver that causes display artifacts 
     // when doing morphing; this code will attempt to detect that condition and disable
     // the offending code until we can find a workaround.
-    auto vendor = Registry::capabilities().getDriverVendor();
-    auto version = Registry::capabilities().getDriverVersion();
-    if (vendor == "Mesa" && version.greaterThanOrEqualTo(23, 1, 4))
+    auto gl_version_str = Registry::capabilities().getVersion();
+    auto mesa_pos = gl_version_str.find("Mesa");
+    if (mesa_pos != std::string::npos)
     {
-        OE_WARN << LC << "Detected Mesa >= 23.1.4 driver; disabling terrain & imagery morphing" << std::endl;
-        _morphingSupported = false;
-        getOrCreateStateSet()->setDefine("OE_MESA_23_WORKAROUND");
+        auto ver = gl_version_str.substr(mesa_pos + 5);
+        Version driver_version = parseVersion(ver.c_str());
+        if (driver_version.greaterThanOrEqualTo(23, 1, 4))
+        {
+            _morphingSupported = false;
+            getOrCreateStateSet()->setDefine("OE_MESA_23_WORKAROUND");
+        }
     }
 
     // morphing imagery LODs requires we bind parent textures to their own unit.

@@ -76,13 +76,7 @@ namespace osgEarth
         const std::string& getRenderer() const { return _renderer;}
 
         //! the GL_VERSION string, which include the GL version, driver vendor, and driver version
-        const std::string& getVersion() const { return _version;}
-
-        //! GPU driver version extracted from GL_VERSION
-        const Version& getDriverVersion() const { return _driverVersion; }
-
-        //! GPU driver vendor extracted from GL_VERSION
-        const std::string& getDriverVendor() const { return _driverVendor; }
+        const std::string& getVersion() const { return _version; }
 
         /** whether the GPU supports DEPTH_PACKED_STENCIL buffer */
         bool supportsDepthPackedStencilBuffer() const { return _supportsDepthPackedStencilBuffer; }
@@ -138,9 +132,6 @@ namespace osgEarth
         std::string _vendor;
         std::string _renderer;
         std::string _version;
-
-        std::string _driverVendor;
-        Version _driverVersion;
 
         bool _supportsS3TC;
         bool _supportsPVRTC;

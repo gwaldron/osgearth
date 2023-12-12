@@ -267,6 +267,7 @@ Capabilities::Capabilities() :
         OE_INFO << LC << "GL_VERSION:        " << _version << std::endl;
         //OE_INFO << LC << "GLSL:             " << getGLSLVersionInt() << std::endl;
 
+#if 0
         // assemble the driver version if possible.
         std::vector<std::string> version_tokens;
         Strings::StringTokenizer parse_glversion(_version, version_tokens, " ", "", false, true);
@@ -274,9 +275,8 @@ Capabilities::Capabilities() :
         {
             _driverVendor = version_tokens[1];
             _driverVersion = parseVersion(version_tokens[2].c_str());
-            //OE_INFO << LC << "GL_VERSION vendor: " << _driverVendor << std::endl;
-            //OE_INFO << LC << "GL_VERSION driver: " << _driverVersion.major << "." << _driverVersion.minor << "." << _driverVersion.patch << std::endl;
         }
+#endif
 
         // Detect core profile by investigating GL_CONTEXT_PROFILE_MASK
         if ( GL2->glVersion < 3.2f )

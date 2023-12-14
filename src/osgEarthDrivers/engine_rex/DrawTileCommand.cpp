@@ -25,9 +25,7 @@ using namespace osgEarth::REX;
 #define LC "[DrawTileCommand] "
 
 bool
-DrawTileCommand::apply(
-    osg::RenderInfo& ri,
-    void* implData) const
+DrawTileCommand::apply(osg::RenderInfo& ri, void* implData) const
 {
     DrawState& ds = *static_cast<DrawState*>(implData);
     ProgramState& pps = ds.getProgramState(ri);
@@ -47,13 +45,6 @@ DrawTileCommand::apply(
         ext->glUniform1i(pps._layerOrderUL, (GLint)_layerOrder);
         pps._layerOrder = _layerOrder;
     }
-
-    // Elevation coefficients (can probably be terrain-wide)
-    //if (pps._elevTexelCoeffUL >= 0 && !pps._elevTexelCoeff.isSetTo(_elevTexelCoeff))
-    //{
-    //    ext->glUniform2fv(pps._elevTexelCoeffUL, 1, _elevTexelCoeff.ptr());
-    //    pps._elevTexelCoeff = _elevTexelCoeff;
-    //}
 
     // Morphing constants for this LOD
     if (pps._morphConstantsUL >= 0 && !pps._morphConstants.isSetTo(_morphConstants))

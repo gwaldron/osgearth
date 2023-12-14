@@ -634,8 +634,8 @@ ChonkFactory::load(osg::Node* node, Chonk* chonk, float far_pixel_scale, float n
     OE_PROFILING_ZONE;
 
     // convert all primitive sets to indexed primitives
-    //osgUtil::Optimizer o;
-    //o.optimize(node, o.INDEX_MESH);
+    osgUtil::Optimizer o;
+    o.optimize(node, o.VERTEX_PRETRANSFORM | o.VERTEX_POSTTRANSFORM);
     
     // first count up the memory we need and allocate it
     Counter counter;
@@ -667,10 +667,6 @@ ChonkFactory::load(osg::Node* node, ChonkDrawable* drawable, float far_pixel_sca
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
     OE_SOFT_ASSERT_AND_RETURN(drawable != nullptr, false);
     OE_PROFILING_ZONE;
-
-    // convert all primitive sets to indexed primitives
-    //osgUtil::Optimizer o;
-    //o.optimize(node, o.INDEX_MESH);
 
     Chonk::Ptr chonk;
 
@@ -704,10 +700,6 @@ ChonkDrawable::add(osg::Node* node, ChonkFactory& factory, float far_pixel_scale
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
     OE_PROFILING_ZONE;
-
-    // convert all primitive sets to indexed primitives
-    //osgUtil::Optimizer o;
-    //o.optimize(node, o.INDEX_MESH);
 
     return factory.load(node, this, far_pixel_scale, near_pixel_scale);
 }
@@ -1298,7 +1290,9 @@ ChonkDrawable::GLObjects::draw(osg::State& state)
     else
         _instanceInputBuf->bindBufferBase(0);
 
-    _ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); // ...maybe
+    // likely do not need this here since the cull leafs execute 
+    // before the raw leafs. Reevaluate if necessary.
+    //_ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     GLenum elementType = sizeof(Chonk::element_t) == sizeof(GLushort) ?
         GL_UNSIGNED_SHORT :

@@ -40,11 +40,10 @@ namespace osgEarth { namespace REX
      */
     struct SamplerState
     {
-        SamplerState() : _matrixUL(-1) { }
-        std::string _name;
+        std::string _name; // Sampler name
         optional<Texture::Ptr> _texture; // Texture currently bound
         optional<osg::Matrixf> _matrix; // Matrix that is currently set
-        GLint _matrixUL; // Matrix uniform location
+        GLint _matrixUL = -1; // Matrix uniform location
 
         void clear() {
             _texture.clear();
@@ -68,30 +67,20 @@ namespace osgEarth { namespace REX
 
     struct ProgramState
     {
-        const osg::Program::PerContextProgram* _pcp;
+        const osg::Program::PerContextProgram* _pcp = nullptr;
 
         // uniform locations
-        GLint _tileKeyUL;
-        GLint _parentTextureExistsUL;
-        GLint _layerUidUL;
-        GLint _layerOrderUL;
-        //GLint _elevTexelCoeffUL;
-        GLint _morphConstantsUL;
+        GLint _tileKeyUL = -1;
+        GLint _parentTextureExistsUL = -1;
+        GLint _layerUidUL = -1;
+        GLint _layerOrderUL = -1;
+        GLint _morphConstantsUL = -1;
 
-        //optional<osg::Vec2f> _elevTexelCoeff;
         optional<osg::Vec2f> _morphConstants;
-        optional<bool>       _parentTextureExists;
-        optional<int>        _layerOrder;
+        optional<bool> _parentTextureExists;
+        optional<int> _layerOrder;
 
         TileSamplerState _samplerState;
-
-        ProgramState() :
-            _pcp(nullptr),
-            _tileKeyUL(-1),
-            _parentTextureExistsUL(-1),
-            _layerUidUL(-1),
-            _layerOrderUL(-1),
-            _morphConstantsUL(-1) { }
 
         void reset();
 
@@ -112,15 +101,9 @@ namespace osgEarth { namespace REX
         using ProgramStates = std::unordered_map<const void*, ProgramState>;
         ProgramStates _perProgramStates;
 
-        const RenderBindings* _bindings;
+        const RenderBindings* _bindings = nullptr;
         osg::BoundingSphere _bs;
         osg::BoundingBox _box;
-
-        DrawState() :
-            _bindings(0L)
-        {
-            //nop
-        }
 
         ProgramState& getProgramState(osg::RenderInfo& ri)
         {

@@ -115,6 +115,56 @@ void oeui_render_metal(inout vec4 color) {
 }
 )";
 
+    const char* render_draw_id = R"(
+#version 460
+#pragma vp_function oeui_render_drawid_vs, vertex_model
+flat out int oeui_drawid;
+void oeui_render_drawid_vs(inout vec4 vertex) {
+    oeui_drawid = gl_DrawID;
+}
+[break]
+#version 460
+#pragma vp_function oeui_render_drawid, fragment_lighting, last
+flat in int oeui_drawid;
+const vec3 colors[32] = { // thanks, GPT
+    vec3(1.0, 0.0, 0.0),   // Red
+    vec3(0.0, 1.0, 0.0),   // Green
+    vec3(0.0, 0.0, 1.0),   // Blue
+    vec3(1.0, 1.0, 0.0),   // Yellow
+    vec3(1.0, 0.0, 1.0),   // Magenta
+    vec3(0.0, 1.0, 1.0),   // Cyan
+    vec3(1.0, 0.5, 0.0),   // Orange
+    vec3(0.5, 1.0, 0.0),   // Lime
+    vec3(0.0, 0.5, 1.0),   // Sky Blue
+    vec3(0.5, 0.0, 1.0),   // Purple
+    vec3(1.0, 0.5, 0.5),   // Light Red
+    vec3(0.5, 1.0, 0.5),   // Light Green
+    vec3(0.5, 0.5, 1.0),   // Light Blue
+    vec3(1.0, 1.0, 0.5),   // Light Yellow
+    vec3(1.0, 0.5, 1.0),   // Light Magenta
+    vec3(0.5, 1.0, 1.0),   // Light Cyan
+    vec3(0.8, 0.2, 0.2),   // Dark Red
+    vec3(0.2, 0.8, 0.2),   // Dark Green
+    vec3(0.2, 0.2, 0.8),   // Dark Blue
+    vec3(0.8, 0.8, 0.2),   // Dark Yellow
+    vec3(0.8, 0.2, 0.8),   // Dark Magenta
+    vec3(0.2, 0.8, 0.8),   // Dark Cyan
+    vec3(0.8, 0.5, 0.2),   // Brown
+    vec3(0.5, 0.8, 0.2),   // Olive Green
+    vec3(0.2, 0.5, 0.8),   // Steel Blue
+    vec3(0.5, 0.2, 0.8),   // Indigo
+    vec3(0.8, 0.5, 0.5),   // Salmon
+    vec3(0.5, 0.8, 0.5),   // Light Olive Green
+    vec3(0.5, 0.5, 0.8),   // Cornflower Blue
+    vec3(0.8, 0.8, 0.5),   // Light Khaki
+    vec3(0.8, 0.5, 0.8),   // Orchid
+    vec3(0.5, 0.8, 0.8)    // Light Slate Gray
+};
+void oeui_render_drawid(inout vec4 color) {
+    color.rgb = colors[oeui_drawid % 32];
+}
+)";
+
 }
 
 namespace osgEarth
@@ -267,6 +317,9 @@ namespace osgEarth
                     }
                     if (ImGui::RadioButton("AO (PBR)", &s_renderMode, m++)) {
                         setRenderMode(render_ao, ri);
+                    }
+                    if (ImGui::RadioButton("Draw ID", &s_renderMode, m++)) {
+                        setRenderMode(render_draw_id, ri);
                     }
 
                     if (GLUtils::useNVGL())

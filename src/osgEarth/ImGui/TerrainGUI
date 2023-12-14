@@ -144,12 +144,20 @@ namespace osgEarth
                             ImGuiLTable::Section("Tessellation");
 
                             float level = options.getTessellationLevel();
-                            if (ImGuiLTable::SliderFloat("Level", &level, 1.0f, 8.0f))
+                            if (ImGuiLTable::SliderFloat("Level", &level, 1.0f, 12.0f))
+                            {
                                 options.setTessellationLevel(level);
+                                _mapNode->getTerrainEngine()->dirtyTerrainOptions();
+                            }
 
                             float range = options.getTessellationRange();
-                            if (ImGuiLTable::SliderFloat("Range", &range, 50.0f, 5000.0f, "%.0f", ImGuiSliderFlags_Logarithmic))
+                            if (ImGuiLTable::SliderFloat("Range", &range, 0.0f, 5000.0f, "%.0f", ImGuiSliderFlags_Logarithmic))
+                            {
                                 options.setTessellationRange(range);
+                                _mapNode->getTerrainEngine()->dirtyTerrainOptions();
+                            }
+
+                            ImGui::Separator();
                         }
 
                         unsigned threads = options.getConcurrency();

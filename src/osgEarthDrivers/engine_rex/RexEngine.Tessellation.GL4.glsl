@@ -10,13 +10,11 @@ layout(vertices=3) out;
 uniform float oe_terrain_tess;
 uniform float oe_terrain_tess_range;
 
-// temporary: use lifemap texture from earth file
 #pragma oe_use_shared_layer(LIFEMAP_TEX, LIFEMAP_MAT)
 
 varying vec4 oe_layer_tilec;
 varying vec4 vp_Vertex;
 varying vec3 vp_Normal;
-flat out vec4 oe_tile_key;
 
 void VP_LoadVertex(in int);
 float oe_terrain_getElevation();
@@ -31,7 +29,6 @@ void oe_rex_TCS()
 {
     if (gl_InvocationID == 0)
     {
-#if 1
         // iterator backward so we end up loading vertex 0
         float d[3];
         vec3 v[3];
@@ -42,13 +39,13 @@ void oe_rex_TCS()
             v[i] = (mvm * (vp_Vertex + vec4(vp_Normal * oe_terrain_getElevation(), 0.0))).xyz;
             d[i] = 1.0;
 #ifdef LIFEMAP_TEX
-            d[i] = 1.0 - texture(LIFEMAP_TEX, (LIFEMAP_MAT*oe_layer_tilec).st).g;
+            d[i] = texture(LIFEMAP_TEX, (LIFEMAP_MAT *oe_layer_tilec).st).r; // more rugged = more tessellated
 #endif
-            d[i] = oe_terrain_tess * d[i] * d[i] * d[i];
+            d[i] = oe_terrain_tess * d[i];
         }
 
-        float min_dist = oe_terrain_tess_range;
-        float max_dist = oe_terrain_tess_range * 3.0;
+        float max_dist = oe_terrain_tess_range;
+        float min_dist = oe_terrain_tess_range / 6.0;
 
         vec3 m12 = 0.5*(v[1] + v[2]);
         vec3 m20 = 0.5*(v[2] + v[0]);
@@ -68,13 +65,6 @@ void oe_rex_TCS()
         gl_TessLevelOuter[1] = e1;
         gl_TessLevelOuter[2] = e2;
         gl_TessLevelInner[0] = e3;
-#else
-        float t = max(1, oe_terrain_tess * (oe_tile_key.z - 16));
-        gl_TessLevelOuter[0] = t;
-        gl_TessLevelOuter[1] = t;
-        gl_TessLevelOuter[2] = t;
-        gl_TessLevelInner[0] = t;
-#endif
     }
 }
 
@@ -86,7 +76,6 @@ void oe_rex_TCS()
 
 // osgEarth terrain is always CCW winding
 layout(triangles, equal_spacing, ccw) in;
-//layout(triangles, fractional_even_spacing, ccw) in;
 
 // Internal helpers:
 void VP_Interpolate3();
@@ -127,11 +116,6 @@ varying vec3 vp_Normal;
 void oe_rex_TES()
 {
     VP_Interpolate3();
-    
-    // Must re-normalize the normal vector since interpolation was linear?
-    //vp_Normal = normalize(vp_Normal);
-    //oe_UpVectorView = normalize(oe_UpVectorView);
-
     VP_EmitVertex();
 }
 

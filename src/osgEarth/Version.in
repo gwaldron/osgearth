@@ -19,11 +19,52 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
-#ifndef OSGEARTH_VERSION
-#define OSGEARTH_VERSION 1
+#pragma once
 
 #include <osgEarth/Export>
+
+namespace osgEarth
+{
+    struct Version
+    {
+        int major = 0, minor = 0, patch = 0;
+
+        inline bool lessThan(const Version& rhs) const {
+            return major < rhs.major ||
+                (major == rhs.major && minor < rhs.minor) ||
+                (major == rhs.major && minor == rhs.minor && patch < rhs.patch);
+        }
+        inline bool lessThan(int major, int minor, int patch) const {
+            return this->lessThan(Version{ major, minor, patch });
+        }
+        inline bool lessThanOrEqualTo(const Version& rhs) const {
+            return major < rhs.major ||
+                (major == rhs.major && minor < rhs.minor) ||
+                (major == rhs.major && minor == rhs.minor && patch <= rhs.patch);
+        }
+        inline bool lessThanOrEqualTo(int major, int minor, int patch) const {
+            return this->lessThanOrEqualTo(Version{ major, minor, patch });
+        }
+        inline bool greaterThan(const Version& rhs) const {
+            return major > rhs.major ||
+                (major == rhs.major && minor > rhs.minor) ||
+                (major == rhs.major && minor == rhs.minor && patch > rhs.patch);
+        }
+        inline bool greaterThan(int major, int minor, int patch) const {
+            return this->greaterThan(Version{ major, minor, patch });
+        }
+        inline bool greaterThanOrEqualTo(const Version& rhs) const {
+            return major > rhs.major ||
+                (major == rhs.major && minor > rhs.minor) ||
+                (major == rhs.major && minor == rhs.minor && patch >= rhs.patch);
+        }
+        inline bool greaterThanOrEqualTo(int major, int minor, int patch) const {
+            return this->greaterThanOrEqualTo(Version{ major, minor, patch });
+        }
+    };
+
+    OSGEARTH_EXPORT Version parseVersion(const char*);
+}
 
 extern "C" {
 
@@ -61,4 +102,3 @@ extern OSGEARTH_EXPORT const char* osgEarthGetLibraryName();
 #define OSGEARTH_VERSION_REVISION 0
 }
 
-#endif

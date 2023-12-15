@@ -1,5 +1,12 @@
 #pragma vp_name Rex Terrain SDK
 
+#pragma import_defines(OE_MESA_23_WORKAROUND)
+#ifdef OE_MESA_23_WORKAROUND
+#define TILE_COORDS gl_MultiTexCoord0
+#else
+#define TILE_COORDS oe_layer_tilec
+#endif
+
 uniform sampler2D oe_tile_elevationTex;
 uniform mat4 oe_tile_elevationTexMatrix;
 uniform sampler2D oe_tile_normalTex;
@@ -31,7 +38,7 @@ float oe_terrain_getElevation(in vec2 uv)
 // Read the elevation at the build-in tile coordinates (convenience)
 float oe_terrain_getElevation()
 {
-    return oe_terrain_getElevation(oe_layer_tilec.st);
+    return oe_terrain_getElevation(TILE_COORDS.st);
 }
 
 // Read the normal vector and curvature at resolved UV tile coordinates.
@@ -50,7 +57,7 @@ vec4 oe_terrain_getNormalAndCurvature(in vec2 uv_scaledBiased)
 
 vec4 oe_terrain_getNormalAndCurvature()
 {
-    vec2 uv_scaledBiased = oe_layer_tilec.st
+    vec2 uv_scaledBiased = TILE_COORDS.st
         * oe_tile_elevTexelCoeff.x * oe_tile_normalTexMatrix[0][0]
         + oe_tile_elevTexelCoeff.x * oe_tile_normalTexMatrix[3].st
         + oe_tile_elevTexelCoeff.y;

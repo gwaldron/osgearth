@@ -24,13 +24,12 @@
 #define OSGEARTH_CAPABILITIES_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Version>
 #include <osg/Uniform>
 #include <osg/Texture>
 
 namespace osgEarth
 {
-    class VirtualProgram;
-
     /**
      * Stores information about the hardware and graphics system capbilities.
      * The osgEarth::Registry stores a singleton Capabilities object that you can
@@ -70,14 +69,14 @@ namespace osgEarth
         /** Are we running OpenGLES? */
         bool isGLES() const { return _isGLES; }
 
-        /** the GPU vendor */
+        //! Reported GL_VENDOR
         const std::string& getVendor() const { return _vendor;}
 
-        /** the GPU renderer */
+        //! Reported GL_RENDERER
         const std::string& getRenderer() const { return _renderer;}
 
-        /** the GPU driver version */
-        const std::string& getVersion() const { return _version;}
+        //! the GL_VERSION string, which include the GL version, driver vendor, and driver version
+        const std::string& getVersion() const { return _version; }
 
         /** whether the GPU supports DEPTH_PACKED_STENCIL buffer */
         bool supportsDepthPackedStencilBuffer() const { return _supportsDepthPackedStencilBuffer; }
@@ -133,6 +132,7 @@ namespace osgEarth
         std::string _vendor;
         std::string _renderer;
         std::string _version;
+
         bool _supportsS3TC;
         bool _supportsPVRTC;
         bool _supportsARBTC;

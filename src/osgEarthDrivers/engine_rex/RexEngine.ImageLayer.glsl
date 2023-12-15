@@ -3,6 +3,13 @@
 #pragma vp_location   vertex_view
 #pragma vp_order      0.4
 
+#pragma import_defines(OE_MESA_23_WORKAROUND)
+#ifdef OE_MESA_23_WORKAROUND
+    #define TILE_COORDS gl_MultiTexCoord0
+#else
+    #define TILE_COORDS oe_layer_tilec
+#endif
+
 // Stage globals
 vec4 oe_layer_tilec;
 vec2 oe_layer_texc;
@@ -14,8 +21,8 @@ uniform mat4 oe_layer_texParentMatrix;
 void oe_rex_imageLayer_VS(inout vec4 vertexView)
 {
     // calculate the texture coordinates:
-    oe_layer_texc = (oe_layer_texMatrix * oe_layer_tilec).st;
-    oe_layer_texcParent = (oe_layer_texParentMatrix * oe_layer_tilec).st;
+    oe_layer_texc = (oe_layer_texMatrix * TILE_COORDS).st;
+    oe_layer_texcParent = (oe_layer_texParentMatrix * TILE_COORDS).st;
 }
 
 

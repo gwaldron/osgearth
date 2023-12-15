@@ -25,6 +25,7 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
 #include <chrono>
 #include <list>
 
@@ -140,6 +141,18 @@ namespace osgEarth
 
                     ImGui::Checkbox("Unref image data after apply",
                         &Registry::instance()->unRefImageDataAfterApply().mutable_value());
+
+                    ImGui::Separator();
+                    if (ImGuiLTable::Begin("caps"))
+                    {
+                        auto& caps = osgEarth::Registry::capabilities();
+                        ImGuiLTable::Text("osgEarth", osgEarthGetVersion());
+                        ImGuiLTable::Text("OSG", osgGetVersion());
+                        ImGuiLTable::Text("GL_VENDOR", caps.getVendor().c_str());
+                        ImGuiLTable::Text("GL_RENDERER", caps.getRenderer().c_str());
+                        ImGuiLTable::Text("GL_VERSION", caps.getVersion().c_str());
+                        ImGuiLTable::End();
+                    }
                 }
                 ImGui::End();
             }

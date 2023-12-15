@@ -130,7 +130,7 @@ namespace
     // custom cull callback for the wind drawable
     struct WindStateCuller : public osg::Drawable::CullCallback
     {
-        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const;
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const override;
     };
 
     //! Drawable that runs the compute shader to populate our wind texture.
@@ -139,6 +139,9 @@ namespace
     public:
         WindDrawable(const osgDB::Options* readOptions);
 
+        void accept(osg::NodeVisitor& nv) override {
+            osg::Drawable::accept(nv);
+        }
         void setupPerCameraState(const osg::Camera* camera);
         void streamDataToGPU(osg::RenderInfo& ri, GLObjects& globjects) const;
         void updateBuffers(CameraState&, osgUtil::CullVisitor*, const SpatialReference* srs);
@@ -507,6 +510,8 @@ WindLayer::openImplementation()
         return Status(Status::ResourceUnavailable, "WindLayer requires GL 4.3+");
     }
 
+    _drawable = new WindDrawable(getReadOptions());
+
     return Layer::openImplementation();
 }
 
@@ -528,8 +533,10 @@ WindLayer::prepareForRendering(TerrainEngine* engine)
     Layer::prepareForRendering(engine);
 
     // Create the wind drawable that will provide a wind texture
-    WindDrawable* wd = new WindDrawable(getReadOptions());
-    _drawable = wd;
+    //WindDrawable* wd = new WindDrawable(getReadOptions());
+    //_drawable = wd;
+    WindDrawable* wd = dynamic_cast<WindDrawable*>(_drawable.get());
+    OE_SOFT_ASSERT_AND_RETURN(wd, void());
 
     // texture image unit for the shared wind LUT
     engine->getResources()->reserveTextureImageUnit(wd->_unitReservation, "WindLayer");

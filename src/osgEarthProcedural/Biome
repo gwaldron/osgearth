@@ -91,7 +91,7 @@ namespace osgEarth
             //! Stiffness, or how much it will move in the wind. [0..1]
             //!  - 0 = no stiffness, free to move;
             //!  - 1 = completely stiff, wind has no effect.
-            //! Default is 0.
+            //! Default is 0.5
             OE_OPTION(float, stiffness);
 
             //! Minimum lushness of this asset [0..1] - the asset becomes a 

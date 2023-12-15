@@ -32,13 +32,7 @@ uniform sampler3D OE_WIND_TEX;
 uniform mat4 OE_WIND_TEX_MATRIX;
 uniform float osg_FrameTime;
 
-#pragma import_defines(OE_TWEAKABLE)
-#ifdef OE_TWEAKABLE
-#define tweakable uniform
-#else
-#define tweakable const
-#endif
-tweakable float oe_wind_power = 1.0;
+uniform float oe_wind_power = 1.0;
 
 void oe_apply_wind(inout vec4 vertex, in int index)
 {
@@ -82,7 +76,8 @@ void oe_vegetation_vs_view(inout vec4 vertex)
     oe_lod = instances[i].lod;
 
 #ifdef OE_WIND_TEX
-    oe_apply_wind(vertex, i);
+    if (oe_lod == 0)
+        oe_apply_wind(vertex, i);
 #endif
 }
 

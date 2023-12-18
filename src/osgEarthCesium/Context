@@ -30,11 +30,11 @@
 #include "TaskProcessor"
 
 #include <gsl/gsl>
-#include <Cesium3DTilesSelection/GltfUtilities.h>
-#include <Cesium3DTilesSelection/registerAllTileContentTypes.h>
+#include <CesiumGltfContent/GltfUtilities.h>
+#include <Cesium3DTilesContent/registerAllTileContentTypes.h>
 #include <CesiumGltf/AccessorView.h>
 #include <Cesium3DTilesSelection/Tileset.h>
-#include <Cesium3DTilesSelection/IonRasterOverlay.h>
+#include <CesiumRasterOverlays/IonRasterOverlay.h>
 #include <CesiumAsync/AsyncSystem.h>
 
 #include <glm/gtc/type_ptr.hpp>
@@ -62,7 +62,7 @@ namespace osgEarth {
             std::shared_ptr<AssetAccessor> assetAccessor;
             std::shared_ptr<TaskProcessor> taskProcessor;
             std::shared_ptr< spdlog::logger > logger;
-            std::shared_ptr< Cesium3DTilesSelection::CreditSystem > creditSystem;
+            std::shared_ptr< CesiumUtility::CreditSystem > creditSystem;
             CesiumAsync::AsyncSystem asyncSystem;
             std::unique_ptr<Context> context;
         };

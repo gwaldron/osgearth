@@ -20,7 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "PrepareRenderResources"
-#include <Cesium3DTilesSelection/GltfUtilities.h>
+#include <CesiumGltfContent/GltfUtilities.h>
 #include <CesiumGltf/AccessorView.h>
 
 #include <osg/Texture2D>
@@ -187,8 +187,8 @@ public:
         osg::Matrixd matrix;
 
         glm::dmat4x4 rootTransform = _transform;
-        rootTransform = Cesium3DTilesSelection::GltfUtilities::applyRtcCenter(*_model, rootTransform);
-        rootTransform = Cesium3DTilesSelection::GltfUtilities::applyGltfUpAxisTransform(*_model, rootTransform);
+        rootTransform = CesiumGltfContent::GltfUtilities::applyRtcCenter(*_model, rootTransform);
+        rootTransform = CesiumGltfContent::GltfUtilities::applyGltfUpAxisTransform(*_model, rootTransform);
         matrix.set(glm::value_ptr(rootTransform));
 
         //matrix.set(glm::value_ptr(_transform));
@@ -636,7 +636,7 @@ void* PrepareRendererResources::prepareRasterInLoadThread(
 }
 
 void* PrepareRendererResources::prepareRasterInMainThread(
-    Cesium3DTilesSelection::RasterOverlayTile& rasterTile,
+    CesiumRasterOverlays::RasterOverlayTile& rasterTile,
     void* pLoadThreadResult)
 {
     LoadRasterThreadResult* loadThreadResult = reinterpret_cast<LoadRasterThreadResult*>(pLoadThreadResult);
@@ -654,7 +654,7 @@ void* PrepareRendererResources::prepareRasterInMainThread(
 }
 
 void PrepareRendererResources::freeRaster(
-    const Cesium3DTilesSelection::RasterOverlayTile& rasterTile,
+    const CesiumRasterOverlays::RasterOverlayTile& rasterTile,
     void* pLoadThreadResult,
     void* pMainThreadResult) noexcept
 {
@@ -718,7 +718,7 @@ const char* raster_overlay_fs = R"(
 void PrepareRendererResources::attachRasterInMainThread(
     const Cesium3DTilesSelection::Tile& tile,
     int32_t overlayTextureCoordinateID,
-    const Cesium3DTilesSelection::RasterOverlayTile& rasterTile,
+    const CesiumRasterOverlays::RasterOverlayTile& rasterTile,
     void* pMainThreadRendererResources,
     const glm::dvec2& translation,
     const glm::dvec2& scale)
@@ -762,7 +762,7 @@ void PrepareRendererResources::attachRasterInMainThread(
 void PrepareRendererResources::detachRasterInMainThread(
     const Cesium3DTilesSelection::Tile& tile,
     int32_t overlayTextureCoordinateID,
-    const Cesium3DTilesSelection::RasterOverlayTile& rasterTile,
+    const CesiumRasterOverlays::RasterOverlayTile& rasterTile,
     void* pMainThreadRendererResources) noexcept
 {
 }

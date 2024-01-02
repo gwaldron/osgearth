@@ -220,16 +220,16 @@ namespace osgEarth
                         auto hour = mark.hours();
 
                         if (ImGuiLTable::SliderDouble("Hour (UTC)", &hour, 0.0f, 24.0f))
-                            dirtySettings();
+                            _hour = hour, dirtySettings();
 
                         if (_showDetails)
                         {
                             if (ImGuiLTable::SliderInt("Day", &day, 1, 31))
-                                dirtySettings();
+                                _day = day, dirtySettings();
                             if (ImGuiLTable::SliderInt("Month", &month, 1, 12))
-                                dirtySettings();
+                                _month = month, dirtySettings();
                             if (ImGuiLTable::SliderInt("Year", &year, 1970, 2061))
-                                dirtySettings();
+                                _year = year, dirtySettings();
                         }
                         _skyNode->setDateTime(DateTime(year, month, day, hour));
 
@@ -260,7 +260,7 @@ namespace osgEarth
                             ImGui::Separator();
                             ImGuiLTable::Section("Wind");
 
-                            if (ImGuiLTable::SliderFloat("Speed", &_wind_power, 0.0f, 10.0f, "%.1f", 0) || _first)
+                            if (ImGuiLTable::SliderFloat("Speed mult", &_wind_power, 0.0f, 9.0f, "%.1f", 0) || _first)
                             {
                                 stateset(ri)->addUniform(new osg::Uniform("oe_wind_power", _wind_power),
                                     osg::StateAttribute::OVERRIDE | 0x01);

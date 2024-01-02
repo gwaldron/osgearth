@@ -232,6 +232,7 @@ SET(LIB_PUBLIC_HEADERS
     ShaderUtils
     SelectExtentTool
     SimplexNoise
+    NoiseTextureFactory
     SpatialReference
     StateSetCache
     StateTransition
@@ -651,6 +652,7 @@ set(TARGET_SRC
     ShaderUtils.cpp
     SelectExtentTool.cpp
     SimplexNoise.cpp
+    NoiseTextureFactory.cpp
     SpatialReference.cpp
     StateSetCache.cpp
     Status.cpp

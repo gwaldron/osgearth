@@ -30,7 +30,6 @@ set(TARGET_SRC
     Biome.cpp
     BiomeLayer.cpp
     BiomeManager.cpp
-    NoiseTextureFactory.cpp
     RoadSurfaceLayer.cpp
     TextureSplattingLayer.cpp
     TextureSplattingMaterials.cpp
@@ -46,7 +45,6 @@ set(LIB_PUBLIC_HEADERS
     BiomeLayer
     BiomeManager
 	Export
-    NoiseTextureFactory
     RoadSurfaceLayer
     ProceduralShaders
     TextureSplattingLayer

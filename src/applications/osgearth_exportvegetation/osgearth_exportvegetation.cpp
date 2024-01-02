@@ -26,8 +26,8 @@
 #include <osgEarth/Feature>
 #include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/LandCover>
+#include <osgEarth/NoiseTextureFactory>
 #include <osgEarthProcedural/VegetationLayer>
-#include <osgEarthProcedural/NoiseTextureFactory>
 #include <osgEarthProcedural/VegetationFeatureGenerator>
 #include <osgDB/ReadFile>
 

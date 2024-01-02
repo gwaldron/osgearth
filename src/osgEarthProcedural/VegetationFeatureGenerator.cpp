@@ -20,7 +20,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "VegetationFeatureGenerator"
-#include "NoiseTextureFactory"
+#include <osgEarth/NoiseTextureFactory>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Math>
 #include <osg/ComputeBoundsVisitor>

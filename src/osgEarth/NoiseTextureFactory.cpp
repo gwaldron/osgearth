@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "NoiseTextureFactory"
+#include "Math"
 
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Random>
@@ -24,10 +25,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Metrics>
 #include <osg/Texture2D>
-#include <random>
 
 using namespace osgEarth;
-using namespace osgEarth::Procedural;
 using namespace osgEarth::Util;
 
 
@@ -76,8 +75,6 @@ NoiseTextureFactory::createImage(unsigned dim, unsigned chans) const
 
     // seed = 0 so it is deterministic
     Random prng(0);
-    //std::default_random_engine gen(0);
-    //std::uniform_real_distribution<float> rand_float(0.0f, 1.0f);
     
     for(unsigned k=0; k<chans; ++k)
     {
@@ -126,13 +123,13 @@ NoiseTextureFactory::createImage(unsigned dim, unsigned chans) const
         }
    
         // histogram stretch to [0..1] for simplex noise
-        if ( k != 1 && k != 2 )
+        //if ( k != 1 && k != 2 )
         {
             for(int x=0; x<(int)(dim*dim); ++x)
             {
                 int s = x%int(dim), t = x/(int)dim;
                 read(v, s, t);
-                v[k] = osg::clampBetween((v[k]-nmin)/(nmax-nmin), 0.0f, 1.0f);
+                v[k] = clamp((v[k]-nmin)/(nmax-nmin), 0.0f, 1.0f);
                 write(v, s, t);
             }
         }

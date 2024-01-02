@@ -21,8 +21,8 @@
 */
 #include "VegetationLayer"
 #include "ProceduralShaders"
-#include "NoiseTextureFactory"
 
+#include <osgEarth/NoiseTextureFactory>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/CameraUtils>
 #include <osgEarth/LineDrawable>
@@ -1171,6 +1171,8 @@ VegetationLayer::createDrawableAsync(
     double backup_birthday,
     float range) const
 {
+    //OE_INFO << LC << "createDrawableAsync key=" << key_.str() << std::endl;
+
     osg::ref_ptr<const VegetationLayer> layer = this;
     TileKey key = key_;
     const std::string group = group_;
@@ -1210,12 +1212,16 @@ VegetationLayer::getAssetPlacements(
     // bail out if the Map has disappeared
     osg::ref_ptr<const Map> map;
     if (!_map.lock(map))
+    {
         return false;
+    }
 
     // bail out if missing or disabled group
     const Options::Group& groupOptions = options().group(group);
     if (groupOptions.enabled() == false)
+    {
         return false;
+    }
 
     std::vector<Placement> result;
 
@@ -1230,15 +1236,20 @@ VegetationLayer::getAssetPlacements(
 
         auto iter = _assets.find(group);
         if (iter == _assets.end())
-            return false; // data is unavailable.
+        {
+            //OE_INFO << LC << "(1) GAP returning false because _assets doesn't exist for group " << group << std::endl;
+            return !_newAssets.working();
+            //return false; // data is unavailable.
+        }
         else
+        {
             groupAssets = iter->second; //shallow copy
+        }
 
         // if it's empty, bail out (and probably return later)
         if (groupAssets.empty())
         {
-            OE_DEBUG << LC << "key=" << key.str() << "; asset list is empty for group " << group << std::endl;
-            //return std::move(result);
+            //OE_INFO << LC << "GAP returning false because the groupAssets is empty" << std::endl;
             return false;
         }
     }
@@ -1306,9 +1317,14 @@ VegetationLayer::getAssetPlacements(
             ScopedMutexLock lock(_assets);
             auto iter = _assets.find(group);
             if (iter == _assets.end())
+            {
+                //OE_INFO << LC << "(2) GAP returning false because _assets doesn't exist for group " << group << std::endl;
                 return false;
+            }
             else
+            {
                 groupAssets = iter->second; // shallow copy
+            }
         }
 
         // if it's empty, bail out (and probably return later)
@@ -2062,6 +2078,7 @@ VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
             else
             {
                 // creation failed; reset for another try.
+                OE_INFO << "Failed for " << entry->getKey().str() << "; will retry..." << std::endl;
                 view._tile = nullptr;
             }
         }

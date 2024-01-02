@@ -22,8 +22,8 @@
 #include "TextureSplattingLayer"
 #include "TextureSplattingMaterials"
 #include "ProceduralShaders"
-#include "NoiseTextureFactory"
 
+#include <osgEarth/NoiseTextureFactory>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TerrainResources>
 #include <osgEarth/VirtualProgram>

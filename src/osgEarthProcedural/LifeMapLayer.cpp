@@ -20,8 +20,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "LifeMapLayer"
-#include "NoiseTextureFactory"
 
+#include <osgEarth/NoiseTextureFactory>
 #include <osgEarth/Map>
 #include <osgEarth/ElevationPool>
 #include <osgEarth/Math>

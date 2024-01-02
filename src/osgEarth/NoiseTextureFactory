@@ -16,17 +16,17 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_PROCEDURAL_NOISE_TEXTURE_FACTORY
-#define OSGEARTH_PROCEDURAL_NOISE_TEXTURE_FACTORY 1
+#pragma once
 
-#include "Export"
-#include <osg/Texture>
+namespace osg {
+    class Image;
+    class Texture;
+}
+#include <osgEarth/Export>
 
-namespace osgEarth { namespace Procedural
+namespace osgEarth
 {
-    using namespace osgEarth;
-    
-    class OSGEARTHPROCEDURAL_EXPORT NoiseTextureFactory
+    class OSGEARTH_EXPORT NoiseTextureFactory
     {
     public:
         NoiseTextureFactory() { }
@@ -36,6 +36,4 @@ namespace osgEarth { namespace Procedural
         osg::Texture* create(unsigned dim, unsigned numChannels) const;
     };
 
-} } // namespace osgEarth::Procedural
-
-#endif // OSGEARTH_PROCEDURAL_NOISE_TEXTURE_FACTORY
+}

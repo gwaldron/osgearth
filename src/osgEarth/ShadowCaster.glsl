@@ -143,6 +143,4 @@ void oe_shadow_fragment(inout vec4 color)
     oe_pbr.roughness = clamp(mix(oe_pbr.roughness*1.5, oe_pbr.roughness, factor), 0, 1);
     float b = mix(oe_pbr.brightness*oe_shadow_color, oe_pbr.brightness, factor);
     oe_pbr.brightness = mix(b, oe_pbr.brightness, oe_shadow_rf);
-    float c = mix(oe_pbr.brightness+3.0*(1.0-oe_shadow_color), oe_pbr.contrast, factor);
-    oe_pbr.contrast = mix(c, oe_pbr.contrast, oe_shadow_rf);
 }

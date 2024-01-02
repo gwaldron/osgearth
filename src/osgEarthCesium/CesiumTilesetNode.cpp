@@ -42,8 +42,8 @@ CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, const std::string& to
 
     for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
     {
-        Cesium3DTilesSelection::RasterOverlayOptions rasterOptions;
-        const auto ionRasterOverlay = new Cesium3DTilesSelection::IonRasterOverlay("", *overlay, token, rasterOptions);
+        CesiumRasterOverlays::RasterOverlayOptions rasterOptions;
+        const auto ionRasterOverlay = new CesiumRasterOverlays::IonRasterOverlay("", *overlay, token, rasterOptions);
         tileset->getOverlays().add(ionRasterOverlay);
     }    
     _tileset = tileset;
@@ -63,8 +63,8 @@ CesiumTilesetNode::CesiumTilesetNode(const std::string& url, const std::string& 
     Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, url, options);
     for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
     {
-        Cesium3DTilesSelection::RasterOverlayOptions rasterOptions;
-        const auto ionRasterOverlay = new Cesium3DTilesSelection::IonRasterOverlay("", *overlay, token, rasterOptions);
+        CesiumRasterOverlays::RasterOverlayOptions rasterOptions;
+        const auto ionRasterOverlay = new CesiumRasterOverlays::IonRasterOverlay("", *overlay, token, rasterOptions);
         tileset->getOverlays().add(ionRasterOverlay);
     }
     _tileset = tileset;

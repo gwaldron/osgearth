@@ -219,6 +219,9 @@ namespace osgEarth { namespace Procedural
         void setMaxTextureSize(unsigned value);
         unsigned getMaxTextureSize() const;
 
+        void setShowTileBoundingBoxes(bool value);
+        bool getShowTileBoundingBoxes() const;
+
         //! Force regeneration of all visible data
         void dirty();
 
@@ -282,21 +285,23 @@ namespace osgEarth { namespace Procedural
 
     protected:
 
-        virtual void init() override;
-        virtual Status openImplementation() override;
-        virtual Status closeImplementation() override;
+        void init() override;
+        Status openImplementation() override;
+        Status closeImplementation() override;
 
     public:
 
-        virtual void update(osg::NodeVisitor& nv) override;
-        virtual void cull(const TileBatch&, osg::NodeVisitor& nv) const override;
 
-        virtual void addedToMap(const Map* map) override;
-        virtual void removedFromMap(const Map* map) override;
-        virtual void prepareForRendering(TerrainEngine*) override;
+        void modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const override;
+        void update(osg::NodeVisitor& nv) override;
+        void cull(const TileBatch&, osg::NodeVisitor& nv) const override;
 
-        virtual void resizeGLObjectBuffers(unsigned maxSize) override;
-        virtual void releaseGLObjects(osg::State* state) const override;
+        void addedToMap(const Map* map) override;
+        void removedFromMap(const Map* map) override;
+        void prepareForRendering(TerrainEngine*) override;
+
+        void resizeGLObjectBuffers(unsigned maxSize) override;
+        void releaseGLObjects(osg::State* state) const override;
 
     protected:
         virtual ~VegetationLayer();
@@ -346,6 +351,7 @@ namespace osgEarth { namespace Procedural
             using Ptr = std::shared_ptr<Tile>;
             using WeakPtr = std::weak_ptr<Tile>;
             FutureDrawable _drawable;
+            osg::ref_ptr<osg::Node> _debugBound;
         };
 
         using Tiles = std::unordered_map<
@@ -455,6 +461,7 @@ namespace osgEarth { namespace Procedural
         mutable bool _requestMultisampling = false;
         bool _multisamplingActivated = false;
         bool _renderingSupported = true;
+        bool _showTileBoundingBoxes = false;
 
         void activateMultisampling();
     };

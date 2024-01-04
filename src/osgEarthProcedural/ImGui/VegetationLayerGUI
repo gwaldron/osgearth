@@ -247,8 +247,13 @@ namespace osgEarth
                         }
                     }
 
-                    static std::map<const Biome*, unsigned> biomeCounts;
+                    bool showTileBBox = _veglayer->getShowTileBoundingBoxes();
+                    if (ImGui::Checkbox("Show tile bounding boxes", &showTileBBox))
+                    {
+                        _veglayer->setShowTileBoundingBoxes(showTileBBox);
+                    }
 
+                    static std::map<const Biome*, unsigned> biomeCounts;
                     ImGui::Checkbox("Show asset bounding boxes", &_showPlacements);
                     if (_showPlacements)
                     {

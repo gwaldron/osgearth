@@ -36,6 +36,7 @@
 #include <osgEarth/Chonk>
 #include <osgEarth/rtree.h>
 #include <osgEarth/TerrainConstraintLayer>
+#include <osgEarth/AnnotationUtils>
 
 #include <osg/BlendFunc>
 #include <osg/Multisample>
@@ -74,11 +75,49 @@ REGISTER_OSGEARTH_LAYER(vegetation, VegetationLayer);
 
 //........................................................................
 
+namespace
+{
+    osg::ref_ptr<osg::Node> createDebugBound(osg::Drawable* d)
+    {
+        auto& bbox = d->getBoundingBox();
+
+        osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
+        geom->setUseVertexBufferObjects(true);
+        geom->setUseDisplayList(false);
+
+        const osg::Vec3f verts[8] = {
+            { bbox.xMin(), bbox.yMin(), bbox.zMin() },
+            { bbox.xMax(), bbox.yMin(), bbox.zMin() },
+            { bbox.xMax(), bbox.yMax(), bbox.zMin() },
+            { bbox.xMin(), bbox.yMax(), bbox.zMin() },
+            { bbox.xMin(), bbox.yMin(), bbox.zMax() },
+            { bbox.xMax(), bbox.yMin(), bbox.zMax() },
+            { bbox.xMax(), bbox.yMax(), bbox.zMax() },
+            { bbox.xMin(), bbox.yMax(), bbox.zMax() }
+        };
+        geom->setVertexArray(new osg::Vec3Array(osg::Array::BIND_PER_VERTEX, 8, verts));
+
+        const osg::Vec4f colors[1] = {
+            {1,1,1,1}
+        };
+        geom->setColorArray(new osg::Vec4Array(osg::Array::BIND_OVERALL, 1, colors));
+
+        const std::uint8_t indices[24] = {
+            0,1, 1,2, 2,3, 3,0,
+            4,5, 5,6, 6,7, 7,4,
+            0,4, 1,5, 2,6, 3,7
+        };
+        geom->addPrimitiveSet(new osg::DrawElementsUByte(GL_LINES, 24, indices));
+
+        return geom;
+    }
+}
+
+//........................................................................
+
 #define GROUP_TREES "trees"
 #define GROUP_BUSHES "bushes"
 #define GROUP_UNDERGROWTH "undergrowth"
-
-//........................................................................
 
 Config
 VegetationLayer::Options::getConfig() const
@@ -307,6 +346,10 @@ VegetationLayer::init()
     // make a 4-channel noise texture to use
     NoiseTextureFactory noise;
     _noiseTex = Texture::create(noise.create(256u, 4u));
+
+    // set a static bounding box buffer that can account for geometry in this layer.
+    // 25 meters on the sides and the top will be a rough guess for now.
+    _buffer.set(-25, -25, 0, 25, 25, 25);
 }
 
 VegetationLayer::~VegetationLayer()
@@ -364,6 +407,12 @@ VegetationLayer::reportStats() const
     Layer::Stats report;
     report.push_back({ "Resident tiles", std::to_string(_tiles.size()) });
     return report;
+}
+
+void
+VegetationLayer::modifyTileBoundingBox(const TileKey& key, osg::BoundingBox& box) const
+{
+    //box.zMax() += 25.0f;
 }
 
 void
@@ -698,6 +747,18 @@ VegetationLayer::setMaxTextureSize(unsigned value)
             arena->setMaxTextureSize(options().maxTextureSize().value());
         }
     }
+}
+
+void
+VegetationLayer::setShowTileBoundingBoxes(bool value)
+{
+    _showTileBoundingBoxes = value;
+}
+
+bool
+VegetationLayer::getShowTileBoundingBoxes() const
+{
+    return _showTileBoundingBoxes;
 }
 
 unsigned
@@ -2066,13 +2127,27 @@ VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
                             _placeholders[entry->getKey()] = view._tile;
                         });
 
+                    // create the debug bound geometry.
+                    if (!view._tile->_debugBound.valid())
+                    {
+                        view._tile->_debugBound = createDebugBound(drawable);
+                    }
+
                     view._loaded = true;
                 }
 
                 // Push the matrix and accept the drawable.
                 view._matrix->set(entry->getModelViewMatrix());
                 cv->pushModelViewMatrix(view._matrix.get(), osg::Transform::ABSOLUTE_RF);
-                drawable->accept(nv);
+                if (!cv->isCulled(drawable->getBoundingBox()))
+                {
+                    drawable->accept(nv);
+
+                    if (_showTileBoundingBoxes && view._tile->_debugBound.valid())
+                    {
+                        view._tile->_debugBound->accept(nv);
+                    }
+                }
                 cv->popModelViewMatrix();
             }
             else

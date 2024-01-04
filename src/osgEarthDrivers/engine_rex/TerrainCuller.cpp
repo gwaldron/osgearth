@@ -209,6 +209,15 @@ TerrainCuller::isCulledToBBox(osg::Transform* node, const osg::BoundingBox& box)
     return culled;
 }
 
+namespace
+{
+    struct CullVisitorEx : public osgUtil::CullVisitor {
+        inline osg::RefMatrix* createOrReuseMatrixEx(const osg::Matrix& value) {
+            return createOrReuseMatrix(value);
+        }
+    };
+}
+
 void
 TerrainCuller::apply(TileNode& node)
 {
@@ -229,6 +238,8 @@ TerrainCuller::apply(TileNode& node)
         // Render patch layers if applicable.
         _patchLayers.clear();
 
+        osg::BoundingBox buffer(0, 0, 0, 0, 0, 0);
+
         for(auto& patchLayer : _terrain.patchLayers())
         {
             // is the layer accepting this key?
@@ -245,6 +256,8 @@ TerrainCuller::apply(TileNode& node)
                 continue;
             }
 
+            buffer.expandBy(patchLayer->getBuffer());
+
             _patchLayers.push_back(patchLayer.get());
         }
 
@@ -253,19 +266,23 @@ TerrainCuller::apply(TileNode& node)
             SurfaceNode* surface = node.getSurfaceNode();
                     
             // push the surface matrix:
-            osg::ref_ptr<osg::RefMatrix> matrix = new osg::RefMatrix(*_cv->getModelViewMatrix());
+            auto cs = static_cast<CullVisitorEx*>(_cv);
+            osg::ref_ptr<osg::RefMatrix> matrix = cs->createOrReuseMatrixEx(*_cv->getModelViewMatrix());
             surface->computeLocalToWorldMatrix(*matrix.get(),this);
             _cv->pushModelViewMatrix(matrix.get(), surface->getReferenceFrame());
 
-            if (!_cv->isCulled(surface->getAlignedBoundingBox()))
+            // adjust the tile bounding box to account for the patch layer buffer.
+            auto bbox = surface->getAlignedBoundingBox();
+            bbox._min += buffer._min, bbox._max += buffer._max;
+            
+            if (!_cv->isCulled(bbox))
             {
-                // Add the draw command:
-                for(auto patchLayer : _patchLayers)
-                {
-#if 1
-                    float range, morphStart, morphEnd;
-                    getEngineContext()->getSelectionInfo().get(node.getKey(), range, morphStart, morphEnd);
+                float range, morphStart, morphEnd;
+                getEngineContext()->getSelectionInfo().get(node.getKey(), range, morphStart, morphEnd);
 
+                // Add the draw commands:
+                for (auto patchLayer : _patchLayers)
+                {
                     DrawTileCommand* cmd = addDrawCommand(patchLayer->getUID(), &renderModel, nullptr, &node);
                     if (cmd)
                     {
@@ -273,11 +290,7 @@ TerrainCuller::apply(TileNode& node)
                         cmd->_drawCallback = patchLayer->getRenderer();
                         cmd->_morphStartRange = morphStart;
                         cmd->_morphEndRange = morphEnd;
-                        //cmd->_drawCallback = patchLayer->getDrawCallback();
                     }
-#else
-                    patchLayer->cull(_currentTileNode->getKey(), *this);
-#endif
                 }
             }
 

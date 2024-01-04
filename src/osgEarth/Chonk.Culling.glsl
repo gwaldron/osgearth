@@ -147,7 +147,7 @@ void cull()
     LL = min(LL, temp); UR = max(UR, temp);
 
 #if OE_GPUCULL_DEBUG
-    float threshold = 0.75;
+    float threshold = 0.95; // 0.75;
 #else
     float threshold = 1.0;
 #endif

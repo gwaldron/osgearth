@@ -65,7 +65,7 @@ namespace osgEarth
          */
         struct AcceptCallback : public osg::Referenced
         {
-            /** Whether to accept the entire layer. Innvoked during Cull. */
+            /** Whether to accept the entire layer. Invoked during Cull. */
             virtual bool acceptLayer(osg::NodeVisitor& nv, const osg::Camera* camera) const { return true; }
 
             /** Whether to accept a specific tile. Invoked during Cull. */
@@ -73,6 +73,14 @@ namespace osgEarth
         };
 
     public:
+
+        //! Static bounding box buffer that the culling engine will use to
+        //! expand the corresponding terrain tile's axis-asligned bbox
+        //! during culling. This is necessary to account for the geometry that
+        //! may exist in the patch tile before it gets created.
+        const osg::BoundingBox& getBuffer() {
+            return _buffer;
+        }
 
         virtual void cull(
             const TileKey& key,
@@ -85,10 +93,6 @@ namespace osgEarth
         virtual void draw(
             osg::RenderInfo& ri) const { }
 
-        //! Custom tile renderer for this layer
-        //void setRenderer(TileRenderer* value) {
-        //    _renderer = value;
-        //}
         virtual TileRenderer* getRenderer() const {
             return nullptr;
         }
@@ -106,9 +110,11 @@ namespace osgEarth
         //! post-ctor initialization, chain to super/subclasses.
         virtual void init();
 
+        //! Culling buffer to account for layer geometry.
+        osg::BoundingBox _buffer = { 0,0,0,0,0,0 };
+
     private:
         osg::ref_ptr<AcceptCallback> _acceptCallback;
-        //TileRenderer* _renderer;
     };
 
     using PatchLayerVector = std::vector<osg::ref_ptr<PatchLayer>>;

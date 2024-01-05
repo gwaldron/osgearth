@@ -95,7 +95,7 @@ namespace osgEarth { namespace REX
         bool supports(const osg::PrimitiveIndexFunctor&) const override { return true; }
         void accept(osg::PrimitiveIndexFunctor&) const override;
 
-        virtual void accept(osg::NodeVisitor& nv) override {
+        void accept(osg::NodeVisitor& nv) override {
             osg::Drawable::accept(nv);
         }
 
@@ -143,10 +143,10 @@ namespace osgEarth { namespace REX
 
     public: // osg::Drawable
 
-        virtual void drawImplementation(osg::RenderInfo& ri) const override;
-        virtual void releaseGLObjects(osg::State*) const override;
-        virtual void resizeGLObjectBuffers(unsigned size) override;
-        virtual void accept(osg::NodeVisitor& nv) override;
+        void drawImplementation(osg::RenderInfo& ri) const override;
+        void releaseGLObjects(osg::State*) const override;
+        void resizeGLObjectBuffers(unsigned size) override;
+        void accept(osg::NodeVisitor& nv) override;
 
     protected:
 

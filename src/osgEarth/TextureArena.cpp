@@ -568,7 +568,7 @@ TextureArena::find_no_lock(Texture::Ptr tex) const
     if (tex == nullptr)
         return -1;
 
-    auto itr = _textureIndices.find(tex);
+    auto itr = _textureIndices.find(tex.get());
     if (itr != _textureIndices.end())
     {
         return itr->second;
@@ -690,7 +690,7 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
     int index = -1;
 
     // find an open slot if one is available:
-    if (_autoRelease == true)
+    //if (_autoRelease == true)
     {
         for (int i = 0; i < _textures.size(); ++i)
         {
@@ -720,7 +720,7 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
     else
         _textures.push_back(tex);
 
-    _textureIndices[tex] = index;
+    _textureIndices[tex.get()] = index;
 
     if (tex->osgTexture()->getDataVariance() == osg::Object::DYNAMIC)
     {
@@ -737,12 +737,11 @@ TextureArena::purgeTextureIfOrphaned_no_lock(unsigned index)
 
     Texture::Ptr& tex = _textures[index];
 
-    // Check for use_count() == 2.
-    // 1 for the _textures vector and 1 for the _textureIndices map.
-    if (tex && tex.use_count() == 2)
+    // Check for use_count() == 1, meaning that the only reference to this
+    if (tex && tex.use_count() == 1)
     {
         // Remove this texture from the texture indices map
-        _textureIndices.erase(tex);
+        _textureIndices.erase(tex.get());
 
         // Remove this texture from the collection of dynamic textures
         _dynamicTextures.erase(index);

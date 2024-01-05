@@ -726,30 +726,43 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
 {
     ScopedMutexLock lock(_mutex);
 
-    GLsizeiptr bytes = 0;
     unsigned maxNumToRelease = std::max(1u, (unsigned)pow(4.0f, _avarice));
     unsigned numReleased = 0u;
 
-    for (unsigned int i = 0; i < _objects.size();)
+    // first go thru and release some orphans.
+    Collection orphans_to_keep;
+    for (unsigned i = 0; i < _orphans.size() && numReleased < maxNumToRelease; ++i)
     {
-        GLObject::Ptr& object = _objects[i];
-
-        if (object->gc() == gc && object.use_count() == 1 && numReleased < maxNumToRelease)
+        GLObject::Ptr& object = _orphans[i];
+        if (object->gc() == gc)
         {
-            // Release the object
             object->release();
             ++numReleased;
-            // Move the object at the end of the vector into this slot, making sure not to increment i as we want this object processed next.
-            _objects[i] = std::move(_objects.back());
-            // Reduce the size of the vector by 1.
-            _objects.resize(_objects.size() - 1);
         }
         else
         {
-            bytes += object->size();
-            ++i;
+            orphans_to_keep.push_back(object);
         }
     }
+    _orphans.swap(orphans_to_keep);
+
+    // then check for objects to add to the orphan list:
+    GLsizeiptr bytes = 0;
+    Collection objects_to_keep;
+    objects_to_keep.reserve(_objects.size());
+    for(auto& object : _objects)
+    {
+        if (object->gc() == gc && object.use_count() == 1)
+        {
+            _orphans.push_back(object);
+        }
+        else
+        {
+            objects_to_keep.push_back(object);
+            bytes += object->size();
+        }
+    }
+    _objects.swap(objects_to_keep);
     _totalBytes = bytes;
 }
 

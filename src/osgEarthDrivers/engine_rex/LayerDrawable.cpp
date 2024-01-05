@@ -135,6 +135,10 @@ LayerDrawableNVGL::LayerDrawableNVGL() :
     LayerDrawable()
 {
     setName("LayerDrawableNVGL");
+
+    // Make sure our structures are aligned to 16 bytes
+    OE_HARD_ASSERT(sizeof(GL4GlobalData) % 16 == 0);
+    OE_HARD_ASSERT(sizeof(GL4Tile) % 16 == 0);
 }
 LayerDrawableNVGL::~LayerDrawableNVGL()
 {
@@ -503,7 +507,7 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
         GLenum element_type =
             sizeof(DrawElementsBase::value_type) == sizeof(short) ?
             GL_UNSIGNED_SHORT : GL_UNSIGNED_INT;
-        
+
         gl.glMultiDrawElementsIndirectBindlessNV(
             primitive_type,
             element_type,

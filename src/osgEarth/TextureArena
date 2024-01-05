@@ -210,7 +210,7 @@ namespace osgEarth
         mutable osg::buffered_object<GLObjects> _globjects;
 
         mutable TextureVector _textures;
-        mutable std::unordered_map<Texture::Ptr, unsigned int> _textureIndices;
+        mutable std::unordered_map<Texture*, unsigned> _textureIndices;
         mutable std::unordered_set<unsigned> _dynamicTextures;
 
         bool _autoRelease = false;

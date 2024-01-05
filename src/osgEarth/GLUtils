@@ -563,12 +563,14 @@ namespace osgEarth
 
     /**
      * Mechanism that will automatically delete a GL object
-     * when its container goes out of scope
+     * when its container goes out of scope. The object pool uses 
+     * a deferred deletion policy (of one frame) to ensure an object
+     * is not deleted before the GL pipeline has finished using it.
      */
     class OSGEARTH_EXPORT GLObjectPool : public osg::GraphicsObjectManager
     {
     public:
-        using Collection = std::vector< GLObject::Ptr >;
+        using Collection = std::vector<GLObject::Ptr>;
 
         //! construct an object pool under the given graphics context ID
         GLObjectPool(unsigned contextID);
@@ -627,7 +629,8 @@ namespace osgEarth
     protected:
 
         mutable Mutex _mutex;
-        Collection _objects;
+        Collection _objects; // objects being monitored
+        Collection _orphans; // objects whose refcount has dropped to 1
         GLsizeiptr _totalBytes;
         unsigned _hits;
         unsigned _misses;

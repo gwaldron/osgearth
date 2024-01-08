@@ -34,32 +34,32 @@ namespace osgEarth
                 (major == rhs.major && minor < rhs.minor) ||
                 (major == rhs.major && minor == rhs.minor && patch < rhs.patch);
         }
-        inline bool lessThan(int major, int minor, int patch) const {
-            return this->lessThan(Version{ major, minor, patch });
+        inline bool lessThan(int in_major, int in_minor, int in_patch) const {
+            return lessThan(Version{ in_major, in_minor, in_patch });
         }
         inline bool lessThanOrEqualTo(const Version& rhs) const {
             return major < rhs.major ||
                 (major == rhs.major && minor < rhs.minor) ||
                 (major == rhs.major && minor == rhs.minor && patch <= rhs.patch);
         }
-        inline bool lessThanOrEqualTo(int major, int minor, int patch) const {
-            return this->lessThanOrEqualTo(Version{ major, minor, patch });
+        inline bool lessThanOrEqualTo(int in_major, int in_minor, int in_patch) const {
+            return lessThanOrEqualTo(Version{ in_major, in_minor, in_patch });
         }
         inline bool greaterThan(const Version& rhs) const {
             return major > rhs.major ||
                 (major == rhs.major && minor > rhs.minor) ||
                 (major == rhs.major && minor == rhs.minor && patch > rhs.patch);
         }
-        inline bool greaterThan(int major, int minor, int patch) const {
-            return this->greaterThan(Version{ major, minor, patch });
+        inline bool greaterThan(int in_major, int in_minor, int in_patch) const {
+            return greaterThan(Version{ in_major, in_minor, in_patch });
         }
         inline bool greaterThanOrEqualTo(const Version& rhs) const {
             return major > rhs.major ||
                 (major == rhs.major && minor > rhs.minor) ||
                 (major == rhs.major && minor == rhs.minor && patch >= rhs.patch);
         }
-        inline bool greaterThanOrEqualTo(int major, int minor, int patch) const {
-            return this->greaterThanOrEqualTo(Version{ major, minor, patch });
+        inline bool greaterThanOrEqualTo(int in_major, int in_minor, int in_patch) const {
+            return greaterThanOrEqualTo(Version{ in_major, in_minor, in_patch });
         }
     };
 

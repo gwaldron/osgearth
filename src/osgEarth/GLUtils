@@ -257,6 +257,7 @@ namespace osgEarth
         bool _recyclable; // can this object by re-used?
         osg::GLExtensions* _ext;
         osg::GraphicsContext* _gc;
+        unsigned _orphan_frames = 0u;
         friend class GLObjectPool;
 
         struct Resident {
@@ -630,11 +631,11 @@ namespace osgEarth
 
         mutable Mutex _mutex;
         Collection _objects; // objects being monitored
-        Collection _orphans; // objects whose refcount has dropped to 1
         GLsizeiptr _totalBytes;
         unsigned _hits;
         unsigned _misses;
         unsigned _avarice;
+        unsigned _frames_to_delay_deletion = 4u;
 
         struct GC {
             GC() : _gc(nullptr), _operation(nullptr) { }

@@ -551,9 +551,12 @@ GLObjectPool::GLObjectPool(unsigned cxid) :
     _avarice(10.f)
 {
     _gcs.resize(256);
-
     ScopedMutexLock lock(_pools);
     _pools.emplace_back(this);
+
+    char* value = ::getenv("OSGEARTH_GL_OBJECT_POOL_DELAY");
+    if (value)
+        _frames_to_delay_deletion = as<unsigned>(value, _frames_to_delay_deletion);
 }
 
 namespace
@@ -620,10 +623,10 @@ GLObjectPool::track(osg::GraphicsContext* gc)
 //}
 
 void
-GLObjectPool::watch(GLObject::Ptr object) //, osg::State& state)
+GLObjectPool::watch(GLObject::Ptr object)
 {
     ScopedMutexLock lock(_mutex);
-    _objects.push_back(object);
+    _objects.emplace_back(object);
 
     //if (object->shareable())
     //{
@@ -703,7 +706,7 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
     ScopedMutexLock lock(_mutex);
 
     GLsizeiptr bytes = 0;
-    GLObjectPool::Collection keep;
+    GLObjectPool::Collection keepers;
 
     for (auto& object : _objects)
     {
@@ -713,11 +716,12 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
         }
         else
         {
-            keep.push_back(object);
             bytes += object->size();
+            keepers.emplace_back(std::move(object));
         }
     }
-    _objects.swap(keep);
+
+    _objects.swap(keepers);
     _totalBytes = bytes;
 }
 
@@ -729,40 +733,32 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
     unsigned maxNumToRelease = std::max(1u, (unsigned)pow(4.0f, _avarice));
     unsigned numReleased = 0u;
 
-    // first go thru and release some orphans.
-    Collection orphans_to_keep;
-    for (unsigned i = 0; i < _orphans.size() && numReleased < maxNumToRelease; ++i)
-    {
-        GLObject::Ptr& object = _orphans[i];
-        if (object->gc() == gc)
-        {
-            object->release();
-            ++numReleased;
-        }
-        else
-        {
-            orphans_to_keep.push_back(object);
-        }
-    }
-    _orphans.swap(orphans_to_keep);
-
     // then check for objects to add to the orphan list:
     GLsizeiptr bytes = 0;
-    Collection objects_to_keep;
-    objects_to_keep.reserve(_objects.size());
-    for(auto& object : _objects)
+    Collection keepers;
+    keepers.reserve(_objects.size());
+    for (unsigned i = 0; i < _objects.size(); ++i)
     {
-        if (object->gc() == gc && object.use_count() == 1)
+        auto& object = _objects[i];
+        bool keep = true;
+
+        if (object->gc() == gc && object.use_count() == 1 && numReleased < maxNumToRelease)
         {
-            _orphans.push_back(object);
+            if (object->_orphan_frames++ == _frames_to_delay_deletion)
+            {
+                object->release();
+                ++numReleased;
+                keep = false;
+            }
         }
-        else
+
+        if (keep)
         {
-            objects_to_keep.push_back(object);
             bytes += object->size();
+            keepers.emplace_back(std::move(object));
         }
     }
-    _objects.swap(objects_to_keep);
+    _objects.swap(keepers);
     _totalBytes = bytes;
 }
 
@@ -1132,7 +1128,13 @@ GLBuffer::release()
         _size = 0;
 
 #ifdef OSGEARTH_SINGLE_GL_CONTEXT
-        _isResident = false;
+        if (_isResident == true)
+        {
+            OE_HARD_ASSERT(gl.MakeNamedBufferNonResidentNV);
+            gl.MakeNamedBufferNonResidentNV(name());
+            _address = 0;
+            _isResident = false;
+        }
 #else
         for (auto& i : _isResident)
             i.second = false;
@@ -1372,14 +1374,16 @@ GLTexture::release()
 {
     OE_DEVEL << LC << "GLTexture::release, name=" << name() << std::endl;
     if (_handle != 0)
-    {
+    {        
 #ifdef OSGEARTH_SINGLE_GL_CONTEXT
+        if (_isResident == true)
+            ext()->glMakeTextureHandleNonResident(_handle);
+
         _isResident = false;
 #else
         for (auto& i : _isResident)
             i.second = false;
 #endif
-
         _handle = 0;
     }
     if (_name != 0)

@@ -35,6 +35,11 @@ using namespace osgEarth::Cesium;
 
 namespace
 {
+    #ifdef GL_R
+    const GLenum redFormat = GL_R;
+    #else
+    const GLenum redFormat = GL_RED;
+    #endif
 
     osg::Image* getOsgImage(CesiumGltf::ImageCesium& image)
     {
@@ -48,7 +53,7 @@ namespace
             switch (image.channels)
             {
             case 1:
-                format = GL_R;
+                format = redFormat;
                 texFormat = GL_R8;
                 break;
             case 2:
@@ -82,7 +87,7 @@ namespace
             texFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
             break;
         case CesiumGltf::GpuCompressedPixelFormat::BC4_R:
-            format = GL_R;
+            format = redFormat;
             texFormat = GL_COMPRESSED_RED_RGTC1_EXT;
             break;
         case CesiumGltf::GpuCompressedPixelFormat::BC5_RG:
@@ -114,7 +119,7 @@ namespace
             return nullptr;
             break;
         case CesiumGltf::GpuCompressedPixelFormat::ETC2_EAC_R11:
-            format = GL_R;
+            format = redFormat;
             texFormat = GL_COMPRESSED_R11_EAC;
             break;
         case CesiumGltf::GpuCompressedPixelFormat::ETC2_EAC_RG11:

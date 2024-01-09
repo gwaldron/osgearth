@@ -261,10 +261,8 @@ namespace osgEarth
         friend class GLObjectPool;
 
         struct Resident {
-            bool _value; Resident() : _value(false) { }
-            Resident& operator = (bool input) { _value = input; return *this; }
-            bool operator == (const bool& rhs) const { return rhs == _value; }
-            bool operator != (const bool& rhs) const { return rhs != _value; }
+            bool value = false;
+            operator bool() const { return value; }
         };
     };
 

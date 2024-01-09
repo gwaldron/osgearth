@@ -402,8 +402,7 @@ bool
 SharedGeometry::empty() const
 {
     return
-        (_drawElements.valid() == false || _drawElements->getNumIndices() == 0); //&&
-        //(_maskElements.valid() == false || _maskElements->getNumIndices() == 0);
+        (_drawElements.valid() == false || _drawElements->getNumIndices() == 0);
 }
 
 #if OSG_MIN_VERSION_REQUIRED(3,5,9)

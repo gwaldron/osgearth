@@ -1121,24 +1121,24 @@ GLBuffer::release()
     {
         OE_DEVEL << LC << "GLBuffer::release, name=" << name() << std::endl;
 
-        //makeNonResident();
-        //OE_DEVEL << "Releasing buffer " << _name << "(" << _label << ")" << std::endl;
-        ext()->glDeleteBuffers(1, &_name);
-        _name = 0;
-        _size = 0;
-
 #ifdef OSGEARTH_SINGLE_GL_CONTEXT
         if (_isResident == true)
         {
             OE_HARD_ASSERT(gl.MakeNamedBufferNonResidentNV);
             gl.MakeNamedBufferNonResidentNV(name());
             _address = 0;
-            _isResident = false;
+            _isResident.value = false;
         }
 #else
         for (auto& i : _isResident)
             i.second = false;
 #endif
+
+        //makeNonResident();
+        //OE_DEVEL << "Releasing buffer " << _name << "(" << _label << ")" << std::endl;
+        ext()->glDeleteBuffers(1, &_name);
+        _name = 0;
+        _size = 0;
     }
 }
 
@@ -1163,12 +1163,16 @@ GLBuffer::makeResident(osg::State& state)
     Resident& resident = _isResident[state.getGraphicsContext()];
 #endif
 
+    OE_SOFT_ASSERT(address() != 0, "makeResident() called on buffer with no address");
+
+    // Note: it's legal to call this function if the object is already resident.
+
     if (address() != 0 && resident == false)
     {
         OE_HARD_ASSERT(gl.MakeNamedBufferResidentNV);
         //Currently only GL_READ_ONLY is supported according to the spec
         gl.MakeNamedBufferResidentNV(name(), GL_READ_ONLY_ARB);
-        resident = true;
+        resident.value = true;
     }
 }
 
@@ -1181,13 +1185,17 @@ GLBuffer::makeNonResident(osg::State& state)
     Resident& resident = _isResident[state.getGraphicsContext()];
 #endif
 
+    OE_SOFT_ASSERT(address() != 0, "makeNonResident() called on buffer with no address");
+
+    // Note: it's legal to call this function if the object is already non-resident.
+
     if (address() != 0 && resident == true)
     {
         OE_HARD_ASSERT(gl.MakeNamedBufferNonResidentNV);
         gl.MakeNamedBufferNonResidentNV(name());
         // address can be invalidated, so zero it out
         _address = 0;
-        resident = false;
+        resident.value = false;
     }
 }
 
@@ -1341,7 +1349,8 @@ GLTexture::makeResident(const osg::State& state, bool toggle)
     Resident& resident = _isResident[state.getGraphicsContext()];
 #endif
 
-    //TODO: does this stall??
+    // Note: it's legal to call this function if the object is already resident.
+    
     if (resident != toggle)
     {
         OE_SOFT_ASSERT_AND_RETURN(_handle != 0, void(), "makeResident() called on invalid handle: " + label() << );
@@ -1353,7 +1362,7 @@ GLTexture::makeResident(const osg::State& state, bool toggle)
 
         OE_DEVEL << "'" << id() << "' name=" << name() << " resident=" << (toggle ? "yes" : "no") << std::endl;
 
-        resident = toggle;
+        resident.value = toggle;
     }
 }
 
@@ -1379,7 +1388,7 @@ GLTexture::release()
         if (_isResident == true)
             ext()->glMakeTextureHandleNonResident(_handle);
 
-        _isResident = false;
+        _isResident.value = false;
 #else
         for (auto& i : _isResident)
             i.second = false;

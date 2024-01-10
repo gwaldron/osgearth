@@ -42,6 +42,9 @@ using namespace osgEarth;
 
 #define MAX_NEAR_PIXEL_SCALE FLT_MAX
 
+// note: this MUST match the local_size product in Chonk.Culling.glsl
+#define GPU_CULLING_LOCAL_WG_SIZE 32
+
 namespace
 {
     struct SendIndices
@@ -1176,13 +1179,21 @@ ChonkDrawable::GLObjects::update(
         }
 
         // append the instance data (transforms) and set
-        // the index of the first variant command, which the compute
+        // the index of the first lod command, which the compute
         // shader will need.
         for (auto& instance : instances)
         {
             _all_instances.push_back(instance);
             _all_instances.back().first_lod_cmd_index = first_lod_cmd_index;
         }
+
+        // pad out the size of the instances array so it's a multiple of the
+        // GPU culling workgroup size. Add "padding" instances will have the
+        // first_lod_cmd_index member equal to -1, indicating an invalid instance.
+        // The CS will check for this and discard them.
+        unsigned workgroups = (_all_instances.size() + GPU_CULLING_LOCAL_WG_SIZE - 1) / GPU_CULLING_LOCAL_WG_SIZE;
+        unsigned paddedSize = workgroups * GPU_CULLING_LOCAL_WG_SIZE;
+        _all_instances.resize(paddedSize);
 
         max_lod_count = std::max(max_lod_count, lod_commands.size());
     }
@@ -1261,15 +1272,16 @@ ChonkDrawable::GLObjects::cull(osg::State& state)
     // calls for each tile.
     // Also, removing the memory barrier seems to make no difference,
     // but it's the right thing to do
+    unsigned workgroups = (_numInstances + (GPU_CULLING_LOCAL_WG_SIZE-1)) / GPU_CULLING_LOCAL_WG_SIZE;
 
     // cull:
     ext->glUniform1i(ps._passUL, 0);
-    ext->glDispatchCompute(_numInstances, _maxNumLODs, 1);
+    ext->glDispatchCompute(workgroups, _maxNumLODs, 1);
 
     // compact:
     ext->glUniform1i(ps._passUL, 1);
     ext->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-    ext->glDispatchCompute(_numInstances, _maxNumLODs, 1);
+    ext->glDispatchCompute(workgroups, _maxNumLODs, 1);
 }
 
 void

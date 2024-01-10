@@ -1272,6 +1272,7 @@ ChonkDrawable::GLObjects::cull(osg::State& state)
     // calls for each tile.
     // Also, removing the memory barrier seems to make no difference,
     // but it's the right thing to do
+    unsigned workgroups = (_numInstances + (GPU_CULLING_LOCAL_WG_SIZE-1)) / GPU_CULLING_LOCAL_WG_SIZE;
 
     // calculate number of workgroups.
     // (todo: this is probably unnecessary since we already padded the 

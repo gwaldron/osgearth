@@ -259,8 +259,8 @@ ArcGISServer::MapService::init( const URI& _uri, const osgDB::ReaderWriter::Opti
     std::string format = "png";
     int tile_rows = 256;
     int tile_cols = 256;
-    int min_level = 25;
-    int max_level = 0;
+    int min_level = 0;
+    int max_level = 25;
     int num_tiles_wide = 1;
     int num_tiles_high = 1;
 

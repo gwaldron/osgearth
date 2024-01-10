@@ -30,6 +30,9 @@ else()
   find_library(draco_LIBRARIES NAMES draco.lib libdraco.a)
 endif()
 
+include(SelectLibraryConfigurations)
+select_library_configurations(draco) 
+
 # Store path to library.
 get_filename_component(draco_LIBRARY_DIRS ${draco_LIBRARIES} DIRECTORY)
 

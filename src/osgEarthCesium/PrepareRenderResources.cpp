@@ -26,6 +26,7 @@
 #include <osg/Texture2D>
 #include <osg/Geometry>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/Lighting>
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osg/MatrixTransform>
@@ -35,6 +36,11 @@ using namespace osgEarth::Cesium;
 
 namespace
 {
+    #ifdef GL_R
+    const GLenum redFormat = GL_R;
+    #else
+    const GLenum redFormat = GL_RED;
+    #endif
 
     osg::Image* getOsgImage(CesiumGltf::ImageCesium& image)
     {
@@ -48,7 +54,7 @@ namespace
             switch (image.channels)
             {
             case 1:
-                format = GL_R;
+                format = redFormat;
                 texFormat = GL_R8;
                 break;
             case 2:
@@ -82,7 +88,7 @@ namespace
             texFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
             break;
         case CesiumGltf::GpuCompressedPixelFormat::BC4_R:
-            format = GL_R;
+            format = redFormat;
             texFormat = GL_COMPRESSED_RED_RGTC1_EXT;
             break;
         case CesiumGltf::GpuCompressedPixelFormat::BC5_RG:
@@ -114,7 +120,7 @@ namespace
             return nullptr;
             break;
         case CesiumGltf::GpuCompressedPixelFormat::ETC2_EAC_R11:
-            format = GL_R;
+            format = redFormat;
             texFormat = GL_COMPRESSED_R11_EAC;
             break;
         case CesiumGltf::GpuCompressedPixelFormat::ETC2_EAC_RG11:
@@ -533,13 +539,21 @@ public:
 
             if (primitive.material >= 0 && primitive.material < _model->materials.size())
             {
+                osg::StateSet* stateSet = geom->getOrCreateStateSet();
                 auto& material = _model->materials[primitive.material];
                 auto pbr = material.pbrMetallicRoughness;
-                unsigned int baseColorTexture = pbr->baseColorTexture->index;
-                if (baseColorTexture >= 0 && baseColorTexture < _textures.size())
-                {
-                    osg::StateSet* stateSet = geom->getOrCreateStateSet();
-                    stateSet->setTextureAttributeAndModes(0, _textures[baseColorTexture], osg::StateAttribute::ON);
+                if (pbr->baseColorFactor.size() > 0) {
+                    osgEarth::MaterialGL3* material = new osgEarth::MaterialGL3();
+                    osg::Vec4d color(pbr->baseColorFactor[0], pbr->baseColorFactor[1], pbr->baseColorFactor[2], pbr->baseColorFactor[3]);
+                    material->setDiffuse(osg::Material::FRONT_AND_BACK, color);
+                    stateSet->setAttributeAndModes(material);
+                }
+                if (pbr->baseColorTexture.has_value()) {
+                    unsigned int baseColorTexture = pbr->baseColorTexture->index;
+                    if (baseColorTexture >= 0 && baseColorTexture < _textures.size())
+                    {
+                        stateSet->setTextureAttributeAndModes(0, _textures[baseColorTexture], osg::StateAttribute::ON);
+                    }
                 }
             }
 

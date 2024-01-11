@@ -52,92 +52,90 @@ namespace osgEarth { namespace Procedural
 
             //! Whether to render with GL_ALPHA_TO_COVERAGE
             //! default = true
-            OE_OPTION(bool, alphaToCoverage);
+            OE_OPTION(bool, alphaToCoverage, true);
 
             //! Angle of view at which a polygon will become transparent
             //! default = 45 degrees
-            OE_OPTION(Angle, impostorLowAngle);
+            OE_OPTION(Angle, impostorLowAngle, Angle(45.0, Units::DEGREES));
 
             //! Angle of view at which a polygon will become opaque
             //! default = 67.5 degrees
-            OE_OPTION(Angle, impostorHighAngle);
+            OE_OPTION(Angle, impostorHighAngle, Angle(67.5, Units::DEGREES));
 
             //! Whether to use normal maps on impostor geometries
             //! default = true
-            OE_OPTION(bool, useImpostorNormalMaps);
+            OE_OPTION(bool, useImpostorNormalMaps, true);
 
             //! Whether to use PBR maps on impostor geometries
             //! default = true
-            OE_OPTION(bool, useImpostorPBRMaps);
+            OE_OPTION(bool, useImpostorPBRMaps, true);
 
             //! Whether to assume normal maps are RG-compressed
             //! default = true;
-            OE_OPTION(bool, useRGCompressedNormalMaps);
+            OE_OPTION(bool, useRGCompressedNormalMaps, true);
 
             //! Scale factor for LOD-ing the far-away impostor vegetation
             //! default = 1.0f
-            OE_OPTION(float, farLODScale);
+            OE_OPTION(float, farLODScale, 1.0f);
 
             //! Scale factor for the LOD at which to transition from 
             //! high-resolution 3D models up close to impostor models
             //! at distance.
             //! default = 1.0f
-            OE_OPTION(float, nearLODScale);
+            OE_OPTION(float, nearLODScale, 1.0f);
 
             //! Amount of an LOD boundary (from near to far) should be
             //! used to display a transition between the two LODs [0..1]
             //! default = 0.5f
-            OE_OPTION(float, lodTransitionPadding);
+            OE_OPTION(float, lodTransitionPadding, 0.5f);
 
             //! Maximum texture size to transfer to the GPU
             //! default = INT_MAX (no limit)
-            OE_OPTION(unsigned, maxTextureSize);
+            OE_OPTION(unsigned, maxTextureSize, INT_MAX);
 
             //! OSG render bin number for vegetation render bins
-            OE_OPTION(int, renderBinNumber);
+            OE_OPTION(int, renderBinNumber, 3);
 
             //! Number of threads to use for background loading
-            OE_OPTION(unsigned, threads);
+            OE_OPTION(unsigned, threads, 2u);
 
             struct OSGEARTHPROCEDURAL_EXPORT Group
             {
                 //! Whether to render this group at all
                 //! default = true
-                OE_OPTION(bool, enabled);
+                OE_OPTION(bool, enabled, false);
 
                 //! Terrain LOD at which to render this group
-                OE_OPTION(unsigned, lod);
+                OE_OPTION(unsigned, lod, 0u);
 
                 //! Not used
-                OE_OPTION(float, maxRange);
+                OE_OPTION(float, maxRange, FLT_MAX);
 
                 //! Number of assets to place per square kilometer
                 //! default = 4096
-                OE_OPTION(int, instancesPerSqKm);
+                OE_OPTION(int, instancesPerSqKm, 4096);
 
                 //! Whether assets in this group cast shadows
                 //! default = false
-                OE_OPTION(bool, castShadows);
+                OE_OPTION(bool, castShadows, false);
 
                 //! Percentage of overlap allowed in asset bounding spheres [0..1]
                 //! default = 0.0f
-                OE_OPTION(float, overlap);
+                OE_OPTION(float, overlap, 0.0f);
 
                 //! Base SSE scale factor for far visibility
                 //! default = 1.0f
-                OE_OPTION(float, farLODScale);
+                OE_OPTION(float, farLODScale, 1.0f);
 
                 //! Cut off for alpha discard/blend in the shader (0..1]
                 //! default = 0.2f
-                OE_OPTION(float, alphaCutoff);
+                OE_OPTION(float, alphaCutoff, 0.2f);
 
                 // internal
                 osg::ref_ptr<osg::StateSet> _drawStateSet;
                 BiomeManager::CreateImpostorFunction _createImpostor;
 
                 Config getConfig() const;
-
-                Group();
             };
 
             using GroupMap = vector_map<std::string, Group>;
@@ -174,6 +172,12 @@ namespace osgEarth { namespace Procedural
         //! Only use this when multisampling it ON
         void setUseAlphaToCoverage(bool value);
         bool getUseAlphaToCoverage() const;
+
+        //! Whether you can enable A2C by calling setUseAlphaToCoverage(true).
+        //! A2C requires multisampling to be enabled.
+        bool isAlphaToCoverageAvailable() const {
+            return _alphaToCoverageSupported;
+        }
 
         //! Visibility range of the specified asset group
         //! This setting will take effect to next time the layer is opened.
@@ -458,12 +462,12 @@ namespace osgEarth { namespace Procedural
             ProgressCallback* c) const;
 
         // Things that help us detect the presence of multisampling
-        mutable bool _requestMultisampling = false;
-        bool _multisamplingActivated = false;
+        mutable bool _alphaToCoverageSupported = false;
+        mutable bool _alphaToCoverageInstalled = false;
         bool _renderingSupported = true;
         bool _showTileBoundingBoxes = false;
 
-        void activateMultisampling();
+        void updateAlphaToCoverage();
     };
 
 } } // namespace osgEarth::Procedural

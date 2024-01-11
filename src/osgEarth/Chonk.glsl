@@ -169,6 +169,8 @@ mat3 make_tbn(vec3 N, vec3 p, vec2 uv)
 
 void oe_chonk_default_fragment(inout vec4 color)
 {
+    const float alpha_discard_threshold = 0.5;
+
     // When simulating normals, we invert the texture coordinates
     // for backfacing geometry
     if (!gl_FrontFacing && oe_normal_technique != NT_DEFAULT)
@@ -184,12 +186,13 @@ void oe_chonk_default_fragment(inout vec4 color)
 
 #if defined(OE_IS_SHADOW_CAMERA) || defined(OE_IS_DEPTH_CAMERA)
 
-    // force alpha to 0 or 1 and threshold it.
-    color.a = step(oe_alpha_cutoff, color.a * oe_fade);
-    if (color.a < oe_alpha_cutoff)
+    // for shadowing cameras, just do a simple step discard.
+    color.a = step(alpha_discard_threshold, color.a * oe_fade);
+    if (color.a < 1.0)
         discard;
 
 #else // !OE_IS_SHADOW_CAMERA && !OE_IS_DEPTH_CAMERA
+
 
 #if OE_GPUCULL_DEBUG
 
@@ -200,7 +203,7 @@ void oe_chonk_default_fragment(inout vec4 color)
     else if (oe_fade <= 4.0) color.rgb = vec3(0, 1, 0); // REASON_NEARCLIP
     else color.rgb = vec3(1, 0, 1); // should never happen :)
 
-#elif defined(OE_USE_ALPHA_TO_COVERAGE)
+#else // normal rendering path:
 
     // Adjust the alpha based on the calculated mipmap level.
     // Looks better and actually helps performance a bit as well.
@@ -208,26 +211,28 @@ void oe_chonk_default_fragment(inout vec4 color)
     // https://tinyurl.com/fhu4zdxz
     if (oe_albedo_tex > 0UL)
     {
-        ivec2 tsize = textureSize(sampler2D(oe_albedo_tex), 0);
-        vec2 cf = vec2(float(tsize.x)*oe_tex_uv.s, float(tsize.y)*oe_tex_uv.t);
-        vec2 dx_vtc = dFdx(cf);
-        vec2 dy_vtc = dFdy(cf);
-        float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
-        float miplevel = max(0, 0.5 * log2(delta_max_sqr));
-
-        color.a *= (1.0 + miplevel * oe_alpha_cutoff);
+        vec2 miplevel = textureQueryLod(sampler2D(oe_albedo_tex), oe_tex_uv);
+        color.a *= (1.0 + miplevel.x * oe_alpha_cutoff);
     }
-
     color.a *= oe_fade;
 
-#else // if !OE_USE_ALPHA_TO_COVERAGE
+  #ifndef OE_USE_ALPHA_TO_COVERAGE
 
-    // force alpha to 0 or 1 and threshold it.
-    color.a = step(oe_alpha_cutoff, color.a * oe_fade);
-    if (color.a < oe_alpha_cutoff)
+    // When A2C is not available, we force the alpha to 0 or 1 and then
+    // discard the invisible fragments.    
+    // This is necessary because the GPU culler generates the draw commands in an
+    // arbitrary order and not depth sorted. Even if we did depth-sort the results,
+    // there are plenty of overlapping geometries in vegetation that would cause
+    // flickering artifacts.
+    // (TODO: consider a cheap alpha-only pass that we can sample to prevent overdraw
+    // and discard in the expensive shader)
+    color.a = step(alpha_discard_threshold, color.a);
+    if (color.a < 1.0)
         discard;
 
-#endif
+  #endif // !OE_USE_ALPHA_TO_COVERAGE
+
+#endif // !OE_GPUCULL_DEBUG
 
     vec3 normal_view = vp_Normal;
 

@@ -200,20 +200,6 @@ namespace
 void
 VegetationLayer::Options::fromConfig(const Config& conf)
 {
-    // defaults:
-    alphaToCoverage().setDefault(true);
-    impostorLowAngle().setDefault(Angle(45.0, Units::DEGREES));
-    impostorHighAngle().setDefault(Angle(67.5, Units::DEGREES));
-    farLODScale().setDefault(1.0f);
-    nearLODScale().setDefault(1.0f);
-    lodTransitionPadding().setDefault(0.5f);
-    useImpostorNormalMaps().setDefault(true);
-    useImpostorPBRMaps().setDefault(true);
-    useRGCompressedNormalMaps().setDefault(true);
-    maxTextureSize().setDefault(INT_MAX);
-    renderBinNumber().setDefault(3);
-    threads().setDefault(2u);
-
     biomeLayer().get(conf, "biomes_layer");
 
     conf.get("alpha_to_coverage", alphaToCoverage());
@@ -258,7 +244,7 @@ VegetationLayer::Options::fromConfig(const Config& conf)
     groups()[GROUP_UNDERGROWTH].instancesPerSqKm().setDefault(500000);
     groups()[GROUP_UNDERGROWTH].overlap().setDefault(1.0f);
     groups()[GROUP_UNDERGROWTH].farLODScale().setDefault(2.0f);
-    groups()[GROUP_UNDERGROWTH].alphaCutoff().setDefault(0.15f);
+    groups()[GROUP_UNDERGROWTH].alphaCutoff().setDefault(0.25f);
     fromGroupConf(GROUP_UNDERGROWTH, conf.child("layers").child(GROUP_UNDERGROWTH), *this);
     fromGroupConf(GROUP_UNDERGROWTH, conf.child("groups").child(GROUP_UNDERGROWTH), *this);
 }
@@ -275,18 +261,6 @@ VegetationLayer::Options::group(const std::string& name) const
 {
     auto iter = groups().find(name);
     return iter != groups().end() ? iter->second : _emptyGroup;
-}
-
-VegetationLayer::Options::Group::Group()
-{
-    enabled().setDefault(false);
-    lod().setDefault(0u);
-    maxRange().setDefault(FLT_MAX);
-    instancesPerSqKm().setDefault(4096);
-    castShadows().setDefault(false);
-    overlap().setDefault(0.0f);
-    farLODScale().setDefault(1.0f);
-    alphaCutoff().setDefault(0.2f);
 }
 
 Config
@@ -447,11 +421,8 @@ VegetationLayer::update(osg::NodeVisitor& nv)
             _assets = std::move(_newAssets.release());
         }
 
-        if (_requestMultisampling)
-        {
-            activateMultisampling();
-            _requestMultisampling = false;
-        }
+        // do we need to activate A2C?
+        updateAlphaToCoverage();
     }
 }
 
@@ -669,6 +640,30 @@ VegetationLayer::getUseAlphaToCoverage() const
     return options().alphaToCoverage().get();
 }
 
+void
+VegetationLayer::updateAlphaToCoverage()
+{
+    if (getUseAlphaToCoverage() && _alphaToCoverageSupported && !_alphaToCoverageInstalled)
+    {
+        auto ss = getOrCreateStateSet();
+        ss->setMode(GL_MULTISAMPLE, 1);
+        ss->setDefine("OE_USE_ALPHA_TO_COVERAGE");
+        ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
+        ss->setAttributeAndModes(new osg::BlendFunc(), 0 | osg::StateAttribute::OVERRIDE);
+        _alphaToCoverageInstalled = true;
+    }
+    else if (!getUseAlphaToCoverage() && _alphaToCoverageInstalled)
+    {
+        auto ss = getOrCreateStateSet();
+        ss->removeMode(GL_MULTISAMPLE);
+        ss->removeDefine("OE_USE_ALPHA_TO_COVERAGE");
+        ss->removeMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB);
+        ss->removeAttribute(osg::StateAttribute::BLENDFUNC);
+        ss->removeMode(GL_BLEND);
+        _alphaToCoverageInstalled = false;
+    }
+}
+
 bool
 VegetationLayer::getCastShadows() const
 {
@@ -816,9 +811,6 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
 
     PatchLayer::prepareForRendering(engine);
 
-    _requestMultisampling = false;
-    _multisamplingActivated = false;
-
     TerrainResources* res = engine->getResources();
     if (res)
     {
@@ -878,9 +870,10 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
     ss->setDefine("OE_NOISE_TEX_INDEX", std::to_string(index));
 
     // If multisampling is on, use alpha to coverage.
+    _alphaToCoverageSupported = false;
     if (osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
     {
-        activateMultisampling();
+        _alphaToCoverageSupported = true;
     }
 
     // apply the various uniform-based options
@@ -913,24 +906,6 @@ namespace
             stateset->removeDefine(matrix);
         }
     }
-}
-
-void
-VegetationLayer::activateMultisampling()
-{
-    osg::StateSet* ss = getOrCreateStateSet();
-    ss->setMode(GL_MULTISAMPLE, 1);
-
-    if (options().alphaToCoverage() == true)
-    {
-        ss->setDefine("OE_USE_ALPHA_TO_COVERAGE");
-        ss->setMode(GL_SAMPLE_ALPHA_TO_COVERAGE_ARB, 1);
-        ss->setAttributeAndModes(new osg::BlendFunc(), 0 | osg::StateAttribute::OVERRIDE);
-    }
-
-    _multisamplingActivated = true;
-
-    OE_INFO << LC << "Multisampling and ALPHA_TO_COVERAGE are active" << std::endl;
 }
 
 void
@@ -2011,14 +1986,14 @@ VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
     _cameraState.unlock();
 
     // check for multisampling
-    if (!_multisamplingActivated)
+    if (!_alphaToCoverageSupported)
     {
         if (cv->getState()->getLastAppliedModeValue(GL_MULTISAMPLE) ||
             osg::DisplaySettings::instance()->getMultiSamples() == true ||
-            osg::DisplaySettings::instance()->getNumMultiSamples() > 1 ||
-            options().alphaToCoverage() == true)
+            osg::DisplaySettings::instance()->getNumMultiSamples() > 1)
         {
-            _requestMultisampling = true;
+            // the next update() pass will pick this up and apply it if possible.
+            _alphaToCoverageSupported = true;
         }
     }
 

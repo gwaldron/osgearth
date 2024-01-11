@@ -119,6 +119,13 @@ namespace osgEarth
                             if (ImGuiLTable::Checkbox("Use impostor PBR maps", &pbrMaps))
                                 _veglayer->setUseImpostorPBRMaps(pbrMaps);
 
+                            if (_veglayer->isAlphaToCoverageAvailable())
+                            {
+                                bool a2c = _veglayer->getUseAlphaToCoverage();
+                                if (ImGuiLTable::Checkbox("Alpha to Coverage", &a2c))
+                                    _veglayer->setUseAlphaToCoverage(a2c);
+                            }
+
                             unsigned maxTex = _veglayer->getMaxTextureSize();
                             const char* maxTexItems[] = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192", "16384" };
                             unsigned maxTexIndex = 0;

@@ -6,7 +6,6 @@
 //out vec3 oe_normal_binormal;
 
 #ifdef OE_TERRAIN_RENDER_NORMAL_MAP
-uint64_t oe_terrain_getNormalHandle();
 vec2 oe_terrain_getNormalCoords();
 flat out uint64_t oe_normal_handle;
 out vec2 oe_normal_uv;
@@ -16,11 +15,11 @@ void oe_rex_normalMapVS(inout vec4 unused)
 {
 #ifdef OE_TERRAIN_RENDER_NORMAL_MAP
     oe_normal_handle = 0;
-    int normalIndex = oe_tile[oe_tileID].normalIndex;
-    if (normalIndex >= 0)
+    int index = oe_tile[oe_tileID].normalIndex;
+    if (index >= 0)
     {
         oe_normal_uv = oe_terrain_getNormalCoords();
-        oe_normal_handle =  oe_terrain_tex[normalIndex];
+        oe_normal_handle = oe_terrain_tex[index];
     }
 #endif
 }

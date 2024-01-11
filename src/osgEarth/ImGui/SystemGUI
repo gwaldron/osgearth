@@ -139,9 +139,6 @@ namespace osgEarth
                         ImGuiLTable::End();
                     }
 
-                    ImGui::Checkbox("Unref image data after apply",
-                        &Registry::instance()->unRefImageDataAfterApply().mutable_value());
-
                     ImGui::Separator();
                     if (ImGuiLTable::Begin("caps"))
                     {

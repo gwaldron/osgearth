@@ -144,35 +144,35 @@ namespace osgEarth
     //! A draw command for indirect rendering
     struct DrawElementsIndirectCommand
     {
-        GLuint  count = 0;          // how many indices comprise this draw command
-        GLuint  instanceCount = 1;  // how many instances of the geometry to draw
-        GLuint  firstIndex = 0;     // index of the first element in the EBO to use
-        GLuint  baseVertex = 0;     // offset to add to each element index (lets us use USHORT even when >65535 verts)
-        GLuint  baseInstance = 0;   // offset to instance # when fetching vertex attrs (does NOT affect gl_InstanceID)
+        GLuint  count = 0u;         // how many indices comprise this draw command
+        GLuint  instanceCount = 1u;  // how many instances of the geometry to draw
+        GLuint  firstIndex = 0u;     // index of the first element in the EBO to use
+        GLuint  baseVertex = 0u;     // offset to add to each element index (lets us use USHORT even when >65535 verts)
+        GLuint  baseInstance = 0u;   // offset to instance # when fetching vertex attrs (does NOT affect gl_InstanceID)
     };
 
     //! A dispatch command for indirect compute
     struct DispatchIndirectCommand
     {
-        GLuint num_groups_x = 1;
-        GLuint num_groups_y = 0;
-        GLuint num_groups_z = 0;
+        GLuint num_groups_x = 1u;
+        GLuint num_groups_y = 1u;
+        GLuint num_groups_z = 1u;
     };
 
     //! A pointer record for bindless buffer usage
     struct BindlessPtrNV
     {
-        GLuint index = 0;      // unused
-        GLuint reserved = 0;   // unused
-        GLuint64 address = 0;  // GPU address of bindless buffer
-        GLuint64 length = 0;   // length in bytes of bindless buffer
+        GLuint index = 0u;      // unused
+        GLuint reserved = 0u;   // unused
+        GLuint64 address = 0u;  // GPU address of bindless buffer
+        GLuint64 length = 0u;   // length in bytes of bindless buffer
     };
 
     //! A draw command for NVIDIA bindless buffer draws with a single VBO
     struct DrawElementsIndirectBindlessCommandNV
     {
         DrawElementsIndirectCommand cmd;
-        GLuint reserved = 0;
+        GLuint reserved = 0u;
         BindlessPtrNV indexBuffer;
         BindlessPtrNV vertexBuffer;
     };

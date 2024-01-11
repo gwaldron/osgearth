@@ -25,7 +25,8 @@ vec2 oe_terrain_getElevationCoord(in vec2 uv)
 // Gets the handle to use for elevation sampling
 uint64_t oe_terrain_getElevationHandle()
 {
-    return oe_terrain_tex[oe_tile[oe_tileID].elevIndex];
+    int index = oe_tile[oe_tileID].elevIndex;
+    return (index >= 0) ? oe_terrain_tex[index] : 0;
 }
 
 // Sample the elevation data at a UV tile coordinate.
@@ -33,8 +34,13 @@ float oe_terrain_getElevation(in vec2 uv)
 {
     // Texel-level scale and bias allow us to sample the elevation texture
     // on texel center instead of edge.
-    vec2 uv_scaledBiased = oe_terrain_getElevationCoord(uv);
-    return texture(sampler2D(oe_terrain_tex[oe_tile[oe_tileID].elevIndex]), uv_scaledBiased).r;
+    int index = oe_tile[oe_tileID].elevIndex;
+    if (index >= 0)
+    {
+        vec2 uv_scaledBiased = oe_terrain_getElevationCoord(uv);
+        return texture(sampler2D(oe_terrain_tex[index]), uv_scaledBiased).r;
+    }
+    return 0.0;
 }
 
 // Read the elevation at the build-in tile coordinates (convenience)
@@ -46,15 +52,20 @@ float oe_terrain_getElevation()
 // Read the normal vector and curvature at resolved UV tile coordinates.
 vec4 oe_terrain_getNormalAndCurvature(in vec2 uv_scaledBiased)
 {
-    vec4 n = texture(sampler2D(oe_terrain_tex[oe_tile[oe_tileID].normalIndex]), uv_scaledBiased);
-    n.xyz = n.xyz*2.0-1.0;
-    float curv = n.z;
-    n.z = 1.0 - abs(n.x) - abs(n.y);
-    // unnecessary since Z is never < 0:
-    //float t = clamp(-n.z, 0, 1);
-    //n.x += (n.x > 0)? -t : t;
-    //n.y += (n.y > 0)? -t : t;
-    return vec4(normalize(n.xyz), curv);
+    int index = oe_tile[oe_tileID].normalIndex;
+    if (index >= 0)
+    {
+        vec4 n = texture(sampler2D(oe_terrain_tex[index]), uv_scaledBiased);
+        n.xyz = n.xyz * 2.0 - 1.0;
+        float curv = n.z;
+        n.z = 1.0 - abs(n.x) - abs(n.y);
+        // unnecessary since Z is never < 0:
+        //float t = clamp(-n.z, 0, 1);
+        //n.x += (n.x > 0)? -t : t;
+        //n.y += (n.y > 0)? -t : t;
+        return vec4(normalize(n.xyz), curv);
+    }
+    else return vec4(0.0, 0.0, 1.0, 0.0);
 }
 
 vec4 oe_terrain_getNormalAndCurvature()
@@ -69,7 +80,8 @@ vec4 oe_terrain_getNormalAndCurvature()
 
 uint64_t oe_terrain_getNormalHandle()
 {
-    return oe_terrain_tex[oe_tile[oe_tileID].normalIndex];
+    int index = oe_tile[oe_tileID].normalIndex;
+    return (index >= 0) ? oe_terrain_tex[index] : 0;
 }
 
 vec2 oe_terrain_getNormalCoords()

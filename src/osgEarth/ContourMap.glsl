@@ -34,11 +34,14 @@ in vec2 oe_elev_coord;
 
 void oe_contour_fragment( inout vec4 color )
 {
-    float height = texture(sampler2D(oe_elev_tex), oe_elev_coord).r;
-    float height_normalized = (height-oe_contour_min)/oe_contour_range;
-    float lookup = clamp( height_normalized, 0.0, 1.0 );
-    vec4 texel = texture( oe_contour_xfer, lookup );
-    color.rgb = mix(color.rgb, texel.rgb, texel.a);
+    if (oe_elev_tex > 0)
+    {
+        float height = texture(sampler2D(oe_elev_tex), oe_elev_coord).r;
+        float height_normalized = (height - oe_contour_min) / oe_contour_range;
+        float lookup = clamp(height_normalized, 0.0, 1.0);
+        vec4 texel = texture(oe_contour_xfer, lookup);
+        color.rgb = mix(color.rgb, texel.rgb, texel.a);
+    }
 }
 
 #else // OE_USE_GL4

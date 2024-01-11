@@ -189,7 +189,7 @@ LayerDrawableNVGL::refreshRenderState()
         TextureArena* textures = _context->textures();
 
         unsigned tile_num = 0;
-        
+
         _rs.tiles.clear();
 
         for (auto& tile : _tiles)
@@ -301,9 +301,9 @@ LayerDrawableNVGL::refreshRenderState()
             buf.drawOrder = _surfaceDrawOrder;
         }
 
-         _rs.tiles.swap(_tiles); // hopefully uses std::move
-        
-         _tiles.clear();
+        _rs.tiles.swap(_tiles); // hopefully uses std::move
+
+        _tiles.clear();
 
         // This will trigger a GPU upload on the next draw
         _rs.dirty = true;
@@ -349,6 +349,8 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
             512 * sizeof(GL4Tile),
             nullptr,
             GL_DYNAMIC_DRAW);
+
+        gl.tiles->unbind();
     }
 
     if (renderTerrainSurface)
@@ -365,23 +367,18 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
                 GL_DYNAMIC_DRAW);
             gl.commands->unbind();
 
-            osg::setGLExtensionFuncPtr(
-                gl.glMultiDrawElementsIndirectBindlessNV,
-                "glMultiDrawElementsIndirectBindlessNV");
+            osg::setGLExtensionFuncPtr(gl.glMultiDrawElementsIndirectBindlessNV, "glMultiDrawElementsIndirectBindlessNV");
             OE_HARD_ASSERT(gl.glMultiDrawElementsIndirectBindlessNV != nullptr);
 
             // OSG bug: glVertexAttribFormat is mapped to the wrong function :( so
             // we have to look it up fresh.
-            osg::setGLExtensionFuncPtr(
-                gl.glVertexAttribFormat,
-                "glVertexAttribFormat");
+            osg::setGLExtensionFuncPtr(gl.glVertexAttribFormat, "glVertexAttribFormat");
             OE_HARD_ASSERT(gl.glVertexAttribFormat != nullptr);
 
             // Needed for core profile
             void(GL_APIENTRY * glEnableClientState_)(GLenum);
             osg::setGLExtensionFuncPtr(glEnableClientState_, "glEnableClientState");
             OE_HARD_ASSERT(glEnableClientState_ != nullptr);
-
 
             // Set up a VAO that we'll use to render with bindless NV.
             gl.vao = GLVAO::create(state);
@@ -404,16 +401,14 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
                 offsetof(GL4Vertex, neighborPosition),
                 offsetof(GL4Vertex, neighborNormal)
             };
+
             for (unsigned location = 0; location < 5; ++location)
             {
                 gl.glVertexAttribFormat(location, 3, GL_FLOAT, GL_FALSE, offsets[location]);
                 gl.ext->glVertexAttribBinding(location, 0);
                 gl.ext->glEnableVertexAttribArray(location);
+                gl.ext->glBindVertexBuffer(location, 0, offsets[location], sizeof(GL4Vertex));
             }
-
-            // bind a "dummy buffer" that will record the stride, which is
-            // just the size of our vertex structure.
-            gl.ext->glBindVertexBuffer(0, 0, 0, sizeof(GL4Vertex));
 
             // Finish recording
             gl.vao->unbind();
@@ -467,11 +462,12 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
             {
                 SharedGeometry* geom = tile._geom.get();
                 auto& command = geom->getOrCreateNVGLCommand(state);
-                if (command.vertexBuffer.address != 0 && command.indexBuffer.address != 0)
-                    _rs.commands.push_back(command);
+                _rs.commands.push_back(command);
             }
 
             gl.commands->uploadData(_rs.commands);
+
+            OE_SOFT_ASSERT(_rs.commands.size() == _rs.tiles.size());
         }
     }
 
@@ -518,10 +514,7 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
 
         gl.vao->unbind();
 
-        if (_clearOsgState)
-        {
-            gl.commands->unbind();
-        }
+        gl.commands->unbind();
     }
 
     else if (_patchLayer && _patchLayer->getRenderer())

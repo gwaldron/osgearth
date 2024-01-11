@@ -335,6 +335,9 @@ SharedGeometry::~SharedGeometry()
 const DrawElementsIndirectBindlessCommandNV&
 SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
 {
+    OE_SOFT_ASSERT(_verts.size() > 0);
+    OE_SOFT_ASSERT(_drawElements->size() > 0);
+
     bool dirty = false;
 
     // first the drawelements
@@ -373,6 +376,12 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
     // make them resident in each context separately
     de._ebo->makeResident(state);
     gs._vbo->makeResident(state);
+
+    OE_SOFT_ASSERT(de._ebo->address() != 0);
+    OE_SOFT_ASSERT(de._ebo->size() > 0);
+
+    OE_SOFT_ASSERT(gs._vbo->address() != 0);
+    OE_SOFT_ASSERT(gs._vbo->size() > 0);
 
     if (dirty)
     {

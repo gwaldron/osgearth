@@ -37,6 +37,7 @@ namespace osgEarth
         using namespace osgEarth;
 
         using DrawElementsBase = osg::DrawElementsUShort;
+        //using DrawElementsBase = osg::DrawElementsUInt;
 
         // A DrawElements with a UID.
         class /* internal */ SharedDrawElements : public DrawElementsBase
@@ -154,7 +155,7 @@ namespace osgEarth
             const DrawElementsIndirectBindlessCommandNV& getOrCreateNVGLCommand(
                 osg::State& state);
 
-        protected:
+        //protected:
 
             virtual ~SharedGeometry();
 
@@ -178,7 +179,7 @@ namespace osgEarth
             };
             mutable osg::buffered_object<GLObjects> _globjects;
 
-        private:
+        //private:
 
             friend struct DrawTileCommand;
             friend class GeometryPool;

@@ -303,7 +303,7 @@ namespace osgEarth
             float visibility[2]; // per LOD
             float radius; // per chonk
             float alphaCutoff;
-            GLuint first_lod_cmd_index;
+            GLint first_lod_cmd_index = -1; // invalid instance
         };
         using Instances = std::vector<Instance>;
         using Batches = std::unordered_map<Chonk::Ptr, Instances>;

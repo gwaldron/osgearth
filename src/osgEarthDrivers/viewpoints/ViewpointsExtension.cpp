@@ -51,15 +51,15 @@ namespace
 
     struct ViewpointsHandler : public osgGA::GUIEventHandler
     {
-        ViewpointsHandler(const std::vector<Viewpoint>& viewpoints, float t)
-            : _viewpoints( viewpoints ), _transitionTime(t), _autoRunDelay(0.0f), _autoRunIndex(0), _count(0), _homeIndex(-1)
+        ViewpointsHandler(const std::vector<Viewpoint>& viewpoints, float t, bool mapKeys)
+            : _viewpoints( viewpoints ), _transitionTime(t), _autoRunDelay(0.0f), _autoRunIndex(0), _count(0), _homeIndex(-1), _mapKeys(mapKeys)
         {
             _autoRunStartWaitTime = osg::Timer::instance()->tick();
         }
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
         {
-            if ( ea.getEventType() == ea.KEYDOWN )
+            if ( _mapKeys && ea.getEventType() == ea.KEYDOWN )
             {
                 if ( !_viewpoints.empty() && _autoRunDelay <= 0.0f )
                 {
@@ -148,6 +148,7 @@ namespace
         int                    _autoRunIndex;
         int                    _homeIndex;
         int                    _count;
+        bool                   _mapKeys = false;
     };
 
 
@@ -214,6 +215,7 @@ ConfigOptions( options )
     const Config& viewpointsConf = options.getConfig();
     float t = viewpointsConf.value("time", VP_MAX_DURATION);
     int home = viewpointsConf.value("home", (int)-1);
+    bool mapKeys = viewpointsConf.value("map_keys", false) == true;
 
     std::vector<Viewpoint> viewpoints;
 
@@ -228,7 +230,7 @@ ConfigOptions( options )
 
     OE_INFO << LC << "Read " << viewpoints.size() << " viewpoints\n";
 
-    ViewpointsHandler* handler = new ViewpointsHandler(viewpoints, t);
+    ViewpointsHandler* handler = new ViewpointsHandler(viewpoints, t, mapKeys);
     handler->_homeIndex = home;
 
     if (viewpointsConf.hasValue("autorun"))

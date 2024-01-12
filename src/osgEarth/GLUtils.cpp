@@ -1131,7 +1131,7 @@ GLBuffer::release()
         }
 #else
         for (auto& i : _isResident)
-            i.second = false;
+            i.second.value = false;
 #endif
 
         //makeNonResident();
@@ -1391,7 +1391,7 @@ GLTexture::release()
         _isResident.value = false;
 #else
         for (auto& i : _isResident)
-            i.second = false;
+            i.second.value = false;
 #endif
         _handle = 0;
     }

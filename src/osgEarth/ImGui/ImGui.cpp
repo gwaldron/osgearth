@@ -138,10 +138,17 @@ static int ConvertFromOSGKey(int key)
         return ImGuiKey_Enter;
     case KEY::KEY_Escape:
         return ImGuiKey_Escape;
+
+    // map the keys we need for copy/paste/select/undo when control is held
     case 22:
         return osgGA::GUIEventAdapter::KeySymbol::KEY_V;
     case 3:
         return osgGA::GUIEventAdapter::KeySymbol::KEY_C;
+    case 1:
+        return osgGA::GUIEventAdapter::KeySymbol::KEY_A;
+    case 26:
+        return osgGA::GUIEventAdapter::KeySymbol::KEY_Z;
+
     default: // Not found
         return key;
     }

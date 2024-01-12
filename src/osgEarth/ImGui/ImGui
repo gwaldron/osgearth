@@ -472,6 +472,25 @@ namespace ImGuiUtil
             ImGui::Image((void*)(intptr_t)textureObject->_id, ImVec2(w, h), ImVec2(0, flip ? 0 : 1), ImVec2(1, flip ? 1 : 0), ImVec4(1, 1, 1, 1), ImVec4(1, 1, 0, 1));
         }
     }
+
+    static int InputTextCallback(ImGuiInputTextCallbackData* data)
+    {
+        std::string* str = (std::string*)data->UserData;
+        if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
+        {
+            // Resize string callback
+            IM_ASSERT(data->Buf == str->c_str());
+            str->resize(data->BufTextLen);
+            data->Buf = (char*)str->c_str();
+        }
+        return 0;
+    }
+
+    static bool InputTextMultiline(const char* label, std::string* str, const ImVec2& size)
+    {
+        ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
+        return ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, (void*)str);
+    }
 }
 
 #endif

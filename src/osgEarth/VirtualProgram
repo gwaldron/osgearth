@@ -37,7 +37,7 @@ namespace osgEarth
 {
     namespace Util
     {
-        class /*internal*/ ProgramRepo : public Threading::Mutexed<osg::Referenced>
+        class OSGEARTH_EXPORT ProgramRepo : public Threading::Mutexed<osg::Referenced>
         {
         public:
             // Program key (must be sorted set)
@@ -91,6 +91,13 @@ namespace osgEarth
             ProgramRepo();
 
             ~ProgramRepo();
+
+            ProgramMap copy() const {
+                lock();
+                auto result = _db;
+                unlock();
+                return result;
+            }
 
         private:
             mutable ProgramMap _db;

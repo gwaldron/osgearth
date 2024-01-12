@@ -66,8 +66,8 @@ namespace osgEarth {
                             {
                                 _viewpoints.push_back(Viewpoint(j));
 
-#if 0 // works, but conflicts with the ViewpointsExtension :)
-                                if (key < 9)
+                                // warning, if viewpoints:map_keys == true, this will conflict.
+                                if (false) //key < 9)
                                 {
                                     EventRouter::get(view(ri)).onKeyPress(
                                         (osgGA::GUIEventAdapter::KeySymbol)((int)osgGA::GUIEventAdapter::KEY_1 + key),
@@ -78,7 +78,6 @@ namespace osgEarth {
                                         });
                                     key++;
                                 }
-#endif
                             }
                         }
                     }

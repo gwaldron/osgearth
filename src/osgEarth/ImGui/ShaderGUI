@@ -20,11 +20,13 @@
 #define OSGEARTH_IMGUI_SHADER_GUI
 
 #include "ImGui"
-#include <osgEarth/Threading>
+#include <osgEarth/Registry>
+#include <osgEarth/VirtualProgram>
 #include <osg/Uniform>
 #include <osg/StateSet>
 #include <chrono>
 #include <list>
+#include <vector>
 
 namespace osgEarth
 {
@@ -32,6 +34,7 @@ namespace osgEarth
     {
         using namespace osgEarth;
         using namespace osgEarth::Threading;
+        using namespace osgEarth::Util;
 
         class ShaderGUI : public BaseGUI
         {
@@ -48,6 +51,8 @@ namespace osgEarth
                 bool _checked;
             };
             std::vector<DefineSpec> _defines;
+
+            ProgramRepo::ProgramMap _db;
 
         public:
             ShaderGUI(osg::ArgumentParser* args) : BaseGUI("Shaders")
@@ -115,6 +120,49 @@ namespace osgEarth
                                 ri.getCurrentCamera()->getOrCreateStateSet()->setDefine(def._name, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
                             else
                                 ri.getCurrentCamera()->getOrCreateStateSet()->setDefine(def._name, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+                        }
+                    }
+
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Programs:");
+
+                    if (ImGui::Button("Reload"))
+                    {
+                        _db = Registry::programRepo().copy();
+                    }
+                    
+                    for (auto& entry : _db)
+                    {
+                        if (entry.second->_users.size() > 0)
+                        {
+                            auto program = entry.second->_program;
+                            auto name = program->getName();
+                            if (name.empty()) name = "[no name]";
+                            if (ImGui::TreeNode(name.c_str()))
+                            {
+                                auto num = program->getNumShaders();
+                                for (unsigned i = 0; i < num; ++i)
+                                {
+                                    auto shader = program->getShader(i);
+                                    auto shader_name = shader->getName();
+                                    if (shader_name.empty()) shader_name = "[no name]";
+                                    if (ImGui::TreeNode(shader->getName().c_str()))
+                                    {
+                                        if (ImGui::Button("Compile"))
+                                        {
+                                            program->releaseGLObjects(nullptr);
+                                        }
+                                        auto text = shader->getShaderSource();
+                                        if (ImGuiUtil::InputTextMultiline("##shader_source", &text, ImVec2(-1, -1)))
+                                        {
+                                            shader->setShaderSource(text);
+                                            program->releaseGLObjects(nullptr);
+                                        }
+                                        ImGui::TreePop();
+                                    }
+                                }
+                                ImGui::TreePop();
+                            }
                         }
                     }
                 }

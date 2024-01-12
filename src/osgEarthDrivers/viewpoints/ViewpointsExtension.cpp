@@ -151,7 +151,7 @@ namespace
         int                    _autoRunIndex;
         int                    _homeIndex;
         int                    _count;
-        bool                   _mapKeys = false;
+        bool                   _mapKeys = true;
     };
 
 
@@ -218,7 +218,7 @@ ConfigOptions( options )
     const Config& viewpointsConf = options.getConfig();
     float t = viewpointsConf.value("time", VP_MAX_DURATION);
     int home = viewpointsConf.value("home", (int)-1);
-    bool mapKeys = viewpointsConf.value("map_keys", false) == true;
+    bool mapKeys = viewpointsConf.value("map_keys", true) == true;
 
     std::vector<Viewpoint> viewpoints;
 

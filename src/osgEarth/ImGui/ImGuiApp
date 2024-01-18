@@ -102,14 +102,10 @@ namespace osgEarth
         class OsgImGuiHandler : public osgGA::GUIEventHandler
         {
         public:
-            OsgImGuiHandler();
+
+            using RealizeOperation = osgEarth::GUI::GlewInitOperation;
 
             bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
-
-            class RealizeOperation : public osgEarth::GUI::GlewInitOperation
-            {
-                void operator()(osg::Object* object) override;
-            };
 
             virtual void load(void* section, const std::string& key, const std::string& value) { }
 
@@ -119,37 +115,26 @@ namespace osgEarth
 
             virtual void* findByType(const std::type_info& type) { return nullptr; }
 
-            bool getAutoAdjustProjectionMatrix() const { return autoAdjustProjectionMatrix; }
-            void setAutoAdjustProjectionMatrix(bool value) { autoAdjustProjectionMatrix = value; }
+            bool getAutoAdjustProjectionMatrix() const { return _autoAdjustProjectionMatrix; }
 
-        protected:
+            void setAutoAdjustProjectionMatrix(bool value) { _autoAdjustProjectionMatrix = value; }
+
             // Put your ImGui code inside this function
             virtual void draw(osg::RenderInfo& renderInfo) = 0;
-            friend class RealizeOperation;
-
-            virtual void init();
-
-        private:
-
-
-            void setCameraCallbacks(osg::Camera* camera);
-
+            void init();
             void newFrame(osg::RenderInfo& renderInfo);
-
             void render(osg::RenderInfo& renderInfo);
 
         private:
             struct ImGuiNewFrameCallback;
             struct ImGuiRenderCallback;
 
-            double time_;
-            bool mousePressed_[3];
-            bool mouseDoubleClicked_[3];
-            float mouseWheel_;
-            bool initialized_;
-            bool firstFrame_;
-            bool show_;
-            bool autoAdjustProjectionMatrix = true;
+            double _time = 0.0;
+            bool _initialized = false;
+            bool _firstFrame = true;
+            bool _show = true;
+            bool _autoAdjustProjectionMatrix = true;
+            bool _dragging = false;
 
             static void* handleStartEntry(
                 ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name);
@@ -159,6 +144,9 @@ namespace osgEarth
             static void handleWriteSettings(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf);
 
             void installSettingsHandler();
+
+            ImGuiKey convertKey(int osgKey);
+            ImGuiButtonFlags convertMouseButton(int osgButtonMask);
         };
 
         // ALL-PURPOSE GUI container - create a full-screen menu bar
@@ -169,8 +157,8 @@ namespace osgEarth
             using GUIPtr = std::unique_ptr<BaseGUI>;
 
             //! Add all the built-in GUIs
-            ApplicationGUI(
-                bool addBuiltIns = false) : OsgImGuiHandler(),
+            ApplicationGUI(bool addBuiltIns = false) : 
+                OsgImGuiHandler(),
                 _showDemoWindow(false)
             {
                 if (addBuiltIns)
@@ -180,9 +168,8 @@ namespace osgEarth
             }
 
             //! Add all the built-in GUIs
-            ApplicationGUI(
-                osg::ArgumentParser& args,
-                bool addBuiltIns =false) : OsgImGuiHandler(),
+            ApplicationGUI(osg::ArgumentParser& args, bool addBuiltIns =false) :
+                OsgImGuiHandler(),
                 _showDemoWindow(false)
             {
                 if (addBuiltIns)

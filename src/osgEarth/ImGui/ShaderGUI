@@ -124,16 +124,17 @@ namespace osgEarth
                     }
 
                     ImGui::Separator();
-                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Programs:");
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Active Programs:");
 
-                    if (ImGui::Button("Reload"))
+                    if (_db.empty() || ImGui::Button("Refresh"))
                     {
                         _db = Registry::programRepo().copy();
                     }
                     
+                    int frame = ri.getState()->getFrameStamp()->getFrameNumber();
                     for (auto& entry : _db)
                     {
-                        if (entry.second->_users.size() > 0)
+                        if (entry.second->_users.size() > 0 && (frame - entry.second->_frameLastUsed < 60))
                         {
                             auto program = entry.second->_program;
                             auto name = program->getName();

@@ -912,7 +912,9 @@ MapNodeHelper::configureView( osgViewer::View* view ) const
     view->addEventHandler(new osgViewer::LODScaleHandler());
     view->addEventHandler(new osgGA::StateSetManipulator(view->getCamera()->getOrCreateStateSet()));
     view->addEventHandler(new osgViewer::RecordCameraPathHandler());
-    view->addEventHandler(new osgViewer::ScreenCaptureHandler());
+
+    // Taking this out because it does not properly check getHandled()
+    //view->addEventHandler(new osgViewer::ScreenCaptureHandler());
 }
 
 

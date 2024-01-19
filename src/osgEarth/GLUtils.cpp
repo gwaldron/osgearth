@@ -1908,7 +1908,7 @@ GLObjectsCompiler::compileAsync(
             auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
             compileSet->buildCompileMap(ico->getContextSet(), *state);
             ICOCallback* callback = new ICOCallback(node, _jobsActive);
-            result = callback->_promise; // .getFuture();
+            result = callback->_promise;
             compileSet->_compileCompletedCallback = callback;
             _jobsActive++;
             ico->add(compileSet, false);
@@ -1919,9 +1919,10 @@ GLObjectsCompiler::compileAsync(
     if (!compileScheduled)
     {
         // no ICO available - just resolve the future immediately
-        Promise<osg::ref_ptr<osg::Node>> promise;
-        result = promise; // .getFuture();
-        promise.resolve(node);
+        result.resolve(node);
+        //Promise<osg::ref_ptr<osg::Node>> promise;
+        //result = promise; // .getFuture();
+        //promise.resolve(node);
     }
 
     return result;

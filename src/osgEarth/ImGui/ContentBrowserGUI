@@ -174,25 +174,26 @@ namespace osgEarth {
                 if (!_selectedFilename.empty() && !_currentTexture.valid() && !_currentNode.valid())
                 {
                     ImGui::Text("Couldn't load %s", _selectedFilename.c_str());
-                    return;
                 }
-
-                if (_currentTexture.valid())
+                else
                 {
-                    ImGuiUtil::Texture(_currentTexture.get(), ri, 250, 0);
-                    osg::Image* image = _currentTexture->getImage();
-                    ImGui::Text(image->getFileName().c_str());
-                    ImGui::Text("Dimensions: %d x %d", image->s(), image->t());
-                    ImGui::Text("Compressed: %s", image->isCompressed() ? "Yes" : "No");                    
-                    ImGui::Text("Data Type: %s", getGLString(image->getDataType()).c_str());
-                    ImGui::Text("Texture Format: %s", getGLString(image->getInternalTextureFormat()).c_str());
-                    ImGui::Text("Mipmap Levels: %d", image->getNumMipmapLevels());
-                    ImGui::Text("Pixel Format: %s", getGLString(image->getPixelFormat()).c_str());
-                }
+                    if (_currentTexture.valid())
+                    {
+                        ImGuiUtil::Texture(_currentTexture.get(), ri, 250, 0);
+                        osg::Image* image = _currentTexture->getImage();
+                        ImGui::Text(image->getFileName().c_str());
+                        ImGui::Text("Dimensions: %d x %d", image->s(), image->t());
+                        ImGui::Text("Compressed: %s", image->isCompressed() ? "Yes" : "No");
+                        ImGui::Text("Data Type: %s", getGLString(image->getDataType()).c_str());
+                        ImGui::Text("Texture Format: %s", getGLString(image->getInternalTextureFormat()).c_str());
+                        ImGui::Text("Mipmap Levels: %d", image->getNumMipmapLevels());
+                        ImGui::Text("Pixel Format: %s", getGLString(image->getPixelFormat()).c_str());
+                    }
 
-                if (_currentNode.valid())
-                {
-                    ImGui::Text("Loaded Node");
+                    if (_currentNode.valid())
+                    {
+                        ImGui::Text("Loaded Node");
+                    }
                 }
                 ImGui::EndChild();
             }

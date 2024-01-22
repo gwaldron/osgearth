@@ -633,7 +633,7 @@ namespace osgEarth
         unsigned _hits;
         unsigned _misses;
         unsigned _avarice;
-        unsigned _frames_to_delay_deletion = 4u;
+        unsigned _frames_to_delay_deletion = 1u;
 
         struct GC {
             GC() : _gc(nullptr), _operation(nullptr) { }

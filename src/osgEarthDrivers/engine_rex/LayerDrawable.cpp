@@ -36,6 +36,9 @@ using namespace osgEarth::REX;
 #define GL_ELEMENT_ARRAY_UNIFIED_NV 0x8F1F
 #endif
 
+// Uncomment this to reset all buffer base index bindings after rendering.
+// It's unlikely this is necessary, but it's here just we find otherwise.
+//#define RESET_BUFFER_BASE_BINDINGS
 
 
 LayerDrawable::LayerDrawable()
@@ -481,18 +484,13 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
     // Bind the tiles data to its layout(binding=X) in the shader.
     gl.tiles->bindBufferBase(31);
 
-
     if (renderTerrainSurface)
     {
         // Bind the command buffer for rendering.
         gl.commands->bind();
 
         // Bind the shared data to its layout(binding=X) in the shader.
-        // For shared data we only need to do this once per pass
-        if (_surfaceDrawOrder == 0)
-        {
-            gl.shared->bindBufferBase(30);
-        }
+        gl.shared->bindBufferBase(30);
 
         gl.vao->bind();
 
@@ -515,6 +513,10 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
         gl.vao->unbind();
 
         gl.commands->unbind();
+
+#ifdef RESET_BUFFER_BASE_BINDINGS
+        gl.ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 30, 0); // unbind shared data
+#endif
     }
 
     else if (_patchLayer && _patchLayer->getRenderer())
@@ -531,6 +533,11 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
 
         _patchLayer->getRenderer()->draw(ri, batch);
     }
+
+#ifdef RESET_BUFFER_BASE_BINDINGS
+    gl.ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 31, 0); // tiles data
+    gl.ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 29, 0); // texture arena
+#endif
 
     LayerDrawable::drawImplementation(ri);
 }

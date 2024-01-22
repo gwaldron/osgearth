@@ -45,6 +45,10 @@ using namespace osgEarth;
 // note: this MUST match the local_size product in Chonk.Culling.glsl
 #define GPU_CULLING_LOCAL_WG_SIZE 32
 
+// Uncomment this to reset all buffer base index bindings after rendering.
+// It's unlikely this is necessary, but it's here just we find otherwise.
+//#define RESET_BUFFER_BASE_BINDINGS
+
 namespace
 {
     struct SendIndices
@@ -1424,6 +1428,13 @@ ChonkRenderBin::DrawLeaf::draw(osg::State& state)
     {
         auto& gl = ChonkDrawable::GLObjects::get(drawable->_globjects, state);
         gl._vao->unbind();
+
+#ifdef RESET_BUFFER_BASE_BINDINGS
+        gl._ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER,  0, 0);
+        gl._ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 29, 0);
+        gl._ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 30, 0);
+        gl._ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 31, 0);
+#endif
     }
 }
 

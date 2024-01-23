@@ -1282,11 +1282,6 @@ ChonkDrawable::GLObjects::cull(osg::State& state)
     // instances array before computing _numInstances)
     unsigned workgroups = (_numInstances + (GPU_CULLING_LOCAL_WG_SIZE-1)) / GPU_CULLING_LOCAL_WG_SIZE;
 
-    // calculate number of workgroups.
-    // (todo: this is probably unnecessary since we already padded the 
-    // instances array before computing _numInstances)
-    unsigned workgroups = (_numInstances + (GPU_CULLING_LOCAL_WG_SIZE-1)) / GPU_CULLING_LOCAL_WG_SIZE;
-
     // cull:
     ext->glUniform1i(ps._passUL, 0);
     ext->glDispatchCompute(workgroups, _maxNumLODs, 1);

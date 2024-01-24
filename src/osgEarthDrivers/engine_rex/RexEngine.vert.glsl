@@ -21,7 +21,12 @@ void oe_rex_init_model(inout vec4 vertexModel)
     oe_layer_tilec = gl_MultiTexCoord0;
 
     // Extract the vertex type marker
-    oe_terrain_vertexMarker = int(oe_layer_tilec.z);
+    //oe_terrain_vertexMarker = int(oe_layer_tilec.z);
+
+    // Doing this instead of the commented-out line above is a workaround
+    // for the Mesa driver bug described here:
+    // https://gitlab.freedesktop.org/mesa/mesa/-/issues/10482
+    oe_terrain_vertexMarker = int(gl_MultiTexCoord0.z);
 
     // Color of the underlying map geometry (untextured)
     vp_Color = oe_terrain_color;

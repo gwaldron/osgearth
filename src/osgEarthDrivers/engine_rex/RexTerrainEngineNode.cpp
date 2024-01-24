@@ -260,6 +260,7 @@ RexTerrainEngineNode::onSetMap()
         _morphingSupported = false;
     }
 
+#if 0
     // There is an (apparent) bug in the mesa 23.1.4 driver that causes display artifacts 
     // when doing morphing; this code will attempt to detect that condition and disable
     // the offending code until we can find a workaround.
@@ -275,6 +276,7 @@ RexTerrainEngineNode::onSetMap()
             getOrCreateStateSet()->setDefine("OE_MESA_23_WORKAROUND");
         }
     }
+#endif
 
     // morphing imagery LODs requires we bind parent textures to their own unit.
     if (options.getMorphImagery() && _morphingSupported)

@@ -116,7 +116,7 @@ sudo apt-get install libglew-dev
 Build Openscenegraph.  This sets GL profile and context which aren't necessary so change accordingly for your needs.
 ```
 git clone https://github.com/openscenegraph/OpenSceneGraph.git
-cd osg
+cd OpenSceneGraph
 mkdir build && cd build
 cmake .. -DOPENGL_PROFILE=GL3 -DOSG_GL_CONTEXT_VERSION=4.6
 make -j8
@@ -149,7 +149,7 @@ In WSL2 (I have tried Ubuntu 20 and 22), follow the previous Linux build example
 Build Openscenegraph.  This sets GL profile to Core and context to 3.3 for Mesa compatibility
 ```
 git clone https://github.com/openscenegraph/OpenSceneGraph.git
-cd osg
+cd OpenSceneGraph
 mkdir build && cd build
 cmake .. -DOPENGL_PROFILE=GL3 -DOSG_GL_CONTEXT_VERSION=3.3
 make -j8

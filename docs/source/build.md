@@ -168,6 +168,24 @@ sudo add-apt-repository 'deb https://developer.download.nvidia.com/compute/cuda/
 sudo apt-get update
 sudo apt-get -y install cuda
 ```
+If you are on Ubuntu 23.10, there is a CUDA install problem.  This is the fix:
+
+The libtinfo5 package isn't available in Ubuntu 23.10's default repositories yet. We can install it by adding the universe repo for Ubuntu 23.04 (Lunar Lobster).
+
+Open a terminal window and run:
+```
+sudo nano /etc/apt/sources.list
+```
+Add this line (adds the Ubuntu 23.04 aka "Lunar Lobster" universe repository to apt):
+```
+deb http://archive.ubuntu.com/ubuntu/ lunar universe
+```
+Save and exit, then run:
+```
+sudo apt update
+```
+...and now the install command for CUDA should work, automatically downloading and installing libtinfo5 while installing CUDA
+
 I did clone the CUDA samples repo and build deviceQuery which will be a quick test to make sure your GPU is recognized
 ```
 git clone https://github.com/nvidia/cuda-samples

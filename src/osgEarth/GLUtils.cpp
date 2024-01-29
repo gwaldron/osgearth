@@ -422,7 +422,8 @@ namespace
             CallStack stack;
             for(unsigned i=1; i<stack.symbols.size(); ++i)
             {
-                buf << " -> " << stack.symbols[i];
+                if (stack.symbols[i].find("s_oe_gldebugproc") == std::string::npos)
+                    buf << "\n - " << stack.symbols[i];
                 if (stack.symbols[i] == "main") break;
             }
             OE_WARN << "Call stack:" << buf.str() << std::endl;
@@ -1867,7 +1868,7 @@ GLObjectsCompiler::compileAsync(
                 auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
                 compileSet->buildCompileMap(ico->getContextSet(), *state.get());
                 ICOCallback* callback = new ICOCallback(node, _jobsActive);
-                result = callback->_promise; // .getFuture();
+                result = callback->_promise;
                 compileSet->_compileCompletedCallback = callback;
                 _jobsActive++;
                 ico->add(compileSet, false);
@@ -1878,9 +1879,10 @@ GLObjectsCompiler::compileAsync(
         if (!compileScheduled)
         {
             // no ICO available - just resolve the future immediately
-            Promise<osg::ref_ptr<osg::Node>> promise;
-            result = promise; // .getFuture();
-            promise.resolve(node);
+            result.resolve(node);
+            //Promise<osg::ref_ptr<osg::Node>> promise;
+            //result = promise; // .getFuture();
+            //promise.resolve(node);
         }
     }
 

@@ -116,7 +116,7 @@ sudo apt-get install libglew-dev
 Build Openscenegraph.  This sets GL profile and context which aren't necessary so change accordingly for your needs.
 ```
 git clone https://github.com/openscenegraph/OpenSceneGraph.git
-cd osg
+cd OpenSceneGraph
 mkdir build && cd build
 cmake .. -DOPENGL_PROFILE=GL3 -DOSG_GL_CONTEXT_VERSION=4.6
 make -j8
@@ -149,7 +149,7 @@ In WSL2 (I have tried Ubuntu 20 and 22), follow the previous Linux build example
 Build Openscenegraph.  This sets GL profile to Core and context to 3.3 for Mesa compatibility
 ```
 git clone https://github.com/openscenegraph/OpenSceneGraph.git
-cd osg
+cd OpenSceneGraph
 mkdir build && cd build
 cmake .. -DOPENGL_PROFILE=GL3 -DOSG_GL_CONTEXT_VERSION=3.3
 make -j8
@@ -168,6 +168,24 @@ sudo add-apt-repository 'deb https://developer.download.nvidia.com/compute/cuda/
 sudo apt-get update
 sudo apt-get -y install cuda
 ```
+If you are on Ubuntu 23.10, there is a CUDA install problem.  This is the fix:
+
+The libtinfo5 package isn't available in Ubuntu 23.10's default repositories yet. We can install it by adding the universe repo for Ubuntu 23.04 (Lunar Lobster).
+
+Open a terminal window and run:
+```
+sudo nano /etc/apt/sources.list
+```
+Add this line (adds the Ubuntu 23.04 aka "Lunar Lobster" universe repository to apt):
+```
+deb http://archive.ubuntu.com/ubuntu/ lunar universe
+```
+Save and exit, then run:
+```
+sudo apt update
+```
+...and now the install command for CUDA should work, automatically downloading and installing libtinfo5 while installing CUDA
+
 I did clone the CUDA samples repo and build deviceQuery which will be a quick test to make sure your GPU is recognized
 ```
 git clone https://github.com/nvidia/cuda-samples

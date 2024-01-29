@@ -1880,9 +1880,6 @@ GLObjectsCompiler::compileAsync(
         {
             // no ICO available - just resolve the future immediately
             result.resolve(node);
-            //Promise<osg::ref_ptr<osg::Node>> promise;
-            //result = promise; // .getFuture();
-            //promise.resolve(node);
         }
     }
 
@@ -1902,6 +1899,7 @@ GLObjectsCompiler::compileAsync(
 
     // if there is an ICO available, schedule the GPU compilation
     bool compileScheduled = false;
+
     if (state != nullptr && !state->empty())
     {
         osg::ref_ptr<ICO> ico;
@@ -1922,9 +1920,6 @@ GLObjectsCompiler::compileAsync(
     {
         // no ICO available - just resolve the future immediately
         result.resolve(node);
-        //Promise<osg::ref_ptr<osg::Node>> promise;
-        //result = promise; // .getFuture();
-        //promise.resolve(node);
     }
 
     return result;

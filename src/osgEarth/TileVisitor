@@ -141,7 +141,6 @@ namespace osgEarth { namespace Util
 
         unsigned int _numThreads;
 
-        std::shared_ptr<JobArena> _arena;
         JobGroup _group;
     };
 

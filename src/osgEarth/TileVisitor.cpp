@@ -234,12 +234,12 @@ bool TileVisitor::handleTile( const TileKey& key )
 
 /*****************************************************************************************/
 
-MultithreadedTileVisitor::MultithreadedTileVisitor():
-_numThreads(Threading::getConcurrency())
+MultithreadedTileVisitor::MultithreadedTileVisitor() :
+    _numThreads(Threading::getConcurrency())
 {
     // We must do this to avoid an error message in OpenSceneGraph b/c the findWrapper method doesn't appear to be threadsafe.
     // This really isn't a big deal b/c this only effects data that is already cached.
-    osgDB::ObjectWrapper* wrapper = osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper( "osg::Image" );
+    osgDB::ObjectWrapper* wrapper = osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
 }
 
 MultithreadedTileVisitor::MultithreadedTileVisitor(TileHandler* handler) :
@@ -258,26 +258,19 @@ void MultithreadedTileVisitor::setNumThreads( unsigned int numThreads)
     _numThreads = numThreads;
 }
 
+#define MTTV "oe.mttilevisitor"
+
 void MultithreadedTileVisitor::run(const Profile* mapProfile)
 {
     // Start up the task service
     OE_INFO << "Starting " << _numThreads << " threads " << std::endl;
 
-    _arena = std::make_shared<JobArena>("oe.mttilevisitor", _numThreads);
-
-    //_numTiles = 0;
+    JobArena::get(MTTV)->setConcurrency(_numThreads);
 
     // Produce the tiles
     TileVisitor::run( mapProfile );
 
     _group.join();
-    
-    //// Wait for everything to finish
-    //Mutex _doneMx;
-    //std::unique_lock<Mutex> doneLock(_doneMx);
-    //_done.wait(doneLock, [this] {
-    //    return _numTiles == 0;
-    //});
 }
 
 bool MultithreadedTileVisitor::handleTile(const TileKey& key)
@@ -302,7 +295,7 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
         }
     };
 
-    Job job(_arena.get(), &_group);
+    Job job(JobArena::get(MTTV), &_group);
     job.setName("handleTile");
     job.dispatch(delegate);
 

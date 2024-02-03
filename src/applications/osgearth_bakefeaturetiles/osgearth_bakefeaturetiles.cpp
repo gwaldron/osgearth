@@ -407,8 +407,6 @@ public:
         // Start up the task service
         OE_INFO << "Starting " << _numThreads << " threads " << std::endl;
 
-        _arena = std::make_shared<JobArena>("oe.mttilevisitor", _numThreads);
-
         _profile = mapProfile;
 
         // Reset the progress in case this visitor has been ran before.

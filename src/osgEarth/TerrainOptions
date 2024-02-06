@@ -79,6 +79,8 @@ namespace osgEarth
         OE_OPTION(float, screenSpaceError, 0.0f);
         OE_OPTION(unsigned, maxTextureSize, 65536u);
         OE_OPTION(bool, visible, true);
+        OE_OPTION(bool, createTilesAsync, true);
+        OE_OPTION(bool, createTilesGrouped, true);
 
         virtual Config getConfig() const;
     private:
@@ -271,6 +273,14 @@ namespace osgEarth
         //! Whether to render the terrain
         void setVisible(const bool& value);
         const bool& getVisible() const;
+
+        //! Whether the engine should create child tiles asynchronously
+        void setCreateTilesAsync(const bool& value);
+        const bool& getCreateTilesAsync() const;
+
+        //! Whether the engine should create all child tiles in a group
+        void setCreateTilesGrouped(const bool& value);
+        const bool& getCreateTilesGrouped() const;
 
         TerrainOptionsAPI();
         TerrainOptionsAPI(TerrainOptions*);

@@ -85,45 +85,6 @@ TerrainOptions::getConfig() const
 void
 TerrainOptions::fromConfig(const Config& conf)
 {
-    tileSize().setDefault(17);
-    minTileRangeFactor().setDefault(7.0);
-    maxLOD().setDefault(19u);
-    minLOD().setDefault(0u);
-    firstLOD().setDefault(0u);
-    enableLighting().setDefault(true);
-    clusterCulling().setDefault(true);
-    enableBlending().setDefault(true);
-    compressNormalMaps().setDefault(false);
-    minNormalMapLOD().setDefault(0);
-    gpuTessellation().setDefault(false);
-    tessellationLevel().setDefault(2.5f);
-    tessellationRange().setDefault(75.0f);
-    debug().setDefault(false);
-    renderBinNumber().setDefault(0);
-    castShadows().setDefault(false);
-    lodMethod().setDefault(TerrainLODMethod::CAMERA_DISTANCE);
-    tilePixelSize().setDefault(512);
-    minExpiryFrames().setDefault(0);
-    minExpiryTime().setDefault(0.0);
-    minExpiryRange().setDefault(0.0f);
-    minResidentTiles().setDefault(0u);
-    maxTilesToUnloadPerFrame().setDefault(~0u);
-    heightFieldSkirtRatio().setDefault(0.0f);
-    color().setDefault(osg::Vec4f(1,1,1,1));
-    progressive().setDefault(false);
-    useNormalMaps().setDefault(true);
-    normalizeEdges().setDefault(false);
-    morphTerrain().setDefault(true);
-    morphImagery().setDefault(true);
-    mergesPerFrame().setDefault(20u);
-    priorityScale().setDefault(1.0f);
-    textureCompression().setDefault("");
-    concurrency().setDefault(4u);
-    useLandCover().setDefault(true);
-    screenSpaceError().setDefault(0.0f);
-    maxTextureSize().setDefault(65536);
-    visible().setDefault(true);
-
     conf.get( "tile_size", _tileSize );
     conf.get( "min_tile_range_factor", _minTileRangeFactor );   
     conf.get( "range_factor", _minTileRangeFactor );   

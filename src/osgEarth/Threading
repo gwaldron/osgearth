@@ -854,7 +854,7 @@ namespace osgEarth { namespace Threading
         //! @func Function to execute
         //! @return Future result. If this objects goes out of scope,
         //!         the job will be canceled and may not run at all.
-        template<typename FUNC, typename RETURN_TYPE = std::result_of<FUNC(Cancelable*)>::type>
+        template<typename FUNC, typename RETURN_TYPE = typename std::result_of<FUNC(Cancelable*)>::type>
         Future<RETURN_TYPE> dispatch(FUNC function) const;
 
         //! Dispatch the job for asynchronous execution and forget

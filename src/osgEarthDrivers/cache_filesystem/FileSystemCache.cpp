@@ -672,7 +672,7 @@ namespace
             _writeCacheRWM.write_unlock();
 
             // asynchronous write
-            Job(_jobArena.get()).dispatch(write_op);
+            Job(_jobArena.get()).dispatch_and_forget(write_op);
         }
 
         else

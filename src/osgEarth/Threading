@@ -775,7 +775,7 @@ namespace osgEarth { namespace Threading
      *
      *   Job job;
      *   
-     *   Future<int> result = job.dispatch<int>(
+     *   Future<int> result = job.dispatch(
      *      [a, b](Cancelable* progress) {
      *          return (a + b);
      *      }
@@ -854,14 +854,13 @@ namespace osgEarth { namespace Threading
         //! @func Function to execute
         //! @return Future result. If this objects goes out of scope,
         //!         the job will be canceled and may not run at all.
-        template<typename T>
-        Future<T> dispatch(
-            std::function<T(Cancelable*)> func) const;
+        template<typename FUNC, typename RETURN_TYPE = std::result_of<FUNC(Cancelable*)>::type>
+        Future<RETURN_TYPE> dispatch(FUNC function) const;
 
         //! Dispatch the job for asynchronous execution and forget
         //! about it. No return value.
-        inline void dispatch(
-            std::function<void(Cancelable*)> func) const;
+        template<typename FUNC>
+        void dispatch_and_forget(FUNC function) const;
 
     private:
         std::string _name;
@@ -1077,11 +1076,11 @@ namespace osgEarth { namespace Threading
         friend class Job; // allow access to private dispatch method
     };
 
-    template<typename T>
-    Future<T> Job::dispatch(std::function<T(Cancelable*)> function) const
+    template<typename FUNC, typename RETURN_TYPE>
+    Future<RETURN_TYPE> Job::dispatch(FUNC function) const
     {
-        Promise<T> promise;
-        Future<T> future = promise; // .getFuture();
+        Promise<RETURN_TYPE> promise;
+        Future<RETURN_TYPE> future = promise;
         JobArena::Delegate delegate = [function, promise]() mutable
             {
                 bool good = !promise.empty();
@@ -1094,7 +1093,8 @@ namespace osgEarth { namespace Threading
         return std::move(future);
     }
 
-    void Job::dispatch(std::function<void(Cancelable*)> function) const
+    template<typename FUNC>
+    void Job::dispatch_and_forget(FUNC function) const
     {
         auto name = _arena ? _arena->_name : _arenaName;
         JobArena* arena = JobArena::get(name);

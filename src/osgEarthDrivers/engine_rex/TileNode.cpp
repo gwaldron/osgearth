@@ -698,7 +698,7 @@ TileNode::createChildren()
             Job job;
             job.setArena(ARENA_CREATE_CHILD);
             job.setName(_key.str());
-            _createChildrenFutureResult = job.dispatch<CreateChildrenResult>(createChildrenOperation);
+            _createChildrenFutureResult = job.dispatch(createChildrenOperation);
         }
 
         else if (_createChildrenFutureResult.available())
@@ -753,7 +753,7 @@ TileNode::createChildren()
                 job.setArena(ARENA_CREATE_CHILD);
                 job.setName(childkey.str());
 
-                _createChildResults.emplace_back(job.dispatch<CreateChildResult>(createChildOperation));
+                _createChildResults.emplace_back(job.dispatch(createChildOperation));
             }
         }
 

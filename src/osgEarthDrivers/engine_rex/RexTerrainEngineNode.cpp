@@ -597,8 +597,9 @@ RexTerrainEngineNode::refresh(bool forceDirty)
             tileNode->initializeData();
 
             // And load the tile's data
-            load.dispatch([tileNode](Cancelable*) {
-                tileNode->loadSync();
+            load.dispatch_and_forget([tileNode](Cancelable*)
+                {
+                    tileNode->loadSync();
                 });
 
             OE_DEBUG << " - " << (i + 1) << "/" << keys.size() << " : " << keys[i].str() << std::endl;

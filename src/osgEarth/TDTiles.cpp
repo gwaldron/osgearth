@@ -547,8 +547,7 @@ namespace
             parentTileset, uri, options);
 
         JobArena* arena = JobArena::get("oe.3dtiles");
-        return Job(arena).dispatch<ReadTileData>(
-            [operation, options](Cancelable* progress)
+        return Job(arena).dispatch([operation, options](Cancelable* progress)
             {
                 return operation->loadTileSet(progress);
             }
@@ -575,8 +574,7 @@ namespace
     {
         JobArena* arena = JobArena::get("oe.3dtiles");
 
-        return Job(arena).dispatch<ReadTileData>(
-            [uri, options](Cancelable* progress)
+        return Job(arena).dispatch([uri, options](Cancelable* progress)
             {
                 osg::ref_ptr<osg::Node> node = uri.getNode(options.get(), nullptr);
                 if (node.valid())

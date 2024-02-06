@@ -1160,7 +1160,7 @@ VegetationLayer::checkForNewAssets() const
     Job job;
     job.setName("VegetationLayer asset loader");
     job.setArena(JOB_ARENA_VEGETATION);
-    _newAssets = job.dispatch<AssetsByGroup>(loadNewAssets);
+    _newAssets = job.dispatch(loadNewAssets);
 
     return true;
 }
@@ -1229,7 +1229,7 @@ VegetationLayer::createDrawableAsync(
     job.setName("Vegetation create drawable");
     job.setArena(JOB_ARENA_VEGETATION);
     job.setPriority(-range); // closer is sooner
-    return job.dispatch<osg::ref_ptr<osg::Drawable>>(function);
+    return job.dispatch(function);
 }
 
 #undef RAND

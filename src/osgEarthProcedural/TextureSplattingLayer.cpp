@@ -258,7 +258,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
             };
 
             // Load material asynchronously
-            _materialsJob = Job().dispatch<Materials::Ptr>(loadMaterials);
+            _materialsJob = Job().dispatch(loadMaterials);
         }
     }
     else

@@ -1059,12 +1059,9 @@ AsyncElevationSampler::getSample(const GeoPoint& p)
 }
 
 Future<ElevationSample>
-AsyncElevationSampler::getSample(
-    const GeoPoint& point,
-    const Distance& resolution)
+AsyncElevationSampler::getSample(const GeoPoint& point, const Distance& resolution)
 {
-    return Job(_arena).dispatch<ElevationSample>(
-        [=](Cancelable* cancelable)
+    return Job(_arena).dispatch([=](Cancelable* cancelable)
         {
             ElevationSample sample;
             if (cancelable == nullptr || !cancelable->isCanceled())

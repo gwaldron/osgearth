@@ -1095,7 +1095,7 @@ namespace osgEarth
 
                         if (key.valid())
                         {
-                            _imageLayerValueUnderMouse = Job().dispatch<Result<ValueUnderMouse>>([this, key, p](Cancelable* c)
+                            _imageLayerValueUnderMouse = Job().dispatch([this, key, p](Cancelable* c)
                                 {
                                     ValueUnderMouse value;
                                     osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(c);

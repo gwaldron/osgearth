@@ -178,8 +178,7 @@ main(int argc, char** argv)
 
     for(const auto key : keys)
     {
-        Job(&arena).dispatch(
-            [&app, key](Cancelable*)
+        Job(&arena).dispatch_and_forget([&app, key](Cancelable*)
             {
                 app.exportKey(key);
             }

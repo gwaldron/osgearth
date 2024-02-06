@@ -118,7 +118,7 @@ LoadTileDataOperation::dispatch(bool async)
         Job job;
         job.setArena(ARENA_LOAD_TILE);
         job.setPriorityFunction(priority_func);
-        _result = job.dispatch<LoadResult>(load);
+        _result = job.dispatch(load);
     }
     else
     {

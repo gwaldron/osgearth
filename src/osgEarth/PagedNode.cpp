@@ -260,7 +260,7 @@ PagedNode2::load(float priority, const osg::Object* host)
 
             _job.setPriority(priority);
 
-            _loaded = _job.dispatch<Loaded>(
+            _loaded = _job.dispatch(
                 [load, callbacks_weakptr, preCompile](Cancelable* c)
                 {
                     Loaded result;

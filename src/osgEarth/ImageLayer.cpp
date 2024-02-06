@@ -932,8 +932,7 @@ FutureTexture2D::dispatch() const
     // prioritize higher LOD tiles.
     job.setPriority(key.getLOD());
 
-    _result = job.dispatch<GeoImage>(
-        [layer_ptr, key](Cancelable* progress) mutable
+    _result = job.dispatch([layer_ptr, key](Cancelable* progress) mutable
         {
             GeoImage result;
             osg::ref_ptr<ImageLayer> safe(layer_ptr);

@@ -521,7 +521,7 @@ namespace osgEarth
                         if (key.valid())
                         {
                             _biomeUnderMouseKey = key;
-                            _biomeUnderMouse = Job().dispatch<const Biome*>([&, key, p](Cancelable* c)
+                            _biomeUnderMouse = Job().dispatch([&, key, p](Cancelable* c)
                                 {
                                     const Biome* result = nullptr;
                                     osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(c);

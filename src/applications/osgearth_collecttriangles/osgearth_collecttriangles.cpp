@@ -508,7 +508,7 @@ void computeIntersectionsThreaded(osg::Node* node, std::vector< IntersectionQuer
             Job job;
             job.setArena("oe.intersections");
             job.setGroup(&intersections);
-            job.dispatch([node, curStart, curSize, &queries](Cancelable*) {
+            job.dispatch_and_forget([node, curStart, curSize, &queries](Cancelable*) {
                 computeIntersections(node, queries, curStart, curSize);
             });
             ++numJobs;

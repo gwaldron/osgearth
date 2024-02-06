@@ -297,7 +297,7 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
 
     Job job(JobArena::get(MTTV), &_group);
     job.setName("handleTile");
-    job.dispatch(delegate);
+    job.dispatch_and_forget(delegate);
 
     return true;
 }

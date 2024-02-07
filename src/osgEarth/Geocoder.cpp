@@ -181,7 +181,7 @@ Geocoder::search(const std::string& input, const osgDB::Options* io_options)
         std::shared_ptr<JobArena> arena;
         if (ObjectStorage::get(io_options, arena))
         {
-            Future<OutputData> out = Job(arena.get()).dispatch<OutputData>(geocode);
+            Future<OutputData> out = Job(arena.get()).dispatch(geocode);
             return Geocoder::Results(out);
         }
         else

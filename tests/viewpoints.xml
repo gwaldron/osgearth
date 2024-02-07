@@ -138,13 +138,13 @@
         <height>72.19622826110572</height>
         <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
     </viewpoint>
-    <viewpoint name="CULL ISSUE">
-  <heading>0.252151</heading>
-  <pitch>-50.4646</pitch>
-  <range>1081.05m</range>
-  <long>-117.1638458565494</long>
-  <lat>32.71773276857689</lat>
-  <height>-6.852578997612</height>
-  <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
-</viewpoint>
+    <viewpoint name="Chicago">
+        <heading>-62.0354</heading>
+        <pitch>-16.6573</pitch>
+        <range>2923.13m</range>
+        <long>-87.62551572200417</long>
+        <lat>41.89062024802782</lat>
+        <height>166.1599231623113</height>
+        <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+    </viewpoint>
 </viewpoints>

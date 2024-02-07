@@ -31,8 +31,6 @@
 
 namespace osgEarth { namespace RocksDBCache
 {
-    typedef OpenThreads::Atomic unsigned_atomic;
-
     /**
      * Tracks usage metrics across a RocksDB cache
      */
@@ -56,9 +54,9 @@ namespace osgEarth { namespace RocksDBCache
         virtual ~Tracker() { }
 
     public:
-        unsigned_atomic reads;
-        unsigned_atomic hits;
-        unsigned_atomic writes;
+        std::atomic_uint reads;
+        std::atomic_uint hits;
+        std::atomic_uint writes;
 
         bool hasSizeLimit() const {
             return _options.maxSizeMB().isSet();

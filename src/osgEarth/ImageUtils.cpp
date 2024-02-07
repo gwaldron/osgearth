@@ -748,7 +748,7 @@ ImageUtils::compressImageInPlace(
     OE_PROFILING_ZONE;
 
     // prevent 2 threads from compressing the same object at the same time
-    static Threading::Gate<void*> gate("ImageUtils::compressImageInPlace");
+    static Threading::Gate<void*> gate;
     Threading::ScopedGate<void*> lock(gate, input);
 
     if (!input)
@@ -1109,7 +1109,7 @@ ImageUtils::createSharpenedImage( const osg::Image* input )
 
 namespace
 {
-    static Threading::Mutex         s_emptyImageMutex(OE_MUTEX_NAME);
+    static std::mutex s_emptyImageMutex;
     static osg::ref_ptr<osg::Image> s_emptyImage;
 }
 
@@ -1118,7 +1118,7 @@ ImageUtils::createEmptyImage()
 {
     if (!s_emptyImage.valid())
     {
-        Threading::ScopedMutexLock exclusive( s_emptyImageMutex );
+        std::lock_guard<std::mutex> exclusive( s_emptyImageMutex );
         if (!s_emptyImage.valid())
         {
             s_emptyImage = createEmptyImage( 1, 1 );

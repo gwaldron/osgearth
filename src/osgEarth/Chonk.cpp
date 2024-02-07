@@ -800,7 +800,7 @@ ChonkDrawable::installRenderBin(ChonkDrawable* d)
     static osg::ref_ptr<VirtualProgram> s_vp;
 
     static Mutex s_mutex;
-    ScopedMutexLock lock(s_mutex);
+    std::lock_guard<std::mutex> lock(s_mutex);
 
     auto& ss = s_stateSets[d->getRenderBinNumber()];
     if (!ss.valid())
@@ -860,7 +860,7 @@ ChonkDrawable::add(Chonk::Ptr chonk, const osg::Matrixf& xform, const osg::Vec2f
 {
     if (chonk)
     {
-        ScopedMutexLock lock(_m);
+        std::lock_guard<std::mutex> lock(_m);
 
         Instance instance;
         instance.xform = xform;
@@ -896,7 +896,7 @@ ChonkDrawable::update_and_cull_batches(osg::State& state) const
     // if something changed, we need to refresh the GPU tables.
     if (globjects._dirty)
     {
-        ScopedMutexLock lock(_m);
+        std::lock_guard<std::mutex> lock(_m);
         globjects._gpucull = _gpucull;
         globjects.update(_batches, this, _fadeNear, _fadeFar, _birthday, _alphaCutoff, state);
     }
@@ -918,7 +918,7 @@ ChonkDrawable::draw_batches(osg::State& state) const
 osg::BoundingBox
 ChonkDrawable::computeBoundingBox() const
 {
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
     
     osg::BoundingBox result;
 
@@ -974,7 +974,7 @@ ChonkDrawable::refreshProxy() const
 {
     if (_proxy_dirty)
     {
-        ScopedMutexLock lock(_m);
+        std::lock_guard<std::mutex> lock(_m);
 
         _proxy_verts.clear();
         _proxy_indices.clear();
@@ -1354,7 +1354,7 @@ ChonkRenderBin::ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op)
     if (!_cullSS.valid())
     {
         static Mutex m;
-        ScopedMutexLock lock(m);
+        std::lock_guard<std::mutex> lock(m);
 
         auto proto = static_cast<ChonkRenderBin*>(getRenderBinPrototype("ChonkBin"));
         if (!proto->_cullSS.valid())

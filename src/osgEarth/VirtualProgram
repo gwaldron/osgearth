@@ -290,7 +290,7 @@ namespace osgEarth
 
             bool _dirty;
 
-            static Threading::Mutex _cacheMutex;
+            static std::mutex _cacheMutex;
             using PolyShaderCache = std::map<
                 std::pair<std::string, std::string>,
                 osg::ref_ptr<PolyShader>>;
@@ -568,7 +568,7 @@ namespace osgEarth
         mutable osg::buffered_object<ApplyVars> _apply;
 
         // protects access to the data members, which may be accessed by other VPs in the state stack.
-        mutable Threading::Mutex _dataModelMutex;
+        mutable std::mutex _dataModelMutex;
         bool _useDataModelMutex = true;
 
         // The program cache holds an osg::Program instance for each collection of shaders

@@ -136,7 +136,7 @@ namespace osgEarth { namespace Util
         osg::observer_ptr< const osgEarth::Map > _map;
         
         
-        mutable Threading::Mutex _mutex;
+        mutable std::mutex _mutex;
         using Callbacks = std::vector<osg::ref_ptr<Callback>>;
         Callbacks _callbacks;
 

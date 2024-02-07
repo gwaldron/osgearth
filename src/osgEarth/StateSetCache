@@ -155,7 +155,7 @@ namespace osgEarth
         typedef std::set< osg::ref_ptr<osg::StateAttribute>, CompareStateAttributes> StateAttributeSet;
         StateAttributeSet _stateAttributeCache;
 
-        mutable Threading::Mutex _mutex;
+        mutable std::mutex _mutex;
 
         void prune();
         void pruneIfNecessary();

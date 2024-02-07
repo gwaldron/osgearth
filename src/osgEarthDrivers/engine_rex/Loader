@@ -77,7 +77,7 @@ namespace osgEarth { namespace REX
         // Queue of tile data to merge during UPDATE traversal
         using MergeQueue = std::queue<LoadTileDataOperationPtr>;
         MergeQueue _mergeQueue;
-        JobArena::Metrics::Arena::Ptr _metrics;
+        jobs::jobpool::metrics_t* _metrics;
 
         Mutex _mutex;
         unsigned _mergesPerFrame;

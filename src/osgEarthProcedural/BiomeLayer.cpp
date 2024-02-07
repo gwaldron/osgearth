@@ -93,8 +93,6 @@ BiomeLayer::init()
 
     _autoBiomeManagement = true;
 
-    _tracker.setName("BiomeLayer.tracker(OE)");
-
     setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 }
 
@@ -132,7 +130,7 @@ BiomeLayer::closeImplementation()
 
     // cache:
     {
-        ScopedMutexLock lock(_imageCache);
+        std::lock_guard<std::mutex> lock(_imageCache.mutex());
         _imageCache.clear();
     }
 
@@ -231,7 +229,7 @@ BiomeLayer::setBlendRadius(const Distance& value)
     options().blendRadius() = value;
     bumpRevision();
 
-    ScopedMutexLock lock(_imageCache);
+    std::lock_guard<std::mutex> lock(_imageCache.mutex());
     _imageCache.clear();
 }
 
@@ -269,7 +267,8 @@ BiomeLayer::createImageImplementation(
 #if 1
     // check the cache:
     {
-        ScopedMutexLock lock(_imageCache);
+        std::lock_guard<std::mutex> lock(_imageCache.mutex());
+
         auto iter = _imageCache.find(key);
         osg::ref_ptr<osg::Image> image;
         if (iter != _imageCache.end() && iter->second.lock(image))
@@ -466,7 +465,7 @@ BiomeLayer::createImageImplementation(
 #if 1
     // local cache:
     {
-        ScopedMutexLock lock(_imageCache);
+        std::lock_guard<std::mutex> lock(_imageCache.mutex());
         _imageCache[key] = image.get();
     }
 #endif

@@ -52,7 +52,7 @@ using namespace osgEarth::Util;
 class GLTFReader
 {
 public:
-    using TextureCache = osgEarth::Mutexed<
+    using TextureCache = osgEarth::Threading::Mutexed<
         std::unordered_map<std::string, osg::ref_ptr<osg::Texture2D>> >;
 
     struct NodeBuilder;
@@ -586,7 +586,7 @@ public:
                                 TextureCache* texCache = reader->_texCache;
                                 if (!imageEmbedded && texCache)
                                 {
-                                    ScopedMutexLock lock(*texCache);
+                                    std::lock_guard<std::mutex> lock(texCache->mutex());
                                     auto texItr = texCache->find(imageURI.full());
                                     if (texItr != texCache->end())
                                     {
@@ -604,7 +604,7 @@ public:
                                 {
                                     if (!imageEmbedded && texCache && !cachedTex)
                                     {
-                                        ScopedMutexLock lock(*texCache);
+                                        std::lock_guard<std::mutex> lock(texCache->mutex());
                                         auto insResult = texCache->insert(TextureCache::value_type(imageURI.full(), tex));
                                         if (insResult.second)
                                         {

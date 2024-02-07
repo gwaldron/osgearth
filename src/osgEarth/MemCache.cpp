@@ -123,7 +123,7 @@ namespace
     };
     
 
-    static Threading::Mutex s_defaultBinMutex(OE_MUTEX_NAME);
+    static std::mutex s_defaultBinMutex;
 }
 
 //------------------------------------------------------------------------
@@ -154,7 +154,7 @@ MemCache::getOrCreateDefaultBin()
 {
     if ( !_defaultBin.valid() )
     {
-        Threading::ScopedMutexLock lock( s_defaultBinMutex );
+        std::lock_guard<std::mutex> lock( s_defaultBinMutex );
         // double check
         if ( !_defaultBin.valid() )
         {

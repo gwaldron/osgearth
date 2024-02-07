@@ -462,6 +462,8 @@ SET(LIB_PUBLIC_HEADERS
     FileGDBFeatureSource
 
     SDF
+    
+    weethreads.h
 
     ${OSGEARTH_VERSION_HEADER}
 )
@@ -859,7 +861,7 @@ set(TARGET_SRC
     SDF.cpp
 
     FileGDBFeatureSource.cpp
-
+    
     ${SHADERS_CPP}
 )
 

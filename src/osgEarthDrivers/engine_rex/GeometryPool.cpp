@@ -31,9 +31,7 @@ using namespace osgEarth::REX;
 
 GeometryPool::GeometryPool() :
     _enabled(true),
-    _debug(false),
-    _geometryMapMutex("GeometryPool(OE)"),
-    _keygate("GeometryPool(OE).keygate")
+    _debug(false)
 {
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 
@@ -64,7 +62,7 @@ GeometryPool::getPooledGeometry(
 
     // make our globally shared EBO if we need it
     {
-        Threading::ScopedMutexLock lock(_geometryMapMutex);
+        std::lock_guard<std::mutex> lock(_geometryMapMutex);
         if (!_defaultPrimSet.valid())
         {
             // convert the mesher's indices to a SharedDrawElements
@@ -120,7 +118,7 @@ GeometryPool::getPooledGeometry(
         // first check the sharing cache (note: tiles with edits are not cached)
         if (edits.empty())
         {
-            Threading::ScopedMutexLock lock(_geometryMapMutex);
+            std::lock_guard<std::mutex> lock(_geometryMapMutex);
             GeometryMap::iterator i = _geometryMap.find(geomKey);
             if (i != _geometryMap.end())
             {
@@ -137,7 +135,7 @@ GeometryPool::getPooledGeometry(
             // only store as a shared geometry if there are no constraints.
             if (out.valid() && !out->hasConstraints())
             {
-                Threading::ScopedMutexLock lock(_geometryMapMutex);
+                std::lock_guard<std::mutex> lock(_geometryMapMutex);
                 _geometryMap[geomKey] = out.get();
             }
         }
@@ -224,7 +222,7 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == nv.UPDATE_VISITOR && _enabled)
     {
-        Threading::ScopedMutexLock lock(_geometryMapMutex);
+        std::lock_guard<std::mutex> lock(_geometryMapMutex);
 
         std::vector<GeometryKey> keys;
 
@@ -251,7 +249,7 @@ void
 GeometryPool::clear()
 {
     releaseGLObjects(nullptr);
-    Threading::ScopedMutexLock lock(_geometryMapMutex);
+    std::lock_guard<std::mutex> lock(_geometryMapMutex);
     _geometryMap.clear();
 }
 
@@ -262,7 +260,7 @@ GeometryPool::resizeGLObjectBuffers(unsigned maxsize)
         return;
 
     // collect all objects in a thread safe manner
-    Threading::ScopedMutexLock lock(_geometryMapMutex);
+    std::lock_guard<std::mutex> lock(_geometryMapMutex);
 
     for (GeometryMap::const_iterator i = _geometryMap.begin(); i != _geometryMap.end(); ++i)
     {
@@ -283,7 +281,7 @@ GeometryPool::releaseGLObjects(osg::State* state) const
         return;
 
     // collect all objects in a thread safe manner
-    Threading::ScopedMutexLock lock(_geometryMapMutex);
+    std::lock_guard<std::mutex> lock(_geometryMapMutex);
 
     for (auto& entry : _geometryMap)
     {

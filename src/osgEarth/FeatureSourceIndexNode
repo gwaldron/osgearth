@@ -100,7 +100,7 @@ namespace osgEarth
         template<typename InputIter>
         void removeFIDs(InputIter first, InputIter last)
         {
-            Threading::ScopedMutexLock lock(_mutex);
+            std::lock_guard<std::mutex> lock(_mutex);
             for(InputIter fid = first; fid != last; ++fid )
             {
                 FID_to_RefIDPair::iterator f = _fids.find( *fid );
@@ -132,7 +132,7 @@ namespace osgEarth
         FeatureSourceIndexOptions   _options;        
         bool                        _embed;
         
-        mutable Threading::Mutex _mutex;
+        mutable std::mutex _mutex;
 
         OID_to_FID _oids;
         FID_to_RefIDPair _fids;

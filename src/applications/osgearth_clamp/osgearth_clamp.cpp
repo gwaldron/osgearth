@@ -56,7 +56,6 @@ struct App
     osg::ref_ptr<OGRFeatureSource> input;
     osg::ref_ptr<OGRFeatureSource> output;
     Threading::Mutexed<std::queue<FeatureList*> > outputQueue;
-    Threading::Event gate;
     std::string attrName;
     bool verbose;
 

@@ -91,8 +91,7 @@ TerrainEngineNode::TerrainEngineNode() :
     _requireParentTextures(false),
     _requireElevationBorder(false),
     _requireFullDataAtFirstLOD(false),
-    _updateScheduled(false),
-    _createTileModelCallbacksMutex(OE_MUTEX_NAME)
+    _updateScheduled(false)
 {
     // register for event traversals so we can properly reset the dirtyCount
     ADJUST_EVENT_TRAV_COUNT(this, 1);

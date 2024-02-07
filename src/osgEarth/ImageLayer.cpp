@@ -249,7 +249,6 @@ ImageLayer::init()
     TileLayer::init();
 
     _useCreateTexture = false;
-    _sentry.setName("ImageLayer " + getName());
 
     // image layers render as a terrain texture.
     setRenderType(RENDERTYPE_TERRAIN_SURFACE);
@@ -893,7 +892,7 @@ ImageLayer::removeCallback(ImageLayer::Callback* c)
 void
 ImageLayer::addPostLayer(ImageLayer* layer)
 {
-    ScopedMutexLock lock(_postLayers);
+    std::lock_guard<std::mutex> lock(_postLayers.mutex());
     _postLayers.push_back(layer);
 }
 
@@ -926,23 +925,25 @@ FutureTexture2D::dispatch() const
     osg::observer_ptr<ImageLayer> layer_ptr(_layer);
     TileKey key(_key);
 
-    Job job(JobArena::get(ARENA_ASYNC_LAYER));
-    job.setName(Stringify() << key.str() << " " << _layer->getName());
-
-    // prioritize higher LOD tiles.
-    job.setPriority(key.getLOD());
-
-    _result = job.dispatch([layer_ptr, key](Cancelable* progress) mutable
+    auto task = [layer_ptr, key](Cancelable& progress) mutable
         {
             GeoImage result;
             osg::ref_ptr<ImageLayer> safe(layer_ptr);
             if (safe.valid())
             {
-                osg::ref_ptr<ProgressCallback> p = new ProgressCallback(progress);
+                osg::ref_ptr<ProgressCallback> p = new ProgressCallback(&progress);
                 result = safe->createImage(key, p.get());
             }
             return result;
-        });
+        };
+
+    jobs::context context{
+        Stringify() << key.str() << " " << _layer->getName(),
+        jobs::get_pool(ARENA_ASYNC_LAYER),
+        [key]() { return key.getLOD(); }
+    };
+
+    jobs::dispatch(task, context);
 }
 
 void

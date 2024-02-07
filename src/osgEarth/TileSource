@@ -418,7 +418,7 @@ namespace osgEarth { namespace Contrib
 
         bool _openCalled;
 
-        mutable Threading::Mutex _mutex;
+        mutable std::mutex _mutex;
     };
 
     //--------------------------------------------------------------------

@@ -323,7 +323,7 @@ namespace osgEarth
         using GeometryMap = std::unordered_map<GeometryKey, osg::ref_ptr<SharedGeometry>>;
 
         mutable Threading::Gate<GeometryKey> _keygate;
-        mutable Threading::Mutex _geometryMapMutex;
+        mutable std::mutex _geometryMapMutex;
         GeometryMap _geometryMap;
         osg::ref_ptr<SharedDrawElements> _defaultPrimSet;
 

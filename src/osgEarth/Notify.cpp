@@ -137,6 +137,12 @@ protected:
 
 using namespace osgEarth;
 
+std::string NotifyPrefix::DEBUG  = "[osgEarth]  ";
+std::string NotifyPrefix::INFO   = "[osgEarth]  ";
+std::string NotifyPrefix::NOTICE = "[osgEarth]  ";
+std::string NotifyPrefix::WARN   = "[osgEarth]* ";
+std::string NotifyPrefix::ALWAYS = "[osgEarth]**";
+
 namespace
 {
     static osg::ApplicationUsageProxy Notify_e0(osg::ApplicationUsage::ENVIRONMENTAL_VARIABLE, "OSGEARTH_NOTIFY_LEVEL <mode>", "FATAL | WARN | NOTICE | DEBUG_INFO | DEBUG_FP | DEBUG | INFO | ALWAYS");
@@ -149,6 +155,12 @@ namespace
             _logger = spdlog::stdout_color_mt("osgearth");
             _logger->set_pattern("%^[%n %l]%$ %v");
             _logger->set_level(spdlog::level::debug);
+
+            NotifyPrefix::DEBUG = {};
+            NotifyPrefix::INFO = {};
+            NotifyPrefix::NOTICE = {};
+            NotifyPrefix::WARN = {};
+            NotifyPrefix::ALWAYS = {};
         }
 
         void notify(osg::NotifySeverity severity, const char *message)

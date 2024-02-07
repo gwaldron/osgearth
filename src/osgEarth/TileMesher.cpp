@@ -106,7 +106,7 @@ TileMesher::getOrCreateStandardIndices() const
 {
     if (!_standardIndices.valid())
     {
-        ScopedMutexLock lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         if (!_standardIndices.valid())
         {
             unsigned tileSize = _options.getTileSize();
@@ -562,7 +562,7 @@ TileMesher::createMeshWithConstraints(
                     }
                 }
 
-                if (cancelable && cancelable->isCanceled())
+                if (cancelable && cancelable->canceled())
                     return {};
             }
         }
@@ -641,7 +641,7 @@ TileMesher::createMeshWithConstraints(
                             }
                         }
 
-                        if (cancelable && cancelable->isCanceled())
+                        if (cancelable && cancelable->canceled())
                             return {};
                     }
                 }

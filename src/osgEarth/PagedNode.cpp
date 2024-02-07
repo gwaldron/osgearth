@@ -42,7 +42,6 @@ PagedNode2::PagedNode2() :
     _mergeTriggered(false),
     _merged(false),
     _failed(false),
-    _mutex("PagedNode.mutex(OE)"),
     _minRange(0.0f),
     _maxRange(FLT_MAX),
     _minPixels(0.0f),
@@ -55,8 +54,8 @@ PagedNode2::PagedNode2() :
     _autoUnload(true),
     _lastRange(FLT_MAX)
 {
-    _job.setName(typeid(*this).name());
-    _job.setArena(PAGEDNODE_ARENA_NAME);
+    _job.name = (typeid(*this).name());
+    _job.pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);
 }
 
 PagedNode2::~PagedNode2()
@@ -86,7 +85,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
     // locate the paging manager if there is one
     if (_pagingManager == nullptr)
     {
-        ScopedMutexLock lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         if (_pagingManager == nullptr) // double check
         {
             osg::ref_ptr<PagingManager> pm;
@@ -258,14 +257,14 @@ PagedNode2::load(float priority, const osg::Object* host)
             osg::observer_ptr<SceneGraphCallbacks> callbacks_weakptr(_callbacks);
             bool preCompile = _preCompile;
 
-            _job.setPriority(priority);
+            jobs::context job = _job;
+            job.priority = [priority]() { return priority; };
 
-            _loaded = _job.dispatch(
-                [load, callbacks_weakptr, preCompile](Cancelable* c)
+            auto task = [load, callbacks_weakptr, preCompile](Cancelable& c)
                 {
                     Loaded result;
 
-                    osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
+                    osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(&c);
 
                     // invoke the loader function
                     result._node = load(progress.get());
@@ -287,8 +286,9 @@ PagedNode2::load(float priority, const osg::Object* host)
                     }
 
                     return result;
-                }
-            );
+                };
+
+            _loaded = jobs::dispatch(task, job);
         }
         else
         {
@@ -377,8 +377,6 @@ bool PagedNode2::isLoaded() const
 }
 
 PagingManager::PagingManager() :
-    _trackerMutex(OE_MUTEX_NAME),
-    _mergeMutex(OE_MUTEX_NAME),
     _tracker(),
     _mergesPerFrame(4u),
     _newFrame(false)
@@ -386,9 +384,9 @@ PagingManager::PagingManager() :
     setCullingActive(false);
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 
-    auto arena = JobArena::get(PAGEDNODE_ARENA_NAME);
-    arena->setConcurrency(4u);
-    _metrics = arena->metrics();
+    auto pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);
+    pool->set_concurrency(4u);
+    _metrics = pool->metrics();
 
 #ifdef OSGEARTH_SINGLE_THREADED_OSG
     _threadsafe = false;
@@ -399,8 +397,8 @@ PagingManager::~PagingManager()
 {
     if (_mergeQueue.size() > 0)
     {
-        _metrics->numJobsRunning.exchange(
-            _metrics->numJobsRunning - _mergeQueue.size());
+        _metrics->running.exchange(
+            _metrics->running - _mergeQueue.size());
     }
 }
 
@@ -426,7 +424,7 @@ PagingManager::traverse(osg::NodeVisitor& nv)
     if (nv.getVisitorType() == nv.CULL_VISITOR)
     {
         // After culling is complete, update all of the ranges for all of the node
-        ScopedLockIf lock(_trackerMutex, _threadsafe);
+        scoped_lock_if lock(_trackerMutex, _threadsafe);
 
         for (auto& entry : _tracker._list)
         {
@@ -442,19 +440,19 @@ PagingManager::traverse(osg::NodeVisitor& nv)
 void
 PagingManager::merge(PagedNode2* host)
 {
-    ScopedLockIf lock(_mergeMutex, _threadsafe);
+    scoped_lock_if lock(_mergeMutex, _threadsafe);
 
     ToMerge toMerge;
     toMerge._node = host;
     toMerge._revision = host->_revision;
     _mergeQueue.push(std::move(toMerge));
-    _metrics->numJobsRunning++;
+    _metrics->running++;
 }
 
 void
 PagingManager::update()
 {
-    ScopedLockIf lock(_trackerMutex, _threadsafe);
+    scoped_lock_if lock(_trackerMutex, _threadsafe);
 
     _tracker.flush(
         _mergesPerFrame,
@@ -501,6 +499,6 @@ PagingManager::update()
                 ++count;
         }
         _mergeQueue.pop();
-        _metrics->numJobsRunning--;
+        _metrics->running--;
     }
 }

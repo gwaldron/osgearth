@@ -568,7 +568,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
 #ifdef PROFILING
     static double totalTime = 0.0;
-    static Threading::Mutex totalTimeMutex;
+    static std::mutex totalTimeMutex;
     osg::Timer_t p_end = osg::Timer::instance()->tick();
     double t = osg::Timer::instance()->delta_s(p_start, p_end);
     totalTimeMutex.lock();

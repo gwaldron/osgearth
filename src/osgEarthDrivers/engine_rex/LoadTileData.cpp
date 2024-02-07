@@ -86,10 +86,10 @@ LoadTileDataOperation::dispatch(bool async)
 
     TileKey key(_tilenode->getKey());
 
-    auto load = [engine, map, key, manifest, enableCancel] (Cancelable* progress)
+    auto load = [engine, map, key, manifest, enableCancel] (Cancelable& progress)
     {
         osg::ref_ptr<ProgressCallback> wrapper =
-            enableCancel ? new ProgressCallback(progress) : nullptr;
+            enableCancel ? new ProgressCallback(&progress) : nullptr;
 
         osg::ref_ptr<TerrainTileModel> result = engine->createTileModel(
             map.get(),
@@ -115,16 +115,15 @@ LoadTileDataOperation::dispatch(bool async)
 
     if (async)
     {
-        Job job;
-        job.setArena(ARENA_LOAD_TILE);
-        job.setPriorityFunction(priority_func);
-        _result = job.dispatch(load);
+        jobs::context context;
+        context.pool = jobs::get_pool(ARENA_LOAD_TILE);
+        context.priority = priority_func;
+        _result = jobs::dispatch(load, context);
     }
     else
     {
-        Promise<LoadResult> promise;
-        _result = promise; // .getFuture();
-        promise.resolve(load(nullptr));
+        Cancelable c;
+        _result.resolve(load(c));
     }
 
     return true;

@@ -371,7 +371,7 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         osg::ref_ptr<osgDB::Options> _options;
         float _maximumScreenSpaceError;
 
-        mutable Threading::Mutex _mutex;
+        mutable std::mutex _mutex;
         ThreeDTileNode::TileTracker _tracker;
         ThreeDTileNode::TileTracker::iterator _sentryItr;
 

@@ -89,8 +89,9 @@ TileSourceElevationLayer::getOrCreatePreCacheOp() const
 {
     if ( !_preCacheOp.valid() )
     {
-        static Mutex s_mutex;
-        Threading::ScopedLock lock(s_mutex);
+        static std::mutex s_mutex;
+        std::lock_guard<std::mutex> lock(s_mutex);
+
         if ( !_preCacheOp.valid() )
         {
             _preCacheOp = new NormalizeNoDataValues(this);

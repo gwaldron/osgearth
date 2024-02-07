@@ -110,7 +110,7 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr< const Profile > _profile;
 
-        osgEarth::Threading::Mutex _progressMutex;
+        std::mutex _progressMutex;
 
         HasDataCallback _hasData;
 
@@ -141,7 +141,7 @@ namespace osgEarth { namespace Util
 
         unsigned int _numThreads;
 
-        JobGroup _group;
+        jobs::jobgroup _group;
     };
 
 

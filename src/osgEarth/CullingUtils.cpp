@@ -21,6 +21,7 @@
 #include "VirtualProgram"
 #include "Utils"
 #include "Math"
+#include "Notify"
 
 #include <osg/TemplatePrimitiveFunctor>
 #include <osgDB/ObjectWrapper>

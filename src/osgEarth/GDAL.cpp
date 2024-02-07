@@ -483,7 +483,7 @@ GDAL::Driver::Driver() :
     _maxDataLevel(30),
     _linearUnits(1.0)
 {
-    _threadId = osgEarth::Threading::getCurrentThreadId();
+    _threadId = osgEarth::getCurrentThreadId();
 }
 
 GDAL::Driver::~Driver()
@@ -1798,10 +1798,6 @@ GDALImageLayer::init()
 
     // Initialize the image layer
     ImageLayer::init();
-
-    _driversMutex.setName("OE.GDALImageLayer.drivers");
-    _singleThreadingMutex.setName("OE.GDALImageLayer.st");
-
 }
 
 Status
@@ -1811,7 +1807,7 @@ GDALImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
+    unsigned id = getSingleThreaded() ? 0u : osgEarth::getCurrentThreadId();
 
     osg::ref_ptr<const Profile> profile;
 
@@ -1828,7 +1824,7 @@ GDALImageLayer::openImplementation()
     // So we just encapsulate the entire setup once per thread.
     // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
 
-    ScopedMutexLock lock(_driversMutex);
+    std::lock_guard<std::mutex> lock(_driversMutex);
 
     GDAL::Driver::Ptr& driver = _drivers[id];
 
@@ -1857,7 +1853,7 @@ Status
 GDALImageLayer::closeImplementation()
 {
     // safely shut down all per-thread handles.
-    Threading::ScopedMutexLock lock(_driversMutex);
+    std::lock_guard<std::mutex> lock(_driversMutex);
     _drivers.clear();
     return ImageLayer::closeImplementation();
 }
@@ -1868,13 +1864,13 @@ GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     if (getStatus().isError())
         return GeoImage::INVALID;
 
-    unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
+    unsigned id = getSingleThreaded() ? 0u : osgEarth::getCurrentThreadId();
 
     GDAL::Driver::Ptr driver;
 
     // lock while we look up and verify the per-thread driver:
     {
-        ScopedMutexLock lock(_driversMutex);
+        std::lock_guard<std::mutex> lock(_driversMutex);
 
         // check while locked to ensure we may continue
         if (isClosing() || !isOpen())
@@ -1956,8 +1952,6 @@ void
 GDALElevationLayer::init()
 {
     ElevationLayer::init();
-    _driversMutex.setName("OE.GDALElevationLayer.drivers");
-    _singleThreadingMutex.setName("OE.GDALElevationLayer.st");
 }
 
 Status
@@ -1967,7 +1961,7 @@ GDALElevationLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
+    unsigned id = getSingleThreaded() ? 0u : osgEarth::getCurrentThreadId();
 
     osg::ref_ptr<const Profile> profile;
 
@@ -1975,7 +1969,7 @@ GDALElevationLayer::openImplementation()
     // So we just encapsulate the entire setup once per thread.
     // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
 
-    ScopedMutexLock lock(_driversMutex);
+    std::lock_guard<std::mutex> lock(_driversMutex);
 
     // Open the dataset temporarily to query the profile and extents.
     GDAL::Driver::Ptr driver;
@@ -2003,7 +1997,7 @@ Status
 GDALElevationLayer::closeImplementation()
 {
     // safely shut down all per-thread handles.
-    Threading::ScopedMutexLock lock(_driversMutex);
+    std::lock_guard<std::mutex> lock(_driversMutex);
     _drivers.clear();
     return ElevationLayer::closeImplementation();
 }
@@ -2014,13 +2008,13 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
     if (getStatus().isError())
         return GeoHeightField(getStatus());
 
-    unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
+    unsigned id = getSingleThreaded() ? 0u : osgEarth::getCurrentThreadId();
 
     GDAL::Driver::Ptr driver;
 
     // lock while we look up and verify the per-thread driver:
     {
-        ScopedMutexLock lock(_driversMutex);
+        std::lock_guard<std::mutex> lock(_driversMutex);
 
         // check while locked to ensure we may continue
         if (isClosing() || !isOpen())

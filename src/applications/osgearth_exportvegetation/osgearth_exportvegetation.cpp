@@ -172,17 +172,11 @@ main(int argc, char** argv)
     if (keys.empty())
         return usage(argv[0], "No data in extent");
 
-    JobArena arena("Vegetation Export", 1u);
-
     std::cout << "Exporting " << keys.size() << " keys.." << std::endl;
 
     for(const auto key : keys)
     {
-        Job(&arena).dispatch_and_forget([&app, key](Cancelable*)
-            {
-                app.exportKey(key);
-            }
-        );
+        jobs::dispatch([&app, key]() { app.exportKey(key); });
     }
     
 

@@ -184,7 +184,7 @@ namespace osgEarth { namespace REX
         osg::observer_ptr<TileNode> _parentTile;
         osg::ref_ptr<SurfaceNode> _surface;
         osg::observer_ptr<EngineContext> _context;
-        Threading::Mutex _mutex;
+        std::mutex _mutex;
         std::atomic<int> _lastTraversalFrame;
         double _lastTraversalTime = 0.0;
         float _lastTraversalRange = FLT_MAX;

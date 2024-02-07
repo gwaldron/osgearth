@@ -173,8 +173,8 @@ Text::createStateSet()
 
     // The remaining of this method is exclusive so we don't corrupt the
     // stateset cache when creating text objects from multiple threads. -gw
-    static Threading::Mutex mutex(OE_MUTEX_NAME);
-    Threading::ScopedMutexLock lock(mutex);
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lock(mutex);
 
     if (!statesets.empty())
     {
@@ -237,8 +237,8 @@ Text::setFont(osg::ref_ptr<osgText::Font> font)
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,8)
     osgText::Text::setFont(font);
 #else
-    static Threading::Mutex mutex(OE_MUTEX_NAME);
-    Threading::ScopedMutexLock lock(mutex);
+    static std::mutex mutex(OE_MUTEX_NAME);
+    std::lock_guard<std::mutex> lock(mutex);
 
     osg::StateSet* previousFontStateSet = _font.valid() ? _font->getStateSet() : osgText::Font::getDefaultFont()->getStateSet();
     osg::StateSet* newFontStateSet = font.valid() ? font->getStateSet() : osgText::Font::getDefaultFont()->getStateSet();

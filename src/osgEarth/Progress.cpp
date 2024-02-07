@@ -59,12 +59,12 @@ ProgressCallback::reset()
 }
 
 bool
-ProgressCallback::isCanceled() const
+ProgressCallback::canceled() const
 {
     if (!_canceled)
     {
         if ((shouldCancel()) ||
-            (_cancelable && _cancelable->isCanceled()) ||
+            (_cancelable && _cancelable->canceled()) ||
             (_cancelPredicate && _cancelPredicate()))
         {
             _canceled = true;

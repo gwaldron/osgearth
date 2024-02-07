@@ -182,8 +182,8 @@ namespace osgEarth {
         struct LayerBase
         {
         protected:
-            mutable Threading::Mutex _driversMutex;
-            mutable Threading::Mutex _singleThreadingMutex;
+            mutable std::mutex _driversMutex;
+            mutable std::mutex _singleThreadingMutex;
             mutable std::unordered_map<unsigned, GDAL::Driver::Ptr> _drivers;
         };
     }

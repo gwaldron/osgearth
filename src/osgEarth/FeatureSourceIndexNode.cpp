@@ -345,13 +345,10 @@ namespace osgEarth { namespace Serializers { namespace FeatureSourceIndexNodeCla
 #undef  LC
 #define LC "[FeatureSourceIndex] "
 
-FeatureSourceIndex::FeatureSourceIndex(FeatureSource* featureSource,
-                                       ObjectIndex*  index,
-                                       const FeatureSourceIndexOptions& options) :
-_featureSource  ( featureSource ),
-_masterIndex    ( index ),
-_options        ( options ),
-_mutex( "FeatureSourceIndex(OE)" )
+FeatureSourceIndex::FeatureSourceIndex(FeatureSource* featureSource, ObjectIndex* index, const FeatureSourceIndexOptions& options) :
+    _featureSource(featureSource),
+    _masterIndex(index),
+    _options(options)
 {
     _embed =
         _options.embedFeatures() == true ||
@@ -377,7 +374,7 @@ FeatureSourceIndex::tagDrawable(osg::Drawable* drawable, Feature* feature)
 {
     if ( !feature ) return 0L;
 
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     RefIDPair* p = 0L;
     FeatureID fid = feature->getFID();
@@ -410,7 +407,7 @@ FeatureSourceIndex::tagAllDrawables(osg::Node* node, Feature* feature)
 {
     if ( !feature ) return 0L;
 
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     RefIDPair* p = 0L;
     FeatureID fid = feature->getFID();
@@ -443,7 +440,7 @@ FeatureSourceIndex::tagRange(osg::Drawable* drawable, Feature* feature, unsigned
 {
     if (!feature) return 0L;
 
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     RefIDPair* p = 0L;
     FeatureID fid = feature->getFID();
@@ -476,7 +473,7 @@ FeatureSourceIndex::tagNode(osg::Node* node, Feature* feature)
 {
     if ( !feature ) return 0L;
 
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     RefIDPair* p = 0L;
     FeatureID fid = feature->getFID();
@@ -511,7 +508,7 @@ Feature*
 FeatureSourceIndex::getFeature(ObjectID oid) const
 {
     Feature* feature = 0L;
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     OID_to_FID::const_iterator i = _oids.find( oid );
     if ( i != _oids.end() )
     {
@@ -533,7 +530,7 @@ FeatureSourceIndex::getFeature(ObjectID oid) const
 ObjectID
 FeatureSourceIndex::getObjectID(FeatureID fid) const
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     FID_to_RefIDPair::const_iterator i = _fids.find(fid);
     if ( i != _fids.end() )
         return i->second->_oid;

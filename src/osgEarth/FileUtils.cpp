@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Threading>
+#include "Notify"
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ConvertUTF>
@@ -437,7 +438,7 @@ osgEarth::Util::getTempName(const std::string& prefix, const std::string& suffix
     while (true)
     {
         std::stringstream ss;
-        ss << prefix << "~" << osgEarth::Threading::getCurrentThreadId() << "_" << rand() << suffix;
+        ss << prefix << "~" << osgEarth::getCurrentThreadId() << "_" << rand() << suffix;
         if (!osgDB::fileExists(ss.str()))
             return ss.str();
     }

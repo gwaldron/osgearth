@@ -76,36 +76,38 @@ namespace osgEarth
                     ImGui::Text(" Total: %.1lf MB", (double)pb / 1048576.0);
 
                     ImGui::Separator();
-                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Job Arenas:");
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Job Pools:");
 
-                    if (ImGui::BeginTable("arenas", 2))
+                    if (ImGui::BeginTable("thread pools", 2))
                     {
-                        const JobArena::Metrics& m = JobArena::allMetrics();
-                        for (int i = 0; i <= m.maxArenaIndex; ++i)
+                        auto metrics = jobs::get_metrics();
+
+                        auto all_pool_metrics = metrics->all();
+
+                        for(auto pool_metrics : all_pool_metrics)
                         {
-                            auto metrics = m.arena(i);
-                            if (metrics)
+                            if (pool_metrics && pool_metrics->total > 0)
                             {
                                 ImGui::TableNextColumn();
                                 ImGui::Text("%s",
-                                    metrics->arenaName.c_str());
+                                    (pool_metrics->name.empty() ? "default" : pool_metrics->name.c_str()));
 
                                 ImGui::TableNextColumn();
                                 ImGui::Text("(%d) %d / %d // %d",
-                                    (int)metrics->concurrency,
-                                    (int)metrics->numJobsRunning,
-                                    (int)metrics->numJobsPending,
-                                    (int)metrics->numJobsCanceled);
+                                    (int)pool_metrics->concurrency,
+                                    (int)pool_metrics->running,
+                                    (int)pool_metrics->pending,
+                                    (int)pool_metrics->canceled);
 
                                 if (_showArenaControls)
                                 {
                                     ImGui::TableNextColumn();
                                     ImGui::Text("  Concurrency:");
                                     ImGui::TableNextColumn();
-                                    ImGui::PushID(i);
-                                    int concurrency = metrics->concurrency;
+                                    ImGui::PushID((std::uintptr_t)pool_metrics);
+                                    int concurrency = pool_metrics->concurrency;
                                     if (ImGui::SliderInt("", &concurrency, 1, 16)) {
-                                        JobArena::get(metrics->arenaName)->setConcurrency(concurrency);
+                                        jobs::get_pool(pool_metrics->name)->set_concurrency(concurrency);
                                     }
                                     ImGui::PopID();
                                     ImGui::Separator();
@@ -115,7 +117,7 @@ namespace osgEarth
                         ImGui::EndTable();
                     }
                     ImGui::Separator();
-                    ImGui::Text("Total: %d", JobArena::allMetrics().totalJobs());
+                    ImGui::Text("Total: %d", jobs::get_metrics()->totalJobs());
                     ImGui::SameLine();
 
                     int icojobs = 0;

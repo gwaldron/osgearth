@@ -129,9 +129,8 @@ CacheSettings::toString() const
 
 //------------------------------------------------------------------------
 
-Cache::Cache( const CacheOptions& options ) :
-_options( options ),
-_bins("OE.Cache.bins")
+Cache::Cache(const CacheOptions& options) :
+    _options(options)
 {
     //nop
 }
@@ -140,9 +139,8 @@ Cache::~Cache()
 {
 }
 
-Cache::Cache( const Cache& rhs, const osg::CopyOp& op ) :
-osg::Object( rhs, op ),
-_bins("OE.Cache.bins")
+Cache::Cache(const Cache& rhs, const osg::CopyOp& op) :
+    osg::Object(rhs, op)
 {
     _status = rhs._status;
 }

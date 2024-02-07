@@ -388,7 +388,7 @@ namespace osgEarth
         mutable osg::ref_ptr<SpatialReference> _geo_srs;
         mutable osg::ref_ptr<SpatialReference> _geodetic_srs;  // _geo_srs with a NULL vdatum.
         mutable osg::ref_ptr<SpatialReference> _geocentric_srs;
-        mutable Threading::Mutex _mutex;
+        mutable std::mutex _mutex;
         mutable bool _valid;
         mutable bool _initialized;
         Setup _setup;

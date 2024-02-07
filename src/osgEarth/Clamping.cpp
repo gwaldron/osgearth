@@ -268,8 +268,7 @@ ClampingCullSet::accept(osg::NodeVisitor& nv)
     }
 }
 
-ClampingManager::ClampingManager() :
-    _sets(OE_MUTEX_NAME)
+ClampingManager::ClampingManager()
 {
     //nop
 }

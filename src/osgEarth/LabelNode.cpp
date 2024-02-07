@@ -91,8 +91,8 @@ LabelNode::construct()
     osg::ref_ptr<osg::StateSet> geodeStateSet;
     if (s_geodeStateSet.lock(geodeStateSet) == false)
     {
-        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
-        Threading::ScopedMutexLock lock(s_mutex);
+        static std::mutex s_mutex;
+        std::lock_guard<std::mutex> lock(s_mutex);
 
         if (s_geodeStateSet.lock(geodeStateSet) == false)
         {

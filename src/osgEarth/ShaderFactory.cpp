@@ -34,7 +34,7 @@ using namespace osgEarth::Util;
 
 namespace
 {
-    Threading::Mutex s_glslMutex;
+    std::mutex s_glslMutex;
     std::string s_glslHeader;
 
     #if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
@@ -56,7 +56,7 @@ ShaderFactory::getGLSLHeader()
 {
     if (s_glslHeader.empty())
     {
-        Threading::ScopedMutexLock lock(s_glslMutex);
+        std::lock_guard<std::mutex> lock(s_glslMutex);
         if (s_glslHeader.empty())
         {
             int version = Capabilities::get().getGLSLVersionInt();

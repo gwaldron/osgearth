@@ -521,10 +521,11 @@ namespace osgEarth
                         if (key.valid())
                         {
                             _biomeUnderMouseKey = key;
-                            _biomeUnderMouse = Job().dispatch([&, key, p](Cancelable* c)
+
+                            _biomeUnderMouse = jobs::dispatch([&, key, p](Cancelable& c)
                                 {
                                     const Biome* result = nullptr;
-                                    osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(c);
+                                    osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(&c);
                                     auto g = _biolayer->createImage(key, prog.get());
                                     if (g.valid())
                                     {

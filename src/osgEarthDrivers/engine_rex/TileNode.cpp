@@ -31,12 +31,23 @@
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Metrics>
+#include <osgEarth/Notify>
 
 using namespace osgEarth::REX;
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
 #define LC "[TileNode] "
+
+// template to capture the result type of a function:
+template<typename T>
+struct result_type;
+
+template<typename R, typename...A>
+struct result_type<R(A...)>
+{
+    typedef R type;
+};
 
 namespace
 {
@@ -55,8 +66,6 @@ TileNode::TileNode(const TileKey& key, TileNode* parent, EngineContext* context,
     _parentTile(parent),
     _context(context),
     _lastTraversalFrame(0),
-    _mutex("TileNode(OE)"),
-    _loadQueue("TileNode LoadQueue(OE)"),
     _loadPriority(0.0f)
 {
     OE_HARD_ASSERT(context != nullptr);
@@ -127,7 +136,7 @@ TileNode::createGeometry(Cancelable* progress)
         geom,
         progress);
 
-    if (progress && progress->isCanceled())
+    if (progress && progress->canceled())
         return;
 
     if (geom.valid())
@@ -675,30 +684,29 @@ TileNode::createChildren()
             EngineContext* context(_context.get());
             osg::observer_ptr<TileNode> tile_weakptr(this);
 
-            auto createChildrenOperation = [context, tile_weakptr](Cancelable* state)
+            auto createChildrenOperation = [context, tile_weakptr](auto& state)
                 {
                     CreateChildrenResult result;
 
                     osg::ref_ptr<TileNode> tile;
-                    if (tile_weakptr.lock(tile) && !state->isCanceled())
+                    if (tile_weakptr.lock(tile) && !state.canceled())
                     {
                         for (unsigned q = 0; q < 4; ++q)
                         {
                             auto childkey = tile->getKey().createChildKey(q);
-                            result.emplace_back(tile->createChild(childkey, state));
+                            result.emplace_back(tile->createChild(childkey, &state));
                         }
                     }
 
-                    if (state && state->isCanceled())
+                    if (state.canceled())
                         result.clear();
 
                     return result;
                 };
 
-            Job job;
-            job.setArena(ARENA_CREATE_CHILD);
-            job.setName(_key.str());
-            _createChildrenFutureResult = job.dispatch(createChildrenOperation);
+            jobs::context c{ _key.str() };
+            c.pool = jobs::get_pool(ARENA_CREATE_CHILD);
+            _createChildrenFutureResult = jobs::dispatch(createChildrenOperation, c);
         }
 
         else if (_createChildrenFutureResult.available())
@@ -738,22 +746,21 @@ TileNode::createChildren()
                 TileKey childkey = getKey().createChildKey(quadrant);
                 osg::observer_ptr<TileNode> tile_weakptr(this);
 
-                auto createChildOperation = [context, tile_weakptr, childkey](Cancelable* state)
+                auto createChildOperation = [context, tile_weakptr, childkey](Cancelable& state)
                     {
                         CreateChildResult result;
 
                         osg::ref_ptr<TileNode> tile;
-                        if (tile_weakptr.lock(tile) && !state->isCanceled())
-                            result = tile->createChild(childkey, state);
+                        if (tile_weakptr.lock(tile) && state.canceled())
+                            result = tile->createChild(childkey, &state);
 
                         return result;
                     };
 
-                Job job;
-                job.setArena(ARENA_CREATE_CHILD);
-                job.setName(childkey.str());
-
-                _createChildResults.emplace_back(job.dispatch(createChildOperation));
+                jobs::context c;
+                c.name = childkey.str();
+                c.pool = jobs::get_pool(ARENA_CREATE_CHILD);
+                _createChildResults.emplace_back(jobs::dispatch(createChildOperation, c));
             }
         }
 
@@ -797,7 +804,7 @@ TileNode::createChild(const TileKey& childkey, Cancelable* progress)
         progress);
 
     return 
-        progress && progress->isCanceled() ? nullptr
+        progress && progress->canceled() ? nullptr
         : node.release();
 }
 
@@ -1303,7 +1310,7 @@ TileNode::load(TerrainCuller* culler)
     _loadPriority = priority;
 
     // Check the status of the load
-    ScopedMutexLock lock(_loadQueue);
+    std::lock_guard<std::mutex> lock(_loadQueue.mutex());
 
     if (_loadQueue.empty() == false)
     {

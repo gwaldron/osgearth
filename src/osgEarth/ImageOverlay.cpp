@@ -239,8 +239,9 @@ ImageOverlay::construct()
     
     if (!_program.valid())
     {
-        static Threading::Mutex mutex(OE_MUTEX_NAME);
-        mutex.lock();
+        static std::mutex mutex;
+        std::lock_guard<std::mutex> lock(mutex);
+
         if (_program.valid() == false)
         {
             _program = new VirtualProgram;
@@ -248,7 +249,6 @@ ImageOverlay::construct()
             _program->setFunction("oe_ImageOverlay_VS", imageVS, VirtualProgram::LOCATION_VERTEX_MODEL);
             _program->setFunction("oe_ImageOverlay_FS", imageFS, VirtualProgram::LOCATION_FRAGMENT_COLORING);
         }
-        mutex.unlock();
     }
 
     _root = new osg::Group();
@@ -265,7 +265,7 @@ ImageOverlay::construct()
 void
 ImageOverlay::compile()
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     if (_root->getNumChildren() > 0)
     {
@@ -795,7 +795,7 @@ ImageOverlay::traverse(osg::NodeVisitor &nv)
 void ImageOverlay::dirty()
 {
     {
-        Threading::ScopedMutexLock lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         _dirty = true;
     }
 

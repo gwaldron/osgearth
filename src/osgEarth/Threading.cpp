@@ -26,6 +26,7 @@
 #   include <unistd.h>
 #   include <sys/syscall.h>
 #   include <pthread.h>
+#   include <cstring>
 #endif
 
 // define the threading library singleton

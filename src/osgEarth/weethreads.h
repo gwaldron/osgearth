@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <mutex>
 #include <thread>
 #include <condition_variable>
@@ -594,8 +595,8 @@ namespace WEETHREADS_NAMESPACE
                         float highest_priority = -FLT_MAX;
                         for (unsigned i = 0; i < _queue.size(); ++i)
                         {
-                            float priority = _queue[i].context.priority != nullptr ?
-                                _queue[i].context.priority() :
+                            float priority = _queue[i].ctx.priority != nullptr ?
+                                _queue[i].ctx.priority() :
                                 0.0f;
 
                             if (index < 0 || priority > highest_priority)
@@ -628,7 +629,7 @@ namespace WEETHREADS_NAMESPACE
 
                     auto t0 = std::chrono::steady_clock::now();
 
-                    bool job_executed = next.delegate();
+                    bool job_executed = next._delegate();
 
                     auto duration = std::chrono::steady_clock::now() - t0;
 
@@ -642,9 +643,9 @@ namespace WEETHREADS_NAMESPACE
                     }
 
                     // release the group semaphore if necessary
-                    if (next.context.group != nullptr)
+                    if (next.ctx.group != nullptr)
                     {
-                        next.context.group->release();
+                        next.ctx.group->release();
                     }
 
                     _metrics.running--;
@@ -674,13 +675,13 @@ namespace WEETHREADS_NAMESPACE
 
         struct job
         {
-            context context;
-            std::function<bool()> delegate;
+            context ctx;
+            std::function<bool()> _delegate;
 
             bool operator < (const job& rhs) const
             {
-                float lp = context.priority ? context.priority() : -FLT_MAX;
-                float rp = rhs.context.priority ? rhs.context.priority() : -FLT_MAX;
+                float lp = ctx.priority ? ctx.priority() : -FLT_MAX;
+                float rp = rhs.ctx.priority ? rhs.ctx.priority() : -FLT_MAX;
                 return lp < rp;
             }
         };
@@ -866,9 +867,9 @@ namespace WEETHREADS_NAMESPACE
             // will not deadlock.
             for (auto& queuedjob : _queue)
             {
-                if (queuedjob.context.group != nullptr)
+                if (queuedjob.ctx.group != nullptr)
                 {
-                    queuedjob.context.group->reset();
+                    queuedjob.ctx.group->reset();
                 }
             }
             _queue.clear();

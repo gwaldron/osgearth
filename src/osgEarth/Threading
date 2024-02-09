@@ -56,9 +56,6 @@ namespace osgEarth
 
         using Event = jobs::detail::event;
 
-        inline unsigned getCurrentThreadId() {
-            return osgEarth::getCurrentThreadId();
-        }
         // C++17 typedefs - for now we need to support C++11 so cannot use these yet.
         //using ReadWriteMutex = std::shared_mutex;
         //using ScopedReadLock = std::shared_lock<std::shared_mutex>;

@@ -9,6 +9,7 @@
 #include <chrono>
 #include <type_traits>
 #include <cstdlib>
+#include <cfloat>
 
 // MANDATORY: Somewhere in one of your .cpp files, use this macro to instantiate the singleton:
 // WEETHREADS_INSTANCE;
@@ -25,23 +26,23 @@
 
 /**
 * WeeThreads is an API for scheduling a task to run in the background.
-* 
+*
 * WeeThreads is header-only and has no dependencies aside from the STL.
 *
 * Usage:
-* 
+*
 *    Use this macro somewhere in your app. Put it in a .cpp file if you plan
      to use multiple modules, DLLs, etc.:
-* 
+*
 *    WEETHREADS_INSTANCE;
 *
 * Example: Spawn a job with no return value (fire and forget):
-* 
+*
 *    auto job = []() { std::cout << "Hello, world!" << std::endl; };
 *    jobs::dispatch(job);
-* 
+*
 * Example: Spawn a job and get a future result:
-* 
+*
 *    auto job = [](jobs::cancelable&) { return 7; };
 *    jobs::future<int> result = jobs::dispatch(job);
 *    // later...
@@ -51,25 +52,25 @@
 *       std::cout << "Job was canceled" << std::endl;
 *    else
 *       // still running.... come back later
-* 
+*
 * Example: Spawn a job and wait for it to complete:
-* 
+*
 *    auto job = [url](jobs::cancelable&) { return fetch_data_from_network(url); };
 *    auto result = jobs::dispatch(job);
 *    auto value = result.join();
-* 
+*
 * Example: Spwan a job with some context information:
-* 
+*
 *    auto job = []() { std::cout << "Hello, world!" << std::endl; };
 *    jobs::context context;
 *    context.name = "My Job";
 *    context.pool = jobs::get_pool("My Job Pool");
 *    context.priority = []() { return 1.0f; };
 *    jobs::dispatch(job, context);
-* 
+*
 * Example: Check for cancelation within a job:
-* 
-*   auto job = [url](jobs::cancelable& state) { 
+*
+*   auto job = [url](jobs::cancelable& state) {
 *       std::string data;
 *       if (!state.canceled())
 *           data = fetch_data_from_network(url);
@@ -77,14 +78,14 @@
 *   };
 *
 *   auto result = jobs::dispatch(job);
-*   // if "result" goes out of scope, "state.canceled()" in the job will return true 
-* 
+*   // if "result" goes out of scope, "state.canceled()" in the job will return true
+*
 * This SDK exists because existing solutions do not support two things we need:
 * automatic job cancelation, and job prioritization. This system acheives
 * cancelation by tracking the reference count of the shared result object contained
 * in the Future object; if that reference count goes to one, it means that ONLY the
 * scheduler knows about the job, and no one else is around to fetch its result.
-* In this case, future.canceled() returns true. It's up to the task itself to 
+* In this case, future.canceled() returns true. It's up to the task itself to
 * check the cancelable& object if it wants to quit early.
 */
 namespace WEETHREADS_NAMESPACE
@@ -469,11 +470,11 @@ namespace WEETHREADS_NAMESPACE
         struct metrics_t
         {
             std::string name;
-            std::atomic_uint concurrency = 0u;
-            std::atomic_uint pending = 0u;
-            std::atomic_uint running = 0u;
-            std::atomic_uint canceled = 0u;
-            std::atomic_uint total = 0u;
+            std::atomic_uint concurrency = { 0u };
+            std::atomic_uint pending = { 0u };
+            std::atomic_uint running = { 0u };
+            std::atomic_uint canceled = { 0u };
+            std::atomic_uint total = { 0u };
         };
 
     public:
@@ -568,9 +569,6 @@ namespace WEETHREADS_NAMESPACE
         //! Runs in a loop until _done is set.
         void run()
         {
-            // cap the number of jobs to run (applies to TRAVERSAL modes only)
-            int jobsLeftToRun = INT_MAX;
-
             while (!_done)
             {
                 job next;
@@ -633,11 +631,7 @@ namespace WEETHREADS_NAMESPACE
 
                     auto duration = std::chrono::steady_clock::now() - t0;
 
-                    if (job_executed)
-                    {
-                        jobsLeftToRun--;
-                    }
-                    else
+                    if (job_executed == false)
                     {
                         _metrics.canceled++;
                     }
@@ -781,7 +775,7 @@ namespace WEETHREADS_NAMESPACE
     inline jobpool* get_pool(const std::string& name = {})
     {
         std::lock_guard<std::mutex> lock(instance()._mutex);
-        for(auto pool : instance()._pools)
+        for (auto pool : instance()._pools)
         {
             if (pool->name() == name)
                 return pool;

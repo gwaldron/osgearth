@@ -19,6 +19,7 @@
 #include "Threading"
 #include <cstdlib>
 #include <climits>
+#include <cstring>
 
 #ifdef _WIN32
 #   include <Windows.h>
@@ -26,7 +27,6 @@
 #   include <unistd.h>
 #   include <sys/syscall.h>
 #   include <pthread.h>
-#   include <cstring>
 #endif
 
 // define the threading library singleton

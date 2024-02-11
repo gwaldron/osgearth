@@ -6,4 +6,6 @@ IF(UNIX AND NOT ANDROID)
     FIND_PACKAGE(X11)
     # Some Unicies need explicit linkage to the Math library or the build fails.
     FIND_LIBRARY(MATH_LIBRARY m)
+    # for ptheads in linux
+    find_library(Threads)
 ENDIF(UNIX AND NOT ANDROID)

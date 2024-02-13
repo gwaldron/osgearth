@@ -456,14 +456,11 @@ SET(LIB_PUBLIC_HEADERS
     TrackNode
     WindLayer
     TerrainLayer
+    SDF
 
     rtree.h
-
-    FileGDBFeatureSource
-
-    SDF
-    
-    weethreads.h
+    weemesh.h
+    weejobs.h
 
     ${OSGEARTH_VERSION_HEADER}
 )
@@ -497,7 +494,6 @@ IF (NOT TINYXML_FOUND)
         ${LIB_PUBLIC_HEADERS}
         tinystr.h
         tinyxml.h
-        weemesh.h
     )
 ENDIF (NOT TINYXML_FOUND)
 

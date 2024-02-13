@@ -66,7 +66,7 @@ void osgEarth::initialize()
         GLUtils::useNVGL(true);
     }
 
-    // Tell the weethreads library how to set a thread name
+    // Tell the weetjobs library how to set a thread name
     jobs::set_thread_name_function([](const char* value) {
         osgEarth::setThreadName(value);
     });

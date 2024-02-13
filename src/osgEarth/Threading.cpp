@@ -30,7 +30,7 @@
 #endif
 
 // define the threading library singleton
-WEETHREADS_INSTANCE;
+WEEJOBS_INSTANCE;
 
 using namespace osgEarth;
 

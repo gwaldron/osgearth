@@ -19,17 +19,16 @@
 #pragma once
 #include <osgEarth/Export>
 
-// bring in weethreads in the jobs namespace
-#define WEETHREADS_NAMESPACE jobs
-#define WEETHREADS_EXPORT OSGEARTH_EXPORT
-#include <osgEarth/weethreads.h>
+// bring in weejobs in the jobs namespace
+#define WEEJOBS_EXPORT OSGEARTH_EXPORT
+#include <osgEarth/weejobs.h>
 
 namespace osgEarth
 {
     /**
     * Pure interface for an object that can be canceled.
     */
-    using Cancelable = WEETHREADS_NAMESPACE::cancelable;
+    using Cancelable = WEEJOBS_NAMESPACE::cancelable;
 
     //! Sets the name of the curent thread
     extern OSGEARTH_EXPORT void setThreadName(const std::string& name);
@@ -42,7 +41,7 @@ namespace osgEarth
         using ScopedMutexLock = std::lock_guard<std::mutex>;
         using ScopedRecursiveMutexLock = std::lock_guard<RecursiveMutex>;
 
-        template<typename T> using Future = typename WEETHREADS_NAMESPACE::future<T>;
+        template<typename T> using Future = typename WEEJOBS_NAMESPACE::future<T>;
 
         using Event = jobs::detail::event;
 

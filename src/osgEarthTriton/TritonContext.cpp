@@ -86,7 +86,7 @@ TritonContext::initialize(osg::RenderInfo& renderInfo)
     if ( !_initAttempted && !_initFailed )
     {
         // lock/double-check:
-        Threading::ScopedMutexLock excl(_initMutex);
+        std::lock_guard<std::mutex> excl(_initMutex);
         if ( !_initAttempted && !_initFailed )
         {
             _initAttempted = true;

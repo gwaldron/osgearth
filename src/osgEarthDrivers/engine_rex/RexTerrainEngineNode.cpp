@@ -327,7 +327,7 @@ RexTerrainEngineNode::onSetMap()
     const char* concurrency_str = ::getenv("OSGEARTH_TERRAIN_CONCURRENCY");
     if (concurrency_str)
         concurrency = Strings::as<unsigned>(concurrency_str, concurrency);
-    JobArena::setConcurrency(ARENA_LOAD_TILE, concurrency);
+    jobs::get_pool(ARENA_LOAD_TILE)->set_concurrency(concurrency);
 
     // Make a tile unloader
     _unloader = new UnloaderGroup(_tiles.get(), getOptions());
@@ -412,7 +412,6 @@ RexTerrainEngineNode::onSetMap()
                     {
                         ShadersGL4 sh;
                         std::string incStrGL4 = ShaderLoader::load(sh.ENGINE_TYPES, sh);
-                        //const std::string incGL4 = "#pragma include RexEngine.GL4.glsl";
                         if (source.find(incStrGL4) == std::string::npos)
                         {
                             buf << incStrGL4 << "\n";
@@ -574,10 +573,11 @@ RexTerrainEngineNode::refresh(bool forceDirty)
         this->ref();
 
         // Load all the root key tiles.
-        JobGroup loadGroup;
-        Job load;
-        load.setArena(ARENA_LOAD_TILE);
-        load.setGroup(&loadGroup);
+        jobs::jobgroup loadGroup;
+
+        jobs::context context;
+        context.group = &loadGroup;
+        context.pool = jobs::get_pool(ARENA_LOAD_TILE);
 
         for (unsigned i = 0; i < keys.size(); ++i)
         {
@@ -597,10 +597,7 @@ RexTerrainEngineNode::refresh(bool forceDirty)
             tileNode->initializeData();
 
             // And load the tile's data
-            load.dispatch_and_forget([tileNode](Cancelable*)
-                {
-                    tileNode->loadSync();
-                });
+            jobs::dispatch([tileNode]() { tileNode->loadSync(); }, context);
 
             OE_DEBUG << " - " << (i + 1) << "/" << keys.size() << " : " << keys[i].str() << std::endl;
         }
@@ -751,7 +748,7 @@ RexTerrainEngineNode::dirtyTerrainOptions()
 
     _merger->setMergesPerFrame(options.getMergesPerFrame());
 
-    JobArena::setConcurrency(ARENA_LOAD_TILE, options.getConcurrency());
+    jobs::get_pool(ARENA_LOAD_TILE)->set_concurrency(options.getConcurrency());
 
     getSurfaceStateSet()->getOrCreateUniform(
         "oe_terrain_tess", osg::Uniform::FLOAT)->set(options.getTessellationLevel());

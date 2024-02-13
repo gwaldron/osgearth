@@ -272,13 +272,12 @@ namespace
 //---------------------------------------------------------------------------
 
 OverlayDecorator::OverlayDecorator() :
-_dumpRequested       ( false ),
-_rttTraversalMask    ( ~0 ),
-_maxHorizonDistance  ( DBL_MAX ),
-_totalOverlayChildren( 0 ),
-_maxHeight           ( 500000.0 ),
-_isGeocentric(true),
-_perViewDataMutex(OE_MUTEX_NAME)
+    _dumpRequested(false),
+    _rttTraversalMask(~0),
+    _maxHorizonDistance(DBL_MAX),
+    _totalOverlayChildren(0),
+    _maxHeight(500000.0),
+    _isGeocentric(true)
 {
     //nop.
 }

@@ -41,8 +41,8 @@ using namespace osgEarth;
 int
 fail(const std::string& msg, char** argv)
 {
-    OE_WARN LC << msg << std::endl;
-    OE_WARN LC << argv[0]
+    OE_WARN << LC << msg << std::endl;
+    OE_WARN << LC << argv[0]
         << "\n    --in <filename>               ; model to process"
         << "\n    --out <filename>              ; output texture filename"
         << "\n    --size <n>                    ; dimension of texture"

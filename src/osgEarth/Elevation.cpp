@@ -185,7 +185,7 @@ ElevationTexture::generateNormalMap(
     void* workingSet,
     ProgressCallback* progress)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     if (!_normalTex.valid())
     {        

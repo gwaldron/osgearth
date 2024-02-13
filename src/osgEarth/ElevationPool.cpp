@@ -24,6 +24,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Containers>
 #include <osgEarth/Progress>
+#include <osgEarth/Notify>
 
 #include <thread>
 #include <chrono>
@@ -41,7 +42,7 @@ ElevationPool::StrongLRU::StrongLRU(unsigned maxSize) :
 void
 ElevationPool::StrongLRU::push(ElevationPool::Pointer& p)
 {
-    ScopedMutexLock lock(_lru);
+    std::lock_guard<std::mutex> lock(_lru.mutex());
     _lru.push(p);
     if (_lru.size() > (unsigned)((1.5f*(float)_maxSize)))
     {
@@ -53,7 +54,7 @@ ElevationPool::StrongLRU::push(ElevationPool::Pointer& p)
 void
 ElevationPool::StrongLRU::clear()
 {
-    ScopedMutexLock lock(_lru);
+    std::lock_guard<std::mutex> lock(_lru.mutex());
     while(!_lru.empty())
         _lru.pop();
 }
@@ -61,13 +62,10 @@ ElevationPool::StrongLRU::clear()
 ElevationPool::ElevationPool() :
     _index(nullptr),
     _tileSize(257),
-    _mutex("OE.ElevPool.RM"),
-    _globalLUTMutex("OE.ElevPool.GLUT"),
     _L2(64u),
     _mapRevision(-1),
     _elevationHash(0)
 {
-    _L2._lru.setName("OE.ElevPool.LRU");
 }
 
 namespace
@@ -219,7 +217,6 @@ ElevationPool::WorkingSet::WorkingSet(unsigned size) :
     _lru(size)
 {
     //nop
-    _lru._lru.setName("OE.WorkingSet.LRU");
 }
 
 void
@@ -1018,7 +1015,7 @@ namespace osgEarth { namespace Internal
         GeoPoint _p;
         Distance _res;
         ElevationPool::WorkingSet* _ws;
-        Promise<ElevationSample> _promise;
+        jobs::promise<ElevationSample> _promise;
 
         SampleElevationOp(osg::observer_ptr<const Map> map, const GeoPoint& p, const Distance& res, ElevationPool::WorkingSet* ws) :
             _map(map), _p(p), _res(res), _ws(ws) { }
@@ -1048,8 +1045,8 @@ AsyncElevationSampler::AsyncElevationSampler(
     _map(map),
     _arena(nullptr)
 {
-    _arena = JobArena::get("oe.asyncelevation");
-    _arena->setConcurrency(numThreads > 0 ? numThreads : _arena->getConcurrency());
+    _arena = jobs::get_pool("oe.asyncelevation");
+    _arena->set_concurrency(numThreads > 0 ? numThreads : _arena->concurrency());
 }
 
 Future<ElevationSample>
@@ -1061,15 +1058,18 @@ AsyncElevationSampler::getSample(const GeoPoint& p)
 Future<ElevationSample>
 AsyncElevationSampler::getSample(const GeoPoint& point, const Distance& resolution)
 {
-    return Job(_arena).dispatch([=](Cancelable* cancelable)
+    jobs::context c;
+    c.pool = _arena;
+
+    auto task = [=](Cancelable& cancelable)
         {
             ElevationSample sample;
-            if (cancelable == nullptr || !cancelable->isCanceled())
+            if (!cancelable.canceled())
             {
                 osg::ref_ptr<const Map> map(_map);
                 if (map.valid())
                 {
-                    osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(cancelable);
+                    osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(&cancelable);
 
                     sample = map->getElevationPool()->getSample(
                         point,
@@ -1079,6 +1079,7 @@ AsyncElevationSampler::getSample(const GeoPoint& point, const Distance& resoluti
                 }
             }
             return sample;
-        }
-    );
+        };
+    
+    return jobs::dispatch(task, c);
 }

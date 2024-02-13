@@ -308,14 +308,14 @@ namespace osgEarth
         //! Sample elevation at a point at highest available resolution
         //! @param p Point at which to sample terrain elevation
         //! @return Future result of the sample
-        Future<ElevationSample> getSample(
+        jobs::future<ElevationSample> getSample(
             const GeoPoint& p);
 
         //! Sample elevation at a point and a target resolution
         //! @param p Point at which to sample terrain elevation
         //! @param resolution Resolution at which to sample terrain
         //! @return Future result of the sample
-        Future<ElevationSample> getSample(
+        jobs::future<ElevationSample> getSample(
             const GeoPoint& p,
             const Distance& resolution);
 
@@ -323,7 +323,7 @@ namespace osgEarth
 
         osg::observer_ptr<const Map> _map;
         ElevationPool::WorkingSet _ws;
-        JobArena* _arena;
+        jobs::jobpool* _arena;
     };
 } // namespace
 

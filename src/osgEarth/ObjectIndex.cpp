@@ -59,8 +59,7 @@ namespace
 }
 
 ObjectIndex::ObjectIndex() :
-_idGen( STARTING_OBJECT_ID ),
-_mutex("ObjectIndex(OE)")
+    _idGen(STARTING_OBJECT_ID)
 {
     _attribName     = "oe_index_objectid_attr";
     _attribLocation = osg::Drawable::SECONDARY_COLORS;
@@ -100,7 +99,7 @@ ObjectIndex::setObjectIDAtrribLocation(int value)
 ObjectID
 ObjectIndex::insert(osg::Referenced* object)
 {
-    Threading::ScopedMutexLock excl( _mutex );
+    std::lock_guard<std::mutex> excl( _mutex );
     return insertImpl( object );
 }
 
@@ -125,7 +124,7 @@ ObjectIndex::getImpl(ObjectID id) const
 void
 ObjectIndex::remove(ObjectID id)
 {
-    Threading::ScopedMutexLock excl(_mutex);
+    std::lock_guard<std::mutex> excl(_mutex);
     removeImpl(id);
 }
 
@@ -141,7 +140,7 @@ ObjectIndex::removeImpl(ObjectID id)
 ObjectID
 ObjectIndex::tagDrawable(osg::Drawable* drawable, osg::Referenced* object)
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     ObjectID oid = insertImpl(object);
     tagDrawable(drawable, oid);
     return oid;
@@ -170,7 +169,7 @@ ObjectIndex::tagDrawable(osg::Drawable* drawable, ObjectID id) const
 ObjectID
 ObjectIndex::tagRange(osg::Drawable* drawable, osg::Referenced* object, unsigned int start, unsigned int count)
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     ObjectID oid = insertImpl(object);
     tagRange(drawable, oid, start, count);
     return oid;
@@ -236,7 +235,7 @@ namespace
 ObjectID
 ObjectIndex::tagAllDrawables(osg::Node* node, osg::Referenced* object)
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     ObjectID oid = insertImpl(object);
     tagAllDrawables(node, oid);
     return oid;
@@ -255,7 +254,7 @@ ObjectIndex::tagAllDrawables(osg::Node* node, ObjectID id) const
 ObjectID
 ObjectIndex::tagNode(osg::Node* node, osg::Referenced* object)
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     ObjectID oid = insertImpl(object);
     tagNode(node, oid);
     return oid;

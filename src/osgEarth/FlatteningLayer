@@ -113,7 +113,7 @@ namespace osgEarth { namespace Contrib
 
         typedef LRUCache<TileKey, FeatureList> FeaturesLRU;
         FeaturesLRU _featuresCache;
-        Threading::Mutex _featuresCacheMutex;
+        std::mutex _featuresCacheMutex;
 
         osg::ref_ptr<FeatureFilterChain> _filterChain;
     };

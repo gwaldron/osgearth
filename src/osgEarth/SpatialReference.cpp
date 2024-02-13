@@ -138,9 +138,7 @@ SpatialReference::SpatialReference(void* handle) :
     _is_user_defined(false),
     _is_ltp(false),
     _is_spherical_mercator(false),
-    _ellipsoidId(0u),
-    _local("OE.SRS.Local"),
-    _mutex("OE.SRS")
+    _ellipsoidId(0u)
 {
     _setup.srcHandle = handle;
 
@@ -159,9 +157,7 @@ SpatialReference::SpatialReference(const Key& key) :
     _is_user_defined(false),
     _is_ltp(false),
     _is_spherical_mercator(false),
-    _ellipsoidId(0u),
-    _local("OE.SRS.Local"),
-    _mutex("OE.SRS")
+    _ellipsoidId(0u)
 {
     // shortcut for spherical-mercator:
     // https://wiki.openstreetmap.org/wiki/EPSG:3857
@@ -566,7 +562,7 @@ SpatialReference::getGeographicSRS() const
 
     if ( !_geo_srs.valid() )
     {
-        Threading::ScopedMutexLock lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         if ( !_geo_srs.valid() ) // double-check pattern
         {
@@ -598,7 +594,7 @@ SpatialReference::getGeodeticSRS() const
 
     if ( !_geodetic_srs.valid() )
     {
-        Threading::ScopedMutexLock lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         if ( !_geodetic_srs.valid() ) // double check pattern
         {
@@ -630,7 +626,7 @@ SpatialReference::getGeocentricSRS() const
 
     if ( !_geocentric_srs.valid() )
     {
-        Threading::ScopedMutexLock lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         if ( !_geocentric_srs.valid() ) // double-check pattern
         {

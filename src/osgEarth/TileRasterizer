@@ -114,7 +114,7 @@ namespace osgEarth
             GeoExtent _extent; // viewport extent of the node
             Renderer::Ptr _renderer; // Rtt camera to use to renderer
 
-            Promise<Result> _promise;
+            jobs::promise<Result> _promise;
 
             void useRenderer(Renderer::Ptr);
         };

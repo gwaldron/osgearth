@@ -201,7 +201,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                 Registry::instance()->getMaxTextureSize());
 
             // Function to load all material textures.
-            auto loadMaterials = [assets, tile_height_m, readOptions, maxTextureSize](Cancelable* c) -> Materials::Ptr
+            auto loadMaterials = [assets, tile_height_m, readOptions, maxTextureSize](Cancelable& c) -> Materials::Ptr
             {
                 Materials::Ptr result = Materials::Ptr(new Materials);
 
@@ -238,7 +238,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
                         << ", t=" << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << "ms"
                         << std::endl;
 
-                    if (c && c->isCanceled())
+                    if (c.canceled())
                         return nullptr;
 
                     // Set up the texture scaling:
@@ -258,7 +258,7 @@ TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
             };
 
             // Load material asynchronously
-            _materialsJob = Job().dispatch(loadMaterials);
+            _materialsJob = jobs::dispatch(loadMaterials);
         }
     }
     else

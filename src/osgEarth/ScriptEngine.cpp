@@ -87,14 +87,14 @@ ScriptEngine::run(
 #define SCRIPT_ENGINE_OPTIONS_TAG "__osgEarth::ScriptEngineOptions"
 
 ScriptEngineFactory* ScriptEngineFactory::s_singleton = 0L;
-osgEarth::Threading::Mutex ScriptEngineFactory::s_singletonMutex(OE_MUTEX_NAME);
+std::mutex ScriptEngineFactory::s_singletonMutex;
 
 ScriptEngineFactory*
 ScriptEngineFactory::instance()
 {
     if ( !s_singleton )
     {
-        Threading::ScopedMutexLock lock(s_singletonMutex);
+        std::lock_guard<std::mutex> lock(s_singletonMutex);
         if ( !s_singleton )
         {
             s_singleton = new ScriptEngineFactory();

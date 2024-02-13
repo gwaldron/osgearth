@@ -153,7 +153,7 @@ namespace osgEarth
         void releaseGLObjects(osg::State* state) const;
 
         mutable std::vector<osg::ref_ptr<osg::StateSet> > _statesets;
-        mutable Threading::Mutex _statesetsMutex;
+        mutable std::mutex _statesetsMutex;
     };
 }
 

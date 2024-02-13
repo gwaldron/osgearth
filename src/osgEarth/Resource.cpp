@@ -21,8 +21,7 @@
 
 using namespace osgEarth;
 
-Resource::Resource( const Config& conf ) :
-_mutex("OE.Resource")
+Resource::Resource( const Config& conf )
 {
     mergeConfig( conf );
 }

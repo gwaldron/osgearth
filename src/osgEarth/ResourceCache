@@ -82,16 +82,16 @@ namespace osgEarth { namespace Util
         //typedef LRUCache<std::string, osg::observer_ptr<osg::StateSet> > SkinCache;
         typedef LRUCache<std::string, osg::ref_ptr<osg::StateSet> > SkinCache;
         SkinCache        _skinCache;
-        Threading::Mutex _skinMutex;
+        std::mutex _skinMutex;
 
         typedef LRUCache<std::string, osg::ref_ptr<osg::Texture> > TextureCache;
         TextureCache _texCache;
-        Threading::Mutex _texMutex;
+        std::mutex _texMutex;
 
         //typedef LRUCache<std::string, osg::observer_ptr<osg::Node> > InstanceCache;
         typedef LRUCache<std::string, osg::ref_ptr<osg::Node> > InstanceCache;
         InstanceCache    _instanceCache;
-        Threading::Mutex _instanceMutex;
+        std::mutex _instanceMutex;
     };
 } } 
 

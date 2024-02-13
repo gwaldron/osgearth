@@ -234,7 +234,7 @@ SkinResource::createImage( const osgDB::Options* dbOptions ) const
 
     if (result.failed())
     {
-        Threading::ScopedMutexLock lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         if (_status.isOK())
             _status = Status::Error(Status::ServiceUnavailable, "Failed to load resource image\n");
     }

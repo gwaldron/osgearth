@@ -45,7 +45,7 @@ void ZipArchive::close()
 {
     if ( _zipLoaded )
     {
-        OpenThreads::ScopedLock<OpenThreads::Mutex> exclusive(_zipMutex);
+        std::lock_guard<std::mutex> lock(_zipMutex);
         if ( _zipLoaded )
         {
             // close the file (on one thread since it's a shared file)
@@ -111,7 +111,7 @@ bool ZipArchive::open(const std::string& file, ArchiveStatus /*status*/, const o
     if ( !_zipLoaded )
     {
         // exclusive lock when we open for the first time:
-        OpenThreads::ScopedLock<OpenThreads::Mutex> exclusiveLock( _zipMutex );
+        std::lock_guard<std::mutex> lock(_zipMutex);
 
         if ( !_zipLoaded ) // double-check avoids race condition
         {
@@ -510,7 +510,7 @@ std::string ZipArchive::ReadPassword(const osgDB::ReaderWriter::Options* options
 const ZipArchive::PerThreadData&
 ZipArchive::getData() const
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> exclusive( const_cast<ZipArchive*>(this)->_zipMutex );
+    std::lock_guard<std::mutex> lock(_zipMutex);
     return getDataNoLock();
 }
 
@@ -519,7 +519,7 @@ const ZipArchive::PerThreadData&
 ZipArchive::getDataNoLock() const
 {
     // get/create data for the currently running thread:
-    size_t current = osgEarth::Threading::getCurrentThreadId();
+    auto current = std::this_thread::get_id();
 
     PerThreadDataMap::const_iterator i = _perThreadData.find( current );
 

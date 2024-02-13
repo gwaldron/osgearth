@@ -158,7 +158,7 @@ namespace osgEarth { namespace Util
         };
         typedef std::unordered_map<osg::Camera*, CameraData> CameraDataMap;
         mutable CameraDataMap _cameraDataMap;
-        mutable Threading::Mutex _cameraDataMapMutex;
+        mutable std::mutex _cameraDataMapMutex;
 
         CameraData& getCameraData(osg::Camera*) const;
 

@@ -85,7 +85,7 @@ namespace osgEarth { namespace RocksDBCache
         std::string                       _binPath;        // full path to the bin's root folder
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
         osg::ref_ptr<osgDB::Options>      _rwOptions;
-        Threading::Mutex                  _rwMutex;
+        std::mutex                  _rwMutex;
         rocksdb::DB*                      _db;
         osg::ref_ptr<Tracker>             _tracker;
         bool                              _debug;

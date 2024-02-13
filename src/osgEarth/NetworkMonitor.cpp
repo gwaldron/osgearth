@@ -21,6 +21,7 @@
 #include <osgEarth/Threading>
 #include <osgDB/fstream>
 #include <iomanip>
+#include <thread>
 
 using namespace osgEarth;
 
@@ -28,10 +29,10 @@ namespace
 {
     static NetworkMonitor::Requests s_requests;
     static NetworkMonitor::URICount s_counts;
-    osgEarth::Threading::ReadWriteMutex s_requestsMutex("NetworkMonitor(OE)");
+    osgEarth::Threading::ReadWriteMutex s_requestsMutex;
     static unsigned long s_requestId = 0;
     static bool s_enabled = false;
-    static std::unordered_map<unsigned int, std::string> s_requestLayer;
+    static std::unordered_map<std::thread::id, std::string> s_requestLayer;
 }
 
 #define LC "[NetworkMonitor] "
@@ -42,7 +43,7 @@ unsigned long NetworkMonitor::begin(const std::string& uri, const std::string& s
     {
         osgEarth::Threading::ScopedWriteLock lock(s_requestsMutex);
         Request req(uri, status);
-        req.layer = s_requestLayer[osgEarth::Threading::getCurrentThreadId()];
+        req.layer = s_requestLayer[std::this_thread::get_id()];
         req.type = type;
         req.count = ++s_counts.insert(std::make_pair(uri, 0u)).first->second;
 
@@ -131,13 +132,13 @@ void NetworkMonitor::saveCSV(Requests& requests, const std::string& filename)
 
 void NetworkMonitor::setRequestLayer(const std::string& name)
 {
-    osgEarth::Threading::ScopedWriteLock lock(s_requestsMutex);
-    s_requestLayer[osgEarth::Threading::getCurrentThreadId()] = name;
+    osgEarth::Threading::ScopedWriteLock unique_lock(s_requestsMutex);
+    s_requestLayer[std::this_thread::get_id()] = name;
 }
 
 std::string NetworkMonitor::getRequestLayer()
 {
-    osgEarth::Threading::ScopedReadLock lock(s_requestsMutex);
-    return s_requestLayer[osgEarth::Threading::getCurrentThreadId()];
+    osgEarth::Threading::ScopedReadLock shared_lock (s_requestsMutex);
+    return s_requestLayer[std::this_thread::get_id()];
 }
 

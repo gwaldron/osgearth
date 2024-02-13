@@ -30,9 +30,7 @@ namespace osgEarth
     * ProgressCallback is a general purpose interface for functions that need to report progress
     * or handle cancelation of a task.
     */
-    class OSGEARTH_EXPORT ProgressCallback : 
-        public osg::Referenced, 
-        public Threading::Cancelable
+    class OSGEARTH_EXPORT ProgressCallback : public osg::Referenced, public Cancelable
     {
     public:
         //! Creates a new ProgressCallback
@@ -104,7 +102,9 @@ namespace osgEarth
          * recoverable problem occurred and the task is eligible to be
          * tried again later (e.g., HTTP timeout)
          */
-        bool isCanceled() const override;
+        bool canceled() const override;
+
+        bool isCanceled() const { return canceled(); } // backwards compatibility
 
         //! Resets the cancelation flag
         void reset();

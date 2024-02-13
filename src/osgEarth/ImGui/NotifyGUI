@@ -36,7 +36,7 @@ namespace osgEarth { namespace GUI
     public:
         void notify(osg::NotifySeverity severity, const char *message)
         {
-            ScopedMutexLock lk(_mutex);
+            std::lock_guard<std::mutex> lk(_mutex);
             int old_size = Buf.size();
             Buf.append(message);
             for (int new_size = Buf.size(); old_size < new_size; old_size++)

@@ -4,7 +4,7 @@ osgEarth Sample - OpenStreetMap Features
 <map name="Worldwide OSM feature data">
     
     <XYZImage name="OSM Imagery">
-        <url>http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
+        <url>https://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
         <profile>spherical-mercator</profile>
         <cache_policy usage="none"/>
         <attribution>&#169;OpenStreetMap contributors</attribution>

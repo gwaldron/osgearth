@@ -65,6 +65,11 @@ void osgEarth::initialize()
     {
         GLUtils::useNVGL(true);
     }
+
+    // Tell the weetjobs library how to set a thread name
+    jobs::set_thread_name_function([](const char* value) {
+        osgEarth::setThreadName(value);
+    });
 }
 
 void osgEarth::initialize(osg::ArgumentParser& args)
@@ -100,19 +105,14 @@ namespace
 }
 
 Registry::Registry() :
-_caps               ( 0L ),
-_defaultFont        ( 0L ),
-_terrainEngineDriver( "rex" ),
-_cacheDriver        ( "filesystem" ),
-_overrideCachePolicyInitialized( false ),
-_devicePixelRatio(1.0f),
-_maxVertsPerDrawable(UINT_MAX),
-_regMutex("Registry(OE)"),
-_activityMutex("Reg.Activity(OE)"),
-_capsMutex("Reg.Caps(OE)"),
-_srsCache("Reg.SRSCache(OE)"),
-_blacklist("Reg.BlackList(OE)"),
-_maxImageDimension(INT_MAX)
+    _caps(nullptr),
+    _defaultFont(nullptr),
+    _terrainEngineDriver("rex"),
+    _cacheDriver("filesystem"),
+    _overrideCachePolicyInitialized(false),
+    _devicePixelRatio(1.0f),
+    _maxVertsPerDrawable(UINT_MAX),
+    _maxImageDimension(INT_MAX)
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -240,7 +240,7 @@ _maxImageDimension(INT_MAX)
     Units::registerAll( this );
 
     // Default concurrency for async image layers
-    JobArena::setConcurrency("oe.layer.async", 4u);
+    jobs::get_pool("oe.layer.async")->set_concurrency(4u);
 
     // register the chonk bin with OSG
     osgUtil::RenderBin::addRenderBinPrototype(
@@ -343,7 +343,7 @@ Registry::release()
 
 Threading::RecursiveMutex& osgEarth::getGDALMutex()
 {
-    static osgEarth::Threading::RecursiveMutex _gdal_mutex("GDAL Mutex");
+    static osgEarth::Threading::RecursiveMutex _gdal_mutex;
     return _gdal_mutex;
 }
 
@@ -382,7 +382,7 @@ Registry::getNamedProfile( const std::string& name ) const
 osg::ref_ptr<SpatialReference>
 Registry::getOrCreateSRS(const SpatialReference::Key& key)
 {
-    ScopedMutexLock lock(_srsCache);
+    std::lock_guard<std::mutex> lock(_srsCache.mutex());
     osg::ref_ptr<SpatialReference>& srs = _srsCache[key];
     if (!srs.valid())
     {
@@ -432,7 +432,7 @@ Registry::getDefaultCacheDriverName() const
 {
     if (!_cacheDriver.isSet())
     {
-        Threading::ScopedMutexLock lock(_regMutex);
+        std::lock_guard<std::mutex> lock(_regMutex);
 
         if (!_cacheDriver.isSet())
         {
@@ -459,7 +459,7 @@ Registry::overrideCachePolicy() const
 {
     if ( !_overrideCachePolicyInitialized )
     {
-        Threading::ScopedMutexLock lock(_regMutex);
+        std::lock_guard<std::mutex> lock(_regMutex);
 
         if ( !_overrideCachePolicyInitialized )
         {
@@ -501,7 +501,7 @@ Registry::getDefaultCache() const
     {
         std::string driverName = getDefaultCacheDriverName();
 
-        Threading::ScopedMutexLock lock(_regMutex);
+        std::lock_guard<std::mutex> lock(_regMutex);
         if (!_defaultCache.valid())
         {
             const char* noCache = ::getenv(OSGEARTH_ENV_NO_CACHE);
@@ -536,7 +536,7 @@ Registry::setDefaultCache(Cache* cache)
 bool
 Registry::isBlacklisted(const std::string& filename)
 {
-    Threading::ScopedMutexLock sharedLock(_blacklist.mutex());
+    std::lock_guard<std::mutex> sharedLock(_blacklist.mutex());
     return _blacklist.find(filename) != _blacklist.end();
 }
 
@@ -560,7 +560,7 @@ Registry::clearBlacklist()
 unsigned int
 Registry::getNumBlacklistedFilenames()
 {
-    Threading::ScopedMutexLock sharedLock(_blacklist.mutex());
+    std::lock_guard<std::mutex> sharedLock(_blacklist.mutex());
     return _blacklist.size();
 }
 
@@ -588,7 +588,7 @@ Registry::setCapabilities( Capabilities* caps )
 void
 Registry::initCapabilities()
 {
-    ScopedMutexLock lock( _capsMutex ); // double-check pattern (see getCapabilities)
+    std::lock_guard<std::mutex> lock( _capsMutex ); // double-check pattern (see getCapabilities)
     if ( !_caps.valid() )
         _caps = new Capabilities();
 }
@@ -598,7 +598,7 @@ Registry::getShaderFactory() const
 {
     if (!_shaderLib.valid())
     {
-        ScopedMutexLock lock(_regMutex);
+        std::lock_guard<std::mutex> lock(_regMutex);
         if (!_shaderLib.valid())
             const_cast<Registry*>(this)->_shaderLib = new ShaderFactory();
     }
@@ -640,14 +640,14 @@ Registry::getURIReadCallback() const
 void
 Registry::setDefaultFont( osgText::Font* font )
 {
-    Threading::ScopedMutexLock exclusive(_regMutex);
+    std::lock_guard<std::mutex> exclusive(_regMutex);
     _defaultFont = font;
 }
 
 osgText::Font*
 Registry::getDefaultFont()
 {
-    Threading::ScopedMutexLock shared(_regMutex);
+    std::lock_guard<std::mutex> shared(_regMutex);
     return _defaultFont.get();
 }
 
@@ -670,14 +670,14 @@ Registry::cloneOrCreateOptions(const osgDB::Options* input)
 void
 Registry::registerUnits( const Units* units )
 {
-    Threading::ScopedMutexLock lock(_regMutex);
+    std::lock_guard<std::mutex> lock(_regMutex);
     _unitsVector.push_back(units);
 }
 
 const Units*
 Registry::getUnits(const std::string& name) const
 {
-    Threading::ScopedMutexLock lock(_regMutex);
+    std::lock_guard<std::mutex> lock(_regMutex);
     std::string lower = toLower(name);
     for( UnitsVector::const_iterator i = _unitsVector.begin(); i != _unitsVector.end(); ++i )
     {
@@ -725,7 +725,7 @@ Registry::getObjectIndex() const
 {
     if (!_objectIndex.valid())
     {
-        ScopedMutexLock lock(_regMutex);
+        std::lock_guard<std::mutex> lock(_regMutex);
         if (!_objectIndex.valid())
         {
             _objectIndex = new ObjectIndex();
@@ -737,7 +737,7 @@ Registry::getObjectIndex() const
 void
 Registry::startActivity(const std::string& activity)
 {
-    Threading::ScopedMutexLock lock(_activityMutex);
+    std::lock_guard<std::mutex> lock(_activityMutex);
     _activities.insert(Activity(activity,std::string()));
 }
 
@@ -745,7 +745,7 @@ void
 Registry::startActivity(const std::string& activity,
     const std::string& value)
 {
-    Threading::ScopedMutexLock lock(_activityMutex);
+    std::lock_guard<std::mutex> lock(_activityMutex);
     _activities.erase(Activity(activity,std::string()));
     _activities.insert(Activity(activity,value));
 }
@@ -753,14 +753,14 @@ Registry::startActivity(const std::string& activity,
 void
 Registry::endActivity(const std::string& activity)
 {
-    Threading::ScopedMutexLock lock(_activityMutex);
+    std::lock_guard<std::mutex> lock(_activityMutex);
     _activities.erase(Activity(activity,std::string()));
 }
 
 void
 Registry::getActivities(std::set<std::string>& output)
 {
-    Threading::ScopedMutexLock lock(_activityMutex);
+    std::lock_guard<std::mutex> lock(_activityMutex);
     for(std::set<Activity,ActivityLess>::const_iterator i = _activities.begin();
         i != _activities.end();
         ++i)
@@ -807,14 +807,14 @@ Registry::getMimeTypeForExtension(const std::string& ext)
 void
 Registry::setTextureImageUnitOffLimits(int unit)
 {
-    Threading::ScopedMutexLock exclusive(_regMutex);
+    std::lock_guard<std::mutex> exclusive(_regMutex);
     _offLimitsTextureImageUnits.insert(unit);
 }
 
 const std::set<int>
 Registry::getOffLimitsTextureImageUnits() const
 {
-    Threading::ScopedMutexLock exclusive(_regMutex);
+    std::lock_guard<std::mutex> exclusive(_regMutex);
     return _offLimitsTextureImageUnits;
 }
 

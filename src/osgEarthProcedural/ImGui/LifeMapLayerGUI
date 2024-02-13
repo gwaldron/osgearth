@@ -228,10 +228,10 @@ namespace osgEarth
                     TileKey key = _lifemap->getBestAvailableTileKey(keyUnderMouse, false);
                     if (key.valid())
                     {
-                        _lifemapUnderMouse = Job().dispatch([this, key, pointUnderMouse](Cancelable* c)
+                        auto task = [this, key, pointUnderMouse](Cancelable& c)
                             {
                                 osg::Vec4 result(0, 0, 0, 1);
-                                osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(c);
+                                osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(&c);
                                 auto g = _lifemap->createImage(key, prog.get());
                                 if (g.valid())
                                 {
@@ -239,7 +239,9 @@ namespace osgEarth
                                     g.read(result, pointUnderMouse);
                                 }
                                 return result;
-                            });
+                            };
+
+                        _lifemapUnderMouse = jobs::dispatch(task);
                     }
                 }
 
@@ -255,10 +257,10 @@ namespace osgEarth
                     TileKey key = coverage->getBestAvailableTileKey(keyUnderMouse, false);
                     if (key.valid())
                     {
-                        _landcoverUnderMouse = Job().dispatch([this, key, pointUnderMouse](Cancelable *c)
+                        auto task = [this, key, pointUnderMouse](Cancelable& c)
                             {
                                 LandCoverSample result;
-                                osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(c);
+                                osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(&c);
                                 auto factory = LandCoverSample::Factory::create(_lifemap->getLandCoverLayer());
                                 auto g = factory->createCoverage(key, prog.get());
                                 if (g.valid())
@@ -266,7 +268,8 @@ namespace osgEarth
                                     g.readAtCoords(result, pointUnderMouse.x(), pointUnderMouse.y());
                                 }
                                 return result;
-                            });
+                            };
+                        _landcoverUnderMouse = jobs::dispatch(task);
                     }
                 }
             }

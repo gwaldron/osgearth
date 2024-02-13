@@ -332,8 +332,7 @@ MBTiles::Driver::Driver() :
     _minLevel(0),
     _maxLevel(19),
     _forceRGB(false),
-    _database(nullptr),
-    _mutex("MBTiles Driver(OE)")
+    _database(nullptr)
 {
     //nop
 }
@@ -646,7 +645,7 @@ MBTiles::Driver::read(
     ProgressCallback* progress,
     const osgDB::Options* readOptions) const
 {
-    Threading::ScopedMutexLock exclusiveLock(_mutex);
+    std::lock_guard<std::mutex> exclusiveLock(_mutex);
 
     int z = key.getLevelOfDetail();
     int x = key.getTileX();
@@ -744,7 +743,7 @@ MBTiles::Driver::write(
     if (!key.valid() || !image)
         return Status::AssertionFailure;
 
-    Threading::ScopedMutexLock exclusiveLock(_mutex);
+    std::lock_guard<std::mutex> exclusiveLock(_mutex);
 
     // encode the data stream:
     std::stringstream buf;
@@ -844,7 +843,7 @@ MBTiles::Driver::write(
 bool
 MBTiles::Driver::getMetaData(const std::string& key, std::string& value)
 {
-    Threading::ScopedMutexLock exclusiveLock(_mutex);
+    std::lock_guard<std::mutex> exclusiveLock(_mutex);
 
     sqlite3* database = (sqlite3*)_database;
 
@@ -886,7 +885,7 @@ MBTiles::Driver::getMetaData(const std::string& key, std::string& value)
 bool
 MBTiles::Driver::putMetaData(const std::string& key, const std::string& value)
 {
-    Threading::ScopedMutexLock exclusiveLock(_mutex);
+    std::lock_guard<std::mutex> exclusiveLock(_mutex);
 
     sqlite3* database = (sqlite3*)_database;
 

@@ -224,7 +224,7 @@ namespace osgEarth { namespace Util
         float _maxPixels;
         bool _useRange;
         float _priorityScale;
-        Job _job;
+        jobs::context _job;
         bool _preCompile;
         std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load;
         std::atomic_int _revision;
@@ -249,7 +249,7 @@ namespace osgEarth { namespace Util
         //! Subordinates call this to inform the paging manager they are still alive.
         void* use(PagedNode2* node, void* token)
         {
-            ScopedLockIf lock(_trackerMutex, _threadsafe);
+            scoped_lock_if lock(_trackerMutex, _threadsafe);
             return _tracker.use(node, token);
         }
 
@@ -270,7 +270,7 @@ namespace osgEarth { namespace Util
         std::list<PagedNode2*> _trash;
         using UpdateFunc = std::function<void(Cancelable*)>;
         UpdateFunc _updateFunc;
-        JobArena::Metrics::Arena::Ptr _metrics;
+        jobs::jobpool::metrics_t* _metrics;
 
         mutable Mutex _mergeMutex;
         struct ToMerge {

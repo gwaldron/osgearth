@@ -132,7 +132,7 @@ SilverLiningNode::onSetDateTime()
 void
 SilverLiningNode::traverse(osg::NodeVisitor& nv)
 {
-    static Threading::Mutex s_mutex(OE_MUTEX_NAME);
+    static std::mutex s_mutex;
 
     if ( nv.getVisitorType() == nv.CULL_VISITOR )
     {
@@ -140,7 +140,7 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
         osg::Camera* camera = cv->getCurrentCamera();
         if ( camera )
         {
-            Threading::ScopedMutexLock lock(s_mutex);
+            std::lock_guard<std::mutex> lock(s_mutex);
 
             CameraContextMap::const_iterator i = _contexts.find(camera);
             if (i == _contexts.end())
@@ -158,7 +158,7 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
     else if (nv.getVisitorType() == nv.UPDATE_VISITOR)
     {
         {
-            Threading::ScopedMutexLock lock(s_mutex);
+            std::lock_guard<std::mutex> lock(s_mutex);
             if (!_camerasToAdd.empty())
             {
                 for (CameraSet::const_iterator i = _camerasToAdd.begin(); i != _camerasToAdd.end(); ++i)
@@ -179,7 +179,7 @@ SilverLiningNode::traverse(osg::NodeVisitor& nv)
 
     else
     {
-        Threading::ScopedMutexLock lock(s_mutex);
+        std::lock_guard<std::mutex> lock(s_mutex);
         for (CameraContextMap::const_iterator i = _contexts.begin(); i != _contexts.end(); ++i)
         {
             i->second->accept(nv);

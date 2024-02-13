@@ -31,6 +31,7 @@
 #include <osgEarth/GLUtils>
 #include <chrono>
 #include <list>
+#include <algorithm>
 
 namespace osgEarth
 {
@@ -160,7 +161,7 @@ namespace osgEarth
                             ImGui::Separator();
                         }
 
-                        unsigned threads = options.getConcurrency();
+                        unsigned threads = std::max(1u, std::thread::hardware_concurrency());
                         if (ImGuiLTable::SliderInt("Load threads", (int*)&threads, 1, 16))
                         {
                             options.setConcurrency(threads);

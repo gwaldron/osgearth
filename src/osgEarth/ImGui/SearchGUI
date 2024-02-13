@@ -47,13 +47,6 @@ namespace osgEarth {
                 if (!isVisible())
                     return;
 
-                if (!_arena)
-                {
-                    _options = new osgDB::Options();
-                    _arena = std::make_shared<JobArena>("oe.geocoder", 1U);
-                    ObjectStorage::set(_options.get(), _arena);
-                }
-
                 if (!_mapSRS.valid()) {
                     MapNode* mapNode = findNode<MapNode>(ri);
                     if (mapNode)
@@ -120,7 +113,6 @@ namespace osgEarth {
             char _search[128];
             Geocoder::Results _results;
             osg::ref_ptr<osgDB::Options> _options;
-            std::shared_ptr<JobArena> _arena;
             FeatureList _features;
             Geocoder geocoder;
             osg::ref_ptr<const SpatialReference> _mapSRS;

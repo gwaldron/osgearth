@@ -485,11 +485,12 @@ void computeIntersectionsThreaded(osg::Node* node, std::vector< IntersectionQuer
             }
         }
     }
-
-    JobArena::get("oe.intersections")->setConcurrency(num_threads);
+    
+    auto pool = jobs::get_pool("oe.intersections");
+    pool->set_concurrency(num_threads);
 
     // Poor man's parallel for
-    JobGroup intersections;
+    jobs::jobgroup intersections;
 
     //unsigned int workSize = 500;
     // Try to split the jobs evenly among the threads
@@ -505,12 +506,16 @@ void computeIntersectionsThreaded(osg::Node* node, std::vector< IntersectionQuer
         unsigned int curSize = curStart + workSize <= queries.size() ? workSize : queries.size() - curStart;
         if (curSize > 0)
         {
-            Job job;
-            job.setArena("oe.intersections");
-            job.setGroup(&intersections);
-            job.dispatch_and_forget([node, curStart, curSize, &queries](Cancelable*) {
+            jobs::context context;
+            context.pool = pool;
+            context.group = &intersections;
+
+            jobs::dispatch([node, curStart, curSize, &queries](Cancelable&) {
                 computeIntersections(node, queries, curStart, curSize);
-            });
+                return true;
+                },
+                context
+            );
             ++numJobs;
         }
         start += workSize;

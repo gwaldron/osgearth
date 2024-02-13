@@ -113,8 +113,8 @@ PlaceNode::construct()
     // Construct the shared state sets
     if (s_geodeStateSet.lock(_geodeStateSet) == false)
     {
-        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
-        Threading::ScopedMutexLock lock(s_mutex);
+        static std::mutex s_mutex;
+        std::lock_guard<std::mutex> lock(s_mutex);
 
         if (s_geodeStateSet.lock(_geodeStateSet) == false)
         {
@@ -135,8 +135,8 @@ PlaceNode::construct()
 
     if (s_imageStateSet.lock(_imageStateSet) == false)
     {
-        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
-        Threading::ScopedMutexLock lock(s_mutex);
+        static std::mutex s_mutex;
+        std::lock_guard<std::mutex> lock(s_mutex);
 
         if (s_imageStateSet.lock(_imageStateSet) == false)
         {

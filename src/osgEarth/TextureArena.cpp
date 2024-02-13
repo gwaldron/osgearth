@@ -579,14 +579,14 @@ TextureArena::find_no_lock(Texture::Ptr tex) const
 int
 TextureArena::find(Texture::Ptr tex) const
 {
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
     return find_no_lock(tex);
 }
 
 Texture::Ptr
 TextureArena::find(unsigned index) const
 {
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
     if (index >= _textures.size())
         return nullptr;
 
@@ -604,7 +604,7 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
     // Lock the respository - we do that early because if you have multiple
     // views/gcs, it's very possible that both will try to add the same
     // texture in parallel.
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     // First check whether it's already there; if so, return the index.
     int existingIndex = find_no_lock(tex);
@@ -785,7 +785,7 @@ TextureArena::update(osg::NodeVisitor& nv)
 
     OE_PROFILING_ZONE_NAMED("update/autorelease");
 
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     if (_textures.empty())
         return;
@@ -807,7 +807,7 @@ TextureArena::flush()
 
     OE_PROFILING_ZONE_NAMED("flush");
 
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     for (unsigned i = 0; i < _textures.size(); ++i)
     {
@@ -821,7 +821,7 @@ TextureArena::apply(osg::State& state) const
     if (_textures.empty())
         return;
 
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     OE_PROFILING_ZONE;
 
@@ -980,7 +980,7 @@ TextureArena::apply(osg::State& state) const
 void
 TextureArena::notifyOfTextureRelease(osg::State* state) const
 {
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     if (state)
     {
@@ -1007,7 +1007,7 @@ TextureArena::compileGLObjects(osg::State& state) const
 void
 TextureArena::resizeGLObjectBuffers(unsigned maxSize)
 {
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     if (_globjects.size() < maxSize)
     {
@@ -1030,7 +1030,7 @@ TextureArena::releaseGLObjects(osg::State* state) const
 void
 TextureArena::releaseGLObjects(osg::State* state, bool force) const
 {
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     //OE_DEVEL << LC << "releaseGLObjects on arena " << getName() << std::endl;
 

@@ -25,6 +25,7 @@
 #include <osgEarth/CacheBin>
 #include <osgEarth/URI>
 #include <osgEarth/FileUtils>
+#include "Notify"
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
 #include <curl/curl.h>
@@ -432,7 +433,7 @@ HTTPResponse::setHeadersFromConfig(const Config& conf)
 namespace
 {
     // per-thread client map (must be global scope)
-    static PerThread<HTTPClient>       s_clientPerThread("HTTPClient(OE)");
+    static PerThread<HTTPClient>       s_clientPerThread;
 
     static optional<ProxySettings>     s_proxySettings;
 
@@ -444,7 +445,7 @@ namespace
 
     // HTTP debugging.
     static bool                        s_HTTP_DEBUG = false;
-    static Threading::Mutex            s_HTTP_DEBUG_mutex;
+    static std::mutex            s_HTTP_DEBUG_mutex;
     static int                         s_HTTP_DEBUG_request_count;
     static double                      s_HTTP_DEBUG_total_duration;
 
@@ -810,7 +811,7 @@ namespace
                 }
 
                 {
-                    Threading::ScopedMutexLock lock(s_HTTP_DEBUG_mutex);
+                    std::lock_guard<std::mutex> lock(s_HTTP_DEBUG_mutex);
                     s_HTTP_DEBUG_request_count++;
                     s_HTTP_DEBUG_total_duration += response.getDuration();
 

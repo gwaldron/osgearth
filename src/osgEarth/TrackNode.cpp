@@ -109,8 +109,8 @@ TrackNode::construct()
     osg::ref_ptr<osg::StateSet> geodeStateSet;
     if (s_geodeStateSet.lock(geodeStateSet) == false)
     {
-        static Threading::Mutex m(OE_MUTEX_NAME);
-        Threading::ScopedMutexLock lock(m);
+        static std::mutex m;
+        std::lock_guard<std::mutex> lock(m);
         if (s_geodeStateSet.lock(geodeStateSet) == false)
         {
             s_geodeStateSet = geodeStateSet = new osg::StateSet();
@@ -131,8 +131,8 @@ TrackNode::construct()
 
     if (s_imageStateSet.lock(_imageStateSet) == false)
     {
-        static Threading::Mutex m(OE_MUTEX_NAME);
-        Threading::ScopedMutexLock lock(m);
+        static std::mutex m;
+        std::lock_guard<std::mutex> lock(m);
         if (s_imageStateSet.lock(_imageStateSet) == false)
         {
             s_imageStateSet = _imageStateSet = new osg::StateSet();

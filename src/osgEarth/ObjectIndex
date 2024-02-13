@@ -99,7 +99,7 @@ namespace osgEarth
          */
         template<typename T>
         osg::ref_ptr<T> get(ObjectID id) const {
-            Threading::ScopedMutexLock lock(_mutex);
+            std::lock_guard<std::mutex> lock(_mutex);
             return dynamic_cast<T*>( getImpl(id) );
         }   
 
@@ -235,7 +235,7 @@ namespace osgEarth
         IndexMap                 _index;
         int                      _attribLocation;
         std::string              _oidUniformName;
-        mutable Threading::Mutex _mutex;
+        mutable std::mutex _mutex;
         std::atomic_int          _idGen;
         ShaderPackage            _shaders;
         std::string              _attribName;

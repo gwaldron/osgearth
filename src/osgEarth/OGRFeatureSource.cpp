@@ -515,7 +515,7 @@ OGRFeatureSource::openImplementation()
         // otherwise, assume we're loading from the URL/connection:
 
         // remember the thread so we don't use the handles illegaly.
-        _dsHandleThreadId = osgEarth::Threading::getCurrentThreadId();
+        _dsHandleThreadId = std::this_thread::get_id();
 
         // If the user request a particular driver, set that up now:
         std::string driverName = options().ogrDriver().value();
@@ -776,7 +776,7 @@ OGRFeatureSource::create(const FeatureProfile* profile,
 
     _ogrDriverHandle = OGRGetDriverByName(driverName.c_str());
 
-    _dsHandleThreadId = osgEarth::Threading::getCurrentThreadId();
+    _dsHandleThreadId = std::this_thread::get_id();
 
     // this handle may ONLY be used from this thread!
     // https://github.com/OSGeo/gdal/blob/v2.4.1/gdal/gcore/gdaldataset.cpp#L2577
@@ -825,7 +825,7 @@ OGRFeatureSource::buildSpatialIndex()
    if (_dsHandle &&
        _layerHandle && 
        OGR_L_TestCapability(_layerHandle, OLCFastSpatialFilter) == 0 &&
-       _dsHandleThreadId == osgEarth::Threading::getCurrentThreadId())
+       _dsHandleThreadId == std::this_thread::get_id())
    {
        std::stringstream buf;
        const char* name = OGR_FD_GetName(OGR_L_GetLayerDefn(_layerHandle));

@@ -20,6 +20,7 @@
 #include <osgEarth/TileEstimator>
 #include <osgEarth/FileUtils>
 #include <thread>
+#include <algorithm>
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,10)
 #include <osg/os_utils>
@@ -31,23 +32,21 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-TileVisitor::TileVisitor():
-_total(0),
-_processed(0),
-_minLevel(0),
-_maxLevel(99),
-_progressMutex("TileVisitor Progress")
+TileVisitor::TileVisitor() :
+    _total(0),
+    _processed(0),
+    _minLevel(0),
+    _maxLevel(99)
 {
 }
 
 
-TileVisitor::TileVisitor(TileHandler* handler):
-_tileHandler( handler ),
-_total(0),
-_processed(0),
-_minLevel(0),
-_maxLevel(99),
-_progressMutex("TileVisitor Progress")
+TileVisitor::TileVisitor(TileHandler* handler) :
+    _tileHandler(handler),
+    _total(0),
+    _processed(0),
+    _minLevel(0),
+    _maxLevel(99)
 {
 }
 
@@ -203,7 +202,7 @@ void TileVisitor::processKey( const TileKey& key )
 void TileVisitor::incrementProgress(unsigned int amount)
 {
     {
-        Threading::ScopedMutexLock lk(_progressMutex );
+        std::lock_guard<std::mutex> lk(_progressMutex );
         _processed += amount;
     }
 
@@ -235,7 +234,7 @@ bool TileVisitor::handleTile( const TileKey& key )
 /*****************************************************************************************/
 
 MultithreadedTileVisitor::MultithreadedTileVisitor() :
-    _numThreads(Threading::getConcurrency())
+    _numThreads(std::max(1u, std::thread::hardware_concurrency()))
 {
     // We must do this to avoid an error message in OpenSceneGraph b/c the findWrapper method doesn't appear to be threadsafe.
     // This really isn't a big deal b/c this only effects data that is already cached.
@@ -244,7 +243,7 @@ MultithreadedTileVisitor::MultithreadedTileVisitor() :
 
 MultithreadedTileVisitor::MultithreadedTileVisitor(TileHandler* handler) :
     TileVisitor(handler),
-    _numThreads(Threading::getConcurrency())
+    _numThreads(std::max(1u, std::thread::hardware_concurrency()))
 {
 }
 
@@ -265,7 +264,7 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
     // Start up the task service
     OE_INFO << "Starting " << _numThreads << " threads " << std::endl;
 
-    JobArena::get(MTTV)->setConcurrency(_numThreads);
+    jobs::get_pool(MTTV)->set_concurrency(_numThreads);
 
     // Produce the tiles
     TileVisitor::run( mapProfile );
@@ -279,25 +278,28 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
     //_numTiles++;
 
     // don't let the task queue get too large...?
-    while (JobArena::allMetrics().totalJobsPending() > 1000)
+    while(jobs::get_metrics()->totalJobsPending() > 1000)
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     // Add the tile to the task queue.
-    auto delegate = [this, key](Cancelable*)
+    auto task = [this, key](Cancelable&)
     {
-        if ((_tileHandler.valid()) &&
-            (!_progress.valid() || !_progress->isCanceled()))
+        if ((_tileHandler.valid()) && (!_progress.valid() || !_progress->isCanceled()))
         {
             _tileHandler->handleTile(key, *this);
             this->incrementProgress(1);
         }
+        return true;
     };
 
-    Job job(JobArena::get(MTTV), &_group);
-    job.setName("handleTile");
-    job.dispatch_and_forget(delegate);
+    jobs::context job;
+    job.name = "handleTile";
+    job.pool = jobs::get_pool(MTTV);
+    job.group = &_group;
+
+    jobs::dispatch(task, job);
 
     return true;
 }

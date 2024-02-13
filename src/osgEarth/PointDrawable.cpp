@@ -630,8 +630,8 @@ PointDrawable::setupState()
     {
         if (s_sharedStateSet.lock(_sharedStateSet) == false)
         {
-            static Threading::Mutex s_mutex(OE_MUTEX_NAME);
-            Threading::ScopedMutexLock lock(s_mutex);
+            static std::mutex s_mutex;
+            std::lock_guard<std::mutex> lock(s_mutex);
 
             if (s_sharedStateSet.lock(_sharedStateSet) == false)
             {
@@ -676,8 +676,8 @@ PointDrawable::checkSharedStateSet(osg::State* state) const
 {
     if (_sharedStateSet.valid() && !_sharedStateSetCompiled)
     {
-        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
-        Threading::ScopedMutexLock lock(s_mutex);
+        static std::mutex s_mutex;
+        std::lock_guard<std::mutex> lock(s_mutex);
 
         if (!_sharedStateSetCompiled)
         {

@@ -273,7 +273,7 @@ namespace osgEarth
 
         typedef LRUCache<TileKey, FeatureList> FeaturesLRU;
         std::unique_ptr< FeaturesLRU > _featuresCache;
-        Threading::Mutex _featuresCacheMutex;
+        std::mutex _featuresCacheMutex;
 
         //! Implements the feature cursor creation
         virtual FeatureCursor* createFeatureCursorImplementation(

@@ -34,6 +34,7 @@
 #include <osg/Drawable>
 #include <osg/Texture2D>
 #include <osg/ContextData>
+#include <osg/State>
 #include <set>
 
 #ifndef GLintptr
@@ -602,7 +603,7 @@ namespace osgEarth
 
         template<typename T>
         typename T::Ptr recycle(const GLObject::Compatible& compatible) {
-            ScopedMutexLock lock(_mutex);
+            std::lock_guard<std::mutex> lock(_mutex);
             typename T::Ptr result;
             for (auto& object : _objects) {
                 if (object.use_count() == 1 && compatible(object.get())) {
@@ -807,8 +808,8 @@ namespace osgEarth
         template<typename T>
         using Delegate = std::function<bool(
             osg::State& state,
-            Promise<T>& promise,
-            int         invocation)>;
+            jobs::promise<T>& promise,
+            int invocation)>;
 
     public:
         //! Gets the GL pipeline for a State
@@ -819,7 +820,7 @@ namespace osgEarth
         template<typename T>
         struct DelegateOperation : public osg::Operation {
             Delegate<T> _delegate;
-            Promise<T> _promise;
+            jobs::promise<T> _promise;
             int _invocation;
 
             DelegateOperation(Delegate<T> d) :
@@ -840,10 +841,10 @@ namespace osgEarth
         template<typename T>
         struct DelegateOperation2 : public osg::Operation {
             Delegate<T> _delegate;
-            Promise<T>& _promise;
+            jobs::promise<T>& _promise;
             int _invocation;
 
-            DelegateOperation2(Delegate<T> d, Promise<T>& promise) :
+            DelegateOperation2(Delegate<T> d, jobs::promise<T>& promise) :
                 osg::Operation("GLPipeline", true),
                 _delegate(d),
                 _promise(promise),
@@ -860,10 +861,10 @@ namespace osgEarth
     public:
         // Launch an operation on this GL Pipeline.
         template<typename T>
-        Future<T> dispatch(Delegate<T> delegate)
+        jobs::future<T> dispatch(Delegate<T> delegate)
         {
             auto operation = new DelegateOperation<T>(delegate);
-            Future<T> future = operation->_promise; // .getFuture();
+            jobs::future<T> future = operation->_promise;
             if (_dispatcher.valid())
                 _dispatcher->push(operation);
             else
@@ -874,7 +875,7 @@ namespace osgEarth
         // Launch an operation on this GL Pipeline, supplying your own Promise.
         // Be sure to call getFuture() prior to calling this function.
         template<typename T>
-        void dispatch(Delegate<T> delegate, Promise<T>& promise)
+        void dispatch(Delegate<T> delegate, jobs::promise<T>& promise)
         {
             auto operation = new DelegateOperation2<T>(delegate, promise);
             if (_dispatcher.valid())
@@ -939,28 +940,6 @@ namespace osgEarth
         void readback(osg::State* state);
     };
 
-    template<typename T>
-    class PerThreadComputeSession
-    {
-    public:
-        PerThreadComputeSession() :
-            _sessions("PerThreadComputeSession(OE)") { }
-
-        T& get(osg::Program* program) const {
-            ScopedMutexLock lock(_sessions);
-            SessionPtr& ptr = _sessions[getCurrentThreadId()];
-            if (ptr == nullptr) {
-                ptr = std::make_shared<T>();
-                ptr->setProgram(program);
-            }
-            return *ptr.get();
-        }
-    private:
-        using SessionPtr = std::shared_ptr<T>;
-        using SessionPtrPerThread = Mutexed<std::unordered_map<unsigned, SessionPtr>>;
-        mutable SessionPtrPerThread _sessions;
-    };
-
     /**
      * Utility to "pre-compile" a node by running it through the ICO
      * if one exists in the Options. If there is no ICO, this is a no-op
@@ -975,18 +954,18 @@ namespace osgEarth
         void compileNow(
             const osg::ref_ptr<osg::Node>& node,
             const osg::Object* host,
-            osgEarth::Threading::Cancelable* progress) const;
+            osgEarth::Cancelable* progress) const;
 
         Future<osg::ref_ptr<osg::Node>> compileAsync(
             const osg::ref_ptr<osg::Node>& node,
             const osg::Object* host,
-            osgEarth::Threading::Cancelable* progress) const;
+            osgEarth::Cancelable* progress) const;
 
         Future<osg::ref_ptr<osg::Node>> compileAsync(
             const osg::ref_ptr<osg::Node>& node,
             osgUtil::StateToCompile* state,
             const osg::Object* host,
-            osgEarth::Threading::Cancelable* progress) const;
+            osgEarth::Cancelable* progress) const;
 
         static int totalJobs() { return (int)_jobsActive; }
 

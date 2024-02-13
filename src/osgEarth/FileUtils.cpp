@@ -438,11 +438,10 @@ osgEarth::Util::getTempName(const std::string& prefix, const std::string& suffix
     while (true)
     {
         std::stringstream ss;
-        ss << prefix << "~" << osgEarth::getCurrentThreadId() << "_" << rand() << suffix;
+        ss << prefix << "~" << std::this_thread::get_id() << "_" << rand() << suffix;
         if (!osgDB::fileExists(ss.str()))
             return ss.str();
     }
-//    return "";
 }
 
 bool

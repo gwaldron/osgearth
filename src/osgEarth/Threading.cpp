@@ -34,33 +34,6 @@ WEETHREADS_INSTANCE;
 
 using namespace osgEarth;
 
-
-unsigned osgEarth::getCurrentThreadId()
-{
-#ifdef _WIN32
-    return (unsigned)::GetCurrentThreadId();
-#elif __APPLE__
-    return ::syscall(SYS_thread_selfid);
-#elif __ANDROID__
-    return gettid();
-#elif __LINUX__
-    return (unsigned)::syscall(SYS_gettid);
-#elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
-    long  tid;
-    syscall(SYS_thr_self, &tid);
-    return (unsigned)tid;
-#else
-    /* :XXX: this truncates to 32 bits, but better than nothing */
-    return (unsigned)pthread_self();
-#endif
-}
-
-unsigned osgEarth::getConcurrency()
-{
-    int value = std::thread::hardware_concurrency();
-    return value > 0 ? (unsigned)value : 4u;
-}
-
 void osgEarth::setThreadName(const std::string& name)
 {
 #if (defined _WIN32 && defined _WIN32_WINNT_WIN10 && defined _WIN32_WINNT && _WIN32_WINNT >= _WIN32_WINNT_WIN10) || (defined __CYGWIN__)

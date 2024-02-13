@@ -32,6 +32,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <queue>
+#include <thread>
 
 namespace osgEarth { namespace Util
 {
@@ -570,7 +571,7 @@ namespace osgEarth { namespace Util
 
         T& get() {
             std::lock_guard<std::mutex> lock(*this);
-            return _data[osgEarth::getCurrentThreadId()];
+            return _data[std::this_thread::get_id()];
         }
 
         void clear() {
@@ -578,7 +579,7 @@ namespace osgEarth { namespace Util
             _data.clear();
         }
 
-        typedef typename std::unordered_map<unsigned,T> container_t;
+        typedef typename std::unordered_map<std::thread::id,T> container_t;
         typedef typename container_t::iterator iterator;
 
         // NB. lock before using these!

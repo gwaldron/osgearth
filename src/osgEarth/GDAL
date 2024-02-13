@@ -24,6 +24,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/URI>
+#include <osgEarth/Containers>
 
  /**
   * GDAL (Geospatial Data Abstraction Library) Layers
@@ -162,7 +163,6 @@ namespace osgEarth {
             const GDAL::Options& gdalOptions() const { return _gdalOptions; }
             osg::ref_ptr<GDAL::ExternalDataset> _externalDataset;
             std::string _name;
-            unsigned _threadId;
 
             const std::string& getName() const { return _name; }
         };
@@ -182,9 +182,10 @@ namespace osgEarth {
         struct LayerBase
         {
         protected:
-            mutable std::mutex _driversMutex;
+            mutable Util::PerThread<GDAL::Driver::Ptr> _driverPerThread;
             mutable std::mutex _singleThreadingMutex;
-            mutable std::unordered_map<unsigned, GDAL::Driver::Ptr> _drivers;
+            mutable GDAL::Driver::Ptr _driverSingleThreaded = nullptr;
+            mutable Util::ReadWriteMutex _createCloseMutex;
         };
     }
 }

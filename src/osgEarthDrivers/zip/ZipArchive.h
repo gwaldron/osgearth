@@ -6,6 +6,7 @@
 
 #include <osgDB/Archive>
 #include <mutex>
+#include <thread>
 
 #include <zip.h>
 
@@ -82,7 +83,7 @@ class ZipArchive : public osgDB::Archive
             zip_t* _zipHandle;
         };
 
-        typedef std::map<size_t, PerThreadData> PerThreadDataMap;
+        typedef std::map<std::thread::id, PerThreadData> PerThreadDataMap;
         PerThreadDataMap _perThreadData;
 
         const PerThreadData& getData() const;

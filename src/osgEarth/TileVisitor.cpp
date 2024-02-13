@@ -20,6 +20,7 @@
 #include <osgEarth/TileEstimator>
 #include <osgEarth/FileUtils>
 #include <thread>
+#include <algorithm>
 
 #if OSG_VERSION_GREATER_OR_EQUAL(3,5,10)
 #include <osg/os_utils>
@@ -233,7 +234,7 @@ bool TileVisitor::handleTile( const TileKey& key )
 /*****************************************************************************************/
 
 MultithreadedTileVisitor::MultithreadedTileVisitor() :
-    _numThreads(osgEarth::getConcurrency())
+    _numThreads(std::max(1u, std::thread::hardware_concurrency()))
 {
     // We must do this to avoid an error message in OpenSceneGraph b/c the findWrapper method doesn't appear to be threadsafe.
     // This really isn't a big deal b/c this only effects data that is already cached.
@@ -242,7 +243,7 @@ MultithreadedTileVisitor::MultithreadedTileVisitor() :
 
 MultithreadedTileVisitor::MultithreadedTileVisitor(TileHandler* handler) :
     TileVisitor(handler),
-    _numThreads(osgEarth::getConcurrency())
+    _numThreads(std::max(1u, std::thread::hardware_concurrency()))
 {
 }
 

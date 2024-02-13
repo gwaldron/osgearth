@@ -940,28 +940,6 @@ namespace osgEarth
         void readback(osg::State* state);
     };
 
-    template<typename T>
-    class PerThreadComputeSession
-    {
-    public:
-        PerThreadComputeSession() :
-            _sessions("PerThreadComputeSession(OE)") { }
-
-        T& get(osg::Program* program) const {
-            std::lock_guard<std::mutex> lock(_sessions);
-            SessionPtr& ptr = _sessions[getCurrentThreadId()];
-            if (ptr == nullptr) {
-                ptr = std::make_shared<T>();
-                ptr->setProgram(program);
-            }
-            return *ptr.get();
-        }
-    private:
-        using SessionPtr = std::shared_ptr<T>;
-        using SessionPtrPerThread = Mutexed<std::unordered_map<unsigned, SessionPtr>>;
-        mutable SessionPtrPerThread _sessions;
-    };
-
     /**
      * Utility to "pre-compile" a node by running it through the ICO
      * if one exists in the Options. If there is no ICO, this is a no-op

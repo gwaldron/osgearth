@@ -19,12 +19,10 @@
 #pragma once
 #include <osgEarth/Export>
 
+// bring in weethreads in the jobs namespace
 #define WEETHREADS_NAMESPACE jobs
 #define WEETHREADS_EXPORT OSGEARTH_EXPORT
-
 #include <osgEarth/weethreads.h>
-
-#include <shared_mutex>
 
 namespace osgEarth
 {
@@ -32,14 +30,6 @@ namespace osgEarth
     * Pure interface for an object that can be canceled.
     */
     using Cancelable = WEETHREADS_NAMESPACE::cancelable;
-
-
-    //! Gets the approximate number of available threading contexts.
-    //! Result is guaranteed to be greater than zero
-    extern OSGEARTH_EXPORT unsigned getConcurrency();
-
-    //! Gets the unique ID of the running thread.
-    extern OSGEARTH_EXPORT unsigned getCurrentThreadId();
 
     //! Sets the name of the curent thread
     extern OSGEARTH_EXPORT void setThreadName(const std::string& name);
@@ -166,7 +156,7 @@ namespace osgEarth
 
             inline void lock(const T& key) {
                 std::unique_lock<std::mutex> lock(_m);
-                auto thread_id = getCurrentThreadId();
+                auto thread_id = std::this_thread::get_id();
                 for (;;) {
                     auto i = _keys.emplace(key, thread_id);
                     if (i.second)
@@ -185,7 +175,7 @@ namespace osgEarth
         private:
             std::mutex _m;
             std::condition_variable_any _unlocked;
-            std::unordered_map<T, unsigned> _keys;
+            std::unordered_map<T, std::thread::id> _keys;
         };
 
         //! Gate the locks for the duration of this object's scope

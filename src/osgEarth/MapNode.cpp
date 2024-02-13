@@ -670,7 +670,7 @@ MapNode::addExtension(Extension* extension, const osgDB::Options* options)
             }
         }
 
-        OE_INFO << LC << "Added extension \"" << extension->getName() << "\"\n";
+        //OE_INFO << LC << "Added extension \"" << extension->getName() << "\"\n";
     }
 }
 

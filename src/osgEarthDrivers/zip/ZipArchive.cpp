@@ -519,7 +519,7 @@ const ZipArchive::PerThreadData&
 ZipArchive::getDataNoLock() const
 {
     // get/create data for the currently running thread:
-    size_t current = osgEarth::getCurrentThreadId();
+    auto current = std::this_thread::get_id();
 
     PerThreadDataMap::const_iterator i = _perThreadData.find( current );
 

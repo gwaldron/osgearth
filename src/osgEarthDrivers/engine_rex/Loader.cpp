@@ -184,6 +184,7 @@ Merger::traverse(osg::NodeVisitor& nv)
                 if (next->_result.available())
                 {
                     next->merge();
+                    ++count;
                 }
                 else
                 {
@@ -191,9 +192,8 @@ Merger::traverse(osg::NodeVisitor& nv)
                 }
             }
 
-            ++count;
-
             _mergeQueue.pop();
+
             if (_metrics)
             {
                 _metrics->running--;

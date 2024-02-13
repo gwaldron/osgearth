@@ -166,18 +166,15 @@ main(int argc, char** argv)
     if (keys.empty())
         return usage(argv[0], "No data in extent");
 
-    JobArena arena("GroundCover Export", 4u);
-
     std::cout << "Exporting " << keys.size() << " keys.." << std::endl;
+
+    jobs::context ctx;
+    ctx.pool = jobs::get_pool("GroundCover Export");
+    ctx.pool->set_concurrency(4u);
 
     for (const auto& key : keys)
     {
-        Job(&arena).dispatch(
-            [&app, key](Cancelable*)
-            {
-                app.exportKey(key);
-            }
-        );
+        jobs::dispatch([&app, key]() { app.exportKey(key); }, ctx);
     }
 
     unsigned totalFeatures = 0u;

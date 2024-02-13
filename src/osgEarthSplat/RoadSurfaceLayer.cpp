@@ -84,8 +84,6 @@ RoadSurfaceLayer::init()
 {
     ImageLayer::init();
 
-    _keygate.setName("RoadSurfaceLayer " + getName());
-
     // Generate Mercator tiles by default.
     setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 
@@ -434,7 +432,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
                 progress,
                 [layer]() {
                     osg::ref_ptr<const Layer> safe;
-                    return !layer.lock(safe) || !safe->isOpen() || !JobArena::alive();
+                    return !layer.lock(safe) || !safe->isOpen() || !jobs::alive();
                 }
             );
 

@@ -1,3 +1,8 @@
+/**
+ * weethreads
+ * Copyright 2024 Pelican Mapping
+ * MIT License
+ */
 #pragma once
 #include <atomic>
 #include <mutex>

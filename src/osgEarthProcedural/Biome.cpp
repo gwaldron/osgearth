@@ -78,13 +78,15 @@ AssetTraits::getPermutationVectors(const std::vector<std::string>& input)
 std::string
 AssetTraits::toString(const std::vector<std::string>& traits)
 {
-    std::ostringstream buf;
-    for (int i = 0; i < traits.size(); ++i)
-    {
-        if (i > 0) buf << ',';
-        buf << traits[i];
+    std::string result;
+    if (!traits.empty()) {
+        result = traits[0];
+        for (int i = 1; i < traits.size(); ++i)
+        {
+            result += ',' + traits[i];
+        }
     }
-    return buf.str();
+    return result;
 }
 
 ModelAsset::ModelAsset(const Config& conf)

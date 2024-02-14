@@ -248,7 +248,7 @@ XmlElement::getConfig(const std::string& referrer) const
         URIContext uriContext(referrer);
         URI uri(href, uriContext);
         const std::string& fullURI = uri.full();
-        OE_DEBUG << "Loading href from " << fullURI << std::endl;
+        //OE_DEBUG << "Loading href from " << fullURI << std::endl;
 
         osg::ref_ptr< XmlDocument > doc = XmlDocument::load(fullURI);
         if (doc && doc->getChildren().size() > 0)

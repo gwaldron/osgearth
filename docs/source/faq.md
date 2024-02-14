@@ -4,9 +4,7 @@
 
 #### Error: 'gl_ModelViewMatrix is removed after version 140'
 
-osgEarth works best with OpenSceneGraph that was built with the GL3 or GLCORE profile. If you build OSG with the GL2 profile (which is the default) you may need to take some extra steps.
-
-The most common symptom is error messages like this:
+If you build OSG with the GL2 profile (which is the default) you may see errors like this:
 ```
 VERTEX Shader "..." infolog:
 0(94) : error C7616: global variable gl_ModelViewMatrix is removed after version 140
@@ -14,14 +12,14 @@ VERTEX Shader "..." infolog:
 0(125) : error C7616: global variable gl_MultiTexCoord2 is removed after version 140
 ```
 
-If you see this with an OSG GL2 build, you can include code like this to get things working:
+If so, you can include code like this to get things working:
 ```c++
 #include <osgEarth/GLUtils>
-#include <osgEarth/ExampleResources>
 ...
 viewer.setRealizeOperation(new GL3RealizeOperation());
-MapNodeHelper().configureView(&viewer);
 ```
+
+The `osgearth_simple.cpp` example shows how to do this in your application.
 
 
 ## Earth File

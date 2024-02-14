@@ -50,9 +50,12 @@ namespace osgEarth
         };
 
         //! Result object returned from a geocoding attempt
-        class OSGEARTH_EXPORT Results : public FutureResult<OutputData>
+        class OSGEARTH_EXPORT Results
         {
         public:
+            bool isReady() const { return _result.available(); }
+            bool isWorking() const { return _result.working(); }
+
             //! Status of geocode operation -- check this first
             Status getStatus();
 
@@ -61,8 +64,11 @@ namespace osgEarth
 
             //! Internal constructors
             Results(const Status& status, FeatureCursor* cursor);
-            Results(Future<OutputData> future);
+            Results(jobs::future<OutputData> future);
             Results(const OutputData& results);
+
+        private:
+            jobs::future<OutputData> _result;
         };
 
     public:

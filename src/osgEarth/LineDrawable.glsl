@@ -52,8 +52,8 @@ void oe_LineDrawable_VS_VIEW(inout vec4 currView)
 uniform vec3 oe_Camera;
 
 // Set by GLUtils methods
-uniform float oe_GL_LineWidth;
-uniform int oe_GL_LineStipplePattern;
+uniform float oe_GL_LineWidth = 1.0;
+uniform int oe_GL_LineStipplePattern = 0xffff;
 
 // Input attributes for adjacent points
 in vec3 oe_LineDrawable_prev;

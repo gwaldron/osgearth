@@ -75,8 +75,8 @@ namespace
 
     protected:
         std::string _rootPath;
-        std::shared_ptr<JobArena> _jobArena;
         FileSystemCacheOptions _options;
+        jobs::jobpool* _pool = nullptr;
     };
 
     struct WriteCacheRecord {
@@ -96,7 +96,7 @@ namespace
             const std::string& name,
             const std::string& rootPath,
             const FileSystemCacheOptions& options,
-            std::shared_ptr<JobArena>& jobArena);
+            jobs::jobpool* pool);
 
         static bool _s_debug;
 
@@ -136,7 +136,7 @@ namespace
         FileSystemCacheOptions _options;
 
         // pool for asynchronous writes
-        std::shared_ptr<JobArena> _jobArena;
+        jobs::jobpool* _pool = nullptr;
 
     public:
         // cache for objects waiting to be written; this supports reading from
@@ -193,7 +193,8 @@ namespace
 {
     FileSystemCache::FileSystemCache(const CacheOptions& options) :
         Cache(options),
-        _options(options)
+        _options(options),
+        _pool(nullptr)
     {
         // read the root path from ENV is necessary:
         if ( !_options.rootPath().isSet())
@@ -222,11 +223,12 @@ namespace
     {
         if (num > 0u)
         {
-            _jobArena = std::make_shared<JobArena>("oe.fscache", osg::clampBetween(num, 1u, 8u));
+            _pool = jobs::get_pool("oe.fscache");
+            _pool->set_concurrency(osg::clampBetween(num, 1u, 8u));
         }
         else
         {
-            _jobArena = nullptr;
+            _pool = nullptr;
         }
     }
 
@@ -236,7 +238,7 @@ namespace
         if (getStatus().isError())
             return NULL;
 
-        return _bins.getOrCreate(name, new FileSystemCacheBin(name, _rootPath, _options, _jobArena));
+        return _bins.getOrCreate(name, new FileSystemCacheBin(name, _rootPath, _options, _pool));
     }
 
     CacheBin*
@@ -245,13 +247,13 @@ namespace
         if (getStatus().isError())
             return NULL;
 
-        static Mutex s_defaultBinMutex(OE_MUTEX_NAME);
+        static Mutex s_defaultBinMutex;
         if ( !_defaultBin.valid() )
         {
-            ScopedMutexLock lock( s_defaultBinMutex );
+            std::lock_guard<std::mutex> lock( s_defaultBinMutex );
             if ( !_defaultBin.valid() ) // double-check
             {
-                _defaultBin = new FileSystemCacheBin("__default", _rootPath, _options, _jobArena);
+                _defaultBin = new FileSystemCacheBin("__default", _rootPath, _options, _pool);
             }
         }
         return _defaultBin.get();
@@ -323,15 +325,13 @@ namespace
         const std::string& binID,
         const std::string& rootPath,
         const FileSystemCacheOptions& options,
-        std::shared_ptr<JobArena>& jobArena) :
+        jobs::jobpool* pool) :
 
         CacheBin(binID, options.enableNodeCaching().get()),
-        _jobArena(jobArena),
+        _pool(pool),
         _binPathExists(false),
         _options(options),
-        _ok(true),
-        _fileGate("CacheBinFileGate(OE)"),
-        _writeCacheRWM("CacheBinWriteL2(OE)")
+        _ok(true)
     {
         _binPath = osgDB::concatPaths(rootPath, binID);
         _metaPath = osgDB::concatPaths(_binPath, "osgearth_cacheinfo.json");
@@ -402,7 +402,7 @@ namespace
         // lock the file:
         ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
 
-        if (_jobArena)
+        if (_pool)
         {
             // first check the write-pending cache. The record will be there
             // if the object is queued for asynchronous writing but hasn't
@@ -487,7 +487,7 @@ namespace
         // lock the file:
         ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
 
-        if (_jobArena)
+        if (_pool)
         {
             // first check the write-pending cache. The record will be there
             // if the object is queued for asynchronous writing but hasn't
@@ -592,7 +592,7 @@ namespace
         osg::ref_ptr<const osg::Object> object(raw_object);
         osg::ref_ptr<const osgDB::Options> writeOptions(dbo);
 
-        auto write_op = [=](Cancelable*)
+        auto write_op = [=]()
         {
             OE_PROFILING_ZONE_NAMED("OE FS Cache Write");
 
@@ -660,7 +660,7 @@ namespace
             }
         };
 
-        if (_jobArena != nullptr)
+        if (_pool != nullptr)
         {
             // Store in the write-cache until it's actually written.
             // Will override any existing entry and that's OK since the
@@ -672,13 +672,13 @@ namespace
             _writeCacheRWM.write_unlock();
 
             // asynchronous write
-            Job(_jobArena.get()).dispatch(write_op);
+            jobs::dispatch(write_op, jobs::context{ fileURI.full(), _pool });
         }
 
         else
         {
             // synchronous write
-            write_op(nullptr);
+            write_op();
         }
 
         return true;

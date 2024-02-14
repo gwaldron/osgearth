@@ -100,7 +100,7 @@ namespace osgEarth { namespace SilverLining
 
         bool                       _initAttempted;
         bool                       _initFailed;
-        osgEarth::Threading::Mutex _initMutex;
+        std::mutex _initMutex;
 
         double _maxAmbientLightingAlt;
 

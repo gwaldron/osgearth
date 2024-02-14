@@ -456,12 +456,11 @@ SET(LIB_PUBLIC_HEADERS
     TrackNode
     WindLayer
     TerrainLayer
+    SDF
 
     rtree.h
-
-    FileGDBFeatureSource
-
-    SDF
+    weemesh.h
+    weejobs.h
 
     ${OSGEARTH_VERSION_HEADER}
 )
@@ -495,7 +494,6 @@ IF (NOT TINYXML_FOUND)
         ${LIB_PUBLIC_HEADERS}
         tinystr.h
         tinyxml.h
-        weemesh.h
     )
 ENDIF (NOT TINYXML_FOUND)
 
@@ -859,7 +857,7 @@ set(TARGET_SRC
     SDF.cpp
 
     FileGDBFeatureSource.cpp
-
+    
     ${SHADERS_CPP}
 )
 
@@ -977,6 +975,10 @@ IF (TRACY_FOUND)
     INCLUDE_DIRECTORIES(${TRACY_INCLUDE_DIR})
     LINK_WITH_VARIABLES(${LIB_NAME} TRACY_LIBRARY)
 ENDIF(TRACY_FOUND)
+
+if(UNIX)
+    target_link_libraries(${LIB_NAME} PUBLIC Threads::Threads)
+endif()
 
 OPTION(NRL_STATIC_LIBRARIES "Link osgEarth against static GDAL and cURL, including static OpenSSL, Proj4, JPEG, PNG, and TIFF." OFF)
 if(NOT NRL_STATIC_LIBRARIES)

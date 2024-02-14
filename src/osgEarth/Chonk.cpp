@@ -45,6 +45,10 @@ using namespace osgEarth;
 // note: this MUST match the local_size product in Chonk.Culling.glsl
 #define GPU_CULLING_LOCAL_WG_SIZE 32
 
+// Uncomment this to reset all buffer base index bindings after rendering.
+// It's unlikely this is necessary, but it's here just we find otherwise.
+//#define RESET_BUFFER_BASE_BINDINGS
+
 namespace
 {
     struct SendIndices
@@ -796,7 +800,7 @@ ChonkDrawable::installRenderBin(ChonkDrawable* d)
     static osg::ref_ptr<VirtualProgram> s_vp;
 
     static Mutex s_mutex;
-    ScopedMutexLock lock(s_mutex);
+    std::lock_guard<std::mutex> lock(s_mutex);
 
     auto& ss = s_stateSets[d->getRenderBinNumber()];
     if (!ss.valid())
@@ -856,7 +860,7 @@ ChonkDrawable::add(Chonk::Ptr chonk, const osg::Matrixf& xform, const osg::Vec2f
 {
     if (chonk)
     {
-        ScopedMutexLock lock(_m);
+        std::lock_guard<std::mutex> lock(_m);
 
         Instance instance;
         instance.xform = xform;
@@ -892,7 +896,7 @@ ChonkDrawable::update_and_cull_batches(osg::State& state) const
     // if something changed, we need to refresh the GPU tables.
     if (globjects._dirty)
     {
-        ScopedMutexLock lock(_m);
+        std::lock_guard<std::mutex> lock(_m);
         globjects._gpucull = _gpucull;
         globjects.update(_batches, this, _fadeNear, _fadeFar, _birthday, _alphaCutoff, state);
     }
@@ -914,7 +918,7 @@ ChonkDrawable::draw_batches(osg::State& state) const
 osg::BoundingBox
 ChonkDrawable::computeBoundingBox() const
 {
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
     
     osg::BoundingBox result;
 
@@ -970,7 +974,7 @@ ChonkDrawable::refreshProxy() const
 {
     if (_proxy_dirty)
     {
-        ScopedMutexLock lock(_m);
+        std::lock_guard<std::mutex> lock(_m);
 
         _proxy_verts.clear();
         _proxy_indices.clear();
@@ -1350,7 +1354,7 @@ ChonkRenderBin::ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op)
     if (!_cullSS.valid())
     {
         static Mutex m;
-        ScopedMutexLock lock(m);
+        std::lock_guard<std::mutex> lock(m);
 
         auto proto = static_cast<ChonkRenderBin*>(getRenderBinPrototype("ChonkBin"));
         if (!proto->_cullSS.valid())
@@ -1419,6 +1423,13 @@ ChonkRenderBin::DrawLeaf::draw(osg::State& state)
     {
         auto& gl = ChonkDrawable::GLObjects::get(drawable->_globjects, state);
         gl._vao->unbind();
+
+#ifdef RESET_BUFFER_BASE_BINDINGS
+        gl._ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER,  0, 0);
+        gl._ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 29, 0);
+        gl._ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 30, 0);
+        gl._ext->glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 31, 0);
+#endif
     }
 }
 

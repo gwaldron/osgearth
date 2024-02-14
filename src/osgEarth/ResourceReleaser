@@ -55,7 +55,7 @@ namespace osgEarth { namespace Util
 
     private:
         mutable ObjectList _toRelease;
-        mutable Threading::Mutex _mutex;
+        mutable std::mutex _mutex;
     };
 } }
 

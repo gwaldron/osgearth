@@ -211,7 +211,7 @@ namespace osgEarth
 
         static osg::observer_ptr<osg::StateSet> s_gpuStateSet;
         osg::ref_ptr<osg::StateSet> _gpuStateSet;
-        mutable Threading::Mutex _mutex;
+        mutable std::mutex _mutex;
         osg::ref_ptr<osg::Geometry> _geom;
 
     public: // osg::Drawable pass thrus

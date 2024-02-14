@@ -33,18 +33,16 @@ using namespace osgEarth;
 //------------------------------------------------------------------------
 
 ResourceLibrary::ResourceLibrary(const Config& conf) :
-_initialized( false ),
-_mutex(OE_MUTEX_NAME)
+    _initialized(false)
 {
-    mergeConfig( conf );
+    mergeConfig(conf);
 }
 
-ResourceLibrary::ResourceLibrary(const std::string&    name,
-                                 const URI&            uri) :
-_name       ( name ),
-_uri        ( uri, uri ),
-_initialized( false ),
-_mutex(OE_MUTEX_NAME)
+ResourceLibrary::ResourceLibrary(const std::string& name,
+    const URI& uri) :
+    _name(name),
+    _uri(uri, uri),
+    _initialized(false)
 {
     //nop
 }
@@ -145,7 +143,7 @@ ResourceLibrary::removeResource( Resource* resource )
 
 namespace
 {
-    static Threading::Mutex s_initMutex(OE_MUTEX_NAME);
+    static std::mutex s_initMutex;
 }
 
 bool
@@ -155,7 +153,7 @@ ResourceLibrary::initialize( const osgDB::Options* dbOptions )
 
     if ( !_initialized )
     {
-        Threading::ScopedMutexLock exclusive(s_initMutex);
+        std::lock_guard<std::mutex> exclusive(s_initMutex);
         if ( !_initialized )
         {
             ok = false;

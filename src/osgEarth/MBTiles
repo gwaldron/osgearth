@@ -92,7 +92,7 @@ namespace osgEarth { namespace MBTiles
         std::string _name;
 
         // because no one knows if/when sqlite3 is threadsafe.
-        mutable Threading::Mutex _mutex;
+        mutable std::mutex _mutex;
 
         bool createTables();
         void computeLevels();

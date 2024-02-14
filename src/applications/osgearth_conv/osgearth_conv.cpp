@@ -213,7 +213,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
                         unsigned           totalStages,
                         const std::string& msg )
     {
-        ScopedMutexLock lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         if (_first)
         {
@@ -278,7 +278,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
         return false;
     }
 
-    Threading::Mutex _mutex;
+    std::mutex _mutex;
     bool _first;
     osg::Timer_t _start;
 };
@@ -489,17 +489,11 @@ main(int argc, char** argv)
     // create the visitor.
     osg::ref_ptr<TileVisitor> visitor;
 
-    unsigned numThreads = 1;
-    if (args.read("--threads", numThreads))
-    {
-        MultithreadedTileVisitor* mtv = new MultithreadedTileVisitor();
-        mtv->setNumThreads(numThreads < 1 ? 1 : numThreads);
-        visitor = mtv;
-    }
-    else
-    {
-        visitor = new TileVisitor();
-    }
+    unsigned numThreads = 4;
+    args.read("--threads", numThreads);
+    MultithreadedTileVisitor* mtv = new MultithreadedTileVisitor();
+    mtv->setNumThreads(numThreads < 1 ? 1 : numThreads);
+    visitor = mtv;
 
     bool overwrite = true;
     if (args.read("--no-overwrite"))

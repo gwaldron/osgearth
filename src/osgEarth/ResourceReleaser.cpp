@@ -30,8 +30,7 @@ using namespace osgEarth::Util;
 #define LC "[ResourceReleaser] "
 
 
-ResourceReleaser::ResourceReleaser() :
-    _mutex("ResourceReleaser(OE)")
+ResourceReleaser::ResourceReleaser()
 {
     // ensure this node always gets traversed:
     this->setCullingActive(false);
@@ -46,7 +45,7 @@ ResourceReleaser::ResourceReleaser() :
 void
 ResourceReleaser::push(osg::Object* object)
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     _toRelease.push_back(object);
 }
@@ -54,7 +53,7 @@ ResourceReleaser::push(osg::Object* object)
 void
 ResourceReleaser::push(const ObjectList& objects)
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     _toRelease.reserve(_toRelease.size() + objects.size());
     for (unsigned i = 0; i<objects.size(); ++i)
@@ -74,7 +73,7 @@ ResourceReleaser::releaseGLObjects(osg::State* state) const
     OE_PROFILING_ZONE;
     if (!_toRelease.empty())
     {
-        Threading::ScopedMutexLock lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         if (!_toRelease.empty())
         {
             for (ObjectList::const_iterator i = _toRelease.begin(); i != _toRelease.end(); ++i)

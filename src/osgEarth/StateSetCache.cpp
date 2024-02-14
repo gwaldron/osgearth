@@ -247,27 +247,26 @@ namespace
 //------------------------------------------------------------------------
 
 StateSetCache::StateSetCache() :
-    _pruneCount       ( 0 ),
-    _maxSize          ( DEFAULT_PRUNE_ACCESS_COUNT ),
-    _attrShareAttempts( 0 ),
-    _attrsIneligible  ( 0 ),
-    _attrShareHits    ( 0 ),
-    _attrShareMisses  ( 0 ),
-    _mutex            ("StateSetCache(OE)")
+    _pruneCount(0),
+    _maxSize(DEFAULT_PRUNE_ACCESS_COUNT),
+    _attrShareAttempts(0),
+    _attrsIneligible(0),
+    _attrShareHits(0),
+    _attrShareMisses(0)
 {
     //nop
 }
 
 StateSetCache::~StateSetCache()
 {
-    Threading::ScopedMutexLock lock( _mutex );
+    std::lock_guard<std::mutex> lock( _mutex );
     prune();
 }
 
 void
 StateSetCache::releaseGLObjects(osg::State* state) const
 {
-    Threading::ScopedMutexLock lock( _mutex );
+    std::lock_guard<std::mutex> lock( _mutex );
     for(StateSetSet::const_iterator i = _stateSetCache.begin(); i != _stateSetCache.end(); ++i)
     {
         i->get()->releaseGLObjects(state);
@@ -280,7 +279,7 @@ StateSetCache::setMaxSize(unsigned value)
 {
     _maxSize = value;
     {
-        Threading::ScopedMutexLock lock( _mutex );
+        std::lock_guard<std::mutex> lock( _mutex );
         pruneIfNecessary();
     }
 }
@@ -342,7 +341,7 @@ StateSetCache::share(osg::ref_ptr<osg::StateSet>& input,
 
     if ( !checkEligible || eligible(input.get()) )
     {
-        Threading::ScopedMutexLock lock( _mutex );
+        std::lock_guard<std::mutex> lock( _mutex );
 
         pruneIfNecessary();
 
@@ -390,7 +389,7 @@ StateSetCache::share(osg::ref_ptr<osg::StateAttribute>& input,
 
     if ( !checkEligible || eligible(input.get()) )
     {
-        Threading::ScopedMutexLock lock( _mutex );
+        std::lock_guard<std::mutex> lock( _mutex );
 
         pruneIfNecessary();
 
@@ -470,7 +469,7 @@ StateSetCache::prune()
 void
 StateSetCache::clear()
 {
-    Threading::ScopedMutexLock lock( _mutex );
+    std::lock_guard<std::mutex> lock( _mutex );
 
     prune();
     _stateAttributeCache.clear();
@@ -480,7 +479,7 @@ StateSetCache::clear()
 void
 StateSetCache::protect()
 {
-    Threading::ScopedMutexLock lock( _mutex );
+    std::lock_guard<std::mutex> lock( _mutex );
     for(auto i : _stateSetCache)
     {
         i->setDataVariance(osg::Object::DYNAMIC);
@@ -491,7 +490,7 @@ StateSetCache::protect()
 void
 StateSetCache::dumpStats()
 {
-    Threading::ScopedMutexLock lock( _mutex );
+    std::lock_guard<std::mutex> lock( _mutex );
 
     OE_NOTICE << LC << "StateSetCache Dump:" << std::endl
         << "    attr attempts     = " << _attrShareAttempts << std::endl

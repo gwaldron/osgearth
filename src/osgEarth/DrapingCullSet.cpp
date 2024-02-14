@@ -29,7 +29,6 @@ using namespace osgEarth::Util;
 
 
 DrapingManager::DrapingManager() :
-    _sets(OE_MUTEX_NAME),
     _renderBinNum(1)
 {
 #ifdef OSGEARTH_SINGLE_THREADED_OSG

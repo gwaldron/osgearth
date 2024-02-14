@@ -579,8 +579,8 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
     // allocate a texture image unit the first time through.
     if ( !_textureUnit.isSet() )
     {
-        static Threading::Mutex m(OE_MUTEX_NAME);
-        Threading::ScopedMutexLock lock(m);
+        static std::mutex m;
+        std::lock_guard<std::mutex> lock(m);
 
         if ( !_textureUnit.isSet() )
         {

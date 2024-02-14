@@ -148,7 +148,7 @@ namespace osgEarth { namespace Util
 
     std::vector<std::string> _failedDrivers;
     static ScriptEngineFactory* s_singleton;
-    static osgEarth::Threading::Mutex s_singletonMutex;
+    static std::mutex s_singletonMutex;
   };
 } }
 

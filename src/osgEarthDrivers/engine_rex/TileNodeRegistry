@@ -104,7 +104,7 @@ namespace osgEarth { namespace REX
 
         TileTable _tiles;
         Tracker _tracker;
-        mutable Threading::Mutex _mutex;
+        mutable std::mutex _mutex;
         bool _notifyNeighbors;
         const FrameClock* _clock;
 

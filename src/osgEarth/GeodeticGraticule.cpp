@@ -402,7 +402,7 @@ GeodeticGraticule::rebuild()
     _root->addChild(_labelingEngine);
 
     // destroy all per-camera data so it can reinitialize itself
-    Threading::ScopedMutexLock lock(_cameraDataMapMutex);
+    std::lock_guard<std::mutex> lock(_cameraDataMapMutex);
     _cameraDataMap.clear();
 }
 
@@ -631,7 +631,7 @@ GeodeticGraticule::updateLabels()
 
     const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("wgs84");
 
-    Threading::ScopedMutexLock lock(_cameraDataMapMutex);
+    std::lock_guard<std::mutex> lock(_cameraDataMapMutex);
     for (CameraDataMap::iterator itr = _cameraDataMap.begin(); itr != _cameraDataMap.end(); ++itr)
     {
         CameraData& cdata = itr->second;
@@ -727,7 +727,7 @@ GeodeticGraticule::updateLabels()
 GeodeticGraticule::CameraData&
 GeodeticGraticule::getCameraData(osg::Camera* cam) const
 {
-    Threading::ScopedMutexLock lock(_cameraDataMapMutex);
+    std::lock_guard<std::mutex> lock(_cameraDataMapMutex);
     CameraData& cdata = _cameraDataMap[cam];
 
     // New camera data? Initialize:
@@ -807,7 +807,7 @@ GeodeticGraticule::releaseGLObjects(osg::State* state) const
 {
     VisibleLayer::releaseGLObjects(state);
 
-    Threading::ScopedMutexLock lock(_cameraDataMapMutex);
+    std::lock_guard<std::mutex> lock(_cameraDataMapMutex);
     for (CameraDataMap::iterator i = _cameraDataMap.begin(); i != _cameraDataMap.end(); ++i)
     {
         CameraData& data = i->second;

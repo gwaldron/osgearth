@@ -41,44 +41,46 @@ namespace osgEarth
     {
     public:
         META_ConfigOptions(osgEarth, TerrainOptions, DriverConfigOptions);
-        OE_OPTION(int, tileSize);
-        OE_OPTION(float, minTileRangeFactor);
-        OE_OPTION(bool, clusterCulling);
-        OE_OPTION(unsigned, maxLOD);
-        OE_OPTION(unsigned, minLOD);
-        OE_OPTION(unsigned, firstLOD);
-        OE_OPTION(bool, enableLighting);
-        OE_OPTION(bool, enableBlending);
-        OE_OPTION(bool, compressNormalMaps);
-        OE_OPTION(unsigned, minNormalMapLOD);
-        OE_OPTION(bool, gpuTessellation);
-        OE_OPTION(float, tessellationLevel);
-        OE_OPTION(float, tessellationRange);
-        OE_OPTION(bool, debug);
-        OE_OPTION(int, renderBinNumber);
-        OE_OPTION(unsigned, minExpiryFrames);
-        OE_OPTION(double, minExpiryTime);
-        OE_OPTION(float, minExpiryRange);
-        OE_OPTION(unsigned, maxTilesToUnloadPerFrame);
-        OE_OPTION(unsigned, minResidentTiles);
-        OE_OPTION(bool, castShadows);
-        OE_OPTION(TerrainLODMethod, lodMethod);
-        OE_OPTION(float, tilePixelSize);
-        OE_OPTION(float, heightFieldSkirtRatio);
-        OE_OPTION(Color, color);
-        OE_OPTION(bool, progressive);
-        OE_OPTION(bool, useNormalMaps);
-        OE_OPTION(bool, normalizeEdges);
-        OE_OPTION(bool, morphTerrain);
-        OE_OPTION(bool, morphImagery);
-        OE_OPTION(unsigned, mergesPerFrame);
-        OE_OPTION(float, priorityScale);
-        OE_OPTION(std::string, textureCompression);
-        OE_OPTION(unsigned, concurrency);
-        OE_OPTION(bool, useLandCover);
-        OE_OPTION(float, screenSpaceError);
-        OE_OPTION(unsigned, maxTextureSize);
-        OE_OPTION(bool, visible);
+        OE_OPTION(int, tileSize, 17);
+        OE_OPTION(float, minTileRangeFactor, 7.0f);
+        OE_OPTION(bool, clusterCulling, true);
+        OE_OPTION(unsigned, maxLOD, 19u);
+        OE_OPTION(unsigned, minLOD, 0u);
+        OE_OPTION(unsigned, firstLOD, 0u);
+        OE_OPTION(bool, enableLighting, true);
+        OE_OPTION(bool, enableBlending, true);
+        OE_OPTION(bool, compressNormalMaps, false);
+        OE_OPTION(unsigned, minNormalMapLOD, 0u);
+        OE_OPTION(bool, gpuTessellation, false);
+        OE_OPTION(float, tessellationLevel, 2.5f);
+        OE_OPTION(float, tessellationRange, 75.0f);
+        OE_OPTION(bool, debug, false);
+        OE_OPTION(int, renderBinNumber, 0);
+        OE_OPTION(unsigned, minExpiryFrames, 0u);
+        OE_OPTION(double, minExpiryTime, 0.0);
+        OE_OPTION(float, minExpiryRange, 0.0f);
+        OE_OPTION(unsigned, maxTilesToUnloadPerFrame, ~0u);
+        OE_OPTION(unsigned, minResidentTiles, 0u);
+        OE_OPTION(bool, castShadows, false);
+        OE_OPTION(TerrainLODMethod, lodMethod, TerrainLODMethod::CAMERA_DISTANCE);
+        OE_OPTION(float, tilePixelSize, 512.0f);
+        OE_OPTION(float, heightFieldSkirtRatio, 0.0f);
+        OE_OPTION(Color, color, Color::White);
+        OE_OPTION(bool, progressive, false);
+        OE_OPTION(bool, useNormalMaps, true);
+        OE_OPTION(bool, normalizeEdges, false);
+        OE_OPTION(bool, morphTerrain, true);
+        OE_OPTION(bool, morphImagery, true);
+        OE_OPTION(unsigned, mergesPerFrame, 20u);
+        OE_OPTION(float, priorityScale, 1.0f);
+        OE_OPTION(std::string, textureCompression, {});
+        OE_OPTION(unsigned, concurrency, 4u);
+        OE_OPTION(bool, useLandCover, true);
+        OE_OPTION(float, screenSpaceError, 0.0f);
+        OE_OPTION(unsigned, maxTextureSize, 65536u);
+        OE_OPTION(bool, visible, true);
+        OE_OPTION(bool, createTilesAsync, true);
+        OE_OPTION(bool, createTilesGrouped, true);
 
         virtual Config getConfig() const;
     private:
@@ -271,6 +273,14 @@ namespace osgEarth
         //! Whether to render the terrain
         void setVisible(const bool& value);
         const bool& getVisible() const;
+
+        //! Whether the engine should create child tiles asynchronously
+        void setCreateTilesAsync(const bool& value);
+        const bool& getCreateTilesAsync() const;
+
+        //! Whether the engine should create all child tiles in a group
+        void setCreateTilesGrouped(const bool& value);
+        const bool& getCreateTilesGrouped() const;
 
         TerrainOptionsAPI();
         TerrainOptionsAPI(TerrainOptions*);

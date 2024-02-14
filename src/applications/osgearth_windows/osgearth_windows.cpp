@@ -39,7 +39,7 @@ usage(const char* name)
     OE_NOTICE
         << "\nUsage: " << name << " file.earth"
         << "\n          --views [num] : Number of windows to open"
-        << "\n          --shared      : Use a shared graphics context"
+        << "\n          --shared      : Share a single OSG graphics context across all windows (forces SingleThreaded mode)"
         << "\n          --updates [num] : Number of update traversals"
         << "\n"
         << MapNodeHelper().usage() << std::endl;
@@ -61,7 +61,6 @@ struct App
         _viewer(args),
         _size(800)
     {
-        //_viewer.setThreadingModel(_viewer.SingleThreaded);
         _sharedGC = args.read("--shared");
     }
 
@@ -101,7 +100,6 @@ struct App
 
         osgViewer::View* view = new osgViewer::View();
         view->getCamera()->setGraphicsContext(gc);
-        //osg::GraphicsContext::incrementContextIDUsageCount(gc->getState()->getContextID());
 
         view->getCamera()->setViewport(0, 0, width, height);
         view->getCamera()->setProjectionMatrixAsPerspective(45, 1, 1, 10);
@@ -247,6 +245,16 @@ main(int argc, char** argv)
 
     // Setup the viewer for imgui
     app._viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
+
+    // Force SingleThreaded mode if we are sharing a GC and have more than one view.
+    // OSG cannot share a GC across multiple draw threads.
+    // https://groups.google.com/g/osg-users/c/hZEOr-Hb2kM/m/AiYZvRDLCAAJ
+    if (app._sharedGC)
+    {
+        app._viewer.setThreadingModel(osgViewer::ViewerBase::SingleThreaded);
+        OE_WARN << "Forcing --SingleThreaded mode because we are sharing an OSG Graphics Context (GC), "
+            "and OSG does not support multi-threading of a shared GC" << std::endl;
+    }
 
     app._node = MapNodeHelper().loadWithoutControls(arguments, &app._viewer);
     if (!app._node.get())

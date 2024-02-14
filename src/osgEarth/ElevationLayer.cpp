@@ -104,8 +104,6 @@ ElevationLayer::init()
     // open and visible are the same thing for elevation layers
     _visibleTiedToOpen = true;
 
-    _sentry.setName("ElevationLayer " + getName());
-
     // override with a different default tile size since elevation
     // tiles need overlapping edges
     if (!options().tileSize().isSet())
@@ -1060,8 +1058,8 @@ ElevationLayerVector::populateHeightField(
 
 #ifdef ANALYZE
     {
-        static Threading::Mutex m;
-        Threading::ScopedMutexLock lock(m);
+        static std::mutex m;
+        std::lock_guard<std::mutex> lock(m);
         std::cout << key.str() << ": ";
         for (std::map<ElevationLayer*, LayerAnalysis>::const_iterator i = layerAnalysis.begin();
             i != layerAnalysis.end(); ++i)

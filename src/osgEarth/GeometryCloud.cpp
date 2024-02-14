@@ -21,6 +21,7 @@
 */
 #include "GeometryCloud"
 #include "Metrics"
+#include "Notify"
 
 #include <osgUtil/Optimizer>
 #include <osgUtil/MeshOptimizers>

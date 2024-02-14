@@ -194,7 +194,6 @@ void
 StyleSheet::init()
 {
     Layer::init();
-    _resLibsMutex.setName(OE_MUTEX_NAME);
 }
 
 void

@@ -25,12 +25,9 @@ using namespace osgEarth;
 
 // internal thread-safety not required since we mutex it in this object.
 ResourceCache::ResourceCache() :
-_skinCache    ( false ),
-_instanceCache( false ),
-_texCache( false ),
-_skinMutex(OE_MUTEX_NAME),
-_instanceMutex(OE_MUTEX_NAME),
-_texMutex(OE_MUTEX_NAME)
+    _skinCache(false),
+    _instanceCache(false),
+    _texCache(false)
 {
     //nop
 }
@@ -38,7 +35,7 @@ _texMutex(OE_MUTEX_NAME)
 bool
 ResourceCache::getOrCreateLineTexture(const URI& uri, osg::ref_ptr<osg::Texture>& output, const osgDB::Options* readOptions)
 {
-    Threading::ScopedMutexLock lock(_texMutex);
+    std::lock_guard<std::mutex> lock(_texMutex);
     TextureCache::Record rec;
     if (_texCache.get(uri.full(), rec) && rec.value().valid())
     {
@@ -85,7 +82,7 @@ ResourceCache::getOrCreateStateSet(SkinResource*                skin,
 
     // exclusive lock (since it's an LRU)
     {
-        Threading::ScopedMutexLock exclusive( _skinMutex );
+        std::lock_guard<std::mutex> exclusive( _skinMutex );
             
         // double check to avoid race condition
         SkinCache::Record rec;       
@@ -118,7 +115,7 @@ ResourceCache::getOrCreateInstanceNode(InstanceResource*        res,
 
     // exclusive lock (since it's an LRU)
     {
-        Threading::ScopedMutexLock exclusive( _instanceMutex );
+        std::lock_guard<std::mutex> exclusive( _instanceMutex );
 
         // double check to avoid race condition
         InstanceCache::Record rec;
@@ -150,7 +147,7 @@ ResourceCache::cloneOrCreateInstanceNode(InstanceResource*        res,
 
     // exclusive lock (since it's an LRU)
     {
-        Threading::ScopedMutexLock exclusive( _instanceMutex );
+        std::lock_guard<std::mutex> exclusive( _instanceMutex );
 
         // Deep copy everything except for images.  Some models may share imagery so we only want one copy of it at a time.
         osg::CopyOp copyOp = osg::CopyOp::DEEP_COPY_ALL & ~osg::CopyOp::DEEP_COPY_IMAGES & ~osg::CopyOp::DEEP_COPY_TEXTURES;

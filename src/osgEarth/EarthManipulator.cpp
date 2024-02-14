@@ -296,8 +296,8 @@ _orthoTracksPerspective         ( true ),
 _terrainAvoidanceEnabled        ( true ),
 _terrainAvoidanceMinDistance    ( 1.0 ),
 _throwingEnabled                ( false ),
-_throwDecayRate                 ( 0.05 ),
-_zoomToMouse                    ( false )
+_throwDecayRate                 ( 0.175 ),
+_zoomToMouse                    ( true )
 {
     //NOP
 }

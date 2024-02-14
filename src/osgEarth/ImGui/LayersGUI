@@ -1038,45 +1038,59 @@ namespace osgEarth
 
             void drawUsefulLayers()
             {
-                if (ImGui::BeginMenu("Useful Layers"))
+                ImGui::Separator();
+
+                //if (ImGui::BeginMenu("Useful Layers"))
                 {
                     // ReadyMap Imagery
-                    if (ImGui::MenuItem("ReadyMap Imagery"))
+                    if (_mapNode->getMap()->getLayerByName("ReadyMap Imagery") == nullptr)
                     {
-                        TMSImageLayer* readymap = new TMSImageLayer();
-                        readymap->setName("ReadyMap Imagery");
-                        readymap->setURL("http://readymap.org/readymap/tiles/1.0.0/7/");
-                        _mapNode->getMap()->addLayer(readymap);
+                        if (ImGui::MenuItem("ReadyMap Imagery"))
+                        {
+                            TMSImageLayer* readymap = new TMSImageLayer();
+                            readymap->setName("ReadyMap Imagery");
+                            readymap->setURL("https://readymap.org/readymap/tiles/1.0.0/7/");
+                            _mapNode->getMap()->addLayer(readymap);
+                        }
                     }
 
                     // ReadyMap Elevation
-                    if (ImGui::MenuItem("ReadyMap Elevation"))
+                    if (_mapNode->getMap()->getLayerByName("ReadyMap Elevation") == nullptr)
                     {
-                        TMSElevationLayer* readymap = new TMSElevationLayer();
-                        readymap->setName("ReadyMap Elevation");
-                        readymap->setURL("http://readymap.org/readymap/tiles/1.0.0/116/");
-                        _mapNode->getMap()->addLayer(readymap);
+                        if (ImGui::MenuItem("ReadyMap Elevation"))
+                        {
+                            TMSElevationLayer* readymap = new TMSElevationLayer();
+                            readymap->setName("ReadyMap Elevation");
+                            readymap->setURL("https://readymap.org/readymap/tiles/1.0.0/116/");
+                            _mapNode->getMap()->addLayer(readymap);
+                        }
                     }
 
                     // OpenStreetMap
-                    if (ImGui::MenuItem("OpenStreetMap"))
+                    if (_mapNode->getMap()->getLayerByName("OpenStreetMap") == nullptr)
                     {
-                        XYZImageLayer* osm = new XYZImageLayer();
-                        osm->setName("OpenStreetMap");
-                        osm->setURL("http://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png");
-                        osm->setProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile());
-                        osm->setAttribution("&#169;OpenStreetMap contributors");
-                        _mapNode->getMap()->addLayer(osm);
+                        if (ImGui::MenuItem("OpenStreetMap"))
+                        {
+                            XYZImageLayer* osm = new XYZImageLayer();
+                            osm->setName("OpenStreetMap");
+                            osm->setURL("https://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png");
+                            osm->setProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile());
+                            osm->setAttribution("&#169;OpenStreetMap contributors");
+                            _mapNode->getMap()->addLayer(osm);
+                        }
                     }
 
-                    if (ImGui::MenuItem("Debug"))
+                    if (_mapNode->getMap()->getLayer<DebugImageLayer>() == nullptr)
                     {
-                        DebugImageLayer* debugImage = new DebugImageLayer;
-                        debugImage->setName("Debug");
-                        _mapNode->getMap()->addLayer(debugImage);
+                        if (ImGui::MenuItem("Debug"))
+                        {
+                            DebugImageLayer* debugImage = new DebugImageLayer;
+                            debugImage->setName("Debug");
+                            _mapNode->getMap()->addLayer(debugImage);
+                        }
                     }
 
-                    ImGui::EndMenu();
+                    //ImGui::EndMenu();
                 }
             }
 
@@ -1095,10 +1109,10 @@ namespace osgEarth
 
                         if (key.valid())
                         {
-                            _imageLayerValueUnderMouse = Job().dispatch<Result<ValueUnderMouse>>([this, key, p](Cancelable* c)
+                            auto task = [this, key, p](Cancelable& c)
                                 {
                                     ValueUnderMouse value;
-                                    osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(c);
+                                    osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(&c);
                                     GeoImage g = _mouseOverImageLayer->createImage(key, prog.get());
                                     if (g.valid())
                                     {
@@ -1111,7 +1125,9 @@ namespace osgEarth
                                         }
                                     }
                                     return Result<ValueUnderMouse>(Status::Error("No value"));
-                                });
+                                };
+
+                            _imageLayerValueUnderMouse = jobs::dispatch(task);
                         }
                     }
                 }

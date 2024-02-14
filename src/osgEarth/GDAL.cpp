@@ -36,6 +36,7 @@
 #include <osgDB/ImageOptions>
 
 #include <sstream>
+#include <thread>
 #include <stdlib.h>
 #include <memory.h>
 
@@ -483,7 +484,7 @@ GDAL::Driver::Driver() :
     _maxDataLevel(30),
     _linearUnits(1.0)
 {
-    _threadId = osgEarth::Threading::getCurrentThreadId();
+    //nop
 }
 
 GDAL::Driver::~Driver()
@@ -493,7 +494,7 @@ GDAL::Driver::~Driver()
     else if (_srcDS)
         GDALClose(_srcDS);
 
-    OE_DEBUG << "Closed GDAL Driver on thread " << _threadId << std::endl;
+    OE_DEBUG << "Closed GDAL Driver on thread " << std::this_thread::get_id() << std::endl;
 }
 
 void
@@ -1798,10 +1799,6 @@ GDALImageLayer::init()
 
     // Initialize the image layer
     ImageLayer::init();
-
-    _driversMutex.setName("OE.GDALImageLayer.drivers");
-    _singleThreadingMutex.setName("OE.GDALImageLayer.st");
-
 }
 
 Status
@@ -1810,8 +1807,6 @@ GDALImageLayer::openImplementation()
     Status parent = ImageLayer::openImplementation();
     if (parent.isError())
         return parent;
-
-    unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
 
     osg::ref_ptr<const Profile> profile;
 
@@ -1828,11 +1823,12 @@ GDALImageLayer::openImplementation()
     // So we just encapsulate the entire setup once per thread.
     // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
 
-    ScopedMutexLock lock(_driversMutex);
-
-    GDAL::Driver::Ptr& driver = _drivers[id];
+    // Note: no need to mutex the _driverSingleThreaded instance since we are in open
+    // and open is single-threaded by definition.
+    GDAL::Driver::Ptr& driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
 
     DataExtentList dataExtents;
+
     Status s = openOnThisThread(
         this,
         driver,
@@ -1857,8 +1853,10 @@ Status
 GDALImageLayer::closeImplementation()
 {
     // safely shut down all per-thread handles.
-    Threading::ScopedMutexLock lock(_driversMutex);
-    _drivers.clear();
+    Util::ScopedWriteLock unique_lock(_createCloseMutex);
+    _driverPerThread.clear();
+    _driverSingleThreaded = nullptr;
+
     return ImageLayer::closeImplementation();
 }
 
@@ -1868,19 +1866,17 @@ GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     if (getStatus().isError())
         return GeoImage::INVALID;
 
-    unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
+    Util::ScopedReadLock shared_lock(_createCloseMutex);
 
     GDAL::Driver::Ptr driver;
 
     // lock while we look up and verify the per-thread driver:
     {
-        ScopedMutexLock lock(_driversMutex);
-
         // check while locked to ensure we may continue
         if (isClosing() || !isOpen())
             return GeoImage::INVALID;
 
-        GDAL::Driver::Ptr& test_driver = _drivers[id];
+        GDAL::Driver::Ptr& test_driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
 
         if (test_driver == nullptr)
         {
@@ -1898,17 +1894,14 @@ GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
     {
         OE_PROFILING_ZONE;
 
-        if (getSingleThreaded())
-            _singleThreadingMutex.lock();
+        // serialize acccess if we're in single-threaded mode
+        Util::scoped_lock_if lock(_singleThreadingMutex, getSingleThreaded());
 
         osg::ref_ptr<osg::Image> image = driver->createImage(
             key,
             options().tileSize().get(),
             options().coverage() == true,
             progress);
-
-        if (getSingleThreaded())
-            _singleThreadingMutex.unlock();
 
         return GeoImage(image.get(), key.getExtent());
     }
@@ -1956,8 +1949,6 @@ void
 GDALElevationLayer::init()
 {
     ElevationLayer::init();
-    _driversMutex.setName("OE.GDALElevationLayer.drivers");
-    _singleThreadingMutex.setName("OE.GDALElevationLayer.st");
 }
 
 Status
@@ -1967,20 +1958,17 @@ GDALElevationLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
-
     osg::ref_ptr<const Profile> profile;
 
     // GDAL thread-safety requirement: each thread requires a separate GDALDataSet.
     // So we just encapsulate the entire setup once per thread.
     // https://trac.osgeo.org/gdal/wiki/FAQMiscellaneous#IstheGDALlibrarythread-safe
 
-    ScopedMutexLock lock(_driversMutex);
-
     // Open the dataset temporarily to query the profile and extents.
-    GDAL::Driver::Ptr driver;
+    GDAL::Driver::Ptr& driver = getSingleThreaded() ? _driverSingleThreaded :  _driverPerThread.get();
 
     DataExtentList dataExtents;
+
     Status s = openOnThisThread(
         this,
         driver,
@@ -2002,9 +1990,14 @@ GDALElevationLayer::openImplementation()
 Status
 GDALElevationLayer::closeImplementation()
 {
-    // safely shut down all per-thread handles.
-    Threading::ScopedMutexLock lock(_driversMutex);
-    _drivers.clear();
+    // safely shut down all per-thread handles. The mutex prevents closing
+    // while the layer is working on a create call.
+    {
+        Util::ScopedWriteLock unique_lock(_createCloseMutex);
+        _driverPerThread.clear();
+        _driverSingleThreaded = nullptr;
+    }
+
     return ElevationLayer::closeImplementation();
 }
 
@@ -2014,19 +2007,17 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
     if (getStatus().isError())
         return GeoHeightField(getStatus());
 
-    unsigned id = getSingleThreaded() ? 0u : Threading::getCurrentThreadId();
+    Util::ScopedReadLock shared_lock(_createCloseMutex);
 
     GDAL::Driver::Ptr driver;
 
     // lock while we look up and verify the per-thread driver:
     {
-        ScopedMutexLock lock(_driversMutex);
-
         // check while locked to ensure we may continue
         if (isClosing() || !isOpen())
             return GeoHeightField::INVALID;
 
-        GDAL::Driver::Ptr& test_driver = _drivers[id];
+        GDAL::Driver::Ptr& test_driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
 
         if (test_driver == nullptr)
         {
@@ -2044,8 +2035,7 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
     {
         OE_PROFILING_ZONE;
 
-        if (getSingleThreaded())
-            _singleThreadingMutex.lock();
+        Util::scoped_lock_if lock(_singleThreadingMutex, getSingleThreaded());
 
         osg::ref_ptr<osg::HeightField> heightfield;
 
@@ -2063,9 +2053,6 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
                 options().tileSize().get(),
                 progress);
         }
-
-        if (getSingleThreaded())
-            _singleThreadingMutex.unlock();
 
         return GeoHeightField(heightfield.get(), key.getExtent());
     }

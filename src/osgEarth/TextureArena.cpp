@@ -579,14 +579,14 @@ TextureArena::find_no_lock(Texture::Ptr tex) const
 int
 TextureArena::find(Texture::Ptr tex) const
 {
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
     return find_no_lock(tex);
 }
 
 Texture::Ptr
 TextureArena::find(unsigned index) const
 {
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
     if (index >= _textures.size())
         return nullptr;
 
@@ -604,7 +604,7 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
     // Lock the respository - we do that early because if you have multiple
     // views/gcs, it's very possible that both will try to add the same
     // texture in parallel.
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     // First check whether it's already there; if so, return the index.
     int existingIndex = find_no_lock(tex);
@@ -711,8 +711,14 @@ TextureArena::add(Texture::Ptr tex, const osgDB::Options* readOptions)
     // add to all existing GCs:
     for (unsigned i = 0; i < _globjects.size(); ++i)
     {
-        if (_globjects[i]._inUse)        
+        if (_globjects[i]._inUse)
+        {
+            //if (index < _globjects[i]._handles.size())
+            //{
+            //    _globjects[i]._handles[index] = 0;
+            //}
             _globjects[i]._toCompile.push(index);
+        }
     }
 
     if (index < _textures.size())
@@ -740,6 +746,24 @@ TextureArena::purgeTextureIfOrphaned_no_lock(unsigned index)
     // Check for use_count() == 1, meaning that the only reference to this
     if (tex && tex.use_count() == 1)
     {
+        // Zero out the bindless handle and flag for sync.
+        // Theoretically we should not need to do this because the texture being orphaned
+        // should "guarantee" that it will not be accessed by the GPU. But in practice
+        // it's possible for the GPU to be accessing the texture based on stale data, so 
+        // we need to zero it out to be safe.
+        auto index = _textureIndices[tex.get()];
+        for(unsigned i = 0; i < _globjects.size(); ++i)
+        {
+            if (_globjects[i]._inUse)
+            {
+                if (index < _globjects[i]._handles.size())
+                {
+                    _globjects[i]._handles[index] = 0;
+                    _globjects[i]._handleBufferDirty = true;
+                }
+            }
+        }
+
         // Remove this texture from the texture indices map
         _textureIndices.erase(tex.get());
 
@@ -761,7 +785,7 @@ TextureArena::update(osg::NodeVisitor& nv)
 
     OE_PROFILING_ZONE_NAMED("update/autorelease");
 
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     if (_textures.empty())
         return;
@@ -783,7 +807,7 @@ TextureArena::flush()
 
     OE_PROFILING_ZONE_NAMED("flush");
 
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     for (unsigned i = 0; i < _textures.size(); ++i)
     {
@@ -797,7 +821,7 @@ TextureArena::apply(osg::State& state) const
     if (_textures.empty())
         return;
 
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     OE_PROFILING_ZONE;
 
@@ -905,13 +929,8 @@ TextureArena::apply(osg::State& state) const
 
                 GLuint64 handle = gltex ? gltex->handle(state) : 0ULL;
                 unsigned index = _useUBO ? ptr * 2 : ptr; // hack for std140 vec4 alignment
-                if (gc._handles[index] != handle)
-                {
-                    gc._handles[index] = handle;
-
-                    // mark the GC to re-upload its LUT
-                    gc._handleBufferDirty = true;
-                }
+                gc._handles[index] = handle;
+                gc._handleBufferDirty = true;
             }
 
             // reinstate the old bound texture
@@ -923,6 +942,30 @@ TextureArena::apply(osg::State& state) const
 
         gc._lastAppliedFrame = state.getFrameStamp()->getFrameNumber();
     }
+
+#if 0
+    // DEBUGGING - reapply ALL handles to the GPU each frame
+    int changes = 0;
+    for (unsigned i = 0; i < _textures.size(); ++i)
+    {
+        auto tex = _textures[i];
+        GLuint64 handle = 0ULL;
+        if (tex) {
+            auto gltex = Texture::GLObjects::get(_textures[i]->_globjects, state)._gltexture.get();
+            OE_SOFT_ASSERT(gltex);
+            if (gltex)
+                handle = gltex->handle(state);
+        }
+        if (handle != gc._handles[i])
+        {
+            ++changes;
+            OE_WARN << "change, existing = " << gc._handles[i] << "  new = " << handle << std::endl;
+        }
+        gc._handles[i] = handle;
+        gc._handleBufferDirty = true;
+    }
+    OE_SOFT_ASSERT(changes == 0);
+#endif
 
     // upload to GPU if it changed:
     if (gc._handleBufferDirty)
@@ -937,7 +980,7 @@ TextureArena::apply(osg::State& state) const
 void
 TextureArena::notifyOfTextureRelease(osg::State* state) const
 {
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     if (state)
     {
@@ -964,7 +1007,7 @@ TextureArena::compileGLObjects(osg::State& state) const
 void
 TextureArena::resizeGLObjectBuffers(unsigned maxSize)
 {
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     if (_globjects.size() < maxSize)
     {
@@ -987,7 +1030,7 @@ TextureArena::releaseGLObjects(osg::State* state) const
 void
 TextureArena::releaseGLObjects(osg::State* state, bool force) const
 {
-    ScopedMutexLock lock(_m);
+    std::lock_guard<std::mutex> lock(_m);
 
     //OE_DEVEL << LC << "releaseGLObjects on arena " << getName() << std::endl;
 

@@ -1294,8 +1294,8 @@ LineDrawable::setupShaders()
         if (s_gpuStateSet.lock(_gpuStateSet) == false)
         {
             // serialize access and double-check:
-            static Threading::Mutex s_mutex(OE_MUTEX_NAME);
-            Threading::ScopedMutexLock lock(s_mutex);
+            static std::mutex s_mutex;
+            std::lock_guard<std::mutex> lock(s_mutex);
 
             if (s_gpuStateSet.lock(_gpuStateSet) == false)
             {
@@ -1336,7 +1336,7 @@ LineDrawable::accept(osg::NodeVisitor& nv)
 
         if (!_current)
         {
-            ScopedMutexLock lock(_mutex);
+            std::lock_guard<std::mutex> lock(_mutex);
             if (!_current)
                 initialize();
         }

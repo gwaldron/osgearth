@@ -107,7 +107,7 @@ namespace osgEarth
         void setVisibilityRangeHint(unsigned lod, float range);
 
     private:
-        Threading::Mutex _reservedUnitsMutex;
+        std::mutex _reservedUnitsMutex;
 
         typedef std::set<int> ReservedUnits;
         ReservedUnits _globallyReservedUnits;

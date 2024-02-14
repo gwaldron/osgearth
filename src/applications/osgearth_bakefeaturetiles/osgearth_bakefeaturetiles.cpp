@@ -339,7 +339,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
         unsigned           totalStages,
         const std::string& msg)
     {
-        ScopedMutexLock lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
 
         if (_first)
         {
@@ -388,7 +388,7 @@ struct ProgressReporter : public osgEarth::ProgressCallback
         return false;
     }
 
-    Threading::Mutex _mutex;
+    std::mutex _mutex;
     bool _first;
     osg::Timer_t _start;
 };
@@ -406,8 +406,6 @@ public:
     {
         // Start up the task service
         OE_INFO << "Starting " << _numThreads << " threads " << std::endl;
-
-        _arena = std::make_shared<JobArena>("oe.mttilevisitor", _numThreads);
 
         _profile = mapProfile;
 

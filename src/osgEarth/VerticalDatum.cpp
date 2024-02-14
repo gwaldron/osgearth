@@ -35,7 +35,7 @@ namespace
 {
     typedef std::map<std::string, osg::ref_ptr<VerticalDatum> > VDatumCache;
     VDatumCache _vdatumCache;
-    Threading::Mutex _vdataCacheMutex("VDatumCache(OE)");
+    std::mutex _vdataCacheMutex;
     bool _vdatumWarning = false;
 } 
 
@@ -47,7 +47,7 @@ VerticalDatum::get( const std::string& initString )
     if (initString.empty())
         return result;
 
-    Threading::ScopedMutexLock exclusive(_vdataCacheMutex);
+    std::lock_guard<std::mutex> exclusive(_vdataCacheMutex);
 
     if (::getenv("OSGEARTH_IGNORE_VERTICAL_DATUMS"))
     {

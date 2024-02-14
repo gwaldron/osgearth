@@ -95,9 +95,7 @@ void
 FeatureSource::init()
 {
     Layer::init();
-    _blacklistMutex.setName("FeatureSource(OE).blacklist " + getName());
     _blacklistSize = 0u;
-    _featuresCacheMutex.setName("FeatureSource(OE).featuresCache " + getName());
 }
 
 Status
@@ -270,7 +268,7 @@ FeatureSource::createFeatureCursor(
         {
             FeaturesLRU::Record result;
             {
-                ScopedMutexLock lk(_featuresCacheMutex);
+                std::lock_guard<std::mutex> lk(_featuresCacheMutex);
                 _featuresCache->get(*query.tileKey(), result);
             }
             if (result.valid())
@@ -304,7 +302,7 @@ FeatureSource::createFeatureCursor(
                 return osg::clone(feature.get(), osg::CopyOp::DEEP_COPY_ALL);
             });
         {
-            ScopedMutexLock lk(_featuresCacheMutex);
+            std::lock_guard<std::mutex> lk(_featuresCacheMutex);
             _featuresCache->insert(*query.tileKey(), copy);
         }
 #else

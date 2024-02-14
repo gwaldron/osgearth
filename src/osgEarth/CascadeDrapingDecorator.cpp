@@ -324,8 +324,8 @@ CascadeDrapingDecorator::reserveTextureImageUnit()
 {
     if (_unit < 0)
     {
-        static Threading::Mutex mutex(OE_MUTEX_NAME);
-        Threading::ScopedMutexLock lock(mutex);
+        static std::mutex mutex;
+        std::lock_guard<std::mutex> lock(mutex);
 
         osg::ref_ptr<TerrainResources> tr;
         if (_unit < 0 && _resources.lock(tr))

@@ -298,7 +298,7 @@ namespace osgEarth
         template<typename R>
             R* registerSingleton(R* singleton)
         {
-            Threading::ScopedMutexLock lock(_regMutex);
+            std::lock_guard<std::mutex> lock(_regMutex);
             _singletons.push_back(singleton);
             return singleton;
         }
@@ -307,7 +307,7 @@ namespace osgEarth
         virtual ~Registry();
         Registry();
 
-        mutable Threading::Mutex _regMutex;
+        mutable std::mutex _regMutex;
 
         ProgramRepo _programRepo;
 
@@ -325,7 +325,7 @@ namespace osgEarth
 
         // system capabilities:
         osg::ref_ptr< Capabilities > _caps;
-        mutable Threading::Mutex     _capsMutex;
+        mutable std::mutex     _capsMutex;
         void initCapabilities();
 
         osg::ref_ptr<osgDB::Options> _defaultOptions;
@@ -336,7 +336,7 @@ namespace osgEarth
 
         typedef std::vector<const Units*> UnitsVector;
         UnitsVector _unitsVector;
-        //mutable Threading::Mutex _unitsVectorMutex;
+        //mutable std::mutex _unitsVectorMutex;
 
         osg::ref_ptr<StateSetCache> _stateSetCache;
 
@@ -352,7 +352,7 @@ namespace osgEarth
             }
         };
         std::set<Activity,ActivityLess> _activities;
-        mutable Threading::Mutex _activityMutex;
+        mutable std::mutex _activityMutex;
 
         optional<bool> _unRefImageDataAfterApply;
 

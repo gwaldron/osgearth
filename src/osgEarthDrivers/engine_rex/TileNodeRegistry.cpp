@@ -34,8 +34,7 @@ using namespace osgEarth;
 //----------------------------------------------------------------------------
 
 TileNodeRegistry::TileNodeRegistry() :
-    _notifyNeighbors(false),
-    _mutex("TileNodeRegistry(OE)")
+    _notifyNeighbors(false)
 {
     //nop
 }
@@ -58,7 +57,7 @@ TileNodeRegistry::setDirty(
     unsigned maxLevel,
     const CreateTileManifest& manifest)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     
     for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
     {
@@ -76,7 +75,7 @@ TileNodeRegistry::setDirty(
 void
 TileNodeRegistry::add(TileNode* tile)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     auto& entry = _tiles[tile->getKey()];
     entry._tile = tile;
@@ -171,7 +170,7 @@ TileNodeRegistry::stopListeningFor(
 void
 TileNodeRegistry::releaseAll(osg::State* state)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     for (auto& tile : _tiles)
     {
@@ -191,7 +190,7 @@ TileNodeRegistry::releaseAll(osg::State* state)
 void
 TileNodeRegistry::touch(TileNode* tile, osg::NodeVisitor& nv)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     TileTable::iterator i = _tiles.find(tile->getKey());
 
@@ -208,7 +207,7 @@ TileNodeRegistry::touch(TileNode* tile, osg::NodeVisitor& nv)
 void
 TileNodeRegistry::update(osg::NodeVisitor& nv)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     if (!_tilesToUpdate.empty())
     {
@@ -244,7 +243,7 @@ TileNodeRegistry::collectDormantTiles(
     unsigned maxTiles,
     std::vector<osg::observer_ptr<TileNode>>& output)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     unsigned count = 0u;
 

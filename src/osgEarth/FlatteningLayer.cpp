@@ -920,7 +920,7 @@ FlatteningLayer::removedFromMap(const Map* map)
 FeatureList
 FlatteningLayer::getFeatures(const TileKey& key)
 {
-    OpenThreads::ScopedLock< Threading::Mutex > lk(_featuresCacheMutex);
+    std::lock_guard<std::mutex> lk(_featuresCacheMutex);
 
     FeaturesLRU::Record result;
     _featuresCache.get(key, result);

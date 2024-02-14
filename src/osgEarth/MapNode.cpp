@@ -670,7 +670,7 @@ MapNode::addExtension(Extension* extension, const osgDB::Options* options)
             }
         }
 
-        OE_INFO << LC << "Added extension \"" << extension->getName() << "\"\n";
+        //OE_INFO << LC << "Added extension \"" << extension->getName() << "\"\n";
     }
 }
 
@@ -831,8 +831,8 @@ MapNode::traverse( osg::NodeVisitor& nv )
             nv.getVisitorType() == nv.CULL_VISITOR ||
             nv.getVisitorType() == nv.UPDATE_VISITOR)
         {
-            static Threading::Mutex s_openMutex(OE_MUTEX_NAME);
-            Threading::ScopedMutexLock lock(s_openMutex);
+            static std::mutex s_openMutex;
+            std::lock_guard<std::mutex> lock(s_openMutex);
             if (!_isOpen)
             {
                 _isOpen = open();

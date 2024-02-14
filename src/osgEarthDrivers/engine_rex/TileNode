@@ -182,31 +182,35 @@ namespace osgEarth { namespace REX
 
         TileKey _key;
         osg::observer_ptr<TileNode> _parentTile;
-        osg::ref_ptr<SurfaceNode>          _surface;
-        osg::observer_ptr<EngineContext>   _context;
-        Threading::Mutex                   _mutex;
-        std::atomic<int>                   _lastTraversalFrame;
-        double                             _lastTraversalTime;
-        float                              _lastTraversalRange;
-        bool                               _childrenReady;
-        mutable osg::Vec4f                 _tileKeyValue;
-        osg::Vec2f                         _morphConstants;
-        TileRenderModel                    _renderModel;
-        bool                               _empty;
-        bool                               _imageUpdatesActive;
-        TileKey                            _subdivideTestKey;
-        bool                               _doNotExpire;
-        int                                _revision;
-        bool _createChildAsync;
+        osg::ref_ptr<SurfaceNode> _surface;
+        osg::observer_ptr<EngineContext> _context;
+        std::mutex _mutex;
+        std::atomic<int> _lastTraversalFrame;
+        double _lastTraversalTime = 0.0;
+        float _lastTraversalRange = FLT_MAX;
+        bool _childrenReady = false;
+        mutable osg::Vec4f _tileKeyValue;
+        osg::Vec2f _morphConstants;
+        TileRenderModel _renderModel;
+        bool _empty = false;
+        bool _imageUpdatesActive = false;
+        TileKey _subdivideTestKey;
+        bool _doNotExpire = false;
+        int _revision = 0;
         std::atomic<float> _loadPriority;
 
+        // for each job creating one child at a time:
         using CreateChildResult = osg::ref_ptr<TileNode>;
         std::vector<Future<CreateChildResult>> _createChildResults;
 
+        // for each job creating all children at once:
+        using CreateChildrenResult = std::vector<osg::ref_ptr<TileNode>>;
+        Future<CreateChildrenResult> _createChildrenFutureResult;
+
         using LoadQueue = std::queue<LoadTileDataOperationPtr>;
         Mutexed<LoadQueue> _loadQueue;
-        unsigned _loadsInQueue;
-        const CreateTileManifest* _nextLoadManifestPtr;
+        unsigned _loadsInQueue = 0;
+        const CreateTileManifest* _nextLoadManifestPtr = nullptr;
 
         bool dirty() const {
             return _loadsInQueue > 0;

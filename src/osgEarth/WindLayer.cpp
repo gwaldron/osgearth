@@ -106,19 +106,19 @@ namespace
     {
         CameraState& get(const osg::Camera* camera)
         {
-            ScopedMutexLock lock(mutex());
+            std::lock_guard<std::mutex> lock(mutex());
             return (*this)[camera];
         }
 
         void for_each(const std::function<void(CameraState&)>& func) {
-            ScopedMutexLock lock(mutex());
+            std::lock_guard<std::mutex> lock(mutex());
             for (auto& i : *this) {
                 func(i.second);
             }
         }
 
         void for_each(const std::function<void(const CameraState&)>& func) const {
-            ScopedMutexLock lock(mutex());
+            std::lock_guard<std::mutex> lock(mutex());
             for (auto& i : *this) {
                 func(i.second);
             }
@@ -177,8 +177,6 @@ namespace
     WindDrawable::WindDrawable(const osgDB::Options* readOptions)
     {
         OE_SOFT_ASSERT(sizeof(WindData) % 16 == 0, "struct WindData is not 16-byte aligned; expect chaos");
-
-        _cameraState.setName(OE_MUTEX_NAME);
 
         // Always run the shader.
         setCullingActive(false);

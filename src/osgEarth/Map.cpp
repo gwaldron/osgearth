@@ -19,6 +19,7 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapModelChange>
 #include <osgEarth/Registry>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 
@@ -122,8 +123,6 @@ Map::init()
 {
     // reset the revision:
     _dataModelRevision = 0;
-
-    _mapDataMutex.setName("Map dataMutex(OE)");
 
     // set the object name from the options:
     if (options().name().isSet())

@@ -489,7 +489,7 @@ namespace
         {
             NetworkMonitor::ScopedRequestLayer layerRequest(_requestLayer);
 
-            if (progress && progress->isCanceled())
+            if (progress && progress->canceled())
                 return nullptr;
 
             osg::ref_ptr<ThreeDTilesetContentNode> tilesetNode;
@@ -508,7 +508,7 @@ namespace
                 osg::ref_ptr<Tileset> tileset = Tileset::create(rr.getString(), _uri.full());
                 if (tileset.valid())
                 {
-                    if (progress && progress->isCanceled())
+                    if (progress && progress->canceled())
                         return nullptr;
 
                     tilesetNode = new ThreeDTilesetContentNode(parentTileset.get(), tileset.get(), _options.get());
@@ -546,13 +546,13 @@ namespace
         std::shared_ptr<LoadTilesetOperation> operation = std::make_shared<LoadTilesetOperation>(
             parentTileset, uri, options);
 
-        JobArena* arena = JobArena::get("oe.3dtiles");
-        return Job(arena).dispatch<ReadTileData>(
-            [operation, options](Cancelable* progress)
-            {
-                return operation->loadTileSet(progress);
-            }
-        );
+        auto job = [operation](Cancelable& progress)
+        {
+            return operation->loadTileSet(&progress);
+        };
+
+        return jobs::dispatch(job,
+            jobs::context{ uri.full(), jobs::get_pool("oe.3dtiles") });
     }
 
     osg::ref_ptr<osg::Node> readTileContentSync(
@@ -573,20 +573,22 @@ namespace
         const URI& uri,
         osg::ref_ptr<const osgDB::Options> options)
     {
-        JobArena* arena = JobArena::get("oe.3dtiles");
+        jobs::context context;
+        context.name = uri.full();
+        context.pool = jobs::get_pool("oe.3dtiles");
 
-        return Job(arena).dispatch<ReadTileData>(
-            [uri, options](Cancelable* progress)
+        return jobs::dispatch([uri, options](Cancelable& progress)
             {
                 osg::ref_ptr<osg::Node> node = uri.getNode(options.get(), nullptr);
                 if (node.valid())
                 {
                     ImageUtils::compressAndMipmapTextures(node.get());
                     GLObjectsCompiler compiler;
-                    compiler.compileNow(node.get(), options.get(), progress);
+                    compiler.compileNow(node.get(), options.get(), &progress);
                 }
                 return node;
-            }
+            },
+            context
         );
     }
 }
@@ -1362,7 +1364,7 @@ ThreeDTilesetNode::runPostMergeOperations(osg::Node* node)
 
 void ThreeDTilesetNode::touchTile(ThreeDTileNode* node)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     if (node->_trackerItrValid)
     {
         _tracker.erase(node->_trackerItr);
@@ -1383,7 +1385,7 @@ void ThreeDTilesetNode::expireTiles(const osg::NodeVisitor& nv)
     osg::Timer_t startTime = osg::Timer::instance()->tick();
     osg::Timer_t endTime;
 
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     // Max time in ms to allocate to erasing tiles
     float maxTime = 2.0f;

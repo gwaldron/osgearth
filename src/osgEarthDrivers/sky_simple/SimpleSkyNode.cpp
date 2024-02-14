@@ -207,8 +207,7 @@ namespace
 SimpleSkyNode::SimpleSkyNode(const SimpleSkyOptions& options) :
     SkyNode(options),
     _options(options),
-    _eb_initialized(false),
-    _eb_mutex("SimpleSkyNode.eb_mutex(OE)")
+    _eb_initialized(false)
 {
     construct();
 
@@ -344,7 +343,7 @@ SimpleSkyNode::traverse(osg::NodeVisitor& nv)
         // Generate LUTs on the first pass
         if (_useBruneton && !_eb_drawable.valid())
         {
-            ScopedMutexLock lock(_eb_mutex);
+            std::lock_guard<std::mutex> lock(_eb_mutex);
             if (!_eb_drawable.valid())
             {
                 _eb_drawable = new Bruneton::ComputeDrawable(

@@ -20,18 +20,17 @@ using namespace osgEarth::Util;
 #define LC "[SimplerPager] "
 
 
-SimplePager::SimplePager(const osgEarth::Map* map, const osgEarth::Profile* profile):
-_map(map),
-_profile( profile ),
-_rangeFactor( 6.0 ),
-_additive(false),
-_minLevel(0),
-_maxLevel(30),
-_priorityScale(1.0f),
-_priorityOffset(0.0f),
-_canCancel(true),
-_done(false),
-_mutex("SimplePager(OE)")
+SimplePager::SimplePager(const osgEarth::Map* map, const osgEarth::Profile* profile) :
+    _map(map),
+    _profile(profile),
+    _rangeFactor(6.0),
+    _additive(false),
+    _minLevel(0),
+    _maxLevel(30),
+    _priorityScale(1.0f),
+    _priorityOffset(0.0f),
+    _canCancel(true),
+    _done(false)
 {
     if (map)
     {
@@ -293,7 +292,7 @@ void SimplePager::addCallback(Callback* callback)
 {
     if (callback)
     {
-        Threading::ScopedMutexLock lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         _callbacks.push_back(callback);
     }
 }
@@ -302,7 +301,7 @@ void SimplePager::removeCallback(Callback* callback)
 {
     if (callback)
     {
-        Threading::ScopedMutexLock lock(_mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         for (Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
         {
             if (i->get() == callback)
@@ -316,7 +315,7 @@ void SimplePager::removeCallback(Callback* callback)
 
 void SimplePager::fire_onCreateNode(const TileKey& key, osg::Node* node)
 {
-    Threading::ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     for (Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
         i->get()->onCreateNode(key, node);
 }

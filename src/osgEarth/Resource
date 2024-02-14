@@ -64,7 +64,7 @@ namespace osgEarth { namespace Util
 
     protected:
 
-        mutable Threading::Mutex _mutex;
+        mutable std::mutex _mutex;
         mutable Status _status;
 
     private:

@@ -36,12 +36,12 @@ namespace
     {
         // get a handle on the file cache. This is a temporary setup just to get things
         // working.
-        static Threading::Mutex s_fcMutex(OE_MUTEX_NAME);
+        static std::mutex s_fcMutex;
 
         static URIContext s_cache;
         if ( s_cache.empty() )
         {
-            Threading::ScopedMutexLock exclusiveLock(s_fcMutex);
+            std::lock_guard<std::mutex> exclusiveLock(s_fcMutex);
             if ( s_cache.empty() )
             {
                 const char* osgCacheDir = ::getenv("OSG_FILE_CACHE");

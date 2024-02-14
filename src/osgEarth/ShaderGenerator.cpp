@@ -639,15 +639,15 @@ ShaderGenerator::apply(osg::PagedLOD& node)
 
     for( unsigned i=0; i<node.getNumFileNames(); ++i )
     {
-        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
-        s_mutex.lock();
+        static std::mutex s_mutex;
+        std::lock_guard<std::mutex> lock(s_mutex);
+
         const std::string& filename = node.getFileName( i );
         if (!filename.empty() &&
             osgDB::getLowerCaseFileExtension(filename).compare(SHADERGEN_PL_EXTENSION) != 0 )
         {
             node.setFileName( i, Stringify() << filename << "." << SHADERGEN_PL_EXTENSION );
         }
-        s_mutex.unlock();
     }
 
     apply( static_cast<osg::LOD&>(node) );

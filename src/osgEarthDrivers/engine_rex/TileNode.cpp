@@ -31,12 +31,23 @@
 #include <osgEarth/Utils>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Metrics>
+#include <osgEarth/Notify>
 
 using namespace osgEarth::REX;
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
 #define LC "[TileNode] "
+
+// template to capture the result type of a function:
+template<typename T>
+struct result_type;
+
+template<typename R, typename...A>
+struct result_type<R(A...)>
+{
+    typedef R type;
+};
 
 namespace
 {
@@ -50,28 +61,11 @@ namespace
     };
 }
 
-TileNode::TileNode(
-    const TileKey& key,
-    TileNode* parent,
-    EngineContext* context,
-    Cancelable* progress) :
-
+TileNode::TileNode(const TileKey& key, TileNode* parent, EngineContext* context, Cancelable* progress) :
     _key(key),
     _parentTile(parent),
     _context(context),
-    _loadsInQueue(0u),
-    _childrenReady(false),
-    _lastTraversalTime(0.0),
     _lastTraversalFrame(0),
-    _lastTraversalRange(FLT_MAX),
-    _empty(false), // an "empty" node exists but has no geometry or children
-    _imageUpdatesActive(false),
-    _doNotExpire(false),
-    _revision(0),
-    _mutex("TileNode(OE)"),
-    _loadQueue("TileNode LoadQueue(OE)"),
-    _createChildAsync(true),
-    _nextLoadManifestPtr(nullptr),
     _loadPriority(0.0f)
 {
     OE_HARD_ASSERT(context != nullptr);
@@ -88,12 +82,6 @@ TileNode::TileNode(
 
     double x = (double)_key.getTileX();
     double y = (double)(th - _key.getTileY() - 1);
-
-    //_tileKeyValue.set(
-    //    (float)(int)fmod(x, m),
-    //    (float)(int)fmod(y, m),
-    //    (float)_key.getLOD(),
-    //    -1.0f);
 
     _tileKeyValue.set(
         (float)(x-tw/2), //(int)fmod(x, m),
@@ -148,7 +136,7 @@ TileNode::createGeometry(Cancelable* progress)
         geom,
         progress);
 
-    if (progress && progress->isCanceled())
+    if (progress && progress->canceled())
         return;
 
     if (geom.valid())
@@ -673,36 +661,106 @@ TileNode::update(osg::NodeVisitor& nv)
 bool
 TileNode::createChildren()
 {
-    if (_createChildAsync)
+    if (_context->options().getCreateTilesAsync() == false)
     {
+        // synchronous mode: do it now.
+        for (unsigned quadrant = 0; quadrant < 4; ++quadrant)
+        {
+            TileKey childkey = getKey().createChildKey(quadrant);
+            osg::ref_ptr<TileNode> child = createChild(childkey, nullptr);
+            addChild(child);
+            child->initializeData();
+            child->refreshAllLayers();
+        }
+
+        return true;
+    }
+
+    if (_context->options().getCreateTilesGrouped() == true)
+    {
+        // create all 4 children in a single job.
+        if (_createChildrenFutureResult.empty())
+        {
+            EngineContext* context(_context.get());
+            osg::observer_ptr<TileNode> tile_weakptr(this);
+
+            auto createChildrenOperation = [context, tile_weakptr](auto& state)
+                {
+                    CreateChildrenResult result;
+
+                    osg::ref_ptr<TileNode> tile;
+                    if (tile_weakptr.lock(tile) && !state.canceled())
+                    {
+                        for (unsigned q = 0; q < 4; ++q)
+                        {
+                            auto childkey = tile->getKey().createChildKey(q);
+                            result.emplace_back(tile->createChild(childkey, &state));
+                        }
+                    }
+
+                    if (state.canceled())
+                        result.clear();
+
+                    return result;
+                };
+
+            jobs::context c{ _key.str() };
+            c.pool = jobs::get_pool(ARENA_CREATE_CHILD);
+            _createChildrenFutureResult = jobs::dispatch(createChildrenOperation, c);
+        }
+
+        else if (_createChildrenFutureResult.available())
+        {
+            // all 4 children MUST be present AND valid to continue
+            if (_createChildrenFutureResult.value().size() == 4 &&
+                _createChildrenFutureResult.value()[0].valid() &&
+                _createChildrenFutureResult.value()[1].valid() &&
+                _createChildrenFutureResult.value()[2].valid() &&
+                _createChildrenFutureResult.value()[3].valid())
+            {
+                for (int i = 0; i < 4; ++i)
+                {
+                    auto& child = _createChildrenFutureResult.value()[i];
+                    addChild(child);
+                    child->initializeData();
+                    child->refreshAllLayers();
+                }
+            }
+
+            _createChildrenFutureResult.reset();
+        }
+
+        // true if the result is empty (i.e., the job is complete)
+        return _createChildrenFutureResult.empty();
+    }
+
+    else // if create each tile separately
+    {
+        // create each child is a separate job.
         if (_createChildResults.empty())
         {
             TileKey parentkey(_key);
             EngineContext* context(_context.get());
-
             for (unsigned quadrant = 0; quadrant < 4; ++quadrant)
             {
                 TileKey childkey = getKey().createChildKey(quadrant);
                 osg::observer_ptr<TileNode> tile_weakptr(this);
 
-                auto createChildOperation = [context, tile_weakptr, childkey](Cancelable* state)
-                {
-                    CreateChildResult result;
+                auto createChildOperation = [context, tile_weakptr, childkey](Cancelable& state)
+                    {
+                        CreateChildResult result;
 
-                    osg::ref_ptr<TileNode> tile;
-                    if (tile_weakptr.lock(tile) && !state->isCanceled())
-                        result = tile->createChild(childkey, state);
+                        osg::ref_ptr<TileNode> tile;
+                        if (tile_weakptr.lock(tile) && state.canceled())
+                            result = tile->createChild(childkey, &state);
 
-                    return result;
-                };
+                        return result;
+                    };
 
-                Job job;
-                job.setArena(ARENA_CREATE_CHILD);
-                job.setName(childkey.str());
-
-                _createChildResults.emplace_back(
-                    job.dispatch<CreateChildResult>(createChildOperation)
-                );
+                jobs::context c;
+                c.name = childkey.str();
+                c.pool = jobs::get_pool(ARENA_CREATE_CHILD);
+                _createChildResults.emplace_back(jobs::dispatch(createChildOperation, c));
             }
         }
 
@@ -729,21 +787,9 @@ TileNode::createChildren()
                 _createChildResults.clear();
             }
         }
-    }
 
-    else
-    {
-        for (unsigned quadrant = 0; quadrant < 4; ++quadrant)
-        {
-            TileKey childkey = getKey().createChildKey(quadrant);
-            osg::ref_ptr<TileNode> child = createChild(childkey, nullptr);
-            addChild(child);
-            child->initializeData();
-            child->refreshAllLayers();
-        }
+        return _createChildResults.empty();
     }
-
-    return _createChildResults.empty();
 }
 
 TileNode*
@@ -758,14 +804,12 @@ TileNode::createChild(const TileKey& childkey, Cancelable* progress)
         progress);
 
     return 
-        progress && progress->isCanceled() ? nullptr
+        progress && progress->canceled() ? nullptr
         : node.release();
 }
 
 void
-TileNode::merge(
-    const TerrainTileModel* model,
-    const CreateTileManifest& manifest)
+TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifest)
 {
     bool newElevationData = false;
     const RenderBindings& bindings = _context->getRenderBindings();
@@ -1019,9 +1063,6 @@ TileNode::merge(
                     bindingIndex,
                     sharedLayer.texture(),
                     sharedLayer.revision());
-                //osg::Texture* tex = layerModel->getTexture();
-                //int revision = layerModel->getRevision();
-                //_renderModel.setSharedSampler(bindingIndex, tex, revision);
 
                 uidsLoaded.insert(uid);
             }
@@ -1269,7 +1310,7 @@ TileNode::load(TerrainCuller* culler)
     _loadPriority = priority;
 
     // Check the status of the load
-    ScopedMutexLock lock(_loadQueue);
+    std::lock_guard<std::mutex> lock(_loadQueue.mutex());
 
     if (_loadQueue.empty() == false)
     {
@@ -1329,6 +1370,7 @@ TileNode::removeSubTiles()
     }
     this->removeChildren(0, this->getNumChildren());
 
+    _createChildrenFutureResult.abandon();
     _createChildResults.clear();
 }
 
@@ -1388,7 +1430,6 @@ TileNode::updateNormalMap()
         {
             readThat(pixel, 0, t);
             writeThis(pixel, width-1, t);
-            //writeThis(readThat(0, t), width-1, t);
         }
 
         thisImage->dirty();

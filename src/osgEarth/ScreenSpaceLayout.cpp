@@ -117,7 +117,7 @@ namespace
             // we clone the render bin. This play nicely with static initialization.
             if (!_vpInstalled)
             {
-                Threading::ScopedMutexLock lock(_vpMutex);
+                std::lock_guard<std::mutex> lock(_vpMutex);
                 if (!_vpInstalled)
                 {
                     VirtualProgram* vp = VirtualProgram::getOrCreate(getStateSet());
@@ -165,11 +165,11 @@ namespace
 
         osg::ref_ptr<DeclutterSortFunctor> _f;
         osg::ref_ptr<ScreenSpaceLayoutContext> _context;
-        static Threading::Mutex _vpMutex;
+        static std::mutex _vpMutex;
         static bool _vpInstalled;
     };
 
-    Threading::Mutex osgEarthScreenSpaceLayoutRenderBin::_vpMutex(OE_MUTEX_NAME);
+    std::mutex osgEarthScreenSpaceLayoutRenderBin::_vpMutex;
     bool osgEarthScreenSpaceLayoutRenderBin::_vpInstalled = false;
 }
 

@@ -20,6 +20,7 @@
 #define OSGEARTH_COMMON_H 1
 
 #include <osgEarth/Export>
+#include <osgEarth/Notify>
 #include <osg/ref_ptr>
 #include <osg/Referenced>
 #include <memory>

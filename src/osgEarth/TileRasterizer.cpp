@@ -388,13 +388,13 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
     OE_HARD_ASSERT(job != nullptr);
 
     // Check to see if the client still wants the result:
-    if (job->_promise.isCanceled())
+    if (job->_promise.canceled())
         return;
 
     job->_renderer->allocate(state);
 
     // GPU task delegate:
-    auto gpu_task = [job](osg::State& state, Promise<Job::Result>& promise, int invocation)
+    auto gpu_task = [job](osg::State& state, jobs::promise<Job::Result>& promise, int invocation)
     {
         if (promise.empty())
         {

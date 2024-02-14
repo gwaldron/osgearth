@@ -130,10 +130,10 @@ namespace
     struct GeocodeAsyncOperation : public osg::Operation
     {
         std::string _input;
-        Promise<Geocoder::OutputData> _promise;
+        jobs::promise<Geocoder::OutputData> _promise;
         osg::ref_ptr<Geocoder::Implementation> _impl;
 
-        GeocodeAsyncOperation(const std::string& input, Promise<Geocoder::OutputData> promise, Geocoder::Implementation* impl) :
+        GeocodeAsyncOperation(const std::string& input, jobs::promise<Geocoder::OutputData> promise, Geocoder::Implementation* impl) :
             _input(input),
             _promise(promise),
             _impl(impl)
@@ -171,29 +171,20 @@ Geocoder::search(const std::string& input, const osgDB::Options* io_options)
 {
     if (_impl)
     {
-        auto geocode = [=](Cancelable* progress)
+        auto geocode = [=](Cancelable& c)
         {
             osg::ref_ptr<FeatureCursor> cursor;
             Status status = _impl->search(input, cursor);
             return OutputData(status, cursor.release());
         };
 
-        std::shared_ptr<JobArena> arena;
-        if (ObjectStorage::get(io_options, arena))
-        {
-            Future<OutputData> out = Job(arena.get()).dispatch<OutputData>(geocode);
-            return Geocoder::Results(out);
-        }
-        else
-        {
-            return Geocoder::Results(geocode(nullptr));
-        }
+        return Geocoder::Results(jobs::dispatch(geocode));
     }
     else
     {
         return Geocoder::Results(
             Status(Status::ServiceUnavailable, "No geocoder implementation installed"),
-            NULL);
+            nullptr);
     }
 }
 
@@ -206,36 +197,36 @@ Geocoder::setImplementation(Geocoder::Implementation* impl)
     }
 }
 
-Geocoder::Results::Results(const Status& status, FeatureCursor* cursor) :
-    FutureResult(Geocoder::OutputData(status, cursor))
+Geocoder::Results::Results(const Status& status, FeatureCursor* cursor)
 {
-    //NOP - error status
+    // results immediately available
+    _result.resolve(Geocoder::OutputData(status, cursor));
 }
 
-Geocoder::Results::Results(Future<Geocoder::OutputData> data) :
-    FutureResult<Geocoder::OutputData>(data)
+Geocoder::Results::Results(jobs::future<Geocoder::OutputData> data) :
+    _result(data)
 {
-    //NOP
+    // NOP - results eventually available    
 }
 
-Geocoder::Results::Results(const Geocoder::OutputData& data) :
-    FutureResult<Geocoder::OutputData>(data)
+Geocoder::Results::Results(const Geocoder::OutputData& data)
 {
-    //NOP
+    // results immediately available
+    _result.resolve(data);
 }
 
 Status
 Geocoder::Results::getStatus()
 {
-    return _future.available() ?
-        _future.value()._status :
+    return _result.available() ?
+        _result.value()._status :
         Status(Status::ServiceUnavailable, "Operation canceled");
 }
 
 FeatureCursor*
 Geocoder::Results::getFeatures()
 {
-    return _future.available() ?
-        _future.value()._cursor.get() :
+    return _result.available() ?
+        _result.value()._cursor.get() :
         nullptr;
 }

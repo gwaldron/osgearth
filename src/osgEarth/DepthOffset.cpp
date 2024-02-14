@@ -22,6 +22,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Shaders>
+#include "Notify"
 
 #include <osg/Geometry>
 #include <osg/Depth>
@@ -293,8 +294,8 @@ DepthOffsetGroup::computeBound() const
 {
     if ( _adapter.supported() )
     {
-        static Threading::Mutex s_mutex(OE_MUTEX_NAME);
-        Threading::ScopedMutexLock lock(s_mutex);
+        static std::mutex s_mutex;
+        std::lock_guard<std::mutex> lock(s_mutex);
 
         const_cast<DepthOffsetGroup*>(this)->scheduleUpdate();
     }

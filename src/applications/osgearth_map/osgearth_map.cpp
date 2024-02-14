@@ -26,6 +26,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ModelLayer>
 #include <osgEarth/GeoTransform>
+#include <osgEarth/GLUtils>
 
 #include <osgEarth/TMS>
 #include <osgEarth/WMS>
@@ -222,6 +223,7 @@ main(int argc, char** argv)
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);
+    viewer.setRealizeOperation( new GL3RealizeOperation() );
     viewer.setCameraManipulator( new EarthManipulator() );
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     viewer.setSceneData( node );

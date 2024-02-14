@@ -44,7 +44,7 @@ namespace osgEarth { namespace REX
             int flags,
             unsigned referenceLOD,
             const TileKey& area,
-            Threading::Cancelable* progress = nullptr);
+            Cancelable* progress = nullptr);
     };
 
 } }

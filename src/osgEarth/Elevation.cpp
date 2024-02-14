@@ -31,6 +31,7 @@ osgEarth::createEmptyElevationTexture()
 {
     osg::Image* image = new osg::Image();
     image->allocateImage(1, 1, 1, GL_RED, GL_FLOAT);
+    image->setInternalTextureFormat(GL_R32F);
     *((GLfloat*)image->data()) = 0.0f;
     osg::Texture2D* tex = new osg::Texture2D(image);
     tex->setInternalFormat(GL_R32F);
@@ -44,6 +45,7 @@ osgEarth::createEmptyNormalMapTexture()
 {
     osg::Image* image = new osg::Image();
     image->allocateImage(1, 1, 1, GL_RG, GL_UNSIGNED_BYTE);
+    image->setInternalTextureFormat(GL_RG8);
     ImageUtils::PixelWriter write(image);
     osg::Vec4 packed;
     NormalMapGenerator::pack(osg::Vec3(0,0,1), packed);
@@ -51,6 +53,7 @@ osgEarth::createEmptyNormalMapTexture()
     osg::Texture2D* tex = new osg::Texture2D(image);
     tex->setInternalFormat(GL_RG8);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
+    tex->setName("empty:normalmap");
     return tex;
 }
 
@@ -182,7 +185,7 @@ ElevationTexture::generateNormalMap(
     void* workingSet,
     ProgressCallback* progress)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     if (!_normalTex.valid())
     {        
@@ -240,9 +243,8 @@ NormalMapGenerator::createNormalMap(
     ElevationPool::WorkingSet* workingSet = static_cast<ElevationPool::WorkingSet*>(ws);
 
     osg::ref_ptr<osg::Image> image = new osg::Image();
-    image->allocateImage(
-        ELEVATION_TILE_SIZE, ELEVATION_TILE_SIZE, 1,
-        GL_RG, GL_UNSIGNED_BYTE);
+    image->allocateImage(ELEVATION_TILE_SIZE, ELEVATION_TILE_SIZE, 1, GL_RG, GL_UNSIGNED_BYTE);
+    image->setInternalTextureFormat(GL_RG8);
 
     ElevationPool* pool = map->getElevationPool();
 

@@ -226,17 +226,10 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
         if (io.WantCaptureKeyboard || c == ea.KEY_Return)
         {
             // first apply any modifiers:
-            if (ea.getModKeyMask() & ea.MODKEY_CTRL)
-                io.AddKeyEvent(ImGuiMod_Ctrl, isKeyDown);
-
-            if (ea.getModKeyMask() & ea.MODKEY_SHIFT)
-                io.AddKeyEvent(ImGuiMod_Shift, isKeyDown);
-
-            if (ea.getModKeyMask() & ea.MODKEY_ALT)
-                io.AddKeyEvent(ImGuiMod_Alt, isKeyDown);
-
-            if (ea.getModKeyMask() & ea.MODKEY_SUPER)
-                io.AddKeyEvent(ImGuiMod_Super, isKeyDown);
+            io.AddKeyEvent(ImGuiMod_Ctrl, (ea.getModKeyMask() & ea.MODKEY_CTRL) != 0);
+            io.AddKeyEvent(ImGuiMod_Shift, (ea.getModKeyMask() & ea.MODKEY_SHIFT) != 0);
+            io.AddKeyEvent(ImGuiMod_Alt, (ea.getModKeyMask() & ea.MODKEY_ALT) != 0);
+            io.AddKeyEvent(ImGuiMod_Super, (ea.getModKeyMask() & ea.MODKEY_SUPER) != 0);
 
             // map the OSG key code to the ImGui key code and send to imgui:
             auto imgui_key = convertKey(c);
@@ -276,10 +269,11 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
     {
         if (io.WantCaptureMouse)
         {
-            auto imgui_button = convertMouseButton(ea.getButtonMask());
             io.AddMousePosEvent(ea.getX(), io.DisplaySize.y - ea.getY());
-            io.AddMouseButtonEvent(imgui_button, false); // false = release
         }
+        auto imgui_button = convertMouseButton(ea.getButtonMask());
+        io.AddMouseButtonEvent(imgui_button, false); // false = release
+
         return io.WantCaptureMouse;
     }
 

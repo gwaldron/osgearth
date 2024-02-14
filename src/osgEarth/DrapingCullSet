@@ -70,7 +70,7 @@ namespace osgEarth { namespace Util
         };
         using SortedFrameData = std::map<int, FrameData>;
         SortedFrameData _data;
-        Threading::Mutex _data_mutex;
+        std::mutex _data_mutex;
     };
 
     /**

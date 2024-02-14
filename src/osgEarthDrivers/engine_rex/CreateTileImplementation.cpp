@@ -104,7 +104,7 @@ CreateTileImplementation::createTile(
             sharedGeom,
             progress);
 
-        if (progress && progress->isCanceled())
+        if (progress && progress->canceled())
         {
             return nullptr;
         }

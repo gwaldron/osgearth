@@ -97,7 +97,7 @@ namespace osgEarth { namespace Triton
 
         bool             _initAttempted;
         bool             _initFailed;
-        Threading::Mutex _initMutex;
+        std::mutex _initMutex;
 
         osg::ref_ptr<const osgEarth::SpatialReference> _srs;
 

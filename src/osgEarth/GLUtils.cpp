@@ -26,6 +26,7 @@
 #include <osgEarth/Utils>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
+#include <osgEarth/Notify>
 
 #include <osg/LineStipple>
 #include <osg/GraphicsContext>
@@ -422,7 +423,8 @@ namespace
             CallStack stack;
             for(unsigned i=1; i<stack.symbols.size(); ++i)
             {
-                buf << " -> " << stack.symbols[i];
+                if (stack.symbols[i].find("s_oe_gldebugproc") == std::string::npos)
+                    buf << "\n - " << stack.symbols[i];
                 if (stack.symbols[i] == "main") break;
             }
             OE_WARN << "Call stack:" << buf.str() << std::endl;
@@ -537,7 +539,7 @@ std::unordered_map<int, GLObjectPool*>
 GLObjectPool::getAll()
 {
     std::unordered_map<int, GLObjectPool*> result;
-    ScopedMutexLock lock(_pools);
+    std::lock_guard<std::mutex> lock(_pools.mutex());
     for (auto& pool : _pools)
         result[pool->getContextID()] = pool;
     return result;
@@ -551,7 +553,7 @@ GLObjectPool::GLObjectPool(unsigned cxid) :
     _avarice(10.f)
 {
     _gcs.resize(256);
-    ScopedMutexLock lock(_pools);
+    std::lock_guard<std::mutex> lock(_pools.mutex());
     _pools.emplace_back(this);
 
     char* value = ::getenv("OSGEARTH_GL_OBJECT_POOL_DELAY");
@@ -625,7 +627,7 @@ GLObjectPool::track(osg::GraphicsContext* gc)
 void
 GLObjectPool::watch(GLObject::Ptr object)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     _objects.emplace_back(object);
 
     //if (object->shareable())
@@ -652,7 +654,7 @@ GLObjectPool::releaseGLObjects(osg::State* state)
 //void
 //GLObjectPool::releaseAll()
 //{
-//    ScopedMutexLock lock(_mutex);
+//    std::lock_guard<std::mutex> lock(_mutex);
 //    for (auto& object : _objects)
 //        object->release();
 //    _objects.clear();
@@ -685,7 +687,7 @@ GLObjectPool::flushAllDeletedGLObjects()
 void
 GLObjectPool::deleteAllGLObjects()
 {
-    //ScopedMutexLock lock(_mutex);
+    //std::lock_guard<std::mutex> lock(_mutex);
     //for (auto& object : _objects)
     //    object->release();
     //_objects.clear();
@@ -695,7 +697,7 @@ GLObjectPool::deleteAllGLObjects()
 void
 GLObjectPool::discardAllGLObjects()
 {
-    //ScopedMutexLock lock(_mutex);
+    //std::lock_guard<std::mutex> lock(_mutex);
     //_objects.clear();
     //_totalBytes = 0;
 }
@@ -703,7 +705,7 @@ GLObjectPool::discardAllGLObjects()
 void
 GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     GLsizeiptr bytes = 0;
     GLObjectPool::Collection keepers;
@@ -728,7 +730,7 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
 void
 GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     unsigned maxNumToRelease = std::max(1u, (unsigned)pow(4.0f, _avarice));
     unsigned numReleased = 0u;
@@ -766,7 +768,7 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
 unsigned
 GLObjectPool::flush(GLObjectPool::Collection& objects)
 {
-    ScopedMutexLock lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     GLsizeiptr bytes_released = 0;
     std::unordered_set<GLObject::Ptr> keep;
@@ -1671,14 +1673,14 @@ GLPipeline::Dispatcher::operator()(osg::GraphicsContext* gc)
 }
 
 //static defs
-Mutex GLPipeline::_mutex("GLPipeline(OE)");
+Mutex GLPipeline::_mutex;
 std::unordered_map<osg::State*, GLPipeline::Ptr> GLPipeline::_lut;
 
 
 GLPipeline::Ptr
 GLPipeline::get(osg::State& state)
 {
-    ScopedMutexLock lock(GLPipeline::_mutex);
+    std::lock_guard<std::mutex> lock(GLPipeline::_mutex);
     GLPipeline::Ptr& p = _lut[&state];
 
     if (p == nullptr)
@@ -1727,8 +1729,7 @@ ComputeImageSession::setImage(osg::Image* image)
 void
 ComputeImageSession::execute(osg::State& state)
 {
-    auto job = GLPipeline::get(state)->dispatch<bool>(
-        [this](osg::State& state, Promise<bool>& promise, int invocation)
+    auto task = [this](osg::State& state, jobs::promise<bool>& promise, int invocation)
         {
             if (invocation == 0)
             {
@@ -1742,9 +1743,9 @@ ComputeImageSession::execute(osg::State& state)
                 readback(&state);
                 return false; // all done.
             }
-        }
-    );
+        };
 
+    auto job = GLPipeline::get(state)->dispatch<bool>(task);
     job.join();
 }
 
@@ -1802,7 +1803,7 @@ namespace
 
     struct ICOCallback : public ICO::CompileCompletedCallback
     {
-        Promise<osg::ref_ptr<osg::Node>> _promise;
+        jobs::promise<osg::ref_ptr<osg::Node>> _promise;
         osg::ref_ptr<osg::Node> _node;
         std::atomic_int& _jobsActive;
 
@@ -1867,7 +1868,7 @@ GLObjectsCompiler::compileAsync(
                 auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
                 compileSet->buildCompileMap(ico->getContextSet(), *state.get());
                 ICOCallback* callback = new ICOCallback(node, _jobsActive);
-                result = callback->_promise; // .getFuture();
+                result = callback->_promise;
                 compileSet->_compileCompletedCallback = callback;
                 _jobsActive++;
                 ico->add(compileSet, false);
@@ -1878,9 +1879,7 @@ GLObjectsCompiler::compileAsync(
         if (!compileScheduled)
         {
             // no ICO available - just resolve the future immediately
-            Promise<osg::ref_ptr<osg::Node>> promise;
-            result = promise; // .getFuture();
-            promise.resolve(node);
+            result.resolve(node);
         }
     }
 
@@ -1900,6 +1899,7 @@ GLObjectsCompiler::compileAsync(
 
     // if there is an ICO available, schedule the GPU compilation
     bool compileScheduled = false;
+
     if (state != nullptr && !state->empty())
     {
         osg::ref_ptr<ICO> ico;
@@ -1908,7 +1908,7 @@ GLObjectsCompiler::compileAsync(
             auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
             compileSet->buildCompileMap(ico->getContextSet(), *state);
             ICOCallback* callback = new ICOCallback(node, _jobsActive);
-            result = callback->_promise; // .getFuture();
+            result = callback->_promise;
             compileSet->_compileCompletedCallback = callback;
             _jobsActive++;
             ico->add(compileSet, false);
@@ -1919,9 +1919,7 @@ GLObjectsCompiler::compileAsync(
     if (!compileScheduled)
     {
         // no ICO available - just resolve the future immediately
-        Promise<osg::ref_ptr<osg::Node>> promise;
-        result = promise; // .getFuture();
-        promise.resolve(node);
+        result.resolve(node);
     }
 
     return result;

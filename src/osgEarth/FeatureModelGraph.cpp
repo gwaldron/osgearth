@@ -408,7 +408,6 @@ FeatureModelGraph::FeatureModelGraph(const FeatureModelOptions& options) :
     _options(options),
     _featureExtentClamped(false),
     _useTiledSource(false),
-    _blacklistMutex("FMG BlackList(OE)"),
     _isActive(false),
     loadedTiles(std::make_shared<std::atomic_int>(0))
 {

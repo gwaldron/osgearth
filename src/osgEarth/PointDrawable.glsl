@@ -3,7 +3,7 @@
 #pragma vp_location vertex_view
 #pragma vp_order last
 
-uniform float oe_GL_PointSize;
+uniform float oe_GL_PointSize = 1.0;
 
 void oe_PointDrawable_VS_VIEW(inout vec4 vertexView)
 {

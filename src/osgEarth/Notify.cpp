@@ -137,7 +137,7 @@ protected:
 
 using namespace osgEarth;
 
-std::string NotifyPrefix::DEBUG  = "[osgEarth]  ";
+std::string NotifyPrefix::DEBUG_INFO  = "[osgEarth]  ";
 std::string NotifyPrefix::INFO   = "[osgEarth]  ";
 std::string NotifyPrefix::NOTICE = "[osgEarth]  ";
 std::string NotifyPrefix::WARN   = "[osgEarth]* ";
@@ -156,7 +156,7 @@ namespace
             _logger->set_pattern("%^[%n %l]%$ %v");
             _logger->set_level(spdlog::level::debug);
 
-            NotifyPrefix::DEBUG = {};
+            NotifyPrefix::DEBUG_INFO = {};
             NotifyPrefix::INFO = {};
             NotifyPrefix::NOTICE = {};
             NotifyPrefix::WARN = {};

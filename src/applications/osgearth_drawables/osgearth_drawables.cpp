@@ -311,6 +311,7 @@ main(int argc, char** argv)
 
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
+    viewer.setRealizeOperation(new GL3RealizeOperation());
 
     osg::ref_ptr<osg::Node> node = createDrawables();
 

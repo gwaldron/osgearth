@@ -102,6 +102,12 @@ namespace osgEarth
                             options.setMaxLOD(max_lod);
                         }
 
+                        bool progressive = options.getProgressive();
+                        if (ImGuiLTable::Checkbox("Progressive load", &progressive))
+                        {
+                            options.setProgressive(progressive);
+                        }
+
                         TerrainLODMethod method = options.getLODMethod();
                         bool method_b = (method == TerrainLODMethod::SCREEN_SPACE);
                         if (ImGuiLTable::Checkbox("Screen space LOD", &method_b))

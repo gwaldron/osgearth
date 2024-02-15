@@ -573,10 +573,8 @@ RexTerrainEngineNode::refresh(bool forceDirty)
         this->ref();
 
         // Load all the root key tiles.
-        jobs::jobgroup loadGroup;
-
         jobs::context context;
-        context.group = &loadGroup;
+        context.group = jobs::jobgroup::create();
         context.pool = jobs::get_pool(ARENA_LOAD_TILE);
 
         for (unsigned i = 0; i < keys.size(); ++i)
@@ -603,7 +601,7 @@ RexTerrainEngineNode::refresh(bool forceDirty)
         }
 
         // wait for all loadSync calls to complete
-        loadGroup.join();
+        context.group->join();
 
         // release the self-ref.
         this->unref_nodelete();

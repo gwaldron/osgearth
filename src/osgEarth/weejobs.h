@@ -6,18 +6,18 @@
  */
 #pragma once
 #include <atomic>
+#include <cfloat>
+#include <chrono>
+#include <condition_variable>
+#include <cstdlib>
+#include <functional>
+#include <list>
 #include <mutex>
 #include <thread>
-#include <condition_variable>
-#include <functional>
-#include <vector>
-#include <unordered_map>
-#include <chrono>
 #include <type_traits>
-#include <cstdlib>
-#include <cfloat>
+#include <vector>
 
-// OPTIONAL: Define WEEJOBS_EXPORT if you want to use this library from multiple modules (DLLs)
+ // OPTIONAL: Define WEEJOBS_EXPORT if you want to use this library from multiple modules (DLLs)
 #ifndef WEEJOBS_EXPORT
 #define WEEJOBS_EXPORT
 #endif
@@ -386,7 +386,13 @@ namespace WEEJOBS_NAMESPACE
     * You can then call jobgroup::join() to wait for the whole group
     * to finish.
     */
-    using jobgroup = detail::semaphore;
+    struct jobgroup : public detail::semaphore
+    {
+        static std::shared_ptr<jobgroup> create()
+        {
+            return std::make_shared<jobgroup>();
+        }
+    };
 
     /**
     * Context object you can pass to dispatch(...) to control aspects of
@@ -397,7 +403,7 @@ namespace WEEJOBS_NAMESPACE
         std::string name;
         class jobpool* pool = nullptr;
         std::function<float()> priority = {};
-        jobgroup* group = nullptr;
+        std::shared_ptr<jobgroup> group = nullptr;
     };
 
     /**
@@ -532,34 +538,38 @@ namespace WEEJOBS_NAMESPACE
                         // (Benchmark: https://stackoverflow.com/a/20365638/4218920)
                         // Also note: it is indeed possible for the results of 
                         // priority() to change during the search. We don't care.
-                        int index = -1;
+                        //int index = -1;
+                        std::list<job>::iterator ptr = _queue.end();
                         float highest_priority = -FLT_MAX;
-                        for (unsigned i = 0; i < _queue.size(); ++i)
+                        for (auto iter = _queue.begin(); iter != _queue.end(); ++iter)
                         {
-                            float priority = _queue[i].ctx.priority != nullptr ?
-                                _queue[i].ctx.priority() :
+                            float priority = iter->ctx.priority != nullptr ?
+                                iter->ctx.priority() :
                                 0.0f;
 
-                            if (index < 0 || priority > highest_priority)
+                            if (ptr == _queue.end() || priority > highest_priority)
                             {
-                                index = i;
+                                ptr = iter;
                                 highest_priority = priority;
                             }
                         }
-                        if (index < 0)
-                            index = 0;
 
-                        next = std::move(_queue[index]);
+                        if (ptr == _queue.end())
+                            ptr = _queue.begin();
+
+                        next = std::move(*ptr); // _queue[index]);
                         have_next = true;
 
+                        _queue.erase(ptr);
+
                         // move the last element into the empty position:
-                        if (index < _queue.size() - 1)
-                        {
-                            _queue[index] = std::move(_queue.back());
-                        }
+                        //if (index < _queue.size() - 1)
+                        //{
+                        //    _queue[index] = std::move(_queue.back());
+                        //}
 
                         // and remove the last element.
-                        _queue.erase(_queue.end() - 1);
+                        //_queue.erase(_queue.end() - 1);
                     }
                 }
 
@@ -624,7 +634,8 @@ namespace WEEJOBS_NAMESPACE
         };
 
         std::string _name; // pool name
-        std::vector<job> _queue; // queued operations to run asynchronously
+        std::list<job> _queue;
+        //std::vector<job> _queue; // queued operations to run asynchronously
         mutable std::mutex _queueMutex; // protect access to the queue
         mutable std::mutex _quitMutex; // protects access to _done
         std::atomic<unsigned> _targetConcurrency; // target number of concurrent threads in the pool
@@ -689,18 +700,9 @@ namespace WEEJOBS_NAMESPACE
         {
             inline runtime();
 
-            inline void kill()
-            {
-                _alive = false;
+            inline ~runtime();
 
-                for (auto& pool : _pools)
-                    if (pool)
-                        pool->stop_threads();
-
-                for (auto& pool : _pools)
-                    if (pool)
-                        pool->join_threads();
-            }
+            inline void shutdown();
 
             bool _alive = true;
             std::mutex _mutex;
@@ -806,7 +808,7 @@ namespace WEEJOBS_NAMESPACE
             {
                 if (queuedjob.ctx.group != nullptr)
                 {
-                    queuedjob.ctx.group->reset();
+                    queuedjob.ctx.group->release();
                 }
             }
             _queue.clear();
@@ -840,7 +842,7 @@ namespace WEEJOBS_NAMESPACE
     //! stop all threads, wait for them to exit, and shut down the system
     inline void shutdown()
     {
-        instance().kill();
+        instance().shutdown();
     }
 
     //! Whether the weejobs runtime is still alive (has not been shutdown)
@@ -856,10 +858,29 @@ namespace WEEJOBS_NAMESPACE
         instance()._setThreadName = f;
     }
 
-    // internal
     inline detail::runtime::runtime()
     {
-        std::atexit(shutdown);
+        //nop
+    }
+
+    inline detail::runtime::~runtime()
+    {
+        shutdown();
+    }
+
+    inline void detail::runtime::shutdown()
+    {
+        _alive = false;
+
+        //std::cout << "stopping " << _pools.size() << " threads..." << std::endl;
+        for (auto& pool : _pools)
+            if (pool)
+                pool->stop_threads();
+
+        //std::cout << "joining " << _pools.size() << " threads..." << std::endl;
+        for (auto& pool : _pools)
+            if (pool)
+                pool->join_threads();
     }
 
     // Use this macro ONCE in your application in a .cpp file to 

@@ -66,12 +66,12 @@ namespace osgEarth
         OE_OPTION(float, tilePixelSize, 512.0f);
         OE_OPTION(float, heightFieldSkirtRatio, 0.0f);
         OE_OPTION(Color, color, Color::White);
-        OE_OPTION(bool, progressive, false);
+        OE_OPTION(bool, progressive, true);
         OE_OPTION(bool, useNormalMaps, true);
         OE_OPTION(bool, normalizeEdges, false);
         OE_OPTION(bool, morphTerrain, true);
         OE_OPTION(bool, morphImagery, true);
-        OE_OPTION(unsigned, mergesPerFrame, 20u);
+        OE_OPTION(unsigned, mergesPerFrame, ~0u);
         OE_OPTION(float, priorityScale, 1.0f);
         OE_OPTION(std::string, textureCompression, {});
         OE_OPTION(unsigned, concurrency, 4u);

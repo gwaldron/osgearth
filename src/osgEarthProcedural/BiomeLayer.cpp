@@ -354,6 +354,28 @@ BiomeLayer::createImageImplementation(
         }
     }
 
+    // Make a small l2 cache of biomes that we've already looked up and search the vector
+    // before going to the catalog. This is a performance optimization to avoid repeated queries into a potentially large catalog.
+    std::vector< const Biome* > biomeCache;
+    auto getBiome = [&](const std::string& id) -> const Biome*
+        {
+            // Search the cache first
+            for (auto i : biomeCache)
+            {
+                if (i->id() == id)
+                {
+                    return i;
+                }
+            }
+
+            auto result = getBiomeCatalog()->getBiome(id);
+            if (result)
+            {
+                biomeCache.push_back(result);
+            }
+            return result;
+        };
+
     iter.forEachPixelOnCenter([&]()
         {
             const Biome* biome = nullptr;
@@ -381,7 +403,7 @@ BiomeLayer::createImageImplementation(
                 {
                     if (sample->biomeid().isSet())
                     {
-                        biome = getBiomeCatalog()->getBiome(sample->biomeid().get());
+                        biome = getBiome(sample->biomeid().get());
                     }
                 }
             }
@@ -408,7 +430,7 @@ BiomeLayer::createImageImplementation(
                     // if the biomeid() is set, we are overriding the biome expressly:
                     if (sample->biomeid().isSet())
                     {
-                        biome = getBiomeCatalog()->getBiome(sample->biomeid().get());
+                        biome = getBiome(sample->biomeid().get());
                     }
 
                     // If we have a biome, but there are traits set, we need to
@@ -422,7 +444,7 @@ BiomeLayer::createImageImplementation(
                         std::string implicit_biome_id =
                             biome->id() + "." + AssetTraits::toString(sorted);
 
-                        const Biome* implicit_biome = getBiomeCatalog()->getBiome(implicit_biome_id);
+                        const Biome* implicit_biome = getBiome(implicit_biome_id);
 
                         if (implicit_biome)
                         {

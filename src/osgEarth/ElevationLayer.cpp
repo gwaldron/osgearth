@@ -398,9 +398,7 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
     // at the same time. This helps a lot with elevation data since
     // the many queries cross tile boundaries (like calculating 
     // normal maps)
-    ScopedGate<TileKey> gate(_sentry, key, [&]() {
-        return _memCache.valid();
-    });
+    ScopedGate<TileKey> gate(_sentry, key, _memCache.valid());
 
     // Check the memory cache first
     bool fromMemCache = false;

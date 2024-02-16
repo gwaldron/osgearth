@@ -18,7 +18,7 @@
  */
 #pragma once
 #include <osgEarth/Export>
-#include <unordered_map>
+#include <unordered_set>
 
 // bring in weejobs in the jobs namespace
 #define WEEJOBS_EXPORT OSGEARTH_EXPORT
@@ -156,12 +156,10 @@ namespace osgEarth
 
             inline void lock(const T& key) {
                 std::unique_lock<std::mutex> lock(_m);
-                auto thread_id = std::this_thread::get_id();
                 for (;;) {
-                    auto i = _keys.emplace(key, thread_id);
-                    if (i.second)
+                    auto i = _keys.emplace(key);
+                    if (i.second == true) // insert successful
                         return;
-                    OE_HARD_ASSERT(i.first->second != thread_id, "Recursive Gate access attempt");
                     _unlocked.wait(lock);
                 }
             }
@@ -175,7 +173,7 @@ namespace osgEarth
         private:
             std::mutex _m;
             std::condition_variable_any _unlocked;
-            std::unordered_map<T, std::thread::id> _keys;
+            std::unordered_set<T> _keys;
         };
 
         //! Gate the locks for the duration of this object's scope
@@ -194,10 +192,10 @@ namespace osgEarth
 
             //! Lock a gate based on key "key" IFF the predicate is true,
             //! else it's a nop.
-            ScopedGate(Gate<T>& gate, const T& key, std::function<bool()> pred) :
+            ScopedGate(Gate<T>& gate, const T& key, bool pred) :
                 _gate(gate),
                 _key(key),
-                _active(pred())
+                _active(pred)
             {
                 if (_active)
                     _gate.lock(_key);

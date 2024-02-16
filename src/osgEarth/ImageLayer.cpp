@@ -463,9 +463,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
     // Tile gate prevents two threads from requesting the same key
     // at the same time, which would be unnecessary work. Only lock
     // the gate if there is an L2 cache active
-    ScopedGate<TileKey> scopedGate(_sentry, key, [&]() {
-        return _memCache.valid();
-    });
+    ScopedGate<TileKey> scopedGate(_sentry, key, _memCache.valid());
 
     GeoImage result;
 

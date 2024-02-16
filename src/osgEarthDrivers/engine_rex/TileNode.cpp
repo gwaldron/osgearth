@@ -39,16 +39,6 @@ using namespace osgEarth::Util;
 
 #define LC "[TileNode] "
 
-// template to capture the result type of a function:
-template<typename T>
-struct result_type;
-
-template<typename R, typename...A>
-struct result_type<R(A...)>
-{
-    typedef R type;
-};
-
 namespace
 {
     // Scale and bias matrices, one for each TileKey quadrant.
@@ -751,7 +741,7 @@ TileNode::createChildren()
                         CreateChildResult result;
 
                         osg::ref_ptr<TileNode> tile;
-                        if (tile_weakptr.lock(tile) && state.canceled())
+                        if (tile_weakptr.lock(tile) && !state.canceled())
                             result = tile->createChild(childkey, &state);
 
                         return result;

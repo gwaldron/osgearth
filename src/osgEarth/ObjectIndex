@@ -29,6 +29,7 @@
 #include <osg/Drawable>
 #include <osg/Array>
 #include <algorithm>
+#include <unordered_map>
 
 #define OSGEARTH_OBJECTID_EMPTY   (ObjectID)0
 #define OSGEARTH_OBJECTID_TERRAIN (ObjectID)1

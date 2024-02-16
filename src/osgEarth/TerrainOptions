@@ -66,12 +66,12 @@ namespace osgEarth
         OE_OPTION(float, tilePixelSize, 512.0f);
         OE_OPTION(float, heightFieldSkirtRatio, 0.0f);
         OE_OPTION(Color, color, Color::White);
-        OE_OPTION(bool, progressive, false);
+        OE_OPTION(bool, progressive, true);
         OE_OPTION(bool, useNormalMaps, true);
         OE_OPTION(bool, normalizeEdges, false);
         OE_OPTION(bool, morphTerrain, true);
         OE_OPTION(bool, morphImagery, true);
-        OE_OPTION(unsigned, mergesPerFrame, 20u);
+        OE_OPTION(unsigned, mergesPerFrame, ~0u);
         OE_OPTION(float, priorityScale, 1.0f);
         OE_OPTION(std::string, textureCompression, {});
         OE_OPTION(unsigned, concurrency, 4u);
@@ -115,15 +115,6 @@ namespace osgEarth
         const unsigned& getMaxLOD() const;
 
         //! (Legacy property)
-        //! The minimum level of detail to which the terrain should subdivide (no matter what).
-        //! If you leave this unset, the terrain will subdivide until the map layers
-        //! stop providing data (default behavior). If you set a value, the terrain will subdivide
-        //! to the specified LOD no matter what (and may continue farther if higher-resolution
-        //! data is available).
-        void setMinLOD(const unsigned& value);
-        const unsigned& getMinLOD() const;
-
-        //! (Legacy property)
         //! The lowest LOD to display. By default, the terrain begins at LOD 0.
         //! Set this to start the terrain tile mesh at a higher LOD.
         //! Don't set this TOO high though or you will run into memory problems.
@@ -140,11 +131,7 @@ namespace osgEarth
         void setEnableBlending(const bool& value);
         const bool& getEnableBlending() const;
 
-        //! @deprecated
-        //! Whether to compress the normal maps before sending to the GPU
-        void setCompressNormalMaps(const bool& value);
-        const bool& getCompressNormalMaps() const;
-
+        //! (Currently not used)
         //! Minimum level of detail at which to generate elevation-based normal maps,
         //! assuming normal maps have been activated. This mitigates the overhead of 
         //! calculating normal maps for very high altitude scenes where they are no
@@ -163,10 +150,6 @@ namespace osgEarth
         //! Maximum range in meters to apply GPU tessellation
         void setTessellationRange(const float& value);
         const float& getTessellationRange() const;
-
-        //! Whether to activate debugging mode
-        void setDebug(const bool& value);
-        const bool& getDebug() const;
 
         //! Render bin number for the terrain
         void setRenderBinNumber(const int& value);
@@ -248,12 +231,6 @@ namespace osgEarth
         void setMergesPerFrame(const unsigned& value);
         const unsigned& getMergesPerFrame() const;
 
-        //! Scale factor for background loading priority of terrain tiles.
-        //! Default = 1.0. Make it higher to prioritize terrain loading over
-        //! other modules.
-        void setPriorityScale(const float& value);
-        const float& getPriorityScale() const;
-
         //! Texture compression to use by default on terrain image textures
         void setTextureCompressionMethod(const std::string& method);
         const std::string& getTextureCompressionMethod() const;
@@ -281,6 +258,32 @@ namespace osgEarth
         //! Whether the engine should create all child tiles in a group
         void setCreateTilesGrouped(const bool& value);
         const bool& getCreateTilesGrouped() const;
+
+        //! @deprecated
+        //! Scale factor for background loading priority of terrain tiles.
+        //! Default = 1.0. Make it higher to prioritize terrain loading over
+        //! other modules.
+        void setPriorityScale(const float& value);
+        const float& getPriorityScale() const;
+
+        //! @deprecated
+        //! Whether to activate debugging mode
+        void setDebug(const bool& value);
+        const bool& getDebug() const;
+
+        //! @deprecated
+        //! Whether to compress the normal maps before sending to the GPU
+        void setCompressNormalMaps(const bool& value);
+        const bool& getCompressNormalMaps() const;
+
+        //! @deprecated
+        //! The minimum level of detail to which the terrain should subdivide (no matter what).
+        //! If you leave this unset, the terrain will subdivide until the map layers
+        //! stop providing data (default behavior). If you set a value, the terrain will subdivide
+        //! to the specified LOD no matter what (and may continue farther if higher-resolution
+        //! data is available).
+        void setMinLOD(const unsigned& value);
+        const unsigned& getMinLOD() const;
 
         TerrainOptionsAPI();
         TerrainOptionsAPI(TerrainOptions*);

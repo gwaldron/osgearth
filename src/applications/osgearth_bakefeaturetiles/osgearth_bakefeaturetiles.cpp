@@ -402,7 +402,7 @@ public:
     {
     }
 
-    virtual void run(const Profile* mapProfile)
+    void run(const Profile* mapProfile) override
     {
         // Start up the task service
         OE_INFO << "Starting " << _numThreads << " threads " << std::endl;
@@ -419,7 +419,7 @@ public:
             this->handleTile(key);
         }
 
-        _group.join();
+        _group->join();
     }    
 
     std::vector< TileKey > _keys;

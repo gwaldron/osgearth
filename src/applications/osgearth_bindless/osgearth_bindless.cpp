@@ -53,6 +53,8 @@ int main_NV(int argc, char** argv)
     osg::ArgumentParser arguments(&argc, argv);
 
     osgViewer::Viewer viewer(arguments);
+    viewer.setRealizeOperation(new GL3RealizeOperation());
+
     MapNodeHelper().configureView(&viewer);
 
     if (arguments.read("--pause"))

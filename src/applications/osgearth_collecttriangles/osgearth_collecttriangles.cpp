@@ -490,7 +490,7 @@ void computeIntersectionsThreaded(osg::Node* node, std::vector< IntersectionQuer
     pool->set_concurrency(num_threads);
 
     // Poor man's parallel for
-    jobs::jobgroup intersections;
+    auto intersections = jobs::jobgroup::create();
 
     //unsigned int workSize = 500;
     // Try to split the jobs evenly among the threads
@@ -508,7 +508,7 @@ void computeIntersectionsThreaded(osg::Node* node, std::vector< IntersectionQuer
         {
             jobs::context context;
             context.pool = pool;
-            context.group = &intersections;
+            context.group = intersections;
 
             jobs::dispatch([node, curStart, curSize, &queries](Cancelable&) {
                 computeIntersections(node, queries, curStart, curSize);
@@ -525,7 +525,7 @@ void computeIntersectionsThreaded(osg::Node* node, std::vector< IntersectionQuer
         }
     }
     //std::cout << "Dispatched " << numJobs << " jobs" << std::endl;
-    intersections.join();
+    intersections->join();
 }
 
 

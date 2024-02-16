@@ -18,6 +18,7 @@
  */
 #pragma once
 #include <osgEarth/Export>
+#include <unordered_map>
 
 // bring in weejobs in the jobs namespace
 #define WEEJOBS_EXPORT OSGEARTH_EXPORT

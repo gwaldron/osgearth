@@ -141,7 +141,7 @@ namespace osgEarth { namespace Util
 
         unsigned int _numThreads;
 
-        jobs::jobgroup _group;
+        std::shared_ptr<jobs::jobgroup> _group;
     };
 
 

@@ -239,6 +239,8 @@ MultithreadedTileVisitor::MultithreadedTileVisitor() :
     // We must do this to avoid an error message in OpenSceneGraph b/c the findWrapper method doesn't appear to be threadsafe.
     // This really isn't a big deal b/c this only effects data that is already cached.
     osgDB::ObjectWrapper* wrapper = osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
+
+    _group = jobs::jobgroup::create();
 }
 
 MultithreadedTileVisitor::MultithreadedTileVisitor(TileHandler* handler) :
@@ -269,7 +271,7 @@ void MultithreadedTileVisitor::run(const Profile* mapProfile)
     // Produce the tiles
     TileVisitor::run( mapProfile );
 
-    _group.join();
+    _group->join();
 }
 
 bool MultithreadedTileVisitor::handleTile(const TileKey& key)
@@ -297,7 +299,7 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
     jobs::context job;
     job.name = "handleTile";
     job.pool = jobs::get_pool(MTTV);
-    job.group = &_group;
+    job.group = _group;
 
     jobs::dispatch(task, job);
 

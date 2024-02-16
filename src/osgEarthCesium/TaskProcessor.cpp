@@ -30,7 +30,7 @@ const std::string CESIUM_ARENA_NAME = "cesium";
 
 TaskProcessor::TaskProcessor()
 {
-    JobArena::get(CESIUM_ARENA_NAME)->setConcurrency(8);
+    jobs::get_pool(CESIUM_ARENA_NAME)->set_concurrency(8);
 }
 
 TaskProcessor::~TaskProcessor()
@@ -40,21 +40,22 @@ TaskProcessor::~TaskProcessor()
 void TaskProcessor::shutdown()
 {    
     // Wait for all jobs to finish
-    auto metrics = JobArena::get(CESIUM_ARENA_NAME)->metrics();
-    unsigned int totalJobs = metrics->numJobsPending + metrics->numJobsRunning;
+    auto metrics = jobs::get_pool(CESIUM_ARENA_NAME)->metrics();
+    unsigned int totalJobs = metrics->pending + metrics->running;
     while (totalJobs != 0)
     {
         std::this_thread::yield();        
-        totalJobs = metrics->numJobsPending + metrics->numJobsRunning;
+        totalJobs = metrics->pending + metrics->running;
     }
 }
 
 void TaskProcessor::startTask(std::function<void()> f)
 {
-    auto delegate = [this, f](Cancelable*) {
+    auto task = [this, f](Cancelable&) {
         f();
+        return true;
     };
-    Job job;
-    job.setArena(CESIUM_ARENA_NAME);
-    job.dispatch(delegate);
+    jobs::context cx;
+    cx.pool = jobs::get_pool(CESIUM_ARENA_NAME);
+    jobs::dispatch(task, cx);
 }

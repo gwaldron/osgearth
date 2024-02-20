@@ -66,11 +66,13 @@ Merger::clear()
     {
         for (unsigned int i = 0; i < _mergeQueue.size(); ++i)
         {
-            _metrics->running--;
+            //_metrics->running--;
+            _metrics->postprocessing--;
         }
         for (unsigned int i = 0; i < _compileQueue.size(); ++i)
         {
-            _metrics->running--;
+            //_metrics->running--;
+            _metrics->postprocessing--;
         }
     }
 
@@ -123,7 +125,8 @@ Merger::merge(LoadTileDataOperationPtr data, osg::NodeVisitor& nv)
 
     if (_metrics)
     {
-        _metrics->running++;
+        _metrics->postprocessing++;
+        //_metrics->running++;
     }
 }
 
@@ -157,7 +160,8 @@ Merger::traverse(osg::NodeVisitor& nv)
                 // compile canceled, ditch it
                 if (_metrics)
                 {
-                    _metrics->running--;
+                    //_metrics->running--;
+                    _metrics->postprocessing--;
                     _metrics->canceled++;
                 }
             }
@@ -196,7 +200,8 @@ Merger::traverse(osg::NodeVisitor& nv)
 
             if (_metrics)
             {
-                _metrics->running--;
+                //_metrics->running--;
+                _metrics->postprocessing--;
             }
         }
 

@@ -520,7 +520,12 @@ GL3RealizeOperation::operator()(osg::Object* object)
 #define LC "[GLObjectPool] "
 
 // static decl
-Mutexed<std::vector<GLObjectPool*>> GLObjectPool::_pools;
+namespace
+{
+    std::mutex s_pools_mutex;
+    std::vector<GLObjectPool*> s_pools;
+}
+
 
 GLObjectPool*
 GLObjectPool::get(osg::State& state)
@@ -539,8 +544,8 @@ std::unordered_map<int, GLObjectPool*>
 GLObjectPool::getAll()
 {
     std::unordered_map<int, GLObjectPool*> result;
-    std::lock_guard<std::mutex> lock(_pools.mutex());
-    for (auto& pool : _pools)
+    std::unique_lock<std::mutex> lock(s_pools_mutex);
+    for (auto& pool : s_pools)
         result[pool->getContextID()] = pool;
     return result;
 }
@@ -553,8 +558,9 @@ GLObjectPool::GLObjectPool(unsigned cxid) :
     _avarice(10.f)
 {
     _gcs.resize(256);
-    std::lock_guard<std::mutex> lock(_pools.mutex());
-    _pools.emplace_back(this);
+
+    std::unique_lock<std::mutex> lock(s_pools_mutex);
+    s_pools.emplace_back(this);
 
     char* value = ::getenv("OSGEARTH_GL_OBJECT_POOL_DELAY");
     if (value)
@@ -627,7 +633,7 @@ GLObjectPool::track(osg::GraphicsContext* gc)
 void
 GLObjectPool::watch(GLObject::Ptr object)
 {
-    std::lock_guard<std::mutex> lock(_mutex);
+    std::unique_lock<std::mutex> lock(_mutex);
     _objects.emplace_back(object);
 
     //if (object->shareable())
@@ -705,7 +711,7 @@ GLObjectPool::discardAllGLObjects()
 void
 GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
 {
-    std::lock_guard<std::mutex> lock(_mutex);
+    std::unique_lock<std::mutex> lock(_mutex);
 
     GLsizeiptr bytes = 0;
     GLObjectPool::Collection keepers;
@@ -730,7 +736,7 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
 void
 GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
 {
-    std::lock_guard<std::mutex> lock(_mutex);
+    std::unique_lock<std::mutex> lock(_mutex);
 
     unsigned maxNumToRelease = std::max(1u, (unsigned)pow(4.0f, _avarice));
     unsigned numReleased = 0u;
@@ -1680,7 +1686,7 @@ std::unordered_map<osg::State*, GLPipeline::Ptr> GLPipeline::_lut;
 GLPipeline::Ptr
 GLPipeline::get(osg::State& state)
 {
-    std::lock_guard<std::mutex> lock(GLPipeline::_mutex);
+    std::unique_lock<std::mutex> lock(GLPipeline::_mutex);
     GLPipeline::Ptr& p = _lut[&state];
 
     if (p == nullptr)
@@ -1845,13 +1851,13 @@ GLObjectsCompiler::collectState(osg::Node* node) const
     return state;
 }
 
-Future<osg::ref_ptr<osg::Node>>
+jobs::future<osg::ref_ptr<osg::Node>>
 GLObjectsCompiler::compileAsync(
     const osg::ref_ptr<osg::Node>& node,
     const osg::Object* host,
     Cancelable* progress) const
 {
-    Future<osg::ref_ptr<osg::Node>> result;
+    jobs::future<osg::ref_ptr<osg::Node>> result;
 
     if (node.valid())
     {
@@ -1886,14 +1892,14 @@ GLObjectsCompiler::compileAsync(
     return result;
 }
 
-Future<osg::ref_ptr<osg::Node>>
+jobs::future<osg::ref_ptr<osg::Node>>
 GLObjectsCompiler::compileAsync(
     const osg::ref_ptr<osg::Node>& node,
     osgUtil::StateToCompile* state,
     const osg::Object* host,
     Cancelable* progress) const
 {
-    Future<osg::ref_ptr<osg::Node>> result;
+    jobs::future<osg::ref_ptr<osg::Node>> result;
 
     OE_SOFT_ASSERT_AND_RETURN(node.valid(), result);
 
@@ -1923,6 +1929,45 @@ GLObjectsCompiler::compileAsync(
     }
 
     return result;
+}
+
+void
+GLObjectsCompiler::requestIncrementalCompile(
+    const osg::ref_ptr<osg::Node>& node,
+    osgUtil::StateToCompile* state,
+    const osg::Object* host,
+    jobs::promise<osg::ref_ptr<osg::Node>> promise) const
+{
+    if (!node.valid())
+    {
+        promise.resolve();
+        return;
+    }
+
+    // if there is an ICO available, schedule the GPU compilation
+    bool compileScheduled = false;
+
+    if (state != nullptr && !state->empty())
+    {
+        osg::ref_ptr<ICO> ico;
+        if (ObjectStorage::get(host, ico) && ico->isActive())
+        {
+            auto compileSet = new osgUtil::IncrementalCompileOperation::CompileSet();
+            compileSet->buildCompileMap(ico->getContextSet(), *state);
+            ICOCallback* callback = new ICOCallback(node, _jobsActive);
+            callback->_promise = promise;
+            compileSet->_compileCompletedCallback = callback;
+            _jobsActive++;
+            ico->add(compileSet, false);
+            compileScheduled = true;
+        }
+    }
+
+    if (!compileScheduled)
+    {
+        // no ICO available - just resolve the future immediately
+        promise.resolve(node);
+    }
 }
 
 

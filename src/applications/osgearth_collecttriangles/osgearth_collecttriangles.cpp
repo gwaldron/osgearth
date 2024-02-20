@@ -949,8 +949,7 @@ struct PredictiveDataLoader : public osg::NodeVisitor
             if (!pagedNode.isLoaded())
             {
                 float priority = -range;
-                // TODO:  ICO
-                pagedNode.load(priority, nullptr);
+                pagedNode.startLoad(priority, nullptr);
                 _fullyLoaded = false;
             }
             pagedNode.touch();

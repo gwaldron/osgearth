@@ -129,7 +129,7 @@ namespace osgEarth
         std::vector<float> _resolutions;
         osg::ref_ptr<osg::Image> _ruggedness;
         ImageUtils::PixelReader _readRuggedness;
-        Mutex _mutex;
+        std::mutex _mutex;
     };
 
     /**

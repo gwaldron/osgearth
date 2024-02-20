@@ -25,7 +25,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/optional>
-#include <osgEarth/Threading>
 #include <osgEarth/Math>
 #include <osg/StateSet>
 #include <osg/OperationThread>
@@ -60,8 +59,6 @@ namespace osgUtil {
 
 namespace osgEarth
 {
-    using namespace Threading;
-
     struct OSGEARTH_EXPORT GLUtils
     {
         //! Sets any default uniforms required by the implementation
@@ -603,7 +600,7 @@ namespace osgEarth
 
         template<typename T>
         typename T::Ptr recycle(const GLObject::Compatible& compatible) {
-            std::lock_guard<std::mutex> lock(_mutex);
+            std::unique_lock<std::mutex> lock(_mutex);
             typename T::Ptr result;
             for (auto& object : _objects) {
                 if (object.use_count() == 1 && compatible(object.get())) {
@@ -628,7 +625,7 @@ namespace osgEarth
 
     protected:
 
-        mutable Mutex _mutex;
+        mutable std::mutex _mutex;
         Collection _objects; // objects being monitored
         GLsizeiptr _totalBytes;
         unsigned _hits;
@@ -649,9 +646,6 @@ namespace osgEarth
 
         //! Release all objects created in the provided GC
         void releaseAll(const osg::GraphicsContext*);
-
-    private:
-        static Mutexed<std::vector<GLObjectPool*>> _pools;
     };
 
     /**
@@ -760,7 +754,7 @@ namespace osgEarth
     {
     public:
         //! Result type - future that will eventually contain the return value
-        using Result = Future<RESULT_TYPE>;
+        using Result = jobs::future<RESULT_TYPE>;
 
         //! Function type of async job
         using Function = std::function<RESULT_TYPE(osg::State*, Cancelable*)>;
@@ -886,7 +880,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<osg::GraphicsContext> _gc;
-        static Mutex _mutex;
+        static std::mutex _mutex;
         static std::unordered_map<osg::State*, GLPipeline::Ptr> _lut;
 
         struct Dispatcher : public osg::GraphicsOperation
@@ -895,7 +889,7 @@ namespace osgEarth
             void operator()(osg::GraphicsContext*) override;
             using OpQ = std::queue<osg::ref_ptr<osg::Operation>>;
             OpQ _thisQ;
-            Mutex _queue_mutex;
+            std::mutex _queue_mutex;
             GLPipeline::WeakPtr _pipeline_ref;
             osg::ref_ptr<osg::GraphicsContext> _myGC;
             void push(osg::Operation*);
@@ -951,17 +945,29 @@ namespace osgEarth
         osg::ref_ptr<osgUtil::StateToCompile> collectState(
             osg::Node* node) const;
 
+        //! Request that the OSG ICO compile GL object state asychnornously.
+        //! @node Node to compile
+        //! @state Collected state to compile for the given node
+        //! @host Object hosting the ICO itself. If this null, or does not host an ICO,
+        //!   the data will not compile and the promise will be resolved immediately.
+        //! @promise Promise that the ICO should resolve when the compile is complete.
+        void requestIncrementalCompile(
+            const osg::ref_ptr<osg::Node>& node,
+            osgUtil::StateToCompile* state,
+            const osg::Object* host,
+            jobs::promise<osg::ref_ptr<osg::Node>> promise) const;
+
         void compileNow(
             const osg::ref_ptr<osg::Node>& node,
             const osg::Object* host,
             osgEarth::Cancelable* progress) const;
 
-        Future<osg::ref_ptr<osg::Node>> compileAsync(
+        jobs::future<osg::ref_ptr<osg::Node>> compileAsync(
             const osg::ref_ptr<osg::Node>& node,
             const osg::Object* host,
             osgEarth::Cancelable* progress) const;
 
-        Future<osg::ref_ptr<osg::Node>> compileAsync(
+        jobs::future<osg::ref_ptr<osg::Node>> compileAsync(
             const osg::ref_ptr<osg::Node>& node,
             osgUtil::StateToCompile* state,
             const osg::Object* host,

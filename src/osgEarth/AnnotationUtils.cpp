@@ -24,7 +24,6 @@
 #include <osgEarth/Color>
 #include <osgEarth/MeshSubdivider>
 #include <osgEarth/TextSymbolizer>
-#include <osgEarth/Threading>
 #include <osgEarth/Registry>
 #include <osgEarth/Capabilities>
 #include <osgEarth/CullingUtils>

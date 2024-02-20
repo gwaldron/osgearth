@@ -20,7 +20,6 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
-#include <osgEarth/Threading>
 #include "Notify"
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>

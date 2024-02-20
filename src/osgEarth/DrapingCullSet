@@ -25,7 +25,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/Containers>
 #include <osgEarth/DrapeableNode>
-#include <osgEarth/Threading>
 #include <osg/Camera>
 #include <osg/ObserverNodePath>
 #include <queue>

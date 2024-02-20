@@ -25,24 +25,16 @@
 #include <osgEarth/Common>
 #include <osgEarth/optional>
 #include <osgEarth/Threading>
-#include <osgEarth/URI>
 #include <osgEarth/SceneGraphCallback>
 #include <osgEarth/Utils>
 #include <osgEarth/LoadableNode>
-
-#include <osg/PagedLOD>
-#include <osg/LOD>
-
 #include <queue>
 #include <list>
 #include <memory>
-#include <iterator>
-#include <unordered_map>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    using namespace osgEarth::Threading;
 
     /**
      * Internal node type to handle on-demand loading and unloading
@@ -64,7 +56,7 @@ namespace osgEarth { namespace Util
         //! Function to run to load the asychronous child
         void setLoadFunction(const Loader& value);
         const Loader& getLoadFunction() const {
-            return _load;
+            return _load_function;
         }
 
         //! Set the center of this node, which is necessary since we
@@ -149,10 +141,8 @@ namespace osgEarth { namespace Util
             _refinePolicy = value;
         }
 
-        //! Loads the content for this node
-        void load(
-            float priority,
-            const osg::Object* host);
+        //! Starts the content loading for this node
+        void startLoad(float priority, const osg::Object* host);
 
         //! Mark the content as "in use" so that it will not
         //! be removed if setAutoUnload is true.
@@ -177,7 +167,7 @@ namespace osgEarth { namespace Util
 
         //! Loads the content for this node (convenience function)
         void load() override {
-            load(0.0, nullptr);
+            startLoad(0.0, nullptr);
         }
 
         //! Unloads the content for this node
@@ -201,35 +191,36 @@ namespace osgEarth { namespace Util
         friend class PagingManager;
 
         struct Loaded {
-            osg::ref_ptr<osg::Node> _node;
-            osg::ref_ptr<osgUtil::StateToCompile> _state;
+            osg::ref_ptr<osg::Node> node;
+            osg::ref_ptr<osgUtil::StateToCompile> state;
         };
 
-        void* _token;
-        class PagingManager* _pagingManager;
+        std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load_function;
+
+        void* _token = nullptr;
+        class PagingManager* _pagingManager = nullptr;
         osg::ref_ptr<SceneGraphCallbacks> _callbacks;
-        RefinePolicy _refinePolicy;
-        std::atomic_bool _loadTriggered;
-        std::atomic_bool _compileTriggered;
-        std::atomic_bool _mergeTriggered;
-        bool _merged; // true if the compiled node was added as a child
-        bool _failed; // true if the child load failed and no more action is possible
-        Future<Loaded> _loaded;
-        Future<osg::ref_ptr<osg::Node>> _compiled;
+        
+        std::atomic_bool _loadGate = { false };
+
+        jobs::future<Loaded> _loaded;
+        jobs::future<osg::ref_ptr<osg::Node>> _compiled;
+        jobs::future<bool> _merged;
+
         Mutex _mutex;
         optional<osg::BoundingSphere> _userBS;
-        float _minRange;
-        float _maxRange;
-        float _minPixels;
-        float _maxPixels;
-        bool _useRange;
-        float _priorityScale;
+        float _minRange = 0.0f;
+        float _maxRange = FLT_MAX;
+        float _minPixels = 0.0f;
+        float _maxPixels = FLT_MAX;
+        bool _useRange = true;
+        float _priorityScale = 1.0f;
         jobs::context _job;
-        bool _preCompile;
-        std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load;
-        std::atomic_int _revision;
-        bool _autoUnload;
-        float _lastRange;
+        bool _preCompile = true;
+        std::atomic_int _revision = { 0 };
+        bool _autoUnload = true;
+        float _lastRange = FLT_MAX;
+        RefinePolicy _refinePolicy = REFINE_REPLACE;
 
         bool merge(int revision);
         void traverseChildren(osg::NodeVisitor& nv);

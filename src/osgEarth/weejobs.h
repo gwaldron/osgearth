@@ -126,9 +126,9 @@ namespace WEEJOBS_NAMESPACE
             }
 
         protected:
-            std::mutex _m; // do not use Mutex, we never want tracking
-            std::condition_variable_any _cond;
             bool _set;
+            std::condition_variable_any _cond;
+            std::mutex _m; // do not use Mutex, we never want tracking
         };
 
 
@@ -213,6 +213,7 @@ namespace WEEJOBS_NAMESPACE
 #endif
     }
 
+    struct context;
 
     /**
      * Future holds the future result of an asynchronous operation.
@@ -240,6 +241,9 @@ namespace WEEJOBS_NAMESPACE
         {
             T _obj;
             mutable detail::event _ev;
+            std::mutex _continuation_mutex;
+            std::function<void()> _continuation;
+            std::atomic_bool _continuation_ran = { false };
         };
 
     public:
@@ -291,6 +295,12 @@ namespace WEEJOBS_NAMESPACE
             return &_shared->_obj;
         }
 
+        //! Result is available AND equal to the argument.
+        bool has_value(const T& arg) const
+        {
+            return available() && value() == arg;
+        }
+
         //! Same as value(), but if the result is available will reset the
         //! future before returning the result object.
         T release()
@@ -315,7 +325,7 @@ namespace WEEJOBS_NAMESPACE
         //! Blocks until the result becomes available or the future is abandoned
         //! or a cancelation flag is set; then returns the result object. Be sure to
         //! check canceled() after calling join() to see if the return value is valid.
-        const T& join(cancelable* p) const
+        const T& join(const cancelable* p) const
         {
             while (working() && (p == nullptr || !p->canceled()))
             {
@@ -349,6 +359,7 @@ namespace WEEJOBS_NAMESPACE
         {
             _shared->_obj = value;
             _shared->_ev.set();
+            fire_continuation();
         }
 
         //! Resolve (fulfill) the promise with an rvalue
@@ -356,12 +367,14 @@ namespace WEEJOBS_NAMESPACE
         {
             _shared->_obj = std::move(value);
             _shared->_ev.set();
+            fire_continuation();
         }
 
         //! Resolve (fulfill) the promise with a default result
         void resolve()
         {
             _shared->_ev.set();
+            fire_continuation();
         }
 
         //! The number of objects, including this one, that
@@ -373,8 +386,40 @@ namespace WEEJOBS_NAMESPACE
             return _shared.use_count();
         }
 
+        //! Add a continuation to this future. The continuation will be dispatched
+        //! when this object's result becomes available; that result will be the input
+        //! value to the continuation function. The continuation function in turn must
+        //! return a value (cannot be void).
+        template<typename FUNC, typename R = typename detail::result_of_t<FUNC(const T&, cancelable&)>>
+        inline future<R> then_dispatch(FUNC func, const context& con = {});
+
+        //! Add a continuation to this future. Instead of the functor returning a value,
+        //! it will instead have the option of resolving the incoming future/promise object.
+        //! This is useful for operations that have their own way of running asynchronous code.
+        //! Note: for some reason when you use this variant you must specific the template
+        //! argument, e.g. result.then<int>(auto i, promise<int> p)
+        template<typename R>
+        inline future<R> then_dispatch(std::function<void(const T&, future<R>&)> func, const context& con = {});
+
+        //! Add a continuation to this future. The functor only takes an input value and has no
+        //! return value (fire and forget).
+        inline void then_dispatch(std::function<void(const T&)> func, const context& con = {});
+
     private:
         std::shared_ptr<shared_t> _shared;
+
+        void fire_continuation()
+        {
+            std::lock_guard<std::mutex> lock(_shared->_continuation_mutex);
+
+            if (_shared->_continuation && !_shared->_continuation_ran.exchange(true))
+                _shared->_continuation();
+
+            // Zero out the continuation function immediately after running it.
+            // This is important because the continuation might hold a reference to a promise
+            // that might hamper cancelation.
+            _shared->_continuation = nullptr;
+        }
     };
 
     //! in the "promise/future" pattern, we use the same object for both,
@@ -400,10 +445,11 @@ namespace WEEJOBS_NAMESPACE
     */
     struct context
     {
-        std::string name;
-        class jobpool* pool = nullptr;
-        std::function<float()> priority = {};
-        std::shared_ptr<jobgroup> group = nullptr;
+        std::string name; // readable name of the job
+        class jobpool* pool = nullptr; // job pool to run in
+        std::function<float()> priority = {}; // priority of the job
+        std::shared_ptr<jobgroup> group = nullptr; // join group for this job
+        bool can_cancel = true; // if true, the job will cancel if its future goes out of scope
     };
 
     /**
@@ -422,6 +468,7 @@ namespace WEEJOBS_NAMESPACE
             std::atomic_uint concurrency = { 0u };
             std::atomic_uint pending = { 0u };
             std::atomic_uint running = { 0u };
+            std::atomic_uint postprocessing = { 0u };
             std::atomic_uint canceled = { 0u };
             std::atomic_uint total = { 0u };
         };
@@ -474,7 +521,7 @@ namespace WEEJOBS_NAMESPACE
         //! Use job::dispatch to run jobs (usually no need to call this directly)
         //! @param delegate Function to execute
         //! @param context Job details
-        void dispatch(std::function<bool()>& delegate, const context& context)
+        void dispatch_delegate(std::function<bool()>& delegate, const context& context)
         {
             // If we have a group semaphore, acquire it BEFORE queuing the job
             if (context.group)
@@ -557,19 +604,10 @@ namespace WEEJOBS_NAMESPACE
                         if (ptr == _queue.end())
                             ptr = _queue.begin();
 
-                        next = std::move(*ptr); // _queue[index]);
+                        next = std::move(*ptr);
                         have_next = true;
 
                         _queue.erase(ptr);
-
-                        // move the last element into the empty position:
-                        //if (index < _queue.size() - 1)
-                        //{
-                        //    _queue[index] = std::move(_queue.back());
-                        //}
-
-                        // and remove the last element.
-                        //_queue.erase(_queue.end() - 1);
                     }
                 }
 
@@ -635,7 +673,6 @@ namespace WEEJOBS_NAMESPACE
 
         std::string _name; // pool name
         std::list<job> _queue;
-        //std::vector<job> _queue; // queued operations to run asynchronously
         mutable std::mutex _queueMutex; // protect access to the queue
         mutable std::mutex _quitMutex; // protects access to _done
         std::atomic<unsigned> _targetConcurrency; // target number of concurrent threads in the pool
@@ -666,6 +703,15 @@ namespace WEEJOBS_NAMESPACE
             return count;
         }
 
+        //! Total number of running jobs across all schedulers
+        int totalJobsPostprocessing() const
+        {
+            int count = 0;
+            for (auto pool : _pools)
+                count += pool->postprocessing;
+            return count;
+        }
+
         //! Total number of canceled jobs across all schedulers
         int totalJobsCanceled() const
         {
@@ -678,7 +724,7 @@ namespace WEEJOBS_NAMESPACE
         //! Total number of active jobs in the system
         int totalJobs() const
         {
-            return totalJobsPending() + totalJobsRunning();
+            return totalJobsPending() + totalJobsRunning() + totalJobsPostprocessing();
         }
 
         //! Gets a vector of all jobpool metrics structures.
@@ -699,9 +745,7 @@ namespace WEEJOBS_NAMESPACE
         struct runtime
         {
             inline runtime();
-
             inline ~runtime();
-
             inline void shutdown();
 
             bool _alive = true;
@@ -709,7 +753,7 @@ namespace WEEJOBS_NAMESPACE
             std::vector<std::string> _pool_names;
             std::vector<jobpool*> _pools;
             metrics _metrics;
-            std::function<void(const char*)> _setThreadName;
+            std::function<void(const char*)> _set_thread_name;
         };
     }
 
@@ -738,7 +782,7 @@ namespace WEEJOBS_NAMESPACE
         {
             auto pool = context.pool ? context.pool : get_pool({});
             if (pool)
-                pool->dispatch(delegate, context);
+                pool->dispatch_delegate(delegate, context);
         }
     }
 
@@ -754,17 +798,53 @@ namespace WEEJOBS_NAMESPACE
     //! Dispatches a job and immediately returns a future result.
     //! @param task Function to run in a thread. Prototype is T(cancelable&)
     //! @param context Optional configuration for the asynchronous function call
-    //! @param promise Optional user-supplied promise object
     //! @return Future result of the async function call
     template<typename FUNC, typename T = typename detail::result_of_t<FUNC(cancelable&)>>
-    inline future<T> dispatch(FUNC task, const context& context = {}, future<T> promise = {})
+    inline future<T> dispatch(FUNC task, const context& context = {})
     {
-        std::function<bool()> delegate = [task, promise]() mutable
+        future<T> promise;
+        bool can_cancel = context.can_cancel;
+
+        std::function<bool()> delegate = [task, promise, can_cancel]() mutable
             {
-                bool good = !promise.canceled();
-                if (good)
-                    promise.resolve(task(promise));
+                bool good = true;
+                if (can_cancel)
+                {
+                    good = !promise.canceled();
+                    if (good)
+                        promise.resolve(task(promise));
+                }
+                else
+                {
+                    cancelable dummy;
+                    promise.resolve(task(dummy));
+                }
                 return good;
+            };
+
+        detail::pool_dispatch(delegate, context);
+
+        return promise;
+    }
+
+    //! Dispatches a job and immediately returns a future result.
+    //! @param task Function to run in a thread. Prototype is T(cancelable&)
+    //! @param promise Optional user-supplied promise object
+    //! @param context Optional configuration for the asynchronous function call
+    //! @return Future result of the async function call
+    template<typename FUNC, typename T = typename detail::result_of_t<FUNC(cancelable&)>>
+    inline future<T> dispatch(FUNC task, future<T> promise, const context& context = {})
+    {
+        bool can_cancel = context.can_cancel;
+
+        std::function<bool()> delegate = [task, promise, can_cancel]() mutable
+            {
+                bool run = !can_cancel || !promise.canceled();
+                if (run)
+                {
+                    task(promise);
+                }
+                return run;
             };
 
         detail::pool_dispatch(delegate, context);
@@ -784,9 +864,9 @@ namespace WEEJOBS_NAMESPACE
 
             _threads.push_back(std::thread([this]
                 {
-                    if (instance()._setThreadName)
+                    if (instance()._set_thread_name)
                     {
-                        instance()._setThreadName(_name.c_str());
+                        instance()._set_thread_name(_name.c_str());
                     }
                     run();
                 }
@@ -855,7 +935,7 @@ namespace WEEJOBS_NAMESPACE
     //! when it spawns them.
     inline void set_thread_name_function(std::function<void(const char*)> f)
     {
-        instance()._setThreadName = f;
+        instance()._set_thread_name = f;
     }
 
     inline detail::runtime::runtime()
@@ -881,6 +961,144 @@ namespace WEEJOBS_NAMESPACE
         for (auto& pool : _pools)
             if (pool)
                 pool->join_threads();
+    }
+
+    template<typename T>
+    template<typename FUNC, typename R>
+    inline future<R> future<T>::then_dispatch(FUNC func, const context& con)
+    {
+        // The future result of FUNC. 
+        // In this case, the continuation task will return a value that the system will use to resolve the promise.
+        future<R> continuation_promise;
+
+        // lock the continuation and set it:
+        {
+            std::lock_guard<std::mutex> lock(_shared->_continuation_mutex);
+
+            if (_shared->_continuation)
+            {
+                return {}; // only one continuation allowed
+            }
+
+            // take a weak ptr to this future's shared data. If this future goes away we'll still
+            // have access to its result.
+            std::weak_ptr<shared_t> weak_shared = _shared;
+
+            context copy_of_con = con;
+
+            _shared->_continuation = [func, copy_of_con, weak_shared, continuation_promise]() mutable
+                {
+                    auto shared = weak_shared.lock();
+
+                    // verify the parent's result is actually available (simulate available())
+                    if (shared && shared->_ev.isSet())
+                    {
+                        // copy it and dispatch it as the input to a new job:
+                        T copy_of_value = shared->_obj;
+
+                        // Once this wrapper gets created, note that we now have 2 refereces to the continuation_promise.
+                        // To prevent this from hampering cancelation, the continuation fuction is set to nullptr
+                        // immediately after being called.
+                        auto wrapper = [func, copy_of_value, continuation_promise]() mutable
+                            {
+                                continuation_promise.resolve(func(copy_of_value, continuation_promise));
+                            };
+
+                        jobs::dispatch(wrapper, copy_of_con);
+                    }
+                };
+        }
+
+        // maybe the future is already available?
+        if (available())
+        {
+            fire_continuation();
+        }
+
+        return continuation_promise;
+    }
+
+    template<typename T>
+    template<typename R>
+    inline future<R> future<T>::then_dispatch(std::function<void(const T&, future<R>&)> func, const context& con)
+    {
+        // The future we will return to the caller.
+        // Note, the user function "func" is responsible for resolving this promise.
+        future<R> continuation_promise;
+
+        // lock the continuation and set it:
+        {
+            std::lock_guard<std::mutex> lock(_shared->_continuation_mutex);
+
+            if (_shared->_continuation)
+            {
+                return {}; // only one continuation allowed
+            }
+
+            // take a weak ptr to this future's shared data. If this future goes away we'll still
+            // have access to its result.
+            std::weak_ptr<shared_t> weak_shared = _shared;
+
+            // The user task is responsible for resolving the promise.
+            // This continuation executes the user function directly instead of dispatching it
+            // to the job pool. This is because we expect the user function to use some external
+            // asynchronous mechanism to resolve the promise.
+            _shared->_continuation = [func, weak_shared, continuation_promise]() mutable
+                {
+                    auto shared = weak_shared.lock();
+                    if (shared)
+                    {
+                        func(shared->_obj, continuation_promise);
+                    }
+                };
+        }
+
+        if (available())
+        {
+            fire_continuation();
+        }
+
+        return continuation_promise;
+    }
+
+    template<typename T>
+    inline void future<T>::then_dispatch(std::function<void(const T&)> func, const context& con)
+    {
+        // lock the continuation and set it:
+        {
+            std::lock_guard<std::mutex> lock(_shared->_continuation_mutex);
+
+            if (_shared->_continuation)
+            {
+                return; // only one continuation allowed
+            }
+
+            // take a weak ptr to this future's shared data. If this future goes away we'll still
+            // have access to its result.
+            std::weak_ptr<shared_t> weak_shared = _shared;
+            auto copy_of_con = con;
+
+            _shared->_continuation = [func, weak_shared, copy_of_con]() mutable
+                {
+                    auto shared = weak_shared.lock();
+                    if (shared)
+                    {
+                        auto copy_of_value = shared->_obj;
+                        auto fire_and_forget_delegate = [func, copy_of_value]() mutable
+                            {
+                                func(copy_of_value);
+                                return true;
+                            };
+
+                        detail::pool_dispatch(fire_and_forget_delegate, copy_of_con);
+                    }
+                };
+        }
+
+        if (available())
+        {
+            fire_continuation();
+        }
     }
 
     // Use this macro ONCE in your application in a .cpp file to 

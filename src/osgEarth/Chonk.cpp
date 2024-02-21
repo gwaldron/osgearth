@@ -738,8 +738,10 @@ ChonkDrawable::ChonkDrawable(int renderBinNumber) :
 {
     setName(typeid(*this).name());
     setUseDisplayList(false);
-    setUseVertexBufferObjects(false);
     setUseVertexArrayObject(false);
+
+    // The ICO only accepts drawables for which VBOs or display lists are enabled:
+    setUseVertexBufferObjects(true);
 
     installRenderBin(this);
 }
@@ -913,6 +915,20 @@ ChonkDrawable::draw_batches(osg::State& state) const
     auto& globjects = GLObjects::get(_globjects, state);
 
     globjects.draw(state);
+}
+
+void
+ChonkDrawable::compileGLObjects(osg::RenderInfo& ri) const
+{
+    auto& globjects = GLObjects::get(_globjects, *ri.getState());
+
+    // if something changed, we need to refresh the GPU tables.
+    if (globjects._dirty)
+    {
+        std::lock_guard<std::mutex> lock(_m);
+        globjects._gpucull = _gpucull;
+        globjects.update(_batches, this, _fadeNear, _fadeFar, _birthday, _alphaCutoff, *ri.getState());
+    }
 }
 
 osg::BoundingBox

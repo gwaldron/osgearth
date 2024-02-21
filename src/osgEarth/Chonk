@@ -283,11 +283,12 @@ namespace osgEarth
 
     public:
 
-        virtual osg::BoundingBox computeBoundingBox() const override;
-        virtual osg::BoundingSphere computeBound() const override;
-        virtual void drawImplementation(osg::RenderInfo& ri) const override;
-        virtual void resizeGLObjectBuffers(unsigned) override;
-        virtual void releaseGLObjects(osg::State*) const override;
+        osg::BoundingBox computeBoundingBox() const override;
+        osg::BoundingSphere computeBound() const override;
+        void drawImplementation(osg::RenderInfo& ri) const override;
+        void compileGLObjects(osg::RenderInfo& ri) const override;
+        void resizeGLObjectBuffers(unsigned) override;
+        void releaseGLObjects(osg::State*) const override;
 
     protected:
         virtual ~ChonkDrawable();

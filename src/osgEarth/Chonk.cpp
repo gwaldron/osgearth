@@ -896,12 +896,7 @@ ChonkDrawable::update_and_cull_batches(osg::State& state) const
     auto& globjects = GLObjects::get(_globjects, state);
 
     // if something changed, we need to refresh the GPU tables.
-    if (globjects._dirty)
-    {
-        std::lock_guard<std::mutex> lock(_m);
-        globjects._gpucull = _gpucull;
-        globjects.update(_batches, this, _fadeNear, _fadeFar, _birthday, _alphaCutoff, state);
-    }
+    update_gl_objects(globjects, state);
 
     if (_gpucull)
     {
@@ -917,17 +912,19 @@ ChonkDrawable::draw_batches(osg::State& state) const
     globjects.draw(state);
 }
 
+
 void
-ChonkDrawable::compileGLObjects(osg::RenderInfo& ri) const
+ChonkDrawable::update_gl_objects(GLObjects& globjects, osg::State& state) const
 {
-    auto& globjects = GLObjects::get(_globjects, *ri.getState());
+    // this method is called to pre-compile the drawable (usually by ICO)
+    // or to update the GPU tables if something has changed.
 
     // if something changed, we need to refresh the GPU tables.
     if (globjects._dirty)
     {
         std::lock_guard<std::mutex> lock(_m);
         globjects._gpucull = _gpucull;
-        globjects.update(_batches, this, _fadeNear, _fadeFar, _birthday, _alphaCutoff, *ri.getState());
+        globjects.update(_batches, this, _fadeNear, _fadeFar, _birthday, _alphaCutoff, state);
     }
 }
 
@@ -963,6 +960,13 @@ osg::BoundingSphere
 ChonkDrawable::computeBound() const
 {
     return osg::BoundingSphere(computeBoundingBox());
+}
+
+void
+ChonkDrawable::compileGLObjects(osg::RenderInfo& ri) const
+{
+    auto& globjects = GLObjects::get(_globjects, *ri.getState());
+    update_gl_objects(globjects, *ri.getState());
 }
 
 void

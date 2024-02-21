@@ -389,6 +389,7 @@ namespace osgEarth
         mutable std::vector<osg::Vec3f> _proxy_verts;
         mutable std::vector<GLuint> _proxy_indices;
         void refreshProxy() const;
+        void update_gl_objects(GLObjects&, osg::State&) const;
         ChonkDrawable(const ChonkDrawable& rhs, const osg::CopyOp&) { }
 
         friend class ChonkRenderBin;

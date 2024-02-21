@@ -307,7 +307,8 @@ namespace osgEarth
                         if (models[tmi] == vb->getThreadingModel())
                             break;
 
-                    ImGui::TableNextColumn();
+                    ImGui::Text("OSG Threading Model: ");
+                    ImGui::SameLine();
                     if (ImGui::Button(modelNames[tmi].c_str())) {
                         auto new_tm = models[(tmi + 1) % 4];
                         vb->addUpdateOperation(new OneTimer([vb, new_tm]() {

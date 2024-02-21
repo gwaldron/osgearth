@@ -167,13 +167,6 @@ namespace osgEarth
                             ImGui::Separator();
                         }
 
-                        unsigned threads = std::max(1u, std::thread::hardware_concurrency());
-                        if (ImGuiLTable::SliderInt("Load threads", (int*)&threads, 1, 16))
-                        {
-                            options.setConcurrency(threads);
-                            _mapNode->getTerrainEngine()->dirtyTerrainOptions();
-                        }
-
                         ImGuiLTable::End();
                     }
 

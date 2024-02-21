@@ -279,8 +279,10 @@ MapNode::init()
     this->addChild(_terrainGroup);
 
     // make a group for the model layers.  This node is a PagingManager instead of a regular Group to allow PagedNode's to be used within the layers.
-    _layerNodes = new PagingManager;
-    _layerNodes->setName( "osgEarth::MapNode.layerNodes" );
+    auto pagingManager = new PagingManager();
+    pagingManager->setName("osgEarth::MapNode.layerNodes");
+    pagingManager->setMaxMergesPerFrame(options().terrain()->mergesPerFrame().value());
+    _layerNodes = pagingManager;
 
     this->addChild( _layerNodes );
 

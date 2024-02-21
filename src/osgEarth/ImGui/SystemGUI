@@ -28,6 +28,7 @@
 #include <osgEarth/Capabilities>
 #include <chrono>
 #include <list>
+#include <vector>
 
 namespace osgEarth
 {
@@ -35,6 +36,37 @@ namespace osgEarth
     {
         using namespace osgEarth;
         using namespace osgEarth::Threading;
+
+        namespace
+        {
+            const int frame_count = 300;
+            using Counts = std::vector<unsigned>;
+            using Timings = std::vector<std::chrono::nanoseconds>;
+            Timings frame_times(frame_count);
+            Counts total_jobs(frame_count);
+            Counts ico_jobs(frame_count);
+            std::chrono::time_point<std::chrono::steady_clock> t_previous;
+            int frame_num = 0;
+            char buf[256];
+            float get_counts(void* data, int index) {
+                return (float)(*(Counts*)data)[index];
+            };
+            unsigned long long get_average_timing_ns(void* data, int count, int start) {
+                Timings& t = *(Timings*)(data);
+                unsigned long long total = 0;
+                int s = start - count; if (s < 0) s += frame_count;
+                for (int i = s; i <= s + count; i++)
+                    total += t[i % frame_count].count();
+                return (total / count);
+            }
+            float get_timing_ms(void* data, int index) {
+                return 1e-6 * get_average_timing_ns(data, 4, index - 3);
+                //int index0 = (index - 1) % frame_count;
+                //auto value0 = (float)(*(Timings*)data)[index0].count();
+                //auto value1 = (float)(*(Timings*)data)[index].count();
+                //return 1e-6 * ((value0 + value1) / 2);
+            };
+        };
 
         class SystemGUI : public BaseGUI
         {
@@ -50,7 +82,7 @@ namespace osgEarth
             SystemGUI() : BaseGUI("System"),
                 _renderViewNormals(false), _renderModelNormals(false),
                 _renderWinding(false), _renderOutlines(false),
-                _showArenaControls(false){ }
+                _showArenaControls(false) {}
 
             void load(const Config& conf) override
             {
@@ -115,20 +147,34 @@ namespace osgEarth
                         }
                         ImGui::EndTable();
                     }
-                    ImGui::Separator();
-                    ImGui::Text("Total: %d", jobs::get_metrics()->totalJobs());
-                    ImGui::SameLine();
 
-                    int icojobs = 0;
-                    auto pager = view(ri)->getDatabasePager();
-                    if (pager) {
-                        auto ico = pager->getIncrementalCompileOperation();
-                        if (ico) {
-                            icojobs = ico->getToCompile().size();
+                    ImGui::Separator();
+
+                    if (ImGuiLTable::Begin("SystemGUIPlots"))
+                    {
+                        int f = frame_num++ % frame_count;
+                        auto now = std::chrono::steady_clock::now();
+                        frame_times[f] = now - t_previous;
+                        t_previous = now;
+                        auto avg_timing_ms = 1e-6 * (float)get_average_timing_ns(&frame_times, 120, f);
+                        sprintf(buf, "%.1f ms / %d fps", avg_timing_ms, (int)std::ceil(1000.0 / avg_timing_ms));
+                        ImGuiLTable::PlotLines("Frame", get_timing_ms, &frame_times, frame_count, frame_num, buf, 0.0f, 32.0f);
+
+                        total_jobs[f] = jobs::get_metrics()->totalJobs();
+                        sprintf(buf, "%d", total_jobs[f]);
+                        ImGuiLTable::PlotLines("Jobs", get_counts, &total_jobs, frame_count, frame_num, buf, 0u, 100u);
+
+                        auto pager = view(ri)->getDatabasePager();
+                        if (pager) {
+                            auto ico = pager->getIncrementalCompileOperation();
+                            if (ico) {
+                                ico_jobs[f] = ico->getToCompile().size();
+                                sprintf(buf, "%d", ico_jobs[f]);
+                                ImGuiLTable::PlotLines("ICO", get_counts, &ico_jobs, frame_count, frame_num, buf, 0u, 4u);
+                            }
                         }
+                        ImGuiLTable::End();
                     }
-                    ImGui::Text(" ICO: %d", icojobs);
-                    ImGui::Checkbox("Advanced arena controls", &_showArenaControls);
 
                     ImGui::Separator();
 

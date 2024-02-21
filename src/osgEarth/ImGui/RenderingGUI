@@ -224,54 +224,6 @@ namespace osgEarth
 
                 ImGui::Begin(name(), visible());
                 {
-                    time_point now = std::chrono::steady_clock::now();
-                    int us = std::chrono::duration_cast<std::chrono::microseconds>(now - _lastFrame).count();
-                    _lastFrame = now;
-                    constexpr int interval = 15;
-                    _times.push(us);
-                    _time_accum += us;
-                    if (_times.size() > interval) {
-                        _time_accum -= _times.front();
-                        _times.pop();
-                    }
-                    if (_frameCounter++ % interval == 0)
-                        _fps = 1000000 / (_time_accum / interval);
-
-                    if (ImGui::BeginTable("render", 2))
-                    {
-                        ImGui::TableNextColumn();
-                        ImGui::Text("FPS: %d", _fps);
-
-                        const osgViewer::ViewerBase::ThreadingModel models[] = {
-                            osgViewer::ViewerBase::SingleThreaded,
-                            osgViewer::ViewerBase::DrawThreadPerContext,
-                            osgViewer::ViewerBase::CullDrawThreadPerContext,
-                            osgViewer::ViewerBase::CullThreadPerCameraDrawThreadPerContext
-                        };
-                        const std::string modelNames[] = {
-                            "SingleThreaded",
-                            "DrawThreadPerContext",
-                            "CullDrawThreadPerContext",
-                            "CullThreadPerCameraDrawThreadPerContext"
-                        };
-
-                        auto vb = view(ri)->getViewerBase();
-                        int tmi;
-                        for (tmi = 0; tmi < 4; ++tmi)
-                            if (models[tmi] == vb->getThreadingModel())
-                                break;
-
-                        ImGui::TableNextColumn();
-                        if (ImGui::Button(modelNames[tmi].c_str())) {
-                            auto new_tm = models[(tmi + 1) % 4];
-                            vb->addUpdateOperation(new OneTimer([vb, new_tm]() {
-                                vb->setThreadingModel(new_tm);
-                                }));
-                        }
-                        ImGui::EndTable();
-                    }
-                    ImGui::Separator();
-
                     if (ImGuiLTable::Begin("LOD"))
                     {
                         float sse = _mapNode->getScreenSpaceError();
@@ -332,6 +284,34 @@ namespace osgEarth
                             else
                                 stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "0");
                         }
+                    }
+
+                    ImGui::Separator();
+
+                    const osgViewer::ViewerBase::ThreadingModel models[] = {
+                        osgViewer::ViewerBase::SingleThreaded,
+                        osgViewer::ViewerBase::DrawThreadPerContext,
+                        osgViewer::ViewerBase::CullDrawThreadPerContext,
+                        osgViewer::ViewerBase::CullThreadPerCameraDrawThreadPerContext
+                    };
+                    const std::string modelNames[] = {
+                        "SingleThreaded",
+                        "DrawThreadPerContext",
+                        "CullDrawThreadPerContext",
+                        "CullThreadPerCameraDrawThreadPerContext"
+                    };
+
+                    auto vb = view(ri)->getViewerBase();
+                    int tmi;
+                    for (tmi = 0; tmi < 4; ++tmi)
+                        if (models[tmi] == vb->getThreadingModel())
+                            break;
+
+                    ImGui::TableNextColumn();
+                    if (ImGui::Button(modelNames[tmi].c_str())) {
+                        auto new_tm = models[(tmi + 1) % 4];
+                        vb->addUpdateOperation(new OneTimer([vb, new_tm]() {
+                            vb->setThreadingModel(new_tm); }));
                     }
                 }
                 ImGui::End();

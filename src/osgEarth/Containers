@@ -567,7 +567,7 @@ namespace osgEarth { namespace Util
     template<typename T>
     struct PerThread : public std::mutex
     {
-        PerThread() : std::mutex() { }
+        PerThread() { }
 
         T& get() {
             std::lock_guard<std::mutex> lock(*this);
@@ -632,7 +632,6 @@ namespace osgEarth { namespace Util
     struct PerObjectFastMap
     {
         PerObjectFastMap() { }
-        PerObjectFastMap(const std::string& name) : _mutex(name) { }
         bool threadsafe = true;
 
         struct Functor {

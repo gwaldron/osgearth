@@ -71,13 +71,13 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         if (nv.getVisitorType() == nv.CULL_VISITOR)
         {
             bool inRange = false;
-            float priority = 0.0f;
+            //float priority = 0.0f;
 
             if (_useRange) // meters
             {
                 float range = std::max(0.0f, nv.getDistanceToViewPoint(getBound().center(), true) - getBound().radius());
                 inRange = (range >= _minRange && range <= _maxRange);
-                priority = -range * _priorityScale;
+                _lastPriority = -range * _priorityScale;
             }
             else // pixels
             {
@@ -86,7 +86,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 {
                     float pixels = cullStack->clampedPixelSize(getBound()) / cullStack->getLODScale();
                     inRange = (pixels >= _minPixels && pixels <= _maxPixels);
-                    priority = pixels * _priorityScale;
+                    _lastPriority = pixels * _priorityScale;
                 }
             }
 
@@ -94,7 +94,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             {
                 if (_load_function && _loaded.empty() && !_loadGate.exchange(true))
                 {
-                    startLoad(priority, &nv);
+                    startLoad(_lastPriority, &nv);
                 }
 
                 // traverse children
@@ -239,7 +239,7 @@ PagedNode2::startLoad(float priority, const osg::Object* host)
                     callbacks->firePreMergeNode(result.node.get());
                 }
 
-                if (preCompile)
+                if (preCompile && result.node->getBound().valid())
                 {
                     // Collect the GL objects for later compilation.
                     // Don't waste precious ICO time doing this later
@@ -284,8 +284,14 @@ PagedNode2::startLoad(float priority, const osg::Object* host)
 
     // Dispatch a chain of jobs.
     jobs::context context;
-    context.pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);
-    context.priority = [priority]() { return priority; };
+    context.pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);    
+    context.priority = [pnode_weak]() {
+        osg::ref_ptr<PagedNode2> pnode;
+        if (pnode_weak.lock(pnode))
+            return pnode->_lastPriority;
+        else
+            return -FLT_MAX;
+        };
 
     _loaded = jobs::dispatch(load_job, context);
 
@@ -317,10 +323,7 @@ bool PagedNode2::isLoaded() const
     return _merged.has_value(true);
 }
 
-PagingManager::PagingManager() :
-    _tracker(),
-    _mergesPerFrame(4u),
-    _newFrame(false)
+PagingManager::PagingManager()
 {
     setCullingActive(false);
     ADJUST_UPDATE_TRAV_COUNT(this, +1);

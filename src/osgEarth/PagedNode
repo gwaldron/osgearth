@@ -141,6 +141,10 @@ namespace osgEarth { namespace Util
             _refinePolicy = value;
         }
 
+        float getPriority() const {
+            return _lastPriority;
+        }
+
         //! Starts the content loading for this node
         void startLoad(float priority, const osg::Object* host);
 
@@ -220,6 +224,7 @@ namespace osgEarth { namespace Util
         std::atomic_int _revision = { 0 };
         bool _autoUnload = true;
         float _lastRange = FLT_MAX;
+        mutable float _lastPriority = 0.0f;
         RefinePolicy _refinePolicy = REFINE_REPLACE;
 
         bool merge(int revision);
@@ -236,6 +241,14 @@ namespace osgEarth { namespace Util
     {
     public:
         PagingManager();
+
+        //! Maximum number of nodes to merge into the scene graph per update pass
+        void setMaxMergesPerFrame(unsigned value) {
+            _mergesPerFrame = value;
+        }
+        unsigned getMaxMergesPerFrame() const {
+            return _mergesPerFrame;
+        }
 
         //! Subordinates call this to inform the paging manager they are still alive.
         void* use(PagedNode2* node, void* token)
@@ -269,8 +282,8 @@ namespace osgEarth { namespace Util
             int _revision;
         };
         std::queue<ToMerge> _mergeQueue;
-        unsigned _mergesPerFrame;
-        std::atomic_bool _newFrame;
+        unsigned _mergesPerFrame = ~0u;
+        std::atomic_bool _newFrame = { false };
 
         inline void merge(PagedNode2* host);
 

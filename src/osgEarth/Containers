@@ -632,7 +632,7 @@ namespace osgEarth { namespace Util
     struct PerObjectFastMap
     {
         PerObjectFastMap() { }
-        PerObjectFastMap(const std::string& name) : _mutex(name) { }
+        PerObjectFastMap(const std::string& name) : _mutex() { }
         bool threadsafe = true;
 
         struct Functor {

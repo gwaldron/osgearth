@@ -391,7 +391,7 @@ namespace WEEJOBS_NAMESPACE
         //! value to the continuation function. The continuation function in turn must
         //! return a value (cannot be void).
         template<typename FUNC, typename R = typename detail::result_of_t<FUNC(const T&, cancelable&)>>
-        inline future<R> then_dispatch(FUNC func, const context& con = {});
+        inline future<R> then_dispatch(FUNC func, const context& con );
 
         //! Add a continuation to this future. Instead of the functor returning a value,
         //! it will instead have the option of resolving the incoming future/promise object.
@@ -399,11 +399,11 @@ namespace WEEJOBS_NAMESPACE
         //! Note: for some reason when you use this variant you must specific the template
         //! argument, e.g. result.then<int>(auto i, promise<int> p)
         template<typename R>
-        inline future<R> then_dispatch(std::function<void(const T&, future<R>&)> func, const context& con = {});
+        inline future<R> then_dispatch(std::function<void(const T&, future<R>&)> func, const context& con);
 
         //! Add a continuation to this future. The functor only takes an input value and has no
         //! return value (fire and forget).
-        inline void then_dispatch(std::function<void(const T&)> func, const context& con = {});
+        inline void then_dispatch(std::function<void(const T&)> func, const context& con );
 
     private:
         std::shared_ptr<shared_t> _shared;

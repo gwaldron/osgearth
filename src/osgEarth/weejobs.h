@@ -213,7 +213,31 @@ namespace WEEJOBS_NAMESPACE
 #endif
     }
 
-    struct context;
+    /**
+    * Include a jobgroup in a context to group together multiple jobs.
+    * You can then call jobgroup::join() to wait for the whole group
+    * to finish.
+    */
+    struct jobgroup : public detail::semaphore
+    {
+        static std::shared_ptr<jobgroup> create()
+        {
+            return std::make_shared<jobgroup>();
+        }
+    };
+
+    /**
+    * Context object you can pass to dispatch(...) to control aspects of
+    * how the background task is run.
+    */
+    struct context
+    {
+        std::string name; // readable name of the job
+        class jobpool* pool = nullptr; // job pool to run in
+        std::function<float()> priority = {}; // priority of the job
+        std::shared_ptr<jobgroup> group = nullptr; // join group for this job
+        bool can_cancel = true; // if true, the job will cancel if its future goes out of scope
+    };
 
     /**
      * Future holds the future result of an asynchronous operation.
@@ -425,32 +449,6 @@ namespace WEEJOBS_NAMESPACE
     //! in the "promise/future" pattern, we use the same object for both,
     //! but here's an alias for clarity.
     template<class T> using promise = future<T>;
-
-    /**
-    * Include a jobgroup in a context to group together multiple jobs.
-    * You can then call jobgroup::join() to wait for the whole group
-    * to finish.
-    */
-    struct jobgroup : public detail::semaphore
-    {
-        static std::shared_ptr<jobgroup> create()
-        {
-            return std::make_shared<jobgroup>();
-        }
-    };
-
-    /**
-    * Context object you can pass to dispatch(...) to control aspects of
-    * how the background task is run.
-    */
-    struct context
-    {
-        std::string name; // readable name of the job
-        class jobpool* pool = nullptr; // job pool to run in
-        std::function<float()> priority = {}; // priority of the job
-        std::shared_ptr<jobgroup> group = nullptr; // join group for this job
-        bool can_cancel = true; // if true, the job will cancel if its future goes out of scope
-    };
 
     /**
     * A priority-sorted collection of jobs that are running or waiting

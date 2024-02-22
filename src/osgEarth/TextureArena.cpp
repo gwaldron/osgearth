@@ -211,6 +211,7 @@ Texture::compileGLObjects(osg::State& state) const
     osg::GLExtensions* ext = state.get<osg::GLExtensions>();
     auto& gc = GLObjects::get(_globjects, state);
 
+    unsigned int imageCount = osgTexture()->getNumImages();
     auto image = osgTexture()->getImage(0);
 
     // make sure we need to compile this
@@ -222,7 +223,7 @@ Texture::compileGLObjects(osg::State& state) const
             return false; // nope
     }
 
-    if (target() == GL_TEXTURE_2D)
+    if (target() == GL_TEXTURE_2D || target() == GL_TEXTURE_3D || target() == GL_TEXTURE_2D_ARRAY)
     {
         // mipmaps already created and in the image:
         unsigned numMipLevelsInMemory = image->getNumMipmapLevels();
@@ -269,13 +270,14 @@ Texture::compileGLObjects(osg::State& state) const
         numMipLevelsToAllocate -= firstMipLevel;
         auto widthToAllocate = std::max(1, image->s() >> firstMipLevel);
         auto heightToAllocate = std::max(1, image->t() >> firstMipLevel);
+        auto depthToAllocate = target() == GL_TEXTURE_2D_ARRAY ? imageCount : image->r();
 
         // Calculate the size beforehand so we can make the texture recyclable
         GLTexture::Profile profileHint(
             target(),
             numMipLevelsToAllocate,
             gpuInternalFormat,
-            widthToAllocate, heightToAllocate, image->r(),
+            widthToAllocate, heightToAllocate, depthToAllocate,
             0, // border
             minFilter,
             magFilter,
@@ -315,101 +317,106 @@ Texture::compileGLObjects(osg::State& state) const
             //<< "' name=" << gc._gltexture->name()
             //<< " handle=" << gc._gltexture->handle(state) << std::endl;
 
-        bool compressed = image->isCompressed();
-
-        glPixelStorei(GL_UNPACK_ALIGNMENT, image->getPacking());
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, image->getRowLength() >> firstMipLevel);
-
-        GLsizei mipLevelWidth = widthToAllocate;
-        GLsizei mipLevelHeight = heightToAllocate;
-
-        // Iterate over the in-memory mipmap levels in this layer
-        // and download each one
-        for (unsigned mipLevel = firstMipLevel; mipLevel < numMipLevelsInMemory; ++mipLevel)
+        for (unsigned imageIndex = 0; imageIndex < imageCount; ++imageIndex)
         {
-            // Note: getImageSizeInBytes() will return the actual data size 
-            // even if the data is compressed.
-            GLsizei mipmapBytes = image->getImageSizeInBytes() >> (2 * mipLevel);
+            image = osgTexture()->getImage(imageIndex);
 
-            if (compressed)
-            {
-                GLsizei blockSize; // unused
+            bool compressed = image->isCompressed();
 
-                osg::Texture::getCompressedSize(
-                    gpuInternalFormat,
-                    mipLevelWidth, mipLevelHeight, 1,
-                    blockSize, mipmapBytes);
-            }
-            else
-            {
-                mipmapBytes = image->getImageSizeInBytes() >> (2 * mipLevel);
-            }
+            glPixelStorei(GL_UNPACK_ALIGNMENT, image->getPacking());
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, image->getRowLength() >> firstMipLevel);
 
-            // Iterate over image slices:
-            for (int r = 0; r < image->r(); ++r)
+            GLsizei mipLevelWidth = widthToAllocate;
+            GLsizei mipLevelHeight = heightToAllocate;
+
+            // Iterate over the in-memory mipmap levels in this layer
+            // and download each one
+            for (unsigned mipLevel = firstMipLevel; mipLevel < numMipLevelsInMemory; ++mipLevel)
             {
-                if (target() == GL_TEXTURE_2D)
+                // Note: getImageSizeInBytes() will return the actual data size 
+                // even if the data is compressed.
+                GLsizei mipmapBytes = image->getImageSizeInBytes() >> (2 * mipLevel);
+            
+                if (compressed)
                 {
-                    unsigned char* dataptr = image->getMipmapData(mipLevel);
-
-                    if (compressed)
+                    GLsizei blockSize; // unused
+            
+                    osg::Texture::getCompressedSize(
+                        gpuInternalFormat,
+                        mipLevelWidth, mipLevelHeight, 1,
+                        blockSize, mipmapBytes);
+                }
+                else
+                {
+                    mipmapBytes = image->getImageSizeInBytes() >> (2 * mipLevel);
+                }
+            
+                // Iterate over image slices:
+                for (int r = 0; r < image->r(); ++r)
+                {
+                    if (target() == GL_TEXTURE_2D)
                     {
-                        gc._gltexture->compressedSubImage2D(
-                            mipLevel - firstMipLevel,
-                            0, 0, // xoffset, yoffset
-                            mipLevelWidth, mipLevelHeight,
-                            gpuInternalFormat, //image->getInternalTextureFormat(),
-                            mipmapBytes,
-                            dataptr);
+                        unsigned char* dataptr = image->getMipmapData(mipLevel);
+            
+                        if (compressed)
+                        {
+                            gc._gltexture->compressedSubImage2D(
+                                mipLevel - firstMipLevel,
+                                0, 0, // xoffset, yoffset
+                                mipLevelWidth, mipLevelHeight,
+                                gpuInternalFormat, //image->getInternalTextureFormat(),
+                                mipmapBytes,
+                                dataptr);
+                        }
+                        else
+                        {
+                            gc._gltexture->subImage2D(
+                                mipLevel - firstMipLevel,
+                                0, 0, // xoffset, yoffset
+                                mipLevelWidth, mipLevelHeight,
+                                image->getPixelFormat(),
+                                image->getDataType(),
+                                dataptr);
+                        }
                     }
-                    else
+                    else if (target() == GL_TEXTURE_2D_ARRAY || target() == GL_TEXTURE_3D)
                     {
-                        gc._gltexture->subImage2D(
-                            mipLevel - firstMipLevel,
-                            0, 0, // xoffset, yoffset
-                            mipLevelWidth, mipLevelHeight,
-                            image->getPixelFormat(),
-                            image->getDataType(),
-                            dataptr);
+                        unsigned char* dataptr =
+                            image->getMipmapData(mipLevel) +
+                            mipmapBytes * r;
+            
+                        if (compressed)
+                        {
+                            gc._gltexture->compressedSubImage3D(
+                                mipLevel - firstMipLevel,
+                                0, 0, // xoffset, yoffset
+                                imageIndex + r, // zoffset (array layer)
+                                mipLevelWidth, mipLevelHeight,
+                                1, // z size always = 1
+                                gpuInternalFormat,
+                                mipmapBytes,
+                                dataptr);
+                        }
+                        else
+                        {
+                            gc._gltexture->subImage3D(
+                                mipLevel - firstMipLevel,
+                                0, 0, // xoffset, yoffset
+                                imageIndex + r, // zoffset (array layer)
+                                mipLevelWidth, mipLevelHeight,
+                                1, // z size always = 1
+                                image->getPixelFormat(),
+                                image->getDataType(),
+                                dataptr);
+                        }
                     }
                 }
-                else if (target() == GL_TEXTURE_2D_ARRAY || target() == GL_TEXTURE_3D)
-                {
-                    unsigned char* dataptr =
-                        image->getMipmapData(mipLevel) +
-                        mipmapBytes * r;
-
-                    if (compressed)
-                    {
-                        gc._gltexture->compressedSubImage3D(
-                            mipLevel - firstMipLevel,
-                            0, 0, // xoffset, yoffset
-                            r, // zoffset (array layer)
-                            mipLevelWidth, mipLevelHeight,
-                            1, // z size always = 1
-                            gpuInternalFormat,
-                            mipmapBytes,
-                            dataptr);
-                    }
-                    else
-                    {
-                        gc._gltexture->subImage3D(
-                            mipLevel - firstMipLevel,
-                            0, 0, // xoffset, yoffset
-                            r, // zoffset (array layer)
-                            mipLevelWidth, mipLevelHeight,
-                            1, // z size always = 1
-                            image->getPixelFormat(),
-                            image->getDataType(),
-                            dataptr);
-                    }
-                }
+            
+                mipLevelWidth >>= 1;
+                if (mipLevelWidth < 1) mipLevelWidth = 1;
+                mipLevelHeight >>= 1;
+                if (mipLevelHeight < 1) mipLevelHeight = 1;
             }
-
-            mipLevelWidth >>= 1;
-            if (mipLevelWidth < 1) mipLevelWidth = 1;
-            mipLevelHeight >>= 1;
-            if (mipLevelHeight < 1) mipLevelHeight = 1;
         }
 
         // TODO:

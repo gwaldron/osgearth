@@ -51,8 +51,7 @@ namespace osgEarth
             // constructors
             Options();
             Options(const ConfigOptions& options);
-            OE_OPTION_LAYER(FeatureSource, featureSource);
-            OE_OPTION(bool, additive);
+            OE_OPTION_LAYER(FeatureSource, featureSource);            
             Config getConfig() const override;
         protected: // LayerOptions
             void mergeConfig(const Config& conf) override;
@@ -77,11 +76,7 @@ namespace osgEarth
 
         //! Whether to support lighting
         void setEnableLighting(const bool& value);
-        const bool& getEnableLighting() const;
-
-        //! Whether new LODs should be added to the scene (true) or replace existing ones (false)
-        void setAdditive(const bool& value);
-        const bool& getAdditive() const;
+        const bool& getEnableLighting() const;        
 
         //! Forces a rebuild on this FeatureModelLayer.
         void dirty();    

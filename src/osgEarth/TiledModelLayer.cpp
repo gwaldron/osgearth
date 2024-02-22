@@ -22,21 +22,23 @@ using namespace osgEarth;
 
 void TiledModelLayer::Options::fromConfig(const Config& conf)
 {
-    //minLevel().setDefault(0u);
-    //maxLevel().setDefault(99u);
-
-    //conf.get("min_level", minLevel());
-    //conf.get("max_level", maxLevel());
+    additive().setDefault(false);
+    rangeFactor().setDefault(6.0);
+    conf.get("additive", additive());
+    conf.get("range_factor", rangeFactor());
 }
 
 Config
 TiledModelLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
-    //conf.set("min_level", minLevel());
-    //conf.set("max_level", maxLevel());
+    conf.set("additive", additive());
+    conf.set("range_factor", rangeFactor());
     return conf;
 }
+
+OE_LAYER_PROPERTY_IMPL(TiledModelLayer, bool, Additive, additive);
+OE_LAYER_PROPERTY_IMPL(TiledModelLayer, float, RangeFactor, rangeFactor);
 
 osg::ref_ptr<osg::Node>
 TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) const

@@ -32,15 +32,10 @@ REGISTER_OSGEARTH_LAYER(XYZModel, XYZModelLayer);
 
 void XYZModelLayer::Options::fromConfig(const Config& conf)
 {
-    invertY().setDefault(false);
-    additive().setDefault(false);
-    rangeFactor().setDefault(6.0);
-
-    conf.get("additive", additive());
+    invertY().setDefault(false);        
     conf.get("url", url());
     conf.get("min_level", minLevel());
-    conf.get("max_level", maxLevel());
-    conf.get("range_factor", rangeFactor());
+    conf.get("max_level", maxLevel());    
     conf.get("profile", profile());
 }
 
@@ -48,12 +43,10 @@ Config
 XYZModelLayer::Options::getConfig() const
 {
     Config conf = TiledModelLayer::Options::getConfig();
-    conf.set("additive", additive());
     conf.set("url", url());
     conf.set("min_level", minLevel());
     conf.set("max_level", maxLevel());
     conf.set("profile", profile());
-    conf.set("range_factor", rangeFactor());
 
     return conf;
 }
@@ -61,7 +54,6 @@ XYZModelLayer::Options::getConfig() const
 //...........................................................................
 
 OE_LAYER_PROPERTY_IMPL(XYZModelLayer, URI, URL, url);
-OE_LAYER_PROPERTY_IMPL(XYZModelLayer, bool, Additive, additive);
 
 void
 XYZModelLayer::setMinLevel(unsigned value) {
@@ -81,18 +73,6 @@ XYZModelLayer::setMaxLevel(unsigned value) {
 unsigned
 XYZModelLayer::getMaxLevel() const {
     return options().maxLevel().get();
-}
-
-void
-XYZModelLayer::setRangeFactor(float value)
-{
-    options().rangeFactor() = value;
-}
-
-float
-XYZModelLayer::getRangeFactor() const
-{
-    return options().rangeFactor().get();
 }
 
 

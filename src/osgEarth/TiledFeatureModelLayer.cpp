@@ -47,8 +47,6 @@ TiledFeatureModelLayer::Options::Options(const ConfigOptions& options) :
 
 void TiledFeatureModelLayer::Options::fromConfig(const Config& conf)
 {
-    additive().setDefault(false);
-    conf.get("additive", additive());
     featureSource().get(conf, "features");
 }
 
@@ -62,8 +60,6 @@ TiledFeatureModelLayer::Options::getConfig() const
 
     Config gcConf = GeometryCompilerOptions::getConfig();
     conf.merge(gcConf);
-
-    conf.set("additive", additive());
 
     featureSource().set(conf, "features");
 
@@ -80,7 +76,6 @@ void TiledFeatureModelLayer::Options::mergeConfig(const Config& conf)
 
 OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, bool, AlphaBlending, alphaBlending);
 OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, bool, EnableLighting, enableLighting);
-OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, bool, Additive, additive);
 
 TiledFeatureModelLayer::~TiledFeatureModelLayer()
 {
@@ -266,6 +261,7 @@ TiledFeatureModelLayer::create()
             fmg->setOwnerName(getName());
             fmg->setFilterChain(chain.get());
             fmg->setAdditive(*_options->additive());
+            fmg->setRangeFactor(*_options->rangeFactor());
             fmg->build();
 
             _root->removeChildren(0, _root->getNumChildren());
@@ -295,20 +291,17 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
 const Profile*
 TiledFeatureModelLayer::getProfile() const
 {
-    auto fmg = osgEarth::findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
-    return fmg ? fmg->getProfile() : nullptr;
+    return getFeatureSource()->getFeatureProfile()->getTilingProfile();
 }
 
 unsigned
 TiledFeatureModelLayer::getMinLevel() const
 {
-    auto fmg = osgEarth::findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
-    return fmg ? fmg->getMinLevel() : 0u;
+    return getFeatureSource()->getFeatureProfile()->getFirstLevel();
 }
 
 unsigned
 TiledFeatureModelLayer::getMaxLevel() const
 {
-    auto fmg = osgEarth::findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
-    return fmg ? fmg->getMaxLevel() : 99u;
+    return getFeatureSource()->getFeatureProfile()->getMaxLevel();    
 }

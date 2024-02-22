@@ -37,6 +37,8 @@ namespace osgEarth
         struct OSGEARTH_EXPORT Options : public VisibleLayer::Options
         {
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(bool, additive);
+            OE_OPTION(float, rangeFactor);
             virtual Config getConfig() const;
             void fromConfig(const Config& conf);
         };
@@ -57,6 +59,14 @@ namespace osgEarth
 
         //! Maximum available LOD of the underlying tiled data source.
         virtual unsigned getMaxLevel() const = 0;
+
+        //! Whether new LODs should be added to the scene (true) or replace existing ones (false)
+        void setAdditive(const bool& value);
+        const bool& getAdditive() const;
+
+        //! The range factor.  Default is 6
+        void setRangeFactor(const float &value);
+        const float& getRangeFactor() const;
 
     protected:
         //! Subclasses must implement this to create a tile.

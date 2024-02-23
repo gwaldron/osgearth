@@ -44,8 +44,8 @@ namespace osgEarth { namespace Drivers
 
     public:
         OE_OPTION(std::string, rootPath);
-        OE_OPTION(unsigned, threads);
-        OE_OPTION(std::string, format);
+        OE_OPTION(unsigned, threads, 1u);
+        OE_OPTION(std::string, format, "osgb");
 
     public:
         virtual Config getConfig() const {
@@ -62,8 +62,6 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            threads().setDefault(1u);
-            format().setDefault("osgb");
             conf.get("path", rootPath() );
             conf.get("threads", threads() );
             conf.get("image_format", format());

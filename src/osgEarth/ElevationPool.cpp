@@ -1046,6 +1046,7 @@ AsyncElevationSampler::AsyncElevationSampler(
     _arena(nullptr)
 {
     _arena = jobs::get_pool("oe.asyncelevation");
+    _arena->set_can_steal_work(false);
     _arena->set_concurrency(numThreads > 0 ? numThreads : _arena->concurrency());
 }
 

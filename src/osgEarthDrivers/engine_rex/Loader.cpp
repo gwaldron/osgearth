@@ -168,7 +168,7 @@ Merger::traverse(osg::NodeVisitor& nv)
             else
             {
                 // not ready - requeue
-                _tempQueue.push_back(std::move(next));
+                _tempQueue.emplace_back(std::move(next));
             }
         }
         _compileQueue.swap(_tempQueue);

@@ -224,6 +224,7 @@ namespace
         if (num > 0u)
         {
             _pool = jobs::get_pool("oe.fscache");
+            _pool->set_can_steal_work(false);
             _pool->set_concurrency(osg::clampBetween(num, 1u, 8u));
         }
         else

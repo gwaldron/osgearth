@@ -236,11 +236,14 @@ Registry::Registry() :
         //getGDALMutex().disable();
     }
 
+    // disable work stealing in the jobs system?
+    if (getenv("OSGEARTH_DISABLE_WORK_STEALING"))
+    {
+        jobs::set_allow_work_stealing(false);
+    }
+
     // register the system stock Units.
     Units::registerAll( this );
-
-    // Default concurrency for async image layers
-    jobs::get_pool("oe.layer.async")->set_concurrency(4u);
 
     // register the chonk bin with OSG
     osgUtil::RenderBin::addRenderBinPrototype(

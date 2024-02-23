@@ -61,10 +61,6 @@ namespace osgEarth
             }
             float get_timing_ms(void* data, int index) {
                 return 1e-6 * get_average_timing_ns(data, 4, index - 3);
-                //int index0 = (index - 1) % frame_count;
-                //auto value0 = (float)(*(Timings*)data)[index0].count();
-                //auto value1 = (float)(*(Timings*)data)[index].count();
-                //return 1e-6 * ((value0 + value1) / 2);
             };
         };
 
@@ -125,7 +121,7 @@ namespace osgEarth
 
                         for(auto pool_metrics : all_pool_metrics)
                         {
-                            if (pool_metrics && pool_metrics->total > 0)
+                            if (pool_metrics) // && pool_metrics->total > 0)
                             {
                                 ImGui::TableNextColumn();
                                 ImGui::Text("%s", (pool_metrics->name.empty() ? "default" : pool_metrics->name.c_str()));
@@ -148,6 +144,8 @@ namespace osgEarth
                         ImGui::EndTable();
                     }
 
+                    //OE_HARD_ASSERT(jobs::get_metrics()->total() == jobs::get_metrics()->total_running() + jobs::get_metrics()->total_pending() + jobs::get_metrics()->total_postprocessing());
+
                     ImGui::Separator();
 
                     if (ImGuiLTable::Begin("SystemGUIPlots"))
@@ -160,7 +158,7 @@ namespace osgEarth
                         sprintf(buf, "%.1f ms / %d fps", avg_timing_ms, (int)std::ceil(1000.0 / avg_timing_ms));
                         ImGuiLTable::PlotLines("Frame", get_timing_ms, &frame_times, frame_count, frame_num, buf, 0.0f, 32.0f);
 
-                        total_jobs[f] = jobs::get_metrics()->totalJobs();
+                        total_jobs[f] = jobs::get_metrics()->total();
                         sprintf(buf, "%d", total_jobs[f]);
                         ImGuiLTable::PlotLines("Jobs", get_counts, &total_jobs, frame_count, frame_num, buf, 0u, 100u);
 
@@ -173,6 +171,8 @@ namespace osgEarth
                                 ImGuiLTable::PlotLines("ICO", get_counts, &ico_jobs, frame_count, frame_num, buf, 0u, 4u);
                             }
                         }
+
+                        ImGuiLTable::Text("Canceled", std::to_string(jobs::get_metrics()->total_canceled()).c_str());
                         ImGuiLTable::End();
                     }
 

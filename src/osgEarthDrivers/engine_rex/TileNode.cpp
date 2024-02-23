@@ -696,6 +696,7 @@ TileNode::createChildren()
 
             jobs::context c{ _key.str() };
             c.pool = jobs::get_pool(ARENA_CREATE_CHILD);
+            c.pool->set_can_steal_work(false);
             _createChildrenFutureResult = jobs::dispatch(createChildrenOperation, c);
         }
 
@@ -750,6 +751,7 @@ TileNode::createChildren()
                 jobs::context c;
                 c.name = childkey.str();
                 c.pool = jobs::get_pool(ARENA_CREATE_CHILD);
+                c.pool->set_can_steal_work(false);
                 _createChildResults.emplace_back(jobs::dispatch(createChildOperation, c));
             }
         }

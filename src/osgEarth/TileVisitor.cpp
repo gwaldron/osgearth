@@ -280,7 +280,7 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
     //_numTiles++;
 
     // don't let the task queue get too large...?
-    while(jobs::get_metrics()->totalJobsPending() > 1000)
+    while(jobs::get_metrics()->total_pending() > 1000)
     {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }

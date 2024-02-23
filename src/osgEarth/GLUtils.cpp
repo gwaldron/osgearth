@@ -600,52 +600,13 @@ GLObjectPool::track(osg::GraphicsContext* gc)
     _gcs[i]._gc = gc;
     _gcs[i]._operation = new GCServicingOperation(this);
     gc->add(_gcs[i]._operation.get());
-
-    //auto iter = _non_shared_objects.find(gc);
-    //if (iter == _non_shared_objects.end())
-    //{
-    //    _non_shared_objects.emplace(gc, Collection());
-
-    //    // add this object to the GC's operations thread so it
-    //    // can service it once per frame:
-    //    if (_gc_operation == nullptr)
-    //    {
-    //        _gc_operation = new FlushOperation(this);
-    //    }
-    //    gc->add(_gc_operation.get());
-    //}
 }
-
-//void
-//GLObjectPool::flush(osg::GraphicsContext* gc)
-//{
-//    // This function is invoked by the FlushOperation once per
-//    // frame with the active GC.
-//    // Here we will look for per-state objects (like VAOs and FBOs)
-//    // that may only be deleted in the same GC that created them.
-//    unsigned num = flush(_non_shared_objects[gc]);
-//    if (num > 0)
-//    {
-//        OE_DEBUG << LC << "GC " << (std::uintptr_t)gc << " flushed " << num << " shared objects" << std::endl;
-//    }
-//}
 
 void
 GLObjectPool::watch(GLObject::Ptr object)
 {
     std::unique_lock<std::mutex> lock(_mutex);
     _objects.emplace_back(object);
-
-    //if (object->shareable())
-    //{
-    //    // either this is a shareable object, or we are inserting into
-    //    // a non-shared pool and that is why state is nullptr.
-    //    _objects.insert(object);
-    //}
-    //else
-    //{
-    //    _non_shared_objects[state.getGraphicsContext()].insert(object);
-    //}
 }
 
 void
@@ -656,15 +617,6 @@ GLObjectPool::releaseGLObjects(osg::State* state)
         GLObjectPool::get(*state)->releaseAll(state->getGraphicsContext());
     }
 }
-
-//void
-//GLObjectPool::releaseAll()
-//{
-//    std::lock_guard<std::mutex> lock(_mutex);
-//    for (auto& object : _objects)
-//        object->release();
-//    _objects.clear();
-//}
 
 GLsizeiptr
 GLObjectPool::totalBytes() const
@@ -769,37 +721,6 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
     _objects.swap(keepers);
     _totalBytes = bytes;
 }
-
-#if 0
-unsigned
-GLObjectPool::flush(GLObjectPool::Collection& objects)
-{
-    std::lock_guard<std::mutex> lock(_mutex);
-
-    GLsizeiptr bytes_released = 0;
-    std::unordered_set<GLObject::Ptr> keep;
-    unsigned maxNumToRelease = std::max(1u, (unsigned)pow(4.0f, _avarice));
-    unsigned numReleased = 0u;
-
-    for (auto& object : objects)
-    {
-        if (object.use_count() == 1 && numReleased < maxNumToRelease)
-        {
-            bytes_released += object->size();
-            object->release();
-            ++numReleased;
-        }
-        else
-        {
-            keep.insert(object);
-        }
-    }
-    objects.swap(keep);
-    _totalBytes = _totalBytes - bytes_released;
-
-    return numReleased;
-}
-#endif
 
 GLObject::GLObject(GLenum ns, osg::State& state) :
     _name(0),
@@ -1969,7 +1890,6 @@ GLObjectsCompiler::requestIncrementalCompile(
         promise.resolve(node);
     }
 }
-
 
 void
 GLObjectsCompiler::compileNow(

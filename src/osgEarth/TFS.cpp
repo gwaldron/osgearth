@@ -462,9 +462,6 @@ TFSFeatureSource::createURL(const Query& query)
     {
         TileKey key = query.tileKey().get();
 
-        if ((int)key.getLOD() > getMaxLevel())
-            key = key.createAncestorKey(getMaxLevel());
-
         unsigned int tileX = key.getTileX();
         unsigned int tileY = key.getTileY();
         unsigned int level = key.getLevelOfDetail();

@@ -194,11 +194,6 @@ namespace osgEarth { namespace Util
     private:
         friend class PagingManager;
 
-        struct Loaded {
-            osg::ref_ptr<osg::Node> node;
-            osg::ref_ptr<osgUtil::StateToCompile> state;
-        };
-
         std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load_function;
 
         void* _token = nullptr;
@@ -207,8 +202,7 @@ namespace osgEarth { namespace Util
         
         std::atomic_bool _loadGate = { false };
 
-        jobs::future<Loaded> _loaded;
-        jobs::future<osg::ref_ptr<osg::Node>> _compiled;
+        jobs::future<osg::ref_ptr<osg::Node>> _loaded;
         jobs::future<bool> _merged;
 
         Mutex _mutex;

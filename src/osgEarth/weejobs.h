@@ -450,6 +450,24 @@ namespace WEEJOBS_NAMESPACE
     //! but here's an alias for clarity.
     template<class T> using promise = future<T>;
 
+    namespace detail
+    {
+        struct job
+        {
+            context ctx;
+            std::function<bool()> _delegate;
+
+            bool operator < (const job& rhs) const
+            {
+                float lp = ctx.priority ? ctx.priority() : -FLT_MAX;
+                float rp = rhs.ctx.priority ? rhs.ctx.priority() : -FLT_MAX;
+                return lp < rp;
+            }
+        };
+
+        inline bool steal_job(class jobpool* thief, detail::job& stolen);
+    }
+
     /**
     * A priority-sorted collection of jobs that are running or waiting
     * to run in a thread pool.
@@ -493,9 +511,9 @@ namespace WEEJOBS_NAMESPACE
         void set_concurrency(unsigned value)
         {
             value = std::max(value, 1u);
-            if (_targetConcurrency != value)
+            if (_target_concurrency != value)
             {
-                _targetConcurrency = value;
+                _target_concurrency = value;
                 start_threads();
             }
         }
@@ -503,13 +521,20 @@ namespace WEEJOBS_NAMESPACE
         //! Get the target concurrency (thread count) 
         unsigned concurrency() const
         {
-            return _targetConcurrency;
+            return _target_concurrency;
+        }
+
+        //! Whether this job pool is allowed to steal work from other job pools
+        //! when it is idle. Default = true.
+        void set_can_steal_work(bool value)
+        {
+            _can_steal_work = value;
         }
 
         //! Discard all queued jobs
         void cancel_all()
         {
-            std::unique_lock<std::mutex> lock(_queueMutex);
+            std::lock_guard<std::mutex> lock(_queue_mutex);
             _queue.clear();
             _metrics.canceled += _metrics.pending;
             _metrics.pending = 0;
@@ -519,7 +544,7 @@ namespace WEEJOBS_NAMESPACE
         //! Use job::dispatch to run jobs (usually no need to call this directly)
         //! @param delegate Function to execute
         //! @param context Job details
-        void dispatch_delegate(std::function<bool()>& delegate, const context& context)
+        void _dispatch_delegate(std::function<bool()>& delegate, const context& context)
         {
             // If we have a group semaphore, acquire it BEFORE queuing the job
             if (context.group)
@@ -527,33 +552,69 @@ namespace WEEJOBS_NAMESPACE
                 context.group->acquire();
             }
 
-            if (_targetConcurrency > 0)
+            if (!_done)
             {
-                std::unique_lock<std::mutex> lock(_queueMutex);
-                if (!_done)
+                if (_target_concurrency > 0)
                 {
-                    _queue.emplace_back(job{ context, delegate });
+                    std::lock_guard<std::mutex> lock(_queue_mutex);
+
+                    _queue.emplace_back(detail::job{ context, delegate });
                     _metrics.pending++;
                     _metrics.total++;
                     _block.notify_one();
                 }
-            }
-            else
-            {
-                // no threads? run synchronously.
-                delegate();
-
-                if (context.group)
+                else
                 {
-                    context.group->release();
+                    // no threads? run synchronously.
+                    delegate();
+
+                    if (context.group)
+                    {
+                        context.group->release();
+                    }
                 }
             }
+        }
+
+        inline bool _take_job(detail::job& output, bool lock)
+        {
+            if (lock)
+            {
+                std::lock_guard<std::mutex> lock(_queue_mutex);
+                return _take_job(output, false);
+            }
+            else if (!_done && !_queue.empty())
+            {
+                auto ptr = _queue.end();
+                float highest_priority = -FLT_MAX;
+                for (auto iter = _queue.begin(); iter != _queue.end(); ++iter)
+                {
+                    float priority = iter->ctx.priority != nullptr ?
+                        iter->ctx.priority() :
+                        0.0f;
+
+                    if (ptr == _queue.end() || priority > highest_priority)
+                    {
+                        ptr = iter;
+                        highest_priority = priority;
+                    }
+                }
+
+                if (ptr == _queue.end())
+                    ptr = _queue.begin();
+
+                output = std::move(*ptr);
+                _queue.erase(ptr);
+                _metrics.pending--;
+                return true;
+            }
+            return false;
         }
 
         //! Construct a new job pool.
         //! Do not call this directly - call getPool(name) instead.
         jobpool(const std::string& name, unsigned concurrency) :
-            _targetConcurrency(concurrency)
+            _target_concurrency(concurrency)
         {
             _metrics.name = name;
             _metrics.concurrency = 0;
@@ -561,90 +622,7 @@ namespace WEEJOBS_NAMESPACE
 
         //! Pulls queued jobs and runs them in whatever thread run() is called from.
         //! Runs in a loop until _done is set.
-        void run()
-        {
-            while (!_done)
-            {
-                job next;
-                bool have_next = false;
-                {
-                    std::unique_lock<std::mutex> lock(_queueMutex);
-
-                    _block.wait(lock, [this] {
-                        return _queue.empty() == false || _done == true;
-                        });
-
-                    if (!_queue.empty() && !_done)
-                    {
-                        // Find the highest priority item in the queue.
-                        // Note: We could use std::partial_sort or std::nth_element,
-                        // but benchmarking proves that a simple brute-force search
-                        // is always the fastest.
-                        // (Benchmark: https://stackoverflow.com/a/20365638/4218920)
-                        // Also note: it is indeed possible for the results of 
-                        // priority() to change during the search. We don't care.
-                        //int index = -1;
-                        std::list<job>::iterator ptr = _queue.end();
-                        float highest_priority = -FLT_MAX;
-                        for (auto iter = _queue.begin(); iter != _queue.end(); ++iter)
-                        {
-                            float priority = iter->ctx.priority != nullptr ?
-                                iter->ctx.priority() :
-                                0.0f;
-
-                            if (ptr == _queue.end() || priority > highest_priority)
-                            {
-                                ptr = iter;
-                                highest_priority = priority;
-                            }
-                        }
-
-                        if (ptr == _queue.end())
-                            ptr = _queue.begin();
-
-                        next = std::move(*ptr);
-                        have_next = true;
-
-                        _queue.erase(ptr);
-                    }
-                }
-
-                if (have_next)
-                {
-                    _metrics.running++;
-                    _metrics.pending--;
-
-                    auto t0 = std::chrono::steady_clock::now();
-
-                    bool job_executed = next._delegate();
-
-                    auto duration = std::chrono::steady_clock::now() - t0;
-
-                    if (job_executed == false)
-                    {
-                        _metrics.canceled++;
-                    }
-
-                    // release the group semaphore if necessary
-                    if (next.ctx.group != nullptr)
-                    {
-                        next.ctx.group->release();
-                    }
-
-                    _metrics.running--;
-                }
-
-                // See if we no longer need this thread because the
-                // target concurrency has been reduced
-                std::lock_guard<std::mutex> lock(_quitMutex);
-
-                if (_targetConcurrency < _metrics.concurrency)
-                {
-                    _metrics.concurrency--;
-                    break;
-                }
-            }
-        }
+        inline void run();
 
         //! Spawn all threads in this scheduler
         inline void start_threads();
@@ -655,25 +633,12 @@ namespace WEEJOBS_NAMESPACE
         //! Wait for all threads to exit (after calling stop_threads)
         inline void join_threads();
 
-
-        struct job
-        {
-            context ctx;
-            std::function<bool()> _delegate;
-
-            bool operator < (const job& rhs) const
-            {
-                float lp = ctx.priority ? ctx.priority() : -FLT_MAX;
-                float rp = rhs.ctx.priority ? rhs.ctx.priority() : -FLT_MAX;
-                return lp < rp;
-            }
-        };
-
         std::string _name; // pool name
-        std::list<job> _queue;
-        mutable std::mutex _queueMutex; // protect access to the queue
-        mutable std::mutex _quitMutex; // protects access to _done
-        std::atomic<unsigned> _targetConcurrency; // target number of concurrent threads in the pool
+        bool _can_steal_work = true;
+        std::list<detail::job> _queue;
+        mutable std::mutex _queue_mutex; // protect access to the queue
+        mutable std::mutex _quit_mutex; // protects access to _done
+        std::atomic<unsigned> _target_concurrency; // target number of concurrent threads in the pool
         std::condition_variable_any _block; // thread waiter block
         bool _done = false; // set to true when threads should exit
         std::vector<std::thread> _threads; // threads in the pool
@@ -684,46 +649,19 @@ namespace WEEJOBS_NAMESPACE
     {
     public:
         //! Total number of pending jobs across all schedulers
-        int totalJobsPending() const
-        {
-            int count = 0;
-            for (auto pool : _pools)
-                count += pool->pending;
-            return count;
-        }
+        int total_pending() const;
 
         //! Total number of running jobs across all schedulers
-        int totalJobsRunning() const
-        {
-            int count = 0;
-            for (auto pool : _pools)
-                count += pool->running;
-            return count;
-        }
+        int total_running() const;
 
         //! Total number of running jobs across all schedulers
-        int totalJobsPostprocessing() const
-        {
-            int count = 0;
-            for (auto pool : _pools)
-                count += pool->postprocessing;
-            return count;
-        }
+        int total_postprocessing() const;
 
         //! Total number of canceled jobs across all schedulers
-        int totalJobsCanceled() const
-        {
-            int count = 0;
-            for (auto pool : _pools)
-                count += pool->canceled;
-            return count;
-        }
+        int total_canceled() const;
 
         //! Total number of active jobs in the system
-        int totalJobs() const
-        {
-            return totalJobsPending() + totalJobsRunning() + totalJobsPostprocessing();
-        }
+        int total() const;
 
         //! Gets a vector of all jobpool metrics structures.
         inline const std::vector<struct jobpool::metrics_t*> all()
@@ -747,21 +685,23 @@ namespace WEEJOBS_NAMESPACE
             inline void shutdown();
 
             bool _alive = true;
-            std::mutex _mutex;
-            std::vector<std::string> _pool_names;
+            bool _stealing_allowed = true;
+            std::mutex _pools_mutex;
             std::vector<jobpool*> _pools;
             metrics _metrics;
             std::function<void(const char*)> _set_thread_name;
         };
     }
 
+    //! Access to the runtime singleton - users need not call this
     extern WEEJOBS_EXPORT detail::runtime& instance();
 
     //! Returns the job pool with the given name, creating a new one if it doesn't 
     //! already exist. If you don't specify a name, a default pool is used.
     inline jobpool* get_pool(const std::string& name = {})
     {
-        std::lock_guard<std::mutex> lock(instance()._mutex);
+        std::lock_guard<std::mutex> lock(instance()._pools_mutex);
+
         for (auto pool : instance()._pools)
         {
             if (pool->name() == name)
@@ -776,11 +716,25 @@ namespace WEEJOBS_NAMESPACE
 
     namespace detail
     {
+        // dispatches a function to the appropriate job pool.
         inline void pool_dispatch(std::function<bool()> delegate, const context& context)
         {
             auto pool = context.pool ? context.pool : get_pool({});
             if (pool)
-                pool->dispatch_delegate(delegate, context);
+            {
+                pool->_dispatch_delegate(delegate, context);
+
+                // if work stealing is enabled, wake up all pools
+                if (instance()._stealing_allowed)
+                {
+                    std::lock_guard<std::mutex> lock(instance()._pools_mutex);
+
+                    for (auto pool : instance()._pools)
+                    {
+                        pool->_block.notify_all();
+                    }
+                }
+            }
         }
     }
 
@@ -850,67 +804,6 @@ namespace WEEJOBS_NAMESPACE
         return promise;
     }
 
-
-    inline void jobpool::start_threads()
-    {
-        _done = false;
-
-        // Not enough? Start up more
-        while (_metrics.concurrency < _targetConcurrency)
-        {
-            _metrics.concurrency++;
-
-            _threads.push_back(std::thread([this]
-                {
-                    if (instance()._set_thread_name)
-                    {
-                        instance()._set_thread_name(_name.c_str());
-                    }
-                    run();
-                }
-            ));
-        }
-    }
-
-    inline void jobpool::stop_threads()
-    {
-        _done = true;
-
-        // Clear out the queue
-        {
-            std::unique_lock<std::mutex> lock(_queueMutex);
-
-            // reset any group semaphores so that JobGroup.join()
-            // will not deadlock.
-            for (auto& queuedjob : _queue)
-            {
-                if (queuedjob.ctx.group != nullptr)
-                {
-                    queuedjob.ctx.group->release();
-                }
-            }
-            _queue.clear();
-
-            // wake up all threads so they can exit
-            _block.notify_all();
-        }
-    }
-
-    //! Wait for all threads to exit (after calling stop_threads)
-    inline void jobpool::join_threads()
-    {
-        // wait for them to exit
-        for (unsigned i = 0; i < _threads.size(); ++i)
-        {
-            if (_threads[i].joinable())
-            {
-                _threads[i].join();
-            }
-        }
-
-        _threads.clear();
-    }
-
     //! Metrics for all job pool
     inline metrics* get_metrics()
     {
@@ -936,6 +829,12 @@ namespace WEEJOBS_NAMESPACE
         instance()._set_thread_name = f;
     }
 
+    //! Whether to allow jobpools to steal work from other jobpools when they are idle.
+    inline void set_allow_work_stealing(bool value)
+    {
+        instance()._stealing_allowed = value;
+    }
+
     inline detail::runtime::runtime()
     {
         //nop
@@ -959,6 +858,170 @@ namespace WEEJOBS_NAMESPACE
         for (auto& pool : _pools)
             if (pool)
                 pool->join_threads();
+    }
+
+    inline void jobpool::run()
+    {
+        while (!_done)
+        {
+            detail::job next;
+            bool have_next = false;
+            {
+                if (_can_steal_work && instance()._stealing_allowed)
+                {
+                    {
+                        std::unique_lock<std::mutex> lock(_queue_mutex);
+
+                        // work-stealing enabled: wait until any queue is non-empty
+                        _block.wait(lock, [this]() { return get_metrics()->total_pending() > 0 || _done; });
+
+                        if (!_done && !_queue.empty())
+                        {
+                            have_next = _take_job(next, false);
+                        }
+                    }
+
+                    if (!_done && !have_next)
+                    {
+                        have_next = detail::steal_job(this, next);
+                    }
+                }
+                else
+                {
+                    std::unique_lock<std::mutex> lock(_queue_mutex);
+
+                    // wait until just our local queue is non-empty
+                    _block.wait(lock, [this] { return !_queue.empty() || _done; });
+
+                    if (!_done && !_queue.empty())
+                    {
+                        have_next = _take_job(next, false);
+                    }
+                }
+            }
+
+            if (have_next)
+            {
+                _metrics.running++;
+
+                auto t0 = std::chrono::steady_clock::now();
+
+                bool job_executed = next._delegate();
+
+                auto duration = std::chrono::steady_clock::now() - t0;
+
+                if (job_executed == false)
+                {
+                    _metrics.canceled++;
+                }
+
+                // release the group semaphore if necessary
+                if (next.ctx.group != nullptr)
+                {
+                    next.ctx.group->release();
+                }
+
+                _metrics.running--;
+            }
+
+            // See if we no longer need this thread because the
+            // target concurrency has been reduced
+            std::lock_guard<std::mutex> lock(_quit_mutex);
+
+            if (_target_concurrency < _metrics.concurrency)
+            {
+                _metrics.concurrency--;
+                break;
+            }
+        }
+    }
+
+    inline void jobpool::start_threads()
+    {
+        _done = false;
+
+        // Not enough? Start up more
+        while (_metrics.concurrency < _target_concurrency)
+        {
+            _metrics.concurrency++;
+
+            _threads.push_back(std::thread([this]
+                {
+                    if (instance()._set_thread_name)
+                    {
+                        instance()._set_thread_name(_name.c_str());
+                    }
+                    run();
+                }
+            ));
+        }
+    }
+
+    inline void jobpool::stop_threads()
+    {
+        _done = true;
+
+        // Clear out the queue
+        std::lock_guard<std::mutex> lock(_queue_mutex);
+
+        // reset any group semaphores so that JobGroup.join()
+        // will not deadlock.
+        for (auto& queuedjob : _queue)
+        {
+            if (queuedjob.ctx.group != nullptr)
+            {
+                queuedjob.ctx.group->release();
+            }
+        }
+        _queue.clear();
+
+        // wake up all threads so they can exit
+        _block.notify_all();
+    }
+
+    //! Wait for all threads to exit (after calling stop_threads)
+    inline void jobpool::join_threads()
+    {
+        // wait for them to exit
+        for (unsigned i = 0; i < _threads.size(); ++i)
+        {
+            if (_threads[i].joinable())
+            {
+                _threads[i].join();
+            }
+        }
+
+        _threads.clear();
+    }
+
+    // steal a job from another jobpool's queue (other than "thief").
+    inline bool detail::steal_job(jobpool* thief, detail::job& stolen)
+    {
+        jobpool* pool_with_most_jobs = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(instance()._pools_mutex);
+
+            std::size_t max_num_jobs = 0u;
+            for (auto pool : instance()._pools)
+            {
+                if (pool != thief)
+                {
+                    auto num_jobs = pool->_queue.size();
+                    if (num_jobs > max_num_jobs)
+                    {
+                        max_num_jobs = num_jobs;
+                        pool_with_most_jobs = pool;
+                    }
+                }
+            }
+        }
+
+        if (pool_with_most_jobs)
+        {
+            return pool_with_most_jobs->_take_job(stolen, true);
+        }
+
+        return false;
     }
 
     template<typename T>
@@ -1097,6 +1160,56 @@ namespace WEEJOBS_NAMESPACE
         {
             fire_continuation();
         }
+    }
+
+    //! Total number of pending jobs across all schedulers
+    inline int metrics::total_pending() const
+    {
+        std::lock_guard<std::mutex> lock(instance()._pools_mutex);
+        int count = 0;
+        for (auto pool : _pools)
+            count += pool->pending;
+        return count;
+    }
+
+    //! Total number of running jobs across all schedulers
+    inline int metrics::total_running() const
+    {
+        std::lock_guard<std::mutex> lock(instance()._pools_mutex);
+        int count = 0;
+        for (auto pool : _pools)
+            count += pool->running;
+        return count;
+    }
+
+    //! Total number of running jobs across all schedulers
+    inline int metrics::total_postprocessing() const
+    {
+        std::lock_guard<std::mutex> lock(instance()._pools_mutex);
+        int count = 0;
+        for (auto pool : _pools)
+            count += pool->postprocessing;
+        return count;
+    }
+
+    //! Total number of canceled jobs across all schedulers
+    inline int metrics::total_canceled() const
+    {
+        std::lock_guard<std::mutex> lock(instance()._pools_mutex);
+        int count = 0;
+        for (auto pool : _pools)
+            count += pool->canceled;
+        return count;
+    }
+
+    //! Total number of active jobs in the system
+    inline int metrics::total() const
+    {
+        std::lock_guard<std::mutex> lock(instance()._pools_mutex);
+        int count = 0;
+        for (auto pool : _pools)
+            count += pool->pending + pool->running + pool->postprocessing;
+        return count;
     }
 
     // Use this macro ONCE in your application in a .cpp file to 

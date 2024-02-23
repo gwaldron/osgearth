@@ -937,7 +937,7 @@ FutureTexture2D::dispatch() const
 
     jobs::context context{
         Stringify() << key.str() << " " << _layer->getName(),
-        jobs::get_pool(ARENA_ASYNC_LAYER),
+        nullptr, // pool
         [key]() { return key.getLOD(); }
     };
 

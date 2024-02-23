@@ -106,7 +106,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             else
             {
                 // child out of range; just accept static children
-                auto paged_child = _merged.has_value(true) ? _loaded.value().node : nullptr;
+                auto paged_child = _merged.has_value(true) ? _loaded.value() : nullptr;
 
                 for (auto& child : _children)
                 {
@@ -139,7 +139,7 @@ PagedNode2::traverseChildren(osg::NodeVisitor& nv)
 {
     if (_refinePolicy == REFINE_REPLACE && _merged.has_value(true))
     {
-        _loaded.value().node->accept(nv);
+        _loaded.value()->accept(nv);
     }
     else
     {
@@ -172,13 +172,13 @@ PagedNode2::merge(int revision)
         // This is called from PagingManager.
         // We're in the UPDATE traversal.
         OE_SOFT_ASSERT_AND_RETURN(_loaded.available(), false);
-        OE_SOFT_ASSERT_AND_RETURN(_loaded.value().node.valid(), false);
-        OE_SOFT_ASSERT_AND_RETURN(_loaded.value().node->getNumParents() == 0, false);
+        OE_SOFT_ASSERT_AND_RETURN(_loaded.value().valid(), false);
+        OE_SOFT_ASSERT_AND_RETURN(_loaded.value()->getNumParents() == 0, false);
 
-        addChild(_loaded.value().node);
+        addChild(_loaded.value());
 
         if (_callbacks.valid())
-            _callbacks->firePostMergeNode(_loaded.value().node.get());
+            _callbacks->firePostMergeNode(_loaded.value().get());
 
         _merged.resolve(true);
         return true;
@@ -202,9 +202,9 @@ PagedNode2::computeBound() const
     {
         osg::BoundingSphere bs = osg::Group::computeBound();
 
-        if (!_merged.available() && _loaded.available() && _loaded.value().node.valid())
+        if (!_merged.available() && _loaded.available() && _loaded.value().valid())
         {
-            bs.expandBy(_loaded.value().node->computeBound());
+            bs.expandBy(_loaded.value()->computeBound());
         }
 
         return bs;
@@ -220,50 +220,44 @@ PagedNode2::startLoad(float priority, const osg::Object* host)
     bool preCompile = _preCompile;
     auto pnode_weak = osg::observer_ptr<PagedNode2>(this);
 
-    // Job to load the child node and collect GL state
-    auto load_job = [load_function, callbacks_weak, preCompile](jobs::cancelable& c)
-        {
-            Loaded result;
+    jobs::context context;
+    context.pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);
+    context.priority = [pnode_weak]() {
+            osg::ref_ptr<PagedNode2> pnode;
+            return pnode_weak.lock(pnode) ? pnode->_lastPriority : -FLT_MAX;
+        };
 
-            osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(&c);
+    // Job to load the child node and compile its GL objects if necessary
+    auto load_and_compile_job = [load_function, callbacks_weak, preCompile, host](auto& promise)
+        {
+            osg::ref_ptr<osg::Node> result;
+
+            osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(&promise);
 
             // invoke the loader function
-            result.node = load_function(progress.get());
+            result = load_function(progress.get());
 
             // Fire any pre-merge callbacks
-            if (result.node.valid())
+            if (result.valid())
             {
                 osg::ref_ptr<SceneGraphCallbacks> callbacks;
                 if (callbacks_weak.lock(callbacks))
                 {
-                    callbacks->firePreMergeNode(result.node.get());
+                    callbacks->firePreMergeNode(result.get());
                 }
 
-                if (preCompile && result.node->getBound().valid())
+                if (result->getBound().valid())
                 {
                     // Collect the GL objects for later compilation.
                     // Don't waste precious ICO time doing this later
                     GLObjectsCompiler compiler;
-                    result.state = compiler.collectState(result.node.get());
+                    auto state = compiler.collectState(result.get());
+                    compiler.requestIncrementalCompile(result, state.get(), host, promise);
+                    return;
                 }
             }
-
-            return result;
-        };
-
-    // Job to pre-compile GL objects for the loaded data
-    auto compile_job = [preCompile, host](const Loaded& data, auto& promise)
-        {
-            if (preCompile && data.node.valid())
-            {
-                // Compile the loaded node using the ICO if possible.
-                GLObjectsCompiler compiler;
-                compiler.requestIncrementalCompile(data.node, data.state, host, promise);
-            }
-            else
-            {
-                promise.resolve(data.node);
-            }
+                
+            promise.resolve(result);
         };
 
     // Job to request a scene graph merge.
@@ -272,42 +266,27 @@ PagedNode2::startLoad(float priority, const osg::Object* host)
     auto merge_job = [pnode_weak](const osg::ref_ptr<osg::Node>& node, auto& promise)
         {
             osg::ref_ptr<PagedNode2> pnode;
-            if (pnode_weak.lock(pnode))
+            if (pnode_weak.lock(pnode) && pnode->_loaded.available() && pnode->_pagingManager)
             {
-                if (pnode->_compiled.available() && pnode->_pagingManager)
-                {
-                    pnode->_pagingManager->merge(pnode);
-                    pnode->dirtyBound();
-                }
+                pnode->_pagingManager->merge(pnode);
+                pnode->dirtyBound();
             }
+            else promise.resolve(false);
         };
 
-    // Dispatch a chain of jobs.
-    jobs::context context;
-    context.pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);    
-    context.priority = [pnode_weak]() {
-        osg::ref_ptr<PagedNode2> pnode;
-        if (pnode_weak.lock(pnode))
-            return pnode->_lastPriority;
-        else
-            return -FLT_MAX;
-        };
+    _loaded = jobs::dispatch(load_and_compile_job, _loaded, context);
 
-    _loaded = jobs::dispatch(load_job, context);
-
-    _compiled = _loaded.then_dispatch<osg::ref_ptr<osg::Node>>(compile_job, context);
-
-    _merged = _compiled.then_dispatch<bool>(merge_job, context);
+    _merged = _loaded.then_dispatch<bool>(merge_job, context);
 }
 
 void PagedNode2::unload()
 {
     if (_merged.has_value(true))
     {
-        removeChild(_loaded.value().node);
+        removeChild(_loaded.value());
     }
 
-    _compiled.reset();
+    //_compiled.reset();
     _loaded.reset();
     _merged.reset();
 
@@ -337,7 +316,7 @@ PagingManager::~PagingManager()
 {
     if (_mergeQueue.size() > 0)
     {
-        _metrics->running.exchange(_metrics->running - _mergeQueue.size());
+        _metrics->postprocessing.exchange(_metrics->postprocessing - _mergeQueue.size());
     }
 }
 

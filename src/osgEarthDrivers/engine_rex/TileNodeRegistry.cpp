@@ -247,9 +247,9 @@ TileNodeRegistry::collectDormantTiles(
 
     unsigned count = 0u;
 
-    const auto disposeTile = [&](TileNode* tile) -> bool
+    const auto disposeTile = [&](osg::ref_ptr<TileNode>& tile) -> bool
     {
-        OE_SOFT_ASSERT_AND_RETURN(tile != nullptr, true);
+        OE_SOFT_ASSERT_AND_RETURN(tile, true);
 
         const TileKey& key = tile->getKey();
 

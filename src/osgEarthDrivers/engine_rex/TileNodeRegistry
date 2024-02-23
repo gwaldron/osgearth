@@ -37,7 +37,7 @@ namespace osgEarth { namespace REX
     public:
         using Ptr = std::shared_ptr<TileNodeRegistry>;
 
-        using Tracker = SentryTracker<TileNode*>;
+        using Tracker = SentryTracker<osg::ref_ptr<TileNode>>;
 
         struct TableEntry
         {

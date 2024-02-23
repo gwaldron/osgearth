@@ -21,6 +21,7 @@
 */
 #include "TaskProcessor"
 #include <osgEarth/Threading>
+#include <osgEarth/Notify>
 
 using namespace osgEarth;
 using namespace osgEarth::Threading;
@@ -51,7 +52,7 @@ void TaskProcessor::shutdown()
 
 void TaskProcessor::startTask(std::function<void()> f)
 {
-    auto task = [this, f](Cancelable&) {
+    auto task = [this, f]() {
         f();
         return true;
     };

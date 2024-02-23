@@ -203,7 +203,7 @@ namespace osgEarth { namespace Util
         template<typename FUNC_TYPE>
         struct Action {
             FUNC_TYPE func;
-            bool eat = true;
+            bool eat;
         };
 
         struct Push {

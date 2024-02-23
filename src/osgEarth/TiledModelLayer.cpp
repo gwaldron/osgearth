@@ -17,8 +17,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "TiledModelLayer"
+#include <osgEarth/SimplePager>
+#include <osgEarth/NodeUtils>
 
 using namespace osgEarth;
+
+
+class TiledModelLayerPager : public SimplePager
+{
+public:
+    TiledModelLayerPager(const Map* map, TiledModelLayer* layer):
+        SimplePager(map, layer->getProfile()),
+        _layer(layer)
+    {
+    }
+
+    virtual osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress) override
+    {
+        return _layer->createTile(key, progress);
+    }
+
+    osg::observer_ptr< TiledModelLayer > _layer;
+};
 
 void TiledModelLayer::Options::fromConfig(const Config& conf)
 {
@@ -79,3 +99,82 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
         return group;
     }
 }
+
+// The Node representing this layer.
+osg::Node* TiledModelLayer::getNode() const
+{
+    return _root.get();
+}
+
+// called by the map when this layer is added
+void
+TiledModelLayer::addedToMap(const Map* map)
+{
+    super::addedToMap(map);
+
+    _map = map;
+
+    _graphDirty = true;
+
+    // re-create the graph if necessary.
+    create();
+}
+
+// called by the map when this layer is removed
+void
+TiledModelLayer::removedFromMap(const Map* map)
+{
+    super::removedFromMap(map);
+
+    if (_root.valid())
+    {
+        osg::ref_ptr<TiledModelLayerPager> node = findTopMostNodeOfType<TiledModelLayerPager>(_root.get());
+        if (node.valid()) node->setDone();
+        _root->removeChildren(0, _root->getNumChildren());
+    }
+}
+
+void TiledModelLayer::dirty()
+{
+    _graphDirty = true;
+
+    // create the scene graph
+    create();
+}
+
+// post-ctor initialization
+void TiledModelLayer::init()
+{
+    super::init();
+
+    // Create the container group
+
+    _root = new osg::Group();
+
+    // Assign the layer's state set to the root node:
+    _root->setStateSet(this->getOrCreateStateSet());
+
+    // Graph needs rebuilding
+    _graphDirty = true;
+
+    // Depth sorting by default
+    getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+}
+
+void TiledModelLayer::create()
+{
+    if (_map.valid() && _graphDirty)
+    {
+        _root->removeChildren(0, _root->getNumChildren());
+
+        TiledModelLayerPager* pager = new TiledModelLayerPager(_map.get(), this);
+        pager->setAdditive(this->getAdditive());
+        pager->setRangeFactor(this->getRangeFactor());
+        pager->setMinLevel(this->getMinLevel());
+        pager->setMaxLevel(this->getMaxLevel());
+        pager->build();
+        // TODO:  NVGL
+        _root->addChild(pager);
+        _graphDirty = false;
+    }
+}   

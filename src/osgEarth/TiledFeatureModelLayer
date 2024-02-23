@@ -51,8 +51,7 @@ namespace osgEarth
             // constructors
             Options();
             Options(const ConfigOptions& options);
-            OE_OPTION_LAYER(FeatureSource, featureSource);
-            OE_OPTION(bool, additive);
+            OE_OPTION_LAYER(FeatureSource, featureSource);            
             Config getConfig() const override;
         protected: // LayerOptions
             void mergeConfig(const Config& conf) override;
@@ -79,13 +78,6 @@ namespace osgEarth
         void setEnableLighting(const bool& value);
         const bool& getEnableLighting() const;
 
-        //! Whether new LODs should be added to the scene (true) or replace existing ones (false)
-        void setAdditive(const bool& value);
-        const bool& getAdditive() const;
-
-        //! Forces a rebuild on this FeatureModelLayer.
-        void dirty();    
-
     public: // Layer
 
         // opens the layer and returns the status
@@ -93,9 +85,6 @@ namespace osgEarth
 
         // closes the layer
         Status closeImplementation() override;
-
-        // The Node representing this layer.
-        osg::Node* getNode() const override;
 
         //! Extent of the feature layer, if available (INVALID if not)
         const GeoExtent& getExtent() const override;
@@ -136,10 +125,8 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<class Session> _session;
-        osg::ref_ptr<osg::Group> _root;
-        bool _graphDirty;
-        
-        void create();
+        osg::ref_ptr<FeatureFilterChain> _filters;
+        osg::ref_ptr< FeatureSourceIndex > _featureIndex;
     };
 
 } // namespace osgEarth

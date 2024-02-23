@@ -114,6 +114,7 @@ SET(LIB_PUBLIC_HEADERS
     ColorFilter
     Common
     Composite
+    CompositeTiledModelLayer
     Config
     Containers
     Coverage
@@ -260,7 +261,6 @@ SET(LIB_PUBLIC_HEADERS
     TileHandler
     TileMesher
     TileRasterizer
-    TiledFeatureModelGraph
     TiledFeatureModelLayer
     TiledModelLayer
     TileSource
@@ -283,7 +283,6 @@ SET(LIB_PUBLIC_HEADERS
     WMS
     XmlUtils
     XYZ
-    XYZModelGraph
     XYZModelLayer
 
     ActivityMonitorTool
@@ -551,6 +550,7 @@ set(TARGET_SRC
     Color.cpp
     ColorFilter.cpp
     Composite.cpp
+    CompositeTiledModelLayer.cpp
     Compressors.cpp
     Config.cpp
     CoverageLayer.cpp
@@ -676,7 +676,6 @@ set(TARGET_SRC
     TileHandler.cpp
     TileMesher.cpp
     TileRasterizer.cpp
-    TiledFeatureModelGraph.cpp
     TiledFeatureModelLayer.cpp
     TiledModelLayer.cpp
     TileVisitor.cpp
@@ -699,7 +698,6 @@ set(TARGET_SRC
     WMS.cpp
     XmlUtils.cpp
     XYZ.cpp
-    XYZModelGraph.cpp
     XYZModelLayer.cpp
 
     ActivityMonitorTool.cpp

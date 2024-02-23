@@ -408,6 +408,13 @@ namespace osgEarth
                             }
                             if (pools.size() > 1)
                                 ImGui::Separator();
+
+                            auto recycle_attempts = glpool->recycleHits() + glpool->recycleMisses();
+                            if (recycle_attempts > 0)
+                            {
+                                float re = (float)glpool->recycleHits() / (float)recycle_attempts;
+                                ImGui::Text("Recycle Efficiency: %.0f%%", 100.0f * re);
+                            }
                         }
                     }
                 }

@@ -44,7 +44,7 @@ using namespace osgEarth;
 
 #define LC "[GLUtils] "
 
-//#define USE_RECYCLING
+#define USE_RECYCLING
 
 #define OE_DEVEL OE_DEBUG
 
@@ -525,6 +525,7 @@ namespace
     std::mutex s_pools_mutex;
     std::vector<GLObjectPool*> s_pools;
 }
+bool GLObjectPool::_enableRecycling = true;
 
 
 GLObjectPool*
@@ -544,7 +545,7 @@ std::unordered_map<int, GLObjectPool*>
 GLObjectPool::getAll()
 {
     std::unordered_map<int, GLObjectPool*> result;
-    std::unique_lock<std::mutex> lock(s_pools_mutex);
+    std::lock_guard<std::mutex> lock(s_pools_mutex);
     for (auto& pool : s_pools)
         result[pool->getContextID()] = pool;
     return result;
@@ -559,7 +560,7 @@ GLObjectPool::GLObjectPool(unsigned cxid) :
 {
     _gcs.resize(256);
 
-    std::unique_lock<std::mutex> lock(s_pools_mutex);
+    std::lock_guard<std::mutex> lock(s_pools_mutex);
     s_pools.emplace_back(this);
 
     char* value = ::getenv("OSGEARTH_GL_OBJECT_POOL_DELAY");
@@ -605,7 +606,7 @@ GLObjectPool::track(osg::GraphicsContext* gc)
 void
 GLObjectPool::watch(GLObject::Ptr object)
 {
-    std::unique_lock<std::mutex> lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     _objects.emplace_back(object);
 }
 
@@ -663,7 +664,7 @@ GLObjectPool::discardAllGLObjects()
 void
 GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
 {
-    std::unique_lock<std::mutex> lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     GLsizeiptr bytes = 0;
     GLObjectPool::Collection keepers;
@@ -688,7 +689,7 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
 void
 GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
 {
-    std::unique_lock<std::mutex> lock(_mutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     unsigned maxNumToRelease = std::max(1u, (unsigned)pow(4.0f, _avarice));
     unsigned numReleased = 0u;
@@ -1754,6 +1755,16 @@ namespace
 }
 
 std::atomic_int GLObjectsCompiler::_jobsActive;
+
+namespace
+{
+    struct StateToCompileEx : public osgUtil::StateToCompile
+    {
+        void apply(osg::StateSet& stateSet) override
+        {
+        }
+    };
+}
 
 osg::ref_ptr<osgUtil::StateToCompile>
 GLObjectsCompiler::collectState(osg::Node* node) const

@@ -572,6 +572,9 @@ namespace osgEarth
         //! construct an object pool under the given graphics context ID
         GLObjectPool(unsigned contextID);
 
+        //! Whether to support recycling of GL objects with identical properties
+        static void setEnableRecycling(bool value) { _enableRecycling = value; }
+
         //! Fetch the object pool for the graphics context represented
         //! by the state object
         static GLObjectPool* get(osg::State& state);
@@ -600,7 +603,8 @@ namespace osgEarth
 
         template<typename T>
         typename T::Ptr recycle(const GLObject::Compatible& compatible) {
-            std::unique_lock<std::mutex> lock(_mutex);
+            if (!_enableRecycling) return {};
+            std::lock_guard<std::mutex> lock(_mutex);
             typename T::Ptr result;
             for (auto& object : _objects) {
                 if (object.use_count() == 1 && compatible(object.get())) {
@@ -628,6 +632,7 @@ namespace osgEarth
         mutable std::mutex _mutex;
         Collection _objects; // objects being monitored
         GLsizeiptr _totalBytes;
+        static bool _enableRecycling;
         unsigned _hits;
         unsigned _misses;
         unsigned _avarice;

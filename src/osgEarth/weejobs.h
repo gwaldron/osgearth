@@ -546,14 +546,14 @@ namespace WEEJOBS_NAMESPACE
         //! @param context Job details
         void _dispatch_delegate(std::function<bool()>& delegate, const context& context)
         {
-            // If we have a group semaphore, acquire it BEFORE queuing the job
-            if (context.group)
-            {
-                context.group->acquire();
-            }
-
             if (!_done)
             {
+                // If we have a group semaphore, acquire it BEFORE queuing the job
+                if (context.group)
+                {
+                    context.group->acquire();
+                }
+
                 if (_target_concurrency > 0)
                 {
                     std::lock_guard<std::mutex> lock(_queue_mutex);
@@ -576,6 +576,9 @@ namespace WEEJOBS_NAMESPACE
             }
         }
 
+        //! removes the highest priority job from the queue and places it
+        //! in output. Returns true if a job was taken, false if the queue
+        //! was empty.
         inline bool _take_job(detail::job& output, bool lock)
         {
             if (lock)
@@ -633,7 +636,6 @@ namespace WEEJOBS_NAMESPACE
         //! Wait for all threads to exit (after calling stop_threads)
         inline void join_threads();
 
-        std::string _name; // pool name
         bool _can_steal_work = true;
         std::list<detail::job> _queue;
         mutable std::mutex _queue_mutex; // protect access to the queue
@@ -949,7 +951,7 @@ namespace WEEJOBS_NAMESPACE
                 {
                     if (instance()._set_thread_name)
                     {
-                        instance()._set_thread_name(_name.c_str());
+                        instance()._set_thread_name(_metrics.name.c_str());
                     }
                     run();
                 }

@@ -896,7 +896,7 @@ ImageLayer::addPostLayer(ImageLayer* layer)
 
 //...................................................................
 
-#define ARENA_ASYNC_LAYER "oe.layer.async"
+#define ARENA_ASYNC_LAYER "oe.rex.loadtile"
 //#define FUTURE_IMAGE_COLOR_PLACEHOLDER
 
 FutureTexture2D::FutureTexture2D(
@@ -937,11 +937,11 @@ FutureTexture2D::dispatch() const
 
     jobs::context context{
         Stringify() << key.str() << " " << _layer->getName(),
-        nullptr, // pool
+        jobs::get_pool(ARENA_ASYNC_LAYER), // pool
         [key]() { return key.getLOD(); }
     };
 
-    jobs::dispatch(task, context);
+    _result = jobs::dispatch(task, context);
 }
 
 void

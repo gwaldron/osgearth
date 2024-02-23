@@ -17,7 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/TiledFeatureModelLayer>
-#include <osgEarth/TiledFeatureModelGraph>
+#include <osgEarth/NetworkMonitor>
+#include <osgEarth/Registry>
 
 using namespace osgEarth;
 
@@ -47,8 +48,6 @@ TiledFeatureModelLayer::Options::Options(const ConfigOptions& options) :
 
 void TiledFeatureModelLayer::Options::fromConfig(const Config& conf)
 {
-    additive().setDefault(false);
-    conf.get("additive", additive());
     featureSource().get(conf, "features");
 }
 
@@ -62,8 +61,6 @@ TiledFeatureModelLayer::Options::getConfig() const
 
     Config gcConf = GeometryCompilerOptions::getConfig();
     conf.merge(gcConf);
-
-    conf.set("additive", additive());
 
     featureSource().set(conf, "features");
 
@@ -80,7 +77,6 @@ void TiledFeatureModelLayer::Options::mergeConfig(const Config& conf)
 
 OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, bool, AlphaBlending, alphaBlending);
 OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, bool, EnableLighting, enableLighting);
-OE_LAYER_PROPERTY_IMPL(TiledFeatureModelLayer, bool, Additive, additive);
 
 TiledFeatureModelLayer::~TiledFeatureModelLayer()
 {
@@ -91,26 +87,6 @@ void
 TiledFeatureModelLayer::init()
 {
     TiledModelLayer::init();
-
-    _root = new osg::Group();
-
-    // Assign the layer's state set to the root node:
-    _root->setStateSet(this->getOrCreateStateSet());
-
-    // Graph needs rebuilding
-    _graphDirty = true;
-
-    // Depth sorting by default
-    getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-}
-
-void TiledFeatureModelLayer::dirty()
-{
-    // feature source changed, so the graph needs rebuilding
-    _graphDirty = true;
-
-    // create the scene graph
-    create();
 }
 
 Config
@@ -159,12 +135,6 @@ TiledFeatureModelLayer::getStyleSheet() const
     return options().styleSheet().getLayer();
 }
 
-osg::Node*
-TiledFeatureModelLayer::getNode() const
-{
-    return _root.get();
-}
-
 Status
 TiledFeatureModelLayer::openImplementation()
 {
@@ -186,9 +156,9 @@ TiledFeatureModelLayer::openImplementation()
 Status
 TiledFeatureModelLayer::closeImplementation()
 {
+    super::closeImplementation();
     options().featureSource().close();
     options().styleSheet().close();
-    _graphDirty = true;
     return getStatus();
 }
 
@@ -207,7 +177,7 @@ void
 TiledFeatureModelLayer::addedToMap(const Map* map)
 {
     OE_TEST << LC << "addedToMap" << std::endl;
-    TiledModelLayer::addedToMap(map);
+    
 
     options().featureSource().addedToMap(map);
     options().styleSheet().addedToMap(map);
@@ -222,29 +192,36 @@ TiledFeatureModelLayer::addedToMap(const Map* map)
             getFeatureSource(),
             getReadOptions());
 
-        // re-create the graph if necessary.
-        create();
+        // connect the session to the features:
+        _session->setFeatureSource(getFeatureSource());
+        _session->setResourceCache(new ResourceCache());
+
+        FeatureSourceIndexOptions indexOptions;
+        indexOptions.enabled() = true;
+
+        _featureIndex = new FeatureSourceIndex(
+            getFeatureSource(),
+            Registry::objectIndex(),
+            indexOptions);
     }
+
+    _filters = FeatureFilterChain::create(options().filters(), getReadOptions());
+
+    TiledModelLayer::addedToMap(map);    
 }
 
 void
 TiledFeatureModelLayer::removedFromMap(const Map* map)
 {
-    TiledModelLayer::removedFromMap(map);
+    super::removedFromMap(map);
 
     options().featureSource().removedFromMap(map);
     options().styleSheet().removedFromMap(map);
 
-    if (_root.valid())
-    {
-        osg::ref_ptr<TiledFeatureModelGraph> tfmg = findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
-        if (tfmg.valid()) tfmg->setDone();
-        _root->removeChildren(0, _root->getNumChildren());
-    }
-
     _session = 0L;
 }
 
+#if 0
 void
 TiledFeatureModelLayer::create()
 {
@@ -266,6 +243,7 @@ TiledFeatureModelLayer::create()
             fmg->setOwnerName(getName());
             fmg->setFilterChain(chain.get());
             fmg->setAdditive(*_options->additive());
+            fmg->setRangeFactor(*_options->rangeFactor());
             fmg->build();
 
             _root->removeChildren(0, _root->getNumChildren());
@@ -279,36 +257,179 @@ TiledFeatureModelLayer::create()
         }
     }
 }
+#endif
 
 osg::ref_ptr<osg::Node>
 TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    osg::ref_ptr<osg::Node> result;
-    auto fmg = osgEarth::findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
-    if (fmg)
+    if (progress && progress->isCanceled())
+        return nullptr;
+
+    NetworkMonitor::ScopedRequestLayer layerRequest(getName());
+    // Get features for this key
+    Query query;
+    query.tileKey() = key;
+
+    GeoExtent dataExtent = key.getExtent();
+
+    // set up for feature indexing if appropriate:
+    osg::ref_ptr< FeatureSourceIndexNode > index = 0L;
+
+    if (_featureIndex.valid())
     {
-        result = fmg->createNode(key, progress);
+        index = new FeatureSourceIndexNode(_featureIndex.get());
     }
-    return result;
+
+    FilterContext fc(_session.get(), new FeatureProfile(dataExtent), dataExtent, index);
+
+    GeometryCompilerOptions options;
+    options.instancing() = true;
+    //options.mergeGeometry() = true;
+    GeometryCompiler gc(options);
+
+    GeomFeatureNodeFactory factory(options);
+
+    if (progress && progress->isCanceled())
+        return nullptr;
+
+    osg::ref_ptr< FeatureCursor > cursor = getFeatureSource()->createFeatureCursor(
+        query,
+        _filters.get(),
+        &fc,
+        progress);
+
+    osg::ref_ptr<osg::Node> node = new osg::Group;
+    if (cursor)
+    {
+        if (progress && progress->isCanceled())
+            return nullptr;
+
+        FeatureList features;
+        cursor->fill(features);
+
+        if (getStyleSheet()->getSelectors().size() > 0)
+        {
+            osg::Group* group = new osg::Group;
+
+            for (StyleSelectors::const_iterator i = getStyleSheet()->getSelectors().begin();
+                i != getStyleSheet()->getSelectors().end();
+                ++i)
+            {
+                typedef std::map< std::string, FeatureList > StyleToFeaturesMap;
+                StyleToFeaturesMap styleToFeatures;
+
+                // pull the selected style...
+                const StyleSelector& sel = i->second;
+
+                if (sel.styleExpression().isSet())
+                {
+                    // establish the working bounds and a context:
+                    StringExpression styleExprCopy(sel.styleExpression().get());
+                    for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
+                    {
+                        Feature* feature = itr->get();
+
+                        feature->set("level", (long long)key.getLevelOfDetail());
+
+                        const std::string& styleString = feature->eval(styleExprCopy, &fc);
+                        if (!styleString.empty() && styleString != "null")
+                        {
+                            styleToFeatures[styleString].push_back(feature);
+                        }
+
+                        if (progress && progress->isCanceled())
+                            return nullptr;
+                    }
+                }
+
+                std::unordered_map<std::string, Style> literal_styles;
+
+                for (StyleToFeaturesMap::iterator itr = styleToFeatures.begin(); itr != styleToFeatures.end(); ++itr)
+                {
+                    const std::string& styleString = itr->first;
+                    Style* style = nullptr;
+
+                    if (styleString.length() > 0 && styleString[0] == '{')
+                    {
+                        Config conf("style", styleString);
+                        conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
+                        conf.set("type", "text/css");
+                        Style& literal_style = literal_styles[conf.toJSON()];
+                        if (literal_style.empty())
+                            literal_style = Style(conf);
+                        style = &literal_style;
+                    }
+                    else
+                    {
+                        style = getStyleSheet()->getStyle(styleString);
+                    }
+
+                    if (style)
+                    {
+                        osg::Group* styleGroup = factory.getOrCreateStyleGroup(*style, _session.get());
+                        osg::ref_ptr< osg::Node>  styleNode;
+                        osg::ref_ptr< FeatureListCursor> cursor = new FeatureListCursor(itr->second);
+                        Query query;
+                        factory.createOrUpdateNode(cursor.get(), *style, fc, styleNode, query);
+                        if (styleNode.valid())
+                        {
+                            styleGroup->addChild(styleNode);
+                            if (!group->containsNode(styleGroup))
+                            {
+                                group->addChild(styleGroup);
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            node = group;
+        }
+        else if (getStyleSheet()->getDefaultStyle())
+        {
+            osg::ref_ptr< FeatureListCursor> cursor = new FeatureListCursor(features);
+            osg::ref_ptr< osg::Group > group = new osg::Group;
+            osg::ref_ptr< osg::Group > styleGroup = factory.getOrCreateStyleGroup(*getStyleSheet()->getDefaultStyle(), _session.get());
+            osg::ref_ptr< osg::Node>  styleNode;
+            factory.createOrUpdateNode(cursor.get(), *getStyleSheet()->getDefaultStyle(), fc, styleNode, query);
+            if (styleNode.valid())
+            {
+                group->addChild(styleGroup);
+                styleGroup->addChild(styleNode);
+                node = group;
+            }
+        }
+    }
+
+    if (!node->getBound().valid())
+    {
+        return nullptr;
+    }
+
+    if (index.valid())
+    {
+        index->addChild(node);
+        return index;
+    }
+
+    return node;
 }
 
 const Profile*
 TiledFeatureModelLayer::getProfile() const
 {
-    auto fmg = osgEarth::findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
-    return fmg ? fmg->getProfile() : nullptr;
+    return getFeatureSource()->getFeatureProfile()->getTilingProfile();
 }
 
 unsigned
 TiledFeatureModelLayer::getMinLevel() const
 {
-    auto fmg = osgEarth::findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
-    return fmg ? fmg->getMinLevel() : 0u;
+    return getFeatureSource()->getFeatureProfile()->getFirstLevel();
 }
 
 unsigned
 TiledFeatureModelLayer::getMaxLevel() const
 {
-    auto fmg = osgEarth::findTopMostNodeOfType<TiledFeatureModelGraph>(_root.get());
-    return fmg ? fmg->getMaxLevel() : 99u;
+    return getFeatureSource()->getFeatureProfile()->getMaxLevel();    
 }

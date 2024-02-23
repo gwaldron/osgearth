@@ -37,6 +37,8 @@ namespace osgEarth
         struct OSGEARTH_EXPORT Options : public VisibleLayer::Options
         {
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            OE_OPTION(bool, additive);
+            OE_OPTION(float, rangeFactor);
             virtual Config getConfig() const;
             void fromConfig(const Config& conf);
         };
@@ -58,10 +60,41 @@ namespace osgEarth
         //! Maximum available LOD of the underlying tiled data source.
         virtual unsigned getMaxLevel() const = 0;
 
+        //! Whether new LODs should be added to the scene (true) or replace existing ones (false)
+        void setAdditive(const bool& value);
+        const bool& getAdditive() const;
+
+        //! The range factor.  Default is 6
+        void setRangeFactor(const float &value);
+        const float& getRangeFactor() const;
+
+        //! Forces a rebuild on this layer.
+        void dirty();
+
+    public: // Layer
+
+        // The Node representing this layer.
+        osg::Node* getNode() const override;
+
+        // called by the map when this layer is added
+        void addedToMap(const Map*) override;
+
+        // called by the map when this layer is removed
+        void removedFromMap(const Map*) override;
+
+        // post-ctor initialization
+        void init() override;
+
     protected:
         //! Subclasses must implement this to create a tile.
         //! @param key The tile key, in the underlying tiled data source's profile.
         //! @param progress A progress callback that can be checked for user cancellation.
         virtual osg::ref_ptr<osg::Node> createTileImplementation(const TileKey& key, ProgressCallback* progress) const = 0;
+
+    private:
+        osg::observer_ptr< const Map > _map;
+        osg::ref_ptr< osg::Group > _root;
+        bool _graphDirty;
+        void create();
     };
 }

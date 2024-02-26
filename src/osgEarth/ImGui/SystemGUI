@@ -103,6 +103,10 @@ namespace osgEarth
                     ImGui::SameLine();
                     ImGui::Text(" Total: %.1lf MB", (double)pb / 1048576.0);
 
+                    auto& pa = Util::Memory::allocator();
+                    float pa_eff = (float)pa.recycles / (float)(pa.news + pa.recycles);
+                    ImGui::TextWrapped("Mempool blocks %d allocs %d recycles %d efficiency %.0f%%", pa.blocks.size(), pa.news, pa.recycles, 100.0f * pa_eff);
+
                     ImGui::Separator();
                     auto flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg;
                     if (ImGui::BeginTable("thread pools", 6, flags))
@@ -144,8 +148,6 @@ namespace osgEarth
                         ImGui::EndTable();
                     }
 
-                    //OE_HARD_ASSERT(jobs::get_metrics()->total() == jobs::get_metrics()->total_running() + jobs::get_metrics()->total_pending() + jobs::get_metrics()->total_postprocessing());
-
                     ImGui::Separator();
 
                     if (ImGuiLTable::Begin("SystemGUIPlots"))
@@ -172,7 +174,7 @@ namespace osgEarth
                             }
                         }
 
-                        ImGuiLTable::Text("Canceled", std::to_string(jobs::get_metrics()->total_canceled()).c_str());
+                        ImGuiLTable::Text("Canceled:", std::to_string(jobs::get_metrics()->total_canceled()).c_str());
                         ImGuiLTable::End();
                     }
 

@@ -19,15 +19,44 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
-#ifndef OSGEARTH_MEMORY_H
-#define OSGEARTH_MEMORY_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <cstdint>
+#include <cstdlib>
+#include <new>
+#include <mutex>
+#include <unordered_map>
+#include <limits>
+#include <iostream>
 
 namespace osgEarth { namespace Util
 {
+    struct AllocatorData
+    {
+        std::mutex mutex;
+        std::size_t max_freelist_size = 64;
+        std::size_t news = 0;
+        std::size_t recycles = 0;
+
+        struct Block
+        {
+            std::size_t size;
+            std::list<void*> freelist;
+        };
+        std::vector<Block> blocks;
+
+        Block& get_or_create_block(std::size_t size)
+        {
+            for (auto& block : blocks) {
+                if (block.size == size)
+                    return block;
+            }
+            blocks.emplace_back(Block{ size });
+            return blocks.back();
+        }
+    };
+
     class OSGEARTH_EXPORT Memory
     {
     public:
@@ -43,11 +72,65 @@ namespace osgEarth { namespace Util
         /** Maximum bytes allocated privately to thie process (peak pagefile usage) */
         static std::int64_t getProcessPeakPrivateUsage();
 
+        static AllocatorData& allocator();
+
     private:
         // Not creatable.
         Memory() { }
     };
+
+    template<typename T>
+    struct PooledAllocator // : public PooledAllocatorBase
+    {
+        using value_type = T;
+
+        PooledAllocator() = default;
+
+        template<class U>
+        constexpr PooledAllocator(const PooledAllocator<U>& rhs) noexcept { }
+
+        T* allocate(std::size_t n)
+        {
+            if (n > std::numeric_limits<std::size_t>::max() / sizeof(T))
+                throw std::bad_array_new_length();
+
+            std::lock_guard<std::mutex> lock(Memory::allocator().mutex);
+
+            auto bytes = n * sizeof(T);
+            auto& block = Memory::allocator().get_or_create_block(bytes);
+            
+            if (block.freelist.empty())
+            {
+                if (auto ptr = static_cast<T*>(std::malloc(bytes)))
+                {
+                    ++Memory::allocator().news;
+                    return ptr;
+                }
+                throw std::bad_alloc();
+            }
+            else
+            {
+                T* ptr = static_cast<T*>(block.freelist.front());
+                block.freelist.pop_front();
+                ++Memory::allocator().recycles;
+                return ptr;
+            }
+        }
+
+        void deallocate(T* ptr, std::size_t n) noexcept
+        {
+            std::lock_guard<std::mutex> lock(Memory::allocator().mutex);
+
+            auto& block = Memory::allocator().get_or_create_block(n * sizeof(T));
+            if (block.freelist.size() >= Memory::allocator().max_freelist_size)
+            {
+                std::free(ptr);
+            }
+            else
+            {
+                block.freelist.push_back(ptr);
+            }
+        }
+    };
 } }
 
-
-#endif // OSGEARTH_MEMORY_H

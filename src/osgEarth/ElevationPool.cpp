@@ -33,6 +33,7 @@ using namespace osgEarth;
 
 #define LC "[ElevationPool] "
 
+
 ElevationPool::StrongLRU::StrongLRU(unsigned maxSize) :
     _maxSize(maxSize)
 {
@@ -303,7 +304,7 @@ ElevationPool::getOrCreateRaster(
             false,      // no border
             true);      // initialize to HAE (0.0) heights
 
-        std::vector<float> resolutions;
+        Resolutions resolutions;
         resolutions.assign(_tileSize*_tileSize, FLT_MAX);
 
         TileKey keyToUse;

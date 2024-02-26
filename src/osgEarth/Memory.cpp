@@ -173,3 +173,12 @@ Memory::getProcessPeakPrivateUsage()
     return (std::int64_t)0L;
 #endif
 }
+
+AllocatorData&
+Memory::allocator()
+{
+    static AllocatorData s_allocator;
+    return s_allocator;
+}
+
+

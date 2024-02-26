@@ -60,11 +60,11 @@ osgEarth::createEmptyNormalMapTexture()
 ElevationTexture::ElevationTexture(
     const TileKey& key,
     const GeoHeightField& in_hf,
-    const std::vector<float>& resolutions) :
+    const Resolutions& resolutions) :
 
     _tilekey(key),
     _extent(in_hf.getExtent()),
-    _resolutions(std::move(resolutions))
+    _resolutions(resolutions)
 {
     setName(key.str() + ":elevation");
 

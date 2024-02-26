@@ -24,6 +24,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
 #include <osgEarth/Math>
+#include <osgEarth/Memory>
 #include <osg/Texture2D>
 
 namespace osgEarth
@@ -52,6 +53,8 @@ namespace osgEarth
         Distance _e, _r;
     };
 
+    using Resolutions = std::vector<float, Util::PooledAllocator<float>>;
+
     /**
      * Elevation grid as a texture with in optional associated normal map.
      */
@@ -61,7 +64,7 @@ namespace osgEarth
         ElevationTexture(
             const TileKey& key,
             const GeoHeightField& hf,
-            const std::vector<float>& resolutions);
+            const Resolutions& resolutions);
 
         virtual ~ElevationTexture();
 
@@ -96,7 +99,7 @@ namespace osgEarth
         const ImageUtils::PixelReader& reader() const { return _read; }
 
         //! Matching list of sample resolutions
-        const std::vector<float>& getResolutions() const { return _resolutions; }
+        const Resolutions& getResolutions() const { return _resolutions; }
 
         //! Get the resolution at s,t
         inline float getResolution(int s, int t) const {
@@ -126,7 +129,7 @@ namespace osgEarth
         ImageUtils::PixelReader _readNormal;
         osg::ref_ptr<osg::Texture2D> _normalTex;
         osg::ref_ptr<const osg::HeightField> _heightField;
-        std::vector<float> _resolutions;
+        Resolutions _resolutions;
         osg::ref_ptr<osg::Image> _ruggedness;
         ImageUtils::PixelReader _readRuggedness;
         std::mutex _mutex;

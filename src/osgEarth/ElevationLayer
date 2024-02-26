@@ -21,6 +21,7 @@
 #define OSGEARTH_ELEVATION_TERRAIN_LAYER_H 1
 
 #include <osgEarth/TileLayer>
+#include <osgEarth/Elevation>
 #include <osg/MixinVector>
 
 namespace osgEarth
@@ -169,7 +170,7 @@ namespace osgEarth
          */
         bool populateHeightField(
             osg::HeightField*      hf,
-            std::vector<float>*    resolutions,
+            Resolutions*           resolutions,
             const TileKey&         key,
             const Profile*         haeProfile,
             RasterInterpolation    interpolation,

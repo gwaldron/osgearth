@@ -678,7 +678,7 @@ namespace
 bool
 ElevationLayerVector::populateHeightField(
     osg::HeightField*   hf,
-    std::vector<float>* resolutions,
+    Resolutions* resolutions,
     const TileKey&      key,
     const Profile*      haeProfile,
     RasterInterpolation interpolation,

@@ -154,7 +154,7 @@ namespace osgEarth
 
             void draw(osg::RenderInfo& ri) override
             {
-                if (!findNodeOrHide(_mapNode, ri))
+                if (!isVisible() || !findNodeOrHide(_mapNode, ri))
                     return;
 
                 if (ImGui::Begin(name(), visible()))

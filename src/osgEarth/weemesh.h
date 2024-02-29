@@ -471,7 +471,7 @@ namespace weemesh
             // The working set of triangles which we will add to if we have
             // to split triangles. Any triangle only needs to be split once,
             // even if it gets intersected multiple times. That is because each
-            // split generates new traigles, and discards the original, and further
+            // split generates new triangles, and discards the original, and further
             // splits will just happen on the new triangles later. (That's why
             // every split operation is followed by a "continue" to short-circuit
             // to loop)
@@ -753,6 +753,47 @@ namespace weemesh
             if (u < 0.0) return e1;
             else if (u > 1.0) return e2;
             else return e1 + qp * u;
+        }
+
+        bool update_existing_edge(const segment_t& seg, int marker)
+        {
+            // search for possible intersecting triangles:
+            vert_t::value_type a_min[2];
+            vert_t::value_type a_max[2];
+            a_min[0] = std::min(seg.first.x(), seg.second.x());
+            a_min[1] = std::min(seg.first.y(), seg.second.y());
+            a_max[0] = std::max(seg.first.x(), seg.second.x());
+            a_max[1] = std::max(seg.first.y(), seg.second.y());
+            std::vector<UID> uids;
+
+            _spatial_index.Search(
+                a_min, a_max, 
+                [&uids](const UID& u) {
+                    uids.push_back(u);
+                    return true;
+                });
+            
+            vert_t::value_type E = EPSILON; // E = 1e-3;
+            std::list<UID> uid_list;
+            std::copy(uids.begin(), uids.end(), std::back_inserter(uid_list));
+            for (auto uid : uid_list)
+            {
+                triangle_t& tri = _triangles[uid];
+
+                // check if a triangle contains those verts and update their markers
+                if (tri.contains_2d(seg.first) && tri.contains_2d(seg.second))
+                {
+                    vert_table_t::iterator i0 = _vert_lut.find(seg.first);
+                    if (i0 != _vert_lut.end())
+                        _markers[i0->second] |= marker;
+                    vert_table_t::iterator i1 = _vert_lut.find(seg.first);
+                    if (i1 != _vert_lut.end())
+                        _markers[i1->second] |= marker;
+                    // assume no further "close by" verts exist and exit after a first match
+                    return true;
+                }
+            }
+            return false;
         }
     };
 

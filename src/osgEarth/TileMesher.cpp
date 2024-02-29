@@ -556,7 +556,9 @@ TileMesher::createMeshWithConstraints(
                                 (p0.y >= ymin || p1.y >= ymin) &&
                                 (p0.y <= ymax || p1.y <= ymax))
                             {
-                                mesh.insert(weemesh::segment_t(p0, p1), marker);
+                                weemesh::segment_t seg(p0, p1);
+                                if(!mesh.update_existing_edge(seg,marker))
+                                    mesh.insert(seg, marker);
                             }
                         }
                     }

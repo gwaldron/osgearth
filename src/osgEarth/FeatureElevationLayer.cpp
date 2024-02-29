@@ -106,6 +106,10 @@ FeatureElevationLayer::addedToMap(const Map* map)
 
     _extent = features->getFeatureProfile()->getExtent();
 
+    setProfile(
+        map->getProfile() != nullptr ? map->getProfile() :
+        Profile::create(Profile::GLOBAL_GEODETIC));
+
 #if 0
     // Add the bounds of the features
     DataExtent de(_extent, getMinLevel(), getMaxDataLevel());
@@ -129,10 +133,6 @@ FeatureElevationLayer::addedToMap(const Map* map)
     }
     setDataExtents(dataExtents);
 #endif
-
-    setProfile(
-        map->getProfile() != nullptr ? map->getProfile() :
-        Profile::create(Profile::GLOBAL_GEODETIC));
 }
 
 void

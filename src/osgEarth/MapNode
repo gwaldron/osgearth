@@ -81,7 +81,7 @@ namespace osgEarth
 
     public: // static loaders
 
-        //! Loads a MapNode form a ".earth" file in the arguemnts list
+        //! Loads a MapNode form a ".earth" file in the arguments list
         static MapNode* load(class osg::ArgumentParser& arguments);
 
         //! Loads a MapNode from a ".earth" file in the arguments list

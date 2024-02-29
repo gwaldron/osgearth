@@ -67,7 +67,7 @@ namespace osgEarth { namespace Util
     public:
         /**
          * Loads a map file and processes all the built-in example command line 
-         * arguemnts and XML externals. Disables the Controls library.
+         * arguments and XML externals. Disables the Controls library.
          */
         osg::ref_ptr<osg::Node> loadWithoutControls(
             osg::ArgumentParser&   args,
@@ -75,7 +75,7 @@ namespace osgEarth { namespace Util
 
         /**
          * Loads a map file and processes all the built-in example command line
-         * arguemnts and XML externals.
+         * arguments and XML externals.
          */
         osg::ref_ptr<osg::Node> load(
             osg::ArgumentParser&   args,

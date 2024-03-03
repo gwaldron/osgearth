@@ -31,6 +31,7 @@ namespace osgEarth
     namespace GeometryUtils
     {
         extern OSGEARTH_EXPORT std::string geometryToWKT( const Geometry* geometry );
+        extern OSGEARTH_EXPORT std::string geometryToIsoWKT( const Geometry* geometry );
         extern OSGEARTH_EXPORT Geometry*   geometryFromWKT( const std::string& wkt, bool rewindPolygons = true);
 
         extern OSGEARTH_EXPORT std::string geometryToGeoJSON( const Geometry* geometry );

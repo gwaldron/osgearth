@@ -43,6 +43,24 @@ osgEarth::GeometryUtils::geometryToWKT( const Geometry* geometry )
     return result;
 }
 
+std::string
+osgEarth::GeometryUtils::geometryToIsoWKT( const Geometry* geometry )
+{
+    OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
+    std::string result;
+    if (g)
+    {
+        char* buf;   
+        if (OGR_G_ExportToIsoWkt( g, &buf ) == OGRERR_NONE)
+        {
+            result = std::string(buf);
+            OGRFree( buf );
+        }
+        OGR_G_DestroyGeometry( g );
+    }
+    return result;
+}
+
 std::string 
 osgEarth::GeometryUtils::geometryToGeoJSON( const Geometry* geometry )
 {

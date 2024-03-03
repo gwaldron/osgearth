@@ -274,7 +274,7 @@ OgrUtils::encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, 
     {
         if (part_type == wkbNone)
         {
-            for (int v = geometry->size() - 1; v >= 0; v--)
+            for (int v = 0; v < geometry->size(); v++)
             {
                 osg::Vec3d p = (*geometry)[v];
                 OGR_G_AddPoint(shape_handle, p.x(), p.y(), p.z());
@@ -282,7 +282,7 @@ OgrUtils::encodeShape( const Geometry* geometry, OGRwkbGeometryType shape_type, 
         }
         else if (part_type == wkbPoint)
         {
-            for (int v = geometry->size() - 1; v >= 0; v--)
+            for (int v = 0; v < geometry->size(); v++)
             {
                 osg::Vec3d p = (*geometry)[v];
                 OGRGeometryH part_handle = OGR_G_CreateGeometry(part_type);

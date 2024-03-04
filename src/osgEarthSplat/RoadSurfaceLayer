@@ -98,7 +98,7 @@ namespace osgEarth { namespace Splat
         mutable Gate<TileKey> _keygate;
         using FeatureListCache = LRUCache<TileKey, FeatureList>;
         mutable std::unique_ptr<FeatureListCache> _lru;
-        osg::ref_ptr<FeatureFilterChain> _filterChain;
+        FeatureFilterChain _filterChain;
 
         void getFeatures(
             FeatureSource* featureSource,

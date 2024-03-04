@@ -114,7 +114,7 @@ ImageToFeatureSource::removedFromMap(const Map* map)
 }
 
 FeatureCursor*
-ImageToFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+ImageToFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     TileKey key = *query.tileKey();
 

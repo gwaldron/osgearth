@@ -55,19 +55,19 @@ namespace osgEarth { namespace Splat
 
     public: // FeatureSource
 
-        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);
+        FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const;
 
     protected: // Layer
 
-        virtual void init();
+        void init() override;
 
-        virtual Status openImplementation();
+        Status openImplementation() override;
 
-        virtual Status closeImplementation();
+        Status closeImplementation() override;
 
-        virtual void addedToMap(const Map*);
+        void addedToMap(const Map*) override;
 
-        virtual void removedFromMap(const Map*);
+        void removedFromMap(const Map*) override;
         
     private:
         GroundCoverFeatureGenerator _gen;

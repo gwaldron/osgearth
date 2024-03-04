@@ -84,11 +84,8 @@ namespace osgEarth
         //! Geospatial extent of this layer's data, if known.
         const GeoExtent& getExtent() const override;
 
-        //! Visibility toggle from VisibleLayer
-        //void setVisible(bool value) override;
-
         //! Feature filters to use when querying the feature source, if applicable.
-        FeatureFilterChain* getFilters() const { return _filterchain.get(); }
+        FeatureFilterChain& getFilters() { return _filterChain; }
 
         //! Return a constraint object for a given tile key.
         //! @param key The tile key
@@ -119,7 +116,7 @@ namespace osgEarth
 
         void create();
 
-        osg::ref_ptr<FeatureFilterChain> _filterchain;
+        FeatureFilterChain _filterChain;
 
         void getFeatureConstraint(
             const TileKey& key,
@@ -141,6 +138,7 @@ namespace osgEarth
     {
     public:
         std::vector<osg::ref_ptr<TerrainConstraintLayer>> layers;
+        osg::ref_ptr<Session> session;
 
         TerrainConstraintQuery(const Map* map = {}) {
             if (map) setup(map);

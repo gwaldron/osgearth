@@ -138,17 +138,17 @@ namespace osgEarth
 
     public: // Layer
 
-        virtual Status openImplementation();
+        Status openImplementation() override;
 
     protected:
 
-        virtual void init();
+        void init() override;
 
     public: // FeatureLayer
 
-        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);        
+        FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const override;
         
-        virtual const FeatureSchema& getSchema() const { return _schema; }
+        const FeatureSchema& getSchema() const override { return _schema; }
 
     protected:
 
@@ -159,11 +159,11 @@ namespace osgEarth
         TFS::Layer _layer;
         bool _layerValid;
 
-        bool getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features);
-        std::string getExtensionForMimeType(const std::string& mime);
+        bool getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features) const;
+        std::string getExtensionForMimeType(const std::string& mime) const;
         bool isGML(const std::string& mime) const;
         bool isJSON(const std::string& mime) const;
-        std::string createURL(const Query& query);
+        std::string createURL(const Query& query) const;
     };
 } // namespace osgEarth
 

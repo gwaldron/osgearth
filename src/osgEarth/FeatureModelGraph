@@ -237,7 +237,7 @@ namespace osgEarth { namespace Util
         bool createOrUpdateNode(FeatureCursor*, const Style&, FilterContext&, const osgDB::Options*, osg::ref_ptr<osg::Node>& output, const Query& query);
 
         FeatureCursor* createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const;
-        osg::ref_ptr<FeatureFilterChain> _filterChain;
+        FeatureFilterChain _filterChain;
     };
 } }
 

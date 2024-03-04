@@ -175,7 +175,7 @@ void JoinPointsLinesFilter::getLineFeatures(const GeoExtent& extent, FeatureList
     query.bounds() = localExtent.bounds();
     if (localExtent.intersects( fs->getFeatureProfile()->getExtent()))
     {
-        osg::ref_ptr< FeatureCursor > cursor = fs->createFeatureCursor( query, 0L);
+        osg::ref_ptr< FeatureCursor > cursor = fs->createFeatureCursor(query);
         while (cursor->hasMore())
         {
             Feature* feature = cursor->nextFeature();

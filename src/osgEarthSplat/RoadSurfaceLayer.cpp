@@ -504,7 +504,7 @@ RoadSurfaceLayer::getFeatures(
             }
             else
             {
-                cursor = fs->createFeatureCursor(subkey, _filterChain.get(), nullptr, progress);
+                cursor = fs->createFeatureCursor(subkey, _filterChain, nullptr, progress);
                 if (cursor.valid())
                 {
                     cursor->fill(

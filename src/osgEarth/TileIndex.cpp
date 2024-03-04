@@ -110,7 +110,7 @@ TileIndex::getFiles(const osgEarth::GeoExtent& extent, std::vector< std::string 
 
     GeoExtent transformed = extent.transform( _features->getFeatureProfile()->getSRS() );
     query.bounds() = transformed.bounds();
-    osg::ref_ptr< osgEarth::FeatureCursor> cursor = _features->createFeatureCursor( query, 0L );
+    osg::ref_ptr< osgEarth::FeatureCursor> cursor = _features->createFeatureCursor(query);
 
     while (cursor->hasMore())
     {

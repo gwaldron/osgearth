@@ -1320,7 +1320,7 @@ void
 FeatureStyleSorter::sort_usingEmbeddedStyles(
     const TileKey& key,
     const Distance& buffer,
-    FeatureFilterChain* filters,
+    const FeatureFilterChain& filters,
     Session* session,
     FeatureStyleSorter::Function processFeaturesForStyle,
     ProgressCallback* progress) const
@@ -1328,17 +1328,16 @@ FeatureStyleSorter::sort_usingEmbeddedStyles(
     // Each feature has its own embedded style data, so use that:
     FilterContext context;
 
-    osg::ref_ptr<FeatureCursor> cursor = session->getFeatureSource()->createFeatureCursor(
-        key,
-        buffer,
-        filters,
-        &context,
-        progress);
+    Query query;
+    query.tileKey() = key;
+    query.buffer() = buffer;
+
+    osg::ref_ptr<FeatureCursor> cursor = session->getFeatureSource()->createFeatureCursor(query, filters, &context, progress);
 
     while (cursor.valid() && cursor->hasMore())
     {
-        osg::ref_ptr< Feature > feature = cursor->nextFeature();
-        if (feature.valid())
+        auto feature = cursor->nextFeature();
+        if (feature)
         {
             FeatureList data;
             data.push_back(feature);
@@ -1351,7 +1350,7 @@ void
 FeatureStyleSorter::sort_usingSelectors(
     const TileKey& key,
     const Distance& buffer,
-    FeatureFilterChain* filters,
+    const FeatureFilterChain& filters,
     Session* session,
     FeatureStyleSorter::Function processFeaturesForStyle,
     ProgressCallback* progress) const
@@ -1448,7 +1447,7 @@ FeatureStyleSorter::sort_usingOneStyle(
     const Style& style,
     const TileKey& key,
     const Distance& buffer,
-    FeatureFilterChain* filters,
+    const FeatureFilterChain& filters,
     Session* session,
     Function processFeaturesForStyle,
     ProgressCallback* progress) const
@@ -1467,7 +1466,7 @@ FeatureStyleSorter::sort(
     const TileKey& key,
     const Distance& buffer,
     Session* session,
-    FeatureFilterChain* filters,
+    const FeatureFilterChain& filters,
     Function processFeaturesForStyle,
     ProgressCallback* progress) const
 {
@@ -1532,7 +1531,7 @@ FeatureStyleSorter::getFeatures(
     const Query& query,
     const Distance& buffer,
     const GeoExtent& workingExtent,
-    FeatureFilterChain* filters,
+    const FeatureFilterChain& filters,
     FeatureList& features,
     ProgressCallback* progress) const
 {
@@ -1573,21 +1572,10 @@ FeatureStyleSorter::getFeatures(
             
             if (localQuery.tileKey().isSet())
             {
-                cursor = session->getFeatureSource()->createFeatureCursor(
-                    localQuery.tileKey().get(),
-                    buffer,
-                    filters,
-                    &context,
-                    progress);
+                localQuery.buffer() = buffer;
             }
-            else
-            {
-                cursor = session->getFeatureSource()->createFeatureCursor(
-                    localQuery,
-                    filters,
-                    &context,
-                    progress);
-            }
+
+            cursor = session->getFeatureSource()->createFeatureCursor(localQuery, filters, &context, progress);
 
             while (cursor.valid() && cursor->hasMore())
             {

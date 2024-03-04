@@ -89,7 +89,7 @@ namespace osgEarth
     {
     public:
         GeometryFeatureCursor( Geometry* geom );
-        GeometryFeatureCursor( Geometry* geom, const FeatureProfile* fp, const FeatureFilterChain* filters );
+        GeometryFeatureCursor( Geometry* geom, const FeatureProfile* fp, const FeatureFilterChain& filters );
 
     public: // FeatureCursor
         virtual bool hasMore() const;
@@ -99,7 +99,7 @@ namespace osgEarth
         virtual ~GeometryFeatureCursor();
         osg::ref_ptr<Geometry> _geom;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
-        osg::ref_ptr<const FeatureFilterChain> _filterChain;
+        FeatureFilterChain _filterChain;
         osg::ref_ptr<Feature> _lastFeature;
     };
 
@@ -111,11 +111,11 @@ namespace osgEarth
     public:
         FilteredFeatureCursor(
             FeatureCursor* cursor,
-            FeatureFilterChain* chain);
+            const FeatureFilterChain& chain);
 
         FilteredFeatureCursor(
             FeatureCursor* cursor,
-            FeatureFilterChain* chain,
+            const FeatureFilterChain& chain,
             FilterContext* context,
             bool ownsContext = false);
 
@@ -127,7 +127,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<FeatureCursor> _cursor;
-        osg::ref_ptr<FeatureFilterChain> _chain;
+        FeatureFilterChain _chain;
         FilterContext* _user_cx;
         mutable FeatureList _cache;
         bool _ownsContext = false;

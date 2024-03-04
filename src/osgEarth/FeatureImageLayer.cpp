@@ -324,7 +324,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         key,
         Distance(0, Units::METERS),
         local._session.get(),
-        local._filterChain.get(),
+        local._filterChain,
         renderer,
         progress);
 

@@ -16,17 +16,16 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_FEATURES_FEATURE_SOURCE_H
-#define OSGEARTH_FEATURES_FEATURE_SOURCE_H 1
+#pragma once
 
 #include <osgEarth/Filter>
 #include <osgEarth/FeatureCursor>
-#include <osgEarth/Query>
 #include <osgEarth/Layer>
 
 namespace osgEarth
 {
+    class Query;
+
     /**
      * Layer that provides raw feature data.
      */
@@ -37,11 +36,11 @@ namespace osgEarth
         {
         public:
             META_LayerOptions(osgEarth, Options, Layer::Options);
-            OE_OPTION(bool, openWrite);
+            OE_OPTION(bool, openWrite, false);
             OE_OPTION(ProfileOptions, profile);
             OE_OPTION(GeoInterpolation, geoInterp);
             OE_OPTION(std::string, fidAttribute);
-            OE_OPTION(bool, rewindPolygons);
+            OE_OPTION(bool, rewindPolygons, true);
             OE_OPTION(std::string, vdatum);
             OE_OPTION_VECTOR(ConfigOptions, filters);
             virtual Config getConfig() const;
@@ -68,85 +67,37 @@ namespace osgEarth
         void setRewindPolygons(const bool& value);
         const bool& getRewindPolygons() const;
 
-        //! Extents of this layer, if known
-        virtual const GeoExtent& getExtent() const override;
-
-        //! Called when the layer is added to the Map
-        virtual void addedToMap(const class Map*) override;
-
     public: // Layer
 
-        virtual void init();
+        void init() override;
 
-        virtual Status openImplementation();
+        Status openImplementation() override;
+
+        //! Extents of this layer, if known
+        const GeoExtent& getExtent() const override;
+
+        //! Called when the layer is added to the Map
+        void addedToMap(const class Map*) override;
+
+        //! Marks the source as dirty and wipes any memory caches
+        void dirty() override;
 
     public:
 
-        /**
-         * Creates and initializes a new feature source for writing
-         */
+        //! Creates a cursor that iterates over all features corresponding to the
+        //! specified Query.
+        osg::ref_ptr<FeatureCursor> createFeatureCursor(
+            const Query& query = {},
+            const FeatureFilterChain& filters = {},
+            FilterContext* context = nullptr,
+            ProgressCallback* progress = nullptr) const;
+
+        //! Creates and initializes a new feature source for writing
         virtual const Status& create(
             const FeatureProfile* profile,
             const FeatureSchema& schema,
             const Geometry::Type& geometryType,
             const osgDB::Options* readOptions);
-
-        /**
-        * Creates a cursor that iterates over all features corresponding to the
-        * specified TileKey. Caller takes ownership of the returned object.
-        */
-        FeatureCursor* createFeatureCursor(
-            const TileKey& key,
-            ProgressCallback* progress);
-
-        /**
-        * Creates a cursor that iterates over all features corresponding to the
-        * specified TileKey, passing them through the specified filter chain.
-        * Caller takes ownership of the returned object.
-        */
-        FeatureCursor* createFeatureCursor(
-            const TileKey& key,
-            FeatureFilterChain* filters,
-            FilterContext* context,
-            ProgressCallback* progress);
-
-        /**
-        * Creates a cursor that iterates over all features corresponding to the
-        * specified TileKey with a buffer. Caller takes ownership of the returned object.
-        */
-        FeatureCursor* createFeatureCursor(
-            const TileKey& key,
-            const Distance& buffer,
-            FeatureFilterChain* filters,
-            FilterContext* context,
-            ProgressCallback* progress);
-
-        /**
-         * Creates a cursor that iterates over all the features corresponding to the
-         * specified query. Caller takes ownership of the returned object.
-         */
-        FeatureCursor* createFeatureCursor(
-            const Query& query,
-            ProgressCallback* progress);
-
-        /**
-        * Creates a cursor that iterates over all features corresponding to the
-        * specified TileKey, passing them through the specified filter chain.
-        * Caller takes ownership of the returned object.
-        */
-        FeatureCursor* createFeatureCursor(
-            const Query& query,
-            FeatureFilterChain* filters,
-            FilterContext* context,
-            ProgressCallback* progress);
-
-        /**
-         * Creates a cursor that iterates over all the features corresponding to the
-         * specified query. Caller takes ownership of the returned object.
-         */
-        FeatureCursor* createFeatureCursor(ProgressCallback* progress) {
-            return createFeatureCursor(Query(), progress);
-        }
 
         //! Gets a vector of keys required to cover the input key and
         //! a buffering distance.
@@ -155,108 +106,70 @@ namespace osgEarth
             const Distance& buffer,
             std::unordered_set<TileKey>& output) const;
 
-        /**
-         * Gets a reference to the metadata that describes features that you can
-         * get from this FeatureSource. A valid feature profile indiciates that the
-         * feature source successfully initialized.
-         */
+        //! Gets a reference to the metadata that describes features that you can
+        //! get from this FeatureSource. A valid feature profile indiciates that the
+        //! feature source successfully initialized.
         const FeatureProfile* getFeatureProfile() const;
 
-        /**
-         * Sets the feature profile for this source.
-         * This is required. Usually the subclass should call this from open().
-         */
+        //! Sets the feature profile for this source.
+        //! This is required. Usually the subclass should call this from open().
         const FeatureProfile* setFeatureProfile(const FeatureProfile* profile);
 
-        /**
-         * Whether this FeatureSource supports inserting and deleting features
-         */
+        //! Whether this FeatureSource supports inserting and deleting features
         virtual bool isWritable() const { return false; }
 
-        /**
-         * Deletes the feature with the given FID
-         * @return True on success; false on failure or if the source is read-only
-         */
+        //! Deletes the feature with the given FID
+        //! return True on success; false on failure or if the source is read-only
         virtual bool deleteFeature(FeatureID fid) { return false; }
 
-        /**
-         * Gets the number of features in this FeatureSource
-         * @return
-         *      The number of features or -1 if the number of features cannot be determined.
-         */
+        //! Gets the number of features in this FeatureSource
+        //! @return Number of features or -1 if the number of features cannot be determined.
         virtual int getFeatureCount() const { return -1; }
 
-        /**
-         * Whether the source can look up a Feature by its ID.
-         * @return True or False
-         */
+        //! Whether the source can look up a Feature by its ID.
+        //! @return True or False
         virtual bool supportsGetFeature() const { return false; }
 
-        /**
-         * Gets the Feature with the given FID
-         * @return
-         *     The Feature with the given FID or NULL if not found.
-         */
+        //! Gets the Feature with the given FID
+        //! @return Feature with the given FID or NULL if not found.
         virtual Feature* getFeature( FeatureID fid ) { return 0L; }
 
-        /**
-         * Gets the FeatureSchema for this FeatureSource. If the schema doesn't
-         * publish a source, this might be empty.
-         */
+        //! Gets the FeatureSchema for this FeatureSource. If the schema doesn't
+        //! publish a source, this might be empty.
         virtual const FeatureSchema& getSchema() const;
 
-        /**
-         * Inserts the given feature into the FeatureSource
-         * @return
-         *     True if the feature was inserted, false if not
-         */
+        //! Inserts the given feature into the FeatureSource
+        //! @return  True if the feature was inserted, false if not
         virtual bool insertFeature(Feature* feature) { return false; }
 
-        /**
-         * Gets the Geometry type of the FeatureSource
-         * @return
-         *      The Geometry type of the FeatureSource
-         */
+        //! Gets the Geometry type of the FeatureSource
+        //! @return Geometry type of the FeatureSource
         virtual Geometry::Type getGeometryType() const { return Geometry::TYPE_UNKNOWN; }
 
-        /**
-         *Returns true if this source creates features with embedded style information.
-         * By default, this is false (features are not expected to carry their own
-         * style definitions).
-         */
+        //! Returns true if this source creates features with embedded style information.
+        //! By default, this is false (features are not expected to carry their own
+        //! style definitions).
         virtual bool hasEmbeddedStyles() const { return false; }
 
-        /**
-         * Accesses the list of feature filters that will transform features
-         * before they are returned in a feature cursor.
-         */
-        const FeatureFilterChain* getFilters() const;
+        //! Accesses the list of feature filters that will transform features
+        //! before they are returned in a feature cursor.
+        const FeatureFilterChain& getFilters() const;
 
-        /**
-         * Adds a feature ID to the blacklist.
-         */
+        //! Adds a feature ID to the blacklist.
         void addToBlacklist( FeatureID fid );
 
-        /**
-         * Removes a feature from the blacklist.
-         */
+        //! Removes a feature from the blacklist.
         void removeFromBlacklist( FeatureID fid );
 
-        /**
-         * Clears the blacklist.
-         */
+        //! Clears the blacklist.
         void clearBlacklist();
 
-        /**
-         * Checks the blacklist for a feature ID.
-         */
+        //! Checks the blacklist for a feature ID.
         bool isBlacklisted( FeatureID fid ) const;
 
         //! Build (or rebuild) a disk-based spatial index.
         virtual void buildSpatialIndex() { }
 
-        //! dirty (??)
-        virtual void dirty() { }
 
     public:
 
@@ -265,22 +178,22 @@ namespace osgEarth
 
     protected:
         osg::ref_ptr<const FeatureProfile> _featureProfile;
-        URIContext                         _uriContext;
+        URIContext _uriContext;
         mutable Threading::ReadWriteMutex  _blacklistMutex;
-        std::unordered_set<FeatureID>      _blacklist;
-        unsigned                           _blacklistSize;
-        osg::ref_ptr<FeatureFilterChain>   _filters;
+        std::unordered_set<FeatureID> _blacklist;
+        unsigned _blacklistSize;
+        FeatureFilterChain _filters;
 
         typedef LRUCache<TileKey, FeatureList> FeaturesLRU;
-        std::unique_ptr< FeaturesLRU > _featuresCache;
-        std::mutex _featuresCacheMutex;
+        mutable std::unique_ptr< FeaturesLRU > _featuresCache;
+        mutable std::mutex _featuresCacheMutex;
 
         //! Implements the feature cursor creation
         virtual FeatureCursor* createFeatureCursorImplementation(
             const Query& query,
-            ProgressCallback* progress) =0;
+            ProgressCallback* progress) const =0;
 
-        /** Convenience function to apply the filters to a FeatureList */
+        //! Convenience function to apply the filters to a FeatureList
         void applyFilters(FeatureList& features, const GeoExtent& extent) const;
 
         virtual ~FeatureSource() { }
@@ -288,5 +201,3 @@ namespace osgEarth
 }
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureSource::Options);
-
-#endif // OSGEARTH_FEATURES_FEATURE_SOURCE_H

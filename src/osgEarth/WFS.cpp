@@ -315,7 +315,7 @@ WFSFeatureSource::openImplementation()
 
 
 void
-WFSFeatureSource::saveResponse(const std::string buffer, const std::string& filename)
+WFSFeatureSource::saveResponse(const std::string buffer, const std::string& filename) const
 {
     std::ofstream fout;
     fout.open(filename.c_str(), std::ios::out | std::ios::binary);
@@ -324,7 +324,7 @@ WFSFeatureSource::saveResponse(const std::string buffer, const std::string& file
 }
 
 bool
-WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mimeType, FeatureList& features)
+WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mimeType, FeatureList& features) const
 {
     // Unnecessary - dataset is created and destroyed locally
     //OGR_SCOPED_LOCK;
@@ -406,7 +406,7 @@ WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mime
 
 
 std::string
-WFSFeatureSource::getExtensionForMimeType(const std::string& mime)
+WFSFeatureSource::getExtensionForMimeType(const std::string& mime) const
 {
     //OGR is particular sometimes about the extension of files when it's reading them so it's good to have
     //the temp file have an appropriate extension
@@ -505,7 +505,7 @@ WFSFeatureSource::createURL(const Query& query) const
 }
 
 FeatureCursor*
-WFSFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+WFSFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     FeatureCursor* result = 0L;
 
@@ -536,16 +536,11 @@ WFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
     }
 
     //If we have any filters, process them here before the cursor is created
-    if (getFilters() && !getFilters()->empty() && !features.empty())
+    if (!getFilters().empty() && !features.empty())
     {
         FilterContext cx;
         cx.setProfile(getFeatureProfile());
-
-        for (FeatureFilterChain::const_iterator i = getFilters()->begin(); i != getFilters()->end(); ++i)
-        {
-            FeatureFilter* filter = i->get();
-            cx = filter->push(features, cx);
-        }
+        cx = getFilters().push(features, cx);
     }
 
     // If we have any features and we have an fid attribute, override the fid of the features

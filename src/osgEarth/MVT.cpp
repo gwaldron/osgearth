@@ -541,7 +541,7 @@ MVTFeatureSource::closeImplementation()
 }
 
 FeatureCursor*
-MVTFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+MVTFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     if (!query.tileKey().isSet())
     {

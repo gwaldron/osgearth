@@ -188,9 +188,7 @@ TerrainConstraintLayer::openImplementation()
             return modelStatus;
     }
 
-    _filterchain = FeatureFilterChain::create(
-        options().filters(),
-        getReadOptions());
+    _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
 
     return Status::NoError;
 }
@@ -285,11 +283,7 @@ TerrainConstraintLayer::setMinLevel(unsigned value)
 void
 TerrainConstraintLayer::getFeatureConstraint(const TileKey& key, FilterContext* context, MeshConstraint& constraint, ProgressCallback* progress) const
 {
-    osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(
-        key,
-        getFilters(),
-        context,
-        progress);
+    auto cursor = getFeatureSource()->createFeatureCursor(key, _filterChain, context, progress);
 
     if (cursor.valid() && cursor->hasMore())
     {
@@ -366,6 +360,7 @@ TerrainConstraintQuery::setup(const Map* map)
     if (map)
     {
         map->getOpenLayers(layers);
+        session = new Session(map);
     }
 }
 
@@ -381,9 +376,11 @@ TerrainConstraintQuery::getConstraints(
     {
         const GeoExtent& keyExtent = key.getExtent();
 
+        FilterContext context(session.get());
+
         for (auto& layer : layers)
         {
-            auto constraint = layer->getConstraint(key, nullptr, progress);
+            auto constraint = layer->getConstraint(key, &context, progress);
             if (!constraint.features.empty())
             {
                 output.push_back(std::move(constraint));

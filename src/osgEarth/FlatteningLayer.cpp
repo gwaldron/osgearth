@@ -918,7 +918,7 @@ FlatteningLayer::removedFromMap(const Map* map)
 }
 
 FeatureList
-FlatteningLayer::getFeatures(const TileKey& key)
+FlatteningLayer::getFeatures(const TileKey& key) const
 {
     std::lock_guard<std::mutex> lk(_featuresCacheMutex);
 
@@ -933,7 +933,7 @@ FlatteningLayer::getFeatures(const TileKey& key)
     query.tileKey() = key;
 
     FeatureList features;
-    osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(query, _filterChain.get(), nullptr, nullptr);
+    auto cursor = getFeatureSource()->createFeatureCursor(query, _filterChain);
     if (cursor.valid())
     {
         cursor->fill(features);
@@ -1121,11 +1121,7 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         Query query;
         query.bounds() = queryExtent.bounds();
 
-        osg::ref_ptr<FeatureCursor> cursor = getFeatureSource()->createFeatureCursor(
-            query,
-            _filterChain.get(),
-            nullptr,
-            progress);
+        auto cursor = getFeatureSource()->createFeatureCursor(query, _filterChain, nullptr, progress);
 
         // Run the query and fill the list.
         while (cursor.valid() && cursor->hasMore())

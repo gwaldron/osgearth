@@ -96,13 +96,11 @@ _geom( geom )
     //nop
 }
 
-GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom,
-                                             const FeatureProfile* fp,
-                                             const FeatureFilterChain* filters) :
-FeatureCursor(NULL),
-_geom          ( geom ),
-_featureProfile( fp ),
-_filterChain   ( filters )
+GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom, const FeatureProfile* fp, const FeatureFilterChain& filters) :
+    FeatureCursor(NULL),
+    _geom(geom),
+    _featureProfile(fp),
+    _filterChain(filters)
 {
     //nop
 }
@@ -134,13 +132,7 @@ GeometryFeatureCursor::nextFeature()
         FeatureList list;
         list.push_back( _lastFeature.get() );
 
-        if (_filterChain.valid())
-        {
-            for( FeatureFilterChain::const_iterator i = _filterChain->begin(); i != _filterChain->end(); ++i )
-            {
-                cx = i->get()->push( list, cx );
-            }
-        }
+        cx = _filterChain.push(list, cx);
 
         if ( list.empty() )
         {
@@ -157,7 +149,7 @@ GeometryFeatureCursor::nextFeature()
 
 FilteredFeatureCursor::FilteredFeatureCursor(
     FeatureCursor* cursor,
-    FeatureFilterChain* chain) :
+    const FeatureFilterChain& chain) :
 
     FeatureCursor(cursor ? cursor->getProgress() : nullptr),
     _cursor(cursor),
@@ -168,10 +160,9 @@ FilteredFeatureCursor::FilteredFeatureCursor(
 }
 FilteredFeatureCursor::FilteredFeatureCursor(
     FeatureCursor* cursor,
-    FeatureFilterChain* chain,
+    const FeatureFilterChain& chain,
     FilterContext* context,
-    bool ownsContext
-    ) :
+    bool ownsContext) :
 
     FeatureCursor(cursor->getProgress()),
     _cursor(cursor),
@@ -210,12 +201,7 @@ FilteredFeatureCursor::hasMore() const
             local.push_back(_cursor->nextFeature());
         }
 
-        for(FeatureFilterChain::const_iterator filter = _chain->begin();
-            filter != _chain->end();
-            ++filter)
-        {
-            cx = filter->get()->push(local, cx);
-        }
+        cx = _chain.push(local, cx);
 
         std::copy(local.begin(), local.end(), std::back_inserter(_cache));
     }

@@ -109,13 +109,13 @@ namespace osgEarth { namespace Contrib
         osg::ref_ptr<ScriptEngine> _scriptEngine;
         osg::observer_ptr< const Map > _map;
 
-        FeatureList getFeatures(const TileKey& key);
+        FeatureList getFeatures(const TileKey& key) const;
 
         typedef LRUCache<TileKey, FeatureList> FeaturesLRU;
-        FeaturesLRU _featuresCache;
-        std::mutex _featuresCacheMutex;
+        mutable FeaturesLRU _featuresCache;
+        mutable std::mutex _featuresCacheMutex;
 
-        osg::ref_ptr<FeatureFilterChain> _filterChain;
+        FeatureFilterChain _filterChain;
     };
 
 } }

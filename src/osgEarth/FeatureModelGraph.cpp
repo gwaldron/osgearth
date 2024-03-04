@@ -551,13 +551,9 @@ FeatureModelGraph::open()
     _filterChain = FeatureFilterChain::create(_options.filters(), NULL);
 
     // Call addedToMap on all of the FeatureFilters
-    if (_filterChain.valid() && !_filterChain->empty() && _session->getMap())
-    {
-        for (auto filter = _filterChain->begin(); filter != _filterChain->end(); ++filter)
-        {
-            filter->get()->addedToMap(_session->getMap());
-        }
-    }
+    if (_session->getMap())
+        for (auto& filter : _filterChain)
+            filter->addedToMap(_session->getMap());
 
     // world-space bounds of the feature layer
     _fullWorldBound = getBoundInWorldCoords(_usableMapExtent);
@@ -1549,10 +1545,10 @@ FeatureCursor*
 FeatureModelGraph::createCursor(FeatureSource* fs, FilterContext& cx, const Query& query, ProgressCallback* progress) const
 {
     NetworkMonitor::ScopedRequestLayer layerRequest(_ownerName);
-    FeatureCursor* cursor = fs->createFeatureCursor(query, progress);
-    if (cursor && _filterChain.valid())
+    FeatureCursor* cursor = fs->createFeatureCursor(query, {}, nullptr, progress);
+    if (cursor && !_filterChain.empty())
     {
-        cursor = new FilteredFeatureCursor(cursor, _filterChain.get(), &cx);
+        cursor = new FilteredFeatureCursor(cursor, _filterChain, &cx);
     }
     return cursor;
 }
@@ -1582,11 +1578,7 @@ FeatureModelGraph::build(
         FilterContext context(_session.get(), featureProfile, workingExtent, index);
 
         // each feature has its own style, so use that and ignore the style catalog.
-        osg::ref_ptr<FeatureCursor> cursor = source->createFeatureCursor(
-            baseQuery,
-            _filterChain.get(),
-            &context,
-            progress);
+        osg::ref_ptr<FeatureCursor> cursor = source->createFeatureCursor(baseQuery, _filterChain, &context, progress);
 
         while (cursor.valid() && cursor->hasMore())
         {
@@ -1822,7 +1814,7 @@ FeatureModelGraph::queryAndSortIntoStyleGroups(const Query&            query,
     // query the feature source:
     osg::ref_ptr<FeatureCursor> cursor = _session->getFeatureSource()->createFeatureCursor(
         query,
-        _filterChain.get(),
+        _filterChain,
         &context,
         progress);
 
@@ -1977,7 +1969,7 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
     // query the feature source:
     osg::ref_ptr<FeatureCursor> cursor = _session->getFeatureSource()->createFeatureCursor(
         query,
-        _filterChain.get(),
+        _filterChain,
         &context,
         progress);
 

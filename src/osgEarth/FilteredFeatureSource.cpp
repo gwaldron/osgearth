@@ -101,14 +101,14 @@ FilteredFeatureSource::getFeatureSource() const
 
 FeatureCursor* FilteredFeatureSource::createFeatureCursorImplementation(
     const Query& query,
-    ProgressCallback* progress)
+    ProgressCallback* progress) const
 {
     if (isOpen() && getFeatureSource())
     {
-        osg::ref_ptr< FeatureCursor > cursor = getFeatureSource()->createFeatureCursor(query, progress);
+        osg::ref_ptr< FeatureCursor > cursor = getFeatureSource()->createFeatureCursor(query, {}, nullptr, progress);
         if (cursor.valid())
         {
-            if (_filters.valid())
+            if (!_filters.empty())
             {
                 FilterContext* cx = new FilterContext;
                 cx->setProfile(getFeatureProfile());

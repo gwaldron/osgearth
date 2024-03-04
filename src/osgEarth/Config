@@ -243,6 +243,13 @@ namespace osgEarth
             add(conf);
         }
 
+        //! Adds or replaces a config as a child if it's not empty.
+        void set_with_function(const std::string& key, std::function<void(Config&)>&& f) {
+            Config conf(key);
+            f(conf);
+            if (!conf.empty()) set(conf);
+        }
+
         /** Sets a key value pair child */
         template<typename T>
         void set(const std::string& key, const T& value) {

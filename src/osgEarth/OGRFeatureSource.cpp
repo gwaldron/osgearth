@@ -90,24 +90,24 @@ OGR::OGRFeatureCursor::OGRFeatureCursor(
     const FeatureSource* source,
     const FeatureProfile* profile,
     const Query& query,
-    const FeatureFilterChain* filters,
+    const FeatureFilterChain& filters,
     bool rewindPolygons,
     unsigned chunkSize,
     ProgressCallback* progress) :
 
-FeatureCursor     ( progress ),
-_source           ( source ),
-_dsHandle         ( dsHandle ),
-_layerHandle      ( layerHandle ),
-_resultSetHandle  ( 0L ),
-_spatialFilter    ( 0L ),
-_query            ( query ),
-_chunkSize        ( chunkSize == 0u ? 500u : chunkSize ),
-_nextHandleToQueue( 0L ),
-_resultSetEndReached(false),
-_profile          ( profile ),
-_filters          ( filters ),
-_rewindPolygons   ( rewindPolygons )
+    FeatureCursor(progress),
+    _source(source),
+    _dsHandle(dsHandle),
+    _layerHandle(layerHandle),
+    _resultSetHandle(0L),
+    _spatialFilter(0L),
+    _query(query),
+    _chunkSize(chunkSize == 0u ? 500u : chunkSize),
+    _nextHandleToQueue(0L),
+    _resultSetEndReached(false),
+    _profile(profile),
+    _filters(filters),
+    _rewindPolygons(rewindPolygons)
 {
     std::string expr;
     std::string from = OGR_FD_GetName(OGR_L_GetLayerDefn(_layerHandle));
@@ -316,7 +316,7 @@ OGR::OGRFeatureCursor::readChunk()
         }
 
         // preprocess the features using the filter list:
-        if ( _filters.valid() && !_filters->empty() )
+        if (!_filters.empty())
         {
             FilterContext cx;
             cx.setProfile( _profile.get() );
@@ -329,11 +329,7 @@ OGR::OGRFeatureCursor::readChunk()
                 cx.extent() = _profile->getExtent();
             }
 
-            for( FeatureFilterChain::const_iterator i = _filters->begin(); i != _filters->end(); ++i )
-            {
-                FeatureFilter* filter = i->get();
-                cx = filter->push( filterList, cx );
-            }
+            cx = _filters.push(filterList, cx);
         }
 
         for(FeatureList::const_iterator i = filterList.begin(); i != filterList.end(); ++i)
@@ -837,7 +833,7 @@ OGRFeatureSource::buildSpatialIndex()
 }
 
 FeatureCursor*
-OGRFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+OGRFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     if (_geometry.valid())
     {

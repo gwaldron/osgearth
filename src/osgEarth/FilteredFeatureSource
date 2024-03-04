@@ -52,16 +52,16 @@ namespace osgEarth
         void setFeatureSource(FeatureSource* layer);
         FeatureSource* getFeatureSource() const;
 
-        virtual Status openImplementation();
+        Status openImplementation() override;
 
-        virtual void addedToMap(const Map*);
+        void addedToMap(const Map*) override;
 
-        virtual void removedFromMap(const Map*);
+        void removedFromMap(const Map*) override;
 
     protected:   
-        virtual FeatureCursor* createFeatureCursorImplementation(
+        FeatureCursor* createFeatureCursorImplementation(
             const Query& query,
-            ProgressCallback* progress);        
+            ProgressCallback* progress) const override;
     }; 
 }
 

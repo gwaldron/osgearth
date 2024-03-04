@@ -128,7 +128,7 @@ XYZFeatureSource::init()
 
 
 FeatureCursor*
-XYZFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+XYZFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
 
@@ -171,17 +171,12 @@ XYZFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
     }
 
     //If we have any filters, process them here before the cursor is created
-    if (getFilters() && !getFilters()->empty() && !features.empty())
+    if (!getFilters().empty() && !features.empty())
     {
         FilterContext cx;
         cx.setProfile(getFeatureProfile());
         cx.extent() = query.tileKey()->getExtent();
-
-        for (FeatureFilterChain::const_iterator i = getFilters()->begin(); i != getFilters()->end(); ++i)
-        {
-            FeatureFilter* filter = i->get();
-            cx = filter->push(features, cx);
-        }
+        cx = getFilters().push(features, cx);
     }
 
     // If we have any features and we have an fid attribute, override the fid of the features
@@ -202,7 +197,7 @@ XYZFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 }
 
 bool
-XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features)
+XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features) const
 {
     if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream" || mimeType == "application/octet-stream")
     {
@@ -276,7 +271,7 @@ XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
 
 
 std::string
-XYZFeatureSource::getExtensionForMimeType(const std::string& mime)
+XYZFeatureSource::getExtensionForMimeType(const std::string& mime) const
 {
     //OGR is particular sometimes about the extension of files when it's reading them so it's good to have
     //the temp file have an appropriate extension
@@ -323,7 +318,7 @@ XYZFeatureSource::isJSON(const std::string& mime) const
 }
 
 URI
-XYZFeatureSource::createURL(const Query& query)
+XYZFeatureSource::createURL(const Query& query) const
 {
     if (query.tileKey().isSet() && query.tileKey()->valid())
     {

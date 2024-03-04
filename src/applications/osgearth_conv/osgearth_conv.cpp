@@ -537,7 +537,7 @@ main(int argc, char** argv)
             return -1;
         }
 
-        osg::ref_ptr< FeatureCursor > cursor = indexFeatures->createFeatureCursor(0);
+        osg::ref_ptr< FeatureCursor > cursor = indexFeatures->createFeatureCursor();
         while (cursor.valid() && cursor->hasMore())
         {
             osg::ref_ptr< Feature > feature = cursor->nextFeature();

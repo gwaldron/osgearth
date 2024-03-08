@@ -1311,7 +1311,7 @@ main(int argc, char** argv)
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags
-    auto node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
+    auto node = MapNodeHelper().load(arguments, &viewer);
     if (node.valid())
     {
         MapNode* mapNode = MapNode::get(node);

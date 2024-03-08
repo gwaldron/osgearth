@@ -22,6 +22,7 @@
 
 #include <osgViewer/Viewer>
 #include <osgViewer/CompositeViewer>
+#include <osgEarth/Controls>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/MapNode>

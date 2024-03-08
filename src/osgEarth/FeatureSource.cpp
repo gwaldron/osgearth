@@ -97,6 +97,7 @@ Status
 FeatureSource::openImplementation()
 {
     unsigned int l2CacheSize = 16u;
+
     if (options().l2CacheSize().isSet())
     {
         l2CacheSize = options().l2CacheSize().get();
@@ -279,7 +280,7 @@ FeatureSource::dirty()
 osg::ref_ptr<FeatureCursor>
 FeatureSource::createFeatureCursor(
     const Query& query,
-    const FeatureFilterChain& filters,
+    const FeatureFilterChain& post_filters,
     FilterContext* context,
     ProgressCallback* progress) const
 {
@@ -287,22 +288,9 @@ FeatureSource::createFeatureCursor(
 
     bool fromCache = false;
 
-    // combine all filters into a single chain.
-    FeatureFilterChain combo_chain;
-    const FeatureFilterChain* all_filters = &_filters;
-    if (!filters.empty())
-    {
-        if (all_filters->empty())
-        {
-            all_filters = &filters;
-        }
-        else
-        {
-            std::copy(_filters.begin(), _filters.end(), std::back_inserter(combo_chain));
-            std::copy(filters.begin(), filters.end(), std::back_inserter(combo_chain));
-            all_filters = &combo_chain;
-        }
-    }
+    FilterContext temp_cx;
+    if (context)
+        temp_cx = *context;
 
     // TileKey path:
     if (query.tileKey().isSet())
@@ -319,50 +307,39 @@ FeatureSource::createFeatureCursor(
             {
                 FeatureList copy(cache_entry.value().size());
                 std::transform(cache_entry.value().begin(), cache_entry.value().end(), copy.begin(),
-                    [&](auto& feature) {
-                        return osg::clone(feature.get(), osg::CopyOp::DEEP_COPY_ALL);
-                    });
-                result = new FeatureListCursor(copy);
+                    [&](auto& feature) { return new Feature(*feature); });
+                result = new FeatureListCursor(std::move(copy));
                 fromCache = true;
             }
         }
 
-        std::unordered_set<TileKey> keys;
-        getKeys(query.tileKey().value(), query.buffer().value(), keys);
-
-        osg::ref_ptr<MultiCursor> multi = new MultiCursor(progress);
-
-        // Query and collect all the features we need for this tile.
-        for (auto& sub_key : keys)
+        if (!temp_cx.extent().isSet())
         {
-            auto sub_cursor = createFeatureCursorImplementation(Query(sub_key), progress);
-            if (sub_cursor)
-                multi->_cursors.emplace_back(sub_cursor);
+            temp_cx.extent() = query.tileKey()->getExtent();
         }
 
-        if (multi->_cursors.empty())
+        if (!result.valid())
         {
-            return { };
-        }
+            std::unordered_set<TileKey> keys;
+            getKeys(query.tileKey().value(), query.buffer().value(), keys);
 
-        multi->finish();
-        result = multi;
+            osg::ref_ptr<MultiCursor> multi = new MultiCursor(progress);
 
-        if (_featuresCache && !fromCache)
-        {
-            FeatureList features;
-            result->fill(features);
-            FeatureList copy(features.size());
-            std::transform(features.begin(), features.end(), copy.begin(),
-                [&](auto& feature) {
-                    return osg::clone(feature.get(), osg::CopyOp::DEEP_COPY_ALL);
-                });
+            // Query and collect all the features we need for this tile.
+            for (auto& sub_key : keys)
             {
-                std::lock_guard<std::mutex> lk(_featuresCacheMutex);
-                _featuresCache->insert(*query.tileKey(), copy);
+                auto sub_cursor = createFeatureCursorImplementation(Query(sub_key), progress);
+                if (sub_cursor)
+                    multi->_cursors.emplace_back(sub_cursor);
             }
 
-            result = new FeatureListCursor(features);
+            if (multi->_cursors.empty())
+            {
+                return { };
+            }
+
+            multi->finish();
+            result = multi;
         }
     }
 
@@ -370,12 +347,76 @@ FeatureSource::createFeatureCursor(
     {
         OE_SOFT_ASSERT(!query.buffer().isSet(), "Buffer not supported for non-tilekey queries; ignoring");
 
+        if (!temp_cx.extent().isSet() && _featureProfile.valid())
+        {
+            if (query.bounds().isSet())
+                temp_cx.extent() = GeoExtent(_featureProfile->getSRS(), query.bounds().get());
+            else
+                temp_cx.extent() = _featureProfile->getExtent();
+        }
+
         result = createFeatureCursorImplementation(query, progress);
     }
 
-    if (result.valid() && !all_filters->empty())
+    if (result.valid())
     {
-        result = new FilteredFeatureCursor(result, *all_filters, context);
+        if (!fromCache)
+        {
+            // Apply this feature source's core filters. This happend pre-cache, as opposed 
+            // to the caller's filters, which apply post-cache.
+            if (!_filters.empty())
+            {
+                FeatureList features;
+                result->fill(features);
+                temp_cx = _filters.push(features, temp_cx);
+                result = new FeatureListCursor(std::move(features));
+            }
+
+            // Apply the optional FID attribute:
+            if (options().fidAttribute().isSet())
+            {
+                FeatureList features;
+                result->fill(features);
+                for(auto& feature : features)
+                {
+                    std::string attr = feature->getString(options().fidAttribute().get());
+                    feature->setFID(as<FeatureID>(attr, 0));
+                }
+                result = new FeatureListCursor(std::move(features));
+            }
+
+            // Write the feature set to the L2 cache.
+            // TODO: If we have a persistent cache, write to that as well here
+            if (_featuresCache)
+            {
+                FeatureList features;
+                result->fill(features, [](const Feature* f) { return f != nullptr; });
+
+                // clone the list for caching:
+                FeatureList clone(features.size());
+                std::transform(features.begin(), features.end(), clone.begin(),
+                    [&](auto& feature) { return new Feature(*feature); });
+
+                std::lock_guard<std::mutex> lk(_featuresCacheMutex);
+                _featuresCache->insert(*query.tileKey(), clone);
+
+                result = new FeatureListCursor(std::move(features));
+            }
+        }
+
+        // apply caller's filters. These are NOT cached by this class because the 
+        // modifications are the resposibility of the caller.
+        if (!post_filters.empty())
+        {
+            FeatureList features;
+            result->fill(features);
+            temp_cx = post_filters.push(features, temp_cx);
+            result = new FeatureListCursor(std::move(features));
+        }
+
+        // copy out temporary context back out.
+        if (context)
+            *context = temp_cx;
     }
     
     return result;
@@ -386,6 +427,9 @@ FeatureSource::getKeys(const TileKey& key, const Distance& buffer, std::unordere
 {
     if (_featureProfile.valid())
     {
+        unsigned firstLevel = _featureProfile->getFirstLevel();
+        unsigned maxLevel = _featureProfile->getMaxLevel() >= 0u ? _featureProfile->getMaxLevel() : UINT_MAX;
+
         // We need to translate the caller's tilekey into feature source
         // tilekeys and combine multiple queries into one.
         const Profile* profile =
@@ -410,16 +454,26 @@ FeatureSource::getKeys(const TileKey& key, const Distance& buffer, std::unordere
 
             for (int i = 0; i < intersectingKeys.size(); ++i)
             {
-                if (_featureProfile->getMaxLevel() >= 0 && (int)intersectingKeys[i].getLOD() > _featureProfile->getMaxLevel())
-                    output.insert(intersectingKeys[i].createAncestorKey(_featureProfile->getMaxLevel()));
-                else
+                auto lod = intersectingKeys[i].getLOD();
+                if (lod > maxLevel)
+                {
+                    // fall back to the max level if necessary:
+                    output.insert(intersectingKeys[i].createAncestorKey(maxLevel));
+                }
+                else if (lod >= firstLevel)
+                {
+                    // must be at least the first available level
                     output.insert(intersectingKeys[i]);
+                }
             }
         }
         else
         {
             // plan B
-            output.insert(key);
+            if (key.getLOD() >= firstLevel && key.getLOD() <= maxLevel)
+            {
+                output.insert(key);
+            }
         }
     }
 

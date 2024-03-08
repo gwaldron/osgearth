@@ -315,6 +315,7 @@ OGR::OGRFeatureCursor::readChunk()
             }
         }
 
+#if 0
         // preprocess the features using the filter list:
         if (!_filters.empty())
         {
@@ -331,6 +332,7 @@ OGR::OGRFeatureCursor::readChunk()
 
             cx = _filters.push(filterList, cx);
         }
+#endif
 
         for(FeatureList::const_iterator i = filterList.begin(); i != filterList.end(); ++i)
         {

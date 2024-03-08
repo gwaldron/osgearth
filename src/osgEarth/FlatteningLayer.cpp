@@ -16,13 +16,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/FlatteningLayer>
-#include <osgEarth/Registry>
-#include <osgEarth/HeightFieldUtils>
-#include <osgEarth/FeatureCursor>
-#include <osgEarth/Containers>
-#include <osgEarth/rtree.h>
-#include <osgEarth/Metrics>
+#include "FlatteningLayer"
+#include "Registry"
+#include "HeightFieldUtils"
+#include "FeatureCursor"
+#include "Containers"
+#include "rtree.h"
+#include "Metrics"
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;
@@ -159,10 +159,10 @@ namespace
     double getDistanceSquaredToClosestEdge(const osg::Vec3d& P, const Polygon* poly)
     {
         double Dmin = DBL_MAX;
-        ConstSegmentIterator segIter(poly, true);
-        while (segIter.hasMore())
+        ConstSegmentIterator seg_iter(poly, true);
+        while (seg_iter.hasMore())
         {
-            const Segment segment = segIter.next();
+            auto& segment = seg_iter.next();
             const POINT& A = segment.first;
             const POINT& B = segment.second;
             const VECTOR AP = P - A, AB = B - A;
@@ -210,6 +210,8 @@ namespace
         GeoPoint EP(geomSRS, 0, 0, 0);
 
         bool needsTransform = ex.getSRS() != geomSRS;
+        
+        ConstGeometryIterator giter;
 
         for (unsigned col = 0; col < hf->getNumColumns(); ++col)
         {
@@ -238,12 +240,15 @@ namespace
                 {
                     Geometry* component = geom->getComponents()[geomIndex].get();
                     Widths width = widths[geomIndex];
-                    ConstGeometryIterator giter(component, false);
+                    giter.reset(component, false);
+                    //ConstGeometryIterator giter(component, false);
                     while (giter.hasMore() && !done)
                     {
-                        const Polygon* polygon = dynamic_cast<const Polygon*>(giter.next());
-                        if (polygon)
+                        auto part = giter.next();
+                        if (part->getType() == Geometry::TYPE_POLYGON)
                         {
+                            auto polygon = static_cast<const Polygon*>(part);
+
                             // Does the point P fall within the polygon?
                             if (polygon->contains2D(P.x(), P.y()))
                             {
@@ -407,28 +412,32 @@ namespace
 
     void buildSegmentList(const MultiGeometry* geom, LineSegmentList& segments, LineSegmentIndex& index)
     {
+        ConstGeometryIterator giter;
+
         for (unsigned int geomIndex = 0; geomIndex < geom->getNumComponents(); geomIndex++)
         {
             Geometry* component = geom->getComponents()[geomIndex].get();
 
-            ConstGeometryIterator giter(component);
+            giter.reset(component);
             while (giter.hasMore())
             {
                 const Geometry* part = giter.next();
-
-                for (int i = 0; i < part->size() - 1; ++i)
+                if (part->getType() == Geometry::TYPE_LINESTRING || part->getType() == Geometry::TYPE_RING)
                 {
-                    // AB is a candidate line segment:
-                    const osg::Vec3d& A = (*part)[i];
-                    const osg::Vec3d& B = (*part)[i + 1];
-                    segments.emplace_back(A, B, geomIndex);
+                    for (int i = 0; i < part->size() - 1; ++i)
+                    {
+                        // AB is a candidate line segment:
+                        const osg::Vec3d& A = (*part)[i];
+                        const osg::Vec3d& B = (*part)[i + 1];
+                        segments.emplace_back(A, B, geomIndex);
 
-                    double min[2] = { osg::minimum(A.x(), B.x()), osg::minimum(A.y(), B.y()) };
-                    double max[2] = { osg::maximum(A.x(), B.x()), osg::maximum(A.y(), B.y()) };
+                        double min[2] = { osg::minimum(A.x(), B.x()), osg::minimum(A.y(), B.y()) };
+                        double max[2] = { osg::maximum(A.x(), B.x()), osg::maximum(A.y(), B.y()) };
 
-                    unsigned int segmentIndex = segments.size() - 1;
+                        unsigned int segmentIndex = segments.size() - 1;
 
-                    index.Insert(min, max, segmentIndex);
+                        index.Insert(min, max, segmentIndex);
+                    }
                 }
             }
         }
@@ -509,6 +518,9 @@ namespace
                 continue;
             }
 
+            static const unsigned Maxsamples = 4;
+            Samples samples;
+
             for (unsigned col = 0; col < hf->getNumColumns(); ++col)
             {
                 P.x() = ex.xMin() + (double)col * col_interval;
@@ -517,8 +529,7 @@ namespace
                 // because the elevation values on these line segments will be the flattening
                 // value. There may be more than one line segment that falls within the search
                 // radius; we will collect up to MaxSamples of these for each heightfield point.
-                static const unsigned Maxsamples = 4;
-                Samples samples;
+                samples.clear();
 
                 unsigned int hitIndex = 0;
                 // What is the maximum number of hits we see in this area?
@@ -717,15 +728,17 @@ namespace
         WidthsList& widths, ElevationPool* pool, ElevationPool::WorkingSet* workingSet,
         bool fillAllPixels, ProgressCallback* progress)
     {
-        if (geom->isLinear())
+        if (geom->getComponentType() == Geometry::TYPE_POLYGON)
+        {
+            return integratePolygons(key, hf, geom, geomSRS, widths, pool, workingSet, fillAllPixels, progress);
+        }
+        else
         {
             LineSegmentList segments;
             LineSegmentIndex index;
             buildSegmentList(geom, segments, index);
             return integrateLines(key, hf, segments, index, geomSRS, widths, pool, workingSet, fillAllPixels, progress);
         }
-        else
-            return integratePolygons(key, hf, geom, geomSRS, widths, pool, workingSet, fillAllPixels, progress);
     }
 }
 
@@ -774,9 +787,6 @@ FlatteningLayer::Options::getConfig() const
 void
 FlatteningLayer::Options::fromConfig(const Config& conf)
 {
-    fill().init(false);
-    lineWidth().init(40);
-    bufferWidth().init(40);
     URIContext uriContext = URIContext(conf.referrer());
 
     featureSource().get(conf, "features");
@@ -830,7 +840,7 @@ FlatteningLayer::init()
     ElevationLayer::init();
 
     // Experiment with this and see what will work.
-    _pool = new ElevationPool();
+    //_pool = new ElevationPool();
 }
 
 Config
@@ -847,7 +857,7 @@ FlatteningLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    // ensure the caller named a feature source:
+    // we either need a feature source:
     Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
@@ -887,9 +897,16 @@ FlatteningLayer::addedToMap(const Map* map)
 
     // Initialize the elevation pool with our map:
     OE_INFO << LC << "Attaching elevation pool to map\n";
+    _pool = map->getElevationPool();
     _pool->setMap(map);
 
+    // Feature source:
     options().featureSource().addedToMap(map);
+    auto fs = getFeatureSource();
+    if (fs && fs->getStatus().isError()) {
+        setStatus(fs->getStatus());
+        return;
+    }
 
     // Collect all elevation layers preceding this one and use them for flattening.
     ElevationLayerVector layers;
@@ -917,39 +934,20 @@ FlatteningLayer::removedFromMap(const Map* map)
     ElevationLayer::removedFromMap(map);
 }
 
-FeatureList
-FlatteningLayer::getFeatures(const TileKey& key) const
-{
-    std::lock_guard<std::mutex> lk(_featuresCacheMutex);
-
-    FeaturesLRU::Record result;
-    _featuresCache.get(key, result);
-    if (result.valid())
-    {
-        return result.value();
-    }
-
-    Query query;
-    query.tileKey() = key;
-
-    FeatureList features;
-    auto cursor = getFeatureSource()->createFeatureCursor(query, _filterChain);
-    if (cursor.valid())
-    {
-        cursor->fill(features);
-        _featuresCache.insert(key, features);
-    }
-    return features;
-}
-
 GeoHeightField
 FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    if (getStatus().isError())
+    if (getStatus().isOK() && getFeatureSource())
     {
-        return GeoHeightField::INVALID;
+        return createFromFeatures(key, progress);
     }
 
+    return GeoHeightField::INVALID;
+}
+
+GeoHeightField
+FlatteningLayer::createFromFeatures(const TileKey& key, ProgressCallback* progress) const
+{
     if (!getFeatureSource())
     {
         setStatus(Status(Status::ServiceUnavailable, "No feature source"));
@@ -976,166 +974,59 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
         return GeoHeightField::INVALID;
     }
 
-    //if (_pool->getElevationLayers().empty())
-    //{
-    //    OE_WARN << LC << "Internal error - Pool layer set is empty\n";
-    //    return GeoHeightField::INVALID;
-    //}
-
-    // If the feature source has a tiling profile, we are going to have to map the incoming
-    // TileKey to a set of intersecting TileKeys in the feature source's tiling profile.
-    GeoExtent queryExtent;
-    if (featureProfile->getTilingProfile())
-        queryExtent = featureProfile->getTilingProfile()->clampAndTransformExtent(key.getExtent());
-    else
-        queryExtent = key.getExtent().transform(featureSRS);
-
-    if (!queryExtent.isValid())
-    {
-        return GeoHeightField::INVALID;
-    }
-
     // Lat/Long extent:
-    GeoExtent geoExtent = queryExtent.transform(featureSRS->getGeographicSRS());
+    GeoExtent geoExtent = key.getExtent().transform(featureSRS->getGeographicSRS());
     if (!geoExtent.isValid())
     {
         return GeoHeightField::INVALID;
     }
 
-    // Buffer the query extent to include the potentially flattened area.
-    /*
-    double linewidth = SpatialReference::transformUnits(
-        options().lineWidth().get(),
-        featureSRS,
-        geoExtent.getCentroid().y());
-
-    double bufferwidth = SpatialReference::transformUnits(
-        options().bufferWidth().get(),
-        featureSRS,
-        geoExtent.getCentroid().y());
-    */
     // TODO:  JBFIX.  Add a "max" setting somewhere.
     double linewidth = 10.0;
     double bufferwidth = 10.0;
     double queryBuffer = 0.5*linewidth + bufferwidth;
-    queryExtent.expand(queryBuffer, queryBuffer);
 
-    // We must do all the feature processing in a projected system since we're using vector math.
-#if 0
-    osg::ref_ptr<const SpatialReference> workingSRS = queryExtent.getSRS();
-    //if (workingSRS->isGeographic())
-    {
-        osg::Vec3d refPos = queryExtent.getCentroid();
-        workingSRS = workingSRS->createTangentPlaneSRS(refPos);
-    }
-#else
-    const SpatialReference* workingSRS = queryExtent.getSRS()->isGeographic() ? SpatialReference::get("spherical-mercator") :
-        queryExtent.getSRS();
-#endif
+    // We need to work in projected space since we are buffering in meters.
+    auto workingSRS = key.getExtent().getSRS()->isGeographic() ? 
+        SpatialReference::get("spherical-mercator") : key.getExtent().getSRS();
 
     bool needsTransform = !featureSRS->isHorizEquivalentTo(workingSRS);
 
-    osg::ref_ptr< StyleSheet > styleSheet = new StyleSheet();
-    styleSheet->setScript(options().getScript());
-    osg::ref_ptr< Session > session = new Session(_map.get(), styleSheet.get());
+    osg::ref_ptr<Session> session = new Session(_map.get(), new StyleSheet());
+    session->styles()->setScript(options().getScript());
+    FilterContext context(session.get());
 
-    // We will collection all the feature geometries in this multigeometry:
-    MultiGeometry geoms;
-    WidthsList widths;
+    Query query(key);
+    query.buffer() = Distance(queryBuffer, Units::METERS);
 
-    if (featureProfile->getTilingProfile())
-    {
-        // Tiled source, must resolve complete set of intersecting tiles:
-        std::vector<TileKey> intersectingKeys;
-        featureProfile->getTilingProfile()->getIntersectingTiles(queryExtent, key.getLOD(), intersectingKeys);
+    // Fetch our features:
+    auto cursor = getFeatureSource()->createFeatureCursor(query, _filterChain, &context, progress);
+    if (!cursor.valid())
+        return GeoHeightField::INVALID;
 
-        std::unordered_set<TileKey> featureKeys;
-        for (int i = 0; i < intersectingKeys.size(); ++i)
-        {
-            if ((int)intersectingKeys[i].getLOD() > featureProfile->getMaxLevel())
-                featureKeys.insert(intersectingKeys[i].createAncestorKey(featureProfile->getMaxLevel()));
-            else
-                featureKeys.insert(intersectingKeys[i]);
-        }
-
-        unsigned featureCount = 0;
-        std::vector<FeatureList> lists;
-        lists.reserve(featureKeys.size());
-        for (auto featureKey : featureKeys)
-        {
-            lists.emplace_back(std::move(const_cast<FlatteningLayer*>(this)->getFeatures(featureKey)));
-            featureCount += lists.back().size();
-        }
+    FeatureList features;
+    auto featureCount = cursor->fill(features);
         
-        // preallocate some memory for speed
-        geoms.getComponents().reserve(featureCount);
-        widths.reserve(featureCount);
+    // preallocate some memory for speed
+    MultiGeometry geoms;
+    geoms.getComponents().reserve(featureCount);
 
-        // Now collect all the features we need for this tile.
-        for(auto& list : lists)
-        {
-            for(auto& feature : list)
-            {
-                double lineWidth = 0.0;
-                double bufferWidth = 0.0;
-                if (options().lineWidth().isSet())
-                {
-                    NumericExpression lineWidthExpr(options().lineWidth().get());
-                    lineWidth = feature->eval(lineWidthExpr, session.get());
-                }
+    WidthsList widths;
+    widths.reserve(featureCount);
 
-                if (lineWidth > 0.0)
-                {
-                    if (options().bufferWidth().isSet())
-                    {
-                        NumericExpression bufferWidthExpr(options().bufferWidth().get());
-                        bufferWidth = feature->eval(bufferWidthExpr, session.get());
-                    }
-
-                    // Transform the feature geometry to our working (projected) SRS.
-                    if (needsTransform)
-                        feature->transform(workingSRS);
-
-                    lineWidth = SpatialReference::transformUnits(
-                        Distance(lineWidth, Units::METERS),
-                        featureSRS,
-                        geoExtent.getCentroid().y());
-
-                    bufferWidth = SpatialReference::transformUnits(
-                        Distance(bufferWidth, Units::METERS),
-                        featureSRS,
-                        geoExtent.getCentroid().y());
-
-                    //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
-                    //      in order to discard geometries we don't care about
-                    geoms.getComponents().push_back(feature->getGeometry());
-                    widths.push_back(Widths(bufferWidth, lineWidth));
-                }
-            }
-        }
-    }
-    else
+    // Now collect all the features we need for this tile.
+    for (auto& feature : features)
     {
-        // Non-tiled feaure source, just query arbitrary extent:
-        // Set up the query; bounds must be in the feature SRS:
-        Query query;
-        query.bounds() = queryExtent.bounds();
-
-        auto cursor = getFeatureSource()->createFeatureCursor(query, _filterChain, nullptr, progress);
-
-        // Run the query and fill the list.
-        while (cursor.valid() && cursor->hasMore())
+        double lineWidth = 0.0;
+        double bufferWidth = 0.0;
+        if (options().lineWidth().isSet())
         {
-            Feature* feature = cursor->nextFeature();
+            NumericExpression lineWidthExpr(options().lineWidth().get());
+            lineWidth = feature->eval(lineWidthExpr, session.get());
+        }
 
-            double lineWidth = 0.0;
-            double bufferWidth = 0.0;
-            if (options().lineWidth().isSet())
-            {
-                NumericExpression lineWidthExpr(options().lineWidth().get());
-                lineWidth = feature->eval(lineWidthExpr, session.get());
-            }
-
+        if (lineWidth > 0.0)
+        {
             if (options().bufferWidth().isSet())
             {
                 NumericExpression bufferWidthExpr(options().bufferWidth().get());
@@ -1144,7 +1035,9 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
 
             // Transform the feature geometry to our working (projected) SRS.
             if (needsTransform)
+            {
                 feature->transform(workingSRS);
+            }
 
             lineWidth = SpatialReference::transformUnits(
                 Distance(lineWidth, Units::METERS),
@@ -1156,32 +1049,23 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
                 featureSRS,
                 geoExtent.getCentroid().y());
 
-            // Transform the feature geometry to our working (projected) SRS.
-            if (needsTransform)
-                feature->transform(workingSRS);
-
             //TODO: optimization: test the geometry bounds against the expanded tilekey bounds
             //      in order to discard geometries we don't care about
-
             geoms.getComponents().push_back(feature->getGeometry());
-            widths.push_back(Widths(bufferWidth, lineWidth));
+            widths.emplace_back(bufferWidth, lineWidth);
         }
     }
 
     if (!geoms.getComponents().empty())
     {
         // Make an empty heightfield to populate:
-        osg::ref_ptr<osg::HeightField> hf = HeightFieldUtils::createReferenceHeightField(
-            queryExtent,
+        auto hf = HeightFieldUtils::createReferenceHeightField(
+            key.getExtent(),
             osgEarth::ELEVATION_TILE_SIZE,
             osgEarth::ELEVATION_TILE_SIZE,
             0u,                 // no border
-            true);              // initialize to HAE (0.0) heights
-
-        // Initialize to NO DATA.
-        hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), NO_DATA_VALUE);
-
-        bool fill = (options().fill() == true);
+            false,              // don't process HAEs
+            NO_DATA_VALUE);     // initialize to no data
 
         bool wrote_to_hf = integrate(
             key,
@@ -1191,20 +1075,14 @@ FlatteningLayer::createHeightFieldImplementation(const TileKey& key, ProgressCal
             widths,
             _pool.get(),
             &_elevWorkingSet,
-            fill,
+            options().fill().value(),
             progress);
 
         if (wrote_to_hf)
         {
             return GeoHeightField(hf.get(), key.getExtent());
         }
-        else
-        {
-            return GeoHeightField::INVALID;
-        }
     }
-    else
-    {
-        return GeoHeightField::INVALID;
-    }
+
+    return GeoHeightField::INVALID;
 }

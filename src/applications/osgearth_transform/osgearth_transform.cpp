@@ -39,8 +39,6 @@
 
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
-
 namespace ui = osgEarth::Util::Controls;
 
 int
@@ -117,20 +115,20 @@ ui::Control* makeUI(App& app)
     grid->setControl(0, 6, new ui::LabelControl("Relative Z:"));
 
     app.uiLat = grid->setControl(1, 0, new ui::HSliderControl(40.0f, 50.0f, 44.7433f, new Apply(app)));
-    grid->setControl(2, 0, new LabelControl(app.uiLat));
+    grid->setControl(2, 0, new ui::LabelControl(app.uiLat));
     app.uiLon = grid->setControl(1, 1, new ui::HSliderControl(6.0f, 8.0f, 7.0f, new Apply(app)));
-    grid->setControl(2, 1, new LabelControl(app.uiLon));
+    grid->setControl(2, 1, new ui::LabelControl(app.uiLon));
     app.uiAlt = grid->setControl(1, 2, new ui::HSliderControl(-3000.0f, 100000.0f, 25000.0f, new Apply(app)));
-    grid->setControl(2, 2, new LabelControl(app.uiAlt));
-    grid->setControl(3, 2, new ButtonControl("Zero", new ZeroAlt(app)));
+    grid->setControl(2, 2, new ui::LabelControl(app.uiAlt));
+    grid->setControl(3, 2, new ui::ButtonControl("Zero", new ZeroAlt(app)));
     app.uiHeading = grid->setControl(1, 3, new ui::HSliderControl(-180.0f, 180.0f, 0.0f, new Apply(app)));
-    grid->setControl(2, 3, new LabelControl(app.uiHeading));
+    grid->setControl(2, 3, new ui::LabelControl(app.uiHeading));
     app.uiPitch   = grid->setControl(1, 4, new ui::HSliderControl(-90.0f, 90.0f, 0.0f, new Apply(app)));
-    grid->setControl(2, 4, new LabelControl(app.uiPitch));
+    grid->setControl(2, 4, new ui::LabelControl(app.uiPitch));
     app.uiRoll    = grid->setControl(1, 5, new ui::HSliderControl(-180.0f, 180.0f, 0.0f, new Apply(app)));
-    grid->setControl(2, 5, new LabelControl(app.uiRoll));
+    grid->setControl(2, 5, new ui::LabelControl(app.uiRoll));
     app.uiRelativeZ = grid->setControl(1, 6, new ui::CheckBoxControl(true, new Apply(app))); app.uiRelativeZ->setWidth(15.0f);
-    grid->setControl(2, 6, new LabelControl(app.uiRelativeZ));
+    grid->setControl(2, 6, new ui::LabelControl(app.uiRelativeZ));
 
     app.uiLat->setHorizFill(true, 700.0f);
     return grid;

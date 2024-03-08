@@ -172,7 +172,8 @@ FilterContext
 TessellateOperator::push(FeatureList& input, FilterContext& context) const
 {
     for (FeatureList::iterator i = input.begin(); i != input.end(); ++i) {
-        operator()(i->get(), context);
+        if (i->valid())
+            operator()(i->get(), context);
     }
     return context;
 }

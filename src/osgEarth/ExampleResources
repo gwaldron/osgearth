@@ -19,16 +19,15 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_UTIL_EXAMPLE_RESOURCES_H
-#define OSGEARTH_UTIL_EXAMPLE_RESOURCES_H 1
+#pragma once
 
 #include <osgEarth/Common>
-#include <osgEarth/Controls>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/Sky>
 #include <osgEarth/SimpleOceanLayer>
 #include <osgEarth/Viewpoint>
 #include <osgGA/GUIEventHandler>
+#include <osgViewer/View>
 
 namespace osgEarth {
     class MapNode;
@@ -37,7 +36,6 @@ namespace osg {
     class ArgumentParser;
 }
 namespace osgViewer {
-    class View;
     class ViewerBase;
 };
 
@@ -56,7 +54,6 @@ struct EnumClassHash
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
-    using namespace osgEarth::Util::Controls;
 
     /**
      * Parses a set of built-in example arguments. Any Controls created by parsing
@@ -69,60 +66,28 @@ namespace osgEarth { namespace Util
          * Loads a map file and processes all the built-in example command line 
          * arguemnts and XML externals. Disables the Controls library.
          */
-        osg::ref_ptr<osg::Node> loadWithoutControls(
-            osg::ArgumentParser&   args,
+        osg::ref_ptr<osg::Node> load(
+            osg::ArgumentParser& args,
             osgViewer::ViewerBase* viewer) const;
 
-        /**
-         * Loads a map file and processes all the built-in example command line
-         * arguemnts and XML externals.
-         */
-        osg::ref_ptr<osg::Node> load(
-            osg::ArgumentParser&   args,
-            osgViewer::ViewerBase* viewer) const
-        {
-            return load(args, viewer, nullptr, nullptr);
-        }
-
-        osg::ref_ptr<osg::Node> load(
-            osg::ArgumentParser&   args,
-            osgViewer::ViewerBase* viewer,
-            Container*             userContainer) const
-        {
-            return load(args, viewer, userContainer, nullptr);
-        }
-
-        osg::ref_ptr<osg::Node> load(
-            osg::ArgumentParser&   args,
-            osgViewer::ViewerBase* viewer,
-            Container*             userContainer,
-            const osgDB::Options*  readOptions) const;
-
-        /**
-         * Takes an existing map node and processes all the built-in example command
-         * line arguments and mapNode externals.
-         */
+        //! Takes an existing map node and processes all the built-in example
+        //! command line arguments.
         void parse(
-            MapNode*             mapNode,
+            MapNode* mapNode,
             osg::ArgumentParser& args,
-            osgViewer::View*     view,
-            osg::Group*          parentGroup,
-            Container*           userContainer,
-            bool                 useControls) const;
+            osgViewer::View* view,
+            osg::Group* parentGroup) const;
 
-        /**
-         * Configures a view with a stock set of event handlers that are useful
-         * for demos, and performs some other common view configuration for osgEarth.
-         */
-        void configureView( osgViewer::View* view ) const;
+        //! Configures a view with a stock set of event handlers that are useful
+        //! for demos, and performs some other common view configuration for osgEarth.
+        void configureView(osgViewer::View* view) const;
 
-        /**
-         * Returns a usage string
-         */
+        //! Enumerates the command line arguments that this helper will process
         std::string usage() const;
     };
 
 
+#if 0
     /**
      * Creates a UI Control with a list of clickable viewpoints.
      */
@@ -133,7 +98,6 @@ namespace osgEarth { namespace Util
             const std::vector<Viewpoint>& list,
             osgViewer::View*              view) const;
     };
-
 
     /**
      * Creates UI controls that show the map coordinates under the mouse
@@ -188,14 +152,12 @@ namespace osgEarth { namespace Util
     public:
         Control* create(MapNode* mapNode) const;
     };
-
+#endif
     
     /**
      * Helper class for easily creating event handlers
      */
-    struct EventRouter :
-        public osgGA::GUIEventHandler,
-        public osgGA::GUIEventAdapter
+    struct EventRouter : public osgGA::GUIEventHandler, public osgGA::GUIEventAdapter
     {
         using Function = std::function<void()>;
         using ViewFunction = std::function<void(osg::View*, float, float)>;
@@ -320,12 +282,3 @@ namespace osgEarth { namespace Util
 
 
 } } // namespace osgEarth::Util
-
-
-#define OE_UI_HANDLER(X) \
-    struct X : public osgEarth::Util::Controls::ControlEventHandler { \
-        App& _app; X(App& app):_app(app) { } \
-        void onValueChanged(osgEarth::Util::Controls::Control*) { _app. X (); } \
-        void onClick(osgEarth::Util::Controls::Control*) { _app. X (); } }
-
-#endif // OSGEARTH_UTIL_EXAMPLE_RESOURCES_H

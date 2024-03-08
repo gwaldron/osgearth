@@ -91,28 +91,28 @@ struct SetDateTime : public ui::ControlEventHandler
 };
 
 
-Container* createUI()
+ui::Container* createUI()
 {
-    VBox* box = new VBox();
+    ui::VBox* box = new ui::VBox();
     box->setBackColor(0,0,0,0.5);
-    Grid* grid = box->addControl(new Grid());
+    ui::Grid* grid = box->addControl(new ui::Grid());
     int r=0;
     //grid->setControl(0, r, new LabelControl("Visibility"));
     //HSliderControl* vis = grid->setControl(1, r, new HSliderControl(100.0f, 1000000.0f, 1000000.0f, new Set<double>(s_settings.visibility)));
     //vis->setHorizFill(true, 175);
     //grid->setControl(2, r, new LabelControl(vis));
     //++r;
-    grid->setControl(0, r, new LabelControl("Rain"));
-    grid->setControl(1, r, new HSliderControl(0, 100, 0, new Set<double>(s_settings.rain)));
+    grid->setControl(0, r, new ui::LabelControl("Rain"));
+    grid->setControl(1, r, new ui::HSliderControl(0, 100, 0, new Set<double>(s_settings.rain)));
     ++r;
-    grid->setControl(0, r, new LabelControl("Snow"));
-    grid->setControl(1, r, new HSliderControl(0, 100, 0, new Set<double>(s_settings.snow)));
+    grid->setControl(0, r, new ui::LabelControl("Snow"));
+    grid->setControl(1, r, new ui::HSliderControl(0, 100, 0, new Set<double>(s_settings.snow)));
     ++r;
-    grid->setControl(0, r, new LabelControl("Time"));
-    grid->setControl(1, r, new HSliderControl(0, 24, 0, new SetDateTime()));
+    grid->setControl(0, r, new ui::LabelControl("Time"));
+    grid->setControl(1, r, new ui::HSliderControl(0, 24, 0, new SetDateTime()));
     ++r;
-    grid->setControl(0, r, new LabelControl("Lighting"));
-    grid->setControl(1, r, new CheckBoxControl(false, new Set<bool>(s_settings.lighting)));
+    grid->setControl(0, r, new ui::LabelControl("Lighting"));
+    grid->setControl(1, r, new ui::CheckBoxControl(false, new Set<bool>(s_settings.lighting)));
     ++r;
     grid->getControl(1, r-1)->setHorizFill(true,200);
     return box;
@@ -179,7 +179,7 @@ main(int argc, char** argv)
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
-    auto node = MapNodeHelper().load(arguments, &viewer, createUI());
+    auto node = MapNodeHelper().load(arguments, &viewer);
     if (node.valid() && MapNode::get(node))
     {
         // Make sure we don't already have a sky.
@@ -221,9 +221,16 @@ main(int argc, char** argv)
 
         // insert the new sky above the map node.
         osgEarth::insertParent(s_settings.sky, mapNode);
+
+        auto canvas = new ui::ControlCanvas();
+        canvas->addChild(createUI());
+
+        auto group = new osg::Group();
+        group->addChild(osgEarth::findTopOfGraph(node));
+        group->addChild(canvas);
         
         // use the topmost node.
-        viewer.setSceneData(osgEarth::findTopOfGraph(node));
+        viewer.setSceneData(group);
 
         // connects the sky's light to the viewer.
         s_settings.sky->attach(&viewer);

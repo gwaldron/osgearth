@@ -127,10 +127,11 @@ FeatureNode::build()
         _extent = GeoExtent::INVALID;
 
         FeatureList clone;
-        for(FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr)
+        for(auto& feature : _features)
         {
-            Feature* feature = new Feature( *itr->get(), osg::CopyOp::DEEP_COPY_ALL);
-            GeoExtent featureExtent(feature->getSRS(), feature->getGeometry()->getBounds());
+            auto cloned_feature = new Feature(*feature);
+
+            GeoExtent featureExtent(cloned_feature->getSRS(), cloned_feature->getGeometry()->getBounds());
 
             if (_extent.isInvalid())
             {
@@ -140,7 +141,7 @@ FeatureNode::build()
             {
                 _extent.expandToInclude( featureExtent );
             }
-            clone.push_back( feature );
+            clone.push_back(cloned_feature);
         }
 
         // prep the compiler:

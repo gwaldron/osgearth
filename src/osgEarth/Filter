@@ -88,10 +88,11 @@ namespace osgEarth { namespace Util
         const Status& getStatus() const { return _status; }
 
         FilterContext push(FeatureList& input, FilterContext& context) const {
+            FilterContext temp = context;
             for (auto& filter : *this) {
-                context = filter->push(input, context);
+                temp = filter->push(input, temp);
             }
-            return context;
+            return temp;
         }
 
     private:

@@ -40,8 +40,6 @@
 using namespace osgEarth;
 using namespace osgEarth::WFS;
 
-#define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
-
 //........................................................................
 
 #define ATTR_VERSION "version"
@@ -326,9 +324,6 @@ WFSFeatureSource::saveResponse(const std::string buffer, const std::string& file
 bool
 WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mimeType, FeatureList& features) const
 {
-    // Unnecessary - dataset is created and destroyed locally
-    //OGR_SCOPED_LOCK;
-
     bool json = isJSON(mimeType);
     bool gml = isGML(mimeType);
 
@@ -535,6 +530,7 @@ WFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
     }
 
+#if 0 // Done in FeatureSource now
     //If we have any filters, process them here before the cursor is created
     if (!getFilters().empty() && !features.empty())
     {
@@ -553,6 +549,7 @@ WFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
             itr->get()->setFID(fid);
         }
     }
+#endif
 
     result = dataOK ? new FeatureListCursor(features) : 0L;
 

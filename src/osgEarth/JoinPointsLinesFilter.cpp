@@ -260,12 +260,11 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
         {
             Feature* lineFeature = i->get();
             const AttributeTable& attrTable = lineFeature->getAttrs();
-            for(AttributeTable::const_iterator j = attrTable.begin(); j != attrTable.end(); ++j)
+            for (auto& attr_entry : attrTable)
             {
-                const AttributeTable::value_type& attrEntry = *j;
-                if (attrEntry.first[0] != '@' && !pointFeature->hasAttr(attrEntry.first))
+                if (attr_entry.first[0] != '@' && !pointFeature->hasAttr(attr_entry.first))
                 {
-                    pointFeature->set(attrEntry.first, attrEntry.second);
+                    pointFeature->set(attr_entry.first, attr_entry.second);
                 }
             }
         }

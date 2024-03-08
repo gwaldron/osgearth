@@ -77,13 +77,16 @@ AttributesFilter::push(FeatureList& input, FilterContext& context)
     for (FeatureList::iterator i = input.begin(); i != input.end(); )
     {
         bool passed = false;
-        for (auto& a : _attributes)
+        if (i->valid())
         {
-            if (i->get()->hasAttr(a))
+            for (auto& a : _attributes)
             {
-                ++i;
-                passed = true;
-                break;
+                if (i->get()->hasAttr(a))
+                {
+                    ++i;
+                    passed = true;
+                    break;
+                }
             }
         }
 

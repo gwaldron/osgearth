@@ -265,7 +265,7 @@ namespace osgEarth { namespace Util
         bool _threadsafe = true;
         Mutex _trackerMutex;
         SentryTracker<osg::ref_ptr<PagedNode2>> _tracker;
-        std::list<PagedNode2*> _trash;
+        //std::list<PagedNode2*> _trash;
         using UpdateFunc = std::function<void(Cancelable*)>;
         UpdateFunc _updateFunc;
         jobs::jobpool::metrics_t* _metrics;

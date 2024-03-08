@@ -54,14 +54,6 @@ namespace osgEarth
     class OSGEARTH_EXPORT Geometry : public osgEarth::InlineVector<osg::Vec3d,osg::Referenced>
     {
     public:
-        Geometry( int capacity =0 );
-        Geometry( const Geometry& rhs );
-        Geometry( const Vec3dVector* toCopy );
-
-        /** dtor - intentionally public */
-        virtual ~Geometry();
-
-    public:
         enum Type {
             TYPE_UNKNOWN,
             TYPE_POINT,
@@ -69,6 +61,7 @@ namespace osgEarth
             TYPE_LINESTRING,
             TYPE_RING,
             TYPE_POLYGON,
+            TYPE_TRIMESH,
             TYPE_MULTI
         };
 
@@ -78,6 +71,14 @@ namespace osgEarth
             ORIENTATION_DEGENERATE
         };
 
+    public:
+        Geometry() : Geometry(TYPE_UNKNOWN) { }
+        Geometry(const Geometry& rhs) = default;
+
+        /** dtor - intentionally public */
+        virtual ~Geometry();
+
+    public:
         static std::string toString( Type t ) {
             return
                 t == TYPE_POINT ?      "Point" :
@@ -85,6 +86,7 @@ namespace osgEarth
                 t == TYPE_LINESTRING ? "LineString" :
                 t == TYPE_RING ?       "Ring" :
                 t == TYPE_POLYGON ?    "Polygon" :
+                t == TYPE_TRIMESH ?    "TriangleMesh" :
                 t == TYPE_MULTI ?      "MultiGeometry" :
                                        "Unknown";
         }
@@ -258,7 +260,7 @@ namespace osgEarth
         void forEachPart(bool includePolygonHoles, const std::function<void(const Geometry*)>& func) const;
 
     public:
-        virtual Type getType() const { return TYPE_UNKNOWN; }
+        inline Type getType() const { return _type; }
         virtual Type getComponentType() const { return getType(); }
         virtual bool isValid() const { return size() >= 1; }
 
@@ -276,7 +278,12 @@ namespace osgEarth
         virtual bool isPointSet() const { return getComponentType()==TYPE_POINT || getComponentType()==TYPE_POINTSET; }
         virtual bool isLineString() const { return getComponentType() == TYPE_LINESTRING; }
         virtual bool isOpen() const { return true; }
+
     protected:
+        Geometry(Type type, int capacity = 0);
+        Geometry(Type type, const Vec3dVector* toCopy);
+
+        Type _type = TYPE_UNKNOWN;
     };
 
     typedef std::vector< osg::ref_ptr<Geometry> > GeometryCollection;
@@ -287,17 +294,16 @@ namespace osgEarth
     class OSGEARTH_EXPORT PointSet : public Geometry
     {
     public:
-        PointSet( int capacity =0 ) : Geometry( capacity ) { }
-        PointSet( const Vec3dVector* toCopy ) : Geometry( toCopy ) { }
-        PointSet( const PointSet& rhs );
+        PointSet(int capacity = 0) : Geometry(TYPE_POINTSET, capacity) { }
+        PointSet(const Vec3dVector* toCopy) : Geometry(TYPE_POINTSET, toCopy) { }
+        PointSet(const PointSet& rhs) = default;
 
-        /** dtor */
-        virtual ~PointSet();
+        // Don't close point sets
+        void close() override { }
 
-        virtual void close() override;
-
-    public:
-        virtual Type getType() const override { return Geometry::TYPE_POINTSET; }
+    protected:
+        PointSet(Type type, int capacity = 0) : Geometry(type, capacity) { }
+        PointSet(Type type, const Vec3dVector* toCopy) : Geometry(type, toCopy) { }
     };
 
     /**
@@ -306,17 +312,14 @@ namespace osgEarth
     class OSGEARTH_EXPORT Point : public PointSet
     {
     public:
-        Point(int capacity = 0) : PointSet(capacity) { }
-        Point(const Vec3dVector* toCopy) : PointSet(toCopy) { }
-        Point(const Point& rhs);
-
-        /** dtor */
-        virtual ~Point();
+        Point(int capacity = 0) : PointSet(TYPE_POINT, capacity) { }
+        Point(const Vec3dVector* toCopy) : PointSet(TYPE_POINT, toCopy) { }
+        Point(const Point& rhs) = default;
 
         void set(const osg::Vec3d& value);
 
-    public:
-        virtual Type getType() const override { return Geometry::TYPE_POINT; }
+        // don't close
+        void close() override { }
     };
 
     /**
@@ -325,23 +328,18 @@ namespace osgEarth
     class OSGEARTH_EXPORT LineString : public Geometry
     {
     public:
-        LineString( int capacity =0 ) : Geometry( capacity ) { }
-        LineString( const LineString& rhs );
-        LineString( const Vec3dVector* toCopy );
-
-        /** dtor */
-        virtual ~LineString();
+        LineString(int capacity = 0) : Geometry(TYPE_LINESTRING, capacity) { }
+        LineString(const Vec3dVector* toCopy) : Geometry(TYPE_LINESTRING, toCopy) { }
+        LineString(const LineString& rhs) = default;
 
         bool getSegment(double length, osg::Vec3d& start, osg::Vec3d& end);
 
-        virtual void close() override;
+        void close() override;
 
-        virtual double getSignedDistance2D(
-            const osg::Vec3d& point) const override;
+        double getSignedDistance2D(const osg::Vec3d& point) const override;
 
     public:
-        virtual Type getType() const { return Geometry::TYPE_LINESTRING; }
-        virtual bool isValid() const { return size() >= 2; }
+        bool isValid() const override { return size() >= 2; }
     };
 
     /**
@@ -352,43 +350,43 @@ namespace osgEarth
     class OSGEARTH_EXPORT Ring : public Geometry
     {
     public:
-        Ring( int capacity =0 ) : Geometry( capacity ) { }
-        Ring( const Ring& ring );
-        Ring( const Vec3dVector* toCopy );
-
-        /** dtor */
-        virtual ~Ring();
+        Ring(int capacity = 0) : Geometry(TYPE_RING, capacity) { }
+        Ring(const Vec3dVector* toCopy) : Ring(TYPE_RING, toCopy) { }
+        Ring(const Ring& ring) = default;
 
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
 
         // tests whether the point falls within the ring
-        virtual bool contains2D( double x, double y ) const override;
+        bool contains2D( double x, double y ) const override;
 
         // gets the signed area of a part that is known to be open.
-        virtual double getSignedArea2D() const;
+        double getSignedArea2D() const;
 
         // gets the length of the ring (override)
-        virtual double getLength() const;
+        double getLength() const;
 
         // ensures that the first and last points are not idential.
-        virtual void open() override;
+        void open() override;
 
         // ensures that the first and last points are identical.
-        virtual void close() override;
+        void close() override;
 
         // whether the ring is open (i.e. first and last points are different)
-        virtual bool isOpen() const override;
+        bool isOpen() const override;
 
         // opens and winds the ring in the specified direction
-        virtual void rewind( Orientation ori );
+        virtual void rewind(Orientation ori);
 
-        virtual double getSignedDistance2D(
-            const osg::Vec3d& a) const override;
+        double getSignedDistance2D(const osg::Vec3d& a) const override;
 
     public:
         virtual Type getType() const { return Geometry::TYPE_RING; }
         virtual bool isValid() const { return size() >= 3; }
+
+    protected:
+        Ring(Type type, int capacity = 0) : Geometry(type, capacity) { }
+        Ring(Type type, const Vec3dVector* toCopy);
     };
 
     typedef std::vector<osg::ref_ptr<Ring> > RingCollection;
@@ -401,12 +399,9 @@ namespace osgEarth
     class OSGEARTH_EXPORT Polygon : public Ring
     {
     public:
-        Polygon( int capacity =0 ) : Ring( capacity ) { }
-        Polygon( const Polygon& rhs );
-        Polygon( const Vec3dVector* toCopy );
-
-        /** dtor */
-        virtual ~Polygon();
+        Polygon(int capacity = 0) : Ring(TYPE_POLYGON, capacity) { }
+        Polygon(const Vec3dVector* toCopy) : Ring(TYPE_POLYGON, toCopy) { }
+        Polygon(const Polygon& rhs);
 
     public:
         virtual Type getType() const { return Geometry::TYPE_POLYGON; }
@@ -436,44 +431,50 @@ namespace osgEarth
         RingCollection _holes;
     };
 
+    class OSGEARTH_EXPORT TriMesh : public Geometry
+    {
+    public:
+        TriMesh() : Geometry(TYPE_TRIMESH) { }
+
+        unsigned getNumGeometries() const override { return 1u; }
+
+        bool contains2D(double x, double y) const override;
+
+    public:
+        std::vector<unsigned> _indices;
+    };
+
     /**
      * A collection of multiple geometries (aka, a "multi-part" geometry).
      */
     class OSGEARTH_EXPORT MultiGeometry : public Geometry
     {
     public:
-        MultiGeometry() { }
-        MultiGeometry( const GeometryCollection& parts );
-        MultiGeometry( const MultiGeometry& rhs );
-
-        /** dtor */
-        virtual ~MultiGeometry();
+        MultiGeometry() : Geometry(TYPE_MULTI) { }
+        MultiGeometry(const MultiGeometry& rhs);
+        MultiGeometry(const GeometryCollection& parts);
 
     public:
-        virtual Type getType() const  override { return Geometry::TYPE_MULTI; }
-        virtual Type getComponentType() const override;
-        virtual int getTotalPointCount() const override;
-        virtual unsigned getNumComponents() const override { return _parts.size(); }
+        Type getComponentType() const override;
+        int getTotalPointCount() const override;
+        unsigned getNumComponents() const override { return _parts.size(); }
 
-        virtual unsigned getNumGeometries() const override;
+        unsigned getNumGeometries() const override;
 
         // gets the combined length of all parts
-        virtual double getLength() const override;
+        double getLength() const override;
 
         // override
-        virtual Geometry* cloneAs( const Geometry::Type& newType ) const override;
-        virtual bool isValid() const override;
-        virtual Bounds getBounds() const override;
-        virtual void rewind( Orientation ori ) override;
+        Geometry* cloneAs( const Geometry::Type& newType ) const override;
+        bool isValid() const override;
+        Bounds getBounds() const override;
+        void rewind( Orientation ori ) override;
         void removeDuplicates() override;
-        virtual void removeColinearPoints() override;
+        void removeColinearPoints() override;
         void open() override;
-        virtual void close() override;
-
-        virtual double getSignedDistance2D(
-            const osg::Vec3d& a) const override;
-
-        virtual bool contains2D(double x, double y) const override;
+        void close() override;
+        double getSignedDistance2D(const osg::Vec3d& a) const override;
+        bool contains2D(double x, double y) const override;
 
     public:
         GeometryCollection& getComponents() { return _parts; }
@@ -530,12 +531,18 @@ namespace osgEarth
     class OSGEARTH_EXPORT ConstGeometryIterator
     {
     public:
+        //! Null constructor (must call reset before using)
+        ConstGeometryIterator();
+
         //! Constructs a new iterator.
         //! @param geom Geometry over which to iterator
         //! @param traversePolyHoles Whether to include polygon holes in the traversal
         ConstGeometryIterator(
             const Geometry* geom,
             bool traversePolygonHoles  =true );
+
+        //! Sets the iterator to iterate a new geometry
+        void reset(const Geometry* geom, bool traversePolygonHoles = true);
 
         //! Whether next() will return another geometry
         bool hasMore() const;
@@ -549,10 +556,11 @@ namespace osgEarth
         }
 
     private:
-        const Geometry* _next;
-        std::stack<const Geometry*> _stack;
-        bool _traverseMulti;
-        bool _traversePolyHoles;
+        const Geometry* _next = nullptr;
+        std::vector<const Geometry*> _stack;
+        //std::stack<const Geometry*> _stack;
+        bool _traverseMulti = true;
+        bool _traversePolyHoles = true;
 
         void fetchNext();
     };
@@ -570,17 +578,30 @@ namespace osgEarth
         //! @param verts Geometry over which to iterate segments
         //! @param forceClosedLoop connect the last and first point even if the
         //!    geometry is not a ring.
-        ConstSegmentIterator( const Geometry* verts, bool forceClosedLoop =false );
+        ConstSegmentIterator(const Geometry* verts, bool forceClosedLoop = false) {
+            _verts = &verts->asVector();
+            _iter = verts->begin();
+            _done = verts->size() < 2;
+            _closeLoop = forceClosedLoop ? true : verts->getType() == verts->TYPE_RING || verts->getType() == verts->TYPE_POLYGON;
+        }
 
         //! Whether next() will return a valid segment
-        bool hasMore() const { return !_done; }
+        inline bool hasMore() const {
+            return !_done;
+        }
 
         //! Next segment when hasMore() == true
-        Segment next();
-
-        //!V isits each segment and calls a user-defined functor
-        inline void forEach(const std::function<void(const Segment&)>& func) {
-            while (hasMore()) func(next());
+        const Segment& next() {
+            _current.first = *_iter++;
+            if (_iter == _verts->end()) {
+                _iter = _verts->begin();
+                _done = true;
+            }
+            else if (_iter + 1 == _verts->end() && !_closeLoop) {
+                _done = true;
+            }
+            _current.second = *_iter;
+            return _current;
         }
 
     private:
@@ -588,6 +609,7 @@ namespace osgEarth
         Vec3dVector::const_iterator _iter;
         bool _done;
         bool _closeLoop;
+        Segment _current;
     };
 } // namespace osgEarth
 

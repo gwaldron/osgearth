@@ -398,27 +398,34 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
     // at the same time. This helps a lot with elevation data since
     // the many queries cross tile boundaries (like calculating 
     // normal maps)
-    ScopedGate<TileKey> gate(_sentry, key, _memCache.valid());
-
-    // Check the memory cache first
-    bool fromMemCache = false;
+    const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
+    CacheBin* cacheBin = policy.isCacheEnabled() ? getCacheBin(key.getProfile()) : nullptr;
 
     // cache key combines the key with the full signature (incl vdatum)
     // the cache key combines the Key and the horizontal profile.
-    std::string cacheKey = Cache::makeCacheKey(
-        Stringify() << key.str() << "-" << std::hex << key.getProfile()->getHorizSignature(),
-        "elevation");
-    const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
+    auto cacheKey = Cache::makeCacheKey(key.str() + "-" + key.getProfile()->getHorizSignature(), "elevation");
+    std::string memCacheKey;
 
-    char memCacheKey[64];
+    // see if there's a persistent cache.
+    bool memCacheAvailable = _memCache.valid();
+    bool diskCacheAvailable = cacheBin && policy.isCacheReadable() && policy.isCacheWriteable();
+
+    // Prevent multiple threads from creating the same object at the same time
+    // IF there is a cache present. The gate goes here so that the first thread
+    // to enter has a chance to write to a cache, allowing the followers to read
+    // from that cache immediately when unblocked.
+    // 
+    // NOTE! This can cause deadlock. Cause: the ElevationPool has a r/w lock that it
+    // uses when synchronizing and refreshing from the Map. If this functions is called
+    // from the ElevationPool and this gate locks while holding that read lock, all
+    // other threads will be blocked and you get deadlock.T
+    //ScopedGate<TileKey> gate(_sentry, key, memCacheAvailable || diskCacheAvailable);
 
     // Try the L2 memory cache first:
+    bool fromMemCache = false;
     if ( _memCache.valid() )
     {
-        sprintf(memCacheKey, "%d/%s/%s",
-            getRevision(),
-            key.str().c_str(),
-            key.getProfile()->getHorizSignature().c_str());
+        memCacheKey = std::to_string(getRevision()) + cacheKey;
 
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
         ReadResult cacheResult = bin->readObject(memCacheKey, 0L);
@@ -435,9 +442,6 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
     // Next try the main cache:
     if ( !result.valid() )
     {
-        // See if there's a persistent cache.
-        CacheBin* cacheBin = getCacheBin( key.getProfile() );
-
         // validate the existance of a valid layer profile.
         if ( !policy.isCacheOnly() && !getProfile() )
         {
@@ -451,7 +455,7 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
 
         osg::ref_ptr< osg::HeightField > cachedHF;
 
-        if ( cacheBin && policy.isCacheReadable() )
+        if (diskCacheAvailable)
         {
             ReadResult r = cacheBin->readObject(cacheKey, 0L);
             if ( r.succeeded() )

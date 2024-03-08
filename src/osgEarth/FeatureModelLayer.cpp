@@ -32,17 +32,17 @@ REGISTER_OSGEARTH_LAYER(feature_model, FeatureModelLayer); // backwards compatib
 //...........................................................................
 
 FeatureModelLayer::Options::Options() :
-VisibleLayer::Options(),
-FeatureModelOptions(),
-GeometryCompilerOptions()
+    VisibleLayer::Options(),
+    FeatureModelOptions(),
+    GeometryCompilerOptions()
 {
     fromConfig(_conf);
 }
 
 FeatureModelLayer::Options::Options(const ConfigOptions& options) :
-VisibleLayer::Options(options),
-FeatureModelOptions(options),
-GeometryCompilerOptions(options)
+    VisibleLayer::Options(options),
+    FeatureModelOptions(options),
+    GeometryCompilerOptions(options)
 {
     fromConfig(_conf);
 }

@@ -858,13 +858,13 @@ FeatureRasterizer::render_blend2d(
         // fashion will always be rendered in the same order when rendered in multiple neighboring tiles
         // so the decluttering algorithm will work consistently across tiles.
         FeatureList sortedFeatures(features);
-        sortedFeatures.sort([](const osg::ref_ptr< Feature >& a, const osg::ref_ptr< Feature >& b) {
+        std::sort(sortedFeatures.begin(), sortedFeatures.end(), [](auto& a, auto& b) {
             auto centerA = a->getGeometry()->getBounds().center();
             auto centerB = b->getGeometry()->getBounds().center();
             if (centerA.x() < centerB.x()) return true;
             if (centerA.x() > centerB.x()) return false;
             return centerA.y() < centerB.y();
-        });
+            });
 
         // Rasterize the symbols:
         for (const auto& feature : sortedFeatures)

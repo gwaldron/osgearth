@@ -198,7 +198,7 @@ ImageToFeatureSource::createFeatureCursorImplementation(const Query& query, Prog
             if (!features.empty())
             {
                 //OE_NOTICE << LC << "Returning " << features.size() << " features" << std::endl;
-                return new FeatureListCursor(features);
+                return new FeatureListCursor(std::move(features));
             }
         }
     }

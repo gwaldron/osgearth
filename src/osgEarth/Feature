@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHFEATURES_FEATURE_H
-#define OSGEARTHFEATURES_FEATURE_H 1
-
+#pragma once
 #include <osgEarth/Common>
 #include <osgEarth/Profile>
 #include <osgEarth/Geometry>
@@ -93,13 +91,11 @@ namespace osgEarth
     struct AttributeValueUnion
     {
         std::string stringValue;
-        double      doubleValue;
-        long long   intValue;
-        bool        boolValue;
+        double doubleValue;
+        long long intValue;
+        bool boolValue;
         std::vector<double> doubleArrayValue;
-
-        //Whether the value is set.  A value of false means the value is effectively NULL
-        bool        set;
+        bool set = false;
     };
 
     enum AttributeType
@@ -112,38 +108,42 @@ namespace osgEarth
         ATTRTYPE_DOUBLEARRAY
     };
 
-    struct OSGEARTH_EXPORT AttributeValue : public std::pair<AttributeType,AttributeValueUnion>
+    struct OSGEARTH_EXPORT AttributeValue
     {
+        AttributeType type;
+        AttributeValueUnion value;
         std::string getString() const;
-        double getDouble( double defaultValue =0.0 ) const;
-        long long getInt( long long defaultValue =0 ) const;
-        bool getBool( bool defaultValue =false ) const;
+        double getDouble(double defaultValue = 0.0) const;
+        long long getInt(long long defaultValue = 0) const;
+        bool getBool(bool defaultValue = false) const;
         const std::vector<double>& getDoubleArrayValue() const;
     };
 
-    typedef std::map<std::string, AttributeValue, CIStringComp> AttributeTable;
+    using AttributeTable = vector_map<std::string, AttributeValue, ci_string_less>;
 
-    typedef long long FeatureID;
+    using FeatureID = long long;
 
-    typedef std::map< std::string, AttributeType > FeatureSchema;
+    using FeatureSchema = std::map<std::string, AttributeType>;
 
     class Feature;
 
-    typedef std::list< osg::ref_ptr<Feature> > FeatureList;
+    using FeatureList = std::vector<osg::ref_ptr<Feature>>;
 
     /**
      * Basic building block of vector feature data.
      */
-    class OSGEARTH_EXPORT Feature : public osg::Object
+    class OSGEARTH_EXPORT Feature : public osg::Referenced // : public osg::Object
     {
     public:
 
-        Feature( Geometry* geom, const SpatialReference* srs, const Style& style =Style(), FeatureID fid =0LL );
+        //! Construct a feature
+        Feature(Geometry* geom, const SpatialReference* srs, const Style& style =Style(), FeatureID fid =0LL );
 
-        /** Copy contructor */
-        Feature( const Feature& rhs, const osg::CopyOp& copyop =osg::CopyOp::DEEP_COPY_ALL );
+        //! Construct a feature (copy)
+        Feature(const Feature& rhs);
 
-        META_Object( osgEarth, Feature );
+        //! Contruct a feature (move)
+        Feature(Feature&& rhs);
 
     public:
 
@@ -281,5 +281,3 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
-
-#endif // OSGEARTHFEATURES_FEATURE_H

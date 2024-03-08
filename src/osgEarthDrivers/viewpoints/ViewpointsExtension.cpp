@@ -25,8 +25,11 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Viewpoints;
+
+#ifdef OSGEARTH_HAVE_CONTROLS_API
+using namespace osgEarth::Util::Controls;
+#endif
 
 #define LC "[ViewpointsExtension] "
 
@@ -155,6 +158,7 @@ namespace
     };
 
 
+#ifdef OSGEARTH_HAVE_CONTROLS_API
     // flies to a viewpoint in response to control event (click)
     struct ClickViewpointHandler : public ControlEventHandler
     {
@@ -201,6 +205,7 @@ namespace
 
         return grid;
     }
+#endif 
 }
 
 //.........................................................................
@@ -278,6 +283,8 @@ ViewpointsExtension::disconnect(osg::View* view)
     return true;
 }
 
+
+#ifdef OSGEARTH_HAVE_CONTROLS_API
 bool
 ViewpointsExtension::connect(Control* control)
 {
@@ -301,3 +308,4 @@ ViewpointsExtension::disconnect(Control* control)
     // TODO: remove the UI
     return true;
 }
+#endif

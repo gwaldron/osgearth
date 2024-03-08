@@ -765,7 +765,7 @@ VTPKFeatureSource::createFeatureCursorImplementation(const Query& query, Progres
 
     if (!features.empty())
     {
-        return new FeatureListCursor(features);
+        return new FeatureListCursor(std::move(features));
     }
     return nullptr;
 }

@@ -38,7 +38,7 @@ namespace osgDB
 namespace osgEarth
 {
     using namespace osgEarth::Util;
-    typedef std::list<class Config> ConfigSet;
+    using ConfigSet = std::vector<class Config>;
 
     /**
      * Config is a general-purpose container for serializable data. You store an object's members

@@ -157,7 +157,7 @@ namespace
                   {
                       if (_levelAdded < 0 || _levelAdded == tile->getKey().getLevelOfDetail())
                       {
-                          osg::ref_ptr< Feature > clone = new Feature( *_feature, osg::CopyOp::DEEP_COPY_ALL );
+                          osg::ref_ptr< Feature > clone = new Feature(*_feature);
                           FeatureList features;
                           features.push_back( clone );
 

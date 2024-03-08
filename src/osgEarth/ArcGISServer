@@ -24,7 +24,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/URI>
-#include <list>
+#include <vector>
 
 /**
  * Layers that access an ArcGIS Server REST endpoint
@@ -47,7 +47,7 @@ namespace osgEarth
             std::string name;
         };
 
-        typedef std::list<MapServiceLayer> MapServiceLayerList;
+        using MapServiceLayerList = std::vector<MapServiceLayer>;
 
         class OSGEARTH_EXPORT TileInfo
         {

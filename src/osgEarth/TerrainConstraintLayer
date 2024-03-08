@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H
-#define OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/VisibleLayer>
@@ -48,7 +46,7 @@ namespace osgEarth
             OE_OPTION(bool, hasElevation);
             OE_OPTION(unsigned, minLevel);
             Config getConfig() const override;
-            void fromConfig( const Config& conf );
+            void fromConfig(const Config& conf);
         };
 
     public:
@@ -107,11 +105,6 @@ namespace osgEarth
 
         void removedFromMap(const Map*) override;
 
-    protected:
-
-        /** dtor */
-        virtual ~TerrainConstraintLayer() { }
-
     private:
 
         void create();
@@ -158,5 +151,4 @@ namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TerrainConstraintLayer::Options);
 
-#endif // OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H
 

@@ -19,29 +19,19 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
-#include <osgEarth/ExampleResources>
-#include <osgEarth/LatLongFormatter>
-#include <osgEarth/MGRSFormatter>
-#include <osgEarth/MouseCoordsTool>
-#include <osgEarth/Shadowing>
-#include <osgEarth/ActivityMonitorTool>
-#include <osgEarth/LogarithmicDepthBuffer>
-#include <osgEarth/SimpleOceanLayer>
-#include <osgEarth/Registry>
-
-#include <osgEarth/AnnotationData>
-#include <osgEarth/TerrainEngineNode>
-#include <osgEarth/NodeUtils>
-#include <osgEarth/GLUtils>
-#include <osgEarth/CullingUtils>
+#include "ExampleResources"
+#include "Shadowing"
+#include "LogarithmicDepthBuffer"
+#include "SimpleOceanLayer"
+#include "Registry"
+#include "TerrainEngineNode"
+#include "NodeUtils"
+#include "GLUtils"
+#include "CullingUtils"
 
 #include <osgDB/ReadFile>
-#include <osgDB/WriteFile>
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/ViewerEventHandlers>
-
-#define KML_PUSHPIN_URL "../data/placemark32.png"
 
 #define VP_MIN_DURATION      2.0     // minimum fly time.
 #define VP_METERS_PER_SECOND 2500.0  // fly speed
@@ -49,253 +39,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Contrib;
-
-namespace ui = osgEarth::Util::Controls;
-
-//------------------------------------------------------------------------
-
-/** Shared event handlers. */
-namespace
-{
-    void flyToViewpoint(EarthManipulator* manip, const Viewpoint& vp)
-    {
-        Viewpoint currentVP = manip->getViewpoint();
-        double distance = currentVP.focalPoint()->distanceTo(currentVP.focalPoint().get());
-        double duration = osg::clampBetween(distance / VP_METERS_PER_SECOND, VP_MIN_DURATION, VP_MAX_DURATION);
-        manip->setViewpoint( vp, duration );
-    }
-
-
-    // flies to a viewpoint in response to control event (click)
-    struct ClickViewpointHandler : public ControlEventHandler
-    {
-        ClickViewpointHandler( const Viewpoint& vp, osgGA::CameraManipulator* manip )
-            : _vp(vp), _manip( dynamic_cast<EarthManipulator*>(manip) ) { }
-
-        Viewpoint         _vp;
-        EarthManipulator* _manip;
-
-        virtual void onClick( class Control* control )
-        {
-            if ( _manip )
-                flyToViewpoint(_manip, _vp);
-        }
-    };
-
-
-    // toggles a node in response to a control event (checkbox)
-    struct ToggleNodeHandler : public ControlEventHandler
-    {
-        ToggleNodeHandler( osg::Node* node ) : _node(node) { }
-
-        virtual void onValueChanged( class Control* control, bool value )
-        {
-            osg::ref_ptr<osg::Node> safeNode = _node.get();
-            if ( safeNode.valid() )
-                safeNode->setNodeMask( value ? ~0 : 0 );
-        }
-
-        osg::observer_ptr<osg::Node> _node;
-    };
-
-    /**
-     * Toggles the main control canvas on and off.
-     */
-    struct ToggleCanvasEventHandler : public osgGA::GUIEventHandler
-    {
-        ToggleCanvasEventHandler(osg::Node* canvas, char key) :
-            _canvas(canvas), _key(key)
-        {
-        }
-
-        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-        {
-            if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN)
-            {
-                if (ea.getKey() == _key)
-                {
-                    osg::ref_ptr< osg::Node > safeNode = _canvas.get();
-                    if (safeNode.valid())
-                    {
-                        safeNode->setNodeMask( safeNode->getNodeMask() ? 0 : ~0 );
-                    }
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        osg::observer_ptr<osg::Node> _canvas;
-        char _key;
-    };
-
-    // sets a user-specified uniform.
-    struct ApplyValueUniform : public ControlEventHandler
-    {
-        osg::ref_ptr<osg::Uniform> _u;
-        ApplyValueUniform(osg::Uniform* u) :_u(u) { }
-        void onValueChanged(Control* c, double value)
-        {
-            _u->set( float(value) );
-        }
-    };
-
-    struct ToggleDefine : public ControlEventHandler
-    {
-        osg::ref_ptr<osg::StateSet> _ss;
-        std::string _name;
-        ToggleDefine(osg::StateSet* ss, const std::string& name) : _ss(ss), _name(name) { }
-        void onValueChanged(Control* c, bool value) {
-            if (value) _ss->setDefine(_name, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-            else _ss->setDefine(_name, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE); //(_name);
-        }
-    };
-}
-
-
-//------------------------------------------------------------------------
-
-Control*
-MouseCoordsControlFactory::create(MapNode*         mapNode,
-                                  osgViewer::View* view     ) const
-{
-    // readout for coordinates under the mouse
-    LabelControl* readout = new LabelControl();
-    readout->setHorizAlign( Control::ALIGN_RIGHT );
-    readout->setVertAlign( Control::ALIGN_BOTTOM );
-
-    Formatter* formatter = nullptr;
-    if (mapNode->getMapSRS()->isGeographic())
-        formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DECIMAL_DEGREES);
-
-    MouseCoordsTool* mcTool = new MouseCoordsTool( mapNode );
-    mcTool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
-    view->addEventHandler( mcTool );
-
-    return readout;
-}
-
-//------------------------------------------------------------------------
-
-namespace
-{
-    struct AnnoControlBuilder : public osg::NodeVisitor
-    {
-        AnnoControlBuilder(osgViewer::View* view)
-            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-              _mindepth(-1)
-        {
-            _grid = new Grid();
-            _grid->setHorizFill( true );
-            _grid->setAbsorbEvents( true );
-            _grid->setPadding( 5 );
-            _grid->setBackColor( Color(Color::Black,0.5) );
-
-            _manip = dynamic_cast<EarthManipulator*>(view->getCameraManipulator());
-        }
-
-        void apply( osg::Node& node )
-        {
-            AnnotationData* data = dynamic_cast<AnnotationData*>( node.getUserData() );
-            if ( data )
-            {
-                ControlVector row;
-                CheckBoxControl* cb = new CheckBoxControl( node.getNodeMask() != 0, new ToggleNodeHandler( &node ) );
-                cb->setSize( 12, 12 );
-                row.push_back( cb );
-                std::string name = trim(data->getName());
-                if ( name.empty() ) name = "<unnamed>";
-                LabelControl* label = new LabelControl( name, 14.0f );
-                int depth = (int)this->getNodePath().size();
-                if ( _mindepth < 0 )
-                    _mindepth = depth;
-                label->setMargin(Gutter(0,0,0,(depth-_mindepth)*20));
-                if ( data->getViewpoint() )
-                {
-                    label->addEventHandler( new ClickViewpointHandler(*data->getViewpoint(), _manip) );
-                    label->setActiveColor( Color::Blue );
-                }
-                row.push_back( label );
-                _grid->addControls( row );
-            }
-            traverse(node);
-        }
-
-        Grid*             _grid;
-        EarthManipulator* _manip;
-        int               _mindepth;
-    };
-}
-
-Control*
-AnnotationGraphControlFactory::create(osg::Node*       graph,
-                                      osgViewer::View* view) const
-{
-    AnnoControlBuilder builder( view );
-    builder.setNodeMaskOverride(~0);
-    if ( graph )
-        graph->accept( builder );
-
-    return builder._grid;
-}
-
-//------------------------------------------------------------------------
-
-namespace
-{
-    std::string getAttributionString(Map* map)
-    {
-        StringSet attributions;
-        map->getAttributions(attributions);
-        std::stringstream buf;
-        for (StringSet::iterator itr = attributions.begin(); itr != attributions.end(); ++itr)
-        {
-            buf << *itr << std::endl;
-        }
-
-        return buf.str();
-    }
-
-    class AttributeCallback : public osgEarth::MapCallback
-    {
-    public:
-        AttributeCallback(LabelControl* label, MapNode* mapNode) :
-            _label(label),
-            _mapNode(mapNode)
-        {
-        }
-
-        virtual void onMapModelChanged(const MapModelChange& change)
-        {
-            osg::ref_ptr< LabelControl > label;
-            osg::ref_ptr< MapNode > mapNode;
-
-            StringVector attributions;
-            if (_mapNode.lock(mapNode) && _label.lock(label))
-            {
-                label->setText(getAttributionString(_mapNode->getMap()));
-            }
-        }
-
-        osg::observer_ptr< LabelControl > _label;
-        osg::observer_ptr< MapNode > _mapNode;
-    };
-}
-
-Control* AttributionControlFactory::create(MapNode* mapNode) const
-{
-    // readout for coordinates under the mouse
-    LabelControl* credits = new LabelControl();
-    credits->setHorizAlign(Control::ALIGN_CENTER);
-    credits->setVertAlign(Control::ALIGN_BOTTOM);
-    credits->setText(getAttributionString(mapNode->getMap()));
-    mapNode->getMap()->addMapCallback(new AttributeCallback(credits, mapNode));
-    return credits;
-}
-
-//------------------------------------------------------------------------
 
 #undef  LC
 #define LC "[MapNodeHelper] "
@@ -313,10 +56,29 @@ namespace
     };
 }
 
+std::string
+MapNodeHelper::usage() const
+{
+    return Stringify()
+        << "  --sky                         : add a default sky model\n"
+        << "  --ortho                       : use an orthographic camera\n"
+        << "  --shadows                     : activates model layer shadows\n"
+        << "  --path [file]                 : load and playback an animation path\n"
+        << "  --nologdepth                  : disables the logarithmic depth buffer\n"
+        << "  --nogui                       : start with GUI hidden ('y' to show)\n"
+        << "  --nvgl                        : use NVGL rendering path if available\n"
+        << "  --osg-options [string]        : options to pass to osgDB::read* methods\n"
+        << "  --no-cache                    : disable the cache if one is configured\n"
+        << "  --cahce-only                  : only read data from the disk cache\n"
+        << "  --gldebug                     : activate GL debug messages\n"
+        << "  --novsync                     : disable vertical sync\n"
+        << "  --tess                        : enable GPU tessellation\n"
+        << "  --lodscale [float]            : set the OSG LOD scale factor (default is 1.0)\n";
+    
+}
+
 osg::ref_ptr<osg::Node>
-MapNodeHelper::loadWithoutControls(
-    osg::ArgumentParser&   args,
-    osgViewer::ViewerBase* viewer) const
+MapNodeHelper::load(osg::ArgumentParser& args, osgViewer::ViewerBase* viewer) const
 {
     // Pause do the user can attach a debugger
     if (args.read("--pause"))
@@ -452,7 +214,7 @@ MapNodeHelper::loadWithoutControls(
     // parses common cmdline arguments and apply to the first view:
     if (!views.empty())
     {
-        parse(mapNode.get(), args, views.front(), root.get(), (Container*)nullptr, false);
+        parse(mapNode.get(), args, views.front(), root.get());
 
         float lodscale;
         if (args.read("--lodscale", lodscale))
@@ -467,172 +229,15 @@ MapNodeHelper::loadWithoutControls(
     return root;
 }
 
-
-osg::ref_ptr<osg::Node>
-MapNodeHelper::load(
-    osg::ArgumentParser&   args,
-    osgViewer::ViewerBase* viewer,
-    Container*             userContainer,
-    const osgDB::Options*  readOptions) const
-{
-    // Pause do the user can attach a debugger
-    if (args.read("--pause"))
-    {
-        std::cout << "Press <ENTER> to continue" << std::endl;
-        ::getchar();
-    }
-
-    if (!readOptions) {
-        readOptions = osgDB::Registry::instance()->getOptions();
-    }
-
-    osg::ref_ptr<osgDB::Options> myReadOptions = Registry::cloneOrCreateOptions(readOptions);
-
-    // pass through OSG options
-    std::string str;
-    if (args.read("--osg-options", str) || args.read("-O", str))
-    {
-        myReadOptions->setOptionString(str);
-    }
-
-    // NVGL rendering?
-    if (args.read("--nvgl") || args.read("--gl4") || args.read("--use-gl4"))
-    {
-        GLUtils::useNVGL(true);
-
-        myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_NVGL");
-    }
-
-    // GL debugging stuff
-    if (args.read("--gldebug") || args.read("--gl-debug"))
-    {
-        GLUtils::enableGLDebugging();
-    }
-
-    // collect the views
-    osgViewer::Viewer::Views views;
-    if (viewer)
-    {
-        viewer->getViews(views);
-    }
-
-    // configures each view with some stock goodies
-    for (osgViewer::Viewer::Views::iterator view = views.begin(); view != views.end(); ++view)
-    {
-        configureView(*view);
-    }
-
-    // vsync on/off?
-    optional<bool> vsync;
-    if (args.read("--vsync"))
-        vsync = true;
-    else if (args.read("--novsync"))
-        vsync = false;
-
-    // VP debugging
-    if (args.read("--vpdebug") || args.read("--vp-debug"))
-    {
-        GLUtils::enableGLDebugging();
-        VirtualProgram::enableGLDebugging();
-    }
-
-    if (viewer)
-    {
-        MultiRealizeOperation* op = new MultiRealizeOperation();
-
-        if (viewer->getRealizeOperation())
-            op->_ops.push_back(viewer->getRealizeOperation());
-
-        GL3RealizeOperation* rop = new GL3RealizeOperation();
-
-        if (vsync.isSet())
-            rop->setSyncToVBlank(vsync.get());
-
-        op->_ops.push_back(rop);
-
-        viewer->setRealizeOperation(op);
-    }
-
-    // read in the Earth file:
-    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles(args, myReadOptions.get());
-
-    // fallback in case none is specified:
-    if (!node.valid())
-    {
-        OE_WARN << LC << "No valid earth file loaded - aborting" << std::endl;
-        return NULL;
-    }
-
-    osg::ref_ptr<MapNode> mapNode = MapNode::get(node.get());
-
-    if ( !mapNode.valid() )
-    {
-        OE_WARN << LC << "Loaded scene graph does not contain a MapNode" << std::endl;
-        return node;
-    }
-
-    if (args.read("--tessellation") || args.read("--tess"))
-    {
-        mapNode->getTerrainOptions().setGPUTessellation(true);
-    }
-
-    // warn about not having an earth manip
-    for (osgViewer::Viewer::Views::iterator view = views.begin(); view != views.end(); ++view)
-    {
-        EarthManipulator* manip = dynamic_cast<EarthManipulator*>((*view)->getCameraManipulator());
-        if ( manip == 0L )
-        {
-            OE_WARN << LC << "Helper used before installing an EarthManipulator" << std::endl;
-        }
-    }
-
-    // a root node to hold everything:
-    osg::Group* root = new osg::Group();
-
-    root->addChild( node );
-    
-    // open the map node:
-    if (!mapNode->open())
-    {
-        OE_WARN << LC << "Failed to open MapNode" << std::endl;
-        return 0L;
-    }
-
-    // parses common cmdline arguments and apply to the first view:
-    if ( !views.empty() )
-    {
-        parse( mapNode.get(), args, views.front(), root, userContainer, true );
-        
-        float lodscale;
-        if (args.read("--lodscale", lodscale))
-        {
-            LODScaleGroup* g = new LODScaleGroup();
-            g->setLODScaleFactor(osg::maximum(lodscale, 0.0001f));
-            osgEarth::insertGroup(g, mapNode->getParent(0));
-            OE_NOTICE << "LOD Scale set to: " << lodscale << std::endl;
-        }
-    }
-
-    return root;
-}
-
 void
-MapNodeHelper::parse(
-    MapNode* mapNode,
-    osg::ArgumentParser& args,
-    osgViewer::View* view,
-    osg::Group* root,
-    Container* userContainer,
-    bool useControls) const
+MapNodeHelper::parse(MapNode* mapNode, osg::ArgumentParser& args, osgViewer::View* view, osg::Group* root) const
 {
     if ( !root )
         root = mapNode;
 
     // parse out custom example arguments first:
-    bool useCoords     = useControls && args.read("--coords");
-    bool showActivity  = useControls && args.read("--activity");
     bool useLogDepth2  = args.read("--logdepth2");
-    bool useLogDepth   = !args.read("--nologdepth") && !useLogDepth2; //args.read("--logdepth");
+    bool useLogDepth   = !args.read("--nologdepth") && !useLogDepth2;
 
     // animation path:
     std::string animpath;
@@ -650,56 +255,6 @@ MapNodeHelper::parse(
         view->getCamera()->setProjectionMatrixAsPerspective(vfov, ar, n, f);
     }
 
-    // Install a new Canvas for our UI controls, or use one that already exists.
-    ControlCanvas* canvas = nullptr;
-    Container* mainContainer = nullptr;
-    if (useControls)
-    {
-        canvas = ControlCanvas::getOrCreate(view);
-        
-        if (userContainer)
-        {
-            mainContainer = userContainer;
-        }
-        else
-        {
-            mainContainer = new VBox();
-            mainContainer->setAbsorbEvents(false);
-            mainContainer->setBackColor(Color(Color::Black, 0.8));
-            mainContainer->setHorizAlign(Control::ALIGN_LEFT);
-            mainContainer->setVertAlign(Control::ALIGN_BOTTOM);
-        }
-        canvas->addControl(mainContainer);
-
-        // Add an event handler to toggle the canvas with a key press;
-        view->addEventHandler(new ToggleCanvasEventHandler(canvas, 'y'));
-    }
-
-    // Configure the mouse coordinate readout:
-    if ( useCoords && mapNode )
-    {
-        LabelControl* readout = new LabelControl();
-        readout->setBackColor( Color(Color::Black, 0.8) );
-        readout->setHorizAlign( Control::ALIGN_RIGHT );
-        readout->setVertAlign( Control::ALIGN_BOTTOM );
-    
-        Formatter* formatter = nullptr;
-        if (mapNode->getMapSRS()->isGeographic())
-            formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DECIMAL_DEGREES);
-        MouseCoordsTool* mcTool = new MouseCoordsTool( mapNode );
-        mcTool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
-        view->addEventHandler( mcTool );
-
-        canvas->addControl( readout );
-    }
-
-
-    // Add the credits display
-    if (mapNode && canvas)
-    {
-        canvas->addControl(AttributionControlFactory().create(mapNode));
-    }
-
     // Configure for an ortho camera:
     if ( args.read("--ortho") )
     {
@@ -712,17 +267,6 @@ MapNodeHelper::parse(
         }
 
         view->getCamera()->setProjectionMatrixAsOrtho(-1, 1, -1, 1, 0, 1);
-    }
-
-    // activity monitor (debugging)
-    if ( showActivity )
-    {
-        VBox* vbox = new VBox();
-        vbox->setBackColor( Color(Color::Black, 0.8) );
-        vbox->setHorizAlign( Control::ALIGN_RIGHT );
-        vbox->setVertAlign( Control::ALIGN_BOTTOM );
-        view->addEventHandler( new ActivityMonitorTool(vbox) );
-        canvas->addControl( vbox );
     }
 
     // Install logarithmic depth buffer on main camera
@@ -742,69 +286,6 @@ MapNodeHelper::parse(
         logDepth.install( view->getCamera() );
     }
 
-    // Generic named value uniform with min/max.
-    if (canvas)
-    {
-        VBox* uniformBox = 0L;
-        while (args.find("--uniform") >= 0)
-        {
-            std::string name;
-            float minval, maxval;
-            if (args.read("--uniform", name, minval, maxval))
-            {
-                if (uniformBox == 0L)
-                {
-                    uniformBox = new VBox();
-                    uniformBox->setBackColor(0, 0, 0, 0.5);
-                    uniformBox->setAbsorbEvents(true);
-                    mainContainer->addControl(uniformBox);
-                }
-                osg::Uniform* uniform = new osg::Uniform(osg::Uniform::FLOAT, name);
-                uniform->set(minval);
-                root->getOrCreateStateSet()->addUniform(uniform, osg::StateAttribute::OVERRIDE);
-                HBox* box = new HBox();
-                box->addControl(new LabelControl(name));
-                HSliderControl* hs = box->addControl(new HSliderControl(minval, maxval, minval, new ApplyValueUniform(uniform)));
-                hs->setHorizFill(true, 200);
-                box->addControl(new LabelControl(hs));
-                uniformBox->addControl(box);
-                OE_INFO << LC << "Installed uniform controller for " << name << std::endl;
-            }
-        }
-
-        while (args.find("--define") >= 0)
-        {
-            std::string name;
-            if (args.read("--define", name))
-            {
-                if ( uniformBox == 0L )
-                {
-                    uniformBox = new VBox();
-                    uniformBox->setBackColor(0,0,0,0.5);
-                    uniformBox->setAbsorbEvents( true );
-                    mainContainer->addControl( uniformBox );
-                }
-            
-                HBox* box = new HBox();
-                box->addControl(new CheckBoxControl(false, new ToggleDefine(mapNode->getOrCreateStateSet(), name)));
-                box->addControl(new LabelControl(name));
-                uniformBox->addControl(box);
-            }
-        }
-    }
-
-    // Map inspector:
-    if (args.read("--inspect") && mapNode && canvas)
-    {
-        mapNode->addExtension( Extension::create("mapinspector", ConfigOptions()) );
-    }
-
-    // Memory monitor:
-    if (args.read("--monitor") && mapNode && canvas)
-    {
-        mapNode->addExtension(Extension::create("monitor", ConfigOptions()) );
-    }
-
     // Simple sky model:
     if (mapNode)
     {
@@ -819,17 +300,11 @@ MapNodeHelper::parse(
         }
     }
 
-
     // Simple ocean model:
     if (args.read("--ocean") && mapNode)
     {
         SimpleOceanLayer* layer = new SimpleOceanLayer();
         mapNode->getMap()->addLayer(layer);
-        if (canvas)
-        {
-            Control* ui = OceanControlFactory::create(layer);
-            mainContainer->addControl(ui);
-        }
     }
 
     // Arbitrary extension:
@@ -850,14 +325,6 @@ MapNodeHelper::parse(
             ExtensionInterface<osg::View>* viewIF = ExtensionInterface<osg::View>::get(extension.get());
             if (viewIF)
                 viewIF->connect(view);
-
-            if (canvas)
-            {
-                // Check for a Control interface:
-                ExtensionInterface<Control>* controlIF = ExtensionInterface<Control>::get(extension.get());
-                if (controlIF)
-                    controlIF->connect(mainContainer);
-            }
         }
     }
 
@@ -883,11 +350,6 @@ MapNodeHelper::parse(
                 root = caster;
             }
         }
-    }
-
-    if (canvas)
-    {
-        root->addChild(canvas);
     }
 }
 
@@ -918,27 +380,11 @@ MapNodeHelper::configureView( osgViewer::View* view ) const
 }
 
 
-std::string
-MapNodeHelper::usage() const
-{
-    return Stringify()
-        << "  --sky                         : add a sky model\n"
-        << "  --ortho                       : use an orthographic camera\n"
-        << "  --logdepth                    : activates the logarithmic depth buffer\n"
-        << "  --logdepth2                   : activates logarithmic depth buffer with per-fragment interpolation\n"
-        << "  --shadows                     : activates model layer shadows\n"
-        << "  --out-earth [file]            : write the loaded map to an earth file\n"
-        << "  --uniform [name] [min] [max]  : create a uniform controller with min/max values\n"
-        << "  --define [name]               : install a shader #define\n"
-        << "  --path [file]                 : load and playback an animation path\n"
-        << "  --extension [name]            : loads a named extension\n"
-        << "  --ocean                       : add a simple ocean model (requires bathymetry)\n";
-}
 
 
 //........................................................................
 
-
+#if 0
 namespace
 {
     struct SkyHoursSlider : public ui::ControlEventHandler
@@ -1093,3 +539,4 @@ OceanControlFactory::create(SimpleOceanLayer* ocean)
 
     return grid;
 }
+#endif

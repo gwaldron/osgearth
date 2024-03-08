@@ -204,16 +204,6 @@ TerrainConstraintLayer::getExtent() const
         return Layer::getExtent();
 }
 
-//void
-//TerrainConstraintLayer::setVisible(bool value)
-//{
-//    //VisibleLayer::setVisible(value); // do NOT call base class
-//    if (value && !isOpen())
-//        open();
-//    else if (!value && isOpen())
-//        close();
-//}
-
 void
 TerrainConstraintLayer::addedToMap(const Map* map)
 {
@@ -242,7 +232,7 @@ TerrainConstraintLayer::create()
     {
         if (!fs->getFeatureProfile())
         {
-            setStatus(Status(Status::ConfigurationError, "Feature source cannot report profile (is it open?)"));
+            setStatus(Status::ConfigurationError, "Feature source cannot report profile (is it open?)");
         }
         return;
     }
@@ -365,10 +355,7 @@ TerrainConstraintQuery::setup(const Map* map)
 }
 
 bool
-TerrainConstraintQuery::getConstraints(
-    const TileKey& key,
-    MeshConstraints& output,
-    ProgressCallback* progress) const
+TerrainConstraintQuery::getConstraints(const TileKey& key, MeshConstraints& output, ProgressCallback* progress) const
 {
     output.clear();
 

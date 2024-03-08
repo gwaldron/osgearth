@@ -304,6 +304,7 @@ TFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
     }
 
+#if 0 // this happens in FeatureSource now
     // If we have any filters, process them here before the cursor is created
     if (!getFilters().empty() && !features.empty())
     {
@@ -323,6 +324,7 @@ TFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
             itr->get()->setFID(fid);
         }
     }
+#endif
 
     result = new FeatureListCursor(features);
     return result;

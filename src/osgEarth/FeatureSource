@@ -182,7 +182,6 @@ namespace osgEarth
         mutable Threading::ReadWriteMutex  _blacklistMutex;
         std::unordered_set<FeatureID> _blacklist;
         unsigned _blacklistSize;
-        FeatureFilterChain _filters;
 
         typedef LRUCache<TileKey, FeatureList> FeaturesLRU;
         mutable std::unique_ptr< FeaturesLRU > _featuresCache;
@@ -193,10 +192,12 @@ namespace osgEarth
             const Query& query,
             ProgressCallback* progress) const =0;
 
+    private:
+        FeatureFilterChain _filters;
+
         //! Convenience function to apply the filters to a FeatureList
         void applyFilters(FeatureList& features, const GeoExtent& extent) const;
 
-        virtual ~FeatureSource() { }
     };
 }
 

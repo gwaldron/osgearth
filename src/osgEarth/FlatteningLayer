@@ -16,19 +16,17 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_UTIL_FLATTENING_LAYER
-#define OSGEARTH_UTIL_FLATTENING_LAYER 1
+#pragma once
 
 #include <osgEarth/Common>
-#include <osgEarth/TileSource>
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/ElevationPool>
 #include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/ScriptEngine>
 #include <osgEarth/StyleSheet>
+#include <osgEarth/ImageLayer>
 #include <osgDB/FileNameUtils>
-
 
 namespace osgEarth { namespace Contrib
 {
@@ -44,10 +42,11 @@ namespace osgEarth { namespace Contrib
         public:
             META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_LAYER(ImageLayer, sdf);
             OE_OPTION_VECTOR(ConfigOptions, filters);
-            OE_OPTION(NumericExpression, lineWidth);
-            OE_OPTION(NumericExpression, bufferWidth);
-            OE_OPTION(bool, fill);
+            OE_OPTION(NumericExpression, lineWidth, 10);
+            OE_OPTION(NumericExpression, bufferWidth, 20);
+            OE_OPTION(bool, fill, false);
             StyleSheet::ScriptDef* getScript() const { return _script.get(); }
             virtual Config getConfig() const;
 
@@ -62,6 +61,10 @@ namespace osgEarth { namespace Contrib
         //! Feature source layer to get features from
         void setFeatureSource(FeatureSource* layer);
         FeatureSource* getFeatureSource() const { return options().featureSource().getLayer(); }
+
+        //! SDF layer as an alternative to the feature source
+        void setSDF(ImageLayer* layer);
+        ImageLayer* getSDF() const { return options().sdf().getLayer(); }
 
         //! For line features, the width around the line to flatten
         void setLineWidth(const NumericExpression& value);
@@ -108,18 +111,12 @@ namespace osgEarth { namespace Contrib
         mutable ElevationPool::WorkingSet _elevWorkingSet;
         osg::ref_ptr<ScriptEngine> _scriptEngine;
         osg::observer_ptr< const Map > _map;
-
-        FeatureList getFeatures(const TileKey& key) const;
-
-        typedef LRUCache<TileKey, FeatureList> FeaturesLRU;
-        mutable FeaturesLRU _featuresCache;
-        mutable std::mutex _featuresCacheMutex;
-
         FeatureFilterChain _filterChain;
+
+        GeoHeightField createFromFeatures(const TileKey& key, ProgressCallback* progress) const;
+        GeoHeightField createFromSDF(const TileKey& key, ProgressCallback* progress) const;
     };
 
 } }
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Contrib::FlatteningLayer::Options);
-
-#endif // OSGEARTH_UTIL_FLATTENING_LAYER

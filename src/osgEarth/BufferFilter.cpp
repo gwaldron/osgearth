@@ -85,14 +85,16 @@ BufferFilter::push( FeatureList& input, FilterContext& context )
         return context;
     }
 
+    FeatureList output;
+    output.reserve(input.size());
+
     //OE_NOTICE << "Buffer: input = " << input.size() << " features" << std::endl;
-    for( FeatureList::iterator i = input.begin(); i != input.end(); )
+    for(auto& feature : input)
     {
-        Feature* feature = i->get();
-        if ( !feature || !feature->getGeometry() )
+        if ( !feature.valid() || !feature->getGeometry() )
             continue;
 
-        osg::ref_ptr<Geometry> output;
+        osg::ref_ptr<Geometry> geom;
 
         BufferParameters params;
         
@@ -104,17 +106,18 @@ BufferFilter::push( FeatureList& input, FilterContext& context )
 
         params._cornerSegs = _numQuadSegs;
 
-        if ( feature->getGeometry()->buffer( _distance.value(), output, params ) )
+        if (feature->getGeometry()->buffer(_distance.value(), geom, params))
         {
-            feature->setGeometry( output.get() );
-            ++i;
+            feature->setGeometry(geom.get());
+            output.emplace_back(feature);
         }
         else
         {
-            i = input.erase( i );
             OE_DEBUG << LC << "feature " << feature->getFID() << " yielded no geometry" << std::endl;
         }
     }
+
+    output.swap(input);
 
     return context;
 }

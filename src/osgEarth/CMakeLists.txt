@@ -41,6 +41,10 @@ IF(WIN32)
     LIST(APPEND TARGET_EXTERNAL_LIBRARIES psapi)
 ENDIF(WIN32)
 
+
+LIST(APPEND TARGET_EXTERNAL_LIBRARIES meshoptimizer::meshoptimizer)
+
+
 # Generate the Version header.
 # set(OSGEARTH_SOVERSION_VALUE "${OSGEARTH_SOVERSION}")
 set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version")
@@ -114,6 +118,7 @@ SET(LIB_PUBLIC_HEADERS
     ColorFilter
     Common
     Composite
+    CompressedArray
     CompositeTiledModelLayer
     Config
     Containers
@@ -552,6 +557,7 @@ set(TARGET_SRC
     Composite.cpp
     CompositeTiledModelLayer.cpp
     Compressors.cpp
+    CompressedArray.cpp
     Config.cpp
     CoverageLayer.cpp
     Cube.cpp

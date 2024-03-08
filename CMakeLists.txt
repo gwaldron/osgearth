@@ -136,6 +136,7 @@ find_package(WEBP)
 find_package(Blend2D)
 find_package(Blosc)
 find_package(spdlog)
+find_package(meshoptimizer)
 
 if(OSGEARTH_BUILD_CESIUM_NODEKIT)
     find_package(CesiumNative)

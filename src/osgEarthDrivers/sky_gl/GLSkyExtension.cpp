@@ -27,11 +27,6 @@
 #include <osgEarth/Sky>
 #include <osgEarth/ExampleResources>
 
-#ifdef OSGEARTH_HAVE_CONTROLS_API
-#include <osgEarth/Controls>
-namespace ui = osgEarth::Util::Controls;
-#endif
-
 #define LC "[GLSkyDriver] "
 
 using namespace osgEarth;
@@ -39,22 +34,12 @@ using namespace osgEarth::Util;
 
 namespace osgEarth { namespace GLSky
 {
-#ifdef OSGEARTH_HAVE_CONTROLS_API
-    class GLSkyExtension : 
-        public Extension,
-        public ExtensionInterface<MapNode>,
-        public ExtensionInterface<osg::View>,
-        public ExtensionInterface<ui::Control>,
-        public SkyNodeFactory,
-        public GLSkyOptions
-#else
     class GLSkyExtension : 
         public Extension,
         public ExtensionInterface<MapNode>,
         public ExtensionInterface<osg::View>,
         public SkyNodeFactory,
         public GLSkyOptions
-#endif
     {
     public:
         META_OE_Extension( osgEarth, GLSkyExtension, sky_gl );
@@ -73,14 +58,6 @@ namespace osgEarth { namespace GLSky
 
         bool connect( osg::View* );
         bool disconnect( osg::View* ) { return true; }
-
-#ifdef OSGEARTH_HAVE_CONTROLS_API
-    public: // ExtensionInterface<ui::Control>
-
-        bool connect( ui::Control* );
-        bool disconnect( ui::Control* );
-        osg::ref_ptr<ui::Control> _ui;
-#endif
 
     public: // SkyNodeFactory
 
@@ -143,26 +120,6 @@ GLSkyExtension::connect(osg::View* view)
     }
     return true;
 }
-
-#ifdef OSGEARTH_HAVE_CONTROLS_API
-bool
-GLSkyExtension::connect(ui::Control* control)
-{
-    ui::Container* container = dynamic_cast<ui::Container*>(control);
-    if (container && _skyNode.valid())
-        container->addControl(SkyControlFactory::create(_skyNode.get()));
-    return true;
-}
-
-bool
-GLSkyExtension::disconnect(ui::Control* control)
-{
-    ui::Container* container = dynamic_cast<ui::Container*>(control);
-    if (container && _ui.valid())
-        container->removeChild(_ui.get());
-    return true;
-}
-#endif
 
 SkyNode*
 GLSkyExtension::createSkyNode()

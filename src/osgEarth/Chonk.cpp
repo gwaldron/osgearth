@@ -1530,6 +1530,7 @@ ChonkFactory::GetOrCreateFunction ChonkFactory::getWeakTextureCacheFunction(
                 else
                 {
                     // dead entry, remove it
+                    //TODO this is a bad function to call on a vector, fix it
                     iter = cache.erase(iter);
                 }
             }

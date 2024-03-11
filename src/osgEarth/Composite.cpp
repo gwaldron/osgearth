@@ -19,6 +19,7 @@
 #include <osgEarth/Composite>
 #include <osgEarth/Progress>
 #include <osgEarth/Notify>
+#include "HeightFieldUtils"
 
 using namespace osgEarth;
 
@@ -605,7 +606,7 @@ CompositeElevationLayer::removedFromMap(const Map* map)
 Status
 CompositeElevationLayer::openImplementation()
 {
-    Status parent = ElevationLayer::openImplementation();
+    Status parent = super::openImplementation();
     if (parent.isError())
         return parent;    
     
@@ -664,7 +665,7 @@ CompositeElevationLayer::openImplementation()
                 if (!profile.valid())
                 {
                     return Status(Status::ResourceUnavailable, 
-                        Stringify()<<"Cannot establish profile for layer " << layer->getName());
+                        "Cannot establish profile for layer " + layer->getName());
                 }
                 else if (profile->getSRS()->getVerticalDatum() != NULL)
                 {
@@ -734,17 +735,13 @@ CompositeElevationLayer::closeImplementation()
 GeoHeightField
 CompositeElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    unsigned size = getTileSize();
-    osg::ref_ptr< osg::HeightField > heightField = new osg::HeightField();
-    heightField->allocate(size, size);
-
-    // Initialize the heightfield to nodata
-    heightField->getFloatArray()->assign(size*size, NO_DATA_VALUE);
+    auto hf = HeightFieldUtils::createReferenceHeightField(
+        key.getExtent(), getTileSize(), getTileSize(), 0, false, NO_DATA_VALUE);
 
     // Populate the heightfield and return it if it's valid
-    if (_layers.populateHeightField(heightField.get(), NULL, key, 0, INTERP_BILINEAR, progress))
+    if (_layers.populateHeightField(hf.get(), NULL, key, 0, INTERP_BILINEAR, progress))
     {                
-        return GeoHeightField(heightField.release(), key.getExtent());
+        return GeoHeightField(hf.release(), key.getExtent());
     }
     else
     {        

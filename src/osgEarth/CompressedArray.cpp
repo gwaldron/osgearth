@@ -265,7 +265,6 @@ namespace osgEarth {
                 }
                 else if (g.getQuantization() == osgEarth::CompressedVec3Array::QUANTIZE_HALF)
                 {
-                    OE_NOTICE << "Quantizing to half" << std::endl;
                     std::vector<osg::Vec4us> packed(g.size());
                     for (unsigned int i = 0; i < g.size(); ++i)
                     {                        
@@ -426,8 +425,7 @@ namespace osgEarth {
                 vbuf.resize(meshopt_encodeIndexBufferBound(g.size(), USHRT_MAX));
                 vbuf.resize(meshopt_encodeIndexBuffer(&vbuf[0], vbuf.size(), &indices[0], indices.size()));
 
-                OE_NOTICE << "Writing CompressedDrawElementsUShort raw=" << g.getTotalDataSize() << " compressed=" << vbuf.size() << " ratio=" << (float)vbuf.size() / (float)g.getTotalDataSize() << std::endl;
-                
+               
                 os << os.BEGIN_BRACKET << std::endl;
                 os.writeSize(vbuf.size());
                 os.writeCharArray((char*)vbuf.data(), vbuf.size());
@@ -494,8 +492,6 @@ namespace osgEarth {
                 vbuf.resize(meshopt_encodeIndexBufferBound(g.size(), 255));
                 vbuf.resize(meshopt_encodeIndexBuffer(&vbuf[0], vbuf.size(), &indices[0], indices.size()));
 
-                OE_NOTICE << "Writing CompressedDrawElementsUByte raw=" << g.getTotalDataSize() << " compressed=" << vbuf.size() << " ratio=" << (float)vbuf.size() / (float)g.getTotalDataSize() << std::endl;
-
                 os << os.BEGIN_BRACKET << std::endl;
                 os.writeSize(vbuf.size());
                 os.writeCharArray((char*)vbuf.data(), vbuf.size());
@@ -561,8 +557,6 @@ namespace osgEarth {
                 std::vector<unsigned char> vbuf;
                 vbuf.resize(meshopt_encodeIndexBufferBound(g.size(), UINT_MAX));
                 vbuf.resize(meshopt_encodeIndexBuffer(&vbuf[0], vbuf.size(), &indices[0], indices.size()));
-
-                OE_NOTICE << "Writing CompressedDrawElementsUInt raw=" << g.getTotalDataSize() << " compressed=" << vbuf.size() << " ratio=" << (float)vbuf.size() / (float)g.getTotalDataSize() << std::endl;
 
                 os << os.BEGIN_BRACKET << std::endl;
                 os.writeSize(vbuf.size());
@@ -633,8 +627,7 @@ namespace osgEarth {
                 vbuf.resize(meshopt_encodeVertexBufferBound(g.size(), g.getElementSize()));
                 vbuf.resize(meshopt_encodeVertexBuffer(&vbuf[0], vbuf.size(), g.getDataPointer(), g.size(), g.getElementSize()));
 
-                os << os.BEGIN_BRACKET << std::endl;
-                OE_NOTICE << "Writing dataSize=" << vbuf.size() << std::endl;
+                os << os.BEGIN_BRACKET << std::endl;                
                 //os.writeSize(ibuf.size());
                 //os.writeCharArray((char*)ibuf.data(), ibuf.size());
                 os.writeSize(vbuf.size());

@@ -79,7 +79,7 @@ public: // FeatureFilter
             Query query;
             query.bounds() = extentInFeatureSRS.bounds();
 
-            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor( query, progress );
+            osg::ref_ptr<FeatureCursor> cursor = fs->createFeatureCursor(query, {}, nullptr, progress);
             if (cursor)
             {
                 cursor->fill( features );

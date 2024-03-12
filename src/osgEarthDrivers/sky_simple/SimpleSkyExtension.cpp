@@ -22,22 +22,19 @@
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
-#include <osgEarth/Controls>
 #include <osgEarth/ExampleResources>
 
 #define LC "[SimpleSkyDriver] "
 
 using namespace osgEarth::Util;
-namespace ui = osgEarth::Util::Controls;
 
 namespace osgEarth { namespace SimpleSky
 {
     class SimpleSkyExtension : public Extension,
-                               public ExtensionInterface<MapNode>,
-                               public ExtensionInterface<osg::View>,
-                               public ExtensionInterface<ui::Control>,
-                               public SimpleSkyOptions,
-                               public SkyNodeFactory
+        public ExtensionInterface<MapNode>,
+        public ExtensionInterface<osg::View>,
+        public SimpleSkyOptions,
+        public SkyNodeFactory
     {
     public:
         META_OE_Extension(osgEarth, SimpleSkyExtension, simple_sky);
@@ -92,25 +89,6 @@ namespace osgEarth { namespace SimpleSky
             return true;
         }
 
-
-    public: // ExtensionInterface<Control>
-
-        bool connect(ui::Control* control) override
-        {
-            ui::Container* container = dynamic_cast<ui::Container*>(control);
-            if (container)
-                _ui = container->addControl(SkyControlFactory::create(_skynode.get()));
-            return true;
-        }
-
-        bool disconnect(ui::Control* control) override
-        {
-            ui::Container* container = dynamic_cast<ui::Container*>(control);
-            if (container && _ui.valid())
-                container->removeChild(_ui.get());
-            return true;
-        }
-
     public: // SkyNodeFactory
 
         SkyNode* createSkyNode() override {
@@ -125,7 +103,6 @@ namespace osgEarth { namespace SimpleSky
 
 
     private:
-        osg::ref_ptr<ui::Control> _ui;
         osg::ref_ptr<SkyNode> _skynode;
     };
 

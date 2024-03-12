@@ -26,6 +26,7 @@
 #include "TerrainCuller"
 #include "RexTerrainEngineNode"
 
+#include <osgEarth/TerrainTileModel>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Utils>
@@ -684,12 +685,16 @@ TileNode::createChildren()
                         for (unsigned q = 0; q < 4; ++q)
                         {
                             auto childkey = tile->getKey().createChildKey(q);
-                            result.emplace_back(tile->createChild(childkey, &state));
+                            result[q] = tile->createChild(childkey, &state);
+                            //result.emplace_back(tile->createChild(childkey, &state));
                         }
                     }
 
                     if (state.canceled())
-                        result.clear();
+                    {
+                        //result.clear();
+                        for (int i = 0; i < 4; ++i) result[i] = {};
+                    }
 
                     return result;
                 };
@@ -728,7 +733,7 @@ TileNode::createChildren()
     else // if create each tile separately
     {
         // create each child is a separate job.
-        if (_createChildResults.empty())
+        if (_createChildResults[0].empty())
         {
             TileKey parentkey(_key);
             EngineContext* context(_context.get());
@@ -752,7 +757,8 @@ TileNode::createChildren()
                 c.name = childkey.str();
                 c.pool = jobs::get_pool(ARENA_CREATE_CHILD);
                 c.pool->set_can_steal_work(false);
-                _createChildResults.emplace_back(jobs::dispatch(createChildOperation, c));
+
+                _createChildResults[quadrant] = jobs::dispatch(createChildOperation, c);
             }
         }
 
@@ -763,7 +769,9 @@ TileNode::createChildren()
             for (int i = 0; i < 4; ++i)
             {
                 if (_createChildResults[i].available())
+                {
                     ++numChildrenReady;
+                }
             }
 
             if (numChildrenReady == 4)
@@ -774,13 +782,12 @@ TileNode::createChildren()
                     addChild(child);
                     child->initializeData();
                     child->refreshAllLayers();
+                    _createChildResults[i].reset();
                 }
-
-                _createChildResults.clear();
             }
         }
 
-        return _createChildResults.empty();
+        return _createChildResults[0].empty();
     }
 }
 
@@ -1362,8 +1369,12 @@ TileNode::removeSubTiles()
     }
     this->removeChildren(0, this->getNumChildren());
 
-    _createChildrenFutureResult.abandon();
-    _createChildResults.clear();
+    _createChildrenFutureResult.reset();
+
+    _createChildResults[0].reset();
+    _createChildResults[1].reset();
+    _createChildResults[2].reset();
+    _createChildResults[3].reset();
 }
 
 

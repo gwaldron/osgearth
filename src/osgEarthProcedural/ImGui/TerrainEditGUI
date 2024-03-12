@@ -138,7 +138,7 @@ namespace osgEarth
                 osg::ref_ptr<osg::Image>& out_landcover,
                 GeoExtent& out_extent)
             {
-                osg::ref_ptr<Feature> feature = osg::clone(in_feature, osg::CopyOp::DEEP_COPY_ALL);
+                osg::ref_ptr<Feature> feature = new Feature(*in_feature);
                 GeoPoint center = feature->getExtent().getCentroid();
                 center = center.toLocalTangentPlane();
                 feature->transform(center.getSRS());

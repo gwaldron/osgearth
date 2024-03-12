@@ -276,7 +276,7 @@ main(int argc, char** argv)
     app.viewer.setCameraManipulator( new EarthManipulator() );
 
     // Load up the earth file.
-    auto node = MapNodeHelper().loadWithoutControls(arguments, &app.viewer);
+    auto node = MapNodeHelper().load(arguments, &app.viewer);
     if ( node.valid() )
     {
         GUI::ApplicationGUI* gui = new GUI::ApplicationGUI(true);

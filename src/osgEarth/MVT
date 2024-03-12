@@ -83,18 +83,18 @@ namespace osgEarth
 
     public: // Layer
 
-        virtual Status openImplementation() override;
-        virtual Status closeImplementation() override;
+        Status openImplementation() override;
+        Status closeImplementation() override;
 
     protected:
 
-        virtual void init();
+        void init() override;
 
     public: // FeatureSource
 
-        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);        
+        FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const override;
         
-        virtual const FeatureSchema& getSchema() const { return _schema; }
+        const FeatureSchema& getSchema() const override { return _schema; }
 
     protected:
 

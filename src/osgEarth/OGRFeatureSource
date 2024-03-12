@@ -90,31 +90,31 @@ namespace osgEarth
 
     protected: // Layer
 
-        virtual void init();
+        void init() override;
 
-        virtual Status openImplementation();
+        Status openImplementation() override;
 
-        virtual Status closeImplementation();
+        Status closeImplementation() override;
 
     public: // FeatureSource
 
-        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);        
+        FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const override;
 
-        virtual bool deleteFeature(FeatureID fid);
+        bool deleteFeature(FeatureID fid) override;
 
-        virtual int getFeatureCount() const;
+        int getFeatureCount() const override;
 
-        virtual bool supportsGetFeature() const;
+        bool supportsGetFeature() const override;
 
-        virtual Feature* getFeature( FeatureID fid );
+        Feature* getFeature( FeatureID fid ) override;
 
-        virtual bool isWritable() const;
+        bool isWritable() const override;
 
-        virtual const FeatureSchema& getSchema() const;
+        const FeatureSchema& getSchema() const override;
     
-        virtual bool insertFeature(Feature* feature);
+        bool insertFeature(Feature* feature) override;
 
-        virtual osgEarth::Geometry::Type getGeometryType() const;
+        osgEarth::Geometry::Type getGeometryType() const override;
 
         const Status& create(
                 const FeatureProfile* profile,
@@ -168,7 +168,7 @@ namespace osgEarth
                 const FeatureSource*      source,
                 const FeatureProfile*     profile,
                 const Query&              query,
-                const FeatureFilterChain* filters,
+                const FeatureFilterChain& filters,
                 bool                      rewindPolygons,
                 unsigned                  chunkSize,
                 ProgressCallback*         progress
@@ -200,7 +200,7 @@ namespace osgEarth
             osg::ref_ptr<const FeatureProfile> _profile;
             std::queue< osg::ref_ptr<Feature> > _queue;
             osg::ref_ptr<Feature> _lastFeatureReturned;
-            osg::ref_ptr<const FeatureFilterChain> _filters;
+            const FeatureFilterChain _filters;
             bool _resultSetEndReached;
             bool _rewindPolygons;
 

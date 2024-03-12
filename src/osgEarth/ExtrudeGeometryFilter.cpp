@@ -54,10 +54,10 @@ namespace
     {
         Segment n;
         double  maxLen2 = 0.0;
-        ConstSegmentIterator i( geom, true );
+        ConstSegmentIterator i(geom, true);
         while( i.hasMore() )
         {
-            Segment s = i.next();
+            auto& s = i.next();
             double len2 = (s.second - s.first).length2();
             if ( len2 > maxLen2 ) 
             {

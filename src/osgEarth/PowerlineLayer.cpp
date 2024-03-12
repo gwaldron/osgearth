@@ -333,7 +333,7 @@ namespace
                     Query newQuery(query);
                     newQuery.bounds().unset();
                     newQuery.tileKey() = neighborKey;
-                    FeatureCursor* cursor = session->getFeatureSource()->createFeatureCursor(newQuery, 0L);
+                    FeatureCursor* cursor = session->getFeatureSource()->createFeatureCursor(newQuery);
                     while (cursor->hasMore())
                     {
                         Feature* feature = cursor->nextFeature();

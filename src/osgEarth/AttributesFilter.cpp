@@ -73,25 +73,26 @@ AttributesFilter::push(FeatureList& input, FilterContext& context)
         return context;
     }
 
+    FeatureList output;
+    output.reserve(input.size());
+
     bool ok = true;
-    for (FeatureList::iterator i = input.begin(); i != input.end(); )
+    for(auto& feature : input)
     {
         bool passed = false;
-        for (auto& a : _attributes)
+        if (feature.valid())
         {
-            if (i->get()->hasAttr(a))
+            for (auto& a : _attributes)
             {
-                ++i;
-                passed = true;
-                break;
+                if (feature->hasAttr(a))
+                {
+                    output.emplace_back(feature);
+                    break;
+                }
             }
         }
-
-        if (!passed)
-        {
-            i = input.erase(i);
-        }
     }
+    output.swap(input);
 
     return context;
 }

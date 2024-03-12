@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHFEATURES_FILTER_CONTEXT_H
-#define OSGEARTHFEATURES_FILTER_CONTEXT_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Feature>
@@ -47,34 +46,33 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT FilterContext
     {
     public:
-        FilterContext();
+        //! Construct (default)
+        FilterContext() { }
 
+        //! Construct with a session
         FilterContext(
             Session*              session,
             const FeatureProfile* profile       =0L,
             const GeoExtent&      workingExtent =GeoExtent::INVALID,
             FeatureIndexBuilder*  index         =0L);
 
-        FilterContext( const FilterContext& rhs );
+        //! Construct (copy)
+        FilterContext(const FilterContext& rhs) = default;
+        FilterContext& operator = (const FilterContext& rhs) = default;
 
-        ~FilterContext();
+        //! Construct (move)
+        FilterContext(FilterContext&& rhs) = default;
+        FilterContext& operator = (FilterContext&& rhs) = default;
         
-        /**
-         * Assigns a resource cache to use. One is created automatically if you
-         * don't assign one.
-         */
+        //! Assigns a resource cache to use. One is created automatically if you don't assign one.
         void setResourceCache( ResourceCache* value ) { _resourceCache = value; }
 
-        /**
-         * Sets the profile (SRS etc) of the feature data
-         */
+        //! Sets the profile (SRS etc) of the feature data
         void setProfile( const FeatureProfile* profile );
 
-        /**
-         * Sets the output SRS for feature processing. This is optional.
-         * If you do not set this, the output SRS will be that of the
-         * session's Map.
-         */
+        //! Sets the output SRS for feature processing. This is optional.
+        //! If you do not set this, the output SRS will be that of the
+        //! session's Map.
         void setOutputSRS(const SpatialReference* srs) { _outputSRS = srs; }
         const SpatialReference* getOutputSRS() const;
 
@@ -195,19 +193,18 @@ namespace osgEarth { namespace Util
 
     protected:
 
-        osg::ref_ptr<Session>              _session;
+        osg::ref_ptr<Session> _session;
         osg::ref_ptr<const FeatureProfile> _profile;
-        bool                               _isGeocentric;
-        optional<GeoExtent>                _extent;
-        osg::Matrixd                       _referenceFrame;
-        osg::Matrixd                       _inverseReferenceFrame;
-        osg::ref_ptr<ResourceCache>        _resourceCache;
-        FeatureIndexBuilder*               _index;
-        optional<ShaderPolicy>             _shaderPolicy;
-        std::vector<std::string>           _history;
+        bool _isGeocentric = false;
+        optional<GeoExtent> _extent;
+        osg::Matrixd _referenceFrame;
+        osg::Matrixd _inverseReferenceFrame;
+        osg::ref_ptr<ResourceCache> _resourceCache;
+        FeatureIndexBuilder* _index = nullptr;
+        optional<ShaderPolicy> _shaderPolicy = SHADERPOLICY_GENERATE;
+        std::vector<std::string> _history;
         osg::ref_ptr<const SpatialReference> _outputSRS;
     };
 } }
 
-#endif // OSGEARTHFEATURES_FILTER_CONTEXT_H
 

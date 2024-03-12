@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/FeatureSource>
-#include <osgEarth/Filter>
+#include "FeatureSource"
+#include "Query"
 
 #define LC "[FeatureSource] " << getName() << ": "
 
@@ -30,22 +30,20 @@ FeatureSource::Options::getConfig() const
 {
     Config conf = Layer::Options::getConfig();
 
-    conf.set( "open_write",   openWrite() );
-    conf.set( "profile",      profile() );
-    conf.set( "geo_interpolation", "great_circle", geoInterp(), GEOINTERP_GREAT_CIRCLE );
-    conf.set( "geo_interpolation", "rhumb_line",   geoInterp(), GEOINTERP_RHUMB_LINE );
-    conf.set( "fid_attribute", fidAttribute() );
-    conf.set( "rewind_polygons", rewindPolygons());
-    conf.set( "vdatum", vdatum() );
+    conf.set("open_write", openWrite());
+    conf.set("profile", profile());
+    conf.set("geo_interpolation", "great_circle", geoInterp(), GEOINTERP_GREAT_CIRCLE);
+    conf.set("geo_interpolation", "rhumb_line", geoInterp(), GEOINTERP_RHUMB_LINE);
+    conf.set("fid_attribute", fidAttribute());
+    conf.set("rewind_polygons", rewindPolygons());
+    conf.set("vdatum", vdatum());
 
     if (!filters().empty())
     {
-        Config filtersConf;
-        for(unsigned i=0; i<filters().size(); ++i)
-        {
-            filtersConf.add( filters()[i].getConfig() );
-        }
-        conf.set( "filters", filtersConf );
+        conf.set_with_function("filters", [this](Config& conf) {
+            for (auto& filter : filters())
+                conf.add(filter.getConfig());
+        });
     }
 
     return conf;
@@ -54,19 +52,16 @@ FeatureSource::Options::getConfig() const
 void
 FeatureSource::Options::fromConfig(const Config& conf)
 {
-    _rewindPolygons.init(true);
+    conf.get("open_write", openWrite());
+    conf.get("profile", profile());
+    conf.get("geo_interpolation", "great_circle", geoInterp(), GEOINTERP_GREAT_CIRCLE);
+    conf.get("geo_interpolation", "rhumb_line", geoInterp(), GEOINTERP_RHUMB_LINE);
+    conf.get("fid_attribute", fidAttribute());
+    conf.get("rewind_polygons", rewindPolygons());
+    conf.get("vdatum", vdatum());
 
-    conf.get( "open_write",   openWrite() );
-    conf.get( "profile",      profile() );
-    conf.get( "geo_interpolation", "great_circle", geoInterp(), GEOINTERP_GREAT_CIRCLE );
-    conf.get( "geo_interpolation", "rhumb_line",   geoInterp(), GEOINTERP_RHUMB_LINE );
-    conf.get( "fid_attribute", fidAttribute() );
-    conf.get( "rewind_polygons", rewindPolygons());
-    conf.get( "vdatum", vdatum() );
-
-    const Config& filtersConf = conf.child("filters");
-    for(ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
-        filters().push_back( *i );
+    for(auto& filterConf : conf.child("filters").children())
+        filters().push_back(filterConf);
 }
 
 //...................................................................
@@ -94,7 +89,7 @@ OE_LAYER_PROPERTY_IMPL(FeatureSource, bool, RewindPolygons, rewindPolygons);
 void
 FeatureSource::init()
 {
-    Layer::init();
+    super::init();
     _blacklistSize = 0u;
 }
 
@@ -102,6 +97,7 @@ Status
 FeatureSource::openImplementation()
 {
     unsigned int l2CacheSize = 16u;
+
     if (options().l2CacheSize().isSet())
     {
         l2CacheSize = options().l2CacheSize().get();
@@ -113,18 +109,13 @@ FeatureSource::openImplementation()
         _featuresCache = std::unique_ptr<FeaturesLRU>(new FeaturesLRU(l2CacheSize));
     }
 
-    Status parent = Layer::openImplementation();
+    Status parent = super::openImplementation();
     if (parent.isError())
         return parent;
 
     // Create and initialize the filters.
     _filters = FeatureFilterChain::create(options().filters(), getReadOptions());
-    if (_filters.valid() && _filters->getStatus().isError())
-    {
-        return _filters->getStatus();
-    }
-
-    return Status::NoError;
+    return _filters.getStatus();
 }
 
 const Status&
@@ -166,10 +157,10 @@ FeatureSource::getFeatureProfile() const
     return _featureProfile.get();
 }
 
-const FeatureFilterChain*
+const FeatureFilterChain&
 FeatureSource::getFilters() const
 {
-    return _filters.get();
+    return _filters;
 }
 
 const FeatureSchema&
@@ -217,14 +208,14 @@ void
 FeatureSource::applyFilters(FeatureList& features, const GeoExtent& extent) const
 {
     // apply filters before returning.
-    if (_filters.valid() && _filters->empty() == false)
+    if (!_filters.empty())
     {
         FilterContext cx;
-        cx.setProfile( getFeatureProfile() );
+        cx.setProfile(getFeatureProfile());
         cx.extent() = extent;
-        for(FeatureFilterChain::const_iterator filter = _filters->begin(); filter != _filters->end(); ++filter)
+        for(auto& filter : _filters)
         {
-            cx = filter->get()->push( features, cx );
+            cx = filter->push(features, cx);
         }
     }
 }
@@ -236,88 +227,6 @@ FeatureSource::getExtent() const
         return _featureProfile->getExtent();
     else
         return Layer::getExtent();
-}
-
-FeatureCursor*
-FeatureSource::createFeatureCursor(
-    const Query& query,
-    ProgressCallback* progress)
-{
-    return createFeatureCursor(
-        query,
-        nullptr, // filters
-        nullptr, // context
-        progress);
-}
-
-FeatureCursor*
-FeatureSource::createFeatureCursor(
-    const Query& query,
-    FeatureFilterChain* filters,
-    FilterContext* context,
-    ProgressCallback* progress)
-{
-    osg::ref_ptr< FeatureCursor > cursor;
-
-    bool fromCache = false;
-
-    if (_featuresCache)
-    {
-        // Try reading from the cache first if we have a TileKey.
-        if (query.tileKey().isSet())
-        {
-            FeaturesLRU::Record result;
-            {
-                std::lock_guard<std::mutex> lk(_featuresCacheMutex);
-                _featuresCache->get(*query.tileKey(), result);
-            }
-            if (result.valid())
-            {
-                FeatureList copy(result.value().size());
-                std::transform(result.value().begin(), result.value().end(), copy.begin(),
-                    [&](const osg::ref_ptr<Feature>& feature) {
-                        return osg::clone(feature.get(), osg::CopyOp::DEEP_COPY_ALL);
-                    });
-                cursor = new FeatureListCursor(copy);
-                fromCache = true;
-            }
-        }
-    }
-
-    // Call the implementation if we didn't get a cursor from the cache.
-    if (!cursor.valid())
-    {
-        cursor = createFeatureCursorImplementation(query, progress);
-    }
-
-    // Insert it into the cache if we read it from the source itself.
-    if (_featuresCache && !fromCache && cursor.valid() && query.tileKey().isSet())
-    {
-        FeatureList features;
-        cursor->fill(features);
-#if 1
-        FeatureList copy(features.size());
-        std::transform(features.begin(), features.end(), copy.begin(),
-            [&](const osg::ref_ptr<Feature>& feature) {
-                return osg::clone(feature.get(), osg::CopyOp::DEEP_COPY_ALL);
-            });
-        {
-            std::lock_guard<std::mutex> lk(_featuresCacheMutex);
-            _featuresCache->insert(*query.tileKey(), copy);
-        }
-#else
-        // original code: stored raw features in the cache, but they are not const.
-        // revisit if/when we refactor this
-        _featuresCache->insert(*query.tileKey(), features);
-#endif
-
-        cursor = new FeatureListCursor(features);
-    }
-
-    if (cursor.valid() && filters)
-        return new FilteredFeatureCursor(cursor.get(), filters, context);
-    else
-        return cursor.release();
 }
 
 namespace
@@ -335,7 +244,7 @@ namespace
         void finish()
         {
             _iter = _cursors.begin();
-            while(_iter != _cursors.end() && !_iter->get()->hasMore())
+            while (_iter != _cursors.end() && !_iter->get()->hasMore())
                 _iter++;
         }
 
@@ -348,7 +257,7 @@ namespace
         {
             Feature* f = _iter->get()->nextFeature();
 
-            while(_iter != _cursors.end() && !_iter->get()->hasMore())
+            while (_iter != _cursors.end() && !_iter->get()->hasMore())
                 _iter++;
 
             return f;
@@ -356,106 +265,171 @@ namespace
     };
 }
 
-FeatureCursor*
-FeatureSource::createFeatureCursor(
-    const TileKey& key,
-    ProgressCallback* progress)
+void
+FeatureSource::dirty()
 {
-    return createFeatureCursor(
-        key,
-        Distance(0.0, Units::METERS),
-        nullptr, // filters
-        nullptr, // context
-        progress);
-}
-
-FeatureCursor*
-FeatureSource::createFeatureCursor(
-    const TileKey& key,
-    FeatureFilterChain* filters,
-    FilterContext* context,
-    ProgressCallback* progress)
-{
-    return createFeatureCursor(
-        key,
-        Distance(0.0, Units::METERS),
-        filters,
-        context,
-        progress);
-}
-
-FeatureCursor*
-FeatureSource::createFeatureCursor(
-    const TileKey& key,
-    const Distance& buffer,
-    FeatureFilterChain* filters,
-    FilterContext* context,
-    ProgressCallback* progress)
-{
-    std::unordered_set<TileKey> keys;
-    getKeys(key, buffer, keys);
-
-    if (!keys.empty())
+    if (_featuresCache)
     {
-        osg::ref_ptr<MultiCursor> multi = new MultiCursor(progress);
+        std::lock_guard<std::mutex> lk(_featuresCacheMutex);
+        _featuresCache->clear();
+    }
 
-        // Query and collect all the features we need for this tile.
-        for (auto& i : keys)
+    super::dirty();
+}
+
+osg::ref_ptr<FeatureCursor>
+FeatureSource::createFeatureCursor(
+    const Query& query,
+    const FeatureFilterChain& post_filters,
+    FilterContext* context,
+    ProgressCallback* progress) const
+{
+    osg::ref_ptr<FeatureCursor> result;
+
+    bool fromCache = false;
+
+    FilterContext temp_cx;
+    if (context)
+        temp_cx = *context;
+
+    // TileKey path:
+    if (query.tileKey().isSet())
+    {
+        // Try reading from the cache first if we have a TileKey.
+        if (_featuresCache)
         {
-            Query query;
-            query.tileKey() = i;
-
-            osg::ref_ptr<FeatureCursor> cursor = createFeatureCursor(
-                query,
-                filters,
-                context,
-                progress);
-
-            if (cursor.valid())
+            FeaturesLRU::Record cache_entry;
             {
-                multi->_cursors.push_back(cursor.get());
+                std::lock_guard<std::mutex> lk(_featuresCacheMutex);
+                _featuresCache->get(*query.tileKey(), cache_entry);
+            }
+            if (result.valid())
+            {
+                FeatureList copy(cache_entry.value().size());
+                std::transform(cache_entry.value().begin(), cache_entry.value().end(), copy.begin(),
+                    [&](auto& feature) { return new Feature(*feature); });
+                result = new FeatureListCursor(std::move(copy));
+                fromCache = true;
             }
         }
 
-        if (multi->_cursors.empty())
-            return nullptr;
+        if (!temp_cx.extent().isSet())
+        {
+            temp_cx.extent() = query.tileKey()->getExtent();
+        }
 
-        multi->finish();
-        return multi.release();
+        if (!result.valid())
+        {
+            std::unordered_set<TileKey> keys;
+            getKeys(query.tileKey().value(), query.buffer().value(), keys);
+
+            osg::ref_ptr<MultiCursor> multi = new MultiCursor(progress);
+
+            // Query and collect all the features we need for this tile.
+            for (auto& sub_key : keys)
+            {
+                auto sub_cursor = createFeatureCursorImplementation(Query(sub_key), progress);
+                if (sub_cursor)
+                    multi->_cursors.emplace_back(sub_cursor);
+            }
+
+            if (multi->_cursors.empty())
+            {
+                return { };
+            }
+
+            multi->finish();
+            result = multi;
+        }
     }
 
     else
     {
-        if (!_featureProfile)
-            return nullptr;
-        GeoExtent localExtent = key.getExtent().transform(_featureProfile->getSRS());
-        if (localExtent.isInvalid())
-            return nullptr;
+        OE_SOFT_ASSERT(!query.buffer().isSet(), "Buffer not supported for non-tilekey queries; ignoring");
 
-        localExtent.expand(buffer*2.0, buffer*2.0);
+        if (!temp_cx.extent().isSet() && _featureProfile.valid())
+        {
+            if (query.bounds().isSet())
+                temp_cx.extent() = GeoExtent(_featureProfile->getSRS(), query.bounds().get());
+            else
+                temp_cx.extent() = _featureProfile->getExtent();
+        }
 
-        // Set up the query; bounds must be in the feature SRS:
-        Query query;
-        query.bounds() = localExtent.bounds();
-
-        return createFeatureCursor(
-            query,
-            filters,
-            context,
-            progress);
+        result = createFeatureCursorImplementation(query, progress);
     }
 
-    return nullptr;
+    if (result.valid())
+    {
+        if (!fromCache)
+        {
+            // Apply this feature source's core filters. This happend pre-cache, as opposed 
+            // to the caller's filters, which apply post-cache.
+            if (!_filters.empty())
+            {
+                FeatureList features;
+                result->fill(features);
+                temp_cx = _filters.push(features, temp_cx);
+                result = new FeatureListCursor(std::move(features));
+            }
+
+            // Apply the optional FID attribute:
+            if (options().fidAttribute().isSet())
+            {
+                FeatureList features;
+                result->fill(features);
+                for(auto& feature : features)
+                {
+                    std::string attr = feature->getString(options().fidAttribute().get());
+                    feature->setFID(as<FeatureID>(attr, 0));
+                }
+                result = new FeatureListCursor(std::move(features));
+            }
+
+            // Write the feature set to the L2 cache.
+            // TODO: If we have a persistent cache, write to that as well here
+            if (_featuresCache)
+            {
+                FeatureList features;
+                result->fill(features, [](const Feature* f) { return f != nullptr; });
+
+                // clone the list for caching:
+                FeatureList clone(features.size());
+                std::transform(features.begin(), features.end(), clone.begin(),
+                    [&](auto& feature) { return new Feature(*feature); });
+
+                std::lock_guard<std::mutex> lk(_featuresCacheMutex);
+                _featuresCache->insert(*query.tileKey(), clone);
+
+                result = new FeatureListCursor(std::move(features));
+            }
+        }
+
+        // apply caller's filters. These are NOT cached by this class because the 
+        // modifications are the resposibility of the caller.
+        if (!post_filters.empty())
+        {
+            FeatureList features;
+            result->fill(features);
+            temp_cx = post_filters.push(features, temp_cx);
+            result = new FeatureListCursor(std::move(features));
+        }
+
+        // copy out temporary context back out.
+        if (context)
+            *context = temp_cx;
+    }
+    
+    return result;
 }
 
 unsigned
-FeatureSource::getKeys(
-    const TileKey& key,
-    const Distance& buffer,
-    std::unordered_set<TileKey>& output) const
+FeatureSource::getKeys(const TileKey& key, const Distance& buffer, std::unordered_set<TileKey>& output) const
 {
     if (_featureProfile.valid())
     {
+        unsigned firstLevel = _featureProfile->getFirstLevel();
+        unsigned maxLevel = _featureProfile->getMaxLevel() >= 0u ? _featureProfile->getMaxLevel() : UINT_MAX;
+
         // We need to translate the caller's tilekey into feature source
         // tilekeys and combine multiple queries into one.
         const Profile* profile =
@@ -480,16 +454,26 @@ FeatureSource::getKeys(
 
             for (int i = 0; i < intersectingKeys.size(); ++i)
             {
-                if (_featureProfile->getMaxLevel() >= 0 && (int)intersectingKeys[i].getLOD() > _featureProfile->getMaxLevel())
-                    output.insert(intersectingKeys[i].createAncestorKey(_featureProfile->getMaxLevel()));
-                else
+                auto lod = intersectingKeys[i].getLOD();
+                if (lod > maxLevel)
+                {
+                    // fall back to the max level if necessary:
+                    output.insert(intersectingKeys[i].createAncestorKey(maxLevel));
+                }
+                else if (lod >= firstLevel)
+                {
+                    // must be at least the first available level
                     output.insert(intersectingKeys[i]);
+                }
             }
         }
         else
         {
             // plan B
-            output.insert(key);
+            if (key.getLOD() >= firstLevel && key.getLOD() <= maxLevel)
+            {
+                output.insert(key);
+            }
         }
     }
 
@@ -498,12 +482,10 @@ FeatureSource::getKeys(
 
 void FeatureSource::addedToMap(const class Map* map)
 {
-    if (_filters.valid() && _filters->empty() == false)
+    for (auto& filter : _filters)
     {
-        for (auto filter = _filters->begin(); filter != _filters->end(); ++filter)
-        {
-            filter->get()->addedToMap(map);
-        }
+        filter->addedToMap(map);
     }
-    Layer::addedToMap(map);
+
+    super::addedToMap(map);
 }

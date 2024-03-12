@@ -293,7 +293,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator );
 
     // load a map from an earth file.
-    auto earth = MapNodeHelper().load(arguments, &viewer, createControls(&viewer));
+    auto earth = MapNodeHelper().load(arguments, &viewer);
 
     MapNode* mapNode = MapNode::get(earth);
     if ( !mapNode )
@@ -302,7 +302,14 @@ main(int argc, char** argv)
     // count on the cmd line?
     arguments.read("--count", g_numTracks);
 
-    viewer.setSceneData( earth );
+    auto canvas = new ControlCanvas();
+    canvas->addChild(createControls(&viewer));
+
+    auto group = new osg::Group();
+    group->addChild(earth);
+    group->addChild(canvas);
+
+    viewer.setSceneData(group);
 
     // build a track field schema.
     TrackNodeFieldSchema schema;

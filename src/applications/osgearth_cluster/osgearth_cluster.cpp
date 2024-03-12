@@ -27,6 +27,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Threading>
 #include <osgEarth/Registry>
+#include <osgEarth/Controls>
 #include <osgDB/ReadFile>
 #include <iostream>
 
@@ -38,6 +39,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Contrib;
 
 int

@@ -125,6 +125,8 @@ namespace osgEarth
             void newFrame(osg::RenderInfo& renderInfo);
             void render(osg::RenderInfo& renderInfo);
 
+            bool _show = true;
+
         private:
             struct ImGuiNewFrameCallback;
             struct ImGuiRenderCallback;
@@ -132,7 +134,6 @@ namespace osgEarth
             double _time = 0.0;
             bool _initialized = false;
             bool _firstFrame = true;
-            bool _show = true;
             bool _autoAdjustProjectionMatrix = true;
             bool _dragging = false;
 
@@ -157,9 +158,7 @@ namespace osgEarth
             using GUIPtr = std::unique_ptr<BaseGUI>;
 
             //! Add all the built-in GUIs
-            ApplicationGUI(bool addBuiltIns = false) : 
-                OsgImGuiHandler(),
-                _showDemoWindow(false)
+            ApplicationGUI(bool addBuiltIns = false)
             {
                 if (addBuiltIns)
                 {
@@ -168,13 +167,16 @@ namespace osgEarth
             }
 
             //! Add all the built-in GUIs
-            ApplicationGUI(osg::ArgumentParser& args, bool addBuiltIns =false) :
-                OsgImGuiHandler(),
-                _showDemoWindow(false)
+            ApplicationGUI(osg::ArgumentParser& args, bool addBuiltIns =false)
             {
                 if (addBuiltIns)
                 {
                     addAllBuiltInTools(&args);
+                }
+
+                if (args.read("--nogui") || args.read("--no-gui"))
+                {
+                    _show = false;
                 }
             }
 
@@ -391,7 +393,7 @@ namespace osgEarth
             using GUIVector = std::vector<std::unique_ptr<BaseGUI>>;
             using SortedMenuMap = std::map<std::string, GUIVector>;
             SortedMenuMap _menu;
-            bool _showDemoWindow;
+            bool _showDemoWindow = false;
         };
     }
 }

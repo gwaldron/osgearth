@@ -24,12 +24,8 @@
 #include "Loader"
 #include "TileRenderModel"
 #include "LoadTileData"
-
-#include <osgEarth/TerrainTileModel>
-#include <osgEarth/TerrainTileNode>
-#include <osgEarth/TerrainTileModelFactory>
 #include <osgEarth/Threading>
-#include <vector>
+#include <array>
 
 namespace osg {
     class CullStack;
@@ -39,6 +35,7 @@ namespace osgUtil {
 }
 namespace osgEarth {
     class TerrainOptions;
+    class TerrainTileModel;
 }
 
 namespace osgEarth { namespace REX
@@ -201,10 +198,10 @@ namespace osgEarth { namespace REX
 
         // for each job creating one child at a time:
         using CreateChildResult = osg::ref_ptr<TileNode>;
-        std::vector<Future<CreateChildResult>> _createChildResults;
+        std::array<Future<CreateChildResult>, 4> _createChildResults;
 
         // for each job creating all children at once:
-        using CreateChildrenResult = std::vector<osg::ref_ptr<TileNode>>;
+        using CreateChildrenResult = std::array<osg::ref_ptr<TileNode>, 4>;
         Future<CreateChildrenResult> _createChildrenFutureResult;
 
         using LoadQueue = std::queue<LoadTileDataOperationPtr>;

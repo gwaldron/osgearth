@@ -89,7 +89,7 @@ namespace osgEarth
     private:
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
-        osg::ref_ptr<FeatureFilterChain> _filterChain;
+        FeatureFilterChain _filterChain;
         SDFGenerator _sdfGenerator;
 
         void updateSession();

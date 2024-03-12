@@ -23,12 +23,10 @@
 #include "DetailTerrainEffect"
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
-#include <osgEarth/Controls>
 
 namespace osgEarth { namespace Detail
 {
     using namespace osgEarth;
-    using namespace osgEarth::Util::Controls;
 
     /**
      * Extension for loading a detail texture.
@@ -49,16 +47,16 @@ namespace osgEarth { namespace Detail
 
     public: // Extension
 
-        void setDBOptions(const osgDB::Options* dbOptions);
+        void setDBOptions(const osgDB::Options* dbOptions) override;
 
-        const ConfigOptions& getConfigOptions() const { return _options; }
+        const ConfigOptions& getConfigOptions() const override { return _options; }
 
 
     public: // ExtensionInterface<MapNode>
 
-        bool connect(MapNode* mapNode);
+        bool connect(MapNode* mapNode) override;
 
-        bool disconnect(MapNode* mapNode);
+        bool disconnect(MapNode* mapNode) override;
 
         
     private:

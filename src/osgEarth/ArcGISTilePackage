@@ -242,7 +242,7 @@ namespace osgEarth
 
     public: // FeatureSource
 
-        virtual FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress);
+        FeatureCursor* createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const override;
 
     protected:
 

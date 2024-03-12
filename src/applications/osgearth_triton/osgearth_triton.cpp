@@ -243,23 +243,23 @@ struct Toggle : public ui::ControlEventHandler
     }
 };
 
-Container* createUI()
+ui::Container* createUI()
 {
-    VBox* box = new VBox();
+    ui::VBox* box = new ui::VBox();
     box->setBackColor(0,0,0,0.5);
-    Grid* grid = box->addControl(new Grid());
+    ui::Grid* grid = box->addControl(new ui::Grid());
     int r=0;
-    grid->setControl(0, r, new LabelControl("Chop"));
-    grid->setControl(1, r, new HSliderControl(0, 3, 0, new Set<double>(s_app.settings.chop)));
+    grid->setControl(0, r, new ui::LabelControl("Chop"));
+    grid->setControl(1, r, new ui::HSliderControl(0, 3, 0, new Set<double>(s_app.settings.chop)));
     ++r;
-    grid->setControl(0, r, new LabelControl("Sea State"));
-    grid->setControl(1, r, new HSliderControl(0, 12, 5, new Set<double>(s_app.settings.seaState)));
+    grid->setControl(0, r, new ui::LabelControl("Sea State"));
+    grid->setControl(1, r, new ui::HSliderControl(0, 12, 5, new Set<double>(s_app.settings.seaState)));
     ++r;  
-    grid->setControl(0, r, new LabelControl("Alpha"));
-    grid->setControl(1, r, new HSliderControl(0, 1.0, 1.0, new Set<float>(s_app.settings.alpha)));
+    grid->setControl(0, r, new ui::LabelControl("Alpha"));
+    grid->setControl(1, r, new ui::HSliderControl(0, 1.0, 1.0, new Set<float>(s_app.settings.alpha)));
     ++r;
-    grid->setControl(0, r, new LabelControl("Toggle"));
-    grid->setControl(1, r, new CheckBoxControl(true, new Toggle()));
+    grid->setControl(0, r, new ui::LabelControl("Toggle"));
+    grid->setControl(1, r, new ui::CheckBoxControl(true, new Toggle()));
 
     grid->getControl(1, r-1)->setHorizFill(true,200);
 
@@ -303,10 +303,16 @@ main(int argc, char** argv)
 
     // load an earth file, and support all or our example command-line options
     // and earth file <external> tags    
-    auto node = osgEarth::Util::MapNodeHelper().load(arguments, &viewer, createUI());
+    auto node = osgEarth::Util::MapNodeHelper().load(arguments, &viewer);
     if (node.valid() && MapNode::get(node))
     {
-        viewer.setSceneData( node );
+        auto group = new osg::Group();
+        auto canvas = new ui::ControlCanvas();
+        canvas->addChild(createUI());
+
+        group->addChild(node);
+        group->addChild(canvas);
+        viewer.setSceneData(group);
 
         s_app.map = MapNode::get( node )->getMap();
 

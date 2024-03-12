@@ -43,32 +43,33 @@ CropFilter::push( FeatureList& input, FilterContext& context )
 
     if ( _method == METHOD_CENTROID )
     {
-        for( FeatureList::iterator i = input.begin(); i != input.end();  )
+        for(auto& feature : input)
         {
-            bool keepFeature = false;
-
-            Feature* feature = i->get();
-            Geometry* featureGeom = feature->getGeometry();
-
-            if ( featureGeom && featureGeom->isValid() )
+            if (feature.valid())
             {
-                Bounds bounds = featureGeom->getBounds();
-                if ( bounds.valid() )
+                bool keepFeature = false;
+                Geometry* featureGeom = feature->getGeometry();
+
+                if (featureGeom && featureGeom->isValid())
                 {
-                    osg::Vec3d centroid = bounds.center();
-                    if ( extent.contains( centroid.x(), centroid.y() ) )
+                    Bounds bounds = featureGeom->getBounds();
+                    if (bounds.valid())
                     {
-                        keepFeature = true;
-                        newExtent.expandToInclude( bounds.xMin(), bounds.yMin() );
-                        newExtent.expandToInclude( bounds.xMax(), bounds.yMax() );
+                        osg::Vec3d centroid = bounds.center();
+                        if (extent.contains(centroid.x(), centroid.y()))
+                        {
+                            keepFeature = true;
+                            newExtent.expandToInclude(bounds.xMin(), bounds.yMin());
+                            newExtent.expandToInclude(bounds.xMax(), bounds.yMax());
+                        }
                     }
                 }
-            }
 
-            if ( keepFeature )
-                ++i;
-            else
-                i = input.erase( i );
+                if (!keepFeature)
+                {
+                    feature = nullptr;
+                }
+            }
         }
     }
 
@@ -78,59 +79,63 @@ CropFilter::push( FeatureList& input, FilterContext& context )
 
         // create the intersection polygon:
         osg::ref_ptr<Polygon> poly;
+        FeatureList output;
+        output.reserve(input.size());
         
-        for( FeatureList::iterator i = input.begin(); i != input.end();  )
+        for(auto& feature : input)
         {
             bool keepFeature = false;
-
-            Feature* feature = i->get();
-
-            Geometry* featureGeom = feature->getGeometry();
-            if ( featureGeom && featureGeom->isValid() )
+            if (feature.valid())
             {
-                // test for trivial acceptance:
-                GeoExtent featureExtent = feature->getExtent();
-                if (featureExtent.isInvalid())
+                Geometry* featureGeom = feature->getGeometry();
+                if (featureGeom && featureGeom->isValid())
                 {
-                    //nop
-                }
-
-                else if ( extent.contains(featureExtent) )
-                {
-                    keepFeature = true;
-                    newExtent.expandToInclude(featureExtent);
-                }
-
-                // then move on to the cropping operation:
-                else
-                {
-                    if ( !poly.valid() )
+                    // test for trivial acceptance:
+                    GeoExtent featureExtent = feature->getExtent();
+                    if (featureExtent.isInvalid())
                     {
-                        poly = new Polygon();
-                        poly->push_back( osg::Vec3d( extent.xMin(), extent.yMin(), 0 ));
-                        poly->push_back( osg::Vec3d( extent.xMax(), extent.yMin(), 0 ));
-                        poly->push_back( osg::Vec3d( extent.xMax(), extent.yMax(), 0 ));
-                        poly->push_back( osg::Vec3d( extent.xMin(), extent.yMax(), 0 ));
+                        //nop
                     }
 
-                    osg::ref_ptr<Geometry> croppedGeometry;
-                    if ( featureGeom->crop( poly.get(), croppedGeometry ) )
+                    else if (extent.contains(featureExtent))
                     {
-                        if ( croppedGeometry->isValid() )
+                        keepFeature = true;
+                        newExtent.expandToInclude(featureExtent);
+                    }
+
+                    // then move on to the cropping operation:
+                    else
+                    {
+                        if (!poly.valid())
                         {
-                            feature->setGeometry( croppedGeometry.get() );
-                            keepFeature = true;
-                            newExtent.expandToInclude(GeoExtent(newExtent.getSRS(), croppedGeometry->getBounds()));
+                            poly = new Polygon();
+                            poly->push_back(osg::Vec3d(extent.xMin(), extent.yMin(), 0));
+                            poly->push_back(osg::Vec3d(extent.xMax(), extent.yMin(), 0));
+                            poly->push_back(osg::Vec3d(extent.xMax(), extent.yMax(), 0));
+                            poly->push_back(osg::Vec3d(extent.xMin(), extent.yMax(), 0));
+                        }
+
+                        osg::ref_ptr<Geometry> croppedGeometry;
+                        if (featureGeom->crop(poly.get(), croppedGeometry))
+                        {
+                            if (croppedGeometry->isValid())
+                            {
+                                feature->setGeometry(croppedGeometry.get());
+                                keepFeature = true;
+                                newExtent.expandToInclude(GeoExtent(newExtent.getSRS(), croppedGeometry->getBounds()));
+                            }
                         }
                     }
                 }
             }
 
-            if ( keepFeature )
-                ++i;
-            else
-                i = input.erase( i );
+            if (keepFeature)
+            {
+                output.emplace_back(feature);
+            }
         }  
+
+        output.swap(input);
 
 #else // OSGEARTH_HAVE_GEOS
 

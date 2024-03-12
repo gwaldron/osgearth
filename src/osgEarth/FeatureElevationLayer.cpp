@@ -116,7 +116,7 @@ FeatureElevationLayer::addedToMap(const Map* map)
     // in the world.  The extent is the entire world, but it's actually very sparsley covered so tiles in the middle of nowhere with
     // no airport will still be considered valid for this layer and a tile will be created which we don't want to happen.
     auto profile = getProfile();
-    osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(nullptr);
+    osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor();
     DataExtentList dataExtents;
     while (cursor.valid() && cursor->hasMore())
     {
@@ -169,7 +169,7 @@ FeatureElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
     query.bounds() = extentInFeatureSRS.bounds();
 
     FeatureList featureList;
-    osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(query, progress);
+    osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor(query, {}, nullptr, progress);
     while (cursor.valid() && cursor->hasMore())
     {
         Feature* f = cursor->nextFeature();

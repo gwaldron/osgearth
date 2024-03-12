@@ -39,10 +39,7 @@
 #define LC "[viewer] "
 
 using namespace osgEarth::Util;
-using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Contrib;
-
-namespace ui = osgEarth::Util::Controls;
 
 //------------------------------------------------------------------------
 
@@ -72,9 +69,6 @@ namespace
     struct App
     {
         MapNode* _mapNode;
-        ui::CheckBoxControl* _fitting;
-        ui::HSliderControl* _minNearFarRatio;
-        ui::ButtonControl* _centerView;
         osg::ref_ptr<osg::Node> _dumpNode;
         osg::Camera* _overlayCam;
         EarthManipulator* _manip;
@@ -82,14 +76,14 @@ namespace
         void toggleFitting()
         {
             CascadeDrapingDecorator* cdd = getCDD(_mapNode);
-            if (cdd) cdd->setUseProjectionFitting(_fitting->getValue());
+            if (cdd) cdd->setUseProjectionFitting(!cdd->getUseProjectionFitting());
         }
 
-        void setMinNearFarRatio()
-        {
-            CascadeDrapingDecorator* cdd = getCDD(_mapNode);
-            if (cdd) cdd->setMinimumNearFarRatio(_minNearFarRatio->getValue());
-        }
+        //void setMinNearFarRatio()
+        //{
+        //    CascadeDrapingDecorator* cdd = getCDD(_mapNode);
+        //    if (cdd) cdd->setMinimumNearFarRatio(_minNearFarRatio->getValue());
+        //}
 
         void findFrusta()
         {
@@ -113,6 +107,7 @@ namespace
         }
     };
 
+#if 0
     OE_UI_HANDLER(toggleFitting);
     OE_UI_HANDLER(setMinNearFarRatio);
     OE_UI_HANDLER(findFrusta);
@@ -141,6 +136,7 @@ namespace
 
         return grid;
     }
+#endif
 
     // it's not used by osgEarth, but you can copy this code into a viewer app and
     // use it to visualize the various polyhedra created by the overlay decorator.
@@ -251,7 +247,6 @@ main(int argc, char** argv)
             return -1;
 
         app._overlayCam = overlayView->getCamera();
-        ui::ControlCanvas::get(mainView)->addControl(makeUI(app));
 
         osg::Group* group = new osg::Group();
         group->addChild(app._mapNode);

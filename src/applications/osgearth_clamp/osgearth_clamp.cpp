@@ -112,7 +112,7 @@ struct App
 
         GeoPoint point(input->getFeatureProfile()->getSRS(),0,0,0);
 
-        osg::ref_ptr<FeatureCursor> cursor = input->createFeatureCursor(Query(), NULL);
+        osg::ref_ptr<FeatureCursor> cursor = input->createFeatureCursor();
         while(cursor->hasMore())
         {
             Feature* f = cursor->nextFeature();

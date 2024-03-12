@@ -133,6 +133,7 @@ namespace osgEarth { namespace Util
         osg::Group* processLines           (FeatureList& input, FilterContext& cx);
         osg::Group* processPolygonizedLines(FeatureList& input, bool twosided, FilterContext& cx, bool wireLines);
         osg::Geode* processPoints          (FeatureList& input, FilterContext& cx);
+        osg::Geode* processMeshes(FeatureList& input, FilterContext& cx);
     };
 } }
 

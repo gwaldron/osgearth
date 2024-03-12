@@ -78,16 +78,22 @@ namespace osgEarth { namespace Util
     };
 
     //! Vector of feature filters (ref counted)
-    class OSGEARTH_EXPORT FeatureFilterChain : 
-        public osg::Referenced,
-        public osg::MixinVector<osg::ref_ptr<FeatureFilter> >
+    class OSGEARTH_EXPORT FeatureFilterChain : public std::vector<osg::ref_ptr<FeatureFilter>>
     {
     public:
-        static FeatureFilterChain* create(
+        static FeatureFilterChain create(
             const std::vector<ConfigOptions>& filters,
             const osgDB::Options* readOptions);
 
         const Status& getStatus() const { return _status; }
+
+        FilterContext push(FeatureList& input, FilterContext& context) const {
+            FilterContext temp = context;
+            for (auto& filter : *this) {
+                temp = filter->push(input, temp);
+            }
+            return temp;
+        }
 
     private:
         Status _status;

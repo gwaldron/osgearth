@@ -36,6 +36,7 @@
 #include <osgEarth/Sky>
 #include <osgEarth/Color>
 #include <osgEarth/LabelNode>
+#include <osgEarth/Controls>
 #include <osgViewer/Viewer>
 #include <iostream>
 
@@ -274,8 +275,8 @@ osg::Node* createECIAxes()
 struct App
 {
     DateTime start, end;
-    HSliderControl* time;
-    LabelControl* timeLabel;
+    ui::HSliderControl* time;
+    ui::LabelControl* timeLabel;
     SkyNode* sky;
     J2000ToECEFTransform* ecef;
     osg::Group* eci;
@@ -347,14 +348,17 @@ main(int argc, char** argv)
     // UI control to modify the time of day.
     ui::HBox* h = container->addControl(new ui::HBox());
     h->addControl(new ui::LabelControl("Time:"));
-    app.time = h->addControl(new HSliderControl(
+    app.time = h->addControl(new ui::HSliderControl(
         app.start.asTimeStamp(), app.end.asTimeStamp(), app.start.asTimeStamp(),
         new setTime(app)));
     app.time->setWidth(500);
-    app.timeLabel = container->addControl(new LabelControl());
+    app.timeLabel = container->addControl(new ui::LabelControl());
+
+    ui::ControlCanvas* canvas = new ui::ControlCanvas();
+    canvas->addChild(container);
 
     // Load an earth file
-    auto earth = MapNodeHelper().load(arguments, &viewer, container);
+    auto earth = MapNodeHelper().load(arguments, &viewer);
     if (earth.valid() && MapNode::get(earth))
     {
         // New scene graph root
@@ -397,6 +401,8 @@ main(int argc, char** argv)
                 app.eci->addChild(app.trackDrawable);
             }
         }
+
+        root->addChild(canvas);
 
         viewer.realize();
         app.time->setWidth(viewer.getCamera()->getViewport()->width()-40);

@@ -17,28 +17,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "TiledModelLayer"
-#include <osgEarth/SimplePager>
-#include <osgEarth/NodeUtils>
+#include "SimplePager"
+#include "NodeUtils"
+#include "Chonk"
+#include "Registry"
+#include "ShaderGenerator"
+#include <osg/BlendFunc>
 
 using namespace osgEarth;
 
-
-class TiledModelLayerPager : public SimplePager
+namespace
 {
-public:
-    TiledModelLayerPager(const Map* map, TiledModelLayer* layer):
-        SimplePager(map, layer->getProfile()),
-        _layer(layer)
+    class TiledModelLayerPager : public SimplePager
     {
-    }
+    public:
+        TiledModelLayerPager(const Map* map, TiledModelLayer* layer) :
+            SimplePager(map, layer->getProfile()),
+            _layer(layer)
+        {
+        }
 
-    virtual osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress) override
-    {
-        return _layer->createTile(key, progress);
-    }
+        virtual osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress) override
+        {
+            return _layer->createTile(key, progress);
+        }
 
-    osg::observer_ptr< TiledModelLayer > _layer;
-};
+        osg::observer_ptr< TiledModelLayer > _layer;
+    };
+}
 
 void TiledModelLayer::Options::fromConfig(const Config& conf)
 {
@@ -46,6 +52,9 @@ void TiledModelLayer::Options::fromConfig(const Config& conf)
     rangeFactor().setDefault(6.0);
     conf.get("additive", additive());
     conf.get("range_factor", rangeFactor());
+    conf.get("min_level", minLevel());
+    conf.get("max_level", maxLevel());
+    conf.get("nvgl", nvgl());
 }
 
 Config
@@ -54,18 +63,43 @@ TiledModelLayer::Options::getConfig() const
     Config conf = VisibleLayer::Options::getConfig();
     conf.set("additive", additive());
     conf.set("range_factor", rangeFactor());
+    conf.set("min_level", minLevel());
+    conf.set("max_level", maxLevel());
+    conf.set("nvgl", nvgl());
     return conf;
 }
 
 OE_LAYER_PROPERTY_IMPL(TiledModelLayer, bool, Additive, additive);
 OE_LAYER_PROPERTY_IMPL(TiledModelLayer, float, RangeFactor, rangeFactor);
 
+void TiledModelLayer::setMinLevel(unsigned value)
+{
+    options().minLevel() = value;
+}
+
+unsigned TiledModelLayer::getMinLevel() const
+{
+    return options().minLevel().get();
+}
+
+void TiledModelLayer::setMaxLevel(unsigned value)
+{
+    options().maxLevel() = value;
+}
+
+unsigned TiledModelLayer::getMaxLevel() const
+{
+    return options().maxLevel().get();
+}
+
 osg::ref_ptr<osg::Node>
 TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) const
 {
+    osg::ref_ptr<osg::Node> result;
+
     if (key.getProfile()->isEquivalentTo(getProfile()))
     {
-        return createTileImplementation(key, progress);
+        result = createTileImplementation(key, progress);
     }
     else
     {
@@ -96,8 +130,48 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
             }
         }
 
-        return group;
+        result = group;
     }
+
+    if (result.valid())
+    {
+        if (_textures.valid())
+        {
+            auto xform = findTopMostNodeOfType<osg::MatrixTransform>(result.get());
+
+            // Convert the geometry into chonks
+            ChonkFactory factory(_textures);
+
+            factory.setGetOrCreateFunction(
+                ChonkFactory::getWeakTextureCacheFunction(_texturesCache, _texturesCacheMutex));
+
+            osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();
+
+            if (xform)
+            {
+                for (unsigned i = 0; i < xform->getNumChildren(); ++i)
+                {
+                    drawable->add(xform->getChild(i), factory);
+                }
+                xform->removeChildren(0, xform->getNumChildren());
+                xform->addChild(drawable);
+                result = xform;
+            }
+            else
+            {
+                if (drawable->add(result.get(), factory))
+                {
+                    result = drawable;
+                }
+            }
+        }
+        else
+        {
+            osgEarth::Registry::shaderGenerator().run(result.get(), _statesetCache);
+        }
+    }
+
+    return result;
 }
 
 // The Node representing this layer.
@@ -111,6 +185,25 @@ void
 TiledModelLayer::addedToMap(const Map* map)
 {
     super::addedToMap(map);
+
+    if (*options().nvgl() == true && GLUtils::useNVGL() && !_textures.valid())
+    {
+        _textures = new TextureArena();
+        getOrCreateStateSet()->setAttribute(_textures, 1);
+
+        // auto release requires that we install this update callback!
+        _textures->setAutoRelease(true);
+
+        getNode()->addUpdateCallback(new LambdaCallback<>([this](osg::NodeVisitor& nv)
+            {
+                _textures->update(nv);
+                return true;
+            }));
+
+        getOrCreateStateSet()->setAttributeAndModes(
+            new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
+            osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+    }
 
     _map = map;
 

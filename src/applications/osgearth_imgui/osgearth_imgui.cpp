@@ -59,7 +59,7 @@ main(int argc, char** argv)
     // If you use the MapNodeHelper, call this first.
     viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
 
-    osg::ref_ptr<osg::Node> node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
+    osg::ref_ptr<osg::Node> node = MapNodeHelper().load(arguments, &viewer);
     if (node.valid())
     {
         // Call this to add the GUI. 

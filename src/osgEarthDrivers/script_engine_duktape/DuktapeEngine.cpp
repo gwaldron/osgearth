@@ -181,12 +181,14 @@ namespace
                     const AttributeTable& attrs = feature->getAttrs();
                     for(AttributeTable::const_iterator a = attrs.begin(); a != attrs.end(); ++a)
                     {
-                        AttributeType type = a->second.first;
+                        AttributeType type = a->second.type;
                         switch(type) {
                         case ATTRTYPE_DOUBLE: duk_push_number (ctx, a->second.getDouble()); break;          // [global] [feature] [properties] [name]
                         case ATTRTYPE_INT:    duk_push_number(ctx, (double)a->second.getInt()); break;             // [global] [feature] [properties] [name]
                         case ATTRTYPE_BOOL:   duk_push_boolean(ctx, a->second.getBool()?1:0); break;            // [global] [feature] [properties] [name]
+#if 0
                         case ATTRTYPE_DOUBLEARRAY: break;
+#endif
                         case ATTRTYPE_STRING:
                         default:              duk_push_string (ctx, a->second.getString().c_str()); break;  // [global] [feature] [properties] [name]
                         }

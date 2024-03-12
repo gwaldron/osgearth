@@ -19,9 +19,10 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarth/Geometry>
-#include <osgEarth/GEOS>
-#include <osgEarth/Math>
+#include "Geometry"
+#include "GEOS"
+#include "Math"
+#include "weemesh.h"
 #include <algorithm>
 #include <iterator>
 #include <cstdarg>
@@ -74,19 +75,16 @@ namespace
     }
 }
 
-Geometry::Geometry( const Geometry& rhs ) :
-osgEarth::InlineVector<osg::Vec3d,osg::Referenced>( rhs )
-{
-    //nop
-}
 
-Geometry::Geometry( int capacity )
+Geometry::Geometry(Type type, int capacity) :
+    _type(type)
 {
     if ( capacity > 0 )
         reserve( capacity );
 }
 
-Geometry::Geometry( const Vec3dVector* data )
+Geometry::Geometry(Type type, const Vec3dVector* data) :
+    _type(type)
 {
     reserve( data->size() );
     insert( begin(), data->begin(), data->end() );
@@ -94,6 +92,7 @@ Geometry::Geometry( const Vec3dVector* data )
 
 Geometry::~Geometry()
 {
+    //nop
 }
 
 int
@@ -114,9 +113,6 @@ Geometry::getBounds() const
 Geometry*
 Geometry::cloneAs( const Geometry::Type& newType ) const
 {
-    //if ( newType == getType() )
-    //    return static_cast<Geometry*>( clone() );
-
     switch( newType )
     {
     case TYPE_POINT:
@@ -133,7 +129,7 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
         else
             return new Polygon( &this->asVector() );
     case TYPE_UNKNOWN:
-        return new Geometry( &this->asVector() );
+        return new Geometry(newType, &this->asVector() );
     default:
         break;
     }
@@ -283,7 +279,7 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
                 // still returning false but allows for check.
                 if (GEOSGeomGetNumPoints_r(handle, outGeom ) == 0)
                 {
-                    output = new osgEarth::Geometry();
+                    output = new osgEarth::Geometry(TYPE_UNKNOWN);
                 }
             }
 
@@ -355,7 +351,7 @@ Geometry::geounion( const Geometry* other, osg::ref_ptr<Geometry>& output ) cons
             // still returning false but allows for check.
             if (GEOSGeomGetNumPoints_r(handle, outGeom) == 0)
             {
-                output = new osgEarth::Geometry();
+                output = new osgEarth::Geometry(TYPE_UNKNOWN);
             }
         }
 
@@ -649,34 +645,6 @@ Geometry::forEachPart(bool includePolygonHoles, const std::function<void(const G
 
 //----------------------------------------------------------------------------
 
-PointSet::PointSet( const PointSet& rhs ) :
-Geometry( rhs )
-{
-    //nop
-}
-
-PointSet::~PointSet()
-{
-}
-
-void
-PointSet::close()
-{
-    //NOP. Don't close point sets..
-}
-
-//----------------------------------------------------------------------------
-
-Point::Point(const Point& rhs) :
-    PointSet(rhs)
-{
-    //nop
-}
-
-Point::~Point()
-{
-}
-
 void
 Point::set(const osg::Vec3d& value)
 {
@@ -686,21 +654,6 @@ Point::set(const osg::Vec3d& value)
 
 //----------------------------------------------------------------------------
 
-LineString::LineString( const LineString& rhs ) :
-Geometry( rhs )
-{
-    //nop
-}
-
-LineString::LineString( const Vec3dVector* data ) :
-Geometry( data )
-{
-    //nop
-}
-
-LineString::~LineString()
-{
-}
 
 bool
 LineString::getSegment(double length, osg::Vec3d& start, osg::Vec3d& end)
@@ -746,20 +699,10 @@ LineString::getSignedDistance2D(
 
 //----------------------------------------------------------------------------
 
-Ring::Ring( const Ring& rhs ) :
-Geometry( rhs )
-{
-    //nop
-}
-
-Ring::Ring( const Vec3dVector* data ) :
-Geometry( data )
+Ring::Ring(Type type, const Vec3dVector* data) :
+    Geometry(type, data)
 {
     open();
-}
-
-Ring::~Ring()
-{
 }
 
 Geometry*
@@ -829,8 +772,7 @@ Ring::getSignedArea2D() const
 }
 
 double
-Ring::getSignedDistance2D(
-    const osg::Vec3d& a) const
+Ring::getSignedDistance2D(const osg::Vec3d& a) const
 {
     Segment2d seg;
     double r = DBL_MAX;
@@ -880,21 +822,11 @@ Ring::contains2D( double x, double y ) const
 
 //----------------------------------------------------------------------------
 
-Polygon::Polygon( const Polygon& rhs ) :
-Ring( rhs )
+Polygon::Polygon(const Polygon& rhs) :
+    Ring(rhs)
 {
     for (auto& hole : rhs._holes)
         _holes.push_back(new Ring(&hole->asVector()));
-}
-
-Polygon::Polygon( const Vec3dVector* data ) :
-Ring( data )
-{
-    //nop
-}
-
-Polygon::~Polygon()
-{
 }
 
 int
@@ -907,19 +839,17 @@ Polygon::getTotalPointCount() const
 }
 
 bool
-Polygon::contains2D( double x, double y ) const
+Polygon::contains2D(double x, double y) const
 {
     // first check the outer ring
-    if ( !Ring::contains2D(x, y) )
+    if (!Ring::contains2D(x, y))
         return false;
 
     // then check each inner ring (holes). Point has to be inside the outer ring,
     // but NOT inside any of the holes
-    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
-    {
-        if ( i->get()->contains2D(x, y) )
+    for(auto& hole : _holes)
+        if (hole->contains2D(x, y))
             return false;
-    }
 
     return true;
 }
@@ -928,37 +858,36 @@ void
 Polygon::open()
 {
     Ring::open();
-    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
-        (*i)->open();
+    for (auto& hole : _holes)
+        hole->open();
 }
 
 void
 Polygon::close()
 {
     Ring::close();
-    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
-        (*i)->close();
+    for (auto& hole : _holes)
+        hole->close();
 }
 
 void
 Polygon::removeDuplicates()
 {
     Ring::removeDuplicates();
-    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
-        (*i)->removeDuplicates();
+    for (auto& hole : _holes)
+        hole->removeDuplicates();
 }
 
 void
 Polygon::removeColinearPoints()
 {
     Ring::removeColinearPoints();
-    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
-        (*i)->removeColinearPoints();
+    for (auto& hole : _holes)
+        hole->removeColinearPoints();
 }
 
 double
-Polygon::getSignedDistance2D(
-    const osg::Vec3d& a) const
+Polygon::getSignedDistance2D(const osg::Vec3d& a) const
 {
     Segment2d seg;
     double r = DBL_MAX;
@@ -973,21 +902,48 @@ Polygon::getSignedDistance2D(
 
 //----------------------------------------------------------------------------
 
-MultiGeometry::MultiGeometry( const MultiGeometry& rhs ) :
-Geometry( rhs )
+namespace
 {
-    for( GeometryCollection::const_iterator i = rhs._parts.begin(); i != rhs._parts.end(); ++i )
-        _parts.push_back( i->get()->clone() );
+    template<class T>
+    double cross2d(const T& a, const T& b) { return a.x()*b.y() - a.y()*b.x(); }
 }
 
-MultiGeometry::MultiGeometry( const GeometryCollection& parts ) :
-_parts( parts )
+bool TriMesh::contains2D(double x, double y) const
 {
-    //nop
+    osg::Vec3d P(x, y, 0);
+
+    for (unsigned i = 0; i < _indices.size(); i += 3)
+    {
+        const osg::Vec3d& p0 = (*this)[_indices[i]];
+        const osg::Vec3d& p1 = (*this)[_indices[i + 1]];
+        const osg::Vec3d& p2 = (*this)[_indices[i + 2]];
+
+        auto AB = p1 - p0, BC = p2 - p1, CA = p0 - p2;
+        auto AP = P - p0, BP = P - p1, CP = P - p2;
+        auto c1 = cross2d(AB, AP), c2 = cross2d(BC, BP), c3 = cross2d(CA, CP);
+        if ((c1 >= 0 && c2 >= 0 && c3 >= 0) || (c1 <= 0 && c2 <= 0 && c3 <= 0))
+            return true;
+    }
+    return false;
 }
 
-MultiGeometry::~MultiGeometry()
+
+//----------------------------------------------------------------------------
+
+MultiGeometry::MultiGeometry(const MultiGeometry& rhs) :
+    Geometry(rhs)
 {
+    _parts.reserve(rhs._parts.size());
+    for (auto& part : rhs._parts)
+        _parts.emplace_back(part->clone());
+}
+
+MultiGeometry::MultiGeometry(const GeometryCollection& rhs) :
+    Geometry(TYPE_MULTI)
+{
+    _parts.reserve(rhs.size());
+    for (auto& part : rhs)
+        _parts.emplace_back(part);
 }
 
 Geometry::Type
@@ -1006,8 +962,8 @@ int
 MultiGeometry::getTotalPointCount() const
 {
     int total = 0;
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-        total += i->get()->getTotalPointCount();
+    for (auto& part : _parts)
+        total += part->getTotalPointCount();
     return total;
 }
 
@@ -1015,8 +971,8 @@ double
 MultiGeometry::getLength() const
 {
     double total = 0.0;
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-        total += i->get()->getLength();
+    for (auto& part : _parts)
+        total += part->getLength();
     return total;
 }
 
@@ -1024,8 +980,8 @@ unsigned
 MultiGeometry::getNumGeometries() const
 {
     unsigned total = 0;
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-        total += i->get()->getNumGeometries();
+    for (auto& part : _parts)
+        total += part->getNumGeometries();
     return total;
 }
 
@@ -1033,11 +989,8 @@ Bounds
 MultiGeometry::getBounds() const
 {
     Bounds bounds = Geometry::getBounds();
-
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-    {
-        bounds.expandBy( i->get()->getBounds() );
-    }
+    for (auto& part : _parts)
+        bounds.expandBy(part->getBounds());
     return bounds;
 }
 
@@ -1045,10 +998,10 @@ Geometry*
 MultiGeometry::cloneAs( const Geometry::Type& newType ) const
 {
     MultiGeometry* multi = new MultiGeometry();
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
+    for (auto& part : _parts)
     {
-        Geometry* part = i->get()->cloneAs( i->get()->getType() );
-        if ( part ) multi->getComponents().push_back( part );
+        auto cloned_part = part->cloneAs(part->getType());
+        if (cloned_part) multi->getComponents().push_back(cloned_part);
     }
     return multi;
 }
@@ -1059,13 +1012,11 @@ MultiGeometry::isValid() const
     if ( _parts.size() == 0 )
         return false;
 
-    bool valid = true;
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end() && valid; ++i )
-    {
-        if ( !i->get()->isValid() )
-            valid = false;
-    }
-    return valid;
+    for (auto& part : _parts)
+        if (!part->isValid())
+            return false;
+
+    return true;
 }
 
 void
@@ -1078,20 +1029,16 @@ MultiGeometry::open()
 void
 MultiGeometry::close()
 {
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-    {
-        i->get()->close();
-    }
+    for (auto& part : _parts)
+        part->close();
 }
 
 // opens and rewinds the polygon to the specified orientation.
 void
 MultiGeometry::rewind( Orientation orientation )
 {
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-    {
-        i->get()->rewind( orientation );
-    }
+    for (auto& part : _parts)
+        part->rewind(orientation);
 }
 
 void
@@ -1104,10 +1051,8 @@ MultiGeometry::removeDuplicates()
 void
 MultiGeometry::removeColinearPoints()
 {
-    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
-    {
-        i->get()->removeColinearPoints();
-    }
+    for (auto& part : _parts)
+        part->removeColinearPoints();
 }
 
 double
@@ -1135,14 +1080,14 @@ MultiGeometry::contains2D(double x, double y) const
 
 //----------------------------------------------------------------------------
 
-GeometryIterator::GeometryIterator( Geometry* geom, bool holes ) :
-_next( 0L ),
-_traverseMulti( true ),
-_traversePolyHoles( holes )
+GeometryIterator::GeometryIterator(Geometry* geom, bool holes) :
+    _next(0L),
+    _traverseMulti(true),
+    _traversePolyHoles(holes)
 {
-    if ( geom )
+    if (geom)
     {
-        _stack.push( geom );
+        _stack.push(geom);
         fetchNext();
     }
 }
@@ -1193,14 +1138,26 @@ GeometryIterator::fetchNext()
 
 //----------------------------------------------------------------------------
 
-ConstGeometryIterator::ConstGeometryIterator( const Geometry* geom, bool holes ) :
-_next( 0L ),
-_traverseMulti( true ),
-_traversePolyHoles( holes )
+ConstGeometryIterator::ConstGeometryIterator()
 {
-    if ( geom )
+    //nop
+}
+
+ConstGeometryIterator::ConstGeometryIterator(const Geometry* geom, bool holes)
+{
+    _stack.reserve(64);
+    reset(geom, holes);
+}
+
+void
+ConstGeometryIterator::reset(const Geometry* geom, bool holes)
+{
+    _next = nullptr;
+    _traversePolyHoles = holes;
+    _stack.clear();
+    if (geom)
     {
-        _stack.push( geom );
+        _stack.emplace_back(geom);
         fetchNext();
     }
 }
@@ -1208,7 +1165,7 @@ _traversePolyHoles( holes )
 bool
 ConstGeometryIterator::hasMore() const
 {
-    return _next != 0L;
+    return _next != nullptr;
 }
 
 const Geometry*
@@ -1222,25 +1179,25 @@ ConstGeometryIterator::next()
 void
 ConstGeometryIterator::fetchNext()
 {
-    _next = 0L;
+    _next = nullptr;
     if ( _stack.size() == 0 )
         return;
 
-    const Geometry* current = _stack.top();
-    _stack.pop();
+    const Geometry* current = _stack.back();
+    _stack.resize(_stack.size() - 1);
 
-    if ( current->getType() == Geometry::TYPE_MULTI && _traverseMulti )
+    if (_traverseMulti && current->getType() == Geometry::TYPE_MULTI)
     {
         const MultiGeometry* m = static_cast<const MultiGeometry*>(current);
-        for( GeometryCollection::const_iterator i = m->getComponents().begin(); i != m->getComponents().end(); ++i )
-            _stack.push( i->get() );
+        for (auto i = m->getComponents().rbegin(); i != m->getComponents().rend(); ++i)
+            _stack.emplace_back(i->get());
         fetchNext();
     }
-    else if ( current->getType() == Geometry::TYPE_POLYGON && _traversePolyHoles )
+    else if (_traversePolyHoles && current->getType() == Geometry::TYPE_POLYGON)
     {
         const Polygon* p = static_cast<const Polygon*>(current);
-        for( RingCollection::const_iterator i = p->getHoles().begin(); i != p->getHoles().end(); ++i )
-            _stack.push( i->get() );
+        for (auto i = p->getHoles().rbegin(); i != p->getHoles().rend(); ++i)
+            _stack.emplace_back(i->get());
         _next = current;
     }
     else
@@ -1249,34 +1206,3 @@ ConstGeometryIterator::fetchNext()
     }
 }
 
-//----------------------------------------------------------------------------
-
-ConstSegmentIterator::ConstSegmentIterator( const Geometry* verts, bool forceClosedLoop ) :
-_verts(&verts->asVector()),
-_closeLoop(forceClosedLoop),
-_iter(verts->begin())
-{
-    _done = _verts->size() < 2;
-
-    if ( !forceClosedLoop )
-    {
-        _closeLoop = dynamic_cast<const Ring*>(verts) != 0L;
-    }
-}
-
-Segment
-ConstSegmentIterator::next()
-{
-    osg::Vec3d p0 = *_iter++;
-    if ( _iter == _verts->end() )
-    {
-        _iter = _verts->begin();
-        _done = true;
-    }
-    else if ( _iter+1 == _verts->end() && !_closeLoop )
-    {
-        _done = true;
-    }
-
-    return Segment( p0, *_iter );
-}

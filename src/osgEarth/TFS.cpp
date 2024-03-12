@@ -261,7 +261,7 @@ TFSFeatureSource::openImplementation()
 
 
 FeatureCursor*
-TFSFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+TFSFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
 
@@ -304,18 +304,14 @@ TFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
         OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
     }
 
-    //If we have any filters, process them here before the cursor is created
-    if (getFilters() && !getFilters()->empty() && !features.empty())
+#if 0 // this happens in FeatureSource now
+    // If we have any filters, process them here before the cursor is created
+    if (!getFilters().empty() && !features.empty())
     {
         FilterContext cx;
         cx.setProfile(getFeatureProfile());
         cx.extent() = query.tileKey()->getExtent();
-
-        for (FeatureFilterChain::const_iterator i = getFilters()->begin(); i != getFilters()->end(); ++i)
-        {
-            FeatureFilter* filter = i->get();
-            cx = filter->push(features, cx);
-        }
+        cx = getFilters().push(features, cx);
     }
 
     // If we have any features and we have an fid attribute, override the fid of the features
@@ -328,6 +324,7 @@ TFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
             itr->get()->setFID(fid);
         }
     }
+#endif
 
     result = new FeatureListCursor(features);
     return result;
@@ -335,7 +332,7 @@ TFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 
 
 bool
-TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features)
+TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features) const
 {
     if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream")
     {
@@ -409,7 +406,7 @@ TFSFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
 
 
 std::string
-TFSFeatureSource::getExtensionForMimeType(const std::string& mime)
+TFSFeatureSource::getExtensionForMimeType(const std::string& mime) const
 {
     //OGR is particular sometimes about the extension of files when it's reading them so it's good to have
     //the temp file have an appropriate extension
@@ -456,7 +453,7 @@ TFSFeatureSource::isJSON(const std::string& mime) const
 }
 
 std::string
-TFSFeatureSource::createURL(const Query& query)
+TFSFeatureSource::createURL(const Query& query) const
 {
     if (query.tileKey().isSet() && query.tileKey()->valid())
     {

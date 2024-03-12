@@ -19,9 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_CONTAINERS_H
-#define OSGEARTH_CONTAINERS_H 1
-
+#pragma once
 #include <osgEarth/Common>
 #include <osgEarth/Threading>
 #include <osg/ref_ptr>
@@ -40,23 +38,28 @@ namespace osgEarth { namespace Util
      * A std::map-like map that uses a vector.
      * This benchmarks much faster than std::map or std::unordered_map for small sets.
      */
-    template<typename KEY,typename DATA>
+    template<typename KEY,typename DATA,typename LESS=std::less<KEY>>
     struct vector_map
     {
         struct ENTRY {
             KEY first;
             DATA second;
         };
-        typedef std::vector<ENTRY> container_t;
 
-        typedef typename container_t::iterator       iterator;
-        typedef typename container_t::const_iterator const_iterator;
+        using value_type = DATA;
+        using container_t = std::vector<ENTRY>;
+        using iterator = typename container_t::iterator;
+        using const_iterator = typename container_t::const_iterator;
 
         container_t _container;
 
+        inline bool keys_equal(const KEY& a, const KEY& b) const {
+            return LESS()(a, b) == false && LESS()(b, a) == false;
+        }
+
         inline DATA& operator[](const KEY& key) {
             for(unsigned i=0; i<_container.size(); ++i) {
-                if (_container[i].first == key) {
+                if (keys_equal(_container[i].first, key)) {
                     return _container[i].second;
                 }
             }
@@ -72,7 +75,7 @@ namespace osgEarth { namespace Util
 
         inline iterator find(const KEY& key) {
             for (unsigned i = 0; i < _container.size(); ++i) {
-                if (_container[i].first == key) {
+                if (keys_equal(_container[i].first, key)) {
                     return _container.begin() + i;
                 }
             }
@@ -81,7 +84,7 @@ namespace osgEarth { namespace Util
 
         inline const_iterator find(const KEY& key) const {
             for(unsigned i=0; i<_container.size(); ++i) {
-                if (_container[i].first == key) {
+                if (keys_equal(_container[i].first, key)) {
                     return _container.begin()+i;
                 }
             }
@@ -94,7 +97,7 @@ namespace osgEarth { namespace Util
 
         inline void erase(const KEY& key) {
             for(unsigned i=0; i<_container.size(); ++i) {
-                if (_container[i].first == key) {
+                if (keys_equal(_container[i].first, key)) {
                     if (i+1 < _container.size()) {
                         _container[i] = _container[_container.size()-1];
                     }
@@ -914,5 +917,3 @@ namespace osgEarth { namespace Util
         iterator _iter;
     };
 } }
-
-#endif // OSGEARTH_CONTAINERS_H

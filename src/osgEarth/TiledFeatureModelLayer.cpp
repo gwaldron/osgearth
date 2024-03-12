@@ -204,6 +204,10 @@ TiledFeatureModelLayer::addedToMap(const Map* map)
             Registry::objectIndex(),
             indexOptions);
     }
+    else
+    {
+        OE_WARN << LC << "Missing either feature source or stylesheet - nothing will render" << std::endl;
+    }
 
     _filters = FeatureFilterChain::create(options().filters(), getReadOptions());
 
@@ -220,44 +224,6 @@ TiledFeatureModelLayer::removedFromMap(const Map* map)
 
     _session = 0L;
 }
-
-#if 0
-void
-TiledFeatureModelLayer::create()
-{
-    OE_TEST << LC << "create" << std::endl;
-
-    if (_graphDirty)
-    {
-        if (getFeatureSource() && getStyleSheet() && _session.valid())
-        {
-            // connect the session to the features:
-            _session->setFeatureSource(getFeatureSource());
-            _session->setResourceCache(new ResourceCache());
-
-            // initialize filters if necessary
-            osg::ref_ptr<FeatureFilterChain> chain = FeatureFilterChain::create(options().filters(), getReadOptions());
-
-            // group that will build all the feature geometry:
-            osg::ref_ptr<TiledFeatureModelGraph> fmg = new TiledFeatureModelGraph(_session->getMap(), getFeatureSource(), getStyleSheet(), _session.get());
-            fmg->setOwnerName(getName());
-            fmg->setFilterChain(chain.get());
-            fmg->setAdditive(*_options->additive());
-            fmg->setRangeFactor(*_options->rangeFactor());
-            fmg->build();
-
-            _root->removeChildren(0, _root->getNumChildren());
-            _root->addChild(fmg.get());
-
-            // clear the dirty flag.
-            _graphDirty = false;
-
-            setStatus(Status::OK());
-
-        }
-    }
-}
-#endif
 
 osg::ref_ptr<osg::Node>
 TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCallback* progress) const
@@ -284,7 +250,6 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
 
     GeometryCompilerOptions options;
     options.instancing() = true;
-    //options.mergeGeometry() = true;
     GeometryCompiler gc(options);
 
     GeomFeatureNodeFactory factory(options);
@@ -292,11 +257,7 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
     if (progress && progress->isCanceled())
         return nullptr;
 
-    osg::ref_ptr< FeatureCursor > cursor = getFeatureSource()->createFeatureCursor(
-        query,
-        _filters.get(),
-        &fc,
-        progress);
+    auto cursor = getFeatureSource()->createFeatureCursor(query, _filters, &fc, progress);
 
     osg::ref_ptr<osg::Node> node = new osg::Group;
     if (cursor)
@@ -307,7 +268,7 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
         FeatureList features;
         cursor->fill(features);
 
-        if (getStyleSheet()->getSelectors().size() > 0)
+        if (getStyleSheet() && getStyleSheet()->getSelectors().size() > 0)
         {
             osg::Group* group = new osg::Group;
 
@@ -386,7 +347,7 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
 
             node = group;
         }
-        else if (getStyleSheet()->getDefaultStyle())
+        else if (getStyleSheet() && getStyleSheet()->getDefaultStyle())
         {
             osg::ref_ptr< FeatureListCursor> cursor = new FeatureListCursor(features);
             osg::ref_ptr< osg::Group > group = new osg::Group;
@@ -425,11 +386,17 @@ TiledFeatureModelLayer::getProfile() const
 unsigned
 TiledFeatureModelLayer::getMinLevel() const
 {
-    return getFeatureSource()->getFeatureProfile()->getFirstLevel();
+    if (options().minLevel().isSet())
+        return options().minLevel().value();
+    else
+        return getFeatureSource()->getFeatureProfile()->getFirstLevel();
 }
 
 unsigned
 TiledFeatureModelLayer::getMaxLevel() const
 {
-    return getFeatureSource()->getFeatureProfile()->getMaxLevel();    
+    if (options().maxLevel().isSet())
+        return options().maxLevel().value();
+    else
+        return getFeatureSource()->getFeatureProfile()->getMaxLevel();
 }

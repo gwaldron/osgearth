@@ -96,24 +96,50 @@ configure_shaders(
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
-SET(LIB_PUBLIC_HEADERS
+SET(LIB_PUBLIC_HEADERS    
+    AGG.h
+    AltitudeFilter
+    AltitudeSymbol
+    AnnotationData
+    AnnotationLayer
+    AnnotationNode
+    AnnotationRegistry
+    AnnotationSettings
+    AnnotationUtils
     ArcGISServer
     ArcGISTilePackage
+    AtlasBuilder
+    AttributesFilter
+    AutoClipPlaneHandler
+    AutoScaleCallback
+    BboxDrawable
+    BBoxSymbol
+    BillboardResource
+    BillboardSymbol
     Bing
     Bounds
+    BufferFilter
+    BuildGeometryFilter
+    BuildTextFilter
     Cache
     CacheBin
     CachePolicy
     CacheSeed
+    Callbacks
     Callouts
     CameraUtils
     Capabilities
-    CesiumIon
     CascadeDrapingDecorator
+    CentroidFilter
+    CesiumIon
     Chonk
-    Clamping
+    CircleNode
     ClampableNode
+    ClampCallback
+    Clamping
     ClampingTechnique
+    ClipSpace
+    ClusterNode
     Color
     ColorFilter
     Common
@@ -122,345 +148,302 @@ SET(LIB_PUBLIC_HEADERS
     CompositeTiledModelLayer
     Config
     Containers
+    ContourMap
+    Controls
+    ConvertTypeFilter
     Coverage
     CoverageLayer
+    CoverageSymbol
+    CropFilter
+    CssUtils
     Cube
     CullingUtils
     DateTime
     DateTimeRange
+    DebugImageLayer
     DecalLayer
     DepthOffset
+    Draggers
     DrapeableNode
     DrapingCullSet
     DrapingTechnique
     DrawInstanced
+    EarthManipulator
     ECEF
     Elevation
     ElevationLayer
     ElevationLOD
     ElevationPool
-    ElevationRanges
     ElevationQuery
+    ElevationRanges
+    EllipseNode
     Ellipsoid
     Endian
-    Export
-    Extension
-    FadeEffect
-    FileUtils
-    FrameClock
-    GDAL
-    GDALDEM
-    GeoCommon
-    GeoData
-    Geoid
-    GeoMath
-    GeoTransform
-    GeometryClamper
-    GeometryCloud
-    GLSLChunker
-    GLUtils
-    HeightFieldUtils
-    Horizon
-    HorizonClipPlane
-    HTTPClient
-    ImageLayer
-    ImageMosaic
-    ImageToHeightFieldConverter
-    ImageUtils
-    InstanceBuilder
-    InstanceCloud
-    IntersectionPicker
-    IOTypes
-    JoinPointsLinesFilter
-    JsonUtils
-    LandCover
-    LandCoverLayer
-    Layer
-    LayerReference
-    LayerShader
-    Lighting
-    LineDrawable
-    LineFunctor
-    LoadableNode
-    Locators
-    LocalTangentPlane
-    MaterialLoader
-    Math
-    Map
-    MapboxGLImageLayer
-    MapboxGLGlyphManager
-    MapCallback
-    MapModelChange
-    MapNode
-    MapNodeObserver
-    Memory
-    MemCache
-    MetaTile
-    Metrics
-    MBTiles
-    ModelLayer
-    ModelSource
-    NativeProgramAdapter
-    NetworkMonitor
-    NodeUtils
-    Notify
-    optional
-    ObjectIDPicker
-    ObjectIndex
-    OverlayDecorator
-    PagedNode
-    PatchLayer
-    PhongLightingEffect
-    Picker
-    PluginLoader
-    PointDrawable
-    PowerlineLayer
-    PrimitiveIntersector
-    Profile
-    Progress
-    Random
-    RefinePolicy
-    Registry
-    ResourceReleaser
-    Revisioning
-    SceneGraphCallback
-    ScreenSpaceLayout
-    ScreenSpaceLayoutImpl
-    ScreenSpaceLayoutDeclutter
-    ScreenSpaceLayoutCallout
-    SDF
-    Shaders
-    ShaderFactory
-    ShaderGenerator
-    ShaderLayer
-    ShaderLoader
-    ShaderMerger
-    ShaderUtils
-    SelectExtentTool
-    SimplexNoise
-    NoiseTextureFactory
-    SpatialReference
-    StateSetCache
-    StateTransition
-    Status
-    StringUtils
-    TDTiles
-    TimeSeriesImage
-    Terrain
-    TerrainEffect
-    TerrainOptions
-    TerrainEngineNode
-    TerrainEngineRequirements
-    TerrainMeshLayer
-    TerrainResources
-    TerrainTileModel
-    TerrainTileModelFactory
-    TerrainTileNode
-    Tessellator
-    Text
-    TextureBuffer
-    ThreeDTilesLayer
-    TileEstimator
-    TileKey
-    TileLayer
-    TileHandler
-    TileMesher
-    TileRasterizer
-    TiledFeatureModelLayer
-    TiledModelLayer
-    TileSource
-    TileSourceElevationLayer
-    TileSourceImageLayer
-    TileVisitor
-    TileCache
-    TimeControl
-    Threading
-    TMS
-    Units
-    URI
-    Utils
-    #Version
-    VerticalDatum
-    VideoLayer
-    Viewpoint
-    VirtualProgram
-    VisibleLayer
-    WMS
-    XmlUtils
-    XYZ
-    XYZModelLayer
-
-    ActivityMonitorTool
-    AutoClipPlaneHandler
-    AutoScaleCallback
-    AtlasBuilder
-    ClipSpace
-    Common
-    Controls
-    ContourMap
-    ClampCallback
-    ClusterNode
-    DebugImageLayer
-    EarthManipulator
     Ephemeris
     ExampleResources
     Export
-    FlatteningLayer
-    Formatter
-    FractalElevationLayer
-    GARSGraticule
-    GeodeticGraticule
-    GeodeticLabelingEngine
-    GraticuleLabelingEngine
-    HTM
-    LatLongFormatter
-    LineOfSight
-    LinearLineOfSight
-    LogarithmicDepthBuffer
-    MeasureTool
-    MGRSFormatter
-    MGRSGraticule
-    MouseCoordsTool
-    RadialLineOfSight
-    RTTPicker
-    Shaders
-    Shadowing
-    SimpleOceanLayer
-    SimplePager
-    Sky
-    SkyView
-    StarData
-    TerrainProfile
-    TextureArena
-    TileIndex
-    TileIndexBuilder    
-    TFSPackager
-    TMSBackFiller
-    TopologyGraph
-    UTMGraticule
-    UTMLabelingEngine
-    ViewFitter
-
-    AltitudeFilter
-    AttributesFilter
-    BufferFilter
-    BuildGeometryFilter
-    BuildTextFilter
-    CentroidFilter
-    Common
-    ConvertTypeFilter
-    CropFilter
+    Expression
+    Extension
     ExtrudeGeometryFilter
+    ExtrusionSymbol
+    FadeEffect
     Feature
     FeatureCursor
     FeatureDisplayLayout
     FeatureElevationLayer
     FeatureImageLayer
-    FeatureSDFLayer
-    FeatureRasterizer
     FeatureIndex
-    TerrainConstraintLayer
     FeatureModelGraph
     FeatureModelLayer
     FeatureModelSource
+    FeatureNode
+    FeatureRasterizer
+    FeatureSDFLayer
     FeatureSource
     FeatureSourceIndexNode
+    FileUtils
+    Fill
     Filter
     FilterContext
-    FilteredFeatureSource
-    GeometryCompiler
-    GeometryUtils
-    ImageToFeatureLayer
-    InstanceCloud
-    MetadataNode
-    MVT
-    OgrUtils
-    OGRFeatureSource
-    PolygonizeLines
-    ResampleFilter
-    ScaleFilter
-    Session
-    ScatterFilter
-    Script
-    ScriptEngine
-    ScriptFilter
-    Shaders
-    SubstituteModelFilter
-    TessellateOperator
-    TextSymbolizer
-    TFS
-    TransformFilter
-    WireLines
-    XYZFeatureSource
-    WFS
-
-    AGG.h
-    AltitudeSymbol
-    BBoxSymbol
-    BillboardResource
-    BillboardSymbol
-    Common
-    CoverageSymbol
-    CssUtils
-    Expression
-    ExtrusionSymbol
-    Fill
+    FlatteningLayer
+    Formatter
+    FractalElevationLayer
+    FrameClock
+    GARSGraticule
+    GDAL
+    GDALDEM
+    GeoCommon
+    GeoData
+    GeodeticGraticule
+    GeodeticLabelingEngine
+    Geoid
+    GeoMath
     Geometry
+    GeometryClamper
+    GeometryCloud
+    GeometryCompiler
     GeometryFactory
-    GEOS
     GeometryRasterizer
+    GeometryUtils
+    GeoPositionNode
+    GeoPositionNodeAutoScaler
+    GEOS
+    GeoTransform
+    GLSLChunker
+    GLUtils
+    GraticuleLabelingEngine
+    HeightFieldUtils
+    Horizon
+    HorizonClipPlane
+    HTM
+    HTTPClient
     IconResource
     IconSymbol
+    ImageLayer
+    ImageMosaic
+    ImageOverlay
+    ImageOverlayEditor
+    ImageToFeatureLayer
+    ImageToHeightFieldConverter
+    ImageUtils
+    InstanceBuilder
+    InstanceCloud
     InstanceResource
     InstanceSymbol
+    IntersectionPicker
+    IOTypes
+    JoinPointsLinesFilter
+    JsonUtils
+    LabelNode
+    LandCover
+    LandCoverLayer
+    LatLongFormatter
+    Layer
+    LayerReference
+    LayerShader
+    Lighting
+    LinearLineOfSight
+    LineDrawable
+    LineFunctor
+    LineOfSight
     LineSymbol
+    LoadableNode
+    LocalGeometryNode
+    LocalTangentPlane
+    Locators
+    LogarithmicDepthBuffer
+    Map
+    MapboxGLGlyphManager
+    MapboxGLImageLayer
+    MapCallback
+    MapModelChange
+    MapNode
+    MapNodeObserver
+    MaterialLoader
+    Math
+    MBTiles
+    MeasureTool
+    MemCache
+    Memory
     MeshConsolidator
     MeshFlattener
     MeshSubdivider
+    MetadataNode
+    MetaTile
+    Metrics
+    MGRSFormatter
+    MGRSGraticule
+    ModelLayer
+    ModelNode
     ModelResource
+    ModelSource
     ModelSymbol
+    MVT
+    NativeProgramAdapter
+    NetworkMonitor
+    NodeUtils
+    NoiseTextureFactory
+    Notify
+    ObjectIDPicker
+    ObjectIndex
+    OGRFeatureSource
+    OgrUtils
+    optional
+    OverlayDecorator
+    PagedNode
+    PatchLayer
+    PhongLightingEffect
+    Picker
+    PlaceNode
+    PluginLoader
+    PointDrawable
     PointSymbol
+    PolygonizeLines
     PolygonSymbol
+    PowerlineLayer
+    PrimitiveIntersector
+    Profile
+    Progress
     Query
+    RadialLineOfSight
+    Random
+    RectangleNode
+    RefinePolicy
+    Registry
     RenderSymbol
+    ResampleFilter
     Resource
     ResourceCache
     ResourceLibrary
+    Revisioning
+    RTTPicker
+    ScaleFilter
+    ScatterFilter
+    SceneGraphCallback
+    ScreenSpaceLayout
+    ScreenSpaceLayoutCallout
+    ScreenSpaceLayoutDeclutter
+    ScreenSpaceLayoutImpl
+    Script
+    ScriptEngine
+    ScriptFilter
+    SDF
+    SDF
+    SelectExtentTool
+    Session
+    ShaderFactory
+    ShaderGenerator
+    ShaderLayer
+    ShaderLoader
+    ShaderMerger
+    Shaders
+    ShaderUtils
+    Shadowing
+    SimpleOceanLayer
+    SimplePager
+    SimplexNoise
     Skins
+    Sky
+    SkyView
+    SpatialReference
+    StarData
+    StateSetCache
+    StateTransition
+    Status
+    StringUtils
     Stroke
     Style
     StyleSelector
     StyleSheet
+    SubstituteModelFilter
     Symbol
     Tags
-    TextSymbol
-
-    AnnotationSettings
-    AnnotationData
-    AnnotationLayer
-    AnnotationNode
-    AnnotationRegistry
-    AnnotationUtils
-	BboxDrawable
-    CircleNode
-    Common
-    Draggers
-    EllipseNode
-    Export
-    FeatureNode
-    GeoPositionNode
-    GeoPositionNodeAutoScaler
-    LocalGeometryNode
-    ImageOverlay
-    ImageOverlayEditor
-    LabelNode
-    ModelNode
-    PlaceNode
-    RectangleNode
-    TrackNode
-    WindLayer
+    TDTiles
+    Terrain
+    TerrainConstraintLayer
+    TerrainEffect
+    TerrainEngineNode
+    TerrainEngineRequirements
     TerrainLayer
-    SDF
+    TerrainMeshLayer
+    TerrainOptions
+    TerrainProfile
+    TerrainResources
+    TerrainTileModel
+    TerrainTileModelFactory
+    TerrainTileNode
+    TessellateOperator
+    Tessellator
+    Text
+    TextSymbol
+    TextSymbolizer
+    TextureArena
+    TextureBuffer
+    TFS
+    TFSPackager
+    Threading
+    ThreeDTilesLayer
+    TileCache
+    TiledFeatureModelLayer
+    TiledModelLayer
+    TileEstimator
+    TileHandler
+    TileIndex
+    TileIndexBuilder    
+    TileKey
+    TileLayer
+    TileMesher
+    TileRasterizer
+    TileSource
+    TileSourceElevationLayer
+    TileSourceImageLayer
+    TileVisitor
+    TimeControl
+    TimeSeriesImage
+    TMS
+    TMSBackFiller
+    TopologyGraph
+    TrackNode
+    TransformFilter
+    Units
+    URI
+    Utils
+    UTMGraticule
+    UTMLabelingEngine
+    VerticalDatum
+    VideoLayer
+    ViewFitter
+    Viewpoint
+    VirtualProgram
+    VisibleLayer
+    WFS
+    WindLayer
+    WireLines
+    WMS
+    XmlUtils
+    XYZ
+    XYZFeatureSource
+    XYZModelLayer
 
     rtree.h
     weemesh.h
@@ -492,6 +475,11 @@ if(OSGEARTH_ENABLE_IMGUI)
         )
 endif()
 
+if(OSGERATH_BUILD_LEGACY_CONTROLS_API)
+    list(APPEND LIB_PUBLIC_HEADERS
+        ActivityMonitorTool
+        MouseCoordsTool)
+endif()
 
 IF (NOT TINYXML_FOUND)
     SET(LIB_PUBLIC_HEADERS
@@ -535,10 +523,28 @@ if (GIT_FOUND)
 endif()
 
 set(TARGET_SRC
+    AltitudeFilter.cpp
+    AltitudeSymbol.cpp
+    AnnotationData.cpp
+    AnnotationLayer.cpp
+    AnnotationNode.cpp
+    AnnotationRegistry.cpp
+    AnnotationSettings.cpp
+    AnnotationUtils.cpp
     ArcGISServer.cpp
     ArcGISTilePackage.cpp
+    AtlasBuilder.cpp
+    AttributesFilter.cpp
+    AutoClipPlaneHandler.cpp
+    BboxDrawable.cpp
+    BBoxSymbol.cpp
+    BillboardResource.cpp
+    BillboardSymbol.cpp
     Bing.cpp
     Bounds.cpp
+    BufferFilter.cpp
+    BuildGeometryFilter.cpp
+    BuildTextFilter.cpp
     Cache.cpp
     CacheBin.cpp
     CachePolicy.cpp
@@ -546,12 +552,17 @@ set(TARGET_SRC
     Callouts.cpp
     CameraUtils.cpp
     Capabilities.cpp
-    CesiumIon.cpp
     CascadeDrapingDecorator.cpp
+    CentroidFilter.cpp
+    CesiumIon.cpp
     Chonk.cpp
-    Clamping.cpp
+    CircleNode.cpp
     ClampableNode.cpp
+    ClampCallback.cpp
+    Clamping.cpp
     ClampingTechnique.cpp
+    ClipSpace.cpp
+    ClusterNode.cpp
     Color.cpp
     ColorFilter.cpp
     Composite.cpp
@@ -559,311 +570,284 @@ set(TARGET_SRC
     Compressors.cpp
     CompressedArray.cpp
     Config.cpp
+    ContourMap.cpp
+    Controls.cpp
+    ConvertTypeFilter.cpp
     CoverageLayer.cpp
+    CoverageSymbol.cpp
+    CropFilter.cpp
+    CssUtils.cpp
     Cube.cpp
     CullingUtils.cpp
     DateTime.cpp
     DateTimeRange.cpp
+    DebugImageLayer.cpp
     DecalLayer.cpp
     DepthOffset.cpp
+    Draggers.cpp
     DrapeableNode.cpp
     DrapingCullSet.cpp
     DrapingTechnique.cpp
     DrawInstanced.cpp
+    EarthManipulator.cpp
     ECEF.cpp
     Elevation.cpp
     ElevationLayer.cpp
     ElevationLOD.cpp
     ElevationPool.cpp
-    ElevationRanges.cpp
     ElevationQuery.cpp
+    ElevationRanges.cpp
+    EllipseNode.cpp
     Ellipsoid.cpp
+    Ephemeris.cpp
+    ExampleResources.cpp
+    Expression.cpp
     Extension.cpp
+    ExtrudeGeometryFilter.cpp
+    ExtrusionSymbol.cpp
     FadeEffect.cpp
+    Feature.cpp
+    FeatureCursor.cpp
+    FeatureDisplayLayout.cpp
+    FeatureElevationLayer.cpp
+    FeatureImageLayer.cpp
+    FeatureModelGraph.cpp
+    FeatureModelLayer.cpp
+    FeatureModelSource.cpp
+    FeatureNode.cpp
+    FeatureRasterizer.cpp
+    FeatureSDFLayer.cpp
+    FeatureSource.cpp
+    FeatureSourceIndexNode.cpp
+    FileGDBFeatureSource.cpp
     FileUtils.cpp
+    Fill.cpp
+    Filter.cpp
+    FilterContext.cpp
+    FlatteningLayer.cpp
+    FractalElevationLayer.cpp
     FrameClock.cpp
+    GARSGraticule.cpp
     GDAL.cpp
     GDALDEM.cpp
     GeoData.cpp
+    GeodeticGraticule.cpp
+    GeodeticLabelingEngine.cpp
     Geoid.cpp
     GeoMath.cpp
-    GeoTransform.cpp
+    Geometry.cpp
     GeometryClamper.cpp
     GeometryCloud.cpp
+    GeometryCompiler.cpp
+    GeometryFactory.cpp
+    GeometryRasterizer.cpp
+    GeometryUtils.cpp
+    GeoPositionNode.cpp
+    GeoPositionNodeAutoScaler.cpp
+    GEOS.cpp
+    GeoTransform.cpp
     GLSLChunker.cpp
     GLUtils.cpp
+    GraticuleLabelingEngine.cpp
     HeightFieldUtils.cpp
     Horizon.cpp
     HorizonClipPlane.cpp
+    HTM.cpp
     HTTPClient.cpp
+    IconResource.cpp
+    IconSymbol.cpp
     ImageLayer.cpp
     ImageMosaic.cpp
+    ImageOverlay.cpp
+    ImageOverlayEditor.cpp
+    ImageToFeatureLayer.cpp
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
     InstanceBuilder.cpp
     InstanceCloud.cpp
+    InstanceResource.cpp
+    InstanceSymbol.cpp
     IntersectionPicker.cpp
     IOTypes.cpp
     JoinPointsLinesFilter.cpp
     JsonUtils.cpp
+    LabelNode.cpp
     LandCover.cpp
     LandCoverLayer.cpp
+    LatLongFormatter.cpp
     Layer.cpp
     LayerShader.cpp
     Lighting.cpp
+    LinearLineOfSight.cpp
     LineDrawable.cpp
+    LineSymbol.cpp
+    LocalGeometryNode.cpp
     LocalTangentPlane.cpp
-    Math.cpp
+    LogarithmicDepthBuffer.cpp
     Map.cpp
-    MapboxGLImageLayer.cpp
     MapboxGLGlyphManager.cpp
+    MapboxGLImageLayer.cpp
     MapCallback.cpp
     MapNode.cpp
     MaterialLoader.cpp
+    Math.cpp
+    MBTiles.cpp
+    MeasureTool.cpp
     MemCache.cpp
     Memory.cpp
+    MeshConsolidator.cpp
+    MeshFlattener.cpp
+    MeshSubdivider.cpp
+    MetadataNode.cpp
     MetaTile.cpp
     Metrics.cpp
-    MBTiles.cpp
+    MGRSFormatter.cpp
+    MGRSGraticule.cpp
     ModelLayer.cpp
+    ModelNode.cpp
+    ModelResource.cpp
     ModelSource.cpp
+    ModelSymbol.cpp
+    MVT.cpp
     NetworkMonitor.cpp
     NodeUtils.cpp
+    NoiseTextureFactory.cpp
     Notify.cpp
     ObjectIDPicker.cpp
     ObjectIndex.cpp
+    OGRFeatureSource.cpp
+    OgrUtils.cpp
     OverlayDecorator.cpp
     PagedNode.cpp
     PatchLayer.cpp
     PhongLightingEffect.cpp
+    PlaceNode.cpp
     PointDrawable.cpp
+    PointSymbol.cpp
+    PolygonizeLines.cpp
+    PolygonSymbol.cpp
     PowerlineLayer.cpp
     PrimitiveIntersector.cpp
     Profile.cpp
     Progress.cpp
+    Query.cpp
+    RadialLineOfSight.cpp
     Random.cpp
+    RectangleNode.cpp
     Registry.cpp
-    ResourceReleaser.cpp
+    RenderSymbol.cpp
+    ResampleFilter.cpp
+    Resource.cpp
+    ResourceCache.cpp
+    ResourceLibrary.cpp
     Revisioning.cpp
+    RTTPicker.cpp
+    ScaleFilter.cpp
+    ScatterFilter.cpp
     SceneGraphCallback.cpp
     ScreenSpaceLayout.cpp
+    ScriptEngine.cpp
+    ScriptFilter.cpp
     SDF.cpp
+    SDF.cpp
+    SelectExtentTool.cpp
+    Session.cpp
     ShaderFactory.cpp
     ShaderGenerator.cpp
     ShaderLayer.cpp
     ShaderLoader.cpp
     ShaderMerger.cpp
     ShaderUtils.cpp
-    SelectExtentTool.cpp
+    Shadowing.cpp
+    SimpleOceanLayer.cpp
+    SimplePager.cpp
     SimplexNoise.cpp
-    NoiseTextureFactory.cpp
+    Skins.cpp
+    Sky.cpp
+    SkyView.cpp
     SpatialReference.cpp
     StateSetCache.cpp
     Status.cpp
     StringUtils.cpp
-    TDTiles.cpp
-    TimeSeriesImage.cpp
-    Terrain.cpp
-    TerrainOptions.cpp
-    TerrainEngineNode.cpp
-    TerrainMeshLayer.cpp
-    TerrainResources.cpp
-    TerrainTileModel.cpp
-    TerrainTileModelFactory.cpp
-    Tessellator.cpp
-    Text.cpp
-    TextureArena.cpp
-    TextureBuffer.cpp
-    ThreeDTilesLayer.cpp
-    TextureBufferSerializer.cpp
-    TileEstimator.cpp
-    TileKey.cpp
-    TileLayer.cpp
-    TileHandler.cpp
-    TileMesher.cpp
-    TileRasterizer.cpp
-    TiledFeatureModelLayer.cpp
-    TiledModelLayer.cpp
-    TileVisitor.cpp
-    TileSource.cpp
-    TileSourceElevationLayer.cpp
-    TileSourceImageLayer.cpp
-    TileCache.cpp
-    TimeControl.cpp
-    Threading.cpp
-    TMS.cpp
-    Units.cpp
-    URI.cpp
-    Utils.cpp
-    Version.cpp
-    VerticalDatum.cpp
-    VideoLayer.cpp
-    Viewpoint.cpp
-    VirtualProgram.cpp
-    VisibleLayer.cpp
-    WMS.cpp
-    XmlUtils.cpp
-    XYZ.cpp
-    XYZModelLayer.cpp
-
-    ActivityMonitorTool.cpp
-    AtlasBuilder.cpp
-    AutoClipPlaneHandler.cpp
-    ClampCallback.cpp
-    ClipSpace.cpp
-    ClusterNode.cpp
-    Controls.cpp
-    ContourMap.cpp
-    DebugImageLayer.cpp
-    EarthManipulator.cpp
-    Ephemeris.cpp
-    ExampleResources.cpp
-    FlatteningLayer.cpp
-    FractalElevationLayer.cpp
-    GARSGraticule.cpp
-    GeodeticGraticule.cpp
-    GeodeticLabelingEngine.cpp
-    GraticuleLabelingEngine.cpp
-    HTM.cpp
-    LatLongFormatter.cpp
-    LinearLineOfSight.cpp
-    LogarithmicDepthBuffer.cpp
-    MeasureTool.cpp
-    MGRSFormatter.cpp
-    MGRSGraticule.cpp
-    MouseCoordsTool.cpp
-    RadialLineOfSight.cpp
-    RTTPicker.cpp
-    Shadowing.cpp
-    SimpleOceanLayer.cpp
-    SimplePager.cpp
-    Sky.cpp
-    SkyView.cpp
-    TerrainProfile.cpp
-    TileIndex.cpp
-    TileIndexBuilder.cpp
-    TFSPackager.cpp
-    TMSBackFiller.cpp
-    TopologyGraph.cpp
-    UTMGraticule.cpp
-    UTMLabelingEngine.cpp
-    ViewFitter.cpp
-
-    AltitudeFilter.cpp
-    AttributesFilter.cpp
-    BufferFilter.cpp
-    BuildGeometryFilter.cpp
-    BuildTextFilter.cpp
-    CentroidFilter.cpp
-    ConvertTypeFilter.cpp
-    CropFilter.cpp
-    ExtrudeGeometryFilter.cpp
-    Feature.cpp
-    FeatureCursor.cpp
-    FeatureDisplayLayout.cpp
-    FeatureElevationLayer.cpp
-    FeatureImageLayer.cpp
-    FeatureRasterizer.cpp
-    FeatureSDFLayer.cpp
-    TerrainConstraintLayer.cpp
-    FeatureModelGraph.cpp
-    FeatureModelLayer.cpp
-    FeatureModelSource.cpp
-    FeatureSource.cpp
-    FeatureSourceIndexNode.cpp
-    Filter.cpp
-    FilterContext.cpp
-    FilteredFeatureSource.cpp
-    GeometryCompiler.cpp
-    GeometryUtils.cpp
-    ImageToFeatureLayer.cpp
-    MVT.cpp
-    MetadataNode.cpp
-    OgrUtils.cpp
-    OGRFeatureSource.cpp
-    PolygonizeLines.cpp
-    ResampleFilter.cpp
-    ScaleFilter.cpp
-    Session.cpp
-    ScatterFilter.cpp
-    ScriptEngine.cpp
-    ScriptFilter.cpp
-    SubstituteModelFilter.cpp
-    TessellateOperator.cpp
-    TextSymbolizer.cpp
-    TFS.cpp
-    TransformFilter.cpp
-    WireLines.cpp
-    XYZFeatureSource.cpp
-    WFS.cpp
-
-    AltitudeSymbol.cpp
-    BBoxSymbol.cpp
-    BillboardResource.cpp
-    BillboardSymbol.cpp
-    CoverageSymbol.cpp
-    CssUtils.cpp
-    Expression.cpp
-    ExtrusionSymbol.cpp
-    Fill.cpp
-    Geometry.cpp
-    GeometryFactory.cpp
-    GEOS.cpp
-    GeometryRasterizer.cpp
-    IconResource.cpp
-    IconSymbol.cpp
-    InstanceResource.cpp
-    InstanceSymbol.cpp
-    LineSymbol.cpp
-    MeshConsolidator.cpp
-    MeshFlattener.cpp
-    MeshSubdivider.cpp
-    ModelResource.cpp
-    ModelSymbol.cpp
-    PointSymbol.cpp
-    PolygonSymbol.cpp
-    Query.cpp
-    RenderSymbol.cpp
-    Resource.cpp
-    ResourceCache.cpp
-    ResourceLibrary.cpp
-    Skins.cpp
     Stroke.cpp
     Style.cpp
     StyleSelector.cpp
     StyleSheet.cpp
+    SubstituteModelFilter.cpp
     Symbol.cpp
+    TDTiles.cpp
+    Terrain.cpp
+    TerrainConstraintLayer.cpp
+    TerrainEngineNode.cpp
+    TerrainMeshLayer.cpp
+    TerrainOptions.cpp
+    TerrainProfile.cpp
+    TerrainResources.cpp
+    TerrainTileModel.cpp
+    TerrainTileModelFactory.cpp
+    TessellateOperator.cpp
+    Tessellator.cpp
+    Text.cpp
     TextSymbol.cpp
-
-    AnnotationSettings.cpp
-    AnnotationData.cpp
-    AnnotationLayer.cpp
-    AnnotationNode.cpp
-    AnnotationRegistry.cpp
-    AnnotationUtils.cpp
-	BboxDrawable.cpp
-    CircleNode.cpp
-    Draggers.cpp
-    EllipseNode.cpp
-    FeatureNode.cpp
-    GeoPositionNode.cpp
-    GeoPositionNodeAutoScaler.cpp
-    LocalGeometryNode.cpp
-    ImageOverlay.cpp
-    ImageOverlayEditor.cpp
-    LabelNode.cpp
-    RectangleNode.cpp
-    ModelNode.cpp
-    PlaceNode.cpp
+    TextSymbolizer.cpp
+    TextureArena.cpp
+    TextureBuffer.cpp
+    TextureBufferSerializer.cpp
+    TFS.cpp
+    TFSPackager.cpp
+    Threading.cpp
+    ThreeDTilesLayer.cpp
+    TileCache.cpp
+    TiledFeatureModelLayer.cpp
+    TiledModelLayer.cpp
+    TileEstimator.cpp
+    TileHandler.cpp
+    TileIndex.cpp
+    TileIndexBuilder.cpp
+    TileKey.cpp
+    TileLayer.cpp
+    TileMesher.cpp
+    TileRasterizer.cpp
+    TileSource.cpp
+    TileSourceElevationLayer.cpp
+    TileSourceImageLayer.cpp
+    TileVisitor.cpp
+    TimeControl.cpp
+    TimeSeriesImage.cpp
+    TMS.cpp
+    TMSBackFiller.cpp
+    TopologyGraph.cpp
     TrackNode.cpp
+    TransformFilter.cpp
+    Units.cpp
+    URI.cpp
+    Utils.cpp
+    UTMGraticule.cpp
+    UTMLabelingEngine.cpp
+    Version.cpp
+    VerticalDatum.cpp
+    VideoLayer.cpp
+    ViewFitter.cpp
+    Viewpoint.cpp
+    VirtualProgram.cpp
+    VisibleLayer.cpp
+    WFS.cpp
     WindLayer.cpp
-
-    SDF.cpp
-
-    FileGDBFeatureSource.cpp
+    WireLines.cpp
+    WMS.cpp
+    XmlUtils.cpp
+    XYZ.cpp
+    XYZFeatureSource.cpp
+    XYZModelLayer.cpp
     
     ${SHADERS_CPP}
 )
+
+if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
+    list(APPEND TARGET_SRC
+        ActivityMonitorTool.cpp
+        MouseCoordsTool.cpp)
+endif()
 
 # MSVC 2017 and 2019 need /bigobj on debug build
 if(MSVC AND MSVC_VERSION LESS 1930)

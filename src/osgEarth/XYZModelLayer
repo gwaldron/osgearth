@@ -104,12 +104,13 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<const Profile> _profile;
-
-        osg::ref_ptr< osgEarth::StateSetCache > _statesetCache;
         osg::ref_ptr< osgDB::Options > _readOptions;
+#if 0
+        osg::ref_ptr< osgEarth::StateSetCache > _statesetCache;
         osg::ref_ptr< TextureArena > _textures;
         mutable std::vector<Texture::WeakPtr> _texturesCache;
         mutable std::mutex _texturesCacheMutex;
+#endif
     };
 
 } // namespace osgEarth

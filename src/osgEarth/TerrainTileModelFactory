@@ -43,8 +43,6 @@ namespace osgEarth
     class OSGEARTH_EXPORT CreateTileManifest
     {
     public:
-        CreateTileManifest();
-
         //! Request data for a layer
         void insert(const Layer* layer);
 
@@ -77,10 +75,10 @@ namespace osgEarth
     private:
         typedef vector_map<UID, int> LayerTable;
         LayerTable _layers;
-        bool _includesElevation;
-        bool _includesConstraints;
-        bool _includesLandCover;
-        optional<bool> _progressive;
+        bool _includesElevation = false;
+        bool _includesConstraints = false;
+        bool _includesLandCover = false;
+        optional<bool> _progressive = false;
     };
 
     /**

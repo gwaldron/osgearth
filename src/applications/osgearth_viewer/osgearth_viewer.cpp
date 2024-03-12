@@ -79,7 +79,7 @@ main(int argc, char** argv)
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     // load an earth file, and support all or our example command-line options
-    auto node = MapNodeHelper().loadWithoutControls(arguments, &viewer);
+    auto node = MapNodeHelper().load(arguments, &viewer);
     if (node.valid())
     {
         if (MapNode::get(node))

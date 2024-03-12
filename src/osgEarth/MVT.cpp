@@ -541,7 +541,7 @@ MVTFeatureSource::closeImplementation()
 }
 
 FeatureCursor*
-MVTFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+MVTFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     if (!query.tileKey().isSet())
     {
@@ -597,6 +597,8 @@ MVTFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 
     sqlite3_finalize(select);
 
+#if 0
+    // This is now done in FeatureSource itself
     // apply filters before returning.
     applyFilters(features, query.tileKey()->getExtent());
 
@@ -610,14 +612,15 @@ MVTFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
             itr->get()->setFID(fid);
         }
     }
+#endif
 
     if (!features.empty())
     {
         //OE_NOTICE << "Returning " << features.size() << " features" << std::endl;
-        return new FeatureListCursor(features);
+        return new FeatureListCursor(std::move(features));
     }
 
-    return 0;
+    return nullptr;
 }
 
 void
@@ -680,7 +683,10 @@ MVTFeatureSource::iterateTiles(int zoomLevel, int limit, int offset, const GeoEx
 
         FeatureList features;
 
+        MVT::readTile(in, key, features);
+
         // If we have any features and we have an fid attribute, override the fid of the features
+        // NOTE: FeatureSource normally does this, but we're bypassing it here... consider a refactoring...
         if (options().fidAttribute().isSet())
         {
             for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
@@ -692,11 +698,9 @@ MVTFeatureSource::iterateTiles(int zoomLevel, int limit, int offset, const GeoEx
             }
         }
 
-
-        MVT::readTile(in, key, features);
-
-        // apply filters before returning.
-        applyFilters(features, key.getExtent());
+        // NOTE: FeatureSource normally does this, but we're bypassing it here... consider a refactoring...
+        FilterContext temp;
+        getFilters().push(features, temp);
 
         if (features.size() > 0)
         {

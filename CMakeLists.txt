@@ -84,6 +84,7 @@ option(OSGEARTH_BUILD_EXAMPLES "Build the osgEarth example applications" ON)
 option(OSGEARTH_BUILD_TESTS "Build the osgEarth unit tests" OFF)
 option(OSGEARTH_BUILD_PROCEDURAL_NODEKIT "Build the procedural terrain nodekit (osgEarthProcedural)" OFF)
 option(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT "Build the legacy procedural nodekit (osgEarthSplat)" OFF)
+option(OSGERATH_BUILD_LEGACY_CONTROLS_API "Build the legacy Controls UI API" OFF)
 option(OSGEARTH_BUILD_CESIUM_NODEKIT "Build the Cesium nodekit (osgEarthCesium)" OFF)
 option(OSGEARTH_BUILD_TRITON_NODEKIT "Build support for SunDog Triton SDK" OFF)
 option(OSGEARTH_BUILD_SILVERLINING_NODEKIT "Build support for SunDog SilverLining SDK" OFF)
@@ -208,6 +209,11 @@ endif()
 
 if(OSGEARTH_ASSUME_SINGLE_THREADED_OSG)
     add_definitions(-DOSGEARTH_SINGLE_THREADED_OSG)
+endif()
+
+# support for the old Controls API (superceded by imgui)
+if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
+    add_definitions(-DOSGEARTH_HAVE_CONTROLS_API)
 endif()
 
 # Protobuf enables the MVT (Mapnik Vector Tiles) format

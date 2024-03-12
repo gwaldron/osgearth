@@ -23,7 +23,6 @@
 #include <osgViewer/Viewer>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
-#include <osgEarth/MouseCoordsTool>
 #include <osgEarth/Utils>
 
 #include <osgEarth/Horizon>
@@ -36,7 +35,6 @@
 #define LC "[viewer] "
 
 using namespace osgEarth;
-using namespace osgEarth::Contrib;
 
 #include <osg/Geometry>
 #include <osg/Depth>
@@ -49,6 +47,7 @@ using namespace osgEarth::Contrib;
 #include <osgGA/TrackballManipulator>
 #include <cstdlib> // for putenv
 
+#if 0
 struct PlacerCallback : public MouseCoordsTool::Callback
 {
     PlaceNode* _place;
@@ -75,6 +74,7 @@ struct PlacerCallback : public MouseCoordsTool::Callback
         _place->setNodeMask(0);
     }
 };
+#endif
 
 struct CaptureFrustum : public osg::NodeCallback
 {
@@ -257,9 +257,11 @@ main( int argc, char** argv )
     place->setNodeMask(0);
     viewer.getView(0)->getCamera()->addChild( place );
 
+#if 0
     MouseCoordsTool* mct = new MouseCoordsTool(mapNode);
     mct->addCallback( new PlacerCallback(place, viewer.getView(0)) );
     viewer.getView(1)->addEventHandler( mct );
+#endif
 
     mapNode->addChild(new HorizonNode());
 

@@ -268,9 +268,11 @@ namespace osgEarth
                                 feature->set(attrName, static_cast<long long>(v));
                                 break;
                             }
+#if 0
                             case ATTRTYPE_DOUBLEARRAY:
                                 // TODO:
                                 break;
+#endif
                             default:
                                 break;
                             }
@@ -342,8 +344,8 @@ namespace osgEarth
                     for (auto& attr : feature->getAttrs())
                     {
                         os << (unsigned int)keysToIndex[attr.first] << std::endl;
-                        os << (unsigned int)attr.second.first << std::endl;
-                        switch (attr.second.first)
+                        os << (unsigned int)attr.second.type << std::endl;
+                        switch (attr.second.type)
                         {
                         case osgEarth::ATTRTYPE_BOOL:
                             os << attr.second.getBool();
@@ -360,9 +362,11 @@ namespace osgEarth
                             writeInt64(os, attr.second.getInt());
                             break;
                         }
+#if 0
                         case ATTRTYPE_DOUBLEARRAY:
                             // TODO:
                             break;
+#endif
                         default:
                             break;
                         }

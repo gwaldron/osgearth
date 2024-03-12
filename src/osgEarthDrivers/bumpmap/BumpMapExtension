@@ -23,19 +23,18 @@
 #include "BumpMapTerrainEffect"
 #include <osgEarth/Extension>
 #include <osgEarth/MapNode>
-#include <osgEarth/Controls>
 
 namespace osgEarth { namespace BumpMap
 {
     using namespace osgEarth;
-    using namespace osgEarth::Util::Controls;
 
     /**
      * Extension for loading the normal mapping effect on demand.
      */
-    class BumpMapExtension : public Extension,
-                             public ExtensionInterface<MapNode>,
-                             public BumpMapOptions
+    class BumpMapExtension :
+        public Extension,
+        public BumpMapOptions,
+        public ExtensionInterface<MapNode>
     {
     public:
         META_OE_Extension(osgEarth, BumpMapExtension, bumpmap);
@@ -50,16 +49,16 @@ namespace osgEarth { namespace BumpMap
 
     public: // Extension
 
-        virtual void setDBOptions(const osgDB::Options* dbOptions);
+        void setDBOptions(const osgDB::Options* dbOptions) override;
 
-        virtual const ConfigOptions& getConfigOptions() const { return *this; }
+        const ConfigOptions& getConfigOptions() const override { return *this; }
 
 
     public: // ExtensionInterface<MapNode>
 
-        bool connect(MapNode* mapNode);
+        bool connect(MapNode* mapNode) override;
 
-        bool disconnect(MapNode* mapNode);
+        bool disconnect(MapNode* mapNode) override;
 
     private:
         osg::ref_ptr<const osgDB::Options>   _dbOptions;

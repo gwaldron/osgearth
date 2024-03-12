@@ -58,20 +58,16 @@ namespace osgEarth
 
     public: // methods
 
-        //! Creates an image for the given tile key.
-        //! @param key TileKey for which to create an image
+        //! Creates a tile mesh for the given tile key.
+        //! @param key TileKey for which to create the tile mesh
         //! @param progress Optional progress/cancelation callback
-        TileMesh createTile(
-            const TileKey& key,
-            ProgressCallback* progress) const;
+        TileMesh createTile(const TileKey& key, ProgressCallback* progress) const;
 
     protected:
 
         //! Override to create a tile mesh in a subclass implementation.
         //! Default implementation simply uses the default tile mesher.
-        virtual TileMesh createTileImplementation(
-            const TileKey& key,
-            ProgressCallback* progress) const;
+        virtual TileMesh createTileImplementation(const TileKey& key, ProgressCallback* progress) const;
 
     protected: // Layer
 

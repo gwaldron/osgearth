@@ -110,15 +110,131 @@ namespace
     }
 }
 
-BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
-_style        ( style ),
-_maxAngle_deg ( 180.0 ),
-_geoInterp    ( GEOINTERP_RHUMB_LINE ),
-_maxPolyTilingAngle_deg( 45.0f ),
-_optimizeVertexOrdering( false ),
-_maximumCreaseAngle(Angle(0.0, Units::DEGREES))
+BuildGeometryFilter::BuildGeometryFilter(const Style& style) :
+    _style(style),
+    _maxAngle_deg(180.0),
+    _geoInterp(GEOINTERP_RHUMB_LINE),
+    _maxPolyTilingAngle_deg(45.0f),
+    _optimizeVertexOrdering(false),
+    _maximumCreaseAngle(Angle(0.0, Units::DEGREES))
 {
     //nop
+}
+
+osg::Geode*
+BuildGeometryFilter::processMeshes(FeatureList& features, FilterContext& context)
+{
+    osg::Geode* geode = new osg::Geode();
+
+    bool makeECEF = false;
+    const SpatialReference* featureSRS = 0L;
+    const SpatialReference* outputSRS = 0L;
+
+    // set up the reference system info:
+    if (context.isGeoreferenced())
+    {
+        featureSRS = context.extent()->getSRS();
+        outputSRS = context.getOutputSRS();
+        makeECEF = context.getOutputSRS()->isGeographic();
+    }
+
+    for (FeatureList::iterator f = features.begin(); f != features.end(); ++f)
+    {
+        Feature* input = f->get();
+
+        // access the polygon symbol, and bail out if there isn't one
+        const PolygonSymbol* poly =
+            input->style().isSet() && input->style()->has<PolygonSymbol>() ? input->style()->get<PolygonSymbol>() :
+            _style.get<PolygonSymbol>();
+
+        if (!poly) {
+            OE_TEST << LC << "Discarding feature with no poly symbol\n";
+            continue;
+        }
+
+        // run a symbol script if present.
+        if (poly->script().isSet())
+        {
+            StringExpression temp(poly->script().get());
+            input->eval(temp, &context);
+        }
+
+        if (input->getGeometry() == 0L)
+            continue;
+
+        GeometryIterator parts(input->getGeometry(), false);
+        while (parts.hasMore())
+        {
+            TriMesh* part = static_cast<TriMesh*>(parts.next());
+
+            // resolve the color:
+            auto primaryColor = poly->fill()->color();
+
+            osg::ref_ptr<osg::Geometry> osgGeom = new osg::Geometry();
+            osgGeom->setName(typeid(*this).name());
+            osgGeom->setUseVertexBufferObjects(true);
+
+            // are we embedding a feature name?
+            if (_featureNameExpr.isSet())
+            {
+                const std::string& name = input->eval(_featureNameExpr.mutable_value(), &context);
+                osgGeom->setName(name);
+            }
+
+            // compute localizing matrices or use globals
+            osg::Matrixd w2l, l2w;
+            if (makeECEF)
+            {
+                osgEarth::GeoExtent partExtent(featureSRS, part->getBounds());
+                computeLocalizers(context, partExtent, w2l, l2w);
+            }
+            else
+            {
+                w2l = _world2local;
+                l2w = _local2world;
+            }
+
+            //// collect all the pre-transformation HAT (Z) values.
+            //osg::ref_ptr<osg::FloatArray> hats = new osg::FloatArray();
+            //hats->reserve(part->size());
+            //for (Geometry::const_iterator i = part->begin(); i != part->end(); ++i)
+            //    hats->push_back(i->z());
+
+            // build the geometry:
+            auto allPoints = new osg::Vec3Array();
+            allPoints->reserve(part->size());
+            osgGeom->setVertexArray(allPoints);
+            transformAndLocalize(part->asVector(), featureSRS, allPoints, outputSRS, _world2local, makeECEF);
+
+            // todo: compress the verts since there are lots of unused ones!
+
+            auto indices = new osg::DrawElementsUInt(GL_TRIANGLES, part->_indices.size());
+            std::copy(part->_indices.begin(), part->_indices.end(), indices->begin());
+            osgGeom->addPrimitiveSet(indices);
+
+            // assign the primary color array. PER_VERTEX required in order to support
+            // vertex optimization later
+            auto colors = new osg::Vec4Array(osg::Array::BIND_PER_VERTEX);
+            colors->assign(allPoints->size(), primaryColor);
+            osgGeom->setColorArray(colors);
+
+            geode->addDrawable(osgGeom);
+
+            // record the geometry's primitive set(s) in the index:
+            if (context.featureIndex())
+                context.featureIndex()->tagDrawable(osgGeom.get(), input);
+
+            //// install clamping attributes if necessary
+            //if (_style.has<AltitudeSymbol>() &&
+            //    _style.get<AltitudeSymbol>()->technique() == AltitudeSymbol::TECHNIQUE_GPU)
+            //{
+            //    Clamping::applyDefaultClampingAttrs(osgGeom.get(), input->getDouble("__oe_verticalOffset", 0.0));
+            //}
+        }
+    }
+
+    OE_TEST << LC << "Num drawables = " << geode->getNumDrawables() << "\n";
+    return geode;
 }
 
 osg::Geode*
@@ -1671,6 +1787,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     FeatureList polygonizedLines;
     FeatureList points;
     FeatureList wireLines;
+    FeatureList meshes;
 
     FeatureList splitFeatures;
 
@@ -1709,8 +1826,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             has_linesymbol     = has_linesymbol     || (f->style()->has<LineSymbol>() && f->style()->get<LineSymbol>()->stroke()->widthUnits() == Units::PIXELS);
             has_polylinesymbol = has_polylinesymbol || (f->style()->has<LineSymbol>() && f->style()->get<LineSymbol>()->stroke()->widthUnits() != Units::PIXELS);
             has_pointsymbol    = has_pointsymbol    || (f->style()->has<PointSymbol>());
-            has_wirelinessymbol = has_wirelinessymbol
-                || (f->style()->has<LineSymbol>() && f->style()->get<LineSymbol>()->useWireLines().value());
+            has_wirelinessymbol = has_wirelinessymbol || (f->style()->has<LineSymbol>() && f->style()->get<LineSymbol>()->useWireLines().value());
         }
 
         // if there's a polygon with outlining disabled, nix the line symbol.
@@ -1749,34 +1865,31 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
         if ( has_polysymbol )
         {
-#if 0 // Placeholder. We probably need this, but let's wait and see
-            // split polygons that cross the andimeridian:
-            if (f->getSRS()->isGeographic() &&
-                f->calculateExtent().crossesAntimeridian())
-            {
-                FeatureList temp;
-                f->splitAcrossDateLine(temp);
-                std::copy(temp.begin(), temp.end(), std::back_inserter(polygons));
-            }
+            if (f->getGeometry()->getType() == Geometry::TYPE_TRIMESH)
+                meshes.push_back(f);
             else
-#endif
-            {
                 polygons.push_back( f );
-            }
         }
 
-        if ( has_linesymbol )
-            lines.push_back( f );
+        if (has_linesymbol)
+        {
+            lines.push_back(f);
+        }
 
         if ( has_wirelinessymbol)
         {
             wireLines.push_back( f);
         }
-        else if ( has_polylinesymbol )
-            polygonizedLines.push_back( f );
 
-        if ( has_pointsymbol )
-            points.push_back( f );
+        else if (has_polylinesymbol)
+        {
+            polygonizedLines.push_back(f);
+        }
+
+        if (has_pointsymbol)
+        {
+            points.push_back(f);
+        }
     }
 
     // process them separately.
@@ -1856,6 +1969,16 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<osg::Group> group = processPoints(points, context);
 
         if ( group->getNumChildren() > 0 )
+        {
+            result->addChild(group.get());
+        }
+    }
+
+    if (meshes.size() > 0)
+    {
+        osg::ref_ptr<osg::Group> group = processMeshes(meshes, context);
+
+        if (group->getNumChildren() > 0)
         {
             result->addChild(group.get());
         }

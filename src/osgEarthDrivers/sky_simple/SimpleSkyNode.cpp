@@ -131,7 +131,7 @@ namespace
 
                 if (genTexCoords)
                 {
-                    float s = 0.5 + (1.0 - ((lon + 180) / 360.0));
+                    float s = (lon + 180) / 360.0;
                     float t = (lat + 90.0) / 180.0;
                     texCoords->push_back(osg::Vec2(s, t));
                 }
@@ -146,7 +146,7 @@ namespace
 
                 if (y < latSegments && x < lonSegments)
                 {
-                    int x_plus_1 = x + 1; // x < lonSegments - 1 ? x + 1 : 0;
+                    int x_plus_1 = x + 1;
                     int y_plus_1 = y + 1;
                     el->push_back(y * row_size + x);
                     el->push_back(y * row_size + x_plus_1);

@@ -106,16 +106,16 @@ FeatureProfile::setTilingProfile( const osgEarth::Profile* profile )
 std::string
 AttributeValue::getString() const
 {
-    if (!second.set)
+    if (!value.set)
     {
         return "";
     }
 
-    switch( first ) {
-        case ATTRTYPE_STRING: return second.stringValue;
-        case ATTRTYPE_DOUBLE: return osgEarth::toString(second.doubleValue);
-        case ATTRTYPE_INT:    return osgEarth::toString(second.intValue);
-        case ATTRTYPE_BOOL:   return osgEarth::toString(second.boolValue);
+    switch(type) {
+        case ATTRTYPE_STRING: return value.stringValue;
+        case ATTRTYPE_DOUBLE: return osgEarth::toString(value.doubleValue);
+        case ATTRTYPE_INT:    return osgEarth::toString(value.intValue);
+        case ATTRTYPE_BOOL:   return osgEarth::toString(value.boolValue);
         case ATTRTYPE_UNSPECIFIED: break;
     }
     return EMPTY_STRING;
@@ -124,16 +124,16 @@ AttributeValue::getString() const
 double
 AttributeValue::getDouble( double defaultValue ) const
 {
-    if (!second.set)
+    if (!value.set)
     {
         return defaultValue;
     }
 
-    switch( first ) {
-        case ATTRTYPE_STRING: return Strings::as<double>(second.stringValue, defaultValue);
-        case ATTRTYPE_DOUBLE: return second.doubleValue;
-        case ATTRTYPE_INT:    return (double)second.intValue;
-        case ATTRTYPE_BOOL:   return second.boolValue? 1.0 : 0.0;
+    switch(type) {
+        case ATTRTYPE_STRING: return Strings::as<double>(value.stringValue, defaultValue);
+        case ATTRTYPE_DOUBLE: return value.doubleValue;
+        case ATTRTYPE_INT:    return (double)value.intValue;
+        case ATTRTYPE_BOOL:   return value.boolValue? 1.0 : 0.0;
         case ATTRTYPE_UNSPECIFIED: break;
     }
     return defaultValue;
@@ -142,16 +142,16 @@ AttributeValue::getDouble( double defaultValue ) const
 long long
 AttributeValue::getInt( long long defaultValue ) const
 {
-    if (!second.set)
+    if (!value.set)
     {
         return defaultValue;
     }
 
-    switch( first ) {
-        case ATTRTYPE_STRING: return Strings::as<int>(second.stringValue, defaultValue);
-        case ATTRTYPE_DOUBLE: return (long long)second.doubleValue;
-        case ATTRTYPE_INT:    return second.intValue;
-        case ATTRTYPE_BOOL:   return second.boolValue? 1 : 0;
+    switch( type ) {
+        case ATTRTYPE_STRING: return Strings::as<int>(value.stringValue, defaultValue);
+        case ATTRTYPE_DOUBLE: return (long long)value.doubleValue;
+        case ATTRTYPE_INT:    return value.intValue;
+        case ATTRTYPE_BOOL:   return value.boolValue? 1 : 0;
         case ATTRTYPE_UNSPECIFIED: break;
     }
     return defaultValue;
@@ -160,16 +160,16 @@ AttributeValue::getInt( long long defaultValue ) const
 bool
 AttributeValue::getBool( bool defaultValue ) const
 {
-    if (!second.set)
+    if (!value.set)
     {
         return defaultValue;
     }
 
-    switch( first ) {
-        case ATTRTYPE_STRING: return Strings::as<bool>(second.stringValue, defaultValue);
-        case ATTRTYPE_DOUBLE: return second.doubleValue != 0.0;
-        case ATTRTYPE_INT:    return second.intValue != 0;
-        case ATTRTYPE_BOOL:   return second.boolValue;
+    switch( type ) {
+        case ATTRTYPE_STRING: return Strings::as<bool>(value.stringValue, defaultValue);
+        case ATTRTYPE_DOUBLE: return value.doubleValue != 0.0;
+        case ATTRTYPE_INT:    return value.intValue != 0;
+        case ATTRTYPE_BOOL:   return value.boolValue;
         case ATTRTYPE_UNSPECIFIED: break;
     }
     return defaultValue;
@@ -177,7 +177,7 @@ AttributeValue::getBool( bool defaultValue ) const
 
 const std::vector<double>& AttributeValue::getDoubleArrayValue() const
 {
-    return second.doubleArrayValue;
+    return value.doubleArrayValue;
 }
 
 //----------------------------------------------------------------------------
@@ -189,35 +189,45 @@ Feature::Feature() :
     //nop
 }
 
-Feature::Feature( FeatureID fid ) :
-_fid( fid ),
-_srs( 0L )
+Feature::Feature(FeatureID fid) :
+    _fid(fid),
+    _srs(0L)
 {
     //NOP
 }
 
-Feature::Feature( Geometry* geom, const SpatialReference* srs, const Style& style, FeatureID fid ) :
-_geom ( geom ),
-_srs  ( srs ),
-_fid  ( fid )
+Feature::Feature(Geometry* geom, const SpatialReference* srs, const Style& style, FeatureID fid) :
+    _geom(geom),
+    _srs(srs),
+    _fid(fid)
 {
-    if ( !style.empty() )
+    if (!style.empty())
         _style = style;
 
     dirty();
 }
 
-Feature::Feature( const Feature& rhs, const osg::CopyOp& copyOp ) :
-_fid      ( rhs._fid ),
-_attrs    ( rhs._attrs ),
-_style    ( rhs._style ),
-_geoInterp( rhs._geoInterp ),
-_srs      ( rhs._srs.get() )
+Feature::Feature(const Feature& rhs) : //, const osg::CopyOp& copyOp) :
+    _fid(rhs._fid),
+    _attrs(rhs._attrs),
+    _style(rhs._style),
+    _geoInterp(rhs._geoInterp),
+    _srs(rhs._srs.get())
 {
-    if ( rhs._geom.valid() )
+    if (rhs._geom.valid())
         _geom = rhs._geom->clone();
 
     dirty();
+}
+
+Feature::Feature(Feature&& rhs) // : osg::Object(rhs)
+{
+    _fid = rhs._fid;
+    _attrs = std::move(rhs._attrs);
+    _style = std::move(rhs._style);
+    _geoInterp = std::move(rhs._geoInterp);
+    _geom = std::move(rhs._geom);
+    _cachedExtent = std::move(rhs._cachedExtent);
 }
 
 Feature::~Feature()
@@ -273,36 +283,36 @@ void
 Feature::set( const std::string& name, const std::string& value )
 {
     AttributeValue& a = _attrs[name];
-    a.first = ATTRTYPE_STRING;
-    a.second.stringValue = value;
-    a.second.set = true;
+    a.type = ATTRTYPE_STRING;
+    a.value.stringValue = value;
+    a.value.set = true;
 }
 
 void
 Feature::set( const std::string& name, double value )
 {
     AttributeValue& a = _attrs[name];
-    a.first = ATTRTYPE_DOUBLE;
-    a.second.doubleValue = value;
-    a.second.set = true;
+    a.type = ATTRTYPE_DOUBLE;
+    a.value.doubleValue = value;
+    a.value.set = true;
 }
 
 void
 Feature::set( const std::string& name, long long value )
 {
     AttributeValue& a = _attrs[name];
-    a.first = ATTRTYPE_INT;
-    a.second.intValue = value;
-    a.second.set = true;
+    a.type = ATTRTYPE_INT;
+    a.value.intValue = value;
+    a.value.set = true;
 }
 
 void
 Feature::set(const std::string& name, int value)
 {
     AttributeValue& a = _attrs[name];
-    a.first = ATTRTYPE_INT;
-    a.second.intValue = value;
-    a.second.set = true;
+    a.type = ATTRTYPE_INT;
+    a.value.intValue = value;
+    a.value.set = true;
 }
 
 void
@@ -315,42 +325,42 @@ void
 Feature::set( const std::string& name, bool value )
 {
     AttributeValue& a = _attrs[name];
-    a.first = ATTRTYPE_BOOL;
-    a.second.boolValue = value;
-    a.second.set = true;
+    a.type = ATTRTYPE_BOOL;
+    a.value.boolValue = value;
+    a.value.set = true;
 }
 
 void
 Feature::set( const std::string& name, const std::vector<double>& value )
 {
     AttributeValue& a = _attrs[name];
-    a.first = ATTRTYPE_DOUBLEARRAY;
-    a.second.doubleArrayValue = value;
-    a.second.set = true;
+    a.type = ATTRTYPE_DOUBLEARRAY;
+    a.value.doubleArrayValue = value;
+    a.value.set = true;
 }
 
 void
 Feature::setSwap( const std::string& name, std::vector<double>& value )
 {
     AttributeValue& a = _attrs[name];
-    a.first = ATTRTYPE_DOUBLEARRAY;
-    a.second.doubleArrayValue.swap(value);
-    a.second.set = true;
+    a.type = ATTRTYPE_DOUBLEARRAY;
+    a.value.doubleArrayValue.swap(value);
+    a.value.set = true;
 }
 
 void
 Feature::setNull( const std::string& name)
 {
     AttributeValue& a = _attrs[name];
-    a.second.set = false;
+    a.value.set = false;
 }
 
 void
 Feature::setNull( const std::string& name, AttributeType type)
 {
     AttributeValue& a = _attrs[name];
-    a.first = type;
-    a.second.set = false;
+    a.type = type;
+    a.value.set = false;
 }
 
 
@@ -401,37 +411,37 @@ bool
 Feature::isSet( const std::string& name) const
 {
     AttributeTable::const_iterator i = _attrs.find(toLower(name));
-    return i != _attrs.end()? i->second.second.set : false;
+    return i != _attrs.end()? i->second.value.set : false;
 }
 
 double
 Feature::eval( NumericExpression& expr, FilterContext const* context ) const
 {
     const NumericExpression::Variables& vars = expr.variables();
-    for( NumericExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
+    for (NumericExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
     {
-      double val = 0.0;
-      AttributeTable::const_iterator ai = _attrs.find(toLower(i->first));
-      if (ai != _attrs.end())
-      {
-        val = ai->second.getDouble(0.0);
-      }
-      else if (context && context->getSession())
-      {
-        //No attr found, look for script
-        ScriptEngine* engine = context->getSession()->getScriptEngine();
-        if (engine)
+        double val = 0.0;
+        AttributeTable::const_iterator ai = _attrs.find(toLower(i->first));
+        if (ai != _attrs.end())
         {
-          ScriptResult result = engine->run(i->first, this, context);
-          if (result.success())
-            val = result.asDouble();
-          else {
-              OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
-          }
+            val = ai->second.getDouble(0.0);
         }
-      }
+        else if (context && context->getSession())
+        {
+            //No attr found, look for script
+            ScriptEngine* engine = context->getSession()->getScriptEngine();
+            if (engine)
+            {
+                ScriptResult result = engine->run(i->first, this, context);
+                if (result.success())
+                    val = result.asDouble();
+                else {
+                    OE_WARN << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+                }
+            }
+        }
 
-      expr.set( *i, val); //osgEarth::as<double>(getAttr(i->first),0.0) );
+        expr.set(*i, val); //osgEarth::as<double>(getAttr(i->first),0.0) );
     }
 
     return expr.eval();
@@ -474,36 +484,36 @@ Feature::eval(NumericExpression& expr, Session* session) const
 }
 
 const std::string&
-Feature::eval( StringExpression& expr, FilterContext const* context ) const
+Feature::eval(StringExpression& expr, FilterContext const* context) const
 {
     const StringExpression::Variables& vars = expr.variables();
-    for( StringExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
+    for (StringExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i)
     {
-      std::string val = "";
-      AttributeTable::const_iterator ai = _attrs.find(toLower(i->first));
-      if (ai != _attrs.end())
-      {
-        val = ai->second.getString();
-      }
-      else if (context && context->getSession())
-      {
-        //No attr found, look for script
-        ScriptEngine* engine = context->getSession()->getScriptEngine();
-        if (engine)
+        std::string val = "";
+        AttributeTable::const_iterator ai = _attrs.find(toLower(i->first));
+        if (ai != _attrs.end())
         {
-          ScriptResult result = engine->run(i->first, this, context);
-          if (result.success())
-            val = result.asString();
-          else
-          {
-            // Couldn't execute it as code, just take it as a string literal.
-            val = i->first;
-            OE_DEBUG << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
-          }
+            val = ai->second.getString();
         }
-      }
+        else if (context && context->getSession())
+        {
+            //No attr found, look for script
+            ScriptEngine* engine = context->getSession()->getScriptEngine();
+            if (engine)
+            {
+                ScriptResult result = engine->run(i->first, this, context);
+                if (result.success())
+                    val = result.asString();
+                else
+                {
+                    // Couldn't execute it as code, just take it as a string literal.
+                    val = i->first;
+                    OE_DEBUG << LC << "Feature Script error on '" << expr.expr() << "': " << result.message() << std::endl;
+                }
+            }
+        }
 
-      expr.set( *i, val );
+        expr.set(*i, val);
     }
 
     return expr.eval();
@@ -672,12 +682,11 @@ Feature::getGeoJSON() const
     Json::Value props(Json::objectValue);
     if (getAttrs().size() > 0)
     {
-
         for (AttributeTable::const_iterator itr = getAttrs().begin(); itr != getAttrs().end(); ++itr)
         {
-            if (itr->second.first == ATTRTYPE_INT)
+            if (itr->second.type == ATTRTYPE_INT)
             {
-                if (itr->second.second.set)
+                if (itr->second.value.set)
                 {
                     props[itr->first] = (double)itr->second.getInt();
                 }
@@ -686,9 +695,9 @@ Feature::getGeoJSON() const
                     props[itr->first] = Json::nullValue;
                 }
             }
-            else if (itr->second.first == ATTRTYPE_DOUBLE)
+            else if (itr->second.type == ATTRTYPE_DOUBLE)
             {
-                if (itr->second.second.set)
+                if (itr->second.value.set)
                 {
                     props[itr->first] = itr->second.getDouble();
                 }
@@ -697,9 +706,9 @@ Feature::getGeoJSON() const
                     props[itr->first] = Json::nullValue;
                 }
             }
-            else if (itr->second.first == ATTRTYPE_BOOL)
+            else if (itr->second.type == ATTRTYPE_BOOL)
             {
-                if (itr->second.second.set)
+                if (itr->second.value.set)
                 {
                     props[itr->first] = itr->second.getBool();
                 }
@@ -710,7 +719,7 @@ Feature::getGeoJSON() const
             }
             else
             {
-                if (itr->second.second.set)
+                if (itr->second.value.set)
                 {
                     props[itr->first] = itr->second.getString();
                 }

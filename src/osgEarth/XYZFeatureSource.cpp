@@ -28,7 +28,8 @@
 #define LC "[XYZFeatureSource] " << getName() << " : "
 
 using namespace osgEarth;
-#define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
+
+#define OE_DEVEL OE_DEBUG
 
 //........................................................................
 
@@ -128,16 +129,21 @@ XYZFeatureSource::init()
 
 
 FeatureCursor*
-XYZFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+XYZFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     OE_PROFILING_ZONE;
 
-    FeatureCursor* result = 0L;
+    // Must be a tiled request.
+    if (!query.tileKey().isSet())
+        return nullptr;
+
+    FeatureCursor* result = nullptr;
 
     URI uri = createURL(query);
-    if (uri.empty()) return 0;
+    if (uri.empty())
+        return nullptr;
 
-    OE_DEBUG << LC << uri.full() << std::endl;
+    OE_DEVEL << LC << uri.full() << std::endl;
 
     // read the data:
     ReadResult r = uri.readString(getReadOptions(), progress);
@@ -167,21 +173,17 @@ XYZFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 
     if (dataOK)
     {
-        OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
+        OE_DEVEL << LC << "Read " << features.size() << " features" << std::endl;
     }
 
+#if 0
     //If we have any filters, process them here before the cursor is created
-    if (getFilters() && !getFilters()->empty() && !features.empty())
+    if (!getFilters().empty() && !features.empty())
     {
         FilterContext cx;
         cx.setProfile(getFeatureProfile());
         cx.extent() = query.tileKey()->getExtent();
-
-        for (FeatureFilterChain::const_iterator i = getFilters()->begin(); i != getFilters()->end(); ++i)
-        {
-            FeatureFilter* filter = i->get();
-            cx = filter->push(features, cx);
-        }
+        cx = getFilters().push(features, cx);
     }
 
     // If we have any features and we have an fid attribute, override the fid of the features
@@ -194,15 +196,15 @@ XYZFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
             itr->get()->setFID(fid);
         }
     }
+#endif
 
-    //result = new FeatureListCursor(features);
-    result = dataOK ? new FeatureListCursor(features) : 0L;
+    result = dataOK ? new FeatureListCursor(std::move(features)) : nullptr;
 
     return result;
 }
 
 bool
-XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features)
+XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, const std::string& mimeType, FeatureList& features) const
 {
     if (mimeType == "application/x-protobuf" || mimeType == "binary/octet-stream" || mimeType == "application/octet-stream")
     {
@@ -220,9 +222,6 @@ XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
     }
     else
     {
-        // find the right driver for the given mime type
-        OGR_SCOPED_LOCK;
-
         // find the right driver for the given mime type
         OGRSFDriverH ogrDriver =
             isJSON(mimeType) ? OGRGetDriverByName("GeoJSON") :
@@ -276,7 +275,7 @@ XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
 
 
 std::string
-XYZFeatureSource::getExtensionForMimeType(const std::string& mime)
+XYZFeatureSource::getExtensionForMimeType(const std::string& mime) const
 {
     //OGR is particular sometimes about the extension of files when it's reading them so it's good to have
     //the temp file have an appropriate extension
@@ -323,7 +322,7 @@ XYZFeatureSource::isJSON(const std::string& mime) const
 }
 
 URI
-XYZFeatureSource::createURL(const Query& query)
+XYZFeatureSource::createURL(const Query& query) const
 {
     if (query.tileKey().isSet() && query.tileKey()->valid())
     {

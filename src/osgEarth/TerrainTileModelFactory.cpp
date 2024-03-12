@@ -38,13 +38,6 @@ using namespace osgEarth;
 
 //.........................................................................
 
-CreateTileManifest::CreateTileManifest()
-{
-    _includesElevation = false;
-    _includesConstraints = false;
-    _includesLandCover = false;
-    _progressive.setDefault(false);
-}
 
 void CreateTileManifest::insert(const Layer* layer)
 {
@@ -143,8 +136,7 @@ void CreateTileManifest::setProgressive(bool value)
 
 //.........................................................................
 
-TerrainTileModelFactory::TerrainTileModelFactory(
-    const TerrainOptions& options) :
+TerrainTileModelFactory::TerrainTileModelFactory(const TerrainOptions& options) :
     _options(options)
 {
     //nop
@@ -159,6 +151,7 @@ TerrainTileModelFactory::createTileModel(
     ProgressCallback*                progress)
 {
     OE_PROFILING_ZONE;
+
     // Make a new model:
     osg::ref_ptr<TerrainTileModel> model = new TerrainTileModel(
         key,
@@ -192,6 +185,7 @@ TerrainTileModelFactory::createStandaloneTileModel(
     ProgressCallback*                progress)
 {
     OE_PROFILING_ZONE;
+
     // Make a new model:
     osg::ref_ptr<TerrainTileModel> model = new TerrainTileModel(
         key,

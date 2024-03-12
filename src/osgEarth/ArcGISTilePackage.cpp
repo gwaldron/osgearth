@@ -716,7 +716,7 @@ VTPKFeatureSource::computeMinMaxLevel(unsigned int &min, unsigned int &max)
 }
 
 FeatureCursor*
-VTPKFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+VTPKFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     if (!query.tileKey().isSet())
     {
@@ -765,7 +765,7 @@ VTPKFeatureSource::createFeatureCursorImplementation(const Query& query, Progres
 
     if (!features.empty())
     {
-        return new FeatureListCursor(features);
+        return new FeatureListCursor(std::move(features));
     }
     return nullptr;
 }

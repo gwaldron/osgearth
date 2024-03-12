@@ -91,6 +91,7 @@ void XYZModelLayer::addedToMap(const Map* map)
     _readOptions = osgEarth::Registry::instance()->cloneOrCreateOptions(getReadOptions());
     _readOptions->setObjectCacheHint(osgDB::Options::CACHE_IMAGES);
 
+#if 0
     _statesetCache = new StateSetCache();
 
     if (*options().useNVGL() == true && GLUtils::useNVGL() && !_textures.valid())
@@ -111,6 +112,7 @@ void XYZModelLayer::addedToMap(const Map* map)
             new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
             osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
     }
+#endif
 
     super::addedToMap(map);
 }
@@ -176,7 +178,6 @@ XYZModelLayer::createTileImplementation(const TileKey& key, ProgressCallback* pr
     replaceIn(location, "${-y}", Stringify() << inverted_y);
     replaceIn(location, "${z}", Stringify() << key.getLevelOfDetail());
 
-
     // failing that, legacy osgearth style:
     replaceIn(location, "{x}", Stringify() << x);
     replaceIn(location, "{y}", Stringify() << y);
@@ -185,9 +186,11 @@ XYZModelLayer::createTileImplementation(const TileKey& key, ProgressCallback* pr
 
     URI myUri(location, options().url()->context());
 
-    osg::ref_ptr< osg::Node > node = myUri.readNode(_readOptions.get()).getNode();
+    osg::ref_ptr<osg::Node> node = myUri.readNode(_readOptions.get()).getNode();
+
     if (node.valid())
     {
+#if 0
         if (_textures.valid())
         {
             auto xform = findTopMostNodeOfType<osg::MatrixTransform>(node.get());
@@ -223,6 +226,7 @@ XYZModelLayer::createTileImplementation(const TileKey& key, ProgressCallback* pr
         {
             osgEarth::Registry::shaderGenerator().run(node.get(), _statesetCache);
         }
+#endif
         return node.release();
     }
     return nullptr;

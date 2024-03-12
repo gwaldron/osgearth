@@ -495,12 +495,14 @@ HeightFieldUtils::resampleHeightField(osg::HeightField*      input,
 }
 
 
-osg::HeightField*
-HeightFieldUtils::createReferenceHeightField(const GeoExtent& ex,
-                                             unsigned         numCols,
-                                             unsigned         numRows,
-                                             unsigned         border,
-                                             bool             expressAsHAE)
+osg::ref_ptr<osg::HeightField>
+HeightFieldUtils::createReferenceHeightField(
+    const GeoExtent& ex,
+    unsigned         numCols,
+    unsigned         numRows,
+    unsigned         border,
+    bool             expressAsHAE,
+    float            initializeValue)
 {
     osg::HeightField* hf = new osg::HeightField();
 
@@ -541,7 +543,7 @@ HeightFieldUtils::createReferenceHeightField(const GeoExtent& ex,
     }
     else
     {
-        hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), 0.0f);
+        hf->getFloatArray()->assign(hf->getNumColumns()*hf->getNumRows(), initializeValue);
     }
 
     hf->setBorderWidth( border );

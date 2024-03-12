@@ -256,7 +256,7 @@ main(int argc, char** argv)
             "and OSG does not support multi-threading of a shared GC" << std::endl;
     }
 
-    app._node = MapNodeHelper().loadWithoutControls(arguments, &app._viewer);
+    app._node = MapNodeHelper().load(arguments, &app._viewer);
     if (!app._node.get())
         return usage(argv[0]);
 

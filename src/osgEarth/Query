@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
+#include <osgEarth/Units>
 
 namespace osgEarth
 {
@@ -32,35 +33,39 @@ namespace osgEarth
     class OSGEARTH_EXPORT Query
     {
     public:
-        Query( const Config& conf =Config() );
+        //! Default constructor
+        Query() = default;
 
-        Query(const Query& rhs);
+        //! Copy constructor
+        Query(const Query& rhs) = default;
 
-        virtual ~Query() { }
+        //! Construct from a serialized representation
+        Query(const Config& conf);
+
+        //! Construct from a tile key
+        Query(const TileKey& key);
 
         static Query ALL;
 
     public: // properties
 
-        /** Sets the geospatial extent bounding this query. */
-        optional<Bounds>& bounds() { return _bounds; }
-        const optional<Bounds>& bounds() const { return _bounds; }
+        //! geospatial extent bounding this query when not using a tile key
+        OE_OPTION(Bounds, bounds);
 
-        /** Sets a driver-specific query expression. */
-        optional<std::string>& expression() { return _expression; }
-        const optional<std::string>& expression() const { return _expression; }
+        //! Driver-specific query expression
+        OE_OPTION(std::string, expression);
 
-        /** Sets a driver-specific orderby expression. */
-        optional<std::string>& orderby() { return _orderby; }
-        const optional<std::string>& orderby() const { return _orderby; }
+        //! Driver-specific orderby expression
+        OE_OPTION(std::string, orderby);
 
-        /** Sets tilekey to use for tiled feature sources */
-        optional<TileKey>& tileKey() { return _tileKey; }
-        const optional<TileKey>& tileKey() const { return _tileKey; }
+        //! Sets tilekey to use for tiled feature sources
+        OE_OPTION(TileKey, tileKey);
 
-        /** The maximum number of features to be returned by this Query.  This is driver specific . */
-        optional<int>& limit() { return _limit; }
-        const optional<int>& limit() const { return _limit; }        
+        //! Optional buffer to use with a tile key
+        OE_OPTION(Distance, buffer);
+
+        //! Maximum number of features to be returned by this Query
+        OE_OPTION(int, limit);
 
         /** Merges this query with another query, and returns the result */
         Query combineWith( const Query& other ) const;
@@ -69,13 +74,6 @@ namespace osgEarth
 
         virtual Config getConfig() const;
         void mergeConfig( const Config& conf );
-
-    protected:
-        optional<Bounds> _bounds;
-        optional<std::string> _expression;
-        optional<std::string> _orderby;
-        optional<TileKey> _tileKey;
-        optional<int> _limit;
     };
 } // namespace osgEarth
 

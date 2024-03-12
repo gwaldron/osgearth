@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H
-#define OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/VisibleLayer>
@@ -48,7 +46,7 @@ namespace osgEarth
             OE_OPTION(bool, hasElevation);
             OE_OPTION(unsigned, minLevel);
             Config getConfig() const override;
-            void fromConfig( const Config& conf );
+            void fromConfig(const Config& conf);
         };
 
     public:
@@ -84,11 +82,8 @@ namespace osgEarth
         //! Geospatial extent of this layer's data, if known.
         const GeoExtent& getExtent() const override;
 
-        //! Visibility toggle from VisibleLayer
-        //void setVisible(bool value) override;
-
         //! Feature filters to use when querying the feature source, if applicable.
-        FeatureFilterChain* getFilters() const { return _filterchain.get(); }
+        FeatureFilterChain& getFilters() { return _filterChain; }
 
         //! Return a constraint object for a given tile key.
         //! @param key The tile key
@@ -110,16 +105,11 @@ namespace osgEarth
 
         void removedFromMap(const Map*) override;
 
-    protected:
-
-        /** dtor */
-        virtual ~TerrainConstraintLayer() { }
-
     private:
 
         void create();
 
-        osg::ref_ptr<FeatureFilterChain> _filterchain;
+        FeatureFilterChain _filterChain;
 
         void getFeatureConstraint(
             const TileKey& key,
@@ -141,6 +131,7 @@ namespace osgEarth
     {
     public:
         std::vector<osg::ref_ptr<TerrainConstraintLayer>> layers;
+        osg::ref_ptr<Session> session;
 
         TerrainConstraintQuery(const Map* map = {}) {
             if (map) setup(map);
@@ -160,5 +151,4 @@ namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::TerrainConstraintLayer::Options);
 
-#endif // OSGEARTH_TERRAIN_CONSTRAINT_LAYER_H
 

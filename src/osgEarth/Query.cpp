@@ -22,19 +22,14 @@ using namespace osgEarth;
 
 Query Query::ALL;
 
-Query::Query( const Config& conf )
+Query::Query(const Config& conf)
 {
-    mergeConfig( conf );
+    mergeConfig(conf);
 }
 
-Query::Query(const Query& rhs) :
-_bounds(rhs._bounds),
-_expression(rhs._expression),
-_orderby(rhs._orderby),
-_tileKey(rhs._tileKey),
-_limit(rhs._limit)
+Query::Query(const TileKey& key_)
 {
-    //nop
+    _tileKey = key_;
 }
 
 void

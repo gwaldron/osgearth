@@ -157,7 +157,7 @@ namespace
                   {
                       if (_levelAdded < 0 || _levelAdded == tile->getKey().getLevelOfDetail())
                       {
-                          osg::ref_ptr< Feature > clone = new Feature( *_feature, osg::CopyOp::DEEP_COPY_ALL );
+                          osg::ref_ptr< Feature > clone = new Feature(*_feature);
                           FeatureList features;
                           features.push_back( clone );
 
@@ -326,7 +326,7 @@ TFSPackager::package( FeatureSource* features, const std::string& destination, c
 
     osg::ref_ptr< FeatureTile > root = new FeatureTile( rootKey );
     //Loop through all the features and try to insert them into the quadtree
-    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor( _query, 0L ); // TODO: progress.
+    osg::ref_ptr< FeatureCursor > cursor = features->createFeatureCursor(_query); // TODO: progress.
     int added = 0;
     int failed = 0;
     int skipped = 0;

@@ -26,6 +26,9 @@
 #include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
 #include <osgEarth/Threading>
+
+#include <osg/MatrixTransform>
+
 #include <iostream>
 
 #define LC "[viewer] "
@@ -57,8 +60,6 @@ main(int argc, char** argv)
 
     float vfov = -1.0f;
     arguments.read("--vfov", vfov);
-
-
 
     // create a viewer:
     osgViewer::Viewer viewer(arguments);

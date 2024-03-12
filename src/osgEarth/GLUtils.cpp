@@ -1251,10 +1251,16 @@ GLTexture::bind(osg::State& state)
     glBindTexture(_target, _name);
 
     // Inform OSG of the state change
-    state.haveAppliedTextureAttribute(
-        state.getActiveTextureUnit(), osg::StateAttribute::TEXTURE);
-    state.haveAppliedTextureMode(
-        state.getActiveTextureUnit(), _target);
+    state.haveAppliedTextureAttribute(state.getActiveTextureUnit(), osg::StateAttribute::TEXTURE);
+
+    // account for the FFP version of the mode
+    GLenum fixed_function_target = _target;
+    if (_target == GL_TEXTURE_2D_ARRAY)
+    {
+        fixed_function_target = GL_TEXTURE_2D;
+    }
+
+    state.haveAppliedTextureMode(state.getActiveTextureUnit(), fixed_function_target);
 }
 
 GLuint64

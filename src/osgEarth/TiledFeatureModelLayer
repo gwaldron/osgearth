@@ -123,9 +123,8 @@ namespace osgEarth
 
         virtual ~TiledFeatureModelLayer();
 
-    private:
         osg::ref_ptr<class Session> _session;
-        osg::ref_ptr<FeatureFilterChain> _filters;
+        FeatureFilterChain _filters;
         osg::ref_ptr< FeatureSourceIndex > _featureIndex;
     };
 

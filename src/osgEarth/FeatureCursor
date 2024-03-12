@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHFEATURES_FEATURE_CURSOR_H
-#define OSGEARTHFEATURES_FEATURE_CURSOR_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Feature>
@@ -42,18 +40,18 @@ namespace osgEarth
         //! The next feature, or nullptr if empty
         virtual Feature* nextFeature() =0;
 
-        //! Copy all features to the list
-        void fill(FeatureList& output);
+        //! Copy all features to the list, returning the size.
+        unsigned fill(FeatureList& output);
 
-        //! Copy all features to the list that pass the predicate
-        void fill(FeatureList& output, std::function<bool(const Feature*)> predicate);
+        //! Copy all features to the list that pass the predicate, returning the size.
+        unsigned fill(FeatureList& output, std::function<bool(const Feature*)> predicate);
 
         //! Progress callback to check for cancelation
         ProgressCallback* getProgress() const { return _progress.get(); }
 
     protected:
 
-        FeatureCursor(ProgressCallback* progress);
+        FeatureCursor(ProgressCallback* progress = nullptr);
 
         virtual ~FeatureCursor();
 
@@ -67,19 +65,27 @@ namespace osgEarth
     class OSGEARTH_EXPORT FeatureListCursor : public FeatureCursor
     {
     public:
-        FeatureListCursor(const FeatureList& input);
+        FeatureListCursor(const FeatureList& input) :
+            _features(input),
+            _iter(_features.begin()) { }
+
+        FeatureListCursor(FeatureList&& rhs) {
+            _features.swap(rhs);
+            _iter = _features.begin();
+        }
 
     public: // FeatureCursor
-        virtual bool hasMore() const;
-        virtual Feature* nextFeature();
+        bool hasMore() const override {
+            return _iter != _features.end();
+        }
+
+        Feature* nextFeature() override {
+            return (_iter++)->get();
+        }
 
     protected:
-        
-        virtual ~FeatureListCursor();
-
-        FeatureList           _features;
+        FeatureList _features;
         FeatureList::iterator _iter;
-        bool                  _clone;
     };
 
     /**
@@ -89,7 +95,7 @@ namespace osgEarth
     {
     public:
         GeometryFeatureCursor( Geometry* geom );
-        GeometryFeatureCursor( Geometry* geom, const FeatureProfile* fp, const FeatureFilterChain* filters );
+        GeometryFeatureCursor( Geometry* geom, const FeatureProfile* fp, const FeatureFilterChain& filters );
 
     public: // FeatureCursor
         virtual bool hasMore() const;
@@ -99,41 +105,9 @@ namespace osgEarth
         virtual ~GeometryFeatureCursor();
         osg::ref_ptr<Geometry> _geom;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
-        osg::ref_ptr<const FeatureFilterChain> _filterChain;
+        FeatureFilterChain _filterChain;
         osg::ref_ptr<Feature> _lastFeature;
     };
 
-    /**
-     * FeatureCursor wrapper that runs incoming features through a filter chain
-     */
-    class OSGEARTH_EXPORT FilteredFeatureCursor : public FeatureCursor
-    {
-    public:
-        FilteredFeatureCursor(
-            FeatureCursor* cursor,
-            FeatureFilterChain* chain);
-
-        FilteredFeatureCursor(
-            FeatureCursor* cursor,
-            FeatureFilterChain* chain,
-            FilterContext* context,
-            bool ownsContext = false);
-
-        virtual bool hasMore() const;
-        virtual Feature* nextFeature();
-
-    protected:
-        virtual ~FilteredFeatureCursor();
-
-    private:
-        osg::ref_ptr<FeatureCursor> _cursor;
-        osg::ref_ptr<FeatureFilterChain> _chain;
-        FilterContext* _user_cx;
-        mutable FeatureList _cache;
-        bool _ownsContext = false;
-    };
-
 } // namespace osgEarth
-
-#endif // OSGEARTHFEATURES_FEATURE_CURSOR_H
 

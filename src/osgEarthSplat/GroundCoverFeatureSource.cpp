@@ -122,7 +122,7 @@ GroundCoverFeatureSource::getGroundCoverLayer() const
 }
 
 FeatureCursor*
-GroundCoverFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress)
+GroundCoverFeatureSource::createFeatureCursorImplementation(const Query& query, ProgressCallback* progress) const
 {
     if (getStatus().isError())
         return NULL;

@@ -14,9 +14,11 @@ osgEarth Sample - OpenStreetMap Features
     
     <xi:include href="osm_data.xml"/>    
 
-    <xi:include href="osm_buildings.xml" nvgl="false" open="false" name="FMG Buildings (GL3)"/>
+    <xi:include href="osm_buildings.xml" nvgl="false" open="true" name="FMG Buildings (GL3)"/>
         
     <xi:include href="osm_buildings.xml" nvgl="true" open="false" name="FMG Buildings (NVGL)"/>
+    
+    <xi:include href="osm_roads.xml" open="true"/>
 
     <XYZModel name="Freshly Baked Buildings (GL3)" nvgl="false" open="false">
         <url>https://pelican-public.s3.amazonaws.com/buildings_mak/{z}/{x}/{y}.osgb</url>

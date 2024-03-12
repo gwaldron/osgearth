@@ -148,13 +148,16 @@ namespace osgEarth { namespace Util
          *      the height values will be those of its reference geoid. If there is no vertical
          *      datum, or is expressHeightsAsHAE==false, we assume that MSL == the reference
          *      ellipsoid and all the HF values will be zero.
+         * @param initializeValue
+         *      When expressHeightsAsHAE==false, this value will be used to initialize the heightfield.
          */
-        static osg::HeightField* createReferenceHeightField( 
-            const GeoExtent& ex, 
+        static osg::ref_ptr<osg::HeightField> createReferenceHeightField(
+            const GeoExtent& ex,
             unsigned         numCols,
             unsigned         numRows,
             unsigned         border,
-            bool             expressHeightsAsHAE =true);
+            bool             expressHeightsAsHAE = true,
+            float            initializeValue = 0.0f);
 
         /**
          * Subsamples a heightfield to the specified extent.

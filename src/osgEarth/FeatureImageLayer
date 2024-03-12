@@ -92,7 +92,7 @@ namespace osgEarth
             Isolate() { }
             Isolate(const Isolate&);
             osg::ref_ptr<Session> _session;
-            osg::ref_ptr<FeatureFilterChain> _filterChain;
+            FeatureFilterChain _filterChain;
         };
 
         Isolate _global;

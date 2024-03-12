@@ -33,7 +33,7 @@
 #include <map>
 #include <unordered_map>
 #include <set>
-#include <ctype.h>
+#include <cctype>
 
 namespace osgEarth { namespace Util
 {
@@ -98,8 +98,21 @@ namespace osgEarth { namespace Util
     /**
      * Case-insensitive STL comparator
      */
-    struct OSGEARTH_EXPORT CIStringComp {
-        bool operator()(const std::string& lhs, const std::string& rhs) const;
+    inline bool ci_char_equals(char c1, char c2) {
+        return std::tolower(c1) == std::tolower(c2);
+    }
+    inline bool ci_equals(const std::string& lhs, const std::string& rhs) {
+        return (lhs.size() == rhs.size()) &&
+            std::equal(lhs.begin(), lhs.end(), rhs.begin(), ci_char_equals);
+    }
+    struct ci_string_less {
+        bool operator()(const std::string& lhs, const std::string& rhs) const {
+            for(auto i=0; i<std::min(lhs.size(), rhs.size()); ++i) {
+                if (std::tolower(lhs[i]) < std::tolower(rhs[i])) return true;
+                if (std::tolower(lhs[i]) > std::tolower(rhs[i])) return false;
+            }
+            return false;
+        }
     };
 
 

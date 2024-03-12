@@ -21,24 +21,36 @@
 
 #include <osgEarth/Extension>
 #include <osgEarth/Viewpoint>
-#include <osgEarth/Controls>
 #include <osgGA/GUIEventAdapter>
+#include <osgGA/GUIEventHandler>
 #include <osg/View>
 #include <vector>
+
+#ifdef OSGEARTH_HAVE_CONTROLS_API
+#include <osgEarth/Controls>
+using namespace osgEarth::Util::Controls;
+#endif
 
 namespace osgEarth { namespace Viewpoints
 {
     using namespace osgEarth;
-    using namespace osgEarth::Util::Controls;
 
     /**
      * Loads a collection of viewpoints and makes them available
      * through a Controls UI.
      */
-    class ViewpointsExtension : public Extension,
-                                public ExtensionInterface<osg::View>,
-                                public ExtensionInterface<Control>,
-                                public ConfigOptions
+#ifdef OSGEARTH_HAVE_CONTROLS_API
+    class ViewpointsExtension : 
+        public Extension,
+        public ExtensionInterface<osg::View>,
+        public ExtensionInterface<Control>,
+        public ConfigOptions
+#else
+    class ViewpointsExtension : 
+        public Extension,
+        public ExtensionInterface<osg::View>,
+        public ConfigOptions
+#endif
     {
     public:
         META_OE_Extension(osgEarth, ViewpointsExtension, viewpoints);
@@ -66,11 +78,13 @@ namespace osgEarth { namespace Viewpoints
         bool disconnect(osg::View* view);
 
 
+#ifdef OSGEARTH_HAVE_CONTROLS_API
     public: // ExtensionInterface<Control>
 
         bool connect(Control* control);
 
         bool disconnect(Control* control);
+#endif
 
     private:
         osg::ref_ptr<const osgDB::Options>   _dbOptions;

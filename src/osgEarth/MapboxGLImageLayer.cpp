@@ -1335,7 +1335,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
                     {
                         // Get the features for this tile
-                        osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(queryKey, progress);
+                        osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(queryKey, {}, nullptr, progress);
                         if (progress && progress->isCanceled())
                         {
                             return GeoImage::INVALID;
@@ -1363,7 +1363,7 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
 
                                 if (key.valid())
                                 {
-                                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(sampleKey, progress);
+                                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(sampleKey, {}, nullptr, progress);
                                     if (progress && progress->isCanceled())
                                     {
                                         return GeoImage::INVALID;

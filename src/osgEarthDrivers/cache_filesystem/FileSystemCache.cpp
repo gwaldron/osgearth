@@ -391,14 +391,7 @@ namespace
         //std::string path = fileURI.full() + OSG_EXT;
         std::string path = fileURI.full() + "." + _options.format().get();
 
-        if ( !osgDB::fileExists(path) )
-            return ReadResult( ReadResult::RESULT_NOT_FOUND );
-
-        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
-
-        osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(readOptions);
-
-        unsigned long handle = NetworkMonitor::begin(path, "pending", "Cache");
+        osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(readOptions);        
 
         // lock the file:
         ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
@@ -413,18 +406,26 @@ namespace
 
             auto i = _writeCache.find(fileURI.full());
             if (i != _writeCache.end())
-            {
+            {                
                 ReadResult rr(
                     const_cast<osg::Image*>(dynamic_cast<const osg::Image*>(i->second.object.get())),
                     i->second.meta);
 
-                rr.setLastModifiedTime(timeStamp);
-
-                NetworkMonitor::end(handle, "OK");
+                rr.setLastModifiedTime(DateTime().asTimeStamp());        
 
                 return rr;
             }
+        }        
+
+        // Not in the pool, now check the file system
+        if (!osgDB::fileExists(path))
+        {
+            return ReadResult(ReadResult::RESULT_NOT_FOUND);
         }
+
+        unsigned long handle = NetworkMonitor::begin(path, "pending", "Cache");
+
+        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
 
         osg::ref_ptr<osgDB::ReaderWriter> image_rw = 
             osgDB::Registry::instance()->getReaderWriterForExtension(_options.format().get());
@@ -449,7 +450,7 @@ namespace
         std::string metafile = fileURI.full() + ".meta";
         if (osgDB::fileExists(metafile))
             readMeta(metafile, meta);
-
+        
         ReadResult rr(r.getImage(), meta);
         rr.setLastModifiedTime(timeStamp);
 
@@ -476,14 +477,7 @@ namespace
         URI fileURI( key, _metaPath );
         std::string path = fileURI.full() + OSG_EXT;
 
-        if ( !osgDB::fileExists(path) )
-            return ReadResult( ReadResult::RESULT_NOT_FOUND );
-
-        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
-
-        osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(readOptions);
-
-        unsigned long handle = NetworkMonitor::begin(path, "pending", "Cache");
+        osg::ref_ptr<const osgDB::Options> dbo = mergeOptions(readOptions);        
 
         // lock the file:
         ScopedGate<std::string> lockFile(_fileGate, fileURI.full());
@@ -503,14 +497,21 @@ namespace
                     const_cast<osg::Object*>(i->second.object.get()),
                     i->second.meta);
 
-                rr.setLastModifiedTime(timeStamp);
-
-                NetworkMonitor::end(handle, "OK");
+                rr.setLastModifiedTime(DateTime().asTimeStamp());
 
                 return rr;
             }
         }
 
+        // Not in the pool, now check the file system
+        if (!osgDB::fileExists(path))
+        {            
+            return ReadResult(ReadResult::RESULT_NOT_FOUND);
+        }
+
+        unsigned long handle = NetworkMonitor::begin(path, "pending", "Cache");
+
+        osgEarth::TimeStamp timeStamp = osgEarth::getLastModifiedTime(path);
         osgDB::ReaderWriter::ReadResult r = _rw->readObject(path, dbo.get());
         if (!r.success())
         {

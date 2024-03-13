@@ -43,11 +43,11 @@ MACRO(DETECT_OSG_VERSION)
                 "\\1" _osg_VERSION_PATCH ${_osg_Version_contents})
         elseif(_osg_new_defines)
             string(REGEX REPLACE ".*#define OPENSCENEGRAPH_MAJOR_VERSION[ \t]+([0-9]+).*"
-                "\\1" _osg_VERSION_MAJOR ${_osg_Version_contents})
-            string(REGEX REPLACE ".*#define OPENSCENEGRAPH_MINOR_VERSION[ \t]+([0-9]+).*"
-                "\\1" _osg_VERSION_MINOR ${_osg_Version_contents})
-            string(REGEX REPLACE ".*#define OPENSCENEGRAPH_PATCH_VERSION[ \t]+([0-9]+).*"
-                "\\1" _osg_VERSION_PATCH ${_osg_Version_contents})
+                "\\1" _osg_VERSION_MAJOR "${_osg_Version_contents}")
+            string(REGEX REPLACE ".*#define OPENSCENEGRAPH_MINOR_VERSION[ \t]+([0-9]+).*" 
+                "\\1" _osg_VERSION_MINOR "${_osg_Version_contents}")
+            string(REGEX REPLACE ".*#define OPENSCENEGRAPH_PATCH_VERSION[ \t]+([0-9]+).*" 
+                "\\1" _osg_VERSION_PATCH "${_osg_Version_contents}")
         else()
             message(WARNING "[ FindOpenSceneGraph.cmake:${CMAKE_CURRENT_LIST_LINE} ] "
                 "Failed to parse version number, please report this as a bug")

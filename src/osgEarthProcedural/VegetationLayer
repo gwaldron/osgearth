@@ -22,11 +22,11 @@
 #ifndef OSGEARTH_PROCEDURAL_GROUND_VEGETATION_LAYER_BINDLESS_H
 #define OSGEARTH_PROCEDURAL_GROUND_VEGETATION_LAYER_BINDLESS_H
 
-#include "Export"
-#include "Biome"
-#include "LifeMapLayer"
-#include "BiomeLayer"
-#include "BiomeManager"
+#include <osgEarthProcedural/Export>
+#include <osgEarthProcedural/Biome>
+#include <osgEarthProcedural/LifeMapLayer>
+#include <osgEarthProcedural/BiomeLayer>
+#include <osgEarthProcedural/BiomeManager>
 
 #include <osgEarth/PatchLayer>
 #include <osgEarth/LayerReference>
@@ -45,7 +45,7 @@ namespace osgEarth { namespace Procedural
     public:
         class OSGEARTHPROCEDURAL_EXPORT Options : public PatchLayer::Options {
         public:
-            META_LayerOptions(osgEarth, Options, PatchLayer::Options);
+            META_LayerOptions(osgEarthProcedural, Options, PatchLayer::Options);
 
             //! Biomes layer in the map
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);

@@ -44,7 +44,7 @@ REGISTER_OSGEARTH_LAYER(lifemap, LifeMapLayer);
 Config
 LifeMapLayer::Options::getConfig() const
 {
-    Config conf = VisibleLayer::Options::getConfig();
+    Config conf = super::getConfig();
     biomeLayer().set(conf, "biomes_layer");
     maskLayer().set(conf, "mask_layer");
     waterLayer().set(conf, "water_layer");
@@ -62,14 +62,6 @@ LifeMapLayer::Options::getConfig() const
 void
 LifeMapLayer::Options::fromConfig(const Config& conf)
 {
-    landCoverWeight().setDefault(1.0f);
-    landCoverBlur().setDefault(Distance(0.0f, Units::METERS));
-    terrainWeight().setDefault(1.0f);
-    slopeIntensity().setDefault(1.0f);
-    colorWeight().setDefault(1.0f);
-    noiseWeight().setDefault(0.225f);
-    lushFactor().setDefault(1.9f);
-
     biomeLayer().get(conf, "biomes_layer");
     maskLayer().get(conf, "mask_layer");
     waterLayer().get(conf, "water_layer");

@@ -400,8 +400,9 @@ main(int argc, char** argv)
 
         inConf.key() = inConf.value("driver");
 
-        input = dynamic_cast<TileLayer*>(Layer::create(ConfigOptions(inConf)));
-        if (!input.valid())
+        auto layer = Layer::create(ConfigOptions(inConf));
+        auto input = dynamic_cast<TileLayer*>(layer.get());
+        if (!input)
         {
             OE_WARN << LC << "Failed to open input for " << inConf.toJSON(false) << std::endl;
             return -1;
@@ -462,8 +463,9 @@ main(int argc, char** argv)
     outConf.add("profile", profileOptions.getConfig());
 
     // open the output tile source:
-    osg::ref_ptr<TileLayer> output = dynamic_cast<TileLayer*>(Layer::create(ConfigOptions(outConf)));
-    if (!output.valid())
+    auto layer = Layer::create(ConfigOptions(outConf));
+    osg::ref_ptr<TileLayer> output = dynamic_cast<TileLayer*>(layer.get());
+    if (!output)
     {
         OE_WARN << LC << "Failed to create output layer" << std::endl;
         return -1;

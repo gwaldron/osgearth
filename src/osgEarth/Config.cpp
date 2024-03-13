@@ -31,10 +31,6 @@ using namespace osgEarth;
 
 #define LC "[Config] "
 
-Config::~Config()
-{
-}
-
 void
 Config::setReferrer( const std::string& referrer )
 {

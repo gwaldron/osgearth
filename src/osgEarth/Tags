@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHSYMBOLOGY_TAGS_H
-#define OSGEARTHSYMBOLOGY_TAGS_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
@@ -203,5 +201,3 @@ namespace osgEarth { namespace Util
         }
     };
 } }
-
-#endif // OSGEARTHSYMBOLOGY_QUERY_H

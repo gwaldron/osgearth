@@ -19,13 +19,13 @@
 #ifndef OSGEARTH_PROCEDURAL_ROAD_SURFACE_LAYER
 #define OSGEARTH_PROCEDURAL_ROAD_SURFACE_LAYER 1
 
+#include <osgEarthProcedural/Export>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/TileRasterizer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/StyleSheet>
 #include <osgEarth/Containers>
-#include "Export"
 
 namespace osgEarth { namespace Procedural
 {
@@ -39,7 +39,7 @@ namespace osgEarth { namespace Procedural
     public: // serialization
         class OSGEARTHPROCEDURAL_EXPORT Options : public ImageLayer::Options {
         public:
-            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            META_LayerOptions(osgEarthProcedural, Options, ImageLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
             OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION_LAYER(StyleSheet, styleSheet);

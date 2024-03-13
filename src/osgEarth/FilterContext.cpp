@@ -30,11 +30,13 @@ FilterContext::FilterContext(Session* session,
 
     _session(session),
     _profile(profile),
-    _extent(workingExtent, workingExtent),
+    _extent(workingExtent),
     _isGeocentric(false),
     _index(index),
     _shaderPolicy(osgEarth::SHADERPOLICY_GENERATE)
 {
+    _extent = workingExtent;
+
     if (session)
     {
         if ( session->getResourceCache() )

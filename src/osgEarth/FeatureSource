@@ -171,11 +171,6 @@ namespace osgEarth
         virtual void buildSpatialIndex() { }
 
 
-    public:
-
-        //! Creates a features source from a serialized definition
-        static FeatureSource* create(const ConfigOptions&);
-
     protected:
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         URIContext _uriContext;

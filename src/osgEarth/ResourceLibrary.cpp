@@ -41,10 +41,10 @@ ResourceLibrary::ResourceLibrary(const Config& conf) :
 ResourceLibrary::ResourceLibrary(const std::string& name,
     const URI& uri) :
     _name(name),
-    _uri(uri, uri),
+    _uri(uri),
     _initialized(false)
 {
-    //nop
+    _uri = uri;
 }
 
 void

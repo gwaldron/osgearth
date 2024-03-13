@@ -22,8 +22,8 @@
 #ifndef OSGEARTH_PROCEDURAL_LIFE_MAP_LAYER_H
 #define OSGEARTH_PROCEDURAL_LIFE_MAP_LAYER_H
 
-#include "Export"
-#include "BiomeLayer"
+#include <osgEarthProcedural/Export>
+#include <osgEarthProcedural/BiomeLayer>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationPool>
 #include <osgEarth/LayerReference>
@@ -46,21 +46,21 @@ namespace osgEarth { namespace Procedural
         class OSGEARTHPROCEDURAL_EXPORT Options : public ImageLayer::Options
         {
         public:
-            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            META_LayerOptions(osgEarthProcedural, Options, ImageLayer::Options);
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION_LAYER(ImageLayer, maskLayer);
             OE_OPTION_LAYER(ImageLayer, waterLayer);
             OE_OPTION_LAYER(CoverageLayer, landCoverLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
 
-            OE_OPTION(float, landCoverWeight);
-            OE_OPTION(Distance, landCoverBlur);
-            OE_OPTION(float, terrainWeight);
-            OE_OPTION(float, slopeIntensity);
-            OE_OPTION(float, slopeCutoff);
-            OE_OPTION(float, colorWeight);
-            OE_OPTION(float, noiseWeight);
-            OE_OPTION(float, lushFactor);
+            OE_OPTION(float, landCoverWeight, 1.0f);
+            OE_OPTION(Distance, landCoverBlur, Distance(0.0f, Units::METERS));
+            OE_OPTION(float, terrainWeight, 1.0f);
+            OE_OPTION(float, slopeIntensity, 1.0f);
+            OE_OPTION(float, slopeCutoff, 0.0f);
+            OE_OPTION(float, colorWeight, 1.0f);
+            OE_OPTION(float, noiseWeight, 0.225f);
+            OE_OPTION(float, lushFactor, 1.9f);
 
             virtual Config getConfig() const;
         private:

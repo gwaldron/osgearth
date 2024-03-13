@@ -22,9 +22,9 @@
 #ifndef OSGEARTH_PROCEDURAL_BIOME_LAYER_H
 #define OSGEARTH_PROCEDURAL_BIOME_LAYER_H
 
-#include "Export"
-#include "Biome"
-#include "BiomeManager"
+#include <osgEarthProcedural/Export>
+#include <osgEarthProcedural/Biome>
+#include <osgEarthProcedural/BiomeManager>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
@@ -156,7 +156,7 @@ namespace osgEarth
             class OSGEARTHPROCEDURAL_EXPORT Options : public ImageLayer::Options
             {
             public:
-                META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+                META_LayerOptions(osgEarthProcedural, Options, ImageLayer::Options);
                 OE_OPTION_LAYER(CoverageLayer, landCoverLayer);
                 OE_OPTION_LAYER(CoverageLayer, biomeBaseLayer);
                 OE_OPTION_SHAREDPTR(BiomeCatalog, biomeCatalog);

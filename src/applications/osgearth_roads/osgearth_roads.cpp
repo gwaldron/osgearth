@@ -21,6 +21,7 @@ SETUP_IMGUI_APPLICATION(osgearth_viewer)
 #include <osgEarth/Threading>
 #include <osgEarth/ShaderGenerator>
 #include <osgDB/ReadFile>
+#include <osgDB/WriteFile>
 #include <osg/PolygonOffset>
 #include <osgGA/TrackballManipulator>
 #include <osgUtil/SmoothingVisitor>
@@ -1330,121 +1331,8 @@ graph_t make_graph(Art& art)
     return g;
 }
 
-const bool s_drape = false;
 
-#if 0
-class RoadPager : public SimplePager
-{
-public:
-    RoadPager(const Map* map, const Profile* dataProfile);
 
-public: // SimplePager
-    osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress) override;
-    osg::ref_ptr<FeatureSource> _featureSource;
-    FeatureFilterChain _filterChain;
-    osg::ref_ptr<Session> _session;
-    Art _art;
-};
-
-RoadPager::RoadPager(const Map* map, const Profile* dataProfile) :
-    SimplePager(map, dataProfile)
-{
-    setAdditive(false);
-    setMinLevel(14);
-    setMaxLevel(14);
-    _session = new Session(map);
-
-    if (s_drape)
-    {
-        getOrCreateStateSet()->setRenderBinDetails(37, "TraversalOrderBin", osg::StateSet::OVERRIDE_RENDERBIN_DETAILS);
-        getOrCreateStateSet()->setMode(GL_DEPTH_TEST, 0);
-    }
-}
-
-osg::ref_ptr<osg::Node>
-RoadPager::createNode(const TileKey& key, ProgressCallback* progress)
-{
-    // take local refs to isolate this method from the member objects
-    osg::ref_ptr<FeatureSource> featureSource(_featureSource);
-
-    OE_SOFT_ASSERT_AND_RETURN(featureSource.valid(), nullptr);
-    OE_SOFT_ASSERT_AND_RETURN(featureSource->getStatus().isOK(), nullptr);
-
-    osg::ref_ptr<const FeatureProfile> featureProfile = featureSource->getFeatureProfile();
-    OE_SOFT_ASSERT_AND_RETURN(featureProfile.valid(), nullptr);
-
-    const SpatialReference* featureSRS = featureProfile->getSRS();
-    OE_SOFT_ASSERT_AND_RETURN(featureSRS, nullptr);
-
-    // Fetch the set of features to render
-    FeatureList features;
-    FilterContext context(_session.get());
-    auto cursor = featureSource->createFeatureCursor(key, _filterChain, &context, progress);
-    cursor->fill(features);
-
-    if (features.empty())
-        return nullptr;
-
-    GeoPoint centroid = key.getExtent().getCentroid();
-
-    osg::Group* root = new osg::Group();
-    
-    MeshConstraints constraints;
-
-    for (auto& feature : features)
-    {
-        //feature->transform(_session->getMapSRS());
-        MeshConstraint constraint;
-        constraint.features.emplace_back(feature);
-        constraint.hasElevation = (feature->getGeometry()->isPolygon());
-        constraint.removeExterior = true;
-        constraint.fillElevations = true;
-        constraints.emplace_back(std::move(constraint));
-    }
-
-    osg::MatrixTransform* mt = nullptr;
-
-    TileMesher mesher;
-
-    TerrainOptions options;
-    options.tileSize() = 33;
-    options.heightFieldSkirtRatio() = 0.0f;
-    options.morphTerrain() = false;
-    mesher.setTerrainOptions(TerrainOptionsAPI(&options));
-
-    auto tg = mesher.createMesh(key, constraints, nullptr);
-
-    if (tg.indices.valid())
-    {
-        auto geom = new osg::Geometry();
-        geom->setUseVertexBufferObjects(true);
-        geom->setUseDisplayList(false);
-
-        if (tg.verts.valid()) geom->setVertexArray(tg.verts);
-        if (tg.normals.valid()) geom->setNormalArray(tg.normals);
-        if (tg.uvs.valid()) geom->setTexCoordArray(0, tg.uvs);
-        if (tg.vert_neighbors.valid()) geom->setTexCoordArray(1, tg.vert_neighbors);
-        if (tg.normal_neighbors.valid()) geom->setTexCoordArray(2, tg.normal_neighbors);
-        if (tg.indices.valid()) geom->addPrimitiveSet(tg.indices);
-
-        auto colors = new osg::Vec4Array(osg::Array::BIND_OVERALL, 1);
-        (*colors)[0].set(.8, .4, .1, 1);
-        geom->setColorArray(colors);
-
-        mt = new osg::MatrixTransform();
-        mt->setMatrix(tg.localToWorld);
-        mt->addChild(geom);
-    }
-
-    if (mt)
-    {
-        ShaderGenerator gen;
-        mt->accept(gen);
-    }
-
-    return mt;
-}
-#endif
 
 class RoadsLayer : public TiledModelLayer
 {
@@ -1472,6 +1360,7 @@ public:
 private:
     FeatureFilterChain _filterChain;
     osg::ref_ptr<Session> _session;
+    Art _art;
 };
 
 void
@@ -1502,8 +1391,6 @@ RoadsLayer::init()
 {
     super::init();
     setMinLevel(14);
-    //setMaxDataLevel(19);
-    //setMaxLevel(14);
 }
 
 Status
@@ -1544,30 +1431,8 @@ RoadsLayer::addedToMap(const Map* map)
 
     _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
     _session = new Session(map);
-    
-
 
     super::addedToMap(map);
-
-#if 0
-    // The pager MUST be in the map profile because the tessellated roads models
-    // are terrain tile cut-outs :)
-    auto pager = new RoadPager(map, map->getProfile());
-    pager->_featureSource = fs;
-    pager->_filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
-    pager->build();
-
-    if (s_drape)
-    {
-        auto draper = new DrapeableNode();
-        draper->addChild(pager);
-        _root->addChild(draper);
-    }
-    else
-    {
-        _root->addChild(pager);
-    }
-#endif
 }
 
 void
@@ -1619,10 +1484,11 @@ RoadsLayer::createTileImplementation(const TileKey& key, ProgressCallback* progr
 
     //OE_WARN << "Got " << features.size() << " features for tile " << key.str() << std::endl;
 
-    GeoPoint centroid = key.getExtent().getCentroid();
+    //GeoPoint centroid = key.getExtent().getCentroid();
 
     osg::Group* root = new osg::Group();
 
+#if 0
     MeshConstraints constraints;
 
     for (auto& feature : features)
@@ -1671,6 +1537,102 @@ RoadsLayer::createTileImplementation(const TileKey& key, ProgressCallback* progr
         mt->setMatrix(tg.localToWorld);
         mt->addChild(geom);
     }
+
+    return mt;
+#else
+
+    graph_t graph;
+    osg::Vec3d origin(0, 0, 0);
+
+    auto centroid = key.getExtent().getCentroid();
+    auto ltp = key.getExtent().getSRS()->createTangentPlaneSRS(centroid.vec3d());
+
+    for (auto& feature : features)
+    {
+        if (!feature.valid())
+            continue;
+
+        auto geom = feature->getGeometry();
+        if (!geom)
+            continue;
+
+        // for now, skip features that are underground
+        if (feature->getInt("layer") < 0)
+            continue;
+        
+        feature->transform(ltp);
+
+        auto highway = feature->getString("highway");
+        auto width = feature->getDouble("width", 0.0);
+        auto lanes = feature->getInt("lanes", 0);
+
+        if (highway == "crossing")
+        {
+            if (feature->getString("crossing") != "unmarked")
+            {
+                if (geom->size() > 0)
+                {
+                    auto pos = (*geom)[0] - origin;
+                    auto node = graph.add_node(pos.x(), pos.y(), &_art.road_basic);
+                    node->has_crossing = true;
+                }
+            }
+        }
+        else
+        {
+            ConstGeometryIterator iter(geom);
+            while (iter.hasMore())
+            {
+                auto part = iter.next();
+                if (part)
+                {
+                    for (int i = 0; i < part->size() - 1; ++i)
+                    {
+                        auto p1 = (*part)[i] - origin;
+                        auto p2 = (*part)[i + 1] - origin;
+
+                        // skip segments that don't meet the minimum length requirement
+                        while ((p1 - p2).length() <= EPSILON && i < part->size() - 2)
+                        {
+                            ++i;
+                            p2 = (*part)[i + 1] - origin;
+                        }
+                        if (i < part->size() - 1)
+                        {
+                            graph.add_edge(p1.x(), p1.y(), p2.x(), p2.y(), width, &_art.road_basic);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (graph.edges.empty())
+    {
+        return {};
+        //return GeoImage::INVALID;
+    }
+
+    // OSM data should be properly noded. Any intersecting edges
+    // are likely layered data (e.g. bridges, overpasses, tunnels).
+    //graph.split_intersecting_edges();
+
+    //return graph;
+
+    compile(graph);
+
+    //osg::ref_ptr<osg::Group> root = new osg::Group();
+    auto xform = [ltp](const osg::Vec3d& p) { return p; };
+    //root->addChild(tessellate_surface(graph, xform));
+    root->addChild(tessellate_markings(graph, xform));
+    root->addChild(debug_surface_outline(graph, 0.1));
+#endif
+
+    auto mt = new osg::MatrixTransform();
+    osg::Matrixd local2world;
+    centroid.createLocalToWorld(local2world);
+    mt->setMatrix(local2world);
+    mt->addChild(root);
 
     return mt;
 }
@@ -1822,9 +1784,7 @@ RoadsImageLayer::removedFromMap(const Map* map)
 }
 
 GeoImage
-RoadsImageLayer::createImageImplementation(
-    const TileKey& key,
-    ProgressCallback* progress) const
+RoadsImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     //if (key.getLOD() % 2 == 1)
     //    return GeoImage::INVALID;
@@ -1886,19 +1846,19 @@ RoadsImageLayer::createImageImplementation(
             continue;
 
         // for now, skip features that are underground
-        //if (feature->getInt("layer") < 0)
-        //    continue;
+        if (feature->getInt("layer") < 0)
+            continue;
 
         auto highway = feature->getString("highway");
 
-        if (feature && (
+        if (feature /*&& (
             highway == "trunk" ||
             highway == "motorway" ||
             highway == "primary" ||
             highway == "secondary" ||
             highway == "tertiary" ||
             highway == "unclassified" ||
-            highway == "residential"))
+            highway == "residential")) */ )
         {
             feature->transform(outputSRS.get());
 
@@ -1960,15 +1920,14 @@ RoadsImageLayer::createImageImplementation(
 
     osg::ref_ptr<osg::Group> root = new osg::Group();
     auto xform = [](const osg::Vec3d& p) { return p; };
-    root->addChild(tessellate_surface(graph, xform));
+    //root->addChild(tessellate_surface(graph, xform));
     root->addChild(tessellate_markings(graph, xform));
     root->addChild(debug_surface_outline(graph, 0.1));
 
-    ShaderGenerator gen;
-    root->accept(gen);
+    //ShaderGenerator gen;
+    //root->accept(gen);
 
-    Future<osg::ref_ptr<osg::Image>> result = rasterizer->render(
-        root.release(), outputExtent);
+    auto result = rasterizer->render(root.get(), outputExtent);
 
     osg::ref_ptr<ProgressCallback> local_progress = new ProgressCallback(
         progress,
@@ -1977,17 +1936,17 @@ RoadsImageLayer::createImageImplementation(
 
     osg::ref_ptr<osg::Image> image = result.join(local_progress.get());
 
-    if (image.valid()
-        && image->data() != nullptr &&
-        !ImageUtils::isEmptyImage(image.get()))
+    if (image.valid())
     {
-        return GeoImage(image.get(), key.getExtent());
-    }
-    else
-    {
-        return GeoImage::INVALID;
+        osgDB::writeImageFile(*image, "out/" + std::to_string(key.hash()) + ".png");
+
+        if (!ImageUtils::isEmptyImage(image.get()))
+        {
+            return GeoImage(image.get(), key.getExtent());
+        }
     }
 
+    return GeoImage::INVALID;
 
 
     //root->addChild(tessellate_markings(graph, 0.05));
@@ -2004,8 +1963,6 @@ RoadsImageLayer::getFeatures(
     FeatureList& output,
     ProgressCallback* progress) const
 {
-    OE_PROFILING_ZONE;
-
     OE_SOFT_ASSERT_AND_RETURN(fs != nullptr, void());
 
     Distance buffer(0.0, Units::METERS); // TODO
@@ -2013,11 +1970,12 @@ RoadsImageLayer::getFeatures(
     // Collect all the features, using a small LRU cache and a
     // Gate to optimize fetching and sharing with other threads
     auto cursor = fs->createFeatureCursor(key, _filterChain, nullptr, progress);
-    cursor->fill(output);
+    if (cursor.valid())
+        cursor->fill(output);
 }
 #endif
 
-#define DEFAULT_WIDTH 8.0
+#define DEFAULT_WIDTH 5.0
 
 class RoadSurfaceOutlineFilterSimple : public FeatureFilter
 {

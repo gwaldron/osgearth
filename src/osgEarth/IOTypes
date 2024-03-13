@@ -19,13 +19,11 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
-#ifndef OSGEARTH_IOTYPES_H
-#define OSGEARTH_IOTYPES_H 1
-
+#pragma once
 #include <osgEarth/Config>
 #include <osgEarth/DateTime>
 #include <osgEarth/Containers>
+#include <osg/Object>
 
 /**
  * A collectin of types used by the various I/O systems in osgEarth. These
@@ -325,5 +323,3 @@ namespace osgEarth
     };
 
 }
-
-#endif // OSGEARTH_IOTYPES_H

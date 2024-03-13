@@ -19,10 +19,10 @@
 #ifndef OSGEARTH_PROCEDURAL_VEGETATION_FEATURE_GEN
 #define OSGEARTH_PROCEDURAL_VEGETATION_FEATURE_GEN 1
 
-#include "Export"
-#include "VegetationLayer"
-#include "LifeMapLayer"
-#include "BiomeLayer"
+#include <osgEarthProcedural/Export>
+#include <osgEarthProcedural/VegetationLayer>
+#include <osgEarthProcedural/LifeMapLayer>
+#include <osgEarthProcedural/BiomeLayer>
 
 #include <osgEarth/Map>
 #include <osgEarth/TerrainTileModelFactory>

@@ -57,11 +57,12 @@ _toType( Geometry::TYPE_UNKNOWN )
 
 Config ConvertTypeFilter::getConfig() const
 {
-    Config config( "convert" );
-    optional<Geometry::Type> type( _toType, _toType); // weird optional ctor :)
-    config.set( "type", "point",   type, Geometry::TYPE_POINTSET );
-    config.set( "type", "line",    type, Geometry::TYPE_LINESTRING );
-    config.set( "type", "polygon", type, Geometry::TYPE_POLYGON );    
+    Config config("convert");
+    optional<Geometry::Type> type(_toType);
+    type = _toType;
+    config.set("type", "point", type, Geometry::TYPE_POINTSET);
+    config.set("type", "line", type, Geometry::TYPE_LINESTRING);
+    config.set("type", "polygon", type, Geometry::TYPE_POLYGON);
 
     return config;
 }

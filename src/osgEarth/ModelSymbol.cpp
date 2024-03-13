@@ -86,7 +86,7 @@ ModelSymbol::getConfig() const
 
     conf.set( "orientation_from_feature", _orientationFromFeature);
 
-    conf.setNonSerializable( "ModelSymbol::node", _node.get() );
+    //conf.setNonSerializable( "ModelSymbol::node", _node.get() );
     return conf;
 }
 
@@ -112,7 +112,7 @@ ModelSymbol::mergeConfig( const Config& conf )
 
     conf.get( "orientation_from_feature", _orientationFromFeature );
 
-    _node = conf.getNonSerializable<osg::Node>( "ModelSymbol::node" );
+    //_node = conf.getNonSerializable<osg::Node>( "ModelSymbol::node" );
 }
 
 InstanceResource*

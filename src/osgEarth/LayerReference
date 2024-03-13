@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_LAYER_REFERENCE_H
-#define OSGEARTH_LAYER_REFERENCE_H 1
+#pragma once
 
 #include <osgEarth/Map>
 
@@ -42,7 +41,7 @@ namespace osgEarth
     class LayerReference
     {
     public:
-        typedef typename T::Options TypedOptions;
+        using TypedOptions = typename T::Options;
 
         LayerReference() : 
             _layer(NULL) { }
@@ -78,8 +77,7 @@ namespace osgEarth
         {
             if (_embeddedOptions.isSet())
             {
-                osg::ref_ptr<Layer> layer = Layer::create(_embeddedOptions.get());
-                osg::ref_ptr<T> typedLayer = dynamic_cast<T*>(layer.get());
+                auto typedLayer = Layer::create_as<T>(_embeddedOptions.get());
                 if (typedLayer)
                 {
                     typedLayer->setReadOptions(readOptions);
@@ -121,8 +119,6 @@ namespace osgEarth
                     if (!layer->isOpen())
                     {
                         layer->open();
-                        //if (layer->isOpen())
-                        //    layer->addedToMap(map);
                     }
                 }
             }
@@ -161,8 +157,8 @@ namespace osgEarth
                 {
                     const Config& tag_content = *conf.child(tag).children().begin();
                     {
-                        osg::ref_ptr<Layer> layer = Layer::create(tag_content);
-                        if (layer.valid() && dynamic_cast<T*>(layer.get()))
+                        auto layer = Layer::create_as<T>(tag_content);
+                        if (layer.valid())
                         {
                             _embeddedOptions = TypedOptions(tag_content);
                         }
@@ -172,14 +168,12 @@ namespace osgEarth
                 // failing that, try each child of the config.
                 if (!_embeddedOptions.isSet())
                 {
-                    for (ConfigSet::const_iterator i = conf.children().begin();
-                        i != conf.children().end();
-                        ++i)
+                    for(auto& child_conf: conf.children())
                     {
-                        osg::ref_ptr<Layer> layer = Layer::create(*i);
-                        if (layer.valid() && dynamic_cast<T*>(layer.get()))
+                        auto layer = Layer::create_as<T>(child_conf);
+                        if (layer.valid())
                         {
-                            _embeddedOptions = TypedOptions(*i);
+                            _embeddedOptions = TypedOptions(child_conf);
                             break;
                         }
                     }
@@ -217,5 +211,3 @@ namespace osgEarth
         optional<std::string> _externalLayerName;
     };
 }
-
-#endif // OSGEARTH_LAYER_REFERENCE_H

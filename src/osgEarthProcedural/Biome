@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_PROCEDURAL_BIOME
 #define OSGEARTH_PROCEDURAL_BIOME 1
 
-#include "Export"
+#include <osgEarthProcedural/Export>
 #include <osgEarth/Config>
 #include <osgEarth/URI>
 #include <osgEarth/Units>

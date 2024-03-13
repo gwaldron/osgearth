@@ -32,6 +32,8 @@
 
 namespace osgEarth { namespace Procedural
 {
+    using namespace osgEarth;
+
     //! Layer that renders geotypical textures on the terrain based on
     //! Biome classification data ("texture splatting").
     class OSGEARTHPROCEDURAL_EXPORT TextureSplattingLayer : public VisibleLayer
@@ -40,15 +42,15 @@ namespace osgEarth { namespace Procedural
         class OSGEARTHPROCEDURAL_EXPORT Options : public VisibleLayer::Options
         {
         public:
-            META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
+            META_LayerOptions(osgEarthProcedural, Options, VisibleLayer::Options);
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION_LAYER(LifeMapLayer, lifeMapLayer);
-            OE_OPTION(int, numLevels);
-            OE_OPTION(bool, useHexTiler);
-            OE_OPTION(float, normalMapPower);
-            OE_OPTION(float, lifeMapMaskThreshold);
-            OE_OPTION(float, displacementDepth);
-            OE_OPTION(unsigned, maxTextureSize);
+            OE_OPTION(int, numLevels, 1);
+            OE_OPTION(bool, useHexTiler, true);
+            OE_OPTION(float, normalMapPower, 1.0f);
+            OE_OPTION(float, lifeMapMaskThreshold, 0.0f);
+            OE_OPTION(float, displacementDepth, 0.1f);
+            OE_OPTION(unsigned, maxTextureSize, 63356);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

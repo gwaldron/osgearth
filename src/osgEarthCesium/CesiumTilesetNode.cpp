@@ -40,10 +40,10 @@ CesiumTilesetNode::CesiumTilesetNode(unsigned int assetID, const std::string& to
     options.contentOptions.generateMissingNormalsSmooth = true;
     Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, assetID, token, options);
 
-    for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
+    for (auto overlay: overlays)
     {
         CesiumRasterOverlays::RasterOverlayOptions rasterOptions;
-        const auto ionRasterOverlay = new CesiumRasterOverlays::IonRasterOverlay("", *overlay, token, rasterOptions);
+        const auto ionRasterOverlay = new CesiumRasterOverlays::IonRasterOverlay("", overlay, token, rasterOptions);
         tileset->getOverlays().add(ionRasterOverlay);
     }    
     _tileset = tileset;
@@ -61,10 +61,10 @@ CesiumTilesetNode::CesiumTilesetNode(const std::string& url, const std::string& 
     options.maximumScreenSpaceError = maximumScreenSpaceError;
     options.contentOptions.generateMissingNormalsSmooth = true;
     Cesium3DTilesSelection::Tileset* tileset = new Cesium3DTilesSelection::Tileset(externals, url, options);
-    for (auto& overlay = overlays.begin(); overlay != overlays.end(); ++overlay)
+    for (auto overlay : overlays)
     {
         CesiumRasterOverlays::RasterOverlayOptions rasterOptions;
-        const auto ionRasterOverlay = new CesiumRasterOverlays::IonRasterOverlay("", *overlay, token, rasterOptions);
+        const auto ionRasterOverlay = new CesiumRasterOverlays::IonRasterOverlay("", overlay, token, rasterOptions);
         tileset->getOverlays().add(ionRasterOverlay);
     }
     _tileset = tileset;

@@ -44,6 +44,11 @@
 using namespace osgEarth;
 using namespace osgEarth::Threading;
 
+namespace
+{
+    static Gate<std::string> uri_gate;    
+}
+
 //------------------------------------------------------------------------
 
 URIStream::URIStream(const URI& uri, std::ios_base::openmode mode) :
@@ -524,6 +529,8 @@ namespace
         const osgDB::Options* dbOptions,
         ProgressCallback*     progress)
     {
+        ScopedGate<std::string> gatelock(uri_gate, inputURI.full());
+
         //osg::Timer_t startTime = osg::Timer::instance()->tick();
 
         unsigned long handle = NetworkMonitor::begin(inputURI.full(), "pending", "URI");

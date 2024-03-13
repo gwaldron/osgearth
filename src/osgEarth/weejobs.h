@@ -1014,7 +1014,7 @@ namespace WEEJOBS_NAMESPACE
             {
                 if (pool != thief)
                 {
-                    if (pool->_queue_size > max_num_jobs)
+                    if (static_cast<std::size_t>(pool->_queue_size) > max_num_jobs)
                     {
                         max_num_jobs = pool->_queue_size;
                         pool_with_most_jobs = pool;

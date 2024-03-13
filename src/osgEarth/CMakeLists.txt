@@ -470,7 +470,7 @@ if(OSGEARTH_ENABLE_IMGUI)
         )
 endif()
 
-if(OSGERATH_BUILD_LEGACY_CONTROLS_API)
+if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
     list(APPEND LIB_PUBLIC_HEADERS
         ActivityMonitorTool
         MouseCoordsTool)

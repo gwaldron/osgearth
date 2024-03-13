@@ -107,7 +107,7 @@ namespace osgEarth { namespace Util
     }
     struct ci_string_less {
         bool operator()(const std::string& lhs, const std::string& rhs) const {
-            for(auto i=0; i<std::min(lhs.size(), rhs.size()); ++i) {
+            for(size_t i=0; i<std::min(lhs.size(), rhs.size()); ++i) {
                 if (std::tolower(lhs[i]) < std::tolower(rhs[i])) return true;
                 if (std::tolower(lhs[i]) > std::tolower(rhs[i])) return false;
             }

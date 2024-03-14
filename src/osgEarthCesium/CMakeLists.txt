@@ -7,7 +7,7 @@ ELSE ()
 ENDIF()
 
 # Add definitions for linking against async++ and spdlog.  Found in the cesium-omniverse project.
-ADD_DEFINITIONS(-DSPDLOG_COMPILED_LIB -DLIBASYNC_STATIC)
+ADD_DEFINITIONS(-DSPDLOG_COMPILED_LIB -DLIBASYNC_STATIC -DGLM_FORCE_XYZW_ONLY -DGLM_FORCE_EXPLICIT_CTOR -DGLM_FORCE_SIZE_T_LENGTH)
 
 set(TARGET_SRC
     AssetAccessor.cpp
@@ -80,15 +80,22 @@ LINK_WITH_VARIABLES(${LIB_NAME}
                     OSGUTIL_LIBRARY
                     OSGDB_LIBRARY
                     OSGTEXT_LIBRARY
-                    CESIUM_NATIVE_3DTILES_LIBRARY                    
+                    
                     CESIUM_NATIVE_3DTILES_SELECTION_LIBRARY
-                    CESIUM_NATIVE_UTILITY_LIBRARY
+                    CESIUM_NATIVE_3DTILES_CONTENT_LIBRARY
+                    CESIUM_NATIVE_3DTILES_LIBRARY                    
+                    CESIUM_NATIVE_RASTER_OVERLAYS_LIBRARY                                       
+                    CESIUM_NATIVE_GLTF_CONTENT_LIBRARY
+                    
                     CESIUM_NATIVE_GLTF_READER_LIBRARY
                     CESIUM_NATIVE_3DTILES_READER_LIBRARY
                     CESIUM_NATIVE_ION_CLIENT_LIBRARY
-                    CESIUM_NATIVE_GEOSPATIAL_LIBRARY
-                    CESIUM_NATIVE_GEOMETRY_LIBRARY
+                    CESIUM_NATIVE_GEOSPATIAL_LIBRARY                    
                     CESIUM_NATIVE_GLTF_LIBRARY
+                    CESIUM_NATIVE_GEOMETRY_LIBRARY
+                    CESIUM_NATIVE_ASYNC_LIBRARY
+                    CESIUM_NATIVE_UTILITY_LIBRARY
+
                     CESIUM_NATIVE_KTX_READ_LIBRARY
                     CESIUM_NATIVE_DRACO_LIBRARY
                     CESIUM_NATIVE_MESHOPTIMIZER_LIBRARY
@@ -99,13 +106,10 @@ LINK_WITH_VARIABLES(${LIB_NAME}
                     CESIUM_NATIVE_TURBOJPEG_LIBRARY
                     CESIUM_NATIVE_CSPRNG_LIBRARY
                     CESIUM_NATIVE_MODPB64_LIBRARY
-                    CESIUM_NATIVE_JSONREADER_LIBRARY
-                    CESIUM_NATIVE_ASYNC_LIBRARY
+                    CESIUM_NATIVE_JSONREADER_LIBRARY                    
                     CESIUM_NATIVE_S2GEOMETRY_LIBRARY
                     CESIUM_NATIVE_TINYXML2_LIBRARY
-                    CESIUM_NATIVE_3DTILES_CONTENT_LIBRARY
-                    CESIUM_NATIVE_GLTF_CONTENT_LIBRARY
-                    CESIUM_NATIVE_RASTER_OVERLAYS_LIBRARY
+                     
                     )
 LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
 

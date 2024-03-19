@@ -289,33 +289,33 @@ TerrainTileModelFactory::addImageLayer(
         tex->category() = LABEL_IMAGERY;
 
         tex->name() =
-            model->key().str() + ":" +
+            model->key.str() + ":" +
             (imageLayer->getName().empty() ? "(unnamed image layer)" : imageLayer->getName());
 
         TerrainTileModel::ColorLayer layerModel;
-        layerModel.layer() = imageLayer;
-        layerModel.texture() = tex;
-        layerModel.matrix() = scaleBiasMatrix;
-        layerModel.revision() = imageLayer->getRevision();
+        layerModel.layer = imageLayer;
+        layerModel.texture = tex;
+        layerModel.matrix = scaleBiasMatrix;
+        layerModel.revision = imageLayer->getRevision();
 
         if (imageLayer->isShared())
         {
-            model->sharedLayerIndices().push_back(
-                model->colorLayers().size());
+            model->sharedLayerIndices.push_back(
+                model->colorLayers.size());
         }
 
         if (imageLayer->isDynamic() || imageLayer->getAsyncLoading())
         {
-            model->requiresUpdateTraversal() = true;
+            model->requiresUpdateTraversal = true;
         }
 
-        model->colorLayers().push_back(std::move(layerModel));
+        model->colorLayers.push_back(std::move(layerModel));
         return true;
     }
 
     return false;
 
-    return &model->colorLayers().back();
+    return &model->colorLayers.back();
 }
 
 void
@@ -348,7 +348,7 @@ TerrainTileModelFactory::addStandaloneImageLayer(
 
     if (added)
     {
-        model->colorLayers().back().matrix() = scaleBiasMatrix;
+        model->colorLayers.back().matrix = scaleBiasMatrix;
     }
 }
 
@@ -398,9 +398,9 @@ TerrainTileModelFactory::addColorLayers(
         else // non-image kind of TILE layer (e.g., splatting)
         {
             TerrainTileModel::ColorLayer colorModel;
-            colorModel.layer() = layer;
-            colorModel.revision() = layer->getRevision();
-            model->colorLayers().push_back(std::move(colorModel));
+            colorModel.layer = layer;
+            colorModel.revision = layer->getRevision();
+            model->colorLayers.push_back(std::move(colorModel));
         }
     }
 }
@@ -445,9 +445,9 @@ TerrainTileModelFactory::addElevation(
     {
         if (elevTex.valid())
         {
-            model->elevation().revision() = combinedRevision;
-            model->elevation().texture() = Texture::create(elevTex.get());
-            model->elevation().texture()->category() = LABEL_ELEVATION;
+            model->elevation.revision = combinedRevision;
+            model->elevation.texture = Texture::create(elevTex.get());
+            model->elevation.texture->category() = LABEL_ELEVATION;
 
             if (_options.useNormalMaps() == true)
             {
@@ -457,13 +457,13 @@ TerrainTileModelFactory::addElevation(
                 if (elevTex->getNormalMapTexture())
                 {
                     elevTex->getNormalMapTexture()->setName(key.str() + ":normalmap");
-                    model->normalMap().texture() = Texture::create(elevTex->getNormalMapTexture());
-                    model->normalMap().texture()->category() = LABEL_NORMALMAP;
+                    model->normalMap.texture = Texture::create(elevTex->getNormalMapTexture());
+                    model->normalMap.texture->category() = LABEL_NORMALMAP;
                 }
             }
 
             // Keep the heightfield pointer around for legacy 3rd party usage (VRF)
-            model->elevation().heightField() = elevTex->getHeightField();
+            model->elevation.heightField = elevTex->getHeightField();
         }
     }
 }
@@ -478,20 +478,20 @@ TerrainTileModelFactory::addStandaloneElevation(
     ProgressCallback*            progress)
 {
     TileKey keyToUse = key;
-    while (keyToUse.valid() && model->elevation().texture() == nullptr)
+    while (keyToUse.valid() && model->elevation.texture == nullptr)
     {
         addElevation(model, map, keyToUse, manifest, border, progress);
 
-        if (model->elevation().texture() == nullptr)
+        if (model->elevation.texture == nullptr)
         {
             keyToUse = keyToUse.createParentKey();
         }
     }
-    if (model->elevation().texture() != nullptr)
+    if (model->elevation.texture != nullptr)
     {
         osg::Matrixf scaleBiasMatrix;
         key.getExtent().createScaleBias(keyToUse.getExtent(), scaleBiasMatrix);
-        model->elevation().matrix() = scaleBiasMatrix;
+        model->elevation.matrix = scaleBiasMatrix;
     }
 }
 
@@ -541,28 +541,28 @@ TerrainTileModelFactory::addLandCover(
 
     if (layers.populateLandCoverImage(coverageImage, key, progress))
     {
-        model->landCover().texture() = createCoverageTexture(coverageImage.get());
+        model->landCover.texture = createCoverageTexture(coverageImage.get());
     }
 
     // if this is the first LOD, and the engine requires that the first LOD
     // be populated, make an empty texture if we didn't get one.
-    if (model->landCover().texture() == nullptr &&
+    if (model->landCover.texture == nullptr &&
         _options.firstLOD() == key.getLOD() &&
         reqs && reqs->fullDataAtFirstLodRequired())
     {
         osg::Image* landCoverImage = LandCover::createImage(1u);
         ImageUtils::PixelWriter writeLC(landCoverImage);
         writeLC(osg::Vec4(0, 0, 0, 0), 0, 0);
-        model->landCover().texture() = Texture::create(landCoverImage);
+        model->landCover.texture = Texture::create(landCoverImage);
     }
 
-    if (model->landCover().texture())
+    if (model->landCover.texture)
     {
-        model->landCover().texture()->category() = LABEL_COVERAGE;
-        model->landCover().texture()->name() = model->key().str() + ":landcover";
+        model->landCover.texture->category() = LABEL_COVERAGE;
+        model->landCover.texture->name() = model->key.str() + ":landcover";
     }
 
-    return model->landCover().texture() != nullptr;
+    return model->landCover.texture != nullptr;
 }
 
 void
@@ -576,10 +576,10 @@ TerrainTileModelFactory::addStandaloneLandCover(
 {
     TileKey keyToUse = key;
     osg::Matrixf scaleBiasMatrix;
-    while (keyToUse.valid() && !model->landCover().texture())
+    while (keyToUse.valid() && !model->landCover.texture)
     {
         addLandCover(model, map, keyToUse, reqs, manifest, progress);
-        if (!model->landCover().texture())
+        if (!model->landCover.texture)
         {
             TileKey parentKey = keyToUse.createParentKey();
             if (parentKey.valid())
@@ -591,9 +591,9 @@ TerrainTileModelFactory::addStandaloneLandCover(
             keyToUse = parentKey;
         }
     }
-    if (model->landCover().texture())
+    if (model->landCover.texture)
     {
-        model->landCover().matrix() = scaleBiasMatrix;
+        model->landCover.matrix = scaleBiasMatrix;
     }
 }
 

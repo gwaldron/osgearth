@@ -16,19 +16,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_TERRAIN_TILE_MODEL_H
-#define OSGEARTH_TERRAIN_TILE_MODEL_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
-#include <osgEarth/ImageLayer>
-#include <osgEarth/PatchLayer>
-#include <osgEarth/Revisioning>
-#include <osgEarth/HeightFieldUtils>
 #include <osgEarth/TextureArena>
-#include <osg/Texture>
+#include <osgEarth/Layer>
 #include <osg/Matrix>
-#include <osg/Node>
 
 namespace osgUtil {
     class StateToCompile;
@@ -44,62 +38,66 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainTileModel : public osg::Referenced
     {
     public:
-        struct OSGEARTH_EXPORT Tile {
-            Tile() : _revision(-1) { }
-            OE_PROPERTY(int, revision);
-            OE_PROPERTY(Texture::Ptr, texture);
-            OE_PROPERTY(osg::Matrixf, matrix);
+        struct Tile
+        {
+            int revision = -1;
+            Texture::Ptr texture;
+            osg::Matrixf matrix;
         };
 
-        struct OSGEARTH_EXPORT ColorLayer : public Tile {
+        struct ColorLayer : public Tile
+        {
             using Vector = std::vector<ColorLayer>;
-            OE_PROPERTY(osg::ref_ptr<Layer>, layer);
+            osg::ref_ptr<Layer> layer;
         };
 
-        struct OSGEARTH_EXPORT Elevation : public Tile {
-            Elevation();
-            OE_PROPERTY(float, minHeight);
-            OE_PROPERTY(float, maxHeight);
-            OE_PROPERTY(osg::ref_ptr<const osg::HeightField>, heightField);
+        struct Elevation : public Tile
+        {
+            float minHeight = FLT_MAX;
+            float maxHeight = -FLT_MAX;
+            osg::ref_ptr<const osg::HeightField> heightField;
         };
 
-        struct OSGEARTH_EXPORT NormalMap : public Tile {
+        struct NormalMap : public Tile
+        {
             // empty
         };
 
-        struct OSGEARTH_EXPORT LandCover : public ColorLayer {
+        struct LandCover : public ColorLayer
+        {
             // empty
         };
 
     public:
         //! Create a new empty data model for a tile/revision pair
-        TerrainTileModel(
-            const TileKey&  key,
-            const Revision& revision);
-
-        //! Map model revision from which this model was created
-        OE_PROPERTY(int, revision);
+        TerrainTileModel(const TileKey& key_, int revision_)  :
+            key(key_), revision(revision_) { }
 
         //! Tile key corresponding to this model
-        OE_PROPERTY(TileKey, key);
+        TileKey key;
+
+        //! Map model revision from which this model was created
+        int revision = -1;
 
         //! Whether some data here requires updates
-        OE_PROPERTY(bool, requiresUpdateTraversal);
+        bool requiresUpdateTraversal = false;
 
         //! Imagery and other surface coloring layers
-        OE_PROPERTY(ColorLayer::Vector, colorLayers);
+        ColorLayer::Vector colorLayers;
 
         //! Indices of shared data layers
-        OE_PROPERTY(std::vector<unsigned>, sharedLayerIndices);
+        std::vector<unsigned> sharedLayerIndices;
 
         //! Elevation data
-        OE_PROPERTY(Elevation, elevation);
+        Elevation elevation;
 
         //! Normal map data
-        OE_PROPERTY(NormalMap, normalMap);
+        NormalMap normalMap;
 
         //! Land coverage data
-        OE_PROPERTY(LandCover, landCover);
+        LandCover landCover;
+
+    public:
 
         //! Get a texture given a layer ID
         Texture::Ptr getTexture(UID layerUID) const;
@@ -114,10 +112,6 @@ namespace osgEarth
             osgUtil::StateToCompile& out,
             bool bindless,
             osg::Object* token) const;
-
-    protected:
-        bool _requiresUpdateTraverse;
     };
 }
 
-#endif // OSGEARTH_TERRAIN_TILE_MODEL_H

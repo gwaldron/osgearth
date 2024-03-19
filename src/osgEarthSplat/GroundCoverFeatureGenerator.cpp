@@ -359,7 +359,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     osg::Matrixf lcMat;
     if (_lclayer.valid())
     {
-        auto t = model->landCover().texture();
+        auto t = model->landCover.texture;
         if (t) lcTex = t->osgTexture();
         if (!lcTex)
         {
@@ -368,7 +368,7 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
         }
         else
         {
-            lcMat = model->landCover().matrix();
+            lcMat = model->landCover.matrix;
         }
     }
     ImageUtils::PixelReader lcSampler;
@@ -377,10 +377,10 @@ GroundCoverFeatureGenerator::getFeatures(const TileKey& key, FeatureList& output
     // elevation
     osg::Texture* elevTex = NULL;
     osg::Matrix elevMat;
-    if (model->elevation().texture())
+    if (model->elevation.texture)
     {
-        elevTex = model->elevation().texture()->osgTexture();
-        elevMat = model->elevation().matrix();
+        elevTex = model->elevation.texture->osgTexture();
+        elevMat = model->elevation.matrix;
     }
     ImageUtils::PixelReader elevSampler;
     elevSampler.setTexture(elevTex);

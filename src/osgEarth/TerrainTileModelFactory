@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_TERRAIN_TILE_MODEL_FACTORY_H
-#define OSGEARTH_TERRAIN_TILE_MODEL_FACTORY_H 1
+#pragma once
 
 #include <osgEarth/TerrainTileModel>
 #include <osgEarth/TerrainOptions>
@@ -187,5 +185,3 @@ namespace osgEarth
         ElevationPool::WorkingSet _workingSet;
     };
 }
-
-#endif // OSGEARTH_TERRAIN_TILE_MODEL_FACTORY_H

@@ -831,15 +831,14 @@ TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifes
     {
         // loop over all the layers included in the new data model and
         // add them to our render model (or update them if they already exist)
-        for(const auto& colorLayer : model->colorLayers())
+        for(const auto& colorLayer : model->colorLayers)
         {
-            auto& layer = colorLayer.layer();
+            auto& layer = colorLayer.layer;
             if (!layer.valid())
                 continue;
 
             // Look up the parent pass in case we need it
-            RenderingPass* pass = 
-                _renderModel.getPass(layer->getUID());
+            RenderingPass* pass = _renderModel.getPass(layer->getUID());
 
             const RenderingPass* parentPass =
                 getParentTile() ? getParentTile()->_renderModel.getPass(layer->getUID()) :
@@ -859,9 +858,9 @@ TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifes
 
                 pass->setSampler(
                     SamplerBinding::COLOR,
-                    colorLayer.texture(),
-                    colorLayer.matrix(),
-                    colorLayer.revision());
+                    colorLayer.texture,
+                    colorLayer.matrix,
+                    colorLayer.revision);
 
                 // If this is a new rendering pass, just copy the color into the color-parent.
                 if (isNewPass && bindings[SamplerBinding::COLOR_PARENT].isActive())
@@ -872,7 +871,7 @@ TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifes
                 // check to see if this data requires an image update traversal.
                 if (_imageUpdatesActive == false)
                 {
-                    _imageUpdatesActive = colorLayer.texture()->needsUpdates();
+                    _imageUpdatesActive = colorLayer.texture->needsUpdates();
                 }
 
                 if (imageLayer->getAsyncLoading())
@@ -892,14 +891,14 @@ TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifes
                     else
                     {
                         // note: this can happen with an async layer load
-                        OE_DEBUG << "no parent pass in my pass. key=" << model->key().str() << std::endl;
+                        OE_DEBUG << "no parent pass in my pass. key=" << model->key.str() << std::endl;
                     }
 
                     // check whether it's actually a futuretexture.
                     // if it's not, it is likely an empty texture and we'll ignore it
-                    if (dynamic_cast<FutureTexture*>(colorLayer.texture()->osgTexture().get()))
+                    if (dynamic_cast<FutureTexture*>(colorLayer.texture->osgTexture().get()))
                     {
-                        pass->sampler(SamplerBinding::COLOR)._futureTexture = colorLayer.texture();
+                        pass->sampler(SamplerBinding::COLOR)._futureTexture = colorLayer.texture;
                     }
 
                     // require an update pass to process the future texture
@@ -914,7 +913,7 @@ TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifes
                 if (!pass)
                 {
                     pass = &_renderModel.addPass();
-                    pass->setLayer(colorLayer.layer().get());
+                    pass->setLayer(colorLayer.layer.get());
                 }
 
                 uidsLoaded.insert(pass->sourceUID());
@@ -964,12 +963,12 @@ TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifes
     const SamplerBinding& elevation = bindings[SamplerBinding::ELEVATION];
     if (elevation.isActive())
     {
-        if (model->elevation().texture())
+        if (model->elevation.texture)
         {
             _renderModel.setSharedSampler(
                 SamplerBinding::ELEVATION,
-                model->elevation().texture(),
-                model->elevation().revision());
+                model->elevation.texture,
+                model->elevation.revision);
 
             updateElevationRaster();
 
@@ -994,12 +993,12 @@ TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifes
     const SamplerBinding& normals = bindings[SamplerBinding::NORMAL];
     if (normals.isActive())
     {
-        if (model->normalMap().texture())
+        if (model->normalMap.texture)
         {
             _renderModel.setSharedSampler(
                 SamplerBinding::NORMAL,
-                model->normalMap().texture(),
-                model->normalMap().revision());
+                model->normalMap.texture,
+                model->normalMap.revision);
 
             updateNormalMap();
         }
@@ -1019,12 +1018,12 @@ TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifes
     const SamplerBinding& landCover = bindings[SamplerBinding::LANDCOVER];
     if (landCover.isActive())
     {
-        if (model->landCover().texture())
+        if (model->landCover.texture)
         {
             _renderModel.setSharedSampler(
                 SamplerBinding::LANDCOVER,
-                model->landCover().texture(),
-                model->landCover().revision());
+                model->landCover.texture,
+                model->landCover.revision);
         }
 
         else if (
@@ -1040,13 +1039,13 @@ TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifes
     // Other Shared Layers:
     uidsLoaded.clear();
 
-    for(unsigned index : model->sharedLayerIndices())
+    for(unsigned index : model->sharedLayerIndices)
     {
-        auto& sharedLayer = model->colorLayers()[index];
-        if (sharedLayer.texture())
+        auto& sharedLayer = model->colorLayers[index];
+        if (sharedLayer.texture)
         {
             // locate the shared binding corresponding to this layer:
-            UID uid = sharedLayer.layer()->getUID();
+            UID uid = sharedLayer.layer->getUID();
             unsigned bindingIndex = INT_MAX;
             for(unsigned i=SamplerBinding::SHARED; i<bindings.size() && bindingIndex==INT_MAX; ++i)
             {
@@ -1060,8 +1059,8 @@ TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifes
             {
                 _renderModel.setSharedSampler(
                     bindingIndex,
-                    sharedLayer.texture(),
-                    sharedLayer.revision());
+                    sharedLayer.texture,
+                    sharedLayer.revision);
 
                 uidsLoaded.insert(uid);
             }

@@ -175,100 +175,7 @@ LoadRasterMainThreadResult::~LoadRasterMainThreadResult()
 
 
 /********/
-// TODO:  Move to own class
-class NodeBuilder
-{
-public:
-    NodeBuilder(CesiumGltf::Model* model, const glm::dmat4& transform) :
-        _model(model),
-        _transform(transform)
-    {
-        loadArrays();
-        loadTextures();        
-    }
-
-    osg::Node* build()
-    {
-        osg::MatrixTransform* root = new osg::MatrixTransform;
-        osg::Matrixd matrix;
-
-        glm::dmat4x4 rootTransform = _transform;
-        rootTransform = CesiumGltfContent::GltfUtilities::applyRtcCenter(*_model, rootTransform);
-        rootTransform = CesiumGltfContent::GltfUtilities::applyGltfUpAxisTransform(*_model, rootTransform);
-        matrix.set(glm::value_ptr(rootTransform));
-
-        //matrix.set(glm::value_ptr(_transform));
-        root->setMatrix(matrix);
-        
-        if (!_model->scenes.empty())
-        {
-            for (auto& scene : _model->scenes)
-            {
-                for (int node : scene.nodes)
-                {
-                    root->addChild(createNode(_model->nodes[node]));
-                }
-            }
-        }
-        else
-        {
-            for (auto itr = _model->nodes.begin(); itr != _model->nodes.end(); ++itr)
-            {
-                root->addChild(createNode(*itr));
-            }
-        }
-
-        osgEarth::Registry::shaderGenerator().run(root);
-        osg::Group* container = new osg::Group;
-        container->addChild(root);
-        return container;
-    }
-
-    osg::Node* createNode(const CesiumGltf::Node& node)
-    {
-        osg::MatrixTransform* root = new osg::MatrixTransform;
-        if (node.matrix.size() == 16)
-        {
-            osg::Matrixd matrix;
-            matrix.set(node.matrix.data());
-            root->setMatrix(matrix);
-        }
-
-
-        if (root->getMatrix().isIdentity())
-        {
-            osg::Matrixd scale, translation, rotation;
-            if (node.scale.size() == 3)
-            {
-                scale = osg::Matrixd::scale(node.scale[0], node.scale[1], node.scale[2]);
-            }
-
-            if (node.rotation.size() == 4) {
-                osg::Quat quat(node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]);
-                rotation.makeRotate(quat);
-            }
-
-            if (node.translation.size() == 3) {
-                translation = osg::Matrixd::translate(node.translation[0], node.translation[1], node.translation[2]);
-            }
-
-            root->setMatrix(scale * rotation * translation);
-        }
-
-        if (node.mesh >= 0)
-        {
-            // Build the mesh and add it.
-            // TODO:  This mesh needs cached since it can be reused and referenced elsewhere.
-            root->addChild(createMesh(_model->meshes[node.mesh]));
-        }
-
-        for (int child : node.children)
-        {
-            root->addChild(createNode(_model->nodes[child]));
-        }
-
-        return root;
-    }
+namespace {
 
     template<typename T>
     osg::Array* accessorViewToArray(const CesiumGltf::AccessorView<T>& accessorView)
@@ -350,226 +257,321 @@ public:
         return result;
     }
 
-    void loadArrays()
+    class NodeBuilder
     {
-        for (unsigned int i = 0; i < _model->accessors.size(); ++i)
+    public:
+        NodeBuilder(CesiumGltf::Model* model, const glm::dmat4& transform) :
+            _model(model),
+            _transform(transform)
         {
-            osg::ref_ptr< osg::Array > osgArray = nullptr;
-            CesiumGltf::createAccessorView(*this->_model, i, [&](const auto& accessorView) {
-                osgArray = accessorViewToArray(accessorView);
-                });
-
-            if (osgArray)
-            {
-                osgArray->setBinding(osg::Array::BIND_PER_VERTEX);
-                osgArray->setNormalize(_model->accessors[i].normalized);
-                _arrays.push_back(osgArray);
-            }
-            else
-            {
-                _arrays.push_back(nullptr);
-            }
+            loadArrays();
+            loadTextures();        
         }
-    }
 
-    void loadTextures()
-    {
-        for (unsigned int i = 0; i < _model->textures.size(); ++i)
+        osg::Node* build()
         {
-            auto& texture = _model->textures[i];
+            osg::MatrixTransform* root = new osg::MatrixTransform;
+            osg::Matrixd matrix;
 
-            osg::Texture2D* osgTexture = new osg::Texture2D;
-            osgTexture->setResizeNonPowerOfTwoHint(false);
-            osgTexture->setDataVariance(osg::Object::STATIC);
-            // Sampler settings
-            if (texture.sampler >= 0 && texture.sampler < _model->samplers.size())
+            glm::dmat4x4 rootTransform = _transform;
+            rootTransform = CesiumGltfContent::GltfUtilities::applyRtcCenter(*_model, rootTransform);
+            rootTransform = CesiumGltfContent::GltfUtilities::applyGltfUpAxisTransform(*_model, rootTransform);
+            matrix.set(glm::value_ptr(rootTransform));
+
+            //matrix.set(glm::value_ptr(_transform));
+            root->setMatrix(matrix);
+        
+            if (!_model->scenes.empty())
             {
-                auto& sampler = _model->samplers[texture.sampler];
-
-                // TODO?  Actually set filter?
-                osgTexture->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR_MIPMAP_LINEAR); //sampler.minFilter);
-                osgTexture->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR); //sampler.magFilter);
-                osgTexture->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)sampler.wrapS);
-                osgTexture->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)sampler.wrapT);
-                //osgTexture->setWrap(osg::Texture::WRAP_R, (osg::Texture::WrapMode)sampler.wrapR);
-            }
-            else
-            {
-                osgTexture->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR_MIPMAP_LINEAR);
-                osgTexture->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR);
-                osgTexture->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)osg::Texture::CLAMP_TO_EDGE);
-                osgTexture->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)osg::Texture::CLAMP_TO_EDGE);
-            }
-
-            // Load the image
-            auto& image = _model->images[texture.source].cesium;
-
-            osg::Image* osgImage = getOsgImage(image);
-
-            if (osgImage)
-            {
-                osgTexture->setImage(osgImage);
-            }
-
-            _textures.push_back(osgTexture);
-        }
-    }
-
-    osg::Node* createMesh(const CesiumGltf::Mesh& mesh)
-    {
-        osg::Group* geode = new osg::Group;
-        for (auto primitive : mesh.primitives)
-        {
-            osg::ref_ptr< osg::Geometry> geom = new osg::Geometry;
-            geom->setUseDisplayList(false);
-            geom->setUseVertexBufferObjects(true);
-
-            for (auto& attribute : primitive.attributes)
-            {
-                const std::string& name = attribute.first;
-                osg::Array* osgArray = _arrays[attribute.second];
-                if (name == "POSITION")
+                for (auto& scene : _model->scenes)
                 {
-                    geom->setVertexArray(osgArray);
-                }
-                else if (name == "COLOR_0")
-                {
-                    geom->setColorArray(osgArray);
-                }
-                else if (name == "NORMAL")
-                {
-                    geom->setNormalArray(osgArray);
-                }
-                else if (name == "TEXCOORD_0")
-                {
-                    geom->setTexCoordArray(0, osgArray);
-                }
-                else if (name == "TEXCOORD_1")
-                {
-                    geom->setTexCoordArray(1, osgArray);
-                }
-
-                // Look for Cesium Overlay texture coordinates.
-                const std::string CESIUM_OVERLAY = "_CESIUMOVERLAY_";
-                if (osgEarth::startsWith(name, CESIUM_OVERLAY))
-                {
-                    int index = std::stoi(name.substr(CESIUM_OVERLAY.length()));
-
-                    // Not sure how many overlays or tex coords we should support.  For now we'll support 2 texture coords and two overlays so stick the 
-                    // overlay texture coordinates at an index of index + 2.  Revisit this later.
-                    geom->setTexCoordArray(index + 2, osgArray);
-                }
-            }
-
-            // If there is no color array just add one
-            if (!geom->getColorArray())
-            {
-                osg::Vec4Array* colors = new osg::Vec4Array();
-                osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
-                for (unsigned int i = 0; i < verts->size(); i++)
-                {
-                    colors->push_back(osg::Vec4(1, 1, 1, 1));
-                }
-                geom->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
-            }
-
-            if (primitive.indices >= 0)
-            {
-                osg::Array* primitiveArray = _arrays[primitive.indices];
-                GLenum mode = GL_TRIANGLES;
-                switch (primitive.mode)
-                {
-                case CesiumGltf::MeshPrimitive::Mode::TRIANGLES:
-                    mode = GL_TRIANGLES;
-                    break;
-                case CesiumGltf::MeshPrimitive::Mode::TRIANGLE_FAN:
-                    mode = GL_TRIANGLE_FAN;
-                    break;
-                case CesiumGltf::MeshPrimitive::Mode::TRIANGLE_STRIP:
-                    mode = GL_TRIANGLE_STRIP;
-                    break;
-                case CesiumGltf::MeshPrimitive::Mode::LINES:
-                    mode = GL_LINES;
-                    break;
-                case CesiumGltf::MeshPrimitive::Mode::LINE_LOOP:
-                    mode = GL_LINES;
-                    break;
-                case CesiumGltf::MeshPrimitive::Mode::LINE_STRIP:
-                    mode = GL_LINE_STRIP;
-                    break;
-                case CesiumGltf::MeshPrimitive::Mode::POINTS:
-                    mode = GL_POINTS;
-                    break;
-                }
-
-                switch (primitiveArray->getType())
-                {
-                case osg::Array::UShortArrayType:
-                {
-                    osg::UShortArray* indices = static_cast<osg::UShortArray*>(primitiveArray);
-                    osg::DrawElementsUShort* drawElements = new osg::DrawElementsUShort(mode, indices->begin(), indices->end());
-                    geom->addPrimitiveSet(drawElements);
-                    break;
-                }
-                case osg::Array::UIntArrayType:
-                {
-                    osg::UIntArray* indices = static_cast<osg::UIntArray*>(primitiveArray);
-                    osg::DrawElementsUInt* drawElements
-                        = new osg::DrawElementsUInt(mode, indices->begin(), indices->end());
-                    geom->addPrimitiveSet(drawElements);
-                    break;
-                }
-                case osg::Array::UByteArrayType:
-                {
-                    osg::UByteArray* indices = static_cast<osg::UByteArray*>(primitiveArray);
-                    // DrawElementsUByte doesn't have the constructor with iterator arguments.
-                    osg::DrawElementsUByte* drawElements = new osg::DrawElementsUByte(mode, indices->size());
-                    std::copy(indices->begin(), indices->end(), drawElements->begin());
-                    geom->addPrimitiveSet(drawElements);
-                    break;
-                }
-                }
-            }
-            else
-            {
-                // If there are no primitives and we have a vertex array assume it is a point cloud.
-                geom->addPrimitiveSet(new osg::DrawArrays(GL_POINTS, 0, geom->getVertexArray()->getNumElements()));
-            }
-
-
-            if (primitive.material >= 0 && primitive.material < _model->materials.size())
-            {
-                osg::StateSet* stateSet = geom->getOrCreateStateSet();
-                auto& material = _model->materials[primitive.material];
-                auto pbr = material.pbrMetallicRoughness;
-                if (pbr->baseColorFactor.size() > 0) {
-                    osgEarth::MaterialGL3* material = new osgEarth::MaterialGL3();
-                    osg::Vec4d color(pbr->baseColorFactor[0], pbr->baseColorFactor[1], pbr->baseColorFactor[2], pbr->baseColorFactor[3]);
-                    material->setDiffuse(osg::Material::FRONT_AND_BACK, color);
-                    stateSet->setAttributeAndModes(material);
-                }
-                if (pbr->baseColorTexture.has_value()) {
-                    unsigned int baseColorTexture = pbr->baseColorTexture->index;
-                    if (baseColorTexture >= 0 && baseColorTexture < _textures.size())
+                    for (int node : scene.nodes)
                     {
-                        stateSet->setTextureAttributeAndModes(0, _textures[baseColorTexture], osg::StateAttribute::ON);
+                        root->addChild(createNode(_model->nodes[node]));
                     }
                 }
             }
+            else
+            {
+                for (auto itr = _model->nodes.begin(); itr != _model->nodes.end(); ++itr)
+                {
+                    root->addChild(createNode(*itr));
+                }
+            }
 
-            geode->addChild(geom);
-
-
+            osgEarth::Registry::shaderGenerator().run(root);
+            osg::Group* container = new osg::Group;
+            container->addChild(root);
+            return container;
         }
-        return geode;
-    }
 
-    glm::dmat4 _transform;
-    CesiumGltf::Model* _model;
+        osg::Node* createNode(const CesiumGltf::Node& node)
+        {
+            osg::MatrixTransform* root = new osg::MatrixTransform;
+            if (node.matrix.size() == 16)
+            {
+                osg::Matrixd matrix;
+                matrix.set(node.matrix.data());
+                root->setMatrix(matrix);
+            }
 
-    std::vector< osg::ref_ptr< osg::Array> > _arrays;
-    std::vector< osg::ref_ptr< osg::Texture2D > > _textures;
-};
+
+            if (root->getMatrix().isIdentity())
+            {
+                osg::Matrixd scale, translation, rotation;
+                if (node.scale.size() == 3)
+                {
+                    scale = osg::Matrixd::scale(node.scale[0], node.scale[1], node.scale[2]);
+                }
+
+                if (node.rotation.size() == 4) {
+                    osg::Quat quat(node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]);
+                    rotation.makeRotate(quat);
+                }
+
+                if (node.translation.size() == 3) {
+                    translation = osg::Matrixd::translate(node.translation[0], node.translation[1], node.translation[2]);
+                }
+
+                root->setMatrix(scale * rotation * translation);
+            }
+
+            if (node.mesh >= 0)
+            {
+                // Build the mesh and add it.
+                // TODO:  This mesh needs cached since it can be reused and referenced elsewhere.
+                root->addChild(createMesh(_model->meshes[node.mesh]));
+            }
+
+            for (int child : node.children)
+            {
+                root->addChild(createNode(_model->nodes[child]));
+            }
+
+            return root;
+        }    
+
+        void loadArrays()
+        {
+            for (unsigned int i = 0; i < _model->accessors.size(); ++i)
+            {
+                osg::ref_ptr< osg::Array > osgArray = nullptr;
+                CesiumGltf::createAccessorView(*this->_model, i, [&](const auto& accessorView) {
+                    osgArray = accessorViewToArray(accessorView);
+                    });
+
+                if (osgArray)
+                {
+                    osgArray->setBinding(osg::Array::BIND_PER_VERTEX);
+                    osgArray->setNormalize(_model->accessors[i].normalized);
+                    _arrays.push_back(osgArray);
+                }
+                else
+                {
+                    _arrays.push_back(nullptr);
+                }
+            }
+        }
+
+        void loadTextures()
+        {
+            for (unsigned int i = 0; i < _model->textures.size(); ++i)
+            {
+                auto& texture = _model->textures[i];
+
+                osg::Texture2D* osgTexture = new osg::Texture2D;
+                osgTexture->setResizeNonPowerOfTwoHint(false);
+                osgTexture->setDataVariance(osg::Object::STATIC);
+                // Sampler settings
+                if (texture.sampler >= 0 && texture.sampler < _model->samplers.size())
+                {
+                    auto& sampler = _model->samplers[texture.sampler];
+
+                    // TODO?  Actually set filter?
+                    osgTexture->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR_MIPMAP_LINEAR); //sampler.minFilter);
+                    osgTexture->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR); //sampler.magFilter);
+                    osgTexture->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)sampler.wrapS);
+                    osgTexture->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)sampler.wrapT);
+                    //osgTexture->setWrap(osg::Texture::WRAP_R, (osg::Texture::WrapMode)sampler.wrapR);
+                }
+                else
+                {
+                    osgTexture->setFilter(osg::Texture::MIN_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR_MIPMAP_LINEAR);
+                    osgTexture->setFilter(osg::Texture::MAG_FILTER, (osg::Texture::FilterMode)osg::Texture::LINEAR);
+                    osgTexture->setWrap(osg::Texture::WRAP_S, (osg::Texture::WrapMode)osg::Texture::CLAMP_TO_EDGE);
+                    osgTexture->setWrap(osg::Texture::WRAP_T, (osg::Texture::WrapMode)osg::Texture::CLAMP_TO_EDGE);
+                }
+
+                // Load the image
+                auto& image = _model->images[texture.source].cesium;
+
+                osg::Image* osgImage = getOsgImage(image);
+
+                if (osgImage)
+                {
+                    osgTexture->setImage(osgImage);
+                }
+
+                _textures.push_back(osgTexture);
+            }
+        }
+
+        osg::Node* createMesh(const CesiumGltf::Mesh& mesh)
+        {
+            osg::Group* geode = new osg::Group;
+            for (auto primitive : mesh.primitives)
+            {
+                osg::ref_ptr< osg::Geometry> geom = new osg::Geometry;
+                geom->setUseDisplayList(false);
+                geom->setUseVertexBufferObjects(true);
+
+                for (auto& attribute : primitive.attributes)
+                {
+                    const std::string& name = attribute.first;
+                    osg::Array* osgArray = _arrays[attribute.second];
+                    if (name == "POSITION")
+                    {
+                        geom->setVertexArray(osgArray);
+                    }
+                    else if (name == "COLOR_0")
+                    {
+                        geom->setColorArray(osgArray);
+                    }
+                    else if (name == "NORMAL")
+                    {
+                        geom->setNormalArray(osgArray);
+                    }
+                    else if (name == "TEXCOORD_0")
+                    {
+                        geom->setTexCoordArray(0, osgArray);
+                    }
+                    else if (name == "TEXCOORD_1")
+                    {
+                        geom->setTexCoordArray(1, osgArray);
+                    }
+
+                    // Look for Cesium Overlay texture coordinates.
+                    const std::string CESIUM_OVERLAY = "_CESIUMOVERLAY_";
+                    if (osgEarth::startsWith(name, CESIUM_OVERLAY))
+                    {
+                        int index = std::stoi(name.substr(CESIUM_OVERLAY.length()));
+
+                        // Not sure how many overlays or tex coords we should support.  For now we'll support 2 texture coords and two overlays so stick the 
+                        // overlay texture coordinates at an index of index + 2.  Revisit this later.
+                        geom->setTexCoordArray(index + 2, osgArray);
+                    }
+                }
+
+                // If there is no color array just add one
+                if (!geom->getColorArray())
+                {
+                    osg::Vec4Array* colors = new osg::Vec4Array();
+                    osg::Vec3Array* verts = static_cast<osg::Vec3Array*>(geom->getVertexArray());
+                    for (unsigned int i = 0; i < verts->size(); i++)
+                    {
+                        colors->push_back(osg::Vec4(1, 1, 1, 1));
+                    }
+                    geom->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
+                }
+
+                if (primitive.indices >= 0)
+                {
+                    osg::Array* primitiveArray = _arrays[primitive.indices];
+                    GLenum mode = GL_TRIANGLES;
+                    switch (primitive.mode)
+                    {
+                    case CesiumGltf::MeshPrimitive::Mode::TRIANGLES:
+                        mode = GL_TRIANGLES;
+                        break;
+                    case CesiumGltf::MeshPrimitive::Mode::TRIANGLE_FAN:
+                        mode = GL_TRIANGLE_FAN;
+                        break;
+                    case CesiumGltf::MeshPrimitive::Mode::TRIANGLE_STRIP:
+                        mode = GL_TRIANGLE_STRIP;
+                        break;
+                    case CesiumGltf::MeshPrimitive::Mode::LINES:
+                        mode = GL_LINES;
+                        break;
+                    case CesiumGltf::MeshPrimitive::Mode::LINE_LOOP:
+                        mode = GL_LINES;
+                        break;
+                    case CesiumGltf::MeshPrimitive::Mode::LINE_STRIP:
+                        mode = GL_LINE_STRIP;
+                        break;
+                    case CesiumGltf::MeshPrimitive::Mode::POINTS:
+                        mode = GL_POINTS;
+                        break;
+                    }
+
+                    switch (primitiveArray->getType())
+                    {
+                    case osg::Array::UShortArrayType:
+                    {
+                        osg::UShortArray* indices = static_cast<osg::UShortArray*>(primitiveArray);
+                        osg::DrawElementsUShort* drawElements = new osg::DrawElementsUShort(mode, indices->begin(), indices->end());
+                        geom->addPrimitiveSet(drawElements);
+                        break;
+                    }
+                    case osg::Array::UIntArrayType:
+                    {
+                        osg::UIntArray* indices = static_cast<osg::UIntArray*>(primitiveArray);
+                        osg::DrawElementsUInt* drawElements
+                            = new osg::DrawElementsUInt(mode, indices->begin(), indices->end());
+                        geom->addPrimitiveSet(drawElements);
+                        break;
+                    }
+                    case osg::Array::UByteArrayType:
+                    {
+                        osg::UByteArray* indices = static_cast<osg::UByteArray*>(primitiveArray);
+                        // DrawElementsUByte doesn't have the constructor with iterator arguments.
+                        osg::DrawElementsUByte* drawElements = new osg::DrawElementsUByte(mode, indices->size());
+                        std::copy(indices->begin(), indices->end(), drawElements->begin());
+                        geom->addPrimitiveSet(drawElements);
+                        break;
+                    }
+                    }
+                }
+                else
+                {
+                    // If there are no primitives and we have a vertex array assume it is a point cloud.
+                    geom->addPrimitiveSet(new osg::DrawArrays(GL_POINTS, 0, geom->getVertexArray()->getNumElements()));
+                }
+
+
+                if (primitive.material >= 0 && primitive.material < _model->materials.size())
+                {
+                    osg::StateSet* stateSet = geom->getOrCreateStateSet();
+                    auto& material = _model->materials[primitive.material];
+                    auto pbr = material.pbrMetallicRoughness;
+                    if (pbr->baseColorFactor.size() > 0) {
+                        osgEarth::MaterialGL3* material = new osgEarth::MaterialGL3();
+                        osg::Vec4d color(pbr->baseColorFactor[0], pbr->baseColorFactor[1], pbr->baseColorFactor[2], pbr->baseColorFactor[3]);
+                        material->setDiffuse(osg::Material::FRONT_AND_BACK, color);
+                        stateSet->setAttributeAndModes(material);
+                    }
+                    if (pbr->baseColorTexture.has_value()) {
+                        unsigned int baseColorTexture = pbr->baseColorTexture->index;
+                        if (baseColorTexture >= 0 && baseColorTexture < _textures.size())
+                        {
+                            stateSet->setTextureAttributeAndModes(0, _textures[baseColorTexture], osg::StateAttribute::ON);
+                        }
+                    }
+                }
+
+                geode->addChild(geom);
+
+
+            }
+            return geode;
+        }
+
+        glm::dmat4 _transform;
+        CesiumGltf::Model* _model;
+
+        std::vector< osg::ref_ptr< osg::Array> > _arrays;
+        std::vector< osg::ref_ptr< osg::Texture2D > > _textures;
+    };
+}
 /********/
 
 CesiumAsync::Future<Cesium3DTilesSelection::TileLoadResultAndRenderResources>

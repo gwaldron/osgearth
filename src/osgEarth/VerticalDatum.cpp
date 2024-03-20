@@ -80,21 +80,21 @@ VerticalDatum::get( const std::string& initString )
 // --------------------------------------------------------------------------
 
 VerticalDatum::VerticalDatum(const std::string& name,
-                             const std::string& initString,
-                             Geoid*             geoid ) :
-_name      ( name ),
-_initString( initString ),
-_geoid     ( geoid ),
-_units     ( Units::METERS )
+    const std::string& initString,
+    Geoid* geoid) :
+    _name(name),
+    _initString(initString),
+    _geoid(geoid),
+    _units(Units::METERS)
 {
-    if ( _geoid.valid() )
+    if (_geoid.valid())
         _units = _geoid->getUnits();
 }
 
-VerticalDatum::VerticalDatum( const Units& units ) :
-_name      ( units.getName() ),
-_initString( units.getName() ),
-_units     ( units )
+VerticalDatum::VerticalDatum(const UnitsType& units) :
+    _name(units.getName()),
+    _initString(units.getName()),
+    _units(units)
 {
     //nop
 }
@@ -114,8 +114,8 @@ VerticalDatum::transform(const VerticalDatum* from,
         in_out_z = from->msl2hae( lat_deg, lon_deg, in_out_z );
     }
 
-    Units fromUnits = from ? from->getUnits() : Units::METERS;
-    Units toUnits = to ? to->getUnits() : Units::METERS;
+    auto fromUnits = from ? from->getUnits() : Units::METERS;
+    auto toUnits = to ? to->getUnits() : Units::METERS;
 
     in_out_z = fromUnits.convertTo(toUnits, in_out_z);
 

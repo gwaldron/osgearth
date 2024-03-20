@@ -43,28 +43,22 @@ using namespace osgEarth;
 
 #define LC "[Registry] "
 
+namespace
+{
+    osg::ref_ptr<osgEarth::Registry> g_registry = nullptr;
+}
+
 void osgEarth::initialize()
 {
-    OE_INFO << "Hello, world." << std::endl;
-
-    // creates a registry and initializes the system caps
-    osgEarth::Registry::instance()->getCapabilities();
-
-    if (::getenv("OSGEARTH_GL_DEBUG"))
+    // Create the registry singleton.
+    // It will be destroyed on program exit automatically.
+    if (!g_registry.valid())
     {
-        GLUtils::enableGLDebugging();
+        g_registry = Registry::instance();
     }
 
-    if (::getenv("OSGEARTH_VP_DEBUG"))
-    {
-        GLUtils::enableGLDebugging();
-        VirtualProgram::enableGLDebugging();
-    }
-
-    if (::getenv("OSGEARTH_USE_NVGL") || ::getenv("OSGEARTH_USE_GL4"))
-    {
-        GLUtils::useNVGL(true);
-    }
+    // Query the system capabilities
+    g_registry->getCapabilities();
 
     // Tell the weetjobs library how to set a thread name
     jobs::set_thread_name_function([](const char* value) {
@@ -114,6 +108,9 @@ Registry::Registry() :
     _maxVertsPerDrawable(UINT_MAX),
     _maxImageDimension(INT_MAX)
 {
+    OE_INFO << "Hello, world." << std::endl;
+    //OE_INFO << LC << "Registry starting up" << std::endl;
+
     // set up GDAL and OGR.
     OGRRegisterAll();
     GDALAllRegister();
@@ -140,6 +137,23 @@ Registry::Registry() :
     // global initialization for CURL (not thread safe)
     HTTPClient::globalInit();
 
+    // GL debugging environment variables
+    if (::getenv("OSGEARTH_GL_DEBUG"))
+    {
+        GLUtils::enableGLDebugging();
+    }
+
+    if (::getenv("OSGEARTH_VP_DEBUG"))
+    {
+        GLUtils::enableGLDebugging();
+        VirtualProgram::enableGLDebugging();
+    }
+
+    if (::getenv("OSGEARTH_USE_NVGL") || ::getenv("OSGEARTH_USE_GL4"))
+    {
+        GLUtils::useNVGL(true);
+    }
+
     // warn if GDAL_DATA is not set
     if (::getenv("GDAL_DATA") == NULL)
         OE_INFO << LC << "Note: GDAL_DATA environment variable is not set" << std::endl;
@@ -155,7 +169,9 @@ Registry::Registry() :
     _unRefImageDataAfterApply = false;
 
     if (::getenv("OSGEARTH_DISABLE_UNREF_AFTER_APPLY"))
+    {
         _unRefImageDataAfterApply = false;
+    }
 
     // activate KMZ support
     osgDB::Registry::instance()->addArchiveExtension( "kmz" );
@@ -225,7 +241,8 @@ Registry::Registry() :
     const char* maxVerts = getenv("OSGEARTH_MAX_VERTS_PER_DRAWABLE");
     if (maxVerts)
     {
-        sscanf(maxVerts, "%u", &_maxVertsPerDrawable);
+        _maxVertsPerDrawable = std::atoi(maxVerts);
+
         if (_maxVertsPerDrawable < 1024)
             _maxVertsPerDrawable = 65536;
     }
@@ -260,54 +277,64 @@ Registry::Registry() :
 
 Registry::~Registry()
 {
-    OE_DEBUG << LC << "Registry shutting down...\n";
+    OE_DEBUG << LC << "Registry shutting down..." << std::endl;
+
     // A heavy hammer, but at this stage, which is usually application
     // shutdown, various osgEarth objects (e.g., VirtualPrograms) are
     // in the OSG cache and will cause a crash when they are deleted later.
     osgDB::Registry::instance()->clearObjectCache();
-    OE_DEBUG << LC << "Registry shutdown complete.\n";
 
     // pop the custom error handler
     CPLPopErrorHandler();
+
+    // Release any GL objects
+    release();
+
+    OE_INFO << "Goodbye." << std::endl;
 }
 
-static osg::ref_ptr<Registry> s_registry = NULL;
-
-// Destroy the registry explicitly: this is called in an atexit() hook.  See comment in
-// Registry::instance(bool reset).
-void destroyRegistry()
-{
-   s_registry->release();
-   s_registry = NULL;
-}
+//// Destroy the registry explicitly: this is called in an atexit() hook.  See comment in
+//// Registry::instance(bool reset).
+//void destroyRegistry()
+//{
+//    if (g_registry.valid())
+//    {
+//        g_registry->release();
+//        g_registry = nullptr;
+//    }
+//}
 
 Registry*
-Registry::instance(bool reset)
+Registry::instance()
 {
     // Make sure the gdal mutex is created before the Registry so it will still be around when the registry is destroyed statically.
     // This is to prevent crash on exit where the gdal mutex is deleted before the registry is.
-    osgEarth::getGDALMutex();
 
-    static bool s_registryInit = false;
+    //static bool s_registryInit = false;
 
     // Create registry the first time through, explicitly rather than depending on static object
     // initialization order, which is undefined in c++ across separate compilation units.  An
     // explicit hook is registered to tear it down on exit.  atexit() hooks are run on exit in
     // the reverse order of their registration during setup.
-    if (!s_registryInit)
+    if (!g_registry.valid())
     {
-        s_registryInit = true;
-        s_registry = new Registry;
-        std::atexit(destroyRegistry);
+        g_registry = new Registry();
     }
 
-    if (reset)
-    {
-        s_registry->release();
-        s_registry = new Registry();
-    }
+    //if (!s_registryInit)
+    //{
+    //    s_registryInit = true;
+    //    s_registry = new Registry;
+    //    std::atexit(destroyRegistry);
+    //}
 
-    return s_registry.get();
+    //if (reset)
+    //{
+    //    s_registry->release();
+    //    s_registry = new Registry();
+    //}
+
+    return g_registry.get();
 }
 
 void
@@ -671,33 +698,25 @@ Registry::cloneOrCreateOptions(const osgDB::Options* input)
 }
 
 void
-Registry::registerUnits( const Units* units )
+Registry::registerUnits(const UnitsType& prototype)
 {
     std::lock_guard<std::mutex> lock(_regMutex);
-    _unitsVector.push_back(units);
+    _unitsVector.push_back(prototype);
 }
 
-const Units*
+UnitsType
 Registry::getUnits(const std::string& name) const
 {
     std::lock_guard<std::mutex> lock(_regMutex);
-    std::string lower = toLower(name);
-    for( UnitsVector::const_iterator i = _unitsVector.begin(); i != _unitsVector.end(); ++i )
+    for (auto& units : _unitsVector)
     {
-        if (toLower((*i)->getName()) == lower ||
-            toLower((*i)->getAbbr()) == lower)
+        if (ci_equals(name, units.getName()) || ci_equals(name, units.getAbbr()))
         {
-            return *i;
+            return units;
         }
     }
-    return 0L;
+    return { };
 }
-
-//void
-//Registry::setDefaultTerrainEngineDriverName(const std::string& name)
-//{
-//    _terrainEngineDriver = name;
-//}
 
 void
 Registry::setDefaultCacheDriverName(const std::string& name)

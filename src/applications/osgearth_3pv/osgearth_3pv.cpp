@@ -194,7 +194,7 @@ main( int argc, char** argv )
 {
     osgEarth::initialize();
 
-    static char debugEnv[] = "OSGEARTH_REX_DEBUG=1";
+    const char debugEnv[] = "OSGEARTH_REX_DEBUG=1";
     putenv(debugEnv);
 
     osg::ArgumentParser arguments( &argc, argv );

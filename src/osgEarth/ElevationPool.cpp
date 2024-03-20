@@ -461,7 +461,7 @@ ElevationPool::prepareEnvelope(
     env._pxmin = env._profile->getExtent().xMin();
     env._pymin = env._profile->getExtent().yMin();
 
-    const Units& units = env._map->getSRS()->getUnits();
+    auto& units = env._map->getSRS()->getUnits();
     Distance pointRes(0.0, units);
 
     GeoPoint refPointMap = refPoint.transform(env._map->getSRS());
@@ -637,7 +637,7 @@ ElevationPool::sampleMapCoords(
 
     int lod;
     int lod_prev = INT_MAX;
-    const Units& units = map->getSRS()->getUnits();
+    auto& units = map->getSRS()->getUnits();
     Distance pointRes(0.0, units);
 
     for(auto iter = begin; iter != end; ++iter)
@@ -778,7 +778,7 @@ ElevationPool::sampleMapCoords(
 
     int lod;
     int lod_prev = INT_MAX;
-    const Units& units = map->getSRS()->getUnits();
+    auto& units = map->getSRS()->getUnits();
 
     for(auto iter = begin; iter != end; ++iter)
     {

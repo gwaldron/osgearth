@@ -755,7 +755,7 @@ FeatureRasterizer::render_blend2d(
             double lineWidthValue = masterLine->stroke()->width().value();
 
             // if the width units are specified, convert to pixels
-            const optional<Units> widthUnits = masterLine->stroke()->widthUnits();
+            const optional<UnitsType> widthUnits = masterLine->stroke()->widthUnits();
 
             if (widthUnits.isSet() && widthUnits != Units::PIXELS)
             {
@@ -1030,8 +1030,8 @@ FeatureRasterizer::render_agglite(
                 if (globalLineSymbol->stroke()->widthUnits().isSet() &&
                     globalLineSymbol->stroke()->widthUnits().get() != Units::PIXELS)
                 {
-                    const Units& featureUnits = featureSRS->getUnits();
-                    const Units& strokeUnits = globalLineSymbol->stroke()->widthUnits().value();
+                    auto& featureUnits = featureSRS->getUnits();
+                    auto& strokeUnits = globalLineSymbol->stroke()->widthUnits().value();
 
                     // if the units are different than those of the feature data, we need to
                     // do a units conversion.
@@ -1185,8 +1185,8 @@ FeatureRasterizer::render_agglite(
         if (globalLineSymbol->stroke()->widthUnits().isSet() &&
             globalLineSymbol->stroke()->widthUnits().get() != Units::PIXELS)
         {
-            const Units& featureUnits = featureSRS->getUnits();
-            const Units& strokeUnits = globalLineSymbol->stroke()->widthUnits().value();
+            auto& featureUnits = featureSRS->getUnits();
+            auto& strokeUnits = globalLineSymbol->stroke()->widthUnits().value();
 
             // if the units are different than those of the feature data, we need to
             // do a units conversion.

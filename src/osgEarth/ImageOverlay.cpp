@@ -28,6 +28,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/VirtualProgram>
+#include <osgEarth/Registry>
 #include <osg/Geode>
 #include <osg/ShapeDrawable>
 #include <osg/Texture2D>
@@ -45,9 +46,7 @@ namespace
     void clampLatitude(osg::Vec2d& l)
     {
         l.y() = osg::clampBetween( l.y(), -90.0, 90.0);
-    }    
-
-    static Distance default_geometryResolution(5.0, Units::DEGREES);
+    }
 
     const char* imageVS =
         "out vec2 oe_ImageOverlay_texcoord; \n"
@@ -70,21 +69,21 @@ namespace
 
 OSGEARTH_REGISTER_ANNOTATION( imageoverlay, osgEarth::ImageOverlay );
 
-osg::ref_ptr<VirtualProgram> ImageOverlay::_program;
+#define DEFAULT_GEOM_RESOLUTION Distance(5.0, Units::DEGREES)
 
 ImageOverlay::ImageOverlay(const Config& conf, const osgDB::Options* readOptions) :
-AnnotationNode(conf, readOptions),
-_lowerLeft    (10, 10),
-_lowerRight   (20, 10),
-_upperRight   (20, 20),
-_upperLeft    (10, 20),
-_dirty        (false),
-_alpha        (1.0f),
-_minFilter    (osg::Texture::LINEAR_MIPMAP_LINEAR),
-_magFilter    (osg::Texture::LINEAR),
-_texture      (0),
-_geometryResolution(default_geometryResolution),
-_draped(true)
+    AnnotationNode(conf, readOptions),
+    _lowerLeft(10, 10),
+    _lowerRight(20, 10),
+    _upperRight(20, 20),
+    _upperLeft(10, 20),
+    _dirty(false),
+    _alpha(1.0f),
+    _minFilter(osg::Texture::LINEAR_MIPMAP_LINEAR),
+    _magFilter(osg::Texture::LINEAR),
+    _texture(0),
+    _geometryResolution(DEFAULT_GEOM_RESOLUTION),
+    _draped(true)
 {
     construct();
 
@@ -138,7 +137,7 @@ _draped(true)
 
     if (conf.hasValue("geometry_resolution"))
     {
-        float value; Units units;
+        float value; UnitsType units;
         if (Units::parse(conf.value("geometry_resolution"), value, units, Units::DEGREES))
             _geometryResolution.set(value, units);
     }
@@ -192,7 +191,7 @@ ImageOverlay::getConfig() const
 
     conf.set("draped", _draped);
 
-    if (_geometryResolution != default_geometryResolution)
+    if (_geometryResolution != DEFAULT_GEOM_RESOLUTION)
     {
         conf.set("geometry_resolution", _geometryResolution.asParseableString());
     }
@@ -204,20 +203,20 @@ ImageOverlay::getConfig() const
 
 
 ImageOverlay::ImageOverlay(MapNode* mapNode, osg::Image* image) :
-AnnotationNode(),
-_lowerLeft    (10, 10),
-_lowerRight   (20, 10),
-_upperRight   (20, 20),
-_upperLeft    (10, 20),
-_image        (image),
-_dirty        (false),
-_alpha        (1.0f),
-_minFilter    (osg::Texture::LINEAR_MIPMAP_LINEAR),
-_magFilter    (osg::Texture::LINEAR),
-_texture      (0),
-_geometryResolution(default_geometryResolution),
-_draped(true)
-{        
+    AnnotationNode(),
+    _lowerLeft(10, 10),
+    _lowerRight(20, 10),
+    _upperRight(20, 20),
+    _upperLeft(10, 20),
+    _image(image),
+    _dirty(false),
+    _alpha(1.0f),
+    _minFilter(osg::Texture::LINEAR_MIPMAP_LINEAR),
+    _magFilter(osg::Texture::LINEAR),
+    _texture(0),
+    _geometryResolution(DEFAULT_GEOM_RESOLUTION),
+    _draped(true)
+{
     construct();
 
     if (mapNode)
@@ -236,24 +235,19 @@ ImageOverlay::construct()
     DrapeableNode* d = new DrapeableNode();
     d->setDrapingEnabled(*_draped);
     addChild( d );
-    
-    if (!_program.valid())
-    {
-        static std::mutex mutex;
-        std::lock_guard<std::mutex> lock(mutex);
 
-        if (_program.valid() == false)
+    auto vp = Registry::instance()->getOrCreate<VirtualProgram>("oe.vp.imageoverlay", []()
         {
-            _program = new VirtualProgram;
-            _program->setInheritShaders(true);
-            _program->setFunction("oe_ImageOverlay_VS", imageVS, VirtualProgram::LOCATION_VERTEX_MODEL);
-            _program->setFunction("oe_ImageOverlay_FS", imageFS, VirtualProgram::LOCATION_FRAGMENT_COLORING);
-        }
-    }
+            auto vp = new VirtualProgram;
+            vp->setInheritShaders(true);
+            vp->setFunction("oe_ImageOverlay_VS", imageVS, VirtualProgram::LOCATION_VERTEX_MODEL);
+            vp->setFunction("oe_ImageOverlay_FS", imageFS, VirtualProgram::LOCATION_FRAGMENT_COLORING);
+            return vp;
+        });
 
     _root = new osg::Group();
     osg::StateSet *ss = _root->getOrCreateStateSet();
-    ss->setAttributeAndModes(_program.get(), osg::StateAttribute::ON);
+    ss->setAttributeAndModes(vp, osg::StateAttribute::ON);
     ss->addUniform(new osg::Uniform("oe_ImageOverlay_tex", 0));
     ss->addUniform(new osg::Uniform("oe_ImageOverlay_alpha", *_alpha));
     ss->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);

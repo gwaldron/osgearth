@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_ANNO_IMAGE_OVERLAY_H
-#define OSGEARTH_ANNO_IMAGE_OVERLAY_H
+#pragma once
 
 #include <osgEarth/AnnotationNode>
 #include <osgEarth/GeoData>
@@ -184,15 +183,10 @@ namespace osgEarth
 
         bool _updateScheduled;
 
-
         ImageOverlay() { }
         ImageOverlay(const ImageOverlay&, const osg::CopyOp&) { }
-
-    private:
-        static osg::ref_ptr<VirtualProgram> _program;
     };
 
 }
 
-#endif // OSGEARTH_ANNO_IMAGE_OVERLAY_H
 

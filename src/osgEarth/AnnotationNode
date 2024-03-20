@@ -103,7 +103,7 @@ namespace osgEarth
 
         virtual void setStyle(const Style& style) { }
 
-        virtual const Style& getStyle() const { return s_emptyStyle; }
+        virtual const Style& getStyle() const;
 
     protected:
 
@@ -158,7 +158,6 @@ namespace osgEarth
     private:
             
         osg::observer_ptr<MapNode> _mapNode;
-        static Style s_emptyStyle;
         bool _mapNodeRequired;
         osg::NodeCallback* _altCallback;
 

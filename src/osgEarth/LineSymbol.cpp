@@ -104,7 +104,7 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "stroke-width") ) {
         float width;
-        Units units;
+        UnitsType units;
         if ( Units::parse(c.value(), width, units, Units::PIXELS) )
         {
             style.getOrCreate<LineSymbol>()->stroke()->width() = width;
@@ -131,7 +131,7 @@ LineSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "stroke-tessellation-size") ) {
         float value;
-        Units units;
+        UnitsType units;
         if ( Units::parse(c.value(), value, units, Units::METERS) ) {
             style.getOrCreate<LineSymbol>()->tessellationSize() = Distance(value, units);
         }

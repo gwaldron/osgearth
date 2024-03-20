@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_REGISTRY
-#define OSGEARTH_REGISTRY 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/CachePolicy>
@@ -45,7 +43,7 @@ namespace osgEarth
     class Profile;
     class URIReadCallback;
     class ObjectIndex;
-    class Units;
+    //class Units;
     class StateSetCache;
 
     namespace Util
@@ -62,8 +60,8 @@ namespace osgEarth
     class OSGEARTH_EXPORT Registry : public osg::Referenced
     {
     public:
-        /** Access the global Registry singleton. Pass in true to destroy it and create a new one. */
-        static Registry* instance(bool reset = false);
+        //! Access the global Registry singleton.
+        static Registry* instance();
 
         /** Gets a well-known named profile instance.
         * @deprecated Use Profile::get(name) */
@@ -210,9 +208,8 @@ namespace osgEarth
         /**
          * Registers a Units definition.
          */
-        void registerUnits( const Units* staticInstance );
-
-        const Units* getUnits(const std::string& name) const;
+        void registerUnits(const UnitsType& prototype);
+        UnitsType getUnits(const std::string& name) const;
 
         /**
          * The name of the default terrain engine driver
@@ -295,12 +292,21 @@ namespace osgEarth
 
         //! Register singleton objects with the registry and defer
         //! their destruction to happen with the registry's own.
-        template<typename R>
-            R* registerSingleton(R* singleton)
+        template<typename R> R* registerSingleton(R* singleton)
         {
             std::lock_guard<std::mutex> lock(_regMutex);
             _singletons.push_back(singleton);
             return singleton;
+        }
+
+        //! Gets (or creates on demand) a named singleton object.
+        //! FUNC must have the signature std::function<T*()>
+        template<typename T, typename FUNC> T* getOrCreate(const std::string& name, FUNC&& create)
+        {
+            std::lock_guard<std::mutex> lock(_regMutex);
+            auto& s = _namedSingletons[name];
+            if (!s.valid()) s = create();
+            return dynamic_cast<T*>(s.get());
         }
 
     protected:
@@ -334,9 +340,7 @@ namespace osgEarth
 
         osg::ref_ptr<osgText::Font> _defaultFont;
 
-        typedef std::vector<const Units*> UnitsVector;
-        UnitsVector _unitsVector;
-        //mutable std::mutex _unitsVectorMutex;
+        std::vector<UnitsType> _unitsVector;
 
         osg::ref_ptr<StateSetCache> _stateSetCache;
 
@@ -369,6 +373,7 @@ namespace osgEarth
 
         unsigned _maxVertsPerDrawable;
         std::vector<osg::ref_ptr<osg::Referenced>> _singletons;
+        std::unordered_map<std::string, osg::ref_ptr<osg::Referenced>> _namedSingletons;
 
         //! Gets a spatial reference object (internal)
         //! Please use SpatialReference::get() instead of calling this directly
@@ -380,25 +385,21 @@ namespace osgEarth
 }
 
 
-namespace
-{
-    /** Proxy class for automatic registration of Units with the Registry.*/
-    struct osgEarthRegisterUnits {
-        osgEarthRegisterUnits(const osgEarth::Units* units) {
-            osgEarth::Registry::instance()->registerUnits(units);
-        }
-    };
-}
-
-#define OSGEARTH_REGISTER_UNITS(NAME,INSTANCE) \
-    extern "C" void osgearth_units_##NAME(void) {} \
-    static osgEarthRegisterUnits s_osgEarthRegistryUnitsProxy##NAME (INSTANCE)
-
-
-#define USE_OSGEARTH_UNITS(NAME ) \
-    extern "C" void osgearth_units_##NAME(void); \
-    static osgDB::PluginFunctionProxy proxy_osgearth_units_##NAME(osgearth_units_##NAME);
-
-
-
-#endif //OSGEARTH_REGISTRY
+//namespace
+//{
+//    /** Proxy class for automatic registration of Units with the Registry.*/
+//    struct osgEarthRegisterUnits {
+//        osgEarthRegisterUnits(const osgEarth::Units* units) {
+//            osgEarth::Registry::instance()->registerUnits(units);
+//        }
+//    };
+//}
+//
+//#define OSGEARTH_REGISTER_UNITS(NAME,INSTANCE) \
+//    extern "C" void osgearth_units_##NAME(void) {} \
+//    static osgEarthRegisterUnits s_osgEarthRegistryUnitsProxy##NAME (INSTANCE)
+//
+//
+//#define USE_OSGEARTH_UNITS(NAME ) \
+//    extern "C" void osgearth_units_##NAME(void); \
+//    static osgDB::PluginFunctionProxy proxy_osgearth_units_##NAME(osgearth_units_##NAME);

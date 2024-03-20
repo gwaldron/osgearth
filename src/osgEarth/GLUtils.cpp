@@ -178,8 +178,7 @@ GLUtils::useNVGL(bool value)
 namespace
 {
     struct Mapping {
-        Mapping() : _ptr(nullptr) { }
-        const osg::State* _ptr;
+        const osg::State* _ptr = nullptr;
     };
     static Mapping s_mappings[4096];
 }

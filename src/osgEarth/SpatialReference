@@ -240,7 +240,7 @@ namespace osgEarth
         const std::string& getDatumName() const;
 
         /** Gets the base units of data in this SRS */
-        const Units& getUnits() const;
+        const UnitsType& getUnits() const;
 
         //! Gets the reported linear unit conversion
         double getReportedLinearUnits() const;
@@ -382,7 +382,7 @@ namespace osgEarth
         unsigned _ellipsoidId;
         std::string _proj4;
         std::string _datum;
-        Units _units;
+        UnitsType _units;
         double _reportedLinearUnits;
         Ellipsoid _ellipsoid;
         mutable osg::ref_ptr<SpatialReference> _geo_srs;

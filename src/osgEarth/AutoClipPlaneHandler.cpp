@@ -243,7 +243,7 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                 }
                 else
                 {
-                    static osg::EllipsoidModel em;
+                    osg::EllipsoidModel em;
                     osg::Vec3d t;
                     em.convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), loc.y(), loc.x(), loc.z() );
                 }

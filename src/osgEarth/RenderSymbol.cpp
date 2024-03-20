@@ -125,23 +125,23 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = as<bool>(c.value(), *defaults.depthOffset()->enabled() );
     }
     else if ( match(c.key(), "render-depth-offset-min-bias") ) {
-        float value; Units units;
+        float value; UnitsType units;
         if (Units::parse(c.value(), value, units, Units::METERS))
             style.getOrCreate<RenderSymbol>()->depthOffset()->minBias() = Distance(value, units);
         style.getOrCreate<RenderSymbol>()->depthOffset()->automatic() = false;
     }
     else if ( match(c.key(), "render-depth-offset-max-bias") ) {
-        float value; Units units;
+        float value; UnitsType units;
         if (Units::parse(c.value(), value, units, Units::METERS))
             style.getOrCreate<RenderSymbol>()->depthOffset()->maxBias() = Distance(value, units);
     }
     else if ( match(c.key(), "render-depth-offset-min-range") ) {
-        float value; Units units;
+        float value; UnitsType units;
         if (Units::parse(c.value(), value, units, Units::METERS))
             style.getOrCreate<RenderSymbol>()->depthOffset()->minRange() = Distance(value, units);
     }
     else if ( match(c.key(), "render-depth-offset-max-range") ) {
-        float value; Units units;
+        float value; UnitsType units;
         if (Units::parse(c.value(), value, units, Units::METERS))
             style.getOrCreate<RenderSymbol>()->depthOffset()->maxRange() = Distance(value, units);
     }
@@ -170,22 +170,22 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<RenderSymbol>()->decal() = as<bool>(c.value(), *defaults.decal());
     }
     else if (match(c.key(), "render-max-crease-angle")) {
-        float value; Units units;
+        float value; UnitsType units;
         if (Units::parse(c.value(), value, units, Units::METERS))
             style.getOrCreate<RenderSymbol>()->maxCreaseAngle() = Angle(value, units);
     }
     else if (match(c.key(), "render-max-tess-angle")) {
-        float value; Units units;
+        float value; UnitsType units;
         if (Units::parse(c.value(), value, units, Units::DEGREES))
             style.getOrCreate<RenderSymbol>()->maxTessAngle() = Angle(value, units);
     }
     else if (match(c.key(), "render-max-altitude")) {
-        float value; Units units;
+        float value; UnitsType units;
         if (Units::parse(c.value(), value, units, Units::METERS))
             style.getOrCreate<RenderSymbol>()->maxAltitude() = Distance(value, units);
     }
     else if (match(c.key(), "render-geometric-error")) {
-        float value; Units units;
+        float value; UnitsType units;
         if (Units::parse(c.value(), value, units, Units::METERS))
             style.getOrCreate<RenderSymbol>()->geometricError() = Distance(value, units);
     }

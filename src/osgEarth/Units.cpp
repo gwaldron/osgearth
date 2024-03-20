@@ -16,9 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#include <osgEarth/Units>
-#include <osgEarth/Registry>
+#include "Units"
+#include "Registry"
 
 using namespace osgEarth;
 
@@ -27,13 +26,12 @@ using namespace osgEarth;
 namespace
 {
     template<typename T>
-    bool
-    parseValueAndUnits(const std::string& input, 
-                       T&                 out_value, 
-                       Units&             out_units,
-                       const Units&       defaultUnits )
+    bool parseValueAndUnits(const std::string& input,
+        T& out_value,
+        UnitsType& out_units,
+        const UnitsType& defaultUnits)
     {
-        if ( input.empty() )
+        if (input.empty())
             return false;
 
         std::string valueStr, unitsStr;
@@ -71,7 +69,7 @@ namespace
 
             if ( !unitsStr.empty() )
             {
-                Units units;
+                UnitsType units;
                 if ( Units::parse(unitsStr, units) )
                     out_units = units;
                 else if (unitsStr.back() != 's' && Units::parse(unitsStr+'s', units))
@@ -90,106 +88,81 @@ namespace
 
 //------------------------------------------------------------------------
 
-
-
-Units::Units( const std::string& name, const std::string& abbr, const Units::Type& type, double toBase ) :
-_name  ( name ),
-_abbr  ( abbr ),
-_type  ( type ),
-_toBase( toBase ),
-_distance(0L),
-_time(0L)
-{
-    //nop
-}
-
-Units::Units( const std::string& name, const std::string& abbr, const Units& distance, const Units& time ) :
-_name    ( name ),
-_abbr    ( abbr ),
-_type    ( TYPE_SPEED ),
-_toBase  ( 1.0 ),
-_distance( &distance ),
-_time    ( &time )
-{
-    //nop
-}
-
 bool
-Units::parse( const std::string& name, Units& output )
+Units::parse(const std::string& name, UnitsType& output)
 {
-    const Units* u = osgEarth::Registry::instance()->getUnits( name );
-    if ( u ) 
+    const UnitsType u = osgEarth::Registry::instance()->getUnits(name);
+    if (u.valid())
     {
-        output = *u;
+        output = u;
         return true;
     }
     return false;
 }
 
 bool
-Units::parse( const std::string& input, float& out_value, Units& out_units, const Units& defaultUnits )
+Units::parse(const std::string& input, float& out_value, UnitsType& out_units, const UnitsType& defaultUnits)
 {
     return parseValueAndUnits(input, out_value, out_units, defaultUnits);
 }
 
 bool
-Units::parse( const std::string& input, double& out_value, Units& out_units, const Units& defaultUnits )
+Units::parse(const std::string& input, double& out_value, UnitsType& out_units, const UnitsType& defaultUnits)
 {
     return parseValueAndUnits(input, out_value, out_units, defaultUnits);
 }
 
 bool
-Units::parse( const std::string& input, int& out_value, Units& out_units, const Units& defaultUnits )
+Units::parse(const std::string& input, int& out_value, UnitsType& out_units, const UnitsType& defaultUnits)
 {
     return parseValueAndUnits(input, out_value, out_units, defaultUnits);
 }
-
 
 void
 Units::registerAll(Registry* r)
 {
-    r->registerUnits( &Units::CENTIMETERS );
-    r->registerUnits( &Units::FEET );
-    r->registerUnits( &Units::FEET_US_SURVEY );
-    r->registerUnits( &Units::KILOMETERS );
-    r->registerUnits( &Units::METERS );
-    r->registerUnits( &Units::MILES );
-    r->registerUnits( &Units::MILLIMETERS );
-    r->registerUnits( &Units::YARDS );
-    r->registerUnits( &Units::NAUTICAL_MILES );
-    r->registerUnits( &Units::DATA_MILES );
-    r->registerUnits( &Units::INCHES );
-    r->registerUnits( &Units::FATHOMS );
-    r->registerUnits( &Units::KILOFEET );
-    r->registerUnits( &Units::KILOYARDS );
+    r->registerUnits(Units::CENTIMETERS);
+    r->registerUnits(Units::FEET);
+    r->registerUnits(Units::FEET_US_SURVEY);
+    r->registerUnits(Units::KILOMETERS);
+    r->registerUnits(Units::METERS);
+    r->registerUnits(Units::MILES);
+    r->registerUnits(Units::MILLIMETERS);
+    r->registerUnits(Units::YARDS);
+    r->registerUnits(Units::NAUTICAL_MILES);
+    r->registerUnits(Units::DATA_MILES);
+    r->registerUnits(Units::INCHES);
+    r->registerUnits(Units::FATHOMS);
+    r->registerUnits(Units::KILOFEET);
+    r->registerUnits(Units::KILOYARDS);
 
-    r->registerUnits( &Units::DEGREES );
-    r->registerUnits( &Units::RADIANS );
-    r->registerUnits( &Units::BAM );
-    r->registerUnits( &Units::NATO_MILS );
-    r->registerUnits( &Units::DECIMAL_HOURS );
+    r->registerUnits(Units::DEGREES);
+    r->registerUnits(Units::RADIANS);
+    r->registerUnits(Units::BAM);
+    r->registerUnits(Units::NATO_MILS);
+    r->registerUnits(Units::DECIMAL_HOURS);
 
-    r->registerUnits( &Units::DAYS );
-    r->registerUnits( &Units::HOURS );
-    r->registerUnits( &Units::MICROSECONDS );
-    r->registerUnits( &Units::MILLISECONDS );
-    r->registerUnits( &Units::MINUTES );
-    r->registerUnits( &Units::SECONDS );
-    r->registerUnits( &Units::WEEKS );
+    r->registerUnits(Units::DAYS);
+    r->registerUnits(Units::HOURS);
+    r->registerUnits(Units::MICROSECONDS);
+    r->registerUnits(Units::MILLISECONDS);
+    r->registerUnits(Units::MINUTES);
+    r->registerUnits(Units::SECONDS);
+    r->registerUnits(Units::WEEKS);
 
-    r->registerUnits( &Units::FEET_PER_SECOND );
-    r->registerUnits( &Units::YARDS_PER_SECOND );
-    r->registerUnits( &Units::METERS_PER_SECOND );
-    r->registerUnits( &Units::KILOMETERS_PER_SECOND );
-    r->registerUnits( &Units::KILOMETERS_PER_HOUR );
-    r->registerUnits( &Units::MILES_PER_HOUR );
-    r->registerUnits( &Units::DATA_MILES_PER_HOUR );
-    r->registerUnits( &Units::KNOTS );
+    r->registerUnits(Units::FEET_PER_SECOND);
+    r->registerUnits(Units::YARDS_PER_SECOND);
+    r->registerUnits(Units::METERS_PER_SECOND);
+    r->registerUnits(Units::KILOMETERS_PER_SECOND);
+    r->registerUnits(Units::KILOMETERS_PER_HOUR);
+    r->registerUnits(Units::MILES_PER_HOUR);
+    r->registerUnits(Units::DATA_MILES_PER_HOUR);
+    r->registerUnits(Units::KNOTS);
 
-    r->registerUnits( &Units::PIXELS );
+    r->registerUnits(Units::PIXELS);
 }
 
-
+#if 0
 // Factor converts unit into METERS:
 const Units Units::CENTIMETERS       ( "centimeters",    "cm",  Units::TYPE_LINEAR, 0.01 ); 
 const Units Units::FEET              ( "feet",           "ft",  Units::TYPE_LINEAR, 0.3048 );
@@ -232,14 +205,14 @@ const Units Units::DATA_MILES_PER_HOUR  ( "data miles per hour",     "dm/h", Uni
 const Units Units::KNOTS                ( "nautical miles per hour", "kts",  Units::NAUTICAL_MILES, Units::HOURS );
 
 const Units Units::PIXELS               ( "pixels", "px", Units::TYPE_SCREEN_SIZE, 1.0 );
-
+#endif
 
 
 int
 Units::unitTest()
 {
     double value;
-    Units  units;
+    UnitsType units;
 
     // test parsing scientific notation
     {

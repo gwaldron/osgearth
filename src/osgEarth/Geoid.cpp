@@ -26,8 +26,8 @@ using namespace osgEarth;
 
 
 Geoid::Geoid() :
-_units( Units::METERS ),
-_valid( false )
+    _units(Units::METERS),
+    _valid(false)
 {
     //nop
 }
@@ -54,7 +54,7 @@ Geoid::setHeightField( osg::HeightField* hf )
 }
 
 void
-Geoid::setUnits( const Units& units ) 
+Geoid::setUnits(const UnitsType& units)
 {
     _units = units;
     validate();

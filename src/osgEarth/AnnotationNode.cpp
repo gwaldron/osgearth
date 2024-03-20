@@ -47,10 +47,6 @@ using namespace osgEarth::Util;
 
 //-------------------------------------------------------------------
 
-Style AnnotationNode::s_emptyStyle;
-
-//-------------------------------------------------------------------
-
 AnnotationNode::AnnotationNode()
 {
     construct();
@@ -88,6 +84,13 @@ AnnotationNode::construct()
 AnnotationNode::~AnnotationNode()
 {
     setMapNode(NULL);
+}
+
+const Style&
+AnnotationNode::getStyle() const
+{
+    static Style s_emptyStyle;
+    return s_emptyStyle;
 }
 
 void

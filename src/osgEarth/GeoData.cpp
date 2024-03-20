@@ -212,7 +212,7 @@ GeoPoint::set(const SpatialReference* srs,
     _altMode = altMode;
 }
 
-const Units&
+const UnitsType&
 GeoPoint::getXYUnits() const
 {
     return getSRS() ? getSRS()->getUnits() : Units::DEGREES;
@@ -328,7 +328,7 @@ GeoPoint::transformZ(const AltitudeMode& altMode, const TerrainResolver* terrain
 }
 
 Distance
-GeoPoint::transformResolution(const Distance& resolution, const Units& outUnits) const
+GeoPoint::transformResolution(const Distance& resolution, const UnitsType& outUnits) const
 {
     if (!isValid())
         return resolution;
@@ -897,7 +897,7 @@ GeoExtent::getCentroid(double& out_x, double& out_y) const
 }
 
 double
-GeoExtent::width(const Units& units) const
+GeoExtent::width(const UnitsType& units) const
 {
     if (!isValid())
     {
@@ -918,7 +918,7 @@ GeoExtent::width(const Units& units) const
 }
 
 double
-GeoExtent::height(const Units& units) const
+GeoExtent::height(const UnitsType& units) const
 {
     if (!isValid())
         return 0.0;

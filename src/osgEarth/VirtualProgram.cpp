@@ -401,6 +401,22 @@ ProgramRepo::linkProgram(
     }
 }
 
+osg::ref_ptr<VirtualProgram>
+ProgramRepo::getOrCreateVirtualProgram(const std::string& name, std::function<VirtualProgram*()> create)
+{
+    lock();
+
+    auto& vp = _virtualProgramLUT[name];
+    if (!vp.valid())
+    {
+        vp = create();
+    }
+
+    unlock();
+
+    return vp;
+}
+
 //------------------------------------------------------------------------
 
 #undef  LC

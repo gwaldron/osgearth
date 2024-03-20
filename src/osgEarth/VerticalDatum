@@ -97,7 +97,7 @@ namespace osgEarth
         const std::string& getName() const { return _name; }
 
         /** Gets the linear units of height values */
-        const Units& getUnits() const { return _units; }
+        const UnitsType& getUnits() const { return _units; }
 
         /** Gets the string that was used to initialize this SRS */
         const std::string& getInitString() const { return _initString; }
@@ -117,7 +117,7 @@ namespace osgEarth
             Geoid*             geoid =0L );
 
         /** Creates a simple ellipsoidal VSRS. */
-        VerticalDatum( const Units& units );
+        VerticalDatum( const UnitsType& units );
 
         /** dtor */
         virtual ~VerticalDatum() { }
@@ -130,7 +130,7 @@ namespace osgEarth
         std::string         _name;
         std::string         _initString;
         osg::ref_ptr<Geoid> _geoid;
-        Units               _units;
+        UnitsType           _units;
     };
 
     //--------------------------------------------------------------------

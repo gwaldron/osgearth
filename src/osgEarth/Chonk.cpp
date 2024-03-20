@@ -28,6 +28,7 @@
 #include "Utils"
 #include "NodeUtils"
 #include "DrawInstanced"
+#include "Registry"
 
 #include <osg/Switch>
 #include <osg/LOD>
@@ -798,9 +799,6 @@ ChonkDrawable::installRenderBin(ChonkDrawable* d)
     // map of render bin number to stateset
     static vector_map<int, osg::ref_ptr<osg::StateSet>> s_stateSets;
 
-    // globally shared VP
-    static osg::ref_ptr<VirtualProgram> s_vp;
-
     static Mutex s_mutex;
     std::lock_guard<std::mutex> lock(s_mutex);
 
@@ -813,16 +811,17 @@ ChonkDrawable::installRenderBin(ChonkDrawable* d)
             (osg::StateSet::RenderBinMode)(ss->USE_RENDERBIN_DETAILS | ss->PROTECTED_RENDERBIN_DETAILS));
         
         // create the (shared) shader program if necessary:
-        if (!s_vp.valid())
-        {
-            s_vp = new VirtualProgram();
-            s_vp->setInheritShaders(true);
-            s_vp->setName("ChonkDrawable");
-            Shaders pkg;
-            pkg.load(s_vp.get(), pkg.Chonk);
-        }
+        auto vp = Registry::instance()->getOrCreate<VirtualProgram>("vp.ChonkDrawable", []()
+            {
+                auto vp = new VirtualProgram();
+                vp->setInheritShaders(true);
+                vp->setName("ChonkDrawable");
+                Shaders pkg;
+                pkg.load(vp, pkg.Chonk);
+                return vp;
+            });
 
-        ss->setAttribute(s_vp);
+        ss->setAttribute(vp);
     }
 
     d->setStateSet(ss);
@@ -1370,7 +1369,6 @@ ChonkRenderBin::ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op)
     osgUtil::RenderBin(rhs, op),
     _cullSS(rhs._cullSS)
 {
-    // The first time this happens, create the shaders and statesets.
     if (!_cullSS.valid())
     {
         static Mutex m;

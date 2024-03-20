@@ -18,6 +18,7 @@
  */
 #include <osgEarth/AnnotationLayer>
 #include <osgEarth/AnnotationRegistry>
+#include <osgEarth/Registry>
 
 using namespace osgEarth;
 
@@ -76,7 +77,7 @@ AnnotationLayer::deserialize()
 
     // deserialize from the options:
     osg::Group* group = 0L;
-    AnnotationRegistry::instance()->create(0L, options().getConfig(), getReadOptions(), group);
+    AnnotationRegistry::instance()->create(nullptr, options().getConfig(), getReadOptions(), group);
     if (group)
     {
         _root->addChild(group);

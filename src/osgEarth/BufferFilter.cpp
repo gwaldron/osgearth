@@ -28,12 +28,10 @@ bool
 BufferFilter::isSupported()
 {
 #ifdef OSGEARTH_HAVE_GEOS
-    static bool s_isSupported = true;
+    return true;
 #else
-    static bool s_isSupported = false;
+    return false;
 #endif
-
-    return s_isSupported;
 }
 
 #define ASSERT_SUPPORT() \

@@ -66,8 +66,8 @@ namespace osgEarth
             const RasterInterpolation& interp =INTERP_BILINEAR) const;
 
         /** The linear units in which height values are expressed. */
-        const Units& getUnits() const { return _units; }
-        void setUnits( const Units& value );
+        const UnitsType& getUnits() const { return _units; }
+        void setUnits( const UnitsType& value );
 
         /** Whether this is a valid object to use */
         bool isValid() const { return _valid; }
@@ -77,7 +77,7 @@ namespace osgEarth
 
     private:
         std::string    _name;
-        Units          _units;
+        UnitsType      _units;
         bool           _valid;
         Bounds         _bounds;
 

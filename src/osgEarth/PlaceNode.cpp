@@ -31,6 +31,7 @@
 #include <osgEarth/Shaders>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ShaderGenerator>
+#include <osgEarth/Registry>
 
 #include <osg/Depth>
 #include <osgText/Text>
@@ -56,9 +57,6 @@ namespace
         "    color = color * texture(oe_PlaceNode_tex, oe_PlaceNode_texcoord); \n"
         "} \n";
 }
-
-osg::observer_ptr<osg::StateSet> PlaceNode::s_geodeStateSet;
-osg::observer_ptr<osg::StateSet> PlaceNode::s_imageStateSet;
 
 PlaceNode::PlaceNode() :
 GeoPositionNode()
@@ -111,43 +109,36 @@ PlaceNode::construct()
     ShaderGenerator::setIgnoreHint(this, true);
 
     // Construct the shared state sets
-    if (s_geodeStateSet.lock(_geodeStateSet) == false)
-    {
-        static std::mutex s_mutex;
-        std::lock_guard<std::mutex> lock(s_mutex);
-
-        if (s_geodeStateSet.lock(_geodeStateSet) == false)
+    _geodeStateSet = Registry::instance()->getOrCreate<osg::StateSet>("PlaceNode::geodeStateSet", []()
         {
-            s_geodeStateSet = _geodeStateSet = new osg::StateSet();
+            auto ss = new osg::StateSet();
 
             // draw in the screen-space bin
-            ScreenSpaceLayout::activate(_geodeStateSet.get());
+            ScreenSpaceLayout::activate(ss);
 
             // completely disable depth buffer
-            _geodeStateSet->setAttributeAndModes(
+            ss->setAttributeAndModes(
                 new osg::Depth(osg::Depth::ALWAYS, 0, 1, false),
                 osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
 
             // Disable lighting for place nodes by default
-            _geodeStateSet->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
-        }
-    }
+            ss->setDefine(OE_LIGHTING_DEFINE, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED);
 
-    if (s_imageStateSet.lock(_imageStateSet) == false)
-    {
-        static std::mutex s_mutex;
-        std::lock_guard<std::mutex> lock(s_mutex);
+            return ss;
+        });
 
-        if (s_imageStateSet.lock(_imageStateSet) == false)
+    _imageStateSet = Registry::instance()->getOrCreate<osg::StateSet>("PlaceNode::imageStateSet", []()
         {
-            s_imageStateSet = _imageStateSet = new osg::StateSet();
-            VirtualProgram* vp = VirtualProgram::getOrCreate(_imageStateSet.get());
+            auto ss = new osg::StateSet();
+
+            VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
             vp->setName("PlaceNode::imageStateSet");
             vp->setFunction("oe_PlaceNode_icon_VS", iconVS, VirtualProgram::LOCATION_VERTEX_MODEL);
             vp->setFunction("oe_PlaceNode_icon_FS", iconFS, VirtualProgram::LOCATION_FRAGMENT_COLORING);
-            _imageStateSet->addUniform(new osg::Uniform("oe_PlaceNode_tex", 0));
-        }
-    }
+            ss->addUniform(new osg::Uniform("oe_PlaceNode_tex", 0));
+
+            return ss;
+        });
 }
 
 void

@@ -76,8 +76,8 @@ namespace osgEarth
         const optional<float>& width() const { return _width; }
 
         /** Units for the width property. (default = Units::PIXELS) */
-        optional<Units>& widthUnits() { return _widthUnits; }
-        const optional<Units>& widthUnits() const { return _widthUnits; }
+        optional<UnitsType>& widthUnits() { return _widthUnits; }
+        const optional<UnitsType>& widthUnits() const { return _widthUnits; }
 
         /** Minimum with of a line in pixels (default = 0.0, no minimum).
             This typically only applies to lines with map unit width, and
@@ -121,7 +121,7 @@ namespace osgEarth
         optional<LineCapStyle>   _lineCap;
         optional<LineJoinStyle>  _lineJoin;
         optional<float>          _width;
-        optional<Units>          _widthUnits;
+        optional<UnitsType>      _widthUnits;
         optional<unsigned>       _stippleFactor;
         optional<unsigned short> _stipplePattern;
         optional<float>          _roundingRatio;

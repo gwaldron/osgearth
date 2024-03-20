@@ -27,12 +27,12 @@ using namespace osgEarth;
 
 namespace
 {
-    static NetworkMonitor::Requests s_requests;
-    static NetworkMonitor::URICount s_counts;
+    NetworkMonitor::Requests s_requests;
+    NetworkMonitor::URICount s_counts;
     osgEarth::Threading::ReadWriteMutex s_requestsMutex;
-    static unsigned long s_requestId = 0;
-    static bool s_enabled = false;
-    static std::unordered_map<std::thread::id, std::string> s_requestLayer;
+    unsigned long s_requestId = 0;
+    bool s_enabled = false;
+    std::unordered_map<std::thread::id, std::string> s_requestLayer;
 }
 
 #define LC "[NetworkMonitor] "

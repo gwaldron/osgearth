@@ -112,9 +112,9 @@ int main(int argc, char** argv)
     if (!grid.empty())
     {
         float gridSize;
-        Units units;
-        if ( Units::parse(grid, gridSize, units, Units::METERS) ) {
-             gridSizeMeters = Distance(gridSize, units).as(Units::METERS);
+        UnitsType units;
+        if (Units::parse(grid, gridSize, units, Units::METERS)) {
+            gridSizeMeters = Distance(gridSize, units).as(Units::METERS);
         }
     }
 

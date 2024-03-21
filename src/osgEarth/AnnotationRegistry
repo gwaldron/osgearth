@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ANNO_REGISTRY_H
-#define OSGEARTH_ANNO_REGISTRY_H 1
+#pragma once
 
 #include <osgEarth/AnnotationNode>
 #include <osgEarth/MapNode>
@@ -108,5 +107,3 @@ namespace osgEarth { namespace Util
     };
 
 } }
-
-#endif // OSGEARTH_ANNO_FEATURE_NODE_H

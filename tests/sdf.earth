@@ -1,0 +1,48 @@
+<map name="SDF demo">
+
+    <TMSImage name="ReadyMap 15m Imagery">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </TMSImage>
+    
+    <FeatureSDF name="SDF roads" min_level="14" max_data_level="18" caching="false">
+        <features>data:roads</features>
+        <inverted>true</inverted>
+        <styles>
+            <style>
+                default {
+                    render-sdf-min-distance: 0;
+                    render-sdf-max-distance: 15;
+                }
+            </style>
+        </styles>
+        <shader>
+         <![CDATA[
+            #pragma vp_function invert_alpha, fragment
+            void invert_alpha(inout vec4 color) {
+                color = vec4(1, 0, 0, 1-color.r);
+            }
+          ]]>
+        </shader>
+    </FeatureSDF>
+    
+    <XYZFeatures name="data:roads">
+        <url>http://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
+        <min_level>14</min_level>
+        <max_level>14</max_level>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <fid_attribute>@id</fid_attribute>
+        <filters>
+            <attributes>highway</attributes>
+        </filters>
+    </XYZFeatures>
+    
+    <Viewpoints home="0" time="0">
+        <viewpoint name="New Orleans">
+            <pitch>-89</pitch>
+            <range>837.938m</range>
+            <long>-90.0725</long>
+            <lat>29.9245</lat>
+        </viewpoint>
+    </Viewpoints>
+</map>

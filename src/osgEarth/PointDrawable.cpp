@@ -301,34 +301,35 @@ namespace
 }
 
 PointDrawable::PointDrawable() :
-osg::Geometry(),
-_gpu(false),
-_color(1, 1, 1, 1),
-_width(1.0f),
-_smooth(false),
-_first(0u),
-_count(0u),
-_current(NULL),
-_colors(NULL),
-_sharedStateSetCompiled(false)
+    osg::Geometry(),
+    _gpu(false),
+    _color(1, 1, 1, 1),
+    _width(1.0f),
+    _smooth(false),
+    _first(0u),
+    _count(0u),
+    _current(NULL),
+    _colors(NULL),
+    _sharedStateSetCompiled(false)
 {
 #ifdef USE_GPU
     _gpu = Registry::capabilities().supportsGLSL();
 #endif
+    s_isCoreProfile = Registry::capabilities().isCoreProfile();
     setupState();
 }
 
 PointDrawable::PointDrawable(const PointDrawable& rhs, const osg::CopyOp& copy) :
-osg::Geometry(rhs, copy),
-_gpu(rhs._gpu),
-_color(rhs._color),
-_width(rhs._width),
-_smooth(rhs._smooth),
-_first(rhs._first),
-_count(rhs._count),
-_current(NULL),
-_colors(NULL),
-_sharedStateSetCompiled(rhs._sharedStateSetCompiled)
+    osg::Geometry(rhs, copy),
+    _gpu(rhs._gpu),
+    _color(rhs._color),
+    _width(rhs._width),
+    _smooth(rhs._smooth),
+    _first(rhs._first),
+    _count(rhs._count),
+    _current(NULL),
+    _colors(NULL),
+    _sharedStateSetCompiled(rhs._sharedStateSetCompiled)
 {
     _current = static_cast<osg::Vec3Array*>(getVertexArray());
     setupState();

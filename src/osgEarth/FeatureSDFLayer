@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_FEATURE_SDF_LAYER_H
-#define OSGEARTH_FEATURE_SDF_LAYER_H
+#pragma once
 
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
@@ -40,7 +38,6 @@ namespace osgEarth
             OE_OPTION_LAYER(FeatureSource, featureSource);
             OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION_LAYER(StyleSheet, styleSheet);
-            OE_OPTION(bool, inverted);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);
@@ -57,10 +54,6 @@ namespace osgEarth
         //! Style sheet to use to render feature data
         void setStyleSheet(StyleSheet* styles);
         inline StyleSheet* getStyleSheet() const;
-
-        //! Whether to invert the distance field
-        void setInverted(bool value);
-        bool getInverted() const;
 
     public: // ImageLayer
 
@@ -106,4 +99,3 @@ namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureSDFLayer::Options);
 
-#endif // OSGEARTH_FEATURE_SDF_LAYER_H

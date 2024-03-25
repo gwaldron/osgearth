@@ -35,7 +35,6 @@ FeatureSDFLayer::Options::getConfig() const
     Config conf = ImageLayer::Options::getConfig();
     featureSource().set(conf, "features");
     styleSheet().set(conf, "styles");
-    conf.set("inverted", inverted());
 
     if (filters().empty() == false)
     {
@@ -51,11 +50,8 @@ FeatureSDFLayer::Options::getConfig() const
 void
 FeatureSDFLayer::Options::fromConfig(const Config& conf)
 {
-    inverted().setDefault(false);
-
     featureSource().get(conf, "features");
     styleSheet().get(conf, "styles");
-    conf.get("inverted", inverted());
 
     const Config& filtersConf = conf.child("filters");
     for (ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
@@ -68,18 +64,7 @@ FeatureSDFLayer::init()
     ImageLayer::init();
 
     // The SDF shader is no good. Too many memory barriers.
-    //_sdfGenerator.setUseGPU(true);
     _sdfGenerator.setUseGPU(false);
-}
-
-void
-FeatureSDFLayer::setInverted(bool value) {
-    options().inverted() = value;
-}
-
-bool
-FeatureSDFLayer::getInverted() const {
-    return options().inverted().get();
 }
 
 Status
@@ -238,31 +223,8 @@ FeatureSDFLayer::updateSession()
     }
 }
 
-
-/*
-osg::Image* redToRGBA(const osg::Image* image)
-{
-    osg::ref_ptr<osg::Image> out = new osg::Image();
-    out->allocateImage(image->s(), image->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    osg::Vec4f p;
-    ImageUtils::PixelReader read(image);
-    ImageUtils::PixelWriter write(out.get());
-    ImageUtils::ImageIterator i(read);
-    i.forEachPixel([&]()
-        {
-            read(p, i.s(), i.t());
-            p.set(1.0, 1.0, 1.0, p.r());
-            write(p, i.s(), i.t());
-        }
-    );
-    return out.release();
-}
-*/
-
 GeoImage
-FeatureSDFLayer::createImageImplementation(
-    const TileKey& key, 
-    ProgressCallback* progress) const
+FeatureSDFLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     if (getStatus().isError())
     {
@@ -300,7 +262,6 @@ FeatureSDFLayer::createImageImplementation(
     // just outside the extent.
     GeoExtent featuresExtent = key.getExtent();
 
-#if 1
     featuresExtent.expand(
         key.getExtent().width(), 
         key.getExtent().height());
@@ -310,16 +271,6 @@ FeatureSDFLayer::createImageImplementation(
         2 * getTileSize(),
         featuresExtent,
         Color(1, 1, 1, 0)); // background
-
-#else
-    FeatureRasterizer rasterizer(
-        getTileSize(),
-        getTileSize(),
-        featuresExtent,
-        Color(1, 1, 1, 0)); // background
-
-#endif
-
 
     // Hello! If you are looking at this code, maybe you are wondering
     // why your SDF layer with multiple styles only seems to be applying
@@ -395,7 +346,8 @@ FeatureSDFLayer::createImageImplementation(
     rasterizedFeatures = rasterizer.finalize();
 
     // Convert the distances to pixels
-    double metersPerPixel = toMeters * (key.getExtent().width() / (double)rasterizedFeatures.getImage()->s());
+    //double metersPerPixel = toMeters * (key.getExtent().width() / (double)rasterizedFeatures.getImage()->s());
+    double metersPerPixel = toMeters * (featuresExtent.width() / (double)rasterizedFeatures.getImage()->s());
 
     // We couldn't compute a valid min/max distance from the features b/c no features were rendered
     // So initialize it to something reasonable.

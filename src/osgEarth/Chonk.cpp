@@ -563,7 +563,7 @@ Chonk::getOrCreateCommands(osg::State& state) const
     {
         gs.vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state);
         gs.vbo->bind();
-        gs.vbo->debugLabel("Chonk", "VBO");
+        gs.vbo->debugLabel("Chonk", "VBO " + _name);
         gs.vbo->bufferStorage(
             _vbo_store.size() * sizeof(VertexGPU),
             _vbo_store.data(),
@@ -571,7 +571,7 @@ Chonk::getOrCreateCommands(osg::State& state) const
 
         gs.ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
         gs.ebo->bind();
-        gs.ebo->debugLabel("Chonk", "EBO");
+        gs.ebo->debugLabel("Chonk", "EBO " + _name);
         gs.ebo->bufferStorage(
             _ebo_store.size() * sizeof(element_t),
             _ebo_store.data(),

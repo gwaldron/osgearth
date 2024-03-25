@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_CHONK
-#define OSGEARTH_CHONK 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/GLUtils>
@@ -73,7 +72,7 @@ namespace osgEarth
     /**
      * A bindless rendering unit comprised of one VBO and one EBO.
      * A single Chonk usually represents one drawable "Object" in
-     * the scene. It can include multiple LODs.
+     * the scene. It can include up to 2 LODs.
      */
     class OSGEARTH_EXPORT Chonk
     {
@@ -96,6 +95,10 @@ namespace osgEarth
 
         //! Local bounding box of this Chonk.
         const osg::BoundingBoxf& getBound();
+
+        //! Name, which will appear in GL debug labels
+        std::string& name() { return _name; }
+        const std::string& name() const { return _name; }
 
     public:
         //! Single vertex data.
@@ -136,6 +139,7 @@ namespace osgEarth
         //! Creates a new empty chonk.
         static Ptr create();
 
+        std::string _name;
         std::vector<ChonkMaterial::Ptr> _materials;
         std::vector<VertexGPU> _vbo_store;
         std::vector<element_t> _ebo_store;
@@ -435,5 +439,3 @@ namespace osgEarth
         };
     };
 }
-
-#endif // OSGEARTH_INSTANCE_CLOUD

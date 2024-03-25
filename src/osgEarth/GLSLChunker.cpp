@@ -204,14 +204,47 @@ GLSLChunker::read(const std::string& input, Chunks& output) const
     }
 }
 
+namespace
+{
+    std::string indent(const std::string& input)
+    {
+        std::ostringstream out;
+        std::vector<std::string> lines;
+        StringTokenizer(input, lines, "\n", "", true);
+        std::string prefix;
+        for (auto& line : lines)
+        {
+            auto temp = Strings::trim(line);
+            auto pos = temp.find_first_not_of(" \t", 0);
+            if (pos > 0 && pos != temp.npos)
+                temp = temp.substr(pos);
+
+            if (temp.find('}') != temp.npos && prefix.size() >= 4)
+                prefix.resize(prefix.size() - 4);
+
+            out << prefix << temp << "\n";
+            
+            if (temp.find('{') != temp.npos)
+                prefix += "    ";
+        }
+        return out.str();
+    }
+}
 
 void
-GLSLChunker::write(const Chunks& input, std::string& output) const
+GLSLChunker::write(const Chunks& input, std::string& output, bool reindent) const
 {
     std::stringstream buf;
     for(int i=0; i<input.size(); ++i)
     {
-        buf << input[i].text << "\n";
+        if (reindent && input[i].type != Chunk::TYPE_COMMENT && input[i].type != Chunk::TYPE_DIRECTIVE)
+        {
+            buf << indent(input[i].text);
+        }
+        else
+        {
+            buf << input[i].text << "\n";
+        }
     }
     output = buf.str();
 }

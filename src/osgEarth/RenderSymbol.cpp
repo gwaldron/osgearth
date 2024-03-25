@@ -18,6 +18,15 @@
  */
 #include <osgEarth/RenderSymbol>
 #include <osgEarth/Style>
+#include <osgEarth/GLUtils>
+#include <osgEarth/DepthOffset>
+#include <osgEarth/ShaderUtils>
+#include <osg/Depth>
+#include <osg/PolygonOffset>
+
+#ifndef GL_CLIP_DISTANCE0
+#define GL_CLIP_DISTANCE0 0x3000
+#endif
 
 using namespace osgEarth;
 
@@ -46,21 +55,7 @@ RenderSymbol::RenderSymbol(const RenderSymbol& rhs, const osg::CopyOp& copyop) :
 }
 
 RenderSymbol::RenderSymbol(const Config& conf) :
-    Symbol(conf),
-    _depthTest(true),
-    _lighting(true),
-    _backfaceCulling(true),
-    _order(0),
-    _clipPlane(0),
-    _minAlpha(0.0f),
-    _transparent(false),
-    _decal(false),
-    _maxCreaseAngle(Angle(0.0, Units::DEGREES)),
-    _maxTessAngle(Angle(1.0, Units::DEGREES)),
-    _maxAltitude(Distance(FLT_MAX, Units::METERS)),
-    _geometricError(Distance(0.0, Units::METERS)),
-    _sdfMinDistance(0.0),
-    _sdfMaxDistance(20.0)
+    Symbol(conf)
 {
     mergeConfig(conf);
 }
@@ -194,5 +189,78 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
     }
     else if (match(c.key(), "render-sdf-max-distance")) {
         style.getOrCreate<RenderSymbol>()->sdfMaxDistance() = NumericExpression(c.value());
+    }
+}
+
+
+
+void
+RenderSymbol::applyTo(osg::Node* node) const
+{
+    if (depthTest().isSet())
+    {
+        node->getOrCreateStateSet()->setMode(
+            GL_DEPTH_TEST,
+            (depthTest() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE);
+    }
+
+    if (lighting().isSet())
+    {
+        GLUtils::setLighting(
+            node->getOrCreateStateSet(),
+            (lighting() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE);
+    }
+
+    if (depthOffset().isSet())
+    {
+        DepthOffsetAdapter adapter(node);
+        adapter.setDepthOffsetOptions(depthOffset().value());
+        adapter.recalculate();
+    }
+
+    if (backfaceCulling().isSet())
+    {
+        node->getOrCreateStateSet()->setMode(
+            GL_CULL_FACE,
+            (backfaceCulling() == true ? osg::StateAttribute::ON : osg::StateAttribute::OFF) | osg::StateAttribute::OVERRIDE);
+    }
+
+#if !( defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE) )
+    if (clipPlane().isSet())
+    {
+        GLenum mode = GL_CLIP_DISTANCE0 + clipPlane().value();
+        node->getOrCreateStateSet()->setMode(mode, 1);
+    }
+#endif
+
+    if (order().isSet() || renderBin().isSet())
+    {
+        osg::StateSet* ss = node->getOrCreateStateSet();
+        int binNumber = order().isSet() ? (int)order()->eval() : ss->getBinNumber();
+        std::string binName =
+            renderBin().isSet() ? renderBin().get() :
+            ss->useRenderBinDetails() ? ss->getBinName() : "DepthSortedBin";
+        ss->setRenderBinDetails(binNumber, binName);
+    }
+
+    if (minAlpha().isSet())
+    {
+        DiscardAlphaFragments().install(node->getOrCreateStateSet(), minAlpha().value());
+    }
+
+
+    if (transparent() == true)
+    {
+        osg::StateSet* ss = node->getOrCreateStateSet();
+        ss->setRenderingHint(ss->TRANSPARENT_BIN);
+    }
+
+    if (decal() == true)
+    {
+        node->getOrCreateStateSet()->setAttributeAndModes(
+            new osg::PolygonOffset(-1, -1), 1);
+
+        node->getOrCreateStateSet()->setAttributeAndModes(
+            new osg::Depth(osg::Depth::LEQUAL, 0, 1, false));
     }
 }

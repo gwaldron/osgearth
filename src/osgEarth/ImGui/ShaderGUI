@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_SHADER_GUI
-#define OSGEARTH_IMGUI_SHADER_GUI
+#pragma once
 
 #include "ImGui"
 #include <osgEarth/Registry>
@@ -174,8 +173,9 @@ namespace osgEarth
                                         if (ImGuiUtil::InputTextMultiline("##shader_source", &text, ImVec2(-1, -1)))
                                         {
                                             shader->setShaderSource(text);
-                                            program->releaseGLObjects(nullptr);
+                                            //program->releaseGLObjects(nullptr);
                                         }
+
                                         ImGui::End();
                                     }
                                     ImGui::PopID();
@@ -190,5 +190,3 @@ namespace osgEarth
         };
     }
 }
-
-#endif // OSGEARTH_IMGUI_SHADER_GUI

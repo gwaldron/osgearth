@@ -63,7 +63,7 @@ namespace osgEarth
 
     private:
         //! hidden to force use of create()
-        ChonkMaterial() { }
+        ChonkMaterial() = default;
     };
 
     class ChonkFactory;
@@ -180,16 +180,22 @@ namespace osgEarth
         using GetOrCreateFunction =
             std::function<Texture::Ptr(osg::Texture* osgTex, bool& isNew)>;
 
-        osg::ref_ptr<TextureArena> _textures;
+        //! Texture arena into which this factory will place textures it finds
+        osg::ref_ptr<TextureArena> textures;
 
-        GetOrCreateFunction _getOrCreateTexture;
+        //! Texture caching function
+        GetOrCreateFunction getOrCreateTexture;
 
     public:
-        ChonkFactory(
-            TextureArena* textures);
+        //! Default, user should supply a TextureArena.
+        ChonkFactory();
 
-        //! User function that can try to find textures instead of
-        //! creating new ones. Good for sharing data across invocations.
+        //! Construct with a texture arena.
+        ChonkFactory(TextureArena* textures);
+
+        //! Function that can try to find textures instead of
+        //! creating new ones. Good for sharing data across invocations, and
+        //! for preventint duplicate textures in the arena.
         void setGetOrCreateFunction(GetOrCreateFunction);
 
         //! For the given node, this method populates the provided Chonk wit
@@ -208,14 +214,16 @@ namespace osgEarth
             float far_pixel_scale,
             float near_pixel_scale);
 
-        /**
-        * Stock "getOrCreateTexture" function for the ChonkFactory that works on
-        * a vector of Weak pointers. Use this or provide your own or don't use
-        * one at all.
-        */
+        //! Stock "getOrCreateTexture" function for the ChonkFactory that works on
+        //! a vector of Weak pointers. Use this or provide your own or don't use
+        //! one at all.
         static GetOrCreateFunction getWeakTextureCacheFunction(
             std::vector<Texture::WeakPtr>& cache,
             std::mutex& cache_mutex);
+
+    private:
+        mutable std::vector<Texture::WeakPtr> _texcache;
+        mutable std::mutex _texcache_mutex;
     };
 
     /**

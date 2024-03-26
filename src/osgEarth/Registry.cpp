@@ -177,8 +177,6 @@ Registry::Registry() :
     osgDB::Registry::instance()->addArchiveExtension( "kmz" );
     osgDB::Registry::instance()->addArchiveExtension( "3tz");
     osgDB::Registry::instance()->addFileExtensionAlias( "3tz", "zip" );
-    //osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
-
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml; charset=utf8", "kml");
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz",     "kmz" );

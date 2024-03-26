@@ -122,7 +122,7 @@ namespace
         ChonkDrawable* _drawable = nullptr; // optional.
         float _far_pixel_scale = 0.0f;
         float _near_pixel_scale = MAX_NEAR_PIXEL_SCALE;
-        TextureArena* _textures;
+        TextureArena* _textures = nullptr;
         ChonkFactory::GetOrCreateFunction _getOrCreateTexture;
         std::list<ChonkMaterial::Ptr> _materialCache;
         std::stack<ChonkMaterial::Ptr> _materialStack;
@@ -622,16 +622,21 @@ Chonk::getBound()
     return _box;
 }
 
-ChonkFactory::ChonkFactory(TextureArena* textures) :
-    _textures(textures)
+ChonkFactory::ChonkFactory()
 {
-    //nop
+    getOrCreateTexture = getWeakTextureCacheFunction(_texcache, _texcache_mutex);
+}
+
+ChonkFactory::ChonkFactory(TextureArena* in_textures)
+{
+    textures = in_textures;
+    getOrCreateTexture = getWeakTextureCacheFunction(_texcache, _texcache_mutex);
 }
 
 void
 ChonkFactory::setGetOrCreateFunction(GetOrCreateFunction value)
 {
-    _getOrCreateTexture = value;
+    getOrCreateTexture = value;
 }
 
 bool
@@ -639,6 +644,8 @@ ChonkFactory::load(osg::Node* node, Chonk* chonk, float far_pixel_scale, float n
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
     OE_SOFT_ASSERT_AND_RETURN(chonk != nullptr, false);
+    OE_SOFT_ASSERT_AND_RETURN(textures.valid(), false, "ChonkFactory requires a valid TextureArena");
+    
     OE_PROFILING_ZONE;
 
     // convert all primitive sets to indexed primitives
@@ -655,7 +662,7 @@ ChonkFactory::load(osg::Node* node, Chonk* chonk, float far_pixel_scale, float n
     unsigned offset = chonk->_ebo_store.size();
 
     // rip geometry and textures into a new Asset object
-    Ripper ripper(chonk, nullptr, _textures.get(), _getOrCreateTexture, far_pixel_scale, near_pixel_scale);
+    Ripper ripper(chonk, nullptr, textures.get(), getOrCreateTexture, far_pixel_scale, near_pixel_scale);
     node->accept(ripper);
 
     // dirty its bounding box
@@ -674,6 +681,8 @@ ChonkFactory::load(osg::Node* node, ChonkDrawable* drawable, float far_pixel_sca
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
     OE_SOFT_ASSERT_AND_RETURN(drawable != nullptr, false);
+    OE_SOFT_ASSERT_AND_RETURN(textures.valid(), false, "ChonkFactory requires a valid TextureArena");
+
     OE_PROFILING_ZONE;
 
     Chonk::Ptr chonk;
@@ -688,7 +697,7 @@ ChonkFactory::load(osg::Node* node, ChonkDrawable* drawable, float far_pixel_sca
         chonk->_ebo_store.reserve(counter._numElements);
     }
 
-    Ripper ripper(chonk.get(), drawable, _textures.get(), _getOrCreateTexture, far_pixel_scale, near_pixel_scale);
+    Ripper ripper(chonk.get(), drawable, textures.get(), getOrCreateTexture, far_pixel_scale, near_pixel_scale);
     node->accept(ripper);
 
     if (chonk && !chonk->_ebo_store.empty())

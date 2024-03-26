@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/GLSLChunker>
-#include <osgEarth/StringUtils>
+#include "GLSLChunker"
+#include "StringUtils"
 #include <osgEarth/Notify>
 
 using namespace osgEarth;
@@ -219,10 +219,15 @@ namespace
             if (pos > 0 && pos != temp.npos)
                 temp = temp.substr(pos);
 
+            bool is_directive = (temp.size() > 0 && temp[0] == '#');
+
             if (temp.find('}') != temp.npos && prefix.size() >= 4)
                 prefix.resize(prefix.size() - 4);
 
-            out << prefix << temp << "\n";
+            if (is_directive)
+                out << temp << "\n";
+            else
+                out << prefix << temp << "\n";
             
             if (temp.find('{') != temp.npos)
                 prefix += "    ";

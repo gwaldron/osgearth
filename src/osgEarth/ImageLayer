@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_IMAGE_TERRAIN_LAYER_H
-#define OSGEARTH_IMAGE_TERRAIN_LAYER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
@@ -253,6 +251,13 @@ namespace osgEarth
         //! using a createImage driver
         void setUseCreateTexture();
 
+        //! Apply a post-processing layers to the image
+        virtual GeoImage applyPostLayer(
+            const GeoImage& image,
+            const TileKey& key,
+            Layer* postLayer,
+            ProgressCallback* progress) const;
+
         osg::ref_ptr<osg::Image> _emptyImage;
 
     private:
@@ -333,6 +338,3 @@ namespace osgEarth
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ImageLayer::Options);
-
-
-#endif // OSGEARTH_IMAGE_TERRAIN_LAYER_H

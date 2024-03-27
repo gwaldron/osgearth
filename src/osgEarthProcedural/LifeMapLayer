@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_PROCEDURAL_LIFE_MAP_LAYER_H
-#define OSGEARTH_PROCEDURAL_LIFE_MAP_LAYER_H
+#pragma once
 
 #include <osgEarthProcedural/Export>
 #include <osgEarthProcedural/BiomeLayer>
@@ -113,13 +112,11 @@ namespace osgEarth { namespace Procedural
 
     public:
 
-        virtual void addedToMap(const Map* map) override; 
+        void addedToMap(const Map* map) override; 
 
-        virtual void removedFromMap(const Map* map) override;
+        void removedFromMap(const Map* map) override;
 
     protected:
-
-        virtual ~LifeMapLayer() { }
 
         osg::observer_ptr<const Map> _map;
         mutable ElevationPool::WorkingSet _workingSet;
@@ -133,5 +130,3 @@ namespace osgEarth { namespace Procedural
     };
 
 } } // namespace osgEarth::Procedural
-
-#endif // OSGEARTH_PROCEDURAL_LIFE_MAP_LAYER_H

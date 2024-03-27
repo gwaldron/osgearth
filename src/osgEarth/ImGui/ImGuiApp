@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_APP_H
-#define OSGEARTH_IMGUI_APP_H 1
+#pragma once
 
 //! Use this include to build a local ImGui application, 
 //! as in the osgearth examples and tools.
@@ -397,5 +396,3 @@ namespace osgEarth
         };
     }
 }
-
-#endif

@@ -421,18 +421,6 @@ namespace ImGuiLTable
 
 namespace ImGuiUtil
 {
-    static bool BeginPopupResizable(const char* str_id, ImGuiWindowFlags flags)
-    {
-        ImGuiContext& g = *GImGui;
-        if (g.OpenPopupStack.Size <= g.BeginPopupStack.Size) // Early out for performance
-        {
-            g.NextWindowData.ClearFlags(); // We behave like Begin() and need to consume those values
-            return false;
-        }
-        //flags |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings;
-        return ImGui::BeginPopupEx(g.CurrentWindow->GetID(str_id), flags);
-    }
-
     template<typename... Args>
     static void TextCentered(const char* format, Args&&... args)
     {

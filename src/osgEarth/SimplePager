@@ -19,9 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_UTIL_SIMPLE_PAGER_H
-#define OSGEARTH_UTIL_SIMPLE_PAGER_H 1
-
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Profile>
@@ -121,19 +119,21 @@ namespace osgEarth { namespace Util
             const TileKey& key,
             ProgressCallback* progress);
 
-        bool _additive;
-        double _rangeFactor;
+        bool _additive = false;
+        double _rangeFactor = 6.0;
         float _maxRange = FLT_MAX;
-        unsigned int _minLevel;
-        unsigned int _maxLevel;
+        unsigned int _minLevel = 0;
+        unsigned int _maxLevel = 30;
+        float _priorityScale = 1.0f;
+        float _priorityOffset = 0.0f;
+        bool _canCancel = true;
+        bool _done = false;
+        bool _clusterCullingEnabled = true;
+
+        osg::observer_ptr<const osgEarth::Map> _map;
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const Profile> _mapProfile;
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
-        float _priorityScale;
-        float _priorityOffset;
-        bool _canCancel;
-        bool _done;
-        osg::observer_ptr< const osgEarth::Map > _map;
         
         
         mutable std::mutex _mutex;
@@ -144,5 +144,3 @@ namespace osgEarth { namespace Util
     };
 
 } } // namespace osgEarth::Util
-
-#endif

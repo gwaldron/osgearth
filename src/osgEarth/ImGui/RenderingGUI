@@ -393,10 +393,7 @@ namespace osgEarth
                                         for (auto& obj : cat.second)
                                         {
                                             ImGui::TableNextColumn();
-                                            if (obj->size() < 1048576)
-                                                ImGui::Text("%6.2lf KB", (double)obj->size() / (double)1024.);
-                                            else
-                                                ImGui::Text("%6.2lf MB", (double)obj->size() / (double)1048576.);
+                                            ImGui::Text("%6.1lf KB", (double)obj->size() / (double)1024.);
                                             ImGui::TableNextColumn();
                                             ImGui::Text("%d", obj->recycles());
                                             ImGui::TableNextColumn();

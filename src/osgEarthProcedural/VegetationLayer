@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_PROCEDURAL_GROUND_VEGETATION_LAYER_BINDLESS_H
-#define OSGEARTH_PROCEDURAL_GROUND_VEGETATION_LAYER_BINDLESS_H
+#pragma once
 
 #include <osgEarthProcedural/Export>
 #include <osgEarthProcedural/Biome>
@@ -360,7 +359,7 @@ namespace osgEarth { namespace Procedural
 
         using Tiles = std::unordered_map<
             TileKeyAndRevision,
-            Tile::Ptr,
+            Tile::WeakPtr,
             TileKeyAndRevision>;
 
         // Shared (amongst all cameras) cache of vegetation tiles,
@@ -473,5 +472,3 @@ namespace osgEarth { namespace Procedural
 } } // namespace osgEarth::Procedural
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Procedural::VegetationLayer::Options);
-
-#endif // OSGEARTH_PROCEDURAL_GROUND_VEGETATION_LAYER_H

@@ -168,7 +168,7 @@ LifeMapLayer::init()
 }
 
 Status
-LifeMapLayer::openImplementation() 
+LifeMapLayer::openImplementation()
 {
     Status parent = super::openImplementation();
     if (parent.isError())
@@ -222,7 +222,7 @@ LifeMapLayer::addedToMap(const Map* map)
     // not specified; try to find it
     if (!getBiomeLayer())
         setBiomeLayer(map->getLayer<BiomeLayer>());
-    
+
     Status biomeStatus = options().biomeLayer().open(getReadOptions());
     if (getBiomeLayer())
     {
@@ -429,7 +429,7 @@ LifeMapLayer::createImageImplementation(
     {
         auto creator = [&](const TileKey& key, ProgressCallback* p) {
             return _landCoverFactory->createCoverage(key, p);
-        };
+            };
         landcover.setCreateTileFunction(creator);
         landcover.setCenterTileKey(key, progress);
     }
@@ -533,8 +533,8 @@ LifeMapLayer::createImageImplementation(
     //    12u, 13u, 14u, 15u //, 16u // 0u, 9u, 13u, 16u
     //};
     const unsigned noisePattern[NOISE_LEVELS] = { RANDOM, CLUMPY };
-        //RANDOM, SMOOTH, CLUMPY, RANDOM2 };
-    
+    //RANDOM, SMOOTH, CLUMPY, RANDOM2 };
+
     CoordScaler coordScalers[NOISE_LEVELS] = {
         CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[0]),
         CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[1]) //,
@@ -959,7 +959,7 @@ LifeMapLayer::applyPostLayer(const GeoImage& canvas, const TileKey& key, Layer* 
                     }
                 }
             }
-
+             
             return GeoImage(result_image, canvas.getExtent());
         }
     }

@@ -2043,7 +2043,8 @@ VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
             // that doesn't mean it is ready to render)
             view._placeholder = _placeholders[entry->getKey()];
 
-            Tile::Ptr& tile = _tiles[rev_tile_key];
+            Tile::WeakPtr& tile_weak = _tiles[rev_tile_key];
+            Tile::Ptr tile = tile_weak.lock();
             if (tile == nullptr)
             {
                 // If the placeholder exists, extact its birthday so we
@@ -2071,6 +2072,8 @@ VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
                     birthday < 0.0 ? cv->getState()->getFrameStamp() : nullptr,
                     birthday,
                     range);
+
+                tile_weak = tile;
             }
 
             view._tile = tile;
@@ -2166,14 +2169,30 @@ VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
 
 
     // purge unused tiles & placeholders
-    _tiles.scoped_lock([this]()
+    _tiles.scoped_lock([this, &cs]()
         {
-            for (auto it = _tiles.begin(); it != _tiles.end(); )
+            bool report = false;
+
+            for (auto it = _placeholders.begin(); it != _placeholders.end();)
             {
                 if (it->second.use_count() == 1)
-                    it = _tiles.erase(it);
+                    it = _placeholders.erase(it), report = true;
                 else
                     ++it;
+            }
+
+            for (auto it = _tiles.begin(); it != _tiles.end(); )
+            {
+                if (it->second.expired())
+                    it = _tiles.erase(it), report = true;
+                else
+                    ++it;
+            }
+
+            if (report)
+            {
+                OE_DEBUG << LC << "_tiles=" << _tiles.size() << " _placeholders=" << _placeholders.size()
+                    << " _views=" << cs->_views.size() << std::endl;
             }
         });
 }
@@ -2185,11 +2204,15 @@ VegetationLayer::resizeGLObjectBuffers(unsigned maxSize)
 
     std::lock_guard<std::mutex> lock(_tiles.mutex());
 
-    for (auto& tile : _tiles)
+    for (auto iter : _tiles)
     {
-        auto drawable = tile.second->_drawable.value();
-        if (drawable.valid())
-            drawable->resizeGLObjectBuffers(maxSize);
+        Tile::Ptr tile = iter.second.lock();
+        if (tile)
+        {
+            auto drawable = tile->_drawable.value();
+            if (drawable.valid())
+                drawable->resizeGLObjectBuffers(maxSize);
+        }
     }
 }
 

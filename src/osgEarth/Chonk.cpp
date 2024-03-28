@@ -50,6 +50,14 @@ using namespace osgEarth;
 // It's unlikely this is necessary, but it's here just we find otherwise.
 //#define RESET_BUFFER_BASE_BINDINGS
 
+// Chunk sizes for the various GL buffers that the culling system will allocate.
+// In theory chunked allocation can make object recycling more efficient.
+// These are all in bytes
+#define COMMAND_BUF_CHUNK_SIZE 512
+#define INPUT_BUF_CHUNK_SIZE (1024 * 512)
+#define OUTPUT_BUF_CHUNK_SIZE (INPUT_BUF_CHUNK_SIZE * 2)
+#define CHONK_BUF_CHUNK_SIZE 256
+
 namespace
 {
     struct SendIndices
@@ -553,6 +561,8 @@ Chonk::add(
     return factory.load(node, this, far_pixel_scale, near_pixel_scale);
 }
 
+#define IMMUTABLE 0
+
 const Chonk::DrawCommands&
 Chonk::getOrCreateCommands(osg::State& state) const
 {
@@ -564,18 +574,12 @@ Chonk::getOrCreateCommands(osg::State& state) const
         gs.vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state);
         gs.vbo->bind();
         gs.vbo->debugLabel("Chonk geometry", "VBO " + _name);
-        gs.vbo->bufferStorage(
-            _vbo_store.size() * sizeof(VertexGPU),
-            _vbo_store.data(),
-            0); // permanent
+        gs.vbo->bufferStorage(_vbo_store.size() * sizeof(VertexGPU), _vbo_store.data(), IMMUTABLE);
 
         gs.ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
         gs.ebo->bind();
         gs.ebo->debugLabel("Chonk geometry", "EBO " + _name);
-        gs.ebo->bufferStorage(
-            _ebo_store.size() * sizeof(element_t),
-            _ebo_store.data(),
-            0); // permanent
+        gs.ebo->bufferStorage(_ebo_store.size() * sizeof(element_t), _ebo_store.data(), IMMUTABLE);
 
         gs.commands.reserve(_lods.size());
 
@@ -1054,17 +1058,20 @@ ChonkDrawable::GLObjects::initialize(const osg::Object* host, osg::State& state)
     void(GL_APIENTRY * gl_VertexAttribLFormat)(GLuint, GLint, GLenum, GLuint);
     osg::setGLExtensionFuncPtr(gl_VertexAttribLFormat, "glVertexAttribLFormatNV");
 
+#if 0
     // DrawElementsCommand buffer:
     _commandBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
     _commandBuf->bind();
     _commandBuf->debugLabel("Chonk drawable", "commands " + host->getName());
     _commandBuf->unbind();
+    _commandBuf->setBufferDataAllocMultiple(COMMAND_BUF_CHUNK_SIZE);
 
     // Per-culling instances:
     _instanceInputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
     _instanceInputBuf->bind();
     _instanceInputBuf->debugLabel("Chonk drawable", "input " +host->getName());
     _instanceInputBuf->unbind();
+    _instanceInputBuf->setBufferDataAllocMultiple(INPUT_BUF_CHUNK_SIZE);
 
     if (_gpucull)
     {
@@ -1073,13 +1080,16 @@ ChonkDrawable::GLObjects::initialize(const osg::Object* host, osg::State& state)
         _instanceOutputBuf->bind();
         _instanceOutputBuf->debugLabel("Chonk drawable", "output " + host->getName());
         _instanceOutputBuf->unbind();
+        _instanceOutputBuf->setBufferDataAllocMultiple(OUTPUT_BUF_CHUNK_SIZE);
 
         // Chonk data
         _chonkBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
         _chonkBuf->bind();
         _chonkBuf->debugLabel("Chonk drawable", "chonkbuf " + host->getName());
         _chonkBuf->unbind();
+        _instanceOutputBuf->setBufferDataAllocMultiple(CHONK_BUF_CHUNK_SIZE);
     }
+#endif
 
     // Multidraw command:
     osg::setGLExtensionFuncPtr(
@@ -1146,6 +1156,7 @@ ChonkDrawable::GLObjects::initialize(const osg::Object* host, osg::State& state)
     _vao->unbind();
 }
 
+#define NEXT_MULTIPLE(X, Y) (((X+Y-1)/Y)*Y)
 
 void
 ChonkDrawable::GLObjects::update(
@@ -1237,21 +1248,55 @@ ChonkDrawable::GLObjects::update(
     }
 
     // Send to the GPU:
+    if (!_instanceInputBuf)
+    {
+        // Per-culling instances:
+        GLsizei sizeHint = _all_instances.size() * sizeof(Instance);
+        _instanceInputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, sizeHint, INPUT_BUF_CHUNK_SIZE);
+        _instanceInputBuf->bind();
+        _instanceInputBuf->debugLabel("Chonk drawable", "input " + host->getName());
+        _instanceInputBuf->unbind();
+    }
     _instanceInputBuf->uploadData(_all_instances, GL_STATIC_DRAW);
+
+    // need to do this since it gets sent in cull() when gpu culling is on.
+    if (!_commandBuf)
+    {
+        GLsizei sizeHint = _commands.size() * sizeof(Chonk::DrawCommand);
+        _commandBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, sizeHint, COMMAND_BUF_CHUNK_SIZE);
+        _commandBuf->bind();
+        _commandBuf->debugLabel("Chonk drawable", "commands " + host->getName());
+        _commandBuf->unbind();
+    }
 
     if (_gpucull)
     {
+        if (!_chonkBuf)
+        {
+            GLsizei sizeHint = _chonk_lods.size() * sizeof(ChonkLOD);
+            _chonkBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, sizeHint, CHONK_BUF_CHUNK_SIZE);
+            _chonkBuf->bind();
+            _chonkBuf->debugLabel("Chonk drawable", "chonkbuf " + host->getName());
+            _chonkBuf->unbind();
+        }
         _chonkBuf->uploadData(_chonk_lods, GL_STATIC_DRAW);
         
         // just reserve space if necessary - make sure there's enough space
         // for 2 LODs for each instance so we can do transitioning!
         // If someday, we draw more than 2 LODs at a time, we'll need to
         // up this buffer size!!
+        if (!_instanceOutputBuf)
+        {
+            GLsizei sizeHint = _all_instances.size() * sizeof(Instance) * 2;
+            _instanceOutputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, sizeHint, OUTPUT_BUF_CHUNK_SIZE);
+            _instanceOutputBuf->bind();
+            _instanceOutputBuf->debugLabel("Chonk drawable", "output " + host->getName());
+            _instanceOutputBuf->unbind();
+        }
         _instanceOutputBuf->uploadData(_instanceInputBuf->size() * 2, nullptr);
     }
     else
     {
-        // need to do this since it gets sent in cull() when gpu culling is on.
         _commandBuf->uploadData(_commands);
     }
 
@@ -1264,7 +1309,7 @@ ChonkDrawable::GLObjects::update(
 void
 ChonkDrawable::GLObjects::cull(osg::State& state)
 {
-    if (_commands.empty())
+    if (_commands.empty() || _commandBuf == nullptr)
         return;
 
     OE_GL_ZONE_NAMED("cull");
@@ -1324,6 +1369,9 @@ void
 ChonkDrawable::GLObjects::draw(osg::State& state)
 {
     OE_GL_ZONE_NAMED("draw");
+
+    if (_commandBuf == nullptr)
+        return;
 
     // transmit the uniforms
     state.applyModelViewAndProjectionUniformsIfRequired();

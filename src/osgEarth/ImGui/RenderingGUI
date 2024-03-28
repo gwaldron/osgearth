@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_RENDERING_GUI
-#define OSGEARTH_IMGUI_RENDERING_GUI
+#pragma once
 
 #include "ImGui"
 #include <osgEarth/Threading>
@@ -376,7 +375,7 @@ namespace osgEarth
                                     total += obj->size();
 
                                 char header[128];
-                                sprintf(header, "%s (%d @ %.1lf MB)", cat.first.c_str(), (int)cat.second.size(), (double)total / 1048576.);
+                                sprintf(header, "%s (%d @ %.1lf MB)###%s", cat.first.c_str(), (int)cat.second.size(), (double)total / 1048576., cat.first.c_str());
 
                                 if (sort_by_size)
                                 {
@@ -389,12 +388,17 @@ namespace osgEarth
                                 {
                                     ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders;
                                     flags &= ~ImGuiTableFlags_BordersOuter;
-                                    if (ImGui::BeginTable("globj", 3, flags))
+                                    if (ImGui::BeginTable("globj", 4, flags))
                                     {
                                         for (auto& obj : cat.second)
                                         {
                                             ImGui::TableNextColumn();
-                                            ImGui::Text("%6.2lf MB", (double)obj->size() / (double)1048576.);
+                                            if (obj->size() < 1048576)
+                                                ImGui::Text("%6.2lf KB", (double)obj->size() / (double)1024.);
+                                            else
+                                                ImGui::Text("%6.2lf MB", (double)obj->size() / (double)1048576.);
+                                            ImGui::TableNextColumn();
+                                            ImGui::Text("%d", obj->recycles());
                                             ImGui::TableNextColumn();
                                             ImGui::Text("%s", obj->uid().c_str());
                                             ImGui::TableNextColumn();
@@ -423,5 +427,3 @@ namespace osgEarth
         };
     }
 }
-
-#endif // OSGEARTH_IMGUI_SYSTEM_GUI

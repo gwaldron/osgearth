@@ -227,6 +227,9 @@ namespace osgEarth
         //! whether this object can be shared between shared GCs
         bool shareable() const { return _shareable; }
 
+        //! number of times this object's been recycled
+        unsigned recycles() const { return _recycles; }
+
         //! true if this object is OK to use
         bool valid() const { return _name != 0 && _ext != nullptr;  }
 
@@ -247,14 +250,15 @@ namespace osgEarth
         
     protected:
         GLObject(GLenum ns, osg::State& state);
-        GLuint _name; // GL name assigned on creation
+        GLuint _name = 0u; // GL name assigned on creation
         std::string _uid; // debugging unique id (optional)
         std::string _category; // debugging category (optional)
-        GLenum _ns; // object namespace
-        bool _shareable; // can this object be shared between GCs?
-        bool _recyclable; // can this object by re-used?
-        osg::GLExtensions* _ext;
-        osg::GraphicsContext* _gc;
+        GLenum _ns = (GLenum)0; // object namespace
+        bool _shareable = false; // can this object be shared between GCs?
+        bool _recyclable = false; // can this object by re-used?
+        unsigned _recycles = 0u; // number of times this object has been recycled
+        osg::GLExtensions* _ext = nullptr;
+        osg::GraphicsContext* _gc = nullptr;
         unsigned _orphan_frames = 0u;
         friend class GLObjectPool;
 
@@ -325,17 +329,13 @@ namespace osgEarth
         using Ptr = std::shared_ptr<GLBuffer>;
 
         //! Creates a new unallocated buffer.
-        static Ptr create(
-            GLenum target,
-            osg::State& state);
+        static Ptr create(GLenum target, osg::State& state);
 
         //! Creates a new unallocated buffer.
         //! The "size hint" allows it to potentially be created from recycled
+        //! The "chunk size" is an alignment value to improve recycling efficiency
         //! GPU memory.
-        static Ptr create(
-            GLenum target,
-            osg::State& state,
-            GLsizei sizeHint);
+        static Ptr create(GLenum target, osg::State& state, GLsizei sizeHint, GLsizei chunkSize = 1);
 
         //! Bind this buffer to target() in the active context.
         void bind() const;
@@ -350,7 +350,7 @@ namespace osgEarth
         GLenum target() const { return _target; }
 
         //! allocated size of this buffer, from a call to bufferData or bufferStorage
-        GLsizei size() const override { return _size; }
+        GLsizei size() const override { return _alloc_size; }
 
         //! de-allocate and release this buffer
         virtual void release();
@@ -391,7 +391,15 @@ namespace osgEarth
         }
 
         //! glBufferStorage - allocate with immutable storage
-        void bufferStorage(GLsizei size, const GLvoid* data, GLbitfield flags =0) const;
+        //! @param buffersize The size of the buffer AND the data in bytes
+        //! @param data The data to upload
+        void bufferStorage(GLsizei datasize, const GLvoid* data, GLbitfield flags = 0) const;
+
+        //! glBufferStorage - allocate with immutable storage
+        //! @param buffersize The size of the buffer in bytes
+        //! @param datasize The size of the data in bytes
+        //! @param data The data to upload
+        void bufferStorage(GLsizei buffersize, GLsizei datasize, const GLvoid* data, GLbitfield flags = 0) const;
 
         //! map the buffer to a pointer
         void* map(GLbitfield access) const;
@@ -427,12 +435,17 @@ namespace osgEarth
         //! Align a value for the storage target.
         size_t align(size_t val);
 
+        //! Sets the storage alignment for this buffer. Calls to bufferData will align
+        //! to the next multiple of this value. Higher values can help with recycling.
+        void setChunkSize(GLsizei value);
+
     protected:
         GLBuffer(GLenum target, osg::State& state);
-        GLenum _target;
-        GLuint64 _address; // bindless GPU address
-        mutable GLsizei _size;
-        mutable bool _immutable;
+        GLenum _target = (GLenum)0;
+        GLuint64 _address = 0ULL; // bindless GPU address
+        mutable GLsizei _alloc_size = 0;
+        mutable bool _immutable = false;
+        GLsizei _chunk_size = 1;
 
 #ifdef OSGEARTH_SINGLE_GL_CONTEXT
         mutable Resident _isResident;
@@ -464,9 +477,12 @@ namespace osgEarth
                 GLint     wrapT,
                 GLint     wrapR,
                 GLfloat   maxAnisotropy);
-            GLint _minFilter, _magFilter;
-            GLint _wrapS, _wrapT, _wrapR;
-            GLfloat _maxAnisotropy;
+            GLint _minFilter = GL_LINEAR;
+            GLint _magFilter = GL_LINEAR;
+            GLint _wrapS = GL_CLAMP_TO_EDGE;
+            GLint _wrapT = GL_CLAMP_TO_EDGE;
+            GLint _wrapR = GL_CLAMP_TO_EDGE;
+            GLfloat _maxAnisotropy = 1.0f;
             bool operator == (const Profile& rhs) const;
         };
 
@@ -516,10 +532,10 @@ namespace osgEarth
 
     private:
         void reset(GLenum, const std::string&, const std::string&, osg::State&);
-        GLenum _target;
-        GLuint64 _handle;
+        GLenum _target = (GLenum)0;
+        GLuint64 _handle = 0ULL;
         std::string _id;
-        GLsizei _size;
+        GLsizei _size = 0;
         Profile _profile;
 
 #ifdef OSGEARTH_SINGLE_GL_CONTEXT
@@ -592,10 +608,9 @@ namespace osgEarth
         //! Get a vector of all extant object pools
         static std::unordered_map<int, GLObjectPool*> getAll();
 
-        //! Set the speed at which the pool will release orphaned objects.
-        //! zero is the slowest.
-        void setAvarice(unsigned value) { _avarice = value; _hits = 0; _misses = 0; }
-        unsigned getAvarice() const { return _avarice; }
+        //! Set the target memory size to attempt to delete per frame
+        void setBytesToDeletePerFrame(unsigned value) { _bytes_to_delete_per_frame = value; _hits = 0; _misses = 0; }
+        unsigned getBytesToDeletePerFrame() const { return _bytes_to_delete_per_frame; }
 
         unsigned recycleHits() const { return _hits; }
         unsigned recycleMisses() const { return _misses; }
@@ -610,6 +625,8 @@ namespace osgEarth
                 if (object.use_count() == 1 && compatible(object.get())) {
                     result = std::dynamic_pointer_cast<T>(object);
                     ++_hits;
+                    ++result->_recycles;
+                    result->_orphan_frames = 0u;
                     break;
                 }
             }
@@ -631,19 +648,20 @@ namespace osgEarth
 
         mutable std::mutex _mutex;
         Collection _objects; // objects being monitored
-        GLsizeiptr _totalBytes;
+        GLsizeiptr _totalBytes = 0;
         static bool _enableRecycling;
-        unsigned _hits;
-        unsigned _misses;
-        unsigned _avarice;
-        unsigned _frames_to_delay_deletion = 1u;
+        unsigned _hits = 0u;
+        unsigned _misses = 0u;
+        // note: these values affect the availability of memory for recycling.
+        unsigned _bytes_to_delete_per_frame = 100000u;
+        unsigned _frames_to_delay_deletion = 60u;
 
-        struct GC {
-            GC() : _gc(nullptr), _operation(nullptr) { }
-            const osg::GraphicsContext* _gc;
+        struct GC
+        {
+            const osg::GraphicsContext* _gc = nullptr;
             osg::ref_ptr<osg::GraphicsOperation> _operation;
+            std::chrono::steady_clock::time_point _time_last_visit;
         };
-
         std::vector<GC> _gcs;
 
         //! Start tracking object lifetime for a GC
@@ -768,8 +786,7 @@ namespace osgEarth
         //! @param function Function to execute in the graphics thread
         //! @return Future result value. If this object goes out of scope,
         //!   the job may by canceled.
-        static Result dispatch(
-            const Function& function);
+        static Result dispatch(const Function& function);
     };
 
     /**

@@ -100,19 +100,26 @@ namespace osgEarth { namespace Procedural
         float getNoiseWeight() const;
         bool getUseNoise() const;
 
+        //! Access the elevation data working set so we can customize the elevation layer
+        //! the LifeMapLayer uses when creating rasters.
+        //! Only do this before starting up the terrain engine.
+        ElevationPool::WorkingSet& getWorkingSet() { return _workingSet; }
+
     protected:
 
-        virtual void init() override;
+        void init() override;
 
-        virtual Status openImplementation() override;
+        Status openImplementation() override;
 
-        virtual Status closeImplementation() override;
-            
-        virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback*) const override;
+        Status closeImplementation() override;
+
+        GeoImage createImageImplementation(const TileKey&, ProgressCallback*) const override;
+
+        GeoImage applyPostLayer(const GeoImage&, const TileKey&, Layer*, ProgressCallback*) const override;
 
     public:
 
-        void addedToMap(const Map* map) override; 
+        void addedToMap(const Map* map) override;
 
         void removedFromMap(const Map* map) override;
 
@@ -121,8 +128,6 @@ namespace osgEarth { namespace Procedural
         osg::observer_ptr<const Map> _map;
         mutable ElevationPool::WorkingSet _workingSet;
         osg::ref_ptr<osg::Image> _noiseFunc;
-        LandCoverLayerVector _landCoverLayers;
-        osg::ref_ptr<LandCoverDictionary> _landCoverDictionary;
 
         LandCoverSample::Factory::Ptr _landCoverFactory;
 

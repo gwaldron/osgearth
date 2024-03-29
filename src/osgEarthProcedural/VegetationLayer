@@ -406,7 +406,7 @@ namespace osgEarth { namespace Procedural
         };
 
         using CameraStates = vector_map<
-            const osg::Camera*, 
+            osg::ref_ptr<const osg::Camera>,
             CameraState::Ptr>;
 
         // Collection tile views for each camera

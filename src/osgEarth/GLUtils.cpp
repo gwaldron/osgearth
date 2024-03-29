@@ -691,57 +691,11 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
 
     auto now = std::chrono::steady_clock::now();
 
-    int bytes_remaining = (int)_bytes_to_delete_per_frame;
-
-    // then check for objects to add to the orphan list:
-    GLsizeiptr bytes = 0;
-    Collection keepers;
-    keepers.reserve(_objects.size());
-    for (unsigned i = 0; i < _objects.size(); ++i)
-    {
-        auto& object = _objects[i];
-        bool keep = true;
-
-        if (object->gc() == gc &&
-            object.use_count() == 1 &&
-            bytes_remaining > 0 &&
-            object->_orphan_frames++ >= _frames_to_delay_deletion)
-        {
-            keep = false;
-            bytes_remaining -= object->size();
-            object->release();
-        }
-
-        else if (!object->valid())
-        {
-            // object has already been released; it cannot be recycled.
-            keep = false;
-        }
-
-        else if (object->gc() == nullptr)
-        {
-            keep = false;
-            bytes_remaining -= object->size();
-
-            // Is this ok? We are releasing an object that was created in a different GC,
-            // but there's no other place to do so now that the GC is gone.
-            object->release();
-        }
-
-        if (keep)
-        {
-            bytes += object->size();
-            keepers.emplace_back(std::move(object));
-        }
-    }
-
-    _objects.swap(keepers);
-    _totalBytes = bytes;
-
-    // now check the GCs to see if any of them are no longer valid.
+#if 0 // not necessary when releaseGLObjects is used properly :)
+    // First check the GCs to see if any of them are no longer valid.
     // This is kind of a "backup plan" in case the user doesn't call
     // releaseGLObjects.
-    for(int i=0; i<_gcs.size(); ++i)
+    for (int i = 0; i < _gcs.size(); ++i)
     {
         if (_gcs[i]._gc == nullptr)
             break;
@@ -753,7 +707,7 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
         else if (now - _gcs[i]._time_last_visit > std::chrono::seconds(5))
         {
             // mark all objects created in this GC as orphans
-            for(auto& object : _objects)
+            for (auto& object : _objects)
             {
                 if (object->gc() == _gcs[i]._gc)
                 {
@@ -767,6 +721,45 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
             --i;
         }
     }
+#endif
+
+    int bytes_remaining = (int)_bytes_to_delete_per_frame;
+
+    // then check for objects to add to the orphan list:
+    GLsizeiptr bytes = 0;
+    Collection keepers;
+    keepers.reserve(_objects.size());
+    for (unsigned i = 0; i < _objects.size(); ++i)
+    {
+        auto& object = _objects[i];
+        
+        if (!object->valid())
+        {
+            // object has already been released; it cannot be recycled.
+            continue;
+        }
+
+        // either the object is not in use, or it's been decommisioned and the GC set to null:
+        //if ((object->gc() == gc && object.use_count() == 1) || (object->gc() == nullptr))
+        if (object.use_count() == 1)
+        {
+            // timeslice (by limiting deallocations per frame), and
+            // delay deletion in the event of multithreaded draw
+            if (bytes_remaining > 0 && object->_orphan_frames++ >= _frames_to_delay_deletion)
+            {
+                //keep = false;
+                object->release();
+                bytes_remaining -= object->size();
+                continue;
+            }
+        }
+
+        bytes += object->size();
+        keepers.emplace_back(std::move(object));
+    }
+
+    _objects.swap(keepers);
+    _totalBytes = bytes;
 }
 
 GLObject::GLObject(GLenum ns, osg::State& state) :

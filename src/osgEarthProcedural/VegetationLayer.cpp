@@ -1218,7 +1218,7 @@ VegetationLayer::createDrawableAsync(
     osg::BoundingBox tile_bbox = tile_bbox_;
     osg::ref_ptr<const osg::FrameStamp> framestamp = framestamp_;
 
-    auto function = [layer, key, group, tile_bbox, framestamp, backup_birthday](Cancelable& c) // -> osg::ref_ptr<osg::Drawable>
+    auto function = [layer, key, group, tile_bbox, framestamp, backup_birthday](Cancelable& c)
     {
         osg::ref_ptr<ProgressCallback> p = new ProgressCallback(&c);
         auto result = layer->createDrawable(key, group, tile_bbox, p.get());
@@ -2221,5 +2221,33 @@ VegetationLayer::releaseGLObjects(osg::State* state) const
 {
     PatchLayer::releaseGLObjects(state);
 
-    const_cast<VegetationLayer*>(this)->dirty();
+    //const_cast<VegetationLayer*>(this)->dirty();
+
+    {
+        std::lock_guard<std::mutex> lock(_tiles.mutex());
+
+        for (auto iter : _tiles)
+        {
+            Tile::Ptr tile = iter.second.lock();
+            if (tile)
+            {
+                auto drawable = tile->_drawable.value();
+                if (drawable.valid())
+                    drawable->releaseGLObjects(state);
+            }
+        }
+    }
+
+    if (state != nullptr)
+    {
+        std::lock_guard<std::mutex> lock(_cameraState.mutex());
+        for (auto cs : _cameraState)
+        {
+            if (cs.first->getGraphicsContext() == state->getGraphicsContext())
+            {
+                _cameraState.erase(cs.first);
+                break;
+            }
+        }
+    }
 }

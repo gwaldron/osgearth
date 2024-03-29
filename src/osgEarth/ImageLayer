@@ -81,7 +81,7 @@ namespace osgEarth
             OE_OPTION(std::string, shareTexMatUniformName);
             virtual Config getConfig() const;
         private:
-            void fromConfig( const Config& conf );
+            void fromConfig(const Config& conf);
         };
 
     public:
@@ -105,11 +105,11 @@ namespace osgEarth
 
         //! @deprecated
         //! Adds a color filter to the filter chain.
-        void addColorFilter( ColorFilter* filter );
+        void addColorFilter(ColorFilter* filter);
 
         //! @deprecated
         //! Removes a color filter from the filter chain
-        void removeColorFilter( ColorFilter* filter );
+        void removeColorFilter(ColorFilter* filter);
 
         //! @deprecated
         //! Accesses the color filter chain
@@ -179,7 +179,7 @@ namespace osgEarth
 
         //! Stores an image in this layer (if writing is enabled).
         //! Returns a status value indicating whether the store succeeded.
-        Status writeImage(const TileKey& key, const osg::Image* image, ProgressCallback* progress =0L);
+        Status writeImage(const TileKey& key, const osg::Image* image, ProgressCallback* progress = 0L);
 
         //! Returns the compression method prefered by this layer
         //! that you can pass to ImageUtils::compressImage.
@@ -192,7 +192,7 @@ namespace osgEarth
         void removeCallback(Callback* callback);
 
         //! Add a post-processing layer
-        void addPostLayer(ImageLayer* layer);
+        void addPostLayer(Layer* layer);
 
 
     public: // Texture support
@@ -202,13 +202,17 @@ namespace osgEarth
         bool useCreateTexture() const { return _useCreateTexture; }
 
         //! Override this method to create the texture when useCreateTexture is true
-        virtual TextureWindow createTexture(const TileKey& key, ProgressCallback* progress) const 
-            { return TextureWindow(); }
+        virtual TextureWindow createTexture(const TileKey& key, ProgressCallback* progress) const
+        {
+            return TextureWindow();
+        }
 
         //! Subclass overrides this to generate image data for the key.
         //! The key will always be in the same profile as the layer.
         virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback* progress) const
-            { return GeoImage::INVALID; }
+        {
+            return GeoImage::INVALID;
+        }
 
     protected:
 
@@ -228,7 +232,9 @@ namespace osgEarth
         virtual GeoImage createImageImplementation(
             const GeoImage& canvas,
             const TileKey& key,
-            ProgressCallback* progress) const { return canvas; }
+            ProgressCallback* progress) const {
+            return canvas;
+        }
 
         //! Override to do something to an image before returning
         //! it from createImage (including a GeoImage read from the cache)
@@ -288,7 +294,7 @@ namespace osgEarth
         typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
         Threading::Mutexed<Callbacks> _callbacks;
 
-        Mutexed<std::vector<osg::ref_ptr<ImageLayer>>> _postLayers;
+        Mutexed<std::vector<osg::ref_ptr<Layer>>> _postLayers;
 
         Gate<TileKey> _sentry;
 
@@ -296,7 +302,7 @@ namespace osgEarth
     };
 
     typedef std::vector< osg::ref_ptr<ImageLayer> > ImageLayerVector;
-    
+
     /**
      * Texture that loads its data asynchronously
      */

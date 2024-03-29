@@ -277,6 +277,11 @@ FeatureSource::createFeatureCursor(
     if (context)
         temp_cx = *context;
 
+
+    if (temp_cx.profile() == nullptr)
+        temp_cx.setProfile(getFeatureProfile());
+    
+
     // TileKey path:
     if (query.tileKey().isSet())
     {

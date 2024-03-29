@@ -69,6 +69,10 @@ namespace osgEarth { namespace Util
         void setEnableCancelation(bool value);
         bool getEnableCancelation() const;
 
+        //! Whether to install cluster culling for geographic nodes
+        void setClusterCullingEnabled(bool value);
+        bool getClusterCullingEnabled() const;
+
         //! Scene graph callbacks for notification of changes. Call before calling build().
         void setSceneGraphCallbacks(SceneGraphCallbacks* value) { _sceneGraphCallbacks = value; }
         SceneGraphCallbacks* getSceneGraphCallbacks() const { return _sceneGraphCallbacks.get(); }
@@ -83,8 +87,8 @@ namespace osgEarth { namespace Util
             ProgressCallback* progress);
 
         /**
-         * Callback structure for pager events
-         */
+            * Callback structure for pager events
+            */
         struct Callback : public osg::Referenced
         {
             //! Called after a new tile is created, but before it's merged into the live
@@ -102,7 +106,7 @@ namespace osgEarth { namespace Util
 
         //! (INTERNAL) Loads the geometry hierarchy for this key.
         osg::ref_ptr<osg::Node> loadKey(
-            const TileKey& key, 
+            const TileKey& key,
             ProgressCallback* progress);
 
     protected:
@@ -134,8 +138,8 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const Profile> _mapProfile;
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
-        
-        
+
+
         mutable std::mutex _mutex;
         using Callbacks = std::vector<osg::ref_ptr<Callback>>;
         Callbacks _callbacks;

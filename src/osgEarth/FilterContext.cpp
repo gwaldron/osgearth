@@ -72,6 +72,18 @@ FilterContext::FilterContext(Session* session,
     }
 }
 
+FilterContext::FilterContext(const FeatureProfile* profile, const Query& query)
+{
+    _profile = profile;
+
+    if (query.tileKey().isSet())
+        extent() = query.tileKey()->getExtent();
+    else if (query.bounds().isSet() && profile)
+        extent() = GeoExtent(profile->getSRS(), query.bounds().get());
+    else if (profile)
+        extent() = profile->getExtent();
+}
+
 void
 FilterContext::setProfile(const FeatureProfile* value)
 {

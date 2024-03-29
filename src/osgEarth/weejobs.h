@@ -692,7 +692,7 @@ namespace WEEJOBS_NAMESPACE
             inline void shutdown();
 
             bool _alive = true;
-            bool _stealing_allowed = true;
+            bool _stealing_allowed = false;
             std::mutex _pools_mutex;
             std::vector<jobpool*> _pools;
             metrics _metrics;

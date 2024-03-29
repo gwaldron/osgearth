@@ -616,13 +616,28 @@ namespace osgEarth
         unsigned recycleMisses() const { return _misses; }
         Collection objects() const;
 
-        template<typename T>
-        typename T::Ptr recycle(const GLObject::Compatible& compatible) {
-            if (!_enableRecycling) return {};
+        //! Attempt to grab an existing object from the recycling bin and re-use it.
+        //! Returns nullptr if no compatible object is found.
+        template<typename T, typename PREDICATE>
+        typename T::Ptr recycle(PREDICATE&& is_compatible)
+        {
+            if (!_enableRecycling)
+                return {};
+
             std::lock_guard<std::mutex> lock(_mutex);
+
             typename T::Ptr result;
-            for (auto& object : _objects) {
-                if (object.use_count() == 1 && compatible(object.get())) {
+            for (auto& object : _objects)
+            {
+                // an object can be recycled if and only if:
+                // - the use_count() is 1, meaning no one else is using it
+                // - the object's GPU memory is allocated and usable ("valid")
+                // - the object's configuration is compatible with the request. For example,
+                //   you can only recycle an RGBA texture to another RGBA texture of the same
+                //   dimensions and format; and you can only recycle and SSBO into another SSBO
+                //   of the same size.
+                if (object.use_count() == 1 && object->valid() && is_compatible(object.get()))
+                {
                     result = std::dynamic_pointer_cast<T>(object);
                     ++_hits;
                     ++result->_recycles;

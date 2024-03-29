@@ -553,7 +553,6 @@ GLObjectPool::getAll()
 GLObjectPool::GLObjectPool(unsigned cxid) :
     osg::GraphicsObjectManager("osgEarth::GLObjectPool", cxid)
 {
-    //_gcs.resize(256);
 
     std::lock_guard<std::mutex> lock(s_pools_mutex);
     s_pools.emplace_back(this);
@@ -598,17 +597,6 @@ GLObjectPool::track(osg::GraphicsContext* gc)
     _gcs.emplace_back(GC{ gc, servicer, now });
 
     gc->add(servicer);
-
-#if 0
-    for (i = 0; i < _gcs.size() && _gcs[i]._gc != nullptr; ++i)
-    {
-        if (_gcs[i]._gc == gc)
-            return;
-    }
-    _gcs[i]._gc = gc;
-    _gcs[i]._operation = new GCServicingOperation(this);
-    gc->add(_gcs[i]._operation.get());
-#endif
 }
 
 void
@@ -624,6 +612,14 @@ GLObjectPool::releaseGLObjects(osg::State* state)
     if (state)
     {
         GLObjectPool::get(*state)->releaseAll(state->getGraphicsContext());
+    }
+    else
+    {
+        auto pools = getAll();
+        for(auto i : pools)
+        {
+            i.second->releaseAll(nullptr);
+        }
     }
 }
 
@@ -642,31 +638,25 @@ GLObjectPool::objects() const
 void
 GLObjectPool::flushDeletedGLObjects(double now, double& avail)
 {
-    //flush(_objects);
+    //nop
 }
 
 void
 GLObjectPool::flushAllDeletedGLObjects()
 {
-    deleteAllGLObjects();
+    //nop
 }
 
 void
 GLObjectPool::deleteAllGLObjects()
 {
-    //std::lock_guard<std::mutex> lock(_mutex);
-    //for (auto& object : _objects)
-    //    object->release();
-    //_objects.clear();
-    //_totalBytes = 0;
+    //nop
 }
 
 void
 GLObjectPool::discardAllGLObjects()
 {
-    //std::lock_guard<std::mutex> lock(_mutex);
-    //_objects.clear();
-    //_totalBytes = 0;
+    //nop
 }
 
 void
@@ -679,7 +669,7 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
 
     for (auto& object : _objects)
     {
-        if (object->gc() == gc)
+        if (object->gc() == gc || (gc == nullptr))
         {
             object->release();
         }
@@ -717,16 +707,25 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
             bytes_remaining > 0 &&
             object->_orphan_frames++ >= _frames_to_delay_deletion)
         {
+            keep = false;
             bytes_remaining -= object->size();
             object->release();
+        }
+
+        else if (!object->valid())
+        {
+            // object has already been released; it cannot be recycled.
             keep = false;
         }
 
         else if (object->gc() == nullptr)
         {
-            bytes_remaining -= object->size();
-            object->release(); // not sure this is kosher ...
             keep = false;
+            bytes_remaining -= object->size();
+
+            // Is this ok? We are releasing an object that was created in a different GC,
+            // but there's no other place to do so now that the GC is gone.
+            object->release();
         }
 
         if (keep)
@@ -739,7 +738,9 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
     _objects.swap(keepers);
     _totalBytes = bytes;
 
-    // now check the GCs to see if any of them are no longer valid
+    // now check the GCs to see if any of them are no longer valid.
+    // This is kind of a "backup plan" in case the user doesn't call
+    // releaseGLObjects.
     for(int i=0; i<_gcs.size(); ++i)
     {
         if (_gcs[i]._gc == nullptr)

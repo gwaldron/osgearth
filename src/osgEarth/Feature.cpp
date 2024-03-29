@@ -363,8 +363,11 @@ Feature::setNull( const std::string& name, AttributeType type)
     a.value.set = false;
 }
 
-
-
+void
+Feature::removeAttribute(const std::string& name)
+{
+    _attrs.erase(name);
+}
 
 bool
 Feature::hasAttr( const std::string& name ) const

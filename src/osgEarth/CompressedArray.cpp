@@ -611,25 +611,12 @@ namespace osgEarth {
             static bool writeData(osgDB::OutputStream& os, const osgEarth::CompressedUIntArray& g)
             {
                 os.writeSize(g.size()); os << os.BEGIN_BRACKET << std::endl;
-                //std::vector<unsigned int> indices(g.size());
-                //for (unsigned int i = 0; i < g.size(); ++i)
-                //{
-                //    indices[i] = g[i];
-                //}
-
-                //std::vector<unsigned char> ibuf;
-                //ibuf.resize(meshopt_encodeIndexBufferBound(g.size(), UINT_MAX));
-                //ibuf.resize(meshopt_encodeIndexBuffer(&ibuf[0], ibuf.size(), &indices[0], indices.size()));
-
-                //OE_NOTICE << "Writing CompressedUIntArray raw=" << g.getTotalDataSize() << " compressed=" << vbuf.size() << " ratio=" << (float)vbuf.size() / (float)g.getTotalDataSize() << std::endl;
 
                 std::vector<unsigned char> vbuf;
                 vbuf.resize(meshopt_encodeVertexBufferBound(g.size(), g.getElementSize()));
                 vbuf.resize(meshopt_encodeVertexBuffer(&vbuf[0], vbuf.size(), g.getDataPointer(), g.size(), g.getElementSize()));
 
-                os << os.BEGIN_BRACKET << std::endl;                
-                //os.writeSize(ibuf.size());
-                //os.writeCharArray((char*)ibuf.data(), ibuf.size());
+                os << os.BEGIN_BRACKET << std::endl;
                 os.writeSize(vbuf.size());
                 os.writeCharArray((char*)vbuf.data(), vbuf.size());
 

@@ -168,6 +168,11 @@ const Feature* MetadataNode::getFeature(unsigned int index) const
     return _features[index];
 }
 
+Feature* MetadataNode::getFeature(unsigned int index)
+{
+    return _features[index];
+}
+
 int MetadataNode::getIndexFromObjectID(ObjectID id) const
 {
     for (unsigned int i = 0; i < _instances->size(); ++i)
@@ -188,7 +193,7 @@ namespace osgEarth
         namespace MetadataNode
         {
             static bool checkFeatures(const osgEarth::MetadataNode& g)
-            {
+            {             
                 return g.getNumFeatures() > 0;
             }
 

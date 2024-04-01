@@ -1,4 +1,11 @@
 #include <osgEarth/CompressedArray>
+
+#ifdef OSGEARTH_HAVE_MESH_OPTIMIZER
+#include <osgDB/InputStream>
+#include <osgDB/OutputStream>
+#include <osgDB/ObjectWrapper>
+#include <osgDB/Registry>
+
 #include <meshoptimizer.h>
 
 using namespace osgEarth;
@@ -638,5 +645,4 @@ namespace osgEarth {
     }
 }
 
-
-
+#endif // OSGEARTH_HAVE_MESH_OPTIMIZER

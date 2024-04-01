@@ -2,9 +2,11 @@
 #define OSGEARTHUTIL_COMPRESSED_ARRAY_H
 
 #include <osgEarth/Common>
-#include <osg/Node>
 
-#include <osgEarth/PlaceNode>
+#ifdef OSGEARTH_HAVE_MESH_OPTIMIZER
+
+#include <osg/Array>
+#include <osg/PrimitiveSet>
 
 namespace osgEarth
 {
@@ -98,5 +100,8 @@ namespace osgEarth
 
 
 }
+#else
+#pragma message("Warning: MeshOptimizer not available. CompressedArray classes will not be available.")
+#endif
 
 #endif

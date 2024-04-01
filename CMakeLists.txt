@@ -161,6 +161,10 @@ if(draco_FOUND)
     set(OSGEARTH_HAVE_DRACO ON)
 endif(draco_FOUND)
 
+if (meshoptimizer_FOUND)
+    set(OSGEARTH_HAVE_MESH_OPTIMIZER ON)
+endif()
+
 if(OSGEARTH_BUILD_CESIUM_NODEKIT)
     find_package(CesiumNative)
 endif()

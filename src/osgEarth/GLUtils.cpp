@@ -592,9 +592,8 @@ GLObjectPool::track(osg::GraphicsContext* gc)
     }
 
     auto servicer = new GCServicingOperation(this);
-    auto now = std::chrono::steady_clock::now();
 
-    _gcs.emplace_back(GC{ gc, servicer, now });
+    _gcs.emplace_back(GC{ gc, servicer });
 
     gc->add(servicer);
 }
@@ -689,40 +688,6 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
 {
     std::lock_guard<std::mutex> lock(_mutex);
 
-    auto now = std::chrono::steady_clock::now();
-
-#if 0 // not necessary when releaseGLObjects is used properly :)
-    // First check the GCs to see if any of them are no longer valid.
-    // This is kind of a "backup plan" in case the user doesn't call
-    // releaseGLObjects.
-    for (int i = 0; i < _gcs.size(); ++i)
-    {
-        if (_gcs[i]._gc == nullptr)
-            break;
-
-        if (_gcs[i]._gc == gc)
-        {
-            _gcs[i]._time_last_visit = now;
-        }
-        else if (now - _gcs[i]._time_last_visit > std::chrono::seconds(5))
-        {
-            // mark all objects created in this GC as orphans
-            for (auto& object : _objects)
-            {
-                if (object->gc() == _gcs[i]._gc)
-                {
-                    object->_gc = nullptr;
-                }
-            }
-
-            // remove it
-            _gcs[i] = _gcs.back();
-            _gcs.resize(_gcs.size() - 1);
-            --i;
-        }
-    }
-#endif
-
     int bytes_remaining = (int)_bytes_to_delete_per_frame;
 
     // then check for objects to add to the orphan list:
@@ -740,14 +705,12 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
         }
 
         // either the object is not in use, or it's been decommisioned and the GC set to null:
-        //if ((object->gc() == gc && object.use_count() == 1) || (object->gc() == nullptr))
         if (object.use_count() == 1)
         {
             // timeslice (by limiting deallocations per frame), and
             // delay deletion in the event of multithreaded draw
             if (bytes_remaining > 0 && object->_orphan_frames++ >= _frames_to_delay_deletion)
             {
-                //keep = false;
                 object->release();
                 bytes_remaining -= object->size();
                 continue;
@@ -761,6 +724,7 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
     _objects.swap(keepers);
     _totalBytes = bytes;
 }
+
 
 GLObject::GLObject(GLenum ns, osg::State& state) :
     _ns(ns),

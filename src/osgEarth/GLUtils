@@ -675,7 +675,6 @@ namespace osgEarth
         {
             const osg::GraphicsContext* _gc = nullptr;
             osg::ref_ptr<osg::GraphicsOperation> _operation;
-            std::chrono::steady_clock::time_point _time_last_visit;
         };
         std::vector<GC> _gcs;
 

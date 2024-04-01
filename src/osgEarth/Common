@@ -21,6 +21,7 @@
 
 #include <osgEarth/Export>
 #include <osgEarth/Notify>
+#include <osgEarth/BuildConfig>
 #include <osg/ref_ptr>
 #include <osg/Referenced>
 #include <memory>

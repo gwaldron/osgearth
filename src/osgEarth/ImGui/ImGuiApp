@@ -43,6 +43,7 @@
 #include "CameraGUI"
 #include "RenderingGUI"
 #include "AnnotationsGUI"
+#include <osgEarth/BuildConfig>
 
 #include <osgDB/ReadFile>
 

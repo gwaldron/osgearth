@@ -260,7 +260,7 @@ void MapBoxGL::StyleSheet::Source::loadFeatureSource(const std::string& styleShe
         }
         else if (type() == "vector-mbtiles")
         {
-#if defined(OSGEARTH_HAVE_MVT) && defined(OSGEARTH_HAVE_SQLITE3)
+#if defined(OSGEARTH_HAVE_MVT)
             URI uri(url(), context);
 
             osg::ref_ptr< MVTFeatureSource > featureSource = new MVTFeatureSource();

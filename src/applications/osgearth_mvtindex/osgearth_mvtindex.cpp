@@ -20,10 +20,6 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-// TODO:  Reconfigure CMake to not require this.....
-#define OSGEARTH_HAVE_MVT 1
-#define OSGEARTH_HAVE_SQLITE3 1
-
 #include <osgEarth/TileKey>
 #include <osgEarth/FeatureSource>
 #include <osgEarth/FeatureCursor>

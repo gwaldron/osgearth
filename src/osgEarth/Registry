@@ -57,7 +57,7 @@ namespace osgEarth
     /**
      * Application-wide global repository.
      */
-    class OSGEARTH_EXPORT Registry : public osg::Referenced
+    class OSGEARTH_EXPORT Registry // : public osg::Referenced
     {
     public:
         //! Access the global Registry singleton.
@@ -309,8 +309,9 @@ namespace osgEarth
             return dynamic_cast<T*>(s.get());
         }
 
-    protected:
         virtual ~Registry();
+
+    protected:
         Registry();
 
         mutable std::mutex _regMutex;

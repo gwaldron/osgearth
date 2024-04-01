@@ -43,23 +43,11 @@ using namespace osgEarth;
 
 #define LC "[Registry] "
 
-namespace
-{
-    osg::ref_ptr<osgEarth::Registry> g_registry = nullptr;
-}
-
 void osgEarth::initialize()
 {
     // Create the registry singleton.
-    // It will be destroyed on program exit automatically.
-    if (!g_registry.valid())
-    {
-        g_registry = Registry::instance();
-    }
-
-    // Query the system capabilities
-    g_registry->getCapabilities();
-
+    Registry::instance()->getCapabilities();
+    
     // Tell the weetjobs library how to set a thread name
     jobs::set_thread_name_function([](const char* value) {
         osgEarth::setThreadName(value);
@@ -291,48 +279,39 @@ Registry::~Registry()
     OE_INFO << "Goodbye." << std::endl;
 }
 
-//// Destroy the registry explicitly: this is called in an atexit() hook.  See comment in
-//// Registry::instance(bool reset).
-//void destroyRegistry()
-//{
-//    if (g_registry.valid())
-//    {
-//        g_registry->release();
-//        g_registry = nullptr;
-//    }
-//}
+// Destroy the registry explicitly: this is called in an atexit() hook.  See comment in
+// Registry::instance(bool reset).
+namespace
+{
+    static bool g_registry_created = false;
+    static Registry* g_registry = nullptr;
+
+    void destroyRegistry()
+    {
+        if (g_registry)
+        {
+            g_registry->release();
+            delete g_registry;
+            g_registry = nullptr;
+        }
+    }
+}
 
 Registry*
 Registry::instance()
 {
-    // Make sure the gdal mutex is created before the Registry so it will still be around when the registry is destroyed statically.
-    // This is to prevent crash on exit where the gdal mutex is deleted before the registry is.
-
-    //static bool s_registryInit = false;
-
     // Create registry the first time through, explicitly rather than depending on static object
     // initialization order, which is undefined in c++ across separate compilation units.  An
     // explicit hook is registered to tear it down on exit.  atexit() hooks are run on exit in
     // the reverse order of their registration during setup.
-    if (!g_registry.valid())
+    if (!g_registry && !g_registry_created)
     {
         g_registry = new Registry();
+        g_registry_created = true;
+        std::atexit(destroyRegistry);
     }
 
-    //if (!s_registryInit)
-    //{
-    //    s_registryInit = true;
-    //    s_registry = new Registry;
-    //    std::atexit(destroyRegistry);
-    //}
-
-    //if (reset)
-    //{
-    //    s_registry->release();
-    //    s_registry = new Registry();
-    //}
-
-    return g_registry.get();
+    return g_registry;
 }
 
 void

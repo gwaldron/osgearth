@@ -49,6 +49,7 @@
 #endif
 #endif
 
+#include <osgEarth/BuildConfig>
 #include <osgEarth/Registry>
 #include <osgEarth/XYZ>
 #include <osgEarth/TMS>

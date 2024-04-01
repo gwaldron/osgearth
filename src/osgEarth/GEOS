@@ -20,9 +20,10 @@
 #ifndef OSGEARTHSYMBOLOGY_GEOS_H
 #define OSGEARTHSYMBOLOGY_GEOS_H 1
 
+#include <osgEarth/Common>
+
 #ifdef OSGEARTH_HAVE_GEOS
 
-#include <osgEarth/Common>
 #include <osgEarth/Style>
 #include <osgEarth/Geometry>
 

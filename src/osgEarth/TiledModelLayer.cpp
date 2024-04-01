@@ -139,19 +139,13 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
         {
             auto xform = findTopMostNodeOfType<osg::MatrixTransform>(result.get());
 
-            // Convert the geometry into chonks
-            ChonkFactory factory(_textures);
-
-            factory.setGetOrCreateFunction(
-                ChonkFactory::getWeakTextureCacheFunction(_texturesCache, _texturesCacheMutex));
-
             osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();
 
             if (xform)
             {
                 for (unsigned i = 0; i < xform->getNumChildren(); ++i)
                 {
-                    drawable->add(xform->getChild(i), factory);
+                    drawable->add(xform->getChild(i), _chonkFactory);
                 }
                 xform->removeChildren(0, xform->getNumChildren());
                 xform->addChild(drawable);
@@ -159,7 +153,7 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
             }
             else
             {
-                if (drawable->add(result.get(), factory))
+                if (drawable->add(result.get(), _chonkFactory))
                 {
                     result = drawable;
                 }
@@ -193,6 +187,8 @@ TiledModelLayer::addedToMap(const Map* map)
 
         // auto release requires that we install this update callback!
         _textures->setAutoRelease(true);
+
+        _chonkFactory.textures = _textures;
 
         getNode()->addUpdateCallback(new LambdaCallback<>([this](osg::NodeVisitor& nv)
             {

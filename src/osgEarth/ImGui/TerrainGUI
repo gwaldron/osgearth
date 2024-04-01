@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_TERRAIN_GUI
-#define OSGEARTH_IMGUI_TERRAIN_GUI
+#pragma once
 
 #include "ImGui"
 #include <osgEarth/Threading>
@@ -388,7 +387,12 @@ namespace osgEarth
                         geom->push_back(pf.x(), pf.y());
                         _measureCursor->dirty();
                     }
-                    else
+                    else if (geom->size() == 2)
+                    {
+                        // do nothing
+                        geom->push_back(geom->back()); // trick.
+                    }
+                    else if (geom->size() > 2)
                     {
                         // start over
                         geom->clear();
@@ -399,5 +403,3 @@ namespace osgEarth
         };
     }
 }
-
-#endif // OSGEARTH_IMGUI_TERRAIN_GUI

@@ -62,66 +62,47 @@ namespace
 
 //...................................................................
 
-TerrainTileModel::Elevation::Elevation() :
-    _minHeight(FLT_MAX),
-    _maxHeight(-FLT_MAX)
-{
-    //nop
-}
-
-//...................................................................
-
-TerrainTileModel::TerrainTileModel(
-    const TileKey&  key,
-    const Revision& revision) :
-    _key(key),
-    _revision(revision),
-    _requiresUpdateTraversal(false)
-{
-    // nop
-}
-
 void
 TerrainTileModel::getStateToCompile(osgUtil::StateToCompile& out, bool bindless, osg::Object* token) const
 {
-    for (auto& colorLayer : colorLayers())
+    for (auto& colorLayer : colorLayers)
     {
-        if (colorLayer.texture())
+        if (colorLayer.texture)
         {
             out._textures.insert(bindless ?
-                new TextureICOAdapter(colorLayer.texture(), token) :
-                colorLayer.texture()->osgTexture().get());
+                new TextureICOAdapter(colorLayer.texture, token) :
+                colorLayer.texture->osgTexture().get());
         }
     }
 
-    if (normalMap().texture())
+    if (normalMap.texture)
     {
         out._textures.insert(bindless ?
-            new TextureICOAdapter(normalMap().texture(), token) :
-            normalMap().texture()->osgTexture().get());
+            new TextureICOAdapter(normalMap.texture, token) :
+            normalMap.texture->osgTexture().get());
     }
 
-    if (elevation().texture())
+    if (elevation.texture)
     {
         out._textures.insert(bindless ?
-            new TextureICOAdapter(elevation().texture(), token) :
-            elevation().texture()->osgTexture().get());
+            new TextureICOAdapter(elevation.texture, token) :
+            elevation.texture->osgTexture().get());
     }
 
-    if (landCover().texture())
+    if (landCover.texture)
     {
         out._textures.insert(bindless ?
-            new TextureICOAdapter(landCover().texture(), token) :
-            landCover().texture()->osgTexture().get());
+            new TextureICOAdapter(landCover.texture, token) :
+            landCover.texture->osgTexture().get());
     }
 }
 
 Texture::Ptr
 TerrainTileModel::getTexture(UID layerUID) const
 {
-    for (auto& colorLayer : colorLayers())
-        if (colorLayer.layer() && colorLayer.layer()->getUID() == layerUID)
-            return colorLayer.texture();
+    for (auto& colorLayer : colorLayers)
+        if (colorLayer.layer && colorLayer.layer->getUID() == layerUID)
+            return colorLayer.texture;
 
     return nullptr;
 }
@@ -131,9 +112,9 @@ TerrainTileModel::getMatrix(UID layerUID) const
 {
     static osg::Matrixf s_identity;
 
-    for (auto& colorLayer : colorLayers())
-        if (colorLayer.layer() && colorLayer.layer()->getUID() == layerUID)
-            return colorLayer.matrix();
+    for (auto& colorLayer : colorLayers)
+        if (colorLayer.layer && colorLayer.layer->getUID() == layerUID)
+            return colorLayer.matrix;
 
     return s_identity;
 }

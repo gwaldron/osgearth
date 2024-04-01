@@ -41,10 +41,10 @@ namespace osgEarth
             OE_OPTION_LAYER(FeatureSource, featureSource);
             OE_OPTION_LAYER(TiledModelLayer, model);
             OE_OPTION_VECTOR(ConfigOptions, filters);
-            OE_OPTION(bool, removeInterior);
-            OE_OPTION(bool, removeExterior);
-            OE_OPTION(bool, hasElevation);
-            OE_OPTION(unsigned, minLevel);
+            OE_OPTION(bool, removeInterior, false);
+            OE_OPTION(bool, removeExterior, false);
+            OE_OPTION(bool, hasElevation, false);
+            OE_OPTION(unsigned, minLevel, 8);
             Config getConfig() const override;
             void fromConfig(const Config& conf);
         };

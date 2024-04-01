@@ -30,11 +30,13 @@ FilterContext::FilterContext(Session* session,
 
     _session(session),
     _profile(profile),
-    _extent(workingExtent, workingExtent),
+    _extent(workingExtent),
     _isGeocentric(false),
     _index(index),
     _shaderPolicy(osgEarth::SHADERPOLICY_GENERATE)
 {
+    _extent = workingExtent;
+
     if (session)
     {
         if ( session->getResourceCache() )
@@ -68,6 +70,18 @@ FilterContext::FilterContext(Session* session,
     {
         pushHistory( _session->getName() );
     }
+}
+
+FilterContext::FilterContext(const FeatureProfile* profile, const Query& query)
+{
+    _profile = profile;
+
+    if (query.tileKey().isSet())
+        extent() = query.tileKey()->getExtent();
+    else if (query.bounds().isSet() && profile)
+        extent() = GeoExtent(profile->getSRS(), query.bounds().get());
+    else if (profile)
+        extent() = profile->getExtent();
 }
 
 void

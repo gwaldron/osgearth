@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ANNO_REGISTRY_H
-#define OSGEARTH_ANNO_REGISTRY_H 1
+#pragma once
 
 #include <osgEarth/AnnotationNode>
 #include <osgEarth/MapNode>
@@ -32,9 +31,11 @@ namespace osgEarth { namespace Util
     /**
      * Singleton registry for annotation node types.
      */
-    class OSGEARTH_EXPORT AnnotationRegistry
+    class OSGEARTH_EXPORT AnnotationRegistry : public osg::Referenced
     {
     public:
+        AnnotationRegistry() { }
+
         /**
          * Access the singleton instance of this class.
          */
@@ -66,7 +67,6 @@ namespace osgEarth { namespace Util
         virtual ~AnnotationRegistry() { }
 
     private:
-        AnnotationRegistry() { }
         typedef std::unordered_map<std::string, AnnotationFactory*> FactoryMap;
         FactoryMap _factories;
 
@@ -102,10 +102,8 @@ namespace osgEarth { namespace Util
     // internal: proxy class used by the registraion macro
     template<typename T>
     struct AnnotationRegistrationProxy : public AnnotationFactory {
-        AnnotationRegistrationProxy(const std::string& key) { AnnotationRegistry::instance()->add(key, this); }
+        AnnotationRegistrationProxy(const std::string& key) { osgEarth::Util::AnnotationRegistry::instance()->add(key, this); }
         AnnotationNode* create(const Config& conf, const osgDB::Options* options) const { return new T(conf, options); }
     };
 
 } }
-
-#endif // OSGEARTH_ANNO_FEATURE_NODE_H

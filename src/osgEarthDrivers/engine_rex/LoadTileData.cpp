@@ -168,7 +168,7 @@ LoadTileDataOperation::merge()
     // revisions don't match the revisions in the original manifest.
     // If there are mismatches, that means the map has changed since we
     // submitted this request, and the results are now invalid.
-    if (model->revision() != map->getDataModelRevision() ||
+    if (model->revision != map->getDataModelRevision() ||
         _manifest.inSyncWith(map.get()) == false)
     {
         // wipe the data model, update the revisions, and try again.

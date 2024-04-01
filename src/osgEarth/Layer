@@ -393,7 +393,15 @@ namespace osgEarth
     public: // Public internal methods
 
         //! Creates a layer from serialized data - internal use
-        static Layer* create(const ConfigOptions& options);
+        static osg::ref_ptr<Layer> create(const ConfigOptions& options);
+
+        //! Creates a layer from serialized data and attempt to cast it
+        //! to a specific type
+        template<class T>
+        static osg::ref_ptr<T> create_as(const ConfigOptions& options) {
+            auto layer = create(options);
+            return osg::ref_ptr<T>(dynamic_cast<T*>(layer.get()));
+        }
 
         //! Extracts config options from a DB options - internal use
         static const ConfigOptions& getConfigOptions(const osgDB::Options*);

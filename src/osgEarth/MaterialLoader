@@ -18,8 +18,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_MATERIAL_LOADER
-#define OSGEARTH_MATERIAL_LOADER 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/IOTypes>
@@ -35,10 +34,13 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT MaterialUtils
     {
     public:
+        //! A Mangler is a function that takes a filename and returns a new filename.
         using Mangler = std::function<std::string(const std::string&)>;
 
+        //! The default filename mangler for normal maps
         static Mangler getDefaultNormalMapNameMangler();
 
+        //! The default filename mangler for PBR maps
         static Mangler getDefaultPBRMapNameMangler();
     };
 
@@ -110,6 +112,46 @@ namespace osgEarth { namespace Util
         Cache _cache;
         std::string _referrer;
     };
+
+    class OSGEARTH_EXPORT PBRMaterial
+    {
+    public:
+        PBRMaterial() = default;
+        PBRMaterial(const PBRMaterial& rhs) = default;
+        PBRMaterial& operator=(const PBRMaterial& rhs) = default;
+        PBRMaterial(PBRMaterial&& rhs) = default;
+        PBRMaterial& operator=(PBRMaterial&& rhs) = default;
+
+        OE_OPTION(URI, color);
+        OE_OPTION(URI, normal);
+        OE_OPTION(URI, roughness);
+        OE_OPTION(URI, ao);
+        OE_OPTION(URI, metal);
+        OE_OPTION(URI, height);
+
+        PBRMaterial(const Config& conf) {
+            conf.get("color", color());
+            conf.get("normal", normal());
+            conf.get("roughness", roughness());
+            conf.get("ao", ao());
+            conf.get("metal", metal());
+            conf.get("height", height());
+        }
+
+        Config getConfig() const {
+            Config conf;
+            conf.set("color", color());
+            conf.set("normal", normal());
+            conf.set("roughness", roughness());
+            conf.set("ao", ao());
+            conf.set("metal", metal());
+            conf.set("height", height());
+            return conf;
+        }
+
+        osg::ref_ptr<osg::Texture> createTexture(const osgDB::Options* options) const;
+    };
 } }
 
-#endif // OSGEARTH_MATERIAL_LOADER
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Util::PBRMaterial);
+

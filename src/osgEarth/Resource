@@ -25,6 +25,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/Status>
 #include <osgEarth/Threading>
+#include <osg/Object>
 #include <vector>
 
 namespace osgEarth { namespace Util

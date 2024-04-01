@@ -35,8 +35,6 @@ REGISTER_OSGEARTH_LAYER(mask, TerrainConstraintLayer);
 void
 TerrainConstraintLayer::Options::fromConfig(const Config& conf)
 {
-    minLevel().setDefault(8u);
-
     // backwards compatability
     if (ciEquals(conf.key(), "featuremask"))
     {

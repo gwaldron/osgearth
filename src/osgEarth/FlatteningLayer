@@ -23,10 +23,8 @@
 #include <osgEarth/ElevationPool>
 #include <osgEarth/LayerReference>
 #include <osgEarth/FeatureSource>
-#include <osgEarth/ScriptEngine>
+#include <osgEarth/Session>
 #include <osgEarth/StyleSheet>
-#include <osgEarth/ImageLayer>
-#include <osgDB/FileNameUtils>
 
 namespace osgEarth { namespace Contrib
 {
@@ -42,17 +40,14 @@ namespace osgEarth { namespace Contrib
         public:
             META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
             OE_OPTION_LAYER(FeatureSource, featureSource);
-            OE_OPTION_LAYER(ImageLayer, sdf);
             OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION(NumericExpression, lineWidth, 10);
             OE_OPTION(NumericExpression, bufferWidth, 20);
             OE_OPTION(bool, fill, false);
-            StyleSheet::ScriptDef* getScript() const { return _script.get(); }
             virtual Config getConfig() const;
 
         private:
             void fromConfig(const Config&);
-            osg::ref_ptr< StyleSheet::ScriptDef > _script;
         };
 
     public:
@@ -61,10 +56,6 @@ namespace osgEarth { namespace Contrib
         //! Feature source layer to get features from
         void setFeatureSource(FeatureSource* layer);
         FeatureSource* getFeatureSource() const { return options().featureSource().getLayer(); }
-
-        //! SDF layer as an alternative to the feature source
-        void setSDF(ImageLayer* layer);
-        ImageLayer* getSDF() const { return options().sdf().getLayer(); }
 
         //! For line features, the width around the line to flatten
         void setLineWidth(const NumericExpression& value);
@@ -82,24 +73,23 @@ namespace osgEarth { namespace Contrib
 
     public: // ElevationLayer
 
-        virtual void init();
+        void init() override;
 
-        // opens the layer and returns the status
-        virtual Status openImplementation();
+        Status openImplementation() override;
 
-        virtual Config getConfig() const;
+        Config getConfig() const override;
 
     protected: // ElevationLayer
 
-        virtual GeoHeightField createHeightFieldImplementation(
+        GeoHeightField createHeightFieldImplementation(
             const TileKey& key,
-            ProgressCallback* progress) const;
+            ProgressCallback* progress) const override;
 
         //! called by the map when this layer is added
-        virtual void addedToMap(const class Map*);
+        void addedToMap(const class Map*) override;
 
         //! called by the map when this layer is removed
-        virtual void removedFromMap(const class Map*);
+        void removedFromMap(const class Map*) override;
 
     protected:
 
@@ -109,8 +99,7 @@ namespace osgEarth { namespace Contrib
 
         osg::ref_ptr<ElevationPool> _pool;
         mutable ElevationPool::WorkingSet _elevWorkingSet;
-        osg::ref_ptr<ScriptEngine> _scriptEngine;
-        osg::observer_ptr< const Map > _map;
+        osg::ref_ptr<Session> _session;
         FeatureFilterChain _filterChain;
 
         GeoHeightField createFromFeatures(const TileKey& key, ProgressCallback* progress) const;

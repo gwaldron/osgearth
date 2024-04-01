@@ -44,7 +44,7 @@ REGISTER_OSGEARTH_LAYER(lifemap, LifeMapLayer);
 Config
 LifeMapLayer::Options::getConfig() const
 {
-    Config conf = VisibleLayer::Options::getConfig();
+    Config conf = super::getConfig();
     biomeLayer().set(conf, "biomes_layer");
     maskLayer().set(conf, "mask_layer");
     waterLayer().set(conf, "water_layer");
@@ -62,14 +62,6 @@ LifeMapLayer::Options::getConfig() const
 void
 LifeMapLayer::Options::fromConfig(const Config& conf)
 {
-    landCoverWeight().setDefault(1.0f);
-    landCoverBlur().setDefault(Distance(0.0f, Units::METERS));
-    terrainWeight().setDefault(1.0f);
-    slopeIntensity().setDefault(1.0f);
-    colorWeight().setDefault(1.0f);
-    noiseWeight().setDefault(0.225f);
-    lushFactor().setDefault(1.9f);
-
     biomeLayer().get(conf, "biomes_layer");
     maskLayer().get(conf, "mask_layer");
     waterLayer().get(conf, "water_layer");
@@ -176,7 +168,7 @@ LifeMapLayer::init()
 }
 
 Status
-LifeMapLayer::openImplementation() 
+LifeMapLayer::openImplementation()
 {
     Status parent = super::openImplementation();
     if (parent.isError())
@@ -230,7 +222,7 @@ LifeMapLayer::addedToMap(const Map* map)
     // not specified; try to find it
     if (!getBiomeLayer())
         setBiomeLayer(map->getLayer<BiomeLayer>());
-    
+
     Status biomeStatus = options().biomeLayer().open(getReadOptions());
     if (getBiomeLayer())
     {
@@ -437,7 +429,7 @@ LifeMapLayer::createImageImplementation(
     {
         auto creator = [&](const TileKey& key, ProgressCallback* p) {
             return _landCoverFactory->createCoverage(key, p);
-        };
+            };
         landcover.setCreateTileFunction(creator);
         landcover.setCenterTileKey(key, progress);
     }
@@ -541,8 +533,8 @@ LifeMapLayer::createImageImplementation(
     //    12u, 13u, 14u, 15u //, 16u // 0u, 9u, 13u, 16u
     //};
     const unsigned noisePattern[NOISE_LEVELS] = { RANDOM, CLUMPY };
-        //RANDOM, SMOOTH, CLUMPY, RANDOM2 };
-    
+    //RANDOM, SMOOTH, CLUMPY, RANDOM2 };
+
     CoordScaler coordScalers[NOISE_LEVELS] = {
         CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[0]),
         CoordScaler(key.getProfile(), key.getLOD(), noiseLOD[1]) //,
@@ -895,4 +887,82 @@ LifeMapLayer::createImageImplementation(
     }
 
     return std::move(result);
+}
+
+GeoImage
+LifeMapLayer::applyPostLayer(const GeoImage& canvas, const TileKey& key, Layer* postLayer, ProgressCallback* progress) const
+{
+    auto coverageLayer = dynamic_cast<CoverageLayer*>(postLayer);
+    if (coverageLayer && canvas.valid())
+    {
+        // Is there any way to actually type-check this?
+        auto factory = LandCoverSample::Factory::create(coverageLayer);
+
+        auto coverage = factory->createCoverage(key, progress);
+
+        if (coverage.valid() && !coverage.empty())
+        {
+            // landcover material index lookup table:
+            // TODO: read this ONCE and store as a member - createImageImpl uses it too.
+            std::unordered_map<std::string, unsigned> materialLUT;
+            if (getBiomeLayer())
+            {
+                unsigned ptr = 0;
+                for (auto& material : getBiomeLayer()->getBiomeCatalog()->getAssets().getMaterials())
+                {
+                    materialLUT[material.name().get()] = ptr++;
+                }
+            }
+
+            auto result_image = osg::clone(canvas.getImage(), osg::CopyOp::DEEP_COPY_ALL);
+
+            ImageUtils::PixelReader read_canvas(canvas.getImage());
+            ImageUtils::PixelWriter write_result(result_image);
+
+            const auto& extent = canvas.getExtent();
+
+            for (unsigned t = 0; t < read_canvas.t(); ++t)
+            {
+                double v = (double)t / (double)read_canvas.t();
+                for (unsigned s = 0; s < read_canvas.s(); ++s)
+                {
+                    double u = (double)s / (double)read_canvas.s();
+
+                    // do we need to offset this be half a 'pixel'?
+                    double x = extent.xMin() + u * extent.width();
+                    double y = extent.yMin() + v * extent.height();
+
+                    auto* sample = coverage.readAtCoords(x, y);
+                    if (sample)
+                    {
+                        // populate the pixel with the original values:
+                        osg::Vec4 value;
+                        read_canvas(value, s, t);
+
+                        // overwrite with the coverage data:
+                        if (sample->rugged().isSet())
+                            value[LIFEMAP_RUGGED] = sample->rugged().value();
+                        if (sample->dense().isSet())
+                            value[LIFEMAP_DENSE] = sample->dense().value();
+                        if (sample->lush().isSet())
+                            value[LIFEMAP_LUSH] = sample->lush().value();
+
+                        if (sample->material().isSet())
+                        {
+                            // land cover asked for a custom material. Find its index.
+                            auto i = materialLUT.find(sample->material().value());
+                            if (i != materialLUT.end())
+                                value[LIFEMAP_SPECIAL] = (i->second + 1);
+                        }
+
+                        write_result(value, s, t);
+                    }
+                }
+            }
+             
+            return GeoImage(result_image, canvas.getExtent());
+        }
+    }
+
+    return super::applyPostLayer(canvas, key, postLayer, progress);
 }

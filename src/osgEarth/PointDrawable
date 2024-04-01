@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_POINTDRAWABLE_H
-#define OSGEARTH_POINTDRAWABLE_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osg/Array>
@@ -157,7 +156,6 @@ namespace osgEarth
         void setupState();
         void updateFirstCount();
 
-        static osg::observer_ptr<osg::StateSet> s_sharedStateSet;
         osg::ref_ptr<osg::StateSet> _sharedStateSet;
         mutable bool _sharedStateSetCompiled;
 
@@ -233,5 +231,3 @@ namespace osgEarth
     }
 
 } // namespace osgEarth
-
-#endif // OSGEARTH_POINTDRAWABLE_H

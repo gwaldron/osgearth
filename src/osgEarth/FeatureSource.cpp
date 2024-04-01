@@ -66,21 +66,6 @@ FeatureSource::Options::fromConfig(const Config& conf)
 
 //...................................................................
 
-FeatureSource*
-FeatureSource::create(const ConfigOptions& options)
-{
-    osg::ref_ptr<Layer> layer = Layer::create(options);
-    FeatureSource* fs = dynamic_cast<FeatureSource*>(layer.get());
-    if (fs)
-    {
-        layer.release();
-        return fs;
-    }
-    return 0L;
-}
-
-//...................................................................
-
 OE_LAYER_PROPERTY_IMPL(FeatureSource, bool, OpenWrite, openWrite);
 OE_LAYER_PROPERTY_IMPL(FeatureSource, GeoInterpolation, GeoInterpolation, geoInterp);
 OE_LAYER_PROPERTY_IMPL(FeatureSource, std::string, FIDAttribute, fidAttribute);
@@ -291,6 +276,11 @@ FeatureSource::createFeatureCursor(
     FilterContext temp_cx;
     if (context)
         temp_cx = *context;
+
+
+    if (temp_cx.profile() == nullptr)
+        temp_cx.setProfile(getFeatureProfile());
+    
 
     // TileKey path:
     if (query.tileKey().isSet())

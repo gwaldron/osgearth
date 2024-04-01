@@ -71,7 +71,7 @@ IconSymbol::getConfig() const
 	conf.set( "icon-occlusion-cull", _occlusionCull );
     conf.set( "icon-occlusion-cull-altitude", _occlusionCullAltitude );
 
-    conf.setNonSerializable( "IconSymbol::image", _image.get() );
+    //conf.setNonSerializable( "IconSymbol::image", _image.get() );
     return conf;
 }
 
@@ -93,7 +93,7 @@ IconSymbol::mergeConfig( const Config& conf )
 	conf.get( "icon-occlusion-cull", _occlusionCull );
     conf.get( "icon-occlusion-cull-altitude", _occlusionCullAltitude );
 
-    _image = conf.getNonSerializable<osg::Image>( "IconSymbol::image" );
+    //_image = conf.getNonSerializable<osg::Image>( "IconSymbol::image" );
 }
 
 namespace

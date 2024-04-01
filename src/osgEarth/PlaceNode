@@ -131,9 +131,6 @@ namespace osgEarth
         { }
 
     private:
-        static osg::observer_ptr<osg::StateSet> s_geodeStateSet;
-        static osg::observer_ptr<osg::StateSet> s_imageStateSet;
-
         osg::ref_ptr<osg::StateSet> _geodeStateSet, _imageStateSet;
     };
 

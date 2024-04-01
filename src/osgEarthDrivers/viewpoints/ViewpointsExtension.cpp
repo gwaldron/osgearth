@@ -54,14 +54,34 @@ namespace
 
     struct ViewpointsHandler : public osgGA::GUIEventHandler
     {
+        std::vector<Viewpoint> _viewpoints;
+        optional<Viewpoint>    _flyTo;
+        float                  _transitionTime = 0.0f;
+        float                  _autoRunDelay = 0.0f;
+        osg::Timer_t           _autoRunStartWaitTime;
+        int                    _autoRunIndex = 0;
+        int                    _homeIndex = -1;
+        int                    _count = 0;
+        bool                   _mapKeys = true;
+
         ViewpointsHandler(const std::vector<Viewpoint>& viewpoints, float t, bool mapKeys)
-            : _viewpoints( viewpoints ), _transitionTime(t), _autoRunDelay(0.0f), _autoRunIndex(0), _count(0), _homeIndex(-1), _mapKeys(mapKeys)
+            : _viewpoints( viewpoints ), _transitionTime(t), _mapKeys(mapKeys)
         {
             _autoRunStartWaitTime = osg::Timer::instance()->tick();
         }
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
         {
+            if (_count == 0 && _homeIndex >= 0 && _homeIndex < _viewpoints.size())
+            {
+                EarthManipulator* manip = getManip(aa);
+                if (manip)
+                {
+                    flyToViewpoint(manip, _viewpoints[_homeIndex], _transitionTime);
+                    ++_count;
+                }
+            }
+
             if (ea.getHandled())
                 return false;
 
@@ -117,19 +137,6 @@ namespace
                         _autoRunStartWaitTime = now;
                     }
                 }
-
-                else if (_count == 0 && _homeIndex >= 0)
-                {
-                    if (_homeIndex < _viewpoints.size())
-                    {
-                        EarthManipulator* manip = getManip(aa);
-                        if (manip)
-                        {
-                            flyToViewpoint(manip, _viewpoints[_homeIndex], _transitionTime);
-                            ++_count;
-                        }
-                    }
-                }
             }
 
             return false;
@@ -145,16 +152,6 @@ namespace
         {
             _autoRunDelay = t;
         }
-
-        std::vector<Viewpoint> _viewpoints;
-        optional<Viewpoint>    _flyTo;
-        float                  _transitionTime;
-        float                  _autoRunDelay;
-        osg::Timer_t           _autoRunStartWaitTime;
-        int                    _autoRunIndex;
-        int                    _homeIndex;
-        int                    _count;
-        bool                   _mapKeys = true;
     };
 
 

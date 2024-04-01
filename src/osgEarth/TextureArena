@@ -16,8 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_TEXTURE_ARENA_H
-#define OSGEARTH_TEXTURE_ARENA_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/GLUtils>
@@ -85,7 +84,9 @@ namespace osgEarth
         OE_PROPERTY(std::string, category);
         OE_PROPERTY(bool, compress);
         OE_PROPERTY(bool, mipmap);
-        OE_PROPERTY(bool, clamp);
+        OE_PROPERTY(bool, clamp_s);
+        OE_PROPERTY(bool, clamp_t);
+        OE_PROPERTY(bool, clamp_r);
         OE_PROPERTY(bool, keepImage);
         OE_PROPERTY(unsigned, maxDim);
 
@@ -228,5 +229,3 @@ namespace osgEarth
         void notifyOfTextureRelease(osg::State*) const;
     };
 }
-
-#endif // OSGEARTH_TEXTURE_ARENA_H

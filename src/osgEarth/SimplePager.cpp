@@ -22,15 +22,7 @@ using namespace osgEarth::Util;
 
 SimplePager::SimplePager(const osgEarth::Map* map, const osgEarth::Profile* profile) :
     _map(map),
-    _profile(profile),
-    _rangeFactor(6.0),
-    _additive(false),
-    _minLevel(0),
-    _maxLevel(30),
-    _priorityScale(1.0f),
-    _priorityOffset(0.0f),
-    _canCancel(true),
-    _done(false)
+    _profile(profile)
 {
     if (map)
     {
@@ -50,6 +42,16 @@ void SimplePager::setEnableCancelation(bool value)
 bool SimplePager::getEnableCancelation() const
 {
     return _canCancel;
+}
+
+void SimplePager::setClusterCullingEnabled(bool value)
+{
+    _clusterCullingEnabled = value;
+}
+
+bool SimplePager::getClusterCullingEnabled() const
+{
+    return _clusterCullingEnabled;
 }
 
 void SimplePager::setMaxRange(float value)

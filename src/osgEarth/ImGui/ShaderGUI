@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_SHADER_GUI
-#define OSGEARTH_IMGUI_SHADER_GUI
+#pragma once
 
 #include "ImGui"
 #include <osgEarth/Registry>
@@ -131,6 +130,8 @@ namespace osgEarth
                         _db = Registry::programRepo().copy();
                     }
                     
+                    static void* open_shader = nullptr;
+                    int count = 0;
                     int frame = ri.getState()->getFrameStamp()->getFrameNumber();
                     for (auto& entry : _db)
                     {
@@ -139,6 +140,7 @@ namespace osgEarth
                             auto program = entry.second->_program;
                             auto name = program->getName();
                             if (name.empty()) name = "[no name]";
+                            std::string tag = name + "##" + std::to_string(count++);
                             if (ImGui::TreeNode(name.c_str()))
                             {
                                 auto num = program->getNumShaders();
@@ -147,20 +149,36 @@ namespace osgEarth
                                     auto shader = program->getShader(i);
                                     auto shader_name = shader->getName();
                                     if (shader_name.empty()) shader_name = "[no name]";
-                                    if (ImGui::TreeNode(shader->getName().c_str()))
+
+                                    ImGui::PushID(count++);
+
+                                    if (ImGui::Button(shader_name.c_str()))
                                     {
+                                        open_shader = shader;
+                                    }
+
+                                    if (open_shader == shader)
+                                    {
+                                        ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+                                        ImGui::Begin(shader_name.c_str());
+
                                         if (ImGui::Button("Compile"))
-                                        {
                                             program->releaseGLObjects(nullptr);
-                                        }
+
+                                        ImGui::SameLine();
+                                        if (ImGui::Button("Close"))
+                                            open_shader = nullptr;
+
                                         auto text = shader->getShaderSource();
                                         if (ImGuiUtil::InputTextMultiline("##shader_source", &text, ImVec2(-1, -1)))
                                         {
                                             shader->setShaderSource(text);
-                                            program->releaseGLObjects(nullptr);
+                                            //program->releaseGLObjects(nullptr);
                                         }
-                                        ImGui::TreePop();
+
+                                        ImGui::End();
                                     }
+                                    ImGui::PopID();
                                 }
                                 ImGui::TreePop();
                             }
@@ -172,5 +190,3 @@ namespace osgEarth
         };
     }
 }
-
-#endif // OSGEARTH_IMGUI_SHADER_GUI

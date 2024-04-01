@@ -362,17 +362,14 @@ ImageLayer::getColorFilters() const
 }
 
 GeoImage
-ImageLayer::createImage(
-    const TileKey& key)
+ImageLayer::createImage(const TileKey& key)
 {
     return createImage(key, nullptr);
 }
 
 GeoImage
-ImageLayer::createImage(
-    const TileKey& key,
-    ProgressCallback* progress)
-{    
+ImageLayer::createImage(const TileKey& key, ProgressCallback* progress)
+{
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT(getName() + " " + key.str());
 
@@ -383,7 +380,7 @@ ImageLayer::createImage(
 
     NetworkMonitor::ScopedRequestLayer layerRequest(getName());
 
-    GeoImage result = createImageInKeyProfile( key, progress );
+    GeoImage result = createImageInKeyProfile(key, progress);
 
     // Post-cache operations:
 
@@ -391,13 +388,15 @@ ImageLayer::createImage(
     {
         for (auto& post : _postLayers)
         {
+            // if we didn't get a result from the actual key, try to fall back
+            // so we can apply the post to "something".
             if (!result.valid())
             {
                 TileKey bestKey = getBestAvailableTileKey(key);
                 result = createImageInKeyProfile(bestKey, progress);
             }
 
-            result = post->createImage(result, key, progress);
+            result = applyPostLayer(result, key, post.get(), progress);
         }
     }
 
@@ -410,39 +409,22 @@ ImageLayer::createImage(
 }
 
 GeoImage
-ImageLayer::createImage(
-    const GeoImage& canvas,
-    const TileKey& key,
-    ProgressCallback* progress)
+ImageLayer::applyPostLayer(const GeoImage& canvas, const TileKey& key, Layer* post, ProgressCallback* progress) const
+{
+    auto post_imageLayer = dynamic_cast<ImageLayer*>(post);
+    if (post_imageLayer)
+    {
+        return post_imageLayer->createImage(canvas, key, progress);
+    }
+    else return canvas;
+}
+
+GeoImage
+ImageLayer::createImage(const GeoImage& canvas, const TileKey& key, ProgressCallback* progress)
 {
     Threading::ScopedReadLock lock(layerMutex());
     return createImageImplementation(canvas, key, progress);
 }
-
-struct Hooks
-{
-    static void put(osgDB::Options* read_options, std::shared_ptr<Hooks> hooks)
-    {
-        ObjectStorage::set(read_options, hooks);
-    }
-
-    static std::shared_ptr<Hooks> get(const osgDB::Options* read_options)
-    {
-        std::shared_ptr<Hooks> hooks;
-        ObjectStorage::get(read_options, hooks);
-        return hooks;
-    }
-
-    ReadResult pre_read(Layer* layer, const TileKey& key, ProgressCallback* progress)
-    {
-        return ReadResult(ReadResult::RESULT_OK);
-    }
-
-    ReadResult post_read(Layer* layer, const TileKey& key, const GeoImage& data, ProgressCallback* progress)
-    {
-        return ReadResult(ReadResult::RESULT_OK);
-    }
-};
 
 GeoImage
 ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progress)
@@ -470,21 +452,6 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
 
     GeoImage result;
 
-#if HOOKS
-    auto hooks = Hooks::get(getReadOptions());
-    if (hooks)
-    {
-        auto rr = hooks->pre_read(this, key, progress);
-        auto image = rr.releaseImage();
-        auto status = hooks->prehook_image(this, key, progress, result);
-        if (status.isError())
-            return GeoImage(status);
-        else if (result.valid())
-            return result;
-    }
-#endif
-
-#if 1
     OE_DEBUG << LC << "create image for \"" << key.str() << "\", ext= "
         << key.getExtent().toString() << std::endl;
 
@@ -561,7 +528,6 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
             return GeoImage::INVALID;
         }
     }
-#endif
 
     if (key.getProfile()->isHorizEquivalentTo(getProfile()))
     {
@@ -891,7 +857,7 @@ ImageLayer::removeCallback(ImageLayer::Callback* c)
 }
 
 void
-ImageLayer::addPostLayer(ImageLayer* layer)
+ImageLayer::addPostLayer(Layer* layer)
 {
     std::lock_guard<std::mutex> lock(_postLayers.mutex());
     _postLayers.push_back(layer);
@@ -902,10 +868,7 @@ ImageLayer::addPostLayer(ImageLayer* layer)
 #define ARENA_ASYNC_LAYER "oe.rex.loadtile"
 //#define FUTURE_IMAGE_COLOR_PLACEHOLDER
 
-FutureTexture2D::FutureTexture2D(
-    ImageLayer* layer,
-    const TileKey& key) :
-
+FutureTexture2D::FutureTexture2D(ImageLayer* layer, const TileKey& key) :
     osg::Texture2D(),
     FutureTexture(),
     _layer(layer),

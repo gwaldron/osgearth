@@ -61,19 +61,16 @@ namespace osgEarth
         template<typename T> class ReadWrite
         {
         public:
-            ReadWrite() :
-                _writers(0u), _readers(0u) { }
-
             void read_lock() {
                 std::unique_lock<T> lock(_m);
                 _unlocked.wait(lock, [&]() { return _writers == 0; });
-                ++_readers;
+                _readers.emplace(std::this_thread::get_id());
             }
 
             void read_unlock() {
                 std::unique_lock<T> lock(_m);
-                --_readers;
-                if (_readers == 0)
+                _readers.erase(std::this_thread::get_id());
+                if (_readers.empty())
                     _unlocked.notify_one();
             }
 
@@ -85,13 +82,29 @@ namespace osgEarth
 
             void write_lock() {
                 std::unique_lock<T> lock(_m);
-                _unlocked.wait(lock, [&]() { return _writers == 0 && _readers == 0; });
+                // already holding a read lock? release it, then upgrade.
+                bool upgrade = _readers.count(std::this_thread::get_id()) > 0;
+                if (upgrade) {
+                    _readers.erase(std::this_thread::get_id());
+                    if (_readers.empty())
+                        _unlocked.notify_all();
+                }
+                _unlocked.wait(lock, [&]() { return _writers == 0 && _readers.size() == 0; });
                 ++_writers;
+                if (upgrade) {
+                    // remember the upgrade so we can downgrade later.
+                    _upgraded_reader = std::this_thread::get_id();
+                }
             }
 
             void write_unlock() {
                 std::unique_lock<T> lock(_m);
                 _writers = 0;
+                bool downgrade = (_upgraded_reader == std::this_thread::get_id());
+                if (downgrade) {
+                    _upgraded_reader = {};
+                    _readers.emplace(std::this_thread::get_id());
+                }
                 _unlocked.notify_one();
             }
 
@@ -101,18 +114,12 @@ namespace osgEarth
                 write_unlock();
             }
 
-            void upgrade_to_write_lock() {
-                std::unique_lock<T> lock(_m);
-                _unlocked.wait(lock, [&]() { return _writers == 0 && _readers == 1; });
-                --_readers;
-                ++_writers;
-            }
-
         private:
             T _m;
             std::condition_variable_any _unlocked;
-            unsigned _writers;
-            unsigned _readers;
+            unsigned _writers = 0u;
+            std::unordered_set<std::thread::id> _readers;
+            std::thread::id _upgraded_reader = {};
         };
 
         template<typename T>
@@ -126,16 +133,9 @@ namespace osgEarth
         template<typename T>
         struct ScopedRead {
             ScopedRead(ReadWrite<T>& lock) : _lock(lock) { _lock.read_lock(); }
-            void upgradeToWriteLock() { _lock.upgrade_to_write_lock(); _upgraded = true; }
-            ~ScopedRead() {
-                if (_upgraded)
-                    _lock.write_unlock();
-                else
-                    _lock.read_unlock();
-            }
+            ~ScopedRead() { _lock.read_unlock(); }
         private:
             ReadWrite<T>& _lock;
-            bool _upgraded = false;
         };
 
         using ReadWriteMutex = ReadWrite<Mutex>;

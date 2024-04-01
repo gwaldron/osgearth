@@ -24,6 +24,7 @@
 #include <osgEarth/Layer>
 #include <osg/Texture2D>
 #include <osg/Texture2DArray>
+#include <osgDB/WriteFile>
 
 #undef  LC
 #define LC "[LayerShader] "
@@ -115,6 +116,13 @@ ShaderOptions::fromConfig(const Config& conf)
         {
             i->get("value", _uniforms.back()._floatValue);
         }
+    }
+
+    if (conf.hasChild("material"))
+    {
+        auto& child = conf.child("material");
+        _pbrsampler->_name = child.value("name");
+        _pbrsampler->_material = PBRMaterial(child);
     }
 }
 
@@ -241,6 +249,23 @@ LayerShader::install(Layer* layer, TerrainResources* res)
                 osg::Uniform* u = new osg::Uniform(uniform._name.c_str(), uniform._vec3Value.get());
                 stateset->addUniform(u);
             }
+        }
+    }
+
+    if (_options.pbrsampler().isSet())
+    {
+        auto& pbrsampler = _options.pbrsampler().get();
+
+        _reservations.push_back(TextureImageUnitReservation());
+        TextureImageUnitReservation& reservation = _reservations.back();
+
+        if (res->reserveTextureImageUnitForLayer(reservation, layer, "User shader pbr sampler"))
+        {
+            auto tex = pbrsampler._material.createTexture(layer->getReadOptions());
+            stateset->setTextureAttribute(reservation.unit(), tex);
+            stateset->addUniform(new osg::Uniform(pbrsampler._name.c_str(), reservation.unit()));
+
+            //osgDB::writeImageFile(*tex->getImage(0), "out/pbr.png");
         }
     }
 }

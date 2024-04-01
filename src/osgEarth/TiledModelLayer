@@ -22,6 +22,7 @@
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/TextureArena>
 #include <osgEarth/StateSetCache>
+#include <osgEarth/Chonk>
 #include <osg/Node>
 
 namespace osgEarth
@@ -100,8 +101,7 @@ namespace osgEarth
 
         // NVGL support:
         osg::ref_ptr<TextureArena> _textures;
-        mutable std::vector<Texture::WeakPtr> _texturesCache;
-        mutable std::mutex _texturesCacheMutex;
+        mutable ChonkFactory _chonkFactory;
 
     private:
         osg::observer_ptr< const Map > _map;

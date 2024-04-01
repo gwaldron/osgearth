@@ -28,6 +28,7 @@
 #include "Utils"
 #include "NodeUtils"
 #include "DrawInstanced"
+#include "Registry"
 
 #include <osg/Switch>
 #include <osg/LOD>
@@ -48,6 +49,14 @@ using namespace osgEarth;
 // Uncomment this to reset all buffer base index bindings after rendering.
 // It's unlikely this is necessary, but it's here just we find otherwise.
 //#define RESET_BUFFER_BASE_BINDINGS
+
+// Chunk sizes for the various GL buffers that the culling system will allocate.
+// In theory chunked allocation can make object recycling more efficient.
+// These are all in bytes
+#define COMMAND_BUF_CHUNK_SIZE 512
+#define INPUT_BUF_CHUNK_SIZE (1024 * 512)
+#define OUTPUT_BUF_CHUNK_SIZE (INPUT_BUF_CHUNK_SIZE * 2)
+#define CHONK_BUF_CHUNK_SIZE 256
 
 namespace
 {
@@ -121,7 +130,7 @@ namespace
         ChonkDrawable* _drawable = nullptr; // optional.
         float _far_pixel_scale = 0.0f;
         float _near_pixel_scale = MAX_NEAR_PIXEL_SCALE;
-        TextureArena* _textures;
+        TextureArena* _textures = nullptr;
         ChonkFactory::GetOrCreateFunction _getOrCreateTexture;
         std::list<ChonkMaterial::Ptr> _materialCache;
         std::stack<ChonkMaterial::Ptr> _materialStack;
@@ -241,7 +250,7 @@ namespace
                         arena_tex = Texture::create(tex);
                     }
 
-                    arena_tex->category() = "Chonk Texture";
+                    arena_tex->category() = "Chonk texture";
 
                     int index = _textures->add(arena_tex);
                     if (index >= 0)
@@ -552,6 +561,8 @@ Chonk::add(
     return factory.load(node, this, far_pixel_scale, near_pixel_scale);
 }
 
+#define IMMUTABLE 0
+
 const Chonk::DrawCommands&
 Chonk::getOrCreateCommands(osg::State& state) const
 {
@@ -562,19 +573,13 @@ Chonk::getOrCreateCommands(osg::State& state) const
     {
         gs.vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state);
         gs.vbo->bind();
-        gs.vbo->debugLabel("Chonk", "VBO");
-        gs.vbo->bufferStorage(
-            _vbo_store.size() * sizeof(VertexGPU),
-            _vbo_store.data(),
-            0); // permanent
+        gs.vbo->debugLabel("Chonk geometry", "VBO " + _name);
+        gs.vbo->bufferStorage(_vbo_store.size() * sizeof(VertexGPU), _vbo_store.data(), IMMUTABLE);
 
         gs.ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
         gs.ebo->bind();
-        gs.ebo->debugLabel("Chonk", "EBO");
-        gs.ebo->bufferStorage(
-            _ebo_store.size() * sizeof(element_t),
-            _ebo_store.data(),
-            0); // permanent
+        gs.ebo->debugLabel("Chonk geometry", "EBO " + _name);
+        gs.ebo->bufferStorage(_ebo_store.size() * sizeof(element_t), _ebo_store.data(), IMMUTABLE);
 
         gs.commands.reserve(_lods.size());
 
@@ -621,16 +626,21 @@ Chonk::getBound()
     return _box;
 }
 
-ChonkFactory::ChonkFactory(TextureArena* textures) :
-    _textures(textures)
+ChonkFactory::ChonkFactory()
 {
-    //nop
+    getOrCreateTexture = getWeakTextureCacheFunction(_texcache, _texcache_mutex);
+}
+
+ChonkFactory::ChonkFactory(TextureArena* in_textures)
+{
+    textures = in_textures;
+    getOrCreateTexture = getWeakTextureCacheFunction(_texcache, _texcache_mutex);
 }
 
 void
 ChonkFactory::setGetOrCreateFunction(GetOrCreateFunction value)
 {
-    _getOrCreateTexture = value;
+    getOrCreateTexture = value;
 }
 
 bool
@@ -638,6 +648,8 @@ ChonkFactory::load(osg::Node* node, Chonk* chonk, float far_pixel_scale, float n
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
     OE_SOFT_ASSERT_AND_RETURN(chonk != nullptr, false);
+    OE_SOFT_ASSERT_AND_RETURN(textures.valid(), false, "ChonkFactory requires a valid TextureArena");
+    
     OE_PROFILING_ZONE;
 
     // convert all primitive sets to indexed primitives
@@ -654,7 +666,7 @@ ChonkFactory::load(osg::Node* node, Chonk* chonk, float far_pixel_scale, float n
     unsigned offset = chonk->_ebo_store.size();
 
     // rip geometry and textures into a new Asset object
-    Ripper ripper(chonk, nullptr, _textures.get(), _getOrCreateTexture, far_pixel_scale, near_pixel_scale);
+    Ripper ripper(chonk, nullptr, textures.get(), getOrCreateTexture, far_pixel_scale, near_pixel_scale);
     node->accept(ripper);
 
     // dirty its bounding box
@@ -673,6 +685,8 @@ ChonkFactory::load(osg::Node* node, ChonkDrawable* drawable, float far_pixel_sca
 {
     OE_SOFT_ASSERT_AND_RETURN(node != nullptr, false);
     OE_SOFT_ASSERT_AND_RETURN(drawable != nullptr, false);
+    OE_SOFT_ASSERT_AND_RETURN(textures.valid(), false, "ChonkFactory requires a valid TextureArena");
+
     OE_PROFILING_ZONE;
 
     Chonk::Ptr chonk;
@@ -687,7 +701,7 @@ ChonkFactory::load(osg::Node* node, ChonkDrawable* drawable, float far_pixel_sca
         chonk->_ebo_store.reserve(counter._numElements);
     }
 
-    Ripper ripper(chonk.get(), drawable, _textures.get(), _getOrCreateTexture, far_pixel_scale, near_pixel_scale);
+    Ripper ripper(chonk.get(), drawable, textures.get(), getOrCreateTexture, far_pixel_scale, near_pixel_scale);
     node->accept(ripper);
 
     if (chonk && !chonk->_ebo_store.empty())
@@ -798,9 +812,6 @@ ChonkDrawable::installRenderBin(ChonkDrawable* d)
     // map of render bin number to stateset
     static vector_map<int, osg::ref_ptr<osg::StateSet>> s_stateSets;
 
-    // globally shared VP
-    static osg::ref_ptr<VirtualProgram> s_vp;
-
     static Mutex s_mutex;
     std::lock_guard<std::mutex> lock(s_mutex);
 
@@ -813,16 +824,17 @@ ChonkDrawable::installRenderBin(ChonkDrawable* d)
             (osg::StateSet::RenderBinMode)(ss->USE_RENDERBIN_DETAILS | ss->PROTECTED_RENDERBIN_DETAILS));
         
         // create the (shared) shader program if necessary:
-        if (!s_vp.valid())
-        {
-            s_vp = new VirtualProgram();
-            s_vp->setInheritShaders(true);
-            s_vp->setName("ChonkDrawable");
-            Shaders pkg;
-            pkg.load(s_vp.get(), pkg.Chonk);
-        }
+        auto vp = Registry::instance()->getOrCreate<VirtualProgram>("vp.ChonkDrawable", []()
+            {
+                auto vp = new VirtualProgram();
+                vp->setInheritShaders(true);
+                vp->setName("ChonkDrawable");
+                Shaders pkg;
+                pkg.load(vp, pkg.Chonk);
+                return vp;
+            });
 
-        ss->setAttribute(s_vp);
+        ss->setAttribute(vp);
     }
 
     d->setStateSet(ss);
@@ -1046,32 +1058,38 @@ ChonkDrawable::GLObjects::initialize(const osg::Object* host, osg::State& state)
     void(GL_APIENTRY * gl_VertexAttribLFormat)(GLuint, GLint, GLenum, GLuint);
     osg::setGLExtensionFuncPtr(gl_VertexAttribLFormat, "glVertexAttribLFormatNV");
 
+#if 0
     // DrawElementsCommand buffer:
     _commandBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
     _commandBuf->bind();
-    _commandBuf->debugLabel("Chonk", "Cmd buf " + host->getName());
+    _commandBuf->debugLabel("Chonk drawable", "commands " + host->getName());
     _commandBuf->unbind();
+    _commandBuf->setBufferDataAllocMultiple(COMMAND_BUF_CHUNK_SIZE);
 
     // Per-culling instances:
     _instanceInputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
     _instanceInputBuf->bind();
-    _instanceInputBuf->debugLabel("Chonk", "In buf " +host->getName());
+    _instanceInputBuf->debugLabel("Chonk drawable", "input " +host->getName());
     _instanceInputBuf->unbind();
+    _instanceInputBuf->setBufferDataAllocMultiple(INPUT_BUF_CHUNK_SIZE);
 
     if (_gpucull)
     {
         // Culled instances (GPU only)
         _instanceOutputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
         _instanceOutputBuf->bind();
-        _instanceOutputBuf->debugLabel("Chonk", "Out buf " + host->getName());
+        _instanceOutputBuf->debugLabel("Chonk drawable", "output " + host->getName());
         _instanceOutputBuf->unbind();
+        _instanceOutputBuf->setBufferDataAllocMultiple(OUTPUT_BUF_CHUNK_SIZE);
 
         // Chonk data
         _chonkBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
         _chonkBuf->bind();
-        _chonkBuf->debugLabel("Chonk", "Chonk buf " + host->getName());
+        _chonkBuf->debugLabel("Chonk drawable", "chonkbuf " + host->getName());
         _chonkBuf->unbind();
+        _instanceOutputBuf->setBufferDataAllocMultiple(CHONK_BUF_CHUNK_SIZE);
     }
+#endif
 
     // Multidraw command:
     osg::setGLExtensionFuncPtr(
@@ -1090,7 +1108,7 @@ ChonkDrawable::GLObjects::initialize(const osg::Object* host, osg::State& state)
     _vao->bind();
 
     // must call AFTER bind
-    _vao->debugLabel("Chonk", "VAO " + host->getName());
+    _vao->debugLabel("Chonk drawable", "VAO " + host->getName());
 
     // required in order to use BindlessNV extension
     glEnableClientState_(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
@@ -1138,6 +1156,7 @@ ChonkDrawable::GLObjects::initialize(const osg::Object* host, osg::State& state)
     _vao->unbind();
 }
 
+#define NEXT_MULTIPLE(X, Y) (((X+Y-1)/Y)*Y)
 
 void
 ChonkDrawable::GLObjects::update(
@@ -1229,21 +1248,55 @@ ChonkDrawable::GLObjects::update(
     }
 
     // Send to the GPU:
+    if (!_instanceInputBuf)
+    {
+        // Per-culling instances:
+        GLsizei sizeHint = _all_instances.size() * sizeof(Instance);
+        _instanceInputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, sizeHint, INPUT_BUF_CHUNK_SIZE);
+        _instanceInputBuf->bind();
+        _instanceInputBuf->debugLabel("Chonk drawable", "input " + host->getName());
+        _instanceInputBuf->unbind();
+    }
     _instanceInputBuf->uploadData(_all_instances, GL_STATIC_DRAW);
+
+    // need to do this since it gets sent in cull() when gpu culling is on.
+    if (!_commandBuf)
+    {
+        GLsizei sizeHint = _commands.size() * sizeof(Chonk::DrawCommand);
+        _commandBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, sizeHint, COMMAND_BUF_CHUNK_SIZE);
+        _commandBuf->bind();
+        _commandBuf->debugLabel("Chonk drawable", "commands " + host->getName());
+        _commandBuf->unbind();
+    }
 
     if (_gpucull)
     {
+        if (!_chonkBuf)
+        {
+            GLsizei sizeHint = _chonk_lods.size() * sizeof(ChonkLOD);
+            _chonkBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, sizeHint, CHONK_BUF_CHUNK_SIZE);
+            _chonkBuf->bind();
+            _chonkBuf->debugLabel("Chonk drawable", "chonkbuf " + host->getName());
+            _chonkBuf->unbind();
+        }
         _chonkBuf->uploadData(_chonk_lods, GL_STATIC_DRAW);
         
         // just reserve space if necessary - make sure there's enough space
         // for 2 LODs for each instance so we can do transitioning!
         // If someday, we draw more than 2 LODs at a time, we'll need to
         // up this buffer size!!
+        if (!_instanceOutputBuf)
+        {
+            GLsizei sizeHint = _all_instances.size() * sizeof(Instance) * 2;
+            _instanceOutputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state, sizeHint, OUTPUT_BUF_CHUNK_SIZE);
+            _instanceOutputBuf->bind();
+            _instanceOutputBuf->debugLabel("Chonk drawable", "output " + host->getName());
+            _instanceOutputBuf->unbind();
+        }
         _instanceOutputBuf->uploadData(_instanceInputBuf->size() * 2, nullptr);
     }
     else
     {
-        // need to do this since it gets sent in cull() when gpu culling is on.
         _commandBuf->uploadData(_commands);
     }
 
@@ -1256,7 +1309,7 @@ ChonkDrawable::GLObjects::update(
 void
 ChonkDrawable::GLObjects::cull(osg::State& state)
 {
-    if (_commands.empty())
+    if (_commands.empty() || _commandBuf == nullptr)
         return;
 
     OE_GL_ZONE_NAMED("cull");
@@ -1317,6 +1370,9 @@ ChonkDrawable::GLObjects::draw(osg::State& state)
 {
     OE_GL_ZONE_NAMED("draw");
 
+    if (_commandBuf == nullptr)
+        return;
+
     // transmit the uniforms
     state.applyModelViewAndProjectionUniformsIfRequired();
 
@@ -1370,7 +1426,6 @@ ChonkRenderBin::ChonkRenderBin(const ChonkRenderBin& rhs, const osg::CopyOp& op)
     osgUtil::RenderBin(rhs, op),
     _cullSS(rhs._cullSS)
 {
-    // The first time this happens, create the shaders and statesets.
     if (!_cullSS.valid())
     {
         static Mutex m;
@@ -1530,6 +1585,7 @@ ChonkFactory::GetOrCreateFunction ChonkFactory::getWeakTextureCacheFunction(
                 else
                 {
                     // dead entry, remove it
+                    //TODO this is a bad function to call on a vector, fix it
                     iter = cache.erase(iter);
                 }
             }

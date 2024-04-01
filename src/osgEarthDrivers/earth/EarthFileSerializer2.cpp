@@ -339,8 +339,8 @@ namespace
 
     bool addLayer(const Config& conf, LayerVector& layers)
     {
-        Layer* layer = Layer::create(conf);
-        if (layer)
+        auto layer = Layer::create(conf);
+        if (layer.valid())
         {
             layers.push_back(layer);
 

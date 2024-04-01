@@ -67,13 +67,6 @@ TextureSplattingLayer::Options::getConfig() const
 void
 TextureSplattingLayer::Options::fromConfig(const Config& conf)
 {
-    numLevels().setDefault(1);
-    useHexTiler().setDefault(true);
-    normalMapPower().setDefault(1.0f);
-    lifeMapMaskThreshold().setDefault(0.0f);
-    displacementDepth().setDefault(0.1f);
-    maxTextureSize().setDefault(INT_MAX);
-
     conf.get("num_levels", numLevels());
     conf.get("use_hex_tiler", useHexTiler());
     conf.get("normalmap_power", normalMapPower());

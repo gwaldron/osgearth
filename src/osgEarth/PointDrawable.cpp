@@ -301,34 +301,35 @@ namespace
 }
 
 PointDrawable::PointDrawable() :
-osg::Geometry(),
-_gpu(false),
-_color(1, 1, 1, 1),
-_width(1.0f),
-_smooth(false),
-_first(0u),
-_count(0u),
-_current(NULL),
-_colors(NULL),
-_sharedStateSetCompiled(false)
+    osg::Geometry(),
+    _gpu(false),
+    _color(1, 1, 1, 1),
+    _width(1.0f),
+    _smooth(false),
+    _first(0u),
+    _count(0u),
+    _current(NULL),
+    _colors(NULL),
+    _sharedStateSetCompiled(false)
 {
 #ifdef USE_GPU
     _gpu = Registry::capabilities().supportsGLSL();
 #endif
+    s_isCoreProfile = Registry::capabilities().isCoreProfile();
     setupState();
 }
 
 PointDrawable::PointDrawable(const PointDrawable& rhs, const osg::CopyOp& copy) :
-osg::Geometry(rhs, copy),
-_gpu(rhs._gpu),
-_color(rhs._color),
-_width(rhs._width),
-_smooth(rhs._smooth),
-_first(rhs._first),
-_count(rhs._count),
-_current(NULL),
-_colors(NULL),
-_sharedStateSetCompiled(rhs._sharedStateSetCompiled)
+    osg::Geometry(rhs, copy),
+    _gpu(rhs._gpu),
+    _color(rhs._color),
+    _width(rhs._width),
+    _smooth(rhs._smooth),
+    _first(rhs._first),
+    _count(rhs._count),
+    _current(NULL),
+    _colors(NULL),
+    _sharedStateSetCompiled(rhs._sharedStateSetCompiled)
 {
     _current = static_cast<osg::Vec3Array*>(getVertexArray());
     setupState();
@@ -619,8 +620,6 @@ PointDrawable::dirty()
     addPrimitiveSet(new osg::DrawArrays(GL_POINTS, _first, _count > 0u? _count : _current->size()));
 }
 
-osg::observer_ptr<osg::StateSet> PointDrawable::s_sharedStateSet;
-
 void
 PointDrawable::setupState()
 {
@@ -628,29 +627,21 @@ PointDrawable::setupState()
     // shared by all PointDrawable instances so OSG will sort them together.
     if (!_sharedStateSet.valid())
     {
-        if (s_sharedStateSet.lock(_sharedStateSet) == false)
-        {
-            static std::mutex s_mutex;
-            std::lock_guard<std::mutex> lock(s_mutex);
-
-            if (s_sharedStateSet.lock(_sharedStateSet) == false)
+        bool gpu = _gpu;
+        _sharedStateSet = Registry::instance()->getOrCreate<osg::StateSet>("oe.PointDrawable.StateSet", [gpu]()
             {
-                s_sharedStateSet = _sharedStateSet = new osg::StateSet();
-
-                s_sharedStateSet->setTextureAttributeAndModes(0, new osg::PointSprite(), osg::StateAttribute::ON);
-
-                if (_gpu)
+                auto ss = new osg::StateSet();
+                ss->setTextureAttributeAndModes(0, new osg::PointSprite(), osg::StateAttribute::ON);
+                if (gpu)
                 {
-                    VirtualProgram* vp = VirtualProgram::getOrCreate(_sharedStateSet.get());
+                    VirtualProgram* vp = VirtualProgram::getOrCreate(ss);
                     vp->setName("osgEarth::PointDrawable");
                     Shaders shaders;
                     shaders.load(vp, shaders.PointDrawable);
-                    _sharedStateSet->setMode(GL_PROGRAM_POINT_SIZE, 1);
+                    ss->setMode(GL_PROGRAM_POINT_SIZE, 1);
                 }
-
-                s_isCoreProfile = Registry::capabilities().isCoreProfile();
-            }
-        }
+                return ss;
+            });
     }
 }
 

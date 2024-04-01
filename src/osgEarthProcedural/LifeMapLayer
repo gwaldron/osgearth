@@ -19,11 +19,10 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_PROCEDURAL_LIFE_MAP_LAYER_H
-#define OSGEARTH_PROCEDURAL_LIFE_MAP_LAYER_H
+#pragma once
 
-#include "Export"
-#include "BiomeLayer"
+#include <osgEarthProcedural/Export>
+#include <osgEarthProcedural/BiomeLayer>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/ElevationPool>
 #include <osgEarth/LayerReference>
@@ -46,21 +45,21 @@ namespace osgEarth { namespace Procedural
         class OSGEARTHPROCEDURAL_EXPORT Options : public ImageLayer::Options
         {
         public:
-            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            META_LayerOptions(osgEarthProcedural, Options, ImageLayer::Options);
             OE_OPTION_LAYER(BiomeLayer, biomeLayer);
             OE_OPTION_LAYER(ImageLayer, maskLayer);
             OE_OPTION_LAYER(ImageLayer, waterLayer);
             OE_OPTION_LAYER(CoverageLayer, landCoverLayer);
             OE_OPTION_LAYER(ImageLayer, colorLayer);
 
-            OE_OPTION(float, landCoverWeight);
-            OE_OPTION(Distance, landCoverBlur);
-            OE_OPTION(float, terrainWeight);
-            OE_OPTION(float, slopeIntensity);
-            OE_OPTION(float, slopeCutoff);
-            OE_OPTION(float, colorWeight);
-            OE_OPTION(float, noiseWeight);
-            OE_OPTION(float, lushFactor);
+            OE_OPTION(float, landCoverWeight, 1.0f);
+            OE_OPTION(Distance, landCoverBlur, Distance(0.0f, Units::METERS));
+            OE_OPTION(float, terrainWeight, 1.0f);
+            OE_OPTION(float, slopeIntensity, 1.0f);
+            OE_OPTION(float, slopeCutoff, 0.0f);
+            OE_OPTION(float, colorWeight, 1.0f);
+            OE_OPTION(float, noiseWeight, 0.225f);
+            OE_OPTION(float, lushFactor, 1.9f);
 
             virtual Config getConfig() const;
         private:
@@ -101,31 +100,34 @@ namespace osgEarth { namespace Procedural
         float getNoiseWeight() const;
         bool getUseNoise() const;
 
+        //! Access the elevation data working set so we can customize the elevation layer
+        //! the LifeMapLayer uses when creating rasters.
+        //! Only do this before starting up the terrain engine.
+        ElevationPool::WorkingSet& getWorkingSet() { return _workingSet; }
+
     protected:
 
-        virtual void init() override;
+        void init() override;
 
-        virtual Status openImplementation() override;
+        Status openImplementation() override;
 
-        virtual Status closeImplementation() override;
-            
-        virtual GeoImage createImageImplementation(const TileKey&, ProgressCallback*) const override;
+        Status closeImplementation() override;
+
+        GeoImage createImageImplementation(const TileKey&, ProgressCallback*) const override;
+
+        GeoImage applyPostLayer(const GeoImage&, const TileKey&, Layer*, ProgressCallback*) const override;
 
     public:
 
-        virtual void addedToMap(const Map* map) override; 
+        void addedToMap(const Map* map) override;
 
-        virtual void removedFromMap(const Map* map) override;
+        void removedFromMap(const Map* map) override;
 
     protected:
-
-        virtual ~LifeMapLayer() { }
 
         osg::observer_ptr<const Map> _map;
         mutable ElevationPool::WorkingSet _workingSet;
         osg::ref_ptr<osg::Image> _noiseFunc;
-        LandCoverLayerVector _landCoverLayers;
-        osg::ref_ptr<LandCoverDictionary> _landCoverDictionary;
 
         LandCoverSample::Factory::Ptr _landCoverFactory;
 
@@ -133,5 +135,3 @@ namespace osgEarth { namespace Procedural
     };
 
 } } // namespace osgEarth::Procedural
-
-#endif // OSGEARTH_PROCEDURAL_LIFE_MAP_LAYER_H

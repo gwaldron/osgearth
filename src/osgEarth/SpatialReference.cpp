@@ -427,7 +427,7 @@ SpatialReference::getDatumName() const
     return _datum;
 }
 
-const Units&
+const UnitsType&
 SpatialReference::getUnits() const
 {
     return _units;
@@ -1029,8 +1029,8 @@ SpatialReference::transformZ(std::vector<osg::Vec3d>& points,
     if ( _vdatum.get() == outVDatum )
         return true;
 
-    Units inUnits = _vdatum.valid() ? _vdatum->getUnits() : Units::METERS;
-    Units outUnits = outVDatum ? outVDatum->getUnits() : inUnits;
+    UnitsType inUnits = _vdatum.valid() ? _vdatum->getUnits() : Units::METERS;
+    UnitsType outUnits = outVDatum ? outVDatum->getUnits() : inUnits;
 
     if ( isGeographic() || pointsAreLatLong )
     {
@@ -1456,12 +1456,12 @@ SpatialReference::init()
     _datum = getOGRAttrValue( handle, "DATUM", 0, true );
 
     // Extract the base units:
-    std::string units = getOGRAttrValue( handle, "UNIT", 0, true );
+    std::string units_name = getOGRAttrValue( handle, "UNIT", 0, true );
     double unitMultiplier = osgEarth::Util::as<double>( getOGRAttrValue( handle, "UNIT", 1, true ), 1.0 );
     if ( isGeographic() )
-        _units = Units(units, units, Units::TYPE_ANGULAR, unitMultiplier);
+        _units = UnitsType(units_name.c_str(), units_name.c_str(), Units::Domain::ANGLE, unitMultiplier);
     else
-        _units = Units(units, units, Units::TYPE_LINEAR, unitMultiplier);
+        _units = UnitsType(units_name.c_str(), units_name.c_str(), Units::Domain::DISTANCE, unitMultiplier);
 
     _reportedLinearUnits = OSRGetLinearUnits(handle, nullptr);
     

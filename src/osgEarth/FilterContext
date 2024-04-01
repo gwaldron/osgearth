@@ -22,7 +22,6 @@
 #include <osgEarth/Feature>
 #include <osgEarth/Session>
 
-#include <osgEarth/Geometry>
 #include <osgEarth/ResourceCache>
 
 #include <osgEarth/GeoData>
@@ -36,6 +35,8 @@ namespace osgEarth
 {
     class FeatureProfile;
     class FeatureIndexBuilder;
+    class Geometry;
+    class Query;
 }
 
 namespace osgEarth { namespace Util
@@ -47,14 +48,19 @@ namespace osgEarth { namespace Util
     {
     public:
         //! Construct (default)
-        FilterContext() { }
+        FilterContext() = default;
 
         //! Construct with a session
         FilterContext(
             Session*              session,
-            const FeatureProfile* profile       =0L,
+            const FeatureProfile* profile       =nullptr,
             const GeoExtent&      workingExtent =GeoExtent::INVALID,
-            FeatureIndexBuilder*  index         =0L);
+            FeatureIndexBuilder*  index         =nullptr);
+
+        //! Construct with a profile and a query
+        FilterContext(
+            const FeatureProfile* profile,
+            const Query& query);
 
         //! Construct (copy)
         FilterContext(const FilterContext& rhs) = default;
@@ -79,114 +85,74 @@ namespace osgEarth { namespace Util
 
     public: // properties
 
-        /**
-         * Whether this context contains complete georeferencing information.
-         */
+        //! Whether this context contains complete georeferencing information.
         bool isGeoreferenced() const;
 
-        /**
-         * Access to the Session under which this filter context operates
-         */
+        //! Access to the Session under which this filter context operates
         Session* getSession();
         const Session* getSession() const;
 
-        /**
-         * The spatial profile of the feature data in this context.
-         */
+        //! The spatial profile of the feature data in this context.
         const FeatureProfile* profile() const { return _profile.get(); }
 
-        /**
-         * The spatial extent of the working cell
-         */
+        //! The spatial extent of the working cell
         optional<GeoExtent>& extent() { return _extent; }
         const optional<GeoExtent>& extent() const { return _extent; }
 
-        /**
-         * The feature index
-         */
+        //! The feature index (optional)
         FeatureIndexBuilder* featureIndex() { return _index; }
         const FeatureIndexBuilder* featureIndex() const { return _index; }
 
-        /**
-         * Whether this context has a non-identity reference frame
-         */
+        //! Whether this context has a non-identity reference frame
         bool hasReferenceFrame() const { return !_referenceFrame.isIdentity(); }
 
-        /**
-         * Converts from world coordiantes into local coordinates 
-         */
+        //! Converts from world coordiantes into local coordinates 
         osg::Vec3d toLocal( const osg::Vec3d& world ) const { return world * _referenceFrame; }
 
-        /**
-         * Converts a Geometry from world coords to local coords
-         */
+        //! Converts a Geometry from world coords to local coords
         void toLocal( Geometry* geom ) const;
 
-        /**
-         * Converts from local (reference frame) coordinates into world coordinates
-         */
+        //! Converts from local (reference frame) coordinates into world coordinates
         osg::Vec3d toWorld( const osg::Vec3d& local ) const { return local * _inverseReferenceFrame; }
 
-        /**
-         * Converts a Geometry from local coords to world coords
-         */
+        //! Converts a Geometry from local coords to world coords
         void toWorld( Geometry* geom ) const;
 
-        /**
-         * Converts a context-local point to a map coordinate.
-         */
+        //! Converts a context-local point to a map coordinate.
         osg::Vec3d toMap( const osg::Vec3d& local ) const;
 
-        /**
-         * Converts a map coordinate to a context-local point.
-         */
+        //! Converts a map coordinate to a context-local point.
         osg::Vec3d fromMap( const osg::Vec3d& map ) const;
 
-        /**
-         * Multiplying by the reference frame takes a point from world coords into local coords.
-         */
+        //! Multiplying by the reference frame takes a point from world coords into local coords.
         const osg::Matrixd& referenceFrame() const { return _referenceFrame; }
 
-        /**
-         * Multiplying by the inverse reference frame takes a point from local coords into world coords.
-         */
+        //! Multiplying by the inverse reference frame takes a point from local coords into world coords.
         const osg::Matrix& inverseReferenceFrame() const { return _inverseReferenceFrame; }
 
-        /**
-         * Sets the reference frame (and its inverse)
-         */
+        //! Sets the reference frame (and its inverse)
         void setReferenceFrame( const osg::Matrixd& in ) {
             _referenceFrame = in;
             _inverseReferenceFrame.invert( _referenceFrame ); // = osg::Matrixd::inverse( _referenceFrame );
         }      
 
-        /**
-         * Accesses the shared resource cache where filters can store data.
-         */
+        //! Accesses the shared resource cache where filters can store data.
         ResourceCache* resourceCache();
 
-        /**
-         * Shader policy. Unset by default, but code using this context can expressly
-         * set it to affect shader generation. Typical use case it to set the policy
-         * to "inherit" to inhibit shader generation if you have already generated
-         * shaders yourself.
-         */
+        //! Shader policy. Unset by default, but code using this context can expressly
+        //! set it to affect shader generation. Typical use case it to set the policy
+        //! to "inherit" to inhibit shader generation if you have already generated
+        //! shaders yourself.
         optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
         const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
 
-        /**
-         * Dump as a string
-         */
+        //! Dump as a string
         std::string toString() const;
 
-        /**
-         * Gets the DB Options associated with the context's session
-         */
+        //! Gets the DB Options associated with the context's session
         const osgDB::Options* getDBOptions() const;
 
-        /**
-         * Gets a "history" string for debugging purposes
-         */
+        //! Gets a "history" string for debugging purposes
         std::string getHistory() const;
 
         void pushHistory(const std::string& value) { _history.push_back(value); }

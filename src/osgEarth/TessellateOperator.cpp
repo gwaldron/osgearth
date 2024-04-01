@@ -104,7 +104,7 @@ TessellateOperator::operator()( Feature* feature, FilterContext& context ) const
         return;
     }
 
-    Units featureUnits = feature->getSRS() ? feature->getSRS()->getUnits() : Units::METERS;
+    auto featureUnits = feature->getSRS() ? feature->getSRS()->getUnits() : Units::METERS;
     bool isGeo = feature->getSRS() ? feature->getSRS()->isGeographic() : false;
     GeoInterpolation geoInterp = feature->geoInterp().isSet() ? *feature->geoInterp() : _defaultInterp;
 

@@ -416,8 +416,7 @@ namespace
 }
 
 void
-BiomeManager::materializeNewAssets(
-    const osgDB::Options* readOptions)
+BiomeManager::materializeNewAssets(const osgDB::Options* readOptions)
 {
     OE_PROFILING_ZONE;
 
@@ -430,6 +429,7 @@ BiomeManager::materializeNewAssets(
 
     // Factory for loading chonk data. It will use our texture arena.
     ChonkFactory factory(_textures.get());
+    factory.setGetOrCreateFunction(ChonkFactory::getWeakTextureCacheFunction(_texturesCache, _texturesCacheMutex));
 
     // Clear out each biome's instances so we can start fresh.
     // This is a low-cost operation since anything we can re-use
@@ -768,7 +768,10 @@ BiomeManager::materializeNewAssets(
                     float near_pixel_scale = FLT_MAX;
 
                     if (residentAsset->chonk() == nullptr)
+                    {
                         residentAsset->chonk() = Chonk::create();
+                        residentAsset->chonk()->name() = residentAsset->assetDef()->name();
+                    }
 
 #if 0
                     // FOR DEBUGGING - ADD A CHONK THAT VISUALIZES THE NORMALS
@@ -806,7 +809,10 @@ BiomeManager::materializeNewAssets(
                         FLT_MAX;
 
                     if (residentAsset->chonk() == nullptr)
+                    {
                         residentAsset->chonk() = Chonk::create();
+                        residentAsset->chonk()->name() = residentAsset->assetDef()->name();
+                    }
 
                     residentAsset->chonk()->add(
                         residentAsset->impostor().get(),

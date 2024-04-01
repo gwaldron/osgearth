@@ -16,17 +16,14 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_CONFIG_H
-#define OSGEARTH_CONFIG_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/optional>
 #include <osgEarth/StringUtils>
-#include <osg/Object>
-#include <osg/Version>
 #include <osg/Vec2f>
 #include <osg/Vec3d>
-#include <list>
+#include <vector>
 #include <istream>
 #include <functional>
 
@@ -48,31 +45,45 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT Config
     {
-    public:
-        Config()
-            : _isLocation(false), _isNumber(false) { }
+    protected:
+        std::string _key;
+        std::string _defaultValue;
+        std::string _referrer;
+        std::string _externalRef;
+        ConfigSet _children;
+        bool _isLocation = false;
+        bool _isNumber = false;
 
-        Config(const std::string& key)
-            : _key(key), _isLocation(false), _isNumber(false) { }
+    public:
+        Config() = default;
+
+        Config(const std::string& key) :
+            _key(key) { }
 
         template<typename T>
-        explicit Config(const std::string& key, const T& value)
-            : _key(key), _isLocation(false), _isNumber(false)
+        explicit Config(const std::string& key, const T& value) :
+            _key(key)
         {
             setValue(value);
         }
 
-        explicit Config(const std::string& key, const Config& value)
-            : _key(key), _isLocation(false), _isNumber(false)
+        explicit Config(const std::string& key, const Config& value) :
+            _key(key)
         {
             add(value);
         }
 
-        // Copy CTOR
-        Config( const Config& rhs ) 
-            : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _referrer(rhs._referrer), _isLocation(rhs._isLocation), _isNumber(rhs._isNumber), _externalRef(rhs._externalRef), _refMap(rhs._refMap) { }
+        explicit Config(const std::string& key, Config&& value) :
+            _key(key)
+        {
+            add(value);
+        }
 
-        virtual ~Config();
+        // Copy functions
+        Config(const Config& rhs) = default;
+        Config(Config&& rhs) = default;
+        Config& operator=(const Config& rhs) = default;
+        Config& operator=(Config&& rhs) = default;
 
         /**
          * Referrer is the context for resolving relative pathnames that occur in this object.
@@ -190,17 +201,32 @@ namespace osgEarth
             _children.back().setReferrer(_referrer);
         }
 
-        /** Add a Config as a child */
-        void add(const Config& conf) {
+        //! Set a config as a child
+        Config& add(const Config& conf) {
             _children.push_back(conf);
             _children.back().setReferrer(_referrer);
+            return _children.back();
+        }
+
+        //! Move a config as a child
+        Config& add(Config&& conf) {
+            _children.push_back(std::move(conf));
+            _children.back().setReferrer(_referrer);
+            conf = {};
+            return _children.back();
         }
 
         /** Add a config as a child, assigning it a key */
-        void add(const std::string& key, const Config& conf) {
-            Config temp = conf;
-            temp.key() = key;
-            add(temp);
+        Config& add(const std::string& key, const Config& conf) {
+            Config& result = add(conf);
+            result.key() = key;
+            return result;
+        }
+        Config& add(const std::string& key, Config&& conf) {
+            Config& result = add(std::move(conf));
+            result.key() = key;
+            conf = {};
+            return result;
         }
 
         /** Add a set of config objects as children. */
@@ -224,7 +250,7 @@ namespace osgEarth
             if (obj.valid()) {
                 Config conf = obj->getConfig();
                 conf.key() = key;
-                set(conf);
+                set(std::move(conf));
             }
         }
 
@@ -238,16 +264,21 @@ namespace osgEarth
         }
 
         /** Adds or replaces a config as a child. */
-        void set(const Config& conf) {
+        Config& set(const Config& conf) {
             remove(conf.key());
-            add(conf);
+            return add(conf);
+        }
+        Config& set(Config&& conf) {
+            remove(conf.key());
+            return add(std::move(conf));
         }
 
         //! Adds or replaces a config as a child if it's not empty.
-        void set_with_function(const std::string& key, std::function<void(Config&)>&& f) {
+        template<typename CALLABLE>
+        void set_with_function(const std::string& key, CALLABLE&& f) {
             Config conf(key);
             f(conf);
-            if (!conf.empty()) set(conf);
+            if (!conf.empty()) set(std::move(conf));
         }
 
         /** Sets a key value pair child */
@@ -340,36 +371,11 @@ namespace osgEarth
             return false;
         }
 
-        /** support for conveying non-serializable objects in a Config (in memory only) */
-        typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > RefMap;
-
-        //! @deprecated
-        void setNonSerializable(const std::string& key, osg::Referenced* obj) {
-            _refMap[key] = obj;
-        }
-
-        //! @deprecated
-        template<typename X>
-        X* getNonSerializable(const std::string& key) const {
-            RefMap::const_iterator i = _refMap.find(key);
-            return i == _refMap.end() ? 0 : dynamic_cast<X*>(i->second.get());
-        }
-
         // remove everything from (this) that also appears in rhs (diff)
         Config operator - (const Config& rhs) const;
 
         //! Whether the encoded value is actual a number
         bool isNumber() const { return _isNumber; }
-
-    protected:
-        std::string _key;
-        std::string _defaultValue;
-        ConfigSet   _children;
-        std::string _referrer;
-        bool        _isLocation;
-        bool        _isNumber;
-        std::string _externalRef;
-        RefMap      _refMap;
     };
 
     // SPECIALIZATION - Config
@@ -377,18 +383,16 @@ namespace osgEarth
     template<> inline
         void Config::set<Config>(const std::string& key, const Config& conf) {
         remove(key);
-        Config temp = conf;
-        temp.key() = key;
-        add(temp);
+        Config& result = add(conf);
+        result.key() = key;
     }
 
     template<> inline
         void Config::set<Config>(const std::string& key, const optional<Config>& opt) {
         remove(key);
         if (opt.isSet()) {
-            Config conf = opt.value();
-            conf.key() = key;
-            add(conf);
+            Config& result = add(opt.value());
+            result.key() = key;
         }
     }
 
@@ -573,7 +577,7 @@ namespace osgEarth
         template<> inline void Config::add<TYPE>(const std::string& key, const TYPE& value) { \
             Config conf = value.getConfig(); \
             conf.key() = key; \
-            add( conf ); \
+            add(std::move(conf)); \
         } \
     } // namespace osgEarth
 
@@ -762,5 +766,3 @@ namespace osgEarth
     if (L().isSet() && R().isSet()) { \
         if (L().get() < R().get()) return true; \
         if (L().get() > R().get()) return false; }
-
-#endif // OSGEARTH_CONFIG_H

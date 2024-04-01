@@ -38,9 +38,9 @@ namespace
     std::string s_glslHeader;
 
     #if defined(OSG_GLES2_AVAILABLE) || defined(OSG_GLES3_AVAILABLE)
-        static bool s_GLES_SHADERS = true;
+        bool s_GLES_SHADERS = true;
     #else
-        static bool s_GLES_SHADERS = false;
+        bool s_GLES_SHADERS = false;
     #endif
 }
 

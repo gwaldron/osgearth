@@ -51,6 +51,10 @@ set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version"
 message(STATUS "Creating ${OSGEARTH_VERSION_HEADER}")
 configure_file(Version.in ${OSGEARTH_VERSION_HEADER})
 
+set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig")
+message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
+configure_file(BuildConfig.in ${OSGEARTH_BUILDCONFIG_HEADER})
+
 # Name all the library files
 SET(LIB_NAME osgEarth)
 
@@ -205,6 +209,7 @@ SET(LIB_PUBLIC_HEADERS
     Fill
     Filter
     FilterContext
+    FilteredFeatureSource
     FlatteningLayer
     Formatter
     FractalElevationLayer
@@ -624,6 +629,7 @@ set(TARGET_SRC
     Fill.cpp
     Filter.cpp
     FilterContext.cpp
+    FilteredFeatureSource.cpp
     FlatteningLayer.cpp
     FractalElevationLayer.cpp
     FrameClock.cpp
@@ -924,19 +930,15 @@ ENDIF(BLOSC_FOUND)
 
 # GEOS support?
 IF (GEOS_FOUND)
-    ADD_DEFINITIONS(-DOSGEARTH_HAVE_GEOS)
     INCLUDE_DIRECTORIES(${GEOS_INCLUDE_DIR})
     LINK_WITH_VARIABLES(${LIB_NAME} GEOS_LIBRARY)
 ENDIF(GEOS_FOUND)
 
 # Protobuf/MVT?
-IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
-
-  ADD_DEFINITIONS(-DOSGEARTH_HAVE_MVT)
+IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)  
   IF (PROTOBUF_USE_DLLS)
     ADD_DEFINITIONS(-DPROTOBUF_USE_DLLS)
   ENDIF()
-
   LINK_WITH_VARIABLES(${LIB_NAME} Protobuf_LIBRARIES)
 ENDIF()
 
@@ -948,7 +950,6 @@ IF(FILEGDB_FOUND)
 ENDIF()
 
 IF(BLEND2D_FOUND)
-    add_definitions(-DOSGEARTH_HAVE_BLEND2D)
     include_directories(${BLEND2D_INCLUDES})
     link_with_variables(${LIB_NAME} BLEND2D_LIBRARY)
 ENDIF()

@@ -192,7 +192,7 @@ namespace osgEarth
         bool transformZ(const AltitudeMode& altMode, const TerrainResolver* t, double& out_z) const;
 
         //! Transforms a resolution distance to a cartesian value.
-        Distance transformResolution(const Distance& d, const Units& outUnits) const;
+        Distance transformResolution(const Distance& d, const UnitsType& outUnits) const;
 
         /**
          * Transforms this geopoint's Z to be absolute w.r.t. the vertical datum
@@ -272,7 +272,7 @@ namespace osgEarth
         GeoPoint interpolate(const GeoPoint& rhs, double t) const;
 
         //! Convenience function to return xy units
-        const Units& getXYUnits() const;
+        const UnitsType& getXYUnits() const;
 
         bool operator == (const GeoPoint& rhs) const;
         bool operator != (const GeoPoint& rhs) const { return !operator==(rhs); }
@@ -409,13 +409,13 @@ namespace osgEarth
         inline double width() const { return _width; }
 
         //! East-to-est span in specified units
-        double width(const Units& units) const;
+        double width(const UnitsType& units) const;
 
         //! North-to-south span of the extent
         inline double height() const { return _height; }
 
         //! North-to-south span in specified units
-        double height(const Units& units) const;
+        double height(const UnitsType& units) const;
 
         //! Gets the centroid of the bounds
         GeoPoint getCentroid() const;

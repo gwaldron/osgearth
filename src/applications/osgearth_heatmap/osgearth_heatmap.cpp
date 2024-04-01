@@ -423,7 +423,8 @@ main(int argc, char** argv)
     }
 
     // open the output tile source:
-    osg::ref_ptr<ImageLayer> output = dynamic_cast<ImageLayer*>(Layer::create(ConfigOptions(outConf)));
+    auto layer = Layer::create(ConfigOptions(outConf));
+    osg::ref_ptr<ImageLayer> output = dynamic_cast<ImageLayer*>(layer.get());
     if (!output.valid())
     {
         OE_WARN << "Failed to create output layer" << std::endl;

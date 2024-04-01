@@ -178,8 +178,7 @@ GLUtils::useNVGL(bool value)
 namespace
 {
     struct Mapping {
-        Mapping() : _ptr(nullptr) { }
-        const osg::State* _ptr;
+        const osg::State* _ptr = nullptr;
     };
     static Mapping s_mappings[4096];
 }
@@ -552,13 +551,8 @@ GLObjectPool::getAll()
 }
 
 GLObjectPool::GLObjectPool(unsigned cxid) :
-    osg::GraphicsObjectManager("osgEarth::GLObjectPool", cxid),
-    _hits(0),
-    _misses(0),
-    _totalBytes(0),
-    _avarice(10.f)
+    osg::GraphicsObjectManager("osgEarth::GLObjectPool", cxid)
 {
-    _gcs.resize(256);
 
     std::lock_guard<std::mutex> lock(s_pools_mutex);
     s_pools.emplace_back(this);
@@ -591,16 +585,17 @@ namespace
 void
 GLObjectPool::track(osg::GraphicsContext* gc)
 {
-    unsigned i;
-    for (i = 0; i < _gcs.size() && _gcs[i]._gc != nullptr; ++i)
+    for (auto& rec : _gcs)
     {
-        if (_gcs[i]._gc == gc)
+        if (rec._gc == gc)
             return;
     }
 
-    _gcs[i]._gc = gc;
-    _gcs[i]._operation = new GCServicingOperation(this);
-    gc->add(_gcs[i]._operation.get());
+    auto servicer = new GCServicingOperation(this);
+
+    _gcs.emplace_back(GC{ gc, servicer });
+
+    gc->add(servicer);
 }
 
 void
@@ -616,6 +611,14 @@ GLObjectPool::releaseGLObjects(osg::State* state)
     if (state)
     {
         GLObjectPool::get(*state)->releaseAll(state->getGraphicsContext());
+    }
+    else
+    {
+        auto pools = getAll();
+        for(auto i : pools)
+        {
+            i.second->releaseAll(nullptr);
+        }
     }
 }
 
@@ -634,31 +637,25 @@ GLObjectPool::objects() const
 void
 GLObjectPool::flushDeletedGLObjects(double now, double& avail)
 {
-    //flush(_objects);
+    //nop
 }
 
 void
 GLObjectPool::flushAllDeletedGLObjects()
 {
-    deleteAllGLObjects();
+    //nop
 }
 
 void
 GLObjectPool::deleteAllGLObjects()
 {
-    //std::lock_guard<std::mutex> lock(_mutex);
-    //for (auto& object : _objects)
-    //    object->release();
-    //_objects.clear();
-    //_totalBytes = 0;
+    //nop
 }
 
 void
 GLObjectPool::discardAllGLObjects()
 {
-    //std::lock_guard<std::mutex> lock(_mutex);
-    //_objects.clear();
-    //_totalBytes = 0;
+    //nop
 }
 
 void
@@ -671,7 +668,7 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
 
     for (auto& object : _objects)
     {
-        if (object->gc() == gc)
+        if (object->gc() == gc || (gc == nullptr))
         {
             object->release();
         }
@@ -691,8 +688,7 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
 {
     std::lock_guard<std::mutex> lock(_mutex);
 
-    unsigned maxNumToRelease = std::max(1u, (unsigned)pow(4.0f, _avarice));
-    unsigned numReleased = 0u;
+    int bytes_remaining = (int)_bytes_to_delete_per_frame;
 
     // then check for objects to add to the orphan list:
     GLsizeiptr bytes = 0;
@@ -701,33 +697,37 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
     for (unsigned i = 0; i < _objects.size(); ++i)
     {
         auto& object = _objects[i];
-        bool keep = true;
-
-        if (object->gc() == gc && object.use_count() == 1 && numReleased < maxNumToRelease)
+        
+        if (!object->valid())
         {
-            if (object->_orphan_frames++ == _frames_to_delay_deletion)
+            // object has already been released; it cannot be recycled.
+            continue;
+        }
+
+        // either the object is not in use, or it's been decommisioned and the GC set to null:
+        if (object.use_count() == 1)
+        {
+            // timeslice (by limiting deallocations per frame), and
+            // delay deletion in the event of multithreaded draw
+            if (bytes_remaining > 0 && object->_orphan_frames++ >= _frames_to_delay_deletion)
             {
                 object->release();
-                ++numReleased;
-                keep = false;
+                bytes_remaining -= object->size();
+                continue;
             }
         }
 
-        if (keep)
-        {
-            bytes += object->size();
-            keepers.emplace_back(std::move(object));
-        }
+        bytes += object->size();
+        keepers.emplace_back(std::move(object));
     }
+
     _objects.swap(keepers);
     _totalBytes = bytes;
 }
 
+
 GLObject::GLObject(GLenum ns, osg::State& state) :
-    _name(0),
     _ns(ns),
-    _recyclable(false),
-    _shareable(false),
     _ext(osg::GLExtensions::Get(state.getContextID(), true)),
     _gc(state.getGraphicsContext())
 {
@@ -840,10 +840,7 @@ GLVAO::unbind()
 
 GLBuffer::GLBuffer(GLenum target, osg::State& state) :
     GLObject(GL_BUFFER, state),
-    _target(target),
-    _size(0),
-    _immutable(false),
-    _address(0)
+    _target(target)
 {
     ext()->glGenBuffers(1, &_name);
     if (name() == 0)
@@ -863,18 +860,19 @@ GLBuffer::create(GLenum target, osg::State& state)
     return object;
 }
 
+#define NEXT_MULTIPLE(X, Y) (((X+Y-1)/Y)*Y)
+
 GLBuffer::Ptr
-GLBuffer::create(
-    GLenum target,
-    osg::State& state,
-    GLsizei sizeHint)
+GLBuffer::create(GLenum target, osg::State& state, GLsizei sizeHint, GLsizei chunkSize)
 {
 #ifdef USE_RECYCLING
-    const GLObject::Compatible comp = [sizeHint](GLObject* obj) {
+    GLsizei alignedSizeHint = NEXT_MULTIPLE(sizeHint, chunkSize);
+
+    const GLObject::Compatible comp = [alignedSizeHint](GLObject* obj) {
         return
             obj->ns() == GL_BUFFER &&
             obj->recyclable() &&
-            obj->size() == sizeHint;
+            obj->size() == alignedSizeHint;
     };
 
     Ptr object = GLObjectPool::get(state)->recycle<GLBuffer>(comp);
@@ -886,11 +884,14 @@ GLBuffer::create(
     else
     {
         object = create(target, state);
+        object->setChunkSize(chunkSize);
         object->_recyclable = true;
     }
     return object;
 #else
-    return create(target, state);
+    auto result = create(target, state);
+    result->setChunkSize(chunkSize);
+    return result;
 #endif
 }
 
@@ -922,7 +923,6 @@ GLBuffer::uploadData(GLsizei datasize, const GLvoid* data, GLbitfield flags) con
 {
     OE_SOFT_ASSERT_AND_RETURN(_immutable == false || datasize <= size(), void());
 
-    //if (!gl.NamedBufferData)
     if (!gl.useNamedBuffers)
         bind();
 
@@ -940,16 +940,27 @@ GLBuffer::uploadData(GLsizei datasize, const GLvoid* data, GLbitfield flags) con
 }
 
 void
-GLBuffer::bufferData(GLsizei size, const GLvoid* data, GLbitfield flags) const
+GLBuffer::bufferData(GLsizei datasize, const GLvoid* data, GLbitfield flags) const
 {
     if (_target == GL_SHADER_STORAGE_BUFFER)
-        size = ::align(size, getSSBOAlignment<GLsizei>());
+    {
+        OE_SOFT_ASSERT_AND_RETURN(datasize == ::align(datasize, getSSBOAlignment<GLsizei>()), void());
+    }
+
+    GLsizei alloc_size = NEXT_MULTIPLE(datasize, _chunk_size);
 
     if (gl.NamedBufferData)
-        gl.NamedBufferData(name(), size, data, flags);
+    {
+        gl.NamedBufferData(name(), alloc_size, nullptr, flags);
+        gl.NamedBufferSubData(name(), 0, datasize, data);
+    }
     else
-        ext()->glBufferData(_target, size, data, flags);
-    _size = size;
+    {
+        ext()->glBufferData(_target, alloc_size, nullptr, flags);
+        ext()->glBufferSubData(_target, 0, datasize, data);
+    }
+
+    _alloc_size = alloc_size;
     _immutable = false;
 }
 
@@ -964,23 +975,53 @@ GLBuffer::bufferSubData(GLintptr offset, GLsizei datasize, const GLvoid* data) c
 }
 
 void
-GLBuffer::bufferStorage(GLsizei size, const GLvoid* data, GLbitfield flags) const
+GLBuffer::bufferStorage(GLsizei datasize, const GLvoid* data, GLbitfield flags) const
 {
     if (_target == GL_SHADER_STORAGE_BUFFER)
-        size = ::align(size, getSSBOAlignment<GLsizei>());
-
-    if (recyclable() && size == _size)
     {
-        ext()->glBufferSubData(_target, 0, size, data);
+        OE_SOFT_ASSERT_AND_RETURN(datasize == ::align(datasize, getSSBOAlignment<GLsizei>()), void());
+    }
+
+    if (recyclable() && datasize <= _alloc_size)
+    {
+        ext()->glBufferSubData(_target, 0, datasize, data);
     }
     else
     {
         if (recyclable())
             flags |= GL_DYNAMIC_STORAGE_BIT;
 
-        ext()->glBufferStorage(_target, size, data, flags);
+        ext()->glBufferStorage(_target, datasize, data, flags);
+        _alloc_size = datasize;
     }
-    _size = size;
+
+    _immutable = true;
+}
+
+void
+GLBuffer::bufferStorage(GLsizei buffersize, GLsizei datasize, const GLvoid* data, GLbitfield flags) const
+{
+    OE_SOFT_ASSERT_AND_RETURN(datasize <= buffersize, void());
+    if (_target == GL_SHADER_STORAGE_BUFFER)
+    {
+        OE_SOFT_ASSERT_AND_RETURN(buffersize == ::align(buffersize, getSSBOAlignment<GLsizei>()), void());
+    }
+
+    if (recyclable() && datasize <= _alloc_size)
+    {
+        ext()->glBufferSubData(_target, 0, datasize, data);
+    }
+    else
+    {
+        if (recyclable())
+            flags |= GL_DYNAMIC_STORAGE_BIT;
+
+        ext()->glBufferStorage(_target, buffersize, nullptr, flags);
+        _alloc_size = buffersize;
+
+        ext()->glBufferSubData(_target, 0, datasize, data);
+    }
+
     _immutable = true;
 }
 
@@ -1064,11 +1105,10 @@ GLBuffer::release()
             i.second.value = false;
 #endif
 
-        //makeNonResident();
         //OE_DEVEL << "Releasing buffer " << _name << "(" << _label << ")" << std::endl;
         ext()->glDeleteBuffers(1, &_name);
         _name = 0;
-        _size = 0;
+        _alloc_size = 0;
     }
 }
 
@@ -1138,14 +1178,17 @@ GLBuffer::align(size_t val)
         return ::align(val, getUBOAlignment<size_t>());
 }
 
+void
+GLBuffer::setChunkSize(GLsizei value)
+{
+    if (value > 0)
+    {
+        _chunk_size = align(value);
+    }
+}
+
 GLTexture::Profile::Profile(GLenum target) :
-    osg::Texture::TextureProfile(target),
-    _minFilter(GL_LINEAR),
-    _magFilter(GL_LINEAR),
-    _wrapS(GL_CLAMP_TO_EDGE),
-    _wrapT(GL_CLAMP_TO_EDGE),
-    _wrapR(GL_CLAMP_TO_EDGE),
-    _maxAnisotropy(1.0f)
+    osg::Texture::TextureProfile(target)
 {
     //nop
 }
@@ -1196,9 +1239,7 @@ GLTexture::Profile::operator==(const GLTexture::Profile& rhs) const
 GLTexture::GLTexture(GLenum target, osg::State& state) :
     GLObject(GL_TEXTURE, state),
     _target(target),
-    _handle(0),
-    _profile(target),
-    _size(0)
+    _profile(target)
 {
     glGenTextures(1, &_name);
 }
@@ -1213,10 +1254,7 @@ GLTexture::create(GLenum target, osg::State& state)
 }
 
 GLTexture::Ptr
-GLTexture::create(
-    GLenum target,
-    osg::State& state,
-    const Profile& profileHint)
+GLTexture::create(GLenum target, osg::State& state, const Profile& profileHint)
 {
 #ifdef USE_RECYCLING
     const GLObject::Compatible comp = [profileHint](GLObject* obj) {
@@ -1456,11 +1494,7 @@ GLFBO::size() const
 }
 
 GLTexture::Ptr
-GLFBO::renderToTexture(
-    GLsizei width,
-    GLsizei height,
-    DrawFunction draw,
-    osg::State& state)
+GLFBO::renderToTexture(GLsizei width, GLsizei height, DrawFunction draw, osg::State& state)
 {
     // http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-14-render-to-texture/
 

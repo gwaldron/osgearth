@@ -17,12 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "FlatteningLayer"
-#include "Registry"
 #include "HeightFieldUtils"
 #include "FeatureCursor"
-#include "Containers"
 #include "rtree.h"
-#include "Metrics"
 
 using namespace osgEarth;
 using namespace osgEarth::Contrib;
@@ -470,8 +467,6 @@ namespace
         bool fillAllPixels,
         ProgressCallback* progress)
     {
-        OE_PROFILING_ZONE;
-
         double maxBufferDistance = 0.0;
         for (auto& w : widths)
         {
@@ -763,6 +758,7 @@ FlatteningLayer::Options::getConfig() const
     conf.set("buffer_width", _bufferWidth);
     conf.set("fill", _fill);
 
+#if 0
     if (_script.valid())
     {
         Config scriptConf("script");
@@ -780,6 +776,7 @@ FlatteningLayer::Options::getConfig() const
 
         conf.add(scriptConf);
     }
+#endif
 
     return conf;
 }
@@ -799,6 +796,7 @@ FlatteningLayer::Options::fromConfig(const Config& conf)
     conf.get("buffer_width", _bufferWidth);
     conf.get("fill", _fill);
 
+#if 0
     // TODO:  Separate out ScriptDef from Stylesheet and include it as a standalone class, along with this loading code.
     ConfigSet scripts = conf.children("script");
     for (ConfigSet::iterator i = scripts.begin(); i != scripts.end(); ++i)
@@ -826,6 +824,7 @@ FlatteningLayer::Options::fromConfig(const Config& conf)
         std::string profile = i->value("profile");
         _script->profile = profile;
     }
+#endif
 }
 
 //........................................................................
@@ -871,10 +870,7 @@ FlatteningLayer::openImplementation()
         setProfile(profile);
     }
 
-    addDataExtent(DataExtent(
-        profile->getExtent(),
-        getMinLevel(),
-        getMaxDataLevel()));
+    addDataExtent(DataExtent(profile->getExtent(), getMinLevel(),  getMaxDataLevel()));
 
     return Status::NoError;
 }
@@ -894,11 +890,6 @@ void
 FlatteningLayer::addedToMap(const Map* map)
 {
     ElevationLayer::addedToMap(map);
-
-    // Initialize the elevation pool with our map:
-    OE_INFO << LC << "Attaching elevation pool to map\n";
-    _pool = map->getElevationPool();
-    _pool->setMap(map);
 
     // Feature source:
     options().featureSource().addedToMap(map);
@@ -924,6 +915,14 @@ FlatteningLayer::addedToMap(const Map* map)
     {
         _elevWorkingSet.setElevationLayers(layers);
     }
+
+    // Initialize the elevation pool with our map:
+    OE_INFO << LC << "Attaching elevation pool to map\n";
+    _pool = map->getElevationPool();
+    _pool->setMap(map);
+
+    // Make a feature session
+    _session = new Session(map);
 }
 
 void
@@ -992,10 +991,7 @@ FlatteningLayer::createFromFeatures(const TileKey& key, ProgressCallback* progre
 
     bool needsTransform = !featureSRS->isHorizEquivalentTo(workingSRS);
 
-    osg::ref_ptr<Session> session = new Session(_map.get(), new StyleSheet());
-    session->styles()->setScript(options().getScript());
-    FilterContext context(session.get());
-
+    FilterContext context(_session.get());
     Query query(key);
     query.buffer() = Distance(queryBuffer, Units::METERS);
 
@@ -1022,7 +1018,7 @@ FlatteningLayer::createFromFeatures(const TileKey& key, ProgressCallback* progre
         if (options().lineWidth().isSet())
         {
             NumericExpression lineWidthExpr(options().lineWidth().get());
-            lineWidth = feature->eval(lineWidthExpr, session.get());
+            lineWidth = feature->eval(lineWidthExpr, _session);
         }
 
         if (lineWidth > 0.0)
@@ -1030,7 +1026,7 @@ FlatteningLayer::createFromFeatures(const TileKey& key, ProgressCallback* progre
             if (options().bufferWidth().isSet())
             {
                 NumericExpression bufferWidthExpr(options().bufferWidth().get());
-                bufferWidth = feature->eval(bufferWidthExpr, session.get());
+                bufferWidth = feature->eval(bufferWidthExpr, _session);
             }
 
             // Transform the feature geometry to our working (projected) SRS.

@@ -20,7 +20,7 @@ set(OSGEARTH_PATCH_VERSION 0)
 set(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
 
 # Increment this each time the ABI changes
-set(OSGEARTH_SOVERSION 150)
+set(OSGEARTH_SOVERSION 151)
 
 # Require C++11
 set_property(GLOBAL PROPERTY CXX_STANDARD 11)
@@ -84,7 +84,7 @@ option(OSGEARTH_BUILD_EXAMPLES "Build the osgEarth example applications" ON)
 option(OSGEARTH_BUILD_TESTS "Build the osgEarth unit tests" OFF)
 option(OSGEARTH_BUILD_PROCEDURAL_NODEKIT "Build the procedural terrain nodekit (osgEarthProcedural)" OFF)
 option(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT "Build the legacy procedural nodekit (osgEarthSplat)" OFF)
-option(OSGERATH_BUILD_LEGACY_CONTROLS_API "Build the legacy Controls UI API" OFF)
+option(OSGEARTH_BUILD_LEGACY_CONTROLS_API "Build the legacy Controls UI API" OFF)
 option(OSGEARTH_BUILD_CESIUM_NODEKIT "Build the Cesium nodekit (osgEarthCesium)" OFF)
 option(OSGEARTH_BUILD_TRITON_NODEKIT "Build support for SunDog Triton SDK" OFF)
 option(OSGEARTH_BUILD_SILVERLINING_NODEKIT "Build support for SunDog SilverLining SDK" OFF)
@@ -125,10 +125,11 @@ find_package(OpenGL REQUIRED)
 find_package(OSG REQUIRED)
 find_package(CURL REQUIRED)
 find_package(GDAL REQUIRED)
+find_package(Sqlite3 REQUIRED)
 
 # optional
 find_package(GEOS)
-find_package(Sqlite3)
+
 find_package(Draco)
 find_package(BASISU)
 find_package(GLEW)
@@ -138,6 +139,27 @@ find_package(Blend2D)
 find_package(Blosc)
 find_package(spdlog)
 find_package(meshoptimizer)
+
+# Configure OSGEARTH_HAVE_XXX variables for the BuildConfig
+IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
+  SET(OSGEARTH_HAVE_MVT ON)
+ENDIF()
+
+if(SQLITE3_FOUND)
+    set(OSGEARTH_HAVE_MBTILES ON)
+endif(SQLITE3_FOUND)
+
+if(Protobuf_FOUND)
+    set(OSGEARTH_HAVE_PROTOBUF ON)
+endif()
+
+IF (GEOS_FOUND)
+    set(OSGEARTH_HAVE_GEOS ON)
+ENDIF(GEOS_FOUND)
+
+if(draco_FOUND)
+    set(OSGEARTH_HAVE_DRACO ON)
+endif(draco_FOUND)
 
 if(OSGEARTH_BUILD_CESIUM_NODEKIT)
     find_package(CesiumNative)
@@ -175,20 +197,6 @@ if(spdlog_FOUND)
     add_definitions(-DHAVE_SPDLOG)
 endif()
 
-# Sqlite enables the MBTiles format:
-if(SQLITE3_FOUND)
-    ADD_DEFINITIONS(-DOSGEARTH_HAVE_MBTILES)
-endif(SQLITE3_FOUND)
-
-# DRACO enables geometry compression sometimes used in glTF:
-if(draco_FOUND)
-    ADD_DEFINITIONS(-DOSGEARTH_HAVE_DRACO)
-endif(draco_FOUND)
-
-if(Protobuf_FOUND)
-    add_definitions(-DOSGEARTH_HAVE_PROTOBUF)
-endif()
-
 # Tracy is a profiler
 if(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
     ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
@@ -200,8 +208,12 @@ if(GLEW_FOUND AND EXISTS "${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui.cpp
 endif()
 
 if(OSGEARTH_ENABLE_GEOCODER)
-    add_definitions(-DOSGEARTH_HAVE_GEOCODER)
+    set(OSGEARTH_HAVE_GEOCODER ON)
 endif()
+
+IF(BLEND2D_FOUND)
+    set(OSGEARTH_HAVE_BLEND2D ON)
+ENDIF()
 
 if(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
     add_definitions(-DOSGEARTH_SINGLE_GL_CONTEXT)

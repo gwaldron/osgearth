@@ -26,17 +26,17 @@ using namespace osgEarth::Util;
 
 namespace
 {
-    static const char*    GZD_ALPHABET     = "CDEFGHJKLMNPQRSTUVWXX";    // 2 X's because X is a 12 degree high grid zone
-    static const char*    UTM_COL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-    static const char*    UTM_ROW_ALPHABET = "ABCDEFGHJKLMNPQRSTUV";
-    static unsigned UTM_ROW_ALPHABET_SIZE = 20;
+    const char*    GZD_ALPHABET     = "CDEFGHJKLMNPQRSTUVWXX";    // 2 X's because X is a 12 degree high grid zone
+    const char*    UTM_COL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const char*    UTM_ROW_ALPHABET = "ABCDEFGHJKLMNPQRSTUV";
+    unsigned UTM_ROW_ALPHABET_SIZE = 20;
 
-    static const char*    UPS_COL_ALPHABET = "ABCFGHJKLPQRSTUXYZ";        // omit I, O, D, E, M, N, V, W
-    static unsigned UPS_COL_ALPHABET_SIZE = 18;
-    static const char*    UPS_ROW_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";  // omit I, O
-    static unsigned UPS_ROW_ALPHABET_SIZE = 24;
+    const char*    UPS_COL_ALPHABET = "ABCFGHJKLPQRSTUXYZ";        // omit I, O, D, E, M, N, V, W
+    unsigned UPS_COL_ALPHABET_SIZE = 18;
+    const char*    UPS_ROW_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";  // omit I, O
+    unsigned UPS_ROW_ALPHABET_SIZE = 24;
 
-    static std::string s_lateralZoneSpecs[] = {
+    std::string s_lateralZoneSpecs[] = {
         "+proj=utm +zone=1 +north +units=m",  "+proj=utm +zone=2 +north +units=m",
         "+proj=utm +zone=3 +north +units=m",  "+proj=utm +zone=4 +north +units=m",
         "+proj=utm +zone=5 +north +units=m",  "+proj=utm +zone=6 +north +units=m",
@@ -69,7 +69,7 @@ namespace
         "+proj=utm +zone=59 +north +units=m", "+proj=utm +zone=60 +north +units=m"
     };
 
-    static std::string s_polarZoneSpecs[] = {
+    std::string s_polarZoneSpecs[] = {
         "+proj=stere +lat_ts=90 +lat_0=90 +lon_0=0 +k_0=1 +x_0=0 +y_0=0",   // north
         "+proj=stere +lat_ts=-90 +lat_0=-90 +lon_0=0 +k_0=1 +x_0=0 +y_0=0"  // south
     };

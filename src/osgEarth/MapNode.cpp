@@ -970,9 +970,12 @@ MapNode::releaseGLObjects(osg::State* state) const
     for(const osg::Callback* ec = getEventCallback(); ec; ec = ec->getNestedCallback())
         ec->releaseGLObjects(state);
 
+    // run this prior to the static bins and pools.
+    osg::Group::releaseGLObjects(state);
+
     ChonkRenderBin::releaseSharedGLObjects(state);
 
-    osg::Group::releaseGLObjects(state);
+    GLObjectPool::releaseGLObjects(state);
 }
 
 ClampingManager*

@@ -250,6 +250,24 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
     bool success = false;
     output = 0L;
 
+    if (getType() == TYPE_POINT)
+    {
+        if (cropPoly->contains2D(front().x(), front().y()))
+            output = this->clone();
+        return true;
+    }
+    else if (getType() == TYPE_POINTSET)
+    {
+        osg::ref_ptr<PointSet> pointSet = new PointSet;
+        for (const auto& point : *this)
+        {
+            if (cropPoly->contains2D(point.x(), point.y()))
+                pointSet->push_back(point);
+        }
+        output = pointSet;
+        return true;
+    }
+
     //Create the GEOS Geometries
     GEOSGeometry* inGeom = GEOS::importGeometry(handle, this);
     GEOSGeometry* cropGeom = GEOS::importGeometry(handle, cropPoly);

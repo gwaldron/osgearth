@@ -112,11 +112,11 @@ namespace osgEarth
                         auto all_pool_metrics = metrics->all();
 
                         ImGui::TableNextColumn(); ImGui::Text("Pool");
-                        ImGui::TableNextColumn(); ImGui::Text("Run"); ImGui::SetItemTooltip("Running");
-                        ImGui::TableNextColumn(); ImGui::Text("Mrg"); ImGui::SetItemTooltip("Merging / postprocessing");
-                        ImGui::TableNextColumn(); ImGui::Text("Que"); ImGui::SetItemTooltip("Queued jobs (waiting to run)");
-                        //ImGui::TableNextColumn(); ImGui::Text("Can"); ImGui::SetItemTooltip("Canceled jobs");
-                        ImGui::TableNextColumn(); ImGui::Text("Max"); ImGui::SetItemTooltip("Number of available threads");
+                        ImGui::TableNextColumn(); ImGui::Text("Run"); //ImGui::SetItemTooltip("Running");
+                        ImGui::TableNextColumn(); ImGui::Text("Mrg"); //ImGui::SetItemTooltip("Merging / postprocessing");
+                        ImGui::TableNextColumn(); ImGui::Text("Que"); //ImGui::SetItemTooltip("Queued jobs (waiting to run)");
+                        //ImGui::TableNextColumn(); ImGui::Text("Can"); //ImGui::SetItemTooltip("Canceled jobs");
+                        ImGui::TableNextColumn(); ImGui::Text("Max"); //ImGui::SetItemTooltip("Number of available threads");
                         ImGui::TableNextColumn();
 
                         for(auto pool_metrics : all_pool_metrics)

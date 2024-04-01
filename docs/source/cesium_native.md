@@ -14,7 +14,7 @@ First, you need to build cesium-native.  The official instructions for building 
 git clone git@github.com:CesiumGS/cesium-native.git --recurse-submodules
 
 # Configure cesium-native and disable tests
-cmake -B build -S . -G "Visual Studio 16 2019" -A x64 -DCMAKE_INSTALL_PREFIX=install -DCESIUM_TESTS_ENABLED=OFF
+cmake -B build -S . -G "Visual Studio 16 2019" -A x64 -DCMAKE_INSTALL_PREFIX=install -DCESIUM_TESTS_ENABLED=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 # Build and install cesium-native.  We generally use RelWithDebInfo on Windows but you can also build Release and Debug if you'd like.
 cmake --build build --config RelWithDebInfo
 cmake --install build --config RelWithDebInfo

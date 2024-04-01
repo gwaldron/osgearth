@@ -35,6 +35,8 @@
 
 namespace osgEarth
 {
+    class VirtualProgram;
+
     namespace Util
     {
         class OSGEARTH_EXPORT ProgramRepo : public Threading::Mutexed<osg::Referenced>
@@ -99,10 +101,16 @@ namespace osgEarth
                 return result;
             }
 
+            //! Repository for simple, reusable VP objects.
+            osg::ref_ptr<VirtualProgram> getOrCreateVirtualProgram(
+                const std::string& name,
+                std::function<VirtualProgram*()> create);
+
         private:
             mutable ProgramMap _db;
             bool _releaseUnusedPrograms;
             std::string _programBinaryCacheFolder;
+            std::unordered_map<std::string, osg::ref_ptr<VirtualProgram>> _virtualProgramLUT;
         };
     }
 }

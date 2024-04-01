@@ -121,25 +121,25 @@ namespace osgEarth
         
         //! Opens all composited layers and only returns OK if all layers
         //! open succesfully
-        virtual Status openImplementation();
+        Status openImplementation() override;
 
         //! Close all composited layers
-        virtual Status closeImplementation();
+        Status closeImplementation() override;
 
         //! Creates a heightfield for the given tile key
-        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
+        GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
-        //! Scene graph containing any nodes from the composited image layers
-        virtual osg::Node* getNode() const;
+        //! Scene graph containing any nodes from the composited layers
+        osg::Node* getNode() const override;
 
     protected: // Layer
 
         //! Called by constructors
-        virtual void init();
+        void init() override;
 
         //! Called when a layer is added to the map
-        virtual void addedToMap(const Map* map);
-        virtual void removedFromMap(const Map* map);
+        void addedToMap(const Map* map) override;
+        void removedFromMap(const Map* map) override;
 
     protected:
 

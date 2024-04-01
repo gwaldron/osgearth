@@ -80,7 +80,9 @@ Texture::Texture(GLenum target_) :
     _globjects(MAX_CONTEXTS),
     _compress(true),
     _mipmap(true),
-    _clamp(false),
+    _clamp_s(false),
+    _clamp_t(false),
+    _clamp_r(false),
     _keepImage(true),
     _maxDim(63356),
     _target(target_),
@@ -123,9 +125,17 @@ Texture::Texture(osg::Texture* input) :
         input->getFilter(osg::Texture::MIN_FILTER) == osg::Texture::NEAREST_MIPMAP_LINEAR ||
         input->getFilter(osg::Texture::MIN_FILTER) == osg::Texture::NEAREST_MIPMAP_NEAREST;
 
-    clamp() =
+    clamp_s() =
         input->getWrap(osg::Texture::WRAP_S) == osg::Texture::CLAMP ||
         input->getWrap(osg::Texture::WRAP_S) == osg::Texture::CLAMP_TO_EDGE;
+
+    clamp_t() =
+        input->getWrap(osg::Texture::WRAP_T) == osg::Texture::CLAMP ||
+        input->getWrap(osg::Texture::WRAP_T) == osg::Texture::CLAMP_TO_EDGE;
+
+    clamp_r() =
+        input->getWrap(osg::Texture::WRAP_R) == osg::Texture::CLAMP ||
+        input->getWrap(osg::Texture::WRAP_R) == osg::Texture::CLAMP_TO_EDGE;
 
     maxAnisotropy() =
         input->getMaxAnisotropy();
@@ -281,9 +291,9 @@ Texture::compileGLObjects(osg::State& state) const
             0, // border
             minFilter,
             magFilter,
-            clamp() ? GL_CLAMP_TO_EDGE : GL_REPEAT,
-            clamp() ? GL_CLAMP_TO_EDGE : GL_REPEAT,
-            clamp() ? GL_CLAMP_TO_EDGE : GL_REPEAT,
+            clamp_s() ? GL_CLAMP_TO_EDGE : GL_REPEAT,
+            clamp_t() ? GL_CLAMP_TO_EDGE : GL_REPEAT,
+            clamp_r() ? GL_CLAMP_TO_EDGE : GL_REPEAT,
             maxAnisotropy().getOrUse(4.0f));
 
         gc._gltexture = GLTexture::create(

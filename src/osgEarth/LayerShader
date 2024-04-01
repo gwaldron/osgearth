@@ -22,6 +22,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/URI>
 #include <osgEarth/TerrainResources>
+#include <osgEarth/MaterialLoader>
 #include <osgDB/Options>
 #include <vector>
 #include <string>
@@ -57,6 +58,12 @@ namespace osgEarth { namespace Util
             optional<osg::Vec3f> _vec3Value;
         };
 
+        struct PBRSampler
+        {
+            std::string _name;
+            PBRMaterial _material;
+        };
+
         void apply(osg::StateSet*, Layer*, TerrainResources*, const osgDB::Options*);
 
     public:
@@ -69,6 +76,9 @@ namespace osgEarth { namespace Util
         std::vector<Uniform>& uniforms() { return _uniforms; }
         const std::vector<Uniform>& uniforms() const { return _uniforms; }
 
+        optional<PBRSampler>& pbrsampler() { return _pbrsampler; }
+        const optional<PBRSampler>& pbrsampler() const { return _pbrsampler; }
+
     public:
         virtual Config getConfig() const;
 
@@ -79,6 +89,7 @@ namespace osgEarth { namespace Util
         std::string _code;
         std::vector<Sampler> _samplers;
         std::vector<Uniform>  _uniforms;
+        optional<PBRSampler> _pbrsampler;
     };
 
     //! Encapsulates a shader attached to a Layer (or other object).

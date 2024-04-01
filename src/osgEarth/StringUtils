@@ -111,7 +111,7 @@ namespace osgEarth { namespace Util
                 if (std::tolower(lhs[i]) < std::tolower(rhs[i])) return true;
                 if (std::tolower(lhs[i]) > std::tolower(rhs[i])) return false;
             }
-            return false;
+            return lhs.size() < rhs.size();
         }
     };
 

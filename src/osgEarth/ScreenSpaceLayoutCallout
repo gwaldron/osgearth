@@ -352,6 +352,9 @@ namespace osgEarth { namespace Internal
             }
         }
 
+        if (local._points.empty())
+            return;
+
         // Use a Voronoi diagram to find the best location for each callout.
         // Use the "visual center" of the point's site as the label location.
         jcv_diagram diagram;

@@ -38,15 +38,15 @@ namespace osgEarth
 
         struct OSGEARTHPROCEDURAL_EXPORT LandCoverSample
         {
-            OE_OPTION(std::string, biomeid);
-            OE_OPTION(float, dense);
-            OE_OPTION(float, lush);
-            OE_OPTION(float, rugged);
-            OE_OPTION(std::string, material);
-            OE_OPTION(std::string, soiltype);
+            OE_OPTION(std::string, biomeid, {});
+            OE_OPTION(float, dense, 0.0f);
+            OE_OPTION(float, lush, 0.0f);
+            OE_OPTION(float, rugged, 0.0f);
+            OE_OPTION(std::string, material, {});
+            OE_OPTION(std::string, soiltype, {});
             OE_PROPERTY(std::vector<std::string>, traits);
 
-            LandCoverSample() { }
+            LandCoverSample() = default;
 
             LandCoverSample(const Config& conf)
             {
@@ -86,7 +86,6 @@ namespace osgEarth
             bool operator < (const LandCoverSample& rhs) const
             {
                 OE_OPTION_LESS(biomeid, rhs.biomeid);
-                //OE_OPTION_LESS(traits, rhs.traits);
                 OE_OPTION_LESS(dense, rhs.dense);
                 OE_OPTION_LESS(lush, rhs.lush);
                 OE_OPTION_LESS(rugged, rhs.rugged);

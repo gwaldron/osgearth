@@ -942,21 +942,25 @@ GLBuffer::uploadData(GLsizei datasize, const GLvoid* data, GLbitfield flags) con
 void
 GLBuffer::bufferData(GLsizei datasize, const GLvoid* data, GLbitfield flags) const
 {
+    GLsizei alloc_size = NEXT_MULTIPLE(datasize, _chunk_size);
+
     if (_target == GL_SHADER_STORAGE_BUFFER)
     {
-        OE_SOFT_ASSERT_AND_RETURN(datasize == ::align(datasize, getSSBOAlignment<GLsizei>()), void());
+        alloc_size = ::align(datasize, getSSBOAlignment<GLsizei>());
     }
-
-    GLsizei alloc_size = NEXT_MULTIPLE(datasize, _chunk_size);
 
     if (gl.NamedBufferData)
     {
-        gl.NamedBufferData(name(), alloc_size, nullptr, flags);
+        if (alloc_size > _alloc_size)
+            gl.NamedBufferData(name(), alloc_size, nullptr, flags);
+
         gl.NamedBufferSubData(name(), 0, datasize, data);
     }
     else
     {
-        ext()->glBufferData(_target, alloc_size, nullptr, flags);
+        if (alloc_size > _alloc_size)
+            ext()->glBufferData(_target, alloc_size, nullptr, flags);
+
         ext()->glBufferSubData(_target, 0, datasize, data);
     }
 
@@ -979,7 +983,7 @@ GLBuffer::bufferStorage(GLsizei datasize, const GLvoid* data, GLbitfield flags) 
 {
     if (_target == GL_SHADER_STORAGE_BUFFER)
     {
-        OE_SOFT_ASSERT_AND_RETURN(datasize == ::align(datasize, getSSBOAlignment<GLsizei>()), void());
+        OE_SOFT_ASSERT(datasize == ::align(datasize, getSSBOAlignment<GLsizei>()));
     }
 
     if (recyclable() && datasize <= _alloc_size)
@@ -1002,9 +1006,10 @@ void
 GLBuffer::bufferStorage(GLsizei buffersize, GLsizei datasize, const GLvoid* data, GLbitfield flags) const
 {
     OE_SOFT_ASSERT_AND_RETURN(datasize <= buffersize, void());
+
     if (_target == GL_SHADER_STORAGE_BUFFER)
     {
-        OE_SOFT_ASSERT_AND_RETURN(buffersize == ::align(buffersize, getSSBOAlignment<GLsizei>()), void());
+        buffersize = ::align(buffersize, getSSBOAlignment<GLsizei>());
     }
 
     if (recyclable() && datasize <= _alloc_size)

@@ -22,6 +22,7 @@
         "sqlite3",
         "tinyxml",
         "rocksdb",
-        "spdlog"
+        "spdlog",
+        "meshoptimizer" 
     ]
 }

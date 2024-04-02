@@ -58,6 +58,8 @@ namespace osgEarth
 
         virtual const Feature* getFeature(unsigned int index) const;
 
+        virtual Feature* getFeature(unsigned int index);
+
         virtual int getIndexFromObjectID(ObjectID id) const;
 
     protected:

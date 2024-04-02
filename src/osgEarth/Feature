@@ -215,6 +215,8 @@ namespace osgEarth
         void setNull( const std::string& name );
         void setNull( const std::string& name, AttributeType type );
 
+        void removeAttribute(const std::string& name);
+
         bool hasAttr( const std::string& name ) const;
 
         std::string getString( const std::string& name ) const;

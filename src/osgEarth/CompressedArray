@@ -1,0 +1,107 @@
+#ifndef OSGEARTHUTIL_COMPRESSED_ARRAY_H
+#define OSGEARTHUTIL_COMPRESSED_ARRAY_H
+
+#include <osgEarth/Common>
+
+#ifdef OSGEARTH_HAVE_MESH_OPTIMIZER
+
+#include <osg/Array>
+#include <osg/PrimitiveSet>
+
+namespace osgEarth
+{
+    using namespace osgEarth;
+
+    class OSGEARTH_EXPORT CompressedVec3Array : public osg::Vec3Array
+    {
+    public:
+        enum QuantizationType
+        {
+            QUANTIZE_NONE,
+            QUANTIZE_VERTEX,
+            QUANTIZE_NORMAL,
+            QUANTIZE_HALF
+        };
+
+        CompressedVec3Array();
+
+        CompressedVec3Array(osg::Vec3Array& va, QuantizationType quantization = CompressedVec3Array::QUANTIZE_NONE);
+
+        CompressedVec3Array(const CompressedVec3Array& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+
+        META_Object(osgEarth, CompressedVec3Array);
+
+        QuantizationType getQuantization() const { return _quantization; }
+        void setQuantization(QuantizationType quantization) { _quantization = quantization; }
+
+    private:
+        QuantizationType _quantization = QUANTIZE_NONE;
+    };
+
+    class OSGEARTH_EXPORT CompressedVec2Array : public osg::Vec2Array
+    {
+    public:
+        CompressedVec2Array();
+
+        CompressedVec2Array(osg::Vec2Array& va);
+
+        CompressedVec2Array(const CompressedVec2Array& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+
+        META_Object(osgEarth, CompressedVec2Array);
+    };
+
+    class OSGEARTH_EXPORT CompressedDrawElementsUShort : public osg::DrawElementsUShort
+    {
+    public:
+        CompressedDrawElementsUShort();
+
+        CompressedDrawElementsUShort(osg::DrawElementsUShort& de);
+
+        CompressedDrawElementsUShort(const CompressedDrawElementsUShort& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+
+        META_Object(osgEarth, CompressedDrawElementsUShort);
+    };
+
+    class OSGEARTH_EXPORT CompressedDrawElementsUByte : public osg::DrawElementsUByte
+    {
+    public:
+        CompressedDrawElementsUByte();
+
+        CompressedDrawElementsUByte(osg::DrawElementsUByte& de);
+
+        CompressedDrawElementsUByte(const CompressedDrawElementsUByte& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+
+        META_Object(osgEarth, CompressedDrawElementsUByte);
+    };
+
+    class OSGEARTH_EXPORT CompressedDrawElementsUInt : public osg::DrawElementsUInt
+    {
+    public:
+        CompressedDrawElementsUInt();
+
+        CompressedDrawElementsUInt(osg::DrawElementsUInt& de);
+
+        CompressedDrawElementsUInt(const CompressedDrawElementsUInt& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+
+        META_Object(osgEarth, CompressedDrawElementsUInt);
+    };
+
+    class OSGEARTH_EXPORT CompressedUIntArray : public osg::UIntArray
+    {
+    public:
+        CompressedUIntArray();
+
+        CompressedUIntArray(osg::UIntArray& array);
+
+        CompressedUIntArray(const CompressedUIntArray& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+
+        META_Object(osgEarth, CompressedUIntArray);
+    };
+
+
+}
+#else
+#pragma message("Warning: MeshOptimizer not available. CompressedArray classes will not be available.")
+#endif
+
+#endif

@@ -1217,15 +1217,20 @@ namespace osgEarth
                             unsigned int textureWidth = 50;
                             for (unsigned int i = 0; i < stateset->getTextureAttributeList().size(); ++i)
                             {
-                                osg::Texture2D* texture = dynamic_cast<osg::Texture2D*>(stateset->getTextureAttribute(i, osg::StateAttribute::TEXTURE));
-
+                                osg::Texture* texture = dynamic_cast<osg::Texture*>(stateset->getTextureAttribute(i, osg::StateAttribute::TEXTURE));
                                 if (texture)
                                 {
+                                    osg::Texture2D* texture2D = dynamic_cast<osg::Texture2D*>(texture);
+
                                     ImGui::PushID(texture);
                                     ImGui::BeginGroup();
                                     ImGui::Text("Unit %d", i);
+                                    ImGui::Text("Type %s", typeid(*texture).name());
                                     ImGui::Text("Name %s", texture->getName().c_str());
-                                    ImGuiUtil::Texture(texture, ri, textureWidth);
+                                    if (texture2D)
+                                    {
+                                        ImGuiUtil::Texture(texture2D, ri, textureWidth);
+                                    }
                                     ImGui::EndGroup();
                                 }
                             }
@@ -1279,6 +1284,8 @@ namespace osgEarth
                 osg::Geometry* geometry = dynamic_cast<osg::Geometry*>(node);
                 if (geometry && ImGui::TreeNode("Geometry Properties"))
                 {
+                    ImGui::Text("Type %s", typeid(*geometry).name());
+
                     if (geometry->getVertexArray())
                     {
                         if (ImGui::TreeNode("verts", "VERTICES %d", geometry->getVertexArray()->getNumElements()))
@@ -1353,7 +1360,7 @@ namespace osgEarth
                     for (auto &p : geometry->getPrimitiveSetList())
                     {
                         ImGui::Text("%s Mode=%s Primitives=%d Instances=%d", typeid(*p.get()).name(), GLModeToString(p->getMode()), p->getNumPrimitives(), p->getNumInstances());
-                    }
+                    }                    
                 }
 
                 ImGui::Separator();

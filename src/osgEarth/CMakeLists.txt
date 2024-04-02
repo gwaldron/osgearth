@@ -90,6 +90,7 @@ set(TARGET_GLSL
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
 set(TARGET_IN
+    BuildConfig.in    
     Version.in
     Shaders.cpp.in)
 
@@ -454,6 +455,7 @@ SET(LIB_PUBLIC_HEADERS
     weemesh.h
     weejobs.h
 
+    ${OSGEARTH_BUILDCONFIG_HEADER}
     ${OSGEARTH_VERSION_HEADER}
 )
 

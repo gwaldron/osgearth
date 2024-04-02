@@ -240,6 +240,13 @@ ImageLayer::openImplementation()
         }
     }
 
+    for (auto layer : _postLayers)
+    {
+        Status s = layer->open(getReadOptions());
+        if (s.isError())
+            return s;
+    }
+
     return Status::NoError;
 }
 

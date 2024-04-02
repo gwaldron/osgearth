@@ -288,7 +288,7 @@ MapNode::init()
 
     // Make sure the Registry is not destroyed until we are done using
     // it (in ~MapNode).
-    _registry = Registry::instance();
+    //_registry = Registry::instance();
 
     // the default SSE for all supporting geometries
     _sseU = new osg::Uniform("oe_sse", options().screenSpaceError().get());

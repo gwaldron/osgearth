@@ -16,16 +16,15 @@ find_path(osgEarth_INCLUDE_DIR
     HINTS ${${XPREFIX}_INCLUDE_DIRS}
 )
 
-set(OSGEARTH_NAMES osgEarth)
+set(PACKAGE_LIBS "")
 
 find_library(osgEarth_LIBRARY
-    NAMES ${OSGEARTH_NAMES}
+    NAMES osgEarth
     HINTS ${${XPREFIX}_LIBRARY_DIRS}
 )
 
-set(OSGEARTH_NAMES osgEarthd)
 find_library(osgEarth_LIBRARY_DEBUG
-    NAMES ${OSGEARTH_NAMES}
+    NAMES osgEarthd
     HINTS ${${XPREFIX}_LIBRARY_DIRS}
 )
 
@@ -37,24 +36,38 @@ set(osgEarth_INCLUDE_DIRS ${osgEarth_INCLUDE_DIR})
 set(osgEarth_LDFLAGS ${${XPREFIX}_LDFLAGS})
 
 include(FindPackageHandleStandardArgs)
+
+if(${osgEarth_LIBRARY})
+    list(APPEND PACKAGE_LIBS ${osgEarth_LIBRARY})
+endif()
+if({$osgEarth_LIBRARY_DEBUG})
+    list(APPEND PACKAGE_LIBS ${osgEarth_LIBRARY_DEBUG})
+endif()
+
 find_package_handle_standard_args(osgEarth DEFAULT_MSG
-    osgEarth_LIBRARY
-	osgEarth_LIBRARY_DEBUG    
+    ${PACKAGE_LIBS}
     osgEarth_INCLUDE_DIR
 )
 
 if (osgEarth_FOUND)
     string (REPLACE ";" " " osgEarth_LDFLAGS "${osgEarth_LDFLAGS}")
 
+    # import the osgEarth library
     add_library(osgEarth UNKNOWN IMPORTED)
 
     set_target_properties(osgEarth
-      PROPERTIES
-      IMPORTED_LOCATION             "${osgEarth_LIBRARIES}"
-      INTERFACE_INCLUDE_DIRECTORIES "${osgEarth_INCLUDE_DIRS}"
-      INTERFACE_LINK_LIBRARIES      "${osgEarth_LDFLAGS}"
-      INTERFACE_COMPILE_OPTIONS     "${osgEarth_DEFINITIONS}"
-    )
+        PROPERTIES
+        IMPORTED_LOCATION             "${osgEarth_LIBRARIES}"
+        INTERFACE_INCLUDE_DIRECTORIES "${osgEarth_INCLUDE_DIRS}"
+        INTERFACE_LINK_LIBRARIES      "${osgEarth_LDFLAGS}"
+        INTERFACE_COMPILE_OPTIONS     "${osgEarth_DEFINITIONS}")              
+    
+    # include OSG as a public-facing dependency:    
+    include(CMakeFindDependencyMacro)
+    find_dependency(OpenSceneGraph REQUIRED COMPONENTS osg osgDB osgGA osgUtil osgViewer OpenThreads)
+    include_directories(${OPENSCENEGRAPH_INCLUDE_DIR})
+    target_link_libraries(osgEarth INTERFACE ${OPENSCENEGRAPH_LIBRARIES})
+    
 endif()
 
 message(STATUS "osgEarth_FOUND: ${osgEarth_FOUND}")

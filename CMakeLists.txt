@@ -308,26 +308,12 @@ if(OSGEARTH_BUILD_DOCS)
 endif()
 
 
-# VCPkg Config File Creation .............................................
+# CMake Config File Creation .............................................
 
-set(INSTALL_INCDIR ${CMAKE_INSTALL_PREFIX}/include)
-set(INSTALL_LIBDIR ${PROJECT_BINARY_DIR}/lib)	
-message(STATUS "INCDIR: ${INSTALL_INCDIR}")
-include(CMakePackageConfigHelpers)
+include(CMakeModules/install-package-config-files.cmake)
 
-configure_package_config_file(
-    osgEarthConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
-    INSTALL_DESTINATION ${LIB_INSTALL_DIR}/osgearth/cmake)
-  
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
-    VERSION ${OSGEARTH_VERSION}
-    COMPATIBILITY SameMajorVersion)
-  
-install(
-    FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfig.cmake
-        ${CMAKE_CURRENT_BINARY_DIR}/osgEarthConfigVersion.cmake
-    DESTINATION
-        ${CMAKE_INSTALL_PREFIX}/cmake )
+osgearth_install_package_config_files(
+    osgEarth
+    ${OSGEARTH_VERSION}
+    ${CMAKE_INSTALL_PREFIX}/include
+    ${CMAKE_INSTALL_PREFIX}/lib)

@@ -41,8 +41,9 @@ IF(WIN32)
     LIST(APPEND TARGET_EXTERNAL_LIBRARIES psapi)
 ENDIF(WIN32)
 
-
-LIST(APPEND TARGET_EXTERNAL_LIBRARIES meshoptimizer::meshoptimizer)
+IF(meshoptimizer_FOUND)
+    LIST(APPEND TARGET_EXTERNAL_LIBRARIES meshoptimizer::meshoptimizer)
+ENDIF()
 
 
 # Generate the Version header.

@@ -16,6 +16,7 @@
 #include <thread>
 #include <type_traits>
 #include <vector>
+#include <string>
 
  // OPTIONAL: Define WEEJOBS_EXPORT if you want to use this library from multiple modules (DLLs)
 #ifndef WEEJOBS_EXPORT

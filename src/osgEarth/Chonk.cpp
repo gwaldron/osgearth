@@ -571,12 +571,12 @@ Chonk::getOrCreateCommands(osg::State& state) const
 
     if (gs.vbo == nullptr || !gs.vbo->valid())
     {
-        gs.vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state);
+        gs.vbo = GLBuffer::create_shared(GL_ARRAY_BUFFER_ARB, state);
         gs.vbo->bind();
         gs.vbo->debugLabel("Chonk geometry", "VBO " + _name);
         gs.vbo->bufferStorage(_vbo_store.size() * sizeof(VertexGPU), _vbo_store.data(), IMMUTABLE);
 
-        gs.ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
+        gs.ebo = GLBuffer::create_shared(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
         gs.ebo->bind();
         gs.ebo->debugLabel("Chonk geometry", "EBO " + _name);
         gs.ebo->bufferStorage(_ebo_store.size() * sizeof(element_t), _ebo_store.data(), IMMUTABLE);
@@ -1057,39 +1057,6 @@ ChonkDrawable::GLObjects::initialize(const osg::Object* host, osg::State& state)
 
     void(GL_APIENTRY * gl_VertexAttribLFormat)(GLuint, GLint, GLenum, GLuint);
     osg::setGLExtensionFuncPtr(gl_VertexAttribLFormat, "glVertexAttribLFormatNV");
-
-#if 0
-    // DrawElementsCommand buffer:
-    _commandBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
-    _commandBuf->bind();
-    _commandBuf->debugLabel("Chonk drawable", "commands " + host->getName());
-    _commandBuf->unbind();
-    _commandBuf->setBufferDataAllocMultiple(COMMAND_BUF_CHUNK_SIZE);
-
-    // Per-culling instances:
-    _instanceInputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
-    _instanceInputBuf->bind();
-    _instanceInputBuf->debugLabel("Chonk drawable", "input " +host->getName());
-    _instanceInputBuf->unbind();
-    _instanceInputBuf->setBufferDataAllocMultiple(INPUT_BUF_CHUNK_SIZE);
-
-    if (_gpucull)
-    {
-        // Culled instances (GPU only)
-        _instanceOutputBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
-        _instanceOutputBuf->bind();
-        _instanceOutputBuf->debugLabel("Chonk drawable", "output " + host->getName());
-        _instanceOutputBuf->unbind();
-        _instanceOutputBuf->setBufferDataAllocMultiple(OUTPUT_BUF_CHUNK_SIZE);
-
-        // Chonk data
-        _chonkBuf = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
-        _chonkBuf->bind();
-        _chonkBuf->debugLabel("Chonk drawable", "chonkbuf " + host->getName());
-        _chonkBuf->unbind();
-        _instanceOutputBuf->setBufferDataAllocMultiple(CHONK_BUF_CHUNK_SIZE);
-    }
-#endif
 
     // Multidraw command:
     osg::setGLExtensionFuncPtr(

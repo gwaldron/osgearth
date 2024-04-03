@@ -343,7 +343,7 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
 
     if (de._ebo == nullptr || !de._ebo->valid())
     {
-        de._ebo = GLBuffer::create(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
+        de._ebo = GLBuffer::create_shared(GL_ELEMENT_ARRAY_BUFFER_ARB, state);
         de._ebo->bind();
         de._ebo->debugLabel("REX geometry", "Shared EBO");
         de._ebo->bufferStorage(_drawElements->getTotalDataSize(), _drawElements->getDataPointer(), 0);
@@ -359,9 +359,9 @@ SharedGeometry::getOrCreateNVGLCommand(osg::State& state)
         // supply a "size hint" for unconstrained tiles to the GLBuffer so it can try to re-use
         GLsizei size = _verts.size() * sizeof(GL4Vertex);
         if (_hasConstraints)
-            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state);
+            gs._vbo = GLBuffer::create_shared(GL_ARRAY_BUFFER_ARB, state);
         else
-            gs._vbo = GLBuffer::create(GL_ARRAY_BUFFER_ARB, state, size);
+            gs._vbo = GLBuffer::create_shared(GL_ARRAY_BUFFER_ARB, state, size);
 
         gs._vbo->bind();
         gs._vbo->debugLabel("REX geometry", "Shared VBO");

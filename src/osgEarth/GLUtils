@@ -225,7 +225,7 @@ namespace osgEarth
         bool recyclable() const { return _recyclable; }
 
         //! whether this object can be shared between shared GCs
-        bool shareable() const { return _shareable; }
+        bool shared() const { return _shared; }
 
         //! number of times this object's been recycled
         unsigned recycles() const { return _recycles; }
@@ -254,7 +254,7 @@ namespace osgEarth
         std::string _uid; // debugging unique id (optional)
         std::string _category; // debugging category (optional)
         GLenum _ns = (GLenum)0; // object namespace
-        bool _shareable = false; // can this object be shared between GCs?
+        bool _shared = false; // is this object shared by all GCs?
         bool _recyclable = false; // can this object by re-used?
         unsigned _recycles = 0u; // number of times this object has been recycled
         osg::GLExtensions* _ext = nullptr;
@@ -331,11 +331,22 @@ namespace osgEarth
         //! Creates a new unallocated buffer.
         static Ptr create(GLenum target, osg::State& state);
 
+        //! Creates a new unallocated buffer that can be shared across
+        //! all graphics contexts/states.
+        static Ptr create_shared(GLenum target, osg::State& state);
+
         //! Creates a new unallocated buffer.
         //! The "size hint" allows it to potentially be created from recycled
         //! The "chunk size" is an alignment value to improve recycling efficiency
         //! GPU memory.
         static Ptr create(GLenum target, osg::State& state, GLsizei sizeHint, GLsizei chunkSize = 1);
+
+        //! Creates a new unallocated buffer that can be shared across
+        //! all graphics contexts/states.
+        //! The "size hint" allows it to potentially be created from recycled
+        //! The "chunk size" is an alignment value to improve recycling efficiency
+        //! GPU memory.
+        static Ptr create_shared(GLenum target, osg::State& state, GLsizei sizeHint, GLsizei chunkSize = 1);
 
         //! Bind this buffer to target() in the active context.
         void bind() const;
@@ -594,6 +605,9 @@ namespace osgEarth
         //! Fetch the object pool for the graphics context represented
         //! by the state object
         static GLObjectPool* get(osg::State& state);
+
+        //! Fetch the object pool for graphics objects shared across contexts/states
+        static GLObjectPool* get_shared();
 
         //! Release all GL objects that were created in the given state's
         //! graphics context

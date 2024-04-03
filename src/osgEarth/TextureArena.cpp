@@ -875,9 +875,9 @@ TextureArena::apply(osg::State& state) const
     if (gc._handleBuffer == nullptr || !gc._handleBuffer->valid())
     {
         if (_useUBO)
-            gc._handleBuffer = GLBuffer::create(GL_UNIFORM_BUFFER, state);
+            gc._handleBuffer = GLBuffer::create_shared(GL_UNIFORM_BUFFER, state);
         else
-            gc._handleBuffer = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
+            gc._handleBuffer = GLBuffer::create_shared(GL_SHADER_STORAGE_BUFFER, state);
 
         gc._handleBuffer->bind();
         gc._handleBuffer->debugLabel("TextureArena", "Handle LUT");

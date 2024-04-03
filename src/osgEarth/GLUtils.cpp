@@ -668,7 +668,7 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
 
     for (auto& object : _objects)
     {
-        if (object->gc() == gc || (gc == nullptr))
+        if (object->gc() == gc && object->shared() == false)
         {
             object->release();
         }
@@ -704,17 +704,16 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
             continue;
         }
 
-        // either the object is not in use, or it's been decommisioned and the GC set to null:
-        if (object.use_count() == 1)
+        // the object is not in use:
+        // timeslice (by limiting deallocations per frame), and
+       // delay deletion in the event of multithreaded draw
+        if (object.use_count() == 1 &&
+            bytes_remaining > 0 &&
+            object->_orphan_frames++ >= _frames_to_delay_deletion)
         {
-            // timeslice (by limiting deallocations per frame), and
-            // delay deletion in the event of multithreaded draw
-            if (bytes_remaining > 0 && object->_orphan_frames++ >= _frames_to_delay_deletion)
-            {
-                object->release();
-                bytes_remaining -= object->size();
-                continue;
-            }
+            object->release();
+            bytes_remaining -= object->size();
+            continue;
         }
 
         bytes += object->size();
@@ -860,6 +859,14 @@ GLBuffer::create(GLenum target, osg::State& state)
     return object;
 }
 
+GLBuffer::Ptr
+GLBuffer::create_shared(GLenum target, osg::State& state)
+{
+    auto ptr = create(target, state);
+    if (ptr) ptr->_shared = true;
+    return ptr;
+}
+
 #define NEXT_MULTIPLE(X, Y) (((X+Y-1)/Y)*Y)
 
 GLBuffer::Ptr
@@ -895,10 +902,21 @@ GLBuffer::create(GLenum target, osg::State& state, GLsizei sizeHint, GLsizei chu
 #endif
 }
 
+GLBuffer::Ptr
+GLBuffer::create_shared(GLenum target, osg::State& state, GLsizei sizeHint, GLsizei chunkSize)
+{
+    auto ptr = create(target, state, sizeHint, chunkSize);
+    if (ptr) ptr->_shared = true;
+    return ptr;
+}
+
 void
 GLBuffer::bind() const
 {
     //OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
+    if (_name == 0) {
+        OE_WARN << "Catch" << std::endl;
+    }
     OE_SOFT_ASSERT_AND_RETURN(_name != 0, void(), "bind() called on invalid/deleted name: " + _name << );
     ext()->glBindBuffer(_target, _name);
 }
@@ -906,6 +924,9 @@ GLBuffer::bind() const
 void
 GLBuffer::bind(GLenum otherTarget) const
 {
+    if (_name == 0) {
+        OE_WARN << "Catch" << std::endl;
+    }
     //OE_DEVEL << LC << "GLBuffer::bind, name=" << name() << std::endl;
     OE_SOFT_ASSERT_AND_RETURN(_name != 0, void(), "bind() called on invalid/deleted name: " + label() << );
     ext()->glBindBuffer(otherTarget, _name);
@@ -1247,6 +1268,7 @@ GLTexture::GLTexture(GLenum target, osg::State& state) :
     _profile(target)
 {
     glGenTextures(1, &_name);
+    _shared = true;
 }
 
 GLTexture::Ptr

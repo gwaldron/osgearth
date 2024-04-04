@@ -450,13 +450,27 @@ TileRasterizer::releaseGLObjects(osg::State* state) const
 {
     osg::Node::releaseGLObjects(state);
 
-    for(unsigned i=0; i< _globjects.size(); ++i)
+    if (state)
     {
-        if (_globjects[i])
+        auto& gc = GLObjects::get(_globjects, *state);
+        if (gc)
         {
-            for (auto& r : _globjects[i]->_renderers)
+            for (auto& r : gc->_renderers)
             {
                 r->releaseGLObjects(state);
+            }
+        }
+    }
+    else
+    {
+        for(unsigned i=0; i< _globjects.size(); ++i)
+        {
+            if (_globjects[i])
+            {
+                for (auto& r : _globjects[i]->_renderers)
+                {
+                    r->releaseGLObjects(state);
+                }
             }
         }
     }

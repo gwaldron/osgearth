@@ -973,8 +973,10 @@ MapNode::releaseGLObjects(osg::State* state) const
     // run this prior to the static bins and pools.
     osg::Group::releaseGLObjects(state);
 
+    // indirect rendering objects
     ChonkRenderBin::releaseSharedGLObjects(state);
 
+    // managed GL objects
     GLObjectPool::releaseGLObjects(state);
 }
 

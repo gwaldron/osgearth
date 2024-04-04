@@ -571,6 +571,8 @@ Chonk::getOrCreateCommands(osg::State& state) const
 
     if (gs.vbo == nullptr || !gs.vbo->valid())
     {
+        // create_shared, because we will shares these static bindless GL objects across all OSG states.
+
         gs.vbo = GLBuffer::create_shared(GL_ARRAY_BUFFER_ARB, state);
         gs.vbo->bind();
         gs.vbo->debugLabel("Chonk geometry", "VBO " + _name);

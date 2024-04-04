@@ -410,12 +410,24 @@ namespace osgEarth
                             if (pools.size() > 1)
                                 ImGui::Separator();
 
+                            ImGui::Separator();
+
                             auto recycle_attempts = glpool->recycleHits() + glpool->recycleMisses();
                             if (recycle_attempts > 0)
                             {
                                 float re = (float)glpool->recycleHits() / (float)recycle_attempts;
                                 ImGui::Text("Recycle Efficiency: %.0f%%", 100.0f * re);
                             }
+                        }
+                        
+                        ImGui::Separator();
+                        int kb_per_frame = GLObjectPool::getBytesToDeletePerFrame() / 1024;
+                        if (ImGuiLTable::Begin("Settings"))
+                        {
+                            if (ImGuiLTable::SliderInt("Rel KB per frame", &kb_per_frame, 128, 1024))
+                                GLObjectPool::setBytesToDeletePerFrame(kb_per_frame*1024);
+
+                            ImGuiLTable::End();
                         }
                     }
                 }

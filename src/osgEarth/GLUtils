@@ -19,9 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
-#ifndef OSGEARTH_GLUTILS_H
-#define OSGEARTH_GLUTILS_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/optional>
@@ -331,18 +329,18 @@ namespace osgEarth
         //! Creates a new unallocated buffer.
         static Ptr create(GLenum target, osg::State& state);
 
-        //! Creates a new unallocated buffer that can be shared across
-        //! all graphics contexts/states.
+        //! Creates a new unallocated buffer that can be shared by OSG states
+        //! within the same OpenGL context.
         static Ptr create_shared(GLenum target, osg::State& state);
 
-        //! Creates a new unallocated buffer.
+        //! Creates a new unallocated buffer that is tied to a specific OSG state.
         //! The "size hint" allows it to potentially be created from recycled
         //! The "chunk size" is an alignment value to improve recycling efficiency
         //! GPU memory.
         static Ptr create(GLenum target, osg::State& state, GLsizei sizeHint, GLsizei chunkSize = 1);
 
-        //! Creates a new unallocated buffer that can be shared across
-        //! all graphics contexts/states.
+        //! Creates a new unallocated buffer that can be shared by OSG states
+        //! within the same OpenGL context.
         //! The "size hint" allows it to potentially be created from recycled
         //! The "chunk size" is an alignment value to improve recycling efficiency
         //! GPU memory.
@@ -537,9 +535,7 @@ namespace osgEarth
         void compressedSubImage3D(GLint level, GLint xoff, GLint yoff, GLint zoff, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const void* data) const;
 
     protected:
-        GLTexture(
-            GLenum target,
-            osg::State& state);
+        GLTexture(GLenum target, osg::State& state);
 
     private:
         void reset(GLenum, const std::string&, const std::string&, osg::State&);
@@ -606,9 +602,6 @@ namespace osgEarth
         //! by the state object
         static GLObjectPool* get(osg::State& state);
 
-        //! Fetch the object pool for graphics objects shared across contexts/states
-        static GLObjectPool* get_shared();
-
         //! Release all GL objects that were created in the given state's
         //! graphics context
         static void releaseGLObjects(osg::State* state);
@@ -623,8 +616,8 @@ namespace osgEarth
         static std::unordered_map<int, GLObjectPool*> getAll();
 
         //! Set the target memory size to attempt to delete per frame
-        void setBytesToDeletePerFrame(unsigned value) { _bytes_to_delete_per_frame = value; _hits = 0; _misses = 0; }
-        unsigned getBytesToDeletePerFrame() const { return _bytes_to_delete_per_frame; }
+        static inline void setBytesToDeletePerFrame(unsigned value) { _bytes_to_delete_per_frame = value; }
+        static inline unsigned getBytesToDeletePerFrame() { return _bytes_to_delete_per_frame; }
 
         unsigned recycleHits() const { return _hits; }
         unsigned recycleMisses() const { return _misses; }
@@ -678,19 +671,15 @@ namespace osgEarth
         mutable std::mutex _mutex;
         Collection _objects; // objects being monitored
         GLsizeiptr _totalBytes = 0;
-        static bool _enableRecycling;
         unsigned _hits = 0u;
         unsigned _misses = 0u;
-        // note: these values affect the availability of memory for recycling.
-        unsigned _bytes_to_delete_per_frame = 100000u;
-        unsigned _frames_to_delay_deletion = 60u;
 
-        struct GC
-        {
-            const osg::GraphicsContext* _gc = nullptr;
-            osg::ref_ptr<osg::GraphicsOperation> _operation;
-        };
-        std::vector<GC> _gcs;
+        // note: these values affect the availability of memory for recycling.
+        static bool _enableRecycling;
+        static unsigned _bytes_to_delete_per_frame;
+        static unsigned _frames_to_delay_deletion;
+
+        std::vector<const osg::GraphicsContext*> _gcs;
 
         //! Start tracking object lifetime for a GC
         void track(osg::GraphicsContext*);
@@ -1029,5 +1018,3 @@ namespace osgEarth
         static std::atomic_int _jobsActive;
     };
 }
-
-#endif // OSGEARTH_GLUTILS_H

@@ -525,6 +525,8 @@ namespace
     std::vector<GLObjectPool*> s_pools;
 }
 bool GLObjectPool::_enableRecycling = true;
+unsigned GLObjectPool::_bytes_to_delete_per_frame = 100000u;
+unsigned GLObjectPool::_frames_to_delay_deletion = 30u;
 
 
 GLObjectPool*
@@ -553,7 +555,6 @@ GLObjectPool::getAll()
 GLObjectPool::GLObjectPool(unsigned cxid) :
     osg::GraphicsObjectManager("osgEarth::GLObjectPool", cxid)
 {
-
     std::lock_guard<std::mutex> lock(s_pools_mutex);
     s_pools.emplace_back(this);
 
@@ -585,17 +586,18 @@ namespace
 void
 GLObjectPool::track(osg::GraphicsContext* gc)
 {
-    for (auto& rec : _gcs)
+    // if we already know about this GC, we are good
+    for (auto& known_gc : _gcs)
     {
-        if (rec._gc == gc)
+        if (known_gc == gc)
             return;
     }
 
-    auto servicer = new GCServicingOperation(this);
+    // A new GC has appeared. Create a servicing operation that will run
+    // each frame and check for orphaned data.
+    gc->add(new GCServicingOperation(this));
 
-    _gcs.emplace_back(GC{ gc, servicer });
-
-    gc->add(servicer);
+    _gcs.emplace_back(gc);
 }
 
 void
@@ -608,16 +610,13 @@ GLObjectPool::watch(GLObject::Ptr object)
 void
 GLObjectPool::releaseGLObjects(osg::State* state)
 {
-    if (state)
+    // ONLY do mass-release here; not state-based. Leave that to
+    // the entities that own the GL objects themselves.
+    if (state == nullptr)
     {
-        GLObjectPool::get(*state)->releaseAll(state->getGraphicsContext());
-    }
-    else
-    {
-        auto pools = getAll();
-        for(auto i : pools)
+        for(auto pool : s_pools)
         {
-            i.second->releaseAll(nullptr);
+            pool->releaseAll(nullptr);
         }
     }
 }
@@ -668,6 +667,8 @@ GLObjectPool::releaseAll(const osg::GraphicsContext* gc)
 
     for (auto& object : _objects)
     {
+        // if an object 'owned' by this GC is not shared, release its GL objects
+        // and drop it from the tracking pool.
         if (object->gc() == gc && object->shared() == false)
         {
             object->release();
@@ -700,13 +701,14 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
         
         if (!object->valid())
         {
-            // object has already been released; it cannot be recycled.
+            // object has already been released; it cannot be recycled,
+            // so drop it from the tracker pool.
             continue;
         }
 
-        // the object is not in use:
-        // timeslice (by limiting deallocations per frame), and
-       // delay deletion in the event of multithreaded draw
+        // the object is not referenced anywhere else but here,
+        // and we've satisfied the byte-slice and time-slice requirements,
+        // release its memory and drop it from the tracker pool.
         if (object.use_count() == 1 &&
             bytes_remaining > 0 &&
             object->_orphan_frames++ >= _frames_to_delay_deletion)
@@ -716,6 +718,7 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
             continue;
         }
 
+        // keep the object around.
         bytes += object->size();
         keepers.emplace_back(std::move(object));
     }

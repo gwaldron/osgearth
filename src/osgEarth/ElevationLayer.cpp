@@ -398,8 +398,8 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
     // at the same time. This helps a lot with elevation data since
     // the many queries cross tile boundaries (like calculating 
     // normal maps)
-    const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
-    CacheBin* cacheBin = policy.isCacheEnabled() ? getCacheBin(key.getProfile()) : nullptr;
+    auto& policy = getCacheSettings()->cachePolicy().get();
+    auto* cacheBin = policy.isCacheEnabled() ? getCacheBin(key.getProfile()) : nullptr;
 
     // cache key combines the key with the full signature (incl vdatum)
     // the cache key combines the Key and the horizontal profile.
@@ -408,7 +408,6 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
 
     // see if there's a persistent cache.
     bool memCacheAvailable = _memCache.valid();
-    bool diskCacheAvailable = cacheBin && policy.isCacheReadable() && policy.isCacheWriteable();
 
     // Prevent multiple threads from creating the same object at the same time
     // IF there is a cache present. The gate goes here so that the first thread
@@ -455,9 +454,9 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
 
         osg::ref_ptr< osg::HeightField > cachedHF;
 
-        if (diskCacheAvailable)
+        if (cacheBin != nullptr && policy.isCacheReadable())
         {
-            ReadResult r = cacheBin->readObject(cacheKey, 0L);
+            ReadResult r = cacheBin->readObject(cacheKey, nullptr);
             if ( r.succeeded() )
             {
                 bool expired = policy.isExpired(r.lastModifiedTime());
@@ -545,13 +544,12 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
 
             // If we have a cacheable heightfield, and it didn't come from the cache
             // itself, cache it now.
-            if ( hf.valid()    &&
-                 cacheBin      &&
-                 !fromCache    &&
-                 policy.isCacheWriteable() )
+            if (hf.valid() &&
+                !fromCache &&
+                cacheBin && policy.isCacheWriteable() )
             {
                 OE_PROFILING_ZONE_NAMED("cache write");
-                cacheBin->write(cacheKey, hf.get(), 0L);
+                cacheBin->write(cacheKey, hf.get(), nullptr);
             }
 
             // If we have an expired heightfield from the cache and were not able to create

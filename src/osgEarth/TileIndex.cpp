@@ -34,8 +34,6 @@ using namespace osgEarth;
 using namespace osgEarth::Contrib;
 using namespace std;
 
-#define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
-
 TileIndex::TileIndex()
 {
 }
@@ -76,8 +74,6 @@ TileIndex::create( const std::string& filename, const osgEarth::SpatialReference
 {
     // Make sure the registry is loaded since that is where the OGR/GDAL registration happens
     osgEarth::Registry::instance();
-
-    OGR_SCOPED_LOCK;
 
     OGRSFDriverH driver = OGRGetDriverByName( "ESRI Shapefile" );    
 

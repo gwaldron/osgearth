@@ -31,10 +31,10 @@
 
 using namespace osgEarth;
 
-#define LABEL_IMAGERY "REX textures"
-#define LABEL_NORMALMAP "REX textures"
-#define LABEL_ELEVATION "REX textures"
-#define LABEL_COVERAGE "REX textures"
+#define LABEL_IMAGERY "Terrain textures"
+#define LABEL_NORMALMAP "Terrain textures"
+#define LABEL_ELEVATION "Terrain textures"
+#define LABEL_COVERAGE "Terrain textures"
 
 //.........................................................................
 

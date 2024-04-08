@@ -345,7 +345,7 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
 
         gl.tiles = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
         gl.tiles->bind();
-        gl.tiles->debugLabel("REX geometry", "Tiles SSBO");
+        gl.tiles->debugLabel("Terrain geometry", "Tiles SSBO");
 
         // preallocate space for a bunch of tiles (just for fun)
         gl.tiles->bufferData(
@@ -362,7 +362,7 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
         {
             gl.commands = GLBuffer::create(GL_DRAW_INDIRECT_BUFFER, state);
             gl.commands->bind();
-            gl.commands->debugLabel("REX geometry", "GL_DRAW_INDIRECT_BUFFER");
+            gl.commands->debugLabel("Terrain geometry", "GL_DRAW_INDIRECT_BUFFER");
             // preallocate space for a bunch of draw commands (just for fun)
             gl.commands->bufferData(
                 512 * sizeof(DrawElementsIndirectBindlessCommandNV),
@@ -390,7 +390,7 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
             gl.vao->bind();
 
             // after the bind, please
-            gl.vao->debugLabel("REX geometry", "VAO");
+            gl.vao->debugLabel("Terrain geometry", "VAO");
 
             // set up the VAO for NVIDIA bindless buffers
             glEnableClientState_(GL_VERTEX_ATTRIB_ARRAY_UNIFIED_NV);
@@ -435,7 +435,7 @@ LayerDrawableNVGL::drawImplementation(osg::RenderInfo& ri) const
             gl.shared = GLBuffer::create(GL_SHADER_STORAGE_BUFFER, state);
 
             gl.shared->bind();
-            gl.shared->debugLabel("REX geometry", "Global data SSBO");
+            gl.shared->debugLabel("Terrain geometry", "Global data SSBO");
             gl.shared->bufferStorage(sizeof(GL4GlobalData), &buf, 0); // permanent
             gl.shared->unbind();
         }

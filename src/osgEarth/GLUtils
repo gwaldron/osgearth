@@ -96,9 +96,11 @@ namespace osgEarth
         //! Pop a GL debugging group
         static void popDebugGroup();
 
-        //! Whether to use NVGL when possible (and if supported)
+        //! Whether to use NVGL if available
         static void useNVGL(bool value);
-        static bool useNVGL() { return _useNVGL; }
+
+        //! Whether NVGL is requested AND supported.
+        static bool useNVGL();
 
         //! Unique ID associated with this State object (and by extension
         //! its unique graphics context). You can use this to track

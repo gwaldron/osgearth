@@ -159,11 +159,7 @@ bool GLUtils::_useNVGL = false;
 void
 GLUtils::useNVGL(bool value)
 {
-    bool oldValue = _useNVGL;
-
-    _useNVGL =
-        value == true &&
-        Capabilities::get().supportsNVGL();
+    _useNVGL = value;
 
     if (_useNVGL)
     {
@@ -173,6 +169,12 @@ GLUtils::useNVGL(bool value)
     {
         OE_INFO << LC << "Disabling NVIDIA GL4 extensions" << std::endl;
     }
+}
+
+bool
+GLUtils::useNVGL()
+{
+    return _useNVGL && Registry::capabilities().supportsNVGL();
 }
 
 namespace

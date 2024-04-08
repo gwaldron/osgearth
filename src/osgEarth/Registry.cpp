@@ -34,11 +34,6 @@
 #include <cpl_conv.h>
 #include <cstdlib>
 
-// Fails to build on the GitHub Linux Action runner, so leaving out for now -gw
-//#ifndef OSG_GL3_AVAILABLE
-//#error osgEarth requires OpenSceneGraph built with OSG_GL3_AVAILABLE.
-//#endif
-
 using namespace osgEarth;
 
 #define LC "[Registry] "
@@ -87,8 +82,6 @@ namespace
 }
 
 Registry::Registry() :
-    _caps(nullptr),
-    _defaultFont(nullptr),
     _terrainEngineDriver("rex"),
     _cacheDriver("filesystem"),
     _overrideCachePolicyInitialized(false),
@@ -97,7 +90,6 @@ Registry::Registry() :
     _maxImageDimension(INT_MAX)
 {
     OE_INFO << "Hello, world." << std::endl;
-    //OE_INFO << LC << "Registry starting up" << std::endl;
 
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -233,16 +225,10 @@ Registry::Registry() :
             _maxVertsPerDrawable = 65536;
     }
 
-    // use the GDAL global mutex?
-    if (getenv("OSGEARTH_DISABLE_GDAL_MUTEX"))
-    {
-        //getGDALMutex().disable();
-    }
-
     // disable work stealing in the jobs system?
-    if (getenv("OSGEARTH_DISABLE_WORK_STEALING"))
+    if (getenv("OSGEARTH_ENABLE_WORK_STEALING"))
     {
-        jobs::set_allow_work_stealing(false);
+        jobs::set_allow_work_stealing(true);
     }
 
     // register the system stock Units.
@@ -300,14 +286,19 @@ namespace
 Registry*
 Registry::instance()
 {
+    if (g_registry_created == true && g_registry == nullptr)
+    {
+        OE_HARD_ASSERT(false, "Registry::instance() called recursively. Contact support.");
+    }
+
     // Create registry the first time through, explicitly rather than depending on static object
     // initialization order, which is undefined in c++ across separate compilation units.  An
     // explicit hook is registered to tear it down on exit.  atexit() hooks are run on exit in
     // the reverse order of their registration during setup.
     if (!g_registry && !g_registry_created)
     {
-        g_registry = new Registry();
         g_registry_created = true;
+        g_registry = new Registry();
         std::atexit(destroyRegistry);
     }
 
@@ -346,12 +337,6 @@ Registry::release()
 
     // Shared object index
     _objectIndex = nullptr;
-}
-
-Threading::RecursiveMutex& osgEarth::getGDALMutex()
-{
-    static osgEarth::Threading::RecursiveMutex _gdal_mutex;
-    return _gdal_mutex;
 }
 
 const Profile*

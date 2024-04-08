@@ -153,20 +153,20 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
 
     // static shaders.
     osg::StateSet* stateset = getOrCreateStateSet();
-    stateset->setName("REX node");
+    stateset->setName("Terrain node");
     //VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
     //vp->setName(typeid(*this).name());
     //vp->setIsAbstract(true);    // cannot run by itself, requires additional children
 
     _surfaceSS = new osg::StateSet();
-    _surfaceSS->setName("REX surface");
+    _surfaceSS->setName("Terrain surface");
 
     _imageLayerSS = new osg::StateSet();
-    _imageLayerSS->setName("REX image layer");
+    _imageLayerSS->setName("Terrain image layer");
 
     _terrain = new osg::Group();
     _terrainSS = _terrain->getOrCreateStateSet();
-    _terrainSS->setName("REX terrain");
+    _terrainSS->setName("Terrain terrain");
 
     addChild(_terrain.get());
 
@@ -647,7 +647,7 @@ RexTerrainEngineNode::setupRenderBindings()
     color.samplerName() = "oe_layer_tex";
     color.matrixName() = "oe_layer_texMatrix";
     color.setDefaultTexture(new osg::Texture2D(ImageUtils::createEmptyImage(1, 1)));
-    color.getDefaultTexture()->setName("rex default color");
+    color.getDefaultTexture()->setName("terrain default color");
 
     if (!GLUtils::useNVGL())
         getResources()->reserveTextureImageUnit(color.unit(), "Terrain Color");
@@ -659,7 +659,7 @@ RexTerrainEngineNode::setupRenderBindings()
         elevation.samplerName() = "oe_tile_elevationTex";
         elevation.matrixName() = "oe_tile_elevationTexMatrix";
         elevation.setDefaultTexture(osgEarth::createEmptyElevationTexture());
-        elevation.getDefaultTexture()->setName("rex default elevation");
+        elevation.getDefaultTexture()->setName("terrain default elevation");
 
         if (!GLUtils::useNVGL())
             getResources()->reserveTextureImageUnit(elevation.unit(), "Terrain Elevation");
@@ -672,7 +672,7 @@ RexTerrainEngineNode::setupRenderBindings()
         normal.samplerName() = "oe_tile_normalTex";
         normal.matrixName() = "oe_tile_normalTexMatrix";
         normal.setDefaultTexture(osgEarth::createEmptyNormalMapTexture());
-        normal.getDefaultTexture()->setName("rex default normalmap");
+        normal.getDefaultTexture()->setName("terrain default normalmap");
 
         if (!GLUtils::useNVGL())
             getResources()->reserveTextureImageUnit(normal.unit(), "Terrain Normals");
@@ -696,7 +696,7 @@ RexTerrainEngineNode::setupRenderBindings()
         landCover.samplerName() = "oe_tile_landCoverTex";
         landCover.matrixName() = "oe_tile_landCoverTexMatrix";
         landCover.setDefaultTexture(LandCover::createEmptyTexture());
-        landCover.getDefaultTexture()->setName("rex default landcover");
+        landCover.getDefaultTexture()->setName("terrain default landcover");
         getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX", landCover.samplerName());
         getOrCreateStateSet()->setDefine("OE_LANDCOVER_TEX_MATRIX", landCover.matrixName());
 

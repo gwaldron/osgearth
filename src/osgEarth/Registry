@@ -28,10 +28,6 @@
 #include <unordered_set>
 #include <unordered_map>
 
-#define GDAL_SCOPED_LOCK \
-    std::lock_guard<osgEarth::Threading::RecursiveMutex> \
-        _oe_gdal_lock( osgEarth::getGDALMutex() )
-
 namespace osgText {
     class Font;
 }
@@ -50,9 +46,6 @@ namespace osgEarth
     {
         class ShaderFactory;
     }
-
-    //! Global mutex used to serialize access to GDAL/OGR/PROJ functionality
-    extern OSGEARTH_EXPORT Threading::RecursiveMutex& getGDALMutex();
 
     /**
      * Application-wide global repository.

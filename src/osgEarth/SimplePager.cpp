@@ -80,14 +80,6 @@ osg::BoundingSphered SimplePager::getBounds(const TileKey& key) const
     GeoExtent workingExtent;
 
     workingExtent = _mapProfile->clampAndTransformExtent(key.getExtent());
-    //if (key.getProfile()->getSRS()->isGeographic())
-    //{
-    //    workingExtent = key.getExtent();
-    //}
-    //else
-    //{
-    //    workingExtent = _mapProfile->clampAndTransformExtent(key.getExtent());
-    //}
 
     GeoPoint center = workingExtent.getCentroid();
     unsigned lod = _mapProfile->getLOD(workingExtent.height());
@@ -137,16 +129,23 @@ osg::ref_ptr<osg::Node> SimplePager::buildRootNode()
 
 osg::ref_ptr<osg::Node> SimplePager::createNode(const TileKey& key, ProgressCallback* progress)
 {
-    osg::BoundingSphered bounds = getBounds( key );
+    if (_createNodeFunction)
+    {
+        return _createNodeFunction(key, progress);
+    }
+    else
+    {
+        osg::BoundingSphered bounds = getBounds(key);
 
-    osg::MatrixTransform* mt = new osg::MatrixTransform;
-    mt->setMatrix(osg::Matrixd::translate( bounds.center() ) );
-    osg::Geode* geode = new osg::Geode;
-    osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3f(0,0,0), bounds.radius()) );
-    sd->setColor( osg::Vec4(1,0,0,1 ) );
-    geode->addDrawable( sd );
-    mt->addChild(geode);
-    return mt;
+        osg::MatrixTransform* mt = new osg::MatrixTransform;
+        mt->setMatrix(osg::Matrixd::translate(bounds.center()));
+        osg::Geode* geode = new osg::Geode;
+        osg::ShapeDrawable* sd = new osg::ShapeDrawable(new osg::Sphere(osg::Vec3f(0, 0, 0), bounds.radius()));
+        sd->setColor(osg::Vec4(1, 0, 0, 1));
+        geode->addDrawable(sd);
+        mt->addChild(geode);
+        return mt;
+    }
 }
 
 osg::ref_ptr<osg::Node>

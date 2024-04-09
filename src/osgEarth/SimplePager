@@ -73,6 +73,10 @@ namespace osgEarth { namespace Util
         void setClusterCullingEnabled(bool value);
         bool getClusterCullingEnabled() const;
 
+        using CreateNodeFunction = std::function<osg::ref_ptr<osg::Node>(const TileKey& key, ProgressCallback* progress)>;
+        void setCreateNodeFunction(CreateNodeFunction func) { _createNodeFunction = func; }
+
+
         //! Scene graph callbacks for notification of changes. Call before calling build().
         void setSceneGraphCallbacks(SceneGraphCallbacks* value) { _sceneGraphCallbacks = value; }
         SceneGraphCallbacks* getSceneGraphCallbacks() const { return _sceneGraphCallbacks.get(); }
@@ -139,6 +143,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<const Profile> _mapProfile;
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
 
+        CreateNodeFunction _createNodeFunction;
 
         mutable std::mutex _mutex;
         using Callbacks = std::vector<osg::ref_ptr<Callback>>;

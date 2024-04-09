@@ -34,6 +34,7 @@
 #include <osgEarth/LocalGeometryNode>
 #include <osgEarth/FeatureNode>
 #include <osgEarth/ModelNode>
+#include <osgEarth/TrackNode>
 
 #include <osgEarth/ImageOverlayEditor>
 
@@ -375,6 +376,31 @@ main(int argc, char** argv)
         ModelNode* modelNode = new ModelNode(mapNode, style);
         modelNode->setPosition(GeoPoint(geoSRS, -100, 52));
         annoGroup->addChild(modelNode);
+    }
+
+    //--------------------------------------------------------------------
+
+    // a track node
+    {
+
+        // A TrackNode
+        auto trackImage = osgDB::readRefImageFile("../data/icon.png");
+        if (trackImage.valid())
+        {
+            GeoPoint trackPos(SpatialReference::get("wgs84"), -55, 22, 0, ALTMODE_ABSOLUTE);
+            auto nameSymbol = new TextSymbol();
+            nameSymbol->pixelOffset()->set(0, -trackImage->t() / 3);
+            nameSymbol->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM;
+            nameSymbol->halo() = Color::Black;
+            nameSymbol->content() = { "Hello, TrackNode" };
+            nameSymbol->size() = 18.0f;
+            TrackNodeFieldSchema trackSchema;
+            trackSchema["name"] = { nameSymbol, true };
+            auto track = new TrackNode(trackPos, trackImage.get(), trackSchema);
+
+            track->setIconRotation(Angle(45.0, Units::DEGREES));
+            annoGroup->addChild(track);
+        }
     }
 
     //--------------------------------------------------------------------

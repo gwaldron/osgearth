@@ -229,11 +229,18 @@ namespace osgEarth { namespace Internal
 
                     bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
 
-                    osg::Vec3d loc = layoutData->getAnchorPoint() * camVPW;
-                    osg::Vec3d proj = layoutData->getProjPoint() * camVPW;
-                    proj -= loc;
-
-                    float angle = atan2(proj.y(), proj.x());
+                    float angle = 0.0f;
+                    if (layoutData->getRotationDegrees() != 0.0f)
+                    {
+                        angle = deg2rad(layoutData->getRotationDegrees());
+                    }
+                    else
+                    {
+                        osg::Vec3d loc = layoutData->getAnchorPoint() * camVPW;
+                        osg::Vec3d proj = layoutData->getProjPoint() * camVPW;
+                        proj -= loc;
+                        angle = atan2(proj.y(), proj.x());
+                    }
 
                     if ( isText && (angle < -osg::PI_2 || angle > osg::PI_2) )
                     {

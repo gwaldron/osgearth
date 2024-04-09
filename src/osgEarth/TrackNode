@@ -19,12 +19,12 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ANNOTATION_TRACK_NODE_H
-#define OSGEARTH_ANNOTATION_TRACK_NODE_H 1
+#pragma once
 
 #include <osgEarth/GeoPositionNode>
 #include <osgEarth/Style>
 #include <osgEarth/Containers>
+#include <osgEarth/Units>
 #include <osg/Image>
 #include <osgText/String>
     
@@ -124,6 +124,10 @@ namespace osgEarth
          * DYNAMIC data variance so it will be thread-safe.
          */
         osg::Drawable* getDrawable( const std::string& name ) const;
+
+
+        void setIconRotation(const Angle& angle);
+        const Angle& getIconRotation() const { return _iconAngle; }
         
     public: // AnnotationNode
 
@@ -150,9 +154,11 @@ namespace osgEarth
         static osg::observer_ptr<osg::StateSet> s_imageStateSet;
 
         osg::ref_ptr<osg::StateSet> _imageStateSet;
+        Angle _iconAngle;
+        osg::Drawable* _iconDrawable = nullptr;
 
-        Style             _style;
-        class osg::Geode* _geode;
+        Style _style;
+        class osg::Group* _geode;
         TrackNodeFieldSchema _fieldSchema;
 
         using NamedDrawables = std::unordered_map<std::string, osg::Drawable*>;
@@ -162,5 +168,3 @@ namespace osgEarth
     };
 
 }
-
-#endif //OSGEARTH_ANNOTATION_TRACK_NODE_H

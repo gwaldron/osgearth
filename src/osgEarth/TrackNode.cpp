@@ -59,20 +59,20 @@ osg::observer_ptr<osg::StateSet> TrackNode::s_geodeStateSet;
 osg::observer_ptr<osg::StateSet> TrackNode::s_imageStateSet;
 
 
-TrackNode::TrackNode(const GeoPoint&             position,
-                     osg::Image*                 image,
-                     const TrackNodeFieldSchema& fieldSchema ) :
+TrackNode::TrackNode(const GeoPoint& position,
+    osg::Image* image,
+    const TrackNodeFieldSchema& fieldSchema) :
 
-GeoPositionNode()
+    GeoPositionNode()
 {
     construct();
 
-    if ( image )
+    if (image)
     {
         IconSymbol* icon = _style.getOrCreate<IconSymbol>();
-        icon->setImage( image );
+        icon->setImage(image);
     }
-    
+
     _fieldSchema = fieldSchema;
 
     setPosition(position);
@@ -80,12 +80,12 @@ GeoPositionNode()
     compile();
 }
 
-TrackNode::TrackNode(const GeoPoint&             position,
-                     const Style&                style,
-                     const TrackNodeFieldSchema& fieldSchema ) :
+TrackNode::TrackNode(const GeoPoint& position,
+    const Style& style,
+    const TrackNodeFieldSchema& fieldSchema) :
 
-GeoPositionNode(),
-_style( style )
+    GeoPositionNode(),
+    _style(style)
 {
     construct();
 
@@ -167,12 +167,13 @@ TrackNode::compile()
         if ( imageGeom )
         {
             imageGeom->getOrCreateStateSet()->merge(*_imageStateSet.get());
-            _geode->addDrawable( imageGeom );
+            _geode->addChild(imageGeom);
 
-            ScreenSpaceLayoutData* layout = new ScreenSpaceLayoutData();
+            auto layout = ScreenSpaceLayoutData::getOrCreate(imageGeom);
             layout->setPriority(getPriority());
-            imageGeom->setUserData(layout);
         }
+
+        _iconDrawable = imageGeom;
     }
 
     if ( !_fieldSchema.empty() )
@@ -220,15 +221,25 @@ TrackNode::setPriority(float value)
 }
 
 void
+TrackNode::setIconRotation(const Angle& angle)
+{
+    _iconAngle = angle;
+    auto* layout = ScreenSpaceLayoutData::getOrCreate(_iconDrawable);
+    if (layout)
+        layout->setRotationDegrees(angle.as(Units::DEGREES));
+}
+
+void
 TrackNode::updateLayoutData()
 {
     osg::ref_ptr<ScreenSpaceLayoutData> data = new ScreenSpaceLayoutData();
     data->setPriority(getPriority());
 
     // re-apply annotation drawable-level stuff as neccesary.
-    for (unsigned i = 0; i<_geode->getNumDrawables(); ++i)
+    for (unsigned i = 0; i<_geode->getNumChildren(); ++i)
     {
-        _geode->getDrawable(i)->setUserData(data.get());
+        auto* data = ScreenSpaceLayoutData::getOrCreate(_geode->getChild(i));
+        data->setPriority(getPriority());
     }
 }
 
@@ -263,7 +274,7 @@ void
 TrackNode::addDrawable( const std::string& name, osg::Drawable* drawable )
 {
     _namedDrawables[name] = drawable;
-    _geode->addDrawable( drawable );
+    _geode->addChild( drawable );
     updateLayoutData();
 }
 

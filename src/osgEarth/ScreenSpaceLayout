@@ -40,7 +40,7 @@ namespace osgEarth
     {
     public:
         /** Install and return a LayoutData on a drawable. */
-        static ScreenSpaceLayoutData* getOrCreate(osg::Drawable* drawable) {
+        static ScreenSpaceLayoutData* getOrCreate(osg::Node* drawable) {
             if (!drawable) return 0L;
             ScreenSpaceLayoutData* ld = dynamic_cast<ScreenSpaceLayoutData*>(drawable->getUserData());
             if (!ld) {
@@ -49,12 +49,6 @@ namespace osgEarth
             }
             return ld;
         }
-
-        /** Constructor */
-        ScreenSpaceLayoutData() :
-            _priority(0.0f),
-            _pixelOffset(0,0),
-            _fixed(false) { }
 
         /** Decluttering priority - FLT_MAX means don't declutter */
         void setPriority(float value) { _priority = value; }
@@ -76,11 +70,16 @@ namespace osgEarth
         void setProjPoint(const osg::Vec3d& value) { _refPoint = value; }
         const osg::Vec3d& getProjPoint() const { return _refPoint; }
 
+        //! Fixed screen space rotation angle
+        void setRotationDegrees(float value) { _angle_deg = value; }
+        float getRotationDegrees() const { return _angle_deg; }
+
     public:
-        float      _priority;
+        float _priority = 0.0f;
         osg::Vec2s _pixelOffset;
         osg::Vec3d _anchorPoint, _refPoint;
-        bool _fixed;
+        float _angle_deg = 0.0f;
+        bool _fixed = false;
 
     public:
         virtual ~ScreenSpaceLayoutData() { }

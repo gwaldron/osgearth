@@ -540,6 +540,8 @@ Layer::create(const ConfigOptions& options)
 
     osg::ref_ptr<Layer> result;
 
+    name = "osgearth_layer_" + name;
+
     // use this instead of osgDB::readObjectFile b/c the latter prints a warning msg.
     auto rw = osgDB::Registry::instance()->getReaderWriterForExtension(name);
     if (rw)
@@ -562,12 +564,14 @@ Layer::create(const ConfigOptions& options)
     return result;
 }
 
+namespace {
+    ConfigOptions s_default_config_options;
+}
 const ConfigOptions&
 Layer::getConfigOptions(const osgDB::Options* options)
 {
-    static ConfigOptions s_default;
-    const void* data = options->getPluginData(LAYER_OPTIONS_TAG);
-    return data ? *static_cast<const ConfigOptions*>(data) : s_default;
+    const void* data = options ? options->getPluginData(LAYER_OPTIONS_TAG) : nullptr;
+    return data ? *static_cast<const ConfigOptions*>(data) : s_default_config_options;
 }
 
 SceneGraphCallbacks*

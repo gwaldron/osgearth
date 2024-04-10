@@ -60,7 +60,7 @@ namespace osgEarth_osgearth
          * referrer = the location from which the Config was created; typically this
          * is the pathname of the .earth file.
          */
-        osg::Node* deserialize( 
+        osg::ref_ptr<osg::Node> deserialize( 
             const Config& conf, 
             const std::string& referrer,
             const osgDB::Options* readOptions) const;

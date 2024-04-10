@@ -10,6 +10,17 @@ ENDIF()
 SET(LIB_NAME osgEarthProcedural)
 set(OSGEARTHPROCEDURAL_LIBRARY ${LIB_NAME})
 
+
+# temporary...
+set(CLIPPER2_INCLUDE_DIR "H:/devel/clipper2/install/include")
+if (EXISTS ${CLIPPER2_INCLUDE_DIR})
+    include_directories(${CLIPPER2_INCLUDE_DIR})
+    SET(CLIPPER2_LIB "H:/devel/clipper2/install/lib/clipper2.lib")
+    set(OSGEARTH_HAVE_CLIPPER2)
+    add_definitions(-DOSGEARTH_HAVE_CLIPPER2)
+endif()
+
+
 # shaders:
 set(TARGET_GLSL
     Procedural.Vegetation.glsl
@@ -36,8 +47,8 @@ set(TARGET_SRC
     LifeMapLayer.cpp
     VegetationFeatureGenerator.cpp
     VegetationLayer.cpp
-    ${SHADERS_CPP}
-    )
+    RoadLayer.cpp
+    ${SHADERS_CPP} )
 	
 # headers:
 set(LIB_PUBLIC_HEADERS
@@ -52,7 +63,7 @@ set(LIB_PUBLIC_HEADERS
     LifeMapLayer
     VegetationFeatureGenerator
     VegetationLayer
-    )
+    RoadLayer )
     
 # ImGui headers:
 if(OSGEARTH_ENABLE_IMGUI)
@@ -78,7 +89,8 @@ LINK_INTERNAL(
     ${LIB_NAME} 
     ${TARGET_EXTERNAL_LIBRARIES} 
     ${CMAKE_THREAD_LIBS_INIT} 
-    ${MATH_LIBRARY} )
+    ${MATH_LIBRARY}
+    ${CLIPPER2_LIB} )
 
 LINK_INTERNAL(
     ${LIB_NAME}

@@ -35,7 +35,7 @@ namespace osgEarth
         class OSGEARTH_EXPORT Options : public ImageLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
-            OE_OPTION_LAYER(FeatureSource, featureSource);
+            OE_OPTION_LAYER(FeatureSource, features);
             OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION_LAYER(StyleSheet, styleSheet);
             virtual Config getConfig() const;
@@ -58,28 +58,25 @@ namespace osgEarth
     public: // ImageLayer
 
         // Opens the layer and returns a status
-        virtual Status openImplementation() override;
+        Status openImplementation() override;
 
-        virtual GeoImage createImageImplementation(
+        GeoImage createImageImplementation(
             const TileKey& key,
             ProgressCallback* progress) const override;
 
     protected: // Layer
 
         // Called by Map when it adds this layer
-        virtual void addedToMap(const class Map*) override;
+        void addedToMap(const class Map*) override;
 
         // Called by Map when it removes this layer
-        virtual void removedFromMap(const class Map*) override;
+        void removedFromMap(const class Map*) override;
 
         // post-ctor initialization
-        virtual void init() override;
+        void init() override;
+
 
     protected:
-
-        virtual ~FeatureSDFLayer() { }
-
-    private:
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
         FeatureFilterChain _filterChain;
@@ -92,7 +89,7 @@ namespace osgEarth
     
     // template/inline impls .................................................
 
-    FeatureSource* FeatureSDFLayer::getFeatureSource() const { return options().featureSource().getLayer(); }
+    FeatureSource* FeatureSDFLayer::getFeatureSource() const { return options().features().getLayer(); }
     StyleSheet* FeatureSDFLayer::getStyleSheet() const { return options().styleSheet().getLayer(); }
 
 }

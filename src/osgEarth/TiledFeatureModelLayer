@@ -51,7 +51,7 @@ namespace osgEarth
             // constructors
             Options();
             Options(const ConfigOptions& options);
-            OE_OPTION_LAYER(FeatureSource, featureSource);            
+            OE_OPTION_LAYER(FeatureSource, features);            
             Config getConfig() const override;
         protected: // LayerOptions
             void mergeConfig(const Config& conf) override;

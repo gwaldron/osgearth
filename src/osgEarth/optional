@@ -30,12 +30,12 @@ namespace osgEarth
      * This is used extensively in osgEarth's ConfigOptions subsystem.
      */
     template<typename T> struct optional {
-        optional() { }
-        optional(T defaultValue) : _value(defaultValue), _defaultValue(defaultValue) { }
-        //optional(T defaultValue, T value) : _set(true), _value(value), _defaultValue(defaultValue) { }
-        optional(const optional<T>& rhs) { operator=(rhs); }
-        //virtual ~optional() { }
-        optional<T>& operator =(const optional<T>& rhs) { _set=rhs._set; _value=rhs._value; _defaultValue=rhs._defaultValue; return *this; }
+        optional() = default;
+        optional(const optional<T>& rhs) = default;
+        optional<T>& operator = (const optional<T>& rhs) = default;
+        optional(optional<T>&& rhs) { operator=(rhs); };
+        optional<T>& operator = (optional<T>&& rhs) { _set = rhs._set; _value = std::move(rhs._value); _defaultValue = std::move(rhs._defaultValue); return *this; }
+        optional(const T& defaultValue) : _value(defaultValue), _defaultValue(defaultValue) { }
         const T& operator =(const T& value) { _set=true; _value=value; return _value; }
         bool operator ==(const optional<T>& rhs) const { return _set && rhs._set && _value==rhs._value; }
         bool operator !=(const optional<T>& rhs) const { return !( (*this)==rhs); }
@@ -50,10 +50,10 @@ namespace osgEarth
         void unset() { _set = false; _value=_defaultValue; }
         void clear() { unset(); }
 
-        const T& get() const { return _value; }
+        const T& get() const { return value(); }
         const T& value() const { return _value; }
         const T& defaultValue() const { return _defaultValue; }
-        T temp_copy() const { return _value; }
+        //T temp_copy() const { return _value; }
 
         const T& getOrUse(const T& fallback) const { return _set ? _value : fallback; }
 

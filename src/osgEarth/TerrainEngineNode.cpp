@@ -353,12 +353,16 @@ TerrainEngineNode::create(const TerrainOptions& options )
     if ( driver.empty() )
         driver = Registry::instance()->getDefaultTerrainEngineDriverName();
 
-    std::string driverExt = std::string( ".osgearth_engine_" ) + driver;
-    osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt );
-    node = dynamic_cast<TerrainEngineNode*>( object.release() );
-    if ( !node )
+    std::string driverExt = std::string("osgearth_engine_") + driver;
+    auto rw = osgDB::Registry::instance()->getReaderWriterForExtension(driverExt);
+    if (rw)
     {
-        OE_WARN << "WARNING: Failed to load terrain engine driver for \"" << driver << "\"" << std::endl;
+        osg::ref_ptr<osg::Object> object = rw->readObject("." + driverExt).getObject();
+        node = dynamic_cast<TerrainEngineNode*>(object.release());
+        if (!node)
+        {
+            OE_WARN << "WARNING: Failed to load terrain engine driver for \"" << driver << "\"" << std::endl;
+        }
     }
 
     return node.release();

@@ -23,6 +23,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarth/JsonUtils>
 #include <osgEarth/FileUtils>
+#include <osgEarth/URI>
 #include <osgDB/FileNameUtils>
 #include <osgEarth/Notify>
 #include <osgDB/Options>
@@ -69,9 +70,47 @@ bool
 Config::fromXML( std::istream& in )
 {
     osg::ref_ptr<XmlDocument> xml = XmlDocument::load( in );
-    if ( xml.valid() )
-        *this = xml->getConfig();
+    if (xml.valid())
+    {
+        *this = std::move(xml->getConfig());
+    }
     return xml.valid();
+}
+
+bool
+Config::fromURI(const URI& uri)
+{
+    auto result = uri.readString();
+    if (result.failed())
+        return false;
+
+    std::string data = result.getString();
+    if (!data.empty())
+    {
+        data = trim(data);
+
+        if (data[0] == '{')
+        {
+            fromJSON(data);
+        }
+        else if (data[0] == '<')
+        {
+            std::istringstream in(data);
+            fromXML(in);
+            if (key() == "Document" && children().size() > 0)
+            {
+                Config temp = std::move(children().front());
+                *this = temp;
+            }               
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    setReferrer(uri.full());
+    return true;
 }
 
 #if 1
@@ -173,25 +212,6 @@ Config::find( const std::string& key, bool checkMe )
     return 0L;
 }
 
-/****************************************************************/
-ConfigOptions::~ConfigOptions()
-{
-}
-
-Config
-ConfigOptions::getConfig() const
-{
-    // iniialize with the raw original conf. subclass getConfig's can 
-    // override the values there.
-    Config conf = _conf;
-    conf.setReferrer(referrer());
-    return conf;
-}
-
-/****************************************************************/
-DriverConfigOptions::~DriverConfigOptions()
-{
-}
 
 namespace
 {

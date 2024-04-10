@@ -1695,7 +1695,7 @@ RoadsLayer::createTileImplementation(const TileKey& key, ProgressCallback* progr
     return mt;
 }
 
-REGISTER_OSGEARTH_LAYER(roads, RoadsLayer);
+//REGISTER_OSGEARTH_LAYER(roads, RoadsLayer);
 
 
 

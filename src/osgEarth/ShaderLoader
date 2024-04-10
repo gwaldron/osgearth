@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_SHADER_LOADER_H
-#define OSGEARTH_SHADER_LOADER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgDB/Options>
@@ -115,7 +114,7 @@ namespace osgEarth { namespace Util
     {
     public:
         /**
-         * Loads shader source from the specified filename, and calls 
+         * Loads shader source from the specified filename or string, and calls 
          * setFunction() on the virtual program to install the shader.
          * The shader much include #pragma definitions for both its
          * entry point and its location, e.g.:
@@ -124,10 +123,10 @@ namespace osgEarth { namespace Util
          *   #pargma vp_location   VERTEX_VIEW
          */
         static bool load(
-            VirtualProgram*       vp,
-            const std::string&    filename,
-            const ShaderPackage&  package,
-            const osgDB::Options* dbOptions =0L );
+            VirtualProgram* vp,
+            const std::string& filename_or_string,
+            const ShaderPackage& package,
+            const osgDB::Options* dbOptions = 0L);
 
         static bool load(
             VirtualProgram* vp,
@@ -137,9 +136,9 @@ namespace osgEarth { namespace Util
          * Removes a function loaded by load from the VirtualProgram.
          */
         static bool unload(
-            VirtualProgram*       vp,
-            const std::string&    filename,
-            const ShaderPackage&  package,
+            VirtualProgram* vp,
+            const std::string& filename_or_string,
+            const ShaderPackage& package,
             const osgDB::Options* dbOptions =0L );
 
         static bool unload(
@@ -150,8 +149,8 @@ namespace osgEarth { namespace Util
         //! file can't be found in the OSG file path, use the source
         //! provided in backupSource.
         static std::string load(
-            const std::string&    filename,
-            const ShaderPackage&  package,
+            const std::string& filename_or_string,
+            const ShaderPackage& package,
             const osgDB::Options* dbOptions = nullptr);
 
         /**
@@ -195,8 +194,8 @@ namespace osgEarth { namespace Util
 
         // internal function to load a file but apply no processing to it
         static std::string load_raw_source(
-            const std::string&    filename,
-            const ShaderPackage&  package,
+            const std::string& filename_or_string,
+            const ShaderPackage& package,
             const osgDB::Options* dbOptions);
 
         static void sort_components(
@@ -204,7 +203,3 @@ namespace osgEarth { namespace Util
 
     };
 } } // namespace osgEarth
-
-
-#endif // OSGEARTH_SHADER_LOADER
-

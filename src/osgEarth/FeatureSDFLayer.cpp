@@ -33,7 +33,7 @@ Config
 FeatureSDFLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    featureSource().set(conf, "features");
+    features().set(conf, "features");
     styleSheet().set(conf, "styles");
 
     if (filters().empty() == false)
@@ -50,7 +50,7 @@ FeatureSDFLayer::Options::getConfig() const
 void
 FeatureSDFLayer::Options::fromConfig(const Config& conf)
 {
-    featureSource().get(conf, "features");
+    features().get(conf, "features");
     styleSheet().get(conf, "styles");
 
     const Config& filtersConf = conf.child("filters");
@@ -75,7 +75,7 @@ FeatureSDFLayer::openImplementation()
         return parent;
 
     // assert a feature source:
-    Status fsStatus = options().featureSource().open(getReadOptions());
+    Status fsStatus = options().features().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
@@ -121,7 +121,7 @@ FeatureSDFLayer::addedToMap(const Map* map)
 {
     ImageLayer::addedToMap(map);
 
-    options().featureSource().addedToMap(map);
+    options().features().addedToMap(map);
     options().styleSheet().addedToMap(map);
 
     if (getFeatureSource())
@@ -135,7 +135,7 @@ FeatureSDFLayer::addedToMap(const Map* map)
 void
 FeatureSDFLayer::removedFromMap(const Map* map)
 {
-    options().featureSource().removedFromMap(map);
+    options().features().removedFromMap(map);
     options().styleSheet().removedFromMap(map);
 
     ImageLayer::removedFromMap(map);
@@ -146,7 +146,7 @@ FeatureSDFLayer::setFeatureSource(FeatureSource* fs)
 {
     if (getFeatureSource() != fs)
     {
-        options().featureSource().setLayer(fs);
+        options().features().setLayer(fs);
         _featureProfile = 0L;
 
         if (fs)
@@ -314,8 +314,9 @@ FeatureSDFLayer::createImageImplementation(const TileKey& key, ProgressCallback*
             r_style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
 
         // Compute the min and max distances across all the styles.
-        float styleMinDist = style.get<RenderSymbol>()->sdfMinDistance()->eval();
-        float styleMaxDist = style.get<RenderSymbol>()->sdfMaxDistance()->eval();
+        auto render = style.get<RenderSymbol>();
+        float styleMinDist = render ? render->sdfMinDistance()->eval() : 0.0f;
+        float styleMaxDist = render ? render->sdfMaxDistance()->eval() : 0.0f;
         if (styleMinDist < minDistanceMeters)
         {
             minDistanceMeters = styleMinDist;

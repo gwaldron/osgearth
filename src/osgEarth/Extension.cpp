@@ -51,18 +51,24 @@ Extension::create(const std::string& name, const ConfigOptions& options)
     osg::ref_ptr<osgDB::Options> dbopt = Registry::instance()->cloneOrCreateOptions();
     dbopt->setPluginData( EXTENSION_OPTIONS_TAG, (void*)&options );
 
-    std::string pluginExtension = std::string( ".osgearth_" ) + name;
+    std::string pluginExtension = std::string( "osgearth_" ) + name;
 
     // use this instead of osgDB::readObjectFile b/c the latter prints a warning msg.
-    osgDB::ReaderWriter::ReadResult rr = osgDB::Registry::instance()->readObject( pluginExtension, dbopt.get() );
+    auto rw = osgDB::Registry::instance()->getReaderWriterForExtension(pluginExtension);
+    if (!rw)
+    {
+        return nullptr;
+    }
+
+    auto rr = rw->readObject("." + pluginExtension, dbopt.get());
     if ( !rr.validObject() || rr.error() )
     {
         // quietly fail so we don't get tons of msgs.
-        return 0L;
+        return nullptr;
     }
 
     Extension* extension = dynamic_cast<Extension*>( rr.getObject() );
-    if ( extension == 0L )
+    if ( extension == nullptr )
     {
         OE_WARN << LC << "Plugin \"" << name << "\" is not an Extension" << std::endl;
         return 0L;

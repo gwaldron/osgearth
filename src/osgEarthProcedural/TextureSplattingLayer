@@ -57,7 +57,7 @@ namespace osgEarth { namespace Procedural
         };
 
     public:
-        META_Layer(osgEarthProcedural, TextureSplattingLayer, Options, VisibleLayer, SplatImage);
+        META_Layer(osgEarthProcedural, TextureSplattingLayer, Options, VisibleLayer, ProceduralImage);
 
         BiomeLayer* getBiomeLayer() const;
 

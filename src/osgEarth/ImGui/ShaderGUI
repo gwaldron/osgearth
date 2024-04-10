@@ -141,7 +141,7 @@ namespace osgEarth
                             auto name = program->getName();
                             if (name.empty()) name = "[no name]";
                             std::string tag = name + "##" + std::to_string(count++);
-                            if (ImGui::TreeNode(name.c_str()))
+                            if (ImGui::TreeNode(tag.c_str())) //name.c_str()))
                             {
                                 auto num = program->getNumShaders();
                                 for (unsigned i = 0; i < num; ++i)
@@ -151,8 +151,9 @@ namespace osgEarth
                                     if (shader_name.empty()) shader_name = "[no name]";
 
                                     ImGui::PushID(count++);
+                                    std::string shader_tag = shader_name + "##" + std::to_string(count++);
 
-                                    if (ImGui::Button(shader_name.c_str()))
+                                    if (ImGui::Button(shader_tag.c_str()))
                                     {
                                         open_shader = shader;
                                     }

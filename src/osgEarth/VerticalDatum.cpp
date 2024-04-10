@@ -231,12 +231,17 @@ VerticalDatumFactory::create( const std::string& init )
 {
     osg::ref_ptr<VerticalDatum> datum;
 
-    std::string driverExt = Stringify() << ".osgearth_vdatum_" << init;
-    osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt );
-    datum = dynamic_cast<VerticalDatum*>( object.release() );
-    if ( !datum )
+    std::string driverExt = "osgearth_vdatum_" + init;
+    auto rw = osgDB::Registry::instance()->getReaderWriterForExtension(driverExt);
+    if (rw)
     {
-        OE_WARN << "WARNING: Failed to load Vertical Datum driver for \"" << init << "\"" << std::endl;
+        auto rr = rw->readObject("."+driverExt, nullptr);
+        osg::ref_ptr<osg::Object> object = rr.getObject();
+        datum = dynamic_cast<VerticalDatum*>(object.release());
+        if (!datum)
+        {
+            OE_WARN << "WARNING: Failed to load Vertical Datum driver for \"" << init << "\"" << std::endl;
+        }
     }
 
     return datum.release();

@@ -144,18 +144,21 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
     {
         if ( std::find(instance()->_failedDrivers.begin(), instance()->_failedDrivers.end(), options.getDriver()) == instance()->_failedDrivers.end() )
         {
-            std::string driverExt = std::string(".osgearth_scriptengine_") + options.getDriver();
+            std::string driverExt = std::string("osgearth_scriptengine_") + options.getDriver();
 
             osg::ref_ptr<osgDB::Options> rwopts = Registry::instance()->cloneOrCreateOptions();
             rwopts->setPluginData( SCRIPT_ENGINE_OPTIONS_TAG, (void*)&options );
-
-            osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, rwopts.get() );
-            scriptEngine = dynamic_cast<ScriptEngine*>( object.release() );
-            if ( scriptEngine )
+            auto rw = osgDB::Registry::instance()->getReaderWriterForExtension(driverExt);
+            if (rw)
             {
-                OE_DEBUG << "Loaded ScriptEngine driver \"" << options.getDriver() << "\" OK" << std::endl;
+                osg::ref_ptr<osg::Object> object = rw->readObject("." + driverExt, rwopts.get()).getObject();
+                scriptEngine = dynamic_cast<ScriptEngine*>(object.release());
+                if (scriptEngine)
+                {
+                    OE_DEBUG << "Loaded ScriptEngine driver \"" << options.getDriver() << "\" OK" << std::endl;
+                }
             }
-            else
+            if (!scriptEngine.valid())
             {
                 if (!quiet)
                     OE_WARN << "FAIL, unable to load ScriptEngine driver for \"" << options.getDriver() << "\"" << std::endl;

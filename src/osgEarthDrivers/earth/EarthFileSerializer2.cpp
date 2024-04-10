@@ -524,7 +524,7 @@ _rewriteAbsolutePaths( false )
 }
 
 
-osg::Node*
+osg::ref_ptr<osg::Node>
 EarthFileSerializer2::deserialize( 
     const Config& const_conf, 
     const std::string& referrer,
@@ -654,10 +654,12 @@ EarthFileSerializer2::deserialize(
 
     // return the topmost parent of the mapnode. It's possible that
     // an extension added parents!
-    osg::Node* top = mapNode.release();
+    osg::ref_ptr<osg::Node> top = mapNode;
 
-    while( top->getNumParents() > 0 )
+    while (top->getNumParents() > 0)
+    {
         top = top->getParent(0);
+    }
 
     return top;
 }

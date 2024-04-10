@@ -214,6 +214,8 @@ PagedNode2::computeBound() const
 void
 PagedNode2::startLoad(float priority, const osg::Object* host)
 {
+    OE_SOFT_ASSERT_AND_RETURN(_load_function != nullptr, void(), "No load function set");
+
     // Load the asynchronous node.
     Loader load_function(_load_function);
     osg::observer_ptr<SceneGraphCallbacks> callbacks_weak(_callbacks);
@@ -235,7 +237,10 @@ PagedNode2::startLoad(float priority, const osg::Object* host)
             osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(&promise);
 
             // invoke the loader function
-            result = load_function(progress.get());
+            if (load_function)
+            {
+                result = load_function(progress.get());
+            }
 
             // Fire any pre-merge callbacks
             if (result.valid())

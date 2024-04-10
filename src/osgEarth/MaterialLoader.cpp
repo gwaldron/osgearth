@@ -211,39 +211,42 @@ namespace
 
     osg::ref_ptr<osg::Image> assemble_RGBH(
         osg::ref_ptr<osg::Image> color,
-        osg::ref_ptr<osg::Image> height)
+        osg::ref_ptr<osg::Image> height,
+        osg::ref_ptr<osg::Image> opacity)
     {
-        OE_SOFT_ASSERT_AND_RETURN(color.valid(), {}, "Color must be present");
-
         // output will be input :)
         osg::ref_ptr<osg::Image> output = new osg::Image();
         output->allocateImage(color->s(), color->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
+        OE_SOFT_ASSERT_AND_RETURN(color.valid(), output, "Color must be present");
+
         ImageUtils::PixelReader readColor(color.get());
         ImageUtils::PixelReader readHeight(height.get());
+        ImageUtils::PixelReader readOpacity(opacity.get());
 
         ImageUtils::PixelWriter write(output.get());
 
         osg::Vec4 temp, temp2;
-        float minh = 1.0f, maxh = 0.0f;
+        //float minh = 1.0f, maxh = 0.0f;
 
         ImageUtils::ImageIterator iter(output.get());
         iter.forEachPixel([&]()
             {
                 readColor(temp, iter.s(), iter.t());
+                temp2[0] = 1.0f; // default
                 if (height.valid())
                 {
                     // use (u,v) in case textures are different sizes
                     readHeight(temp2, iter.u(), iter.v());
-                    temp.a() = temp2[0];
                 }
-                else
+                else if (opacity.valid())
                 {
-                    temp.a() = 0.0f; // default height
+                    readOpacity(temp2, iter.u(), iter.v());
                 }
+                temp.a() = temp2[0];
 
-                minh = std::min(minh, temp.a());
-                maxh = std::max(maxh, temp.a());
+                //minh = std::min(minh, temp.a());
+                //maxh = std::max(maxh, temp.a());
 
                 write(temp, iter.s(), iter.t());
             });
@@ -366,14 +369,15 @@ namespace
 osg::ref_ptr<osg::Texture>
 PBRMaterial::createTexture(const osgDB::Options* options) const
 {
-    osg::ref_ptr<osg::Image> color_image, normal_image, roughness_image, ao_image, height_image;
+    osg::ref_ptr<osg::Image> color_image, normal_image, roughness_image, ao_image, height_image, opacity_image;
     if (color().isSet()) color_image = color()->getImage(options);
     if (normal().isSet()) normal_image = normal()->getImage(options);
     if (roughness().isSet()) roughness_image = roughness()->getImage(options);
     if (ao().isSet()) ao_image = ao()->getImage(options);
     if (height().isSet()) height_image = height()->getImage(options);
+    if (opacity().isSet()) opacity_image = opacity()->getImage(options);
 
-    auto rgbh = assemble_RGBH(color_image, height_image);
+    auto rgbh = assemble_RGBH(color_image, height_image, opacity_image);
     auto nnra = assemble_NNRA(color_image, normal_image, { 1,1,1 }, roughness_image, 0, false, ao_image, 0);
 
 #if 0

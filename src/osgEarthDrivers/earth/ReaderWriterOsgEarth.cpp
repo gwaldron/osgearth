@@ -242,6 +242,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 // see if we were given a reference URI to use:
                 const std::string& refURI = uriContext.referrer();
 
+
                 if ( conf.value("version") == "1" )
                 {
                     OE_INFO << LC << "Detected a version 1.x earth file" << std::endl;

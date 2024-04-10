@@ -201,7 +201,7 @@ Registry::Registry() :
     if ( !_defaultFont.valid() )
     {
 #ifdef WIN32
-        _defaultFont = osgText::readRefFontFile("arial.ttf");
+        //_defaultFont = osgText::readRefFontFile("arial.ttf");
 #else
         _defaultFont = osgText::Font::getDefaultFont();
 #endif
@@ -270,6 +270,7 @@ Registry::~Registry()
 namespace
 {
     static bool g_registry_created = false;
+    static bool g_registry_destroyed = false;
     static Registry* g_registry = nullptr;
 
     void destroyRegistry()
@@ -279,6 +280,7 @@ namespace
             g_registry->release();
             delete g_registry;
             g_registry = nullptr;
+            g_registry_destroyed = true;
         }
     }
 }
@@ -286,6 +288,11 @@ namespace
 Registry*
 Registry::instance()
 {
+    if (g_registry_destroyed)
+    {
+        return nullptr;
+    }
+
     if (g_registry_created == true && g_registry == nullptr)
     {
         OE_HARD_ASSERT(false, "Registry::instance() called recursively. Contact support.");

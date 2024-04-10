@@ -48,7 +48,7 @@ TiledFeatureModelLayer::Options::Options(const ConfigOptions& options) :
 
 void TiledFeatureModelLayer::Options::fromConfig(const Config& conf)
 {
-    featureSource().get(conf, "features");
+    features().get(conf, "features");
 }
 
 Config
@@ -62,7 +62,7 @@ TiledFeatureModelLayer::Options::getConfig() const
     Config gcConf = GeometryCompilerOptions::getConfig();
     conf.merge(gcConf);
 
-    featureSource().set(conf, "features");
+    features().set(conf, "features");
 
     return conf;
 }
@@ -101,7 +101,7 @@ TiledFeatureModelLayer::setFeatureSource(FeatureSource* source)
 {
     if (getFeatureSource() != source)
     {
-        options().featureSource().setLayer(source);
+        options().features().setLayer(source);
 
         if (source && source->getStatus().isError())
         {
@@ -116,7 +116,7 @@ TiledFeatureModelLayer::setFeatureSource(FeatureSource* source)
 FeatureSource*
 TiledFeatureModelLayer::getFeatureSource() const
 {
-    return options().featureSource().getLayer();
+    return options().features().getLayer();
 }
 
 void
@@ -142,7 +142,7 @@ TiledFeatureModelLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    Status fsStatus = options().featureSource().open(getReadOptions());
+    Status fsStatus = options().features().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
 
@@ -157,7 +157,7 @@ Status
 TiledFeatureModelLayer::closeImplementation()
 {
     super::closeImplementation();
-    options().featureSource().close();
+    options().features().close();
     options().styleSheet().close();
     return getStatus();
 }
@@ -179,7 +179,7 @@ TiledFeatureModelLayer::addedToMap(const Map* map)
     OE_TEST << LC << "addedToMap" << std::endl;
     
 
-    options().featureSource().addedToMap(map);
+    options().features().addedToMap(map);
     options().styleSheet().addedToMap(map);
 
     if (getFeatureSource() && getStyleSheet())
@@ -219,7 +219,7 @@ TiledFeatureModelLayer::removedFromMap(const Map* map)
 {
     super::removedFromMap(map);
 
-    options().featureSource().removedFromMap(map);
+    options().features().removedFromMap(map);
     options().styleSheet().removedFromMap(map);
 
     _session = 0L;

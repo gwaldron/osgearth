@@ -47,14 +47,14 @@
 using namespace osgEarth::Procedural;
 
 REGISTER_OSGEARTH_LAYER(proceduralimage, TextureSplattingLayer);
-REGISTER_OSGEARTH_LAYER(procedural_image, TextureSplattingLayer);
+//REGISTER_OSGEARTH_LAYER(procedural_image, TextureSplattingLayer);
 
 //........................................................................
 
 Config
 TextureSplattingLayer::Options::getConfig() const
 {
-    Config conf = VisibleLayer::Options::getConfig();
+    Config conf = super::getConfig();
     conf.set("num_levels", numLevels());
     conf.set("use_hex_tiler", useHexTiler());
     conf.set("normalmap_power", normalMapPower());
@@ -92,7 +92,7 @@ TextureSplattingLayer::getLifeMapLayer() const
 void
 TextureSplattingLayer::init()
 {
-    VisibleLayer::init();
+    super::init();
 
     setRenderType(osgEarth::Layer::RENDERTYPE_TERRAIN_SURFACE);
 }
@@ -100,7 +100,7 @@ TextureSplattingLayer::init()
 void
 TextureSplattingLayer::addedToMap(const Map* map)
 {
-    VisibleLayer::addedToMap(map);
+    super::addedToMap(map);
 
     options().biomeLayer().addedToMap(map);
     if (getBiomeLayer() == nullptr)
@@ -126,7 +126,7 @@ TextureSplattingLayer::addedToMap(const Map* map)
 void
 TextureSplattingLayer::removedFromMap(const Map* map)
 {
-    VisibleLayer::removedFromMap(map);
+    super::removedFromMap(map);
 
     options().biomeLayer().removedFromMap(map);
     options().lifeMapLayer().removedFromMap(map);
@@ -135,7 +135,7 @@ TextureSplattingLayer::removedFromMap(const Map* map)
 void
 TextureSplattingLayer::prepareForRendering(TerrainEngine* engine)
 {
-    VisibleLayer::prepareForRendering(engine);
+    super::prepareForRendering(engine);
 
     if (Capabilities::get().supportsInt64() == false)
     {
@@ -419,7 +419,7 @@ TextureSplattingLayer::getMaxTextureSize() const
 void
 TextureSplattingLayer::resizeGLObjectBuffers(unsigned maxSize)
 {
-    VisibleLayer::resizeGLObjectBuffers(maxSize);
+    super::resizeGLObjectBuffers(maxSize);
 
     if (_materials && _materials->_arena.valid())
         _materials->_arena->resizeGLObjectBuffers(maxSize);
@@ -428,7 +428,7 @@ TextureSplattingLayer::resizeGLObjectBuffers(unsigned maxSize)
 void
 TextureSplattingLayer::releaseGLObjects(osg::State* state) const
 {
-    VisibleLayer::releaseGLObjects(state);
+    super::releaseGLObjects(state);
 
     if (_materials && _materials->_arena.valid())
         _materials->_arena->releaseGLObjects(state);

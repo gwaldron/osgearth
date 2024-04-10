@@ -36,6 +36,7 @@ namespace osgEarth
 {
     using namespace osgEarth::Util;
     using ConfigSet = std::vector<class Config>;
+    class URI;
 
     /**
      * Config is a general-purpose container for serializable data. You store an object's members
@@ -81,8 +82,8 @@ namespace osgEarth
 
         // Copy functions
         Config(const Config& rhs) = default;
-        Config(Config&& rhs) = default;
         Config& operator=(const Config& rhs) = default;
+        Config(Config&& rhs) = default;
         Config& operator=(Config&& rhs) = default;
 
         /**
@@ -113,6 +114,9 @@ namespace osgEarth
 
         /** Populate this object from an XML input stream. */
         bool fromXML(std::istream& in);
+
+        //! Populate this object from a URI
+        bool fromURI(const URI&);
 
         /** Encode this object as JSON. */
         std::string toJSON(bool pretty = false) const;
@@ -586,17 +590,16 @@ namespace osgEarth
     /**
      * Base class for all serializable options classes.
      */
-    class OSGEARTH_EXPORT ConfigOptions
+    class ConfigOptions
     {
     public:
-        ConfigOptions(const Config& conf = Config())
-            : _conf(conf) { }
-        ConfigOptions(const ConfigOptions& rhs)
-            : _conf(rhs.getConfig()) { } //rhs._conf ) { }
+        ConfigOptions() = default;
+        ConfigOptions(const ConfigOptions& rhs) = default;
+        ConfigOptions(const Config& conf) : _conf(conf) { }
 
-        virtual ~ConfigOptions();
-
-        const std::string& referrer() const { return _conf.referrer(); }
+        const std::string& referrer() const {
+            return _conf.referrer();
+        }
 
         ConfigOptions& operator = (const ConfigOptions& rhs) {
             if (this != &rhs) {
@@ -611,9 +614,15 @@ namespace osgEarth
             mergeConfig(rhs.getConfig());
         }
 
-        virtual Config getConfig() const;
+        virtual Config getConfig() const {
+            Config conf = _conf;
+            conf.setReferrer(referrer());
+            return conf;
+        }
 
-        bool empty() const { return _conf.empty(); }
+        bool empty() const {
+            return _conf.empty();
+        }
 
     protected:
         virtual void mergeConfig(const Config& conf) { }
@@ -625,16 +634,14 @@ namespace osgEarth
      * Base configoptions class for driver options.
      * @deprecated - will be removed.
      */
-    class OSGEARTH_EXPORT DriverConfigOptions : public ConfigOptions
+    class DriverConfigOptions : public ConfigOptions
     {
     public:
         DriverConfigOptions(const ConfigOptions& rhs = ConfigOptions())
-            : ConfigOptions(rhs) {
+            : ConfigOptions(rhs)
+        {
             fromConfig(_conf);
         }
-
-        /** dtor */
-        virtual ~DriverConfigOptions();
 
         /** Gets or sets the name of the driver to load */
         void setDriver(const std::string& value) { _driver = value; }

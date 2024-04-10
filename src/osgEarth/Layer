@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_LAYER_H
-#define OSGEARTH_LAYER_H
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
@@ -527,6 +526,9 @@ namespace osgEarth
         //! are we in the middle of a open() call?
         bool isOpening() const { return _isOpening; }
 
+        //! Layers that this layer wants to add to the map
+        std::vector<osg::ref_ptr<Layer>> _sublayers;
+
     public:
 
         Layer::Options& options() { return *_options; }
@@ -580,13 +582,11 @@ namespace osgEarth
 
 
 #define REGISTER_OSGEARTH_LAYER(NAME,CLASS) \
-    extern "C" void osgdb_##NAME(void) {} \
-    static osgEarth::RegisterPluginLoader< osgEarth::PluginLoader<CLASS, osgEarth::Layer> > g_proxy_##CLASS_##NAME( #NAME );
+    extern "C" void osgdb_osgearth_##NAME(void) {} \
+    static osgEarth::RegisterPluginLoader< osgEarth::PluginLoader<CLASS, osgEarth::Layer> > g_proxy_##CLASS_##NAME(OE_STRINGIFY(osgearth_layer_##NAME));
 
 #define USE_OSGEARTH_LAYER(NAME) \
-    extern "C" void osgdb_##NAME(void); \
-    static osgDB::PluginFunctionProxy proxy_osgearth_layer_##NAME(osgdb_##NAME);
+    extern "C" void osgdb_osgearth_##NAME(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_layer_##NAME(OE_STRINGIFY(osgdb_osgearth_##NAME));
 
 } // namespace osgEarth
-
-#endif // OSGEARTH_LAYER_H

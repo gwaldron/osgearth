@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_PLUGIN_LOADER_H
-#define OSGEARTH_PLUGIN_LOADER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgDB/Registry>
@@ -64,20 +62,16 @@ namespace osgEarth { namespace Util
     {
     public: // Plugin stuff
         PluginLoader(const std::string& name) {
-            supportsExtension( name, name );
+            supportsExtension(name, name);
         }
 
-        virtual ~PluginLoader() { }
-
-        ReadResult readObject(const std::string& filename, const osgDB::Options* dbOptions) const
+        ReadResult readObject(const std::string& filename, const osgDB::Options* dbOptions) const override
         {
-          if ( !acceptsExtension(osgDB::getLowerCaseFileExtension(filename)) )
+            if (!acceptsExtension(osgDB::getLowerCaseFileExtension(filename)))
                 return ReadResult::FILE_NOT_HANDLED;
 
-          return ReadResult( new T(U::getConfigOptions(dbOptions)) );
+            return ReadResult(new T(U::getConfigOptions(dbOptions)));
         }
     };
 
 } } // namespace osgEarth
-
-#endif // OSGEARTH_PLUGIN_LOADER_H

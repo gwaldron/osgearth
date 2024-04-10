@@ -1,0 +1,43 @@
+#pragma once
+#include <osgEarthProcedural/Export>
+#include <osgEarth/TileLayer>
+#include <osgEarth/FeatureSource>
+#include <osgEarth/LayerReference>
+#include <osgEarth/MaterialLoader>
+
+namespace osgEarth
+{
+    namespace Util
+    {
+        class SimplePager;
+    }
+
+    namespace Procedural
+    {
+        class OSGEARTHPROCEDURAL_EXPORT RoadLayer : public TileLayer
+        {
+        public:
+            class OSGEARTHPROCEDURAL_EXPORT Options : public TileLayer::Options
+            {
+                META_LayerOptions(osgEarthProcedural, Options, TileLayer::Options);
+                OE_OPTION_LAYER(FeatureSource, features);
+                OE_OPTION(PBRMaterial, surfaceMaterial);
+                void fromConfig(const Config& conf);
+                Config getConfig() const override;
+            };
+
+            META_Layer(osgEarthProcedural, RoadLayer, Options, TileLayer, roads);
+
+        public: // Layer
+            void init() override;
+            Status openImplementation() override;
+            void addedToMap(const Map* map) override;
+            void removedFromMap(const Map* map) override;
+
+        private:
+            osg::ref_ptr<Layer> _surfaceLayer;
+            osg::ref_ptr<Layer> _markingsLayer;
+        };
+    }
+}
+

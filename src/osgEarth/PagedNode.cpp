@@ -214,14 +214,12 @@ PagedNode2::computeBound() const
 void
 PagedNode2::startLoad(float priority, const osg::Object* host)
 {
-    OE_SOFT_ASSERT_AND_RETURN(_load_function != nullptr, void(), "No load function set");
+    OE_SOFT_ASSERT_AND_RETURN(_load_function != nullptr, void());
 
     // Load the asynchronous node.
-    Loader load_function(_load_function);
-    osg::observer_ptr<SceneGraphCallbacks> callbacks_weak(_callbacks);
-    bool preCompile = _preCompile;
     auto pnode_weak = osg::observer_ptr<PagedNode2>(this);
 
+    // Configure the jobs to run in a specific pool and with a dynamic priority.
     jobs::context context;
     context.pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);
     context.priority = [pnode_weak]() {
@@ -229,49 +227,47 @@ PagedNode2::startLoad(float priority, const osg::Object* host)
             return pnode_weak.lock(pnode) ? pnode->_lastPriority : -FLT_MAX;
         };
 
-    // Job to load the child node and compile its GL objects if necessary
-    auto load_and_compile_job = [load_function, callbacks_weak, preCompile, host](auto& promise)
+    // Job that will load the node and optionally compile it.
+    auto load_and_compile_job = [pnode_weak, host](auto& promise)
         {
             osg::ref_ptr<osg::Node> result;
-
             osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(&promise);
 
-            // invoke the loader function
-            if (load_function)
+            osg::ref_ptr<PagedNode2> pnode;
+            if (pnode_weak.lock(pnode))
             {
-                result = load_function(progress.get());
+                // invoke the loader function
+                result = pnode->_load_function(progress.get());
+
+                // Fire any pre-merge callbacks
+                if (result.valid())
+                {
+                    if (pnode->_callbacks.valid())
+                    {
+                        pnode->_callbacks->firePreMergeNode(result.get());
+                    }
+
+                    if (pnode->_preCompile && result->getBound().valid())
+                    {
+                        // Collect the GL objects for later compilation.
+                        // Don't waste precious ICO time doing this later
+                        GLObjectsCompiler compiler;
+                        auto state = compiler.collectState(result.get());
+                        compiler.requestIncrementalCompile(result, state.get(), host, promise);
+                        return;
+                    }
+                }
             }
 
-            // Fire any pre-merge callbacks
-            if (result.valid())
-            {
-                osg::ref_ptr<SceneGraphCallbacks> callbacks;
-                if (callbacks_weak.lock(callbacks))
-                {
-                    callbacks->firePreMergeNode(result.get());
-                }
-
-                if (result->getBound().valid())
-                {
-                    // Collect the GL objects for later compilation.
-                    // Don't waste precious ICO time doing this later
-                    GLObjectsCompiler compiler;
-                    auto state = compiler.collectState(result.get());
-                    compiler.requestIncrementalCompile(result, state.get(), host, promise);
-                    return;
-                }
-            }
-                
             promise.resolve(result);
         };
 
     // Job to request a scene graph merge.
-    // The promise is unused in the job, but we plan to manually resolve it in
-    // PagedNode::merge().
+    // The promise is unused (unless the job fails) because we plan to resolve it after the merge.
     auto merge_job = [pnode_weak](const osg::ref_ptr<osg::Node>& node, auto& promise)
         {
             osg::ref_ptr<PagedNode2> pnode;
-            if (pnode_weak.lock(pnode) && pnode->_loaded.available() && pnode->_pagingManager)
+            if (pnode_weak.lock(pnode) && pnode->_loaded.available() && pnode->_loaded->valid() && pnode->_pagingManager)
             {
                 pnode->_pagingManager->merge(pnode);
                 pnode->dirtyBound();

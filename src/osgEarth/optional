@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_OPTIONAL_H
-#define OSGEARTH_OPTIONAL_H 1
+#pragma once
 
 namespace osgEarth
 {
@@ -30,11 +29,9 @@ namespace osgEarth
      * This is used extensively in osgEarth's ConfigOptions subsystem.
      */
     template<typename T> struct optional {
-        optional() = default;
-        optional(const optional<T>& rhs) = default;
-        optional<T>& operator = (const optional<T>& rhs) = default;
-        optional(optional<T>&& rhs) { operator=(rhs); };
-        optional<T>& operator = (optional<T>&& rhs) { _set = rhs._set; _value = std::move(rhs._value); _defaultValue = std::move(rhs._defaultValue); return *this; }
+        optional() { }
+        optional(const optional<T>& rhs) : _set(rhs._set), _value(rhs._value), _defaultValue(rhs._defaultValue) { }
+        optional<T>& operator = (const optional<T>& rhs) { _set=rhs._set; _value=rhs._value; _defaultValue=rhs._defaultValue; return *this; }
         optional(const T& defaultValue) : _value(defaultValue), _defaultValue(defaultValue) { }
         const T& operator =(const T& value) { _set=true; _value=value; return _value; }
         bool operator ==(const optional<T>& rhs) const { return _set && rhs._set && _value==rhs._value; }
@@ -81,5 +78,3 @@ namespace osgEarth
         operator unspecified_bool_type() const { return 0; }
     };
 }
-
-#endif // OSGEARTH_OPTIONAL_H

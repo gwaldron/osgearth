@@ -39,7 +39,6 @@ namespace osgEarth
     class Profile;
     class URIReadCallback;
     class ObjectIndex;
-    //class Units;
     class StateSetCache;
 
     namespace Util
@@ -50,7 +49,7 @@ namespace osgEarth
     /**
      * Application-wide global repository.
      */
-    class OSGEARTH_EXPORT Registry // : public osg::Referenced
+    class OSGEARTH_EXPORT Registry
     {
     public:
         //! Access the global Registry singleton.
@@ -377,23 +376,3 @@ namespace osgEarth
 
     extern OSGEARTH_EXPORT std::int64_t g_startupPrivateBytes;
 }
-
-
-//namespace
-//{
-//    /** Proxy class for automatic registration of Units with the Registry.*/
-//    struct osgEarthRegisterUnits {
-//        osgEarthRegisterUnits(const osgEarth::Units* units) {
-//            osgEarth::Registry::instance()->registerUnits(units);
-//        }
-//    };
-//}
-//
-//#define OSGEARTH_REGISTER_UNITS(NAME,INSTANCE) \
-//    extern "C" void osgearth_units_##NAME(void) {} \
-//    static osgEarthRegisterUnits s_osgEarthRegistryUnitsProxy##NAME (INSTANCE)
-//
-//
-//#define USE_OSGEARTH_UNITS(NAME ) \
-//    extern "C" void osgearth_units_##NAME(void); \
-//    static osgDB::PluginFunctionProxy proxy_osgearth_units_##NAME(osgearth_units_##NAME);

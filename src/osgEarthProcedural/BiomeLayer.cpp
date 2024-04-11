@@ -37,9 +37,6 @@ REGISTER_OSGEARTH_LAYER(biomes, BiomeLayer);
 void
 BiomeLayer::Options::fromConfig(const Config& conf)
 {
-    blendRadius().setDefault(Distance(0.0f, Units::METERS));
-    blendPercentage().setDefault(0.0f);
-
     biomeCatalog() = std::make_shared<BiomeCatalog>(conf.child("biomecatalog"));
     landCoverLayer().get(conf, "landcover_layer");
     biomeBaseLayer().get(conf, "biome_base_layer");

@@ -32,6 +32,8 @@ namespace osgDB
     class Options;
 }
 
+#define OE_CONFIG_MOVE_SEMATICS
+
 namespace osgEarth
 {
     using namespace osgEarth::Util;
@@ -74,17 +76,19 @@ namespace osgEarth
             add(value);
         }
 
+#ifdef OE_CONFIG_MOVE_SEMATICS
         explicit Config(const std::string& key, Config&& value) :
             _key(key)
         {
             add(value);
         }
+        Config(Config&& rhs) = default;
+        Config& operator=(Config&& rhs) = default;
+#endif
 
         // Copy functions
         Config(const Config& rhs) = default;
         Config& operator=(const Config& rhs) = default;
-        Config(Config&& rhs) = default;
-        Config& operator=(Config&& rhs) = default;
 
         /**
          * Referrer is the context for resolving relative pathnames that occur in this object.
@@ -212,24 +216,10 @@ namespace osgEarth
             return _children.back();
         }
 
-        //! Move a config as a child
-        Config& add(Config&& conf) {
-            _children.push_back(std::move(conf));
-            _children.back().setReferrer(_referrer);
-            conf = {};
-            return _children.back();
-        }
-
         /** Add a config as a child, assigning it a key */
         Config& add(const std::string& key, const Config& conf) {
             Config& result = add(conf);
             result.key() = key;
-            return result;
-        }
-        Config& add(const std::string& key, Config&& conf) {
-            Config& result = add(std::move(conf));
-            result.key() = key;
-            conf = {};
             return result;
         }
 
@@ -238,6 +228,26 @@ namespace osgEarth
             for (ConfigSet::const_iterator i = set.begin(); i != set.end(); i++)
                 add(*i);
         }
+
+#ifdef OE_CONFIG_MOVE_SEMATICS
+        //! Move a config as a child
+        Config& add(Config&& conf) {
+            _children.push_back(std::move(conf));
+            _children.back().setReferrer(_referrer);
+            conf = {};
+            return _children.back();
+        }
+        Config& add(const std::string& key, Config&& conf) {
+            Config& result = add(std::move(conf));
+            result.key() = key;
+            conf = {};
+            return result;
+        }
+        Config& set(Config&& conf) {
+            remove(conf.key());
+            return add(std::move(conf));
+        }
+#endif
 
         /** Adds or replaces an optional value as a child, but only if it is set */
         template<typename T>
@@ -271,10 +281,6 @@ namespace osgEarth
         Config& set(const Config& conf) {
             remove(conf.key());
             return add(conf);
-        }
-        Config& set(Config&& conf) {
-            remove(conf.key());
-            return add(std::move(conf));
         }
 
         //! Adds or replaces a config as a child if it's not empty.

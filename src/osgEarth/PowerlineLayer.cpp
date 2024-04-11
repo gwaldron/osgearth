@@ -190,11 +190,15 @@ private:
 
 PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles)
     : GeomFeatureNodeFactory(options),    
-      _lineSourceLayer(options.lineSourceLayerName().get()),
-      _lineSource(options.lineSourceEmbeddedOptions().get()),
+      _lineSourceLayer(options.lineSource().externalLayerName().get()),
       _point_features(options.point_features().get()),
       _powerlineOptions(options)
 {
+    if (options.lineSource().embeddedOptions() != nullptr)
+    {
+        _lineSource = *options.lineSource().embeddedOptions();
+    }
+
     if (options.towerModels().empty())
         return;
     _renderData = options.towerModels();
@@ -932,8 +936,8 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     FilterContext localCX = sharedCX;
     
     osgEarth::Util::JoinPointsLinesFilter pointsLinesFilter;
-    pointsLinesFilter.lineSourceLayerName() = "lines";
-    pointsLinesFilter.lineSourceEmbeddedOptions() = _lineSource;
+    pointsLinesFilter.lineSource().setExternalLayerName("lines");
+    pointsLinesFilter.lineSource().setEmbeddedOptions(_lineSource);
     if (!_point_features)
     {
         pointsLinesFilter.createPointFeatures() = true;

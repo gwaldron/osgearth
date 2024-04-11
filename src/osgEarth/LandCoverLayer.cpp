@@ -144,7 +144,10 @@ LandCoverLayer::openImplementation()
 
     // We never want to cache data from a coverage, because the "parent" layer
     // will be caching the entire result of a multi-coverage composite.
-    options().sourceEmbeddedOptions()->cachePolicy() = CachePolicy::NO_CACHE;
+    if (options().source().embeddedOptions())
+    {
+        options().source().embeddedOptions()->cachePolicy() = CachePolicy::NO_CACHE;
+    }
 
     // Try to open it.
     Status cs = options().source().open(getReadOptions());

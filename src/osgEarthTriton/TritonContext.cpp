@@ -77,7 +77,7 @@ TritonContext::getHeightMapSize() const
 const std::string&
 TritonContext::getMaskLayerName() const
 {
-    return _options.maskLayerLayerName().get();
+    return _options.maskLayer().externalLayerName().get();
 }
 
 void

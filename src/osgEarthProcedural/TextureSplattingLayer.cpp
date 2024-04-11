@@ -49,6 +49,7 @@ using namespace osgEarth::Procedural;
 REGISTER_OSGEARTH_LAYER(proceduralimage, TextureSplattingLayer);
 //REGISTER_OSGEARTH_LAYER(procedural_image, TextureSplattingLayer);
 
+
 //........................................................................
 
 Config
@@ -80,13 +81,13 @@ TextureSplattingLayer::Options::fromConfig(const Config& conf)
 BiomeLayer*
 TextureSplattingLayer::getBiomeLayer() const
 {
-    return options().biomeLayer().getLayer();
+    return _biomeLayer.get();
 }
 
 LifeMapLayer*
 TextureSplattingLayer::getLifeMapLayer() const
 {
-    return options().lifeMapLayer().getLayer();
+    return _lifeMapLayer.get();
 }
 
 void
@@ -102,20 +103,14 @@ TextureSplattingLayer::addedToMap(const Map* map)
 {
     super::addedToMap(map);
 
-    options().biomeLayer().addedToMap(map);
     if (getBiomeLayer() == nullptr)
     {
-        BiomeLayer* layer = map->getLayer<BiomeLayer>();
-        if (layer)
-            options().biomeLayer().setLayer(layer);
+        _biomeLayer = map->getLayer<BiomeLayer>();
     }
 
-    options().lifeMapLayer().addedToMap(map);
     if (getLifeMapLayer() == nullptr)
     {
-        LifeMapLayer* layer = map->getLayer<LifeMapLayer>();
-        if (layer)
-            options().lifeMapLayer().setLayer(layer);
+        _lifeMapLayer = map->getLayer<LifeMapLayer>();
     }
 
     _mapProfile = map->getProfile();
@@ -127,9 +122,8 @@ void
 TextureSplattingLayer::removedFromMap(const Map* map)
 {
     super::removedFromMap(map);
-
-    options().biomeLayer().removedFromMap(map);
-    options().lifeMapLayer().removedFromMap(map);
+    _lifeMapLayer = nullptr;
+    _biomeLayer = nullptr;
 }
 
 void

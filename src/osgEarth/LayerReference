@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #pragma once
-
 #include <osgEarth/Map>
 
  //! optional property macro for referencing another layer
@@ -25,10 +24,6 @@
     private: \
         LayerReference< TYPE > _layerRef_ ## NAME ; \
     public: \
-        optional< TYPE ::Options >& NAME ## EmbeddedOptions () { return NAME ().embeddedOptions(); } \
-        const optional< TYPE ::Options >& NAME ## EmbeddedOptions () const { return NAME ().embeddedOptions(); } \
-        optional< std::string >& NAME ## LayerName () { return NAME ().externalLayerName() ; } \
-        const optional< std::string >& NAME ## LayerName () const { return NAME ().externalLayerName() ; } \
         LayerReference< TYPE >& NAME () { return _layerRef_ ## NAME ; } \
         const LayerReference< TYPE >& NAME () const { return _layerRef_ ## NAME ; }
 
@@ -42,9 +37,6 @@ namespace osgEarth
     {
     public:
         using TypedOptions = typename T::Options;
-
-        LayerReference() : 
-            _layer(NULL) { }
 
         //! User can call this to set the layer by hand (instead of finding it
         //! in the map or in an embedded options structure)
@@ -62,22 +54,22 @@ namespace osgEarth
         //! Whether this reference is set at all.
         bool isSet() const
         {
-            return _layer.valid() || _embeddedOptions.isSet() || _externalLayerName.isSet();
+            return _layer.valid() || _embeddedOptions || _externalLayerName.isSet();
         }
 
         //! Whether the user called setLayer to establish the reference
         //! (as opposed to finding it in an embedded options or in the map)
         bool isSetByUser() const 
         {
-            return _layer.valid() && !_embeddedOptions.isSet() && !_externalLayerName.isSet();
+            return _layer.valid() && !_embeddedOptions && !_externalLayerName.isSet();
         }
 
         //! open the layer pointed to in the reference and return a status code
         Status open(const osgDB::Options* readOptions)
         {
-            if (_embeddedOptions.isSet())
+            if (_embeddedOptions)
             {
-                auto typedLayer = Layer::create_as<T>(_embeddedOptions.get());
+                auto typedLayer = Layer::create_as<T>(*_embeddedOptions.get());
                 if (typedLayer)
                 {
                     typedLayer->setReadOptions(readOptions);
@@ -98,7 +90,7 @@ namespace osgEarth
                     return layerStatus;
                 }
             }
-            return Status::OK(); // _layer.valid() ? _layer->getStatus() : Status(Status::ResourceUnavailable);
+            return Status::OK();
         }
 
         void close()
@@ -122,7 +114,7 @@ namespace osgEarth
                     }
                 }
             }
-            else if (getLayer() && _embeddedOptions.isSet())
+            else if (getLayer() && _embeddedOptions)
             {
                 _layer->addedToMap(map);
             }
@@ -133,7 +125,7 @@ namespace osgEarth
         {
             if (map && _layer.valid())
             {
-                if (_embeddedOptions.isSet())
+                if (_embeddedOptions)
                 {
                     _layer->removedFromMap(map);
                 }
@@ -160,20 +152,20 @@ namespace osgEarth
                         auto layer = Layer::create_as<T>(tag_content);
                         if (layer.valid())
                         {
-                            _embeddedOptions = TypedOptions(tag_content);
+                            _embeddedOptions = std::make_shared<TypedOptions>(tag_content);
                         }
                     }
                 }
 
                 // failing that, try each child of the config.
-                if (!_embeddedOptions.isSet())
+                if (!_embeddedOptions)
                 {
                     for(auto& child_conf: conf.children())
                     {
                         auto layer = Layer::create_as<T>(child_conf);
                         if (layer.valid())
                         {
-                            _embeddedOptions = TypedOptions(child_conf);
+                            _embeddedOptions = std::make_shared<TypedOptions>(child_conf);
                             break;
                         }
                     }
@@ -188,7 +180,7 @@ namespace osgEarth
             {
                 conf.set(tag, _externalLayerName);
             }
-            else if (_embeddedOptions.isSet())
+            else if (_embeddedOptions)
             {
                 conf.set(_embeddedOptions->getConfig());
             }
@@ -198,16 +190,23 @@ namespace osgEarth
             }
         }
 
-        optional<TypedOptions>& embeddedOptions() { return _embeddedOptions; }
-        const optional<TypedOptions>& embeddedOptions() const { return _embeddedOptions; }
+        const std::shared_ptr<TypedOptions>& embeddedOptions() const { return _embeddedOptions; }
 
-        optional<std::string>& externalLayerName() { return _externalLayerName; }
+        void setEmbeddedOptions(const TypedOptions& value)
+        {
+            _embeddedOptions = std::make_shared<TypedOptions>(value);
+        }
+
         const optional<std::string>& externalLayerName() const { return _externalLayerName; }
 
+        void setExternalLayerName(const std::string& value)
+        {
+            _externalLayerName = value;
+        }
 
     private:
-        osg::ref_ptr< T > _layer;
-        optional<TypedOptions> _embeddedOptions;
+        osg::ref_ptr<T> _layer;
         optional<std::string> _externalLayerName;
+        std::shared_ptr<TypedOptions> _embeddedOptions;
     };
 }

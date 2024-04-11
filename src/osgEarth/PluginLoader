@@ -19,43 +19,27 @@
 #pragma once
 
 #include <osgEarth/Common>
+#include <osgEarth/Registry>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 
 namespace osgEarth { namespace Util
 {
     /**
-     * Template that helps with the registration of plugins.
+     * Create one of these as a static global to register an OSG plugin at startup.
      */
     template<class T>
-    class RegisterPluginLoader
+    struct RegisterPluginLoader
     {
-        public:
-            RegisterPluginLoader(const std::string& name)
-            {
-                if (osgDB::Registry::instance())
-                {
-                    _rw = new T(name);
-                    osgDB::Registry::instance()->addReaderWriter(_rw.get());
-                }
-            }
-
-            ~RegisterPluginLoader()
-            {
-                if (osgDB::Registry::instance())
-                {
-                    osgDB::Registry::instance()->removeReaderWriter(_rw.get());
-                }
-            }
-
-            T* get() { return _rw.get(); }
-
-        protected:
-            osg::ref_ptr<T> _rw;
+        RegisterPluginLoader(const std::string& name)
+        {
+            OE_HARD_ASSERT(osgDB::Registry::instance());
+            osgDB::Registry::instance()->addReaderWriter(new T(name));
+        }
     };
 
     /**
-     * Template that create a plugin loader.
+     * OSG plugin that will create an instance of a type with configuration options.
      */
     template<typename T, typename U>
     class PluginLoader : public osgDB::ReaderWriter
@@ -65,7 +49,7 @@ namespace osgEarth { namespace Util
             supportsExtension(name, name);
         }
 
-        ReadResult readObject(const std::string& filename, const osgDB::Options* dbOptions) const override
+        inline ReadResult readObject(const std::string& filename, const osgDB::Options* dbOptions) const override
         {
             if (!acceptsExtension(osgDB::getLowerCaseFileExtension(filename)))
                 return ReadResult::FILE_NOT_HANDLED;

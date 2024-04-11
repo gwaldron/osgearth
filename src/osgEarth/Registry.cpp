@@ -844,21 +844,3 @@ Registry::setMaxTextureSize(int value)
 {
     _maxImageDimension = value;
 }
-
-namespace
-{
-    //Simple class used to add a file extension alias for the earth_tile to the earth plugin
-    class RegisterEarthTileExtension
-    {
-    public:
-        RegisterEarthTileExtension()
-        {
-#if OSG_VERSION_LESS_THAN(3,5,4)
-            // Method deprecated beyone 3.5.4 since all ref counting is thread-safe by default
-            osg::Referenced::setThreadSafeReferenceCounting( true );
-#endif
-            osgDB::Registry::instance()->addFileExtensionAlias("earth_tile", "earth");
-        }
-    };
-}
-static RegisterEarthTileExtension s_registerEarthTileExtension;

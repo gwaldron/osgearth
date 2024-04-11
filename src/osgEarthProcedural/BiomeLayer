@@ -159,8 +159,8 @@ namespace osgEarth
                 OE_OPTION_LAYER(CoverageLayer, landCoverLayer);
                 OE_OPTION_LAYER(CoverageLayer, biomeBaseLayer);
                 OE_OPTION_SHAREDPTR(BiomeCatalog, biomeCatalog);
-                OE_OPTION(Distance, blendRadius);
-                OE_OPTION(float, blendPercentage);
+                OE_OPTION(Distance, blendRadius, Distance(0.0f, Units::METERS));
+                OE_OPTION(float, blendPercentage, 0.0f);
                 virtual Config getConfig() const;
             private:
                 void fromConfig(const Config& conf);

@@ -27,6 +27,8 @@
 #include "Math"
 
 #include <osg/BoundingBox>
+#include <osg/Polytope>
+#include <osg/Camera>
 
 using namespace osgEarth;
 
@@ -629,6 +631,26 @@ GeoPoint::toString() const
     buf << "x=" << x() << ", y=" << y() << ", z=" << z() << "; m=" <<
         (_altMode == ALTMODE_ABSOLUTE ? "abs" : "rel");
     return buf.str();
+}
+
+osg::Vec2d
+GeoPoint::toScreen(const osg::Camera* camera) const
+{
+    osg::Vec2d result;
+    if (camera)
+    {
+        osg::Vec3d world;
+        if (toWorld(world))
+        {
+            auto temp = world *
+                camera->getViewMatrix() *
+                camera->getProjectionMatrix() *
+                camera->getViewport()->computeWindowMatrix();
+
+            result.set(temp.x(), temp.y());
+        }
+    }
+    return result;
 }
 
 

@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_GEODATA_H
-#define OSGEARTH_GEODATA_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/GeoCommon>
@@ -30,9 +29,14 @@
 #include <osg/Referenced>
 #include <osg/Image>
 #include <osg/Shape>
-#include <osg/Polytope>
 
 #include <unordered_map>
+
+namespace osg
+{
+    class Camera;
+    class Polytope;
+}
 
 namespace osgEarth
 {
@@ -270,6 +274,9 @@ namespace osgEarth
          * using the parameter t [0..1].
          */
         GeoPoint interpolate(const GeoPoint& rhs, double t) const;
+
+        //! Convert this point to screen coordinates.
+        osg::Vec2d toScreen(const osg::Camera* camera) const;
 
         //! Convenience function to return xy units
         const UnitsType& getXYUnits() const;
@@ -960,5 +967,3 @@ namespace osgEarth
 
     typedef std::vector<GeoNode> GeoNodeVector;
 }
-
-#endif // OSGEARTH_GEODATA_H

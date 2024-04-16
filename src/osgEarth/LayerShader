@@ -22,7 +22,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/URI>
 #include <osgEarth/TerrainResources>
-#include <osgEarth/MaterialLoader>
+#include <osgEarth/PBRMaterial>
 #include <osgDB/Options>
 #include <vector>
 #include <string>

@@ -1,0 +1,109 @@
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2020 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+* IN THE SOFTWARE.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#pragma once
+
+#include <osgEarth/Config>
+#include <osgEarth/URI>
+#include <osg/Texture>
+
+namespace osgEarth
+{
+    /**
+    * Describes a PBR (physically-based rendering) material as a collection
+    * of its component rasters.
+    */
+    class OSGEARTH_EXPORT PBRMaterial
+    {
+    public:
+        PBRMaterial() = default;
+        PBRMaterial(const PBRMaterial& rhs) = default;
+        PBRMaterial& operator=(const PBRMaterial& rhs) = default;
+        PBRMaterial(PBRMaterial&& rhs) = default;
+        PBRMaterial& operator=(PBRMaterial&& rhs) = default;
+
+        OE_PROPERTY(std::string, name, {});
+        OE_OPTION(URI, color);
+        OE_OPTION(URI, normal);
+        OE_OPTION(URI, roughness);
+        OE_OPTION(URI, ao);
+        OE_OPTION(URI, metal);
+        OE_OPTION(URI, displacement);
+        OE_OPTION(URI, opacity);
+
+        PBRMaterial(const Config& conf)
+        {
+            conf.get("name", name());
+            if (name().empty())
+                name() = conf.referrer();
+            conf.get("color", color());
+            conf.get("normal", normal());
+            conf.get("roughness", roughness());
+            conf.get("ao", ao());
+            conf.get("metal", metal());
+            conf.get("displacement", displacement());
+            conf.get("height", displacement());
+            conf.get("opacity", opacity());
+        }
+
+        Config getConfig() const
+        {
+            Config conf("material");
+            conf.set("name", name());
+            conf.set("color", color());
+            conf.set("normal", normal());
+            conf.set("roughness", roughness());
+            conf.set("ao", ao());
+            conf.set("metal", metal());
+            conf.set("displacement", displacement());
+            conf.set("opacity", opacity());
+            return conf;
+        }
+    };
+
+    /**
+    * Adapter that lets you place a PBR material collection in a state attribute.
+    */
+    class OSGEARTH_EXPORT PBRTexture : public osg::StateAttribute
+    {
+    public:
+        META_StateAttribute(osgEarth, PBRTexture, TEXTURE);
+        PBRTexture() = default;
+        PBRTexture(const PBRTexture& rhs, const osg::CopyOp& op) :
+            osg::StateAttribute(rhs, op), albedo(rhs.albedo), normal(rhs.normal), pbr(rhs.pbr) { }
+        int compare(const osg::StateAttribute& rhs) const override { return -1; }
+        bool isTextureAttribute() const { return true; }
+
+        //! The textures comprising the PBR material
+        osg::ref_ptr<osg::Texture> albedo, normal, pbr;
+
+        //! Sets a wrap on all textures
+        inline void setWrap(osg::Texture::WrapParameter wrap, osg::Texture::WrapMode mode) {
+            if (albedo.valid()) albedo->setWrap(wrap, mode);
+            if (normal.valid()) normal->setWrap(wrap, mode);
+            if (pbr.valid()) pbr->setWrap(wrap, mode);
+        }
+
+        //! Populates this object from a PBRMaterial description
+        void load(const PBRMaterial& material, const osgDB::Options* options = nullptr);
+    };
+}
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::PBRMaterial);

@@ -319,6 +319,7 @@ SET(LIB_PUBLIC_HEADERS
     OverlayDecorator
     PagedNode
     PatchLayer
+    PBRMaterial
     PhongLightingEffect
     Picker
     PlaceNode
@@ -729,6 +730,7 @@ set(TARGET_SRC
     OverlayDecorator.cpp
     PagedNode.cpp
     PatchLayer.cpp
+    PBRMaterial.cpp
     PhongLightingEffect.cpp
     PlaceNode.cpp
     PointDrawable.cpp

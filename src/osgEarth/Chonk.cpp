@@ -29,7 +29,7 @@
 #include "NodeUtils"
 #include "DrawInstanced"
 #include "Registry"
-#include "MaterialLoader"
+#include "PBRMaterial"
 
 #include <osg/Switch>
 #include <osg/LOD>

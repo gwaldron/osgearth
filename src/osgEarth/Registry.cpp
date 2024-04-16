@@ -201,20 +201,14 @@ Registry::Registry() :
     if ( !_defaultFont.valid() )
     {
 #ifdef WIN32
-        //_defaultFont = osgText::readRefFontFile("arial.ttf");
-#else
-        _defaultFont = osgText::Font::getDefaultFont();
+        _defaultFont = osgText::readRefFontFile("arial.ttf");
 #endif
-    }
 
-#if OSG_VERSION_LESS_THAN(3,5,8)
-    if ( _defaultFont.valid() )
-    {
-        // mitigates mipmapping issues that cause rendering artifacts
-        // for some fonts/placement
-        _defaultFont->setGlyphImageMargin( 2 );
+        if (!_defaultFont.valid())
+        {
+            _defaultFont = osgText::Font::getDefaultFont();
+        }
     }
-#endif
 
     const char* maxVerts = getenv("OSGEARTH_MAX_VERTS_PER_DRAWABLE");
     if (maxVerts)

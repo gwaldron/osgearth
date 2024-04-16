@@ -119,7 +119,7 @@ osg::ref_ptr<osg::Node> SimplePager::buildRootNode()
     osg::ref_ptr<ProgressCallback> prog = new ObserverProgressCallback(this);
     for (unsigned int i = 0; i < keys.size(); i++)
     {
-        osg::ref_ptr<osg::Node> node = createPagedNode(keys[i], prog.get());
+        osg::ref_ptr<osg::Node> node = createChildNode(keys[i], prog.get());
         if ( node.valid() )
             root->addChild( node );
     }
@@ -149,82 +149,88 @@ osg::ref_ptr<osg::Node> SimplePager::createNode(const TileKey& key, ProgressCall
 }
 
 osg::ref_ptr<osg::Node>
-SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
+SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
 {
+    osg::ref_ptr<osg::Node> result;
+
     osg::BoundingSphered tileBounds = getBounds(key);
     double tileRadius = tileBounds.radius();
 
     // restrict subdivision to max level:
     bool hasChildren = key.getLOD() < _maxLevel;
 
-    // Create the actual data for this tile.
-    osg::ref_ptr<osg::Node> node;
+    // Create the actual drawable data for this tile.
+    osg::ref_ptr<osg::Node> payload;
 
     // only create real node if we are at least at the min LOD:
     if (key.getLOD() >= _minLevel)
     {
-        node = createNode(key, progress);
-    }
+        payload = createNode(key, progress);
 
-    osg::ref_ptr<PagedNode2> pagedNode = new PagedNode2();
-    pagedNode->setSceneGraphCallbacks(getSceneGraphCallbacks());
-
-    if (node.valid())
-    {
-        // Build kdtrees to increase intersection speed.
-        if (osgDB::Registry::instance()->getKdTreeBuilder())
+        if (payload.valid())
         {
-            osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
-            node->accept(*kdTreeBuilder.get());
-        }
-
-        pagedNode->addChild(node);
-        fire_onCreateNode(key, node.get());
-    }
-
-    pagedNode->setCenter(tileBounds.center());
-    pagedNode->setRadius(tileRadius);
-
-    // Assume geocentric for now.
-    if (_mapProfile->getSRS()->isGeographic())
-    {
-        const GeoExtent& ccExtent = key.getExtent();
-        if (ccExtent.isValid())
-        {
-            // if the extent is more than 90 degrees, bail
-            GeoExtent geodeticExtent = ccExtent.transform(ccExtent.getSRS()->getGeographicSRS());
-            if (geodeticExtent.width() < 90.0 && geodeticExtent.height() < 90.0)
+            // Build kdtrees to increase intersection speed.
+            if (osgDB::Registry::instance()->getKdTreeBuilder())
             {
-                // get the geocentric tile center:
-                osg::Vec3d tileCenter;
-                ccExtent.getCentroid(tileCenter.x(), tileCenter.y());
-
-                osg::Vec3d centerECEF;
-                const SpatialReference* mapSRS = osgEarth::SpatialReference::get("epsg:4326");
-                if (mapSRS)
-                {
-                    ccExtent.getSRS()->transform(tileCenter, mapSRS->getGeocentricSRS(), centerECEF);
-                    osg::NodeCallback* ccc = ClusterCullingFactory::create(geodeticExtent);
-                    if (ccc)
-                        pagedNode->addCullCallback(ccc);
-                }
+                osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
+                payload->accept(*kdTreeBuilder.get());
             }
         }
     }
 
-    float loadRange = FLT_MAX;
-
     if (hasChildren)
     {
+        osg::ref_ptr<PagedNode2> pagedNode = new PagedNode2();
+
+        pagedNode->setSceneGraphCallbacks(getSceneGraphCallbacks());
+
+        if (payload.valid())
+        {
+            pagedNode->addChild(payload);
+            fire_onCreateNode(key, payload.get());
+        }
+
+        pagedNode->setCenter(tileBounds.center());
+        pagedNode->setRadius(tileRadius);
+
+        // Install a cluster-culling callback for geocentric data:
+        if (_mapProfile->getSRS()->isGeographic())
+        {
+            const GeoExtent& ccExtent = key.getExtent();
+            if (ccExtent.isValid())
+            {
+                // if the extent is more than 90 degrees, bail
+                GeoExtent geodeticExtent = ccExtent.transform(ccExtent.getSRS()->getGeographicSRS());
+                if (geodeticExtent.width() < 90.0 && geodeticExtent.height() < 90.0)
+                {
+                    // get the geocentric tile center:
+                    osg::Vec3d tileCenter;
+                    ccExtent.getCentroid(tileCenter.x(), tileCenter.y());
+                    osg::Vec3d centerECEF;
+                    const SpatialReference* mapSRS = _mapProfile->getSRS();
+                    if (mapSRS)
+                    {
+                        ccExtent.getSRS()->transform(tileCenter, mapSRS->getGeocentricSRS(), centerECEF);
+                        osg::NodeCallback* ccc = ClusterCullingFactory::create(geodeticExtent);
+                        if (ccc)
+                        {
+                            pagedNode->addCullCallback(ccc);
+                        }
+                    }
+                }
+            }
+        }
+
+        float loadRange = FLT_MAX;
+
         if (getName().empty())
             pagedNode->setName(key.str());
         else
             pagedNode->setName(getName() + " " + key.str());
 
-        // Now setup a filename on the PagedLOD that will load all of the children of this node.
         pagedNode->setPriorityScale(_priorityScale);
-        //pager->setPriorityOffset(_priorityOffset);
 
+        // Now set up a loader that will load the child data
         osg::observer_ptr<SimplePager> pager_weakptr(this);
         pagedNode->setLoadFunction(
             [pager_weakptr, key](Cancelable* c)
@@ -247,13 +253,30 @@ SimplePager::createPagedNode(const TileKey& key, ProgressCallback* progress)
         loadRange = (float)(tileRadius * _rangeFactor);
 
         pagedNode->setRefinePolicy(_additive ? REFINE_ADD : REFINE_REPLACE);
+
+        pagedNode->setMaxRange(std::min(loadRange, _maxRange));
+
+        result = pagedNode;
     }
 
-    pagedNode->setMaxRange(std::min(loadRange, _maxRange));
+    else // !hasChildren
+    {
+        if (payload.valid())
+        {
+            fire_onCreateNode(key, payload.get());
+            result = payload;
+        }
+    }
 
-    //OE_INFO << "PagedNode2: key="<<key.str()<<" hasChildren=" << hasChildren << ", range=" << loadRange << std::endl;
+    if (result.valid())
+    {
+        if (getName().empty())
+            result->setName(key.str());
+        else
+            result->setName(getName() + " " + key.str());
+    }
 
-    return pagedNode;
+    return result;
 }
 
 osg::ref_ptr<osg::Node>
@@ -271,10 +294,10 @@ SimplePager::loadKey(const TileKey& key, ProgressCallback* progress)
     {
         TileKey childKey = key.createChildKey( i );
 
-        osg::ref_ptr<osg::Node> plod = createPagedNode(childKey, progress);
-        if (plod.valid())
+        osg::ref_ptr<osg::Node> child = createChildNode(childKey, progress);
+        if (child.valid())
         {
-            group->addChild( plod );
+            group->addChild(child);
         }
     }
     if (group->getNumChildren() > 0)

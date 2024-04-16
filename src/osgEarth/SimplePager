@@ -123,9 +123,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Node> buildRootNode();
 
         //! Creates a paging data for the given TileKey
-        osg::ref_ptr<osg::Node> createPagedNode(
-            const TileKey& key,
-            ProgressCallback* progress);
+        osg::ref_ptr<osg::Node> createChildNode(const TileKey& key, ProgressCallback* progress);
 
         bool _additive = false;
         double _rangeFactor = 6.0;

@@ -42,7 +42,8 @@ PagedNode2::~PagedNode2()
 bool
 PagedNode2::isHighestResolution() const
 {
-    return getNumChildren() == 0;
+    // if there's no load function, we are at the end of the road.
+    return getLoadFunction() == nullptr;
 }
 
 void

@@ -53,7 +53,7 @@ namespace osgEarth { namespace Util
         //! Construct an empty paged node
         PagedNode2();
 
-        //! Function to run to load the asychronous child
+        //! Function to run to load the asychronous child. When null, there is no child data.
         void setLoadFunction(const Loader& value);
         const Loader& getLoadFunction() const {
             return _load_function;
@@ -77,43 +77,60 @@ namespace osgEarth { namespace Util
             return _userBS->radius();
         }
 
-        //! Minimum distance from camera at which to render.
+        //! Sets the minimum distance from camera at which to load child data
+        //! and activates range-based loading.
         void setMinRange(float value) {
             _minRange = value, _useRange = true;
         }
 
+        //! Minimum distance from camera at which to load child data
+        //! when using range-based loading.
         float getMinRange() const {
             return _minRange;
         }
 
-        //! Maximum distance from camera at which to render
+        //! Sets the maximum distance from camera at which to load child data
+        //! and activates range-based loading.
         void setMaxRange(float value) {
             _maxRange = value, _useRange = true;
         }
+
+        //! Maximum distance from camera at which to load child data
+        //! when using range-based loading.
         float getMaxRange() const {
             return _maxRange;
         }
 
-        //! Minimum pixel extent at which to render.
+        //! Sets the minimum pixel extent at which to load child data
+        //! and activates screen-space-based loading.
         void setMinPixels(float value) {
             _minPixels = value, _useRange = false;
         }
+
+        //! Minimum pixel extent at which to load child data
+        //! when using screen-size-based loading.
         float getMinPixels() const {
             return _minPixels;
         }
 
-        //! Maximum pixel extent at which to render.
+        //! Sets the maximum pixel extent at which to load child data
+        //! and activates screen-size-based loading.
         void setMaxPixels(float value) {
             _maxPixels = value, _useRange = false;
         }
+
+        //! Maximum pixel extent at which to load child data
+        //! when using screen-size-based loading.
         float getMaxPixels() const {
             return _maxPixels;
         }
 
-        //! Multiple the load job's priority by this number
+        //! Multiply the load job's priority by this number
         void setPriorityScale(float value) {
             _priorityScale = value;
         }
+
+        //! Multiply the load job's priority by this number
         float getPriorityScale() const {
             return _priorityScale;
         }
@@ -122,6 +139,8 @@ namespace osgEarth { namespace Util
         void setSceneGraphCallbacks(SceneGraphCallbacks* value) {
             _callbacks = value;
         }
+
+        //! Pre- and post-merge callbacks for the async data
         SceneGraphCallbacks* getSceneGraphCallbacks() const {
             return _callbacks.get();
         }
@@ -130,6 +149,8 @@ namespace osgEarth { namespace Util
         void setPreCompileGLObjects(bool value) {
             _preCompile = value;
         }
+
+        //! Whether to pre-compile GL objects before merging
         bool getPreCompileGLObjects() const {
             return _preCompile;
         }

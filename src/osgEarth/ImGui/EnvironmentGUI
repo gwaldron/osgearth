@@ -249,6 +249,12 @@ namespace osgEarth
                                 _skyNode->getSunLight()->setDiffuse(diffuse_color);
                                 dirtySettings();
                             }
+
+                            static float normal_boost = 1.0f;
+                            if (ImGuiLTable::SliderFloat("Normal boost", &normal_boost, 1.0f, 5.0f)) {
+                                _skyNode->getOrCreateStateSet()->getOrCreateUniform("oe_normal_boost", osg::Uniform::FLOAT)->set(normal_boost);
+                                dirtySettings();
+                            }
                         }
                         else
                         {

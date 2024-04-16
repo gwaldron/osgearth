@@ -24,7 +24,6 @@
 #include <osgEarth/TextureArena>
 #include <osgEarth/VirtualProgram>
 #include <osgEarth/ExampleResources>
-#include <osgEarth/GeometryCloud>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Chonk>
 #include <osgEarth/Capabilities>

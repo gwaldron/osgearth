@@ -204,9 +204,10 @@ namespace osgEarth
 
         /** Add a value as a child */
         template<typename T>
-        void add(const std::string& key, const T& value) {
+        Config& add(const std::string& key, const T& value) {
             _children.push_back(Config(key, value));
             _children.back().setReferrer(_referrer);
+            return _children.back();
         }
 
         //! Set a config as a child
@@ -221,6 +222,11 @@ namespace osgEarth
             Config& result = add(conf);
             result.key() = key;
             return result;
+        }
+
+        //! Add a config named key
+        Config& add(const std::string& key) {
+            return add(Config(key));
         }
 
         /** Add a set of config objects as children. */
@@ -584,10 +590,10 @@ namespace osgEarth
             } \
             else return false; \
         } \
-        template<> inline void Config::add<TYPE>(const std::string& key, const TYPE& value) { \
+        template<> inline Config& Config::add<TYPE>(const std::string& key, const TYPE& value) { \
             Config conf = value.getConfig(); \
             conf.key() = key; \
-            add(std::move(conf)); \
+            return add(std::move(conf)); \
         } \
     } // namespace osgEarth
 
@@ -755,18 +761,18 @@ namespace osgEarth
     const TYPE & CLASS ::get ## FUNC () const { return options(). OPTION ().get(); }
 
 //! property macro
-#define OE_PROPERTY(TYPE, NAME) \
+#define OE_PROPERTY(TYPE, NAME, DEFVAL) \
     private: \
-    TYPE _ ## NAME ; \
+    TYPE _ ## NAME = DEFVAL; \
     public: \
     TYPE & NAME () { return _ ## NAME; } \
     TYPE & NAME ## _mutable() { return _ ## NAME; } \
     const TYPE & NAME () const { return _ ## NAME; }
 
 //! const property macro
-#define OE_PROPERTY_CONST(TYPE, NAME) \
+#define OE_PROPERTY_CONST(TYPE, NAME, DEFVAL) \
     private: \
-    TYPE _ ## NAME ; \
+    TYPE _ ## NAME = DEFVAL; \
     protected: \
     TYPE & NAME () { return _ ## NAME; } \
     TYPE & NAME ## _mutable() { return _ ## NAME; } \

@@ -78,13 +78,6 @@ Texture::create(osg::Texture* input)
 
 Texture::Texture(GLenum target_) :
     _globjects(MAX_CONTEXTS),
-    _compress(true),
-    _mipmap(true),
-    _clamp_s(false),
-    _clamp_t(false),
-    _clamp_r(false),
-    _keepImage(true),
-    _maxDim(63356),
     _target(target_),
     _host(nullptr)
 {
@@ -107,8 +100,6 @@ Texture::Texture(GLenum target_) :
 
 Texture::Texture(osg::Texture* input) :
     _globjects(MAX_CONTEXTS),
-    _compress(false),
-    _maxDim(65536),
     _host(nullptr)
 {
 #ifdef DEEP_CLONE_IMAGE
@@ -910,7 +901,7 @@ TextureArena::apply(osg::State& state) const
     // only apply once per frame per state.
     // (This is disabled in single-context mode so that it always runs)
 
-    if (gc._lastAppliedFrame != state.getFrameStamp()->getFrameNumber())
+    if (state.getFrameStamp() && (gc._lastAppliedFrame != state.getFrameStamp()->getFrameNumber()))
 
 #endif
     {

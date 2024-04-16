@@ -90,16 +90,16 @@ void oeui_render_outlines(inout vec4 color) {
     const char* render_ao = R"(
 #version 450
 #pragma vp_function oeui_render_ao, fragment_lighting, last
-struct OE_PBR { float roughness, ao, metal, brightness, contrast; } oe_pbr;
+struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 void oeui_render_ao(inout vec4 color) {
-    color = vec4(oe_pbr.ao, oe_pbr.ao, oe_pbr.ao, 1);
+    color = vec4(oe_pbr.ao, oe_pb.ao, oe_pb.ao, 1);
 }
 )";
 
     const char* render_roughness = R"(
 #version 450
 #pragma vp_function oeui_render_roughness, fragment_lighting, last
-struct OE_PBR { float roughness, ao, metal, brightness, contrast; } oe_pbr;
+struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 void oeui_render_roughness(inout vec4 color) {
     color = vec4(oe_pbr.roughness, oe_pbr.roughness, oe_pbr.roughness, 1);
 }
@@ -108,7 +108,7 @@ void oeui_render_roughness(inout vec4 color) {
     const char* render_metal = R"(
 #version 450
 #pragma vp_function oeui_render_metal, fragment_lighting, last
-struct OE_PBR { float roughness, ao, metal, brightness, contrast; } oe_pbr;
+struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 void oeui_render_metal(inout vec4 color) {
     color = vec4(oe_pbr.metal, oe_pbr.metal, oe_pbr.metal, 1);
 }

@@ -42,9 +42,6 @@ usage(const char* name)
 int
 main(int argc, char** argv)
 {
-    std::cout << "Press enter to continue..." << std::endl;
-    ::getchar();
-
     osg::ArgumentParser arguments(&argc, argv);
     if (arguments.read("--help"))
         return usage(argv[0]);

@@ -206,9 +206,186 @@ MaterialLoader::apply(osg::StateSet* ss)
 
 namespace
 {
+    const float DEFAULT_DISPLACEMENT = 0.0f;
     const float DEFAULT_ROUGHNESS = 0.5f;
     const float DEFAULT_AO = 1.0f;
+    const float DEFAULT_METAL = 0.0f;
 
+    osg::ref_ptr<osg::Image> assemble_RGBA(
+        osg::ref_ptr<osg::Image>& color,
+        osg::ref_ptr<osg::Image>& opacity)
+    {
+        osg::ref_ptr<osg::Image> output;
+
+        if (color.valid())
+        {
+            output = new osg::Image();
+            output->allocateImage(color->s(), color->t(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
+            ImageUtils::PixelWriter write_output(output.get());
+            ImageUtils::PixelReader read_color(color.get());
+            ImageUtils::PixelReader read_opacity(opacity.get());
+            ImageUtils::ImageIterator iter(output.get());
+            osg::Vec4 a, b;
+            iter.forEachPixel([&]()
+                {
+                    read_color(a, iter.s(), iter.t());
+                    if (opacity.valid())
+                    {
+                        read_opacity(b, iter.u(), iter.v());
+                        a.a() = b[0];
+                    }
+                    write_output(a, iter.s(), iter.t());
+                });
+        }
+        else
+        {
+            // default to red
+            output = new osg::Image();
+            output->allocateImage(1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+            output->setColor(osg::Vec4(1, 0, 0, 1), 0, 0);
+        }
+
+        return output;
+    }
+
+    osg::ref_ptr<osg::Image> assemble_NORM(osg::ref_ptr<osg::Image> normal)
+    {
+        osg::ref_ptr<osg::Image> output;
+        if (normal.valid())
+        {
+            return normal;
+
+#if 0
+            // disable compression for now b/c it's not working :(
+            if (normal->getPixelFormat() == GL_COMPRESSED_RED_GREEN_RGTC2_EXT)
+            {
+                // DO nothing.
+                output = normal;
+            }
+            else
+            {
+                output = new osg::Image();
+                output->allocateImage(normal->s(), normal->t(), 1, GL_RG, GL_UNSIGNED_BYTE);
+                output->setInternalTextureFormat(GL_COMPRESSED_RED_GREEN_RGTC2_EXT);
+                ImageUtils::PixelReader read(normal.get());
+                ImageUtils::PixelWriter write(output.get());
+                osg::Vec4 a, packed;
+                osg::Vec3 temp;
+                ImageUtils::ImageIterator iter(output.get());
+                iter.forEachPixel([&]()
+                    {
+                        read(a, iter.s(), iter.t());
+                        temp.set(a.x() * 2.0f - 1.0f, a.y() * 2.0f - 1.0f, a.z() * 2.0f - 1.0f);
+                        NormalMapGenerator::pack(temp, packed);
+                        write(packed, iter.s(), iter.t());
+                    });
+            }
+#endif
+        }
+        else
+        {
+            osg::ref_ptr<osg::Image> output = new osg::Image();
+            output->allocateImage(1, 1, 1, GL_RG, GL_UNSIGNED_BYTE);
+            output->setInternalTextureFormat(GL_RG8);
+            output->setColor(osg::Vec4(0.5, 0.5, 1.0, 1.0), 0, 0);
+        }
+        return output;
+    }
+
+    osg::ref_ptr<osg::Image> assemble_DRAM(
+        osg::ref_ptr<osg::Image>& displacement,
+        osg::ref_ptr<osg::Image>& roughness,
+        osg::ref_ptr<osg::Image>& ao,
+        osg::ref_ptr<osg::Image>& metal)
+    {
+        osg::ref_ptr<osg::Image> output;
+
+        if (displacement.valid() || roughness.valid() || ao.valid() || metal.valid())
+        {
+            // use the dimensions of the largest image
+            int s = 0, t = 0;
+            for (auto& image : { displacement, roughness, ao, metal })
+            {
+                if (image.valid() && image->s() > s)
+                    s = image->s();
+                if (image.valid() && image->t() > t)
+                    t = image->t();
+            }
+
+            if (s > 0 && t > 0)
+            {
+                output = new osg::Image();
+                output->allocateImage(s, t, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
+                ImageUtils::PixelReader
+                    read_displacement(displacement.get()),
+                    read_roughness(roughness.get()),
+                    read_ao(ao.get()),
+                    read_metal(metal.get());
+
+                ImageUtils::PixelWriter write_output(output.get());
+
+                osg::Vec4 in, out;
+                ImageUtils::ImageIterator iter(output.get());
+                iter.forEachPixel([&]()
+                    {
+                        if (displacement.valid())
+                        {
+                            read_displacement(in, iter.u(), iter.v());
+                            out.r() = in.r();
+                        }
+                        else
+                        {
+                            out.r() = DEFAULT_DISPLACEMENT;
+                        }
+
+                        if (roughness.valid())
+                        {
+                            read_roughness(in, iter.u(), iter.v());
+                            out.g() = in.r();
+                        }
+                        else
+                        {
+                            out.g() = DEFAULT_ROUGHNESS;
+                        }
+
+                        if (ao.valid())
+                        {
+                            read_ao(in, iter.u(), iter.v());
+                            out.b() = in.r();
+                        }
+                        else
+                        {
+                            out.b() = DEFAULT_AO;
+                        }
+
+                        if (metal.valid())
+                        {
+                            read_metal(in, iter.u(), iter.v());
+                            out.a() = in.r();
+                        }
+                        else
+                        {
+                            out.a() = DEFAULT_METAL;
+                        }
+
+                        write_output(out, iter.s(), iter.t());
+                    });
+            }
+        }
+
+        if (!output.valid())
+        {
+            // fallback - use defaults.
+            osg::ref_ptr<osg::Image> output = new osg::Image();
+            output->allocateImage(1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+            output->setColor(osg::Vec4(DEFAULT_DISPLACEMENT, DEFAULT_ROUGHNESS, DEFAULT_AO, DEFAULT_METAL), 0, 0);
+        }
+
+        return output;
+    }
+
+#if 0
     osg::ref_ptr<osg::Image> assemble_RGBH(
         osg::ref_ptr<osg::Image> color,
         osg::ref_ptr<osg::Image> height,
@@ -221,8 +398,8 @@ namespace
         OE_SOFT_ASSERT_AND_RETURN(color.valid(), output, "Color must be present");
 
         ImageUtils::PixelReader readColor(color.get());
-        ImageUtils::PixelReader readHeight(height.get());
         ImageUtils::PixelReader readOpacity(opacity.get());
+        ImageUtils::PixelReader readHeight(height.get());
 
         ImageUtils::PixelWriter write(output.get());
 
@@ -234,14 +411,14 @@ namespace
             {
                 readColor(temp, iter.s(), iter.t());
                 temp2[0] = 1.0f; // default
-                if (height.valid())
+                if (opacity.valid())
+                {
+                    readOpacity(temp2, iter.u(), iter.v());
+                }
+                else if (height.valid())
                 {
                     // use (u,v) in case textures are different sizes
                     readHeight(temp2, iter.u(), iter.v());
-                }
-                else if (opacity.valid())
-                {
-                    readOpacity(temp2, iter.u(), iter.v());
                 }
                 temp.a() = temp2[0];
 
@@ -363,44 +540,38 @@ namespace
 
         return output;
     }
+#endif
 }
 
+#include <osgDB/WriteFile>
 
-osg::ref_ptr<osg::Texture>
-PBRMaterial::createTexture(const osgDB::Options* options) const
+void
+PBRTexture::load(const PBRMaterial& mat, const osgDB::Options* options)
 {
-    osg::ref_ptr<osg::Image> color_image, normal_image, roughness_image, ao_image, height_image, opacity_image;
-    if (color().isSet()) color_image = color()->getImage(options);
-    if (normal().isSet()) normal_image = normal()->getImage(options);
-    if (roughness().isSet()) roughness_image = roughness()->getImage(options);
-    if (ao().isSet()) ao_image = ao()->getImage(options);
-    if (height().isSet()) height_image = height()->getImage(options);
-    if (opacity().isSet()) opacity_image = opacity()->getImage(options);
+    osg::ref_ptr<osg::Image> color_image, normal_image, roughness_image, metal_image, ao_image, displacement_image, opacity_image;
+    if (mat.color().isSet()) color_image = mat.color()->getImage(options);
+    if (mat.normal().isSet()) normal_image = mat.normal()->getImage(options);
+    if (mat.roughness().isSet()) roughness_image = mat.roughness()->getImage(options);
+    if (mat.metal().isSet()) metal_image = mat.metal()->getImage(options);
+    if (mat.ao().isSet()) ao_image = mat.ao()->getImage(options);
+    if (mat.displacement().isSet()) displacement_image = mat.displacement()->getImage(options);
+    if (mat.opacity().isSet()) opacity_image = mat.opacity()->getImage(options);
 
-    auto rgbh = assemble_RGBH(color_image, height_image, opacity_image);
-    auto nnra = assemble_NNRA(color_image, normal_image, { 1,1,1 }, roughness_image, 0, false, ao_image, 0);
+    albedo = new osg::Texture2D(assemble_RGBA(color_image, opacity_image));
+    albedo->setName(mat.name() + " albedo");
 
-#if 0
-    auto tex = new osg::Texture2D(rgbh);
-    //tex->setInternalFormat(GL_RGBA8);
-    tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
-    tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-    tex->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
-    tex->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
-    return tex;
-#else
-    osg::ref_ptr<osg::Texture2DArray> tex = new osg::Texture2DArray();
-    tex->setTextureSize(rgbh->s(), rgbh->t(), 2);
-    tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
-    tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-    tex->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
-    tex->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
-    tex->setImage(0, rgbh);
-    tex->setImage(1, nnra);
+    normal = new osg::Texture2D(assemble_NORM(normal_image));
+    normal->setName(mat.name() + " normal");
 
-    // TODO: this is a temporary hack so the shader generator can detect a PBR material.
-    tex->setName("PBRMaterial");
+    pbr = new osg::Texture2D(assemble_DRAM(displacement_image, roughness_image, ao_image, metal_image));
+    pbr->setName(mat.name() + " PBR");
 
-    return tex;
-#endif
+    for (auto& tex : { albedo, normal, pbr })
+    {
+        tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+        tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+        tex->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
+        tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+        tex->setMaxAnisotropy(4.0f);
+    }
 }

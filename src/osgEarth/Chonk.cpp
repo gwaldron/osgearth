@@ -29,6 +29,7 @@
 #include "NodeUtils"
 #include "DrawInstanced"
 #include "Registry"
+#include "MaterialLoader"
 
 #include <osg/Switch>
 #include <osg/LOD>
@@ -220,20 +221,9 @@ namespace
 
         std::stack<int> _materialIndexStack;
 
-        // adds a teture to the arena and returns its index
-        Texture::Ptr addTexture(unsigned slot, osg::StateSet* stateset)
+        Texture::Ptr addTexture(osg::Texture* tex)
         {
-            OE_SOFT_ASSERT_AND_RETURN(_textures != nullptr, {});
-
-            // if the slot isn't mapped, bail out
-            if (slot < 0)
-                return {};
-
             Texture::Ptr arena_tex;
-
-            osg::Texture* tex = dynamic_cast<osg::Texture*>(
-                stateset->getTextureAttribute(slot, osg::StateAttribute::TEXTURE));
-
             if (tex && tex->getImage(0))
             {
                 auto i = _textureLUT.find(tex);
@@ -262,6 +252,27 @@ namespace
                 {
                     arena_tex = i->second;
                 }
+            }
+            return arena_tex;
+        }
+
+        // adds a teture to the arena and returns its index
+        Texture::Ptr addTexture(unsigned slot, osg::StateSet* stateset)
+        {
+            OE_SOFT_ASSERT_AND_RETURN(_textures != nullptr, {});
+
+            // if the slot isn't mapped, bail out
+            if (slot < 0)
+                return {};
+
+            Texture::Ptr arena_tex;
+
+            osg::Texture* tex = dynamic_cast<osg::Texture*>(
+                stateset->getTextureAttribute(slot, osg::StateAttribute::TEXTURE));
+
+            if (tex && tex->getImage(0))
+            {
+                arena_tex = addTexture(tex);
             }
 
             return arena_tex;
@@ -293,11 +304,25 @@ namespace
             bool pushed = false;
             if (stateset)
             {
-                Texture::Ptr albedo_tex = addTexture(ALBEDO_UNIT, stateset);
-                Texture::Ptr normal_tex = addTexture(NORMAL_UNIT, stateset);
-                Texture::Ptr pbr_tex = addTexture(PBR_UNIT, stateset);
-                Texture::Ptr material_tex1 = findExternalTexture(MAT1_SLOT, stateset);
-                Texture::Ptr material_tex2 = findExternalTexture(MAT2_SLOT, stateset);
+                Texture::Ptr albedo_tex, normal_tex, pbr_tex;
+                Texture::Ptr material_tex1, material_tex2;
+
+                auto combo = dynamic_cast<PBRTexture*>(stateset->getTextureAttribute(ALBEDO_UNIT, osg::StateAttribute::TEXTURE));
+                if (combo)
+                {
+                    albedo_tex = addTexture(combo->albedo);
+                    normal_tex = addTexture(combo->normal);
+                    pbr_tex = addTexture(combo->pbr);
+                }
+                else
+                {
+                    albedo_tex = addTexture(ALBEDO_UNIT, stateset);
+                    normal_tex = addTexture(NORMAL_UNIT, stateset);
+                    pbr_tex = addTexture(PBR_UNIT, stateset);
+                }
+
+                material_tex1 = findExternalTexture(MAT1_SLOT, stateset);
+                material_tex2 = findExternalTexture(MAT2_SLOT, stateset);
 
                 if (albedo_tex || normal_tex)
                 {

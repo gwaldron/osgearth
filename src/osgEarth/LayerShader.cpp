@@ -256,16 +256,45 @@ LayerShader::install(Layer* layer, TerrainResources* res)
     {
         auto& pbrsampler = _options.pbrsampler().get();
 
-        _reservations.push_back(TextureImageUnitReservation());
-        TextureImageUnitReservation& reservation = _reservations.back();
+        PBRTexture textures;
+        textures.load(pbrsampler._material);
 
-        if (res->reserveTextureImageUnitForLayer(reservation, layer, "User shader pbr sampler"))
+        _reservations.reserve(3);
+
+        if (textures.albedo)
         {
-            auto tex = pbrsampler._material.createTexture(layer->getReadOptions());
-            stateset->setTextureAttribute(reservation.unit(), tex);
-            stateset->addUniform(new osg::Uniform(pbrsampler._name.c_str(), reservation.unit()));
+            _reservations.emplace_back();
+            auto& reservation = _reservations.back();
 
-            //osgDB::writeImageFile(*tex->getImage(0), "out/pbr.png");
+            if (res->reserveTextureImageUnitForLayer(reservation, layer, "User shader albedo sampler"))
+            {
+                stateset->setTextureAttribute(reservation.unit(), textures.albedo);
+                stateset->addUniform(new osg::Uniform((pbrsampler._name + "_albedo").c_str(), reservation.unit()));
+            }
+        }
+
+        if (textures.normal)
+        {
+            _reservations.emplace_back();
+            auto& reservation = _reservations.back();
+
+            if (res->reserveTextureImageUnitForLayer(reservation, layer, "User shader normal sampler"))
+            {
+                stateset->setTextureAttribute(reservation.unit(), textures.normal);
+                stateset->addUniform(new osg::Uniform((pbrsampler._name + "_normal").c_str(), reservation.unit()));
+            }
+        }
+
+        if (textures.pbr)
+        {
+            _reservations.emplace_back();
+            auto& reservation = _reservations.back();
+
+            if (res->reserveTextureImageUnitForLayer(reservation, layer, "User shader pbr sampler"))
+            {
+                stateset->setTextureAttribute(reservation.unit(), textures.pbr);
+                stateset->addUniform(new osg::Uniform((pbrsampler._name + "_pbr").c_str(), reservation.unit()));
+            }
         }
     }
 }

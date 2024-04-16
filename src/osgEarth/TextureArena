@@ -80,22 +80,22 @@ namespace osgEarth
         void resizeGLObjectBuffers(unsigned);
         void releaseGLObjects(osg::State*, bool force = false) const;
 
-        OE_PROPERTY(std::string, name);
-        OE_PROPERTY(std::string, category);
-        OE_PROPERTY(bool, compress);
-        OE_PROPERTY(bool, mipmap);
-        OE_PROPERTY(bool, clamp_s);
-        OE_PROPERTY(bool, clamp_t);
-        OE_PROPERTY(bool, clamp_r);
-        OE_PROPERTY(bool, keepImage);
-        OE_PROPERTY(unsigned, maxDim);
+        OE_PROPERTY(std::string, name, {});
+        OE_PROPERTY(std::string, category, {});
+        OE_PROPERTY(bool, compress, true);
+        OE_PROPERTY(bool, mipmap, true);
+        OE_PROPERTY(bool, clamp_s, false);
+        OE_PROPERTY(bool, clamp_t, false);
+        OE_PROPERTY(bool, clamp_r, false);
+        OE_PROPERTY(bool, keepImage, true);
+        OE_PROPERTY(unsigned, maxDim, 65536);
 
         OE_OPTION(URI, uri);
         OE_OPTION(GLenum, internalFormat);
         OE_OPTION(float, maxAnisotropy);
 
-        OE_PROPERTY(osg::ref_ptr<osg::Texture>, osgTexture);
-        OE_PROPERTY_CONST(GLenum, target);
+        OE_PROPERTY(osg::ref_ptr<osg::Texture>, osgTexture, {});
+        OE_PROPERTY_CONST(GLenum, target, GL_TEXTURE_2D);
 
         //! Whether any actual image data has been loaded into this object,
         //! or whether we need to load it from the URI
@@ -146,7 +146,7 @@ namespace osgEarth
         void setAutoRelease(bool value);
         bool getAutoRelease() const { return _autoRelease; }
 
-        //! Sets the GLSL binding point for the arena. Default is 5.
+        //! Sets the GLSL binding point for the arena. Default is 1.
         void setBindingPoint(unsigned value);
 
         //! Sets the maximum texture size (in one dimension, in pixels)

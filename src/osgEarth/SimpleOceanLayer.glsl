@@ -63,13 +63,7 @@ uniform sampler2D OE_OCEAN_MASK ;
 #endif
 
 // fragment stage global PBR parameters.
-struct OE_PBR {
-    float roughness;
-    float ao;
-    float metal;
-    float brightness;
-    float contrast;
-} oe_pbr;
+struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 
 // remaps a value from [vmin..vmax] to [0..1] clamped
 float oe_ocean_remap(float val, float vmin, float vmax, float r0, float r1)

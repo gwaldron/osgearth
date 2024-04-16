@@ -119,13 +119,7 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
 #pragma import_defines(OE_GPUCULL_DEBUG)
 #pragma import_defines(OE_CHONK_SINGLE_SIDED)
 
-struct OE_PBR {
-    float roughness;
-    float ao;
-    float metal;
-    float brightness;
-    float contrast;
-} oe_pbr;
+struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 
 // inputs
 in vec3 vp_Normal;
@@ -182,6 +176,10 @@ void oe_chonk_default_fragment(inout vec4 color)
     if (oe_albedo_tex > 0)
     {
         color *= texture(sampler2D(oe_albedo_tex), oe_tex_uv);
+    }
+    else
+    {
+        color = vec4(1, 0, 0, 1); // testing
     }
 
 #if defined(OE_IS_SHADOW_CAMERA) || defined(OE_IS_DEPTH_CAMERA)
@@ -291,9 +289,11 @@ void oe_chonk_default_fragment(inout vec4 color)
     {
         // apply PBR maps:
         vec4 texel = texture(sampler2D(oe_pbr_tex), oe_tex_uv);
-        oe_pbr.metal = clamp(oe_pbr.metal + texel[0], 0, 1);
-        oe_pbr.roughness *= (1.0 - texel[1]);
+
+        oe_pbr.displacement = texel[0];
+        oe_pbr.roughness *= texel[1];
         oe_pbr.ao *= texel[2];
+        oe_pbr.metal = clamp(oe_pbr.metal + texel[3], 0, 1);
     }
 
 #endif // !OE_IS_SHADOW_CAMERA

@@ -22,6 +22,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Metrics>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/Math>
 #include <osg/GLU>
 #include <osgDB/Registry>
 
@@ -2360,9 +2361,9 @@ namespace {
     float fractf(float x) {
         return x >= 0.0 ? (x - floorf(x)) : (x - ceilf(x));
     }
-    float clamp(double x, double a, double b) {
-        return x<a ? a : x>b ? b : x;
-    }
+    //float clamp(double x, double a, double b) {
+    //    return x<a ? a : x>b ? b : x;
+    //}
     float clampf(float x, float a, float b) {
         return x<a ? a : x>b ? b : x;
     }
@@ -2630,8 +2631,8 @@ ImageUtils::PixelReader::operator()(osg::Vec4f& out, double u, double v, int r, 
         }
         else
         {
-            u = clamp(u, 0.0f, 1.0f);
-            v = clamp(v, 0.0f, 1.0f);
+            u = clamp(u, 0.0, 1.0);
+            v = clamp(v, 0.0, 1.0);
         }
 
         // u, v => [0..1]

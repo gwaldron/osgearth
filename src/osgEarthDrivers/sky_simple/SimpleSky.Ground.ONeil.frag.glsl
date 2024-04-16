@@ -21,13 +21,7 @@ in vec3 vp_VertexView; // from osgEarth
 // frag stage global PBR parameters
 #ifdef OE_USE_PBR
 // fragment stage global PBR parameters.
-struct OE_PBR {
-    float roughness;
-    float ao;
-    float metal;
-    float brightness;
-    float contrast;
-} oe_pbr;
+struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 #endif
 
 // Parameters of each light:
@@ -106,6 +100,7 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 }
 
 const float oe_wrap = 0.22;
+uniform float oe_normal_boost = 1.0;
 
 #ifdef OE_USE_PBR
 void atmos_fragment_main_pbr(inout vec4 color)
@@ -180,7 +175,7 @@ void atmos_fragment_main_pbr(inout vec4 color)
     color.rgb = 1.0 - exp(-oe_sky_exposure * color.rgb);
 
     // brightness and contrast
-    color.rgb = ((color.rgb - 0.5)*oe_pbr.contrast + 0.5) * oe_pbr.brightness;
+    //color.rgb = ((color.rgb - 0.5)*oe_pbr.contrast + 0.5) * oe_pbr.brightness;
 
     // linear back to SRGB
     color.rgb = pow(color.rgb, vec3(1.0/2.2));

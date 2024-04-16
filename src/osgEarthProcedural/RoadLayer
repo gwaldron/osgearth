@@ -14,6 +14,17 @@ namespace osgEarth
 
     namespace Procedural
     {
+        struct OSGEARTHPROCEDURAL_EXPORT RoadArt
+        {
+            RoadArt(const Config& conf = {}); // { fromConfig(conf); }
+            //void fromConfig(const Config&);
+            Config getConfig() const;
+
+            OE_OPTION(PBRMaterial, substrateMaterial, {});
+            OE_OPTION(PBRMaterial, linesMaterial, {});
+            OE_OPTION(PBRMaterial, crossingsMaterial, {});
+        };
+
         class OSGEARTHPROCEDURAL_EXPORT RoadLayer : public TileLayer
         {
         public:
@@ -21,7 +32,7 @@ namespace osgEarth
             {
                 META_LayerOptions(osgEarthProcedural, Options, TileLayer::Options);
                 OE_OPTION_LAYER(FeatureSource, features);
-                OE_OPTION(PBRMaterial, surfaceMaterial);
+                OE_OPTION(RoadArt, art);
                 void fromConfig(const Config& conf);
                 Config getConfig() const override;
             };
@@ -31,13 +42,12 @@ namespace osgEarth
         public: // Layer
             void init() override;
             Status openImplementation() override;
-            void addedToMap(const Map* map) override;
-            void removedFromMap(const Map* map) override;
 
         private:
-            osg::ref_ptr<Layer> _surfaceLayer;
+            osg::ref_ptr<Layer> _substrateLayer;
             osg::ref_ptr<Layer> _markingsLayer;
         };
     }
 }
 
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Procedural::RoadArt);

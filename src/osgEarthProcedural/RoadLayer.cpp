@@ -8,15 +8,38 @@
 #include <osgEarth/TerrainResources>
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/ResampleFilter>
+#include <osgEarth/TextureArena>
 #include <osgDB/ReadFile>
 #include <osgUtil/SmoothingVisitor>
 #include <osg/Depth>
 #include <osg/PolygonOffset>
+#include <array>
 
 using namespace osgEarth;
 using namespace osgEarth::Procedural;
 
 REGISTER_OSGEARTH_LAYER(roads, RoadLayer);
+
+RoadArt::RoadArt(const Config& conf)
+{
+    conf.child("substrate").get("material", substrateMaterial());
+    conf.child("lines").get("material", linesMaterial());
+    conf.child("crossings").get("material", crossingsMaterial());
+}
+
+Config
+RoadArt::getConfig() const
+{
+    Config conf("art");
+    Config& sub = conf.add("substrate");
+    sub.set("substrate", substrateMaterial());
+    Config& lines = conf.add("lines");
+    lines.set("lines", linesMaterial());
+    Config& crossings = conf.add("crossings");
+    crossings.set("crossings", crossingsMaterial());
+    return conf;
+}
+
 
 namespace
 {
@@ -56,9 +79,8 @@ namespace
 
     struct edge_t;
 
-    struct art_t
+    struct part_art_t
     {
-        osg::ref_ptr<osg::Texture> texture;
         osg::ref_ptr<osg::StateSet> stateset;
         float width; // m
         float length; // m
@@ -69,9 +91,9 @@ namespace
     struct properties_t
     {
         std::string kind;
-        art_t surface;
-        art_t lines;
-        art_t crossing;
+        part_art_t surface;
+        part_art_t lines;
+        part_art_t crossing;
         float default_width = 5.0f;
         rank_t rank = 0;
         uint8_t lanes = 2;
@@ -364,16 +386,13 @@ namespace
     };
 
 
-    struct Art
+    struct art_t
     {
         properties_t road_basic;
         properties_t road_one_lane;
 
-        Art()
+        void load(const RoadArt& art)
         {
-            //Config conf;
-            //conf.fromXML(URIStream(URI("D:/data/textures/ambientcg/RoadLines007_1K-PNG/oe.xml")));
-            //PBRMaterial lines_mat(conf.child("material"));
             auto asphalt = new osg::Texture2D(osgDB::readRefImageFile("D:/data/textures/ambientcg/Asphalt026B_4K-JPG/Asphalt026B_4K-JPG_Color.jpg"));
             asphalt->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
             asphalt->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
@@ -384,38 +403,35 @@ namespace
 
             // basic 2 lane road
             {
-                Config conf;
-                conf.fromURI(URI("D:/data/textures/ambientcg/RoadLines007_1K-PNG/oe.xml"));
-                PBRMaterial lines_mat(conf);
-                //auto lines = new osg::Texture2D(osgDB::readRefImageFile("D:/data/textures/ambientcg/RoadLines007_1K-PNG/RoadLines007_1K-PNG_Color.png"));
-                //auto lines = new osg::Texture2D(osgDB::readRefImageFile("D:/data/textures/reference_grid_Color.jpg"));
-                auto lines = lines_mat.createTexture();
-                lines->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
-                lines->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
-                //lines->setMaxAnisotropy(4.0f);
-                auto lines_ss = new osg::StateSet();
-                lines_ss->setTextureAttribute(0, lines);
-                lines_ss->addUniform(new osg::Uniform("markings_tex_pbr", 0));
+                auto lines_tex = new PBRTexture();
+                lines_tex->load(art.linesMaterial().value());
+                lines_tex->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
 
-                auto crossing = new osg::Texture2D(URI("D:/data/textures/ambientcg/RoadLines004_1K-PNG/oe.xml").getImage());
-                //auto crossing = new osg::Texture2D(osgDB::readRefImageFile("D:/data/textures/road_crossing.png"));
-                crossing->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
-                crossing->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
-                crossing->setMaxAnisotropy(4.0f);
+                auto lines_ss = new osg::StateSet();
+                lines_ss->setTextureAttribute(0, lines_tex);
+                //lines_ss->setTextureAttribute(0, lines_tex->albedo);
+                //lines_ss->setTextureAttribute(1, lines_tex->normal);
+                //lines_ss->setTextureAttribute(2, lines_tex->pbr);
+
+                auto crossings_tex = new PBRTexture();
+                crossings_tex->load(art.crossingsMaterial().value());
+                crossings_tex->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+
                 auto crossing_ss = new osg::StateSet();
-                crossing_ss->setTextureAttribute(0, crossing);
+                crossing_ss->setTextureAttribute(0, crossings_tex);
 
                 road_basic = {
                     "road",
-                    { asphalt, asphalt_ss, 8, 10 },     // surface art, width, length 
-                    { lines, lines_ss, 5, 5 },        // lines art, width, length
-                    { crossing, crossing_ss, 0.5, 1.5 }, // crossing art, width, length
-                    5.0f,                   // default road width(m)
-                    1,                      // rank
-                    2                       // lanes
+                    { asphalt_ss, 8, 10, true, true }, // surface art, width, length , tiled_along_length, tiled_along_width
+                    { lines_ss, 5, 5, true, false }, // lines art, width, length, tiled_along_length, tiled_along_width
+                    { crossing_ss, 0.5, 1.5, false, true }, // crossing art, width, length, tiled_along_length, tiled_along_width
+                    5.0f, // default road width(m)
+                    1, // rank
+                    2  // lanes
                 };
             }
 
+#if 0
             // skinny one land road
             {
                 auto crossing = new osg::Texture2D(osgDB::readRefImageFile("D:/data/textures/road_crossing_simple.png"));
@@ -429,7 +445,7 @@ namespace
                 road_one_lane.crossing.texture = crossing;
                 road_one_lane.crossing.length = 3.0f;
             }
-
+#endif
             //secondary = { { texture, 10, 10 }, 20.0f, 4, 4 };
         }
     };
@@ -683,7 +699,8 @@ namespace
         osg::Quat q;
         q.makeRotate(normalize(edge.node2.p - edge.node1.p), vec_t(1, 0, 0));
         float s = edge.width / edge.props->surface.width;
-        if (edge.props->surface.texture->getWrap(osg::Texture::WRAP_S) != osg::Texture::REPEAT)
+        if (edge.props->surface.tiled_along_width == false)
+        //if (edge.props->surface.texture->getWrap(osg::Texture::WRAP_S) != osg::Texture::REPEAT)
             s = std::ceil(s);
         float t;
         t = (q * (*verts)[0]).x() / edge.props->surface.length;
@@ -741,7 +758,7 @@ namespace
         std::function<osg::Vec3(const osg::Vec3d&)> transform,
         float z = 0)
     {
-        if (edge.props->lines.texture == nullptr)
+        if (edge.props->lines.stateset == nullptr)
             return new osg::Group();
 
         auto verts = new osg::Vec3Array();
@@ -804,7 +821,7 @@ namespace
         float z = 0.01)
     {
         if (node.props == nullptr ||
-            node.props->crossing.texture == nullptr ||
+            node.props->crossing.stateset == nullptr ||
             node.edges.size() != 2)
         {
             return new osg::Group();
@@ -1033,35 +1050,23 @@ namespace
         #pragma vp_function render_sdf_vs, vertex_view
         vec2 oe_terrain_scaleCoordsToRefLOD(in vec2 tc, in float refLOD);
         out vec4 oe_layer_tilec;
-        out vec2 sdf_uv;
+        out vec2 oe_sdf_uv;
         void render_sdf_vs(inout vec4 vert)
         {
-            sdf_uv = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, 19);
+            oe_sdf_uv = oe_terrain_scaleCoordsToRefLOD(oe_layer_tilec.st, 19);
         }
 
         [break]
 
         #pragma vp_function render_sdf_fs, fragment
-        uniform sampler2DArray road_tex_pbr;
-        in vec2 sdf_uv;
+        uniform sampler2D road_tex_albedo;
+        uniform sampler2D road_tex_normal;
+        uniform sampler2D road_tex_pbr;
+        in vec2 oe_sdf_uv;
         vec3 vp_Normal;
         mat3 oe_normalMapTBN;
-        struct OE_PBR { float roughness, ao, metal, brightness, contrast; } oe_pbr;
-        
-        void texture_pbr(in sampler2DArray tex, in vec2 uv, inout vec3 rgb, inout vec3 N, out float height, inout OE_PBR pbr)
-        {
-            vec4 rgbh = texture(tex, vec3(uv.x, uv.y, 0.0));
-            vec4 nnra = texture(tex, vec3(uv.x, uv.y, 1.0));
-            rgb = rgbh.rgb;
-            height = rgbh.a;
-            //color.a = height_and_effect_mix(1, 0, max(rgbh.a, 0.5), color.a);
-            pbr.roughness = nnra[2];
-            pbr.ao = nnra[3];
-            vec3 normal = nnra.xyz * 2.0 - 1.0;
-            normal.z = 1.0 - abs(normal.x) - abs(normal.y);
-            N = normalize(N + oe_normalMapTBN * normal);
-            //vp_Normal = normalize(vp_Normal + oe_normalMapTBN * N);
-        }
+        uniform float oe_normal_boost = 1.0f;
+        struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 
         float height_and_effect_mix(in float h1, in float a1, in float h2, in float a2)
         {
@@ -1073,80 +1078,41 @@ namespace
         }
                 
         void render_sdf_fs(inout vec4 color)
-        {
-            const float min_height = 0.5;
-            float dist = 1.0-color.r; // SDF distance [0..1]
-            float height;
+        {                    
+            vec4 albedo = texture(road_tex_albedo, oe_sdf_uv);
+            vec4 nn = texture(road_tex_normal, oe_sdf_uv);
+            vec4 pbr = texture(road_tex_pbr, oe_sdf_uv);
+                    
+            const float min_h = 0.5;
+            float a = 1.0-color.r;
+            float h = pbr[0];
 
-            texture_pbr(road_tex_pbr, sdf_uv, color.rgb, vp_Normal, height, oe_pbr);
-
-            color.a = height_and_effect_mix(1, 0, max(height,min_height), dist);
-
-
-            //const float min_h = 0.5;
-            //float a = 1.0-color.r;
-
-            //vec4 rgbh = texture(road_tex_pbr, vec3(sdf_uv.x, sdf_uv.y, 0.0));
-            //vec4 nnra = texture(road_tex_pbr, vec3(sdf_uv.x, sdf_uv.y, 1.0));
-            //        
-            //const float min_h = 0.5;
-            //float a = 1.0-color.r;
-            //float h = rgbh[3];
-
-            //color.rgb = rgbh.rgb;                    
-            //color.a = height_and_effect_mix(1, 0, max(h,min_h), a);
-            //        
-            //oe_pbr.roughness = nnra[2];
-            //oe_pbr.ao = nnra[3];
-            //        
-            //vec3 N = nnra.xyz * 2.0 - 1.0;
-            //N.z = 1.0 - abs(N.x) - abs(N.y);
-            //vp_Normal = normalize(vp_Normal + oe_normalMapTBN * N);
+            color = albedo;
+            color.a *= height_and_effect_mix(1, 0, max(h,min_h), a);
+                    
+            oe_pbr.displacement = pbr[0];
+            oe_pbr.roughness = pbr[1];
+            oe_pbr.ao = pbr[2];
+            oe_pbr.metal = pbr[3];
+                    
+            vec3 N = nn.xyz * 2.0 - 1.0;
+            N.z = 1.0 - abs(N.x)*oe_normal_boost - abs(N.y)*oe_normal_boost;
+            vp_Normal = normalize(vp_Normal + oe_normalMapTBN * N);
         }
     )";
 
 
     const char* markings_shaders = R"(
         #pragma vp_function pull_vs, vertex_clip, last
-        uniform float pull_offset = 0.1;
-        vec3 vp_Normal;
+        uniform float pull_offset = 0.001;
         out float ndc_depth;
-        out vec2 oe_markings_uv;
         void pull_vs(inout vec4 vert)
         {
             ndc_depth = (vert.z/vert.w) - pull_offset;
-            oe_markings_uv = gl_MultiTexCoord0.st;
         }
 
         [break]
-        #pragma vp_function render_markings_fs, fragment
-        uniform sampler2DArray markings_tex_pbr;
-        in vec2 oe_markings_uv;
-        vec3 vp_Normal;
-        mat3 oe_normalMapTBN;
-        struct OE_PBR { float roughness, ao, metal, brightness, contrast; } oe_pbr;
 
-        void texture_pbr(in sampler2DArray tex, in vec2 uv, inout vec3 rgb, inout vec3 N, out float height, inout OE_PBR pbr)
-        {
-            vec4 rgbh = texture(tex, vec3(uv.x, uv.y, 0.0));
-            vec4 nnra = texture(tex, vec3(uv.x, uv.y, 1.0));
-            rgb = rgbh.rgb;
-            height = rgbh.a;
-            pbr.roughness = nnra[2];
-            pbr.ao = nnra[3];
-            vec3 normal = nnra.xyz * 2.0 - 1.0;
-            normal.z = 1.0 - abs(normal.x) - abs(normal.y);
-            N = normalize(N + oe_normalMapTBN * normal);
-        }
-
-        void render_markings_fs(inout vec4 color)
-        {
-            float height;
-            texture_pbr(markings_tex_pbr, oe_markings_uv, color.rgb, vp_Normal, height, oe_pbr);
-            color.a = height; // assume height is the opacity for markings
-        }
-
-        [break]
         #pragma vp_function pull_fs, fragment, last
         in float ndc_depth;
         void pull_fs(inout vec4 color)
@@ -1161,20 +1127,19 @@ namespace
 
 namespace
 {
-    class SurfaceLayer : public FeatureSDFLayer
+    class SubstrateLayer : public FeatureSDFLayer
     {
     public:
         class Options : public FeatureSDFLayer::Options {
             META_LayerOptions(osgEarthProcedural, Options, FeatureSDFLayer::Options);
             void fromConfig(const Config&) { }
         };
-        META_Layer(osgEarthProcedural, SurfaceLayer, Options, FeatureSDFLayer, _roads_surface);
+        META_Layer(osgEarthProcedural, SubstrateLayer, Options, FeatureSDFLayer, _roads_surface);
 
     public:
         
         PBRMaterial _material;
-        osg::ref_ptr<osg::Texture> _texture;
-        TextureImageUnitReservation _unit;
+        std::array<TextureImageUnitReservation, 3> _units;
         double _sdf_offset = DEFAULT_WIDTH;
 
         void init() override
@@ -1188,13 +1153,9 @@ namespace
             if (s.isError())
                 return s;
 
-            _texture = _material.createTexture(getReadOptions());
-            if (!_texture.valid())
-                return Status(Status::ResourceUnavailable, "RoadSurface: Failed to load surface material");
-
             Style style;
             style.getOrCreate<RenderSymbol>()->sdfMinDistance()->setLiteral(0.0);
-            style.getOrCreate<RenderSymbol>()->sdfMaxDistance()->setLiteral(_sdf_offset);
+            style.getOrCreate<RenderSymbol>()->sdfMaxDistance()->setLiteral(_sdf_offset * 0.5);
             
             auto styles = new StyleSheet();
             styles->addStyle(style);
@@ -1213,19 +1174,30 @@ namespace
         {
             super::prepareForRendering(engine);
 
-            if (!engine->getResources()->reserveTextureImageUnitForLayer(_unit, this))
+            PBRTexture textures;
+            textures.load(_material);
+
+            if (!engine->getResources()->reserveTextureImageUnitForLayer(_units[0], this) ||
+                !engine->getResources()->reserveTextureImageUnitForLayer(_units[1], this) ||
+                !engine->getResources()->reserveTextureImageUnitForLayer(_units[2], this))
             {
-                setStatus(Status::ResourceUnavailable, "Failed to reserve texture image unit");
+                setStatus(Status::ResourceUnavailable, "Failed to reserve texture image units");
                 return;
             }
 
-            // the uniform for our custom shader:
             auto ss = getOrCreateStateSet();
-            ss->getOrCreateUniform("road_tex_pbr", osg::Uniform::SAMPLER_2D_ARRAY)->set(_unit.unit());
-            ss->setTextureAttribute(_unit.unit(), _texture);
+
+            ss->setTextureAttribute(_units[0].unit(), textures.albedo.get());
+            ss->getOrCreateUniform("road_tex_albedo", osg::Uniform::SAMPLER_2D)->set(_units[0].unit());
+
+            ss->setTextureAttribute(_units[1].unit(), textures.normal.get());
+            ss->getOrCreateUniform("road_tex_normal", osg::Uniform::SAMPLER_2D)->set(_units[1].unit());
+
+            ss->setTextureAttribute(_units[2].unit(), textures.pbr.get());
+            ss->getOrCreateUniform("road_tex_pbr", osg::Uniform::SAMPLER_2D)->set(_units[2].unit());
 
             // and the shader itself:
-            auto vp = VirtualProgram::getOrCreate(ss);
+            auto vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
             vp->setName("Road Surface");
             ShaderLoader::load(vp, surface_shaders);
         }
@@ -1240,11 +1212,13 @@ namespace
         };
         META_Layer(osgEarthProcedural, MarkingsLayer, Options, TiledModelLayer, _roads_markings);
 
+        const RoadArt* _artConfig;
         LayerReference<FeatureSource> _features;
         osg::ref_ptr<StyleSheet> _stylesheet;
         osg::ref_ptr<Session> _session;
         FeatureFilterChain _filterChain; // not needed, use filteredfeaturesource
-        Art _art;
+        osg::ref_ptr<TextureArena> _textures;
+        art_t _art;
 
         void init() override
         {
@@ -1257,7 +1231,6 @@ namespace
             auto ss = getOrCreateStateSet();
             ss->setMode(GL_BLEND, 1);
             ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0, 1, false), 1);
-            //ss->setAttributeAndModes(new osg::PolygonOffset(-1, -1), 1);
             
             _filterChain.push_back(new ResampleFilter(0.0, 25.0));
         }
@@ -1267,6 +1240,8 @@ namespace
             auto s = super::openImplementation();
             if (s.isError())
                 return s;
+
+            _art.load(*_artConfig);
 
             _features.open(getReadOptions());
             return s;
@@ -1442,24 +1417,12 @@ namespace
                 };
 
 
-            //root->addChild(tessellate(graph, xform));
             root->addChild(tessellate_markings(graph, xform));
-            //root->addChild(debug_surface_outline(graph, xform));
-            //root->addChild(tessellate_surface(graph, xform));
 
             auto sheet = _stylesheet.get();
             auto style = sheet ? sheet->getDefaultStyle() : nullptr;
             auto render = style ? style->get<RenderSymbol>() : nullptr;
             if (render) render->applyTo(root);
-
-            // no need if we chonkin'
-            //osgUtil::Optimizer::MergeGeometryVisitor mgv;
-            //mgv.setTargetMaximumNumberOfVertices(~0);
-            //root->accept(mgv);
-
-            // debugging only
-            //GeometryValidator gv;
-            //root->accept(gv);
 
             auto mt = new osg::MatrixTransform();
             osg::Matrixd local2world;
@@ -1478,7 +1441,7 @@ void
 RoadLayer::Options::fromConfig(const Config& conf)
 {
     features().get(conf, "features");
-    conf.child("surface").get("material", surfaceMaterial());
+    conf.get("art", art());
 }
 
 Config
@@ -1486,7 +1449,7 @@ RoadLayer::Options::getConfig() const
 {
     Config conf = super::getConfig();
     features().set(conf, "features");
-    conf.add("surface", surfaceMaterial()->getConfig());
+    conf.set("art", art());
     return conf;
 }
 
@@ -1499,44 +1462,34 @@ RoadLayer::init()
 Status
 RoadLayer::openImplementation()
 {
-    // Layer that splats the surface texture on the terrain
-    auto surface = new SurfaceLayer();
-    surface->setName("  Roads - surface");
-    surface->setMinLevel(getMinLevel());
-    surface->setMaxDataLevel(getMaxDataLevel());
-    surface->options().features() = options().features();
-    surface->_material = options().surfaceMaterial().value();
-    surface->setUserProperty("show_in_ui", "false");
-    Status s = surface->open(getReadOptions());
-    if (s.isError())
-        return s;
-    _surfaceLayer = surface;
+    if (options().art()->substrateMaterial().isSet())
+    {
+        auto substrate = new SubstrateLayer();
+        substrate->setName("  Roads - substrate");
+        substrate->setMinLevel(getMinLevel());
+        substrate->setMaxDataLevel(getMaxDataLevel());
+        substrate->options().features() = options().features();
+        substrate->_material = options().art()->substrateMaterial().value();
+        substrate->setUserProperty("show_in_ui", "false");
+        Status s = substrate->open(getReadOptions());
+        if (s.isError())
+            return s;
+        _substrateLayer = substrate;
+        _sublayers.emplace_back(_substrateLayer);
+    }
 
     // Layer that renders the road marking decal geometries
     auto* markings = new MarkingsLayer();
     markings->setName("  Roads - markings");
     markings->setMinLevel(getMinLevel());
     markings->_features = options().features();
+    markings->_artConfig = &options().art().value();
     markings->setUserProperty("show_in_ui", "false");
     Status s2 = markings->open(getReadOptions());
     if (s2.isError())
         return s2;
     _markingsLayer = markings;
-
-    _sublayers.emplace_back(surface);
     _sublayers.emplace_back(markings);
 
     return super::openImplementation();
-}
-
-void
-RoadLayer::addedToMap(const Map* map)
-{
-    //options().features().addedToMap(map);
-}
-
-void
-RoadLayer::removedFromMap(const Map* map)
-{
-    //options().features().removedFromMap(map);
 }

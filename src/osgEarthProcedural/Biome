@@ -60,7 +60,7 @@ namespace osgEarth
         {
         public:
             //! Readable name of the asset
-            OE_PROPERTY(std::string, name);
+            OE_PROPERTY(std::string, name, {});
 
             //! URI from which to load the asset 3D model
             OE_OPTION(URI, modelURI);
@@ -110,7 +110,7 @@ namespace osgEarth
             OE_OPTION(float, topBillboardHeight);
 
             //! User-defined traits string (comma-delimited)
-            OE_PROPERTY(std::vector<std::string>, traits);
+            OE_PROPERTY(std::vector<std::string>, traits, {});
 
             //! If true, this asset will ONLY be used in a biome that
             //! explicity inherits this asset's traits from land cover
@@ -118,7 +118,7 @@ namespace osgEarth
             OE_OPTION(bool, traitsRequired);
 
             //! Asset group to which this model belongs.
-            OE_PROPERTY(std::string, group);
+            OE_PROPERTY(std::string, group, {});
 
         public:
             //! Construct an empty model asset definition
@@ -216,7 +216,7 @@ namespace osgEarth
             Config getConfig() const;
 
             //! Unique identifier of the biome
-            OE_PROPERTY(std::string, id);
+            OE_PROPERTY(std::string, id, {});
 
             //! Readable name/description of the biome
             OE_OPTION(std::string, name);
@@ -235,13 +235,13 @@ namespace osgEarth
                 using ModelAssetPointer = const ModelAsset * ;
 
                 //! Reference to the asset being used
-                OE_PROPERTY(ModelAssetPointer, asset);
+                OE_PROPERTY(ModelAssetPointer, asset, {});
 
                 //! Selection weight compared to other assets (default = 1.0)
-                OE_PROPERTY(float, weight);
+                OE_PROPERTY(float, weight, 1.0f);
 
                 //! Coverage percentage when this asset it selected (default = 1.0)
-                OE_PROPERTY(float, coverage);
+                OE_PROPERTY(float, coverage, 1.0f);
 
                 bool operator < (const ModelAssetRef& rhs) const {
                     return (std::uintptr_t)asset() < (std::uintptr_t)rhs.asset();

@@ -109,7 +109,7 @@ tweakable float oe_dense_contrast = 1.0;
 uniform float oe_normal_power = 1.0;
 uniform float oe_mask_alpha = 0.0;
 uniform float oe_displacement_depth = 0.1;
-
+uniform float oe_normal_boost = 1.0;
 
 mat3 oe_normalMapTBN;
 
@@ -123,7 +123,7 @@ mat3 oe_normalMapTBN;
 #endif
 
 // optimized uncompressor (assumes Z is never negative)
-#define UNPACK_NORMAL(P,N) N.xy = P*2.0-1.0; N.z = 1.0-abs(N.x)-abs(N.y); N /= length(N)
+#define UNPACK_NORMAL(P,N) N.xy = P*2.0-1.0; N.z = 1.0-abs(N.x)*oe_normal_boost-abs(N.y)*oe_normal_boost; N /= length(N)
 
 struct SplatRowData
 {
@@ -169,13 +169,7 @@ struct Pixel {
 #define METAL 2
 
 // fragment stage global PBR parameters.
-struct OE_PBR {
-    float roughness;
-    float ao;
-    float metal;
-    float brightness;
-    float contrast;
-} oe_pbr;
+struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 
 // compute the splatting texture coordinate by combining the macro (tile_xy)
 // and micro (local xy) components. Cannot do this in the VS because it will
@@ -204,6 +198,7 @@ void ht_hex2colTex_optimized(
     inout vec3 weighting);
 #endif
 
+#if 0 // old PBR
 void get_pixel(out Pixel res, inout vec3 weights, in int index, in vec2 coord)
 {
     vec4 nnra;
@@ -225,6 +220,34 @@ void get_pixel(out Pixel res, inout vec3 weights, in int index, in vec2 coord)
     UNPACK_NORMAL(nnra.xy, res.normal);
     res.material = vec3(nnra[2], nnra[3], 0.0); // roughness, ao, metal
 }
+#else
+void get_pixel(out Pixel res, inout vec3 weights, in int index, in vec2 coord)
+{
+    vec4 rgbh, norm, pbr;
+
+#if OE_SPLAT_HEX_TILER == 1
+    ht_hex2colTex_optimized(
+        sampler2D(texHandle[index * 2]),     // color
+        sampler2D(texHandle[index * 2 + 1]), // normal
+        sampler2D(texHandle[index * 2 + 2]), // PBR dram
+        coord,
+        rgbh,
+        norm,
+        pbr,
+        weights);
+
+#else
+    rgbh = texture(sampler2D(texHandle[index * 2]), coord);
+    norm = texture(sampler2D(texHandle[index * 2 + 1]), coord);
+    pbr = texture(sampler2D(texHandle[index * 2 + 2]), coord);
+#endif
+
+    res.rgbh[3] = dram[0]; // displacement height
+    UNPACK_NORMAL(norm.xy, res.normal);
+    res.material = vec3(dram[1], dram[2], dram[3]); // roughness, ao, metal
+    //res.material = vec3(nnra[2], nnra[3], 0.0); // roughness, ao, metal
+}
+#endif
 
 float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2)
 {
@@ -350,21 +373,14 @@ void oe_splat_Frag(inout vec4 quad)
     }
 
     // apply PBR
+    oe_pbr.dispacement = pixel.material[DISPLACEMENT];
     oe_pbr.roughness = clamp(oe_pbr.roughness * pixel.material[ROUGHNESS], 0.0, 1.0);
     oe_pbr.ao = clamp(oe_pbr.ao * pow(pixel.material[AO], ao_power), 0.0, 1.0);
     oe_pbr.metal = clamp(pixel.material[METAL], 0.0, 1.0);
-    oe_pbr.brightness *= oe_splat_brightness;
-    oe_pbr.contrast *= oe_splat_contrast;
-
-    //pixel.rgbh.rgb = clamp(((pixel.rgbh.rgb - 0.5)*oe_splat_contrast + 0.5) * oe_splat_brightness, 0, 1);
+    //oe_pbr.brightness *= oe_splat_brightness;
+    //oe_pbr.contrast *= oe_splat_contrast;
 
     vec3 color = pixel.rgbh.rgb;
-
-    // NORMAL
-    //pixel.normal = normalize(vec3(
-    //    DECEL(pixel.normal.x, normal_power),
-    //    DECEL(pixel.normal.y, normal_power),
-    //    pixel.normal.z));
 
     pixel.normal = vec3(
         DECEL(pixel.normal.x, oe_normal_power),

@@ -50,27 +50,27 @@ namespace osgEarth
             using ModelAssetPtr = const ModelAsset * ;
 
             //! Reference the model definintion itself
-            OE_PROPERTY(ModelAssetPtr, assetDef);
+            OE_PROPERTY(ModelAssetPtr, assetDef, nullptr);
 
             //! Local bounding box of the model
-            OE_PROPERTY(osg::BoundingBox, boundingBox);
+            OE_PROPERTY(osg::BoundingBox, boundingBox, {});
 
             //! the model node loaded from the asset definition
-            OE_PROPERTY(osg::ref_ptr<osg::Node>, model);
+            OE_PROPERTY(osg::ref_ptr<osg::Node>, model, {});
 
             //! the impostor node loaded from the asset definition
-            OE_PROPERTY(osg::ref_ptr<osg::Node>, impostor);
+            OE_PROPERTY(osg::ref_ptr<osg::Node>, impostor, {});
 
             //! impostor textures
-            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardTex);
-            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardNormalMap);
-            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardPBRMap);
-            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardTex);
-            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardNormalMap);
-            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardPBRMap);
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardTex, {});
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardNormalMap, {});
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, sideBillboardPBRMap, {});
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardTex, {});
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardNormalMap, {});
+            OE_PROPERTY(osg::ref_ptr<osg::Texture>, topBillboardPBRMap, {});
 
             //! Bindless geometry chonk
-            OE_PROPERTY(Chonk::Ptr, chonk);
+            OE_PROPERTY(Chonk::Ptr, chonk, {});
 
         private:
             ResidentModelAsset();
@@ -88,13 +88,13 @@ namespace osgEarth
                 _weight(1.0f),
                 _coverage(1.0f) { }
 
-            OE_PROPERTY(ResidentModelAsset::Ptr, residentAsset);
+            OE_PROPERTY(ResidentModelAsset::Ptr, residentAsset, nullptr);
 
             // selection weight
-            OE_PROPERTY(float, weight);
+            OE_PROPERTY(float, weight, 1.0f);
 
             // coverage percentage
-            OE_PROPERTY(float, coverage);
+            OE_PROPERTY(float, coverage, 1.0f);
         };
 
         /**

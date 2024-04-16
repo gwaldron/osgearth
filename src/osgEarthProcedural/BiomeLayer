@@ -44,7 +44,7 @@ namespace osgEarth
             OE_OPTION(float, rugged, 0.0f);
             OE_OPTION(std::string, material, {});
             OE_OPTION(std::string, soiltype, {});
-            OE_PROPERTY(std::vector<std::string>, traits);
+            OE_PROPERTY(std::vector<std::string>, traits, {});
 
             LandCoverSample() = default;
 

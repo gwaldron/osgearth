@@ -138,7 +138,7 @@ namespace osgEarth { namespace Procedural
             };
 
             using GroupMap = vector_map<std::string, Group>;
-            OE_PROPERTY(GroupMap, groups);
+            OE_PROPERTY(GroupMap, groups, {});
             Group& group(const std::string& name);
             const Group& group(const std::string& name) const;
 
@@ -240,25 +240,25 @@ namespace osgEarth { namespace Procedural
             Placement& operator =(const Placement& rhs) = default;
 
             //! Location in map coordinates
-            OE_PROPERTY(osg::Vec3d, mapPoint);
+            OE_PROPERTY(osg::Vec3d, mapPoint, {});
 
             //! Location in tile local tangent plane coordinates
-            OE_PROPERTY(osg::Vec2d, localPoint);
+            OE_PROPERTY(osg::Vec2d, localPoint, {});
 
             //! Location in tile normalized coordinates [0..1]
-            OE_PROPERTY(osg::Vec2f, uv);
+            OE_PROPERTY(osg::Vec2f, uv, {});
 
             //! Scale of asset
-            OE_PROPERTY(osg::Vec3f, scale);
+            OE_PROPERTY(osg::Vec3f, scale, {});
 
             //! Rotation of asset in radians
-            OE_PROPERTY(float, rotation);
+            OE_PROPERTY(float, rotation, 0.f);
 
             //! Pointer to asset model record
-            OE_PROPERTY(ResidentModelAsset::Ptr, asset);
+            OE_PROPERTY(ResidentModelAsset::Ptr, asset, nullptr);
 
             //! Density of the LifeMap at this location
-            OE_PROPERTY(float, density);
+            OE_PROPERTY(float, density, 0.0f);
 
             //! Biome this asset came from
             const Biome* biome = nullptr;

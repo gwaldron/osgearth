@@ -104,7 +104,7 @@ float oe_shadow_multisample(in vec3 c, in float refvalue, in float blur)
 void oe_shadow_fragment(inout vec4 color)
 {
     float alpha = color.a;
-    float factor = 1.0;
+    float out_of_shadow = 1.0;
 
     // pre-pixel biasing to reduce moire/acne
     const float b0 = 0.001;
@@ -117,24 +117,23 @@ void oe_shadow_fragment(inout vec4 color)
     float depth;
 
     // loop over the slices:
-    for(int i=0; i<$OE_SHADOW_NUM_SLICES && factor > 0.0; ++i)
+    for(int i=0; i<$OE_SHADOW_NUM_SLICES && out_of_shadow > 0.0; ++i)
     {
         vec4 c = oe_shadow_coord[i];
         vec3 coord = vec3(c.x, c.y, float(i));
 
         if ( oe_shadow_blur > 0.0 )
         {
-            factor = min(factor, oe_shadow_multisample(coord, c.z-bias, oe_shadow_blur));
+            out_of_shadow = min(out_of_shadow, oe_shadow_multisample(coord, c.z-bias, oe_shadow_blur));
         }
         else
         {
             depth = texture(oe_shadow_map, coord).r;
             if ( depth < 1.0 && depth < c.z-bias )
-                factor = 0.0;
+                out_of_shadow = 0.0;
         }
     }
 
-    oe_pbr.roughness = clamp(mix(oe_pbr.roughness*1.5, oe_pbr.roughness, factor), 0, 1);
-    //float b = mix(oe_pbr.brightness*oe_shadow_color, oe_pbr.brightness, factor);
-    //oe_pbr.brightness = mix(b, oe_pbr.brightness, oe_shadow_rf);
+    oe_pbr.roughness = clamp(mix(oe_pbr.roughness*1.5, oe_pbr.roughness, out_of_shadow), 0, 1);
+    color.rgb = mix(color.rgb * oe_shadow_color, color.rgb, out_of_shadow);
 }

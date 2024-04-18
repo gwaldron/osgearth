@@ -198,7 +198,7 @@ void ht_hex2colTex_optimized(
     inout vec3 weighting);
 #endif
 
-#if 0 // old PBR
+#if 1 // old PBR
 void get_pixel(out Pixel res, inout vec3 weights, in int index, in vec2 coord)
 {
     vec4 nnra;
@@ -373,7 +373,7 @@ void oe_splat_Frag(inout vec4 quad)
     }
 
     // apply PBR
-    oe_pbr.dispacement = pixel.material[DISPLACEMENT];
+    oe_pbr.displacement = pixel.rgbh.a; // pixel.material[DISPLACEMENT];
     oe_pbr.roughness = clamp(oe_pbr.roughness * pixel.material[ROUGHNESS], 0.0, 1.0);
     oe_pbr.ao = clamp(oe_pbr.ao * pow(pixel.material[AO], ao_power), 0.0, 1.0);
     oe_pbr.metal = clamp(pixel.material[METAL], 0.0, 1.0);

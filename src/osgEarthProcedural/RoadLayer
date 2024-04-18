@@ -4,6 +4,7 @@
 #include <osgEarth/FeatureSource>
 #include <osgEarth/LayerReference>
 #include <osgEarth/MaterialLoader>
+#include <osgEarth/Units>
 
 namespace osgEarth
 {
@@ -16,13 +17,15 @@ namespace osgEarth
     {
         struct OSGEARTHPROCEDURAL_EXPORT RoadArt
         {
-            RoadArt(const Config& conf = {}); // { fromConfig(conf); }
+            RoadArt(const Config& conf = {});
             //void fromConfig(const Config&);
             Config getConfig() const;
 
             OE_OPTION(PBRMaterial, substrateMaterial, {});
-            OE_OPTION(PBRMaterial, linesMaterial, {});
+            OE_OPTION(Distance, substrateBuffer, Distance(1.0, Units::METERS));
+            OE_OPTION(PBRMaterial, lanesMaterial, {});
             OE_OPTION(PBRMaterial, crossingsMaterial, {});
+            OE_OPTION(PBRMaterial, intersectionsMaterial, {});
         };
 
         class OSGEARTHPROCEDURAL_EXPORT RoadLayer : public TileLayer
@@ -44,8 +47,8 @@ namespace osgEarth
             Status openImplementation() override;
 
         private:
-            osg::ref_ptr<Layer> _substrateLayer;
-            osg::ref_ptr<Layer> _markingsLayer;
+            osg::ref_ptr<VisibleLayer> _substrateLayer;
+            osg::ref_ptr<VisibleLayer> _markingsLayer;
         };
     }
 }

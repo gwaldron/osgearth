@@ -270,14 +270,13 @@ vec4 ht_hex2col(in sampler2D tex, in vec2 st, in float rotStrength, in float tra
     return color;
 }
 
-// Hextiling function optimized for no rotations and to 
-// sample and interpolate both color and material vectors
+// Hextiling function optimized for no rotations and to sample and interpolate two input vectors
 void ht_hex2colTex_optimized(
-    in sampler2D color_tex,
-    in sampler2D material_tex,
+    in sampler2D tex1,
+    in sampler2D tex2,
     in vec2 st,
-    out vec4 color,
-    out vec4 material,
+    out vec4 out1,
+    out vec4 out2,
     inout vec3 weighting)
 {
     // Get triangle info
@@ -293,7 +292,6 @@ void ht_hex2colTex_optimized(
     // Use the same partial derivitives to sample all three locations
     // to avoid rendering artifacts.
 
-#if 1
     // Fast way: replace textureGrad by manually calculating the LOD
     // and using textureLod instead (much faster than textureGrad)
     // https://solidpixel.github.io/2022/03/27/texture_sampling_tips.html
@@ -304,39 +302,26 @@ void ht_hex2colTex_optimized(
 
     vec2 st_ddx = dFdx(st), st_ddy = dFdy(st);
 
-    tex_dim = textureSize(color_tex, 0);
+    tex_dim = textureSize(tex1, 0);
     ddx = st_ddx * float(tex_dim.x), ddy = st_ddy * float(tex_dim.y);
     lod = 0.5 * log2(max(dot(ddx, ddx), dot(ddy, ddy)));
 
-    vec4 c1 = textureLod(color_tex, st1, lod);
-    vec4 c2 = textureLod(color_tex, st2, lod);
-    vec4 c3 = textureLod(color_tex, st3, lod);
+    vec4 c1 = textureLod(tex1, st1, lod);
+    vec4 c2 = textureLod(tex1, st2, lod);
+    vec4 c3 = textureLod(tex1, st3, lod);
 
-    tex_dim = textureSize(material_tex, 0);
+    tex_dim = textureSize(tex2, 0);
     ddx = st_ddx * float(tex_dim.x), ddy = st_ddy * float(tex_dim.y);
     lod = 0.5 * log2(max(dot(ddx, ddx), dot(ddy, ddy)));
 
-    vec4 m1 = textureLod(material_tex, st1, lod);
-    vec4 m2 = textureLod(material_tex, st2, lod);
-    vec4 m3 = textureLod(material_tex, st3, lod);
-#else
-    // Original approach: use textureGrad to supply the same gradient
-    // for each sample point (slow)
-    vec2 ddx = dFdx(st), ddy = dFdy(st);
-
-    vec4 c1 = textureGrad(color_tex, st1, ddx, ddy);
-    vec4 c2 = textureGrad(color_tex, st2, ddx, ddy);
-    vec4 c3 = textureGrad(color_tex, st3, ddx, ddy);
-
-    vec4 m1 = textureGrad(material_tex, st1, ddx, ddy);
-    vec4 m2 = textureGrad(material_tex, st2, ddx, ddy);
-    vec4 m3 = textureGrad(material_tex, st3, ddx, ddy);
-#endif
+    vec4 n1 = textureLod(tex2, st1, lod);
+    vec4 n2 = textureLod(tex2, st2, lod);
+    vec4 n3 = textureLod(tex2, st3, lod);
 
     vec3 W = weighting;
     if (W == vec3(0))
     {
-        // Use color's luminance as weighting factor
+        // Use first texture's (color's) luminance as weighting factor
         vec3 Lw = vec3(0.299, 0.587, 0.114);
         vec3 Dw = vec3(dot(c1.xyz, Lw), dot(c2.xyz, Lw), dot(c3.xyz, Lw));
         Dw = mix(vec3(1.0), Dw, ht_g_fallOffContrast);
@@ -345,8 +330,83 @@ void ht_hex2colTex_optimized(
     }
 
     weighting = W;
-    color = W.x * c1 + W.y * c2 + W.z * c3;
-    material = W.x * m1 + W.y * m2 + W.z * m3;
+    out1 = W.x * c1 + W.y * c2 + W.z * c3;
+    out2 = W.x * n1 + W.y * n1 + W.z * n3;
+}
+
+// Hextiling function optimized for no rotations and to sample and interpolate three input vectors
+void ht_hex2colTex_optimized(
+    in sampler2D tex1,
+    in sampler2D tex2,
+    in sampler2D tex3,
+    in vec2 st,
+    out vec4 out1,
+    out vec4 out2,
+    out vec4 out3,
+    inout vec3 weighting)
+{
+    // Get triangle info
+    vec3 weights;
+    vec2 vertex1, vertex2, vertex3;
+    ht_TriangleGrid_f(weights[0], weights[1], weights[2], vertex1, vertex2, vertex3, st);
+
+    // randomize the sampling offsets:
+    vec2 st1 = st + ht_hash(vertex1);
+    vec2 st2 = st + ht_hash(vertex2);
+    vec2 st3 = st + ht_hash(vertex3);
+
+    // Use the same partial derivitives to sample all three locations
+    // to avoid rendering artifacts.
+
+    // Fast way: replace textureGrad by manually calculating the LOD
+    // and using textureLod instead (much faster than textureGrad)
+    // https://solidpixel.github.io/2022/03/27/texture_sampling_tips.html
+
+    ivec2 tex_dim;
+    vec2 ddx, ddy;
+    float lod;
+
+    vec2 st_ddx = dFdx(st), st_ddy = dFdy(st);
+
+    tex_dim = textureSize(tex1, 0);
+    ddx = st_ddx * float(tex_dim.x), ddy = st_ddy * float(tex_dim.y);
+    lod = 0.5 * log2(max(dot(ddx, ddx), dot(ddy, ddy)));
+
+    vec4 c1 = textureLod(tex1, st1, lod);
+    vec4 c2 = textureLod(tex1, st2, lod);
+    vec4 c3 = textureLod(tex1, st3, lod);
+
+    tex_dim = textureSize(tex2, 0);
+    ddx = st_ddx * float(tex_dim.x), ddy = st_ddy * float(tex_dim.y);
+    lod = 0.5 * log2(max(dot(ddx, ddx), dot(ddy, ddy)));
+
+    vec4 n1 = textureLod(tex2, st1, lod);
+    vec4 n2 = textureLod(tex2, st2, lod);
+    vec4 n3 = textureLod(tex2, st3, lod);
+
+    tex_dim = textureSize(tex3, 0);
+    ddx = st_ddx * float(tex_dim.x), ddy = st_ddy * float(tex_dim.y);
+    lod = 0.5 * log2(max(dot(ddx, ddx), dot(ddy, ddy)));
+
+    vec4 m1 = textureLod(tex3, st1, lod);
+    vec4 m2 = textureLod(tex3, st2, lod);
+    vec4 m3 = textureLod(tex3, st3, lod);
+
+    vec3 W = weighting;
+    if (W == vec3(0))
+    {
+        // Use first texture's (color's) luminance as weighting factor
+        vec3 Lw = vec3(0.299, 0.587, 0.114);
+        vec3 Dw = vec3(dot(c1.xyz, Lw), dot(c2.xyz, Lw), dot(c3.xyz, Lw));
+        Dw = mix(vec3(1.0), Dw, ht_g_fallOffContrast);
+        W = Dw * pow(weights, vec3(ht_g_exp));
+        W /= (W.x + W.y + W.z);
+    }
+
+    weighting = W;
+    out1 = W.x * c1 + W.y * c2 + W.z * c3;
+    out2 = W.x * n1 + W.y * n1 + W.z * n3;
+    out3 = W.x * m1 + W.y * m2 + W.z * m3;
 }
 
 #endif // VP_STAGE_FRAGMENT

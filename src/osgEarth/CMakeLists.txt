@@ -370,6 +370,7 @@ SET(LIB_PUBLIC_HEADERS
     SimpleOceanLayer
     SimplePager
     SimplexNoise
+    SimplifyFilter
     Skins
     Sky
     SkyView
@@ -773,6 +774,7 @@ set(TARGET_SRC
     SimpleOceanLayer.cpp
     SimplePager.cpp
     SimplexNoise.cpp
+    SimplifyFilter.cpp
     Skins.cpp
     Sky.cpp
     SkyView.cpp

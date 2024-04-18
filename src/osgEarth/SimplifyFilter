@@ -1,0 +1,84 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_SIMPLIFY_FILTER_H
+#define OSGEARTHFEATURES_SIMPLIFY_FILTER_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Feature>
+#include <osgEarth/Filter>
+
+namespace osgEarth { namespace Util
+{
+    class SimplifyFilterOptions : public ConfigOptions
+    {
+    public:
+        SimplifyFilterOptions(const ConfigOptions& co =ConfigOptions()) : ConfigOptions(co) {
+            _tolerance.init(0.5);
+            _preserveTopology.init(false);
+            fromConfig(_conf);
+        }        
+
+        optional<double>& tolerance() { return _tolerance; }
+        const optional<double>& tolerance() const { return _tolerance; }
+
+        optional<bool>& preserveTopology() { return _preserveTopology; }
+        const optional<bool>& preserveTopology() const { return _preserveTopology; }
+
+        void fromConfig(const Config& conf) {
+            conf.get("tolerance", _tolerance);
+            conf.get("preserve_topology", _preserveTopology);
+        }
+
+        Config getConfig() const {
+            Config conf = ConfigOptions::getConfig();
+            conf.key() = "simplify";
+            conf.set("tolerance", _tolerance);
+            conf.set("preserve_topology", _preserveTopology);
+            return conf;
+        }
+
+    protected:
+        optional<double> _tolerance;
+        optional<bool> _preserveTopology;
+    };
+
+    /**
+     * This filter will simplify geometries
+     */
+    class OSGEARTH_EXPORT SimplifyFilter : public FeatureFilter,
+                                           public SimplifyFilterOptions
+    {
+    public:
+        // Call this determine whether this filter is available.
+        static bool isSupported();    
+
+    public:
+        SimplifyFilter();
+        SimplifyFilter( double tolerance, bool preserveTopology );
+        SimplifyFilter( const Config& conf );
+
+        virtual ~SimplifyFilter() { }
+
+    public:
+        virtual FilterContext push( FeatureList& input, FilterContext& context );    
+    };
+} }
+
+#endif // OSGEARTHFEATURES_SIMPLIFY_FILTER_H

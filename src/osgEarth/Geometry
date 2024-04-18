@@ -196,6 +196,15 @@ namespace osgEarth
             const class Geometry* other
             ) const;
 
+        /**
+         * Simplifies this geometry, returning the result in the output parameter.
+         */
+        bool simplify(
+            double tolerance,
+            bool preserveTopology,
+            osg::ref_ptr<Geometry>& output
+        ) const;
+
         //! Calculate the signed distance (in the XY plane) from a point
         //! to this geometry.
         //! A negative distance indicates that the point is interior

@@ -112,8 +112,8 @@ namespace
         else
         {
             osg::ref_ptr<osg::Image> output = new osg::Image();
-            output->allocateImage(1, 1, 1, GL_RG, GL_UNSIGNED_BYTE);
-            output->setInternalTextureFormat(GL_RG8);
+            output->allocateImage(1, 1, 1, GL_RGB, GL_UNSIGNED_BYTE);
+            output->setInternalTextureFormat(GL_RGB8);
             output->setColor(osg::Vec4(0.5, 0.5, 1.0, 1.0), 0, 0);
         }
         return output;
@@ -211,19 +211,64 @@ namespace
 
         return output;
     }
+
+    Result<osg::ref_ptr<osg::Image>> loadImage(const URI& uri, const osgDB::Options* o)
+    {
+        auto rr = uri.readImage(o);
+        if (rr.failed())
+            return Status(Status::ResourceUnavailable, rr.errorDetail());
+        else
+            return rr.getImage();
+    }
 }
 
-void
+Status
 PBRTexture::load(const PBRMaterial& mat, const osgDB::Options* options)
 {
     osg::ref_ptr<osg::Image> color_image, normal_image, roughness_image, metal_image, ao_image, displacement_image, opacity_image;
-    if (mat.color().isSet()) color_image = mat.color()->getImage(options);
-    if (mat.normal().isSet()) normal_image = mat.normal()->getImage(options);
-    if (mat.roughness().isSet()) roughness_image = mat.roughness()->getImage(options);
-    if (mat.metal().isSet()) metal_image = mat.metal()->getImage(options);
-    if (mat.ao().isSet()) ao_image = mat.ao()->getImage(options);
-    if (mat.displacement().isSet()) displacement_image = mat.displacement()->getImage(options);
-    if (mat.opacity().isSet()) opacity_image = mat.opacity()->getImage(options);
+
+    if (mat.color().isSet()) {
+        auto rr = mat.color()->readImage(options);
+        if (rr.failed()) return status = Status(Status::ResourceUnavailable, "Failed to load " + mat.color()->full() + " ... " + rr.errorDetail());
+        else color_image = rr.getImage();
+    }
+
+    if (mat.normal().isSet()) {
+        auto rr = mat.normal()->readImage(options);
+        if (rr.failed()) return status = Status(Status::ResourceUnavailable, "Failed to load " + mat.normal()->full() + " ... " + rr.errorDetail());
+        else normal_image = rr.getImage();
+    }
+
+    if (mat.roughness().isSet()) {
+        auto rr = mat.roughness()->readImage(options);
+        if (rr.failed()) return status = Status(Status::ResourceUnavailable, "Failed to load " + mat.roughness()->full() + " ... " + rr.errorDetail());
+        else roughness_image = rr.getImage();
+    }
+
+    if (mat.metal().isSet()) {
+        auto rr = mat.metal()->readImage(options);
+        if (rr.failed()) return status = Status(Status::ResourceUnavailable, "Failed to load " + mat.metal()->full() + " ... " + rr.errorDetail());
+        else metal_image = rr.getImage();
+    }
+
+    if (mat.ao().isSet()) {
+        auto rr = mat.ao()->readImage(options);
+        if (rr.failed()) return status = Status(Status::ResourceUnavailable, "Failed to load " + mat.ao()->full() + " ... " + rr.errorDetail());
+        else ao_image = rr.getImage();
+    }
+
+    if (mat.displacement().isSet()) {
+        auto rr = mat.displacement()->readImage(options);
+        if (rr.failed()) return status = Status(Status::ResourceUnavailable, "Failed to load " + mat.displacement()->full() + " ... " + rr.errorDetail());
+        else displacement_image = rr.getImage();
+    }
+
+    if (mat.opacity().isSet()) {
+        auto rr = mat.opacity()->readImage(options);
+        if (rr.failed()) return status = Status(Status::ResourceUnavailable, "Failed to load " + mat.opacity()->full() + " ... " + rr.errorDetail());
+        else opacity_image = rr.getImage();
+    }
+
 
     albedo = new osg::Texture2D(assemble_RGBA(color_image, opacity_image));
     albedo->setName(mat.name() + " albedo");
@@ -242,4 +287,6 @@ PBRTexture::load(const PBRMaterial& mat, const osgDB::Options* options)
         tex->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
         tex->setMaxAnisotropy(4.0f);
     }
+
+    return status = Status::OK();
 }

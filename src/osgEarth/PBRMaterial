@@ -22,6 +22,7 @@
 
 #include <osgEarth/Config>
 #include <osgEarth/URI>
+#include <osgEarth/Status>
 #include <osg/Texture>
 
 namespace osgEarth
@@ -93,6 +94,7 @@ namespace osgEarth
 
         //! The textures comprising the PBR material
         osg::ref_ptr<osg::Texture> albedo, normal, pbr;
+        Status status;
 
         //! Sets a wrap on all textures
         inline void setWrap(osg::Texture::WrapParameter wrap, osg::Texture::WrapMode mode) {
@@ -102,7 +104,7 @@ namespace osgEarth
         }
 
         //! Populates this object from a PBRMaterial description
-        void load(const PBRMaterial& material, const osgDB::Options* options = nullptr);
+        Status load(const PBRMaterial& material, const osgDB::Options* options = nullptr);
     };
 }
 

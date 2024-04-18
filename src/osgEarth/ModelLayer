@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_MODEL_LAYER_H
-#define OSGEARTH_MODEL_LAYER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/VisibleLayer>
@@ -32,13 +30,6 @@
 namespace osgEarth
 {
     class Map;
-
-    struct ModelLayerCallback : public VisibleLayerCallback
-    {
-        // Nothing - placeholder
-        typedef void (ModelLayerCallback::*MethodPtr)(class ModelLayer* layer);
-    };
-
 
     /**
      * Layer that contains an OSG scene graph
@@ -148,13 +139,9 @@ namespace osgEarth
         Revision                      _modelSourceRev;
         osg::ref_ptr<CacheSettings>   _cacheSettings;
         osg::ref_ptr<osg::Group>      _root;
-
-        void fireCallback(ModelLayerCallback::MethodPtr method);
     };
 
-    typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerVector;
+    using ModelLayerVector = std::vector< osg::ref_ptr<ModelLayer> >;
 }
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ModelLayer::Options);
-
-#endif // OSGEARTH_MODEL_LAYER_H

@@ -550,13 +550,3 @@ ModelLayer::isLightingEnabled() const
 {
     return options().lightingEnabled().get();
 }
-
-void
-ModelLayer::fireCallback(ModelLayerCallback::MethodPtr method)
-{
-    for(CallbackVector::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-    {
-        ModelLayerCallback* cb = dynamic_cast<ModelLayerCallback*>(i->get());
-        if (cb) (cb->*method)( this );
-    }
-}

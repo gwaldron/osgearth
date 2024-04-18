@@ -34,11 +34,6 @@ namespace osgEarth
     class Cache;
     class CacheBin;
 
-    struct TileLayerCallback : public VisibleLayerCallback
-    {
-        typedef void(TileLayerCallback::*MethodPtr)(class TileLayer*);
-    };
-
     /**
      * A layer that comprises the terrain skin (image or elevation layer)
      */

@@ -1,0 +1,61 @@
+/**
+ * osgEarth
+ * Copyright Pelican Mapping
+ * MIT License
+ */
+#pragma once
+#include <osgEarth/Common>
+#include <mutex>
+#include <functional>
+#include <vector>
+
+namespace osgEarth
+{
+    /**
+     * Easy way to add a thread-safe callback to a class.
+     * usage:
+     *   Callback<Function> onClick;
+     *
+     * User adds a callback:
+     *   instance->onClick([](...) { respond; });
+     *
+     * Class fires a callback:
+     *   onClick(a, b, ...);
+     */
+    template<typename F>
+    class Callback
+    {
+    private:
+        using Entry = typename std::pair<UID, std::function<F>>;
+        mutable std::vector<Entry> entries;
+        mutable std::mutex mutex;
+
+    public:
+        //! Adds a callback function
+        UID operator()(std::function<F>&& func) const {
+            std::lock_guard<std::mutex> lock(mutex);
+            auto uid = createUID();
+            entries.emplace_back(uid, func);
+            return uid;
+        }
+
+        //! Removed a callback function with the UID returned from ()
+        void remove(UID uid) const {
+            std::lock_guard<std::mutex> lock(mutex);
+            for(auto iter : entries) {
+                if(iter.first == uid) {
+                    entries.erase(iter);
+                    break;
+                }
+            }
+        }
+
+        //! Executes all callback functions with the provided args
+        template<typename... Args>
+        void fire(Args&&... args) const {
+            std::lock_guard<std::mutex> lock(mutex);
+            for (auto& e : entries)
+                e.second(args...);
+        }
+    };
+}

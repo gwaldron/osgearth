@@ -240,7 +240,7 @@ VisibleLayer::setVisible(bool value)
 
         updateNodeMasks();
 
-        fireCallback(&VisibleLayerCallback::onVisibleChanged);
+        onVisibleChanged.fire(this);
 
         if (_visibleTiedToOpen)
         {
@@ -406,7 +406,8 @@ VisibleLayer::setOpacity(float value)
     options().opacity() = value;
     initializeUniforms();
     _opacityU->set(value);
-    fireCallback(&VisibleLayerCallback::onOpacityChanged);
+
+    onOpacityChanged.fire(this);
 }
 
 float
@@ -425,7 +426,8 @@ VisibleLayer::setMinVisibleRange( float minVisibleRange )
         (float)options().minVisibleRange().get(),
         (float)options().maxVisibleRange().get(),
         (float)options().attenuationRange().get()));
-    fireCallback( &VisibleLayerCallback::onVisibleRangeChanged );
+
+    onVisibleRangeChanged.fire(this);
 }
 
 float
@@ -451,7 +453,7 @@ VisibleLayer::setMaxVisibleRange( float maxVisibleRange )
         }
     );
 
-    fireCallback(&VisibleLayerCallback::onVisibleRangeChanged);
+    onVisibleRangeChanged.fire(this);
 }
 
 float
@@ -476,16 +478,6 @@ float
 VisibleLayer::getAttenuationRange() const
 {
     return options().attenuationRange().get();
-}
-
-void
-VisibleLayer::fireCallback(VisibleLayerCallback::MethodPtr method)
-{
-    for (CallbackVector::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
-    {
-        VisibleLayerCallback* cb = dynamic_cast<VisibleLayerCallback*>(i->get());
-        if (cb) (cb->*method)(this);
-    }
 }
 
 void

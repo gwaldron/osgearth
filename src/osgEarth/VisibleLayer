@@ -16,10 +16,10 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_VISIBLE_LAYER_H
-#define OSGEARTH_VISIBLE_LAYER_H
+#pragma once
 
 #include <osgEarth/Layer>
+#include <osgEarth/Callbacks>
 
 namespace osgEarth
 {
@@ -32,15 +32,6 @@ namespace osgEarth
 
 namespace osgEarth
 {
-    struct VisibleLayerCallback : public LayerCallback
-    {
-        virtual void onVisibleChanged(class VisibleLayer* layer) { }
-        virtual void onOpacityChanged(class VisibleLayer* layer) { }
-        virtual void onVisibleRangeChanged(class VisibleLayer* layer) { }
-        typedef void (VisibleLayerCallback::*MethodPtr)(class VisibleLayer* layer);
-    };
-
-
     //! Base class for a layer supporting visibility and opacity controls.
     class OSGEARTH_EXPORT VisibleLayer : public Layer
     {
@@ -105,6 +96,12 @@ namespace osgEarth
         void setEnableDebugView(bool value);
         bool getEnableDebugView() const;
 
+    public: // callbacks
+
+        Callback<void(const VisibleLayer*)> onVisibleChanged;
+        Callback<void(const VisibleLayer*)> onVisibleRangeChanged;
+        Callback<void(const VisibleLayer*)> onOpacityChanged;
+
     public: // Layer
 
         virtual Status openImplementation() override;
@@ -114,8 +111,6 @@ namespace osgEarth
         virtual void init() override;
 
         virtual void prepareForRendering(TerrainEngine*) override;
-
-        void fireCallback(VisibleLayerCallback::MethodPtr);
 
         bool _visibleTiedToOpen = false;
         bool _canSetVisible = true;
@@ -130,8 +125,6 @@ namespace osgEarth
         void updateNodeMasks();
     };
 
-    typedef std::vector< osg::ref_ptr<VisibleLayer> > VisibleLayerVector;
+    using VisibleLayerVector = std::vector<osg::ref_ptr<VisibleLayer>>;
 
-} // namespace TileLayer
-
-#endif // OSGEARTH_RENDER_LAYER_H
+} // namespace osgEarth

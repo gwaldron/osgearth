@@ -466,6 +466,55 @@ Geometry::intersects(
 #endif // OSGEARTH_HAVE_GEOS
 }
 
+bool
+Geometry::simplify(
+    double distanceTolerance,
+    bool preserveTopology,
+    osg::ref_ptr<Geometry>& output
+) const
+{
+#ifdef OSGEARTH_HAVE_GEOS
+
+    GEOSContextHandle_t handle = initGEOS_r(OSGEARTH_WarningHandler, OSGEARTH_GEOSErrorHandler);
+
+    //Create the GEOS Geometries
+    GEOSGeometry* inGeom = GEOS::importGeometry(handle, this);
+
+    if (inGeom)
+    {
+        GEOSGeometry* outGeom = nullptr;
+        if (preserveTopology)
+        {
+            outGeom = GEOSTopologyPreserveSimplify_r(handle, inGeom, distanceTolerance);
+        }
+        else
+        {
+            outGeom = GEOSSimplify_r(handle, inGeom, distanceTolerance);
+        }
+        if (outGeom)
+        {
+            output = GEOS::exportGeometry(handle, outGeom);
+            GEOSGeom_destroy_r(handle, outGeom);
+
+            if (output.valid() && !output->isValid())
+            {
+                output = 0L;
+            }
+        }
+    }
+
+    //Destroy the geometry
+    GEOSGeom_destroy_r(handle, inGeom);
+
+    finishGEOS_r(handle);
+
+    return output.valid();
+#else
+    OE_WARN << LC << "Simplify failed - GEOS not available" << std::endl;
+    return false;
+#endif
+}
+
 double
 Geometry::getSignedDistance2D(
     const osg::Vec3d& point) const

@@ -9,6 +9,7 @@
 #include <osgEarth/ShaderLoader>
 #include <osgEarth/ResampleFilter>
 #include <osgEarth/TextureArena>
+#include <osgEarth/Math>
 #include <osgDB/ReadFile>
 #include <osgUtil/SmoothingVisitor>
 #include <osg/Depth>
@@ -48,6 +49,10 @@ RoadArt::getConfig() const
 
 namespace
 {
+    Distance LANE_WIDTH(10.0f, Units::FEET);
+
+    Distance DEFAULT_ROAD_WIDTH = LANE_WIDTH * 2.0;
+
     using index_t = uint32_t;
     using rank_t = uint8_t;
     using point_t = osg::Vec3d;
@@ -100,8 +105,8 @@ namespace
     struct part_art_t
     {
         osg::ref_ptr<osg::StateSet> stateset;
-        float width; // m
-        float length; // m
+        float width = 1.0f; // m
+        float length = 1.0f; // m
         bool tiled_along_width = true;
         bool tiled_along_length = true;
     };
@@ -113,7 +118,8 @@ namespace
         part_art_t lanes;
         part_art_t crossing;
         part_art_t intersection;
-        float default_width = 5.0f;
+        Distance default_width = Distance(20, Units::FEET);
+        //float default_width = 5.0f;
         rank_t rank = 0;
         uint8_t num_lanes = 2;
     };
@@ -168,6 +174,13 @@ namespace
         }
     };
 
+    // A graph edge connecting two nodes.
+    // 
+    // The "left" and "right" sides of the edge are relative to the direction
+    // of the edge (from "node1" to "node2").
+    // The 2 nodes are sorted in geospatial order from west to east;
+    // the western-most node is always node1. If the edge is oriented
+    // straight north or south, then the southern-most node is node1.
     struct edge_t
     {
         const UID uid;
@@ -176,10 +189,11 @@ namespace
         FID fid; // unique source id (feature id)
         float width; // m
         const properties_t* props = nullptr;
+        int order = 0; // render order
 
         float angle = 0.0f; // relative to +x axis, used for sorting
 
-        // end points, extruded to width
+        // end points, extruded to width.
         point_t node1_left, node1_right;
         point_t node2_left, node2_right;
 
@@ -198,7 +212,7 @@ namespace
             auto dir = node2.p - node1.p;
             angle = atan2(dir.y(), dir.x());
             if (w <= 0.0f && props != nullptr)
-                width = props->default_width;
+                width = props->default_width.as(Units::METERS);
         }
 
         vec_t direction() const {
@@ -359,11 +373,6 @@ namespace
                 }
             if (!found) node2->edges.emplace_back(edge);
 
-            //node1->add_edge(edge);
-            //node2->add_edge(edge);
-            //node1->edges.emplace_back(edge);
-            //node2->edges.emplace_back(edge);
-
             auto& n1 = const_cast<node_t&>(*node1);
             auto& n2 = const_cast<node_t&>(*node2);
 
@@ -474,18 +483,17 @@ namespace
 
     struct art_t
     {
-        properties_t road_basic;
-        properties_t road_one_lane;
+        properties_t road_2_lane;
 
         void load(const RoadArt& art)
         {
-            auto asphalt = new osg::Texture2D(osgDB::readRefImageFile("D:/data/textures/ambientcg/Asphalt026B_4K-JPG/Asphalt026B_4K-JPG_Color.jpg"));
-            asphalt->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
-            asphalt->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
-            asphalt->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
-            asphalt->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-            auto asphalt_ss = new osg::StateSet();
-            asphalt_ss->setTextureAttribute(0, asphalt);
+            //auto asphalt = new osg::Texture2D(osgDB::readRefImageFile("D:/data/textures/ambientcg/Asphalt026B_4K-JPG/Asphalt026B_4K-JPG_Color.jpg"));
+            //asphalt->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+            //asphalt->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+            //asphalt->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
+            //asphalt->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
+            //auto asphalt_ss = new osg::StateSet();
+            //asphalt_ss->setTextureAttribute(0, asphalt);
 
             // basic 2 lane road
             {
@@ -523,6 +531,8 @@ namespace
                 osg::ref_ptr<osg::StateSet> intersection_ss;
                 auto intersection_tex = new PBRTexture();
                 intersection_tex->load(art.intersectionsMaterial().value());
+                intersection_tex->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+                intersection_tex->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
                 if (intersection_tex->status.isOK())
                 {
                     intersection_ss = new osg::StateSet();
@@ -533,13 +543,14 @@ namespace
                     OE_WARN << "Failed to load intersection texture: " << intersection_tex->status.message() << std::endl;
                 }
 
-                road_basic = {
+                road_2_lane = {
                     "road",
-                    { asphalt_ss, 8, 10, true, true }, // surface art, width, length , tiled_along_length, tiled_along_width
+                    { {}, 9, 0, true, true }, // surface - UNUSED
+                    //{ asphalt_ss, 8, 10, true, true }, // surface art, width, length , tiled_along_length, tiled_along_width
                     { lanes_ss, 5, 5, true, false }, // lines art, width, length, tiled_along_length, tiled_along_width
                     { crossing_ss, 0.5, 1.5, false, true }, // crossing art, width, length, tiled_along_length, tiled_along_width
-                    { intersection_ss, 5.0f, 5.0f, true, true}, // intersection art, width, length, tiled_along_length, tiled_along_width
-                    5.0f, // default road width(m)
+                    { intersection_ss, 1.0f, 1.0f, true, true}, // intersection art, width, length, tiled_along_length, tiled_along_width
+                    DEFAULT_ROAD_WIDTH, // default road width
                     1, // rank
                     2  // lanes
                 };
@@ -613,14 +624,18 @@ namespace
             // generic for starters.
             node.intersection.type = intersection_t::GENERIC;
 
-            // compute backoff distance for connecting edges
-            for (auto& edge : node.edges)
+            // compute backoff distance for each edge.
+            for(unsigned i = 0; i<=node.edges.size(); ++i)
             {
-                node.intersection.backoff_length = std::max(
-                    node.intersection.backoff_length,
-                    edge->width *0.5f);
+                auto& A = i < node.edges.size() ? *node.edges[i] : *node.edges.front();
+                auto& B = (i == 0) ? *node.edges.back() : *node.edges[i - 1];
+                float angle = 0.5 * acos(A.cos_of_angle_with(B)); // bisecting angle
+                float half_width = 0.5 * (std::max(A.width, B.width));
+                float backoff = half_width / tan(angle);
+                node.intersection.backoff_length = std::max(node.intersection.backoff_length, backoff);
             }
-            node.intersection.crossing_length = node.intersection.backoff_length * 0.5;
+
+            //node.intersection.crossing_length = node.intersection.backoff_length * 0.5;
 
             // if this node doesn't have its own properties, inherit them from the edges.
             if (node.props == nullptr)
@@ -637,12 +652,12 @@ namespace
     }
 
     // squares off an unconnected edge node
-    void compile_end_cap(edge_t& e, const node_t& n, float extra_backoff = 0.0f)
+    void compile_end_cap(edge_t& e, const node_t& n, bool use_backoff)
     {
         vec_t dir = e.direction();
         vec_t left = cross(vec_t(0, 0, 1), dir);
         vec_t extrusion = (left * e.width * 0.5);
-        vec_t backoff = (dir * (n.intersection.backoff_length + extra_backoff));
+        vec_t backoff = (dir * n.intersection.backoff_length * (use_backoff? 1.0 : 0.0));
         vec_t crossing = (dir * n.intersection.crossing_length);
 
         if (e.node2 == n)
@@ -665,9 +680,9 @@ namespace
     {
         // too tight a turn? cap it
         double cosangle = A.cos_of_angle_with(B);
-        if (cosangle > 0.0)
+        if (cosangle > 0.25)
         {
-            compile_end_cap(A, n);
+            compile_end_cap(A, n, true);
             return;
         }
 
@@ -712,8 +727,11 @@ namespace
     // joins a "third" edge to two edges that are joined with a simple miter.
     void compile_t_edge(edge_t& t_edge, const node_t& n)
     {
+        // decrement the order of the T-edge so it draws "under" the main edges:
+        t_edge.order--;
+
         // temporary:
-        compile_end_cap(t_edge, n, n.intersection.backoff_length);
+        compile_end_cap(t_edge, n, false); // no backoff!
         return;
 
         edge_t* a;
@@ -783,26 +801,17 @@ namespace
                 else
                     compile_2way_join(e, a, n);
             }
-//            if (t_edge == a && e == b)
-//                compile_2way_join(e, c, n);
-//            else if (t_edge == b && e == c)
-//                compile_2way_join(e, a, n);
-//            else
-//                compile_2way_join(e, b, n);
-////            edge_t& e2 = (t_edge == a && e == b) ? c : (t_edge == b && e == c) ? a : b;
-////            compile_2way_join(e, e2, n);
         }
     }
 
     // Calculates all the values needed to render the graph
     void compile(graph_t& g)
     {
-        // sort the edges by angle
-        const auto sort_by_angle = [](const edge_t* a, const edge_t* b) { return a->angle < b->angle; };
+        // sort each node's edges by angle.
         for (auto& n : g.nodes)
         {
             auto& node = const_cast<node_t&>(n);
-            std::sort(node.edges.begin(), node.edges.end(), sort_by_angle);
+            std::sort(node.edges.begin(), node.edges.end(), angle_sort(node));
         }
 
         // calculate crossing types and backoff distances
@@ -821,19 +830,26 @@ namespace
             {
                 if (node->edges.size() == 1)
                 {
-                    compile_end_cap(edge, *node);
+                    compile_end_cap(edge, *node, false); // no backoff needed
                 }
                 else if (node->edges.size() == 2)
                 {
                     compile_2way_join(edge, *node);
                 }
-                else if (node->edges.size() >= 3)
+                else if (node->edges.size() == 3)
                 {
                     compile_3way_join(edge, *node);
+                }
+                else
+                {
+                    // TODO? Just render the intersection separately in this case.
+                    compile_end_cap(edge, *node, true);
                 }
             }
         }
     }
+
+#if 0
     osg::Node* tessellate_edge(const edge_t& edge, std::function<osg::Vec3(const osg::Vec3d&)>& transform)
     {
         auto verts = new osg::Vec3Array();
@@ -904,6 +920,7 @@ namespace
 
         return geom;
     }
+#endif
 
     osg::Node* tessellate_lanes(
         const edge_t& edge,
@@ -918,19 +935,10 @@ namespace
         auto normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
         auto uvs = new osg::Vec2Array(osg::Array::BIND_PER_VERTEX);
 
-        osg::Vec3d zup(0, 0, z);
-
-        //verts->push_back(transform(edge.node1_cr_right + zup));
-        //verts->push_back(transform(edge.node2_cr_right + zup));
-        //verts->push_back(transform(edge.node2_cr_left + zup));
-        //verts->push_back(transform(edge.node1_cr_left + zup));
-        verts->push_back(transform(edge.node1_right));
-        verts->push_back(transform(edge.node2_right));
-        verts->push_back(transform(edge.node2_left));
-        verts->push_back(transform(edge.node1_left));
-
-        //for (int i = 0; i < 4; ++i)
-        //    (*verts)[i].z() = z;
+        verts->push_back(transform(edge.node1_cr_right));
+        verts->push_back(transform(edge.node2_cr_right));
+        verts->push_back(transform(edge.node2_cr_left));
+        verts->push_back(transform(edge.node1_cr_left));
 
         colors->push_back(osg::Vec4(1, 1, 1, 0.85));
         normals->push_back(osg::Vec3(0, 0, 1));
@@ -939,7 +947,8 @@ namespace
         osg::Quat q;
         q.makeRotate(normalize(edge.node2.p - edge.node1.p), vec_t(1, 0, 0));
 
-        float s = edge.width / edge.props->lanes.width;
+        float s = 1.0f; // stretch to whatever road we're using
+        //float s = edge.width / edge.props->lanes.width;
 
         float t;
         t = (q * (*verts)[0]).x() / edge.props->lanes.length;
@@ -1031,6 +1040,9 @@ namespace
         if (g.nodes.empty())
             return new osg::Group();
 
+        // Note: this depends on each node's edges being sorted by angle,
+        // which happens in the compile() function.
+
         // TODO: later, we will sort these by properties so we get all the right
         // textures in the right places. For now, just use the props of the first
         // node:
@@ -1039,7 +1051,7 @@ namespace
         unsigned num_points = 0;
         for (auto& node : g.nodes)
         {
-            if (node.intersection.type != node.intersection.NONE)
+            if (node.intersection.type != node.intersection.NONE && node.edges.size() >= 4)
             {
                 if (!first_node)
                     first_node = &node;
@@ -1051,33 +1063,37 @@ namespace
         if (num_points < 2)
             return new osg::Group();
 
+        auto geom = new osg::Geometry();
+        geom->setUseDisplayList(false);
+        geom->setUseVertexBufferObjects(true);
+
         std::vector<vec_t> points;
         points.reserve(num_points);
 
-        std::vector<GLushort> indices;
-        indices.reserve(3 * (num_points - 2));
+        auto indices = new osg::DrawElementsUInt(GL_TRIANGLES);
+        indices->reserve(3 * (num_points - 2));
+        geom->addPrimitiveSet(indices);
 
         auto uvs = new osg::Vec2Array(osg::Array::BIND_PER_VERTEX);
         uvs->reserve(num_points);
 
         for (auto& node : g.nodes)
         {
-            if (node.intersection.type != node.intersection.NONE)
+            if (node.intersection.type != node.intersection.NONE && node.edges.size() == 4)
             {
-                // sort the edges by angle.
-                std::sort(node.edges.begin(), node.edges.end(), angle_sort(node));
-
                 GLushort base = points.size();
+                float length = 0.0f;
                 Bounds b;
-                //float length_squared = 0.0f;
 
                 for (auto& edge : node.edges)
                 {
-                    if (edge->node1 == node) {
+                    if (edge->node1 == node)
+                    {
                         points.push_back(edge->node1_cr_right);
                         points.push_back(edge->node1_cr_left);
                     }
-                    else {
+                    else
+                    {
                         points.push_back(edge->node2_cr_left);
                         points.push_back(edge->node2_cr_right);
                     }
@@ -1085,37 +1101,40 @@ namespace
                     b.expandBy(points[points.size() - 2]);
                     b.expandBy(points[points.size() - 1]);
 
-                    if (points.size() > 2)
+                    length += (points[points.size() - 2] - points[points.size() - 1]).length();
+
+                    if (points.size()-base > 2)
                     {
-                        indices.push_back(base);
-                        indices.push_back(points.size() - 3);
-                        indices.push_back(points.size() - 2);
-                        indices.push_back(base);
-                        indices.push_back(points.size() - 2);
-                        indices.push_back(points.size() - 1);
+                        indices->push_back(base);
+                        indices->push_back(points.size() - 3);
+                        indices->push_back(points.size() - 2);
+                        indices->push_back(base);
+                        indices->push_back(points.size() - 2);
+                        indices->push_back(points.size() - 1);
+
+                        length += (points[points.size() - 3] - points[points.size() - 2]).length();
                     }
                 }
 
-                // generate the uvs be stretching the texture across the bounding box
-                // and then clamping it to the [0...1] range.
-                for (GLushort i = base; i < points.size(); ++i)
+                // generate uvs.
+                float sm = node.props->intersection.width;
+                float tm = node.props->intersection.length;
+                for (auto& p : points)
                 {
-                    float s = clamp(((points[i].x()-b.xMin()) / (b.xMax() - b.xMin())), 0.0, 1.0);
-                    float t = clamp(((points[i].y()-b.yMin()) / (b.yMax() - b.yMin())), 0.0, 1.0);
-                    uvs->push_back(osg::Vec2(s, t));
+                    float s = (p.x()-b.xMin())/(b.xMax()-b.xMin());
+                    float t = (p.y()-b.yMin())/(b.yMax()-b.yMin());
+                    uvs->push_back(osg::Vec2(s * sm, t * tm));
                 }
             }
         }
-
-        auto geom = new osg::Geometry();
-        geom->setUseDisplayList(false);
-        geom->setUseVertexBufferObjects(true);
 
         geom->setTexCoordArray(0, uvs);
 
         auto verts = new osg::Vec3Array();
         verts->reserve(points.size());
-        for (auto& p : points) verts->push_back(transform(p));
+        for (auto& p : points) {
+            verts->push_back(transform(p));
+        }
         geom->setVertexArray(verts);
 
         auto normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
@@ -1126,8 +1145,6 @@ namespace
         colors->push_back(osg::Vec4(1, 1, 1, 1));
         geom->setColorArray(colors);
 
-        auto prim = new osg::DrawElementsUShort(GL_TRIANGLES, indices.size(), indices.data());
-        geom->addPrimitiveSet(prim);
 
         // texture:
         if (first_node && first_node->props && first_node->props->intersection.stateset.valid())
@@ -1145,9 +1162,18 @@ namespace
     {
         auto group = new osg::Group();
 
-        for (auto& edge : g.edges)
+        // first sort the edges by render order.
+        std::vector<const edge_t*> sorted_edges;
+        sorted_edges.reserve(g.edges.size());
+        for(auto& edge : g.edges)
+            sorted_edges.push_back(&edge);
+        std::sort(sorted_edges.begin(), sorted_edges.end(), [](const edge_t* a, const edge_t* b) {
+            return a->order < b->order;
+        });        
+
+        for (auto& edge : sorted_edges)
         {
-            group->addChild(tessellate_lanes(edge, transform, z));
+            group->addChild(tessellate_lanes(*edge, transform, z));
         }
         for (auto& node : g.nodes)
         {
@@ -1163,7 +1189,7 @@ namespace
     }
 }
 
-#define DEFAULT_WIDTH 5.0
+//#define DEFAULT_WIDTH 5.0
 
 #ifdef OSGEARTH_HAVE_CLIPPER2
 #include <clipper2/clipper.h>
@@ -1412,12 +1438,8 @@ namespace
         void init() override
         {
             super::init();
-        }
-
-        GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override
-        {
-            return super::createImageImplementation(key, progress);
-        }
+            options().minLevel() = 18u;
+        }            
 
         Status openImplementation() override
         {
@@ -1425,12 +1447,13 @@ namespace
             if (s.isError())
                 return s;
 
-            float width = DEFAULT_WIDTH;
+            float width = DEFAULT_ROAD_WIDTH.as(Units::METERS);
             float buffered_width = width + (2.0 * _artConfig->substrateBuffer()->as(Units::METERS));
 
             Style style;
-            style.getOrCreate<RenderSymbol>()->sdfMinDistance()->setLiteral(0.5 * width);
-            style.getOrCreate<RenderSymbol>()->sdfMaxDistance()->setLiteral(0.5 * buffered_width);
+            auto render = style.getOrCreate<RenderSymbol>();
+            render->sdfMinDistance()->setLiteral(0.5 * width);
+            render->sdfMaxDistance()->setLiteral(0.5 * buffered_width);
             
             auto styles = new StyleSheet();
             styles->addStyle(style);
@@ -1620,19 +1643,31 @@ namespace
                 if (!geom)
                     continue;
 
-                int layer = feature->getInt("layer");
+                int layer = feature->getInt("layer", 0);
 
                 // for now, skip features that are underground
                 if (layer < 0)
                     continue;
 
-                float z = layer * 3.0f;
+                //TODO: use this to render overpasses, etc. We will need to "bin" them separately
+                // because of the depth writes being disabled on the bottom layer.
+                //float z = layer * 3.0f;
+                float z = 0.0;
 
                 feature->transform(local_srs);
 
                 auto highway = feature->getString("highway");
-                auto width = feature->getDouble("width", 0.0);
+                auto width = feature->getDouble("width", 0);
                 auto lanes = feature->getInt("lanes", 0);
+
+                auto* art = &_art.road_2_lane;
+
+                // todo: select art based on number of lanes
+
+                if (width == 0.0 && lanes > 0)
+                {
+                    width = lanes * LANE_WIDTH.as(Units::METERS);
+                }
 
                 if (highway == "crossing")
                 {
@@ -1641,7 +1676,7 @@ namespace
                         if (geom->size() > 0)
                         {
                             auto pos = (*geom)[0] - origin;
-                            auto node = graph.add_node(pos.x(), pos.y(), z, &_art.road_basic);
+                            auto node = graph.add_node(pos.x(), pos.y(), z, art);
                             node->has_crossing = true;
                         }
                     }
@@ -1667,7 +1702,13 @@ namespace
                                 //}
                                 //if (i < part->size() - 1)
                                 {
-                                    graph.add_edge(p1.x(), p1.y(), p2.x(), p2.y(), z, width, &_art.road_basic);
+                                    auto* edge = graph.add_edge(p1.x(), p1.y(), p2.x(), p2.y(), z, width, art);
+
+                                    // higher layers draw later
+                                    if (edge)
+                                    {
+                                        edge->order += layer;
+                                    }
                                 }
                             }
                         }
@@ -1765,8 +1806,9 @@ RoadLayer::openImplementation()
     {
         auto substrate = new SubstrateLayer();
         substrate->setName("  Roads - substrate");
-        substrate->setMinLevel(getMinLevel());
-        substrate->setMaxDataLevel(getMaxDataLevel());
+        substrate->setMinLevel(19); // getMinLevel());
+        substrate->setMaxDataLevel(19); // getMaxDataLevel());
+        //substrate->setTileSize(65);
         substrate->options().features() = options().features();
         substrate->_artConfig = &options().art().value();
         substrate->_material = options().art()->substrateMaterial().value();

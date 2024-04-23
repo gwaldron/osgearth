@@ -25,6 +25,7 @@
 #include <osgEarth/GLUtils>
 #include <osgEarth/TextureArena>
 #include <osgEarth/Utils>
+#include <osg/Geometry>
 #include <osgUtil/RenderLeaf>
 #include <osgUtil/RenderBin>
 #include <vector>
@@ -229,7 +230,7 @@ namespace osgEarth
     /**
      * Renders batches of chonks with gpu culling.
      */
-    class OSGEARTH_EXPORT ChonkDrawable : public osg::Drawable
+    class OSGEARTH_EXPORT ChonkDrawable : public osg::Geometry //public osg::Drawable
     {
     public:
         META_Node(osgEarth, ChonkDrawable);
@@ -394,12 +395,15 @@ namespace osgEarth
     public:
         // support intersectors and stats visitors
         bool supports(const osg::PrimitiveFunctor& f) const override { return true; }
-        virtual void accept(osg::PrimitiveFunctor&) const override;
+        void accept(osg::PrimitiveFunctor&) const override;
+
+        bool supports(const osg::PrimitiveIndexFunctor& f) const override { return true; }
+        void accept(osg::PrimitiveIndexFunctor&) const override;
 
     private:
         mutable bool _proxy_dirty = true;
-        mutable std::vector<osg::Vec3f> _proxy_verts;
-        mutable std::vector<GLuint> _proxy_indices;
+        mutable osg::Vec3Array* _proxy_verts = nullptr;
+        mutable osg::DrawElementsUInt* _proxy_indices = nullptr;
         void refreshProxy() const;
         void update_gl_objects(GLObjects&, osg::State&) const;
         ChonkDrawable(const ChonkDrawable& rhs, const osg::CopyOp&) { }

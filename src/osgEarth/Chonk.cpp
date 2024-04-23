@@ -774,7 +774,7 @@ namespace
 }
 
 ChonkDrawable::ChonkDrawable(int renderBinNumber) :
-    osg::Drawable(),
+    osg::Geometry(),
     _renderBinNumber(renderBinNumber)
 {
     setName(typeid(*this).name());
@@ -783,8 +783,14 @@ ChonkDrawable::ChonkDrawable(int renderBinNumber) :
 
     // The ICO only accepts drawables for which VBOs or display lists are enabled:
     setUseVertexBufferObjects(true);
-
     installRenderBin(this);
+
+    // stores the proxy geometry for intersections, etc.
+    _proxy_verts = new osg::Vec3Array();
+    setVertexArray(_proxy_verts);
+    _proxy_indices = new osg::DrawElementsUInt(GL_TRIANGLES);
+    addPrimitiveSet(_proxy_indices);
+
 }
 
 ChonkDrawable::~ChonkDrawable()
@@ -1035,9 +1041,24 @@ ChonkDrawable::refreshProxy() const
     {
         std::lock_guard<std::mutex> lock(_m);
 
-        _proxy_verts.clear();
-        _proxy_indices.clear();
+        _proxy_verts->clear();
+        _proxy_indices->clear();
 
+        // pre-allocate
+        unsigned num_verts = 0, num_indices = 0;
+        for (auto& batch : _batches)
+        {
+            Chonk::Ptr c = batch.first;
+            for (auto& instance : batch.second)
+            {
+                num_verts += c->_vbo_store.size();
+                num_indices += c->_ebo_store.size();
+            }
+        }
+        _proxy_verts->reserve(num_verts);
+        _proxy_indices->reserve(num_indices);
+
+        // and populate
         unsigned offset = 0;
         for (auto& batch : _batches)
         {
@@ -1046,11 +1067,11 @@ ChonkDrawable::refreshProxy() const
             {
                 for (auto& vert : c->_vbo_store)
                 {
-                    _proxy_verts.push_back(vert.position * instance.xform);
+                    _proxy_verts->push_back(vert.position * instance.xform);
                 }
                 for (auto& index : c->_ebo_store)
                 {
-                    _proxy_indices.push_back(index + offset);
+                    _proxy_indices->push_back(index + offset);
                 }
             }
             offset += c->_vbo_store.size();
@@ -1066,8 +1087,17 @@ ChonkDrawable::accept(osg::PrimitiveFunctor& f) const
     if (!_batches.empty())
     {
         refreshProxy();
-        f.setVertexArray(_proxy_verts.size(), _proxy_verts.data());
-        f.drawElements(GL_TRIANGLES, _proxy_indices.size(), _proxy_indices.data());
+        osg::Geometry::accept(f);
+    }
+}
+
+void
+ChonkDrawable::accept(osg::PrimitiveIndexFunctor& f) const
+{
+    if (!_batches.empty())
+    {
+        refreshProxy();
+        osg::Geometry::accept(f);
     }
 }
 

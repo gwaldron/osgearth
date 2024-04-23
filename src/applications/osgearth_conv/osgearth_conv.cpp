@@ -401,7 +401,7 @@ main(int argc, char** argv)
         inConf.key() = inConf.value("driver");
 
         auto layer = Layer::create(ConfigOptions(inConf));
-        auto input = dynamic_cast<TileLayer*>(layer.get());
+        input = dynamic_cast<TileLayer*>(layer.get());
         if (!input)
         {
             OE_WARN << LC << "Failed to open input for " << inConf.toJSON(false) << std::endl;

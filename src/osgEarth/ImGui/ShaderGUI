@@ -174,7 +174,7 @@ namespace osgEarth
                                         if (ImGuiUtil::InputTextMultiline("##shader_source", &text, ImVec2(-1, -1)))
                                         {
                                             shader->setShaderSource(text);
-                                            //program->releaseGLObjects(nullptr);
+                                            program->releaseGLObjects(nullptr);
                                         }
 
                                         ImGui::End();

@@ -4,6 +4,7 @@
 #include <osgEarth/rtree.h>
 #include <osgEarth/FeatureSDFLayer>
 #include <osgEarth/TiledModelLayer>
+#include <osgEarth/TerrainConstraintLayer>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TerrainResources>
 #include <osgEarth/ShaderLoader>
@@ -21,7 +22,7 @@ using namespace osgEarth::Procedural;
 
 REGISTER_OSGEARTH_LAYER(roads, RoadLayer);
 
-RoadArt::RoadArt(const Config& conf)
+RoadLayerArt::RoadLayerArt(const Config& conf)
 {
     conf.child("substrate").get("material", substrateMaterial());
     conf.child("substrate").get("buffer", substrateBuffer());
@@ -31,7 +32,7 @@ RoadArt::RoadArt(const Config& conf)
 }
 
 Config
-RoadArt::getConfig() const
+RoadLayerArt::getConfig() const
 {
     Config conf("art");
     Config& sub = conf.add("substrate");
@@ -93,10 +94,10 @@ namespace
     }
 
     
-    inline int hashed_value(double a, double mult)
+    inline std::int64_t hashed_value(double a, double mult)
     {
-        int i = (int)(a * 1000.0);
-        int m = (int)(mult * 1000.0);
+        auto i = (std::int64_t)(a * 1000.0);
+        auto m = (std::int64_t)(mult * 1000.0);
         return ((i + m - 1) / m) * m;
     }
 
@@ -485,16 +486,8 @@ namespace
     {
         properties_t road_2_lane;
 
-        void load(const RoadArt& art)
+        void load(const RoadLayerArt& art)
         {
-            //auto asphalt = new osg::Texture2D(osgDB::readRefImageFile("D:/data/textures/ambientcg/Asphalt026B_4K-JPG/Asphalt026B_4K-JPG_Color.jpg"));
-            //asphalt->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
-            //asphalt->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
-            //asphalt->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
-            //asphalt->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-            //auto asphalt_ss = new osg::StateSet();
-            //asphalt_ss->setTextureAttribute(0, asphalt);
-
             // basic 2 lane road
             {
                 osg::ref_ptr<osg::StateSet> lanes_ss;
@@ -546,7 +539,6 @@ namespace
                 road_2_lane = {
                     "road",
                     { {}, 9, 0, true, true }, // surface - UNUSED
-                    //{ asphalt_ss, 8, 10, true, true }, // surface art, width, length , tiled_along_length, tiled_along_width
                     { lanes_ss, 5, 5, true, false }, // lines art, width, length, tiled_along_length, tiled_along_width
                     { crossing_ss, 0.5, 1.5, false, true }, // crossing art, width, length, tiled_along_length, tiled_along_width
                     { intersection_ss, 1.0f, 1.0f, true, true}, // intersection art, width, length, tiled_along_length, tiled_along_width
@@ -922,10 +914,8 @@ namespace
     }
 #endif
 
-    osg::Node* tessellate_lanes(
-        const edge_t& edge,
-        std::function<osg::Vec3(const osg::Vec3d&)> transform,
-        float z = 0)
+    template<class XFORM>
+    osg::Node* tessellate_lanes(const edge_t& edge, XFORM&& transform)
     {
         if (edge.props->lanes.stateset == nullptr)
             return new osg::Group();
@@ -935,10 +925,13 @@ namespace
         auto normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
         auto uvs = new osg::Vec2Array(osg::Array::BIND_PER_VERTEX);
 
-        verts->push_back(transform(edge.node1_cr_right));
-        verts->push_back(transform(edge.node2_cr_right));
-        verts->push_back(transform(edge.node2_cr_left));
-        verts->push_back(transform(edge.node1_cr_left));
+        auto node1_c = (edge.node1_cr_left + edge.node1_cr_right) * 0.5;
+        auto node2_c = (edge.node2_cr_left + edge.node2_cr_right) * 0.5;
+
+        verts->push_back(transform(edge.node1_cr_right, node1_c));
+        verts->push_back(transform(edge.node2_cr_right, node2_c));
+        verts->push_back(transform(edge.node2_cr_left, node2_c));
+        verts->push_back(transform(edge.node1_cr_left, node1_c));
 
         colors->push_back(osg::Vec4(1, 1, 1, 0.85));
         normals->push_back(osg::Vec3(0, 0, 1));
@@ -978,10 +971,8 @@ namespace
         return geom;
     }
 
-    osg::Node* tessellate_crossing(
-        const node_t& node,
-        std::function<osg::Vec3(const osg::Vec3d&)> transform,
-        float z = 0.01)
+    template<class XFORM>
+    osg::Node* tessellate_crossing(const node_t& node, XFORM&& transform)
     {
         if (node.props == nullptr ||
             node.props->crossing.stateset == nullptr ||
@@ -1011,16 +1002,23 @@ namespace
         geom->setUseDisplayList(false);
         geom->setUseVertexArrayObject(true);
 
+        auto LL = node.p + q * osg::Vec3d(-hw, -hl, 0);
+        auto LR = node.p + q * osg::Vec3d(hw, -hl, 0);
+        auto UR = node.p + q * osg::Vec3d(hw, hl, 0);
+        auto UL = node.p + q * osg::Vec3d(-hw, hl, 0);
+        auto CL = (LL + UL) * 0.5;
+        auto CR = (LR + UR) * 0.5;
+
         auto verts = new osg::Vec3Array();
         verts->reserve(4);
-        verts->push_back(transform(node.p + q * osg::Vec3d(-hw, -hl, z)));
-        verts->push_back(transform(node.p + q * osg::Vec3d(hw, -hl, z)));
-        verts->push_back(transform(node.p + q * osg::Vec3d(hw, hl, z)));
-        verts->push_back(transform(node.p + q * osg::Vec3d(-hw, hl, z)));
+        verts->push_back(transform(LL, CL));
+        verts->push_back(transform(LR, CR));
+        verts->push_back(transform(UR, CR));
+        verts->push_back(transform(UL, CL));
         geom->setVertexArray(verts);
 
-        const GLushort index_data[] = { 0, 1, 2, 0, 2, 3 };
-        geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_TRIANGLES, 6, index_data));
+        const GLubyte index_data[] = { 0, 1, 2, 0, 2, 3 };
+        geom->addPrimitiveSet(new osg::DrawElementsUByte(GL_TRIANGLES, 6, index_data));
 
         const osg::Vec4 color_data[] = { { 1, 1, 1, 1 } };
         geom->setColorArray(new osg::Vec4Array(osg::Array::BIND_OVERALL, 1, color_data));
@@ -1033,9 +1031,8 @@ namespace
         return geom;
     }
 
-    osg::Node* tessellate_intersections(
-        const graph_t& g,
-        std::function<osg::Vec3(const osg::Vec3d&)> transform)
+    template<class XFORM>
+    osg::Node* tessellate_intersections(const graph_t& g, XFORM&& transform)
     {
         if (g.nodes.empty())
             return new osg::Group();
@@ -1155,10 +1152,8 @@ namespace
         return geom;
     }
 
-    osg::Node* tessellate_decals(
-        const graph_t& g,
-        std::function<osg::Vec3(const osg::Vec3d&)> transform,
-        float z = 0)
+    template<class XFORM>
+    osg::Node* tessellate_decals(const graph_t& g, XFORM&& transform)
     {
         auto group = new osg::Group();
 
@@ -1173,7 +1168,7 @@ namespace
 
         for (auto& edge : sorted_edges)
         {
-            group->addChild(tessellate_lanes(*edge, transform, z));
+            group->addChild(tessellate_lanes(*edge, transform));
         }
         for (auto& node : g.nodes)
         {
@@ -1186,6 +1181,69 @@ namespace
         //group->addChild(tessellate_intersections(g, transform));
 
         return group;
+    }
+
+
+
+
+
+
+    template<class XFORM>
+    Geometry* create_lane_polygon(const edge_t& edge, XFORM&& transform)
+    {
+        auto poly = new osgEarth::Polygon();
+        poly->reserve(4);
+
+        auto node1_c = (edge.node1_cr_left + edge.node1_cr_right) * 0.5;
+        auto node2_c = (edge.node2_cr_left + edge.node2_cr_right) * 0.5;
+
+        poly->push_back(transform(edge.node1_cr_right, node1_c));
+        poly->push_back(transform(edge.node2_cr_right, node2_c));
+        poly->push_back(transform(edge.node2_cr_left, node2_c));
+        poly->push_back(transform(edge.node1_cr_left, node1_c));
+
+        return poly;
+    }
+
+    template<class XFORM>
+    osg::Node* tessellate_decals_to_grid(const TileKey& key, const SpatialReference* working_srs, const graph_t& g, XFORM&& transform)
+    {
+        // first sort the edges by render order.
+        std::vector<const edge_t*> sorted_edges;
+        sorted_edges.reserve(g.edges.size());
+        for (auto& edge : g.edges)
+            sorted_edges.push_back(&edge);
+        std::sort(sorted_edges.begin(), sorted_edges.end(), [](const edge_t* a, const edge_t* b) {
+            return a->order < b->order;
+            });
+
+        MeshConstraint mc;
+        mc.hasElevation = true;
+        mc.removeExterior = true;
+
+        for (auto& edge : sorted_edges)
+        {
+            auto poly = create_lane_polygon(*edge, transform);
+            mc.features.emplace_back(new Feature(poly, working_srs));
+            //add_lane_polygon_to_feature_list(mc.features, *edge, transform);
+        }
+
+        TileMesher mesher;
+        auto mesh = mesher.createMesh(key, { mc }, nullptr);
+        
+        auto geom = new osg::Geometry();
+        geom->setUseVertexBufferObjects(true);
+        geom->setUseDisplayList(false);
+        geom->setVertexArray(mesh.verts);
+        geom->setNormalArray(mesh.normals, osg::Array::BIND_PER_VERTEX);
+        geom->setTexCoordArray(0, mesh.uvs);
+        geom->addPrimitiveSet(mesh.indices);
+
+        auto mt = new osg::MatrixTransform();
+        mt->setMatrix(mesh.localToWorld);
+        mt->addChild(geom);
+
+        return mt;
     }
 }
 
@@ -1396,12 +1454,28 @@ namespace
 
 
     const char* decal_shaders = R"(
-        #pragma vp_function pull_vs, vertex_clip, last
-        uniform float pull_offset = 0.001;
-        out float ndc_depth;
-        void pull_vs(inout vec4 vert)
+        #pragma vp_function pull_view, vertex_view
+        void pull_view(inout vec4 vert)
         {
-            ndc_depth = (vert.z/vert.w) - pull_offset;
+            vec3 look = vert.xyz;
+            float look_len = length(look);
+            vec3 look_norm = normalize(look);
+            vec3 pull = -look_norm*1.0; // 1 meter
+            float pull_len = length(pull);
+            float max_pull_len = look_len;
+            if (pull_len > max_pull_len)
+                pull = -normalize(look)*max_pull_len;
+            vert.xyz += pull;
+        }
+
+        [break]
+
+        #pragma vp_function pull_clip, vertex_clip, last
+        uniform float clipz_offset = 0.0;
+        out float ndc_depth;
+        void pull_clip(inout vec4 vert)
+        {
+            ndc_depth = (vert.z/vert.w) - clipz_offset;
         }
 
         [break]
@@ -1431,7 +1505,7 @@ namespace
 
     public:
         
-        const RoadArt* _artConfig = nullptr;
+        const RoadLayerArt* _artConfig = nullptr;
         PBRMaterial _material;
         std::array<TextureImageUnitReservation, 3> _units;
 
@@ -1501,15 +1575,15 @@ namespace
     };
 
 
-    class MarkingsLayer : public TiledModelLayer
+    class RoadDecalsLayer : public TiledModelLayer
     {
     public:
         class Options : public TiledModelLayer::Options {
             META_LayerOptions(osgEarthProcedural, Options, TiledModelLayer::Options);
         };
-        META_Layer(osgEarthProcedural, MarkingsLayer, Options, TiledModelLayer, _roads_markings);
+        META_Layer(osgEarthProcedural, RoadDecalsLayer, Options, TiledModelLayer, _roads_markings);
 
-        const RoadArt* _artConfig = nullptr;
+        const RoadLayerArt* _artConfig = nullptr;
         LayerReference<FeatureSource> _features;
         osg::ref_ptr<StyleSheet> _stylesheet;
         osg::ref_ptr<Session> _session;
@@ -1563,6 +1637,14 @@ namespace
             }
 
             _session = new Session(map);
+
+            auto sheet = new StyleSheet();
+            _session->setStyles(sheet);
+
+            Style style;
+            auto render = style.getOrCreate<RenderSymbol>();
+            render->order()->setLiteral(818);
+            sheet->addStyle(style);
         }
 
         void removedFromMap(const Map* map)
@@ -1576,12 +1658,12 @@ namespace
             super::prepareForRendering(engine);
 
             // and the shader itself:
-            auto vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
-            ShaderLoader::load(vp, decal_shaders);
-            vp->setName("Road Decals");
+            //auto vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
+            //ShaderLoader::load(vp, decal_shaders);
+            //vp->setName("Road Decals");
 
-            //auto ss = getOrCreateStateSet();
-            //ss->setAttributeAndModes(new osg::PolygonOffset(-1,1), 1);
+            auto ss = getOrCreateStateSet();
+            ss->setAttributeAndModes(new osg::PolygonOffset(-1, -1), 1);
         }
 
         const Profile* getProfile() const override
@@ -1632,7 +1714,8 @@ namespace
             osg::Vec3d origin(0, 0, 0);
 
             auto centroid = key.getExtent().getCentroid();
-            auto local_srs = key.getExtent().getSRS()->createTangentPlaneSRS(centroid.vec3d());
+            //auto working_srs = key.getExtent().getSRS()->createTangentPlaneSRS(centroid.vec3d());
+            auto working_srs = SpatialReference::get("spherical-mercator");
 
             for (auto& feature : features)
             {
@@ -1654,7 +1737,7 @@ namespace
                 //float z = layer * 3.0f;
                 float z = 0.0;
 
-                feature->transform(local_srs);
+                feature->transform(working_srs);
 
                 auto highway = feature->getString("highway");
                 auto width = feature->getDouble("width", 0);
@@ -1729,30 +1812,42 @@ namespace
 
             ElevationPool::WorkingSet ws;
             auto pool = _session->getMap()->getElevationPool();
-            GeoPoint temp;
-            auto xform = [local_srs, pool, &ws, &temp](const osg::Vec3d& p)
+
+            osg::Matrix world2local;
+            centroid.createWorldToLocal(world2local);
+
+            auto xform = [working_srs, pool, &world2local, &ws](const osg::Vec3d& p, const osg::Vec3d& ref)
                 {
                     auto layer_z = p.z();
-                    temp.set(local_srs, p, ALTMODE_ABSOLUTE);
+                    GeoPoint temp(working_srs, p, ALTMODE_ABSOLUTE);
+                    temp.transformInPlace(working_srs->getGeographicSRS());
                     auto z = pool->getSample(temp, {}, &ws, nullptr);
-                    return osg::Vec3d(p.x(), p.y(), z.elevation().as(Units::METERS) + layer_z);
+                    temp.z() = z.elevation().as(Units::METERS) + layer_z;
+                    osg::Vec3d world;
+                    temp.toWorld(world);
+                    return world * world2local;
+                    //return osg::Vec3d(p.x(), p.y(), z.elevation().as(Units::METERS) + layer_z);
                 };
 
-
+#if 1
             root->addChild(tessellate_decals(graph, xform));
-
-            auto sheet = _stylesheet.get();
-            auto style = sheet ? sheet->getDefaultStyle() : nullptr;
-            auto render = style ? style->get<RenderSymbol>() : nullptr;
-            if (render) render->applyTo(root);
 
             auto mt = new osg::MatrixTransform();
             osg::Matrixd local2world;
             centroid.createLocalToWorld(local2world);
             mt->setMatrix(local2world);
             mt->addChild(root);
+            root = mt;
+#else
+            root->addChild(tessellate_decals_to_grid(key, working_srs, graph, xform));
+#endif
 
-            return mt;
+            auto sheet = _stylesheet.get();
+            auto style = sheet ? sheet->getDefaultStyle() : nullptr;
+            auto render = style ? style->get<RenderSymbol>() : nullptr;
+            if (render) render->applyTo(root);
+
+            return root;
         }
     };
 }
@@ -1764,6 +1859,9 @@ RoadLayer::Options::fromConfig(const Config& conf)
 {
     features().get(conf, "features");
     conf.get("art", art());
+    conf.get("use_constraints", useConstraints());
+    conf.get("substrate_min_level", substrateMinLevel());
+    conf.get("constraints_min_level", constraintsMinLevel());
 }
 
 Config
@@ -1772,6 +1870,9 @@ RoadLayer::Options::getConfig() const
     Config conf = super::getConfig();
     features().set(conf, "features");
     conf.set("art", art());
+    conf.set("use_constraints", useConstraints());
+    conf.set("substrate_min_level", substrateMinLevel());
+    conf.set("constraints_min_level", constraintsMinLevel());
     return conf;
 }
 
@@ -1788,10 +1889,14 @@ RoadLayer::init()
                 _substrateLayer->setVisible(layer->getVisible());
                 _substrateLayer->setOpacity(layer->getOpacity());
             }
-            if (_markingsLayer)
+            if (_decalsLayer)
             {
-                _markingsLayer->setVisible(layer->getVisible());
-                _markingsLayer->setOpacity(layer->getOpacity());
+                _decalsLayer->setVisible(layer->getVisible());
+                _decalsLayer->setOpacity(layer->getOpacity());
+            }
+            if (_constraintsLayer)
+            {
+                _constraintsLayer->setVisible(layer->getVisible());
             }
         };
 
@@ -1806,13 +1911,12 @@ RoadLayer::openImplementation()
     {
         auto substrate = new SubstrateLayer();
         substrate->setName("  Roads - substrate");
-        substrate->setMinLevel(19); // getMinLevel());
-        substrate->setMaxDataLevel(19); // getMaxDataLevel());
-        //substrate->setTileSize(65);
+        substrate->setMinLevel(std::max(options().substrateMinLevel().value(), getMinLevel()));
+        substrate->setMaxDataLevel(19u);
         substrate->options().features() = options().features();
         substrate->_artConfig = &options().art().value();
         substrate->_material = options().art()->substrateMaterial().value();
-        substrate->setUserProperty("show_in_ui", "false");
+        substrate->setUserProperty("show_in_ui", "true");
         substrate->options().cachePolicy() = options().cachePolicy();
         substrate->options().visible() = options().visible();
         substrate->options().opacity() = options().opacity();
@@ -1824,20 +1928,44 @@ RoadLayer::openImplementation()
     }
 
     // Layer that renders the road marking decal geometries
-    auto* markings = new MarkingsLayer();
-    markings->setName("  Roads - markings");
-    markings->setMinLevel(getMinLevel());
-    markings->_features = options().features();
-    markings->_artConfig = &options().art().value();
-    markings->setUserProperty("show_in_ui", "false");
-    markings->options().cachePolicy() = options().cachePolicy();
-    markings->options().visible() = options().visible();
-    markings->options().opacity() = options().opacity();
-    Status s2 = markings->open(getReadOptions());
-    if (s2.isError())
-        return s2;
-    _markingsLayer = markings;
-    _sublayers.emplace_back(markings);
+    RoadDecalsLayer* decals = nullptr;
+    if (options().art()->lanesMaterial().isSet())
+    {
+        decals = new RoadDecalsLayer();
+        decals->setName("  Roads - markings");
+        decals->setMinLevel(getMinLevel());
+        decals->_features = options().features();
+        decals->_artConfig = &options().art().value();
+        decals->setUserProperty("show_in_ui", "true");
+        decals->options().cachePolicy() = options().cachePolicy();
+        decals->options().visible() = options().visible();
+        decals->options().opacity() = options().opacity();
+        Status s2 = decals->open(getReadOptions());
+        if (s2.isError())
+            return s2;
+        _decalsLayer = decals;
+        _sublayers.emplace_back(decals);
+    }
+
+    // Layer that cuts the road geometries into the terrain
+    if (options().useConstraints() == true)
+    {
+        auto* con = new TerrainConstraintLayer();
+        con->setName("  Roads - constraints");
+        con->setUserProperty("show_in_ui", "true");
+        con->setModelLayer(decals);
+        con->setRemoveInterior(true);
+        con->setMinLevel(std::max(options().constraintsMinLevel().value(), getMinLevel()));
+        con->setHasElevation(true);
+        con->options().cachePolicy() = options().cachePolicy();
+        con->options().visible() = options().visible();
+        con->options().opacity() = options().opacity();
+        Status s3 = con->open(getReadOptions());
+        if (s3.isError())
+            return s3;
+        _constraintsLayer = con;
+        _sublayers.emplace_back(con);
+    }
 
     return super::openImplementation();
 }

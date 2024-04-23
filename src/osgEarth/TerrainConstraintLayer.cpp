@@ -302,10 +302,17 @@ TerrainConstraintLayer::getModelConstraint(const TileKey& key, MeshConstraint& c
     auto layer_profile = layer->getProfile();
     OE_SOFT_ASSERT_AND_RETURN(layer_profile, void());
 
-    osg::ref_ptr<osg::Node> node = layer->createTile(key, progress);
-    if (node.valid())
+    for (int i = -1; i <= 1; ++i)
     {
-        addNode(node.get(),key.getProfile()->getSRS(), constraint);
+        for (int j = -1; j <= 1; ++j)
+        {
+            auto part_key = key.createNeighborKey(i, j);
+            osg::ref_ptr<osg::Node> node = layer->createTile(part_key, progress);
+            if (node.valid())
+            {
+                addNode(node.get(), key.getProfile()->getSRS(), constraint);
+            }
+        }
     }
 }
 

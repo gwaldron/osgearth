@@ -35,30 +35,33 @@ uniform mat4 osg_ViewMatrixInverse;
 uniform float oe_wind_power = 1.0;
 
 void oe_apply_wind(inout vec4 vertex, in int index)
-{
-    // scale the vert's flexibility by the model Z scale factor
+{    // scale the vert's flexibility by the model Z scale factor
+
     mat3 vec3xform = mat3(instances[index].xform);
 
     float flexibility = length(flex) * vec3xform[2][2];
 
-    if (flexibility > 0.0)
+    if (flexibility > 0.0 && oe_wind_power > 0.0)
     {
+        vec3 center = instances[index].xform[3].xyz;
+        vec2 tile_uv = instances[index].local_uv;
+
         // sample the wind direction and speed:
         vec4 wind = textureProj(OE_WIND_TEX, (OE_WIND_TEX_MATRIX * vertex));
         vec3 wind_vec = normalize(wind.rgb * 2.0 - 1.0);
-        float speed = wind.a;
+        float speed = wind.a * oe_wind_power;
+
+        const float rate = 0.05 * speed;
+        vec4 noise_moving = textureLod(NOISE_TEX, tile_uv + osg_FrameTime * rate, 0);
+        speed *= noise_moving[3];
 
         // final wind force vector:
         vec3 wind_force = wind_vec * speed;
 
-#if 1
         // project the wind vector onto the flex plane
         vec3 flex_plane_normal = normalize(gl_NormalMatrix * vec3xform * flex);
         float dist = dot(wind_force, flex_plane_normal);
         vec3 wind_vec_projected = wind_force - flex_plane_normal * dist;
-#else
-        vec3 wind_vec_projected = wind_force;
-#endif
 
         // move the vertex within the flex plane
         vertex.xyz += wind_vec_projected * flexibility;

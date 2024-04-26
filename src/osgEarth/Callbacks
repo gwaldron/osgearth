@@ -42,8 +42,8 @@ namespace osgEarth
         //! Removed a callback function with the UID returned from ()
         void remove(UID uid) const {
             std::lock_guard<std::mutex> lock(mutex);
-            for(auto iter : entries) {
-                if(iter.first == uid) {
+            for(auto iter = entries.begin(); iter != entries.end(); ++iter) {
+                if(iter->first == uid) {
                     entries.erase(iter);
                     break;
                 }

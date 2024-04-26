@@ -30,6 +30,7 @@
 #include <osgEarth/Terrain>
 #include <osgEarth/NativeProgramAdapter>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/VerticalDatum>
 
 const unsigned int TRITON_OCEAN_MASK = 0x4; // 0100
 
@@ -53,20 +54,25 @@ namespace osgEarth { namespace Triton
         //! terrain has positive elevation
         void setHeightMapGenerator(TritonHeightMap* heightMap);
 
+        //! Vertical datum to use to calculate sea level
+        void setVerticalDatum(VerticalDatum* value) {
+            _verticalDatum = value;
+        }
+
         //! Gets the Triton Camera associated with an osg Camera
         ::Triton::Camera* getTritonCam(const osg::Camera* cam) {
             return _local.get(cam)._tritonCam;
         }
 
-    public: // osg::Drawable
-
-        void drawImplementation(osg::RenderInfo& ri) const;
-
-        osg::BoundingBox computeBoundingBox() const;
-
         void setPlanarReflectionMap(osg::Texture2D* map);
 
         void setPlanarReflectionProjection(osg::RefMatrix* proj);
+
+    public: // osg::Drawable
+
+        void drawImplementation(osg::RenderInfo& ri) const override;
+
+        osg::BoundingBox computeBoundingBox() const override;
 
     protected:
         virtual ~TritonDrawable();
@@ -80,12 +86,14 @@ namespace osgEarth { namespace Triton
 
         mutable osg::ref_ptr<TritonHeightMap> _heightMapGenerator;
 
+        osg::ref_ptr<VerticalDatum> _verticalDatum;
+        osg::ref_ptr<const SpatialReference> _wgs84, _ecef;
+
         mutable osg::buffered_object<osgEarth::NativeProgramAdapterCollection> _adapters;
 
         struct CameraLocal
         {
-            CameraLocal() : _tritonCam(0L) { }
-            ::Triton::Camera* _tritonCam;
+            ::Triton::Camera* _tritonCam = nullptr;
         };
         mutable PerObjectFastMap<const osg::Camera*, CameraLocal> _local;
     };

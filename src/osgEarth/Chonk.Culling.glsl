@@ -3,6 +3,7 @@
 
 #pragma import_defines(OE_GPUCULL_DEBUG)
 #pragma import_defines(OE_IS_SHADOW_CAMERA)
+#pragma import_defines(OE_LOD_SCALE_UNIFORM)
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
@@ -82,6 +83,14 @@ uniform float oe_sse;
 uniform vec4 oe_lod_scale;
 uniform float osg_FrameTime;
 uniform float oe_chonk_lod_transition_factor = 0.0;
+
+// Support a user-defined LOD scale uniform. When not present,
+// default to osgEarth's LOD scale value in oe_Camera.z.
+#ifdef OE_LOD_SCALE_UNIFORM
+uniform float OE_LOD_SCALE_UNIFORM;
+#else
+#define OE_LOD_SCALE_UNIFORM oe_Camera.z
+#endif
 
 #if OE_GPUCULL_DEBUG
 //#ifdef OE_GPUCULL_DEBUG
@@ -202,7 +211,7 @@ void cull()
     float fade_range = chonks[v].fade_far - chonks[v].fade_near;
     if (fade_range > 0.0)
     {
-        float dist = length(center_view.xyz);
+        float dist = length(center_view.xyz) * OE_LOD_SCALE_UNIFORM;
         fade *= clamp((chonks[v].fade_far - dist) / fade_range, 0.0, 1.0);
     }
 

@@ -1156,19 +1156,16 @@ InstallCameraUniform::operator()(osg::Node* node, osg::NodeVisitor* nv)
         }
         else
         {
-            const osg::Matrixd& proj = camera->getProjectionMatrix();
-            if (proj(3, 3) == 1.0) // ortho
+            double L, R, B, T, N, F;
+            if (ProjectionMatrix::getOrtho(camera->getProjectionMatrix(), L, R, B, T, N, F))
             {
-                double L, R, B, T, N, F;
-                ProjectionMatrix::getOrtho(proj, L, R, B, T, N, F);
                 width = R - L;
                 height = T - B;
             }
         }
     
         ss = new osg::StateSet();
-        ss->addUniform(new osg::Uniform("oe_Camera",
-            osg::Vec3f(width, height, camera->getLODScale())));
+        ss->addUniform(new osg::Uniform("oe_Camera", osg::Vec3f(width, height, camera->getLODScale())));
         cv->pushStateSet(ss.get());
     }
 

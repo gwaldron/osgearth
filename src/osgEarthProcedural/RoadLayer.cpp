@@ -657,7 +657,13 @@ namespace
         vec_t dir = e.direction();
         vec_t left = cross(vec_t(0, 0, 1), dir);
         vec_t extrusion = (left * e.width * 0.5);
-        vec_t backoff = (dir * n.intersection.backoff_length * (use_backoff? 1.0 : 0.0));
+
+        // backoff cannot be longer than 1/2 the edge length:
+        float len = (e.node1.p - e.node2.p).length();
+        float max_backoff = 0.5f * len;
+        double backoff_len = std::min(n.intersection.backoff_length, max_backoff);
+
+        vec_t backoff = (dir * backoff_len * (use_backoff? 1.0 : 0.0));
         vec_t crossing = (dir * n.intersection.crossing_length);
 
         if (e.node2 == n)

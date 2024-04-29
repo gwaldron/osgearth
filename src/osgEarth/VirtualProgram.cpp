@@ -133,13 +133,17 @@ void
 ProgramRepo::setProgramBinaryCacheLocation(const std::string& folder)
 {
     lock();
-    if (osgDB::makeDirectory(folder) == true)
+    if (folder.empty())
+    {
+        _programBinaryCacheFolder.clear();
+    }
+    else if (osgDB::makeDirectory(folder) == true)
     {
         _programBinaryCacheFolder = folder;
     }
     else
     {
-        OE_WARN << LC << "Failed to access program binary cache location " << folder << std::endl;
+        OE_WARN << LC << "Failed to access/create program binary cache location " << folder << std::endl;
     }
     unlock();
 }

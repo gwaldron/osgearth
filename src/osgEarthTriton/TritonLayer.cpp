@@ -27,6 +27,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ElevationLOD>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/VerticalDatum>
 
 #include <osgUtil/CullVisitor>
 
@@ -117,6 +118,11 @@ namespace osgEarth { namespace Triton
             _drawable->getOrCreateStateSet()->setRenderBinDetails(
                 _tritonLayer->getRenderBinNumber(), 
                 "DepthSortedBin");
+
+            // Install a vdatum for sea level calculations:
+            auto vdatum = VerticalDatum::get(_tritonLayer->options().vdatum().value());
+            if (vdatum)
+                drawable->setVerticalDatum(vdatum);
 
             // If the user requested a height map, install it now.
             // Configuration of the height map generator will take place later when
@@ -250,11 +256,6 @@ namespace osgEarth { namespace Triton
 void
 TritonLayer::Options::fromConfig(const osgEarth::Config& conf)
 {
-    _useHeightMap.init(true);
-    _heightMapSize.init(1024);
-    _renderBinNumber.init(12);
-    _maxAltitude.init(50000);
-
     conf.get("user", _user);
     conf.get("license_code", _licenseCode);
     conf.get("resource_path", _resourcePath);
@@ -262,6 +263,7 @@ TritonLayer::Options::fromConfig(const osgEarth::Config& conf)
     conf.get("height_map_size", _heightMapSize);
     conf.get("render_bin_number", _renderBinNumber);
     conf.get("max_altitude", _maxAltitude);
+    conf.get("vdatum", vdatum());
     maskLayer().get(conf, "mask_layer");
 }
 
@@ -276,6 +278,7 @@ TritonLayer::Options::getConfig() const
     conf.set("height_map_size", _heightMapSize);
     conf.set("render_bin_number", _renderBinNumber);
     conf.set("max_altitude", _maxAltitude);
+    conf.set("vdatum", vdatum());
     maskLayer().set(conf, "mask_layer");
 
     return conf;
@@ -297,6 +300,7 @@ OE_LAYER_PROPERTY_IMPL(TritonLayer, bool, UseHeightMap, useHeightMap);
 OE_LAYER_PROPERTY_IMPL(TritonLayer, unsigned, HeightMapSize, heightMapSize);
 OE_LAYER_PROPERTY_IMPL(TritonLayer, int, RenderBinNumber, renderBinNumber);
 OE_LAYER_PROPERTY_IMPL(TritonLayer, float, MaxAltitude, maxAltitude);
+OE_LAYER_PROPERTY_IMPL(TritonLayer, std::string, VerticalDatum, vdatum);
 
 void
 TritonLayer::init()

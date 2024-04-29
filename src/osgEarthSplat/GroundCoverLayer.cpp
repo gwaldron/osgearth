@@ -247,6 +247,10 @@ GroundCoverLayer::init()
     _debug = (::getenv("OSGEARTH_GROUNDCOVER_DEBUG") != NULL);
 
     _frameLastUpdate = 0U;
+
+    // set a static bounding box buffer that can account for geometry in this layer.
+    // 25 meters on the sides and 50m on the top will be a rough guess for now.
+    _buffer.set(-25, -25, 0, 25, 25, 50);
 }
 
 GroundCoverLayer::~GroundCoverLayer()

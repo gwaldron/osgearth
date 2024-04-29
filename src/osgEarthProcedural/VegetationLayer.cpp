@@ -323,8 +323,8 @@ VegetationLayer::init()
     _noiseTex = Texture::create(noise.create(256u, 4u));
 
     // set a static bounding box buffer that can account for geometry in this layer.
-    // 25 meters on the sides and the top will be a rough guess for now.
-    _buffer.set(-25, -25, 0, 25, 25, 25);
+    // 25 meters on the sides and 50m on the top will be a rough guess for now.
+    _buffer.set(-25, -25, 0, 25, 25, 50);
 }
 
 VegetationLayer::~VegetationLayer()

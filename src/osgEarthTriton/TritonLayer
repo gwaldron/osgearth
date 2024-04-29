@@ -41,10 +41,11 @@ namespace osgEarth { namespace Triton
             OE_OPTION(std::string, user);
             OE_OPTION(std::string, licenseCode);
             OE_OPTION(std::string, resourcePath);
-            OE_OPTION(bool, useHeightMap);
-            OE_OPTION(unsigned, heightMapSize);
-            OE_OPTION(int, renderBinNumber);
-            OE_OPTION(float, maxAltitude);
+            OE_OPTION(bool, useHeightMap, true);
+            OE_OPTION(unsigned, heightMapSize, 1024);
+            OE_OPTION(int, renderBinNumber, 12);
+            OE_OPTION(float, maxAltitude, 50000.0f);
+            OE_OPTION(std::string, vdatum, "egm96");
             OE_OPTION_LAYER(osgEarth::ImageLayer, maskLayer);
             virtual Config getConfig() const;
         private:
@@ -88,6 +89,10 @@ namespace osgEarth { namespace Triton
         //! Maximum visibility altitude
         void setMaxAltitude(const float& value);
         const float& getMaxAltitude() const;
+
+        //! Vertical datum to use to calculate sea level
+        void setVerticalDatum(const std::string& value);
+        const std::string& getVerticalDatum() const;
 
         //! Adds an intersection set.
         //! Each frame, Triton will perform intersections against the ocean surface

@@ -40,7 +40,7 @@ using namespace osgEarth::Triton;
 
 
 TritonDrawable::TritonDrawable(TritonContext* TRITON) :
-_TRITON(TRITON)
+    _TRITON(TRITON)
 {
     // call this to ensure draw() gets called every frame.
     setSupportsDisplayList( false );
@@ -48,6 +48,9 @@ _TRITON(TRITON)
 
     // dynamic variance prevents update/cull overlap when drawing this
     setDataVariance( osg::Object::DYNAMIC );
+
+    _wgs84 = SpatialReference::get("wgs84");
+    _ecef = _wgs84->getGeocentricSRS();
 }
 
 TritonDrawable::~TritonDrawable()
@@ -161,6 +164,15 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     {
         tritonCam->SetCameraMatrix(state->getModelViewMatrix().ptr());
         tritonCam->SetProjectionMatrix(state->getProjectionMatrix().ptr());
+    }
+
+    // Calculate sea level based on the camera:
+    if (_verticalDatum.valid())
+    {
+        GeoPoint cam(_ecef, osg::Vec3d(0, 0, 0) * state->getInitialInverseViewMatrix(), ALTMODE_ABSOLUTE);
+        cam.transformInPlace(_wgs84);
+        auto msl = _verticalDatum->hae2msl(cam.y(), cam.x(), 0.0);
+        environment->SetSeaLevel(-msl);
     }
 
     if (_heightMapGenerator.valid())

@@ -344,20 +344,20 @@ namespace
         }
 
         node_t* add_node(double x1, double y1, double z1, const properties_t* props) {
-            auto& n = nodes.emplace(x1, y1, z1).first;
-            auto node = const_cast<node_t*>(&(*n));
+            const auto iter = nodes.emplace(x1, y1, z1).first;
+            auto node = const_cast<node_t*>(&(*iter));
             node->props = props;
             return node;
         }
 
         edge_t* add_edge(double x1, double y1, double x2, double y2, double z, float width, const properties_t* props) {
-            auto& node1 = nodes.emplace(x1, y1, z).first;
-            auto& node2 = nodes.emplace(x2, y2, z).first;
+            const auto node1 = nodes.emplace(x1, y1, z).first;
+            const auto node2 = nodes.emplace(x2, y2, z).first;
             if (node1->uid == node2->uid) // safety catch; shouldn't happen
                 return nullptr;
-            auto& e = edges.emplace(*node1, *node2, width, props);
-            auto edge = const_cast<edge_t*>(&(*e.first));
-            if (!e.second)
+            const auto edge_emplace_result = edges.emplace(*node1, *node2, width, props);
+            auto edge = const_cast<edge_t*>(&(*edge_emplace_result.first));
+            if (!edge_emplace_result.second)
                 return edge; // dupe
 
             bool found = false;
@@ -649,7 +649,13 @@ namespace
         vec_t dir = e.direction();
         vec_t left = cross(vec_t(0, 0, 1), dir);
         vec_t extrusion = (left * e.width * 0.5);
-        vec_t backoff = (dir * n.intersection.backoff_length * (use_backoff? 1.0 : 0.0));
+
+        // backoff cannot be longer than 1/2 the edge length:
+        float len = (e.node1.p - e.node2.p).length();
+        float max_backoff = 0.5f * len;
+        double backoff_len = std::min(n.intersection.backoff_length, max_backoff);
+
+        vec_t backoff = (dir * backoff_len * (use_backoff? 1.0 : 0.0));
         vec_t crossing = (dir * n.intersection.crossing_length);
 
         if (e.node2 == n)

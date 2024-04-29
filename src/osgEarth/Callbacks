@@ -4,7 +4,10 @@
  * MIT License
  */
 #pragma once
+
 #include <osgEarth/Common>
+
+#include <atomic>
 #include <mutex>
 #include <functional>
 #include <vector>
@@ -13,37 +16,40 @@ namespace osgEarth
 {
     /**
      * Easy way to add a thread-safe callback to a class.
-     * usage:
-     *   Callback<Function> onClick;
+     *
+     * Developer defines a callback, usually as a class member:
+     *   Callback<void(int)> onClick;
      *
      * User adds a callback:
-     *   instance->onClick([](...) { respond; });
+     *   instance->onClick([](int a) { ... });
      *
      * Class fires a callback:
-     *   onClick(a, b, ...);
+     *   onClick(a);
      */
     template<typename F>
     class Callback
     {
     private:
-        using Entry = typename std::pair<UID, std::function<F>>;
+        using Entry = typename std::pair<int, std::function<F>>;
+        mutable int uidgen = 0;
         mutable std::vector<Entry> entries;
         mutable std::mutex mutex;
+        mutable std::atomic_bool firing = { false };
 
     public:
         //! Adds a callback function
-        UID operator()(std::function<F>&& func) const {
+        int operator()(std::function<F>&& func) const {
             std::lock_guard<std::mutex> lock(mutex);
-            auto uid = createUID();
+            auto uid = ++uidgen;
             entries.emplace_back(uid, func);
             return uid;
         }
 
         //! Removed a callback function with the UID returned from ()
-        void remove(UID uid) const {
+        void remove(int uid) const {
             std::lock_guard<std::mutex> lock(mutex);
-            for(auto iter : entries) {
-                if(iter.first == uid) {
+            for (auto iter = entries.begin(); iter != entries.end(); ++iter) {
+                if (iter->first == uid) {
                     entries.erase(iter);
                     break;
                 }
@@ -53,9 +59,12 @@ namespace osgEarth
         //! Executes all callback functions with the provided args
         template<typename... Args>
         void fire(Args&&... args) const {
-            std::lock_guard<std::mutex> lock(mutex);
-            for (auto& e : entries)
-                e.second(args...);
+            if (firing.exchange(true) == false) {
+                std::lock_guard<std::mutex> lock(mutex);
+                for (auto& e : entries)
+                    e.second(args...);
+                firing = false;
+            }
         }
     };
 }

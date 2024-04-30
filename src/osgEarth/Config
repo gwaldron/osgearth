@@ -606,7 +606,11 @@ namespace osgEarth
     {
     public:
         ConfigOptions() = default;
-        ConfigOptions(const ConfigOptions& rhs) = default;
+
+        //! Copy constructor - it must call getConfig() so it can repopulate the internal _conf member.
+        ConfigOptions(const ConfigOptions& rhs) : _conf(rhs.getConfig()) { }
+
+        //! Copy constructor - simple Config copy.
         ConfigOptions(const Config& conf) : _conf(conf) { }
 
         const std::string& referrer() const {

@@ -1136,7 +1136,7 @@ namespace
         auto verts = new osg::Vec3Array();
         verts->reserve(points.size());
         for (auto& p : points) {
-            verts->push_back(transform(p));
+            verts->push_back(transform(p, p));
         }
         geom->setVertexArray(verts);
 
@@ -1184,7 +1184,7 @@ namespace
             }
         }
 
-        //group->addChild(tessellate_intersections(g, transform));
+        group->addChild(tessellate_intersections(g, transform));
 
         return group;
     }
@@ -1460,24 +1460,8 @@ namespace
 
 
     const char* decal_shaders = R"(
-        #pragma vp_function pull_view, vertex_view
-        void pull_view(inout vec4 vert)
-        {
-            vec3 look = vert.xyz;
-            float look_len = length(look);
-            vec3 look_norm = normalize(look);
-            vec3 pull = -look_norm*1.0; // 1 meter
-            float pull_len = length(pull);
-            float max_pull_len = look_len;
-            if (pull_len > max_pull_len)
-                pull = -normalize(look)*max_pull_len;
-            vert.xyz += pull;
-        }
-
-        [break]
-
         #pragma vp_function pull_clip, vertex_clip, last
-        uniform float clipz_offset = 0.0;
+        uniform float clipz_offset = 0.001;
         out float ndc_depth;
         void pull_clip(inout vec4 vert)
         {
@@ -1490,7 +1474,7 @@ namespace
         in float ndc_depth;
         void pull_fs(inout vec4 color)
         {
-            if (color.a < 0.15) discard;
+            //if (color.a < 0.15) discard;
             gl_FragDepth = ((gl_DepthRange.diff*ndc_depth)+gl_DepthRange.near+gl_DepthRange.far)*0.5;
         }
     )";
@@ -1664,9 +1648,9 @@ namespace
             super::prepareForRendering(engine);
 
             // and the shader itself:
-            //auto vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
-            //ShaderLoader::load(vp, decal_shaders);
-            //vp->setName("Road Decals");
+            auto vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
+            ShaderLoader::load(vp, decal_shaders);
+            vp->setName("Road Decals");
 
             auto ss = getOrCreateStateSet();
             ss->setAttributeAndModes(new osg::PolygonOffset(-1, -1), 1);
@@ -1710,9 +1694,11 @@ namespace
             if (cursor->fill(features) == 0)
                 return nullptr;
 
-            CropFilter crop(CropFilter::METHOD_CROPPING);
+#if 0
+            CropFilter crop(CropFilter::METHOD_BBOX);
             context.extent() = key.getExtent().transform(featureSRS);
             context = crop.push(features, context);
+#endif
 
             osg::Group* root = new osg::Group();
 
@@ -1722,6 +1708,8 @@ namespace
             auto centroid = key.getExtent().getCentroid();
             //auto working_srs = key.getExtent().getSRS()->createTangentPlaneSRS(centroid.vec3d());
             auto working_srs = SpatialReference::get("spherical-mercator");
+            auto working_extent = key.getExtent().transform(working_srs);
+            auto working_bounds = working_extent.bounds();
 
             for (auto& feature : features)
             {
@@ -1733,7 +1721,6 @@ namespace
                     continue;
 
                 int layer = feature->getInt("layer", 0);
-
                 // for now, skip features that are underground
                 if (layer < 0)
                     continue;
@@ -1744,6 +1731,10 @@ namespace
                 float z = 0.0;
 
                 feature->transform(working_srs);
+
+                // trivial reject-o
+                if (!feature->getExtent().intersects(working_extent))
+                    continue;
 
                 auto highway = feature->getString("highway");
                 auto width = feature->getDouble("width", 0);
@@ -1760,11 +1751,11 @@ namespace
 
                 if (highway == "crossing")
                 {
-                    if (feature->getString("crossing") != "unmarked")
+                    if (feature->getString("crossing") != "unmarked" && !geom->empty())
                     {
-                        if (geom->size() > 0)
+                        auto pos = (*geom)[0] - origin;
+                        if (working_extent.contains(osg::Vec3d(pos.x(), pos.y(), z)))
                         {
-                            auto pos = (*geom)[0] - origin;
                             auto node = graph.add_node(pos.x(), pos.y(), z, art);
                             node->has_crossing = true;
                         }
@@ -1783,20 +1774,26 @@ namespace
                                 auto p1 = (*part)[i] - origin;
                                 auto p2 = (*part)[i + 1] - origin;
 
-                                // skip segments that don't meet the minimum length requirement
-                                //while ((p1 - p2).length() <= EPSILON && i < part->size() - 2)
-                                //{
-                                //    ++i;
-                                //    p2 = (*part)[i + 1] - origin;
-                                //}
-                                //if (i < part->size() - 1)
+                                Bounds bounds;
+                                bounds.expandBy(p1);
+                                bounds.expandBy(p2);
+                                if (working_bounds.intersects(bounds))
                                 {
-                                    auto* edge = graph.add_edge(p1.x(), p1.y(), p2.x(), p2.y(), z, width, art);
-
-                                    // higher layers draw later
-                                    if (edge)
+                                    // skip segments that don't meet the minimum length requirement
+                                    //while ((p1 - p2).length() <= EPSILON && i < part->size() - 2)
+                                    //{
+                                    //    ++i;
+                                    //    p2 = (*part)[i + 1] - origin;
+                                    //}
+                                    //if (i < part->size() - 1)
                                     {
-                                        edge->order += layer;
+                                        auto* edge = graph.add_edge(p1.x(), p1.y(), p2.x(), p2.y(), z, width, art);
+
+                                        // higher layers draw later
+                                        if (edge)
+                                        {
+                                            edge->order += layer;
+                                        }
                                     }
                                 }
                             }
@@ -1832,7 +1829,6 @@ namespace
                     osg::Vec3d world;
                     temp.toWorld(world);
                     return world * world2local;
-                    //return osg::Vec3d(p.x(), p.y(), z.elevation().as(Units::METERS) + layer_z);
                 };
 
 #if 1
@@ -1916,7 +1912,7 @@ RoadLayer::openImplementation()
     if (options().art()->substrateMaterial().isSet())
     {
         auto substrate = new SubstrateLayer();
-        substrate->setName("  Roads - substrate");
+        substrate->setName("..Roads - substrate");
         substrate->setMinLevel(std::max(options().substrateMinLevel().value(), getMinLevel()));
         substrate->setMaxDataLevel(19u);
         substrate->options().features() = options().features();
@@ -1938,7 +1934,7 @@ RoadLayer::openImplementation()
     if (options().art()->lanesMaterial().isSet())
     {
         decals = new RoadDecalsLayer();
-        decals->setName("  Roads - markings");
+        decals->setName("..Roads - decals");
         decals->setMinLevel(getMinLevel());
         decals->_features = options().features();
         decals->_artConfig = &options().art().value();
@@ -1957,7 +1953,7 @@ RoadLayer::openImplementation()
     if (options().useConstraints() == true)
     {
         auto* con = new TerrainConstraintLayer();
-        con->setName("  Roads - constraints");
+        con->setName("..Roads - constraints");
         con->setUserProperty("show_in_ui", "true");
         con->setModelLayer(decals);
         con->setRemoveInterior(true);

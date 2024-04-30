@@ -1575,7 +1575,7 @@ RoadsLayer::createTileImplementation(const TileKey& key, ProgressCallback* progr
     if (cursor->fill(features) == 0)
         return nullptr;
 
-    CropFilter crop(CropFilter::METHOD_CROPPING);
+    CropFilter crop(CropFilter::METHOD_CROP_TO_EXTENT);
     context.extent() = key.getExtent().transform(featureSRS);
     context = crop.push(features, context);
 

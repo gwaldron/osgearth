@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHFEATURES_CROP_FILTER_H
-#define OSGEARTHFEATURES_CROP_FILTER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Feature>
@@ -37,12 +35,15 @@ namespace osgEarth
     public:
         enum Method 
         {
-            METHOD_CENTROID,    // include a feature if its centroid is included
-            METHOD_CROPPING     // crop a feature's geometry to the target extent
+            METHOD_CENTROID,       // include an entire feature if its centroid is included
+            METHOD_BBOX,           // include an entire feature if its bounding box overlaps
+            METHOD_CROP_TO_EXTENT, // crop a feature's geometry to the target extent
+
+            METHOD_CROPPING = METHOD_CROP_TO_EXTENT // backwards compatibility
         };
 
     public:
-        CropFilter( Method method =METHOD_CENTROID );
+        CropFilter(Method method = METHOD_CENTROID);
         virtual ~CropFilter() { }
 
         optional<Method>& method() { return _method; }
@@ -56,4 +57,3 @@ namespace osgEarth
     };
 } // namespace osgEarth
 
-#endif // OSGEARTHFEATURES_BUFFER_FILTER_H

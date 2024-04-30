@@ -130,7 +130,7 @@ namespace
 
           virtual void traverse( FeatureTile* tile)
           {        
-              if (_added && _cropMethod != CropFilter::METHOD_CROPPING) return;
+              if (_added && _cropMethod != CropFilter::METHOD_CROP_TO_EXTENT) return;
 
               bool traverse = true;
 
@@ -178,7 +178,7 @@ namespace
                           }
                       }
 
-                      if (traverse || _cropMethod == CropFilter::METHOD_CROPPING)
+                      if (traverse || _cropMethod == CropFilter::METHOD_CROP_TO_EXTENT)
                       {
                           tile->traverse( this );
                       }

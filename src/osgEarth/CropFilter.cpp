@@ -22,8 +22,8 @@
 
 using namespace osgEarth;
 
-CropFilter::CropFilter( CropFilter::Method method ) :
-_method( method )
+CropFilter::CropFilter(CropFilter::Method method) :
+    _method(method)
 {
     //nop
 }
@@ -72,11 +72,10 @@ CropFilter::push( FeatureList& input, FilterContext& context )
             }
         }
     }
-
-    else // METHOD_CROPPING (requires GEOS)
+    
+    else if (_method == METHOD_CROP_TO_EXTENT) //(requires GEOS)
     {
 #ifdef OSGEARTH_HAVE_GEOS
-
         // create the intersection polygon:
         osg::ref_ptr<Polygon> poly;
         FeatureList output;
@@ -143,6 +142,26 @@ CropFilter::push( FeatureList& input, FilterContext& context )
         return context;
 
 #endif
+    }
+    
+    else // CROP_BBOX
+    {
+        FeatureList output;
+        output.reserve(input.size());
+
+        for (auto& feature : input)
+        {
+            if (feature.valid())
+            {
+                GeoExtent featureExtent = feature->getExtent();
+                if (extent.intersects(featureExtent))
+                {
+                    output.emplace_back(feature);
+                }
+            }
+        }
+
+        output.swap(input);
     }
 
     FilterContext newContext = context;

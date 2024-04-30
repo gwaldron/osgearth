@@ -92,7 +92,7 @@ void oeui_render_outlines(inout vec4 color) {
 #pragma vp_function oeui_render_ao, fragment_lighting, last
 struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 void oeui_render_ao(inout vec4 color) {
-    color = vec4(oe_pbr.ao, oe_pb.ao, oe_pb.ao, 1);
+    color = vec4(oe_pbr.ao, oe_pbr.ao, oe_pbr.ao, 1);
 }
 )";
 

@@ -543,17 +543,20 @@ namespace {
                     osg::StateSet* stateSet = geom->getOrCreateStateSet();
                     auto& material = _model->materials[primitive.material];
                     auto pbr = material.pbrMetallicRoughness;
-                    if (pbr->baseColorFactor.size() > 0) {
-                        osgEarth::MaterialGL3* material = new osgEarth::MaterialGL3();
-                        osg::Vec4d color(pbr->baseColorFactor[0], pbr->baseColorFactor[1], pbr->baseColorFactor[2], pbr->baseColorFactor[3]);
-                        material->setDiffuse(osg::Material::FRONT_AND_BACK, color);
-                        stateSet->setAttributeAndModes(material);
-                    }
-                    if (pbr->baseColorTexture.has_value()) {
-                        unsigned int baseColorTexture = pbr->baseColorTexture->index;
-                        if (baseColorTexture >= 0 && baseColorTexture < _textures.size())
-                        {
-                            stateSet->setTextureAttributeAndModes(0, _textures[baseColorTexture], osg::StateAttribute::ON);
+                    if (pbr)
+                    {
+                        if (pbr->baseColorFactor.size() > 0) {
+                            osgEarth::MaterialGL3* material = new osgEarth::MaterialGL3();
+                            osg::Vec4d color(pbr->baseColorFactor[0], pbr->baseColorFactor[1], pbr->baseColorFactor[2], pbr->baseColorFactor[3]);
+                            material->setDiffuse(osg::Material::FRONT_AND_BACK, color);
+                            stateSet->setAttributeAndModes(material);
+                        }
+                        if (pbr->baseColorTexture.has_value()) {
+                            unsigned int baseColorTexture = pbr->baseColorTexture->index;
+                            if (baseColorTexture >= 0 && baseColorTexture < _textures.size())
+                            {
+                                stateSet->setTextureAttributeAndModes(0, _textures[baseColorTexture], osg::StateAttribute::ON);
+                            }
                         }
                     }
                 }

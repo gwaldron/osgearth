@@ -28,6 +28,12 @@ namespace weemesh
     }
 
     template<typename T>
+    inline bool less_than(T a, T b, T epsilon)
+    {
+        return a < b && !equivalent(a, b, epsilon);
+    }
+
+    template<typename T>
     inline T clamp(T x, T lo, T hi)
     {
         return x < lo ? lo : x > hi ? hi : x;
@@ -51,7 +57,7 @@ namespace weemesh
     struct vert_t
     {
         using value_type = double;
-        double x, y, z;
+        double x = 0.0, y = 0.0, z = 0.0;
         vert_t() { }
         vert_t(value_type a, value_type b, value_type c) : x(a), y(b), z(c) { }
         vert_t(value_type* ptr) : x(ptr[0]), y(ptr[1]), z(ptr[2]) { }

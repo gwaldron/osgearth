@@ -16,8 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_LOADABLE_NODE_H
-#define OSGEARTH_LOADABLE_NODE_H
+#pragma once
 
 #include <osgEarth/Export>
 #include <osgEarth/RefinePolicy>
@@ -25,7 +24,7 @@
 namespace osgEarth
 {
     /**
-     * Pure interface for a node that can load or unload data.
+     * Pure interface for an object that can load or unload data.
      */
     class /*interface*/ LoadableNode
     {
@@ -39,11 +38,10 @@ namespace osgEarth
         //! How to behave when higher resolution data is loaded
         virtual RefinePolicy getRefinePolicy() const = 0;
 
-        //! Whether this node's payload was succesfully loaded
-        virtual bool isLoaded() const = 0;
+        //! Whether a call to load() completed (successfully or not)
+        virtual bool isLoadComplete() const = 0;
 
-        //! Whether the payload associated with this node is the highest
-        //! resolution and no higher resolution data is available
+        //! Whether the node is the highest resolution node in the scene graph
         virtual bool isHighestResolution() const = 0;
 
         //! Whether to automatically discard the payload when the
@@ -55,4 +53,4 @@ namespace osgEarth
         virtual void setAutoUnload(bool value) = 0;
     };
 }
-#endif
+

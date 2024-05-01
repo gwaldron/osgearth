@@ -946,7 +946,7 @@ struct PredictiveDataLoader : public osg::NodeVisitor
         float range = getMinRange(pagedNode);
         if (range < pagedNode.getMaxRange())
         {
-            if (!pagedNode.isLoaded())
+            if (!pagedNode.isLoadComplete())
             {
                 float priority = -range;
                 pagedNode.startLoad(priority, nullptr);
@@ -1057,22 +1057,22 @@ protected:
                 //if (terrainTile && node->isLoaded()) _numLoadedTerrainTiles++;
                 //if (terrainTile && !node->isLoaded()) _numUnloadedTerrainTiles;
 
-                if (pagedNode2 && node->isLoaded()) _numLoadedPagedNode2++;
-                if (pagedNode2 && !node->isLoaded()) _numUnloadedPagedNode2++;
+                if (pagedNode2 && node->isLoadComplete()) _numLoadedPagedNode2++;
+                if (pagedNode2 && !node->isLoadComplete()) _numUnloadedPagedNode2++;
 
-                if (threedTiles && node->isLoaded()) _numLoadedThreedTiles++;
-                if (threedTiles && !node->isLoaded()) _numUnloadedThreedTiles++;
+                if (threedTiles && node->isLoadComplete()) _numLoadedThreedTiles++;
+                if (threedTiles && !node->isLoadComplete()) _numUnloadedThreedTiles++;
 
-                if (node->isLoaded()) _numLoaded++;
-                if (!node->isLoaded()) _numUnloaded++;
+                if (node->isLoadComplete()) _numLoaded++;
+                if (!node->isLoadComplete()) _numUnloaded++;
 
                 //if (terrainTile && !_terrainTiles) continue;
                 if (pagedNode2 && !_pagedNode2) continue;
                 if (threedTiles && !_threedTiles) continue;
 
-                if (node->isLoaded() && _loaded || !node->isLoaded() && _unloaded)
+                if (node->isLoadComplete() && _loaded || !node->isLoadComplete() && _unloaded)
                 {
-                    osg::Vec4 color = node->isLoaded() ? osg::Vec4(0.0, 1.0, 0.0, 1.0) : osg::Vec4(1.0, 0.0, 0.0, 1.0);
+                    osg::Vec4 color = node->isLoadComplete() ? osg::Vec4(0.0, 1.0, 0.0, 1.0) : osg::Vec4(1.0, 0.0, 0.0, 1.0);
 
                     /*
                     if (terrainTile)
@@ -1087,7 +1087,7 @@ protected:
 
                     if (threedTiles)
                     {
-                        color = node->isLoaded() ? Color::Cyan : Color::White;
+                        color = node->isLoadComplete() ? Color::Cyan : Color::White;
                     }
 
                     osg::NodePath nodePath = n->getParentalNodePaths()[0];

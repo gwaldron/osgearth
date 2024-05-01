@@ -660,6 +660,35 @@ TileMesher::createMeshWithConstraints(
                 mesh.remove_triangle(*tri);
             }
         }
+
+#if 1
+        // do we want to add the constraint triangles back in?
+        if (!insiders_to_remove.empty())
+        {
+            for (auto& edit : edits)
+            {
+                if (edit.removeInterior)
+                {
+                    for (auto& feature : edit.features)
+                    {
+                        // skip the polygon holes.
+                        GeometryIterator geom_iter(feature->getGeometry(), false);
+                        while (geom_iter.hasMore())
+                        {
+                            Geometry* part = geom_iter.next();
+                            if (part->isPolygon() && part->size() == 3)
+                            {
+                                auto i1 = mesh.get_or_create_vertex(weemesh::vert_t((*part)[0].ptr()), VERTEX_CONSTRAINT);
+                                auto i2 = mesh.get_or_create_vertex(weemesh::vert_t((*part)[1].ptr()), VERTEX_CONSTRAINT);
+                                auto i3 = mesh.get_or_create_vertex(weemesh::vert_t((*part)[2].ptr()), VERTEX_CONSTRAINT);
+                                mesh.add_triangle(i1, i2, i3);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+#endif
     }
 
     // if ALL triangles are gone, it's an empty tile.

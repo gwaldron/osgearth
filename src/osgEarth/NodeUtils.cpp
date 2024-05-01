@@ -468,10 +468,9 @@ void LoadDataVisitor::apply(LoadableNode& node)
 {
     if (_loadHighestResolutionOnly)
     {
-        if (!node.isLoaded())
+        if (!node.isLoadComplete())
         {
-            if (node.getRefinePolicy() == REFINE_ADD ||
-                node.isHighestResolution())
+            if (node.getRefinePolicy() == REFINE_ADD || node.isHighestResolution())
             {
                 node.setAutoUnload(false);
                 node.load();
@@ -482,7 +481,7 @@ void LoadDataVisitor::apply(LoadableNode& node)
     else
     {
         node.setAutoUnload(false);
-        if (!node.isLoaded())
+        if (!node.isLoadComplete())
         {
             node.load();
             _fullyLoaded = false;

@@ -39,13 +39,6 @@ PagedNode2::~PagedNode2()
     //nop
 }
 
-bool
-PagedNode2::isHighestResolution() const
-{
-    // if there's no load function, we are at the end of the road.
-    return getLoadFunction() == nullptr;
-}
-
 void
 PagedNode2::setLoadFunction(const Loader& value)
 {
@@ -172,6 +165,8 @@ PagedNode2::merge(int revision)
     {
         // This is called from PagingManager.
         // We're in the UPDATE traversal.
+        // None of these should even happen since we check for them before we enqueue the merge.
+        // (See merge_job)
         OE_SOFT_ASSERT_AND_RETURN(_loaded.available(), false);
         OE_SOFT_ASSERT_AND_RETURN(_loaded.value().valid(), false);
         OE_SOFT_ASSERT_AND_RETURN(_loaded.value()->getNumParents() == 0, false);
@@ -281,6 +276,15 @@ PagedNode2::startLoad(float priority, const osg::Object* host)
     _merged = _loaded.then_dispatch<bool>(merge_job, context);
 }
 
+void
+PagedNode2::load()
+{
+    if (_load_function && _loaded.empty() && !_loadGate.exchange(true))
+    {
+        startLoad(0.0f, nullptr);
+    }
+}
+
 void PagedNode2::unload()
 {
     if (_merged.has_value(true))
@@ -288,7 +292,6 @@ void PagedNode2::unload()
         removeChild(_loaded.value());
     }
 
-    //_compiled.reset();
     _loaded.reset();
     _merged.reset();
 
@@ -299,9 +302,16 @@ void PagedNode2::unload()
     _revision++;
 }
 
-bool PagedNode2::isLoaded() const
+bool
+PagedNode2::isLoadComplete() const
 {
-    return _merged.has_value(true);
+    return _merged.available() || (_load_function == nullptr);
+}
+
+bool
+PagedNode2::isHighestResolution() const
+{
+    return getLoadFunction() == nullptr;
 }
 
 PagingManager::PagingManager()

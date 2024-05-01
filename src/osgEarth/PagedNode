@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTHUTIL_PAGEDNODE_H
-#define OSGEARTHUTIL_PAGEDNODE_H
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/optional>
@@ -175,12 +174,14 @@ namespace osgEarth { namespace Util
 
     public: // LoadableNode API
 
+        void load() override;
+        void unload() override;
+        bool isLoadComplete() const override;
+        bool isHighestResolution() const override;
+
         RefinePolicy getRefinePolicy() const override {
             return _refinePolicy;
         }
-
-        //! Whether this node will automatically unload its content
-        //! when it goes not pass cull.
         bool getAutoUnload() const override {
             return _autoUnload;
         }
@@ -188,25 +189,11 @@ namespace osgEarth { namespace Util
             _autoUnload = value;
         }
 
-        bool isHighestResolution() const override;
-
-        //! Loads the content for this node (convenience function)
-        void load() override {
-            startLoad(0.0, nullptr);
-        }
-
-        //! Unloads the content for this node
-        void unload() override;
-
-        //! Whether the content is loaded.
-        bool isLoaded() const override;
-
-
     public: // osg::Node overrides
 
-        virtual void traverse(osg::NodeVisitor& nv) override;
+        void traverse(osg::NodeVisitor& nv) override;
 
-        virtual osg::BoundingSphere computeBound() const override;
+        osg::BoundingSphere computeBound() const override;
 
     protected:
 
@@ -306,5 +293,3 @@ namespace osgEarth { namespace Util
     };
 
 } }
-
-#endif // OSGEARTHUTIL_PAGEDNODE_H

@@ -188,7 +188,8 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
         void setParentTile(ThreeDTileNode* parentTile);
 
     public: // LoadableNode
-        void load()
+
+        void load() override
         {
             // Load the content for this tile and attempt to resolve it.
             requestContent(nullptr);
@@ -212,17 +213,17 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
             }
         }
 
-        void unload()
+        void unload() override
         {
             unloadContent();
         }
 
-        bool isHighestResolution() const
+        bool isHighestResolution() const override
         {
             return getNumChildren() == 0;
         }
 
-        virtual bool isLoaded() const
+        bool isLoadComplete() const override
         {
             auto t = const_cast<ThreeDTileNode*>(this);
 
@@ -253,12 +254,12 @@ namespace osgEarth { namespace Contrib { namespace ThreeDTiles
             return areChildrenReady && isContentReady;
         }
 
-        virtual bool getAutoUnload() const
+        bool getAutoUnload() const override
         {
             return _autoUnload;
         }
 
-        virtual void setAutoUnload(bool value)
+        void setAutoUnload(bool value) override
         {
             _autoUnload = value;
         }

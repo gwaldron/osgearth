@@ -13,6 +13,7 @@
 #include <osgEarth/Math>
 #include <osgDB/ReadFile>
 #include <osgUtil/SmoothingVisitor>
+#include <osg/CullFace>
 #include <osg/Depth>
 #include <osg/PolygonOffset>
 #include <array>
@@ -1591,6 +1592,7 @@ namespace
             auto ss = getOrCreateStateSet();
             ss->setMode(GL_BLEND, 1);
             ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0, 1, false), 1);
+            ss->setAttributeAndModes(new osg::CullFace(osg::CullFace::BACK), 1);
             
             _filterChain.push_back(new ResampleFilter(0.0, 25.0));
         }
@@ -1819,15 +1821,19 @@ namespace
             osg::Matrix world2local;
             centroid.createWorldToLocal(world2local);
 
-            auto xform = [working_srs, pool, &world2local, &ws](const osg::Vec3d& p, const osg::Vec3d& ref)
+            auto xform = [&](const osg::Vec3d& p, const osg::Vec3d& ref)
                 {
                     auto layer_z = p.z();
-                    GeoPoint temp(working_srs, p, ALTMODE_ABSOLUTE);
-                    temp.transformInPlace(working_srs->getGeographicSRS());
-                    auto z = pool->getSample(temp, {}, &ws, nullptr);
-                    temp.z() = z.elevation().as(Units::METERS) + layer_z;
+
+                    GeoPoint ref_point(working_srs, ref, ALTMODE_ABSOLUTE);
+                    auto z = pool->getSample(ref_point, {}, &ws, progress);
+
+                    GeoPoint actual_point(working_srs, p, ALTMODE_ABSOLUTE);
+                    actual_point.transformInPlace(working_srs->getGeographicSRS());
+                    actual_point.z() = z.elevation().as(Units::METERS) + layer_z;
+                    
                     osg::Vec3d world;
-                    temp.toWorld(world);
+                    actual_point.toWorld(world);
                     return world * world2local;
                 };
 
@@ -1836,7 +1842,7 @@ namespace
 
             auto mt = new osg::MatrixTransform();
             osg::Matrixd local2world;
-            centroid.createLocalToWorld(local2world);
+            local2world.invert(world2local);
             mt->setMatrix(local2world);
             mt->addChild(root);
             root = mt;
@@ -1956,9 +1962,9 @@ RoadLayer::openImplementation()
         con->setName("..Roads - constraints");
         con->setUserProperty("show_in_ui", "true");
         con->setModelLayer(decals);
-        con->setRemoveInterior(true);
-        con->setMinLevel(std::max(options().constraintsMinLevel().value(), getMinLevel()));
         con->setHasElevation(true);
+        con->setRemoveInterior(false);
+        con->setMinLevel(std::max(options().constraintsMinLevel().value(), getMinLevel()));
         con->options().cachePolicy() = options().cachePolicy();
         con->options().visible() = options().visible();
         con->options().opacity() = options().opacity();

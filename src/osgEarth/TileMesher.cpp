@@ -515,7 +515,7 @@ TileMesher::createMeshWithConstraints(
 
                 Geometry* part = geom_iter.next();
 
-                if (part->getBounds().intersects(localBounds))
+                if (intersects2d(part->getBounds(), localBounds))
                 {
                     if (part->isPointSet())
                     {
@@ -600,7 +600,8 @@ TileMesher::createMeshWithConstraints(
                         // Note: the part was already transformed in a previous step.
 
                         const auto& bb = part->getBounds();
-                        if (part->isPolygon() && bb.intersects(localBounds))
+
+                        if (part->isPolygon() && intersects2d(bb, localBounds))
                         {
                             if (edit.removeExterior)
                             {
@@ -661,10 +662,12 @@ TileMesher::createMeshWithConstraints(
             }
         }
 
-#if 1
+#if 0
         // do we want to add the constraint triangles back in?
         if (!insiders_to_remove.empty())
         {
+            std::set<std::tuple<int, int, int>> unique_tris;
+
             for (auto& edit : edits)
             {
                 if (edit.removeInterior)
@@ -676,12 +679,22 @@ TileMesher::createMeshWithConstraints(
                         while (geom_iter.hasMore())
                         {
                             Geometry* part = geom_iter.next();
-                            if (part->isPolygon() && part->size() == 3)
+
+                            if (localBounds.contains(part->getBounds().center()))
                             {
-                                auto i1 = mesh.get_or_create_vertex(weemesh::vert_t((*part)[0].ptr()), VERTEX_CONSTRAINT);
-                                auto i2 = mesh.get_or_create_vertex(weemesh::vert_t((*part)[1].ptr()), VERTEX_CONSTRAINT);
-                                auto i3 = mesh.get_or_create_vertex(weemesh::vert_t((*part)[2].ptr()), VERTEX_CONSTRAINT);
-                                mesh.add_triangle(i1, i2, i3);
+                                if (part->isPolygon() && part->size() == 3)
+                                {
+                                    auto i1 = mesh.get_or_create_vertex(weemesh::vert_t((*part)[0].ptr()), VERTEX_CONSTRAINT);
+                                    auto i2 = mesh.get_or_create_vertex(weemesh::vert_t((*part)[1].ptr()), VERTEX_CONSTRAINT);
+                                    auto i3 = mesh.get_or_create_vertex(weemesh::vert_t((*part)[2].ptr()), VERTEX_CONSTRAINT);
+
+                                    auto unique = std::make_tuple(i1, i2, i3);
+                                    if (unique_tris.count(unique) == 0)
+                                    {
+                                        unique_tris.insert(unique);
+                                        mesh.add_triangle(i1, i2, i3);
+                                    }
+                                }
                             }
                         }
                     }

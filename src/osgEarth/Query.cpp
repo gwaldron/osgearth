@@ -115,7 +115,7 @@ Query::combineWith( const Query& rhs ) const
     // merge the bounds:
     if ( bounds().isSet() && rhs.bounds().isSet() )
     {
-        merged.bounds() = intersection(*bounds(), *rhs.bounds());
+        merged.bounds() = intersectionOf(*bounds(), *rhs.bounds());
     }
     else if ( bounds().isSet() )
     {

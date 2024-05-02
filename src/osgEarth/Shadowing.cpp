@@ -248,6 +248,9 @@ ShadowCaster::traverse(osg::NodeVisitor& nv)
         osg::Camera* camera = cv->getCurrentCamera();
         if ( camera )
         {
+            if (ProjectionMatrix::isOrtho(*cv->getProjectionMatrix()))
+                return;
+
             osg::Matrix MV = *cv->getModelViewMatrix();
             osg::Matrix inverseMV;
             inverseMV.invert(MV);

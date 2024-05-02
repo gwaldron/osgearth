@@ -403,7 +403,7 @@ CubeSpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
     {
         Bounds faceBounds((double)(face), 0.0, 0.0, (double)(face + 1), 1.0, 0.0);
 
-        Bounds isect = intersection(faceBounds, inBounds);
+        Bounds isect = intersectionOf(faceBounds, inBounds);
 
         // if they intersect (with a non-zero area; abutting doesn't count in this case)
         // transform the intersection and include in the result.

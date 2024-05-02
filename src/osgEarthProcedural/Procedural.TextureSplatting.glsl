@@ -377,10 +377,10 @@ void oe_splat_Frag(inout vec4 quad)
     oe_pbr.roughness = clamp(oe_pbr.roughness * pixel.material[ROUGHNESS], 0.0, 1.0);
     oe_pbr.ao = clamp(oe_pbr.ao * pow(pixel.material[AO], ao_power), 0.0, 1.0);
     oe_pbr.metal = clamp(pixel.material[METAL], 0.0, 1.0);
-    //oe_pbr.brightness *= oe_splat_brightness;
-    //oe_pbr.contrast *= oe_splat_contrast;
 
     vec3 color = pixel.rgbh.rgb;
+
+    color = ((color - 0.5) * oe_splat_contrast + 0.5) * oe_splat_brightness;
 
     pixel.normal = vec3(
         DECEL(pixel.normal.x, oe_normal_power),

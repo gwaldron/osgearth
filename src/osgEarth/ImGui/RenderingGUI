@@ -164,6 +164,26 @@ void oeui_render_drawid(inout vec4 color) {
 }
 )";
 
+    const char* render_elevation_marker = R"(
+#version 460
+#pragma vp_function oeui_render_elevation_marker_vs, vertex_view
+out vec4 oeui_color;
+flat out int oe_terrain_vertexMarker;
+void oeui_render_elevation_marker_vs(inout vec4 vertex) {
+    oeui_color = vec4(0);
+    int marker = oe_terrain_vertexMarker;
+    if ((marker & 4) > 0) // HAS_ELEVATION
+        oeui_color = vec4(1,0,0,1);
+    else if ((marker & 16) > 0) // CONSTRAINT
+        oeui_color = vec4(1,1,0,1);
+}
+[break]
+#pragma vp_function oeui_render_elevation_marker_fs, fragment_lighting, last
+in vec4 oeui_color;
+void oeui_render_elevation_marker_fs(inout vec4 color) {
+    color.rgb = mix(color.rgb, oeui_color.rgb, oeui_color.a);
+}
+)";
 }
 
 namespace osgEarth
@@ -271,6 +291,9 @@ namespace osgEarth
                     }
                     if (ImGui::RadioButton("Draw ID", &s_renderMode, m++)) {
                         setRenderMode(render_draw_id, ri);
+                    }
+                    if (ImGui::RadioButton("Elevation markers", &s_renderMode, m++)) {
+                        setRenderMode(render_elevation_marker, ri);
                     }
 
                     if (GLUtils::useNVGL())

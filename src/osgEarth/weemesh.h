@@ -570,7 +570,8 @@ namespace weemesh
                             marker_is_set(tri.i0, _has_elevation_marker) && marker_is_set(tri.i1, _has_elevation_marker))
                         {
                             auto z0 = get_vertex(tri.i0).z, z1 = get_vertex(tri.i1).z;
-                            get_vertex(new_i).z = z0 + u * (z1 - z0);
+                            double& new_z = get_vertex(new_i).z;
+                            new_z = std::max(new_z, z0 + u * (z1 - z0));
                             set_marker(new_i, _has_elevation_marker);
                         }
 
@@ -615,7 +616,8 @@ namespace weemesh
                             marker_is_set(tri.i1, _has_elevation_marker) && marker_is_set(tri.i2, _has_elevation_marker))
                         {
                             auto z0 = get_vertex(tri.i1).z, z1 = get_vertex(tri.i2).z;
-                            get_vertex(new_i).z = z0 + u * (z1 - z0);
+                            double& new_z = get_vertex(new_i).z;
+                            new_z = std::max(new_z, z0 + u * (z1 - z0));
                             set_marker(new_i, _has_elevation_marker);
                         }
 
@@ -660,7 +662,8 @@ namespace weemesh
                             marker_is_set(tri.i2, _has_elevation_marker) && marker_is_set(tri.i0, _has_elevation_marker))
                         {
                             auto z0 = get_vertex(tri.i2).z, z1 = get_vertex(tri.i0).z;
-                            get_vertex(new_i).z = z0 + u * (z1 - z0);
+                            double& new_z = get_vertex(new_i).z;
+                            new_z = std::max(new_z, z0 + u * (z1 - z0));
                             set_marker(new_i, _has_elevation_marker);
                         }
 

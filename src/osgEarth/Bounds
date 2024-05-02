@@ -19,17 +19,13 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
-#ifndef OSGEARTH_BOUNDS_H
-#define OSGEARTH_BOUNDS_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osg/BoundingBox>
 
 namespace osgEarth
-{  
-    class SpatialReference;
-
+{
     using Bounds = osg::BoundingBoxd;
 
     inline double width(const Bounds& b) {
@@ -51,11 +47,15 @@ namespace osgEarth
             y >= b.yMin() && y <= b.yMax();
     }
 
+    inline bool intersects2d(const Bounds& lhs, const Bounds& rhs) {
+        return
+            lhs.xMax() >= rhs.xMin() && lhs.xMin() <= rhs.xMax() &&
+            lhs.yMax() >= rhs.yMin() && lhs.yMin() <= rhs.yMax();
+    }
+
     extern OSGEARTH_EXPORT bool contains(const Bounds& lhs, const Bounds& rhs);
 
-    extern OSGEARTH_EXPORT Bounds intersection(const Bounds& lhs, const Bounds& rhs);
+    extern OSGEARTH_EXPORT Bounds intersectionOf(const Bounds& lhs, const Bounds& rhs);
 
     extern OSGEARTH_EXPORT Bounds unionOf(const Bounds& lhs, const Bounds& rhs);
 }
-
-#endif // OSGEARTH_BOUNDS_H

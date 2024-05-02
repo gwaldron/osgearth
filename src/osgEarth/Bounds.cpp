@@ -20,10 +20,8 @@
 
 using namespace osgEarth;
 
-//------------------------------------------------------------------------
-
 Bounds
-osgEarth::intersection(const Bounds& lhs, const Bounds& rhs)
+osgEarth::intersectionOf(const Bounds& lhs, const Bounds& rhs)
 {
     if (lhs.valid() && !rhs.valid()) return lhs;
     if (!lhs.valid() && rhs.valid()) return rhs;
@@ -72,117 +70,3 @@ osgEarth::contains(const Bounds& lhs, const Bounds& rhs)
         lhs.xMin() <= rhs.xMin() && lhs.xMax() >= rhs.xMax() &&
         lhs.yMin() <= rhs.yMin() && lhs.yMax() >= rhs.yMax();
 }
-
-#if 0
-void
-Bounds::expandBy( double x, double y )
-{
-    osg::BoundingBoxImpl<osg::Vec3d>::expandBy( x, y, 0 );
-}
-
-void
-Bounds::expandBy( double x, double y, double z )
-{
-    osg::BoundingBoxImpl<osg::Vec3d>::expandBy( x, y, z );
-}
-
-void
-Bounds::expandBy( const Bounds& rhs )
-{
-    osg::BoundingBoxImpl<osg::Vec3d>::expandBy( rhs );
-}
-
-Bounds 
-Bounds::unionWith(const Bounds& rhs) const
-{
-    if ( valid() && !rhs.valid() ) return *this;
-    if ( !valid() && rhs.valid() ) return rhs;
-
-    Bounds u;
-    if ( intersects(rhs) ) {
-        u.xMin() = xMin() >= rhs.xMin() && xMin() <= rhs.xMax() ? xMin() : rhs.xMin();
-        u.xMax() = xMax() >= rhs.xMin() && xMax() <= rhs.xMax() ? xMax() : rhs.xMax();
-        u.yMin() = yMin() >= rhs.yMin() && yMin() <= rhs.yMax() ? yMin() : rhs.yMin();
-        u.yMax() = yMax() >= rhs.yMin() && yMax() <= rhs.yMax() ? yMax() : rhs.yMax();
-        u.zMin() = zMin() >= rhs.zMin() && zMin() <= rhs.zMax() ? zMin() : rhs.zMin();
-        u.zMax() = zMax() >= rhs.zMin() && zMax() <= rhs.zMax() ? zMax() : rhs.zMax();
-    }
-    return u;
-}
-
-Bounds
-Bounds::intersectionWith(const Bounds& rhs) const 
-{
-    if ( valid() && !rhs.valid() ) return *this;
-    if ( !valid() && rhs.valid() ) return rhs;
-
-    if ( this->contains(rhs) ) return rhs;
-    if ( rhs.contains(*this) ) return *this;
-
-    if ( !intersects(rhs) ) return Bounds();
-
-    double xmin, xmax, ymin, ymax;
-
-    xmin = ( xMin() > rhs.xMin() && xMin() < rhs.xMax() ) ? xMin() : rhs.xMin();
-    xmax = ( xMax() > rhs.xMin() && xMax() < rhs.xMax() ) ? xMax() : rhs.xMax();
-    ymin = ( yMin() > rhs.yMin() && yMin() < rhs.yMax() ) ? yMin() : rhs.yMin();
-    ymax = ( yMax() > rhs.yMin() && yMax() < rhs.yMax() ) ? yMax() : rhs.yMax();
-
-    return Bounds(xmin, ymin, xmax, ymax);
-}
-
-double
-Bounds::width() const {
-    return xMax()-xMin();
-}
-
-double
-Bounds::height() const {
-    return yMax()-yMin();
-}
-
-double
-Bounds::depth() const {
-    return zMax()-zMin();
-}
-
-osg::Vec2d
-Bounds::center2d() const {
-    osg::Vec3d c = center();
-    return osg::Vec2d( c.x(), c.y() );
-}
-
-double
-Bounds::radius2d() const {
-    return (center2d() - osg::Vec2d(xMin(),yMin())).length();
-}
-
-double
-Bounds::area2d() const {
-    return isValid() ? width() * height() : -1.0;
-}
-
-std::string
-Bounds::toString() const
-{
-    return Stringify() << "(" << xMin() << "," << yMin() << " => " << xMax() << "," << yMax() << ")";
-}
-
-void
-Bounds::transform( const SpatialReference* from, const SpatialReference* to )
-{
-    from->transformExtentToMBR( to, _min.x(), _min.y(), _max.x(), _max.y() );
-}
-
-void
-Bounds::set(double xmin, double ymin, double xmax, double ymax)
-{
-    osg::BoundingBoxd::set(xmin, ymin, -DBL_MAX, xmax, ymax, DBL_MAX);
-}
-
-void
-Bounds::set(double xmin, double ymin, double zmin, double xmax, double ymax, double zmax)
-{
-    osg::BoundingBoxd::set(xmin, ymin, zmin, xmax, ymax, zmax);
-}
-#endif

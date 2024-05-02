@@ -1061,7 +1061,7 @@ GeoExtent::bounds() const
 {
     double west, east, south, north;
     getBounds(west, south, east, north);
-    return Bounds( west, south, 0, east, north, 0 );
+    return Bounds(west, south, 0, east, north, 0);
 }
 
 bool

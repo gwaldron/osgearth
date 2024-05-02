@@ -2135,7 +2135,7 @@ VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
             else
             {
                 // creation failed; reset for another try.
-                OE_INFO << "Failed for " << entry->getKey().str() << "; will retry..." << std::endl;
+                OE_DEBUG << LC << "Failed for " << entry->getKey().str() << "; will retry..." << std::endl;
                 view._tile = nullptr;
             }
         }

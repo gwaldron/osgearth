@@ -478,7 +478,10 @@ namespace osgEarth
          */
         bool contains(double x, double y, const SpatialReference* srs = 0L) const;
 
-        bool contains(const osg::Vec3d& xy, const SpatialReference* srs = 0L) const { return contains(xy.x(), xy.y(), srs); }
+        template<typename VEC>
+        bool contains(const VEC& a, const SpatialReference* srs = nullptr) const { 
+            return contains(a.x(), a.y(), srs);
+        }
 
         /**
          * Returns true if the point falls within this extent.

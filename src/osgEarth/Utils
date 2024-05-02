@@ -69,6 +69,20 @@ namespace osgEarth { namespace Util
     };
 
     /**
+    * General purpose wrapper that wraps a value in an osg::Object so you can
+    * easily store it in a user data container (or whatever)
+    */
+    template<class T>
+    struct WrapperObject : public osg::Object
+    {
+        META_Object(osgEarth, WrapperObject<T>);
+        WrapperObject() { }
+        WrapperObject(const std::string name, const T& t) : value(t) { setName(name); }
+        WrapperObject(const WrapperObject<T>& rhs, const osg::CopyOp& op) : osg::Object(rhs, op), value(rhs.value) { }
+        T value;
+    };
+
+    /**
      * Utility for storing observables in an osg::Object
      */
     class ObjectStorage

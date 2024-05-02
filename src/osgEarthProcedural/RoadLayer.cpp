@@ -130,14 +130,13 @@ namespace
     {
         enum Type { NONE, GENERIC, MERGE, T, Y, X } type = NONE;
         float backoff_length = 0.0f;
-        float crossing_length = 0.0f;
         vec_t orientation = vec_t(1, 0, 0);
     };
 
     struct node_t
     {
         const UID uid;
-        const point_t p;
+        point_t p;
         mutable std::vector<edge_t*> edges;
         intersection_t intersection;
         bool has_crossing = false;
@@ -198,10 +197,6 @@ namespace
         // end points, extruded to width.
         point_t node1_left, node1_right;
         point_t node2_left, node2_right;
-
-        // end points minus crossing area, extruded to width
-        point_t node1_cr_left, node1_cr_right;
-        point_t node2_cr_left, node2_cr_right;
 
         // constructor keeps the nodes sorted in geospatial order.
         edge_t(const node_t& a, const node_t& b, float w, const properties_t* d) :
@@ -628,8 +623,6 @@ namespace
                 node.intersection.backoff_length = std::max(node.intersection.backoff_length, backoff);
             }
 
-            //node.intersection.crossing_length = node.intersection.backoff_length * 0.5;
-
             // if this node doesn't have its own properties, inherit them from the edges.
             if (node.props == nullptr)
             {
@@ -657,21 +650,16 @@ namespace
         double backoff_len = std::min(n.intersection.backoff_length, max_backoff);
 
         vec_t backoff = (dir * backoff_len * (use_backoff? 1.0 : 0.0));
-        vec_t crossing = (dir * n.intersection.crossing_length);
 
         if (e.node2 == n)
         {
             e.node2_left = e.node2.p + extrusion - backoff;
             e.node2_right = e.node2.p - extrusion - backoff;
-            e.node2_cr_left = e.node2_left - crossing;
-            e.node2_cr_right = e.node2_right - crossing;
         }
         else
         {
             e.node1_left = e.node1.p + extrusion + backoff;
             e.node1_right = e.node1.p - extrusion + backoff;
-            e.node1_cr_left = e.node1_left + crossing;
-            e.node1_cr_right = e.node1_right + crossing;
         }
     }
 
@@ -704,15 +692,11 @@ namespace
         {
             A.node1_left = n.p + median * median_len;
             A.node1_right = n.p - median * median_len;
-            A.node1_cr_left = A.node1_left;
-            A.node1_cr_right = A.node1_right;
         }
         else
         {
             A.node2_left = n.p - median * median_len;
             A.node2_right = n.p + median * median_len;
-            A.node2_cr_left = A.node2_left;
-            A.node2_cr_right = A.node2_right;
         }
     }
 
@@ -848,6 +832,32 @@ namespace
         }
     }
 
+    // clamps edge polygon points to the terrain.
+    void clamp(graph_t& g, const SpatialReference* working_srs, ElevationPool* pool, ProgressCallback* progress)
+    {
+        ElevationPool::WorkingSet ws;
+
+        for (auto& const_node : g.nodes)
+        {
+            auto& node = const_cast<node_t&>(const_node);
+            GeoPoint p(working_srs, node.p.x(), node.p.y(), node.p.z(), ALTMODE_ABSOLUTE);
+            auto e = pool->getSample(p, &ws, progress);
+            if (e.hasData())
+            {
+                node.p.z() += e.elevation().as(Units::METERS);
+            }
+        }
+
+        for (auto& const_edge : g.edges)
+        {
+            auto& edge = const_cast<edge_t&>(const_edge);
+            edge.node1_left.z() = edge.node1.p.z();
+            edge.node1_right.z() = edge.node1.p.z();
+            edge.node2_left.z() = edge.node2.p.z();
+            edge.node2_right.z() = edge.node2.p.z();
+        }
+    }
+
 #if 0
     osg::Node* tessellate_edge(const edge_t& edge, std::function<osg::Vec3(const osg::Vec3d&)>& transform)
     {
@@ -932,13 +942,10 @@ namespace
         auto normals = new osg::Vec3Array(osg::Array::BIND_OVERALL);
         auto uvs = new osg::Vec2Array(osg::Array::BIND_PER_VERTEX);
 
-        auto node1_c = (edge.node1_cr_left + edge.node1_cr_right) * 0.5;
-        auto node2_c = (edge.node2_cr_left + edge.node2_cr_right) * 0.5;
-
-        verts->push_back(transform(edge.node1_cr_right, node1_c));
-        verts->push_back(transform(edge.node2_cr_right, node2_c));
-        verts->push_back(transform(edge.node2_cr_left, node2_c));
-        verts->push_back(transform(edge.node1_cr_left, node1_c));
+        verts->push_back(transform(edge.node1_right));
+        verts->push_back(transform(edge.node2_right));
+        verts->push_back(transform(edge.node2_left));
+        verts->push_back(transform(edge.node1_left));
 
         colors->push_back(osg::Vec4(1, 1, 1, 0.85));
         normals->push_back(osg::Vec3(0, 0, 1));
@@ -1013,15 +1020,13 @@ namespace
         auto LR = node.p + q * osg::Vec3d(hw, -hl, 0);
         auto UR = node.p + q * osg::Vec3d(hw, hl, 0);
         auto UL = node.p + q * osg::Vec3d(-hw, hl, 0);
-        auto CL = (LL + UL) * 0.5;
-        auto CR = (LR + UR) * 0.5;
 
         auto verts = new osg::Vec3Array();
         verts->reserve(4);
-        verts->push_back(transform(LL, CL));
-        verts->push_back(transform(LR, CR));
-        verts->push_back(transform(UR, CR));
-        verts->push_back(transform(UL, CL));
+        verts->push_back(transform(LL));
+        verts->push_back(transform(LR));
+        verts->push_back(transform(UR));
+        verts->push_back(transform(UL));
         geom->setVertexArray(verts);
 
         const GLubyte index_data[] = { 0, 1, 2, 0, 2, 3 };
@@ -1093,13 +1098,13 @@ namespace
                 {
                     if (edge->node1 == node)
                     {
-                        points.push_back(edge->node1_cr_right);
-                        points.push_back(edge->node1_cr_left);
+                        points.push_back(edge->node1_right);
+                        points.push_back(edge->node1_left);
                     }
                     else
                     {
-                        points.push_back(edge->node2_cr_left);
-                        points.push_back(edge->node2_cr_right);
+                        points.push_back(edge->node2_left);
+                        points.push_back(edge->node2_right);
                     }
 
                     b.expandBy(points[points.size() - 2]);
@@ -1137,7 +1142,7 @@ namespace
         auto verts = new osg::Vec3Array();
         verts->reserve(points.size());
         for (auto& p : points) {
-            verts->push_back(transform(p, p));
+            verts->push_back(transform(p));
         }
         geom->setVertexArray(verts);
 
@@ -1190,25 +1195,33 @@ namespace
         return group;
     }
 
+    void create_feature_polygons_from_decals(const graph_t& g, MultiGeometry* mg)
+    {
+        for (auto& edge : g.edges)
+        {
+            auto t1 = new osgEarth::Polygon();
+            t1->push_back(edge.node1_left);
+            t1->push_back(edge.node1_right);
+            t1->push_back(edge.node2_left);
+            mg->add(t1);
 
-
-
-
+            auto t2 = new osgEarth::Polygon();
+            t2->push_back(edge.node2_left);
+            t2->push_back(edge.node1_right);
+            t2->push_back(edge.node2_right);
+            mg->add(t2);
+        }
+    }
 
     template<class XFORM>
     Geometry* create_lane_polygon(const edge_t& edge, XFORM&& transform)
     {
         auto poly = new osgEarth::Polygon();
         poly->reserve(4);
-
-        auto node1_c = (edge.node1_cr_left + edge.node1_cr_right) * 0.5;
-        auto node2_c = (edge.node2_cr_left + edge.node2_cr_right) * 0.5;
-
-        poly->push_back(transform(edge.node1_cr_right, node1_c));
-        poly->push_back(transform(edge.node2_cr_right, node2_c));
-        poly->push_back(transform(edge.node2_cr_left, node2_c));
-        poly->push_back(transform(edge.node1_cr_left, node1_c));
-
+        poly->push_back(transform(edge.node1_right));
+        poly->push_back(transform(edge.node2_right));
+        poly->push_back(transform(edge.node2_left));
+        poly->push_back(transform(edge.node1_left));
         return poly;
     }
 
@@ -1232,7 +1245,6 @@ namespace
         {
             auto poly = create_lane_polygon(*edge, transform);
             mc.features.emplace_back(new Feature(poly, working_srs));
-            //add_lane_polygon_to_feature_list(mc.features, *edge, transform);
         }
 
         TileMesher mesher;
@@ -1580,6 +1592,7 @@ namespace
         osg::ref_ptr<Session> _session;
         FeatureFilterChain _filterChain; // not needed, use filteredfeaturesource
         art_t _art;
+        bool _drawRoadsAtopTerrainSkin = false;
 
         void init() override
         {
@@ -1587,12 +1600,6 @@ namespace
             setMinLevel(14);
             setMaxLevel(14);
             options().nvgl() = GLUtils::useNVGL();
-
-            // blending on, depth writes off
-            auto ss = getOrCreateStateSet();
-            ss->setMode(GL_BLEND, 1);
-            ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0, 1, false), 1);
-            ss->setAttributeAndModes(new osg::CullFace(osg::CullFace::BACK), 1);
             
             _filterChain.push_back(new ResampleFilter(0.0, 25.0));
         }
@@ -1649,13 +1656,21 @@ namespace
         {
             super::prepareForRendering(engine);
 
-            // and the shader itself:
-            auto vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
-            ShaderLoader::load(vp, decal_shaders);
-            vp->setName("Road Decals");
-
+            // blending on, backface culling on
             auto ss = getOrCreateStateSet();
+            ss->setMode(GL_BLEND, 1);
+            ss->setAttributeAndModes(new osg::CullFace(osg::CullFace::BACK), 1);
             ss->setAttributeAndModes(new osg::PolygonOffset(-1, -1), 1);
+
+            // if the roads aren't cut in, we need some depth magic.
+            if (_drawRoadsAtopTerrainSkin)
+            {
+                auto vp = VirtualProgram::getOrCreate(getOrCreateStateSet());
+                ShaderLoader::load(vp, decal_shaders);
+                vp->setName("Road Decals");
+
+                ss->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 0, 1, false), 1);
+            }
         }
 
         const Profile* getProfile() const override
@@ -1779,7 +1794,8 @@ namespace
                                 Bounds bounds;
                                 bounds.expandBy(p1);
                                 bounds.expandBy(p2);
-                                if (working_bounds.intersects(bounds))
+
+                                if (intersects2d(working_bounds, bounds))
                                 {
                                     // skip segments that don't meet the minimum length requirement
                                     //while ((p1 - p2).length() <= EPSILON && i < part->size() - 2)
@@ -1813,27 +1829,23 @@ namespace
             // are likely layered data (e.g. bridges, overpasses, tunnels).
             //graph.split_intersecting_edges();
 
+            // Compile the 3D geometry:
             compile(graph);
 
-            ElevationPool::WorkingSet ws;
+            // Clamp to the terrain:
             auto pool = _session->getMap()->getElevationPool();
+            clamp(graph, working_srs, pool, progress);
 
+            // Tessellate into OSG:
             osg::Matrix world2local;
             centroid.createWorldToLocal(world2local);
 
-            auto xform = [&](const osg::Vec3d& p, const osg::Vec3d& ref)
+            auto xform = [&](const osg::Vec3d& p)
                 {
-                    auto layer_z = p.z();
-
-                    GeoPoint ref_point(working_srs, ref, ALTMODE_ABSOLUTE);
-                    auto z = pool->getSample(ref_point, {}, &ws, progress);
-
-                    GeoPoint actual_point(working_srs, p, ALTMODE_ABSOLUTE);
-                    actual_point.transformInPlace(working_srs->getGeographicSRS());
-                    actual_point.z() = z.elevation().as(Units::METERS) + layer_z;
-                    
+                    GeoPoint point(working_srs, p, ALTMODE_ABSOLUTE);
+                    point.transformInPlace(working_srs->getGeographicSRS());                    
                     osg::Vec3d world;
-                    actual_point.toWorld(world);
+                    point.toWorld(world);
                     return world * world2local;
                 };
 
@@ -1854,6 +1866,12 @@ namespace
             auto style = sheet ? sheet->getDefaultStyle() : nullptr;
             auto render = style ? style->get<RenderSymbol>() : nullptr;
             if (render) render->applyTo(root);
+
+            auto* embedded = new MultiGeometry();
+            create_feature_polygons_from_decals(graph, embedded);
+            osg::ref_ptr<Feature> feature = new Feature(embedded, working_srs);
+            auto object = new WrapperObject<osg::ref_ptr<Feature>>("features", feature);
+            root->getOrCreateUserDataContainer()->addUserObject(object);
 
             return root;
         }
@@ -1944,6 +1962,7 @@ RoadLayer::openImplementation()
         decals->setMinLevel(getMinLevel());
         decals->_features = options().features();
         decals->_artConfig = &options().art().value();
+        decals->_drawRoadsAtopTerrainSkin = options().useConstraints() == false;
         decals->setUserProperty("show_in_ui", "true");
         decals->options().cachePolicy() = options().cachePolicy();
         decals->options().visible() = options().visible();
@@ -1963,7 +1982,7 @@ RoadLayer::openImplementation()
         con->setUserProperty("show_in_ui", "true");
         con->setModelLayer(decals);
         con->setHasElevation(true);
-        con->setRemoveInterior(false);
+        con->setRemoveInterior(true);
         con->setMinLevel(std::max(options().constraintsMinLevel().value(), getMinLevel()));
         con->options().cachePolicy() = options().cachePolicy();
         con->options().visible() = options().visible();

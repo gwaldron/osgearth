@@ -79,14 +79,34 @@ TerrainConstraintLayer::Options::getConfig() const
 
 namespace
 {
-    void addNode(osg::Node* node, const SpatialReference* map_srs, MeshConstraint& constraint)
+    using triangle_t = std::tuple<osg::Vec3d, osg::Vec3d, osg::Vec3d>;
+    using triangle_set_t = std::set<triangle_t>;
+
+    void addNode(osg::Node* node, const SpatialReference* map_srs, triangle_set_t& tris, MeshConstraint& constraint)
     {
-        const osg::Vec3d zup(0, 0, 1);
+        OE_SOFT_ASSERT_AND_RETURN(node != nullptr, void());
+
+        if (node->getUserDataContainer())
+        {
+            auto wrapper = dynamic_cast<WrapperObject<osg::ref_ptr<Feature>>*>(
+                node->getUserDataContainer()->getUserObject("features"));
+
+            if (wrapper)
+            {
+                constraint.features.push_back(wrapper->value.get());
+            }
+
+            return;
+        }
+
+
+        OE_SOFT_ASSERT_AND_RETURN(map_srs != nullptr, void());
+
         const SpatialReference* ecef = map_srs->getGeocentricSRS();
+        auto* working_srs = SpatialReference::get("spherical-mercator");
 
         auto multipolygon = new MultiGeometry();
         auto feature = new Feature(multipolygon, map_srs);
-        constraint.features.emplace_back(feature);
 
         auto functor = [&](osg::Geometry& geom, unsigned i0, unsigned i1, unsigned i2, const osg::Matrix& xform)
             {
@@ -97,21 +117,32 @@ namespace
                 {
                     v[i] = v[i] * xform; // to ECEF
                     ecef->transform(v[i], map_srs, v[i]); // to Map SRS
-
+                    
                     // zero out elevation if necessary
                     if (constraint.hasElevation == false)
                         v[i].z() = 0.0;
                 }
 
-                osg::ref_ptr<osgEarth::Polygon> poly = new osgEarth::Polygon();
-                poly->push_back(v[0]);
-                poly->push_back(v[1]);
-                poly->push_back(v[2]);
-                multipolygon->getComponents().push_back(poly);
+                auto triangle = std::make_tuple(v[0], v[1], v[2]);
+                if (tris.find(triangle) == tris.end())
+                {
+                    tris.insert(triangle);
+
+                    osg::ref_ptr<osgEarth::Polygon> poly = new osgEarth::Polygon();
+                    poly->push_back(v[0]);
+                    poly->push_back(v[1]);
+                    poly->push_back(v[2]);
+                    multipolygon->getComponents().push_back(poly);
+                }
             };
 
         TriangleVisitor visitor(functor);
         node->accept(visitor);
+
+        if (!multipolygon->getComponents().empty())
+        {
+            constraint.features.emplace_back(feature);
+        }
     }
 }
 
@@ -302,6 +333,15 @@ TerrainConstraintLayer::getModelConstraint(const TileKey& key, MeshConstraint& c
     auto layer_profile = layer->getProfile();
     OE_SOFT_ASSERT_AND_RETURN(layer_profile, void());
 
+    triangle_set_t triangles;
+
+#if 0
+    osg::ref_ptr<osg::Node> node = layer->createTile(key, progress);
+    if (node.valid())
+    {
+        addNode(node.get(), key.getProfile()->getSRS(), triangles, constraint);
+    }
+#else 
     for (int i = -1; i <= 1; ++i)
     {
         for (int j = -1; j <= 1; ++j)
@@ -310,10 +350,11 @@ TerrainConstraintLayer::getModelConstraint(const TileKey& key, MeshConstraint& c
             osg::ref_ptr<osg::Node> node = layer->createTile(part_key, progress);
             if (node.valid())
             {
-                addNode(node.get(), key.getProfile()->getSRS(), constraint);
+                addNode(node.get(), key.getProfile()->getSRS(), triangles, constraint);
             }
         }
     }
+#endif
 }
 
 

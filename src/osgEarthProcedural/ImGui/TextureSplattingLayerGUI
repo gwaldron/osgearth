@@ -56,8 +56,9 @@ namespace osgEarth {
 
             void load(const Config& conf) override
             {
-                //conf.get("brightness", _brightness);
-                //conf.get("contrast", _contrast);
+                conf.get("brightness", _brightness);
+                conf.get("contrast", _contrast);
+                conf.get("ao_power", _ao_power);
                 //conf.get("dense_contrast", _dense_contrast);
                 //conf.get("dense_brightness", _dense_brightness);
                 //conf.get("snow", _snow);
@@ -67,8 +68,9 @@ namespace osgEarth {
 
             void save(Config& conf) override
             {
-                //conf.set("brightness", _brightness);
-                //conf.set("contrast", _contrast);
+                conf.set("brightness", _brightness);
+                conf.set("contrast", _contrast);
+                conf.set("ao_power", _ao_power);
                 //conf.set("dense_contrast", _dense_contrast);
                 //conf.set("dense_brightness", _dense_brightness);
                 //conf.set("snow", _snow);

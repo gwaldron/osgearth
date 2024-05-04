@@ -1,7 +1,4 @@
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} )
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY)
-
-SET(TARGET_SRC osgearth_bindless.cpp )
-
-#### end var setup  ###
-SETUP_APPLICATION(osgearth_bindless)
+add_osgearth_app(
+    TARGET osgearth_bindless
+    SOURCES osgearth_bindless.cpp
+    FOLDER Tests)

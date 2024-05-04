@@ -1,45 +1,35 @@
 # osgEarth Core Library
 
-IF(OSGEARTH_BUILD_SHARED_LIBS)
-    ADD_DEFINITIONS(-DOSGEARTH_LIBRARY)
-ELSE ()
-    ADD_DEFINITIONS(-DOSGEARTH_LIBRARY_STATIC)
-ENDIF()
+if(OSGEARTH_BUILD_SHARED_LIBS)
+    add_definitions(-DOSGEARTH_LIBRARY)
+else()
+    add_definitions(-DOSGEARTH_LIBRARY_STATIC)
+endif()
 
-# Add __STDC_FORMAT_MACROS for use of PRIu64 macro
-ADD_DEFINITIONS(-D__STDC_FORMAT_MACROS)
-
-# CURL options
-OPTION(CURL_IS_STATIC "on if curl is a static lib " ON)
-MARK_AS_ADVANCED(CURL_IS_STATIC)
-
-# NVTT mipmap generation
-option(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS "Use NVTT, if available, to generate texture mipmaps on the CPU" OFF)
-mark_as_advanced(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)
-if(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)
-    add_definitions(-DOSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)
-endif(OSGEARTH_ENABLE_NVTT_CPU_MIPMAPS)
 
 # TinyXML options
-ADD_DEFINITIONS(-DTIXML_USE_STL)
+add_definitions(-DTIXML_USE_STL)
 
 # Builds the HTTPClient with WIN_INET instead of CURL
 option(OSGEARTH_ENABLE_WININET_FOR_HTTP "Whether to use the WinInet library for HTTP requests (instead of cURL)" OFF)
 mark_as_advanced(OSGEARTH_ENABLE_WININET_FOR_HTTP)
 if (OSGEARTH_ENABLE_WININET_FOR_HTTP)
-    ADD_DEFINITIONS(-DOSGEARTH_USE_WININET_FOR_HTTP)
-endif ()
+    add_definitions(-DOSGEARTH_USE_WININET_FOR_HTTP)
+endif()
 
-IF(WIN32)
-    IF(MSVC)
-        SET(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRT")
-    ENDIF(MSVC)
-    IF(CURL_IS_STATIC)
-        ADD_DEFINITIONS(-DCURL_STATICLIB)
-        SET(TARGET_EXTERNAL_LIBRARIES ws2_32 winmm wldap32)
-    ENDIF(CURL_IS_STATIC)
-    LIST(APPEND TARGET_EXTERNAL_LIBRARIES psapi)
-ENDIF(WIN32)
+
+#IF(WIN32)
+#    option(CURL_IS_STATIC "on if curl is a static lib " ON)
+#    mark_as_advanced(CURL_IS_STATIC)
+#    IF(MSVC)
+#        SET(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRT")
+#    ENDIF(MSVC)
+#    IF(CURL_IS_STATIC)
+#        ADD_DEFINITIONS(-DCURL_STATICLIB)
+#        SET(TARGET_EXTERNAL_LIBRARIES ws2_32 winmm wldap32)
+#    ENDIF(CURL_IS_STATIC)
+#    LIST(APPEND TARGET_EXTERNAL_LIBRARIES psapi)
+#ENDIF(WIN32)
 
 IF(meshoptimizer_FOUND)
     LIST(APPEND TARGET_EXTERNAL_LIBRARIES meshoptimizer::meshoptimizer)
@@ -47,11 +37,11 @@ ENDIF()
 
 
 # Generate the Version header.
-# set(OSGEARTH_SOVERSION_VALUE "${OSGEARTH_SOVERSION}")
 set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version")
 message(STATUS "Creating ${OSGEARTH_VERSION_HEADER}")
 configure_file(Version.in ${OSGEARTH_VERSION_HEADER})
 
+# Generate the BuildConfig header.
 set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig")
 message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
 configure_file(BuildConfig.in ${OSGEARTH_BUILDCONFIG_HEADER})
@@ -102,7 +92,7 @@ configure_shaders(
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
-SET(LIB_PUBLIC_HEADERS    
+SET(TARGET_H    
     AGG.h
     AltitudeFilter
     AltitudeSymbol
@@ -463,7 +453,7 @@ SET(LIB_PUBLIC_HEADERS
 )
 
 if(OSGEARTH_ENABLE_IMGUI)
-    set(LIB_PUBLIC_HEADERS_IMGUI
+    set(TARGET_H_IMGUI
         ImGui/ImGui
         ImGui/ImGuiApp
         ImGui/AnnotationsGUI
@@ -486,14 +476,14 @@ if(OSGEARTH_ENABLE_IMGUI)
 endif()
 
 if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
-    list(APPEND LIB_PUBLIC_HEADERS
+    list(APPEND TARGET_H
         ActivityMonitorTool
         MouseCoordsTool)
 endif()
 
 IF (NOT TINYXML_FOUND)
-    SET(LIB_PUBLIC_HEADERS
-        ${LIB_PUBLIC_HEADERS}
+    SET(TARGET_H
+        ${TARGET_H}
         tinystr.h
         tinyxml.h
     )
@@ -507,30 +497,6 @@ IF (NOT TINYXML_FOUND)
         tinyxmlparser.cpp
     )
 ENDIF (NOT TINYXML_FOUND)
-
-
-
-SET(VERSION_GIT_SOURCE "")
-find_package(Git)
-if (GIT_FOUND)
-    option(OSGEARTH_EMBED_GIT_SHA "Encode the SHA in the Version header code" OFF)
-    if(OSGEARTH_EMBED_GIT_SHA)
-        include(GetGitRevisionDescription)
-        get_git_head_revision(GIT_REFSPEC OSGEARTH_GIT_SHA1)
-        if(OSGEARTH_GIT_SHA1)
-            message(STATUS "Embedding git SHA = ${OSGEARTH_GIT_SHA1}")
-            ADD_DEFINITIONS(-DOSGEARTH_EMBED_GIT_SHA)
-
-            # auto-generate the VersionGit file to include the git SHA1 variable.
-            configure_file(
-                "${CMAKE_CURRENT_SOURCE_DIR}/VersionGit.cpp.in"
-                "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp"
-                @ONLY)
-
-            set(VERSION_GIT_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/VersionGit.cpp")
-        endif()
-    endif()
-endif()
 
 set(TARGET_SRC
     AltitudeFilter.cpp
@@ -867,17 +833,16 @@ if(MSVC AND MSVC_VERSION LESS 1930)
     add_compile_options("$<$<CONFIG:Debug>:/bigobj>")    
 endif()
 
+# Generate the protobuf headers and sources
 IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
-  IF(NOT OUT_OF_SOURCE_BUILD)
-    INCLUDE_DIRECTORIES(${Protobuf_INCLUDE_DIR})
-  ELSE()
-    INCLUDE_DIRECTORIES(${Protobuf_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
-  ENDIF()
+  include_directories(${Protobuf_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 
   PROTOBUF_GENERATE_CPP(PROTO_VECTOR_TILE_CPP PROTO_VECTOR_TILE_H vector_tile.proto)
+  
   PROTOBUF_GENERATE_CPP(PROTO_GLYPHS_CPP PROTO_GLYPHS_H glyphs.proto)
-  SET(LIB_PUBLIC_HEADERS
-    ${LIB_PUBLIC_HEADERS}
+  
+  SET(TARGET_H
+    ${TARGET_H}
     ${PROTO_VECTOR_TILE_H}
     ${PROTO_GLYPHS_H}
   )
@@ -890,99 +855,130 @@ ENDIF()
 
 if(OSGEARTH_ENABLE_GEOCODER)
     set(TARGET_SRC ${TARGET_SRC} Geocoder.cpp)
-    set(LIB_PUBLIC_HEADERS ${LIB_PUBLIC_HEADERS} Geocoder)
+    set(TARGET_H ${TARGET_H} Geocoder)
 endif()
 
 message(STATUS "Building ${LIB_NAME} as a ${OSGEARTH_DYNAMIC_OR_STATIC} library")
 
-ADD_LIBRARY(${LIB_NAME}
-    ${OSGEARTH_DYNAMIC_OR_STATIC}
-    ${LIB_PUBLIC_HEADERS}
-    ${LIB_PUBLIC_HEADERS_IMGUI}
-    ${TINYXML_SRC}
-    ${VERSION_GIT_SOURCE}
-    ${TARGET_SRC}
-    ${TARGET_GLSL}
-    ${TARGET_IN} )
+add_osgearth_library(
+    TARGET ${LIB_NAME}
+    PUBLIC_HEADERS ${TARGET_H}
+    IMGUI_HEADERS ${TARGET_H_IMGUI}
+    SOURCES ${TARGET_SRC} ${TINYXML_SRC}
+    SHADERS ${TARGET_GLSL}
+    TEMPLATES ${TARGET_IN} )
 
-INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR} ${CURL_INCLUDE_DIR} ${OSG_INCLUDE_DIR} )
+# add_library(${LIB_NAME}
+    # ${OSGEARTH_DYNAMIC_OR_STATIC}
+    # ${TARGET_H}
+    # ${TARGET_H_IMGUI}
+    # ${TINYXML_SRC}
+    # ${TARGET_SRC}
+    # ${TARGET_GLSL}
+    # ${TARGET_IN} )
 
 # spdlog support?
 if (spdlog_FOUND)
-    TARGET_LINK_LIBRARIES(${LIB_NAME} PRIVATE spdlog::spdlog)
+    target_link_libraries(${LIB_NAME} PRIVATE spdlog::spdlog)
     message(STATUS "Linking osgEarth with spdlog")
 endif()
 
 # TinyXML support?
-IF (TINYXML_FOUND)
-    INCLUDE_DIRECTORIES(${TINYXML_INCLUDE_DIR})
-    LINK_WITH_VARIABLES(${LIB_NAME} TINYXML_LIBRARY)
-    get_directory_property(output INCLUDE_DIRECTORIES)
+if (TINYXML_FOUND)
+    include_directories(${TINYXML_INCLUDE_DIR})
+    #LINK_WITH_VARIABLES(${LIB_NAME} TINYXML_LIBRARY)
+    #get_directory_property(output INCLUDE_DIRECTORIES)
+    target_link_libraries(${LIB_NAME} PRIVATE unofficial-tinyxml::unofficial-tinyxml)
     message(STATUS ${output})
-ENDIF (TINYXML_FOUND)
+endif()
 
 # MBTiles support?
-IF(SQLITE3_FOUND)
-    ADD_DEFINITIONS(-DOSGEARTH_HAVE_SQLITE3)
-    INCLUDE_DIRECTORIES(${SQLITE3_INCLUDE_DIR})
-    LINK_WITH_VARIABLES(${LIB_NAME} SQLITE3_LIBRARY)
-ENDIF(SQLITE3_FOUND)
+if(SQLITE3_FOUND)
+    include_directories(${SQLITE3_INCLUDE_DIR})
+    target_link_libraries(${LIB_NAME} PRIVATE ${SQLite3_LIBRARIES})
+    message(STATUS "Linking osgEarth with sqlite3")
+endif()
 
 # Blosc support?
-IF (BLOSC_FOUND)
-ADD_DEFINITIONS(-DOSGEARTH_HAVE_BLOSC)
-    INCLUDE_DIRECTORIES(${BLOSC_INCLUDE_DIR})
-    LINK_WITH_VARIABLES(${LIB_NAME} BLOSC_LIBRARY)
-ENDIF(BLOSC_FOUND)
+if(blosc_FOUND)
+    include_directories(${BLOSC_INCLUDE_DIR})
+    target_link_libraries(${LIB_NAME} PRIVATE blosc_shared)
+    message(STATUS "Linking osgEarth with blosc")
+endif()
 
 # GEOS support?
-IF (GEOS_FOUND)
-    INCLUDE_DIRECTORIES(${GEOS_INCLUDE_DIR})
-    LINK_WITH_VARIABLES(${LIB_NAME} GEOS_LIBRARY)
-ENDIF(GEOS_FOUND)
+if(geos_FOUND)
+    include_directories(${GEOS_INCLUDE_DIR})
+    target_link_libraries(${LIB_NAME} PRIVATE GEOS::geos_c)
+    message(STATUS "Linking osgEarth with geos_c")
+endif()
 
 # Protobuf/MVT?
-IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)  
-  IF (PROTOBUF_USE_DLLS)
-    ADD_DEFINITIONS(-DPROTOBUF_USE_DLLS)
-  ENDIF()
-  LINK_WITH_VARIABLES(${LIB_NAME} Protobuf_LIBRARIES)
-ENDIF()
+if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)  
+    if(PROTOBUF_USE_DLLS)
+        add_definitions(-DPROTOBUF_USE_DLLS)
+    endif()
+    #LINK_WITH_VARIABLES(${LIB_NAME} Protobuf_LIBRARIES)
+    target_link_libraries(${LIB_NAME} PRIVATE protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite)
+    message(STATUS "Linking osgEarth with protobuf")
+endif()
 
-# ESRI FileGeodatabase?
-IF(FILEGDB_FOUND)
-    add_definitions(-DOSGEARTH_HAVE_FILEGDB)
-    include_directories(${FILEGDB_INCLUDE_DIR})
-    LINK_WITH_VARIABLES(${LIB_NAME} FILEGDB_LIBRARY)
-ENDIF()
-
-IF(BLEND2D_FOUND)
+# Blend2D?
+IF(blend2d_FOUND)
     include_directories(${BLEND2D_INCLUDES})
-    link_with_variables(${LIB_NAME} BLEND2D_LIBRARY)
+    target_link_libraries(${LIB_NAME} PRIVATE blend2d::blend2d)
+    message(STATUS "Linking osgEarth with blend2d")
 ENDIF()
 
-IF (WIN32)
-  LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY} )
-ELSE(WIN32)
-  LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY} )
-ENDIF(WIN32)
-
+# Tracy?
 IF (TRACY_FOUND)
-    INCLUDE_DIRECTORIES(${TRACY_INCLUDE_DIR})
+    include_directories(${TRACY_INCLUDE_DIR})
     LINK_WITH_VARIABLES(${LIB_NAME} TRACY_LIBRARY)
+    message(STATUS "Linking osgEarth with tracy")
 ENDIF(TRACY_FOUND)
 
+# pthreads?
 if(UNIX)
     target_link_libraries(${LIB_NAME} PUBLIC Threads::Threads)
 endif()
 
-OPTION(NRL_STATIC_LIBRARIES "Link osgEarth against static GDAL and cURL, including static OpenSSL, Proj4, JPEG, PNG, and TIFF." OFF)
+# mesh optimizer optional library?
+if(meshoptimizer_FOUND)
+    target_link_libraries(${LIB_NAME} PRIVATE meshoptimizer::meshoptimizer)
+endif()
+
+# special purpose - do not remove
+option(NRL_STATIC_LIBRARIES "Link osgEarth against static GDAL and cURL, including static OpenSSL, Proj4, JPEG, PNG, and TIFF." OFF)
+
 if(NOT NRL_STATIC_LIBRARIES)
-  LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGDB_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY CURL_LIBRARY GDAL_LIBRARY OSGMANIPULATOR_LIBRARY)
-else(NOT NRL_STATIC_LIBRARIES)
-  LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGDB_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY CURL_LIBRARY GDAL_LIBRARY OSGMANIPULATOR_LIBRARY SSL_EAY_RELEASE LIB_EAY_RELEASE TIFF_LIBRARY PROJ4_LIBRARY PNG_LIBRARY JPEG_LIBRARY)
-endif(NOT NRL_STATIC_LIBRARIES)
+    # normal link:
+    target_link_libraries(${LIB_NAME} 
+        PUBLIC
+            ${OPENSCENEGRAPH_LIBRARIES}
+        PRIVATE
+            OpenGL::GL CURL::libcurl GDAL::GDAL)
+else()
+    # special-purpose custom link:
+    target_link_libraries(${LIB_NAME} 
+        PUBLIC
+            ${OPENSCENEGRAPH_LIBRARIES}
+        PRIVATE
+            OpenGL::GL CURL::libcurl GDAL::GDAL
+            ${SSL_EAY_RELEASE} ${LIB_EAY_RELEASE} ${TIFF_LIBRARY} ${PROJ4_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
+endif()
 
-LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
 
-INCLUDE(ModuleInstall OPTIONAL)
+# set up the IDE and install the destination files.
+# install_osgearth_library(
+    # TARGET ${LIB_NAME}
+    # SOURCES ${TARGET_SRC}
+    # PUBLIC_HEADERS ${TARGET_H}
+    # IMGUI_HEADERS ${TARGET_H_IMGUI}
+    # SHADERS ${TARGET_GLSL}
+    # TEMPLATES ${TARGET_IN} )
+    
+
+
+
+
+

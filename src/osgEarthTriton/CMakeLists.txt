@@ -1,17 +1,16 @@
-IF(TRITON_FOUND)
+if(TRITON_FOUND)
 
-    SET(LIB_NAME osgEarthTriton)
+    set(LIB_NAME osgEarthTriton)
 
-    IF(OSGEARTH_BUILD_SHARED_LIBS)
-        ADD_DEFINITIONS(-DOSGEARTHTRITON_LIBRARY)
-    ELSE ()
-        ADD_DEFINITIONS(-DOSGEARTHTRITON_LIBRARY_STATIC)
-    ENDIF()
+    if(OSGEARTH_BUILD_SHARED_LIBS)
+        add_definitions(-DOSGEARTHTRITON_LIBRARY)
+    else()
+        add_definitions(-DOSGEARTHTRITON_LIBRARY_STATIC)
+    endif()
 
-    SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
+    set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
-    SET(LIB_PUBLIC_HEADERS
-    #   header files go here
+    SET(TARGET_H
         Common
         Export
         TritonContext
@@ -22,49 +21,31 @@ IF(TRITON_FOUND)
         TritonHeightMap
         TritonIntersections
     )
-
-    ADD_LIBRARY(${LIB_NAME} 
-        ${OSGEARTH_DYNAMIC_OR_STATIC}
-        ${LIB_PUBLIC_HEADERS}
-    #  .cpp files go here
+    
+    set(TARGET_SRC
         TritonContext.cpp
         TritonDrawable.cpp
         TritonAPIWrapper.cpp
         TritonLayer.cpp
         TritonHeightMap.cpp
-        TritonIntersections.cpp
-    )
+        TritonIntersections.cpp)    
 
-    INCLUDE_DIRECTORIES( 
+    add_osgearth_library(
+        TARGET ${LIB_NAME}
+        SOURCES ${TARGET_SRC}
+        PUBLIC_HEADERS ${TARGET_H} )
+
+    include_directories( 
         ${OSG_INCLUDE_DIR}
         ${OSGEARTH_SOURCE_DIR}
         ${TRITON_INCLUDE_DIR}
     )
 
-    LINK_EXTERNAL(
-        ${LIB_NAME}
-        ${TARGET_EXTERNAL_LIBRARIES}
-        ${CMAKE_THREAD_LIBS_INIT} )
-
-    LINK_INTERNAL(
-        ${LIB_NAME}
-        osgEarth
-    )
-
-    LINK_WITH_VARIABLES(
-        ${LIB_NAME} 
-        OSG_LIBRARY
-        OSGDB_LIBRARY
-        OSGUTIL_LIBRARY
-        TRITON_LIBRARY )
-
-    LINK_CORELIB_DEFAULT(
-        ${LIB_NAME}
-        ${CMAKE_THREAD_LIBS_INIT} )
+    target_link_libraries(${LIB_NAME}
+        PUBLIC osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${TRITON_LIBRARY})
 
     # Add this project to the NodeKits solution folder
     set_property( TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )
 
-    INCLUDE(ModuleInstall OPTIONAL)
 
-ENDIF(TRITON_FOUND)
+endif(TRITON_FOUND)

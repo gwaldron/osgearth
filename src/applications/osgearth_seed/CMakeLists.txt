@@ -1,7 +1,5 @@
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} )
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY)
-
-SET(TARGET_SRC osgearth_seed.cpp )
-
-#### end var setup  ###
-SETUP_APPLICATION(osgearth_cache)
+add_osgearth_app(
+    TARGET osgearth_cache
+    SOURCES osgearth_seed.cpp
+    FOLDER Tools )
+    

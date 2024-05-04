@@ -1,13 +1,7 @@
-IF(WEBP_FOUND)
+if(WEBP_FOUND)
+    include_directories( ${WEBP_INCLUDE_DIR} )
+    add_osgearth_library_as_plugin(
+        TARGET osgdb_webp
+        SOURCES ReaderWriterWebP.cpp )
+endif(WEBP_FOUND)
 
-SET(TARGET_SRC
-	ReaderWriterWebP.cpp
-)
-
-INCLUDE_DIRECTORIES( ${WEBP_INCLUDE_DIR} )
-
-SET(TARGET_LIBRARIES_VARS WEBP_LIBRARY OPENTHREADS_LIBRARY OSG_LIBRARY OSGDB_LIBRARY)
-
-SETUP_PLUGIN(webp)
-
-ENDIF(WEBP_FOUND)

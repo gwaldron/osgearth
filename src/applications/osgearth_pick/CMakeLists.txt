@@ -1,4 +1,5 @@
-set(TARGET_LIBRARIES_VARS OPENTHREADS_LIBRARY OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGGA_LIBRARY OSGVIEWER_LIBRARY OPENGL_gl_LIBRARY)
-set(TARGET_SRC osgearth_pick.cpp)
-
-SETUP_IMGUI_APPLICATION(osgearth_pick)
+add_osgearth_imgui_app(
+    TARGET osgearth_pick
+    SOURCES osgearth_pick.cpp
+    FOLDER Examples )
+    

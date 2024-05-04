@@ -1,7 +1,4 @@
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} )
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGGA_LIBRARY OSGGA_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY)
-
-SET(TARGET_SRC osgearth_minimap.cpp )
-
-#### end var setup  ###
-SETUP_APPLICATION(osgearth_minimap)
+add_osgearth_app(
+    TARGET osgearth_minimap
+    SOURCES osgearth_minimap.cpp
+    FOLDER Examples)

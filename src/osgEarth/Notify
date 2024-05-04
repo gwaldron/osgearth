@@ -16,11 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#pragma once
 
-#ifndef OSGEARTH_NOTIFY_H
-#define OSGEARTH_NOTIFY_H 1
-
-#include <osgEarth/Export>
+#include <osgEarth/Common>
 #include <osg/Notify>
 #include <osg/Timer>
 #include <string>
@@ -57,7 +55,7 @@ namespace osgEarth
 
 #define OE_NOTIFY( X,Y ) if(osgEarth::isNotifyEnabled( X )) osgEarth::notify( X ) << Y
 
-#ifdef HAVE_SPDLOG
+#ifdef OSGEARTH_HAVE_SPDLOG
 #define OE_CRITICAL OE_NOTIFY(osg::ALWAYS,"")
 #define OE_FATAL OE_NOTIFY(osg::FATAL,"")
 #define OE_WARN OE_NOTIFY(osg::WARN,"")
@@ -101,5 +99,3 @@ extern OSGEARTH_EXPORT void setNotifyHandler(osg::NotifyHandler *handler);
 extern OSGEARTH_EXPORT osg::NotifyHandler *getNotifyHandler();
 
 }
-
-#endif // OSGEARTH_NOTIFY_H

@@ -11,9 +11,13 @@ endif()
 
 # Project setup ..........................................................
 
-project(OSGEARTH)
+project(
+    OSGEARTH
+    DESCRIPTION "osgEarth 3D Geospatial SDK"
+    HOMEPAGE_URL "https://github.com/gwaldron/osgearth"
+    LANGUAGES CXX)
 
-# SDK version number (informational)
+# SDK version number
 set(OSGEARTH_MAJOR_VERSION 3)
 set(OSGEARTH_MINOR_VERSION 5)
 set(OSGEARTH_PATCH_VERSION 0)
@@ -23,52 +27,20 @@ set(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEA
 set(OSGEARTH_SOVERSION 152)
 
 # Require C++11
-set_property(GLOBAL PROPERTY CXX_STANDARD 11)
-set_property(GLOBAL PROPERTY CXX_STANDARD_REQUIRED ON)
-
-# Detect out-of-source build. You should always do an out-of-source build!
-if (NOT "${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
-    SET(OUT_OF_SOURCE_BUILD 1)
-endif()
-
-
-# IDE configuration ......................................................
-
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets")
-
-
-# Search Locations .......................................................
-
-# Expose CMAKE_INCLUDE_PATH and CMAKE_LIBARY_PATH to the GUI so users
-# may set these values without needing to manipulate the environment.
-set(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
-set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
-set(CMAKE_PREFIX_PATH  ${CMAKE_PREFIX_PATH}  CACHE STRING "Add additional search paths here. Use ; to separate multiple paths.")
-
-set(OSGEARTH_DEPENDENCY_DIR "" CACHE PATH "Folder to search for dependencies (e.g., vcpkg/installed/x64-windows)")
-if(OSGEARTH_DEPENDENCY_DIR)
-    LIST(APPEND CMAKE_INCLUDE_PATH ${OSGEARTH_DEPENDENCY_DIR}/include)
-    LIST(APPEND CMAKE_LIBRARY_PATH ${OSGEARTH_DEPENDENCY_DIR}/lib)
-endif()
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # We have some custom .cmake scripts not in the official distribution.
-set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${OSGEARTH_SOURCE_DIR}/CMakeModules;${OSGEARTH_DEPENDENCY_DIR}")
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PROJECT_SOURCE_DIR}/cmake")
 
 # Special folder for build-time generated include files
 set(OSGEARTH_BUILDTIME_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/build_include")
 include_directories(${OSGEARTH_BUILDTIME_INCLUDE_DIR})
 
-# Third-party sources included in the osgEarth repo
+# Third-party sources included in the reposotory
 set(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
-
-# Location of GLCORE headers if you are using GLCORE
-set(OSGEARTH_GLCORE_INCLUDE_DIR CACHE PATH "For OpenGL CORE Profile, location of the GLCORE header files")
-if (OSGEARTH_GLCORE_INCLUDE_DIR)
-    include_directories(${OSGEARTH_GLCORE_INCLUDE_DIR})
-endif()
-
-
+    
 # Platform-specific settings ............................................
 
 include(oe_ios)
@@ -76,32 +48,46 @@ include(oe_osx)
 include(oe_unix)
 include(oe_win32)
 
-
 # Build options ..........................................................
 
 option(OSGEARTH_BUILD_TOOLS "Build the osgEarth command-line tools" ON)
 option(OSGEARTH_BUILD_EXAMPLES "Build the osgEarth example applications" ON)
-option(OSGEARTH_BUILD_TESTS "Build the osgEarth unit tests" OFF)
-option(OSGEARTH_BUILD_PROCEDURAL_NODEKIT "Build the procedural terrain nodekit (osgEarthProcedural)" OFF)
-option(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT "Build the legacy procedural nodekit (osgEarthSplat)" OFF)
-option(OSGEARTH_BUILD_LEGACY_CONTROLS_API "Build the legacy Controls UI API" OFF)
 option(OSGEARTH_BUILD_CESIUM_NODEKIT "Build the Cesium nodekit (osgEarthCesium)" OFF)
 option(OSGEARTH_BUILD_TRITON_NODEKIT "Build support for SunDog Triton SDK" OFF)
 option(OSGEARTH_BUILD_SILVERLINING_NODEKIT "Build support for SunDog SilverLining SDK" OFF)
-option(OSGEARTH_BUILD_LEVELDB_CACHE "Build the LevelDB cache plugin" OFF)
-option(OSGEARTH_BUILD_ZIP_PLUGIN "Build osgEarth's zip plugin based on libzip" ON)
-option(OSGEARTH_BUILD_DOCS "Include the documentation folder" ON)
-option(OSGEARTH_ENABLE_PROFILING "Enable profiling with Tracy" OFF)
 option(OSGEARTH_ENABLE_GEOCODER "Enable the geocoder (GDAL/OGR must be built with geocoder support)" OFF)
-option(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT "Assume the use of a single GL context for all GL objects (advanced)" OFF)
-option(OSGEARTH_ASSUME_SINGLE_THREADED_OSG "Assume OSG will always be configured to run in SingleThreaded mode (advanced)" OFF)
-option(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when installing (OFF=inlined shaders)" OFF)
 
-mark_as_advanced(OSGEARTH_BUILD_TESTS)
-mark_as_advanced(OSGEARTH_BUILD_LEVELDB_CACHE)
+option(OSGEARTH_BUILD_DOCS "Include the documentation folder" ON)
 mark_as_advanced(OSGEARTH_BUILD_DOCS)
+
+option(OSGEARTH_BUILD_TESTS "Build the osgEarth unit tests" OFF)
+mark_as_advanced(OSGEARTH_BUILD_TESTS)
+
+option(OSGEARTH_BUILD_PROCEDURAL_NODEKIT "Build the procedural terrain nodekit (osgEarthProcedural)" OFF)
+mark_as_advanced(OSGEARTH_BUILD_PROCEDURAL_NODEKIT)
+
+option(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT "Build the legacy procedural nodekit (osgEarthSplat)" OFF)
+mark_as_advanced(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT)
+
+option(OSGEARTH_BUILD_LEGACY_CONTROLS_API "Build the legacy Controls UI API" OFF)
+mark_as_advanced(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
+
+option(OSGEARTH_BUILD_LEVELDB_CACHE "Build the LevelDB cache plugin" OFF)
+mark_as_advanced(OSGEARTH_BUILD_LEVELDB_CACHE)
+
+option(OSGEARTH_BUILD_ZIP_PLUGIN "Build osgEarth's zip plugin based on libzip" ON)
+mark_as_advanced(OSGEARTH_BUILD_ZIP_PLUGIN)
+
+option(OSGEARTH_ENABLE_PROFILING "Enable profiling with Tracy" OFF)
 mark_as_advanced(OSGEARTH_ENABLE_PROFILING)
+
+option(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT "Assume the use of a single GL context for all GL objects (advanced)" OFF)
 mark_as_advanced(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
+
+option(OSGEARTH_ASSUME_SINGLE_THREADED_OSG "Assume OSG will always be configured to run in SingleThreaded mode (advanced)" OFF)
+mark_as_advanced(OSGEARTH_ASSUME_SINGLE_THREADED_OSG)
+
+option(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when installing (OFF=inlined shaders)" OFF)
 mark_as_advanced(OSGEARTH_INSTALL_SHADERS)
 
 
@@ -122,44 +108,42 @@ endif()
 
 # required
 find_package(OpenGL REQUIRED)
-find_package(OSG REQUIRED)
+find_package(OpenSceneGraph REQUIRED COMPONENTS osg osgDB osgGA osgManipulator osgShadow osgSim osgText osgUtil osgViewer OpenThreads)
 find_package(CURL REQUIRED)
 find_package(GDAL REQUIRED)
-find_package(Sqlite3 REQUIRED)
+find_package(SQLite3 REQUIRED)
 
 # optional
-find_package(GEOS)
-
-find_package(Draco)
-find_package(BASISU)
+find_package(geos)
 find_package(GLEW)
 find_package(Protobuf)
-find_package(WEBP)
-find_package(Blend2D)
-find_package(Blosc)
+find_package(WebP)
+find_package(blend2d)
+find_package(blosc)
 find_package(spdlog)
 find_package(meshoptimizer)
+#find_package(BASISU)
 
-# Configure OSGEARTH_HAVE_XXX variables for the BuildConfig
-IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
+
+
+# Configure OSGEARTH_HAVE_XXX variables for the BuildConfig ..........
+
+if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
   SET(OSGEARTH_HAVE_MVT ON)
-ENDIF()
+endif()
 
-if(SQLITE3_FOUND)
+if(SQLite3_FOUND)
+    set(OSGEARTH_HAVE_SQLITE3 ON)
     set(OSGEARTH_HAVE_MBTILES ON)
-endif(SQLITE3_FOUND)
+endif()
 
 if(Protobuf_FOUND)
     set(OSGEARTH_HAVE_PROTOBUF ON)
 endif()
 
-IF (GEOS_FOUND)
+if(geos_FOUND)
     set(OSGEARTH_HAVE_GEOS ON)
-ENDIF(GEOS_FOUND)
-
-if(draco_FOUND)
-    set(OSGEARTH_HAVE_DRACO ON)
-endif(draco_FOUND)
+endif()
 
 if (meshoptimizer_FOUND)
     set(OSGEARTH_HAVE_MESH_OPTIMIZER ON)
@@ -188,17 +172,17 @@ endif()
 set(WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use external Duktape instead of inlining it")
 if(WITH_EXTERNAL_DUKTAPE)
     find_package(Duktape)
-endif(WITH_EXTERNAL_DUKTAPE)
+endif()
 
 set(WITH_EXTERNAL_TINYXML FALSE CACHE BOOL "Use external TinyXML instead of inlining it")
 if(WITH_EXTERNAL_TINYXML)
     find_package(TinyXML)
-endif(WITH_EXTERNAL_TINYXML)
+endif()
 
 
 # Logging SDK
 if(spdlog_FOUND)
-    add_definitions(-DHAVE_SPDLOG)
+    set(OSGEARTH_HAVE_SPDLOG ON)
 endif()
 
 # Tracy is a profiler
@@ -206,7 +190,7 @@ if(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
     ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
 endif()
 
-if(GLEW_FOUND AND EXISTS "${OSGEARTH_SOURCE_DIR}/src/third_party/imgui/imgui.cpp")
+if(GLEW_FOUND AND EXISTS "${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp")
     set(OSGEARTH_ENABLE_IMGUI 1)
     add_definitions(-DOSGEARTH_ENABLE_IMGUI)
 endif()
@@ -215,9 +199,9 @@ if(OSGEARTH_ENABLE_GEOCODER)
     set(OSGEARTH_HAVE_GEOCODER ON)
 endif()
 
-IF(BLEND2D_FOUND)
+if(blend2d_FOUND)
     set(OSGEARTH_HAVE_BLEND2D ON)
-ENDIF()
+endif()
 
 if(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
     add_definitions(-DOSGEARTH_SINGLE_GL_CONTEXT)
@@ -235,13 +219,15 @@ endif()
 # Protobuf enables the MVT (Mapnik Vector Tiles) format
 set(PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
 
+# Bring in out utility macros
 include(OsgEarthMacroUtils)
 
 # Detect the OSG version so we can append it to plugin DLLs just like OSG does.
-DETECT_OSG_VERSION()
+detect_osg_version()
+
 if(NOT OPENSCENEGRAPH_VERSION)
 	set(OPENSCENEGRAPH_VERSION ${OPENSCENEGRAPH_MAJOR_VERSION}.${OPENSCENEGRAPH_MINOR_VERSION}.${OPENSCENEGRAPH_PATCH_VERSION})
-endif(NOT OPENSCENEGRAPH_VERSION)
+endif()
 
 if(OPENSCENEGRAPH_VERSION)
     message(STATUS "Found OSG version ${OPENSCENEGRAPH_VERSION}")
@@ -254,41 +240,6 @@ include_directories(
     ${OSG_GEN_INCLUDE_DIR}
 )
 
-
-# Linking & Intallation ..................................................
-
-# Assign SONAMEs to the shared libraries on Linux
-set(OSGEARTH_SONAMES TRUE)
-
-# postfix settings for various configs
-set(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a Debug postfix, usually d on windows")
-set(CMAKE_RELEASE_POSTFIX "" CACHE STRING "add a Release postfix, usually empty on windows")
-set(CMAKE_RELWITHDEBINFO_POSTFIX "" CACHE STRING "add a RelWithDebInfo postfix, usually empty on windows")
-set(CMAKE_MINSIZEREL_POSTFIX "s" CACHE STRING "add a MinSizeRel postfix, usually empty on windows")
-
-if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
-   file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin ${CMAKE_BINARY_DIR}/lib)
-endif("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
-
-if(UNIX AND NOT WIN32 AND NOT APPLE AND NOT ANDROID)
-  if(CMAKE_SIZEOF_VOID_P MATCHES "8")
-      set(LIB_POSTFIX "64" CACHE STRING "suffix for 32/64 dir placement")
-      mark_as_advanced(LIB_POSTFIX)
-  endif(CMAKE_SIZEOF_VOID_P MATCHES "8")
-endif(UNIX AND NOT WIN32 AND NOT APPLE AND NOT ANDROID)
-if(NOT DEFINED LIB_POSTFIX)
-    set(LIB_POSTFIX "")
-endif(NOT DEFINED LIB_POSTFIX)
-
-set(OUTPUT_BINDIR ${PROJECT_BINARY_DIR}/bin)
-make_directory(${OUTPUT_BINDIR})
-set(EXECUTABLE_OUTPUT_PATH ${OUTPUT_BINDIR})
-
-set(OUTPUT_LIBDIR ${PROJECT_BINARY_DIR}/lib)
-make_directory(${OUTPUT_LIBDIR})
-set(LIBRARY_OUTPUT_PATH ${OUTPUT_LIBDIR})
-
-link_directories( ${LINK_DIRECTORIES} ${OUTPUT_LIBDIR} )
 
 # Dynamic vs Static Linking
 option(OSGEARTH_BUILD_SHARED_LIBS "ON to build shared libraries; OFF to build static libraries." ON)
@@ -310,10 +261,27 @@ endif()
 
 # CMake Config File Creation .............................................
 
-include(CMakeModules/install-package-config-files.cmake)
+include(cmake/install-package-config-files.cmake)
 
 osgearth_install_package_config_files(
     osgEarth
     ${OSGEARTH_VERSION}
     ${CMAKE_INSTALL_PREFIX}/include
     ${CMAKE_INSTALL_PREFIX}/lib)
+    
+    
+    
+# IDE configuration ......................................................
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets")
+    
+
+#message(STATUS "....................................")
+#get_cmake_property(_variableNames VARIABLES)
+#list (SORT _variableNames)
+#foreach (_variableName ${_variableNames})
+    #message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach()
+#message(STATUS "....................................")
+

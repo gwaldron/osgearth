@@ -1,7 +1,5 @@
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} )
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGGA_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY)
-
-SET(TARGET_SRC osgearth_ephemeris.cpp )
-
-#### end var setup  ###
-SETUP_APPLICATION(osgearth_ephemeris)
+add_osgearth_app(
+    TARGET osgearth_ephemeris
+    SOURCES osgearth_ephemeris.cpp
+    FOLDER Tests )
+    

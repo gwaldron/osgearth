@@ -20,9 +20,7 @@
 /* -*-c++-*- 
  * Derived from osg/Export
  */
-
-#ifndef OSGEARTH_EXPORT_H
-#define OSGEARTH_EXPORT_H 1
+#pragma once
 
 #if defined(_MSC_VER)
     #pragma warning( disable : 4244 )
@@ -91,6 +89,4 @@
 /**
 \namespace osgEarth
 */
-
-#endif
 

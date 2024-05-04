@@ -1,7 +1,4 @@
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} )
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGGA_LIBRARY OSGUTIL_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY)
-
-SET(TARGET_SRC osgearth_drawables.cpp )
-
-#### end var setup  ###
-SETUP_APPLICATION(osgearth_drawables)
+add_osgearth_app(
+    TARGET osgearth_drawables
+    SOURCES osgearth_drawables.cpp
+    FOLDER Tests )

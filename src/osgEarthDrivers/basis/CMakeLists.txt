@@ -1,13 +1,11 @@
-IF(BASISU_FOUND)
 
-SET(TARGET_SRC
-    ReaderWriterBasis.cpp
-)
+#find_package(BASISU)
 
-INCLUDE_DIRECTORIES( ${BASISU_INCLUDE_DIR} )
-SET(TARGET_LIBRARIES_VARS BASISU_TRANSCODER_LIBRARY )
+if(BASISU_FOUND)
 
-#### end var setup  ###
-SETUP_PLUGIN(basis)
+    add_osgearth_library_as_plugin(TARGET osgdb_basis
+        INCLUDE_DIRECTORIES ${BASISU_INCLUDE_DIR}
+        SOURCES ReaderWriterBasis.cpp
+        LIBRARIES ${BASISU_TRANSCODER_LIBRARY})
 
-ENDIF(BASISU_FOUND)
+endif()

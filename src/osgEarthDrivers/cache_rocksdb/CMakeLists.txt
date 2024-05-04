@@ -1,54 +1,45 @@
-# OPTIONAL RocksDB cache driver
 
-# CMake Option
-SET (WITH_STATIC_ROCKSDB FALSE CACHE BOOL "Use static library of RocksDB")
-IF(MINGW)
-    FIND_PACKAGE(RocksDB CONFIG QUIET)
-    IF(RocksDB_FOUND)
-        MESSAGE(STATUS "Found RocksDB " ${RocksDB_VERSION})
-    ENDIF()
-ELSE(MINGW)
-    IF (WITH_STATIC_ROCKSDB)
-      FIND_PACKAGE(RocksDB REQUIRED COMPONENTS STATIC QUIET)
-    ELSE()
-      FIND_PACKAGE(RocksDB QUIET)
-    ENDIF()
-ENDIF(MINGW)
+find_package(RocksDB)
 
+if(RocksDB_FOUND)
 
-IF(ROCKSDB_FOUND OR RocksDB_FOUND)
+    # set(LIB_NAME osgdb_osgearth_cache_rocksdb)
 
-    SET(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD 17)
 
-    INCLUDE_DIRECTORIES( ${ROCKSDB_INCLUDE_DIR} )
-
-    SET(TARGET_H
-        RocksDBCacheOptions
-        RocksDBCache
-        RocksDBCacheBin
-        Tracker
-    )
-    SET(TARGET_SRC 
-        RocksDBCache.cpp
-        RocksDBCacheBin.cpp
-        RocksDBCacheDriver.cpp
-    )
-
-    SET(TARGET_LIBRARIES_VARS ROCKSDB_LIBRARY ZLIB_LIBRARY OSG_LIBRARY OSGDB_LIBRARY OPENTHREADS_LIBRARY)
-
-    IF(MSVC)
-        SET(TARGET_EXTERNAL_LIBRARIES ws2_32 winmm rpcrt4 shlwapi)
-    ENDIF(MSVC)
-
-    IF(MINGW)
-        SET(TARGET_EXTERNAL_LIBRARIES RocksDB::rocksdb)
-    ENDIF(MINGW)
-
-    SETUP_PLUGIN(osgearth_cache_rocksdb)
-
-    # to install public driver includes:
-    SET(LIB_NAME cache_rocksdb)
-    SET(LIB_PUBLIC_HEADERS RocksDBCacheOptions)
-    INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
-
-ENDIF(ROCKSDB_FOUND OR RocksDB_FOUND)
+    # set(TARGET_H_PUBLIC    
+        # RocksDBCacheOptions)
+        
+    # set(TARGET_H
+        # ${TARGET_H_PUBLIC}
+        # RocksDBCache
+        # RocksDBCacheBin
+        # Tracker
+    # )
+    # set(TARGET_SRC 
+        # RocksDBCache.cpp
+        # RocksDBCacheBin.cpp
+        # RocksDBCacheDriver.cpp
+    # )
+    
+    #add_library_as_osgdb_plugin(osgdb_osgearth_cache_rocksdb)
+    
+    add_osgearth_library_as_plugin(
+        TARGET 
+            osgdb_osgearth_cache_rocksdb
+        PUBLIC_HEADERS
+            RocksDBCacheOptions
+        HEADERS
+            RocksDBCache
+            RocksDBCacheBin
+            Tracker
+        SOURCES 
+            RocksDBCache.cpp
+            RocksDBCacheBin.cpp
+            RocksDBCacheDriver.cpp )
+            
+    
+    target_link_libraries(osgdb_osgearth_cache_rocksdb
+        PRIVATE RocksDB::rocksdb RocksDB::rocksdb-shared)    
+        
+endif()

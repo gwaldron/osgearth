@@ -1,14 +1,8 @@
-IF(draco_FOUND)
+find_package(draco)
 
-    SET(TARGET_SRC
-        ReaderWriterDraco.cpp
-    )
-
-    INCLUDE_DIRECTORIES( ${draco_INCLUDE_DIRS} )
-    SET(TARGET_LIBRARIES_VARS draco_LIBRARIES OSG_LIBRARY OSGDB_LIBRARY OPENTHREADS_LIBRARY )
-
-
-    #### end var setup  ###
-    SETUP_PLUGIN(draco)
-    
-ENDIF(draco_FOUND)
+if(draco_FOUND)
+    add_osgearth_library_as_plugin(
+        TARGET osgdb_draco
+        SOURCES ReaderWriterDraco.cpp
+        LIBRARIES draco::draco)
+endif()

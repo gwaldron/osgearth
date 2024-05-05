@@ -1009,7 +1009,7 @@ if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
         add_definitions(-DPROTOBUF_USE_DLLS)
     endif()
     #LINK_WITH_VARIABLES(${LIB_NAME} Protobuf_LIBRARIES)
-    target_link_libraries(${LIB_NAME} PRIVATE protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite)
+    target_link_libraries(${LIB_NAME} PRIVATE protobuf::libprotobuf)
     message(STATUS "Linking osgEarth with protobuf")
 endif()
 

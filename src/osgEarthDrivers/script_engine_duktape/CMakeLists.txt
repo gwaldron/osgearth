@@ -26,6 +26,7 @@ if(NOT WITH_EXTERNAL_DUKTAPE OR DUKTAPE_FOUND)
     add_osgearth_library_as_plugin(
         TARGET osgdb_osgearth_scriptengine_javascript
         HEADERS ${TARGET_H}
-        SOURCES ${TARGET_SRC} )
+        SOURCES ${TARGET_SRC}
+        LIBRARIES ${DUKTAPE_LIBRARIES} )
 
 endif(NOT WITH_EXTERNAL_DUKTAPE OR DUKTAPE_FOUND)

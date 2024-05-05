@@ -1,7 +1,12 @@
+set(WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use external Duktape instead of inlining it")
+
+if(WITH_EXTERNAL_DUKTAPE)
+    find_package(Duktape)
+endif()
+
 if(NOT WITH_EXTERNAL_DUKTAPE OR DUKTAPE_FOUND)
 
     if(WITH_EXTERNAL_DUKTAPE)
-        include_directories( ${DUKTAPE_INCLUDE_DIR} )
 
         set(TARGET_H
             DuktapeEngine
@@ -10,23 +15,31 @@ if(NOT WITH_EXTERNAL_DUKTAPE OR DUKTAPE_FOUND)
         set(TARGET_SRC
             Plugin.cpp
             DuktapeEngine.cpp )
+    
+        add_osgearth_library_as_plugin(
+            TARGET osgdb_osgearth_scriptengine_javascript
+            HEADERS ${TARGET_H}
+            SOURCES ${TARGET_SRC}
+            INCLUDE_DIRECTORIES ${DUKTAPE_INCLUDE_DIR}
+            LIBRARIES ${DUKTAPE_LIBRARIES} )
+        
     else()
         set(TARGET_H
-            duktape.h
-            duk_config.h
             DuktapeEngine
-            JSGeometry )
+            JSGeometry
+            duktape.h
+            duk_config.h )
 
         set(TARGET_SRC
             Plugin.cpp
-            duktape.c
-            DuktapeEngine.cpp )
+            DuktapeEngine.cpp
+            duktape.c )
+    
+        add_osgearth_library_as_plugin(
+            TARGET osgdb_osgearth_scriptengine_javascript
+            HEADERS ${TARGET_H}
+            SOURCES ${TARGET_SRC} )
+
     endif()
     
-    add_osgearth_library_as_plugin(
-        TARGET osgdb_osgearth_scriptengine_javascript
-        HEADERS ${TARGET_H}
-        SOURCES ${TARGET_SRC}
-        LIBRARIES ${DUKTAPE_LIBRARIES} )
-
-endif(NOT WITH_EXTERNAL_DUKTAPE OR DUKTAPE_FOUND)
+endif()

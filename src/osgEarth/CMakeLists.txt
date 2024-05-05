@@ -67,11 +67,6 @@ if(OSGEARTH_BUILD_ZIP_PLUGIN)
     find_package(LibZip)
 endif()
 
-set(WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use external Duktape instead of inlining it")
-if(WITH_EXTERNAL_DUKTAPE)
-    find_package(Duktape)
-endif()
-
 set(WITH_EXTERNAL_TINYXML FALSE CACHE BOOL "Use external TinyXML instead of inlining it")
 if(WITH_EXTERNAL_TINYXML)
     find_package(TinyXML)

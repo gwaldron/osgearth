@@ -37,9 +37,9 @@ if(OSGEARTH_BUILD_SILVERLINING_NODEKIT)
     add_subdirectory(sky_silverlining)
 endif()
 
-if(OSGEARTH_BUILD_LEVELDB_CACHE)
-    add_subdirectory(cache_leveldb)
-endif()
+# if(OSGEARTH_BUILD_LEVELDB_CACHE)
+    # add_subdirectory(cache_leveldb)
+# endif()
 
 add_subdirectory(cache_rocksdb)
 

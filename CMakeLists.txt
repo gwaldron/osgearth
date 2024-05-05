@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 # VCPKG customization ....................................................
 
@@ -24,7 +24,7 @@ set(OSGEARTH_PATCH_VERSION 0)
 set(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
 
 # Increment this each time the ABI changes
-set(OSGEARTH_SOVERSION 152)
+set(OSGEARTH_SOVERSION 153)
 
 # Require C++11
 set(CMAKE_CXX_STANDARD 11)
@@ -72,9 +72,6 @@ mark_as_advanced(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT)
 option(OSGEARTH_BUILD_LEGACY_CONTROLS_API "Build the legacy Controls UI API" OFF)
 mark_as_advanced(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
 
-option(OSGEARTH_BUILD_LEVELDB_CACHE "Build the LevelDB cache plugin" OFF)
-mark_as_advanced(OSGEARTH_BUILD_LEVELDB_CACHE)
-
 option(OSGEARTH_BUILD_ZIP_PLUGIN "Build osgEarth's zip plugin based on libzip" ON)
 mark_as_advanced(OSGEARTH_BUILD_ZIP_PLUGIN)
 
@@ -106,121 +103,37 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
     endif()
 endif()
 
-# required
+# required - globally used
 find_package(OpenGL REQUIRED)
 find_package(OpenSceneGraph REQUIRED COMPONENTS osg osgDB osgGA osgManipulator osgShadow osgSim osgText osgUtil osgViewer OpenThreads)
-find_package(CURL REQUIRED)
-find_package(GDAL REQUIRED)
-find_package(SQLite3 REQUIRED)
 
-# optional
-find_package(geos)
+# optional - GLEW supports ImGui
 find_package(GLEW)
-find_package(Protobuf)
-find_package(WebP)
-find_package(blend2d)
-find_package(blosc)
-find_package(spdlog)
-find_package(meshoptimizer)
-#find_package(BASISU)
-
-
-
-# Configure OSGEARTH_HAVE_XXX variables for the BuildConfig ..........
-
-if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
-  SET(OSGEARTH_HAVE_MVT ON)
-endif()
-
-if(SQLite3_FOUND)
-    set(OSGEARTH_HAVE_SQLITE3 ON)
-    set(OSGEARTH_HAVE_MBTILES ON)
-endif()
-
-if(Protobuf_FOUND)
-    set(OSGEARTH_HAVE_PROTOBUF ON)
-endif()
-
-if(geos_FOUND)
-    set(OSGEARTH_HAVE_GEOS ON)
-endif()
-
-if (meshoptimizer_FOUND)
-    set(OSGEARTH_HAVE_MESH_OPTIMIZER ON)
-endif()
-
-if(OSGEARTH_BUILD_CESIUM_NODEKIT)
-    find_package(CesiumNative)
-endif()
-
-if(OSGEARTH_BUILD_TRITON_NODEKIT)
-    find_package(Triton)
-endif()
-
-if(OSGEARTH_BUILD_SILVERLINING_NODEKIT)
-    find_package(SilverLining)
-endif()
-
-if(OSGEARTH_ENABLE_PROFILING)
-    find_package(Tracy)
-endif()
-
-if(OSGEARTH_BUILD_ZIP_PLUGIN)
-    find_package(LibZip)
-endif()
-
-set(WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use external Duktape instead of inlining it")
-if(WITH_EXTERNAL_DUKTAPE)
-    find_package(Duktape)
-endif()
-
-set(WITH_EXTERNAL_TINYXML FALSE CACHE BOOL "Use external TinyXML instead of inlining it")
-if(WITH_EXTERNAL_TINYXML)
-    find_package(TinyXML)
-endif()
-
-
-# Logging SDK
-if(spdlog_FOUND)
-    set(OSGEARTH_HAVE_SPDLOG ON)
-endif()
-
-# Tracy is a profiler
-if(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
-    ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
-endif()
 
 if(GLEW_FOUND AND EXISTS "${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp")
     set(OSGEARTH_ENABLE_IMGUI 1)
     add_definitions(-DOSGEARTH_ENABLE_IMGUI)
 endif()
 
-if(OSGEARTH_ENABLE_GEOCODER)
-    set(OSGEARTH_HAVE_GEOCODER ON)
+#find_package(Tracy)
+if(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
+    ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
 endif()
 
-if(blend2d_FOUND)
-    set(OSGEARTH_HAVE_BLEND2D ON)
-endif()
-
+# optimization option:
 if(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
     add_definitions(-DOSGEARTH_SINGLE_GL_CONTEXT)
 endif()
 
+# optimization option:
 if(OSGEARTH_ASSUME_SINGLE_THREADED_OSG)
     add_definitions(-DOSGEARTH_SINGLE_THREADED_OSG)
 endif()
 
-# support for the old Controls API (superceded by imgui)
-if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
-    add_definitions(-DOSGEARTH_HAVE_CONTROLS_API)
-endif()
 
-# Protobuf enables the MVT (Mapnik Vector Tiles) format
-set(PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
 
-# Bring in out utility macros
-include(OsgEarthMacroUtils)
+# Bring in our utility macros that sub-projects will use to configure themselves.
+include(cmake/osgearth-macros.cmake)
 
 # Detect the OSG version so we can append it to plugin DLLs just like OSG does.
 detect_osg_version()
@@ -228,10 +141,7 @@ detect_osg_version()
 if(NOT OPENSCENEGRAPH_VERSION)
 	set(OPENSCENEGRAPH_VERSION ${OPENSCENEGRAPH_MAJOR_VERSION}.${OPENSCENEGRAPH_MINOR_VERSION}.${OPENSCENEGRAPH_PATCH_VERSION})
 endif()
-
-if(OPENSCENEGRAPH_VERSION)
-    message(STATUS "Found OSG version ${OPENSCENEGRAPH_VERSION}")
-endif()
+message(STATUS "Found OSG version ${OPENSCENEGRAPH_VERSION}")
 
 # Make the headers visible to everything
 include_directories(
@@ -241,7 +151,8 @@ include_directories(
 )
 
 
-# Dynamic vs Static Linking
+# Dynamic vs Static Linking.
+# The utilities in osgearth-macros will use this value.
 option(OSGEARTH_BUILD_SHARED_LIBS "ON to build shared libraries; OFF to build static libraries." ON)
 if(OSGEARTH_BUILD_SHARED_LIBS)
     set(OSGEARTH_DYNAMIC_OR_STATIC "SHARED")
@@ -275,13 +186,3 @@ osgearth_install_package_config_files(
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets")
-    
-
-#message(STATUS "....................................")
-#get_cmake_property(_variableNames VARIABLES)
-#list (SORT _variableNames)
-#foreach (_variableName ${_variableNames})
-    #message(STATUS "${_variableName}=${${_variableName}}")
-#endforeach()
-#message(STATUS "....................................")
-

@@ -6,9 +6,117 @@ else()
     add_definitions(-DOSGEARTH_LIBRARY_STATIC)
 endif()
 
+# Dependencies ...................................................
 
-# TinyXML options
+# required
+find_package(CURL REQUIRED)
+find_package(GDAL REQUIRED)
+find_package(SQLite3 REQUIRED)
+
+# optional
+find_package(geos)
+find_package(Protobuf)
+find_package(WebP)
+find_package(blend2d)
+find_package(blosc)
+find_package(spdlog)
+find_package(meshoptimizer)
+
+
+# Configure OSGEARTH_HAVE_XXX variables for the BuildConfig generated header
+
+if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
+  SET(OSGEARTH_HAVE_MVT ON)
+endif()
+
+if(SQLite3_FOUND)
+    set(OSGEARTH_HAVE_SQLITE3 ON)
+    set(OSGEARTH_HAVE_MBTILES ON)
+endif()
+
+if(Protobuf_FOUND)
+    set(OSGEARTH_HAVE_PROTOBUF ON)
+    set(PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
+endif()
+
+if(geos_FOUND)
+    set(OSGEARTH_HAVE_GEOS ON)
+endif()
+
+if (meshoptimizer_FOUND)
+    set(OSGEARTH_HAVE_MESH_OPTIMIZER ON)
+endif()
+
+if(OSGEARTH_BUILD_CESIUM_NODEKIT)
+    find_package(CesiumNative)
+endif()
+
+if(OSGEARTH_BUILD_TRITON_NODEKIT)
+    find_package(Triton)
+endif()
+
+if(OSGEARTH_BUILD_SILVERLINING_NODEKIT)
+    find_package(SilverLining)
+endif()
+
+if(OSGEARTH_ENABLE_PROFILING)
+    find_package(Tracy)
+endif()
+
+if(OSGEARTH_BUILD_ZIP_PLUGIN)
+    find_package(LibZip)
+endif()
+
+set(WITH_EXTERNAL_DUKTAPE FALSE CACHE BOOL "Use external Duktape instead of inlining it")
+if(WITH_EXTERNAL_DUKTAPE)
+    find_package(Duktape)
+endif()
+
+set(WITH_EXTERNAL_TINYXML FALSE CACHE BOOL "Use external TinyXML instead of inlining it")
+if(WITH_EXTERNAL_TINYXML)
+    find_package(TinyXML)
+endif()
 add_definitions(-DTIXML_USE_STL)
+
+
+# Logging SDK
+if(spdlog_FOUND)
+    set(OSGEARTH_HAVE_SPDLOG ON)
+endif()
+
+# # Tracy is a profiler
+# if(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
+    # ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
+# endif()
+
+# if(GLEW_FOUND AND EXISTS "${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp")
+    # set(OSGEARTH_ENABLE_IMGUI 1)
+    # add_definitions(-DOSGEARTH_ENABLE_IMGUI)
+# endif()
+
+if(OSGEARTH_ENABLE_GEOCODER)
+    set(OSGEARTH_HAVE_GEOCODER ON)
+endif()
+
+if(blend2d_FOUND)
+    set(OSGEARTH_HAVE_BLEND2D ON)
+endif()
+
+# if(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
+    # add_definitions(-DOSGEARTH_SINGLE_GL_CONTEXT)
+# endif()
+
+# if(OSGEARTH_ASSUME_SINGLE_THREADED_OSG)
+    # add_definitions(-DOSGEARTH_SINGLE_THREADED_OSG)
+# endif()
+
+
+# Other options ...................................................
+
+# support for the old Controls API (superceded by imgui)
+if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
+    add_definitions(-DOSGEARTH_HAVE_CONTROLS_API)
+endif()
 
 # Builds the HTTPClient with WIN_INET instead of CURL
 option(OSGEARTH_ENABLE_WININET_FOR_HTTP "Whether to use the WinInet library for HTTP requests (instead of cURL)" OFF)
@@ -18,23 +126,7 @@ if (OSGEARTH_ENABLE_WININET_FOR_HTTP)
 endif()
 
 
-#IF(WIN32)
-#    option(CURL_IS_STATIC "on if curl is a static lib " ON)
-#    mark_as_advanced(CURL_IS_STATIC)
-#    IF(MSVC)
-#        SET(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRT")
-#    ENDIF(MSVC)
-#    IF(CURL_IS_STATIC)
-#        ADD_DEFINITIONS(-DCURL_STATICLIB)
-#        SET(TARGET_EXTERNAL_LIBRARIES ws2_32 winmm wldap32)
-#    ENDIF(CURL_IS_STATIC)
-#    LIST(APPEND TARGET_EXTERNAL_LIBRARIES psapi)
-#ENDIF(WIN32)
-
-IF(meshoptimizer_FOUND)
-    LIST(APPEND TARGET_EXTERNAL_LIBRARIES meshoptimizer::meshoptimizer)
-ENDIF()
-
+# Files generated from templates ..................................
 
 # Generate the Version header.
 set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version")
@@ -45,6 +137,9 @@ configure_file(Version.in ${OSGEARTH_VERSION_HEADER})
 set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig")
 message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
 configure_file(BuildConfig.in ${OSGEARTH_BUILDCONFIG_HEADER})
+
+
+# Source code .....................................................
 
 # Name all the library files
 SET(LIB_NAME osgEarth)

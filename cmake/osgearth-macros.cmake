@@ -128,6 +128,11 @@ macro(add_osgearth_library_as_plugin)
     if(OSGEARTH_INSTALL_SHADERS)
         install(FILES ${MY_SHADERS} DESTINATION resources/shaders)
     endif()
+
+    # macos-specific
+    if(OSG_BUILD_PLATFORM_IPHONE)
+        set_target_properties(${TARGET_TARGETNAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_BITCODE ${IPHONE_ENABLE_BITCODE})
+    endif()
     
     # install the dynamic libraries.
     install(TARGETS ${MY_TARGET}
@@ -187,14 +192,19 @@ macro(add_osgearth_app)
     target_link_libraries(${MY_TARGET} PRIVATE osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${MY_LIBRARIES})
     
     set_target_properties(${MY_TARGET} PROPERTIES PROJECT_LABEL "${MY_TARGET}")
+    
+    # macos-specific
+    if(OSG_BUILD_PLATFORM_IPHONE)
+        set_target_properties(${TARGET_TARGETNAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_BITCODE ${IPHONE_ENABLE_BITCODE})
+    endif()
 
     install(TARGETS ${MY_TARGET} RUNTIME DESTINATION bin)
 
-	if(NOT MY_FOLDER)
-	    set(MY_FOLDER "Ungrouped")
-	endif()
+    if(NOT MY_FOLDER)
+        set(MY_FOLDER "Ungrouped")
+    endif()
 
-	SET_PROPERTY(TARGET ${MY_TARGET} PROPERTY FOLDER "${MY_FOLDER}")
+    set_property(TARGET ${MY_TARGET} PROPERTY FOLDER "${MY_FOLDER}")
 endmacro(add_osgearth_app)
 
 
@@ -363,7 +373,11 @@ macro(add_osgearth_library)
             FILES ${MY_PUBLIC_HEADERS}
             DESTINATION ${INSTALL_INCDIR})
     else()
-        # MAC OSX stuff.
+        # macos-specific
+        if(OSG_BUILD_PLATFORM_IPHONE)
+            set_target_properties(${TARGET_TARGETNAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_BITCODE ${IPHONE_ENABLE_BITCODE})
+        endif()
+    
         set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
         set(CMAKE_INSTALL_RPATH "${OSGEARTH_BUILD_FRAMEWORKS_INSTALL_NAME_DIR}")
         

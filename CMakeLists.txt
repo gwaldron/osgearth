@@ -142,8 +142,9 @@ endif()
 message(STATUS "Found OSG version ${OPENSCENEGRAPH_VERSION}")
 
 # Make the headers visible to everything
-include_directories(${OSGEARTH_SOURCE_DIR}/src)
-
+include_directories(
+    ${OSGEARTH_SOURCE_DIR}/src
+    ${OPENSCENEGRAPH_INCLUDE_DIR})
 
 # Dynamic vs Static Linking.
 # The utilities in osgearth-macros will use this value.

@@ -15,23 +15,7 @@ configure_shaders(
     ${SHADERS_CPP}
     ${TARGET_GLSL} )
 
-# set(TARGET_SRC
-	# BumpMapExtension.cpp
-	# BumpMapTerrainEffect.cpp
-	# ${SHADERS_CPP} )
-	
-# set(TARGET_H_PUBLIC
-	# BumpMapExtension
-	# BumpMapOptions
-	# BumpMapTerrainEffect)
-	
-# set(TARGET_H
-	# ${TARGET_H_PUBLIC}
-	# BumpMapShaders )
-
-# add_osgearth_library_as_plugin(osgdb_osgearth_bumpmap)
-
-add_osgearth_library_as_plugin(TARGET osgdb_osgearth_bumpmap
+add_osgearth_plugin(TARGET osgdb_osgearth_bumpmap
     PUBLIC_HEADERS
         BumpMapExtension
         BumpMapOptions
@@ -46,5 +30,4 @@ add_osgearth_library_as_plugin(TARGET osgdb_osgearth_bumpmap
         ${TARGET_IN}
     SHADERS
         ${TARGET_GLSL} )
-        
         

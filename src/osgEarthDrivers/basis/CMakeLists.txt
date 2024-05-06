@@ -1,11 +1,9 @@
-
 #find_package(BASISU)
 
 if(BASISU_FOUND)
-
-    add_osgearth_library_as_plugin(TARGET osgdb_basis
-        INCLUDE_DIRECTORIES ${BASISU_INCLUDE_DIR}
+    add_osgearth_plugin(
+        TARGET osgdb_basis
         SOURCES ReaderWriterBasis.cpp
+        INCLUDE_DIRECTORIES ${BASISU_INCLUDE_DIR}
         LIBRARIES ${BASISU_TRANSCODER_LIBRARY})
-
 endif()

@@ -1,7 +1,7 @@
 option(OSGEARTH_ENABLE_FASTDXT "Set to ON to build optional FastDXT image compressor." ON)
 if(OSGEARTH_ENABLE_FASTDXT)
 
-    add_osgearth_library_as_plugin(
+    add_osgearth_plugin(
         TARGET osgdb_fastdxt
         HEADERS 
             dxt.h

@@ -1,5 +1,5 @@
 if(SILVERLINING_FOUND)
-    add_osgearth_library_as_plugin(
+    add_osgearth_plugin(
         TARGET osgdb_osgearth_sky_silverlining
         SOURCES
             SilverLiningDriver.cpp

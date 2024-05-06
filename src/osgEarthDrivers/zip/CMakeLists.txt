@@ -6,7 +6,7 @@ if(LIBZIP_FOUND AND OSGEARTH_BUILD_ZIP_PLUGIN)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-implicit-fallthrough")
     endif()
     
-    add_osgearth_library_as_plugin(
+    add_osgearth_plugin(
         TARGET osgdb_zip
         HEADERS
             ZipArchive.h

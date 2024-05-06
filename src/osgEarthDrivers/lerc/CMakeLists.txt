@@ -1,6 +1,6 @@
 include_directories(BEFORE ../../third_party/lerc/include )
 
-add_osgearth_library_as_plugin(
+add_osgearth_plugin(
     TARGET osgdb_lerc
     SOURCES
         ReaderWriterLERC.cpp

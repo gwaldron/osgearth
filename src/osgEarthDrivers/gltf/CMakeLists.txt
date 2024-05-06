@@ -9,7 +9,7 @@ SET(TARGET_SRC
     ReaderWriterGLTF.cpp
 )
 
-add_osgearth_library_as_plugin(
+add_osgearth_plugin(
     TARGET osgdb_gltf
     HEADERS ${TARGET_H}
     SOURCES ${TARGET_SRC} )

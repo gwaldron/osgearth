@@ -57,7 +57,7 @@ set(INCLUDED_SRC_FILES
     eb_compute_shaders.cpp
     eb_osgearth_shaders.cpp)
 
-add_osgearth_library_as_plugin(
+add_osgearth_plugin(
     TARGET osgdb_osgearth_sky_simple
     SOURCES ${TARGET_SRC}
     HEADERS ${TARET_H}

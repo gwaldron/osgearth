@@ -7,8 +7,7 @@ macro(detect_osg_version)
     if(OSG_DIR AND NOT OSG_INCLUDE_DIR AND EXISTS "${OSG_DIR}/include/osg/Version")
         set(OSG_INCLUDE_DIR "${OSG_DIR}/include")
     endif()
-
-    OPTION(APPEND_OPENSCENEGRAPH_VERSION "Append the OSG version number to the osgPlugins directory" ON)
+    option(APPEND_OPENSCENEGRAPH_VERSION "Append the OSG version number to the osgPlugins directory" ON)
 
     # Try to ascertain the version...
     # (Taken from CMake's FindOpenSceneGraph.cmake)
@@ -61,18 +60,16 @@ macro(detect_osg_version)
                 "Detected version ${OPENSCENEGRAPH_VERSION}")
         endif()
     endif()
+	mark_as_advanced(OPENSCENEGRAPH_VERSION)
 
-	MARK_AS_ADVANCED(OPENSCENEGRAPH_VERSION)
 
-
-    IF (APPEND_OPENSCENEGRAPH_VERSION AND OPENSCENEGRAPH_VERSION)
+    if(APPEND_OPENSCENEGRAPH_VERSION AND OPENSCENEGRAPH_VERSION)
         SET(OSG_PLUGINS "osgPlugins-${OPENSCENEGRAPH_VERSION}"  CACHE STRING "" FORCE)
         #MESSAGE(STATUS "Plugins will be installed under osgPlugins-${OPENSCENEGRAPH_VERSION} directory.")
-	else (APPEND_OPENSCENEGRAPH_VERSION AND OPENSCENEGRAPH_VERSION)
+	else()
 		SET(OSG_PLUGINS  CACHE STRING "" FORCE)
-    ENDIF(APPEND_OPENSCENEGRAPH_VERSION AND OPENSCENEGRAPH_VERSION)
-
-	MARK_AS_ADVANCED(OSG_PLUGINS)
+    endif()
+	mark_as_advanced(OSG_PLUGINS)
 
 endmacro(detect_osg_version)
 
@@ -85,7 +82,7 @@ endmacro(detect_osg_version)
 #
 # example usage:
 #
-#   add_osgearth_library_as_plugin(
+#   add_osgearth_plugin(
 #       TARGET [name of plugin with osgdb_ or osgdb_osgearth_ prefix]
 #       HEADERS [list of header files to include in the project]
 #       PUBLIC_HEADERS [list of header files to install]
@@ -97,7 +94,7 @@ endmacro(detect_osg_version)
 #
 # Note: osgEarth and OpenScenegraph libraries will automatically link to all plugins.
 #
-macro(add_osgearth_library_as_plugin)
+macro(add_osgearth_plugin)
 
     set(options "")
     set(oneValueArgs TARGET)

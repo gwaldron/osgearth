@@ -9,7 +9,7 @@ set(TARGET_SRC
     DuktapeEngine.cpp
     duktape.c )
 
-add_osgearth_library_as_plugin(
+add_osgearth_plugin(
     TARGET osgdb_osgearth_scriptengine_javascript
     HEADERS ${TARGET_H}
     SOURCES ${TARGET_SRC} )

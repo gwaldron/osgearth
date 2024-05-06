@@ -24,7 +24,7 @@ if(RocksDB_FOUND)
     
     #add_library_as_osgdb_plugin(osgdb_osgearth_cache_rocksdb)
     
-    add_osgearth_library_as_plugin(
+    add_osgearth_plugin(
         TARGET 
             osgdb_osgearth_cache_rocksdb
         PUBLIC_HEADERS

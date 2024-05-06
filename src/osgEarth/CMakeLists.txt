@@ -12,6 +12,7 @@ endif()
 find_package(CURL REQUIRED)
 find_package(GDAL REQUIRED)
 find_package(SQLite3 REQUIRED)
+find_package(tinyxml REQUIRED)
 
 # optional
 find_package(geos)
@@ -67,13 +68,6 @@ if(OSGEARTH_BUILD_ZIP_PLUGIN)
     find_package(LibZip)
 endif()
 
-set(WITH_EXTERNAL_TINYXML FALSE CACHE BOOL "Use external TinyXML instead of inlining it")
-if(WITH_EXTERNAL_TINYXML)
-    find_package(TinyXML)
-endif()
-add_definitions(-DTIXML_USE_STL)
-
-
 # Logging SDK
 if(spdlog_FOUND)
     set(OSGEARTH_HAVE_SPDLOG ON)
@@ -106,6 +100,10 @@ mark_as_advanced(OSGEARTH_ENABLE_WININET_FOR_HTTP)
 if (OSGEARTH_ENABLE_WININET_FOR_HTTP)
     add_definitions(-DOSGEARTH_USE_WININET_FOR_HTTP)
 endif()
+
+
+# TinyXML should use STL containers:
+add_definitions(-DTIXML_USE_STL)
 
 
 # Files generated from templates ..................................
@@ -166,8 +164,6 @@ configure_shaders(
     Shaders.cpp.in
     ${SHADERS_CPP}
     ${TARGET_GLSL} )
-
-SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(TARGET_H    
     AGG.h
@@ -558,22 +554,22 @@ if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
         MouseCoordsTool)
 endif()
 
-IF (NOT TINYXML_FOUND)
-    SET(TARGET_H
-        ${TARGET_H}
-        tinystr.h
-        tinyxml.h
-    )
-ENDIF (NOT TINYXML_FOUND)
+# IF (NOT TINYXML_FOUND)
+    # SET(TARGET_H
+        # ${TARGET_H}
+        # tinystr.h
+        # tinyxml.h
+    # )
+# ENDIF (NOT TINYXML_FOUND)
 
-IF (NOT TINYXML_FOUND)
-    SET(TINYXML_SRC
-        tinystr.cpp
-        tinyxml.cpp
-        tinyxmlerror.cpp
-        tinyxmlparser.cpp
-    )
-ENDIF (NOT TINYXML_FOUND)
+# IF (NOT TINYXML_FOUND)
+    # SET(TINYXML_SRC
+        # tinystr.cpp
+        # tinyxml.cpp
+        # tinyxmlerror.cpp
+        # tinyxmlparser.cpp
+    # )
+# ENDIF (NOT TINYXML_FOUND)
 
 set(TARGET_SRC
     AltitudeFilter.cpp
@@ -905,11 +901,6 @@ if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
         MouseCoordsTool.cpp)
 endif()
 
-# MSVC 2017 and 2019 need /bigobj on debug build
-if(MSVC AND MSVC_VERSION LESS 1930)
-    add_compile_options("$<$<CONFIG:Debug>:/bigobj>")    
-endif()
-
 # Generate the protobuf headers and sources
 IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
   include_directories(${Protobuf_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
@@ -937,11 +928,12 @@ endif()
 
 message(STATUS "Building ${LIB_NAME} as a ${OSGEARTH_DYNAMIC_OR_STATIC} library")
 
+
 add_osgearth_library(
     TARGET ${LIB_NAME}
     PUBLIC_HEADERS ${TARGET_H}
     IMGUI_HEADERS ${TARGET_H_IMGUI}
-    SOURCES ${TARGET_SRC} ${TINYXML_SRC}
+    SOURCES ${TARGET_SRC}
     SHADERS ${TARGET_GLSL}
     TEMPLATES ${TARGET_IN} )
 
@@ -953,13 +945,9 @@ if (spdlog_FOUND)
 endif()
 
 # TinyXML support?
-if (TINYXML_FOUND)
-    include_directories(${TINYXML_INCLUDE_DIR})
-    #LINK_WITH_VARIABLES(${LIB_NAME} TINYXML_LIBRARY)
-    #get_directory_property(output INCLUDE_DIRECTORIES)
-    target_link_libraries(${LIB_NAME} PRIVATE unofficial-tinyxml::unofficial-tinyxml)
-    message(STATUS ${output})
-endif()
+include_directories(${tinyxml_INCLUDE_DIR})
+target_link_libraries(${LIB_NAME} PRIVATE unofficial-tinyxml::unofficial-tinyxml)
+message(STATUS "Linking osgEarth with tinyxml")
 
 # MBTiles support?
 if(SQLITE3_FOUND)
@@ -1013,6 +1001,7 @@ endif()
 # mesh optimizer optional library?
 if(meshoptimizer_FOUND)
     target_link_libraries(${LIB_NAME} PRIVATE meshoptimizer::meshoptimizer)
+    message(STATUS "Linking osgEarth with meshoptimizer")
 endif()
 
 # special purpose - do not remove

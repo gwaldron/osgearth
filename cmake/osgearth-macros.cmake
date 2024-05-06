@@ -384,23 +384,22 @@ macro(configure_shaders templateFile autoGenCppFile)
 	set(TEMPLATE_FILE   ${templateFile} )
 	set(GLSL_FILES      ${ARGN} )
 	set(OUTPUT_CPP_FILE ${autoGenCppFile})
-
+	
 	# generate the build-time script that will create out cpp file with inline shaders:
 	configure_file(
-		"${CMAKE_SOURCE_DIR}/cmake/ConfigureShaders.cmake.in"
-		"${CMAKE_CURRENT_BINARY_DIR}/ConfigureShaders.cmake"
-		@ONLY)
-
+	    "${CMAKE_SOURCE_DIR}/cmake/ConfigureShaders.cmake.in"
+	    "${CMAKE_CURRENT_BINARY_DIR}/ConfigureShaders.cmake"
+	    @ONLY)
+	
 	# add the custom build-time command to run the script:
 	add_custom_command(
-		OUTPUT
-			"${autoGenCppFile}"
-		COMMAND
-			"${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/ConfigureShaders.cmake"
-		DEPENDS
-			${GLSL_FILES}
-			"${TEMPLATE_FILE}"
-			"${CMAKE_SOURCE_DIR}/cmake/ConfigureShaders.cmake.in" )
+	    OUTPUT
+	        "${autoGenCppFile}"
+	    COMMAND
+	        "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/ConfigureShaders.cmake"
+	    DEPENDS
+	        ${GLSL_FILES}
+	        "${TEMPLATE_FILE}"
+	        "${CMAKE_SOURCE_DIR}/cmake/ConfigureShaders.cmake.in" )
 
 endmacro(configure_shaders)
-

@@ -77,16 +77,16 @@ endmacro(detect_osg_version)
 
 
 
-# ..........................................................
-# Create a library for an osgdb plugin.
+# .................................................................
+# Create a library for either an osgdb plugin or an osgearth plugin.
 #
 # example usage:
 #
 #   add_osgearth_plugin(
-#       TARGET [name of plugin with osgdb_ or osgdb_osgearth_ prefix]
+#       TARGET [name of plugin with 'osgdb_' or 'osgdb_osgearth_' prefix, REQUIRED]
+#       SOURCES [list of source files, REQUIRED]
 #       HEADERS [list of header files to include in the project]
 #       PUBLIC_HEADERS [list of header files to install]
-#       SOURCES [list of source files]
 #       TEMPLATES [list of cmake .in files]
 #       SHADERS [list of GLSL shader files]
 #       LIBRARIES [list of additional libraries to link with]
@@ -158,26 +158,66 @@ endmacro()
 
 
 # ..........................................................
-# Create a library for an osgEarth application.
+# Create a library for an osgEarth executable application.
 #
 # example usage:
 #
 #   add_osgearth_app(
-#       TARGET [name of the application]
+#       TARGET [name of the application, REQUIRED]
+#       SOURCES [list of source files, REQUIRED]
 #       HEADERS [list of header files to include in the project]
-#       SOURCES [list of source files]
 #       TEMPLATES [list of cmake .in files]
 #       SHADERS [list of GLSL shader files]
+#       USE_IMGUI [to build an ImGui-based application]
 #       LIBRARIES [list of additional libraries to link with]
 #       INCLUDE_DIRECTORIES [list of additional include folders to use]
 #
 # Note: osgEarth and OpenScenegraph libraries will automatically link to all apps.
 #
 macro(add_osgearth_app)
-    set(options "")
+    set(options USE_IMGUI)
     set(oneValueArgs TARGET FOLDER)
     set(multiValueArgs SOURCES HEADERS SHADERS TEMPLATES LIBRARIES INCLUDE_DIRECTORIES)
     cmake_parse_arguments(MY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    
+    if (MY_USE_IMGUI)
+        if(OSGEARTH_HAVE_IMGUI)
+            list(APPEND MY_INCLUDE_DIRECTORIES
+                ${GLEW_INCLUDE_DIR}
+                ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui
+                ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/examples )
+            
+            list(APPEND MY_SOURCES
+                ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp
+                ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui_demo.cpp
+                ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui_draw.cpp
+                ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui_widgets.cpp
+                ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui_tables.cpp
+                ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/backends/imgui_impl_opengl3.cpp
+                ${OSGEARTH_SOURCE_DIR}/src/osgEarth/ImGui/ImGui.cpp )
+
+            list(APPEND MY_LIBRARIES
+                ${MY_LIBRARIES} ${GLEW_LIBRARIES} ${CMAKE_DL_LIBS} OpenGL::GL)
+
+            # define for conditional compilation (esp for imgui headers)
+            if(OSGEARTHPROCEDURAL_LIBRARY)
+                add_definitions(-DHAVE_OSGEARTHPROCEDURAL)
+                list(APPEND MY_LIBRARIES osgEarthProcedural)
+            endif()
+
+            if(OSGEARTHCESIUM_LIBRARY)
+                add_definitions(-DHAVE_OSGEARTHCESIUM)
+                list(APPEND MY_LIBRARIES osgEarthCesium)
+            endif()            
+        else()    
+            message(STATUS "ImGui application '${MY_TARGET}' skipped")
+            if (NOT GLEW_FOUND)
+                message(STATUS "   ...because GLEW not found")
+            elseif (NOT EXISTS "${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp")
+                message(STATUS "   ...because ImGui git submodule not found")
+            endif()
+        endif()        
+    endif()    
     
     set(ALL_HEADERS ${MY_HEADERS})
     
@@ -202,20 +242,21 @@ macro(add_osgearth_app)
     endif()
 
     set_property(TARGET ${MY_TARGET} PROPERTY FOLDER "${MY_FOLDER}")
+
 endmacro(add_osgearth_app)
 
 
 
 
 # ..........................................................
-# Create a library for an osgEarth ImGUi application.
+# Create a library for an osgEarth ImGui application.
 #
 # example usage:
 #
-#   add_osgearth_app(
-#       TARGET [name of the application]
+#   add_osgearth_imgui_app(
+#       TARGET [name of the application, REQUIRED]
+#       SOURCES [list of source files, REQUIRED]
 #       HEADERS [list of header files to include in the project]
-#       SOURCES [list of source files]
 #       TEMPLATES [list of cmake .in files]
 #       SHADERS [list of GLSL shader files]
 #       LIBRARIES [list of additional libraries to link with]
@@ -223,62 +264,62 @@ endmacro(add_osgearth_app)
 #
 # Note: osgEarth and OpenScenegraph libraries will automatically link to all apps.
 #
-macro(add_osgearth_imgui_app)
-    set(options "")
-    set(oneValueArgs TARGET FOLDER)
-    set(multiValueArgs SOURCES HEADERS SHADERS TEMPLATES LIBRARIES INCLUDE_DIRECTORIES)
-    cmake_parse_arguments(MY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+# macro(add_osgearth_imgui_app)
+    # set(options "")
+    # set(oneValueArgs TARGET FOLDER)
+    # set(multiValueArgs SOURCES HEADERS SHADERS TEMPLATES LIBRARIES INCLUDE_DIRECTORIES)
+    # cmake_parse_arguments(MY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
-    if(OSGEARTH_HAVE_IMGUI)
-        include_directories(
-            ${GLEW_INCLUDE_DIR}
-            ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui
-            ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/examples
-        )
+    # if(OSGEARTH_HAVE_IMGUI)
+        # include_directories(
+            # ${GLEW_INCLUDE_DIR}
+            # ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui
+            # ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/examples
+        # )
 
-        set(MY_SOURCES ${MY_SOURCES}
-            ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp
-            ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui_demo.cpp
-            ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui_draw.cpp
-            ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui_widgets.cpp
-            ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui_tables.cpp
-            ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/backends/imgui_impl_opengl3.cpp
-            ${OSGEARTH_SOURCE_DIR}/src/osgEarth/ImGui/ImGui.cpp
-        )
+        # set(MY_SOURCES ${MY_SOURCES}
+            # ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp
+            # ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui_demo.cpp
+            # ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui_draw.cpp
+            # ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui_widgets.cpp
+            # ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui_tables.cpp
+            # ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/backends/imgui_impl_opengl3.cpp
+            # ${OSGEARTH_SOURCE_DIR}/src/osgEarth/ImGui/ImGui.cpp
+        # )
 
-        set(MY_LIBRARIES ${MY_LIBRARIES} ${GLEW_LIBRARIES} ${CMAKE_DL_LIBS} OpenGL::GL)
+        # set(MY_LIBRARIES ${MY_LIBRARIES} ${GLEW_LIBRARIES} ${CMAKE_DL_LIBS} OpenGL::GL)
 
-        # define for conditional compilation (esp for imgui headers)
-        if(OSGEARTHPROCEDURAL_LIBRARY)
-            add_definitions(-DHAVE_OSGEARTHPROCEDURAL)
-            list(APPEND MY_LIBRARIES osgEarthProcedural)
-        endif()
+        # # define for conditional compilation (esp for imgui headers)
+        # if(OSGEARTHPROCEDURAL_LIBRARY)
+            # add_definitions(-DHAVE_OSGEARTHPROCEDURAL)
+            # list(APPEND MY_LIBRARIES osgEarthProcedural)
+        # endif()
 
-        if(OSGEARTHCESIUM_LIBRARY)
-            add_definitions(-DHAVE_OSGEARTHCESIUM)
-            list(APPEND MY_LIBRARIES osgEarthCesium)
-        endif()
+        # if(OSGEARTHCESIUM_LIBRARY)
+            # add_definitions(-DHAVE_OSGEARTHCESIUM)
+            # list(APPEND MY_LIBRARIES osgEarthCesium)
+        # endif()
         
-        add_osgearth_app(
-            TARGET ${MY_TARGET}
-            SOURCES ${MY_SOURCES}
-            HEADERS ${MY_HEADERS}
-            INCLUDE_DIRECTORIES ${MY_INCLUDE_DIRECTORIES}
-            LIBRARIES ${MY_LIBRARIES}
-            FOLDER ${MY_FOLDER} )
+        # add_osgearth_app(
+            # TARGET ${MY_TARGET}
+            # SOURCES ${MY_SOURCES}
+            # HEADERS ${MY_HEADERS}
+            # INCLUDE_DIRECTORIES ${MY_INCLUDE_DIRECTORIES}
+            # LIBRARIES ${MY_LIBRARIES}
+            # FOLDER ${MY_FOLDER} )
             
-    else()
+    # else()
     
-        message(STATUS "ImGui application '${MY_TARGET}' skipped")
-        if (NOT GLEW_FOUND)
-            message(STATUS "   ...because GLEW not found")
-        elseif (NOT EXISTS "${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp")
-            message(STATUS "   ...because ImGui git submodule not found")
-        endif()
+        # message(STATUS "ImGui application '${MY_TARGET}' skipped")
+        # if (NOT GLEW_FOUND)
+            # message(STATUS "   ...because GLEW not found")
+        # elseif (NOT EXISTS "${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp")
+            # message(STATUS "   ...because ImGui git submodule not found")
+        # endif()
         
-    endif()
+    # endif()
     
-endmacro(add_osgearth_imgui_app)
+# endmacro(add_osgearth_imgui_app)
 
 
 

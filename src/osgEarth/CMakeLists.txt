@@ -12,7 +12,7 @@ endif()
 find_package(CURL REQUIRED)
 find_package(GDAL REQUIRED)
 find_package(SQLite3 REQUIRED)
-find_package(tinyxml REQUIRED)
+find_package(TinyXML REQUIRED)
 
 # optional
 find_package(geos)
@@ -945,9 +945,11 @@ if (spdlog_FOUND)
 endif()
 
 # TinyXML support?
-include_directories(${tinyxml_INCLUDE_DIR})
-target_link_libraries(${LIB_NAME} PRIVATE unofficial-tinyxml::unofficial-tinyxml)
-message(STATUS "Linking osgEarth with tinyxml")
+if (TinyXML_FOUND)
+    include_directories(${TinyXML_INCLUDE_DIRS})
+    target_link_libraries(${LIB_NAME} PRIVATE ${TinyXML_LIBRARIES})
+    message(STATUS "Linking osgEarth with tinyxml")
+endif()
 
 # MBTiles support?
 if(SQLITE3_FOUND)

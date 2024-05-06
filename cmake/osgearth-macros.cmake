@@ -180,6 +180,8 @@ macro(add_osgearth_app)
     set(multiValueArgs SOURCES HEADERS SHADERS TEMPLATES LIBRARIES INCLUDE_DIRECTORIES)
     cmake_parse_arguments(MY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
+    set(OK_TO_BUILD TRUE)
+    
     if (MY_USE_IMGUI)
         if(OSGEARTH_HAVE_IMGUI)
             list(APPEND MY_INCLUDE_DIRECTORIES
@@ -216,32 +218,35 @@ macro(add_osgearth_app)
             elseif (NOT EXISTS "${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp")
                 message(STATUS "   ...because ImGui git submodule not found")
             endif()
+            set(OK_TO_BUILD FALSE)
         endif()        
     endif()    
     
-    set(ALL_HEADERS ${MY_HEADERS})
-    
-    include_directories(${MY_INCLUDE_DIRECTORIES})
-
-    add_executable(${MY_TARGET} ${MY_SOURCES} ${ALL_HEADERS} ${MY_SHADERS} ${MY_TEMPLATES})
+    if (OK_TO_BUILD)
+        set(ALL_HEADERS ${MY_HEADERS})
         
-    # We always need these so just link them here.
-    target_link_libraries(${MY_TARGET} PRIVATE osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${MY_LIBRARIES})
-    
-    set_target_properties(${MY_TARGET} PROPERTIES PROJECT_LABEL "${MY_TARGET}")
-    
-    # macos-specific
-    if(OSG_BUILD_PLATFORM_IPHONE)
-        set_target_properties(${TARGET_TARGETNAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_BITCODE ${IPHONE_ENABLE_BITCODE})
+        include_directories(${MY_INCLUDE_DIRECTORIES})
+
+        add_executable(${MY_TARGET} ${MY_SOURCES} ${ALL_HEADERS} ${MY_SHADERS} ${MY_TEMPLATES})
+            
+        # We always need these so just link them here.
+        target_link_libraries(${MY_TARGET} PRIVATE osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${MY_LIBRARIES})
+        
+        set_target_properties(${MY_TARGET} PROPERTIES PROJECT_LABEL "${MY_TARGET}")
+        
+        # macos-specific
+        if(OSG_BUILD_PLATFORM_IPHONE)
+            set_target_properties(${TARGET_TARGETNAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_BITCODE ${IPHONE_ENABLE_BITCODE})
+        endif()
+
+        install(TARGETS ${MY_TARGET} RUNTIME DESTINATION bin)
+
+        if(NOT MY_FOLDER)
+            set(MY_FOLDER "Ungrouped")
+        endif()
+
+        set_property(TARGET ${MY_TARGET} PROPERTY FOLDER "${MY_FOLDER}")
     endif()
-
-    install(TARGETS ${MY_TARGET} RUNTIME DESTINATION bin)
-
-    if(NOT MY_FOLDER)
-        set(MY_FOLDER "Ungrouped")
-    endif()
-
-    set_property(TARGET ${MY_TARGET} PROPERTY FOLDER "${MY_FOLDER}")
 
 endmacro(add_osgearth_app)
 
@@ -379,23 +384,22 @@ macro(configure_shaders templateFile autoGenCppFile)
 	set(TEMPLATE_FILE   ${templateFile} )
 	set(GLSL_FILES      ${ARGN} )
 	set(OUTPUT_CPP_FILE ${autoGenCppFile})
-
+	
 	# generate the build-time script that will create out cpp file with inline shaders:
 	configure_file(
-		"${CMAKE_SOURCE_DIR}/cmake/ConfigureShaders.cmake.in"
-		"${CMAKE_CURRENT_BINARY_DIR}/ConfigureShaders.cmake"
-		@ONLY)
-
+	    "${CMAKE_SOURCE_DIR}/cmake/ConfigureShaders.cmake.in"
+	    "${CMAKE_CURRENT_BINARY_DIR}/ConfigureShaders.cmake"
+	    @ONLY)
+	
 	# add the custom build-time command to run the script:
 	add_custom_command(
-		OUTPUT
-			"${autoGenCppFile}"
-		COMMAND
-			"${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/ConfigureShaders.cmake"
-		DEPENDS
-			${GLSL_FILES}
-			"${TEMPLATE_FILE}"
-			"${CMAKE_SOURCE_DIR}/cmake/ConfigureShaders.cmake.in" )
+	    OUTPUT
+	        "${autoGenCppFile}"
+	    COMMAND
+	        "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/ConfigureShaders.cmake"
+	    DEPENDS
+	        ${GLSL_FILES}
+	        "${TEMPLATE_FILE}"
+	        "${CMAKE_SOURCE_DIR}/cmake/ConfigureShaders.cmake.in" )
 
 endmacro(configure_shaders)
-

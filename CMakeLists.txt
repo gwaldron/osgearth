@@ -15,7 +15,7 @@ project(
     OSGEARTH
     DESCRIPTION "osgEarth 3D Geospatial SDK"
     HOMEPAGE_URL "https://github.com/gwaldron/osgearth"
-    LANGUAGES CXX)
+    LANGUAGES CXX C)
 
 # SDK version number
 set(OSGEARTH_MAJOR_VERSION 3)

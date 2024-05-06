@@ -142,11 +142,7 @@ endif()
 message(STATUS "Found OSG version ${OPENSCENEGRAPH_VERSION}")
 
 # Make the headers visible to everything
-include_directories(
-    ${OSGEARTH_SOURCE_DIR}/src
-    ${OSG_INCLUDE_DIR}
-    ${OSG_GEN_INCLUDE_DIR}
-)
+include_directories(${OSGEARTH_SOURCE_DIR}/src)
 
 
 # Dynamic vs Static Linking.

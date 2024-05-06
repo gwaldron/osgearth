@@ -84,11 +84,6 @@ endif()
     # ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
 # endif()
 
-# if(GLEW_FOUND AND EXISTS "${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp")
-    # set(OSGEARTH_ENABLE_IMGUI 1)
-    # add_definitions(-DOSGEARTH_ENABLE_IMGUI)
-# endif()
-
 if(OSGEARTH_ENABLE_GEOCODER)
     set(OSGEARTH_HAVE_GEOCODER ON)
 endif()
@@ -96,14 +91,6 @@ endif()
 if(blend2d_FOUND)
     set(OSGEARTH_HAVE_BLEND2D ON)
 endif()
-
-# if(OSGEARTH_ASSUME_SINGLE_GL_CONTEXT)
-    # add_definitions(-DOSGEARTH_SINGLE_GL_CONTEXT)
-# endif()
-
-# if(OSGEARTH_ASSUME_SINGLE_THREADED_OSG)
-    # add_definitions(-DOSGEARTH_SINGLE_THREADED_OSG)
-# endif()
 
 
 # Other options ...................................................
@@ -542,7 +529,7 @@ SET(TARGET_H
     ${OSGEARTH_VERSION_HEADER}
 )
 
-if(OSGEARTH_ENABLE_IMGUI)
+if(OSGEARTH_HAVE_IMGUI)
     set(TARGET_H_IMGUI
         ImGui/ImGui
         ImGui/ImGuiApp
@@ -958,14 +945,6 @@ add_osgearth_library(
     SHADERS ${TARGET_GLSL}
     TEMPLATES ${TARGET_IN} )
 
-# add_library(${LIB_NAME}
-    # ${OSGEARTH_DYNAMIC_OR_STATIC}
-    # ${TARGET_H}
-    # ${TARGET_H_IMGUI}
-    # ${TINYXML_SRC}
-    # ${TARGET_SRC}
-    # ${TARGET_GLSL}
-    # ${TARGET_IN} )
 
 # spdlog support?
 if (spdlog_FOUND)
@@ -1008,8 +987,7 @@ if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
     if(PROTOBUF_USE_DLLS)
         add_definitions(-DPROTOBUF_USE_DLLS)
     endif()
-    #LINK_WITH_VARIABLES(${LIB_NAME} Protobuf_LIBRARIES)
-    target_link_libraries(${LIB_NAME} PRIVATE protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite)
+    target_link_libraries(${LIB_NAME} PRIVATE protobuf::libprotobuf)
     message(STATUS "Linking osgEarth with protobuf")
 endif()
 
@@ -1056,19 +1034,3 @@ else()
             OpenGL::GL CURL::libcurl GDAL::GDAL
             ${SSL_EAY_RELEASE} ${LIB_EAY_RELEASE} ${TIFF_LIBRARY} ${PROJ4_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
 endif()
-
-
-# set up the IDE and install the destination files.
-# install_osgearth_library(
-    # TARGET ${LIB_NAME}
-    # SOURCES ${TARGET_SRC}
-    # PUBLIC_HEADERS ${TARGET_H}
-    # IMGUI_HEADERS ${TARGET_H_IMGUI}
-    # SHADERS ${TARGET_GLSL}
-    # TEMPLATES ${TARGET_IN} )
-    
-
-
-
-
-

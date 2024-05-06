@@ -110,8 +110,7 @@ find_package(OpenSceneGraph REQUIRED COMPONENTS osg osgDB osgGA osgManipulator o
 find_package(GLEW)
 
 if(GLEW_FOUND AND EXISTS "${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp")
-    set(OSGEARTH_ENABLE_IMGUI 1)
-    add_definitions(-DOSGEARTH_ENABLE_IMGUI)
+    set(OSGEARTH_HAVE_IMGUI 1)
 endif()
 
 #find_package(Tracy)

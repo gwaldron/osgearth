@@ -11,3 +11,4 @@
 #cmakedefine OSGEARTH_HAVE_BASISU
 #cmakedefine OSGEARTH_HAVE_SPDLOG
 #cmakedefine OSGEARTH_HAVE_SQLITE3
+#cmakedefine OSGEARTH_HAVE_IMGUI

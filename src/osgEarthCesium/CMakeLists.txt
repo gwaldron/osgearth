@@ -35,7 +35,7 @@ if(CESIUM_NATIVE_FOUND)
         TaskProcessor)
 
     # ImGui headers:
-    if(OSGEARTH_ENABLE_IMGUI)
+    if(OSGEARTH_HAVE_IMGUI)
         set(TARGET_H_IMGUI ImGui/CesiumIonGUI)    
     endif()
 

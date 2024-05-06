@@ -222,7 +222,7 @@ macro(add_osgearth_imgui_app)
     set(multiValueArgs SOURCES HEADERS SHADERS TEMPLATES LIBRARIES INCLUDE_DIRECTORIES)
     cmake_parse_arguments(MY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
-    if(OSGEARTH_ENABLE_IMGUI)
+    if(OSGEARTH_HAVE_IMGUI)
         include_directories(
             ${GLEW_INCLUDE_DIR}
             ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui
@@ -377,7 +377,7 @@ macro(add_osgearth_library)
 
 
     # custom install for ImGui headers.
-    if(OSGEARTH_ENABLE_IMGUI)
+    if(OSGEARTH_HAVE_IMGUI)
         source_group("Headers\\ImGui" FILES ${MY_IMGUI_HEADERS})        
         install(
             FILES ${MY_IMGUI_HEADERS}

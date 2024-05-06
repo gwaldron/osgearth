@@ -64,7 +64,7 @@ set(TARGET_H
     RoadLayer )
     
 # ImGui headers:
-if(OSGEARTH_ENABLE_IMGUI)
+if(OSGEARTH_HAVE_IMGUI)
     set(TARGET_H_IMGUI
         ImGui/LifeMapLayerGUI
         ImGui/VegetationLayerGUI

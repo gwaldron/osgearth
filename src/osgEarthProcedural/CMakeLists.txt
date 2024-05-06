@@ -9,6 +9,8 @@ endif()
 
 SET(LIB_NAME osgEarthProcedural)
 
+set(OSGEARTH_HAVE_PROCEDURAL_NODEKIT ON PARENT_SCOPE) # for BuildConfig
+
 # temporary... for devel only...
 set(CLIPPER2_INCLUDE_DIR "H:/devel/clipper2/install/include")
 if (EXISTS ${CLIPPER2_INCLUDE_DIR})

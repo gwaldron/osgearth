@@ -1,51 +1,50 @@
-if(TRITON_FOUND)
+find_package(Triton REQUIRED)
 
-    set(LIB_NAME osgEarthTriton)
+set(LIB_NAME osgEarthTriton)
 
-    if(OSGEARTH_BUILD_SHARED_LIBS)
-        add_definitions(-DOSGEARTHTRITON_LIBRARY)
-    else()
-        add_definitions(-DOSGEARTHTRITON_LIBRARY_STATIC)
-    endif()
+set(OSGEARTH_HAVE_TRITON_NODEKIT ON PARENT_SCOPE) # BuildConfig
 
-    set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
+if(OSGEARTH_BUILD_SHARED_LIBS)
+    add_definitions(-DOSGEARTHTRITON_LIBRARY)
+else()
+    add_definitions(-DOSGEARTHTRITON_LIBRARY_STATIC)
+endif()
 
-    SET(TARGET_H
-        Common
-        Export
-        TritonContext
-        TritonDrawable
-        TritonAPIWrapper
-        TritonCallback
-        TritonLayer
-        TritonHeightMap
-        TritonIntersections
-    )
-    
-    set(TARGET_SRC
-        TritonContext.cpp
-        TritonDrawable.cpp
-        TritonAPIWrapper.cpp
-        TritonLayer.cpp
-        TritonHeightMap.cpp
-        TritonIntersections.cpp)    
+set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
-    add_osgearth_library(
-        TARGET ${LIB_NAME}
-        SOURCES ${TARGET_SRC}
-        PUBLIC_HEADERS ${TARGET_H} )
+SET(TARGET_H
+    Common
+    Export
+    TritonContext
+    TritonDrawable
+    TritonAPIWrapper
+    TritonCallback
+    TritonLayer
+    TritonHeightMap
+    TritonIntersections
+)
 
-    include_directories( 
-        ${OSG_INCLUDE_DIR}
-        ${OSGEARTH_SOURCE_DIR}
-        ${TRITON_INCLUDE_DIR}
-    )
+set(TARGET_SRC
+    TritonContext.cpp
+    TritonDrawable.cpp
+    TritonAPIWrapper.cpp
+    TritonLayer.cpp
+    TritonHeightMap.cpp
+    TritonIntersections.cpp)    
 
-    target_link_libraries(${LIB_NAME}
-        PUBLIC osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${TRITON_LIBRARY})
+add_osgearth_library(
+    TARGET ${LIB_NAME}
+    SOURCES ${TARGET_SRC}
+    PUBLIC_HEADERS ${TARGET_H} )
 
-    # Add this project to the NodeKits solution folder
-    set_property( TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )
+include_directories( 
+    ${OSG_INCLUDE_DIR}
+    ${OSGEARTH_SOURCE_DIR}
+    ${TRITON_INCLUDE_DIR}
+)
 
+target_link_libraries(${LIB_NAME}
+    PUBLIC osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${TRITON_LIBRARY})
 
-endif(TRITON_FOUND)
+# Add this project to the NodeKits solution folder
+set_property( TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )

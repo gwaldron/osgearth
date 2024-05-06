@@ -23,43 +23,6 @@ find_package(blosc)
 find_package(spdlog)
 find_package(meshoptimizer)
 
-
-# Configure OSGEARTH_HAVE_XXX variables for the BuildConfig generated header
-
-if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
-  SET(OSGEARTH_HAVE_MVT ON)
-endif()
-
-if(SQLite3_FOUND)
-    set(OSGEARTH_HAVE_SQLITE3 ON)
-    set(OSGEARTH_HAVE_MBTILES ON)
-endif()
-
-if(Protobuf_FOUND)
-    set(OSGEARTH_HAVE_PROTOBUF ON)
-    set(PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
-endif()
-
-if(geos_FOUND)
-    set(OSGEARTH_HAVE_GEOS ON)
-endif()
-
-if (meshoptimizer_FOUND)
-    set(OSGEARTH_HAVE_MESH_OPTIMIZER ON)
-endif()
-
-if(OSGEARTH_BUILD_CESIUM_NODEKIT)
-    find_package(CesiumNative)
-endif()
-
-if(OSGEARTH_BUILD_TRITON_NODEKIT)
-    find_package(Triton)
-endif()
-
-if(OSGEARTH_BUILD_SILVERLINING_NODEKIT)
-    find_package(SilverLining)
-endif()
-
 if(OSGEARTH_ENABLE_PROFILING)
     find_package(Tracy)
 endif()
@@ -68,30 +31,13 @@ if(OSGEARTH_BUILD_ZIP_PLUGIN)
     find_package(LibZip)
 endif()
 
-# Logging SDK
-if(spdlog_FOUND)
-    set(OSGEARTH_HAVE_SPDLOG ON)
-endif()
-
-# # Tracy is a profiler
-# if(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
-    # ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
-# endif()
-
-if(OSGEARTH_ENABLE_GEOCODER)
-    set(OSGEARTH_HAVE_GEOCODER ON)
-endif()
-
-if(blend2d_FOUND)
-    set(OSGEARTH_HAVE_BLEND2D ON)
-endif()
-
 
 # Other options ...................................................
 
 # support for the old Controls API (superceded by imgui)
 if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
-    add_definitions(-DOSGEARTH_HAVE_CONTROLS_API)
+    set(OSGEARTH_HAVE_LEGACY_CONTROLS_API) # for BuildConfig
+    add_definitions(-DOSGEARTH_HAVE_CONTROLS_API) # for backwards compat
 endif()
 
 # Builds the HTTPClient with WIN_INET instead of CURL
@@ -100,23 +46,6 @@ mark_as_advanced(OSGEARTH_ENABLE_WININET_FOR_HTTP)
 if (OSGEARTH_ENABLE_WININET_FOR_HTTP)
     add_definitions(-DOSGEARTH_USE_WININET_FOR_HTTP)
 endif()
-
-
-# TinyXML should use STL containers:
-add_definitions(-DTIXML_USE_STL)
-
-
-# Files generated from templates ..................................
-
-# Generate the Version header.
-set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version")
-message(STATUS "Creating ${OSGEARTH_VERSION_HEADER}")
-configure_file(Version.in ${OSGEARTH_VERSION_HEADER})
-
-# Generate the BuildConfig header.
-set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig")
-message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
-configure_file(BuildConfig.in ${OSGEARTH_BUILDCONFIG_HEADER})
 
 
 # Source code .....................................................
@@ -554,23 +483,6 @@ if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
         MouseCoordsTool)
 endif()
 
-# IF (NOT TINYXML_FOUND)
-    # SET(TARGET_H
-        # ${TARGET_H}
-        # tinystr.h
-        # tinyxml.h
-    # )
-# ENDIF (NOT TINYXML_FOUND)
-
-# IF (NOT TINYXML_FOUND)
-    # SET(TINYXML_SRC
-        # tinystr.cpp
-        # tinyxml.cpp
-        # tinyxmlerror.cpp
-        # tinyxmlparser.cpp
-    # )
-# ENDIF (NOT TINYXML_FOUND)
-
 set(TARGET_SRC
     AltitudeFilter.cpp
     AltitudeSymbol.cpp
@@ -901,29 +813,20 @@ if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
         MouseCoordsTool.cpp)
 endif()
 
-# Generate the protobuf headers and sources
-IF(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
-  include_directories(${Protobuf_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
-
-  PROTOBUF_GENERATE_CPP(PROTO_VECTOR_TILE_CPP PROTO_VECTOR_TILE_H vector_tile.proto)
-  
-  PROTOBUF_GENERATE_CPP(PROTO_GLYPHS_CPP PROTO_GLYPHS_H glyphs.proto)
-  
-  SET(TARGET_H
-    ${TARGET_H}
-    ${PROTO_VECTOR_TILE_H}
-    ${PROTO_GLYPHS_H}
-  )
-  SET(TARGET_SRC
-    ${TARGET_SRC}
-    ${PROTO_VECTOR_TILE_CPP}
-    ${PROTO_GLYPHS_CPP}
-  )
-ENDIF()
+# generate the google protocol buffers headers and sources
+if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
+    
+    PROTOBUF_GENERATE_CPP(PROTO_VECTOR_TILE_CPP PROTO_VECTOR_TILE_H vector_tile.proto) 
+    PROTOBUF_GENERATE_CPP(PROTO_GLYPHS_CPP PROTO_GLYPHS_H glyphs.proto)
+    
+    list(APPEND TARGET_H ${PROTO_VECTOR_TILE_H} ${PROTO_GLYPHS_H})
+    list(APPEND TARGET_SRC ${PROTO_VECTOR_TILE_CPP} ${PROTO_GLYPHS_CPP})
+endif()
 
 if(OSGEARTH_ENABLE_GEOCODER)
-    set(TARGET_SRC ${TARGET_SRC} Geocoder.cpp)
-    set(TARGET_H ${TARGET_H} Geocoder)
+    set(OSGEARTH_HAVE_GEOCODER ON)
+    list(APPEND TARGET_H GeoCoder)
+    list(APPEND TARGET_SRC GeoCoder.cpp)
 endif()
 
 message(STATUS "Building ${LIB_NAME} as a ${OSGEARTH_DYNAMIC_OR_STATIC} library")
@@ -938,72 +841,80 @@ add_osgearth_library(
     TEMPLATES ${TARGET_IN} )
 
 
+# google protocol buffers
+if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
+    set(OSGEARTH_HAVE_PROTOBUF ON)
+    set(OSGEARTH_HAVE_MVT ON)
+    
+    set(PROTOBUF_USE_DLLS FALSE CACHE BOOL "Set this to true if Protobuf is compiled as dll")
+    if(PROTOBUF_USE_DLLS)
+        add_definitions(-DPROTOBUF_USE_DLLS)
+    endif()
+    
+    include_directories(${Protobuf_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+    target_link_libraries(${LIB_NAME} PRIVATE protobuf::libprotobuf)
+endif()
+
 # spdlog support?
 if (spdlog_FOUND)
+    set(OSGEARTH_HAVE_SPDLOG ON)
     target_link_libraries(${LIB_NAME} PRIVATE spdlog::spdlog)
-    message(STATUS "Linking osgEarth with spdlog")
 endif()
 
 # TinyXML support?
 if (TinyXML_FOUND)
+    set(OSGEARTH_HAVE_TINYXML ON)
     include_directories(${TinyXML_INCLUDE_DIRS})
     target_link_libraries(${LIB_NAME} PRIVATE ${TinyXML_LIBRARIES})
-    message(STATUS "Linking osgEarth with tinyxml")
+    add_definitions(-DTIXML_USE_STL)
 endif()
 
 # MBTiles support?
-if(SQLITE3_FOUND)
+if(SQLite3_FOUND)
+    set(OSGEARTH_HAVE_SQLITE3 ON)
+    set(OSGEARTH_HAVE_MBTILES ON)
     include_directories(${SQLITE3_INCLUDE_DIR})
     target_link_libraries(${LIB_NAME} PRIVATE ${SQLite3_LIBRARIES})
-    message(STATUS "Linking osgEarth with sqlite3")
 endif()
 
 # Blosc support?
 if(blosc_FOUND)
+    set(OSGEARTH_HAVE_BLOSC ON)
     include_directories(${BLOSC_INCLUDE_DIR})
     target_link_libraries(${LIB_NAME} PRIVATE blosc_shared)
-    message(STATUS "Linking osgEarth with blosc")
 endif()
 
 # GEOS support?
 if(geos_FOUND)
+    set(OSGEARTH_HAVE_GEOS ON)
     include_directories(${GEOS_INCLUDE_DIR})
     target_link_libraries(${LIB_NAME} PRIVATE GEOS::geos_c)
-    message(STATUS "Linking osgEarth with geos_c")
-endif()
-
-# Protobuf/MVT?
-if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)  
-    if(PROTOBUF_USE_DLLS)
-        add_definitions(-DPROTOBUF_USE_DLLS)
-    endif()
-    target_link_libraries(${LIB_NAME} PRIVATE protobuf::libprotobuf)
-    message(STATUS "Linking osgEarth with protobuf")
 endif()
 
 # Blend2D?
-IF(blend2d_FOUND)
+if(blend2d_FOUND)
+    set(OSGEARTH_HAVE_BLEND2D ON)
     include_directories(${BLEND2D_INCLUDES})
     target_link_libraries(${LIB_NAME} PRIVATE blend2d::blend2d)
-    message(STATUS "Linking osgEarth with blend2d")
-ENDIF()
+endif()
 
 # Tracy?
-IF (TRACY_FOUND)
+if (TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
+    set(OSGEARTH_HAVE_TRACY ON)
+    add_definitions(-DOSGEARTH_PROFILING)
     include_directories(${TRACY_INCLUDE_DIR})
-    LINK_WITH_VARIABLES(${LIB_NAME} TRACY_LIBRARY)
-    message(STATUS "Linking osgEarth with tracy")
-ENDIF(TRACY_FOUND)
-
-# pthreads?
-if(UNIX)
-    target_link_libraries(${LIB_NAME} PUBLIC Threads::Threads)
+    target_link_libraries(${LIB_NAME} PRIVATE ${TRACY_LIBRARIES})
 endif()
 
 # mesh optimizer optional library?
 if(meshoptimizer_FOUND)
+    set(OSGEARTH_HAVE_MESH_OPTIMIZER ON)
     target_link_libraries(${LIB_NAME} PRIVATE meshoptimizer::meshoptimizer)
-    message(STATUS "Linking osgEarth with meshoptimizer")
+endif()
+
+# pthreads?
+if(UNIX)
+    target_link_libraries(${LIB_NAME} PUBLIC Threads::Threads)
 endif()
 
 # special purpose - do not remove
@@ -1025,3 +936,18 @@ else()
             OpenGL::GL CURL::libcurl GDAL::GDAL
             ${SSL_EAY_RELEASE} ${LIB_EAY_RELEASE} ${TIFF_LIBRARY} ${PROJ4_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
 endif()
+
+
+
+# Files generated from templates ..................................
+
+# Generate the Version header.
+set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version")
+message(STATUS "Creating ${OSGEARTH_VERSION_HEADER}")
+configure_file(Version.in ${OSGEARTH_VERSION_HEADER})
+
+# Generate the BuildConfig header.
+set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig")
+message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
+configure_file(BuildConfig.in ${OSGEARTH_BUILDCONFIG_HEADER})
+

@@ -25,6 +25,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/Threading>
 #include <osgEarth/ElevationPool>
+#include <osgEarth/TileMesher>
 
 namespace osgEarth
 {
@@ -101,7 +102,7 @@ namespace osgEarth
             const Map*                       map,
             const TileKey&                   key,
             const CreateTileManifest&        manifest,
-            const TerrainEngineRequirements* requirements,
+            const TerrainEngineRequirements& requirements,
             ProgressCallback*                progress);
 
         //! Same as createTileModel, except that this method will create "fallback"
@@ -112,7 +113,7 @@ namespace osgEarth
             const Map*                       map,
             const TileKey&                   key,
             const CreateTileManifest&        manifest,
-            const TerrainEngineRequirements* requirements,
+            const TerrainEngineRequirements& requirements,
             ProgressCallback*                progress);
 
     protected:
@@ -120,7 +121,7 @@ namespace osgEarth
         virtual void addColorLayers(
             TerrainTileModel*                model,
             const Map*                       map,
-            const TerrainEngineRequirements* reqs,
+            const TerrainEngineRequirements& reqs,
             const TileKey&                   key,
             const CreateTileManifest&        manifest,
             ProgressCallback*                progress,
@@ -130,14 +131,14 @@ namespace osgEarth
             TerrainTileModel* model,
             ImageLayer* layer,
             const TileKey& key,
-            const TerrainEngineRequirements* reqs,
+            const TerrainEngineRequirements& reqs,
             ProgressCallback* progress);
 
         virtual void addStandaloneImageLayer(
             TerrainTileModel* model,
             ImageLayer* layer,
             const TileKey& key,
-            const TerrainEngineRequirements* reqs,
+            const TerrainEngineRequirements& reqs,
             ProgressCallback* progress);
 
         virtual void addElevation(
@@ -160,7 +161,7 @@ namespace osgEarth
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
-            const TerrainEngineRequirements* requirements,
+            const TerrainEngineRequirements& requirements,
             const CreateTileManifest&    manifest,
             ProgressCallback*            progress);
 
@@ -168,7 +169,15 @@ namespace osgEarth
             TerrainTileModel*            model,
             const Map*                   map,
             const TileKey&               key,
-            const TerrainEngineRequirements* requirements,
+            const TerrainEngineRequirements& requirements,
+            const CreateTileManifest&    manifest,
+            ProgressCallback*            progress);
+
+        virtual void addMesh(
+            TerrainTileModel*            model,
+            const Map*                   map,
+            const TileKey&               key,
+            const TerrainEngineRequirements& requirements,
             const CreateTileManifest&    manifest,
             ProgressCallback*            progress);
 

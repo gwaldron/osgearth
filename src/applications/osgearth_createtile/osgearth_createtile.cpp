@@ -300,7 +300,7 @@ struct CreateTileHandler : public osgGA::GUIEventHandler
         TerrainTileModelFactory factory(myOptions);
 
         osg::ref_ptr<TerrainTileModel> model =
-            factory.createStandaloneTileModel(map, key, _manifest, nullptr, nullptr);
+            factory.createStandaloneTileModel(map, key, _manifest, {}, nullptr);
 
         osg::ref_ptr<osg::Node> node =
             s_mapNode->getTerrainEngine()->createStandaloneTile(model.get(), _tileFlags, _refLOD, key);

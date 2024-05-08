@@ -85,12 +85,6 @@ TerrainEngineNode::getResources() const
 
 TerrainEngineNode::TerrainEngineNode() :
     _dirtyCount(0),
-    _requireElevationTextures(false),
-    _requireNormalTextures(false),
-    _requireLandCoverTextures(false),
-    _requireParentTextures(false),
-    _requireElevationBorder(false),
-    _requireFullDataAtFirstLOD(false),
     _updateScheduled(false)
 {
     // register for event traversals so we can properly reset the dirtyCount
@@ -223,14 +217,13 @@ TerrainEngineNode::createTileModel(const Map* map,
 {
     if ( !_tileModelFactory.valid() )
         return nullptr;
-    TerrainEngineRequirements* requirements = this;
 
     // Ask the factory to create a new tile model:
     osg::ref_ptr<TerrainTileModel> model = _tileModelFactory->createTileModel(
         map,
         key,
         manifest,
-        requirements,
+        getRequirements(),
         progress);
 
     if ( model.valid() )

@@ -1849,24 +1849,24 @@ namespace
                     return world * world2local;
                 };
 
-#if 1
+            // make the decal geometry
             root->addChild(tessellate_decals(graph, xform));
 
+            // localization transform for this tile:
             auto mt = new osg::MatrixTransform();
             osg::Matrixd local2world;
             local2world.invert(world2local);
             mt->setMatrix(local2world);
             mt->addChild(root);
             root = mt;
-#else
-            root->addChild(tessellate_decals_to_grid(key, working_srs, graph, xform));
-#endif
 
+            // render support:
             auto sheet = _stylesheet.get();
             auto style = sheet ? sheet->getDefaultStyle() : nullptr;
             auto render = style ? style->get<RenderSymbol>() : nullptr;
             if (render) render->applyTo(root);
 
+            // embed the source features:
             auto* embedded = new MultiGeometry();
             create_feature_polygons_from_decals(graph, embedded);
             osg::ref_ptr<Feature> feature = new Feature(embedded, working_srs);

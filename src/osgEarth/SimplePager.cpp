@@ -158,14 +158,18 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
 
     // restrict subdivision to max level:
     bool hasChildren = key.getLOD() < _maxLevel;
+    bool hasPayload = key.getLOD() >= _minLevel;
 
     // Create the actual drawable data for this tile.
     osg::ref_ptr<osg::Node> payload;
 
     // only create real node if we are at least at the min LOD:
-    if (key.getLOD() >= _minLevel)
+    if (hasPayload)
     {
         payload = createNode(key, progress);
+
+        if (progress && progress->canceled())
+            return result;
 
         if (payload.valid())
         {
@@ -175,6 +179,12 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
                 osg::ref_ptr< osg::KdTreeBuilder > kdTreeBuilder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
                 payload->accept(*kdTreeBuilder.get());
             }
+        }
+        else
+        {
+            // if this node's supposed to have a payload but createNode returns nullptr,
+            // we have run out of data and will stop here.
+            hasChildren = false;
         }
     }
 
@@ -188,6 +198,9 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
         {
             pagedNode->addChild(payload);
             fire_onCreateNode(key, payload.get());
+
+            tileBounds.expandBy(osg::BoundingSphered(payload->getBound().center(), payload->getBound().radius()));
+            tileRadius = tileBounds.radius();
         }
 
         pagedNode->setCenter(tileBounds.center());
@@ -232,23 +245,21 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
 
         // Now set up a loader that will load the child data
         osg::observer_ptr<SimplePager> pager_weakptr(this);
-        pagedNode->setLoadFunction(
-            [pager_weakptr, key](Cancelable* c)
+
+        pagedNode->setLoadFunction([pager_weakptr, key](Cancelable* c)
             {
                 osg::ref_ptr<osg::Node> result;
+                if (c && c->canceled())
+                    return result;
+
                 osg::ref_ptr<SimplePager> pager;
                 if (pager_weakptr.lock(pager))
                 {
                     osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
                     result = pager->loadKey(key, progress.get());
                 }
-                else
-                {
-                    OE_DEBUG << "Task canceled!" << std::endl;
-                }
                 return result;
-            }
-        );
+            });
 
         loadRange = (float)(tileRadius * _rangeFactor);
 

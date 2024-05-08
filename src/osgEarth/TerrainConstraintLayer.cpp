@@ -374,6 +374,15 @@ TerrainConstraintLayer::getConstraint(const TileKey& key, FilterContext* context
     result.removeExterior = getRemoveExterior();
     result.removeInterior = getRemoveInterior();
 
+#if 0
+    // testing :)
+    result.hasElevation = true;
+    result.removeExterior = false;
+    result.removeInterior = true;
+    result.cutMesh = false;
+    result.flattenMesh = true;
+#endif
+
     if (options().model().getLayer())
     {
         getModelConstraint(key, result, progress);

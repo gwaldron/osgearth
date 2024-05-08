@@ -143,20 +143,17 @@ RexTerrainEngineNode::RexTerrainEngineNode() :
     // Necessary for pager object data
     // Note: Do not change this value. Apps depend on it to
     // detect being inside a terrain traversal.
-    this->setName("osgEarth.RexTerrainEngineNode");
+    this->setName("rex");
 
     // unique ID for this engine:
     _uid = osgEarth::createUID();
 
     // always require elevation.
-    _requireElevationTextures = true;
+    _requirements.elevationTextures = true;
 
     // static shaders.
     osg::StateSet* stateset = getOrCreateStateSet();
     stateset->setName("Terrain node");
-    //VirtualProgram* vp = VirtualProgram::getOrCreate(stateset);
-    //vp->setName(typeid(*this).name());
-    //vp->setIsAbstract(true);    // cannot run by itself, requires additional children
 
     _surfaceSS = new osg::StateSet();
     _surfaceSS->setName("Terrain surface");
@@ -260,28 +257,10 @@ RexTerrainEngineNode::onSetMap()
         _morphingSupported = false;
     }
 
-#if 0
-    // There is an (apparent) bug in the mesa 23.1.4 driver that causes display artifacts 
-    // when doing morphing; this code will attempt to detect that condition and disable
-    // the offending code until we can find a workaround.
-    auto gl_version_str = Registry::capabilities().getVersion();
-    auto mesa_pos = gl_version_str.find("Mesa");
-    if (mesa_pos != std::string::npos)
-    {
-        auto ver = gl_version_str.substr(mesa_pos + 5);
-        Version driver_version = parseVersion(ver.c_str());
-        if (driver_version.greaterThanOrEqualTo(23, 1, 4))
-        {
-            _morphingSupported = false;
-            getOrCreateStateSet()->setDefine("OE_MESA_23_WORKAROUND");
-        }
-    }
-#endif
-
     // morphing imagery LODs requires we bind parent textures to their own unit.
     if (options.getMorphImagery() && _morphingSupported)
     {
-        _requireParentTextures = true;
+        _requirements.parentTextures = true;
     }
 
     // Terrain morphing doesn't work in projected maps:
@@ -297,13 +276,13 @@ RexTerrainEngineNode::onSetMap()
         if (getStateSet()) getStateSet()->removeDefine("OE_DEBUG_NORMALS");
 
     // check for normal map generation (required for lighting).
-    this->_requireNormalTextures = (options.getUseNormalMaps() == true);
+    _requirements.normalTextures = (options.getUseNormalMaps() == true);
 
     // don't know how to set this up so just do it
-    this->_requireLandCoverTextures = (options.getUseLandCover() == true);
+    _requirements.landCoverTextures = (options.getUseLandCover() == true);
 
     // ensure we get full coverage at the first LOD.
-    this->_requireFullDataAtFirstLOD = true;
+    _requirements.fullDataAtFirstLod = true;
 
     // A shared registry for tile nodes in the scene graph. Enable revision tracking
     // if requested in the options. Revision tracking lets the registry notify all
@@ -652,7 +631,7 @@ RexTerrainEngineNode::setupRenderBindings()
     if (!GLUtils::useNVGL())
         getResources()->reserveTextureImageUnit(color.unit(), "Terrain Color");
 
-    if (this->elevationTexturesRequired())
+    if (_requirements.elevationTextures)
     {
         SamplerBinding& elevation = _renderBindings[SamplerBinding::ELEVATION];
         elevation.usage() = SamplerBinding::ELEVATION;
@@ -665,7 +644,7 @@ RexTerrainEngineNode::setupRenderBindings()
             getResources()->reserveTextureImageUnit(elevation.unit(), "Terrain Elevation");
     }
 
-    if (this->normalTexturesRequired())
+    if (_requirements.normalTextures)
     {
         SamplerBinding& normal = _renderBindings[SamplerBinding::NORMAL];
         normal.usage() = SamplerBinding::NORMAL;
@@ -678,7 +657,7 @@ RexTerrainEngineNode::setupRenderBindings()
             getResources()->reserveTextureImageUnit(normal.unit(), "Terrain Normals");
     }
 
-    if (this->parentTexturesRequired())
+    if (_requirements.parentTextures)
     {
         SamplerBinding& colorParent = _renderBindings[SamplerBinding::COLOR_PARENT];
         colorParent.usage() = SamplerBinding::COLOR_PARENT;
@@ -689,7 +668,7 @@ RexTerrainEngineNode::setupRenderBindings()
             getResources()->reserveTextureImageUnit(colorParent.unit(), "Terrain Parent Color");
     }
 
-    if (this->landCoverTexturesRequired())
+    if (_requirements.landCoverTextures)
     {
         SamplerBinding& landCover = _renderBindings[SamplerBinding::LANDCOVER];
         landCover.usage() = SamplerBinding::LANDCOVER;
@@ -1369,7 +1348,7 @@ RexTerrainEngineNode::updateState()
             _terrainSS->addUniform(new osg::Uniform(
                 "oe_layer_order", (int)0));
 
-            if (this->elevationTexturesRequired())
+            if (_requirements.elevationTextures)
             {
                 // Compute an elevation texture sampling scale/bias so we sample elevation data on center
                 // instead of on edge (as we do with color, etc.)
@@ -1426,13 +1405,13 @@ RexTerrainEngineNode::updateState()
             }
 
             // Elevation
-            if (this->elevationTexturesRequired())
+            if (_requirements.elevationTextures)
             {
                 _surfaceSS->setDefine("OE_TERRAIN_RENDER_ELEVATION");
             }
 
             // Normal mapping
-            if (this->normalTexturesRequired())
+            if (_requirements.normalTextures)
             {
                 _surfaceSS->setDefine("OE_TERRAIN_RENDER_NORMAL_MAP");
             }

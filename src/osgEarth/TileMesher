@@ -16,8 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_TILE_MESHER
-#define OSGEARTH_TILE_MESHER 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
@@ -32,12 +31,18 @@
 
 namespace osgEarth
 {
+    class ElevationPool;
+
     /**
      * Represents a single edit operation driven by a feature collection
      */
     struct MeshConstraint
     {
         FeatureList features;
+        ElevationPool* pool = nullptr;
+        bool cutMesh = true;           // should we cut the mesh with the constraint data?
+        bool flattenMesh = false;      // should we flatten the mesh to the constraint data?
+        bool clampMesh = false;        // should we clamp the mesh to the elevation data?
         bool hasElevation = false;     // do the features contain valid elevation data in Z?
         bool removeInterior = false;   // should we remove triangles inside polygons?
         bool removeExterior = false;   // should we remove triangles outside polygons?
@@ -69,6 +74,10 @@ namespace osgEarth
         TileMesh(const TileMesh& m);
         TileMesh(TileMesh&& m);
         TileMesh& operator = (const TileMesh&);
+
+        inline bool valid() const {
+            return verts.valid() && indices.valid();
+        }
     };
 
     /**
@@ -128,5 +137,3 @@ namespace osgEarth
             Cancelable* progress) const;
     };
 }
-
-#endif // OSGEARTH_TILE_MESHER

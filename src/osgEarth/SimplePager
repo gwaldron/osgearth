@@ -76,6 +76,8 @@ namespace osgEarth { namespace Util
         using CreateNodeFunction = std::function<osg::ref_ptr<osg::Node>(const TileKey& key, ProgressCallback* progress)>;
         void setCreateNodeFunction(CreateNodeFunction func) { _createNodeFunction = func; }
 
+        using PriorityFunction = std::function<float(const TileKey& key)>;
+        void setPriorityFunction(PriorityFunction func) { _priorityFunction = func; }
 
         //! Scene graph callbacks for notification of changes. Call before calling build().
         void setSceneGraphCallbacks(SceneGraphCallbacks* value) { _sceneGraphCallbacks = value; }
@@ -142,6 +144,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
 
         CreateNodeFunction _createNodeFunction;
+        PriorityFunction _priorityFunction;
 
         mutable std::mutex _mutex;
         using Callbacks = std::vector<osg::ref_ptr<Callback>>;

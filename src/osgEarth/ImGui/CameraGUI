@@ -203,6 +203,17 @@ namespace osgEarth
                             }
                         }
 
+                        auto& proj = camera(ri)->getProjectionMatrix();
+                        if (ProjectionMatrix::isPerspective(proj))
+                        {
+                            ImGui::Separator();
+                            double vfov, ar, n, f;
+                            ProjectionMatrix::getPerspective(proj, vfov, ar, n, f);
+                            ImGuiLTable::Text("VFOV", "%.2f", vfov);
+                            ImGuiLTable::Text("Near", "%.2f", n);
+                            ImGuiLTable::Text("Far", "%.1f", f);
+                        }                        
+
                         ImGuiLTable::End();
                     }
                 }

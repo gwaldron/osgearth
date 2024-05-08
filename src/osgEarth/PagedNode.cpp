@@ -26,12 +26,9 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-#define PAGEDNODE_ARENA_NAME "oe.nodepager"
-
 PagedNode2::PagedNode2()
 {
     _job.name = (typeid(*this).name());
-    _job.pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);
 }
 
 PagedNode2::~PagedNode2()
@@ -56,7 +53,9 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         {
             osg::ref_ptr<PagingManager> pm;
             if (ObjectStorage::get(&nv, pm))
+            {
                 _pagingManager = pm.get();
+            }
         }
     }
 
@@ -65,13 +64,12 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         if (nv.getVisitorType() == nv.CULL_VISITOR)
         {
             bool inRange = false;
-            //float priority = 0.0f;
 
             if (_useRange) // meters
             {
                 float range = std::max(0.0f, nv.getDistanceToViewPoint(getBound().center(), true) - getBound().radius());
                 inRange = (range >= _minRange && range <= _maxRange);
-                _lastPriority = -range * _priorityScale;
+                _priority = -range * _priorityScale;
             }
             else // pixels
             {
@@ -80,7 +78,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 {
                     float pixels = cullStack->clampedPixelSize(getBound()) / cullStack->getLODScale();
                     inRange = (pixels >= _minPixels && pixels <= _maxPixels);
-                    _lastPriority = pixels * _priorityScale;
+                    _priority = pixels * _priorityScale;
                 }
             }
 
@@ -88,7 +86,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             {
                 if (_load_function && _loaded.empty() && !_loadGate.exchange(true))
                 {
-                    startLoad(_lastPriority, &nv);
+                    startLoad(&nv);
                 }
 
                 // traverse children
@@ -208,7 +206,7 @@ PagedNode2::computeBound() const
 }
 
 void
-PagedNode2::startLoad(float priority, const osg::Object* host)
+PagedNode2::startLoad(const osg::Object* host)
 {
     OE_SOFT_ASSERT_AND_RETURN(_load_function != nullptr, void());
 
@@ -217,10 +215,10 @@ PagedNode2::startLoad(float priority, const osg::Object* host)
 
     // Configure the jobs to run in a specific pool and with a dynamic priority.
     jobs::context context;
-    context.pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);
+    context.pool = jobs::get_pool(_pagingManager->_jobpoolName);
     context.priority = [pnode_weak]() {
             osg::ref_ptr<PagedNode2> pnode;
-            return pnode_weak.lock(pnode) ? pnode->_lastPriority : -FLT_MAX;
+            return pnode_weak.lock(pnode) ? pnode->getPriority() : -FLT_MAX;
         };
 
     // Job that will load the node and optionally compile it.
@@ -281,7 +279,7 @@ PagedNode2::load()
 {
     if (_load_function && _loaded.empty() && !_loadGate.exchange(true))
     {
-        startLoad(0.0f, nullptr);
+        startLoad(nullptr);
     }
 }
 
@@ -314,12 +312,13 @@ PagedNode2::isHighestResolution() const
     return getLoadFunction() == nullptr;
 }
 
-PagingManager::PagingManager()
+PagingManager::PagingManager(const std::string& jobpoolname) :
+    _jobpoolName(jobpoolname)
 {
     setCullingActive(false);
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 
-    auto pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);
+    auto pool = jobs::get_pool(_jobpoolName);
     pool->set_concurrency(4u);
     _metrics = pool->metrics();
 }
@@ -385,9 +384,7 @@ PagingManager::update()
 {
     scoped_lock_if lock(_trackerMutex, _threadsafe);
 
-    _tracker.flush(
-        _mergesPerFrame,
-        [this](osg::ref_ptr<PagedNode2>& node) -> bool
+    _tracker.flush(_mergesPerFrame, [this](osg::ref_ptr<PagedNode2>& node)
         {
             // if the node is no longer in the scene graph, expunge it
             if (node->referenceCount() == 1)

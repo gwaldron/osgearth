@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_TERRAIN_ENGINE_NODE_H
-#define OSGEARTH_TERRAIN_ENGINE_NODE_H 1
+#pragma once
 
 #include <osgEarth/Map>
 #include <osgEarth/Terrain>
@@ -194,13 +193,9 @@ namespace osgEarth
      * A map engine lives under a MapNode and is responsible for generating the
      * actual geometry representing the Earth.
      */
-    class OSGEARTH_EXPORT TerrainEngineNode : 
-        public osg::CoordinateSystemNode,
-        public TerrainEngine,
-        public TerrainEngineRequirements
+    class OSGEARTH_EXPORT TerrainEngineNode : public osg::CoordinateSystemNode,  public TerrainEngine
     {
     public:
-
         TerrainTileModel* createTileModel(
             const Map* map,
             const TileKey& key,
@@ -210,6 +205,8 @@ namespace osgEarth
         const Map* getMap() const override { return _map.get(); }
 
         TerrainResources* getResources() const override;
+
+        virtual const TerrainEngineRequirements& getRequirements() const = 0;
 
         Terrain* getTerrain() override { return _terrainInterface.get(); }
         const Terrain* getTerrain() const override { return _terrainInterface.get(); }
@@ -314,16 +311,6 @@ namespace osgEarth
 
         static TerrainEngineNode* create(const TerrainOptions& options);
 
-
-    public: // TerrainEngineRequirements
-
-        bool normalTexturesRequired() const { return _requireNormalTextures; }
-        bool elevationTexturesRequired() const { return _requireElevationTextures; }
-        bool landCoverTexturesRequired() const { return _requireLandCoverTextures; }
-        bool parentTexturesRequired() const { return _requireParentTextures; }
-        bool elevationBorderRequired() const { return _requireElevationBorder; }
-        bool fullDataAtFirstLodRequired() const { return _requireFullDataAtFirstLOD; }
-
     protected:
         TerrainEngineNode();
         virtual ~TerrainEngineNode();
@@ -350,14 +337,6 @@ namespace osgEarth
         virtual void dirtyState() { }
 
         osg::ref_ptr<TerrainResources> _textureResourceTracker;
-
-        bool _requireElevationTextures;
-        bool _requireNormalTextures;
-        bool _requireLandCoverTextures;
-        bool _requireParentTextures;
-        bool _requireElevationBorder;
-        bool _requireFullDataAtFirstLOD;
-
         osg::ref_ptr<const Map> _map;
 
     private:
@@ -366,7 +345,7 @@ namespace osgEarth
         void onMapModelChanged( const MapModelChange& change );
         virtual void updateTextureCombining() { }
 
-    private:
+    protected:
         osg::ref_ptr<Terrain> _terrainInterface;
         unsigned _dirtyCount;
         bool _updateScheduled;
@@ -401,5 +380,3 @@ namespace osgEarth
         }
     };
 } // namespace osgEarth
-
-#endif // OSGEARTH_TERRAIN_ENGINE_NODE_H

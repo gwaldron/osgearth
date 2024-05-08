@@ -89,7 +89,9 @@ namespace osgEarth
 
                     if (ImGuiLTable::Begin("terraingui"))
                     {
-                        ImGuiLTable::Text("Resident Tiles", "%u", _mapNode->getTerrainEngine()->getNumResidentTiles());
+                        ImGuiLTable::Text("Resident Tiles", "%u (%s)", 
+                            _mapNode->getTerrainEngine()->getNumResidentTiles(),
+                            _mapNode->getTerrainEngine()->getNode()->getName().c_str());
 
                         static int max_max_lod = -1;
                         static unsigned u32_one = 1;

@@ -16,27 +16,24 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_TERRAIN_ENGINE_REQUIREMENTS_H
-#define OSGEARTH_TERRAIN_ENGINE_REQUIREMENTS_H 1
+#pragma once
 
-namespace osgEarth { namespace Util
+namespace osgEarth
 {
-    /**
-     * Interface for querying terrain engine feature requirements.
-     */
-    class TerrainEngineRequirements
+    namespace Util
     {
-    public:
-        virtual bool elevationTexturesRequired() const =0;
-        virtual bool normalTexturesRequired() const =0;
-        virtual bool landCoverTexturesRequired() const =0;
-        virtual bool parentTexturesRequired() const =0;
-        virtual bool elevationBorderRequired() const =0;
-        virtual bool fullDataAtFirstLodRequired() const =0;
-
-    public:
-        virtual ~TerrainEngineRequirements() { }
-    };
-} }
-
-#endif // OSGEARTH_TERRAIN_ENGINE_REQUIREMENTS_H
+        /**
+         * Interface for querying terrain engine feature requirements.
+         */
+        struct TerrainEngineRequirements
+        {
+            bool fullDataAtFirstLod = true;
+            bool elevationTextures = true;
+            bool normalTextures = true;
+            bool landCoverTextures = true;
+            bool parentTextures = true;
+            bool elevationBorder = false;
+            bool tileMesh = false;
+        };
+    }
+}

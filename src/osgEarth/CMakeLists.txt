@@ -873,7 +873,7 @@ endif()
 if(SQLite3_FOUND)
     set(OSGEARTH_HAVE_SQLITE3 ON)
     set(OSGEARTH_HAVE_MBTILES ON)
-    include_directories(${SQLITE3_INCLUDE_DIR})
+    include_directories(${SQLite3_INCLUDE_DIR})
     target_link_libraries(${LIB_NAME} PRIVATE ${SQLite3_LIBRARIES})
 endif()
 

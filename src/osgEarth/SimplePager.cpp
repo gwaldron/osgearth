@@ -54,6 +54,16 @@ bool SimplePager::getClusterCullingEnabled() const
     return _clusterCullingEnabled;
 }
 
+void SimplePager::setUsePayloadBoundsForChildren(bool value)
+{
+    _usePayloadBoundsForChildren = value;
+}
+
+bool SimplePager::getUsePayloadBoundsForChildren() const
+{
+    return _usePayloadBoundsForChildren;
+}
+
 void SimplePager::setMaxRange(float value)
 {
     _maxRange = value;
@@ -199,8 +209,15 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
             pagedNode->addChild(payload);
             fire_onCreateNode(key, payload.get());
 
-            tileBounds.expandBy(osg::BoundingSphered(payload->getBound().center(), payload->getBound().radius()));
-            tileRadius = tileBounds.radius();
+            if (_usePayloadBoundsForChildren)
+            {
+                const auto& bs = payload->getBound();
+                if (bs.valid())
+                {
+                    tileBounds.set(bs.center(), bs.radius());
+                    tileRadius = tileBounds.radius();
+                }
+            }
         }
 
         pagedNode->setCenter(tileBounds.center());

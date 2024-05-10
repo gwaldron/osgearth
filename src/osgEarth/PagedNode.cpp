@@ -170,7 +170,7 @@ PagedNode2::merge(int revision)
         OE_SOFT_ASSERT_AND_RETURN(_loaded.value()->getNumParents() == 0, false);
 
         addChild(_loaded.value());
-
+        
         if (_callbacks.valid())
             _callbacks->firePostMergeNode(_loaded.value().get());
 

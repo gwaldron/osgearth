@@ -1686,13 +1686,16 @@ GeoExtent::createWorldBoundingSphere(double minElev, double maxElev) const
     else // geocentric
     {
         // Sample points along the extent
-        std::vector< osg::Vec3d > samplePoints;
-
         int samples = 7;
+        osg::Vec3d samplePoints[7*7*2];
+        //std::array <osg::Vec3d, 7 * 7> samplePoints;
+        //std::vector< osg::Vec3d > samplePoints;
+
 
         double xSample = width() / (double)(samples - 1);
         double ySample = height() / (double)(samples - 1);
 
+        int ptr = 0;
         for (int c = 0; c < samples; c++)
         {
             double x = xMin() + (double)c * xSample;
@@ -1702,9 +1705,9 @@ GeoExtent::createWorldBoundingSphere(double minElev, double maxElev) const
                 
                 osg::Vec3d world;
                 GeoPoint(getSRS(), x, y, minElev, ALTMODE_ABSOLUTE).toWorld(world);
-                samplePoints.push_back(world);               
+                samplePoints[ptr++] = world;
                 GeoPoint(getSRS(), x, y, maxElev, ALTMODE_ABSOLUTE).toWorld(world);
-                samplePoints.push_back(world);
+                samplePoints[ptr++] = world;
             }
         }
 

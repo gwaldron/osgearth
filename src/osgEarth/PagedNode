@@ -208,7 +208,8 @@ namespace osgEarth { namespace Util
     private:
         friend class PagingManager;
 
-        std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load_function;
+        Loader _load_function;
+        //std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load_function;
 
         void* _token = nullptr;
         class PagingManager* _pagingManager = nullptr;

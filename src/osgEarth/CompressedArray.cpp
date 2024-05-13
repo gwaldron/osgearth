@@ -130,7 +130,7 @@ namespace osgEarth {
                 is >> is.BEGIN_BRACKET;
 
                 int quantization = osgEarth::CompressedVec3Array::QUANTIZE_NONE;
-                is >> is.PROPERTY("Quantization") >> (int)quantization;
+                is >> is.PROPERTY("Quantization") >> quantization;
                 g.setQuantization((osgEarth::CompressedVec3Array::QuantizationType)quantization);
 
                 osg::Vec3 min, max;

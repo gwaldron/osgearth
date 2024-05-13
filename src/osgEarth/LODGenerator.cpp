@@ -96,7 +96,7 @@ osg::LOD* createLODFromGeometry(osg::Geometry* originalGeometry, const std::vect
 }
 
 
-void LODGenerator::generateLODs(osg::Node* node, const std::vector<LODOptions>& options)
+osg::Node* LODGenerator::generateLODs(osg::Node* node, const std::vector<LODOptions>& options)
 {
     FindNodesVisitor<osg::Geometry> nv;
     node->accept(nv);
@@ -113,15 +113,28 @@ void LODGenerator::generateLODs(osg::Node* node, const std::vector<LODOptions>& 
                 if (geode)
                 {
                     lod->setStateSet(geode->getStateSet());
-                    geode->getParent(0)->replaceChild(geode, lod);
+                    if (geode->getNumParents() == 0)
+                    {
+                        return lod;
+                    }
+                    else
+                    {
+                        geode->getParent(0)->replaceChild(geode, lod);
+                    }
                 }
                 else
                 {
                     parent->replaceChild(geom, lod);
                 }
             }
+            else
+            {             
+                return lod;
+            }
         }
     }
+
+    return node;
 }
 
 #endif // OSGEARTH_HAVE_MESH_OPTIMIZER

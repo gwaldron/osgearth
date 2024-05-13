@@ -53,8 +53,8 @@ main(int argc, char** argv)
     osg::ref_ptr<osg::Node> root = osgDB::readRefNodeFiles(args);
 
     LODGenerator generator;
-    generator.generateLODs(root.get(), options);
+    osg::ref_ptr< osg::Node> result = generator.generateLODs(root.get(), options);
 
-    osgDB::writeNodeFile(*root, outFilename);
+    osgDB::writeNodeFile(*result, outFilename);
     return 0;
 }

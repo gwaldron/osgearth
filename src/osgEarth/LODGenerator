@@ -21,7 +21,7 @@ namespace osgEarth
             bool aggressive;
         };
 
-        void generateLODs(osg::Node* node, const std::vector<LODOptions>& options);
+        osg::Node* generateLODs(osg::Node* node, const std::vector<LODOptions>& options);
     };
 
 

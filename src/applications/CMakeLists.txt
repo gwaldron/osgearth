@@ -56,6 +56,10 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         if(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT)
             add_subdirectory(osgearth_exportgroundcover_splat)
         endif()     
+
+        if (OSGEARTH_HAVE_MESH_OPTIMIZER)
+            add_subdirectory(osgearth_lod)
+        endif()
     ENDIF()
 
     # Examples:

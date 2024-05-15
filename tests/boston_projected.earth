@@ -14,7 +14,7 @@ osgEarth Sample. Like boston.earth, but on a projected map
     </options>
     
     <TMSImage name="Imagery">
-        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/22/</url>
     </TMSImage>
     
     <xi:include href="readymap_elevation.xml"/>

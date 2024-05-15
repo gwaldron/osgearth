@@ -1,7 +1,7 @@
 <map name="SDF demo">
 
     <TMSImage name="ReadyMap 15m Imagery">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
     
     <FeatureSDF name="SDF roads" min_level="14" max_data_level="18" caching="false">
@@ -26,7 +26,7 @@
     </FeatureSDF>
     
     <XYZFeatures name="data:roads">
-        <url>http://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
+        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>

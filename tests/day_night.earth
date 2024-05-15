@@ -11,7 +11,7 @@
     <xi:include href="readymap_imagery.xml"/>
 
     <TMSImage name="EarthAtNight">
-        <url>http://readymap.org/readymap/tiles/1.0.0/26/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/26/</url>
         <shader>
           <![CDATA[
             #pragma vp_function dayNight, fragment

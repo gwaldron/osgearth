@@ -4,7 +4,7 @@ osgEarth Sample - TFS
 <map name="Demo: TFS scripting">
 
     <TFSFeatures name="buildings-data">	                
-        <url>http://readymap.org/readymap/features/tfs/4/</url>
+        <url>https://readymap.org/readymap/features/tfs/4/</url>
         <format>json</format>
     </TFSFeatures>
     

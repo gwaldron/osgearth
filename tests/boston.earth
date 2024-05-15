@@ -8,7 +8,7 @@ to extruded buildings.
 <map name="Boston Demo">
     
     <TMSImage name="Imagery">
-        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/22/</url>
     </TMSImage>
     
     <xi:include href="readymap_elevation.xml"/>

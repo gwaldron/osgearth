@@ -4,16 +4,16 @@
     </options>
 
     <TMSImage name="ReadyMap 15m Imagery" enabled="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
 
     <TMSElevation name="ReadyMap 90m Elevation" enabled="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/116/</url>
         <vdatum>egm96</vdatum>
     </TMSElevation>
 
     <XYZFeatures name="data:osm-water">
-        <url>http://readymap.org/readymap/mbtiles/osm-water/{z}/{x}/{-y}.pbf</url>
+        <url>https://readymap.org/readymap/mbtiles/osm-water/{z}/{x}/{-y}.pbf</url>
         <min_level>0</min_level>
         <max_level>12</max_level>
         <profile>spherical-mercator</profile>
@@ -40,7 +40,7 @@
     </FeatureImage>
 
     <XYZFeatures name="data:osm-roads">
-        <url>http://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
+        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
         <min_level>10</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>

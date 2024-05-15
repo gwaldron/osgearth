@@ -9,7 +9,7 @@ Demonstrates the "min_range" and "max_range" properties.
     </GDALImage>
     
     <TMSImage name="readymap_imagery" max_range="10000000" min_range="2000000" attenuation_range="2500000">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
     
 </map>

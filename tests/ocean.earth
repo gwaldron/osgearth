@@ -14,7 +14,7 @@ osgEarth Sample - Simple Ocean with surface texture
     </Ocean>
     
     <TMSImage name="ocean_mask" shared="true" visible="false">
-        <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/2/</url>
     </TMSImage>
 
     <Viewpoints>

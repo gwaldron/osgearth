@@ -286,14 +286,13 @@ bool MultithreadedTileVisitor::handleTile(const TileKey& key)
     }
 
     // Add the tile to the task queue.
-    auto task = [this, key](Cancelable&)
+    auto task = [this, key]()
     {
         if ((_tileHandler.valid()) && (!_progress.valid() || !_progress->isCanceled()))
         {
             _tileHandler->handleTile(key, *this);
             this->incrementProgress(1);
         }
-        return true;
     };
 
     jobs::context job;

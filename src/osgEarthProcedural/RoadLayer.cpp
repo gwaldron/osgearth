@@ -1983,6 +1983,7 @@ RoadLayer::openImplementation()
         con->setModelLayer(decals);
         con->setHasElevation(true);
         con->setRemoveInterior(true);
+        con->options().flattenElevationAroundModel() = true;
         con->setMinLevel(std::max(options().constraintsMinLevel().value(), getMinLevel()));
         con->options().cachePolicy() = options().cachePolicy();
         con->options().visible() = options().visible();

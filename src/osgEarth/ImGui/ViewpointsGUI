@@ -71,7 +71,7 @@ namespace osgEarth {
                                 {
                                     EventRouter::get(view(ri)).onKeyPress(
                                         (osgGA::GUIEventAdapter::KeySymbol)((int)osgGA::GUIEventAdapter::KEY_1 + key),
-                                        [&, key]() {
+                                        [&, key](...) {
                                             auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
                                             if (manip)
                                                 manip->setViewpoint(_viewpoints[key]);

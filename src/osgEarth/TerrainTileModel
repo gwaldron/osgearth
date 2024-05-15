@@ -22,6 +22,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/TextureArena>
 #include <osgEarth/Layer>
+#include <osgEarth/TileLayer>
 #include <osgEarth/TileMesher>
 #include <osg/Matrix>
 
@@ -50,6 +51,7 @@ namespace osgEarth
         {
             using Vector = std::vector<ColorLayer>;
             osg::ref_ptr<Layer> layer;
+            osg::ref_ptr<TileLayer> tileLayer;
         };
 
         struct Elevation : public Tile
@@ -72,13 +74,15 @@ namespace osgEarth
     public:
         //! Create a new empty data model for a tile/revision pair
         TerrainTileModel(const TileKey& key_, int revision_)  :
-            key(key_), revision(revision_) { }
+            key(key_), mapRevision(revision_) { }
+
+        TerrainTileModel(const TerrainTileModel& rhs) = default;
 
         //! Tile key corresponding to this model
         TileKey key;
 
         //! Map model revision from which this model was created
-        int revision = -1;
+        int mapRevision = -1;
 
         //! Whether some data here requires updates
         bool requiresUpdateTraversal = false;

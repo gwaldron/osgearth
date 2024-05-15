@@ -48,11 +48,6 @@ namespace osgEarth
     class TerrainEffect;
     class VirtualProgram;
 
-    namespace Util
-    {
-        class TerrainEngineNodeFactory;
-    }
-
     /**
      * A callback that lets you customize the computed range for a terrain tile.
      * Providing a custom range can let applications better control how paging behaves.
@@ -321,7 +316,6 @@ namespace osgEarth
 
     protected:
         friend class MapNode;
-        friend class TerrainEngineNodeFactory;
 
         //! Assigns a map to render
         void setMap(const Map* map, const TerrainOptions& options);
@@ -362,6 +356,7 @@ namespace osgEarth
         ModifyTileBoundingBoxCallbacks _modifyTileBoundingBoxCallbacks;
 
         osg::ref_ptr<TerrainTileModelFactory> _tileModelFactory;
+        TerrainTileModelDB _tileModelDB;
 
         osg::ref_ptr<ComputeRangeCallback> _computeRangeCallback;
 

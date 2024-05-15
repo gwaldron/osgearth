@@ -104,7 +104,7 @@ namespace
     }
 }
 
-osg::DrawElements*
+osg::DrawElementsUInt*
 TileMesher::getOrCreateStandardIndices() const
 {
     if (!_standardIndices.valid())
@@ -127,6 +127,7 @@ TileMesher::getOrCreateStandardIndices() const
             GLenum mode = _options.getGPUTessellation() == true ? GL_PATCHES : GL_TRIANGLES;
 
             auto primset = new osg::DrawElementsUInt(mode);
+            primset->setElementBufferObject(new osg::ElementBufferObject());
             primset->reserveElements(numIndiciesInSurface + numIncidesInSkirt);
 
             // add the elements for the surface:
@@ -381,7 +382,7 @@ namespace
 
             // clamp to the lowest resolution we need:
             Distance resolution(locator._extent.width() / (double)(tileSize - 1), locator._srs->getUnits());
-            pool->sampleMapCoords(clamped_verts.begin(), clamped_verts.end(), resolution, &ws, nullptr);
+            pool->sampleMapCoords(clamped_verts.begin(), clamped_verts.end(), resolution, &ws, nullptr, 0.0f);
             for (auto& v : clamped_verts)
             {
                 srs->transformToWorld(v, v);
@@ -809,7 +810,7 @@ TileMesher::createMeshWithConstraints(
                     }
                 }
 
-                if (closest_part && closest_dist2 < 5.0)
+                if (closest_part && closest_dist2 < 5.0) // TODO: parameterize this distance!
                 {
                     auto bary = get_barycentric_coords(vert.x, vert.y, (*closest_part)[0].x(), (*closest_part)[0].y(), (*closest_part)[1].x(), (*closest_part)[1].y(), (*closest_part)[2].x(), (*closest_part)[2].y());
                     vert.z = bary[0] * (*closest_part)[0].z() + bary[1] * (*closest_part)[1].z() + bary[2] * (*closest_part)[2].z();

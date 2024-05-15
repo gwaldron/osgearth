@@ -61,16 +61,17 @@ namespace osgEarth
     */
     struct OSGEARTH_EXPORT TileMesh
     {
+        int revision = -1;
         osg::Matrix localToWorld;
+        bool hasConstraints = false;
         osg::ref_ptr<osg::Vec3Array> verts;
         osg::ref_ptr<osg::Vec3Array> normals;
         osg::ref_ptr<osg::Vec3Array> uvs;
         osg::ref_ptr<osg::Vec3Array> vert_neighbors;
         osg::ref_ptr<osg::Vec3Array> normal_neighbors;
-        osg::ref_ptr<osg::DrawElements> indices;
-        bool hasConstraints = false;
+        osg::ref_ptr<osg::DrawElementsUInt> indices;
 
-        TileMesh() { }
+        TileMesh() = default;
         TileMesh(const TileMesh& m);
         TileMesh(TileMesh&& m);
         TileMesh& operator = (const TileMesh&);
@@ -118,11 +119,11 @@ namespace osgEarth
 
         //! Creates a primitive set that represents triangles for
         //! a tile mesh without any edits.
-        osg::DrawElements* getOrCreateStandardIndices() const;
+        osg::DrawElementsUInt* getOrCreateStandardIndices() const;
             
 
     protected:
-        mutable osg::ref_ptr<osg::DrawElements> _standardIndices;
+        mutable osg::ref_ptr<osg::DrawElementsUInt> _standardIndices;
         mutable Mutex _mutex;
         TerrainOptionsAPI _options;
 

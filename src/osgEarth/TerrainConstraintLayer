@@ -44,6 +44,7 @@ namespace osgEarth
             OE_OPTION(bool, removeInterior, false);
             OE_OPTION(bool, removeExterior, false);
             OE_OPTION(bool, hasElevation, false);
+            OE_OPTION(bool, flattenElevationAroundModel, false);
             OE_OPTION(unsigned, minLevel, 8);
             Config getConfig() const override;
             void fromConfig(const Config& conf);

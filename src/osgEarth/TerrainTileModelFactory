@@ -26,6 +26,7 @@
 #include <osgEarth/Threading>
 #include <osgEarth/ElevationPool>
 #include <osgEarth/TileMesher>
+#include <osgEarth/Containers>
 
 namespace osgEarth
 {
@@ -105,6 +106,14 @@ namespace osgEarth
             const TerrainEngineRequirements& requirements,
             ProgressCallback*                progress);
 
+        virtual bool updateTileModel(
+            TerrainTileModel* model_to_update,
+            const Map* map,
+            const CreateTileManifest& manifest,
+            const TerrainEngineRequirements& requirements,
+            ProgressCallback* progress);
+
+
         //! Same as createTileModel, except that this method will create "fallback"
         //! data for each layer that doesn't have real data at the TileKey's LOD.
         //! The texture matrix will each layer will provide a scale and bias for
@@ -173,13 +182,13 @@ namespace osgEarth
             const CreateTileManifest&    manifest,
             ProgressCallback*            progress);
 
-        virtual void addMesh(
-            TerrainTileModel*            model,
-            const Map*                   map,
-            const TileKey&               key,
-            const TerrainEngineRequirements& requirements,
-            const CreateTileManifest&    manifest,
-            ProgressCallback*            progress);
+        //virtual void addMesh(
+        //    TerrainTileModel*            model,
+        //    const Map*                   map,
+        //    const TileKey&               key,
+        //    const TerrainEngineRequirements& requirements,
+        //    const CreateTileManifest&    manifest,
+        //    ProgressCallback*            progress);
 
     protected:
 
@@ -193,4 +202,7 @@ namespace osgEarth
         TerrainOptions _options;
         ElevationPool::WorkingSet _workingSet;
     };
+
+
+    using TerrainTileModelDB = Util::WeakRefPtrDatabase<TileKey, TerrainTileModel>;
 }

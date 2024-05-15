@@ -151,13 +151,16 @@ TerrainTileModelFactory::createTileModel(
     const TerrainEngineRequirements& require,
     ProgressCallback*                progress)
 {
-    OE_PROFILING_ZONE;
+    OE_SOFT_ASSERT_AND_RETURN(key.valid(), nullptr);
 
     // Make a new model:
     osg::ref_ptr<TerrainTileModel> model = new TerrainTileModel(
         key,
         map->getDataModelRevision() );
 
+    updateTileModel(model.get(), map, manifest, require, progress);
+
+#if 0
     // assemble all the components:
     addColorLayers(model.get(), map, require, key, manifest, progress, false);
 
@@ -180,10 +183,219 @@ TerrainTileModelFactory::createTileModel(
             addMesh(model.get(), map, key, require, manifest, progress);
         }
     }
-    
+#endif
 
     // done.
     return model.release();
+
+}
+
+#if 0
+bool
+TerrainTileModelFactory::updateTileModel(
+    TerrainTileModel* model,
+    const Map* map,
+    const CreateTileManifest& manifest,
+    const TerrainEngineRequirements& require,
+    ProgressCallback* progress)
+{
+    OE_SOFT_ASSERT_AND_RETURN(model != nullptr, false);
+
+    // assemble all the components:
+    addColorLayers(model, map, require, model->key, manifest, progress, false);
+
+    if (require.elevationTextures)
+    {
+        unsigned border = (require.elevationBorder) ? 1u : 0u;
+        addElevation(model, map, model->key, manifest, border, progress);
+    }
+
+    if (require.landCoverTextures)
+    {
+        addLandCover(model, map, model->key, require, manifest, progress);
+    }
+
+    if (require.tileMesh)
+    {
+        if (model->key.getLOD() <= _options.maxLOD().value())
+        {
+            addMesh(model, map, model->key, require, manifest, progress);
+        }
+    }
+
+    return true;
+}
+#endif
+
+namespace
+{
+    bool modelContainsLayerAtLatestRevision(const TerrainTileModel* model, const Layer* layer)
+    {
+        for (auto& existing_color_layer : model->colorLayers)
+        {
+            if (existing_color_layer.layer->getUID() == layer->getUID() &&
+                existing_color_layer.layer->getRevision() == layer->getRevision())
+            {
+                // already have this layer at the proper revision
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+bool
+TerrainTileModelFactory::updateTileModel(
+    TerrainTileModel* model,
+    const Map* map,
+    const CreateTileManifest& manifest,
+    const TerrainEngineRequirements& require,
+    ProgressCallback* progress)
+{
+    OE_SOFT_ASSERT_AND_RETURN(model != nullptr, false);
+
+    int order = 0;
+    bool madeUpdates = false;
+
+    // Color layers:
+    LayerVector colorLayers;
+    map->getLayers(colorLayers, [&](const Layer* layer)
+        {
+            return
+                layer->isOpen() &&
+                layer->getRenderType() == Layer::RENDERTYPE_TERRAIN_SURFACE &&
+                !manifest.excludes(layer) &&
+                !modelContainsLayerAtLatestRevision(model, layer);
+        });
+
+    for(auto& layer : colorLayers)
+    {
+        ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer.get());
+        if (imageLayer)
+        {
+            addImageLayer(model, imageLayer, model->key, require, progress);
+            madeUpdates = true;
+        }
+        else // non-image kind of TILE layer (e.g., splatting)
+        {
+            TerrainTileModel::ColorLayer color;
+            color.layer = layer;
+            color.revision = layer->getRevision();
+            model->colorLayers.push_back(std::move(color));
+            madeUpdates = true;
+        }
+    }
+
+    // Elevation:
+    int elevationRevision = map->getDataModelRevision();
+
+    if (require.elevationTextures || require.normalTextures || require.tileMesh)
+    {
+        ElevationLayerVector elevationLayers;
+        map->getLayers(elevationLayers, [&](const Layer* layer)
+            {
+                return
+                    layer->isOpen() &&
+                    !manifest.excludes(layer);
+            });
+
+        // combine the elevation layers we want into a single revision number.
+        for (auto& layer : elevationLayers)
+            if (layer->isOpen() && !manifest.excludes(layer.get()))
+                elevationRevision += layer->getRevision();
+
+        if (manifest.includesElevation() && (require.elevationTextures || require.normalTextures))
+        {
+            if (elevationLayers.empty())
+            {
+                model->elevation = {};
+            }
+            else if (model->elevation.revision != elevationRevision)
+            {
+                model->elevation = {};
+
+                osg::ref_ptr<ElevationTexture> elevTex;
+
+                const bool acceptLowerRes = false;
+
+                if (map->getElevationPool()->getTile(model->key, acceptLowerRes, elevTex, &_workingSet, progress))
+                {
+                    if (elevTex.valid())
+                    {
+                        model->elevation.revision = elevationRevision;
+                        model->elevation.texture = Texture::create(elevTex.get());
+                        model->elevation.texture->category() = LABEL_ELEVATION;
+                        madeUpdates = true;
+
+                        if (require.normalTextures && (_options.useNormalMaps() == true))
+                        {
+                            // Make a normal map if it doesn't already exist
+                            elevTex->generateNormalMap(map, &_workingSet, progress);
+
+                            if (elevTex->getNormalMapTexture())
+                            {
+                                elevTex->getNormalMapTexture()->setName(model->key.str() + ":normalmap");
+                                model->normalMap.texture = Texture::create(elevTex->getNormalMapTexture());
+                                model->normalMap.texture->category() = LABEL_NORMALMAP;
+                            }
+                        }
+
+                        // Keep the heightfield pointer around for legacy 3rd party usage (VRF)
+                        model->elevation.heightField = elevTex->getHeightField();
+                    }
+                }
+            }
+        }
+    }
+    
+    // add the mesh.
+    if (require.tileMesh && (manifest.includesElevation() || manifest.includesConstraints()))
+    {
+        auto meshLayer = map->getLayer<TerrainMeshLayer>();
+        if (meshLayer)
+        {
+            model->mesh = meshLayer->createTile(model->key, progress);
+            model->mesh.revision = meshLayer->getRevision();
+        }
+        else
+        {
+            std::vector<osg::ref_ptr<TerrainConstraintLayer>> clayers;
+            map->getOpenLayers<TerrainConstraintLayer>(clayers);
+            int combo_revision = elevationRevision;
+            for (auto& clayer : clayers)
+                combo_revision += clayer->getRevision();
+
+            if (model->mesh.revision != combo_revision)
+            {
+                TileMesher mesher;
+                mesher.setTerrainOptions(TerrainOptionsAPI(&_options));
+
+                TerrainConstraintQuery query(map);
+                MeshConstraints constraints;
+                query.getConstraints(model->key, constraints, progress);
+
+                // test.
+                MeshConstraint clamp;
+                clamp.clampMesh = true;
+                clamp.pool = map->getElevationPool();
+                constraints.emplace_back(std::move(clamp));
+
+                model->mesh = mesher.createMesh(model->key, constraints, progress);
+
+                if (model->mesh.indices == nullptr)
+                {
+                    model->mesh.indices = mesher.getOrCreateStandardIndices();
+                }
+
+                model->mesh.revision = combo_revision;
+            }
+        }
+        madeUpdates = true;
+    }
+
+    model->mapRevision = map->getDataModelRevision();
+
+    return madeUpdates;
 }
 
 TerrainTileModel*
@@ -301,28 +513,38 @@ TerrainTileModelFactory::addImageLayer(
 
         TerrainTileModel::ColorLayer layerModel;
         layerModel.layer = imageLayer;
+        layerModel.tileLayer = imageLayer;
         layerModel.texture = tex;
         layerModel.matrix = scaleBiasMatrix;
         layerModel.revision = imageLayer->getRevision();
-
-        if (imageLayer->isShared())
-        {
-            model->sharedLayerIndices.push_back(
-                model->colorLayers.size());
-        }
 
         if (imageLayer->isDynamic() || imageLayer->getAsyncLoading())
         {
             model->requiresUpdateTraversal = true;
         }
 
+        for (unsigned i = 0; i < model->colorLayers.size(); ++i)
+        {
+            auto& existingLayer = model->colorLayers[i];
+            if (existingLayer.layer->getUID() == imageLayer->getUID())
+            {
+                model->colorLayers[i] = layerModel;
+                return true;
+            }
+        }
+
+        // new layer...
+        if (imageLayer->isShared())
+        {
+            model->sharedLayerIndices.push_back(
+                model->colorLayers.size());
+        }
         model->colorLayers.push_back(std::move(layerModel));
+
         return true;
     }
 
     return false;
-
-    return &model->colorLayers.back();
 }
 
 void
@@ -390,6 +612,16 @@ TerrainTileModelFactory::addColorLayers(
         if (manifest.excludes(layer))
             continue;
 
+        for (auto& existing_color_layer : model->colorLayers)
+        {
+            if (existing_color_layer.layer->getUID() == layer->getUID() &&
+                existing_color_layer.layer->getRevision() == layer->getRevision())
+            {
+                // already have this layer at the proper revision
+                continue;
+            }
+        }
+
         ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer);
         if (imageLayer)
         {
@@ -404,10 +636,10 @@ TerrainTileModelFactory::addColorLayers(
         }
         else // non-image kind of TILE layer (e.g., splatting)
         {
-            TerrainTileModel::ColorLayer colorModel;
-            colorModel.layer = layer;
-            colorModel.revision = layer->getRevision();
-            model->colorLayers.push_back(std::move(colorModel));
+            TerrainTileModel::ColorLayer color;
+            color.layer = layer;
+            color.revision = layer->getRevision();
+            model->colorLayers.push_back(std::move(color));
         }
     }
 }
@@ -424,25 +656,25 @@ TerrainTileModelFactory::addElevation(
     OE_PROFILING_ZONE;
     OE_PROFILING_ZONE_TEXT("Elevation");
 
-    bool needElevation = manifest.includesElevation() || manifest.includesConstraints();
+    bool needToLoadElevation = false;
+
     ElevationLayerVector layers;
     map->getLayers(layers);
 
+    // combine the elevation layers we want into a single revision number.
     int combinedRevision = map->getDataModelRevision();
-    if (!manifest.empty())
-    {
-        for (const auto& layer : layers)
-        {
-            if (needElevation == false && !manifest.excludes(layer.get()))
-            {
-                needElevation = true;
-            }
+    for(auto& layer : layers)
+        if (layer->isOpen() && !manifest.excludes(layer.get()))
             combinedRevision += layer->getRevision();
-        }
-    }
-    if (!needElevation)
-        return;
 
+    // if we need elevation, and already have the correct revision, we are done.
+    if (manifest.includesElevation() && model->elevation.revision == combinedRevision)
+    {
+        return;
+    }
+
+    // clear out any existing data in preparation for load.
+    model->elevation = {};
 
     osg::ref_ptr<ElevationTexture> elevTex;
 
@@ -521,6 +753,11 @@ TerrainTileModelFactory::addLandCover(
 
     // any land cover layer means using them all:
     bool needLandCover = manifest.includesLandCover();
+
+    if (needLandCover && model->landCover.revision == combinedRevision)
+    {
+        return true;
+    }
 
     if (!manifest.empty())
     {
@@ -602,43 +839,6 @@ TerrainTileModelFactory::addStandaloneLandCover(
     }
 }
 
-void
-TerrainTileModelFactory::addMesh(
-    TerrainTileModel*            model,
-    const Map*                   map,
-    const TileKey&               key,
-    const TerrainEngineRequirements& reqs,
-    const CreateTileManifest&    manifest,
-    ProgressCallback*            progress)
-{
-    auto meshLayer = map->getLayer<TerrainMeshLayer>();
-    if (meshLayer)
-    {
-        model->mesh = meshLayer->createTile(key, progress);
-    }
-    else
-    {
-        TileMesher mesher;
-        mesher.setTerrainOptions(TerrainOptionsAPI(&_options));
-
-        TerrainConstraintQuery query(map);
-        MeshConstraints constraints;
-        query.getConstraints(key, constraints, progress);
-
-        // test.
-        MeshConstraint clamp;
-        clamp.clampMesh = true;
-        clamp.pool = map->getElevationPool();
-        constraints.emplace_back(std::move(clamp));
-
-        model->mesh = mesher.createMesh(key, constraints, progress);
-        
-        if (model->mesh.indices == nullptr)
-        {
-            model->mesh.indices = mesher.getOrCreateStandardIndices();
-        }
-    }
-}
 
 namespace
 {

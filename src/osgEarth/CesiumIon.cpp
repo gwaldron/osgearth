@@ -481,7 +481,7 @@ namespace
         unsigned int triangleCount;
         buf.read(reinterpret_cast<char*>(&triangleCount), sizeof(unsigned int));
 
-        osg::ref_ptr< osg::DrawElements > drawElements;
+        osg::ref_ptr< osg::DrawElementsUInt > drawElements;
 
         if (vertexData.vertexCount > 65536)
         {
@@ -521,7 +521,7 @@ namespace
                 }
             }
 
-            drawElements = new osg::DrawElementsUShort(GL_TRIANGLES);
+            drawElements = new osg::DrawElementsUInt(GL_TRIANGLES);
             for (unsigned int i = 0; i < indices.size(); ++i)
             {
                 drawElements->addElement(indices[i]);

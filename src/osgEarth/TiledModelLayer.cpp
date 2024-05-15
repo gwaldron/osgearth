@@ -37,12 +37,13 @@ namespace
         {
         }
 
-        virtual osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress) override
+        osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress) override
         {
-            return _layer->createTile(key, progress);
+            osg::ref_ptr<TiledModelLayer> layer;
+            return _layer.lock(layer) ? layer->createTile(key, progress) : osg::ref_ptr<osg::Node>();
         }
 
-        osg::observer_ptr< TiledModelLayer > _layer;
+        osg::observer_ptr<TiledModelLayer> _layer;
     };
 }
 
@@ -109,7 +110,7 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
         getProfile()->getIntersectingTiles(key, i_keys);
 
         if (i_keys.empty())
-            return {};
+            return nullptr;
 
         std::set<TileKey> unique_keys;
 

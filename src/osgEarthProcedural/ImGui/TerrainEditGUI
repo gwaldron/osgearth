@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_TERRAIN_EDIT_GUI
-#define OSGEARTH_IMGUI_TERRAIN_EDIT_GUI
+#pragma once
 
 #include <osgEarthProcedural/LifeMapLayer>
 #include <osgEarth/ImGui/ImGui>
@@ -213,6 +212,7 @@ namespace osgEarth
             unsigned _minLevel = 10u;
             bool _placingCrater = false;
             bool _placingDitch = false;
+            bool _eventsActivated = false;
             float _craterRadius = 1.0f;
             float _width = 5.0f;
             float _height = -3.0f;
@@ -271,6 +271,8 @@ namespace osgEarth
                     if (_placingDitch)
                         ImGui::TextColored(ImVec4(1, 1, 0, 1), "Click points; press ENTER to finish");
 
+                    updateEvents(view(ri));
+
                     if (ImGuiLTable::Begin("TerrainEdit"))
                     {
                         ImGuiLTable::SliderFloat("Width(m)", &_width, 1.0f, 50.0f);
@@ -299,19 +301,28 @@ namespace osgEarth
 
             void undo()
             {
-                GeoExtent ex = _elevDecal->getDecalExtent(_undoStack.top());
-                _elevDecal->removeDecal(_undoStack.top());
-                _lifemapDecal->removeDecal(_undoStack.top());
-                _landcoverDecal->removeDecal(_undoStack.top());
+                GeoExtent ex;
+                if (_elevDecal.valid()) {
+                     ex = _elevDecal->getDecalExtent(_undoStack.top());
+                    _elevDecal->removeDecal(_undoStack.top());
+                }
+                if (_lifemapDecal.valid())
+                    _lifemapDecal->removeDecal(_undoStack.top());
+                if (_landcoverDecal.valid())
+                    _landcoverDecal->removeDecal(_undoStack.top());
+
                 _undoStack.pop();
                 _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, ex, _minLevel, INT_MAX);
             }
 
             void clear()
             {
-                _elevDecal->clearDecals();
-                _lifemapDecal->clearDecals();
-                _landcoverDecal->clearDecals();
+                if (_elevDecal.valid())
+                    _elevDecal->clearDecals();
+                if (_lifemapDecal.valid())
+                    _lifemapDecal->clearDecals();
+                if (_landcoverDecal.valid())
+                    _landcoverDecal->clearDecals();
                 _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, GeoExtent::INVALID, _minLevel, INT_MAX);
             }
 
@@ -538,15 +549,31 @@ namespace osgEarth
                 _ditchCursor = new FeatureNode(_ditchFeature.get());
                 _ditchCursor->setNodeMask(0);
                 _mapNode->addChild(_ditchCursor);
+            }
 
-                EventRouter::get(view)
-                    .onClick([this](osg::View* v, float x, float y) { handleClick(v, x, y); })
-                    .onMove([this](osg::View* v, float x, float y) { handleMove(v, x, y); })
-                    .onKeyPress(EventRouter::KEY_Return, [this]() { finishDrawing(); })
-                    .onKeyPress(EventRouter::KEY_Escape, [this]() { cancelDrawing(); });
+            void updateEvents(osgViewer::View* view)
+            {
+                if (!_eventsActivated && (_placingCrater || _placingDitch))
+                {
+                    EventRouter::get(view)
+                        .onClick([this](osg::View* v, float x, float y) { handleClick(v, x, y); })
+                        .onMove([this](osg::View* v, float x, float y) { handleMove(v, x, y); })
+                        .onKeyPress(EventRouter::KEY_Return, [this](...) { finishDrawing(); })
+                        .onKeyPress(EventRouter::KEY_Escape, [this](...) { cancelDrawing(); });
+
+                    _eventsActivated = true;
+                }
+                else if (_eventsActivated && (!_placingCrater && !_placingDitch))
+                {
+                    EventRouter::get(view)
+                        .popClick()
+                        .popMove()
+                        .popKeyPress(EventRouter::KEY_Return)
+                        .popKeyPress(EventRouter::KEY_Escape);
+
+                    _eventsActivated = false;
+                }
             }
         };
     }
 }
-
-#endif // OSGEARTH_IMGUI_TERRAIN_GUI

@@ -39,6 +39,12 @@
 #define WEEJOBS_VERSION_NUMBER WEEJOBS_COMPUTE_VERSION(WEEJOBS_VERSION_MAJOR, WEEJOBS_VERSION_MINOR, WEEJOBS_VERSION_REV)
 #define WEEJOBS_VERSION_STRING WEEJOBS_STR(WEEJOBS_VERSION_MAJOR) "." WEEJOBS_STR(WEEJOBS_VERSION_MINOR) "." WEEJOBS_STR(WEEJOBS_VERSION_REV)
 
+#if __cplusplus >= 201703L
+#define WEEJOBS_NO_DISCARD [[nodiscard]]
+#else
+#define WEEJOBS_NO_DISCARD
+#endif
+
 /**
 * weejobs is an API for scheduling a task to run in the background.
 * Please read the README.md file for more information.
@@ -427,7 +433,7 @@ namespace WEEJOBS_NAMESPACE
         //! value to the continuation function. The continuation function in turn must
         //! return a value (cannot be void).
         template<typename F, typename R = typename detail::result_of_t<F(const T&, cancelable&)>>
-        inline future<R> then_dispatch(F func, const context& con = {});
+        inline WEEJOBS_NO_DISCARD future<R> then_dispatch(F func, const context& con = {});
 
         //! Add a continuation to this future. Instead of the functor returning a value,
         //! it will instead have the option of resolving the incoming future/promise object.
@@ -435,7 +441,7 @@ namespace WEEJOBS_NAMESPACE
         //! Note: for some reason when you use this variant you must specific the template
         //! argument, e.g. result.then<int>(auto i, promise<int> p)
         template<typename R>
-        inline future<R> then_dispatch(std::function<void(const T&, future<R>&)> func, const context& con = {});
+        inline WEEJOBS_NO_DISCARD future<R> then_dispatch(std::function<void(const T&, future<R>&)> func, const context& con = {});
 
         //! Add a continuation to this future. The functor only takes an input value and has no
         //! return value (fire and forget).
@@ -771,7 +777,7 @@ namespace WEEJOBS_NAMESPACE
     //! @param context Optional configuration for the asynchronous function call
     //! @return Future result of the async function call
     template<typename F, typename T = typename detail::result_of_t<F(cancelable&)>>
-    inline future<T> dispatch(F task, const context& context = {})
+    inline WEEJOBS_NO_DISCARD future<T> dispatch(F task, const context& context = {})
     {
         future<T> promise;
         bool can_cancel = context.can_cancel;
@@ -804,7 +810,7 @@ namespace WEEJOBS_NAMESPACE
     //! @param context Optional configuration for the asynchronous function call
     //! @return Future result of the async function call
     template<typename F, typename T = typename detail::result_of_t<F(cancelable&)>>
-    inline future<T> dispatch(F task, future<T> promise, const context& context = {})
+    inline WEEJOBS_NO_DISCARD future<T> dispatch(F task, future<T> promise, const context& context = {})
     {
         bool can_cancel = context.can_cancel;
 

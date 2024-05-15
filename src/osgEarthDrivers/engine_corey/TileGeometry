@@ -1,0 +1,96 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#pragma once
+#include "Common"
+#include "TileRenderModel"
+#include <osgEarth/TileMesher>
+#include <osg/Geometry>
+
+namespace osgEarth
+{
+    namespace Corey
+    {
+        using namespace osgEarth;
+
+        using DrawElementsBase = osg::DrawElementsUShort;
+
+        struct DrawElementsGL4Data : osg::Referenced
+        {
+            // Shareable because they are static and bindless
+            struct GLObjects : public BindlessShareableGLObjects {
+                GLBuffer::Ptr _ebo; // bindless buffer
+            };
+            mutable osg::buffered_object<GLObjects> _globjects;
+
+            void releaseGLObjects(osg::State* state) const {
+                if (state)
+                    GLObjects::get(_globjects, *state)._ebo = nullptr;
+            }
+
+            void resizeGLObjectBuffers(unsigned size) {
+                if (size > _globjects.size())
+                    _globjects.resize(size);
+            }
+        };
+
+        class TileGeometry : public osg::Geometry
+        {
+        public:
+            TileGeometry();
+
+            //! Make a SharedGeometry from a TileMesh
+            static TileGeometry* create(const TileMesh& mesh);
+
+            //! Whether this tile has constraints; if not, it can be shared
+            bool hasConstraints = false;
+
+            //! Vertex array for NVGL rendering
+            std::vector<GL4Vertex> verts;           
+
+            //! Mode of the SharedDrawElements primitiveset (cached)
+            GLenum mode = GL_TRIANGLES;
+
+            //! Generate the NVGL command for this geometry
+            const DrawElementsIndirectBindlessCommandNV& getOrCreateNVGLCommand(osg::State& state);
+
+        public: // osg::Drawable
+
+            void resizeGLObjectBuffers(unsigned int maxSize) override;
+            void releaseGLObjects(osg::State* state) const override;
+
+        private:
+            virtual ~TileGeometry()
+            {
+                releaseGLObjects(nullptr);
+            }
+
+            // Shareable because they are static and bindless
+            struct GLObjects : public BindlessShareableGLObjects
+            {
+                DrawElementsIndirectBindlessCommandNV _command;
+                GLBuffer::Ptr _vbo;
+            };
+            mutable osg::buffered_object<GLObjects> _globjects;
+
+            osg::ref_ptr<DrawElementsGL4Data> _drawElementsData;
+
+            friend struct DrawTileCommand;
+        };
+    }
+}

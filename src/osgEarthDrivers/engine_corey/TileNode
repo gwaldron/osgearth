@@ -1,0 +1,64 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#pragma once
+
+#include "Common"
+#include "TileRenderModel"
+#include "TileGeometry"
+
+#include <osgEarth/TerrainTileModel>
+#include <osg/MatrixTransform>
+
+namespace osgEarth
+{
+    namespace Corey
+    {
+        struct EngineData;
+
+        class TileNode : public osg::Group, public osgEarth::TerrainTile
+        {
+        public:
+            TileNode(const TileKey& key);
+
+            //! Sets a new (partial) data model for this tile.
+            //! @param model The new (potentially partial) data model to install
+            //! @param parent_model The full data model of the parent file, which this tile
+            //!   can use to inherit data not in its own data model.
+            //! @param ctx The engine context
+            void set(TerrainTileModel* model, const TerrainTileModel* parent_model, EngineData& data);
+
+        public:
+            TileKey _key;
+            osg::MatrixTransform* _xform = nullptr;
+            TileGeometry* _drawable = nullptr;
+            osg::ref_ptr<TerrainTileModel> _partialDataModel, _fullDataModel;
+            TileRenderModel _renderModel;
+            osg::Vec4f _tileKeyValue;
+            osg::Vec2f _morphConstants;
+            bool _dirty = false;
+
+        public: // TerrainTile interface
+            const TileKey& getKey() const override { return _key; }
+
+        private:
+            void updateSamplers(const TileRenderModel* parentRenderModel, EngineData& data);
+        };
+    }
+}
+

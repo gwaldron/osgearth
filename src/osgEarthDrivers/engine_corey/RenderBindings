@@ -1,0 +1,71 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include "Common"
+#include <osgEarth/Common>
+#include <osgEarth/optional>
+#include <osgEarth/Containers>
+#include <osg/Texture>
+
+namespace osgEarth
+{
+    namespace Corey
+    {
+        using namespace osgEarth;
+        using namespace osgEarth::Util;
+
+        /**
+         * Defines the usage information for a single texture sampler.
+         */
+        class SamplerBinding
+        {
+        public:
+            enum Usage
+            {
+                COLOR = 0,
+                COLOR_PARENT = 1,
+                ELEVATION = 2,
+                NORMAL = 3,
+                LANDCOVER = 4,
+                SHARED = 5   // non-core shared layers start at this index
+            };
+
+            int unit = -1;
+            optional<UID> sourceUID;
+            optional<Usage> usage;
+            std::string samplerName;
+            std::string matrixName;
+            osg::ref_ptr<osg::Texture> defaultTexture;
+
+            inline bool isActive() const {
+                return unit >= 0 || usage.isSet() || sourceUID.isSet();
+            }
+        };
+
+        /**
+         * Array of render bindings. This array is always indexed by the
+         * SamplerBinding::USAGE itself. So for example, RenderBindings[0] is always
+         * the COLOR usage, [2] is the ELEVATION usage, etc. Shared layer bindings
+         * (i.e., custom samplers) start at index SHARED and go up from there.
+         */
+        using RenderBindings = AutoArray<SamplerBinding>;
+
+    }
+}

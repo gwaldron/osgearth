@@ -1,0 +1,195 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include "TileRenderModel"
+#include "DrawState"
+#include "TileGeometry"
+#include <osgEarth/TerrainTileNode>
+#include <osgEarth/TileKey>
+#include <osg/Matrix>
+#include <osg/Geometry>
+#include <osg/PrimitiveSet>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Corey
+{
+    /**
+     * All data necessary to draw a single terrain tile.
+     */
+    struct DrawTileCommand : public osgEarth::TileState
+    {
+        // Tile key
+        const TileKey* _key;
+
+        // True if this tile intersects the extent of its source layer.
+        // We can achieve some optimizations by not rendering tiles outside
+        // of the layer extents in many cases, but we don't know until it's
+        // time to render.
+        bool _intersectsLayerExtent;
+
+        // ModelView matrix to apply before rendering this tile
+        osg::Matrix _modelViewMatrix;
+        osg::Matrix _localToWorld;
+
+        // Samplers that are common across all rendering passes
+        const Samplers* _commonSamplers;
+
+        // Samplers specific to one rendering pass
+        const Samplers* _colorSamplers;
+
+        // Tile geometry, if present (ref_ptr necessary?)
+        osg::ref_ptr<TileGeometry> _geom;
+
+        //TileDrawable* _tile;
+
+        // Tile key value to push to uniform just before drawing
+        osg::Vec4f _keyValue;
+
+        // Data revision # of the tile
+        unsigned _tileRevision;
+
+        // Coefficient used for tile vertex morphing
+        osg::Vec2f _morphConstants;
+
+        // Custom draw callback to call instead of rendering _geom
+        TileRenderer* _drawCallback;
+
+        // When drawing _geom, whether to render as GL_PATCHES 
+        // instead of GL_TRIANGLES (for patch layers)
+        bool _drawPatch;
+
+        // Distance from camera to center of tile
+        float _range;
+
+        // Start and end morphing distances for this tile
+        float _morphStartRange, _morphEndRange;
+
+        // Layer order for this tile. i.e., if this is zero, then this command
+        // is drawing a tile for the first LayerDrawable.
+        int _layerOrder;
+
+        // Order in which this tile appears within the layer
+        int _sequence;
+
+        // True if the tile has a custom constrainted mesh
+        bool _hasConstraints;
+
+        // Renders the tile.
+        inline void draw(osg::RenderInfo& ri) const {
+            _geom->draw(ri);
+        }
+
+        // Less than operator will ensure that tiles are sorted near to far
+        // to minimze overdraw.
+        bool operator < (const DrawTileCommand& rhs) const
+        {
+            // using LOD seems to be slightly faster than using range, probably
+            // because we also get nice grouping of shared geometry tiles that way.
+            if (_key->getLOD() > rhs._key->getLOD()) return true;
+            if (_key->getLOD() < rhs._key->getLOD()) return false;
+            return _geom.get() < rhs._geom.get();
+        }
+
+        bool operator == (const DrawTileCommand& rhs) const
+        {
+            return
+                // same tile
+                _key == rhs._key &&
+                // same revision
+                _tileRevision == rhs._tileRevision &&
+                // same matrix
+                _modelViewMatrix == rhs._modelViewMatrix &&
+                // same underlying geometry pointer - this is important
+                // if we're doing bindless NV rendering and have to 
+                // use a different GPU buffer address.
+                _geom.get() == rhs._geom.get();
+        }
+
+        DrawTileCommand() :
+            _commonSamplers(0L),
+            _colorSamplers(0L),
+            _geom(0L),
+            _drawCallback(0L),
+            _drawPatch(false),
+            _range(0.0f),
+            _layerOrder(INT_MAX),
+            _sequence(0),
+            _hasConstraints(false) { }
+
+        DrawTileCommand(DrawTileCommand&&) = default;
+        DrawTileCommand& operator = (const DrawTileCommand&) = default;
+        DrawTileCommand& operator = (DrawTileCommand&&) = default;
+
+        void accept(osg::PrimitiveFunctor& functor) const;
+        void accept(osg::PrimitiveIndexFunctor& functor) const;
+
+    public: // TileState
+
+        const TileKey& getKey() const override {
+            return *_key;
+        }
+
+        int getRevision() const override {
+            return _tileRevision;
+        }
+
+        int getSequence() const override {
+            return _sequence;
+        }
+
+        const osg::BoundingBox& getBBox() const override {
+            return _geom->getBoundingBox();
+        }
+
+        const osg::Matrix& getModelViewMatrix() const override {
+            return _modelViewMatrix;
+        }
+
+        const osg::Matrixd& getLocalToWorld() const override {
+            return _localToWorld;
+        }
+
+        float getMorphStartRange() const override {
+            return _morphStartRange;
+        }
+
+        float getMorphEndRange() const override {
+            return _morphEndRange;
+        }
+
+        //! Apply the GL state for this tile (all samplers and uniforms)
+        //! in preparation for rendering or computation
+        bool apply(
+            osg::RenderInfo& ri,
+            void* implData) const override;
+
+        void debug(
+            osg::RenderInfo& ri,
+            void* implData) const override;
+    };
+
+    /**
+     * Ordered list of tile drawing commands.
+     * List is faster than vector here (benchmarked)
+     */
+    typedef std::vector<DrawTileCommand> DrawTileCommands;
+
+} } // namespace 

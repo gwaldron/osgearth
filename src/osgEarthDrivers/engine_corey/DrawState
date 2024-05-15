@@ -1,0 +1,127 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_Corey_TERRAIN_DRAW_STATE_H
+#define OSGEARTH_Corey_TERRAIN_DRAW_STATE_H 1
+
+#include "RenderBindings"
+
+#include <osgEarth/TextureArena>
+
+#include <osg/RenderInfo>
+#include <osg/GLExtensions>
+#include <osg/StateSet>
+#include <osg/Program>
+
+#include <vector>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Corey
+{
+    /**
+     * Tracks the state of a single sampler through the draw process,
+     * to prevent redundant OpenGL texture binding and matrix uniform sets.
+     */
+    struct SamplerState
+    {
+        std::string _name; // Sampler name
+        optional<Texture::Ptr> _texture; // Texture currently bound
+        optional<osg::Matrixf> _matrix; // Matrix that is currently set
+        GLint _matrixUL = -1; // Matrix uniform location
+
+        void clear() {
+            _texture.clear();
+            _matrix.clear();
+        }
+    };
+
+    /**
+     * Tracks the state of all samplers used in render a tile,
+     * to prevent redundant OpenGL binds.
+     */
+    struct TileSamplerState
+    {
+        std::vector<SamplerState> _samplers;
+
+        void clear() {
+            for (unsigned i = 0; i<_samplers.size(); ++i)
+                _samplers[i].clear();
+        }
+    };
+
+    struct ProgramState
+    {
+        const osg::Program::PerContextProgram* _pcp = nullptr;
+
+        // uniform locations
+        GLint _tileKeyUL = -1;
+        GLint _parentTextureExistsUL = -1;
+        GLint _layerUidUL = -1;
+        GLint _layerOrderUL = -1;
+        GLint _morphConstantsUL = -1;
+
+        optional<osg::Vec2f> _morphConstants;
+        optional<bool> _parentTextureExists;
+        optional<int> _layerOrder;
+
+        TileSamplerState _samplerState;
+
+        void reset();
+
+        void init(
+            const osg::Program::PerContextProgram* pcp,
+            const RenderBindings* bindings);
+    };
+
+    /**
+     * Tracks the state of terrain drawing settings in a single frame,
+     * to prevent redundant OpenGL calls.
+     */
+    struct DrawState
+    {
+        using Ptr = std::shared_ptr<DrawState>;
+        static DrawState::Ptr create();
+
+        using ProgramStates = std::unordered_map<const void*, ProgramState>;
+        ProgramStates _perProgramStates;
+
+        const RenderBindings* _bindings = nullptr;
+        osg::BoundingSphere _bs;
+        osg::BoundingBox _box;
+
+        ProgramState& getProgramState(osg::RenderInfo& ri)
+        {
+            auto pcp = ri.getState()->getLastAppliedProgramObject();
+            ProgramState& programState = _perProgramStates[pcp];
+            if (programState._pcp == nullptr)
+            {
+                programState.init(pcp, _bindings);
+            }
+            return programState;
+        }
+
+        void resetAll(osg::RenderInfo& ri)
+        {
+            _perProgramStates.clear();
+        }
+    };
+
+} } // namespace 
+
+#endif // OSGEARTH_Corey_TERRAIN_DRAW_STATE_H

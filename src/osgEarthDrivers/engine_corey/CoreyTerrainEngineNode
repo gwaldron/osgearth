@@ -1,0 +1,187 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarth/TerrainEngineNode>
+#include <osgEarth/TerrainResources>
+#include <osgEarth/Map>
+#include <osgEarth/Revisioning>
+#include <osgEarth/Threading>
+#include <osgEarth/Containers>
+#include <osgEarth/FrameClock>
+#include <osgEarth/PagedNode>
+#include <osgEarth/Containers>
+#include <osgEarth/SimplePager>
+
+#include "EngineData"
+#include "RenderBindings"
+#include "SelectionInfo"
+#include <vector>
+#include <unordered_map>
+
+namespace osgEarth { namespace Corey
+{
+    using namespace osgEarth;
+
+    class CoreyTerrainEngineNode : public osgEarth::TerrainEngineNode
+    {
+    public:
+        CoreyTerrainEngineNode();
+
+    protected:
+        virtual ~CoreyTerrainEngineNode();
+
+    public:
+        
+        //! Forces regeneration of tiles in the given region.
+        void invalidateRegion(
+            const GeoExtent& extent,
+            unsigned minLevel,
+            unsigned maxLevel) override;
+
+        //! Forces regeneration of tiles in the given region for one layer.
+        void invalidateRegion(
+            const std::vector<const Layer*> layers,
+            const GeoExtent& extent,
+            unsigned minLevel,
+            unsigned maxLevel) override;
+
+        const TerrainEngineRequirements& getRequirements() const override {
+            return _require;
+        }
+
+        //! Access the stateset used to render the entire terrain.
+        osg::StateSet* getTerrainStateSet() override;
+
+        //! Get the stateset used to render the terrain surface.
+        osg::StateSet* getSurfaceStateSet() override;
+
+        //! Unique identifier of this engine instance
+        UID getUID() const override { return _uid; }
+
+        //! Generate a standalone tile geometry
+        osg::Node* createStandaloneTile(
+            const TerrainTileModel* model,
+            int createTileFlags,
+            unsigned referenceLOD,
+            const TileKey& subRegion) override;
+
+        //! Shutdown the engine and any running services
+        void shutdown() override;
+
+        //! Name of the job arena used to load terrain tiles
+        std::string getJobArenaName() const override;
+
+        //! Number of resident terrain tiles
+        unsigned getNumResidentTiles() const override;
+
+    public: // osg::Node
+
+        void traverse(osg::NodeVisitor& nv) override;
+
+        osg::BoundingSphere computeBound() const override;
+
+        void resizeGLObjectBuffers(unsigned maxSize) override;
+
+        void releaseGLObjects(osg::State* state) const override;
+
+    public: // MapCallback adapter functions
+
+        void onMapModelChanged( const MapModelChange& change ); // not virtual!
+
+    protected: // TerrainEngineNode protected
+
+        virtual void onSetMap() override;
+
+        virtual void updateTextureCombining() override { updateState(); }
+        
+        virtual void dirtyState() override;
+
+        virtual void dirtyTerrainOptions() override;
+
+    private:
+
+        void update_traverse(osg::NodeVisitor& nv);
+        void cull_traverse(osg::NodeVisitor& nv);
+
+        //! Reloads all the tiles in the terrain due to a data model change
+        void refresh(bool force =false);
+
+        //! Various methods that trigger when the Map model changes.
+        void addLayer(Layer* layer);
+        void addSurfaceLayer( Layer* layer );
+        void removeImageLayer( ImageLayer* layerRemoved );        
+        void addElevationLayer(Layer* layer);
+        void removeElevationLayer(Layer* layerRemoved );
+        void moveElevationLayer(Layer* layerMoved );
+        
+        //! refresh the statesets of the terrain and the imagelayer tile surface
+        void updateState(); 
+
+        //! one-time allocation of render units for the terrain
+        void setupRenderBindings();
+        
+        //! Adds a Layer to the cachedLayerExtents vector.
+        void cacheLayerExtentInMapSRS(Layer* layer); 
+
+        //! Recompute all cached layer extents
+        void cacheAllLayerExtentsInMapSRS();
+
+    private:
+        UID _uid;
+        bool _batchUpdateInProgress = false;
+        bool _refreshRequired = false;
+        bool _stateUpdateRequired = false;
+        bool _renderModelUpdateRequired = false;
+        bool _morphTerrainSupported = true;
+        bool _morphingSupported = true;
+
+        TerrainEngineRequirements _require;
+        EngineData _data;
+        
+        osg::ref_ptr<PagingManager> _terrain;
+        osg::ref_ptr<SimplePager> _pager;
+        osg::ref_ptr<osg::StateSet> _surfaceSS;
+        osg::ref_ptr<osg::StateSet> _imageLayerSS;
+
+        // Data that we maintain across frames on a per-camera basis.
+        using PersistentDataTable = vector_map<
+            osg::Camera*,
+            TerrainRenderData::PersistentData>;
+
+        Mutexed<PersistentDataTable> _persistent;
+
+        unsigned _frameLastUpdated = 0u;
+        FrameClock _clock;
+        std::atomic_bool _updatedThisFrame = { false };
+        UID _ppUID = 0;
+
+        // keys of tiles that require an update
+        // This is an ordered set in order to preserve LOD ordering.
+        mutable std::set<TileKey> _staleTiles;
+        mutable std::mutex _staleTiles_mutex;
+
+        using LoadFunction = std::function<osg::ref_ptr<TerrainTileModel>()>;
+        mutable std::list<jobs::future<osg::ref_ptr<TerrainTileModel>>> _loadQueue;
+        mutable std::mutex _queue_mutex;
+
+        void merge(TerrainTileModel*);
+    };
+
+} } // namespace osgEarth::Corey

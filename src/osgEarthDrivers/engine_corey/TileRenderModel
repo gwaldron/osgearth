@@ -1,0 +1,375 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include "Common"
+#include "RenderBindings"
+#include <osgEarth/Common>
+#include <osgEarth/Containers> // for AutoArray
+#include <osgEarth/Layer>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/PatchLayer>
+#include <osgEarth/TextureArena>
+#include <osg/Texture>
+#include <osg/Matrix>
+#include <vector>
+
+namespace osgEarth { namespace Corey
+{
+    using namespace osgEarth::Util;
+
+
+    // **** NVGL rendering support ****
+
+#define MAX_NUM_SHARED_SAMPLERS 16
+
+    // TODO: consider making this a simple UBO instead
+    // since it's constant data
+    struct GL4GlobalData // align to 16 bytes (std430)
+    {
+        float morphConstants[98];
+        float padding2[2];
+    };
+
+    struct GL4Tile // align to 16 bytes (std430)
+    {
+        GLfloat tileKey[4];
+        GLfloat modelViewMatrix[4 * 4];
+        GLfloat colorMat[4 * 4];
+        GLfloat parentMat[4 * 4];
+        GLfloat elevMat[4 * 4];
+        GLfloat normalMat[4 * 4];
+        GLfloat landcoverMat[4 * 4];
+        GLfloat sharedMat[MAX_NUM_SHARED_SAMPLERS][4 * 4];
+        GLint colorIndex;
+        GLint parentIndex;
+        GLint elevIndex;
+        GLint normalIndex;
+        GLint landcoverIndex;
+        GLint sharedIndex[MAX_NUM_SHARED_SAMPLERS];
+        GLint drawOrder; // todo: stuff this somewhere else?
+        float padding[2];
+    };
+
+    struct GL4Vertex
+    {
+        osg::Vec3f position;
+        osg::Vec3f normal;
+        osg::Vec3f uv;
+        osg::Vec3f neighborPosition;
+        osg::Vec3f neighborNormal;
+    };
+
+    /**
+     * A single texture and its matrix.
+     * This corresponds to a single SamplerBinding. If the texture matrix 
+     * is non-identity, that means the sampler inherits the texture from
+     * another sampler higher up in the scene graph.
+     */
+    class Sampler
+    {
+    public:
+        //! Construct
+        Sampler() 
+            : _revision(0u) { }
+
+        //! Construct
+        Sampler(const Sampler& rhs) :
+            // no _futuretexture
+            _texture(rhs._texture),
+            _matrix(rhs._matrix),
+            _revision(rhs._revision)
+        {
+            //nop
+        }
+
+        // pointer to the sampler's active texture data
+        Texture::Ptr _texture;
+
+        // scale and bias matrix for accessing the texture - will be non-identity
+        // if the texture is inherited from an ancestor tile
+        osg::Matrixf _matrix;
+
+        // point to a texture whose image is still being loaded asynchronously
+        Texture::Ptr _futureTexture;
+
+        // revision of the data in this sampler (taken from its source layer)
+        unsigned _revision;
+
+        //! True is this sampler is the rightful owner of _texture.
+        inline bool ownsTexture() const { 
+            return _texture && _matrix.isIdentity();
+        }
+
+        //! True is this sampler is NOT the rightful owner of _texture.
+        inline bool inheritsTexture() const {
+            return !_texture || !_matrix.isIdentity();
+        }
+
+        //! Revision of the data model use to initialize this sampler.
+        inline unsigned revision() const { 
+            return _revision;
+        }
+
+        //! Set this sampler's matrix to inherit
+        inline void inheritFrom(const Sampler& rhs, const osg::Matrixf& scaleBias) {
+            _texture = rhs._texture;
+            _matrix = rhs._matrix;
+            _revision = rhs._revision;
+            // do NOT copy and overwrite _futureTexture!
+            _matrix.preMult(scaleBias);
+        }
+    };
+    typedef AutoArray<Sampler> Samplers;
+
+    /**
+     * A single rendering pass for color data.
+     * Samplers (one per RenderBinding) specific to one rendering pass of a tile.
+     * These are just the COLOR and COLOR_PARENT samplers.
+     */
+    class RenderingPass
+    {
+    public:
+        RenderingPass() :
+            _sourceUID(-1),
+            _samplers(SamplerBinding::COLOR_PARENT+1),
+            _visibleLayer(0L),
+            _tileLayer(0L)
+            { }
+
+        RenderingPass(const RenderingPass& rhs) :
+            _sourceUID(rhs._sourceUID),
+            _samplers(rhs._samplers),
+            _layer(rhs._layer),
+            _visibleLayer(rhs._visibleLayer),
+            _tileLayer(rhs._tileLayer)
+        {
+            //nop
+        }
+
+        ~RenderingPass()
+        {
+            releaseGLObjects(nullptr);
+        }
+        
+        // UID of the layer corresponding to this rendering pass
+        UID sourceUID() const { return _sourceUID; }
+
+        // the COLOR and COLOR_PARENT (optional) samplers for this rendering pass
+        Samplers& samplers() { return _samplers; }
+        const Samplers& samplers() const  { return _samplers; }
+        
+        Sampler& sampler(int binding) { return _samplers[binding]; }
+        const Sampler& sampler(int binding) const { return _samplers[binding]; }
+
+        const Layer* layer() const { return _layer.get(); }
+        const VisibleLayer* visibleLayer() const { return _visibleLayer; }
+        const TileLayer* tileLayer() const { return _tileLayer; }
+
+        // whether the color sampler in this rendering pass are native
+        // or inherited from another tile
+        bool ownsTexture() const { return _samplers[SamplerBinding::COLOR].ownsTexture(); }
+        bool inheritsTexture() const { return !ownsTexture(); }
+
+        void inheritFrom(const RenderingPass& rhs, const osg::Matrix& scaleBias) {
+            _sourceUID = rhs._sourceUID;
+            _samplers = rhs._samplers;
+            _layer = rhs._layer;
+            _visibleLayer = rhs._visibleLayer;
+            _tileLayer = rhs._tileLayer;
+
+            for (unsigned s = 0; s < samplers().size(); ++s)
+                sampler(s)._matrix.preMult(scaleBias);
+        }
+
+        void releaseGLObjects(osg::State* state) const
+        {
+            for (unsigned s = 0; s < _samplers.size(); ++s)
+            {
+                const Sampler& sampler = _samplers[s];
+                if (sampler.ownsTexture())
+                    sampler._texture->releaseGLObjects(state);
+                if (sampler._futureTexture)
+                    sampler._futureTexture->releaseGLObjects(state);
+            }
+        }
+
+        void resizeGLObjectBuffers(unsigned size)
+        {
+            for (unsigned s = 0; s < _samplers.size(); ++s)
+            {
+                const Sampler& sampler = _samplers[s];
+                if (sampler.ownsTexture())
+                    sampler._texture->resizeGLObjectBuffers(size);
+                if (sampler._futureTexture)
+                    sampler._futureTexture->resizeGLObjectBuffers(size);
+            }
+        }
+
+        void setLayer(const Layer* layer) {
+            _layer = layer;
+            if (layer) {
+                _visibleLayer = dynamic_cast<const VisibleLayer*>(layer);
+                _tileLayer = dynamic_cast<const TileLayer*>(layer);
+                _sourceUID = layer->getUID();
+                for (unsigned s = 0; s<_samplers.size(); ++s) {
+                    _samplers[s]._revision = layer->getRevision();
+                }
+            }
+        }
+
+        void setSampler(
+            SamplerBinding::Usage binding,
+            Texture::Ptr texture,
+            const osg::Matrix& matrix,
+            int sourceRevision)
+        {
+            Sampler& sampler = _samplers[binding];
+            sampler._texture = texture;
+            sampler._matrix = matrix;
+            sampler._revision = sourceRevision;
+        }
+
+    private:
+        /** UID of the layer responsible for this rendering pass (usually an ImageLayer) */
+        UID _sourceUID;
+
+        /** Samplers specific to this rendering pass (COLOR, COLOR_PARENT) */
+        Samplers _samplers;
+
+        /** Layer respsonible for this rendering pass */
+        osg::ref_ptr<const Layer> _layer;
+
+        /** VisibleLayer responsible for this rendering pass (is _layer is a VisibleLayer) */
+        const VisibleLayer* _visibleLayer;
+        
+        /** VisibleLayer responsible for this rendering pass (is _layer is a TileLayer) */
+        const TileLayer* _tileLayer;
+
+        friend class TileRenderModel;
+    };
+
+    /**
+     * Unordered collection of rendering passes.
+     */
+    typedef std::vector<RenderingPass> RenderingPasses;
+
+    /**
+     * Everything necessary to render a single terrain tile.
+     * Corey renders the terrain in multiple passes, one pass for each visible layer.
+     */
+    class TileRenderModel
+    {
+    public:
+        /** Samplers that are bound for every rendering pass (elevation, normal map, etc.) */
+        Samplers _commonSamplers;
+
+        /** Samplers bound for each visible layer (color) */
+        RenderingPasses _passes;
+
+        DrawElementsIndirectBindlessCommandNV _command;
+
+        /** Add a new rendering pass to the end of the list. */
+        RenderingPass& addPass()
+        {
+            _passes.resize(_passes.size()+1);
+            return _passes.back();
+        }
+
+        RenderingPass& copyPass(const RenderingPass& rhs)
+        {
+            _passes.push_back(rhs);
+            return _passes.back();
+        }
+
+        /** Look up a rendering pass by the corresponding layer ID */
+        const RenderingPass* getPass(UID uid) const
+        {
+            for (unsigned i = 0; i < _passes.size(); ++i) {
+                if (_passes[i].sourceUID() == uid)
+                    return &_passes[i];
+            }
+            return 0L;
+        }
+
+        /** Look up a rendering pass by the corresponding layer ID */
+        RenderingPass* getPass(UID uid)
+        {
+            for (unsigned i = 0; i < _passes.size(); ++i) {
+                if (_passes[i].sourceUID() == uid)
+                    return &_passes[i];
+            }
+            return 0L;
+        }
+
+        void setCommonSampler(
+            unsigned binding,
+            Texture::Ptr texture,
+            int sourceRevision)
+        {
+            Sampler& sampler = _commonSamplers[binding];
+            sampler._texture = texture;
+            sampler._matrix.makeIdentity();
+            sampler._revision = sourceRevision;
+        }
+
+        void setCommonSampler(
+            unsigned binding,
+            Texture::Ptr texture,
+            const osg::Matrixf& matrix,
+            int sourceRevision)
+        {
+            Sampler& sampler = _commonSamplers[binding];
+            sampler._texture = texture;
+            sampler._matrix = matrix;
+            sampler._revision = sourceRevision;
+        }
+
+        void clearCommonSampler(unsigned binding)
+        {
+            Sampler& sampler = _commonSamplers[binding];
+            sampler._texture = nullptr;
+            sampler._matrix.makeIdentity();
+            sampler._revision = 0;
+        }
+
+        /** Deallocate GPU objects associated with this model */
+        void releaseGLObjects(osg::State* state) const
+        {
+            for (unsigned s = 0; s< _commonSamplers.size(); ++s)
+                if (_commonSamplers[s].ownsTexture())
+                    _commonSamplers[s]._texture->releaseGLObjects(state);
+
+            for (unsigned p = 0; p<_passes.size(); ++p)
+                _passes[p].releaseGLObjects(state);
+        }
+
+        /** Resize GL buffers associated with this model */
+        void resizeGLObjectBuffers(unsigned size)
+        {
+            for (unsigned s = 0; s< _commonSamplers.size(); ++s)
+                if (_commonSamplers[s].ownsTexture())
+                    _commonSamplers[s]._texture->resizeGLObjectBuffers(size);
+
+            for (unsigned p = 0; p<_passes.size(); ++p)
+                _passes[p].resizeGLObjectBuffers(size);
+        }
+    };
+
+} }

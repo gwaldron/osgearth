@@ -1,0 +1,206 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2008-2014 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include "DrawTileCommand"
+#include "DrawState"
+#include "TileRenderModel"
+
+#include <osgEarth/ImageLayer>
+#include <osgEarth/GLUtils>
+#include <osgEarth/TextureArena>
+
+#include <vector>
+
+using namespace osgEarth;
+
+namespace osgEarth { namespace Corey
+{
+    class TerrainRenderData;
+    struct EngineData;
+
+    /**
+     * Drawable for single "Layer" i.e. rendering pass. 
+     * It is important that LayerDrawables be rendered in the order in which
+     * they appear. Since all LayerDrawables share a common bounds, this 
+     * should happen automatically, but let's keep an eye out for trouble.
+     */
+    class LayerDrawable : public osg::Drawable
+    {
+    public:
+        LayerDrawable();
+
+        // The colletion of tiles to render for this layer
+        DrawTileCommands _tiles;
+
+        // Determines whether to use the default surface shader program
+        Layer::RenderType _renderType = Layer::RENDERTYPE_TERRAIN_SURFACE;
+
+        // Pointer back to the actual Map layer, if there is one
+        const Layer* _layer = nullptr;
+
+        // If _layer is a VisibleLayer, this will be set as well, otherwise nullptr
+        const VisibleLayer* _visibleLayer = nullptr;
+
+        // If _layer is an ImageLayer, this will be set as well, otherwise nullptr
+        const ImageLayer* _imageLayer = nullptr;
+
+        // If _layer is a PatchLayer, this will be set, otherwise nullptr
+        const PatchLayer* _patchLayer = nullptr;
+
+        // Layer render order, which is pushed into a Uniform at render time.
+        // This value is assigned at cull time by CoreyTerrainEngineNode.
+        int _drawOrder = 0;
+
+        // Layer render order (only terrain surface layers)
+        int _surfaceDrawOrder = 0;
+
+        // The last layer to render will have this flag set, which will
+        // prompt the render to dirty the osg::State to prevent corruption.
+        // This flag is set at cull time by CoreyTerrainEngineNode.
+        bool _clearOsgState = false;
+
+        // Reference the terrain-wide state
+        DrawState::Ptr _drawState;
+
+        // Whether to render this layer.
+        bool _draw = true;
+
+        // shared context
+        EngineData* _data = nullptr;
+
+    public: // osg::Drawable
+        
+        // All LayerDrawables share the common terrain bounds.
+        osg::BoundingSphere computeBound() const override { return _drawState->_bs; }
+        osg::BoundingBox computeBoundingBox() const override { return _drawState->_box; }
+        bool supports(const osg::PrimitiveFunctor&) const override { return true; }
+        void accept(osg::PrimitiveFunctor& functor) const override;
+        bool supports(const osg::PrimitiveIndexFunctor&) const override { return true; }
+        void accept(osg::PrimitiveIndexFunctor&) const override;
+
+        void accept(osg::NodeVisitor& nv) override {
+            osg::Drawable::accept(nv);
+        }
+
+    protected:
+
+        // overriden to prevent OSG from releasing GL objects on an attached stateset.
+        virtual ~LayerDrawable();
+
+    private:
+    };
+
+
+    /**
+     * Drawable for single "Layer" i.e. rendering pass.
+     * It is important that LayerDrawables be rendered in the order in which
+     * they appear. Since all LayerDrawables share a common bounds, this
+     * should happen automatically, but let's keep an eye out for trouble.
+     */
+    class LayerDrawableGL3 : public LayerDrawable
+    {
+    public:
+        LayerDrawableGL3();
+
+    public: // osg::Drawable
+
+        void drawImplementation(osg::RenderInfo& ri) const override;
+
+    protected:
+
+        // overriden to prevent OSG from releasing GL objects on an attached stateset.
+        virtual ~LayerDrawableGL3();
+    };
+
+
+    /**
+     * Drawable for single "Layer" i.e. rendering pass.
+     * It is important that LayerDrawables be rendered in the order in which
+     * they appear. Since all LayerDrawables share a common bounds, this
+     * should happen automatically, but let's keep an eye out for trouble.
+     */
+    class LayerDrawableNVGL : public LayerDrawable
+    {
+    public:
+        LayerDrawableNVGL();
+
+    public: // osg::Drawable
+
+        void drawImplementation(osg::RenderInfo& ri) const override;
+        void releaseGLObjects(osg::State*) const override;
+        void resizeGLObjectBuffers(unsigned size) override;
+        void accept(osg::NodeVisitor& nv) override;
+
+    protected:
+
+        virtual ~LayerDrawableNVGL();
+
+    private:
+
+        // GL objects maintained entirely on a per-State/GC basis.
+        // Since this is a Drawable, the data here will differ per view
+        // and per camera, and therefore cannot be shared across graphics
+        // contexts no matter what.
+        struct GLObjects : public PerStateGLObjects
+        {
+            // ssbo containing globally shared constant data
+            GLBuffer::Ptr shared;
+
+            // ssbo containing per-tile render info
+            GLBuffer::Ptr tiles;
+
+            // VAO for rendering with bindless buffers
+            GLVAO::Ptr vao;
+
+            // bindless draw commands
+            GLBuffer::Ptr commands;
+
+            osg::GLExtensions* ext;
+
+            void(GL_APIENTRY * glMultiDrawElementsIndirectBindlessNV)
+                (GLenum, GLenum, const GLvoid*, GLsizei, GLsizei, GLint);
+
+            void(GL_APIENTRY * glVertexAttribFormat)
+                (GLuint, GLint, GLenum, GLboolean, GLuint);
+        };
+
+        struct RenderState
+        {
+            RenderState();
+
+            bool dirty;
+
+            DrawTileCommands tiles;
+            std::vector<GL4Tile> tilebuf;
+
+            std::vector<DrawElementsIndirectBindlessCommandNV> commands;
+            osg::buffered_object<GLObjects> globjects;
+        };
+        mutable RenderState _rs;
+
+        void refreshRenderState();
+    };
+
+
+    // Straight list of LayerDrawables.
+    using LayerDrawableList = std::vector<osg::ref_ptr<LayerDrawable>>;
+    using LayerDrawableMap = std::unordered_map<UID, osg::ref_ptr<LayerDrawable>>;
+
+} } // namespace 

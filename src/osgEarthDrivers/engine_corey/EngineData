@@ -1,0 +1,83 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+* Copyright 2008-2014 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#pragma once
+
+#include "Common"
+#include "TileNode"
+#include "RenderBindings"
+#include "TerrainCuller"
+#include "SelectionInfo"
+
+#include <osgEarth/TerrainTileModel>
+#include <osgEarth/Progress>
+#include <osgEarth/TerrainEngineNode>
+
+#include <osgUtil/CullVisitor>
+
+using namespace osgEarth;
+
+namespace osgEarth {
+    class FrameClock;
+}
+
+namespace osgEarth
+{
+    namespace Corey
+    {
+        class SelectionInfo;
+
+        struct EngineData
+        {
+            CullData cullData; // TODO: per camera, please
+
+            inline osg::ref_ptr<TileNode> getTileNode(const TileKey& key) const {
+                osg::ref_ptr<TileNode> result;
+                std::lock_guard<std::mutex> lock(tiles_mutex);
+                auto i = tiles.find(key);
+                if (i != tiles.end()) {
+                    i->second.lock(result);
+                    if (!result.valid())
+                        tiles.erase(key);
+                }
+                return result;
+            }
+
+            inline void storeTileNode(TileNode* node) {
+                OE_SOFT_ASSERT_AND_RETURN(node, void());
+                std::lock_guard<std::mutex> lock(tiles_mutex);
+                tiles[node->_key] = node;
+            }
+
+            osg::ref_ptr<TileNodeCuller> tileNodeCullCallback;
+            osg::ref_ptr<TileDrawableCuller> tileDrawableCullCallback;
+            mutable std::unordered_map<TileKey, osg::observer_ptr<TileNode>> tiles;
+            mutable std::mutex tiles_mutex;
+            osg::ref_ptr<const Map> map;
+            TerrainOptionsAPI options;
+            RenderBindings renderBindings;
+            SelectionInfo selectionInfo;
+            FrameClock* clock = nullptr;
+            osg::ref_ptr<TextureArena> textures;
+
+            // extents of each layer, in the Map's SRS. UID = vector index (for speed)
+            LayerExtentMap cachedLayerExtents;
+            bool cachedLayerExtentsComputeRequired = true;
+        };
+    }
+}

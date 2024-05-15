@@ -107,6 +107,13 @@ MapNodeHelper::load(osg::ArgumentParser& args, osgViewer::ViewerBase* viewer) co
         myReadOptions->setOptionString(myReadOptions->getOptionString() + " OSGEARTH_USE_NVGL");
     }
 
+    // terrain engine?
+    std::string engine;
+    if (args.read("--engine", engine))
+    {
+        Registry::instance()->overrideTerrainEngineDriverName() = engine;
+    }
+
     // caching?
     if (args.read("--cache-only"))
     {

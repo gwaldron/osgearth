@@ -165,7 +165,8 @@ namespace osgEarth { namespace Util
         template<typename FUNC_TYPE>
         struct Action {
             FUNC_TYPE func;
-            bool eat;
+            bool eat = true;
+            Action(const FUNC_TYPE& f, bool e) : func(f), eat(e) { }
         };
 
         struct Push {
@@ -175,21 +176,27 @@ namespace osgEarth { namespace Util
             void set(bool value, int mask) { _value = value, _modkeymask = mask; }
             operator bool() { return _value; }
         };
-
-        std::unordered_map<KeySymbol, std::list<Action<Function>>, EnumClassHash> _keypress_simple;
+        
+        //std::unordered_map<KeySymbol, std::list<Action<Function>>, EnumClassHash> _keypress_simple;
         std::unordered_map<KeySymbol, std::list<Action<ViewFunction>>, EnumClassHash> _keypress;
         std::unordered_map<int, Push> _pushes;
         std::unordered_map<int, std::list<Action<ViewFunction>>> _click;
         std::list<Action<ViewFunction>> _move;
         std::list<Action<ViewFunction>> _drag;
 
-        EventRouter& onKeyPress(KeySymbol key, const Function& func, bool eat=true) {
-            _keypress_simple[key].emplace_back(Action<Function>{ func, eat });
+        //EventRouter& onKeyPress(KeySymbol key, const Function& func, bool eat=true) {
+        //    _keypress_simple[key].emplace_back(Action<Function>(func, eat));
+        //    return *this;
+        //}
+
+        EventRouter& onKeyPress(KeySymbol key, const ViewFunction& func, bool eat=true) {
+            _keypress[key].emplace_back(Action<ViewFunction>(func, eat));
             return *this;
         }
 
-        EventRouter& onKeyPress(KeySymbol key, const ViewFunction& func, bool eat=true) {
-            _keypress[key].emplace_back(Action<ViewFunction>{ func, eat });
+        EventRouter& popKeyPress(KeySymbol key) {
+            if (!_keypress[key].empty())
+                _keypress[key].pop_back();
             return *this;
         }
 
@@ -199,22 +206,41 @@ namespace osgEarth { namespace Util
         }
 
         EventRouter& onClick(int button, const ViewFunction& func, bool eat=true) {
-            _click[button].emplace_back(Action<ViewFunction>{ func, eat });
+            _click[button].emplace_back(Action<ViewFunction>(func, eat));
             return *this;
         }
 
         EventRouter& onClick(int button, int modkey, const ViewFunction& func, bool eat=true) {
-            _click[button | (modkey<<3)].emplace_back(Action<ViewFunction>{ func, eat });
+            _click[button | (modkey<<3)].emplace_back(Action<ViewFunction>(func, eat));
+            return *this;
+        }
+        
+        EventRouter& popClick(int button = LEFT_MOUSE_BUTTON, int modkey = 0) {
+            if (!_click[button | (modkey << 3)].empty())
+                _click[button | (modkey << 3)].pop_back();
+            _pushes.clear();
             return *this;
         }
 
         EventRouter& onMove(const ViewFunction& func, bool eat=false) {
-            _move.emplace_back(Action<ViewFunction>{ func, eat });
+            _move.emplace_back(Action<ViewFunction>(func, eat));
+            return *this;
+        }
+
+        EventRouter& popMove() {
+            if (!_move.empty())
+                _move.pop_back();
             return *this;
         }
 
         EventRouter& onDrag(const ViewFunction& func, bool eat=false) {
-            _drag.emplace_back(Action<ViewFunction>{ func, eat });
+            _drag.emplace_back(Action<ViewFunction>(func, eat));
+            return *this;
+        }
+
+        EventRouter& popDrag() {
+            if (!_drag.empty())
+                _drag.pop_back();
             return *this;
         }
 
@@ -223,10 +249,10 @@ namespace osgEarth { namespace Util
             unsigned count = 0u;
 
             if (ea.getEventType() == ea.KEYUP) {
-                for (auto& action : _keypress_simple[(KeySymbol)ea.getKey()]) {
-                    action.func();
-                    if (action.eat) count++;
-                }
+                //for (auto& action : _keypress_simple[(KeySymbol)ea.getKey()]) {
+                //    action.func();
+                //    if (action.eat) count++;
+                //}
                 for (auto& action : _keypress[(KeySymbol)ea.getKey()]) {
                     action.func(aa.asView(), ea.getX(), ea.getY()); 
                     if (action.eat) count++;
@@ -234,6 +260,10 @@ namespace osgEarth { namespace Util
             }
             else if (ea.getEventType() == ea.PUSH) {
                 _pushes[ea.getButton()].set(true, ea.getModKeyMask());
+                int combo = ea.getButton() | ea.getModKeyMask();
+                for (auto& action : _click[combo]) {
+                    if (action.eat) count++;
+                }
             }
             else if (ea.getEventType() == ea.RELEASE) {
                 Push& push = _pushes[ea.getButton()];

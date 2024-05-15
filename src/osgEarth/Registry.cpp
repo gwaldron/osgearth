@@ -82,7 +82,7 @@ namespace
 }
 
 Registry::Registry() :
-    _terrainEngineDriver("corey"),
+    _terrainEngineDriver("rex"),
     _cacheDriver("filesystem"),
     _overrideCachePolicyInitialized(false),
     _devicePixelRatio(1.0f),

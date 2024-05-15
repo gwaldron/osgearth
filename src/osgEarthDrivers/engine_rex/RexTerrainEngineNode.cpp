@@ -249,7 +249,7 @@ RexTerrainEngineNode::onSetMap()
 
     _morphingSupported = true;
     auto options = getOptions();
-    if (options.getLODMethod() ==TerrainLODMethod::SCREEN_SPACE)
+    if (options.getLODMethod() ==LODMethod::SCREEN_SPACE)
     {
         OE_INFO << LC << "LOD method = pixel size; pixel tile size = " << options.getTilePixelSize() << std::endl;
 

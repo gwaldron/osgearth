@@ -167,7 +167,7 @@ namespace
         {
             std::string buf(message);
             std::vector<std::string> parts;
-            Util::StringTokenizer(buf, parts, "\n");
+            Util::StringTokenizer(buf, parts, "\n", {}, true, false);
 
             for (auto& part : parts)
             {

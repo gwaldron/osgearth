@@ -106,8 +106,6 @@ Layer::TraversalCallback::traverse(osg::Node* node, osg::NodeVisitor* nv) const
 
 Layer::Layer() :
     _options(&_optionsConcrete),
-    _revision(1),
-    _mutex(NULL),
     _layerName(osg::Object::_name) // for the debugger
 {
     init();
@@ -116,8 +114,6 @@ Layer::Layer() :
 Layer::Layer(Layer::Options* optionsPtr, const Layer::Options* optionsPtr0) :
     _options(optionsPtr ? optionsPtr : &_optionsConcrete),
     _options0(optionsPtr0 ? optionsPtr0 : &_optionsConcrete0),
-    _revision(1),
-    _mutex(NULL),
     _layerName(osg::Object::_name) // for the debugger
 {
     // init() will be called by base class
@@ -132,9 +128,8 @@ Layer::Layer(const Layer& rhs, const osg::CopyOp& op) :
 
 Layer::~Layer()
 {
-    OE_DEBUG << LC << "~Layer\n";
-    if (_mutex)
-        delete _mutex;
+    OE_DEBUG << LC << "~Layer" << std::endl;
+    // close(); ?
 }
 
 void
@@ -331,10 +326,7 @@ Layer::init()
 {
     _uid = osgEarth::createUID();
     _renderType = RENDERTYPE_NONE;
-    _status.set(Status::ResourceUnavailable,
-        getOpenAutomatically() ? "Layer closed" : "Layer disabled");
-    _isClosing = false;
-    _isOpening = false;
+    _status.set(Status::ResourceUnavailable, getOpenAutomatically() ? "Layer closed" : "Layer disabled");
 
     // For detecting scene graph changes at runtime
     _sceneGraphCallbacks = new SceneGraphCallbacks(this);
@@ -350,8 +342,6 @@ Layer::init()
     {
         osg::Object::setName("[" + std::string(className()) + "]");
     }
-
-    _mutex = new Threading::ReadWriteMutex();
 }
 
 Status
@@ -362,8 +352,6 @@ Layer::open()
     {
         return getStatus();
     }
-
-    Threading::ScopedWriteLock lock(layerMutex());
 
     // be optimistic :)
     _status.set(Status::NoError);
@@ -381,13 +369,11 @@ Layer::open()
         getOrCreateStateSet()->setDefine(options().shaderDefine().get());
     }
 
-    _isOpening = true;
     setStatus(openImplementation());
     if (isOpen())
     {
         fireCallback(&LayerCallback::onOpen);
     }
-    _isOpening = false;
 
     return getStatus();
 }
@@ -451,13 +437,11 @@ Layer::close()
 {    
     if (isOpen())
     {
-        Threading::ScopedWriteLock lock(layerMutex());
-        _isClosing = true;
+        Threading::ScopedWriteLock lock(_inuse_mutex);
         closeImplementation();
         _status.set(Status::ResourceUnavailable, "Layer closed");
         _runtimeCacheId = "";
         fireCallback(&LayerCallback::onClose);
-        _isClosing = false;
     }
     return getStatus();
 }

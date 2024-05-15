@@ -429,7 +429,7 @@ ImageLayer::applyPostLayer(const GeoImage& canvas, const TileKey& key, Layer* po
 GeoImage
 ImageLayer::createImage(const GeoImage& canvas, const TileKey& key, ProgressCallback* progress)
 {
-    Threading::ScopedReadLock lock(layerMutex());
+    Threading::ScopedReadLock lock(inUseMutex());
     return createImageImplementation(canvas, key, progress);
 }
 
@@ -559,7 +559,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
         }
         else
         {
-            Threading::ScopedReadLock lock(layerMutex());
+            Threading::ScopedReadLock lock(inUseMutex());
             result = createImageImplementation(key, progress);
         }
     }
@@ -736,7 +736,7 @@ ImageLayer::assembleImage(
                 parentKey.makeParent())
             {
                 {
-                    Threading::ScopedReadLock lock(layerMutex());
+                    Threading::ScopedReadLock lock(inUseMutex());
                     image = createImageImplementation(parentKey, progress);
                 }
 
@@ -813,7 +813,7 @@ ImageLayer::writeImage(const TileKey& key, const osg::Image* image, ProgressCall
     if (getStatus().isError())
         return getStatus();
 
-    Threading::ScopedReadLock lock(layerMutex());
+    Threading::ScopedReadLock lock(inUseMutex());
     return writeImageImplementation(key, image, progress);
 }
 

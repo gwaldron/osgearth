@@ -27,6 +27,7 @@
 #include <osgEarth/SceneGraphCallback>
 #include <osgEarth/Utils>
 #include <osgEarth/LoadableNode>
+#include <osgEarth/CullingUtils>
 #include <queue>
 #include <list>
 #include <memory>
@@ -167,8 +168,19 @@ namespace osgEarth { namespace Util
         void setPriority(float value) {
             _priority = value;
         }
+
         float getPriority() const {
             return _priority;
+        }
+
+        //! The LOD refinement mode (range versus SSE). Make sure you
+        //! have set the appropriate min/max range or min/max pixels.
+        void setLODMethod(const LODMethod& value) {
+            _useRange = (value == LODMethod::CAMERA_DISTANCE);
+        }
+
+        LODMethod getLODMethod() const {
+            return _useRange ? LODMethod::CAMERA_DISTANCE : LODMethod::SCREEN_SPACE;
         }
 
         //! Mark the content as "in use" so that it will not
@@ -209,7 +221,6 @@ namespace osgEarth { namespace Util
         friend class PagingManager;
 
         Loader _load_function;
-        //std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load_function;
 
         void* _token = nullptr;
         class PagingManager* _pagingManager = nullptr;

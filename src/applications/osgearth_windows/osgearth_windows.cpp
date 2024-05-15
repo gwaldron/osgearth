@@ -280,12 +280,12 @@ main(int argc, char** argv)
     }
 
     OE_NOTICE << "Press 'n' to create a new view" << std::endl;
-    EventRouter::get(view).onKeyPress(EventRouter::KEY_N, [&]() { 
+    EventRouter::get(view).onKeyPress(EventRouter::KEY_N, [&](...) { 
         std::cout << "Creating new view" << std::endl;
         app.addView(Stringify()<<"View " << app._viewer.getNumViews()); });
 
     OE_NOTICE << "Press 'r' to call releaseGLObjects" << std::endl;
-    EventRouter::get(view).onKeyPress(EventRouter::KEY_R, [&]() { 
+    EventRouter::get(view).onKeyPress(EventRouter::KEY_R, [&](...) { 
         app.releaseGLObjects(nullptr);
     });
 

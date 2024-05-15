@@ -50,7 +50,7 @@ MapNode* makeMiniMapNode( )
     map->addLayer(osm);
 
     TerrainOptions terrainOptions;
-    terrainOptions.lodMethod() = TerrainLODMethod::SCREEN_SPACE;
+    terrainOptions.lodMethod() = LODMethod::SCREEN_SPACE;
 
     MapNode::Options mapNodeOptions;
     mapNodeOptions.terrain() = terrainOptions;

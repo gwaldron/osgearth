@@ -372,61 +372,67 @@ PagingManager::merge(PagedNode2* host)
 {
     scoped_lock_if lock(_mergeMutex, _threadsafe);
 
-    ToMerge toMerge;
-    toMerge._node = host;
-    toMerge._revision = host->_revision;
-    _mergeQueue.push(std::move(toMerge));
+    _mergeQueue.emplace(ToMerge{ host, host->_revision });
     _metrics->postprocessing++;
 }
 
 void
 PagingManager::update()
 {
-    scoped_lock_if lock(_trackerMutex, _threadsafe);
-
-    _tracker.flush(_mergesPerFrame, [this](osg::ref_ptr<PagedNode2>& node)
-        {
-            // if the node is no longer in the scene graph, expunge it
-            if (node->referenceCount() == 1)
-            {
-                return true;
-            }
-
-            // Don't expire nodes that are still within range even if they haven't passed cull.
-            if (node->_lastRange < node->getMaxRange())
-            {
-                return false;
-            }
-
-            if (node->getAutoUnload())
-            {
-                node->unload();
-                return true;
-            }
-            return false;
-        });
-
-    // Reset the lastRange on the nodes for the next frame.
-    for (auto& entry : _tracker._list)
     {
-        if (entry._data.valid())
+        scoped_lock_if lock(_trackerMutex, _threadsafe);
+
+        _tracker.flush(_mergesPerFrame, [this](osg::ref_ptr<PagedNode2>& node)
+            {
+                // if the node is no longer in the scene graph, expunge it
+                if (node->referenceCount() == 1)
+                {
+                    return true;
+                }
+
+                // Don't expire nodes that are still within range even if they haven't passed cull.
+                if (node->_lastRange < node->getMaxRange())
+                {
+                    return false;
+                }
+
+                if (node->getAutoUnload())
+                {
+                    node->unload();
+                    return true;
+                }
+                return false;
+            });
+
+        // Reset the lastRange on the nodes for the next frame.
+        for (auto& entry : _tracker._list)
         {
-            entry._data->_lastRange = FLT_MAX;
+            if (entry._data.valid())
+            {
+                entry._data->_lastRange = FLT_MAX;
+            }
         }
     }
 
     // Handle merges
-    unsigned count = 0u;
-    while (_mergeQueue.empty() == false && count < _mergesPerFrame)
+    std::list<ToMerge> toMerge;
     {
-        ToMerge& front = _mergeQueue.front();
-        osg::ref_ptr<PagedNode2> next;
-        if (front._node.lock(next))
+        scoped_lock_if lock(_mergeMutex, _threadsafe);
+        unsigned count = 0u;
+        while (!_mergeQueue.empty() && count++ < 64u) //_mergesPerFrame)
         {
-            if (next->merge(front._revision))
-                ++count;
+            toMerge.emplace_back(_mergeQueue.front());
+            _mergeQueue.pop();
         }
-        _mergeQueue.pop();
+    }
+
+    for(auto& entry : toMerge)
+    {
+        osg::ref_ptr<PagedNode2> next;
+        if (entry._node.lock(next))
+        {
+            next->merge(entry._revision);
+        }
         _metrics->postprocessing--;
     }
 }

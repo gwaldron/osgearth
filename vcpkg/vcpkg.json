@@ -20,7 +20,6 @@
         "osg",
         "protobuf",
         "sqlite3",
-        "tinyxml",
         "rocksdb",
         "spdlog",
         "meshoptimizer" 

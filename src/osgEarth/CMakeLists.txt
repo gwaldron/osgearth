@@ -870,19 +870,11 @@ if (spdlog_FOUND)
     target_link_libraries(${LIB_NAME} PRIVATE spdlog::spdlog)
 endif()
 
-# TinyXML support?
-if (TinyXML_FOUND)
-    set(OSGEARTH_HAVE_TINYXML ON)
-    include_directories(${TinyXML_INCLUDE_DIRS})
-    target_link_libraries(${LIB_NAME} PRIVATE ${TinyXML_LIBRARIES})
-    add_definitions(-DTIXML_USE_STL)
-endif()
-
 # MBTiles support?
 if(SQLite3_FOUND)
     set(OSGEARTH_HAVE_SQLITE3 ON)
     set(OSGEARTH_HAVE_MBTILES ON)
-    include_directories(${SQLITE3_INCLUDE_DIR})
+    include_directories(${SQLite3_INCLUDE_DIR})
     target_link_libraries(${LIB_NAME} PRIVATE ${SQLite3_LIBRARIES})
 endif()
 

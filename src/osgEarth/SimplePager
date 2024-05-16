@@ -25,12 +25,15 @@
 #include <osgEarth/Profile>
 #include <osgEarth/Progress>
 #include <osgEarth/Map>
+#include <osgEarth/Callbacks>
 #include <osgEarth/SceneGraphCallback>
+#include <osgEarth/CullingUtils>
 #include <osg/Group>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
+    class PagedNode2;
 
     class OSGEARTH_EXPORT SimplePager : public osg::Group
     {
@@ -55,10 +58,19 @@ namespace osgEarth { namespace Util
         void setMaxLevel(unsigned int maxLevel) { _maxLevel = maxLevel; }
 
         float getRangeFactor() const { return _rangeFactor; }
-        void setRangeFactor(float value) { _rangeFactor = value; }
+        void setRangeFactor(float value);
 
         float getMaxRange() const { return _maxRange; }
         void setMaxRange(float value);
+
+        float getMaxPixels() const { return _maxPixels; }
+        void setMaxPixels(float value);
+
+        float getMinPixels() const { return _minPixels; }
+        void setMinPixels(float value);
+
+        void setLODMethod(const LODMethod& value);
+        LODMethod getLODMethod() const { return _useRange ? LODMethod::CAMERA_DISTANCE : LODMethod::SCREEN_SPACE; }
 
         float getPriorityScale() const { return _priorityScale; }
         void setPriorityScale(float value) { _priorityScale = value; }
@@ -73,9 +85,19 @@ namespace osgEarth { namespace Util
         void setClusterCullingEnabled(bool value);
         bool getClusterCullingEnabled() const;
 
+        //! Whether to use the bounds of loaded data to compute the paging bounds of that
+        //! data's children. Default = false. (By default, it will use the tile key bounds
+        //! and the built-in ElevationRanges to compute paging bounds.)
+        //! This is optimal when you know every level will be populated by geometry that
+        //! fits approximately inside its parent's bounds (e.g., terrain tiles).
+        void setUsePayloadBoundsForChildren(bool value);
+        bool getUsePayloadBoundsForChildren() const;
+
         using CreateNodeFunction = std::function<osg::ref_ptr<osg::Node>(const TileKey& key, ProgressCallback* progress)>;
         void setCreateNodeFunction(CreateNodeFunction func) { _createNodeFunction = func; }
 
+        using CreatePagedNodeFunction = std::function<PagedNode2*(const TileKey&)>;
+        void setCreatePagedNodeFunction(CreatePagedNodeFunction func) { _createPagedNodeFunction = func; }
 
         //! Scene graph callbacks for notification of changes. Call before calling build().
         void setSceneGraphCallbacks(SceneGraphCallbacks* value) { _sceneGraphCallbacks = value; }
@@ -84,34 +106,22 @@ namespace osgEarth { namespace Util
         //! Gets the profile for the SimplePager.
         const osgEarth::Profile* getProfile() const;
 
-        //! Creates a node for the given TileKey.  Doesn't do anything with paging, just gets the raw data.
-        //! Subclasses override this method to provide their data for TileKeys
-        virtual osg::ref_ptr<osg::Node> createNode(
-            const TileKey& key,
-            ProgressCallback* progress);
+        //! Creates a payload for the given TileKey.
+        //! Doesn't do anything with paging, just gets the raw data.
+        //! Subclasses override this method to provide their data for TileKeys, OR you can
+        //! call setCreateNodeFunction and createNode will call that.
+        virtual osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress);
 
-        /**
-            * Callback structure for pager events
-            */
-        struct Callback : public osg::Referenced
-        {
-            //! Called after a new tile is created, but before it's merged into the live
-            //! scene graph. Runs in a pager thread.
-            virtual void onCreateNode(const TileKey& key, osg::Node* node) { }
-        };
-
-        //! Adds a pager callback.
-        void addCallback(Callback* callback);
-
-        //! Removes a pager callback.
-        void removeCallback(Callback* callback);
+        //! Callback fired when a node is created.
+        Callback<void(const TileKey&, osg::Node*)> onCreateNode;
 
     public:
 
-        //! (INTERNAL) Loads the geometry hierarchy for this key.
-        osg::ref_ptr<osg::Node> loadKey(
-            const TileKey& key,
-            ProgressCallback* progress);
+        //! (INTERNAL) Creates a group containing 4 PagedNodes,
+        //! one for each child of the given TileKey.
+        osg::ref_ptr<osg::Node> createPagedChildrenOf(const TileKey& parent, ProgressCallback* progress);
+
+        void traverse(osg::NodeVisitor&) override;
 
     protected:
 
@@ -126,8 +136,11 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Node> createChildNode(const TileKey& key, ProgressCallback* progress);
 
         bool _additive = false;
+        bool _useRange = true;
         double _rangeFactor = 6.0;
         float _maxRange = FLT_MAX;
+        float _minPixels = 0.0f;
+        float _maxPixels = FLT_MAX;
         unsigned int _minLevel = 0;
         unsigned int _maxLevel = 30;
         float _priorityScale = 1.0f;
@@ -135,17 +148,14 @@ namespace osgEarth { namespace Util
         bool _canCancel = true;
         bool _done = false;
         bool _clusterCullingEnabled = true;
+        bool _usePayloadBoundsForChildren = false;
 
         osg::observer_ptr<const osgEarth::Map> _map;
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const Profile> _mapProfile;
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
-
         CreateNodeFunction _createNodeFunction;
-
-        mutable std::mutex _mutex;
-        using Callbacks = std::vector<osg::ref_ptr<Callback>>;
-        Callbacks _callbacks;
+        CreatePagedNodeFunction _createPagedNodeFunction;
 
         void fire_onCreateNode(const TileKey& key, osg::Node* node);
     };

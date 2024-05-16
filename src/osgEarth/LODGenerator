@@ -1,0 +1,33 @@
+#ifndef OSGEARTH_LODGENERATOR_H
+#define OSGEARTH_LODGENERATOR_H
+
+#include <osgEarth/Common>
+#include <osg/Node>
+
+#ifdef OSGEARTH_HAVE_MESH_OPTIMIZER
+
+
+namespace osgEarth
+{
+    using namespace osgEarth;
+
+    class OSGEARTH_EXPORT LODGenerator
+    {
+    public:
+        struct LODOptions
+        {
+            float threshold;            
+            float rangeFactor;
+            bool aggressive;
+        };
+
+        osg::Node* generateLODs(osg::Node* node, const std::vector<LODOptions>& options);
+    };
+
+
+}
+#else
+#pragma message("Warning: MeshOptimizer not available. LODGenerator will not be available.")
+#endif
+
+#endif

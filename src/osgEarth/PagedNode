@@ -27,6 +27,7 @@
 #include <osgEarth/SceneGraphCallback>
 #include <osgEarth/Utils>
 #include <osgEarth/LoadableNode>
+#include <osgEarth/CullingUtils>
 #include <queue>
 #include <list>
 #include <memory>
@@ -161,12 +162,26 @@ namespace osgEarth { namespace Util
             _refinePolicy = value;
         }
 
-        float getPriority() const {
-            return _lastPriority;
+        //! Priority to use if loading manually via the load() function.
+        //! If this node is culled in the scene graph, this value will be
+        //! overwritten.
+        void setPriority(float value) {
+            _priority = value;
         }
 
-        //! Starts the content loading for this node
-        void startLoad(float priority, const osg::Object* host);
+        float getPriority() const {
+            return _priority;
+        }
+
+        //! The LOD refinement mode (range versus SSE). Make sure you
+        //! have set the appropriate min/max range or min/max pixels.
+        void setLODMethod(const LODMethod& value) {
+            _useRange = (value == LODMethod::CAMERA_DISTANCE);
+        }
+
+        LODMethod getLODMethod() const {
+            return _useRange ? LODMethod::CAMERA_DISTANCE : LODMethod::SCREEN_SPACE;
+        }
 
         //! Mark the content as "in use" so that it will not
         //! be removed if setAutoUnload is true.
@@ -199,10 +214,13 @@ namespace osgEarth { namespace Util
 
         virtual ~PagedNode2();
 
+        //! Starts the content loading for this node
+        void startLoad(const osg::Object* host);
+
     private:
         friend class PagingManager;
 
-        std::function<osg::ref_ptr<osg::Node>(Cancelable*)> _load_function;
+        Loader _load_function;
 
         void* _token = nullptr;
         class PagingManager* _pagingManager = nullptr;
@@ -226,8 +244,9 @@ namespace osgEarth { namespace Util
         std::atomic_int _revision = { 0 };
         bool _autoUnload = true;
         float _lastRange = FLT_MAX;
-        mutable float _lastPriority = 0.0f;
+        mutable float _priority = 0.0f;
         RefinePolicy _refinePolicy = REFINE_REPLACE;
+        std::string _jobpoolName;
 
         bool merge(int revision);
         void traverseChildren(osg::NodeVisitor& nv);
@@ -242,7 +261,7 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT PagingManager : public osg::Group
     {
     public:
-        PagingManager();
+        PagingManager(const std::string& jobpoolname = { "oe.nodepager" });
 
         //! Maximum number of nodes to merge into the scene graph per update pass
         void setMaxMergesPerFrame(unsigned value) {
@@ -250,6 +269,11 @@ namespace osgEarth { namespace Util
         }
         unsigned getMaxMergesPerFrame() const {
             return _mergesPerFrame;
+        }
+
+        //! Number of nodes under management
+        unsigned getNumTrackedNodes() const {
+            return _tracker.size();
         }
 
         //! Subordinates call this to inform the paging manager they are still alive.
@@ -262,7 +286,6 @@ namespace osgEarth { namespace Util
         //! Manually call an update on the PagingManager.  This should only be used if you are loading data outside of a traditional frameloop and want to merge data.
         void update();
 
-
     protected:
         virtual ~PagingManager();
 
@@ -273,10 +296,10 @@ namespace osgEarth { namespace Util
         bool _threadsafe = true;
         Mutex _trackerMutex;
         SentryTracker<osg::ref_ptr<PagedNode2>> _tracker;
-        //std::list<PagedNode2*> _trash;
         using UpdateFunc = std::function<void(Cancelable*)>;
         UpdateFunc _updateFunc;
-        jobs::jobpool::metrics_t* _metrics;
+        jobs::jobpool::metrics_t* _metrics = nullptr;
+        std::string _jobpoolName;
 
         mutable Mutex _mergeMutex;
         struct ToMerge {

@@ -55,7 +55,7 @@
     </PowerlineModel>
 
     <TFSFeatures name="power-lines">
-        <url>http://readymap.org/readymap/mbtiles/osm/</url>
+        <url>https://readymap.org/readymap/mbtiles/osm/</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>

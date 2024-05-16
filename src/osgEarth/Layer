@@ -481,12 +481,12 @@ namespace osgEarth
         osg::ref_ptr<SceneGraphCallbacks> _sceneGraphCallbacks;
         osg::ref_ptr<TraversalCallback> _traversalCallback;
         Hints _hints;
-        std::atomic_int _revision;
+        std::atomic_int _revision = { 1 };
         std::string _runtimeCacheId;
         osg::ref_ptr<osgDB::Options> _readOptions;
         osg::ref_ptr<CacheSettings> _cacheSettings;
         std::vector<osg::ref_ptr<LayerShader> > _shaders;
-        mutable Threading::ReadWriteMutex* _mutex;
+        mutable Threading::ReadWriteMutex _inuse_mutex;
         bool _isClosing;
         bool _isOpening;
 
@@ -518,7 +518,7 @@ namespace osgEarth
         //! subclass access to a mutex that serializes the 
         //! Layer open and close methods with respect to any asynchronous
         //! functions that require the layer to remain open
-        Threading::ReadWriteMutex& layerMutex() const { return *_mutex; }
+        Threading::ReadWriteMutex& inUseMutex() const { return _inuse_mutex; }
 
         //! are we in the middle of a close() call?
         bool isClosing() const { return _isClosing; }
@@ -554,25 +554,25 @@ namespace osgEarth
         friend class MapNode;
     };
 
-    typedef std::vector< osg::ref_ptr<Layer> > LayerVector;
+    using LayerVector = std::vector<osg::ref_ptr<Layer>>;
 
 
     template<typename T, typename V>
     void Layer::setOptionThatRequiresReopen(T& target, const V& value) {
         if (target != value) {
             bool wasOpen = isOpen();
-            if (wasOpen && !isOpening() && !isClosing()) close();
+            if (wasOpen) close();
             target = value;
-            if (wasOpen && !isOpening() && !isClosing()) open();
+            if (wasOpen) open();
         }
     }
     template<typename T>
     void Layer::resetOptionThatRequiresReopen(T& target) {
         if (target.isSet()) {
             bool wasOpen = isOpen();
-            if (wasOpen && !isOpening() && !isClosing()) close();
+            if (wasOpen) close();
             target.unset();
-            if (wasOpen && !isOpening() && !isClosing()) open();
+            if (wasOpen) open();
         }
     }
     template<typename T>

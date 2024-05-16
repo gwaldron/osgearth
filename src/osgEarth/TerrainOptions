@@ -19,23 +19,16 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_TERRAIN_OPTIONS_H
-#define OSGEARTH_TERRAIN_OPTIONS_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/Color>
+#include <osgEarth/CullingUtils>
 #include <osg/LOD>
 
 namespace osgEarth
 {
-    //! Method to use when determining when to switch terrain levels of detail.
-    enum class TerrainLODMethod
-    {
-        CAMERA_DISTANCE = osg::LOD::DISTANCE_FROM_EYE_POINT,
-        SCREEN_SPACE = osg::LOD::PIXEL_SIZE_ON_SCREEN
-    };
-
     // Options structure for a terrain engine (internal)
     class OSGEARTH_EXPORT TerrainOptions : public DriverConfigOptions
     {
@@ -62,7 +55,7 @@ namespace osgEarth
         OE_OPTION(unsigned, maxTilesToUnloadPerFrame, ~0u);
         OE_OPTION(unsigned, minResidentTiles, 0u);
         OE_OPTION(bool, castShadows, false);
-        OE_OPTION(TerrainLODMethod, lodMethod, TerrainLODMethod::CAMERA_DISTANCE);
+        OE_OPTION(LODMethod, lodMethod, LODMethod::CAMERA_DISTANCE);
         OE_OPTION(float, tilePixelSize, 512.0f);
         OE_OPTION(float, heightFieldSkirtRatio, 0.0f);
         OE_OPTION(Color, color, Color::White);
@@ -182,8 +175,8 @@ namespace osgEarth
 
         //! Mode to use when calculating LOD switching distances.
         //! Choices are TerrainLODMode::CAMERA_DISTANCE (default) or TerrainLODMode::SCREEN_SPACE
-        void setLODMethod(const TerrainLODMethod& value);
-        const TerrainLODMethod& getLODMethod() const;
+        void setLODMethod(const LODMethod& value);
+        const LODMethod& getLODMethod() const;
 
         //! Size of the tile, in pixels, when using rangeMode = PIXEL_SIZE_ON_SCREEN
         void setTilePixelSize(const float& value);
@@ -303,5 +296,3 @@ namespace osgEarth
     };
 
 } // namespace osgEarth
-
-#endif // OSGEARTH_TERRAIN_OPTIONS_H

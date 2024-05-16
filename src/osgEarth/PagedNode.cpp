@@ -26,12 +26,9 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-#define PAGEDNODE_ARENA_NAME "oe.nodepager"
-
 PagedNode2::PagedNode2()
 {
     _job.name = (typeid(*this).name());
-    _job.pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);
 }
 
 PagedNode2::~PagedNode2()
@@ -56,7 +53,9 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         {
             osg::ref_ptr<PagingManager> pm;
             if (ObjectStorage::get(&nv, pm))
+            {
                 _pagingManager = pm.get();
+            }
         }
     }
 
@@ -65,13 +64,12 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
         if (nv.getVisitorType() == nv.CULL_VISITOR)
         {
             bool inRange = false;
-            //float priority = 0.0f;
 
             if (_useRange) // meters
             {
                 float range = std::max(0.0f, nv.getDistanceToViewPoint(getBound().center(), true) - getBound().radius());
                 inRange = (range >= _minRange && range <= _maxRange);
-                _lastPriority = -range * _priorityScale;
+                _priority = -range * _priorityScale;
             }
             else // pixels
             {
@@ -80,7 +78,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
                 {
                     float pixels = cullStack->clampedPixelSize(getBound()) / cullStack->getLODScale();
                     inRange = (pixels >= _minPixels && pixels <= _maxPixels);
-                    _lastPriority = pixels * _priorityScale;
+                    _priority = pixels * _priorityScale;
                 }
             }
 
@@ -88,7 +86,7 @@ PagedNode2::traverse(osg::NodeVisitor& nv)
             {
                 if (_load_function && _loaded.empty() && !_loadGate.exchange(true))
                 {
-                    startLoad(_lastPriority, &nv);
+                    startLoad(&nv);
                 }
 
                 // traverse children
@@ -172,7 +170,7 @@ PagedNode2::merge(int revision)
         OE_SOFT_ASSERT_AND_RETURN(_loaded.value()->getNumParents() == 0, false);
 
         addChild(_loaded.value());
-
+        
         if (_callbacks.valid())
             _callbacks->firePostMergeNode(_loaded.value().get());
 
@@ -208,7 +206,7 @@ PagedNode2::computeBound() const
 }
 
 void
-PagedNode2::startLoad(float priority, const osg::Object* host)
+PagedNode2::startLoad(const osg::Object* host)
 {
     OE_SOFT_ASSERT_AND_RETURN(_load_function != nullptr, void());
 
@@ -217,10 +215,10 @@ PagedNode2::startLoad(float priority, const osg::Object* host)
 
     // Configure the jobs to run in a specific pool and with a dynamic priority.
     jobs::context context;
-    context.pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);
+    context.pool = jobs::get_pool(_pagingManager->_jobpoolName);
     context.priority = [pnode_weak]() {
             osg::ref_ptr<PagedNode2> pnode;
-            return pnode_weak.lock(pnode) ? pnode->_lastPriority : -FLT_MAX;
+            return pnode_weak.lock(pnode) ? pnode->getPriority() : -FLT_MAX;
         };
 
     // Job that will load the node and optionally compile it.
@@ -281,7 +279,7 @@ PagedNode2::load()
 {
     if (_load_function && _loaded.empty() && !_loadGate.exchange(true))
     {
-        startLoad(0.0f, nullptr);
+        startLoad(nullptr);
     }
 }
 
@@ -314,12 +312,13 @@ PagedNode2::isHighestResolution() const
     return getLoadFunction() == nullptr;
 }
 
-PagingManager::PagingManager()
+PagingManager::PagingManager(const std::string& jobpoolname) :
+    _jobpoolName(jobpoolname)
 {
     setCullingActive(false);
     ADJUST_UPDATE_TRAV_COUNT(this, +1);
 
-    auto pool = jobs::get_pool(PAGEDNODE_ARENA_NAME);
+    auto pool = jobs::get_pool(_jobpoolName);
     pool->set_concurrency(4u);
     _metrics = pool->metrics();
 }
@@ -373,63 +372,67 @@ PagingManager::merge(PagedNode2* host)
 {
     scoped_lock_if lock(_mergeMutex, _threadsafe);
 
-    ToMerge toMerge;
-    toMerge._node = host;
-    toMerge._revision = host->_revision;
-    _mergeQueue.push(std::move(toMerge));
+    _mergeQueue.emplace(ToMerge{ host, host->_revision });
     _metrics->postprocessing++;
 }
 
 void
 PagingManager::update()
 {
-    scoped_lock_if lock(_trackerMutex, _threadsafe);
-
-    _tracker.flush(
-        _mergesPerFrame,
-        [this](osg::ref_ptr<PagedNode2>& node) -> bool
-        {
-            // if the node is no longer in the scene graph, expunge it
-            if (node->referenceCount() == 1)
-            {
-                return true;
-            }
-
-            // Don't expire nodes that are still within range even if they haven't passed cull.
-            if (node->_lastRange < node->getMaxRange())
-            {
-                return false;
-            }
-
-            if (node->getAutoUnload())
-            {
-                node->unload();
-                return true;
-            }
-            return false;
-        });
-
-    // Reset the lastRange on the nodes for the next frame.
-    for (auto& entry : _tracker._list)
     {
-        if (entry._data.valid())
+        scoped_lock_if lock(_trackerMutex, _threadsafe);
+
+        _tracker.flush(_mergesPerFrame, [this](osg::ref_ptr<PagedNode2>& node)
+            {
+                // if the node is no longer in the scene graph, expunge it
+                if (node->referenceCount() == 1)
+                {
+                    return true;
+                }
+
+                // Don't expire nodes that are still within range even if they haven't passed cull.
+                if (node->_lastRange < node->getMaxRange())
+                {
+                    return false;
+                }
+
+                if (node->getAutoUnload())
+                {
+                    node->unload();
+                    return true;
+                }
+                return false;
+            });
+
+        // Reset the lastRange on the nodes for the next frame.
+        for (auto& entry : _tracker._list)
         {
-            entry._data->_lastRange = FLT_MAX;
+            if (entry._data.valid())
+            {
+                entry._data->_lastRange = FLT_MAX;
+            }
         }
     }
 
     // Handle merges
-    unsigned count = 0u;
-    while (_mergeQueue.empty() == false && count < _mergesPerFrame)
+    std::list<ToMerge> toMerge;
     {
-        ToMerge& front = _mergeQueue.front();
-        osg::ref_ptr<PagedNode2> next;
-        if (front._node.lock(next))
+        scoped_lock_if lock(_mergeMutex, _threadsafe);
+        unsigned count = 0u;
+        while (!_mergeQueue.empty() && count++ < 64u) //_mergesPerFrame)
         {
-            if (next->merge(front._revision))
-                ++count;
+            toMerge.emplace_back(_mergeQueue.front());
+            _mergeQueue.pop();
         }
-        _mergeQueue.pop();
+    }
+
+    for(auto& entry : toMerge)
+    {
+        osg::ref_ptr<PagedNode2> next;
+        if (entry._node.lock(next))
+        {
+            next->merge(entry._revision);
+        }
         _metrics->postprocessing--;
     }
 }

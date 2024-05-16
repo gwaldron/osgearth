@@ -350,10 +350,17 @@ namespace osgEarth { namespace Util
             _list.clear();
             _list.emplace_front(nullptr, nullptr); // the sentry marker
             _sentryptr = _list.begin();
+            _total = 0;
+        }
+
+        std::size_t size() const
+        {
+            return _total;
         }
 
         List _list;
         ListIterator _sentryptr;
+        std::atomic_uint _total = { 0u };
 
         inline void* use(const T& data, void* token)
         {
@@ -375,13 +382,13 @@ namespace osgEarth { namespace Util
                 Token* ptr = new Token();
                 _list.emplace_front(data, ptr); // ListEntry
                 *ptr = _list.begin();
+                ++_total;
                 return ptr;
             }
         }
 
-        inline void flush(
-            unsigned maxCount,
-            std::function<bool(T& obj)> dispose)
+        template<class CALLABLE>
+        inline void flush(unsigned maxCount, CALLABLE&& dispose)
         {
             // After cull, all visited tiles are in front of the sentry, and all
             // non-visited tiles are behind it. Start at the sentry position and
@@ -394,11 +401,8 @@ namespace osgEarth { namespace Util
             {
                 ListEntry& le = *i;
 
-                bool disposed = true;
-
                 // user disposal function
-                if (dispose != nullptr)
-                    disposed = dispose(le._data);
+                bool disposed = dispose(le._data);
 
                 if (disposed)
                 {
@@ -412,6 +416,7 @@ namespace osgEarth { namespace Util
                     // remove it from the tracker list:
                     _list.erase(tmp);
                     ++count;
+                    --_total;
                 }                
             }
 

@@ -346,7 +346,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
     {
         // In PSOS mode, subdivide when the on-screen size of a tile exceeds the maximum
         // allowable on-screen tile size in pixels.
-        if (_context->options().getLODMethod() == TerrainLODMethod::SCREEN_SPACE)
+        if (_context->options().getLODMethod() == LODMethod::SCREEN_SPACE)
         {
             float tileSizeInPixels = -1.0;
 

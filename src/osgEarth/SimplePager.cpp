@@ -54,19 +54,87 @@ bool SimplePager::getClusterCullingEnabled() const
     return _clusterCullingEnabled;
 }
 
+void SimplePager::setUsePayloadBoundsForChildren(bool value)
+{
+    _usePayloadBoundsForChildren = value;
+}
+
+bool SimplePager::getUsePayloadBoundsForChildren() const
+{
+    return _usePayloadBoundsForChildren;
+}
+
+void SimplePager::setRangeFactor(float value)
+{
+    _rangeFactor = value;
+    _useRange = true;
+
+    forEachNodeOfType<PagedNode2>(this, [&](auto* node)
+        {
+            // trick to switch over to range mode
+            node->setMaxRange(node->getMaxRange());
+        });
+}
+
 void SimplePager::setMaxRange(float value)
 {
     _maxRange = value;
+    _useRange = true;
 
-    forEachNodeOfType<PagedNode2>(this, [&](PagedNode2* node)
+    forEachNodeOfType<PagedNode2>(this, [&](auto* node)
+        {
+            node->setMaxRange(value);
+        });
+}
+
+void SimplePager::setMinPixels(float value)
+{
+    _minPixels = value;
+    _useRange = false;
+
+    forEachNodeOfType<PagedNode2>(this, [&](auto* node)
+        {
+            node->setMinPixels(value);
+        });
+}
+
+void SimplePager::setMaxPixels(float value)
+{
+    _maxPixels = value;
+    _useRange = false;
+
+    forEachNodeOfType<PagedNode2>(this, [&](auto* node)
+        {
+            node->setMaxPixels(value);
+        });
+}
+
+void SimplePager::setLODMethod(const LODMethod& value)
+{
+    if (value == LODMethod::CAMERA_DISTANCE && !_useRange)
     {
-        node->setMaxRange(value);
-    });
+        setRangeFactor(_rangeFactor);
+    }
+    else if (value == LODMethod::SCREEN_SPACE && _useRange)
+    {
+        setMaxPixels(_maxPixels);
+    }
 }
 
 void SimplePager::setDone()
 {
     _done = true;
+}
+
+void SimplePager::traverse(osg::NodeVisitor& nv)
+{
+    if (!_done && nv.getVisitorType() == nv.CULL_VISITOR && getNumChildren() == 0)
+    {
+        OE_WARN << LC << "Not initialized - did you forget to call build()?" << std::endl;
+        setDone();
+    }
+
+    osg::Group::traverse(nv);
 }
 
 void SimplePager::build()
@@ -127,11 +195,12 @@ osg::ref_ptr<osg::Node> SimplePager::buildRootNode()
     return root;
 }
 
-osg::ref_ptr<osg::Node> SimplePager::createNode(const TileKey& key, ProgressCallback* progress)
+osg::ref_ptr<osg::Node>
+SimplePager::createNode(const TileKey& key, ProgressCallback* progress)
 {
     if (_createNodeFunction)
     {
-        return _createNodeFunction(key, progress);
+        return _createNodeFunction(key, progress);       
     }
     else
     {
@@ -158,14 +227,18 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
 
     // restrict subdivision to max level:
     bool hasChildren = key.getLOD() < _maxLevel;
+    bool mayHavePayload = key.getLOD() >= _minLevel;
 
     // Create the actual drawable data for this tile.
     osg::ref_ptr<osg::Node> payload;
 
     // only create real node if we are at least at the min LOD:
-    if (key.getLOD() >= _minLevel)
+    if (mayHavePayload)
     {
         payload = createNode(key, progress);
+
+        if (progress && progress->canceled())
+            return nullptr;
 
         if (payload.valid())
         {
@@ -176,18 +249,41 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
                 payload->accept(*kdTreeBuilder.get());
             }
         }
+        else if (!_additive)
+        {
+            // If we are in REPLACE mode, and this node's payload did not appear,
+            // we have run out of data and will stop here.
+            // In ADD mode, we will continue to subdivide because we do not know when data will appear.
+            hasChildren = false;
+        }
     }
 
     if (hasChildren)
     {
-        osg::ref_ptr<PagedNode2> pagedNode = new PagedNode2();
+        //osg::ref_ptr<PagedNode2> pagedNode = new PagedNode2();
+        osg::ref_ptr<PagedNode2> pagedNode;
+        if (_createPagedNodeFunction)
+            pagedNode = _createPagedNodeFunction(key);
+        else
+            pagedNode = new PagedNode2();
 
         pagedNode->setSceneGraphCallbacks(getSceneGraphCallbacks());
 
         if (payload.valid())
         {
             pagedNode->addChild(payload);
-            fire_onCreateNode(key, payload.get());
+
+            onCreateNode.fire(key, payload.get());
+
+            if (_usePayloadBoundsForChildren)
+            {
+                const auto& bs = payload->getBound();
+                if (bs.valid())
+                {
+                    tileBounds.set(bs.center(), bs.radius());
+                    tileRadius = tileBounds.radius();
+                }
+            }
         }
 
         pagedNode->setCenter(tileBounds.center());
@@ -232,29 +328,33 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
 
         // Now set up a loader that will load the child data
         osg::observer_ptr<SimplePager> pager_weakptr(this);
-        pagedNode->setLoadFunction(
-            [pager_weakptr, key](Cancelable* c)
+
+        pagedNode->setLoadFunction([pager_weakptr, key](Cancelable* c)
             {
                 osg::ref_ptr<osg::Node> result;
+                if (c && c->canceled())
+                    return result;
+
                 osg::ref_ptr<SimplePager> pager;
                 if (pager_weakptr.lock(pager))
                 {
                     osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(c);
-                    result = pager->loadKey(key, progress.get());
-                }
-                else
-                {
-                    OE_DEBUG << "Task canceled!" << std::endl;
+                    result = pager->createPagedChildrenOf(key, progress.get());
                 }
                 return result;
-            }
-        );
+            });
 
         loadRange = (float)(tileRadius * _rangeFactor);
 
         pagedNode->setRefinePolicy(_additive ? REFINE_ADD : REFINE_REPLACE);
 
         pagedNode->setMaxRange(std::min(loadRange, _maxRange));
+
+        if (!_useRange)
+        {
+            pagedNode->setMinPixels(_minPixels);
+            pagedNode->setMaxPixels(_maxPixels);
+        }
 
         result = pagedNode;
     }
@@ -263,7 +363,7 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
     {
         if (payload.valid())
         {
-            fire_onCreateNode(key, payload.get());
+            onCreateNode.fire(key, payload.get());
             result = payload;
         }
     }
@@ -280,19 +380,19 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
 }
 
 osg::ref_ptr<osg::Node>
-SimplePager::loadKey(const TileKey& key, ProgressCallback* progress)
+SimplePager::createPagedChildrenOf(const TileKey& parentKey, ProgressCallback* progress)
 {
     if (_done)
     {
         if (progress) progress->cancel();
-        return nullptr;
+        return {};
     }
 
     osg::ref_ptr< osg::Group >  group = new osg::Group;
 
     for (unsigned int i = 0; i < 4; i++)
     {
-        TileKey childKey = key.createChildKey( i );
+        TileKey childKey = parentKey.createChildKey( i );
 
         osg::ref_ptr<osg::Node> child = createChildNode(childKey, progress);
         if (child.valid())
@@ -304,42 +404,10 @@ SimplePager::loadKey(const TileKey& key, ProgressCallback* progress)
     {
         return group;
     }
-    return nullptr;
+    return {};
 }
 
 const osgEarth::Profile* SimplePager::getProfile() const
 {
     return _profile.get();
-}
-
-void SimplePager::addCallback(Callback* callback)
-{
-    if (callback)
-    {
-        std::lock_guard<std::mutex> lock(_mutex);
-        _callbacks.push_back(callback);
-    }
-}
-
-void SimplePager::removeCallback(Callback* callback)
-{
-    if (callback)
-    {
-        std::lock_guard<std::mutex> lock(_mutex);
-        for (Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
-        {
-            if (i->get() == callback)
-            {
-                _callbacks.erase(i);
-                break;
-            }
-        }
-    }
-}
-
-void SimplePager::fire_onCreateNode(const TileKey& key, osg::Node* node)
-{
-    std::lock_guard<std::mutex> lock(_mutex);
-    for (Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i)
-        i->get()->onCreateNode(key, node);
 }

@@ -274,7 +274,7 @@ ElevationLayer::assembleHeightField(const TileKey& key,
 
             if ( isKeyInLegalRange(layerKey) )
             {
-                Threading::ScopedReadLock lock(layerMutex());
+                Threading::ScopedReadLock lock(inUseMutex());
                 GeoHeightField hf = createHeightFieldImplementation(layerKey, progress);
                 if (hf.valid())
                 {
@@ -489,7 +489,7 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
 
             if (key.getProfile()->isHorizEquivalentTo(profile.get()))
             {
-                Threading::ScopedReadLock lock(layerMutex());
+                Threading::ScopedReadLock lock(inUseMutex());
                 result = createHeightFieldImplementation(key, progress);
             }
             else
@@ -594,7 +594,7 @@ ElevationLayer::writeHeightField(const TileKey& key, const osg::HeightField* hf,
 {
     if (isWritingSupported() && isWritingRequested())
     {
-        Threading::ScopedReadLock lock(layerMutex());
+        Threading::ScopedReadLock lock(inUseMutex());
         return writeHeightFieldImplementation(key, hf, progress);
     }
     return Status::ServiceUnavailable;

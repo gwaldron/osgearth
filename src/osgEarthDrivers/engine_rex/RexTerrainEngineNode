@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_ENGINE_NODE_H
-#define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_ENGINE_NODE_H 1
+#pragma once
 
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/TerrainResources>
@@ -70,6 +69,10 @@ namespace osgEarth { namespace REX
             const GeoExtent& extent,
             unsigned minLevel,
             unsigned maxLevel) override;
+
+        const TerrainEngineRequirements& getRequirements() const override {
+            return _requirements;
+        }
 
         //! Access the stateset used to render the entire terrain.
         osg::StateSet* getTerrainStateSet() override;
@@ -154,6 +157,7 @@ namespace osgEarth { namespace REX
         bool _refreshRequired;
         bool _stateUpdateRequired;
         bool _morphTerrainSupported;
+        TerrainEngineRequirements _requirements;
 
         // extents of each layer, in the Map's SRS. UID = vector index (for speed)
         LayerExtentMap _cachedLayerExtents;
@@ -199,5 +203,3 @@ namespace osgEarth { namespace REX
     };
 
 } } // namespace osgEarth::REX
-
-#endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_ENGINE_NODE_H

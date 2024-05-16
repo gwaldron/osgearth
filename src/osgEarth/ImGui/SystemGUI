@@ -121,7 +121,7 @@ namespace osgEarth
 
                         for(auto pool_metrics : all_pool_metrics)
                         {
-                            if (pool_metrics) // && pool_metrics->total > 0)
+                            if (pool_metrics && pool_metrics->total > 0)
                             {
                                 ImGui::TableNextColumn();
                                 ImGui::Text("%s", (pool_metrics->name.empty() ? "default" : pool_metrics->name.c_str()));
@@ -172,7 +172,24 @@ namespace osgEarth
                             }
                         }
 
-                        ImGuiLTable::Text("Canceled", std::to_string(jobs::get_metrics()->total_canceled()).c_str());
+                        static unsigned zeroJobFrames = 0;
+                        static unsigned zeroJobFramesThreshold = 3;
+                        static std::chrono::steady_clock::time_point lastZeroJobTime = now;
+                        static long long surgeDuration_ms = 0;
+
+                        if (zeroJobFrames < zeroJobFramesThreshold)
+                            surgeDuration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastZeroJobTime).count();
+                        else
+                            lastZeroJobTime = now;
+
+                        if (total_jobs[f] == 0)
+                            ++zeroJobFrames;
+                        else
+                            zeroJobFrames = 0;
+
+                        ImGuiLTable::Text("Surge:", "%d ms", surgeDuration_ms);
+
+                        ImGuiLTable::Text("Canceled:", std::to_string(jobs::get_metrics()->total_canceled()).c_str());
                         ImGuiLTable::End();
                     }
 

@@ -55,10 +55,10 @@ TerrainOptions::getConfig() const
     conf.set( "max_tiles_to_unload_per_frame", _maxTilesToUnloadPerFrame);
     conf.set( "cast_shadows", _castShadows);
     conf.set( "tile_pixel_size", _tilePixelSize);
-    conf.set( "lod_method", "screen_space", _lodMethod, TerrainLODMethod::SCREEN_SPACE);
-    conf.set( "lod_method", "camera_distance", _lodMethod, TerrainLODMethod::CAMERA_DISTANCE);
-    conf.set( "range_mode", "PIXEL_SIZE_ON_SCREEN", _lodMethod, TerrainLODMethod::SCREEN_SPACE); // backwards compatible
-    conf.set( "range_mode", "DISTANCE_FROM_EYE_POINT", _lodMethod, TerrainLODMethod::CAMERA_DISTANCE); // backwards compatible
+    conf.set( "lod_method", "screen_space", _lodMethod, LODMethod::SCREEN_SPACE);
+    conf.set( "lod_method", "camera_distance", _lodMethod, LODMethod::CAMERA_DISTANCE);
+    conf.set( "range_mode", "PIXEL_SIZE_ON_SCREEN", _lodMethod, LODMethod::SCREEN_SPACE); // backwards compatible
+    conf.set( "range_mode", "DISTANCE_FROM_EYE_POINT", _lodMethod, LODMethod::CAMERA_DISTANCE); // backwards compatible
     conf.set( "skirt_ratio", heightFieldSkirtRatio() );
     conf.set( "color", color() );
     conf.set( "progressive", progressive() );
@@ -111,10 +111,10 @@ TerrainOptions::fromConfig(const Config& conf)
     conf.get( "max_tiles_to_unload_per_frame", _maxTilesToUnloadPerFrame);
     conf.get( "cast_shadows", _castShadows);
     conf.get( "tile_pixel_size", _tilePixelSize);
-    conf.get( "lod_method", "screen_space", _lodMethod, TerrainLODMethod::SCREEN_SPACE);
-    conf.get( "lod_method", "camera_distance", _lodMethod, TerrainLODMethod::CAMERA_DISTANCE);
-    conf.get( "range_mode", "PIXEL_SIZE_ON_SCREEN", _lodMethod, TerrainLODMethod::SCREEN_SPACE); // backwards compatible
-    conf.get( "range_mode", "DISTANCE_FROM_EYE_POINT", _lodMethod, TerrainLODMethod::CAMERA_DISTANCE); // backwards compatible
+    conf.get( "lod_method", "screen_space", _lodMethod, LODMethod::SCREEN_SPACE);
+    conf.get( "lod_method", "camera_distance", _lodMethod, LODMethod::CAMERA_DISTANCE);
+    conf.get( "range_mode", "PIXEL_SIZE_ON_SCREEN", _lodMethod, LODMethod::SCREEN_SPACE); // backwards compatible
+    conf.get( "range_mode", "DISTANCE_FROM_EYE_POINT", _lodMethod, LODMethod::CAMERA_DISTANCE); // backwards compatible
     conf.get( "skirt_ratio", heightFieldSkirtRatio() );
     conf.get( "color", color() );
     conf.get( "progressive", progressive() );
@@ -194,7 +194,7 @@ OE_OPTION_IMPL(TerrainOptionsAPI, float, TessellationRange, tessellationRange);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, Debug, debug);
 OE_OPTION_IMPL(TerrainOptionsAPI, int, RenderBinNumber, renderBinNumber);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, CastShadows, castShadows);
-OE_OPTION_IMPL(TerrainOptionsAPI, TerrainLODMethod, LODMethod, lodMethod)
+OE_OPTION_IMPL(TerrainOptionsAPI, LODMethod, LODMethod, lodMethod)
 OE_OPTION_IMPL(TerrainOptionsAPI, float, TilePixelSize, tilePixelSize);
 OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, MinExpiryFrames, minExpiryFrames);
 OE_OPTION_IMPL(TerrainOptionsAPI, double, MinExpiryTime, minExpiryTime);

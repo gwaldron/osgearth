@@ -130,7 +130,7 @@ namespace osgEarth {
                 is >> is.BEGIN_BRACKET;
 
                 int quantization = osgEarth::CompressedVec3Array::QUANTIZE_NONE;
-                is >> is.PROPERTY("Quantization") >> (int)quantization;
+                is >> is.PROPERTY("Quantization") >> quantization;
                 g.setQuantization((osgEarth::CompressedVec3Array::QuantizationType)quantization);
 
                 osg::Vec3 min, max;
@@ -152,8 +152,7 @@ namespace osgEarth {
                 if (g.getQuantization() == osgEarth::CompressedVec3Array::QUANTIZE_VERTEX)
                 {
                     std::vector<osg::Vec4us> decoded(size);
-                    int resvb = meshopt_decodeVertexBuffer(&decoded[0], decoded.size(), sizeof(osg::Vec4us), &vbuf[0], vbuf.size());
-                    assert(resvb == 0 && resib == 0);
+                    meshopt_decodeVertexBuffer(&decoded[0], decoded.size(), sizeof(osg::Vec4us), &vbuf[0], vbuf.size());                    
 
                     for (unsigned int i = 0; i < size; ++i)
                     {
@@ -166,8 +165,7 @@ namespace osgEarth {
                 if (g.getQuantization() == osgEarth::CompressedVec3Array::QUANTIZE_NORMAL)
                 {
                     std::vector<unsigned int> decoded(size);
-                    int resvb = meshopt_decodeVertexBuffer(&decoded[0], decoded.size(), sizeof(unsigned int), &vbuf[0], vbuf.size());
-                    assert(resvb == 0 && resib == 0);
+                    meshopt_decodeVertexBuffer(&decoded[0], decoded.size(), sizeof(unsigned int), &vbuf[0], vbuf.size());
 
                     for (unsigned int i = 0; i < size; ++i)
                     {
@@ -189,8 +187,7 @@ namespace osgEarth {
                 else if (g.getQuantization() == osgEarth::CompressedVec3Array::QUANTIZE_HALF)
                 {
                     std::vector<osg::Vec4us> decoded(size);
-                    int resvb = meshopt_decodeVertexBuffer(&decoded[0], decoded.size(), sizeof(osg::Vec4us), &vbuf[0], vbuf.size());                    
-                    assert(resvb == 0 && resib == 0);
+                    meshopt_decodeVertexBuffer(&decoded[0], decoded.size(), sizeof(osg::Vec4us), &vbuf[0], vbuf.size());                    
                     for (unsigned int i = 0; i < decoded.size(); ++i)
                     {
                         osg::Vec3 v(
@@ -334,8 +331,7 @@ namespace osgEarth {
 
                 
                 std::vector<osg::Vec2us> decoded(size);
-                int resvb = meshopt_decodeVertexBuffer(&decoded[0], decoded.size(), sizeof(osg::Vec2us), &vbuf[0], vbuf.size());
-                assert(resvb == 0 && resib == 0);
+                meshopt_decodeVertexBuffer(&decoded[0], decoded.size(), sizeof(osg::Vec2us), &vbuf[0], vbuf.size());
                 for (unsigned int i = 0; i < decoded.size(); ++i)
                 {
                     osg::Vec2 v(

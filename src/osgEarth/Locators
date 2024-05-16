@@ -36,6 +36,8 @@ namespace osgEarth { namespace Util
         //! Construct with an extent that defines the unit [0..1] space
         GeoLocator(const GeoExtent& extent)
         {
+            _extent = extent;
+
             _srs = extent.getSRS();
 
             _transform.set(
@@ -63,8 +65,8 @@ namespace osgEarth { namespace Util
             if (_srs->isGeographic())
                 world = _srs->getEllipsoid().geodeticToGeocentric(world);
         }
-        
-    protected:
+
+        GeoExtent _extent;
         osg::Matrixd _transform;
         osg::Matrixd _inverse;
         double _x0, _y0, _x1, _y1;

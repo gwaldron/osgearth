@@ -1,5 +1,5 @@
 <XYZFeatures name="data:osm">
-    <url>http://readymap.org/readymap/mbtiles/daylight-v1.2/{z}/{x}/{-y}.pbf</url>
+    <url>https://readymap.org/readymap/mbtiles/daylight-v1.2/{z}/{x}/{-y}.pbf</url>
     <min_level>14</min_level>
     <max_level>14</max_level>
     <profile>spherical-mercator</profile>

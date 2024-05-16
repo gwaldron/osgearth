@@ -167,7 +167,7 @@ namespace osgEarth { namespace REX
             return _modelViewMatrix;
         }
 
-        const osg::Matrixd& getLocalToWorld() const override {
+        const osg::Matrix& getLocalToWorld() const override {
             return _localToWorld;
         }
 

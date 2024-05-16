@@ -7,7 +7,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
 <map name="Worldwide OSM feature data">
 
     <TFSFeatures name="data:osm">
-        <url>http://readymap.org/readymap/mbtiles/osm/</url>
+        <url>https://readymap.org/readymap/mbtiles/osm/</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
@@ -184,7 +184,7 @@ You must have the mapnik vector tiles driver built by including the protobuf lib
     <xi:include href="readymap_imagery.xml"/>
 
     <TFSFeatures name="data:roads">
-        <url>http://readymap.org/readymap/mbtiles/osm/</url>
+        <url>https://readymap.org/readymap/mbtiles/osm/</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>

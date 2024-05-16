@@ -5,12 +5,12 @@ Note the use of the oe_use_shared_layer pragma to call out the shared names.
 -->
 <map>
     <TMSImage name="ocean_mask" visible="false" shared="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/2/</url>
         <shared_sampler>mask_tex</shared_sampler>
         <shared_matrix>mask_mat</shared_matrix>
     </TMSImage>
     <TMSImage name="imagery">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
         <shader>
             <![CDATA[
             #pragma vp_function mask_me, fragment    

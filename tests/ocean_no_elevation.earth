@@ -14,7 +14,7 @@ osgEarth Sample - Ocean without elevation data
     </Ocean>
     
     <TMSImage name="ocean_mask" visible="false" shared="true">
-        <url>http://readymap.org/readymap/tiles/1.0.0/2/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/2/</url>
         <shared_sampler>ocean_mask</shared_sampler>
         <shared_matrix>ocean_mask_matrix</shared_matrix>
     </TMSImage>

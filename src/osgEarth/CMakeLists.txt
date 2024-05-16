@@ -278,6 +278,7 @@ SET(LIB_PUBLIC_HEADERS
     LocalGeometryNode
     LocalTangentPlane
     Locators
+    LODGenerator
     LogarithmicDepthBuffer
     Map
     MapboxGLGlyphManager
@@ -694,6 +695,7 @@ set(TARGET_SRC
     LineSymbol.cpp
     LocalGeometryNode.cpp
     LocalTangentPlane.cpp
+    LODGenerator.cpp
     LogarithmicDepthBuffer.cpp
     Map.cpp
     MapboxGLGlyphManager.cpp

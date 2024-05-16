@@ -6,7 +6,7 @@ Provides access to GDALDEM processing capabilities such as hillshading.
 <map name="GDALDEM">
 
     <TMSElevation name="elevation">
-        <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/116/</url>
         <vdatum>egm96</vdatum>
     </TMSElevation>
 

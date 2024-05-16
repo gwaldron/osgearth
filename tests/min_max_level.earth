@@ -10,7 +10,7 @@ at a given levels of detail.
     </GDALImage>
     
     <TMSImage name="readymap_imagery" min_level="6">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
     
 </map>

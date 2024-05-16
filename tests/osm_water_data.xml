@@ -1,5 +1,5 @@
 <XYZFeatures name="data:osm-water">
-    <url>http://readymap.org/readymap/mbtiles/osm-water/{z}/{x}/{-y}.pbf</url>
+    <url>https://readymap.org/readymap/mbtiles/osm-water/{z}/{x}/{-y}.pbf</url>
     <profile>spherical-mercator</profile>
     <min_level>0</min_level>
     <max_level>14</max_level>

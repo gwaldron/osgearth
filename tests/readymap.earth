@@ -1,5 +1,5 @@
 <!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
+osgEarth Sample - ReadyMap.ORG Server - https://readymap.org
 
 ReadyMap.ORG provides free global base map data for osgEarth developers!
 This tiled, worldwide dataset of imagery, elevation, and street map data
@@ -8,17 +8,17 @@ It works "out of the box" with osgEarth applications.
 
 **** NOTICE ****
 YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
+https://readymap.org
 
 -->
 <map name="ReadyMap.org">
 
 	<TMSImage name="ReadyMap 15m Imagery">
-		<url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+		<url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
 	</TMSImage>
 
 	 <TMSElevation name="ReadyMap 90m Elevation">
-		 <url>http://readymap.org/readymap/tiles/1.0.0/116/</url>
+		 <url>https://readymap.org/readymap/tiles/1.0.0/116/</url>
 		 <vdatum>egm96</vdatum>
 	 </TMSElevation>
 

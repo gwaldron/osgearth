@@ -6,7 +6,7 @@ Weather (RADAR and IR) overlaid on the map.
 <map name="Current Weather">
 
     <TMSImage name="ReadyMap 15m Imagery">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
 
     <!-- GlobalIR Imgery from http://realearth.ssec.wisc.edu/ -->	

@@ -1,5 +1,5 @@
 <!--
-osgEarth Sample - ReadyMap.ORG Server - http://readymap.org
+osgEarth Sample - ReadyMap.ORG Server - https://readymap.org
 
 ReadyMap.ORG provides free global base map data for osgEarth developers!
 This tiled, worldwide dataset of imagery, elevation, and street map data
@@ -8,7 +8,7 @@ It works "out of the box" with osgEarth applications.
 
 **** NOTICE ****
 YOU ARE RESPONSIBLE for abiding by the TERMS AND CONDITIONS outlined at:
-http://readymap.org
+https://readymap.org
 
 -->
 <Map name="Roads Test">
@@ -18,7 +18,7 @@ http://readymap.org
     </options>
         
     <TMSImage name="readymap_imagery" driver="tms" visible="true" opacity="0.8">
-        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
     </TMSImage>
     
     <xi:include href="readymap_elevation.xml"/>
@@ -94,7 +94,7 @@ http://readymap.org
     </RoadSurface>
 
     <XYZFeatures name="roads-data">
-        <url>http://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
+        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>

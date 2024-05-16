@@ -526,10 +526,14 @@ MBTiles::Driver::open(
         {
             if (!profileStr.empty())
             {
-                // try to parse it as a JSON config
-                Config pconf;
-                pconf.fromJSON(profileStr);
-                profile = Profile::create(ProfileOptions(pconf));
+                // See if the profile string is JSON
+                if (profileStr.find("{") != std::string::npos)
+                {                 
+                    // try to parse it as a JSON config
+                    Config pconf;
+                    pconf.fromJSON(profileStr);
+                    profile = Profile::create(ProfileOptions(pconf));
+                }
 
                 // if that didn't work, try parsing it directly
                 if (!profile)

@@ -12,7 +12,6 @@ endif()
 find_package(CURL REQUIRED)
 find_package(GDAL REQUIRED)
 find_package(SQLite3 REQUIRED)
-find_package(TinyXML REQUIRED)
 
 # optional
 find_package(geos)
@@ -93,7 +92,7 @@ configure_shaders(
     Shaders.cpp.in
     ${SHADERS_CPP}
     ${TARGET_GLSL} )
-
+    
 SET(TARGET_H    
     AGG.h
     AltitudeFilter
@@ -450,6 +449,9 @@ SET(TARGET_H
     rtree.h
     weemesh.h
     weejobs.h
+    
+    tinyxml/tinyxml.h
+    tinyxml/tinystr.h
 
     ${OSGEARTH_BUILDCONFIG_HEADER}
     ${OSGEARTH_VERSION_HEADER}
@@ -805,6 +807,11 @@ set(TARGET_SRC
     XYZ.cpp
     XYZFeatureSource.cpp
     XYZModelLayer.cpp
+    
+    tinyxml/tinyxml.cpp
+    tinyxml/tinyxmlerror.cpp
+    tinyxml/tinystr.cpp
+    tinyxml/tinyxmlparser.cpp
     
     ${SHADERS_CPP}
 )

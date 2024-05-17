@@ -42,6 +42,13 @@ set(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
     
 # Platform-specific settings ............................................
 
+# Default installation folders. The platform-specific includes will
+# override these values as necessary.
+set(INSTALL_RUNTIME_FOLDER "bin")  # executables
+set(INSTALL_LIBRARY_FOLDER "bin")  # .dll/.so
+set(INSTALL_ARCHIVE_FOLDER "lib")  # .lib/.a
+set(INSTALL_PLUGINS_FOLDER "bin")  # parent folder of OSG plugins folder
+
 include(oe_ios)
 include(oe_osx)
 include(oe_unix)
@@ -156,6 +163,9 @@ else()
 endif()
 
 
+# Whether to append SOVERSIONs to libraries (unix)
+option(OSGEARTH_SONAMES "ON to append so-version numbers to libraries" ON)
+
 # Source code ............................................................
 
 add_subdirectory(src)
@@ -173,7 +183,7 @@ osgearth_install_package_config_files(
     osgEarth
     ${OSGEARTH_VERSION}
     ${CMAKE_INSTALL_PREFIX}/include
-    ${CMAKE_INSTALL_PREFIX}/lib)
+    ${CMAKE_INSTALL_PREFIX}/${INSTALL_LIBRARY_FOLDER})
     
     
     

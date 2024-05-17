@@ -120,6 +120,11 @@ macro(add_osgearth_plugin)
     else()
         message(FATAL_ERROR "add_library_as_plugin: name '${MY_TARGET}' must begin with 'osgdb_' or 'osgdb_osgearth_'")
     endif()
+    
+    # soversions - append SO version to shared object files on unix (e.g., osgearth.so.123)
+    if (OSGEARTH_SONAMES)
+        set_target_properties(${MY_TARGET} PROPERTIES VERSION ${OSGEARTH_VERSION} SOVERSION ${OSGEARTH_SOVERSION})
+    endif()
    
     # install the shader source files, if requested:
     if(OSGEARTH_INSTALL_SHADERS)
@@ -133,9 +138,9 @@ macro(add_osgearth_plugin)
     
     # install the dynamic libraries.
     install(TARGETS ${MY_TARGET}
-        RUNTIME DESTINATION bin
-        ARCHIVE DESTINATION lib/${OSG_PLUGINS}
-        LIBRARY DESTINATION bin/${OSG_PLUGINS})
+        # RUNTIME DESTINATION ${INSTALL_RUNTIME_FOLDER}
+        # ARCHIVE DESTINATION ${INSTALL_ARCHIVE_FOLDER}/${OSG_PLUGINS}
+        LIBRARY DESTINATION ${INSTALL_PLUGINS_FOLDER}/${OSG_PLUGINS})
     
     # organize the files in the IDE
     source_group( "Header Files"   FILES ${ALL_HEADERS} )
@@ -239,7 +244,9 @@ macro(add_osgearth_app)
             set_target_properties(${TARGET_TARGETNAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_BITCODE ${IPHONE_ENABLE_BITCODE})
         endif()
 
-        install(TARGETS ${MY_TARGET} RUNTIME DESTINATION bin)
+        install(
+            TARGETS ${MY_TARGET}
+            RUNTIME DESTINATION ${INSTALL_RUNTIME_FOLDER})
 
         if(NOT MY_FOLDER)
             set(MY_FOLDER "Ungrouped")
@@ -277,17 +284,7 @@ macro(add_osgearth_library)
     set(multiValueArgs SOURCES HEADERS PUBLIC_HEADERS IMGUI_HEADERS SHADERS TEMPLATES LIBRARIES INCLUDE_DIRECTORIES)
     cmake_parse_arguments(MY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
-    set(INSTALL_INCDIR include/${MY_TARGET})
-
-    # apply postfixes for non-windows...?
-    set(INSTALL_BINDIR bin)
-    if(WIN32)
-        set(INSTALL_LIBDIR bin)
-        set(INSTALL_ARCHIVEDIR lib)
-    else()
-        set(INSTALL_LIBDIR lib${LIB_POSTFIX})
-        set(INSTALL_ARCHIVEDIR lib${LIB_POSTFIX})
-    endif()
+    set(INSTALL_INCLUDE_FOLDER include/${MY_TARGET})
     
     set(ALL_HEADERS ${MY_HEADERS} ${MY_IMGUI_HEADERS} ${MY_PUBLIC_HEADERS})
     include_directories(${MY_INCLUDE_DIRECTORIES})        
@@ -315,14 +312,19 @@ macro(add_osgearth_library)
     else()
         target_link_libraries(${MY_TARGET} PRIVATE ${OPENSCENEGRAPH_LIBRARIES} ${MY_LIBRARIES})
     endif()
+    
+    # soversions - append SO version to shared object files on unix (e.g., osgearth.so.123)
+    if (OSGEARTH_SONAMES)
+        set_target_properties(${MY_TARGET} PROPERTIES VERSION ${OSGEARTH_VERSION} SOVERSION ${OSGEARTH_SOVERSION})
+    endif()
 
     # library install and target exports for the cmake config packaging.
     install(
         TARGETS ${MY_TARGET}
         EXPORT ${MY_TARGET}Targets
-        RUNTIME DESTINATION ${INSTALL_BINDIR}
-        LIBRARY DESTINATION ${INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${INSTALL_ARCHIVEDIR}
+        RUNTIME DESTINATION ${INSTALL_RUNTIME_FOLDER}
+        LIBRARY DESTINATION ${INSTALL_LIBRARY_FOLDER}
+        ARCHIVE DESTINATION ${INSTALL_ARCHIVE_FOLDER}
     )
 
     # deploy the shaders for this library, if requested.
@@ -338,7 +340,7 @@ macro(add_osgearth_library)
         # normal path to install the public header files:
         install(
             FILES ${MY_PUBLIC_HEADERS}
-            DESTINATION ${INSTALL_INCDIR})
+            DESTINATION ${INSTALL_INCLUDE_FOLDER})
     else()
         # macos-specific
         if(OSG_BUILD_PLATFORM_IPHONE)

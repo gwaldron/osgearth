@@ -57,7 +57,7 @@ if(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         add_subdirectory(osgearth_lights)
         add_subdirectory(osgearth_infinitescroll)
         add_subdirectory(osgearth_video)
-        #add_subdirectory(osgearth_heatmap)
+        add_subdirectory(osgearth_heatmap)
         add_subdirectory(osgearth_collecttriangles)
         
         if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)

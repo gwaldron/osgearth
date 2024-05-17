@@ -1,11 +1,10 @@
-find_package(WEBP)
+find_package(WebP)
 
-if (WEBP_FOUND)
+if (WebP_FOUND)
     message(STATUS "Found WebP ${WEBP_VERSION}")
-    include_directories(${WEBP_INCLUDE_DIRS})
     add_osgearth_plugin(
         TARGET osgdb_webp
-        SOURCES ReaderWriterWebP.cpp
-        LIBRARIES ${WEBP_LIBRARIES})
+        SOURCES ReaderWriterWebP.cpp)
+    target_link_libraries(osgdb_webp PRIVATE WebP::webp)
 endif()
 

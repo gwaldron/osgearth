@@ -1,8 +1,6 @@
-if(SILVERLINING_FOUND)
-    add_osgearth_plugin(
-        TARGET osgdb_osgearth_sky_silverlining
-        SOURCES
-            SilverLiningDriver.cpp
-        LIBRARIES
-            osgEarthSilverLining )
-endif()
+add_osgearth_plugin(
+    TARGET osgdb_osgearth_sky_silverlining
+    SOURCES
+        SilverLiningDriver.cpp
+    LIBRARIES
+        osgEarthSilverLining )

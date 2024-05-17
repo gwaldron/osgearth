@@ -3,4 +3,4 @@ add_osgearth_app(
     SOURCES osgearth_triton.cpp
     FOLDER Tests )
 
-target_link_libraries(osgearth_triton PRIVATE osgEarthTriton ${OPENGL_LIBRARIES})
+target_link_libraries(osgearth_triton PRIVATE osgEarthTriton)

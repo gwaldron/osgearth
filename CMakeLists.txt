@@ -191,3 +191,16 @@ osgearth_install_package_config_files(
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets")
+
+
+# Uninstall target .......................................................
+
+configure_file(
+   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
+   "${CMAKE_CURRENT_BINARY_DIR}/uninstall.cmake"
+   IMMEDIATE @ONLY
+)
+
+add_custom_target(uninstall
+   "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/uninstall.cmake"
+)

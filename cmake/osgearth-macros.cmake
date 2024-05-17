@@ -121,6 +121,10 @@ macro(add_osgearth_plugin)
         message(FATAL_ERROR "add_library_as_plugin: name '${MY_TARGET}' must begin with 'osgdb_' or 'osgdb_osgearth_'")
     endif()
     
+    # no prefixes on plugin library files, please.
+    # without this, plugins will have names like "libosgdb_osgearth.so" and OSG doesn't want the "lib"
+    set_target_properties(${MY_TARGET} PROPERTIES PREFIX "")
+    
     # soversions - append SO version to shared object files on unix (e.g., osgearth.so.123)
     if (OSGEARTH_SONAMES)
         set_target_properties(${MY_TARGET} PROPERTIES VERSION ${OSGEARTH_VERSION} SOVERSION ${OSGEARTH_SOVERSION})

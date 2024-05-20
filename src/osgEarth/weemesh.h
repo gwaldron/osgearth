@@ -411,8 +411,11 @@ namespace weemesh
             output.clear();
             vert_t::value_type a_min[2] = { xmin, ymin };
             vert_t::value_type a_max[2] = { xmax, ymax };
-            _spatial_index.Search(a_min, a_max, [&](const UID& uid) {
-                output.emplace_back(&triangles[uid]); return true;  });
+            _spatial_index.Search(a_min, a_max, [&](const UID& uid) 
+                {
+                    output.emplace_back(&triangles[uid]);
+                    return RTREE_KEEP_SEARCHING;
+                });
             return output.size();
         }
 
@@ -432,11 +435,10 @@ namespace weemesh
 
             std::vector<UID> uids;
 
-            _spatial_index.Search(
-                a_min, a_max,
-                [&uids](const UID& u) {
+            _spatial_index.Search(a_min, a_max, [&uids](const UID& u)
+                {
                     uids.push_back(u);
-                    return true;
+                    return RTREE_KEEP_SEARCHING;
                 });
 
             for (auto uid : uids)
@@ -467,11 +469,10 @@ namespace weemesh
             a_max[1] = std::max(seg.first.y, seg.second.y);
             std::vector<UID> uids;
 
-            _spatial_index.Search(
-                a_min, a_max,
-                [&uids](const UID& u) {
+            _spatial_index.Search(a_min, a_max, [&uids](const UID& u)
+                {
                     uids.push_back(u);
-                    return true;
+                    return RTREE_KEEP_SEARCHING;
                 });
 
             // The working set of triangles which we will add to if we have

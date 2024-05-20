@@ -292,7 +292,7 @@ CalloutManager::sort(osg::NodeVisitor& nv)
 
     // stop on any hit
     auto stop_on_any_hit = [&](const CalloutRecord*) {
-        return false;
+        return RTREE_STOP_SEARCHING;
     };
 
     for (Callouts::reverse_iterator i = _callouts.rbegin();

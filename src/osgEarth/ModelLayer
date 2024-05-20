@@ -29,8 +29,6 @@
 
 namespace osgEarth
 {
-    class Map;
-
     /**
      * Layer that contains an OSG scene graph
      */
@@ -41,16 +39,11 @@ namespace osgEarth
         public:        
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
             OE_OPTION(URI, url);
-            OE_OPTION(float, lodScale);
-            OE_OPTION(GeoPoint, location);
+            OE_OPTION(GeoPoint, position);
             OE_OPTION(osg::Vec3, orientation);
-            OE_OPTION(ShaderPolicy, shaderPolicy);
-            OE_OPTION(float, loadingPriorityScale);
-            OE_OPTION(float, loadingPriorityOffset);
-            OE_OPTION(bool, paged);
-            OE_OPTION(bool, lightingEnabled);
-            OE_OPTION(unsigned, maskMinLevel);
-            OE_OPTION(ModelSourceOptions, driver);
+            OE_OPTION(bool, lightingEnabled, true);
+            OE_OPTION(float, minPixels, 0.0f);
+            OE_OPTION(ShaderPolicy, shaderPolicy, SHADERPOLICY_GENERATE);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );
@@ -60,88 +53,39 @@ namespace osgEarth
         META_Layer(osgEarth, ModelLayer, Options, VisibleLayer, Model);
 
     public:
-        //! Sets the node to add to the map's scene graph. Set this OR setURL
-        //! Call this OR setURL, but not both.
-        void setNode(osg::Node* node);
-
         //! URL from which to load the model to use in this layer.
         //! Call this OR setNode, but not both. Call before opening the layer.
         void setURL(const URI& url);
         const URI& getURL() const;
 
-        //! LOD scale for the scene graph in this model layer.
-        //! Call before opening the layer.
-        void setLODScale(const float& value);
-        const float& getLODScale() const;
-
-        //! Whether the model loaded by setURL() should be paged in versus
-        //! loaded immediately. Only applicable when using setURL.
-        //! Call before opening the layer.
-        void setPaged(const bool& value);
-        const bool& getPaged() const;
-
         //! Sets the location at which to position the model.
         //! Call before opening the layer.
-        void setLocation(const GeoPoint& value);
-        const GeoPoint& getLocation() const;
+        void setPosition(const GeoPoint& value);
+        const GeoPoint& getPosition() const;
 
         //! Sets the orientation (HPR) of the model in degrees
         //! Call before opening the layer.
-        void setOrientation(const osg::Vec3& value);
-        const osg::Vec3& getOrientation() const;
-
-        //! Minimum terrain LOD at which to apply the mask.
-        //! Call before opening the layer.
-        void setMaskMinLevel(const unsigned& value);
-        const unsigned& getMaskMinLevel() const;
-
-        //! Whether lighting should affect the model graph
-        void setLightingEnabled( bool value );
-        bool isLightingEnabled() const;
+        void setOrientationHPR(const osg::Vec3& value);
+        const osg::Vec3& getOrientationHPR() const;
 
         //! Whether to generate shaders or use the default shaders
         void setShaderPolicy(const ShaderPolicy& value);
         const ShaderPolicy& getShaderPolicy() const;
 
-    public: // deprecated
+        //! minimum visibility size in pixels
+        void setMinPixels(float value);
+        const float& getMinPixels() const;
 
-        //! @deprecated - subclass ModelLayer instead of using ModelSource plugins
-        //! Access the underlying model source.
-        ModelSource* getModelSource() const { return _modelSource.get(); }
 
     public: // Layer
 
-        //! Open the layer and return its status
-        virtual Status openImplementation();
+        Status openImplementation() override;
+        osg::Node* getNode() const override;
+        void init() override;
 
-        //! Called when this layer is added to a Map
-        virtual void addedToMap(const Map*);
-
-        //! Called when this layer is removed from a Map
-        virtual void removedFromMap(const Map*);
-
-        //! Node created by this model layer
-        virtual osg::Node* getNode() const;
-
-        //! Generate a cache ID for this layer
-        virtual std::string getCacheID() const;
-
-    protected: // Layer
-
-        //! post-ctor initialization
-        virtual void init();
-
-    protected:
-
-        virtual ~ModelLayer();
-
-        osg::ref_ptr<ModelSource>     _modelSource;
-        Revision                      _modelSourceRev;
-        osg::ref_ptr<CacheSettings>   _cacheSettings;
-        osg::ref_ptr<osg::Group>      _root;
+    private:
+        osg::ref_ptr<osg::Group> _root;
     };
-
-    using ModelLayerVector = std::vector< osg::ref_ptr<ModelLayer> >;
 }
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ModelLayer::Options);

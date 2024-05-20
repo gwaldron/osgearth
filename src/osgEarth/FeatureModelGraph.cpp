@@ -1040,11 +1040,6 @@ FeatureModelGraph::load(
         // over and over.
         result = new osg::Group();
     }
-    else
-    {
-        // For some unknown reason, this breaks when I insert an LOD. -gw
-        //RemoveEmptyGroupsVisitor::run( result );
-    }
 
     if (result->getNumChildren() == 0)
     {

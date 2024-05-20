@@ -499,12 +499,10 @@ namespace
             double searchMin[2] = { ex.xMin() - maxBufferDistance, P.y() - maxBufferDistance };
             double searchMax[2] = { ex.xMax() + maxBufferDistance, P.y() + maxBufferDistance };
 
-            index.Search(
-                searchMin, searchMax,
-                [&hits](const unsigned& hit)
+            index.Search(searchMin, searchMax,[&hits](const unsigned& hit)
                 {
                     hits.push_back(hit);
-                    return true;
+                    return RTREE_KEEP_SEARCHING;
                 });
 
             // If there are no hits just skip the whole row.

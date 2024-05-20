@@ -32,6 +32,9 @@
 #define RTREE_DONT_USE_MEMPOOLS // This version does not contain a fixed memory allocator, fill in lines with EXAMPLE to implement one.
 #define RTREE_USE_SPHERICAL_VOLUME // Better split classification, may be slower on some systems
 
+#define RTREE_STOP_SEARCHING false
+#define RTREE_KEEP_SEARCHING true
+
 // Fwd decl
 class RTFileStream;  // File I/O helper class, look below for implementation and notes.
 
@@ -1647,9 +1650,9 @@ bool RTREE_QUAL::Search(Node* a_node, Rect* a_rect, int& a_foundCount, CALLBACK_
                 DATATYPE& id = a_node->m_branch[index].m_data;
                 ++a_foundCount;
 
-                if (!callback(id))
+                if (callback(id) == RTREE_STOP_SEARCHING)
                 {
-                    return false; // Don't continue searching
+                    return false; // stop
                 }
             }
         }

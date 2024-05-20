@@ -35,7 +35,7 @@ endif()
 
 # support for the old Controls API (superceded by imgui)
 if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
-    set(OSGEARTH_HAVE_LEGACY_CONTROLS_API) # for BuildConfig
+    set(OSGEARTH_HAVE_LEGACY_CONTROLS_API ON) # for BuildConfig
     add_definitions(-DOSGEARTH_HAVE_CONTROLS_API) # for backwards compat
 endif()
 
@@ -841,17 +841,6 @@ endif()
 message(STATUS "Building ${LIB_NAME} as a ${OSGEARTH_DYNAMIC_OR_STATIC} library")
 
 
-# Generate the Version header.
-set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version")
-message(STATUS "Creating ${OSGEARTH_VERSION_HEADER}")
-configure_file(Version.in ${OSGEARTH_VERSION_HEADER})
-
-# Generate the BuildConfig header.
-set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig")
-message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
-configure_file(BuildConfig.in ${OSGEARTH_BUILDCONFIG_HEADER})
-
-
 
 add_osgearth_library(
     TARGET ${LIB_NAME}
@@ -950,3 +939,14 @@ else()
             ${SSL_EAY_RELEASE} ${LIB_EAY_RELEASE} ${TIFF_LIBRARY} ${PROJ4_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
 endif()
 
+
+
+# Generate the Version header.
+set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version")
+message(STATUS "Creating ${OSGEARTH_VERSION_HEADER}")
+configure_file(Version.in ${OSGEARTH_VERSION_HEADER})
+
+# Generate the BuildConfig header.
+set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig")
+message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
+configure_file(BuildConfig.in ${OSGEARTH_BUILDCONFIG_HEADER})

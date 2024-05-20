@@ -93,7 +93,7 @@ bool TileVisitor::hasData(const TileKey& key)
         double min[2] = { extent.xMin(), extent.yMin() };
         double max[2] = { extent.xMax(), extent.yMax() };
         std::vector< unsigned int > hits;
-        auto stop_on_any_hit = [](const unsigned&) { return false; }; // stop on any hit
+        auto stop_on_any_hit = [](const unsigned&) { return RTREE_STOP_SEARCHING; }; // stop on any hit
         if (_dataExtentIndex.Search(min, max, stop_on_any_hit) == 0)
         {
             return false;

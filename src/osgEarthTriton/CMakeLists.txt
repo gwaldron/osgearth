@@ -44,7 +44,7 @@ include_directories(
 )
 
 target_link_libraries(${LIB_NAME}
-    PUBLIC osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARIES} ${TRITON_LIBRARY})
+    PUBLIC osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARIES} OE::TRITON)
 
 # Add this project to the NodeKits solution folder
 set_property( TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )

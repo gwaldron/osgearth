@@ -474,34 +474,35 @@ namespace {
                     geom->setColorArray(colors, osg::Array::BIND_PER_VERTEX);
                 }
 
+                GLenum mode = GL_TRIANGLES;
+                switch (primitive.mode)
+                {
+                case CesiumGltf::MeshPrimitive::Mode::TRIANGLES:
+                    mode = GL_TRIANGLES;
+                    break;
+                case CesiumGltf::MeshPrimitive::Mode::TRIANGLE_FAN:
+                    mode = GL_TRIANGLE_FAN;
+                    break;
+                case CesiumGltf::MeshPrimitive::Mode::TRIANGLE_STRIP:
+                    mode = GL_TRIANGLE_STRIP;
+                    break;
+                case CesiumGltf::MeshPrimitive::Mode::LINES:
+                    mode = GL_LINES;
+                    break;
+                case CesiumGltf::MeshPrimitive::Mode::LINE_LOOP:
+                    mode = GL_LINES;
+                    break;
+                case CesiumGltf::MeshPrimitive::Mode::LINE_STRIP:
+                    mode = GL_LINE_STRIP;
+                    break;
+                case CesiumGltf::MeshPrimitive::Mode::POINTS:
+                    mode = GL_POINTS;
+                    break;
+                }
+
                 if (primitive.indices >= 0)
                 {
-                    osg::Array* primitiveArray = _arrays[primitive.indices];
-                    GLenum mode = GL_TRIANGLES;
-                    switch (primitive.mode)
-                    {
-                    case CesiumGltf::MeshPrimitive::Mode::TRIANGLES:
-                        mode = GL_TRIANGLES;
-                        break;
-                    case CesiumGltf::MeshPrimitive::Mode::TRIANGLE_FAN:
-                        mode = GL_TRIANGLE_FAN;
-                        break;
-                    case CesiumGltf::MeshPrimitive::Mode::TRIANGLE_STRIP:
-                        mode = GL_TRIANGLE_STRIP;
-                        break;
-                    case CesiumGltf::MeshPrimitive::Mode::LINES:
-                        mode = GL_LINES;
-                        break;
-                    case CesiumGltf::MeshPrimitive::Mode::LINE_LOOP:
-                        mode = GL_LINES;
-                        break;
-                    case CesiumGltf::MeshPrimitive::Mode::LINE_STRIP:
-                        mode = GL_LINE_STRIP;
-                        break;
-                    case CesiumGltf::MeshPrimitive::Mode::POINTS:
-                        mode = GL_POINTS;
-                        break;
-                    }
+                    osg::Array* primitiveArray = _arrays[primitive.indices];                    
 
                     switch (primitiveArray->getType())
                     {
@@ -533,8 +534,8 @@ namespace {
                 }
                 else
                 {
-                    // If there are no primitives and we have a vertex array assume it is a point cloud.
-                    geom->addPrimitiveSet(new osg::DrawArrays(GL_POINTS, 0, geom->getVertexArray()->getNumElements()));
+                    // If there are no primitives, then it is non-indexed geometry                    
+                    geom->addPrimitiveSet(new osg::DrawArrays(mode, 0, geom->getVertexArray()->getNumElements()));
                 }
 
 

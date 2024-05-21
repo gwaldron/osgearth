@@ -202,21 +202,10 @@ main(int argc, char** argv)
     }
 
     // put a model on the map atop Pike's Peak, Colorado, USA
-    osg::ref_ptr<osg::Node> model = osgDB::readRefNodeFile("../data/red_flag.osg.osgearth_shadergen");
-    if (model.valid())
-    {
-        osg::PositionAttitudeTransform* pat = new osg::PositionAttitudeTransform();
-        pat->addCullCallback(new AutoScaleCallback<osg::PositionAttitudeTransform>(100));
-        pat->addChild(model.get());
-
-        GeoTransform* xform = new GeoTransform();
-        xform->setPosition(GeoPoint(SpatialReference::get("wgs84"), -105.042292, 38.840829));
-        xform->addChild(pat);
-
-        ModelLayer* layer = new ModelLayer();
-        layer->setNode(xform);
-        map->addLayer(layer);
-    }
+    auto modelLayer = new ModelLayer();
+    modelLayer->setURL("../data/red_flag.osg.2000.scale");
+    modelLayer->setPosition(GeoPoint(SpatialReference::get("wgs84"), -105.042292, 38.840829));
+    map->addLayer(modelLayer);
 
     // make the map scene graph:
     MapNode* node = new MapNode( map );

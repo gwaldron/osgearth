@@ -22,11 +22,9 @@
 #include <osgEarth/Registry>
 #include <osgEarth/URI>
 
-#include <osg/CullStack>
-#include <osg/Depth>
-#include <osg/PositionAttitudeTransform>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
+#include <osg/PositionAttitudeTransform>
 
 #define LC "[ModelLayer] " << getName() << " : "
 
@@ -39,23 +37,16 @@ ModelLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
 
-    conf.set("url", _url);
-    conf.set("lod_scale", _lodScale);
-    conf.set("location", _location);
-    conf.set("orientation", _orientation);
-    conf.set("loading_priority_scale", _loadingPriorityScale);
-    conf.set("loading_priority_offset", _loadingPriorityOffset);
-    conf.set("paged", _paged);
+    conf.set("url", url());
+    conf.set("position", position());
+    conf.set("orientation", orientation());
+    conf.set("min_pixels", minPixels());
 
-    conf.set("shader_policy", "disable", _shaderPolicy, SHADERPOLICY_DISABLE);
-    conf.set("shader_policy", "inherit", _shaderPolicy, SHADERPOLICY_INHERIT);
-    conf.set("shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE);
+    conf.set("shader_policy", "disable", shaderPolicy(), SHADERPOLICY_DISABLE);
+    conf.set("shader_policy", "inherit", shaderPolicy(), SHADERPOLICY_INHERIT);
+    conf.set("shader_policy", "generate", shaderPolicy(), SHADERPOLICY_GENERATE);
 
-    conf.set( "lighting",       _lightingEnabled );
-    conf.set( "mask_min_level", _maskMinLevel );
-
-    if ( driver().isSet() )
-        conf.merge(driver()->getConfig());
+    conf.set( "lighting", lightingEnabled() );
 
     return conf;
 }
@@ -63,102 +54,21 @@ ModelLayer::Options::getConfig() const
 void
 ModelLayer::Options::fromConfig( const Config& conf )
 {
-    _lightingEnabled.init(true);
-    _maskMinLevel.init(0);
-    _lodScale.init(1.0f);
-    _shaderPolicy.init(SHADERPOLICY_GENERATE);
-    _loadingPriorityScale.init(1.0f);
-    _loadingPriorityOffset.init(0.0f);
-    _paged.init(false);
+    conf.get("url", url());
+    conf.get("position", position());
+    conf.get("location", position());
+    conf.get("orientation", orientation());
+    conf.get("min_pixels", minPixels());
 
-    conf.get("url", _url);
-    conf.get("lod_scale", _lodScale);
-    conf.get("location", _location);
-    conf.get("position", _location);
-    conf.get("orientation", _orientation);
-    conf.get("loading_priority_scale", _loadingPriorityScale);
-    conf.get("loading_priority_offset", _loadingPriorityOffset);
-    conf.get("paged", _paged);
+    conf.get("shader_policy", "disable", shaderPolicy(), SHADERPOLICY_DISABLE);
+    conf.get("shader_policy", "inherit", shaderPolicy(), SHADERPOLICY_INHERIT);
+    conf.get("shader_policy", "generate", shaderPolicy(), SHADERPOLICY_GENERATE);
 
-    conf.get("shader_policy", "disable", _shaderPolicy, SHADERPOLICY_DISABLE);
-    conf.get("shader_policy", "inherit", _shaderPolicy, SHADERPOLICY_INHERIT);
-    conf.get("shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE);
-
-    conf.get( "lighting",       _lightingEnabled );
-    conf.get( "mask_min_level", _maskMinLevel );
-
-    if ( conf.hasValue("driver") )
-        driver() = ModelSourceOptions(conf);
+    conf.get( "lighting", lightingEnabled());
 }
-
-//------------------------------------------------------------------------
 
 namespace
 {
-    class LODScaleOverrideNode : public osg::Group
-    {
-    public:
-        LODScaleOverrideNode() : m_lodScale(1.0f) {}
-        virtual ~LODScaleOverrideNode() {}
-    public:
-        void setLODScale(float scale) { m_lodScale = scale; }
-        float getLODScale() const { return m_lodScale; }
-
-        virtual void traverse(osg::NodeVisitor& nv)
-        {
-            if(nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
-            {
-                osg::CullStack* cullStack = dynamic_cast<osg::CullStack*>(&nv);
-                if(cullStack)
-                {
-                    float oldLODScale = cullStack->getLODScale();
-                    cullStack->setLODScale(oldLODScale * m_lodScale);
-                    osg::Group::traverse(nv);
-                    cullStack->setLODScale(oldLODScale);
-                }
-                else
-                    osg::Group::traverse(nv);
-            }
-            else
-                osg::Group::traverse(nv);
-        }
-
-    private:
-        float m_lodScale;
-    };
-
-    class SetLoadPriorityVisitor : public osg::NodeVisitor
-    {
-    public:
-        SetLoadPriorityVisitor(float scale=1.0f, float offset=0.0f)
-            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
-            , m_scale(scale)
-            , m_offset(offset)
-        {
-            setNodeMaskOverride( ~0 );
-        }
-
-        virtual void apply(osg::PagedLOD& node)
-        {
-            for(unsigned n = 0; n < node.getNumFileNames(); n++)
-            {
-                float old;
-                old = node.getPriorityScale(n);
-                node.setPriorityScale(n, old * m_scale);
-                old = node.getPriorityOffset(n);
-                node.setPriorityOffset(n, old + m_offset);
-            }
-            traverse(node);
-        }
-
-    private:
-        float m_scale;
-        float m_offset;
-    };
-
-    /**
-     * Visitor that sets the DBOptions on deferred-loading nodes.
-     */
     class SetDBOptionsVisitor : public osg::NodeVisitor
     {
     private:
@@ -167,22 +77,22 @@ namespace
     public:
         SetDBOptionsVisitor(const osgDB::Options* dbOptions)
         {
-            setTraversalMode( TRAVERSE_ALL_CHILDREN );
-            setNodeMaskOverride( ~0 );
-            _dbOptions = Registry::cloneOrCreateOptions( dbOptions );                
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+            _dbOptions = Registry::cloneOrCreateOptions(dbOptions);
         }
 
     public: // osg::NodeVisitor
 
         void apply(osg::PagedLOD& node)
         {
-            node.setDatabaseOptions( _dbOptions.get() );
+            node.setDatabaseOptions(_dbOptions.get());
             traverse(node);
         }
 
         void apply(osg::ProxyNode& node)
         {
-            node.setDatabaseOptions( _dbOptions.get() );
+            node.setDatabaseOptions(_dbOptions.get());
             traverse(node);
         }
     };
@@ -192,23 +102,77 @@ namespace
 
 REGISTER_OSGEARTH_LAYER(model, ModelLayer);
 
-OE_LAYER_PROPERTY_IMPL(ModelLayer, URI, URL, url);
-OE_LAYER_PROPERTY_IMPL(ModelLayer, float, LODScale, lodScale);
-OE_LAYER_PROPERTY_IMPL(ModelLayer, bool, Paged, paged);
-OE_LAYER_PROPERTY_IMPL(ModelLayer, GeoPoint, Location, location);
-OE_LAYER_PROPERTY_IMPL(ModelLayer, osg::Vec3, Orientation, orientation);
-OE_LAYER_PROPERTY_IMPL(ModelLayer, unsigned, MaskMinLevel, maskMinLevel);
-OE_LAYER_PROPERTY_IMPL(ModelLayer, ShaderPolicy, ShaderPolicy, shaderPolicy);
-
-ModelLayer::~ModelLayer()
+void
+ModelLayer::setURL(const URI& value)
 {
-    //nop
+    options().url() = value;
 }
+
+const URI&
+ModelLayer::getURL() const
+{
+    return options().url().get();
+}
+
+void
+ModelLayer::setShaderPolicy(const ShaderPolicy& value)
+{
+    options().shaderPolicy() = value;
+}
+
+const
+ShaderPolicy& ModelLayer::getShaderPolicy() const
+{
+    return options().shaderPolicy().get();
+}
+
+void
+ModelLayer::setPosition(const GeoPoint& value)
+{
+    options().position() = value;
+
+    auto xform = findNode<GeoTransform>(getNode());
+    if (xform)
+    {
+        xform->setPosition(value);
+    }
+}
+
+const GeoPoint&
+ModelLayer::getPosition() const
+{
+    return options().position().value();
+}
+
+void
+ModelLayer::setOrientationHPR(const osg::Vec3& hpr)
+{
+    options().orientation() = hpr;
+
+    auto pat = findNode<osg::PositionAttitudeTransform>(getNode());
+    if (pat)
+    {
+        osg::Matrix rot_mat;
+        rot_mat.makeRotate(
+            osg::DegreesToRadians(options().orientation()->y()), osg::Vec3(1, 0, 0),
+            osg::DegreesToRadians(options().orientation()->x()), osg::Vec3(0, 0, 1),
+            osg::DegreesToRadians(options().orientation()->z()), osg::Vec3(0, 1, 0));
+        pat->setAttitude(rot_mat.getRotate());
+    }
+}
+
+const osg::Vec3&
+ModelLayer::getOrientationHPR() const
+{
+    return options().orientation().value();
+}
+
+
 
 void
 ModelLayer::init()
 {
-    VisibleLayer::init();
+    super::init();
     _root = new osg::Group();
     _root->setName(getName());
 }
@@ -216,337 +180,118 @@ ModelLayer::init()
 Status
 ModelLayer::openImplementation()
 {
-    Status parentStatus = VisibleLayer::openImplementation();
+    Status parentStatus = super::openImplementation();
     if (parentStatus.isError())
         return parentStatus;
 
-    // Do we need to load a model source?
-    if (!_modelSource.valid() && options().driver().isSet())
-    {
-        std::string driverName = options().driver()->getDriver();
-
-        OE_INFO << LC << "Opening; driver=\"" << driverName << "\"" << std::endl;
-        
-        Status status;
-
-        // Try to create the model source:
-        _modelSource = ModelSourceFactory::create( options().driver().get() );
-        if ( _modelSource.valid() )
-        {
-            _modelSource->setName( this->getName() );
-            const Status& modelStatus = _modelSource->open(getReadOptions());
-            return modelStatus;
-        }
-        else
-        {
-            return Status(Status::ServiceUnavailable, Stringify() << "Failed to create driver \"" << driverName << "\"");
-        }
-    }
-
     // Do we have a model URL to load?
-    else if (!_modelSource.valid() && options().url().isSet())
+    if (options().url().isSet())
     {
         osg::ref_ptr<osgDB::Options> localReadOptions =
             Registry::instance()->cloneOrCreateOptions(getReadOptions());
-        
+
         // Add the URL to the file search path for relative-path paging support.
         localReadOptions->getDatabasePathList().push_back(
-            osgDB::getFilePath(options().url()->full()) );
-            
-        // Only support paging if user has enabled it and provided a min/max range
-        bool paged = 
-            (options().paged() == true) &&
-            (options().minVisibleRange().isSet() || options().maxVisibleRange().isSet());
+            osgDB::getFilePath(options().url()->full()));
 
-        osg::ref_ptr<osg::Node> result;
-        osg::ref_ptr<osg::Node> modelNode;
-        osg::ref_ptr<osg::Group> modelNodeParent;
-
-        // If we're not paging, just load the node now:
-        if (!paged)
-        {
-            ReadResult rr = options().url()->readNode(localReadOptions.get());
-            if (rr.failed())
-            {
-                return Status(Status::ResourceUnavailable,
-                    Stringify() << "Failed to load model from URL ("<<rr.errorDetail()<<")");
-            }
-            modelNode = rr.getNode();
-        }
+        osg::ref_ptr<osg::Group> modelParent;
 
         // Apply the location and orientation, if available:
-        GeoTransform* geo = 0L;
-        osg::PositionAttitudeTransform* pat = 0L;
+        GeoTransform* geo = nullptr;
+        osg::PositionAttitudeTransform* pat = nullptr;
 
         if (options().orientation().isSet())
         {
             pat = new osg::PositionAttitudeTransform();
             osg::Matrix rot_mat;
-            rot_mat.makeRotate( 
-                osg::DegreesToRadians(options().orientation()->y()), osg::Vec3(1,0,0),
-                osg::DegreesToRadians(options().orientation()->x()), osg::Vec3(0,0,1),
-                osg::DegreesToRadians(options().orientation()->z()), osg::Vec3(0,1,0) );
+            rot_mat.makeRotate(
+                osg::DegreesToRadians(options().orientation()->y()), osg::Vec3(1, 0, 0),
+                osg::DegreesToRadians(options().orientation()->x()), osg::Vec3(0, 0, 1),
+                osg::DegreesToRadians(options().orientation()->z()), osg::Vec3(0, 1, 0));
             pat->setAttitude(rot_mat.getRotate());
-            modelNodeParent = pat;
+            modelParent = pat;
         }
 
-        if (options().location().isSet())
+        if (options().position().isSet())
         {
             geo = new GeoTransform();
-            geo->setPosition(options().location().get());
+            geo->setPosition(options().position().get());
             if (pat)
                 geo->addChild(pat);
-
-            modelNodeParent = geo;
+            else
+                modelParent = geo;
         }
 
-        result = modelNodeParent.get();
-        
-        if ( options().minVisibleRange().isSet() || options().maxVisibleRange().isSet() )
-        {                
-            float minRange = options().minVisibleRange().getOrUse(0.0f);
-            float maxRange = options().maxVisibleRange().getOrUse(FLT_MAX);
+        float minRange = options().minVisibleRange().getOrUse(0.0f);
+        float maxRange = options().maxVisibleRange().getOrUse(FLT_MAX);
 
-            osg::Group* group = nullptr;
+        PagedNode2* plod = new PagedNode2();
 
-            if (!paged)
+        URI uri = options().url().get();
+        auto localOptions = options();
+
+        auto loader = [localOptions, localReadOptions](Cancelable*)
             {
-                // Just use a regular LOD
-                osg::LOD* lod = new osg::LOD();
-                lod->addChild(modelNode.release());
-                lod->setRange(0, minRange, maxRange);
-                group = lod;
-            }
-            else
-            {
-                PagedNode2* plod = new PagedNode2();
-
-                URI uri = options().url().get();
-
-                plod->setLoadFunction([uri, localReadOptions](Cancelable*) {
-                    osg::ref_ptr<osg::Node> node = uri.getNode(localReadOptions.get());
-                    ShaderGenerator gen;
-                    node->accept(gen);
-                    return node;
-                });
-
-                plod->setMinRange(minRange);
-                plod->setMaxRange(maxRange);
-
-                // FIXME: Tries to set the PagedNode center based on a GeoPoint; 
-                // if said GeoPoint has an ALTMODE_RELATIVE it will fail to resolve and
-                // will print the ILLEGAL toWorld message.
-                // Options: (a) Use a terrain callback to set the Z value (b) use ElevationRanges
-                // (c) use a ModelNode instead
-                osg::Vec3d center;
-                if (options().location().isSet())
+                osg::ref_ptr<osg::Node> node = localOptions.url()->getNode(localReadOptions.get());
+                if (node.valid())
                 {
-                    options().location()->toWorld(center);
-                }
-                else
-                {
-                    center = result->getBound().center();
-                }
-                plod->setCenter(center);
+                    if (localOptions.shaderPolicy() == SHADERPOLICY_GENERATE)
+                    {
+                        osg::ref_ptr<StateSetCache> cache = new StateSetCache();
+                        Registry::shaderGenerator().run(node, localOptions.url()->base(), cache.get());
+                    }
+                    else if (localOptions.shaderPolicy() == SHADERPOLICY_DISABLE)
+                    {
+                        node->getOrCreateStateSet()->setAttributeAndModes(
+                            new osg::Program(),
+                            osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+                    }
 
-                if (result.valid())
-                {
-                    plod->setRadius(std::max(result->getBound().radius(), maxRange));
-                }
-                else
-                {
-                    plod->setRadius(maxRange);
+                    // apply the DB options if there are any, so that deferred nodes like PagedLOD et al
+                    // will inherit the loading options.
+                    if (localReadOptions.valid())
+                    {
+                        SetDBOptionsVisitor setDBO(localReadOptions.get());
+                        node->accept(setDBO);
+                    }
                 }
 
-                group = plod;
-            }
+                return node;
+            };
 
-            modelNodeParent->addChild(group);
+        plod->setLoadFunction(loader);
+
+        if (options().minPixels().isSet())
+        {
+            plod->setMinPixels(options().minPixels().value());
         }
         else
         {
-            // Simply add the node to the matrix transform
-            if (modelNode.valid() && modelNodeParent.valid())
-            {            
-                modelNodeParent->addChild(modelNode.get());
-            }
+            plod->setMinRange(minRange);
+            plod->setMaxRange(maxRange);
         }
 
-        if (!result.valid())
-        {
-            result = modelNode.get();
-        }
+        // Only supports GeoPoint ALTMODE_ABSOLUTE.
+        osg::Vec3d center;
+        if (options().position().isSet())
+            options().position()->toWorld(center);
 
-        if (result.valid())
-        {
-            if(options().loadingPriorityScale().isSet() || options().loadingPriorityOffset().isSet())
-            {
-                SetLoadPriorityVisitor slpv(options().loadingPriorityScale().value(), options().loadingPriorityOffset().value());
-                result->accept(slpv);
-            }
-    
-            if(options().lodScale().isSet())
-            {
-                LODScaleOverrideNode * node = new LODScaleOverrideNode;
-                node->setLODScale(options().lodScale().value());
-                node->addChild(result.release());
-                result = node;
-            }
+        plod->setCenter(center);
+        plod->setRadius(maxRange);
 
-            if ( options().shaderPolicy() == SHADERPOLICY_GENERATE )
-            {
-                osg::ref_ptr<StateSetCache> cache = new StateSetCache();
+        if (modelParent.valid())
+            modelParent->addChild(plod);
 
-                Registry::shaderGenerator().run(
-                    result.get(),
-                    options().url()->base(),
-                    cache.get() );
-            }
-            else if ( options().shaderPolicy() == SHADERPOLICY_DISABLE )
-            {
-                result->getOrCreateStateSet()->setAttributeAndModes(
-                    new osg::Program(),
-                    osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
-            }
+        auto result = modelParent.valid() ? modelParent : plod;
 
-            // apply the DB options if there are any, so that deferred nodes like PagedLOD et al
-            // will inherit the loading options.
-            if ( localReadOptions.valid() )
-            {
-                SetDBOptionsVisitor setDBO( localReadOptions.get() );
-                result->accept( setDBO );
-            }
-        }
-
-        if (result.valid())
-        {
-            setNode(result.release());
-        }
+        _root->addChild(result);
     }
 
     return Status::NoError;
-}
-
-std::string
-ModelLayer::getCacheID() const
-{
-    // Customized from the base class to use the driver() config instead of full config:
-    std::string binID;
-    if (options().cacheId().isSet() && !options().cacheId()->empty())
-    {
-        binID = options().cacheId().get();
-    }
-    else
-    {
-        Config conf = options().driver()->getConfig();
-        binID = hashToString(conf.toJSON(false));
-    }
-    return binID;
-}
-
-void
-ModelLayer::addedToMap(const Map* map)
-{
-    VisibleLayer::addedToMap(map);
-
-    if (getStatus().isError())
-        return;
-
-    // Using a model source?
-    if ( _modelSource.valid() )
-    {
-        // reset the scene graph.
-        while (_root->getNumChildren() > 0)
-        {
-            getSceneGraphCallbacks()->fireRemoveNode(_root->getChild(0));
-            _root->removeChildren(0, 1);
-        }
-
-        // Share the scene graph callbacks with the model source:
-        _modelSource->setSceneGraphCallbacks(getSceneGraphCallbacks());
-
-        // Create the scene graph from the mode source:
-        osg::ref_ptr<osg::Node> node = _modelSource->createNode(map, 0L);
-        if (node.valid())
-        {
-            if ( options().lightingEnabled().isSet() )
-            {
-                setLightingEnabled( options().lightingEnabled().get() );
-            }
-
-            _modelSource->sync( _modelSourceRev );
-
-            // Handle disabling depth testing
-            if ( _modelSource->getOptions().depthTestEnabled() == false )
-            {
-                osg::StateSet* ss = node->getOrCreateStateSet();
-                ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );              
-                ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
-            }
-
-            // enfore a rendering bin if necessary:
-            if (_modelSource->getOptions().renderOrder().isSet())
-            {
-                osg::StateSet* ss = node->getOrCreateStateSet();
-                ss->setRenderBinDetails(
-                    _modelSource->getOptions().renderOrder().value(),
-                    ss->getBinName().empty() ? "DepthSortedBin" : ss->getBinName());
-            }
-
-            if (_modelSource->getOptions().renderBin().isSet())
-            {
-                osg::StateSet* ss = node->getOrCreateStateSet();
-                ss->setRenderBinDetails(
-                    ss->getBinNumber(),
-                    _modelSource->getOptions().renderBin().get());
-            }
-
-            _root->addChild(node.get());
-        }
-    }
-}
-
-void
-ModelLayer::removedFromMap(const Map* map)
-{
-    // dispose of the scene graph.
-    while (_root->getNumChildren() > 0)
-    {
-        getSceneGraphCallbacks()->fireRemoveNode(_root->getChild(0));
-        _root->removeChildren(0, 1);
-    }
-}
-
-void
-ModelLayer::setNode(osg::Node* node)
-{
-    _root->removeChildren(0, _root->getNumChildren());
-    if (node)
-    {
-        _root->addChild(node);
-        setStatus(Status::OK());
-    }
 }
 
 osg::Node*
 ModelLayer::getNode() const
 {
     return _root.get();
-}
-
-void
-ModelLayer::setLightingEnabled( bool value )
-{
-    options().lightingEnabled() = value;
-
-    GLUtils::setLighting(
-        _root->getOrCreateStateSet(),
-        value ? osg::StateAttribute::ON : 
-        (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
-}
-
-bool
-ModelLayer::isLightingEnabled() const
-{
-    return options().lightingEnabled().get();
 }

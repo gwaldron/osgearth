@@ -102,6 +102,17 @@ TerrainEngineNode::~TerrainEngineNode()
     OE_DEBUG << LC << "~TerrainEngineNode\n";
 }
 
+namespace
+{
+    struct RequestRedraw
+    {
+        void operator()(osg::View* view) {
+            osgGA::GUIActionAdapter* aa = dynamic_cast<osgGA::GUIActionAdapter*>(view);
+            if (aa) aa->requestRedraw();
+        }
+    };
+}
+
 void
 TerrainEngineNode::requestRedraw()
 {

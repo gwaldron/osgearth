@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_NODE_UTILS_H
-#define OSGEARTH_NODE_UTILS_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osg/View>
@@ -38,84 +37,6 @@ namespace osgEarth { namespace Util
     using namespace osgEarth;
 
     /**
-     * General purpose operation for doing something to a node.
-     */
-    struct NodeOperation : public osg::Referenced
-    {
-        virtual void operator()( osg::Node* node ) =0;
-    };
-
-    typedef std::vector< osg::ref_ptr<NodeOperation> > NodeOperationVector;
-
-    struct RefNodeOperationVector : public osg::Referenced, public NodeOperationVector
-    {
-    public:
-       Threading::ReadWriteMutex& mutex() const { return _mutex; }
-    private:
-       mutable Threading::ReadWriteMutex _mutex;
-    };
-
-    /**
-     * A PagedLOD that will fire node operation callbacks when it merges
-     * new nodes into the graph.
-     */
-    class OSGEARTH_EXPORT PagedLODWithNodeOperations : public osg::PagedLOD
-    {
-    public:
-        PagedLODWithNodeOperations( RefNodeOperationVector* postMergeOps );
-
-    public: // osg::Group
-
-        virtual bool addChild( osg::Node* child );
-        virtual bool insertChild( unsigned index, Node* child );
-        virtual bool replaceChild( Node* origChild, Node* newChild );
-
-    protected:
-        osg::observer_ptr<RefNodeOperationVector> _postMergeOps;
-
-        void runPostMerge( osg::Node* node );
-    };
-
-    /**
-     * Visitor that looks for empty group nodes and removes them from the
-     * scene graph. (Note, if the entry node is an empty group, it will
-     * not be affected.)
-     */
-    class OSGEARTH_EXPORT RemoveEmptyGroupsVisitor : public osg::NodeVisitor
-    {
-    public:
-        static void run( osg::Node* entry ) {
-            if ( entry ) {
-                RemoveEmptyGroupsVisitor v;
-                entry->accept( v );
-            }
-        }
-
-    public:
-        RemoveEmptyGroupsVisitor();
-        void apply( osg::Group& group ); //override
-    };
-
-    /**
-     * Visitor that counts the number of point, line, and polygon primitive sets
-     * in a scene graph.
-     */
-    class OSGEARTH_EXPORT PrimitiveSetTypeCounter : public osg::NodeVisitor
-    {
-    public:
-        PrimitiveSetTypeCounter();
-
-        /** dtor */
-        virtual ~PrimitiveSetTypeCounter() { }
-
-        void apply(class osg::Drawable&);
-
-        unsigned _point;
-        unsigned _line;
-        unsigned _polygon;
-    };
-
-    /**
      * Visitor that finds all the parental Camera Views, and calls an operator
      * on each one.
      */
@@ -129,19 +50,6 @@ namespace osgEarth { namespace Util
             osg::View* view = cam.getView();
             if ( view ) this->operator()( view );
             traverse(cam);
-        }
-    };
-
-    /**
-     * Functor (for use with ViewVisitor) that notifies a view that it needs to
-     * redraw the scene because something has changed
-     * Usage: ViewVisitor<RequestRedraw> vis; node->accept(vis);
-     */
-    struct RequestRedraw
-    {
-        void operator()(osg::View* view) {
-            osgGA::GUIActionAdapter* aa = dynamic_cast<osgGA::GUIActionAdapter*>(view);
-            if ( aa ) aa->requestRedraw();
         }
     };
 
@@ -233,6 +141,12 @@ namespace osgEarth { namespace Util
         return fnotv._foundNode;
     }
 
+    //! Synonym for findTopMostNodeOfType.
+    template<typename T>
+    T* findNode(osg::Node* node, unsigned traversalMask = ~0) {
+        return findTopMostNodeOfType<T>(node, traversalMask);
+    }
+
     /**
      * Searchs the scene graph upward starting at [node] and returns the first node found
      * that matches the template parameter type.
@@ -281,9 +195,9 @@ namespace osgEarth { namespace Util
     }
 
     /** Finds all the siblings of a node */
-    inline std::vector<osg::ref_ptr<osg::Node>> findSiblings(osg::Node* node)
+    inline osg::NodeList findSiblings(osg::Node* node)
     {
-        std::vector<osg::ref_ptr<osg::Node>> output;
+        osg::NodeList output;
         if (node && node->getNumParents() > 0)
         {
             auto parent = node->getParent(0);
@@ -559,5 +473,3 @@ namespace osgEarth { namespace Util
     extern OSGEARTH_EXPORT void loadData(osg::Node* node, std::vector<osg::BoundingSphered>& areasToLoad);
 
 } }
-
-#endif // OSGEARTH_CACHING_H

@@ -48,7 +48,7 @@ include_directories(
     ${SILVERLINING_INCLUDE_DIR})
     
 target_link_libraries(${LIB_NAME}
-    PUBLIC osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARIES} ${SILVERLINING_LIBRARY})
+    PUBLIC osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARIES} OE::SILVERLINING)
 
 # Add this project to the NodeKits solution folder
 set_property( TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )

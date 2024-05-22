@@ -340,6 +340,12 @@ macro(add_osgearth_library)
             FILES ${MY_SHADERS}
             DESTINATION resources/shaders )
     endif()
+    
+    # on Windows, install pdb files
+    # https://stackoverflow.com/a/40860436/4218920
+    if(OSGEARTH_INSTALL_PDBS)
+        install(FILES $<TARGET_PDB_FILE:${PROJECT_NAME}> DESTINATION ${INSTALL_LIBRARY_FOLDER} OPTIONAL)
+    endif()
 
 
     # Public Header File install:

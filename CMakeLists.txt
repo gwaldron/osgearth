@@ -93,6 +93,9 @@ mark_as_advanced(OSGEARTH_ASSUME_SINGLE_THREADED_OSG)
 option(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when installing (OFF=inlined shaders)" OFF)
 mark_as_advanced(OSGEARTH_INSTALL_SHADERS)
 
+if(WIN32)
+    option(OSGEARTH_INTSALL_PDBS "Whether to deploy Windows .pdb files" OFF)
+endif()
 
 # Dependencies ...........................................................
 

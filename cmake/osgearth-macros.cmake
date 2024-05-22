@@ -91,6 +91,7 @@ endmacro(detect_osg_version)
 #       SHADERS [list of GLSL shader files]
 #       LIBRARIES [list of additional libraries to link with]
 #       INCLUDE_DIRECTORIES [list of additional include folders to use]
+#       FOLDER [name of IDE folder in which to place target]
 #
 # Note: osgEarth and OpenScenegraph libraries will automatically link to all plugins.
 #
@@ -180,6 +181,7 @@ endmacro()
 #       USE_IMGUI [to build an ImGui-based application]
 #       LIBRARIES [list of additional libraries to link with]
 #       INCLUDE_DIRECTORIES [list of additional include folders to use]
+#       FOLDER [name of IDE folder in which to place target]
 #
 # Note: osgEarth and OpenScenegraph libraries will automatically link to all apps.
 #
@@ -278,6 +280,7 @@ endmacro(add_osgearth_app)
 #       SHADERS [list of GLSL shader files]
 #       LIBRARIES [list of additional libraries to link with]
 #       INCLUDE_DIRECTORIES [list of additional include folders to use]
+#       FOLDER [name of IDE folder in which to place target]
 #
 # Note: osgEarth and OpenScenegraph libraries will automatically link to all apps.
 #
@@ -361,6 +364,11 @@ macro(add_osgearth_library)
              INSTALL_NAME_DIR "${OSGEARTH_BUILD_FRAMEWORKS_INSTALL_NAME_DIR}"
         )
     endif()
+    
+    # IDE location:
+    if (MY_FOLDER)
+        set_property(TARGET ${MY_TARGET} PROPERTY FOLDER "${MY_FOLDER}")
+    endif()        
 
 
     # custom install for ImGui headers.

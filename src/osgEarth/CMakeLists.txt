@@ -823,6 +823,7 @@ if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
         MouseCoordsTool.cpp)
 endif()
 
+
 # generate the google protocol buffers headers and sources
 if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
     
@@ -949,3 +950,16 @@ else()
             ${SSL_EAY_RELEASE} ${LIB_EAY_RELEASE} ${TIFF_LIBRARY} ${PROJ4_LIBRARY} ${PNG_LIBRARY} ${JPEG_LIBRARY})
 endif()
 
+
+
+
+
+
+message(STATUS "Protobuf_FOUND: ${Protobuf_FOUND}")
+message(STATUS "spdlog_FOUND: ${spdlog_FOUND}")
+message(STATUS "SQLite3_FOUND: ${SQLite3_FOUND}")
+message(STATUS "blosc_FOUND: ${blosc_FOUND}")
+message(STATUS "geos_FOUND: ${geos_FOUND}")
+message(STATUS "blend2d_FOUND: ${blend2d_FOUND}")
+message(STATUS "TRACY_FOUND: ${TRACY_FOUND}")
+message(STATUS "meshoptimizer_FOUND: ${meshoptimizer_FOUND}")

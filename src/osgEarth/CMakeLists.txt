@@ -842,15 +842,9 @@ endif()
 
 message(STATUS "Building ${LIB_NAME} as a ${OSGEARTH_DYNAMIC_OR_STATIC} library")
 
-# Generate the Version header.
+# Declare the dynamic headers -- we'll generate them later when all the HAVE vars are set.
 set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version")
-message(STATUS "Creating ${OSGEARTH_VERSION_HEADER}")
-configure_file(Version.in ${OSGEARTH_VERSION_HEADER})
-
-# Generate the BuildConfig header.
 set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig")
-message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
-configure_file(BuildConfig.in ${OSGEARTH_BUILDCONFIG_HEADER})
 
 
 add_osgearth_library(
@@ -951,15 +945,9 @@ else()
 endif()
 
 
+# Generate the dynamic headers.
+message(STATUS "Creating ${OSGEARTH_BUILDCONFIG_HEADER}")
+configure_file(BuildConfig.in ${OSGEARTH_BUILDCONFIG_HEADER})
 
-
-
-
-message(STATUS "Protobuf_FOUND: ${Protobuf_FOUND}")
-message(STATUS "spdlog_FOUND: ${spdlog_FOUND}")
-message(STATUS "SQLite3_FOUND: ${SQLite3_FOUND}")
-message(STATUS "blosc_FOUND: ${blosc_FOUND}")
-message(STATUS "geos_FOUND: ${geos_FOUND}")
-message(STATUS "blend2d_FOUND: ${blend2d_FOUND}")
-message(STATUS "TRACY_FOUND: ${TRACY_FOUND}")
-message(STATUS "meshoptimizer_FOUND: ${meshoptimizer_FOUND}")
+message(STATUS "Creating ${OSGEARTH_VERSION_HEADER}")
+configure_file(Version.in ${OSGEARTH_VERSION_HEADER})

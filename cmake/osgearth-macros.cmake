@@ -314,7 +314,7 @@ macro(add_osgearth_library)
     include_directories(${MY_INCLUDE_DIRECTORIES})
 
     # Link:
-    if(NOT ${MY_TARGET} MATCHES "osgEarth")
+    if(NOT "${MY_TARGET}" STREQUAL "osgEarth")
         target_link_libraries(${MY_TARGET} PRIVATE osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${MY_LIBRARIES})
     else()
         target_link_libraries(${MY_TARGET} PRIVATE ${OPENSCENEGRAPH_LIBRARIES} ${MY_LIBRARIES})

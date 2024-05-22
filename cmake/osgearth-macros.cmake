@@ -258,7 +258,13 @@ macro(add_osgearth_app)
             set(MY_FOLDER "Ungrouped")
         endif()
 
-        set_property(TARGET ${MY_TARGET} PROPERTY FOLDER "${MY_FOLDER}")
+        set_target_properties(${MY_TARGET} PROPERTIES
+            FOLDER "${MY_FOLDER}"
+            DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}"
+            RELEASE_POSTFIX "${CMAKE_RELEASE_POSTFIX}"
+            RELWITHDEBINFO_POSTFIX "${CMAKE_RELWITHDEBINFO_POSTFIX}"
+            MINSIZEREL_POSTFIX "${CMAKE_MINSIZEREL_POSTFIX}"
+        )
     endif()
 
 endmacro(add_osgearth_app)

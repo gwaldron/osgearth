@@ -866,7 +866,7 @@ if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
         add_definitions(-DPROTOBUF_USE_DLLS)
     endif()
     
-    include_directories(${Protobuf_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+    include_directories(${Protobuf_INCLUDE_DIR})
     target_link_libraries(${LIB_NAME} PRIVATE protobuf::libprotobuf)
 endif()
 

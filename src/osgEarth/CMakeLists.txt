@@ -836,8 +836,8 @@ endif()
 
 if(OSGEARTH_ENABLE_GEOCODER)
     set(OSGEARTH_HAVE_GEOCODER ON)
-    list(APPEND TARGET_H GeoCoder)
-    list(APPEND TARGET_SRC GeoCoder.cpp)
+    list(APPEND TARGET_H Geocoder)
+    list(APPEND TARGET_SRC Geocoder.cpp)
 endif()
 
 message(STATUS "Building ${LIB_NAME} as a ${OSGEARTH_DYNAMIC_OR_STATIC} library")

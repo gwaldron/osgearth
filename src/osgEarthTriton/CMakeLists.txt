@@ -35,16 +35,12 @@ set(TARGET_SRC
 add_osgearth_library(
     TARGET ${LIB_NAME}
     SOURCES ${TARGET_SRC}
-    PUBLIC_HEADERS ${TARGET_H} )
+    PUBLIC_HEADERS ${TARGET_H}
+    FOLDER "NodeKits")
 
-include_directories( 
-    ${OSG_INCLUDE_DIR}
-    ${OSGEARTH_SOURCE_DIR}
-    ${TRITON_INCLUDE_DIR}
-)
+include_directories(${TRITON_INCLUDE_DIR})
 
 target_link_libraries(${LIB_NAME}
-    PUBLIC osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARIES} OE::TRITON)
+    PUBLIC OpenGL::GL
+    PRIVATE OE::TRITON)
 
-# Add this project to the NodeKits solution folder
-set_property( TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )

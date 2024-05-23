@@ -326,6 +326,12 @@ macro(add_osgearth_library)
         target_link_libraries(${MY_TARGET} PRIVATE ${OPENSCENEGRAPH_LIBRARIES} ${MY_LIBRARIES})
     endif()
     
+    # profiler:
+    if(TRACY_FOUND)
+        include_directories(${TRACY_INCLUDE_DIR})
+        target_link_libraries(${MY_TARGET} PRIVATE ${TRACY_LIBRARY})
+    endif()
+    
     # soversions - append SO version to shared object files on unix (e.g., osgearth.so.123)
     if (OSGEARTH_SONAMES)
         set_target_properties(${MY_TARGET} PROPERTIES VERSION ${OSGEARTH_VERSION} SOVERSION ${OSGEARTH_SOVERSION})

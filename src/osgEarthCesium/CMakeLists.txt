@@ -49,7 +49,8 @@ add_osgearth_library(
     IMGUI_HEADERS ${TARGET_H_IMGUI}
     SOURCES ${TARGET_SRC}
     SHADERS ${TARGET_GLSL}
-    TEMPLATES ${TARGET_IN} )
+    TEMPLATES ${TARGET_IN}
+    FOLDER "NodeKits")
 
 # Include the Cesium Native headers BEFORE anything else to ensure that dependencies that might be duplicated like spdlog are included from the Cesium Native headers.
 include_directories(BEFORE ${CESIUM_NATIVE_INCLUDE_DIR})
@@ -87,6 +88,3 @@ target_link_libraries(${LIB_NAME}
         ${CESIUM_NATIVE_S2GEOMETRY_LIBRARY}
         ${CESIUM_NATIVE_TINYXML2_LIBRARY})
 
-
-# Add this project to the NodeKits solution folder
-set_property( TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )

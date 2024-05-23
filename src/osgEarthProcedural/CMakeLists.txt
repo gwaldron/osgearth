@@ -12,14 +12,15 @@ SET(LIB_NAME osgEarthProcedural)
 set(OSGEARTH_HAVE_PROCEDURAL_NODEKIT ON PARENT_SCOPE) # for BuildConfig
 
 # temporary... for devel only...
-set(CLIPPER2_INCLUDE_DIR "H:/devel/clipper2/install/include")
-if (EXISTS ${CLIPPER2_INCLUDE_DIR})
-    include_directories(${CLIPPER2_INCLUDE_DIR})
-    SET(CLIPPER2_LIB "H:/devel/clipper2/install/lib/clipper2.lib")
-    set(OSGEARTH_HAVE_CLIPPER2)
-    add_definitions(-DOSGEARTH_HAVE_CLIPPER2)
+if(CLIPPER2_FOUND)
+    set(CLIPPER2_INCLUDE_DIR "H:/devel/clipper2/install/include")
+    if (EXISTS ${CLIPPER2_INCLUDE_DIR})
+        include_directories(${CLIPPER2_INCLUDE_DIR})
+        SET(CLIPPER2_LIB "H:/devel/clipper2/install/lib/clipper2.lib")
+        set(OSGEARTH_HAVE_CLIPPER2)
+        add_definitions(-DOSGEARTH_HAVE_CLIPPER2)
+    endif()
 endif()
-
 
 # shaders:
 set(TARGET_GLSL
@@ -80,20 +81,9 @@ add_osgearth_library(
     PUBLIC_HEADERS ${TARGET_H}
     IMGUI_HEADERS ${TARGET_H_IMGUI}
     SHADERS ${TARGET_GLSL}
-    TEMPLATES ${TARGET_IN} )
+    TEMPLATES ${TARGET_IN}
+    FOLDER "NodeKits")
 
-target_link_libraries(${LIB_NAME}
-    PRIVATE
-        ${CLIPPER2_LIB}
-    PUBLIC
-        osgEarth ${OPENSCENEGRAPH_LIBRARIES})
-
-if(TRACY_FOUND)
-    include_directories(${TRACY_INCLUDE_DIR})
-    target_link_libraries(${LIB_NAME} PRIVATE ${TRACY_LIBRARY})
+if(CLIPPER2_FOUND)
+    target_link_libraries(${LIB_NAME} PRIVATE ${CLIPPER2_LIB})
 endif()
-
-# Place it in the NodeKits solution folder
-set_property(TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )
-
-# install the library

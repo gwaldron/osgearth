@@ -203,6 +203,7 @@ SET(TARGET_H
     Filter
     FilterContext
     FilteredFeatureSource
+    FilterUsage
     FlatteningLayer
     Formatter
     FractalElevationLayer

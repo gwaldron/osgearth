@@ -73,17 +73,10 @@ add_osgearth_library(
     SOURCES ${TARGET_SRC}
     PUBLIC_HEADERS ${TARGET_H}
     SHADERS ${TARGET_GLSL}
-    TEMPLATES ${TARGET_IN} )
+    TEMPLATES ${TARGET_IN}
+    FOLDER "NodeKits")
 
-if(TRACY_FOUND)
-    include_directories(${TRACY_INCLUDE_DIR})
-    target_link_libraries(${LIB_NAME} PRIVATE ${TRACY_LIBRARY})
-endif()
+target_link_libraries(${LIB_NAME} PRIVATE OpenGL::GL)
 
-target_link_libraries(${LIB_NAME}
-    PUBLIC osgEarth ${OPENSCENEGRAPH_LIBRARIES} OpenGL::GL)
-
-# Add this project to the NodeKits solution folder
-set_property( TARGET ${LIB_NAME} PROPERTY FOLDER "NodeKits" )
 
 

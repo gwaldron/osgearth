@@ -243,6 +243,21 @@ macro(add_osgearth_app)
         # We always need these so just link them here.
         target_link_libraries(${MY_TARGET} PRIVATE osgEarth ${OPENSCENEGRAPH_LIBRARIES} ${MY_LIBRARIES})
         
+        # ImGui apps may use panels that require linking to all nodekits
+        if (MY_USE_IMGUI)
+            if(OSGEARTH_HAVE_PROCEDURAL_NODEKIT)
+                target_link_libraries(${MY_TARGET} PRIVATE osgEarthProcedural)
+            endif()
+
+            if (OSGEARTH_HAVE_LEGACY_SPLAT_NODEKIT)
+                target_link_libraries(${MY_TARGET} PRIVATE osgEarthSplat)
+            endif()
+
+            if (OSGEARTH_HAVE_CESIUM_NODEKIT)
+                target_link_libraries(${MY_TARGET} PRIVATE osgEarthCesium)
+            endif()
+        endif()
+        
         set_target_properties(${MY_TARGET} PROPERTIES PROJECT_LABEL "${MY_TARGET}")
         
         # macos-specific

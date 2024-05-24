@@ -21,7 +21,7 @@
 #include <osgEarth/Metrics>
 #include <osgViewer/ViewerBase>
 #include <osgViewer/View>
-#include <osgEarth/Memory>
+#include <osgEarth/MemoryUtils>
 #include <stdlib.h>
 
 using namespace osgEarth::Util;

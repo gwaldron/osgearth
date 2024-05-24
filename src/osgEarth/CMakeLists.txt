@@ -292,7 +292,7 @@ SET(LIB_PUBLIC_HEADERS
     MBTiles
     MeasureTool
     MemCache
-    Memory
+    MemoryUtils
     MeshConsolidator
     MeshFlattener
     MeshSubdivider
@@ -707,7 +707,7 @@ set(TARGET_SRC
     MBTiles.cpp
     MeasureTool.cpp
     MemCache.cpp
-    Memory.cpp
+    MemoryUtils.cpp
     MeshConsolidator.cpp
     MeshFlattener.cpp
     MeshSubdivider.cpp

@@ -24,7 +24,7 @@
 #include "TerrainEngineNode"
 #include "GLUtils"
 #include "Chonk"
-#include "Memory"
+#include "MemoryUtils"
 
 #include <osg/ArgumentParser>
 #include <osgText/Font>

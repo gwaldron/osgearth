@@ -20,7 +20,7 @@
 
 #include "ImGui"
 #include <osgEarth/Threading>
-#include <osgEarth/Memory>
+#include <osgEarth/MemoryUtils>
 #include <osgEarth/GLUtils>
 #include <osgEarth/ShaderLoader>
 #include <chrono>

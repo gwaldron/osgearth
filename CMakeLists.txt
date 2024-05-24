@@ -123,9 +123,15 @@ if(GLEW_FOUND AND EXISTS "${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/imgui/imgui.cpp")
     set(OSGEARTH_HAVE_IMGUI 1)
 endif()
 
-#find_package(Tracy)
-if(TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
-    ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
+
+# integrated profiling with tracy?
+if(OSGEARTH_ENABLE_PROFILING)
+    message(STATUS "Looking for Tracy...")
+    find_package(Tracy)
+    if(Tracy_FOUND)
+        message(STATUS "Found Tracy ... enabling frame profiling")
+        ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
+    endif()
 endif()
 
 # optimization option:

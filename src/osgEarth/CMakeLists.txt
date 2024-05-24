@@ -22,10 +22,6 @@ find_package(blosc)
 find_package(spdlog)
 find_package(meshoptimizer)
 
-if(OSGEARTH_ENABLE_PROFILING)
-    find_package(Tracy)
-endif()
-
 if(OSGEARTH_BUILD_ZIP_PLUGIN)
     find_package(LibZip)
 endif()
@@ -906,9 +902,8 @@ if(blend2d_FOUND)
 endif()
 
 # Tracy?
-if (TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
+if (Tracy_FOUND)
     set(OSGEARTH_HAVE_TRACY ON)
-    add_definitions(-DOSGEARTH_PROFILING)
     target_link_libraries(${LIB_NAME} PRIVATE Tracy::TracyClient)
 endif()
 

@@ -30,6 +30,14 @@ set(OSGEARTH_SOVERSION 153)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Detect out-of-source build. We'll need this for protobuf generated files.
+if (NOT "${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}")
+    message(STATUS "Detected an out-of-source build. Kudos.")    
+    set(OSGEARTH_OUT_OF_SOURCE_BUILD TRUE)
+else()
+    message(STATUS "Detected a in-source build.")  
+endif()
+
 # We have some custom .cmake scripts not in the official distribution.
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PROJECT_SOURCE_DIR}/cmake")
 
@@ -126,11 +134,9 @@ endif()
 
 # integrated profiling with tracy?
 if(OSGEARTH_ENABLE_PROFILING)
-    message(STATUS "Looking for Tracy...")
     find_package(Tracy)
     if(Tracy_FOUND)
-        message(STATUS "Found Tracy ... enabling frame profiling")
-        ADD_DEFINITIONS(-DOSGEARTH_PROFILING)
+        message(STATUS "Found Tracy. Enabling frame profiling.")
     endif()
 endif()
 

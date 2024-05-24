@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_METRICS_H
-#define OSGEARTH_METRICS_H 1
+#pragma once
 
 #include <osgEarth/Common>
 
@@ -56,14 +54,18 @@ namespace osgEarth {
     }
 }
 
-#ifdef OSGEARTH_PROFILING
+#ifdef OSGEARTH_HAVE_TRACY
 
 // uncomment this to attempt GPU profiling blocks
 //#define OSGEARTH_GPU_PROFILING
 
 #include <osg/GL>
 
+// if you used a config.cmake file to get tracy, TRACY_ENABLE is already defined
+#ifndef TRACY_ENABLE
 #define TRACY_ENABLE
+#endif
+
 #define TRACY_ON_DEMAND
 #define TRACY_DELAYED_INIT
 #include <tracy/Tracy.hpp>
@@ -149,6 +151,4 @@ inline void _zoneSetText(tracy::ScopedZone& zone, const std::string& text) {
 #define OE_LOCKABLE(type, varname) type varname
 #define OE_LOCKABLE_BASE( type ) type
 #define OE_PROFILING_GPU_ZONE(name)
-#endif
-
 #endif

@@ -909,8 +909,7 @@ endif()
 if (TRACY_FOUND AND OSGEARTH_ENABLE_PROFILING)
     set(OSGEARTH_HAVE_TRACY ON)
     add_definitions(-DOSGEARTH_PROFILING)
-    include_directories(${TRACY_INCLUDE_DIR})
-    target_link_libraries(${LIB_NAME} PRIVATE ${TRACY_LIBRARIES})
+    target_link_libraries(${LIB_NAME} PRIVATE Tracy::TracyClient)
 endif()
 
 # mesh optimizer optional library?

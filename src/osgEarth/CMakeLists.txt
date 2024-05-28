@@ -14,16 +14,15 @@ find_package(GDAL REQUIRED)
 find_package(SQLite3 REQUIRED)
 
 # optional
-find_package(geos)
-find_package(Protobuf)
-find_package(WebP)
-find_package(blend2d)
-find_package(blosc)
-find_package(spdlog)
-find_package(meshoptimizer)
+find_package(geos QUIET)
+find_package(Protobuf QUIET)
+find_package(blend2d QUIET)
+find_package(blosc QUIET)
+find_package(spdlog QUIET)
+find_package(meshoptimizer QUIET)
 
 if(OSGEARTH_BUILD_ZIP_PLUGIN)
-    find_package(LibZip)
+    find_package(LibZip QUIET)
 endif()
 
 
@@ -821,10 +820,8 @@ endif()
 
 # generate the google protocol buffers headers and sources
 if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
-    
     PROTOBUF_GENERATE_CPP(PROTO_VECTOR_TILE_CPP PROTO_VECTOR_TILE_H vector_tile.proto) 
-    PROTOBUF_GENERATE_CPP(PROTO_GLYPHS_CPP PROTO_GLYPHS_H glyphs.proto)
-    
+    PROTOBUF_GENERATE_CPP(PROTO_GLYPHS_CPP PROTO_GLYPHS_H glyphs.proto)    
     list(APPEND TARGET_H ${PROTO_VECTOR_TILE_H} ${PROTO_GLYPHS_H})
     list(APPEND TARGET_SRC ${PROTO_VECTOR_TILE_CPP} ${PROTO_GLYPHS_CPP})
     
@@ -859,6 +856,7 @@ add_osgearth_library(
 
 # google protocol buffers
 if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
+    message(STATUS "Found protobuf")
     set(OSGEARTH_HAVE_PROTOBUF ON)
     set(OSGEARTH_HAVE_MVT ON)
     
@@ -867,18 +865,20 @@ if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
         add_definitions(-DPROTOBUF_USE_DLLS)
     endif()
     
-    include_directories(${Protobuf_INCLUDE_DIR})
+    #include_directories(${Protobuf_INCLUDE_DIR})
     target_link_libraries(${LIB_NAME} PRIVATE protobuf::libprotobuf)
 endif()
 
 # spdlog support?
 if (spdlog_FOUND)
+    message(STATUS "Found spdlog")
     set(OSGEARTH_HAVE_SPDLOG ON)
     target_link_libraries(${LIB_NAME} PRIVATE spdlog::spdlog)
 endif()
 
 # MBTiles support?
 if(SQLite3_FOUND)
+    message(STATUS "Found SQLite3 - will support MBTiles")
     set(OSGEARTH_HAVE_SQLITE3 ON)
     set(OSGEARTH_HAVE_MBTILES ON)
     include_directories(${SQLite3_INCLUDE_DIR})
@@ -887,6 +887,7 @@ endif()
 
 # Blosc support?
 if(blosc_FOUND)
+    message(STATUS "Found blosc")
     set(OSGEARTH_HAVE_BLOSC ON)
     include_directories(${BLOSC_INCLUDE_DIR})
     target_link_libraries(${LIB_NAME} PRIVATE blosc_shared)
@@ -894,6 +895,7 @@ endif()
 
 # GEOS support?
 if(geos_FOUND)
+    message(STATUS "Found geos")
     set(OSGEARTH_HAVE_GEOS ON)
     include_directories(${GEOS_INCLUDE_DIR})
     target_link_libraries(${LIB_NAME} PRIVATE GEOS::geos_c)
@@ -901,6 +903,7 @@ endif()
 
 # Blend2D?
 if(blend2d_FOUND)
+    message(STATUS "Found blend2d")
     set(OSGEARTH_HAVE_BLEND2D ON)
     include_directories(${BLEND2D_INCLUDES})
     target_link_libraries(${LIB_NAME} PRIVATE blend2d::blend2d)
@@ -908,12 +911,14 @@ endif()
 
 # Tracy?
 if (Tracy_FOUND)
+    message(STATUS "Found Tracy")
     set(OSGEARTH_HAVE_TRACY ON)
     target_link_libraries(${LIB_NAME} PRIVATE Tracy::TracyClient)
 endif()
 
 # mesh optimizer optional library?
 if(meshoptimizer_FOUND)
+    message(STATUS "Found meshoptimizer")
     set(OSGEARTH_HAVE_MESH_OPTIMIZER ON)
     target_link_libraries(${LIB_NAME} PRIVATE meshoptimizer::meshoptimizer)
 endif()

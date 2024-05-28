@@ -1,4 +1,4 @@
-find_package(WebP)
+find_package(WebP QUIET)
 
 if (WebP_FOUND)
     message(STATUS "Found WebP ${WEBP_VERSION}")
@@ -7,4 +7,3 @@ if (WebP_FOUND)
         SOURCES ReaderWriterWebP.cpp)
     target_link_libraries(osgdb_webp PRIVATE WebP::webp)
 endif()
-

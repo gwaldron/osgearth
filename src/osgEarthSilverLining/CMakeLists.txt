@@ -15,10 +15,7 @@ if (SILVERLINING_USE_PRE_5_079_API)
     add_definitions(-DOSGEARTH_SILVERLINING_USE_PRE_5_079_API)
 endif()
 
-SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
-
 SET(TARGET_H
-#   header files go here
     Common
     Export
     SilverLiningOptions
@@ -44,9 +41,6 @@ add_osgearth_library(
     SOURCES ${TARGET_SRC}
     PUBLIC_HEADERS ${TARGET_H}
     FOLDER "NodeKits")
-
-include_directories(${SILVERLINING_INCLUDE_DIR})
    
 target_link_libraries(${LIB_NAME}
-    PUBLIC OE::SILVERLINING
-    PRIVATE OpenGL::GL)
+    PRIVATE OE::SILVERLINING OpenGL::GL)

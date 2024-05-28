@@ -10,8 +10,6 @@ else()
     add_definitions(-DOSGEARTHTRITON_LIBRARY_STATIC)
 endif()
 
-set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
-
 SET(TARGET_H
     Common
     Export
@@ -38,9 +36,5 @@ add_osgearth_library(
     PUBLIC_HEADERS ${TARGET_H}
     FOLDER "NodeKits")
 
-include_directories(${TRITON_INCLUDE_DIR})
-
 target_link_libraries(${LIB_NAME}
-    PUBLIC OpenGL::GL
-    PRIVATE OE::TRITON)
-
+    PRIVATE OE::TRITON OpenGL::GL)

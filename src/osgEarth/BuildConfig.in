@@ -2,6 +2,7 @@
 #pragma once
 
 #cmakedefine OSGEARTH_HAVE_BLEND2D
+#cmakedefine OSGEARTH_HAVE_BLOSC
 #cmakedefine OSGEARTH_HAVE_GEOS
 #cmakedefine OSGEARTH_HAVE_GEOCODER
 #cmakedefine OSGEARTH_HAVE_IMGUI

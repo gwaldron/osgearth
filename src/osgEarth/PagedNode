@@ -261,7 +261,7 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT PagingManager : public osg::Group
     {
     public:
-        PagingManager(const std::string& jobpoolname = { "oe.nodepager" });
+        PagingManager(const std::string& jobpoolname = {});
 
         //! Maximum number of nodes to merge into the scene graph per update pass
         void setMaxMergesPerFrame(unsigned value) {

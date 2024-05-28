@@ -26,6 +26,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
+#define DEFAULT_JOBPOOL_NAME "oe.nodepager"
+
 PagedNode2::PagedNode2()
 {
     _job.name = (typeid(*this).name());
@@ -214,8 +216,11 @@ PagedNode2::startLoad(const osg::Object* host)
     auto pnode_weak = osg::observer_ptr<PagedNode2>(this);
 
     // Configure the jobs to run in a specific pool and with a dynamic priority.
+    auto poolName = _pagingManager ? _pagingManager->_jobpoolName : _jobpoolName;
+    if (poolName.empty()) poolName = DEFAULT_JOBPOOL_NAME;
+
     jobs::context context;
-    context.pool = jobs::get_pool(_pagingManager->_jobpoolName);
+    context.pool = jobs::get_pool(poolName);
     context.priority = [pnode_weak]() {
             osg::ref_ptr<PagedNode2> pnode;
             return pnode_weak.lock(pnode) ? pnode->getPriority() : -FLT_MAX;

@@ -102,7 +102,7 @@ option(OSGEARTH_INSTALL_SHADERS "Whether to deploy GLSL shaders when installing 
 mark_as_advanced(OSGEARTH_INSTALL_SHADERS)
 
 if(WIN32)
-    option(OSGEARTH_INTSALL_PDBS "Whether to deploy Windows .pdb files" OFF)
+    option(OSGEARTH_INSTALL_PDBS "Whether to deploy Windows .pdb files" OFF)
 endif()
 
 # Dependencies ...........................................................

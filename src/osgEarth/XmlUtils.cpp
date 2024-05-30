@@ -19,7 +19,7 @@
 
 #include <osgEarth/XmlUtils>
 
-#include "tinyxml.h"
+#include "tinyxml/tinyxml.h"
 
 
 using namespace osgEarth;
@@ -527,9 +527,12 @@ namespace
             XmlText* t = (XmlText*)node;
             std::string value = t->getValue();
 
-            std::string encodedValue;
-            TiXmlBase::EncodeString(value, &encodedValue);
-            bool needCDATA = !encodedValue.empty() && encodedValue != value;
+            //std::string encodedValue;
+            TiXmlString rawValue(value.c_str());
+            TiXmlString encodedValue;
+            TiXmlBase::EncodeString(rawValue, &encodedValue);
+
+            bool needCDATA = !encodedValue.empty() && (std::string(encodedValue.c_str()) != value);
 
             TiXmlText* tNode = new TiXmlText(value.c_str());
             if (needCDATA)

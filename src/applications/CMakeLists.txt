@@ -1,31 +1,7 @@
-PROJECT(OSGEARTH_APPLICATIONS)
-
-SET(OSGCORE_BUNDLED TRUE)
-
-IF(NOT OSGCORE_BUNDLED)
-	FIND_PACKAGE(OSGCORE)
-	IF(OSGCORE_FOUND)
-		INCLUDE(${OSGCORE_USE_FILE})
-	ELSE(OSGCORE_FOUND)
-		MESSAGE(ERROR "OSGCORE needed but NOT FOUND")
-	ENDIF(OSGCORE_FOUND)
-	SET(CMAKE_MODULE_PATH  ${PROJECT_SOURCE_DIR}/../../Macros)
-ENDIF(NOT OSGCORE_BUNDLED)
-
-SET(OPENSCENEGRAPH_APPLICATION_DIR ${PROJECT_SOURCE_DIR})
-
-
-#OpenThreads, osg, osgDB and osgUtil are included elsewhere.
-SET(TARGET_COMMON_LIBRARIES
-    osgEarth
-)
-
-SET(TARGET_DEFAULT_PREFIX "application_")
-
-IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
+if(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
 
     # Tools:
-    IF(OSGEARTH_BUILD_TOOLS)
+    if(OSGEARTH_BUILD_TOOLS)
         set(TARGET_DEFAULT_LABEL_PREFIX "Tool")
         set(TARGET_DEFAULT_APPLICATION_FOLDER "Tools")
         add_subdirectory(osgearth_viewer)
@@ -63,7 +39,7 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
     ENDIF()
 
     # Examples:
-    IF(OSGEARTH_BUILD_EXAMPLES)
+    if(OSGEARTH_BUILD_EXAMPLES)
         set(TARGET_DEFAULT_LABEL_PREFIX "Example")
         set(TARGET_DEFAULT_APPLICATION_FOLDER "Examples")
         add_subdirectory(osgearth_simple)
@@ -83,7 +59,6 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         add_subdirectory(osgearth_video)
         add_subdirectory(osgearth_heatmap)
         add_subdirectory(osgearth_collecttriangles)
-        add_subdirectory(osgearth_roads)
         
         if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
             add_subdirectory(osgearth_cluster)
@@ -95,8 +70,7 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
             add_subdirectory(osgearth_tracks)
             add_subdirectory(osgearth_transform)
         endif()
-
-    ENDIF(OSGEARTH_BUILD_EXAMPLES)
+    endif()
     
     if(OSGEARTH_BUILD_TESTS)
         set(TARGET_DEFAULT_LABEL_PREFIX "Test")
@@ -110,23 +84,23 @@ IF(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
         if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
             add_subdirectory(osgearth_shadercomp)
             
-            if(SILVERLINING_FOUND)
+            if(OSGEARTH_HAVE_SILVERLINING_NODEKIT)
                 add_subdirectory(osgearth_silverlining)
-            endif(SILVERLINING_FOUND)
+            endif()
 
-            if(TRITON_FOUND)
+            if(OSGEARTH_HAVE_TRITON_NODEKIT)
                 add_subdirectory(osgearth_triton)
-            endif(TRITON_FOUND)
+            endif()
         endif()
-    endif(OSGEARTH_BUILD_TESTS)
+    endif()
 
-ELSE()
+else()
 
     # ios
     IF(OSGEARTH_BUILD_EXAMPLES)
         SET(TARGET_DEFAULT_LABEL_PREFIX "Example")
         SET(TARGET_DEFAULT_APPLICATION_FOLDER "Examples")
         add_subdirectory(osgearth_viewerIOS)
-    ENDIF()
+    endif()
 
-ENDIF()
+endif()

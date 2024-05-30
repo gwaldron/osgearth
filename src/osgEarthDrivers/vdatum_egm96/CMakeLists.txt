@@ -1,9 +1,5 @@
-SET(TARGET_SRC EGM96.cpp)
-SET(TARGET_H EGM96Grid.h)
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OPENTHREADS_LIBRARY) 
-SETUP_PLUGIN(osgearth_vdatum_egm96)
-
-# to install public driver includes:
-SET(LIB_NAME vdatum_egm96)
-#SET(LIB_PUBLIC_HEADERS EGM96Grid.h)
-INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
+add_osgearth_plugin(
+    TARGET osgdb_osgearth_vdatum_egm96
+    HEADERS EGM96Grid.h
+    SOURCES EGM96.cpp )
+    

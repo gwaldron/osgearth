@@ -1,8 +1,4 @@
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} )
-# For colorscheme includes
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
-
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY)
 
 SET(COLOR_SCHEMES
         colorschemes/Blues.c
@@ -39,5 +35,8 @@ SET(TARGET_SRC osgearth_heatmap.cpp
                ${COLOR_SCHEMES}
                )
 
-#### end var setup  ###
-SETUP_APPLICATION(osgearth_heatmap)
+add_osgearth_app(
+    TARGET osgearth_heatmap
+    SOURCES ${TARGET_SRC}
+    HEADERS heatmap.h
+    FOLDER Examples)

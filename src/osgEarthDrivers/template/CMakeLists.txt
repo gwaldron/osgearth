@@ -1,12 +1,5 @@
-SET(TARGET_H
-    NLTemplate.h
-)
-
-SET(TARGET_SRC
-    ReaderWriterTemplate.cpp
-    NLTemplate.cpp
-)
-
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OPENTHREADS_LIBRARY) 
+add_osgearth_plugin(
+    TARGET osgdb_template
+    HEADERS NLTemplate.h
+    SOURCES ReaderWriterTemplate.cpp NLTemplate.cpp )
     
-SETUP_PLUGIN(template)

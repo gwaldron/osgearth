@@ -1,25 +1,11 @@
-#---------------------------------------------------
-# OSG CMAKE SUPPORT
-# (C) by Michael Wagner, mtw@shared-reality.com 2005
-# (C) Eric Wing, Luigi Calori and Robert Osfield 2006-2007
-#---------------------------------------------------
+#include_directories(${OSG_INCLUDE_DIRS})
 
-PROJECT(OSGEARTH_PLUGINS_MASTER)
-
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} )
-
-SET(CMAKE_SHARED_MODULE_PREFIX ${OSGEARTH_PLUGIN_PREFIX})
-
-SET(TARGET_DEFAULT_PREFIX "osgdb_")
-SET(TARGET_DEFAULT_LABEL_PREFIX "Plugin")
+#set(CMAKE_SHARED_MODULE_PREFIX ${OSGEARTH_PLUGIN_PREFIX})
 
 #OpenThreads, osg, osgDB and osgUtil are included elsewhere.
-SET(TARGET_COMMON_LIBRARIES
-    osgEarth
-)
-
-# Folder name for plugins
-SET(OSGEARTH_PLUGINS_FOLDER Plugins)
+#SET(TARGET_COMMON_LIBRARIES
+#    osgEarth
+#)
 
 if(BASISU_FOUND)
     add_subdirectory(basis)
@@ -40,20 +26,20 @@ add_subdirectory(sky_gl)
 add_subdirectory(sky_simple)
 add_subdirectory(template)
 add_subdirectory(terrainshader)
-add_subdirectory(webp)
 add_subdirectory(vdatum_egm2008)
 add_subdirectory(vdatum_egm84)
 add_subdirectory(vdatum_egm96)
 add_subdirectory(viewpoints)
+add_subdirectory(webp)
 add_subdirectory(zip)
 
-if(OSGEARTH_BUILD_SILVERLINING_NODEKIT)
+if(OSGEARTH_HAVE_SILVERLINING_NODEKIT)
     add_subdirectory(sky_silverlining)
 endif()
 
-if(OSGEARTH_BUILD_LEVELDB_CACHE)
-    add_subdirectory(cache_leveldb)
-endif()
+# if(OSGEARTH_BUILD_LEVELDB_CACHE)
+    # add_subdirectory(cache_leveldb)
+# endif()
 
 add_subdirectory(cache_rocksdb)
 

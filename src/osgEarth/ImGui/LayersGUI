@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_MAP_LAYERS_GUI
-#define OSGEARTH_IMGUI_MAP_LAYERS_GUI
+#pragma once
 
 #include "ImGui"
 #include <osgEarth/MapNode>
@@ -35,7 +34,7 @@
 #include <osgEarth/Sky>
 #include <osg/Camera>
 
-#ifdef HAVE_OSGEARTHCESIUM
+#ifdef OSGEARTH_HAVE_CESIUM_NODEKIT
 #include <osgEarthCesium/CesiumLayer>
 #endif
 
@@ -61,7 +60,7 @@
 #include <osgEarth/MBTiles>
 #endif
 
-#ifdef HAVE_OSGEARTHPROCEDURAL
+#ifdef OSGEARTH_HAVE_PROCEDURAL_NODEKIT
 #include <osgEarthProcedural/LifeMapLayer>
 #include <osgEarthProcedural/TextureSplattingLayer>
 #include <osgEarthProcedural/VegetationLayer>
@@ -520,7 +519,7 @@ namespace osgEarth
 
                     for (auto& layer : _layers)
                     {
-#ifdef HAVE_OSGEARTHPROCEDURAL
+#ifdef OSGEARTH_HAVE_PROCEDURAL_NODEKIT
                         if (dynamic_cast<osgEarth::Procedural::LifeMapLayer*>(layer.get()) ||
                             dynamic_cast<osgEarth::Procedural::VegetationLayer*>(layer.get()) ||
                             dynamic_cast<osgEarth::Procedural::TextureSplattingLayer*>(layer.get()) ||
@@ -698,7 +697,7 @@ namespace osgEarth
                                 }
                             }
 
-#ifdef HAVE_OSGEARTHCESIUM
+#ifdef OSGEARTH_HAVE_CESIUM_NODEKIT
                             auto cesiumNativeLayer = dynamic_cast<osgEarth::Cesium::CesiumNative3DTilesLayer*>(layer);
                             if (cesiumNativeLayer)
                             {
@@ -1136,5 +1135,3 @@ namespace osgEarth
         };
     }
 }
-
-#endif // OSGEARTH_IMGUI_MAP_LAYERS_GUI

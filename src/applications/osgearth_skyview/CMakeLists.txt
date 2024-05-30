@@ -1,14 +1,5 @@
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} )
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGGA_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY)
-
-SET(TARGET_H
-    SkyManipulator
-)
-
-SET(TARGET_SRC
-    SkyManipulator.cpp
-    osgearth_skyview.cpp
-)
-
-#### end var setup  ###
-SETUP_APPLICATION(osgearth_skyview)
+add_osgearth_app(
+    TARGET osgearth_skyview
+    HEADERS SkyManipulator
+    SOURCES SkyManipulator.cpp osgearth_skyview.cpp
+    FOLDER Examples)

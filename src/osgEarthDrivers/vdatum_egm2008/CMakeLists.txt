@@ -1,8 +1,5 @@
-SET(TARGET_SRC EGM2008.cpp)
-SET(TARGET_H EGM2008Grid.h)
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OPENTHREADS_LIBRARY) 
-SETUP_PLUGIN(osgearth_vdatum_egm2008)
-# to install public driver includes:
-SET(LIB_NAME vdatum_egm2008)
-#SET(LIB_PUBLIC_HEADERS EGM2008Grid.h)
-INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
+add_osgearth_plugin(
+    TARGET osgdb_osgearth_vdatum_egm2008
+    HEADERS EGM2008Grid.h
+    SOURCES EGM2008.cpp )
+    

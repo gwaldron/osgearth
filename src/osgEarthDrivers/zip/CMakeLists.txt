@@ -1,21 +1,23 @@
-IF(LIBZIP_FOUND AND OSGEARTH_BUILD_ZIP_PLUGIN)
-    
-    SET(TARGET_SRC
-        ZipArchive.cpp
-        ReaderWriterZIP.cpp
-    )
+if(OSGEARTH_BUILD_ZIP_PLUGIN)
 
-    SET(TARGET_H
-        ZipArchive.h
-    )
+    find_package(libzip)
 
-    INCLUDE_DIRECTORIES( ${LIBZIP_INCLUDE_DIRS} )
-    SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OPENTHREADS_LIBRARY LIBZIP_LIBRARY)
-    
-    IF(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-implicit-fallthrough")
-    ENDIF()
+    if(libzip_FOUND)
 
-    SETUP_PLUGIN(zip)
-    
-ENDIF(LIBZIP_FOUND AND OSGEARTH_BUILD_ZIP_PLUGIN)
+        if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-implicit-fallthrough")
+        endif()
+        
+        add_osgearth_plugin(
+            TARGET osgdb_zip
+            HEADERS
+                ZipArchive.h
+            SOURCES
+                ZipArchive.cpp
+                ReaderWriterZIP.cpp)
+                
+        target_link_libraries(osgdb_zip PRIVATE libzip::zip)
+        
+    endif()
+
+endif()

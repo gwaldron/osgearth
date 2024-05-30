@@ -24,7 +24,7 @@
 #include <iostream>
 #include <stdlib.h>
 
-#ifdef HAVE_SPDLOG
+#ifdef OSGEARTH_HAVE_SPDLOG
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #endif
@@ -147,7 +147,7 @@ namespace
 {
     static osg::ApplicationUsageProxy Notify_e0(osg::ApplicationUsage::ENVIRONMENTAL_VARIABLE, "OSGEARTH_NOTIFY_LEVEL <mode>", "FATAL | WARN | NOTICE | DEBUG_INFO | DEBUG_FP | DEBUG | INFO | ALWAYS");
 
-#ifdef HAVE_SPDLOG
+#ifdef OSGEARTH_HAVE_SPDLOG
     struct SpdLogNotifyHandler : public osg::NotifyHandler
     {
         SpdLogNotifyHandler()
@@ -242,7 +242,7 @@ namespace
             NotifyStreamBuffer *buffer = dynamic_cast<NotifyStreamBuffer *>(_notifyStream.rdbuf());
             if (buffer && !buffer->getNotifyHandler())
             {
-#ifdef HAVE_SPDLOG
+#ifdef OSGEARTH_HAVE_SPDLOG
                 buffer->setNotifyHandler(new SpdLogNotifyHandler);
 #else
                 buffer->setNotifyHandler(new osg::StandardNotifyHandler);

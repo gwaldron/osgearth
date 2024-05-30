@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_METRICS_H
-#define OSGEARTH_METRICS_H 1
+#pragma once
 
 #include <osgEarth/Common>
 
@@ -27,27 +25,22 @@ namespace osgViewer {
     class ViewerBase;
 }
 
-namespace osgEarth {
+namespace osgEarth
+{
     namespace Util
     {
         class OSGEARTH_EXPORT Metrics
         {
         public:
-            /**
-             * Convenience function to run the OSG frame loop with metrics.
-             */
+            //! Convenience function to run the OSG frame loop with metrics.
             static int run(osgViewer::ViewerBase& viewer);
 
             static void frame();
 
-            /*
-            * Whether metrics collection is enabled.
-            */
+            //! Whether metrics collection is enabled.
             static bool enabled();
 
-            /**
-             * Toggle on metrics collection
-             */
+            //! Toggle on metrics collection
             static void setEnabled(bool enabled);
 
             //! Whether to install GPU profiling.
@@ -56,14 +49,13 @@ namespace osgEarth {
     }
 }
 
-#ifdef OSGEARTH_PROFILING
+#ifdef OSGEARTH_HAVE_TRACY
 
-// uncomment this to attempt GPU profiling blocks
-//#define OSGEARTH_GPU_PROFILING
-
-#include <osg/GL>
-
+// if you used a config.cmake file to get tracy, TRACY_ENABLE is already defined
+#ifndef TRACY_ENABLE
 #define TRACY_ENABLE
+#endif
+
 #define TRACY_ON_DEMAND
 #define TRACY_DELAYED_INIT
 #include <tracy/Tracy.hpp>
@@ -78,68 +70,10 @@ namespace osgEarth {
 #define OE_LOCKABLE_NAMED(type, varname, desc) TracyLockableN(type, varname, desc)
 #define OE_LOCKABLE_BASE( type ) LockableBase( type )
 
-#ifdef OSGEARTH_GPU_PROFILING
-namespace osgEarth { namespace MetricsGL {
-#ifndef GL_TIMESTAMP
-#define GL_TIMESTAMP 0x8E28
-    //constexpr GLenum GL_TIMESTAMP = 0x8E28;
-#endif
-#ifndef GL_QUERY_COUNTER_BITS
-#define GL_QUERY_COUNTER_BITS 0x8864
-    //constexpr GLenum GL_QUERY_COUNTER_BITS = 0x8864;
-#endif
-#ifndef GL_QUERY_RESULT
-#define GL_QUERY_RESULT 0x8866
-    //constexpr GLenum GL_QUERY_RESULT = 0x8866;
-#endif
-#ifndef GL_QUERY_RESULT_AVAILABLE
-#define GL_QUERY_RESULT_AVAILABLE 0x8867
-    //constexpr GLenum GL_QUERY_RESULT_AVAILABLE = 0x8867;
-#endif
-
-    extern OSGEARTH_EXPORT void (GL_APIENTRY * _glGenQueries)(GLsizei, GLuint*);
-    extern OSGEARTH_EXPORT void (GL_APIENTRY * _glGetInteger64v)(GLenum, GLint64*);
-    extern OSGEARTH_EXPORT void (GL_APIENTRY * _glGetQueryiv)(GLenum, GLenum, GLint*);
-    extern OSGEARTH_EXPORT void (GL_APIENTRY * _glGetQueryObjectiv)(GLint, GLenum, GLint*);
-    extern OSGEARTH_EXPORT void (GL_APIENTRY * _glGetQueryObjectui64v)(GLint, GLenum, GLuint64*);
-    extern OSGEARTH_EXPORT void (GL_APIENTRY * _glQueryCounter)(GLuint, GLenum);
-
-    #undef glGenQueries
-    #undef glGetInteger64v
-    #undef glGetQueryiv
-    #undef glGetQueryObjectiv
-    #undef glGetQueryObjectui64v
-    #undef glQueryCounter
-
-    #define glGenQueries _glGenQueries
-    #define glGetInteger64v _glGetInteger64v
-    #define glGetQueryiv _glGetQueryiv
-    #define glGetQueryObjectiv _glGetQueryObjectiv
-    #define glGetQueryObjectui64v _glGetQueryObjectui64v
-    #define glQueryCounter _glQueryCounter
-
-} }
-using namespace osgEarth::MetricsGL;
-#include <TracyClient/TracyOpenGL.hpp>
-#define OE_PROFILING_GPU_ZONE(name) TracyGpuZone( name )
-#else
 #define OE_PROFILING_GPU_ZONE(name)
-#endif
 
-#undef glGenQueries
-#undef glGetInteger64v
-#undef glGetQueryiv
-#undef glGetQueryObjectiv
-#undef glGetQueryObjectui64v
-#undef glQueryCounter
+#else // ifndef OSGEARTH_HAVE_TRACY
 
-inline void _zoneSetText(tracy::ScopedZone& zone, const char* text) {
-    zone.Text(text, strlen(text));
-}
-inline void _zoneSetText(tracy::ScopedZone& zone, const std::string& text) {
-    zone.Text(text.c_str(), text.size());
-}
-#else
 #define OE_PROFILING_ZONE
 #define OE_PROFILING_ZONE_NAMED(functionName)
 #define OE_PROFILING_ZONE_COLOR(color)
@@ -149,6 +83,5 @@ inline void _zoneSetText(tracy::ScopedZone& zone, const std::string& text) {
 #define OE_LOCKABLE(type, varname) type varname
 #define OE_LOCKABLE_BASE( type ) type
 #define OE_PROFILING_GPU_ZONE(name)
-#endif
 
 #endif

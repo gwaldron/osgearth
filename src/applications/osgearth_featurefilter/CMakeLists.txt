@@ -1,7 +1,4 @@
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} )
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OSGGA_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY)
-
-SET(TARGET_SRC osgearth_featurefilter.cpp )
-
-#### end var setup  ###
-SETUP_APPLICATION(osgearth_featurefilter)
+add_osgearth_app(
+    TARGET osgearth_featurefilter
+    SOURCES osgearth_featurefilter.cpp
+    FOLDER Examples)

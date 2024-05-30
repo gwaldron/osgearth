@@ -9,17 +9,16 @@ SET(TARGET_SRC
     ReaderWriterGLTF.cpp
 )
 
-INCLUDE_DIRECTORIES(
+add_osgearth_plugin(
+    TARGET osgdb_gltf
+    HEADERS ${TARGET_H}
+    SOURCES ${TARGET_SRC} )
+    
+include_directories(
     ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/tinygltf 
-    ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/rapidjson/include/rapidjson
-)
+    ${OSGEARTH_EMBEDDED_THIRD_PARTY_DIR}/rapidjson/include/rapidjson )
 
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGUTIL_LIBRARY OPENTHREADS_LIBRARY)
-
-IF(draco_FOUND)
-    INCLUDE_DIRECTORIES( ${draco_INCLUDE_DIRS} )
-    LIST(APPEND TARGET_LIBRARIES_VARS draco_LIBRARIES)
-ENDIF(draco_FOUND)
-
-#### end var setup  ###
-SETUP_PLUGIN(gltf)
+if (draco_FOUND)
+    #include_directories(${draco_INCLUDE_DIRS})
+    target_link_libraries(osgdb_gltf PRIVATE draco::draco)
+endif()

@@ -27,7 +27,7 @@ namespace osgEarth
 {
     struct Version
     {
-        int major = 0, minor = 0, patch = 0;
+        int major, minor, patch;
 
         inline bool lessThan(const Version& rhs) const {
             return major < rhs.major ||

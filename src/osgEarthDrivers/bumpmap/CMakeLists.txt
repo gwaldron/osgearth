@@ -1,6 +1,3 @@
-#
-# bump mapping plugin
-#
 
 set(TARGET_GLSL
 	BumpMap.vert.view.glsl
@@ -18,23 +15,19 @@ configure_shaders(
     ${SHADERS_CPP}
     ${TARGET_GLSL} )
 
-set(TARGET_SRC
-	BumpMapExtension.cpp
-	BumpMapTerrainEffect.cpp
-	${SHADERS_CPP} )
-	
-set(LIB_PUBLIC_HEADERS
-	BumpMapExtension
-	BumpMapOptions
-	BumpMapTerrainEffect)
-	
-set(TARGET_H
-	${LIB_PUBLIC_HEADERS}
-	BumpMapShaders )
-
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OPENTHREADS_LIBRARY) 
-	
-setup_plugin(osgearth_bumpmap)
-
-# to install public driver includes:
-set(LIB_NAME bumpmap)
+add_osgearth_plugin(TARGET osgdb_osgearth_bumpmap
+    PUBLIC_HEADERS
+        BumpMapExtension
+        BumpMapOptions
+        BumpMapTerrainEffect
+    HEADERS
+        BumpMapShaders
+    SOURCES 
+        BumpMapExtension.cpp
+        BumpMapTerrainEffect.cpp
+        ${SHADERS_CPP}
+    TEMPLATES
+        ${TARGET_IN}
+    SHADERS
+        ${TARGET_GLSL} )
+        

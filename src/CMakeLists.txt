@@ -1,19 +1,12 @@
-# required:
-add_subdirectory(osgEarth)
-add_subdirectory(osgEarthDrivers)
-set_property(TARGET osgEarth PROPERTY FOLDER "Core")
+
 
 #optionals:
 if(OSGEARTH_BUILD_PROCEDURAL_NODEKIT)
-    add_definitions(-DHAVE_OSGEARTHPROCEDURAL)
-    set(OSGEARTHPROCEDURAL_LIBRARY osgEarthProcedural)
     add_subdirectory(osgEarthProcedural)
 endif()
 
-if (CESIUM_NATIVE_FOUND)
+if(OSGEARTH_BUILD_CESIUM_NODEKIT)
     add_subdirectory(osgEarthCesium)
-    add_definitions(-DHAVE_OSGEARTHCESIUM)
-    set(OSGEARTHCESIUM_LIBRARY osgEarthCesium)
 endif()
 
 if(OSGEARTH_BUILD_TRITON_NODEKIT)
@@ -35,3 +28,11 @@ endif()
 if(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT)
     add_subdirectory(osgEarthSplat)
 endif()
+
+# plugins:
+add_subdirectory(osgEarthDrivers)
+
+# Do this LAST since we are generating the BuildConfig header
+# based on everything that's happened so far
+add_subdirectory(osgEarth)
+set_property(TARGET osgEarth PROPERTY FOLDER "Core")

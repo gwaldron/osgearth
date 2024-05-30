@@ -1,7 +1,5 @@
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIRS} )
-SET(TARGET_LIBRARIES_VARS OSG_LIBRARY OSGDB_LIBRARY OSGGA_LIBRARY OSGUTIL_LIBRARY OSGVIEWER_LIBRARY OPENTHREADS_LIBRARY)
-
-SET(TARGET_SRC osgearth_city.cpp )
-
-#### end var setup  ###
-SETUP_APPLICATION(osgearth_city)
+add_osgearth_app(
+    TARGET osgearth_city
+    SOURCES osgearth_city.cpp
+    FOLDER Examples )
+    

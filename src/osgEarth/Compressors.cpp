@@ -23,7 +23,7 @@
 #include <osgDB/ObjectWrapper>
 #include <osgDB/DataTypes>
 
-#if OSGEARTH_HAVE_BLOSC
+#ifdef OSGEARTH_HAVE_BLOSC
 #include <blosc.h>
 
 class BloscCompressor : public osgDB::BaseCompressor

@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_COMMON_H
-#define OSGEARTH_COMMON_H 1
+#pragma once
 
 #include <osgEarth/Export>
 #include <osgEarth/Notify>
@@ -58,4 +57,3 @@ namespace osgEarth
 #define OE_STRINGIFY_0(x) #x
 #define OE_STRINGIFY(x) OE_STRINGIFY_0(x)
 
-#endif // OSGEARTH_COMMON_H

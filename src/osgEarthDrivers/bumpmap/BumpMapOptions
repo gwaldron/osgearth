@@ -16,13 +16,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_DRIVER_BUMPMAP_OPTIONS
-#define OSGEARTH_DRIVER_BUMPMAP_OPTIONS 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/URI>
+#include <osgEarth/VisibleLayer>
 
-namespace osgEarth { namespace BumpMap
+namespace osgEarth
 {
     using namespace osgEarth;
 
@@ -31,50 +31,24 @@ namespace osgEarth { namespace BumpMap
      * A Bump Map is a repeating normal texture that modifies the
      * existing normal vector per fragment.
      */
-    class BumpMapOptions : public ConfigOptions // NO EXPORT; header only
+    class BumpMapOptions : public VisibleLayer::Options
     {
-    public:
-        // bump map texture to load.
-        optional<URI>& imageURI() { return _imageURI; }
-        const optional<URI>& imageURI() const { return _imageURI; }
-
-        // Intensity of normal map effect.
-        optional<float>& intensity() { return _intensity; }
-        const optional<float>& intensity() const { return _intensity; }
-
-        // Scale factor for the normal map texture.
-        optional<float>& scale() { return _scale; }
-        const optional<float>& scale() const { return _scale; }
-
-        /** Number of times to proressively scale and multisample the bump map
-            based on camera range. Default is 1. */
-        optional<int>& octaves() { return _octaves; }
-        const optional<int>& octaves() const { return _octaves; }
-
-        /** Camera range at which to render one octave (outer range). */
-        optional<float>& maxRange() { return _maxRange; }
-        const optional<float>& maxRange() const { return _maxRange; }
-
-        /** LOD at which the bumpmap renders at a scale of 1.0. */
-        optional<unsigned>& baseLOD() { return _baseLOD; }
-        const optional<unsigned>& baseLOD() const { return _baseLOD; }
+        META_LayerOptions(osgEarth, BumpMapOptions, VisibleLayer::Options);
 
     public:
-        BumpMapOptions( const ConfigOptions& opt =ConfigOptions() ) : ConfigOptions( opt )
-        {
-            // Defaults.
-            _intensity.init( 1.0f );
-            _scale.init    ( 1.0f );
-            _octaves.init  ( 1 );
-            _maxRange.init (25000.0f);
-            _baseLOD.init  ( 13u );
+        //! bump map texture to load.
+        OE_OPTION(URI, imageURI);
+        //! Intensity of normal map effect.
+        OE_OPTION(float, intensity, 1.0f);
+        //! Scale factor for the normal map texture.
+        OE_OPTION(float, scale, 1.0f);
+        //! Number of times to proressively scale and multisample the bump map based on camera range. Default is 1.
+        OE_OPTION(int, octaves, 1);
+        //! Camera range at which to render one octave (outer range).
+        OE_OPTION(float, maxRange, 25000.0f);
+        //! LOD at which the bumpmap renders at a scale of 1.0.
+        OE_OPTION(unsigned, baseLOD, 13u);
 
-            fromConfig( _conf );
-        }
-
-        virtual ~BumpMapOptions() { }
-
-    public:
         Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
             conf.set("image",     _imageURI);
@@ -86,13 +60,6 @@ namespace osgEarth { namespace BumpMap
             return conf;
         }
 
-    protected:
-        void mergeConfig( const Config& conf ) {
-            ConfigOptions::mergeConfig( conf );
-            fromConfig( conf );
-        }
-
-    private:
         void fromConfig( const Config& conf ) {
             conf.get("image",     _imageURI);
             conf.get("intensity", _intensity);
@@ -101,16 +68,5 @@ namespace osgEarth { namespace BumpMap
             conf.get("max_range", _maxRange);
             conf.get("base_lod",  _baseLOD);
         }
-
-        optional<URI>      _imageURI;
-        optional<float>    _intensity;
-        optional<float>    _scale;
-        optional<int>      _octaves;
-        optional<float>    _maxRange;
-        optional<unsigned> _baseLOD;
     };
-
-} } // namespace osgEarth::BumpMap
-
-#endif // OSGEARTH_DRIVER_BUMPMAP_OPTIONS
-
+} // namespace osgEarth

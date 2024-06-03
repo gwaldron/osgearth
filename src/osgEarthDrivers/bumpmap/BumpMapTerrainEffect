@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_BumpMap_TERRAIN_EFFECT_H
-#define OSGEARTH_BumpMap_TERRAIN_EFFECT_H
+#pragma once
 
 #include <osgEarth/TerrainEffect>
 #include <osgEarth/ImageLayer>
@@ -30,7 +29,7 @@
 
 using namespace osgEarth;
 
-namespace osgEarth { namespace BumpMap
+namespace osgEarth
 {
     /**
      * Effect that applies bump mapping to the terrain.
@@ -39,7 +38,9 @@ namespace osgEarth { namespace BumpMap
     {
     public:
         /** construct a new terrain effect. */
-        BumpMapTerrainEffect(const osgDB::Options* dbOptions);
+        BumpMapTerrainEffect();
+
+        void setActive(bool);
 
         /** Sets the image containing the normal offsets. */
         void setBumpMapImage(osg::Image* image);
@@ -62,25 +63,23 @@ namespace osgEarth { namespace BumpMap
 
     public: // TerrainEffect interface
 
-        void onInstall(TerrainEngineNode* engine);
+        void onInstall(TerrainEngineNode* engine) override;
 
-        void onUninstall(TerrainEngineNode* engine);
+        void onUninstall(TerrainEngineNode* engine) override;
 
 
     protected:
         virtual ~BumpMapTerrainEffect();
 
-        bool  _ok;
-        int   _bumpMapUnit;
-        int   _octaves;
-        float _maxRange;
-        unsigned _baseLOD;
+        bool _ok = true;
+        int _bumpMapUnit = -1;
+        int _octaves = 1;
+        float _maxRange = 25000.0f;
+        unsigned _baseLOD = 13u;
         osg::ref_ptr<osg::Texture2D> _bumpMapTex;
-        osg::ref_ptr<osg::Uniform>   _bumpMapTexUniform;
-        osg::ref_ptr<osg::Uniform>   _scaleUniform;
-        osg::ref_ptr<osg::Uniform>   _intensityUniform;
+        osg::ref_ptr<osg::Uniform> _bumpMapTexUniform;
+        osg::ref_ptr<osg::Uniform> _scaleUniform;
+        osg::ref_ptr<osg::Uniform> _intensityUniform;
+        osg::ref_ptr<osg::Uniform> _octavesUniform;
     };
-
-} } // namespace osgEarth::BumpMap
-
-#endif // OSGEARTH_BumpMap_TERRAIN_EFFECT_H
+}

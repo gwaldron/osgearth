@@ -15,15 +15,16 @@ configure_shaders(
     ${SHADERS_CPP}
     ${TARGET_GLSL} )
 
-add_osgearth_plugin(TARGET osgdb_osgearth_bumpmap
+add_osgearth_plugin(
+    TARGET osgdb_osgearth_bumpmap
     PUBLIC_HEADERS
-        BumpMapExtension
         BumpMapOptions
-        BumpMapTerrainEffect
     HEADERS
+        BumpMapLayer
         BumpMapShaders
+        BumpMapTerrainEffect
     SOURCES 
-        BumpMapExtension.cpp
+        BumpMapLayer.cpp
         BumpMapTerrainEffect.cpp
         ${SHADERS_CPP}
     TEMPLATES

@@ -204,7 +204,7 @@ main(int argc, char** argv)
     // put a model on the map atop Pike's Peak, Colorado, USA
     auto modelLayer = new ModelLayer();
     modelLayer->setURL("../data/red_flag.osg.2000.scale");
-    modelLayer->setPosition(GeoPoint(SpatialReference::get("wgs84"), -105.042292, 38.840829));
+    modelLayer->setLocation(GeoPoint(SpatialReference::get("wgs84"), -105.042292, 38.840829));
     map->addLayer(modelLayer);
 
     // make the map scene graph:

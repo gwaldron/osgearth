@@ -39,6 +39,9 @@ namespace osgEarth
 
         // Gets the min/max elevation at the given tile key index.
         static bool getElevationRange(unsigned int level, unsigned int x, unsigned int y, short& min, short& max);      
+
+        // Get the default min/max elevation range if no index data is available.
+        static bool getDefaultElevationRange(short& min, short& max);
     };
 
 } // namespace osgEarth

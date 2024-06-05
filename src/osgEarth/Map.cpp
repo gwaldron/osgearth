@@ -64,14 +64,14 @@ Map::Options::getConfig() const
 
     conf.set("read_options", osgOptionString());
 
+    conf.set("disable_elevation_ranges", disableElevationRanges());
+
     return conf;
 }
 
 void
 Map::Options::fromConfig(const Config& conf)
-{
-    elevationInterpolation().init(INTERP_BILINEAR);
-    
+{   
     conf.get( "name",         name() );
     conf.get( "profile",      profile() );
     conf.get( "cache",        cache() );  
@@ -93,6 +93,8 @@ Map::Options::fromConfig(const Config& conf)
 
     conf.get("read_options", osgOptionString());
     conf.get("osg_options", osgOptionString()); // back compat
+
+    conf.get("disable_elevation_ranges", disableElevationRanges());
 }
 
 //...................................................................

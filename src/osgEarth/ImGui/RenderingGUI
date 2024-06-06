@@ -80,9 +80,13 @@ void oeui_render_winding_fs(inout vec4 color) {
 #version 450
 #extension GL_NV_fragment_shader_barycentric : enable
 #pragma vp_function oeui_render_outlines, fragment_lighting, last
+#define VP_STAGE_FRAGMENT
 void oeui_render_outlines(inout vec4 color) {
-    float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z))*28.0;        
-    vec3 line_color = (vec3(1.0)-color.rgb); //clamp(color.rgb*1.5, 0.0, 1.0);
+    float b = min(gl_BaryCoordNV.x, min(gl_BaryCoordNV.y, gl_BaryCoordNV.z))*32.0;
+    vec3 line_color = color.rgb;
+    if (color.r < 0.5) line_color.r += 0.5; else line_color.r -= 0.5;
+    if (color.b < 0.5) line_color.b += 0.5; else line_color.b -= 0.5;
+    if (color.g < 0.5) line_color.b += 0.5; else line_color.g -= 0.5;
     color = vec4(mix(line_color, color.rgb, clamp(b,0,1)), color.a);
 }
 )";

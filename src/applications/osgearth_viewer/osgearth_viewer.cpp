@@ -21,16 +21,11 @@
 */
 
 #include <osgViewer/Viewer>
-#include <osgEarth/Notify>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/MapNode>
-#include <osgEarth/Threading>
-#include <osgEarth/ShaderGenerator>
 #include <osgEarth/PhongLightingEffect>
-#include <osgDB/ReadFile>
 #include <osgGA/TrackballManipulator>
-#include <osgUtil/Optimizer>
 #include <iostream>
 
 #include <osgEarth/Metrics>
@@ -43,9 +38,9 @@ using namespace osgEarth::Util;
 int
 usage(const char* name)
 {
-    OE_NOTICE
+    std::cout
         << "\nUsage: " << name << " file.earth" << std::endl
-        << MapNodeHelper().usage() << std::endl;
+        << Util::MapNodeHelper().usage() << std::endl;
 
     return 0;
 }
@@ -58,24 +53,16 @@ main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
+    // start up osgEarth
     osgEarth::initialize(arguments);
 
-    // create a viewer:
+    // create a simple view
     osgViewer::Viewer viewer(arguments);
-    // This is normally called by Viewer::run but we are running our frame loop manually so we need to call it here.
-    viewer.setReleaseContextAtEndOfFrameHint(false);
-
-    // Tell the database pager to not modify the unref settings
-    viewer.getDatabasePager()->setUnrefImageDataAfterApplyPolicy( true, false );
-
-    // thread-safe initialization of the OSG wrapper manager. Calling this here
-    // prevents the "unsupported wrapper" messages from OSG
-    osgDB::Registry::instance()->getObjectWrapperManager()->findWrapper("osg::Image");
 
     // install our default manipulator (do this before calling load)
-    viewer.setCameraManipulator( new EarthManipulator(arguments) );
+    viewer.setCameraManipulator(new EarthManipulator(arguments));
 
-    // disable the small-feature culling
+    // disable the small-feature culling; necessary for some feature rendering
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
     // load an earth file, and support all or our example command-line options

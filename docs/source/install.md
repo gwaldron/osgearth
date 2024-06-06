@@ -3,19 +3,8 @@
 ## Installation
 The easiest way to install and use osgEarth is with the `vcpkg` package manager. There are two ways to go about it. But first...
 
-### Update the OpenSceneGraph vcpkg build
-OsgEarth depends on the OpenSceneGraph (OSG) SDK. OSG is available through vcpkg, but the confiruation is for OpenGL 2 and osgEarth needs to use OpenGL 3. So we need to make a simple change.
-
-In the folder where you installed `vcpkg`, find the file `ports/osg/portfile.cmake`, and locate this block:
-```
-if(NOT DEFINED osg_OPENGL_PROFILE)
-    set(osg_OPENGL_PROFILE "GL2")
-endif()
-```
-Set the `osg_OPENGL_PROFILE` variable to `GL3`. You are now good to go.
-
 ### Method 1: Do it manually
-You can install osgEarth manually using this command:
+You can install osgEarth on Windows manually using this command:
 ```
 vcpkg install osgearth:x64-windows
 ```
@@ -41,7 +30,7 @@ Next you need to bootstrap CMake to use the vcpkg toolchain, using a command lik
 cmake ^
     -S %SOURCE_DIR% ^
     -B %BUILD_DIR% ^
-    -G "Visual Studio 16 2019" ^
+    -G "Visual Studio 17 2022" ^
     -A x64 ^
     -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
     -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR% ^
@@ -60,22 +49,15 @@ cmake <build_dir>
 
 ## Sample CMakeLists.txt
 ```cmake
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.20)
 
-project(
-    myApp
-    VERSION 0.1.0
-    LANGUAGES CXX C
-)
-
-find_package(OpenSceneGraph REQUIRED COMPONENTS osg osgDB osgGA osgUtil osgViewer)
+project(myApp)
 
 find_package(osgEarth CONFIG REQUIRED)
 
 add_executable(myApp main.cpp)
 
 target_link_libraries(myApp PRIVATE osgEarth)
-target_link_libraries(myApp PRIVATE ${OPENSCENEGRAPH_LIBRARIES})
 
 install(TARGETS myApp RUNTIME DESTINATION bin)
 ```

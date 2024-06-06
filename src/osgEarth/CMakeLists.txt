@@ -838,8 +838,6 @@ if(OSGEARTH_ENABLE_GEOCODER)
     list(APPEND TARGET_SRC Geocoder.cpp)
 endif()
 
-message(STATUS "Building ${LIB_NAME} as a ${OSGEARTH_DYNAMIC_OR_STATIC} library")
-
 # Declare the dynamic headers -- we'll generate them later when all the HAVE vars are set.
 set(OSGEARTH_VERSION_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Version")
 set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/BuildConfig")

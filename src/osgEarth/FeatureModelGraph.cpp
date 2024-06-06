@@ -806,12 +806,19 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent, const Profile*
                 // Get the approximate elevation range if we have elevation data in the map
                 lod = osg::clampBetween(lod, 0u, ElevationRanges::getMaxLevel());
                 GeoPoint centerWGS84 = center.transform(ElevationRanges::getProfile()->getSRS());
+
                 TileKey rangeKey = ElevationRanges::getProfile()->createTileKey(centerWGS84.x(), centerWGS84.y(), lod);
                 short min, max;
-                ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
+                if (!*map->options().disableElevationRanges())
+                {
+                    ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
+                }
+                else
+                {
+                    ElevationRanges::getDefaultElevationRange(min, max);
+                }
                 // Clamp the min value to avoid extreme underwater values.
                 minElevation = osg::maximum(min, (short)-500);
-                // Add a little bit extra of extra height to account for feature data.
                 // Add a little bit extra of extra height to account for feature data.
                 maxElevation = max + 100.0f;
             }

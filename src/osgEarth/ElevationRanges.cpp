@@ -34,6 +34,13 @@ osg::ref_ptr<const Profile> ElevationRanges::getProfile()
     return Profile::create(Profile::GLOBAL_GEODETIC);
 }
 
+bool ElevationRanges::getDefaultElevationRange(short& min, short& max)
+{
+    min = -2000;
+    max = 9000;
+    return true;
+}
+
 bool ElevationRanges::getElevationRange(unsigned int level, unsigned int x, unsigned int y, short& min, short& max)
 {
     osg::ref_ptr< const Profile > profile = getProfile();

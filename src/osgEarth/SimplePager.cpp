@@ -167,7 +167,14 @@ osg::BoundingSphered SimplePager::getBounds(const TileKey& key) const
             GeoPoint centerWGS84 = center.transform(ElevationRanges::getProfile()->getSRS());
             TileKey rangeKey = ElevationRanges::getProfile()->createTileKey(centerWGS84.x(), centerWGS84.y(), lod);
             short min, max;
-            ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
+            if (!*map->options().disableElevationRanges())
+            {
+                ElevationRanges::getElevationRange(rangeKey.getLevelOfDetail(), rangeKey.getTileX(), rangeKey.getTileY(), min, max);
+            }
+            else
+            {
+                ElevationRanges::getDefaultElevationRange(min, max);
+            }
             // Clamp the min value to avoid extreme underwater values.
             minElevation = osg::maximum(min, (short)-500);
             // Add a little bit extra of extra height to account for feature data.

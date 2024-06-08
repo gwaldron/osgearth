@@ -45,7 +45,7 @@ namespace
             auto searchStartItr = input.begin();
             decltype(searchStartItr) imgItr;
             while ((imgItr = std::search(searchStartItr, input.end(), img.begin(), img.end(),
-                [&](unsigned char c1, unsigned char c2)
+                [&](char c1, char c2)
                 {
                     return std::toupper(c1, locale) == std::toupper(c2, locale);
                 })) != input.end())

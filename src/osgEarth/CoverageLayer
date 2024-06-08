@@ -78,6 +78,8 @@ namespace osgEarth
 
         //! Table of preset sample values.
         struct Presets : public std::unordered_map<std::string, Config> {
+            Presets() : _nodata() {
+            }
             const Config _nodata;
             inline const Config& get(const std::string& name) const;
         };

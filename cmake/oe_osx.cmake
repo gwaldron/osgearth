@@ -2,7 +2,7 @@
 
 # Set defaults for Universal Binaries. We want 32-bit Intel/PPC on 10.4
 # and 32/64-bit Intel/PPC on >= 10.5. Anything <= 10.3 doesn't support.
-IF(APPLE AND NOT ANDROID)
+IF(APPLE)
 
     # These are just defaults/recommendations, but how we want to build
     # out of the box. But the user needs to be able to change these options.
@@ -34,5 +34,8 @@ IF(APPLE AND NOT ANDROID)
     OPTION(OSGEARTH_BUILD_APPLICATION_BUNDLES "Enable the building of applications and examples as OSX Bundles" OFF)
     OPTION(OSGEARTH_BUILD_FRAMEWORKS "Compile frameworks instead of dylibs" OFF)
     SET(OSGEARTH_BUILD_FRAMEWORKS_INSTALL_NAME_DIR "@executable_path/../Frameworks" CACHE STRING "Install name dir for compiled frameworks")
+    
+    # MacOS required this in order to find the protobuf_generate_cpp function:
+    set(OSGEARTH_PROTOBUF_FORCE_CONFIG_MODE ON)
 
-ENDIF(APPLE AND NOT ANDROID)
+ENDIF()

@@ -15,7 +15,6 @@ find_package(SQLite3 REQUIRED)
 
 # optional
 find_package(geos QUIET)
-find_package(Protobuf QUIET)
 find_package(blend2d QUIET)
 find_package(blosc QUIET)
 find_package(spdlog QUIET)
@@ -23,6 +22,14 @@ find_package(meshoptimizer QUIET)
 
 if(OSGEARTH_BUILD_ZIP_PLUGIN)
     find_package(LibZip QUIET)
+endif()
+
+if(OSGEARTH_PROTOBUF_FORCE_CONFIG_MODE)
+    # https://stackoverflow.com/a/56896032/4218920
+    set(protobuf_MODULE_COMPATIBLE ON CACHE BOOL "")
+    find_package(Protobuf CONFIG QUIET)
+else()
+    find_package(Protobuf QUIET)
 endif()
 
 
@@ -819,9 +826,9 @@ endif()
 
 
 # generate the google protocol buffers headers and sources
-if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)
-    PROTOBUF_GENERATE_CPP(PROTO_VECTOR_TILE_CPP PROTO_VECTOR_TILE_H vector_tile.proto) 
-    PROTOBUF_GENERATE_CPP(PROTO_GLYPHS_CPP PROTO_GLYPHS_H glyphs.proto)    
+if(Protobuf_FOUND AND Protobuf_PROTOC_EXECUTABLE)    
+    protobuf_generate_cpp(PROTO_VECTOR_TILE_CPP PROTO_VECTOR_TILE_H vector_tile.proto) 
+    protobuf_generate_cpp(PROTO_GLYPHS_CPP PROTO_GLYPHS_H glyphs.proto)    
     list(APPEND TARGET_H ${PROTO_VECTOR_TILE_H} ${PROTO_GLYPHS_H})
     list(APPEND TARGET_SRC ${PROTO_VECTOR_TILE_CPP} ${PROTO_GLYPHS_CPP})
     

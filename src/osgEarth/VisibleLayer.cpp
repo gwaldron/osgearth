@@ -22,9 +22,9 @@
 #include "NodeUtils"
 #include "ShaderLoader"
 #include "SimplePager"
+#include "CullingUtils"
 
 #include <osg/BlendFunc>
-#include <osgUtil/RenderBin>
 
 using namespace osgEarth;
 
@@ -33,42 +33,6 @@ using namespace osgEarth;
 namespace
 {
     static osg::Node::NodeMask DEFAULT_LAYER_MASK = 0xffffffff;
-
-    struct EmptyRenderBin : public osgUtil::RenderBin
-    {
-        EmptyRenderBin(osgUtil::RenderStage* stage) :
-            osgUtil::RenderBin()
-        {
-            setName("OE_EMPTY_RENDER_BIN");
-            _stage = stage;
-        }
-    };
-
-    // Cull callback that will permit culling but will supress rendering.
-    // We use this to toggle node visibility to that paged scene graphs
-    // will continue to page in/out even when the layer is not visible.
-    struct NoDrawCullCallback : public osg::NodeCallback
-    {
-        void operator()(osg::Node* node, osg::NodeVisitor* nv) override
-        {
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
-            osg::ref_ptr<osgUtil::RenderBin> savedBin;
-            osg::ref_ptr< EmptyRenderBin > emptyStage;
-            if (cv)
-            {
-                savedBin = cv->getCurrentRenderBin();
-                emptyStage = new EmptyRenderBin(savedBin->getStage());
-                cv->setCurrentRenderBin(emptyStage.get());
-            }
-
-            traverse(node, nv);
-
-            if (cv)
-            {
-                cv->setCurrentRenderBin(savedBin.get());
-            }
-        }
-    };
 
     // Shader that just copies the uniform value into a stage global/output
     const char* opacityVS = R"(
@@ -259,22 +223,15 @@ VisibleLayer::updateNodeMasks()
     osg::Node* node = getNode();
     if (node)
     {
-        if (options().visible() == true)
+        if (!_noDrawCallback.valid())
         {
-            if (_noDrawCallback.valid())
-            {
-                node->removeCullCallback(_noDrawCallback.get());
-                _noDrawCallback = nullptr;
-            }
+            auto cb = new ToggleVisibleCullCallback();
+            node->addCullCallback(cb);
+            _noDrawCallback = cb;
         }
-        else
-        {
-            if (!_noDrawCallback.valid())
-            {
-                _noDrawCallback = new NoDrawCullCallback();
-                node->addCullCallback(_noDrawCallback.get());
-            }
-        }
+
+        auto cb = dynamic_cast<ToggleVisibleCullCallback*>(_noDrawCallback.get());
+        cb->setVisible(options().visible().value());
     }
 }
 

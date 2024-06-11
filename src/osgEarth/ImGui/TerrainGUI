@@ -95,6 +95,18 @@ namespace osgEarth
                             engine->getNumResidentTiles(),
                             engine->getNode()->getName().c_str());
 
+                        static bool terrain_visible = true;
+                        static osg::ref_ptr<ToggleVisibleCullCallback> visible_cb;
+                        if (ImGuiLTable::Checkbox("Visible", &terrain_visible))
+                        {
+                            if (!visible_cb)
+                            {
+                                visible_cb = new ToggleVisibleCullCallback();
+                                _mapNode->getTerrainEngine()->getNode()->addCullCallback(visible_cb);
+                            }
+                            visible_cb->setVisible(terrain_visible);
+                        }
+
                         static int max_max_lod = -1;
                         static unsigned u32_one = 1;
                         unsigned max_lod = options.getMaxLOD();

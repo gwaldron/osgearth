@@ -33,6 +33,7 @@
 #include <osg/ClipPlane>
 #include <osg/LOD>
 #include <osgUtil/CullVisitor>
+#include <osgUtil/RenderBin>
 
 namespace osgEarth
 {
@@ -275,6 +276,66 @@ namespace osgEarth
         private:
             optional<float> _maxAltitude;
             osg::ref_ptr<const SpatialReference> _srs;
+        };
+
+        /**
+         * Cull callback that will permit culling but will supress rendering.
+         * We use this to toggle node visibility to that paged scene graphs
+         * will continue to page in/out even when the layer is not visible.
+         */
+        class OSGEARTH_EXPORT ToggleVisibleCullCallback : public osg::NodeCallback
+        {
+        public:
+            void setVisible(bool value)
+            {
+                _visible = value;
+            }
+
+            bool getVisible() const
+            {
+                return _visible;
+            }
+
+        private:
+            struct EmptyRenderBin : public osgUtil::RenderBin
+            {
+                EmptyRenderBin(osgUtil::RenderStage* stage) :
+                    osgUtil::RenderBin()
+                {
+                    setName("OE_EMPTY_RENDER_BIN");
+                    _stage = stage;
+                }
+            };
+ 
+            bool _visible = true;
+
+        public:
+            void operator()(osg::Node* node, osg::NodeVisitor* nv) override
+            {
+                if (_visible)
+                {
+                    traverse(node, nv);
+                }
+                else
+                {
+                    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(nv);
+                    osg::ref_ptr<osgUtil::RenderBin> savedBin;
+                    osg::ref_ptr<EmptyRenderBin> emptyStage;
+                    if (cv)
+                    {
+                        savedBin = cv->getCurrentRenderBin();
+                        emptyStage = new EmptyRenderBin(savedBin->getStage());
+                        cv->setCurrentRenderBin(emptyStage.get());
+                    }
+
+                    traverse(node, nv);
+
+                    if (cv)
+                    {
+                        cv->setCurrentRenderBin(savedBin.get());
+                    }
+                }
+            }
         };
     }
 }

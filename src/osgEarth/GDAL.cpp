@@ -742,7 +742,7 @@ GDAL::Driver::open(
     pixelToGeo(0.0, _warpedDS->GetRasterYSize(), minX, minY);
     pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, maxX, maxY);
 
-    OE_DEBUG << LC << INDENT << "Geo extents: " << minX << ", " << minY << " -> " << maxX << ", " << maxY << std::endl;
+    OE_INFO << LC << INDENT << gdalOptions().url()->full() << ": pixelToGeo: " << minX << ", " << minY << " -> " << maxX << ", " << maxY << std::endl;
 
     // If we don't have a profile yet, that means this is a projected dataset
     // so we will create the profile from the actual data extents.
@@ -1868,26 +1868,18 @@ GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
 
     Util::ScopedReadLock shared_lock(_createCloseMutex);
 
-    GDAL::Driver::Ptr driver;
+    // check while locked to ensure we may continue
+    if (!isOpen())
+        return GeoImage::INVALID;
 
-    // lock while we look up and verify the per-thread driver:
+    GDAL::Driver::Ptr& driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
+
+    if (driver == nullptr)
     {
-        // check while locked to ensure we may continue
-        if (isClosing() || !isOpen())
-            return GeoImage::INVALID;
-
-        GDAL::Driver::Ptr& test_driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
-
-        if (test_driver == nullptr)
-        {
-            // calling openImpl with NULL params limits the setup
-            // since we already called this during openImplementation
-            osg::ref_ptr<const Profile> profile = getProfile();
-            openOnThisThread(this, test_driver, &profile);
-        }
-
-        // assign to a ref_ptr to continue
-        driver = test_driver;
+        // calling openImpl with NULL params limits the setup
+        // since we already called this during openImplementation
+        osg::ref_ptr<const Profile> profile = getProfile();
+        openOnThisThread(this, driver, &profile);
     }
 
     if (driver != nullptr)
@@ -2009,26 +2001,18 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
 
     Util::ScopedReadLock shared_lock(_createCloseMutex);
 
-    GDAL::Driver::Ptr driver;
+    // check while locked to ensure we may continue
+    if (!isOpen())
+        return GeoHeightField::INVALID;
 
-    // lock while we look up and verify the per-thread driver:
+    GDAL::Driver::Ptr& driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
+
+    if (driver == nullptr)
     {
-        // check while locked to ensure we may continue
-        if (isClosing() || !isOpen())
-            return GeoHeightField::INVALID;
-
-        GDAL::Driver::Ptr& test_driver = getSingleThreaded() ? _driverSingleThreaded : _driverPerThread.get();
-
-        if (test_driver == nullptr)
-        {
-            // calling openImpl with NULL params limits the setup
-            // since we already called this during openImplementation
-            osg::ref_ptr<const Profile> profile = getProfile();
-            openOnThisThread(this, test_driver, &profile);
-        }
-
-        // assign to a ref_ptr to continue
-        driver = test_driver;
+        // calling openImpl with NULL params limits the setup
+        // since we already called this during openImplementation
+        osg::ref_ptr<const Profile> profile = getProfile();
+        openOnThisThread(this, driver, &profile);
     }
 
     if (driver != nullptr)

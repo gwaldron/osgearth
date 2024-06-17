@@ -222,12 +222,12 @@ namespace WEEJOBS_NAMESPACE
             mutable std::mutex _m;
         };
 
-#if __cplusplus >= 202000L
+#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
         template<typename F, typename...Args>
         using result_of_t = typename std::invoke_result<F, Args...>::type;
 #else
-        template<typename F>
-        using result_of_t = typename std::result_of<F>::type;
+        template<typename F, typename...Args>
+        using result_of_t = typename std::result_of<F(Args...)>::type;
 #endif
     }
 
@@ -432,7 +432,7 @@ namespace WEEJOBS_NAMESPACE
         //! when this object's result becomes available; that result will be the input
         //! value to the continuation function. The continuation function in turn must
         //! return a value (cannot be void).
-        template<typename F, typename R = typename detail::result_of_t<F(const T&, cancelable&)>>
+        template<typename F, typename R = typename detail::result_of_t<F, const T&, cancelable&>>
         WEEJOBS_NO_DISCARD inline future<R> then_dispatch(F func, const context& con = {});
 
         //! Add a continuation to this future. Instead of the functor returning a value,
@@ -776,7 +776,7 @@ namespace WEEJOBS_NAMESPACE
     //! @param task Function to run in a thread. Prototype is T(cancelable&)
     //! @param context Optional configuration for the asynchronous function call
     //! @return Future result of the async function call
-    template<typename F, typename T = typename detail::result_of_t<F(cancelable&)>>
+    template<typename F, typename T = typename detail::result_of_t<F, cancelable&>>
     WEEJOBS_NO_DISCARD inline future<T> dispatch(F task, const context& context = {})
     {
         future<T> promise;
@@ -809,7 +809,7 @@ namespace WEEJOBS_NAMESPACE
     //! @param promise Optional user-supplied promise object
     //! @param context Optional configuration for the asynchronous function call
     //! @return Future result of the async function call
-    template<typename F, typename T = typename detail::result_of_t<F(cancelable&)>>
+    template<typename F, typename T = typename detail::result_of_t<F, cancelable&>>
     WEEJOBS_NO_DISCARD inline future<T> dispatch(F task, future<T> promise, const context& context = {})
     {
         bool can_cancel = context.can_cancel;

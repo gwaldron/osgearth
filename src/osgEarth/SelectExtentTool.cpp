@@ -70,13 +70,13 @@ SelectExtentTool::rebuild()
     _feature->geoInterp() = GEOINTERP_RHUMB_LINE;
 
     // define a style for the line
-    LineSymbol* ls = _feature->style()->getOrCreate<LineSymbol>();
-    ls->stroke()->color() = Color::Yellow;
-    ls->stroke()->width() = 3.0f;
-    ls->stroke()->widthUnits() = Units::PIXELS;
-    ls->tessellationSize()->set(100, Units::KILOMETERS);
+    LineSymbol* ls = _feature->style().mutable_value().getOrCreate<LineSymbol>();
+    ls->stroke().mutable_value().color() = Color::Yellow;
+    ls->stroke().mutable_value().width() = 3.0f;
+    ls->stroke().mutable_value().widthUnits() = Units::PIXELS;
+    ls->tessellationSize() = Distance(100, Units::KILOMETERS);
 
-    RenderSymbol* render = _feature->style()->getOrCreate<RenderSymbol>();
+    RenderSymbol* render = _feature->style().mutable_value().getOrCreate<RenderSymbol>();
     render->depthTest() = false;
 
     _featureNode = new FeatureNode( _feature.get() );

@@ -110,7 +110,7 @@ ShaderOptions::fromConfig(const Config& conf)
         if (!value.empty() && value[0] == '#') 
         {
             Color color(value);
-            _uniforms.back()._vec3Value->set(color.r(), color.g(), color.b());
+            _uniforms.back()._vec3Value = osg::Vec3f(color.r(), color.g(), color.b());
         }
         else
         {
@@ -121,8 +121,8 @@ ShaderOptions::fromConfig(const Config& conf)
     if (conf.hasChild("material"))
     {
         auto& child = conf.child("material");
-        _pbrsampler->_name = child.value("name");
-        _pbrsampler->_material = PBRMaterial(child);
+        _pbrsampler.mutable_value()._name = child.value("name");
+        _pbrsampler.mutable_value()._material = PBRMaterial(child);
     }
 }
 

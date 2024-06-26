@@ -153,7 +153,7 @@ KML_Placemark::build( xml_node<>* node, KMLContext& cx )
                             text = style.getOrCreate<TextSymbol>();
                             text->encoding() = TextSymbol::ENCODING_UTF8;
                         }
-                        text->content()->setLiteral( name );
+                        text->content().mutable_value().setLiteral( name );
                     }
 
                     // is there an icon?

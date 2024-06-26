@@ -503,10 +503,10 @@ Profile::toProfileOptions() const
     {
         op.srsString() = getSRS()->getHorizInitString();
         op.vsrsString() = getSRS()->getVertInitString();
-        op.bounds()->xMin() = _extent.xMin();
-        op.bounds()->yMin() = _extent.yMin();
-        op.bounds()->xMax() = _extent.xMax();
-        op.bounds()->yMax() = _extent.yMax();
+        op.bounds().mutable_value().xMin() = _extent.xMin();
+        op.bounds().mutable_value().yMin() = _extent.yMin();
+        op.bounds().mutable_value().xMax() = _extent.xMax();
+        op.bounds().mutable_value().yMax() = _extent.yMax();
         op.numTilesWideAtLod0() = _numTilesWideAtLod0;
         op.numTilesHighAtLod0() = _numTilesHighAtLod0;
     }

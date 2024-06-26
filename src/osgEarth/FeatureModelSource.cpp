@@ -79,7 +79,7 @@ FeatureModelOptions::fromConfig(const Config& conf)
     // shorthand for enabling feature indexing
     if (featureIndexing().isSet() == false && conf.value("pickable", false) == true)
     {
-        featureIndexing()->enabled() = true;
+        featureIndexing().mutable_value().enabled() = true;
     }
 }
 

@@ -1447,9 +1447,9 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                 else if (layer.type() == "line")
                 {
                     Style style;
-                    style.getOrCreateSymbol<LineSymbol>()->stroke()->color() = layer.paint().lineColor().evaluate(key.getLOD());
-                    style.getOrCreateSymbol<LineSymbol>()->stroke()->width() = layer.paint().lineWidth().evaluate(key.getLOD());
-                    style.getOrCreateSymbol<LineSymbol>()->stroke()->widthUnits() = Units::PIXELS;
+                    style.getOrCreateSymbol<LineSymbol>()->stroke().mutable_value().color() = layer.paint().lineColor().evaluate(key.getLOD());
+                    style.getOrCreateSymbol<LineSymbol>()->stroke().mutable_value().width() = layer.paint().lineWidth().evaluate(key.getLOD());
+                    style.getOrCreateSymbol<LineSymbol>()->stroke().mutable_value().widthUnits() = Units::PIXELS;
                     featureRasterizer.render(
                         features,
                         style,
@@ -1466,9 +1466,9 @@ MapBoxGLImageLayer::createImageImplementation(const TileKey& key, ProgressCallba
                         {
                             style.getOrCreateSymbol<TextSymbol>()->content() = layer.paint().textField().get();
                         }
-                        style.getOrCreateSymbol<TextSymbol>()->fill()->color() = layer.paint().textColor().evaluate(key.getLOD());
-                        style.getOrCreateSymbol<TextSymbol>()->halo()->color() = layer.paint().textHaloColor().evaluate(key.getLOD());
-                        style.getOrCreateSymbol<TextSymbol>()->size()->setLiteral(layer.paint().textSize().evaluate(key.getLOD()));
+                        style.getOrCreateSymbol<TextSymbol>()->fill().mutable_value().color() = layer.paint().textColor().evaluate(key.getLOD());
+                        style.getOrCreateSymbol<TextSymbol>()->halo().mutable_value().color() = layer.paint().textHaloColor().evaluate(key.getLOD());
+                        style.getOrCreateSymbol<TextSymbol>()->size().mutable_value().setLiteral(layer.paint().textSize().evaluate(key.getLOD()));
 
                         TextSymbol::Alignment alignment = TextSymbol::ALIGN_CENTER_CENTER;
                         if (layer.paint().textAnchor().isSet())

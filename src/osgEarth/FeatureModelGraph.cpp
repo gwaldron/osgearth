@@ -562,7 +562,7 @@ FeatureModelGraph::open()
             // The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere.
             tileSizeFactor = osg::maximum(tileSizeFactor, 1.0f);
             OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " << maxRangeAtFirstLevel << std::endl;
-            _options.layout()->tileSizeFactor() = tileSizeFactor;
+            _options.layout().mutable_value().tileSizeFactor() = tileSizeFactor;
         }
 
         // The max range that has been computed is for the first level of the dataset, which may be greater than 0.
@@ -615,11 +615,11 @@ FeatureModelGraph::open()
         {
             if (maxRange.isSet())
             {
-                _options.layout()->tileSizeFactor() = maxRange.get() / _options.layout()->tileSize().get();
+                _options.layout().mutable_value().tileSizeFactor() = maxRange.get() / _options.layout()->tileSize().get();
             }
             else
             {
-                maxRange = _options.layout()->tileSizeFactor().get() * _options.layout()->tileSize().get();
+                maxRange = _options.layout().mutable_value().tileSizeFactor().value() * _options.layout()->tileSize().get();
             }
 
             OE_INFO << LC
@@ -632,7 +632,7 @@ FeatureModelGraph::open()
         if (maxRange.isSet() && !haveTSF && !haveTileSize)
         {
             float size = (2.0*_fullWorldBound.radius() / 1.1412);
-            _options.layout()->tileSizeFactor() = maxRange.get() / size;
+            _options.layout().mutable_value().tileSizeFactor() = maxRange.get() / size;
             OE_INFO << LC 
                 << "maxRange = " << maxRange.get() 
                 << ", calc tile size = " << size 

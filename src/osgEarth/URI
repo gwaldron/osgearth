@@ -444,8 +444,9 @@ namespace osgEarth
         if ( hasChild(key) ) {
             const Config& uriconf = child(key);
             if (!uriconf.value().empty()) {
-                output = URI(uriconf.value(), uriconf.referrer());
-                output->mergeConfig(uriconf);
+                URI uri(uriconf.value(), uriconf.referrer());
+                uri.mergeConfig(uriconf);
+                output = uri;
                 return true;
             }
             else return false;
@@ -478,7 +479,7 @@ namespace osgEarth
                 std::string source = i->value("source");
                 std::string target = i->value("target");
                 if ( !source.empty() && !target.empty() )
-                    output->insert( source, target );
+                    output.mutable_value().insert( source, target );
             }
             return true;
         }

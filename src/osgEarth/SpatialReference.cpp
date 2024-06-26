@@ -982,9 +982,9 @@ SpatialReference::transformXYPointArrays(
     optional<TransformInfo>& xform = local._xformCache[out_srs->getWKT()];
     if (!xform.isSet())
     {
-        xform->_handle = OCTNewCoordinateTransformation(local._handle, out_srs->getHandle());
+        xform.mutable_value()._handle = OCTNewCoordinateTransformation(local._handle, out_srs->getHandle());
 
-        if ( xform->_handle == nullptr )
+        if ( xform.mutable_value()._handle == nullptr )
         {
             OE_WARN << LC
                 << "SRS xform not possible:" << std::endl
@@ -997,8 +997,8 @@ SpatialReference::transformXYPointArrays(
             const char* errmsg = CPLGetLastErrorMsg();
             OE_WARN << LC << "ERROR: " << (errmsg? errmsg : "do not know") << std::endl;
 
-            xform->_handle = nullptr;
-            xform->_failed = true;
+            xform.mutable_value()._handle = nullptr;
+            xform.mutable_value()._failed = true;
 
             return false;
         }

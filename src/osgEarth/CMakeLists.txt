@@ -818,6 +818,8 @@ set(TARGET_SRC
     ${SHADERS_CPP}
 )
 
+# whether to build the osgEarth::Util::Controls API, which has been
+# mostly replaced by ImGui
 if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
     list(APPEND TARGET_SRC
         ActivityMonitorTool.cpp

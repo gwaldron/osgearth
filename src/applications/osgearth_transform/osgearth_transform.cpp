@@ -183,9 +183,9 @@ main(int argc, char** argv)
 
     osgEarth::Viewpoint vp;
     vp.setNode( app.geo );
-    vp.heading()->set( -45.0, Units::DEGREES );
-    vp.pitch()->set( -20.0, Units::DEGREES );
-    vp.range()->set( model->getBound().radius()*10.0, Units::METERS );
+    vp.heading() = Angle( -45.0, Units::DEGREES );
+    vp.pitch() = Angle( -20.0, Units::DEGREES );
+    vp.range() = Distance( model->getBound().radius()*10.0, Units::METERS );
     em->setViewpoint( vp );
 
     return viewer.run();

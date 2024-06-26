@@ -105,9 +105,6 @@ DebugImageLayer::Options::getConfig() const
 void
 DebugImageLayer::Options::fromConfig(const Config& conf)
 {
-    _colorCode.init("#000000");
-    _invertY.init(false);
-
     conf.get("color", _colorCode);
     conf.get("invert_y", _invertY);
     conf.get("show_tessellation", showTessellation());

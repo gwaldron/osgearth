@@ -231,7 +231,7 @@ Horizon::isVisible(const osg::Vec3d& eye,
     if ( radius > 0.0 )
     {
         eyeUnit = eye;
-        eyeUnit->normalize();
+        eyeUnit.mutable_value().normalize();
         delta.set( eyeUnit.get()*radius );
     }
     osg::Vec3d VT( target+delta - eye );
@@ -278,7 +278,7 @@ Horizon::isVisible(const osg::Vec3d& eye,
 
     if ( !eyeUnit.isSet() ) {
         eyeUnit = eye;
-        eyeUnit->normalize();
+        eyeUnit.mutable_value().normalize();
     }
     double a = VT * -eyeUnit.get();
     double b = a * coneTan;

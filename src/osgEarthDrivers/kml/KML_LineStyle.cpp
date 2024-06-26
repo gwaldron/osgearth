@@ -29,16 +29,16 @@ KML_LineStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 		std::string color = getValue(node, "color");
         if ( !color.empty() )
         {
-            line->stroke()->color() = Color( Stringify() << "#" << color, Color::ABGR );
+            line->stroke().mutable_value().color() = Color( Stringify() << "#" << color, Color::ABGR );
         }
 		std::string width = getValue(node, "width");
         if ( !width.empty() )
         {
-            line->stroke()->width() = as<float>( width, 1.0f );
+            line->stroke().mutable_value().width() = as<float>( width, 1.0f );
 
             if ( line->stroke()->width() == 0.0f )
             {
-                line->stroke()->width() = 1.0f;
+                line->stroke().mutable_value().width() = 1.0f;
             }
         }
     }

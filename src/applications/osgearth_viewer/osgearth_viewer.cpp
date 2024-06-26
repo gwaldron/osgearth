@@ -27,6 +27,8 @@
 #include <osgEarth/PhongLightingEffect>
 #include <osgGA/TrackballManipulator>
 #include <iostream>
+#include <osgEarth/PlaceNode>
+#include <osgEarth/ObjectIDPicker>
 
 #include <osgEarth/Metrics>
 
@@ -53,45 +55,44 @@ main(int argc, char** argv)
     if ( arguments.read("--help") )
         return usage(argv[0]);
 
-    // start up osgEarth
     osgEarth::initialize(arguments);
-
-    // create a simple view
     osgViewer::Viewer viewer(arguments);
-
-    // install our default manipulator (do this before calling load)
     viewer.setCameraManipulator(new EarthManipulator(arguments));
-
-    // disable the small-feature culling; necessary for some feature rendering
     viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
 
-    // load an earth file, and support all or our example command-line options
     auto node = MapNodeHelper().load(arguments, &viewer);
     if (node.valid())
     {
-        if (MapNode::get(node))
+        auto mapnode = MapNode::get(node);
+        if (mapnode)
         {
+            auto anno = new PlaceNode();
+            anno->setText("Hello, World!");
+            anno->setPosition(GeoPoint(mapnode->getMapSRS(), -122.5, 45.5));
+            Registry::objectIndex()->tagNode(anno, anno);
+            mapnode->addChild(anno);
+
+            auto picker = new ObjectIDPicker();
+            picker->setView(&viewer);
+            picker->setGraph(mapnode);
+            mapnode->addChild(picker);
+
+            picker->onClick([&](const ObjectID& id)
+                {
+                    if (id != OSGEARTH_OBJECTID_EMPTY)
+                    {
+                        auto place = Registry::objectIndex()->get<AnnotationNode>(id);
+                        if (place)
+                        {
+                            std::cout << "Clicked on \"" << place->getText() << "\"" << std::endl;
+                        }
+                    }
+                });
+
+
             viewer.setSceneData(node);
+            return viewer.run();
         }
-        else
-        {
-            // not an earth file? Just view as a normal OSG node or image with basic lighting
-            viewer.setCameraManipulator(new osgGA::TrackballManipulator);
-
-            osg::LightSource* sunLS = new osg::LightSource();
-            sunLS->getLight()->setPosition(osg::Vec4d(1, -1, 1, 0));
-            auto group = new osg::Group();
-            group->addChild(sunLS);
-            group->addChild(node);
-            auto phong = new PhongLightingEffect();
-            phong->attach(group->getOrCreateStateSet());
-            ShaderGenerator gen;
-            gen.run(group);
-
-            viewer.setSceneData(group);
-        }
-
-        return Metrics::run(viewer);
     }
 
     return usage(argv[0]);

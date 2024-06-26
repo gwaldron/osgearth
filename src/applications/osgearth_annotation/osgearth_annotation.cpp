@@ -98,7 +98,7 @@ main(int argc, char** argv)
     // Style our labels:
     Style labelStyle;
     labelStyle.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
-    labelStyle.getOrCreate<TextSymbol>()->fill()->color() = Color::Yellow;
+    labelStyle.getOrCreate<TextSymbol>()->fill().mutable_value().color() = Color::Yellow;
 
     // A lat/long SRS for specifying points.
     const SpatialReference* geoSRS = mapNode->getMapSRS()->getGeographicSRS();
@@ -108,7 +108,7 @@ main(int argc, char** argv)
     // A series of place nodes (an icon with a text label)
     {
         Style pm;
-        pm.getOrCreate<IconSymbol>()->url()->setLiteral( "../data/placemark32.png" );
+        pm.getOrCreate<IconSymbol>()->url().mutable_value().setLiteral( "../data/placemark32.png" );
         pm.getOrCreate<IconSymbol>()->declutter() = true;
         pm.getOrCreate<TextSymbol>()->halo() = Color("#5f5f5f");
 
@@ -155,10 +155,10 @@ main(int argc, char** argv)
         feature->geoInterp() = GEOINTERP_RHUMB_LINE;
 
         Style geomStyle;
-        geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
-        geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
-        geomStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(75000, Units::METERS);
-        geomStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
+        geomStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().color() = Color::Cyan;
+        geomStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = 5.0f;
+        geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = Distance(75000, Units::METERS);
+        geomStyle.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().enabled() = true;
 
         FeatureNode* fnode = new FeatureNode(feature, geomStyle);
 
@@ -185,10 +185,10 @@ main(int argc, char** argv)
         Feature* feature = new Feature(geom, geoSRS);
         feature->geoInterp() = GEOINTERP_RHUMB_LINE;
 
-        geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Lime;
-        geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
-        geomStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(75000, Units::METERS);
-        geomStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
+        geomStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().color() = Color::Lime;
+        geomStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = 3.0f;
+        geomStyle.getOrCreate<LineSymbol>()->tessellationSize() = Distance(75000, Units::METERS);
+        geomStyle.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().enabled() = true;
 
         FeatureNode* gnode = new FeatureNode(feature, geomStyle);
         annoGroup->addChild( gnode );
@@ -214,16 +214,18 @@ main(int argc, char** argv)
         pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
 
         Style pathStyle;
-        pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::White;
-        pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 1.0f;
-        pathStyle.getOrCreate<LineSymbol>()->stroke()->smooth() = true;
-        pathStyle.getOrCreate<LineSymbol>()->tessellationSize()->set(75000, Units::METERS);
+        auto* line = pathStyle.getOrCreate<LineSymbol>();
+        auto& stroke = line->stroke().mutable_value();
+        stroke.color() = Color::White;
+        stroke.width() = 1.0f;
+        stroke.smooth() = true;
+        line->tessellationSize() = Distance(75000, Units::METERS);
         pathStyle.getOrCreate<PointSymbol>()->size() = 8;
-        pathStyle.getOrCreate<PointSymbol>()->fill()->color() = Color::Red;
+        pathStyle.getOrCreate<PointSymbol>()->fill().mutable_value().color() = Color::Red;
         pathStyle.getOrCreate<PointSymbol>()->smooth() = true;
         pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         pathStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_GPU;
-        pathStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
+        pathStyle.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().enabled() = true;
 
         //OE_INFO << "Path extent = " << pathFeature->getExtent().toString() << std::endl;
 
@@ -240,7 +242,7 @@ main(int argc, char** argv)
     // Two circle segments around New Orleans.
     {
         Style circleStyle;
-        circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
+        circleStyle.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color(Color::Cyan, 0.5);
         circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 
@@ -258,7 +260,7 @@ main(int argc, char** argv)
 
 	{
 		Style circleStyle;
-		circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Red, 0.5);
+		circleStyle.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color(Color::Red, 0.5);
 		circleStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 		circleStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
 
@@ -279,7 +281,7 @@ main(int argc, char** argv)
     // An extruded ellipse around Miami.
     {
         Style ellipseStyle;
-        ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);
+        ellipseStyle.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color(Color::Orange, 0.75);
         ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
         EllipseNode* ellipse = new EllipseNode();
         ellipse->set(
@@ -295,7 +297,7 @@ main(int argc, char** argv)
     }
 	{
 		Style ellipseStyle;
-		ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Blue, 0.75);
+		ellipseStyle.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color(Color::Blue, 0.75);
 		ellipseStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
 		EllipseNode* ellipse = new EllipseNode();
         ellipse->set(
@@ -315,7 +317,7 @@ main(int argc, char** argv)
     {
         // A rectangle around San Diego
         Style rectStyle;
-        rectStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Green, 0.5);
+        rectStyle.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color(Color::Green, 0.5);
         rectStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         rectStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
         RectangleNode* rect = new RectangleNode(
@@ -342,7 +344,7 @@ main(int argc, char** argv)
 
         Style utahStyle;
         utahStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
-        utahStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::White, 0.8);
+        utahStyle.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color(Color::White, 0.8);
 
         Feature*     utahFeature = new Feature(utah, geoSRS);
         FeatureNode* featureNode = new FeatureNode(utahFeature, utahStyle);
@@ -372,7 +374,7 @@ main(int argc, char** argv)
     {
         Style style;
         style.getOrCreate<ModelSymbol>()->autoScale() = true;
-        style.getOrCreate<ModelSymbol>()->url()->setLiteral("../data/red_flag.osg.50.scale");
+        style.getOrCreate<ModelSymbol>()->url().mutable_value().setLiteral("../data/red_flag.osg.50.scale");
         ModelNode* modelNode = new ModelNode(mapNode, style);
         modelNode->setPosition(GeoPoint(geoSRS, -100, 52));
         annoGroup->addChild(modelNode);
@@ -389,7 +391,7 @@ main(int argc, char** argv)
         {
             GeoPoint trackPos(SpatialReference::get("wgs84"), -55, 22, 0, ALTMODE_ABSOLUTE);
             auto nameSymbol = new TextSymbol();
-            nameSymbol->pixelOffset()->set(0, -trackImage->t() / 3);
+            nameSymbol->pixelOffset() = osg::Vec2s(0, -trackImage->t() / 3);
             nameSymbol->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM;
             nameSymbol->halo() = Color::Black;
             nameSymbol->content() = { "Hello, TrackNode" };

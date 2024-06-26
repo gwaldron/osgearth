@@ -19,7 +19,6 @@
 #include <osgEarth/ElevationPool>
 #include <osgEarth/Map>
 #include <osgEarth/Metrics>
-#define _DEBUG 1
 #include <osgEarth/rtree.h>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Registry>
@@ -214,9 +213,8 @@ ElevationPool::refresh(const Map* map)
 
     _L2.clear();
 
-    _globalLUTMutex.write_lock();
+    ScopedWriteLock lock(_globalLUTMutex);
     _globalLUT.clear();
-    _globalLUTMutex.write_unlock();
 }
 
 int
@@ -1046,39 +1044,6 @@ ElevationPool::getTile(
 
 //...................................................................
 
-namespace osgEarth {
-    namespace Internal
-    {
-        struct SampleElevationOp : public osg::Operation
-        {
-            osg::observer_ptr<const Map> _map;
-            GeoPoint _p;
-            Distance _res;
-            ElevationPool::WorkingSet* _ws;
-            jobs::promise<ElevationSample> _promise;
-
-            SampleElevationOp(osg::observer_ptr<const Map> map, const GeoPoint& p, const Distance& res, ElevationPool::WorkingSet* ws) :
-                _map(map), _p(p), _res(res), _ws(ws) { }
-
-            void operator()(osg::Object*)
-            {
-                if (!_promise.empty())
-                {
-                    osg::ref_ptr<const Map> map;
-                    if (_map.lock(map))
-                    {
-                        ElevationSample sample = map->getElevationPool()->getSample(_p, _res, _ws);
-                        _promise.resolve(sample);
-                        return;
-                    }
-                }
-
-                _promise.resolve();
-            }
-        };
-    }
-}
-
 AsyncElevationSampler::AsyncElevationSampler(
     const Map* map,
     unsigned numThreads) :
@@ -1113,11 +1078,7 @@ AsyncElevationSampler::getSample(const GeoPoint& point, const Distance& resoluti
                 {
                     osg::ref_ptr<ProgressCallback> progress = new ProgressCallback(&cancelable);
 
-                    sample = map->getElevationPool()->getSample(
-                        point,
-                        resolution,
-                        &_ws,
-                        progress.get());
+                    sample = map->getElevationPool()->getSample(point, resolution, &_ws, progress.get());
                 }
             }
             return sample;

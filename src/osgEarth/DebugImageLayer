@@ -38,9 +38,9 @@ namespace osgEarth { namespace Util
         class OSGEARTH_EXPORT Options : public ImageLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
-            OE_OPTION(std::string, colorCode);
-            OE_OPTION(bool, invertY);
-            OE_OPTION(bool, showTessellation);
+            OE_OPTION(std::string, colorCode, "#000000");
+            OE_OPTION(bool, invertY, false);
+            OE_OPTION(bool, showTessellation, false);
             virtual Config getConfig() const;
             static Config getMetadata();
         private:

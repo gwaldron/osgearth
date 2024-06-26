@@ -75,11 +75,11 @@ Layer::Options::fromConfig(const Config& conf)
     if (!cachePolicy().isSet())
     {
         if ( conf.value<bool>( "cache_only", false ) == true )
-            _cachePolicy->usage() = CachePolicy::USAGE_CACHE_ONLY;
+            _cachePolicy.mutable_value().usage() = CachePolicy::USAGE_CACHE_ONLY;
         if ( conf.value<bool>( "cache_enabled", true ) == false )
-            _cachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
+            _cachePolicy.mutable_value().usage() = CachePolicy::USAGE_NO_CACHE;
         if (conf.value<bool>("caching", true) == false)
-            _cachePolicy->usage() = CachePolicy::USAGE_NO_CACHE;
+            _cachePolicy.mutable_value().usage() = CachePolicy::USAGE_NO_CACHE;
     }
     conf.get("shader_define", shaderDefine());
 

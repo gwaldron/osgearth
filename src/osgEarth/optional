@@ -26,7 +26,7 @@ namespace osgEarth
     /**
      * A template for defining "optional" class members. An optional member has a default value
      * and a flag indicating whether the member is "set".
-     * This is used extensively in osgEarth's ConfigOptions subsystem.
+     * This is used extensively in osgEarth's Config subsystem.
      */
     template<typename T> struct optional {
         optional() { }
@@ -50,23 +50,31 @@ namespace osgEarth
         const T& get() const { return value(); }
         const T& value() const { return _value; }
         const T& defaultValue() const { return _defaultValue; }
-        //T temp_copy() const { return _value; }
 
         const T& getOrUse(const T& fallback) const { return _set ? _value : fallback; }
 
         // gets a mutable reference, automatically setting
         T& mutable_value() { _set = true; return _value; }
-
-        // sets a default value and usets the variable
-        void init(T defValue) { _value=defValue; _defaultValue=defValue; unset(); }
+        T& edit() { return mutable_value(); }
 
         // sets a default value (without altering a set value)
         void setDefault(T defValue) { _defaultValue = defValue; if (!_set) _value = defValue; }
 
+        // gets the const value.
         operator const T*() const { return &_value; }
 
-        T* operator ->() { _set=true; return &_value; }
+        // gets the const value.
         const T* operator ->() const { return &_value; }
+
+
+    public: // deprecated methods
+        
+        // sets a default value and usets the variable
+        //[[deprecated("Use setDefault or OE_OPTION(type,name,default) instead")]]
+        void init(T defValue) { _value = defValue; _defaultValue = defValue; unset(); }
+
+        //[[deprecated("Use mutable_value() or edit() instead")]]
+        T* operator ->() { _set = true; return &_value; }
 
     private:
         bool _set = false;

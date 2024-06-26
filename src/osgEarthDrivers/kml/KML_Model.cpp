@@ -47,8 +47,8 @@ KML_Model::parseStyle(xml_node<>* node, KMLContext& cx, Style& style)
     if ( !url.empty() )
     {
         if ( !model ) model = style.getOrCreate<ModelSymbol>();
-        model->url()->setLiteral( url );
-        model->url()->setURIContext( URIContext(cx._referrer) );
+        model->url().mutable_value().setLiteral( url );
+        model->url().mutable_value().setURIContext( URIContext(cx._referrer) );
 
     }
 
@@ -89,7 +89,7 @@ KML_Model::parseStyle(xml_node<>* node, KMLContext& cx, Style& style)
             if ( !source.empty() || !target.empty() )
             {
                 if ( !model ) model = style.getOrCreate<ModelSymbol>();
-                model->uriAliasMap()->insert( source, target );
+                model->uriAliasMap().mutable_value().insert( source, target );
             }
 		}
     }

@@ -75,9 +75,9 @@ KML_Feature::build( xml_node<>* node, KMLContext& cx, osg::Node* working )
 				as<double>(getValue(lookat, "altitude"), 0.0),
                 ALTMODE_ABSOLUTE );
 
-            vp.heading()->set(as<double>(getValue(lookat, "heading"), 0.0), Units::DEGREES);
-            vp.pitch()->set(-as<double>(getValue(lookat, "tilt"), 45.0), Units::DEGREES);
-            vp.range()->set(as<double>(getValue(lookat, "range"), 10000.0), Units::METERS);
+            vp.heading() = Angle(as<double>(getValue(lookat, "heading"), 0.0), Units::DEGREES);
+            vp.pitch() = Angle(-as<double>(getValue(lookat, "tilt"), 45.0), Units::DEGREES);
+            vp.range() = Distance(as<double>(getValue(lookat, "range"), 10000.0), Units::METERS);
 
             anno->setViewpoint( vp );
         }

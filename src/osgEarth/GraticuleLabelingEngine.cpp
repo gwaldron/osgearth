@@ -70,13 +70,13 @@ GraticuleLabelingEngine::GraticuleLabelingEngine(const SpatialReference* srs)
     // Set up the symbology for x-axis labels
     TextSymbol* xText = _xLabelStyle.getOrCreate<TextSymbol>();
     xText->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM;
-    xText->halo()->color().set(0, 0, 0, 1);
+    xText->halo().mutable_value().color().set(0, 0, 0, 1);
     xText->declutter() = false;
 
     // Set up the symbology for y-axis labels
     TextSymbol* yText = _yLabelStyle.getOrCreate<TextSymbol>();
     yText->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM;
-    yText->halo()->color().set(0, 0, 0, 1);
+    yText->halo().mutable_value().color().set(0, 0, 0, 1);
     yText->declutter() = false;
 }
 

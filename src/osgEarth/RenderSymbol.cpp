@@ -117,31 +117,31 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<RenderSymbol>()->lighting() = as<bool>(c.value(), *defaults.lighting());
     }
     else if ( match(c.key(), "render-depth-offset") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = as<bool>(c.value(), *defaults.depthOffset()->enabled() );
+        style.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().enabled() = as<bool>(c.value(), *defaults.depthOffset()->enabled() );
     }
     else if ( match(c.key(), "render-depth-offset-min-bias") ) {
         float value; UnitsType units;
         if (Units::parse(c.value(), value, units, Units::METERS))
-            style.getOrCreate<RenderSymbol>()->depthOffset()->minBias() = Distance(value, units);
-        style.getOrCreate<RenderSymbol>()->depthOffset()->automatic() = false;
+            style.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().minBias() = Distance(value, units);
+        style.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().automatic() = false;
     }
     else if ( match(c.key(), "render-depth-offset-max-bias") ) {
         float value; UnitsType units;
         if (Units::parse(c.value(), value, units, Units::METERS))
-            style.getOrCreate<RenderSymbol>()->depthOffset()->maxBias() = Distance(value, units);
+            style.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().maxBias() = Distance(value, units);
     }
     else if ( match(c.key(), "render-depth-offset-min-range") ) {
         float value; UnitsType units;
         if (Units::parse(c.value(), value, units, Units::METERS))
-            style.getOrCreate<RenderSymbol>()->depthOffset()->minRange() = Distance(value, units);
+            style.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().minRange() = Distance(value, units);
     }
     else if ( match(c.key(), "render-depth-offset-max-range") ) {
         float value; UnitsType units;
         if (Units::parse(c.value(), value, units, Units::METERS))
-            style.getOrCreate<RenderSymbol>()->depthOffset()->maxRange() = Distance(value, units);
+            style.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().maxRange() = Distance(value, units);
     }
     else if ( match(c.key(), "render-depth-offset-auto") ) {
-        style.getOrCreate<RenderSymbol>()->depthOffset()->automatic() = as<bool>(c.value(), *defaults.depthOffset()->automatic() );
+        style.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().automatic() = as<bool>(c.value(), *defaults.depthOffset()->automatic() );
     }
     else if ( match(c.key(), "render-backface-culling") ) {
         style.getOrCreate<RenderSymbol>()->backfaceCulling() = as<bool>(c.value(), *defaults.backfaceCulling() );

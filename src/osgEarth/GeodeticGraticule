@@ -42,15 +42,15 @@ namespace osgEarth { namespace Util
         class OSGEARTH_EXPORT Options : public VisibleLayer::Options {
         public:
             META_LayerOptions(osgEarth, Options, VisibleLayer::Options);
-            OE_OPTION(Color, color);
+            OE_OPTION(Color, color, Color(Color::Yellow, 0.5f));
             OE_OPTION(Style, gridLabelStyle);
             OE_OPTION(Style, edgeLabelStyle);
-            OE_OPTION(float, lineWidth);
-            OE_OPTION(int, gridLines);
-            OE_OPTION(std::string, resolutions);
-            OE_OPTION(bool, gridLinesVisible);
-            OE_OPTION(bool, gridLabelsVisible);
-            OE_OPTION(bool, edgeLabelsVisible);
+            OE_OPTION(float, lineWidth, 2.0f);
+            OE_OPTION(int, gridLines, 10);
+            OE_OPTION(std::string, resolutions, { "10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.03125" });
+            OE_OPTION(bool, gridLinesVisible, true);
+            OE_OPTION(bool, gridLabelsVisible, true);
+            OE_OPTION(bool, edgeLabelsVisible, true);
             virtual Config getConfig() const;
         private:
             void fromConfig( const Config& conf );

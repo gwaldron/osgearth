@@ -149,8 +149,7 @@ IconSymbol::parseSLD(const Config& c, Style& style)
     IconSymbol defaults;
 
     if ( match(c.key(), "icon") ) {
-        style.getOrCreate<IconSymbol>()->url() = c.value();
-        style.getOrCreate<IconSymbol>()->url()->setURIContext( c.referrer() );
+        style.getOrCreate<IconSymbol>()->url() = StringExpression(c.value(), c.referrer());
     }
     else if ( match(c.key(),"icon-library") ) {
         style.getOrCreate<IconSymbol>()->library() = StringExpression(c.value());

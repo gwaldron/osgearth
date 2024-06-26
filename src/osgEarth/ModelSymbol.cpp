@@ -125,8 +125,7 @@ void
 ModelSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "model") ) {
-        style.getOrCreate<ModelSymbol>()->url() = c.value();
-        style.getOrCreate<ModelSymbol>()->url()->setURIContext( c.referrer() );
+        style.getOrCreate<ModelSymbol>()->url() = StringExpression(c.value(), c.referrer());
     }    
     else if ( match(c.key(),"model-library") ) {
         style.getOrCreate<ModelSymbol>()->library() = StringExpression(c.value());

@@ -128,12 +128,13 @@ BoundingVolume::fromJSON(const Json::Value& value)
         if (a.isArray() && a.size() == 6)
         {
             Json::Value::const_iterator i = a.begin();
-            region()->xMin() = (*i++).asDouble();
-            region()->yMin() = (*i++).asDouble();
-            region()->xMax() = (*i++).asDouble();
-            region()->yMax() = (*i++).asDouble();
-            region()->zMin() = (*i++).asDouble();
-            region()->zMax() = (*i++).asDouble();
+            auto& r = region().mutable_value();
+            r.xMin() = (*i++).asDouble();
+            r.yMin() = (*i++).asDouble();
+            r.xMax() = (*i++).asDouble();
+            r.yMax() = (*i++).asDouble();
+            r.zMin() = (*i++).asDouble();
+            r.zMax() = (*i++).asDouble();
         }
         else OE_WARN << "Invalid region array" << std::endl;
     }
@@ -144,10 +145,11 @@ BoundingVolume::fromJSON(const Json::Value& value)
         if (a.isArray() && a.size() == 4)
         {
             Json::Value::const_iterator i = a.begin();
-            sphere()->center().x() = (*i++).asDouble();
-            sphere()->center().y() = (*i++).asDouble();
-            sphere()->center().z() = (*i++).asDouble();
-            sphere()->radius()     = (*i++).asDouble();
+            auto& s = sphere().mutable_value();
+            s.center().x() = (*i++).asDouble();
+            s.center().y() = (*i++).asDouble();
+            s.center().z() = (*i++).asDouble();
+            s.radius()     = (*i++).asDouble();
 
         }
     }
@@ -169,12 +171,13 @@ BoundingVolume::fromJSON(const Json::Value& value)
             osg::Vec3d yvec(values[6], values[7], values[8]);
             osg::Vec3d zvec(values[9], values[10], values[11]);
 
-            box()->expandBy(center+xvec);
-            box()->expandBy(center-xvec);
-            box()->expandBy(center+yvec);
-            box()->expandBy(center-yvec);
-            box()->expandBy(center+zvec);
-            box()->expandBy(center-zvec);
+            auto& b = box().mutable_value();
+            b.expandBy(center+xvec);
+            b.expandBy(center-xvec);
+            b.expandBy(center+yvec);
+            b.expandBy(center-yvec);
+            b.expandBy(center+zvec);
+            b.expandBy(center-zvec);
         }
         else OE_WARN << "Invalid box array" << std::endl;
     }

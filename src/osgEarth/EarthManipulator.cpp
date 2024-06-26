@@ -716,7 +716,7 @@ EarthManipulator::applySettings( Settings* settings )
     if ( !osg::equivalent(new_pitch_deg, old_pitch_deg) )
     {
         Viewpoint vp = getViewpoint();
-        vp.pitch()->set(new_pitch_deg, Units::DEGREES);
+        vp.pitch() = Angle(new_pitch_deg, Units::DEGREES);
         setViewpoint( vp );
     }
 }
@@ -795,10 +795,10 @@ EarthManipulator::established()
         {
             Viewpoint vp;
             vp.focalPoint() = GeoPoint(_srs.get(), -90.0, 0, 0, ALTMODE_ABSOLUTE);
-            vp.heading()->set( 0.0, Units::DEGREES );
-            vp.pitch()->set( -89.0, Units::DEGREES );
-            vp.range()->set( _srs->getEllipsoid().getRadiusEquator() * 3.0, Units::METERS );
-            vp.positionOffset()->set(0,0,0);
+            vp.heading() = Angle(0.0, Units::DEGREES );
+            vp.pitch() = Angle(-89.0, Units::DEGREES );
+            vp.range() = Distance(_srs->getEllipsoid().getRadiusEquator() * 3.0, Units::METERS );
+            vp.positionOffset() = osg::Vec3d(0,0,0);
             setHomeViewpoint( vp );
         }
         else
@@ -806,10 +806,10 @@ EarthManipulator::established()
             Viewpoint vp;
             const Profile* profile = _mapNode->getMap()->getProfile();
             vp.focalPoint() = profile->getExtent().getCentroid();
-            vp.range()->set(2.0 * std::max(profile->getExtent().width(), profile->getExtent().height()), Units::METERS);
-            vp.positionOffset()->set(0, 0, 0);
-            vp.heading()->set(0.0, Units::DEGREES);
-            vp.pitch()->set(-90.0, Units::DEGREES);
+            vp.range() = Distance(2.0 * std::max(profile->getExtent().width(), profile->getExtent().height()), Units::METERS);
+            vp.positionOffset() = osg::Vec3d(0, 0, 0);
+            vp.heading() = Angle(0.0, Units::DEGREES);
+            vp.pitch() = Angle(-90.0, Units::DEGREES);
             setHomeViewpoint( vp );
         }
     }
@@ -950,34 +950,40 @@ EarthManipulator::getViewpoint() const
         vp = _setVP1.get();
 
         if (vp.getNode().valid())
-            vp.focalPoint()->fromWorld(_srs.get(), computeWorld(vp.getNode().get()));
+        {
+            GeoPoint point;
+            point.fromWorld(_srs.get(), computeWorld(vp.getNode().get()));
+            vp.focalPoint() = point;
+        }
         else
+        {
             vp.focalPoint().unset();
+        }
     }
 
     // Transitioning? Capture the last calculated intermediate position.
     else if ( isSettingViewpoint() )
     {
-        vp.focalPoint()->fromWorld( _srs.get(), _center );
+        vp.focalPoint().mutable_value().fromWorld( _srs.get(), _center );
     }
 
     // If we are stationary:
     else
     {
-        vp.focalPoint()->fromWorld( _srs.get(), _center );
+        vp.focalPoint().mutable_value().fromWorld( _srs.get(), _center );
     }
 
     // Always update the local offsets.
     double localAzim, localPitch;
     getEulerAngles( _rotation, &localAzim, &localPitch );
 
-    vp.heading() = Angle(localAzim,  Units::RADIANS).to(Units::DEGREES);
-    vp.pitch()   = Angle(localPitch, Units::RADIANS).to(Units::DEGREES);
-    vp.range()->set( _distance, Units::METERS );
+    vp.heading() = Angle(localAzim, Units::RADIANS).to(Units::DEGREES);
+    vp.pitch() = Angle(localPitch, Units::RADIANS).to(Units::DEGREES);
+    vp.range() = Distance(_distance, Units::METERS);
 
     if ( _posOffset.x() != 0.0 || _posOffset.y() != 0.0 || _posOffset.z() != 0.0 )
     {
-        vp.positionOffset()->set(_posOffset);
+        vp.positionOffset() = _posOffset;
     }
 
     return vp;
@@ -1018,21 +1024,21 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
         getEulerAngles( _rotation, &defAzim, &defPitch );
 
         if ( !_setVP1->heading().isSet() )
-            _setVP1->heading() = Angle(defAzim, Units::RADIANS);
+            _setVP1.mutable_value().heading() = Angle(defAzim, Units::RADIANS);
 
         if ( !_setVP1->pitch().isSet() )
-            _setVP1->pitch() = Angle(defPitch, Units::RADIANS);
+            _setVP1.mutable_value().pitch() = Angle(defPitch, Units::RADIANS);
 
         if ( !_setVP1->range().isSet() )
-            _setVP1->range() = Distance(_distance, Units::METERS);
+            _setVP1.mutable_value().range() = Distance(_distance, Units::METERS);
 
         if ( !_setVP1->nodeIsSet() && !_setVP1->focalPoint().isSet() )
         {
             osg::ref_ptr<osg::Node> vpNode = _setVP0->getNode();
             if (vpNode.valid())
-                _setVP1->setNode(vpNode.get());
+                _setVP1.mutable_value().setNode(vpNode.get());
             else
-                _setVP1->focalPoint() = _setVP0->focalPoint().get();
+                _setVP1.mutable_value().focalPoint() = _setVP0->focalPoint().get();
         }
 
         _setVPDuration.set( std::max(duration_seconds, 0.0), Units::SECONDS );
@@ -1115,7 +1121,7 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
         else
         {
             // Immediate transition? Just do it now.
-            _setVPStartTime->set( _time_s_now, Units::SECONDS );
+            _setVPStartTime = Duration(_time_s_now, Units::SECONDS);
             setViewpointFrame( _time_s_now );
         }
 
@@ -1143,7 +1149,7 @@ EarthManipulator::setViewpointFrame(double time_s)
 {
     if ( !_setVPStartTime.isSet() )
     {
-        _setVPStartTime->set( time_s, Units::SECONDS );
+        _setVPStartTime = Duration(time_s, Units::SECONDS);
         return 0.0;
     }
     else
@@ -1639,7 +1645,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             else if ( isSettingViewpoint() && !isTethering() )
             {
                 if ( _frameCount < 2 )
-                    _setVPStartTime->set(_time_s_now, Units::SECONDS);
+                    _setVPStartTime = Duration(_time_s_now, Units::SECONDS);
             }
 
             if (_thrown)
@@ -2869,7 +2875,7 @@ EarthManipulator::handlePointAction( const Action& action, float mx, float my, o
             case ACTION_GOTO:
             {
                 Viewpoint here = getViewpoint();
-                here.focalPoint()->fromWorld(_srs.get(), point);
+                here.focalPoint().mutable_value().fromWorld(_srs.get(), point);
 
                 //osg::Vec3d pointVP;
                 //here.getSRS()->transformFromWorld(point, pointVP);

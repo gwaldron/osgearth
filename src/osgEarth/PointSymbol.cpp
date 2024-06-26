@@ -64,10 +64,10 @@ void
 PointSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "point-fill") ) {
-        style.getOrCreate<PointSymbol>()->fill()->color() = Color(c.value());
+        style.getOrCreate<PointSymbol>()->fill().mutable_value().color() = Color(c.value());
     }
     else if ( match(c.key(), "point-fill-opacity") ) {
-        style.getOrCreate<PointSymbol>()->fill()->color().a() = as<float>( c.value(), 1.0f );
+        style.getOrCreate<PointSymbol>()->fill().mutable_value().color().a() = as<float>( c.value(), 1.0f );
     }
     else if ( match(c.key(), "point-size") ) {
         style.getOrCreate<PointSymbol>()->size() = as<float>(c.value(), 1.0f);

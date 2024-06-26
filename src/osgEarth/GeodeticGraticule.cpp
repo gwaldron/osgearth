@@ -135,19 +135,12 @@ GeodeticGraticule::Options::getConfig() const
 void
 GeodeticGraticule::Options::fromConfig(const Config& conf)
 {
-    _lineWidth.init(2.0f);
-    _color.init(Color(Color::Yellow, 0.5f));
-    _gridLines.init(10);
-    _gridLinesVisible.init(true);
-    _gridLabelsVisible.init(true);
-    _edgeLabelsVisible.init(true);
-    _resolutions.init("10 5 2.5 1.0 0.5 0.25 0.125 0.0625 0.03125");
     Style labelStyle;
     TextSymbol* t = labelStyle.getOrCreate<TextSymbol>();
-    t->fill()->color().set(1, 1, 1, 1);
+    t->fill().mutable_value().color().set(1, 1, 1, 1);
     t->declutter() = false;
-    _gridLabelStyle.init(labelStyle);
-    _edgeLabelStyle.init(labelStyle);
+    _gridLabelStyle.setDefault(labelStyle);
+    _edgeLabelStyle.setDefault(labelStyle);
 
     conf.get("line_width", _lineWidth);
     conf.get("color", _color);

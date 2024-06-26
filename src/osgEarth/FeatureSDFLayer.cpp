@@ -309,9 +309,9 @@ FeatureSDFLayer::createImageImplementation(const TileKey& key, ProgressCallback*
         // Render features to a temporary image
         Style r_style;
         if (features.front()->getGeometry()->isLinear())
-            r_style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Black;
+            r_style.getOrCreate<LineSymbol>()->stroke().mutable_value().color() = Color::Black;
         else
-            r_style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
+            r_style.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color::Black;
 
         // Compute the min and max distances across all the styles.
         auto render = style.get<RenderSymbol>();

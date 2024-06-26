@@ -99,8 +99,8 @@ namespace
                 Viewpoint vp;
                 if (fitter.createViewpoint(points, vp))
                 {
-                    vp.heading()->set(45, Units::DEGREES);
-                    vp.pitch()->set(-45, Units::DEGREES);
+                    vp.heading() = Angle(45, Units::DEGREES);
+                    vp.pitch() = Angle(-45, Units::DEGREES);
                     _manip->setViewpoint(vp, 1.0);
                 }
             }

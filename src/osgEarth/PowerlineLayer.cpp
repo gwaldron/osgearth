@@ -655,8 +655,8 @@ namespace
         osg::ref_ptr<LineSymbol> lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
         if (!lineSymbol->stroke()->width().isSet())
         {
-            lineSymbol->stroke()->width() = .05;
-            lineSymbol->stroke()->widthUnits() = Units::METERS;
+            lineSymbol->stroke().mutable_value().width() = .05;
+            lineSymbol->stroke().mutable_value().widthUnits() = Units::METERS;
         }
         if (!lineSymbol->tessellationSize().isSet())
         {
@@ -689,7 +689,7 @@ namespace
         if (!modelSymbol->url().isSet() || force)
         {
             modelSymbol->url() = "\"" + modelName + "\"";
-            modelSymbol->url()->setURIContext(referrer);
+            modelSymbol->url().mutable_value().setURIContext(referrer);
         }
     }
 }
@@ -908,15 +908,15 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         {
             // defaults
             osg::ref_ptr<LineSymbol> lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
-            lineSymbol->stroke()->color() = Color("#6f6f6f");
-            lineSymbol->stroke()->width() = 1.5f;
+            lineSymbol->stroke().mutable_value().color() = Color("#6f6f6f");
+            lineSymbol->stroke().mutable_value().width() = 1.5f;
             lineSymbol->useGLLines() = true;
         }
         osg::ref_ptr<LineSymbol> lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
         if (!lineSymbol->stroke()->width().isSet())
         {
-            lineSymbol->stroke()->width() = .05;
-            lineSymbol->stroke()->widthUnits() = Units::METERS;
+            lineSymbol->stroke().mutable_value().width() = .05;
+            lineSymbol->stroke().mutable_value().widthUnits() = Units::METERS;
         }
         if (!lineSymbol->tessellationSize().isSet())
         {

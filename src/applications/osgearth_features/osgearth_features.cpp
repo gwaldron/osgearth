@@ -150,9 +150,9 @@ int main(int argc, char** argv)
     Style style;
 
     LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
-    ls->stroke()->color() = Color::Yellow;
-    ls->stroke()->width() = 2.0f;
-    ls->tessellationSize()->set(100, Units::KILOMETERS);
+    ls->stroke().mutable_value().color() = Color::Yellow;
+    ls->stroke().mutable_value().width() = 2.0f;
+    ls->tessellationSize() = Distance(100, Units::KILOMETERS);
 
     if (useDraping)
     {
@@ -167,10 +167,10 @@ int main(int argc, char** argv)
         alt->clamping() = alt->CLAMP_TO_TERRAIN;
         alt->technique() = alt->TECHNIQUE_GPU;
 
-        ls->tessellationSize()->set(100, Units::KILOMETERS);
+        ls->tessellationSize()  = Distance(100, Units::KILOMETERS);
 
         RenderSymbol* render = style.getOrCreate<RenderSymbol>();
-        render->depthOffset()->enabled() = true;
+        render->depthOffset().mutable_value().enabled() = true;
     }
 
     if (useRaster)
@@ -217,8 +217,8 @@ int main(int argc, char** argv)
         text->priority() = NumericExpression( "[pop]" );
         text->size() = 16.0f;
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
-        text->fill()->color() = Color::White;
-        text->halo()->color() = Color::DarkGray;
+        text->fill().mutable_value().color() = Color::White;
+        text->halo().mutable_value().color() = Color::DarkGray;
 
         StyleSheet* sheet = new StyleSheet();
         sheet->addStyle(labelStyle);

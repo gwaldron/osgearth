@@ -1552,8 +1552,8 @@ Frame::draw( const ControlContext& cx )
 
         Style style;
         LineSymbol* line = style.getOrCreate<LineSymbol>();
-        line->stroke()->color() = Color::White;
-        line->stroke()->width() = 2.5f;
+        line->stroke().mutable_value().color() = Color::White;
+        line->stroke().mutable_value().width() = 2.5f;
         GeometryRasterizer ras( (int)_renderSize.x(), (int)_renderSize.y(), style );
         ras.draw( geom.get() );
 

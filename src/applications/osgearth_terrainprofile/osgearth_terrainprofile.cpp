@@ -313,9 +313,9 @@ public:
           //Define a style for the line
           Style style;
           LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
-          ls->stroke()->color() = Color::Yellow;
-          ls->stroke()->width() = 3.0f;
-          ls->tessellationSize()->set(100.0, Units::KILOMETERS);
+          ls->stroke().mutable_value().color() = Color::Yellow;
+          ls->stroke().mutable_value().width() = 3.0f;
+          ls->tessellationSize() = Distance(100.0, Units::KILOMETERS);
 
           AltitudeSymbol* alt = style.getOrCreate<AltitudeSymbol>();
           alt->clamping() = alt->CLAMP_TO_TERRAIN;

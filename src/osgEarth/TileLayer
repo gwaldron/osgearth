@@ -289,7 +289,7 @@ namespace osgEarth
 
     private:
         // general purpose data protector
-        mutable ReadWrite<Mutex> _data_mutex;
+        mutable ReadWriteMutex _data_mutex;
 
         DataExtentList _dataExtents;
         mutable DataExtent _dataExtentsUnion;

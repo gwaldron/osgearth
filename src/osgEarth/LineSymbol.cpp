@@ -97,34 +97,34 @@ void
 LineSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "stroke") ) {
-        style.getOrCreate<LineSymbol>()->stroke()->color() = Color(c.value());
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().color() = Color(c.value());
     }
     else if ( match(c.key(), "stroke-opacity") ) {
-        style.getOrCreate<LineSymbol>()->stroke()->color().a() = as<float>( c.value(), 1.0f );
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().color().a() = as<float>( c.value(), 1.0f );
     }
     else if ( match(c.key(), "stroke-width") ) {
         float width;
         UnitsType units;
         if ( Units::parse(c.value(), width, units, Units::PIXELS) )
         {
-            style.getOrCreate<LineSymbol>()->stroke()->width() = width;
-            style.getOrCreate<LineSymbol>()->stroke()->widthUnits() = units;
+            style.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = width;
+            style.getOrCreate<LineSymbol>()->stroke().mutable_value().widthUnits() = units;
         }
     }
     else if ( match(c.key(), "stroke-linecap") ) {
-        style.getOrCreate<LineSymbol>()->stroke()->lineCap() =
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().lineCap() =
             c.value() == "flat"   ?   Stroke::LINECAP_FLAT   :
             c.value() == "square" ?   Stroke::LINECAP_SQUARE :
             /*value == "round"   ?*/  Stroke::LINECAP_ROUND;
     }
     else if (match(c.key(), "stroke-linejoin") ) {
-        style.getOrCreate<LineSymbol>()->stroke()->lineJoin() =
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().lineJoin() =
             c.value() == "mitre" ?      Stroke::LINEJOIN_MITRE :
             c.value() == "miter" ?      Stroke::LINEJOIN_MITRE : // alternate spelling
             /*c.value() == "round"  ?*/ Stroke::LINEJOIN_ROUND;
     }
     else if ( match(c.key(), "stroke-rounding-ratio") ) {
-        style.getOrCreate<LineSymbol>()->stroke()->roundingRatio() = as<float>(c.value(), 0.4f);
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().roundingRatio() = as<float>(c.value(), 0.4f);
     }
     else if ( match(c.key(), "stroke-tessellation-segments") ) {
         style.getOrCreate<LineSymbol>()->tessellation() = as<unsigned>( c.value(), 0 );
@@ -137,14 +137,14 @@ LineSymbol::parseSLD(const Config& c, Style& style)
         }
     }        
     else if ( match(c.key(), "stroke-min-pixels") ) {
-        style.getOrCreate<LineSymbol>()->stroke()->minPixels() = as<float>(c.value(), 0.0f);
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().minPixels() = as<float>(c.value(), 0.0f);
     }
     else if ( match(c.key(), "stroke-stipple-factor") ) {
-        style.getOrCreate<LineSymbol>()->stroke()->stippleFactor() = as<unsigned>(c.value(), 1);
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().stippleFactor() = as<unsigned>(c.value(), 1);
     }
     else if ( match(c.key(), "stroke-stipple-pattern") ||
               match(c.key(), "stroke-stipple") ) {
-        style.getOrCreate<LineSymbol>()->stroke()->stipplePattern() = as<unsigned short>(c.value(), 0xFFFF);
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().stipplePattern() = as<unsigned short>(c.value(), 0xFFFF);
     }
     else if ( match(c.key(), "stroke-crease-angle") ) {
         style.getOrCreate<LineSymbol>()->creaseAngle() = as<float>(c.value(), 0.0);
@@ -159,7 +159,7 @@ LineSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<LineSymbol>()->imageLength() = as<float>(c.value(), 0.0f);
     }
     else if (match(c.key(), "stroke-smooth")) {
-        style.getOrCreate<LineSymbol>()->stroke()->smooth() = as<bool>(c.value(), false);
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().smooth() = as<bool>(c.value(), false);
     }
     else if (match(c.key(), "stroke-gl-lines")) {
         style.getOrCreate<LineSymbol>()->useGLLines() = as<bool>(c.value(), false);
@@ -168,9 +168,9 @@ LineSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<LineSymbol>()->useWireLines() = as<bool>(c.value(), false);
     }
     else if (match(c.key(), "stroke-outline")) {
-        style.getOrCreate<LineSymbol>()->stroke()->outlineColor() = Color(c.value());
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().outlineColor() = Color(c.value());
     }
     else if (match(c.key(), "stroke-outline-width")) {
-        style.getOrCreate<LineSymbol>()->stroke()->outlineWidth() = Distance(c.value());
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().outlineWidth() = Distance(c.value());
     }
 }

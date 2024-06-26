@@ -408,12 +408,12 @@ Registry::resolveCachePolicy(optional<CachePolicy>& cp) const
     // merge in any set properties from the caller's CP, since they override
     // the defaults:
     if ( cp.isSet() )
-        new_cp->mergeAndOverride( cp );
+        new_cp.mutable_value().mergeAndOverride( cp );
 
     // finally, merge in any set props from the OVERRIDE CP, which take
     // priority over everything else.
     if ( overrideCachePolicy().isSet() )
-        new_cp->mergeAndOverride( overrideCachePolicy() );
+        new_cp.mutable_value().mergeAndOverride( overrideCachePolicy() );
 
     // return the new composited cache policy.
     cp = new_cp;
@@ -467,7 +467,7 @@ Registry::overrideCachePolicy() const
                 // activate cache-only mode from the environment
                 if ( ::getenv(OSGEARTH_ENV_CACHE_ONLY) )
                 {
-                    _overrideCachePolicy->usage() = CachePolicy::USAGE_CACHE_ONLY;
+                    _overrideCachePolicy.mutable_value().usage() = CachePolicy::USAGE_CACHE_ONLY;
                     OE_INFO << LC << "CACHE-ONLY MODE set from environment" << std::endl;
                 }
 
@@ -476,7 +476,7 @@ Registry::overrideCachePolicy() const
                 if ( cacheMaxAge )
                 {
                     TimeSpan maxAge = osgEarth::Strings::as<long>( std::string(cacheMaxAge), INT_MAX );
-                    _overrideCachePolicy->maxAge() = maxAge;
+                    _overrideCachePolicy.mutable_value().maxAge() = maxAge;
                     OE_INFO << LC << "Cache max age set from environment: " << cacheMaxAge << std::endl;
                 }
             }

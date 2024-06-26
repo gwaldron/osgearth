@@ -252,9 +252,9 @@ main(int argc, char** argv)
 
     osgEarth::Viewpoint vp;
     vp.name() = "Mt Ranier";
-    vp.focalPoint()->set(geoSRS, -121.488, 46.2054, 0, ALTMODE_ABSOLUTE);
-    vp.pitch()->set(-50.0, Units::DEGREES);
-    vp.range()->set(100000, Units::METERS);
+    vp.focalPoint() = GeoPoint(geoSRS, -121.488, 46.2054, 0, ALTMODE_ABSOLUTE);
+    vp.pitch() = Angle(-50.0, Units::DEGREES);
+    vp.range() = Distance(100000, Units::METERS);
 
     manip->setHomeViewpoint( vp );
 

@@ -20,6 +20,7 @@
 #include <osgEarth/Export>
 #include <unordered_map>
 #include <unordered_set>
+#include <shared_mutex>
 
 // bring in weejobs in the jobs namespace
 #define WEEJOBS_EXPORT OSGEARTH_EXPORT
@@ -47,104 +48,9 @@ namespace osgEarth
 
         using Event = jobs::detail::event;
 
-        // C++17 typedefs - for now we need to support C++11 so cannot use these yet.
-        //using ReadWriteMutex = std::shared_mutex;
-        //using ScopedReadLock = std::shared_lock<std::shared_mutex>;
-        //using ScopedWriteLock = std::unique_lock<std::shared_mutex>;
-        //using ScopedReadLock = ScopedRead<Mutex>;
-        //using ScopedWriteLock = ScopedWrite<Mutex>;
-        //using ScopedRecursiveReadLock = ScopedRead<RecursiveMutex>;
-        //using ScopedRecursiveWriteLock = ScopedWrite<RecursiveMutex>;
-
-        /**
-         * Mutex that allows many simultaneous readers but only one writer
-         */
-        template<typename T> class ReadWrite
-        {
-        public:
-            void read_lock() {
-                std::unique_lock<T> lock(_m);
-                _unlocked.wait(lock, [&]() { return _writers == 0; });
-                _readers.emplace(std::this_thread::get_id());
-            }
-
-            void read_unlock() {
-                std::unique_lock<T> lock(_m);
-                _readers.erase(std::this_thread::get_id());
-                if (_readers.empty())
-                    _unlocked.notify_one();
-            }
-
-            void read_lock(std::function<void()> f) {
-                read_lock();
-                f();
-                read_unlock();
-            }
-
-            void write_lock() {
-                std::unique_lock<T> lock(_m);
-                // already holding a read lock? release it, then upgrade.
-                bool upgrade = _readers.count(std::this_thread::get_id()) > 0;
-                if (upgrade) {
-                    _readers.erase(std::this_thread::get_id());
-                    if (_readers.empty())
-                        _unlocked.notify_all();
-                }
-                _unlocked.wait(lock, [&]() { return _writers == 0 && _readers.size() == 0; });
-                ++_writers;
-                if (upgrade) {
-                    // remember the upgrade so we can downgrade later.
-                    _upgraded_reader = std::this_thread::get_id();
-                }
-            }
-
-            void write_unlock() {
-                std::unique_lock<T> lock(_m);
-                _writers = 0;
-                bool downgrade = (_upgraded_reader == std::this_thread::get_id());
-                if (downgrade) {
-                    _upgraded_reader = {};
-                    _readers.emplace(std::this_thread::get_id());
-                }
-                _unlocked.notify_one();
-            }
-
-            void write_lock(std::function<void()> f) {
-                write_lock();
-                f();
-                write_unlock();
-            }
-
-        private:
-            T _m;
-            std::condition_variable_any _unlocked;
-            unsigned _writers = 0u;
-            std::unordered_set<std::thread::id> _readers;
-            std::thread::id _upgraded_reader = {};
-        };
-
-        template<typename T>
-        struct ScopedWrite {
-            ScopedWrite(ReadWrite<T>& lock) : _lock(lock) { _lock.write_lock(); }
-            ~ScopedWrite() { _lock.write_unlock(); }
-        private:
-            ReadWrite<T>& _lock;
-        };
-
-        template<typename T>
-        struct ScopedRead {
-            ScopedRead(ReadWrite<T>& lock) : _lock(lock) { _lock.read_lock(); }
-            ~ScopedRead() { _lock.read_unlock(); }
-        private:
-            ReadWrite<T>& _lock;
-        };
-
-        using ReadWriteMutex = ReadWrite<Mutex>;
-        using ReadWriteRecursiveMutex = ReadWrite<RecursiveMutex>;
-        using ScopedReadLock = ScopedRead<Mutex>;
-        using ScopedWriteLock = ScopedWrite<Mutex>;
-        using ScopedRecursiveReadLock = ScopedRead<RecursiveMutex>;
-        using ScopedRecursiveWriteLock = ScopedWrite<RecursiveMutex>;
+        using ReadWriteMutex = std::shared_timed_mutex; // C++14
+        using ScopedReadLock = std::shared_lock<ReadWriteMutex>;
+        using ScopedWriteLock = std::unique_lock<ReadWriteMutex>;
 
         /**
         * Mutex that locks on a per-object basis

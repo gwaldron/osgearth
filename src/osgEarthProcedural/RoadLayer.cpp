@@ -1529,8 +1529,8 @@ namespace
 
             Style style;
             auto render = style.getOrCreate<RenderSymbol>();
-            render->sdfMinDistance()->setLiteral(0.5 * width);
-            render->sdfMaxDistance()->setLiteral(0.5 * buffered_width);
+            render->sdfMinDistance().mutable_value().setLiteral(0.5 * width);
+            render->sdfMaxDistance().mutable_value().setLiteral(0.5 * buffered_width);
             
             auto styles = new StyleSheet();
             styles->addStyle(style);
@@ -1642,7 +1642,7 @@ namespace
 
             Style style;
             auto render = style.getOrCreate<RenderSymbol>();
-            render->order()->setLiteral(818);
+            render->order().mutable_value().setLiteral(818);
             sheet->addStyle(style);
         }
 

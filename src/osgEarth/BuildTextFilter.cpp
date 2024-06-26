@@ -138,28 +138,28 @@ namespace
             if ( text )
             {
                 if ( text->content().isSet() )
-                    tempStyle.get<TextSymbol>()->content()->setLiteral( feature->eval( textContentExpr, &context ) );
+                    tempStyle.get<TextSymbol>()->content().mutable_value().setLiteral( feature->eval( textContentExpr, &context ) );
 
                 if ( text->size().isSet() )
-                    tempStyle.get<TextSymbol>()->size()->setLiteral( feature->eval(textSizeExpr, &context) );
+                    tempStyle.get<TextSymbol>()->size().mutable_value().setLiteral( feature->eval(textSizeExpr, &context) );
 
                 if ( text->onScreenRotation().isSet() )
-                    tempStyle.get<TextSymbol>()->onScreenRotation()->setLiteral( feature->eval(textRotationExpr, &context) );
+                    tempStyle.get<TextSymbol>()->onScreenRotation().mutable_value().setLiteral( feature->eval(textRotationExpr, &context) );
 
                 if ( text->geographicCourse().isSet() )
-                    tempStyle.get<TextSymbol>()->geographicCourse()->setLiteral( feature->eval(textCourseExpr, &context) );
+                    tempStyle.get<TextSymbol>()->geographicCourse().mutable_value().setLiteral( feature->eval(textCourseExpr, &context) );
             }
 
             if ( icon )
             {
                 if ( icon->url().isSet() )
-                    tempStyle.get<IconSymbol>()->url()->setLiteral( feature->eval(iconUrlExpr, &context) );
+                    tempStyle.get<IconSymbol>()->url().mutable_value().setLiteral( feature->eval(iconUrlExpr, &context) );
 
                 if ( icon->scale().isSet() )
-                    tempStyle.get<IconSymbol>()->scale()->setLiteral( feature->eval(iconScaleExpr, &context) );
+                    tempStyle.get<IconSymbol>()->scale().mutable_value().setLiteral( feature->eval(iconScaleExpr, &context) );
 
                 if ( icon->heading().isSet() )
-                    tempStyle.get<IconSymbol>()->heading()->setLiteral( feature->eval(iconHeadingExpr, &context) );
+                    tempStyle.get<IconSymbol>()->heading().mutable_value().setLiteral( feature->eval(iconHeadingExpr, &context) );
             }
 
             PlaceNode* node = makePlaceNode(

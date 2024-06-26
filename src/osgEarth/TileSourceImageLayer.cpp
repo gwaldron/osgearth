@@ -116,7 +116,7 @@ TileSourceImageLayer::openImplementation()
             {
                 // The "effective" policy overrides the runtime policy, but it does not get serialized.
                 //getCacheSettings()->cachePolicy()->mergeAndOverride( cp );
-                getCacheSettings()->cachePolicy()->minTime() = _tileSource->getLastModifiedTime();
+                getCacheSettings()->cachePolicy().mutable_value().minTime() = _tileSource->getLastModifiedTime();
                 OE_INFO << LC << "driver says min valid timestamp = " << DateTime(*cp.minTime()).asRFC1123() << "\n";
             }
         }

@@ -131,23 +131,23 @@ createFieldSchema( TrackNodeFieldSchema& schema )
 
     // draw the track name above the icon:
     TextSymbol* nameSymbol = new TextSymbol();
-    nameSymbol->pixelOffset()->set( 0, R+ICON_SIZE/2 );
+    nameSymbol->pixelOffset() = osg::Vec2s(0, R+ICON_SIZE/2 );
     nameSymbol->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM;
-    nameSymbol->halo()->color() = Color::Black;
+    nameSymbol->halo().mutable_value().color() = Color::Black;
     nameSymbol->size() = nameSymbol->size()->eval() + 2.0f;
     schema[FIELD_NAME] = TrackNodeField(nameSymbol, false); // false => static label (won't change after set)
 
     // draw the track coordinates below the icon:
     TextSymbol* posSymbol = new TextSymbol();
-    posSymbol->pixelOffset()->set( 0, -R-ICON_SIZE/2 );
+    posSymbol->pixelOffset() = osg::Vec2s(0, -R-ICON_SIZE/2 );
     posSymbol->alignment() = TextSymbol::ALIGN_CENTER_TOP;
-    posSymbol->fill()->color() = Color::Yellow;
+    posSymbol->fill().mutable_value().color() = Color::Yellow;
     posSymbol->size() = posSymbol->size()->eval() - 2.0f;
     schema[FIELD_POSITION] = TrackNodeField(posSymbol, true); // true => may change at runtime
 
     // draw some other field to the left:
     TextSymbol* numberSymbol = new TextSymbol();
-    numberSymbol->pixelOffset()->set( -R-ICON_SIZE/2, 0 );
+    numberSymbol->pixelOffset() = osg::Vec2s(-R-ICON_SIZE/2, 0 );
     numberSymbol->alignment() = TextSymbol::ALIGN_RIGHT_CENTER;
     schema[FIELD_NUMBER] = TrackNodeField(numberSymbol, false);
 }

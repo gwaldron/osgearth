@@ -329,13 +329,13 @@ namespace osgEarth
                 _sampler = std::unique_ptr<AsyncElevationSampler>(new AsyncElevationSampler(_mapNode->getMap(), 1u));
 
                 Style measureStyle;
-                measureStyle.getOrCreate<LineSymbol>()->stroke()->width() = 4.0f;
-                measureStyle.getOrCreate<LineSymbol>()->stroke()->color().set(1, 0.5, 0.0, 1);
-                measureStyle.getOrCreate<LineSymbol>()->stroke()->stipplePattern() = 0xCCCC;
+                measureStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = 4.0f;
+                measureStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().color().set(1, 0.5, 0.0, 1);
+                measureStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().stipplePattern() = 0xCCCC;
                 measureStyle.getOrCreate<LineSymbol>()->tessellation() = (_clamp_measure ? 64 : 0);
                 measureStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
                 measureStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
-                measureStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
+                measureStyle.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().enabled() = true;
 
                 _measureFeature = new Feature(new LineString(), _mapNode->getMapSRS());
                 _measureCursor = new FeatureNode(_measureFeature.get(), measureStyle);
@@ -346,10 +346,10 @@ namespace osgEarth
                 Style labelStyle;
                 labelStyle.getOrCreate<TextSymbol>()->size() = 24.0f;
                 labelStyle.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
-                labelStyle.getOrCreate<TextSymbol>()->fill()->color().set(1, 1, 1, 1);
-                labelStyle.getOrCreate<TextSymbol>()->halo()->color().set(.3, .3, .3, 1);
-                labelStyle.getOrCreate<BBoxSymbol>()->fill()->color().set(1, 0.5, 0.0, 0.5);
-                labelStyle.getOrCreate<BBoxSymbol>()->border()->color().set(.8, .8, .8, 1);
+                labelStyle.getOrCreate<TextSymbol>()->fill().mutable_value().color().set(1, 1, 1, 1);
+                labelStyle.getOrCreate<TextSymbol>()->halo().mutable_value().color().set(.3, .3, .3, 1);
+                labelStyle.getOrCreate<BBoxSymbol>()->fill().mutable_value().color().set(1, 0.5, 0.0, 0.5);
+                labelStyle.getOrCreate<BBoxSymbol>()->border().mutable_value().color().set(.8, .8, .8, 1);
                 _measureLabel->setStyle(labelStyle);
                 _measureLabel->setNodeMask(0);
                 _mapNode->addChild(_measureLabel);
@@ -357,7 +357,7 @@ namespace osgEarth
                 // Tool to invalidate a map extent
                 _invalidateTool = new Contrib::SelectExtentTool(_mapNode.get());
                 _invalidateTool->setEnabled(false);
-                _invalidateTool->getStyle().getOrCreateSymbol<LineSymbol>()->stroke()->color() = Color::Red;
+                _invalidateTool->getStyle().getOrCreateSymbol<LineSymbol>()->stroke().mutable_value().color() = Color::Red;
                 view(ri)->getEventHandlers().push_front(_invalidateTool);
                 _invalidateTool->setCallback([&](const GeoExtent& ex)
                     {

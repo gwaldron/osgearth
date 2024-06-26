@@ -41,8 +41,8 @@ KML_IconStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
         if ( !iconHref.empty() )
         {
             // We set a literal here to avoid filenames with spaces being evaluated.
-            icon->url()->setLiteral(iconHref);
-            icon->url()->setURIContext(URIContext(cx._referrer));
+            icon->url().mutable_value().setLiteral(iconHref);
+            icon->url().mutable_value().setURIContext(URIContext(cx._referrer));
         }
 			
         // see: https://developers.google.com/kml/documentation/kmlreference#headingdiagram

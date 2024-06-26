@@ -163,9 +163,9 @@ SDFGenerator::createNearestNeighborField(
     // Render features to a temporary image
     Style style;
     if (features.front()->getGeometry()->isLinear())
-        style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Black;
+        style.getOrCreate<LineSymbol>()->stroke().mutable_value().color() = Color::Black;
     else
-        style.getOrCreate<PolygonSymbol>()->fill()->color() = Color::Black;
+        style.getOrCreate<PolygonSymbol>()->fill().mutable_value().color() = Color::Black;
 
     FeatureRasterizer rasterizer(nnfieldSize, nnfieldSize, extent, Color(1, 1, 1, 0));
     rasterizer.render(features, style);

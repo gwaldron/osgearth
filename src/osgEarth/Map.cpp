@@ -79,10 +79,10 @@ Map::Options::fromConfig(const Config& conf)
 
     // legacy support:
     if ( conf.value<bool>( "cache_only", false ) == true )
-        cachePolicy()->usage() = CachePolicy::USAGE_CACHE_ONLY;
+        cachePolicy().mutable_value().usage() = CachePolicy::USAGE_CACHE_ONLY;
 
     if ( conf.value<bool>( "cache_enabled", true ) == false )
-        cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
+        cachePolicy().mutable_value().usage() = CachePolicy::USAGE_NO_CACHE;
 
     conf.get( "elevation_interpolation", "nearest",     elevationInterpolation(), INTERP_NEAREST);
     conf.get( "elevation_interpolation", "average",     elevationInterpolation(), INTERP_AVERAGE);

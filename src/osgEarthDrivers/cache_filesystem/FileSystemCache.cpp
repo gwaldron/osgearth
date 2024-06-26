@@ -667,11 +667,11 @@ namespace
             // Store in the write-cache until it's actually written.
             // Will override any existing entry and that's OK since the
             // most recent one is the valid one.
-            _writeCacheRWM.write_lock();
+            _writeCacheRWM.lock();
             WriteCacheRecord& record = _writeCache[fileURI.full()];
             record.meta = meta;
             record.object = object;
-            _writeCacheRWM.write_unlock();
+            _writeCacheRWM.unlock();
 
             // asynchronous write
             jobs::dispatch(write_op, jobs::context{ fileURI.full(), _pool });

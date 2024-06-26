@@ -44,10 +44,10 @@ _node     ( rhs._node.get() )
 Viewpoint::Viewpoint(const char* name, double lon, double lat, double z, double h, double p, double range)
 {
     if (name) _name = name;
-    _point->set( SpatialReference::get("wgs84"), lon, lat, z, ALTMODE_ABSOLUTE );
-    _heading->set( h, Units::DEGREES );
-    _pitch->set( p, Units::DEGREES );
-    _range->set( range, Units::METERS );
+    _point = GeoPoint(SpatialReference::get("wgs84"), lon, lat, z, ALTMODE_ABSOLUTE);
+    _heading = Angle(h, Units::DEGREES);
+    _pitch = Angle(p, Units::DEGREES);
+    _range = Distance(range, Units::METERS);
 }
 
 Viewpoint::Viewpoint(const Config& conf)
@@ -92,7 +92,7 @@ Viewpoint::Viewpoint(const Config& conf)
     double zOffset = conf.value("z_offset", 0.0);
     if ( xOffset != 0.0 || yOffset != 0.0 || zOffset != 0.0 )
     {
-        _posOffset->set(xOffset, yOffset, zOffset);
+        _posOffset = osg::Vec3d(xOffset, yOffset, zOffset);
     }
 }
 

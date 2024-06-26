@@ -1846,18 +1846,18 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             default:
             case Geometry::TYPE_LINESTRING:
             case Geometry::TYPE_RING:
-                f->style()->add( new LineSymbol() );
+                f->style().mutable_value().add( new LineSymbol() );
                 has_linesymbol = true;
                 break;
 
             case Geometry::TYPE_POINT:
             case Geometry::TYPE_POINTSET:
-                f->style()->add( new PointSymbol() );
+                f->style().mutable_value().add( new PointSymbol() );
                 has_pointsymbol = true;
                 break;
 
             case Geometry::TYPE_POLYGON:
-                f->style()->add( new PolygonSymbol() );
+                f->style().mutable_value().add( new PolygonSymbol() );
                 has_polysymbol = true;
                 break;
             }

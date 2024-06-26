@@ -32,7 +32,7 @@ KML_PolyStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
 		if (!colorVal.empty())
 		{
 			color = Color(Stringify() << "#" << colorVal, Color::ABGR);
-            poly->fill()->color() = color;
+            poly->fill().mutable_value().color() = color;
 		}
 
         if (poly)
@@ -44,7 +44,7 @@ KML_PolyStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
     			fill = (as<int>(fillVal, 1) == 1);
 			    if (!fill)
 			    {
-                    poly->fill()->color().a() = 0.0f;
+                    poly->fill().mutable_value().color().a() = 0.0f;
 			    }
 		    }
 

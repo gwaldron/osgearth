@@ -600,7 +600,7 @@ namespace
             TextSymbol* text = style.getOrCreate<TextSymbol>();
             text->size() = 32.0f;
             text->declutter() = false;
-            text->pixelOffset()->set(50, 50);
+            text->pixelOffset() = osg::Vec2s(50, 50);
 
             _label = new LabelNode(_name, style);
             _label->setDynamic( true );
@@ -644,8 +644,8 @@ namespace
                 {
                     Viewpoint vp = _manip->getViewpoint();
                     vp.setNode(_label);
-                    vp.range()->set(25000.0, Units::METERS);
-                    vp.pitch()->set(-45.0, Units::DEGREES);
+                    vp.range() = Distance(25000.0, Units::METERS);
+                    vp.pitch() = Angle(-45.0, Units::DEGREES);
                     _manip->setViewpoint(vp, 2.0);
                 }
                 return true;

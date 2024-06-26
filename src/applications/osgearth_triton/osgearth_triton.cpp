@@ -321,9 +321,9 @@ main(int argc, char** argv)
         
         // Zoom the camera to our area of interest:
         Viewpoint vp;
-        vp.heading()->set(25, Units::DEGREES);
-        vp.pitch()->set(-25, Units::DEGREES);
-        vp.range()->set(400, Units::METERS);
+        vp.heading() = Angle(25, Units::DEGREES);
+        vp.pitch() = Angle(-25, Units::DEGREES);
+        vp.range() = Distance(400, Units::METERS);
         vp.focalPoint() = s_app.anchor;
         manip->setViewpoint(vp);
 

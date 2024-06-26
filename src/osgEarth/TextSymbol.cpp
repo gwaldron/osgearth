@@ -216,10 +216,10 @@ TextSymbol::parseSLD(const Config& c, Style& style)
     TextSymbol defaults;
 
     if ( match(c.key(), "text-fill") || match(c.key(), "text-color") ) {
-        style.getOrCreate<TextSymbol>()->fill()->color() = Color(c.value());
+        style.getOrCreate<TextSymbol>()->fill().mutable_value().color() = Color(c.value());
     }
     else if ( match(c.key(), "text-fill-opacity") ) {
-        style.getOrCreate<TextSymbol>()->fill()->color().a() = as<float>( c.value(), 1.0f );
+        style.getOrCreate<TextSymbol>()->fill().mutable_value().color().a() = as<float>( c.value(), 1.0f );
     }
     else if ( match(c.key(), "text-size") ) {
         style.getOrCreate<TextSymbol>()->size() = NumericExpression( c.value() );
@@ -228,7 +228,7 @@ TextSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<TextSymbol>()->font() = c.value();
     }
     else if ( match(c.key(), "text-halo") || match(c.key(), "text-halo-color") ) {
-        style.getOrCreate<TextSymbol>()->halo()->color() = htmlColorToVec4f( c.value() );
+        style.getOrCreate<TextSymbol>()->halo().mutable_value().color() = htmlColorToVec4f( c.value() );
     }
     else if ( match(c.key(), "text-halo-offset") ) {
         style.getOrCreate<TextSymbol>()->haloOffset() = as<float>(c.value(), defaults.haloOffset().get() );
@@ -343,10 +343,10 @@ TextSymbol::parseSLD(const Config& c, Style& style)
         style.getOrCreate<TextSymbol>()->script() = StringExpression(c.value());
     }
     else if ( match(c.key(), "text-offset-x") ) {
-        style.getOrCreate<TextSymbol>()->pixelOffset()->x() = as<double>(c.value(), defaults.pixelOffset()->x() );
+        style.getOrCreate<TextSymbol>()->pixelOffset().mutable_value().x() = as<double>(c.value(), defaults.pixelOffset()->x() );
     }
     else if ( match(c.key(), "text-offset-y") ) {
-        style.getOrCreate<TextSymbol>()->pixelOffset()->y() = as<double>(c.value(), defaults.pixelOffset()->y() );
+        style.getOrCreate<TextSymbol>()->pixelOffset().mutable_value().y() = as<double>(c.value(), defaults.pixelOffset()->y() );
     }
     else if ( match(c.key(), "text-rotation") ) {
         style.getOrCreate<TextSymbol>()->onScreenRotation() = NumericExpression( c.value() );

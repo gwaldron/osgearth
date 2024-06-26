@@ -742,7 +742,7 @@ GDAL::Driver::open(
     pixelToGeo(0.0, _warpedDS->GetRasterYSize(), minX, minY);
     pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, maxX, maxY);
 
-    OE_INFO << LC << INDENT << gdalOptions().url()->full() << ": pixelToGeo: " << minX << ", " << minY << " -> " << maxX << ", " << maxY << std::endl;
+    //OE_INFO << LC << INDENT << gdalOptions().url()->full() << ": pixelToGeo: " << minX << ", " << minY << " -> " << maxX << ", " << maxY << std::endl;
 
     // If we don't have a profile yet, that means this is a projected dataset
     // so we will create the profile from the actual data extents.
@@ -841,7 +841,7 @@ GDAL::Driver::open(
         }
         if (clamped)
         {
-            OE_INFO << LC << "Clamped out-of-range geographic extents" << std::endl;
+            OE_DEBUG << LC << "Clamped out-of-range geographic extents" << std::endl;
         }
     }
     _extents = GeoExtent(srs.get(), _bounds);

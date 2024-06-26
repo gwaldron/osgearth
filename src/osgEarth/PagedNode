@@ -62,7 +62,7 @@ namespace osgEarth { namespace Util
         //! Set the center of this node, which is necessary since we
         //! cannot compute the bounding sphere before the asynchronous load
         void setCenter(const osg::Vec3& value) {
-            _userBS->center() = value;
+            _userBS.mutable_value().center() = value;
         }
         const osg::Vec3& getCenter() const {
             return _userBS->center();
@@ -71,7 +71,7 @@ namespace osgEarth { namespace Util
         //! Set the radius of this node's bounding sphere, which is necessary
         //! since we cannot compute the bounding sphere before the asynchronous load
         void setRadius(float value) {
-            _userBS->radius() = value;
+            _userBS.mutable_value().radius() = value;
         }
         float getRadius() const {
             return _userBS->radius();

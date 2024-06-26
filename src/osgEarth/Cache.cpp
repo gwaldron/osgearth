@@ -79,7 +79,7 @@ CacheSettings::integrateCachePolicy(const optional<CachePolicy>& policy)
 {
     // integrate the fields that are passed in first:
     if ( policy.isSet() )
-        cachePolicy()->mergeAndOverride( policy );
+        cachePolicy().mutable_value().mergeAndOverride( policy );
 
     // then resolve with global overrides from the registry.
     Registry::instance()->resolveCachePolicy( cachePolicy() );

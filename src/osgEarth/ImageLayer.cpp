@@ -56,7 +56,7 @@ ImageLayer::Options::fromConfig(const Config& conf)
 
     if ( conf.hasChild("color_filters") )
     {
-        _colorFilters->clear();
+        _colorFilters.mutable_value().clear();
         ColorFilterRegistry::instance()->readChain( conf.child("color_filters"), _colorFilters.mutable_value() );
     }
 
@@ -348,7 +348,7 @@ ImageLayer::setUseCreateTexture()
 void
 ImageLayer::addColorFilter( ColorFilter* filter )
 {
-    options().colorFilters()->push_back( filter );
+    options().colorFilters().mutable_value().push_back( filter );
 }
 
 void

@@ -73,13 +73,13 @@ void
 BBoxSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "text-bbox-fill") ) {
-       style.getOrCreate<BBoxSymbol>()->fill()->color() = Color(c.value());
+       style.getOrCreate<BBoxSymbol>()->fill().mutable_value().color() = Color(c.value());
     }
     else if ( match(c.key(), "text-bbox-border") ) {
-        style.getOrCreate<BBoxSymbol>()->border()->color() = Color(c.value());
+        style.getOrCreate<BBoxSymbol>()->border().mutable_value().color() = Color(c.value());
     }
     else if ( match(c.key(), "text-bbox-border-width") ) {
-        style.getOrCreate<BBoxSymbol>()->border()->width() = as<float>( c.value(), 1.0f );
+        style.getOrCreate<BBoxSymbol>()->border().mutable_value().width() = as<float>( c.value(), 1.0f );
     }
     else if ( match(c.key(), "text-bbox-margin") ) {
         style.getOrCreate<BBoxSymbol>()->margin() = as<float>(c.value(), 3.0f);

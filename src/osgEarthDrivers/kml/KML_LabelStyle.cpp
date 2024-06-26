@@ -29,6 +29,6 @@ KML_LabelStyle::scan( xml_node<>* node, Style& style, KMLContext& cx )
     std::string color = getValue(node, "color");
     if (!color.empty())
     {
-      text->fill()->color() = Color(Stringify() << "#" << color, Color::ABGR);
+      text->fill().mutable_value().color() = Color(Stringify() << "#" << color, Color::ABGR);
     } 
 }

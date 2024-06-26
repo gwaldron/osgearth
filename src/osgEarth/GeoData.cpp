@@ -2202,7 +2202,7 @@ GeoImage::takeImage()
     if (_future.isSet())
     {
         result = _future->join();
-        _future->abandon();
+        _future.mutable_value().abandon();
     }
     else
     {

@@ -291,14 +291,14 @@ UTMGraticule::rebuild()
     {
         options().gzdStyle() = Style();
 
-        LineSymbol* line = options().gzdStyle()->getOrCreate<LineSymbol>();
-        line->stroke()->color() = Color::Gray;
-        line->stroke()->width() = 1.0;
+        LineSymbol* line = options().gzdStyle().mutable_value().getOrCreate<LineSymbol>();
+        line->stroke().mutable_value().color() = Color::Gray;
+        line->stroke().mutable_value().width() = 1.0;
         line->tessellation() = 20;
 
-        TextSymbol* text = options().gzdStyle()->getOrCreate<TextSymbol>();
-        text->fill()->color() = Color(Color::White, 0.3f);
-        text->halo()->color() = Color(Color::Black, 0.2f);
+        TextSymbol* text = options().gzdStyle().mutable_value().getOrCreate<TextSymbol>();
+        text->fill().mutable_value().color() = Color(Color::White, 0.3f);
+        text->halo().mutable_value().color() = Color(Color::Black, 0.2f);
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     }
     

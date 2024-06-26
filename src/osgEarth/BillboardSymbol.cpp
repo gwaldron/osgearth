@@ -79,12 +79,10 @@ void
 BillboardSymbol::parseSLD(const Config& c, Style& style)
 {
     if ( match(c.key(), "billboard-image") ) {
-        style.getOrCreate<BillboardSymbol>()->url() = c.value();
-        style.getOrCreate<BillboardSymbol>()->url()->setURIContext( c.referrer() );
+        style.getOrCreate<BillboardSymbol>()->url() = StringExpression(c.value(), c.referrer());
     }
     else if (match(c.key(), "billboard-top-image")) {
-        style.getOrCreate<BillboardSymbol>()->topURL() = c.value();
-        style.getOrCreate<BillboardSymbol>()->topURL()->setURIContext(c.referrer());
+        style.getOrCreate<BillboardSymbol>()->topURL() = StringExpression(c.value(), c.referrer());
     }
     else if ( match(c.key(), "billboard-width") ) {
         style.getOrCreate<BillboardSymbol>()->width() = as<float>(c.value(), 10.0f);

@@ -1227,14 +1227,10 @@ FeatureModelGraph::readTileFromCache(const std::string&    cacheKey,
     {
         ++_cacheReads;
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,6,3)
         osg::ref_ptr<osgDB::Options> localOptions = Registry::instance()->cloneOrCreateOptions(readOptions);
         localOptions->setObjectCache(_nodeCachingImageCache.get());
         localOptions->setObjectCacheHint(osgDB::Options::CACHE_ALL);
         ReadResult rr = cacheBin->readObject(cacheKey, localOptions.get());
-#else
-        ReadResult rr = cacheBin->readObject(cacheKey, readOptions);
-#endif
 
         if (policy.isSet() && policy->isExpired(rr.lastModifiedTime()))
         {

@@ -54,15 +54,6 @@ namespace osgEarth
     }
 
     /**
-     * A callback that lets you customize the computed range for a terrain tile.
-     * Providing a custom range can let applications better control how paging behaves.
-     */
-    struct ComputeRangeCallback : public osg::Referenced
-    {
-        virtual float operator()(osg::Node* node, osg::NodeVisitor& nv) = 0;
-    };
-
-    /**
      * Terrain Engine interface. (Pure virtual)
      * Access to the low-level API for the terrain engine, the node graph that
      * renders the planet's surface.
@@ -139,12 +130,6 @@ namespace osgEarth
 
         //! Access the stateset used to render terrain surface layers.
         virtual osg::StateSet* getSurfaceStateSet() = 0;
-
-        //! Gets the ComputeRangeCallback for this TerrainEngineNode */
-        virtual ComputeRangeCallback* getComputeRangeCallback() const = 0;
-
-        //! Sets the ComputeRangeCallback for this TerrainEngineNode */
-        virtual void setComputeRangeCallback(ComputeRangeCallback* computeRangeCallback) = 0;
 
         //! Scene graph root of the terrain engine
         virtual osg::Node* getNode() = 0;
@@ -279,9 +264,14 @@ namespace osgEarth
         //! Shut down the engine
         virtual void shutdown();
 
-        ComputeRangeCallback* getComputeRangeCallback() const override;
+        using ComputeTileRangeCallback = std::function<float(osg::Node* node, osg::NodeVisitor& nv)>;
+        using ComputeTilePixelSizeCallback = std::function<float(osg::Node* node, osg::NodeVisitor& nv)>;
 
-        void setComputeRangeCallback(ComputeRangeCallback* computeRangeCallback) override;
+        void setComputeTileRangeCallback(const ComputeTileRangeCallback& callback) { _computeTileRangeCallback = callback; }
+        ComputeTileRangeCallback& getComputeTileRangeCallback() { return _computeTileRangeCallback; }
+
+        void setComputeTilePixelSizeCallback(const ComputeTilePixelSizeCallback& callback) { _computeTilePixelSizeCallback = callback; }
+        ComputeTilePixelSizeCallback& getComputeTilePixelSizeCallback() { return _computeTilePixelSizeCallback; }
 
         //! Return the top level node associated with the terrain.
         osg::Node* getNode() override {
@@ -363,7 +353,8 @@ namespace osgEarth
 
         osg::ref_ptr<TerrainTileModelFactory> _tileModelFactory;
 
-        osg::ref_ptr<ComputeRangeCallback> _computeRangeCallback;
+        ComputeTileRangeCallback _computeTileRangeCallback;
+        ComputeTilePixelSizeCallback _computeTilePixelSizeCallback;
 
     public:
         // internal

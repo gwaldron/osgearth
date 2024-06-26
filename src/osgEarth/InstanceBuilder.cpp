@@ -34,7 +34,6 @@ using namespace osgEarth;
 
 // OSG in GLCORE mode doesn't set the vertex attribute divisor
 // correctly, so here's a big old hack to get around that.
-#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
 class InstancedGeometry : public osg::Geometry
 {
 public:
@@ -67,7 +66,6 @@ public:
 protected:
     std::vector<unsigned int> _divisors;
 };
-#endif
 
 namespace
 {
@@ -132,14 +130,12 @@ namespace
         if (perVertex)
         {
             geom->setVertexAttribArray(index, perVertex, osg::Array::BIND_PER_VERTEX);
-#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
             InstancedGeometry* instancedGeom = dynamic_cast<InstancedGeometry*>(geom);
             if (instancedGeom && instancedGeom->getUseVertexArrayObject())
             {
                 instancedGeom->setVertexAttribDivisor(index, 1);
             }
             else
-#endif
             {
                 osg::StateSet* ss = geom->getOrCreateStateSet();
                 ss->setAttribute(new osg::VertexAttribDivisor(index, 1));
@@ -152,7 +148,6 @@ namespace
     }
 }
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
 InstancedGeometry::InstancedGeometry()
 {
     setUseVertexArrayObject(osgEarth::Registry::capabilities().supportsVertexArrayObjects());
@@ -189,7 +184,6 @@ void InstancedGeometry::compileGLObjects(osg::RenderInfo& renderInfo) const
         state.unbindVertexArrayObject();
     }
 }
-#endif
 
 InstanceBuilder::InstanceBuilder()
 {
@@ -204,11 +198,7 @@ InstanceBuilder::InstanceBuilder()
 
 osg::Geometry* InstanceBuilder::createGeometry()
 {
-#if OSG_VERSION_GREATER_OR_EQUAL(3,6,0)
     return new InstancedGeometry;
-#else
-    return new osg::Geometry;
-#endif
 }
 
 void InstanceBuilder::installInstancing(osg::Geometry* geometry) const

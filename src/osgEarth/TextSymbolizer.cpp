@@ -180,19 +180,8 @@ TextSymbolizer::apply(osgText::Text* drawable,
     if ( font )
     {
         drawable->setFont( font );
-        
-#if OSG_VERSION_LESS_THAN(3,5,8)
-        // mitigates mipmapping issues that cause rendering artifacts for some fonts/placement
-        font->setGlyphImageMargin( 2 );
-#endif        
     }
 
-#if OSG_VERSION_LESS_THAN(3,5,8)
-    float resFactor = 2.0f;
-    int res = nextPowerOf2((int)(size*resFactor));
-    drawable->setFontResolution(res, res);
-#endif
-    
     if ( symbol->halo().isSet() )
     {
         drawable->setBackdropColor( symbol->halo()->color() );
@@ -205,14 +194,6 @@ TextSymbolizer::apply(osgText::Text* drawable,
         {
             drawable->setBackdropType( osgText::Text::OUTLINE );
         }
-
-#if OSG_VERSION_LESS_THAN(3,5,8)
-        // deprecated since OSG 3.5.8
-        if ( symbol->haloImplementation().isSet() )
-        {
-            drawable->setBackdropImplementation( *symbol->haloImplementation() );
-        }
-#endif
 
         if ( symbol->haloOffset().isSet() )
         {

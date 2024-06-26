@@ -334,18 +334,6 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
     osg::CoordinateSystemNode::traverse( nv );
 }
 
-ComputeRangeCallback*
-TerrainEngineNode::getComputeRangeCallback() const
-{
-    return _computeRangeCallback.get();
-}
-
-void
-TerrainEngineNode::setComputeRangeCallback(ComputeRangeCallback* computeRangeCallback)
-{
-    _computeRangeCallback = computeRangeCallback;
-}
-
 TerrainEngineNode*
 TerrainEngineNode::create(const TerrainOptions& options )
 {

@@ -820,11 +820,6 @@ GroundCoverLayer::Renderer::draw(osg::RenderInfo& ri, const TileBatch& input)
     ds._renderer = this;
     osg::State* state = ri.getState();
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,5,6)
-    // Need to unbind any VAO since we'll be doing straight GL calls
-    //ri.getState()->unbindVertexArrayObject();
-#endif
-
     // Push the pre-gen culling shader and run it:
     const ZoneSA* sa = ZoneSA::extract(ri.getState());
     osg::ref_ptr<LegacyInstanceCloud>& instancer = ds._instancers[sa->_obj];

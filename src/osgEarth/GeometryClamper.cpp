@@ -214,11 +214,7 @@ GeometryClamper::apply(osg::Drawable& drawable)
             }
             else
             {
-#if OSG_VERSION_LESS_THAN(3,6,0)
-                geom->dirtyDisplayList();
-#else
                 geom->dirtyGLObjects();
-#endif
             }
         }
 

@@ -100,11 +100,7 @@ bool ClampCallback::clampGeometry(osg::Geometry* geom, const osg::Matrixd& local
         }
     }
     geom->dirtyBound();
-#if OSG_VERSION_LESS_THAN(3,6,0)
-    geom->dirtyDisplayList();
-#else
     geom->dirtyGLObjects();
-#endif
 
     return true;
 }

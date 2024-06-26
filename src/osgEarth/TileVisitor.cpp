@@ -22,12 +22,8 @@
 #include <thread>
 #include <algorithm>
 
-#if OSG_VERSION_GREATER_OR_EQUAL(3,5,10)
 #include <osg/os_utils>
 #define OS_SYSTEM osg_system
-#else
-#define OS_SYSTEM system
-#endif
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

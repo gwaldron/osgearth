@@ -350,10 +350,10 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
         {
             float tileSizeInPixels = -1.0;
 
-            if (context->getEngine()->getComputeRangeCallback())
+            if (context->getEngine()->getComputeTilePixelSizeCallback())
             {
-                tileSizeInPixels = (*context->getEngine()->getComputeRangeCallback())(this, *culler->_cv);
-            }    
+                tileSizeInPixels = (context->getEngine()->getComputeTilePixelSizeCallback())(this, *culler->_cv);
+            }
 
             if (tileSizeInPixels <= 0.0)
             {
@@ -369,7 +369,18 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
         // In DISTANCE-TO-EYE mode, use the visibility ranges precomputed in the SelectionInfo.
         else
         {
-            float range = context->getSelectionInfo().getRange(_subdivideTestKey);
+            float range = -1.0f;
+
+            if (context->getEngine()->getComputeTileRangeCallback())
+            {
+                range = (context->getEngine()->getComputeTileRangeCallback())(this, *culler->_cv);
+            }
+
+            if (range < 0.0f)
+            {
+                range = context->getSelectionInfo().getRange(_subdivideTestKey);
+            }
+
 #if 1
             // slightly slower than the alternate block below, but supports a user overriding
             // CullVisitor::getDistanceToViewPoint -gw

@@ -170,6 +170,20 @@ TEST_CASE( "GeoExtent" ) {
         REQUIRE(e1.intersectionSameSRS(e2) == GeoExtent(WGS84, -175, -10, -170, 10));
     }
 
+    SECTION("Intersect overlapping anti-meridian extent with a simple extent (again)") {
+        GeoExtent e1(WGS84, -10, -10, 10, 10);
+        GeoExtent e2(WGS84, 170, -10, 0, 10);
+        REQUIRE(e1.intersects(e2) == true);
+        REQUIRE(e1.intersectionSameSRS(e2) == GeoExtent(WGS84, -10, -10, 0, 10));
+    }
+
+    SECTION("Intersect overlapping anti-meridian extent with a simple extent (and again)") {
+        GeoExtent e1(WGS84, -10, -10, -170, 10);
+        GeoExtent e2(WGS84, 0, -10, 10, 10);
+        REQUIRE(e1.intersects(e2) == true);
+        REQUIRE(e1.intersectionSameSRS(e2) == GeoExtent(WGS84, 0, -10, 10, 10));
+    }
+
     SECTION("Intersect 2 non-overlapping anti-meridian extents") {
         GeoExtent e1(WGS84, 170, -10, -170, 10);
         GeoExtent e2(WGS84, 130, -50, -120, -40);

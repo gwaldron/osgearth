@@ -1424,6 +1424,12 @@ GeoExtent::intersectionSameSRS(const GeoExtent& rhs) const
         return GeoExtent::INVALID;
     }
 
+    // first check Y.
+    if (yMin() > rhs.yMax() || yMax() < rhs.yMin())
+    {
+        return GeoExtent::INVALID; // they don't overlap in Y.
+    }
+
     GeoExtent result( *this );
 
     if (isGeographic())
@@ -1440,42 +1446,29 @@ GeoExtent::intersectionSameSRS(const GeoExtent& rhs) const
         }
         else
         {
-            // Sort the four X coordinates, remembering whether each one is west or east edge:
-            double x[4];
-            bool iswest[4];
-            // use min/max here to prevent auto-wraparound
-            x[0] = xMin(), x[1] = xMax(), x[2] = rhs.xMin(), x[3] = rhs.xMax();
-            iswest[0] = true, iswest[1] = false, iswest[2] = true, iswest[3] = false;
-            sort4(x, iswest);
-
-            // find the western-most west coord:
-            int i_west = -1;
-            for (int i=0; i<4 && i_west <0; ++i)
+            if (west() < east() && rhs.west() < rhs.east())
             {
-                if (iswest[i])
-                    i_west = i;
+                // simple case, no antimeridian crossing
+                result._west = std::max(west(), rhs.west());
+                result._width = std::min(east(), rhs.east()) - result._west;
             }
-
-            // iterate from there, finding the LAST west coord and stopping on the 
-            // FIRST east coord found.
-            int q = i_west + 4;
-            int i_east = -1;
-            for (int i = i_west; i < q && i_east < 0; ++i)
-            {
-                int j = i;
-                if (j >= 4) j-=4;
-                if (iswest[j])
-                    i_west = j; // found a better west coord; remember it.
-                else
-                    i_east = j; // found the western-most east coord; done.
-            }
-
-            result._west = x[i_west];
-
-            if (i_east >= i_west)
-                result._width = x[i_east] - x[i_west];
             else
-                result._width = (180.0 - x[i_west]) + (x[i_east] - (-180.0)); // crosses the antimeridian
+            {
+                double lhs_west = west();
+                double rhs_west = rhs.west();
+
+                if (fabs(west() - rhs.west()) >= 180.0)
+                {
+                    if (west() < rhs.west())
+                        lhs_west += 360.0;
+                    else
+                        rhs_west += 360.0;
+                }
+
+                double new_west = std::max(lhs_west, rhs_west);
+                result._west = normalizeX(new_west);
+                result._width = std::min(lhs_west + width(), rhs_west + rhs.width()) - new_west;
+            }
         }
     }
     else

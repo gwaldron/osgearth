@@ -10,13 +10,13 @@ The documentation here is focused on Windows.
 
 **Step 1 - Configure vcpkg**
 
-First, download and bootstrap [vcpkg](https://github.com/Microsoft/vcpkg) following the instructions on the page.
+First, clone and bootstrap [vcpkg](https://github.com/Microsoft/vcpkg) following the instructions on the page.
 
 **Step 2 - (Optional) Configure the osg_OPENGL_PROFILE triplet variable**
 
 You can configure OSG to build in GL3 or GLCORE mode if you require it. Some platforms (like OSX or VMWare) require a GLCORE build.
 
-The latest (as of 6/6/2023) version of vcpkg will build OSG with OPENGL_PROFILE=GL2 by default.  This is sufficient for running many osgEarth applications, but if you run into trouble with newer features, try a GL3 or GLCORE build instead.
+As of this writing, vcpkg will build OSG with OPENGL_PROFILE=GL2 by default.  This is sufficient for running many osgEarth applications, but if you run into trouble with newer features, try a GL3 or GLCORE build instead.
 
 Open your existing x64-windows.cmake triplet file at path\to\vcpkg\triplets\x64-windows.cmake and add this line to the end of the file.
 ```
@@ -55,7 +55,7 @@ Note: You’ll need to specify a different build directory based on your build c
 Most developers will use a RelWithDebInfo build, like so:
 
 ```
-cmake -S osgearth -B build -G "Visual Studio 15 2017 Win64" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWIN32_USE_MP=ON -DCMAKE_INSTALL_PREFIX=[installroot] -DCMAKE_TOOLCHAIN_FILE=[vcpkgroot]\scripts\buildsystems\vcpkg.cmake
+cmake -S osgearth -B build -G "Visual Studio 17 2022 Win64" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWIN32_USE_MP=ON -DCMAKE_INSTALL_PREFIX=[installroot] -DCMAKE_TOOLCHAIN_FILE=[vcpkgroot]\scripts\buildsystems\vcpkg.cmake
 ```
 
 osgEarth provides a vcpkg.json manifest file that lists all of it's necessary dependencies.  The vcpkg toolchain integration will notice this file and install the necessary dependencies in your build\vcpkg_installed directory.

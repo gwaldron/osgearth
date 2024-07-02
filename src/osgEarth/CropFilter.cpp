@@ -43,6 +43,9 @@ CropFilter::push( FeatureList& input, FilterContext& context )
 
     if ( _method == METHOD_CENTROID )
     {
+        FeatureList output;
+        output.reserve(input.size());
+
         for(auto& feature : input)
         {
             if (feature.valid())
@@ -65,12 +68,14 @@ CropFilter::push( FeatureList& input, FilterContext& context )
                     }
                 }
 
-                if (!keepFeature)
+                if (keepFeature)
                 {
-                    feature = nullptr;
+                    output.emplace_back(feature);
                 }
             }
         }
+
+        input.swap(output);
     }
     
     else if (_method == METHOD_CROP_TO_EXTENT) //(requires GEOS)

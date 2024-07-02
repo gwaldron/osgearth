@@ -42,23 +42,27 @@ FeatureCursor::fill(FeatureList& list)
     unsigned count = 0;
     while( hasMore() )
     {
-        list.push_back( nextFeature() );
-        ++count;
+        auto f = nextFeature();
+        if (f)
+        {
+            list.push_back(f);
+            ++count;
+        }
     }
     return count;
 }
 
 unsigned
-FeatureCursor::fill(FeatureList& list,std::function<bool(const Feature*)> predicate)
+FeatureCursor::fill(FeatureList& list, std::function<bool(const Feature*)> predicate)
 {
     unsigned count = 0;
     while (hasMore())
     {
         osg::ref_ptr<Feature> f = nextFeature();
-        if (predicate(f.get()))
+        if (f.valid() && predicate(f.get()))
         {
             list.push_back(f);
-            count++;
+            ++count;
         }
     }
     return count;
@@ -67,8 +71,8 @@ FeatureCursor::fill(FeatureList& list,std::function<bool(const Feature*)> predic
 //---------------------------------------------------------------------------
 
 GeometryFeatureCursor::GeometryFeatureCursor(Geometry* geom) :
-FeatureCursor(NULL),
-_geom( geom )
+    FeatureCursor(NULL),
+    _geom(geom)
 {
     //nop
 }
@@ -96,15 +100,15 @@ GeometryFeatureCursor::hasMore() const
 Feature*
 GeometryFeatureCursor::nextFeature()
 {
-    if ( hasMore() )
-    {        
-        _lastFeature = new Feature( _geom.get(), _featureProfile.valid() ? _featureProfile->getSRS() : 0L );
+    if (hasMore())
+    {
+        _lastFeature = new Feature(_geom.get(), _featureProfile.valid() ? _featureProfile->getSRS() : nullptr);
 
-        if ( _featureProfile && _featureProfile->geoInterp().isSet() )
+        if (_featureProfile && _featureProfile->geoInterp().isSet())
             _lastFeature->geoInterp() = _featureProfile->geoInterp().get();
 
         FilterContext cx;
-        cx.setProfile( _featureProfile.get() );
+        cx.setProfile(_featureProfile.get());
 
         FeatureList one = { _lastFeature };
 
@@ -112,7 +116,7 @@ GeometryFeatureCursor::nextFeature()
 
         if (one.empty())
         {
-            _lastFeature = 0L;
+            _lastFeature = nullptr;
         }
 
         _geom = 0L;

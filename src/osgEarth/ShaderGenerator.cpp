@@ -830,18 +830,27 @@ ShaderGenerator::processGeometry(const osg::StateSet*         original,
 
             osg::Texture* tex = dynamic_cast<osg::Texture*>( current->getTextureAttribute(unit, osg::StateAttribute::TEXTURE) );
 
+            osg::TexGen* texgen = dynamic_cast<osg::TexGen*>(current->getTextureAttribute(unit, osg::StateAttribute::TEXGEN));
+            osg::TexEnv* texenv = dynamic_cast<osg::TexEnv*>(current->getTextureAttribute(unit, osg::StateAttribute::TEXENV));
+            osg::TexMat* texmat = dynamic_cast<osg::TexMat*>(current->getTextureAttribute(unit, osg::StateAttribute::TEXMAT));
+            osg::PointSprite* sprite = dynamic_cast<osg::PointSprite*>(current->getTextureAttribute(unit, osg::StateAttribute::POINTSPRITE));
+
             if (accept(tex) && !ImageUtils::isFloatingPointInternalFormat(tex->getInternalFormat()))
             {
-                osg::TexGen* texgen = dynamic_cast<osg::TexGen*>(current->getTextureAttribute(unit, osg::StateAttribute::TEXGEN));
-                osg::TexEnv* texenv = dynamic_cast<osg::TexEnv*>(current->getTextureAttribute(unit, osg::StateAttribute::TEXENV));
-                osg::TexMat* texmat = dynamic_cast<osg::TexMat*>(current->getTextureAttribute(unit, osg::StateAttribute::TEXMAT));
-                osg::PointSprite* sprite = dynamic_cast<osg::PointSprite*>(current->getTextureAttribute(unit, osg::StateAttribute::POINTSPRITE));
-
                 if ( apply(tex, texgen, texenv, texmat, sprite, unit, buf) == true )
                 {
                     needNewStateSet = true;
                 }
             }
+
+#ifndef OSG_GL_FIXED_FUNCTION_AVAILABLE
+            if (texgen)
+                newStateSet->removeTextureAttribute(unit, texgen);
+            if (texenv)
+                newStateSet->removeTextureAttribute(unit, texenv);
+            if (texmat)
+                newStateSet->removeTextureAttribute(unit, texmat);
+#endif
         }
     }
 

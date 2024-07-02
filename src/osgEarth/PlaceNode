@@ -66,7 +66,7 @@ namespace osgEarth
          * Text label content
          */
         void setText( const std::string& text );
-        virtual const std::string& getText() const { return _text; }
+        const std::string& getText() const override { return _text; }
 
         /**
          * Style (for text and placement)

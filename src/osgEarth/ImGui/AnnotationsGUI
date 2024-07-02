@@ -45,6 +45,14 @@ namespace
             {
                 node.setNodeMask(mask);
             }
+            else
+            {
+                auto anno = dynamic_cast<osgEarth::AnnotationNode*>(&node);
+                if (anno)
+                {
+                    node.setNodeMask(mask);
+                }
+            }
 
             traverse(node);
         }
@@ -60,6 +68,14 @@ namespace
         {
             setTraversalMode(TRAVERSE_ALL_CHILDREN);
             setNodeMaskOverride(~0);
+        }
+
+        std::string simple_class(osgEarth::AnnotationNode* n)
+        {
+            std::string c = n->className();
+            auto npos = c.find_last_of(':');
+            if (npos != c.npos) return c.substr(npos + 1);
+            else return c;
         }
 
         void apply(osg::Node& node) override
@@ -104,16 +120,17 @@ namespace
             }
             else if (anode)
             {
-                ImGui::PushID((std::uintptr_t)data);
+                ImGui::PushID((std::uintptr_t)anode);
 
-                name = anode->getName();
-                if (name.empty()) name = "[" + std::string(anode->className()) + "]";
+                name = simple_class(anode);
+                if (!anode->getName().empty()) name += " " + anode->getName();
+                else if (!anode->getText().empty()) name += " \"" + anode->getText() + "\"";
 
-                bool visible = node.getNodeMask() != 0;
+                bool visible = anode->getNodeMask() != 0;
                 if (ImGui::Checkbox("", &visible))
                 {
                     SetAnnotationNodeMask set(visible ? ~0 : 0);
-                    node.accept(set);
+                    anode->accept(set);
                 }
                 ImGui::SameLine();
                 bool is_selected = false;

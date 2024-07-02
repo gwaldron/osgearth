@@ -60,7 +60,7 @@ namespace osgEarth
          */
         void setText( const std::string& text );
         const std::string& text() const { return _text; }
-        virtual const std::string& getText() const { return text(); }
+        const std::string& getText() const override { return text(); }
 
         /**
          * Gets a copy of the text style.

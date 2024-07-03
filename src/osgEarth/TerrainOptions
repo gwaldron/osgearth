@@ -133,8 +133,10 @@ namespace osgEarth
         const unsigned& getMinNormalMapLOD() const;
 
         //! Whether the terrain engine will be using GPU tessellation shaders.
-        void setGPUTessellation(const bool& value);
-        const bool& getGPUTessellation() const;
+        //! Even if the terrain option is set to true, the getting will return
+        //! false if tessellation shader support is not available.
+        void setGPUTessellation(bool value);
+        bool getGPUTessellation() const;
 
         //! GPU tessellation level
         void setTessellationLevel(const float& value);

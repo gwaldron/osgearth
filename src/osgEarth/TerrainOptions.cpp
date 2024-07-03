@@ -16,9 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/TerrainOptions>
-#include <cstdlib> // for getenv
-#include <osgEarth/Notify>
+#include "TerrainOptions"
+#include "Notify"
+#include "GLUtils"
 
 using namespace osgEarth;
 
@@ -188,7 +188,6 @@ OE_OPTION_IMPL(TerrainOptionsAPI, bool, ClusterCulling, clusterCulling);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, EnableBlending, enableBlending);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, CompressNormalMaps, compressNormalMaps);
 OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, MinNormalMapLOD, minNormalMapLOD);
-OE_OPTION_IMPL(TerrainOptionsAPI, bool, GPUTessellation, gpuTessellation);
 OE_OPTION_IMPL(TerrainOptionsAPI, float, TessellationLevel, tessellationLevel);
 OE_OPTION_IMPL(TerrainOptionsAPI, float, TessellationRange, tessellationRange);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, Debug, debug);
@@ -218,6 +217,18 @@ OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, MaxTextureSize, maxTextureSize);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, Visible, visible);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, CreateTilesAsync, createTilesAsync);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, CreateTilesGrouped, createTilesGrouped);
+
+bool
+TerrainOptionsAPI::getGPUTessellation() const
+{
+    return _ptr->gpuTessellation() == true && GLUtils::useNVGL() == true;
+}
+
+void
+TerrainOptionsAPI::setGPUTessellation(bool value)
+{
+    _ptr->gpuTessellation() = value;
+}
 
 void
 TerrainOptionsAPI::setDriver(const std::string& value)

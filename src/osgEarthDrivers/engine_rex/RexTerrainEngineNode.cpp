@@ -257,6 +257,13 @@ RexTerrainEngineNode::onSetMap()
         _morphingSupported = false;
     }
 
+    // tessellation check
+    if (_optionsConcrete.gpuTessellation() == true &&
+        GLUtils::useNVGL() == false)
+    {
+        OE_WARN << LC << "GPU tessellation is only supported in NVGL mode. Disabling." << std::endl;
+    }
+
     // morphing imagery LODs requires we bind parent textures to their own unit.
     if (options.getMorphImagery() && _morphingSupported)
     {

@@ -7,10 +7,16 @@ needs to be absolutely positioned.
 
 <Map name="Demo: simple model layer">
 
-    <Model name="Cow in the Hudson" paged="true" max_range="5000">
+    <Model name="Cow in the Hudson">
         <url>cow.osg.(0,0,3.14).trans.100.scale</url>
         <location lat="40.717" long="-74.018"/>
     </Model>
+
+    <Model name="Paged Cow in the Hudson" paged="true" max_range="5000">
+        <url>cow.osg.(0,0,3.14).trans.100.scale</url>
+        <location lat="40.717" long="-74.04"/>
+    </Model>
+
     
     <xi:include href="readymap_imagery.xml"/>
     <xi:include href="readymap_elevation.xml"/>

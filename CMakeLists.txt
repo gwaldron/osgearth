@@ -13,7 +13,7 @@ endif()
 
 project(
     OSGEARTH
-    DESCRIPTION "osgEarth 3D Geospatial SDK"
+    DESCRIPTION "osgEarth SDK"
     HOMEPAGE_URL "https://github.com/gwaldron/osgearth"
     LANGUAGES CXX C)
 
@@ -24,7 +24,7 @@ set(OSGEARTH_PATCH_VERSION 0)
 set(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
 
 # Increment this each time the ABI changes
-set(OSGEARTH_SOVERSION 157)
+set(OSGEARTH_SOVERSION 158)
 
 # Require C++14
 set(CMAKE_CXX_STANDARD 14)
@@ -52,10 +52,10 @@ set(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
 
 # Default installation folders. The platform-specific includes will
 # override these values as necessary.
-set(INSTALL_RUNTIME_FOLDER "bin")  # executables
-set(INSTALL_LIBRARY_FOLDER "bin")  # .dll/.so
-set(INSTALL_ARCHIVE_FOLDER "lib")  # .lib/.a
-set(INSTALL_PLUGINS_FOLDER "bin")  # parent folder of OSG plugins folder
+set(INSTALL_RUNTIME_FOLDER "bin${OSGEARTH_INSTALL_FOLDER_SUFFIX}")  # executables
+set(INSTALL_LIBRARY_FOLDER "bin${OSGEARTH_INSTALL_FOLDER_SUFFIX}")  # .dll/.so
+set(INSTALL_ARCHIVE_FOLDER "lib${OSGEARTH_INSTALL_FOLDER_SUFFIX}")  # .lib/.a
+set(INSTALL_PLUGINS_FOLDER "bin${OSGEARTH_INSTALL_FOLDER_SUFFIX}")  # parent folder of OSG plugins folder
 
 include(oe_ios)
 include(oe_osx)

@@ -61,7 +61,7 @@ Lighting::installDefaultMaterial(osg::StateSet* stateSet)
 //............................................................................
 
 GenerateGL3LightingUniforms::GenerateGL3LightingUniforms() :
-osg::NodeVisitor(TRAVERSE_ALL_CHILDREN)
+    osg::NodeVisitor(TRAVERSE_ALL_CHILDREN)
 {
     setNodeMaskOverride(~0);
 }
@@ -96,7 +96,9 @@ GenerateGL3LightingUniforms::apply(osg::Node& node)
                     if (!mat->getUpdateCallback())
                     {
                         if (stateset->getDataVariance() == osg::Object::DYNAMIC)
+                        {
                             mat->setUpdateCallback(new MaterialCallback());
+                        }
                         else
                         {
                             MaterialCallback mc;

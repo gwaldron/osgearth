@@ -323,11 +323,12 @@ ModelLayer::openImplementation()
 
                 URI uri = options().url().get();
 
-                plod->setLoadFunction([uri, localReadOptions](Cancelable*) {
-                    osg::ref_ptr<osg::Node> node = uri.getNode(localReadOptions.get());
-                    ShaderGenerator gen;
-                    node->accept(gen);
-                    return node;
+                plod->setLoadFunction([uri, localReadOptions](Cancelable*)
+                    {
+                        osg::ref_ptr<osg::Node> node = uri.getNode(localReadOptions.get());
+                        ShaderGenerator gen;
+                        gen.run(node.get());
+                        return node;
                     });
 
                 plod->setMinRange(minRange);

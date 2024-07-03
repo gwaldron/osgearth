@@ -85,7 +85,7 @@ namespace osgEarth
 
         META_StateAttribute(osgEarth, MaterialGL3, MATERIAL);
 
-        virtual void apply(osg::State&) const;
+        void apply(osg::State&) const override;
     };
 
     /**

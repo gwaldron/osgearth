@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHUTIL_GEODETIC_GRATICULE_H
-#define OSGEARTHUTIL_GEODETIC_GRATICULE_H
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/LatLongFormatter>
@@ -102,23 +101,15 @@ namespace osgEarth { namespace Util
 
     public: // Layer
 
-        virtual void addedToMap(const Map* map);
-
-        virtual void removedFromMap(const Map* map);
-
-        virtual osg::Node* getNode() const;
-
-        virtual void init();
-
-    public: // VisibleLayer
-
-        virtual void setVisible(bool value);
+        void addedToMap(const Map* map) override;
+        void removedFromMap(const Map* map) override;
+        osg::Node* getNode() const override;
+        void init() override;
 
     public: // osg::Object
 
-        virtual void resizeGLObjectBuffers(unsigned maxSize);
-
-        virtual void releaseGLObjects(osg::State* state) const;
+        void resizeGLObjectBuffers(unsigned maxSize) override;
+        void releaseGLObjects(osg::State* state) const override;
 
     protected:
 
@@ -190,4 +181,3 @@ namespace osgEarth { namespace Util
     };
 } }
 
-#endif // OSGEARTHUTIL_GEODETIC_GRATICULE_H

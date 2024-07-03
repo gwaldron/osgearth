@@ -2,7 +2,10 @@
 #pragma vp_location   vertex_view
 #pragma vp_order      0.5
 
-#pragma import_defines(OE_DISABLE_GRATICULE)
+#pragma import_defines(OE_SHOW_GRID_LINES)
+#ifndef OE_SHOW_GRID_LINES
+#define OE_SHOW_GRID_LINES 1
+#endif
 
 out vec4 oe_layer_tilec;
 out vec2 oe_GeodeticGraticule_coord;
@@ -11,7 +14,7 @@ vec4 oe_tile_key;
 
 void oe_GeodeticGraticule_vertex(inout vec4 vertex)
 {
-#ifndef OE_DISABLE_GRATICULE
+#if OE_SHOW_GRID_LINES
     // calculate long and lat from [0..1] across the profile:
     vec2 r = (oe_tile_key.xy + oe_layer_tilec.xy)/exp2(oe_tile_key.z);
     oe_GeodeticGraticule_coord = vec2(0.5*r.x, r.y);
@@ -24,7 +27,10 @@ void oe_GeodeticGraticule_vertex(inout vec4 vertex)
 #pragma vp_location   fragment_lighting
 #pragma vp_order      1.1
 
-#pragma import_defines(OE_DISABLE_GRATICULE)
+#pragma import_defines(OE_SHOW_GRID_LINES)
+#ifndef OE_SHOW_GRID_LINES
+#define OE_SHOW_GRID_LINES 1
+#endif
 
 uniform float oe_GeodeticGraticule_lineWidth;
 uniform float oe_GeodeticGraticule_resolution;
@@ -35,7 +41,7 @@ in vec2 oe_GeodeticGraticule_coord;
 
 void oe_GeodeticGraticule_fragment(inout vec4 color)
 {
-#ifndef OE_DISABLE_GRATICULE
+#if OE_SHOW_GRID_LINES
     // double the effective res for longitude since it has twice the span
     vec2 gr = vec2(0.5*oe_GeodeticGraticule_resolution, oe_GeodeticGraticule_resolution);
     vec2 distanceToLine = mod(oe_GeodeticGraticule_coord, gr);

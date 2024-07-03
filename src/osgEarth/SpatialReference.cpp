@@ -202,7 +202,8 @@ SpatialReference::SpatialReference(const Key& key) :
     // common WGS84:
     else if(
         key.horizLower == "epsg:4326" ||
-        key.horizLower == "wgs84")
+        key.horizLower == "wgs84" ||
+        key.horizLower == "wgs_1984")
     {
         _setup.name = "WGS84";
         _setup.type = INIT_PROJ;
@@ -336,10 +337,7 @@ SpatialReference::getLocal() const
                 error = OSRSetFromUserInput(local._handle, _setup.horiz.c_str());
             }
 
-            if (error == OGRERR_NONE)
-            {
-            }
-            else
+            if (error != OGRERR_NONE)
             {
                 OE_WARN << LC << "Failed to create SRS from \"" << _setup.horiz << "\"" << std::endl;
                 OSRDestroySpatialReference(local._handle);
@@ -1454,6 +1452,12 @@ SpatialReference::init()
 
     // Try to extract the horizontal datum
     _datum = getOGRAttrValue( handle, "DATUM", 0, true );
+
+    // Fix bad return values..
+    if (_datum == "wgs_1984" || _datum == "WGS_1984")
+        _datum = "WGS84";
+    else if (_datum == "nad_1983" || _datum == "NAD_1983")
+        _datum = "NAD83";
 
     // Extract the base units:
     std::string units_name = getOGRAttrValue( handle, "UNIT", 0, true );

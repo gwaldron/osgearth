@@ -874,6 +874,12 @@ ShaderFactory::createMains(
         if ( geomStage || (viewStage && viewStageInGS) || (clipStage && clipStageInGS) )
         {
             buf << "\n// Injected function declarations:\n";
+
+            if (xformModelToView)
+            {
+                buf << INDENT << "void " << xformModelToView->begin()->second._name << "();\n";
+            }
+
             if ( geomStage )
             {
                 for( OrderedFunctionMap::const_iterator i = geomStage->begin(); i != geomStage->end(); ++i )

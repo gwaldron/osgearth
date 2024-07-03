@@ -45,6 +45,12 @@ main(int argc, char** argv)
 
     osg::ArgumentParser arguments(&argc,argv);
 
+    if (argc < 2)
+    {
+        OE_WARN << "Usage: osgearth_video <video1>" << std::endl;
+        return -1;
+    }
+
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);
 

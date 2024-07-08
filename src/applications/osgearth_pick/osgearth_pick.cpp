@@ -61,14 +61,15 @@ struct App
     osg::ref_ptr<AnnotationNode> _pickedAnno;
 };
 
-struct PickerGUI : public GUI::BaseGUI
+class PickerGUI : public ImGuiPanel
 {
+public:
     App& _app;
     bool _active;
     bool _preview;
     bool _installedTexture;
 
-    PickerGUI(App& app) : BaseGUI("Picker"),
+    PickerGUI(App& app) : ImGuiPanel("Picker"),
         _app(app),
         _active(true),
         _preview(false),
@@ -105,7 +106,7 @@ struct PickerGUI : public GUI::BaseGUI
                             _app.previewStateSet->setTextureAttribute(0, pickTex, 1);
 
                         ImGui::Text("Picker camera preview:");
-                        ImGuiUtil::Texture(_app.previewTexture, ri);
+                        ImGuiEx::OSGTexture(_app.previewTexture, ri);
                     }
                 }
 
@@ -270,7 +271,7 @@ main(int argc, char** argv)
     App app(arguments);
 
     app.viewer.setThreadingModel(app.viewer.SingleThreaded);
-    app.viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
+    app.viewer.setRealizeOperation(new ImGuiAppEngine::RealizeOperation);
 
     app.viewer.getCamera()->setSmallFeatureCullingPixelSize(-1.0f);
     app.viewer.setCameraManipulator( new EarthManipulator() );
@@ -279,9 +280,6 @@ main(int argc, char** argv)
     auto node = MapNodeHelper().load(arguments, &app.viewer);
     if ( node.valid() )
     {
-        GUI::ApplicationGUI* gui = new GUI::ApplicationGUI(true);
-        gui->add("Demo", new PickerGUI(app), true);
-
         app.viewer.setSceneData(node);
 
         app.mapNode = MapNode::get(node);
@@ -320,7 +318,9 @@ main(int argc, char** argv)
         setupPreviewCamera(app);
 
         // Install the imgui:
-        app.viewer.getEventHandlers().push_front(gui);
+        auto* engine = new ImGuiAppEngine(arguments);
+        engine->add("Demo", new PickerGUI(app), true);
+        app.viewer.getEventHandlers().push_front(engine);
         return app.viewer.run();
     }
     else

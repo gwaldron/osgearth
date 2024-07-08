@@ -57,7 +57,7 @@ main(int argc, char** argv)
 
     // Call this to enable ImGui rendering.
     // If you use the MapNodeHelper, call this first.
-    viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
+    viewer.setRealizeOperation(new ImGuiAppEngine::RealizeOperation);
 
     osg::ref_ptr<osg::Node> node = MapNodeHelper().load(arguments, &viewer);
     if (node.valid())
@@ -66,7 +66,7 @@ main(int argc, char** argv)
         // Passing "true" tells it to install all the built-in osgEarth GUI tools.
         // Put it on the front of the list so events don't filter
         // through to other handlers.
-        viewer.getEventHandlers().push_front(new GUI::ApplicationGUI(arguments, true));
+        viewer.getEventHandlers().push_front(new ImGuiAppEngine(arguments, true));
         viewer.setSceneData(node);
         return Metrics::run(viewer);
     }

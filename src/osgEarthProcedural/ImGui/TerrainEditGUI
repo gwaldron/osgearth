@@ -18,8 +18,8 @@
  */
 #pragma once
 
+#include <osgEarth/ImGui/ImGuiApp>
 #include <osgEarthProcedural/LifeMapLayer>
-#include <osgEarth/ImGui/ImGui>
 #include <osgEarth/DecalLayer>
 #include <osgEarth/MapNode>
 #include <osgEarth/TerrainEngineNode>
@@ -38,7 +38,6 @@ namespace osgEarth
         using namespace osgEarth::Contrib;
         using namespace osgEarth::Threading;
         using namespace osgEarth::Util;
-        using namespace osgEarth::GUI;
 
         struct CraterRenderer
         {
@@ -205,7 +204,7 @@ namespace osgEarth
         };
 
 
-        class TerrainEditGUI : public BaseGUI
+        class TerrainEditGUI : public ImGuiPanel
         {
         private:
             bool _installed = false;
@@ -231,7 +230,7 @@ namespace osgEarth
             osg::ref_ptr<Feature> _ditchFeature;
 
         public:
-            TerrainEditGUI() : BaseGUI("Terrain Editing")
+            TerrainEditGUI() : ImGuiPanel("Terrain Editing")
             {
             }
 

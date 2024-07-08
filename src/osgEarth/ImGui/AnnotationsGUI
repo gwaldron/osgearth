@@ -16,10 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_ANNOTATIONS_GUI
-#define OSGEARTH_IMGUI_ANNOTATIONS_GUI
+#pragma once
 
-#include "ImGui"
+#include <osgEarth/ImGui/ImGuiApp>
 #include <osgEarth/AnnotationData>
 #include <osgEarth/AnnotationNode>
 #include <osgEarth/ViewFitter>
@@ -159,46 +158,39 @@ namespace
 
 namespace osgEarth
 {
-    namespace GUI
+    class AnnotationsGUI : public ImGuiPanel
     {
-        using namespace osgEarth;
+    private:
+        osg::observer_ptr<MapNode> _mapNode;
 
-        class AnnotationsGUI : public BaseGUI
+    public:
+        AnnotationsGUI() : ImGuiPanel("Annotations") { }
+
+        void load(const Config& conf) override
         {
-        private:
-            osg::observer_ptr<MapNode> _mapNode;
+        }
 
-        public:
-            AnnotationsGUI() : BaseGUI("Annotations") { }
+        void save(Config& conf) override
+        {
+        }
 
-            void load(const Config& conf) override
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible())
+                return;
+
+            if (!findNodeOrHide(_mapNode, ri))
+                return;
+
+            ImGui::Begin(name(), visible());
             {
+                GetAnnotations getannos;
+                getannos.manip = dynamic_cast<osgEarth::EarthManipulator*>(view(ri)->getCameraManipulator());
+                getannos.srs = _mapNode->getMapSRS();
+                getannos.camera = camera(ri);
+                camera(ri)->accept(getannos);
             }
-
-            void save(Config& conf) override
-            {
-            }
-
-            void draw(osg::RenderInfo& ri) override
-            {
-                if (!isVisible())
-                    return;
-
-                if (!findNodeOrHide(_mapNode, ri))
-                    return;
-
-                ImGui::Begin(name(), visible());
-                {
-                    GetAnnotations getannos;
-                    getannos.manip = dynamic_cast<osgEarth::EarthManipulator*>(view(ri)->getCameraManipulator());
-                    getannos.srs = _mapNode->getMapSRS();
-                    getannos.camera = camera(ri);
-                    camera(ri)->accept(getannos);
-                }
-                ImGui::End();
-            }
-        };
-    }
+            ImGui::End();
+        }
+    };
 }
-
-#endif // OSGEARTH_IMGUI_ANNOTATIONS_GUI

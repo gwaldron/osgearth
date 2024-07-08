@@ -122,10 +122,10 @@ struct App
     }
 };
 
-struct GCPanel : public GUI::BaseGUI
+struct GCPanel : public ImGuiPanel
 {
     App& _app;
-    GCPanel(App& app) : GUI::BaseGUI("GCs"), _app(app) { }
+    GCPanel(App& app) : ImGuiPanel("GCs"), _app(app) { }
 
     void draw(osg::RenderInfo& ri) override
     {
@@ -159,10 +159,10 @@ struct GCPanel : public GUI::BaseGUI
     }
 };
 
-struct ViewerPanel : public GUI::BaseGUI
+struct ViewerPanel : public ImGuiPanel
 {
     App& _app;
-    ViewerPanel(App& app) : GUI::BaseGUI("Views"), _app(app) { }
+    ViewerPanel(App& app) : ImGuiPanel("Views"), _app(app) { }
 
     void draw(osg::RenderInfo& ri) override
     {
@@ -244,7 +244,7 @@ main(int argc, char** argv)
     App app(arguments);
 
     // Setup the viewer for imgui
-    app._viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
+    app._viewer.setRealizeOperation(new ImGuiAppEngine::RealizeOperation);
 
     // Force SingleThreaded mode if we are sharing a GC and have more than one view.
     // OSG cannot share a GC across multiple draw threads.
@@ -272,11 +272,10 @@ main(int argc, char** argv)
     if (arguments.read("--gui"))
     {
         // install the Gui.
-        GUI::ApplicationGUI* gui = new GUI::ApplicationGUI();
-        gui->addAllBuiltInTools();
-        gui->add(new ViewerPanel(app), true);
-        gui->add(new GCPanel(app), true);
-        view->getEventHandlers().push_front(gui);
+        auto* engine = new ImGuiAppEngine(arguments);
+        engine->add(new ViewerPanel(app), true);
+        engine->add(new GCPanel(app), true);
+        view->getEventHandlers().push_front(engine);
     }
 
     OE_NOTICE << "Press 'n' to create a new view" << std::endl;

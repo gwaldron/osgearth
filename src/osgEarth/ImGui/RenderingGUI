@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include "ImGui"
+#include <osgEarth/ImGui/ImGuiApp>
 #include <osgEarth/Threading>
 #include <osgEarth/MemoryUtils>
 #include <osgEarth/GLUtils>
@@ -192,274 +192,270 @@ void oeui_render_elevation_marker_fs(inout vec4 color) {
 
 namespace osgEarth
 {
-    namespace GUI
+    using namespace osgEarth::Threading;
+
+    class RenderingGUI : public ImGuiPanel
     {
-        using namespace osgEarth;
-        using namespace osgEarth::Threading;
+    private:
+        osg::observer_ptr<MapNode> _mapNode;
+        using time_point = std::chrono::time_point<std::chrono::steady_clock>;
+        time_point _lastFrame;
+        std::queue<int> _times;
+        int _time_accum;
+        int _frameCounter;
+        int _fps;
+        std::string _renderMode;
+        bool _renderViewNormals;
+        bool _renderModelNormals;
+        bool _renderWinding;
+        bool _renderOutlines;
 
-        class RenderingGUI : public BaseGUI
+    public:
+        RenderingGUI() : ImGuiPanel("Rendering"),
+            _frameCounter(0), _time_accum(0),
+            _renderViewNormals(false), _renderModelNormals(false),
+            _renderWinding(false), _renderOutlines(false) { }
+
+        void load(const Config& conf) override
         {
-        private:
-            osg::observer_ptr<MapNode> _mapNode;
-            using time_point = std::chrono::time_point<std::chrono::steady_clock>;
-            time_point _lastFrame;
-            std::queue<int> _times;
-            int _time_accum;
-            int _frameCounter;
-            int _fps;
-            std::string _renderMode;
-            bool _renderViewNormals;
-            bool _renderModelNormals;
-            bool _renderWinding;
-            bool _renderOutlines;
+        }
 
-        public:
-            RenderingGUI() : BaseGUI("Rendering"),
-                _frameCounter(0), _time_accum(0),
-                _renderViewNormals(false), _renderModelNormals(false),
-                _renderWinding(false), _renderOutlines(false) { }
+        void save(Config& conf) override
+        {
+        }
 
-            void load(const Config& conf) override
+        void setRenderMode(const std::string& mode, osg::RenderInfo& ri)
+        {
+            auto* vp = VirtualProgram::getOrCreate(stateset(ri));
+            if (!_renderMode.empty())
+                ShaderLoader::unload(vp, _renderMode);
+            _renderMode = mode;
+            if (!_renderMode.empty())
+                ShaderLoader::load(vp, _renderMode);
+        }
+
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible())
+                return;
+
+            if (!findNodeOrHide(_mapNode, ri))
+                return;
+
+            ImGui::Begin(name(), visible());
             {
-            }
-
-            void save(Config& conf) override
-            {
-            }                
-
-            void setRenderMode(const std::string& mode, osg::RenderInfo& ri)
-            {
-                auto* vp = VirtualProgram::getOrCreate(stateset(ri));
-                if (!_renderMode.empty())
-                    ShaderLoader::unload(vp, _renderMode);
-                _renderMode = mode;
-                if (!_renderMode.empty())
-                    ShaderLoader::load(vp, _renderMode);
-            }
-
-            void draw(osg::RenderInfo& ri) override
-            {
-                if (!isVisible())
-                    return;
-
-                if (!findNodeOrHide(_mapNode, ri))
-                    return;
-
-                ImGui::Begin(name(), visible());
+                if (ImGuiLTable::Begin("LOD"))
                 {
-                    if (ImGuiLTable::Begin("LOD"))
-                    {
-                        float sse = _mapNode->getScreenSpaceError();
-                        if (ImGuiLTable::SliderFloat("SSE", &sse, 1.0f, 200.0f))
-                            _mapNode->setScreenSpaceError(sse);
+                    float sse = _mapNode->getScreenSpaceError();
+                    if (ImGuiLTable::SliderFloat("SSE", &sse, 1.0f, 200.0f))
+                        _mapNode->setScreenSpaceError(sse);
 
-                        float lod_scale = camera(ri)->getLODScale();
-                        if (ImGuiLTable::SliderFloat("LOD Scale", &lod_scale, 0.1f, 4.0f))
-                            camera(ri)->setLODScale(lod_scale);
+                    float lod_scale = camera(ri)->getLODScale();
+                    if (ImGuiLTable::SliderFloat("LOD Scale", &lod_scale, 0.1f, 4.0f))
+                        camera(ri)->setLODScale(lod_scale);
+
+                    ImGuiLTable::End();
+                }
+
+                ImGui::Separator();
+
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Overlays");
+                static int s_renderMode = 0;
+                int m = 0;
+
+                if (ImGui::RadioButton("Off", &s_renderMode, m++)) {
+                    setRenderMode("", ri);
+                }
+                if (ImGui::RadioButton("Wireframe overlay", &s_renderMode, m++)) {
+                    setRenderMode(render_outlines, ri);
+                }
+                if (ImGui::RadioButton("Front/backfacing triangles", &s_renderMode, m++)) {
+                    setRenderMode(render_winding, ri);
+                }
+                if (ImGui::RadioButton("Normals (front/back)", &s_renderMode, m++)) {
+                    setRenderMode(render_fb_normals, ri);
+                }
+                if (ImGui::RadioButton("Normals (view space)", &s_renderMode, m++)) {
+                    setRenderMode(render_view_normals, ri);
+                }
+                if (ImGui::RadioButton("Normals (model space)", &s_renderMode, m++)) {
+                    setRenderMode(render_model_normals, ri);
+                }
+                if (ImGui::RadioButton("Metal (PBR)", &s_renderMode, m++)) {
+                    setRenderMode(render_metal, ri);
+                }
+                if (ImGui::RadioButton("Roughness (PBR)", &s_renderMode, m++)) {
+                    setRenderMode(render_roughness, ri);
+                }
+                if (ImGui::RadioButton("AO (PBR)", &s_renderMode, m++)) {
+                    setRenderMode(render_ao, ri);
+                }
+                if (ImGui::RadioButton("Draw ID", &s_renderMode, m++)) {
+                    setRenderMode(render_draw_id, ri);
+                }
+                if (ImGui::RadioButton("Elevation markers", &s_renderMode, m++)) {
+                    setRenderMode(render_elevation_marker, ri);
+                }
+
+                if (GLUtils::useNVGL())
+                {
+                    static bool s_gpuculldebug = false;
+                    if (ImGui::Checkbox("GPU cull debug view", &s_gpuculldebug)) {
+                        stateset(ri)->removeDefine("OE_GPUCULL_DEBUG");
+                        if (s_gpuculldebug)
+                            stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "1");
+                        else
+                            stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "0");
+                    }
+                }
+
+                ImGui::Separator();
+
+                const osgViewer::ViewerBase::ThreadingModel models[] = {
+                    osgViewer::ViewerBase::SingleThreaded,
+                    osgViewer::ViewerBase::DrawThreadPerContext,
+                    osgViewer::ViewerBase::CullDrawThreadPerContext,
+                    osgViewer::ViewerBase::CullThreadPerCameraDrawThreadPerContext
+                };
+                const std::string modelNames[] = {
+                    "SingleThreaded",
+                    "DrawThreadPerContext",
+                    "CullDrawThreadPerContext",
+                    "CullThreadPerCameraDrawThreadPerContext"
+                };
+
+                auto vb = view(ri)->getViewerBase();
+                int tmi;
+                for (tmi = 0; tmi < 4; ++tmi)
+                    if (models[tmi] == vb->getThreadingModel())
+                        break;
+
+                ImGui::Text("OSG Threading Model: ");
+                ImGui::SameLine();
+                if (ImGui::Button(modelNames[tmi].c_str())) {
+                    auto new_tm = models[(tmi + 1) % 4];
+                    vb->addUpdateOperation(new OneTimer([vb, new_tm]() {
+                        vb->setThreadingModel(new_tm); }));
+                }
+            }
+            ImGui::End();
+        }
+    };
+
+
+    class NVGLInspectorGUI : public ImGuiPanel
+    {
+    public:
+        NVGLInspectorGUI() : ImGuiPanel("NVGL Inspector")
+        {
+        }
+
+        void load(const Config& conf) override
+        {
+        }
+
+        void save(Config& conf) override
+        {
+        }
+
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible())
+                return;
+
+            ImGui::Begin(name(), visible());
+            {
+                if (!GLUtils::useNVGL())
+                {
+                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "NVGL not enabled");
+                }
+                else
+                {
+                    auto pools = GLObjectPool::getAll();
+                    for (auto& iter : pools)
+                    {
+                        auto cxid = iter.first;
+                        auto glpool = iter.second;
+                        auto globjects = glpool->objects();
+
+                        if (pools.size() > 1)
+                            ImGui::Text("Context %d", cxid);
+
+                        double glmem = (double)glpool->totalBytes() / 1048576.;
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "NVGL Memory: %.1lf MB", glmem);
+                        ImGui::SameLine();
+                        static bool sort_by_size = false;
+                        ImGui::Checkbox("Sort by size", &sort_by_size);
+
+                        std::map<std::string, std::list<GLObject::Ptr>> categories;
+                        for (auto& obj : globjects) {
+                            categories[obj->category()].emplace_back(obj);
+                        }
+
+                        for (auto& cat : categories)
+                        {
+                            unsigned total = 0;
+                            for (auto& obj : cat.second)
+                                total += obj->size();
+
+                            char header[128];
+                            sprintf(header, "%s (%d @ %.1lf MB)###%s", cat.first.c_str(), (int)cat.second.size(), (double)total / 1048576., cat.first.c_str());
+
+                            if (sort_by_size)
+                            {
+                                cat.second.sort([](const auto& lhs, const auto& rhs) {
+                                    return lhs->size() > rhs->size();
+                                    });
+                            }
+
+                            if (ImGui::TreeNode(header))
+                            {
+                                ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders;
+                                flags &= ~ImGuiTableFlags_BordersOuter;
+                                if (ImGui::BeginTable("globj", 4, flags))
+                                {
+                                    for (auto& obj : cat.second)
+                                    {
+                                        ImGui::TableNextColumn();
+                                        ImGui::Text("%6.1lf KB", (double)obj->size() / (double)1024.);
+                                        ImGui::TableNextColumn();
+                                        ImGui::Text("%d", obj->recycles());
+                                        ImGui::TableNextColumn();
+                                        ImGui::Text("%s", obj->uid().c_str());
+                                        ImGui::TableNextColumn();
+                                        ImGui::Text("(%d)", obj->name());
+                                    }
+                                    ImGui::EndTable();
+                                }
+
+                                ImGui::TreePop();
+                            }
+                        }
+                        if (pools.size() > 1)
+                            ImGui::Separator();
+
+                        ImGui::Separator();
+
+                        auto recycle_attempts = glpool->recycleHits() + glpool->recycleMisses();
+                        if (recycle_attempts > 0)
+                        {
+                            float re = (float)glpool->recycleHits() / (float)recycle_attempts;
+                            ImGui::Text("Recycle Efficiency: %.0f%%", 100.0f * re);
+                        }
+                    }
+
+                    ImGui::Separator();
+                    int kb_per_frame = GLObjectPool::getBytesToDeletePerFrame() / 1024;
+                    if (ImGuiLTable::Begin("Settings"))
+                    {
+                        if (ImGuiLTable::SliderInt("Rel KB per frame", &kb_per_frame, 128, 1024))
+                            GLObjectPool::setBytesToDeletePerFrame(kb_per_frame * 1024);
 
                         ImGuiLTable::End();
                     }
-
-                    ImGui::Separator();
-
-                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Overlays");
-                    static int s_renderMode = 0;
-                    int m = 0;
-
-                    if (ImGui::RadioButton("Off", &s_renderMode, m++)) {
-                        setRenderMode("", ri);
-                    }
-                    if (ImGui::RadioButton("Wireframe overlay", &s_renderMode, m++)) {
-                        setRenderMode(render_outlines, ri);
-                    }
-                    if (ImGui::RadioButton("Front/backfacing triangles", &s_renderMode, m++)) {
-                        setRenderMode(render_winding, ri);
-                    }
-                    if (ImGui::RadioButton("Normals (front/back)", &s_renderMode, m++)) {
-                        setRenderMode(render_fb_normals, ri);
-                    }
-                    if (ImGui::RadioButton("Normals (view space)", &s_renderMode, m++)) {
-                        setRenderMode(render_view_normals, ri);
-                    }
-                    if (ImGui::RadioButton("Normals (model space)", &s_renderMode, m++)) {
-                        setRenderMode(render_model_normals, ri);
-                    }
-                    if (ImGui::RadioButton("Metal (PBR)", &s_renderMode, m++)) {
-                        setRenderMode(render_metal, ri);
-                    }
-                    if (ImGui::RadioButton("Roughness (PBR)", &s_renderMode, m++)) {
-                        setRenderMode(render_roughness, ri);
-                    }
-                    if (ImGui::RadioButton("AO (PBR)", &s_renderMode, m++)) {
-                        setRenderMode(render_ao, ri);
-                    }
-                    if (ImGui::RadioButton("Draw ID", &s_renderMode, m++)) {
-                        setRenderMode(render_draw_id, ri);
-                    }
-                    if (ImGui::RadioButton("Elevation markers", &s_renderMode, m++)) {
-                        setRenderMode(render_elevation_marker, ri);
-                    }
-
-                    if (GLUtils::useNVGL())
-                    {
-                        static bool s_gpuculldebug = false;
-                        if (ImGui::Checkbox("GPU cull debug view", &s_gpuculldebug)) {
-                            stateset(ri)->removeDefine("OE_GPUCULL_DEBUG");
-                            if (s_gpuculldebug)
-                                stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "1");
-                            else
-                                stateset(ri)->setDefine("OE_GPUCULL_DEBUG", "0");
-                        }
-                    }
-
-                    ImGui::Separator();
-
-                    const osgViewer::ViewerBase::ThreadingModel models[] = {
-                        osgViewer::ViewerBase::SingleThreaded,
-                        osgViewer::ViewerBase::DrawThreadPerContext,
-                        osgViewer::ViewerBase::CullDrawThreadPerContext,
-                        osgViewer::ViewerBase::CullThreadPerCameraDrawThreadPerContext
-                    };
-                    const std::string modelNames[] = {
-                        "SingleThreaded",
-                        "DrawThreadPerContext",
-                        "CullDrawThreadPerContext",
-                        "CullThreadPerCameraDrawThreadPerContext"
-                    };
-
-                    auto vb = view(ri)->getViewerBase();
-                    int tmi;
-                    for (tmi = 0; tmi < 4; ++tmi)
-                        if (models[tmi] == vb->getThreadingModel())
-                            break;
-
-                    ImGui::Text("OSG Threading Model: ");
-                    ImGui::SameLine();
-                    if (ImGui::Button(modelNames[tmi].c_str())) {
-                        auto new_tm = models[(tmi + 1) % 4];
-                        vb->addUpdateOperation(new OneTimer([vb, new_tm]() {
-                            vb->setThreadingModel(new_tm); }));
-                    }
                 }
-                ImGui::End();
             }
-        };
-
-
-        class NVGLInspectorGUI : public BaseGUI
-        {
-        public:
-            NVGLInspectorGUI() : BaseGUI("NVGL Inspector")
-            {
-            }
-
-            void load(const Config& conf) override
-            {
-            }
-
-            void save(Config& conf) override
-            {
-            }
-
-            void draw(osg::RenderInfo& ri) override
-            {
-                if (!isVisible())
-                    return;
-
-                ImGui::Begin(name(), visible());
-                {
-                    if (!GLUtils::useNVGL())
-                    {
-                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "NVGL not enabled");
-                    }
-                    else
-                    {
-                        auto pools = GLObjectPool::getAll();
-                        for (auto& iter : pools)
-                        {
-                            auto cxid = iter.first;
-                            auto glpool = iter.second;
-                            auto globjects = glpool->objects();
-
-                            if (pools.size() > 1)
-                                ImGui::Text("Context %d", cxid);
-
-                            double glmem = (double)glpool->totalBytes() / 1048576.;
-                            ImGui::TextColored(ImVec4(1, 1, 0, 1), "NVGL Memory: %.1lf MB", glmem);
-                            ImGui::SameLine();
-                            static bool sort_by_size = false;
-                            ImGui::Checkbox("Sort by size", &sort_by_size);
-
-                            std::map<std::string, std::list<GLObject::Ptr>> categories;
-                            for (auto& obj : globjects) {
-                                categories[obj->category()].emplace_back(obj);
-                            }
-
-                            for (auto& cat : categories)
-                            {
-                                unsigned total = 0;
-                                for (auto& obj : cat.second)
-                                    total += obj->size();
-
-                                char header[128];
-                                sprintf(header, "%s (%d @ %.1lf MB)###%s", cat.first.c_str(), (int)cat.second.size(), (double)total / 1048576., cat.first.c_str());
-
-                                if (sort_by_size)
-                                {
-                                    cat.second.sort([](const auto& lhs, const auto& rhs) {
-                                        return lhs->size() > rhs->size();
-                                        });
-                                }
-
-                                if (ImGui::TreeNode(header))
-                                {
-                                    ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Borders;
-                                    flags &= ~ImGuiTableFlags_BordersOuter;
-                                    if (ImGui::BeginTable("globj", 4, flags))
-                                    {
-                                        for (auto& obj : cat.second)
-                                        {
-                                            ImGui::TableNextColumn();
-                                            ImGui::Text("%6.1lf KB", (double)obj->size() / (double)1024.);
-                                            ImGui::TableNextColumn();
-                                            ImGui::Text("%d", obj->recycles());
-                                            ImGui::TableNextColumn();
-                                            ImGui::Text("%s", obj->uid().c_str());
-                                            ImGui::TableNextColumn();
-                                            ImGui::Text("(%d)", obj->name());
-                                        }
-                                        ImGui::EndTable();
-                                    }
-
-                                    ImGui::TreePop();
-                                }
-                            }
-                            if (pools.size() > 1)
-                                ImGui::Separator();
-
-                            ImGui::Separator();
-
-                            auto recycle_attempts = glpool->recycleHits() + glpool->recycleMisses();
-                            if (recycle_attempts > 0)
-                            {
-                                float re = (float)glpool->recycleHits() / (float)recycle_attempts;
-                                ImGui::Text("Recycle Efficiency: %.0f%%", 100.0f * re);
-                            }
-                        }
-                        
-                        ImGui::Separator();
-                        int kb_per_frame = GLObjectPool::getBytesToDeletePerFrame() / 1024;
-                        if (ImGuiLTable::Begin("Settings"))
-                        {
-                            if (ImGuiLTable::SliderInt("Rel KB per frame", &kb_per_frame, 128, 1024))
-                                GLObjectPool::setBytesToDeletePerFrame(kb_per_frame*1024);
-
-                            ImGuiLTable::End();
-                        }
-                    }
-                }
-                ImGui::End();
-            }
-        };
-    }
+            ImGui::End();
+        }
+    };
 }

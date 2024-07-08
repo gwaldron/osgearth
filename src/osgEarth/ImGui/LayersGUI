@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include "ImGui"
+#include <osgEarth/ImGui/ImGuiApp>
 #include <osgEarth/MapNode>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ViewFitter>
@@ -69,12 +69,11 @@
 
 namespace osgEarth
 {
-    namespace GUI
-    {
-        using namespace osgEarth;
-        using namespace osgEarth::Contrib;
-        using namespace osgEarth::Util;
+    using namespace osgEarth::Contrib;
+    using namespace osgEarth::Util;
 
+    namespace detail
+    {
         struct AddWMSDialog
         {
             AddWMSDialog()
@@ -294,238 +293,239 @@ namespace osgEarth
             char name[64] = "New Layer";
             bool isElevation = false;
         };
+    }
 
-        class LayersGUI : public BaseGUI
+    class LayersGUI : public ImGuiPanel
+    {
+    private:
+        osg::observer_ptr<MapNode> _mapNode;
+        bool _showDisabled = false;
+        bool _sortByCat = false;
+        LayerVector _layers;
+        std::unordered_map<Layer*, bool> _layerExpanded;
+        int _mapRevision = -1;
+        bool _first = true;
+        std::unordered_map<Layer*, float> _maxMaxRanges;
+        std::unordered_map<Layer*, float> _maxMinRanges;
+        std::unordered_map<Layer*, float> _maxAttenRanges;
+        bool _addXYZ = false;
+        ImageLayer* _mouseOverImageLayer = nullptr;
+
+        static const int NUM_CATS = 8;
+
+        enum LayerCat {
+            IMAGE = 0,
+            ELEVATION,
+            FEATURE,
+            MODEL,
+            PROCEDURAL,
+            CONSTRAINT,
+            DATA,
+            OTHER
+        };
+        const std::string _layerCatName[NUM_CATS] = {
+            "Image",
+            "Elevation",
+            "Feature",
+            "Model",
+            "Procedural",
+            "Constraint",
+            "Data",
+            "Other"
+        };
+
+        std::vector<osg::ref_ptr<Layer>> _layersByCat[NUM_CATS];
+
+        detail::AddWMSDialog _addWMSDialog;
+        detail::AddTMSDialog _addTMSDialog;
+        detail::AddXYZDialog _addXYZDialog;
+
+        using ValueUnderMouse = struct {
+            osg::Vec4 pixel;
+            GLenum pixelFormat;
+            GLenum dataType;
+        };
+        Future<Result<ValueUnderMouse>> _imageLayerValueUnderMouse;
+
+        std::function<bool(const Layer*)>
+            _showPred,
+            _showVisibleLayers,
+            _showImageLayers,
+            _showTerrainSurfaceLayers,
+            _showFeatureModelLayers,
+            _showConstraintLayers;
+
+    public:
+
+        LayersGUI() : ImGuiPanel("Map")
         {
-        private:
-            osg::observer_ptr<MapNode> _mapNode;
-            bool _showDisabled = false;
-            bool _sortByCat = false;
-            LayerVector _layers;
-            std::unordered_map<Layer*, bool> _layerExpanded;
-            int _mapRevision = -1;
-            bool _first = true;
-            std::unordered_map<Layer*, float> _maxMaxRanges;
-            std::unordered_map<Layer*, float> _maxMinRanges;
-            std::unordered_map<Layer*, float> _maxAttenRanges;
-            bool _addXYZ = false;
-            ImageLayer* _mouseOverImageLayer = nullptr;
-
-            static const int NUM_CATS = 8;
-
-            enum LayerCat {
-                IMAGE = 0,
-                ELEVATION,
-                FEATURE,
-                MODEL,
-                PROCEDURAL,
-                CONSTRAINT,
-                DATA,
-                OTHER
-            };
-            const std::string _layerCatName[NUM_CATS] = {
-                "Image",
-                "Elevation",
-                "Feature",
-                "Model",
-                "Procedural",
-                "Constraint",
-                "Data",
-                "Other"
-            };
-
-            std::vector<osg::ref_ptr<Layer>> _layersByCat[NUM_CATS];
-
-            AddWMSDialog _addWMSDialog;
-            AddTMSDialog _addTMSDialog;
-            AddXYZDialog _addXYZDialog;
-
-            using ValueUnderMouse = struct {
-                osg::Vec4 pixel;
-                GLenum pixelFormat;
-                GLenum dataType;
-            };
-            Future<Result<ValueUnderMouse>> _imageLayerValueUnderMouse;
-
-            std::function<bool(const Layer*)>
-                _showPred,
-                _showVisibleLayers,
-                _showImageLayers,
-                _showTerrainSurfaceLayers,
-                _showFeatureModelLayers,
-                _showConstraintLayers;
-
-        public:
-
-            LayersGUI() : BaseGUI("Map")
-            {
-                _showVisibleLayers = [this](const Layer* layer)
-                    {
-                        return
-                            dynamic_cast<const VisibleLayer*>(layer) &&
-                            layer->getUserProperty("show_in_ui", true);
-                    };
-
-                _showImageLayers = [this](const Layer* layer)
-                    {
-                        return
-                            dynamic_cast<const ImageLayer*>(layer) &&
-                            layer->getUserProperty("show_in_ui", true);
-                    };
-
-                _showTerrainSurfaceLayers = [this](const Layer* layer)
-                    {
-                        return
-                            layer->getRenderType() == layer->RENDERTYPE_TERRAIN_SURFACE &&
-                            layer->getUserProperty("show_in_ui", true);
-                    };
-
-                _showFeatureModelLayers = [this](const Layer* layer)
-                    {
-                        return
-                            dynamic_cast<const FeatureModelLayer*>(layer) &&
-                            layer->getUserProperty("show_in_ui", true);
-                    };
-
-                _showConstraintLayers = [this](const Layer* layer)
-                    {
-                        return
-                            dynamic_cast<const TerrainConstraintLayer*>(layer) &&
-                            layer->getUserProperty("show_in_ui", true);
-                    };
-
-                _showPred = _showVisibleLayers;
-            }
-
-            //! Sets a predicate that decides whether to include a layer in the GUI
-            void setShowPredicate(std::function<bool(const Layer*)> func)
-            {
-                _showPred = func;
-            }
-
-            void load(const Config& conf) override
-            {
-                conf.get("ShowDisabled", _showDisabled);
-                conf.get("SortByCategory", _sortByCat);
-            }
-
-            void save(Config& conf) override
-            {
-                conf.set("ShowDisabled", _showDisabled);
-                conf.set("SortByCategory", _sortByCat);
-            }
-
-            void draw(osg::RenderInfo& ri) override
-            {
-                if (!isVisible())
-                    return;
-
-                bool mapNodeWasValid = _mapNode.valid();
-
-                if (!findNodeOrHide(_mapNode, ri))
-                    return;
-
-                if (_first)
+            _showVisibleLayers = [this](const Layer* layer)
                 {
-                    EventRouter::get(view(ri))
-                        .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); });
-                    _first = false;
+                    return
+                        dynamic_cast<const VisibleLayer*>(layer) &&
+                        layer->getUserProperty("show_in_ui", true);
+                };
+
+            _showImageLayers = [this](const Layer* layer)
+                {
+                    return
+                        dynamic_cast<const ImageLayer*>(layer) &&
+                        layer->getUserProperty("show_in_ui", true);
+                };
+
+            _showTerrainSurfaceLayers = [this](const Layer* layer)
+                {
+                    return
+                        layer->getRenderType() == layer->RENDERTYPE_TERRAIN_SURFACE &&
+                        layer->getUserProperty("show_in_ui", true);
+                };
+
+            _showFeatureModelLayers = [this](const Layer* layer)
+                {
+                    return
+                        dynamic_cast<const FeatureModelLayer*>(layer) &&
+                        layer->getUserProperty("show_in_ui", true);
+                };
+
+            _showConstraintLayers = [this](const Layer* layer)
+                {
+                    return
+                        dynamic_cast<const TerrainConstraintLayer*>(layer) &&
+                        layer->getUserProperty("show_in_ui", true);
+                };
+
+            _showPred = _showVisibleLayers;
+        }
+
+        //! Sets a predicate that decides whether to include a layer in the GUI
+        void setShowPredicate(std::function<bool(const Layer*)> func)
+        {
+            _showPred = func;
+        }
+
+        void load(const Config& conf) override
+        {
+            conf.get("ShowDisabled", _showDisabled);
+            conf.get("SortByCategory", _sortByCat);
+        }
+
+        void save(Config& conf) override
+        {
+            conf.set("ShowDisabled", _showDisabled);
+            conf.set("SortByCategory", _sortByCat);
+        }
+
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible())
+                return;
+
+            bool mapNodeWasValid = _mapNode.valid();
+
+            if (!findNodeOrHide(_mapNode, ri))
+                return;
+
+            if (_first)
+            {
+                EventRouter::get(view(ri))
+                    .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); });
+                _first = false;
+            }
+
+            refreshMap(ri, mapNodeWasValid);
+
+            if (ImGui::Begin(name(), visible(), ImGuiWindowFlags_MenuBar))
+            {
+                drawAddLayerMenu(ri);
+
+                // Map name:
+                if (_mapNode->getMap()->getName().empty() == false)
+                {
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), _mapNode->getMap()->getName().c_str());
                 }
 
-                refreshMap(ri, mapNodeWasValid);
+                ImGui::SameLine();
 
-                if (ImGui::Begin(name(), visible(), ImGuiWindowFlags_MenuBar))
+                ImGui::Text("(%d)", _layers.size());
+                ImGui::SameLine();
+
+                if (ImGui::Checkbox("Sort", &_sortByCat))
+                    dirtySettings();
+
+                ImGui::SameLine();
+                if (ImGui::Checkbox("Closed", &_showDisabled))
+                    dirtySettings();
+
+                ImGui::Separator();
+
+                if (_sortByCat)
                 {
-                    drawAddLayerMenu(ri);
-
-                    // Map name:
-                    if (_mapNode->getMap()->getName().empty() == false)
-                    {
-                        ImGui::TextColored(ImVec4(1, 1, 0, 1), _mapNode->getMap()->getName().c_str());
-                    }
-
-                    ImGui::SameLine();
-
-                    ImGui::Text("(%d)", _layers.size());
-                    ImGui::SameLine();
-
-                    if (ImGui::Checkbox("Sort", &_sortByCat))
-                        dirtySettings();
-
-                    ImGui::SameLine();
-                    if (ImGui::Checkbox("Closed", &_showDisabled))
-                        dirtySettings();
-
-                    ImGui::Separator();
-
-                    if (_sortByCat)
-                    {
-                        for (int cat = 0; cat < NUM_CATS; ++cat)
-                        {
-                            auto& layers = _layersByCat[cat];
-                            if (layers.empty())
-                                continue;
-
-                            if (ImGui::TreeNode(std::string(_layerCatName[cat] + " Layers").c_str()))
-                            {
-                                drawLayers(layers, ri);
-                                ImGui::TreePop();
-                            }
-                        }
-                    }
-                    else
-                    {
-                        drawLayers(_layers, ri);
-                    }
-
-                    ImGui::End();
-                }
-            }
-
-            void refreshMap(osg::RenderInfo& ri, bool mapNodeWasValid)
-            {
-                const Map* map = _mapNode->getMap();
-
-                Revision rev = map->getDataModelRevision();
-                if (rev != _mapRevision || !mapNodeWasValid)
-                {
-                    _layers.clear();
-                    _layerExpanded.clear();
-
-                    if (_showPred)
-                        _mapRevision = map->getLayers(_layers, _showPred);
-                    else
-                        _mapRevision = map->getLayers(_layers);
-
-                    for (auto& layer : _layers)
-                        _layerExpanded[layer.get()] = false;
-
-                    _maxMaxRanges.clear();
-                    _maxMinRanges.clear();
-                    _maxAttenRanges.clear();
-                    for (auto layer : _layers)
-                    {
-                        VisibleLayer* v = dynamic_cast<VisibleLayer*>(layer.get());
-                        if (v)
-                        {
-                            _maxMaxRanges[layer.get()] = v->getMaxVisibleRange() * 2.0f;
-                            _maxMinRanges[layer.get()] = v->getMinVisibleRange() * 2.0f;
-                            _maxAttenRanges[layer.get()] = v->getAttenuationRange() * 2.0f;
-                        }
-                    }
-
                     for (int cat = 0; cat < NUM_CATS; ++cat)
-                        _layersByCat[cat].clear();
-
-                    for (auto& layer : _layers)
                     {
+                        auto& layers = _layersByCat[cat];
+                        if (layers.empty())
+                            continue;
+
+                        if (ImGui::TreeNode(std::string(_layerCatName[cat] + " Layers").c_str()))
+                        {
+                            drawLayers(layers, ri);
+                            ImGui::TreePop();
+                        }
+                    }
+                }
+                else
+                {
+                    drawLayers(_layers, ri);
+                }
+
+                ImGui::End();
+            }
+        }
+
+        void refreshMap(osg::RenderInfo& ri, bool mapNodeWasValid)
+        {
+            const Map* map = _mapNode->getMap();
+
+            Revision rev = map->getDataModelRevision();
+            if (rev != _mapRevision || !mapNodeWasValid)
+            {
+                _layers.clear();
+                _layerExpanded.clear();
+
+                if (_showPred)
+                    _mapRevision = map->getLayers(_layers, _showPred);
+                else
+                    _mapRevision = map->getLayers(_layers);
+
+                for (auto& layer : _layers)
+                    _layerExpanded[layer.get()] = false;
+
+                _maxMaxRanges.clear();
+                _maxMinRanges.clear();
+                _maxAttenRanges.clear();
+                for (auto layer : _layers)
+                {
+                    VisibleLayer* v = dynamic_cast<VisibleLayer*>(layer.get());
+                    if (v)
+                    {
+                        _maxMaxRanges[layer.get()] = v->getMaxVisibleRange() * 2.0f;
+                        _maxMinRanges[layer.get()] = v->getMinVisibleRange() * 2.0f;
+                        _maxAttenRanges[layer.get()] = v->getAttenuationRange() * 2.0f;
+                    }
+                }
+
+                for (int cat = 0; cat < NUM_CATS; ++cat)
+                    _layersByCat[cat].clear();
+
+                for (auto& layer : _layers)
+                {
 #ifdef OSGEARTH_HAVE_PROCEDURAL_NODEKIT
-                        if (dynamic_cast<osgEarth::Procedural::LifeMapLayer*>(layer.get()) ||
-                            dynamic_cast<osgEarth::Procedural::VegetationLayer*>(layer.get()) ||
-                            dynamic_cast<osgEarth::Procedural::TextureSplattingLayer*>(layer.get()) ||
-                            dynamic_cast<osgEarth::Procedural::BiomeLayer*>(layer.get()))
-                            _layersByCat[PROCEDURAL].push_back(layer);
-                        else
+                    if (dynamic_cast<osgEarth::Procedural::LifeMapLayer*>(layer.get()) ||
+                        dynamic_cast<osgEarth::Procedural::VegetationLayer*>(layer.get()) ||
+                        dynamic_cast<osgEarth::Procedural::TextureSplattingLayer*>(layer.get()) ||
+                        dynamic_cast<osgEarth::Procedural::BiomeLayer*>(layer.get()))
+                        _layersByCat[PROCEDURAL].push_back(layer);
+                    else
 #endif
                         if (dynamic_cast<ImageLayer*>(layer.get()))
                             _layersByCat[IMAGE].push_back(layer);
@@ -541,597 +541,597 @@ namespace osgEarth
                             _layersByCat[DATA].push_back(layer);
                         else
                             _layersByCat[OTHER].push_back(layer);
-                    }
                 }
             }
+        }
 
-            void drawLayers(std::vector<osg::ref_ptr<Layer>>& layers, osg::RenderInfo& ri)
+        void drawLayers(std::vector<osg::ref_ptr<Layer>>& layers, osg::RenderInfo& ri)
+        {
+            auto camera = view(ri)->getCamera();
+            auto map = _mapNode->getMap();
+
+            for (int i = layers.size() - 1; i >= 0; --i)
             {
-                auto camera = view(ri)->getCamera();
-                auto map = _mapNode->getMap();
+                osgEarth::Layer* layer = layers[i];
 
-                for (int i = layers.size() - 1; i >= 0; --i)
+                if (!_showDisabled && !layer->isOpen() && !layer->getOpenAutomatically())
+                    continue;
+
+                ImGui::PushID(layer);
+                bool stylePushed = false;
+
+                bool error =
+                    layer->getStatus().isError() &&
+                    layer->getStatus().message() != "Layer closed" &&
+                    layer->getStatus().message() != "Layer disabled";
+
+                if (error)
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(ImColor(255, 72, 72))), stylePushed = true;
+                else if (!layer->isOpen())
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(ImColor(127, 127, 127))), stylePushed = true;
+
+                auto visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
+
+                if (visibleLayer)
                 {
-                    osgEarth::Layer* layer = layers[i];
-
-                    if (!_showDisabled && !layer->isOpen() && !layer->getOpenAutomatically())
-                        continue;
-
-                    ImGui::PushID(layer);
-                    bool stylePushed = false;
-
-                    bool error =
-                        layer->getStatus().isError() &&
-                        layer->getStatus().message() != "Layer closed" &&
-                        layer->getStatus().message() != "Layer disabled";
-
-                    if (error)
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(ImColor(255, 72, 72))), stylePushed = true;
-                    else if (!layer->isOpen())
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(ImColor(127, 127, 127))), stylePushed = true;
-
-                    auto visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
-
-                    if (visibleLayer)
+                    if (layer->isOpen())
                     {
-                        if (layer->isOpen())
+                        bool visible = visibleLayer->getVisible();
+                        if (ImGui::Checkbox("", &visible))
                         {
-                            bool visible = visibleLayer->getVisible();
-                            if (ImGui::Checkbox("", &visible))
-                            {
-                                visibleLayer->setVisible(visible);
-                            }
+                            visibleLayer->setVisible(visible);
                         }
-                        else // closed? the checkbox will try to open it.
+                    }
+                    else // closed? the checkbox will try to open it.
+                    {
+                        bool dummy = false;
+                        if (ImGui::Checkbox("", &dummy))
                         {
-                            bool dummy = false;
-                            if (ImGui::Checkbox("", &dummy))
-                            {
-                                Registry::instance()->clearBlacklist();
-                                layer->open();
-                            }
+                            Registry::instance()->clearBlacklist();
+                            layer->open();
                         }
+                    }
 
-                        ImGui::SameLine();
+                    ImGui::SameLine();
 
-                        ImGui::PushID("selectable");
-                        bool layerNameClicked = false;
-                        if (layer->isOpen())
-                        {
-                            ImGui::Selectable(layer->getName().c_str(), &layerNameClicked);
-                        }
-                        else
-                        {
-                            std::string text = layer->getName() + " (closed)";
-                            ImGui::Selectable(text.c_str(), &layerNameClicked);
-                        }
-
-                        if (layerNameClicked)
-                        {
-                            _layerExpanded[layer] = !_layerExpanded[layer];
-                        }
-                        ImGui::PopID(); // "selectable"
+                    ImGui::PushID("selectable");
+                    bool layerNameClicked = false;
+                    if (layer->isOpen())
+                    {
+                        ImGui::Selectable(layer->getName().c_str(), &layerNameClicked);
                     }
                     else
                     {
-                        ImGui::Text(layer->getName().c_str());
+                        std::string text = layer->getName() + " (closed)";
+                        ImGui::Selectable(text.c_str(), &layerNameClicked);
                     }
 
-                    if (_layerExpanded[layer])
+                    if (layerNameClicked)
                     {
-                        ImGui::Indent();
+                        _layerExpanded[layer] = !_layerExpanded[layer];
+                    }
+                    ImGui::PopID(); // "selectable"
+                }
+                else
+                {
+                    ImGui::Text(layer->getName().c_str());
+                }
 
-                        ImGui::TextColored(ImVec4(.8, .8, .8, 1), "%s", layer->className());
+                if (_layerExpanded[layer])
+                {
+                    ImGui::Indent();
 
-                        if (layer->isOpen())
+                    ImGui::TextColored(ImVec4(.8, .8, .8, 1), "%s", layer->className());
+
+                    if (layer->isOpen())
+                    {
+                        auto visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
+                        auto tileLayer = dynamic_cast<osgEarth::TileLayer*>(layer);
+                        auto imageLayer = dynamic_cast<osgEarth::ImageLayer*>(layer);
+                        auto elevationLayer = dynamic_cast<osgEarth::ElevationLayer*>(layer);
+
+                        if (tileLayer)
                         {
-                            auto visibleLayer = dynamic_cast<osgEarth::VisibleLayer*>(layer);
-                            auto tileLayer = dynamic_cast<osgEarth::TileLayer*>(layer);
-                            auto imageLayer = dynamic_cast<osgEarth::ImageLayer*>(layer);
-                            auto elevationLayer = dynamic_cast<osgEarth::ElevationLayer*>(layer);
-
-                            if (tileLayer)
+                            const Profile* profile = tileLayer->getProfile();
+                            if (profile)
                             {
-                                const Profile* profile = tileLayer->getProfile();
-                                if (profile)
-                                {
-                                    std::string srsname = profile->getSRS()->getName();
-                                    if (srsname == "unknown")
-                                        srsname = profile->getSRS()->getHorizInitString();
-                                    ImGui::TextColored(ImVec4(.8, .8, .8, 1), "%s", srsname.c_str());
+                                std::string srsname = profile->getSRS()->getName();
+                                if (srsname == "unknown")
+                                    srsname = profile->getSRS()->getHorizInitString();
+                                ImGui::TextColored(ImVec4(.8, .8, .8, 1), "%s", srsname.c_str());
 
-                                    if (elevationLayer)
-                                    {
-                                        ImGui::SameLine();
-                                        auto vdatum = profile->getSRS()->getVertInitString();
-                                        if (vdatum.empty()) vdatum = "geodetic";
-                                        ImGui::TextColored(ImVec4(1, .8, .8, 1), " (vdatum = %s)", vdatum.c_str());
-                                    }
+                                if (elevationLayer)
+                                {
+                                    ImGui::SameLine();
+                                    auto vdatum = profile->getSRS()->getVertInitString();
+                                    if (vdatum.empty()) vdatum = "geodetic";
+                                    ImGui::TextColored(ImVec4(1, .8, .8, 1), " (vdatum = %s)", vdatum.c_str());
+                                }
+                            }
+                        }
+
+                        const GeoExtent& extent = layer->getExtent();
+                        if (extent.isValid())
+                        {
+                            const std::string fmt[] = { "%5.1f", "%4.1f  *  %4.1f", "%1.f", "%.1f * %.1f" };
+                            int i = _mapNode->getMapSRS()->isGeographic() ? 0 : 2;
+                            ImGuiEx::TextCentered(fmt[i].c_str(), extent.north());
+                            ImGuiEx::TextCentered(fmt[i + 1].c_str(), extent.west(), extent.east());
+                            ImGuiEx::TextCentered(fmt[i].c_str(), extent.south());
+                        }
+
+                        ImGuiLTable::Begin("Layer");
+
+                        if (visibleLayer && !elevationLayer)
+                        {
+                            float opacity = visibleLayer->getOpacity();
+                            if (ImGuiLTable::SliderFloat("Opacity", &opacity, 0.0f, 1.0f))
+                                visibleLayer->setOpacity(opacity);
+
+                            if (visibleLayer->options().maxVisibleRange().isSet())
+                            {
+                                float value = visibleLayer->getMaxVisibleRange();
+                                if (value < FLT_MAX) {
+                                    if (ImGuiLTable::SliderFloat("Max range", &value, 0.0f, _maxMaxRanges[layer]))
+                                        visibleLayer->setMaxVisibleRange(value);
                                 }
                             }
 
-                            const GeoExtent& extent = layer->getExtent();
-                            if (extent.isValid())
+                            if (visibleLayer->options().minVisibleRange().isSet())
                             {
-                                const std::string fmt[] = { "%5.1f", "%4.1f  *  %4.1f", "%1.f", "%.1f * %.1f" };
-                                int i = _mapNode->getMapSRS()->isGeographic() ? 0 : 2;
-                                ImGuiUtil::TextCentered(fmt[i].c_str(), extent.north());
-                                ImGuiUtil::TextCentered(fmt[i + 1].c_str(), extent.west(), extent.east());
-                                ImGuiUtil::TextCentered(fmt[i].c_str(), extent.south());
+                                float value = visibleLayer->getMinVisibleRange();
+                                if (ImGuiLTable::SliderFloat("Min range", &value, 0.0f, _maxMinRanges[layer]))
+                                    visibleLayer->setMinVisibleRange(value);
                             }
 
-                            ImGuiLTable::Begin("Layer");
-
-                            if (visibleLayer && !elevationLayer)
+                            if (visibleLayer->options().attenuationRange().isSet())
                             {
-                                float opacity = visibleLayer->getOpacity();
-                                if (ImGuiLTable::SliderFloat("Opacity", &opacity, 0.0f, 1.0f))
-                                    visibleLayer->setOpacity(opacity);
-
-                                if (visibleLayer->options().maxVisibleRange().isSet())
-                                {
-                                    float value = visibleLayer->getMaxVisibleRange();
-                                    if (value < FLT_MAX) {
-                                        if (ImGuiLTable::SliderFloat("Max range", &value, 0.0f, _maxMaxRanges[layer]))
-                                            visibleLayer->setMaxVisibleRange(value);
-                                    }
-                                }
-
-                                if (visibleLayer->options().minVisibleRange().isSet())
-                                {
-                                    float value = visibleLayer->getMinVisibleRange();
-                                    if (ImGuiLTable::SliderFloat("Min range", &value, 0.0f, _maxMinRanges[layer]))
-                                        visibleLayer->setMinVisibleRange(value);
-                                }
-
-                                if (visibleLayer->options().attenuationRange().isSet())
-                                {
-                                    float value = visibleLayer->getAttenuationRange();
-                                    if (ImGuiLTable::SliderFloat("Attenuation range", &value, 0.0f, _maxAttenRanges[layer]))
-                                        visibleLayer->setAttenuationRange(value);
-                                }
-
-                                bool debugView = visibleLayer->getEnableDebugView();
-                                if (ImGuiLTable::Checkbox("Highlight", &debugView)) {
-                                    visibleLayer->setEnableDebugView(debugView);
-                                }
+                                float value = visibleLayer->getAttenuationRange();
+                                if (ImGuiLTable::SliderFloat("Attenuation range", &value, 0.0f, _maxAttenRanges[layer]))
+                                    visibleLayer->setAttenuationRange(value);
                             }
+
+                            bool debugView = visibleLayer->getEnableDebugView();
+                            if (ImGuiLTable::Checkbox("Highlight", &debugView)) {
+                                visibleLayer->setEnableDebugView(debugView);
+                            }
+                        }
 
 #ifdef OSGEARTH_HAVE_CESIUM_NODEKIT
-                            auto cesiumNativeLayer = dynamic_cast<osgEarth::Cesium::CesiumNative3DTilesLayer*>(layer);
-                            if (cesiumNativeLayer)
-                            {
-                                float sse = cesiumNativeLayer->getMaximumScreenSpaceError();
-                                ImGui::PushID("sse");
-                                ImGuiLTable::SliderFloat("SSE", &sse, 0.0f, 50.0f);
-                                cesiumNativeLayer->setMaximumScreenSpaceError(sse);
-                                ImGui::PopID();
-                            }
+                        auto cesiumNativeLayer = dynamic_cast<osgEarth::Cesium::CesiumNative3DTilesLayer*>(layer);
+                        if (cesiumNativeLayer)
+                        {
+                            float sse = cesiumNativeLayer->getMaximumScreenSpaceError();
+                            ImGui::PushID("sse");
+                            ImGuiLTable::SliderFloat("SSE", &sse, 0.0f, 50.0f);
+                            cesiumNativeLayer->setMaximumScreenSpaceError(sse);
+                            ImGui::PopID();
+                        }
 #endif
 
-                            auto threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(layer);
-                            if (threedTiles)
+                        auto threedTiles = dynamic_cast<osgEarth::Contrib::ThreeDTilesLayer*>(layer);
+                        if (threedTiles)
+                        {
+                            float sse = threedTiles->getMaximumScreenSpaceError();
+                            ImGui::PushID("sse");
+                            ImGuiLTable::SliderFloat("SSE", &sse, 0.0f, 50.0f);
+                            threedTiles->setMaximumScreenSpaceError(sse);
+                            ImGui::PopID();
+
+                            ImGui::PushID("debugVolumes");
+                            bool showBoundingVolumes = threedTiles->getTilesetNode()->getShowBoundingVolumes();
+                            ImGuiLTable::Checkbox("Show debug volumes", &showBoundingVolumes);
+                            threedTiles->getTilesetNode()->setShowBoundingVolumes(showBoundingVolumes);
+                            ImGui::PopID();
+
+                            ImGui::PushID("debugColors");
+                            bool colorPerTile = threedTiles->getTilesetNode()->getColorPerTile();
+                            ImGuiLTable::Checkbox("Show color per tile", &colorPerTile);
+                            threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
+                            ImGui::PopID();
+                        }
+
+                        auto mapboxGLLayer = dynamic_cast<MapBoxGLImageLayer*>(layer);
+                        if (mapboxGLLayer)
+                        {
+                            bool disableText = mapboxGLLayer->getDisableText();
+                            if (ImGuiLTable::Checkbox("Disable text", &disableText))
                             {
-                                float sse = threedTiles->getMaximumScreenSpaceError();
-                                ImGui::PushID("sse");
-                                ImGuiLTable::SliderFloat("SSE", &sse, 0.0f, 50.0f);
-                                threedTiles->setMaximumScreenSpaceError(sse);
-                                ImGui::PopID();
-
-                                ImGui::PushID("debugVolumes");
-                                bool showBoundingVolumes = threedTiles->getTilesetNode()->getShowBoundingVolumes();
-                                ImGuiLTable::Checkbox("Show debug volumes", &showBoundingVolumes);
-                                threedTiles->getTilesetNode()->setShowBoundingVolumes(showBoundingVolumes);
-                                ImGui::PopID();
-
-                                ImGui::PushID("debugColors");
-                                bool colorPerTile = threedTiles->getTilesetNode()->getColorPerTile();
-                                ImGuiLTable::Checkbox("Show color per tile", &colorPerTile);
-                                threedTiles->getTilesetNode()->setColorPerTile(colorPerTile);
-                                ImGui::PopID();
+                                mapboxGLLayer->setDisableText(disableText);
                             }
 
-                            auto mapboxGLLayer = dynamic_cast<MapBoxGLImageLayer*>(layer);
-                            if (mapboxGLLayer)
+                            float pixelScale = mapboxGLLayer->getPixelScale();
+                            if (ImGuiLTable::InputFloat("Pixel Scale", &pixelScale))
                             {
-                                bool disableText = mapboxGLLayer->getDisableText();
-                                if (ImGuiLTable::Checkbox("Disable text", &disableText))
-                                {
-                                    mapboxGLLayer->setDisableText(disableText);
-                                }
+                                mapboxGLLayer->setPixelScale(pixelScale);
+                            }
+                        }
 
-                                float pixelScale = mapboxGLLayer->getPixelScale();
-                                if (ImGuiLTable::InputFloat("Pixel Scale", &pixelScale))
-                                {
-                                    mapboxGLLayer->setPixelScale(pixelScale);
-                                }
+                        if (tileLayer)
+                        {
+                            if (tileLayer->options().minLevel().isSet())
+                            {
+                                ImGuiLTable::Text("Min level", "%d", tileLayer->getMinLevel());
+                            }
+                            if (tileLayer->options().maxLevel().isSet())
+                            {
+                                ImGuiLTable::Text("Max level", "%d", tileLayer->getMaxLevel());
+                            }
+                            if (tileLayer->options().maxDataLevel().isSet())
+                            {
+                                ImGuiLTable::Text("Max data level", "%d", tileLayer->getMaxDataLevel());
                             }
 
-                            if (tileLayer)
+                            if (tileLayer->options().upsample().isSet())
                             {
-                                if (tileLayer->options().minLevel().isSet())
-                                {
-                                    ImGuiLTable::Text("Min level", "%d", tileLayer->getMinLevel());
-                                }
-                                if (tileLayer->options().maxLevel().isSet())
-                                {
-                                    ImGuiLTable::Text("Max level", "%d", tileLayer->getMaxLevel());
-                                }
-                                if (tileLayer->options().maxDataLevel().isSet())
-                                {
-                                    ImGuiLTable::Text("Max data level", "%d", tileLayer->getMaxDataLevel());
-                                }
-
-                                if (tileLayer->options().upsample().isSet())
-                                {
-                                    bool upsampling = tileLayer->options().upsample().value();
-                                    ImGuiLTable::Text("Upsampling", "%s", (upsampling ? "ON" : "off"));
-                                }
+                                bool upsampling = tileLayer->options().upsample().value();
+                                ImGuiLTable::Text("Upsampling", "%s", (upsampling ? "ON" : "off"));
                             }
-                            
-                            auto report = layer->reportStats();
-                            for (auto& kv : report)
-                            {
-                                ImGuiLTable::Text(kv.first.c_str(), "%s", kv.second.c_str()); // (kv.first + ": " + kv.second).c_str());
-                            }
+                        }
 
-                            const DateTimeExtent& dtextent = layer->getDateTimeExtent();
-                            if (dtextent.valid())
+                        auto report = layer->reportStats();
+                        for (auto& kv : report)
+                        {
+                            ImGuiLTable::Text(kv.first.c_str(), "%s", kv.second.c_str()); // (kv.first + ": " + kv.second).c_str());
+                        }
+
+                        const DateTimeExtent& dtextent = layer->getDateTimeExtent();
+                        if (dtextent.valid())
+                        {
+                            //ImGui::Text("Time Series:");
+                            ImGuiLTable::Text("Start time", "%s", dtextent.getStart().asISO8601().c_str());
+                            ImGuiLTable::Text("End time", "%s", dtextent.getEnd().asISO8601().c_str());
+                        }
+
+                        ImGuiLTable::End();
+
+                        if (imageLayer)
+                        {
+                            bool queryOn = (_mouseOverImageLayer == imageLayer);
+                            if (ImGui::Checkbox("Show value under mouse", &queryOn))
                             {
-                                //ImGui::Text("Time Series:");
-                                ImGuiLTable::Text("Start time", "%s", dtextent.getStart().asISO8601().c_str());
-                                ImGuiLTable::Text("End time", "%s", dtextent.getEnd().asISO8601().c_str());
+                                _mouseOverImageLayer = queryOn ? imageLayer : nullptr;
                             }
 
-                            ImGuiLTable::End();
-
-                            if (imageLayer)
+                            if (_mouseOverImageLayer == imageLayer)
                             {
-                                bool queryOn = (_mouseOverImageLayer == imageLayer);
-                                if (ImGui::Checkbox("Show value under mouse", &queryOn))
+                                if (_imageLayerValueUnderMouse.available())
                                 {
-                                    _mouseOverImageLayer = queryOn ? imageLayer : nullptr;
-                                }
-
-                                if (_mouseOverImageLayer == imageLayer)
-                                {
-                                    if (_imageLayerValueUnderMouse.available())
+                                    if (_imageLayerValueUnderMouse->isOK())
                                     {
-                                        if (_imageLayerValueUnderMouse->isOK())
+                                        auto& value = _imageLayerValueUnderMouse->value();
+                                        if (value.dataType == GL_UNSIGNED_BYTE)
                                         {
-                                            auto& value = _imageLayerValueUnderMouse->value();
-                                            if (value.dataType == GL_UNSIGNED_BYTE)
+                                            auto& p = value.pixel;
+                                            if (value.pixelFormat == GL_RED)
                                             {
-                                                auto& p = value.pixel;
-                                                if (value.pixelFormat == GL_RED)
-                                                {
-                                                    ImGui::Text(" f32 (%.2f)", p.r());
-                                                    ImGui::Text(" int (%d)", (int)(255.f * p.r()));
-                                                    ImGui::Text(" hex (%.2X)", (int)(255.f * p.r()));
-                                                }
-                                                if (value.pixelFormat == GL_RG)
-                                                {
-                                                    ImGui::Text(" f32 (%.2f %.2f)", p.r(), p.g());
-                                                    ImGui::Text(" int (%d %d)", (int)(255.f * p.r()), (int)(255.f * p.g()));
-                                                    ImGui::Text(" hex (%.2X %.2X)", (int)(255.f * p.r()), (int)(255.f * p.g()));
-                                                }
-                                                else if (value.pixelFormat == GL_RGB)
-                                                {
-                                                    ImGui::Text(" f32 (%.2f %.2f %.2f)", p.r(), p.g(), p.b());
-                                                    ImGui::Text(" int (%d %d %d)", (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()));
-                                                    ImGui::Text(" hex (%.2X %.2X %.2X)", (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()));
-                                                }
-                                                else
-                                                {
-                                                    ImGui::Text(" f32 (%.2f %.2f %.2f %.2f)", p.r(), p.g(), p.b(), p.a());
-                                                    ImGui::Text(" int (%d %d %d %d)", (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()), (int)(255.0f * p.a()));
-                                                    ImGui::Text(" hex (%.2X %.2X %.2X %.2X)", (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()), (int)(255.0f * p.a()));
-                                                }
+                                                ImGui::Text(" f32 (%.2f)", p.r());
+                                                ImGui::Text(" int (%d)", (int)(255.f * p.r()));
+                                                ImGui::Text(" hex (%.2X)", (int)(255.f * p.r()));
                                             }
-                                            else if (value.dataType == GL_FLOAT)
+                                            if (value.pixelFormat == GL_RG)
                                             {
-                                                int v = (int)value.pixel.r();
-                                                ImGui::Text(" f32 (%0.4f)", value.pixel.r());
-                                                ImGui::Text(" int (%d)", v);
-                                                ImGui::Text(" hex (%#.8X)", v);
+                                                ImGui::Text(" f32 (%.2f %.2f)", p.r(), p.g());
+                                                ImGui::Text(" int (%d %d)", (int)(255.f * p.r()), (int)(255.f * p.g()));
+                                                ImGui::Text(" hex (%.2X %.2X)", (int)(255.f * p.r()), (int)(255.f * p.g()));
+                                            }
+                                            else if (value.pixelFormat == GL_RGB)
+                                            {
+                                                ImGui::Text(" f32 (%.2f %.2f %.2f)", p.r(), p.g(), p.b());
+                                                ImGui::Text(" int (%d %d %d)", (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()));
+                                                ImGui::Text(" hex (%.2X %.2X %.2X)", (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()));
+                                            }
+                                            else
+                                            {
+                                                ImGui::Text(" f32 (%.2f %.2f %.2f %.2f)", p.r(), p.g(), p.b(), p.a());
+                                                ImGui::Text(" int (%d %d %d %d)", (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()), (int)(255.0f * p.a()));
+                                                ImGui::Text(" hex (%.2X %.2X %.2X %.2X)", (int)(255.f * p.r()), (int)(255.f * p.g()), (int)(255.0f * p.b()), (int)(255.0f * p.a()));
                                             }
                                         }
-                                        else
+                                        else if (value.dataType == GL_FLOAT)
                                         {
-                                            ImGui::Text("%s", _imageLayerValueUnderMouse->message().c_str());
+                                            int v = (int)value.pixel.r();
+                                            ImGui::Text(" f32 (%0.4f)", value.pixel.r());
+                                            ImGui::Text(" int (%d)", v);
+                                            ImGui::Text(" hex (%#.8X)", v);
                                         }
                                     }
                                     else
                                     {
-                                        ImGui::Text("  (searching)");
-                                        ImGui::Text("");
-                                    }
-                                }
-                            }
-
-                            if (visibleLayer)
-                            {
-                                if ((extent.isValid() && !extent.isWholeEarth()) ||
-                                    (layer->getNode() && layer->getNode()->getBound().valid()) ||
-                                    (dtextent.valid()))
-                                {
-                                    if (ImGui::Button("Zoom"))
-                                    {
-                                        if (extent.isValid())
-                                        {
-                                            std::vector<GeoPoint> points;
-                                            points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
-                                            points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
-
-                                            ViewFitter fitter(_mapNode->getMap()->getSRS(), camera);
-                                            Viewpoint vp;
-                                            if (fitter.createViewpoint(points, vp))
-                                            {
-                                                auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
-                                                if (manip) manip->setViewpoint(vp, 2.0);
-                                            }
-                                        }
-                                        else if (layer->getNode())
-                                        {
-                                            ViewFitter fitter(map->getSRS(), camera);
-                                            Viewpoint vp;
-                                            if (fitter.createViewpoint(layer->getNode(), vp))
-                                            {
-                                                auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
-                                                if (manip) manip->setViewpoint(vp, 2.0);
-                                            }
-                                        }
-
-                                        if (dtextent.valid())
-                                        {
-                                            auto sky = osgEarth::findRelativeNodeOfType<SkyNode>(_mapNode.get());
-                                            if (sky)
-                                            {
-                                                sky->setDateTime(dtextent.getStart());
-                                            }
-                                        }
-                                    }
-
-                                    ImGui::SameLine();
-                                }
-
-                                if (ImGui::Button("Refresh"))
-                                {                                    
-                                    layer->dirty();
-                                    auto cp = layer->getCachePolicy();
-                                    cp.minTime() = DateTime().asTimeStamp();
-                                    layer->setCachePolicy(cp);
-                                    std::vector<const Layer*> layers = { layer };
-                                    _mapNode->getTerrainEngine()->invalidateRegion(layers, GeoExtent());
-                                }
-
-                                if (layer->isOpen())
-                                {
-                                    ImGui::SameLine();
-                                    if (ImGui::Button("Close"))
-                                    {
-                                        layer->close();
-                                    }
-                                }
-
-                                ImGui::SameLine();
-                                if (ImGui::Button("JSON"))
-                                {
-                                    auto conf = layer->getConfig();
-                                    std::cout << conf.toJSON(true) << std::endl;
-                                }
-                            }
-                        }
-
-                        else if (layer->getStatus().isError() && layer->getStatus().message() != "Layer closed")
-                        {
-                            ImGui::TextWrapped(layer->getStatus().message().c_str());
-                        }
-
-                        ImGui::Unindent();
-                    }
-
-                    ImGui::PopID();
-
-                    if (stylePushed)
-                        ImGui::PopStyleColor(1);
-
-                    ImGui::Separator();
-                }
-            }
-
-            void drawAddLayerMenu(osg::RenderInfo& ri)
-            {
-                osg::Camera* camera = ri.getCurrentCamera();
-                if (ImGui::BeginMenuBar())
-                {
-                    if (ImGui::BeginMenu("Add Layer"))
-                    {
-#ifdef HAS_PFD
-                        if (ImGui::MenuItem("Local File"))
-                        {
-                            auto f = pfd::open_file("Choose files to read", pfd::path::home(),
-                                { "All Files", "*" },
-                                pfd::opt::multiselect);
-
-                            if (f.result().size() > 0)
-                            {
-                                auto m = pfd::message("Imagery",
-                                    "Are these files imagery?  Select No for elevation.",
-                                    pfd::choice::yes_no,
-                                    pfd::icon::question);
-                                bool imagery = m.result() == pfd::button::yes;
-
-                                _mapNode->getMap()->beginUpdate();
-
-                                if (imagery)
-                                {
-                                    for (auto const& name : f.result())
-                                    {
-                                        std::string ext = osgDB::getLowerCaseFileExtension(name);
-                                        if (ext == "mbtiles")
-                                        {
-#ifdef OSGEARTH_HAVE_MBTILES
-                                            MBTilesImageLayer* mbtilesImage = new MBTilesImageLayer;
-                                            mbtilesImage->setName(osgDB::getSimpleFileName(name));
-                                            mbtilesImage->setURL(name);
-                                            _mapNode->getMap()->addLayer(mbtilesImage);
-#else
-                                            OE_WARN << "MBTiles driver not available" << std::endl;
-#endif
-                                        }
-                                        else
-
-                                        {
-                                            GDALImageLayer* gdalImage = new GDALImageLayer;
-                                            gdalImage->setName(osgDB::getSimpleFileName(name));
-                                            gdalImage->setURL(name);
-                                            _mapNode->getMap()->addLayer(gdalImage);
-                                        }
+                                        ImGui::Text("%s", _imageLayerValueUnderMouse->message().c_str());
                                     }
                                 }
                                 else
                                 {
-                                    for (auto const& name : f.result())
+                                    ImGui::Text("  (searching)");
+                                    ImGui::Text("");
+                                }
+                            }
+                        }
+
+                        if (visibleLayer)
+                        {
+                            if ((extent.isValid() && !extent.isWholeEarth()) ||
+                                (layer->getNode() && layer->getNode()->getBound().valid()) ||
+                                (dtextent.valid()))
+                            {
+                                if (ImGui::Button("Zoom"))
+                                {
+                                    if (extent.isValid())
                                     {
-                                        std::string ext = osgDB::getLowerCaseFileExtension(name);
-                                        if (ext == "mbtiles")
+                                        std::vector<GeoPoint> points;
+                                        points.push_back(GeoPoint(extent.getSRS(), extent.west(), extent.south()));
+                                        points.push_back(GeoPoint(extent.getSRS(), extent.east(), extent.north()));
+
+                                        ViewFitter fitter(_mapNode->getMap()->getSRS(), camera);
+                                        Viewpoint vp;
+                                        if (fitter.createViewpoint(points, vp))
                                         {
-#ifdef OSGEARTH_HAVE_MBTILES
-                                            MBTilesElevationLayer* mbtilesElevation = new MBTilesElevationLayer;
-                                            mbtilesElevation->setName(osgDB::getSimpleFileName(name));
-                                            mbtilesElevation->setURL(name);
-                                            _mapNode->getMap()->addLayer(mbtilesElevation);
-#else
-                                            OE_WARN << "MBTiles driver not available" << std::endl;
-#endif
+                                            auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                                            if (manip) manip->setViewpoint(vp, 2.0);
                                         }
-                                        else
+                                    }
+                                    else if (layer->getNode())
+                                    {
+                                        ViewFitter fitter(map->getSRS(), camera);
+                                        Viewpoint vp;
+                                        if (fitter.createViewpoint(layer->getNode(), vp))
                                         {
-                                            GDALElevationLayer* gdalElevation = new GDALElevationLayer;
-                                            gdalElevation->setName(osgDB::getSimpleFileName(name));
-                                            gdalElevation->setURL(name);
-                                            _mapNode->getMap()->addLayer(gdalElevation);
+                                            auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                                            if (manip) manip->setViewpoint(vp, 2.0);
+                                        }
+                                    }
+
+                                    if (dtextent.valid())
+                                    {
+                                        auto sky = osgEarth::findRelativeNodeOfType<SkyNode>(_mapNode.get());
+                                        if (sky)
+                                        {
+                                            sky->setDateTime(dtextent.getStart());
                                         }
                                     }
                                 }
-                                _mapNode->getMap()->endUpdate();
+
+                                ImGui::SameLine();
+                            }
+
+                            if (ImGui::Button("Refresh"))
+                            {
+                                layer->dirty();
+                                auto cp = layer->getCachePolicy();
+                                cp.minTime() = DateTime().asTimeStamp();
+                                layer->setCachePolicy(cp);
+                                std::vector<const Layer*> layers = { layer };
+                                _mapNode->getTerrainEngine()->invalidateRegion(layers, GeoExtent());
+                            }
+
+                            if (layer->isOpen())
+                            {
+                                ImGui::SameLine();
+                                if (ImGui::Button("Close"))
+                                {
+                                    layer->close();
+                                }
+                            }
+
+                            ImGui::SameLine();
+                            if (ImGui::Button("JSON"))
+                            {
+                                auto conf = layer->getConfig();
+                                std::cout << conf.toJSON(true) << std::endl;
                             }
                         }
-#endif
-                        if (ImGui::MenuItem("TMS")) _addTMSDialog.visible = true;
-                        if (ImGui::MenuItem("XYZ")) _addXYZDialog.visible = true;
-                        if (ImGui::MenuItem("WMS")) _addWMSDialog.visible = true;
-
-                        drawUsefulLayers();
-
-                        ImGui::EndMenu();
                     }
-                    ImGui::EndMenuBar();
+
+                    else if (layer->getStatus().isError() && layer->getStatus().message() != "Layer closed")
+                    {
+                        ImGui::TextWrapped(layer->getStatus().message().c_str());
+                    }
+
+                    ImGui::Unindent();
                 }
 
-                // Draw the add dialogs
-                _addXYZDialog.draw(_mapNode.get());
-                _addTMSDialog.draw(_mapNode.get());
-                _addWMSDialog.draw(_mapNode.get());
-            }
+                ImGui::PopID();
 
-            void drawUsefulLayers()
-            {
+                if (stylePushed)
+                    ImGui::PopStyleColor(1);
+
                 ImGui::Separator();
-
-                //if (ImGui::BeginMenu("Useful Layers"))
-                {
-                    // ReadyMap Imagery
-                    if (_mapNode->getMap()->getLayerByName("ReadyMap Imagery") == nullptr)
-                    {
-                        if (ImGui::MenuItem("ReadyMap Imagery"))
-                        {
-                            TMSImageLayer* readymap = new TMSImageLayer();
-                            readymap->setName("ReadyMap Imagery");
-                            readymap->setURL("https://readymap.org/readymap/tiles/1.0.0/7/");
-                            _mapNode->getMap()->addLayer(readymap);
-                        }
-                    }
-
-                    // ReadyMap Elevation
-                    if (_mapNode->getMap()->getLayerByName("ReadyMap Elevation") == nullptr)
-                    {
-                        if (ImGui::MenuItem("ReadyMap Elevation"))
-                        {
-                            TMSElevationLayer* readymap = new TMSElevationLayer();
-                            readymap->setName("ReadyMap Elevation");
-                            readymap->setURL("https://readymap.org/readymap/tiles/1.0.0/116/");
-                            _mapNode->getMap()->addLayer(readymap);
-                        }
-                    }
-
-                    // OpenStreetMap
-                    if (_mapNode->getMap()->getLayerByName("OpenStreetMap") == nullptr)
-                    {
-                        if (ImGui::MenuItem("OpenStreetMap"))
-                        {
-                            XYZImageLayer* osm = new XYZImageLayer();
-                            osm->setName("OpenStreetMap");
-                            osm->setURL("https://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png");
-                            osm->setProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile());
-                            osm->setAttribution("&#169;OpenStreetMap contributors");
-                            _mapNode->getMap()->addLayer(osm);
-                        }
-                    }
-
-                    if (_mapNode->getMap()->getLayer<DebugImageLayer>() == nullptr)
-                    {
-                        if (ImGui::MenuItem("Debug"))
-                        {
-                            DebugImageLayer* debugImage = new DebugImageLayer;
-                            debugImage->setName("Debug");
-                            _mapNode->getMap()->addLayer(debugImage);
-                        }
-                    }
-
-                    //ImGui::EndMenu();
-                }
             }
+        }
 
-            void onMove(osg::View* view, float x, float y)
+        void drawAddLayerMenu(osg::RenderInfo& ri)
+        {
+            osg::Camera* camera = ri.getCurrentCamera();
+            if (ImGui::BeginMenuBar())
             {
-                if (_mouseOverImageLayer)
+                if (ImGui::BeginMenu("Add Layer"))
                 {
-                    _imageLayerValueUnderMouse.reset();
-
-                    TerrainTile* tile = _mapNode->getTerrain()->getTerrainTileUnderMouse(view, x, y);
-                    if (tile)
+#ifdef HAS_PFD
+                    if (ImGui::MenuItem("Local File"))
                     {
-                        GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
-                        TileKey key = _mouseOverImageLayer->getProfile()->createTileKey(p, tile->getKey().getLOD());
-                        key = _mouseOverImageLayer->getBestAvailableTileKey(key);
+                        auto f = pfd::open_file("Choose files to read", pfd::path::home(),
+                            { "All Files", "*" },
+                            pfd::opt::multiselect);
 
-                        if (key.valid())
+                        if (f.result().size() > 0)
                         {
-                            auto task = [this, key, p](Cancelable& c)
-                                {
-                                    ValueUnderMouse value;
-                                    osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(&c);
-                                    GeoImage g = _mouseOverImageLayer->createImage(key, prog.get());
-                                    if (g.valid())
-                                    {
-                                        g.getReader().setBilinear(false);
-                                        if (g.read(value.pixel, p))
-                                        {
-                                            value.pixelFormat = g.getImage()->getPixelFormat();
-                                            value.dataType = g.getImage()->getDataType();
-                                            return Result<ValueUnderMouse>(value);
-                                        }
-                                    }
-                                    return Result<ValueUnderMouse>(Status::Error("No value"));
-                                };
+                            auto m = pfd::message("Imagery",
+                                "Are these files imagery?  Select No for elevation.",
+                                pfd::choice::yes_no,
+                                pfd::icon::question);
+                            bool imagery = m.result() == pfd::button::yes;
 
-                            _imageLayerValueUnderMouse = jobs::dispatch(task);
+                            _mapNode->getMap()->beginUpdate();
+
+                            if (imagery)
+                            {
+                                for (auto const& name : f.result())
+                                {
+                                    std::string ext = osgDB::getLowerCaseFileExtension(name);
+                                    if (ext == "mbtiles")
+                                    {
+#ifdef OSGEARTH_HAVE_MBTILES
+                                        MBTilesImageLayer* mbtilesImage = new MBTilesImageLayer;
+                                        mbtilesImage->setName(osgDB::getSimpleFileName(name));
+                                        mbtilesImage->setURL(name);
+                                        _mapNode->getMap()->addLayer(mbtilesImage);
+#else
+                                        OE_WARN << "MBTiles driver not available" << std::endl;
+#endif
+                                    }
+                                    else
+
+                                    {
+                                        GDALImageLayer* gdalImage = new GDALImageLayer;
+                                        gdalImage->setName(osgDB::getSimpleFileName(name));
+                                        gdalImage->setURL(name);
+                                        _mapNode->getMap()->addLayer(gdalImage);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                for (auto const& name : f.result())
+                                {
+                                    std::string ext = osgDB::getLowerCaseFileExtension(name);
+                                    if (ext == "mbtiles")
+                                    {
+#ifdef OSGEARTH_HAVE_MBTILES
+                                        MBTilesElevationLayer* mbtilesElevation = new MBTilesElevationLayer;
+                                        mbtilesElevation->setName(osgDB::getSimpleFileName(name));
+                                        mbtilesElevation->setURL(name);
+                                        _mapNode->getMap()->addLayer(mbtilesElevation);
+#else
+                                        OE_WARN << "MBTiles driver not available" << std::endl;
+#endif
+                                    }
+                                    else
+                                    {
+                                        GDALElevationLayer* gdalElevation = new GDALElevationLayer;
+                                        gdalElevation->setName(osgDB::getSimpleFileName(name));
+                                        gdalElevation->setURL(name);
+                                        _mapNode->getMap()->addLayer(gdalElevation);
+                                    }
+                                }
+                            }
+                            _mapNode->getMap()->endUpdate();
                         }
+                    }
+#endif
+                    if (ImGui::MenuItem("TMS")) _addTMSDialog.visible = true;
+                    if (ImGui::MenuItem("XYZ")) _addXYZDialog.visible = true;
+                    if (ImGui::MenuItem("WMS")) _addWMSDialog.visible = true;
+
+                    drawUsefulLayers();
+
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMenuBar();
+            }
+
+            // Draw the add dialogs
+            _addXYZDialog.draw(_mapNode.get());
+            _addTMSDialog.draw(_mapNode.get());
+            _addWMSDialog.draw(_mapNode.get());
+        }
+
+        void drawUsefulLayers()
+        {
+            ImGui::Separator();
+
+            //if (ImGui::BeginMenu("Useful Layers"))
+            {
+                // ReadyMap Imagery
+                if (_mapNode->getMap()->getLayerByName("ReadyMap Imagery") == nullptr)
+                {
+                    if (ImGui::MenuItem("ReadyMap Imagery"))
+                    {
+                        TMSImageLayer* readymap = new TMSImageLayer();
+                        readymap->setName("ReadyMap Imagery");
+                        readymap->setURL("https://readymap.org/readymap/tiles/1.0.0/7/");
+                        _mapNode->getMap()->addLayer(readymap);
+                    }
+                }
+
+                // ReadyMap Elevation
+                if (_mapNode->getMap()->getLayerByName("ReadyMap Elevation") == nullptr)
+                {
+                    if (ImGui::MenuItem("ReadyMap Elevation"))
+                    {
+                        TMSElevationLayer* readymap = new TMSElevationLayer();
+                        readymap->setName("ReadyMap Elevation");
+                        readymap->setURL("https://readymap.org/readymap/tiles/1.0.0/116/");
+                        _mapNode->getMap()->addLayer(readymap);
+                    }
+                }
+
+                // OpenStreetMap
+                if (_mapNode->getMap()->getLayerByName("OpenStreetMap") == nullptr)
+                {
+                    if (ImGui::MenuItem("OpenStreetMap"))
+                    {
+                        XYZImageLayer* osm = new XYZImageLayer();
+                        osm->setName("OpenStreetMap");
+                        osm->setURL("https://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png");
+                        osm->setProfile(osgEarth::Registry::instance()->getSphericalMercatorProfile());
+                        osm->setAttribution("&#169;OpenStreetMap contributors");
+                        _mapNode->getMap()->addLayer(osm);
+                    }
+                }
+
+                if (_mapNode->getMap()->getLayer<DebugImageLayer>() == nullptr)
+                {
+                    if (ImGui::MenuItem("Debug"))
+                    {
+                        DebugImageLayer* debugImage = new DebugImageLayer;
+                        debugImage->setName("Debug");
+                        _mapNode->getMap()->addLayer(debugImage);
+                    }
+                }
+
+                //ImGui::EndMenu();
+            }
+        }
+
+        void onMove(osg::View* view, float x, float y)
+        {
+            if (_mouseOverImageLayer)
+            {
+                _imageLayerValueUnderMouse.reset();
+
+                TerrainTile* tile = _mapNode->getTerrain()->getTerrainTileUnderMouse(view, x, y);
+                if (tile)
+                {
+                    GeoPoint p = _mapNode->getGeoPointUnderMouse(view, x, y);
+                    TileKey key = _mouseOverImageLayer->getProfile()->createTileKey(p, tile->getKey().getLOD());
+                    key = _mouseOverImageLayer->getBestAvailableTileKey(key);
+
+                    if (key.valid())
+                    {
+                        auto task = [this, key, p](Cancelable& c)
+                            {
+                                ValueUnderMouse value;
+                                osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(&c);
+                                GeoImage g = _mouseOverImageLayer->createImage(key, prog.get());
+                                if (g.valid())
+                                {
+                                    g.getReader().setBilinear(false);
+                                    if (g.read(value.pixel, p))
+                                    {
+                                        value.pixelFormat = g.getImage()->getPixelFormat();
+                                        value.dataType = g.getImage()->getDataType();
+                                        return Result<ValueUnderMouse>(value);
+                                    }
+                                }
+                                return Result<ValueUnderMouse>(Status::Error("No value"));
+                            };
+
+                        _imageLayerValueUnderMouse = jobs::dispatch(task);
                     }
                 }
             }
-        };
-    }
+        }
+    };
 }
+

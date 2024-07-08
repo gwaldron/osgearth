@@ -16,203 +16,196 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_NETWORK_MONITOR_GUI
-#define OSGEARTH_IMGUI_NETWORK_MONITOR_GUI
-
+#pragma once
+#include <osgEarth/ImGui/ImGuiApp>
 #include <osgEarth/NetworkMonitor>
-#include "ImGui"
 
-namespace osgEarth {
-    namespace GUI
+namespace osgEarth
+{
+    class NetworkMonitorGUI : public ImGuiPanel
     {
-
-        class NetworkMonitorGUI : public BaseGUI
+    public:
+        NetworkMonitorGUI() :
+            ImGuiPanel("Network Monitor"),
+            _showOnlyActiveRequests(true),
+            _showOnlyFailedRequests(false)
         {
-        public:
-            NetworkMonitorGUI() :
-                BaseGUI("Network Monitor"),
-                _showOnlyActiveRequests(true),
-                _showOnlyFailedRequests(false)
-            {
-                memset(_filter, 0, sizeof(_filter));
-            }
+            memset(_filter, 0, sizeof(_filter));
+        }
 
-            void draw(osg::RenderInfo& ri) override
-            {
-                if (!isVisible())
-                    return;
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible())
+                return;
 
-                if (ImGui::Begin(name(), visible()))
+            if (ImGui::Begin(name(), visible()))
+            {
+                NetworkMonitor::setEnabled(true);
+
+                NetworkMonitor::Requests requests;
+                NetworkMonitor::getRequests(requests);
+
+                // Compute the time duration for all of the requests
+                osg::Timer_t startTime;
+                double totalTime = 0.0;
+                if (!requests.empty())
                 {
-                    NetworkMonitor::setEnabled(true);
-
-                    NetworkMonitor::Requests requests;
-                    NetworkMonitor::getRequests(requests);
-
-                    // Compute the time duration for all of the requests
-                    osg::Timer_t startTime;
-                    double totalTime = 0.0;
-                    if (!requests.empty())
+                    startTime = requests.begin()->second.startTime;
+                    if (requests.rbegin()->second.isComplete)
                     {
-                        startTime = requests.begin()->second.startTime;
-                        if (requests.rbegin()->second.isComplete)
-                        {
-                            totalTime = osg::Timer::instance()->delta_m(startTime, requests.rbegin()->second.endTime);
-                        }
-                        else
-                        {
-                            totalTime = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
-                        }
+                        totalTime = osg::Timer::instance()->delta_m(startTime, requests.rbegin()->second.endTime);
                     }
-
-                    ImGui::Checkbox("Active", &_showOnlyActiveRequests);
-                    
-                    ImGui::SameLine();
-                    ImGui::Checkbox("Failed", &_showOnlyFailedRequests);
-
-                    ImGui::SameLine();
-                    if (ImGui::Button("Clear"))
+                    else
                     {
-                        NetworkMonitor::clear();
+                        totalTime = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
                     }
+                }
 
-                    ImGui::SameLine();
-                    if (ImGui::Button("Save"))
+                ImGui::Checkbox("Active", &_showOnlyActiveRequests);
+
+                ImGui::SameLine();
+                ImGui::Checkbox("Failed", &_showOnlyFailedRequests);
+
+                ImGui::SameLine();
+                if (ImGui::Button("Clear"))
+                {
+                    NetworkMonitor::clear();
+                }
+
+                ImGui::SameLine();
+                if (ImGui::Button("Save"))
+                {
+                    NetworkMonitor::saveCSV(requests, "network_requests.csv");
+                }
+
+                ImGui::SameLine();
+                ImGui::InputText("Filter", _filter, 128);
+
+                ImGui::Text("%d requests", requests.size());
+                ImGui::SameLine();
+                ImGui::Text("Total time = %.1f s", totalTime / 1000.0);
+
+                ImGui::BeginChild("Columns");
+                ImGui::Columns(5, "requests");
+
+                ImGui::SetColumnWidth(0, 300.f);
+                ImGui::SetColumnWidth(1, 100.f);
+                ImGui::SetColumnWidth(2, 100.f);
+                ImGui::SetColumnWidth(3, 100.f);
+                //ImGui::SetColumnWidth(0, 100.f);
+
+
+                ImGui::Separator();
+                //ImGui::Text("Start time"); ImGui::NextColumn();
+                //ImGui::Text("End time"); ImGui::NextColumn();
+                ImGui::Text("Layer"); ImGui::NextColumn();
+                ImGui::Text("Time(ms)"); ImGui::NextColumn();
+                ImGui::Text("Type"); ImGui::NextColumn();
+                ImGui::Text("Status"); ImGui::NextColumn();
+                ImGui::Text("Path"); ImGui::NextColumn();
+                ImGui::Separator();
+
+
+                std::string filterLower = osgEarth::toLower(_filter);
+
+                for (NetworkMonitor::Requests::iterator itr = requests.begin(); itr != requests.end(); ++itr)
+                {
+                    if (!_showOnlyActiveRequests || !itr->second.isComplete)
                     {
-                        NetworkMonitor::saveCSV(requests, "network_requests.csv");
-                    }
-
-                    ImGui::SameLine();
-                    ImGui::InputText("Filter", _filter, 128);
-
-                    ImGui::Text("%d requests", requests.size());
-                    ImGui::SameLine();
-                    ImGui::Text("Total time = %.1f s", totalTime / 1000.0);
-
-                    ImGui::BeginChild("Columns");
-                    ImGui::Columns(5, "requests");
-
-                    ImGui::SetColumnWidth(0, 300.f);
-                    ImGui::SetColumnWidth(1, 100.f);
-                    ImGui::SetColumnWidth(2, 100.f);
-                    ImGui::SetColumnWidth(3, 100.f);
-                    //ImGui::SetColumnWidth(0, 100.f);
-
-
-                    ImGui::Separator();
-                    //ImGui::Text("Start time"); ImGui::NextColumn();
-                    //ImGui::Text("End time"); ImGui::NextColumn();
-                    ImGui::Text("Layer"); ImGui::NextColumn();
-                    ImGui::Text("Time(ms)"); ImGui::NextColumn();
-                    ImGui::Text("Type"); ImGui::NextColumn();
-                    ImGui::Text("Status"); ImGui::NextColumn();
-                    ImGui::Text("Path"); ImGui::NextColumn();
-                    ImGui::Separator();
-
-
-                    std::string filterLower = osgEarth::toLower(_filter);
-
-                    for (NetworkMonitor::Requests::iterator itr = requests.begin(); itr != requests.end(); ++itr)
-                    {
-                        if (!_showOnlyActiveRequests || !itr->second.isComplete)
+                        if (!filterLower.empty())
                         {
-                            if (!filterLower.empty())
+                            std::string uriLower = osgEarth::toLower(itr->second.uri);
+                            std::string statusLower = osgEarth::toLower(itr->second.status);
+                            std::string layerLower = osgEarth::toLower(itr->second.layer);
+                            std::string typeLower = osgEarth::toLower(itr->second.type);
+
+                            if (strstr(uriLower.c_str(), filterLower.c_str()) == NULL &&
+                                strstr(statusLower.c_str(), filterLower.c_str()) == NULL &&
+                                strstr(layerLower.c_str(), filterLower.c_str()) == NULL &&
+                                strstr(typeLower.c_str(), filterLower.c_str()) == NULL)
                             {
-                                std::string uriLower = osgEarth::toLower(itr->second.uri);
-                                std::string statusLower = osgEarth::toLower(itr->second.status);
-                                std::string layerLower = osgEarth::toLower(itr->second.layer);
-                                std::string typeLower = osgEarth::toLower(itr->second.type);
-
-                                if (strstr(uriLower.c_str(), filterLower.c_str()) == NULL &&
-                                    strstr(statusLower.c_str(), filterLower.c_str()) == NULL &&
-                                    strstr(layerLower.c_str(), filterLower.c_str()) == NULL &&
-                                    strstr(typeLower.c_str(), filterLower.c_str()) == NULL)
-                                {
-                                    continue;
-                                }
-                            }
-
-                            ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
-                            bool failed = false;
-                            bool canceled = false;
-                            if (itr->second.isComplete)
-                            {
-                                if (itr->second.status.find("OK") != std::string::npos)
-                                {
-                                    color = ImVec4(0, 1, 0, 1); // green
-                                }
-                                else if (itr->second.status.find("Canceled") != std::string::npos)
-                                {
-                                    color = ImVec4(.5,.5,.5,1); // grey
-                                    canceled = true;
-                                }
-                                else
-                                {
-                                    // Color bad requests red
-                                    color = ImVec4(1, 0, 0, 1);
-                                    failed = true;
-                                }
-                            }
-
-                            if (_showOnlyFailedRequests && !failed)
                                 continue;
+                            }
+                        }
 
-                            ImGui::PushID(itr->first);
-
-                            double startMS = osg::Timer::instance()->delta_m(startTime, itr->second.startTime);
-                            double endMS = 0.0;
-                            if (itr->second.isComplete)
+                        ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
+                        bool failed = false;
+                        bool canceled = false;
+                        if (itr->second.isComplete)
+                        {
+                            if (itr->second.status.find("OK") != std::string::npos)
                             {
-                                endMS = osg::Timer::instance()->delta_m(startTime, itr->second.endTime);
+                                color = ImVec4(0, 1, 0, 1); // green
+                            }
+                            else if (itr->second.status.find("Canceled") != std::string::npos)
+                            {
+                                color = ImVec4(.5, .5, .5, 1); // grey
+                                canceled = true;
                             }
                             else
                             {
-                                endMS = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
+                                // Color bad requests red
+                                color = ImVec4(1, 0, 0, 1);
+                                failed = true;
                             }
-
-                            ImGui::Text(itr->second.layer.c_str()); ImGui::NextColumn();
-                            char buf[64];
-                            sprintf(buf, "%.1lf", itr->second.getDuration());
-                            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(buf).x
-                                - ImGui::GetScrollX() - 2 * ImGui::GetStyle().ItemSpacing.x);
-                            ImGui::Text(buf); ImGui::NextColumn();
-                            //ImGui::Text("%.2lf ms", startMS); ImGui::NextColumn();
-                            //ImGui::Text("%.2lf ms", endMS); ImGui::NextColumn();
-                            ImGui::Text(itr->second.type.c_str()); ImGui::NextColumn();
-                            ImGui::Text(itr->second.status.c_str()); ImGui::NextColumn();
-
-                            if (ImGui::SmallButton("Copy"))
-                            {
-                                ImGui::SetClipboardText(itr->second.uri.c_str());
-                            }
-                            ImGui::SameLine();
-                            ImGui::TextColored(color, "%s (%d)", itr->second.uri.c_str(), itr->second.count);  ImGui::NextColumn();
-                            ImGui::PopID();
                         }
-                    }
-                    ImGui::Columns(1);
-                    ImGui::Separator();
 
-                    // Keep scroll position at the bottom so we can see new network requests as they come in if they are scrolled to the bottom already
-                    if (ImGui::GetScrollY() == ImGui::GetScrollMaxY())
-                    {
-                        ImGui::SetScrollHereY(1.0);
-                    }
-                    ImGui::EndChild();
+                        if (_showOnlyFailedRequests && !failed)
+                            continue;
 
-                    ImGui::End();
+                        ImGui::PushID(itr->first);
+
+                        double startMS = osg::Timer::instance()->delta_m(startTime, itr->second.startTime);
+                        double endMS = 0.0;
+                        if (itr->second.isComplete)
+                        {
+                            endMS = osg::Timer::instance()->delta_m(startTime, itr->second.endTime);
+                        }
+                        else
+                        {
+                            endMS = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
+                        }
+
+                        ImGui::Text(itr->second.layer.c_str()); ImGui::NextColumn();
+                        char buf[64];
+                        sprintf(buf, "%.1lf", itr->second.getDuration());
+                        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(buf).x
+                            - ImGui::GetScrollX() - 2 * ImGui::GetStyle().ItemSpacing.x);
+                        ImGui::Text(buf); ImGui::NextColumn();
+                        //ImGui::Text("%.2lf ms", startMS); ImGui::NextColumn();
+                        //ImGui::Text("%.2lf ms", endMS); ImGui::NextColumn();
+                        ImGui::Text(itr->second.type.c_str()); ImGui::NextColumn();
+                        ImGui::Text(itr->second.status.c_str()); ImGui::NextColumn();
+
+                        if (ImGui::SmallButton("Copy"))
+                        {
+                            ImGui::SetClipboardText(itr->second.uri.c_str());
+                        }
+                        ImGui::SameLine();
+                        ImGui::TextColored(color, "%s (%d)", itr->second.uri.c_str(), itr->second.count);  ImGui::NextColumn();
+                        ImGui::PopID();
+                    }
                 }
-                else
+                ImGui::Columns(1);
+                ImGui::Separator();
+
+                // Keep scroll position at the bottom so we can see new network requests as they come in if they are scrolled to the bottom already
+                if (ImGui::GetScrollY() == ImGui::GetScrollMaxY())
                 {
-                    NetworkMonitor::setEnabled(false);
+                    ImGui::SetScrollHereY(1.0);
                 }
+                ImGui::EndChild();
+
+                ImGui::End();
             }
+            else
+            {
+                NetworkMonitor::setEnabled(false);
+            }
+        }
 
-            bool _showOnlyActiveRequests;
-            bool _showOnlyFailedRequests;
-            char _filter[128];
-        };
-    }
+        bool _showOnlyActiveRequests;
+        bool _showOnlyFailedRequests;
+        char _filter[128];
+    };
 }
-
-#endif // OSGEARTH_IMGUI_NOTIFY_GUI

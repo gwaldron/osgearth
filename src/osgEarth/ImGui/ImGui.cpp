@@ -17,18 +17,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ImGui/ImGuiApp>
-#include "imgui_internal.h"
-#include "backends/imgui_impl_opengl3.h"
+#include <backends/imgui_impl_opengl3.h>
 #include <osgEarth/GLUtils>
 
-using namespace osgEarth::GUI;
+using namespace osgEarth;
 
 namespace
 {
     struct PreDrawOp : public osg::Camera::DrawCallback
     {
-        OsgImGuiHandler& _handler;
-        PreDrawOp(OsgImGuiHandler& handler) : _handler(handler) {}
+        ImGuiEventHandler& _handler;
+        PreDrawOp(ImGuiEventHandler& handler) : _handler(handler) {}
         void operator()(osg::RenderInfo& renderInfo) const override {
             _handler.newFrame(renderInfo);
         }
@@ -36,28 +35,25 @@ namespace
 
     struct PostDrawOp : public osg::Camera::DrawCallback
     {
-        OsgImGuiHandler& _handler;
-        PostDrawOp(OsgImGuiHandler& handler) : _handler(handler) {}
+        ImGuiEventHandler& _handler;
+        PostDrawOp(ImGuiEventHandler& handler) : _handler(handler) {}
         void operator()(osg::RenderInfo& renderInfo) const override {
             _handler.render(renderInfo);
         }
     };
 }
 
-
-void OsgImGuiHandler::init()
-{
-    ImGui::CreateContext();
-    ImGui_ImplOpenGL3_Init();
-    auto& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-}
-
-void OsgImGuiHandler::newFrame(osg::RenderInfo& renderInfo)
+void
+ImGuiEventHandler::newFrame(osg::RenderInfo& renderInfo)
 {
     if (_firstFrame)
     {
-        init();
+        ImGui::CreateContext();
+        ImGui_ImplOpenGL3_Init();
+        auto& io = ImGui::GetIO();
+#ifdef IMGUI_HAS_DOCK
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+#endif
     }
 
     ImGui_ImplOpenGL3_NewFrame();
@@ -83,10 +79,10 @@ void OsgImGuiHandler::newFrame(osg::RenderInfo& renderInfo)
 
 namespace
 {
-    static OsgImGuiHandler* s_guiHandler = nullptr;
+    static ImGuiEventHandler* s_guiHandler = nullptr;
 }
 
-void OsgImGuiHandler::handleReadSetting(
+void ImGuiEventHandler::handleReadSetting(
     ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line)
 {
     std::vector<std::string> tokens;
@@ -97,13 +93,13 @@ void OsgImGuiHandler::handleReadSetting(
     }
 }
 
-void* OsgImGuiHandler::handleStartEntry(
+void* ImGuiEventHandler::handleStartEntry(
     ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name)
 {
     return s_guiHandler->findByName(name);
 }
 
-void OsgImGuiHandler::handleWriteSettings(
+void ImGuiEventHandler::handleWriteSettings(
     ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf)
 {
     OE_DEBUG << "Writing ini settings..." << std::endl;
@@ -122,7 +118,7 @@ void OsgImGuiHandler::handleWriteSettings(
     }
 }
 
-void OsgImGuiHandler::installSettingsHandler()
+void ImGuiEventHandler::installSettingsHandler()
 {
     OE_HARD_ASSERT(ImGui::GetCurrentContext() != nullptr);
     s_guiHandler = this;
@@ -135,7 +131,7 @@ void OsgImGuiHandler::installSettingsHandler()
     ImGui::GetCurrentContext()->SettingsHandlers.push_back(s);
 }
 
-void OsgImGuiHandler::render(osg::RenderInfo& ri)
+void ImGuiEventHandler::render(osg::RenderInfo& ri)
 {
     auto camera = ri.getCurrentCamera();
     auto viewport = camera->getViewport();
@@ -189,7 +185,7 @@ void OsgImGuiHandler::render(osg::RenderInfo& ri)
     }
 }
 
-bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+bool ImGuiEventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 {
     if (!_initialized)
     {
@@ -296,7 +292,7 @@ bool OsgImGuiHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionA
 }
 
 ImGuiKey
-OsgImGuiHandler::convertKey(int c)
+ImGuiEventHandler::convertKey(int c)
 {
     // If you are holding CTRL, OSG remaps A-Z to 1-26. Undo that.
     if (c >= 1 && c <= 26)
@@ -350,7 +346,7 @@ OsgImGuiHandler::convertKey(int c)
 }
 
 ImGuiButtonFlags
-OsgImGuiHandler::convertMouseButton(int m)
+ImGuiEventHandler::convertMouseButton(int m)
 {
     ImGuiButtonFlags flags = 0;
     if (m & osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)

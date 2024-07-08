@@ -16,8 +16,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_H
-#define OSGEARTH_IMGUI_H 1
+#pragma once
+
+#include <GL/glew.h>
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
@@ -45,206 +49,90 @@ namespace osg {
 struct ImGuiSettingsHandler;
 
 namespace osgEarth
-{
-    namespace GUI
+{    
+    /**
+    * And OSG realize operation that will initialize the GLEW library
+    * as required for ImGui
+    */
+    class ImGuiRealizeOperation : public osg::Operation
     {
-        // base class for GUI elements that allows you to toggle visibility
-        class BaseGUI
+    public:
+        ImGuiRealizeOperation()
+            : osg::Operation("ImGuiGlewInitOperation", false)
         {
-        public:
-            using Ptr = std::unique_ptr<BaseGUI>;
+        }
 
-        public:
-            void setVisible(bool value) {
-                _visible = value;
-                dirtySettings();
-            }
-
-            //! whether it's current shown
-            bool isVisible() const {
-                return _visible;
-            }
-
-            //! name of the GUI panel
-            virtual const char* name() const final {
-                return _name.c_str();
-            }
-
-            //! render this GUI
-            virtual void draw(osg::RenderInfo& ri) = 0;
-
-            //! override to set custom values in the .ini file
-            virtual void load(const osgEarth::Config&) { }
-
-            //! override to get custom values from the .ini file
-            virtual void save(osgEarth::Config&) { }
-
-        protected:
-            BaseGUI(const char* name) :
-                _name(name), _visible(false), _last_visible(false)
+        void operator()(osg::Object* object) override
+        {
+            osg::GraphicsContext* context = dynamic_cast<osg::GraphicsContext*>(object);
+            if (context)
             {
-                //nop
-            }
-
-            //! convenience function for finding nodes
-            template<typename T>
-            T* findNode(osg::RenderInfo& ri) const {
-                return osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
-            }
-
-            //! convenience function for getting the current view
-            inline osgViewer::View* view(osg::RenderInfo& ri) const {
-                return dynamic_cast<osgViewer::View*>(ri.getView());
-            }
-
-            //! convenience function for getting the current camera
-            inline osg::Camera* camera(osg::RenderInfo& ri) const {
-                return ri.getCurrentCamera();
-            }
-
-            //! convenience function for getting the topmost stateset
-            inline osg::StateSet* stateset(osg::RenderInfo& ri) const {
-                return ri.getCurrentCamera()->getOrCreateStateSet();
-            }
-
-            //! convenience function for finding nodes
-            template<typename T>
-            bool findNode(osg::observer_ptr<T>& node, osg::RenderInfo& ri) const {
-                if (!node.valid())
-                    node = osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
-                return node.valid();
-            }
-
-            //! convenience function for finding nodes
-            template<typename T>
-            bool findNodeOrHide(osg::observer_ptr<T>& node, osg::RenderInfo& ri) {
-                if (!node.valid())
-                    node = osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
-                if (!node.valid())
-                    setVisible(false);
-                return node.valid();
-            }
-
-            template<typename T>
-            bool findLayer(osg::observer_ptr<T>& layer, osg::RenderInfo& ri) {
-                if (!layer.valid()) {
-                    MapNode* mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
-                    if (mapNode)
-                        layer = mapNode->getMap()->getLayer<T>();
-                }
-                return layer.valid();
-            }
-
-            template<typename T>
-            bool findLayerOrHide(osg::observer_ptr<T>& layer, osg::RenderInfo& ri) {
-                if (!layer.valid()) {
-                    MapNode* mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
-                    if (mapNode)
-                        layer = mapNode->getMap()->getLayer<T>();
-                }
-                if (!layer.valid())
-                    setVisible(false);
-                return layer.valid();
-            }
-
-            //! sets a value and dirties the .ini store
-            template<typename A, typename B>
-            void set_and_dirty(A& var, const B& value)
-            {
-                if (var != value) {
-                    var = value;
-                    dirtySettings();
-                }
-            }
-
-            //! Map point under the mouse cursor
-            GeoPoint getPointAtMouse(MapNode* mapNode, osg::View* v, float x, float y)
-            {
-                GeoPoint point;
-                osg::Vec3d world;
-                if (mapNode->getTerrain()->getWorldCoordsUnderMouse(v, x, y, world))
-                    point.fromWorld(mapNode->getMapSRS(), world);
-                return point;
-            }
-
-        private:
-            std::string _name;
-            bool _visible;
-            bool _last_visible;
-
-        public:
-            bool* visible() {
-                return &_visible;
-            }
-
-            //! override to set custom values in the .ini file
-            void load_base(const osgEarth::Config& conf)
-            {
-                conf.get("Visible", _visible);
-                load(conf);
-            }
-
-            //! override to set custom values in the .ini file
-            void save_base(osgEarth::Config& conf)
-            {
-                conf.set("Visible", _visible);
-                save(conf);
-            }
-
-            //! tells ImGui it needs to write a new .ini file
-            static void dirtySettings()
-            {
-#ifdef HAVE_IMGUI_INTERNAL
-                if (ImGui::GetCurrentContext())
+#ifdef GLEW_OK
+                if (glewInit() != GLEW_OK)
                 {
-                    if (ImGui::GetCurrentWindowRead())
-                    {
-                        ImGui::MarkIniSettingsDirty(ImGui::GetCurrentWindowRead());
-                    }
+                    OE_FATAL << "glewInit() failed" << std::endl;
                 }
 #endif
             }
+        }
+    };
 
-            //! whether the visibility changed (and resets the flag)
-            bool visibilityChanged() {
-                bool whether = _visible != _last_visible;
-                _last_visible = _visible;
-                return whether;
-            }
-        };
+    /**
+    * Generic OSG event handler that will render ImGui elements.
+    * Subclass this and override "draw" to render your own ImGui interface,
+    * and add this instance as an event handler to your viewer.
+    */
+    class ImGuiEventHandler : public osgGA::GUIEventHandler
+    {
+    public:
+        using RealizeOperation = osgEarth::ImGuiRealizeOperation;
 
-#if 0
-        class GUIFactory
-        {
-        public:
-            using Factory = std::function<BaseGUI*()>;
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
 
-            static BaseGUI::Ptr create(
-                const std::string& name);
+        virtual void load(void* section, const std::string& key, const std::string& value) { }
 
-        public:
-            struct Delegate {
-                Delegate(const std::string& name, Factory factory) {
-                    GUIFactory::add(name, factory);
-                }
-            };
+        virtual void save(osgEarth::Config& conf) { }
 
-            static void add(
-                const std::string& name,
-                Factory factory);
+        virtual void* findByName(const char* name) { return nullptr; }
 
-        private:
-            static std::unordered_map<
-                std::string,
-                Factory> _lut;
-        };
-#endif
-    }
+        virtual void* findByType(const std::type_info& type) { return nullptr; }
+
+        bool getAutoAdjustProjectionMatrix() const { return _autoAdjustProjectionMatrix; }
+
+        void setAutoAdjustProjectionMatrix(bool value) { _autoAdjustProjectionMatrix = value; }
+
+        // Put your ImGui code inside this function
+        virtual void draw(osg::RenderInfo& renderInfo) = 0;
+
+        void newFrame(osg::RenderInfo& renderInfo);
+        void render(osg::RenderInfo& renderInfo);
+        bool _show = true;
+
+    private:
+        struct ImGuiNewFrameCallback;
+        struct ImGuiRenderCallback;
+
+        double _time = 0.0;
+        bool _initialized = false;
+        bool _firstFrame = true;
+        bool _autoAdjustProjectionMatrix = true;
+        bool _dragging = false;
+
+        static void* handleStartEntry(ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name);
+
+        static void handleReadSetting(ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line);
+
+        static void handleWriteSettings(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf);
+
+        void installSettingsHandler();
+
+        ImGuiKey convertKey(int osgKey);
+
+        ImGuiButtonFlags convertMouseButton(int osgButtonMask);
+    };
 }
 
-#define REGISTER_OSGEARTH_IMGUI(NAME, FACTORY) \
-    namespace osgEarth { namespace GUI { static osgEarth::GUI::GUIFactory::Delegate __oe_regimgui_ ## NAME ( #NAME , FACTORY ); } }
-
+// various additions to ImGui.
 namespace ImGuiLTable
 {
     static bool Begin(const char* name)
@@ -419,7 +307,8 @@ namespace ImGuiLTable
     }
 }
 
-namespace ImGuiUtil
+// Added functions to the top level ImGui namespace
+namespace ImGuiEx
 {
     template<typename... Args>
     static void TextCentered(const char* format, Args&&... args)
@@ -430,7 +319,7 @@ namespace ImGuiUtil
         ImGui::Text(buf);
     }
 
-    static void Texture(osg::Texture2D* texture, osg::RenderInfo& renderInfo, unsigned int width = 0, unsigned int height = 0)
+    static void OSGTexture(osg::Texture2D* texture, osg::RenderInfo& renderInfo, unsigned int width = 0, unsigned int height = 0)
     {
         // Get the context id
         const unsigned int contextID = osgEarth::GLUtils::getSharedContextID(*renderInfo.getState());
@@ -492,5 +381,3 @@ namespace ImGuiUtil
         return ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, (void*)str);
     }
 }
-
-#endif

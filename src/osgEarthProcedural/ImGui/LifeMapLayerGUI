@@ -1,10 +1,8 @@
-#ifndef OSGEARTH_PROCEDURAL_LIFEMAP_LAYER_GUI
-#define OSGEARTH_PROCEDURAL_LIFEMAP_LAYER_GUI
-
+#pragma once
+#include <osgEarth/ImGui/ImGuiApp>
 #include <osgEarthProcedural/LifeMapLayer>
 #include <osgEarthProcedural/TextureSplattingLayer>
 #include <osgEarth/VirtualProgram>
-#include <osgEarth/ImGui/ImGui>
 
 namespace {
     const char* render_lifemap = R"(
@@ -43,7 +41,7 @@ namespace osgEarth
     {
         using namespace osgEarth;
 
-        struct LifeMapLayerGUI : public GUI::BaseGUI
+        struct LifeMapLayerGUI : public ImGuiPanel
         {
             osg::observer_ptr<MapNode> _mapNode;
             osg::observer_ptr<LifeMapLayer> _lifemap;
@@ -57,7 +55,7 @@ namespace osgEarth
             //Future<osg::Vec4> _lifemapUnderMouse;
             bool _first;
 
-            LifeMapLayerGUI() : GUI::BaseGUI("Life Map"),
+            LifeMapLayerGUI() : ImGuiPanel("Life Map"),
                 _first(true),
                 _vp(nullptr),
                 _showLifemapUnderMouse(false),
@@ -276,4 +274,3 @@ namespace osgEarth
         };
     }
 }
-#endif // OSGEARTH_PROCEDURAL_LIFEMAP_LAYER_GUI

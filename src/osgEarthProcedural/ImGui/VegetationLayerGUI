@@ -1,12 +1,11 @@
-#ifndef OSGEARTH_PROCEDURAL_VEGETATION_LAYER_GUI
-#define OSGEARTH_PROCEDURAL_VEGETATION_LAYER_GUI
+#pragma once
 
+#include <osgEarth/ImGui/ImGuiApp>
 #include <osgEarthProcedural/Export>
 #include <osgEarthProcedural/VegetationLayer>
 #include <osgEarthProcedural/BiomeLayer>
 #include <osgEarthProcedural/VegetationFeatureGenerator>
 #include <osgEarth/FeatureNode>
-#include <osgEarth/ImGui/ImGui>
 
 namespace osgEarth
 {
@@ -14,7 +13,7 @@ namespace osgEarth
     {
         using namespace osgEarth;
 
-        struct VegetationLayerGUI : public osgEarth::GUI::BaseGUI
+        struct VegetationLayerGUI : public osgEarth::ImGuiPanel
         {
             bool _first;
             bool _forceGenerate;
@@ -34,7 +33,7 @@ namespace osgEarth
             osg::ref_ptr<osg::Node> _boxgeom;
             GeoPoint _pointUnderMouse;
 
-            VegetationLayerGUI() : GUI::BaseGUI("Vegetation"),
+            VegetationLayerGUI() : ImGuiPanel("Vegetation"),
                 _first(true),
                 _forceGenerate(false),
                 _manualBiomes(false),
@@ -554,4 +553,4 @@ namespace osgEarth
         };
     }
 }
-#endif // OSGEARTH_PROCEDURAL_VEGETATION_LAYER_GUI
+

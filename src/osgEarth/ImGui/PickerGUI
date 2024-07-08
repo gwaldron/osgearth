@@ -16,20 +16,18 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_PICKER_GUI
-#define OSGEARTH_IMGUI_PICKER_GUI
+#pragma once
 
-#include "ImGui"
-
+#include <osgEarth/ImGui/ImGuiApp>
 #include <osgEarth/ObjectIDPicker>
 #include <osgEarth/MetadataNode>
 
-namespace osgEarth { namespace GUI
+namespace osgEarth
 {
-    struct PickerGUI : public BaseGUI
+    struct PickerGUI : public ImGuiPanel
     {
         PickerGUI() :
-            BaseGUI("Picker")
+            ImGuiPanel("Picker")
         {
         }
 
@@ -73,7 +71,7 @@ namespace osgEarth { namespace GUI
                 return;
 
             if (ImGui::Begin(name(), visible()))
-            {  
+            {
                 if (!_mapNode.valid())
                     _mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
 
@@ -88,47 +86,47 @@ namespace osgEarth { namespace GUI
                     installHighlighter();
 
                     ObjectIDPicker::Function hover = [&](ObjectID id)
-                    {
-                        if (id > 0)
                         {
-                            _pickedFeature = nullptr;
-
-                            osg::ref_ptr< MetadataNode > metadata = Registry::objectIndex()->get<MetadataNode>(id);
-                            if (metadata.valid())
+                            if (id > 0)
                             {
-                                int index = metadata->getIndexFromObjectID(id);
-                                if (index > 0)
+                                _pickedFeature = nullptr;
+
+                                osg::ref_ptr< MetadataNode > metadata = Registry::objectIndex()->get<MetadataNode>(id);
+                                if (metadata.valid())
                                 {
-                                    const Feature* feature = metadata->getFeature(index);
-                                    _pickedFeature = feature;
+                                    int index = metadata->getIndexFromObjectID(id);
+                                    if (index > 0)
+                                    {
+                                        const Feature* feature = metadata->getFeature(index);
+                                        _pickedFeature = feature;
+                                    }
                                 }
-                            }                            
-                            _highlightUniform->set(id);                            
-                        }
-                        else
-                        {
-                            _highlightUniform->set(0u);
-                            _pickedFeature = nullptr;                            
-                        }
-                    };
+                                _highlightUniform->set(id);
+                            }
+                            else
+                            {
+                                _highlightUniform->set(0u);
+                                _pickedFeature = nullptr;
+                            }
+                        };
 
                     _picker->onHover(hover);
 
                     ObjectIDPicker::Function click = [&](ObjectID id)
-                    {
-                        if (id > 0)
-                        {                            
-                            osg::ref_ptr< MetadataNode > metadata = Registry::objectIndex()->get<MetadataNode>(id);
-                            if (metadata)
+                        {
+                            if (id > 0)
                             {
-                                int index = metadata->getIndexFromObjectID(id);
-                                if (index > 0)
+                                osg::ref_ptr< MetadataNode > metadata = Registry::objectIndex()->get<MetadataNode>(id);
+                                if (metadata)
                                 {
-                                    metadata->setVisible(index, false);
+                                    int index = metadata->getIndexFromObjectID(id);
+                                    if (index > 0)
+                                    {
+                                        metadata->setVisible(index, false);
+                                    }
                                 }
                             }
-                        }                        
-                    };
+                        };
 
                     // Call our handler when hovering over the map
                     _picker->onClick(click);
@@ -161,6 +159,4 @@ namespace osgEarth { namespace GUI
         osg::Uniform* _highlightUniform;
         osg::ref_ptr<const Feature> _pickedFeature;
     };
-} }
-
-#endif // OSGEARTH_IMGUI_PICKER_GUI
+}

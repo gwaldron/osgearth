@@ -50,7 +50,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Contrib;
-using namespace osgEarth::GUI;
 
 float query_range = 100.0;
 long long query_time_ns = 0;
@@ -138,7 +137,6 @@ struct CollectTrianglesVisitor : public osg::NodeVisitor
 {
     CollectTrianglesVisitor() :
         osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN)
-        //osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
     {
         _vertices.reserve(1000000);
         _colors.reserve(1000000);
@@ -981,11 +979,11 @@ struct PredictiveDataLoader : public osg::NodeVisitor
     std::vector< osg::BoundingSphered > _areasToLoad;
 };
 
-class LoadableNodesGUI : public BaseGUI
+class LoadableNodesGUI : public ImGuiPanel
 {
 public:
     LoadableNodesGUI() :
-        BaseGUI("Loadable Nodes Inspector")
+        ImGuiPanel("Loadable Nodes Inspector")
     {
     }
 
@@ -1145,11 +1143,11 @@ protected:
 };
 
 
-class TrianglesGUI : public BaseGUI
+class TrianglesGUI : public ImGuiPanel
 {
 public:
     TrianglesGUI(osgViewer::View* view, MapNode* mapNode, EarthManipulator* earthManip) :
-        BaseGUI("Triangles"),
+        ImGuiPanel("Triangles"),
         _mapNode(mapNode),
         _earthManip(earthManip),
         _view(view)
@@ -1305,7 +1303,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator(manip);
 
     // Setup the viewer for imgui
-    viewer.setRealizeOperation(new GUI::ApplicationGUI::RealizeOperation);
+    viewer.setRealizeOperation(new ImGuiAppEngine::RealizeOperation);
 
     root = new osg::Group;
 
@@ -1318,7 +1316,7 @@ main(int argc, char** argv)
         if (mapNode)
         {
             //viewer.getEventHandlers().push_front(new MyGUI(&viewer, mapNode, manip));
-            auto gui = new GUI::ApplicationGUI(true);
+            auto gui = new ImGuiAppEngine(arguments);
             gui->add(new TrianglesGUI(&viewer, mapNode, manip));
             gui->add(new LoadableNodesGUI());
             viewer.getEventHandlers().push_front(gui);

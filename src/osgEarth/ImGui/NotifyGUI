@@ -16,12 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_IMGUI_NOTIFY_GUI
-#define OSGEARTH_IMGUI_NOTIFY_GUI
+#pragma once
 
-#include "ImGui"
+#include <osgEarth/ImGui/ImGuiApp>
 
-namespace osgEarth { namespace GUI
+namespace osgEarth
 {
     /**
     * OSG notify handler to redirect notify messages to an ImGui text buffer
@@ -58,10 +57,10 @@ namespace osgEarth { namespace GUI
 
 
 
-    struct NotifyGUI : public BaseGUI
+    struct NotifyGUI : public ImGuiPanel
     {
         NotifyGUI() :
-            BaseGUI("Notify Log")
+            ImGuiPanel("Notify Log")
         {
             _handler = dynamic_cast<ImGuiNotifyHandler*>(osg::getNotifyHandler());
         }
@@ -138,6 +137,5 @@ namespace osgEarth { namespace GUI
         ImGuiNotifyHandler* _handler;
         ImGuiTextFilter Filter;
     };
-} }
+}
 
-#endif // OSGEARTH_IMGUI_NOTIFY_GUI

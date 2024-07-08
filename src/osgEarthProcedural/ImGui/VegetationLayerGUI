@@ -1,6 +1,6 @@
 #pragma once
 
-#include <osgEarth/ImGui/ImGuiApp>
+#include <osgEarth/ImGui/ImGuiPanel>
 #include <osgEarthProcedural/Export>
 #include <osgEarthProcedural/VegetationLayer>
 #include <osgEarthProcedural/BiomeLayer>

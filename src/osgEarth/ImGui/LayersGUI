@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include <osgEarth/ImGui/ImGuiApp>
+#include <osgEarth/ImGui/ImGuiPanel>
 #include <osgEarth/MapNode>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ViewFitter>
@@ -942,7 +942,6 @@ namespace osgEarth
 
         void drawAddLayerMenu(osg::RenderInfo& ri)
         {
-            osg::Camera* camera = ri.getCurrentCamera();
             if (ImGui::BeginMenuBar())
             {
                 if (ImGui::BeginMenu("Add Layer"))

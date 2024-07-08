@@ -1,6 +1,6 @@
 #pragma once
 
-#include <osgEarth/ImGui/ImGuiApp>
+#include <osgEarth/ImGui/ImGuiPanel>
 #include <osgEarthProcedural/TextureSplattingLayer>
 
 namespace osgEarth

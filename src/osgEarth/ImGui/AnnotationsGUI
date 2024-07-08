@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include <osgEarth/ImGui/ImGuiApp>
+#include <osgEarth/ImGui/ImGuiPanel>
 #include <osgEarth/AnnotationData>
 #include <osgEarth/AnnotationNode>
 #include <osgEarth/ViewFitter>

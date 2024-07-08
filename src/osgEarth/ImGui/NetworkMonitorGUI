@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #pragma once
-#include <osgEarth/ImGui/ImGuiApp>
+#include <osgEarth/ImGui/ImGuiPanel>
 #include <osgEarth/NetworkMonitor>
 
 namespace osgEarth
@@ -155,16 +155,16 @@ namespace osgEarth
 
                         ImGui::PushID(itr->first);
 
-                        double startMS = osg::Timer::instance()->delta_m(startTime, itr->second.startTime);
-                        double endMS = 0.0;
-                        if (itr->second.isComplete)
-                        {
-                            endMS = osg::Timer::instance()->delta_m(startTime, itr->second.endTime);
-                        }
-                        else
-                        {
-                            endMS = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
-                        }
+                        //double startMS = osg::Timer::instance()->delta_m(startTime, itr->second.startTime);
+                        //double endMS = 0.0;
+                        //if (itr->second.isComplete)
+                        //{
+                        //    endMS = osg::Timer::instance()->delta_m(startTime, itr->second.endTime);
+                        //}
+                        //else
+                        //{
+                        //    endMS = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
+                        //}
 
                         ImGui::Text(itr->second.layer.c_str()); ImGui::NextColumn();
                         char buf[64];

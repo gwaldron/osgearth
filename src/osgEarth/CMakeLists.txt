@@ -462,6 +462,7 @@ SET(TARGET_H
 if(OSGEARTH_HAVE_IMGUI)
     set(TARGET_H_IMGUI
         ImGui/ImGui
+        ImGui/ImGuiPanel
         ImGui/ImGuiApp
         ImGui/AnnotationsGUI
         ImGui/ContentBrowserGUI

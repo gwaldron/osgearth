@@ -1,0 +1,197 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarth/ImGui/ImGui>
+#include <osgEarth/BuildConfig>
+#include <osgEarth/Config>
+#include <osgDB/ReadFile>
+#include <osg/observer_ptr>
+#include <osg/StateSet>
+#include <osg/RenderInfo>
+#include <memory>
+
+namespace osgEarth
+{
+    // base class for GUI elements that allows you to toggle visibility
+    // no export. header only.
+    class ImGuiPanel
+    {
+    public:
+        using Ptr = std::shared_ptr<ImGuiPanel>;
+
+    public:
+        void setVisible(bool value) {
+            _visible = value;
+            dirtySettings();
+        }
+
+        //! whether it's current shown
+        bool isVisible() const {
+            return _visible;
+        }
+
+        //! name of the GUI panel
+        virtual const char* name() const final {
+            return _name.c_str();
+        }
+
+        //! render this GUI
+        virtual void draw(osg::RenderInfo& ri) = 0;
+
+        //! override to set custom values in the .ini file
+        virtual void load(const osgEarth::Config&) { }
+
+        //! override to get custom values from the .ini file
+        virtual void save(osgEarth::Config&) { }
+
+    protected:
+        ImGuiPanel(const char* name) :
+            _name(name), _visible(false), _last_visible(false)
+        {
+            //nop
+        }
+
+        //! convenience function for finding nodes
+        template<typename T>
+        T* findNode(osg::RenderInfo& ri) const {
+            return osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
+        }
+
+        //! convenience function for getting the current view
+        inline osgViewer::View* view(osg::RenderInfo& ri) const {
+            return dynamic_cast<osgViewer::View*>(ri.getView());
+        }
+
+        //! convenience function for getting the current camera
+        inline osg::Camera* camera(osg::RenderInfo& ri) const {
+            return ri.getCurrentCamera();
+        }
+
+        //! convenience function for getting the topmost stateset
+        inline osg::StateSet* stateset(osg::RenderInfo& ri) const {
+            return ri.getCurrentCamera()->getOrCreateStateSet();
+        }
+
+        //! convenience function for finding nodes
+        template<typename T>
+        bool findNode(osg::observer_ptr<T>& node, osg::RenderInfo& ri) const {
+            if (!node.valid())
+                node = osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
+            return node.valid();
+        }
+
+        //! convenience function for finding nodes
+        template<typename T>
+        bool findNodeOrHide(osg::observer_ptr<T>& node, osg::RenderInfo& ri) {
+            if (!node.valid())
+                node = osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
+            if (!node.valid())
+                setVisible(false);
+            return node.valid();
+        }
+
+        template<typename T>
+        bool findLayer(osg::observer_ptr<T>& layer, osg::RenderInfo& ri) {
+            if (!layer.valid()) {
+                MapNode* mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
+                if (mapNode)
+                    layer = mapNode->getMap()->getLayer<T>();
+            }
+            return layer.valid();
+        }
+
+        template<typename T>
+        bool findLayerOrHide(osg::observer_ptr<T>& layer, osg::RenderInfo& ri) {
+            if (!layer.valid()) {
+                MapNode* mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
+                if (mapNode)
+                    layer = mapNode->getMap()->getLayer<T>();
+            }
+            if (!layer.valid())
+                setVisible(false);
+            return layer.valid();
+        }
+
+        //! sets a value and dirties the .ini store
+        template<typename A, typename B>
+        void set_and_dirty(A& var, const B& value)
+        {
+            if (var != value) {
+                var = value;
+                dirtySettings();
+            }
+        }
+
+        //! Map point under the mouse cursor
+        GeoPoint getPointAtMouse(MapNode* mapNode, osg::View* v, float x, float y)
+        {
+            GeoPoint point;
+            osg::Vec3d world;
+            if (mapNode->getTerrain()->getWorldCoordsUnderMouse(v, x, y, world))
+                point.fromWorld(mapNode->getMapSRS(), world);
+            return point;
+        }
+
+    private:
+        std::string _name;
+        bool _visible;
+        bool _last_visible;
+
+    public:
+        bool* visible() {
+            return &_visible;
+        }
+
+        //! override to set custom values in the .ini file
+        void load_base(const osgEarth::Config& conf)
+        {
+            conf.get("Visible", _visible);
+            load(conf);
+        }
+
+        //! override to set custom values in the .ini file
+        void save_base(osgEarth::Config& conf)
+        {
+            conf.set("Visible", _visible);
+            save(conf);
+        }
+
+        //! tells ImGui it needs to write a new .ini file
+        static void dirtySettings()
+        {
+#ifdef HAVE_IMGUI_INTERNAL
+            if (ImGui::GetCurrentContext())
+            {
+                if (ImGui::GetCurrentWindowRead())
+                {
+                    ImGui::MarkIniSettingsDirty(ImGui::GetCurrentWindowRead());
+                }
+            }
+#endif
+        }
+
+        //! whether the visibility changed (and resets the flag)
+        bool visibilityChanged() {
+            bool whether = _visible != _last_visible;
+            _last_visible = _visible;
+            return whether;
+        }
+    };
+}

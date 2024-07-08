@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include <osgEarth/ImGui/ImGuiApp>
+#include <osgEarth/ImGui/ImGuiPanel>
 #include <osgEarth/MapNode>
 #include <osgEarth/Viewpoint>
 #include <osgEarth/XmlUtils>

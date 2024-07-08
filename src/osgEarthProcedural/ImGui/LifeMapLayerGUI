@@ -1,5 +1,5 @@
 #pragma once
-#include <osgEarth/ImGui/ImGuiApp>
+#include <osgEarth/ImGui/ImGuiPanel>
 #include <osgEarthProcedural/LifeMapLayer>
 #include <osgEarthProcedural/TextureSplattingLayer>
 #include <osgEarth/VirtualProgram>

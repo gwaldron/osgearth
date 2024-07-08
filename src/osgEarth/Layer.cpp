@@ -346,11 +346,12 @@ Layer::init()
 
     // Copy the layer options name into the Object name.
     // This happens here AND in open.
-    if (options().name().isSet())
+    if (osg::Object::getName().empty())
     {
         osg::Object::setName(options().name().get());
     }
-    else
+
+    if (osg::Object::getName().empty())
     {
         osg::Object::setName("Unnamed " + std::string(className()));
     }

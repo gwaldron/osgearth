@@ -43,6 +43,8 @@ using namespace osgEarth;
 
 #define LC "[GLUtils] "
 
+//#define USE_RECYCLING
+
 #define OE_DEVEL OE_DEBUG 
 
 #ifndef GL_LINE_SMOOTH
@@ -78,31 +80,31 @@ namespace
     struct
     {
         typedef void (GL_APIENTRY* DebugProc)(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar*, const void*);
-        
-        void (GL_APIENTRY * DebugMessageCallback)(DebugProc, const void*);
-        void (GL_APIENTRY * DebugMessageControl)(GLenum, GLenum, GLenum, GLsizei, const GLuint*, bool);
-        void (GL_APIENTRY * PushDebugGroup)(GLenum, GLuint, GLsizei, const char*);
-        void (GL_APIENTRY * PopDebugGroup)(void);
+
+        void (GL_APIENTRY* DebugMessageCallback)(DebugProc, const void*);
+        void (GL_APIENTRY* DebugMessageControl)(GLenum, GLenum, GLenum, GLsizei, const GLuint*, bool);
+        void (GL_APIENTRY* PushDebugGroup)(GLenum, GLuint, GLsizei, const char*);
+        void (GL_APIENTRY* PopDebugGroup)(void);
 
         // NV_shader_buffer_load
         // https://developer.download.nvidia.com/opengl/specs/GL_NV_shader_buffer_load.txt
-        void (GL_APIENTRY * MakeNamedBufferResidentNV)(GLuint name, GLenum access);
-        void (GL_APIENTRY * MakeNamedBufferNonResidentNV)(GLuint name);
-        void (GL_APIENTRY * GetNamedBufferParameterui64vNV)(GLenum name, GLenum pname, GLuint64* params);
+        void (GL_APIENTRY* MakeNamedBufferResidentNV)(GLuint name, GLenum access);
+        void (GL_APIENTRY* MakeNamedBufferNonResidentNV)(GLuint name);
+        void (GL_APIENTRY* GetNamedBufferParameterui64vNV)(GLenum name, GLenum pname, GLuint64* params);
 
-        void (GL_APIENTRY * MakeBufferResidentNV)(GLuint name, GLenum access);
-        void (GL_APIENTRY * MakeBufferNonResidentNV)(GLuint name);
-        void (GL_APIENTRY * GetBufferParameterui64vNV)(GLenum target, GLenum pname, GLuint64* params);
+        void (GL_APIENTRY* MakeBufferResidentNV)(GLuint name, GLenum access);
+        void (GL_APIENTRY* MakeBufferNonResidentNV)(GLuint name);
+        void (GL_APIENTRY* GetBufferParameterui64vNV)(GLenum target, GLenum pname, GLuint64* params);
 
-        void (GL_APIENTRY * NamedBufferData)(GLuint name, GLsizeiptr size, const void* data, GLenum usage);
-        void (GL_APIENTRY * NamedBufferSubData)(GLuint name, GLintptr offset ,GLsizeiptr size, const void* data);
-        void*(GL_APIENTRY * MapNamedBuffer)(GLuint name, GLbitfield access);
-        void*(GL_APIENTRY * MapNamedBufferRange)(GLuint name, GLintptr offset, GLsizeiptr length, GLbitfield access);
-        void (GL_APIENTRY * UnmapNamedBuffer)(GLuint name);
+        void (GL_APIENTRY* NamedBufferData)(GLuint name, GLsizeiptr size, const void* data, GLenum usage);
+        void (GL_APIENTRY* NamedBufferSubData)(GLuint name, GLintptr offset, GLsizeiptr size, const void* data);
+        void* (GL_APIENTRY* MapNamedBuffer)(GLuint name, GLbitfield access);
+        void* (GL_APIENTRY* MapNamedBufferRange)(GLuint name, GLintptr offset, GLsizeiptr length, GLbitfield access);
+        void (GL_APIENTRY* UnmapNamedBuffer)(GLuint name);
 
-        void (GL_APIENTRY * CopyBufferSubData)(GLenum readTarget, GLenum writeTarget, GLintptr readOffset, GLintptr writeOffset, GLsizei size);
-        void (GL_APIENTRY * CopyNamedBufferSubData)(GLuint readName, GLuint writeName, GLintptr readOffset, GLintptr writeOffset, GLsizei size);
-        void (GL_APIENTRY * GetNamedBufferSubData)(GLuint name, GLintptr offset, GLsizei size, void*);
+        void (GL_APIENTRY* CopyBufferSubData)(GLenum readTarget, GLenum writeTarget, GLintptr readOffset, GLintptr writeOffset, GLsizei size);
+        void (GL_APIENTRY* CopyNamedBufferSubData)(GLuint readName, GLuint writeName, GLintptr readOffset, GLintptr writeOffset, GLsizei size);
+        void (GL_APIENTRY* GetNamedBufferSubData)(GLuint name, GLintptr offset, GLsizei size, void*);
 
         bool useNamedBuffers;
 
@@ -166,6 +168,10 @@ GLUtils::useNVGL(bool value)
     {
         OE_INFO << LC << "Using NVIDIA GL4 extensions" << std::endl;
     }
+    else
+    {
+        OE_INFO << LC << "Disabling NVIDIA GL4 extensions" << std::endl;
+    }
 }
 
 namespace
@@ -196,7 +202,7 @@ GLUtils::getUniqueStateID(const osg::State& state)
     return 0;
 }
 
-unsigned 
+unsigned
 GLUtils::getSharedContextID(const osg::State& state)
 {
 #ifdef OSGEARTH_SINGLE_GL_CONTEXT
@@ -303,7 +309,7 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
         return;
 
 #ifdef OSG_GL_FIXED_FUNCTION_AVAILABLE
-    switch(cap)
+    switch (cap)
     {
     case GL_LIGHTING:
         stateSet->removeMode(GL_LIGHTING);
@@ -331,8 +337,8 @@ GLUtils::remove(osg::StateSet* stateSet, GLenum cap)
     }
 #endif
 
-    switch(cap)
-    {   
+    switch (cap)
+    {
     case GL_LIGHTING:
         stateSet->removeDefine(OE_LIGHTING_DEFINE);
         break;
@@ -730,7 +736,7 @@ GLObjectPool::releaseOrphans(const osg::GraphicsContext* gc)
             _objects.resize(_objects.size() - 1);
         }
         else
-        {         
+        {
             bytes += object->size();
             ++i;
         }
@@ -915,6 +921,7 @@ GLBuffer::create(
     osg::State& state,
     GLsizei sizeHint)
 {
+#ifdef USE_RECYCLING
     const GLObject::Compatible comp = [sizeHint](GLObject* obj) {
         return
             obj->ns() == GL_BUFFER &&
@@ -934,6 +941,9 @@ GLBuffer::create(
         object->_recyclable = true;
     }
     return object;
+#else
+    return create(target, state);
+#endif
 }
 
 void
@@ -1242,10 +1252,11 @@ GLTexture::create(GLenum target, osg::State& state)
 
 GLTexture::Ptr
 GLTexture::create(
-    GLenum target, 
-    osg::State& state, 
+    GLenum target,
+    osg::State& state,
     const Profile& profileHint)
 {
+#ifdef USE_RECYCLING
     const GLObject::Compatible comp = [profileHint](GLObject* obj) {
         return
             obj->ns() == GL_TEXTURE &&
@@ -1264,6 +1275,9 @@ GLTexture::create(
         object->_recyclable = true;
     }
     return object;
+#else
+    return create(target, state);
+#endif
 }
 
 void
@@ -1313,7 +1327,7 @@ GLTexture::makeResident(const osg::State& state, bool toggle)
         else
             ext()->glMakeTextureHandleNonResident(_handle);
 
-        OE_DEVEL << "'" << id() << "' name=" << name() <<" resident=" << (toggle ? "yes" : "no") << std::endl;
+        OE_DEVEL << "'" << id() << "' name=" << name() << " resident=" << (toggle ? "yes" : "no") << std::endl;
 
         resident = toggle;
     }
@@ -1367,13 +1381,13 @@ GLTexture::storage2D(const Profile& profile)
             profile._internalFormat,
             profile._width,
             profile._height);
-        
+
         glTexParameteri(_target, GL_TEXTURE_MIN_FILTER, profile._minFilter);
         glTexParameteri(_target, GL_TEXTURE_MAG_FILTER, profile._magFilter);
         glTexParameteri(_target, GL_TEXTURE_WRAP_S, profile._wrapS);
         glTexParameteri(_target, GL_TEXTURE_WRAP_T, profile._wrapT);
         glTexParameterf(_target, GL_TEXTURE_MAX_ANISOTROPY_EXT, profile._maxAnisotropy);
-        
+
         // special trick: signed RGTC1 textures are compressed normals, so
         // swizzle the A component to be a zero so we can detect them.
         if (profile._internalFormat == GL_COMPRESSED_SIGNED_RED_RGTC1_EXT ||
@@ -1397,8 +1411,8 @@ GLTexture::storage3D(const Profile& profile)
         _profile = profile; // Profile(_target, mipLevels, internalFormat, s, t, r, 0);
 
         ext()->glTexStorage3D(
-            _target, 
-            profile._numMipmapLevels, 
+            _target,
+            profile._numMipmapLevels,
             profile._internalFormat,
             profile._width,
             profile._height,
@@ -1474,7 +1488,7 @@ GLTexture::Ptr
 GLFBO::renderToTexture(
     GLsizei width,
     GLsizei height,
-    DrawFunction draw, 
+    DrawFunction draw,
     osg::State& state)
 {
     // http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-14-render-to-texture/
@@ -1670,7 +1684,7 @@ ComputeImageSession::setImage(osg::Image* image)
     _image = image;
     _tex->setImage(image);
     _stateSet->setAttribute(new osg::BindImageTexture(
-        0, _tex, osg::BindImageTexture::READ_WRITE, 
+        0, _tex, osg::BindImageTexture::READ_WRITE,
         image->getInternalTextureFormat(), 0, GL_TRUE));
     image->dirty();
 }

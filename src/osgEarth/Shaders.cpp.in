@@ -37,6 +37,9 @@ namespace osgEarth { namespace Util
         GPUClampingLib = "GPUClamping.lib.glsl";
         _sources[GPUClampingLib] = @GPUClamping.lib.glsl@;
 
+        HexTilingLib = "HexTiling.glsl";
+        _sources[HexTilingLib] = @HexTiling.glsl@;
+
         // DrawInstanced
         Instancing = "Instancing.glsl";
         _sources[Instancing] = @Instancing.glsl@;

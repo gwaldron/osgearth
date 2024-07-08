@@ -3,6 +3,10 @@ osgEarth Sample - Annotations
 -->
 <map name="Annotations Demo">
 
+    <options>
+        <overlay_blending_source>alpha</overlay_blending_source>
+    </options>
+
     <xi:include href="readymap_imagery.xml"/>
     <xi:include href="readymap_elevation.xml"/>
 
@@ -182,6 +186,13 @@ osgEarth Sample - Annotations
             <geometry>POLYGON((-81 26, -80.5 26, -80.5 26.5, -81 26.5))</geometry>
         </imageoverlay>
         <label text="ImageOverlay" lat="26" long="-81"/>
+
+        <imageoverlay>
+            <url>../data/fractal.png</url>
+            <alpha>0.75</alpha>
+            <geometry>POLYGON((-81 28, -80.5 28, -80.5 28.5, -81 28.5))</geometry>
+        </imageoverlay>
+        <label text="ImageOverlay(alpha)" lat="28" long="-81"/>
 
         <local_geometry name="3D geometry">
             <geometry>

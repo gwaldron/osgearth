@@ -163,7 +163,7 @@ namespace osgEarth
         virtual const char* libraryName() const override { return "osgEarth"; }
 
         //! Override Node::accept to include the singleton GPU statset
-        virtual void accept(osg::NodeVisitor& nv) override;
+        void accept(osg::NodeVisitor& nv) override;
 
     public: // osg::Object
 
@@ -218,9 +218,8 @@ namespace osgEarth
 
         virtual void drawImplementation(osg::RenderInfo& ri) const override;
 
-        virtual void traverse(osg::NodeVisitor& nv) override {
-            _geom->accept(nv);
-        }
+        void traverse(osg::NodeVisitor& nv) override;
+
         virtual osg::BoundingSphere computeBound() const override {
             return _geom->computeBound();
         }

@@ -116,19 +116,21 @@ namespace osgEarth
         FilteredFeatureCursor(
             FeatureCursor* cursor,
             FeatureFilterChain* chain,
-            FilterContext* context);
+            FilterContext* context,
+            bool ownsContext = false);
 
         virtual bool hasMore() const;
         virtual Feature* nextFeature();
 
     protected:
-        virtual ~FilteredFeatureCursor() { }
+        virtual ~FilteredFeatureCursor();
 
     private:
         osg::ref_ptr<FeatureCursor> _cursor;
         osg::ref_ptr<FeatureFilterChain> _chain;
         FilterContext* _user_cx;
         mutable FeatureList _cache;
+        bool _ownsContext = false;
     };
 
 } // namespace osgEarth

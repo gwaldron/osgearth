@@ -497,3 +497,15 @@ FeatureSource::getKeys(
 
     return output.size();
 }
+
+void FeatureSource::addedToMap(const class Map* map)
+{
+    if (_filters.valid() && _filters->empty() == false)
+    {
+        for (auto filter = _filters->begin(); filter != _filters->end(); ++filter)
+        {
+            filter->get()->addedToMap(map);
+        }
+    }
+    Layer::addedToMap(map);
+}

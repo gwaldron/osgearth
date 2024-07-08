@@ -73,7 +73,6 @@ namespace osgEarth
                         (double)(pb - osgEarth::g_startupPrivateBytes) / 1048576.0);
                     ImGui::SameLine();
                     ImGui::Text(" Total: %.1lf MB", (double)pb / 1048576.0);
-                    //ImGui::Text("  WS: %u MB", (Memory::getProcessPhysicalUsage() / 1048576U));
 
                     ImGui::Separator();
                     ImGui::TextColored(ImVec4(1, 1, 0, 1), "Job Arenas:");

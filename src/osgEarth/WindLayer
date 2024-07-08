@@ -104,21 +104,23 @@ namespace osgEarth
     protected: // Layer
 
         // post-ctor initialization
-        virtual void init() override;
+        void init() override;
 
-        virtual Status openImplementation() override;
+        Status openImplementation() override;
 
-        virtual Status closeImplementation() override;
+        Status closeImplementation() override;
 
-        virtual void prepareForRendering(TerrainEngine*) override;
+        void prepareForRendering(TerrainEngine*) override;
 
-        virtual osg::Node* getNode() const override;
+        void addedToMap(const Map*) override;
 
-        virtual osg::StateSet* getSharedStateSet(osg::NodeVisitor* nv) const override;
+        osg::Node* getNode() const override;
 
-        virtual void releaseGLObjects(osg::State*) const override;
+        osg::StateSet* getSharedStateSet(osg::NodeVisitor* nv) const override;
 
-        virtual void resizeGLObjectBuffers(unsigned) override;
+        void releaseGLObjects(osg::State*) const override;
+
+        void resizeGLObjectBuffers(unsigned) override;
 
     private:
         osg::ref_ptr<osg::Node> _drawable;

@@ -90,6 +90,7 @@ GeometryClamper::apply(osg::Drawable& drawable)
                 {
                     lineDrawable->setVertex(i, (*data._verts)[i]);
                 }
+                lineDrawable->dirtyBound();
             }
             else
             {
@@ -201,6 +202,7 @@ GeometryClamper::apply(osg::Drawable& drawable)
             {
                 lineDrawable->setVertex(i, (*verts)[i]);
             }
+            lineDrawable->dirtyBound();
         }
         else
         {

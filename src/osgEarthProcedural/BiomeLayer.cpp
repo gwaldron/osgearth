@@ -419,8 +419,8 @@ BiomeLayer::createImageImplementation(
                         std::vector<std::string> sorted = sample->traits();
                         if (sorted.size() > 1)
                             std::sort(sorted.begin(), sorted.end());
-                        
-                        std::string implicit_biome_id = 
+
+                        std::string implicit_biome_id =
                             biome->id() + "." + AssetTraits::toString(sorted);
 
                         const Biome* implicit_biome = getBiomeCatalog()->getBiome(implicit_biome_id);
@@ -567,4 +567,20 @@ BiomeLayer::objectDeleted(void* value)
             }
             _tracker.erase(token);
         });
+}
+
+void
+BiomeLayer::resizeGLObjectBuffers(unsigned maxsize)
+{
+    auto textures = _biomeMan.getTextures();
+    if (textures)
+        textures->resizeGLObjectBuffers(maxsize);
+}
+
+void
+BiomeLayer::releaseGLObjects(osg::State* state) const
+{
+    auto textures = _biomeMan.getTextures();
+    if (textures)
+        textures->releaseGLObjects(state);
 }

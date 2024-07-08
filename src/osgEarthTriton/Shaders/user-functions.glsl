@@ -69,17 +69,13 @@ void user_diffuse_color( inout vec3 Cdiffuse, in vec3 CiNoLight, in vec3 Cwash, 
 {
 
 }
-#if __VERSION__ > 140
-    in float oe_LogDepth_clipz;
-#else
-    varying float oe_LogDepth_clipz;
-#endif
+
+// osgEarth layer opacity uniform
 uniform float oe_VisibleLayer_opacityUniform;
 
 // Output to MRT
 void writeFragmentData(in vec4 finalColor, in vec4 Cdiffuse, in vec3 lightColor, in vec3 nNorm )
 {
-    gl_FragDepth = oe_LogDepth_clipz >= 0? oe_LogDepth_clipz : gl_FragCoord.z;
     finalColor.a *= oe_VisibleLayer_opacityUniform;
     
 #ifdef OPENGL32

@@ -47,7 +47,7 @@ namespace osgEarth { namespace Util
     {
     public:
         /** Create a program adapter under the current state that wraps the provided glProgram handle. */
-        NativeProgramAdapter(const osg::State* state, GLint handle, const char* prefix, const std::string& name)
+        NativeProgramAdapter(const osg::State* state, GLint handle, const std::vector<const char*> prefixes, const std::string& name)
         {
             OE_LOCAL << LC << "Create adapter for glProgram " << name << " (handle=" << handle << ")" << std::endl;
 
@@ -61,30 +61,47 @@ namespace osgEarth { namespace Util
             _ext->glGetProgramiv( _handle, GL_ACTIVE_UNIFORMS,      &numUniforms );
             _ext->glGetProgramiv( _handle, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxLen );
 
-            if ( (numUniforms > 0) && (maxLen > 1) )
+            std::vector<std::string> uniformNames;
+
+            if ((numUniforms > 0) && (maxLen > 1))
             {
                 GLint   size = 0;
                 GLenum  type = 0;
                 GLchar* name = new GLchar[maxLen];
 
-                for( GLint i = 0; i < numUniforms; ++i )
+                for (GLint i = 0; i < numUniforms; ++i)
                 {
-                    _ext->glGetActiveUniform( _handle, i, maxLen, 0, &size, &type, name );      
-                    if ( !prefix || (::strlen(name) >= ::strlen(prefix) && ::strncmp(name, prefix, ::strlen(prefix)) == 0) )
+                    _ext->glGetActiveUniform(_handle, i, maxLen, 0, &size, &type, name);
+                    uniformNames.push_back(std::string(name));
+                }
+            }
+
+            for(auto& uniformName : uniformNames)
+            {
+                bool use_uniform = true;
+
+                if (!prefixes.empty())
+                {
+                    use_uniform = false;
+                    for (auto& prefix : prefixes)
                     {
-                        GLint loc = _ext->glGetUniformLocation( _handle, name );
-                        if ( loc != -1 )
+                        if (Strings::startsWith(uniformName, prefix))
                         {
-                            _uniformLocations[osg::Uniform::getNameID(reinterpret_cast<const char*>(name))] = loc;
-                        
-                            OE_LOCAL << LC << "    Uniform = \"" << name << "\", location = " << loc << std::endl;
+                            use_uniform = true;
+                            break;
                         }
                     }
                 }
-            }
-            else
-            {
-                OE_LOCAL << LC << "    No uniforms found." << std::endl;
+
+                if (use_uniform)
+                {
+                    GLint loc = _ext->glGetUniformLocation(_handle, uniformName.c_str());
+                    if ( loc != -1 )
+                    {
+                        _uniformLocations[osg::Uniform::getNameID(uniformName)] = loc;
+                        OE_LOCAL << LC << "    Uniform = \"" << uniformName << "\", location = " << loc << std::endl;
+                    }
+                }
             }
         }
 

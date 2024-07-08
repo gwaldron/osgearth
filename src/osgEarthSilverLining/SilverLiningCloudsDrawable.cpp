@@ -63,22 +63,29 @@ CloudsDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
         // adapt the SL shaders so they can accept OSG uniforms:
         auto cid = GLUtils::getSharedContextID(*state);
         osgEarth::NativeProgramAdapterCollection& adapters = _adapters[cid]; // thread safe.
-        if ( adapters.empty() )
+        if (adapters.empty())
         {
-            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetSkyShader(), NULL, "SkyShader"));
-            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetBillboardShader(), NULL, "BillboardShader"));
-            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetStarShader(), NULL, "StarShader"));
-            adapters.push_back( new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetPrecipitationShader(), NULL, "PrecipitationShader"));
-            //adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetAtmosphericLimbShader(), NULL, "AtmosphericLimbShader"));
+            adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetSkyShader(), {}, "SkyShader"));
+            adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetBillboardShader(), {}, "BillboardShader"));
+            adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetStarShader(), {}, "StarShader"));
+            adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetPrecipitationShader(), {}, "PrecipitationShader"));
+
+            if (_SL->getAtmosphere()->GetAtmosphericLimbShader())
+                adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetAtmosphericLimbShader(), {}, "AtmosphericLimbShader"));
 
 #if ((SILVERLINING_MAJOR_VERSION > 6) || (SILVERLINING_MAJOR_VERSION == 6 && SILVERLINING_MINOR_VERSION >= 24))
-            adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetBillboardShaderInstanced(), NULL, "BillboardShaderInstanced"));
+            adapters.push_back(new osgEarth::NativeProgramAdapter(state, _SL->getAtmosphere()->GetBillboardShaderInstanced(), {}, "BillboardShaderInstanced"));
 #endif
 
-            SL_VECTOR(unsigned) handles = _SL->getAtmosphere()->GetActivePlanarCloudShaders();
-            for(int i=0; i<handles.size(); ++i)          
-                adapters.push_back( new osgEarth::NativeProgramAdapter(state, handles[i], NULL, "PlanarCloudShader"));
+            for (auto& handle : _SL->getAtmosphere()->GetActivePlanarCloudShaders())
+                adapters.push_back(new osgEarth::NativeProgramAdapter(state, handle, {}, Stringify() << "PlanarCloudShader" << handle));
+
+#if (SILVERLINING_MAJOR_VERSION >= 6)
+            for (auto& handle : _SL->getAtmosphere()->GetUserShaders())
+                adapters.push_back(new osgEarth::NativeProgramAdapter(state, handle, {}, Stringify() << "UserShader" << handle));
+#endif
         }
+
         adapters.apply( state );
 
         // invoke the user callback if it exists

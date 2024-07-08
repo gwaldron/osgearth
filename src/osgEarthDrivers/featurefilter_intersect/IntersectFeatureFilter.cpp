@@ -43,6 +43,7 @@ class IntersectFeatureFilter : public FeatureFilter, public IntersectFeatureFilt
 {
 private:
     osg::ref_ptr< FeatureSource > _featureSource;
+    osg::ref_ptr< const osgDB::Options > _readOptions;
 
 public:
     IntersectFeatureFilter(const ConfigOptions& options)
@@ -54,17 +55,18 @@ public: // FeatureFilter
 
     Status initialize(const osgDB::Options* readOptions)
     {
-        // Load the feature source containing the intersection geometry.
-        _featureSource = FeatureSource::create(featureSourceEmbeddedOptions().get());
-        if ( !_featureSource.valid() )
-            return Status::Error(Status::ServiceUnavailable, "Failed to create features source");
-
-        _featureSource->setReadOptions(readOptions);
-        const Status& s = _featureSource->open();
-        if (s.isError())
-            return s;
-
+        _readOptions = readOptions;
         return Status::OK();
+    }
+
+    virtual void addedToMap(const class Map* map) override
+    {
+        if (!_featureSource.valid())
+        {
+            featureSource().open(_readOptions.get());
+            featureSource().addedToMap(map);
+            _featureSource = featureSource().getLayer();
+        }
     }
 
     /**
@@ -86,7 +88,7 @@ public: // FeatureFilter
     }
 
     FilterContext push(FeatureList& input, FilterContext& context)
-    {
+    {       
         if (_featureSource.valid())
         {
             osg::ref_ptr<ProgressCallback> progress = new ProgressCallback();
@@ -94,8 +96,7 @@ public: // FeatureFilter
             // Get any features that intersect this query.
             FeatureList boundaries;
             getFeatures(context.extent().get(), boundaries, progress.get());
-            
-            
+                        
             // The list of output features
             FeatureList output;
 

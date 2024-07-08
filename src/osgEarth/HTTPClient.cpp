@@ -24,6 +24,7 @@
 #include <osgEarth/Cache>
 #include <osgEarth/CacheBin>
 #include <osgEarth/URI>
+#include <osgEarth/FileUtils>
 #include <osgDB/ReadFile>
 #include <osgDB/FileNameUtils>
 #include <curl/curl.h>
@@ -1545,11 +1546,20 @@ HTTPClient::doGet(const HTTPRequest&    request,
     {
         ReadResult result = bin->readString(uri.cacheKey(), options);
         if (result.succeeded())
-        {
+        {            
             gotFromCache = true;
 
-            expired = cachePolicy->isExpired(result.lastModifiedTime());
-            result.setIsFromCache(true);
+            // If the cache-control header contains no-cache that means that it's ok to store the result in the cache, but it must be requested
+            // from the server each time it is it requested.
+            bool noCache = false;
+            std::string cacheControl = result.metadata().value("cache-control");
+            if (cacheControl.find_first_of("no-cache") != std::string::npos)
+            {
+                noCache = true;
+            }
+
+            expired = noCache || cachePolicy->isExpired(result.lastModifiedTime());
+            result.setIsFromCache(true);            
 
             HTTPResponse cacheResponse(HTTPResponse::CATEGORY_SUCCESS);
             osg::ref_ptr<HTTPResponse::Part> part = new HTTPResponse::Part();
@@ -1643,8 +1653,10 @@ namespace
     {
         osgDB::ReaderWriter* reader = 0L;
 
+        std::string urlMinusQueryParams = removeQueryParams(url);
         // try extension first:
-        std::string ext = osgDB::getFileExtension( url );
+
+        std::string ext = osgDB::getFileExtension(urlMinusQueryParams);
         if ( !ext.empty() )
         {
             reader = osgDB::Registry::instance()->getReaderWriterForExtension( ext );

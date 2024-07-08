@@ -61,6 +61,7 @@ set(TARGET_GLSL
     DrawInstancedAttribute.glsl
     GPUClamping.glsl
     GPUClamping.lib.glsl
+    HexTiling.glsl
     Instancing.glsl
     LineDrawable.glsl
     MetadataNode.glsl
@@ -246,6 +247,7 @@ SET(LIB_PUBLIC_HEADERS
     TerrainOptions
     TerrainEngineNode
     TerrainEngineRequirements
+    TerrainMeshLayer
     TerrainResources
     TerrainTileModel
     TerrainTileModelFactory
@@ -662,6 +664,7 @@ set(TARGET_SRC
     Terrain.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp
+    TerrainMeshLayer.cpp
     TerrainResources.cpp
     TerrainTileModel.cpp
     TerrainTileModelFactory.cpp

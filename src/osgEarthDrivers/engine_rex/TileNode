@@ -246,7 +246,7 @@ namespace osgEarth { namespace REX
         // Inherit one shared sampler from parent tile if possible
         void inheritSharedSampler(int binding);
 
-        const TerrainOptions& options() const;
+        //const TerrainOptions& options() const;
     };
 
 } } // namespace osgEarth::REX

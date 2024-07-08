@@ -1147,6 +1147,10 @@ OE_LAYER_PROPERTY_IMPL(TMSImageLayer, std::string, Format, format);
 void
 TMSImageLayer::init()
 {
+    // If no name is set, default it to the value of the URL
+    if (!options().name().isSet() && options().url().isSet())
+        options().name().setDefault(options().url()->base());
+
     ImageLayer::init();
 }
 

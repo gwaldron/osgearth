@@ -120,7 +120,7 @@ namespace osgEarth
             }
 
             DateTimeExtent(const DateTime& start, const DateTime& end) :
-                _start(start), _end(end), _valid(true)
+                _valid(true), _start(start), _end(end)
             {
                 //nop
             }

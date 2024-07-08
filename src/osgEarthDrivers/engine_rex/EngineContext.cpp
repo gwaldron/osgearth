@@ -28,15 +28,14 @@ using namespace osgEarth;
 #define LC "[EngineContext] "
 
 EngineContext::EngineContext(
-    const Map*                     map,
-    TerrainEngineNode*             terrainEngine,
-    GeometryPool*                  geometryPool,
-    Merger*                        merger,
+    const Map* map,
+    TerrainEngineNode* terrainEngine,
+    GeometryPool* geometryPool,
+    Merger* merger,
     TileNodeRegistry::Ptr          tiles,
-    const RenderBindings&          renderBindings,
-    const TerrainOptions&          options,
-    const SelectionInfo&           selectionInfo,
-    const FrameClock*              clock) :
+    const RenderBindings& renderBindings,
+    const SelectionInfo& selectionInfo,
+    const FrameClock* clock) :
 
     _map(map),
     _terrainEngine(terrainEngine),
@@ -44,28 +43,29 @@ EngineContext::EngineContext(
     _merger(merger),
     _tiles(tiles),
     _renderBindings(renderBindings),
-    _options(options),
+    _options(terrainEngine->getOptions()),
     _selectionInfo(selectionInfo),
     _tick(0),
     _tilesLastCull(0),
     _clock(clock)
 {
-    _expirationRange2 = _options.minExpiryRange().get() * _options.minExpiryRange().get();
+    _expirationRange2 = _options.getMinExpiryRange() * _options.getMinExpiryRange();
     _bboxCB = new ModifyBoundingBoxCallback(this);
 
     // create a bindless texture arena and set it to automatically
     // release textures that the terrain no longer references.
     _textures = new TextureArena();
+    _textures->setName("REX Terrain Engine");
     _textures->setBindingPoint(29); // TODO
     _textures->setAutoRelease(true);
 
     // texture limiting :(
     int maxSize = std::min(
-        (int)_options.maxTextureSize().get(),
+        (int)_options.getMaxTextureSize(),
         Registry::instance()->getMaxTextureSize());
 
     _textures->setMaxTextureSize(maxSize);
-    
+
 }
 
 osg::ref_ptr<const Map>

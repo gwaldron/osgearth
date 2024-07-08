@@ -78,7 +78,7 @@ namespace osgEarth
         //! GL memory functions
         void compileGLObjects(osg::State&) const;
         void resizeGLObjectBuffers(unsigned);
-        void releaseGLObjects(osg::State*, bool force=false) const;
+        void releaseGLObjects(osg::State*, bool force = false) const;
 
         OE_PROPERTY(std::string, name);
         OE_PROPERTY(std::string, category);
@@ -87,7 +87,7 @@ namespace osgEarth
         OE_PROPERTY(bool, clamp);
         OE_PROPERTY(bool, keepImage);
         OE_PROPERTY(unsigned, maxDim);
-        
+
         OE_OPTION(URI, uri);
         OE_OPTION(GLenum, internalFormat);
         OE_OPTION(float, maxAnisotropy);
@@ -128,7 +128,7 @@ namespace osgEarth
      * After that, you can call activate() or deactivate() on individual textures
      * to control their availability on the GPU.
      */
-    #define OE_TEXTURE_ARENA_SA_TYPE_ID (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY+8675309)
+#define OE_TEXTURE_ARENA_SA_TYPE_ID (osg::StateAttribute::Type)(osg::StateAttribute::CAPABILITY+8675309)
 
     class OSGEARTH_EXPORT TextureArena : public osg::StateAttribute
     {
@@ -165,7 +165,7 @@ namespace osgEarth
 
         //! Find the texture at index i.
         Texture::Ptr find(unsigned index) const;
-        
+
         //! Number of textures registered
         size_t size() const { return _textures.size(); }
 
@@ -191,22 +191,21 @@ namespace osgEarth
 
     private:
         //! disable copy
-        TextureArena(const TextureArena&, const osg::CopyOp&) { } 
+        TextureArena(const TextureArena&, const osg::CopyOp&) { }
 
         void releaseGLObjects(osg::State*, bool force) const;
 
         // GL objects that can be shared across contexts
         struct GLObjects : public BindlessShareableGLObjects
         {
-            GLObjects() : _inUse(false), _lastAppliedFrame(-1) { }
-            bool _inUse;
+            bool _inUse = false;
+            bool _handleBufferDirty = true;
+            int _lastAppliedFrame = -1;
+
             std::queue<int> _toCompile;
             TextureVector _toRemove;
-
             GLBuffer::Ptr _handleBuffer;
             std::vector<GLuint64> _handles;
-            bool _dirty;
-            int _lastAppliedFrame;
         };
         mutable osg::buffered_object<GLObjects> _globjects;
 

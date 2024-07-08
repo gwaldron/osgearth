@@ -135,7 +135,7 @@ TileNode::createGeometry(Cancelable* progress)
 
     _empty = false;
 
-    unsigned tileSize = options().tileSize().get();
+    unsigned tileSize = _context->options().getTileSize();
 
     // Get a shared geometry from the pool that corresponds to this tile key:
     osg::ref_ptr<SharedGeometry> geom;
@@ -144,7 +144,7 @@ TileNode::createGeometry(Cancelable* progress)
         _key,
         tileSize,
         map.get(),
-        options(),
+        _context->options(),
         geom,
         progress);
 
@@ -263,9 +263,9 @@ TileNode::isDormant() const
     unsigned frame = _context->getClock()->getFrame();
     double now = _context->getClock()->getTime();
 
-    bool dormant = 
-        frame - _lastTraversalFrame > std::max(options().minExpiryFrames().get(), minMinExpiryFrames) &&
-        now - _lastTraversalTime > options().minExpiryTime().get();
+    bool dormant =
+        frame - _lastTraversalFrame > std::max(_context->options().getMinExpiryFrames(), minMinExpiryFrames) &&
+        now - _lastTraversalTime > _context->options().getMinExpiryTime();
 
     return dormant;
 }
@@ -365,7 +365,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
     {
         // In PSOS mode, subdivide when the on-screen size of a tile exceeds the maximum
         // allowable on-screen tile size in pixels.
-        if (options().rangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
+        if (_context->options().getRangeMode() == osg::LOD::PIXEL_SIZE_ON_SCREEN)
         {
             float tileSizeInPixels = -1.0;
 
@@ -380,7 +380,7 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
             }
         
             float effectivePixelSize =
-                options().tilePixelSize().get() + options().screenSpaceError().get();
+                _context->options().getTilePixelSize() + _context->options().getScreenSpaceError();
 
             return (tileSizeInPixels > effectivePixelSize);
         }
@@ -444,10 +444,10 @@ TileNode::cull(TerrainCuller* culler)
     bool canCreateChildren = childrenInRange;
 
     // whether it is OK to load data (if necessary)
-    bool canLoadData = 
+    bool canLoadData =
         _doNotExpire ||
-        _key.getLOD() == options().firstLOD().get() ||
-        _key.getLOD() >= options().minLOD().get();
+        _key.getLOD() == _context->options().getFirstLOD() ||
+        _key.getLOD() >= _context->options().getMinLOD();
 
     // whether to accept the current surface node and not the children.
     bool canAcceptSurface = false;
@@ -464,7 +464,7 @@ TileNode::cull(TerrainCuller* culler)
     else
     {
         // Don't load data OR geometry in progressive mode until the parent is up to date
-        if (options().progressive() == true)
+        if (_context->options().getProgressive() == true)
         {
             TileNode* parent = getParentTile();
             if (parent && parent->dirty() && parent->nextLoadIsProgressive())
@@ -1334,7 +1334,7 @@ TileNode::removeSubTiles()
 void
 TileNode::notifyOfArrival(TileNode* that)
 {
-    if (options().normalizeEdges() == true)
+    if (_context->options().getNormalizeEdges() == true)
     {
         if (_key.createNeighborKey(1, 0) == that->getKey())
             _eastNeighbor = that;
@@ -1349,7 +1349,7 @@ TileNode::notifyOfArrival(TileNode* that)
 void
 TileNode::updateNormalMap()
 {
-    if (options().normalizeEdges() == false)
+    if (_context->options().getNormalizeEdges() == false)
         return;
 
     Sampler& thisNormalMap = _renderModel._sharedSamplers[SamplerBinding::NORMAL];
@@ -1427,16 +1427,16 @@ TileNode::updateNormalMap()
     //OE_INFO << LC << _key.str() << " : updated normal map.\n";
 }
 
-const TerrainOptions&
-TileNode::options() const
-{
-    return _context->options();
-}
+//const TerrainOptions&
+//TileNode::options() const
+//{
+//    return _context->options();
+//}
 
 bool
 TileNode::nextLoadIsProgressive() const
 {
     return
-        (options().progressive() == true) &&
+        (_context->options().getProgressive()) &&
         (_nextLoadManifestPtr == nullptr) || (!_nextLoadManifestPtr->progressive().isSetTo(false));
 }

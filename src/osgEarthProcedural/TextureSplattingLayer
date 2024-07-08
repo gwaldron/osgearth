@@ -91,16 +91,16 @@ namespace osgEarth { namespace Procedural
     protected:
 
         //! Override post-ctor init
-        virtual void init() override;
-        virtual void prepareForRendering(TerrainEngine* engine) override;
+        void init() override;
+        void prepareForRendering(TerrainEngine* engine) override;
 
     public:
 
-        virtual void addedToMap(const Map* map) override;
-        virtual void removedFromMap(const Map* map) override;
-        virtual void update(osg::NodeVisitor&) override;
-        virtual void resizeGLObjectBuffers(unsigned maxSize) override;
-        virtual void releaseGLObjects(osg::State* state) const override;
+        void addedToMap(const Map* map) override;
+        void removedFromMap(const Map* map) override;
+        void update(osg::NodeVisitor&) override;
+        void resizeGLObjectBuffers(unsigned maxSize) override;
+        void releaseGLObjects(osg::State* state) const override;
 
     protected:
         virtual ~TextureSplattingLayer() { }
@@ -113,6 +113,7 @@ namespace osgEarth { namespace Procedural
             std::vector<const MaterialAsset*> _assets;
         };
 
+        osg::ref_ptr<const Profile> _mapProfile;
         Future<Materials::Ptr> _materialsJob;
         Materials::Ptr _materials;
         TextureImageUnitReservation _noiseUnit;

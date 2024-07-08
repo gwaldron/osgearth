@@ -50,5 +50,8 @@ InstanceResource::getConfig() const
 osg::Node*
 InstanceResource::createNode( const osgDB::Options* dbOptions ) const
 {
-    return createNodeFromURI( _uri.value(), dbOptions );
+    if (_node.valid())
+        return _node.get();
+    else
+        return createNodeFromURI( _uri.value(), dbOptions );
 }

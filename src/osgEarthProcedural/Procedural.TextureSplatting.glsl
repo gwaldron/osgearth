@@ -62,8 +62,6 @@ void oe_splat_View(inout vec4 vertex_view)
 #pragma import_defines(OE_LIFEMAP_DIRECT)
 //#pragma import_defines(OE_SNOW)
 
-#pragma include Procedural.HexTiling.glsl
-
 layout(binding = 5, std430) buffer SplatTextureArena {
     uint64_t texHandle[];
 };
@@ -90,9 +88,9 @@ in float oe_elev;
 #endif
 
 #ifdef OE_LIFEMAP_DIRECT
-    #define tweakable uniform
+#define tweakable uniform
 #else
-    #define tweakable const
+#define tweakable const
 #endif
 
 tweakable float dense_power = 1.0;
@@ -127,6 +125,38 @@ mat3 oe_normalMapTBN;
 // optimized uncompressor (assumes Z is never negative)
 #define UNPACK_NORMAL(P,N) N.xy = P*2.0-1.0; N.z = 1.0-abs(N.x)-abs(N.y); N /= length(N)
 
+struct SplatRowData
+{
+    vec3 p1_weights;
+    vec3 p2_weights;
+    float column_mix;
+};
+
+struct SplatLevelData
+{
+    vec3 override_material_weights;
+    float sub_surf_mix;
+    float splat_level_mix;
+
+    // 0 = substrate (dirt and rocks)
+    // 1 = surface (greenery and debris)
+    SplatRowData rowData[2];
+};
+
+struct SplatSharedData
+{
+    float rugged;
+    float lush;
+    float dense;
+    int material_index;
+
+    SplatLevelData[OE_SPLAT_NUM_LEVELS] levelData;
+};
+
+// We cache the data computed in the shader here so it can be
+// accessed as a stage-global from other shaders that need to benefit
+// from the splatting calculations (sensors, e.g.)
+SplatSharedData splatData;
 
 struct Pixel {
     vec4 rgbh;
@@ -163,7 +193,18 @@ void get_coord(out vec2 coord, in int index, in int level)
 #define OE_SPLAT_HEX_TILER 0
 #endif
 
-void get_pixel(out Pixel res, in int index, in vec2 coord)
+#if OE_SPLAT_HEX_TILER == 1
+// declare function from HexTiling.glsl library
+void ht_hex2colTex_optimized(
+    in sampler2D color_tex,
+    in sampler2D material_tex,
+    in vec2 st,
+    out vec4 color,
+    out vec4 material,
+    inout vec3 weighting);
+#endif
+
+void get_pixel(out Pixel res, inout vec3 weights, in int index, in vec2 coord)
 {
     vec4 nnra;
 
@@ -173,7 +214,8 @@ void get_pixel(out Pixel res, in int index, in vec2 coord)
         sampler2D(texHandle[index * 2 + 1]),
         coord,
         res.rgbh,
-        nnra);
+        nnra,
+        weights);
 
 #else
     res.rgbh = texture(sampler2D(texHandle[index * 2]), coord);
@@ -203,6 +245,8 @@ void pixmix(out Pixel res, in Pixel p1, in Pixel p2, float m)
 void resolveRow(out Pixel result, int level, int row, float xvar)
 {
     Pixel p1, p2;
+    vec3 w1 = vec3(0.0);
+    vec3 w2 = vec3(0.0);
     vec2 coord;
 
     // calulate first column index and mix factor
@@ -216,18 +260,26 @@ void resolveRow(out Pixel result, int level, int row, float xvar)
 
     // read both columns:
     get_coord(coord, i, level);
-    get_pixel(p1, i, coord);
-    i = (i%OE_TEX_DIM_X < OE_TEX_DIM_X) ? i + 1 : i;
+    get_pixel(p1, w1, i, coord);
+    i = (i % OE_TEX_DIM_X < OE_TEX_DIM_X) ? i + 1 : i;
     get_coord(coord, i, level);
-    get_pixel(p2, i, coord);
+    get_pixel(p2, w2, i, coord);
 
     // blend them using both heightmap:
     float m = heightAndEffectMix(p1.rgbh[3], 1.0 - x_mix, p2.rgbh[3], x_mix);
     pixmix(result, p1, p2, m);
+
+    SplatRowData rowData;
+    rowData.p1_weights = w1;
+    rowData.p2_weights = w2;
+    rowData.column_mix = m;
+
+    splatData.levelData[level].rowData[row] = rowData;
 }
 
 void resolveLevel(out Pixel result, int level, float rugged, float lush, float dense, int override_material_index)
 {
+    SplatLevelData levelData;
     float surface_mix = dense;
 
     // resolve the substrate (dirt and rocks)
@@ -238,10 +290,12 @@ void resolveLevel(out Pixel result, int level, float rugged, float lush, float d
     Pixel surface;
     if (override_material_index > 0)
     {
+        vec3 weights = vec3(0.0);
         vec2 coord;
         get_coord(coord, override_material_index - 1, 0);
-        get_pixel(surface, override_material_index - 1, coord);
+        get_pixel(surface, weights, override_material_index - 1, coord);
         surface_mix = clamp(1.0 - DECEL(dense, 2.0), 0, 1); //  (rugged + dense + lush), 0, 1);
+        levelData.override_material_weights = weights;
     }
     else
     {
@@ -253,6 +307,8 @@ void resolveLevel(out Pixel result, int level, float rugged, float lush, float d
         substrate.rgbh[3], 1.0 - surface_mix,
         surface.rgbh[3], surface_mix);
 
+    levelData.sub_surf_mix = m;
+
     if (level == 0)
     {
         pixmix(result, substrate, surface, m);
@@ -263,10 +319,14 @@ void resolveLevel(out Pixel result, int level, float rugged, float lush, float d
         pixmix(temp, substrate, surface, m);
 
         float mat_mix = min(oe_splat_levelblend, oe_splat_blend_rgbh_mix);
+        levelData.splat_level_mix = mat_mix;
+
         result.rgbh = mix(result.rgbh, temp.rgbh, mat_mix);
         result.normal = mix(result.normal, temp.normal, min(oe_splat_levelblend, oe_splat_blend_normal_mix));
         result.material = mix(result.material, temp.material, mat_mix);
     }
+
+    splatData.levelData[level] = levelData;
 }
 
 void oe_splat_Frag(inout vec4 quad)
@@ -274,19 +334,19 @@ void oe_splat_Frag(inout vec4 quad)
     // sample the life map and extract the compenents:
     vec2 c = (OE_LIFEMAP_MAT * oe_layer_tilec).st;
     vec4 life = texture(OE_LIFEMAP_TEX, c);
-    float rugged = MODIFY(life[RUGGED], rugged_power);
-    float lush = MODIFY(life[LUSH], lush_power);
-    float dense = MODIFY(life[DENSE], dense_power);
+    splatData.rugged = MODIFY(life[RUGGED], rugged_power);
+    splatData.lush = MODIFY(life[LUSH], lush_power);
+    splatData.dense = MODIFY(life[DENSE], dense_power);
 
-    ivec2 tfc = ivec2(min(int(c.x*256.0), 255), min(int(c.y*256.0), 255));
+    ivec2 tfc = ivec2(min(int(c.x * 256.0), 255), min(int(c.y * 256.0), 255));
     vec4 life_i = texelFetch(OE_LIFEMAP_TEX, tfc, 0);
-    int material_index = int(life_i[3] * 255.0f);
+    splatData.material_index = int(life_i[3] * 255.0f);
 
     // compute the pixel color:
     Pixel pixel;
     for (int level = 0; level < OE_SPLAT_NUM_LEVELS; ++level)
     {
-        resolveLevel(pixel, level, rugged, lush, dense, material_index);
+        resolveLevel(pixel, level, splatData.rugged, splatData.lush, splatData.dense, splatData.material_index);
     }
 
     // apply PBR
@@ -313,7 +373,7 @@ void oe_splat_Frag(inout vec4 quad)
 
     vp_Normal = normalize(vp_Normal + oe_normalMapTBN * pixel.normal);
 
-    float composite = DECEL(clamp(dense + lush + rugged, 0.0, 1.0), oe_mask_alpha);
+    float composite = DECEL(clamp(splatData.dense + splatData.lush + splatData.rugged, 0.0, 1.0), oe_mask_alpha);
     float alpha = oe_mask_alpha > 0.0 ? composite : 1.0;
 
     // final color output:

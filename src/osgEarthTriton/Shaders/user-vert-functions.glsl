@@ -1,3 +1,5 @@
+// user-vert-functions.glsl
+#extension GL_ARB_gpu_shader5: enable
 
 float user_get_depth( in vec3 worldPos )
 {
@@ -27,31 +29,25 @@ void user_intercept(in vec3 worldPosition, in vec3 localPosition, in vec4 eyePos
 
 }
 
-#if __VERSION__ > 140
-    out float oe_LogDepth_clipz;
-#else
-    varying float oe_LogDepth_clipz;
-#endif
-uniform mat4 trit_projection;
+
+// osgEarth log depth buffer
+uniform mat4 osg_ProjectionMatrix;
+vec4 oe_logdepth_vert(in vec4 clip)
+{
+    if (osg_ProjectionMatrix[3][3] == 0) // perspective only
+    {
+        mat4 clip2view = inverse(osg_ProjectionMatrix);
+        vec4 farPoint = clip2view * vec4(0,0,1,1);
+        float FAR = -farPoint.z / farPoint.w;
+        float FC = 2.0 / log2(FAR + 1);
+        clip.z = (log2(max(1e-6, clip.w+1.0))*FC - 1.0) * clip.w;
+    }
+    return clip;
+}
 
 // Provides a point to override the final value of gl_Position.
 // Useful for implementing logarithmic depth buffers etc.
 vec4 overridePosition(in vec4 position)
 {
-    if(trit_projection[3][3] == 0)
-    {
-        mat4 clip2view = inverse(trit_projection);
-        vec4 farPoint = clip2view * vec4(0,0,1,1);
-        float FAR = -farPoint.z/farPoint.w;
-    
-        const float C = 0.001;
-        float FC = 1.0/log(FAR*C + 1);
-        oe_LogDepth_clipz = log(position.w*C + 1)*FC;
-        position.z = (2*oe_LogDepth_clipz - 1)*position.w;
-    }
-    else
-    {
-        oe_LogDepth_clipz = -1;
-    }
-    return position;
+    return oe_logdepth_vert(position);
 }

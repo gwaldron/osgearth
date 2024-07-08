@@ -1,9 +1,9 @@
 {
     "name": "osgearth",
-    "version-string": "3.3",
+    "version-string": "3.4",
     "builtin-baseline" : "a4013afe6d3053e739b37c4cb6b5e64b55611e24",
     "port-version": 1,
-    "description": "osgEarth - 3D Maps and Terrain for OpenSceneGraph - Copyright 2022 Pelican Mapping",
+    "description": "osgEarth - 3D Maps and Terrain for OpenSceneGraph - Copyright 2023 Pelican Mapping",
     "homepage": "https://github.com/gwaldron/osgearth",
     "supports": "!(x86 | wasm32)",
     "dependencies": [

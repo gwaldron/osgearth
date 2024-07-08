@@ -163,7 +163,7 @@ MaterialLoader::apply(osg::StateSet* ss)
         }
         else
         {
-            OE_INFO << LC << "Looking for: " << materialURI.full() << std::endl;
+            //OE_INFO << LC << "Looking for: " << materialURI.full() << std::endl;
             osg::ref_ptr<osg::Image> image = materialURI.getImage(_options);
             if (image.valid())
             {
@@ -186,7 +186,7 @@ MaterialLoader::apply(osg::StateSet* ss)
                 mat_tex->setMaxAnisotropy(t->getMaxAnisotropy());
 
                 _cache[materialURI.full()] = mat_tex;
-                OE_INFO << LC << "..loaded material tex '" << materialURI.base() << "' to unit " << unit << std::endl;
+                OE_INFO << LC << "Loaded material tex '" << materialURI.base() << "' to unit " << unit << std::endl;
             }
         }   
 

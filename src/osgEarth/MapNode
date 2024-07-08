@@ -66,6 +66,7 @@ namespace osgEarth
             OE_OPTION(ProxySettings, proxySettings);
             OE_OPTION(bool, enableLighting);
             OE_OPTION(bool, overlayBlending);
+            OE_OPTION(bool, overlayBlendingSource);
             OE_OPTION(unsigned, overlayTextureSize);
             OE_OPTION(bool, overlayMipMapping);
             OE_OPTION(float, overlayResolutionRatio);

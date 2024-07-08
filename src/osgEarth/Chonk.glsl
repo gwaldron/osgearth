@@ -38,6 +38,7 @@ layout(location = 5) in vec3 flex;
 layout(location = 6) in int albedo_index;
 layout(location = 7) in int normalmap_index;
 layout(location = 8) in int pbr_index;
+layout(location = 9) in ivec2 extended_materials;
 
 #define NT_DEFAULT 0
 #define NT_ZAXIS 1
@@ -59,6 +60,7 @@ flat out float oe_alpha_cutoff;
 flat out uint64_t oe_albedo_tex;
 flat out uint64_t oe_normal_tex;
 flat out uint64_t oe_pbr_tex;
+flat out ivec2 oe_extended_materials;
 
 void oe_chonk_default_vertex_model(inout vec4 vertex)
 {
@@ -75,6 +77,7 @@ void oe_chonk_default_vertex_model(inout vec4 vertex)
     oe_alpha_cutoff = instances[i].alpha_cutoff;
     oe_fade = instances[i].visibility[chonk_lod];
     oe_albedo_tex = albedo_index >= 0 ? textures[albedo_index] : 0;
+    oe_extended_materials = extended_materials;
 
 #if defined(OE_IS_SHADOW_CAMERA) || defined(OE_IS_DEPTH_CAMERA)
     oe_fade = 1.0;

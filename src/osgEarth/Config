@@ -510,7 +510,7 @@ namespace osgEarth
         remove(key);
         if (!input.empty()) {
             std::ostringstream buf;
-            for(auto i=0; i<input.size(); ++i) {
+            for(size_t i=0; i<input.size(); ++i) {
                 if (i > 0) buf << ',';
                 bool quote = input[i].find(',') != std::string::npos;
                 if (quote) buf << "\"";

@@ -143,12 +143,6 @@ if(OSGEARTH_ASSUME_SINGLE_THREADED_OSG)
     add_definitions(-DOSGEARTH_SINGLE_THREADED_OSG)
 endif()
 
-# imgui?
-if(OSGEARTH_BUILD_IMGUI_NODEKIT)
-    set(OSGEARTH_HAVE_IMGUI_NODEKIT ON) # for BuildConfig
-endif()
-
-
 # Bring in our utility macros that sub-projects will use to configure themselves.
 include(cmake/osgearth-macros.cmake)
 

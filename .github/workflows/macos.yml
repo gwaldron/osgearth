@@ -28,6 +28,7 @@ jobs:
         brew install protobuf
         brew install poco
         brew install open-scene-graph
+        brew install glew
         sudo xcode-select -p
 
     - uses: actions/checkout@v2

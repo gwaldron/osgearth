@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include <osgEarth/ImGui/ImGuiApp>
+#include <osgEarthImGui/ImGuiApp>
 #include <osgEarth/ObjectIDPicker>
 #include <osgEarth/MetadataNode>
 
@@ -26,30 +26,27 @@ namespace osgEarth
 {
     struct PickerGUI : public ImGuiPanel
     {
-        PickerGUI() :
-            ImGuiPanel("Picker")
-        {
-        }
+        PickerGUI() : ImGuiPanel("Picker") { }
 
         const char* highlight_shader = R"(
-    #pragma vp_function check_for_highlight, vertex_clip
-    uniform uint objectid_to_highlight;
-    uint oe_index_objectid;      // Stage global containing object id
-    flat out int selected;
-    void check_for_highlight(inout vec4 vertex)
-    {
-        selected = (objectid_to_highlight > 1u && objectid_to_highlight == oe_index_objectid) ? 1 : 0;
-    }
+            #pragma vp_function check_for_highlight, vertex_clip
+            uniform uint objectid_to_highlight;
+            uint oe_index_objectid;      // Stage global containing object id
+            flat out int selected;
+            void check_for_highlight(inout vec4 vertex)
+            {
+                selected = (objectid_to_highlight > 1u && objectid_to_highlight == oe_index_objectid) ? 1 : 0;
+            }
 
-    [break]
-    #pragma vp_function highlight_fragment, fragment
-    flat in int selected;
-    void highlight_fragment(inout vec4 color)
-    {
-        if ( selected == 1 )
-            color.rgb = mix(color.rgb, clamp(vec3(0.5,2.0,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5);
-    }
-)";
+            [break]
+            #pragma vp_function highlight_fragment, fragment
+            flat in int selected;
+            void highlight_fragment(inout vec4 color)
+            {
+                if ( selected == 1 )
+                    color.rgb = mix(color.rgb, clamp(vec3(0.5,2.0,2.0)*(1.0-color.rgb), 0.0, 1.0), 0.5);
+            }
+        )";
 
         void installHighlighter()
         {
@@ -59,6 +56,9 @@ namespace osgEarth
             // This shader program will highlight the selected object.
             VirtualProgram* vp = VirtualProgram::getOrCreate(stateSet);
             ShaderLoader::load(vp, highlight_shader);
+
+            // Since we're accessing object IDs, we need to load the indexing shader as well:
+            Registry::objectIndex()->loadShaders(vp);
 
             // A uniform that will tell the shader which object to highlight:
             _highlightUniform = new osg::Uniform("objectid_to_highlight", 0u);
@@ -73,90 +73,170 @@ namespace osgEarth
             if (ImGui::Begin(name(), visible()))
             {
                 if (!_mapNode.valid())
-                    _mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
+                {
+                    _mapNode = findNode<MapNode>(ri);
+                    _installedPicker = false;
+                }
 
                 if (!_installedPicker)
                 {
                     _picker = new ObjectIDPicker();
-                    auto view = dynamic_cast<osgViewer::View*>(ri.getView());
-                    _picker->setView(view);  // which view to pick?
+                    _picker->setView(view(ri));  // which view to pick?
                     _picker->setGraph(_mapNode.get()); // which graph to pick?
                     _mapNode->addChild(_picker); // put it anywhere in the graph
 
-                    installHighlighter();
-
-                    ObjectIDPicker::Function hover = [&](ObjectID id)
+                    ObjectIDPicker::Function pick = [&](ObjectID id)
                         {
                             if (id > 0)
                             {
-                                _pickedFeature = nullptr;
-
-                                osg::ref_ptr< MetadataNode > metadata = Registry::objectIndex()->get<MetadataNode>(id);
-                                if (metadata.valid())
-                                {
-                                    int index = metadata->getIndexFromObjectID(id);
-                                    if (index > 0)
-                                    {
-                                        const Feature* feature = metadata->getFeature(index);
-                                        _pickedFeature = feature;
-                                    }
-                                }
+                                // Got a pick:
+                                FeatureIndex* index = Registry::objectIndex()->get<FeatureIndex>(id).get();
+                                Feature* feature = index ? index->getFeature(id) : 0L;
+                                _pickedFeature = feature;
+                                _pickedAnnotation = Registry::objectIndex()->get<AnnotationNode>(id).get();
                                 _highlightUniform->set(id);
                             }
                             else
                             {
-                                _highlightUniform->set(0u);
+                                // No pick:
                                 _pickedFeature = nullptr;
-                            }
-                        };
-
-                    _picker->onHover(hover);
-
-                    ObjectIDPicker::Function click = [&](ObjectID id)
-                        {
-                            if (id > 0)
-                            {
-                                osg::ref_ptr< MetadataNode > metadata = Registry::objectIndex()->get<MetadataNode>(id);
-                                if (metadata)
-                                {
-                                    int index = metadata->getIndexFromObjectID(id);
-                                    if (index > 0)
-                                    {
-                                        metadata->setVisible(index, false);
-                                    }
-                                }
+                                _pickedAnnotation = nullptr;
+                                _highlightUniform->set(0u);
                             }
                         };
 
                     // Call our handler when hovering over the map
-                    _picker->onClick(click);
+                    _picker->onHover(pick);
+
+                    // Highlight features as we pick'em.
+                    installHighlighter();
+
+                    // To display the contents of the pick camera in the imgui panel
+                    setupPreviewCamera();
 
                     _installedPicker = true;
                 }
 
-                if (_pickedFeature.valid())
+                if (ImGui::Checkbox("Picker active", &_active))
                 {
-                    ImGui::Text("Picked Feature:");
-                    ImGui::Indent();
+                    _picker->setNodeMask(_active ? ~0 : 0);
+                }
+
+                if (_active)
+                {
+                    if (ImGui::Checkbox("RTT preview", &_preview))
+                        dirtySettings();
+
+                    if (_preview && _previewTexture)
                     {
-                        ImGui::Text("FID = %ld", _pickedFeature->getFID());
-                        ImGui::Separator();
-                        for (auto& attr : _pickedFeature->getAttrs())
+                        osg::Texture2D* pickTex = _picker->getOrCreateTexture();
+                        if (pickTex)
                         {
-                            ImGui::Separator();
-                            ImGui::TextWrapped("%s = %s", attr.first.c_str(), attr.second.getString().c_str());
+                            if (_previewStateSet->getTextureAttribute(0, osg::StateAttribute::TEXTURE) != pickTex)
+                                _previewStateSet->setTextureAttribute(0, pickTex, 1);
+
+                            ImGui::Text("Picker camera preview:");
+                            ImGuiEx::OSGTexture(_previewTexture, ri);
                         }
                     }
-                    ImGui::Unindent();
+
+                    if (_pickedFeature.valid())
+                    {
+                        ImGui::Separator();
+                        ImGui::Text("Picked Feature:");
+                        ImGuiLTable::Begin("picked feature", ImGuiTableFlags_Borders);
+                        ImGuiLTable::Text("FID", "%ld", _pickedFeature->getFID());
+                        for (auto& attr : _pickedFeature->getAttrs())
+                        {
+                            ImGuiLTable::Text(attr.first.c_str(), "%s", attr.second.getString().c_str());
+                        }
+                        ImGuiLTable::End();
+                    }
+
+                    else if (_pickedAnnotation.valid())
+                    {
+                        ImGui::Text("Picked Annotation:");
+                        ImGui::Indent();
+                        {
+                            ImGui::Text("Object name = %s", _pickedAnnotation->getName().c_str());
+                            ImGui::Text("Object type = %s", typeid(*_pickedAnnotation).name());
+                        }
+                        ImGui::Unindent();
+                    }
                 }
             }
             ImGui::End();
         }
 
+        // A lot of code just to re-color the picker's rtt camera into visible colors :)
+        // We are just taking the pick texture and re-rendering it to another quad
+        // with a new shader so we can amplify the colors.
+        void setupPreviewCamera()
+        {
+            // simple fragment shader to recolor a texture
+            const char* pick_preview = R"(
+                #pragma vp_function pick_preview_vs, vertex_clip
+                out vec2 uv;
+                void pick_preview_vs(inout vec4 clip) {
+                    const vec2 uvs[6] = vec2[6](
+                        vec2(0,0), vec2(1,1), vec2(0,1),
+                        vec2(1,1), vec2(0,0), vec2(1,0)
+                    );
+                    uv = uvs[gl_VertexID];
+                    clip = vec4(uv*2-1, 0, 1);
+                }
+
+                [break]
+                #pragma vp_function pick_preview_fs, fragment_output
+                in vec2 uv;
+                out vec4 frag;
+                uniform sampler2D tex;
+                void pick_preview_fs(inout vec4 c) {
+                    c = texture(tex, uv);
+                    frag = c==vec4(0)? vec4(1) : vec4(vec3((c.r+c.g+c.b+c.a)/4.0),1);
+                }
+            )";
+
+            osg::Geometry* geom = new osg::Geometry();
+            _previewStateSet = geom->getOrCreateStateSet();
+            geom->setCullingActive(false);
+            geom->setUseVertexBufferObjects(true);
+            geom->setUseDisplayList(false);
+            geom->setVertexArray(new osg::Vec3Array(6));
+            geom->addPrimitiveSet(new osg::DrawArrays(GL_TRIANGLES, 0, 6));
+            _previewStateSet->addUniform(new osg::Uniform("tex", 0));
+
+            VirtualProgram* vp = VirtualProgram::getOrCreate(_previewStateSet);
+            ShaderLoader::load(vp, pick_preview);
+
+            _previewTexture = new osg::Texture2D();
+            _previewTexture->setTextureSize(256, 256);
+            _previewTexture->setSourceFormat(GL_RGBA);
+            _previewTexture->setSourceType(GL_UNSIGNED_BYTE);
+            _previewTexture->setInternalFormat(GL_RGBA8);
+
+            osg::Camera* cam = new osg::Camera();
+            cam->addChild(geom);
+            cam->setClearColor(osg::Vec4(1, 0, 0, 1));
+            cam->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            cam->setViewport(0, 0, 256, 256);
+            cam->setRenderOrder(osg::Camera::POST_RENDER);
+            cam->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+            cam->setImplicitBufferAttachmentMask(0, 0);
+            cam->attach(osg::Camera::COLOR_BUFFER, _previewTexture);
+
+            _mapNode->addChild(cam);
+        }
+
+        bool _active = true;
+        bool _preview = false;
         osg::observer_ptr<MapNode> _mapNode;
         bool _installedPicker = false;
         osgEarth::Util::ObjectIDPicker* _picker;
         osg::Uniform* _highlightUniform;
         osg::ref_ptr<const Feature> _pickedFeature;
+        osg::ref_ptr<AnnotationNode> _pickedAnnotation;
+        osg::ref_ptr<osg::Texture2D> _previewTexture;
+        osg::ref_ptr<osg::StateSet> _previewStateSet;
     };
 }

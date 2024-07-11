@@ -197,9 +197,9 @@ namespace osgEarth
 // various additions to ImGui.
 namespace ImGuiLTable
 {
-    static bool Begin(const char* name)
+    static bool Begin(const char* name, int flags = 0)
     {
-        bool ok = ImGui::BeginTable(name, 2, ImGuiTableFlags_SizingFixedFit);
+        bool ok = ImGui::BeginTable(name, 2, ImGuiTableFlags_SizingFixedFit | flags);
         if (ok) {
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
             ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_WidthStretch);

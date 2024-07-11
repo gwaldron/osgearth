@@ -23,7 +23,7 @@ set(STOCK_PANELS
     LayersGUI
     NetworkMonitorGUI
     NotifyGUI
-    #PickerGUI
+    PickerGUI
     RenderingGUI
     SceneGraphGUI
     SearchGUI

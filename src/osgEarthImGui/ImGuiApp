@@ -33,6 +33,7 @@
 #include <osgEarthImGui/CameraGUI>
 #include <osgEarthImGui/RenderingGUI>
 #include <osgEarthImGui/AnnotationsGUI>
+#include <osgEarthImGui/PickerGUI>
 
 #ifdef OSGEARTH_HAVE_GEOCODER
 #include <osgEarthImGui/SearchGUI>
@@ -111,7 +112,7 @@ namespace osgEarth
             _menu["Tools"].push_back(PPtr(new ContentBrowserGUI));
             //_menu["Tools"].push_back(PPtr(new NotifyGUI));
             _menu["Tools"].push_back(PPtr(new SceneGraphGUI));
-            //_menu["Tools"].push_back(PPtr(new PickerGUI));
+            _menu["Tools"].push_back(PPtr(new PickerGUI));
             _menu["Tools"].push_back(PPtr(new TextureInspectorGUI));
             _menu["Tools"].push_back(PPtr(new ShaderGUI(args)));
             _menu["Tools"].push_back(PPtr(new RenderingGUI()));

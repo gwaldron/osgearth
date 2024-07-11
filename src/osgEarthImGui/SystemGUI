@@ -1,0 +1,217 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarth/Threading>
+#include <osgEarth/MemoryUtils>
+#include <osgEarth/GLUtils>
+#include <osgEarth/ShaderLoader>
+#include <osgEarth/Registry>
+#include <osgEarth/Capabilities>
+#include <chrono>
+#include <list>
+#include <vector>
+
+namespace osgEarth
+{
+    using namespace osgEarth::Threading;
+
+    namespace
+    {
+        const int frame_count = 300;
+        using Counts = std::vector<unsigned>;
+        using Timings = std::vector<std::chrono::nanoseconds>;
+        Timings frame_times(frame_count);
+        Counts total_jobs(frame_count);
+        Counts ico_jobs(frame_count);
+        std::chrono::time_point<std::chrono::steady_clock> t_previous;
+        int frame_num = 0;
+        char buf[256];
+        float get_counts(void* data, int index) {
+            return (float)(*(Counts*)data)[index];
+        };
+        unsigned long long get_average_timing_ns(void* data, int count, int start) {
+            Timings& t = *(Timings*)(data);
+            unsigned long long total = 0;
+            int s = start - count; if (s < 0) s += frame_count;
+            for (int i = s; i <= s + count; i++)
+                total += t[i % frame_count].count();
+            return (total / count);
+        }
+        float get_timing_ms(void* data, int index) {
+            return 1e-6 * get_average_timing_ns(data, 4, index - 3);
+        };
+    };
+
+    class SystemGUI : public ImGuiPanel
+    {
+    private:
+        std::string _renderMode;
+        bool _renderViewNormals;
+        bool _renderModelNormals;
+        bool _renderWinding;
+        bool _renderOutlines;
+        bool _showArenaControls;
+
+    public:
+        SystemGUI() : ImGuiPanel("System"),
+            _renderViewNormals(false), _renderModelNormals(false),
+            _renderWinding(false), _renderOutlines(false),
+            _showArenaControls(false) {}
+
+        void load(const Config& conf) override
+        {
+            conf.get("ImGui.FontGlobalScale", ImGui::GetIO().FontGlobalScale);
+        }
+
+        void save(Config& conf) override
+        {
+            conf.set("ImGui.FontGlobalScale", ImGui::GetIO().FontGlobalScale);
+        }
+
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible())
+                return;
+
+            ImGui::Begin(name(), visible());
+            {
+                auto pb = Memory::getProcessPrivateUsage();
+                ImGui::Text("Mem Alloc: %.1lf MB",
+                    (double)(pb - osgEarth::g_startupPrivateBytes) / 1048576.0);
+                ImGui::SameLine();
+                ImGui::Text(" Total: %.1lf MB", (double)pb / 1048576.0);
+
+                ImGui::Separator();
+                auto flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg;
+                if (ImGui::BeginTable("thread pools", 6, flags))
+                {
+                    auto metrics = jobs::get_metrics();
+
+                    auto all_pool_metrics = metrics->all();
+
+                    ImGui::TableNextColumn(); ImGui::Text("Pool");
+                    ImGui::TableNextColumn(); ImGui::Text("Run"); //ImGui::SetItemTooltip("Running");
+                    ImGui::TableNextColumn(); ImGui::Text("Mrg"); //ImGui::SetItemTooltip("Merging / postprocessing");
+                    ImGui::TableNextColumn(); ImGui::Text("Que"); //ImGui::SetItemTooltip("Queued jobs (waiting to run)");
+                    //ImGui::TableNextColumn(); ImGui::Text("Can"); //ImGui::SetItemTooltip("Canceled jobs");
+                    ImGui::TableNextColumn(); ImGui::Text("Max"); //ImGui::SetItemTooltip("Number of available threads");
+                    ImGui::TableNextColumn();
+
+                    for (auto pool_metrics : all_pool_metrics)
+                    {
+                        if (pool_metrics && pool_metrics->total > 0)
+                        {
+                            ImGui::TableNextColumn();
+                            ImGui::Text("%s", (pool_metrics->name.empty() ? "default" : pool_metrics->name.c_str()));
+
+                            ImGui::TableNextColumn(); ImGui::Text("%d", (int)pool_metrics->running);
+                            ImGui::TableNextColumn(); ImGui::Text("%d", (int)pool_metrics->postprocessing);
+                            ImGui::TableNextColumn(); ImGui::Text("%d", (int)pool_metrics->pending);
+                            //ImGui::TableNextColumn(); ImGui::Text("%d", (int)pool_metrics->canceled);
+                            ImGui::TableNextColumn(); ImGui::Text("%d", (int)pool_metrics->concurrency);
+
+                            ImGui::TableNextColumn();
+                            ImGui::PushID((std::uintptr_t)pool_metrics);
+                            int pc = pool_metrics->concurrency;
+                            if (ImGui::InputInt("", &pc))
+                                jobs::get_pool(pool_metrics->name)->set_concurrency(
+                                    std::max(1, std::min(pc, (int)std::thread::hardware_concurrency())));
+                            ImGui::PopID();
+                        }
+                    }
+                    ImGui::EndTable();
+                }
+
+                //OE_HARD_ASSERT(jobs::get_metrics()->total() == jobs::get_metrics()->total_running() + jobs::get_metrics()->total_pending() + jobs::get_metrics()->total_postprocessing());
+
+                ImGui::Separator();
+
+                if (ImGuiLTable::Begin("SystemGUIPlots"))
+                {
+                    int f = frame_num++ % frame_count;
+                    auto now = std::chrono::steady_clock::now();
+                    frame_times[f] = now - t_previous;
+                    t_previous = now;
+                    auto avg_timing_ms = 1e-6 * (float)get_average_timing_ns(&frame_times, 120, f);
+                    sprintf(buf, "%.1f ms / %d fps", avg_timing_ms, (int)std::ceil(1000.0 / avg_timing_ms));
+                    ImGuiLTable::PlotLines("Frame", get_timing_ms, &frame_times, frame_count, frame_num, buf, 0.0f, 32.0f);
+
+                    total_jobs[f] = jobs::get_metrics()->total();
+                    sprintf(buf, "%d", total_jobs[f]);
+                    ImGuiLTable::PlotLines("Jobs", get_counts, &total_jobs, frame_count, frame_num, buf, 0u, 100u);
+
+                    auto pager = view(ri)->getDatabasePager();
+                    if (pager) {
+                        auto ico = pager->getIncrementalCompileOperation();
+                        if (ico) {
+                            ico_jobs[f] = ico->getToCompile().size();
+                            sprintf(buf, "%d", ico_jobs[f]);
+                            ImGuiLTable::PlotLines("ICO", get_counts, &ico_jobs, frame_count, frame_num, buf, 0u, 4u);
+                        }
+                    }
+
+                    static unsigned zeroJobFrames = 0;
+                    static unsigned zeroJobFramesThreshold = 3;
+                    static std::chrono::steady_clock::time_point lastZeroJobTime = now;
+                    static long long surgeDuration_ms = 0;
+
+                    if (zeroJobFrames < zeroJobFramesThreshold)
+                        surgeDuration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastZeroJobTime).count();
+                    else
+                        lastZeroJobTime = now;
+
+                    if (total_jobs[f] == 0)
+                        ++zeroJobFrames;
+                    else
+                        zeroJobFrames = 0;
+
+                    ImGuiLTable::Text("Surge:", "%d ms", surgeDuration_ms);
+
+                    ImGuiLTable::Text("Canceled:", std::to_string(jobs::get_metrics()->total_canceled()).c_str());
+                    ImGuiLTable::End();
+                }
+
+                ImGui::Separator();
+
+                if (ImGuiLTable::Begin("FontScale"))
+                {
+                    if (ImGuiLTable::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 2.0f))
+                        dirtySettings();
+
+                    ImGuiLTable::End();
+                }
+
+                ImGui::Separator();
+                if (ImGuiLTable::Begin("caps"))
+                {
+                    auto& caps = osgEarth::Registry::capabilities();
+                    ImGuiLTable::Text("osgEarth", osgEarthGetVersion());
+                    ImGuiLTable::Text("OSG", osgGetVersion());
+                    ImGuiLTable::Text("GL_VENDOR", caps.getVendor().c_str());
+                    ImGuiLTable::Text("GL_RENDERER", caps.getRenderer().c_str());
+                    ImGuiLTable::Text("GL_VERSION", caps.getVersion().c_str());
+                    ImGuiLTable::End();
+                }
+            }
+            ImGui::End();
+        }
+    };
+}

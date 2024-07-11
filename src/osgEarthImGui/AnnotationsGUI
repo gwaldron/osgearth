@@ -1,0 +1,196 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarth/AnnotationData>
+#include <osgEarth/AnnotationNode>
+#include <osgEarth/ViewFitter>
+#include <osg/NodeVisitor>
+
+namespace
+{
+    // Recursively set a node mask on all nodes with an AnnotationData
+    struct SetAnnotationNodeMask : public osg::NodeVisitor
+    {
+        unsigned mask;
+
+        SetAnnotationNodeMask(unsigned value) : mask(value)
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+
+        void apply(osg::Node& node) override
+        {
+            auto data = dynamic_cast<osgEarth::AnnotationData*>(node.getUserData());
+            if (data)
+            {
+                node.setNodeMask(mask);
+            }
+            else
+            {
+                auto anno = dynamic_cast<osgEarth::AnnotationNode*>(&node);
+                if (anno)
+                {
+                    node.setNodeMask(mask);
+                }
+            }
+
+            traverse(node);
+        }
+    };
+
+    struct GetAnnotations : public osg::NodeVisitor
+    {
+        osgEarth::EarthManipulator* manip = nullptr;
+        const osgEarth::SpatialReference* srs = nullptr;
+        osg::Camera* camera = nullptr;
+
+        GetAnnotations()
+        {
+            setTraversalMode(TRAVERSE_ALL_CHILDREN);
+            setNodeMaskOverride(~0);
+        }
+
+        std::string simple_class(osgEarth::AnnotationNode* n)
+        {
+            std::string c = n->className();
+            auto npos = c.find_last_of(':');
+            if (npos != c.npos) return c.substr(npos + 1);
+            else return c;
+        }
+
+        void apply(osg::Node& node) override
+        {
+            auto anode = dynamic_cast<osgEarth::AnnotationNode*>(&node);
+            auto data = dynamic_cast<osgEarth::AnnotationData*>(node.getUserData());
+            std::string name;
+
+            if (data)
+            {
+                ImGui::PushID((std::uintptr_t)data);
+
+                name = data->getName();
+                auto vp_ptr = data->getViewpoint();
+                auto desc = data->getDescription();
+
+                osgEarth::Viewpoint vp;
+                if (vp_ptr) vp = *vp_ptr;
+
+                if (!vp.valid())
+                {
+                    osgEarth::Util::ViewFitter fitter(srs, camera);
+                    fitter.createViewpoint(&node, vp);
+                }
+
+                bool visible = node.getNodeMask() != 0;
+                if (ImGui::Checkbox("", &visible))
+                {
+                    SetAnnotationNodeMask set(visible ? ~0 : 0);
+                    node.accept(set);
+                }
+                ImGui::SameLine();
+                bool is_selected = false;
+                if (ImGui::Selectable(name.c_str(), &is_selected) && manip && vp.valid())
+                {
+                    manip->setViewpoint(vp);
+                }
+
+                ImGui::PopID();
+
+                ImGui::Indent();
+            }
+            else if (anode)
+            {
+                ImGui::PushID((std::uintptr_t)anode);
+
+                name = simple_class(anode);
+                if (!anode->getName().empty()) name += " " + anode->getName();
+                else if (!anode->getText().empty()) name += " \"" + anode->getText() + "\"";
+
+                bool visible = anode->getNodeMask() != 0;
+                if (ImGui::Checkbox("", &visible))
+                {
+                    SetAnnotationNodeMask set(visible ? ~0 : 0);
+                    anode->accept(set);
+                }
+                ImGui::SameLine();
+                bool is_selected = false;
+                if (ImGui::Selectable(name.c_str(), &is_selected) && manip)
+                {
+                    osgEarth::Util::ViewFitter fitter(srs, camera);
+                    osgEarth::Viewpoint vp;
+                    fitter.createViewpoint(anode, vp);
+                    manip->setViewpoint(vp);
+                }
+
+                ImGui::PopID();
+
+                ImGui::Indent();
+            }
+
+            traverse(node);
+
+            if (data || anode)
+            {
+                ImGui::Unindent();
+            }
+        }
+    };
+}
+
+namespace osgEarth
+{
+    class AnnotationsGUI : public ImGuiPanel
+    {
+    private:
+        osg::observer_ptr<MapNode> _mapNode;
+
+    public:
+        AnnotationsGUI() : ImGuiPanel("Annotations") { }
+
+        void load(const Config& conf) override
+        {
+        }
+
+        void save(Config& conf) override
+        {
+        }
+
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible())
+                return;
+
+            if (!findNodeOrHide(_mapNode, ri))
+                return;
+
+            ImGui::Begin(name(), visible());
+            {
+                GetAnnotations getannos;
+                getannos.manip = dynamic_cast<osgEarth::EarthManipulator*>(view(ri)->getCameraManipulator());
+                getannos.srs = _mapNode->getMapSRS();
+                getannos.camera = camera(ri);
+                camera(ri)->accept(getannos);
+            }
+            ImGui::End();
+        }
+    };
+}

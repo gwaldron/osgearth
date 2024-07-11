@@ -1,0 +1,153 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarth/MapNode>
+#include <osgEarth/Viewpoint>
+#include <osgEarth/XmlUtils>
+#include <osgEarth/ExampleResources>
+
+namespace osgEarth
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Util;
+
+    struct ViewpointsGUI : public ImGuiPanel
+    {
+        osg::observer_ptr<MapNode> _mapNode;
+        float _duration;
+        bool _initialized;
+        std::vector<Viewpoint> _viewpoints;
+
+        ViewpointsGUI() :
+            ImGuiPanel("Viewpoints"),
+            _initialized(false)
+        {
+        }
+
+        void draw(osg::RenderInfo& ri)
+        {
+            if (!isVisible())
+                return;
+
+            if (!findNodeOrHide(_mapNode, ri))
+                return;
+
+
+            if (!_initialized)
+            {
+                Config conf = _mapNode->getConfig();
+                for (auto& i : conf.children())
+                {
+                    if (i.key() == "viewpoints")
+                    {
+                        _duration = i.value("time", 1.0f);
+                        auto key = 0;
+                        for (auto& j : i.children("viewpoint"))
+                        {
+                            _viewpoints.push_back(Viewpoint(j));
+
+                            // warning, if viewpoints:map_keys == true, this will conflict.
+                            if (false) //key < 9)
+                            {
+                                EventRouter::get(view(ri)).onKeyPress(
+                                    (osgGA::GUIEventAdapter::KeySymbol)((int)osgGA::GUIEventAdapter::KEY_1 + key),
+                                    [&, key](...) {
+                                        auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                                        if (manip)
+                                            manip->setViewpoint(_viewpoints[key]);
+                                    });
+                                key++;
+                            }
+                        }
+                    }
+                }
+
+                _initialized = true;
+            }
+
+            if (ImGui::Begin(name(), visible()))
+            {
+                OE_SOFT_ASSERT_AND_RETURN(view(ri), void());
+                auto manip = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+                if (manip)
+                {
+                    if (_viewpoints.empty())
+                        ImGui::TextColored(ImVec4(1, .9, .9, 1), "No viewpoints");
+
+                    for (auto& vp : _viewpoints)
+                    {
+                        ImGui::PushID(&vp);
+                        bool selected = false;
+                        std::string name = vp.name().get();
+                        if (name.empty())
+                        {
+                            name = "<no name>";
+                        }
+                        if (manip)
+                        {
+                            ImGui::Selectable(name.c_str(), &selected);
+                            if (selected)
+                                manip->setViewpoint(vp, _duration);
+                        }
+                        else
+                        {
+                            ImGui::TextColored(ImVec4(.5, .5, .5, 1), name.c_str());
+                        }
+                        ImGui::PopID();
+                        ImGui::Separator();
+                    }
+
+#if 0
+                    ImGui::Separator();
+
+                    ImGuiLTable::Begin("viewpoints-settings");
+                    {
+                        double xmin, xmax;
+                        manip->getSettings()->getAutoViewpointDurationLimits(xmin, xmax);
+                        if (ImGuiLTable::SliderDouble("Min fly time (s)", &xmin, 0.0, 4.0, "%.1lf"))
+                            manip->getSettings()->setAutoViewpointDurationLimits(xmin, xmax);
+                        if (ImGuiLTable::SliderDouble("Max fly time (s)", &xmax, xmin, 10.0, "%.1lf"))
+                            manip->getSettings()->setAutoViewpointDurationLimits(xmin, xmax);
+                    }
+                    ImGuiLTable::End();
+#endif
+
+                    static bool show_xml = false;
+                    ImGui::Checkbox("XML dump", &show_xml);
+                    if (show_xml)
+                    {
+                        std::stringstream buf;
+                        Util::XmlDocument xml(manip->getViewpoint().getConfig());
+                        xml.store(buf);
+                        std::string xml_str = buf.str();
+                        xml_str = xml_str.substr(xml_str.find("<viewpoint>"));
+                        ImGui::InputTextMultiline("##vp_xml", (char*)xml_str.c_str(), xml_str.size(), ImVec2(-1, -1), ImGuiInputTextFlags_ReadOnly);
+                    }
+                }
+                else
+                {
+                    ImGui::TextColored(ImVec4(1, .9, .9, 1), "(Viewpoints not active)");
+                }
+                ImGui::End();
+            }
+        }
+    };
+}

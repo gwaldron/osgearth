@@ -1,7 +1,3 @@
-[submodule "src/third_party/imgui"]
-	path = src/third_party/imgui
-	url = https://github.com/ocornut/imgui.git
-	branch = docking
 [submodule "src/third_party/lerc"]
 	path = src/third_party/lerc
 	url = https://github.com/Esri/lerc.git

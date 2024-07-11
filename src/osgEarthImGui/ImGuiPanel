@@ -1,0 +1,445 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthImGui/Common>
+
+#include <osgEarth/BuildConfig>
+#include <osgEarth/Config>
+#include <osgEarth/GLUtils>
+
+#include <osgDB/ReadFile>
+#include <osg/observer_ptr>
+#include <osg/StateSet>
+#include <osg/RenderInfo>
+#include <osgViewer/View>
+#include <memory>
+
+namespace osgEarth
+{
+    // base class for GUI elements that allows you to toggle visibility
+    // no export. header only.
+    class ImGuiPanel // no export
+    {
+    public:
+        using Ptr = std::shared_ptr<ImGuiPanel>;
+
+    public:
+        void setVisible(bool value) {
+            _visible = value;
+            dirtySettings();
+        }
+
+        //! whether it's current shown
+        bool isVisible() const {
+            return _visible;
+        }
+
+        //! name of the GUI panel
+        virtual const char* name() const final {
+            return _name.c_str();
+        }
+
+        //! render this GUI
+        virtual void draw(osg::RenderInfo& ri) = 0;
+
+        //! override to set custom values in the .ini file
+        virtual void load(const osgEarth::Config&) { }
+
+        //! override to get custom values from the .ini file
+        virtual void save(osgEarth::Config&) { }
+
+    protected:
+        ImGuiPanel(const char* name) :
+            _name(name), _visible(false), _last_visible(false)
+        {
+            //nop
+        }
+
+        //! convenience function for finding nodes
+        template<typename T>
+        T* findNode(osg::RenderInfo& ri) const {
+            return osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
+        }
+
+        //! convenience function for getting the current view
+        inline osgViewer::View* view(osg::RenderInfo& ri) const {
+            return dynamic_cast<osgViewer::View*>(ri.getView());
+        }
+
+        //! convenience function for getting the current camera
+        inline osg::Camera* camera(osg::RenderInfo& ri) const {
+            return ri.getCurrentCamera();
+        }
+
+        //! convenience function for getting the topmost stateset
+        inline osg::StateSet* stateset(osg::RenderInfo& ri) const {
+            return ri.getCurrentCamera()->getOrCreateStateSet();
+        }
+
+        //! convenience function for finding nodes
+        template<typename T>
+        bool findNode(osg::observer_ptr<T>& node, osg::RenderInfo& ri) const {
+            if (!node.valid())
+                node = osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
+            return node.valid();
+        }
+
+        //! convenience function for finding nodes
+        template<typename T>
+        bool findNodeOrHide(osg::observer_ptr<T>& node, osg::RenderInfo& ri) {
+            if (!node.valid())
+                node = osgEarth::findTopMostNodeOfType<T>(ri.getCurrentCamera());
+            if (!node.valid())
+                setVisible(false);
+            return node.valid();
+        }
+
+        template<typename T>
+        bool findLayer(osg::observer_ptr<T>& layer, osg::RenderInfo& ri) {
+            if (!layer.valid()) {
+                MapNode* mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
+                if (mapNode)
+                    layer = mapNode->getMap()->getLayer<T>();
+            }
+            return layer.valid();
+        }
+
+        template<typename T>
+        bool findLayerOrHide(osg::observer_ptr<T>& layer, osg::RenderInfo& ri) {
+            if (!layer.valid()) {
+                MapNode* mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
+                if (mapNode)
+                    layer = mapNode->getMap()->getLayer<T>();
+            }
+            if (!layer.valid())
+                setVisible(false);
+            return layer.valid();
+        }
+
+        //! sets a value and dirties the .ini store
+        template<typename A, typename B>
+        void set_and_dirty(A& var, const B& value)
+        {
+            if (var != value) {
+                var = value;
+                dirtySettings();
+            }
+        }
+
+        //! Map point under the mouse cursor
+        GeoPoint getPointAtMouse(MapNode* mapNode, osg::View* v, float x, float y)
+        {
+            GeoPoint point;
+            osg::Vec3d world;
+            if (mapNode->getTerrain()->getWorldCoordsUnderMouse(v, x, y, world))
+                point.fromWorld(mapNode->getMapSRS(), world);
+            return point;
+        }
+
+    private:
+        std::string _name;
+        bool _visible;
+        bool _last_visible;
+
+    public:
+        bool* visible() {
+            return &_visible;
+        }
+
+        //! override to set custom values in the .ini file
+        void load_base(const osgEarth::Config& conf)
+        {
+            conf.get("Visible", _visible);
+            load(conf);
+        }
+
+        //! override to set custom values in the .ini file
+        void save_base(osgEarth::Config& conf)
+        {
+            conf.set("Visible", _visible);
+            save(conf);
+        }
+
+        //! tells ImGui it needs to write a new .ini file
+        static void dirtySettings()
+        {
+            std::string file = ImGui::GetIO().IniFilename;
+            if (file.empty()) file = "imgui.ini";
+            ImGui::SaveIniSettingsToDisk(file.c_str());
+        }
+
+        //! whether the visibility changed (and resets the flag)
+        bool visibilityChanged() {
+            bool whether = _visible != _last_visible;
+            _last_visible = _visible;
+            return whether;
+        }
+    };
+}
+
+// various additions to ImGui.
+namespace ImGuiLTable
+{
+    static bool Begin(const char* name)
+    {
+        bool ok = ImGui::BeginTable(name, 2, ImGuiTableFlags_SizingFixedFit);
+        if (ok) {
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_WidthStretch);
+        }
+        return ok;
+    }
+
+    static bool SliderFloat(const char* label, float* v, float v_min, float v_max)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::SliderFloat(s.c_str(), v, v_min, v_max);
+    }
+
+    static bool SliderFloat(const char* label, float* v, float v_min, float v_max, const char* format, ImGuiSliderFlags flags)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::SliderFloat(s.c_str(), v, v_min, v_max, format, flags);
+    }
+
+    static bool SliderDouble(const char* label, double* v, double v_min, double v_max, const char* format = nullptr)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        float temp = *v;
+        bool ok = ImGui::SliderFloat(s.c_str(), &temp, (float)v_min, (float)v_max, format);
+        if (ok) *v = (double)temp;
+        return ok;
+    }
+
+    static bool SliderDouble(const char* label, double* v, double v_min, double v_max, const char* format, ImGuiSliderFlags flags)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        float temp = *v;
+        bool ok = ImGui::SliderFloat(s.c_str(), &temp, (float)v_min, (float)v_max, format, flags);
+        if (ok) *v = (double)temp;
+        return ok;
+    }
+
+    static bool SliderInt(const char* label, int* v, int v_min, int v_max)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::SliderInt(s.c_str(), v, v_min, v_max);
+    }
+
+    static bool SliderInt(const char* label, int* v, int v_min, int v_max, const char* format, ImGuiSliderFlags flags)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::SliderInt(s.c_str(), v, v_min, v_max, format, flags);
+    }
+
+    static bool Checkbox(const char* label, bool* v)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::Checkbox(s.c_str(), v);
+    }
+
+    static bool BeginCombo(const char* label, const char* defaultItem)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::BeginCombo(s.c_str(), defaultItem);
+    }
+
+    static void EndCombo()
+    {
+        return ImGui::EndCombo();
+    }
+
+    static bool InputFloat(const char* label, float* v)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::InputFloat(s.c_str(), v);
+    }
+
+    template<typename...Args>
+    static void Text(const char* label, const char* format, Args...args)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        ImGui::Text(format, args...);
+    }
+
+    static void Section(const char* label)
+    {
+        ImGui::TableNextColumn();
+        ImGui::TextColored(ImVec4(1, 1, 0, 1), label);
+        ImGui::TableNextColumn();
+    }
+
+    static bool InputScalar(const char* label, ImGuiDataType data_type, void* p_data, const void* p_step, const void* p_step_fast, const char* format, ImGuiInputTextFlags flags = 0)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        std::string s("##" + std::string(label));
+        return ImGui::InputScalar(s.c_str(), data_type, p_data, p_step, p_step_fast, format, flags);
+    }
+
+    static bool ColorEdit3(const char* label, float col[3], ImGuiColorEditFlags flags = 0)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        return ImGui::ColorEdit3(label, col, flags);
+    }
+
+    static bool ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flags = 0)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        return ImGui::ColorEdit4(label, col, flags);
+    }
+
+    static void PlotLines(const char* label, float(*getter)(void*, int), void* data, int values_count, int values_offset, const char* overlay = nullptr,
+        float scale_min = FLT_MAX, float scale_max = FLT_MAX)
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-1);
+        ImGui::PlotLines("", getter, data, values_count, values_offset, overlay, scale_min, scale_max);
+    }
+
+    static void End()
+    {
+        ImGui::EndTable();
+    }
+}
+
+// Added functions to the top level ImGui namespace
+namespace ImGuiEx
+{
+    template<typename... Args>
+    static void TextCentered(const char* format, Args&&... args)
+    {
+        char buf[1024];
+        sprintf(buf, format, args...);
+        ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcTextSize(buf).x) * 0.5f);
+        ImGui::Text(buf);
+    }
+
+    static void OSGTexture(osg::Texture2D* texture, osg::RenderInfo& renderInfo, unsigned int width = 0, unsigned int height = 0)
+    {
+        // Get the context id
+        const unsigned int contextID = osgEarth::GLUtils::getSharedContextID(*renderInfo.getState());
+
+        // Apply the texture
+        texture->apply(*renderInfo.getState());
+
+        // Default to the textures size
+        unsigned int w = texture->getTextureWidth();
+        unsigned int h = texture->getTextureHeight();
+
+        // Get the aspect ratio
+        double ar = (double)w / (double)h;
+
+        // If both width and height are specified use that.
+        if (width != 0 && height != 0)
+        {
+            w = width;
+            h = height;
+        }
+        // If just the width is specified compute the height using the ar
+        else if (width != 0)
+        {
+            w = width;
+            h = (1.0 / ar) * w;
+        }
+        // If just the height is specified compute the width using the ar
+        else if (height != 0)
+        {
+            h = height;
+            w = ar * height;
+        }
+
+        // Get the TextureObject.
+        osg::Texture::TextureObject* textureObject = texture->getTextureObject(contextID);
+        if (textureObject)
+        {
+            bool flip = (texture->getImage() && texture->getImage()->getOrigin() == osg::Image::TOP_LEFT);
+            ImGui::Image((void*)(intptr_t)textureObject->_id, ImVec2(w, h), ImVec2(0, flip ? 0 : 1), ImVec2(1, flip ? 1 : 0), ImVec4(1, 1, 1, 1), ImVec4(1, 1, 0, 1));
+        }
+    }
+
+    static int InputTextCallback(ImGuiInputTextCallbackData* data)
+    {
+        std::string* str = (std::string*)data->UserData;
+        if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
+        {
+            // Resize string callback
+            IM_ASSERT(data->Buf == str->c_str());
+            str->resize(data->BufTextLen);
+            data->Buf = (char*)str->c_str();
+        }
+        return 0;
+    }
+
+    static bool InputTextMultiline(const char* label, std::string* str, const ImVec2& size)
+    {
+        ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
+        return ImGui::InputTextMultiline(label, (char*)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, (void*)str);
+    }
+}

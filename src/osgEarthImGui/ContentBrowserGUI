@@ -1,0 +1,227 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgDB/FileUtils>
+#include <osgDB/FileNameUtils>
+#include <osgDB/Registry>
+#include <osgDB/ReadFile>
+#include <osgEarth/FileUtils>
+
+namespace osgEarth
+{
+    using namespace osgEarth::Util;
+
+    struct ContentBrowserGUI : public ImGuiPanel
+    {
+        std::vector< std::string > _drives;
+        std::string _selectedFilename;
+        osg::ref_ptr< osg::Texture2D > _currentTexture;
+        osg::ref_ptr< osg::Node > _currentNode;
+
+        ContentBrowserGUI() :
+            ImGuiPanel("Content Browser")
+        {
+            _drives = getListOfDrives();
+        }
+
+        void load(const Config& conf) override
+        {
+        }
+
+        void save(Config& conf) override
+        {
+        }
+
+        std::vector<std::string> getListOfDrives() {
+            std::vector<std::string> arrayOfDrives;
+#ifdef WIN32
+            char* szDrives = new char[MAX_PATH]();
+            if (GetLogicalDriveStringsA(MAX_PATH, szDrives))
+            {
+                for (int i = 0; i < 100; i += 4)
+                    if (szDrives[i] != (char)0)
+                        arrayOfDrives.push_back(std::string{ szDrives[i],szDrives[i + 1],szDrives[i + 2] });
+            }
+            delete[] szDrives;
+#else
+            arrayOfDrives.push_back("/");
+#endif
+            return arrayOfDrives;
+        }
+
+        void drawDirectoryTree()
+        {
+            ImGui::BeginChild("DirectoryTree");
+            for (auto& drive : _drives)
+            {
+                traverseDir(drive);
+            }
+            ImGui::EndChild();
+        }
+
+
+
+        void traverseDir(const std::string& path)
+        {
+            std::string shortName = osgDB::getSimpleFileName(path);
+            if (shortName.empty())
+            {
+                shortName = path;
+            }
+
+            if (osgDB::fileType(path) == osgDB::DIRECTORY)
+            {
+                if (ImGui::TreeNode(shortName.c_str()))
+                {
+                    osgDB::DirectoryContents files = osgDB::getDirectoryContents(path);
+                    for (osgDB::DirectoryContents::const_iterator f = files.begin(); f != files.end(); ++f)
+                    {
+                        if (f->compare(".") == 0 || f->compare("..") == 0)
+                            continue;
+
+                        std::string filepath = osgDB::concatPaths(path, *f);
+                        traverseDir(filepath);
+                    }
+                    ImGui::TreePop();
+                }
+            }
+            else if (osgDB::fileType(path) == osgDB::REGULAR_FILE)
+            {
+                ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                if (_selectedFilename == path)
+                {
+                    node_flags |= ImGuiTreeNodeFlags_Selected;
+                }
+                ImGui::TreeNodeEx(path.c_str(), node_flags, shortName.c_str());
+                if (ImGui::IsItemClicked())
+                {
+                    setSelectedFilename(path);
+                }
+
+                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
+                {
+                    if (_currentNode.valid())
+                    {
+                        void* ptr = _currentNode.get();
+                        ImGui::SetDragDropPayload("NODE", &ptr, sizeof(ptr));
+                    }
+                    else if (_currentTexture.valid())
+                    {
+                        void* ptr = _currentTexture.get();
+                        ImGui::SetDragDropPayload("TEXTURE", &ptr, sizeof(ptr));
+                    }
+                    ImGui::EndDragDropSource();
+                }
+            }
+        }
+
+        void setSelectedFilename(const std::string& filename)
+        {
+            if (_selectedFilename != filename)
+            {
+                _selectedFilename = filename;
+                if (_currentTexture)
+                {
+                    _currentTexture->releaseGLObjects();
+                    _currentTexture = nullptr;
+                }
+
+                if (_currentNode)
+                {
+                    _currentNode->releaseGLObjects();
+                    _currentNode = nullptr;
+                }
+
+                // Try to load the file as an image
+                osg::ref_ptr< osg::Image > image = osgDB::readImageFile(_selectedFilename);
+                if (image)
+                {
+                    _currentTexture = new osg::Texture2D(image.get());
+                    _currentTexture->setResizeNonPowerOfTwoHint(false);
+                }
+
+                // Try to load it as a node.
+                if (!image)
+                {
+                    _currentNode = osgDB::readNodeFile(_selectedFilename);
+                }
+            }
+        }
+
+        void drawPreview(osg::RenderInfo& ri)
+        {
+            ImGui::BeginChild("Preview");
+            if (!_selectedFilename.empty() && !_currentTexture.valid() && !_currentNode.valid())
+            {
+                ImGui::Text("Couldn't load %s", _selectedFilename.c_str());
+            }
+            else
+            {
+                if (_currentTexture.valid())
+                {
+                    ImGuiEx::OSGTexture(_currentTexture.get(), ri, 250, 0);
+                    osg::Image* image = _currentTexture->getImage();
+                    ImGui::Text(image->getFileName().c_str());
+                    ImGui::Text("Dimensions: %d x %d", image->s(), image->t());
+                    ImGui::Text("Compressed: %s", image->isCompressed() ? "Yes" : "No");
+                    ImGui::Text("Data Type: %s", getGLString(image->getDataType()).c_str());
+                    ImGui::Text("Texture Format: %s", getGLString(image->getInternalTextureFormat()).c_str());
+                    ImGui::Text("Mipmap Levels: %d", image->getNumMipmapLevels());
+                    ImGui::Text("Pixel Format: %s", getGLString(image->getPixelFormat()).c_str());
+                }
+
+                if (_currentNode.valid())
+                {
+                    ImGui::Text("Loaded Node");
+                }
+            }
+            ImGui::EndChild();
+        }
+
+        const std::string& getGLString(int value)
+        {
+            return osgDB::Registry::instance()->getObjectWrapperManager()->getString("GL", value);
+        }
+
+        void draw(osg::RenderInfo& ri)
+        {
+            if (!isVisible())
+                return;
+
+            ImGui::Begin(name(), visible());
+            {
+                ImVec2 window_size = ImGui::GetWindowSize();
+
+                if (ImGui::BeginTable("Content Browser", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_Borders))
+                {
+                    ImGui::TableNextColumn();
+                    drawDirectoryTree();
+
+                    ImGui::TableNextColumn();
+                    drawPreview(ri);
+
+                    ImGui::EndTable();
+                }
+            }
+            ImGui::End();
+        }
+    };
+}

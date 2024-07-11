@@ -66,20 +66,10 @@ set(TARGET_H
     VegetationLayer
     RoadLayer )
     
-# ImGui headers:
-if(OSGEARTH_HAVE_IMGUI)
-    set(TARGET_H_IMGUI
-        ImGui/LifeMapLayerGUI
-        ImGui/VegetationLayerGUI
-        ImGui/TerrainEditGUI
-        ImGui/TextureSplattingLayerGUI)
-endif()
-
 add_osgearth_library(
     TARGET ${LIB_NAME}
     SOURCES ${TARGET_SRC}
     PUBLIC_HEADERS ${TARGET_H}
-    IMGUI_HEADERS ${TARGET_H_IMGUI}
     SHADERS ${TARGET_GLSL}
     TEMPLATES ${TARGET_IN}
     FOLDER "NodeKits")

@@ -1,0 +1,110 @@
+#pragma once
+
+#include <osgEarthImGui/ImGuiApp>
+#include <osgEarthCesium/CesiumIon>
+#include <osgEarthCesium/CesiumLayer>
+#include <osgEarth/CesiumIon>
+#include <osgEarth/MapNode>
+
+namespace osgEarth
+{
+    namespace Cesium
+    {
+        class CesiumIonGUI : public osgEarth::ImGuiPanel
+        {
+        public:
+            CesiumIonGUI() :
+                osgEarth::ImGuiPanel("Cesium Ion")
+            {
+            }
+
+            void load(const Config& conf) override
+            {
+            }
+
+            void save(Config& conf) override
+            {
+            }
+
+        protected:
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!_mapNode.valid())
+                    _mapNode = osgEarth::findTopMostNodeOfType<MapNode>(ri.getCurrentCamera());
+
+                if (!isVisible()) return;
+
+                ImGui::Begin(name(), visible());
+
+                if (ImGui::BeginTable("Cesium Ion Assets", 4, ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_Borders))
+                {
+                    ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
+                    ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_None);
+                    ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None);
+                    ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_None);
+                    ImGui::TableSetupColumn("Date added", ImGuiTableColumnFlags_None);
+                    ImGui::TableHeadersRow();
+
+                    for (unsigned int i = 0; i < _cesiumIon.assets.size(); ++i)
+                    {
+                        auto& asset = _cesiumIon.assets[i];
+                        std::stringstream buf;
+                        buf << asset.id;
+
+                        ImGui::TableNextColumn();
+                        if (ImGui::Selectable(buf.str().c_str(), i == selectedIndex, ImGuiSelectableFlags_SpanAllColumns))
+                            selectedIndex = i;
+                        //ImGui::Text("%d", asset.id);
+
+                        ImGui::TableNextColumn();
+                        ImGui::Text(asset.name.c_str());
+
+                        ImGui::TableNextColumn();
+                        ImGui::Text(asset.type.c_str());
+
+                        ImGui::TableNextColumn();
+                        ImGui::Text(asset.dateAdded.c_str());
+                    }
+
+                    ImGui::EndTable();
+                }
+
+                if (ImGui::Button("Add Layer"))
+                {
+                    if (selectedIndex >= 0)
+                    {
+                        auto& asset = _cesiumIon.assets[selectedIndex];
+                        if (asset.type == "3DTILES")
+                        {
+                            osgEarth::Cesium::CesiumNative3DTilesLayer* layer = new osgEarth::Cesium::CesiumNative3DTilesLayer;
+                            layer->setName(asset.name);
+                            layer->setAssetId(asset.id);
+                            _mapNode->getMap()->addLayer(layer);
+                        }
+                        else if (asset.type == "IMAGERY")
+                        {
+                            osgEarth::CesiumIonImageLayer *layer = new osgEarth::CesiumIonImageLayer;
+                            layer->setAssetId(osgEarth::Stringify() << asset.id);
+                            layer->setName(asset.name);
+                            _mapNode->getMap()->addLayer(layer);
+                        }
+                        else if (asset.type == "TERRAIN")
+                        {
+                            osgEarth::CesiumIonTerrainMeshLayer* layer = new osgEarth::CesiumIonTerrainMeshLayer;
+                            layer->setAssetId(osgEarth::Stringify() << asset.id);
+                            layer->setName(asset.name);
+                            _mapNode->getMap()->addLayer(layer);
+                        }
+                    }
+                }
+
+                ImGui::End();
+            }
+
+            osgEarth::Cesium::CesiumIon _cesiumIon;
+            osg::observer_ptr< MapNode > _mapNode;
+            int selectedIndex = -1;
+        };
+    }
+}
+

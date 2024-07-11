@@ -29,6 +29,10 @@ if(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT)
     add_subdirectory(osgEarthSplat)
 endif()
 
+if(OSGEARTH_BUILD_IMGUI_NODEKIT)
+    add_subdirectory(osgEarthImGui)
+endif()
+
 # plugins:
 add_subdirectory(osgEarthDrivers)
 

@@ -459,30 +459,6 @@ SET(TARGET_H
     ${OSGEARTH_VERSION_HEADER}
 )
 
-if(OSGEARTH_HAVE_IMGUI)
-    set(TARGET_H_IMGUI
-        ImGui/ImGui
-        ImGui/ImGuiPanel
-        ImGui/ImGuiApp
-        ImGui/AnnotationsGUI
-        ImGui/ContentBrowserGUI
-        ImGui/LayersGUI
-        ImGui/NetworkMonitorGUI
-        ImGui/NotifyGUI
-        ImGui/PickerGUI
-        ImGui/SceneGraphGUI
-        ImGui/SearchGUI
-        ImGui/TextureInspectorGUI
-        ImGui/ViewpointsGUI
-        ImGui/SystemGUI
-        ImGui/EnvironmentGUI
-        ImGui/ShaderGUI
-        ImGui/TerrainGUI
-        ImGui/CameraGUI
-        ImGui/RenderingGUI
-        )
-endif()
-
 if(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
     list(APPEND TARGET_H
         ActivityMonitorTool
@@ -856,7 +832,6 @@ set(OSGEARTH_BUILDCONFIG_HEADER "${OSGEARTH_BUILDTIME_INCLUDE_DIR}/osgEarth/Buil
 add_osgearth_library(
     TARGET ${LIB_NAME}
     PUBLIC_HEADERS ${TARGET_H} ${OSGEARTH_VERSION_HEADER} ${OSGEARTH_BUILDCONFIG_HEADER}
-    IMGUI_HEADERS ${TARGET_H_IMGUI}
     SOURCES ${TARGET_SRC}
     SHADERS ${TARGET_GLSL}
     TEMPLATES ${TARGET_IN} )

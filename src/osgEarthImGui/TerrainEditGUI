@@ -1,0 +1,578 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarthProcedural/LifeMapLayer>
+#include <osgEarth/DecalLayer>
+#include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
+#include <osgEarth/Registry>
+#include <osgEarth/CircleNode>
+#include <osgEarth/SDF>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/FeatureRasterizer>
+#include <osgDB/WriteFile>
+
+namespace osgEarth
+{
+    namespace Procedural
+    {
+        using namespace osgEarth;
+        using namespace osgEarth::Contrib;
+        using namespace osgEarth::Threading;
+        using namespace osgEarth::Util;
+
+        struct CraterRenderer
+        {
+            static void render(
+                const GeoPoint& center,
+                const Distance& width,
+                float rugged, float dense, float lush,
+                float lifemapMix,
+                GeoExtent& out_extent,
+                osg::ref_ptr<osg::Image>& out_elevation,
+                osg::ref_ptr<osg::Image>& out_lifemap,
+                osg::ref_ptr<osg::Image>& out_landcover)
+            {
+                GeoPoint local = center.toLocalTangentPlane();
+                out_extent = GeoExtent(local.getSRS());
+                out_extent.expandToInclude(local.x(), local.y());
+                out_extent.expand(width, width);
+
+                out_elevation = new osg::Image();
+                out_elevation->allocateImage(
+                    ELEVATION_TILE_SIZE,
+                    ELEVATION_TILE_SIZE,
+                    1,
+                    GL_RED,
+                    GL_UNSIGNED_BYTE);
+
+                ImageUtils::PixelWriter writeElevation(out_elevation.get());
+                ImageUtils::ImageIterator e_iter(writeElevation);
+                osg::Vec4 value;
+                e_iter.forEachPixel([&]()
+                    {
+                        float a = 2.0*(e_iter.u() - 0.5f);
+                        float b = 2.0*(e_iter.v() - 0.5f);
+                        float d = sqrt((a*a) + (b*b));
+                        value.r() = clamp(d, 0.0f, 1.0f);
+                        writeElevation(value, e_iter.s(), e_iter.t());
+                    }
+                );
+
+                out_lifemap = new osg::Image();
+                out_lifemap->allocateImage(
+                    256,
+                    256,
+                    1,
+                    GL_RGBA,
+                    GL_UNSIGNED_BYTE);
+
+                ImageUtils::PixelWriter writeLifeMap(out_lifemap.get());
+                ImageUtils::ImageIterator lm_iter(writeLifeMap);
+                lm_iter.forEachPixel([&]()
+                    {
+                        float a = 2.0f*(lm_iter.u() - 0.5f);
+                        float b = 2.0f*(lm_iter.v() - 0.5f);
+                        float d = clamp(static_cast<float>(sqrt((a*a) + (b*b))), 0.0f, 1.0f);
+                        value.set(rugged, dense, lush, (1.0f - (d*d)) * lifemapMix);
+
+                        writeLifeMap(value, lm_iter.s(), lm_iter.t());
+                    }
+                );
+
+                out_landcover = new osg::Image();
+                out_landcover->allocateImage(256, 256, 1, GL_RED, GL_UNSIGNED_BYTE);
+                ImageUtils::PixelWriter writeLandCover(out_landcover.get());
+                ImageUtils::ImageIterator lc_iter(writeLandCover);
+                lc_iter.forEachPixel([&]()
+                    {
+                        float r = 2.0f / 255.0f;
+                        float a = 2.0f * (lc_iter.u() - 0.5f);
+                        float b = 2.0f * (lc_iter.v() - 0.5f);
+                        //float d = clamp(static_cast<float>(sqrt((a * a) + (b * b))), 0.0f, 1.0f);
+                        //TODO uncomment me for a nice circle
+                        //if (d < 1.0f)
+                        {
+                            value.r() = r;
+                            writeLandCover(value, lc_iter.s(), lc_iter.t());
+                        }
+                    }
+                );
+
+                //static int shmoo = 0;
+                //std::string f = "out/out" + std::to_string(shmoo++) + ".png";
+                //osgDB::writeImageFile(*out_landcover.get(), f);
+            }
+        };
+
+
+        struct DitchRenderer
+        {
+            static void render(
+                const Feature* in_feature,
+                const Distance& width,
+                float rugged, float dense, float lush,
+                float lifemapMix,
+                osg::ref_ptr<osg::Image>& out_elevation,
+                osg::ref_ptr<osg::Image>& out_lifemap,
+                osg::ref_ptr<osg::Image>& out_landcover,
+                GeoExtent& out_extent)
+            {
+                osg::ref_ptr<Feature> feature = new Feature(*in_feature);
+                GeoPoint center = feature->getExtent().getCentroid();
+                center = center.toLocalTangentPlane();
+                feature->transform(center.getSRS());
+
+                out_extent = feature->getExtent();
+
+                // the extent must account for the width of the ditch,
+                // AND the extent must be square.....
+                out_extent.expand(width, width);
+                double diff = out_extent.width() - out_extent.height();
+                if (diff > 0.0)
+                    out_extent.expand(0.0, diff);
+                else if (diff < 0.0)
+                    out_extent.expand(-diff, 0.0);
+
+
+                FeatureList features{ feature };
+
+                SDFGenerator sdfgen;
+                sdfgen.setUseGPU(false);
+
+                GeoImage nnf;
+                sdfgen.createNearestNeighborField(features, 256, out_extent, false, nnf, nullptr);
+
+                const float min_dist = 0.25f * width;
+                const float max_dist = 0.5f * width;
+                GeoImage sdf = sdfgen.allocateSDF(256, out_extent);
+                sdfgen.createDistanceField(nnf, sdf, out_extent.height(), min_dist, max_dist, nullptr);
+
+                out_elevation = new osg::Image();
+                out_elevation->allocateImage(256, 256, 1, GL_RED, GL_UNSIGNED_BYTE);
+
+                ImageUtils::PixelReader readSDF(sdf.getImage());
+                ImageUtils::PixelWriter writeElevation(out_elevation.get());
+                ImageUtils::ImageIterator e_iter(writeElevation);
+                osg::Vec4 value;
+                e_iter.forEachPixel([&]()
+                    {
+                        readSDF(value, e_iter.s(), e_iter.t());
+                        writeElevation(value, e_iter.s(), e_iter.t());
+                    }
+                );
+
+                out_lifemap = new osg::Image();
+                out_lifemap->allocateImage(256, 256, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
+                ImageUtils::PixelWriter writeLifeMap(out_lifemap.get());
+                ImageUtils::ImageIterator lm_iter(writeLifeMap);
+                lm_iter.forEachPixel([&]()
+                    {
+                        readSDF(value, lm_iter.s(), lm_iter.t());
+                        float dist = clamp(value.r(), 0.0f, 1.0f);
+                        dist = accel(accel(dist));
+                        value.set(rugged, dense, lush, (1.0f - dist) * lifemapMix);
+                        writeLifeMap(value, lm_iter.s(), lm_iter.t());
+                    }
+                );
+
+#if 0
+                osgDB::writeImageFile(*nnf.getImage(), Stringify() << "out/decal_nnf.png");
+                osgDB::writeImageFile(*sdf.getImage(), Stringify() << "out/decal_sdf.png");
+                osgDB::writeImageFile(*out_lifemap.get(), Stringify() << "out/decal_lifemap.png");
+#endif
+            }
+        };
+
+
+        class TerrainEditGUI : public ImGuiPanel
+        {
+        private:
+            bool _installed = false;
+            unsigned _minLevel = 10u;
+            bool _placingCrater = false;
+            bool _placingDitch = false;
+            bool _eventsActivated = false;
+            float _craterRadius = 1.0f;
+            float _width = 5.0f;
+            float _height = -3.0f;
+            float _rugged = 0.75f;
+            float _dense = 0.0f;
+            float _lush = 0.0f;
+            float _lifemapMix = 1.0f;
+            osg::observer_ptr<MapNode> _mapNode;
+            osg::ref_ptr<DecalElevationLayer> _elevDecal;
+            osg::ref_ptr<DecalImageLayer> _lifemapDecal;
+            osg::ref_ptr<DecalImageLayer> _landcoverDecal;
+            std::vector<const Layer*> _layersToRefresh;
+            std::stack<std::string> _undoStack;
+            osg::ref_ptr<CircleNode> _craterCursor;
+            osg::ref_ptr<FeatureNode> _ditchCursor;
+            osg::ref_ptr<Feature> _ditchFeature;
+
+        public:
+            TerrainEditGUI() : ImGuiPanel("Terrain Editing")
+            {
+            }
+
+            void load(const Config& conf) override
+            {
+            }
+
+            void save(Config& conf) override
+            {
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!isVisible()) return;
+                if (!findNodeOrHide(_mapNode, ri)) return;
+
+                if (!_installed)
+                {
+                    // first time through, install the event handlers and add the decal layers
+                    auto event_view = view(ri);
+                    view(ri)->getViewerBase()->addUpdateOperation(new OneTimer([this, event_view]()
+                        {
+                            setup(event_view);
+                        }));
+
+                    _installed = true;
+                    return;
+                }
+
+                if (ImGui::Begin(name(), visible()))
+                {
+                    ImGui::Checkbox("Place a crater", &_placingCrater);
+                    if (_placingCrater)
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Click to place feature");
+                        
+                    ImGui::Checkbox("Place a ditch/berm", &_placingDitch);
+                    if (_placingDitch)
+                        ImGui::TextColored(ImVec4(1, 1, 0, 1), "Click points; press ENTER to finish");
+
+                    updateEvents(view(ri));
+
+                    if (ImGuiLTable::Begin("TerrainEdit"))
+                    {
+                        ImGuiLTable::SliderFloat("Width(m)", &_width, 1.0f, 50.0f);
+                        ImGuiLTable::SliderFloat("Height(m)", &_height, -10.0f, 10.0f);
+                        ImGuiLTable::SliderFloat("Rugged", &_rugged, 0.0f, 1.0f);
+                        ImGuiLTable::SliderFloat("Dense", &_dense, 0.0f, 1.0f);
+                        ImGuiLTable::SliderFloat("Lush", &_lush, 0.0f, 1.0f);
+                        ImGuiLTable::SliderFloat("Mix", &_lifemapMix, 0.0f, 1.0f);
+                        ImGuiLTable::End();
+                    }
+
+                    ImGui::Separator();
+                    if (ImGui::Button("Undo") && _undoStack.size() > 0)
+                        undo();
+
+                    ImGui::SameLine();
+                    if (ImGui::Button("Clear All"))
+                        clear();
+
+                    if (_placingCrater && _placingDitch)
+                        _placingCrater = false;
+
+                    ImGui::End();
+                }
+            }
+
+            void undo()
+            {
+                GeoExtent ex;
+                if (_elevDecal.valid()) {
+                     ex = _elevDecal->getDecalExtent(_undoStack.top());
+                    _elevDecal->removeDecal(_undoStack.top());
+                }
+                if (_lifemapDecal.valid())
+                    _lifemapDecal->removeDecal(_undoStack.top());
+                if (_landcoverDecal.valid())
+                    _landcoverDecal->removeDecal(_undoStack.top());
+
+                _undoStack.pop();
+                _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, ex, _minLevel, INT_MAX);
+            }
+
+            void clear()
+            {
+                if (_elevDecal.valid())
+                    _elevDecal->clearDecals();
+                if (_lifemapDecal.valid())
+                    _lifemapDecal->clearDecals();
+                if (_landcoverDecal.valid())
+                    _landcoverDecal->clearDecals();
+                _mapNode->getTerrainEngine()->invalidateRegion(_layersToRefresh, GeoExtent::INVALID, _minLevel, INT_MAX);
+            }
+
+            void addCrater(const GeoPoint& center)
+            {
+                GeoExtent extent;
+                osg::ref_ptr<osg::Image> elevation;
+                osg::ref_ptr<osg::Image> lifemap;
+                osg::ref_ptr<osg::Image> landcover;
+
+                CraterRenderer::render(
+                    center,
+                    Distance(_width, Units::METERS),
+                    _rugged, _dense, _lush,
+                    _lifemapMix,
+                    extent,
+                    elevation,
+                    lifemap,
+                    landcover);
+
+                addDecals(elevation, lifemap, landcover, extent);
+            }
+
+            void addDecals(
+                osg::ref_ptr<osg::Image>& elevation,
+                osg::ref_ptr<osg::Image>& lifemap,
+                osg::ref_ptr<osg::Image>& landcover,
+                const GeoExtent& extent)
+            {
+                // ID for the new decal(s). ID's need to be unique in a single decal layer,
+                // but the three different TYPES of layers can share the same ID
+                std::string id = Stringify() << osgEarth::createUID();
+                _undoStack.push(id);
+
+                OE_NOTICE << "Adding decal #" << id << std::endl;
+
+                if (_elevDecal.valid() && elevation.valid())
+                {
+                    _elevDecal->addDecal(id, extent, elevation.get(), _height, 0.0f, GL_RED);
+                }
+
+                if (_lifemapDecal.valid() && lifemap.valid())
+                {
+                    _lifemapDecal->addDecal(id, extent, lifemap.get());
+                }
+
+                if (_landcoverDecal.valid() && landcover.valid())
+                {
+                    _landcoverDecal->addDecal(id, extent, landcover.get());
+                }
+
+                // Tell the terrain engine to regenerate the effected area.
+                _mapNode->getTerrainEngine()->invalidateRegion(
+                    _layersToRefresh,
+                    extent,
+                    _minLevel,
+                    INT_MAX);
+            }
+
+            void handleClick(osg::View* view, float x, float y)
+            {
+                if (!_placingCrater && !_placingDitch)
+                    return;
+
+                GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
+                if (!p.isValid())
+                {
+                    OE_WARN << "No intersection under mouse..." << std::endl;
+                    return;
+                }
+
+                if (_placingCrater)
+                {
+                    addCrater(p);
+                    _placingCrater = false;
+                    _craterCursor->setNodeMask(0);
+                }
+
+                if (_placingDitch)
+                {
+                    if (_ditchCursor->getNodeMask() == 0)
+                    {
+                        Style& style = _ditchFeature->style().mutable_value();
+                        auto line = style.getOrCreate<LineSymbol>();
+                        line->stroke()->width() = _width;
+                        line->stroke()->widthUnits() = Units::METERS;
+                        line->tessellationSize()->set(_width, Units::METERS);
+                    }
+                    _ditchCursor->setNodeMask(~0);
+                    GeoPoint pf = p.transform(_ditchFeature->getSRS());
+                    Geometry* geom = _ditchFeature->getGeometry();
+                    geom->push_back(pf.x(), pf.y());
+                    if (geom->size() == 1)
+                        geom->push_back(pf.x(), pf.y());
+                    _ditchCursor->dirty();
+                }
+            }
+
+            void handleMove(osg::View* view, float x, float y)
+            {
+                if (!_placingCrater && !_placingDitch)
+                    return;
+
+                GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
+                if (!p.isValid())
+                    return;
+
+                if (_placingCrater)
+                {
+                    _craterCursor->setNodeMask(~0);
+                    _craterCursor->setRadius(Distance(_width*0.5, Units::METERS));
+                    _craterCursor->setPosition(p);
+                }
+
+                if (_placingDitch)
+                {
+                    Geometry* geom = _ditchFeature->getGeometry();
+                    if (!geom->empty())
+                    {
+                        GeoPoint pf = p.transform(_ditchFeature->getSRS());
+                        geom->back().set(pf.x(), pf.y(), 0.0f);
+                        _ditchCursor->dirty();
+                    }
+                }
+            }
+
+            void finishDrawing()
+            {
+                if (_placingDitch)
+                {
+                    _ditchCursor->setNodeMask(0);
+
+                    osg::ref_ptr<osg::Image> elevation, lifemap, landcover;
+                    GeoExtent extent;
+
+                    DitchRenderer dr;
+                    dr.render(
+                        _ditchFeature.get(),
+                        Distance(_width, Units::METERS),
+                        _rugged, _dense, _lush,
+                        _lifemapMix,
+                        elevation,
+                        lifemap,
+                        landcover,
+                        extent);
+
+                    addDecals(elevation, lifemap, landcover, extent);
+                }
+
+                cancelDrawing();
+            }
+
+            void cancelDrawing()
+            {
+                _placingCrater = false;
+                _craterCursor->setNodeMask(0);
+
+                _placingDitch = false;
+                _ditchFeature->getGeometry()->clear();
+                _ditchCursor->dirty();
+                _ditchCursor->setNodeMask(0);
+            }
+            
+            void setup(osgViewer::View* view)
+            {
+                if (_elevDecal.valid())
+                    return;
+
+                _elevDecal = new DecalElevationLayer();
+                _elevDecal->setName("Elevation Decals");
+                _elevDecal->setMinLevel(_minLevel);
+                _mapNode->getMap()->addLayer(_elevDecal.get());
+                _layersToRefresh.push_back(_elevDecal.get());
+
+                _lifemapDecal = new DecalImageLayer();
+                _lifemapDecal->setName("LifeMap Decals");
+                _lifemapDecal->setMinLevel(_minLevel);
+
+                // lifemap data needs special blending treatment on the A channel
+                // since this contains material override data.
+                _lifemapDecal->setBlendFuncs(
+                    GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                    GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                    GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                    GL_ZERO, GL_ONE);
+
+                // If there is a LifeMapLayer, append to it as a Post, otherwise standalone decal.
+                LifeMapLayer* lifemap = _mapNode->getMap()->getLayer<LifeMapLayer>();
+                if (lifemap)
+                {
+                    lifemap->addPostLayer(_lifemapDecal.get());
+                    _layersToRefresh.push_back(lifemap);
+
+                    // If there's a coverage layer with a decal, find it.
+                    auto coverage = lifemap->getLandCoverLayer();
+                    if (coverage)
+                    {
+                        _landcoverDecal = dynamic_cast<DecalImageLayer*>(coverage->getSourceLayerByName("decal"));
+                    }
+                }
+                else
+                {
+                    _mapNode->getMap()->addLayer(_lifemapDecal.get());
+                    _layersToRefresh.push_back(_lifemapDecal.get());
+                }
+
+                _craterCursor = new CircleNode();
+                _craterCursor->setNodeMask(0);
+                Style craterStyle;
+                craterStyle.getOrCreate<LineSymbol>()->stroke()->color().set(1, 1, 0, 1);
+                craterStyle.getOrCreate<PolygonSymbol>()->fill()->color().set(1, 1, 0, 0.65);
+                craterStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+                craterStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_DRAPE;
+                _craterCursor->setStyle(craterStyle);
+                _mapNode->addChild(_craterCursor);
+
+                Style ditchStyle;
+                ditchStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(1, 1, 0, 0.65f);
+                ditchStyle.getOrCreate<LineSymbol>()->stroke()->lineCap() = Stroke::LINECAP_ROUND;
+                ditchStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+                ditchStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
+                ditchStyle.getOrCreate<RenderSymbol>()->depthOffset()->automatic() = true;
+                _ditchFeature = new Feature(new LineString(), SpatialReference::get("spherical-mercator"), ditchStyle);
+                _ditchCursor = new FeatureNode(_ditchFeature.get());
+                _ditchCursor->setNodeMask(0);
+                _mapNode->addChild(_ditchCursor);
+            }
+
+            void updateEvents(osgViewer::View* view)
+            {
+                if (!_eventsActivated && (_placingCrater || _placingDitch))
+                {
+                    EventRouter::get(view)
+                        .onClick([this](osg::View* v, float x, float y) { handleClick(v, x, y); })
+                        .onMove([this](osg::View* v, float x, float y) { handleMove(v, x, y); })
+                        .onKeyPress(EventRouter::KEY_Return, [this](...) { finishDrawing(); })
+                        .onKeyPress(EventRouter::KEY_Escape, [this](...) { cancelDrawing(); });
+
+                    _eventsActivated = true;
+                }
+                else if (_eventsActivated && (!_placingCrater && !_placingDitch))
+                {
+                    EventRouter::get(view)
+                        .popClick()
+                        .popMove()
+                        .popKeyPress(EventRouter::KEY_Return)
+                        .popKeyPress(EventRouter::KEY_Escape);
+
+                    _eventsActivated = false;
+                }
+            }
+        };
+    }
+}

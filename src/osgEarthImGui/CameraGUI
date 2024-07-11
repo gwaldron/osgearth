@@ -1,0 +1,223 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarth/MapNode>
+#include <osgEarth/EarthManipulator>
+
+namespace osgEarth
+{
+    using namespace osgEarth::Util;
+
+    /**
+     * GUI for the EarthManipulator settings
+     */
+    struct CameraGUI : public ImGuiPanel
+    {
+        bool _first;
+        bool _singleAxisRotation;
+        bool _lockAzimuthWhilePanning;
+        bool _arcViewpointTransitions;
+        bool _terrainAvoidanceEnabled;
+        bool _throwing;
+        float _throwDecayRate;
+        bool _zoomToMouse;
+        double _vfov, _ar, _zn, _zf;
+
+        CameraGUI() :
+            ImGuiPanel("Camera"),
+            _first(true),
+            _vfov(30), _ar(1), _zn(1), _zf(100)
+        {
+            EarthManipulator::Settings d;
+            _singleAxisRotation = d.getSingleAxisRotation();
+            _lockAzimuthWhilePanning = d.getLockAzimuthWhilePanning();
+            _arcViewpointTransitions = d.getArcViewpointTransitions();
+            _terrainAvoidanceEnabled = d.getTerrainAvoidanceEnabled();
+            _throwing = d.getThrowingEnabled();
+            _throwDecayRate = d.getThrowDecayRate();
+            _zoomToMouse = d.getZoomToMouse();
+        }
+
+        void load(const Config& conf) override
+        {
+            conf.get("SingleAxisRotation", _singleAxisRotation);
+            conf.get("LockAzimuthWhilePanning", _lockAzimuthWhilePanning);
+            conf.get("ArcViewpointTransitions", _arcViewpointTransitions);
+            conf.get("TerrainAvoidance", _terrainAvoidanceEnabled);
+            conf.get("Throwing", _throwing);
+            conf.get("ThrowingDecay", _throwDecayRate);
+            conf.get("ZoomToMouse", _zoomToMouse);
+        }
+
+        void save(Config& conf) override
+        {
+            conf.set("SingleAxisRotation", _singleAxisRotation);
+            conf.set("LockAzimuthWhilePanning", _lockAzimuthWhilePanning);
+            conf.set("ArcViewpointTransitions", _arcViewpointTransitions);
+            conf.set("TerrainAvoidance", _terrainAvoidanceEnabled);
+            conf.set("Throwing", _throwing);
+            conf.set("ThrowingDecay", _throwDecayRate);
+            conf.set("ZoomToMouse", _zoomToMouse);
+        }
+
+        void draw(osg::RenderInfo& ri)
+        {
+            if (!isVisible())
+                return;
+
+            EarthManipulator* man = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
+
+            EarthManipulator::Settings* s = nullptr;
+
+            if (man)
+                s = man->getSettings();
+
+            ImGui::Begin(name(), visible());
+            {
+                //if (ImGui::Checkbox("Single axis continuous rotation", &_singleAxisRotation) || _first)
+                //    s->setSingleAxisRotation(_singleAxisRotation), dirtySettings();
+
+                if (ImGuiLTable::Begin("CameraGUI"))
+                {
+                    osg::Matrix pm = camera(ri)->getProjectionMatrix();
+                    bool ortho = ProjectionMatrix::isOrtho(pm);
+                    if (ImGuiLTable::Checkbox("Orthographic", &ortho))
+                    {
+                        if (ortho) {
+                            ProjectionMatrix::getPerspective(pm, _vfov, _ar, _zn, _zf);
+                            ProjectionMatrix::setOrtho(pm, -1, 1, -1, 1, _zn, _zf);
+                        }
+                        else {
+                            ProjectionMatrix::setPerspective(pm, _vfov, _ar, _zn, _zf);
+                        }
+                        camera(ri)->setProjectionMatrix(pm);
+                    }
+
+                    if (s)
+                    {
+                        if (ImGuiLTable::Checkbox("Lock azimuth", &_lockAzimuthWhilePanning) || _first)
+                            s->setLockAzimuthWhilePanning(_lockAzimuthWhilePanning), dirtySettings();
+
+                        if (ImGuiLTable::Checkbox("Arc transitions", &_arcViewpointTransitions) || _first)
+                            s->setArcViewpointTransitions(_arcViewpointTransitions), dirtySettings();
+
+                        if (ImGuiLTable::Checkbox("Avoid terrain", &_terrainAvoidanceEnabled) || _first)
+                            s->setTerrainAvoidanceEnabled(_terrainAvoidanceEnabled), dirtySettings();
+
+                        if (ImGuiLTable::Checkbox("Zoom to mouse", &_zoomToMouse) || _first)
+                            s->setZoomToMouse(_zoomToMouse), dirtySettings();
+
+                        if (ImGuiLTable::Checkbox("Throwing", &_throwing) || _first)
+                            s->setThrowingEnabled(_throwing), dirtySettings();
+
+                        if (_throwing || _first)
+                        {
+                            if (ImGuiLTable::SliderFloat("Decay", &_throwDecayRate, 0.02f, 0.3f) || _first)
+                                s->setThrowDecayRate(_throwDecayRate), dirtySettings();
+                        }
+                    }
+
+                    static float magnification_old = 1.0f, magnification_new = 1.0f;
+                    static osg::Matrix ref_proj;
+                    if (ImGuiLTable::SliderFloat("Magnification", &magnification_new, 1.0f, 25.0f))
+                    {
+                        auto proj = camera(ri)->getProjectionMatrix();
+                        if (magnification_old == 1.0f ||
+                            ref_proj.isIdentity() ||
+                            ProjectionMatrix::isOrtho(proj) != ProjectionMatrix::isOrtho(ref_proj))
+                        {
+                            ref_proj = proj;
+                        }
+
+                        double rangeScale = 1.0 / magnification_new;
+
+                        osg::Matrix new_proj;
+                        if (ProjectionMatrix::isPerspective(ref_proj))
+                        {
+                            double vfov, ar, n, f;
+                            ProjectionMatrix::getPerspective(ref_proj, vfov, ar, n, f);
+                            ProjectionMatrix::setPerspective(new_proj, vfov * rangeScale, ar, n, f);
+
+                            if (s)
+                                s->setOrthoTracksPerspective(true);
+                        }
+                        else
+                        {
+                            double L, R, B, T, N, F;
+                            double M, H;
+                            ProjectionMatrix::getOrtho(ref_proj, L, R, B, T, N, F);
+                            M = B + (T - B) / 2;
+                            H = (T - B) * rangeScale / 2;
+                            B = M - H, T = M + H;
+                            M = L + (R - L) / 2;
+                            H = (R - L) * rangeScale / 2;
+                            L = M - H, R = M + H;
+                            ProjectionMatrix::setOrtho(new_proj, L, R, B, T, N, F);
+
+                            if (s)
+                                s->setOrthoTracksPerspective(false);
+                        }
+
+                        camera(ri)->setProjectionMatrix(new_proj);
+                        camera(ri)->setLODScale(rangeScale);
+
+                        magnification_old = magnification_new;
+                    }
+
+                    static osg::CullSettings::ComputeNearFarMode old_near_far_mode = osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR;
+                    static bool lock_far_clip = false;
+                    static float locked_far_clip = 0.0f;
+                    if (ImGuiLTable::Checkbox("Lock far clip", &lock_far_clip))
+                    {
+                        if (lock_far_clip)
+                        {
+                            old_near_far_mode = camera(ri)->getComputeNearFarMode();
+                            double L, R, B, T, N, F;
+                            camera(ri)->getProjectionMatrixAsFrustum(L, R, B, T, N, F);
+                            locked_far_clip = F;
+                            camera(ri)->setComputeNearFarMode(osg::Camera::DO_NOT_COMPUTE_NEAR_FAR);
+                            camera(ri)->setProjectionMatrixAsFrustum(L, R, B, T, N, F);
+                        }
+                        else
+                        {
+                            camera(ri)->setComputeNearFarMode(old_near_far_mode);
+                        }
+                    }
+
+                    auto& proj = camera(ri)->getProjectionMatrix();
+                    if (ProjectionMatrix::isPerspective(proj))
+                    {
+                        ImGui::Separator();
+                        double vfov, ar, n, f;
+                        ProjectionMatrix::getPerspective(proj, vfov, ar, n, f);
+                        ImGuiLTable::Text("VFOV", "%.2f", vfov);
+                        ImGuiLTable::Text("Near", "%.2f", n);
+                        ImGuiLTable::Text("Far", "%.1f", f);
+                    }
+
+                    ImGuiLTable::End();
+                }
+            }
+
+            _first = false;
+            ImGui::End();
+        }
+    };
+}

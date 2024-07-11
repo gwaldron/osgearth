@@ -1,0 +1,133 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osg/NodeVisitor>
+
+namespace osgEarth
+{
+    class TextureInspectorGUI : public ImGuiPanel
+    {
+    public:
+        TextureInspectorGUI() :
+            ImGuiPanel("Texture Inspector")
+        {
+            //nop
+        }
+
+        void setNode(osg::Node* node)
+        {
+            _root = node;
+        }
+
+    private:
+        class FindTexturesVisitor : public osg::NodeVisitor
+        {
+        public:
+            FindTexturesVisitor() :
+                osg::NodeVisitor(TRAVERSE_ALL_CHILDREN)
+            {
+            }
+
+            void apply(osg::Node& node)
+            {
+                auto stateset = node.getStateSet();
+                if (stateset)
+                {
+                    for (unsigned int i = 0; i < stateset->getTextureAttributeList().size(); ++i)
+                    {
+                        osg::Texture2D* texture = dynamic_cast<osg::Texture2D*>(stateset->getTextureAttribute(i, osg::StateAttribute::TEXTURE));
+                        if (texture)
+                        {
+                            _textures.insert(texture);
+                        }
+                    }
+                }
+                traverse(node);
+            }
+
+            typedef std::set< osg::ref_ptr< osg::Texture2D > > TextureSet;
+            TextureSet _textures;
+        };
+
+    public:
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible())
+                return;
+
+            if (ImGui::Begin(name(), visible()))
+            {
+                if (_root.valid() == false)
+                    _root = ri.getCurrentCamera();
+
+                if (ImGui::Button("Refresh"))
+                {
+                    _textures.clear();
+                    FindTexturesVisitor findTextures;
+                    ri.getCurrentCamera()->accept(findTextures);
+                    std::copy(findTextures._textures.begin(), findTextures._textures.end(), std::back_inserter(_textures));
+                }
+                ImGui::Text("Found %d textures", _textures.size());
+                ImGuiStyle& style = ImGui::GetStyle();
+                float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+                unsigned int textureWidth = 50;
+                for (unsigned int i = 0; i < _textures.size(); ++i)
+                {
+                    auto t = _textures[i];
+                    std::string name = t.get()->getName();
+                    if (name.empty())
+                    {
+                        name = "Texture";
+                    }
+
+                    ImGui::PushID(t.get());
+                    ImGui::BeginGroup();
+                    ImGui::Text(name.c_str());
+                    ImGuiEx::OSGTexture(t.get(), ri, textureWidth);
+                    ImGui::EndGroup();
+
+                    float last_button_x2 = ImGui::GetItemRectMax().x;
+                    float next_button_x2 = last_button_x2 + style.ItemSpacing.x + textureWidth; // Expected position if next button was on same line
+                    if (i + 1 < _textures.size() && next_button_x2 < window_visible_x2)
+                        ImGui::SameLine();
+
+                    ImGui::PopID();
+                    if (ImGui::IsItemHovered())
+                    {
+                        ImGui::BeginTooltip();
+                        ImGui::Text("%dx%d", t.get()->getTextureWidth(), t.get()->getTextureHeight());
+                        osg::Image* image = t.get()->getImage();
+                        if (image && !image->getFileName().empty())
+                        {
+                            ImGui::Text(image->getFileName().c_str());
+                        }
+                        ImGui::EndTooltip();
+                    }
+
+                }
+                ImGui::End();
+            }
+        }
+
+        std::vector< osg::ref_ptr< osg::Texture2D > > _textures;
+        osg::observer_ptr<osg::Node> _root;
+    };
+}

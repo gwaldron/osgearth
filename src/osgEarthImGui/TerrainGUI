@@ -1,0 +1,419 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarth/Threading>
+#include <osgEarth/MemoryUtils>
+#include <osgEarth/GLUtils>
+#include <osgEarth/ExampleResources>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/LabelNode>
+#include <osgEarth/SelectExtentTool>
+#include <osgEarth/TerrainEngineNode>
+#include <osgEarth/GLUtils>
+#include <chrono>
+#include <list>
+#include <algorithm>
+
+namespace osgEarth
+{
+    using namespace osgEarth::Threading;
+
+    class TerrainGUI : public ImGuiPanel
+    {
+    private:
+        osg::observer_ptr<MapNode> _mapNode;
+        std::unique_ptr<AsyncElevationSampler> _sampler;
+        Future<ElevationSample> _sample;
+        osg::ref_ptr<FeatureNode> _measureCursor;
+        osg::ref_ptr<Feature> _measureFeature;
+        osg::ref_ptr<LabelNode> _measureLabel;
+        osg::ref_ptr<Contrib::SelectExtentTool> _invalidateTool;
+        float _x = 0.0f, _y = 0.0f;
+        float _ax = 0.0f, _ay = 0.0f;
+        float _measureDist = 0.0f;
+        bool _installed = false;
+        bool _measuring = false;
+        bool _clamp_measure = true;
+        bool _invalidating = false;
+
+    public:
+        TerrainGUI() : ImGuiPanel("Terrain") { }
+
+        void load(const Config& conf) override
+        {
+        }
+
+        void save(Config& conf) override
+        {
+        }
+
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible()) return;
+            if (!findNodeOrHide(_mapNode, ri)) return;
+
+            if (!_installed)
+                install(ri);
+
+            ImGui::Begin(name(), visible());
+            {
+                auto engine = _mapNode->getTerrainEngine();
+
+                if (!engine)
+                {
+                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "No terrain engine");
+                    ImGui::End();
+                    return;
+                }
+
+                auto options = _mapNode->getTerrainOptions();
+
+                if (ImGuiLTable::Begin("terraingui"))
+                {
+                    ImGuiLTable::Text("Resident Tiles", "%u (%s)",
+                        engine->getNumResidentTiles(),
+                        engine->getNode()->getName().c_str());
+
+                    static bool terrain_visible = true;
+                    static osg::ref_ptr<ToggleVisibleCullCallback> visible_cb;
+                    if (ImGuiLTable::Checkbox("Visible", &terrain_visible))
+                    {
+                        if (!visible_cb)
+                        {
+                            visible_cb = new ToggleVisibleCullCallback();
+                            _mapNode->getTerrainEngine()->getNode()->addCullCallback(visible_cb);
+                        }
+                        visible_cb->setVisible(terrain_visible);
+                    }
+
+                    static int max_max_lod = -1;
+                    static unsigned u32_one = 1;
+                    unsigned max_lod = options.getMaxLOD();
+                    if (max_max_lod < 0) max_max_lod = max_lod;
+                    if (ImGuiLTable::InputScalar("Max LOD", ImGuiDataType_U32, &max_lod, &u32_one, nullptr, "%u"))
+                    {
+                        max_lod = clamp(max_lod, 0u, (unsigned)max_max_lod);
+                        options.setMaxLOD(max_lod);
+                    }
+
+                    bool progressive = options.getProgressive();
+                    if (ImGuiLTable::Checkbox("Progressive load", &progressive))
+                    {
+                        options.setProgressive(progressive);
+                    }
+
+                    LODMethod method = options.getLODMethod();
+                    bool method_b = (method == LODMethod::SCREEN_SPACE);
+                    if (ImGuiLTable::Checkbox("Screen space LOD", &method_b))
+                    {
+                        options.setLODMethod(method_b ? LODMethod::SCREEN_SPACE : LODMethod::CAMERA_DISTANCE);
+                        engine->dirtyTerrainOptions();
+                    }
+
+                    if (options.getLODMethod() == LODMethod::SCREEN_SPACE)
+                    {
+                        float tilePixelSize = options.getTilePixelSize();
+                        if (ImGuiLTable::SliderFloat("  Pixels/tile:", &tilePixelSize, 64.0f, 1024.0f))
+                        {
+                            options.setTilePixelSize(tilePixelSize);
+                            engine->dirtyTerrainOptions();
+                        }
+                    }
+
+                    if (GLUtils::useNVGL())
+                    {
+                        unsigned maxTex = options.getMaxTextureSize();
+                        const char* maxTexItems[] = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192", "16384" };
+                        unsigned maxTexIndex = 0;
+                        for (maxTexIndex = 0; maxTex > (unsigned)::atoi(maxTexItems[maxTexIndex]) && maxTexIndex < IM_ARRAYSIZE(maxTexItems) - 1; ++maxTexIndex);
+                        if (ImGuiLTable::BeginCombo("Max tex size", maxTexItems[maxTexIndex])) {
+                            for (int n = 0; n < IM_ARRAYSIZE(maxTexItems); n++) {
+                                const bool is_selected = (maxTexIndex == n);
+                                if (ImGui::Selectable(maxTexItems[n], is_selected)) {
+                                    maxTexIndex = n;
+                                    options.setMaxTextureSize(atoi(maxTexItems[maxTexIndex]));
+                                    engine->dirtyTerrainOptions();
+                                }
+                                if (is_selected)
+                                    ImGui::SetItemDefaultFocus();
+                            }
+                            ImGuiLTable::EndCombo();
+                        }
+                    }
+
+                    if (options.getGPUTessellation())
+                    {
+                        ImGui::Separator();
+                        ImGuiLTable::Section("Tessellation");
+
+                        float level = options.getTessellationLevel();
+                        if (ImGuiLTable::SliderFloat("Level", &level, 1.0f, 12.0f))
+                        {
+                            options.setTessellationLevel(level);
+                            engine->dirtyTerrainOptions();
+                        }
+
+                        float range = options.getTessellationRange();
+                        if (ImGuiLTable::SliderFloat("Range", &range, 0.0f, 5000.0f, "%.0f", ImGuiSliderFlags_Logarithmic))
+                        {
+                            options.setTessellationRange(range);
+                            engine->dirtyTerrainOptions();
+                        }
+
+                        ImGui::Separator();
+                    }
+
+                    ImGuiLTable::End();
+                }
+
+                GeoPoint mp;
+                if (_mapNode->getGeoPointUnderMouse(view(ri), _x, _y, mp))
+                {
+                    ImGui::Separator();
+                    if (mp.getSRS()->isGeographic())
+                    {
+                        osg::Vec3d world;
+                        mp.toWorld(world);
+
+                        ImGui::Text("Lat %.3f  Lon %.3f  Z %.3f", mp.y(), mp.x(), mp.z());
+                        ImGui::Text("X %d  Y %d  Z %d", (int)world.x(), (int)world.y(), (int)world.z());
+                    }
+                    else
+                    {
+                        GeoPoint LL = mp.transform(mp.getSRS()->getGeographicSRS());
+                        ImGui::Text("Lat %.3f  Lon %.3f  Z %.3f", LL.y(), LL.x(), LL.z());
+                        ImGui::Text("X %d  Y %d  Z %d", (int)mp.x(), (int)mp.y(), (int)mp.z());
+                    }
+
+                    osg::Vec3d world, eye, center, up;
+                    mp.toWorld(world);
+                    view(ri)->getCamera()->getViewMatrixAsLookAt(eye, center, up);
+                    double dist = (eye - world).length();
+                    ImGui::Text("Distance from camera: %.1lf m", dist);
+                    ImGui::Text("Camera radius: %.1lf m", eye.length());
+
+                    if (_sample.available())
+                    {
+                        if (_sample->elevation().getValue() == NO_DATA_VALUE)
+                        {
+                            ImGui::Text("Elevation: 0.0m");
+                            ImGui::Text("Resolution: n/a (NO DATA)");
+                        }
+                        else
+                        {
+                            Distance cartRes = mp.transformResolution(_sample.value().resolution(), Units::METERS);
+                            const VerticalDatum* egm96 = VerticalDatum::get("egm96");
+                            if (egm96)
+                            {
+                                double egm96z = _sample.value().elevation().getValue();
+                                VerticalDatum::transform(
+                                    mp.getSRS()->getVerticalDatum(),
+                                    egm96,
+                                    mp.y(), mp.x(),
+                                    egm96z);
+                                Distance elevEGM96(egm96z, _sample.value().elevation().getUnits());
+
+                                ImGui::Text("Elevation: %s MSL / %s HAE",
+                                    elevEGM96.asParseableString().c_str(),
+                                    _sample.value().elevation().asParseableString().c_str());
+                            }
+                            else
+                            {
+                                ImGui::Text("Elevation: %s HAE",
+                                    _sample.value().elevation().asParseableString().c_str());
+                            }
+
+                            ImGui::Text("Resolution: %s",
+                                cartRes.asParseableString().c_str());
+                        }
+                    }
+                    else
+                    {
+                        ImGui::Text("Elevation: ...");
+                        ImGui::Text("Resolution: ...");
+                    }
+                    if (fabs(_ax - _x) > 5 || fabs(_ay - _y) > 5)
+                    {
+                        _sample = _sampler->getSample(mp);
+                        _ax = _x, _ay = _y;
+                    }
+                }
+
+                ImGui::Separator();
+
+                ImGui::Text("SRS:"); ImGui::SameLine();
+                std::string proj = _mapNode->getMapSRS()->getName();
+                if (proj != "unknown")
+                    ImGui::TextWrapped("%s", proj.c_str());
+                ImGui::TextWrapped("(%s)", _mapNode->getMapSRS()->getHorizInitString().c_str());
+                if (!_mapNode->getMapSRS()->getVertInitString().empty())
+                    ImGui::TextWrapped("vdatum = %s", _mapNode->getMapSRS()->getVertInitString().c_str());
+
+                ImGui::Separator();
+                if (ImGui::Checkbox("Measure", &_measuring))
+                {
+                    if (_measuring)
+                    {
+                        _measureFeature->getGeometry()->clear();
+                        _measureCursor->dirty();
+                        _measureCursor->setNodeMask(~0);
+                        _measureLabel->setNodeMask(~0);
+                    }
+                }
+                if (_measuring)
+                {
+                    ImGui::SameLine();
+                    if (ImGui::Checkbox("Follow", &_clamp_measure)) {
+                        Style s = _measureCursor->getStyle();
+                        s.getOrCreate<LineSymbol>()->tessellation() = (_clamp_measure ? 64 : 0);
+                        _measureCursor->setStyle(s);
+                    }
+                    ImGui::SameLine();
+                    float dist_m = 0.0f;
+                    auto& vec = _measureFeature->getGeometry()->asVector();
+                    if (_mapNode->getMapSRS()->isGeographic()) {
+                        dist_m = GeoMath::distance(vec);
+                    }
+                    else {
+                        for (unsigned i = 1; i < vec.size(); ++i)
+                            dist_m += (vec[i] - vec[i - 1]).length();
+                    }
+                    char buf[64];
+                    sprintf(buf, "%.1f m", dist_m);
+                    _measureLabel->setText(buf);
+                    GeoPoint labelPos = _measureFeature->getExtent().getCentroid();
+                    labelPos.altitudeMode() = ALTMODE_RELATIVE;
+                    _measureLabel->setPosition(labelPos);
+                }
+                else
+                {
+                    _measureCursor->setNodeMask(0);
+                    _measureLabel->setNodeMask(0);
+                }
+
+                if (ImGui::Checkbox("Drag to invalidate", &_invalidating))
+                {
+                    _invalidateTool->setEnabled(_invalidating);
+                }
+            }
+            ImGui::End();
+        }
+
+        void install(osg::RenderInfo& ri)
+        {
+            EventRouter::get(view(ri))
+                .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); }, false)
+                .onClick([&](osg::View* v, float x, float y) { onClick(v, x, y); }, false);
+
+            _sampler = std::unique_ptr<AsyncElevationSampler>(new AsyncElevationSampler(_mapNode->getMap(), 1u));
+
+            Style measureStyle;
+            measureStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().width() = 4.0f;
+            measureStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().color().set(1, 0.5, 0.0, 1);
+            measureStyle.getOrCreate<LineSymbol>()->stroke().mutable_value().stipplePattern() = 0xCCCC;
+            measureStyle.getOrCreate<LineSymbol>()->tessellation() = (_clamp_measure ? 64 : 0);
+            measureStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+            measureStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
+            measureStyle.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().enabled() = true;
+
+            _measureFeature = new Feature(new LineString(), _mapNode->getMapSRS());
+            _measureCursor = new FeatureNode(_measureFeature.get(), measureStyle);
+            _mapNode->addChild(_measureCursor);
+
+            _measureLabel = new LabelNode();
+            _measureLabel->setDynamic(true);
+            Style labelStyle;
+            labelStyle.getOrCreate<TextSymbol>()->size() = 24.0f;
+            labelStyle.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+            labelStyle.getOrCreate<TextSymbol>()->fill().mutable_value().color().set(1, 1, 1, 1);
+            labelStyle.getOrCreate<TextSymbol>()->halo().mutable_value().color().set(.3, .3, .3, 1);
+            labelStyle.getOrCreate<BBoxSymbol>()->fill().mutable_value().color().set(1, 0.5, 0.0, 0.5);
+            labelStyle.getOrCreate<BBoxSymbol>()->border().mutable_value().color().set(.8, .8, .8, 1);
+            _measureLabel->setStyle(labelStyle);
+            _measureLabel->setNodeMask(0);
+            _mapNode->addChild(_measureLabel);
+
+            // Tool to invalidate a map extent
+            _invalidateTool = new Contrib::SelectExtentTool(_mapNode.get());
+            _invalidateTool->setEnabled(false);
+            _invalidateTool->getStyle().getOrCreateSymbol<LineSymbol>()->stroke().mutable_value().color() = Color::Red;
+            view(ri)->getEventHandlers().push_front(_invalidateTool);
+            _invalidateTool->setCallback([&](const GeoExtent& ex)
+                {
+                    OE_NOTICE << "Invalidating extent " << ex.toString() << std::endl;
+                    _mapNode->getTerrainEngine()->invalidateRegion(ex);
+                    _invalidateTool->clear();
+                    _invalidateTool->setEnabled(false);
+                    _invalidating = false;
+                });
+
+            _installed = true;
+        }
+
+        void onMove(osg::View* view, float x, float y)
+        {
+            _x = x, _y = y;
+
+            if (_measuring)
+            {
+                GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
+                if (!p.isValid()) return;
+
+                Geometry* geom = _measureFeature->getGeometry();
+                if (geom->size() == 2)
+                {
+                    GeoPoint pf = p.transform(_measureFeature->getSRS());
+                    geom->back().set(pf.x(), pf.y(), 0.0f);
+                    _measureCursor->dirty();
+                }
+            }
+        }
+
+        void onClick(osg::View* view, float x, float y)
+        {
+            if (_measuring)
+            {
+                Geometry* geom = _measureFeature->getGeometry();
+                if (geom->size() < 2)
+                {
+                    GeoPoint p = getPointAtMouse(_mapNode.get(), view, x, y);
+                    if (!p.isValid()) return;
+
+                    GeoPoint pf = p.transform(_measureFeature->getSRS());
+                    geom->push_back(pf.x(), pf.y());
+                    geom->push_back(pf.x(), pf.y());
+                    _measureCursor->dirty();
+                }
+                else if (geom->size() == 2)
+                {
+                    // do nothing
+                    geom->push_back(geom->back()); // trick.
+                }
+                else if (geom->size() > 2)
+                {
+                    // start over
+                    geom->clear();
+                    onClick(view, x, y);
+                }
+            }
+        }
+    };
+}

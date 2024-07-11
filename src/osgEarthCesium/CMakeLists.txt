@@ -40,17 +40,11 @@ if (CESIUM_NATIVE_FOUND)
         PrepareRenderResources
         TaskProcessor)
 
-    # ImGui headers:
-    if(OSGEARTH_HAVE_IMGUI)
-        set(TARGET_H_IMGUI ImGui/CesiumIonGUI)    
-    endif()
-
     set(CMAKE_CXX_STANDARD 17)
 
     add_osgearth_library(
         TARGET ${LIB_NAME}
         PUBLIC_HEADERS ${TARGET_H}
-        IMGUI_HEADERS ${TARGET_H_IMGUI}
         SOURCES ${TARGET_SRC}
         SHADERS ${TARGET_GLSL}
         TEMPLATES ${TARGET_IN}

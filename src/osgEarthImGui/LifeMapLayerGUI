@@ -1,0 +1,276 @@
+#pragma once
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarthProcedural/LifeMapLayer>
+#include <osgEarthProcedural/TextureSplattingLayer>
+#include <osgEarth/VirtualProgram>
+
+namespace {
+    const char* render_lifemap = R"(
+#version 450
+#pragma vp_function oeiu_render_lifemap, fragment_lighting, last
+void oeiu_render_lifemap(inout vec4 color) { color.a = 1.0; }
+)";
+    const char* render_density = R"(
+#version 450
+#pragma vp_function oeui_render_density, fragment_lighting, last
+void oeui_render_density(inout vec4 color) { color = vec4(0,color.g,0,1); }
+)";
+
+    const char* render_lush = R"(
+#version 450
+#pragma vp_function oeui_render_lush, fragment_lighting, last
+void oeui_render_lush(inout vec4 color) { color = vec4(0,0,color.b, 1); }
+)";
+
+    const char* render_rugged = R"(
+#version 450
+#pragma vp_function oeui_render_rugged, fragment_lighting, last
+void oeui_render_rugged(inout vec4 color) { color = vec4(color.r, 0, 0, 1); }
+)";
+
+    const char* render_alpha = R"(
+#version 450
+#pragma vp_function oeui_render_alpha, fragment_lighting, last
+void oeui_render_alpha(inout vec4 color) { color = vec4(color.a, color.a, color.a, 1.0); }
+)";
+}
+
+namespace osgEarth
+{
+    namespace Procedural
+    {
+        using namespace osgEarth;
+
+        struct LifeMapLayerGUI : public ImGuiPanel
+        {
+            osg::observer_ptr<MapNode> _mapNode;
+            osg::observer_ptr<LifeMapLayer> _lifemap;
+            osg::observer_ptr<TextureSplattingLayer> _splat;
+            VirtualProgram* _vp;
+            std::string _renderMode;
+            bool _showLifemapUnderMouse;
+            Future<osg::Vec4> _lifemapUnderMouse;
+            bool _showLandcoverUnderMouse;
+            Future<LandCoverSample> _landcoverUnderMouse;
+            //Future<osg::Vec4> _lifemapUnderMouse;
+            bool _first;
+
+            LifeMapLayerGUI() : ImGuiPanel("Life Map"),
+                _first(true),
+                _vp(nullptr),
+                _showLifemapUnderMouse(false),
+                _showLandcoverUnderMouse(false)
+            {
+                //nop
+            }
+
+            void setRenderMode(const std::string& mode, osg::RenderInfo& ri)
+            {
+                if (!_vp)
+                    _vp = VirtualProgram::getOrCreate(_lifemap->getOrCreateStateSet());
+
+                if (!_renderMode.empty())
+                    ShaderLoader::unload(_vp, _renderMode);
+                _renderMode = mode;
+                if (!_renderMode.empty())
+                    ShaderLoader::load(_vp, _renderMode);
+
+                bool show = !_renderMode.empty();
+                _lifemap->setVisible(show);
+                if (_splat.valid())
+                    _splat->setVisible(!show);
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!findNodeOrHide(_mapNode, ri))
+                    return;
+                if (!findLayerOrHide(_lifemap, ri))
+                    return;
+
+                findLayer(_splat, ri);
+
+                if (_first)
+                {
+                    EventRouter::get(view(ri))
+                        .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); });
+
+                    _first = false;
+                }
+
+                ImGui::Begin("Life Map");
+
+                // render the layer?
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Visualization");
+                {
+                    static int s_renderMode = 0;
+                    int m = 0;
+
+                    if (ImGui::RadioButton("Normal", &s_renderMode, m++)) {
+                        setRenderMode("", ri);
+                    }
+                    if (ImGui::RadioButton("Ruggedness", &s_renderMode, m++)) {
+                        setRenderMode(render_rugged, ri);
+                    }
+                    if (ImGui::RadioButton("Density", &s_renderMode, m++)) {
+                        setRenderMode(render_density, ri);
+                    }
+                    if (ImGui::RadioButton("Lushness", &s_renderMode, m++)) {
+                        setRenderMode(render_lush, ri);
+                    }
+                    if (ImGui::RadioButton("Material", &s_renderMode, m++)) {
+                        setRenderMode(render_alpha, ri);
+                    }
+                    if (ImGui::RadioButton("All", &s_renderMode, m++)) {
+                        setRenderMode(render_lifemap, ri);
+                    }
+                }
+
+                LifeMapLayer::Options& o = _lifemap->options();
+
+                ImGui::Separator();
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "LifeMap Generator levels:");
+
+                if (ImGuiLTable::Begin("LifeMap"))
+                {
+                    ImGuiLTable::SliderFloat("Coverage contrib", &o.landCoverWeight().mutable_value(), 0.0f, 1.0f);
+                    if (o.landCoverWeight().value() > 0.0f)
+                    {
+                        float value = o.landCoverBlur()->as(Units::METERS);
+                        if (ImGuiLTable::SliderFloat("Coverage blur (m)", &value, 0.0f, 100.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+                            o.landCoverBlur()->set(value, Units::METERS);
+                    }
+
+                    if (_lifemap->getColorLayer())
+                    {
+                        ImGuiLTable::SliderFloat("Imagery color contrib", &o.colorWeight().mutable_value(), 0.0f, 1.0f);
+                    }
+
+                    ImGuiLTable::SliderFloat("Terrain contrib", &o.terrainWeight().mutable_value(), 0.0f, 1.0f);
+                    //ImGuiLTable::SliderFloat("Slope contrib", &o.slopeIntensity().mutable_value(), 1.0f, 10.0f);
+                    //ImGuiLTable::SliderFloat("Slope cutoff", &o.slopeCutoff().mutable_value(), 0.0f, 1.0f);
+
+                    ImGuiLTable::SliderFloat("Noise contrib", &o.noiseWeight().mutable_value(), 0.0f, 1.0f);
+
+                    ImGuiLTable::End();
+                }
+
+                if (ImGui::Button("Apply Changes"))
+                {
+                    // make sure the cache is off
+                    _lifemap->setCachePolicy(CachePolicy::NO_CACHE);
+
+                    _mapNode->getTerrainEngine()->invalidateRegion(
+                        { _lifemap.get() },
+                        GeoExtent::INVALID);
+                }
+
+                ImGui::Separator();
+                ImGui::Checkbox("Show lifemap under mouse", &_showLifemapUnderMouse);
+                if (_showLifemapUnderMouse && _lifemapUnderMouse.available())
+                {
+                    osg::Vec4 pixel = _lifemapUnderMouse.value();
+                    ImGui::Text("R=%.2f D=%.2f L=%.2f M=%d",
+                        pixel.r(),
+                        pixel.g(),
+                        pixel.b(),
+                        (int)(pixel.a() * 255.0f));
+                }
+
+                if (_lifemap.valid() && _lifemap->getLandCoverLayer())
+                {
+                    ImGui::Separator();
+                    ImGui::Checkbox("Show landcover under mouse", &_showLandcoverUnderMouse);
+                    if (_showLandcoverUnderMouse && _landcoverUnderMouse.available())
+                    {
+                        LandCoverSample sample = _landcoverUnderMouse.value();
+                        if (sample.biomeid().isSet())
+                            ImGui::Text("biome_id = %s", sample.biomeid().get());
+                        if (sample.dense().isSet())
+                            ImGui::Text("dense = %.2f", sample.dense().get());
+                        if (sample.lush().isSet())
+                            ImGui::Text("lush = %.2f", sample.lush().get());
+                        if (sample.rugged().isSet())
+                            ImGui::Text("rugged = %.2f", sample.rugged().get());
+                        if (sample.material().isSet())
+                            ImGui::Text("material = %s", sample.material().get());
+                        if (sample.soiltype().isSet())
+                            ImGui::Text("soiltype = %s", sample.soiltype().get());
+                    }
+                }
+
+                ImGui::End();
+            }
+
+            bool getKeyUnderMouse(osg::View* view, float x, float y, TileKey& key, GeoPoint& point)
+            {
+                TerrainTile* tile = _mapNode->getTerrain()->getTerrainTileUnderMouse(view, x, y);
+                if (tile)
+                {
+                    point = _mapNode->getGeoPointUnderMouse(view, x, y);
+                    key = _mapNode->getMap()->getProfile()->createTileKey(point.x(), point.y(), tile->getKey().getLOD());
+                }
+                return key.valid();
+            }
+
+            void onMove(osg::View* view, float x, float y)
+            {
+                TileKey keyUnderMouse;
+                GeoPoint pointUnderMouse;
+
+                if (_showLifemapUnderMouse)
+                {
+                    _lifemapUnderMouse.reset();
+                    getKeyUnderMouse(view, x, y, keyUnderMouse, pointUnderMouse);
+
+                    TileKey key = _lifemap->getBestAvailableTileKey(keyUnderMouse, false);
+                    if (key.valid())
+                    {
+                        auto task = [this, key, pointUnderMouse](Cancelable& c)
+                            {
+                                osg::Vec4 result(0, 0, 0, 1);
+                                osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(&c);
+                                auto g = _lifemap->createImage(key, prog.get());
+                                if (g.valid())
+                                {
+                                    g.getReader().setBilinear(false);
+                                    g.read(result, pointUnderMouse);
+                                }
+                                return result;
+                            };
+
+                        _lifemapUnderMouse = jobs::dispatch(task);
+                    }
+                }
+
+                if (_showLandcoverUnderMouse)
+                {
+                    auto coverage = _lifemap->getLandCoverLayer();
+
+                    _landcoverUnderMouse.reset();
+
+                    if (!keyUnderMouse.valid())
+                        getKeyUnderMouse(view, x, y, keyUnderMouse, pointUnderMouse);
+
+                    TileKey key = coverage->getBestAvailableTileKey(keyUnderMouse, false);
+                    if (key.valid())
+                    {
+                        auto task = [this, key, pointUnderMouse](Cancelable& c)
+                            {
+                                LandCoverSample result;
+                                osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(&c);
+                                auto factory = LandCoverSample::Factory::create(_lifemap->getLandCoverLayer());
+                                auto g = factory->createCoverage(key, prog.get());
+                                if (g.valid())
+                                {
+                                    g.readAtCoords(result, pointUnderMouse.x(), pointUnderMouse.y());
+                                }
+                                return result;
+                            };
+                        _landcoverUnderMouse = jobs::dispatch(task);
+                    }
+                }
+            }
+        };
+    }
+}

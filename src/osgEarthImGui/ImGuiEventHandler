@@ -1,0 +1,105 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthImGui/Common>
+
+#include <osgEarth/Config>
+#include <osgEarth/GeoData>
+#include <osgEarth/NodeUtils>
+#include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
+#include <osgEarth/GLUtils>
+
+#include <osg/Texture2D>
+#include <osg/RenderInfo>
+#include <osgViewer/View>
+#include <osgViewer/ViewerEventHandlers>
+
+#include <typeinfo>
+
+struct ImGuiSettingsHandler;
+
+namespace osgEarth
+{    
+    /**
+    * And OSG realize operation that will initialize the GLEW library
+    * as required for ImGui
+    */
+    class ImGuiRealizeOperation : public osg::Operation
+    {
+    public:
+        ImGuiRealizeOperation();
+        void operator()(osg::Object* object) override;
+    };
+
+    /**
+    * Generic OSG event handler that will render ImGui elements.
+    * Subclass this and override "draw" to render your own ImGui interface,
+    * and add this instance as an event handler to your viewer.
+    */
+    class ImGuiEventHandler : public osgGA::GUIEventHandler
+    {
+    public:
+        using RealizeOperation = osgEarth::ImGuiRealizeOperation;
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) override;
+
+        virtual void load(void* section, const std::string& key, const std::string& value) { }
+
+        virtual void save(osgEarth::Config& conf) { }
+
+        virtual void* findByName(const char* name) { return nullptr; }
+
+        virtual void* findByType(const std::type_info& type) { return nullptr; }
+
+        bool getAutoAdjustProjectionMatrix() const { return _autoAdjustProjectionMatrix; }
+
+        void setAutoAdjustProjectionMatrix(bool value) { _autoAdjustProjectionMatrix = value; }
+
+        // Put your ImGui code inside this function
+        virtual void draw(osg::RenderInfo& renderInfo) = 0;
+
+        void newFrame(osg::RenderInfo& renderInfo);
+        void render(osg::RenderInfo& renderInfo);
+        bool _show = true;
+
+    private:
+        struct ImGuiNewFrameCallback;
+        struct ImGuiRenderCallback;
+
+        double _time = 0.0;
+        bool _initialized = false;
+        bool _firstFrame = true;
+        bool _autoAdjustProjectionMatrix = true;
+        bool _dragging = false;
+
+        static void* handleStartEntry(ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name);
+
+        static void handleReadSetting(ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line);
+
+        static void handleWriteSettings(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf);
+
+        void installSettingsHandler();
+
+        ImGuiKey convertKey(int osgKey);
+
+        ImGuiButtonFlags convertMouseButton(int osgButtonMask);
+    };
+}

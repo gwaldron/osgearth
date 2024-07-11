@@ -1,0 +1,556 @@
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarthProcedural/Export>
+#include <osgEarthProcedural/VegetationLayer>
+#include <osgEarthProcedural/BiomeLayer>
+#include <osgEarthProcedural/VegetationFeatureGenerator>
+#include <osgEarth/FeatureNode>
+
+namespace osgEarth
+{
+    namespace Procedural
+    {
+        using namespace osgEarth;
+
+        struct VegetationLayerGUI : public osgEarth::ImGuiPanel
+        {
+            bool _first;
+            bool _forceGenerate;
+            bool _manualBiomes;
+            bool _showBiomeUnderMouse;
+            bool _showPlacements;
+            bool _simulateTreePlacement = false;
+            std::string _simulateTreePlacementOutput;
+            std::unordered_map<const Biome*, bool> _isManualBiomeActive;
+            osg::observer_ptr<BiomeLayer> _biolayer;
+            osg::observer_ptr<VegetationLayer> _veglayer;
+            osg::observer_ptr<MapNode> _mapNode;
+            Future<const Biome*> _biomeUnderMouse;
+            TileKey _biomeUnderMouseKey;
+            osg::ref_ptr<FeatureNode> _placementNode;
+            TileKey _showPlacementsLastTileKey;
+            osg::ref_ptr<osg::Node> _boxgeom;
+            GeoPoint _pointUnderMouse;
+
+            VegetationLayerGUI() : ImGuiPanel("Vegetation"),
+                _first(true),
+                _forceGenerate(false),
+                _manualBiomes(false),
+                _showBiomeUnderMouse(false),
+                _showPlacements(false)
+            {
+                auto geom = new osg::Geometry();
+                geom->setUseVertexBufferObjects(true);
+                geom->setUseDisplayList(false);
+                const osg::Vec3 verts_data[8] = { {-0.5, -0.5, 0.0}, {0.5, -0.5, 0.0}, {0.5, 0.5, 0.0}, {-0.5, 0.5, 0.0},
+                    {-0.5, -0.5, 1.0}, {0.5, -0.5, 1.0}, {0.5, 0.5, 1.0}, {-0.5, 0.5, 1.0} };
+                geom->setVertexArray(new osg::Vec3Array(8, verts_data));
+                const GLushort indices[24] = { 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7 };
+                geom->addPrimitiveSet(new osg::DrawElementsUShort(GL_LINES, 24, indices));
+                const osg::Vec4 color(1.0f, 1.0f, 0.5f, 1.0);
+                geom->setColorArray(new osg::Vec4Array(1, &color));
+                geom->setColorBinding(osg::Geometry::BIND_OVERALL);
+
+                _boxgeom = geom;
+            }
+
+            void load(const Config& conf) override
+            {
+            }
+
+            void save(Config& conf) override
+            {
+            }
+
+            void draw(osg::RenderInfo& ri) override
+            {
+                if (!findNodeOrHide<MapNode>(_mapNode, ri))
+                    return;
+                if (!findLayerOrHide(_biolayer, ri))
+                    return;
+                findLayer(_veglayer, ri);
+
+                if (_first)
+                {
+                    _first = false;
+
+                    EventRouter::get(view(ri))
+                        .onMove([&](osg::View* v, float x, float y) { onMove(v, x, y); });
+
+                    // activate tweakable uniforms
+                    stateset(ri)->setDataVariance(osg::Object::DYNAMIC);
+                    stateset(ri)->removeDefine("OE_TWEAKABLE");
+                    stateset(ri)->setDefine("OE_TWEAKABLE", 0x7);
+                }
+
+                ImGui::Begin("Vegetation", visible());
+                {
+                    if (_veglayer.valid() && _veglayer->isOpen())
+                    {
+                        if (ImGuiLTable::Begin("VegetationDetails"))
+                        {
+                            float near_scale = _veglayer->getNearLODScale();
+                            if (ImGuiLTable::SliderFloat("Near LOD scale", &near_scale, 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+                                _veglayer->setNearLODScale(near_scale);
+
+                            float far_scale = _veglayer->getFarLODScale();
+                            if (ImGuiLTable::SliderFloat("Far LOD scale", &far_scale, 0.0f, 4.0f, "%.2f", ImGuiSliderFlags_Logarithmic))
+                                _veglayer->setFarLODScale(far_scale);
+
+                            float padding = _veglayer->getLODTransitionPadding();
+                            if (ImGuiLTable::SliderFloat("LOD padding", &padding, 0.0f, 1.0f))
+                                _veglayer->setLODTransitionPadding(padding);
+
+                            float bb_low = _veglayer->getImpostorLowAngle().as(Units::DEGREES);
+                            if (ImGuiLTable::SliderFloat("Low impostor angle", &bb_low, 0.0f, 90.0f))
+                                _veglayer->setImpostorLowAngle(Angle(bb_low, Units::DEGREES));
+
+                            float bb_high = _veglayer->getImpostorHighAngle().as(Units::DEGREES);
+                            if (ImGuiLTable::SliderFloat("High impostor angle", &bb_high, 0.0f, 90.0f))
+                                _veglayer->setImpostorHighAngle(Angle(bb_high, Units::DEGREES));
+
+                            bool normalMaps = _veglayer->getUseImpostorNormalMaps();
+                            if (ImGuiLTable::Checkbox("Use impostor normal maps", &normalMaps))
+                                _veglayer->setUseImpostorNormalMaps(normalMaps);
+
+                            bool pbrMaps = _veglayer->getUseImpostorPBRMaps();
+                            if (ImGuiLTable::Checkbox("Use impostor PBR maps", &pbrMaps))
+                                _veglayer->setUseImpostorPBRMaps(pbrMaps);
+
+                            if (_veglayer->isAlphaToCoverageAvailable())
+                            {
+                                bool a2c = _veglayer->getUseAlphaToCoverage();
+                                if (ImGuiLTable::Checkbox("Alpha to Coverage", &a2c))
+                                    _veglayer->setUseAlphaToCoverage(a2c);
+                            }
+
+                            unsigned maxTex = _veglayer->getMaxTextureSize();
+                            const char* maxTexItems[] = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192", "16384" };
+                            unsigned maxTexIndex = 0;
+                            for (maxTexIndex = 0; maxTex > (unsigned)::atoi(maxTexItems[maxTexIndex]) && maxTexIndex < IM_ARRAYSIZE(maxTexItems) - 1; ++maxTexIndex);
+                            if (ImGuiLTable::BeginCombo("Max tex size", maxTexItems[maxTexIndex])) {
+                                for (int n = 0; n < IM_ARRAYSIZE(maxTexItems); n++) {
+                                    const bool is_selected = (maxTexIndex == n);
+                                    if (ImGui::Selectable(maxTexItems[n], is_selected)) {
+                                        maxTexIndex = n;
+                                        _veglayer->setMaxTextureSize(atoi(maxTexItems[maxTexIndex]));
+                                    }
+                                    if (is_selected)
+                                        ImGui::SetItemDefaultFocus();
+                                }
+                                ImGuiLTable::EndCombo();
+                            }
+
+                            ImGui::Separator();
+                            ImGuiLTable::Section("Layers:");
+                            int vi = 0;
+                            for (auto& iter : _veglayer->options().groups())
+                            {
+                                auto& groupName = iter.first;
+                                auto& groupOptions = iter.second;
+
+                                ImGui::PushID(vi++);
+
+                                if (vi > 1)
+                                    ImGui::Separator();
+
+                                ImGuiLTable::Checkbox(
+                                    groupName.c_str(),
+                                    &groupOptions.enabled().mutable_value());
+
+                                ImGuiLTable::SliderInt(
+                                    "  Instances per sqkm",
+                                    &groupOptions.instancesPerSqKm().mutable_value(),
+                                    1024, 1024000,
+                                    "%d",
+                                    ImGuiSliderFlags_Logarithmic);
+
+                                ImGuiLTable::SliderFloat(
+                                    "  Overlap %",
+                                    &groupOptions.overlap().mutable_value(),
+                                    0.0f, 1.0f,
+                                    "%.2f", 0);
+
+                                ImGuiLTable::SliderFloat(
+                                    "  Alpha cutoff",
+                                    &groupOptions.alphaCutoff().mutable_value(),
+                                    0.0f, 1.0f,
+                                    "%.2f", 0);
+
+                                ImGui::PopID();
+                            }
+
+                            ImGuiLTable::End();
+                        }
+
+                        ImGui::Separator();
+
+                        if (ImGui::Button("Regenerate"))
+                        {
+                            _veglayer->dirty();
+                        }
+                    }
+                    else
+                    {
+                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Vegetation layer is closed");
+                    }
+
+                    ImGui::Separator();
+                    ImGuiLTable::Section("Biomes:");
+
+                    if (ImGuiLTable::Begin("VegBlend"))
+                    {
+                        float blendPerc = _biolayer->getBlendPercentage();
+                        if (ImGuiLTable::SliderFloat("Biome feather %",
+                            &blendPerc,
+                            0.0f, 1.0f,
+                            "%.2f", ImGuiSliderFlags_Logarithmic))
+                        {
+                            _biolayer->setBlendPercentage(blendPerc);
+                        }
+                        ImGuiLTable::End();
+                    }
+
+                    if (ImGui::Button("Refresh biomes"))
+                    {
+                        _biolayer->dirty();
+                        auto cp = _biolayer->getCachePolicy();
+                        cp.minTime() = DateTime().asTimeStamp();
+                        _biolayer->setCachePolicy(cp);
+                        std::vector<const Layer*> layers = { _biolayer.get() };
+                        _mapNode->getTerrainEngine()->invalidateRegion(layers, GeoExtent());
+                    }
+
+                    ImGui::Checkbox("Show biome under mouse", &_showBiomeUnderMouse);
+                    if (_showBiomeUnderMouse)
+                    {
+                        if (_biomeUnderMouse.working())
+                        {
+                            ImGui::Text("searching...");
+                            ImGui::Text("");
+                        }
+                        else if (_biomeUnderMouse.available())
+                        {
+                            const Biome* biome = _biomeUnderMouse.value();
+                            if (biome)
+                            {
+                                ImGui::Text("%s", biome->name()->c_str());
+                                ImGui::Text("id=%s parentid=%s index=%d key=%s",
+                                    biome->id().c_str(),
+                                    biome->parentId()->c_str(),
+                                    biome->index(),
+                                    _biomeUnderMouseKey.str().c_str());
+                            }
+                            else
+                            {
+                                ImGui::Text("No biome");
+                            }
+                        }
+                        else
+                        {
+                            ImGui::Text("No biome");
+                        }
+                    }
+
+                    bool showTileBBox = _veglayer->getShowTileBoundingBoxes();
+                    if (ImGui::Checkbox("Show tile bounding boxes", &showTileBBox))
+                    {
+                        _veglayer->setShowTileBoundingBoxes(showTileBBox);
+                    }
+
+                    static std::map<const Biome*, unsigned> biomeCounts;
+                    ImGui::Checkbox("Show asset bounding boxes", &_showPlacements);
+                    if (_showPlacements)
+                    {
+                        const char* group_items[] = { "trees", "bushes", "undergrowth" };
+                        static unsigned group_item = 0;
+                        ImGui::SameLine();
+                        if (ImGuiLTable::BeginCombo("Group", group_items[group_item])) {
+                            for (int n = 0; n < IM_ARRAYSIZE(group_items); n++) {
+                                const bool is_selected = (group_item == n);
+                                if (ImGui::Selectable(group_items[n], is_selected))
+                                    group_item = n;
+                                if (is_selected)
+                                    ImGui::SetItemDefaultFocus();
+                            }
+                            ImGuiLTable::EndCombo();
+                        }
+                        const char* group_name = group_items[group_item];
+
+                        biomeCounts.clear();
+
+                        auto& p = _pointUnderMouse;
+                        if (p.isValid())
+                        {
+                            auto lod = _veglayer->options().group(group_name).lod().get();
+                            TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p, lod);
+                            if (key != _showPlacementsLastTileKey)
+                            {
+                                _showPlacementsLastTileKey = key;
+
+                                std::vector<VegetationLayer::Placement> placements;
+
+                                _veglayer->getAssetPlacements(
+                                    key,
+                                    group_name,
+                                    true,
+                                    placements,
+                                    nullptr);
+
+                                FeatureList features;
+
+                                for (auto& p : placements)
+                                {
+                                    // record the asset's position and properties as a point feature:
+                                    Point* point = new Point();
+                                    point->push_back(p.mapPoint());
+
+                                    osg::ref_ptr<Feature> feature = new Feature(point, key.getExtent().getSRS());
+                                    feature->set("elevation", p.mapPoint().z());
+
+                                    float width = 1.0f, height = 1.0f;
+                                    auto& bbox = p.asset()->boundingBox();
+                                    if (bbox.valid())
+                                    {
+                                        width = std::max(
+                                            p.asset()->boundingBox().xMax() - p.asset()->boundingBox().xMin(),
+                                            p.asset()->boundingBox().yMax() - p.asset()->boundingBox().yMin());
+
+                                        height =
+                                            p.asset()->boundingBox().zMax() - p.asset()->boundingBox().zMin();
+                                    }
+
+                                    feature->set("width", width * std::max(p.scale().x(), p.scale().y()));
+                                    feature->set("height", height * p.scale().z());
+                                    feature->set("rotation", p.rotation() * 180.0f / M_PI);
+                                    feature->set("name", p.asset()->assetDef()->name());
+
+                                    features.push_back(feature.get());
+
+                                    if (biomeCounts.find(p.biome) == biomeCounts.end())
+                                        biomeCounts[p.biome] = 0;
+                                    else
+                                        biomeCounts[p.biome]++;
+                                }
+
+                                Style s;
+                                s.getOrCreate<ModelSymbol>()->setModel(_boxgeom.get());
+                                s.getOrCreate<ModelSymbol>()->scaleX() = NumericExpression("feature.properties.width");
+                                s.getOrCreate<ModelSymbol>()->scaleY() = NumericExpression("feature.properties.width");
+                                s.getOrCreate<ModelSymbol>()->scaleZ() = NumericExpression("feature.properties.height");
+
+                                if (_placementNode.valid())
+                                    _placementNode->getParent(0)->removeChild(_placementNode.get());
+
+                                _placementNode = new FeatureNode(features, s);
+                                _mapNode->addChild(_placementNode);
+                            }
+                        }
+
+                        for (auto iter : biomeCounts)
+                        {
+                            std::string biome_name = iter.first ? iter.first->name().get() : "null";
+                            ImGui::Text("(%ld) %s", iter.second, biome_name.c_str());
+                        }
+                    }
+                    else if (_placementNode.valid())
+                    {
+                        if (_placementNode.valid())
+                            _placementNode->getParent(0)->removeChild(_placementNode.get());
+                        _placementNode = nullptr;
+                        _showPlacementsLastTileKey = {};
+                    }
+
+                    ImGui::Checkbox("Simulate tree placement under mouse", &_simulateTreePlacement);
+                    if (_simulateTreePlacement)
+                    {
+                        ImGui::TextWrapped(_simulateTreePlacementOutput.c_str());
+                    }
+
+                    ImGui::Separator();
+
+                    if (ImGui::CollapsingHeader("All Biomes"))
+                    {
+                        auto layer = _biolayer;
+                        auto biocat = layer->getBiomeCatalog();
+                        auto& bioman = layer->getBiomeManager();
+
+#if 0 // doesn't work ... revisit later
+                        if (ImGui::Checkbox("Select biomes manually", &_manualBiomes))
+                        {
+                            layer->setAutoBiomeManagement(!_manualBiomes);
+
+                            if (_manualBiomes)
+                            {
+                                _isManualBiomeActive.clear();
+                                for (auto biome : biocat->getBiomes())
+                                    _isManualBiomeActive[biome] = false;
+                            }
+                            else
+                            {
+                                stateset(ri)->setDefine("OE_BIOME_INDEX", "-1", 0x7);
+                            }
+                        }
+#endif
+
+                        ImGui::Separator();
+
+                        if (_manualBiomes)
+                        {
+                            for (auto biome : biocat->getBiomes())
+                            {
+                                ImGui::PushID(biome);
+                                char buf[255];
+                                sprintf(buf, "[%s] %s", biome->id().c_str(), biome->name()->c_str());
+                                if (ImGui::Checkbox(buf, &_isManualBiomeActive[biome]))
+                                {
+                                    if (_isManualBiomeActive[biome])
+                                    {
+                                        bioman.ref(biome);
+                                        stateset(ri)->setDefine("OE_BIOME_INDEX", std::to_string(biome->index()), 0x7);
+                                    }
+                                    else
+                                    {
+                                        bioman.unref(biome);
+                                    }
+                                }
+                                ImGui::PopID();
+                            }
+                        }
+                        else
+                        {
+                            auto biomes = biocat->getBiomes();
+                            std::sort(biomes.begin(), biomes.end(), [](const Biome* lhs, const Biome* rhs) {
+                                return lhs->id() < rhs->id(); });
+
+                            for (auto biome : biomes)
+                            {
+                                char buf[255];
+                                sprintf(buf, "[%s] %s", biome->id().c_str(), biome->name()->c_str());
+                                ImGui::Text(buf);
+                            }
+                        }
+                    }
+
+                    if (ImGui::CollapsingHeader("Active Biomes", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        auto biocat = _biolayer->getBiomeCatalog();
+                        auto& bioman = _biolayer->getBiomeManager();
+                        auto biomes = bioman.getActiveBiomes();
+                        for (auto biome : biomes)
+                        {
+                            char buf[255];
+                            sprintf(buf, "[%s] %s", biome->id().c_str(), biome->name()->c_str());
+                            if (ImGui::TreeNode(buf))
+                            {
+                                for (auto& iter : _veglayer->options().groups())
+                                {
+                                    auto& groupName = iter.first;
+
+                                    auto assets = biome->getModelAssets(groupName);
+                                    if (!assets.empty() && ImGui::TreeNode(groupName.c_str()))
+                                    {
+                                        for (auto& asset_ref : assets)
+                                        {
+                                            drawModelAsset(asset_ref->asset());
+                                        }
+                                        ImGui::TreePop();
+                                    }
+                                }
+                                ImGui::TreePop();
+                            }
+                        }
+                    }
+
+                    if (ImGui::CollapsingHeader("Resident Assets", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        auto biocat = _biolayer->getBiomeCatalog();
+                        auto& bioman = _biolayer->getBiomeManager();
+
+                        auto assets = bioman.getResidentAssetsIfNotLocked();
+                        for (auto& asset : assets)
+                        {
+                            drawModelAsset(asset);
+                        }
+                    }
+                }
+                ImGui::End();
+            }
+
+            void drawModelAsset(const ModelAsset* asset)
+            {
+                std::string name = asset->name();
+                if (asset->traits().empty() == false)
+                    name += " (" + AssetTraits::toString(asset->traits()) + ")";
+
+                if (ImGui::TreeNode(name.c_str()))
+                {
+                    if (asset->modelURI().isSet())
+                        ImGui::Text("Model: %s", asset->modelURI()->base().c_str());
+                    if (asset->sideBillboardURI().isSet())
+                        ImGui::Text("Side BB: %s", asset->sideBillboardURI()->base().c_str());
+                    if (asset->topBillboardURI().isSet())
+                        ImGui::Text("Top BB: %s", asset->topBillboardURI()->base().c_str());
+                    if (asset->traits().empty() == false)
+                        ImGui::Text("Traits: %s", AssetTraits::toString(asset->traits()).c_str());
+
+                    ImGui::TreePop();
+                }
+            }
+
+            void onMove(osg::View* view, float x, float y)
+            {
+                if (_showBiomeUnderMouse || _showPlacements || _simulateTreePlacement)
+                {
+                    _pointUnderMouse = _mapNode->getGeoPointUnderMouse(view, x, y);
+                }
+
+                if (_showBiomeUnderMouse)
+                {
+                    _biomeUnderMouse.reset();
+
+                    TerrainTile* tile = _mapNode->getTerrain()->getTerrainTileUnderMouse(view, x, y);
+                    if (tile)
+                    {
+                        auto& p = _pointUnderMouse;
+                        TileKey key = _mapNode->getMap()->getProfile()->createTileKey(p.x(), p.y(), tile->getKey().getLOD());
+                        key = _biolayer->getBestAvailableTileKey(key, false);
+
+                        if (key.valid())
+                        {
+                            _biomeUnderMouseKey = key;
+
+                            _biomeUnderMouse = jobs::dispatch([&, key, p](Cancelable& c)
+                                {
+                                    const Biome* result = nullptr;
+                                    osg::ref_ptr<ProgressCallback> prog = new ProgressCallback(&c);
+                                    auto g = _biolayer->createImage(key, prog.get());
+                                    if (g.valid())
+                                    {
+                                        GeoImage::pixel_type pixel;
+                                        g.getReader().setBilinear(false);
+                                        g.read(pixel, p);
+                                        int biome_index = (int)pixel.r();
+                                        result = _biolayer->getBiomeCatalog()->getBiomeByIndex(biome_index);
+                                    }
+                                    return result;
+                                });
+                        }
+                    }
+                }
+
+                if (_simulateTreePlacement)
+                {
+                    auto& p = _pointUnderMouse;
+                    _simulateTreePlacementOutput = _veglayer->simulateAssetPlacement(p, "trees");
+                }
+                else
+                {
+                    _simulateTreePlacementOutput = {};
+                }
+            }
+        };
+    }
+}
+

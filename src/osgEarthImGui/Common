@@ -13,8 +13,7 @@
 
 // note: No Windows declspec's here because we are using CMAKE_EXINDOWS_EXPORT_ALL_SYMBOLS
 
-#include <GL/glew.h>
-
 #ifndef IMGUI_VERSION
+#include <GL/glew.h>
 #include <osgEarthImGui/imgui.h>
 #endif

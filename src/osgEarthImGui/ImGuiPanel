@@ -26,6 +26,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/Terrain>
 #include <osgEarth/GeoData>
+#include <osgEarth/NodeUtils>
 
 #include <osgDB/ReadFile>
 #include <osg/observer_ptr>
@@ -180,12 +181,9 @@ namespace osgEarth
             save(conf);
         }
 
-        //! tells ImGui it needs to write a new .ini file
-        static void dirtySettings()
+        void dirtySettings()
         {
-            std::string file = ImGui::GetIO().IniFilename;
-            if (file.empty()) file = "imgui.ini";
-            ImGui::SaveIniSettingsToDisk(file.c_str());
+            // nop - settings save automatically
         }
 
         //! whether the visibility changed (and resets the flag)

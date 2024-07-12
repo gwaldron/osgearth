@@ -242,22 +242,14 @@ namespace osgEarth
                 ImGui::EndMainMenuBar();
             }
 
-            bool dirty = false;
-
             for (auto& iter : _menu)
             {
                 for (auto& gui : iter.second)
                 {
                     if (gui->isVisible())
                         gui->draw(ri);
-
-                    if (gui->visibilityChanged())
-                        dirty = true;
                 }
             }
-
-            if (dirty)
-                ImGuiPanel::dirtySettings();
         }
 
         //! Toggle a GUI's visibility by its type

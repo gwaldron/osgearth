@@ -23,6 +23,9 @@
 #include <osgEarth/BuildConfig>
 #include <osgEarth/Config>
 #include <osgEarth/GLUtils>
+#include <osgEarth/MapNode>
+#include <osgEarth/Terrain>
+#include <osgEarth/GeoData>
 
 #include <osgDB/ReadFile>
 #include <osg/observer_ptr>

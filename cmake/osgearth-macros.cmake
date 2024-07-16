@@ -145,7 +145,7 @@ macro(add_osgearth_plugin)
     install(TARGETS ${MY_TARGET}
         # RUNTIME DESTINATION ${INSTALL_RUNTIME_FOLDER}
         # ARCHIVE DESTINATION ${INSTALL_ARCHIVE_FOLDER}/${OSG_PLUGINS}
-        LIBRARY DESTINATION ${plugins/${OSG_PLUGINS})
+        LIBRARY DESTINATION plugins/${OSG_PLUGINS})
     
     # organize the files in the IDE
     source_group( "Header Files"   FILES ${ALL_HEADERS} )

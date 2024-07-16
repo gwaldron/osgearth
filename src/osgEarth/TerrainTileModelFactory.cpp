@@ -627,8 +627,8 @@ TerrainTileModelFactory::addMesh(
 
         // test.
         MeshConstraint clamp;
-        clamp.clampMesh = true;
-        clamp.pool = map->getElevationPool();
+        //clamp.clampMesh = true;
+        //clamp.pool = map->getElevationPool();
         constraints.emplace_back(std::move(clamp));
 
         model->mesh = mesher.createMesh(key, constraints, progress);

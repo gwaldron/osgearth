@@ -488,7 +488,12 @@ namespace osgEarth {
                     ctx.scale(scale);
                     ctx.blitImage(BLPoint((double)g->left - GLYPH_PADDING, (double)(-g->top) - GLYPH_PADDING), sprite, glyphRect);
                     //ctx.blitImage(BLPoint(0, 0), sprite, glyphRect);
+
+#if BL_VERSION >= 2820
                     ctx.resetTransform();
+#else
+                    ctx.resetMatrix();
+#endif
 
 #if 0
                     // Draw the text bounding box
@@ -573,7 +578,12 @@ namespace osgEarth {
                                             ctx.translate(x, y);
                                             ctx.scale(scale);
                                             ctx.blitImage(BLPoint(-iconRect.w / 2.0, -iconRect.h / 2.0), sprite, iconRect);
+
+#if BL_VERSION >= 2820
                                             ctx.resetTransform();
+#else
+                                            ctx.resetMatrix();
+#endif
                                         }
                                     });
                             }

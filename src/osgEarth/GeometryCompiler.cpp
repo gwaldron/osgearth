@@ -481,8 +481,17 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             altRequired = false;
         }
 
-        BuildTextFilter filter( style );
-        osg::Node* node = filter.push( workingSet, sharedCX );
+        std::string ftnf_driver = style.getSymbol<TextSymbol>()->provider().get();
+        Config ftnf_cfg(ftnf_driver);
+        osg::ref_ptr<FeaturesToNodeFilter> filter = FeaturesToNodeFilterRegistry::instance()->create(
+            ftnf_cfg,
+            0L,
+            style);
+
+        if (!filter)
+           filter = new BuildTextFilter( style );
+
+        osg::Node* node = filter->push( workingSet, sharedCX );
         if ( node )
         {
             if ( trackHistory ) history.push_back( "text" );

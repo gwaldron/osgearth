@@ -40,10 +40,6 @@ FeatureFilter::~FeatureFilter()
 {
 }
 
-void FeatureFilter::addedToMap(const class Map*)
-{
-}
-
 /********************************************************************************/
 
 #undef LC
@@ -377,4 +373,90 @@ FeaturesToNodeFilter::applyPointSymbology(osg::StateSet*     stateset,
         float size = osg::maximum( 0.1f, *point->size() );
         GLUtils::setPointSize(stateset, size, 1);
     }
+}
+
+/********************************************************************************/
+
+#undef  LC
+#define LC "[FeaturesToNodeFilterRegistry] "
+
+FeaturesToNodeFilterRegistry::FeaturesToNodeFilterRegistry() : _factories()
+{
+}
+
+FeaturesToNodeFilterRegistry*
+FeaturesToNodeFilterRegistry::instance()
+{
+    // OK to be in the local scope since this gets called at static init time
+    // by the OSGEARTH_REGISTER_ANNOTATION macro
+    static FeaturesToNodeFilterRegistry* s_singleton =0L;
+    static Threading::Mutex    s_singletonMutex(OE_MUTEX_NAME);
+
+    if ( !s_singleton )
+    {
+        Threading::ScopedMutexLock lock(s_singletonMutex);
+        if ( !s_singleton )
+        {
+            s_singleton = new FeaturesToNodeFilterRegistry();
+        }
+    }
+    return s_singleton;
+}
+
+void
+FeaturesToNodeFilterRegistry::add( FeaturesToNodeFilterFactory* factory )
+{
+    _factories.push_back( factory );
+}
+
+#define FEATURES_TO_NODE_FILTER_OPTIONS_TAG "__osgEarth::FeaturesToNodeFilterOptions"
+
+FeaturesToNodeFilter*
+FeaturesToNodeFilterRegistry::create(
+   const Config& conf,
+   const osgDB::Options* dbo,
+   osgEarth::Style style)
+{
+    const std::string& driver = conf.key();
+
+    osg::ref_ptr<FeaturesToNodeFilter> result;
+
+    for (FeaturesToNodeFilterFactoryList::iterator itr = _factories.begin(); result == 0L && itr != _factories.end(); itr++)
+    {
+        result = itr->get()->create(conf, style);
+    }
+
+    if ( !result.valid() )
+    {
+        // not found; try to load from plugin.
+        if ( driver.empty() )
+        {
+            OE_WARN << LC << "ILLEGAL- no driver set for features to node filter" << std::endl;
+            return 0L;
+        }
+
+        ConfigOptions options(conf);
+
+        osg::ref_ptr<osgDB::Options> dbopt = Registry::instance()->cloneOrCreateOptions(dbo);
+        dbopt->setPluginData( FEATURES_TO_NODE_FILTER_OPTIONS_TAG, (void*)&options );
+
+        std::string driverExt = std::string( ".osgearth_featurestonodefilter_" ) + driver;
+        osg::ref_ptr<osg::Object> object = osgDB::readRefObjectFile( driverExt, dbopt.get() );
+        result = dynamic_cast<FeaturesToNodeFilter*>( object.release() );
+    }
+
+    if ( !result.valid() )
+    {
+        OE_WARN << LC << "Failed to load FeaturesToNodeFilter driver \"" << driver << "\"" << std::endl;
+    }
+
+    return result.release();
+}
+
+const ConfigOptions&
+FeaturesToNodeFilterDriver::getConfigOptions(const osgDB::Options* options) const
+{
+    static ConfigOptions s_default;
+    const void* data = options->getPluginData(FEATURES_TO_NODE_FILTER_OPTIONS_TAG);
+    return data ? *static_cast<const ConfigOptions*>(data) : s_default;
 }

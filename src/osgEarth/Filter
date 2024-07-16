@@ -66,11 +66,6 @@ namespace osgEarth { namespace Util
          */
         virtual Config getConfig() const { return Config(); }
 
-        /**
-         * Called when the FeatureFilter is added to the map.
-         */
-        virtual void addedToMap(const class Map*);
-
     protected:
         FeatureFilter() { }
         FeatureFilter(const FeatureFilter& rhs, const osg::CopyOp& c) : Filter(rhs, c) { }
@@ -232,6 +227,80 @@ namespace osgEarth { namespace Util
         void applyPointSymbology(osg::StateSet*, const class PointSymbol*);
 
         osg::Matrixd _world2local, _local2world;   // for coordinate localization
+    };
+
+    class OSGEARTH_EXPORT FeaturesToNodeFilterFactory : public osg::Referenced
+    {
+    public:
+        virtual FeaturesToNodeFilter* create(const Config& conf, osgEarth::Style style) = 0;
+    };
+
+    typedef std::list<osg::ref_ptr<FeaturesToNodeFilterFactory>> FeaturesToNodeFilterFactoryList;
+
+    class OSGEARTH_EXPORT FeaturesToNodeFilterRegistry : public osg::Referenced
+    {
+    public:
+        static FeaturesToNodeFilterRegistry* instance();
+
+        void add( FeaturesToNodeFilterFactory* factory );
+        FeaturesToNodeFilter* create(
+         const Config& conf,
+         const osgDB::Options* dbo,
+         osgEarth::Style style);
+
+    protected:
+        FeaturesToNodeFilterRegistry();
+        FeaturesToNodeFilterFactoryList _factories;
+    };
+
+    template<class T>
+    struct SimpleFeaturesToNodeFilterFactory : public FeaturesToNodeFilterFactory
+    {
+        SimpleFeaturesToNodeFilterFactory(const std::string& key) : _key(key) {}
+
+        virtual FeaturesToNodeFilter* create(const Config& conf, osgEarth::Style style)
+        {
+            if (conf.key() == _key) return new T(style);
+            return 0;
+        }
+
+        std::string _key;
+    };
+
+    template<class T>
+    struct RegisterFeaturesToNodeFilterProxy
+    {
+        RegisterFeaturesToNodeFilterProxy( T* factory)
+        {
+           FeaturesToNodeFilterRegistry::instance()->add( factory );
+        }
+
+        RegisterFeaturesToNodeFilterProxy()
+        {
+           FeaturesToNodeFilterRegistry::instance()->add( new T );
+        }
+    };
+
+#define OSGEARTH_REGISTER_FEATURESTONODEFILTER( CLASSNAME )\
+    extern "C" void osgearth_featurestonodefilter_##KEY(void) {} \
+    static osgEarth::RegisterFeaturesToNodeFilterProxy<CLASSNAME> s_osgEarthRegisterFeaturesToNodeFilterProxy_##CLASSNAME;
+
+#define USE_OSGEARTH_FEATURESTONODEFILTER( KEY ) \
+    extern "C" void osgearth_featurestonodefilter_##KEY(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_featurestonodefilter_##KEY(osgearth_featurestonodefilter_##KEY);
+
+#define OSGEARTH_REGISTER_SIMPLE_FEATURESTONODEFILTER( KEY, CLASSNAME)\
+    extern "C" void osgearth_simple_featurestonodefilter_##KEY(void) {} \
+    static osgEarth::RegisterFeaturesToNodeFilterProxy< osgEarth::SimpleFeaturesToNodeFilterFactory<CLASSNAME> > s_osgEarthRegisterFeaturesToNodeFilterProxy_##CLASSNAME##KEY(new osgEarth::SimpleFeaturesToNodeFilterFactory<CLASSNAME>(#KEY));
+
+#define USE_OSGEARTH_SIMPLE_FEATURESTONODEFILTER( KEY ) \
+    extern "C" void osgearth_simple_featurestonodefilter_##KEY(void); \
+    static osgDB::PluginFunctionProxy proxy_osgearth_simple_featurestonodefilter_##KEY(osgearth_simple_featurestonodefilter_##KEY);
+
+    class OSGEARTH_EXPORT FeaturesToNodeFilterDriver : public osgDB::ReaderWriter
+    {
+    protected:
+        const ConfigOptions& getConfigOptions(const osgDB::Options* options) const;
     };
 
 } }

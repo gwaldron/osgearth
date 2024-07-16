@@ -87,7 +87,7 @@ mark_as_advanced(OSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT)
 option(OSGEARTH_BUILD_LEGACY_CONTROLS_API "Build the legacy Controls UI API" OFF)
 mark_as_advanced(OSGEARTH_BUILD_LEGACY_CONTROLS_API)
 
-option(OSGEARTH_BUILD_ZIP_PLUGIN "Build osgEarth's zip plugin based on libzip" OFF)
+option(OSGEARTH_BUILD_ZIP_PLUGIN "Build osgEarth's zip plugin based on libzip" ON)
 mark_as_advanced(OSGEARTH_BUILD_ZIP_PLUGIN)
 
 option(OSGEARTH_ENABLE_PROFILING "Enable profiling with Tracy" OFF)

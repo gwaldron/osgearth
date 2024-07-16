@@ -28,6 +28,9 @@
 #include <gdal.h>
 #include <sstream>
 #include <osgEarth/Notify>
+#ifdef OSGEARTH_HAVE_BLEND2D
+#include <blend2d.h>
+#endif
 
 using namespace osgEarth;
 
@@ -266,6 +269,10 @@ Capabilities::Capabilities() :
         _version = std::string( reinterpret_cast<const char*>(glGetString(GL_VERSION)) );
         OE_INFO << LC << "GL_VERSION:        " << _version << std::endl;
         //OE_INFO << LC << "GLSL:             " << getGLSLVersionInt() << std::endl;
+
+#ifdef OSGEARTH_HAVE_BLEND2D
+        //OE_INFO << LC << "Blend2D version:   " << std::to_string(BL_VERSION) << std::endl;
+#endif
 
 #if 0
         // assemble the driver version if possible.

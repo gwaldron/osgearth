@@ -26,7 +26,7 @@ function(osgearth_install_package_config_files TARGET TARGET_VERSION INCLUDE_INS
     install(
         FILES
             "${CMAKE_CURRENT_BINARY_DIR}/${TARGET}-config.cmake"
-            "${CMAKE_CURRENT_BINARY_DIR}/${TARGET}-configVersion.cmake"
+            "${CMAKE_CURRENT_BINARY_DIR}/${TARGET}-configversion.cmake"
         DESTINATION
              ${PACKAGE_INSTALL_DIR} )
     

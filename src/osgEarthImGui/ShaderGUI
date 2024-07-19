@@ -51,7 +51,7 @@ namespace osgEarth
         ProgramRepo::ProgramMap _db;
 
     public:
-        ShaderGUI(osg::ArgumentParser* args) : ImGuiPanel("Shaders")
+        ShaderGUI(osg::ArgumentParser* args = nullptr) : ImGuiPanel("Shaders")
         {
             if (args)
             {

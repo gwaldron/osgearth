@@ -112,7 +112,7 @@ namespace osgEarth
         float _wind_power = 1.0f;
 
     public:
-        EnvironmentGUI() : ImGuiPanel("Sky")
+        EnvironmentGUI() : ImGuiPanel("Environment/Sky")
         {
             DateTime now;
             _hour = now.hours(), _day = now.day(), _month = now.month(), _year = now.year();

@@ -28,6 +28,8 @@
 #include <chrono>
 #include <list>
 #include <vector>
+#include <thread>
+#include <algorithm>
 
 namespace osgEarth
 {

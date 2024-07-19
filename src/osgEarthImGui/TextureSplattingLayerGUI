@@ -2,6 +2,7 @@
 
 #include <osgEarthImGui/ImGuiPanel>
 #include <osgEarthProcedural/TextureSplattingLayer>
+#include <algorithm>
 
 namespace osgEarth
 {

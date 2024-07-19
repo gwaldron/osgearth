@@ -42,9 +42,6 @@ namespace osgEarth
     class ImGuiPanel // no export
     {
     public:
-        using Ptr = std::shared_ptr<ImGuiPanel>;
-
-    public:
         void setVisible(bool value) {
             _visible = value;
             dirtySettings();
@@ -56,12 +53,12 @@ namespace osgEarth
         }
 
         //! name of the GUI panel
-        virtual const char* name() const final {
+        const char* name() const {
             return _name.c_str();
         }
 
         //! render this GUI
-        virtual void draw(osg::RenderInfo& ri) = 0;
+        virtual void draw(osg::RenderInfo& ri) { }
 
         //! override to set custom values in the .ini file
         virtual void load(const osgEarth::Config&) { }

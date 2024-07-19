@@ -19,10 +19,11 @@ set(STOCK_PANELS
     CameraGUI
     ContentBrowserGUI
     #DateTimeGUI
-    EnvironmentGUI
+    EnvironmentGUI    
     LayersGUI
     NetworkMonitorGUI
     NotifyGUI
+    OpenEarthFileGUI
     PickerGUI
     RenderingGUI
     SceneGraphGUI

@@ -3,4 +3,4 @@ add_osgearth_app(
     SOURCES osgearth_collecttriangles.cpp
     LIBRARIES osgEarthImGui
     FOLDER Examples )
-    
+   

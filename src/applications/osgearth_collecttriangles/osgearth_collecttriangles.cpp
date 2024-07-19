@@ -1315,7 +1315,6 @@ main(int argc, char** argv)
         MapNode* mapNode = MapNode::get(node);
         if (mapNode)
         {
-            //viewer.getEventHandlers().push_front(new MyGUI(&viewer, mapNode, manip));
             auto gui = new ImGuiAppEngine(arguments);
             gui->add(new TrianglesGUI(&viewer, mapNode, manip));
             gui->add(new LoadableNodesGUI());

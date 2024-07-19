@@ -1,0 +1,71 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarth/EarthManipulator>
+
+#if defined(__has_include)
+#if __has_include(<third_party/portable-file-dialogs/portable-file-dialogs.h>)
+#include <third_party/portable-file-dialogs/portable-file-dialogs.h>
+#define OSGEARTH_HAVE_OPEN_EARTH_FILE_GUI
+#endif
+#endif
+
+#ifdef OSGEARTH_HAVE_OPEN_EARTH_FILE_GUI
+namespace osgEarth
+{
+    class OpenEarthFileGUI : public ImGuiPanel
+    {
+    public:
+        OpenEarthFileGUI() : ImGuiPanel("Open Earth File") { }
+
+        void draw(osg::RenderInfo& ri) override
+        {
+            auto f = pfd::open_file("Choose files to read", pfd::path::home(),
+                { "Earth Files", "*.earth", "All Files", "*" },
+                pfd::opt::none);
+
+            if (f.result().size() > 0)
+            {
+                std::string earthFile = f.result()[0];
+                osg::ref_ptr< osg::Node > node = osgDB::readRefNodeFile(earthFile);
+                if (node.valid())
+                {
+                    MapNode* mapNode = MapNode::findMapNode(node);
+                    osgViewer::View* view = dynamic_cast<osgViewer::View*>(ri.getView());
+                    if (view && mapNode)
+                    {
+                        mapNode->open();
+                        auto* em = dynamic_cast<Util::EarthManipulator*>(view->getCameraManipulator());
+                        if (em)
+                        {
+                            em->setNode(nullptr);
+                            em->setNode(mapNode);
+                        }
+                        view->setSceneData(mapNode);
+                    }
+                }
+            }
+
+            setVisible(false);
+        }
+    };
+}
+#endif

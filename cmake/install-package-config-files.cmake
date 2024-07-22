@@ -3,7 +3,6 @@ function(osgearth_install_package_config_files TARGET TARGET_VERSION INCLUDE_INS
     include(CMakePackageConfigHelpers)
 
     set(PACKAGE_INSTALL_DIR share/osgearth)
-    string(TOLOWER ${TARGET} target)
     #set(INCLUDE_INSTALL_DIR ${CMAKE_INSTALL_INCLUDEDIR})
     #set(LIBRARY_INSTALL_DIR ${CMAKE_INSTALL_LIBDIR})
 

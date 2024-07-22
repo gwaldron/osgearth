@@ -14,7 +14,7 @@ function(osgearth_install_package_config_files TARGET TARGET_VERSION INCLUDE_INS
         PATH_VARS INCLUDE_INSTALL_DIR LIBRARY_INSTALL_DIR) 
 
     write_basic_package_version_file(
-        "${TARGET}-configversion.cmake"
+        "${target}-configversion.cmake"
         VERSION ${TARGET_VERSION}
         COMPATIBILITY AnyNewerVersion)
 

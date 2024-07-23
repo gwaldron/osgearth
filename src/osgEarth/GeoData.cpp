@@ -980,7 +980,7 @@ GeoExtent::operator != ( const GeoExtent& rhs ) const
 bool
 GeoExtent::crossesAntimeridian() const
 {
-    return _srs.valid() && _srs->isGeographic() && east() < west(); //west()+width() > 180.0;
+    return _srs.valid() && _srs->isGeographic() && east() < west();
 }
 
 bool
@@ -1583,22 +1583,12 @@ GeoExtent::normalizeX(double x) const
 {
     if (is_valid(x) && _srs.valid() && _srs->isGeographic())
     {
-        if (fabs(x) <= 180.0)
-        {
-            return x;
-        }
-
-        if (x < 0.0 || x >= 360.0)
-        {
-            x = fmod(x, 360.0);
-            if (x < 0.0)
-                x += 360.0;
-        }
-        
-        if (x > 180.0)
-        {
+        // put x in the range [-180..180] inclusive on both ends.
+        x = fmod(x, 360.0);
+        if (x < -180.0)
+            x += 360.0;
+        else if (x > 180.0)
             x -= 360.0;
-        }
     }
     return x;
 }

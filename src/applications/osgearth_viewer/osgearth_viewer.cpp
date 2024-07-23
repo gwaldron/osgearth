@@ -78,17 +78,26 @@ main(int argc, char** argv)
             // not an earth file? Just view as a normal OSG node or image with basic lighting
             viewer.setCameraManipulator(new osgGA::TrackballManipulator);
 
-            osg::LightSource* sunLS = new osg::LightSource();
-            sunLS->getLight()->setPosition(osg::Vec4d(1, -1, 1, 0));
-            auto group = new osg::Group();
-            group->addChild(sunLS);
-            group->addChild(node);
-            auto phong = new PhongLightingEffect();
-            phong->attach(group->getOrCreateStateSet());
-            ShaderGenerator gen;
-            gen.run(group);
-
-            viewer.setSceneData(group);
+            bool light = arguments.read("--light");
+            if (light)
+            {
+                osg::LightSource* sunLS = new osg::LightSource();
+                sunLS->getLight()->setPosition(osg::Vec4d(1, -1, 1, 0));
+                auto group = new osg::Group();
+                group->addChild(sunLS);
+                group->addChild(node);
+                auto phong = new PhongLightingEffect();
+                phong->attach(group->getOrCreateStateSet());
+                ShaderGenerator gen;
+                gen.run(group);
+                viewer.setSceneData(group);
+            }
+            else
+            {
+                ShaderGenerator gen;
+                gen.run(node);
+                viewer.setSceneData(node);
+            }
         }
 
         return Metrics::run(viewer);

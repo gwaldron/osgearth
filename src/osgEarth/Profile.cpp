@@ -751,6 +751,12 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, unsigned localLOD, std::
         return;
     }
 
+    if (!key_ext.isValid())
+    {
+        // quiet ignore.
+        return;
+    }
+
     int tileMinX, tileMaxX;
     int tileMinY, tileMaxY;
 
@@ -839,29 +845,46 @@ Profile::getIntersectingTiles(const TileKey& key, std::vector<TileKey>& out_inte
 void
 Profile::getIntersectingTiles(const GeoExtent& extent, unsigned localLOD, std::vector<TileKey>& out_intersectingKeys) const
 {
-    GeoExtent ext = extent;
+    if (!extent.isValid())
+        return;
+
+    GeoExtent transfomed_extent = extent;
 
     // reproject into the profile's SRS if necessary:
-    if ( !getSRS()->isHorizEquivalentTo( extent.getSRS() ) )
+    if (!getSRS()->isHorizEquivalentTo(extent.getSRS()))
     {
-        // localize the extents and clamp them to legal values
-        ext = clampAndTransformExtent( extent );
-        if ( !ext.isValid() )
+        if (extent.crossesAntimeridian())
+        {
+            GeoExtent first, second;
+            if (extent.splitAcrossAntimeridian(first, second))
+            {
+                getIntersectingTiles(first, localLOD, out_intersectingKeys);
+                getIntersectingTiles(second, localLOD, out_intersectingKeys);
+            }
             return;
+        }
+        else
+        {
+            // localize the extents and clamp them to legal values
+            transfomed_extent = clampAndTransformExtent(extent);
+
+            if (!transfomed_extent.isValid())
+                return;
+        }
     }
 
-    if ( ext.crossesAntimeridian() )
+    if (transfomed_extent.crossesAntimeridian())
     {
         GeoExtent first, second;
-        if (ext.splitAcrossAntimeridian( first, second ))
+        if (transfomed_extent.splitAcrossAntimeridian(first, second))
         {
-            addIntersectingTiles( first, localLOD, out_intersectingKeys );
-            addIntersectingTiles( second, localLOD, out_intersectingKeys );
+            addIntersectingTiles(first, localLOD, out_intersectingKeys);
+            addIntersectingTiles(second, localLOD, out_intersectingKeys);
         }
     }
     else
     {
-        addIntersectingTiles( ext, localLOD, out_intersectingKeys );
+        addIntersectingTiles(transfomed_extent, localLOD, out_intersectingKeys);
     }
 }
 

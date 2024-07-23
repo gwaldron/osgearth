@@ -321,6 +321,9 @@ FeatureSource::createFeatureCursor(
                 auto sub_cursor = createFeatureCursorImplementation(Query(sub_key), progress);
                 if (sub_cursor)
                     multi->_cursors.emplace_back(sub_cursor);
+
+                if (progress && progress->isCanceled())
+                    return {};
             }
 
             if (multi->_cursors.empty())

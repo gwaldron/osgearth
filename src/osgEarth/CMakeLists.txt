@@ -873,7 +873,8 @@ if(blosc_FOUND)
     message(STATUS "Found blosc")
     set(OSGEARTH_HAVE_BLOSC ON)
     include_directories(${BLOSC_INCLUDE_DIR})
-    target_link_libraries(${LIB_NAME} PRIVATE blosc_static)
+    string (TOLOWER ${OSGEARTH_DYNAMIC_OR_STATIC} shared_or_static)
+    target_link_libraries(${LIB_NAME} PRIVATE blosc_${shared_or_static})
 endif()
 
 # GEOS support?

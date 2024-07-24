@@ -1,5 +1,13 @@
 # Release Notes
 
+## Version 3.6.1 (July 2024)
+
+Bug fix release:
+
+* Support Blend2D 0.11.4
+* Revert a TileMesher update that broke TerrainConstraints in come cases
+* Fix a bug in Profile affecting antimeridian cursors
+
 ## Version 3.6 (June 2024)
 
 Release Highlights:

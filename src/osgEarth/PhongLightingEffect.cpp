@@ -105,3 +105,11 @@ PhongLightingEffect::detach(osg::StateSet* stateset)
         }
     }
 }
+
+
+
+PhongLightingGroup::PhongLightingGroup()
+{
+    _effect = new PhongLightingEffect(getOrCreateStateSet());
+    Lighting::installDefaultMaterial(getOrCreateStateSet());
+}

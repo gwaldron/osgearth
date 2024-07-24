@@ -189,7 +189,7 @@ MapNodeHelper::load(osg::ArgumentParser& args, osgViewer::ViewerBase* viewer) co
     osg::ref_ptr<MapNode> mapNode = MapNode::get(node.get());
     if (!mapNode.valid())
     {
-        OE_WARN << LC << "Loaded scene graph does not contain a MapNode - aborting" << std::endl;
+        OE_WARN << LC << "Loaded scene graph does not contain a MapNode" << std::endl;
         return node;
     }
 

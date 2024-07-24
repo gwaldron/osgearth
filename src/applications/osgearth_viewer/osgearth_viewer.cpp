@@ -39,7 +39,8 @@ int
 usage(const char* name)
 {
     std::cout
-        << "\nUsage: " << name << " file.earth" << std::endl
+        << "View an earth file: " << name << " file.earth" << std::endl
+        << "View an OSG model: " << name << " [modelfile.ext] [--light]" << std::endl
         << Util::MapNodeHelper().usage() << std::endl;
 
     return 0;
@@ -72,35 +73,44 @@ main(int argc, char** argv)
         if (MapNode::get(node))
         {
             viewer.setSceneData(node);
+            return viewer.run();
         }
         else
         {
             // not an earth file? Just view as a normal OSG node or image with basic lighting
             viewer.setCameraManipulator(new osgGA::TrackballManipulator);
 
-            bool light = arguments.read("--light");
-            if (light)
+            if (arguments.read("--light"))
             {
-                osg::LightSource* sunLS = new osg::LightSource();
-                sunLS->getLight()->setPosition(osg::Vec4d(1, -1, 1, 0));
-                auto group = new osg::Group();
-                group->addChild(sunLS);
+                osg::LightSource* lightSource = new osg::LightSource();
+                lightSource->getLight()->setAmbient(osg::Vec4(0.75f, 0.75f, 0.75f, 1.0f));
+                
+                auto group = new PhongLightingGroup();
+                group->addChild(lightSource);
                 group->addChild(node);
-                auto phong = new PhongLightingEffect();
-                phong->attach(group->getOrCreateStateSet());
+
                 ShaderGenerator gen;
                 gen.run(group);
+
                 viewer.setSceneData(group);
+
+                while (!viewer.done())
+                {
+                    auto cam = viewer.getCamera()->getInverseViewMatrix().getTrans();
+                    cam.normalize();
+                    lightSource->getLight()->setPosition(osg::Vec4d(cam.x(), cam.y(), cam.z(), 0));
+                    viewer.frame();
+                }
+                return 0;
             }
             else
             {
                 ShaderGenerator gen;
                 gen.run(node);
                 viewer.setSceneData(node);
+                return viewer.run();
             }
         }
-
-        return Metrics::run(viewer);
     }
 
     return usage(argv[0]);

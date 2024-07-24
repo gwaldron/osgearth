@@ -181,7 +181,7 @@ namespace osgEarth
 
         virtual void apply( osg::Drawable* );
 
-        virtual bool processGeometry(const osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement);
+        virtual bool processGeometry(const osg::Geometry* geom, const osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement);
 
         virtual bool processText(const osg::StateSet* stateSet, osg::ref_ptr<osg::StateSet>& replacement);
 

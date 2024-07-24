@@ -612,7 +612,8 @@ public:
                                             tex = insResult.first->second;
                                         }
                                     }
-                                    geom->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex.get());
+                                    //geom->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex.get());
+                                    geom->getOrCreateStateSet()->setTextureAttribute(0, tex.get());
                                 }
 
                                 if (material.alphaMode != "OPAQUE")

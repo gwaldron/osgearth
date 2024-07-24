@@ -26,6 +26,7 @@
 #include <osg/StateSet>
 #include <osg/Uniform>
 #include <osg/observer_ptr>
+#include <osg/Group>
 
 namespace osgEarth { namespace Util
 {
@@ -65,6 +66,15 @@ namespace osgEarth { namespace Util
 
         void init();
     };
+
+
+    class OSGEARTH_EXPORT PhongLightingGroup : public osg::Group
+    {
+    public:
+        PhongLightingGroup();
+    private:
+        osg::ref_ptr< PhongLightingEffect> _effect;
+    };    
 
 } } // namespace osgEarth::Util
 

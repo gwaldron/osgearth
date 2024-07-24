@@ -80,7 +80,7 @@ void oe_phong_fragment(inout vec4 color)
     vec3 totalAmbient = vec3(0.0);
     vec3 totalSpecular = vec3(0.0);
     
-    int numLights = OE_NUM_LIGHTS; //min(osg_NumLights, MAX_LIGHTS);
+    int numLights = OE_NUM_LIGHTS;
 
     for (int i=0; i<numLights; ++i)
     {
@@ -121,8 +121,8 @@ void oe_phong_fragment(inout vec4 color)
             }
 
             vec3 ambientReflection =
-                attenuation
-                * osg_LightSource[i].ambient.rgb;
+                attenuation *
+                osg_LightSource[i].ambient.rgb;
 
             float NdotL = max(dot(N,L), 0.0); 
 

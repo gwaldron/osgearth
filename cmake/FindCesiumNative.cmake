@@ -98,7 +98,7 @@ find_cesium_library(CESIUM_NATIVE_GLTF_CONTENT CesiumGltfContent)
 
 find_cesium_library(CESIUM_NATIVE_CSPRNG csprng)
 find_cesium_library(CESIUM_NATIVE_DRACO draco)
-find_cesium_library(CESIUM_NATIVE_KTX_READ ktx_read)
+find_cesium_library(CESIUM_NATIVE_KTX ktx)
 find_cesium_library(CESIUM_NATIVE_MODPB64 modp_b64)
 find_cesium_library(CESIUM_NATIVE_S2GEOMETRY s2geometry)
 find_cesium_library(CESIUM_NATIVE_SPDLOG spdlog)

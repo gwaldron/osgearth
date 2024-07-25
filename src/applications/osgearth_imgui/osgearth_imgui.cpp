@@ -54,7 +54,7 @@
 #endif
 
 #ifdef OSGEARTH_HAVE_CESIUM_NODEKIT
-#include <osgEarthCesium/ImGui/CesiumIonGUI>
+#include <osgEarthImGui/CesiumIonGUI>
 #endif
 
 #define LC "[imgui] "

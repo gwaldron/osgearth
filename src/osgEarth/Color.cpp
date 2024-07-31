@@ -231,7 +231,7 @@ Color::Color( const std::string& input, Format format )
             {
                 L = osgEarth::as<float>(components[2], 0.0f);
             }
-            osg::Vec4 c(H / 255.0f, S / 100.0f, L / 100.0f, 1.0f);
+            osg::Vec4 c(H / 360.0f, S / 100.0f, L / 100.0f, 1.0f);
             hsl2rgb(c);
             set(c.r(), c.g(), c.b(), c.a());
         }

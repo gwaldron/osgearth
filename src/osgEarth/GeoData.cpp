@@ -1583,11 +1583,11 @@ GeoExtent::normalizeX(double x) const
 {
     if (is_valid(x) && _srs.valid() && _srs->isGeographic())
     {
-        // put x in the range [-180..180] inclusive on both ends.
+        // put x in the range [-180..180)
         x = fmod(x, 360.0);
         if (x < -180.0)
             x += 360.0;
-        else if (x > 180.0)
+        else if (x >= 180.0)
             x -= 360.0;
     }
     return x;

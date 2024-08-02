@@ -401,10 +401,10 @@ namespace osgEarth
         const SpatialReference* getSRS() const { return _srs.get(); }
 
         //! Coordinates of the bounding edges, normalized for the lat/long frame if necessary
-        inline double west() const { return _west; }
-        inline double east() const { return normalizeX(_west + _width); }
-        inline double south() const { return _south; }
-        inline double north() const { return _south + _height; }
+        inline double west() const;
+        inline double east() const;
+        inline double south() const;
+        inline double north() const;
 
         //! Coordinates of the bounds, NOT normalized to the lat/long frame.
         inline double xMin() const { return _west; }
@@ -611,6 +611,18 @@ namespace osgEarth
 
         void setOriginAndSize(double west, double south, double width, double height);
     };
+
+    inline double GeoExtent::west() const { return _west; }
+
+    // if east is exactly on the antimeridian, return 180.0
+    inline double GeoExtent::east() const {
+        double a = normalizeX(_west + _width);
+        return (isValid() && _srs->isGeographic() && a == -180.0) ? 180.0 : a;
+    }
+
+    inline double GeoExtent::south() const { return _south; }
+
+    inline double GeoExtent::north() const { return _south + _height; }
 
 
     /**

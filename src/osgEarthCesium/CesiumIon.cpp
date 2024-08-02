@@ -36,7 +36,10 @@ CesiumIon::CesiumIon()
 
 void CesiumIon::refresh()
 {
-    Connection connection(Context::instance().asyncSystem, Context::instance().assetAccessor, getCesiumIonKey());
+    ApplicationData data;
+    data.authenticationMode = AuthenticationMode::SingleUser;
+
+    Connection connection(Context::instance().asyncSystem, Context::instance().assetAccessor, getCesiumIonKey(), data);
 
     bool loaded = false;
 

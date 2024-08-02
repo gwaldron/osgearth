@@ -55,12 +55,12 @@ call :realpath !-I!
 set INSTALL_DIR=%RETVAL%
 
 :: Ask for confirmation:
-echo VCPKG_DIR = %VCPKG_DIR%
-echo Source location = %SOURCE_DIR%
-echo Build location = %BUILD_DIR%
+echo VCPKG_DIR        = %VCPKG_DIR%
+echo Source location  = %SOURCE_DIR%
+echo Build location   = %BUILD_DIR%
 echo Install location = %INSTALL_DIR%
-echo Compiler = %COMPILER%
-echo Architecture = %ARCHITECTURE%
+echo Compiler         = %COMPILER%
+echo Architecture     = %ARCHITECTURE%
 choice /C:YN /M Continue?
 if ERRORLEVEL == 2 goto :usage
 

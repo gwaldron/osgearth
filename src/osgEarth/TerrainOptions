@@ -56,7 +56,7 @@ namespace osgEarth
         OE_OPTION(unsigned, minResidentTiles, 0u);
         OE_OPTION(bool, castShadows, false);
         OE_OPTION(LODMethod, lodMethod, LODMethod::CAMERA_DISTANCE);
-        OE_OPTION(float, tilePixelSize, 512.0f);
+        OE_OPTION(float, tilePixelSize, 256.0f);
         OE_OPTION(float, heightFieldSkirtRatio, 0.0f);
         OE_OPTION(Color, color, Color::White);
         OE_OPTION(bool, progressive, true);

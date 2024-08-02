@@ -27,6 +27,7 @@
 #include <osgEarth/Random>
 #include <osgEarth/MetaTile>
 #include <osgEarth/Utils>
+#include <osgEarth/Math>
 #include <osg/ImageStream>
 #include <cinttypes>
 
@@ -635,9 +636,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
 }
 
 GeoImage
-ImageLayer::assembleImage(
-    const TileKey& key,
-    ProgressCallback* progress)
+ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 {
     // If we got here, asset that there's a non-null layer profile.
     if (!getProfile())
@@ -646,165 +645,146 @@ ImageLayer::assembleImage(
         return GeoImage::INVALID;
     }
 
-    GeoImage mosaicedImage, result;
+    GeoImage output;
+    unsigned targetLOD = getProfile()->getEquivalentLOD(key.getProfile(), key.getLOD());
 
-    // Scale the extent if necessary to apply an "edge buffer"
-    GeoExtent ext = key.getExtent();
-    if ( options().edgeBufferRatio().isSet() )
-    {
-        double ratio = options().edgeBufferRatio().get();
-        ext.scale(ratio, ratio);
-    }
-
-    // Get a set of layer tiles that intersect the requested extent.
     std::vector<TileKey> intersectingKeys;
-    getProfile()->getIntersectingTiles( key, intersectingKeys );
+    getProfile()->getIntersectingTiles(key, intersectingKeys);
 
-    if ( intersectingKeys.size() > 0 )
+    using KeyedImage = std::pair<TileKey, GeoImage>;
+    std::vector<KeyedImage> sources;
+
+    if (intersectingKeys.size() > 0)
     {
-#if 0
-        GeoExtent ee = key.getExtent().transform(intersectingKeys.front().getProfile()->getSRS());
-        OE_INFO << "Tile " << key.str() << " ... " << ee.toString() << std::endl;
-        for (auto key : intersectingKeys) {
-            OE_INFO << " - " << key.str() << " ... " << key.getExtent().toString() << std::endl;
-        }
-#endif
-        double dst_minx, dst_miny, dst_maxx, dst_maxy;
-        key.getExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
+        bool hasAtLeastOneSourceAtTargetLOD = false;
 
-        // if we find at least one "real" tile in the mosaic, then the whole result tile is
-        // "real" (i.e. not a fallback tile)
-        bool retry = false;
-        ImageMosaic mosaic;
-
-        // keep track of failed tiles.
-        std::vector<TileKey> failedKeys;
-
-        for(auto& k : intersectingKeys)
+        for (auto& intersectingKey : intersectingKeys)
         {
-            GeoImage image = createImageInKeyProfile(k, progress);
-
-            if (image.valid())
+            TileKey subKey = intersectingKey;
+            GeoImage subTile;
+            while (subKey.valid() && !subTile.valid())
             {
-                if (dynamic_cast<const TimeSeriesImage*>(image.getImage()))
-                {
-                    OE_WARN << LC << "Cannot mosaic a TimeSeriesImage. Discarding." << std::endl;
-                    return GeoImage::INVALID;
-                }
-                else if (dynamic_cast<const osg::ImageStream*>(image.getImage()))
-                {
-                    OE_WARN << LC << "Cannot mosaic an osg::ImageStream. Discarding." << std::endl;
-                    return GeoImage::INVALID;
-                }
-                else
-                {
-                    mosaic.getImages().push_back(TileImage(image.getImage(), k));
-                }
-            }
-            else
-            {
-                // the tile source did not return a tile, so make a note of it.
-                failedKeys.push_back(k);
+                subTile = createImageInKeyProfile(subKey, progress);
+                if (!subTile.valid())
+                    subKey.makeParent();
 
                 if (progress && progress->isCanceled())
+                    return {};
+            }
+
+            if (subTile.valid())
+            {
+                if (subKey.getLOD() == targetLOD)
                 {
-                    retry = true;
-                    break;
+                    hasAtLeastOneSourceAtTargetLOD = true;
                 }
+
+                // got a valid image, so add it to our sources collection:
+                sources.emplace_back(subKey, subTile);
             }
         }
 
-        // Fail is: a) we got no data and the LOD is greater than zero; or
-        // b) the operation was canceled mid-stream.
-        if ( (mosaic.getImages().empty() && key.getLOD() > 0) || retry)
+        // If we actually got at least one piece of usable data,
+        // move ahead and build a mosaic of all sources.
+        if (hasAtLeastOneSourceAtTargetLOD)
         {
-            // if we didn't get any data at LOD>0, fail.
-            OE_DEBUG << LC << "Couldn't create image for ImageMosaic " << std::endl;
-            return GeoImage::INVALID;
-        }
+            unsigned cols = getTileSize();
+            unsigned rows = getTileSize();
 
-        // We got at least one good tile, OR we got nothing but since the LOD==0 we have to
-        // fall back on a lower resolution.
-        // So now we go through the failed keys and try to fall back on lower resolution data
-        // to fill in the gaps. The entire mosaic must be populated or this qualifies as a bad tile.
-        for(auto& k : failedKeys)
-        {
-            GeoImage image;
+            // sort the sources by LOD (highest first).
+            std::sort(
+                sources.begin(), sources.end(),
+                [](const KeyedImage& lhs, const KeyedImage& rhs) {
+                    return lhs.first.getLOD() > rhs.first.getLOD();
+                });
 
-            for(TileKey parentKey = k.createParentKey();
-                parentKey.valid() && !image.valid();
-                parentKey.makeParent())
+            // assume all tiles to mosaic are in the same SRS.
+            auto* key_srs = key.getExtent().getSRS();
+            auto* source_srs = sources[0].second.getSRS();
+
+            // new output:
+            auto mosaic = new osg::Image();
+            mosaic->allocateImage(cols, rows, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+
+            // Working set of points. it's much faster to xform an entire vector all at once.
+            std::vector<osg::Vec3d> points;
+            points.assign(cols * rows, { 0, 0, 0 });
+
+            double minx, miny, maxx, maxy;
+            key.getExtent().getBounds(minx, miny, maxx, maxy);
+            double dx = (maxx - minx) / (double)(cols);
+            double dy = (maxy - miny) / (double)(rows);
+
+            Bounds sourceBounds;
+            sources[0].second.getSRS()->getBounds(sourceBounds);
+            // shrink the sourceBounds by our pixel-centering value:
+            if (sourceBounds.valid())
             {
+                sourceBounds.xMin() += 0.5 * dx;
+                sourceBounds.yMin() += 0.5 * dy;
+                sourceBounds.xMax() -= 0.5 * dx;
+                sourceBounds.yMax() -= 0.5 * dy;
+            }
+
+            // build a grid of sample points:
+            for (unsigned r = 0; r < rows; ++r)
+            {
+                double y = miny + (0.5 * dy) + (dy * (double)r);
+                for (unsigned c = 0; c < cols; ++c)
                 {
-                    Threading::ScopedReadLock lock(inUseMutex());
-                    image = createImageImplementation(parentKey, progress);
+                    double x = minx + (0.5 * dx) + (dx * (double)c);
+                    points[r * cols + c] = { x, y, 0.0 };
                 }
+            }
 
-                if ( image.valid() )
+            // transform the sample points to the SRS of our source data tiles:
+            if (source_srs && key_srs)
+            {
+                key_srs->transform(points, source_srs);
+
+                if (sourceBounds.valid())
                 {
-                    GeoImage cropped;
-
-                    if ( !isCoverage() )
+                    for (auto& point : points)
                     {
-                        cropped = image.crop(k.getExtent(), false, image.getImage()->s(), image.getImage()->t() );
+                        point.x() = clamp(point.x(), sourceBounds.xMin(), sourceBounds.xMax());
+                        point.y() = clamp(point.y(), sourceBounds.yMin(), sourceBounds.yMax());
+                    }
+                }
+            }
+
+            // Mosaic our sources into a single output image.
+            std::vector<GeoImagePixelReader> readers;
+            for (unsigned i = 0; i < sources.size(); ++i)
+            {
+                readers.emplace_back(sources[i].second);
+                readers.back().setBilinear(true);
+            }
+
+            ImageUtils::PixelWriter write_mosaic(mosaic);
+
+            osg::Vec4f pixel;
+            for (unsigned r = 0; r < rows; ++r)
+            {
+                for (unsigned c = 0; c < cols; ++c)
+                {
+                    unsigned i = r * cols + c;
+                    pixel.set(0, 0, 0, 0);
+
+                    // check each source (high to low LOD) until we get a valid pixel.
+                    for (unsigned k = 0; k < sources.size() && pixel.a() == 0.0f; ++k)
+                    {
+                        readers[k].readCoordWithoutClamping(pixel, points[i].x(), points[i].y());
                     }
 
-                    else
-                    {
-                        // TODO: may not work.... test; tilekey extent will <> cropped extent
-                        cropped = image.crop(k.getExtent(), true, image.getImage()->s(), image.getImage()->t(), false );
-                    }
-
-                    // and queue it.
-                    mosaic.getImages().push_back( TileImage(cropped.getImage(), k) );
-
+                    write_mosaic(pixel, c, r);
                 }
             }
 
-            if ( !image.valid() )
-            {
-                // a tile completely failed, even with fallback. Eject.
-                OE_DEBUG << LC << "Couldn't fallback on tiles for ImageMosaic" << std::endl;
-                // let it go. The empty areas will be filled with alpha by ImageMosaic.
-            }
-        }
-
-        // all set. Mosaic all the images together.
-        double rxmin, rymin, rxmax, rymax;
-        mosaic.getExtents( rxmin, rymin, rxmax, rymax );
-
-        mosaicedImage = GeoImage(
-            mosaic.createImage(),
-            GeoExtent( getProfile()->getSRS(), rxmin, rymin, rxmax, rymax ) );
-    }
-    else
-    {
-        OE_DEBUG << LC << "assembleImage: no intersections (" << key.str() << ")" << std::endl;
+            return GeoImage(mosaic, key.getExtent());
+        }            
     }
 
-    // Final step: transform the mosaic into the requesting key's extent.
-    if ( mosaicedImage.valid() )
-    {
-        // GeoImage::reproject() will automatically crop the image to the correct extents.
-        // so there is no need to crop after reprojection. Also note that if the SRS's are the
-        // same (even though extents are different), then this operation is technically not a
-        // reprojection but merely a resampling.
-
-        const GeoExtent& extent = key.getExtent();
-
-        result = mosaicedImage.reproject(
-            key.getProfile()->getSRS(),
-            &extent,
-            getTileSize(), getTileSize(),
-            true);
-    }
-
-    if (progress && progress->isCanceled())
-    {
-        return GeoImage::INVALID;
-    }
-
-    return result;
+    return output;
 }
 
 Status

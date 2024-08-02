@@ -640,12 +640,20 @@ namespace osgEarth { namespace Util
             PixelReaderWithExtent(const osg::Image* image, const EXTENT& extent) :
                 PixelReader(image), _extent(extent) { }
 
-            void readCoord(osg::Vec4f& value, double x, double y, int r = 1, int m = 1) const {
+            void readCoord(osg::Vec4f& value, double x, double y, int r = 0, int m = 0) const {
                 PixelReader::operator()(
                     value,
                     (double)(x - _extent.xMin()) / _extent.width(),
                     (double)(y - _extent.yMin()) / _extent.height(),
                     r, m);
+            }
+
+            bool readCoordWithoutClamping(osg::Vec4f& value, double x, double y, int r = 0, int m = 0) const {
+                double u = (x - _extent.xMin()) / _extent.width();
+                double v = (y - _extent.yMin()) / _extent.height();
+                if (u < 0.0 || u > 1.0 || v < 0.0 || v > 1.0) return false;
+                PixelReader::operator()(value, u, v, r, m);
+                return true;
             }
 
         private:

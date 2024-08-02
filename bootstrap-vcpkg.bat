@@ -2,11 +2,15 @@
 setlocal
 set ERROR_MSG=
 
+if "%VCPKG_DIR%" == "" (
+    FOR /F "tokens=*" %%X IN ('where vcpkg.exe') do (SET VCPKG_DIR=%%~dpX)
+)
+
 :: Verify vcpkg is available
 set VCPKG_TOOLCHAIN_FILE=%VCPKG_DIR%\scripts\buildsystems\vcpkg.cmake
 
 if not exist %VCPKG_TOOLCHAIN_FILE% (
-    set ERROR_MSG=Please set the VCPKG_DIR environment variable to your vcpkg install location
+    set ERROR_MSG=Cannot find vcpkg. Please ensure vcpkg.exe is in your PATH, or set the VCPKG_DIR environment variable to your vcpkg install location
     goto :usage
 )
 
@@ -51,6 +55,7 @@ call :realpath !-I!
 set INSTALL_DIR=%RETVAL%
 
 :: Ask for confirmation:
+echo VCPKG_DIR = %VCPKG_DIR%
 echo Source location = %SOURCE_DIR%
 echo Build location = %BUILD_DIR%
 echo Install location = %INSTALL_DIR%

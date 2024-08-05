@@ -68,15 +68,26 @@ std::int64_t osgEarth::g_startupPrivateBytes =
 
 namespace
 {
+    bool verbose_gdal_errors = false;
+
     void CPL_STDCALL myCPLErrorHandler(CPLErr errClass, int errNum, const char* msg)
     {
-        if (errClass == CE_Warning)
+        static std::once_flag flag;
+        std::call_once(flag, [&]() {
+            verbose_gdal_errors = ::getenv("OSGEARTH_VERBOSE_GDAL_ERRORS") != nullptr;
+        });
+
+        if (errClass == CE_Fatal)
         {
-            OE_INFO << "GDAL warning: " << msg << " (error " << errNum << ")" << std::endl;
+            OE_WARN << "GDAL fatal error: " << msg << " (error " << errNum << ")" << std::endl;
         }
-        else if (errClass > CE_Warning)
+        else if (verbose_gdal_errors)
         {
-            OE_WARN << "GDAL failure: " << msg << " (error " << errNum << ")" << std::endl;
+            OE_NOTICE << "GDAL says: " << msg << " (error " << errNum << ")" << std::endl;
+        }
+        else
+        {
+            OE_DEBUG << "GDAL says: " << msg << " (error " << errNum << ")" << std::endl;
         }
     }
 }
@@ -108,7 +119,8 @@ Registry::Registry() :
 #endif
 
     // Redirect GDAL/OGR console errors to our own handler
-    CPLPushErrorHandler(myCPLErrorHandler);
+    //CPLPushErrorHandler(myCPLErrorHandler);
+    CPLSetErrorHandler(myCPLErrorHandler);
 
     // Set the GDAL shared block cache size. This defaults to 5% of
     // available memory which is too high.
@@ -251,7 +263,7 @@ Registry::~Registry()
     osgDB::Registry::instance()->clearObjectCache();
 
     // pop the custom error handler
-    CPLPopErrorHandler();
+    //CPLPopErrorHandler();
 
     // Release any GL objects
     release();

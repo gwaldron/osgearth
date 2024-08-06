@@ -1,4 +1,4 @@
-find_package(CesiumNative)
+find_package(CesiumNative REQUIRED)
 
 if (CESIUM_NATIVE_FOUND)
 

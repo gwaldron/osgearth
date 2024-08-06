@@ -743,6 +743,7 @@ FlatteningLayer::Options::getConfig() const
     Config conf = ElevationLayer::Options::getConfig();
 
     featureSource().set(conf, "features");
+    styleSheet().set(conf, "styles");
 
     if (filters().empty() == false)
     {
@@ -756,26 +757,6 @@ FlatteningLayer::Options::getConfig() const
     conf.set("buffer_width", _bufferWidth);
     conf.set("fill", _fill);
 
-#if 0
-    if (_script.valid())
-    {
-        Config scriptConf("script");
-
-        if (!_script->name.empty())
-            scriptConf.set("name", _script->name);
-        if (!_script->language.empty())
-            scriptConf.set("language", _script->language);
-        if (_script->uri.isSet())
-            scriptConf.set("url", _script->uri->base());
-        if (!_script->profile.empty())
-            scriptConf.set("profile", _script->profile);
-        else if (!_script->code.empty())
-            scriptConf.setValue(_script->code);
-
-        conf.add(scriptConf);
-    }
-#endif
-
     return conf;
 }
 
@@ -785,6 +766,7 @@ FlatteningLayer::Options::fromConfig(const Config& conf)
     URIContext uriContext = URIContext(conf.referrer());
 
     featureSource().get(conf, "features");
+    styleSheet().get(conf, "styles");
 
     const Config& filtersConf = conf.child("filters");
     for (ConfigSet::const_iterator i = filtersConf.children().begin(); i != filtersConf.children().end(); ++i)
@@ -793,36 +775,6 @@ FlatteningLayer::Options::fromConfig(const Config& conf)
     conf.get("line_width", _lineWidth);
     conf.get("buffer_width", _bufferWidth);
     conf.get("fill", _fill);
-
-#if 0
-    // TODO:  Separate out ScriptDef from Stylesheet and include it as a standalone class, along with this loading code.
-    ConfigSet scripts = conf.children("script");
-    for (ConfigSet::iterator i = scripts.begin(); i != scripts.end(); ++i)
-    {
-        _script = new StyleSheet::ScriptDef();
-
-        // load the code from a URI if there is one:
-        if (i->hasValue("url"))
-        {
-            _script->uri = URI(i->value("url"), uriContext);
-            OE_INFO << "Loading script from \"" << _script->uri->full() << std::endl;
-            _script->code = _script->uri->getString();
-        }
-        else
-        {
-            _script->code = i->value();
-        }
-
-        // name is optional and unused at the moment
-        _script->name = i->value("name");
-
-        std::string lang = i->value("language");
-        _script->language = lang.empty() ? "javascript" : lang;
-
-        std::string profile = i->value("profile");
-        _script->profile = profile;
-    }
-#endif
 }
 
 //........................................................................
@@ -835,9 +787,6 @@ void
 FlatteningLayer::init()
 {
     ElevationLayer::init();
-
-    // Experiment with this and see what will work.
-    //_pool = new ElevationPool();
 }
 
 Config
@@ -858,6 +807,10 @@ FlatteningLayer::openImplementation()
     Status fsStatus = options().featureSource().open(getReadOptions());
     if (fsStatus.isError())
         return fsStatus;
+
+    Status ssStatus = options().styleSheet().open(getReadOptions());
+    if (ssStatus.isError())
+        return ssStatus;
 
     _filterChain = FeatureFilterChain::create(options().filters(), getReadOptions());
     
@@ -897,6 +850,14 @@ FlatteningLayer::addedToMap(const Map* map)
         return;
     }
 
+    // Stylesheet
+    options().styleSheet().addedToMap(map);
+    auto ss = getStyleSheet();
+    if (ss && ss->getStatus().isError()) {
+        setStatus(ss->getStatus());
+        return;
+    }
+
     // Collect all elevation layers preceding this one and use them for flattening.
     ElevationLayerVector layers;
     map->getLayers(layers);
@@ -921,12 +882,14 @@ FlatteningLayer::addedToMap(const Map* map)
 
     // Make a feature session
     _session = new Session(map);
+    _session->setStyles(getStyleSheet());
 }
 
 void
 FlatteningLayer::removedFromMap(const Map* map)
 {
     options().featureSource().removedFromMap(map);
+    options().styleSheet().removedFromMap(map);
 
     ElevationLayer::removedFromMap(map);
 }

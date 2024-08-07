@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_GDAL_H
-#define OSGEARTH_GDAL_H
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
@@ -33,7 +31,8 @@ class GDALDataset;
 class GDALRasterBand;
 
 
-namespace osgEarth {
+namespace osgEarth
+{
     namespace GDAL
     {
         /**
@@ -42,11 +41,12 @@ namespace osgEarth {
         class OSGEARTH_EXPORT ExternalDataset : public osg::Referenced // NO EXPORT; header only
         {
         public:
-            ExternalDataset() : osg::Referenced(), _dataset(NULL), _ownsDataset(true) {};
-            ExternalDataset(GDALDataset* dataset, bool ownsDataset) : osg::Referenced(), _dataset(dataset), _ownsDataset(ownsDataset) {};
+            //! Default constructor
+            ExternalDataset() = default;
 
-        protected:
-            virtual ~ExternalDataset() {};
+            //! Init constructor
+            ExternalDataset(GDALDataset* dataset, bool ownsDataset) : 
+                 _dataset(dataset), _ownsDataset(ownsDataset) {}
 
         public:
             GDALDataset* dataset() const { return _dataset; };
@@ -56,8 +56,8 @@ namespace osgEarth {
             void setOwnsDataset(bool ownsDataset) { _ownsDataset = ownsDataset; };
 
         private:
-            GDALDataset* _dataset;
-            bool         _ownsDataset;
+            GDALDataset* _dataset = nullptr;
+            bool _ownsDataset = true;
         };
 
         // GDAL-specific serialization data to be incorpoated by the LayerOptions below
@@ -85,13 +85,12 @@ namespace osgEarth {
          * It is rarely necessary to use this object directly; use a
          * GDALImageLayer or GDALElevationLayer instead.
          */
-        class OSGEARTH_EXPORT Driver : public osg::Referenced
+        class OSGEARTH_EXPORT Driver
         {
         public:
             using Ptr = std::shared_ptr<Driver>;
 
             //! Constructs a new driver
-            Driver();
 
             virtual ~Driver();
 
@@ -150,10 +149,10 @@ namespace osgEarth {
             float getInterpolatedValue(GDALRasterBand* band, double x, double y, bool applyOffset = true);
 
             optional<float> _noDataValue, _minValidValue, _maxValidValue;
-            optional<unsigned> _maxDataLevel;
-            GDALDataset* _srcDS;
-            GDALDataset* _warpedDS;
-            double _linearUnits;
+            optional<unsigned> _maxDataLevel = 30;
+            GDALDataset* _srcDS = nullptr;
+            GDALDataset* _warpedDS = nullptr;
+            double _linearUnits = 1.0;
             double _geotransform[6];
             double _invtransform[6];
             GeoExtent _extents;
@@ -326,5 +325,3 @@ namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::GDALImageLayer::Options);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::GDALElevationLayer::Options);
-
-#endif // OSGEARTH_TMS_H

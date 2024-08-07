@@ -42,7 +42,10 @@
 
 #include <gdal.h>
 #include <gdalwarper.h>
+#include <gdal_proxy.h>
+#include <gdal_vrt.h>
 #include <ogr_spatialref.h>
+#include <cpl_string.h>
 
 using namespace osgEarth;
 using namespace osgEarth::GDAL;
@@ -50,48 +53,14 @@ using namespace osgEarth::GDAL;
 #undef LC
 #define LC "[GDAL] "
 
-#define INDENT ""
-
-#if (GDAL_VERSION_MAJOR > 1 || (GDAL_VERSION_MAJOR >= 1 && GDAL_VERSION_MINOR >= 5))
-#  define GDAL_VERSION_1_5_OR_NEWER 1
-#endif
-
-#if (GDAL_VERSION_MAJOR > 1 || (GDAL_VERSION_MAJOR >= 1 && GDAL_VERSION_MINOR >= 6))
-#  define GDAL_VERSION_1_6_OR_NEWER 1
-#endif
-
-#ifndef GDAL_VERSION_1_5_OR_NEWER
-#  error "**** GDAL 1.5 or newer required ****"
-#endif
-
-//GDAL proxy is only available after GDAL 1.6
-#if GDAL_VERSION_1_6_OR_NEWER
-#  include <gdal_proxy.h>
-#endif
-
-#if (GDAL_VERSION_MAJOR >= 2)
-#  define GDAL_VERSION_2_0_OR_NEWER 1
-#endif
-
-#include <cpl_string.h>
-
-//GDAL VRT api is only available after 1.5.0
-#include <gdal_vrt.h>
-
-#define GEOTRSFRM_TOPLEFT_X            0
-#define GEOTRSFRM_WE_RES               1
-#define GEOTRSFRM_ROTATION_PARAM1      2
-#define GEOTRSFRM_TOPLEFT_Y            3
-#define GEOTRSFRM_ROTATION_PARAM2      4
-#define GEOTRSFRM_NS_RES               5
-
+#define INDENT "    "
 
 namespace osgEarth
 {
     namespace GDAL
     {
         // From easyrgb.com
-        float Hue_2_RGB(float v1, float v2, float vH)
+        inline float Hue_2_RGB(float v1, float v2, float vH)
         {
             if (vH < 0.0f) vH += 1.0f;
             if (vH > 1.0f) vH -= 1.0f;
@@ -101,43 +70,10 @@ namespace osgEarth
             return (v1);
         }
 
-#ifndef GDAL_VERSION_2_0_OR_NEWER
-        // RasterIO was substantially improved in 2.0
-        // See https://trac.osgeo.org/gdal/wiki/rfc51_rasterio_resampling_progress
-        typedef int GSpacing;
-#endif
-
-        typedef enum
-        {
-            LOWEST_RESOLUTION,
-            HIGHEST_RESOLUTION,
-            AVERAGE_RESOLUTION
-        } ResolutionStrategy;
-
-        typedef struct
-        {
-            int    isFileOK;
-            int    nRasterXSize;
-            int    nRasterYSize;
-            double adfGeoTransform[6];
-            int    nBlockXSize;
-            int    nBlockYSize;
-        } DatasetProperty;
-
-        typedef struct
-        {
-            GDALColorInterp        colorInterpretation;
-            GDALDataType           dataType;
-            GDALColorTableH        colorTable;
-            int                    bHasNoData;
-            double                 noDataValue;
-        } BandProperty;
-
-
         // This is simply the method GDALAutoCreateWarpedVRT() with the GDALSuggestedWarpOutput
         // logic replaced with something that will work properly for polar projections.
         // see: http://www.mail-archive.com/gdal-dev@lists.osgeo.org/msg01491.html
-        GDALDatasetH GDALAutoCreateWarpedVRTforPolarStereographic(
+        inline GDALDatasetH GDALAutoCreateWarpedVRTforPolarStereographic(
             GDALDatasetH hSrcDS,
             const char *pszSrcWKT,
             const char *pszDstWKT,
@@ -478,14 +414,6 @@ namespace osgEarth
 
 //...................................................................
 
-GDAL::Driver::Driver() :
-    _srcDS(NULL),
-    _warpedDS(NULL),
-    _maxDataLevel(30),
-    _linearUnits(1.0)
-{
-    //nop
-}
 
 GDAL::Driver::~Driver()
 {
@@ -779,22 +707,14 @@ GDAL::Driver::open(
     }
     else
     {
-        unsigned int max_level = 30;
-        for (unsigned int i = 0; i < max_level; ++i)
-        {
-            _maxDataLevel = i;
-            double w, h;
-            _profile->getTileDimensions(i, w, h);
-            double resX = w / (double)tileSize;
-            double resY = h / (double)tileSize;
+        // calculate the maximum LOD at which to use GDAL to read data
+        auto nx = _warpedDS->GetRasterXSize() / (int)tileSize;
+        auto ny = _warpedDS->GetRasterYSize() / (int)tileSize;
+        _maxDataLevel = std::max(
+            std::max((int)ceil(log2(nx)) - 1, 0),
+            std::max((int)ceil(log2(ny)) - 1, 0));
 
-            if (resX < maxResolution || resY < maxResolution)
-            {
-                break;
-            }
-        }
-
-        if (info)
+        if (true)
             OE_INFO << LC << INDENT << gdalOptions().url()->full() << " max Data Level: " << _maxDataLevel.get() << std::endl;
     }
 

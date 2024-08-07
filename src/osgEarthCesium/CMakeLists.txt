@@ -50,9 +50,12 @@ if (CESIUM_NATIVE_FOUND)
         TEMPLATES ${TARGET_IN}
         FOLDER "NodeKits")
 
-    # Include the Cesium Native headers BEFORE anything else to ensure that dependencies that might be duplicated like spdlog are included from the Cesium Native headers.
-    include_directories(BEFORE ${CESIUM_NATIVE_INCLUDE_DIR})
-
     target_link_libraries(${LIB_NAME} PRIVATE OE::CESIUM_NATIVE)
+
+    # Include the Cesium Native headers BEFORE anything else to ensure that dependencies
+    # that might be duplicated like spdlog are included from the Cesium Native headers.
+    # Note: we had to comment out the INTERFACE_INCLUDE_DIRECTORIES from the OE::CESIUM_NATIVE import
+    # library to make this work!
+    include_directories(BEFORE ${CESIUM_NATIVE_INCLUDE_DIR})
 
 endif()

@@ -63,8 +63,13 @@ macro(find_cesium_library MY_LIBRARY_VAR MY_LIBRARY_NAME)
             # create the import library for this component:
             add_library(${MY_IMPORT_LIBRARY_NAME} UNKNOWN IMPORTED)
             
+            # Normally you would need to add the include folders to the import library.
+            # But because cesium native's includes need to come FIRST, we will omit
+            # it and specify it later with a BEFORE argument to include_directories.
+            #set_target_properties(${MY_IMPORT_LIBRARY_NAME} PROPERTIES
+            #    INTERFACE_INCLUDE_DIRECTORIES "${CESIUM_NATIVE_INCLUDE_DIR}")
+            
             set_target_properties(${MY_IMPORT_LIBRARY_NAME} PROPERTIES
-                INTERFACE_INCLUDE_DIRECTORIES "${CESIUM_NATIVE_INCLUDE_DIR}"
                 IMPORTED_LOCATION ${MY_RELEASE_LIBRARY}
                 IMPORTED_LOCATION_DEBUG ${MY_DEBUG_LIBRARY} )
 

@@ -421,8 +421,6 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
         osg::ref_ptr< osg::Image > image = 0;
         const osg::HeightField* hf = heightField.getHeightField();
 
-        std::string tmpPath = getTempName(getTempPath(), ".tif");
-
         GDALDataset* srcDS = createDataSetFromHeightField(hf, key.getExtent().xMin(), key.getExtent().yMin(), key.getExtent().xMax(), key.getExtent().yMax(), key.getExtent().getSRS()->getWKT());
         int error = 0;
         std::string processing = options().processing().get();
@@ -467,13 +465,18 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
             pszColorFilename = color_filename.c_str();
         }
 
+        // temporary in-memory file:
+        static std::atomic_int s_tempNameGen = { 0 };
+        std::string tmpPath = Stringify() << "/vsimem/" << std::this_thread::get_id() << std::to_string(s_tempNameGen++) << ".tif";
+
         GDALDatasetH outputDS = GDALDEMProcessing(tmpPath.c_str(), srcDS, processing.c_str(), pszColorFilename, psOptions, &error);
         if (outputDS)
         {
             image = createImageFromDataset((GDALDataset*)outputDS);
             GDALClose(outputDS);
         }
-        remove(tmpPath.c_str());
+        //remove(tmpPath.c_str());
+        VSIUnlink(tmpPath.c_str());
         delete srcDS;
         GDALDEMProcessingOptionsFree(psOptions);
         CSLDestroy(papsz);

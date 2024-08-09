@@ -21,6 +21,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
+#include <osgDB/FileUtils>
 
 #include <gdal_priv.h> // C++ API
 
@@ -164,13 +165,13 @@ GDALDEMLayer::getAlpha() const
 void
 GDALDEMLayer::setColorFilename(const URI& value)
 {
-  setOptionThatRequiresReopen(options().color_filename(), value);
+    setOptionThatRequiresReopen(options().color_filename(), value);
 }
 
 const URI&
 GDALDEMLayer::getColorFilename() const
 {
-  return options().color_filename().get();
+    return options().color_filename().get();
 }
 
 void
@@ -187,7 +188,7 @@ GDALDEMLayer::addedToMap(const Map* map)
     ElevationLayer* layer = options().elevationLayer().getLayer();
     if (!layer)
     {
-        setStatus(Status::Error(Stringify() << "Failed to get elevation layer"));
+        setStatus(Status::ResourceUnavailable, "Failed to find elevation layer");
         return;
     }
 
@@ -212,51 +213,53 @@ GDALDEMLayer::openImplementation()
 
     // If we're in cache-only mode, do not attempt to open the layer!
     if (getCacheSettings()->cachePolicy()->isCacheOnly())
-        return Status::NoError;
+        return STATUS_OK;
 
     Status childStatus = options().elevationLayer().open(getReadOptions());
     if (childStatus.isError())
         return childStatus;
 
-#ifdef HAS_GDALDEM
-
-    //ElevationLayer* layer = options().elevationLayer().getLayer();
-    /*
-    if (!layer)
-        return Status::ServiceUnavailable;
-    setProfile(layer->getProfile());
-    setDataExtents(layer->getDataExtents());
-    */
-
-    /*
-    const Profile* profile = getProfile();
-    if (!profile)
+    // if the colorramp file doesn't exist, create a default one.
+    if (!osgDB::fileExists(options().color_filename()->full()))
     {
-        profile = Profile::create(Profile::GLOBAL_GEODETIC);
-        setProfile(profile);
+        const char* default_color_ramp = R"(
+5000 220 220 220
+4000 212 207 204
+3000 212 193 179
+2000 212 184 163
+1000 212 201 180
+600 169 192 166
+200 134 184 159
+50 120 172 149
+1 114 164 141
+0 66 135 245
+-32768 0 0 255
+)";
+        _colorRampFilename = "/vsimem/osgearth_gdaldem_color_ramp.txt";
+        auto handle = VSIFOpenL(_colorRampFilename.c_str(), "wb");
+        VSIFWriteL(default_color_ramp, 1, strlen(default_color_ramp), handle);
+        VSIFCloseL(handle);
     }
-    */
+    else
+    {
+        _colorRampFilename = options().color_filename()->full();
+    }
 
-    return Status::NoError;
-
-#else
-
-    return Status(Status::AssertionFailure, "GDAL 2.4+ required");
-
-#endif
+    return STATUS_OK;
 }
 
 Status
 GDALDEMLayer::closeImplementation()
 {
     getElevationLayer()->close();
-    return Status::OK();
+    return STATUS_OK;
 }
 
 namespace
 {
+
     GDALDataset*
-        createMemDS(int width, int height, int numBands, GDALDataType dataType, double minX, double minY, double maxX, double maxY, const std::string &projection)
+        createMemDS(int width, int height, int numBands, GDALDataType dataType, double minX, double minY, double maxX, double maxY, const std::string& projection)
     {
         //Get the MEM driver
         GDALDriver* memDriver = (GDALDriver*)GDALGetDriverByName("MEM");
@@ -370,7 +373,7 @@ namespace
     }
 
     GDALDataset*
-    createDataSetFromHeightField(const osg::HeightField* hf, double minX, double minY, double maxX, double maxY, const std::string &projection)
+        createDataSetFromHeightField(const osg::HeightField* hf, double minX, double minY, double maxX, double maxY, const std::string& projection)
     {
         GDALDataType gdalDataType = GDT_Float32;
 
@@ -412,8 +415,6 @@ GeoImage
 GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
 #ifdef HAS_GDALDEM
-    //GDAL_SCOPED_LOCK;
-
     ElevationLayer* layer = getElevationLayer();
     GeoHeightField heightField = layer->createHeightField(key, progress);
     if (heightField.valid())
@@ -425,7 +426,7 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
         int error = 0;
         std::string processing = options().processing().get();
         std::string color_filename = options().color_filename()->full();
-        char **papsz = NULL;
+        char** papsz = NULL;
         papsz = CSLAddString(papsz, "-compute_edges");
 
         if (options().azimuth().isSet())
@@ -459,23 +460,17 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
 
         GDALDEMProcessingOptions* psOptions = GDALDEMProcessingOptionsNew(papsz, NULL);
 
-        const char* pszColorFilename = NULL;
-        if (!color_filename.empty())
-        {
-            pszColorFilename = color_filename.c_str();
-        }
-
         // temporary in-memory file:
         static std::atomic_int s_tempNameGen = { 0 };
         std::string tmpPath = Stringify() << "/vsimem/" << std::this_thread::get_id() << std::to_string(s_tempNameGen++) << ".tif";
 
-        GDALDatasetH outputDS = GDALDEMProcessing(tmpPath.c_str(), srcDS, processing.c_str(), pszColorFilename, psOptions, &error);
+        GDALDatasetH outputDS = GDALDEMProcessing(tmpPath.c_str(), srcDS, processing.c_str(), _colorRampFilename.c_str(), psOptions, &error);
         if (outputDS)
         {
             image = createImageFromDataset((GDALDataset*)outputDS);
             GDALClose(outputDS);
         }
-        //remove(tmpPath.c_str());
+
         VSIUnlink(tmpPath.c_str());
         delete srcDS;
         GDALDEMProcessingOptionsFree(psOptions);
@@ -484,7 +479,7 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
         if (image.valid())
         {
             // Make any NO_DATA_VALUE pixels transparent
-            ImageUtils::PixelWriter writer(image.get());            
+            ImageUtils::PixelWriter writer(image.get());
             for (unsigned int r = 0; r < hf->getNumRows(); ++r)
             {
                 for (unsigned int c = 0; c < hf->getNumColumns(); ++c)
@@ -496,7 +491,7 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
                     }
                 }
             }
-            return GeoImage(image.get() , key.getExtent());
+            return GeoImage(image.get(), key.getExtent());
         }
     }
 

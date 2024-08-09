@@ -107,10 +107,7 @@ namespace osgEarth
         //! Called by constructors
         virtual void init();
 
-    protected:
-
-        //! Destructor
-        virtual ~GDALDEMLayer() { }
+        std::string _colorRampFilename;
     };
 
 } // namespace osgEarth

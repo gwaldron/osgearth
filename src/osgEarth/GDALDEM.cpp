@@ -251,7 +251,7 @@ GDALDEMLayer::openImplementation()
 Status
 GDALDEMLayer::closeImplementation()
 {
-    getElevationLayer()->close();
+    options().elevationLayer().close();
     return STATUS_OK;
 }
 
@@ -415,7 +415,15 @@ GeoImage
 GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
 #ifdef HAS_GDALDEM
+
     ElevationLayer* layer = getElevationLayer();
+    if (layer->isOpen() == false)
+    {
+        OE_WARN << LC << "Elevation layer is not open!" << key.str() << std::endl;
+        return {};
+    }
+
+
     GeoHeightField heightField = layer->createHeightField(key, progress);
     if (heightField.valid())
     {
@@ -425,7 +433,6 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
         GDALDataset* srcDS = createDataSetFromHeightField(hf, key.getExtent().xMin(), key.getExtent().yMin(), key.getExtent().xMax(), key.getExtent().yMax(), key.getExtent().getSRS()->getWKT());
         int error = 0;
         std::string processing = options().processing().get();
-        std::string color_filename = options().color_filename()->full();
         char** papsz = NULL;
         papsz = CSLAddString(papsz, "-compute_edges");
 
@@ -464,7 +471,9 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
         static std::atomic_int s_tempNameGen = { 0 };
         std::string tmpPath = Stringify() << "/vsimem/" << std::this_thread::get_id() << std::to_string(s_tempNameGen++) << ".tif";
 
-        GDALDatasetH outputDS = GDALDEMProcessing(tmpPath.c_str(), srcDS, processing.c_str(), _colorRampFilename.c_str(), psOptions, &error);
+        const char* color_filename = processing == "color-relief" ? _colorRampFilename.c_str() : nullptr;
+
+        GDALDatasetH outputDS = GDALDEMProcessing(tmpPath.c_str(), srcDS, processing.c_str(), color_filename, psOptions, &error);
         if (outputDS)
         {
             image = createImageFromDataset((GDALDataset*)outputDS);

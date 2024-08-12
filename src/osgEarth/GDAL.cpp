@@ -705,14 +705,17 @@ GDAL::Driver::open(
         if (info)
             OE_INFO << LC << INDENT << gdalOptions().url()->full() << " using override max data level " << _maxDataLevel.get() << std::endl;
     }
-    else
+    else if (!std::isnan(maxResolution) && maxResolution > 0.0)
     {
-        // calculate the maximum LOD at which to use GDAL to read data
-        auto nx = _warpedDS->GetRasterXSize() / (int)tileSize;
-        auto ny = _warpedDS->GetRasterYSize() / (int)tileSize;
-        _maxDataLevel = std::max(
-            std::max((int)ceil(log2(nx)) - 1, 0),
-            std::max((int)ceil(log2(ny)) - 1, 0));
+        _maxDataLevel = 0u;
+        double w, h;
+        _profile->getTileDimensions(0, w, h);
+        w /= (double)tileSize, h /= (double)tileSize;
+        while(w >= maxResolution && h >= maxResolution)
+        {
+            _maxDataLevel = _maxDataLevel.value() + 1;
+            w *= 0.5, h *= 0.5;
+        }
 
         if (true)
             OE_INFO << LC << INDENT << gdalOptions().url()->full() << " max Data Level: " << _maxDataLevel.get() << std::endl;

@@ -11,7 +11,7 @@
         "draco",
         { "name": "gdal",
           "default-features": false,
-          "features": [ "recommended-features", "jpeg" ] },
+          "features": [ "recommended-features", "jpeg", "tools" ] },
         "geos",
         "glew",
         "libwebp",

@@ -1,0 +1,6 @@
+<map name="Azure Maps Example">
+    <AzureMapsImage name="Azure Maps layer">
+        <subscription_key>your key here</subscription_key>
+        <tileset_id>microsoft.base.road</tileset_id>
+    </AzureMapsImage>
+</map>

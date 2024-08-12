@@ -1757,6 +1757,7 @@ HTTPClient::doReadImage(const HTTPRequest&    request,
             response.isCanceled() ? ReadResult::RESULT_CANCELED :
             response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
             response.getCode() == HTTPResponse::NOT_MODIFIED ? ReadResult::RESULT_NOT_MODIFIED :
+            response.getCode() == HTTPResponse::FORBIDDEN ? ReadResult::RESULT_UNAUTHORIZED :
             response.getCodeCategory() == HTTPResponse::CATEGORY_SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
             ReadResult::RESULT_UNKNOWN_ERROR);
 

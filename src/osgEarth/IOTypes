@@ -121,6 +121,7 @@ namespace osgEarth
         {
             RESULT_OK,
             RESULT_CANCELED,
+            RESULT_UNAUTHORIZED,
             RESULT_NOT_FOUND,
             RESULT_EXPIRED,
             RESULT_SERVER_ERROR,
@@ -225,6 +226,7 @@ namespace osgEarth
             return
                 code == RESULT_OK              ? "OK" :
                 code == RESULT_CANCELED        ? "Read canceled" :
+                code == RESULT_UNAUTHORIZED    ? "Unauthorized" :
                 code == RESULT_NOT_FOUND       ? "Target not found" :
                 code == RESULT_SERVER_ERROR    ? "Server reported error" :
                 code == RESULT_TIMEOUT         ? "Read timed out" :

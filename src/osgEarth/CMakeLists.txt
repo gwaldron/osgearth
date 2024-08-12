@@ -111,6 +111,7 @@ SET(TARGET_H
     AttributesFilter
     AutoClipPlaneHandler
     AutoScaleCallback
+    AzureMaps
     BboxDrawable
     BBoxSymbol
     BillboardResource
@@ -478,7 +479,8 @@ set(TARGET_SRC
     ArcGISTilePackage.cpp
     AtlasBuilder.cpp
     AttributesFilter.cpp
-    AutoClipPlaneHandler.cpp
+    AutoClipPlaneHandler.cpp    
+    AzureMaps.cpp
     BboxDrawable.cpp
     BBoxSymbol.cpp
     BillboardResource.cpp

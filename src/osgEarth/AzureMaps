@@ -1,0 +1,116 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2024 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarth/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/URI>
+
+namespace osgEarth
+{
+    /**
+     * Image layer reading from Microsoft's Azure Maps REST API
+     * https://learn.microsoft.com/en-us/rest/api/maps/render/get-map-tile?view=rest-maps-2024-04-01
+     */
+    class OSGEARTH_EXPORT AzureMapsImageLayer : public ImageLayer
+    {
+    public: // serialization
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+
+            //! Azure subscription key (or use OSGEARTH_AZURE_KEY env var)
+            OE_OPTION(std::string, subscriptionKey);
+
+            //! Tileset ID
+            //! See https://learn.microsoft.com/en-us/rest/api/maps/render/get-map-tile?view=rest-maps-2024-04-01&tabs=HTTP#tilesetid
+            OE_OPTION(std::string, tilesetId, "microsoft.base.road");
+
+            //! Base URL for the REST API
+            OE_OPTION(URI, mapTileEndpoint, { "https://atlas.microsoft.com/map/tile" });
+
+            //! API version
+            OE_OPTION(std::string, apiVersion, "2024-04-01");
+
+
+            virtual Config getConfig() const;
+        private:
+            void fromConfig(const Config& conf);
+        };
+
+    public:
+        META_Layer(osgEarth, AzureMapsImageLayer, Options, ImageLayer, AzureMapsImage);
+
+    public:
+        //! User's API key
+        void setSubscriptionKey(const std::string& value) {
+            options().subscriptionKey() = value;
+        }
+        const std::string& getSubscriptionKey() const {
+            return options().subscriptionKey().value();
+        }
+
+        //! Tileset ID
+        void setTilesetID(const std::string& value) {
+            options().tilesetId() = value;
+        }
+        const std::string& getTilesetID() const {
+            return options().tilesetId().value();
+        }
+
+        //! Base URL of the REST API
+        void setMapTileEndpoint(const URI& value) {
+            options().mapTileEndpoint() = value;
+        }
+        const URI& getMapTileEndpoint() const {
+            return options().mapTileEndpoint().value();
+        }
+
+        //! API version to use
+        void setAPIVersion(const std::string& value) {
+            options().apiVersion() = value;
+        }
+        const std::string& getAPIVersion() const {
+            return options().apiVersion().value();
+        }
+
+    public: // Layer
+
+        //! Establishes a connection to the service
+        Status openImplementation() override;
+
+        //! Closes all resources
+        Status closeImplementation() override;
+
+        //! Creates a raster image for the given tile key
+        GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
+
+    protected: // Layer
+
+        void init() override;
+
+        virtual ~AzureMapsImageLayer();
+
+        URIContext _uricontext;
+    };
+
+} // namespace osgEarth
+
+OSGEARTH_SPECIALIZE_CONFIG(osgEarth::AzureMapsImageLayer::Options);

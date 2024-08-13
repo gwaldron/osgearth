@@ -179,7 +179,8 @@ void oe_chonk_default_fragment(inout vec4 color)
     }
     else
     {
-        color = vec4(1, 0, 0, 1); // testing
+        //color = vec4(1, 0, 0, 1); // testing
+        // no texture ... use the vertex color
     }
 
 #if defined(OE_IS_SHADOW_CAMERA) || defined(OE_IS_DEPTH_CAMERA)

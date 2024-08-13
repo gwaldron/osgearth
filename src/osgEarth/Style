@@ -172,6 +172,16 @@ namespace osgEarth
 
     typedef std::vector<Style> StyleList;
 
+
+
+    class OSGEARTH_EXPORT StyleGroup : public osg::Group
+    {
+    public:
+        Style _style;
+    };
+
+
+
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Style);

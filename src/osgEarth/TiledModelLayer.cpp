@@ -22,6 +22,7 @@
 #include "Chonk"
 #include "Registry"
 #include "ShaderGenerator"
+#include "Style"
 #include <osg/BlendFunc>
 
 using namespace osgEarth;
@@ -137,10 +138,23 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
     {
         if (_textures.valid())
         {
+            forEachNodeOfType<StyleGroup>(result, [&](StyleGroup* group)
+                {
+                    auto drawable = new ChonkDrawable();
+                    drawable->add(group, _chonkFactory);
+                    group->removeChildren(0, group->getNumChildren());
+                    group->addChild(drawable);
+
+                    auto* render = group->_style.get<RenderSymbol>();
+                    if (render)
+                        render->applyTo(group);
+                });
+
+
+#if 0
+            auto drawable = new ChonkDrawable();
+
             auto xform = findTopMostNodeOfType<osg::MatrixTransform>(result.get());
-
-            osg::ref_ptr<ChonkDrawable> drawable = new ChonkDrawable();
-
             if (xform)
             {
                 for (unsigned i = 0; i < xform->getNumChildren(); ++i)
@@ -158,6 +172,7 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
                     result = drawable;
                 }
             }
+#endif
         }
         else
         {

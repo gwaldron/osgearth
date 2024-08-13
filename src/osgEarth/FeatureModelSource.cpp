@@ -142,7 +142,10 @@ FeatureNodeFactory::getOrCreateStyleGroup(const Style& style,
     // Otherwise, a normal group.
     if ( !group )
     {
-        group = new osg::Group();
+        auto styleGroup = new StyleGroup();
+        styleGroup->_style = style;
+        group = styleGroup;
+        //group = new osg::Group();
     }
 
     // apply necessary render styles.

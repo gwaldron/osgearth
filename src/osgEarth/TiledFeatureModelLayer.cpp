@@ -178,12 +178,17 @@ TiledFeatureModelLayer::addedToMap(const Map* map)
 {
     OE_TEST << LC << "addedToMap" << std::endl;
     
-
     options().features().addedToMap(map);
     options().styleSheet().addedToMap(map);
 
     if (getFeatureSource() && getStyleSheet())
     {
+        if (getFeatureSource()->getStatus().isError())
+        {
+            setStatus(getFeatureSource()->getStatus());
+            return;
+        }
+
         // Save a reference to the map since we'll need it to
         // create a new session object later.
         _session = new Session(
@@ -380,6 +385,9 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
 const Profile*
 TiledFeatureModelLayer::getProfile() const
 {
+    OE_SOFT_ASSERT_AND_RETURN(getFeatureSource() != nullptr, nullptr);
+    OE_SOFT_ASSERT_AND_RETURN(getFeatureSource()->getFeatureProfile() != nullptr, nullptr);
+
     return getFeatureSource()->getFeatureProfile()->getTilingProfile();
 }
 

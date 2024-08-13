@@ -1934,6 +1934,7 @@ FeatureModelGraph::applyRenderSymbology(const Style& style, osg::Node* node)
             DepthOffsetAdapter doa;
             doa.setGraph(node);
             doa.setDepthOffsetOptions(*render->depthOffset());
+            doa.recalculate();
         }
 
         if (render->renderBin().isSet())

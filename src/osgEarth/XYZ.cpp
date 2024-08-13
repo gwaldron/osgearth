@@ -33,7 +33,6 @@ using namespace osgEarth::XYZ;
 
 Status
 XYZ::Driver::open(const URI& uri,
-                  osg::ref_ptr<const Profile>& profile,
                   const std::string& format,
                   DataExtentList& out_dataExtents,
                   const osgDB::Options* readOptions)
@@ -41,12 +40,6 @@ XYZ::Driver::open(const URI& uri,
     if (uri.empty())
     {
         return Status::Error(Status::ConfigurationError, "Valid URL is missing");
-    }
-
-    // driver requires an express profile.
-    if (!profile.valid())
-    {
-        return Status::Error(Status::ConfigurationError, "Required explicit profile definition is missing");
     }
 
     _template = uri.full();
@@ -223,12 +216,9 @@ XYZImageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    osg::ref_ptr<const Profile> profile = getProfile();
-
     DataExtentList dataExtents;
     Status status = _driver.open(
         options().url().get(),
-        profile,
         options().format().get(),
         dataExtents,
         getReadOptions());
@@ -236,9 +226,10 @@ XYZImageLayer::openImplementation()
     if (status.isError())
         return status;
 
-    if (profile.get() != getProfile())
+    if (!getProfile())
     {
-        setProfile(profile.get());
+        OE_INFO << LC << "No profile; assuming spherical mercator" << std::endl;
+        setProfile(Profile::create("spherical-mercator"));
     }
 
     setDataExtents(dataExtents);

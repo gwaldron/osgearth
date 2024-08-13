@@ -43,7 +43,6 @@ namespace osgEarth { namespace XYZ
     public:
         Status open(
             const URI& uri,
-            osg::ref_ptr<const Profile>& profile,
             const std::string& format,
             DataExtentList& out_dataExtents,
             const osgDB::Options* readOptions);

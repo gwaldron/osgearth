@@ -185,7 +185,7 @@ namespace osgEarth
                     {
                         LandCoverSample sample = _landcoverUnderMouse.value();
                         if (sample.biomeid().isSet())
-                            ImGui::Text("biome_id = %s", sample.biomeid().get());
+                            ImGui::Text("biome_id = %s", sample.biomeid().get().c_str());
                         if (sample.dense().isSet())
                             ImGui::Text("dense = %.2f", sample.dense().get());
                         if (sample.lush().isSet())
@@ -193,9 +193,9 @@ namespace osgEarth
                         if (sample.rugged().isSet())
                             ImGui::Text("rugged = %.2f", sample.rugged().get());
                         if (sample.material().isSet())
-                            ImGui::Text("material = %s", sample.material().get());
+                            ImGui::Text("material = %s", sample.material().get().c_str());
                         if (sample.soiltype().isSet())
-                            ImGui::Text("soiltype = %s", sample.soiltype().get());
+                            ImGui::Text("soiltype = %s", sample.soiltype().get().c_str());
                     }
                 }
 

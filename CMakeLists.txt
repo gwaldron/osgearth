@@ -158,7 +158,14 @@ message(STATUS "Found OSG version ${OPENSCENEGRAPH_VERSION}")
 include_directories(
     ${OSGEARTH_SOURCE_DIR}/src
     ${OPENSCENEGRAPH_INCLUDE_DIR})
-
+    
+# If OSG is built with OPENGL_PROFILE=GLCORE, <osg/GL> will try to include the GLCORE ARB headers.
+# Set this variable to make those headers available when building osgEarth.
+set(OSGEARTH_GLCORE_INCLUDE_DIR "" CACHE PATH "Location of OpenGL CORE profile header parent folder")
+mark_as_advanced(OSGEARTH_GLCORE_INCLUDE_DIR)
+if(OSGEARTH_GLCORE_INCLUDE_DIR)
+    include_directories(${OSGEARTH_GLCORE_INCLUDE_DIR})
+endif()
 
 # Shared v. static build .................................................
 

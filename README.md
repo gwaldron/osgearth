@@ -1,5 +1,3 @@
-osgEarth - 3D Maps for C++
-
 ![Windows](https://github.com/gwaldron/osgearth/actions/workflows/windows.yml/badge.svg)
 ![Linux](https://github.com/gwaldron/osgearth/actions/workflows/linux.yml/badge.svg)
 ![OSX](https://github.com/gwaldron/osgearth/actions/workflows/macos.yml/badge.svg)

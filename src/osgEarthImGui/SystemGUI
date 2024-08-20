@@ -207,9 +207,10 @@ namespace osgEarth
                     auto& caps = osgEarth::Registry::capabilities();
                     ImGuiLTable::Text("osgEarth", osgEarthGetVersion());
                     ImGuiLTable::Text("OSG", osgGetVersion());
-                    ImGuiLTable::Text("GL_VENDOR", caps.getVendor().c_str());
+                    //ImGuiLTable::Text("GL_VENDOR", caps.getVendor().c_str());
                     ImGuiLTable::Text("GL_RENDERER", caps.getRenderer().c_str());
                     ImGuiLTable::Text("GL_VERSION", caps.getVersion().c_str());
+                    ImGuiLTable::Text("GL Profile", caps.isCoreProfile() ? "Core" : "Compatibility");
                     ImGuiLTable::End();
                 }
             }

@@ -231,8 +231,6 @@ GeometryPool::traverse(osg::NodeVisitor& nv)
             if (iter.second.get()->referenceCount() == 1)
             {
                 keys.push_back(iter.first);
-                //iter.second->releaseGLObjects(nullptr);
-                OE_DEBUG << "Releasing: " << iter.second.get() << std::endl;
             }
         }
 

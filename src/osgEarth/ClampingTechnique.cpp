@@ -155,7 +155,7 @@ ClampingTechnique::reestablish(TerrainEngineNode* engine)
 void
 ClampingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 {
-    OE_INFO << LC << "Using texture size = " << _textureSize.get() << std::endl;
+    OE_DEBUG << LC << "Using texture size = " << _textureSize.get() << std::endl;
 
     // To store technique-specific per-view info:
     LocalPerViewData* local = new LocalPerViewData();

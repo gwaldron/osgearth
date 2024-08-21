@@ -1580,14 +1580,12 @@ HTTPClient::doGet(const HTTPRequest&    request,
 
         if (remoteResponse.getCode() == ReadResult::RESULT_NOT_MODIFIED)
         {
-            OE_DEBUG << LC << uri.full() << " not modified, using cached result" << std::endl;
             // Touch the cached item to update it's last modified timestamp so it doesn't expire again immediately.
             if (bin)
                 bin->touch(uri.cacheKey());
         }
         else
         {
-            OE_DEBUG << LC << "Got remote result for " << uri.full() << std::endl;
             response = remoteResponse;
 
             if (response.isOK())

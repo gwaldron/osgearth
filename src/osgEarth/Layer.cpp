@@ -128,8 +128,7 @@ Layer::Layer(const Layer& rhs, const osg::CopyOp& op) :
 
 Layer::~Layer()
 {
-    OE_DEBUG << LC << "~Layer" << std::endl;
-    // close(); ?
+    //nop
 }
 
 void
@@ -365,7 +364,7 @@ Layer::open()
     // Install any shader #defines
     if (options().shaderDefine().isSet() && !options().shaderDefine()->empty())
     {
-        OE_INFO << LC << "Setting shader define " << options().shaderDefine().get() << "\n";
+        OE_DEBUG << LC << "Setting shader define " << options().shaderDefine().get() << "\n";
         getOrCreateStateSet()->setDefine(options().shaderDefine().get());
     }
 
@@ -409,7 +408,7 @@ Layer::openImplementation()
         CacheBin* bin = _cacheSettings->getCache()->addBin(_runtimeCacheId);
         if (bin)
         {
-            OE_INFO << LC << "Cache bin is [" << _runtimeCacheId << "]" << std::endl;
+            OE_DEBUG << LC << "Cache bin is [" << _runtimeCacheId << "]" << std::endl;
             _cacheSettings->setCacheBin(bin);
         }
         else
@@ -529,7 +528,6 @@ Layer::create(const ConfigOptions& options)
     // convey the configuration options:
     osg::ref_ptr<osgDB::Options> dbopt = Registry::instance()->cloneOrCreateOptions();
     dbopt->getOrCreateUserDataContainer()->addUserObject(new Holder<ConfigOptions>(LAYER_OPTIONS_TAG, options));
-    //dbopt->setPluginData( LAYER_OPTIONS_TAG, (void*)&options );
 
     osg::ref_ptr<Layer> result;
 

@@ -176,13 +176,9 @@ osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
         // Build a group that contains one geode per group
         osg::Group* result = new osg::Group;
 
-        OE_DEBUG << "We have " << _geometries.size() << " stateset stacks" << std::endl;
-
         unsigned int i = 0;
         for (StateSetStackToGeometryMap::iterator itr = _geometries.begin(); itr != _geometries.end(); ++itr)
         {
-            OE_DEBUG << LC << "StateSetStack " << i++ << " has " << itr->second.size() << " geometries " << std::endl;
-            
             // Merge all of the statesets
             osg::StateSet* ss = new osg::StateSet();
             for (StateSetStack::const_iterator ssItr = itr->first.begin(); ssItr != itr->first.end(); ++ssItr)

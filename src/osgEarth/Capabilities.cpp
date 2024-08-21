@@ -16,21 +16,20 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/Capabilities>
-#include <osgEarth/Version>
-#include <osgEarth/SpatialReference>
-#include <osgEarth/GEOS>
+#include "Capabilities"
+#include "Version"
+#include "SpatialReference"
+#include "GEOS"
 #include "Registry"
+#include "Notify"
+
 #include <osg/FragmentProgram>
 #include <osg/GL2Extensions>
 #include <osg/Version>
 #include <osgViewer/Version>
+
 #include <gdal.h>
 #include <sstream>
-#include <osgEarth/Notify>
-#ifdef OSGEARTH_HAVE_BLEND2D
-#include <blend2d.h>
-#endif
 
 using namespace osgEarth;
 
@@ -170,12 +169,6 @@ Capabilities::Capabilities() :
     _renderer("Unknown"),
     _version("3.30")
 {
-    // Prefer OSG to be built with GL3 support
-#ifndef OSG_GL3_AVAILABLE
-    OE_DEBUG << LC << "Warning, OpenSceneGraph does not define OSG_GL3_AVAILABLE; "
-        "the application may not function properly" << std::endl;
-#endif
-
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
 
@@ -211,11 +204,11 @@ Capabilities::Capabilities() :
 
     if (isHeadless)
     {
-        OE_INFO << LC << "** Simulating headless mode **" << std::endl;
+        OE_INFO << LC << "Simulating headless mode" << std::endl;
     }
     else if (isAndroid)
     {
-        OE_INFO << LC << "Using defaults for Android" << std::endl;
+        OE_DEBUG << LC << "Using defaults for Android" << std::endl;
     }
     else
     {
@@ -238,10 +231,6 @@ Capabilities::Capabilities() :
         OE_INFO << LC << "GDAL Version:      " << GDAL_RELEASE_NAME << std::endl;
 #endif
 
-#ifdef OSGEARTH_EMBED_GIT_SHA
-        OE_INFO << LC << "osgEarth HEAD SHA: " << osgEarthGitSHA1() << std::endl;
-#endif
-
         OE_INFO << LC << "OSG Version:       " << osgGetVersion() << std::endl;
 
 #if OSG_GL3_FEATURES
@@ -260,7 +249,7 @@ Capabilities::Capabilities() :
         _supportsGLSL = GL2->isGlslSupported;
         _GLSLversion = GL2->glslLanguageVersion;
 
-        _vendor = std::string( reinterpret_cast<const char*>(glGetString(GL_VENDOR)) );
+        _vendor = std::string(reinterpret_cast<const char*>(glGetString(GL_VENDOR)));
         OE_INFO << LC << "GL_VENDOR:         " << _vendor << std::endl;
 
         _renderer = std::string( reinterpret_cast<const char*>(glGetString(GL_RENDERER)) );
@@ -268,22 +257,6 @@ Capabilities::Capabilities() :
 
         _version = std::string( reinterpret_cast<const char*>(glGetString(GL_VERSION)) );
         OE_INFO << LC << "GL_VERSION:        " << _version << std::endl;
-        //OE_INFO << LC << "GLSL:             " << getGLSLVersionInt() << std::endl;
-
-#ifdef OSGEARTH_HAVE_BLEND2D
-        //OE_INFO << LC << "Blend2D version:   " << std::to_string(BL_VERSION) << std::endl;
-#endif
-
-#if 0
-        // assemble the driver version if possible.
-        std::vector<std::string> version_tokens;
-        Strings::StringTokenizer parse_glversion(_version, version_tokens, " ", "", false, true);
-        if (version_tokens.size() >= 2)
-        {
-            _driverVendor = version_tokens[1];
-            _driverVersion = parseVersion(version_tokens[2].c_str());
-        }
-#endif
 
         // Detect core profile by investigating GL_CONTEXT_PROFILE_MASK
         if ( GL2->glVersion < 3.2f )

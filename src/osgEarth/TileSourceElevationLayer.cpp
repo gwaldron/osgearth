@@ -65,7 +65,6 @@ namespace
                     float& value = *i;
                     if ( osg::isNaN(value) || osg::equivalent(value, _noDataValue) || value < _minValidValue || value > _maxValidValue )
                     {
-                        OE_DEBUG << "Replaced " << value << " with NO_DATA_VALUE" << std::endl;
                         value = NO_DATA_VALUE;
                     }
                 } 
@@ -192,7 +191,7 @@ TileSourceElevationLayer::openImplementation()
             // Set the profile from the TileSource if possible:
             if (getProfile() == NULL)
             {
-                OE_DEBUG << LC << "Get Profile from tile source" << std::endl;
+                //OE_DEBUG << LC << "Get Profile from tile source" << std::endl;
                 setProfile(_tileSource->getProfile());
             }
         }
@@ -235,7 +234,6 @@ TileSourceElevationLayer::createHeightFieldImplementation(const TileKey& key, Pr
     // If the key is blacklisted, fail.
     if ( _tileSource->getBlacklist()->contains( key ))
     {
-        OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted " << std::endl;
         if (progress) progress->message() = "blacklisted";
         return GeoHeightField::INVALID;
     }
@@ -243,8 +241,6 @@ TileSourceElevationLayer::createHeightFieldImplementation(const TileKey& key, Pr
     // Only try to get data if the source actually has data
     if (!mayHaveData(key))
     {
-        OE_DEBUG << LC << "Source for layer has no data at " << key.str() << std::endl;
-        //if (progress) progress->message() = "mayHaveData=false";
         return GeoHeightField::INVALID;
     }
 

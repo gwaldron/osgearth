@@ -99,7 +99,7 @@ UnloaderGroup::traverse(osg::NodeVisitor& nv)
 
             if (_deadpool.empty() == false)
             {
-                OE_DEBUG << LC << "Unloaded " << count << " of " << _deadpool.size() << " dormant tiles; " << _tiles->size() << " remain active." << std::endl;
+                //OE_DEBUG << LC << "Unloaded " << count << " of " << _deadpool.size() << " dormant tiles; " << _tiles->size() << " remain active." << std::endl;
             }
 
             _deadpool.clear();

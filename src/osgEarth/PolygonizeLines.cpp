@@ -325,17 +325,17 @@ PolygonizeLinesOperator::operator()(
                     {
                         osg::Vec3 nextBufVert = seg.second + bufVec;
 
-                        OE_DEBUG 
-                            << "\n"
-                            << "point " << i << " : \n"
-                            << "seg f: " << seg.first.x() << ", " << seg.first.y() << "\n"
-                            << "seg s: " << seg.second.x() << ", " << seg.second.y() << "\n"
-                            << "pnt 1: " << prevBufVert.x() << ", " << prevBufVert.y() << "\n"
-                            << "ray 1: " << prevDir.x() << ", " << prevDir.y() << "\n"
-                            << "pnt 2: " << nextBufVert.x() << ", " << nextBufVert.y() << "\n"
-                            << "ray 2: " << -dir.x() << ", " << -dir.y() << "\n"
-                            << "bufvec: " << bufVec.x() << ", " << bufVec.y() << "\n"
-                            << "\n";
+                        //OE_DEBUG 
+                        //    << "\n"
+                        //    << "point " << i << " : \n"
+                        //    << "seg f: " << seg.first.x() << ", " << seg.first.y() << "\n"
+                        //    << "seg s: " << seg.second.x() << ", " << seg.second.y() << "\n"
+                        //    << "pnt 1: " << prevBufVert.x() << ", " << prevBufVert.y() << "\n"
+                        //    << "ray 1: " << prevDir.x() << ", " << prevDir.y() << "\n"
+                        //    << "pnt 2: " << nextBufVert.x() << ", " << nextBufVert.y() << "\n"
+                        //    << "ray 2: " << -dir.x() << ", " << -dir.y() << "\n"
+                        //    << "bufvec: " << bufVec.x() << ", " << bufVec.y() << "\n"
+                        //    << "\n";
 
                         // find the 2D intersection of these two vectors. Check for the 
                         // special case of colinearity.

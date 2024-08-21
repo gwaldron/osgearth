@@ -178,7 +178,7 @@ ResourceLibrary::initialize( const osgDB::Options* dbOptions )
                             mergeConfig( child );
                     }
 
-                    OE_INFO << LC << "Found " << _skins.size() << " textures, " << _instances.size() << " models\n";
+                    OE_INFO << LC << "Found " << _skins.size() << " textures, " << _instances.size() << " models" << std::endl;
                 }
                 else
                 {

@@ -143,7 +143,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
     osgEarth::NativeProgramAdapterCollection& adapters = _adapters[cid];
     if ( adapters.empty() )
     {
-        OE_INFO << LC << "Initializing Triton program adapters" << std::endl;
+        OE_DEBUG << LC << "Initializing Triton program adapters" << std::endl;
         const std::vector<const char*> prefixes = { "osg_", "oe_" };
         adapters.push_back( new osgEarth::NativeProgramAdapter(state, getOceanShader(_TRITON->getOcean(), ::Triton::WATER_SURFACE, 0L, tritonCam), prefixes, "WATER_SURFACE"));
         adapters.push_back( new osgEarth::NativeProgramAdapter(state, getOceanShader(_TRITON->getOcean(), ::Triton::WATER_SURFACE_PATCH, 0L, tritonCam), prefixes, "WATER_SURFACE_PATCH"));
@@ -190,7 +190,7 @@ TritonDrawable::drawImplementation(osg::RenderInfo& renderInfo) const
 
             environment->SetHeightMap((::Triton::TextureHandle)texName, texMat, 0L, tritonCam);
                 
-            OE_DEBUG << LC << "Updating height map, FN=" << renderInfo.getState()->getFrameStamp()->getFrameNumber() << std::endl;
+            //OE_DEBUG << LC << "Updating height map, FN=" << renderInfo.getState()->getFrameStamp()->getFrameNumber() << std::endl;
         }
     }
 

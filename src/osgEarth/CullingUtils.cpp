@@ -555,10 +555,6 @@ void OcclusionCullingCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
         if (nv->getFrameStamp()->getFrameNumber() != frameNumber)
         {
-            if (numCompleted > 0 || numSkipped > 0)
-            {
-                OE_DEBUG << "OcclusionCullingCallback frame=" << frameNumber << " completed=" << numCompleted << " skipped=" << numSkipped << std::endl;
-            }
             frameNumber = nv->getFrameStamp()->getFrameNumber();
             numCompleted = 0;
             numSkipped = 0;

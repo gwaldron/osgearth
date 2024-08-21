@@ -260,7 +260,7 @@ void MultithreadedTileVisitor::setNumThreads( unsigned int numThreads)
 void MultithreadedTileVisitor::run(const Profile* mapProfile)
 {
     // Start up the task service
-    OE_INFO << "Starting " << _numThreads << " threads " << std::endl;
+    OE_DEBUG << "Starting " << _numThreads << " threads " << std::endl;
 
     jobs::get_pool(MTTV)->set_concurrency(_numThreads);
 

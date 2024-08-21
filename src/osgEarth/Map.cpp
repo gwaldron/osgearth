@@ -184,7 +184,8 @@ Map::init()
 
     // store in the options so we can propagate it to layers, etc.
     _cacheSettings->store(_readOptions.get());
-    OE_INFO << LC << _cacheSettings->toString() << "\n";
+    if (_cacheSettings->getCache() && _cacheSettings->isCacheEnabled())
+        OE_INFO << LC << _cacheSettings->toString() << std::endl;
 
     // remember the referrer for relative-path resolution:
     URIContext( options().referrer() ).store( _readOptions.get() );
@@ -201,7 +202,7 @@ Map::init()
 
 Map::~Map()
 {
-    OE_DEBUG << LC << "~Map" << std::endl;
+    //nop
 }
 
 ElevationPool*
@@ -277,7 +278,7 @@ Map::setProfile(const Profile* value)
         }
 
         // finally, fire an event if the profile has been set.
-        OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
+        OE_INFO << LC << "Map profile: " << _profile->toString() << std::endl;
     }
 
     // If we just set the profile, tell all our layers they are now added

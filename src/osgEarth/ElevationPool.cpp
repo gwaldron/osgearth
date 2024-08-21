@@ -163,8 +163,6 @@ ElevationPool::refresh(const Map* map)
 
     _elevationLayers.clear();
 
-    OE_DEBUG << LC << "Refreshing EP index" << std::endl;
-
     if (_index)
         delete static_cast<MaxLevelIndex*>(_index);
 
@@ -309,7 +307,7 @@ ElevationPool::findExistingRaster(
     // found it, so stick it in the L2 cache
     if (output.valid())
     {
-        OE_DEBUG << LC << key._tilekey.str() << " - Cache hit (global LUT)" << std::endl;
+        //OE_DEBUG << LC << key._tilekey.str() << " - Cache hit (global LUT)" << std::endl;
     }
 
     return output.valid();

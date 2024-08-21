@@ -444,7 +444,7 @@ GeoPoint::createLocalToWorld( osg::Matrixd& out_l2w ) const
     bool result = _srs->createLocalToWorld( _p, out_l2w );
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
-        OE_DEBUG << LC << "ILLEGAL: called GeoPoint::createLocalToWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        //OE_DEBUG << LC << "ILLEGAL: called GeoPoint::createLocalToWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return result;
@@ -457,7 +457,7 @@ GeoPoint::createWorldToLocal( osg::Matrixd& out_w2l ) const
     bool result = _srs->createWorldToLocal( _p, out_w2l );
     if ( _altMode != ALTMODE_ABSOLUTE )
     {
-        OE_DEBUG << LC << "ILLEGAL: called GeoPoint::createWorldToLocal with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        //OE_DEBUG << LC << "ILLEGAL: called GeoPoint::createWorldToLocal with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
         return false;
     }
     return result;

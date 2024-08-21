@@ -229,7 +229,7 @@ MapNodeHelper::load(osg::ArgumentParser& args, osgViewer::ViewerBase* viewer) co
             LODScaleGroup* g = new LODScaleGroup();
             g->setLODScaleFactor(osg::maximum(lodscale, 0.0001f));
             osgEarth::insertGroup(g, mapNode->getParent(0));
-            OE_INFO << "LOD Scale set to: " << lodscale << std::endl;
+            OE_DEBUG << "LOD Scale set to: " << lodscale << std::endl;
         }
     }
 
@@ -279,7 +279,7 @@ MapNodeHelper::parse(MapNode* mapNode, osg::ArgumentParser& args, osgViewer::Vie
     // Install logarithmic depth buffer on main camera
     if ( useLogDepth )
     {
-        OE_INFO << LC << "Activating logarithmic depth buffer (vertex-only) on main camera" << std::endl;
+        OE_DEBUG << LC << "Activating logarithmic depth buffer (vertex-only) on main camera" << std::endl;
         osgEarth::Util::LogarithmicDepthBuffer logDepth;
         logDepth.setUseFragDepth( false );
         logDepth.install( view->getCamera() );
@@ -287,7 +287,7 @@ MapNodeHelper::parse(MapNode* mapNode, osg::ArgumentParser& args, osgViewer::Vie
 
     else if ( useLogDepth2 )
     {
-        OE_INFO << LC << "Activating logarithmic depth buffer (precise) on main camera" << std::endl;
+        OE_DEBUG << LC << "Activating logarithmic depth buffer (precise) on main camera" << std::endl;
         osgEarth::Util::LogarithmicDepthBuffer logDepth;
         logDepth.setUseFragDepth( true );
         logDepth.install( view->getCamera() );

@@ -37,7 +37,7 @@ using namespace osgEarth;
 #define Q2(x) #x
 #define Q(x)  Q2(x)
 
-#define LIBNAME_UTIL_POSTFIX Q(OSGEARTH_LIBRARY_POSTFIX)
+#define LIBNAME_UTIL_POSTFIX
 
 
 #if defined(WIN32)
@@ -92,8 +92,11 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
         {
             // force the loading of other osgEarth libraries that might be needed to 
             // deserialize an earth file. 
-            OE_DEBUG << LC << "Forced load: " << LIBNAME_UTIL LIBNAME_UTIL_POSTFIX LIBNAME_UTIL_EXTENSION << std::endl;
-            osgDB::Registry::instance()->loadLibrary( LIBNAME_UTIL LIBNAME_UTIL_POSTFIX LIBNAME_UTIL_EXTENSION );
+            auto status = osgDB::Registry::instance()->loadLibrary( LIBNAME_UTIL LIBNAME_UTIL_POSTFIX LIBNAME_UTIL_EXTENSION );
+            if (status == osgDB::Registry::NOT_LOADED)
+            {
+                OE_DEBUG << LC << "Failed to load \"" << LIBNAME_UTIL LIBNAME_UTIL_POSTFIX LIBNAME_UTIL_EXTENSION << "\"" << std::endl;
+            }
         }
 
         virtual const char* className() const
@@ -153,13 +156,13 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
                 if ( ostr.find(toLower(EARTH_DO_NOT_REWRITE_PATHS)) != std::string::npos )
                 {
-                    OE_INFO << LC << "path re-writing disabled\n";
+                    OE_DEBUG << LC << "path re-writing disabled" << std::endl;
                     ser.setRewritePaths( false );
                 }
 
                 if ( ostr.find(toLower(EARTH_REWRITE_ABSOLUTE_PATHS)) != std::string::npos )
                 {
-                    OE_INFO << LC << "absolute path re-writing enabled\n";
+                    OE_DEBUG << LC << "absolute path re-writing enabled" << std::endl;
                     ser.setRewriteAbsolutePaths( true );
                 }
             }
@@ -293,7 +296,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 if (cacheSettings && cacheSettings->getCache())
                 {
                     mapNode->getMap()->setCache( cacheSettings->getCache() );
-                    OE_INFO << LC << "Applied user-supplied cache to the Map\n";
+                    OE_DEBUG << LC << "Applied user-supplied cache to the Map" << std::endl;
                 }
             }
 

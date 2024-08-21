@@ -77,7 +77,7 @@ OE_LAYER_PROPERTY_IMPL(SimpleOceanLayer, unsigned, SurfaceTextureLOD, textureLOD
 void
 SimpleOceanLayer::init()
 {
-    OE_INFO << LC << "Creating a Simple Ocean Layer\n";
+   // OE_INFO << LC << "Creating a Simple Ocean Layer" << std::endl;
 
     VisibleLayer::init();
 
@@ -219,7 +219,7 @@ SimpleOceanLayer::updateMaskLayer()
     {
         if (!layer->isShared())
         {
-            OE_WARN << LC << "Mask layer \"" << layer->getName() << "\" is not a shared\n";
+            OE_WARN << LC << "Mask layer \"" << layer->getName() << "\" is not a shared" << std::endl;
             return;
         }
 
@@ -228,7 +228,7 @@ SimpleOceanLayer::updateMaskLayer()
         ss->setDefine("OE_OCEAN_MASK", layer->getSharedTextureUniformName());
         ss->setDefine("OE_OCEAN_MASK_MATRIX", layer->getSharedTextureMatrixUniformName());
 
-        OE_INFO << LC << "Installed \"" << layer->getName() << "\" as mask layer\n";
+        OE_INFO << LC << "Installed \"" << layer->getName() << "\" as mask layer" << std::endl;
     }
 
     else
@@ -236,8 +236,6 @@ SimpleOceanLayer::updateMaskLayer()
         osg::StateSet* ss = getOrCreateStateSet();
         ss->removeDefine("OE_OCEAN_MASK");
         ss->removeDefine("OE_OCEAN_MASK_MATRIX");
-
-        //OE_INFO << LC << "Uninstalled mask layer\n";
     }
 }
 

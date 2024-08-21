@@ -360,7 +360,7 @@ TileLayer::addedToMap(const Map* map)
         !map->getProfile()->getSRS()->isHorizEquivalentTo(getProfile()->getSRS()))
     {
         l2CacheSize = 16u;
-        OE_INFO << LC << "Map/Layer profiles differ; requesting L2 cache" << std::endl;
+        OE_DEBUG << LC << "Map/Layer profiles differ; requesting L2 cache" << std::endl;
     }
 
     // Use the user defined option if it's set.
@@ -403,7 +403,7 @@ TileLayer::setUpL2Cache(unsigned minSize)
     if (l2CacheSize > 0)
     {
         _memCache = new MemCache(l2CacheSize);
-        OE_INFO << LC << "L2 cache size = " << l2CacheSize << std::endl;
+        OE_DEBUG << LC << "L2 cache size = " << l2CacheSize << std::endl;
     }
 }
 
@@ -585,7 +585,6 @@ TileLayer::getCacheBin(const Profile* profile)
     if (meta.valid())
     {
         _cacheBinMetadata[metaKey] = meta.get();
-        OE_DEBUG << LC << "Established metadata for cache bin [" << _runtimeCacheId << "]" << std::endl;
     }
 
     return bin;

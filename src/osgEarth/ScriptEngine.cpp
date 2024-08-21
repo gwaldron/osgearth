@@ -153,10 +153,6 @@ ScriptEngineFactory::create( const ScriptEngineOptions& options, bool quiet)
             {
                 osg::ref_ptr<osg::Object> object = rw->readObject("." + driverExt, rwopts.get()).getObject();
                 scriptEngine = dynamic_cast<ScriptEngine*>(object.release());
-                if (scriptEngine)
-                {
-                    OE_DEBUG << "Loaded ScriptEngine driver \"" << options.getDriver() << "\" OK" << std::endl;
-                }
             }
             if (!scriptEngine.valid())
             {

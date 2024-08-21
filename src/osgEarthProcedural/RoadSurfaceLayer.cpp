@@ -411,7 +411,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
 
             if (intersector->getIntersections().empty())
             {
-                OE_DEBUG << LC << "RSL: skipped an EMPTY bounds without rasterizing :) for " << key.str() << std::endl;
+                //OE_DEBUG << LC << "RSL: skipped an EMPTY bounds without rasterizing :) for " << key.str() << std::endl;
                 return GeoImage::INVALID;
             }
 
@@ -450,7 +450,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
                 }
                 else
                 {
-                    OE_DEBUG << LC << "RSL: skipped an EMPTY image result for " << key.str() << std::endl;
+                    //OE_DEBUG << LC << "RSL: skipped an EMPTY image result for " << key.str() << std::endl;
                     return GeoImage::INVALID;
                 }
             }

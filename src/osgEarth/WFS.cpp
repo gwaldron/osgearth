@@ -506,7 +506,6 @@ WFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 
     std::string url = createURL(query);
 
-    OE_DEBUG << LC << url << std::endl;
     URI uri(url, options().url()->context());
 
     // read the data:
@@ -527,7 +526,7 @@ WFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 
     if (dataOK)
     {
-        OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
+        OE_NULL << LC << "Read " << features.size() << " features" << std::endl;
     }
 
 #if 0 // Done in FeatureSource now

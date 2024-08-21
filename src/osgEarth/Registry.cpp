@@ -148,7 +148,9 @@ Registry::Registry() :
 
     // warn if GDAL_DATA is not set
     if (::getenv("GDAL_DATA") == NULL)
+    {
         OE_INFO << LC << "Note: GDAL_DATA environment variable is not set" << std::endl;
+    }
 
     // shader generator used internally by osgEarth. Can be replaced.
     _shaderGen = new ShaderGenerator();
@@ -255,7 +257,7 @@ Registry::Registry() :
 
 Registry::~Registry()
 {
-    OE_DEBUG << LC << "Registry shutting down..." << std::endl;
+    OE_DEBUG << LC << "Registry destructing" << std::endl;
 
     // A heavy hammer, but at this stage, which is usually application
     // shutdown, various osgEarth objects (e.g., VirtualPrograms) are
@@ -446,7 +448,7 @@ Registry::getDefaultCacheDriverName() const
             if ( value )
             {
                 _cacheDriver = value;
-                OE_DEBUG << LC << "Cache driver set from environment: " << value << std::endl;
+                OE_INFO << LC << "Cache driver set from environment: " << value << std::endl;
             }
         }
     }
@@ -550,7 +552,6 @@ Registry::blacklist(const std::string& filename)
 {
     _blacklist.lock();
     _blacklist.insert(filename);
-    OE_DEBUG << "Blacklist size = " << _blacklist.size() << std::endl;
     _blacklist.unlock();
 }
 

@@ -205,7 +205,7 @@ LayerShader::install(Layer* layer, TerrainResources* res)
                         osg::ref_ptr<osg::Image> image = uri.getImage(layer->getReadOptions());
                         if (image)
                         {
-                            OE_INFO << LC << "   Added image from \"" << uri.full() << "\"\n";
+                            OE_DEBUG << LC << "   Added image from \"" << uri.full() << "\"\n";
                             tex->setImage(i, image);
                             tex->setFilter(tex->MIN_FILTER, tex->NEAREST_MIPMAP_LINEAR);
                             tex->setFilter(tex->MAG_FILTER, tex->LINEAR);

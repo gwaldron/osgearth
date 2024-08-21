@@ -256,6 +256,10 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
                 payload->accept(*kdTreeBuilder.get());
             }
         }
+
+#if 0
+        // if we comment this out, the pager will continue to subdivide even up to the max level,
+        // which MIGHT be desirable for some datasets with sparse data...
         else if (!_additive)
         {
             // If we are in REPLACE mode, and this node's payload did not appear,
@@ -263,6 +267,7 @@ SimplePager::createChildNode(const TileKey& key, ProgressCallback* progress)
             // In ADD mode, we will continue to subdivide because we do not know when data will appear.
             hasChildren = false;
         }
+#endif
     }
 
     if (hasChildren)

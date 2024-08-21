@@ -385,7 +385,7 @@ namespace osgEarth { namespace Util
         if ( ((DELTA) < 0 && newCount < oldCount) || ((DELTA) >= 0 && newCount >= oldCount) ) { \
             NODE ->setNumChildrenRequiringUpdateTraversal( newCount ); \
         } else { \
-            OE_INFO << "**INTERNAL: ADJUST_UPDATE_TRAV_COUNT wrapped around" << std::endl; \
+            OE_WARN << "**INTERNAL: ADJUST_UPDATE_TRAV_COUNT wrapped around" << std::endl; \
         } \
     }
 
@@ -400,7 +400,7 @@ namespace osgEarth { namespace Util
         if ( ((DELTA) < 0 && newCount < oldCount) || ((DELTA) >= 0 && newCount >= oldCount) ) { \
             NODE ->setNumChildrenRequiringEventTraversal( newCount ); \
         } else { \
-            OE_INFO << "**INTERNAL: ADJUST_EVENT_TRAV_COUNT wrapped around" << std::endl; \
+            OE_WARN << "**INTERNAL: ADJUST_EVENT_TRAV_COUNT wrapped around" << std::endl; \
         } \
     }
 

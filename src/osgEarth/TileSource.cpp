@@ -46,21 +46,18 @@ void
 TileBlacklist::add(const TileKey& key)
 {
     _tiles.insert(key, true);
-    OE_DEBUG << "Added " << key.str() << " to blacklist" << std::endl;
 }
 
 void
 TileBlacklist::remove(const TileKey& key)
 {
     _tiles.erase(key);
-    OE_DEBUG << "Removed " << key.str() << " from blacklist" << std::endl;
 }
 
 void
 TileBlacklist::clear()
 {
     _tiles.clear();
-    OE_DEBUG << "Cleared blacklist" << std::endl;
 }
 
 bool

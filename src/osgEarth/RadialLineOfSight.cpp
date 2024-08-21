@@ -223,7 +223,6 @@ RadialLineOfSightNode::getNode()
 void
 RadialLineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain )
 {
-    OE_DEBUG << "RadialLineOfSightNode::terrainChanged" << std::endl;
     compute( getNode() );    
 }
 

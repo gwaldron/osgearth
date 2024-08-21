@@ -73,7 +73,7 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         else
         {
             // propagate the source URI along to the stream reader
-            OE_INFO << LC << "Reading KML from " << url << std::endl;
+            OE_DEBUG << LC << "Reading KML from " << url << std::endl;
             osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
             URIContext(url).store( myOptions.get() );
             return readNode( URIStream(url), myOptions.get() );

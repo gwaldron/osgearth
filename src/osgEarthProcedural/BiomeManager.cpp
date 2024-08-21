@@ -37,6 +37,8 @@ using namespace osgEarth::Procedural;
 #undef LC
 #define LC "[BiomeManager] "
 
+#define OE_TEST OE_NULL
+
 #define NORMAL_MAP_TEX_UNIT 1
 #define PBR_TEX_UNIT 2
 
@@ -144,7 +146,7 @@ BiomeManager::ref(const Biome* biome)
     if (item.first->second == 1) // ref count of 1 means it's new
     {
         ++_revision;
-        OE_DEBUG << LC << "Hello, " << biome->name().get() << " (" << biome->index() << ")" << std::endl;
+        OE_TEST << LC << "Hello, " << biome->name().get() << " (" << biome->index() << ")" << std::endl;
     }
 }
 
@@ -171,7 +173,7 @@ BiomeManager::unref(const Biome* biome)
             // would also result in re-loading assets that are already
             // resident... think on this -gw
             //++_revision;
-            OE_DEBUG << LC << "Goodbye, " << biome->name().get() << "(" << biome->index() << ")" << std::endl;
+            OE_TEST << LC << "Goodbye, " << biome->name().get() << "(" << biome->index() << ")" << std::endl;
         }
     }
 }
@@ -215,7 +217,7 @@ BiomeManager::reset()
         for (auto& iter : _refs)
         {
             const Biome* biome = iter.first;
-            OE_DEBUG << LC << "Goodbye, " << biome->name().get() << std::endl;
+            OE_TEST << LC << "Goodbye, " << biome->name().get() << std::endl;
             iter.second = 0;
         }
 
@@ -294,7 +296,7 @@ BiomeManager::recalculateResidentBiomes()
         for (auto& asset_name : to_delete)
         {
             _residentModelAssets.erase(asset_name);
-            OE_DEBUG << LC << "Unloaded asset " << asset_name << std::endl;
+            OE_TEST << LC << "Unloaded asset " << asset_name << std::endl;
         }
     }
 }
@@ -434,7 +436,7 @@ BiomeManager::materializeNewAssets(const osgDB::Options* readOptions)
     // Clear out each biome's instances so we can start fresh.
     // This is a low-cost operation since anything we can re-use
     // will already by in the _residentModelAssetData collection.
-    OE_DEBUG << LC << "Found " << _residentBiomes.size() << " resident biomes..." << std::endl;
+    OE_TEST << LC << "Found " << _residentBiomes.size() << " resident biomes..." << std::endl;
     for (auto& iter : _residentBiomes)
     {
         iter.second.instances.clear();
@@ -504,7 +506,7 @@ BiomeManager::materializeNewAssets(const osgDB::Options* readOptions)
             // First reference to this instance? Populate it:
             if (residentAsset == nullptr)
             {
-                OE_DEBUG << LC << "  Loading asset " << assetDef->name() << std::endl;
+                OE_TEST << LC << "  Loading asset " << assetDef->name() << std::endl;
 
                 residentAsset = ResidentModelAsset::create();
 
@@ -550,7 +552,7 @@ BiomeManager::materializeNewAssets(const osgDB::Options* readOptions)
                             residentAsset->boundingBox() = cbv.getBoundingBox();
                             modelcache[uri]._modelAABB = residentAsset->boundingBox();
 
-                            OE_DEBUG << LC << "Loaded model: " << uri.base() << 
+                            OE_TEST << LC << "Loaded model: " << uri.base() << 
                                 " with bbox " << residentAsset->boundingBox().xMin() << " "
                                 << residentAsset->boundingBox().yMin() << " "
                                 << residentAsset->boundingBox().xMax() << " "
@@ -604,7 +606,7 @@ BiomeManager::materializeNewAssets(const osgDB::Options* readOptions)
                         {
                             residentAsset->sideBillboardTex() = new osg::Texture2D(image.get());
 
-                            OE_DEBUG << LC << "Loaded side BB: " << uri.base() << std::endl;
+                            OE_TEST << LC << "Loaded side BB: " << uri.base() << std::endl;
                             texcache[uri] = residentAsset;
 
                             // normal map:
@@ -612,7 +614,7 @@ BiomeManager::materializeNewAssets(const osgDB::Options* readOptions)
                             osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
                             if (normalMap.valid())
                             {
-                                OE_DEBUG << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
+                                OE_TEST << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
                                 residentAsset->sideBillboardNormalMap() = new osg::Texture2D(normalMap.get());
                             }
                             else
@@ -624,7 +626,7 @@ BiomeManager::materializeNewAssets(const osgDB::Options* readOptions)
                             osg::ref_ptr<osg::Image> pbrMap = pbrMapURI.getImage(readOptions);
                             if (pbrMap.valid())
                             {
-                                OE_DEBUG << LC << "Loaded PBR: " << pbrMapURI.base() << std::endl;
+                                OE_TEST << LC << "Loaded PBR: " << pbrMapURI.base() << std::endl;
                                 residentAsset->sideBillboardPBRMap() = new osg::Texture2D(pbrMap);
                             }
                             else
@@ -662,7 +664,7 @@ BiomeManager::materializeNewAssets(const osgDB::Options* readOptions)
                             {
                                 residentAsset->topBillboardTex() = new osg::Texture2D(image.get());
 
-                                OE_DEBUG << LC << "Loaded top BB: " << uri.base() << std::endl;
+                                OE_TEST << LC << "Loaded top BB: " << uri.base() << std::endl;
                                 texcache[uri] = residentAsset;
 
                                 // normal map:
@@ -670,7 +672,7 @@ BiomeManager::materializeNewAssets(const osgDB::Options* readOptions)
                                 osg::ref_ptr<osg::Image> normalMap = normalMapURI.getImage(readOptions);
                                 if (normalMap.valid())
                                 {
-                                    OE_DEBUG << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
+                                    OE_TEST << LC << "Loaded NML: " << normalMapURI.base() << std::endl;
                                     residentAsset->topBillboardNormalMap() = new osg::Texture2D(normalMap.get());
                                 }
                                 else
@@ -683,7 +685,7 @@ BiomeManager::materializeNewAssets(const osgDB::Options* readOptions)
                                 osg::ref_ptr<osg::Image> pbrMap = pbrMapURI.getImage(readOptions);
                                 if (pbrMap.valid())
                                 {
-                                    OE_DEBUG << LC << "Loaded PBR: " << pbrMapURI.base() << std::endl;
+                                    OE_TEST << LC << "Loaded PBR: " << pbrMapURI.base() << std::endl;
                                     residentAsset->topBillboardPBRMap() = new osg::Texture2D(pbrMap);
                                 }
                                 else

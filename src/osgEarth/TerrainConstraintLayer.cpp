@@ -236,7 +236,6 @@ TerrainConstraintLayer::getExtent() const
 void
 TerrainConstraintLayer::addedToMap(const Map* map)
 {
-    OE_DEBUG << LC << "addedToMap\n";
     VisibleLayer::addedToMap(map);
     options().featureSource().addedToMap(map);
     options().model().addedToMap(map);

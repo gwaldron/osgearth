@@ -94,11 +94,6 @@ namespace
                 !_session.valid() ||
                 !_session->hasMap();
 
-            if (done)
-            {
-                OE_DEBUG << "FMG: canceling load on thread " << std::this_thread::get_id() << std::endl;
-            }
-
             return done;
         }
     };
@@ -561,7 +556,7 @@ FeatureModelGraph::open()
 
             // The tilesize factor must be at least 1.0 to avoid culling the tile when you are within it's bounding sphere.
             tileSizeFactor = osg::maximum(tileSizeFactor, 1.0f);
-            OE_INFO << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " << maxRangeAtFirstLevel << std::endl;
+            OE_DEBUG << LC << "Computed a tilesize factor of " << tileSizeFactor << " with max range setting of " << maxRangeAtFirstLevel << std::endl;
             _options.layout().mutable_value().tileSizeFactor() = tileSizeFactor;
         }
 
@@ -622,7 +617,7 @@ FeatureModelGraph::open()
                 maxRange = _options.layout().mutable_value().tileSizeFactor().value() * _options.layout()->tileSize().get();
             }
 
-            OE_INFO << LC
+            OE_DEBUG << LC
                 << "Tile size = " << (*_options.layout()->tileSize()) 
                 << ", calc TSF = " << (*_options.layout()->tileSizeFactor())
                 << std::endl;
@@ -633,7 +628,7 @@ FeatureModelGraph::open()
         {
             float size = (2.0*_fullWorldBound.radius() / 1.1412);
             _options.layout().mutable_value().tileSizeFactor() = maxRange.get() / size;
-            OE_INFO << LC 
+            OE_DEBUG << LC
                 << "maxRange = " << maxRange.get() 
                 << ", calc tile size = " << size 
                 << ", calc TSF = " << (*_options.layout()->tileSizeFactor()) << std::endl;
@@ -722,7 +717,6 @@ FeatureModelGraph::shutdown()
 FeatureModelGraph::~FeatureModelGraph()
 {
     //nop
-    OE_DEBUG << "~FeatureModelGraph" << std::endl;
 }
 
 void
@@ -846,26 +840,6 @@ FeatureModelGraph::setupPaging()
     osg::BoundingSphered bs = getBoundInWorldCoords(_usableMapExtent);
 
     const FeatureProfile* featureProfile = _session->getFeatureSource()->getFeatureProfile();
-
-#if 0
-    optional<float> maxRangeOverride;
-
-    if (_options.layout()->maxRange().isSet() || _maxRange.isSet())
-    {
-        // select the max range either from the Layout or from the model layer options.
-        float userMaxRange = FLT_MAX;
-        if (_options.layout()->maxRange().isSet())
-            userMaxRange = *_options.layout()->maxRange();
-        if (_maxRange.isSet())
-            userMaxRange = osg::minimum(userMaxRange, _maxRange.get());
-
-        if (!featureProfile->isTiled())
-        {
-            // user set a max_range, but we'd not tiled. Just override the top level plod.
-            maxRangeOverride = userMaxRange;
-        }
-    }
-#endif
 
     float maxRange = bs.radius() * _options.layout()->tileSizeFactor().get();
 
@@ -1053,7 +1027,7 @@ FeatureModelGraph::load(
         // if the result group contains no data, blacklist it so we never try to load it again.
         Threading::ScopedWriteLock exclusiveLock(_blacklistMutex);
         _blacklist.insert(uri);
-        OE_DEBUG << LC << "Blacklisting: " << uri << std::endl;
+        //OE_DEBUG << LC << "Blacklisting: " << uri << std::endl;
     }
 
     // Done - run the pre-merge operations.
@@ -1135,13 +1109,6 @@ FeatureModelGraph::buildSubTilePagedLODs(
 
             if (!blacklisted)
             {
-                OE_DEBUG << LC << "    " << uri
-                    << std::fixed
-                    << "; center = " << subtile_bs.center().x() << "," << subtile_bs.center().y() << "," << subtile_bs.center().z()
-                    << "; radius = " << subtile_bs.radius()
-                    << "; maxrange = " << maxRange
-                    << std::endl;
-
                 osg::ref_ptr<osg::Node> childNode;
 
                 if (_options.layout()->paged() == true)
@@ -1234,14 +1201,14 @@ FeatureModelGraph::readTileFromCache(const std::string&    cacheKey,
 
         if (policy.isSet() && policy->isExpired(rr.lastModifiedTime()))
         {
-            OE_DEBUG << LC << "Tile " << cacheKey << " is cached but expired.\n";
+            // tile is cached but expired; return null.
             return 0L;
         }
 
         if (rr.succeeded())
         {
+            // loaded from cache.
             group = dynamic_cast<osg::Group*>(rr.getNode());
-            OE_DEBUG << LC << "Loaded from the cache (key = " << cacheKey << ")\n";
             ++_cacheHits;
 
             // remap the feature index.
@@ -1260,7 +1227,6 @@ FeatureModelGraph::readTileFromCache(const std::string&    cacheKey,
         else if (rr.code() == ReadResult::RESULT_NOT_FOUND)
         {
             //nop -- object not in cache
-            OE_DEBUG << LC << "Object not in cache (cacheKey=" << cacheKey << ") " << rr.getResultCodeString() << "; " << rr.errorDetail() << "\n";
         }
         else
         {
@@ -1268,11 +1234,7 @@ FeatureModelGraph::readTileFromCache(const std::string&    cacheKey,
             OE_WARN << LC << "Cache read error (cacheKey=" << cacheKey << ") " << rr.getResultCodeString() << "; " << rr.errorDetail() << "\n";
         }
 
-        OE_DEBUG << "cache hit ratio = " << float(_cacheHits) / float(_cacheReads) << "\n";
-    }
-    else
-    {
-        OE_DEBUG << LC << "No cachebin in the readOptions - caching not enabled for this layer\n";
+        //OE_DEBUG << "cache hit ratio = " << float(_cacheHits) / float(_cacheReads) << "\n";
     }
 
     return group.release();
@@ -1294,7 +1256,7 @@ FeatureModelGraph::writeTileToCache(const std::string&    cacheKey,
     if (cacheBin && policy->isCacheWriteable())
     {
         cacheBin->writeNode(cacheKey, node, Config(), writeOptions);
-        OE_DEBUG << LC << "Wrote " << cacheKey << " to cache\n";
+        //OE_DEBUG << LC << "Wrote " << cacheKey << " to cache\n";
     }
     return true;
 }
@@ -1837,13 +1799,7 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
         _options.layout().isSet() && _options.layout()->cropFeatures() == true ?
         CropFilter::METHOD_CROP_TO_EXTENT : CropFilter::METHOD_CENTROID);
 
-    unsigned sizeBefore = workingSet.size();
-
     context = crop.push(workingSet, context);
-
-    unsigned sizeAfter = workingSet.size();
-
-    OE_DEBUG << LC << "Cropped out " << sizeBefore - sizeAfter << " features\n";
 
     // next, if the usable extent is less than the full extent (i.e. we had to clamp the feature
     // extent to fit on the map), calculate the extent of the features in this tile and
@@ -2049,33 +2005,6 @@ FeatureModelGraph::redraw()
         //Remove all current children
         node = buildTile(defaultLevel, GeoExtent::INVALID, 0, _session->getDBOptions());
     }
-
-#if 0
-    float minRange = -FLT_MAX;
-    if (_minRange.isSet())
-        minRange = osg::maximum(minRange, _minRange.get());
-
-    if (_options.layout().isSet() && _options.layout()->minRange().isSet())
-        minRange = osg::maximum(minRange, *_options.layout()->minRange());
-
-    float maxRange = FLT_MAX;
-    if (_maxRange.isSet())
-        maxRange = osg::minimum(maxRange, _maxRange.get());
-
-    if (_options.layout().isSet() && _options.layout()->maxRange().isSet())
-        maxRange = osg::minimum(maxRange, *_options.layout()->maxRange());
-
-    //If they've specified a min/max range, setup an LOD
-    if (minRange != -FLT_MAX || maxRange != FLT_MAX)
-    {
-        OE_INFO << LC << "Elevation LOD set to " << minRange << " => " << maxRange << std::endl;
-
-        // todo: revisit this, make sure this is still right.
-        ElevationLOD *lod = new ElevationLOD(_session->getMapSRS(), minRange, maxRange);
-        lod->addChild(node);
-        node = lod;
-    }
-#endif
 
     // If we want fading, install fading.
     if (_options.fading().isSet())

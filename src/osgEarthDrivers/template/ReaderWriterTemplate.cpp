@@ -85,8 +85,6 @@ class TemplateReaderWriter: public osgDB::ReaderWriter
             OutputString output;
             t.render( output );
 
-            OE_DEBUG << "Processed template " << std::endl << output.buf.str() << std::endl;
-
             // Set the osgEarth URIContext so that relative paths will work.  We have to do this manually here
             // since we are using the stream based readNode function and the Earth driver won't know 
             // where the original earth file came frame.

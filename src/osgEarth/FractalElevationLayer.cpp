@@ -183,13 +183,13 @@ FractalElevationLayer::init()
     // Print info about land cover mappings.
     if (!options().landCoverMap()->empty())
     {
-        OE_INFO << LC << "Land cover to amplitude mappings:\n";
+        OE_DEBUG << LC << "Land cover to amplitude mappings:" << std::endl;
         for(LandCoverMap::const_iterator i = options().landCoverMap()->begin();
             i != options().landCoverMap()->end();
             ++i)
         {
             const LandCoverMapping& mapping = i->second;
-            OE_INFO << LC << "   " << i->second.className << " => " << i->second.amplitude.get() << "\n";
+            OE_DEBUG << LC << "   " << i->second.className << " => " << i->second.amplitude.get() << std::endl;
         }
     }
 }
@@ -351,9 +351,9 @@ FractalElevationLayer::createHeightFieldImplementation(const TileKey& key, Progr
 
         double stdev = sqrt(q_mean / double(getTileSize()*getTileSize()));
 
-        OE_INFO << LC << "Tile " << key.str() << " Hmean=" << h_mean
-            << ", stdev=" << stdev << ", n[" << min_n << ", " << max_n << "] "
-            << "h[" << min_h << ", " << max_h << "]\n";
+        //OE_DEBUG << LC << "Tile " << key.str() << " Hmean=" << h_mean
+        //    << ", stdev=" << stdev << ", n[" << min_n << ", " << max_n << "] "
+        //    << "h[" << min_h << ", " << max_h << "]\n";
     }
 
     return GeoHeightField(hf.release(), key.getExtent());

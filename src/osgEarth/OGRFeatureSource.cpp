@@ -188,8 +188,6 @@ OGR::OGRFeatureCursor::OGRFeatureCursor(
         // note: "Directly" above means _spatialFilter takes ownership if ring handle
     }
 
-
-    OE_DEBUG << LC << "SQL: " << expr << std::endl;
     _resultSetHandle = GDALDatasetExecuteSQL(_dsHandle, expr.c_str(), _spatialFilter, 0L);
 
     if (_resultSetHandle)
@@ -295,17 +293,17 @@ OGR::OGRFeatureCursor::readChunk()
                         }
                         else
                         {
-                            OE_DEBUG << LC << "Invalid geometry found at feature " << feature->getFID() << std::endl;
+                            //OE_DEBUG << LC << "Invalid geometry found at feature " << feature->getFID() << std::endl;
                         }
                     }
                     else
                     {
-                        OE_DEBUG << LC << "Blacklisted feature " << feature->getFID() << " skipped" << std::endl;
+                        //OE_DEBUG << LC << "Blacklisted feature " << feature->getFID() << " skipped" << std::endl;
                     }
                 }
                 else
                 {
-                    OE_DEBUG << LC << "Skipping NULL feature" << std::endl;
+                    //OE_DEBUG << LC << "Skipping NULL feature" << std::endl;
                 }
                 OGR_F_Destroy( handle );
             }
@@ -416,7 +414,6 @@ OGRFeatureSource::closeImplementation()
             buf << "REPACK " << name;
             std::string bufStr;
             bufStr = buf.str();
-            OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
             OGR_DS_ExecuteSQL(_dsHandle, bufStr.c_str(), 0L, 0L);
         }
         _layerHandle = 0L;
@@ -611,18 +608,17 @@ OGRFeatureSource::openImplementation()
         {
             if ((options().forceRebuildSpatialIndex() == true) || (OGR_L_TestCapability(_layerHandle, OLCFastSpatialFilter) == 0))
             {
-                OE_INFO << LC << "Building spatial index for " << getName() << std::endl;
+                OE_DEBUG << LC << _source << ": building spatial index for " << getName() << std::endl;
                 std::stringstream buf;
                 const char* name = OGR_FD_GetName(OGR_L_GetLayerDefn(_layerHandle));
                 buf << "CREATE SPATIAL INDEX ON " << name;
                 std::string bufStr;
                 bufStr = buf.str();
-                OE_DEBUG << LC << "SQL: " << bufStr << std::endl;
                 OGR_DS_ExecuteSQL(_dsHandle, bufStr.c_str(), 0L, 0L);
             }
             else
             {
-                OE_DEBUG << LC << "Use existing spatial index for " << getName() << std::endl;
+                //OE_DEBUG << LC << "Use existing spatial index for " << getName() << std::endl;
             }
         }
 
@@ -877,8 +873,6 @@ OGRFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
             {
                 newQuery = options().query()->combineWith(query);
             }
-
-            OE_DEBUG << newQuery.getConfig().toJSON(true) << std::endl;
 
             // cursor is responsible for the OGR handles.
             return new OGR::OGRFeatureCursor(

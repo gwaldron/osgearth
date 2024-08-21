@@ -34,7 +34,6 @@ SelectionInfo::getLOD(unsigned lod) const
     if (lod-_firstLOD >= _lods.size())
     {
         // note, this can happen if firstLOD() is set
-        OE_DEBUG << LC <<"Index out of bounds"<<std::endl;
         return s_dummy;
     }
     return _lods[lod-_firstLOD];
@@ -48,13 +47,13 @@ SelectionInfo::initialize(unsigned firstLod, unsigned maxLod, const Profile* pro
 
     if (getNumLODs() > 0)
     {
-        OE_INFO << LC <<"Error: Selection Information already initialized"<<std::endl;
+        //OE_INFO << LC <<"Error: Selection Information already initialized"<<std::endl;
         return;
     }
 
     if (firstLod > maxLod)
     {
-        OE_INFO << LC <<"Error: Inconsistent First and Max LODs"<<std::endl;
+        OE_WARN << LC <<"Error: Inconsistent First and Max LODs"<<std::endl;
         return;
     }
 

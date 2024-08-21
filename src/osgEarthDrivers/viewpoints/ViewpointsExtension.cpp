@@ -233,7 +233,7 @@ ConfigOptions( options )
         }
     }
 
-    OE_INFO << LC << "Read " << viewpoints.size() << " viewpoints\n";
+    OE_DEBUG << LC << "Read " << viewpoints.size() << " viewpoints\n";
 
     ViewpointsHandler* handler = new ViewpointsHandler(viewpoints, t, mapKeys);
     handler->_homeIndex = home;

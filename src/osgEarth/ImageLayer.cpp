@@ -460,29 +460,22 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
 
     GeoImage result;
 
-    OE_DEBUG << LC << "create image for \"" << key.str() << "\", ext= "
-        << key.getExtent().toString() << std::endl;
-
     // the cache key combines the Key and the horizontal profile.
     std::string cacheKey = Cache::makeCacheKey(
         Stringify() << key.str() << "-" << std::hex << key.getProfile()->getHorizSignature(),
         "image");
 
     // The L2 cache key includes the layer revision of course!
-    char memCacheKey[64];
+    std::string memCacheKey;
 
     const CachePolicy& policy = getCacheSettings()->cachePolicy().get();
 
     // Check the layer L2 cache first
     if ( _memCache.valid() )
     {
-        sprintf(memCacheKey, "%d/%s/%s", 
-            getRevision(), 
-            key.str().c_str(), 
-            key.getProfile()->getHorizSignature().c_str());
-
+        memCacheKey = Stringify() << std::to_string(getRevision()) << "/" << key.str() << "/" << key.getProfile()->getHorizSignature();
         CacheBin* bin = _memCache->getOrCreateDefaultBin();
-        ReadResult result = bin->readObject(memCacheKey, 0L);
+        ReadResult result = bin->readObject(memCacheKey, nullptr);
         if (result.succeeded())
         {
             return GeoImage(static_cast<osg::Image*>(result.releaseObject()), key.getExtent());
@@ -513,12 +506,7 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
             bool expired = policy.isExpired(r.lastModifiedTime());
             if (!expired)
             {
-                OE_DEBUG << "Got cached image for " << key.str() << std::endl;
                 return GeoImage(cachedImage.get(), key.getExtent());
-            }
-            else
-            {
-                OE_DEBUG << "Expired image for " << key.str() << std::endl;
             }
         }
     }
@@ -622,11 +610,10 @@ ImageLayer::createImageInKeyProfile(const TileKey& key, ProgressCallback* progre
 
     else // result.valid() == false
     {
-        OE_DEBUG << LC << key.str() << "result INVALID" << std::endl;
         // We couldn't get an image from the source.  So see if we have an expired cached image
         if (cachedImage.valid())
         {
-            OE_DEBUG << LC << "Using cached but expired image for " << key.str() << std::endl;
+            //OE_DEBUG << LC << "Using cached but expired image for " << key.str() << std::endl;
             result = GeoImage( cachedImage.get(), key.getExtent());
         }
 #endif
@@ -913,14 +900,11 @@ FutureTexture2D::update()
 
     else if (_result.available())
     {
-        OE_DEBUG<< LC << "Async result available for " << getName() << std::endl;
-
         // fetch the result
         GeoImage geoImage = _result.value();
 
         if (geoImage.getStatus().isError())
         {
-            OE_DEBUG << LC << "Error: " << geoImage.getStatus().message() << std::endl;
             _failed = true;
         }
         else

@@ -421,8 +421,6 @@ GDAL::Driver::~Driver()
         GDALClose(_warpedDS);
     else if (_srcDS)
         GDALClose(_srcDS);
-
-    OE_DEBUG << "Closed GDAL Driver on thread " << std::this_thread::get_id() << std::endl;
 }
 
 void
@@ -439,10 +437,9 @@ GDAL::Driver::open(
     unsigned tileSize,
     const Profile* fallback_profile,
     DataExtentList* layerDataExtents,
-    const osgDB::Options* readOptions)
+    const osgDB::Options* readOptions,
+    bool verbose)
 {
-    bool info = (layerDataExtents != NULL);
-
     _name = name;
     _gdalOptions = options;
 
@@ -570,7 +567,8 @@ GDAL::Driver::open(
         {
             _profile = fallback_profile;
             src_srs = fallback_profile->getSRS();
-            OE_INFO << LC << "Using fallback profile " << fallback_profile->toString() << std::endl;
+            if (verbose)
+                OE_INFO << LC << source << ": using fallback profile " << fallback_profile->toString() << std::endl;
         }
         else
         {
@@ -594,7 +592,9 @@ GDAL::Driver::open(
     // Otherwise, collect information and make the profile later.
     if (src_srs->isGeographic())
     {
-        OE_DEBUG << INDENT << "Creating Profile from source's geographic SRS: " << src_srs->getName() << std::endl;
+        if (verbose)
+            OE_DEBUG << LC << source << ": creating Profile from source's geographic SRS: " << src_srs->getName() << std::endl;
+
         if (!_profile)
         {
             _profile = Profile::create(src_srs.get());
@@ -602,8 +602,8 @@ GDAL::Driver::open(
 
         if (!_profile.valid())
         {
-            return Status::Error(Status::ResourceUnavailable, Stringify()
-                << "Cannot create geographic Profile from dataset's spatial reference information: " << src_srs->getName());
+            return Status::Error(Status::ResourceUnavailable,
+                "Cannot create geographic Profile from dataset's spatial reference information: " + src_srs->getName());
         }
 
         // no xform an geographic? Match the profile.
@@ -682,12 +682,11 @@ GDAL::Driver::open(
 
         if (!_profile.valid())
         {
-            return Status::Error(Stringify()
-                << "Cannot create projected Profile from dataset's warped spatial reference WKT: " << warpedSRSWKT);
+            return Status::Error("Cannot create projected Profile from dataset's warped spatial reference WKT: " + warpedSRSWKT);
         }
-
-        if (info)
-            OE_INFO << LC << INDENT << source << " is projected, SRS = " << warpedSRSWKT << std::endl;
+        
+        if (verbose)
+            OE_DEBUG << LC << gdalOptions().url()->base() << source << " is projected, SRS = " << warpedSRSWKT << std::endl;
     }
 
     OE_HARD_ASSERT(_profile.valid());
@@ -697,13 +696,13 @@ GDAL::Driver::open(
     double resolutionY = (maxY - minY) / (double)_warpedDS->GetRasterYSize();
     double maxResolution = osg::minimum(resolutionX, resolutionY);
 
-    if (info)
-        OE_INFO << LC << INDENT << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
+    if (verbose)
+        OE_DEBUG << LC << source << ": resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 
     if (_maxDataLevel.isSet())
     {
-        if (info)
-            OE_INFO << LC << INDENT << gdalOptions().url()->full() << " using override max data level " << _maxDataLevel.get() << std::endl;
+        if (verbose)
+            OE_DEBUG << LC << source << ": override max data level= " << _maxDataLevel.get() << std::endl;
     }
     else if (!std::isnan(maxResolution) && maxResolution > 0.0)
     {
@@ -717,8 +716,8 @@ GDAL::Driver::open(
             w *= 0.5, h *= 0.5;
         }
 
-        if (true)
-            OE_INFO << LC << INDENT << gdalOptions().url()->full() << " max Data Level: " << _maxDataLevel.get() << std::endl;
+        if (verbose)
+            OE_DEBUG << LC << source << ": max data level= " << _maxDataLevel.get() << std::endl;
     }
 
     // If the input dataset is a VRT, then get the individual files in the dataset and use THEM for the DataExtents.
@@ -764,12 +763,14 @@ GDAL::Driver::open(
         }
         if (clamped)
         {
-            OE_DEBUG << LC << "Clamped out-of-range geographic extents" << std::endl;
+            if (verbose)
+                OE_DEBUG << LC << source << ": clamped out-of-range geographic extents" << std::endl;
         }
     }
     _extents = GeoExtent(srs.get(), _bounds);
 
-    OE_DEBUG << LC << "GeoExtent = " << _extents.toString() << std::endl;
+    if (verbose)
+        OE_DEBUG << LC << source << ": GeoExtent = " << _extents.toString() << std::endl;
 
     if (layerDataExtents)
     {
@@ -792,8 +793,8 @@ GDAL::Driver::open(
     // Get the linear units of the SRS for scaling elevation values
     _linearUnits = srs->getReportedLinearUnits();
 
-    if (info)
-        OE_DEBUG << LC << INDENT << "Set Profile to " << _profile->toString() << std::endl;
+    if (verbose)
+        OE_DEBUG << LC << source << ": set Profile to " << _profile->toString() << std::endl;
 
     return STATUS_OK;
 }
@@ -1064,7 +1065,7 @@ GDAL::Driver::createImage(const TileKey& key,
     double dy = (ymax - ymin) / (double)(tileSize - 1);
 
     //OE_DEBUG << LC << "ReadWindow " << off_x << "," << off_y << " " << width << "x" << height << std::endl;
-    OE_DEBUG << LC << "DestWindow " << tile_offset_left << "," << tile_offset_top << " " << target_width << "x" << target_height << std::endl;
+    //OE_DEBUG << LC << "DestWindow " << tile_offset_left << "," << tile_offset_top << " " << target_width << "x" << target_height << std::endl;
 
 
     //Return if parameters are out of range.
@@ -1619,7 +1620,7 @@ GDAL::Options::readFrom(const Config& conf)
     };
     for (const auto& key : deprecated_keys)
         if (conf.hasValue(key))
-            OE_INFO << LC << "Deprecated property \"" << key << "\" ignored" << std::endl;
+            OE_DEBUG << LC << "Deprecated property \"" << key << "\" ignored" << std::endl;
 }
 
 void
@@ -1649,8 +1650,9 @@ namespace
     Status openOnThisThread(
         const T* layer,
         GDAL::Driver::Ptr& driver,
-        osg::ref_ptr<const Profile>* in_out_profile = nullptr,
-        DataExtentList* out_dataExtents = nullptr)
+        osg::ref_ptr<const Profile>* in_out_profile,
+        DataExtentList* out_dataExtents,
+        bool verbose)
     {
         driver = std::make_shared<GDAL::Driver>();
 
@@ -1669,7 +1671,8 @@ namespace
             layer->options().tileSize().get(),
             in_out_profile ? in_out_profile->get() : nullptr,
             out_dataExtents,
-            layer->getReadOptions());
+            layer->getReadOptions(),
+            verbose);
 
         if (status.isError())
             return status;
@@ -1756,7 +1759,8 @@ GDALImageLayer::openImplementation()
         this,
         driver,
         &profile,
-        &dataExtents);
+        &dataExtents,
+        true);              //verbose
 
     if (s.isError())
         return s;
@@ -1802,7 +1806,7 @@ GDALImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* 
         // calling openImpl with NULL params limits the setup
         // since we already called this during openImplementation
         osg::ref_ptr<const Profile> profile = getProfile();
-        openOnThisThread(this, driver, &profile);
+        openOnThisThread(this, driver, &profile, nullptr, false);
     }
 
     if (driver != nullptr)
@@ -1888,7 +1892,8 @@ GDALElevationLayer::openImplementation()
         this,
         driver,
         &profile,
-        &dataExtents);
+        &dataExtents,
+        true);              //verbose
 
     if (s.isError())
         return s;
@@ -1935,7 +1940,7 @@ GDALElevationLayer::createHeightFieldImplementation(const TileKey& key, Progress
         // calling openImpl with NULL params limits the setup
         // since we already called this during openImplementation
         osg::ref_ptr<const Profile> profile = getProfile();
-        openOnThisThread(this, driver, &profile);
+        openOnThisThread(this, driver, &profile, nullptr, false);
     }
 
     if (driver != nullptr)

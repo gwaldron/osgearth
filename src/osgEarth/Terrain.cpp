@@ -54,8 +54,7 @@ void Terrain::onTileUpdateOperation::operator()(osg::Object*)
     }
     else
     {
-        // nop; tile expired; let it go.
-        OE_DEBUG << "Tile expired before notification: " << _key.str() << std::endl;
+        // nop; tile expired before notification; let it go.
     }
 
     this->setKeep( false );
@@ -212,11 +211,6 @@ namespace
 
         osg::Vec3d startVertex = osg::Vec3d(local_x, local_y, zNear) * inverse;
         osg::Vec3d endVertex = osg::Vec3d(local_x, local_y, zFar) * inverse;
-
-        //osg::Vec3d sv = startVertex * camera->getViewMatrix();
-        //osg::Vec3d ev = endVertex * camera->getViewMatrix();
-        //OE_INFO << "s=" << sv.x() << "," << sv.y() << "," << sv.z() << std::endl;
-        //OE_INFO << "e=" << ev.x() << "," << ev.y() << "," << ev.z() << std::endl;
 
         auto picker = new osgUtil::LineSegmentIntersector(
             osgUtil::Intersector::MODEL,

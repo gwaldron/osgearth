@@ -228,8 +228,6 @@ HTMNode::insert(osg::Node* node)
 void
 HTMNode::split()
 {
-    OE_DEBUG << LC << "Splitting htmid:" << getName() << std::endl;
-
     // find the midpoints of each side of the triangle
     osg::Vec3d w[3];
     _tri.getMidpoints( w );

@@ -109,7 +109,6 @@ ObjectIndex::insertImpl(osg::Referenced* object)
     // internal: assume mutex is locked
     ObjectID id = ++_idGen;
     _index[id] = object;
-    OE_DEBUG << LC << "Insert " << id << "; size = " << _index.size() << "\n";
     return id;
 }
 
@@ -133,8 +132,6 @@ ObjectIndex::removeImpl(ObjectID id)
 {
     // internal - assume mutex is locked
     _index.erase( id );
-    OE_DEBUG << "Remove " << id << "; size = " << _index.size() << "\n";
-
 }
 
 ObjectID

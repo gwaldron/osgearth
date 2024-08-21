@@ -118,7 +118,6 @@ WMS::Capabilities::suggestExtension() const
             if (rw)
             {
                 ext = format;
-                OE_DEBUG << "suggestExtension found ReaderWriter for " << ext << std::endl;
                 break;
             }
         }

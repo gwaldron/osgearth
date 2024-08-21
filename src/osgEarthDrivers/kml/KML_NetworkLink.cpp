@@ -98,13 +98,6 @@ KML_NetworkLink::build( xml_node<>* node, KMLContext& cx )
         plod->setCenter( lodCenter );
         plod->setRadius( d );
 
-        //osgDB::Options* options = Registry::instance()->cloneOrCreateOptions();
-        //options->setPluginData( "osgEarth::MapNode", cx._mapNode );
-        //plod->setDatabaseOptions( options );
-
-        OE_DEBUG << LC << 
-            "PLOD: radius = " << d << ", minRange=" << minRange << ", maxRange=" << maxRange << std::endl;
-
         cx._groupStack.top()->addChild( plod );
     }
 

@@ -533,35 +533,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( trackHistory ) history.push_back( "share state" );
     }
 
-#if 0 // never do this, let the filters do it.
-    if ( _options.optimize() == true )
-    {
-        OE_DEBUG << LC << "optimize begin" << std::endl;
-
-        // Run the optimizer on the resulting graph
-        int optimizations =
-            osgUtil::Optimizer::FLATTEN_STATIC_TRANSFORMS |
-            osgUtil::Optimizer::REMOVE_REDUNDANT_NODES |
-            osgUtil::Optimizer::COMBINE_ADJACENT_LODS |
-            osgUtil::Optimizer::SHARE_DUPLICATE_STATE |
-            //osgUtil::Optimizer::MERGE_GEOMETRY |
-            osgUtil::Optimizer::CHECK_GEOMETRY |
-            osgUtil::Optimizer::MERGE_GEODES |
-            osgUtil::Optimizer::STATIC_OBJECT_DETECTION;
-
-        osgUtil::Optimizer opt;
-        opt.optimize(resultGroup.get(), optimizations);
-
-        osgUtil::Optimizer::MergeGeometryVisitor mg;
-        mg.setTargetMaximumNumberOfVertices(Registry::instance()->getMaxNumberOfVertsPerDrawable());
-        resultGroup->accept(mg);
-
-        OE_DEBUG << LC << "optimize complete" << std::endl;
-
-        if ( trackHistory ) history.push_back( "optimize" );
-    }
-#endif
-
     //test: dump the tile to disk
     //OE_WARN << "Writing GC node file to out.osgt..." << std::endl;
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osgt" );

@@ -194,8 +194,6 @@ void TileMap::computeNumTiles()
             _numTilesWide /= 2;
             _numTilesHigh /= 2;
         }
-
-        OE_DEBUG << LC << "TMS has " << _numTilesWide << ", " << _numTilesHigh << " tiles at level 0 " <<  std::endl;
     }
 }
 
@@ -457,7 +455,7 @@ TileMapReaderWriter::read( const URI& uri, const osgDB::Options* options )
     {
         OE_DEBUG << LC << "Failed to read TMS tile map file from " << uri.full()
             << " ... " << r.errorDetail() << std::endl;
-        return 0L;
+        return nullptr;
     }
 
     // Read tile map into a Config:
@@ -525,7 +523,6 @@ TileMapReaderWriter::read( const Config& conf )
     const Config* formatConf = tileMapConf->find( ELEM_TILE_FORMAT );
     if ( formatConf )
     {
-        OE_DEBUG << LC << "Read TileFormat " << formatConf->value(ATTR_EXTENSION) << std::endl;
         tileMap->getFormat().setExtension( formatConf->value(ATTR_EXTENSION) );
         tileMap->getFormat().setMimeType ( formatConf->value(ATTR_MIME_TYPE) );
         tileMap->getFormat().setWidth    ( formatConf->value<unsigned>(ATTR_WIDTH,  256) );
@@ -579,7 +576,7 @@ TileMapReaderWriter::read( const Config& conf )
     if ( extentsConf )
     {
         osg::ref_ptr< const osgEarth::Profile > profile = tileMap->createProfile();
-        OE_DEBUG << LC << "Found DataExtents " << std::endl;
+        //OE_DEBUG << LC << "Found DataExtents " << std::endl;
         const ConfigSet& children = extentsConf->children(ELEM_DATA_EXTENT);
         for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
         {
@@ -830,7 +827,7 @@ TMS::Driver::open(const URI& uri,
     // A repo is writable only if it's local.
     if ( uri.isRemote() )
     {
-        OE_DEBUG << LC << "Repo is remote; opening in read-only mode" << std::endl;
+        OE_DEBUG << LC << uri.base() << ": repo is remote; opening in read-only mode" << std::endl;
     }
 
     // Is this a new repo? (You can only create a new repo at a local non-archive URI.)
@@ -852,9 +849,8 @@ TMS::Driver::open(const URI& uri,
     // Take the override profile if one is given
     if ( profile.valid() )
     {
-        OE_INFO << LC
-            << "Using express profile \"" << profile->toString()
-            << "\" for URI \"" << uri.base() << "\""
+        OE_DEBUG << LC << uri.base()
+            << ": Using express profile \"" << profile->toString()
             << std::endl;
 
         DataExtentList extents;
@@ -876,7 +872,7 @@ TMS::Driver::open(const URI& uri,
             }
 
             TMS::TileMapReaderWriter::write( _tileMap.get(), uri.full() );
-            OE_INFO << LC << "Created new TMS repo at " << uri.full() << std::endl;
+            OE_INFO << LC << uri.base() << ": created new TMS repo" << std::endl;
         }
     }
 
@@ -890,8 +886,8 @@ TMS::Driver::open(const URI& uri,
             return Status::Error( Status::ResourceUnavailable, Stringify() << "Failed to read configuration from " << uri.full() );
         }
 
-        OE_DEBUG << LC
-            << "TMS tile map datestamp = "
+        OE_DEBUG << LC << uri.base()
+            << ": TMS tile map datestamp = "
             << DateTime(_tileMap->getTimeStamp()).asRFC1123()
             << std::endl;
 
@@ -918,7 +914,7 @@ TMS::Driver::open(const URI& uri,
     // Automatically set the min and max level of the TileMap
     if ( _tileMap->getTileSets().size() > 0 )
     {
-        OE_DEBUG << LC << "TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
+        OE_DEBUG << LC << uri.base() << ": TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
         if (_tileMap->getDataExtents().size() > 0)
         {
             for (DataExtentList::iterator itr = _tileMap->getDataExtents().begin(); itr != _tileMap->getDataExtents().end(); ++itr)
@@ -967,7 +963,6 @@ TMS::Driver::read(const URI& uri,
                 //of the tilemap and create a transparent image.
                 if (key.getLevelOfDetail() <= _tileMap->getMaxLevel())
                 {
-                    OE_DEBUG << LC << "Returning empty image " << std::endl;
                     if (_isCoverage)
                         return LandCover::createEmptyImage();
                     else
@@ -1080,10 +1075,10 @@ TMS::Driver::resolveWriter(const std::string& format)
         _writer.valid() &&
         (_writer->acceptsExtension("jpeg") || _writer->acceptsExtension("jpg"));
 
-    if (_forceRGBWrites)
-    {
-        OE_INFO << LC << "Note: images will be stored as RGB" << std::endl;
-    }
+    //if (_forceRGBWrites)
+    //{
+    //    OE_DEBUG << LC << uri.base() << ": images will be stored as RGB" << std::endl;
+    //}
 
     return _writer.valid();
 }

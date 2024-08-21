@@ -130,7 +130,7 @@ FeatureSource::setFeatureProfile(const FeatureProfile* fp)
 
         _featureProfile = new_fp;
 
-        OE_INFO << LC << "Set vdatum = " << options().vdatum().get() << std::endl;
+        OE_DEBUG << LC << "Set vdatum = " << options().vdatum().get() << std::endl;
     }
 
     return _featureProfile.get();

@@ -62,7 +62,6 @@ ObserverGroup::traverse( osg::NodeVisitor& nv )
             ADJUST_UPDATE_TRAV_COUNT( this, -1 );
         }
 
-        OE_DEBUG << LC << _orphans.size() << " orphaned children removed." << std::endl;
         _orphans.clear();
     }
 

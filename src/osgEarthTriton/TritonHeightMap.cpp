@@ -251,7 +251,6 @@ TritonHeightMap::getBestFBOConfig(osg::State& state, GLint& out_internalFormat, 
         {
             out_internalFormat = format.internalFormat;
             out_sourceFormat   = format.sourceFormat;
-            OE_INFO << LC << "Height map format = " << format.name << std::endl;
             found = true;
         }
     }
@@ -330,7 +329,7 @@ TritonHeightMap::setup(CameraLocal& local, const std::string& name)
     {
         rttSS->setDefine("OE_TRITON_MASK_SAMPLER", maskLayer->getSharedTextureUniformName());
         rttSS->setDefine("OE_TRITON_MASK_MATRIX", maskLayer->getSharedTextureMatrixUniformName());
-        OE_INFO << LC << "Using mask layer \"" << maskLayer->getName() << "\", sampler=" << maskLayer->getSharedTextureUniformName() << ", matrix=" << maskLayer->getSharedTextureMatrixUniformName() << std::endl;
+        OE_DEBUG << LC << "Using mask layer \"" << maskLayer->getName() << "\", sampler=" << maskLayer->getSharedTextureUniformName() << ", matrix=" << maskLayer->getSharedTextureMatrixUniformName() << std::endl;
     }
 
     if (_terrain.valid())
@@ -402,7 +401,7 @@ TritonHeightMap::traverse(osg::NodeVisitor& nv)
            }
            else
            {
-               OE_DEBUG << LC << "Configuration not yet complete..." << std::endl;
+               //OE_DEBUG << LC << "Configuration not yet complete..." << std::endl;
            }
         }
     }
@@ -419,7 +418,7 @@ TritonHeightMap::getTextureAndMatrix(osg::RenderInfo& ri, GLint& out_texName, os
         return false;
 
     // did the texture change?
-    OE_DEBUG << "FN=" << ri.getState()->getFrameStamp()->getFrameNumber() << "; localFN=" << local._frameNum << std::endl;
+    //OE_DEBUG << "FN=" << ri.getState()->getFrameStamp()->getFrameNumber() << "; localFN=" << local._frameNum << std::endl;
 
     if (ri.getState()->getFrameStamp()->getFrameNumber() > local._frameNum)
         return false;

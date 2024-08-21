@@ -704,8 +704,6 @@ MeshConsolidator::run( osg::Geode& geode )
 
         if ( numVerts > targetNumVertsPerGeom || end == consolidate.end() )
         {
-            OE_DEBUG << LC << "Merging " << ((unsigned)(end-start)) << " geoms with " << numVerts << " verts." << std::endl;
-
             merge( start, end, numVerts, numColors, numNormals, texCoordArrayUnits, useVBOs, results );
 
             start = end;

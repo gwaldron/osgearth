@@ -127,7 +127,6 @@ public:
             std::string featureTableJson;
             featureTableJson.resize(header.featureTableJSONByteLength);
             buf.read(reinterpret_cast<char*>(&featureTableJson[0]), header.featureTableJSONByteLength);
-            OE_DEBUG << "Read featureTableJson " << featureTableJson << std::endl;
 
             osgEarth::Json::Reader reader;
             osgEarth::Json::Value doc;
@@ -162,7 +161,7 @@ public:
             std::string featureTableBinary;
             featureTableBinary.resize(header.featureTableBinaryByteLength);
             buf.read(reinterpret_cast<char*>(&featureTableBinary[0]), header.featureTableBinaryByteLength);
-            OE_DEBUG << "Read featureTableJson " << featureTableBinary << std::endl;
+            //OE_DEBUG << "Read featureTableJson " << featureTableBinary << std::endl;
             bytesRead += header.featureTableBinaryByteLength;
         }
 
@@ -171,7 +170,7 @@ public:
             std::string batchTableJSON;
             batchTableJSON.resize(header.batchTableJSONByteLength);
             buf.read(reinterpret_cast<char*>(&batchTableJSON[0]), header.batchTableJSONByteLength);
-            OE_DEBUG << "Read batchTableJSON " << batchTableJSON << std::endl;
+            //OE_DEBUG << "Read batchTableJSON " << batchTableJSON << std::endl;
             bytesRead += header.batchTableJSONByteLength;
         }
 
@@ -180,7 +179,7 @@ public:
             std::string batchTableBinary;
             batchTableBinary.resize(header.batchTableBinaryByteLength);
             buf.read(reinterpret_cast<char*>(&batchTableBinary[0]), header.batchTableBinaryByteLength);
-            OE_DEBUG << "Read batchTableJSON " << batchTableBinary << std::endl;
+            //OE_DEBUG << "Read batchTableJSON " << batchTableBinary << std::endl;
             bytesRead += header.batchTableBinaryByteLength;
         }
 

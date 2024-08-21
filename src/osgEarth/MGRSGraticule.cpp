@@ -233,7 +233,7 @@ namespace
             }
             else
             {
-                OE_DEBUG << LC << "Empty SQID geom at " << gzd << " " << sqid << std::endl;
+                //OE_DEBUG << LC << "Empty SQID geom at " << gzd << " " << sqid << std::endl;
             }
         }
         return true;
@@ -912,10 +912,6 @@ namespace
 
                 fullExtent.expandToInclude(extent);
             }
-
-            OE_DEBUG << LC << "Created " << features.size() << " text elements for " << getName() << std::endl;
-            
-            //Registry::shaderGenerator().run(this, Registry::stateSetCache());
         }
         
 #ifdef DEBUG_MODE

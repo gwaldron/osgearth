@@ -73,31 +73,23 @@ public:
         GLenum compressedPixelFormat;
         int minLevelSize;
 
-#if 1
         switch (compressedFormat)
         {
         case osg::Texture::USE_S3TC_DXT1_COMPRESSION:
             format = FORMAT_DXT1;
             compressedPixelFormat = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
             minLevelSize = 8;
-            OE_DEBUG << "FastDXT using dxt1 format" << std::endl;
             break;
         case osg::Texture::USE_S3TC_DXT5_COMPRESSION:
             format = FORMAT_DXT5;
             compressedPixelFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
             minLevelSize = 16;
-            OE_DEBUG << "FastDXT dxt5 format" << std::endl;
             break;
         default:
             OSG_WARN << "Unhandled compressed format" << compressedFormat << std::endl;
             return;
             break;
         }
-#else
-        format = FORMAT_DXT5;
-        pixelFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-        minLevelSize = 16;
-#endif
 
         if (generateMipMap)
         {
@@ -203,10 +195,7 @@ public:
             unsigned char* out = (unsigned char*)memalign(16, input.s()*input.t()*4);
             memset(out, 0, input.s()*input.t()*4);
 
-            osg::Timer_t start = osg::Timer::instance()->tick();
             int outputBytes = CompressDXT(in, out, sourceImage->s(), sourceImage->t(), format);
-            osg::Timer_t end = osg::Timer::instance()->tick();
-            OE_DEBUG << "compression took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
 
             //Allocate and copy over the output data to the correct size array.
             unsigned char* data = (unsigned char*)malloc(outputBytes);

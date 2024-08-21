@@ -359,7 +359,6 @@ TFSPackager::package( FeatureSource* features, const std::string& destination, c
                     highestLevel = v._levelAdded;
                 }
                 added++;
-                OE_DEBUG << "Added " << added << std::endl;
             }   
         }
         else

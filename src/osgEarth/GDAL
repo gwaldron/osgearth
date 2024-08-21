@@ -116,7 +116,8 @@ namespace osgEarth
                 unsigned tileSize,
                 const Profile* fallback_profile,
                 DataExtentList* out_dataExtents,
-                const osgDB::Options* readOptions);
+                const osgDB::Options* readOptions,
+                bool verbose);
 
             //! Creates an image if possible
             osg::Image* createImage(
@@ -236,21 +237,16 @@ namespace osgEarth
     public: // Layer
 
         //! Called by the constructor
-        virtual void init();
+        void init() override;
 
         //! Establishes a connection to the TMS repository
-        virtual Status openImplementation();
+        Status openImplementation() override;
 
         //! Closes down any GDAL connections
-        virtual Status closeImplementation();
+        Status closeImplementation() override;
 
         //! Gets a raster image for the given tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
-
-    protected:
-
-        //! Destructor
-        virtual ~GDALImageLayer() { }
+        GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
     };
 
 
@@ -304,21 +300,16 @@ namespace osgEarth
     public: // Layer
 
         //! Called by the constructor
-        virtual void init();
+        void init() override;
 
         //! Establishes a connection to the repository
-        virtual Status openImplementation();
+        Status openImplementation() override;
 
         //! Closes down any GDAL connections
-        virtual Status closeImplementation();
+        Status closeImplementation() override;
 
         //! Gets a heightfield for the given tile key
-        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const;
-
-    protected:
-
-        //! Destructor
-        virtual ~GDALElevationLayer() { }
+        GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const override;
     };
 
 } // namespace osgEarth

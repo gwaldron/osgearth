@@ -481,13 +481,11 @@ BiomeLayer::createImageImplementation(
         OE_DEBUG << LC << buf.str() << std::endl;
     }
 
-#if 1
     // local cache:
     {
         std::lock_guard<std::mutex> lock(_imageCache.mutex());
         _imageCache[key] = image.get();
     }
-#endif
 
     return result;
 }
@@ -570,7 +568,7 @@ BiomeLayer::objectDeleted(void* value)
 
     _tracker.scoped_lock([&]()
         {
-            OE_DEBUG << LC << "Unloaded " << token->getName() << std::endl;
+            //OE_DEBUG << LC << "Unloaded " << token->getName() << std::endl;
 
             if (getAutoBiomeManagement())
             {

@@ -142,9 +142,9 @@ TileSourceImageLayer::openImplementation()
             }
 
             // Set the profile from the TileSource if possible:
-            if (getProfile() == NULL)
+            if (getProfile() == nullptr)
             {
-                OE_DEBUG << LC << "Get Profile from tile source" << std::endl;
+                OE_DEBUG << LC << "Getting Profile from tile source" << std::endl;
                 setProfile(_tileSource->getProfile());
             }
         }
@@ -182,13 +182,11 @@ TileSourceImageLayer::createImageImplementation(const TileKey& key, ProgressCall
     // Fail is the image is blacklisted.
     if ( _tileSource->getBlacklist()->contains(key) )
     {
-        OE_DEBUG << LC << "createImageFromTileSource: blacklisted(" << key.str() << ")" << std::endl;
         return GeoImage::INVALID;
     }
 
     if (!mayHaveData(key))
     {
-        OE_DEBUG << LC << "createImageFromTileSource: mayHaveData(" << key.str() << ") == false" << std::endl;
         return GeoImage::INVALID;
     }
 

@@ -126,7 +126,7 @@ namespace
 
             std::string stripped = osgDB::getNameLessExtension(filename);
 
-            OE_DEBUG << LC << "Loading " << stripped << " from PLOD/Proxy and generating shaders." << std::endl;
+            //OE_DEBUG << LC << "Loading " << stripped << " from PLOD/Proxy and generating shaders." << std::endl;
 
             osgEarth::ReadResult result = URI(stripped).readNode(options);
             if ( result.succeeded() && result.getNode() != 0L )

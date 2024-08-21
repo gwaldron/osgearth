@@ -695,7 +695,7 @@ SimplexNoise::createSeamlessImage(unsigned dim) const
         float scale = 1.0/(maxN-minN);
         float bias = -minN;
 
-        OE_INFO << "minN=" << minN << "; maxN=" << maxN << "; scale=" << scale << "; bias=" << bias << "\n";
+        //OE_DEBUG << "minN=" << minN << "; maxN=" << maxN << "; scale=" << scale << "; bias=" << bias << "\n";
 
         ImageUtils::PixelReader read(image);
         read.setBilinear(false);

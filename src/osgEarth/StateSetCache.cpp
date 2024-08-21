@@ -463,7 +463,7 @@ StateSetCache::prune()
         }
     }
 
-    OE_DEBUG << LC << "Pruned " << sa_count << " attributes, " << ss_count << " statesets" << std::endl;
+    OE_NULL << LC << "Pruned " << sa_count << " attributes, " << ss_count << " statesets" << std::endl;
 }
 
 void

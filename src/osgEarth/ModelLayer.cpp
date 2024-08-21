@@ -225,7 +225,7 @@ ModelLayer::openImplementation()
     {
         std::string driverName = options().driver()->getDriver();
 
-        OE_INFO << LC << "Opening; driver=\"" << driverName << "\"" << std::endl;
+        //OE_INFO << LC << "Opening; driver=\"" << driverName << "\"" << std::endl;
 
         Status status;
 

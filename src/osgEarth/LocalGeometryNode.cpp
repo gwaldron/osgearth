@@ -241,8 +241,6 @@ LocalGeometryNode::onTileUpdate(const TileKey&          key,
     {
         _clampInUpdateTraversal = true;
         ADJUST_UPDATE_TRAV_COUNT(this, +1);
-
-        OE_DEBUG << LC << "LGN: clamp requested b/c of key " << key.str() << std::endl;
     }
 }
 
@@ -277,8 +275,6 @@ LocalGeometryNode::clamp(osg::Node* graph, const Terrain* terrain)
         clamper.setOffset(getPosition().alt());
 
         this->accept( clamper );
-        
-        OE_DEBUG << LC << "LGN: clamped.\n";
     }
 }
 

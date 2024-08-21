@@ -850,7 +850,7 @@ GLBuffer::GLBuffer(GLenum target, osg::State& state) :
     if (name() == 0)
     {
         GLenum e = glGetError();
-        OE_INFO << "OpenGL error " << e << std::endl;
+        OE_FATAL << "OpenGL error " << e << std::endl;
         OE_HARD_ASSERT(name() != 0);
     }
 }

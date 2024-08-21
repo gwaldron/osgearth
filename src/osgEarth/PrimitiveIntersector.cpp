@@ -738,8 +738,7 @@ unsigned int PrimitiveIntersector::findPrimitiveIndex(osg::Drawable* drawable, u
         }
     }
 
-    //Should never reach here
-    OE_DEBUG << LC << "Could not find primitive index!" << std::endl;
+    // Should never reach here
 
     return index;
 }

@@ -114,25 +114,25 @@ KMLReader::read( xml_document<>& doc, const osgDB::Options* dbOptions )
     {
         KML_Root kmlRoot;
 
-        osg::Timer_t start = osg::Timer::instance()->tick();
+        //osg::Timer_t start = osg::Timer::instance()->tick();
         kmlRoot.scan ( top, cx );    // first pass
-        osg::Timer_t end = osg::Timer::instance()->tick();
-        OE_INFO << LC << "  Scan1 took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
+        //osg::Timer_t end = osg::Timer::instance()->tick();
+        //OE_DEBUG << LC << "  Scan1 took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
 
-        start = osg::Timer::instance()->tick();
+        //start = osg::Timer::instance()->tick();
         kmlRoot.scan2( top, cx );   // second pass
-        end = osg::Timer::instance()->tick();
-        OE_INFO << LC << "  Scan2 took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
+        //end = osg::Timer::instance()->tick();
+        //OE_DEBUG << LC << "  Scan2 took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
 
-        start = osg::Timer::instance()->tick();
+        //start = osg::Timer::instance()->tick();
         kmlRoot.build( top, cx );   // third pass.
-        end = osg::Timer::instance()->tick();
-        OE_INFO << LC << "  build took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
+        //end = osg::Timer::instance()->tick();
+        //OE_DEBUG << LC << "  build took " << osg::Timer::instance()->delta_s(start, end) << std::endl;
     }
 
     URIResultCache* cacheUsed = URIResultCache::from(cx._dbOptions.get());
     CacheStats stats = cacheUsed->getStats();
-    OE_INFO << LC << "  URI Cache: " << stats._queries << " reads, " << (stats._hitRatio*100.0) << "% hits" << std::endl;
+    OE_DEBUG << LC << "  URI Cache: " << stats._queries << " reads, " << (stats._hitRatio*100.0) << "% hits" << std::endl;
 
     // Make sure the KML gets rendered after the terrain.
     root->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");

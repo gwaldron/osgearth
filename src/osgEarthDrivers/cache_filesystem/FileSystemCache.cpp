@@ -212,7 +212,7 @@ namespace
                 << "Failed to create or access folder \"" << _rootPath << "\"");
             return;
         }
-        OE_INFO << LC << "Opened a filesystem cache at \"" << _rootPath << "\"\n";
+        OE_INFO << LC << "Opened a filesystem cache at \"" << _rootPath << "\"" << std::endl;
 
         // create a thread pool dedicated to asynchronous cache writes
         setNumThreads(_options.threads().get());

@@ -494,9 +494,6 @@ MapNode::~MapNode()
 
     osg::observer_ptr<TerrainEngineNode> te = _terrainEngine;
     removeChildren(0, getNumChildren());
-    
-    OE_DEBUG << LC << "~MapNode (TerrainEngine="
-        << (te.valid()? te.get()->referenceCount() : 0) << ", Map=" << _map->referenceCount() << ")\n";
 }
 
 void
@@ -766,8 +763,6 @@ MapNode::onLayerAdded(Layer* layer, unsigned index)
     osg::Node* node = layer->getNode();
     if (node)
     {
-        OE_DEBUG << LC << "Adding node from layer \"" << layer->getName() << "\" to the scene graph\n";
-
         // notify before adding it to the graph:
         layer->getSceneGraphCallbacks()->firePreMergeNode(node);
 

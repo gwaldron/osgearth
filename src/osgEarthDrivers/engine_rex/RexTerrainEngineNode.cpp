@@ -249,7 +249,7 @@ RexTerrainEngineNode::onSetMap()
 
     _morphingSupported = true;
     auto options = getOptions();
-    if (options.getLODMethod() ==LODMethod::SCREEN_SPACE)
+    if (options.getLODMethod() == LODMethod::SCREEN_SPACE)
     {
         OE_INFO << LC << "LOD method = pixel size; pixel tile size = " << options.getTilePixelSize() << std::endl;
 
@@ -552,7 +552,7 @@ RexTerrainEngineNode::refresh(bool forceDirty)
         getMap()->getProfile()->getAllKeysAtLOD(getOptions().getFirstLOD(), keys);
 
         // create a root node for each root tile key.
-        OE_INFO << LC << "Creating " << keys.size() << " root keys." << std::endl;
+        OE_DEBUG << LC << "Creating " << keys.size() << " root keys." << std::endl;
 
         // We need to take a self-ref here to ensure that the TileNode's data loader
         // can use its observer_ptr back to the terrain engine.
@@ -582,8 +582,6 @@ RexTerrainEngineNode::refresh(bool forceDirty)
 
             // And load the tile's data
             jobs::dispatch([tileNode]() { tileNode->loadSync(); }, context);
-
-            OE_DEBUG << " - " << (i + 1) << "/" << keys.size() << " : " << keys[i].str() << std::endl;
         }
 
         // wait for all loadSync calls to complete
@@ -929,7 +927,6 @@ RexTerrainEngineNode::cull_traverse(osg::NodeVisitor& nv)
     if (culler._orphanedPassesDetected > 0u)
     {
         _renderModelUpdateRequired = true;
-        OE_DEBUG << LC << "Detected " << culler._orphanedPassesDetected << " orphaned rendering passes\n";
     }
 
     // we don't call this b/c we don't want _terrain
@@ -1005,7 +1002,6 @@ RexTerrainEngineNode::update_traverse(osg::NodeVisitor& nv)
         if (fs->getFrameNumber() - iter.second._lastCull.getFrameNumber() > 60)
         {
             _persistent.erase(iter.first);
-            OE_DEBUG << LC << "Releasing orphaned view data" << std::endl;
             break;
         }
     }
@@ -1167,7 +1163,7 @@ RexTerrainEngineNode::addSurfaceLayer(Layer* layer)
                     newBinding.samplerName() = imageLayer->getSharedTextureUniformName();
                     newBinding.matrixName() = imageLayer->getSharedTextureMatrixUniformName();
 
-                    OE_INFO << LC
+                    OE_DEBUG << LC
                         << "Shared Layer \"" << imageLayer->getName() << "\" : sampler=\"" << newBinding.samplerName() << "\", "
                         << "matrix=\"" << newBinding.matrixName() << "\", "
                         << "unit=" << newBinding.unit() << "\n";
@@ -1196,7 +1192,7 @@ RexTerrainEngineNode::addSurfaceLayer(Layer* layer)
                         tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
                         _terrainSS->addUniform(new osg::Uniform(newBinding.samplerName().c_str(), newBinding.unit()));
                         _terrainSS->setTextureAttribute(newBinding.unit(), tex.get(), 1);
-                        OE_INFO << LC << "Bound shared sampler " << newBinding.samplerName() << " to unit " << newBinding.unit() << std::endl;
+                        OE_DEBUG << LC << "Bound shared sampler " << newBinding.samplerName() << " to unit " << newBinding.unit() << std::endl;
                     }
                 }
             }
@@ -1247,7 +1243,7 @@ RexTerrainEngineNode::removeImageLayer(ImageLayer* layerRemoved)
                 SamplerBinding& binding = _renderBindings[i];
                 if (binding.isActive() && binding.sourceUID() == layerRemoved->getUID())
                 {
-                    OE_INFO << LC << "Binding (" << binding.samplerName() << " unit " << binding.unit() << ") cleared\n";
+                    OE_DEBUG << LC << "Binding (" << binding.samplerName() << " unit " << binding.unit() << ") cleared\n";
                     binding.usage().clear();
                     binding.unit() = -1;
                     binding.sourceUID().clear();

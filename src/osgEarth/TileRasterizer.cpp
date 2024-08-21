@@ -398,7 +398,8 @@ TileRasterizer::postDraw(osg::RenderInfo& ri)
     {
         if (promise.empty())
         {
-            OE_DEBUG << "Job " << job << " canceled" << std::endl;
+            // job was canceled / abandoned
+            //OE_DEBUG << "Job " << job << " canceled" << std::endl;
             return false; // done
         }
 

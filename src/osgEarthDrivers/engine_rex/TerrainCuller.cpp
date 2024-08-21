@@ -103,7 +103,6 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
         pass->visibleLayer() && 
         pass->visibleLayer()->getVisible() == false)
     {
-        //OE_DEBUG << LC << "Skipping " << pass->visibleLayer()->getName() << " because it's not visible." << std::endl;
         return nullptr;
     }
 
@@ -127,11 +126,6 @@ TerrainCuller::addDrawCommand(UID uid, const TileRenderModel* model, const Rende
                     ! le._extent.intersects(tileNode->getKey().getExtent(), false))
                 {
                     // culled out!
-                    //OE_DEBUG << LC << "Skippping " << drawable->_layer->getName() 
-                    //    << " key " << tileNode->getKey().str()
-                    //    << " because it was culled by extent." << std::endl;
-                    //return 0L;
-
                     tile._intersectsLayerExtent = false;
                 }
             }

@@ -173,7 +173,9 @@ GeometryCloud::add(
     if (alignment > 0u)
     {
         unsigned padding = align((unsigned)_verts->size(), alignment) - _verts->size();
-        OE_DEBUG << "vert size = " << _verts->size() << " so pad it with " << padding << " bytes" << std::endl;
+
+        //OE_DEBUG << "vert size = " << _verts->size() << " so pad it with " << padding << " bytes" << std::endl;
+
         for(unsigned i=0; i<padding; ++i)
         {   
             _verts->push_back(osg::Vec3());

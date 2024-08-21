@@ -305,9 +305,7 @@ OE_LAYER_PROPERTY_IMPL(TritonLayer, std::string, VerticalDatum, vdatum);
 void
 TritonLayer::init()
 {
-    OE_INFO << LC << "Creating TritonLayer\n";
-
-    osgEarth::VisibleLayer::init();
+    super::init();
 
     _seaLevel = 0.0f;
 
@@ -325,7 +323,7 @@ TritonLayer::init()
     _root = lod;
     if (options().maxAltitude().isSet())
     {
-        OE_INFO << LC << "Setting max altitude = " << options().maxAltitude().get() << std::endl;
+        OE_DEBUG << LC << "Setting max altitude = " << options().maxAltitude().get() << std::endl;
         lod->setMaxElevation(options().maxAltitude().get());
     }
 

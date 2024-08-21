@@ -138,7 +138,7 @@ LandCoverDictionary::Options::fromConfig(const Config& conf)
             }
         }
     }
-    OE_INFO << LC << _landCoverClasses.size() << " classes defined.\n";
+    OE_DEBUG << LC << _landCoverClasses.size() << " classes defined." << std::endl;
 }
 
 Config

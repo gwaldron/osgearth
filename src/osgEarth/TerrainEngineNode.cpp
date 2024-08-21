@@ -99,7 +99,7 @@ TerrainEngineNode::TerrainEngineNode() :
 
 TerrainEngineNode::~TerrainEngineNode()
 {
-    OE_DEBUG << LC << "~TerrainEngineNode\n";
+    //nop
 }
 
 namespace

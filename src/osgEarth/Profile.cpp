@@ -255,7 +255,7 @@ Profile::create(const std::string& srsInitString,
     }
     else if ( srs.valid() )
     {
-        OE_INFO << LC << "No extents given, making some up.\n";
+        OE_DEBUG << LC << "No extents given, making a best guess" << std::endl;
         Bounds bounds;
         if (srs->getBounds(bounds))
         {
@@ -732,11 +732,6 @@ Profile::clampAndTransformExtent(const GeoExtent& input, bool* out_clamped) cons
             clamped_gcs_input :
             clamped_gcs_input.transform( this->getSRS() );
 
-        if (result.isValid())
-        {
-            OE_DEBUG << LC << "clamp&xform: input=" << input.toString() << ", output=" << result.toString() << std::endl;
-        }
-
         return result;
     }    
 }
@@ -805,8 +800,6 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, unsigned localLOD, std::
     tileMinY = osg::clampBetween(tileMinY, 0, (int)numHigh-1);
     tileMaxY = osg::clampBetween(tileMaxY, 0, (int)numHigh-1);
 
-    OE_DEBUG << std::fixed << "  Dest Tiles: " << tileMinX << "," << tileMinY << " => " << tileMaxX << "," << tileMaxY << std::endl;
-
     for (int i = tileMinX; i <= tileMaxX; ++i)
     {
         for (int j = tileMinY; j <= tileMaxY; ++j)
@@ -821,8 +814,6 @@ Profile::addIntersectingTiles(const GeoExtent& key_ext, unsigned localLOD, std::
 void
 Profile::getIntersectingTiles(const TileKey& key, std::vector<TileKey>& out_intersectingKeys) const
 {
-    OE_DEBUG << "GET ISECTING TILES for key " << key.str() << " -----------------" << std::endl;
-
     //If the profiles are exactly equal, just add the given tile key.
     if ( isHorizEquivalentTo( key.getProfile() ) )
     {
@@ -836,9 +827,6 @@ Profile::getIntersectingTiles(const TileKey& key, std::vector<TileKey>& out_inte
         // in the source LOD in terms of resolution.
         unsigned localLOD = getEquivalentLOD(key.getProfile(), key.getLOD());
         getIntersectingTiles(key.getExtent(), localLOD, out_intersectingKeys);
-
-        OE_DEBUG << LC << "GIT, key="<< key.str() << ", localLOD=" << localLOD
-            << ", resulted in " << out_intersectingKeys.size() << " tiles" << std::endl;
     }
 }
 

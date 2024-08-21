@@ -50,7 +50,7 @@ void
 UTMLabelingEngine::setMaxResolution(double value)
 {
     _maxRes = osg::maximum(value, 1.0);
-    OE_INFO << LC << "Max resolution = " << _maxRes << std::endl;
+    //OE_INFO << LC << "Max resolution = " << _maxRes << std::endl;
 }
 
 bool

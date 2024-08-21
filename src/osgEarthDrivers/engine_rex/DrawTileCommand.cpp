@@ -127,9 +127,7 @@ DrawTileCommand::apply(osg::RenderInfo& ri, void* implData) const
 }
 
 void
-DrawTileCommand::debug(
-    osg::RenderInfo& ri,
-    void* implData) const
+DrawTileCommand::debug(osg::RenderInfo& ri, void* implData) const
 {
     DrawState& ds = *static_cast<DrawState*>(implData);
     ProgramState& pps = ds.getProgramState(ri);

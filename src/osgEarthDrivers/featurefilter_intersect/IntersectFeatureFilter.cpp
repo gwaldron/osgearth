@@ -165,8 +165,6 @@ public: // FeatureFilter
                 }
             }
 
-            OE_DEBUG << LC << "Allowed " << output.size() << " out of " << input.size() << " features\n";
-
             input = output;
         }
 

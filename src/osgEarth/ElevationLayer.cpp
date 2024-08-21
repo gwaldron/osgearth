@@ -187,7 +187,6 @@ ElevationLayer::normalizeNoDataValues(osg::HeightField* hf) const
             float& value = *i;
             if ( osg::isNaN(value) || osg::equivalent(value, getNoDataValue()) || value < getMinValidValue() || value > getMaxValidValue() )
             {
-                OE_DEBUG << "Replaced " << value << " with NO_DATA_VALUE" << std::endl;
                 value = NO_DATA_VALUE;
             }
         }
@@ -556,7 +555,6 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
             // any new data, just return the cached data.
             if (!hf.valid() && cachedHF.valid())
             {
-                OE_DEBUG << LC << "Using cached but expired heightfield for " << key.str() << std::endl;
                 hf = cachedHF;
             }
 

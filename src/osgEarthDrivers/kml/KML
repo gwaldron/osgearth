@@ -47,12 +47,12 @@ namespace osgEarth { namespace KML
         osgDB::Registry::instance()->addArchiveExtension( "kmz" );
         if ( osgDB::getLowerCaseFileExtension(uri.full()) == "kmz" )
         {
-            OE_INFO << "[KML] Preloading KML plugin\n";
+            //OE_INFO << "[KML] Preloading KML plugin\n";
             std::string libName = osgDB::Registry::instance()->createLibraryNameForExtension("kml");
             osgDB::Registry::LoadStatus status = osgDB::Registry::instance()->loadLibrary(libName);
             if ( status == osgDB::Registry::NOT_LOADED )
             {
-                OE_WARN << "[KML] FAILED!\n";
+                OE_WARN << "[KML] Failed to load KML plugin!" << std::endl;
             }
             URI newURI( uri.full() + "/doc.kml", uri.context() );
             return load( newURI, mapNode, dbOptions, kmlOptions );

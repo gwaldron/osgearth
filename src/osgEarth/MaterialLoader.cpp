@@ -192,7 +192,7 @@ MaterialLoader::apply(osg::StateSet* ss)
                 mat_tex->setMaxAnisotropy(t->getMaxAnisotropy());
 
                 _cache[materialURI.full()] = mat_tex;
-                OE_INFO << LC << "Loaded material tex '" << materialURI.base() << "' to unit " << unit << std::endl;
+                OE_DEBUG << LC << "Loaded material tex '" << materialURI.base() << "' to unit " << unit << std::endl;
             }
         }   
 

@@ -1932,18 +1932,16 @@ VirtualProgram::PolyShader::getShader(unsigned mask) const
         _location == VirtualProgram::LOCATION_VERTEX_CLIP ||
         _location == VirtualProgram::LOCATION_VERTEX_TRANSFORM_MODEL_TO_VIEW)
     {
-        OE_DEBUG << "getShader, mask = " << std::hex << mask << ", location = " << _location << "\n";
-
         // geometry stage has priority (runs last)
         if (mask & VirtualProgram::STAGE_GEOMETRY)
         {
-            OE_DEBUG << "Installing GS for VIEW/CLIP shader!\n";
+            //OE_DEBUG << "Installing GS for VIEW/CLIP shader!\n";
             return _geomShader.get();
         }
 
         else if (mask & VirtualProgram::STAGE_TESSEVALUATION)
         {
-            OE_DEBUG << "Installing TES for VIEW/CLIP shader!\n";
+            //OE_DEBUG << "Installing TES for VIEW/CLIP shader!\n";
             return _tessevalShader.get();
         }
     }
@@ -2172,15 +2170,12 @@ namespace
         {
             std::string name;
             is >> name >> is.BEGIN_BRACKET;
-            OE_DEBUG << "Name = " << name << std::endl;
             {
                 unsigned location;
                 is >> is.PROPERTY("Location") >> location;
-                OE_DEBUG << "Location = " << location << std::endl;
 
                 float order;
                 is >> is.PROPERTY("Order") >> order;
-                OE_DEBUG << "Order = " << order << std::endl;
 
                 std::string source;
                 is >> is.PROPERTY("Source");
@@ -2194,7 +2189,6 @@ namespace
                         source.append(line); source.append(1, '\n');
                     }
                 }
-                OE_DEBUG << "Source = " << source << std::endl;
                 is >> is.END_BRACKET;
 
                 attr.setFunction(name, source, (osgEarth::VirtualProgram::FunctionLocation)location, order);

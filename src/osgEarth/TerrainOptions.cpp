@@ -149,7 +149,7 @@ TerrainOptions::fromConfig(const Config& conf)
     {
         if (conf.hasValue(key))
         {
-            OE_INFO << LC << "Deprecated key \"" << key << "\" ignored" << std::endl;
+            OE_DEBUG << LC << "Deprecated key \"" << key << "\" ignored" << std::endl;
         }
     }
 }

@@ -867,7 +867,7 @@ FlatteningLayer::addedToMap(const Map* map)
             break;
         }
         else {
-            OE_INFO << LC << "Using: " << i->get()->getName() << "\n";
+            OE_DEBUG << LC << "Using: " << i->get()->getName() << "\n";
         }
     }
     if (!layers.empty())
@@ -876,7 +876,7 @@ FlatteningLayer::addedToMap(const Map* map)
     }
 
     // Initialize the elevation pool with our map:
-    OE_INFO << LC << "Attaching elevation pool to map\n";
+    //OE_DEBUG << LC << "Attaching elevation pool to map" << std::endl;
     _pool = map->getElevationPool();
     _pool->setMap(map);
 

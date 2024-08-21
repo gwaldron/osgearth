@@ -27,26 +27,6 @@
 
 using namespace osgEarth;
 
-namespace
-{
-    class TiledModelLayerPager : public SimplePager
-    {
-    public:
-        TiledModelLayerPager(const Map* map, TiledModelLayer* layer) :
-            SimplePager(map, layer->getProfile()),
-            _layer(layer)
-        {
-        }
-
-        virtual osg::ref_ptr<osg::Node> createNode(const TileKey& key, ProgressCallback* progress) override
-        {
-            return _layer->createTile(key, progress);
-        }
-
-        osg::observer_ptr< TiledModelLayer > _layer;
-    };
-}
-
 void TiledModelLayer::Options::fromConfig(const Config& conf)
 {
     additive().setDefault(false);
@@ -98,7 +78,7 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
 {
     osg::ref_ptr<osg::Node> result;
 
-    if (key.getProfile()->isEquivalentTo(getProfile()))
+    if (key.getProfile()->isHorizEquivalentTo(getProfile()))
     {
         result = createTileImplementation(key, progress);
     }
@@ -149,30 +129,6 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
                     if (render)
                         render->applyTo(group);
                 });
-
-
-#if 0
-            auto drawable = new ChonkDrawable();
-
-            auto xform = findTopMostNodeOfType<osg::MatrixTransform>(result.get());
-            if (xform)
-            {
-                for (unsigned i = 0; i < xform->getNumChildren(); ++i)
-                {
-                    drawable->add(xform->getChild(i), _chonkFactory);
-                }
-                xform->removeChildren(0, xform->getNumChildren());
-                xform->addChild(drawable);
-                result = xform;
-            }
-            else
-            {
-                if (drawable->add(result.get(), _chonkFactory))
-                {
-                    result = drawable;
-                }
-            }
-#endif
         }
         else
         {
@@ -232,8 +188,10 @@ TiledModelLayer::removedFromMap(const Map* map)
 
     if (_root.valid())
     {
-        osg::ref_ptr<TiledModelLayerPager> node = findTopMostNodeOfType<TiledModelLayerPager>(_root.get());
-        if (node.valid()) node->setDone();
+        osg::ref_ptr<SimplePager> node = findTopMostNodeOfType<SimplePager>(_root.get());
+        if (node.valid())
+            node->setDone();
+
         _root->removeChildren(0, _root->getNumChildren());
     }
 }
@@ -271,12 +229,20 @@ void TiledModelLayer::create()
     {
         _root->removeChildren(0, _root->getNumChildren());
 
-        TiledModelLayerPager* pager = new TiledModelLayerPager(_map.get(), this);
+        auto pager = new SimplePager(_map.get(), getProfile());
+
+        pager->setCreateNodeFunction([layer_weak{ osg::observer_ptr<TiledModelLayer>(this) }](const TileKey& key, ProgressCallback* progress)
+            {
+                osg::ref_ptr<TiledModelLayer> layer;
+                return layer_weak.lock(layer) ? layer->createTile(key, progress) : osg::ref_ptr<osg::Node>();
+            });
+
         pager->setAdditive(this->getAdditive());
         pager->setRangeFactor(this->getRangeFactor());
         pager->setMinLevel(this->getMinLevel());
         pager->setMaxLevel(this->getMaxLevel());
         pager->build();
+
         // TODO:  NVGL
         _root->addChild(pager);
         _graphDirty = false;

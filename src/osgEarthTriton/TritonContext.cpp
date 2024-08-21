@@ -198,7 +198,7 @@ TritonContext::releaseGLObjects(osg::State* state) const
 {
     osg::Object::releaseGLObjects(state);
 
-    OE_INFO << LC << "Triton shutting down - releasing GL resources\n";
+    OE_DEBUG << LC << "Triton shutting down - releasing GL resources\n";
     if (state)
     {
         if ( _ocean )

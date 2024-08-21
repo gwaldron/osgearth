@@ -117,7 +117,7 @@ ModelResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOption
     {
         node = r.releaseNode();
         
-        OE_INFO << LC << "Loaded " << uri.base() << "(from " << (r.isFromCache()? "cache" : "source") << ")"
+        OE_DEBUG << LC << "Loaded " << uri.base() << " (from " << (r.isFromCache()? "cache" : "source") << ")"
             << std::endl;
 
         osgUtil::Optimizer o;

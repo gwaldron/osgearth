@@ -98,11 +98,6 @@ FeatureSourceIndexNode::~FeatureSourceIndexNode()
         std::set<FeatureID> fidsToRemove;
         fidsToRemove.insert(KeyIter<FID_to_RefIDPair>(_fids.begin()), KeyIter<FID_to_RefIDPair>(_fids.end()));
         _fids.clear();
-
-        std::string message = Stringify() << "Removing " << fidsToRemove.size();
-        OE_PROFILING_ZONE_TEXT(message.c_str());
-
-        OE_DEBUG << LC << "Removing " << fidsToRemove.size() << " fids\n";
         _index->removeFIDs( fidsToRemove.begin(), fidsToRemove.end() );
     }
 }
@@ -187,7 +182,6 @@ namespace
             FeatureSourceIndexNode* indexNode = dynamic_cast<FeatureSourceIndexNode*>(&node);
             if (indexNode)
             {
-                //OE_INFO << LC << "Reconstituting index...\n";
                 indexNode->setIndex(_index);
                 indexNode->reIndex(_oldToNew);
             }
@@ -498,8 +492,6 @@ FeatureSourceIndex::tagNode(osg::Node* node, Feature* feature)
             _embeddedFeatures[fid] = feature;
         }
     }
-
-    OE_DEBUG << LC << "Tagging feature ID = " << fid << " => " << oid << " (" << feature->getString("name") << ")\n";
 
     return p;
 }

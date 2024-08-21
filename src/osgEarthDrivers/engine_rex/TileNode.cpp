@@ -218,7 +218,6 @@ TileNode::initializeData()
     _context->tiles()->add( this );
 
     // tell the world.
-    OE_DEBUG << LC << "notify (create) key " << getKey().str() << std::endl;
     _context->getEngine()->getTerrain()->notifyTileUpdate(getKey(), this);
 }
 
@@ -902,7 +901,7 @@ TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifes
                     else
                     {
                         // note: this can happen with an async layer load
-                        OE_DEBUG << "no parent pass in my pass. key=" << model->key.str() << std::endl;
+                        //OE_DEBUG << "no parent pass in my pass. key=" << model->key.str() << std::endl;
                     }
 
                     // check whether it's actually a futuretexture.
@@ -942,7 +941,7 @@ TileNode::merge(const TerrainTileModel* model, const CreateTileManifest& manifes
                 manifest.includes(myPass.layer()) &&
                 !uidsLoaded.contains(myPass.sourceUID()))
             {
-                OE_DEBUG << LC << "Releasing orphaned layer " << myPass.layer()->getName() << std::endl;
+                //OE_DEBUG << LC << "Releasing orphaned layer " << myPass.layer()->getName() << std::endl;
 
                 // release the GL objects associated with this pass.
                 // taking this out...can cause "flashing" issues

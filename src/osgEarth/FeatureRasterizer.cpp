@@ -1261,8 +1261,6 @@ FeatureRasterizer::render(
 
     OE_PROFILING_ZONE;
 
-    OE_DEBUG << LC << "Rendering " << features.size() << " features" << std::endl;
-
     const SpatialReference* featureSRS = features.front()->getSRS();
     OE_SOFT_ASSERT_AND_RETURN(featureSRS != nullptr, void());
 

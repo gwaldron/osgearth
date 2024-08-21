@@ -101,7 +101,6 @@ ImageToFeatureSource::openImplementation()
 void
 ImageToFeatureSource::addedToMap(const Map* map)
 {
-    OE_DEBUG << LC << "addedToMap" << std::endl;
     options().image().addedToMap(map);
     FeatureSource::addedToMap(map);
 }

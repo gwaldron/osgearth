@@ -1041,10 +1041,6 @@ EarthManipulator::setViewpoint(const Viewpoint& vp, double duration_seconds)
 
         _setVPDuration.set( std::max(duration_seconds, 0.0), Units::SECONDS );
 
-        OE_DEBUG << LC << "setViewpoint:\n"
-            << "    from " << _setVP0->toString() << "\n"
-            << "    to   " << _setVP1->toString() << "\n";
-
         // access the new tether node if it exists:
         osg::ref_ptr<osg::Node> endNode = _setVP1->getNode();
 
@@ -1591,11 +1587,11 @@ EarthManipulator::updateProjection(osg::Camera* eventCamera)
 
                 eventCamera->setProjectionMatrix(orthoProj);
 
-                OE_DEBUG << "ORTHO: "
-                    << "ar = " << ar << ", width=" << vp->width() << ", height=" << vp->height()
-                    << ", dist = " << _distance << ", vfov=" << _lastKnownVFOV
-                    << ", X = " << x << ", Y = " << y
-                    << std::endl;
+                //OE_DEBUG << "ORTHO: "
+                //    << "ar = " << ar << ", width=" << vp->width() << ", height=" << vp->height()
+                //    << ", dist = " << _distance << ", vfov=" << _lastKnownVFOV
+                //    << ", X = " << x << ", Y = " << y
+                //    << std::endl;
             }
         }
     }

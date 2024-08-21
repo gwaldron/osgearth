@@ -430,7 +430,7 @@ namespace
 void
 DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 {
-    OE_INFO << LC << "Using texture size = " << _textureSize.get() << std::endl;
+    OE_DEBUG << LC << "Using texture size = " << _textureSize.get() << std::endl;
 
     // create the projected texture:
     osg::Texture2D* projTexture = new DrapingTexture(); 
@@ -461,7 +461,7 @@ DrapingTechnique::setUpCamera(OverlayDecorator::TechRTTParams& params)
 
     if ( _attachStencil )
     {
-        OE_INFO << LC << "Attaching a stencil buffer to the RTT camera" << std::endl;
+        OE_DEBUG << LC << "Attaching a stencil buffer to the RTT camera" << std::endl;
 
         // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
         // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
@@ -600,7 +600,7 @@ DrapingTechnique::preCullTerrain(OverlayDecorator::TechRTTParams& params,
                 if ( params._terrainResources->reserveTextureImageUnit(texUnit, "Draping") )
                 {
                     _textureUnit = texUnit;
-                    OE_INFO << LC << "Reserved texture image unit " << *_textureUnit << std::endl;
+                    OE_DEBUG << LC << "Reserved texture image unit " << *_textureUnit << std::endl;
                 }
                 else
                 {
@@ -698,7 +698,7 @@ DrapingTechnique::setMipMapping( bool value )
         _mipmapping = value;
 
         if ( _mipmapping )
-            OE_INFO << LC << "Overlay mipmapping " << (value?"enabled":"disabled") << std::endl;
+            OE_DEBUG << LC << "Overlay mipmapping " << (value?"enabled":"disabled") << std::endl;
     }
 }
 
@@ -710,7 +710,7 @@ DrapingTechnique::setOverlayBlending( bool value )
         _rttBlending = value;
         
         if ( _rttBlending )
-            OE_INFO << LC << "Overlay blending " << (value?"enabled":"disabled")<< std::endl;
+            OE_DEBUG << LC << "Overlay blending " << (value?"enabled":"disabled")<< std::endl;
     }
 }
 

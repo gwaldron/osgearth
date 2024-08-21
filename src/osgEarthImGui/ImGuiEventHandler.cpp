@@ -122,7 +122,6 @@ void* ImGuiEventHandler::handleStartEntry(
 void ImGuiEventHandler::handleWriteSettings(
     ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf)
 {
-    OE_DEBUG << "Writing ini settings..." << std::endl;
     Config sections;
     s_guiHandler->save(sections);
     for (auto& section : sections.children())

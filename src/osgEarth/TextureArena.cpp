@@ -485,7 +485,7 @@ Texture::releaseGLObjects(osg::State* state, bool force) const
     if (_host != nullptr && force == false)
         return;
 
-    OE_DEVEL << "RELEASING = " << name() << std::endl;
+    //OE_DEVEL << "RELEASING = " << name() << std::endl;
 
     if (state)
     {
@@ -1008,7 +1008,6 @@ TextureArena::notifyOfTextureRelease(osg::State* state) const
 void
 TextureArena::compileGLObjects(osg::State& state) const
 {
-    OE_DEBUG << LC << "Compiling GL objects for arena " << getName() << std::endl;
     apply(state);
 }
 

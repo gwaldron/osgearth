@@ -60,7 +60,7 @@ TerrainResources::reserveTextureImageUnit(int& out_unit, const char* requestor)
             out_unit = i;
             if ( requestor )
             {
-                OE_INFO << LC << "Texture unit " << i << " reserved for " << requestor << std::endl;
+                OE_DEBUG << LC << "Texture unit " << i << " reserved for " << requestor << std::endl;
             }
             return true;
         }
@@ -97,7 +97,7 @@ TerrainResources::reserveTextureImageUnit(TextureImageUnitReservation& reservati
             reservation._res = this;
             if ( requestor )
             {
-                OE_INFO << LC << "Texture unit " << i << " reserved for " << requestor << std::endl;
+                OE_DEBUG << LC << "Texture unit " << i << " reserved for " << requestor << std::endl;
             }
             return true;
         }
@@ -137,7 +137,7 @@ TerrainResources::reserveTextureImageUnitForLayer(TextureImageUnitReservation& r
             reservation._res = this;
             if ( requestor )
             {
-                OE_INFO << LC << "Texture unit " << i << " reserved (on layer "
+                OE_DEBUG << LC << "Texture unit " << i << " reserved (on layer "
                     << layer->getName() << ") for " << requestor << std::endl;
             }
             return true;
@@ -151,7 +151,7 @@ TerrainResources::releaseTextureImageUnit(int unit)
 {
     std::lock_guard<std::mutex> exclusiveLock( _reservedUnitsMutex );
     _globallyReservedUnits.erase( unit );
-    OE_INFO << LC << "Texture unit " << unit << " released" << std::endl;
+    OE_DEBUG << LC << "Texture unit " << unit << " released" << std::endl;
 }
 
 void
@@ -173,7 +173,7 @@ TerrainResources::releaseTextureImageUnit(int unit, const Layer* layer)
             _perLayerReservedUnits.erase(i);
         }
 
-        OE_INFO << LC << "Texture unit " << unit << " released (by layer " << layer->getName() << ")" << std::endl;
+        OE_DEBUG << LC << "Texture unit " << unit << " released (by layer " << layer->getName() << ")" << std::endl;
     }
 }
 

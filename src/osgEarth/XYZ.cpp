@@ -228,7 +228,7 @@ XYZImageLayer::openImplementation()
 
     if (!getProfile())
     {
-        OE_INFO << LC << "No profile; assuming spherical mercator" << std::endl;
+        OE_INFO << LC << "No profile; assuming spherical-mercator" << std::endl;
         setProfile(Profile::create("spherical-mercator"));
     }
 

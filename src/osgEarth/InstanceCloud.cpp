@@ -229,7 +229,6 @@ InstanceCloud::InstancingData::allocateGLObjects(osg::State& state, unsigned num
         _renderBuffer.allocate(numInstances, state);
 
         _numTilesAllocated = numTiles;
-        OE_DEBUG << "Re-alloc: tiles = " << _numTilesAllocated << std::endl;
 
         return true;
     }

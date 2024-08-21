@@ -784,7 +784,7 @@ URIAliasMapReadCallback::readObject(const std::string& filename, const osgDB::Op
 osgDB::ReaderWriter::ReadResult
 URIAliasMapReadCallback::readImage(const std::string& filename, const osgDB::Options* options)
 {
-    OE_INFO << LC << "Map: " << filename << " to " << _aliasMap.resolve(filename,_context) << std::endl;
+    //OE_INFO << LC << "Map: " << filename << " to " << _aliasMap.resolve(filename,_context) << std::endl;
     if (osgDB::Registry::instance()->getReadFileCallback()) return osgDB::Registry::instance()->getReadFileCallback()->readImage(_aliasMap.resolve(filename,_context),options);
     else return osgDB::Registry::instance()->readImageImplementation(_aliasMap.resolve(filename,_context),options);
 }

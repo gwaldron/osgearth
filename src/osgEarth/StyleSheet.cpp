@@ -112,7 +112,7 @@ StyleSheet::Options::fromConfig(const Config& conf)
         if (scriptConf.hasValue("url"))
         {
             _script->uri = URI(scriptConf.value("url"), conf.referrer());
-            OE_INFO << LC << "Loading script from \"" << _script->uri->full() << std::endl;
+            OE_DEBUG << LC << "Loading script from \"" << _script->uri->full() << "\"" << std::endl;
             _script->code = _script->uri->getString();
         }
         else
@@ -125,9 +125,6 @@ StyleSheet::Options::fromConfig(const Config& conf)
 
         std::string lang = scriptConf.value("language");
         _script->language = lang.empty() ? "javascript" : lang;
-
-        //std::string profile = scriptConf.value("profile");
-        //_script->profile = profile;
     }
 
     // read any style class definitions. either "class" or "selector" is allowed

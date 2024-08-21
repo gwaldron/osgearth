@@ -214,7 +214,7 @@ TFSFeatureSource::openImplementation()
 
     if (_layerValid)
     {
-        OE_INFO << LC << "Read layer TFS " << _layer.getTitle() << " " << _layer.getAbstract() << " " << _layer.getFirstLevel() << " " << _layer.getMaxLevel() << " " << _layer.getExtent().toString() << std::endl;
+        OE_INFO << LC << "Read TFS layer " << _layer.getTitle() << " " << _layer.getAbstract() << " " << _layer.getFirstLevel() << " " << _layer.getMaxLevel() << " " << _layer.getExtent().toString() << std::endl;
 
         fp = new FeatureProfile(_layer.getExtent());
         fp->setFirstLevel(_layer.getFirstLevel());
@@ -273,7 +273,6 @@ TFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
     if (url.empty())
         return 0L;
 
-    OE_DEBUG << LC << url << std::endl;
     URI uri(url, options().url()->context());
 
     // read the data:
@@ -301,30 +300,8 @@ TFSFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 
     if (dataOK)
     {
-        OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
+        OE_NULL << LC << "Read " << features.size() << " features" << std::endl;
     }
-
-#if 0 // this happens in FeatureSource now
-    // If we have any filters, process them here before the cursor is created
-    if (!getFilters().empty() && !features.empty())
-    {
-        FilterContext cx;
-        cx.setProfile(getFeatureProfile());
-        cx.extent() = query.tileKey()->getExtent();
-        cx = getFilters().push(features, cx);
-    }
-
-    // If we have any features and we have an fid attribute, override the fid of the features
-    if (options().fidAttribute().isSet())
-    {
-        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
-        {
-            std::string attr = itr->get()->getString(options().fidAttribute().get());
-            FeatureID fid = as<FeatureID>(attr, 0);
-            itr->get()->setFID(fid);
-        }
-    }
-#endif
 
     result = new FeatureListCursor(features);
     return result;

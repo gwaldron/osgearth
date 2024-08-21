@@ -411,7 +411,7 @@ VegetationLayer::update(osg::NodeVisitor& nv)
 
             releaseGLObjects(nullptr);
 
-            OE_INFO << LC << "timed out for inactivity." << std::endl;
+            OE_DEBUG << LC << "timed out for inactivity." << std::endl;
         }
 
         checkForNewAssets();
@@ -833,7 +833,7 @@ VegetationLayer::prepareForRendering(TerrainEngine* engine)
                 }
                 group.lod() = bestLOD;
 
-                OE_INFO << LC
+                OE_DEBUG << LC
                     << "Rendering asset group" << iter.first
                     << " at terrain level " << bestLOD << std::endl;
             }
@@ -1210,8 +1210,6 @@ VegetationLayer::createDrawableAsync(
     double backup_birthday,
     float range) const
 {
-    //OE_INFO << LC << "createDrawableAsync key=" << key_.str() << std::endl;
-
     osg::ref_ptr<const VegetationLayer> layer = this;
     TileKey key = key_;
     const std::string group = group_;
@@ -2135,7 +2133,7 @@ VegetationLayer::cull(const TileBatch& batch, osg::NodeVisitor& nv) const
             else
             {
                 // creation failed; reset for another try.
-                OE_DEBUG << LC << "Failed for " << entry->getKey().str() << "; will retry..." << std::endl;
+                //OE_DEBUG << LC << "Failed for " << entry->getKey().str() << "; will retry..." << std::endl;
                 view._tile = nullptr;
             }
         }

@@ -134,14 +134,14 @@ TileNodeRegistry::startListeningFor(
     {
         TileNode* tile = i->second._tile.get();
 
-        OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str()
-            << ", but it was already in the repo.\n";
+        //OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str()
+        //    << ", but it was already in the repo.\n";
 
         waiter->notifyOfArrival( tile );
     }
     else
     {
-        OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str() << ".\n";
+        //OE_DEBUG << LC << waiter->getKey().str() << " listened for " << tileToWaitFor.str() << ".\n";
         _notifiers[tileToWaitFor].insert( waiter->getKey() );
     }
 }

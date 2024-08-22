@@ -146,7 +146,12 @@ StyleSheet::Options::fromConfig(const Config& conf)
     {
         const Config& styleConf = *i;
 
-        if (styleConf.value("type") == "text/css")
+        // if there is a non-empty "text" value, assume it is CSS.
+        bool has_css = 
+            (styleConf.value("type") == "text/css") ||
+            (trim(styleConf.value()).empty() == false);
+
+        if (has_css)
         {
             // for CSS data, there may be multiple styles in one CSS block. So
             // parse them all out and add them to the stylesheet.
@@ -169,7 +174,6 @@ StyleSheet::Options::fromConfig(const Config& conf)
             {
                 Config blockConf(styleConf);
                 blockConf.setValue(*i);
-                //OE_INFO << LC << "Style block = " << blockConf.toJSON() << std::endl;
                 Style style(blockConf, &styles());
                 _styles[style.getName()] = style;
             }

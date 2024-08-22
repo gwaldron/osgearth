@@ -26,47 +26,50 @@ using namespace osgEarth;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(text, TextSymbol);
 
-TextSymbol::TextSymbol(const TextSymbol& rhs,const osg::CopyOp& copyop):
-Symbol(rhs, copyop),
-_fill(rhs._fill),
-_halo(rhs._halo),
-_haloOffset(rhs._haloOffset),
-_haloBackdropType(rhs._haloBackdropType),
-_haloImplementation(rhs._haloImplementation),
-_font(rhs._font),
-_size(rhs._size),
-_content(rhs._content),
-_priority(rhs._priority),
-_pixelOffset(rhs._pixelOffset),
-_onScreenRotation(rhs._onScreenRotation),
-_geographicCourse(rhs._geographicCourse),
-_provider(rhs._provider),
-_encoding(rhs._encoding),
-_alignment(rhs._alignment),
-_layout(rhs._layout),
-_declutter(rhs._declutter),
-_occlusionCull(rhs._occlusionCull),
-_occlusionCullAltitude(rhs._occlusionCullAltitude)
+TextSymbol::TextSymbol(const TextSymbol& rhs, const osg::CopyOp& copyop) :
+    Symbol(rhs, copyop),
+    _fill(rhs._fill),
+    _halo(rhs._halo),
+    _haloOffset(rhs._haloOffset),
+    _haloBackdropType(rhs._haloBackdropType),
+    _haloImplementation(rhs._haloImplementation),
+    _font(rhs._font),
+    _size(rhs._size),
+    _content(rhs._content),
+    _priority(rhs._priority),
+    _pixelOffset(rhs._pixelOffset),
+    _onScreenRotation(rhs._onScreenRotation),
+    _geographicCourse(rhs._geographicCourse),
+    _provider(rhs._provider),
+    _encoding(rhs._encoding),
+    _alignment(rhs._alignment),
+    _layout(rhs._layout),
+    _declutter(rhs._declutter),
+    _occlusionCull(rhs._occlusionCull),
+    _occlusionCullAltitude(rhs._occlusionCullAltitude),
+    _unique(rhs._unique)
 {
+    //nop
 }
 
-TextSymbol::TextSymbol( const Config& conf ) :
-Symbol                ( conf ),
-_fill                 ( Fill( 1, 1, 1, 1 ) ),
-_halo                 ( Stroke( 0.3, 0.3, 0.3, 1) ),
-_haloOffset           ( 0.0625f ),
-_haloBackdropType     ( osgText::Text::OUTLINE ),
-_haloImplementation   ( osgText::Text::DELAYED_DEPTH_WRITES ),
-_size                 ( 16.0f ),
-_alignment            ( ALIGN_BASE_LINE ),
-_layout               ( LAYOUT_LEFT_TO_RIGHT ),
-_provider             ( "annotation" ),
-_encoding             ( ENCODING_ASCII ),
-_declutter            ( true ),
-_occlusionCull        ( false ),
-_occlusionCullAltitude( 200000 ),
-_onScreenRotation     ( 0.0 ),
-_geographicCourse     ( 0.0 )
+TextSymbol::TextSymbol(const Config& conf) :
+    Symbol(conf),
+    _fill(Fill(1, 1, 1, 1)),
+    _halo(Stroke(0.3, 0.3, 0.3, 1)),
+    _haloOffset(0.0625f),
+    _haloBackdropType(osgText::Text::OUTLINE),
+    _haloImplementation(osgText::Text::DELAYED_DEPTH_WRITES),
+    _size(16.0f),
+    _alignment(ALIGN_BASE_LINE),
+    _layout(LAYOUT_LEFT_TO_RIGHT),
+    _provider("annotation"),
+    _encoding(ENCODING_ASCII),
+    _declutter(true),
+    _occlusionCull(false),
+    _occlusionCullAltitude(200000),
+    _onScreenRotation(0.0),
+    _geographicCourse(0.0),
+    _unique(false)
 {
     mergeConfig(conf);
 }
@@ -139,6 +142,7 @@ TextSymbol::getConfig() const
     conf.set( "text-occlusion-cull", _occlusionCull );
     conf.set( "text-occlusion-cull-altitude", _occlusionCullAltitude );
 
+    conf.set("unique", _unique);
     return conf;
 }
 
@@ -167,6 +171,7 @@ TextSymbol::mergeConfig( const Config& conf )
     conf.get( "size", _size );
     conf.get( "content", _content );
     conf.get( "priority", _priority );
+    conf.get( "unique", _unique);
 
     conf.get( "encoding", "ascii", _encoding, ENCODING_ASCII );
     conf.get( "encoding", "utf8",  _encoding, ENCODING_UTF8 );
@@ -353,5 +358,8 @@ TextSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "text-geographic-course") ) {
         style.getOrCreate<TextSymbol>()->geographicCourse() = NumericExpression( c.value() );
+    }
+    else if (match(c.key(), "text-unique")) {
+        style.getOrCreate<TextSymbol>()->unique() = as<bool>(c.value(), defaults.unique().get());
     }
 }

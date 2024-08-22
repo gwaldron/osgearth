@@ -97,6 +97,11 @@ namespace osgEarth
         Style* getStyle( const std::string& name, bool fallBackOnDefault =true );
         const Style* getStyle( const std::string& name, bool fallBackOnDefault =true ) const;
 
+        //! Same as getStyle, but also returns the style's index within the sheet.
+        //! Does NOT return a default on failure.
+        std::pair<const Style*, int> getStyleAndIndex(const std::string& name) const;
+        
+
         /** Gets the default style in this sheet. */
         Style* getDefaultStyle();
         const Style* getDefaultStyle() const;

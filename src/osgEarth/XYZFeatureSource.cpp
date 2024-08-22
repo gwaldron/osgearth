@@ -49,10 +49,6 @@ XYZFeatureSource::Options::getConfig() const
 void
 XYZFeatureSource::Options::fromConfig(const Config& conf)
 {
-    format().setDefault("json");
-    autoFallback().setDefault(false);
-    esriGeodetic().setDefault(false);
-
     conf.get("url", _url);
     conf.get("format", _format);
     conf.get("min_level", _minLevel);
@@ -90,6 +86,11 @@ XYZFeatureSource::openImplementation()
     if (!options().minLevel().isSet() || !options().maxLevel().isSet())
     {
         return Status(Status::ConfigurationError, "XYZ driver requires a min and max level");
+    }
+
+    if (!options().format().isSet())
+    {
+        return Status(Status::ConfigurationError, "XYZ driver requires a format (pbf, json, gml)");
     }
 
     _template = options().url()->full();

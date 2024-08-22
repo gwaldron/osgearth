@@ -144,6 +144,7 @@ LabelNode::setText( const std::string& text )
             }
 
             d->setText(text, textEncoding);
+            d->setName(text);
 
             _text = text;
             return;
@@ -290,6 +291,11 @@ LabelNode::updateLayoutData()
             _geoPointProj.toWorld(p1);
             _dataLayout->setAnchorPoint(p0);
             _dataLayout->setProjPoint(p1);
+        }
+
+        if (ts->unique() == true)
+        {
+            _dataLayout->_unique = true;        
         }
     }
 }

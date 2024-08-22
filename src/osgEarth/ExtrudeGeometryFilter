@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHFEATURES_EXTRUDE_GEOMETRY_FILTER_H
-#define OSGEARTHFEATURES_EXTRUDE_GEOMETRY_FILTER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Filter>
@@ -213,6 +211,7 @@ namespace osgEarth { namespace Util
                                const osg::Vec4&     wallColor,
                                const osg::Vec4&     wallBaseColor,
                                const SkinResource*  wallSkin,
+                               float                shadeMin,
                                FeatureIndexBuilder* index);
 
         bool buildRoofGeometry(const Structure&     structure,
@@ -225,5 +224,3 @@ namespace osgEarth { namespace Util
         osg::Drawable* buildOutlineGeometry(const Structure& structure);
     };
 } }
-
-#endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

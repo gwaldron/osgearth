@@ -107,6 +107,15 @@ namespace osgEarth { namespace Util
             }
         }
 
+        inline int indexOf(const KEY& key) const {
+            for(unsigned i=0; i<_container.size(); ++i) {
+                if (keys_equal(_container[i].first, key)) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
         inline int size() const { return _container.size(); }
 
         template<typename InputIterator>

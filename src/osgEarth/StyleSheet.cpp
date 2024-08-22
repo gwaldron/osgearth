@@ -262,6 +262,21 @@ StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault ) const
     }
 }
 
+std::pair<const Style*, int>
+StyleSheet::getStyleAndIndex(const std::string& name) const
+{
+    StyleMap::const_iterator i = options().styles().find(name);
+    if (i != options().styles().end())
+    {
+        int index = std::distance(options().styles().begin(), i);
+        return { &i->second, index };
+    }
+    else
+    {
+        return { nullptr, -1 };
+    }
+}
+
 StyleMap&
 StyleSheet::getStyles()
 {

@@ -41,6 +41,8 @@ using namespace osgEarth;
 #include <osgEarth/BufferFilter>
 #include <osgEarth/ResampleFilter>
 
+#include <tuple>
+
 namespace osgEarth {
     namespace FeatureImageLayerImpl
     {
@@ -1384,8 +1386,11 @@ FeatureStyleSorter::sort_usingSelectors(
             getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
             if (!features.empty())
             {
-                std::unordered_map<std::string, Style> literal_styles;
-                std::map<const Style*, FeatureList> style_buckets;
+                //std::unordered_map<std::string, Style> literal_styles;
+                std::unordered_map<std::string, std::pair<Style, int>> literal_styles;
+                //std::map<const Style*, FeatureList> style_buckets;
+                // keep ordered.
+                std::map<int, std::pair<const Style*, FeatureList>> style_buckets;
 
                 for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
                 {
@@ -1395,8 +1400,8 @@ FeatureStyleSorter::sort_usingSelectors(
                     if (!styleString.empty() && styleString != "null")
                     {
                         // resolve the style:
-                        //Style combinedStyle;
                         const Style* resolved_style = nullptr;
+                        int resolved_index = 0;
 
                         // if the style string begins with an open bracket, it's an inline style definition.
                         if (styleString.length() > 0 && styleString[0] == '{')
@@ -1404,34 +1409,47 @@ FeatureStyleSorter::sort_usingSelectors(
                             Config conf("style", styleString);
                             conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
                             conf.set("type", "text/css");
-                            Style& literal_style = literal_styles[conf.toJSON()];
-                            if (literal_style.empty())
-                                literal_style = Style(conf);
-                            resolved_style = &literal_style;
+                            auto& literal_style_and_index = literal_styles[conf.toJSON()];
+                            if (literal_style_and_index.first.empty())
+                            {
+                                literal_style_and_index.first = Style(conf);
+                                // literal styles always come AFTER sheet styles
+                                literal_style_and_index.second = literal_styles.size() + session->styles()->getStyles().size();
+                            }
+                            resolved_style = &literal_style_and_index.first;
+                            resolved_index = literal_style_and_index.second;
                         }
 
                         // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-                        // style in this case: for style expressions, the user must be explicity about
+                        // style in this case: for style expressions, the user must be explicit about
                         // default styling; this is because there is no other way to exclude unwanted
                         // features.
                         else
                         {
-                            const Style* selected_style = session->styles()->getStyle(styleString, false);
-                            if (selected_style)
-                                resolved_style = selected_style;
+                            auto style_and_index = session->styles()->getStyleAndIndex(styleString);
+
+                            //const Style* selected_style = session->styles()->getStyle(styleString, false);
+                            if (style_and_index.first)
+                            {
+                                resolved_style = style_and_index.first;
+                                resolved_index = style_and_index.second;
+                            }
                         }
 
                         if (resolved_style)
                         {
-                            style_buckets[resolved_style].push_back(feature);
+                            auto& bucket = style_buckets[resolved_index];
+                            bucket.first = resolved_style;
+                            bucket.second.emplace_back(feature);
                         }
                     }
                 }
 
+                // in order:
                 for (auto& iter : style_buckets)
                 {
-                    const Style* style = iter.first;
-                    FeatureList& list = iter.second;
+                    const Style* style = iter.second.first;
+                    FeatureList& list = iter.second.second;
                     processFeaturesForStyle(*style, list, progress);
                 }
             }

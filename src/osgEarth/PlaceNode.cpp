@@ -412,6 +412,12 @@ PlaceNode::updateLayoutData()
             _dataLayout->setAnchorPoint(p0);
             _dataLayout->setProjPoint(p1);
         }
+
+        if (ts->unique() == true)
+        {
+            _dataLayout->_unique = true;
+            _iconDataLayout->_unique = true;
+        }
     }
 }
 
@@ -436,6 +442,7 @@ PlaceNode::setText( const std::string& text )
 		}
 
         _textDrawable->setText( text, text_encoding );
+        _textDrawable->setName(text);
     }
 }
 

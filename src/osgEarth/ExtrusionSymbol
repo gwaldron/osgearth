@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHSYMBOLOGY_EXTRUSION_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_EXTRUSION_SYMBOL_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Symbol>
@@ -67,6 +66,10 @@ namespace osgEarth
             to the main wall color (default = 0.0, range = [0..1]) */
         optional<float>& wallGradientPercentage() { return _wallGradientPercentage; }
         const optional<float>& wallGradientPercentage() const { return _wallGradientPercentage; }
+
+        /** Percentage by which to shade the wells to simulate lighting [0..1] */
+        optional<float>& wallShadePercentage() { return _wallShadePercentage; }
+        const optional<float>& wallShadePercentage() const { return _wallShadePercentage; }
         
     public:
         virtual Config getConfig() const;
@@ -80,7 +83,6 @@ namespace osgEarth
         optional<std::string>       _wallStyleName;
         optional<std::string>       _roofStyleName;
         optional<float>             _wallGradientPercentage;
+        optional<float>             _wallShadePercentage;
     };
 } // namespace osgEarth
-
-#endif // OSGEARTHSYMBOLOGY_EXTRUSION_SYMBOL_H

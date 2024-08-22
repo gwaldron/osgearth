@@ -43,7 +43,8 @@ namespace osgEarth
 {
     class Style;
 
-    using StyleMap = std::map<std::string, Style>;
+    //! Use a vector_map so we can maintain order of appearance
+    using StyleMap = vector_map<std::string, Style>;
 
     /**
      * Style is an unordered collection of Symbols that describes how to render
@@ -67,9 +68,6 @@ namespace osgEarth
 
         /** assignment operator */
         Style& operator = (const Style& rhs);
-
-        /** virtual dtor */
-        virtual ~Style() { }
 
         /** Gets the name of this style */
         const std::string& getName() const { return _name; }

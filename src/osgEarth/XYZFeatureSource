@@ -36,8 +36,8 @@ namespace osgEarth
             OE_OPTION(std::string, format);
             OE_OPTION(int, minLevel);
             OE_OPTION(int, maxLevel);
-            OE_OPTION(bool, esriGeodetic);
-            OE_OPTION(bool, autoFallback);
+            OE_OPTION(bool, esriGeodetic, false);
+            OE_OPTION(bool, autoFallback, false);
             virtual Config getConfig() const;
         private:
             void fromConfig(const Config& conf);

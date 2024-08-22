@@ -196,7 +196,14 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
 namespace
 {
     inline osg::Vec2d asVec2d(const osg::Vec3d& v) { return osg::Vec2d(v.x(), v.y()); }
+
+    inline osg::Vec4f shade(const osg::Vec4f& input, const osg::Vec3f& normal, float minimum)
+    {
+        float d = minimum + ((1.0f - minimum) * 0.5 * ((normal * osg::Vec3(1,0,0)) + 1.0));
+        return osg::Vec4f(input.r() * d, input.g() * d, input.b() * d, input.a());
+    }
 }
+
 
 bool
 ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
@@ -538,13 +545,15 @@ ExtrudeGeometryFilter::buildStructure(const Geometry*         input,
 }
 
 bool
-ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
-                                         Feature* feature,
-                                         osg::Geometry*       walls,
-                                         const osg::Vec4&     wallColor,
-                                         const osg::Vec4&     wallBaseColor,
-                                         const SkinResource*  wallSkin,
-                                         FeatureIndexBuilder* index)
+ExtrudeGeometryFilter::buildWallGeometry(
+    const Structure& structure,
+    Feature* feature,
+    osg::Geometry* walls,
+    const osg::Vec4& wallColor,
+    const osg::Vec4& wallBaseColor,
+    const SkinResource* wallSkin,
+    float shadeMin,
+    FeatureIndexBuilder* index)
 {
     bool madeGeom = true;
 
@@ -580,8 +589,6 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
     unsigned vertptr = verts->size();
     unsigned startVertPtr = vertptr;
 
-    //verts->resize(verts->size() + numWallVerts);
-
     osg::Vec3Array* tex = 0L;
     if ( wallSkin )
     { 
@@ -591,7 +598,6 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
             tex = new osg::Vec3Array();
             walls->setTexCoordArray( 0, tex );
         }
-        //tex->resize(tex->size() + numWallVerts);
     }
 
     osg::Vec4Array* colors = 0L;
@@ -603,7 +609,6 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
             colors = new osg::Vec4Array( osg::Array::BIND_PER_VERTEX);
             walls->setColorArray( colors );
         }
-        //colors->resize(colors->size() + numWallVerts);
     }
 
     osg::Vec3Array* normals = static_cast<osg::Vec3Array*>(walls->getNormalArray());
@@ -612,7 +617,6 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
         normals = new osg::Vec3Array(osg::Array::BIND_PER_VERTEX);
         walls->setNormalArray(normals);
     }
-    //normals->resize(normals->size() + numWallVerts);
     
     ObjectIDArray* ids = nullptr;
     if (index)
@@ -626,7 +630,6 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
             walls->setVertexAttribArray(osg::Drawable::SECONDARY_COLORS, ids);
             ids->setPreserveDataType(true);
         }
-        //ids->resize(ids->size() + numWallVerts);
     }
 
     osg::Vec4Array* anchors = 0L;
@@ -672,27 +675,21 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
             verts->push_back(f->right.base);
             verts->push_back(f->right.roof);
             verts->push_back(f->left.roof);
-            //(*verts)[vertptr+0] = f->left.roof;
-            //(*verts)[vertptr+1] = f->left.base;
-            //(*verts)[vertptr+2] = f->right.base;
-            //(*verts)[vertptr+3] = f->right.base;
-            //(*verts)[vertptr+4] = f->right.roof;
-            //(*verts)[vertptr+5] = f->left.roof;
 
             //TODO: use the cosAngle to decide whether to smooth the corner!
+
+            osg::Vec3 normal_cache[6];
 
             const osg::Vec3& v1 = f->left.roof;
             const osg::Vec3& v2 = f->left.base;
             const osg::Vec3& v3 = f->right.base;
             osg::Vec3 normal((v2 - v1) ^ (v3 - v1));
             for (int i = 0; i < 6; ++i)
+            {
+                normal.normalize();
+                normal_cache[i] = normal;
                 normals->push_back(normal);
-            //(*normals)[vertptr + 0] = normal;
-            //(*normals)[vertptr + 1] = normal;
-            //(*normals)[vertptr + 2] = normal;
-            //(*normals)[vertptr + 3] = normal;
-            //(*normals)[vertptr + 4] = normal;
-            //(*normals)[vertptr + 5] = normal;
+            }
             
             if ( anchors )
             {
@@ -719,18 +716,12 @@ ExtrudeGeometryFilter::buildWallGeometry(const Structure&     structure,
             // Assign wall polygon colors.
             if (useColor)
             {
-                colors->push_back(wallColor);
-                colors->push_back(wallBaseColor);
-                colors->push_back(wallBaseColor);
-                colors->push_back(wallBaseColor);
-                colors->push_back(wallColor);
-                colors->push_back(wallColor);
-                //(*colors)[vertptr+0] = wallColor;
-                //(*colors)[vertptr+1] = wallBaseColor;
-                //(*colors)[vertptr+2] = wallBaseColor;
-                //(*colors)[vertptr+3] = wallBaseColor;
-                //(*colors)[vertptr+4] = wallColor;
-                //(*colors)[vertptr+5] = wallColor;
+                colors->push_back(shade(wallColor, normal_cache[0], shadeMin));
+                colors->push_back(shade(wallBaseColor, normal_cache[1], shadeMin));
+                colors->push_back(shade(wallBaseColor, normal_cache[2], shadeMin));
+                colors->push_back(shade(wallBaseColor, normal_cache[3], shadeMin));
+                colors->push_back(shade(wallColor, normal_cache[4], shadeMin));
+                colors->push_back(shade(wallColor, normal_cache[5], shadeMin));
             }
 
             // Calculate texture coordinates:
@@ -1314,7 +1305,13 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                     wallBaseColor = wallColor;
                 }
 
-                buildWallGeometry(structure, input, walls.get(), wallColor, wallBaseColor, wallSkin, context.featureIndex());
+                float shadeMin = 1.0f;
+                if (_extrusionSymbol->wallShadePercentage().isSet())
+                {
+                    shadeMin = 1.0f - _extrusionSymbol->wallShadePercentage().value();
+                }
+
+                buildWallGeometry(structure, input, walls.get(), wallColor, wallBaseColor, wallSkin, shadeMin, context.featureIndex());
             }
 
             // tessellate and add the roofs if necessary:

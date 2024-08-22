@@ -1,0 +1,150 @@
+<map name="SDF demo">
+
+    <TMSImage name="ReadyMap 15m Imagery" opacity="0.35">
+        <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </TMSImage>
+
+    <tmselevation name="ReadyMap Elevation">
+        <url>https://readymap.org/readymap/tiles/1.0.0/116/</url>
+    </tmselevation>
+    
+    <FeatureImage name="OMT Features" max_data_level="14" tile_size="512">
+        <features>data:osm</features>
+        <styles>
+            <style>
+                water {
+                    fill: #30338f;
+                }
+                landcover/farmland {
+                    fill: #9f806f;
+                }
+                landcover/ice {
+                    fill: #afffff;
+                }
+                landcover/wood {
+                    fill: #007f00,
+                }
+                landcover/rock {
+                    fill: #6f6f6f;
+                }
+                landcover/grass {
+                    fill: #00ff00;
+                }
+                landcover/wetland {
+                    fill: #9f9fff;
+                }
+                landcover/sand {
+                    fill: #ffffef;
+                }
+                boundary {
+                    stroke: #ffff00;
+                    stroke-width: 2px;
+                }
+                transportation {
+                    stroke: #efefef;
+                    stroke-width: 1px;
+                    stroke-outline: #4f4f4f;
+                    stroke-outline-width: 2px;
+                }                
+            </style>
+            <selector style_expr="get_style()"/>
+            <script><![CDATA[
+                function get_style() {
+                    var layer = feature.properties.mvt_layer;
+                    if (layer == "landcover")
+                        return "landcover/" + feature.properties.class;
+                    else if (layer == "transportation")
+                        return feature.properties.class != "ferry" ? layer : null;
+                    else if (layer == "boundary")
+                        return feature.properties.admin_level == 2 ? layer : null;
+                    else
+                        return layer;
+                }
+            ]]></script>
+        </styles>
+    </FeatureImage>
+       
+    <TiledFeatureModel name="OMT Buildings" nvgl="true">
+        <features>data:osm</features>
+        <additive>false</additive>
+        <styles>
+            <style>
+                building {
+                    altitude-clamping: terrain;
+                    extrusion-height: [render_height];
+                    extrusion-wall-shade: 0.5;
+                }
+            </style>
+            <selector style_expr="get_style()"/>
+            <script><![CDATA[
+                function get_style() {
+                    return (feature.properties.mvt_layer == "building" && "render_height" in feature.properties)? feature.properties.mvt_layer : null;
+                } 
+            ]]></script>
+        </styles>
+    </TiledFeatureModel>
+    
+
+    <TiledFeatureModel name="OMT Labels">
+        <features>data:osm</features>
+        <additive>false</additive>
+        <styles>
+            <style>
+                place {
+                    text: feature.properties.name_en;
+                    text-align: center_center;
+                    text-size: 30.0f;
+                    text-halo: #3f3f3f;
+                    text-priority: 100.0-[rank];  
+                    text-declutter: true;
+                }
+            </style>
+
+            <script><![CDATA[
+                function get_style() {
+                    var layer = feature.properties.mvt_layer;
+                    if (layer == "place")
+                        return (feature.properties.rank <= 3)? layer : null;
+                    else
+                        return layer;
+                }
+            ]]></script>
+
+            <selector style_expr="get_style()"/>
+            
+        </styles>
+    </TiledFeatureModel>
+    
+    <xyzfeatures name="data:osm">
+        <url>https://readymap.org/readymap/mbtiles/osm-openmaptiles-08-05-2024/{z}/{x}/{-y}.pbf</url>
+        <profile>spherical-mercator</profile>
+        <format>pbf</format>
+        <min_level>0</min_level>
+        <max_level>14</max_level>
+    </xyzfeatures>
+    
+    <Viewpoints home="0" time="0">
+        <viewpoint name="New Orleans">
+            <heading>-1.99154e-09</heading>
+            <pitch>-89</pitch>
+            <range>458612m</range>
+            <long>-90.54588070220815</long>
+            <lat>30.06649820328758</lat>
+            <height>-1.047214648686349</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint name="City of London">
+            <heading>-0.838884</heading>
+            <pitch>-37.3032</pitch>
+            <range>2349.47m</range>
+            <long>-0.07582713283597911</long>
+            <lat>51.51117658901586</lat>
+            <height>0.002267543226480484</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+    </Viewpoints>
+    
+    <screen_space_layout>
+        <sort_by_priority>true</sort_by_priority>
+    </screen_space_layout>
+</map>

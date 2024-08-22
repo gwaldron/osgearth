@@ -23,8 +23,8 @@ using namespace osgEarth;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(extrusion, ExtrusionSymbol);
 
-ExtrusionSymbol::ExtrusionSymbol(const ExtrusionSymbol& rhs,const osg::CopyOp& copyop):
-Symbol(rhs, copyop)
+ExtrusionSymbol::ExtrusionSymbol(const ExtrusionSymbol& rhs, const osg::CopyOp& copyop) :
+    Symbol(rhs, copyop)
 {
     _height = rhs._height;
     _flatten = rhs._flatten;
@@ -32,19 +32,20 @@ Symbol(rhs, copyop)
     _wallStyleName = rhs._wallStyleName;
     _roofStyleName = rhs._roofStyleName;
     _wallGradientPercentage = rhs._wallGradientPercentage;
+    _wallShadePercentage = rhs._wallShadePercentage;
 }
 
-ExtrusionSymbol::ExtrusionSymbol( const Config& conf ) :
-Symbol    ( conf ),
-_height   ( 10.0 ),
-_flatten  ( true ),
-_wallGradientPercentage( 0.0f )
+ExtrusionSymbol::ExtrusionSymbol(const Config& conf) :
+    Symbol(conf),
+    _height(10.0),
+    _flatten(true),
+    _wallGradientPercentage(0.0f)
 {
-    if ( !conf.empty() )
+    if (!conf.empty())
         mergeConfig(conf);
 }
 
-Config 
+Config
 ExtrusionSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
@@ -55,6 +56,7 @@ ExtrusionSymbol::getConfig() const
     conf.set( "wall_style", _wallStyleName );
     conf.set( "roof_style", _roofStyleName );
     conf.set( "wall_gradient", _wallGradientPercentage );
+    conf.set( "wall_shade", _wallShadePercentage);
     return conf;
 }
 
@@ -67,6 +69,7 @@ ExtrusionSymbol::mergeConfig( const Config& conf )
     conf.get( "wall_style", _wallStyleName );
     conf.get( "roof_style", _roofStyleName );
     conf.get( "wall_gradient", _wallGradientPercentage );
+    conf.get( "wall_shade", _wallShadePercentage);
 }
 
 void
@@ -86,6 +89,9 @@ ExtrusionSymbol::parseSLD(const Config& c, Style& style)
     }
     else if ( match(c.key(), "extrusion-wall-gradient") ) {
         style.getOrCreate<ExtrusionSymbol>()->wallGradientPercentage() = as<float>(c.value(), 0.0f);
+    }
+    else if (match(c.key(), "extrusion-wall-shade")) {
+        style.getOrCreate<ExtrusionSymbol>()->wallShadePercentage() = as<float>(c.value(), 0.0f);
     }
     else if ( match(c.key(), "extrusion-script") ) {
         style.getOrCreate<ExtrusionSymbol>()->script() = StringExpression(c.value());

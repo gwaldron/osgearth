@@ -301,10 +301,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 
     if (!rasterizer)
     {
-        rasterizer = new FeatureRasterizer(
-            getTileSize(), 
-            getTileSize(), 
-            key.getExtent());
+        rasterizer = new FeatureRasterizer(getTileSize(), getTileSize(), key.getExtent());
     }
 
     FeatureStyleSorter::Function renderer = [&](
@@ -312,10 +309,7 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
         FeatureList& features,
         ProgressCallback* progress)
     {
-        rasterizer->render(
-            features,
-            style,
-            featureProfile);
+        rasterizer->render(features, style, featureProfile);
     };
 
     FeatureStyleSorter sorter;

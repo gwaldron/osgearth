@@ -121,7 +121,7 @@ namespace osgEarth
 
     using AttributeTable = vector_map<std::string, AttributeValue, ci_string_less>;
 
-    using FeatureID = long long;
+    using FeatureID = std::int64_t; // long long;
 
     using FeatureSchema = std::map<std::string, AttributeType>;
 

@@ -202,6 +202,8 @@ namespace osgEarth { namespace Internal
             bool camChanged = camVPW != local._lastCamVPW;
             local._lastCamVPW = camVPW;
 
+            std::unordered_set<std::string> uniqueText;
+
             // Go through each leaf and test for visibility.
             // Enforce the "max objects" limit along the way.
             for(osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin();
@@ -355,6 +357,16 @@ namespace osgEarth { namespace Internal
                                 break;
                             }
                         }
+                    }
+                }
+
+                if (visible && !drawable->getName().empty())
+                {
+                    auto r = uniqueText.emplace(drawable->getName());
+
+                    if (layoutData && layoutData->_unique && r.second == false)
+                    {
+                        visible = false;
                     }
                 }
 

@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHSYMBOLOGY_TEXT_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_TEXT_SYMBOL_H 1
+#pragma once
 
 #include <osgText/Text>
 #include <osgEarth/Symbol>
@@ -156,6 +154,10 @@ namespace osgEarth
         optional<Encoding>& encoding() { return _encoding; }
         const optional<Encoding>& encoding() const { return _encoding; }
 
+        /** text encoding */
+        optional<bool>& unique() { return _unique; }
+        const optional<bool>& unique() const { return _unique; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -181,7 +183,6 @@ namespace osgEarth
         optional<bool>              _declutter;
         optional<bool>              _occlusionCull;
         optional<double>            _occlusionCullAltitude;
+        optional<bool>              _unique;
     };
 } // namespace osgEarth
-
-#endif // OSGEARTHSYMBOLOGY_TEXT_SYMBOL_H

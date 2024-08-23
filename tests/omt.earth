@@ -1,20 +1,28 @@
 <map name="SDF demo">
 
-    <TMSImage name="ReadyMap 15m Imagery" opacity="0.35">
-        <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
-    </TMSImage>
+    <options>
+        <terrain>
+            <lod_method>screen_space</lod_method>
+        </terrain>
+    </options>
 
-    <tmselevation name="ReadyMap Elevation">
+    <tmselevation name="ReadyMap Elevation" open="true">
         <url>https://readymap.org/readymap/tiles/1.0.0/116/</url>
+        <vdatum>egm96</vdatum>
     </tmselevation>
     
-    <FeatureImage name="OMT Features" max_data_level="14" tile_size="512">
+    <tmsimage name="Natural Earth" open="false">
+        <url>https://readymap.org/readymap/tiles/1.0.0/181/</url>
+    </tmsimage>
+
+    <TMSImage name="ReadyMap 15m Imagery" opacity="0.3" open="false">
+        <url>https://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </TMSImage>
+    
+    <FeatureImage name="OMT Features (shaded)" max_data_level="14" tile_size="512">
         <features>data:osm</features>
         <styles>
-            <style>
-                water {
-                    fill: #30338f;
-                }
+            <style type="text/css">
                 landcover/farmland {
                     fill: #9f806f;
                 }
@@ -35,10 +43,40 @@
                 }
                 landcover/sand {
                     fill: #ffffef;
+                }              
+            </style>
+            <selector style_expr="get_style()"/>
+            <script><![CDATA[
+                function get_style() {
+                    var layer = feature.properties.mvt_layer;
+                    if (layer == "landcover")
+                        return "landcover/" + feature.properties.class;
+                    else if (layer == "transportation")
+                        return feature.properties.class != "ferry" ? layer : null;
+                    else if (layer == "boundary")
+                        return feature.properties.admin_level == 2 ? layer : null;
+                    else
+                        return layer;
+                }
+            ]]></script>
+        </styles>
+    </FeatureImage>
+    
+    <gdaldem name="Shaded relief" opacity="0.2" open="true">
+    </gdaldem>
+    
+    <FeatureImage name="OMT Features (unshaded)" max_data_level="16" tile_size="512">
+        <features>data:osm</features>
+        <styles>
+            <style type="text/css">
+                water {
+                    fill: #30338f;
                 }
                 boundary {
                     stroke: #ffff00;
                     stroke-width: 2px;
+                    stroke-outline: #2f2f2f;
+                    stroke-outline-width: 4px;
                 }
                 transportation {
                     stroke: #efefef;
@@ -46,6 +84,11 @@
                     stroke-outline: #4f4f4f;
                     stroke-outline-width: 2px;
                 }                
+                building {
+                    fill: #ffdfbf;
+                    stroke: #ff7f00;
+                    stroke-width: 1px;
+                }
             </style>
             <selector style_expr="get_style()"/>
             <script><![CDATA[
@@ -64,15 +107,18 @@
         </styles>
     </FeatureImage>
        
-    <TiledFeatureModel name="OMT Buildings" nvgl="true">
+    <TiledFeatureModel name="OMT 3D Buildings">
+        <profile>spherical-mercator</profile>
         <features>data:osm</features>
         <additive>false</additive>
+        <max_level>14</max_level>
         <styles>
-            <style>
+            <style type="text/css">
                 building {
                     altitude-clamping: terrain;
                     extrusion-height: [render_height];
                     extrusion-wall-shade: 0.5;
+                    extrusion-wall-gradient: 0.5;
                 }
             </style>
             <selector style_expr="get_style()"/>
@@ -89,12 +135,21 @@
         <features>data:osm</features>
         <additive>false</additive>
         <styles>
-            <style>
+            <style type="text/css">
                 place {
                     text: feature.properties.name_en;
                     text-align: center_center;
                     text-size: 30.0f;
-                    text-halo: #3f3f3f;
+                    text-halo: #2f2f2f;
+                    text-priority: 100.0-[rank];  
+                    text-declutter: true;
+                }
+                capital {
+                    text: feature.properties.name_en;
+                    text-align: center_center;
+                    text-size: 22.0f;
+                    text-fill: #efefff;
+                    text-halo: #2f2f2f;
                     text-priority: 100.0-[rank];  
                     text-declutter: true;
                 }
@@ -103,10 +158,13 @@
             <script><![CDATA[
                 function get_style() {
                     var layer = feature.properties.mvt_layer;
-                    if (layer == "place")
-                        return (feature.properties.rank <= 3)? layer : null;
-                    else
-                        return layer;
+                    if (layer == "place" && feature.properties.rank <= 2) {
+                        if ("capital" in feature.properties)
+                            return "capital";
+                        else
+                            return "place";
+                    }
+                    return null;
                 }
             ]]></script>
 
@@ -124,6 +182,15 @@
     </xyzfeatures>
     
     <Viewpoints home="0" time="0">
+        <viewpoint name="Tokyo">
+            <heading>-1.94997e-06</heading>
+            <pitch>-88.9992</pitch>
+            <range>238445m</range>
+            <long>139.3714749544664</long>
+            <lat>35.62794037726271</lat>
+            <height>140.499267118983</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
         <viewpoint name="New Orleans">
             <heading>-1.99154e-09</heading>
             <pitch>-89</pitch>
@@ -141,7 +208,16 @@
             <lat>51.51117658901586</lat>
             <height>0.002267543226480484</height>
             <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint><viewpoint name="Geneva">
+            <heading>1.35442e-07</heading>
+            <pitch>-88.9975</pitch>
+            <range>7066.05m</range>
+            <long>6.137778140539923</long>
+            <lat>46.20087766531671</lat>
+            <height>379.9929252536967</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
         </viewpoint>
+
     </Viewpoints>
     
     <screen_space_layout>

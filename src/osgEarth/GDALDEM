@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_GDALDEM_H
-#define OSGEARTH_GDALDEM_H
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
@@ -37,12 +35,12 @@ namespace osgEarth
         public:
             META_LayerOptions(osgEarth, Options, ImageLayer::Options);
             OE_OPTION_LAYER(ElevationLayer, elevationLayer);
-            OE_OPTION(std::string, processing);
-            OE_OPTION(float, azimuth);
-            OE_OPTION(float, lightAltitude);
+            OE_OPTION(std::string, processing, "hillshade");
+            OE_OPTION(float, azimuth, 0.0f);
+            OE_OPTION(float, lightAltitude, 0.0f);
             OE_OPTION(bool, multidirectional);
-            OE_OPTION(bool, combined);
-            OE_OPTION(bool, alpha);
+            OE_OPTION(bool, combined, false);
+            OE_OPTION(bool, alpha, false);
             OE_OPTION(URI, color_filename);
             virtual Config getConfig() const;
         private:
@@ -90,29 +88,27 @@ namespace osgEarth
     public: // Layer
 
         //! open succesfully
-        virtual Status openImplementation();
+        Status openImplementation() override;
 
         //! Close all composited layers
-        virtual Status closeImplementation();
+        Status closeImplementation() override;
 
         //! Creates a raster image for the given tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+        GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
         //! Called when a layer is added to the map
-        virtual void addedToMap(const Map* map);
-        virtual void removedFromMap(const Map* map);
+        void addedToMap(const Map* map) override;
+        void removedFromMap(const Map* map) override;
 
     protected: // Layer
 
         //! Called by constructors
-        virtual void init();
+        void init() override;
 
         std::string _colorRampFilename;
+        osg::observer_ptr<ElevationLayer> _elevationLayer;
     };
 
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::GDALDEMLayer::Options);
-
-
-#endif // OSGEARTH_GDALDEM_H

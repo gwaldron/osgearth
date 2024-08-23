@@ -386,6 +386,8 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
 const Profile*
 TiledFeatureModelLayer::getProfile() const
 {
+    OE_HARD_ASSERT(getFeatureSource() != nullptr);
+    OE_HARD_ASSERT(getFeatureSource()->getFeatureProfile() != nullptr);
     OE_SOFT_ASSERT_AND_RETURN(getFeatureSource() != nullptr, nullptr);
     OE_SOFT_ASSERT_AND_RETURN(getFeatureSource()->getFeatureProfile() != nullptr, nullptr);
 

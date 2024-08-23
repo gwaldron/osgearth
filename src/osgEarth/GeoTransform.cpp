@@ -22,7 +22,7 @@
 
 #define LC "[GeoTransform] "
 
-#define OE_TEST OE_DEBUG
+#define OE_TEST OE_NULL
 
 using namespace osgEarth;
 

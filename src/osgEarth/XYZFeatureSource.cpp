@@ -29,7 +29,7 @@
 
 using namespace osgEarth;
 
-#define OE_DEVEL OE_DEBUG
+#define OE_DEVEL OE_NULL
 
 //........................................................................
 

@@ -185,16 +185,21 @@ GDALDEMLayer::addedToMap(const Map* map)
 {
     options().elevationLayer().addedToMap(map);
 
-    ElevationLayer* layer = options().elevationLayer().getLayer();
-    if (!layer)
+    _elevationLayer = options().elevationLayer().getLayer();
+    if (!_elevationLayer.valid())
     {
-        setStatus(Status::ResourceUnavailable, "Failed to find elevation layer");
-        return;
+        // no user-specificed elevation layer; try to find one in the map
+        _elevationLayer = map->getLayer<ElevationLayer>();
+        if (!_elevationLayer.valid())
+        {
+            setStatus(Status::ResourceUnavailable, "Failed to find elevation layer");
+            return;
+        }
     }
 
-    setProfile(layer->getProfile());
+    setProfile(_elevationLayer->getProfile());
     DataExtentList dataExtents;
-    layer->getDataExtents(dataExtents);
+    _elevationLayer->getDataExtents(dataExtents);
     setDataExtents(dataExtents);
 }
 
@@ -202,6 +207,7 @@ void
 GDALDEMLayer::removedFromMap(const Map* map)
 {
     options().elevationLayer().removedFromMap(map);
+    _elevationLayer = nullptr;
 }
 
 Status
@@ -212,12 +218,12 @@ GDALDEMLayer::openImplementation()
         return parent;
 
     // If we're in cache-only mode, do not attempt to open the layer!
-    if (getCacheSettings()->cachePolicy()->isCacheOnly())
-        return STATUS_OK;
+    //if (getCacheSettings()->cachePolicy()->isCacheOnly())
+    //    return STATUS_OK;
 
-    Status childStatus = options().elevationLayer().open(getReadOptions());
-    if (childStatus.isError())
-        return childStatus;
+    //Status childStatus = options().elevationLayer().open(getReadOptions());
+    //if (childStatus.isError())
+    //    return childStatus;
 
     // if the colorramp file doesn't exist, create a default one.
     if (!osgDB::fileExists(options().color_filename()->full()))
@@ -252,6 +258,7 @@ Status
 GDALDEMLayer::closeImplementation()
 {
     options().elevationLayer().close();
+    _elevationLayer = nullptr;
     return STATUS_OK;
 }
 
@@ -304,11 +311,8 @@ namespace
         return ds;
     }
 
-    osg::Image*
-        createImageFromDataset(GDALDataset* ds)
+    osg::Image* createImageFromDataset(GDALDataset* ds)
     {
-        // called internally -- GDAL lock not required
-
         int numBands = ds->GetRasterCount();
         if (numBands < 1)
             return 0L;
@@ -372,8 +376,7 @@ namespace
         return ImageUtils::convertToRGBA8(image.get());
     }
 
-    GDALDataset*
-        createDataSetFromHeightField(const osg::HeightField* hf, double minX, double minY, double maxX, double maxY, const std::string& projection)
+    GDALDataset* createDataSetFromHeightField(const osg::HeightField* hf, double minX, double minY, double maxX, double maxY, const std::string& projection)
     {
         GDALDataType gdalDataType = GDT_Float32;
 
@@ -416,10 +419,16 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
 {
 #ifdef HAS_GDALDEM
 
-    ElevationLayer* layer = getElevationLayer();
-    if (layer->isOpen() == false)
+    //ElevationLayer* layer = getElevationLayer();
+    //if (layer->isOpen() == false)
+    //{
+    //    OE_WARN << LC << "Elevation layer is not open!" << key.str() << std::endl;
+    //    return {};
+    //}
+
+    osg::ref_ptr<ElevationLayer> layer;
+    if (!_elevationLayer.lock(layer) || !layer->isOpen())
     {
-        OE_WARN << LC << "Elevation layer is not open!" << key.str() << std::endl;
         return {};
     }
 
@@ -446,21 +455,21 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
         if (options().lightAltitude().isSet())
         {
             papsz = CSLAddString(papsz, "-alt");
-            std::string arg = Stringify() << *options().lightAltitude();
+            std::string arg = std::to_string(options().lightAltitude().value());
             papsz = CSLAddString(papsz, arg.c_str());
         }
 
-        if (options().multidirectional().isSet())
+        if (options().multidirectional() == true)
         {
             papsz = CSLAddString(papsz, "-multidirectional");
         }
 
-        if (options().combined().isSet())
+        if (options().combined() == true)
         {
             papsz = CSLAddString(papsz, "-combined");
         }
 
-        if (options().alpha().isSet())
+        if (options().alpha() == true)
         {
             papsz = CSLAddString(papsz, "-alpha");
         }

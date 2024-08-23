@@ -191,8 +191,6 @@ Style::mergeConfig( const Config& conf, const StyleMap* sheet )
 
     if ( useCSS )
     {
-        OE_DEBUG << LC << "Found a style with CSS and no text/css type; only first style will be read" << std::endl;
-
         _origData = textData;
         
         // just take the first block.

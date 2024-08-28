@@ -40,6 +40,7 @@ Context::Context():
 
 Context::~Context()
 {
+    shutdown();
 }
 
 void Context::shutdown()
@@ -52,8 +53,3 @@ void Context::shutdown()
     asyncSystem.dispatchMainThreadTasks();
 }
 
-Context& Context::instance()
-{
-    static Context s_context;
-    return s_context;
-}

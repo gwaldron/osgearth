@@ -26,6 +26,7 @@
 #include <osg/Group>
 #include <osg/View>
 #include <osg/Texture2D>
+#include <CesiumUtility/CreditSystem.h>
 
 namespace osgEarth {
     namespace Cesium
@@ -35,7 +36,7 @@ namespace osgEarth {
         class OSGEARTHCESIUM_EXPORT CesiumCreditsNode : public osg::Group
         {
         public:
-            CesiumCreditsNode(osg::View* view);
+            CesiumCreditsNode(osg::View* view, CesiumUtility::CreditSystem* creditSystem);
             virtual void traverse(osg::NodeVisitor& nv);
             
 
@@ -51,6 +52,7 @@ namespace osgEarth {
             std::vector< std::string > _credits;
             osg::Camera* _camera;
             osg::observer_ptr< osg::View > _view;
+            std::shared_ptr< CesiumUtility::CreditSystem > _creditSystem;
         };
     }
 }

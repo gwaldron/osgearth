@@ -144,11 +144,12 @@ namespace
     }
 }
 
-CesiumCreditsNode::CesiumCreditsNode(osg::View* view)
+CesiumCreditsNode::CesiumCreditsNode(osg::View* view, CesiumUtility::CreditSystem* creditSystem)
 {
     setNumChildrenRequiringUpdateTraversal(1);
 
     _view = view;
+    _creditSystem = std::shared_ptr< CesiumUtility::CreditSystem >(creditSystem);
 
     _camera = new osg::Camera;    
     _camera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
@@ -165,15 +166,14 @@ CesiumCreditsNode::CesiumCreditsNode(osg::View* view)
 
 void CesiumCreditsNode::nextFrame()
 {
-    auto creditSystem = Context::instance().creditSystem;
-    creditSystem->startNextFrame();
+    _creditSystem->startNextFrame();
 }
 
 void CesiumCreditsNode::updateCredits()
 {
     std::vector< ParsedCredit > parsedCredits;
 
-    auto creditSystem = Context::instance().creditSystem;
+    auto creditSystem = _creditSystem;
     auto credits = creditSystem->getCreditsToShowThisFrame();
     for (auto& credit : credits)
     {

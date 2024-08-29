@@ -1,0 +1,76 @@
+name: windows-external-project
+
+on: [push, workflow_dispatch]
+
+env:
+  VCPKG_BINARY_SOURCES : 'clear;nuget,GitHub,readwrite'
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+  VCPKG_VERSION: 'master'
+
+jobs:
+
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: ['windows-2019']
+        include:
+          - os: 'windows-2019'
+            triplet: 'x64-windows'
+            mono: ''
+            VCPKG_WORKSPACE: 'c:/vcpkg_own'
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Cloning vcpkg main branch (windows)
+      shell: 'bash'
+      run: |
+        cmake -E make_directory ${{ matrix.VCPKG_WORKSPACE }}
+        cd ${{ matrix.VCPKG_WORKSPACE }}
+        git clone https://github.com/microsoft/vcpkg
+        ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
+        ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version
+
+    - name: 'Setup NuGet Credentials'
+      working-directory: ${{ matrix.VCPKG_WORKSPACE }}
+      shell: 'bash'
+      run: |
+        ${{ matrix.mono }} `./vcpkg/vcpkg fetch nuget | tail -n 1` \
+        sources add \
+        -source "https://nuget.pkg.github.com/${{ github.actor }}/index.json" \
+        -storepasswordincleartext \
+        -name "GitHub" \
+        -username "${{ github.actor }}" \
+        -password "${{ secrets.GITHUB_TOKEN }}" 
+        ${{ matrix.mono }} `./vcpkg/vcpkg fetch nuget | tail -n 1` \
+          setapikey "${{ secrets.GITHUB_TOKEN }}" \
+          -source "https://nuget.pkg.github.com/${{ github.actor }}/index.json"
+
+    - name: Create Build Environment
+      run: |
+        cmake -E make_directory ${{runner.workspace}}/build
+
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{ runner.workspace }}/build
+      run: |
+        cmake $GITHUB_WORKSPACE/share/ExternalProject -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/share/ExternalProject
+
+    - name: 'Upload cmake configure log artifact'
+      uses: actions/upload-artifact@v3
+      if: ${{ failure() }}
+      with:
+        name: cmake-log
+        path: |
+          ${{ runner.workspace }}/build/CMakeCache.txt
+        retention-days: 1
+
+    - name: Build
+      working-directory: ${{ runner.workspace }}/build
+      shell: bash
+      run: cmake --build . --config $BUILD_TYPE

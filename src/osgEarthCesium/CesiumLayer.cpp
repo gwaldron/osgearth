@@ -34,6 +34,7 @@ Config
 CesiumNative3DTilesLayer::Options::getConfig() const
 {
     Config conf = VisibleLayer::Options::getConfig();
+    conf.set("server", _server);
     conf.set("url", _url);
     conf.set("asset_id", _assetId);
     conf.set("token", _token);
@@ -47,8 +48,10 @@ CesiumNative3DTilesLayer::Options::getConfig() const
 void
 CesiumNative3DTilesLayer::Options::fromConfig(const Config& conf)
 {
+    _server.init("https://api.cesium.com/");
     _maximumScreenSpaceError.setDefault(16.0f);
     _forbidHoles.setDefault(false);
+    conf.get("server", _server);
     conf.get("url", _url);
     conf.get("asset_id", _assetId);
     conf.get("token", _token);
@@ -98,7 +101,7 @@ CesiumNative3DTilesLayer::openImplementation()
         {
             overlays.push_back(*_options->rasterOverlay());
         }
-        _tilesetNode = new CesiumTilesetNode(_options->url()->full(), token, *_options->maximumScreenSpaceError(), overlays);
+        _tilesetNode = new CesiumTilesetNode(_options->url()->full(), _options->server()->full(), token, *_options->maximumScreenSpaceError(), overlays);
     }
     else if (_options->assetId().isSet())
     {
@@ -107,7 +110,7 @@ CesiumNative3DTilesLayer::openImplementation()
         {
             overlays.push_back(*_options->rasterOverlay());
         }
-        _tilesetNode = new CesiumTilesetNode(*_options->assetId(), token, *_options->maximumScreenSpaceError(), overlays);
+        _tilesetNode = new CesiumTilesetNode(*_options->assetId(), _options->server()->full(), token, *_options->maximumScreenSpaceError(), overlays);
     }
 
     if (!_tilesetNode.valid())

@@ -23,7 +23,6 @@
 #define OSGEARTH_CESIUM_CONTEXT_H
 
 #include "CesiumTilesetNode"
-#include <CesiumGltf/Material.h>
 
 #include "AssetAccessor"
 #include "PrepareRenderResources"
@@ -33,9 +32,11 @@
 #include <CesiumGltfContent/GltfUtilities.h>
 #include <Cesium3DTilesContent/registerAllTileContentTypes.h>
 #include <CesiumGltf/AccessorView.h>
+#include <CesiumGltf/Material.h>
 #include <Cesium3DTilesSelection/Tileset.h>
 #include <CesiumRasterOverlays/IonRasterOverlay.h>
 #include <CesiumAsync/AsyncSystem.h>
+#include <CesiumIonClient/Connection.h>
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -51,20 +52,18 @@ namespace osgEarth {
         public:
 
             Context();
-
             ~Context();
 
             void shutdown();
 
-            static Context& instance();
-            
             std::shared_ptr< PrepareRendererResources > prepareRenderResources;
             std::shared_ptr<AssetAccessor> assetAccessor;
             std::shared_ptr<TaskProcessor> taskProcessor;
             std::shared_ptr< spdlog::logger > logger;
             std::shared_ptr< CesiumUtility::CreditSystem > creditSystem;
             CesiumAsync::AsyncSystem asyncSystem;
-            std::unique_ptr<Context> context;
+
+            std::unique_ptr< CesiumIonClient::Connection > connection;       
         };
     }
 }

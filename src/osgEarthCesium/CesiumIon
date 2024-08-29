@@ -23,12 +23,15 @@
 #define OSGEARTH_CESIUM_CESIUMION_H
 
 #include "Export"
-#include <vector>
+#include <map>
 #include <string>
+#include <vector>
+#include <memory>
 
 namespace osgEarth {
     namespace Cesium
     {
+        class Context;
         using namespace osgEarth;
 
         struct OSGEARTHCESIUM_EXPORT CesiumIonAsset
@@ -48,10 +51,19 @@ namespace osgEarth {
         {
         public:
             CesiumIon();
+            ~CesiumIon();
 
             void refresh();
 
+            static CesiumIon& instance();
+
+            Context* getContext(const std::string& server);
+            void shutdown();
+
             std::vector< CesiumIonAsset > assets;
+
+        private:
+            std::map< std::string, Context* > contexts;
         };
     }
 }

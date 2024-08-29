@@ -6,4 +6,4 @@ find_package(osgEarth CONFIG REQUIRED)
 
 add_executable(ExternalExample main.cpp)
 
-target_link_libraries(ExternalExample PRIVATE osgEarth)
+target_link_libraries(ExternalExample PRIVATE osgEarth::osgEarth)

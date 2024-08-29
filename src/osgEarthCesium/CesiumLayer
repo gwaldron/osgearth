@@ -35,6 +35,7 @@ namespace osgEarth
             class OSGEARTHCESIUM_EXPORT Options : public VisibleLayer::Options {
             public:
                 META_LayerOptions(osgEarthCesium, Options, VisibleLayer::Options);
+                OE_OPTION(URI, server);
                 OE_OPTION(URI, url);
                 OE_OPTION(unsigned int, assetId);
                 OE_OPTION(std::string, token);

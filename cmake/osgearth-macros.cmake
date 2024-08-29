@@ -226,19 +226,22 @@ macro(add_osgearth_library)
         RUNTIME DESTINATION ${INSTALL_RUNTIME_FOLDER}
         LIBRARY DESTINATION ${INSTALL_LIBRARY_FOLDER}
         ARCHIVE DESTINATION ${INSTALL_ARCHIVE_FOLDER}
+        INCLUDES DESTINATION include # ${CMAKE_INSTALL_INCLUDEDIR}
     )
 
     # deploy the shaders for this library, if requested.
     if(OSGEARTH_INSTALL_SHADERS)
         install(
             FILES ${MY_SHADERS}
-            DESTINATION resources/shaders )
+            DESTINATION share/osgEarth/shaders )
     endif()
     
     # on Windows, install pdb files
     # https://stackoverflow.com/a/40860436/4218920
     if(OSGEARTH_INSTALL_PDBS)
-        install(FILES $<TARGET_PDB_FILE:${MY_TARGET}> DESTINATION ${INSTALL_LIBRARY_FOLDER} OPTIONAL)
+        install(
+            FILES $<TARGET_PDB_FILE:${MY_TARGET}>
+            DESTINATION ${INSTALL_LIBRARY_FOLDER} OPTIONAL)
     endif()
 
 
@@ -264,11 +267,14 @@ macro(add_osgearth_library)
              INSTALL_NAME_DIR "${OSGEARTH_BUILD_FRAMEWORKS_INSTALL_NAME_DIR}"
         )
     endif()
+        
+    # generate and install a packaging target for this library:
+    osgearth_package_install_library_target(${MY_TARGET})
     
     # IDE location:
     if (MY_FOLDER)
         set_property(TARGET ${MY_TARGET} PROPERTY FOLDER "${MY_FOLDER}")
-    endif()        
+    endif()
     
 endmacro()
 

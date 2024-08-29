@@ -54,7 +54,7 @@ cmake_minimum_required(VERSION 3.20)
 project(myApp)
 find_package(osgEarth CONFIG REQUIRED)
 add_executable(myApp main.cpp)
-target_link_libraries(myApp PRIVATE osgEarth)
+target_link_libraries(myApp PRIVATE osgEarth::osgEarth)
 install(TARGETS myApp RUNTIME DESTINATION bin)
 ```
 main.cpp

@@ -3,9 +3,15 @@
 set(OSGEARTH_COMPONENTS)
 list(APPEND OSGEARTH_COMPONENTS osgEarth)
 
+# A list of public-facing dependencies for the packaging targets
+set(OSGEARTH_PUBLIC_DEPENDENCIES)
+
+
 if(OSGEARTH_BUILD_IMGUI_NODEKIT)
     add_subdirectory(osgEarthImGui)
     list(APPEND OSGEARTH_COMPONENTS osgEarthImGui)
+    list(APPEND OSGEARTH_PUBLIC_DEPENDENCIES GLEW)
+    list(APPEND OSGEARTH_PUBLIC_DEPENDENCIES OpenGL)
 endif()
 
 if(OSGEARTH_BUILD_PROCEDURAL_NODEKIT)

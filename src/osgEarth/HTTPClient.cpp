@@ -1057,6 +1057,10 @@ namespace
                 return HTTPResponse(0);
             }
 
+            // Enable automatic HTTP decompression of known types.
+            BOOL enableDecompression = TRUE;
+            InternetSetOption(hConnection, INTERNET_OPTION_HTTP_DECODING, &enableDecompression, sizeof(enableDecompression));
+
             HINTERNET hRequest = HttpOpenRequest(
                 hConnection,            // handle from InternetConnect
                 "GET",                  // verb
@@ -1075,7 +1079,8 @@ namespace
                 return HTTPResponse(0);
             }
 
-            while( !HttpSendRequest(hRequest, NULL, 0, NULL, 0) )
+            const char* headers = "Accept-Encoding: gzip, deflate";
+            while( !HttpSendRequest(hRequest, headers, strlen(headers), NULL, 0) )
             {
                 DWORD errorNum = GetLastError();
 

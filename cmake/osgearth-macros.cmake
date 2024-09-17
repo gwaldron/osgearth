@@ -54,7 +54,7 @@ macro(add_osgearth_plugin)
    
     # install the shader source files, if requested:
     if(OSGEARTH_INSTALL_SHADERS)
-        install(FILES ${MY_SHADERS} DESTINATION resources/shaders)
+        install(FILES ${MY_SHADERS} DESTINATION share/osgEarth/shaders)
     endif()
 
     # macos-specific

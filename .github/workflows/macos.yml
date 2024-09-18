@@ -31,7 +31,7 @@ jobs:
         brew install glew
         sudo xcode-select -p
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
 
@@ -55,7 +55,7 @@ jobs:
           -GXcode -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/vcpkg
 
     - name: 'Upload cmake configure log artifact'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: ${{ failure() }}
       with:
         name: cmake-configure-log
@@ -69,7 +69,7 @@ jobs:
       run: cmake --build . --config $BUILD_TYPE
 
     - name: 'Upload cmake build log artifact'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: ${{ failure() }}
       with:
         name: cmake-build-log

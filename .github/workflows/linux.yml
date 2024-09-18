@@ -32,7 +32,7 @@ jobs:
         sudo apt-get install -y libtinyxml-dev
         sudo apt-get install -y libglew-dev
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
 
@@ -46,7 +46,7 @@ jobs:
       run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DOSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT=OFF -DOSGEARTH_BUILD_PROCEDURAL_NODEKIT=ON
 
     - name: 'Upload cmake configure log artifact'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: ${{ failure() }}
       with:
         name: cmake-configure-log
@@ -60,7 +60,7 @@ jobs:
       run: cmake --build . --parallel 4 --config $BUILD_TYPE
 
     - name: 'Upload cmake build log artifact'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: ${{ failure() }}
       with:
         name: cmake-build-log

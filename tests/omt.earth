@@ -174,7 +174,7 @@
     </TiledFeatureModel>
     
     <xyzfeatures name="data:osm">
-        <url>https://readymap.org/readymap/mbtiles/osm-openmaptiles-08-05-2024/{z}/{x}/{-y}.pbf</url>
+        <url>https://readymap.org/readymap/mbtiles/osm-openmaptiles-09-09-2024/{z}/{x}/{-y}.pbf</url>
         <profile>spherical-mercator</profile>
         <format>pbf</format>
         <min_level>0</min_level>

@@ -9,7 +9,7 @@ function(osgearth_package_install_config_files INCLUDE_INSTALL_DIR LIBRARY_INSTA
     include(CMakePackageConfigHelpers)
 
     configure_package_config_file(
-        "${CMAKE_SOURCE_DIR}/cmake/osgEarth-config.cmake.in"
+        "${PROJECT_SOURCE_DIR}/cmake/osgEarth-config.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/osgEarth-config.cmake"
         INSTALL_DESTINATION ${PACKAGE_INSTALL_DIR}
         PATH_VARS INCLUDE_INSTALL_DIR LIBRARY_INSTALL_DIR) 

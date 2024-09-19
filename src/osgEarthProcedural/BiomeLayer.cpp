@@ -62,18 +62,28 @@ BiomeLayer::Options::getConfig() const
 #undef LC
 #define LC "[BiomeLayer] " << getName() << ": "
 
-namespace
+//namespace
+//{
+//    // Token for keeping track of biome images so we can page their
+//    // asset data in and out
+//    struct BiomeTrackerToken : public osg::Object
+//    {
+//        META_Object(osgEarth, BiomeTrackerToken);
+//        BiomeTrackerToken() { }
+//        BiomeTrackerToken(std::set<int>&& seen, BiomeLayer* layer) : _biome_index_set(seen), _biomeLayer(layer) { }
+//        BiomeTrackerToken(const BiomeTrackerToken& rhs, const osg::CopyOp& op) { }
+//        std::set<int> _biome_index_set;
+//        osg::observer_ptr<BiomeLayer> _biomeLayer;
+//    };
+//}
+
+BiomeLayer::BiomeTrackerToken::~BiomeTrackerToken()
 {
-    // Token for keeping track of biome images so we can page their
-    // asset data in and out
-    struct BiomeTrackerToken : public osg::Object
+    osg::ref_ptr<BiomeLayer> layer;
+    if (_biomeLayer.lock(layer))
     {
-        META_Object(osgEarth, BiomeTrackerToken);
-        BiomeTrackerToken() { }
-        BiomeTrackerToken(std::set<int>&& seen) : _biome_index_set(seen) { }
-        BiomeTrackerToken(const BiomeTrackerToken& rhs, const osg::CopyOp& op) { }
-        std::set<int> _biome_index_set;
-    };
+        layer->trackerTokenDeleted(this);
+    }
 }
 
 void
@@ -551,20 +561,20 @@ BiomeLayer::trackImage(
     // destructs, and we can unref the usage in the BiomeManager accordingly.
     // This works, but reverses the flow of control, so maybe
     // there is a better solution -gw
-    osg::Object* token = new BiomeTrackerToken(std::move(biome_index_set));
-    token->setName(Stringify() << "BiomeLayer " << key.str());
+    osg::Object* token = new BiomeTrackerToken(std::move(biome_index_set), const_cast<BiomeLayer*>(this));
+    token->setName(Stringify() << "Biome token " << key.str());
     image.setTrackingToken(token);
-    token->addObserver(const_cast<BiomeLayer*>(this));
+    //token->addObserver(const_cast<BiomeLayer*>(this));
     _tracker.scoped_lock([&]() { _tracker[token] = key; });
 }
 
 void
-BiomeLayer::objectDeleted(void* value)
+BiomeLayer::trackerTokenDeleted(BiomeTrackerToken* token)
 {
     // Invoked when the biome index raster destructs.
     // Inform the BiomeManager that the indices referenced by this
     // image are no longer in use (unreference the count).
-    BiomeTrackerToken* token = static_cast<BiomeTrackerToken*>(value);
+    //BiomeTrackerToken* token = static_cast<BiomeTrackerToken*>(value);
 
     _tracker.scoped_lock([&]()
         {

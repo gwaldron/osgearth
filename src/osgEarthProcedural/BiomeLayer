@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_PROCEDURAL_BIOME_LAYER_H
-#define OSGEARTH_PROCEDURAL_BIOME_LAYER_H
+#pragma once
 
 #include <osgEarthProcedural/Export>
 #include <osgEarthProcedural/Biome>
@@ -244,7 +243,19 @@ namespace osgEarth
 
             using Tracker = std::unordered_map<osg::Object*, TileKey>;
             mutable Mutexed<Tracker> _tracker;
-            void objectDeleted(void*) override;
+
+            class BiomeTrackerToken : public osg::Object {
+            public:
+                META_Object(osgEarth, BiomeTrackerToken);
+                BiomeTrackerToken() = default;
+                BiomeTrackerToken(std::set<int>&& seen, BiomeLayer* layer) : _biome_index_set(seen), _biomeLayer(layer) { }
+                BiomeTrackerToken(const BiomeTrackerToken& rhs, const osg::CopyOp& op) { }
+                ~BiomeTrackerToken();
+                std::set<int> _biome_index_set;
+                osg::observer_ptr<BiomeLayer> _biomeLayer;
+            };
+            void trackerTokenDeleted(BiomeTrackerToken*);
+            friend BiomeTrackerToken;
 
             void trackImage(
                 GeoImage& image,
@@ -267,4 +278,3 @@ namespace osgEarth
     }
 } // namespace osgEarth::Procedural
 
-#endif // OSGEARTH_PROCEDURAL_BIOME_LAYER_H

@@ -21,6 +21,7 @@ Let's get started!
 * [Using an Earth File](earthfile.md)
 * [Working with Data](data.md)
 * [Layer Reference](layers.md)
+* [Environment Variables](envvars.md)
 * [FAQ](faq.md)
 * [Release Notes](releasenotes.md)
 * [Upgrade Guide: from 2.x to 3.x](3.0_upgrade_guide.md)

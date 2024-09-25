@@ -72,6 +72,9 @@ namespace osgEarth
                 TerrainTileModel*  model) = 0;
         };
 
+        using ComputeTileRangeCallback = std::function<float(osg::Node* node, osg::NodeVisitor& nv)>;
+        using ComputeTilePixelSizeCallback = std::function<float(osg::Node* node, osg::NodeVisitor& nv)>;
+
     public:
         //! Unique ID of the terrain engine instance
         virtual UID getUID() const = 0;
@@ -170,6 +173,13 @@ namespace osgEarth
 
         //! Tell the engine you updates options.
         virtual void dirtyTerrainOptions() = 0;
+
+        //! Set a function that computes the on-screen size of a tile 
+        //! for the purposes of LOD selection.
+        virtual void setComputeTilePixelSizeCallback(const ComputeTilePixelSizeCallback& callback) = 0;
+
+        //! Set a function that computes the range of a tile for the purposes of culling.
+        virtual void setComputeTileRangeCallback(const ComputeTileRangeCallback& callback) = 0;
     };
 
     /**
@@ -264,13 +274,11 @@ namespace osgEarth
         //! Shut down the engine
         virtual void shutdown();
 
-        using ComputeTileRangeCallback = std::function<float(osg::Node* node, osg::NodeVisitor& nv)>;
-        using ComputeTilePixelSizeCallback = std::function<float(osg::Node* node, osg::NodeVisitor& nv)>;
+        void setComputeTileRangeCallback(const ComputeTileRangeCallback& callback) override { _computeTileRangeCallback = callback; }
 
-        void setComputeTileRangeCallback(const ComputeTileRangeCallback& callback) { _computeTileRangeCallback = callback; }
+        void setComputeTilePixelSizeCallback(const ComputeTilePixelSizeCallback& callback) override { _computeTilePixelSizeCallback = callback; }
+        
         ComputeTileRangeCallback& getComputeTileRangeCallback() { return _computeTileRangeCallback; }
-
-        void setComputeTilePixelSizeCallback(const ComputeTilePixelSizeCallback& callback) { _computeTilePixelSizeCallback = callback; }
         ComputeTilePixelSizeCallback& getComputeTilePixelSizeCallback() { return _computeTilePixelSizeCallback; }
 
         //! Return the top level node associated with the terrain.

@@ -30,8 +30,6 @@ void oe_rex_normalMapVS(inout vec4 unused)
 #pragma vp_function oe_rex_normalMapFS, fragment_coloring, 0.1
 
 #pragma import_defines(OE_TERRAIN_RENDER_NORMAL_MAP)
-#pragma import_defines(OE_DEBUG_NORMALS)
-#pragma import_defines(OE_DEBUG_CURVATURE)
 
 in vec3 vp_Normal;
 in vec3 oe_UpVectorView;
@@ -60,18 +58,5 @@ void oe_rex_normalMapFS(inout vec4 color)
         vec4 N = oe_terrain_getNormalAndCurvature(oe_normal_handle, oe_normal_uv);
         vp_Normal = normalize( oe_normalMapTBN*N.xyz );
     }
-#endif
-
-#ifdef OE_DEBUG_CURVATURE
-    // visualize curvature quantized:
-    color.rgba = vec4(0, 0, 0, 1);
-    float curvature = N.w;
-    if (curvature > 0.0) color.r = curvature;
-    if (curvature < 0.0) color.g = -curvature;
-#endif
-
-#ifdef OE_DEBUG_NORMALS
-    // visualize normals:
-    color.rgb = (N.xyz + 1.0)*0.5;
 #endif
 }

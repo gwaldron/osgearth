@@ -276,12 +276,6 @@ RexTerrainEngineNode::onSetMap()
         _morphTerrainSupported = false;
     }
 
-    // Check for normals debugging.
-    if (::getenv("OSGEARTH_DEBUG_NORMALS"))
-        getOrCreateStateSet()->setDefine("OE_DEBUG_NORMALS");
-    else
-        if (getStateSet()) getStateSet()->removeDefine("OE_DEBUG_NORMALS");
-
     // check for normal map generation (required for lighting).
     _requirements.normalTextures = (options.getUseNormalMaps() == true);
 
@@ -732,11 +726,7 @@ RexTerrainEngineNode::dirtyTerrainOptions()
 
     jobs::get_pool(ARENA_LOAD_TILE)->set_concurrency(options.getConcurrency());
 
-    getSurfaceStateSet()->getOrCreateUniform(
-        "oe_terrain_tess", osg::Uniform::FLOAT)->set(options.getTessellationLevel());
-
-    getSurfaceStateSet()->getOrCreateUniform(
-        "oe_terrain_tess_range", osg::Uniform::FLOAT)->set(options.getTessellationRange());
+    updateState();
 }
 
 void

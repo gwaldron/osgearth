@@ -138,6 +138,13 @@ namespace osgEarth
                         }
                     }
 
+                    Color color = options.getColor();
+                    if (ImGuiLTable::ColorEdit3("Background", color.ptr()))
+                    {
+                        options.setColor(color);
+                        engine->dirtyTerrainOptions();
+                    }
+
                     if (GLUtils::useNVGL())
                     {
                         unsigned maxTex = options.getMaxTextureSize();

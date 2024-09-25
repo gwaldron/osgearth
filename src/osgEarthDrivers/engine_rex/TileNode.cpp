@@ -347,22 +347,26 @@ TileNode::shouldSubDivide(TerrainCuller* culler, const SelectionInfo& selectionI
         // allowable on-screen tile size in pixels.
         if (_context->options().getLODMethod() == LODMethod::SCREEN_SPACE)
         {
-            float tileSizeInPixels = -1.0;
+            // assume the imagery of a tile to be this dimension (pixels). If so, once the
+            // size of tile geometry on screen exceeds that, it's time to subdivide.
+            float tileImagerySize = _context->options().getTilePixelSize();
+
+            float tileGeometrySizeInPixels = -1.0;
 
             if (context->getEngine()->getComputeTilePixelSizeCallback())
             {
-                tileSizeInPixels = (context->getEngine()->getComputeTilePixelSizeCallback())(this, *culler->_cv);
+                tileGeometrySizeInPixels = (context->getEngine()->getComputeTilePixelSizeCallback())(this, *culler->_cv);
             }
 
-            if (tileSizeInPixels <= 0.0)
+            if (tileGeometrySizeInPixels <= 0.0)
             {
-                tileSizeInPixels = _surface->getPixelSizeOnScreen(culler);
+                tileGeometrySizeInPixels = _surface->getPixelSizeOnScreen(culler);
             }
         
-            float effectivePixelSize =
-                _context->options().getTilePixelSize() + _context->options().getScreenSpaceError();
+            // SSE is the amount of error we are willing to tolerate in the screen space size
+            float pixelSizeThreshold = tileImagerySize + _context->options().getScreenSpaceError();
 
-            return (tileSizeInPixels > effectivePixelSize);
+            return (tileGeometrySizeInPixels > pixelSizeThreshold);
         }
 
         // In DISTANCE-TO-EYE mode, use the visibility ranges precomputed in the SelectionInfo.

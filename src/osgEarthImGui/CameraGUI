@@ -30,51 +30,34 @@ namespace osgEarth
      */
     struct CameraGUI : public ImGuiPanel
     {
-        bool _first;
-        bool _singleAxisRotation;
-        bool _lockAzimuthWhilePanning;
-        bool _arcViewpointTransitions;
-        bool _terrainAvoidanceEnabled;
-        bool _throwing;
-        float _throwDecayRate;
-        bool _zoomToMouse;
         double _vfov, _ar, _zn, _zf;
+        EarthManipulator::Settings* _settings = nullptr;
+        Config _loadConf;
 
         CameraGUI() :
             ImGuiPanel("Camera"),
-            _first(true),
             _vfov(30), _ar(1), _zn(1), _zf(100)
         {
-            EarthManipulator::Settings d;
-            _singleAxisRotation = d.getSingleAxisRotation();
-            _lockAzimuthWhilePanning = d.getLockAzimuthWhilePanning();
-            _arcViewpointTransitions = d.getArcViewpointTransitions();
-            _terrainAvoidanceEnabled = d.getTerrainAvoidanceEnabled();
-            _throwing = d.getThrowingEnabled();
-            _throwDecayRate = d.getThrowDecayRate();
-            _zoomToMouse = d.getZoomToMouse();
+            //nop
         }
 
         void load(const Config& conf) override
         {
-            conf.get("SingleAxisRotation", _singleAxisRotation);
-            conf.get("LockAzimuthWhilePanning", _lockAzimuthWhilePanning);
-            conf.get("ArcViewpointTransitions", _arcViewpointTransitions);
-            conf.get("TerrainAvoidance", _terrainAvoidanceEnabled);
-            conf.get("Throwing", _throwing);
-            conf.get("ThrowingDecay", _throwDecayRate);
-            conf.get("ZoomToMouse", _zoomToMouse);
+            // remember, the settings come in one at a time so we have to use merge
+            _loadConf.merge(conf);
         }
 
         void save(Config& conf) override
         {
-            conf.set("SingleAxisRotation", _singleAxisRotation);
-            conf.set("LockAzimuthWhilePanning", _lockAzimuthWhilePanning);
-            conf.set("ArcViewpointTransitions", _arcViewpointTransitions);
-            conf.set("TerrainAvoidance", _terrainAvoidanceEnabled);
-            conf.set("Throwing", _throwing);
-            conf.set("ThrowingDecay", _throwDecayRate);
-            conf.set("ZoomToMouse", _zoomToMouse);
+            if (_settings)
+            {
+                conf.set("SingleAxisRotation", _settings->singleAxisRotation());
+                conf.set("LockAzimuthWhilePanning", _settings->lockAzimuthWhilePanning());
+                conf.set("TerrainAvoidance", _settings->terrainAvoidanceEnabled());
+                conf.set("Throwing", _settings->throwingEnabled());
+                conf.set("ThrowingDecay", _settings->throwDecayRate());
+                conf.set("ZoomToMouse", _settings->zoomToMouse());
+            }
         }
 
         void draw(osg::RenderInfo& ri)
@@ -82,18 +65,31 @@ namespace osgEarth
             if (!isVisible())
                 return;
 
-            EarthManipulator* man = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
-
-            EarthManipulator::Settings* s = nullptr;
-
+            auto* man = dynamic_cast<EarthManipulator*>(view(ri)->getCameraManipulator());
             if (man)
-                s = man->getSettings();
+            {
+                _settings = man->getSettings();
+                if (_settings && !_loadConf.empty())
+                {
+                    _loadConf.get("SingleAxisRotation", _settings->singleAxisRotation());
+                    _loadConf.get("LockAzimuthWhilePanning", _settings->lockAzimuthWhilePanning());
+                    _loadConf.get("TerrainAvoidance", _settings->terrainAvoidanceEnabled());
+                    _loadConf.get("Throwing", _settings->throwingEnabled());
+                    _loadConf.get("ThrowingDecay", _settings->throwDecayRate());
+                    _loadConf.get("ZoomToMouse", _settings->zoomToMouse());
+                    _loadConf = {};
+                }
+            }
+
+            if (!_settings)
+            {
+                ImGui::TextColored(ImVec4(1, 0, 0, 1), "No earth manipulator");
+                ImGui::End();
+                return;
+            }
 
             ImGui::Begin(name(), visible());
             {
-                //if (ImGui::Checkbox("Single axis continuous rotation", &_singleAxisRotation) || _first)
-                //    s->setSingleAxisRotation(_singleAxisRotation), dirtySettings();
-
                 if (ImGuiLTable::Begin("CameraGUI"))
                 {
                     osg::Matrix pm = camera(ri)->getProjectionMatrix();
@@ -110,27 +106,24 @@ namespace osgEarth
                         camera(ri)->setProjectionMatrix(pm);
                     }
 
-                    if (s)
+                    if (_settings)
                     {
-                        if (ImGuiLTable::Checkbox("Lock azimuth", &_lockAzimuthWhilePanning) || _first)
-                            s->setLockAzimuthWhilePanning(_lockAzimuthWhilePanning), dirtySettings();
+                        if (ImGuiLTable::Checkbox("Lock azimuth", &_settings->lockAzimuthWhilePanning()))
+                            dirtySettings();
 
-                        if (ImGuiLTable::Checkbox("Arc transitions", &_arcViewpointTransitions) || _first)
-                            s->setArcViewpointTransitions(_arcViewpointTransitions), dirtySettings();
+                        if (ImGuiLTable::Checkbox("Avoid terrain", &_settings->terrainAvoidanceEnabled()))
+                            dirtySettings();
 
-                        if (ImGuiLTable::Checkbox("Avoid terrain", &_terrainAvoidanceEnabled) || _first)
-                            s->setTerrainAvoidanceEnabled(_terrainAvoidanceEnabled), dirtySettings();
+                        if (ImGuiLTable::Checkbox("Zoom to mouse", &_settings->zoomToMouse()))
+                            dirtySettings();
 
-                        if (ImGuiLTable::Checkbox("Zoom to mouse", &_zoomToMouse) || _first)
-                            s->setZoomToMouse(_zoomToMouse), dirtySettings();
+                        if (ImGuiLTable::Checkbox("Throwing", &_settings->throwingEnabled()))
+                            dirtySettings();
 
-                        if (ImGuiLTable::Checkbox("Throwing", &_throwing) || _first)
-                            s->setThrowingEnabled(_throwing), dirtySettings();
-
-                        if (_throwing || _first)
+                        if (_settings->getThrowingEnabled())
                         {
-                            if (ImGuiLTable::SliderFloat("Decay", &_throwDecayRate, 0.02f, 0.3f) || _first)
-                                s->setThrowDecayRate(_throwDecayRate), dirtySettings();
+                            if (ImGuiLTable::SliderDouble("Decay", &_settings->throwDecayRate(), 0.0f, 0.3f))
+                                dirtySettings();
                         }
                     }
 
@@ -154,9 +147,7 @@ namespace osgEarth
                             double vfov, ar, n, f;
                             ProjectionMatrix::getPerspective(ref_proj, vfov, ar, n, f);
                             ProjectionMatrix::setPerspective(new_proj, vfov * rangeScale, ar, n, f);
-
-                            if (s)
-                                s->setOrthoTracksPerspective(true);
+                            _settings->setOrthoTracksPerspective(true);
                         }
                         else
                         {
@@ -170,9 +161,7 @@ namespace osgEarth
                             H = (R - L) * rangeScale / 2;
                             L = M - H, R = M + H;
                             ProjectionMatrix::setOrtho(new_proj, L, R, B, T, N, F);
-
-                            if (s)
-                                s->setOrthoTracksPerspective(false);
+                            _settings->setOrthoTracksPerspective(false);
                         }
 
                         camera(ri)->setProjectionMatrix(new_proj);
@@ -216,7 +205,6 @@ namespace osgEarth
                 }
             }
 
-            _first = false;
             ImGui::End();
         }
     };

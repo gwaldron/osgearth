@@ -424,7 +424,7 @@ PagingManager::update()
     {
         scoped_lock_if lock(_mergeMutex, _threadsafe);
         unsigned count = 0u;
-        while (!_mergeQueue.empty() && count++ < 64u) //_mergesPerFrame)
+        while (!_mergeQueue.empty() && count++ < _mergesPerFrame)
         {
             toMerge.emplace_back(_mergeQueue.front());
             _mergeQueue.pop();

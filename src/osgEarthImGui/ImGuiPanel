@@ -178,10 +178,10 @@ namespace osgEarth
             save(conf);
         }
 
-        void dirtySettings()
-        {
-            // nop - settings save automatically
-        }
+        static void dirtySettings();
+        //{
+        //    // nop - settings save automatically
+        //}
 
         //! whether the visibility changed (and resets the flag)
         bool visibilityChanged() {

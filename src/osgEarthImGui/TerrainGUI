@@ -88,9 +88,16 @@ namespace osgEarth
 
                 if (ImGuiLTable::Begin("terraingui"))
                 {
-                    ImGuiLTable::Text("Resident Tiles", "%u (%s)",
-                        engine->getNumResidentTiles(),
-                        engine->getNode()->getName().c_str());
+                    ImGuiLTable::Text("Resident Tiles", "%u",
+                        engine->getNumResidentTiles());// ,
+                        //engine->getNode()->getName().c_str());
+
+                    int minResident = options.getMinResidentTiles();
+                    if (ImGuiLTable::SliderInt("Resident Cache Size", &minResident, 0, 5000))
+                    {
+                        options.setMinResidentTiles(minResident);
+                        engine->dirtyTerrainOptions();
+                    }
 
                     static bool terrain_visible = true;
                     static osg::ref_ptr<ToggleVisibleCullCallback> visible_cb;
@@ -130,10 +137,10 @@ namespace osgEarth
 
                     if (options.getLODMethod() == LODMethod::SCREEN_SPACE)
                     {
-                        float tilePixelSize = options.getTilePixelSize();
-                        if (ImGuiLTable::SliderFloat("  Pixels/tile:", &tilePixelSize, 64.0f, 1024.0f))
+                        float tileImagePixelSize = options.getTilePixelSize();
+                        if (ImGuiLTable::SliderFloat("  Tile image size", &tileImagePixelSize, 64.0f, 1024.0f))
                         {
-                            options.setTilePixelSize(tilePixelSize);
+                            options.setTilePixelSize(tileImagePixelSize);
                             engine->dirtyTerrainOptions();
                         }
                     }

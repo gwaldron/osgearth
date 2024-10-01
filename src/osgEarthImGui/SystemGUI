@@ -198,6 +198,8 @@ namespace osgEarth
                     if (ImGuiLTable::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 2.0f))
                         dirtySettings();
 
+                    //ImGuiLTable::Text("Dirty timer", "%.1f", ImGui::GetCurrentContext()->SettingsDirtyTimer); // ::GetIO().IniSavingRate);
+
                     ImGuiLTable::End();
                 }
 

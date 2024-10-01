@@ -23,6 +23,13 @@
 
 using namespace osgEarth;
 
+#include "ImGuiPanel"
+void ImGuiPanel::dirtySettings()
+{
+    if (ImGui::GetCurrentContext())
+        ImGui::MarkIniSettingsDirty();
+}
+
 namespace
 {
     struct PreDrawOp : public osg::Camera::DrawCallback

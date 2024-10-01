@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHUTIL_EARTHMANIPULATOR
-#define OSGEARTHUTIL_EARTHMANIPULATOR
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Common>
@@ -330,13 +329,11 @@ namespace osgEarth { namespace Util
                 int modkey_mask =0L,
                 const ActionOptions& options =ActionOptions() );
 
-
             void bindPinch(
                 ActionType action, const ActionOptions& =ActionOptions() );
 
             void bindTwist(
                 ActionType action, const ActionOptions& =ActionOptions() );
-
 
             void bindMultiDrag(
                 ActionType action, const ActionOptions& =ActionOptions() );
@@ -352,11 +349,8 @@ namespace osgEarth { namespace Util
              *      1.0 = default; < 1.0 = less sensitive; > 1.0 = more sensitive.
              */
             void setMouseSensitivity( double value ) { _mouse_sens = value; }
-
-            /**
-             * Gets the overall mouse sensitivity scale factor. Default = 1.0.
-             */
             double getMouseSensitivity() const { return _mouse_sens; }
+            double& mouseSensitivity() { return _mouse_sens; }
 
             /**
              * Sets an overall touch sensitivity factor.
@@ -366,11 +360,8 @@ namespace osgEarth { namespace Util
              *      0.005 = default; < 0.005 = less sensitive; > 0.005 = more sensitive.
              */
             void setTouchSensitivity( double value ) { _touch_sens = value; }
-
-            /**
-             * Gets the overall touch sensitivity scale factor. Default = 1.0.
-             */
             double getTouchSensitivity() const { return _touch_sens; }
+            double& touchSensitivity() { return _touch_sens; }
 
             /**
              * Sets the keyboard action sensitivity factor. This applies to navigation actions
@@ -383,11 +374,8 @@ namespace osgEarth { namespace Util
              *      1.0 = default; < 1.0 = less sensitive; > 1.0 = more sensitive.
              */
             void setKeyboardSensitivity( double value ) { _keyboard_sens = value; }
-
-            /**
-             * Gets the keyboard action sensitivity scale factor. Default = 1.0.
-             */
             double getKeyboardSensitivity() const { return _keyboard_sens; }
+            double& keyboardSensitivity() { return _keyboard_sens; }
 
             /**
              * Sets the scroll-wheel sensitivity factor. This applies to navigation actions
@@ -400,11 +388,8 @@ namespace osgEarth { namespace Util
              *      1.0 = default; < 1.0 = less sensitive; > 1.0 = more sensitive.
              */
             void setScrollSensitivity( double value ) { _scroll_sens = value; }
-
-            /**
-             * Gets the scroll wheel sensetivity scale factor. Default = 1.0.
-             */
             double getScrollSensitivity() const { return _scroll_sens; }
+            double& scrollSensitivity() { return _scroll_sens; }
 
             /**
              * When set to true, prevents simultaneous control of pitch and azimuth.
@@ -416,24 +401,16 @@ namespace osgEarth { namespace Util
              * Default = false.
              */
             void setSingleAxisRotation( bool value ) { _single_axis_rotation = value; }
-
-            /**
-             * Gets whether simultaneous control over pitch and azimuth is disabled.
-             * Default = false.
-             */
             bool getSingleAxisRotation() const { return _single_axis_rotation; }
+            bool& singleAxisRotation() { return _single_axis_rotation; }
 
             /**
              * Sets whether to lock in a camera heading when performing panning operations (i.e.,
              * changing the focal point).
              */
             void setLockAzimuthWhilePanning( bool value ) { _lock_azim_while_panning = value; }
-
-            /**
-             * Gets true if the manipulator should lock in a camera heading when performing panning
-             * operations (i.e. changing the focal point.)
-             */
             bool getLockAzimuthWhilePanning() const { return _lock_azim_while_panning; }
+            bool& lockAzimuthWhilePanning() { return _lock_azim_while_panning; }
 
             /**
              * Sets the minimum and maximum allowable local camera pitch, in degrees.
@@ -474,6 +451,7 @@ namespace osgEarth { namespace Util
             /** Mode used for tethering to a node. */
             void setTetherMode( TetherMode value ) { _tether_mode = value; }
             TetherMode getTetherMode() const { return _tether_mode; }
+            TetherMode& tetherMode() { return _tether_mode; }
 
             /** Access to the list of Actions that will automatically break a tether */
             ActionTypeVector& getBreakTetherActions() { return _breakTetherActions; }
@@ -496,23 +474,29 @@ namespace osgEarth { namespace Util
             /** Whether to automatically adjust an orthographic camera so that it "tracks" the last known FOV and Aspect Ratio. */
             bool getOrthoTracksPerspective() const { return _orthoTracksPerspective; }
             void setOrthoTracksPerspective(bool value) { _orthoTracksPerspective = value; }
+            bool& orthoTracksPerspective() { return _orthoTracksPerspective; }
 
             /** Whether or not to keep the camera from going through the terrain surface */
             bool getTerrainAvoidanceEnabled() const { return _terrainAvoidanceEnabled; }
             void setTerrainAvoidanceEnabled( bool value ) { _terrainAvoidanceEnabled = value; }
+            bool& terrainAvoidanceEnabled() { return _terrainAvoidanceEnabled; }
 
             /** Minimum range for terrain avoidance checks in world coordinates */
             double getTerrainAvoidanceMinimumDistance() const {return _terrainAvoidanceMinDistance; }
             void setTerrainAvoidanceMinimumDistance(double minDistance) { _terrainAvoidanceMinDistance = minDistance; }
+            double& terrainAvoidanceMinimumDistance() { return _terrainAvoidanceMinDistance; }
 
             void setThrowingEnabled(bool throwingEnabled) { _throwingEnabled = throwingEnabled; }
             bool getThrowingEnabled () const { return _throwingEnabled; }
+            bool& throwingEnabled() { return _throwingEnabled; }
 
             void setThrowDecayRate(double throwDecayRate) { _throwDecayRate = osg::clampBetween(throwDecayRate, 0.0, 1.0); }
             double getThrowDecayRate () const { return _throwDecayRate; }
+            double& throwDecayRate() { return _throwDecayRate; }
 
             void setZoomToMouse(bool value) { _zoomToMouse = value; }
             bool getZoomToMouse() const { return _zoomToMouse; }
+            bool& zoomToMouse() { return _zoomToMouse; }
 
         private:
 
@@ -1051,5 +1035,3 @@ namespace osgEarth { namespace Util
     };
 
 } }
-
-#endif // OSGEARTHUTIL_EARTHMANIPULATOR

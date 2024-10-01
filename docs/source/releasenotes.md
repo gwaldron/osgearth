@@ -1,5 +1,16 @@
 # Release Notes
 
+## Version 3.7 (October 2024)
+
+Release Highlights:
+
+* New: `osgEarthImGui` NodeKit - new library that encapsulates all support for built-in ImGui control panels as seen in the `osgearth_imgui` application
+* New: Support for self-hosted Cesium Ion servers
+* New: Support for Microsoft Azure Maps image layers
+* Revamped CMake packaging setup for easier deployment of osgEarth-based applications
+* Performance improvements:faster image mosaicing, mercator image sampling
+* Updated vcpkg support
+
 ## Version 3.6.1 (July 2024)
 
 Bug fix release:

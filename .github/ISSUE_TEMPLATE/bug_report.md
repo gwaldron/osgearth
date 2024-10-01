@@ -8,7 +8,8 @@ assignees: ''
 ---
 osgEarth Version (required):
 
-What is the problem?
-How have you tried to resolve it?
+Description of the problem:
 
-Help US help YOU: include a screenshot, code block, or data file that we can use to reproduce the issue!
+What you have tried:
+
+Screenshot, code block, or data file that will help reproduce the issue:

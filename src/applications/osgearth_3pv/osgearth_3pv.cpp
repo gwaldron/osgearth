@@ -24,13 +24,12 @@
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/Utils>
+#include <osgEarth/Math>
+#include <osgEarth/ShaderLoader>
 
-#include <osgEarth/Horizon>
 #include <osgEarth/Lighting>
 #include <osgEarth/GLUtils>
 #include <osgEarth/LineDrawable>
-
-#include <osgEarth/PlaceNode>
 
 #define LC "[viewer] "
 
@@ -45,36 +44,18 @@ using namespace osgEarth;
 #include <osgDB/ReadFile>
 #include <osgViewer/CompositeViewer>
 #include <osgGA/TrackballManipulator>
-#include <cstdlib> // for putenv
 
-#if 0
-struct PlacerCallback : public MouseCoordsTool::Callback
-{
-    PlaceNode* _place;
-    osg::View* _eyeView;
-    PlacerCallback(PlaceNode* place, osgViewer::View* eyeView) : _place(place), _eyeView(eyeView) { }
-
-    // called when valid map coordinates are found under the mouse
-    void set(const GeoPoint& coords, osg::View* view, MapNode* mapNode)
-    {
-        _place->setPosition(coords);
-        _place->setNodeMask(~0);
-
-        osg::Vec3d eyeWorld, c, u;
-        _eyeView->getCamera()->getViewMatrixAsLookAt(eyeWorld, c, u);
-        osg::Vec3d placeWorld;
-        coords.toWorld(placeWorld);
-
-        _place->setText( Stringify() << "Range: " << (int)(eyeWorld-placeWorld).length() << "m" );
+// this shader will outline each terrain tile
+const char* outline_shader = R"(
+    #pragma vp_function outline_tile, fragment
+    in vec4 oe_layer_tilec;
+    void outline_tile(inout vec4 color) {
+        vec2 uv = abs(oe_layer_tilec.xy * 2.0 - 1.0);
+        if (uv.x > 0.99 || uv.y > 0.99) {
+            color = vec4(1.0, 0.0, 0.0, 1.0);
+        }
     }
-
-    // called when no map coords are found under the mouse
-    void reset(osg::View* view, MapNode* mapNode)
-    {
-        _place->setNodeMask(0);
-    }
-};
-#endif
+)";
 
 struct CaptureFrustum : public osg::NodeCallback
 {
@@ -116,6 +97,7 @@ createFrustumGeometry()
     osg::Group* g1 = new osg::Group();
     g1->addChild(mt);
     g1->getOrCreateStateSet()->setRenderBinDetails(3, "RenderBin");
+    g1->getOrCreateStateSet()->setRenderBinDetails(3, "RenderBin");
 
     osg::Group* top = new osg::Group();
     top->addChild(g0);
@@ -135,34 +117,39 @@ createFrustumGeometry()
 void
 updateFrustumGeometry(osg::Node* node, const osg::Matrix& modelview, const osg::Matrix& proj)
 {
-    // Get near and far from the Projection matrix.
-    const double near = proj(3,2) / (proj(2,2)-1.0);
-    const double far = proj(3,2) / (1.0+proj(2,2));
+    osg::Vec3 LBN, RBN, RTN, LTN, LBF, RBF, RTF, LTF;
 
-    // Get the sides of the near plane.
-    const double nLeft = near * (proj(2,0)-1.0) / proj(0,0);
-    const double nRight = near * (1.0+proj(2,0)) / proj(0,0);
-    const double nTop = near * (1.0+proj(2,1)) / proj(1,1);
-    const double nBottom = near * (proj(2,1)-1.0) / proj(1,1);
+    if (ProjectionMatrix::isPerspective(proj))
+    {
+        double L, R, B, T, N, F;
+        ProjectionMatrix::getPerspective(proj, L, R, B, T, N, F);
 
-    // Get the sides of the far plane.
-    const double fLeft = far * (proj(2,0)-1.0) / proj(0,0);
-    const double fRight = far * (1.0+proj(2,0)) / proj(0,0);
-    const double fTop = far * (1.0+proj(2,1)) / proj(1,1);
-    const double fBottom = far * (proj(2,1)-1.0) / proj(1,1);
+        double x = F / N;
+        LBN.set(L, B, -N);
+        RBN.set(R, B, -N);
+        RTN.set(R, T, -N);
+        LTN.set(L, T, -N);
+        LBF.set(x * L, x * B, -F);
+        RBF.set(x * R, x * B, -F);
+        RTF.set(x * R, x * T, -F);
+        LTF.set(x * L, x * T, -F);
+    }
+    else
+    {
+        double L, R, B, T, N, F;
+        ProjectionMatrix::getOrtho(proj, L, R, B, T, N, F);
+
+        LBN.set(L, B, -N);
+        RBN.set(R, B, -N);
+        RTN.set(R, T, -N);
+        LTN.set(L, T, -N);
+        LBF.set(L, B, -F);
+        RBF.set(R, B, -F);
+        RTF.set(R, T, -F);
+        LTF.set(L, T, -F);
+    }
 
     LineDrawable* geom = static_cast<LineDrawable*>(node->getUserData());
-
-    osg::Vec3
-        LBN(nLeft, nBottom, -near),
-        RBN(nRight, nBottom, -near),
-        RTN(nRight, nTop, -near),
-        LTN(nLeft, nTop, -near),
-        LBF(fLeft, fBottom, -far),
-        RBF(fRight, fBottom, -far),
-        RTF(fRight, fTop, -far),
-        LTF(fLeft, fTop, -far),
-        EYE(0,0,0);
 
     int i=0;
 
@@ -179,24 +166,31 @@ updateFrustumGeometry(osg::Node* node, const osg::Matrix& modelview, const osg::
     geom->setVertex(i++, LTF); geom->setVertex(i++, LBF);
 
     // sides
-    geom->setVertex(i++, EYE); geom->setVertex(i++, LBF);
-    geom->setVertex(i++, EYE); geom->setVertex(i++, RBF);
-    geom->setVertex(i++, EYE); geom->setVertex(i++, LTF);
-    geom->setVertex(i++, EYE); geom->setVertex(i++, RTF);
+    if (ProjectionMatrix::isPerspective(proj))
+    {
+        geom->setVertex(i++, osg::Vec3()); geom->setVertex(i++, LBF);
+        geom->setVertex(i++, osg::Vec3()); geom->setVertex(i++, RBF);
+        geom->setVertex(i++, osg::Vec3()); geom->setVertex(i++, LTF);
+        geom->setVertex(i++, osg::Vec3()); geom->setVertex(i++, RTF);
+    }
+    else
+    {
+        geom->setVertex(i++, LBN); geom->setVertex(i++, LBF);
+        geom->setVertex(i++, RBN); geom->setVertex(i++, RBF);
+        geom->setVertex(i++, RTN); geom->setVertex(i++, RTF);
+        geom->setVertex(i++, LTN); geom->setVertex(i++, LTF);
+    }
+
+    geom->dirty();
 
     osg::MatrixTransform* xform = static_cast<osg::MatrixTransform*>(geom->getParent(0));
     xform->setMatrix( osg::Matrixd::inverse(modelview) );
 }
 
-
-char debugEnv[] = "OSGEARTH_REX_DEBUG=1";
-
 int
 main( int argc, char** argv )
 {
     osgEarth::initialize();
-
-    putenv(debugEnv);
 
     osg::ArgumentParser arguments( &argc, argv );
 
@@ -216,24 +210,32 @@ main( int argc, char** argv )
     // Turn on FSAA, makes the lines look better.
     osg::DisplaySettings::instance()->setNumMultiSamples( 4 );
 
+    bool track = true;
+    if (arguments.read("--no-track"))
+        track = false;
+
+    auto modelManip = new EarthManipulator();
+    auto spyManip = new EarthManipulator();
+
     // Create View 0 -- Just the loaded model.
     {
         osgViewer::View* view = new osgViewer::View;
-        viewer.addView( view );
+        viewer.addView(view);
 
-        view->setUpViewInWindow( 20, 20, 800, 800 );
-        view->setSceneData( scene );
-        view->setCameraManipulator( new EarthManipulator() );
+        view->setUpViewInWindow(20, 20, 1400, 1400);
+        view->setSceneData(scene);
+        view->setCameraManipulator(modelManip);
     }
 
     // Create view 1 -- Contains the loaded moel, as well as a wireframe frustum derived from View 0's Camera.
     {
         osgViewer::View* view = new osgViewer::View;
-        viewer.addView( view );
+        viewer.addView(view);
 
-        view->setUpViewInWindow( 850, 20, 800, 800 );
-        view->setSceneData( root.get() );
-        view->setCameraManipulator( new EarthManipulator() );
+        view->setUpViewInWindow(1450, 20, 1400, 1400);
+        view->setSceneData(root.get());
+        view->setCameraManipulator(spyManip);
+        spyManip->home(0);
     }
 
     MapNodeHelper helper;
@@ -244,35 +246,21 @@ main( int argc, char** argv )
     }
     scene->addChild( node );
 
+    // A shader to outline the terrain tiles.
+    ShaderLoader::load(scene, outline_shader);
+
     helper.configureView( viewer.getView(0) );
     helper.configureView( viewer.getView(1) );
-
-    MapNode* mapNode = MapNode::get(node.get());
-
-    osg::ref_ptr<osg::Image> icon = osgDB::readRefImageFile("../data/placemark32.png");
-    PlaceNode* place = new PlaceNode();
-    place->setIconImage(icon.get());
-    place->setMapNode(mapNode);
-    place->getOrCreateStateSet()->setRenderBinDetails(10, "DepthSortedBin");
-    place->setDynamic(true);
-    place->setNodeMask(0);
-    viewer.getView(0)->getCamera()->addChild( place );
-
-#if 0
-    MouseCoordsTool* mct = new MouseCoordsTool(mapNode);
-    mct->addCallback( new PlacerCallback(place, viewer.getView(0)) );
-    viewer.getView(1)->addEventHandler( mct );
-#endif
-
-    mapNode->addChild(new HorizonNode());
 
     osg::Matrix proj;
     viewer.getView(0)->getCamera()->addCullCallback(new CaptureFrustum(proj));
 
+    // This puts the terrain engine into SPY mode.
     viewer.getView(1)->getCamera()->setName("Spy");
-
     viewer.getView(1)->getCamera()->setCullCallback(
         new ObjectStorage::SetValue<bool>("osgEarth.Spy", true));
+
+    auto* mapNode = MapNode::get(node);
 
     while (!viewer.done())
     {
@@ -280,6 +268,21 @@ main( int argc, char** argv )
             frustum,
             viewer.getView(0)->getCamera()->getViewMatrix(),
             proj);
+
+        if (track)
+        {
+            if (viewer.getFrameStamp()->getFrameNumber() == 0)
+            {
+                spyManip->home(0);
+            }
+            else
+            {
+                Viewpoint model_vp = modelManip->getViewpoint();
+                Viewpoint sky_vp = spyManip->getViewpoint();
+                sky_vp.focalPoint() = model_vp.focalPoint();
+                spyManip->setViewpoint(sky_vp);
+            }
+        }
 
         viewer.frame();
     }

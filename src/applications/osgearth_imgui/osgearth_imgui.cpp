@@ -22,7 +22,6 @@
 #include <osgEarthImGui/ImGuiApp>
 #include <osgEarth/EarthManipulator>
 #include <osgEarth/ExampleResources>
-#include <osgEarth/Metrics>
 #include <osgViewer/Viewer>
 
 #include <osgEarthImGui/LayersGUI>
@@ -80,17 +79,16 @@ main(int argc, char** argv)
 
     osgEarth::initialize(arguments);
 
+    // Set up the viewer and input handler:
     osgViewer::Viewer viewer(arguments);
     viewer.setThreadingModel(viewer.SingleThreaded);
     viewer.setCameraManipulator(new EarthManipulator(arguments));
-
-    // This is normally called by Viewer::run but we are running our frame loop manually so we need to call it here.
-    viewer.setReleaseContextAtEndOfFrameHint(false);
 
     // Call this to enable ImGui rendering.
     // If you use the MapNodeHelper, call this first.
     viewer.setRealizeOperation(new ImGuiAppEngine::RealizeOperation);
 
+    // Load the earth file.
     osg::ref_ptr<osg::Node> node = MapNodeHelper().load(arguments, &viewer);
     if (node.valid())
     {
@@ -138,7 +136,7 @@ main(int argc, char** argv)
         viewer.getEventHandlers().push_front(ui);
 
         viewer.setSceneData(node);
-        return Metrics::run(viewer);
+        return viewer.run();
     }
     else
     {

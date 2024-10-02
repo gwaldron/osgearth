@@ -307,93 +307,6 @@ CompositeImageLayer::closeImplementation()
     return Status::OK();
 }
 
-#if 0
-GeoImage
-CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
-{
-    osg::ref_ptr<osg::Image> out_image;
-    std::vector<GeoImage> sub_images;
-    std::vector<ImageLayer*> sub_layers;
-    std::vector<GeoImagePixelReader> sub_readers;
-
-    // first, fetch a collection of sub images from the component layers
-    // starting at the top. Each sub-image will be in the native profile of
-    // the component layer.
-    for (int i = (int)_layers.size() - 1; i >= 0; --i)
-    {
-        auto& sub_layer = _layers[i];
-        if (sub_layer->isOpen())
-        {
-            std::vector<TileKey> sublayer_keys;
-            sub_layer->getProfile()->getIntersectingTiles(key, sublayer_keys);
-            for (auto& sublayer_key : sublayer_keys)
-            {
-                auto best_sublayer_key = sub_layer->getBestAvailableTileKey(sublayer_key);
-                if (best_sublayer_key.valid())
-                {
-                    auto sub_image = sub_layer->createImage(best_sublayer_key, progress);
-                    if (sub_image.valid())
-                    {
-                        sub_images.emplace_back(sub_image);
-                        sub_layers.emplace_back(sub_layer);
-                        sub_readers.emplace_back(sub_image);
-                    }
-                }
-            }
-        }
-    }
-
-    // found nothing? we are done
-    if (sub_images.empty())
-        return {};
-
-    // starting with the top-most sub-image, composite the images together.
-    out_image = new osg::Image();
-    out_image->allocateImage(getTileSize(), getTileSize(), 1, GL_RGBA, GL_UNSIGNED_BYTE);
-
-    osg::Vec4f pixel, temp;
-
-    // initialize to all transparent
-    ImageUtils::PixelWriter out_write(out_image.get());
-    out_write.assign(pixel);
-
-    ImageUtils::ImageIteratorWithExtent<GeoExtent> out_iter(out_image.get(), key.getExtent());
-    ImageUtils::PixelReader out_read(out_image.get());
-    auto* out_srs = key.getExtent().getSRS();
-    double x, y;
-
-    out_iter.forEachPixelOnCenter([&]()
-        {
-            out_read(pixel, out_iter.s(), out_iter.t());
-
-            for (int i = 0; i < sub_readers.size() && pixel.a() < 1.0f; ++i)
-            {
-                x = out_iter.x(), y = out_iter.y();
-                if (out_srs->transform2D(out_iter.x(), out_iter.y(), sub_images[i].getSRS(), x, y))
-                {
-                    if (sub_layers[i]->getProfile()->getExtent().contains(x, y))
-                    {
-                        sub_readers[i].readCoord(temp, x, y);
-                        float alpha = temp.a() * sub_layers[i]->getOpacity();
-                        if (pixel.a() == 0.0f) {
-                            pixel = temp;
-                        }
-                        else {
-                            temp = mix(pixel, temp, alpha);
-                            pixel.set(temp.r(), temp.g(), temp.b(), std::max(alpha, pixel.a()));
-                        }
-                    }
-                }
-            }
-
-            out_write(pixel, out_iter.s(), out_iter.t());
-        });
-
-    return GeoImage(out_image.get(), key.getExtent());
-}
-
-#else
-
 GeoImage
 CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
@@ -560,13 +473,13 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
                         else // FUNCTION_MORE
                             compare = [](float a, float b) { return a > b; };
                             
-                        ImageUtils::ImageIterator iter(readOne);
-                        iter.forEachPixel([&]()
+                        readOne.forEachPixel([&](auto& iter)
                             {
-                                readOne(pixelOne, iter.s(), iter.t());
-                                readTwo(pixelTwo, iter.s(), iter.t());
+                                readOne(pixelOne, iter);
+                                readTwo(pixelTwo, iter);
                                 if (compare(pixelTwo.r(), pixelOne.r()))
-                                    writeOne(pixelTwo, iter.s(), iter.t());
+                                    writeOne(pixelTwo, iter);
+                                    writeOne(pixelTwo, iter);
                             });
                     }
                 }
@@ -575,7 +488,6 @@ CompositeImageLayer::createImageImplementation(const TileKey& key, ProgressCallb
         return GeoImage(result, key.getExtent());
     }
 }
-#endif
 
 //........................................................................
 

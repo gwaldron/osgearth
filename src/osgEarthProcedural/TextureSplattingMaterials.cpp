@@ -80,10 +80,9 @@ namespace
         osg::Vec4 temp, temp2;
         float minh = 1.0f, maxh = 0.0f;
 
-        ImageUtils::ImageIterator iter(output.get());
-        iter.forEachPixel([&]()
+        write.forEachPixel([&](auto& iter)
             {
-                readColor(temp, iter.s(), iter.t());
+                readColor(temp, iter);
                 if (height.valid())
                 {
                     // use (u,v) in case textures are different sizes
@@ -98,7 +97,7 @@ namespace
                 minh = osg::minimum(minh, temp.a());
                 maxh = osg::maximum(maxh, temp.a());
 
-                write(temp, iter.s(), iter.t());
+                write(temp, iter);
             });
 
         //Resize the image to the nearest power of two
@@ -149,8 +148,7 @@ namespace
         osg::Vec4 aoVal;
         osg::Vec4 packed;
 
-        ImageUtils::ImageIterator iter(output.get());
-        iter.forEachPixel([&]()
+        write.forEachPixel([&](auto& iter)
             {
                 if (normals.valid())
                 {
@@ -195,7 +193,7 @@ namespace
                 }
                 else packed[3] = DEFAULT_AO;
 
-                write(packed, iter.s(), iter.t());
+                write(packed, iter);
             });
 
         //Resize the image to the nearest power of two

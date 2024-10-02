@@ -320,13 +320,18 @@ ShaderLoader::getAllPragmaValues(const std::string&     source,
 }
 
 bool
-ShaderLoader::load(
-    VirtualProgram* vp,
-    const std::string& source)
+ShaderLoader::load(VirtualProgram* vp, const std::string& source)
 {
     ShaderPackage pkg;
     pkg.add("", source);
     return load(vp, "", pkg, nullptr);
+}
+
+bool
+ShaderLoader::load(osg::Node* node, const std::string& source)
+{
+    OE_SOFT_ASSERT_AND_RETURN(node, false);
+    return load(VirtualProgram::getOrCreate(node->getOrCreateStateSet()), source);
 }
 
 std::string

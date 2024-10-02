@@ -132,6 +132,11 @@ namespace osgEarth { namespace Util
             VirtualProgram* vp,
             const std::string& source);
 
+        //! Loads a shader into the virtual program on a node.
+        //! (convenience function. Same as calling
+        //! load(VirtualProgram::getOrCreate(node->getOrCreateStateSet()), source)
+        static bool load(osg::Node* node, const std::string& source);
+
         /**
          * Removes a function loaded by load from the VirtualProgram.
          */

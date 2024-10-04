@@ -16,8 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_NODE
-#define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_NODE 1
+#pragma once
 
 #include "Common"
 #include "RenderBindings"
@@ -167,13 +166,10 @@ namespace osgEarth { namespace REX
 
     public: // osg::Node
 
-        osg::BoundingSphere computeBound() const;
-
-        void traverse(osg::NodeVisitor& nv);
-
-        void resizeGLObjectBuffers(unsigned maxSize);
-
-        void releaseGLObjects(osg::State* state) const;
+        osg::BoundingSphere computeBound() const override;
+        void traverse(osg::NodeVisitor& nv) override;
+        void resizeGLObjectBuffers(unsigned maxSize) override;
+        void releaseGLObjects(osg::State* state) const override;
 
     protected:
 
@@ -246,10 +242,6 @@ namespace osgEarth { namespace REX
 
         // Inherit one shared sampler from parent tile if possible
         void inheritSharedSampler(int binding);
-
-        //const TerrainOptions& options() const;
     };
 
 } } // namespace osgEarth::REX
-
-#endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_NODE

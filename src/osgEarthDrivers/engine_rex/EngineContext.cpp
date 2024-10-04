@@ -65,7 +65,6 @@ EngineContext::EngineContext(
         Registry::instance()->getMaxTextureSize());
 
     _textures->setMaxTextureSize(maxSize);
-
 }
 
 osg::ref_ptr<const Map>

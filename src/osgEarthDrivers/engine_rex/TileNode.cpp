@@ -133,20 +133,17 @@ TileNode::createGeometry(Cancelable* progress)
     if (geom.valid())
     {
         // Create the drawable for the terrain surface:
-        TileDrawable* surfaceDrawable = new TileDrawable(
-            _key,
-            geom.get(),
-            tileSize);
+        auto* drawable = new TileDrawable(_key, geom.get(), tileSize);
 
         // Give the tile Drawable access to the render model so it can properly
         // calculate its bounding box and sphere.
-        surfaceDrawable->setModifyBBoxCallback(_context->getModifyBBoxCallback());
+        drawable->setModifyBBoxCallback(_context->getModifyBBoxCallback());
 
         osg::ref_ptr<const osg::Image> elevationRaster = getElevationRaster();
         osg::Matrixf elevationMatrix = getElevationMatrix();
 
-        // Create the node to house the tile drawable:
-        _surface = new SurfaceNode(_key, surfaceDrawable);
+        // Create the node to house the tile drawable and perform horizon culling:
+        _surface = new SurfaceNode(_key, drawable);
 
         if (elevationRaster.valid())
         {
@@ -228,8 +225,8 @@ TileNode::computeBound() const
     if (_surface.valid())
     {
         bs = _surface->getBound();
-        const osg::BoundingBox& bbox = _surface->getAlignedBoundingBox();
-        _tileKeyValue.a() = osg::maximum( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
+        const osg::BoundingBox& bbox = _surface->_drawable->getBoundingBox();
+        _tileKeyValue.a() = std::max( (bbox.xMax()-bbox.xMin()), (bbox.yMax()-bbox.yMin()) );
     }    
     return bs;
 }
@@ -278,14 +275,14 @@ TileNode::updateElevationRaster()
 const osg::Image*
 TileNode::getElevationRaster() const
 {
-    return _surface.valid() ? _surface->getElevationRaster() : 0L;
+    return _surface.valid() ? _surface->_drawable->getElevationRaster() : 0L;
 }
 
 const osg::Matrixf&
 TileNode::getElevationMatrix() const
 {
     static osg::Matrixf s_identity;
-    return _surface.valid() ? _surface->getElevationMatrix() : s_identity;
+    return _surface.valid() ? _surface->_drawable->getElevationMatrix() : s_identity;
 }
 
 void
@@ -411,7 +408,7 @@ TileNode::cull_spy(TerrainCuller* culler)
     // trick to spy on another camera.
     unsigned frame = context->getClock()->getFrame();
 
-    if ( frame - _surface->getLastFramePassedCull() < 2u)
+    if ( frame - _surface->_lastFramePassedCull < 2u)
     {
         _surface->accept( *culler );
     }
@@ -442,7 +439,6 @@ TileNode::cull(TerrainCuller* culler)
     bool canLoadData =
         _doNotExpire ||
         _key.getLOD() >= _context->options().getFirstLOD();
-        //_key.getLOD() >= _context->options().getMinLOD();
 
     // whether to accept the current surface node and not the children.
     bool canAcceptSurface = false;
@@ -565,10 +561,8 @@ TileNode::traverse(osg::NodeVisitor& nv)
             }
 
             else if (
-                // coarse bounds check:
-                !culler->isCulled(*this) && 
-                // horizon and bbox check:
-                _surface->isVisibleFrom(culler->getViewPointLocal()))
+                !culler->isCulled(*this) && // coarse bounds check
+                _surface->isVisible(culler->_horizon.get())) // horizon check
             {
                 cull(culler);
             }
@@ -700,14 +694,13 @@ TileNode::createChildren()
                         {
                             auto childkey = tile->getKey().createChildKey(q);
                             result[q] = tile->createChild(childkey, &state);
-                            //result.emplace_back(tile->createChild(childkey, &state));
                         }
                     }
 
                     if (state.canceled())
                     {
-                        //result.clear();
-                        for (int i = 0; i < 4; ++i) result[i] = {};
+                        for (int i = 0; i < 4; ++i)
+                            result[i] = {};
                     }
 
                     return result;

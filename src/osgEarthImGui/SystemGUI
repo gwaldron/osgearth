@@ -153,7 +153,7 @@ namespace osgEarth
                     frame_times[f] = now - t_previous;
                     t_previous = now;
                     auto avg_timing_ms = 1e-6 * (float)get_average_timing_ns(&frame_times, 120, f);
-                    sprintf(buf, "%.1f ms / %d fps", avg_timing_ms, (int)std::ceil(1000.0 / avg_timing_ms));
+                    sprintf(buf, "%.2f ms / %d fps", avg_timing_ms, (int)std::ceil(1000.0 / avg_timing_ms));
                     ImGuiLTable::PlotLines("Frame", get_timing_ms, &frame_times, frame_count, frame_num, buf, 0.0f, 32.0f);
 
                     total_jobs[f] = jobs::get_metrics()->total();

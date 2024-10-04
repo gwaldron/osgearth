@@ -532,13 +532,10 @@ GeoPoint::interpolate(const GeoPoint& rhs, double t) const
 
     else // geographic
     {
-        osg::Vec3d output;
-
-        getSRS()->getEllipsoid().geodesicInterpolate(
+        osg::Vec3d output = getSRS()->getEllipsoid().geodesicInterpolate(
             vec3d(),
             to.vec3d(),
-            t,
-            output);
+            t);
 
         result.set(
             getSRS(),

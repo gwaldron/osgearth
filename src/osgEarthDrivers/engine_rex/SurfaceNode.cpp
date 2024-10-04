@@ -46,7 +46,7 @@ using namespace osgEarth;
 
 namespace
 {    
-    osg::Node* makeBBox(const osg::BoundingBox& bbox, const TileKey& key)
+    osg::Node* makeBBox(const osg::BoundingBox& bbox)
     {
         LineDrawable* lines = nullptr;
 
@@ -72,81 +72,24 @@ namespace
     }
 }
 
-//..............................................................
-
-void
-HorizonTileCuller::set(const SpatialReference* srs, 
-                       const osg::Matrix&      local2world,
-                       const osg::BoundingBox& bbox)
-{
-    if (!_horizon.valid() && srs->isGeographic())
-    {
-        _horizon = new Horizon();
-    }
-
-    if (_horizon.valid())
-    {
-        _horizon->setEllipsoid(srs->getEllipsoid());
-
-        // Adjust the horizon ellipsoid based on the minimum Z value of the tile;
-        // necessary because a tile that's below the ellipsoid (ocean floor, e.g.)
-        // may be visible even if it doesn't pass the horizon-cone test. In such
-        // cases we need a more conservative ellipsoid.
-        double zMin = static_cast<double>(std::min(bbox.corner(0).z(), static_cast<osg::BoundingBox::value_type>(0.)));
-        zMin = std::max(zMin, -25000.0); // approx the lowest point on earth * 2
-        _horizon->setEllipsoid( Ellipsoid(
-            srs->getEllipsoid().getRadiusEquator() + zMin, 
-            srs->getEllipsoid().getRadiusPolar() + zMin) );
-
-        // consider the uppermost 4 points of the tile-aligned bounding box.
-        // (the last four corners of the bbox are the "zmax" corners.)
-        for(unsigned i=0; i<4; ++i)
-        {
-            _points[i] = bbox.corner(4+i) * local2world;
-        }
-    }
-}
-
-bool
-HorizonTileCuller::isVisible(const osg::Vec3d& from) const
-{
-    if (!_horizon.valid())
-        return true;
-
-    // alternate method (slower)
-    //return _horizon->isVisible(from, _bs.center(), _bs.radius());
-
-    for (unsigned i = 0; i < 4; ++i)
-        if (_horizon->isVisible(from, _points[i], 0.0))
-            return true;
-
-    return false;
-}
-
-//..............................................................
-
 
 const bool SurfaceNode::_enableDebugNodes = ::getenv("OSGEARTH_REX_DEBUG") != 0L;
 
-SurfaceNode::SurfaceNode(const TileKey& tilekey, TileDrawable* drawable)
+SurfaceNode::SurfaceNode(const TileKey& tilekey, TileDrawable* drawable) :
+    _drawable(drawable),
+    _ellipsoid(tilekey.getProfile()->getSRS()->getEllipsoid())
 {
-    setName(tilekey.str());
-    _tileKey = tilekey;
-
-    _drawable = drawable;
-
     // Create the final node.
-    addChild(_drawable.get());
+    addChild(_drawable);
 
     // Establish a local reference frame for the tile:
     GeoPoint centroid = tilekey.getExtent().getCentroid();
-
     osg::Matrix local2world;
-    centroid.createLocalToWorld( local2world );
-    setMatrix( local2world );
-    
+    centroid.createLocalToWorld(local2world);
+    setMatrix(local2world);
+
     // Initialize the cached bounding box.
-    setElevationRaster( 0L, osg::Matrixf::identity() );
+    setElevationRaster(nullptr, osg::Matrixf::identity());
 }
 
 osg::BoundingSphere
@@ -160,22 +103,6 @@ SurfaceNode::computeBound() const
         bs.expandBy(box.corner(i)*l2w);
 
     return bs;
-}
-
-float
-SurfaceNode::getPixelSizeOnScreen(osg::CullStack* cull) const
-{     
-    // By using the width, the "apparent" pixel size will decrease as we
-    // near the poles.
-    double R = _drawable->getWidth()*0.5;
-    //double R = _drawable->getRadius() / 1.4142;
-    return cull->clampedPixelSize(getMatrix().getTrans(), R) / cull->getLODScale();
-}
-
-void
-SurfaceNode::setLastFramePassedCull(unsigned fn)
-{
-    _lastFramePassedCull = fn;
 }
 
 void
@@ -250,56 +177,50 @@ SurfaceNode::setElevationRaster(const osg::Image*   raster,
     _childrenCorners[3][6] =  maxZMedians[2];
     _childrenCorners[3][7] =  box.corner(7);
 
-    // Transform the child corners to world space
-    
+    // Transform the child corners to world space    
     const osg::Matrix& local2world = getMatrix();
     for (int i = 0; i < 4; ++i)
     {
-        VectorPoints& childCorners = _childrenCorners[i];
         for (int j = 0; j < 8; ++j)
         {
-            osg::Vec3& corner = childCorners[j];
+            auto& corner = _childrenCorners[i][j];
             corner = corner * local2world;
         }
     }
 
+    // Visible bounding box?
     if( _enableDebugNodes )
     {
         removeDebugNode();
         addDebugNode(box);
     }
 
-    // Update the horizon culler.
-    _horizonCuller.set( _tileKey.getProfile()->getSRS(), getMatrix(), box );
+    // Update the horizon culling point. If this point is visible over the horizon,
+    // that means the tile must pass cull.
+    std::vector<osg::Vec3d> mesh_world;
+    mesh_world.reserve(_drawable->_mesh.size());
+    for(auto& p : _drawable->_mesh)
+        mesh_world.push_back(p * local2world);
 
-    // need this?
+    auto& ellipsoid = 
+    _horizonCullingPoint = _ellipsoid.calculateHorizonCullingPoint(mesh_world);
+    _horizonCullingPointSet = (_horizonCullingPoint != osg::Vec3d());
+
     dirtyBound();
 }
 
 void
 SurfaceNode::addDebugNode(const osg::BoundingBox& box)
 {
-    _debugText = 0;
-    _debugNode = makeBBox(box, _tileKey);
+    _debugNode = makeBBox(box);
     addChild( _debugNode.get() );
 }
 
 void
 SurfaceNode::removeDebugNode(void)
 {
-    _debugText = 0;
     if ( _debugNode.valid() )
     {
         removeChild( _debugNode.get() );
     }
-}
-
-void
-SurfaceNode::setDebugText(const std::string& strText)
-{
-    if (_debugText.valid()==false)
-    {
-        return;
-    }
-    _debugText->setText(strText);
 }

@@ -16,8 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_DRAWABLE
-#define OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_TILE_DRAWABLE 1
+#pragma once
 
 #include "Common"
 #include "TileRenderModel"
@@ -64,19 +63,19 @@ namespace osgEarth { namespace REX
         // underlying geometry, possibly shared between this tile and other.
         osg::ref_ptr<SharedGeometry> _geom;
 
-        // tile dimensions
         int _tileSize;
-
         const TileKey _key;
-
-        osg::ref_ptr<const osg::Image> _elevationRaster;
-        osg::Matrixf _elevationScaleBias;
 
         // cached 3D mesh of the terrain tile (derived from the elevation raster)
         std::vector<osg::Vec3> _mesh;
         osg::BoundingBox _bboxOffsets;
         ModifyBoundingBoxCallback* _bboxCB;
-        mutable float _bboxRadius;
+        mutable float _bboxRadius, _bboxHalfWidth, _bboxHalfHeight;
+
+    private:
+
+        osg::ref_ptr<const osg::Image> _elevationRaster;
+        osg::Matrixf _elevationScaleBias;
 
     public:
         
@@ -106,10 +105,6 @@ namespace osgEarth { namespace REX
         // Set the render model so we can properly calculate bounding boxes
         void setModifyBBoxCallback(ModifyBoundingBoxCallback* bboxCB) { _bboxCB = bboxCB; }
 
-        float getRadius() const { return _bboxRadius; }
-
-        float getWidth() const { return getBoundingBox().xMax() - getBoundingBox().xMin(); }
-
     public: // osg::Drawable overrides
 
         // These methods defer functors (like stats collection) to the underlying
@@ -134,6 +129,4 @@ namespace osgEarth { namespace REX
     };
 
 } } // namespace osgEarth::REX
-
-#endif // OSGEARTH_DRIVERS_REX_TERRAIN_ENGINE_RexGEOMETRY
 

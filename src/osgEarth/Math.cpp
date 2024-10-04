@@ -486,18 +486,6 @@ osgEarth::pointInPoly2d(const osg::Vec3d& pt, const osg::Geometry* polyPoints, f
     return windingNum != 0;
 }
 
-bool
-ProjectionMatrix::isOrtho(const osg::Matrix& m)
-{
-    return !m.isIdentity() && m(3, 3) > 0.0;
-}
-
-bool
-ProjectionMatrix::isPerspective(const osg::Matrix& m)
-{
-    return m(3, 3) == 0.0; // can't be identity if this is true
-}
-
 ProjectionMatrix::Type
 ProjectionMatrix::getType(const osg::Matrix& m)
 {

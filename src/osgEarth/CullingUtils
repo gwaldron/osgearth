@@ -219,26 +219,6 @@ namespace osgEarth
         };
 
 
-
-        /**
-         * Cull callback that sets a clip plane at the visible horizon
-         * of the Ellipsoid.
-         */
-        class OSGEARTH_EXPORT ClipToGeocentricHorizon : public osg::NodeCallback
-        {
-        public:
-            ClipToGeocentricHorizon(
-                const osgEarth::SpatialReference* srs,
-                osg::ClipPlane* clipPlane);
-
-            void operator()(osg::Node* node, osg::NodeVisitor* nv);
-
-        protected:
-            osg::ref_ptr<Horizon>             _horizon;
-            osg::observer_ptr<osg::ClipPlane> _clipPlane;
-        };
-
-
         struct OSGEARTH_EXPORT CullDebugger
         {
             Config dumpRenderBin(osgUtil::RenderBin* bin) const;

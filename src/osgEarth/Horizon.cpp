@@ -18,11 +18,9 @@
  */
 #include <osgEarth/Horizon>
 #include <osgUtil/CullVisitor>
-#include <osgEarth/Registry>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/Utils>
-#include <osg/Geometry>
-#include <osg/Geode>
+#include <osgEarth/Math>
 
 #define LC "[Horizon] "
 
@@ -33,25 +31,19 @@ namespace
 
 using namespace osgEarth;
 
-Horizon::Horizon() :
-_valid( false ),
-_VCmag(0), _VCmag2(0), _VHmag2(0), _coneCos(0), _coneTan(0), _minVCmag(0), _minHAE(0)
+Horizon::Horizon()
 {
     setName(OSGEARTH_HORIZON_UDC_NAME);
     setEllipsoid(Ellipsoid());
 }
 
-Horizon::Horizon(const Ellipsoid& e) :
-_valid( false ),
-_VCmag(0), _VCmag2(0), _VHmag2(0), _coneCos(0), _coneTan(0), _minVCmag(0), _minHAE(0)
+Horizon::Horizon(const Ellipsoid& e)
 {
     setName(OSGEARTH_HORIZON_UDC_NAME);
     setEllipsoid( e );
 }
 
-Horizon::Horizon(const SpatialReference* srs) :
-_valid( false ),
-_VCmag(0), _VCmag2(0), _VHmag2(0), _coneCos(0), _coneTan(0), _minVCmag(0), _minHAE(0)
+Horizon::Horizon(const SpatialReference* srs)
 {
     setName(OSGEARTH_HORIZON_UDC_NAME);
     if ( srs && !srs->isProjected() )
@@ -61,21 +53,21 @@ _VCmag(0), _VCmag2(0), _VHmag2(0), _coneCos(0), _coneTan(0), _minVCmag(0), _minH
 }
 
 Horizon::Horizon(const Horizon& rhs, const osg::CopyOp& op) :
-osg::Object( rhs, op ),
-_em      ( rhs._em ),
-_valid   ( rhs._valid ),
-_scale   ( rhs._scale ),
-_scaleInv( rhs._scaleInv ),
-_eye     ( rhs._eye ),
-_eyeUnit ( rhs._eyeUnit ),
-_VC      ( rhs._VC ),
-_VCmag   ( rhs._VCmag ),
-_VCmag2  ( rhs._VCmag2 ),
-_VHmag2  ( rhs._VHmag2 ),
-_coneCos ( rhs._coneCos ),
-_coneTan ( rhs._coneTan ),
-_minVCmag( rhs._minVCmag ),
-_minHAE  ( rhs._minHAE )
+    osg::Object(rhs, op),
+    _em(rhs._em),
+    _valid(rhs._valid),
+    _scale(rhs._scale),
+    _scaleInv(rhs._scaleInv),
+    _eye(rhs._eye),
+    _eyeUnit(rhs._eyeUnit),
+    _VC(rhs._VC),
+    _VCmag(rhs._VCmag),
+    _VCmag2(rhs._VCmag2),
+    _VHmag2(rhs._VHmag2),
+    _coneCos(rhs._coneCos),
+    _coneTan(rhs._coneTan),
+    _minVCmag(rhs._minVCmag),
+    _minHAE(rhs._minHAE)
 {
     // nop
 }
@@ -98,8 +90,8 @@ Horizon::setEllipsoid(const Ellipsoid& em)
     _minHAE = 500.0;
     _minVCmag = 1.0 + (_scale*_minHAE).length();
 
-    // just so we don't have gargabe values
-    setEye( osg::Vec3d(1e7, 0, 0) );
+    // just so we don't have garbage values
+    setEye(osg::Vec3d(1e7, 0, 0), nullptr);
 
     _valid = true;
 }
@@ -112,25 +104,40 @@ Horizon::setMinHAE(double value)
 }
 
 bool
-Horizon::setEye(const osg::Vec3d& eye)
+Horizon::setEye(const osg::Vec3d& eye, const osg::RefMatrix* proj)
 {
     if (eye == _eye)
         return false;
+
+    _orthographic = proj ? ProjectionMatrix::isOrtho(*proj) : false;
 
     _eye = eye;
     _eyeUnit = eye;
     _eyeUnit.normalize();
 
-    _VC     = osg::componentMultiply( -_eye, _scale );  // viewer->center (scaled)
-    _VCmag  = osg::maximum( _VC.length(), _minVCmag );      // clamped to the min HAE
-    _VCmag2 = _VCmag*_VCmag;
-    _VHmag2 = _VCmag2 - 1.0;  // viewer->horizon line (scaled)
+    if (!_orthographic)
+    {
+        // vector from viewer to center of the earth
+        _VC = osg::componentMultiply(-_eye, _scale);
 
-    double VPmag = _VCmag - 1.0/_VCmag; // viewer->horizon plane dist (scaled)
-    double VHmag = sqrtf( _VHmag2 );
+        // distance from viewer to center of the earth, clamped to the min HAE (?)
+        _VCmag = std::max(_VC.length(), _minVCmag);
 
-    _coneCos = VPmag / VHmag; // cos of half-angle of horizon cone
-    _coneTan = tan(acos(_coneCos));
+        // distance squared from viewer to center of the earth
+        _VCmag2 = _VCmag * _VCmag;
+
+        // distance squared from the viewer to the nearest point on the horizon
+        _VHmag2 = _VCmag2 - 1.0;
+
+        // distance from the viewer to the horizon plane
+        double VPmag = _VCmag - 1.0 / _VCmag;
+
+        // distance from the viewer to the nearest surface point on the horizon
+        double VHmag = sqrtf(_VHmag2);
+
+        _coneCos = VPmag / VHmag; // cos of half-angle of horizon cone
+        _coneTan = tan(acos(_coneCos));
+    }
 
     return true;
 }
@@ -142,11 +149,27 @@ Horizon::getRadius() const
 }
 
 bool
-Horizon::isVisible(const osg::Vec3d& target,
-                   double            radius) const
+Horizon::isVisible(const osg::Vec3d& target, double radius) const
 {
     if ( _valid == false || radius >= _scaleInv.x() || radius >= _scaleInv.y() || radius >= _scaleInv.z() )
-        return true;
+        return true;   
+    
+    if (_orthographic)
+    {
+        auto CT = osg::componentMultiply(target, _scale);
+        auto CTmag = CT.length();
+        auto CTmag2 = CTmag * CTmag;
+        CT.normalize();
+
+        double cos_a = -_eyeUnit * CT;
+        if (cos_a <= 0.0)
+            return true;
+
+        double x = CTmag * cos_a;
+        double d = CTmag2 - x * x;
+
+        return d >= 1.0;
+    }
 
     // First check the object against the horizon plane, a plane that intersects the
     // ellipsoid, whose normal is the vector from the eyepoint to the center of the
@@ -207,95 +230,6 @@ Horizon::isVisible(const osg::Vec3d& target,
     // occluded.
     return false;
 }
-
-
-bool
-Horizon::isVisible(const osg::Vec3d& eye,
-                   const osg::Vec3d& target,
-                   double            radius) const
-{
-    if ( _valid == false || radius >= _scaleInv.x() || radius >= _scaleInv.y() || radius >= _scaleInv.z() )
-        return true;
-
-    optional<osg::Vec3d> eyeUnit;
-
-    osg::Vec3d VC = osg::componentMultiply(-eye, _scale);  // viewer->center (scaled)
-
-    // First check the object against the horizon plane, a plane that intersects the
-    // ellipsoid, whose normal is the vector from the eyepoint to the center of the
-    // ellipsoid.
-    // ref: https://cesiumjs.org/2013/04/25/Horizon-culling/
-
-    // Viewer-to-target
-    osg::Vec3d delta(0,0,0);
-    if ( radius > 0.0 )
-    {
-        eyeUnit = eye;
-        eyeUnit.mutable_value().normalize();
-        delta.set( eyeUnit.get()*radius );
-    }
-    osg::Vec3d VT( target+delta - eye );
-
-    // transform into unit space:
-    VT = osg::componentMultiply( VT, _scale );
-
-    // If the target is above the eye, it's visible
-    double VTdotVC = VT*VC;
-    if ( VTdotVC <= 0.0 )
-    {
-        return true;
-    }
-
-    // If the eye is below the ellipsoid, but the target is below the eye
-    // (since the above test failed) the target is occluded.
-    // NOTE: it might be better instead to check for a maximum distance from
-    // the eyepoint instead.
-    double VCmag = osg::maximum( VC.length(), _minVCmag );      // clamped to the min HAE
-    if ( VCmag < 0.0 )
-    {
-        return false;
-    }
-
-    // Now we know that the eye is above the ellipsoid, so there is a valid horizon plane.
-    // If the point is in front of that horizon plane, it's visible and we're done
-    double VHmag2 = VCmag*VCmag - 1.0;  // viewer->horizon line (scaled)
-    if ( VTdotVC <= VHmag2 )
-    {
-        return true;
-    }
-
-    // The sphere is completely behind the horizon plane. So now intersect the
-    // sphere with the horizon cone, a cone eminating from the eyepoint along the
-    // eye->center vetor. If the sphere is entirely within the cone, it is occluded
-    // by the spheroid (not ellipsoid, sorry)
-    // ref: http://www.cbloom.com/3d/techdocs/culling.txt
-    VT = target - eye;
-
-    double VPmag  = VCmag - 1.0/VCmag; // viewer->horizon plane dist (scaled)
-    double VHmag  = sqrtf( VHmag2 );
-    double coneCos = VPmag / VHmag; // cos of half-angle of horizon cone
-    double coneTan = tan(acos(coneCos));
-
-    if ( !eyeUnit.isSet() ) {
-        eyeUnit = eye;
-        eyeUnit.mutable_value().normalize();
-    }
-    double a = VT * -eyeUnit.get();
-    double b = a * coneTan;
-    double c = sqrt( VT*VT - a*a );
-    double d = c - b;
-    double e = d * coneCos;
-
-    if ( e > -radius )
-    {
-        // sphere is at least partially outside the cone (visible)
-        return true;
-    }
-
-    // occluded.
-    return false;
-}
-
 
 bool
 Horizon::getPlane(osg::Plane& out_plane) const
@@ -371,16 +305,18 @@ HorizonCullCallback::isVisible(osg::Node* node, osg::NodeVisitor* nv)
     osg::ref_ptr<Horizon> horizon;
     ObjectStorage::get(nv, horizon);
 
+    auto* cv = Culling::asCullVisitor(nv);
+
     if (_customEllipsoidSet)
     {
         osg::Vec3d eye;
         if (horizon.valid())
             eye = horizon->getEye();
         else
-            eye = osg::Vec3d(0,0,0) * Culling::asCullVisitor(nv)->getCurrentCamera()->getInverseViewMatrix();
+            eye = osg::Vec3d(0,0,0) * cv->getCurrentCamera()->getInverseViewMatrix();
 
         horizon = new Horizon(_customEllipsoid);
-        horizon->setEye(eye);
+        horizon->setEye(eye, cv->getProjectionMatrix());
     }
 
     // If we fetched the Horizon from the nodevisitor...
@@ -433,98 +369,5 @@ HorizonCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
     else
     {
         traverse(node, nv);
-    }
-}
-
-
-
-
-HorizonNode::HorizonNode()
-{
-    const float r = 25.0f;
-    //osg::DrawElements* de = new osg::DrawElementsUByte(GL_QUADS);
-    //de->addElement(0);
-    //de->addElement(1);
-
-    osg::Vec3Array* verts = new osg::Vec3Array();
-    for (unsigned x = 0; x<=(unsigned)r; ++x) {
-        verts->push_back(osg::Vec3(-0.5f + float(x) / r, -0.5f, 0.0f));
-        verts->push_back(osg::Vec3(-0.5f + float(x) / r,  0.5f, 0.0f));
-    }
-
-    //de->addElement(verts->size()-1);
-    //de->addElement(verts->size()-2);
-
-    for (unsigned y=0; y<=(unsigned)r; ++y) {
-        verts->push_back(osg::Vec3(-0.5f, -0.5f + float(y)/r, 0.0f));
-        verts->push_back(osg::Vec3( 0.5f, -0.5f + float(y)/r, 0.0f));
-    }
-
-    osg::Vec4Array* colors = new osg::Vec4Array(osg::Array::BIND_OVERALL);
-    colors->push_back(osg::Vec4(1,0,0,0.5f));
-
-    osg::Geometry* geom = new osg::Geometry();
-    geom->setName(typeid(*this).name());
-    geom->setUseVertexBufferObjects(true);
-
-    geom->setVertexArray(verts);
-    geom->setColorArray(colors);
-    geom->addPrimitiveSet(new osg::DrawArrays(GL_LINES, 0, verts->size()));
-    
-    //geom->addPrimitiveSet(de);
-
-    osg::Geode* geode = new osg::Geode();
-    geode->addDrawable(geom);
-    geom->getOrCreateStateSet()->setMode(GL_BLEND, 1);
-    geom->getOrCreateStateSet()->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-
-    this->addChild(geode);
-
-    setMatrix(osg::Matrix::scale(15e6, 15e6, 15e6));
-}
-
-void
-HorizonNode::traverse(osg::NodeVisitor& nv)
-{
-    bool temp;
-    bool isSpy = nv.getUserValue("osgEarth.Spy", temp);
-
-    if (nv.getVisitorType() == nv.CULL_VISITOR)
-    {
-        if (!isSpy)
-        {
-            //Horizon* h = Horizon::get(nv);
-            osg::ref_ptr<Horizon> h = new Horizon();
-
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-
-            osg::Vec3d eye = osg::Vec3d(0,0,0) * cv->getCurrentCamera()->getInverseViewMatrix();
-            h->setEye(eye);
-
-            osg::Plane plane;
-            if (h->getPlane(plane))
-            {
-                osg::Quat q;
-                q.makeRotate(osg::Plane::Vec3_type(0,0,1), plane.getNormal());
-
-                double dist = plane.distance(osg::Vec3d(0,0,0));
-
-                osg::Matrix m;
-                m.preMultRotate(q);
-                m.preMultTranslate(osg::Vec3d(0, 0, -dist));
-                m.preMultScale(osg::Vec3d(15e6, 15e6, 15e6));
-
-                setMatrix(m);
-            }
-        }
-        else
-        {
-            osg::MatrixTransform::traverse(nv);
-        }
-    }
-       
-    else
-    {
-        osg::MatrixTransform::traverse(nv);
     }
 }

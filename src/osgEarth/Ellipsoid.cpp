@@ -213,9 +213,7 @@ Ellipsoid::intersectGeocentricLine(
 }
 
 double
-Ellipsoid::geodesicDistance(
-    const osg::Vec2d& p1,
-    const osg::Vec2d& p2) const
+Ellipsoid::geodesicDistance(const osg::Vec2d& p1, const osg::Vec2d& p2) const
 {
     double
         lat1 = osg::DegreesToRadians(p1.y()),
@@ -250,19 +248,15 @@ Ellipsoid::geodesicDistance(
     return std::isnan(dist) ? 0.0 : dist;
 }
 
-void
-Ellipsoid::geodesicInterpolate(
-    const osg::Vec3d& lla1_deg,
-    const osg::Vec3d& lla2_deg,
-    double t,
-    osg::Vec3d& output) const
+osg::Vec3d
+Ellipsoid::geodesicInterpolate(const osg::Vec3d& lla1_deg, const osg::Vec3d& lla2_deg, double t) const
 {
     double deltaZ = lla2_deg.z() - lla1_deg.z();
 
-    osg::Vec3d w1 = geodeticToGeocentric(lla1_deg) * _ellipsoidToUnitSphere;
+    auto w1 = geodeticToGeocentric(lla1_deg) * _ellipsoidToUnitSphere;
     w1.normalize();
 
-    osg::Vec3d w2 = geodeticToGeocentric(lla2_deg) * _ellipsoidToUnitSphere;
+    auto w2 = geodeticToGeocentric(lla2_deg) * _ellipsoidToUnitSphere;
     w2.normalize();
 
     // Geometric slerp in unit sphere space
@@ -270,8 +264,7 @@ Ellipsoid::geodesicInterpolate(
     double dp = w1 * w2;
     if (dp == 1.0)
     {
-        output = lla1_deg;
-        return;
+        return lla1_deg;
     }
 
     double angle = acos(dp);
@@ -279,18 +272,64 @@ Ellipsoid::geodesicInterpolate(
     double s = sin(angle);
     if (s == 0.0)
     {
-        output = lla1_deg;
-        return;
+        return lla1_deg;
     }
 
     double c1 = sin((1.0 - t)*angle) / s;
     double c2 = sin(t*angle) / s;
 
-    osg::Vec3d n = w1 * c1 + w2 * c2;
+    auto n = w1 * c1 + w2 * c2;
 
     // convert back to world space and apply altitude lerp
     n = n * _unitSphereToEllipsoid;
 
-    output = geocentricToGeodetic(n);
+    auto output = geocentricToGeodetic(n);
     output.z() = lla1_deg.z() + t * deltaZ;
+    return output;
+}
+
+osg::Vec3d
+Ellipsoid::calculateHorizonCullingPoint(const std::vector<osg::Vec3d>& world_points) const
+{
+    // see: https://cesium.com/blog/2013/05/09/computing-the-horizon-occlusion-point
+
+    OE_SOFT_ASSERT_AND_RETURN(!world_points.empty(), {});
+
+    double max_magnitude = 0.0;
+
+    osg::Vec3d culling_point_dir;
+    std::vector<osg::Vec3d> points;
+    points.reserve(world_points.size());
+    for (auto& world_point : world_points)
+    {
+        // convert to unit-sphere frame:
+        points.emplace_back(world_point * _ellipsoidToUnitSphere);
+        culling_point_dir += points.back();
+    }
+    culling_point_dir.normalize();
+
+    for (auto& point : points)
+    {
+        auto mag2 = point.length2();
+        auto mag = sqrt(mag2);
+        auto point_dir = point / mag;
+       
+        // clamp to ellipsoid
+        mag2 = std::max(1.0, mag2);
+        mag = std::max(1.0, mag);
+       
+        auto cos_alpha = point_dir * culling_point_dir;
+        auto sin_alpha = (point_dir ^ culling_point_dir).length();
+        auto cos_beta = 1.0 / mag;
+        auto sin_beta = sqrt(mag2 - 1.0) * cos_beta;
+
+        auto culling_point_mag = 1.0 / (cos_alpha * cos_beta - sin_alpha * sin_beta);
+
+        max_magnitude = std::max(max_magnitude, culling_point_mag);
+    }
+
+    auto unit_culling_point = culling_point_dir * max_magnitude;
+
+    // convert back to world frame:
+    return unit_culling_point * _unitSphereToEllipsoid;
 }

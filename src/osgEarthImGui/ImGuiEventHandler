@@ -80,6 +80,9 @@ namespace osgEarth
         void render(osg::RenderInfo& renderInfo);
         bool _show = true;
 
+    protected:
+        bool _dirtySettings = false;
+
     private:
         struct ImGuiNewFrameCallback;
         struct ImGuiRenderCallback;

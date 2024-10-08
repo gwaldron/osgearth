@@ -158,6 +158,8 @@ namespace osgEarth
         std::string _name;
         bool _visible;
         bool _last_visible;
+        bool* _dirtySettings = nullptr;
+        friend class ImGuiAppEngine;
 
     public:
         bool* visible() {
@@ -178,16 +180,17 @@ namespace osgEarth
             save(conf);
         }
 
-        static void dirtySettings();
-        //{
-        //    // nop - settings save automatically
-        //}
-
         //! whether the visibility changed (and resets the flag)
         bool visibilityChanged() {
             bool whether = _visible != _last_visible;
             _last_visible = _visible;
             return whether;
+        }
+
+        void dirtySettings()
+        {
+            if (_dirtySettings)
+                *_dirtySettings = true;
         }
     };
 }

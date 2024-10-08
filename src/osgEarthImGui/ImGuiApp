@@ -101,6 +101,7 @@ namespace osgEarth
         {
             OE_SOFT_ASSERT_AND_RETURN(panel, void());
             panel->setVisible(visible);
+            panel->_dirtySettings = &_dirtySettings;
             _menu["User"].push_back(GUIPtr(panel));
         }
 

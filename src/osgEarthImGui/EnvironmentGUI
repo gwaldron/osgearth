@@ -121,10 +121,10 @@ namespace osgEarth
         void load(const Config& conf) override
         {
             conf.get("ShowDetails", _showDetails);
-            conf.get("Hour", _hour);
-            conf.get("Day", _day);
-            conf.get("Month", _month);
-            conf.get("Year", _year);
+            //conf.get("Hour", _hour);
+            //conf.get("Day", _day);
+            //conf.get("Month", _month);
+            //conf.get("Year", _year);
             conf.get("Exposure", _exposure);
             conf.get("Contrast", _contrast);
             conf.get("Ambient", _ambient);
@@ -135,10 +135,10 @@ namespace osgEarth
         void save(Config& conf) override
         {
             conf.set("ShowDetails", _showDetails);
-            conf.set("Hour", _hour);
-            conf.set("Day", _day);
-            conf.set("Month", _month);
-            conf.set("Year", _year);
+            //conf.set("Hour", _hour);
+            //conf.set("Day", _day);
+            //conf.set("Month", _month);
+            //conf.set("Year", _year);
             conf.set("Exposure", _exposure);
             conf.set("Contrast", _contrast);
             conf.set("Ambient", _ambient);

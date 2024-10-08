@@ -28,7 +28,7 @@
 
 namespace {
     const char* render_view_normals = R"(
-#version 450
+#version 330
 #pragma vp_function oeui_render_view_normals, fragment_lighting, last
 in vec3 vp_Normal;
 void oeui_render_view_normals(inout vec4 color) {
@@ -37,7 +37,7 @@ void oeui_render_view_normals(inout vec4 color) {
 )";
 
     const char* render_model_normals = R"(
-#version 450
+#version 330
 #pragma vp_function oeui_render_model_normals_vs, vertex_model, last
 out vec3 vp_Normal;
 out vec3 oeui_model_normal;
@@ -45,7 +45,7 @@ void oeui_render_model_normals_vs(inout vec4 vertex) {
     oeui_model_normal = vp_Normal;
 }
 [break]
-#version 450
+#version 330
 #pragma vp_function oeui_render_view_normals_fs, fragment_lighting, last
 in vec3 oeui_model_normal;
 void oeui_render_view_normals_fs(inout vec4 color) {
@@ -54,7 +54,7 @@ void oeui_render_view_normals_fs(inout vec4 color) {
 )";
 
     const char* render_fb_normals = R"(
-#version 450
+#version 330
 #pragma vp_function oeui_render_fb_normals, fragment_lighting, last
 in vec3 vp_Normal;
 void oeui_render_fb_normals(inout vec4 color) {
@@ -90,7 +90,7 @@ void oeui_render_outlines(inout vec4 color) {
 )";
 
     const char* render_ao = R"(
-#version 450
+#version 330
 #pragma vp_function oeui_render_ao, fragment_lighting, last
 struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 void oeui_render_ao(inout vec4 color) {
@@ -99,7 +99,7 @@ void oeui_render_ao(inout vec4 color) {
 )";
 
     const char* render_roughness = R"(
-#version 450
+#version 330
 #pragma vp_function oeui_render_roughness, fragment_lighting, last
 struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 void oeui_render_roughness(inout vec4 color) {
@@ -108,7 +108,7 @@ void oeui_render_roughness(inout vec4 color) {
 )";
 
     const char* render_metal = R"(
-#version 450
+#version 330
 #pragma vp_function oeui_render_metal, fragment_lighting, last
 struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
 void oeui_render_metal(inout vec4 color) {
@@ -167,7 +167,7 @@ void oeui_render_drawid(inout vec4 color) {
 )";
 
     const char* render_elevation_marker = R"(
-#version 460
+#version 330
 #pragma vp_function oeui_render_elevation_marker_vs, vertex_view
 out vec4 oeui_color;
 flat out int oe_terrain_vertexMarker;

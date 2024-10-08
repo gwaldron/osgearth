@@ -287,7 +287,7 @@ void ClusterNode::traverse(osg::NodeVisitor& nv)
                     osg::Vec3d eye, center, up;
                     cv->getCurrentCamera()->getViewMatrixAsLookAt(eye, center, up);
 
-                    _horizon->setEye(eye);
+                    _horizon->setEye(eye, cv->getProjectionMatrix());
 
                     _clusters.clear();
                     getClusters(cv, _clusters);

@@ -65,15 +65,14 @@ namespace osgEarth
                     GL_UNSIGNED_BYTE);
 
                 ImageUtils::PixelWriter writeElevation(out_elevation.get());
-                ImageUtils::ImageIterator e_iter(writeElevation);
                 osg::Vec4 value;
-                e_iter.forEachPixel([&]()
+                writeElevation.forEachPixel([&](auto& iter)
                     {
-                        float a = 2.0*(e_iter.u() - 0.5f);
-                        float b = 2.0*(e_iter.v() - 0.5f);
+                        float a = 2.0*(iter.u() - 0.5f);
+                        float b = 2.0*(iter.v() - 0.5f);
                         float d = sqrt((a*a) + (b*b));
                         value.r() = clamp(d, 0.0f, 1.0f);
-                        writeElevation(value, e_iter.s(), e_iter.t());
+                        writeElevation(value, iter);
                     }
                 );
 
@@ -86,40 +85,35 @@ namespace osgEarth
                     GL_UNSIGNED_BYTE);
 
                 ImageUtils::PixelWriter writeLifeMap(out_lifemap.get());
-                ImageUtils::ImageIterator lm_iter(writeLifeMap);
-                lm_iter.forEachPixel([&]()
+
+                writeLifeMap.forEachPixel([&](auto& iter)
                     {
-                        float a = 2.0f*(lm_iter.u() - 0.5f);
-                        float b = 2.0f*(lm_iter.v() - 0.5f);
+                        float a = 2.0f*(iter.u() - 0.5f);
+                        float b = 2.0f*(iter.v() - 0.5f);
                         float d = clamp(static_cast<float>(sqrt((a*a) + (b*b))), 0.0f, 1.0f);
                         value.set(rugged, dense, lush, (1.0f - (d*d)) * lifemapMix);
 
-                        writeLifeMap(value, lm_iter.s(), lm_iter.t());
+                        writeLifeMap(value, iter);
                     }
                 );
 
                 out_landcover = new osg::Image();
                 out_landcover->allocateImage(256, 256, 1, GL_RED, GL_UNSIGNED_BYTE);
                 ImageUtils::PixelWriter writeLandCover(out_landcover.get());
-                ImageUtils::ImageIterator lc_iter(writeLandCover);
-                lc_iter.forEachPixel([&]()
+                writeLandCover.forEachPixel([&](auto& iter)
                     {
                         float r = 2.0f / 255.0f;
-                        float a = 2.0f * (lc_iter.u() - 0.5f);
-                        float b = 2.0f * (lc_iter.v() - 0.5f);
+                        float a = 2.0f * (iter.u() - 0.5f);
+                        float b = 2.0f * (iter.v() - 0.5f);
                         //float d = clamp(static_cast<float>(sqrt((a * a) + (b * b))), 0.0f, 1.0f);
                         //TODO uncomment me for a nice circle
                         //if (d < 1.0f)
                         {
                             value.r() = r;
-                            writeLandCover(value, lc_iter.s(), lc_iter.t());
+                            writeLandCover(value, iter);
                         }
                     }
                 );
-
-                //static int shmoo = 0;
-                //std::string f = "out/out" + std::to_string(shmoo++) + ".png";
-                //osgDB::writeImageFile(*out_landcover.get(), f);
             }
         };
 
@@ -171,12 +165,11 @@ namespace osgEarth
 
                 ImageUtils::PixelReader readSDF(sdf.getImage());
                 ImageUtils::PixelWriter writeElevation(out_elevation.get());
-                ImageUtils::ImageIterator e_iter(writeElevation);
                 osg::Vec4 value;
-                e_iter.forEachPixel([&]()
+                writeElevation.forEachPixel([&](auto& iter)
                     {
-                        readSDF(value, e_iter.s(), e_iter.t());
-                        writeElevation(value, e_iter.s(), e_iter.t());
+                        readSDF(value, iter);
+                        writeElevation(value, iter);
                     }
                 );
 
@@ -184,22 +177,15 @@ namespace osgEarth
                 out_lifemap->allocateImage(256, 256, 1, GL_RGBA, GL_UNSIGNED_BYTE);
 
                 ImageUtils::PixelWriter writeLifeMap(out_lifemap.get());
-                ImageUtils::ImageIterator lm_iter(writeLifeMap);
-                lm_iter.forEachPixel([&]()
+                writeLifeMap.forEachPixel([&](auto& iter)
                     {
-                        readSDF(value, lm_iter.s(), lm_iter.t());
+                        readSDF(value, iter);
                         float dist = clamp(value.r(), 0.0f, 1.0f);
                         dist = accel(accel(dist));
                         value.set(rugged, dense, lush, (1.0f - dist) * lifemapMix);
-                        writeLifeMap(value, lm_iter.s(), lm_iter.t());
+                        writeLifeMap(value, iter);
                     }
                 );
-
-#if 0
-                osgDB::writeImageFile(*nnf.getImage(), Stringify() << "out/decal_nnf.png");
-                osgDB::writeImageFile(*sdf.getImage(), Stringify() << "out/decal_sdf.png");
-                osgDB::writeImageFile(*out_lifemap.get(), Stringify() << "out/decal_lifemap.png");
-#endif
             }
         };
 

@@ -16,8 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_DRIVERS_REX_SURFACE_NODE
-#define OSGEARTH_DRIVERS_REX_SURFACE_NODE 1
+#pragma once
 
 #include "Common"
 #include "GeometryPool"
@@ -25,7 +24,7 @@
 #include "TileDrawable"
 #include "TileRenderModel"
 
-#include <osgEarth/Horizon>
+#include <osgEarth/Ellipsoid>
 #include <osg/MatrixTransform>
 #include <osg/BoundingBox>
 #include <osg/Drawable>
@@ -39,76 +38,34 @@ namespace osgEarth { namespace REX
     using namespace osgEarth;
 
     /**
-     * Like cluster culling
-     */
-    struct HorizonTileCuller
-    {
-        // four points representing to upper face of the bounding box
-        osg::Vec3d _points[4];
-
-        // Horizon object to consider for culling
-        osg::ref_ptr<Horizon> _horizon;
-
-        //! Reconfigure the culler
-        void set(const SpatialReference* srs, const osg::Matrix& local2world, const osg::BoundingBox& bbox);
-
-        //! True if this tile may be visible relative to the horizon
-        bool isVisible(const osg::Vec3d& from) const;
-    };
-
-
-    /**
      * SurfaceNode holds the geometry and transform information
      * for one terrain tile surface.
      */
     class SurfaceNode : public osg::MatrixTransform
     {
     public:
-        SurfaceNode(
-            const TileKey& tilekey,
-            TileDrawable* drawable);
+        osg::ref_ptr<TileDrawable> _drawable;
+        osg::ref_ptr<osg::Node> _debugNode;
+        int _lastFramePassedCull = 0;
+
+    public:
+        SurfaceNode(const TileKey& tilekey, TileDrawable* drawable);
 
         //! Update the elevation raster associated with this tile
+        //! and update the culling information based on the new data.
         void setElevationRaster(const osg::Image* raster, const osg::Matrixf& scaleBias);
 
-        //! Elevation raster representing this surface
-        const osg::Image* getElevationRaster() const { 
-            return _drawable->getElevationRaster();
+        //! Whether this tile is visible given the provided horizon.
+        inline bool isVisible(Horizon* horizon) const {
+            return _horizonCullingPointSet ? horizon->isVisible(_horizonCullingPoint, 0.0) : true;
         }
 
-        //! Elevation matrix representing to this surface
-        const osg::Matrixf& getElevationMatrix() const { 
-            return _drawable->getElevationMatrix(); 
-        }
-
-        //! aligned BBOX for culling (derived from elevation raster)
-        const osg::BoundingBox& getAlignedBoundingBox() const {
-            return _drawable->getBoundingBox();
-        }
-        
-        //! Proxy drawable
-        TileDrawable* getDrawable() const { 
-            return _drawable.get(); 
-        }
-
-        //! Horizon visibility check
-        inline bool isVisibleFrom(const osg::Vec3& viewpoint) const {
-            return _horizonCuller.isVisible(viewpoint);
-        }
-        
-        // A box can have 4 children. 
-        // Returns true if any child box intersects the sphere of radius centered around point
-        inline bool anyChildBoxIntersectsSphere(const osg::Vec3& point, float radiusSquared) {
-            for(int c=0; c<4; ++c) {
-                for(int j=0; j<8; ++j) {
-                    if ( (_childrenCorners[c][j]-point).length2() < radiusSquared )
-                        return true;
-                }
-            }
-            return false;
-        }
-
-        bool anyChildBoxWithinRange(float range, osg::NodeVisitor& nv) const {
+        //! Tests whether any "child box" is in visible range. This object holds information
+        //! about the predicted bounding boxes of each its four potential children. This
+        //! method tests whether any of those boxes is within the specified range so that
+        //! the owning TileNode can decide when to subdivide.
+        inline bool anyChildBoxWithinRange(float range, osg::NodeVisitor& nv) const
+        {
             for(int c=0; c<4; ++c) {
                 for(int j=0; j<8; ++j) {
                     if (nv.getDistanceToViewPoint(_childrenCorners[c][j], true) < range)
@@ -118,41 +75,31 @@ namespace osgEarth { namespace REX
             return false;
         }
 
-        void setDebugText(const std::string& strText);
-
-        osg::BoundingSphere computeBound() const;
-
-        osg::Node* getDebugNode() const { return _debugNode.get(); }
-
-        void setLastFramePassedCull(unsigned fn);
-
-        unsigned getLastFramePassedCull() const { return _lastFramePassedCull; }
-
-        float getPixelSizeOnScreen(osg::CullStack* cull) const;
+        //! Size of this node on the screen in pixels; used for culling decisions
+        //! when using in SCREEN_SPACE lod method.
+        inline float getPixelSizeOnScreen(osg::CullStack* cull) const
+        {
+            // By using the width, the "apparent" pixel size will decrease as we near the poles.
+            // TODO: Consider using the Height in ortho mode instead.
+            bool ortho = ProjectionMatrix::isOrtho(*cull->getProjectionMatrix());
+            double R = (ortho ? _drawable->_bboxHalfHeight : _drawable->_bboxHalfWidth);
+            return cull->clampedPixelSize(getMatrix().getTrans(), R) / cull->getLODScale();
+        }
 
     protected:
-        virtual ~SurfaceNode() { }
 
-        TileKey                     _tileKey;
-        osg::ref_ptr<TileDrawable>  _drawable;
-        osg::ref_ptr<osg::Node>     _debugNode;
-        osg::ref_ptr<osgText::Text> _debugText;
-        static const bool           _enableDebugNodes;
-        int                         _lastFramePassedCull;
-        HorizonTileCuller           _horizonCuller;
+        osg::BoundingSphere computeBound() const override;
 
-        typedef osg::Vec3 VectorPoints[8];
+    private:
 
+        const Ellipsoid& _ellipsoid;
+        osg::Vec3d _horizonCullingPoint;
+        bool _horizonCullingPointSet = false;
+        osg::Vec3f _childrenCorners[8][4];
+        static const bool _enableDebugNodes;
 
         void addDebugNode(const osg::BoundingBox& box);
         void removeDebugNode(void);
-
-        VectorPoints _worldCorners;
-
-        using ChildrenCorners = VectorPoints[4];
-        ChildrenCorners _childrenCorners;
     };
 
 } } // namespace osgEarth::REX
-
-#endif // OSGEARTH_DRIVERS_REX_SURFACE_NODE

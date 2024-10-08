@@ -170,23 +170,26 @@ namespace osgEarth
                         magnification_old = magnification_new;
                     }
 
-                    static osg::CullSettings::ComputeNearFarMode old_near_far_mode = osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR;
-                    static bool lock_far_clip = false;
-                    static float locked_far_clip = 0.0f;
-                    if (ImGuiLTable::Checkbox("Lock far clip", &lock_far_clip))
+                    if (!ortho)
                     {
-                        if (lock_far_clip)
+                        static osg::CullSettings::ComputeNearFarMode old_near_far_mode = osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR;
+                        static bool lock_far_clip = false;
+                        static float locked_far_clip = 0.0f;
+                        if (ImGuiLTable::Checkbox("Lock far clip", &lock_far_clip))
                         {
-                            old_near_far_mode = camera(ri)->getComputeNearFarMode();
-                            double L, R, B, T, N, F;
-                            camera(ri)->getProjectionMatrixAsFrustum(L, R, B, T, N, F);
-                            locked_far_clip = F;
-                            camera(ri)->setComputeNearFarMode(osg::Camera::DO_NOT_COMPUTE_NEAR_FAR);
-                            camera(ri)->setProjectionMatrixAsFrustum(L, R, B, T, N, F);
-                        }
-                        else
-                        {
-                            camera(ri)->setComputeNearFarMode(old_near_far_mode);
+                            if (lock_far_clip)
+                            {
+                                old_near_far_mode = camera(ri)->getComputeNearFarMode();
+                                double L, R, B, T, N, F;
+                                camera(ri)->getProjectionMatrixAsFrustum(L, R, B, T, N, F);
+                                locked_far_clip = F;
+                                camera(ri)->setComputeNearFarMode(osg::Camera::DO_NOT_COMPUTE_NEAR_FAR);
+                                camera(ri)->setProjectionMatrixAsFrustum(L, R, B, T, N, F);
+                            }
+                            else
+                            {
+                                camera(ri)->setComputeNearFarMode(old_near_far_mode);
+                            }
                         }
                     }
 

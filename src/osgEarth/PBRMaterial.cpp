@@ -53,15 +53,15 @@ namespace
             ImageUtils::PixelReader read_opacity(opacity.get());
             ImageUtils::ImageIterator iter(output.get());
             osg::Vec4 a, b;
-            iter.forEachPixel([&]()
+            write_output.forEachPixel([&](auto& iter)
                 {
-                    read_color(a, iter.s(), iter.t());
+                    read_color(a, iter);
                     if (opacity.valid())
                     {
                         read_opacity(b, iter.u(), iter.v());
                         a.a() = b[0];
                     }
-                    write_output(a, iter.s(), iter.t());
+                    write_output(a, iter);
                 });
         }
         else
@@ -153,8 +153,7 @@ namespace
                 ImageUtils::PixelWriter write_output(output.get());
 
                 osg::Vec4 in, out;
-                ImageUtils::ImageIterator iter(output.get());
-                iter.forEachPixel([&]()
+                write_output.forEachPixel([&](auto& iter)
                     {
                         if (displacement.valid())
                         {
@@ -196,7 +195,7 @@ namespace
                             out.a() = DEFAULT_METAL;
                         }
 
-                        write_output(out, iter.s(), iter.t());
+                        write_output(out, iter);
                     });
             }
         }

@@ -167,13 +167,12 @@ DecalImageLayer::createImageImplementation(
         osg::Matrix csb;
         key.getExtent().createScaleBias(canvas.getExtent(), csb);
 
-        ImageUtils::ImageIterator iter(writeOutput);
-        iter.forEachPixel([&]()
+        writeOutput.forEachPixel([&](auto& iter)
             {
                 double cu = iter.u() * csb(0, 0) + csb(3, 0);
                 double cv = iter.v() * csb(1, 1) + csb(3, 1);
                 readCanvas(dst, cu, cv);
-                writeOutput(dst, iter.s(), iter.t());
+                writeOutput(dst, iter);
             });
     }
     else

@@ -16,13 +16,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_REX_TERRAIN_CULLER_H
-#define OSGEARTH_REX_TERRAIN_CULLER_H 1
+#pragma once
 
 #include "EngineContext"
 #include "TerrainRenderData"
 #include "SelectionInfo"
 #include <osgEarth/Containers>
+#include <osgEarth/Horizon>
 
 #include <osg/NodeVisitor>
 #include <osgUtil/CullVisitor>
@@ -60,6 +60,7 @@ namespace osgEarth { namespace REX
         double _lastTimeVisited;
         bool _acceptSurfaceNodes;
         TerrainRenderData _terrain;
+        osg::ref_ptr<Horizon> _horizon;
 
     public:
         //! Construct the culler
@@ -104,4 +105,3 @@ namespace osgEarth { namespace REX
 
 } } // namespace 
 
-#endif // OSGEARTH_REX_TERRAIN_CULLER_H

@@ -95,7 +95,7 @@ HorizonClipPlane::operator()(osg::Node* node, osg::NodeVisitor* nv)
     ObjectStorage::set(nv, d.horizon.get());
 
     // update with current eyepoint
-    if (d.horizon->setEye(nv->getViewPoint()))
+    if (d.horizon->setEye(nv->getViewPoint(), cv->getProjectionMatrix()))
     {
         // compute the horizon plane and update the clipping uniform
         osg::Plane horizonPlane;

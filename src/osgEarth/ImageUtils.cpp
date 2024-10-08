@@ -95,11 +95,11 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
         PixelReader read(src);
         PixelWriter write(dst);
 
-        for( int r=0; r<src->r(); ++r)
+        for (int r = 0; r < src->r(); ++r)
         {
-            for( int src_t=0, dst_t=dst_start_row; src_t < src->t(); src_t++, dst_t++ )
+            for (int src_t = 0, dst_t = dst_start_row; src_t < src->t(); src_t++, dst_t++)
             {
-                for( int src_s=0, dst_s=dst_start_col; src_s < src->s(); src_s++, dst_s++ )
+                for (int src_s = 0, dst_s = dst_start_col; src_s < src->s(); src_s++, dst_s++)
                 {
                     write(read(src_s, src_t, r), dst_s, dst_t, r);
                 }
@@ -170,8 +170,6 @@ ImageUtils::resizeImage(const osg::Image* input,
                         unsigned int mipmapLevel,
                         bool bilinear)
 {
-    //TODO: refactor this with gluScaleImage/CPU?
-
     if ( !input && out_s == 0 && out_t == 0 )
         return false;
 
@@ -684,9 +682,7 @@ ImageUtils::mipmapImageInPlace(osg::Image* input)
 }
 
 const osg::Image*
-ImageUtils::compressImage(
-    const osg::Image* input,
-    const std::string& method)
+ImageUtils::compressImage(const osg::Image* input, const std::string& method)
 {
     OE_PROFILING_ZONE;
 
@@ -742,9 +738,7 @@ ImageUtils::compressImage(
 }
 
 void
-ImageUtils::compressImageInPlace(
-    osg::Image* input,
-    const std::string& method)
+ImageUtils::compressImageInPlace(osg::Image* input, const std::string& method)
 {
     OE_PROFILING_ZONE;
 
@@ -849,7 +843,8 @@ ImageUtils::compressAndMipmapTextures(osg::Node* node)
 }
 
 osgDB::ReaderWriter*
-ImageUtils::getReaderWriterForStream(std::istream& stream) {
+ImageUtils::getReaderWriterForStream(std::istream& stream) 
+{
     // Modified from https://oroboro.com/image-format-magic-bytes/
 
     // Get the length of the stream
@@ -970,19 +965,19 @@ ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
     osg::Vec4 src_value, dest_value;
     PixelReader read_src(src), read_dest(dest);
     PixelWriter write_dest(dest);
-    ImageIterator i(src);
 
-    i.forEachPixel([&]() {
-        read_src(src_value, i.s(), i.t());
-        read_dest(dest_value, i.s(), i.t());
-        float sa = srcHasAlpha ? a * src_value.a() : a;
-        float da = destHasAlpha ? dest_value.a() : 1.0f;
-        dest_value.set(
-            dest_value.r()*(1.0f - sa) + src_value.r()*sa,
-            dest_value.g()*(1.0f - sa) + src_value.g()*sa,
-            dest_value.b()*(1.0f - sa) + src_value.b()*sa,
-            osg::maximum(sa, da));
-        write_dest(dest_value, i.s(), i.t());
+    read_src.forEachPixel([&](auto& i)
+        {
+            read_src(src_value, i);
+            read_dest(dest_value, i);
+            float sa = srcHasAlpha ? a * src_value.a() : a;
+            float da = destHasAlpha ? dest_value.a() : 1.0f;
+            dest_value.set(
+                dest_value.r() * (1.0f - sa) + src_value.r() * sa,
+                dest_value.g() * (1.0f - sa) + src_value.g() * sa,
+                dest_value.b() * (1.0f - sa) + src_value.b() * sa,
+                osg::maximum(sa, da));
+            write_dest(dest_value, i);
         });
 
     return true;
@@ -1175,21 +1170,17 @@ ImageUtils::isEmptyImage(const osg::Image* image, float alphaThreshold)
         return isEmptyRGBA(image, (unsigned char)(alphaThreshold * 255.0f));
     }
 
+    bool is_empty = true;
     PixelReader read(image);
 
-    for(unsigned r=0; r<(unsigned)image->r(); ++r)
-    {
-        for(unsigned t=0; t<(unsigned)image->t(); ++t)
+    read.forEachPixel([&](auto& iter)
         {
-            for(unsigned s=0; s<(unsigned)image->s(); ++s)
-            {
-                osg::Vec4 color = read(s, t, r);
-                if ( color.a() > alphaThreshold )
-                    return false;
-            }
-        }
-    }
-    return true;
+            osg::Vec4 color = read(iter);
+            if (color.a() > alphaThreshold)
+                is_empty = false, iter.quit();
+        });
+
+    return is_empty;
 }
 
 osg::Image*
@@ -1331,27 +1322,29 @@ ImageUtils::replaceNoDataValues(osg::Image*       target,
     PixelReader readReference(reference);
     osg::Vec4 pixel;
 
-    ImageIterator i(target);
-    i.forEachPixel([&]() {
-        readTarget(pixel, i.s(), i.t());
+    readTarget.forEachPixel([&](auto& i) {
+        readTarget(pixel, i);
         if (pixel.r() == NO_DATA_VALUE)
         {
             osg::Vec4f refValue = readReference(xscale*i.u() + xbias, yscale*i.v() + ybias);
-            writeTarget(refValue, i.s(), i.t());
+            writeTarget(refValue, i);
         }
     });
 
-    for(int s=0; s<target->s(); ++s)
+    for (int r = 0; r < target->r(); ++r)
     {
-        for(int t=0; t<target->t(); ++t)
+        for (int s = 0; s < target->s(); ++s)
         {
-            osg::Vec4f pixel = readTarget(s, t);
-            if ( pixel.r() == NO_DATA_VALUE )
+            for (int t = 0; t < target->t(); ++t)
             {
-                float nx = (float)s / (float)(target->s()-1);
-                float ny = (float)t / (float)(target->t()-1);
-                osg::Vec4f refValue = readReference( xscale*nx+xbias, yscale*ny+ybias );
-                writeTarget(refValue, s, t);
+                osg::Vec4f pixel = readTarget(s, t);
+                if (pixel.r() == NO_DATA_VALUE)
+                {
+                    float nx = (float)s / (float)(target->s() - 1);
+                    float ny = (float)t / (float)(target->t() - 1);
+                    osg::Vec4f refValue = readReference(xscale * nx + xbias, yscale * ny + ybias);
+                    writeTarget(refValue, s, t, r);
+                }
             }
         }
     }
@@ -1433,11 +1426,11 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
     // copy image to result
     PixelReader read(image);
     PixelWriter write(result);
+
     osg::Vec4 value;
-    ImageIterator iter(read);
-    iter.forEachPixel([&]() {
-        read(value, iter.s(), iter.t());
-        write(value, iter.s(), iter.t());
+    read.forEachPixel([&](auto& i) {
+        read(value, i);
+        write(value, i);
     });
 
     return result;
@@ -1558,12 +1551,12 @@ ImageUtils::convertToPremultipliedAlpha(osg::Image* image)
 
     PixelReader read(image);
     PixelWriter write(image);
-    ImageIterator iter(read);
+
     osg::Vec4 c;
-    iter.forEachPixel([&]() {
-        read(c, iter.s(), iter.t(), iter.r());
+    read.forEachPixel([&](auto& iter) {
+        read(c, iter);
         c.set(c.r()*c.a(), c.g()*c.a(), c.b()*c.a(), c.a());
-        write(c, iter.s(), iter.t(), iter.r());
+        write(c, iter);
     });
     return true;
 }

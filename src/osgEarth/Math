@@ -590,16 +590,17 @@ namespace osgEarth
         };
 
         //! True for an orthographic projection matrix
-        static bool isOrtho(
-            const osg::Matrix& m);
+        static inline bool isOrtho(const osg::Matrix& m) {
+            return !m.isIdentity() && m(3, 3) > 0.0;
+        }
 
         //! True for a perspective projection matrix
-        static bool isPerspective(
-            const osg::Matrix& m);
+        static inline bool isPerspective(const osg::Matrix& m) {
+            return m(3, 3) == 0.0;
+        }
 
         //! Detected type of the projection matrix
-        static Type getType(
-            const osg::Matrix& m);
+        static Type getType(const osg::Matrix& m);
 
         //! Construct a perspective matrix, deriving the type from the
         //! existing values in the matrix if possible

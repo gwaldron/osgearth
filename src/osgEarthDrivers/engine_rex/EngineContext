@@ -16,8 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_DRIVERS_REX_TILE_GROUP_FACTORY
-#define OSGEARTH_DRIVERS_REX_TILE_GROUP_FACTORY 1
+#pragma once
 
 #include "Common"
 #include "GeometryPool"
@@ -31,6 +30,7 @@
 #include <osgEarth/TerrainTileModel>
 #include <osgEarth/Progress>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/Horizon>
 
 #include <osgUtil/CullVisitor>
 
@@ -112,5 +112,3 @@ namespace osgEarth { namespace REX
     };
 
 } } // namespace osgEarth::Drivers::RexTerrainEngine
-
-#endif // OSGEARTH_DRIVERS_REX_TILE_GROUP_FACTORY

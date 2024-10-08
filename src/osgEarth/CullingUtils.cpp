@@ -969,42 +969,6 @@ LODScaleGroup::traverse(osg::NodeVisitor& nv)
     osg::Group::traverse( nv );
 }
 
-//------------------------------------------------------------------
-
-ClipToGeocentricHorizon::ClipToGeocentricHorizon(
-    const osgEarth::SpatialReference* srs,
-    osg::ClipPlane* clipPlane)
-{
-    if ( srs )
-    {
-        _horizon = new Horizon();
-        _horizon->setEllipsoid(srs->getEllipsoid());
-    }
-
-    _clipPlane = clipPlane;
-}
-
-void
-ClipToGeocentricHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
-{
-    osg::ref_ptr<osg::ClipPlane> clipPlane;
-    if ( _clipPlane.lock(clipPlane) )
-    {
-        osg::ref_ptr<Horizon> horizon;
-        if (!ObjectStorage::get(nv, horizon))
-        {
-            horizon = new Horizon(*_horizon.get());
-            horizon->setEye( nv->getViewPoint() );
-        }
-
-        osg::Plane horizonPlane;
-        horizon->getPlane( horizonPlane );
-
-        _clipPlane->setClipPlane( horizonPlane );
-    }
-    traverse(node, nv);
-}
-
 //..........................................................................
 
 void

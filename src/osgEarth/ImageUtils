@@ -373,6 +373,57 @@ namespace osgEarth { namespace Util
         }
 
         /**
+         * Convenience object to iterate over an image with a lamdba function
+         */
+        struct ImageIterator
+        {
+        public:
+            ImageIterator(const osg::Image* image) :
+                _image(image) { }
+
+            //ImageIterator(PixelReader& reader) :
+            //    _image(reader._image) { }
+
+            //ImageIterator(PixelWriter& writer) :
+            //    _image(writer._image) { }
+
+            inline int r() const { return _r; }
+            inline int s() const { return _s; }
+            inline int t() const { return _t; }
+            inline int m() const { return 0; }
+            inline double u() const { return _u; }
+            inline double v() const { return _v; }
+            inline void quit() { _break = true; }
+
+            template<typename CALLABLE>
+            inline void forEachPixel(CALLABLE&& func)
+            {
+                _break = false;
+                int tt = _image->t(), ss = _image->s(), rr = _image->r();
+                for (_t = 0; _t < tt && !_break; ++_t)
+                {
+                    _v = (double)_t / (double)(_image->t() - 1);
+
+                    for (_s = 0; _s < ss && !_break; ++_s)
+                    {
+                        _u = (double)_s / (double)(_image->s() - 1);
+
+                        for (_r = 0; _r < rr && !_break; ++_r)
+                        {
+                            func(*this);
+                        }
+                    }
+                }
+            }
+
+        private:
+            const osg::Image* _image;
+            int    _r, _s, _t;
+            double _u, _v;
+            bool _break = false;
+        };
+
+        /**
          * Reads color data out of an image, regardles of its internal pixel format.
          */
         class OSGEARTH_EXPORT PixelReader
@@ -420,6 +471,19 @@ namespace osgEarth { namespace Util
 
             inline int s() const { return _image->s(); }
             inline int t() const { return _image->t(); }
+            inline int r() const { return _image->r(); }
+
+            //! Returns an iterator into this image
+            ImageIterator iterator() const {
+                return ImageIterator(_image);
+            }
+
+            //! Iterator over this image with the user function CALLABLE
+            //! with the signature void CALLABLE(ImageIterator&)
+            template<typename CALLABLE>
+            void forEachPixel(CALLABLE&& func) const {
+                ImageIterator(_image).forEachPixel(func);
+            }
 
             //! Returns a color from an image at pixel (s,t,r,m)
             inline osg::Vec4f operator()(int s, int t, int r=0, int m=0) const {
@@ -427,7 +491,6 @@ namespace osgEarth { namespace Util
                 _read(this, temp, s, t, r, m);
                 return temp;
             }
-
             inline void operator()(osg::Vec4f& output, int s, int t, int r=0, int m=0) const {
                 _read(this, output, s, t, r, m);
             }
@@ -437,9 +500,19 @@ namespace osgEarth { namespace Util
                 osg::Vec4f temp;
                 _read(this, temp, s, t, r, m);
                 return temp;
-            }
+            }            
             inline void operator()(osg::Vec4f& output, unsigned s, unsigned t, int r=0, int m=0) const {
                 _read(this, output, s, t, r, m);
+            }
+
+            //! composite version of pixel read operator
+            template<typename T>
+            inline osg::Vec4f operator()(const T& composite) const {
+                return (*this)(composite.s(), composite.t(), composite.r());
+            }
+            template<typename T>
+            inline void operator()(osg::Vec4f& output, const T& composite) const {
+                _read(this, output, composite.s(), composite.t(), composite.r(), 0);
             }
 
             /** Reads a color from the image by unit coords [0..1] */
@@ -493,6 +566,7 @@ namespace osgEarth { namespace Util
 
             inline int s() const { return _image->s(); }
             inline int t() const { return _image->t(); }
+            inline int r() const { return _image->r(); }
 
             //! Initialize to all one value
             void assign(const osg::Vec4& c);
@@ -505,11 +579,24 @@ namespace osgEarth { namespace Util
                 (*_writer)(this, c, s, t, r, m );
             }
 
-            inline  void f(const osg::Vec4& c, float s, float t, int r=0, int m=0) {
+            inline void f(const osg::Vec4& c, float s, float t, int r=0, int m=0) {
                 this->operator()( c,
                     (int)(s * (float)(_image->s()-1)),
                     (int)(t * (float)(_image->t()-1)),
                     r, m);
+            }
+
+            //! composite version of pixel write operator
+            template<typename T>
+            inline void operator()(const osg::Vec4& c, const T& composite) const {
+                (*_writer)(this, c, composite.s(), composite.t(), composite.r(), composite.m());
+            }
+
+            //! Iterator over this image with the user function CALLABLE
+            //! with the signature void CALLABLE(ImageIterator&)
+            template<typename CALLABLE>
+            void forEachPixel(CALLABLE&& func) const {
+                ImageIterator(_image).forEachPixel(func);
             }
 
             // internals:
@@ -523,53 +610,6 @@ namespace osgEarth { namespace Util
 
             typedef void (*WriterFunc)(const PixelWriter* iw, const osg::Vec4& c, int s, int t, int r, int m);
             WriterFunc _writer;
-        };
-
-        /**
-         * Convenience object to iterate over an image with a lamdba function
-         */
-        struct ImageIterator
-        {
-        public:
-            ImageIterator(const osg::Image* image) :
-                _image(image) { }
-
-            ImageIterator(PixelReader& reader) :
-                _image(reader._image) { }
-
-            ImageIterator(PixelWriter& writer) :
-                _image(writer._image) { }
-
-            inline int r() const { return _r; }
-            inline int s() const { return _s; }
-            inline int t() const { return _t; }
-            inline double u() const { return _u; }
-            inline double v() const { return _v; }
-
-            //inline void forEachPixel(const std::function<void()>& func)
-            template<typename Func>
-            inline void forEachPixel(const Func& func)
-            {
-                for (_r = 0; _r < _image->r(); ++_r)
-                {
-                    for (_t = 0; _t < _image->t(); ++_t)
-                    {
-                        _v = (double)_t / (double)(_image->t() - 1);
-
-                        for (_s = 0; _s < _image->s(); ++_s)
-                        {
-                            _u = (double)_s / (double)(_image->s() - 1);
-
-                            func();
-                        }
-                    }
-                }
-            }
-
-        private:
-            const osg::Image* _image;
-            int    _r, _s, _t;
-            double _u, _v;
         };
 
         /**
@@ -591,36 +631,40 @@ namespace osgEarth { namespace Util
 
             inline int s() const { return _s; }
             inline int t() const { return _t; }
+            inline int r() const { return _r; }
+            inline int m() const { return 0; }
             inline double u() const { return _u; }
             inline double v() const { return _v; }
             inline double x() const { return _x; }
             inline double y() const { return _y; }
 
-            //inline void forEachPixel(const std::function<void()>& func)
-            template<typename Func>
-            inline void forEachPixel(const Func& func)
+            template<typename CALLABLE>
+            inline void forEachPixel(CALLABLE&& func)
             {
                 forEachPixelOnCenter(func);
             }
 
-            //inline void forEachPixelOnCenter(const std::function<void()>& func)
-            template<typename Func>
-            inline void forEachPixelOnCenter(const Func& func)
+            template<typename CALLABLE>
+            inline void forEachPixelOnCenter(CALLABLE&& func)
             {
-                double _bu = 0.5 / (double)_image->s();
-                double _bv = 0.5 / (double)_image->t();
+                int tt = _image->t(), ss = _image->s(), rr = _image->r();
+                double _bu = 0.5 / (double)ss;
+                double _bv = 0.5 / (double)tt;
 
-                for (_t = 0; _t < _image->t(); ++_t)
+                for (_t = 0; _t < tt; ++_t)
                 {
                     _v = _bv + ((double)_t * 2.0 * _bv);
-                    _y = _extent.yMin() + _extent.height()*_v;
+                    _y = _extent.yMin() + _extent.height() * _v;
 
-                    for (_s = 0; _s < _image->s(); ++_s)
+                    for (_s = 0; _s < ss; ++_s)
                     {
                         _u = _bu + ((double)_s * 2.0 * _bu);
-                        _x = _extent.xMin() + _extent.width()*_u;
+                        _x = _extent.xMin() + _extent.width() * _u;
 
-                        func();
+                        for (_r = 0; _r < rr; ++_r)
+                        {
+                            func();
+                        }
                     }
                 }
             }
@@ -628,7 +672,7 @@ namespace osgEarth { namespace Util
         private:
             const osg::Image* _image;
             const EXTENT _extent;
-            int    _s, _t;
+            int    _s, _t, _r;
             double _u, _v;
             double _x, _y;
         };

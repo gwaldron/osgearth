@@ -71,14 +71,12 @@ namespace
         osg::Vec4 packed;
         ImageUtils::PixelReader read(in);
         ImageUtils::PixelWriter write(out);
-
-        ImageUtils::ImageIterator i(read);
-        i.forEachPixel([&]()
+        read.forEachPixel([&](auto& i)
             {
-                read(v, i.s(), i.t());
+                read(v, i);
                 osg::Vec3 normal(v.r()*2.0f - 1.0f, v.g()*2.0f - 1.0f, v.b()*2.0f - 1.0f);
                 NormalMapGenerator::pack(normal, packed);
-                write(packed, i.s(), i.t());
+                write(packed, i);
             }
         );
 

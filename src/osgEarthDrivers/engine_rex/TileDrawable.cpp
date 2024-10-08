@@ -36,7 +36,7 @@ using namespace osgEarth;
 //........................................................................
 
 ModifyBoundingBoxCallback::ModifyBoundingBoxCallback(EngineContext* context) :
-_context(context)
+    _context(context)
 {
     //nop
 }
@@ -65,17 +65,19 @@ ModifyBoundingBoxCallback::operator()(const TileKey& key, osg::BoundingBox& bbox
         }
     }
 }
+
 //........................................................................
 
-TileDrawable::TileDrawable(const TileKey& key,
-                           SharedGeometry* geometry,
-                           int tileSize) :
-osg::Drawable( ),
-_key         ( key ),
-_geom        ( geometry ),
-_tileSize    ( tileSize ),
-_bboxRadius  ( 1.0 ),
-_bboxCB      ( NULL )
+TileDrawable::TileDrawable(
+    const TileKey& key,
+    SharedGeometry* geometry,
+    int tileSize) :
+    osg::Drawable(),
+    _key(key),
+    _geom(geometry),
+    _tileSize(tileSize),
+    _bboxRadius(1.0),
+    _bboxCB(NULL)
 {
     // builds the initial mesh.
     setElevationRaster(0L, osg::Matrixf::identity());
@@ -215,6 +217,8 @@ TileDrawable::computeBoundingBox() const
     }
 
     _bboxRadius = box.radius();
+    _bboxHalfWidth = 0.5 * (box.xMax() - box.xMin());
+    _bboxHalfHeight = 0.5 * (box.yMax() - box.yMin());
 
     return box;
 }

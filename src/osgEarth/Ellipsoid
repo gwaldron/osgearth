@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_ELLIPSOID_H
-#define OSGEARTH_ELLIPSOID_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osg/Matrix>
@@ -85,12 +84,10 @@ namespace osgEarth
             const osg::Vec2d& longlat2_deg) const;
 
         //! Geodesic interpolation between two lat/long points
-        void geodesicInterpolate(
+        osg::Vec3d geodesicInterpolate(
             const osg::Vec3d& longlat1_deg,
             const osg::Vec3d& longlat2_deg,
-            double t,
-            osg::Vec3d& out_longlat_deg) const;
-
+            double t) const;
 
         //! Intersects a geocentric line with the ellipsoid.
         //! Upon success return true and place the first intersection
@@ -99,6 +96,11 @@ namespace osgEarth
             const osg::Vec3d& p0,
             const osg::Vec3d& p1,
             osg::Vec3d& out) const;
+
+        //! Calculate the world horizon culling point for a set of input points.
+        //! @param points Points to consider, in world coordinates
+        //! @return The horizon culling point, in world coordinates
+        osg::Vec3d calculateHorizonCullingPoint(const std::vector<osg::Vec3d>& points) const;
 
         //! dtor
         ~Ellipsoid();
@@ -112,5 +114,3 @@ namespace osgEarth
         osg::Matrix _unitSphereToEllipsoid;
     };
 }
-
-#endif // OSGEARTH_ELLIPSOID_H

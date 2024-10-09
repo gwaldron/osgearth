@@ -45,6 +45,9 @@ namespace osgEarth
 
             //! The default filename mangler for PBR maps
             static Mangler getDefaultPBRMapNameMangler();
+
+            //! The default filename mangler for displacement maps
+            static Mangler getDefaultDisplacementMapNameMangler();
         };
 
         /**

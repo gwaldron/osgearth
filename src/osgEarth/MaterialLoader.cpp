@@ -93,6 +93,35 @@ MaterialUtils::getDefaultPBRMapNameMangler()
     return getPBRMapFileName;
 }
 
+MaterialUtils::Mangler
+MaterialUtils::getDefaultDisplacementMapNameMangler()
+{
+    static Mangler getPBRMapFileName = [](const std::string& filename)
+        {
+            const std::string pattern = "_HGT";
+
+            std::string dot_ext = osgDB::getFileExtensionIncludingDot(filename);
+            if (Strings::ciEquals(dot_ext, ".meif"))
+            {
+                auto underscore_pos = filename.find_last_of('_');
+                if (underscore_pos != filename.npos)
+                {
+                    return
+                        filename.substr(0, underscore_pos)
+                        + pattern
+                        + filename.substr(underscore_pos);
+                }
+            }
+
+            return
+                osgDB::getNameLessExtension(filename)
+                + pattern
+                + dot_ext;
+        };
+
+    return getPBRMapFileName;
+}
+
 
 
 #undef LC

@@ -100,7 +100,7 @@ namespace
                 write(temp, iter);
             });
 
-        //Resize the image to the nearest power of two
+        // Resize the image to the nearest power of two
         if (!ImageUtils::isPowerOfTwo(output.get()))
         {
             unsigned s = osg::Image::computeNearestPowerOfTwo(output->s());
@@ -258,8 +258,13 @@ RGBH_Loader::readImageFromSourceData(
         color = colorURI.getImage(options);
         if (color.valid())
         {
-            URI heightURI(basename + "_HGT." + extension);
+            auto getDisplacementFileName = MaterialUtils::getDefaultDisplacementMapNameMangler();
+            URI heightURI(getDisplacementFileName(color_filename));
             osg::ref_ptr<osg::Image> height = heightURI.getImage(options);
+            if (!height.valid())
+            {
+                OE_WARN << LC << "Failed to load \"" << heightURI.full() << "\"" << std::endl;
+            }
             return assemble_RGBH(color, height);
         }
         else

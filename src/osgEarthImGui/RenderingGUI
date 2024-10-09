@@ -116,6 +116,15 @@ void oeui_render_metal(inout vec4 color) {
 }
 )";
 
+    const char* render_displacement = R"(
+#version 330
+#pragma vp_function oeui_render_metal, fragment_lighting, last
+struct OE_PBR { float displacement, roughness, ao, metal; } oe_pbr;
+void oeui_render_metal(inout vec4 color) {
+    color = vec4(oe_pbr.displacement, oe_pbr.displacement, oe_pbr.displacement, 1);
+}
+)";
+
     const char* render_draw_id = R"(
 #version 460
 #pragma vp_function oeui_render_drawid_vs, vertex_model
@@ -287,6 +296,9 @@ namespace osgEarth
                 }
                 if (ImGui::RadioButton("AO (PBR)", &s_renderMode, m++)) {
                     setRenderMode(render_ao, ri);
+                }
+                if (ImGui::RadioButton("Displacement (PBR)", &s_renderMode, m++)) {
+                    setRenderMode(render_displacement, ri);
                 }
                 if (ImGui::RadioButton("Draw ID", &s_renderMode, m++)) {
                     setRenderMode(render_draw_id, ri);

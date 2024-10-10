@@ -10,7 +10,7 @@ FeatureImage - rasterizes feature data into an image layer.
         <url>../data/world.shp</url>
     </OGRFeatures>
     
-    <FeatureImage name="World Boundaries">
+    <FeatureImage name="Rasterized polygons + lines">
         <features>world-data</features>
         <styles>        
             <style type="text/css">
@@ -23,4 +23,18 @@ FeatureImage - rasterizes feature data into an image layer.
         </styles>
     </FeatureImage>
   
+    <FeatureImage name="Rasterized points" min_level="5">
+        <ogrfeatures url="../data/cities_mercator.shp"/>
+        <styles>
+            <script language="javascript">
+              <![CDATA[
+                function get_style() {
+                    var rank = feature.properties.scalerank;
+                    return "{ point-fill:#7f7fff;point-size:" + (rank*2.5) + "; }";
+                }
+              ]]>
+            </script>
+            <selector style_expr="get_style();"/>
+        </styles>        
+    </FeatureImage>
 </Map>

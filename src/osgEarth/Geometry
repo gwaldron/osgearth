@@ -256,17 +256,18 @@ namespace osgEarth
         //! Whether a closed geometry contains the 2D point
         virtual bool contains2D(double x, double y) const { return false; }
 
-        //! Iterate over all the parts of a geometry
-        void forEachPart(const std::function<void(Geometry*)>& func) { forEachPart(true, func); }
 
-        //! Iterate over all the parts of a geometry
-        void forEachPart(bool includePolygonHoles, const std::function<void(Geometry*)>& func);
+        //! Iterate over all the parts of a geometry (signature = void(Geometry* part))
+        template<typename CALLABLE>
+        inline void forEachPart(bool includePolygonHoles, CALLABLE&& func);
+        template<typename CALLABLE>
+        inline void forEachPart(CALLABLE&& func) { forEachPart(true, func); };
 
-        //! Iterate over all the parts of a geometry
-        void forEachPart(const std::function<void(const Geometry*)>& func) const { forEachPart(true, func); }
-
-        //! Iterate over all the parts of a geometry
-        void forEachPart(bool includePolygonHoles, const std::function<void(const Geometry*)>& func) const;
+        //! Iterate over all the parts of a CONST geometry (signature = void(const Geometry* part))
+        template<typename CALLABLE>
+        inline void forEachPart(bool includePolygonHoles, CALLABLE&& func) const;
+        template<typename CALLABLE>
+        inline void forEachPart(CALLABLE&& func) const { forEachPart(true, func); };
 
     public:
         inline Type getType() const { return _type; }
@@ -560,7 +561,9 @@ namespace osgEarth
         const Geometry* next();
 
         //! Visits each part and calls a user-defined functor
-        inline void forEach(const std::function<void(const Geometry* part)>& func) {
+        //! Signature = void(const Geometry* part)
+        template<typename CALLABLE>
+        inline void forEach(CALLABLE&& func) { //const std::function<void(const Geometry* part)>& func) {
             while (hasMore()) func(next());
         }
 
@@ -620,6 +623,26 @@ namespace osgEarth
         bool _closeLoop;
         Segment _current;
     };
+
+
+
+    //! Iterate over all the parts of a geometry
+    template<typename CALLABLE>
+    inline void Geometry::forEachPart(bool includePolygonHoles, CALLABLE&& func)
+    {
+        GeometryIterator i(this, includePolygonHoles);
+        i.forEach(func);
+    }
+
+    //! Iterate over all the parts of a geometry
+    template<typename CALLABLE>
+    inline void Geometry::forEachPart(bool includePolygonHoles, CALLABLE&& func) const
+    {
+        ConstGeometryIterator i(this, includePolygonHoles);
+        i.forEach(func);
+    }
+
+
 } // namespace osgEarth
 
 

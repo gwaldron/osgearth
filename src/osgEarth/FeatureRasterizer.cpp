@@ -723,6 +723,7 @@ FeatureRasterizer::render_blend2d(
     _inverted = true;
 
     // find the symbology:
+    const PointSymbol* masterPoint = style.get<PointSymbol>();
     const LineSymbol* masterLine = style.getSymbol<LineSymbol>();
     const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
     const CoverageSymbol* masterCov = style.getSymbol<CoverageSymbol>();
@@ -862,6 +863,28 @@ FeatureRasterizer::render_blend2d(
                     lineWidth_px,
                     frame, ctx);
             }
+        }
+    }
+
+    if (masterPoint)
+    {
+        float width = masterPoint->size().value();
+
+        ctx.setFillStyle(BLRgba(
+            masterPoint->fill()->color().r(), masterPoint->fill()->color().g(), masterPoint->fill()->color().b(), masterPoint->fill()->color().a()));
+
+        for (const auto& feature : features)
+        {
+            feature->getGeometry()->forEachPart([&](const Geometry* part)
+                {
+                    for (auto& p : *part)
+                    {
+                        double x = frame.xf * (p.x() - frame.xmin);
+                        double y = frame.yf * (p.y() - frame.ymin);
+                        y = ctx.targetHeight() - y;
+                        ctx.fillCircle(x, y, width / 2.0);
+                    }
+                });
         }
     }
 

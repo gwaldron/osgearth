@@ -19,6 +19,7 @@
 #include "Ellipsoid"
 #include <osg/CoordinateSystemNode>
 #include <osgEarth/Notify>
+#include <algorithm>
 
 using namespace osgEarth;
 

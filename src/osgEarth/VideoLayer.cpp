@@ -47,7 +47,7 @@ OE_LAYER_PROPERTY_IMPL(VideoLayer, URI, URL, url);
 void
 VideoLayer::init()
 {
-    ImageLayer::init();
+    super::init();
     
     // Configure the layer to use createTexture() to return data
     setUseCreateTexture();
@@ -56,51 +56,51 @@ VideoLayer::init()
 Status
 VideoLayer::openImplementation()
 {
-    if (!isOpen())
+    Status parent = super::openImplementation();
+    if (parent.isError())
+        return parent;
+
+    if (!options().url().isSet())
     {
-        Status parent = ImageLayer::openImplementation();
-        if (parent.isError())
-            return parent;
-
-        if (!options().url().isSet())
-        {
-            return Status(Status::ConfigurationError, "Missing required url");
-        }
-
-        osg::ref_ptr< osg::Image > image = options().url()->readImage().getImage();
-        if (image.valid())
-        {             
-            osg::ImageStream* is = dynamic_cast< osg::ImageStream*>( image.get() );
-            if (is)
-            {
-                is->setLoopingMode(osg::ImageStream::LOOPING);
-                is->play();                 
-            }
-
-            _texture = new osg::Texture2D( image );
-            _texture->setResizeNonPowerOfTwoHint( false );
-            _texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture2D::LINEAR);
-            _texture->setFilter(osg::Texture::MAG_FILTER, osg::Texture2D::LINEAR);
-            _texture->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
-            _texture->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
-            _texture->setUnRefImageDataAfterApply(false);
-        }
-        else
-        {
-            std::stringstream buf;
-            buf << "Failed to load " << options().url()->full();
-            return Status(Status::ServiceUnavailable, buf.str());
-        }
-
-        setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
+        return Status(Status::ConfigurationError, "Missing required url");
     }
+
+    osg::ref_ptr< osg::Image > image = options().url()->readImage().getImage();
+    if (image.valid())
+    {
+        osg::ImageStream* is = dynamic_cast<osg::ImageStream*>(image.get());
+        if (is)
+        {
+            is->setLoopingMode(osg::ImageStream::LOOPING);
+            is->play();
+        }
+
+        _texture = new osg::Texture2D(image);
+        _texture->setResizeNonPowerOfTwoHint(false);
+        _texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture2D::LINEAR);
+        _texture->setFilter(osg::Texture::MAG_FILTER, osg::Texture2D::LINEAR);
+        _texture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+        _texture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
+        _texture->setUnRefImageDataAfterApply(false);
+    }
+    else
+    {
+        std::stringstream buf;
+        buf << "Failed to load " << options().url()->full();
+        return Status(Status::ServiceUnavailable, buf.str());
+    }
+
+    setProfile(Profile::create(Profile::GLOBAL_GEODETIC));
 
     return getStatus();
 }
 
 TextureWindow
 VideoLayer::createTexture(const TileKey& key, ProgressCallback* progress) const
-{   
+{
+    OE_SOFT_ASSERT_AND_RETURN(isOpen(), {});
+    OE_SOFT_ASSERT_AND_RETURN(_texture.valid(), {});
+
     osg::Matrix textureMatrix;
     bool flip = _texture->getImage()->getOrigin() == osg::Image::TOP_LEFT;    
     key.getExtent().createScaleBias(key.getProfile()->getExtent(), textureMatrix);

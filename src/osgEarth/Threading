@@ -18,8 +18,7 @@
  */
 #pragma once
 #include <osgEarth/Export>
-#include <unordered_map>
-#include <unordered_set>
+#include <vector>
 #include <shared_mutex>
 
 // bring in weejobs in the jobs namespace
@@ -61,26 +60,52 @@ namespace osgEarth
         public:
             Gate() = default;
 
-            inline void lock(const T& key) {
+            //! Lock key's gate
+            inline void lock(const T& key)
+            {
                 std::unique_lock<std::mutex> lock(_m);
                 for (;;) {
-                    auto i = _keys.emplace(key, std::this_thread::get_id());
-                    if (i.second == true || i.first->second == std::this_thread::get_id()) // insert successful or recursive access
+                    if (emplace(key))
                         return;
-                    _unlocked.wait(lock);
+                    _block.wait(lock);
                 }
             }
 
-            inline void unlock(const T& key) {
+            //! Unlock the key's gate
+            inline void unlock(const T& key)
+            {
                 std::unique_lock<std::mutex> lock(_m);
-                _keys.erase(key);
-                _unlocked.notify_all();
+                // only remove first occurance since recursive locks mean the same
+                // key/threadid pair can appear multiple times
+                for (unsigned i = 0; i < _keys.size(); ++i) {
+                    if (_keys[i].first == key) {
+                        std::swap(_keys[i], _keys.back());
+                        _keys.resize(_keys.size() - 1);
+                        break;
+                    }
+                }
+                _block.notify_all();
             }
 
         private:
             std::mutex _m;
-            std::condition_variable_any _unlocked;
-            std::unordered_map<T, std::thread::id> _keys;
+            std::condition_variable_any _block;
+            using entry_t = std::pair<T, std::thread::id>;
+            std::vector<entry_t> _keys;
+
+            // return true is lock is granted.
+            inline bool emplace(const T& key)
+            {
+                for (auto& k : _keys) {
+                    if (k.first == key && k.second != std::this_thread::get_id()) {
+                        // fail if the key is already locked by another thread
+                        return false;
+                    }
+                }
+                // nb: same key can appear multiple times for the same thread
+                _keys.push_back(std::make_pair(key, std::this_thread::get_id()));
+                return true;
+            }
         };
 
         //! Gate the locks for the duration of this object's scope

@@ -1,7 +1,7 @@
 <map name="WMTS Demo">
     <gdalimage name="WMTS Layer">
         <connection>
-            WMTS:https://tiles.maps.eox.at/wmts/1.0.0/WMTSCapabilities.xml,layer=s2cloudless-2020
+            WMTS:https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/WMTS/1.0.0/WMTSCapabilities.xml,layer=World_Imagery
         </connection>
     </gdalimage>
 </map>

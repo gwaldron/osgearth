@@ -3,8 +3,6 @@
 #
 if(OSGEARTH_BUILD_SHARED_LIBS)
     add_definitions(-DOSGEARTHPROCEDURAL_LIBRARY)
-else()
-    add_definitions(-DOSGEARTHPROCEDURAL_LIBRARY_STATIC)
 endif()
 
 SET(LIB_NAME osgEarthProcedural)

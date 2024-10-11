@@ -6,6 +6,11 @@ list(APPEND OSGEARTH_COMPONENTS osgEarth)
 # A list of public-facing dependencies for the packaging targets
 set(OSGEARTH_PUBLIC_DEPENDENCIES)
 
+# For a static build, we set the define OSGEARTH_STATIC_LIBRARY
+# for both building the osgEarth.lib AND for building consumer libraries.
+if(NOT OSGEARTH_BUILD_SHARED_LIBS)
+    add_definitions(-DOSGEARTH_LIBRARY_STATIC)
+endif()
 
 if(OSGEARTH_BUILD_IMGUI_NODEKIT)
     add_subdirectory(osgEarthImGui)

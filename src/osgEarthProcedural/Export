@@ -16,13 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-/* -*-c++-*- 
- * Derived from osg/Export
- */
-
-#ifndef OSGEARTH_PROCEDURAL_EXPORT_H
-#define OSGEARTH_PROCEDURAL_EXPORT_H 1
+#pragma once
 
 #if defined(_MSC_VER)
     #pragma warning( disable : 4244 )
@@ -36,7 +30,7 @@
 #endif
 
 #if defined(_MSC_VER) || defined(__CYGWIN__) || defined(__MINGW32__) || defined( __BCPLUSPLUS__)  || defined( __MWERKS__)
-    #  if defined( OSGEARTHPROCEDURAL_LIBRARY_STATIC )
+    #  if defined( OSGEARTH_LIBRARY_STATIC )
     #    define OSGEARTHPROCEDURAL_EXPORT
     #  elif defined( OSGEARTHPROCEDURAL_LIBRARY )
     #    define OSGEARTHPROCEDURAL_EXPORT   __declspec(dllexport)
@@ -52,7 +46,5 @@
 # if (_MSC_VER >= 1300)
 #  define __STL_MEMBER_TEMPLATES
 # endif
-#endif
-
 #endif
 

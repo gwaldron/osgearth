@@ -6,8 +6,6 @@ set(OSGEARTH_HAVE_SILVERLINING_NODEKIT ON PARENT_SCOPE) # for BuildConfig
 
 if(OSGEARTH_BUILD_SHARED_LIBS)
     add_definitions(-DOSGEARTHSILVERLINING_LIBRARY)
-else()
-    add_definitions(-DOSGEARTHSILVERLINING_LIBRARY_STATIC)
 endif()
 
 option(SILVERLINING_USE_PRE_5_079_API "Whether to use the pre-5.079 API due to an API change" OFF)

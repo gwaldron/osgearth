@@ -16,13 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-/* -*-c++-*- 
- * Derived from osg/Export
- */
-
-#ifndef OSGEARTH_SILVERLINING_EXPORT_H
-#define OSGEARTH_SILVERLINING_EXPORT_H 1
+#pragma
 
 #if defined(_MSC_VER)
     #pragma warning( disable : 4244 )
@@ -36,7 +30,7 @@
 #endif
 
 #if defined(_MSC_VER) || defined(__CYGWIN__) || defined(__MINGW32__) || defined( __BCPLUSPLUS__)  || defined( __MWERKS__)
-    #  if defined( OSGEARTHSILVERLINING_LIBRARY_STATIC )
+    #  if defined( OSGEARTH_LIBRARY_STATIC )
     #    define OSGEARTHSILVERLINING_EXPORT
     #  elif defined( OSGEARTHSILVERLINING_LIBRARY )
     #    define OSGEARTHSILVERLINING_EXPORT   __declspec(dllexport)
@@ -63,7 +57,3 @@
         #define NULL    ((void *)0)
     #endif
 #endif
-
-
-#endif // OSGEARTH_SILVERLINING_EXPORT_H
-

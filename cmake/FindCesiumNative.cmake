@@ -16,7 +16,7 @@
 #
 set(CESIUM_NATIVE_DIR "" CACHE PATH "Root directory of cesium-native distribution")
 
-set(CESIUM_NATIVE_FOUND FALSE)
+unset(CESIUM_NATIVE_FOUND)
 
 # Location the cesium-native installation:
 find_path(CESIUM_NATIVE_INCLUDE_DIR CesiumUtility/Uri.h
@@ -26,6 +26,8 @@ find_path(CESIUM_NATIVE_INCLUDE_DIR CesiumUtility/Uri.h
     PATH_SUFFIXES
         include )
         
+set(CESIUM_ANY_LIBRARY_MISSING FALSE)
+        
 # Macro to locate each cesium library.
 macro(find_cesium_library MY_LIBRARY_VAR MY_LIBRARY_NAME)
 
@@ -34,7 +36,7 @@ macro(find_cesium_library MY_LIBRARY_VAR MY_LIBRARY_NAME)
     unset(${MY_LIBRARY_VAR}_LIBRARY_DEBUG CACHE)
     unset(${MY_LIBRARY_VAR}_LIBRARY_RELEASE CACHE)
 
-    if (NOT CESIUM_LIBRARY_MISSING)
+    if (NOT CESIUM_ANY_LIBRARY_MISSING)
         find_library(${MY_LIBRARY_VAR}_LIBRARY_DEBUG
             NAMES
                 ${MY_LIBRARY_NAME}d
@@ -76,8 +78,8 @@ macro(find_cesium_library MY_LIBRARY_VAR MY_LIBRARY_NAME)
             # finally, add it to the main list for later.
             list(APPEND CESIUM_NATIVE_IMPORT_LIBRARIES "${MY_IMPORT_LIBRARY_NAME}")
         else()
-            message(NOTICE "Cesium Native: Could not find ${MY_LIBRARY_NAME} ... ")
-            set(CESIUM_LIBRARY_MISSING TRUE)
+            message(WARNING "Cesium Native: Could NOT find ${MY_LIBRARY_NAME}")
+            set(CESIUM_ANY_LIBRARY_MISSING TRUE)
         endif()
     endif()
 endmacro()
@@ -116,7 +118,7 @@ find_cesium_library(CESIUM_NATIVE_MESHOPTIMIZER meshoptimizer)
 
 
 
-if(NOT CESIUM_LIBRARY_MISSING)
+if(NOT CESIUM_ANY_LIBRARY_MISSING)
     set(CESIUM_NATIVE_FOUND TRUE)
 
     # Assemble all the component libraries into one single import library:
@@ -126,6 +128,8 @@ if(NOT CESIUM_LIBRARY_MISSING)
     
     set_property(TARGET OE::CESIUM_NATIVE PROPERTY
         INTERFACE_LINK_LIBRARIES ${CESIUM_NATIVE_IMPORT_LIBRARIES} )
-else()
-    message(WARN "Failed to find all Cesium Native libraries. Check CESIUM_NATIVE_DIR.")
 endif()
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(CesiumNative DEFAULT_MSG CESIUM_NATIVE_FOUND)
+

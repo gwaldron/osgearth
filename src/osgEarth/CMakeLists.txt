@@ -2,8 +2,6 @@
 
 if(OSGEARTH_BUILD_SHARED_LIBS)
     add_definitions(-DOSGEARTH_LIBRARY)
-else()
-    add_definitions(-DOSGEARTH_LIBRARY_STATIC)
 endif()
 
 # Dependencies ...................................................
@@ -16,9 +14,12 @@ find_package(SQLite3 REQUIRED)
 # optional
 find_package(geos QUIET)
 find_package(blend2d QUIET)
-find_package(blosc QUIET)
 find_package(spdlog QUIET)
 find_package(meshoptimizer QUIET)
+
+if(OSGEARTH_BUILD_SHARED_LIBS)
+    find_package(blosc QUIET)
+endif()
 
 if(OSGEARTH_BUILD_ZIP_PLUGIN)
     find_package(LibZip QUIET)

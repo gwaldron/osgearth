@@ -1,5 +1,9 @@
 if(NOT OSGEARTH_BUILD_PLATFORM_IPHONE)
 
+    if(NOT OSGEARTH_BUILD_SHARED_LIBS)
+        add_definitions(-DOSGEARTH_LIBRARY_STATIC)
+    endif()
+
     # Tools:
     if(OSGEARTH_BUILD_TOOLS)
         set(TARGET_DEFAULT_LABEL_PREFIX "Tool")

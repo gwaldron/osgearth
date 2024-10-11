@@ -12,7 +12,7 @@
 #pragma warning( disable : 4996 )
 #endif
 
-// note: No Windows declspec's here because we are using CMAKE_EXINDOWS_EXPORT_ALL_SYMBOLS
+// note: No Windows declspec's here because we are using CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS
 
 #ifndef IMGUI_VERSION
 #include <GL/glew.h>

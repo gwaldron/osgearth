@@ -21,6 +21,6 @@ if(RocksDB_FOUND)
             RocksDBCacheDriver.cpp )
             
     target_link_libraries(osgdb_osgearth_cache_rocksdb
-        PRIVATE RocksDB::rocksdb RocksDB::rocksdb-shared)    
+        PRIVATE RocksDB::rocksdb)    
         
 endif()

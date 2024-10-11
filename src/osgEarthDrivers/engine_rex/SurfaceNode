@@ -95,7 +95,7 @@ namespace osgEarth { namespace REX
         const Ellipsoid& _ellipsoid;
         osg::Vec3d _horizonCullingPoint;
         bool _horizonCullingPointSet = false;
-        osg::Vec3f _childrenCorners[8][4];
+        osg::Vec3 _childrenCorners[4][8];
         static const bool _enableDebugNodes;
 
         void addDebugNode(const osg::BoundingBox& box);

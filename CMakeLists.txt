@@ -125,6 +125,13 @@ endif()
 find_package(OpenGL REQUIRED)
 find_package(OpenSceneGraph REQUIRED COMPONENTS osgManipulator osgShadow osgSim osgViewer osgGA osgUtil osgText osgDB osg OpenThreads)
 
+# For static builds we need to link with Fontconfig directly.
+# There is an unknown issue where the Fc symbols are not found when linking executables statically.
+find_package(Fontconfig QUIET)
+if (Fontconfig_FOUND)
+    list(APPEND OPENSCENEGRAPH_LIBRARIES Fontconfig::Fontconfig)
+endif()
+
 # integrated profiling with tracy?
 if(OSGEARTH_ENABLE_PROFILING)
     find_package(Tracy)

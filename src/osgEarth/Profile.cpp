@@ -361,13 +361,11 @@ Profile::create_with_vdatum(const std::string& name, const std::string& vsrsStri
 {
     if ( ciEquals(name, PLATE_CARREE) || ciEquals(name, "plate-carre") || ciEquals(name, "eqc-wgs84") )
     {
-        // Yes I know this is not really Plate Carre but it will stand in for now.
         osg::Vec3d ex;
         const SpatialReference* plateCarre = SpatialReference::get("plate-carre", vsrsString);
         const SpatialReference* wgs84 = SpatialReference::get("wgs84", vsrsString);
-        wgs84->transform(osg::Vec3d(180,90,0), plateCarre, ex);
-
-        return Profile::create(PLATE_CARREE, plateCarre, -ex.x(), -ex.y(), ex.x(), ex.y(), 2u, 1u);
+        wgs84->transform(osg::Vec3d(-180,-90,0), plateCarre, ex);
+        return Profile::create(PLATE_CARREE, plateCarre, ex.x(), ex.y(), -ex.x(), -ex.y(), 2u, 1u);
     }
     else if (ciEquals(name, GLOBAL_GEODETIC))
     {

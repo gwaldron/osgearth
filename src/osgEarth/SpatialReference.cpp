@@ -1562,6 +1562,10 @@ SpatialReference::init()
             else
                 _bounds.set(166000, 1116915, 0.0, 834000, 10000000, 0.0);
         }
+        else if (projection_lc == "equirectangular") // plate carre
+        {
+            _bounds.set(MERC_MINX, MERC_MINY * 0.5, 0.0, MERC_MAXX, MERC_MAXY * 0.5, 0.0);
+        }
     }
 }
 

@@ -91,6 +91,14 @@ namespace osgEarth
         /** Copy constructor */
         ShaderGenerator(const ShaderGenerator& rhs, const osg::CopyOp& copy);
 
+    public:
+        /**
+         * returns a copy of the shaderGenerator.
+         * need to be reimplemented by any child that wish to be used as the 
+         * default implementation in Registry via Registry::setShaderGenerator().
+         */
+        virtual ShaderGenerator* getCopy(const osg::CopyOp& copy) const { return new ShaderGenerator(*this, copy); };
+
     public: // ShaderGeneratorInterface
 
         /**
@@ -270,7 +278,7 @@ namespace osgEarth
 
     public:
         ShaderGeneratorProxy(const ShaderGenerator* temp)
-            : _instance( new ShaderGenerator(*temp, osg::CopyOp::SHALLOW_COPY) ) { }
+            : _instance( temp->getCopy( osg::CopyOp::SHALLOW_COPY ) ) { }
 
     private:
         osg::ref_ptr<ShaderGenerator> _instance;

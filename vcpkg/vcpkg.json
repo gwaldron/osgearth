@@ -24,5 +24,6 @@
         "spdlog",
         "tracy",
         "meshoptimizer" 
-    ]
+    ],
+    "builtin-baseline": "9558037875497b9db8cf38fcd7db68ec661bffe7"
 }

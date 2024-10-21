@@ -39,7 +39,8 @@ jobs:
         cmake -E make_directory ${{ matrix.VCPKG_WORKSPACE }}
         cd ${{ matrix.VCPKG_WORKSPACE }}
         git clone https://github.com/microsoft/vcpkg
-        ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
+        ./vcpkg/bootstrap-vcpkg.bat -disableMetrics        
+        echo "set(VCPKG_BUILDTYPE release)" >> ./vcpkg/triplets/x64-windows.cmake
         ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version
 
     - name: Create Build Environment

@@ -1,10 +1,12 @@
 #pragma vp_name osgEarth Hex Tiling Library
 
+#pragma import_defines(OE_ENABLE_HEX_TILER_ANISOTROPIC_FILTERING)
+
 // Adapted and ported to GLSL from:
 // https://github.com/mmikk/hextile-demo
 
-float ht_g_fallOffContrast = 0.6;
-float ht_g_exp = 7;
+const float ht_g_fallOffContrast = 0.6;
+const float ht_g_exp = 7;
 
 #ifdef VP_STAGE_FRAGMENT
 
@@ -19,35 +21,6 @@ float ht_g_exp = 7;
 #define HEX_SCALE 3.46410161
 
 // Output:\ weights associated with each hex tile and integer centers
-void ht_TriangleGrid(
-    out float w1, out float w2, out float w3,
-    out ivec2 vertex1, out ivec2 vertex2, out ivec2 vertex3,
-    in vec2 st)
-{
-    // Scaling of the input
-    st *= HEX_SCALE; // 2 * 1.sqrt(3);
-
-    // Skew input space into simplex triangle grid
-    mat2 gridToSkewedGrid = mat2(1.0, -0.57735027, 0.0, 1.15470054);
-    vec2 skewedCoord = mul(gridToSkewedGrid, st);
-
-    ivec2 baseId = ivec2(floor(skewedCoord));
-    vec3 temp = vec3(fract(skewedCoord), 0);
-    temp.z = 1.0 - temp.x - temp.y;
-
-    float s = step(0.0, -temp.z);
-    float s2 = 2 * s - 1;
-
-    w1 = -temp.z * s2;
-    w2 = s - temp.y * s2;
-    w3 = s - temp.x * s2;
-
-    vertex1 = baseId + ivec2(s, s);
-    vertex2 = baseId + ivec2(s, 1 - s);
-    vertex3 = baseId + ivec2(1 - s, s);
-}
-
-// Output:\ weights associated with each hex tile and integer centers
 void ht_TriangleGrid_f(
     out float w1, out float w2, out float w3,
     out vec2 vertex1, out vec2 vertex2, out vec2 vertex3,
@@ -57,217 +30,29 @@ void ht_TriangleGrid_f(
     st *= HEX_SCALE; // 2 * 1.sqrt(3);
 
     // Skew input space into simplex triangle grid
-    mat2 gridToSkewedGrid = mat2(1.0, -0.57735027, 0.0, 1.15470054);
-    vec2 skewedCoord = mul(gridToSkewedGrid, st);
+    const mat2 gridToSkewedGrid = mat2(1.0, -0.57735027, 0.0, 1.15470054);
+    vec2 skewedCoord = gridToSkewedGrid * st;
 
     vec2 baseId = floor(skewedCoord);
-    vec3 temp = vec3(fract(skewedCoord), 0);
+    vec3 temp = vec3(fract(skewedCoord), 0.0);
     temp.z = 1.0 - temp.x - temp.y;
 
     float s = step(0.0, -temp.z);
-    float s2 = 2 * s - 1;
+    float s2 = 2.0 * s - 1.0;
 
     w1 = -temp.z * s2;
     w2 = s - temp.y * s2;
     w3 = s - temp.x * s2;
 
     vertex1 = baseId + vec2(s, s);
-    vertex2 = baseId + vec2(s, 1 - s);
-    vertex3 = baseId + vec2(1 - s, s);
+    vertex2 = baseId + vec2(s, 1.0 - s);
+    vertex3 = baseId + vec2(1.0 - s, s);
 }
 
-vec2 ht_hash(vec2 p)
+vec2 ht_hash(in vec2 p)
 {
     vec2 r = mat2(127.1, 311.7, 269.5, 183.3) * p;
     return fract(sin(r) * 43758.5453);
-}
-
-vec2 ht_MakeCenST(ivec2 Vertex)
-{
-    mat2 invSkewMat = mat2(1.0, 0.5, 0.0, 1.0 / 1.15470054);
-    return mul(invSkewMat, Vertex) / HEX_SCALE;
-}
-
-mat2 ht_LoadRot2x2(ivec2 idx, float rotStrength)
-{
-    float angle = abs(idx.x * idx.y) + abs(idx.x + idx.y) + M_PI;
-
-    // remap to +/-pi
-    angle = mod(angle, 2 * M_PI);
-    if (angle < 0) angle += 2 * M_PI;
-    if (angle > M_PI) angle -= 2 * M_PI;
-
-    angle *= rotStrength;
-
-    float cs = cos(angle), si = sin(angle);
-
-    return mat2(cs, -si, si, cs);
-}
-
-vec3 ht_Gain3(vec3 x, float r)
-{
-    // increase contrast when r>0.5 and
-    // reduce contrast if less
-    float k = log(1 - r) / log(0.5);
-
-    vec3 s = 2 * step(0.5, x);
-    vec3 m = 2 * (1 - s);
-
-    vec3 res = 0.5 * s + 0.25 * m * pow(max(vec3(0.0), s + x * m), vec3(k));
-
-    return res.xyz / (res.x + res.y + res.z);
-}
-
-vec3 ht_ProduceHexWeights(vec3 W, ivec2 vertex1, ivec2 vertex2, ivec2 vertex3)
-{
-    vec3 res;
-
-    int v1 = (vertex1.x - vertex1.y) % 3;
-    if (v1 < 0) v1 += 3;
-
-    int vh = v1 < 2 ? (v1 + 1) : 0;
-    int vl = v1 > 0 ? (v1 - 1) : 2;
-    int v2 = vertex1.x < vertex3.x ? vl : vh;
-    int v3 = vertex1.x < vertex3.x ? vh : vl;
-
-    res.x = v3 == 0 ? W.z : (v2 == 0 ? W.y : W.x);
-    res.y = v3 == 1 ? W.z : (v2 == 1 ? W.y : W.x);
-    res.z = v3 == 2 ? W.z : (v2 == 2 ? W.y : W.x);
-
-    return res;
-}
-
-// Input: vM is tangent space normal in [-1;1].
-// Output: convert vM to a derivative.
-vec2 ht_TspaceNormalToDerivative(in vec3 vM)
-{
-    float scale = 1.0 / 128.0;
-
-    // Ensure vM delivers a positive third component using abs() and
-    // constrain vM.z so the range of the derivative is [-128; 128].
-    vec3 vMa = abs(vM);
-    float z_ma = max(vMa.z, scale * max(vMa.x, vMa.y));
-
-    // Set to match positive vertical texture coordinate axis.
-    bool gFlipVertDeriv = true;
-    float s = gFlipVertDeriv ? -1.0 : 1.0;
-    return -vec2(vM.x, s * vM.y) / z_ma;
-}
-
-vec2 ht_sampleDeriv(sampler2D nmap, vec2 st, vec2 dSTdx, vec2 dSTdy)
-{
-    // sample
-    vec3 vM = 2.0 * textureGrad(nmap, st, dSTdx, dSTdy).xyz - 1.0;
-    return ht_TspaceNormalToDerivative(vM);
-}
-
-
-// Input:\ nmap is a normal map
-// Input:\ r increase contrast when r>0.5
-// Output:\ deriv is a derivative dHduv wrt units in pixels
-// Output:\ weights shows the weight of each hex tile
-void bumphex2derivNMap(
-    out vec2 deriv, out vec3 weights,
-    sampler2D nmap, in vec2 st,
-    float rotStrength, float r)
-{
-    vec2 dSTdx = dFdx(st);
-    vec2 dSTdy = dFdy(st);
-
-    // Get triangle info
-    float w1, w2, w3;
-    ivec2 vertex1, vertex2, vertex3;
-    ht_TriangleGrid(w1, w2, w3, vertex1, vertex2, vertex3, st);
-
-    mat2 rot1 = ht_LoadRot2x2(vertex1, rotStrength);
-    mat2 rot2 = ht_LoadRot2x2(vertex2, rotStrength);
-    mat2 rot3 = ht_LoadRot2x2(vertex3, rotStrength);
-
-    vec2 cen1 = ht_MakeCenST(vertex1);
-    vec2 cen2 = ht_MakeCenST(vertex2);
-    vec2 cen3 = ht_MakeCenST(vertex3);
-
-    vec2 st1 = mul(st - cen1, rot1) + cen1 + ht_hash(vertex1);
-    vec2 st2 = mul(st - cen2, rot2) + cen2 + ht_hash(vertex2);
-    vec2 st3 = mul(st - cen3, rot3) + cen3 + ht_hash(vertex3);
-
-    // Fetch input
-    vec2 d1 = ht_sampleDeriv(nmap, st1,
-        mul(dSTdx, rot1), mul(dSTdy, rot1));
-    vec2 d2 = ht_sampleDeriv(nmap, st2,
-        mul(dSTdx, rot2), mul(dSTdy, rot2));
-    vec2 d3 = ht_sampleDeriv(nmap, st3,
-        mul(dSTdx, rot3), mul(dSTdy, rot3));
-
-    d1 = mul(rot1, d1); d2 = mul(rot2, d2); d3 = mul(rot3, d3);
-
-    // produce sine to the angle between the conceptual normal
-    // in tangent space and the Z-axis
-    vec3 D = vec3(dot(d1, d1), dot(d2, d2), dot(d3, d3));
-    vec3 Dw = sqrt(D / (1.0 + D));
-
-    Dw = mix(vec3(1.0), Dw, ht_g_fallOffContrast);	// 0.6
-    vec3 W = Dw * pow(vec3(w1, w2, w3), vec3(ht_g_exp));	// 7
-    W /= (W.x + W.y + W.z);
-    if (r != 0.5) W = ht_Gain3(W, r);
-
-    deriv = W.x * d1 + W.y * d2 + W.z * d3;
-    weights = ht_ProduceHexWeights(W.xyz, vertex1, vertex2, vertex3);
-}
-
-float ht_get_lod(in ivec2 dim, in vec2 x, in vec2 y)
-{
-    vec2 ddx = x * float(dim.x), ddy = y * float(dim.y);
-    return 0.5 * log2(max(dot(ddx, ddx), dot(ddy, ddy)));
-}
-
-// tex = sampler to sample
-// st = texture coordinates
-// rotStrength = amount of rotation offset
-// transStrength = amount of translation offset
-vec4 ht_hex2col(in sampler2D tex, in vec2 st, in float rotStrength, in float transStength)
-{
-    vec2 dSTdx = dFdx(st), dSTdy = dFdy(st);
-
-    // Get triangle info
-    float w1, w2, w3;
-    ivec2 vertex1, vertex2, vertex3;
-    ht_TriangleGrid(w1, w2, w3, vertex1, vertex2, vertex3, st);
-
-    mat2 rot1 = ht_LoadRot2x2(vertex1, rotStrength);
-    mat2 rot2 = ht_LoadRot2x2(vertex2, rotStrength);
-    mat2 rot3 = ht_LoadRot2x2(vertex3, rotStrength);
-
-    vec2 cen1 = ht_MakeCenST(vertex1);
-    vec2 cen2 = ht_MakeCenST(vertex2);
-    vec2 cen3 = ht_MakeCenST(vertex3);
-
-    vec2 st1 = mul(st - cen1, rot1) + cen1 + ht_hash(vertex1) * transStength;
-    vec2 st2 = mul(st - cen2, rot2) + cen2 + ht_hash(vertex2) * transStength;
-    vec2 st3 = mul(st - cen3, rot3) + cen3 + ht_hash(vertex3) * transStength;
-
-    ivec2 dim = textureSize(tex, 0);
-    vec4 c1 = textureLod(tex, st1, ht_get_lod(dim, dSTdx * rot1, dSTdy * rot1));
-    vec4 c2 = textureLod(tex, st2, ht_get_lod(dim, dSTdx * rot2, dSTdy * rot2));
-    vec4 c3 = textureLod(tex, st3, ht_get_lod(dim, dSTdx * rot3, dSTdy * rot3));
-
-    //vec4 c1 = textureGrad(tex, st1, dSTdx*rot1, dSTdy*rot1);
-    //vec4 c2 = textureGrad(tex, st2, dSTdx*rot2, dSTdy*rot2);
-    //vec4 c3 = textureGrad(tex, st3, dSTdx*rot3, dSTdy*rot3);
-
-    // use luminance as weight
-    vec3 Lw = vec3(0.299, 0.587, 0.114);
-    vec3 Dw = vec3(dot(c1.xyz, Lw), dot(c2.xyz, Lw), dot(c3.xyz, Lw));
-
-    Dw = mix(vec3(1.0), Dw, ht_g_fallOffContrast);	// 0.6
-    vec3 W = Dw * pow(vec3(w1, w2, w3), vec3(ht_g_exp));	// 7
-    W /= (W.x + W.y + W.z);
-    //if (r != 0.5) W = Gain3(W, r);
-
-    vec4 color = W.x * c1 + W.y * c2 + W.z * c3;
-    //weights = ProduceHexWeights(W.xyz, vertex1, vertex2, vertex3);
-
-    return color;
 }
 
 // Hextiling function optimized for no rotations and to 
@@ -293,10 +78,26 @@ void ht_hex2colTex_optimized(
     // Use the same partial derivitives to sample all three locations
     // to avoid rendering artifacts.
 
-#if 1
+#if OE_ENABLE_HEX_TILER_ANISOTROPIC_FILTERING
+
+    // Original approach: use textureGrad to supply the same gradient
+    // for each sample point (slow)
+    float bias = pow(2.0, -0.5);
+    vec2 ddx = dFdx(st) * bias, ddy = dFdy(st) * bias;
+
+    vec4 c1 = textureGrad(color_tex, st1, ddx, ddy);
+    vec4 c2 = textureGrad(color_tex, st2, ddx, ddy);
+    vec4 c3 = textureGrad(color_tex, st3, ddx, ddy);
+
+    vec4 m1 = textureGrad(material_tex, st1, ddx, ddy);
+    vec4 m2 = textureGrad(material_tex, st2, ddx, ddy);
+    vec4 m3 = textureGrad(material_tex, st3, ddx, ddy);
+
+#else
     // Fast way: replace textureGrad by manually calculating the LOD
     // and using textureLod instead (much faster than textureGrad)
-    // https://solidpixel.github.io/2022/03/27/texture_sampling_tips.html
+    // https://web.archive.org/web/20231209114942/https://solidpixel.github.io/2022/03/27/texture_sampling_tips.html
+    // Beware: this approach will disable anisotropic filtering
 
     ivec2 tex_dim;
     vec2 ddx, ddy;
@@ -319,18 +120,6 @@ void ht_hex2colTex_optimized(
     vec4 m1 = textureLod(material_tex, st1, lod);
     vec4 m2 = textureLod(material_tex, st2, lod);
     vec4 m3 = textureLod(material_tex, st3, lod);
-#else
-    // Original approach: use textureGrad to supply the same gradient
-    // for each sample point (slow)
-    vec2 ddx = dFdx(st), ddy = dFdy(st);
-
-    vec4 c1 = textureGrad(color_tex, st1, ddx, ddy);
-    vec4 c2 = textureGrad(color_tex, st2, ddx, ddy);
-    vec4 c3 = textureGrad(color_tex, st3, ddx, ddy);
-
-    vec4 m1 = textureGrad(material_tex, st1, ddx, ddy);
-    vec4 m2 = textureGrad(material_tex, st2, ddx, ddy);
-    vec4 m3 = textureGrad(material_tex, st3, ddx, ddy);
 #endif
 
     vec3 W = weighting;

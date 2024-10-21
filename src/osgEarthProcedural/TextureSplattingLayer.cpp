@@ -58,6 +58,7 @@ TextureSplattingLayer::Options::getConfig() const
     Config conf = super::getConfig();
     conf.set("num_levels", numLevels());
     conf.set("use_hex_tiler", useHexTiler());
+    conf.set("enable_hex_tiler_anisotropic_filtering", enableHexTilerAnisotropicFiltering());
     conf.set("normalmap_power", normalMapPower());
     conf.set("lifemap_threshold", lifeMapMaskThreshold());
     conf.set("displacement_depth", displacementDepth());
@@ -70,6 +71,7 @@ TextureSplattingLayer::Options::fromConfig(const Config& conf)
 {
     conf.get("num_levels", numLevels());
     conf.get("use_hex_tiler", useHexTiler());
+    conf.get("enable_hex_tiler_anisotropic_filtering", enableHexTilerAnisotropicFiltering());
     conf.get("normalmap_power", normalMapPower());
     conf.get("lifemap_threshold", lifeMapMaskThreshold());
     conf.get("displacement_depth", displacementDepth());
@@ -322,6 +324,7 @@ TextureSplattingLayer::buildStateSets()
             std::to_string(clamp(options().numLevels().get(), 1, 2)));
 
         setUseHexTiler(options().useHexTiler().get());
+        setEnableHexTilerAnisotropicFiltering(options().enableHexTilerAnisotropicFiltering().get());
         setNormalMapPower(options().normalMapPower().get());
         setLifeMapMaskThreshold(options().lifeMapMaskThreshold().get());
         setDisplacementDepth(options().displacementDepth().get());
@@ -341,6 +344,21 @@ bool
 TextureSplattingLayer::getUseHexTiler() const
 {
     return options().useHexTiler().get();
+}
+
+void
+TextureSplattingLayer::setEnableHexTilerAnisotropicFiltering(bool value)
+{
+    options().enableHexTilerAnisotropicFiltering() = value;
+    auto ss = getOrCreateStateSet();
+    ss->removeDefine("OE_ENABLE_HEX_TILER_ANISOTROPIC_FILTERING");
+    ss->setDefine("OE_ENABLE_HEX_TILER_ANISOTROPIC_FILTERING", value ? "1" : "0");
+}
+
+bool
+TextureSplattingLayer::getEnableHexTilerAnisotropicFiltering() const
+{
+    return options().enableHexTilerAnisotropicFiltering().get();
 }
 
 void

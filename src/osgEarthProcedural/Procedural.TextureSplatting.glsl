@@ -292,11 +292,11 @@ void resolveRow(out Pixel result, int level, int row, float xvar)
     float m = heightAndEffectMix(p1.rgbh[3], 1.0 - x_mix, p2.rgbh[3], x_mix);
     pixmix(result, p1, p2, m);
 
+    // publish splatting variables for use by other shaders
     SplatRowData rowData;
     rowData.p1_weights = w1;
     rowData.p2_weights = w2;
     rowData.column_mix = m;
-
     splatData.levelData[level].rowData[row] = rowData;
 }
 

@@ -169,6 +169,15 @@ namespace osgEarth
                         _tslayer->setUseHexTiler(hex_tiler);
                     }
 
+                    if (hex_tiler)
+                    {
+                        bool af = _tslayer->getEnableHexTilerAnisotropicFiltering();
+                        if (ImGui::Checkbox("  Enable anisotropic filtering", &af))
+                        {
+                            _tslayer->setEnableHexTilerAnisotropicFiltering(af);
+                        }
+                    }
+
                     // lifemap adjusters
                     ImGui::Separator();
 

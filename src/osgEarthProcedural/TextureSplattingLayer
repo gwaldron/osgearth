@@ -43,6 +43,7 @@ namespace osgEarth { namespace Procedural
             META_LayerOptions(osgEarthProcedural, Options, VisibleLayer::Options);
             OE_OPTION(int, numLevels, 1);
             OE_OPTION(bool, useHexTiler, true);
+            OE_OPTION(bool, enableHexTilerAnisotropicFiltering, false);
             OE_OPTION(float, normalMapPower, 1.0f);
             OE_OPTION(float, lifeMapMaskThreshold, 0.0f);
             OE_OPTION(float, displacementDepth, 0.1f);
@@ -64,6 +65,12 @@ namespace osgEarth { namespace Procedural
         //! Default is true.
         void setUseHexTiler(bool value);
         bool getUseHexTiler() const;
+
+        //! Whether the hex tiler, when active, should support anisotropic filtering.
+        //! When true, splatting quality is improved at the expense of GPU performance.
+        //! Default is false.
+        void setEnableHexTilerAnisotropicFiltering(bool value);
+        bool getEnableHexTilerAnisotropicFiltering() const;
 
         //! Multiplication power to apply to normal maps, to artificially
         //! enhance to effect of splatted normals. [0..1] Default is 1.0

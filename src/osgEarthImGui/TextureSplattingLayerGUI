@@ -105,7 +105,7 @@ namespace osgEarth
                     if (ImGuiLTable::Begin("Splat"))
                     {
                         auto normalPower = _tslayer->getNormalMapPower();
-                        if (ImGuiLTable::SliderFloat("Normal power", &normalPower, 0.0f, 4.0f, "%.1f", 0))
+                        if (ImGuiLTable::SliderFloat("Normal power", &normalPower, 0.0f, 16.0f, "%.1f", 0))
                             _tslayer->setNormalMapPower(normalPower);
 
                         auto dispacementDepth = _tslayer->getDisplacementDepth();
@@ -160,22 +160,32 @@ namespace osgEarth
                         stateset(ri)->addUniform(new osg::Uniform("oe_snow_max_elev", _snow_max_elev), 0x7);
 #endif
 
-                        ImGuiLTable::End();
-                    }
+                        ImGui::Separator();
 
-                    bool hex_tiler = _tslayer->getUseHexTiler();
-                    if (ImGui::Checkbox("Hex tile splatting", &hex_tiler))
-                    {
-                        _tslayer->setUseHexTiler(hex_tiler);
-                    }
-
-                    if (hex_tiler)
-                    {
-                        bool af = _tslayer->getEnableHexTilerAnisotropicFiltering();
-                        if (ImGui::Checkbox("  Enable anisotropic filtering", &af))
+                        bool hex_tiler = _tslayer->getUseHexTiler();
+                        if (ImGuiLTable::Checkbox("Hex tile splatting", &hex_tiler))
                         {
-                            _tslayer->setEnableHexTilerAnisotropicFiltering(af);
+                            _tslayer->setUseHexTiler(hex_tiler);
                         }
+
+                        if (hex_tiler)
+                        {
+                            bool af = _tslayer->getEnableHexTilerAnisotropicFiltering();
+                            if (ImGuiLTable::Checkbox("Enable anisotropic filtering", &af))
+                            {
+                                _tslayer->setEnableHexTilerAnisotropicFiltering(af);
+                            }
+
+                            if (af)
+                            {
+                                float bias = _tslayer->getHexTilerGradientBias();
+                                if (ImGuiLTable::SliderFloat("Gradient bias", &bias, -3.0f, 0.0f))
+                                {
+                                    _tslayer->setHexTilerGradientBias(bias);
+                                }
+                            }
+                        }
+                        ImGuiLTable::End();
                     }
 
                     // lifemap adjusters

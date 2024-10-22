@@ -27,6 +27,7 @@
 #include <osg/View>
 #include <osg/Texture2D>
 #include <CesiumUtility/CreditSystem.h>
+#include <memory>
 
 namespace osgEarth {
     namespace Cesium

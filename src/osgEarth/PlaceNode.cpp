@@ -411,6 +411,13 @@ PlaceNode::updateLayoutData()
             _geoPointProj.toWorld(p1);
             _dataLayout->setAnchorPoint(p0);
             _dataLayout->setProjPoint(p1);
+            _iconDataLayout->setAnchorPoint(p0);
+            _iconDataLayout->setProjPoint(p1);
+        }
+        else
+        {
+            _dataLayout->setRotationDegrees(osg::RadiansToDegrees(_labelRotationRad));
+            _iconDataLayout->setRotationDegrees(osg::RadiansToDegrees(_labelRotationRad));
         }
 
         if (ts->unique() == true)

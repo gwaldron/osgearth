@@ -292,6 +292,10 @@ LabelNode::updateLayoutData()
             _dataLayout->setAnchorPoint(p0);
             _dataLayout->setProjPoint(p1);
         }
+        else
+        {
+            _dataLayout->setRotationDegrees(osg::RadiansToDegrees(_labelRotationRad));
+        }
 
         if (ts->unique() == true)
         {

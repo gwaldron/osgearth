@@ -1,11 +1,12 @@
 {
     "name": "osgearth-external-project",
     "version-string": "1.0",
-    "port-version": 1,
+    "port-version": 2,
     "description": "osgEarth - External Project Text",
     "homepage": "https://github.com/gwaldron/osgearth",
     "supports": "!(x86 | wasm32)",
     "dependencies": [
         "osgearth"
-    ]
+    ],    
+    "builtin-baseline": "a2367ceec5f092d8777606ca110426cadd7ed7db"
 }

@@ -60,6 +60,7 @@ jobs:
         cmake -E make_directory ${{runner.workspace}}/build
 
     - name: Download cesium-native
+      shell: bash
       run: |
         wget https://pelican-public.s3.us-east-1.amazonaws.com/cesium-native-v0.37.0-vs2022.zip c:/cesium-native.zip
         7z x c:/cesium-native.zip -oc:/cesium-native

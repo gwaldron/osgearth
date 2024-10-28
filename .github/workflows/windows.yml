@@ -7,6 +7,7 @@ env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
   VCPKG_VERSION: 'master'
+  CESIUM_NATIVE_VERSION: 'v0.37.0'
 
 jobs:
 
@@ -58,19 +59,29 @@ jobs:
     - name: Create Build Environment
       run: |
         cmake -E make_directory ${{runner.workspace}}/build
+        
+    - uses: actions/cache@v4
+      id: cache_cesium_native
+      with:
+        path: c:/cesium-native-install
+        key: cesium-native-${{ env.CESIUM_NATIVE_VERSION }}-${{ runner.os }}-${{ env.BUILD_TYPE }}
 
-    - name: Download cesium-native
-      shell: powershell
+    - name: Download and build cesium-native
+      shell: 'bash'
+      if: steps.cache_cesium_native.outputs.cache-hit != 'true'
       run: |
-        Invoke-WebRequest -Uri "https://pelican-public.s3.us-east-1.amazonaws.com/cesium-native-v0.37.0-vs2022.zip" -OutFile "C:\cesium-native.zip"
-        Expand-Archive -Path "C:\cesium-native.zip" -DestinationPath "C:\cesium-native"
+        git clone --branch ${{env.CESIUM_NATIVE_VERSION}} git@github.com:CesiumGS/cesium-native.git c:/cesium-native --recurse-submodules
+        cd c:/cesium-native
+        cmake -B build -S . -A x64 -DCMAKE_INSTALL_PREFIX=c:/cesium-native-install -DCESIUM_TESTS_ENABLED=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        cmake --build build --config $BUILD_TYPE
+        cmake --install build --config $BUILD_TYPE
 
     - name: Configure CMake
       shell: bash
       working-directory: ${{ runner.workspace }}/build
       # Add the following for vcpkg install debugging: -DVCPKG_INSTALL_OPTIONS=--debug  
       run: |
-        cmake $GITHUB_WORKSPACE -DWIN32_USE_MP=ON -DOSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT=OFF -DOSGEARTH_BUILD_PROCEDURAL_NODEKIT=ON -DOSGEARTH_BUILD_CESIUM_NODEKIT=ON -DCESIUM_NATIVE_DIR=C:/cesium-native -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/vcpkg
+        cmake $GITHUB_WORKSPACE -DWIN32_USE_MP=ON -DOSGEARTH_BUILD_LEGACY_SPLAT_NODEKIT=OFF -DOSGEARTH_BUILD_PROCEDURAL_NODEKIT=ON -DOSGEARTH_BUILD_CESIUM_NODEKIT=ON -DCESIUM_NATIVE_DIR=C:/cesium-native-install -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/vcpkg
 
     - name: 'Upload cmake configure log artifact'
       uses: actions/upload-artifact@v3

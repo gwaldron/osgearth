@@ -7,7 +7,7 @@ env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: RelWithDebInfo
   VCPKG_VERSION: 'master'
-  CESIUM_NATIVE_VERSION: 'v0.37.0'
+  CESIUM_NATIVE_VERSION: 'v0.39.0'
 
 jobs:
 
@@ -70,10 +70,8 @@ jobs:
       shell: 'bash'
       if: steps.cache_cesium_native.outputs.cache-hit != 'true'
       run: |
-        git clone https://github.com/CesiumGS/cesium-native.git c:/cesium-native
-        cd c:/cesium-native
-        git checkout ${{env.CESIUM_NATIVE_VERSION}}
-        git submodule update --init --recursive      
+        git clone --branch ${{env.CESIUM_NATIVE_VERSION}} https://github.com/CesiumGS/cesium-native.git c:/cesium-native --recurse-submodules
+        cd c:/cesium-native        
         cmake -B build -S . -DCMAKE_INSTALL_PREFIX=c:/cesium-native-install -DCESIUM_TESTS_ENABLED=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE
         cmake --build build --config $BUILD_TYPE
         cmake --install build --config $BUILD_TYPE

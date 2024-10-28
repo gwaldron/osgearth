@@ -72,7 +72,7 @@ jobs:
       run: |
         git clone --branch ${{env.CESIUM_NATIVE_VERSION}} https://github.com/CesiumGS/cesium-native.git c:/cesium-native --recurse-submodules
         cd c:/cesium-native
-        cmake -B build -S . -A x64 -DCMAKE_INSTALL_PREFIX=c:/cesium-native-install -DCESIUM_TESTS_ENABLED=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        cmake -B build -S . -DCMAKE_INSTALL_PREFIX=c:/cesium-native-install -DCESIUM_TESTS_ENABLED=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=$BUILD_TYPE
         cmake --build build --config $BUILD_TYPE
         cmake --install build --config $BUILD_TYPE
 

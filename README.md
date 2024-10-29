@@ -88,7 +88,7 @@ int main(int argc, char** argv)
 ## Resources
 
 * [Documentation](http://docs.osgearth.org/en/latest/) 
-* [Gallery](https://www.pelicanmapping.com/home-1/opensource)
+* [Gallery](https://www.pelicanmapping.com/home-1/opensource) 
 * [Custom Software Development](https://www.pelicanmapping.com/software)
 
 ---

@@ -35,6 +35,8 @@ osgEarth::createEmptyElevationTexture()
     *((GLfloat*)image->data()) = 0.0f;
     osg::Texture2D* tex = new osg::Texture2D(image);
     tex->setInternalFormat(GL_R32F);
+    tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+    tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     tex->setName("empty:elevation");
     return tex;
@@ -52,6 +54,8 @@ osgEarth::createEmptyNormalMapTexture()
     write(packed, 0, 0);
     osg::Texture2D* tex = new osg::Texture2D(image);
     tex->setInternalFormat(GL_RG8);
+    tex->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+    tex->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
     tex->setUnRefImageDataAfterApply(Registry::instance()->unRefImageDataAfterApply().get());
     tex->setName("empty:normalmap");
     return tex;

@@ -130,6 +130,16 @@ namespace osgEarth
 
     public:
 
+        //! Whether to remove unsupported fixed-function pipeline attributes 
+        //! when FFP is not available in OSG. Default is true.
+        //! @param value True to remove unsupported FFP attributes, false to leave them in place.
+        void setRemoveUnsupportedFFPAttributes(bool value) { _removeUnsupportedFFPAttributes = value; }
+
+        //! Whether to remove unsupported fixed-function pipeline attributes
+        //! when FFP is not available in OSG.
+        //! @return True to remove unsupported FFP attributes, false to leave them in place.
+        bool getRemoveUnsupportedFFPAttributes() const { return _removeUnsupportedFFPAttributes; }
+
         /**
          * Whether to automatically duplicate (by cloning) subgraphs with
          * more than one parent during the traversal process. Since a
@@ -245,10 +255,10 @@ namespace osgEarth
 
         osg::ref_ptr<osg::State> _state;
 
-        bool _active;
-
         std::string _name;
-        bool _duplicateSharedSubgraphs;
+        bool _active = true;
+        bool _duplicateSharedSubgraphs = false;
+        bool _removeUnsupportedFFPAttributes = true;
 
         typedef std::vector<osg::ref_ptr<AcceptCallback> > AcceptCallbackVector;
         AcceptCallbackVector _acceptCallbacks;

@@ -76,9 +76,7 @@ namespace osgEarth { namespace REX
 
         const TerrainOptionsAPI& options() const { return _options; }
 
-        ProgressCallback* progress() const { return _progress.get(); }
-
-        double getExpirationRange2() const { return _expirationRange2; }
+        ProgressCallback* progress() const { return _progress.get(); }        
 
         ModifyBoundingBoxCallback* getModifyBBoxCallback() const { return _bboxCB.get(); }
 
@@ -104,8 +102,7 @@ namespace osgEarth { namespace REX
         const SelectionInfo&                  _selectionInfo;
         osg::Timer_t                          _tick;
         int                                   _tilesLastCull;
-        osg::ref_ptr<ProgressCallback>        _progress;    
-        double                                _expirationRange2;
+        osg::ref_ptr<ProgressCallback>        _progress;
         osg::ref_ptr<ModifyBoundingBoxCallback> _bboxCB;
         const FrameClock*                     _clock;
         osg::ref_ptr<TextureArena>            _textures;

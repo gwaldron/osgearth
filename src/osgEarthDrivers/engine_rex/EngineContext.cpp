@@ -49,7 +49,6 @@ EngineContext::EngineContext(
     _tilesLastCull(0),
     _clock(clock)
 {
-    _expirationRange2 = _options.getMinExpiryRange() * _options.getMinExpiryRange();
     _bboxCB = new ModifyBoundingBoxCallback(this);
 
     // create a bindless texture arena and set it to automatically

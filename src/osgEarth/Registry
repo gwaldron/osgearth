@@ -149,6 +149,11 @@ namespace osgEarth
         void setShaderGenerator(ShaderGenerator* gen);
         static ShaderGeneratorProxy shaderGenerator() { return instance()->getShaderGenerator(); }
 
+        //! Access the shader generator prototype, which is the base instance that
+        //! gets cloned for each new shader generator proxy. Use this to set up options
+        //! on the default shader generator. Be careful not to call this at runtime.
+        ShaderGenerator* shaderGeneratorPrototype() const { return instance()->_shaderGen.get(); }
+
         /**
          * Global object index.
          */

@@ -4,8 +4,6 @@ on: [push, workflow_dispatch]
 
 env:
   VCPKG_BINARY_SOURCES : "clear;x-gha,readwrite"
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
   VCPKG_VERSION: 'master'
 
 jobs:
@@ -41,6 +39,7 @@ jobs:
         cd ${{ matrix.VCPKG_WORKSPACE }}
         git clone https://github.com/microsoft/vcpkg
         ./vcpkg/bootstrap-vcpkg.bat -disableMetrics
+        echo "set(VCPKG_BUILD_TYPE release)" >> ./vcpkg/triplets/x64-windows.cmake
         ${{ matrix.VCPKG_WORKSPACE }}/vcpkg/vcpkg version    
 
     - name: Create Build Environment
@@ -51,18 +50,9 @@ jobs:
       shell: bash
       working-directory: ${{ runner.workspace }}/build
       run: |
-        cmake $GITHUB_WORKSPACE/share/ExternalProject -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/share/ExternalProject
-
-    - name: 'Upload cmake configure log artifact'
-      uses: actions/upload-artifact@v3
-      if: ${{ failure() }}
-      with:
-        name: cmake-log
-        path: |
-          ${{ runner.workspace }}/build/CMakeCache.txt
-        retention-days: 1
+        cmake $GITHUB_WORKSPACE/share/ExternalProject -DCMAKE_BUILD_TYPE=release -DCMAKE_TOOLCHAIN_FILE=${{ matrix.VCPKG_WORKSPACE }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_MANIFEST_DIR=$GITHUB_WORKSPACE/share/ExternalProject
 
     - name: Build
       working-directory: ${{ runner.workspace }}/build
       shell: bash
-      run: cmake --build . --config $BUILD_TYPE
+      run: cmake --build . --config release

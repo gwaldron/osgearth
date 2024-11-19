@@ -316,7 +316,7 @@ namespace
 //...........................................................................
 
 ShaderGenerator::GenBuffers::GenBuffers() :
-_stateSet(0L)
+    _stateSet(0L)
 {
     //nop
 }
@@ -329,14 +329,13 @@ ShaderGenerator::ShaderGenerator()
     setTraversalMode( TRAVERSE_ALL_CHILDREN );
     setNodeMaskOverride( ~0 );
     _state = new StateEx();
-    _active = true;
-    _duplicateSharedSubgraphs = false;
 }
 
 ShaderGenerator::ShaderGenerator(const ShaderGenerator& rhs, const osg::CopyOp& copy) :
-osg::NodeVisitor         (rhs, copy),
-_active                  (rhs._active),
-_duplicateSharedSubgraphs(rhs._duplicateSharedSubgraphs)
+    osg::NodeVisitor(rhs, copy),
+    _active(rhs._active),
+    _duplicateSharedSubgraphs(rhs._duplicateSharedSubgraphs),
+    _removeUnsupportedFFPAttributes(rhs._removeUnsupportedFFPAttributes)
 {
     _state = new StateEx();
 }
@@ -863,12 +862,15 @@ ShaderGenerator::processGeometry(
             }
 
 #ifndef OSG_GL_FIXED_FUNCTION_AVAILABLE
-            if (texgen)
-                newStateSet->removeTextureAttribute(unit, texgen);
-            if (texenv)
-                newStateSet->removeTextureAttribute(unit, texenv);
-            if (texmat)
-                newStateSet->removeTextureAttribute(unit, texmat);
+            if (_removeUnsupportedFFPAttributes)
+            {
+                if (texgen)
+                    newStateSet->removeTextureAttribute(unit, texgen);
+                if (texenv)
+                    newStateSet->removeTextureAttribute(unit, texenv);
+                if (texmat)
+                    newStateSet->removeTextureAttribute(unit, texmat);
+            }
 #endif
         }
     }

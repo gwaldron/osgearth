@@ -298,16 +298,21 @@ TileMap::getURL(const osgEarth::TileKey& tilekey, bool invertY)
         {
             if (itr->getOrder() == zoom)
             {
-                std::stringstream ss;
-                std::string basePath = osgDB::getFilePath(_filename);
-                if (!basePath.empty())
+                if (!itr->getHref().empty())
                 {
-                    ss << basePath << "/";
+                    return itr->getHref() + "/" + std::to_string(x) + "/" + std::to_string(y) + "." + _format.getExtension();
                 }
-                ss << zoom << "/" << x << "/" << y << "." << _format.getExtension();
-                std::string ssStr;
-				ssStr = ss.str();
-				return ssStr;
+                else if (osgDB::containsServerAddress(_filename))
+                {
+                    auto f = _filename;
+                    if (!f.empty() && f.back() != '/') f += "/";
+                    return f + std::to_string(zoom) + "/" + std::to_string(x) + "/" + std::to_string(y) + "." + _format.getExtension();
+                }
+                else
+                {
+                    // trip the XML file name off the end of the filename
+                    return osgDB::getFilePath(_filename) + "/" + std::to_string(zoom) + "/" + std::to_string(x) + "/" + std::to_string(y) + "." + _format.getExtension();
+                }
             }
         }
     }

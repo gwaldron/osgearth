@@ -45,21 +45,11 @@ namespace osgEarth
                 NetworkMonitor::Requests requests;
                 NetworkMonitor::getRequests(requests);
 
-                // Compute the time duration for all of the requests
-                osg::Timer_t startTime;
-                double totalTime = 0.0;
-                if (!requests.empty())
-                {
-                    startTime = requests.begin()->second.startTime;
-                    if (requests.rbegin()->second.isComplete)
-                    {
-                        totalTime = osg::Timer::instance()->delta_m(startTime, requests.rbegin()->second.endTime);
-                    }
-                    else
-                    {
-                        totalTime = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
-                    }
-                }
+                unsigned int filteredCount = 0;
+                std::set< std::string > uniqueURLs;
+
+                double minTime = DBL_MAX;
+                double maxTime = 0.0;                
 
                 ImGui::Checkbox("Active", &_showOnlyActiveRequests);
 
@@ -81,23 +71,19 @@ namespace osgEarth
                 ImGui::SameLine();
                 ImGui::InputText("Filter", _filter, 128);
 
-                ImGui::Text("%d requests", requests.size());
-                ImGui::SameLine();
-                ImGui::Text("Total time = %.1f s", totalTime / 1000.0);
+                ImVec2 availableContent = ImGui::GetContentRegionAvail();
+                ImVec2 textSize = ImGui::CalcTextSize("A");
 
-                ImGui::BeginChild("Columns");
+                ImGui::BeginChild("Columns", ImVec2(0, availableContent.y - textSize.y));
+
                 ImGui::Columns(5, "requests");
 
                 ImGui::SetColumnWidth(0, 300.f);
                 ImGui::SetColumnWidth(1, 100.f);
                 ImGui::SetColumnWidth(2, 100.f);
                 ImGui::SetColumnWidth(3, 100.f);
-                //ImGui::SetColumnWidth(0, 100.f);
-
 
                 ImGui::Separator();
-                //ImGui::Text("Start time"); ImGui::NextColumn();
-                //ImGui::Text("End time"); ImGui::NextColumn();
                 ImGui::Text("Layer"); ImGui::NextColumn();
                 ImGui::Text("Time(ms)"); ImGui::NextColumn();
                 ImGui::Text("Type"); ImGui::NextColumn();
@@ -105,11 +91,21 @@ namespace osgEarth
                 ImGui::Text("Path"); ImGui::NextColumn();
                 ImGui::Separator();
 
+                double now = osg::Timer::instance()->tick();
 
                 std::string filterLower = osgEarth::toLower(_filter);
 
                 for (NetworkMonitor::Requests::iterator itr = requests.begin(); itr != requests.end(); ++itr)
                 {
+                    // Compute the min and max time for all requests
+                    double requestStartTime = itr->second.startTime;
+                    double requestEndTime = itr->second.isComplete ? itr->second.endTime : now;
+                    if (requestStartTime < minTime)
+                        minTime = requestStartTime;
+
+                    if (requestEndTime > maxTime)
+                        maxTime = requestEndTime;
+
                     if (!_showOnlyActiveRequests || !itr->second.isComplete)
                     {
                         if (!filterLower.empty())
@@ -127,6 +123,9 @@ namespace osgEarth
                                 continue;
                             }
                         }
+
+                        uniqueURLs.insert(itr->second.uri);
+                        ++filteredCount;
 
                         ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
                         bool failed = false;
@@ -153,18 +152,7 @@ namespace osgEarth
                         if (_showOnlyFailedRequests && !failed)
                             continue;
 
-                        ImGui::PushID(itr->first);
-
-                        //double startMS = osg::Timer::instance()->delta_m(startTime, itr->second.startTime);
-                        //double endMS = 0.0;
-                        //if (itr->second.isComplete)
-                        //{
-                        //    endMS = osg::Timer::instance()->delta_m(startTime, itr->second.endTime);
-                        //}
-                        //else
-                        //{
-                        //    endMS = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
-                        //}
+                        ImGui::PushID(itr->first);                        
 
                         ImGui::Text(itr->second.layer.c_str()); ImGui::NextColumn();
                         char buf[64];
@@ -172,8 +160,6 @@ namespace osgEarth
                         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(buf).x
                             - ImGui::GetScrollX() - 2 * ImGui::GetStyle().ItemSpacing.x);
                         ImGui::Text(buf); ImGui::NextColumn();
-                        //ImGui::Text("%.2lf ms", startMS); ImGui::NextColumn();
-                        //ImGui::Text("%.2lf ms", endMS); ImGui::NextColumn();
                         ImGui::Text(itr->second.type.c_str()); ImGui::NextColumn();
                         ImGui::Text(itr->second.status.c_str()); ImGui::NextColumn();
 
@@ -195,6 +181,17 @@ namespace osgEarth
                     ImGui::SetScrollHereY(1.0);
                 }
                 ImGui::EndChild();
+
+                double totalTime = maxTime > minTime ? osg::Timer::instance()->delta_s(minTime, maxTime) : 0.0;
+
+                if (filterLower.empty())
+                {
+                    ImGui::Text("%d requests | unique %d | %.1f s", requests.size(), uniqueURLs.size(), totalTime);
+                }
+                else
+                {
+                    ImGui::Text("%d / %d requests | unique %d | %.1f s", filteredCount, requests.size(), uniqueURLs.size(), totalTime);
+                }               
 
                 ImGui::End();
             }

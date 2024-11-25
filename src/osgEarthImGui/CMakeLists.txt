@@ -24,6 +24,7 @@ set(STOCK_PANELS
     NetworkMonitorGUI
     NotifyGUI
     OpenEarthFileGUI
+    LiveCamerasGUI
     PickerGUI
     RenderingGUI
     SceneGraphGUI

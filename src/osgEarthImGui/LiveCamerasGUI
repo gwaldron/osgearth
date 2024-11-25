@@ -19,11 +19,7 @@
 #pragma once
 
 #include <osgEarthImGui/ImGuiPanel>
-#include <osgEarthImGui/imgui_internal.h>
-
-#include <osgViewer/Renderer>
-
-
+#include <osgEarth/CullingUtils>
 
 namespace osgEarth
 {
@@ -47,13 +43,20 @@ namespace osgEarth
             {
                 _root = new osg::Group();                
                 view->getSceneData()->asGroup()->addChild(_root.get());
+                _visibleCallback = new ToggleVisibleCullCallback();
                 _installed = true;
             }            
 
             ImGui::Begin(name(), visible());
 
-            ImGui::InputText("Name", _name, IM_ARRAYSIZE(_name));
+            ImGui::Text("Live Cameras: %d", _root->getNumChildren());
 
+            if (ImGui::Checkbox("Visible", &_visible))
+            {
+                _visibleCallback->setVisible(_visible);
+            }
+            ImGui::Separator();
+            ImGui::InputText("Name", _name, IM_ARRAYSIZE(_name));
             if (ImGui::Button("Add"))
             {
                 auto currentCamera = ri.getCurrentCamera();
@@ -113,14 +116,18 @@ namespace osgEarth
                 depthTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
                 depthTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
                 camera->attach(osg::Camera::DEPTH_BUFFER, depthTexture);
-                */
+                */                
+                
 
-                
-                
-                camera->addChild(_mapNode.get());
+                // Create a wrapper group to add to the camera has the ToggleVisibleCullCallback attached
+                // so we can toggle the draw of the camera on and off.
+                osg::Group* wrapperGroup = new osg::Group();
+                wrapperGroup->setCullCallback(_visibleCallback);
+                wrapperGroup->addChild(_mapNode.get());
+                camera->addChild(wrapperGroup);
 
                 _root->addChild(camera);
-            }
+            }            
 
             osg::Camera* toRemove = nullptr;
 
@@ -168,5 +175,7 @@ namespace osgEarth
         osg::ref_ptr< osg::Group > _root;
         osg::observer_ptr<MapNode> _mapNode;
         bool  _installed = false;
+        bool _visible = true;
+        osg::ref_ptr< ToggleVisibleCullCallback> _visibleCallback;
     };
 }

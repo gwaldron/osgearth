@@ -57,6 +57,16 @@ namespace osgEarth
         bool _isLocation = false;
         bool _isNumber = false;
 
+        void clear() {
+            _key.clear();
+            _defaultValue.clear();
+            _referrer.clear();
+            _externalRef.clear();
+            _children.clear();
+            _isLocation = false;
+            _isNumber = false;
+        }
+
     public:
         Config() = default;
 
@@ -77,13 +87,30 @@ namespace osgEarth
         }
 
 #ifdef OE_CONFIG_MOVE_SEMATICS
-        explicit Config(const std::string& key, Config&& value) :
+        explicit Config(const std::string& key, Config&& value) noexcept :
             _key(key)
         {
             add(value);
         }
-        Config(Config&& rhs) = default;
-        Config& operator=(Config&& rhs) = default;
+        
+        Config& operator=(Config&& rhs) noexcept {
+            if (this != &rhs) {
+                _key = std::move(rhs._key);
+                _defaultValue = std::move(rhs._defaultValue);
+                _referrer = std::move(rhs._referrer);
+                _externalRef = std::move(rhs._externalRef);
+                _children = std::move(rhs._children);
+                _isLocation = rhs._isLocation;
+                _isNumber = rhs._isNumber;
+                rhs.clear();
+            }
+            return *this;        
+        }
+
+        Config(Config&& rhs) noexcept {
+            *this = rhs;
+        }
+
 #endif
 
         // Copy functions
@@ -237,21 +264,21 @@ namespace osgEarth
 
 #ifdef OE_CONFIG_MOVE_SEMATICS
         //! Move a config as a child
-        Config& add(Config&& conf) {
-            _children.push_back(std::move(conf));
+        Config& add(Config&& conf) noexcept {
+            _children.emplace_back(conf);
             _children.back().setReferrer(_referrer);
-            conf = {};
+            conf.clear();
             return _children.back();
         }
-        Config& add(const std::string& key, Config&& conf) {
-            Config& result = add(std::move(conf));
+        Config& add(const std::string& key, Config&& conf) noexcept {
+            Config& result = add(conf);
             result.key() = key;
-            conf = {};
+            conf.clear();
             return result;
         }
-        Config& set(Config&& conf) {
+        Config& set(Config&& conf) noexcept {
             remove(conf.key());
-            return add(std::move(conf));
+            return add(conf);
         }
 #endif
 

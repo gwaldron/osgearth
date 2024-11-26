@@ -627,7 +627,7 @@ Chonk::getOrCreateCommands(osg::State& state) const
                 command.vertexBuffer.address = gs.vbo->address();
                 command.vertexBuffer.length = gs.vbo->size();
 
-                gs.commands.push_back(std::move(command));
+                gs.commands.emplace_back(std::move(command));
             }
         }
 

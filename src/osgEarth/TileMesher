@@ -42,10 +42,6 @@ namespace osgEarth
         bool removeInterior = false;   // should we remove triangles inside polygons?
         bool removeExterior = false;   // should we remove triangles outside polygons?
         bool fillElevations = false;   // should we assign elevations to triangles?
-
-        MeshConstraint() = default;
-        MeshConstraint(const MeshConstraint& rhs) = default;
-        MeshConstraint(MeshConstraint&& rhs) = default;
     };
 
     //! Collection of mesh constraints

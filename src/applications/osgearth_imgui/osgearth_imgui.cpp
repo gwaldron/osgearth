@@ -31,6 +31,7 @@
 #include <osgEarthImGui/SceneGraphGUI>
 #include <osgEarthImGui/TextureInspectorGUI>
 #include <osgEarthImGui/ViewpointsGUI>
+#include <osgEarthImGui/LiveCamerasGUI>
 #include <osgEarthImGui/SystemGUI>
 #include <osgEarthImGui/EnvironmentGUI>
 #include <osgEarthImGui/TerrainGUI>
@@ -120,6 +121,7 @@ main(int argc, char** argv)
         ui->add("Tools", new TerrainGUI());
         ui->add("Tools", new TextureInspectorGUI());
         ui->add("Tools", new ViewpointsGUI());
+        ui->add("Tools", new LiveCamerasGUI());
 
 #ifdef OSGEARTH_HAVE_CESIUM_NODEKIT
         ui->add("Cesium", new osgEarth::Cesium::CesiumIonGUI());

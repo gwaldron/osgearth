@@ -1,0 +1,181 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2018 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthImGui/ImGuiPanel>
+#include <osgEarth/CullingUtils>
+
+namespace osgEarth
+{
+    class LiveCamerasGUI : public ImGuiPanel
+    {
+    public:
+        LiveCamerasGUI() :
+            ImGuiPanel("Live Cameras")
+        {
+            memset(_name, 0, sizeof(_name));
+        }
+
+        void draw(osg::RenderInfo& ri) override
+        {
+            if (!isVisible()) return;
+            if (!findNodeOrHide(_mapNode, ri)) return;
+
+            osgViewer::View* view = dynamic_cast<osgViewer::View*>(ri.getView());
+
+            if (!_installed)
+            {
+                _root = new osg::Group();                
+                view->getSceneData()->asGroup()->addChild(_root.get());
+                _visibleCallback = new ToggleVisibleCullCallback();
+                _installed = true;
+            }            
+
+            ImGui::Begin(name(), visible());
+
+            ImGui::Text("Live Cameras: %d", _root->getNumChildren());
+
+            if (ImGui::Checkbox("Visible", &_visible))
+            {
+                _visibleCallback->setVisible(_visible);
+            }
+            ImGui::Separator();
+            ImGui::InputText("Name", _name, IM_ARRAYSIZE(_name));
+            if (ImGui::Button("Add"))
+            {
+                auto currentCamera = ri.getCurrentCamera();
+
+                float width = currentCamera->getViewport()->width();
+                float height = currentCamera->getViewport()->height();
+                double aspectRatio = width / height;
+
+                height = 200.0;
+                width = height * aspectRatio;
+
+                osg::Camera* camera = new osg::Camera;
+                std::string name = std::string(_name);
+                if (name.empty())
+                {
+                    name = "Camera " + std::to_string(_root->getNumChildren() + 1);
+                }
+                camera->setName(name);
+                camera->setClearColor(osg::Vec4(0.0, 0.0, 0.0, 1.0));
+                camera->setClearDepth(1.0);
+                camera->setClearMask(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+                camera->setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
+
+                camera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+                camera->setRenderOrder(osg::Camera::PRE_RENDER);
+                camera->setAllowEventFocus(false);
+                camera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+
+                camera->setViewMatrix(currentCamera->getViewMatrix());
+                camera->setProjectionMatrix(currentCamera->getProjectionMatrix());
+
+                osg::Viewport* viewport = new osg::Viewport(0, 0, width, height);
+
+                camera->setViewport(viewport);
+                camera->setImplicitBufferAttachmentMask(0, 0);
+                camera->setSmallFeatureCullingPixelSize(0.0f);
+
+                osg::Texture2D* colorTexture = new osg::Texture2D;
+                colorTexture->setInternalFormat(GL_RGBA8);
+                colorTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
+                colorTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+                colorTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+                colorTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+                colorTexture->setTextureSize(width, height);
+                camera->attach(osg::Camera::COLOR_BUFFER0, colorTexture);
+
+                /*
+                osg::Texture2D* depthTexture = new osg::Texture2D();
+                depthTexture->setTextureSize(width, height);
+                depthTexture->setSourceFormat(GL_DEPTH_COMPONENT);
+                depthTexture->setSourceType(GL_FLOAT);
+                depthTexture->setInternalFormat(GL_DEPTH_COMPONENT24);
+                depthTexture->setBorderWidth(0);
+                depthTexture->setFilter(osg::Texture2D::MIN_FILTER, osg::Texture2D::LINEAR);
+                depthTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::LINEAR);
+                depthTexture->setWrap(osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+                depthTexture->setWrap(osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_EDGE);
+                camera->attach(osg::Camera::DEPTH_BUFFER, depthTexture);
+                */                
+                
+
+                // Create a wrapper group to add to the camera has the ToggleVisibleCullCallback attached
+                // so we can toggle the draw of the camera on and off.
+                osg::Group* wrapperGroup = new osg::Group();
+                wrapperGroup->setCullCallback(_visibleCallback);
+                wrapperGroup->addChild(_mapNode.get());
+                camera->addChild(wrapperGroup);
+
+                _root->addChild(camera);
+            }            
+
+            osg::Camera* toRemove = nullptr;
+
+            for (unsigned int i = 0; i < _root->getNumChildren(); i++)
+            {
+                osg::Camera* camera = dynamic_cast<osg::Camera*>(_root->getChild(i));
+                if (camera)
+                {
+                    ImGui::PushID(camera);
+                    ImGui::Text(camera->getName().c_str());
+                    if (ImGui::Button("Zoom to"))
+                    {
+                        auto manip = view->getCameraManipulator();
+                        manip->setByInverseMatrix(camera->getViewMatrix());
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Remove"))
+                    {
+                        toRemove = camera;
+                    }
+                    auto colorAttachment = camera->getBufferAttachmentMap().find(osg::Camera::COLOR_BUFFER0);
+                    if (colorAttachment != camera->getBufferAttachmentMap().end())
+                    {
+                        osg::Texture2D* texture = dynamic_cast<osg::Texture2D*>(colorAttachment->second._texture.get());
+                        if (texture)
+                        {
+                            ImGuiEx::OSGTexture(texture, ri, 200);
+                        }
+                    }                    
+                    ImGui::Separator();
+                    ImGui::PopID();
+                }
+            }
+
+            if (toRemove)
+            {
+                _root->removeChild(toRemove);
+            }
+
+            ImGui::End();
+        }        
+
+    private:
+        char _name[1024];
+        osg::ref_ptr< osg::Group > _root;
+        osg::observer_ptr<MapNode> _mapNode;
+        bool  _installed = false;
+        bool _visible = true;
+        osg::ref_ptr< ToggleVisibleCullCallback> _visibleCallback;
+    };
+}

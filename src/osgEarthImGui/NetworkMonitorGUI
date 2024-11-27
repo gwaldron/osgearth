@@ -24,11 +24,30 @@ namespace osgEarth
 {
     class NetworkMonitorGUI : public ImGuiPanel
     {
+
+        enum TypeFilter
+        {
+            TYPEFILTER_ALL = 0,
+            TYPEFILTER_URI = 1,
+            TYPEFILTER_CACHE = 2
+        };
+
+        enum RequestStatus
+        {
+            REQUESTSTATUS_ALL = 0,
+            REQUESTSTATUS_OK = 1,
+            REQUESTSTATUS_NOTFOUND = 2,
+            REQUESTSTATUS_ERROR = 3,
+            REQUESTSTATUS_BLACKLISTED = 4,
+            REQUESTSTATUS_CANCELED = 5,
+            REQUESTSTATUS_PENDING = 6
+        };
+
     public:
         NetworkMonitorGUI() :
             ImGuiPanel("Network Monitor"),
-            _showOnlyActiveRequests(true),
-            _showOnlyFailedRequests(false)
+            _typeFilter(TYPEFILTER_ALL),
+            _statusFilter(REQUESTSTATUS_ALL)
         {
             memset(_filter, 0, sizeof(_filter));
         }
@@ -45,26 +64,30 @@ namespace osgEarth
                 NetworkMonitor::Requests requests;
                 NetworkMonitor::getRequests(requests);
 
-                // Compute the time duration for all of the requests
-                osg::Timer_t startTime;
-                double totalTime = 0.0;
-                if (!requests.empty())
-                {
-                    startTime = requests.begin()->second.startTime;
-                    if (requests.rbegin()->second.isComplete)
-                    {
-                        totalTime = osg::Timer::instance()->delta_m(startTime, requests.rbegin()->second.endTime);
-                    }
-                    else
-                    {
-                        totalTime = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
-                    }
-                }
+                unsigned int filteredCount = 0;
+                std::set< std::string > uniqueURLs;
 
-                ImGui::Checkbox("Active", &_showOnlyActiveRequests);
+                double minTime = DBL_MAX;
+                double maxTime = 0.0;
+
+                double now = osg::Timer::instance()->tick();
+                std::string filterLower = osgEarth::toLower(_filter);                
 
                 ImGui::SameLine();
-                ImGui::Checkbox("Failed", &_showOnlyFailedRequests);
+                ImGui::SetNextItemWidth(500);
+                ImGui::InputText("Filter", _filter, 128);
+
+                const float combo_buffer = 50;
+
+                const char* requestStatus[] = { "All", "OK", "Not Found", "Error", "Blacklisted", "Canceled", "Pending"};
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(ImGui::CalcTextSize("Blacklisted").x + combo_buffer);
+                ImGui::Combo("Status", &_statusFilter, requestStatus, IM_ARRAYSIZE(requestStatus));
+
+                const char* requestTypes[] = { "All", "URI", "Cache" };
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(ImGui::CalcTextSize("Cache").x + combo_buffer);
+                ImGui::Combo("Type", &_typeFilter, requestTypes, IM_ARRAYSIZE(requestTypes));
 
                 ImGui::SameLine();
                 if (ImGui::Button("Clear"))
@@ -76,42 +99,56 @@ namespace osgEarth
                 if (ImGui::Button("Save"))
                 {
                     NetworkMonitor::saveCSV(requests, "network_requests.csv");
-                }
+                }                
 
-                ImGui::SameLine();
-                ImGui::InputText("Filter", _filter, 128);
+                ImVec2 availableContent = ImGui::GetContentRegionAvail();
+                ImVec2 textSize = ImGui::CalcTextSize("A");
 
-                ImGui::Text("%d requests", requests.size());
-                ImGui::SameLine();
-                ImGui::Text("Total time = %.1f s", totalTime / 1000.0);
+                ImVec2 tableSize(0, availableContent.y - textSize.y);
 
-                ImGui::BeginChild("Columns");
-                ImGui::Columns(5, "requests");
-
-                ImGui::SetColumnWidth(0, 300.f);
-                ImGui::SetColumnWidth(1, 100.f);
-                ImGui::SetColumnWidth(2, 100.f);
-                ImGui::SetColumnWidth(3, 100.f);
-                //ImGui::SetColumnWidth(0, 100.f);
-
-
-                ImGui::Separator();
-                //ImGui::Text("Start time"); ImGui::NextColumn();
-                //ImGui::Text("End time"); ImGui::NextColumn();
-                ImGui::Text("Layer"); ImGui::NextColumn();
-                ImGui::Text("Time(ms)"); ImGui::NextColumn();
-                ImGui::Text("Type"); ImGui::NextColumn();
-                ImGui::Text("Status"); ImGui::NextColumn();
-                ImGui::Text("Path"); ImGui::NextColumn();
-                ImGui::Separator();
-
-
-                std::string filterLower = osgEarth::toLower(_filter);
-
-                for (NetworkMonitor::Requests::iterator itr = requests.begin(); itr != requests.end(); ++itr)
+                if (ImGui::BeginTable("RequestTable", 5, ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_Borders, tableSize))
                 {
-                    if (!_showOnlyActiveRequests || !itr->second.isComplete)
+                    ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
+                    ImGui::TableSetupColumn("Layer", ImGuiTableColumnFlags_WidthFixed, 300.0f);
+                    ImGui::TableSetupColumn("Time(ms)", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                    ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                    ImGui::TableSetupColumn("Path", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableHeadersRow();
+
+                    for (NetworkMonitor::Requests::iterator itr = requests.begin(); itr != requests.end(); ++itr)
                     {
+                        // Compute the min and max time for all requests
+                        double requestStartTime = itr->second.startTime;
+                        double requestEndTime = itr->second.isComplete ? itr->second.endTime : now;
+                        if (requestStartTime < minTime)
+                            minTime = requestStartTime;
+
+                        if (requestEndTime > maxTime)
+                            maxTime = requestEndTime;
+
+                        // Filter based on status
+                        if (_statusFilter != REQUESTSTATUS_ALL)
+                        {
+                            if (_statusFilter == REQUESTSTATUS_OK && itr->second.status.find("OK") == std::string::npos)
+                                continue;
+
+                            if (_statusFilter == REQUESTSTATUS_NOTFOUND && itr->second.status.find("Target not found") == std::string::npos)
+                                continue;
+
+                            if (_statusFilter == REQUESTSTATUS_BLACKLISTED && itr->second.status.find("Blacklisted") == std::string::npos)
+                                continue;
+
+                            if (_statusFilter == REQUESTSTATUS_ERROR && itr->second.status.find("error") == std::string::npos)
+                                continue;
+
+                            if (_statusFilter == REQUESTSTATUS_CANCELED && itr->second.status.find("Canceled") == std::string::npos)
+                                continue;
+
+                            if (_statusFilter == REQUESTSTATUS_PENDING && itr->second.status.find("Pending") == std::string::npos)
+                                continue;
+                        }
+
                         if (!filterLower.empty())
                         {
                             std::string uriLower = osgEarth::toLower(itr->second.uri);
@@ -126,6 +163,19 @@ namespace osgEarth
                             {
                                 continue;
                             }
+                        }
+
+                        bool showCache = _typeFilter == TYPEFILTER_ALL || _typeFilter == TYPEFILTER_CACHE;
+                        bool showURI = _typeFilter == TYPEFILTER_ALL || _typeFilter == TYPEFILTER_URI;
+
+                        if (!showCache && itr->second.type == "Cache")
+                        {
+                            continue;
+                        }
+
+                        if (!showURI && itr->second.type == "URI")
+                        {
+                            continue;
                         }
 
                         ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
@@ -150,33 +200,27 @@ namespace osgEarth
                             }
                         }
 
-                        if (_showOnlyFailedRequests && !failed)
-                            continue;
+                        uniqueURLs.insert(itr->second.uri);
+                        ++filteredCount;
 
                         ImGui::PushID(itr->first);
-
-                        //double startMS = osg::Timer::instance()->delta_m(startTime, itr->second.startTime);
-                        //double endMS = 0.0;
-                        //if (itr->second.isComplete)
-                        //{
-                        //    endMS = osg::Timer::instance()->delta_m(startTime, itr->second.endTime);
-                        //}
-                        //else
-                        //{
-                        //    endMS = osg::Timer::instance()->delta_m(startTime, osg::Timer::instance()->tick());
-                        //}
-
+                        ImGui::TableNextColumn();
                         ImGui::Text(itr->second.layer.c_str()); ImGui::NextColumn();
                         char buf[64];
                         sprintf(buf, "%.1lf", itr->second.getDuration());
                         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(buf).x
                             - ImGui::GetScrollX() - 2 * ImGui::GetStyle().ItemSpacing.x);
-                        ImGui::Text(buf); ImGui::NextColumn();
-                        //ImGui::Text("%.2lf ms", startMS); ImGui::NextColumn();
-                        //ImGui::Text("%.2lf ms", endMS); ImGui::NextColumn();
-                        ImGui::Text(itr->second.type.c_str()); ImGui::NextColumn();
-                        ImGui::Text(itr->second.status.c_str()); ImGui::NextColumn();
 
+                        ImGui::TableNextColumn();
+                        ImGui::Text(buf);
+
+                        ImGui::TableNextColumn();
+                        ImGui::Text(itr->second.type.c_str());
+
+                        ImGui::TableNextColumn();
+                        ImGui::Text(itr->second.status.c_str());
+
+                        ImGui::TableNextColumn();
                         if (ImGui::SmallButton("Copy"))
                         {
                             ImGui::SetClipboardText(itr->second.uri.c_str());
@@ -184,17 +228,26 @@ namespace osgEarth
                         ImGui::SameLine();
                         ImGui::TextColored(color, "%s (%d)", itr->second.uri.c_str(), itr->second.count);  ImGui::NextColumn();
                         ImGui::PopID();
-                    }
-                }
-                ImGui::Columns(1);
-                ImGui::Separator();
+                    }                    
 
-                // Keep scroll position at the bottom so we can see new network requests as they come in if they are scrolled to the bottom already
-                if (ImGui::GetScrollY() == ImGui::GetScrollMaxY())
-                {
-                    ImGui::SetScrollHereY(1.0);
+                    // Keep scroll position at the bottom so we can see new network requests as they come in if they are scrolled to the bottom already
+                    if (ImGui::GetScrollY() == ImGui::GetScrollMaxY())
+                    {
+                        ImGui::SetScrollHereY(1.0);
+                    }
+                    ImGui::EndTable();
                 }
-                ImGui::EndChild();
+
+                double totalTime = maxTime > minTime ? osg::Timer::instance()->delta_s(minTime, maxTime) : 0.0;
+
+                if (filterLower.empty() && _typeFilter == TYPEFILTER_ALL && _statusFilter == REQUESTSTATUS_ALL)
+                {
+                    ImGui::Text("%d requests | unique %d | %.1f s", requests.size(), uniqueURLs.size(), totalTime);
+                }
+                else
+                {
+                    ImGui::Text("%d / %d requests | unique %d | %.1f s", filteredCount, requests.size(), uniqueURLs.size(), totalTime);
+                }
 
                 ImGui::End();
             }
@@ -204,8 +257,8 @@ namespace osgEarth
             }
         }
 
-        bool _showOnlyActiveRequests;
-        bool _showOnlyFailedRequests;
+        int _typeFilter;
+        int _statusFilter;
         char _filter[128];
     };
 }

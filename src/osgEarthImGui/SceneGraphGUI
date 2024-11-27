@@ -548,6 +548,35 @@ namespace osgEarth
         return "";
     }
 
+    static std::string BufferComponentToString(osg::Camera::BufferComponent buffer)
+    {
+        switch (buffer)
+        {
+        case (osg::Camera::DEPTH_BUFFER): return "DEPTH_BUFFER";
+        case (osg::Camera::STENCIL_BUFFER): return "STENCIL_BUFFER";
+        case (osg::Camera::PACKED_DEPTH_STENCIL_BUFFER): return "PACKED_DEPTH_STENCIL_BUFFER";
+        case (osg::Camera::COLOR_BUFFER): return "COLOR_BUFFER";
+        case (osg::Camera::COLOR_BUFFER0): return "COLOR_BUFFER0";
+        case (osg::Camera::COLOR_BUFFER1): return "COLOR_BUFFER1";
+        case (osg::Camera::COLOR_BUFFER2): return "COLOR_BUFFER2";
+        case (osg::Camera::COLOR_BUFFER3): return "COLOR_BUFFER3";
+        case (osg::Camera::COLOR_BUFFER4): return "COLOR_BUFFER4";
+        case (osg::Camera::COLOR_BUFFER5): return "COLOR_BUFFER5";
+        case (osg::Camera::COLOR_BUFFER6): return "COLOR_BUFFER6";
+        case (osg::Camera::COLOR_BUFFER7): return "COLOR_BUFFER7";
+        case (osg::Camera::COLOR_BUFFER8): return "COLOR_BUFFER8";
+        case (osg::Camera::COLOR_BUFFER9): return "COLOR_BUFFER9";
+        case (osg::Camera::COLOR_BUFFER10): return "COLOR_BUFFER10";
+        case (osg::Camera::COLOR_BUFFER11): return "COLOR_BUFFER11";
+        case (osg::Camera::COLOR_BUFFER12): return "COLOR_BUFFER12";
+        case (osg::Camera::COLOR_BUFFER13): return "COLOR_BUFFER13";
+        case (osg::Camera::COLOR_BUFFER14): return "COLOR_BUFFER14";
+        case (osg::Camera::COLOR_BUFFER15): return "COLOR_BUFFER15";
+        default: return "UnknownBufferComponent";
+        }
+    }
+    
+
 
     class SceneGraphGUI : public ImGuiPanel
     {
@@ -1119,8 +1148,29 @@ namespace osgEarth
                     ImGui::Text("Render order: %s", order[(int)cam->getRenderOrder()].c_str());
                     ImGui::Text("Projection: %s", proj[ProjectionMatrix::isOrtho(cam->getProjectionMatrix()) ? 1 : 0].c_str());
                     ImGui::Text("Cull mask: %0x%.8X", cam->getCullMask());
-                    ImGui::Text("Gfx context: %0x%.16X", (std::uintptr_t)cam->getGraphicsContext());
-                    ImGui::Text("Gfx context ID: %d", cam->getGraphicsContext()->getState()->getContextID());
+                    osg::GraphicsContext* gc = cam->getGraphicsContext();
+                    if (gc)
+                    {
+                        ImGui::Text("Gfx context: %0x%.16X", (std::uintptr_t)gc);
+                        ImGui::Text("Gfx context ID: %d", gc->getState()->getContextID());
+                    }
+
+                    for (auto itr = cam->getBufferAttachmentMap().begin(); itr != cam->getBufferAttachmentMap().end(); ++itr)
+                    {
+                        osg::Camera::BufferComponent buffer = itr->first;
+
+                        std::string attachmentText = BufferComponentToString(buffer);
+
+                        osg::Camera::Attachment& att = itr->second;
+                        ImGui::Text("Attachment %s", attachmentText.c_str());
+                        osg::Texture2D* texture = dynamic_cast<osg::Texture2D*>(att._texture.get());
+                        if (texture)
+                        {
+                            ImGui::Text("%dx%d", texture->getTextureWidth(), texture->getTextureHeight());                            
+                            ImGuiEx::OSGTexture(texture, ri, 200);
+                        }
+                    }
+
                     ImGui::TreePop();
                 }
             }

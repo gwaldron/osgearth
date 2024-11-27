@@ -84,6 +84,8 @@ namespace osgEarth
                     return;
                 }
 
+                static unsigned u32_one = 1;
+
                 auto options = _mapNode->getTerrainOptions();
 
                 if (ImGuiLTable::Begin("terraingui"))
@@ -111,8 +113,7 @@ namespace osgEarth
                         visible_cb->setVisible(terrain_visible);
                     }
 
-                    static int max_max_lod = -1;
-                    static unsigned u32_one = 1;
+                    static int max_max_lod = -1;                    
                     unsigned max_lod = options.getMaxLOD();
                     if (max_max_lod < 0) max_max_lod = max_lod;
                     if (ImGuiLTable::InputScalar("Max LOD", ImGuiDataType_U32, &max_lod, &u32_one, nullptr, "%u"))
@@ -149,6 +150,36 @@ namespace osgEarth
                     if (ImGuiLTable::ColorEdit3("Background", color.ptr()))
                     {
                         options.setColor(color);
+                        engine->dirtyTerrainOptions();
+                    }
+
+                    // Expiration options
+                    ImGui::Separator();
+                    unsigned int minExpiryFrames = options.getMinExpiryFrames();
+                    if (ImGuiLTable::InputScalar("Min Expiry Frames", ImGuiDataType_U32, &minExpiryFrames, &u32_one, nullptr, "%u"))
+                    {
+                        options.setMinExpiryFrames(minExpiryFrames);
+                        engine->dirtyTerrainOptions();
+                    }
+
+                    float minExpiryTime = options.getMinExpiryTime();
+                    if (ImGuiLTable::InputFloat("Min Expiry Time", &minExpiryTime))
+                    {
+                        options.setMinExpiryTime(minExpiryTime);
+                        engine->dirtyTerrainOptions();
+                    }
+
+                    float minExpiryRange = options.getMinExpiryRange();
+                    if (ImGuiLTable::InputFloat("Min Expiry Range", &minExpiryRange))
+                    {
+                        options.setMinExpiryRange(minExpiryRange);
+                        engine->dirtyTerrainOptions();
+                    }
+
+                    unsigned int maxTilesToUnloadPerFrame = options.getMaxTilesToUnloadPerFrame();
+                    if (ImGuiLTable::InputScalar("Max Tiles to Unload", ImGuiDataType_U32, &maxTilesToUnloadPerFrame, &u32_one, nullptr, "%u"))
+                    {
+                        options.setMaxTilesToUnloadPerFrame(maxTilesToUnloadPerFrame);
                         engine->dirtyTerrainOptions();
                     }
 
@@ -269,7 +300,7 @@ namespace osgEarth
                         _sample = _sampler->getSample(mp);
                         _ax = _x, _ay = _y;
                     }
-                }
+                }                
 
                 ImGui::Separator();
 

@@ -24,6 +24,7 @@
 #include "Capabilities"
 #include "StringUtils"
 #include "VirtualProgram"
+#include "LineDrawable"
 
 #include <osg/Geometry>
 
@@ -149,18 +150,24 @@ ObjectIndex::tagDrawable(osg::Drawable* drawable, ObjectID id) const
     if ( drawable == 0L )
         return;
 
-    osg::Geometry* geom = drawable->asGeometry();
-    if ( !geom )
-        return;
-
-    // add a new integer attributer to store the feautre ID per vertex.
-    ObjectIDArray* ids = new ObjectIDArray();
+    osg::ref_ptr<ObjectIDArray> ids = new ObjectIDArray();
     ids->setBinding(osg::Array::BIND_PER_VERTEX);
     ids->setNormalize(false);
-    geom->setVertexAttribArray(_attribLocation, ids);
     ids->setPreserveDataType(true);
 
-    ids->assign( geom->getVertexArray()->getNumElements(), id );
+    if (auto* geometry = drawable->asGeometry())
+    {
+        // add a new integer attributer to store the feautre ID per vertex.
+        geometry->setVertexAttribArray(_attribLocation, ids);
+        ids->assign(geometry->getVertexArray()->getNumElements(), id);
+    }
+    else if (auto* line = dynamic_cast<LineDrawable*>(drawable))
+    {
+        line->setVertexAttribArray(_attribLocation, ids);
+        auto size = line->size();
+        for (int i = 0; i < size; ++i)
+            line->pushVertexAttrib(ids.get(), id);
+    }
 }
 
 ObjectID

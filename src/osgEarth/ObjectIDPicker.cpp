@@ -177,6 +177,8 @@ ObjectIDPicker::pick(
 {
     ImageUtils::PixelReader read(_pickImage.get());
 
+    OE_SOFT_ASSERT_AND_RETURN(view->getNumSlaves() == 0, void(), "ObjectIDPicker does not support an OSG slave-camera configuration");
+
     const osg::Viewport* vp = view->getCamera()->getViewport();
     float u = (x - vp->x()) / vp->width();
     float v = (y - vp->y()) / vp->height();

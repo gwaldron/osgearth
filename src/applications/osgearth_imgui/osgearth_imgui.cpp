@@ -132,6 +132,11 @@ main(int argc, char** argv)
         ui->add("Procedural", new osgEarth::Procedural::VegetationLayerGUI());
 #endif
 
+        ui->onStartup = []()
+        {
+            ImGui::GetIO().FontAllowUserScaling = true;
+        };
+
         // Put it on the front of the list so events don't filter through to other handlers.
         viewer.getEventHandlers().push_front(ui);
 

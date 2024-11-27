@@ -76,6 +76,9 @@ ImGuiEventHandler::newFrame(osg::RenderInfo& renderInfo)
 #ifdef IMGUI_HAS_DOCK
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 #endif
+        // call a user startup function if set
+        if (onStartup)
+            onStartup();
     }
 
     ImGui_ImplOpenGL3_NewFrame();
@@ -214,6 +217,17 @@ void ImGuiEventHandler::render(osg::RenderInfo& ri)
     }
 }
 
+namespace
+{
+    void applyModifiers(const osgGA::GUIEventAdapter& ea, ImGuiIO& io)
+    {
+        io.AddKeyEvent(ImGuiMod_Ctrl, (ea.getModKeyMask() & ea.MODKEY_CTRL) != 0);
+        io.AddKeyEvent(ImGuiMod_Shift, (ea.getModKeyMask() & ea.MODKEY_SHIFT) != 0);
+        io.AddKeyEvent(ImGuiMod_Alt, (ea.getModKeyMask() & ea.MODKEY_ALT) != 0);
+        io.AddKeyEvent(ImGuiMod_Super, (ea.getModKeyMask() & ea.MODKEY_SUPER) != 0);
+    }
+}
+
 bool ImGuiEventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 {
     if (!_initialized)
@@ -221,8 +235,9 @@ bool ImGuiEventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActio
         auto view = aa.asView();
         if (view)
         {
-            view->getCamera()->setPreDrawCallback(new PreDrawOp(*this));
-            view->getCamera()->setPostDrawCallback(new PostDrawOp(*this));
+            osg::Camera* camera = view->getNumSlaves() > 0 ? view->getSlave(0)._camera : view->getCamera();
+            camera->setPreDrawCallback(new PreDrawOp(*this));
+            camera->setPostDrawCallback(new PostDrawOp(*this));
             _initialized = true;
             return false;
         }
@@ -250,11 +265,7 @@ bool ImGuiEventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActio
 
         if (io.WantCaptureKeyboard || c == ea.KEY_Return)
         {
-            // first apply any modifiers:
-            io.AddKeyEvent(ImGuiMod_Ctrl, (ea.getModKeyMask() & ea.MODKEY_CTRL) != 0);
-            io.AddKeyEvent(ImGuiMod_Shift, (ea.getModKeyMask() & ea.MODKEY_SHIFT) != 0);
-            io.AddKeyEvent(ImGuiMod_Alt, (ea.getModKeyMask() & ea.MODKEY_ALT) != 0);
-            io.AddKeyEvent(ImGuiMod_Super, (ea.getModKeyMask() & ea.MODKEY_SUPER) != 0);
+            applyModifiers(ea, io);
 
             // map the OSG key code to the ImGui key code and send to imgui:
             auto imgui_key = convertKey(c);
@@ -283,6 +294,8 @@ bool ImGuiEventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActio
     {
         if (io.WantCaptureMouse)
         {
+            applyModifiers(ea, io);
+
             auto imgui_button = convertMouseButton(ea.getButtonMask());
             io.AddMousePosEvent(ea.getX(), io.DisplaySize.y - ea.getY());
             io.AddMouseButtonEvent(imgui_button, true); // true = press
@@ -305,17 +318,19 @@ bool ImGuiEventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActio
     case (osgGA::GUIEventAdapter::DRAG):
     case (osgGA::GUIEventAdapter::MOVE):
     {
+        applyModifiers(ea, io);
         io.AddMousePosEvent(ea.getX(), io.DisplaySize.y - ea.getY());
         return io.WantCaptureMouse;
     }
 
     case (osgGA::GUIEventAdapter::SCROLL):
     {
+        applyModifiers(ea, io);
         auto scrolling = ea.getScrollingMotion() == osgGA::GUIEventAdapter::SCROLL_UP ? 1.0 : -1.0;
         io.AddMouseWheelEvent(0.0, io.MouseWheel += scrolling);
         return io.WantCaptureMouse;
     }
-        }
+    }
 
     return false;
 }

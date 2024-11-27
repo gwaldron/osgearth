@@ -77,8 +77,14 @@ namespace osgEarth
         virtual void draw(osg::RenderInfo& renderInfo) = 0;
 
         void newFrame(osg::RenderInfo& renderInfo);
+
         void render(osg::RenderInfo& renderInfo);
+
         bool _show = true;
+
+        // called by the handler upon ImGui initialization - you can access
+        // ImGui::GetIO() safely from here.
+        std::function<void()> onStartup = nullptr;
 
     protected:
         bool _dirtySettings = false;

@@ -235,7 +235,7 @@ bool ImGuiEventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActio
         auto view = aa.asView();
         if (view)
         {
-            osg::Camera* camera = view->getNumSlaves() > 0 ? view->getSlave(0)._camera : view->getCamera();
+            osg::Camera* camera = view->getNumSlaves() > 0 ? view->getSlave(0)._camera.get() : view->getCamera();
             camera->setPreDrawCallback(new PreDrawOp(*this));
             camera->setPostDrawCallback(new PostDrawOp(*this));
             _initialized = true;

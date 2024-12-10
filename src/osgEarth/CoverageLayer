@@ -132,11 +132,17 @@ namespace osgEarth
 
                 GeoCoverage<T> result;
 
-                if (!readFromCache(key, result, progress))
-                {
-                    populate(result, key, progress);
-                    writeToCache(key, result, progress);
-                }
+                // got something from the cache? return it
+                if (readFromCache(key, result, progress))
+                    return result;
+                
+                // nothing in the cache, but we're cache-only, so fail silently
+                if (_layer->getCacheSettings()->cachePolicy()->isCacheOnly())
+                    return result;
+
+                // populate the result (and write it to the cache if necessary)
+                populate(result, key, progress);
+                writeToCache(key, result, progress);
 
                 return result;
             }

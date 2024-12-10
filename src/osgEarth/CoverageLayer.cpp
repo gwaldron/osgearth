@@ -58,29 +58,31 @@ CoverageLayer::openImplementation()
     if (parent.isError())
         return parent;
 
-    for (auto& layer : options().layers())
+    if (!getCacheSettings()->cachePolicy()->isCacheOnly())
     {
-        // Try to open it.
-        Status cs = layer.source().open(getReadOptions());
-        if (cs.isError())
-            return cs;
-
-        // Pull this layer's extents from the coverage layer.
-        ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer.source().getLayer());
-        if (!imageLayer)
-            return Status(Status::ResourceUnavailable, "Source must be an image layer");
-
-        // GW: do we really need this? Probably not
-        imageLayer->setUpL2Cache(9u);
-
-        // Force the image source into coverage mode.
-        imageLayer->options().coverage() = true;
-        //imageLayer->setCoverage(true);
-
-        // inherit a profile from the first component layer, why not.
-        if (getProfile() == nullptr)
+        for (auto& layer : options().layers())
         {
-            setProfile(imageLayer->getProfile());
+            // Try to open it.
+            Status cs = layer.source().open(getReadOptions());
+            if (cs.isError())
+                return cs;
+
+            // Pull this layer's extents from the coverage layer.
+            ImageLayer* imageLayer = dynamic_cast<ImageLayer*>(layer.source().getLayer());
+            if (!imageLayer)
+                return Status(Status::ResourceUnavailable, "Source must be an image layer");
+
+            // GW: do we really need this? Probably not
+            imageLayer->setUpL2Cache(9u);
+
+            // Force the image source into coverage mode.
+            imageLayer->options().coverage() = true;
+
+            // inherit a profile from the first component layer, why not.
+            if (getProfile() == nullptr)
+            {
+                setProfile(imageLayer->getProfile());
+            }
         }
     }
 

@@ -67,3 +67,44 @@ StyleSelector::getConfig() const
     conf.set( "query",      _query );
     return conf;
 }
+
+
+
+OSGEARTH_REGISTER_SIMPLE_SYMBOL(select, SelectorSymbol);
+
+SelectorSymbol::SelectorSymbol(const Config& conf) :
+    Symbol(conf)
+{
+    mergeConfig(conf);
+}
+
+SelectorSymbol::SelectorSymbol(const SelectorSymbol& rhs, const osg::CopyOp& copy) :
+    Symbol(rhs, copy),
+    _predicate(rhs._predicate)
+{
+    //nop
+}
+
+Config
+SelectorSymbol::getConfig() const
+{
+    auto conf = Symbol::getConfig();
+    conf.key() = "selector";
+    conf.set("predicate", predicate());
+    return conf;
+}
+
+void
+SelectorSymbol::mergeConfig(const Config& conf)
+{
+    conf.get("predicate", predicate());
+}
+
+void
+SelectorSymbol::parseSLD(const Config& c, Style& style)
+{
+    if (match(c.key(), "select") || match(c.key(), "select-if"))
+    {
+        style.getOrCreate<SelectorSymbol>()->predicate() = c.value();
+    }
+}

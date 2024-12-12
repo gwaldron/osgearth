@@ -1,0 +1,63 @@
+<!--
+osgEarth Sample
+Demonstrates how to select a style name using javascript.
+-->
+
+<map name="Demo: style selectors">
+
+    <options>
+        <terrain color="#004d8f"/>
+    </options>
+
+    <OGRFeatures name="country-data">
+        <url>../data/world.shp</url>
+        <filters>
+            <buffer distance="-0.05"/>
+        </filters>
+    </OGRFeatures>
+
+    <FeatureModel name="countries" features="country-data" pickable="true">        
+        <styles>        
+            <style type="text/css">
+                base { 
+                    altitude-clamping: terrain-drape;
+                    render-backface-culling: false;
+                }
+                    
+                p1 : base { 
+                    select: between(feature.properties.pop, 0, 14045470);
+                    fill: #ff3f3f;
+                }
+                
+                p2 : base {
+                    select: between(feature.properties.pop, 14045470, 43410900);
+                    fill: #3fff3f;
+                }
+                
+                p3 : base {
+                    select: between(feature.properties.pop, 43410900, 97228750);
+                    fill: #ff8f00;
+                }
+                
+                p4 : base {
+                    select: between(feature.properties.pop, 97228750, 258833000);
+                    fill: #ff3fff;
+                }
+                
+                default : base {
+                    fill: #ffff3f;
+                }
+            </style>
+
+            <script language="javascript">
+              <![CDATA[
+                function between(val_as_string, low, high) {
+                    var v = parseFloat(val_as_string);
+                    return low <= v && v < high;
+                }
+              ]]>
+            </script>
+        </styles>        
+    </FeatureModel>
+
+</map>

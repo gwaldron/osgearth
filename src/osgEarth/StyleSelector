@@ -35,7 +35,7 @@ namespace osgEarth
     {
     public:
         /** Constructs a style selector */
-        StyleSelector( const Config& conf =Config() );
+        StyleSelector(const Config& conf = Config());
 
         /** Constructs a style selector with a name and expression */
         StyleSelector(const std::string& name, const StringExpression& expr);
@@ -64,7 +64,7 @@ namespace osgEarth
         std::string getSelectedStyleName() const;
 
         //Configurable
-        virtual void mergeConfig( const Config& conf );
+        virtual void mergeConfig(const Config& conf);
         virtual Config getConfig() const;
 
     protected:
@@ -72,6 +72,27 @@ namespace osgEarth
         optional<std::string>      _styleName;
         optional<StringExpression> _styleExpression;
         optional<Query>            _query;
+    };
+
+    class OSGEARTH_EXPORT SelectorSymbol : public Symbol
+    {
+    public:
+        META_Object(osgEarth, SelectorSymbol);
+
+        SelectorSymbol(const Config& conf = {});
+        SelectorSymbol(const SelectorSymbol& rhs, const osg::CopyOp& op);
+
+        //! A predicate function (in a scripting language) that returns true if the style should be selected.
+        OE_OPTION(std::string, predicate);
+
+    public:
+        Config getConfig() const override;
+        void mergeConfig(const Config& conf) override;
+        static void parseSLD(const Config& c, class Style& style);
+
+    protected:
+
+        virtual ~SelectorSymbol() { }
     };
 
 } // namespace osgEarth

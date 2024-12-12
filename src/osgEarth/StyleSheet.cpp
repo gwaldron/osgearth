@@ -35,11 +35,12 @@ StyleSheet::Options::getConfig() const
     Config conf = Layer::Options::getConfig();
 
     conf.remove("selector");
-    for (StyleSelectors::const_iterator i = selectors().begin();
-        i != selectors().end();
-        ++i)
+    for(auto& selector_pair : selectors())
     {
-        conf.add("selector", i->second.getConfig());
+        if (selector_pair.first != "__oe_auto") // do not save the auto-gen one
+        {
+            conf.add("selector", selector_pair.second.getConfig());
+        }
     }
 
     conf.remove("style");
@@ -72,10 +73,19 @@ StyleSheet::Options::getConfig() const
             scriptConf.set("language", _script->language);
         if (_script->uri.isSet())
             scriptConf.set("url", _script->uri->base());
-        //if (!_script->profile.empty())
-        //    scriptConf.set("profile", _script->profile);
         else if (!_script->code.empty())
+        {
+            auto code = _script->code;
+
+            // remove the auto-gen code
+            auto pos = code.find("// __oe_auto__");
+            if (pos != std::string::npos)
+            {
+                code = code.substr(0, pos);
+            }
+
             scriptConf.setValue(_script->code);
+        }
 
         conf.add(scriptConf);
     }
@@ -183,6 +193,51 @@ StyleSheet::Options::fromConfig(const Config& conf)
             Style style(styleConf);
             _styles[style.getName()] = style;
         }
+    }
+
+    // finally, parse each style and see if it contains a "select" symbol. 
+    // if so, automatically add a selector and a script to support each one.
+    StyleSelector* auto_selector = nullptr;
+    std::stringstream auto_script;
+
+    for (auto& style_entry : _styles)
+    {
+        auto& style = style_entry.second;
+        auto* selector_symbol = style.get<SelectorSymbol>();
+        if (selector_symbol)
+        {
+            if (!auto_selector)
+            {
+                auto_selector = new StyleSelector();
+                auto_selector->name() = "__oe_auto";
+                auto_selector->styleExpression() = StringExpression("__oe_select_style()");
+                _selectors[auto_selector->name().get()] = *auto_selector;
+
+                auto_script << "// __oe_auto__\n";
+                auto_script << "function __oe_select_style() {\n";
+            }
+
+            auto_script << "    if (" << selector_symbol->predicate().get() << ") return \"" << style.getName() << "\";\n";
+        }
+    }
+
+    if (auto_selector)
+    {
+        auto_script << "    return 'default';\n}\n";
+        auto new_code = auto_script.str();
+
+        if (!_script)
+        {
+            _script = new ScriptDef();
+            _script->language = "javascript";
+            _script->code = new_code;
+        }
+        else
+        {
+            _script->code = _script->code + "\n\n" + new_code;
+        }
+
+        //OE_INFO << LC << "Generated script:\n" << new_code << std::endl;
     }
 }
 

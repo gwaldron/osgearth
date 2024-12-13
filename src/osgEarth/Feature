@@ -262,7 +262,7 @@ namespace osgEarth
         /**
          * Splits this feature into multiple features if it is a geodetic feature and cross the date line.
          */
-        void splitAcrossDateLine(FeatureList& splitFeatures);
+        void splitAcrossAntimeridian();
 
     protected:
 

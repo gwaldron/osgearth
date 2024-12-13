@@ -1796,10 +1796,13 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         for(FeatureList::iterator itr = input.begin(); itr != input.end(); ++itr)
         {
-            Feature* f = itr->get();
-            FeatureList tmpSplit;
-            f->splitAcrossDateLine(tmpSplit);
-            splitFeatures.insert(splitFeatures.end(), tmpSplit.begin(), tmpSplit.end());
+            osg::ref_ptr<Feature> f = new Feature(*itr->get());
+            f->splitAcrossAntimeridian();
+            splitFeatures.emplace_back(f);
+            //Feature* f = itr->clone(); // itr->get();
+            //FeatureList tmpSplit;
+            //f->splitAcrossDateLine(tmpSplit);
+            //splitFeatures.insert(splitFeatures.end(), tmpSplit.begin(), tmpSplit.end());
         }
     }
     else

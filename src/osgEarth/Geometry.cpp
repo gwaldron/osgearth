@@ -696,6 +696,12 @@ Geometry::close()
         push_back( front() );
 }
 
+Geometry*
+Geometry::splitAcrossAntimeridian()
+{
+    return this;
+}
+
 //void
 //Geometry::forEachPart(bool includePolygonHoles, const std::function<void(Geometry*)>& func)
 //{
@@ -887,6 +893,87 @@ Ring::contains2D( double x, double y ) const
     return result;
 }
 
+namespace
+{
+    template<class RING>
+    void split(const RING* input, osg::ref_ptr<RING>& left, osg::ref_ptr<RING>& right, bool& is_left, int& ptr)
+    {
+        // check the current side's back() against the next point in the input.
+        RING* current = is_left ? left.get() : right.get();
+        auto& p0 = current->back();
+        auto& p1 = (*input)[ptr];
+
+        if (p0.x() > 90.0 && p1.x() < -90.0)
+        {
+            // we're crossing the dateline. Split the segment.
+            double t = (180.0 - p0.x()) / ((p1.x() + 360.0) - p0.x());
+            double y = p0.y() + t * (p1.y() - p0.y());
+            left->push_back(osg::Vec3d(180.0, y, 0.0));
+            right->push_back(osg::Vec3d(-180.0, y, 0.0));
+            is_left = !is_left;
+            if (is_left) left->push_back(p1); else right->push_back(p1);
+            while (ptr < input->size() - 1)
+                split(input, left, right, is_left, ++ptr);
+        }
+        else if (p0.x() < -90.0 && p1.x() > 90.0)
+        {
+            // we're crossing the dateline. Split the segment.
+            double t = (180.0 - p1.x()) / ((p0.x() + 360.0) - p1.x());
+            double y = p1.y() + t * (p0.y() - p1.y());
+            left->push_back(osg::Vec3d(180.0, y, 0.0));
+            right->push_back(osg::Vec3d(-180.0, y, 0.0));
+            is_left = !is_left;
+            if (is_left) left->push_back(p1); else right->push_back(p1);
+            while (ptr < input->size() - 1)
+                split(input, left, right, is_left, ++ptr);
+        }
+        else
+        {
+            current->push_back(p1);
+        }
+    }
+
+    template<class RING>
+    void split(const RING* input, osg::ref_ptr<RING>& left, osg::ref_ptr<RING>& right)
+    {
+        left = new RING();
+        right = new RING();
+
+        int ptr = 0;
+        bool is_left = (*input)[0].x() > 0.0;
+        if (is_left)
+            left->push_back((*input)[0]);
+        else
+            right->push_back((*input)[0]);
+
+        while (ptr < input->size() - 1)
+        {
+            split(input, left, right, is_left, ++ptr);
+        }
+    }
+}
+
+Geometry*
+Ring::splitAcrossAntimeridian()
+{
+    if (size() < 3)
+        return this;
+
+    osg::ref_ptr<Ring> left, right;
+    split(this, left, right);
+
+    if (left->size() > 0 && right->size() > 0)
+    {
+        auto mg = new MultiGeometry();
+        mg->add(left);
+        mg->add(right);
+    }
+    else
+    {
+        return this;
+    }
+}
+
 //----------------------------------------------------------------------------
 
 Polygon::Polygon(const Polygon& rhs) :
@@ -965,6 +1052,38 @@ Polygon::getSignedDistance2D(const osg::Vec3d& a) const
         r = std::min(r, hole->getSignedDistance2D(a));
 
     return r;
+}
+
+Geometry*
+Polygon::splitAcrossAntimeridian()
+{
+    if (size() < 3)
+        return this;
+
+    osg::ref_ptr<Polygon> left, right;
+    split(this, left, right);
+
+    if (left->size() > 0 && right->size() > 0)
+    {
+        for (auto& hole : _holes)
+        {
+            osg::ref_ptr<Ring> leftHole, rightHole;
+            split(hole.get(), leftHole, rightHole);
+            if (leftHole->size() > 0)
+                left->_holes.push_back(hole);
+            if (rightHole->size() > 0)
+                right->_holes.push_back(hole);
+        }
+
+        auto mg = new MultiGeometry();
+        mg->add(left);
+        mg->add(right);
+        return mg;
+    }
+    else
+    {
+        return this;
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -1143,6 +1262,32 @@ MultiGeometry::contains2D(double x, double y) const
             return true;
     }
     return false;
+}
+
+Geometry*
+MultiGeometry::splitAcrossAntimeridian()
+{
+    osg::ref_ptr<MultiGeometry> mg;
+
+    for (const auto& part : _parts)
+    {
+        auto* split = part->splitAcrossAntimeridian();
+        if (split != part)
+        {
+            if (!mg.valid())
+            {
+                mg = new MultiGeometry();
+            }
+
+            // breaks up multigeometries (because you cannot next them)
+            GeometryIterator i(split, false);
+            while (i.hasMore())
+            {
+                auto* part = i.next();
+                mg->add(part);
+            }
+        }
+    }
 }
 
 //----------------------------------------------------------------------------

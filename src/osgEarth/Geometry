@@ -256,6 +256,10 @@ namespace osgEarth
         //! Whether a closed geometry contains the 2D point
         virtual bool contains2D(double x, double y) const { return false; }
 
+        //! Splits the geometry along the antimeridian. Only works for geodetic coordinates.
+        //! Might return "this" if no split is necessary or not applicable.
+        virtual Geometry* splitAcrossAntimeridian();
+
 
         //! Iterate over all the parts of a geometry (signature = void(Geometry* part))
         template<typename CALLABLE>
@@ -390,6 +394,9 @@ namespace osgEarth
 
         double getSignedDistance2D(const osg::Vec3d& a) const override;
 
+        //! split across anitmeridian (geodetic coords only)
+        Geometry* splitAcrossAntimeridian() override;
+
     public:
         virtual Type getType() const { return Geometry::TYPE_RING; }
         virtual bool isValid() const { return size() >= 3; }
@@ -432,6 +439,9 @@ namespace osgEarth
 
         virtual double getSignedDistance2D(
             const osg::Vec3d& a) const override;
+
+        //! split across anitmeridian (geodetic coords only)
+        Geometry* splitAcrossAntimeridian() override;
 
     public:
         RingCollection& getHoles() { return _holes; }
@@ -485,6 +495,9 @@ namespace osgEarth
         void close() override;
         double getSignedDistance2D(const osg::Vec3d& a) const override;
         bool contains2D(double x, double y) const override;
+
+        //! split across anitmeridian (geodetic coords only)
+        Geometry* splitAcrossAntimeridian() override;
 
     public:
         GeometryCollection& getComponents() { return _parts; }

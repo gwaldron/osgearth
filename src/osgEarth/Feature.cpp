@@ -783,46 +783,77 @@ void Feature::transform( const SpatialReference* srs )
     setSRS( srs );
 }
 
-void Feature::splitAcrossDateLine(FeatureList& splitFeatures)
+#if 0
+namespace
 {
-    splitFeatures.clear();
-
-     // If the feature is geodetic, try to split it across the dateline.
-    if (getSRS() && getSRS()->isGeodetic())
+    template<class RING>
+    void split(const RING* input, osg::ref_ptr<RING>& left, osg::ref_ptr<RING>& right, bool& is_left, int& ptr)
     {
-        GeoExtent extent(getSRS(), getGeometry()->getBounds());
-        // Only split the feature if it crosses the antimerdian
-        if (extent.crossesAntimeridian())
+        // check the current side's back() against the next point in the input.
+        RING* current = is_left? left.get() : right.get();
+        auto& p0 = current->back();
+        auto& p1 = (*input)[ptr];
+
+        if (p0.x() > 90.0 && p1.x() < -90.0)
         {
-            // This tries to split features across the dateline in three different zones.  -540 to -180, -180 to 180, and 180 to 540.
-            double minLon = -540;
-            for (int i = 0; i < 3; i++)
-            {
-                double offset = minLon - -180.0;
-                double maxLon = minLon + 360.0;
-                Bounds bounds(minLon, -90.0, 0.0, maxLon, 90.0, 0.0);
-                osg::ref_ptr< Geometry > croppedGeometry;
-                if (getGeometry()->crop(bounds, croppedGeometry))
-                {
-                    // If the geometry was cropped, offset the x coordinate so it's within normal longitude ranges.
-                    for (int j = 0; j < croppedGeometry->size(); j++)
-                    {
-                        (*croppedGeometry)[j].x() -= offset;
-                    }
-                    osg::ref_ptr< Feature > croppedFeature = new Feature(*this);
-                    // Make sure the feature is wound correctly.
-                    croppedGeometry->rewind(osgEarth::Geometry::ORIENTATION_CCW);
-                    croppedFeature->setGeometry(croppedGeometry.get());
-                    splitFeatures.push_back(croppedFeature);
-                }
-                minLon += 360.0;
-            }
+            // we're crossing the dateline. Split the segment.
+            double t = (180.0 - p0.x()) / ((p1.x()+360.0) - p0.x());
+            double y = p0.y() + t * (p1.y() - p0.y());
+            left->push_back(osg::Vec3d(180.0, y, 0.0));
+            right->push_back(osg::Vec3d(-180.0, y, 0.0));
+            is_left = !is_left;
+            if (is_left) left->push_back(p1); else right->push_back(p1);
+            while(ptr < input->size()-1)
+                split(input, left, right, is_left, ++ptr);
+        }
+        else if (p0.x() < -90.0 && p1.x() > 90.0)
+        {
+            // we're crossing the dateline. Split the segment.
+            double t = (180.0 - p1.x()) / ((p0.x() + 360.0) - p1.x());
+            double y = p1.y() + t * (p0.y() - p1.y());
+            left->push_back(osg::Vec3d(180.0, y, 0.0));
+            right->push_back(osg::Vec3d(-180.0, y, 0.0));
+            is_left = !is_left;
+            if (is_left) left->push_back(p1); else right->push_back(p1);
+            while(ptr < input->size()-1)
+                split(input, left, right, is_left, ++ptr);
+        }
+        else
+        {
+            current->push_back(p1);
         }
     }
 
-    // If we didn't actually split the feature then just add the original
-    if (splitFeatures.empty())
+    template<class RING>
+    void split(const RING* input, osg::ref_ptr<RING>& left, osg::ref_ptr<RING>& right)
     {
-        splitFeatures.push_back( this );
+        if (input == nullptr || input->size() < 3)
+            return;
+
+        left = new RING();
+        right = new RING();
+        int ptr = 0;
+        bool is_left = (*input)[0].x() > 0.0;
+        if (is_left)
+            left->push_back((*input)[0]);
+        else
+            right->push_back((*input)[0]);
+
+        while(ptr < input->size()-1)
+        {
+            split(input, left, right, is_left, ++ptr);
+        }
+    }
+}
+#endif
+
+void
+Feature::splitAcrossAntimeridian()
+{
+     // If the feature is geodetic, try to split it across the dateline.
+    if (getSRS() && getSRS()->isGeodetic())
+    {
+        auto* split_geom = getGeometry()->splitAcrossAntimeridian();
+        setGeometry(split_geom);
     }
 }

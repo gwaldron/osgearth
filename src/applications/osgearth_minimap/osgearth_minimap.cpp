@@ -49,50 +49,13 @@ MapNode* makeMiniMapNode( )
     osm->setProfile(Profile::create(Profile::SPHERICAL_MERCATOR));
     map->addLayer(osm);
 
-    TerrainOptions terrainOptions;
-    terrainOptions.lodMethod() = LODMethod::SCREEN_SPACE;
+    MapNode::Options options;
+    options.terrain()->lodMethod() = LODMethod::SCREEN_SPACE;
 
-    MapNode::Options mapNodeOptions;
-    mapNodeOptions.terrain() = terrainOptions;
-
-    MapNode* mapNode = new MapNode(map, mapNodeOptions);
-    mapNode->setEnableLighting(false);
-
-    return mapNode;
+    return new MapNode(map, options);
 }
 
-osg::Node* drawBounds(MapNode* mapNode, osgEarth::GeoExtent& bounds)
-{
-    if (bounds.crossesAntimeridian())
-    {
-        GeoExtent first, second;
-        bounds.splitAcrossAntimeridian(first, second);
-        osg::Group* group = new osg::Group;
-        group->addChild( drawBounds( mapNode, first ) );
-        group->addChild( drawBounds( mapNode, second) );
-        return group;
-    }
-    else
-    {
-        osgEarth::LineString* geom = new osgEarth::LineString();
-        geom->push_back(osg::Vec3d(bounds.xMin(), bounds.yMin(), 0));
-        geom->push_back(osg::Vec3d(bounds.xMax(), bounds.yMin(), 0));
-        geom->push_back(osg::Vec3d(bounds.xMax(), bounds.yMax(), 0));
-        geom->push_back(osg::Vec3d(bounds.xMin(), bounds.yMax(), 0));
-        geom->push_back(osg::Vec3d(bounds.xMin(), bounds.yMin(), 0));
-        osgEarth::Feature* feature = new osgEarth::Feature(geom, osgEarth::SpatialReference::create("wgs84"));
-        Style style;
-        style.getOrCreateSymbol<LineSymbol>()->stroke().mutable_value().color() = Color::Yellow;
-        feature->style() = style;
-        FeatureNode* featureNode = new FeatureNode(feature);
-        featureNode->setMapNode(mapNode);
-
-        featureNode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-        return featureNode;
-    }
-}
-
-osgEarth::GeoExtent getExtent(osgViewer::View* view)
+osgEarth::Feature* getExtent(osgViewer::View* view)
 {
     // Get the corners of all points on the view frustum.  Mostly modified from osgthirdpersonview
     osg::Matrixd proj = view->getCamera()->getProjectionMatrix();
@@ -116,44 +79,53 @@ osgEarth::GeoExtent getExtent(osgViewer::View* view)
 
     double dist = farPlane - nearPlane;
 
-    std::vector< osg::Vec3d > verts;
-    verts.reserve(9);
-
-
-    // Include origin?
-    //verts.push_back(osg::Vec3d(0., 0., 0. ));
-    verts.push_back(osg::Vec3d( nLeft, nBottom, -nearPlane ));
-    verts.push_back(osg::Vec3d( nRight, nBottom, -nearPlane ));
-    verts.push_back(osg::Vec3d( nRight, nTop, -nearPlane ));
-    verts.push_back(osg::Vec3d( nLeft, nTop, -nearPlane ));
-    verts.push_back(osg::Vec3d( fLeft, fBottom, -farPlane ));
-    verts.push_back(osg::Vec3d( fRight, fBottom, -farPlane ));
-    verts.push_back(osg::Vec3d( fRight, fTop, -farPlane ));
-    verts.push_back(osg::Vec3d( fLeft, fTop, -farPlane ));
-
-    const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("epsg:4326");
-
-    // Compute the bounding sphere of the frustum.
-    osg::BoundingSphered bs;
-    for (unsigned int i = 0; i < verts.size(); i++)
-    {
-        osg::Vec3d world = verts[i] * invmv;
-        bs.expandBy( world );
+    int samples = 24;
+    std::vector<osg::Vec3d> verts;
+    verts.reserve(samples * 4 - 4);
+    for (int i = 0; i < samples - 1; ++i) {
+        double j = (double)i / (double)(samples - 1);
+        verts.push_back(osg::Vec3d(nLeft + (nRight - nLeft) * j, nBottom, nearPlane));
+        verts.push_back(osg::Vec3d(fLeft + (fRight - fLeft) * j, fBottom, farPlane));
+    }
+    for (int i = 0; i < samples - 1; ++i) {
+        double j = (double)i / (double)(samples - 1);
+        verts.push_back(osg::Vec3d(nRight, nBottom + (nTop - nBottom) * j, nearPlane));
+        verts.push_back(osg::Vec3d(fRight, fBottom + (fTop - fBottom) * j, farPlane));
+    }
+    for (int i = 0; i < samples - 1; ++i) {
+        double j = (double)i / (double)(samples - 1);
+        verts.push_back(osg::Vec3d(nRight - (nRight - nLeft) * j, nTop, nearPlane));
+        verts.push_back(osg::Vec3d(fRight - (fRight - fLeft) * j, fTop, farPlane));
+    }
+    for (int i = 0; i < samples - 1; ++i) {
+        double j = (double)i / (double)(samples - 1);
+        verts.push_back(osg::Vec3d(nLeft, nTop - (nTop - nBottom) * j, nearPlane));
+        verts.push_back(osg::Vec3d(fLeft, fTop - (fTop - fBottom) * j, farPlane));
     }
 
-    // Get the center of the bounding sphere
-    osgEarth::GeoPoint center;
-    center.fromWorld(srs, bs.center());
+    const auto* wgs84 = osgEarth::SpatialReference::create("epsg:4326");
+    auto& ellip = wgs84->getEllipsoid();
 
-    double radiusDegrees = bs.radius() /= 111000.0;
-    double minLon = center.x() - radiusDegrees;
-    double minLat = osg::clampAbove(center.y() - radiusDegrees, -90.0);
-    double maxLon = center.x() + radiusDegrees;
-    double maxLat = osg::clampBelow(center.y() + radiusDegrees, 90.0);
+    std::vector<osg::Vec3d> points;
+    points.reserve(verts.size() / 2);
 
-    osgEarth::GeoExtent extent(srs, minLon, minLat, maxLon, maxLat);
+    auto ecef = wgs84->getGeocentricSRS();
 
-    return extent;
+    for (int i = 0; i < verts.size() / 2; ++i)
+    {
+        osg::Vec3d p1 = verts[i * 2] * invmv;
+        osg::Vec3d p2 = verts[i * 2 + 1] * invmv;
+        osg::Vec3d out;
+
+        if (ellip.intersectGeocentricLine(p1, p2, out))
+        {
+            ecef->transform(out, wgs84, out);
+            points.push_back(out);
+        }
+    }
+
+    auto poly = new osgEarth::Polygon(&points);
+    return new osgEarth::Feature(poly, wgs84);
 }
 
 int
@@ -217,9 +189,14 @@ main(int argc, char** argv)
         PlaceNode* eyeMarker = new PlaceNode("", markerStyle);
         eyeMarker->setDynamic(true);
         eyeMarker->setPosition(GeoPoint(miniMapNode->getMapSRS(), 0, 0));
-        miniMapNode->addChild( eyeMarker );
+        miniMapNode->addChild(eyeMarker);
 
-        osg::Node* bounds = 0;
+        osg::ref_ptr<FeatureNode> featureNode;
+        Style style;
+        style.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.5);
+        style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Yellow;
+        style.getOrCreate<RenderSymbol>()->depthTest() = false;
+        style.getOrCreate<RenderSymbol>()->maxTessAngle() = Angle(1.0, Units::DEGREES);
 
         while (!viewer.done())
         {
@@ -240,13 +217,19 @@ main(int argc, char** argv)
             //Set the position of the marker
             eyeMarker->setPosition( eyeGeo );
 
-            if (bounds)
+            if (featureNode)
             {
-                miniMapNode->removeChild( bounds );
+                miniMapNode->removeChild(featureNode);
+                featureNode = nullptr;
             }
-            GeoExtent extent = getExtent( mainView );
-            bounds = drawBounds( miniMapNode, extent );
-            miniMapNode->addChild( bounds );
+
+            auto feature = getExtent(mainView);
+
+            if (feature)
+            {
+                featureNode = new FeatureNode(feature, style);
+                miniMapNode->addChild(featureNode);
+            }
 
             viewer.frame();
         }

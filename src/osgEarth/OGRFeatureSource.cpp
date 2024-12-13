@@ -687,7 +687,7 @@ OGRFeatureSource::openImplementation()
         return Status(Status::ResourceUnavailable, "Failed to establish a valid feature profile");
     }
 
-    OE_INFO << LC << getName() << " : opened OK" << std::endl;
+    OE_INFO << getName() << " (" << _source << ") opened OK" << std::endl;
 
     return Status::NoError;
 }

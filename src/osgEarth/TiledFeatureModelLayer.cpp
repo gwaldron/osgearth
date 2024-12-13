@@ -391,7 +391,9 @@ TiledFeatureModelLayer::getProfile() const
     OE_SOFT_ASSERT_AND_RETURN(getFeatureSource() != nullptr, nullptr);
     OE_SOFT_ASSERT_AND_RETURN(getFeatureSource()->getFeatureProfile() != nullptr, nullptr);
 
-    return getFeatureSource()->getFeatureProfile()->getTilingProfile();
+    static const Profile* s_fallback = Profile::create(Profile::GLOBAL_GEODETIC);
+    auto profile = getFeatureSource()->getFeatureProfile()->getTilingProfile();
+    return profile ? profile : s_fallback;
 }
 
 unsigned

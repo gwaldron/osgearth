@@ -45,6 +45,7 @@ namespace osgEarth
             OE_OPTION(float, maxVisibleRange, FLT_MAX);
             OE_OPTION(float, attenuationRange, 0.0f);
             OE_OPTION(ColorBlending, blend, BLEND_INTERPOLATE);
+            OE_OPTION(float, depthOffset, 0.0f);
             OE_OPTION(osg::Node::NodeMask, mask, 0xffffffff);
             OE_OPTION(bool, debugView, false);
             OE_OPTION(bool, useNVGL, false);
@@ -67,6 +68,10 @@ namespace osgEarth
         //! Opacity with which to draw this layer
         virtual void setOpacity(float value);
         float getOpacity() const;
+
+        //! Depth offset in meters
+        virtual void setDepthOffset(float value_meters);
+        float getDepthOffset() const;
 
         //! Minimum camera range at which this image layer is visible (if supported)
         float getMinVisibleRange() const;
@@ -116,7 +121,7 @@ namespace osgEarth
         bool _canSetVisible = true;
 
     private:
-        osg::ref_ptr<osg::Uniform> _opacityU;
+        osg::ref_ptr<osg::Uniform> _opacityU, _depthOffsetU;
         osg::ref_ptr<osg::Uniform> _rangeU;
         osg::ref_ptr<osg::NodeCallback> _noDrawCallback;
         bool _minMaxRangeShaderAdded;

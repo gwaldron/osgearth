@@ -691,6 +691,13 @@ namespace osgEarth
                                     visibleLayer->setAttenuationRange(value);
                             }
 
+                            if (visibleLayer->getNode() != nullptr)
+                            {
+                                float value = visibleLayer->getDepthOffset();
+                                if (ImGuiLTable::SliderFloat("Depth offset", &value, -1.0f, 1.0f, "%.3f", 0))
+                                    visibleLayer->setDepthOffset(value);
+                            }
+
                             bool debugView = visibleLayer->getEnableDebugView();
                             if (ImGuiLTable::Checkbox("Highlight", &debugView)) {
                                 visibleLayer->setEnableDebugView(debugView);

@@ -44,6 +44,15 @@ namespace
         }
     )";
 
+    const char* depthOffsetVS = R"(
+        uniform float oe_VisibleLayer_depthOffset = 0.0;
+        void oe_VisibleLayer_applyDepthOffset(inout vec4 vertex_view)
+        {
+            vec3 vert_dir = normalize(vertex_view.xyz);
+            vertex_view.xyz = vertex_view.xyz - vert_dir * oe_VisibleLayer_depthOffset;
+        }
+    )";
+
     // Shader that incorporates range-based opacity (min/max range with attenuation)
     const char* rangeOpacityVS = R"(
         #pragma import_defines(OE_DISABLE_RANGE_OPACITY)
@@ -127,6 +136,7 @@ VisibleLayer::Options::getConfig() const
     conf.set( "attenuation_range", attenuationRange() );
     conf.set( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
     conf.set( "blend", "modulate", _blend, BLEND_MODULATE );
+    conf.set( "depth_offset", depthOffset() );
     conf.set( "nvgl", useNVGL() );
     return conf;
 }
@@ -142,6 +152,7 @@ VisibleLayer::Options::fromConfig(const Config& conf)
     conf.get( "mask", _mask );
     conf.get( "blend", "interpolate", _blend, BLEND_INTERPOLATE );
     conf.get( "blend", "modulate", _blend, BLEND_MODULATE );
+    conf.get( "depth_offset", depthOffset() );
     conf.get( "nvgl", useNVGL());
 }
 
@@ -303,6 +314,12 @@ VisibleLayer::initializeUniforms()
 
         vp->setFunction("oe_VisibleLayer_initOpacity", opacityVS, VirtualProgram::LOCATION_VERTEX_MODEL);
 
+
+        _depthOffsetU = new osg::Uniform("oe_VisibleLayer_depthOffset", (float)options().depthOffset().get());
+        stateSet->addUniform(_depthOffsetU.get());
+
+        vp->setFunction("oe_VisibleLayer_applyDepthOffset", depthOffsetVS, VirtualProgram::LOCATION_VERTEX_VIEW, 1.1f);
+
         if (options().blend() == BLEND_MODULATE)
         {
             vp->setFunction("oe_VisibleLayer_setOpacity", 
@@ -371,6 +388,20 @@ float
 VisibleLayer::getOpacity() const
 {
     return options().opacity().get();
+}
+
+void
+VisibleLayer::setDepthOffset(float value)
+{
+    options().depthOffset() = value;
+    initializeUniforms();
+    _depthOffsetU->set(value);
+}
+
+float
+VisibleLayer::getDepthOffset() const
+{
+    return options().depthOffset().get();
 }
 
 void

@@ -341,6 +341,15 @@ WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mime
         return false;
     }
 
+    auto feature_srs = getFeatureProfile()->getSRS();
+
+    // GeoJSON is always WGS84 according to spec
+    // https://datatracker.ietf.org/doc/html/rfc7946
+    if (json)
+    {
+        feature_srs = osgEarth::SpatialReference::create("wgs84");
+    }
+
     std::string tmpName;
 
     OGRDataSourceH ds = 0;
@@ -377,9 +386,15 @@ WFSFeatureSource::getFeatures(const std::string& buffer, const std::string& mime
         {
             if (feat_handle)
             {
-                osg::ref_ptr<Feature> f = OgrUtils::createFeature(feat_handle, getFeatureProfile(), *_options->rewindPolygons());
+                osg::ref_ptr<Feature> f = OgrUtils::createFeature(feat_handle, feature_srs,
+                    getFeatureProfile()->geoInterp(), *_options->rewindPolygons());
+
                 if (f.valid() && !isBlacklisted(f->getFID()))
                 {
+                    if (feature_srs != getFeatureProfile()->getSRS())
+                    {
+                        f->transform(getFeatureProfile()->getSRS());
+                    }
                     features.push_back(f.release());
                 }
                 OGR_F_Destroy(feat_handle);

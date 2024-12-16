@@ -201,13 +201,17 @@ TiledFeatureModelLayer::addedToMap(const Map* map)
         _session->setFeatureSource(getFeatureSource());
         _session->setResourceCache(new ResourceCache());
 
-        FeatureSourceIndexOptions indexOptions;
-        indexOptions.enabled() = true;
+        if (options().featureIndexing()->enabled() == true)
+        {
+            FeatureSourceIndexOptions indexOptions;
+            indexOptions.enabled() = true;
+            indexOptions.embedFeatures() = true;
 
-        _featureIndex = new FeatureSourceIndex(
-            getFeatureSource(),
-            Registry::objectIndex(),
-            indexOptions);
+            _featureIndex = new FeatureSourceIndex(
+                getFeatureSource(),
+                Registry::objectIndex(),
+                indexOptions);
+        }
     }
     else
     {

@@ -83,20 +83,15 @@ namespace
 //------------------------------------------------------------------------
 
 
-DepthOffsetOptions::DepthOffsetOptions(const Config& conf) :
-_enabled ( true ),
-_minBias (Distance(100.0, Units::METERS)),
-_maxBias (Distance(10000.0, Units::METERS)),
-_minRange(Distance(1000.0, Units::METERS)),
-_maxRange(Distance(10000000.0, Units::METERS)),
-_auto    ( true )
+DepthOffsetOptions::DepthOffsetOptions(const Config& conf)
 {
-    conf.get( "enabled",   _enabled );
-    conf.get( "min_bias",  _minBias );
-    conf.get( "max_bias",  _maxBias );
-    conf.get( "min_range", _minRange );
-    conf.get( "max_range", _maxRange );
-    conf.get( "auto",      _auto );
+    conf.get("enabled", _enabled);
+    conf.get("range", _range);
+    conf.get("min_bias", _minBias);
+    conf.get("max_bias", _maxBias);
+    conf.get("min_range", _minRange);
+    conf.get("max_range", _maxRange);
+    conf.get("auto", _automatic);
 }
 
 
@@ -104,12 +99,13 @@ Config
 DepthOffsetOptions::getConfig() const
 {
     Config conf("depth_offset");
-    conf.set( "enabled",   _enabled );
-    conf.set( "min_bias",  _minBias );
-    conf.set( "max_bias",  _maxBias );
-    conf.set( "min_range", _minRange );
-    conf.set( "max_range", _maxRange );
-    conf.set( "auto",      _auto );
+    conf.set("enabled", _enabled);
+    conf.set("range", _range);
+    conf.set("min_bias", _minBias);
+    conf.set("max_bias", _maxBias);
+    conf.set("min_range", _minRange);
+    conf.set("max_range", _maxRange);
+    conf.set("auto", _automatic);
     return conf;
 }
 
@@ -117,16 +113,16 @@ DepthOffsetOptions::getConfig() const
 //------------------------------------------------------------------------
 
 DepthOffsetAdapter::DepthOffsetAdapter() :
-_dirty( false )
+    _dirty(false)
 {
     init();
 }
 
 DepthOffsetAdapter::DepthOffsetAdapter(osg::Node* graph) :
-_dirty( false )
+    _dirty(false)
 {
     init();
-    setGraph( graph );
+    setGraph(graph);
 }
 
 void
@@ -150,10 +146,10 @@ DepthOffsetAdapter::setGraph(osg::Node* graph)
 
     bool uninstall =
         (_graph.valid() && _graph->getStateSet()) &&
-        (graphChanging || (_options.enabled() == false));
+        ((graphChanging) || (_options.enabled() == false));
 
     bool install =
-        (graph && graphChanging && _options.enabled() == true);
+        (graph && graphChanging) && _options.enabled() == true;
 
     // shader package:
     Shaders shaders;
@@ -206,11 +202,20 @@ DepthOffsetAdapter::updateUniforms()
 {
     if ( !_supported ) return;
 
-    _paramsUniform->set(osg::Vec4f(
-        (float)_options.minBias()->as(Units::METERS),
-        (float)_options.maxBias()->as(Units::METERS),
-        (float)_options.minRange()->as(Units::METERS),
-        (float)_options.maxRange()->as(Units::METERS)));
+    if (_options.range().isSet())
+    {
+        _paramsUniform->set(osg::Vec4f(0.0, 0.0,
+            (float)_options.range()->as(Units::METERS),
+            (float)_options.range()->as(Units::METERS)));
+    }
+    else
+    {
+        _paramsUniform->set(osg::Vec4f(
+            (float)_options.minBias()->as(Units::METERS),
+            (float)_options.maxBias()->as(Units::METERS),
+            (float)_options.minRange()->as(Units::METERS),
+            (float)_options.maxRange()->as(Units::METERS)));
+    }
 }
 
 void 
@@ -219,7 +224,7 @@ DepthOffsetAdapter::setDepthOffsetOptions(const DepthOffsetOptions& options)
     if ( !_supported ) return;
 
     // if "enabled" changed, reset the graph.
-    bool reinitGraph = ( options.enabled() != _options.enabled() );
+    bool reinitGraph = (options.enabled() != _options.enabled());
 
     _options = options;
 
@@ -236,12 +241,12 @@ DepthOffsetAdapter::setDepthOffsetOptions(const DepthOffsetOptions& options)
 void
 DepthOffsetAdapter::recalculate()
 {
-    if ( _supported && _graph.valid() )
+    if (_supported && _graph.valid())
     {
-        if ( _options.automatic() == true )
+        if (_options.automatic() == true && !_options.range().isSet())
         {
             GeometryAnalysisVisitor v;
-            _graph->accept( v );
+            _graph->accept(v);
             float maxLen = osg::maximum(1.0f, sqrtf(v._segmentAnalyzer._maxLen2));
             _options.minRange() = Distance(sqrtf(maxLen) * 19.0f, Units::METERS);
             _dirty = false;

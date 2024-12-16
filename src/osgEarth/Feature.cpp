@@ -222,7 +222,7 @@ Feature::Feature(const Feature& rhs) : //, const osg::CopyOp& copyOp) :
 
 Feature::Feature(Feature&& rhs) // : osg::Object(rhs)
 {
-    _fid = rhs._fid;
+    _fid = std::move(rhs._fid);
     _attrs = std::move(rhs._attrs);
     _style = std::move(rhs._style);
     _geoInterp = std::move(rhs._geoInterp);

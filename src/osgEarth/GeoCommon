@@ -36,7 +36,8 @@ namespace osgEarth
     enum GeoInterpolation
     {
         GEOINTERP_GREAT_CIRCLE,
-        GEOINTERP_RHUMB_LINE
+        GEOINTERP_RHUMB_LINE,
+        GEOINTERP_DEFAULT = GEOINTERP_RHUMB_LINE
     };
 
     /**

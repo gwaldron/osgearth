@@ -373,6 +373,9 @@ FeatureSource::createFeatureCursor(
                 for(auto& feature : features)
                 {
                     std::string attr = feature->getString(options().fidAttribute().get());
+                    for (auto& c : attr)
+                        if (!isdigit(c))
+                            c = ' ';
                     feature->setFID(as<FeatureID>(attr, 0));
                 }
                 result = new FeatureListCursor(std::move(features));

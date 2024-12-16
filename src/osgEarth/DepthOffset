@@ -61,40 +61,29 @@ namespace osgEarth
         DepthOffsetOptions(const Config& conf =Config());
 
     public:
-        /** whether to enable depth offsetting (when applicable) */
-        optional<bool>& enabled() { return _enabled; }
-        const optional<bool>& enabled() const { return _enabled; }
+        //! whether to enable depth offsetting (when applicable)
+        OE_OPTION(bool, enabled, true);
 
-        /** depth bias (in meters) applied at the minimum camera range. */
-        optional<Distance>& minBias() { return _minBias; }
-        const optional<Distance>& minBias() const { return _minBias; }
+        //! a static depth offset distance (in meters) to apply to all geometry.
+        OE_OPTION(Distance, range, Distance(0.1, Units::METERS));
 
-        /** depth bias (in meters) applied at the maximum camera range. */
-        optional<Distance>& maxBias() { return _maxBias; }
-        const optional<Distance>& maxBias() const { return _maxBias; }
+        //! depth bias (in meters) applied at the minimum camera range.
+        OE_OPTION(Distance, minBias, Distance(100, Units::METERS));
 
-        /** camera range (in meters) at which to apply the minimum depth bias. */
-        optional<Distance>& minRange() { return _minRange; }
-        const optional<Distance>& minRange() const { return _minRange; }
+        //! depth bias (in meters) applied at the maximum camera range.
+        OE_OPTION(Distance, maxBias, Distance(10000, Units::METERS));
 
-        /** camera range (in meters) at which to apply the maximum depth bias. */
-        optional<Distance>& maxRange() { return _maxRange; }
-        const optional<Distance>& maxRange() const { return _maxRange; }
+        //! camera range (in meters) at which to apply the minimum depth bias.
+        OE_OPTION(Distance, minRange, Distance(1000, Units::METERS));
 
-        /** automatic calculation of the minRange based on geometry analysis */
-        optional<bool>& automatic() { return _auto; }
-        const optional<bool>& automatic() const { return _auto; }
+        //! camera range (in meters) at which to apply the maximum depth bias.
+        OE_OPTION(Distance, maxRange, Distance(10000000, Units::METERS));
+
+        //! automatic calculation of the minRange based on geometry analysis
+        OE_OPTION(bool, automatic, true);
 
     public:
         Config getConfig() const;
-
-    private:
-        optional<bool>  _enabled;
-        optional<Distance> _minBias;
-        optional<Distance> _maxBias;
-        optional<Distance> _minRange;
-        optional<Distance> _maxRange;
-        optional<bool>  _auto;
     };
 }
 

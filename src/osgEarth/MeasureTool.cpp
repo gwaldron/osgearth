@@ -105,7 +105,6 @@ MeasureToolHandler::rebuild()
 
     // offset to mitigate Z fighting
     RenderSymbol* render = _feature->style().mutable_value().getOrCreate<RenderSymbol>();
-    render->depthOffset().mutable_value().enabled() = true;
     render->depthOffset().mutable_value().automatic() = true;
 
     // define a style for the line

@@ -47,17 +47,15 @@ namespace osgEarth { namespace Util
 
         static OGRGeometryH createOgrGeometry(const Geometry* geometry, OGRwkbGeometryType requestedType = wkbUnknown);
 
-        static Feature* createFeature( OGRFeatureH handle, const FeatureProfile* profile, bool rewindPolygons = true);
+        static Feature* createFeature( OGRFeatureH handle, const SpatialReference* srs, const optional<GeoInterpolation>& interp, bool rewindPolygons = true);
     
+        static Feature* createFeature(OGRFeatureH handle, const SpatialReference* srs, bool rewindPolygons);
+
         static AttributeType getAttributeType( OGRFieldType type );
 
         static OGRwkbGeometryType getOGRGeometryType(const Geometry::Type& type);
     
         static OGRwkbGeometryType getOGRGeometryType(const Geometry* geometry);
-
-    private:
-    
-        static Feature* createFeature( OGRFeatureH handle, const SpatialReference* srs, bool rewindPolygons);
     };
 } }
 

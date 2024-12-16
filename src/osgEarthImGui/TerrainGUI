@@ -377,7 +377,7 @@ namespace osgEarth
             measureStyle.getOrCreate<LineSymbol>()->tessellation() = (_clamp_measure ? 64 : 0);
             measureStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
             measureStyle.getOrCreate<AltitudeSymbol>()->technique() = AltitudeSymbol::TECHNIQUE_SCENE;
-            measureStyle.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().enabled() = true;
+            measureStyle.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().automatic() = true;
 
             _measureFeature = new Feature(new LineString(), _mapNode->getMapSRS());
             _measureCursor = new FeatureNode(_measureFeature.get(), measureStyle);

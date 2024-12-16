@@ -281,7 +281,8 @@ OGR::OGRFeatureCursor::readChunk()
                     OGR_F_SetGeometry(handle, intersection);
                 }
                 */
-                osg::ref_ptr<Feature> feature = OgrUtils::createFeature( handle, _profile.get(), _rewindPolygons);
+                osg::ref_ptr<Feature> feature = OgrUtils::createFeature(
+                    handle, _profile->getSRS(), _rewindPolygons);
 
                 if (feature.valid())
                 {
@@ -935,7 +936,12 @@ OGRFeatureSource::getFeature(FeatureID fid)
         OGRFeatureH handle = OGR_L_GetFeature(_layerHandle, fid);
         if (handle)
         {
-            result = OgrUtils::createFeature(handle, getFeatureProfile(), *_options->rewindPolygons());
+            result = OgrUtils::createFeature(
+                handle,
+                getFeatureProfile()->getSRS(),
+                getFeatureProfile()->geoInterp(),
+                *_options->rewindPolygons());
+
             OGR_F_Destroy(handle);
         }
     }

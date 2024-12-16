@@ -170,7 +170,7 @@ int main(int argc, char** argv)
         ls->tessellationSize()  = Distance(100, Units::KILOMETERS);
 
         RenderSymbol* render = style.getOrCreate<RenderSymbol>();
-        render->depthOffset().mutable_value().enabled() = true;
+        render->depthOffset().mutable_value().automatic() = true;
     }
 
     if (useRaster)

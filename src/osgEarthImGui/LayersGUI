@@ -904,6 +904,7 @@ namespace osgEarth
 
                             if (ImGui::Button("Refresh"))
                             {
+                                Registry::instance()->clearBlacklist();
                                 layer->dirty();
                                 auto cp = layer->getCachePolicy();
                                 cp.minTime() = DateTime().asTimeStamp();

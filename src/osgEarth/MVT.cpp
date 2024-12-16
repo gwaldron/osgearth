@@ -256,7 +256,7 @@ namespace osgEarth { namespace MVT
 
                     // Close the ring.
                     currentRing->close();
-
+                    
                     // New polygon
                     if (area > 0)
                     {
@@ -437,6 +437,7 @@ namespace osgEarth { namespace MVT
                     }
                     else
                     {
+                        OE_SOFT_ASSERT(false, "MVT: unsupported geometry type \"" << feature.type() << "\"");
                         geometry = decodeLine(feature, key, layer.extent());
                     }
 

@@ -496,18 +496,18 @@ OgrUtils::createOgrGeometry(const osgEarth::Geometry* geometry, OGRwkbGeometryTy
 }
 
 Feature*
-OgrUtils::createFeature(OGRFeatureH handle, const FeatureProfile* profile, bool rewindPolygons)
+OgrUtils::createFeature(OGRFeatureH handle, const SpatialReference* srs, const optional<GeoInterpolation>& interp, bool rewindPolygons)
 {
     Feature* f = 0L;
-    if ( profile )
+    if ( srs )
     {
-        f = createFeature( handle, profile->getSRS(), rewindPolygons);
-        if ( f && profile->geoInterp().isSet() )
-            f->geoInterp() = profile->geoInterp().get();
+        f = createFeature( handle, srs, rewindPolygons);
+        if (f && interp.isSet())
+            f->geoInterp() = interp.value();
     }
     else
     {
-        f = createFeature( handle, (const SpatialReference*)0L, rewindPolygons);
+        f = createFeature( handle, (const SpatialReference*)nullptr, interp, rewindPolygons);
     }
     return f;
 }

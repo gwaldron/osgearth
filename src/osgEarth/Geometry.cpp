@@ -967,6 +967,7 @@ Ring::splitAcrossAntimeridian()
         auto mg = new MultiGeometry();
         mg->add(left);
         mg->add(right);
+        return mg;
     }
     else
     {
@@ -1288,6 +1289,8 @@ MultiGeometry::splitAcrossAntimeridian()
             }
         }
     }
+
+    return mg;
 }
 
 //----------------------------------------------------------------------------

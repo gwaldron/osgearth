@@ -528,7 +528,6 @@ namespace osgEarth
                 ditchStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color(1, 1, 0, 0.65f);
                 ditchStyle.getOrCreate<LineSymbol>()->stroke()->lineCap() = Stroke::LINECAP_ROUND;
                 ditchStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-                ditchStyle.getOrCreate<RenderSymbol>()->depthOffset()->enabled() = true;
                 ditchStyle.getOrCreate<RenderSymbol>()->depthOffset()->automatic() = true;
                 _ditchFeature = new Feature(new LineString(), SpatialReference::get("spherical-mercator"), ditchStyle);
                 _ditchCursor = new FeatureNode(_ditchFeature.get());

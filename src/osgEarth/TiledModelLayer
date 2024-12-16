@@ -102,6 +102,8 @@ namespace osgEarth
         // NVGL support:
         osg::ref_ptr<TextureArena> _textures;
         mutable ChonkFactory _chonkFactory;
+        mutable std::vector<Texture::WeakPtr> _texturesCache;
+        mutable std::mutex _texturesCacheMutex;
 
     private:
         osg::observer_ptr< const Map > _map;

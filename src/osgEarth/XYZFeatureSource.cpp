@@ -174,30 +174,8 @@ XYZFeatureSource::createFeatureCursorImplementation(const Query& query, Progress
 
     if (dataOK)
     {
-        OE_DEVEL << LC << "Read " << features.size() << " features" << std::endl;
+        OE_DEVEL << LC << "Tile " << query.tileKey()->str() << " read " << features.size() << " features" << std::endl;
     }
-
-#if 0
-    //If we have any filters, process them here before the cursor is created
-    if (!getFilters().empty() && !features.empty())
-    {
-        FilterContext cx;
-        cx.setProfile(getFeatureProfile());
-        cx.extent() = query.tileKey()->getExtent();
-        cx = getFilters().push(features, cx);
-    }
-
-    // If we have any features and we have an fid attribute, override the fid of the features
-    if (options().fidAttribute().isSet())
-    {
-        for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
-        {
-            std::string attr = itr->get()->getString(options().fidAttribute().get());
-            FeatureID fid = as<FeatureID>(attr, 0);
-            itr->get()->setFID(fid);
-        }
-    }
-#endif
 
     result = dataOK ? new FeatureListCursor(std::move(features)) : nullptr;
 
@@ -223,10 +201,13 @@ XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
     }
     else
     {
+        bool json = isJSON(mimeType);
+        bool gml = isGML(mimeType);
+
         // find the right driver for the given mime type
         OGRSFDriverH ogrDriver =
-            isJSON(mimeType) ? OGRGetDriverByName("GeoJSON") :
-            isGML(mimeType) ? OGRGetDriverByName("GML") :
+            json ? OGRGetDriverByName("GeoJSON") :
+            gml ? OGRGetDriverByName("GML") :
             0L;
 
         // fail if we can't find an appropriate OGR driver:
@@ -245,11 +226,26 @@ XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
             return false;
         }
 
+        // debugging.
+        //auto k = key.str();
+        //replaceIn(k, "/", "_");
+        //std::ofstream out("out/" + k + ".json");
+        //out.write(buffer.c_str(), buffer.length());
+        //out.flush();
+        //out.close();
+        //replaceIn(k, "_", "");
+
         // read the feature data.
         OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
         if (layer)
         {
-            const SpatialReference* srs = getFeatureProfile()->getSRS();
+            auto feature_srs = getFeatureProfile()->getSRS();
+            // GeoJSON is always WGS84 according to spec
+            // https://datatracker.ietf.org/doc/html/rfc7946
+            if (json)
+            {
+                feature_srs = osgEarth::SpatialReference::create("wgs84");
+            }
 
             OGR_L_ResetReading(layer);
             OGRFeatureH feat_handle;
@@ -257,9 +253,16 @@ XYZFeatureSource::getFeatures(const std::string& buffer, const TileKey& key, con
             {
                 if (feat_handle)
                 {
-                    osg::ref_ptr<Feature> f = OgrUtils::createFeature(feat_handle, getFeatureProfile(), *_options->rewindPolygons());
-                    if (f.valid() && !isBlacklisted(f->getFID()))
+                    osg::ref_ptr<Feature> f = OgrUtils::createFeature(feat_handle, feature_srs,
+                        getFeatureProfile()->geoInterp(), *_options->rewindPolygons());
+
+                    if (f.valid())
                     {
+                        if (feature_srs != getFeatureProfile()->getSRS())
+                        {
+                            f->transform(getFeatureProfile()->getSRS());
+                        }
+
                         features.push_back(f.release());
                     }
                     OGR_F_Destroy(feat_handle);

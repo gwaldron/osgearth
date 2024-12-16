@@ -41,22 +41,16 @@ namespace osgEarth
     public:
         FeatureSourceIndexOptions(const Config& conf =Config());
 
-        /** Whether indexing is enabled. */
-        optional<bool>& enabled() { return _enabled; }
-        const optional<bool>& enabled() const { return _enabled; }
+        //! Whether indexing is enabled.
+        OE_OPTION(bool, enabled, false);
 
-        /** Whether to embed the actual Feature objects in the index (instead of
-         *  just the FeatureID). This is useful for feature sources that cannot
-         *  be queried by ID (e.g., streaming data like TFS) */
-        optional<bool>& embedFeatures() { return _embedFeatures; }
-        const optional<bool>& embedFeatures() const { return _embedFeatures; }
+        //! Whether to embed the actual Feature objects in the index (instead of
+        //! just the FeatureID). This is useful for feature sources that cannot
+        //! be queried by ID (e.g., streaming data like TFS)
+        OE_OPTION(bool, embedFeatures, false);
 
     public:
         Config getConfig() const;
-
-    private:
-        optional<bool> _enabled;
-        optional<bool> _embedFeatures;
     };
 
     struct RefIDPair : public osg::Referenced

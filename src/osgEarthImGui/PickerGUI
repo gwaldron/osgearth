@@ -21,6 +21,7 @@
 #include <osgEarthImGui/ImGuiApp>
 #include <osgEarth/ObjectIDPicker>
 #include <osgEarth/MetadataNode>
+#include <cinttypes>
 
 namespace osgEarth
 {
@@ -145,7 +146,7 @@ namespace osgEarth
                         ImGui::Separator();
                         ImGui::Text("Picked Feature:");
                         ImGuiLTable::Begin("picked feature", ImGuiTableFlags_Borders);
-                        ImGuiLTable::Text("FID", "%ld", _pickedFeature->getFID());
+                        ImGuiLTable::Text("FID", "%" PRIu64 , _pickedFeature->getFID());
                         for (auto& attr : _pickedFeature->getAttrs())
                         {
                             ImGuiLTable::Text(attr.first.c_str(), "%s", attr.second.getString().c_str());

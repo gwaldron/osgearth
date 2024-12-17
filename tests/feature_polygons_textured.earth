@@ -1,0 +1,43 @@
+<!--
+osgEarth Sample
+Demonstrates how to select a style name using javascript.
+-->
+
+<map name="Demo: style selectors">
+
+    <options>
+        <terrain color="#004d8f"/>
+    </options>
+
+    <OGRFeatures name="country-data">
+        <url>../data/world.shp</url>
+        <filters>
+            <buffer distance="-0.05"/>
+        </filters>
+    </OGRFeatures>
+
+    <FeatureModel name="countries" features="country-data" pickable="true">        
+        <styles>        
+            <library name="assets">
+                <skin name="flag_us">
+                    <url>../data/flag_us.png</url>
+                    <tiled>true</tiled>
+                    <image_width>1000000</image_width>
+                    <image_height>500000</image_height>
+                    <texture_mode>decal</texture_mode>
+                </skin>
+            </library>
+            
+            <style type="text/css">
+                us {
+                    select: feature.properties.name === 'United States';
+                    skin-library: assets;
+                    skin: flag_us;
+                    altitude-clamping: terrain-drape;
+                    render-max-tess-angle: 2.0;
+                }
+            </style>
+        </styles>        
+    </FeatureModel>
+
+</map>

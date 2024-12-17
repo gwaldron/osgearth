@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H
-#define OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Feature>
@@ -119,14 +117,7 @@ namespace osgEarth { namespace Util
             bool                    makeECEF,
             bool                    tessellate,
             osg::Geometry*          osgGeom,
-            const osg::Matrixd      &world2local);
-        
-        void buildPolygon(
-            Geometry*               input,
-            const SpatialReference* featureSRS,
-            const SpatialReference* mapSRS,
-            bool                    makeECEF,
-            osg::Geometry*          osgGeom,
+            const SkinResource*     skinResource,
             const osg::Matrixd      &world2local);
 
         osg::Geode* processPolygons        (FeatureList& input, FilterContext& cx);
@@ -136,5 +127,3 @@ namespace osgEarth { namespace Util
         osg::Geode* processMeshes(FeatureList& input, FilterContext& cx);
     };
 } }
-
-#endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

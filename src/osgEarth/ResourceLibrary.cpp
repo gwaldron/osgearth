@@ -259,7 +259,7 @@ ResourceLibrary::matches( const SkinSymbol* q, SkinResource* s ) const
 {
     if ( q->name().isSet() )
     {
-        return osgEarth::ciEquals(q->name()->eval(), s->name());
+        return osgEarth::ciEquals(q->name()->eval(), s->name().value());
     }
 
     if (q->objectHeight().isSet())

@@ -77,6 +77,18 @@ namespace osgEarth
             conf.set("opacity", opacity());
             return conf;
         }
+
+        //! Returns true if the material is "simple" (i.e., has only a color map)
+        bool isSimple() const
+        {
+            return color().isSet() && 
+                !normal().isSet() && 
+                !roughness().isSet() && 
+                !ao().isSet() && 
+                !metal().isSet() && 
+                !displacement().isSet() && 
+                !opacity().isSet();
+        }
     };
 
     /**

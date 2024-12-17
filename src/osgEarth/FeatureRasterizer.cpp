@@ -556,7 +556,7 @@ namespace osgEarth {
                             osg::ref_ptr< osg::Image > image = skin->image().get();
                             if (!image.valid())
                             {
-                                image = skin->createImage(nullptr);
+                                image = skin->createColorImage(nullptr);
                             }
                             if (image.valid())
                             {

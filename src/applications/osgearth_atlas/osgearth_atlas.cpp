@@ -263,7 +263,7 @@ show(osg::ArgumentParser& arguments)
             if (drawLabels)
             {
                 osgText::Text* label = new osgText::Text();
-                label->setText(skins[k]->name());
+                label->setText(skins[k]->name().value());
                 label->setPosition(osg::Vec3(x+0.5*s, -0.005f, y+0.5*t));
                 label->setAlignment(label->CENTER_CENTER);
                 label->setAutoRotateToScreen(true);

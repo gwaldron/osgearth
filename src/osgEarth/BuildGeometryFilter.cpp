@@ -34,6 +34,7 @@
 #include <osgEarth/PointDrawable>
 #include <osgEarth/StateSetCache>
 #include <osgEarth/Registry>
+#include <osgEarth/StyleSheet>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineStipple>
@@ -255,6 +256,43 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
         makeECEF   = context.getOutputSRS()->isGeographic();
     }
 
+    // if there's a skin, set that up.
+    // (TODO? only works for stylesheet-level symbols, not per-feature symbols)
+    auto* skin_symbol = _style.get<SkinSymbol>();
+    osg::ref_ptr<SkinResource> skin_res = nullptr;
+    osg::ref_ptr<osg::StateSet> skin_stateset;
+
+    if (skin_symbol && skin_symbol->library().isSet())
+    {
+        auto sheet = context.getSession() ? context.getSession()->styles() : nullptr;
+        if (sheet)
+        {
+            osg::ref_ptr<ResourceLibrary> res_lib = sheet->getResourceLibrary(skin_symbol->library().value());
+            if (res_lib.valid())
+            {
+                // TODO: move this into the feature loop to support per-feature styling...
+                skin_res = res_lib->getSkin(skin_symbol->name()->eval(), context.getDBOptions());
+                if (skin_res)
+                {
+                    context.resourceCache()->getOrCreateStateSet(skin_res, skin_stateset, context.getDBOptions());
+                }
+                else
+                {
+                    OE_WARN << LC << "Unable to find skin '" << skin_symbol->name()->eval() << "'"
+                        << "in library; geometry will have no textures." << std::endl;
+                    skin_symbol = nullptr;
+                }
+            }
+            else
+            {
+                OE_WARN << LC << "Unable to load resource library '" << skin_symbol->library().value() << "'"
+                    << "; geometry will have no textures." << std::endl;
+                skin_symbol = nullptr;
+            }
+        }
+    }
+
+    // ready, time to iterate the features.
     for( FeatureList::iterator f = features.begin(); f != features.end(); ++f )
     {
         Feature* input = f->get();
@@ -306,6 +344,11 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
                 osgGeom->setName( name );
             }
 
+            // apply the skin if there is one.
+            if (skin_stateset.valid())
+            {
+                osgGeom->setStateSet(skin_stateset);
+            }
 
             // compute localizing matrices or use globals
             osg::Matrixd w2l, l2w;
@@ -327,7 +370,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
                 hats->push_back( i->z() );
 
             // build the geometry:
-            tileAndBuildPolygon(part, featureSRS, outputSRS, makeECEF, true, osgGeom.get(), w2l);
+            tileAndBuildPolygon(part, featureSRS, outputSRS, makeECEF, true, osgGeom.get(), skin_res, w2l);
 
             osg::Vec3Array* allPoints = static_cast<osg::Vec3Array*>(osgGeom->getVertexArray());
             if (allPoints && allPoints->size() > 0)
@@ -378,7 +421,7 @@ BuildGeometryFilter::processPolygons(FeatureList& features, FilterContext& conte
             }
             else
             {
-                OE_TEST << LC << "Oh no. buildAndTilePolygon returned nothing.\n";
+                OE_TEST << LC << "Oh no. tileAndBuildPolygon returned nothing.\n";
             }
         }
     }
@@ -1135,13 +1178,25 @@ BuildGeometryFilter::tileAndBuildPolygon(
     bool                    makeECEF,
     bool                    tessellate,
     osg::Geometry*          osgGeom,
+    const SkinResource*     skin_res,
     const osg::Matrixd&     world2local)
 {
     OE_SOFT_ASSERT_AND_RETURN(input != nullptr, void());
     OE_SOFT_ASSERT_AND_RETURN(input->getType() != Geometry::TYPE_MULTI, void());
 
+    const double circum = 40041000.0; //m
+    double ref_x = 0.0, ref_y = 0.0;
+
     osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array();
     verts->reserve(input->getTotalPointCount());
+
+    osg::ref_ptr<osg::Vec2Array> uvs;
+    if (skin_res)
+    {
+        uvs = new osg::Vec2Array();
+        uvs->reserve(verts->size());
+        osgGeom->setTexCoordArray(0, uvs.get());
+    }
 
     // hard copy so we can project the values
     osg::ref_ptr<Geometry> proj = input->clone();
@@ -1174,6 +1229,7 @@ BuildGeometryFilter::tileAndBuildPolygon(
         // of the centroid) and that is way too slow.
         auto local_geom = proj; // working copy
         Bounds local_ex;
+        Bounds geo_ex;
         double z = -DBL_MAX;
         GeometryIterator iter(local_geom.get());
         while (iter.hasMore())
@@ -1182,10 +1238,21 @@ BuildGeometryFilter::tileAndBuildPolygon(
             inputSRS->transform(part->asVector(), outputSRS); // to geographic
             for (auto& p : *part)
             {
+                geo_ex.expandBy(p);
                 geo_to_gnomonic(p, centroid, gnomonic_scale);
                 local_ex.expandBy(p);
                 z = std::max(z, p.z());
             }
+        }
+
+        // calculate a UV reference point close to the centroid of the geometry.
+        if (skin_res)
+        {
+            auto geo_ex_anchor = geo_ex.center();
+            auto x = circum * (geo_ex_anchor.x() + 180.0) / 360.0;
+            auto y = (0.5 * circum) * (geo_ex_anchor.y() + 90.0) / 180.0;
+            ref_x = x - fmod(x, skin_res->imageWidth().value());
+            ref_y = y - fmod(y, skin_res->imageHeight().value());
         }
 
         // start with a weemesh covering the feature extent.
@@ -1264,12 +1331,21 @@ BuildGeometryFilter::tileAndBuildPolygon(
         // Finally we convert from gnomonic back to localized tile coordinates.
         osg::ref_ptr<osg::Vec3Array> new_verts = new osg::Vec3Array();
         new_verts->reserve(m.verts.size());
-        osg::Vec3d temp;
-        for (auto& v : m.verts)
+        osg::Vec3d ecef;
+        for (auto& vert : m.verts)
         {
-            gnomonic_to_geo(v, centroid, gnomonic_scale); // to geographic
-            outputSRS->transformToWorld(osg::Vec3d(v.x, v.y, v.z), temp); // to ECEF
-            new_verts->push_back(temp * world2local); // localized to tile
+            gnomonic_to_geo(vert, centroid, gnomonic_scale); // to geographic
+            outputSRS->transformToWorld(osg::Vec3d(vert.x, vert.y, vert.z), ecef); // to ECEF
+            new_verts->push_back(ecef* world2local); // localized to tile
+
+            if (uvs)
+            {
+                auto x = circum * (vert.x + 180.0) / 360.0;
+                auto y = (0.5 * circum) * (vert.y + 90.0) / 180.0;
+                auto u = (x - ref_x) / skin_res->imageWidth().value();
+                auto v = (y - ref_y) / (skin_res->imageHeight().value());
+                uvs->push_back(osg::Vec2f(u, v));
+            }
         }
 
         // Assemble the final geometry.
@@ -1291,13 +1367,14 @@ BuildGeometryFilter::tileAndBuildPolygon(
     {
         // original tesselation approach
         Tessellator::Plane plane = Tessellator::PLANE_XY;
+        Bounds geo_ex;
 
         if (outputSRS)
         {
             // for geographic data we need to project into 2D before tessellating:
             if (outputSRS->isGeographic())
             {
-                osg::Vec3d temp;
+                osg::Vec3d geo;
                 osg::BoundingBoxd ecef_bb;
 
                 bool allOnEquator = true;
@@ -1308,14 +1385,25 @@ BuildGeometryFilter::tileAndBuildPolygon(
                     part->open();
                     for (osg::Vec3d& p : *part)
                     {
-                        inputSRS->transform(p, outputSRS, temp);
-                        if (temp.y() != 0.0)
+                        inputSRS->transform(p, outputSRS, geo);
+                        if (geo.y() != 0.0)
                         {
                             allOnEquator = false;
                         }
-                        outputSRS->transformToWorld(temp, p);
+                        geo_ex.expandBy(geo);
+                        outputSRS->transformToWorld(geo, p);
                         ecef_bb.expandBy(p);
                     }
+                }
+
+                // calculate a UV reference point close to the centroid of the geometry.
+                if (skin_res)
+                {
+                    auto geo_ex_anchor = geo_ex.center();
+                    auto x = circum * (geo_ex_anchor.x() + 180.0) / 360.0;
+                    auto y = (0.5*circum) * (geo_ex_anchor.y() + 90.0) / 180.0;
+                    ref_x = x - fmod(x, skin_res->imageWidth().value());
+                    ref_y = y - fmod(y, skin_res->imageHeight().value());
                 }
 
                 const osg::Vec3d& center = ecef_bb.center();
@@ -1371,16 +1459,26 @@ BuildGeometryFilter::tileAndBuildPolygon(
 
         if (outputSRS && outputSRS->isGeographic())
         {
+            osg::Vec3d geo;
             ConstGeometryIterator verts_iter(input, true);
             while (verts_iter.hasMore())
             {
                 const Geometry* part = verts_iter.next();
                 for (const auto& p : *part)
                 {
-                    inputSRS->transform(p, outputSRS, temp);
-                    outputSRS->transformToWorld(temp, vert);
+                    inputSRS->transform(p, outputSRS, geo);
+                    outputSRS->transformToWorld(geo, vert);
                     vert = vert * world2local;
                     verts->push_back(vert);
+
+                    if (uvs)
+                    {
+                        auto x = circum * (geo.x() + 180.0) / 360.0;
+                        auto y = (0.5*circum) * (geo.y() + 90.0) / 180.0;
+                        auto u = (x - ref_x) / skin_res->imageWidth().value();
+                        auto v = (y - ref_y) / (skin_res->imageHeight().value());
+                        uvs->push_back(osg::Vec2f(u, v));
+                    }
                 }
             }
         }
@@ -1393,6 +1491,9 @@ BuildGeometryFilter::tileAndBuildPolygon(
                 for (const auto& p : *part)
                 {
                     verts->push_back(p * world2local);
+
+                    //TODO
+                    uvs->push_back(osg::Vec2f(0, 0));
                 }
             }
         }
@@ -1530,175 +1631,6 @@ BuildGeometryFilter::tileAndBuildPolygon(Geometry*               ring,
     }
 }
 #endif
-
-// builds and tessellates a polygon (with or without holes)
-void
-BuildGeometryFilter::buildPolygon(Geometry*               ring,
-                                  const SpatialReference* featureSRS,
-                                  const SpatialReference* outputSRS,
-                                  bool                    makeECEF,
-                                  osg::Geometry*          osgGeom,
-                                  const osg::Matrixd      &world2local)
-{
-    if ( !ring->isValid() )
-        return;
-
-    ring->rewind(osgEarth::Geometry::ORIENTATION_CCW);
-
-    osg::ref_ptr<osg::Vec3Array> allPoints = new osg::Vec3Array();
-    transformAndLocalize( ring->asVector(), featureSRS, allPoints.get(), outputSRS, world2local, makeECEF );
-
-    Polygon* poly = dynamic_cast<Polygon*>(ring);
-    if ( poly )
-    {
-        RingCollection ordered(poly->getHoles().begin(), poly->getHoles().end());
-        std::sort(ordered.begin(), ordered.end(), holeCompare);
-
-        for( RingCollection::const_iterator h = ordered.begin(); h != ordered.end(); ++h )
-        {
-            Geometry* hole = h->get();
-            if ( hole->isValid() )
-            {
-                hole->rewind(osgEarth::Geometry::ORIENTATION_CW);
-
-                osg::ref_ptr<osg::Vec3Array> holePoints = new osg::Vec3Array();
-                transformAndLocalize( hole->asVector(), featureSRS, holePoints.get(), outputSRS, world2local, makeECEF );
-
-                // find the point with the highest x value
-                unsigned int hCursor = 0;
-                for (unsigned int i=1; i < holePoints->size(); i++)
-                {
-                    if ((*holePoints)[i].x() > (*holePoints)[hCursor].x())
-                      hCursor = i;
-                }
-
-                double x1 = (*holePoints)[hCursor].x();
-                double y1 = (*holePoints)[hCursor].y();
-                double y2 = (*holePoints)[hCursor].y();
-
-                unsigned int edgeCursor = UINT_MAX;
-                double edgeDistance = DBL_MAX;
-                unsigned int foundPointCursor = UINT_MAX;
-                for (unsigned int i=0; i < allPoints->size(); i++)
-                {
-                    unsigned int next = i == allPoints->size() - 1 ? 0 : i + 1;
-                    double xMax = osg::maximum((*allPoints)[i].x(), (*allPoints)[next].x());
-
-                    if (xMax > (*holePoints)[hCursor].x())
-                    {
-                        double x2 = xMax + 1.0;
-                        double x3 = (*allPoints)[i].x();
-                        double y3 = (*allPoints)[i].y();
-                        double x4 = (*allPoints)[next].x();
-                        double y4 = (*allPoints)[next].y();
-
-                        double xi=0.0, yi=0.0;
-                        bool intersects = false;
-                        unsigned int hitPointCursor = UINT_MAX;
-                        if (y1 == y3 && x3 > x1)
-                        {
-                            xi = x3;
-                            hitPointCursor = i;
-                            intersects = true;
-                        }
-                        else if (y1 == y4 && x4 > x1)
-                        {
-                            xi = x4;
-                            hitPointCursor = next;
-                            intersects = true;
-                        }
-                        else if (segmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4, xi, yi))
-                        {
-                            intersects = true;
-                        }
-
-                        double dist = (osg::Vec2d(xi, yi) - osg::Vec2d(x1, y1)).length();
-                        if (intersects && dist < edgeDistance)
-                        {
-                            foundPointCursor = hitPointCursor;
-                            edgeCursor = hitPointCursor != UINT_MAX ? hitPointCursor : (x3 >= x4 ? i : next);
-                            edgeDistance = dist;
-                        }
-                    }
-                }
-
-                if (foundPointCursor == UINT_MAX && edgeCursor != UINT_MAX)
-                {
-                    // test for intersecting edges between x1 and x2
-                    // (skipping the two segments for which edgeCursor is a vert)
-
-                    double x2 = (*allPoints)[edgeCursor].x();
-                    y2 = (*allPoints)[edgeCursor].y();
-
-                    bool foundIntersection = false;
-                    for (unsigned int i=0; i < allPoints->size(); i++)
-                    {
-                        unsigned int next = i == allPoints->size() - 1 ? 0 : i + 1;
-
-                        if (i == edgeCursor || next == edgeCursor)
-                          continue;
-
-                        double x3 = (*allPoints)[i].x();
-                        double y3 = (*allPoints)[i].y();
-                        double x4 = (*allPoints)[next].x();
-                        double y4 = (*allPoints)[next].y();
-
-                        foundIntersection = foundIntersection || segmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4);
-
-                        if (foundIntersection)
-                        {
-                            unsigned int prev = i == 0 ? allPoints->size() - 1 : i - 1;
-
-                            if (!isCCW((*allPoints)[prev].x(), (*allPoints)[prev].y(), x3, y3, x4, y4))
-                            {
-                                edgeCursor = i;
-                                x2 = (*allPoints)[edgeCursor].x();
-                                y2 = (*allPoints)[edgeCursor].y();
-                                foundIntersection = false;
-                            }
-                        }
-
-                    }
-                }
-
-                if (edgeCursor != UINT_MAX)
-                {
-                    // build array of correctly ordered new points to add to the outer loop
-                    osg::ref_ptr<osg::Vec3Array> insertPoints = new osg::Vec3Array();
-                    insertPoints->reserve(holePoints->size() + 2);
-
-                    unsigned int p = hCursor;
-                    do
-                    {
-                        insertPoints->push_back((*holePoints)[p]);
-                        p = p == holePoints->size() - 1 ? 0 : p + 1;
-                    } while(p != hCursor);
-
-                    insertPoints->push_back((*holePoints)[hCursor]);
-                    insertPoints->push_back((*allPoints)[edgeCursor]);
-
-                    // insert new points into outer loop
-                    osg::Vec3Array::iterator it = edgeCursor == allPoints->size() - 1 ? allPoints->end() : allPoints->begin() + (edgeCursor + 1);
-                    allPoints->insert(it, insertPoints->begin(), insertPoints->end());
-                }
-            }
-        }
-    }
-
-    GLenum mode = GL_LINE_LOOP;
-    if ( osgGeom->getVertexArray() == 0L )
-    {
-        osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, 0, allPoints->size() ) );
-        osgGeom->setVertexArray( allPoints.get() );
-    }
-    else
-    {
-        osg::Vec3Array* v = static_cast<osg::Vec3Array*>(osgGeom->getVertexArray());
-        osgGeom->addPrimitiveSet( new osg::DrawArrays( mode, v->size(), allPoints->size() ) );
-        //v->reserve(v->size() + allPoints->size());
-        std::copy(allPoints->begin(), allPoints->end(), std::back_inserter(*v));
-    }
-}
 
 
 namespace

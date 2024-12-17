@@ -16,12 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHSYMBOLOGY_GEOMETRY_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_GEOMETRY_SYMBOL_H 1
+#pragma once
 
 #include <osgEarth/Symbol>
 #include <osgEarth/Fill>
+#include <osgEarth/URI>
 
 namespace osgEarth
 {
@@ -33,31 +32,26 @@ namespace osgEarth
     public:
         META_Object(osgEarth, PolygonSymbol);
 
-        PolygonSymbol(const PolygonSymbol& rhs,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
-        PolygonSymbol( const Config& conf =Config() );
+        PolygonSymbol(const PolygonSymbol& rhs, const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
+        PolygonSymbol(const Config& conf = Config());
 
         /** dtor */
         virtual ~PolygonSymbol() { }
 
-        /** Polygon fill properties. */
-        optional<Fill>& fill() { return _fill; }
-        const optional<Fill>& fill() const { return _fill; }
+        //! Polygon fill properties.
+        OE_OPTION(Fill, fill);
 
-        /** Whether to use a LineStyle (if one exists in the Style) as an outline.
-         * This defaults to true, but you set this to false to suppress outlining
-         * even when a LineStyle exists. */
-        optional<bool>& outline() { return _outline; }
-        const optional<bool>& outline() const { return _outline; }
+        //! Whether to use a LineStyle (if one exists in the Style) as an outline.
+        //! This defaults to true, but you set this to false to suppress outlining
+        //! even when a LineStyle exists.
+        OE_OPTION(bool, outline, true);
+
+        //! URI of material to use to texture polygon geometries
+        OE_OPTION(URI, material);
 
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig(const Config& conf);
         static void parseSLD(const Config& c, class Style& style);
-
-    protected:
-        optional<Fill> _fill;
-        optional<bool> _outline;
     };
 } // namespace osgEarth
-
-#endif // OSGEARTH_SYMBOLOGY_SYMBOL_H

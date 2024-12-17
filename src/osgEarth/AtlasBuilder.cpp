@@ -112,17 +112,15 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
     // fetch all the skins from the catalog:
     SkinResourceVector skins;
     out._lib->getSkins( skins );
-    for(SkinResourceVector::iterator i = skins.begin(); i != skins.end(); ++i)
+    for(auto& skin : skins)
     {
-        SkinResource* skin = i->get();
-
         // skip skins that say "no atlas please"
         if ( skin->atlasHint() == false )
         {
             continue;
         }
 
-        osg::ref_ptr<osg::Image> image = skin->createImage( _options.get() );
+        osg::ref_ptr<osg::Image> image = skin->createColorImage( _options.get() );
         if ( image.valid() )
         {
             OE_INFO << LC << "Loaded skin file: " << skin->imageURI()->full() << std::endl;

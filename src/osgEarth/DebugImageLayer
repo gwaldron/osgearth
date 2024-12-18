@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Geometry>
+#include <osgEarth/Map>
 #include <osgText/Font>
 
 using namespace osgEarth;
@@ -52,14 +53,10 @@ namespace osgEarth { namespace Util
 
     public: // Layer
 
-        //! Called by constructors
-        virtual void init();
-        
-        //! Establishes a connection to the WMS service
-        virtual Status openImplementation();
-
-        //! Gets a raster image for the given tile key
-        virtual GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const;
+        void init() override;
+        Status openImplementation() override;
+        void addedToMap(const Map* map) override;
+        GeoImage createImageImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
     protected:
 

@@ -130,7 +130,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
             {
                 OE_WARN << LC <<
                     "Found an image with more than one layer. You cannot create an "
-                    "altas from another atlas. Stopping." << std::endl;
+                    "atlas from another atlas. Stopping." << std::endl;
                 return false;
             }
 
@@ -204,7 +204,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
         else
         {
             OE_WARN << LC << "Failed to load image from catalog: \""
-                << skin->name() << "\" ... skipped" << std::endl;
+                << *skin->name() << "\" ... skipped" << std::endl;
         }
     }
 
@@ -228,7 +228,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
         unsigned t = mainAtlasList[r]->_image->t();
 
         OE_INFO << LC
-            << "Altas image " << r << ": size = (" << s << ", " << t << ")" << std::endl;
+            << "Atlas image " << r << ": size = (" << s << ", " << t << ")" << std::endl;
 
         if ( s > maxS )
             maxS = s;

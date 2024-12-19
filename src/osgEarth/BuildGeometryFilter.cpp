@@ -1205,61 +1205,86 @@ BuildGeometryFilter::tileAndBuildPolygon(
 
     // weemesh path ONLY happens if maxTessAngle is set for now.
     // We will keep it this way until testing is complete -gw
-    if (outputSRS && outputSRS->isGeographic() && render && render->maxTessAngle().isSet())
+    if (outputSRS && render && render->maxTessAngle().isSet())
     {
         // weemesh triangulation approach (from Rocky)
+        double xspan, yspan;
+        double z = -DBL_MAX;
+        Bounds local_ex;
+        osg::Vec3d centroid;
+        auto local_geom = proj; // working copy
 
         // scales our local gnomonic coordinates so they are the same order of magnitude as
-        // weemesh's default epsilon values:
-        const double gnomonic_scale = 1000.0;
+        // weemesh's default epsilon values (for geographic only)
+        // TODO: figure out the relationship between the gnomonic scale and the maxTessAngle
+        const double gnomonic_scale = 1000.0; // 1e7;
 
-        // Meshed triangles will be at a maximum this many degrees across in size,
-        // to help follow the curvature of the earth.
-        const double resolution_degrees = render ? render->maxTessAngle()->as(Units::DEGREES): 1.0;
-
-        // some conversions we will need:
-        auto feature_geo = inputSRS;
-
-        // centroid for use with the gnomonic projection:
-        osg::Vec3d centroid = input->getBounds().center();
-        inputSRS->transform(centroid, outputSRS, centroid); // to geographic
-
-        // transform to gnomonic. We are not using SRS/PROJ for the gnomonic projection
-        // because it would require creating a new SRS for each and every feature (because
-        // of the centroid) and that is way too slow.
-        auto local_geom = proj; // working copy
-        Bounds local_ex;
-        Bounds geo_ex;
-        double z = -DBL_MAX;
-        GeometryIterator iter(local_geom.get());
-        while (iter.hasMore())
+        if (outputSRS->isGeographic())
         {
-            auto part = iter.next();
-            inputSRS->transform(part->asVector(), outputSRS); // to geographic
-            for (auto& p : *part)
+            // Meshed triangles will be at a maximum this many degrees across in size,
+            // to help follow the curvature of the earth.
+            const double resolution_degrees = render ? render->maxTessAngle()->as(Units::DEGREES) : 1.0;
+
+            // some conversions we will need:
+            auto feature_geo = inputSRS;
+
+            // centroid for use with the gnomonic projection:
+            centroid = input->getBounds().center();
+            inputSRS->transform(centroid, outputSRS, centroid); // to geographic
+
+            // transform to gnomonic. We are not using SRS/PROJ for the gnomonic projection
+            // because it would require creating a new SRS for each and every feature (because
+            // of the centroid) and that is way too slow.
+            Bounds geo_ex;
+            GeometryIterator iter(local_geom.get());
+            while (iter.hasMore())
             {
-                geo_ex.expandBy(p);
-                geo_to_gnomonic(p, centroid, gnomonic_scale);
-                local_ex.expandBy(p);
-                z = std::max(z, p.z());
+                auto part = iter.next();
+                inputSRS->transform(part->asVector(), outputSRS); // to geographic
+                for (auto& p : *part)
+                {
+                    geo_ex.expandBy(p);
+                    geo_to_gnomonic(p, centroid, gnomonic_scale);
+                    local_ex.expandBy(p);
+                    z = std::max(z, p.z());
+                }
             }
+
+            // calculate a UV reference point close to the centroid of the geometry.
+            if (skin_res)
+            {
+                auto geo_ex_anchor = geo_ex.center();
+                auto x = circum * (geo_ex_anchor.x() + 180.0) / 360.0;
+                auto y = (0.5 * circum) * (geo_ex_anchor.y() + 90.0) / 180.0;
+                ref_x = x - fmod(x, skin_res->imageWidth().value());
+                ref_y = y - fmod(y, skin_res->imageHeight().value());
+            }
+
+            xspan = gnomonic_scale * resolution_degrees * 3.14159 / 180.0;
+            yspan = gnomonic_scale * resolution_degrees * 3.14159 / 180.0;
         }
 
-        // calculate a UV reference point close to the centroid of the geometry.
-        if (skin_res)
+        else // projected SRS
         {
-            auto geo_ex_anchor = geo_ex.center();
-            auto x = circum * (geo_ex_anchor.x() + 180.0) / 360.0;
-            auto y = (0.5 * circum) * (geo_ex_anchor.y() + 90.0) / 180.0;
-            ref_x = x - fmod(x, skin_res->imageWidth().value());
-            ref_y = y - fmod(y, skin_res->imageHeight().value());
+            double max_span_m = DBL_MAX; // render->maxTessAngle()->as(Units::METERS);
+            xspan = max_span_m;
+            yspan = max_span_m;
+
+            ConstGeometryIterator iter(local_geom.get());
+            while (iter.hasMore())
+            {
+                auto* part = iter.next();
+                for (auto& p : *part)
+                {
+                    local_ex.expandBy(p);
+                    z = std::max(z, p.z());
+                }
+            }
         }
 
         // start with a weemesh covering the feature extent.
         weemesh::mesh_t m;
         const int marker = 0;
-        double xspan = gnomonic_scale * resolution_degrees * 3.14159 / 180.0;
-        double yspan = gnomonic_scale * resolution_degrees * 3.14159 / 180.0;
         double width = (local_ex.xMax() - local_ex.xMin());
         double height = (local_ex.yMax() - local_ex.yMin());
         int cols = std::max(2, (int)(width / xspan));
@@ -1273,7 +1298,7 @@ BuildGeometryFilter::tileAndBuildPolygon(
             {
                 double u = (double)col / (double)(cols - 1);
                 double x = local_ex.xMin() + u * width;
-                m.get_or_create_vertex_from_vec3(weemesh::vert_t{ x, y, z }, marker | m._has_elevation_marker);
+                m.get_or_create_vertex_from_vec3(weemesh::vert_t{ x, y, z }, marker);
             }
         }
 
@@ -1297,7 +1322,7 @@ BuildGeometryFilter::tileAndBuildPolygon(
                 unsigned j = (i == part->size() - 1) ? 0 : i + 1;
                 weemesh::vert_t a((*part)[i].x(), (*part)[i].y(), (*part)[i].z());
                 weemesh::vert_t b((*part)[j].x(), (*part)[j].y(), (*part)[j].z());
-                m.insert(weemesh::segment_t{ a, b }, marker);
+                m.insert(weemesh::segment_t{ a, b }, marker | m._has_elevation_marker);
             }
         }
 
@@ -1328,25 +1353,71 @@ BuildGeometryFilter::tileAndBuildPolygon(
             }
         }
 
+#if 0
+        // *** Copied from TileMesher - TODO consolidate ***
+        // This algorithm looks for verts with no elevation data, and assigns each
+        // one an elevation based on the closest edge that HAS elevation data.
+        // Typical use case: remove exterior polygons, leaving you with an interior
+        // mesh in which the edge points have set elevations. This will then interpolate
+        // the elevations of any new interior points giving you a "flat" surface for
+        // a road or river (for example).
+        // TODO: do some kind of smoothing for exterior points to make nice transitions...?
+        weemesh::vert_t closest;
+
+        // collect every edge that has valid elevation data in Z.
+        // usually this means the caller assigned Z values to the constraint geometry
+        weemesh::edgeset_t elevated_edges(m, m._has_elevation_marker);
+
+        // find every vertex without elevation, and set its elevation to the same value
+        // as that of the closest point on the nearest constrained edge
+        for (int i = 0; i < m.verts.size(); ++i)
+        {
+            if ((m.markers[i] & m._has_elevation_marker) == 0)
+            {
+                if (elevated_edges.point_on_any_edge_closest_to(m.verts[i], m, closest))
+                {
+                    m.verts[i].z = closest.z;
+                    m.markers[i] |= (m._constraint_marker | m._has_elevation_marker);
+                }
+            }
+        }
+#endif
+
         // Finally we convert from gnomonic back to localized tile coordinates.
         osg::ref_ptr<osg::Vec3Array> new_verts = new osg::Vec3Array();
         new_verts->reserve(m.verts.size());
-        osg::Vec3d ecef;
-        for (auto& vert : m.verts)
-        {
-            gnomonic_to_geo(vert, centroid, gnomonic_scale); // to geographic
-            outputSRS->transformToWorld(osg::Vec3d(vert.x, vert.y, vert.z), ecef); // to ECEF
-            new_verts->push_back(ecef* world2local); // localized to tile
 
-            if (uvs)
+        if (outputSRS->isGeographic())
+        {
+            osg::Vec3d ecef;
+            for (auto& vert : m.verts)
             {
-                auto x = circum * (vert.x + 180.0) / 360.0;
-                auto y = (0.5 * circum) * (vert.y + 90.0) / 180.0;
-                auto u = (x - ref_x) / skin_res->imageWidth().value();
-                auto v = (y - ref_y) / (skin_res->imageHeight().value());
-                uvs->push_back(osg::Vec2f(u, v));
+                gnomonic_to_geo(vert, centroid, gnomonic_scale); // to geographic
+                outputSRS->transformToWorld(osg::Vec3d(vert.x, vert.y, vert.z), ecef); // to ECEF
+                new_verts->push_back(ecef * world2local); // localized to tile
+
+                if (uvs)
+                {
+                    auto x = circum * (vert.x + 180.0) / 360.0;
+                    auto y = (0.5 * circum) * (vert.y + 90.0) / 180.0;
+                    auto u = (x - ref_x) / skin_res->imageWidth().value();
+                    auto v = (y - ref_y) / (skin_res->imageHeight().value());
+                    uvs->push_back(osg::Vec2f(u, v));
+                }
             }
         }
+        else // projected SRS
+        {
+            for (auto& vert : m.verts)
+            {
+                new_verts->push_back(osg::Vec3d(vert.x, vert.y, vert.z) * world2local);
+                if (uvs)
+                {
+                    uvs->push_back(osg::Vec2f());
+                }
+            }
+        }
+
 
         // Assemble the final geometry.
         auto de = new osg::DrawElementsUInt(GL_TRIANGLES);
@@ -1491,9 +1562,10 @@ BuildGeometryFilter::tileAndBuildPolygon(
                 for (const auto& p : *part)
                 {
                     verts->push_back(p * world2local);
-
-                    //TODO
-                    uvs->push_back(osg::Vec2f(0, 0));
+                    if (uvs)
+                    {
+                        uvs->push_back(osg::Vec2f(0, 0));
+                    }
                 }
             }
         }

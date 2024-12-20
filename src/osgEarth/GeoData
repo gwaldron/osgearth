@@ -897,6 +897,14 @@ namespace osgEarth
         const GeoExtent& getExtent() const;
 
         /**
+         * Shortcut to get the spatial reference system describing
+         * the projection of the image.
+         */
+        const SpatialReference* getSRS() const {
+            return getExtent().getSRS();
+        }
+
+        /**
          * The minimum height in the heightfield
          */
         float getMinHeight() const { return _minHeight; }

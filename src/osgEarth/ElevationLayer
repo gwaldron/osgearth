@@ -69,9 +69,6 @@ namespace osgEarth
         void setNoDataPolicy(const ElevationNoDataPolicy& value);
         const ElevationNoDataPolicy& getNoDataPolicy() const;
 
-        //! Override from VisibleLayer
-        //virtual void setVisible(bool value);
-
     public: // methods
 
         /**
@@ -133,10 +130,11 @@ namespace osgEarth
         virtual ~ElevationLayer() { }
 
     private:
-        void assembleHeightField(
-            const TileKey& key,
-            osg::ref_ptr<osg::HeightField>& out_hf,
-            ProgressCallback* progress) const;
+        GeoHeightField assembleHeightField(const TileKey& key, ProgressCallback* progress);
+        //void assembleHeightField(
+        //    const TileKey& key,
+        //    osg::ref_ptr<osg::HeightField>& out_hf,
+        //    ProgressCallback* progress) const;
 
         void normalizeNoDataValues(osg::HeightField* hf) const;
 

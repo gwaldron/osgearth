@@ -345,9 +345,13 @@ ElevationLayer::assembleHeightField(const TileKey& key, ProgressCallback* progre
                         auto& source = sources[k].second;
                         if (source.getExtent().contains(points[i].x(), points[i].y())) // prevents clamping of out-of-bounds points
                         {
-                            h = sources[k].second.getElevation(points[i].x(), points[i].y(), INTERP_BILINEAR)
-                                - points[i].z(); // apply vdatum offset
+                            h = sources[k].second.getElevation(points[i].x(), points[i].y(), INTERP_BILINEAR);
                         }
+                    }
+                    if (h != NO_DATA_VALUE)
+                    {
+                        // apply reverse vdatum offset if necessary
+                        h -= points[i].z();
                     }
                 }
             }

@@ -1146,11 +1146,11 @@ FeatureRasterizer::render_agglite(
         }
     }
 
-    osg::ref_ptr<Polygon> cropPoly = new Polygon(4);
-    cropPoly->push_back(osg::Vec3d(cropXMin, cropYMin, 0));
-    cropPoly->push_back(osg::Vec3d(cropXMax, cropYMin, 0));
-    cropPoly->push_back(osg::Vec3d(cropXMax, cropYMax, 0));
-    cropPoly->push_back(osg::Vec3d(cropXMin, cropYMax, 0));
+    Polygon cropPoly(4);
+    cropPoly.push_back(osg::Vec3d(cropXMin, cropYMin, 0));
+    cropPoly.push_back(osg::Vec3d(cropXMax, cropYMin, 0));
+    cropPoly.push_back(osg::Vec3d(cropXMax, cropYMax, 0));
+    cropPoly.push_back(osg::Vec3d(cropXMin, cropYMax, 0));
 
     // If there's a coverage symbol, make a copy of the expressions so we can evaluate them
     optional<NumericExpression> covValue;
@@ -1165,13 +1165,12 @@ FeatureRasterizer::render_agglite(
     {
         Geometry* geometry = feature->getGeometry();
 
-        osg::ref_ptr<Geometry> croppedGeometry;
-        if (geometry->crop(cropPoly.get(), croppedGeometry))
+        if (auto cropped = geometry->crop(&cropPoly))
         {
             if (covValue.isSet())
             {
                 float value = feature->eval(covValue.mutable_value(), &context);
-                rasterizeCoverage_agglite(croppedGeometry.get(), value, frame, ras, rbuf);
+                rasterizeCoverage_agglite(cropped.get(), value, frame, ras, rbuf);
             }
             else
             {
@@ -1180,7 +1179,7 @@ FeatureRasterizer::render_agglite(
                     globalPolySymbol;
 
                 Color color = poly ? poly->fill()->color() : Color::White;
-                rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
+                rasterize_agglite(cropped.get(), color, frame, ras, rbuf);
             }
         }
     }
@@ -1190,12 +1189,12 @@ FeatureRasterizer::render_agglite(
         Geometry* geometry = feature->getGeometry();
 
         osg::ref_ptr<Geometry> croppedGeometry;
-        if (geometry->crop(cropPoly.get(), croppedGeometry))
+        if (auto cropped = geometry->crop(&cropPoly))
         {
             if (covValue.isSet())
             {
                 float value = feature->eval(covValue.mutable_value(), &context);
-                rasterizeCoverage_agglite(croppedGeometry.get(), value, frame, ras, rbuf);
+                rasterizeCoverage_agglite(cropped.get(), value, frame, ras, rbuf);
             }
             else
             {
@@ -1204,7 +1203,7 @@ FeatureRasterizer::render_agglite(
                     globalLineSymbol;
 
                 osg::Vec4f color = line ? static_cast<osg::Vec4>(line->stroke()->color()) : osg::Vec4(1, 1, 1, 1);
-                rasterize_agglite(croppedGeometry.get(), color, frame, ras, rbuf);
+                rasterize_agglite(cropped.get(), color, frame, ras, rbuf);
             }
         }
     }

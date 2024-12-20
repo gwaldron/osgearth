@@ -997,27 +997,26 @@ namespace
             z += geometry->at(i).z();
         z /= geometry->size();
 
-        osg::ref_ptr<Polygon> poly = new Polygon;
-        poly->resize( 4 );
+        Polygon boundary;
+        boundary.resize(4);
 
         for(int x=0; x<(int)numCols; ++x)
         {
             for(int y=0; y<(int)numRows; ++y)
             {
-                (*poly)[0].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)y,     z );
-                (*poly)[1].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)y,     z );
-                (*poly)[2].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)(y+1), z );
-                (*poly)[3].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)(y+1), z );
+                boundary[0].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)y,     z );
+                boundary[1].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)y,     z );
+                boundary[2].set( b.xMin() + tw*(double)(x+1), b.yMin() + th*(double)(y+1), z );
+                boundary[3].set( b.xMin() + tw*(double)x,     b.yMin() + th*(double)(y+1), z );
 
-                osg::ref_ptr<Geometry> ringTile;
-                if ( geometry->crop(poly.get(), ringTile) )
+                if (auto cropped = geometry->crop(&boundary))
                 {
                     // Use an iterator since crop could return a multi-polygon
-                    GeometryIterator gi( ringTile.get(), false );
-                    while( gi.hasMore() )
+                    GeometryIterator gi(cropped.get(), false);
+                    while (gi.hasMore())
                     {
                         Geometry* geom = gi.next();
-                        out.push_back( geom );
+                        out.push_back(geom);
                     }
                 }
             }

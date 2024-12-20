@@ -22,6 +22,8 @@
 
 using namespace osgEarth;
 
+//OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(crop, CropFilter);
+
 CropFilter::CropFilter(CropFilter::Method method) :
     _method(method)
 {
@@ -82,7 +84,13 @@ CropFilter::push( FeatureList& input, FilterContext& context )
     {
 #ifdef OSGEARTH_HAVE_GEOS
         // create the intersection polygon:
-        osg::ref_ptr<Polygon> poly;
+        Polygon poly;
+        poly.reserve(4);
+        poly.push_back(osg::Vec3d(extent.xMin(), extent.yMin(), 0));
+        poly.push_back(osg::Vec3d(extent.xMax(), extent.yMin(), 0));
+        poly.push_back(osg::Vec3d(extent.xMax(), extent.yMax(), 0));
+        poly.push_back(osg::Vec3d(extent.xMin(), extent.yMax(), 0));
+
         FeatureList output;
         output.reserve(input.size());
         
@@ -110,23 +118,13 @@ CropFilter::push( FeatureList& input, FilterContext& context )
                     // then move on to the cropping operation:
                     else
                     {
-                        if (!poly.valid())
+                        if (auto cropped = featureGeom->crop(&poly))
                         {
-                            poly = new Polygon();
-                            poly->push_back(osg::Vec3d(extent.xMin(), extent.yMin(), 0));
-                            poly->push_back(osg::Vec3d(extent.xMax(), extent.yMin(), 0));
-                            poly->push_back(osg::Vec3d(extent.xMax(), extent.yMax(), 0));
-                            poly->push_back(osg::Vec3d(extent.xMin(), extent.yMax(), 0));
-                        }
-
-                        osg::ref_ptr<Geometry> croppedGeometry;
-                        if (featureGeom->crop(poly.get(), croppedGeometry))
-                        {
-                            if (croppedGeometry->isValid())
+                            if (cropped->isValid())
                             {
-                                feature->setGeometry(croppedGeometry.get());
+                                feature->setGeometry(cropped.get());
                                 keepFeature = true;
-                                newExtent.expandToInclude(GeoExtent(newExtent.getSRS(), croppedGeometry->getBounds()));
+                                newExtent.expandToInclude(GeoExtent(newExtent.getSRS(), cropped->getBounds()));
                             }
                         }
                     }

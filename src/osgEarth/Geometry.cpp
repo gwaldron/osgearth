@@ -241,61 +241,153 @@ Geometry::buffer(double distance,
 #endif // OSGEARTH_HAVE_GEOS
 }
 
+namespace
+{
+    // Function to check if a point is inside the clipping edge
+    bool inside(const osg::Vec3d& p, const osg::Vec3d& edgeStart, const osg::Vec3d& edgeEnd)
+    {
+        return (edgeEnd.x() - edgeStart.x()) * (p.y() - edgeStart.y()) -
+            (edgeEnd.y() - edgeStart.y()) * (p.x() - edgeStart.x()) >= 0;
+    }
+
+    // Function to calculate the intersection point of two lines
+    osg::Vec3d intersection(const osg::Vec3d& p1, const osg::Vec3d& p2, const osg::Vec3d& edgeStart, const osg::Vec3d& edgeEnd)
+    {
+        double a1 = p2.y() - p1.y();
+        double b1 = p1.x() - p2.x();
+        double c1 = a1 * p1.x() + b1 * p1.y();
+
+        double a2 = edgeEnd.y() - edgeStart.y();
+        double b2 = edgeStart.x() - edgeEnd.x();
+        double c2 = a2 * edgeStart.x() + b2 * edgeStart.y();
+
+        double determinant = a1 * b2 - a2 * b1;
+
+        osg::Vec3d result = {
+            (b2 * c1 - b1 * c2) / determinant,
+            (a1 * c2 - a2 * c1) / determinant,
+            0.0 };
+
+        result.z() = p1.z() + (result.x() - p1.x()) / (p2.x() - p1.x()) * (p2.z() - p1.z()); // Interpolating Z
+        return result;
+    }
+
+    // Sutherland-Hodgman Polygon Clipping (input poly must be OPEN)
+    std::vector<osg::Vec3d> clipPolygon(const std::vector<osg::Vec3d>& input, const std::vector<osg::Vec3d>& boundary)
+    {
+        std::vector<osg::Vec3d> output = input;
+
+        for(unsigned i=0; i< boundary.size(); ++i)
+        {
+            const osg::Vec3d& edgeStart = boundary[i];
+            const osg::Vec3d& edgeEnd = i < boundary.size() - 1 ? boundary[i + 1] : boundary[0];
+
+            std::vector<osg::Vec3d> input = output;
+            output.clear();
+
+            for (size_t i = 0; i < input.size(); ++i)
+            {
+                osg::Vec3d curr = input[i];
+                osg::Vec3d prev = input[(i + input.size() - 1) % input.size()];
+
+                if (inside(curr, edgeStart, edgeEnd))
+                {
+                    if (!inside(prev, edgeStart, edgeEnd))
+                    {
+                        output.push_back(intersection(prev, curr, edgeStart, edgeEnd));
+                    }
+                    output.push_back(curr);
+                }
+                else if (inside(prev, edgeStart, edgeEnd))
+                {
+                    output.push_back(intersection(prev, curr, edgeStart, edgeEnd));
+                }
+            }
+        }
+
+        return output;
+    }
+}
+
+#if 0
 bool
-Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
+Geometry::crop(const Ring* boundary, osg::ref_ptr<Geometry>& output) const
+{
+    OE_SOFT_ASSERT_AND_RETURN(boundary, false);
+    OE_SOFT_ASSERT_AND_RETURN(boundary->size() > 2, false);
+    std::vector<osg::Vec3d> points;
+    points.reserve(size());
+    for (const auto& point : *this)
+    {
+        if (boundary->contains2D(point.x(), point.y()))
+            points.emplace_back(point);
+    }
+    output = this->cloneAs(getType());
+    output->asVector().swap(points);
+    return true;
+}
+#endif
+
+osg::ref_ptr<Geometry>
+Geometry::crop(const Ring* boundary) const
 {
 #ifdef OSGEARTH_HAVE_GEOS
-    GEOSContextHandle_t handle = initGEOS_r(OSGEARTH_WarningHandler, OSGEARTH_GEOSErrorHandler);
 
     bool success = false;
-    output = 0L;
+    osg::ref_ptr<Geometry> output;
 
     if (getType() == TYPE_POINT)
     {
-        if (cropPoly->contains2D(front().x(), front().y()))
+        if (boundary->contains2D(front().x(), front().y()))
             output = this->clone();
-        return true;
+        return output;
     }
     else if (getType() == TYPE_POINTSET)
     {
-        osg::ref_ptr<PointSet> pointSet = new PointSet;
+        std::vector<osg::Vec3d> points;
         for (const auto& point : *this)
         {
-            if (cropPoly->contains2D(point.x(), point.y()))
-                pointSet->push_back(point);
+            if (boundary->contains2D(point.x(), point.y()))
+                points.emplace_back(point);
         }
-        output = pointSet;
-        return true;
+        if (!points.empty())
+        {
+            output = this->cloneAs(getType());
+            output->asVector().swap(points);
+        }
+        return output;
     }
+
+    GEOSContextHandle_t handle = initGEOS_r(OSGEARTH_WarningHandler, OSGEARTH_GEOSErrorHandler);
 
     //Create the GEOS Geometries
     GEOSGeometry* inGeom = GEOS::importGeometry(handle, this);
-    GEOSGeometry* cropGeom = GEOS::importGeometry(handle, cropPoly);
+    GEOSGeometry* boundaryGeom = GEOS::importGeometry(handle, boundary);
 
-    if ( inGeom && cropGeom)
+    if (inGeom && boundaryGeom)
     {
-        GEOSGeometry* outGeom = GEOSIntersection_r(handle, inGeom, cropGeom);
+        GEOSGeometry* outGeom = GEOSIntersection_r(handle, inGeom, boundaryGeom);
         if ( outGeom )
         {
-            output = GEOS::exportGeometry(handle, outGeom );
+            output = GEOS::exportGeometry(handle, outGeom);
 
-            if ( output.valid())
+            if (output.valid())
             {
-                if ( output->isValid() )
+                if (output->isValid())
                 {
                     success = true;
                 }
                 else
                 {
                     // GEOS result is invalid
-                    output = 0L;
+                    output = nullptr;
                 }
             }
             else
             {
                 // set output to empty geometry to indicate the (valid) empty case,
                 // still returning false but allows for check.
-                if (GEOSGeomGetNumPoints_r(handle, outGeom ) == 0)
+                if (GEOSGeomGetNumPoints_r(handle, outGeom) == 0)
                 {
                     output = new osgEarth::Geometry(TYPE_UNKNOWN);
                 }
@@ -306,12 +398,12 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
     }
 
     //Destroy the geometry
-    GEOSGeom_destroy_r(handle, cropGeom);
+    GEOSGeom_destroy_r(handle, boundaryGeom);
     GEOSGeom_destroy_r(handle, inGeom);
 
     finishGEOS_r(handle);
 
-    return success;
+    return output;
 
 #else // OSGEARTH_HAVE_GEOS
 
@@ -321,16 +413,16 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
 #endif // OSGEARTH_HAVE_GEOS
 }
 
-bool
-Geometry::crop( const Bounds& bounds, osg::ref_ptr<Geometry>& output ) const
+osg::ref_ptr<Geometry>
+Geometry::crop(const Bounds& bounds) const
 {
-    osg::ref_ptr<Polygon> poly = new Polygon;
-    poly->resize( 4 );
-    (*poly)[0].set(bounds.xMin(), bounds.yMin(), 0);
-    (*poly)[1].set(bounds.xMax(), bounds.yMin(), 0);
-    (*poly)[2].set(bounds.xMax(), bounds.yMax(), 0);
-    (*poly)[3].set(bounds.xMin(), bounds.yMax(), 0);
-    return crop(poly.get(), output);
+    Ring boundary;
+    boundary.resize(4);
+    boundary[0].set(bounds.xMin(), bounds.yMin(), 0);
+    boundary[1].set(bounds.xMax(), bounds.yMin(), 0);
+    boundary[2].set(bounds.xMax(), bounds.yMax(), 0);
+    boundary[3].set(bounds.xMin(), bounds.yMax(), 0);
+    return crop(&boundary);
 }
 
 bool
@@ -893,6 +985,19 @@ Ring::contains2D( double x, double y ) const
     return result;
 }
 
+osg::ref_ptr<Geometry>
+Ring::crop(const Ring* boundary) const
+{
+    auto new_points = clipPolygon(this->asVector(), boundary->asVector());
+    if (!new_points.empty())
+    {
+        auto* new_geom = cloneAs(getType());
+        new_geom->asVector().swap(new_points);
+        return new_geom;
+    }
+    return {};
+}
+
 namespace
 {
     template<class RING>
@@ -1053,6 +1158,30 @@ Polygon::getSignedDistance2D(const osg::Vec3d& a) const
         r = std::min(r, hole->getSignedDistance2D(a));
 
     return r;
+}
+
+osg::ref_ptr<Geometry>
+Polygon::crop(const Ring* boundary) const
+{
+    auto new_points = clipPolygon(this->asVector(), boundary->asVector());
+    if (!new_points.empty())
+    {
+        auto* new_poly = new Polygon(&new_points);
+        for (auto& hole : _holes)
+        {
+            auto copy_of_hole = hole->asVector();
+            std::reverse(copy_of_hole.begin(), copy_of_hole.end());
+
+            auto new_hole = clipPolygon(copy_of_hole, boundary->asVector());
+            if (!new_hole.empty())
+            {
+                std::reverse(new_hole.begin(), new_hole.end());
+                new_poly->_holes.push_back(new Ring(&new_hole));
+            }
+        }
+        return new_poly;
+    }
+    return {};
 }
 
 Geometry*
@@ -1263,6 +1392,28 @@ MultiGeometry::contains2D(double x, double y) const
             return true;
     }
     return false;
+}
+
+osg::ref_ptr<Geometry>
+MultiGeometry::crop(const Ring* boundary) const
+{
+    osg::ref_ptr<MultiGeometry> mg;
+
+    for (const auto& part : _parts)
+    {
+        auto cropped = part->crop(boundary);
+        if (cropped.valid())
+        {
+            if (!mg) mg = new MultiGeometry();
+            mg->add(cropped);
+        }
+    }
+    if (mg->_parts.empty())
+        return {};
+    else if (mg->_parts.size() == 1)
+        return mg->_parts.front();
+    else
+        return mg;
 }
 
 Geometry*

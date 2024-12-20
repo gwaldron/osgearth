@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHSYMBOLOGY_GEOMETRY_H
-#define OSGEARTHSYMBOLOGY_GEOMETRY_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
@@ -161,17 +160,13 @@ namespace osgEarth
          * Crops this geometry to the region represented by the crop polygon, returning
          * the result in the output parameter. Returns true if the op succeeded.
          */
-        bool crop(
-            const class Polygon* cropPolygon,
-            osg::ref_ptr<Geometry>& output ) const;
+        virtual osg::ref_ptr<Geometry> crop(const class Ring* boundary) const;
 
         /**
          * Crops this geometry to the bounds, returning the result in the output parameter.
          * Returns true if the op succeeded.
          */
-        bool crop(
-            const Bounds& bounds,
-            osg::ref_ptr<Geometry>& output) const;
+        osg::ref_ptr<Geometry> crop(const Bounds& bounds) const;
 
         /**
          * Creates the union of this geometry with the other geometry, returning
@@ -394,6 +389,9 @@ namespace osgEarth
 
         double getSignedDistance2D(const osg::Vec3d& a) const override;
 
+        // crop to a boundary
+        osg::ref_ptr<Geometry> crop(const class Ring* boundary) const override;
+
         //! split across anitmeridian (geodetic coords only)
         Geometry* splitAcrossAntimeridian() override;
 
@@ -439,6 +437,8 @@ namespace osgEarth
 
         virtual double getSignedDistance2D(
             const osg::Vec3d& a) const override;
+
+        osg::ref_ptr<Geometry> crop(const Ring* boundary) const override;
 
         //! split across anitmeridian (geodetic coords only)
         Geometry* splitAcrossAntimeridian() override;
@@ -495,6 +495,7 @@ namespace osgEarth
         void close() override;
         double getSignedDistance2D(const osg::Vec3d& a) const override;
         bool contains2D(double x, double y) const override;
+        osg::ref_ptr<Geometry> crop(const Ring* boundary) const override;
 
         //! split across anitmeridian (geodetic coords only)
         Geometry* splitAcrossAntimeridian() override;
@@ -657,7 +658,3 @@ namespace osgEarth
 
 
 } // namespace osgEarth
-
-
-#endif // OSGEARTHSYMBOLOGY_GEOMETRY_H
-

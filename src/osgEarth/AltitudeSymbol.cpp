@@ -23,31 +23,25 @@ using namespace osgEarth;
 
 OSGEARTH_REGISTER_SIMPLE_SYMBOL(altitude, AltitudeSymbol);
 
-AltitudeSymbol::AltitudeSymbol( const Config& conf ) :
-Symbol             ( conf ),
-_clamping          ( CLAMP_NONE ),
-_technique         ( TECHNIQUE_MAP ),
-_binding           ( BINDING_VERTEX ),
-_resolution        ( 0.0 ), //0.001f ),
-_verticalScale     ( NumericExpression(1.0) ),
-_verticalOffset    ( NumericExpression(0.0) )
+AltitudeSymbol::AltitudeSymbol(const Config& conf) :
+    Symbol(conf)
 {
-    mergeConfig( conf );
+    mergeConfig(conf);
 }
 
-AltitudeSymbol::AltitudeSymbol(const AltitudeSymbol& rhs,const osg::CopyOp& copyop):
-Symbol(rhs, copyop),
-_clamping(rhs._clamping),
-_technique(rhs._technique),
-_binding(rhs._binding),
-_resolution(rhs._resolution),
-_verticalOffset(rhs._verticalOffset),
-_verticalScale(rhs._verticalScale)
+AltitudeSymbol::AltitudeSymbol(const AltitudeSymbol& rhs, const osg::CopyOp& copyop) :
+    Symbol(rhs, copyop),
+    _clamping(rhs._clamping),
+    _technique(rhs._technique),
+    _binding(rhs._binding),
+    _clampingResolution(rhs._clampingResolution),
+    _verticalOffset(rhs._verticalOffset),
+    _verticalScale(rhs._verticalScale)
 {
 
 }
 
-Config 
+Config
 AltitudeSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
@@ -66,7 +60,7 @@ AltitudeSymbol::getConfig() const
     conf.set( "binding", "vertex",   _binding, BINDING_VERTEX );
     conf.set( "binding", "centroid", _binding, BINDING_CENTROID );
 
-    conf.set( "clamping_resolution", _resolution );
+    conf.set( "clamping_resolution", _clampingResolution);
     conf.set( "vertical_offset",     _verticalOffset );
     conf.set( "vertical_scale",      _verticalScale );
     return conf;
@@ -88,7 +82,7 @@ AltitudeSymbol::mergeConfig( const Config& conf )
     conf.get( "binding", "vertex",   _binding, BINDING_VERTEX );
     conf.get( "binding", "centroid", _binding, BINDING_CENTROID );
 
-    conf.get( "clamping_resolution", _resolution );
+    conf.get( "clamping_resolution", _clampingResolution);
     conf.get( "vertical_offset",     _verticalOffset );
     conf.get( "vertical_scale",      _verticalScale );
 }

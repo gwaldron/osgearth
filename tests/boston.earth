@@ -35,7 +35,7 @@ to extruded buildings.
             <level name="default" max_range="20000" style="buildings"/>
         </layout>
         
-        <styles>            
+        <styles>
             <library name="us_resources">
                 <url>../data/resources/textures_us/catalog.xml</url>
             </library>
@@ -85,29 +85,7 @@ to extruded buildings.
             </style>
         </styles>        
     </FeatureModel>
-	
-	
-	<FeatureModel name="streetlamps" features="streets-data">
-        <layout tile_size="1000" crop_features="true">
-            <level max_range="1000" style="default"/>
-        </layout>
-        
-        <styles>
-            <style type="text/css">
-                default {
-                    model:             "../data/streetlight.osgb";
-                    model-script:      positionAlongSegments();
-					model-heading:     feature.properties.heading;
-                    altitude-clamping: terrain;
-                }
-            </style>
-            <script language="javascript" profile="full">
-				<url>../data/scripts/createLineOffsetPoints.js</url>
-			</script>
-        </styles>   
-    </FeatureModel>
-    
-    
+	    
     <FeatureModel name="Parks" enabled="true">
         <OGRFeatures name="parks">
             <url>../data/boston-parks.shp</url>

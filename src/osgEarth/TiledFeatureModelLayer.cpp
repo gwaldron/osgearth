@@ -49,6 +49,7 @@ TiledFeatureModelLayer::Options::Options(const ConfigOptions& options) :
 void TiledFeatureModelLayer::Options::fromConfig(const Config& conf)
 {
     features().get(conf, "features");
+    conf.get("crop_features", cropFeaturesToTile());
 }
 
 Config
@@ -63,6 +64,8 @@ TiledFeatureModelLayer::Options::getConfig() const
     conf.merge(gcConf);
 
     features().set(conf, "features");
+
+    conf.set("crop_features", cropFeaturesToTile());
 
     return conf;
 }
@@ -241,6 +244,7 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
         return nullptr;
 
     NetworkMonitor::ScopedRequestLayer layerRequest(getName());
+
     // Get features for this key
     Query query;
     query.tileKey() = key;
@@ -257,11 +261,7 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
 
     FilterContext fc(_session.get(), new FeatureProfile(dataExtent), dataExtent, index);
 
-    GeometryCompilerOptions options;
-    options.instancing() = true;
-    GeometryCompiler gc(options);
-
-    GeomFeatureNodeFactory factory(options);
+    GeomFeatureNodeFactory factory(options());
 
     if (progress && progress->isCanceled())
         return nullptr;
@@ -277,31 +277,45 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
         FeatureList features;
         cursor->fill(features);
 
+        if (options().cropFeaturesToTile() == true)
+        {
+            FeatureList tocrop;
+            tocrop.swap(features);
+
+            for (auto& feature : tocrop)
+            {
+                if (auto cropped = feature->getGeometry()->crop(dataExtent.bounds()))
+                {
+                    feature->setGeometry(cropped.get());
+                    features.push_back(feature);
+                }
+            }
+        }
+
         if (getStyleSheet() && getStyleSheet()->getSelectors().size() > 0)
         {
             osg::Group* group = new osg::Group;
 
-            for (StyleSelectors::const_iterator i = getStyleSheet()->getSelectors().begin();
-                i != getStyleSheet()->getSelectors().end();
-                ++i)
+            for(auto& i : getStyleSheet()->getSelectors())
             {
-                typedef std::map< std::string, FeatureList > StyleToFeaturesMap;
+                using StyleToFeaturesMap = std::map<std::string, FeatureList>;
                 StyleToFeaturesMap styleToFeatures;
 
                 // pull the selected style...
-                const StyleSelector& sel = i->second;
+                const StyleSelector& sel = i.second;
 
                 if (sel.styleExpression().isSet())
                 {
                     // establish the working bounds and a context:
                     StringExpression styleExprCopy(sel.styleExpression().get());
-                    for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
-                    {
-                        Feature* feature = itr->get();
 
+                    for(auto& feature : features)
+                    {
+                        //TODO: rename this?
                         feature->set("level", (long long)key.getLevelOfDetail());
 
                         const std::string& styleString = feature->eval(styleExprCopy, &fc); 
+
                         if (!styleString.empty() && styleString != "null")
                         {
                             styleToFeatures[styleString].push_back(feature);
@@ -314,10 +328,14 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
 
                 std::unordered_map<std::string, Style> literal_styles;
 
+                //OE_INFO << "Found styles:" << std::endl;
+
                 for (StyleToFeaturesMap::iterator itr = styleToFeatures.begin(); itr != styleToFeatures.end(); ++itr)
                 {
                     const std::string& styleString = itr->first;
                     Style* style = nullptr;
+
+                    //OE_INFO << "  " << styleString << std::endl;
 
                     if (styleString.length() > 0 && styleString[0] == '{')
                     {
@@ -338,8 +356,8 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
                     if (style)
                     {
                         osg::Group* styleGroup = factory.getOrCreateStyleGroup(*style, _session.get());
-                        osg::ref_ptr< osg::Node>  styleNode;
-                        osg::ref_ptr< FeatureListCursor> cursor = new FeatureListCursor(itr->second);
+                        osg::ref_ptr<osg::Node>  styleNode;
+                        osg::ref_ptr<FeatureListCursor> cursor = new FeatureListCursor(itr->second);
                         Query query;
                         factory.createOrUpdateNode(cursor.get(), *style, fc, styleNode, query);
                         if (styleNode.valid())

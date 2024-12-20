@@ -51,8 +51,10 @@ namespace osgEarth
             // constructors
             Options();
             Options(const ConfigOptions& options);
-            OE_OPTION_LAYER(FeatureSource, features);            
+            OE_OPTION_LAYER(FeatureSource, features);
+            OE_OPTION(bool, cropFeaturesToTile, false);
             Config getConfig() const override;
+
         protected: // LayerOptions
             void mergeConfig(const Config& conf) override;
         private:

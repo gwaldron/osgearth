@@ -111,5 +111,10 @@ namespace osgEarth
         bool _graphDirty;
         osg::ref_ptr<StateSetCache> _statesetCache;
         void create();
+
+        using L2Cache = LRUCache<TileKey, osg::ref_ptr<osg::Node>>;
+        mutable L2Cache _localcache;
+        mutable ReadWriteMutex _localcacheMutex;
+        mutable Gate<TileKey> _gate;
     };
 }

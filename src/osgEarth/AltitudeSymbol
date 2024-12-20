@@ -90,28 +90,22 @@ namespace osgEarth
         AltitudeSymbol( const Config& conf =Config() );
 
         /** How to clamp instances to the terrain (default is CLAMP_NONE) */
-        optional<Clamping>& clamping() { return _clamping; }
-        const optional<Clamping>& clamping() const { return _clamping; }
+        OE_OPTION(Clamping, clamping, CLAMP_NONE);
 
         /** Method of terrain following to use (default is TECHNIQUE_MAP) */
-        optional<Technique>& technique() { return _technique; }
-        const optional<Technique>& technique() const { return _technique; }
+        OE_OPTION(Technique, technique, TECHNIQUE_MAP);
 
         /** Terrain resolution at which to perform clamping (in map units) */
-        optional<float>& clampingResolution() { return _resolution; }
-        const optional<float>& clampingResolution() const { return _resolution; }
+        OE_OPTION(float, clampingResolution, 0.0f);
 
         /** Granularity at which to clamp a geometry */
-        optional<Binding>& binding() { return _binding; }
-        const optional<Binding>& binding() const { return _binding; }
+        OE_OPTION(Binding, binding, BINDING_VERTEX);
 
         /** Vertical offset of geometry after clamping */
-        optional<NumericExpression>& verticalOffset() { return _verticalOffset; }
-        const optional<NumericExpression>& verticalOffset() const { return _verticalOffset; }
+        OE_OPTION(NumericExpression, verticalOffset, { 1.0 });
 
         /** Vertical scale factor to apply to geometry's Z after clamping. */
-        optional<NumericExpression>& verticalScale() { return _verticalScale; }
-        const optional<NumericExpression>& verticalScale() const { return _verticalScale; }
+        OE_OPTION(NumericExpression, verticalScale, { 0.0 });
 
     public:
         virtual Config getConfig() const;
@@ -120,13 +114,6 @@ namespace osgEarth
 
     protected:
         virtual ~AltitudeSymbol() { }
-
-        optional<Clamping>           _clamping;
-        optional<Technique>          _technique;
-        optional<Binding>            _binding;
-        optional<float>              _resolution;
-        optional<NumericExpression>  _verticalOffset;
-        optional<NumericExpression>  _verticalScale;
     };
 } // namespace osgEarth
 

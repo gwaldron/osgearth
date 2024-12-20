@@ -29,6 +29,7 @@
 | OSGEARTH_CACHE_PATH | Path of a local folder in which to cache data. Setting this variable will automatically activate caching. ||
 | OSGEARTH_NO_CACHE | Set this to `1` and osgEarth will ignore any configured cache setup, and force all requests to go directly to source. ||
 | OSGEARTH_CACHE_ONLY | Set this to `1` and osgEarth will only attempt to read data from a configured cache, and will not attempt to read data from the source for remote layers. ||
+| OSGEARTH_CACHE_MAX_AGE | Maximum age (in seconds) of valid cache entries. ||
 | OSGEARTH_CACHE_MAX_SIZE_MB | Maximum size of the disk cache in MB. This only applies to the `rocksdb` cache driver, and is only a general target and NOT a guarantee. ||
 |||
 

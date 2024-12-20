@@ -454,15 +454,13 @@ namespace
                     osg::ref_ptr<Feature> f = new Feature(polygon.get(), _utm.get());
                     f->transform(_feature->getSRS());
 
-                    osg::ref_ptr<Geometry> croppedGeom;
-                    if (f->getGeometry()->crop(_extent.bounds(), croppedGeom))
+                    if (auto cropped = f->getGeometry()->crop(_extent.bounds()))
                     {
-                        f->setGeometry(croppedGeom.get());
+                        f->setGeometry(cropped.get());
                         f->set("easting", x);
                         f->set("northing", y);
                         GeomCell* child = new GeomCell(interval);
                         child->setupData(f.get(), _parent);
-                        //child->setupPaging();
                         group->addChild(child);
                     }                 
                 }
@@ -518,10 +516,9 @@ namespace
             osg::ref_ptr<Feature> f = new Feature(grid.get(), _utm.get());
             f->transform(_feature->getSRS());
 
-            osg::ref_ptr<Geometry> croppedGeom;
-            if (f->getGeometry()->crop(_extent.bounds(), croppedGeom))
+            if (auto cropped = f->getGeometry()->crop(_extent.bounds()))
             {
-                f->setGeometry(croppedGeom.get());
+                f->setGeometry(cropped.get());
             }
 
             GeometryCompilerOptions gco;

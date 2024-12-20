@@ -78,6 +78,22 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
 {
     osg::ref_ptr<osg::Node> result;
 
+    // check the L2 cache
+    {
+        ScopedReadLock lock(_localcacheMutex);
+        L2Cache::Record r;
+        if (_localcache.get(key, r))
+        {
+            OE_INFO << "L2 hit(" << key.str() << ")" << std::endl;
+            return r.value();
+        }
+    }
+
+    // only create one at a time per key
+    ScopedGate<TileKey> sentry(_gate, key);
+
+    //OE_INFO << "createTile(" << key.str() << ")" << std::endl;
+
     if (key.getProfile()->isHorizEquivalentTo(getProfile()))
     {
         result = createTileImplementation(key, progress);
@@ -157,6 +173,12 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
         {
             osgEarth::Registry::shaderGenerator().run(result.get(), _statesetCache);
         }
+    }
+
+    if (result.valid())
+    {
+        ScopedWriteLock lock(_localcacheMutex);
+        _localcache.insert(key, result);
     }
 
     return result;

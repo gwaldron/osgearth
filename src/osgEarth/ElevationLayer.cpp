@@ -223,7 +223,7 @@ ElevationLayer::assembleHeightField(const TileKey& key, ProgressCallback* progre
     // If we got here, assert that there's a non-null layer profile.
     if (!getProfile())
     {
-        setStatus(Status::Error(Status::AssertionFailure, "assembleImage with undefined profile"));
+        setStatus(Status::Error(Status::AssertionFailure, "assembleHeightField with undefined profile"));
         return { };
     }
 
@@ -342,8 +342,12 @@ ElevationLayer::assembleHeightField(const TileKey& key, ProgressCallback* progre
                     auto& h = mosaic->getHeight(col, row);
                     for (unsigned k = 0; k < sources.size() && h == NO_DATA_VALUE; ++k)
                     {
-                        h = sources[k].second.getElevation(points[i].x(), points[i].y(), INTERP_BILINEAR)
-                            - points[i].z(); // apply vdatum offset
+                        auto& source = sources[k].second;
+                        if (source.getExtent().contains(points[i].x(), points[i].y())) // prevents clamping of out-of-bounds points
+                        {
+                            h = sources[k].second.getElevation(points[i].x(), points[i].y(), INTERP_BILINEAR)
+                                - points[i].z(); // apply vdatum offset
+                        }
                     }
                 }
             }

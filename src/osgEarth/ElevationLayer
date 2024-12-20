@@ -131,10 +131,6 @@ namespace osgEarth
 
     private:
         GeoHeightField assembleHeightField(const TileKey& key, ProgressCallback* progress);
-        //void assembleHeightField(
-        //    const TileKey& key,
-        //    osg::ref_ptr<osg::HeightField>& out_hf,
-        //    ProgressCallback* progress) const;
 
         void normalizeNoDataValues(osg::HeightField* hf) const;
 

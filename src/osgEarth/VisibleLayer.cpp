@@ -215,8 +215,6 @@ VisibleLayer::setVisible(bool value)
 
         updateNodeMasks();
 
-        onVisibleChanged.fire(this);
-
         if (_visibleTiedToOpen)
         {
             if (value && !isOpen())
@@ -224,6 +222,8 @@ VisibleLayer::setVisible(bool value)
             else if (!value && isOpen())
                 close();
         }
+
+        onVisibleChanged.fire(this);
     }
 }
 

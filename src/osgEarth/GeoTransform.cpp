@@ -27,16 +27,16 @@
 using namespace osgEarth;
 
 GeoTransform::GeoTransform() :
-_findTerrainInUpdateTraversal(false),
-_terrainCallbackInstalled(false),
-_autoRecomputeHeights(true),
-_clampInUpdateTraversal(false)
+    _findTerrainInUpdateTraversal(false),
+    _terrainCallbackInstalled(false),
+    _autoRecomputeHeights(true),
+    _clampInUpdateTraversal(false)
 {
-   //nop
+    //nop
 }
 
 GeoTransform::GeoTransform(const GeoTransform& rhs, const osg::CopyOp& op) :
-osg::MatrixTransform(rhs, op)
+    osg::MatrixTransform(rhs, op)
 {
     _position = rhs._position;
     _terrain = rhs._terrain.get();
@@ -58,9 +58,24 @@ GeoTransform::setTerrain(Terrain* terrain)
     if (terrain)
     {
         if (_terrain.valid())
+        {
+            if (_terrainCallback.valid())
+            {
+                _terrain->removeTerrainCallback(_terrainCallback.get());
+                _terrainCallbackInstalled = false;
+            }
             _terrain->removeObserver(this);
+        }
+
         _terrain = terrain;
         _terrain->addObserver(this);
+
+        if (_terrainCallback.valid())
+        {
+            _terrain->addTerrainCallback(_terrainCallback);
+            _terrainCallbackInstalled = true;
+        }
+
         setPosition(_position);
     }
 }
@@ -152,8 +167,10 @@ GeoTransform::setPosition(const GeoPoint& position)
         !_terrainCallbackInstalled &&
         terrain.valid())
     {
-        // The Adapter template auto-destructs, so we never need to remote it manually.
-        terrain->addTerrainCallback( new TerrainCallbackAdapter<GeoTransform>(this) );
+        // The Adapter template auto-destructs, so we never need to remove it manually.
+        if (!_terrainCallback.valid())
+            _terrainCallback = new TerrainCallbackAdapter<GeoTransform>(this);
+        terrain->addTerrainCallback(_terrainCallback);
         _terrainCallbackInstalled = true;
     }
 

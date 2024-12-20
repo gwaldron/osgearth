@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_GEO_TRANSFORM
-#define OSGEARTH_GEO_TRANSFORM
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
@@ -123,16 +122,14 @@ namespace osgEarth
     protected:
         virtual ~GeoTransform();
 
-        GeoPoint                   _position;                 // Current position
-        osg::observer_ptr<Terrain> _terrain;                  // Terrain for relative height resolution
-        bool                       _terrainCallbackInstalled; // Whether the Terrain callback is in
-        bool                       _autoRecomputeHeights;     // Whether to resolve relative position Z's
-        bool                       _findTerrainInUpdateTraversal; // True is we need _terrain but don't have it
-        bool                       _clampInUpdateTraversal;       // Whether a terrain clamp is required
-
+        GeoPoint _position;                   // Current position
+        osg::observer_ptr<Terrain> _terrain;  // Terrain for relative height resolution
+        bool _terrainCallbackInstalled;       // Whether the Terrain callback is in
+        bool _autoRecomputeHeights;           // Whether to resolve relative position Z's
+        bool _findTerrainInUpdateTraversal;   // True is we need _terrain but don't have it
+        bool _clampInUpdateTraversal;         // Whether a terrain clamp is required
         osg::ref_ptr<ComputeMatrixCallback> _computeMatrixCallback;
+        osg::ref_ptr<TerrainCallbackAdapter<GeoTransform>> _terrainCallback; // Callback for terrain updates
     };
 
 } // namespace osgEarth
-
-#endif // OSGEARTH_GEO_TRANSFORM

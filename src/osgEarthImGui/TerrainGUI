@@ -238,7 +238,7 @@ namespace osgEarth
                         osg::Vec3d world;
                         mp.toWorld(world);
 
-                        ImGui::Text("Lat %.3f  Lon %.3f  Z %.3f", mp.y(), mp.x(), mp.z());
+                        ImGui::Text("Lat %.5f  Lon %.5f  Z %.3f", mp.y(), mp.x(), mp.z());
                         ImGui::Text("X %d  Y %d  Z %d", (int)world.x(), (int)world.y(), (int)world.z());
                     }
                     else

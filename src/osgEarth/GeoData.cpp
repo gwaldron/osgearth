@@ -355,7 +355,10 @@ GeoPoint::transformResolution(const Distance& resolution, const UnitsType& outUn
             refLatDegrees);
     }
 
-    double d = resolution.asDistance(outUnits, refLatDegrees);
+    double d = getSRS()->transformDistance(resolution, outUnits, refLatDegrees);
+
+    //double d = resolution.asDistance(outUnits, refLatDegrees);
+
     return Distance(d, outUnits);
 }
 

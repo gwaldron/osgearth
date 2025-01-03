@@ -278,6 +278,8 @@ HeightFieldUtils::getHeightAtLocation(const osg::HeightField* hf, double x, doub
     return getHeightAtPixel(hf, px, py, interpolation);
 }
 
+#if 0
+// removed, because it's not used, and b/c it's hard-coded to the earth's ellipsoid
 osg::Vec3
 HeightFieldUtils::getNormalAtLocation(const HeightFieldNeighborhood& hood, double x, double y, double llx, double lly, double dx, double dy, RasterInterpolation interp)
 {
@@ -358,6 +360,7 @@ HeightFieldUtils::getNormalAtLocation(const HeightFieldNeighborhood& hood, doubl
     
     return n; // TODO, include curv
 }
+#endif
 
 float
 HeightFieldUtils::getHeightAtNormalizedLocation(const osg::HeightField* input,

@@ -110,6 +110,10 @@ namespace osgEarth
             const SpatialReference* outputSRS,
             double                  latitude =0.0);
 
+        double transformDistance(
+            const Distance& distance,
+            const UnitsType& output_units,
+            double reference_latitude = 0.0) const;
 
     public: // World transformations.
 

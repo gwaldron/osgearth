@@ -442,7 +442,11 @@ FeatureSource::getKeys(const TileKey& key, const Distance& buffer, std::unordere
             else
             {
                 GeoExtent extent = key.getExtent();
-                double d = buffer.asDistance(extent.getSRS()->getUnits(), 0.5*(extent.yMin() + extent.yMax()));
+                double d = extent.getSRS()->transformDistance(
+                    buffer,
+                    extent.getSRS()->getUnits(),
+                    0.5*(extent.yMin() + extent.yMax()));
+                //double d = buffer.asDistance(extent.getSRS()->getUnits(), 0.5*(extent.yMin() + extent.yMax()));
                 extent.expand(d, d);
                 unsigned lod = profile->getEquivalentLOD(key.getProfile(), key.getLOD());
                 profile->getIntersectingTiles(extent, lod, intersectingKeys);

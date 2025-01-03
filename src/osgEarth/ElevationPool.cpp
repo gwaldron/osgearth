@@ -501,13 +501,14 @@ ElevationPool::prepareEnvelope(
 
     GeoPoint refPointMap = refPoint.transform(env._map->getSRS());
 
-    double resolutionInMapUnits = resolution.asDistance(units, refPointMap.y());
+    double resolutionInMapUnits = env._map->getSRS()->transformDistance(resolution, units, refPointMap.y());
+    //double resolutionInMapUnits = resolution.asDistance(units, refPointMap.y());
 
     int maxLOD = env._profile->getLevelOfDetailForHorizResolution(
         resolutionInMapUnits,
         ELEVATION_TILE_SIZE);
 
-    env._lod = osg::minimum(getLOD(refPointMap.x(), refPointMap.y()), (int)maxLOD);
+    env._lod = std::min(getLOD(refPointMap.x(), refPointMap.y()), (int)maxLOD);
 
     // This can happen if the elevation data publishes no data extents
     if (env._lod < 0)
@@ -672,7 +673,8 @@ ElevationPool::sampleMapCoords(
 
     int lod;
     int lod_prev = INT_MAX;
-    auto& units = map->getSRS()->getUnits();
+    auto* srs = map->getSRS();
+    auto& units = srs->getUnits();
     Distance pointRes(0.0, units);
 
     for (auto iter = begin; iter != end; ++iter)
@@ -687,7 +689,8 @@ ElevationPool::sampleMapCoords(
 
             pointRes.set(p.w(), units);
 
-            double resolutionInMapUnits = pointRes.asDistance(units, p.y());
+            double resolutionInMapUnits = srs->transformDistance(pointRes, units, p.y());
+            //double resolutionInMapUnits = pointRes.asDistance(units, p.y());
 
             lod = profile->getLevelOfDetailForHorizResolution(
                 resolutionInMapUnits,
@@ -813,14 +816,17 @@ ElevationPool::sampleMapCoords(
 
     int lod;
     int lod_prev = INT_MAX;
-    auto& units = map->getSRS()->getUnits();
+    auto* srs = map->getSRS();
+    auto& units = srs->getUnits();
 
     for (auto iter = begin; iter != end; ++iter)
     {
         auto& p = *iter;
         {
             //OE_PROFILING_ZONE_NAMED("createTileKey");
-            double resolutionInMapUnits = resolution.asDistance(units, p.y());
+            double resolutionInMapUnits = srs->transformDistance(resolution, units, p.y());
+            //double resolutionInMapUnits = resolution.asDistance(units, p.y());
+
             int computedLOD = profile->getLevelOfDetailForHorizResolution(
                 resolutionInMapUnits,
                 ELEVATION_TILE_SIZE);

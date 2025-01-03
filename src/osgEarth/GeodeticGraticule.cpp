@@ -518,6 +518,7 @@ GeodeticGraticule::getViewExtent(osgUtil::CullVisitor* cullVisitor) const
     // side of the globe
     osg::Vec3d eye = osg::Vec3d(0,0,0) * invmv;
 
+    // TODO: fix this, hard coded to earth
     const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("epsg:4326");
 
     double nearPlane, farPlane;
@@ -594,6 +595,7 @@ GeodeticGraticule::getViewExtent(osgUtil::CullVisitor* cullVisitor) const
     osgEarth::GeoPoint center;
     center.fromWorld(srs, bs.center());
 
+    // TODO: fix this, it's hard-coded to earth
     double radiusDegrees = bs.radius() / 111000.0;
 
     // Try to clamp the maximum radius so far out views don't go wacky.
@@ -619,6 +621,7 @@ GeodeticGraticule::updateLabels()
         return;
     }
 
+    //TODO: fix earth hard coding
     const osgEarth::SpatialReference* srs = osgEarth::SpatialReference::create("wgs84");
 
     std::lock_guard<std::mutex> lock(_cameraDataMapMutex);

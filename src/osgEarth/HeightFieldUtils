@@ -98,6 +98,7 @@ namespace osgEarth { namespace Util
             double dx, double dy,
             RasterInterpolation interpolation = INTERP_BILINEAR);
 
+#if 0
         /**
          * Gets the normal vector at a geolocation
          */
@@ -107,6 +108,7 @@ namespace osgEarth { namespace Util
             double llx, double lly,
             double dx, double dy,
             RasterInterpolation interpolation = INTERP_BILINEAR);
+#endif
 
         /**
          * Gets the interpolated elevation at the specified "normalized unit location".

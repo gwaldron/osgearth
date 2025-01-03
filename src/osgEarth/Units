@@ -286,20 +286,6 @@ namespace osgEarth
                 return T(as(convertTo), convertTo);
             }
 
-            double asDistance(const UnitsType& convertTo, double refLatDegrees) const {
-                if (_units.isAngle() && convertTo.isLinear()) {
-                    double angleDeg = Units::convert(_units, Units::DEGREES, _value);
-                    double meters = angleDeg * 111000.0 * cos(osg::DegreesToRadians(refLatDegrees));
-                    return Units::convert(Units::METERS, convertTo, meters);
-                }
-                else if (_units.isLinear() && convertTo.isAngle()) {
-                    double valueMeters = Units::convert(_units, Units::METERS, _value);
-                    double angleDeg = valueMeters / (111000.0 * cos(osg::DegreesToRadians(refLatDegrees)));
-                    return Units::convert(Units::DEGREES, convertTo, angleDeg);
-                }
-                else return as(convertTo);
-            }
-
             double getValue() const { return _value; }
             const UnitsType& getUnits() const { return _units; }
 

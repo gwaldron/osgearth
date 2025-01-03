@@ -781,13 +781,23 @@ FeatureRasterizer::render_blend2d(
 
                 Distance lineWidth(lineWidthValue, widthUnits.get());
 
-                double lineWidth_map_south = lineWidth.asDistance(
+                double lineWidth_map_south = _extent.getSRS()->transformDistance(
+                    lineWidth,
                     _extent.getSRS()->getUnits(),
                     _extent.yMin());
 
-                double lineWidth_map_north = lineWidth.asDistance(
+                double lineWidth_map_north = _extent.getSRS()->transformDistance(
+                    lineWidth,
                     _extent.getSRS()->getUnits(),
                     _extent.yMax());
+
+                //double lineWidth_map_south = lineWidth.asDistance(
+                //    _extent.getSRS()->getUnits(),
+                //    _extent.yMin());
+
+                //double lineWidth_map_north = lineWidth.asDistance(
+                //    _extent.getSRS()->getUnits(),
+                //    _extent.yMax());
 
                 double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
 
@@ -812,13 +822,23 @@ FeatureRasterizer::render_blend2d(
 
             if (width.getUnits() != Units::PIXELS)
             {
-                double lineWidth_map_south = width.asDistance(
+                double lineWidth_map_south = _extent.getSRS()->transformDistance(
+                    width,
                     _extent.getSRS()->getUnits(),
                     _extent.yMin());
 
-                double lineWidth_map_north = width.asDistance(
+                double lineWidth_map_north = _extent.getSRS()->transformDistance(
+                    width,
                     _extent.getSRS()->getUnits(),
                     _extent.yMax());
+
+                //double lineWidth_map_south = width.asDistance(
+                //    _extent.getSRS()->getUnits(),
+                //    _extent.yMin());
+
+                //double lineWidth_map_north = width.asDistance(
+                //    _extent.getSRS()->getUnits(),
+                //    _extent.yMax());
 
                 double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
                 double pixelSize_map = _extent.height() / (double)_image->t();

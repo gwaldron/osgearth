@@ -696,7 +696,7 @@ ImageLayer::assembleImage(const TileKey& key, ProgressCallback* progress)
 
             // Working set of points. it's much faster to xform an entire vector all at once.
             std::vector<osg::Vec3d> points;
-            points.assign(cols * rows, { 0, 0, 0 });
+            points.resize(cols * rows);
 
             double minx, miny, maxx, maxy;
             key.getExtent().getBounds(minx, miny, maxx, maxy);

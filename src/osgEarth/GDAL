@@ -145,14 +145,17 @@ namespace osgEarth
             void pixelToGeo(double, double, double&, double&);
             void geoToPixel(double, double, double&, double&);
 
-            bool isValidValue(float, GDALRasterBand*);
+            bool isValidValue(float, GDALRasterBand*) const;
+            bool isValidValue(float value, float noDataValue) const;
             bool intersects(const TileKey&);
-            float getInterpolatedValue(GDALRasterBand* band, double x, double y, bool applyOffset = true);
+            float getInterpolatedDEMValue(GDALRasterBand* band, double x, double y, bool applyOffset = true);
+            float getInterpolatedDEMValueWorkspace(GDALRasterBand* band, double u, double v, float* data, int width, int height);
 
             optional<float> _noDataValue, _minValidValue, _maxValidValue;
             optional<unsigned> _maxDataLevel = 30;
             GDALDataset* _srcDS = nullptr;
             GDALDataset* _warpedDS = nullptr;
+            bool _pixelIsArea = true; // AREA_OR_POINT metadata if available
             double _linearUnits = 1.0;
             double _geotransform[6];
             double _invtransform[6];

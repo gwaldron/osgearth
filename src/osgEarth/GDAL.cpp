@@ -968,7 +968,7 @@ GDAL::Driver::getInterpolatedDEMValue(GDALRasterBand* band, double x, double y, 
     double r, c;
     geoToPixel(x, y, c, r);
 
-#if GDAL_VERSION_NUM >= 3010000 // 3.10+
+#if GDAL_VERSION_NUM >= 3100000 // 3.10+
     GDALRIOResampleAlg alg = GRIORA_NearestNeighbour;
 
     switch (gdalOptions().interpolation().value())

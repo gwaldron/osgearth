@@ -408,7 +408,7 @@ Geometry::crop(const Ring* boundary) const
 #else // OSGEARTH_HAVE_GEOS
 
     OE_WARN << LC << "Crop failed - GEOS not available" << std::endl;
-    return false;
+    return { };
 
 #endif // OSGEARTH_HAVE_GEOS
 }

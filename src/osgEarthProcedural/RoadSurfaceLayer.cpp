@@ -24,6 +24,7 @@
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/Containers>
 #include <osgEarth/Metrics>
+#include <osgEarth/FeatureRasterizer>
 
 #include <osgDB/WriteFile>
 
@@ -137,13 +138,14 @@ RoadSurfaceLayer::addedToMap(const Map* map)
 {
     ImageLayer::addedToMap(map);
 
+    options().featureSource().addedToMap(map);
+    options().styleSheet().addedToMap(map);
+
     // create a session for feature processing based in the Map,
     // but don't set the feature source yet.
     _session = new Session(map, getStyleSheet(), nullptr, getReadOptions());
     _session->setResourceCache(new ResourceCache());
-
-    options().featureSource().addedToMap(map);
-    options().styleSheet().addedToMap(map);
+    _session->setFeatureSource(options().featureSource().getLayer());
 }
 
 void
@@ -354,6 +356,132 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         return GeoImage::INVALID;
     }
 
+#if 1
+
+    GeoExtent featureExtent = key.getExtent().transform(featureSRS);
+
+    // Create the output extent:
+    GeoExtent outputExtent = key.getExtent();
+
+    // Establish a local tangent plane near the output extent. This will allow
+    // the compiler to render the tile in a location cartesian space.
+    const SpatialReference* keySRS = outputExtent.getSRS();
+    osg::Vec3d pos(outputExtent.west(), outputExtent.south(), 0);
+    osg::ref_ptr<const SpatialReference> srs = keySRS->createTangentPlaneSRS(pos);
+    outputExtent = outputExtent.transform(srs.get());
+
+    // Set the LTP as our output SRS.
+    // The geometry compiler will transform all our features into the
+    // LTP so we can render using an orthographic camera (TileRasterizer)
+    FilterContext fc(session.get(), featureProfile.get(), featureExtent);
+    fc.setOutputSRS(outputExtent.getSRS());
+
+    osg::ref_ptr<osg::Group> group;
+    int render_order = 0;
+    RenderSymbol ordering;
+
+    auto processStyle = [&](auto& style, auto& features, auto* progress)
+        {
+            if (!group.valid())
+                group = new osg::Group();
+
+            GeometryCompiler compiler;
+            osg::ref_ptr<osg::Node> node = compiler.compile(features, style, fc);
+            
+            if (node.valid() && node->getBound().valid())
+            {
+                group->addChild(node);
+
+                bool apply_default_ordering = true;
+                auto* render = style.get<RenderSymbol>();
+                if (render)
+                {
+                    render->applyTo(node.get());
+                    if (render->order().isSet())
+                        apply_default_ordering = false;
+                }
+
+                // if there's no render-order symbol, enforce rendering in order of appearance.
+                if (apply_default_ordering)
+                {
+                    ordering.order() = ++render_order;
+                    ordering.applyTo(node.get());
+                }
+            }
+        };
+
+    FeatureStyleSorter().sort(
+        key,
+        options().featureBufferWidth().value(),
+        session.get(),
+        _filterChain,
+        processStyle,
+        progress);
+
+
+
+    if (group && group->getBound().valid())
+    {
+        // Make sure there's actually geometry to render in the output extent
+        // since rasterization is expensive!
+        osg::Polytope polytope;
+        outputExtent.createPolytope(polytope);
+
+        osg::ref_ptr<osgUtil::PolytopeIntersector> intersector = new osgUtil::PolytopeIntersector(polytope);
+        osgUtil::IntersectionVisitor visitor(intersector);
+        group->accept(visitor);
+
+        if (intersector->getIntersections().empty())
+        {
+            //OE_DEBUG << LC << "RSL: skipped an EMPTY bounds without rasterizing :) for " << key.str() << std::endl;
+            return GeoImage::INVALID;
+        }
+
+        group->setName(key.str());
+
+        // rasterize the group in the background:
+        auto result = rasterizer->render(group.release(), outputExtent);
+
+        // Since we join on the rasterizer future immediately, we need to make sure
+        // the join cancels properly with a custom cancel predicate that checks for
+        // the existence and status of the host layer.
+        osg::observer_ptr<const Layer> layer(this);
+
+        osg::ref_ptr<ProgressCallback> local_progress = new ProgressCallback(
+            progress,
+            [layer]() {
+                osg::ref_ptr<const Layer> safe;
+                return !layer.lock(safe) || !safe->isOpen() || !jobs::alive();
+            }
+        );
+
+        // Immediately blocks on the result.
+        // That is OK - we are hopefully in a loading thread.
+        osg::ref_ptr<osg::Image> image = result.join(local_progress.get());
+
+        // Empty image means the texture did not render anything
+        if (image.valid() && image->data() != nullptr)
+        {
+            if (!ImageUtils::isEmptyImage(image.get()))
+            {
+                return GeoImage(image.get(), key.getExtent());
+            }
+            else
+            {
+                //OE_DEBUG << LC << "RSL: skipped an EMPTY image result for " << key.str() << std::endl;
+                return GeoImage::INVALID;
+            }
+        }
+        else
+        {
+            return GeoImage::INVALID;
+        }
+    }
+
+    return GeoImage::INVALID;
+
+#else
+
     // Fetch the set of features to render
     FeatureList features;
     getFeatures(featureSource.get(), key, features, progress);
@@ -381,6 +509,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
         // compile the features into a node.
         GeometryCompiler compiler;
         StyleToFeatures mapping;
+
         sortFeaturesIntoStyleGroups(styleSheet.get(), features, fc, mapping);
         osg::ref_ptr< osg::Group > group;
         if (!mapping.empty())
@@ -390,10 +519,15 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
             group = new osg::Group();
             for (unsigned int i = 0; i < mapping.size(); i++)
             {
-                osg::ref_ptr<osg::Node> node = compiler.compile(mapping[i].second, mapping[i].first, fc);
+                auto& style = mapping[i].first;
+                osg::ref_ptr<osg::Node> node = compiler.compile(mapping[i].second, style, fc);
                 if (node.valid() && node->getBound().valid())
                 {
                     group->addChild(node);
+
+                    auto* render = style.get<RenderSymbol>();
+                    if (render)
+                        render->applyTo(node.get());
                 }
             }
         }
@@ -462,6 +596,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     }
 
     return GeoImage::INVALID;
+#endif
 }
 
 void

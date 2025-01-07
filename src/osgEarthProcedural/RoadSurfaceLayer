@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_PROCEDURAL_ROAD_SURFACE_LAYER
-#define OSGEARTH_PROCEDURAL_ROAD_SURFACE_LAYER 1
+#pragma once
 
 #include <osgEarthProcedural/Export>
 #include <osgEarth/ImageLayer>
@@ -112,5 +111,3 @@ namespace osgEarth { namespace Procedural
 } } // namespace osgEarth::Procedural
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::Procedural::RoadSurfaceLayer::Options);
-
-#endif // OSGEARTH_PROCEDURAL_ROAD_SURFACE_LAYER

@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_FEATURES_FEATURE_IMAGE_LAYER
-#define OSGEARTH_FEATURES_FEATURE_IMAGE_LAYER 1
+#pragma once
 
 #include <osgEarth/ImageLayer>
 #include <osgEarth/LayerReference>
@@ -29,6 +28,8 @@ namespace osgEarth
 {
     /**
      * Rasterizes feature data into an image layer.
+     * Styles will render in their order of appearance in the stylesheet;
+     * e.g. features matching the last style will render on top.
      */
     class OSGEARTH_EXPORT FeatureImageLayer : public osgEarth::ImageLayer
     {
@@ -105,5 +106,3 @@ namespace osgEarth
 } // namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::FeatureImageLayer::Options);
-
-#endif // OSGEARTH_FEATURES_FEATURE_IMAGE_LAYER

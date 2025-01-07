@@ -1428,9 +1428,8 @@ FeatureStyleSorter::sort_usingSelectors(
             getFeatures(session, defaultQuery, buffer, key.getExtent(), filters, features, progress);
             if (!features.empty())
             {
-                //std::unordered_map<std::string, Style> literal_styles;
                 std::unordered_map<std::string, std::pair<Style, int>> literal_styles;
-                //std::map<const Style*, FeatureList> style_buckets;
+
                 // keep ordered.
                 std::map<int, std::pair<const Style*, FeatureList>> style_buckets;
 

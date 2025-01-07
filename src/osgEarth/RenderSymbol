@@ -93,9 +93,5 @@ namespace osgEarth
         static void parseSLD(const Config& c, class Style& style);
 
         void applyTo(osg::Node*) const;
-
-    protected:
-        
-        virtual ~RenderSymbol() { }
     };
 } // namespace osgEarth

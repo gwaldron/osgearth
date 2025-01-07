@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_FEATURE_RASTERIZER
-#define OSGEARTH_FEATURE_RASTERIZER 1
+#pragma once
 
 #include <osgEarth/StyleSheet>
 #include <osgEarth/Session>
@@ -102,65 +101,5 @@ namespace osgEarth
                 const FeatureProfile* profile,
                 const StyleSheet* sheet);
         };
-
-        class OSGEARTH_EXPORT FeatureStyleSorter
-        {
-        public:
-            FeatureStyleSorter();
-
-            using Function = std::function<void(
-                const Style& style,
-                FeatureList& features,
-                ProgressCallback* progress
-            )>;
-
-            void sort(
-                const TileKey& key,
-                const Distance& buffer,
-                Session* session,
-                const FeatureFilterChain& filters,
-                Function processFeaturesForStyle,
-                ProgressCallback* progress) const;
-
-        protected:
-            void getFeatures(
-                Session* session,
-                const Query& query,
-                const Distance& buffer,
-                const GeoExtent& extent,
-                const FeatureFilterChain& filters,
-                FeatureList& output,
-                ProgressCallback* progress) const;
-
-            void sort_usingEmbeddedStyles(
-                const TileKey& key,
-                const Distance& buffer,
-                const FeatureFilterChain& filters,
-                Session* session,
-                Function processFeaturesForStyle,
-                ProgressCallback* progress) const;
-
-            void sort_usingSelectors(
-                const TileKey& key,
-                const Distance& buffer,
-                const FeatureFilterChain& filters,
-                Session* session,
-                Function processFeaturesForStyle,
-                ProgressCallback* progress) const;
-
-            void sort_usingOneStyle(
-                const Style& style,
-                const TileKey& key,
-                const Distance& buffer,
-                const FeatureFilterChain& filters,
-                Session* session,
-                Function processFeaturesForStyle,
-                ProgressCallback* progress) const;
-
-
-        };
     }
 }
-
-
-#endif

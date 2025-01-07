@@ -18,6 +18,7 @@
  */
 #include "FeatureSDFLayer"
 #include "FeatureRasterizer"
+#include "FeatureStyleSorter"
 #include <osgDB/WriteFile>
 #include <osgDB/FileUtils>
 

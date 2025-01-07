@@ -201,6 +201,7 @@ SET(TARGET_H
     FeatureSDFLayer
     FeatureSource
     FeatureSourceIndexNode
+    FeatureStyleSorter
     FileUtils
     Fill
     Filter
@@ -564,6 +565,7 @@ set(TARGET_SRC
     FeatureSDFLayer.cpp
     FeatureSource.cpp
     FeatureSourceIndexNode.cpp
+    FeatureStyleSorter.cpp
     FileGDBFeatureSource.cpp
     FileUtils.cpp
     Fill.cpp

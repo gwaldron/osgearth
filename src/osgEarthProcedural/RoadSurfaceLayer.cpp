@@ -24,7 +24,7 @@
 #include <osgEarth/GeometryCompiler>
 #include <osgEarth/Containers>
 #include <osgEarth/Metrics>
-#include <osgEarth/FeatureRasterizer>
+#include <osgEarth/FeatureStyleSorter>
 
 #include <osgDB/WriteFile>
 

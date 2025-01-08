@@ -13,7 +13,9 @@ if(UNIX AND NOT ANDROID)
     find_package(Threads REQUIRED)
     
     # add 64 to the lib prefix.
-    set(INSTALL_LIBRARY_FOLDER "lib64")
-    set(INSTALL_PLUGINS_FOLDER "lib64")
+    if(NOT APPLE)
+        set(INSTALL_LIBRARY_FOLDER "lib64")
+        set(INSTALL_PLUGINS_FOLDER "lib64")
+    endif()
     
 endif(UNIX AND NOT ANDROID)

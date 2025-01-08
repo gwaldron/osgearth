@@ -166,6 +166,7 @@ XYZElevationLayerOptions::fromConfig(const Config& conf)
     conf.get("format", _format);
     conf.get("invert_y", _invertY);
     conf.get("elevation_encoding", _elevationEncoding);
+    conf.get("interpretation", elevationEncoding()); // compat with QGIS
 }
 
 Config
@@ -337,6 +338,32 @@ XYZElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
 
             return GeoHeightField(hf, key.getExtent());
         }
+
+        else if (options().elevationEncoding() == "terrarium")
+        {
+            // Allocate the heightfield.
+            osg::HeightField* hf = new osg::HeightField();
+            hf->allocate(image->s(), image->t());
+
+            ImageUtils::PixelReader reader(image);
+            osg::Vec4f pixel;
+
+            for (int c = 0; c < image->s(); c++)
+            {
+                for (int r = 0; r < image->t(); r++)
+                {
+                    reader(pixel, c, r);
+                    pixel.r() *= 255.0;
+                    pixel.g() *= 255.0;
+                    pixel.b() *= 255.0;
+                    float h = (pixel.r() * 256.0f + pixel.g() + pixel.b() / 256.0f) - 32768.0f;
+                    hf->setHeight(c, r, h);
+                }
+            }
+
+            return GeoHeightField(hf, key.getExtent());
+        }
+
         else
         {
             ImageToHeightFieldConverter conv;

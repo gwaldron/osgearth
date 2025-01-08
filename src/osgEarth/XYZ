@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_XYZ_H
-#define OSGEARTH_XYZ_H
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/ImageLayer>
@@ -220,5 +218,3 @@ namespace osgEarth
 
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::XYZImageLayer::Options);
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::XYZElevationLayer::Options);
-
-#endif // OSGEARTH_XYZ_H

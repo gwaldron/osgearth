@@ -447,6 +447,7 @@ namespace osgEarth { namespace Util
         double u = (x - xmin) / (xmax - xmin);
         double v = (y - ymin) / (ymax - ymin);
 
+        // tile index (offset from (0,0) center tile)
         int tx = (int)u;
         int ty = (int)v;
 
@@ -454,8 +455,10 @@ namespace osgEarth { namespace Util
         typename Tile* p00_tile = getTile(tx, ty);
         if (!p00_tile)
             return false;
+
         double p00_s = fract(u) * (double)_width, p00_t = fract(v) * (double)_height;
 
+        // nearest-neighbor pixel:
         unsigned s00 = (unsigned)floor(p00_s);
         unsigned t00 = (unsigned)floor(p00_t);
 
@@ -464,35 +467,53 @@ namespace osgEarth { namespace Util
             return p00_tile->_data.read(output, s00, t00);
         }
 
+        // intepolation weights:
+        double left_weight = 1.0 - (p00_s + 0.5 - (double)floor(p00_s + 0.5));
+        double bottom_weight = 1.0 - (p00_t + 0.5 - (double)floor(p00_t + 0.5));
+
+        // prepare for interpolation.
+        int delta_s = 1, delta_t = 1;
+        if (fract(p00_s) < 0.5)
+        {
+            delta_s = -1;
+            left_weight = 1.0 - left_weight;
+        }
+        if (fract(p00_t) < 0.5)
+        {
+            delta_t = -1;
+            bottom_weight = 1.0 - bottom_weight;
+        }
+
         // Neighbors:
         typename Tile* p10_tile = p00_tile;
-        double p10_s = p00_s + 1, p10_t = p00_t;
-        if (p10_s >= (double)_width)
+        double p10_s = p00_s + delta_s, p10_t = p00_t;
+        if (p10_s >= (double)_width || p10_s < 0)
         {
-            p10_tile = getTile(tx + 1, ty);
-            p10_s -= (double)_width;
+            p10_tile = getTile(tx + delta_s, ty);
+            p10_s -= (double)_width * delta_s;
         }
 
         typename Tile* p01_tile = p00_tile;
-        double p01_s = p00_s, p01_t = p00_t + 1;
-        if (p01_t >= _height)
+        double p01_s = p00_s, p01_t = p00_t + delta_t;
+        if (p01_t >= _height || p01_t < 0)
         {
-            p01_tile = getTile(tx, ty + 1);
-            p01_t -= (double)_height;
+            p01_tile = getTile(tx, ty + delta_t);
+            p01_t -= (double)_height * (double)delta_t;
         }
 
         typename Tile* p11_tile = p00_tile;
-        double p11_s = p00_s + 1, p11_t = p00_t + 1;
-        if (p11_s >= (double)_width || p11_t >= (double)_height)
+        double p11_s = p00_s + delta_s, p11_t = p00_t + delta_t;
+        int ntx = tx, nty = ty;
+        if (p11_s >= (double)_width || p11_s < 0)
+            ntx = tx + delta_s;
+        if (p11_t >= (double)_height || p11_t < 0)
+            nty = ty + delta_t;
+        if (ntx != tx || nty != ty)
         {
-            p11_tile = getTile(tx + 1, ty + 1);
-            if (p11_s > (double)_width) p11_s -= (double)_width;
-            if (p11_t > (double)_height) p11_t -= (double)_height;
+            p11_tile = getTile(ntx, nty);
+            if (p11_s > (double)_width || p11_s < 0) p11_s -= (double)_width * (double)delta_s;
+            if (p11_t > (double)_height || p11_t < 0) p11_t -= (double)_height * (double)delta_t;
         }
-
-        // calculate weights:
-        double left_weight = 1.0 - (p00_s - (double)s00);
-        double bottom_weight = 1.0 - (p00_t - (double)t00);
 
         if (!p01_tile || !p10_tile || !p11_tile)
         {

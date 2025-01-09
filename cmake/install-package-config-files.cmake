@@ -2,17 +2,17 @@
 #
 # Creates and installs the top-level LIBNAME-config.cmake file for a library
 #
-function(osgearth_package_install_config_files INCLUDE_INSTALL_DIR LIBRARY_INSTALL_DIR)
-
-    set(PACKAGE_INSTALL_DIR share/osgearth)
-
+function(osgearth_package_install_config_files)
     include(CMakePackageConfigHelpers)
+
+    # main target include dir
+    set(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_INCLUDEDIR}/osgEarth")
 
     configure_package_config_file(
         "${PROJECT_SOURCE_DIR}/cmake/osgEarth-config.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/osgEarth-config.cmake"
-        INSTALL_DESTINATION ${PACKAGE_INSTALL_DIR}
-        PATH_VARS INCLUDE_INSTALL_DIR LIBRARY_INSTALL_DIR) 
+        INSTALL_DESTINATION ${OSGEARTH_INSTALL_CMAKEDIR}
+        PATH_VARS INCLUDE_INSTALL_DIR OSGEARTH_INSTALL_DATADIR) 
 
     write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/osgEarth-configVersion.cmake"
@@ -24,7 +24,7 @@ function(osgearth_package_install_config_files INCLUDE_INSTALL_DIR LIBRARY_INSTA
             "${CMAKE_CURRENT_BINARY_DIR}/osgEarth-config.cmake"
             "${CMAKE_CURRENT_BINARY_DIR}/osgEarth-configVersion.cmake"
         DESTINATION
-             ${PACKAGE_INSTALL_DIR} )
+             ${OSGEARTH_INSTALL_CMAKEDIR} )
     
 endfunction()
 
@@ -36,13 +36,10 @@ endfunction()
 # and is included from the top-level osgEarth-config.cmake file.
 #
 function(osgearth_package_install_library_target MY_TARGET)
-
-    set(PACKAGE_INSTALL_DIR share/osgearth)
-
     install(
         EXPORT ${MY_TARGET}Targets
         FILE ${MY_TARGET}-targets.cmake
         NAMESPACE osgEarth::
-        DESTINATION ${PACKAGE_INSTALL_DIR} )
+        DESTINATION ${OSGEARTH_INSTALL_CMAKEDIR} )
     
 endfunction()

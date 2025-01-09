@@ -1242,9 +1242,6 @@ ElevationLayerVector::populateHeightField(
     }
 #endif
 
-    // Resolve any invalid heights in the output heightfield.
-    HeightFieldUtils::resolveInvalidHeights(hf, key.getExtent(), NO_DATA_VALUE, 0L);
-
     if (progress && progress->isCanceled())
     {
         return false;

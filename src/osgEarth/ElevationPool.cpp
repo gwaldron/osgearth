@@ -360,6 +360,9 @@ ElevationPool::getOrCreateRaster(
                 map->getElevationInterpolation(),
                 progress);
 
+            // Resolve any invalid heights in the output heightfield.
+            HeightFieldUtils::resolveInvalidHeights(hf.get(), keyToUse.getExtent(), NO_DATA_VALUE, 0L);
+
             if ((populated == true) ||
                 (acceptLowerRes == false) ||
                 (progress && progress->isCanceled()))

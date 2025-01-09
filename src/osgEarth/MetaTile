@@ -138,7 +138,7 @@ namespace osgEarth { namespace Util
 
         //! Read the interpolated value at the geospatial coordinate (x,y)
         //! (Bilinear interpolation is used)
-        inline bool readAtCoord(typename T::pixel_type& output, double x, double y);
+        inline bool readAtCoord(typename T::pixel_type& output, double x, double y, RasterInterpolation = INTERP_BILINEAR);
 
         //! The scale&bias of the tile relative to the key originally passed
         //! to setCenterTileKey
@@ -437,7 +437,7 @@ namespace osgEarth { namespace Util
     }
 
     template<typename T>
-    bool MetaTile<T>::readAtCoord(typename T::pixel_type& output, double x, double y)
+    bool MetaTile<T>::readAtCoord(typename T::pixel_type& output, double x, double y, RasterInterpolation interp)
     {
         // geoextents of center tile:
         double xmin, ymin, xmax, ymax;
@@ -455,6 +455,14 @@ namespace osgEarth { namespace Util
         if (!p00_tile)
             return false;
         double p00_s = fract(u) * (double)_width, p00_t = fract(v) * (double)_height;
+
+        unsigned s00 = (unsigned)floor(p00_s);
+        unsigned t00 = (unsigned)floor(p00_t);
+
+        if (interp == INTERP_NEAREST)
+        {
+            return p00_tile->_data.read(output, s00, t00);
+        }
 
         // Neighbors:
         typename Tile* p10_tile = p00_tile;
@@ -483,8 +491,6 @@ namespace osgEarth { namespace Util
         }
 
         // calculate weights:
-        unsigned s00 = (unsigned)floor(p00_s);
-        unsigned t00 = (unsigned)floor(p00_t);
         double left_weight = 1.0 - (p00_s - (double)s00);
         double bottom_weight = 1.0 - (p00_t - (double)t00);
 
@@ -511,12 +517,24 @@ namespace osgEarth { namespace Util
                 return false;
             }
 
-            // bilinear:
-            typename T::pixel_type p0, p1;
-            p0 = mult(p00, left_weight) + mult(p10, 1.0 - left_weight);
-            p1 = mult(p01, left_weight) + mult(p11, 1.0 - left_weight);
-            output = mult(p0, bottom_weight) + mult(p1, 1.0 - bottom_weight);
-            return true;            
+            if (interp == INTERP_AVERAGE)
+            {
+                output =
+                    mult(p00, left_weight * bottom_weight) +
+                    mult(p10, (1.0 - left_weight) * bottom_weight) +
+                    mult(p01, left_weight * (1.0 - bottom_weight)) +
+                    mult(p11, (1.0 - left_weight) * (1.0 - bottom_weight));
+            }
+
+            else // INTERP_BILINEAR
+            {
+                typename T::pixel_type p0, p1;
+                p0 = mult(p00, left_weight) + mult(p10, 1.0 - left_weight);
+                p1 = mult(p01, left_weight) + mult(p11, 1.0 - left_weight);
+                output = mult(p0, bottom_weight) + mult(p1, 1.0 - bottom_weight);
+            }
+
+            return true;
         }
     }
        

@@ -271,6 +271,8 @@ OE_LAYER_PROPERTY_IMPL(XYZElevationLayer, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(XYZElevationLayer, bool, InvertY, invertY);
 OE_LAYER_PROPERTY_IMPL(XYZElevationLayer, std::string, Format, format);
 OE_LAYER_PROPERTY_IMPL(XYZElevationLayer, std::string, ElevationEncoding, elevationEncoding);
+OE_LAYER_PROPERTY_IMPL(XYZElevationLayer, bool, StitchEdges, stitchEdges);
+OE_LAYER_PROPERTY_IMPL(XYZElevationLayer, RasterInterpolation, Interpolation, interpolation);
 
 void
 XYZElevationLayer::init()
@@ -373,7 +375,7 @@ XYZElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
             return {};
         }
 
-        auto hf = new osg::HeightField();
+        osg::ref_ptr<osg::HeightField> hf = new osg::HeightField();
         hf->allocate(getTileSize(), getTileSize());
         std::fill(hf->getHeightList().begin(), hf->getHeightList().end(), NO_DATA_VALUE);
 
@@ -383,6 +385,9 @@ XYZElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
         osg::Vec4f pixel;
         for (int c = 0; c < getTileSize(); c++)
         {
+            if (progress && progress->isCanceled())
+                return {};
+
             double u = (double)c / (double)(getTileSize() - 1);
             double x = xmin + u * (xmax - xmin);
             for (int r = 0; r < getTileSize(); r++)
@@ -396,7 +401,7 @@ XYZElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
             }
         }
 
-        return GeoHeightField(hf, key.getExtent());
+        return GeoHeightField(hf.release(), key.getExtent());
     }
 
     else

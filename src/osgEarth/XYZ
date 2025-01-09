@@ -24,6 +24,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/Threading>
 #include <osgEarth/Containers>
+#include <osgEarth/GeoCommon>
 
 /**
  * XYZ layers. These are general purpose tiled layers that conform
@@ -86,6 +87,7 @@ namespace osgEarth { namespace XYZ
         OE_OPTION(std::string, format, {});
         OE_OPTION(std::string, elevationEncoding, {});
         OE_OPTION(bool, stitchEdges, false);
+        OE_OPTION(RasterInterpolation, interpolation, INTERP_BILINEAR);
         static Config getMetadata();
         virtual Config getConfig() const;
     private:
@@ -170,7 +172,7 @@ namespace osgEarth
     class OSGEARTH_EXPORT XYZElevationLayer : public ElevationLayer
     {
     public:
-        typedef XYZ::XYZElevationLayerOptions Options;
+        using Options = XYZ::XYZElevationLayerOptions;
 
     public:
         META_Layer(osgEarth, XYZElevationLayer, Options, ElevationLayer, XYZElevation);
@@ -191,21 +193,35 @@ namespace osgEarth
         const std::string& getFormat() const;
 
         //! Encoding encoding type
+        //! @param value Encoding type, one of "" (default), "mapbox", "terrarium"
         void setElevationEncoding(const std::string& value);
         const std::string& getElevationEncoding() const;
+
+        //! Whether to stitch the edges of abutting tiles together to prevent gaps.
+        //! Some elevation data is image based, and the side of one tile does not match
+        //! the value on the correspond side of the abutting tile. This option will
+        //! resample the data to make the edges match, for a small performance hit.
+        //! @param value True to stitch edges (default is false)
+        void setStitchEdges(const bool& value);
+        const bool& getStitchEdges() const;
+
+        //! Interpolation method to use when stitching edges = true.
+        //! Default is INTERP_BILINEAR.
+        void setInterpolation(const RasterInterpolation& value);
+        const RasterInterpolation& getInterpolation() const;
 
     public: // Layer
         
         //! Establishes a connection to the XYZ data
-        virtual Status openImplementation() override;
+        Status openImplementation() override;
 
         //! Creates a heightfield for the given tile key
-        virtual GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const override;
+        GeoHeightField createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const override;
 
     protected: // Layer
 
         //! Called by constructors
-        virtual void init();
+        void init() override;
 
     protected:
 

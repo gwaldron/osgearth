@@ -16,14 +16,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_MATH_H
-#define OSGEARTH_MATH_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Geometry>
 #include <osg/Quat>
 #include <osg/Vec3>
+#include <osg/Vec4>
 #include <osg/BoundingBox>
 #include <osg/Array>
 #include <osg/Geometry>
@@ -512,6 +511,12 @@ namespace osgEarth
         return x + 1;
     }
 
+    template<typename T>
+    inline osg::Vec4f mult(const osg::Vec4f& in, T scalar)
+    {
+        return osg::Vec4f(in.x()*scalar, in.y()*scalar, in.z()*scalar, in.w()*scalar);
+    }
+
     // Adapted from Boost - see boost license
     // https://www.boost.org/users/license.html
     template <typename T> inline std::size_t hash_value_unsigned(T val) {
@@ -631,7 +636,4 @@ namespace osgEarth
             const osg::Matrix& m,
             double& L, double& R, double& B, double& T, double& N, double& F);
     };
-
 }
-#endif
-

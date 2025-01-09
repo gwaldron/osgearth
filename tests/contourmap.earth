@@ -7,15 +7,18 @@
     <!-- The stops are optional. Leave them out for a default. -->
     <ContourMap>
         <stops>
-            <stop elevation="-3000" color="#00002f"/>
-            <stop elevation="-2500" color="#00007f"/>
-            <stop elevation="-625" color="#0000ff"/>
-            <stop elevation="0" color="#007fff"/>
-            <stop elevation="3" color="#c2b280"/>
-            <stop elevation="160" color="#1f8f00"/>
-            <stop elevation="850" color="#bfaf72"/>
-            <stop elevation="1875" color="#7f7f7f"/>
-            <stop elevation="2500" color="#ffffff"/>
+            <stop elevation="-7500" color="#000016ff"/>
+            <stop elevation="-2500" color="#00007fff"/>
+            <stop elevation="-625" color="#0000ffff"/>
+            <stop elevation="0" color="#007fffff"/>
+            <stop elevation="2.5" color="#c2b280ff"/>
+            <stop elevation="50" color="#d6d63fff"/>
+            <stop elevation="250" color="#1f9e00ff"/>
+            <stop elevation="1000" color="#30632cff"/>
+            <stop elevation="1750" color="#a37714ff"/>
+            <stop elevation="2250" color="#6c2f2fff"/>
+            <stop elevation="2600" color="#7f7f7fff"/>
+            <stop elevation="3000" color="#ffffffff"/>
         </stops>
     </ContourMap>
 </Map>

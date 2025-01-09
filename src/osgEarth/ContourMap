@@ -60,13 +60,13 @@ namespace osgEarth
     public: // Layer
 
         //! Called by constructors
-        virtual void init() override;
+        void init() override;
 
         //! MapNode will call this function when terrain resources are available
-        virtual void prepareForRendering(TerrainEngine*) override;
+        void prepareForRendering(TerrainEngine*) override;
 
         //! Release resources on close
-        virtual Status closeImplementation() override;
+        Status closeImplementation() override;
 
     protected:
 

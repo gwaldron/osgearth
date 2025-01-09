@@ -349,7 +349,7 @@ RexTerrainEngineNode::onSetMap()
         maxLOD,
         _map->getProfile(),
         options.getMinTileRangeFactor(),
-        true); // restrict polar subdivision for geographic maps
+        options.getRestrictPolarSubdivision());
 
     TerrainResources* res = getResources();
     for (unsigned lod = 0; lod <= maxLOD; ++lod)

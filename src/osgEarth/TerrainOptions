@@ -74,6 +74,7 @@ namespace osgEarth
         OE_OPTION(bool, visible, true);
         OE_OPTION(bool, createTilesAsync, true);
         OE_OPTION(bool, createTilesGrouped, true);
+        OE_OPTION(bool, restrictPolarSubdivision, true);
 
         virtual Config getConfig() const;
     private:
@@ -253,6 +254,10 @@ namespace osgEarth
         //! Whether the engine should create all child tiles in a group
         void setCreateTilesGrouped(const bool& value);
         const bool& getCreateTilesGrouped() const;
+
+        //! Whether to stop a geocentric mesh from subdividing all the way at the poles.
+        void setRestrictPolarSubdivision(const bool& value);
+        const bool& getRestrictPolarSubdivision() const;
 
         //! @deprecated
         //! Scale factor for background loading priority of terrain tiles.

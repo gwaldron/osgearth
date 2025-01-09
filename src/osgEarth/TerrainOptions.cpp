@@ -75,9 +75,9 @@ TerrainOptions::getConfig() const
     //conf.set("screen_space_error", screenSpaceError()); // don't serialize me, i'm set by the MapNode
     conf.set("max_texture_size", maxTextureSize());
     conf.set("visible", visible());
-
     conf.set("create_tiles_async", createTilesAsync());
     conf.set("create_tiles_grouped", createTilesGrouped());
+    conf.set("restrict_polar_subdivision", restrictPolarSubdivision());
 
     conf.set("expiration_range", minExpiryRange()); // legacy
     conf.set("expiration_threshold", minResidentTiles()); // legacy
@@ -134,6 +134,7 @@ TerrainOptions::fromConfig(const Config& conf)
 
     conf.get("create_tiles_async", createTilesAsync());
     conf.get("create_tiles_grouped", createTilesGrouped());
+    conf.get("restrict_polar_subdivision", restrictPolarSubdivision());
 
     conf.get("expiration_range", minExpiryRange()); // legacy
     conf.get("expiration_threshold", minResidentTiles()); // legacy
@@ -217,6 +218,7 @@ OE_OPTION_IMPL(TerrainOptionsAPI, unsigned, MaxTextureSize, maxTextureSize);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, Visible, visible);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, CreateTilesAsync, createTilesAsync);
 OE_OPTION_IMPL(TerrainOptionsAPI, bool, CreateTilesGrouped, createTilesGrouped);
+OE_OPTION_IMPL(TerrainOptionsAPI, bool, RestrictPolarSubdivision, restrictPolarSubdivision);
 
 bool
 TerrainOptionsAPI::getGPUTessellation() const

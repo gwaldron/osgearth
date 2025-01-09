@@ -27,6 +27,7 @@
 #include <osgEarth/GeoData>
 #include <osgEarth/TileKey>
 #include <osgEarth/Progress>
+#include <osgEarth/Math>
 #include <osg/Image>
 
 namespace osgEarth { namespace Util
@@ -135,6 +136,10 @@ namespace osgEarth { namespace Util
         inline const typename T::pixel_type* read(double u, double v);
         inline const typename T::pixel_type* read(int s, int t);
 
+        //! Read the interpolated value at the geospatial coordinate (x,y)
+        //! (Bilinear interpolation is used)
+        inline bool readAtCoord(typename T::pixel_type& output, double x, double y);
+
         //! The scale&bias of the tile relative to the key originally passed
         //! to setCenterTileKey
         inline const osg::Matrix& getScaleBias() const {
@@ -170,6 +175,9 @@ namespace osgEarth { namespace Util
         Grid _tiles;
         osg::Matrix _scale_bias; // scale/bias matrix of _centerKey
         unsigned _width, _height;
+
+        typename Tile* getTile(int tx, int ty);
+        bool getTileAndPixelCoords(double u, double v, typename Tile*& tile, double& s, double& t);
     };
 
     template<typename T>
@@ -401,6 +409,117 @@ namespace osgEarth { namespace Util
 
         return tile._data.read((unsigned)s, (unsigned)t);
     }
+
+    template<typename T>
+    typename MetaTile<T>::Tile* MetaTile<T>::getTile(int tx, int ty)
+    {
+        Tile& tile = _tiles(tx, ty);
+
+        // if we already tried to load this tile and failed, bail out
+        if (tile._failed)
+            return nullptr;
+
+        // if we still need to load this tile, do so
+        if (!tile._data.valid() && _createTile != nullptr)
+        {
+            TileKey key = _centerKey.createNeighborKey(tx, -ty);
+            tile._data = _createTile(key, nullptr);
+            if (!tile._data.valid())
+            {
+                tile._failed = true;
+            }
+        }
+
+        if (tile._failed)
+            return nullptr;
+
+        return &tile;
+    }
+
+    template<typename T>
+    bool MetaTile<T>::readAtCoord(typename T::pixel_type& output, double x, double y)
+    {
+        // geoextents of center tile:
+        double xmin, ymin, xmax, ymax;
+        _centerKey.getExtent().getBounds(xmin, ymin, xmax, ymax);
+
+        // (u, v) ndc relative to center tile:
+        double u = (x - xmin) / (xmax - xmin);
+        double v = (y - ymin) / (ymax - ymin);
+
+        int tx = (int)u;
+        int ty = (int)v;
+
+        // Anchor:
+        typename Tile* p00_tile = getTile(tx, ty);
+        if (!p00_tile)
+            return false;
+        double p00_s = fract(u) * (double)_width, p00_t = fract(v) * (double)_height;
+
+        // Neighbors:
+        typename Tile* p10_tile = p00_tile;
+        double p10_s = p00_s + 1, p10_t = p00_t;
+        if (p10_s >= (double)_width)
+        {
+            p10_tile = getTile(tx + 1, ty);
+            p10_s -= (double)_width;
+        }
+
+        typename Tile* p01_tile = p00_tile;
+        double p01_s = p00_s, p01_t = p00_t + 1;
+        if (p01_t >= _height)
+        {
+            p01_tile = getTile(tx, ty + 1);
+            p01_t -= (double)_height;
+        }
+
+        typename Tile* p11_tile = p00_tile;
+        double p11_s = p00_s + 1, p11_t = p00_t + 1;
+        if (p11_s >= (double)_width || p11_t >= (double)_height)
+        {
+            p11_tile = getTile(tx + 1, ty + 1);
+            if (p11_s > (double)_width) p11_s -= (double)_width;
+            if (p11_t > (double)_height) p11_t -= (double)_height;
+        }
+
+        // calculate weights:
+        unsigned s00 = (unsigned)floor(p00_s);
+        unsigned t00 = (unsigned)floor(p00_t);
+        double left_weight = 1.0 - (p00_s - (double)s00);
+        double bottom_weight = 1.0 - (p00_t - (double)t00);
+
+        if (!p01_tile || !p10_tile || !p11_tile)
+        {
+            return p00_tile->_data.read(output, s00, t00);
+        }
+        else
+        {
+            typename T::pixel_type p00, p10, p01, p11;
+
+            unsigned s01 = clamp((unsigned)floor(p01_s), 0u, _width-1);
+            unsigned t01 = clamp((unsigned)floor(p01_t), 0u, _height-1);
+            unsigned s10 = clamp((unsigned)floor(p10_s), 0u, _width-1);
+            unsigned t10 = clamp((unsigned)floor(p10_t), 0u, _height-1);
+            unsigned s11 = clamp((unsigned)floor(p11_s), 0u, _width-1);
+            unsigned t11 = clamp((unsigned)floor(p11_t), 0u, _height-1);
+
+            if (!p00_tile->_data.read(p00, s00, t00) ||
+                !p01_tile->_data.read(p01, s01, t01) ||
+                !p10_tile->_data.read(p10, s10, t10) ||
+                !p11_tile->_data.read(p11, s11, t11))
+            {
+                return false;
+            }
+
+            // bilinear:
+            typename T::pixel_type p0, p1;
+            p0 = mult(p00, left_weight) + mult(p10, 1.0 - left_weight);
+            p1 = mult(p01, left_weight) + mult(p11, 1.0 - left_weight);
+            output = mult(p0, bottom_weight) + mult(p1, 1.0 - bottom_weight);
+            return true;            
+        }
+    }
+       
 
 } }
 

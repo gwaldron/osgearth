@@ -23,6 +23,7 @@
 #include <osgEarth/ElevationLayer>
 #include <osgEarth/URI>
 #include <osgEarth/Threading>
+#include <osgEarth/Containers>
 
 /**
  * XYZ layers. These are general purpose tiled layers that conform
@@ -67,8 +68,8 @@ namespace osgEarth { namespace XYZ
     public:
         META_LayerOptions(osgEarth, XYZImageLayerOptions, ImageLayer::Options);
         OE_OPTION(URI, url);
-        OE_OPTION(bool, invertY);
-        OE_OPTION(std::string, format);
+        OE_OPTION(bool, invertY, false);
+        OE_OPTION(std::string, format, {});
         static Config getMetadata();
         virtual Config getConfig() const;
     private:
@@ -81,9 +82,10 @@ namespace osgEarth { namespace XYZ
     public:
         META_LayerOptions(osgEarth, XYZElevationLayerOptions, ElevationLayer::Options);
         OE_OPTION(URI, url);
-        OE_OPTION(bool, invertY);
-        OE_OPTION(std::string, format);
-        OE_OPTION(std::string, elevationEncoding);
+        OE_OPTION(bool, invertY, false);
+        OE_OPTION(std::string, format, {});
+        OE_OPTION(std::string, elevationEncoding, {});
+        OE_OPTION(bool, stitchEdges, false);
         static Config getMetadata();
         virtual Config getConfig() const;
     private:
@@ -212,6 +214,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<XYZImageLayer> _imageLayer;
+        mutable Util::LRUCache<TileKey, GeoImage> _stitchingCache{ true, 64 };
     };
 
 } // namespace osgEarth

@@ -21,6 +21,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
+#include "MetaTile"
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
@@ -156,6 +157,7 @@ XYZElevationLayerOptions::getConfig() const
     conf.set("format", _format);
     conf.set("invert_y", _invertY);
     conf.set("elevation_encoding", _elevationEncoding);
+    conf.set("stitch_edges", stitchEdges());
     return conf;
 }
 
@@ -167,6 +169,7 @@ XYZElevationLayerOptions::fromConfig(const Config& conf)
     conf.get("invert_y", _invertY);
     conf.get("elevation_encoding", _elevationEncoding);
     conf.get("interpretation", elevationEncoding()); // compat with QGIS
+    conf.get("stitch_edges", stitchEdges());
 }
 
 Config
@@ -218,6 +221,7 @@ XYZImageLayer::openImplementation()
         return parent;
 
     DataExtentList dataExtents;
+
     Status status = _driver.open(
         options().url().get(),
         options().format().get(),
@@ -231,6 +235,11 @@ XYZImageLayer::openImplementation()
     {
         OE_INFO << LC << "No profile; assuming spherical-mercator" << std::endl;
         setProfile(Profile::create("spherical-mercator"));
+    }
+
+    if (dataExtents.empty())
+    {
+        dataExtents.push_back(DataExtent(getProfile()->getExtent()));
     }
 
     setDataExtents(dataExtents);
@@ -308,70 +317,115 @@ XYZElevationLayer::openImplementation()
 GeoHeightField
 XYZElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-    // Make an image, then convert it to a heightfield
-    GeoImage geoImage = _imageLayer->createImageImplementation(key, progress);
-    if (geoImage.valid())
+    if (!_imageLayer->mayHaveData(key))
     {
-        const osg::Image* image = geoImage.getImage();
-
-        if (options().elevationEncoding() == "mapbox")
-        {
-            // Allocate the heightfield.
-            osg::HeightField* hf = new osg::HeightField();
-            hf->allocate(image->s(), image->t());
-
-            ImageUtils::PixelReader reader(image);
-            osg::Vec4f pixel;
-
-            for (int c = 0; c < image->s(); c++)
-            {
-                for (int r = 0; r < image->t(); r++)
-                {
-                    reader(pixel, c, r);
-                    pixel.r() *= 255.0;
-                    pixel.g() *= 255.0;
-                    pixel.b() *= 255.0;
-                    float h = -10000.0f + ((pixel.r() * 256.0f * 256.0f + pixel.g() * 256.0f + pixel.b()) * 0.1f);
-                    hf->setHeight(c, r, h);
-                }
-            }
-
-            return GeoHeightField(hf, key.getExtent());
-        }
-
-        else if (options().elevationEncoding() == "terrarium")
-        {
-            // Allocate the heightfield.
-            osg::HeightField* hf = new osg::HeightField();
-            hf->allocate(image->s(), image->t());
-
-            ImageUtils::PixelReader reader(image);
-            osg::Vec4f pixel;
-
-            for (int c = 0; c < image->s(); c++)
-            {
-                for (int r = 0; r < image->t(); r++)
-                {
-                    reader(pixel, c, r);
-                    pixel.r() *= 255.0;
-                    pixel.g() *= 255.0;
-                    pixel.b() *= 255.0;
-                    float h = (pixel.r() * 256.0f + pixel.g() + pixel.b() / 256.0f) - 32768.0f;
-                    hf->setHeight(c, r, h);
-                }
-            }
-
-            return GeoHeightField(hf, key.getExtent());
-        }
-
-        else
-        {
-            ImageToHeightFieldConverter conv;
-            osg::HeightField* hf = conv.convert(image);
-            return GeoHeightField(hf, key.getExtent());
-        }
+        return GeoHeightField::INVALID;
     }
-    
 
-    return GeoHeightField::INVALID;
+    std::function<float(const osg::Vec4f&)> decode;
+    
+    if (options().elevationEncoding() == "mapbox")
+    {
+        decode = [](const osg::Vec4f& p) -> float
+            {
+                return -10000.0f + ((p.r() * 255.0f * 256.0f * 256.0f + p.g() * 255.0f * 256.0f + p.b() * 255.0f) * 0.1f);
+            };
+    }
+    else if (options().elevationEncoding() == "terrarium")
+    {
+        decode = [](const osg::Vec4f& p) -> float
+            {
+                return (p.r() * 255.0f * 256.0f + p.g() * 255.0f + p.b() * 255.0f / 256.0f) - 32768.0f;
+            };
+    }
+    else
+    {
+        decode = [](const osg::Vec4f& p) -> float
+            {
+                return p.r();
+            };
+    }
+
+    if (options().stitchEdges() == true)
+    {
+        MetaTile<GeoImage> metaImage;
+        metaImage.setCreateTileFunction([this](const TileKey& key, ProgressCallback* progress)
+            {
+                Util::LRUCache<TileKey, GeoImage>::Record r;
+                if (_stitchingCache.get(key, r))
+                {
+                    return r.value();
+                }
+                else
+                {
+                    GeoImage image = _imageLayer->createImage(key, progress);
+                    if (image.valid())
+                    {
+                        _stitchingCache.insert(key, image);
+                    }
+                    return image;
+                }
+            });
+        metaImage.setCenterTileKey(key, progress);
+
+        if (!metaImage.getCenterTile().valid() || !metaImage.getScaleBias().isIdentity())
+        {
+            return {};
+        }
+
+        auto hf = new osg::HeightField();
+        hf->allocate(getTileSize(), getTileSize());
+        std::fill(hf->getHeightList().begin(), hf->getHeightList().end(), NO_DATA_VALUE);
+
+        double xmin, ymin, xmax, ymax;
+        key.getExtent().getBounds(xmin, ymin, xmax, ymax);
+
+        osg::Vec4f pixel;
+        for (int c = 0; c < getTileSize(); c++)
+        {
+            double u = (double)c / (double)(getTileSize() - 1);
+            double x = xmin + u * (xmax - xmin);
+            for (int r = 0; r < getTileSize(); r++)
+            {
+                double v = (double)r / (double)(getTileSize() - 1);
+                double y = ymin + v * (ymax - ymin);
+                if (metaImage.readAtCoord(pixel, x, y))
+                {
+                    hf->setHeight(c, r, decode(pixel));
+                }
+            }
+        }
+
+        return GeoHeightField(hf, key.getExtent());
+    }
+
+    else
+    {
+        // Make an image, then convert it to a heightfield
+        GeoImage geoImage = _imageLayer->createImageImplementation(key, progress);
+        if (geoImage.valid())
+        {
+            const osg::Image* image = geoImage.getImage();
+
+            // Allocate the heightfield.
+            osg::HeightField* hf = new osg::HeightField();
+            hf->allocate(image->s(), image->t());
+
+            ImageUtils::PixelReader reader(image);
+            osg::Vec4f pixel;
+
+            for (int c = 0; c < image->s(); c++)
+            {
+                for (int r = 0; r < image->t(); r++)
+                {
+                    reader(pixel, c, r);
+                    hf->setHeight(c, r, decode(pixel));
+                }
+            }
+
+            return GeoHeightField(hf, key.getExtent());
+        }
+
+        return GeoHeightField::INVALID;
+    }
 }

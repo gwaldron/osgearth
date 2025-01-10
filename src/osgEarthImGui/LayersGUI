@@ -31,6 +31,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ExampleResources>
+#include <osgEarth/ContourMap>
 #include <osgEarth/Sky>
 #include <osg/Camera>
 
@@ -293,6 +294,98 @@ namespace osgEarth
             char name[64] = "New Layer";
             bool isElevation = false;
         };
+
+        struct EditContoursDialog
+        {
+            bool visible = false;
+            osg::TransferFunction1D::ColorMap ramp;
+
+            void draw(ContourMapLayer* layer)
+            {
+                bool dirty = false;
+                if (!visible) return;
+                ImGui::Begin("Edit Contours", &visible);
+                auto xfer = layer->getTransferFunction();
+                if (ramp.empty())
+                    ramp = xfer->getColorMap();
+
+                ImGui::BeginTable("contours", 3, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody);
+                float to_remove = FLT_MAX;
+                float to_add = FLT_MAX;
+                osg::Vec4f to_add_color;
+
+                ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
+                ImGui::TableSetupColumn("Elevation", ImGuiTableColumnFlags_None, 200.0f);
+                ImGui::TableSetupColumn("Color", ImGuiTableColumnFlags_None, 400.0f);
+                ImGui::TableSetupColumn("", ImGuiTableColumnFlags_None, 20.0f);
+                ImGui::TableHeadersRow();
+
+                for (auto& item : ramp)
+                {
+                    ImGui::TableNextColumn();
+                    float elev = item.first;
+                    ImGui::PushID((std::uintptr_t)&item);
+                    std::string label = "##" + std::to_string(elev);
+                    if (ImGui::InputFloat(label.c_str(), &elev, 0.0f, 0.0f, "%.0f", ImGuiInputTextFlags_EnterReturnsTrue)) {
+                        to_remove = item.first;
+                        to_add = elev;
+                        to_add_color = item.second;
+                    }
+                    ImGui::TableNextColumn();
+                    std::string label2 = "##c" + std::to_string(elev);
+                    if (ImGui::ColorEdit3(label2.c_str(), item.second.ptr())) {
+                        to_add = item.first;
+                        to_add_color = item.second;
+                    }
+                    ImGui::TableNextColumn();
+                    std::string label3 = "##t" + std::to_string(elev);
+                    if (ImGui::Button("x")) {
+                        to_remove = item.first;
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
+
+                if (ImGui::Button("Add stop"))
+                {
+                    if (ramp.empty())
+                        to_add = 0.0f;
+                    else
+                        to_add = ramp.rbegin()->first + 1.0f;
+                    to_add_color = Color::White;
+                }
+
+                if (to_remove != FLT_MAX)
+                    ramp.erase(to_remove);
+                if (to_add != FLT_MAX)
+                    ramp.emplace(to_add, to_add_color);
+                if (to_remove != FLT_MAX || to_add != FLT_MAX)
+                {
+                    xfer->setColorMap(ramp);
+                    layer->setTransferFunction(xfer);
+                }
+
+                ImGui::SameLine();
+                if (ImGui::Button("Export XML"))
+                {
+                    std::ostringstream buf;
+                    buf << "<stops>\n";
+                    for (auto& item : ramp)
+                    {
+                        buf << "    <stop elevation=\"" << item.first << "\" color=\"" << Color(item.second).toHTML() << "\"/>\n";
+                    }
+                    buf << "</stops>\n";
+                    std::cout << buf.str();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Done"))
+                {
+                    ramp.clear();
+                    visible = false;
+                }
+                ImGui::End();
+            }
+        };
     }
 
     class LayersGUI : public ImGuiPanel
@@ -339,6 +432,7 @@ namespace osgEarth
         detail::AddWMSDialog _addWMSDialog;
         detail::AddTMSDialog _addTMSDialog;
         detail::AddXYZDialog _addXYZDialog;
+        detail::EditContoursDialog _editContoursDialog;
 
         using ValueUnderMouse = struct {
             osg::Vec4 pixel;
@@ -704,6 +798,15 @@ namespace osgEarth
                             }
                         }
 
+                        if (imageLayer)
+                        {
+                            bool modulate = imageLayer->getColorBlending() == BLEND_MODULATE;
+                            if (ImGuiLTable::Checkbox("Modulate", &modulate))
+                            {
+                                imageLayer->setColorBlending(modulate ? BLEND_MODULATE : BLEND_INTERPOLATE);
+                            }
+                        }
+
 #ifdef OSGEARTH_HAVE_CESIUM_NODEKIT
                         auto cesiumNativeLayer = dynamic_cast<osgEarth::Cesium::CesiumNative3DTilesLayer*>(layer);
                         if (cesiumNativeLayer)
@@ -791,6 +894,17 @@ namespace osgEarth
                         }
 
                         ImGuiLTable::End();
+
+
+                        auto contourmap = dynamic_cast<osgEarth::ContourMapLayer*>(layer);
+                        if (contourmap)
+                        {
+                            if (ImGui::Button("Edit contours"))
+                            {
+                                _editContoursDialog.visible = true;
+                            }
+                            _editContoursDialog.draw(contourmap);
+                        }
 
                         if (imageLayer)
                         {

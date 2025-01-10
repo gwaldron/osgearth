@@ -45,7 +45,6 @@ Config
 GDALDEMLayer::Options::getConfig() const
 {
     Config conf = ImageLayer::Options::getConfig();
-    elevationLayer().set(conf, "layer");
     conf.set("processing", processing());
     conf.set("light_altitude", lightAltitude());
     conf.set("azimuth", azimuth());
@@ -60,7 +59,6 @@ void
 GDALDEMLayer::Options::fromConfig(const Config& conf)
 {
     processing().init("hillshade");
-    elevationLayer().get(conf, "layer");
     conf.get("processing", processing());
     conf.get("light_altitude", lightAltitude());
     conf.get("azimuth", azimuth());
@@ -71,24 +69,6 @@ GDALDEMLayer::Options::fromConfig(const Config& conf)
 }
 
 REGISTER_OSGEARTH_LAYER(GDALDEM, GDALDEMLayer);
-
-void
-GDALDEMLayer::setElevationLayer(ElevationLayer* elevationLayer)
-{
-    if (getElevationLayer() != elevationLayer)
-    {
-        bool wasOpen = isOpen();
-        if (wasOpen) close();
-        options().elevationLayer().setLayer(elevationLayer);
-        if (wasOpen) open();
-    }
-}
-
-ElevationLayer*
-GDALDEMLayer::getElevationLayer() const
-{
-    return options().elevationLayer().getLayer();
-}
 
 void
 GDALDEMLayer::setProcessing(const std::string& value)
@@ -185,22 +165,16 @@ GDALDEMLayer::addedToMap(const Map* map)
 {
     options().elevationLayer().addedToMap(map);
 
-    _elevationLayer = options().elevationLayer().getLayer();
-    if (!_elevationLayer.valid())
+    _map = map;
+    setProfile(map->getProfile());
+
+    if (!map->getLayer<ElevationLayer>())
     {
-        // no user-specificed elevation layer; try to find one in the map
-        _elevationLayer = map->getLayer<ElevationLayer>();
-        if (!_elevationLayer.valid())
-        {
-            setStatus(Status::ResourceUnavailable, "Failed to find elevation layer");
-            return;
-        }
+        setStatus(Status::ResourceUnavailable, "No ElevationLayer available in the map");
+        return;
     }
 
-    setProfile(_elevationLayer->getProfile());
-    DataExtentList dataExtents;
-    _elevationLayer->getDataExtents(dataExtents);
-    setDataExtents(dataExtents);
+    super::addedToMap(map);
 }
 
 void
@@ -208,6 +182,9 @@ GDALDEMLayer::removedFromMap(const Map* map)
 {
     options().elevationLayer().removedFromMap(map);
     _elevationLayer = nullptr;
+    _map = nullptr;
+
+    super::removedFromMap(map);
 }
 
 Status
@@ -216,14 +193,6 @@ GDALDEMLayer::openImplementation()
     Status parent = ImageLayer::openImplementation();
     if (parent.isError())
         return parent;
-
-    // If we're in cache-only mode, do not attempt to open the layer!
-    //if (getCacheSettings()->cachePolicy()->isCacheOnly())
-    //    return STATUS_OK;
-
-    //Status childStatus = options().elevationLayer().open(getReadOptions());
-    //if (childStatus.isError())
-    //    return childStatus;
 
     // if the colorramp file doesn't exist, create a default one.
     if (!osgDB::fileExists(options().color_filename()->full()))
@@ -259,6 +228,7 @@ GDALDEMLayer::closeImplementation()
 {
     options().elevationLayer().close();
     _elevationLayer = nullptr;
+    _map = nullptr;
     return STATUS_OK;
 }
 
@@ -419,27 +389,19 @@ GDALDEMLayer::createImageImplementation(const TileKey& key, ProgressCallback* pr
 {
 #ifdef HAS_GDALDEM
 
-    //ElevationLayer* layer = getElevationLayer();
-    //if (layer->isOpen() == false)
-    //{
-    //    OE_WARN << LC << "Elevation layer is not open!" << key.str() << std::endl;
-    //    return {};
-    //}
-
-    osg::ref_ptr<ElevationLayer> layer;
-    if (!_elevationLayer.lock(layer) || !layer->isOpen())
-    {
+    osg::ref_ptr<const Map> map;
+    if (!_map.lock(map))
         return {};
-    }
 
+    osg::ref_ptr<ElevationTexture> tile;
+    if (!map->getElevationPool()->getTile(key, false, tile, nullptr, progress))
+        return {};
 
-    GeoHeightField heightField = layer->createHeightField(key, progress);
-    if (heightField.valid())
+    osg::ref_ptr<const osg::HeightField> hf = tile->getHeightField();
     {
         osg::ref_ptr< osg::Image > image = 0;
-        const osg::HeightField* hf = heightField.getHeightField();
 
-        GDALDataset* srcDS = createDataSetFromHeightField(hf, key.getExtent().xMin(), key.getExtent().yMin(), key.getExtent().xMax(), key.getExtent().yMax(), key.getExtent().getSRS()->getWKT());
+        GDALDataset* srcDS = createDataSetFromHeightField(hf.get(), key.getExtent().xMin(), key.getExtent().yMin(), key.getExtent().xMax(), key.getExtent().yMax(), key.getExtent().getSRS()->getWKT());
         int error = 0;
         std::string processing = options().processing().get();
         char** papsz = NULL;

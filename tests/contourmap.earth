@@ -1,11 +1,9 @@
-<!--
- | osgEarth Sample - Render elevation data as a contour map
- |-->
-<Map>
+<Map name="ContourMap Example">
+
     <xi:include href="readymap_elevation.xml"/>
 
     <!-- The stops are optional. Leave them out for a default. -->
-    <ContourMap>
+    <ContourMap name="Contour Map">
         <stops>
             <stop elevation="-7500" color="#000016ff"/>
             <stop elevation="-2500" color="#00007fff"/>
@@ -21,4 +19,8 @@
             <stop elevation="3000" color="#ffffffff"/>
         </stops>
     </ContourMap>
+    
+    <GDALDEM name="Hill Shade" blend="modulate" opacity="0.15">
+        <processing>hillshade</processing>
+    </GDALDEM>
 </Map>

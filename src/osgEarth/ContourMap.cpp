@@ -80,17 +80,23 @@ void
 ContourMapLayer::setTransferFunction(osg::TransferFunction1D* xfer)
 {
     _xfer = xfer;
+    dirty();
+}
+
+void
+ContourMapLayer::dirty()
+{
+    OE_SOFT_ASSERT_AND_RETURN(_xfer.valid() && _xferMin.valid() && _xferRange.valid(), void());
+
     _xferTexture->setImage(_xfer->getImage());
     _xferMin->set(_xfer->getMinimum());
     _xferRange->set(_xfer->getMaximum() - _xfer->getMinimum());
-
-    //OE_WARN << "min=" << _xfer->getMinimum() << ", range=" << (_xfer->getMaximum()-_xfer->getMinimum()) << std::endl;
 }
 
 void
 ContourMapLayer::init()
 {
-    VisibleLayer::init();
+    super::init();
 
     setRenderType(RENDERTYPE_TERRAIN_SURFACE);
 
@@ -158,7 +164,7 @@ ContourMapLayer::init()
 void
 ContourMapLayer::prepareForRendering(TerrainEngine* engine)
 {
-    VisibleLayer::prepareForRendering(engine);
+    super::prepareForRendering(engine);
 
     if (!engine->getResources()->reserveTextureImageUnitForLayer(_reservation, this, "ContourMap"))
     {
@@ -176,5 +182,5 @@ ContourMapLayer::closeImplementation()
 {
     _reservation.release();
 
-    return VisibleLayer::closeImplementation();
+    return super::closeImplementation();
 }

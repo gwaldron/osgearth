@@ -25,6 +25,8 @@
 
 namespace osgEarth
 {
+    class Map;
+
     /**
      * ImageLayer that exposes gdal's dem processing capabilities.
      */
@@ -38,7 +40,7 @@ namespace osgEarth
             OE_OPTION(std::string, processing, "hillshade");
             OE_OPTION(float, azimuth, 0.0f);
             OE_OPTION(float, lightAltitude, 0.0f);
-            OE_OPTION(bool, multidirectional);
+            OE_OPTION(bool, multidirectional, false);
             OE_OPTION(bool, combined, false);
             OE_OPTION(bool, alpha, false);
             OE_OPTION(URI, color_filename);
@@ -51,10 +53,6 @@ namespace osgEarth
         META_Layer(osgEarth, GDALDEMLayer, Options, ImageLayer, GDALDEMLayer);
 
     public:
-
-        //! The elevation layer to get heightfields from.
-        void setElevationLayer(ElevationLayer* layer);
-        ElevationLayer* getElevationLayer() const;
 
         //! Processing option.  Depends on GDAL version; typical options: hillshade; slope; aspect; color-relief; TRI; TPI; roughness
         void setProcessing(const std::string& value);
@@ -107,6 +105,7 @@ namespace osgEarth
 
         std::string _colorRampFilename;
         osg::observer_ptr<ElevationLayer> _elevationLayer;
+        osg::observer_ptr<const Map> _map;
     };
 
 } // namespace osgEarth

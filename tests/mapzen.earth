@@ -1,5 +1,5 @@
 <Map name="MapZen Elevation">
-    <options screen_space_error="50">
+    <options screen_space_error="75">
         <terrain skirt_ratio="0.05" lod_method="screen_space"/>
     </options>
     
@@ -9,9 +9,9 @@
         <stitch_edges>true</stitch_edges>
     </XYZElevation>
 
-    <ContourMap name="Color ramp"/>
+    <ContourMap name="Color Ramp"/>
     
-    <gdaldem name="hillshade" blend="modulate" opacity="0.75">
+    <gdaldem name="Hill Shade" blend="modulate" opacity="0.15">
         <processing>hillshade</processing>
     </gdaldem>
 </Map>

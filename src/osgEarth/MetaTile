@@ -176,8 +176,8 @@ namespace osgEarth { namespace Util
         osg::Matrix _scale_bias; // scale/bias matrix of _centerKey
         unsigned _width, _height;
 
-        typename Tile* getTile(int tx, int ty);
-        bool getTileAndPixelCoords(double u, double v, typename Tile*& tile, double& s, double& t);
+        Tile* getTile(int tx, int ty);
+        bool getTileAndPixelCoords(double u, double v, Tile*& tile, double& s, double& t);
     };
 
     template<typename T>
@@ -452,7 +452,7 @@ namespace osgEarth { namespace Util
         int ty = (int)v;
 
         // Anchor:
-        typename Tile* p00_tile = getTile(tx, ty);
+        Tile* p00_tile = getTile(tx, ty);
         if (!p00_tile)
             return false;
 
@@ -485,7 +485,7 @@ namespace osgEarth { namespace Util
         }
 
         // Neighbors:
-        typename Tile* p10_tile = p00_tile;
+        Tile* p10_tile = p00_tile;
         double p10_s = p00_s + delta_s, p10_t = p00_t;
         if (p10_s >= (double)_width || p10_s < 0)
         {
@@ -493,7 +493,7 @@ namespace osgEarth { namespace Util
             p10_s -= (double)_width * delta_s;
         }
 
-        typename Tile* p01_tile = p00_tile;
+        Tile* p01_tile = p00_tile;
         double p01_s = p00_s, p01_t = p00_t + delta_t;
         if (p01_t >= _height || p01_t < 0)
         {
@@ -501,7 +501,7 @@ namespace osgEarth { namespace Util
             p01_t -= (double)_height * (double)delta_t;
         }
 
-        typename Tile* p11_tile = p00_tile;
+        Tile* p11_tile = p00_tile;
         double p11_s = p00_s + delta_s, p11_t = p00_t + delta_t;
         int ntx = tx, nty = ty;
         if (p11_s >= (double)_width || p11_s < 0)

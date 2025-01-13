@@ -25,6 +25,7 @@
 #include <osgEarth/Containers>
 #include <osgEarth/Metrics>
 #include <osgEarth/FeatureStyleSorter>
+#include <osgEarth/RenderSymbol>
 
 #include <osgDB/WriteFile>
 

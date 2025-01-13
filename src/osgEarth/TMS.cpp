@@ -17,11 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "TMS"
-#include <osgEarth/Registry>
-#include <osgEarth/FileUtils>
-#include <osgEarth/XmlUtils>
-#include <osgEarth/LandCover>
-#include <osgEarth/ImageToHeightFieldConverter>
+#include "Registry"
+#include "FileUtils"
+#include "XmlUtils"
+#include "LandCover"
+#include "ImageToHeightFieldConverter"
+#include "MetaTile"
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
@@ -1237,6 +1238,11 @@ TMSElevationLayer::Options::getConfig() const
 {
     Config conf = ElevationLayer::Options::getConfig();
     writeTo(conf);
+    conf.set("elevation_encoding", elevationEncoding());
+    conf.set("stitch_edges", stitchEdges());
+    conf.set("interpolation", "nearest", interpolation(), osgEarth::INTERP_NEAREST);
+    conf.set("interpolation", "average", interpolation(), osgEarth::INTERP_AVERAGE);
+    conf.set("interpolation", "bilinear", interpolation(), osgEarth::INTERP_BILINEAR);
     return conf;
 }
 
@@ -1244,6 +1250,11 @@ void
 TMSElevationLayer::Options::fromConfig(const Config& conf)
 {
     readFrom(conf);
+    conf.get("elevation_encoding", elevationEncoding());
+    conf.get("stitch_edges", stitchEdges());
+    conf.get("interpolation", "nearest", interpolation(), osgEarth::INTERP_NEAREST);
+    conf.get("interpolation", "average", interpolation(), osgEarth::INTERP_AVERAGE);
+    conf.get("interpolation", "bilinear", interpolation(), osgEarth::INTERP_BILINEAR);
 }
 
 
@@ -1254,6 +1265,9 @@ REGISTER_OSGEARTH_LAYER(tmselevation, TMSElevationLayer);
 OE_LAYER_PROPERTY_IMPL(TMSElevationLayer, URI, URL, url);
 OE_LAYER_PROPERTY_IMPL(TMSElevationLayer, std::string, TMSType, tmsType);
 OE_LAYER_PROPERTY_IMPL(TMSElevationLayer, std::string, Format, format);
+OE_LAYER_PROPERTY_IMPL(TMSElevationLayer, std::string, ElevationEncoding, elevationEncoding);
+OE_LAYER_PROPERTY_IMPL(TMSElevationLayer, bool, StitchEdges, stitchEdges);
+OE_LAYER_PROPERTY_IMPL(TMSElevationLayer, RasterInterpolation, Interpolation, interpolation);
 
 void
 TMSElevationLayer::init()
@@ -1309,31 +1323,119 @@ TMSElevationLayer::closeImplementation()
 GeoHeightField
 TMSElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressCallback* progress) const
 {
-
-    if (_imageLayer.valid() == false ||
-        !_imageLayer->isOpen())
+    if (_imageLayer.valid() == false || !_imageLayer->isOpen() || !_imageLayer->mayHaveData(key))
     {
         return GeoHeightField::INVALID;
     }
 
-    // Make an image, then convert it to a heightfield
-    GeoImage image = _imageLayer->createImageImplementation(key, progress);
-    if (image.valid())
+    std::function<float(const osg::Vec4f&)> decode;
+
+    if (options().elevationEncoding() == "mapbox")
     {
-        if (image.getImage()->s() > 1 && image.getImage()->t() > 1)
-        {
-            ImageToHeightFieldConverter conv;
-            osg::HeightField* hf = conv.convert(image.getImage());
-            return GeoHeightField(hf, key.getExtent());
-        }
-        else
-        {
-            return GeoHeightField::INVALID;
-        }
+        decode = [](const osg::Vec4f& p) -> float
+            {
+                return -10000.0f + ((p.r() * 255.0f * 256.0f * 256.0f + p.g() * 255.0f * 256.0f + p.b() * 255.0f) * 0.1f);
+            };
+    }
+    else if (options().elevationEncoding() == "terrarium")
+    {
+        decode = [](const osg::Vec4f& p) -> float
+            {
+                return (p.r() * 255.0f * 256.0f + p.g() * 255.0f + p.b() * 255.0f / 256.0f) - 32768.0f;
+            };
     }
     else
     {
-        return GeoHeightField(image.getStatus());
+        decode = [](const osg::Vec4f& p) -> float
+            {
+                return p.r();
+            };
+    }
+
+    if (options().stitchEdges() == true)
+    {
+        MetaTile<GeoImage> metaImage;
+        metaImage.setCreateTileFunction([this](const TileKey& key, ProgressCallback* progress)
+            {
+                Util::LRUCache<TileKey, GeoImage>::Record r;
+                if (_stitchingCache.get(key, r))
+                {
+                    return r.value();
+                }
+                else
+                {
+                    GeoImage image = _imageLayer->createImage(key, progress);
+                    if (image.valid())
+                    {
+                        _stitchingCache.insert(key, image);
+                    }
+                    return image;
+                }
+            });
+        metaImage.setCenterTileKey(key, progress);
+
+        if (!metaImage.getCenterTile().valid() || !metaImage.getScaleBias().isIdentity())
+        {
+            return {};
+        }
+
+        osg::ref_ptr<osg::HeightField> hf = new osg::HeightField();
+        hf->allocate(getTileSize(), getTileSize());
+        std::fill(hf->getHeightList().begin(), hf->getHeightList().end(), NO_DATA_VALUE);
+
+        double xmin, ymin, xmax, ymax;
+        key.getExtent().getBounds(xmin, ymin, xmax, ymax);
+
+        osg::Vec4f pixel;
+        for (int c = 0; c < getTileSize(); c++)
+        {
+            if (progress && progress->isCanceled())
+                return {};
+            
+            double u = (double)c / (double)(getTileSize() - 1);
+            double x = xmin + u * (xmax - xmin);
+            for (int r = 0; r < getTileSize(); r++)
+            {
+                double v = (double)r / (double)(getTileSize() - 1);
+                double y = ymin + v * (ymax - ymin);
+                if (metaImage.readAtCoord(pixel, x, y))
+                {
+                    hf->setHeight(c, r, decode(pixel));
+                }
+            }
+        }
+
+        return GeoHeightField(hf.release(), key.getExtent());
+    }
+
+    else
+    {
+        // Make an image, then convert it to a heightfield
+        GeoImage geoImage = _imageLayer->createImageImplementation(key, progress);
+        if (geoImage.valid())
+        {
+            const osg::Image* image = geoImage.getImage();
+
+            // Allocate the heightfield.
+            osg::HeightField* hf = new osg::HeightField();
+            hf->allocate(image->s(), image->t());
+
+            ImageUtils::PixelReader reader(image);
+            osg::Vec4f pixel;
+
+            for (int c = 0; c < image->s(); c++)
+            {
+                for (int r = 0; r < image->t(); r++)
+                {
+                    reader(pixel, c, r);
+                    hf->setHeight(c, r, decode(pixel));
+                }
+            }
+
+            return GeoHeightField(hf, key.getExtent());
+        }
+
+        return GeoHeightField::INVALID;
     }
 }
 

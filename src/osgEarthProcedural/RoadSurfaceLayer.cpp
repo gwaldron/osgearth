@@ -381,7 +381,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     int render_order = 0;
     RenderSymbol ordering;
 
-    auto processStyle = [&](auto& style, auto& features, auto* progress)
+    auto processStyle = [&](const Style& style, auto& features, auto* progress)
         {
             if (!group.valid())
                 group = new osg::Group();

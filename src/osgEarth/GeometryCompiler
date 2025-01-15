@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_FEATURES_GEOMETRY_COMPILER_H
-#define OSGEARTH_FEATURES_GEOMETRY_COMPILER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Feature>
@@ -33,82 +32,61 @@ namespace osgEarth
     class OSGEARTH_EXPORT GeometryCompilerOptions
     {
     public:
-        /**
-         * Set the global default values for the options.
-         */
+        //! Set the global default values for the options.
         static void setDefaults(const GeometryCompilerOptions& defaults);
 
     public:
-        /**
-         * Construct new copiler options, optionally deserializing them
-         */
+        //! Construct new compiler options, optionally deserializing them
         GeometryCompilerOptions(const ConfigOptions& conf =ConfigOptions());
 
     public:
-        /** Maximum span of a generated edge, in degrees. Applicable to geocentric maps only */
-        optional<double>& maxGranularity() { return _maxGranularity_deg; }
-        const optional<double>& maxGranularity() const { return _maxGranularity_deg; }
+        //! Maximum span of a generated edge, in degrees. Applicable to geocentric maps only
+        OE_OPTION(double, maxGranularity, 10.0);
 
-        /** Interpolation type to use for geodetic points */
-        optional<GeoInterpolation>& geoInterp() { return _geoInterp; }
-        const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
+        //! Interpolation type to use for geodetic points
+        OE_OPTION(GeoInterpolation, geoInterpolation, GEOINTERP_GREAT_CIRCLE);
 
-        /** Whether to merge geometry from multiple features */
-        optional<bool>& mergeGeometry() { return _mergeGeometry; }
-        const optional<bool>& mergeGeometry() const { return _mergeGeometry; }
+        //! Whether to merge geometry from multiple features
+        OE_OPTION(bool, mergeGeometry, true);
 
-        /** Expression to evaluate to extract a feature's readable name */
-        optional<StringExpression>& featureName() { return _featureNameExpr; }
-        const optional<StringExpression>& featureName() const { return _featureNameExpr; }
+        //! Expression to evaluate to extract a feature's readable name
+        OE_OPTION(StringExpression, featureName);
 
-        /** Whether to cluster feature geometries together for speed */
-        optional<bool>& clustering() { return _clustering; }
-        const optional<bool>& clustering() const { return _clustering; }
+        //! Whether to cluster feature geometries together for speed
+        OE_OPTION(bool, clustering, false);
 
-        /** Whether to enabled draw-instancing for model substitution */
-        optional<bool>& instancing() { return _instancing; }
-        const optional<bool>& instancing() const { return _instancing; }
+        //! Whether to enabled draw-instancing for model substitution
+        OE_OPTION(bool, instancing, true);
 
-        /** Whether to ignore the altitude filter (e.g. if you plan to do auto-clamping layer) */
-        optional<bool>& ignoreAltitudeSymbol() { return _ignoreAlt; }
-        const optional<bool>& ignoreAltitudeSymbol() const { return _ignoreAlt; }
+        //! Whether to ignore the altitude filter (e.g. if you plan to do auto-clamping layer)
+        OE_OPTION(bool, ignoreAltitudeSymbol, false);
 
         //todo: merge this with geoInterp()
-        optional<osgEarth::ResampleFilter::ResampleMode>& resampleMode() { return _resampleMode;}
-        const optional<osgEarth::ResampleFilter::ResampleMode>& resampleMode() const { return _resampleMode;}
-
-        optional<double>& resampleMaxLength() { return _resampleMaxLength; }
-        const optional<double>& resampleMaxLength() const { return _resampleMaxLength;}
+        OE_OPTION(ResampleFilter::ResampleMode, resampleMode, ResampleFilter::RESAMPLE_LINEAR);
+        OE_OPTION(double, resampleMaxLength);
 
         /** Whether to generate shader components on compiled geometry */
-        optional<ShaderPolicy>& shaderPolicy() { return _shaderPolicy; }
-        const optional<ShaderPolicy>& shaderPolicy() const { return _shaderPolicy; }
+        OE_OPTION(ShaderPolicy, shaderPolicy, SHADERPOLICY_GENERATE);
 
         /** Whether to run consolidate equivalent state attributes for better performance. */
-        optional<bool>& optimizeStateSharing() { return _optimizeStateSharing; }
-        const optional<bool>& optimizeStateSharing() const { return _optimizeStateSharing; }
+        OE_OPTION(bool, optimizeStateSharing, true);
 
         /** Whether to run the optimizer on the resulting group. */
-        optional<bool>& optimize() { return _optimize; }
-        const optional<bool>& optimize() const { return _optimize; }
+        OE_OPTION(bool, optimize, false);
 
         /** Whether to run the vertex order optimizer on geometry. */
-        optional<bool>& optimizeVertexOrdering() { return _optimizeVertexOrdering; }
-        const optional<bool>& optimizeVertexOrdering() const { return _optimizeVertexOrdering; }
+        OE_OPTION(bool, optimizeVertexOrdering, true);
 
         /** Whether to run a geometry validation pass on the resulting group. This is for debugging
         purposes and will dump issues to the console. */
-        optional<bool>& validate() { return _validate; }
-        const optional<bool>& validate() const { return _validate; }
+        OE_OPTION(bool, validate, false);
 
         /** Maximum size (angle, degrees) of a polygon tile, when breaking up a large polygon for tessellation;
-        only applies to geocentric maps (detault = 5.0) */
-        optional<float>& maxPolygonTilingAngle() { return _maxPolyTilingAngle; }
-        const optional<float>& maxPolygonTilingAngle() const { return _maxPolyTilingAngle; }
+        only applies to geocentric maps  */
+        OE_OPTION(float, maxPolygonTilingAngle, 45.0f);
 
-        /** Whether to use OSG tessellator (default=false) */
-        optional<bool>& useOSGTessellator() { return _useOSGTessellator; }
-        const optional<bool>& useOSGTessellator() const { return _useOSGTessellator; }
+        /** Whether to use OSG tessellator */
+        OE_OPTION(bool, useOSGTessellator, false);
 
     public:
         Config getConfig() const;
@@ -116,29 +94,7 @@ namespace osgEarth
     protected:
         void fromConfig( const Config& conf );
 
-    private:
-        optional<double>               _maxGranularity_deg;
-        optional<GeoInterpolation>     _geoInterp;
-        optional<bool>                 _mergeGeometry;
-        optional<StringExpression>     _featureNameExpr;
-        optional<bool>                 _clustering;
-        optional<bool>                 _instancing;
-        optional<ResampleFilter::ResampleMode> _resampleMode;
-        optional<double>               _resampleMaxLength;
-        optional<bool>                 _ignoreAlt;
-        optional<ShaderPolicy>         _shaderPolicy;
-        optional<bool>                 _optimizeStateSharing;
-        optional<bool>                 _optimize;
-        optional<bool>                 _optimizeVertexOrdering;
-        optional<bool>                 _validate;
-        optional<float>                _maxPolyTilingAngle;
-        optional<bool>                 _useOSGTessellator;
-
-
         static GeometryCompilerOptions s_defaults;
-
-    public:
-       GeometryCompilerOptions(bool); // internal
     };
 
 
@@ -202,5 +158,3 @@ namespace osgEarth
         GeometryCompilerOptions _options;
     };
 } // namespace osgEarth
-
-#endif // OSGEARTH_FEATURES_GEOMETRY_COMPILER_H

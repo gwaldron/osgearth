@@ -55,49 +55,32 @@ using namespace osgEarth::Util;
 
 //-----------------------------------------------------------------------
 
-GeometryCompilerOptions GeometryCompilerOptions::s_defaults(true);
+GeometryCompilerOptions GeometryCompilerOptions::s_defaults;
 
 void
 GeometryCompilerOptions::setDefaults(const GeometryCompilerOptions& defaults)
 {
    s_defaults = defaults;
 }
-
-// defaults.
-GeometryCompilerOptions::GeometryCompilerOptions(bool stockDefaults) :
-_maxGranularity_deg    ( 10.0 ),
-_mergeGeometry         ( true ),
-_clustering            ( false ),
-_instancing            ( true ),
-_ignoreAlt             ( false ),
-_shaderPolicy          ( SHADERPOLICY_GENERATE ),
-_geoInterp             ( GEOINTERP_GREAT_CIRCLE ),
-_optimizeStateSharing  ( true ),
-_optimize              ( false ),
-_optimizeVertexOrdering( true ),
-_validate              ( false ),
-_maxPolyTilingAngle    ( 45.0f ),
-_useOSGTessellator     ( false )
-{
-    //nop
-}
-
 //-----------------------------------------------------------------------
 
 GeometryCompilerOptions::GeometryCompilerOptions(const ConfigOptions& conf) :
-_maxGranularity_deg    ( s_defaults.maxGranularity().value() ),
-_mergeGeometry         ( s_defaults.mergeGeometry().value() ),
-_clustering            ( s_defaults.clustering().value() ),
-_instancing            ( s_defaults.instancing().value() ),
-_ignoreAlt             ( s_defaults.ignoreAltitudeSymbol().value() ),
-_shaderPolicy          ( s_defaults.shaderPolicy().value() ),
-_geoInterp             ( s_defaults.geoInterp().value() ),
-_optimizeStateSharing  ( s_defaults.optimizeStateSharing().value() ),
-_optimize              ( s_defaults.optimize().value() ),
-_optimizeVertexOrdering( s_defaults.optimizeVertexOrdering().value() ),
-_validate              ( s_defaults.validate().value() ),
-_maxPolyTilingAngle    ( s_defaults.maxPolygonTilingAngle().value() ),
-_useOSGTessellator     (s_defaults.useOSGTessellator().value())
+    _maxGranularity(s_defaults.maxGranularity().value()),
+    _geoInterpolation(s_defaults.geoInterpolation().value()),
+    _mergeGeometry(s_defaults.mergeGeometry().value()),
+    _featureName(s_defaults.featureName().value()),
+    _clustering(s_defaults.clustering().value()),
+    _instancing(s_defaults.instancing().value()),
+    _ignoreAltitudeSymbol(s_defaults.ignoreAltitudeSymbol().value()),
+    _resampleMode(s_defaults.resampleMode().value()),
+    _resampleMaxLength(s_defaults.resampleMaxLength().value()),
+    _shaderPolicy(s_defaults.shaderPolicy().value()),
+    _optimizeStateSharing(s_defaults.optimizeStateSharing().value()),
+    _optimize(s_defaults.optimize().value()),
+    _optimizeVertexOrdering(s_defaults.optimizeVertexOrdering().value()),
+    _validate(s_defaults.validate().value()),
+    _maxPolygonTilingAngle(s_defaults.maxPolygonTilingAngle().value()),
+    _useOSGTessellator(s_defaults.useOSGTessellator().value())
 {
     fromConfig(conf.getConfig());
 }
@@ -105,48 +88,48 @@ _useOSGTessellator     (s_defaults.useOSGTessellator().value())
 void
 GeometryCompilerOptions::fromConfig( const Config& conf )
 {
-    conf.get( "max_granularity",  _maxGranularity_deg );
-    conf.get( "merge_geometry",   _mergeGeometry );
-    conf.get( "clustering",       _clustering );
-    conf.get( "instancing",       _instancing );
-    conf.get( "feature_name",     _featureNameExpr );
-    conf.get( "ignore_altitude",  _ignoreAlt );
-    conf.get( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.get( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.get( "optimize_state_sharing", _optimizeStateSharing );
-    conf.get( "optimize", _optimize );
-    conf.get( "optimize_vertex_ordering", _optimizeVertexOrdering);
-    conf.get( "validate", _validate );
-    conf.get( "max_polygon_tiling_angle", _maxPolyTilingAngle );
-    conf.get( "use_osg_tessellator", _useOSGTessellator);
+    conf.get("max_granularity", _maxGranularity);
+    conf.get("merge_geometry", _mergeGeometry);
+    conf.get("clustering", _clustering);
+    conf.get("instancing", _instancing);
+    conf.get("feature_name", _featureName);
+    conf.get("ignore_altitude", _ignoreAltitudeSymbol);
+    conf.get("geo_interpolation", "great_circle", _geoInterpolation, GEOINTERP_GREAT_CIRCLE);
+    conf.get("geo_interpolation", "rhumb_line", _geoInterpolation, GEOINTERP_RHUMB_LINE);
+    conf.get("optimize_state_sharing", _optimizeStateSharing);
+    conf.get("optimize", _optimize);
+    conf.get("optimize_vertex_ordering", _optimizeVertexOrdering);
+    conf.get("validate", _validate);
+    conf.get("max_polygon_tiling_angle", _maxPolygonTilingAngle);
+    conf.get("use_osg_tessellator", _useOSGTessellator);
 
-    conf.get( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
-    conf.get( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
-    conf.get( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+    conf.get("shader_policy", "disable", _shaderPolicy, SHADERPOLICY_DISABLE);
+    conf.get("shader_policy", "inherit", _shaderPolicy, SHADERPOLICY_INHERIT);
+    conf.get("shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE);
 }
 
 Config
 GeometryCompilerOptions::getConfig() const
 {
     Config conf;
-    conf.set( "max_granularity",  _maxGranularity_deg );
-    conf.set( "merge_geometry",   _mergeGeometry );
-    conf.set( "clustering",       _clustering );
-    conf.set( "instancing",       _instancing );
-    conf.set( "feature_name",     _featureNameExpr );
-    conf.set( "ignore_altitude",  _ignoreAlt );
-    conf.set( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
-    conf.set( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
-    conf.set( "optimize_state_sharing", _optimizeStateSharing );
-    conf.set( "optimize", _optimize );
-    conf.set( "optimize_vertex_ordering", _optimizeVertexOrdering);
-    conf.set( "validate", _validate );
-    conf.set( "max_polygon_tiling_angle", _maxPolyTilingAngle );
-    conf.set( "use_osg_tessellator", _useOSGTessellator);
+    conf.set("max_granularity", _maxGranularity);
+    conf.set("merge_geometry", _mergeGeometry);
+    conf.set("clustering", _clustering);
+    conf.set("instancing", _instancing);
+    conf.set("feature_name", _featureName);
+    conf.set("ignore_altitude", _ignoreAltitudeSymbol);
+    conf.set("geo_interpolation", "great_circle", _geoInterpolation, GEOINTERP_GREAT_CIRCLE);
+    conf.set("geo_interpolation", "rhumb_line", _geoInterpolation, GEOINTERP_RHUMB_LINE);
+    conf.set("optimize_state_sharing", _optimizeStateSharing);
+    conf.set("optimize", _optimize);
+    conf.set("optimize_vertex_ordering", _optimizeVertexOrdering);
+    conf.set("validate", _validate);
+    conf.set("max_polygon_tiling_angle", _maxPolygonTilingAngle);
+    conf.set("use_osg_tessellator", _useOSGTessellator);
 
-    conf.set( "shader_policy", "disable",  _shaderPolicy, SHADERPOLICY_DISABLE );
-    conf.set( "shader_policy", "inherit",  _shaderPolicy, SHADERPOLICY_INHERIT );
-    conf.set( "shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE );
+    conf.set("shader_policy", "disable", _shaderPolicy, SHADERPOLICY_DISABLE);
+    conf.set("shader_policy", "inherit", _shaderPolicy, SHADERPOLICY_INHERIT);
+    conf.set("shader_policy", "generate", _shaderPolicy, SHADERPOLICY_GENERATE);
     return conf;
 }
 
@@ -159,7 +142,7 @@ GeometryCompiler::GeometryCompiler()
 }
 
 GeometryCompiler::GeometryCompiler( const GeometryCompilerOptions& options ) :
-_options( options )
+    _options( options )
 {
     //nop
 }
@@ -267,7 +250,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         {
             TessellateOperator filter;
             filter.setNumPartitions( *line->tessellation() );
-            filter.setDefaultGeoInterp( _options.geoInterp().get() );
+            filter.setDefaultGeoInterp( _options.geoInterpolation().get() );
             sharedCX = filter.push( workingSet, sharedCX );
             if ( trackHistory ) history.push_back( "tessellation" );
         }
@@ -275,7 +258,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         {
             TessellateOperator filter;
             filter.setMaxPartitionSize( *line->tessellationSize() );
-            filter.setDefaultGeoInterp( _options.geoInterp().get() );
+            filter.setDefaultGeoInterp( _options.geoInterpolation().get() );
             sharedCX = filter.push( workingSet, sharedCX );
             if ( trackHistory ) history.push_back( "tessellationSize" );
         }
@@ -440,7 +423,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         BuildGeometryFilter filter( style );
 
         filter.maxGranularity() = *_options.maxGranularity();
-        filter.geoInterp()      = *_options.geoInterp();
+        filter.geoInterp()      = *_options.geoInterpolation();
         filter.useOSGTessellator() = *_options.useOSGTessellator();
 
         if (_options.maxPolygonTilingAngle().isSet())

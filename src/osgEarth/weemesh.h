@@ -702,31 +702,34 @@ namespace weemesh
 
             if (!equivalent(bary[2], 0.0, epsilon)) {
                 new_uid = add_triangle(tri.i0, tri.i1, new_i);
-                if (new_uid >= 0 && uid_list) {
+                if (new_uid > 0) {
                     markers[tri.i0] |= _constraint_marker;
                     markers[tri.i1] |= _constraint_marker;
-                    uid_list->push_back(new_uid);
                     ++new_tris;
+                    if (uid_list)
+                        uid_list->push_back(new_uid);
                 }
             }
 
             if (!equivalent(bary[0], 0.0, epsilon)) {
                 new_uid = add_triangle(tri.i1, tri.i2, new_i);
-                if (new_uid >= 0 && uid_list) {
+                if (new_uid >= 0) {
                     markers[tri.i1] |= _constraint_marker;
                     markers[tri.i2] |= _constraint_marker;
-                    uid_list->push_back(new_uid);
                     ++new_tris;
+                    if (uid_list)
+                        uid_list->push_back(new_uid);
                 }
             }
 
             if (!equivalent(bary[1], 0.0, epsilon)) {
                 new_uid = add_triangle(tri.i2, tri.i0, new_i);
-                if (new_uid >= 0 && uid_list) {
+                if (new_uid >= 0) {
                     markers[tri.i2] |= _constraint_marker;
                     markers[tri.i0] |= _constraint_marker;
-                    uid_list->push_back(new_uid);
                     ++new_tris;
+                    if (uid_list)
+                        uid_list->push_back(new_uid);
                 }
             }
 

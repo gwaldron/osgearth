@@ -84,7 +84,7 @@ TiledModelLayer::createTile(const TileKey& key, ProgressCallback* progress) cons
         L2Cache::Record r;
         if (_localcache.get(key, r))
         {
-            OE_INFO << "L2 hit(" << key.str() << ")" << std::endl;
+            OE_DEBUG << "L2 hit(" << key.str() << ")" << std::endl;
             return r.value();
         }
     }

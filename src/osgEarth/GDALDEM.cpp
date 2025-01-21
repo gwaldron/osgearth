@@ -157,7 +157,10 @@ GDALDEMLayer::getColorFilename() const
 void
 GDALDEMLayer::init()
 {
-    ImageLayer::init();
+    super::init();
+
+    // disable caching by default since this is a derived layer
+    layerHints().cachePolicy() = CachePolicy::NO_CACHE;
 }
 
 void

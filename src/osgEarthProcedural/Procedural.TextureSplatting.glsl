@@ -251,7 +251,8 @@ void get_pixel(out Pixel res, inout vec3 weights, in int index, in vec2 coord)
 
 float heightAndEffectMix(in float h1, in float a1, in float h2, in float a2)
 {
-    // https://tinyurl.com/y5nkw2l9
+    // Andrey Mishkinis height+alpha blender.
+    // https://www.gamedeveloper.com/programming/advanced-terrain-texture-splatting
     float ma = max(h1 + a1, h2 + a2) - oe_displacement_depth;
     float b1 = max(h1 + a1 - ma, 0.0);
     float b2 = max(h2 + a2 - ma, 0.0);

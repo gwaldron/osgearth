@@ -1,0 +1,49 @@
+#pragma once
+#include <osgEarthProcedural/Export>
+#include <osgEarth/FeatureSDFLayer>
+#include <osgEarth/PBRMaterial>
+#include <osgEarth/TerrainResources>
+
+namespace osgEarth
+{
+    namespace Procedural
+    {
+        using namespace osgEarth;
+
+        /**
+        * Layer that rasterizes features to a distance-field and then uses that
+        * texture to splat a PBR material on the terrain.
+        */
+        class FeatureSplattingLayer : public FeatureSDFLayer
+        {
+        public:
+            class Options : public FeatureSDFLayer::Options
+            {
+                META_LayerOptions(osgEarth, Options, FeatureSDFLayer::Options);
+
+                //! Material to splat on the terrain
+                OE_OPTION(PBRMaterial, material);
+
+                Config getConfig() const override {
+                    Config conf = super::getConfig();
+                    conf.set("material", material());
+                    return conf;
+                }
+            private:
+                void fromConfig(const Config& conf) {
+                    conf.get("material", material());
+                }
+            };
+
+            META_Layer(osgEarth, FeatureSplattingLayer, Options, FeatureSDFLayer, featuresplatting);
+
+        public:
+            void init() override;
+            void prepareForRendering(TerrainEngine* engine) override;
+
+        private:
+            void buildStateSet();
+            TextureImageUnitReservation _res_albedo, _res_normal, _res_pbr;
+        };
+    }
+}

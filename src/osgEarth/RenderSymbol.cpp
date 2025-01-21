@@ -122,10 +122,8 @@ RenderSymbol::parseSLD(const Config& c, Style& style)
         }
         else if (c.value() != "false") {
             float value; UnitsType units;
-            if (c.value() != "true") {
-                if (Units::parse(c.value(), value, units, Units::METERS))
-                    style.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().range() = Distance(value, units);
-            }
+            if (Units::parse(c.value(), value, units, Units::METERS))
+                style.getOrCreate<RenderSymbol>()->depthOffset().mutable_value().range() = Distance(value, units);
         }
     }
     else if ( match(c.key(), "render-depth-offset-min-bias") ) {

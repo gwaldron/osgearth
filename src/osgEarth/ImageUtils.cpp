@@ -2204,6 +2204,17 @@ namespace
         }
     };
 
+    //! Select an appropriate reader for the given data type.
+    //! 
+    //! NOTE!!
+    //! Fopr UNSIGNED data types, we are using a SIGNED reader, except in the case
+    //! of GL_UNSIGNED_BYTE. This is because the OSG TIFF reader always declares
+    //! the data to be unsigned even when it's not. That's a bug, but it does not
+    //! hurt us to generate signed data for unsigned input, so this is an acceptable
+    //! workaround.
+    //! 
+    //! The exception is GL_UNSIGNED_BYTE which is commonly normalized into [0..1]
+    //! so we will maintain signed-ness for that.
     template<int GLFormat>
     inline ImageUtils::PixelReader::ReaderFunc
     chooseReader(GLenum dataType)
@@ -2215,13 +2226,13 @@ namespace
         case GL_UNSIGNED_BYTE:
             return &ColorReader<GLFormat, GLubyte>::read;
         case GL_SHORT:
-            return &ColorReader<GLFormat, GLshort>::read;
         case GL_UNSIGNED_SHORT:
-            return &ColorReader<GLFormat, GLushort>::read;
+            return &ColorReader<GLFormat, GLshort>::read;
+            //return &ColorReader<GLFormat, GLushort>::read;
         case GL_INT:
-            return &ColorReader<GLFormat, GLint>::read;
         case GL_UNSIGNED_INT:
-            return &ColorReader<GLFormat, GLuint>::read;
+            return &ColorReader<GLFormat, GLint>::read;
+            //return &ColorReader<GLFormat, GLuint>::read;
         case GL_FLOAT:
             return &ColorReader<GLFormat, GLfloat>::read;
         case GL_UNSIGNED_SHORT_5_5_5_1:
@@ -2235,6 +2246,7 @@ namespace
         }
     }
 
+    //! Selects a reader based on the input pixel format and type.
     inline ImageUtils::PixelReader::ReaderFunc
     getReader( GLenum pixelFormat, GLenum dataType )
     {

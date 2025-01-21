@@ -37,13 +37,6 @@ namespace
     }
 }
 
-ImageToHeightFieldConverter::ImageToHeightFieldConverter():
-_replace_nodata( false ),
-_nodata_value( 0.0f )
-{
-  //NOP
-}
-
 void
 ImageToHeightFieldConverter::setRemoveNoDataValues( bool which, float f )
 {

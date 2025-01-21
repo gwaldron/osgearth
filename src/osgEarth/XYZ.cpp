@@ -23,6 +23,7 @@
 #include <osgEarth/ImageToHeightFieldConverter>
 #include "MetaTile"
 #include <osgDB/FileUtils>
+#include <osgDB/WriteFile>
 
 using namespace osgEarth;
 using namespace osgEarth::XYZ;
@@ -311,7 +312,10 @@ XYZElevationLayer::openImplementation()
     if (status.isError())
         return status;
 
-    setProfile(_imageLayer->getProfile());            
+    setProfile(_imageLayer->getProfile());
+
+    DataExtentList de{ DataExtent(getProfile()->getExtent()) };
+    setDataExtents(de);
 
     return Status::NoError;
 }
@@ -416,16 +420,19 @@ XYZElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
             osg::HeightField* hf = new osg::HeightField();
             hf->allocate(image->s(), image->t());
 
-            ImageUtils::PixelReader reader(image);
+            ImageUtils::PixelReader read(image);
             osg::Vec4f pixel;
-
-            for (int c = 0; c < image->s(); c++)
-            {
-                for (int r = 0; r < image->t(); r++)
+            read.forEachPixel([&](auto& i)
                 {
-                    reader(pixel, c, r);
-                    hf->setHeight(c, r, decode(pixel));
-                }
+                    read(pixel, i.s(), i.t());
+                    hf->setHeight(i.s(), i.t(), decode(pixel));
+                });
+
+            if (key.is(8, 70, 107))
+            {
+                ImageToHeightFieldConverter c;
+                auto out = c.convert(hf, 32);
+                osgDB::writeImageFile(*out, "test.tif");
             }
 
             return GeoHeightField(hf, key.getExtent());

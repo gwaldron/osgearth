@@ -635,6 +635,8 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
                 return GeoHeightField::INVALID;
             }
 
+            bool applyVerticalDatumTransformation = !key.getExtent().getSRS()->isVertEquivalentTo(profile->getSRS());
+
             if (key.getProfile()->isHorizEquivalentTo(profile.get()))
             {
                 Threading::ScopedReadLock lock(inUseMutex());
@@ -644,6 +646,9 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
             {
                 // If the profiles are different, use a compositing method to assemble the tile.
                 result = assembleHeightField(key, progress);
+                
+                // assembleHeightField already does this, and more efficiently:
+                applyVerticalDatumTransformation = false;
             }
 
             // Check for cancelation before writing to a cache
@@ -671,10 +676,8 @@ ElevationLayer::createHeightFieldInKeyProfile(const TileKey& key, ProgressCallba
 
             // If the result is good, we now have a heightfield but its vertical values
             // are still relative to the source's vertical datum. Convert them.
-            if (hf.valid() && !key.getExtent().getSRS()->isVertEquivalentTo(profile->getSRS()))
+            if (applyVerticalDatumTransformation && hf.valid())
             {
-                OE_PROFILING_ZONE_NAMED("vdatum xform");
-
                 VerticalDatum::transform(
                     profile->getSRS()->getVerticalDatum(),    // from
                     key.getExtent().getSRS()->getVerticalDatum(),  // to

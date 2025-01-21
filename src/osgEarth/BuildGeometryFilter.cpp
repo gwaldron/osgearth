@@ -1183,7 +1183,8 @@ BuildGeometryFilter::tileAndBuildPolygon(
     OE_SOFT_ASSERT_AND_RETURN(input != nullptr, void());
     OE_SOFT_ASSERT_AND_RETURN(input->getType() != Geometry::TYPE_MULTI, void());
 
-    const double circum = 40041000.0; //m
+    double R = outputSRS ? outputSRS->getEllipsoid().getSemiMajorAxis() : 6378137.0;
+    double circum = osg::PI * 2.0 * R;
     double ref_x = 0.0, ref_y = 0.0;
 
     osg::ref_ptr<osg::Vec3Array> verts = new osg::Vec3Array();

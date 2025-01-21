@@ -309,15 +309,16 @@ namespace osgEarth
                 if (ramp.empty())
                     ramp = xfer->getColorMap();
 
-                ImGui::BeginTable("contours", 3, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody);
+                ImGui::BeginTable("contours", 3, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersV | 
+                    ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody);
                 float to_remove = FLT_MAX;
                 float to_add = FLT_MAX;
                 osg::Vec4f to_add_color;
 
                 ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
-                ImGui::TableSetupColumn("Elevation", ImGuiTableColumnFlags_None, 200.0f);
-                ImGui::TableSetupColumn("Color", ImGuiTableColumnFlags_None, 400.0f);
-                ImGui::TableSetupColumn("", ImGuiTableColumnFlags_None, 20.0f);
+                ImGui::TableSetupColumn("Elevation", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+                ImGui::TableSetupColumn("Color", ImGuiTableColumnFlags_WidthFixed, 400.0f);
+                ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 20.0f);
                 ImGui::TableHeadersRow();
 
                 for (auto& item : ramp)
@@ -1201,15 +1202,28 @@ namespace osgEarth
                     }
                 }
 
+                // Contourmap
+                if (_mapNode->getMap()->getLayer<ContourMapLayer>() == nullptr)
+                {
+                    if (ImGui::MenuItem("Contour Map"))
+                    {
+                        auto* layer = new ContourMapLayer();
+                        layer->setName("Contour Map");
+                        _mapNode->getMap()->addLayer(layer);
+                    }
+                }
+
+                // Debug tiles
                 if (_mapNode->getMap()->getLayer<DebugImageLayer>() == nullptr)
                 {
-                    if (ImGui::MenuItem("Debug"))
+                    if (ImGui::MenuItem("Debug Tiles"))
                     {
                         DebugImageLayer* debugImage = new DebugImageLayer;
                         debugImage->setName("Debug");
                         _mapNode->getMap()->addLayer(debugImage);
                     }
                 }
+
 
                 //ImGui::EndMenu();
             }

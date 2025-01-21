@@ -22,7 +22,6 @@
 #include "Geometry"
 #include "GEOS"
 #include "Math"
-#include "weemesh.h"
 #include <algorithm>
 #include <iterator>
 #include <cstdarg>
@@ -558,13 +557,11 @@ Geometry::intersects(
 #endif // OSGEARTH_HAVE_GEOS
 }
 
-bool
-Geometry::simplify(
-    double distanceTolerance,
-    bool preserveTopology,
-    osg::ref_ptr<Geometry>& output
-) const
+osg::ref_ptr<Geometry>
+Geometry::simplify(double distanceTolerance, bool preserveTopology) const
 {
+    osg::ref_ptr<Geometry> output;
+
 #ifdef OSGEARTH_HAVE_GEOS
 
     GEOSContextHandle_t handle = initGEOS_r(OSGEARTH_WarningHandler, OSGEARTH_GEOSErrorHandler);
@@ -590,7 +587,7 @@ Geometry::simplify(
 
             if (output.valid() && !output->isValid())
             {
-                output = 0L;
+                output = {};
             }
         }
     }
@@ -600,11 +597,11 @@ Geometry::simplify(
 
     finishGEOS_r(handle);
 
-    return output.valid();
 #else
     OE_WARN << LC << "Simplify failed - GEOS not available" << std::endl;
-    return false;
 #endif
+
+    return output;
 }
 
 double

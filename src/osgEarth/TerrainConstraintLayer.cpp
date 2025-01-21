@@ -22,6 +22,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/Utils>
 #include <osgEarth/SimplePager>
+#include <osgEarth/SimplifyFilter>
 
 using namespace osgEarth;
 
@@ -319,7 +320,7 @@ TerrainConstraintLayer::getFeatureConstraint(const TileKey& key, FilterContext* 
                 f->transform(keyExtent.getSRS());
                 constraint.features.emplace_back(f);
             }
-        }
+        }            
     }
 }
 
@@ -360,7 +361,6 @@ TerrainConstraintLayer::getModelConstraint(const TileKey& key, MeshConstraint& c
 MeshConstraint
 TerrainConstraintLayer::getConstraint(const TileKey& key, FilterContext* context, ProgressCallback* progress) const
 {
-
     if (!isOpen() || !getVisible() || getMinLevel() > key.getLOD())
         return {};
 
@@ -418,6 +418,7 @@ TerrainConstraintQuery::getConstraints(const TileKey& key, MeshConstraints& outp
         const GeoExtent& keyExtent = key.getExtent();
 
         FilterContext context(session.get());
+        context.extent() = keyExtent;
 
         for (auto& layer : layers)
         {

@@ -32,6 +32,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/ExampleResources>
 #include <osgEarth/ContourMap>
+#include <osgEarth/GDALDEM>
 #include <osgEarth/Sky>
 #include <osg/Camera>
 
@@ -1167,7 +1168,7 @@ namespace osgEarth
                 // ReadyMap Imagery
                 if (_mapNode->getMap()->getLayerByName("ReadyMap Imagery") == nullptr)
                 {
-                    if (ImGui::MenuItem("ReadyMap Imagery"))
+                    if (ImGui::MenuItem("ReadyMap imagery"))
                     {
                         TMSImageLayer* readymap = new TMSImageLayer();
                         readymap->setName("ReadyMap Imagery");
@@ -1179,7 +1180,7 @@ namespace osgEarth
                 // ReadyMap Elevation
                 if (_mapNode->getMap()->getLayerByName("ReadyMap Elevation") == nullptr)
                 {
-                    if (ImGui::MenuItem("ReadyMap Elevation"))
+                    if (ImGui::MenuItem("ReadyMap elevation"))
                     {
                         TMSElevationLayer* readymap = new TMSElevationLayer();
                         readymap->setName("ReadyMap Elevation");
@@ -1205,7 +1206,7 @@ namespace osgEarth
                 // Contourmap
                 if (_mapNode->getMap()->getLayer<ContourMapLayer>() == nullptr)
                 {
-                    if (ImGui::MenuItem("Contour Map"))
+                    if (ImGui::MenuItem("Contour map"))
                     {
                         auto* layer = new ContourMapLayer();
                         layer->setName("Contour Map");
@@ -1213,10 +1214,21 @@ namespace osgEarth
                     }
                 }
 
+                // Hillshade Shading
+                if (_mapNode->getMap()->getLayer<GDALDEMLayer>() == nullptr)
+                {
+                    if (ImGui::MenuItem("Hillside shading"))
+                    {
+                        auto* layer = new GDALDEMLayer();
+                        layer->setOpacity(0.2);
+                        _mapNode->getMap()->addLayer(layer);
+                    }
+                }
+
                 // Debug tiles
                 if (_mapNode->getMap()->getLayer<DebugImageLayer>() == nullptr)
                 {
-                    if (ImGui::MenuItem("Debug Tiles"))
+                    if (ImGui::MenuItem("Tilekey view"))
                     {
                         DebugImageLayer* debugImage = new DebugImageLayer;
                         debugImage->setName("Debug");

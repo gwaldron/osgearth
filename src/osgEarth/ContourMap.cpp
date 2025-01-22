@@ -160,6 +160,8 @@ ContourMapLayer::init()
         xfer->setColor(2250.0f, Color("#6c2f2f"));
         xfer->setColor(2600.0f, Color("#7f7f7f"));
         xfer->setColor(3000.0f, Color("#ffffff"));
+        xfer->setColor(5500.0f, Color("#83eeff"));
+        xfer->setColor(8000.0f, Color("#ff1d7f"));
     }
 
     xfer->updateImage();

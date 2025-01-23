@@ -1185,7 +1185,8 @@ FeatureRasterizer::render_agglite(
     {
         Geometry* geometry = feature->getGeometry();
 
-        if (auto cropped = geometry->crop(&cropPoly))
+        osg::ref_ptr<Geometry> cropped = geometry->crop(&cropPoly);
+        if (cropped.valid())
         {
             if (covValue.isSet())
             {
@@ -1208,8 +1209,8 @@ FeatureRasterizer::render_agglite(
     {
         Geometry* geometry = feature->getGeometry();
 
-        osg::ref_ptr<Geometry> croppedGeometry;
-        if (auto cropped = geometry->crop(&cropPoly))
+        osg::ref_ptr<Geometry> cropped = geometry->crop(&cropPoly);
+        if (cropped.valid())
         {
             if (covValue.isSet())
             {

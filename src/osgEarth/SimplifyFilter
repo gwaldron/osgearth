@@ -38,7 +38,7 @@ namespace osgEarth { namespace Util
 
             OE_OPTION(double, tolerance, 0.0);
             OE_OPTION(bool, toleranceIsPercentage, false);
-            OE_OPTION(bool, preserveTopology, false);
+            OE_OPTION(bool, preserveTopology, true);
             OE_OPTION(bool, preserveAllFeatures, false);
 
             void fromConfig(const Config& conf) {

@@ -30,6 +30,8 @@ using namespace osgEarth;
 
 #define GEOS_OUT OE_DEBUG
 
+//#define CROP_WITH_GEOS
+
 #define LC "[Geometry] "
 
 namespace
@@ -85,8 +87,12 @@ Geometry::Geometry(Type type, int capacity) :
 Geometry::Geometry(Type type, const Vec3dVector* data) :
     _type(type)
 {
-    reserve( data->size() );
-    insert( begin(), data->begin(), data->end() );
+    OE_SOFT_ASSERT(data != nullptr);
+    if (data)
+    {
+        reserve(data->size());
+        insert(begin(), data->begin(), data->end());
+    }
 }
 
 Geometry::~Geometry()
@@ -110,14 +116,16 @@ Geometry::getBounds() const
 }
 
 Geometry*
-Geometry::cloneAs( const Geometry::Type& newType ) const
+Geometry::cloneAs(const Geometry::Type& newType) const
 {
-    switch( newType )
+    OE_SOFT_ASSERT_AND_RETURN(newType != TYPE_MULTI && newType != TYPE_UNKNOWN, nullptr);
+
+    switch (newType)
     {
     case TYPE_POINT:
-        return new Point( &this->asVector() );
+        return new Point(&this->asVector());
     case TYPE_POINTSET:
-        return new PointSet( &this->asVector() );
+        return new PointSet(&this->asVector());
     case TYPE_LINESTRING:
         return new LineString( &this->asVector() );
     case TYPE_RING:
@@ -127,12 +135,11 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
             return new Polygon( *static_cast<const Polygon*>(this) );
         else
             return new Polygon( &this->asVector() );
-    case TYPE_UNKNOWN:
-        return new Geometry(newType, &this->asVector() );
     default:
         break;
     }
-    return 0L;
+
+    return nullptr;
 }
 
 osg::Vec3Array*
@@ -262,6 +269,11 @@ namespace
 
         double determinant = a1 * b2 - a2 * b1;
 
+        if (equivalent(determinant, 0.0, 1e-6))
+        {
+            return osg::Vec3d(DBL_MAX, DBL_MAX, 0.0);
+        }
+
         osg::Vec3d result = {
             (b2 * c1 - b1 * c2) / determinant,
             (a1 * c2 - a2 * c1) / determinant,
@@ -276,10 +288,10 @@ namespace
     {
         std::vector<osg::Vec3d> output = input;
 
-        for(unsigned i=0; i< boundary.size(); ++i)
+        for (unsigned b = 0; b < boundary.size(); ++b)
         {
-            const osg::Vec3d& edgeStart = boundary[i];
-            const osg::Vec3d& edgeEnd = i < boundary.size() - 1 ? boundary[i + 1] : boundary[0];
+            const osg::Vec3d& edgeStart = boundary[b];
+            const osg::Vec3d& edgeEnd = b < boundary.size() - 1 ? boundary[b + 1] : boundary[0];
 
             std::vector<osg::Vec3d> input = output;
             output.clear();
@@ -306,34 +318,102 @@ namespace
 
         return output;
     }
-}
 
-#if 0
-bool
-Geometry::crop(const Ring* boundary, osg::ref_ptr<Geometry>& output) const
-{
-    OE_SOFT_ASSERT_AND_RETURN(boundary, false);
-    OE_SOFT_ASSERT_AND_RETURN(boundary->size() > 2, false);
-    std::vector<osg::Vec3d> points;
-    points.reserve(size());
-    for (const auto& point : *this)
+    std::vector<std::vector<osg::Vec3d>> clipLineString(const std::vector<osg::Vec3d>& input, const osg::Vec3d& e0, const osg::Vec3d& e1)
     {
-        if (boundary->contains2D(point.x(), point.y()))
-            points.emplace_back(point);
-    }
-    output = this->cloneAs(getType());
-    output->asVector().swap(points);
-    return true;
-}
-#endif
+        std::vector<std::vector<osg::Vec3d>> outputs;
+        std::vector<osg::Vec3d>* current = nullptr;
 
-osg::ref_ptr<Geometry>
+        for (size_t i = 1; i < input.size(); ++i)
+        {
+            auto& p = input[i];
+            auto& prev = input[i - 1];
+
+            bool p_inside = inside(p, e0, e1);
+            bool prev_inside = inside(prev, e0, e1);
+
+            if (p_inside && prev_inside)
+            {
+                // both inside the zone:
+                if (!current)
+                {
+                    outputs.emplace_back();
+                    current = &outputs.back();
+                    current->emplace_back(prev); // starting out, so push them oth
+                }
+                current->emplace_back(p);
+            }
+            else if (p_inside && !prev_inside)
+            {
+                // just entered the zone from outside; current should always be nullptr
+                OE_SOFT_ASSERT(current == nullptr);
+                if (!current)
+                {
+                    outputs.emplace_back(); // new linestring
+                    current = &outputs.back();
+                }
+                current->emplace_back(intersection(prev, p, e0, e1));
+                current->emplace_back(p);
+            }
+            else if (!p_inside && prev_inside)
+            {
+                if (!current)
+                {
+                    outputs.emplace_back(); // new linestring
+                    current = &outputs.back();
+                    current->emplace_back(prev); // starting out, so push them
+                }
+                current->emplace_back(intersection(prev, p, e0, e1));
+                current = nullptr;
+            }
+            else
+            {
+                // both outside, do nothing
+            }
+        }
+
+        return outputs;
+    }
+
+    std::vector<std::vector<osg::Vec3d>> clipLineString(const std::vector<osg::Vec3d>& input, const std::vector<osg::Vec3d>& boundary)
+    {
+        if (input.empty())
+            return {};
+
+        std::vector<std::vector<osg::Vec3d>> working_set;
+        working_set.emplace_back(input);
+
+        for (size_t b = 0; b < boundary.size() && !working_set.empty(); ++b)
+        {
+            std::vector<std::vector<osg::Vec3d>> edge_outputs;
+
+            const osg::Vec3d& e0 = boundary[b];
+            const osg::Vec3d& e1 = b < boundary.size() - 1 ? boundary[b + 1] : boundary[0];
+
+            for (auto& edge_input : working_set)
+            {
+                auto clipped = clipLineString(edge_input, e0, e1);
+                if (!clipped.empty())
+                {
+                    for (auto& part : clipped)
+                        edge_outputs.emplace_back(std::move(part));
+                }
+            }
+
+            working_set.swap(edge_outputs);
+        }
+
+        return working_set;
+    }
+}
+
+Geometry*
 Geometry::crop(const Ring* boundary) const
 {
 #ifdef OSGEARTH_HAVE_GEOS
 
     bool success = false;
-    osg::ref_ptr<Geometry> output;
+    Geometry* output = nullptr;
 
     if (getType() == TYPE_POINT)
     {
@@ -351,7 +431,7 @@ Geometry::crop(const Ring* boundary) const
         }
         if (!points.empty())
         {
-            output = this->cloneAs(getType());
+            output = this->cloneAs(getComponentType());
             output->asVector().swap(points);
         }
         return output;
@@ -370,7 +450,7 @@ Geometry::crop(const Ring* boundary) const
         {
             output = GEOS::exportGeometry(handle, outGeom);
 
-            if (output.valid())
+            if (output)
             {
                 if (output->isValid())
                 {
@@ -379,6 +459,7 @@ Geometry::crop(const Ring* boundary) const
                 else
                 {
                     // GEOS result is invalid
+                    delete output;
                     output = nullptr;
                 }
             }
@@ -388,7 +469,7 @@ Geometry::crop(const Ring* boundary) const
                 // still returning false but allows for check.
                 if (GEOSGeomGetNumPoints_r(handle, outGeom) == 0)
                 {
-                    output = new osgEarth::Geometry(TYPE_UNKNOWN);
+                    output = cloneEmpty();
                 }
             }
 
@@ -412,7 +493,7 @@ Geometry::crop(const Ring* boundary) const
 #endif // OSGEARTH_HAVE_GEOS
 }
 
-osg::ref_ptr<Geometry>
+Geometry*
 Geometry::crop(const Bounds& bounds) const
 {
     Ring boundary;
@@ -460,7 +541,7 @@ Geometry::geounion( const Geometry* other, osg::ref_ptr<Geometry>& output ) cons
             // still returning false but allows for check.
             if (GEOSGeomGetNumPoints_r(handle, outGeom) == 0)
             {
-                output = new osgEarth::Geometry(TYPE_UNKNOWN);
+                output = cloneEmpty();
             }
         }
 
@@ -859,6 +940,31 @@ LineString::getSignedDistance2D(
     return sqrt(r);
 }
 
+Geometry*
+LineString::crop(const Ring* boundary) const
+{
+    auto new_data = clipLineString(this->asVector(), boundary->asVector());
+    if (new_data.empty())
+        return nullptr;
+
+    if (new_data.size() == 1)
+    {
+        auto* geom = new LineString(&new_data[0]);
+        return geom;
+    }
+    else
+    {
+        auto* geom = new MultiGeometry();
+        for (auto& data : new_data)
+        {
+            OE_SOFT_ASSERT(!data.empty());
+            auto* part = new LineString(&data);
+            geom->add(part);
+        }
+        return geom;
+    }
+}
+
 //----------------------------------------------------------------------------
 
 Ring::Ring(Type type, const Vec3dVector* data) :
@@ -868,8 +974,10 @@ Ring::Ring(Type type, const Vec3dVector* data) :
 }
 
 Geometry*
-Ring::cloneAs( const Geometry::Type& newType ) const
+Ring::cloneAs(const Geometry::Type& newType) const
 {
+    OE_SOFT_ASSERT_AND_RETURN(newType != TYPE_UNKNOWN && newType != TYPE_MULTI, cloneAs(_type));
+
     if ( newType == TYPE_LINESTRING )
     {
         LineString* line = new LineString( &this->asVector() );
@@ -911,6 +1019,7 @@ Ring::close()
 // whether the ring is open.
 bool
 Ring::isOpen() const
+
 {
     return size() > 1 && front() != back();
 }
@@ -982,9 +1091,13 @@ Ring::contains2D( double x, double y ) const
     return result;
 }
 
-osg::ref_ptr<Geometry>
+Geometry*
 Ring::crop(const Ring* boundary) const
 {
+#ifdef CROP_WITH_GEOS
+    return Geometry::crop(boundary);
+#else
+
     auto new_points = clipPolygon(this->asVector(), boundary->asVector());
     if (!new_points.empty())
     {
@@ -993,6 +1106,7 @@ Ring::crop(const Ring* boundary) const
         return new_geom;
     }
     return {};
+#endif
 }
 
 namespace
@@ -1064,7 +1178,7 @@ Ring::splitAcrossAntimeridian()
     osg::ref_ptr<Ring> left, right;
     split(this, left, right);
 
-    if (left->size() > 0 && right->size() > 0)
+    if (left.valid() && left->size() > 0 && right.valid() && right->size() > 0)
     {
         auto mg = new MultiGeometry();
         mg->add(left);
@@ -1157,9 +1271,12 @@ Polygon::getSignedDistance2D(const osg::Vec3d& a) const
     return r;
 }
 
-osg::ref_ptr<Geometry>
+Geometry*
 Polygon::crop(const Ring* boundary) const
 {
+#ifdef CROP_WITH_GEOS
+    return Geometry::crop(boundary);
+#else
     auto new_points = clipPolygon(this->asVector(), boundary->asVector());
     if (!new_points.empty())
     {
@@ -1179,6 +1296,7 @@ Polygon::crop(const Ring* boundary) const
         return new_poly;
     }
     return {};
+#endif
 }
 
 Geometry*
@@ -1190,15 +1308,15 @@ Polygon::splitAcrossAntimeridian()
     osg::ref_ptr<Polygon> left, right;
     split(this, left, right);
 
-    if (left->size() > 0 && right->size() > 0)
+    if (left.valid() && left->size() > 0 && right.valid() && right->size() > 0)
     {
         for (auto& hole : _holes)
         {
             osg::ref_ptr<Ring> leftHole, rightHole;
             split(hole.get(), leftHole, rightHole);
-            if (leftHole->size() > 0)
+            if (leftHole.valid() && leftHole->size() > 0)
                 left->_holes.push_back(hole);
-            if (rightHole->size() > 0)
+            if (rightHole.valid() && rightHole->size() > 0)
                 right->_holes.push_back(hole);
         }
 
@@ -1213,12 +1331,58 @@ Polygon::splitAcrossAntimeridian()
     }
 }
 
+Geometry*
+Polygon::cloneAs(const Geometry::Type& newType) const
+{
+    OE_SOFT_ASSERT_AND_RETURN(newType != TYPE_UNKNOWN && newType != TYPE_MULTI, cloneAs(_type));
+
+    if (newType == TYPE_LINESTRING)
+    {
+        LineString* line = new LineString(&this->asVector());
+
+        if (line->size() > 1 && line->front() != line->back())
+            line->push_back(front());
+
+        if (_holes.empty())
+        {
+            return line;
+        }
+        else
+        {
+            auto* mg = new MultiGeometry();
+            mg->add(line);
+            for (auto& hole : _holes)
+            {
+                if (hole.valid() && !hole->empty())
+                {
+                    LineString* holeLine = new LineString(&hole->asVector());
+                    if (holeLine->size() > 1 && holeLine->front() != holeLine->back())
+                        holeLine->push_back(hole->front());
+                    std::reverse(holeLine->begin(), holeLine->end());
+                    mg->add(holeLine);
+                }
+            }
+            return mg;
+        }
+    }
+    else
+    {
+        return Ring::cloneAs(newType);
+    }
+}
+
 //----------------------------------------------------------------------------
 
 namespace
 {
     template<class T>
     double cross2d(const T& a, const T& b) { return a.x()*b.y() - a.y()*b.x(); }
+}
+
+TriMesh::TriMesh(const TriMesh& rhs) :
+    Geometry(rhs)
+{
+    _indices = rhs._indices;
 }
 
 bool TriMesh::contains2D(double x, double y) const
@@ -1239,7 +1403,6 @@ bool TriMesh::contains2D(double x, double y) const
     }
     return false;
 }
-
 
 //----------------------------------------------------------------------------
 
@@ -1308,12 +1471,15 @@ MultiGeometry::getBounds() const
 }
 
 Geometry*
-MultiGeometry::cloneAs( const Geometry::Type& newType ) const
+MultiGeometry::cloneAs(const Geometry::Type& newType) const
 {
-    MultiGeometry* multi = new MultiGeometry();
+    OE_SOFT_ASSERT(_parts.size() > 0);
+    OE_SOFT_ASSERT_AND_RETURN(newType != TYPE_UNKNOWN && newType != TYPE_MULTI, nullptr);
+
+    auto* multi = new MultiGeometry();
     for (auto& part : _parts)
     {
-        auto cloned_part = part->cloneAs(part->getType());
+        auto cloned_part = part->cloneAs(newType);
         if (cloned_part) multi->getComponents().push_back(cloned_part);
     }
     return multi;
@@ -1391,54 +1557,68 @@ MultiGeometry::contains2D(double x, double y) const
     return false;
 }
 
-osg::ref_ptr<Geometry>
+Geometry*
 MultiGeometry::crop(const Ring* boundary) const
 {
-    osg::ref_ptr<MultiGeometry> mg;
+#ifdef CROP_WITH_GEOS
+    return Geometry::crop(boundary);
+#else
+    MultiGeometry* mg = nullptr;
 
     for (const auto& part : _parts)
     {
         auto cropped = part->crop(boundary);
-        if (cropped.valid())
+        if (cropped)
         {
-            if (!mg) mg = new MultiGeometry();
+            if (!mg)
+                mg = new MultiGeometry();
             mg->add(cropped);
         }
     }
-    if (mg->_parts.empty())
+    if (mg && mg->_parts.empty())
+    {
+        delete mg;
         return {};
-    else if (mg->_parts.size() == 1)
-        return mg->_parts.front();
+    }
+    else if (mg && mg->_parts.size() == 1)
+    {
+        auto* result = mg->_parts.front().release();
+        delete mg;
+        return result;
+    }
     else
+    {
         return mg;
+    }
+#endif
 }
 
 Geometry*
 MultiGeometry::splitAcrossAntimeridian()
 {
-    osg::ref_ptr<MultiGeometry> mg;
+    MultiGeometry* mg = nullptr;
 
     for (const auto& part : _parts)
     {
         auto* split = part->splitAcrossAntimeridian();
         if (split != part)
         {
-            if (!mg.valid())
-            {
-                mg = new MultiGeometry();
-            }
-
-            // breaks up multigeometries (because you cannot next them)
+            // breaks up multigeometries (because you cannot nest them)
             GeometryIterator i(split, false);
             while (i.hasMore())
             {
                 auto* part = i.next();
-                mg->add(part);
+                if (part && !part->empty())
+                {
+                    if (!mg)
+                        mg = new MultiGeometry();
+                    mg->add(part);
+                }
             }
         }
     }
 
-    return mg;
+    return mg ? mg : this;
 }
 
 //----------------------------------------------------------------------------

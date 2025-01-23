@@ -490,6 +490,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
     }
 
+    if (render)
+    {
+        render->applyTo(resultGroup.get());
+    }
+
     if (Registry::capabilities().supportsGLSL())
     {
         ShaderPolicy shaderPolicy = _options.shaderPolicy().get();

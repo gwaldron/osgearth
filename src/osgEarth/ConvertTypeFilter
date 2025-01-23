@@ -39,30 +39,24 @@ namespace osgEarth { namespace Util
         static bool isSupported() { return true; }
 
     public:
-        ConvertTypeFilter();
-        ConvertTypeFilter( const Geometry::Type& toType );
-        ConvertTypeFilter( const ConvertTypeFilter& rhs );
+        ConvertTypeFilter() = default;
+        ConvertTypeFilter(const ConvertTypeFilter&) = default;
 
-        ConvertTypeFilter( const Config& conf );
+        ConvertTypeFilter(const Geometry::Type& toType);
+        ConvertTypeFilter(const Config& conf);
 
-        /**
-         * Serialize this FeatureFilter
-         */
-        virtual Config getConfig() const;
-
-        virtual ~ConvertTypeFilter() { }
+        //!Serialize this FeatureFilter
+        Config getConfig() const override;
 
     public:
-        Geometry::Type& toType() {
-            return _toType; }
         const Geometry::Type& toType() const {
-            return _toType; }
+            return _toType.value(); }
 
     public:
         virtual FilterContext push( FeatureList& input, FilterContext& context );
 
     protected:
-        Geometry::Type _toType;
+        optional<Geometry::Type> _toType = Geometry::TYPE_UNKNOWN;
     };
 } }
 

@@ -454,7 +454,8 @@ namespace
                     osg::ref_ptr<Feature> f = new Feature(polygon.get(), _utm.get());
                     f->transform(_feature->getSRS());
 
-                    if (auto cropped = f->getGeometry()->crop(_extent.bounds()))
+                    osg::ref_ptr<Geometry> cropped = f->getGeometry()->crop(_extent.bounds());
+                    if (cropped.valid())
                     {
                         f->setGeometry(cropped.get());
                         f->set("easting", x);
@@ -518,7 +519,7 @@ namespace
 
             if (auto cropped = f->getGeometry()->crop(_extent.bounds()))
             {
-                f->setGeometry(cropped.get());
+                f->setGeometry(cropped);
             }
 
             GeometryCompilerOptions gco;

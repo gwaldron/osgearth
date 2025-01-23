@@ -73,7 +73,7 @@ SimplifyFilter::push(FeatureList& input, FilterContext& context)
                 continue;
             }
 
-            auto simplifiedGeometry = geometry->simplify(t, options().preserveTopology().value());
+            auto simplifiedGeometry = geometry->simplify(t, options().preserveTopology().value());  
             if (simplifiedGeometry.valid())
             {
                 feature->setGeometry(simplifiedGeometry.get());

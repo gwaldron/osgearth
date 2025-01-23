@@ -1012,7 +1012,7 @@ namespace
                 if (auto cropped = geometry->crop(&boundary))
                 {
                     // Use an iterator since crop could return a multi-polygon
-                    GeometryIterator gi(cropped.get(), false);
+                    GeometryIterator gi(cropped, false);
                     while (gi.hasMore())
                     {
                         Geometry* geom = gi.next();
@@ -1798,15 +1798,11 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     // Split features across the dateline if necessary
     if (context.getOutputSRS() && !context.getOutputSRS()->isGeographic())
     {
-        for(FeatureList::iterator itr = input.begin(); itr != input.end(); ++itr)
+        for(auto& feature : input)
         {
-            osg::ref_ptr<Feature> f = new Feature(*itr->get());
-            f->splitAcrossAntimeridian();
-            splitFeatures.emplace_back(f);
-            //Feature* f = itr->clone(); // itr->get();
-            //FeatureList tmpSplit;
-            //f->splitAcrossDateLine(tmpSplit);
-            //splitFeatures.insert(splitFeatures.end(), tmpSplit.begin(), tmpSplit.end());
+            auto* clone = new Feature(*feature.get());
+            clone->splitAcrossAntimeridian();
+            splitFeatures.emplace_back(clone);
         }
     }
     else
@@ -1814,6 +1810,8 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         // Just copy the input list to the split list
         std::copy(input.begin(), input.end(), std::back_inserter(splitFeatures));
     }
+
+    osg::ref_ptr<osg::Group> polysGroup, linesGroup, pointsGroup, meshesGroup;
 
     for(FeatureList::iterator i = splitFeatures.begin(); i != splitFeatures.end(); ++i)
     {
@@ -1872,10 +1870,10 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
         if ( has_polysymbol )
         {
-            if (f->getGeometry()->getType() == Geometry::TYPE_TRIMESH)
-                meshes.push_back(f);
-            else
-                polygons.push_back( f );
+            //if (f->getGeometry()->getType() == Geometry::TYPE_TRIMESH)
+            //    meshes.push_back(f);
+            //else
+            polygons.push_back( f );
         }
 
         if (has_linesymbol)
@@ -1927,7 +1925,10 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             GenerateNormals gen;
             geode->accept(gen);
 
-            result->addChild( geode.get() );
+            if (!polysGroup.valid())
+                polysGroup = new osg::Group();
+
+            polysGroup->addChild( geode.get() );
         }
     }
 
@@ -1937,12 +1938,13 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
         bool twosided = polygons.size() > 0 ? false : true;
         osg::ref_ptr< osg::Group > lines = processPolygonizedLines(polygonizedLines, twosided, context,
                                                                    false);
-
         if (lines->getNumChildren() > 0)
         {
-            result->addChild( lines.get() );
-        }
+            if (!linesGroup.valid())
+                linesGroup = new osg::Group();
 
+            linesGroup->addChild( lines.get() );
+        }
     }
 
     if ( wireLines.size() > 0 )
@@ -1952,7 +1954,9 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
         if (lines->getNumChildren() > 0)
         {
-            result->addChild( lines.get() );
+            if (!meshesGroup.valid())
+                meshesGroup = new osg::Group();
+            meshesGroup->addChild( lines.get() );
         }
 
     }
@@ -1965,7 +1969,9 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
         if ( group->getNumChildren() > 0 )
         {
-            result->addChild(group.get());
+            if (!linesGroup.valid())
+                linesGroup = new osg::Group();
+            linesGroup->addChild(group.get());
         }
     }
 
@@ -1977,7 +1983,9 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
         if ( group->getNumChildren() > 0 )
         {
-            result->addChild(group.get());
+            if (!pointsGroup.valid())
+                pointsGroup = new osg::Group();
+            pointsGroup->addChild(group.get());
         }
     }
 
@@ -1987,9 +1995,21 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
         if (group->getNumChildren() > 0)
         {
-            result->addChild(group.get());
+            if (!meshesGroup.valid())
+                meshesGroup = new osg::Group();
+            meshesGroup->addChild(group.get());
         }
     }
+
+    if (polysGroup.valid())
+        result->addChild(polysGroup.get());
+    if (linesGroup.valid())
+        result->addChild(linesGroup.get());
+    if (pointsGroup.valid())
+        result->addChild(pointsGroup.get());
+    if (meshesGroup.valid())
+        result->addChild(meshesGroup.get());
+
 
     //// indicate that geometry contains clamping attributes
     if (_style.has<AltitudeSymbol>() &&

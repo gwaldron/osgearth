@@ -160,13 +160,13 @@ namespace osgEarth
          * Crops this geometry to the region represented by the crop polygon, returning
          * the result in the output parameter. Returns true if the op succeeded.
          */
-        virtual osg::ref_ptr<Geometry> crop(const class Ring* boundary) const;
+        virtual Geometry* crop(const class Ring* boundary) const;
 
         /**
          * Crops this geometry to the bounds, returning the result in the output parameter.
          * Returns true if the op succeeded.
          */
-        osg::ref_ptr<Geometry> crop(const Bounds& bounds) const;
+        Geometry* crop(const Bounds& bounds) const;
 
         /**
          * Creates the union of this geometry with the other geometry, returning
@@ -269,7 +269,11 @@ namespace osgEarth
         virtual Type getComponentType() const { return getType(); }
         virtual bool isValid() const { return size() >= 1; }
 
-        virtual Geometry* clone() const { return cloneAs(getType()); }
+        //! Deep clone of the object
+        virtual Geometry* clone() const = 0;
+
+        //! Empty clone of the object (same type, no content)
+        virtual Geometry* cloneEmpty() const = 0;
 
         void push_back(const osg::Vec3d& v ) {
             osgEarth::InlineVector<osg::Vec3d,osg::Referenced>::push_back(v); }
@@ -302,6 +306,8 @@ namespace osgEarth
         PointSet(int capacity = 0) : Geometry(TYPE_POINTSET, capacity) { }
         PointSet(const Vec3dVector* toCopy) : Geometry(TYPE_POINTSET, toCopy) { }
         PointSet(const PointSet& rhs) = default;
+        Geometry* clone() const override { return new PointSet(*this); }
+        Geometry* cloneEmpty() const override { return new PointSet(); }
 
         // Don't close point sets
         void close() override { }
@@ -320,6 +326,8 @@ namespace osgEarth
         Point(int capacity = 0) : PointSet(TYPE_POINT, capacity) { }
         Point(const Vec3dVector* toCopy) : PointSet(TYPE_POINT, toCopy) { }
         Point(const Point& rhs) = default;
+        Geometry* clone() const override { return new Point(*this); }
+        Geometry* cloneEmpty() const override { return new Point(); }
 
         void set(const osg::Vec3d& value);
 
@@ -336,12 +344,16 @@ namespace osgEarth
         LineString(int capacity = 0) : Geometry(TYPE_LINESTRING, capacity) { }
         LineString(const Vec3dVector* toCopy) : Geometry(TYPE_LINESTRING, toCopy) { }
         LineString(const LineString& rhs) = default;
+        Geometry* clone() const override { return new LineString(*this); }
+        Geometry* cloneEmpty() const override { return new LineString(); }
 
         bool getSegment(double length, osg::Vec3d& start, osg::Vec3d& end);
 
         void close() override;
 
         double getSignedDistance2D(const osg::Vec3d& point) const override;
+
+        Geometry* crop(const class Ring* boundary) const override;
 
     public:
         bool isValid() const override { return size() >= 2; }
@@ -358,6 +370,8 @@ namespace osgEarth
         Ring(int capacity = 0) : Geometry(TYPE_RING, capacity) { }
         Ring(const Vec3dVector* toCopy) : Ring(TYPE_RING, toCopy) { }
         Ring(const Ring& ring) = default;
+        Geometry* clone() const override { return new Ring(*this); }
+        Geometry* cloneEmpty() const override { return new Ring(); }
 
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
@@ -386,7 +400,7 @@ namespace osgEarth
         double getSignedDistance2D(const osg::Vec3d& a) const override;
 
         // crop to a boundary
-        osg::ref_ptr<Geometry> crop(const class Ring* boundary) const override;
+        Geometry* crop(const class Ring* boundary) const override;
 
         //! split across anitmeridian (geodetic coords only)
         Geometry* splitAcrossAntimeridian() override;
@@ -413,6 +427,8 @@ namespace osgEarth
         Polygon(int capacity = 0) : Ring(TYPE_POLYGON, capacity) { }
         Polygon(const Vec3dVector* toCopy) : Ring(TYPE_POLYGON, toCopy) { }
         Polygon(const Polygon& rhs);
+        Geometry* clone() const override { return new Polygon(*this); }
+        Geometry* cloneEmpty() const override { return new Polygon(); }
 
     public:
         virtual Type getType() const { return Geometry::TYPE_POLYGON; }
@@ -434,10 +450,12 @@ namespace osgEarth
         virtual double getSignedDistance2D(
             const osg::Vec3d& a) const override;
 
-        osg::ref_ptr<Geometry> crop(const Ring* boundary) const override;
+        Geometry* crop(const Ring* boundary) const override;
 
         //! split across anitmeridian (geodetic coords only)
         Geometry* splitAcrossAntimeridian() override;
+
+        Geometry* cloneAs( const Geometry::Type& newType ) const override;
 
     public:
         RingCollection& getHoles() { return _holes; }
@@ -451,6 +469,9 @@ namespace osgEarth
     {
     public:
         TriMesh() : Geometry(TYPE_TRIMESH) { }
+        TriMesh(const TriMesh& rhs);
+        Geometry* clone() const override { return new TriMesh(*this); }
+        Geometry* cloneEmpty() const override { return new TriMesh(); }
 
         unsigned getNumGeometries() const override { return 1u; }
 
@@ -469,6 +490,8 @@ namespace osgEarth
         MultiGeometry() : Geometry(TYPE_MULTI) { }
         MultiGeometry(const MultiGeometry& rhs);
         MultiGeometry(const GeometryCollection& parts);
+        Geometry* clone() const override { return new MultiGeometry(*this); }
+        Geometry* cloneEmpty() const override { return new MultiGeometry(); }
 
     public:
         Type getComponentType() const override;
@@ -491,7 +514,7 @@ namespace osgEarth
         void close() override;
         double getSignedDistance2D(const osg::Vec3d& a) const override;
         bool contains2D(double x, double y) const override;
-        osg::ref_ptr<Geometry> crop(const Ring* boundary) const override;
+        Geometry* crop(const Ring* boundary) const override;
 
         //! split across anitmeridian (geodetic coords only)
         Geometry* splitAcrossAntimeridian() override;

@@ -1217,10 +1217,11 @@ namespace osgEarth
                 // Hillshade Shading
                 if (_mapNode->getMap()->getLayer<GDALDEMLayer>() == nullptr)
                 {
-                    if (ImGui::MenuItem("Hillside shading"))
+                    if (ImGui::MenuItem("Hill shading"))
                     {
                         auto* layer = new GDALDEMLayer();
-                        layer->setOpacity(0.2);
+                        layer->setName("Hill shading");
+                        layer->setOpacity(0.25);
                         _mapNode->getMap()->addLayer(layer);
                     }
                 }

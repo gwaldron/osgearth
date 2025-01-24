@@ -227,21 +227,15 @@ namespace osgEarth
 
         virtual void open() { }
 
-        /**
-         * Removes consecutive duplicates in the geometry to prepare for tessellation.
-         */
+        //! Removes consecutive duplicates in the geometry to prepare for tessellation.
         virtual void removeDuplicates();
 
-        /**
-         * Removes any colinear points, i.e. points that can be safely removed without
-         * affecting the shape/area of the geometry.
-         */
+        //! Removes any colinear points, i.e. points that can be safely removed without
+        //! affecting the shape/area of the geometry.
         virtual void removeColinearPoints();
 
-        /**
-         * Get the winding orientation of the geometry (if you consider the last point
-         * to connect back to the first in a ring.)
-         */
+        //! Get the winding orientation of the geometry (if you consider the last point
+        //! to connect back to the first in a ring.)
         Orientation getOrientation() const;
 
         //! Whether a closed geometry contains the 2D point
@@ -402,9 +396,6 @@ namespace osgEarth
         // crop to a boundary
         Geometry* crop(const class Ring* boundary) const override;
 
-        //! split across anitmeridian (geodetic coords only)
-        Geometry* splitAcrossAntimeridian() override;
-
     public:
         virtual Type getType() const { return Geometry::TYPE_RING; }
         virtual bool isValid() const { return size() >= 3; }
@@ -451,9 +442,6 @@ namespace osgEarth
             const osg::Vec3d& a) const override;
 
         Geometry* crop(const Ring* boundary) const override;
-
-        //! split across anitmeridian (geodetic coords only)
-        Geometry* splitAcrossAntimeridian() override;
 
         Geometry* cloneAs( const Geometry::Type& newType ) const override;
 
@@ -515,9 +503,6 @@ namespace osgEarth
         double getSignedDistance2D(const osg::Vec3d& a) const override;
         bool contains2D(double x, double y) const override;
         Geometry* crop(const Ring* boundary) const override;
-
-        //! split across anitmeridian (geodetic coords only)
-        Geometry* splitAcrossAntimeridian() override;
 
     public:
         GeometryCollection& getComponents() { return _parts; }

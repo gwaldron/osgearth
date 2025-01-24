@@ -440,8 +440,9 @@ Geometry::crop(const Ring* boundary) const
     GEOSContextHandle_t handle = initGEOS_r(OSGEARTH_WarningHandler, OSGEARTH_GEOSErrorHandler);
 
     //Create the GEOS Geometries
+    Polygon boundary_as_poly(&boundary->asVector());
     GEOSGeometry* inGeom = GEOS::importGeometry(handle, this);
-    GEOSGeometry* boundaryGeom = GEOS::importGeometry(handle, boundary);
+    GEOSGeometry* boundaryGeom = GEOS::importGeometry(handle, &boundary_as_poly);
 
     if (inGeom && boundaryGeom)
     {
@@ -869,7 +870,46 @@ Geometry::close()
 Geometry*
 Geometry::splitAcrossAntimeridian()
 {
-    return this;
+    double xmin = DBL_MAX;
+    GeometryIterator(this, true).forEach([&](Geometry* part) {
+        for(auto& p : *part)
+            xmin = std::min(xmin, p.x());
+        });
+
+    double count = 0.0;
+    while (xmin <= -180.0)
+        xmin += 360.0, count += 1;
+
+    GeometryIterator(this, true).forEach([&](Geometry* part) {
+        for (auto& p : *part)
+            p.x() += 360.0 * count;
+        });
+    
+    // assume geographic coordinates.
+    std::vector<osg::Vec3d> west_boundary = { {-1e6, -91, 0}, {180, -91, 0}, {180, 91, 0}, {-1e6, 91, 0} };
+    Polygon west(&west_boundary);
+    auto* west_geom = crop(&west);
+
+    std::vector<osg::Vec3d> east_boundary = { {180, -91, 0}, {1e6, -91, 0}, {1e6, 91, 0}, {180, 91, 0} };
+    Polygon east(&east_boundary);
+    auto* east_geom = crop(&east);
+
+    if (west_geom && !east_geom)
+        return west_geom;
+
+    if (east_geom && !west_geom)
+        return east_geom;
+
+    auto* m = new MultiGeometry();
+    m->add(east_geom);
+    m->add(west_geom);
+
+    GeometryIterator(m, true).forEach([&](Geometry* part) {
+        for (auto& p : *part)
+            p.x() -= 360.0 * count;
+        });
+
+    return m;
 }
 
 //void
@@ -943,26 +983,7 @@ LineString::getSignedDistance2D(
 Geometry*
 LineString::crop(const Ring* boundary) const
 {
-    auto new_data = clipLineString(this->asVector(), boundary->asVector());
-    if (new_data.empty())
-        return nullptr;
-
-    if (new_data.size() == 1)
-    {
-        auto* geom = new LineString(&new_data[0]);
-        return geom;
-    }
-    else
-    {
-        auto* geom = new MultiGeometry();
-        for (auto& data : new_data)
-        {
-            OE_SOFT_ASSERT(!data.empty());
-            auto* part = new LineString(&data);
-            geom->add(part);
-        }
-        return geom;
-    }
+    return Geometry::crop(boundary);
 }
 
 //----------------------------------------------------------------------------
@@ -1094,19 +1115,7 @@ Ring::contains2D( double x, double y ) const
 Geometry*
 Ring::crop(const Ring* boundary) const
 {
-#ifdef CROP_WITH_GEOS
     return Geometry::crop(boundary);
-#else
-
-    auto new_points = clipPolygon(this->asVector(), boundary->asVector());
-    if (!new_points.empty())
-    {
-        auto* new_geom = cloneAs(getType());
-        new_geom->asVector().swap(new_points);
-        return new_geom;
-    }
-    return {};
-#endif
 }
 
 namespace
@@ -1166,28 +1175,6 @@ namespace
         {
             split(input, left, right, is_left, ++ptr);
         }
-    }
-}
-
-Geometry*
-Ring::splitAcrossAntimeridian()
-{
-    if (size() < 3)
-        return this;
-
-    osg::ref_ptr<Ring> left, right;
-    split(this, left, right);
-
-    if (left.valid() && left->size() > 0 && right.valid() && right->size() > 0)
-    {
-        auto mg = new MultiGeometry();
-        mg->add(left);
-        mg->add(right);
-        return mg;
-    }
-    else
-    {
-        return this;
     }
 }
 
@@ -1274,61 +1261,7 @@ Polygon::getSignedDistance2D(const osg::Vec3d& a) const
 Geometry*
 Polygon::crop(const Ring* boundary) const
 {
-#ifdef CROP_WITH_GEOS
     return Geometry::crop(boundary);
-#else
-    auto new_points = clipPolygon(this->asVector(), boundary->asVector());
-    if (!new_points.empty())
-    {
-        auto* new_poly = new Polygon(&new_points);
-        for (auto& hole : _holes)
-        {
-            auto copy_of_hole = hole->asVector();
-            std::reverse(copy_of_hole.begin(), copy_of_hole.end());
-
-            auto new_hole = clipPolygon(copy_of_hole, boundary->asVector());
-            if (!new_hole.empty())
-            {
-                std::reverse(new_hole.begin(), new_hole.end());
-                new_poly->_holes.push_back(new Ring(&new_hole));
-            }
-        }
-        return new_poly;
-    }
-    return {};
-#endif
-}
-
-Geometry*
-Polygon::splitAcrossAntimeridian()
-{
-    if (size() < 3)
-        return this;
-
-    osg::ref_ptr<Polygon> left, right;
-    split(this, left, right);
-
-    if (left.valid() && left->size() > 0 && right.valid() && right->size() > 0)
-    {
-        for (auto& hole : _holes)
-        {
-            osg::ref_ptr<Ring> leftHole, rightHole;
-            split(hole.get(), leftHole, rightHole);
-            if (leftHole.valid() && leftHole->size() > 0)
-                left->_holes.push_back(hole);
-            if (rightHole.valid() && rightHole->size() > 0)
-                right->_holes.push_back(hole);
-        }
-
-        auto mg = new MultiGeometry();
-        mg->add(left);
-        mg->add(right);
-        return mg;
-    }
-    else
-    {
-        return this;
-    }
 }
 
 Geometry*
@@ -1560,65 +1493,7 @@ MultiGeometry::contains2D(double x, double y) const
 Geometry*
 MultiGeometry::crop(const Ring* boundary) const
 {
-#ifdef CROP_WITH_GEOS
     return Geometry::crop(boundary);
-#else
-    MultiGeometry* mg = nullptr;
-
-    for (const auto& part : _parts)
-    {
-        auto cropped = part->crop(boundary);
-        if (cropped)
-        {
-            if (!mg)
-                mg = new MultiGeometry();
-            mg->add(cropped);
-        }
-    }
-    if (mg && mg->_parts.empty())
-    {
-        delete mg;
-        return {};
-    }
-    else if (mg && mg->_parts.size() == 1)
-    {
-        auto* result = mg->_parts.front().release();
-        delete mg;
-        return result;
-    }
-    else
-    {
-        return mg;
-    }
-#endif
-}
-
-Geometry*
-MultiGeometry::splitAcrossAntimeridian()
-{
-    MultiGeometry* mg = nullptr;
-
-    for (const auto& part : _parts)
-    {
-        auto* split = part->splitAcrossAntimeridian();
-        if (split != part)
-        {
-            // breaks up multigeometries (because you cannot nest them)
-            GeometryIterator i(split, false);
-            while (i.hasMore())
-            {
-                auto* part = i.next();
-                if (part && !part->empty())
-                {
-                    if (!mg)
-                        mg = new MultiGeometry();
-                    mg->add(part);
-                }
-            }
-        }
-    }
-
-    return mg ? mg : this;
 }
 
 //----------------------------------------------------------------------------

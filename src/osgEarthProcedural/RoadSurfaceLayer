@@ -86,11 +86,7 @@ namespace osgEarth { namespace Procedural
     protected: // Layer
 
         // post-ctor initialization
-        virtual void init() override;
-
-    protected:
-
-        virtual ~RoadSurfaceLayer() { }
+        void init() override;
 
     private:
         osg::ref_ptr<Session> _session;
@@ -98,13 +94,6 @@ namespace osgEarth { namespace Procedural
         using FeatureListCache = LRUCache<TileKey, FeatureList>;
         mutable std::unique_ptr<FeatureListCache> _lru;
         FeatureFilterChain _filterChain;
-
-        void getFeatures(
-            FeatureSource* featureSource,
-            const TileKey& key,
-            FeatureList& output,
-            ProgressCallback* progress) const;
-
         osg::ref_ptr<TileRasterizer> _rasterizer;
     };
 

@@ -19,12 +19,10 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
-#ifndef OSGEARTH_IMAGE_TO_HEIGHTFIELD_CONVERTER
-#define OSGEARTH_IMAGE_TO_HEIGHTFIELD_CONVERTER 1
+#pragma once
 
 #include <osgEarth/Export>
-
+#include <osgEarth/GeoCommon>
 #include <osg/Image>
 #include <osg/Shape>
 
@@ -36,10 +34,7 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT ImageToHeightFieldConverter
     {
     public:
-        ImageToHeightFieldConverter();
-
-        /** dtor */
-        virtual ~ImageToHeightFieldConverter() { }
+        ImageToHeightFieldConverter() = default;
 
         /**
         * Instruct the converter to detect and replace "no data" values. It will
@@ -71,9 +66,7 @@ namespace osgEarth { namespace Util
         osg::Image* convert16(const osg::HeightField* hf ) const;
         osg::Image* convert32(const osg::HeightField* hf ) const;
 
-        bool  _replace_nodata;
-        float _nodata_value;
+        bool _replace_nodata = false;
+        float _nodata_value = NO_DATA_VALUE;
     };
 } }
-
-#endif //OSGEARTH_IMAGE_TO_HEIGHTFIELD_CONVERTER

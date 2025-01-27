@@ -32,7 +32,6 @@ set_and_check(osgEarth_BUILD_DIR "${PACKAGE_PREFIX_DIR}")
 # always depend on the public-facing OSG libraries
 include(CMakeFindDependencyMacro)
 find_dependency(OpenSceneGraph REQUIRED COMPONENTS osg osgDB osgGA osgUtil osgViewer OpenThreads)
-include_directories(${OPENSCENEGRAPH_INCLUDE_DIR})
 
 # additional public dependencies
 foreach(MY_DEPENDENCY @OSGEARTH_PUBLIC_DEPENDENCIES@)
@@ -45,6 +44,8 @@ foreach(MY_COMPONENT @OSGEARTH_COMPONENTS@)
         include("${CMAKE_CURRENT_LIST_DIR}/${MY_COMPONENT}-targets.cmake")
     endif()
 endforeach()
+
+target_include_directories(osgEarth::osgEarth INTERFACE "${OPENSCENEGRAPH_INCLUDE_DIR}")
 
 set(osgEarth_FOUND TRUE)
 set(OSGEARTH_FOUND TRUE)

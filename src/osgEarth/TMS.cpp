@@ -1416,23 +1416,26 @@ TMSElevationLayer::createHeightFieldImplementation(const TileKey& key, ProgressC
         {
             const osg::Image* image = geoImage.getImage();
 
+#if 0
+            ImageToHeightFieldConverter converter;
+            osg::ref_ptr<osg::HeightField> hf = converter.convert(image);
+            return GeoHeightField(hf.get(), key.getExtent());
+
+#else
             // Allocate the heightfield.
             osg::HeightField* hf = new osg::HeightField();
             hf->allocate(image->s(), image->t());
 
-            ImageUtils::PixelReader reader(image);
+            ImageUtils::PixelReader read(image);
             osg::Vec4f pixel;
-
-            for (int c = 0; c < image->s(); c++)
-            {
-                for (int r = 0; r < image->t(); r++)
+            read.forEachPixel([&](auto& i)
                 {
-                    reader(pixel, c, r);
-                    hf->setHeight(c, r, decode(pixel));
-                }
-            }
+                    read(pixel, i.s(), i.t());
+                    hf->setHeight(i.s(), i.t(), decode(pixel));
+                });
 
             return GeoHeightField(hf, key.getExtent());
+#endif
         }
 
         return GeoHeightField::INVALID;

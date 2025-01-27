@@ -19,8 +19,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTHUTIL_CONTOUR_MAP_H
-#define OSGEARTHUTIL_CONTOUR_MAP_H
+#pragma once
 
 #include <osgEarth/VisibleLayer>
 #include <osgEarth/Color>
@@ -44,6 +43,7 @@ namespace osgEarth
                 Color color;
             };
             OE_OPTION_VECTOR(Stop, stops);
+            OE_OPTION(std::string, vdatum, "egm96");
             virtual Config getConfig() const;
             static Config getMetadata();
         private:
@@ -87,16 +87,14 @@ namespace osgEarth
         typedef osg::Texture1D TextureType;
 #endif
 
-        TextureImageUnitReservation           _reservation;
+        TextureImageUnitReservation _reservationColorRamp;
+        TextureImageUnitReservation _reservationGeoid;
         osg::ref_ptr<osg::TransferFunction1D> _xfer;
-        osg::ref_ptr<TextureType>             _xferTexture;
-        osg::ref_ptr<osg::Uniform>            _xferSampler;
-        osg::ref_ptr<osg::Uniform>            _xferMin;
-        osg::ref_ptr<osg::Uniform>            _xferRange;
+        osg::ref_ptr<TextureType> _xferTexture;
+        osg::ref_ptr<osg::Uniform> _xferSampler;
+        osg::ref_ptr<osg::Uniform> _xferMin;
+        osg::ref_ptr<osg::Uniform> _xferRange;
     };
 
 }
 OSGEARTH_SPECIALIZE_CONFIG(osgEarth::ContourMapLayer::Options);
-
-
-#endif // OSGEARTHUTIL_CONTOUR_MAP_H

@@ -118,14 +118,12 @@ CropFilter::push( FeatureList& input, FilterContext& context )
                     // then move on to the cropping operation:
                     else
                     {
-                        if (auto cropped = featureGeom->crop(&poly))
+                        osg::ref_ptr<Geometry> cropped = featureGeom->crop(&poly);
+                        if (cropped.valid() && cropped->isValid())
                         {
-                            if (cropped->isValid())
-                            {
-                                feature->setGeometry(cropped.get());
-                                keepFeature = true;
-                                newExtent.expandToInclude(GeoExtent(newExtent.getSRS(), cropped->getBounds()));
-                            }
+                            feature->setGeometry(cropped);
+                            keepFeature = true;
+                            newExtent.expandToInclude(GeoExtent(newExtent.getSRS(), cropped->getBounds()));
                         }
                     }
                 }

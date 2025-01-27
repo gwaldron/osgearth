@@ -117,20 +117,14 @@ SkinResource::createStateAttribute(const osgDB::Options* readOptions) const
         auto status = pbr_texture->load(material().value(), readOptions);
         if (!status.isOK())
         {
-            OE_WARN << LC << "One or more errors loading material for skin " << name().value() << std::endl;
+            OE_WARN << LC << "One or more errors loading material for skin " << name() << std::endl;
             return nullptr;
         }
 
         if (isTiled() == true)
         {
-            for (auto& tex : { pbr_texture->albedo, pbr_texture->normal, pbr_texture->pbr })
-            {
-                if (tex.valid())
-                {
-                    tex->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
-                    tex->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
-                }
-            }
+            pbr_texture->setWrap(osg::Texture::WRAP_S, osg::Texture::REPEAT);
+            pbr_texture->setWrap(osg::Texture::WRAP_T, osg::Texture::REPEAT);
         }
 
         return pbr_texture.release();

@@ -19,6 +19,7 @@
 #include <osgEarth/TiledFeatureModelLayer>
 #include <osgEarth/NetworkMonitor>
 #include <osgEarth/Registry>
+#include <osgEarth/FeatureStyleSorter>
 
 using namespace osgEarth;
 
@@ -246,26 +247,77 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
     NetworkMonitor::ScopedRequestLayer layerRequest(getName());
 
     // Get features for this key
-    Query query;
-    query.tileKey() = key;
-
-    GeoExtent dataExtent = key.getExtent();
-
     // set up for feature indexing if appropriate:
-    osg::ref_ptr< FeatureSourceIndexNode > index = 0L;
-
+    osg::ref_ptr<FeatureSourceIndexNode> index = 0L;
     if (_featureIndex.valid())
     {
         index = new FeatureSourceIndexNode(_featureIndex.get());
     }
 
-    FilterContext fc(_session.get(), new FeatureProfile(dataExtent), dataExtent, index);
+    //FilterContext fc(_session.get(), new FeatureProfile(dataExtent), dataExtent, index);
 
     GeomFeatureNodeFactory factory(options());
 
     if (progress && progress->isCanceled())
         return nullptr;
 
+    auto featureProfile = getFeatureSource()->getFeatureProfile();
+    OE_SOFT_ASSERT_AND_RETURN(featureProfile, {});
+    
+    FilterContext context(_session.get(), featureProfile, key.getExtent(), index);
+    Query query(key);
+
+
+    osg::ref_ptr<osg::Group> group = new osg::Group();
+
+    auto compile = [&](const Style& style, FeatureList& features, ProgressCallback* progress)
+        {
+            if (options().cropFeaturesToTile() == true)
+            {
+                FeatureList temp;
+                temp.swap(features);
+
+                auto extent = key.getExtent().transform(featureProfile->getSRS());
+                for (auto& feature : temp)
+                {
+                    auto cropped = feature->getGeometry()->crop(extent.bounds());
+                    if (cropped)
+                    {
+                        feature->setGeometry(cropped);
+                        features.emplace_back(feature);
+                    }
+                }
+            }
+
+            for (auto& feature : features)
+            {
+                feature->set("level", (long long)key.getLOD());
+            }
+
+            osg::ref_ptr<osg::Node> node;
+            FeatureListCursor cursor(features);
+            if (factory.createOrUpdateNode(&cursor, style, context, node, query))
+            {
+                group->addChild(node);
+            }
+        };
+
+    FeatureStyleSorter().sort(key, {}, _session.get(), _filters, compile, progress);
+
+    if (group->getNumChildren() == 0 || group->getBound().valid() == false)
+    {
+        return {};
+    }
+
+    if (index.valid())
+    {
+        index->addChild(group);
+        group = index;
+    }
+
+    return group;
+
+#if 0
     auto cursor = getFeatureSource()->createFeatureCursor(query, _filters, &fc, progress);
 
     osg::ref_ptr<osg::Node> node = new osg::Group;
@@ -279,18 +331,18 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
 
         if (options().cropFeaturesToTile() == true)
         {
-            FeatureList tocrop;
-            tocrop.swap(features);
-
-            for (auto& feature : tocrop)
+            for (auto& feature : features)
             {
+                auto cropped = feature->getGeometry()->crop(dataExtent.bounds());
                 if (auto cropped = feature->getGeometry()->crop(dataExtent.bounds()))
                 {
-                    feature->setGeometry(cropped.get());
-                    features.push_back(feature);
+                    feature->setGeometry(cropped);
                 }
             }
         }
+
+
+        //FeatureStyleSorter().sort(features, getStyleSheet(), progress);
 
         if (getStyleSheet() && getStyleSheet()->getSelectors().size() > 0)
         {
@@ -403,6 +455,7 @@ TiledFeatureModelLayer::createTileImplementation(const TileKey& key, ProgressCal
     }
 
     return node;
+#endif
 }
 
 const Profile*

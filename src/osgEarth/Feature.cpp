@@ -207,28 +207,30 @@ Feature::Feature(Geometry* geom, const SpatialReference* srs, const Style& style
     dirty();
 }
 
-Feature::Feature(const Feature& rhs) : //, const osg::CopyOp& copyOp) :
+Feature::Feature(const Feature& rhs) :
     _fid(rhs._fid),
     _attrs(rhs._attrs),
     _style(rhs._style),
     _geoInterp(rhs._geoInterp),
     _srs(rhs._srs.get())
 {
+    OE_SOFT_ASSERT(rhs._geom.valid());
+
     if (rhs._geom.valid())
         _geom = rhs._geom->clone();
 
     dirty();
 }
 
-Feature::Feature(Feature&& rhs) // : osg::Object(rhs)
-{
-    _fid = std::move(rhs._fid);
-    _attrs = std::move(rhs._attrs);
-    _style = std::move(rhs._style);
-    _geoInterp = std::move(rhs._geoInterp);
-    _geom = std::move(rhs._geom);
-    _cachedExtent = std::move(rhs._cachedExtent);
-}
+//Feature::Feature(Feature&& rhs) // : osg::Object(rhs)
+//{
+//    _fid = std::move(rhs._fid);
+//    _attrs = std::move(rhs._attrs);
+//    _style = std::move(rhs._style);
+//    _geoInterp = std::move(rhs._geoInterp);
+//    _geom = std::move(rhs._geom);
+//    _cachedExtent = std::move(rhs._cachedExtent);
+//}
 
 Feature::~Feature()
 {
@@ -267,6 +269,7 @@ Feature::setSRS( const SpatialReference* srs )
 void
 Feature::setGeometry( Geometry* geom )
 {
+    OE_HARD_ASSERT(geom != nullptr);
     _geom = geom;
     dirty();
 }
@@ -786,8 +789,8 @@ void Feature::transform( const SpatialReference* srs )
 void
 Feature::splitAcrossAntimeridian()
 {
-     // If the feature is geodetic, try to split it across the dateline.
-    if (getSRS() && getSRS()->isGeodetic())
+    // If the feature is geodetic, try to split it across the dateline.
+    if (getSRS() && getSRS()->isGeodetic() && getGeometry())
     {
         auto* split_geom = getGeometry()->splitAcrossAntimeridian();
         setGeometry(split_geom);

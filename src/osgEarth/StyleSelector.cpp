@@ -89,7 +89,7 @@ Config
 SelectorSymbol::getConfig() const
 {
     auto conf = Symbol::getConfig();
-    conf.key() = "selector";
+    conf.key() = "select";
     conf.set("predicate", predicate());
     return conf;
 }

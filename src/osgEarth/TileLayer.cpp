@@ -360,7 +360,7 @@ TileLayer::addedToMap(const Map* map)
         !map->getProfile()->getSRS()->isHorizEquivalentTo(getProfile()->getSRS()))
     {
         l2CacheSize = 16u;
-        OE_DEBUG << LC << "Map/Layer profiles differ; requesting L2 cache" << std::endl;
+        OE_INFO << LC << "Map/Layer profiles differ; requesting L2 cache" << std::endl;
     }
 
     // Use the user defined option if it's set.

@@ -72,7 +72,12 @@
     
 
     <TerrainConstraint name="Virginia cut-out" remove_interior="true" min_level="0">
-        <OGRFeatures url="../data/virginia.shp"/>
+        <comment>Simplify the constraint to 1% of the tile extent</comment>
+        <OGRFeatures url="../data/virginia.shp">
+            <filters>
+                <simplify tolerance="1%"/>
+            </filters>
+        </OGRFeatures>
     </TerrainConstraint>
     
     <DebugImage show_tessellation="true" open="true"/>

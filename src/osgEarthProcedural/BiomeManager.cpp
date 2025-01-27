@@ -24,7 +24,6 @@
 #include <osgEarth/Metrics>
 #include <osgEarth/MaterialLoader>
 #include <osgEarth/Utils>
-#include <osgEarth/weemesh.h>
 #include <osgEarth/MeshConsolidator>
 #include <osg/ComputeBoundsVisitor>
 #include <osg/MatrixTransform>

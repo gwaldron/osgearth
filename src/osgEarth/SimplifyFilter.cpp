@@ -25,7 +25,7 @@
 
 using namespace osgEarth;
 
-OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(simplify, SimplifyFilter );
+OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(simplify, SimplifyFilter);
 
 bool
 SimplifyFilter::isSupported()
@@ -33,29 +33,16 @@ SimplifyFilter::isSupported()
     return true;
 }
 
-SimplifyFilter::SimplifyFilter() :
-SimplifyFilterOptions()
-{
-    //NOP
-}
-
-SimplifyFilter::SimplifyFilter( double tolerance, bool preserveTopology) :
-    SimplifyFilterOptions()
-{
-    _tolerance = tolerance;
-    _preserveTopology = preserveTopology;
-}
-
-SimplifyFilter::SimplifyFilter( const Config& conf ):
-    SimplifyFilterOptions( conf )
+SimplifyFilter::SimplifyFilter(const Config& conf) :
+    _options(conf)
 {
     //nop
 }
 
 FilterContext
-SimplifyFilter::push( FeatureList& input, FilterContext& context )
+SimplifyFilter::push(FeatureList& input, FilterContext& context)
 {
-    if ( !isSupported() )
+    if (!isSupported())
     {
         OE_WARN << "SimplifyFilter support not enabled" << std::endl;
         return context;
@@ -64,19 +51,36 @@ SimplifyFilter::push( FeatureList& input, FilterContext& context )
     FeatureList output;
     output.reserve(input.size());
 
+    double t = options().tolerance().value();
+
+    if (options().toleranceIsPercentage() == true && context.extent().isSet())
+    {
+        // 0.01 = percentage to value
+        auto w = context.extent()->width() / 2.0;
+        t = w * options().tolerance().value() * 0.01;
+    }
+
     for (auto& feature : input)
-    {     
+    {
         if (feature.valid())
         {
             auto geometry = feature->getGeometry();
-            osg::ref_ptr< Geometry > simplifiedGeometry;
-            if (geometry->simplify(_tolerance.get(), _preserveTopology.get(), simplifiedGeometry) && simplifiedGeometry.valid())
+
+            if (options().preserveAllFeatures() == false &&
+                !feature->getGeometry()->isPointSet() &&
+                feature->getGeometry()->getLength() < t)
             {
-                feature->setGeometry(simplifiedGeometry);
+                continue;
+            }
+
+            auto simplifiedGeometry = geometry->simplify(t, options().preserveTopology().value());  
+            if (simplifiedGeometry.valid())
+            {
+                feature->setGeometry(simplifiedGeometry.get());
                 output.emplace_back(feature);
             }
         }
-    }    
+    }
     output.swap(input);
 
     return context;

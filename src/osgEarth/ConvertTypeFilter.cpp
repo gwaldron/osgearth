@@ -24,46 +24,28 @@ using namespace osgEarth::Util;
 OSGEARTH_REGISTER_SIMPLE_FEATUREFILTER(convert, ConvertTypeFilter)
 
 
-ConvertTypeFilter::ConvertTypeFilter() :
-_toType( Geometry::TYPE_UNKNOWN )
-{
-    //NOP
-}
-
-ConvertTypeFilter::ConvertTypeFilter( const Geometry::Type& toType ) :
-_toType( toType )
+ConvertTypeFilter::ConvertTypeFilter(const Geometry::Type& toType) :
+    _toType(toType)
 {
     // NOP
 }
 
-ConvertTypeFilter::ConvertTypeFilter( const ConvertTypeFilter& rhs ) :
-_toType( rhs._toType )
-{
-    //NOP
-}
-
-ConvertTypeFilter::ConvertTypeFilter( const Config& conf):
-_toType( Geometry::TYPE_UNKNOWN )
+ConvertTypeFilter::ConvertTypeFilter(const Config& conf)
 {
     if (conf.key() == "convert")
     {
-        optional<Geometry::Type> type = Geometry::TYPE_POINTSET;
-        conf.get( "type", "point",   type, Geometry::TYPE_POINTSET );
-        conf.get( "type", "line",    type, Geometry::TYPE_LINESTRING );
-        conf.get( "type", "polygon", type, Geometry::TYPE_POLYGON );
-        _toType = *type;        
+        conf.get("type", "point", _toType, Geometry::TYPE_POINTSET);
+        conf.get("type", "line", _toType, Geometry::TYPE_LINESTRING);
+        conf.get("type", "polygon", _toType, Geometry::TYPE_POLYGON);
     }
 }
 
 Config ConvertTypeFilter::getConfig() const
 {
     Config config("convert");
-    optional<Geometry::Type> type(_toType);
-    type = _toType;
-    config.set("type", "point", type, Geometry::TYPE_POINTSET);
-    config.set("type", "line", type, Geometry::TYPE_LINESTRING);
-    config.set("type", "polygon", type, Geometry::TYPE_POLYGON);
-
+    config.set("type", "point", _toType, Geometry::TYPE_POINTSET);
+    config.set("type", "line", _toType, Geometry::TYPE_LINESTRING);
+    config.set("type", "polygon", _toType, Geometry::TYPE_POLYGON);
     return config;
 }
 
@@ -76,13 +58,22 @@ ConvertTypeFilter::push( FeatureList& input, FilterContext& context )
         return context;
     }
 
-    bool ok = true;
-    for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
+    if (_toType == Geometry::TYPE_UNKNOWN)
     {
-        Feature* input = i->get();
-        if ( input && input->getGeometry() && input->getGeometry()->getComponentType() != _toType )
+        return context;
+    }
+
+    bool ok = true;
+    for (auto& feature : input)
+    {
+        if (feature && feature->getGeometry() && feature->getGeometry()->getComponentType() != _toType.value())
         {
-            input->setGeometry( input->getGeometry()->cloneAs(_toType) );
+            auto cloned = feature->getGeometry()->cloneAs(_toType.value());
+            if (cloned)
+            {
+                OE_SOFT_ASSERT(cloned->isValid());
+                feature->setGeometry(cloned);
+            }
         }
     }
 

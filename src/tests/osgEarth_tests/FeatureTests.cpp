@@ -23,34 +23,102 @@
 #include <osgEarth/catch.hpp>
 
 #include <osgEarth/Feature>
+#include <osgEarth/Geometry>
 #include <osgEarth/GeometryUtils>
 
 using namespace osgEarth;
 
-TEST_CASE("Feature::splitAcrossDateLine doesn't modify features that don't cross the dateline") {
-    osg::ref_ptr< Feature > feature = new Feature(GeometryUtils::geometryFromWKT("POLYGON((-81 26, -40.5 45, -40.5 75.5, -81 60))"), osgEarth::SpatialReference::create("wgs84"));
+using Vec = std::vector<osg::Vec3d>;
+
+//TEST_CASE("Geometry::crop line against line")
+//{
+//    Vec input = { {-10, 0, 0 }, {10, 0, 0} };
+//    Vec boundary = { {0, 0, 0}, {0, 1, 0} };
+//    Vec output1 = { {-10, 0, 0}, {0, 0, 0} };
+//    Vec output2 = { {0, 0, 0}, {10, 0, 0} };
+//
+//    LineString line(&input);
+//    auto* geom = line.crop(boundary);
+//    REQUIRE(geom);
+//    REQUIRE(geom->isLineString());
+//    REQUIRE(geom->asVector() == output1);
+//    delete geom;
+//
+//    std::reverse(boundary.begin(), boundary.end());
+//    geom = line.crop(boundary);
+//    REQUIRE(geom);
+//    REQUIRE(geom->isLineString());
+//    REQUIRE(geom->asVector() == output2);
+//    delete geom;
+//}
+
+TEST_CASE("Geometry::crop a polygon to another polygon")
+{
+    Vec input = { { 0,0,0 }, {10, 0, 0}, {10, 10, 0}, {0, 10, 0}, {0, 0, 0} };
+    Vec boundary{ {5, 5, 0}, {15, 5, 0}, {15, 15, 0}, {5, 15, 0}, {5, 5, 0} };
+    Vec output = { {5, 10, 0}, {5, 5, 0}, {10, 5, 0}, {10, 10, 0} };
+
+    Ring clip(&boundary);
+
+    Polygon poly(&input);
+    auto* result = poly.crop(&clip);
+
+    REQUIRE(result);
+    REQUIRE(result->isPolygon());
+    REQUIRE(result->asVector() == output);
+    delete result;
+}
+
+TEST_CASE("Geometry::crop a polygon and break it into 2 polygons")
+{
+    // crop a polygon resulting in two output polygons:
+    Vec input_vec = { {0,0,0}, {10,0,0}, {10,10,0}, {0,10,0}, {0,8,0}, {6,8,0}, {6,2,0}, {0,2,0}, {0,0,0} };
+    Polygon input(&input_vec);
+    Vec boundary = { {5,-100,0}, {5,100,0}, {-100, 100, 0}, {-100, -100, 0} };
+    Ring clip(&boundary);
+
+    auto* result = input.crop(&clip);
+
+    REQUIRE(result);
+    REQUIRE(result->getType() == Geometry::TYPE_MULTI);
+    auto* multi = dynamic_cast<MultiGeometry*>(result);
+    REQUIRE(multi);
+    REQUIRE(multi->getNumComponents() == 2);
+
+    Vec part1_output = { {5,0,0}, {5,2,0}, {0,2,0}, {0,0,0} };
+    auto part1 = multi->getComponents().at(0);
+    REQUIRE(part1->getType() == Geometry::TYPE_POLYGON);
+    REQUIRE(part1->size() == 4);
+    REQUIRE(part1->asVector() == part1_output);
+
+    Vec part2_output = { {5,8,0}, {5,10,0}, {0,10,0}, {0,8,0}};
+    auto part2 = multi->getComponents().at(1);
+    REQUIRE(part1->getType() == Geometry::TYPE_POLYGON);
+    REQUIRE(part1->size() == 4);
+    REQUIRE(part1->asVector() == part2_output);
+}
+
+TEST_CASE("Feature::splitAcrossDateLine doesn't modify features that don't cross the dateline")
+{
+    osg::ref_ptr<Feature> feature = new Feature(GeometryUtils::geometryFromWKT("POLYGON((-81 26, -40.5 45, -40.5 75.5, -81 60))"), osgEarth::SpatialReference::create("wgs84"));
     feature->splitAcrossAntimeridian();
     // We only have one feature in the list.
-    //REQUIRE( features.size() == 1 );
-    // The feature is exactly the same feature that was passed in
-    //REQUIRE(features.front().get() == feature.get());
+    REQUIRE(feature->getGeometry()->getType() != Geometry::TYPE_MULTI);
 }
 
-TEST_CASE("Feature::splitAcrossDateLine works") {
+TEST_CASE("Feature::splitAcrossDateLine works")
+{
     osg::ref_ptr< Feature > feature = new Feature(GeometryUtils::geometryFromWKT("POLYGON((170 26, 190 26, 190 56, 170 56))"), osgEarth::SpatialReference::create("wgs84"));
-    //FeatureList features;
     feature->splitAcrossAntimeridian();
+    auto* geom = feature->getGeometry();
     // We have two features in the list
-    //REQUIRE(features.size() == 2);
-    // The features don't cross the anti-meridian
-    //for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
-    //{
-      //  REQUIRE_FALSE(itr->get()->getExtent().crossesAntimeridian());
-    //}
+    REQUIRE(geom->getType() == Geometry::TYPE_MULTI);
+    REQUIRE(geom->getComponentType() == Geometry::TYPE_POLYGON);
 }
 
-TEST_CASE("Feature handles attributes correctly.") {
-    osg::ref_ptr< Feature > feature = new Feature(new Geometry(), osgEarth::SpatialReference::create("wgs84"));
+TEST_CASE("Feature handles attributes correctly.")
+{
+    osg::ref_ptr< Feature > feature = new Feature(new Point(), osgEarth::SpatialReference::create("wgs84"));
 
     SECTION("Missing attributes get the correct default values.") {
         REQUIRE(feature->getDouble("foo") == 0.0);

@@ -291,6 +291,32 @@ namespace osgEarth
             }
         }
 
+        //! Sets a double floating point as a possible percentage
+        void set(const std::string& key, const optional<double>& opt, const optional<bool>& is_percentage) {
+            remove(key);
+            if (opt.isSet()) {
+                Config conf(key, opt.get());
+                auto str = conf.value(key);
+                if (is_percentage.isSetTo(true)) {
+                    conf.set(key, str + '%');
+                }
+                set(std::move(conf));
+            }
+        }
+
+        //! Sets a single floating point as a possible percentage
+        void set(const std::string& key, const optional<float>& opt, const optional<bool>& is_percentage) {
+            remove(key);
+            if (opt.isSet()) {
+                Config conf(key, opt.get());
+                auto str = conf.value(key);
+                if (is_percentage.isSetTo(true)) {
+                    conf.set(key, str + '%');
+                }
+                set(std::move(conf));
+            }
+        }
+
         template<typename T>
         void set(const std::string& key, const osg::ref_ptr<T>& obj) {
             remove(key);
@@ -410,6 +436,40 @@ namespace osgEarth
             if (hasValue(key)) {
                 output = value<T>(key, output);
                 return true;
+            }
+            return false;
+        }
+
+        //! Float as possible percentage
+        bool get(const std::string& key, optional<float>& output, optional<bool>& is_percentage) const {
+            is_percentage.setDefault(false);
+            is_percentage.clear();
+            if (hasChild(key)) {
+                auto r = child(key).value();
+                if (!r.empty()) {
+                    output = osgEarth::Util::as<float>(r, output.defaultValue());
+                    if (trim(r).back() == '%') {
+                        is_percentage = true;
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        //! Double as possible percentage
+        bool get(const std::string& key, optional<double>& output, optional<bool>& is_percentage) const {
+            is_percentage.setDefault(false);
+            is_percentage.clear();
+            if (hasChild(key)) {
+                auto r = child(key).value();
+                if (!r.empty()) {
+                    output = osgEarth::Util::as<double>(r, output.defaultValue());
+                    if (trim(r).back() == '%') {
+                        is_percentage = true;
+                    }
+                    return true;
+                }
             }
             return false;
         }
@@ -559,6 +619,8 @@ namespace osgEarth
         else
             return false;
     }
+
+    // Specializations (VECTORS)
 
     template<> inline void Config::set(const std::string& key, const std::vector<std::string>& input) {
         remove(key);

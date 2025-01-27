@@ -204,7 +204,7 @@ AtlasBuilder::build(const ResourceLibrary* inputLib,
         else
         {
             OE_WARN << LC << "Failed to load image from catalog: \""
-                << *skin->name() << "\" ... skipped" << std::endl;
+                << skin->name() << "\" ... skipped" << std::endl;
         }
     }
 

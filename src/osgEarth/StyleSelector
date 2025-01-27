@@ -80,7 +80,7 @@ namespace osgEarth
         META_Object(osgEarth, SelectorSymbol);
 
         SelectorSymbol(const Config& conf = {});
-        SelectorSymbol(const SelectorSymbol& rhs, const osg::CopyOp& op);
+        SelectorSymbol(const SelectorSymbol& rhs, const osg::CopyOp& op = osg::CopyOp::SHALLOW_COPY);
 
         //! A predicate function (in a scripting language) that returns true if the style should be selected.
         OE_OPTION(std::string, predicate);

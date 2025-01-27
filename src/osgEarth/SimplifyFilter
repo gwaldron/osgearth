@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHFEATURES_SIMPLIFY_FILTER_H
-#define OSGEARTHFEATURES_SIMPLIFY_FILTER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Feature>
@@ -26,59 +24,74 @@
 
 namespace osgEarth { namespace Util
 {
-    class SimplifyFilterOptions : public ConfigOptions
+    /**
+     * This filter will simplify geometries.
+     */
+    class OSGEARTH_EXPORT SimplifyFilter : public FeatureFilter
     {
     public:
-        SimplifyFilterOptions(const ConfigOptions& co =ConfigOptions()) : ConfigOptions(co) {
-            _tolerance.init(0.5);
-            _preserveTopology.init(false);
-            fromConfig(_conf);
-        }        
+        struct OSGEARTH_EXPORT Options : public ConfigOptions
+        {
+            Options(const ConfigOptions& co = {}) : ConfigOptions(co) {
+                fromConfig(_conf);
+            }
 
-        optional<double>& tolerance() { return _tolerance; }
-        const optional<double>& tolerance() const { return _tolerance; }
+            OE_OPTION(double, tolerance, 0.0);
+            OE_OPTION(bool, toleranceIsPercentage, false);
+            OE_OPTION(bool, preserveTopology, true);
+            OE_OPTION(bool, preserveAllFeatures, false);
 
-        optional<bool>& preserveTopology() { return _preserveTopology; }
-        const optional<bool>& preserveTopology() const { return _preserveTopology; }
+            void fromConfig(const Config& conf) {
+                conf.get("tolerance", tolerance(), toleranceIsPercentage());
+                conf.get("preserve_topology", preserveTopology());
+                conf.get("preserve_all_features", preserveAllFeatures());
+            }
 
-        void fromConfig(const Config& conf) {
-            conf.get("tolerance", _tolerance);
-            conf.get("preserve_topology", _preserveTopology);
-        }
+            Config getConfig() const {
+                Config conf = ConfigOptions::getConfig();
+                conf.key() = "simplify";
+                conf.set("tolerance", tolerance(), toleranceIsPercentage());
+                conf.set("preserve_topology", preserveTopology());
+                conf.set("preserve_all_features", preserveAllFeatures());
+                return conf;
+            }
+        };
 
-        Config getConfig() const {
-            Config conf = ConfigOptions::getConfig();
-            conf.key() = "simplify";
-            conf.set("tolerance", _tolerance);
-            conf.set("preserve_topology", _preserveTopology);
-            return conf;
-        }
-
-    protected:
-        optional<double> _tolerance;
-        optional<bool> _preserveTopology;
-    };
-
-    /**
-     * This filter will simplify geometries
-     */
-    class OSGEARTH_EXPORT SimplifyFilter : public FeatureFilter,
-                                           public SimplifyFilterOptions
-    {
     public:
         // Call this determine whether this filter is available.
         static bool isSupported();    
 
     public:
-        SimplifyFilter();
-        SimplifyFilter( double tolerance, bool preserveTopology );
-        SimplifyFilter( const Config& conf );
+        SimplifyFilter() = default;
+        SimplifyFilter(const Config& conf);
+
+        void setTolerance(double value) {
+            options().tolerance() = value;
+            options().toleranceIsPercentage() = false;
+        }
+
+        void setToleranceAsPercentage(double value) {
+            options().tolerance() = value;
+            options().toleranceIsPercentage() = true;
+        }
+
+        void setPreserveTopology(bool value) {
+            options().preserveTopology() = value;
+        }
+
+        void setPreserveAllFeatures(bool value) {
+            options().preserveAllFeatures() = value;
+        }
 
         virtual ~SimplifyFilter() { }
 
     public:
-        virtual FilterContext push( FeatureList& input, FilterContext& context );    
+        virtual FilterContext push( FeatureList& input, FilterContext& context ); 
+
+        Options& options() { return _options; }
+        const Options& options() const { return _options; }
+
+    protected:
+        Options _options;
     };
 } }
-
-#endif // OSGEARTHFEATURES_SIMPLIFY_FILTER_H

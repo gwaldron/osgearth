@@ -23,7 +23,8 @@ endif()
 # shaders:
 set(TARGET_GLSL
     Procedural.Vegetation.glsl
-    Procedural.TextureSplatting.glsl)
+    Procedural.TextureSplatting.glsl
+    Procedural.FeatureSplatting.glsl)
 
 set(SHADERS_CPP "${CMAKE_CURRENT_BINARY_DIR}/AutoGenShaders.cpp")
 
@@ -47,6 +48,7 @@ set(TARGET_SRC
     VegetationFeatureGenerator.cpp
     VegetationLayer.cpp
     RoadLayer.cpp
+    FeatureSplattingLayer.cpp
     ${SHADERS_CPP} )
 	
 # headers:
@@ -62,7 +64,8 @@ set(TARGET_H
     LifeMapLayer
     VegetationFeatureGenerator
     VegetationLayer
-    RoadLayer )
+    RoadLayer
+    FeatureSplattingLayer)
     
 add_osgearth_library(
     TARGET ${LIB_NAME}

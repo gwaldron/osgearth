@@ -69,14 +69,14 @@ TileNode::TileNode(const TileKey& key, TileNode* parent, EngineContext* context,
     unsigned tw, th;
     _key.getProfile()->getNumTiles(_key.getLOD(), tw, th);
 
-    const double m = 65536; //pow(2.0, 16.0);
+    //const double m = 65536; //pow(2.0, 16.0);
 
     double x = (double)_key.getTileX();
     double y = (double)(th - _key.getTileY() - 1);
 
     _tileKeyValue.set(
-        (float)(x-tw/2), //(int)fmod(x, m),
-        (float)(y-th/2), // (int)fmod(y, m),
+        (float)x, //(float)(x-tw/2), //(int)fmod(x, m),
+        (float)y, //(float)(y-th/2), // (int)fmod(y, m),
         (float)_key.getLOD(),
         -1.0f);
 

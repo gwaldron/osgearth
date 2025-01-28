@@ -75,16 +75,19 @@ namespace osgEarth
 
         private:
             GeoExtent _extent;
+            GeoExtent _originalExtent;
+            unsigned _width = 0, _height = 0;
             osg::ref_ptr< osg::Image > _image;
             osg::ref_ptr< MapboxGLGlyphManager > _glyphManager;
             float _pixelScale = 1.0f;
+            unsigned _bufferPixels = 2;
             
             enum RenderFormat {
                 RF_BGRA,
                 RF_ABGR
             };
-            RenderFormat _implPixelFormat;
-            bool _inverted;            
+            RenderFormat _implPixelFormat = RF_BGRA;
+            bool _inverted = false;
 
             SymbolBoundingBoxes _symbolBoundingBoxes;
 

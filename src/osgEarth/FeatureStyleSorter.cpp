@@ -93,51 +93,57 @@ FeatureStyleSorter::sort_usingSelectors(
                 {
                     Feature* feature = itr->get();
 
-                    const std::string& styleString = feature->eval(styleExprCopy, &context);
-                    if (!styleString.empty() && styleString != "null")
+                    const std::string& delimitedStyleStrings = feature->eval(styleExprCopy, &context);
+                    if (!delimitedStyleStrings.empty() && delimitedStyleStrings != "null")
                     {
-                        // resolve the style:
-                        const Style* resolved_style = nullptr;
-                        int resolved_index = 0;
+                        std::vector<std::string> styleStrings;
+                        StringTokenizer(delimitedStyleStrings, styleStrings, ",", "", false, true);
 
-                        // if the style string begins with an open bracket, it's an inline style definition.
-                        if (styleString.length() > 0 && styleString[0] == '{')
+                        for (auto& styleString : styleStrings)
                         {
-                            Config conf("style", styleString);
-                            conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
-                            conf.set("type", "text/css");
-                            auto& literal_style_and_index = literal_styles[conf.toJSON()];
-                            if (literal_style_and_index.first.empty())
+                            // resolve the style:
+                            const Style* resolved_style = nullptr;
+                            int resolved_index = 0;
+
+                            // if the style string begins with an open bracket, it's an inline style definition.
+                            if (styleString.length() > 0 && styleString[0] == '{')
                             {
-                                literal_style_and_index.first = Style(conf);
-                                // literal styles always come AFTER sheet styles
-                                literal_style_and_index.second = literal_styles.size() + session->styles()->getStyles().size();
+                                Config conf("style", styleString);
+                                conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
+                                conf.set("type", "text/css");
+                                auto& literal_style_and_index = literal_styles[conf.toJSON()];
+                                if (literal_style_and_index.first.empty())
+                                {
+                                    literal_style_and_index.first = Style(conf);
+                                    // literal styles always come AFTER sheet styles
+                                    literal_style_and_index.second = literal_styles.size() + session->styles()->getStyles().size();
+                                }
+                                resolved_style = &literal_style_and_index.first;
+                                resolved_index = literal_style_and_index.second;
                             }
-                            resolved_style = &literal_style_and_index.first;
-                            resolved_index = literal_style_and_index.second;
-                        }
 
-                        // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-                        // style in this case: for style expressions, the user must be explicit about
-                        // default styling; this is because there is no other way to exclude unwanted
-                        // features.
-                        else
-                        {
-                            auto style_and_index = session->styles()->getStyleAndIndex(styleString);
-
-                            //const Style* selected_style = session->styles()->getStyle(styleString, false);
-                            if (style_and_index.first)
+                            // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
+                            // style in this case: for style expressions, the user must be explicit about
+                            // default styling; this is because there is no other way to exclude unwanted
+                            // features.
+                            else
                             {
-                                resolved_style = style_and_index.first;
-                                resolved_index = style_and_index.second;
-                            }
-                        }
+                                auto style_and_index = session->styles()->getStyleAndIndex(styleString);
 
-                        if (resolved_style)
-                        {
-                            auto& bucket = style_buckets[resolved_index];
-                            bucket.first = resolved_style;
-                            bucket.second.emplace_back(feature);
+                                //const Style* selected_style = session->styles()->getStyle(styleString, false);
+                                if (style_and_index.first)
+                                {
+                                    resolved_style = style_and_index.first;
+                                    resolved_index = style_and_index.second;
+                                }
+                            }
+
+                            if (resolved_style)
+                            {
+                                auto& bucket = style_buckets[resolved_index];
+                                bucket.first = resolved_style;
+                                bucket.second.emplace_back(feature);
+                            }
                         }
                     }
                 }

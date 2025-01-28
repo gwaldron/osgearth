@@ -195,129 +195,12 @@ RoadSurfaceLayer::getStyleSheet() const
     return options().styleSheet().getLayer();
 }
 
-namespace
-{
-    typedef std::vector< std::pair< Style, FeatureList > > StyleToFeatures;
-
-    void addFeatureToMap(Feature* feature, const Style& style, StyleToFeatures& map)
-    {
-        bool added = false;
-
-        if (!style.getName().empty())
-        {
-            // Try to find the style by name
-            for (int i = 0; i < map.size(); i++)
-            {
-                if (map[i].first.getName() == style.getName())
-                {
-                    map[i].second.push_back(feature);
-                    added = true;
-                    break;
-                }
-            }
-        }
-
-        if (!added)
-        {
-            FeatureList list;
-            list.push_back(feature);
-            map.push_back(std::pair< Style, FeatureList>(style, list));
-        }
-    }
-
-    void sortFeaturesIntoStyleGroups(StyleSheet* styles, FeatureList& features, FilterContext &context, StyleToFeatures& map)
-    {
-        if (styles == nullptr)
-            return;
-
-        if (styles->getSelectors().size() > 0)
-        {
-            for (StyleSelectors::const_iterator i = styles->getSelectors().begin();
-                i != styles->getSelectors().end();
-                ++i)
-            {
-                const StyleSelector& sel = i->second;
-
-                if (sel.styleExpression().isSet())
-                {
-                    // establish the working bounds and a context:
-                    StringExpression styleExprCopy(sel.styleExpression().get());
-
-                    for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
-                    {
-                        Feature* feature = itr->get();
-
-                        // resolve the style:
-                        Style combinedStyle;
-
-                        if (feature->style().isSet())
-                        {
-                            // embedde style:
-                            combinedStyle = feature->style().get();
-                        }
-                        else
-                        {
-                            // evaluated style:
-                            const std::string& styleString = feature->eval(styleExprCopy, &context);
-                            if (!styleString.empty() && styleString != "null")
-                            {
-                                // if the style string begins with an open bracket, it's an inline style definition.
-                                if (styleString.length() > 0 && styleString[0] == '{')
-                                {
-                                    Config conf("style", styleString);
-                                    conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
-                                    conf.set("type", "text/css");
-                                    combinedStyle = Style(conf);
-                                }
-
-                                // otherwise, look up the style in the stylesheet. Do NOT fall back on a default
-                                // style in this case: for style expressions, the user must be explicity about
-                                // default styling; this is because there is no other way to exclude unwanted
-                                // features.
-                                else
-                                {
-                                    const Style* selectedStyle = styles->getStyle(styleString, false);
-                                    if (selectedStyle)
-                                        combinedStyle = *selectedStyle;
-                                }
-                            }
-                        }
-
-                        if (!combinedStyle.empty())
-                        {
-                            addFeatureToMap(feature, combinedStyle, map);
-                        }
-
-                    }
-                }
-            }
-        }
-        else
-        {
-            const Style* style = styles->getDefaultStyle();
-            for (FeatureList::iterator itr = features.begin(); itr != features.end(); ++itr)
-            {
-                Feature* feature = itr->get();
-                // resolve the style:
-                if (feature->style().isSet())
-                {
-                    addFeatureToMap(feature, feature->style().get(), map);
-                }
-                else
-                {
-                    addFeatureToMap(feature, *style, map);
-                }
-            }
-        }
-    }
-}
-
 GeoImage
 RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback* progress) const
 {
     if (getStatus().isError())
     {
-        return GeoImage::INVALID;
+        return GeoImage(getStatus());
     }
 
     // take local refs to isolate this method from the member objects
@@ -329,20 +212,20 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     if (!featureSource.valid())
     {
         setStatus(Status(Status::ServiceUnavailable, "No feature source"));
-        return GeoImage::INVALID;
+        return GeoImage(getStatus());
     }
 
     if (featureSource->getStatus().isError())
     {
         setStatus(featureSource->getStatus());
-        return GeoImage::INVALID;
+        return GeoImage(getStatus());
     }
 
     osg::ref_ptr<const FeatureProfile> featureProfile = featureSource->getFeatureProfile();
     if (!featureProfile.valid())
     {
         setStatus(Status(Status::ConfigurationError, "Feature profile is missing"));
-        return GeoImage::INVALID;
+        return GeoImage(getStatus());
     }
 
     if (!rasterizer.valid() || !session.valid())
@@ -354,7 +237,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     if (!featureSRS)
     {
         setStatus(Status(Status::ConfigurationError, "Feature profile has no SRS"));
-        return GeoImage::INVALID;
+        return GeoImage(getStatus());
     }
 
     GeoExtent featureExtent = key.getExtent().transform(featureSRS);

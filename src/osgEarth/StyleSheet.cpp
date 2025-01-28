@@ -215,14 +215,16 @@ StyleSheet::Options::fromConfig(const Config& conf)
 
                 auto_script << "// __oe_auto__\n";
                 auto_script << "function __oe_select_style() {\n";
+                auto_script << "    var combo = '';\n";
             }
 
-            auto_script << "    if (" << selector_symbol->predicate().get() << ") return \"" << style.getName() << "\";\n";
+            auto_script << "    if (" << selector_symbol->predicate().get() << ") combo = combo + '" << style.getName() << ",';\n";
         }
     }
 
     if (auto_selector)
     {
+        auto_script << "    if (combo.length > 0) return combo.substring(0, combo.length-1);\n";
         auto_script << "    return 'default';\n}\n";
         auto new_code = auto_script.str();
 

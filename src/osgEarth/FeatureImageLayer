@@ -40,6 +40,7 @@ namespace osgEarth
             OE_OPTION_LAYER(FeatureSource, featureSource);
             OE_OPTION_VECTOR(ConfigOptions, filters);
             OE_OPTION_LAYER(StyleSheet, styleSheet);
+            OE_OPTION(Distance, bufferWidth, {});
             OE_OPTION(double, gamma);
             OE_OPTION(bool, sdf);
             OE_OPTION(bool, sdf_invert);

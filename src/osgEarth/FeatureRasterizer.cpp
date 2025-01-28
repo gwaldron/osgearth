@@ -242,7 +242,7 @@ namespace osgEarth {
         void rasterizeLines(
             const Geometry* geometry,
             const Color& color,
-            float lineWidth_px,
+            double lineWidth_px,
             RenderFrame& frame,
             BLContext& ctx)
         {
@@ -283,11 +283,6 @@ namespace osgEarth {
                     path.lineTo(x, y);
                 }
             });
-
-            //BLImage texture;
-            //texture.readFromFile("../data/icon.png");
-            //BLPattern pattern(texture);
-            //ctx.setStrokeStyle(pattern);
 
             ctx.setStrokeStyle(BLRgba(color.r(), color.g(), color.b(), color.a()));
             ctx.setStrokeWidth(lineWidth_px);
@@ -654,15 +649,41 @@ using namespace osgEarth::FeatureImageLayerImpl;
 
 
 FeatureRasterizer::FeatureRasterizer(
-    unsigned int width, unsigned int height, 
+    unsigned width, unsigned height, 
     const GeoExtent& extent, 
     const Color& backgroundColor) :
 
-    _extent(extent)
+    _width(width),
+    _height(height),
+    _originalExtent(extent)
 {
+    unsigned imageWidth = width;
+    unsigned imageHeight = height;
+
+    if (_bufferPixels > 0)
+    {
+        imageWidth = width + 2 * _bufferPixels;
+        imageHeight = height + 2 * _bufferPixels;
+
+        double pixelSizeS = extent.width() / (double)width;
+        double pixelSizeT = extent.height() / (double)height;
+
+        _extent = GeoExtent(
+            extent.getSRS(),
+            extent.xMin() - pixelSizeS * (double)_bufferPixels,
+            extent.yMin() - pixelSizeT * (double)_bufferPixels,
+            extent.xMax() + pixelSizeS * (double)_bufferPixels,
+            extent.yMax() + pixelSizeT * (double)_bufferPixels);
+    }
+    else
+    {
+        _extent = _originalExtent;
+    }
+
     // Allocate the image and initialize it to the background color
     _image = new osg::Image();
-    _image->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    //_image->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    _image->allocateImage(imageWidth, imageHeight, 1, GL_RGBA, GL_UNSIGNED_BYTE);
     ImageUtils::PixelWriter write(_image.get());
 
 #ifdef USE_BLEND2D
@@ -679,10 +700,7 @@ FeatureRasterizer::FeatureRasterizer(
 }
 
 
-FeatureRasterizer::FeatureRasterizer(
-    osg::Image* image,
-    const GeoExtent& extent) :
-
+FeatureRasterizer::FeatureRasterizer(osg::Image* image, const GeoExtent& extent) :
     _image(image),
     _extent(extent)
 {
@@ -730,12 +748,18 @@ FeatureRasterizer::render_blend2d(
     const TextSymbol* masterText = style.getSymbol<TextSymbol>();
     const SkinSymbol* masterSkin = style.getSymbol<SkinSymbol>();
 
-    // Converts coordinates to image space (s,t):
+    // Converts coordinates to image space (double s, t).
+    // Blend2D uses a coordinate system where (0,0) is the top-left corner of the image (on the actual corner,
+    // not the center up the upper-left pixel) and (s,t) is the bottom-right corner of the bottom-right
+    // pixel.  The y-axis is positive down.
+
     RenderFrame frame;
     frame.xmin = _extent.xMin();
     frame.ymin = _extent.yMin();
     frame.xmax = _extent.xMax();
     frame.ymax = _extent.yMax();
+    //frame.xf = (double)(_image->s()-1) / _extent.width();
+    //frame.yf = (double)(_image->t()-1) / _extent.height();
     frame.xf = (double)_image->s() / _extent.width();
     frame.yf = (double)_image->t() / _extent.height();
 
@@ -760,8 +784,8 @@ FeatureRasterizer::render_blend2d(
 
     if (masterLine)
     {
-        float lineWidth_px = 1.0f;
-        float outlineWidth_px = 0.0f;
+        double lineWidth_px = 1.0f;
+        double outlineWidth_px = 0.0f;
 
         // Calculate the line width in pixels:
         if (masterLine->stroke()->width().isSet())
@@ -791,14 +815,6 @@ FeatureRasterizer::render_blend2d(
                     _extent.getSRS()->getUnits(),
                     _extent.yMax());
 
-                //double lineWidth_map_south = lineWidth.asDistance(
-                //    _extent.getSRS()->getUnits(),
-                //    _extent.yMin());
-
-                //double lineWidth_map_north = lineWidth.asDistance(
-                //    _extent.getSRS()->getUnits(),
-                //    _extent.yMax());
-
                 double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
 
                 double pixelSize_map = _extent.height() / (double)_image->t();
@@ -806,7 +822,7 @@ FeatureRasterizer::render_blend2d(
                 lineWidth_px = (lineWidth_map / pixelSize_map);
 
                 // enfore a minimum width of one pixel.
-                float minPixels = masterLine->stroke()->minPixels().getOrUse(1.0f);
+                double minPixels = masterLine->stroke()->minPixels().getOrUse(1.0);
                 lineWidth_px = osg::clampAbove(lineWidth_px, minPixels);
             }
 
@@ -832,20 +848,12 @@ FeatureRasterizer::render_blend2d(
                     _extent.getSRS()->getUnits(),
                     _extent.yMax());
 
-                //double lineWidth_map_south = width.asDistance(
-                //    _extent.getSRS()->getUnits(),
-                //    _extent.yMin());
-
-                //double lineWidth_map_north = width.asDistance(
-                //    _extent.getSRS()->getUnits(),
-                //    _extent.yMax());
-
                 double lineWidth_map = std::min(lineWidth_map_south, lineWidth_map_north);
                 double pixelSize_map = _extent.height() / (double)_image->t();
                 outlineWidth_px = (lineWidth_map / pixelSize_map);
 
                 // enfore a minimum width of one pixel.
-                float minPixels = masterLine->stroke()->minPixels().getOrUse(1.0f);
+                double minPixels = masterLine->stroke()->minPixels().getOrUse(1.0);
                 outlineWidth_px = std::max(outlineWidth_px, minPixels);
             }
 
@@ -1355,10 +1363,28 @@ FeatureRasterizer::finalize()
         }
     }
 
+    // unbuffer
+    if (_bufferPixels > 0)
+    {
+        auto finalImage = new osg::Image();
+        finalImage->allocateImage(_width, _height, 1, _image->getPixelFormat(), _image->getDataType());
+        ImageUtils::PixelReader read(_image.get());
+        ImageUtils::PixelWriter write(finalImage);
+        
+        osg::Vec4 pixel;
+        ImageUtils::ImageIterator iter(finalImage);
+        iter.forEachPixel([&](auto& i) {
+            read(pixel, i.s() + _bufferPixels, i.t() + _bufferPixels, i.r());
+            write(pixel, i.s(), i.t(), i.r());
+        });
+
+        _image = finalImage;
+    }
+
     if (_inverted)
     {
         _image->flipVertical();
     }
 
-    return GeoImage(_image.release(), _extent);
+    return GeoImage(_image.release(), _originalExtent);
 }

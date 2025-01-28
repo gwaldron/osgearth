@@ -41,6 +41,7 @@ FeatureImageLayer::Options::getConfig() const
     Config conf = ImageLayer::Options::getConfig();
     featureSource().set(conf, "features");
     styleSheet().set(conf, "styles");
+    conf.set("buffer_width", bufferWidth());
     conf.set("gamma", gamma());
     conf.set("sdf", sdf());
     conf.set("sdf_invert", sdf_invert());
@@ -65,6 +66,7 @@ FeatureImageLayer::Options::fromConfig(const Config& conf)
 
     featureSource().get(conf, "features");
     styleSheet().get(conf, "styles");
+    conf.get("buffer_width", bufferWidth());
     conf.get("gamma", gamma());
     conf.get("sdf", sdf());
     conf.get("sdf_invert", sdf_invert());
@@ -315,9 +317,11 @@ FeatureImageLayer::createImageImplementation(const TileKey& key, ProgressCallbac
 
     FeatureStyleSorter sorter;
 
+    // a buffer will pull in data from nearby tiles to mitigate edge artifacts
+
     sorter.sort(
         key,
-        Distance(0, Units::METERS),
+        options().bufferWidth().value(),
         local._session.get(),
         local._filterChain,
         renderer,

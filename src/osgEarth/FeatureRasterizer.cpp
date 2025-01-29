@@ -702,7 +702,10 @@ FeatureRasterizer::FeatureRasterizer(
 
 FeatureRasterizer::FeatureRasterizer(osg::Image* image, const GeoExtent& extent) :
     _image(image),
-    _extent(extent)
+    _extent(extent),
+    _originalExtent(extent),
+    _width(image ? image->s() : 0),
+    _height(image ? image->t() : 0)
 {
     //nop
 }
@@ -758,8 +761,6 @@ FeatureRasterizer::render_blend2d(
     frame.ymin = _extent.yMin();
     frame.xmax = _extent.xMax();
     frame.ymax = _extent.yMax();
-    //frame.xf = (double)(_image->s()-1) / _extent.width();
-    //frame.yf = (double)(_image->t()-1) / _extent.height();
     frame.xf = (double)_image->s() / _extent.width();
     frame.yf = (double)_image->t() / _extent.height();
 

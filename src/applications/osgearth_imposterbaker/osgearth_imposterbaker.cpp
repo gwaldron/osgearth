@@ -33,6 +33,7 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgDB/FileNameUtils>
+#include <osgEarth/GLUtils>
 
 using namespace osgEarth;
 
@@ -309,6 +310,7 @@ main(int argc, char** argv)
     normalMapVP->setFunction("normalMapFS", normalMapFS, VirtualProgram::LOCATION_FRAGMENT_OUTPUT);
 
     viewer.setSceneData(root);
+    viewer.setRealizeOperation(new GL3RealizeOperation());
     viewer.realize();
 
 

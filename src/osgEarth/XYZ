@@ -71,6 +71,8 @@ namespace osgEarth { namespace XYZ
         OE_OPTION(URI, url);
         OE_OPTION(bool, invertY, false);
         OE_OPTION(std::string, format, {});
+        OE_OPTION(unsigned, minLevel, 0);
+        OE_OPTION(unsigned, maxLevel, 19);
         static Config getMetadata();
         virtual Config getConfig() const;
     private:
@@ -85,6 +87,8 @@ namespace osgEarth { namespace XYZ
         OE_OPTION(URI, url);
         OE_OPTION(bool, invertY, false);
         OE_OPTION(std::string, format, {});
+        OE_OPTION(unsigned, minLevel, 0);
+        OE_OPTION(unsigned, maxLevel, 19);
         OE_OPTION(std::string, elevationEncoding, {});
         OE_OPTION(bool, stitchEdges, false);
         OE_OPTION(RasterInterpolation, interpolation, INTERP_BILINEAR);

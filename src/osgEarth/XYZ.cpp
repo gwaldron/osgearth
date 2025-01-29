@@ -121,6 +121,8 @@ XYZImageLayerOptions::getConfig() const
     conf.set("url", _url);
     conf.set("format", _format);
     conf.set("invert_y", _invertY);
+    conf.set("min_level", minLevel());
+    conf.set("max_level", maxLevel());
     return conf;
 }
 
@@ -132,6 +134,8 @@ XYZImageLayerOptions::fromConfig(const Config& conf)
     conf.get("url", _url);
     conf.get("format", _format);
     conf.get("invert_y", _invertY);
+    conf.get("min_level", minLevel());
+    conf.get("max_level", maxLevel());
 }
 
 Config
@@ -157,6 +161,8 @@ XYZElevationLayerOptions::getConfig() const
     conf.set("url", _url);
     conf.set("format", _format);
     conf.set("invert_y", _invertY);
+    conf.set("min_level", minLevel());
+    conf.set("max_level", maxLevel());
     conf.set("elevation_encoding", _elevationEncoding);
     conf.set("stitch_edges", stitchEdges());
     return conf;
@@ -168,6 +174,8 @@ XYZElevationLayerOptions::fromConfig(const Config& conf)
     conf.get("url", _url);
     conf.get("format", _format);
     conf.get("invert_y", _invertY);
+    conf.get("min_level", minLevel());
+    conf.get("max_level", maxLevel());
     conf.get("elevation_encoding", _elevationEncoding);
     conf.get("interpretation", elevationEncoding()); // compat with QGIS
     conf.get("stitch_edges", stitchEdges());
@@ -240,7 +248,10 @@ XYZImageLayer::openImplementation()
 
     if (dataExtents.empty())
     {
-        dataExtents.push_back(DataExtent(getProfile()->getExtent()));
+        dataExtents.push_back(DataExtent(
+            getProfile()->getExtent(),
+            options().minLevel().value(),
+            options().maxLevel().value()));
     }
 
     setDataExtents(dataExtents);
@@ -314,7 +325,8 @@ XYZElevationLayer::openImplementation()
 
     setProfile(_imageLayer->getProfile());
 
-    DataExtentList de{ DataExtent(getProfile()->getExtent()) };
+    DataExtentList de;
+    _imageLayer->getDataExtents(de);
     setDataExtents(de);
 
     return Status::NoError;

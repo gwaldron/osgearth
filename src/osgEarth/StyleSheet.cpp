@@ -44,11 +44,9 @@ StyleSheet::Options::getConfig() const
     }
 
     conf.remove("style");
-    for (StyleMap::const_iterator i = styles().begin();
-        i != styles().end();
-        ++i)
+    for(auto& style_entry : styles())
     {
-        conf.add("style", i->second.getConfig());
+        conf.add("style", style_entry.second.getConfig());
     }
 
     conf.remove("library");
@@ -68,11 +66,17 @@ StyleSheet::Options::getConfig() const
         Config scriptConf("script");
 
         if (!_script->name.empty())
+        {
             scriptConf.set("name", _script->name);
+        }
         if (!_script->language.empty())
+        {
             scriptConf.set("language", _script->language);
+        }
         if (_script->uri.isSet())
+        {
             scriptConf.set("url", _script->uri->base());
+        }
         else if (!_script->code.empty())
         {
             auto code = _script->code;
@@ -84,7 +88,7 @@ StyleSheet::Options::getConfig() const
                 code = code.substr(0, pos);
             }
 
-            scriptConf.setValue(_script->code);
+            scriptConf.setValue(code);
         }
 
         conf.add(scriptConf);
@@ -110,7 +114,7 @@ StyleSheet::Options::fromConfig(const Config& conf)
 
         _libraries[resLib->getName()] = resLib;
     }
-
+    
     // read in any scripts
     _script = NULL;
     const Config& scriptConf = conf.child("script");

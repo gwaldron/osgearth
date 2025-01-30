@@ -1,0 +1,131 @@
+/* -*-c++-*- */
+/* osgEarth - Geospatial SDK for OpenSceneGraph
+ * Copyright 2020 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#pragma once
+
+#include <osgEarthProcedural/Export>
+#include <osgEarth/Layer>
+#include <osgEarth/LayerReference>
+#include <osgEarth/TiledModelLayer>
+#include <osgEarthProcedural/NodeGraph>
+
+namespace osgEarth { namespace Procedural
+{
+    class OSGEARTHPROCEDURAL_EXPORT ProceduralTiledModelLayer : public TiledModelLayer
+    {
+    public: // serialization
+        struct OSGEARTHPROCEDURAL_EXPORT Options : public TiledModelLayer::Options
+        {
+            META_LayerOptions(osgEarth, Options, TiledModelLayer::Options);
+            OE_OPTION(ProfileOptions, profile);
+            Config getConfig() const override;
+            void fromConfig(const Config& conf);
+        };
+    public:
+        META_Layer(osgEarth, ProceduralTiledModelLayer, Options, TiledModelLayer, ProceduralTiledModel);
+
+
+    public: // Layer
+
+        // opens the layer and returns the status
+        Status openImplementation() override;
+
+        // closes the layer
+        Status closeImplementation() override;
+
+        //! Extent of the feature layer, if available (INVALID if not)
+        const GeoExtent& getExtent() const override;
+
+        //! Tiling profile (required)
+        void setProfile(const Profile* profile);
+        const Profile* getProfile() const override { return _profile.get(); }        
+
+        //! Minimum level of detail to access
+
+        void setMinLevel(unsigned value);
+        unsigned getMinLevel() const override;
+
+        //! Maximum level of detail to access
+        void setMaxLevel(unsigned value);
+        unsigned getMaxLevel() const override;
+
+        //! Serialization
+        Config getConfig() const override;
+
+        std::shared_ptr< NodeGraph > getNodeGraph() { return _nodeGraph; }
+        void setNodeGraph(std::shared_ptr< NodeGraph> nodeGraph)
+        {
+            if (_nodeGraph != nodeGraph)
+            {
+                _nodeGraph = nodeGraph;
+                dirtyNodeGraph();
+            }
+        }
+
+        void dirtyNodeGraph()
+        {
+            unsigned int i = 0;
+            std::lock_guard< std::mutex> lk(_nodesMutex);
+            for (auto n : _nodes)
+            {
+                OE_NOTICE << "Building " << i++ << " of " << _nodes.size() << " nodes" << std::endl;
+                osg::ref_ptr< NodeGraphNode> ng;
+                if (n.lock(ng))
+                {
+                    ng->_nodeGraph = _nodeGraph;
+                    ng->build();
+                }
+            }
+        }
+
+
+        void registerNode(NodeGraphNode* node)
+        {
+            std::lock_guard< std::mutex> lk(_nodesMutex);
+            _nodes.push_back(node);
+        }
+
+        std::mutex _nodesMutex;
+        std::vector< osg::observer_ptr< NodeGraphNode > > _nodes;
+
+    protected: // Layer
+        
+        // called by the map when this layer is added
+        void addedToMap(const Map*) override;
+
+        // called by the map when this layer is removed
+        void removedFromMap(const Map*) override;
+
+        // post-ctor initialization
+        void init() override;
+
+    protected: // TiledModelLayer
+
+        //! Creates an OSG node from a tile key.
+        osg::ref_ptr<osg::Node> createTileImplementation(const TileKey&, ProgressCallback*) const override;
+
+    protected:
+
+        virtual ~ProceduralTiledModelLayer();
+
+    private:
+        osg::ref_ptr<const Profile> _profile;
+
+        std::shared_ptr< NodeGraph > _nodeGraph;
+    };
+} }

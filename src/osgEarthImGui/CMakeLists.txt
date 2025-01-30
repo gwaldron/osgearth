@@ -11,8 +11,8 @@ set(LIB_NAME osgEarthImGui)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 # embedded ImGui source code:
-set(IMGUI_HEADERS imgui.h imgui_internal.h imgui_impl_opengl3.h imconfig.h)
-set(IMGUI_SOURCES imgui.cpp imgui_demo.cpp imgui_draw.cpp imgui_tables.cpp imgui_widgets.cpp imgui_impl_opengl3.cpp)
+set(IMGUI_HEADERS imgui.h imgui_internal.h imgui_impl_opengl3.h imconfig.h imnodes.h)
+set(IMGUI_SOURCES imgui.cpp imgui_demo.cpp imgui_draw.cpp imgui_tables.cpp imgui_widgets.cpp imgui_impl_opengl3.cpp imnodes.cpp)
 
 set(STOCK_PANELS
     AnnotationsGUI
@@ -25,6 +25,7 @@ set(STOCK_PANELS
     NotifyGUI
     OpenEarthFileGUI
     LiveCamerasGUI
+    NodeGraphGUI
     PickerGUI
     RenderingGUI
     SceneGraphGUI

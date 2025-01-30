@@ -105,7 +105,7 @@ namespace osgEarth
         mutable std::vector<Texture::WeakPtr> _texturesCache;
         mutable std::mutex _texturesCacheMutex;
 
-    private:
+    protected:
         osg::observer_ptr< const Map > _map;
         osg::ref_ptr< osg::Group > _root;
         bool _graphDirty;

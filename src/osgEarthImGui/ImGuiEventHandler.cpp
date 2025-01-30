@@ -71,6 +71,12 @@ ImGuiEventHandler::newFrame(osg::RenderInfo& renderInfo)
     if (_firstFrame)
     {
         ImGui::CreateContext();
+        ImNodes::CreateContext();
+        ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkDetachWithDragClick);
+        ImNodesIO& imNodesio = ImNodes::GetIO();
+        imNodesio.LinkDetachWithModifierClick.Modifier = &ImGui::GetIO().KeyCtrl;
+        imNodesio.MultipleSelectModifier.Modifier = &ImGui::GetIO().KeyCtrl;
+
         ImGui_ImplOpenGL3_Init();
         auto& io = ImGui::GetIO();
 #ifdef IMGUI_HAS_DOCK

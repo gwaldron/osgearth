@@ -6,23 +6,23 @@ function(osgearth_package_install_config_files)
     include(CMakePackageConfigHelpers)
 
     # main target include dir
-    set(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_INCLUDEDIR}/osgEarth")
+    set(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_INCLUDEDIR}/osgearth")
 
     configure_package_config_file(
-        "${PROJECT_SOURCE_DIR}/cmake/osgEarth-config.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/osgEarth-config.cmake"
+        "${PROJECT_SOURCE_DIR}/cmake/osgearth-config.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/osgearth-config.cmake"
         INSTALL_DESTINATION ${OSGEARTH_INSTALL_CMAKEDIR}
         PATH_VARS INCLUDE_INSTALL_DIR OSGEARTH_INSTALL_DATADIR) 
 
     write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/osgEarth-configVersion.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/osgearth-config-version.cmake"
         VERSION ${OSGEARTH_VERSION}
         COMPATIBILITY AnyNewerVersion)
         
     install(
         FILES
-            "${CMAKE_CURRENT_BINARY_DIR}/osgEarth-config.cmake"
-            "${CMAKE_CURRENT_BINARY_DIR}/osgEarth-configVersion.cmake"
+            "${CMAKE_CURRENT_BINARY_DIR}/osgearth-config.cmake"
+            "${CMAKE_CURRENT_BINARY_DIR}/osgearth-config-version.cmake"
         DESTINATION
              ${OSGEARTH_INSTALL_CMAKEDIR} )
     

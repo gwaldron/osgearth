@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_FEATURES_POWERLINE_LAYER
-#define OSGEARTH_FEATURES_POWERLINE_LAYER 1
+#pragma once
 
 #include <osgEarth/FeatureModelLayer>
 
@@ -26,7 +24,6 @@ namespace osgEarth
 {
     class OSGEARTH_EXPORT PowerlineLayer : public FeatureModelLayer
     {
-        // XXX Maybe hide some options from FeatureModelLayer?
     public:
         class ModelOptions : public ConfigOptions
         {
@@ -47,7 +44,7 @@ namespace osgEarth
             Options();
             Options(const ConfigOptions& options);
             OE_OPTION_LAYER(FeatureSource, lineSource);
-            OE_OPTION(bool, point_features);
+            OE_OPTION(bool, point_features, false);
             OE_OPTION(std::string, lineExpr);
             OE_OPTION(std::string, cableExpr);
             OE_OPTION_VECTOR(ModelOptions, towerModels);
@@ -59,8 +56,10 @@ namespace osgEarth
         };
     public:
         META_Layer(osgEarth, PowerlineLayer, Options, FeatureModelLayer, PowerlineModel);
+
+        void init() override;
+
     protected:
         virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const; // override;
     };
 }
-#endif // OSGEARTH_FEATURES_POWERLINE_LAYER

@@ -85,6 +85,9 @@ namespace osgEarth
         optional<bool>& sessionWideResourceCache() { return _sessionWideResourceCache; }
         const optional<bool>& sessionWideResourceCache() const { return _sessionWideResourceCache; }
 
+        //! Whether to automatically crop features to the working extent
+        OE_OPTION(bool, autoCropFeatures, true);
+
         /** Options feature filters */
         OE_OPTION_VECTOR(ConfigOptions, filters);
 

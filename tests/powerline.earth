@@ -1,6 +1,11 @@
 <map name="power tower test">
     <PowerlineModel name="towers" max_range="6000" attenuation_range="1000">
         <features>power-lines</features>
+        <point_features>true</point_features>
+        <filters>
+            <script>feature.properties.power === 'line' || feature.properties.power === 'tower';
+            </script>
+        </filters>
         <tower_model>
             <uri>../data/power_tower.osgb</uri>
             <attachment_points>
@@ -18,6 +23,29 @@
             </style>
         </styles>
     </PowerlineModel>
+    
+    <TiledFeatureModel name="power schematics" pickable="true" open="false">
+        <features>power-lines</features>
+        <styles>
+            <style type="text/css">
+                lines {
+                    select: feature.properties.power === 'line';
+                    altitude-clamping: terrain;
+                    altitude-offset: 10;
+                    stroke: #ff0000;
+                    stroke-width: 3px;
+                }
+                towers {
+                    select: feature.properties.power === 'tower';
+                    altitude-clamping: terrain;
+                    altitude-offset: 10;
+                    point-fill: #00ff00;
+                    point-size: 20px;
+                    point-smooth: true;
+                }
+            </style>
+        </styles>
+    </TiledFeatureModel>
 
     <TFSFeatures name="power-lines">
         <url>https://readymap.org/readymap/mbtiles/osm/</url>
@@ -25,14 +53,25 @@
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
         <format>pbf</format>
+        <fid_attribute>@id</fid_attribute>
         <filters>
-            <script language="javascript">
-                <![CDATA[ (feature.properties.power === "line"); ]]>
+            <script>
+                'power' in feature.properties;
             </script>
         </filters>
+        <buffer_width>50%</buffer_width>
     </TFSFeatures>
 
     <viewpoints>
+        <viewpoint name="Las Puglas">
+            <heading>1.0252</heading>
+            <pitch>-50.0742</pitch>
+            <range>277.225m</range>
+            <long>-117.443849086234</long>
+            <lat>33.31569349071246</lat>
+            <height>11.61921861581504</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
         <viewpoint name="Le Haillan">
             <heading>0</heading>
             <pitch>-89.0007</pitch>
@@ -47,7 +86,7 @@
             <long>7.297303744118898</long>
             <lat>46.21744910621433</lat>
             <height>532.5380253428593</height>
-            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
         </viewpoint>
         <viewpoint name="Kilo">
             <pitch>-20</pitch>
@@ -55,7 +94,7 @@
             <lat>33.320303</lat>
             <long>-117.325534</long>
             <height>155</height>
-            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
             <range>500</range>
         </viewpoint>
         <viewpoint name="problematic">
@@ -65,11 +104,17 @@
             <long>-0.6434920611453753</long>
             <lat>44.89152565710955</lat>
             <height>53.01278693787754</height>
-            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
         </viewpoint>
 
     </viewpoints>
 
-    <xi:include href="readymap_imagery.xml"/>
+    <XYZImage name="OSM Imagery">
+        <url>https://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="none"/>
+        <attribution>&#169;OpenStreetMap contributors</attribution>
+    </XYZImage>
+    
     <xi:include href="readymap_elevation.xml"/>
 </map>

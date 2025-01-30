@@ -318,6 +318,14 @@ namespace osgEarth
         }
 
         template<typename T>
+        void set(const std::string& key, const optional<T>& opt, const optional<double>& opt_as_percentage) {
+            if (opt.isSet())
+                set(key, opt);
+            else if (opt_as_percentage.isSet())
+                set(key, std::to_string(opt_as_percentage.value() * 100.0) + '%');
+        }
+
+        template<typename T>
         void set(const std::string& key, const osg::ref_ptr<T>& obj) {
             remove(key);
             if (obj.valid()) {
@@ -436,6 +444,25 @@ namespace osgEarth
             if (hasValue(key)) {
                 output = value<T>(key, output);
                 return true;
+            }
+            return false;
+        }
+
+        //! Object OR percentage (if ends in %)
+        template<typename T>
+        bool get(const std::string& key, optional<T>& opt, optional<double>& opt_as_percentage) const {
+            opt.clear();
+            opt_as_percentage.clear();
+            if (hasChild(key)) {
+                auto r = child(key).value();
+                if (!r.empty() && r.back() == '%') {
+                    r = r.substr(0, r.size() - 1);
+                    opt_as_percentage = as<double>(r, 0.0) * 0.01;
+                    return true;
+                }
+                else {
+                    return get(key, opt);
+                }
             }
             return false;
         }

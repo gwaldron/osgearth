@@ -173,67 +173,171 @@ void JoinPointsLinesFilter::getLineFeatures(const GeoExtent& extent, FeatureList
     GeoExtent localExtent = extent.transform( fs->getFeatureProfile()->getSRS() );
     Query query;
     query.bounds() = localExtent.bounds();
+
     if (localExtent.intersects( fs->getFeatureProfile()->getExtent()))
     {
         osg::ref_ptr< FeatureCursor > cursor = fs->createFeatureCursor(query);
         while (cursor->hasMore())
         {
             Feature* feature = cursor->nextFeature();
-            if (feature->getGeometry()->getType() == Geometry::TYPE_LINESTRING)
+            if (feature->getGeometry()->isLinear())
             {
                 features.push_back(feature);
             }
         }
     }     
 }
+
+namespace
+{
+    bool eq2d(const osg::Vec3d& lhs, const osg::Vec3d& rhs)
+    {
+        return
+            equivalent(lhs.x(), rhs.x(), 1e-3) &&
+            equivalent(lhs.y(), rhs.y(), 1e-3);
+    }    
+}
+
 FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& context)
 {
     PointMap pointMap;
-        
-    for(FeatureList::iterator i = input.begin(); i != input.end(); ++i)
+
+    // collect all point features (towers and poles) that fall within the working extent.
+    FeatureList points;
+    for(auto& feature : input)
     {
-        Feature* feature = i->get();
-        Geometry* geom = feature->getGeometry();
-        if (geom->getType() == Geometry::TYPE_POINT || geom->getType() == Geometry::TYPE_POINTSET)
+        if (feature->getGeometry()->isPointSet())
         {
-            // Are there multiple points? Does it matter?
-            for(Geometry::iterator i = geom->begin(); i != geom->end(); ++i)
+            GeometryIterator iter(feature->getGeometry(), false);
+            iter.forEach([&](auto* geom)
+                {
+                    for(auto& pt : *geom)
+                    {
+                        pointMap[pt] = PointEntry(feature);
+                    }
+                });
+
+            points.push_back(feature);
+        }
+    }
+
+    // collect all linear features as single linestrings:
+    FeatureList lines;
+    for (auto& feature : input) {
+        auto* g = feature->getGeometry();
+        if (g && g->isLinear()) {
+            GeometryIterator iter(g, false);
+            iter.forEach([&](auto* geom)
+                {
+                    if (geom->size() >= 2) {
+                        auto* new_feature = new Feature(*feature);
+                        new_feature->setGeometry(geom->cloneAs(Geometry::TYPE_LINESTRING));
+                        lines.emplace_back(new_feature);
+                    }
+                });
+        }
+    }
+
+    // combine linestrings with common endpoints:
+    for (int changes = 1; changes > 0; )
+    {
+        changes = 0;
+        for (auto& feature : lines)
+        {
+            if (!feature.valid())
+                continue;
+
+            auto* geom = feature->getGeometry();
+            auto& start = geom->front();
+            auto& end = geom->back();
+
+            for (auto& other : lines)
             {
-                const osg::Vec3d& pt = *i;
-                pointMap[pt] = PointEntry(feature);
+                if (other.valid() && other != feature)
+                {
+                    auto* other_geom = other->getGeometry();
+
+                    if (eq2d(start, other_geom->back()))
+                    {
+                        geom->erase(geom->begin());
+                        geom->insert(geom->begin(), other_geom->begin(), other_geom->end());
+                        changes++;
+                        other = nullptr;
+                    }
+                    else if (eq2d(start, other_geom->front()))
+                    {
+                        geom->erase(geom->begin());
+                        geom->insert(geom->begin(), other_geom->rbegin(), other_geom->rend());
+                        changes++;
+                        other = nullptr;
+                    }
+                    else if (eq2d(end, other_geom->front()))
+                    {
+                        geom->erase(geom->end() - 1);
+                        geom->insert(geom->end(), other_geom->begin(), other_geom->end());
+                        changes++;
+                        other = nullptr;
+                    }
+                    else if (eq2d(end, other_geom->front()))
+                    {
+                        geom->erase(geom->end() - 1);
+                        geom->insert(geom->end(), other_geom->rbegin(), other_geom->rend());
+                        changes++;
+                        other = nullptr;
+                    }
+                }
             }
         }
     }
-    for (FeatureList::iterator i = input.begin(); i != input.end(); ++i)
+
+    // remove the onces that were null'd out during connection:
+    FeatureList temp;
+    for(auto& feature : lines)
+        if (feature.valid())
+            temp.push_back(feature);
+    lines.swap(temp);
+
+    // associate all linears to their component points
+    for(auto& feature : lines)
     {
-        Feature* feature = i->get();
-        Geometry* geom = feature->getGeometry();
-        if (geom->getType() != Geometry::TYPE_LINESTRING)
-            continue;
-        const int size = geom->size();
-        for (int i = 0; i < size; ++i)
-        {
-            osg::Vec3d key = (*geom)[i];
-            PointMap::iterator ptItr = pointMap.find(key);
-            if (ptItr == pointMap.end() && createPointFeatures().get())
-            {
-                std::pair<PointMap::iterator, bool> ret
-                    = pointMap.insert(PointMap::value_type(key, PointEntry(0L)));
-                ptItr = ret.first;
-            }
-            if (ptItr != pointMap.end())
-            {
-                PointEntry &point = ptItr->second;
-                point.lineFeatures.push_back(feature);
-                if (i > 0)
+        if (feature.valid() && feature->getGeometry()->isLinear())
+        {   
+            auto* output = new LineString();
+
+            GeometryIterator iter(feature->getGeometry(), false);
+            iter.forEach([&](Geometry* geom)
                 {
-                    point.previous = (*geom)[i - 1];
-                }
-                if (i < size - 1)
-                {
-                    point.next = (*geom)[i + 1];
-                }
-            }
+                    const int size = geom->size();
+                    for (int i = 0; i < size; ++i)
+                    {
+                        osg::Vec3d key = (*geom)[i];
+
+                        PointMap::iterator ptItr = pointMap.find(key);
+
+                        if (ptItr == pointMap.end() && createPointFeatures() == true)
+                        {
+                            auto ret = pointMap.emplace(key, PointEntry(nullptr));
+                            ptItr = ret.first;
+                        }
+
+                        if (ptItr != pointMap.end())
+                        {
+                            PointEntry& point = ptItr->second;
+                            point.lineFeatures.push_back(feature);
+                            
+                            if (!output->empty())
+                            {
+                                point.previous = output->back();
+                                auto& prev_point = pointMap.find(point.previous);
+                                prev_point->second.next = key;
+                            }
+
+                            output->push_back(key);
+                        }
+                    }
+                });
+
+            feature->setGeometry(output);
         }
     }
     const SpatialReference* targetSRS = 0L;
@@ -245,20 +349,21 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
     {
         targetSRS = context.profile()->getSRS()->getGeocentricSRS();
     }
-    for(PointMap::iterator i = pointMap.begin(); i != pointMap.end(); ++i)
+
+    for(auto& i : pointMap)
     {        
-        PointEntry& entry = i->second;
+        PointEntry& entry = i.second;
         Feature* pointFeature = entry.pointFeature.get();
         if (!pointFeature)
         {
             Point* geom = new Point;
-            geom->set(i->first);
+            geom->set(i.first);
             pointFeature = new Feature(geom, entry.lineFeatures.front()->getSRS(), Style(), 0L);
             input.push_back(pointFeature);
         }
-        for(FeatureList::iterator i = entry.lineFeatures.begin(); i != entry.lineFeatures.end(); ++i)
+
+        for(auto& lineFeature : entry.lineFeatures)
         {
-            Feature* lineFeature = i->get();
             const AttributeTable& attrTable = lineFeature->getAttrs();
             for (auto& attr_entry : attrTable)
             {
@@ -268,9 +373,17 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
                 }
             }
         }
-        pointFeature->set("heading", calculateGeometryHeading(i->first, entry.previous, entry.next,
-                                                              context.profile()->getSRS(), targetSRS));
+        pointFeature->set("heading",
+            calculateGeometryHeading(
+                i.first, entry.previous, entry.next,
+                context.profile()->getSRS(), targetSRS));        
     }
+
+    // combine all new features for output.
+    input.clear();
+    input.reserve(points.size() + lines.size());
+    input.insert(input.end(), points.begin(), points.end());
+    input.insert(input.end(), lines.begin(), lines.end());
 
     return context;
 }

@@ -106,8 +106,6 @@ PowerlineLayer::Options::Options(const ConfigOptions& options)
 // them.
 void PowerlineLayer::Options::fromConfig(const Config& conf)
 {
-    _point_features.init(false);
-
     conf.get("point_features", point_features());
     lineSource().get(conf, "line_features");
     FeatureDisplayLayout layout = _layout.get();
@@ -213,6 +211,20 @@ PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::O
         
 }
 
+void
+PowerlineLayer::init()
+{
+    super::init();
+
+    // do NOT crop features to the working extent! We need features from adjoining tiles.
+    options().autoCropFeatures().setDefault(false);
+
+    // TODO:
+    // This class surely creates some duplicate geometry in neighboring tiles.
+    // We create geometry from neighboring tiles but do nothing to prevent dupes.
+    // Will solve later (if it becomes a problem)
+}
+
 FeatureNodeFactory*
 PowerlineLayer::createFeatureNodeFactoryImplementation() const
 {
@@ -251,7 +263,7 @@ namespace
     void addFeature(PowerNetwork& network, const Feature* feature)
     {
             const Geometry* geom = feature->getGeometry();
-            if (geom->getType() == Geometry::TYPE_LINESTRING)
+            if (geom && geom->isLinear() && geom->size() >= 2)
             {
                 FeatureID fid = feature->getFID();
                 for (int seg = 0; seg < geom->size() - 1; ++seg)
@@ -263,9 +275,9 @@ namespace
 
     void addFeatures(PowerNetwork& network, const FeatureList& list)
     {
-        for (FeatureList::const_iterator i = list.begin(); i != list.end(); ++i)
+        for(auto& feature : list)
         {
-            addFeature(network, i->get());
+            addFeature(network, feature.get());
         }        
     }
     
@@ -342,7 +354,7 @@ namespace
                     {
                         Feature* feature = cursor->nextFeature();
                         Geometry* geom = feature->getGeometry();
-                        if (geom->getType() == Geometry::TYPE_LINESTRING)
+                        if (geom->isLinear())
                         {
                             result.push_back(feature);
                         }
@@ -763,9 +775,9 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
         linesNetwork.buildNetwork();
     }
     PointMap pointMap;
-    for (FeatureList::iterator i = towerFeatures.begin(); i != towerFeatures.end(); ++i)
+
+    for(auto& feature : towerFeatures)
     {
-        Feature* feature = i->get();
         Geometry* geom = feature->getGeometry();
         for(Geometry::iterator i = geom->begin(); i != geom->end(); ++i)
         {
@@ -792,11 +804,10 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
         cableExprCopy = _cableExpr.get();
     }
 
-    for (FeatureList::iterator i = powerFeatures.begin(); i != powerFeatures.end(); ++i)
+    for(auto& feature : powerFeatures)
     {
-        Feature* feature = i->get();
         Geometry* geom = feature->getGeometry();
-        if (geom->getType() == Geometry::TYPE_LINESTRING)
+        if (geom->isLinear() && geom->size() >= 2)
         {
             const int size = geom->size();
             std::vector<osg::Matrixd> towerMats;
@@ -835,6 +846,7 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
             // attachment points are not in pairs... awkward...
             Array::View<osg::Vec3d> attachments(featureRenderData.attachment_points().data(),
                                                 featureRenderData.attachment_points().size() / 2, 2);
+
             for (int attachRow = 0; attachRow < featureRenderData.attachment_points().size() / 2; ++attachRow)
             {
                 for (int startingAttachment = 0; startingAttachment < 2; ++startingAttachment)
@@ -871,15 +883,15 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                     {
                         cableSource = &cablePoints;
                     }
-                    for (std::vector<osg::Vec3d>::iterator itr = cableSource->begin();
-                         itr != cableSource->end();
-                         ++itr)
+
+                    for(auto& point : *cableSource)
                     {
                         osg::Vec3d wgs84, mapAttach;
-                        featureSRS->getGeographicSRS()->transformFromWorld(*itr, wgs84);
+                        featureSRS->getGeographicSRS()->transformFromWorld(point, wgs84);
                         featureSRS->getGeographicSRS()->transform(wgs84, featureSRS.get(), mapAttach);
                         newGeom->push_back(mapAttach);
                     }
+
                     newFeature->setGeometry(newGeom);
                     result.push_back(newFeature);
                 }
@@ -944,19 +956,19 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     }
     localCX = pointsLinesFilter.push(workingSet, sharedCX);
     Style towerStyle;
-    for(FeatureList::iterator i = workingSet.begin(); i != workingSet.end(); ++i)
+
+    for(auto& feature : workingSet)
     {
-        Feature* feature = i->get();
-        Geometry* geom = feature->getGeometry();
-        if (geom->getType() == Geometry::TYPE_POINTSET
-            || geom->getType() == Geometry::TYPE_POINT)
+        if (feature->getGeometry()->isPointSet())
         {
             pointSet.push_back(feature);
         }
     }
+
     osg::ref_ptr<osg::Node> pointsNode;
     osg::ref_ptr<FeatureListCursor> listCursor = new FeatureListCursor(pointSet);
     StyleSheet* sheet = context.getSession()->styles();
+
     // The tower model should come from the "model" attribute of
     // tower_model if it is not specified in the tower model style
     // (usually called "towers"). If the tower_model is chosen

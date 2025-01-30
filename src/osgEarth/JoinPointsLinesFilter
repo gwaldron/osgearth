@@ -101,6 +101,14 @@ namespace osgEarth { namespace Util
     {
         bool operator()(const osg::Vec3d& lhs, const osg::Vec3d& rhs) const
         {
+#if 1
+            const double E = 5.0; // meters // 1e-5; // degrees
+            double dx = rhs.x() - lhs.x(), dy = rhs.y() - lhs.y();
+            if (dx < -E) return true;
+            if (dx > +E) return false;
+            if (dy < -E) return true;
+            return false;
+#else
             if (lhs.x() < rhs.x())
             {
                 return true;
@@ -113,14 +121,17 @@ namespace osgEarth { namespace Util
             {
                 return lhs.y() < rhs.y();
             }
+#endif
         }
     };
 
-    typedef std::map<osg::Vec3d, PointEntry, CompPoints> PointMap;
+    using PointMap = std::map<osg::Vec3d, PointEntry, CompPoints>;
+
     inline PointEntry& getPoint(PointMap& map, const osg::Vec3d& coord)
     {
         return map[coord];
     }
+
     inline PointMap::iterator findPoint(PointMap& map, const osg::Vec3d& coord)
     {
         return map.find(coord);

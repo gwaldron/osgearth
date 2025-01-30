@@ -1790,26 +1790,29 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
 
     FilterContext context(contextPrototype);
 
-    // First Crop the feature set to the working extent.
-    // Note: There is an obscure edge case that can happen is a feature's centroid
-    // falls exactly on the crop extent boundary. In that case the feature can
-    // show up in more than one tile. It's rare and not trivial to mitigate so for now
-    // we have decided to do nothing. :)
-    CropFilter crop(
-        _options.layout().isSet() && _options.layout()->cropFeatures() == true ?
-        CropFilter::METHOD_CROP_TO_EXTENT : CropFilter::METHOD_CENTROID);
-
-    context = crop.push(workingSet, context);
-
-    // next, if the usable extent is less than the full extent (i.e. we had to clamp the feature
-    // extent to fit on the map), calculate the extent of the features in this tile and
-    // crop to the map extent if necessary. (Note, if cropFeatures was set to true, this is
-    // already done)
-    if (_featureExtentClamped && _options.layout().isSet() && _options.layout()->cropFeatures() == false)
+    if (_options.autoCropFeatures() == true)
     {
-        context.extent() = _usableFeatureExtent;
-        CropFilter crop2(CropFilter::METHOD_CROP_TO_EXTENT);
-        context = crop2.push(workingSet, context);
+        // First Crop the feature set to the working extent.
+        // Note: There is an obscure edge case that can happen is a feature's centroid
+        // falls exactly on the crop extent boundary. In that case the feature can
+        // show up in more than one tile. It's rare and not trivial to mitigate so for now
+        // we have decided to do nothing. :)
+        CropFilter crop(
+            _options.layout().isSet() && _options.layout()->cropFeatures() == true ?
+            CropFilter::METHOD_CROP_TO_EXTENT : CropFilter::METHOD_CENTROID);
+
+        context = crop.push(workingSet, context);
+
+        // next, if the usable extent is less than the full extent (i.e. we had to clamp the feature
+        // extent to fit on the map), calculate the extent of the features in this tile and
+        // crop to the map extent if necessary. (Note, if cropFeatures was set to true, this is
+        // already done)
+        if (_featureExtentClamped && _options.layout().isSet() && _options.layout()->cropFeatures() == false)
+        {
+            context.extent() = _usableFeatureExtent;
+            CropFilter crop2(CropFilter::METHOD_CROP_TO_EXTENT);
+            context = crop2.push(workingSet, context);
+        }
     }
 
     // finally, compile the features into a node.
@@ -1852,6 +1855,9 @@ FeatureModelGraph::createStyleGroup(const Style&          style,
         query.bounds().isSet() ? *query.bounds() : extent.bounds();
 
     FilterContext context(_session.get(), featureProfile, GeoExtent(featureProfile->getSRS(), cellBounds), index);
+
+    //if (!query.tileKey()->is(14, 2847, 6583))
+    //    return {};
 
     // query the feature source:
     osg::ref_ptr<FeatureCursor> cursor = _session->getFeatureSource()->createFeatureCursor(

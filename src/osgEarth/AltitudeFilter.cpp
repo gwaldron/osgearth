@@ -16,14 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarth/AltitudeFilter>
-#include <osgEarth/ElevationQuery>
-#include <osgEarth/GeoData>
-#include <osgEarth/Metrics>
+#include "AltitudeFilter"
+#include "ElevationQuery"
+#include "GeoData"
 
 #define LC "[AltitudeFilter] "
-
-#define USE_EP_SESSION
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -49,8 +46,6 @@ AltitudeFilter::setPropertiesFromStyle( const Style& style )
 FilterContext
 AltitudeFilter::push( FeatureList& features, FilterContext& cx )
 {
-    OE_PROFILING_ZONE;
-
     bool clampToMap = 
         _altitude.valid()                                          && 
         _altitude->clamping()  != AltitudeSymbol::CLAMP_NONE       &&
@@ -69,8 +64,6 @@ AltitudeFilter::push( FeatureList& features, FilterContext& cx )
 void
 AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
 {
-    OE_PROFILING_ZONE;
-
     NumericExpression scaleExpr;
     if ( _altitude.valid() && _altitude->verticalScale().isSet() )
         scaleExpr = *_altitude->verticalScale();
@@ -191,9 +184,15 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
         _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN ||
         _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE;
 
-    // whether to clamp every vertex (or just the centroid)
+    // how to clamp:
     bool perVertex =
         _altitude->binding() == AltitudeSymbol::BINDING_VERTEX;
+
+    bool perCentroid = 
+        _altitude->binding() == AltitudeSymbol::BINDING_CENTROID;
+
+    bool perEndpoint = 
+        _altitude->binding() == AltitudeSymbol::BINDING_ENDPOINT;
 
     // whether the SRS's have a compatible vertical datum.
     bool vertEquiv =
@@ -208,10 +207,8 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
             Distance(_maxRes, map->getSRS()->getUnits()));
     }
 
-    for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
-    {
-        Feature* feature = i->get();
-        
+    for(auto& feature : features)
+    {        
         // run a symbol script if present.
         if ( _altitude.valid() && _altitude->script().isSet() )
         {
@@ -242,7 +239,7 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
         // If we aren't doing per vertex clamping go ahead and get the centroid.
         // We do this now instead of within the geometry iterator to ensure that multipolygons
         // are clamped to the whole multipolygon and not per polygon.
-        if (!perVertex)
+        if (perCentroid)
         {
             if (useElevationQuery)
             {
@@ -475,7 +472,42 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
                         }
                     }
                 }
-                else // per-centroid
+
+                else if (perEndpoint)
+                {
+                    auto* featureSRSwithMapVertDatum = !vertEquiv ?
+                        SpatialReference::create(featureSRS->getHorizInitString(), mapSRS->getVertInitString()) : nullptr;
+
+                    // clamp the front and back points:
+                    std::vector<osg::Vec3d> endpoints { geom->front(), geom->back() };
+
+                    bool xform = !featureSRS->isHorizEquivalentTo(map->getSRS());
+                    if (xform)
+                    {
+                        featureSRS->transform(endpoints, map->getSRS());
+                    }
+                    envelope.sampleMapCoords(endpoints.begin(), endpoints.end(), nullptr);
+
+                    geom->front().z() = endpoints[0].z();
+                    geom->back().z() = endpoints[1].z();
+
+                    // interpolate all the Z values in between
+                    for( unsigned i=1; i<geom->size()-1; ++i )
+                    {
+                        auto& p = (*geom)[i];
+                        double t = (double)i / (double)(geom->size() - 1);
+                        p.z() = mix(endpoints[0], endpoints[1], t).z();
+
+                        // if necessary, convert the Z value (which is now in the map's SRS) back to
+                        // the feature's SRS.
+                        if (!vertEquiv)
+                        {
+                            featureSRSwithMapVertDatum->transform(p, featureSRS.get(), p);
+                        }
+                    }
+                }
+
+                else if (perCentroid)
                 {
                     osg::ref_ptr<const SpatialReference> featureSRSWithMapVertDatum;
                     if ( !vertEquiv )

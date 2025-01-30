@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHFEATURES_ALTITUDE_FILTER_H
-#define OSGEARTHFEATURES_ALTITUDE_FILTER_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/Feature>
@@ -34,8 +32,6 @@ namespace osgEarth { namespace Util
     public:
         /** Constructs a new clamping filter */     
         AltitudeFilter();
-        
-        virtual ~AltitudeFilter() { }
 
     public: // properties
 
@@ -58,5 +54,3 @@ namespace osgEarth { namespace Util
         void pushAndDontClamp( FeatureList& input, FilterContext& cx );
     };
 } }
-
-#endif // OSGEARTHFEATURES_ALTITUDE_FILTER_H

@@ -50,8 +50,8 @@ set(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
 
 include(GNUInstallDirs)
 set(OSGEARTH_INSTALL_PLUGINSDIR "${CMAKE_INSTALL_LIBDIR}" CACHE STRING "Parent folder of OSG plugins folder")
-set(OSGEARTH_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/osgEarth" CACHE STRING "osgEarth CMake package install directory")
-set(OSGEARTH_INSTALL_DATADIR "${CMAKE_INSTALL_DATADIR}/osgEarth" CACHE STRING "osgEarth data directory")
+set(OSGEARTH_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/osgearth" CACHE STRING "osgEarth CMake package install directory")
+set(OSGEARTH_INSTALL_DATADIR "${CMAKE_INSTALL_DATADIR}/osgearth" CACHE STRING "osgEarth data directory")
 
 # Platform-specific settings ............................................
 

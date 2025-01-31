@@ -106,8 +106,14 @@ namespace osgEarth
             }
 
             int getId() const { return _id; }
+            
             const std::string& getName() const {
                 return _name;
+            }
+
+            void setName(const std::string& name)
+            {
+                _name = name;
             }
 
             AttributeType getType() const {
@@ -1303,20 +1309,7 @@ namespace osgEarth
                     // These are modified in place, this is faster but is destructive to the features from the input
                     set_output("Points", points->featuresValue);
                 }
-            }
-
-            unsigned int getCount() const
-            {
-                return _count;
-            }
-
-            void setCount(unsigned int count)
-            {
-                _count = count;
-            }
-
-            unsigned int _count = 10;
-            Random   _prng;
+            }           
         };
 
 
@@ -1753,51 +1746,6 @@ namespace osgEarth
         class OSGEARTHPROCEDURAL_EXPORT NodeGraph
         {
         public:
-#if 0
-            virtual void execute(const NodeGraphContext& context)
-            {
-                // The NodeGraph can be ran multiple times during threaded loading for each load.  Maybe it needs cloned or something for reach
-                // execution
-                // Lock it for now.     
-                std::lock_guard< std::mutex > lk(_mutex);
-
-                NodeOutputOperation* outputNode = nullptr;
-                // First reset all the operations and find the output node.
-                for (auto& op : operations)
-                {
-                    op->reset();
-
-                    if (!outputNode)
-                    {
-                        outputNode = dynamic_cast<NodeOutputOperation*>(op.get());
-                    }
-                }
-
-                if (!outputNode)
-                {
-                    OE_NOTICE << "No NodeOutputOperation found" << std::endl;
-                    return;
-                }
-
-
-                // Build the dependencies.  We could do this at connect/disconnect time instead but this should be fast enough.
-                for (auto& op : operations)
-                {
-                    for (auto& link : op->getLinks())
-                    {
-                        // Add a dependency for the destination
-                        link._destination->addDependency(op.get());
-                    }
-                }
-
-                // Execute only the output node with it's dependencies
-                outputNode->executeWithDependencies(context);
-
-                // In theory there is a final node now.
-                _output = outputNode->result.get();
-            }
-#endif
-
             template<typename T>
             NodeGraphResult* execute(const NodeGraphContext& context)
             {
@@ -1884,7 +1832,7 @@ namespace osgEarth
             }
 
             TileKey _tileKey;
-            const Map* _map;
+            const Map* _map = nullptr;
             std::shared_ptr< NodeGraph > _nodeGraph;
         };
 } }

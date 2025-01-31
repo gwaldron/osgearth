@@ -201,25 +201,7 @@ namespace osgEarth
                             }
 
                             ImGui::EndMenu();
-                        }
-
-                        if (ImGui::MenuItem("Export Features"))
-                        {
-                            NodeGraphContext context;
-                            context.map = _mapNode->getMap();
-                            context.tileKey = TileKey(14, 9091, 5773, osgEarth::Registry::instance()->getGlobalGeodeticProfile());
-                            NodeGraphResult* result = _proceduralModelLayer->getNodeGraph()->execute<FeatureOutputOperation>(context);
-                            if (result)
-                            {
-                                for (auto& f : result->featuresValue)
-                                {
-                                    f->transform(osgEarth::SpatialReference::create("wgs84"));
-                                    f->getGeometry()->close();
-                                }
-                                std::ofstream out("H:/dev/osgearth/tests/features.json");
-                                out << osgEarth::Feature::featuresToGeoJSON(result->featuresValue);
-                            } 
-                        }
+                        }                      
                     }
                     ImGui::EndMenuBar();
 

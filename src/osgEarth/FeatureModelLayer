@@ -98,19 +98,19 @@ namespace osgEarth
     public: // Layer
 
         // opens the layer and returns the status
-        virtual Status openImplementation();
+        Status openImplementation() override;
 
         // closes the layer
-        virtual Status closeImplementation();
+        Status closeImplementation() override;
 
         // The Node representing this layer.
-        virtual osg::Node* getNode() const;
+        osg::Node* getNode() const override;
 
         //! Extent of the feature layer, if available (INVALID if not)
-        virtual const GeoExtent& getExtent() const;
+        const GeoExtent& getExtent() const override;
 
         //! Serialization
-        virtual Config getConfig() const;
+        Config getConfig() const override;
 
     public: // key value reporter
 
@@ -119,13 +119,13 @@ namespace osgEarth
     protected: // Layer
         
         // called by the map when this layer is added
-        virtual void addedToMap(const Map*);
+        void addedToMap(const Map*) override;
 
         // called by the map when this layer is removed
-        virtual void removedFromMap(const Map*);
+        void removedFromMap(const Map*) override;
 
         // post-ctor initialization
-        virtual void init();
+        void init() override;
 
     protected:
 
@@ -134,13 +134,15 @@ namespace osgEarth
         //! You can override this as an alternative to setting the CreateFeatureNodeFactoryCallback
         virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const;
 
+        //! Created the FMG; override to customize
+        virtual void create();
+
     private:
         osg::ref_ptr<class Session> _session;
         osg::ref_ptr<osg::Group> _root;
         bool _graphDirty;
         osg::ref_ptr<CreateFeatureNodeFactoryCallback> _createFactoryCallback;
         
-        void create();
         FeatureNodeFactory* createFeatureNodeFactory();
     };
 

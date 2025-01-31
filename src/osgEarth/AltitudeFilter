@@ -30,15 +30,15 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT AltitudeFilter : public FeatureFilter
     {
     public:
-        /** Constructs a new clamping filter */     
+        // Constructs a new clamping filter
         AltitudeFilter();
 
     public: // properties
 
-        /** Shortcut to set any properties that are represented in a style. */
+        //! Shortcut to set any properties that are represented in a style.
         void setPropertiesFromStyle( const Style& style );
 
-        /** Maximum terrain resolution to consider when clamping */
+        //! Maximum terrain resolution to consider when clamping
         void setMaxResolution( double value ) { _maxRes = value; }
         double getMaxResolution() const { return _maxRes; }
 

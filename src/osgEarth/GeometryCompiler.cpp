@@ -313,6 +313,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }
 
     // resample the geometry if necessary:
+    // @deprecated, remove this, dupe of the ResampleFilter
     if (_options.resampleMode().isSet())
     {
         ResampleFilter resample;
@@ -325,7 +326,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( trackHistory ) history.push_back( "resample" );
     }
 
-    // check whether we need to do elevation clamping:
+    // check whether we need to do elevation adjustment:
     bool altRequired =
         _options.ignoreAltitudeSymbol() != true &&
         altitude && (
@@ -334,7 +335,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             altitude->verticalScale().isSet() ||
             altitude->script().isSet() );
 
-    // instance substitution (replaces marker)
+    // instance substitution:
     if ( model )
     {
         const InstanceSymbol* instance = (const InstanceSymbol*)model;
@@ -411,10 +412,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             extrude.setFeatureNameExpr( *_options.featureName() );
 
         if (_options.mergeGeometry().isSet())
-            extrude.setMergeGeometry(*_options.mergeGeometry());
-        //else if (_options.optimize() == true)
-        //    extrude.setMergeGeometry(false);
-            
+            extrude.setMergeGeometry(*_options.mergeGeometry());            
 
         osg::Node* node = extrude.push( workingSet, sharedCX );
         if ( node )
@@ -422,7 +420,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             if ( trackHistory ) history.push_back( "extrude" );
             resultGroup->addChild( node );
         }
-
     }
 
     // simple geometry

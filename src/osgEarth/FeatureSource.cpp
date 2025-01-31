@@ -38,6 +38,7 @@ FeatureSource::Options::getConfig() const
     conf.set("rewind_polygons", rewindPolygons());
     conf.set("vdatum", vdatum());
     conf.set("buffer_width", bufferWidth(), bufferWidthAsPercentage());
+    conf.set("auto_fid", autoFID());
 
     if (!filters().empty())
     {
@@ -61,6 +62,7 @@ FeatureSource::Options::fromConfig(const Config& conf)
     conf.get("rewind_polygons", rewindPolygons());
     conf.get("vdatum", vdatum());
     conf.get("buffer_width", bufferWidth(), bufferWidthAsPercentage());
+    conf.get("auto_fid", autoFID());
 
     for(auto& filterConf : conf.child("filters").children())
         filters().push_back(filterConf);
@@ -408,6 +410,17 @@ FeatureSource::createFeatureCursor(
                         if (!isdigit(c))
                             c = ' ';
                     feature->setFID(as<FeatureID>(attr, 0));
+                }
+                result = new FeatureListCursor(std::move(features));
+            }
+            else if (options().autoFID() == true)
+            {
+                static FeatureID generator = 0;
+                FeatureList features;
+                result->fill(features);
+                for (auto& feature : features)
+                {
+                    feature->setFID(generator++);
                 }
                 result = new FeatureListCursor(std::move(features));
             }

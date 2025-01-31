@@ -1,7 +1,7 @@
 <map name="power tower test">
+
     <PowerlineModel name="towers" max_range="6000" attenuation_range="1000">
         <features>power-lines</features>
-        <point_features>true</point_features>
         <filters>
             <script>feature.properties.power === 'line' || feature.properties.power === 'tower';
             </script>
@@ -11,7 +11,6 @@
             <attachment_points>
                 LINESTRING(6.400827 -0.031 26.068, -6.3926 -0.039 26.068, 3.981 -0.01 29.88, -3.854 0.39 29.89, 6.385 0.0 21.077, -6.35 -0.01 21.077)
             </attachment_points>
-            <!-- maximum sag or droop of a single cable -->
             <max_sag>5.0</max_sag>
         </tower_model>
         <styles>
@@ -47,8 +46,8 @@
         </styles>
     </TiledFeatureModel>
 
-    <TFSFeatures name="power-lines">
-        <url>https://readymap.org/readymap/mbtiles/osm/</url>
+    <XYZFeatures name="power-lines">
+        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
@@ -59,10 +58,36 @@
                 'power' in feature.properties;
             </script>
         </filters>
-        <buffer_width>50%</buffer_width>
-    </TFSFeatures>
+    </XYZFeatures>
 
-    <viewpoints>
+    <viewpoints time="0">
+        <viewpoint name="Sion mystery lines">
+            <heading>72.5484</heading>
+            <pitch>-14.5443</pitch>
+            <range>785.863m</range>
+            <long>7.364413793845917</long>
+            <lat>46.21222739944896</lat>
+            <height>942.5281157856807</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint name="Swissue 2">
+            <heading>4.55936</heading>
+            <pitch>-60.6356</pitch>
+            <range>428.161m</range>
+            <long>7.339310147916917</long>
+            <lat>46.21942392095163</lat>
+            <height>538.3499684054404</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint name="Swissue issue">
+            <heading>8.48763</heading>
+            <pitch>-82.7926</pitch>
+            <range>1327.41m</range>
+            <long>7.365628510551915</long>
+            <lat>46.22256162729438</lat>
+            <height>539.6748825293034</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
         <viewpoint name="Las Puglas">
             <heading>1.0252</heading>
             <pitch>-50.0742</pitch>

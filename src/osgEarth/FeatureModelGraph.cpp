@@ -375,6 +375,12 @@ FeatureModelGraph::setUseNVGL(bool value)
 }
 
 void
+FeatureModelGraph::setFeatureQueryBufferWidthAsPercentage(double value)
+{
+    _featureQueryBufferWidthAsPercentage = value;
+}
+
+void
 FeatureModelGraph::setSession(Session* value)
 {
     _session = value;
@@ -1323,6 +1329,30 @@ FeatureModelGraph::buildTile(
         // add a tile key to the query if there is one, to support TFS-style queries
         if (key)
             query.tileKey() = *key;
+
+        // buffer the query?
+        if (_featureQueryBufferWidthAsPercentage.isSet())
+        {
+            if (query.bounds().isSet())
+            {
+                auto* fp = featureSource->getFeatureProfile();
+                double w = width(query.bounds().value());
+                double h = height(query.bounds().value());
+                double buffer = sqrt(w * h) * _featureQueryBufferWidthAsPercentage.value();
+                query.buffer() = Distance(buffer, fp->getSRS()->getUnits());
+            }
+            else if (query.tileKey().isSet())
+            {
+                double w = query.tileKey()->getExtent().width();
+                double h = query.tileKey()->getExtent().height();
+                double buffer = sqrt(w * h) * _featureQueryBufferWidthAsPercentage.value();
+                query.buffer() = Distance(buffer, query.tileKey()->getProfile()->getSRS()->getUnits());
+            }
+            else
+            {
+                OE_WARN << LC << "Requested a buffer width as a percentage but no bounds or tilekey was set" << std::endl;
+            }
+        }
 
         // does the level have a style name set?
         if (level.styleName().isSet())

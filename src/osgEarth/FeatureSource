@@ -44,6 +44,7 @@ namespace osgEarth
             OE_OPTION(std::string, vdatum);
             OE_OPTION(Distance, bufferWidth);
             OE_OPTION(double, bufferWidthAsPercentage);
+            OE_OPTION(bool, autoFID, false);
             OE_OPTION_VECTOR(ConfigOptions, filters);
             virtual Config getConfig() const;
         private:

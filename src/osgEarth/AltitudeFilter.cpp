@@ -28,13 +28,13 @@ using namespace osgEarth::Util;
 //---------------------------------------------------------------------------
 
 AltitudeFilter::AltitudeFilter() :
-_maxRes ( 0.0f )
+    _maxRes(0.0f)
 {
     //NOP
 }
 
 void
-AltitudeFilter::setPropertiesFromStyle( const Style& style )
+AltitudeFilter::setPropertiesFromStyle(const Style& style)
 {
     _altitude = style.get<AltitudeSymbol>();
     if ( _altitude )

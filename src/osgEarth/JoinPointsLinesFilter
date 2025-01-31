@@ -87,7 +87,9 @@ namespace osgEarth { namespace Util
     struct PointEntry
     {
         PointEntry(Feature* feature)
-            : pointFeature(feature), previous(DBL_MAX, DBL_MAX, DBL_MAX), next(DBL_MAX, DBL_MAX, DBL_MAX)
+            : pointFeature(feature), 
+              previous(DBL_MAX, DBL_MAX, DBL_MAX), 
+              next(DBL_MAX, DBL_MAX, DBL_MAX)
             {}
         PointEntry() : PointEntry(0L) {}
         osg::ref_ptr<Feature> pointFeature;

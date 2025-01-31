@@ -67,13 +67,14 @@ namespace
         {
             targetSRS = context.profile()->getSRS()->getGeocentricSRS();
         }
-        osg::Vec3d point3d(point);
 
+        osg::Vec3d point3d(point);
         osg::Matrixd orientation;
         osg::Vec3d world3d;
     
         ECEF::transformAndGetRotationMatrix(point3d, context.profile()->getSRS(), world3d,
                                             targetSRS, orientation);
+
         // XXX OSG bug weirdness, fixed in OSG next
         osg::Matrixd toLocal(orientation);
         transpose3x3(toLocal);
@@ -83,8 +84,7 @@ namespace
         if (previous.x() != DBL_MAX)
         {
             osg::Vec3d prevWorld;
-            ECEF::transformAndLocalize(previous, context.profile()->getSRS(), prevWorld,
-                                       targetSRS);
+            ECEF::transformAndLocalize(previous, context.profile()->getSRS(), prevWorld, targetSRS);
             osg::Vec3d inWorld = world3d - prevWorld;
             osg::Vec3d inLocal = inWorld * toLocal;
             in.x() = inLocal.x();
@@ -95,8 +95,7 @@ namespace
         if (next.x() != DBL_MAX)
         {
             osg::Vec3d nextWorld;
-            ECEF::transformAndLocalize(next, context.profile()->getSRS(), nextWorld,
-                                       targetSRS);
+            ECEF::transformAndLocalize(next, context.profile()->getSRS(), nextWorld, targetSRS);
             osg::Vec3d outWorld = nextWorld - world3d;
             osg::Vec3d outLocal = outWorld * toLocal;
             out.x() = outLocal.x();
@@ -108,48 +107,38 @@ namespace
         double heading = std::atan2(-direction.x(), direction.y());
         if (heading < -osg::PI_2) heading += osg::PI;
         if (heading >= osg::PI_2) heading -= osg::PI;
+
         return osg::RadiansToDegrees(heading);
     }
 
-    double calculateGeometryHeading(const osg::Vec3d& point, const osg::Vec3d& previous, const osg::Vec3d& next,
-                                    const SpatialReference* sourceSRS,
-                                    const SpatialReference* targetSRS)
+    double calculateGeometryHeading(const osg::Vec3d& point, const osg::Vec3d& previous, const osg::Vec3d& next)
     {
-        osg::Vec3d point3d(point);
-
-        osg::Matrixd orientation;
-        osg::Vec3d world3d;
-
-        ECEF::transformAndGetRotationMatrix(point3d, sourceSRS, world3d, targetSRS, orientation);
-        // XXX OSG bug weirdness, fixed in OSG next
-        osg::Matrixd toLocal(orientation);
-        transpose3x3(toLocal);
-        osg::Vec2d in;
-        osg::Vec2d out;
-        if (previous.x() != DBL_MAX)
+        osg::Vec3d dir;
+        if (previous.x() == DBL_MAX && next.x() == DBL_MAX)
         {
-            osg::Vec3d prevWorld;
-            ECEF::transformAndLocalize(previous, sourceSRS, prevWorld, targetSRS);
-            osg::Vec3d inWorld = world3d - prevWorld;
-            osg::Vec3d inLocal = inWorld * toLocal;
-            in.x() = inLocal.x();
-            in.y() = inLocal.y();
-            in.normalize();
+            return 0.0;
         }
-        if (next.x() != DBL_MAX)
+        else if (previous.x() != DBL_MAX && next.x() != DBL_MAX)
         {
-            osg::Vec3d nextWorld;
-            ECEF::transformAndLocalize(next, sourceSRS, nextWorld, targetSRS);
-            osg::Vec3d outWorld = nextWorld - world3d;
-            osg::Vec3d outLocal = outWorld * toLocal;
-            out.x() = outLocal.x();
-            out.y() = outLocal.y();
-            out.normalize();
+            dir = next - previous;
         }
-        osg::Vec2d direction = in + out;
-        double heading = std::atan2(-direction.x(), direction.y());
-        if (heading < -osg::PI_2) heading += osg::PI;
-        if (heading >= osg::PI_2) heading -= osg::PI;
+        else if (previous.x() != DBL_MAX)
+        {
+            dir = point - previous;
+        }
+        else if (next.x() != DBL_MAX)
+        {
+            dir = next - point;
+        }
+        else
+        {
+            return 0.0;
+        }
+
+        dir.normalize();
+        double heading = std::atan2(-dir.x(), dir.y());
+        while (heading < -osg::PI_2) heading += osg::PI;
+        while (heading >= osg::PI_2) heading -= osg::PI;
         return osg::RadiansToDegrees(heading);
     }
 }
@@ -190,19 +179,19 @@ void JoinPointsLinesFilter::getLineFeatures(const GeoExtent& extent, FeatureList
 
 namespace
 {
-    bool eq2d(const osg::Vec3d& lhs, const osg::Vec3d& rhs)
+    bool eq2d(const osg::Vec3d& lhs, const osg::Vec3d& rhs, double EPS = 1e-3)
     {
         return
-            equivalent(lhs.x(), rhs.x(), 1e-3) &&
-            equivalent(lhs.y(), rhs.y(), 1e-3);
+            equivalent(lhs.x(), rhs.x(), EPS) &&
+            equivalent(lhs.y(), rhs.y(), EPS);
     }    
 }
 
 FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& context)
 {
-    PointMap pointMap;
 
-    // collect all point features (towers and poles) that fall within the working extent.
+    // collect all point features (towers and poles).
+    PointMap pointMap;
     FeatureList points;
     for(auto& feature : input)
     {
@@ -217,11 +206,11 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
                     }
                 });
 
-            points.push_back(feature);
+            points.emplace_back(feature);
         }
     }
 
-    // collect all linear features as single linestrings:
+    // collect all linear features as single linestrings.
     FeatureList lines;
     for (auto& feature : input) {
         auto* g = feature->getGeometry();
@@ -248,8 +237,6 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
                 continue;
 
             auto* geom = feature->getGeometry();
-            auto& start = geom->front();
-            auto& end = geom->back();
 
             for (auto& other : lines)
             {
@@ -257,33 +244,38 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
                 {
                     auto* other_geom = other->getGeometry();
 
-                    if (eq2d(start, other_geom->back()))
+                    if (eq2d(geom->back(), other_geom->front()))
                     {
-                        geom->erase(geom->begin());
-                        geom->insert(geom->begin(), other_geom->begin(), other_geom->end());
-                        changes++;
-                        other = nullptr;
-                    }
-                    else if (eq2d(start, other_geom->front()))
-                    {
-                        geom->erase(geom->begin());
-                        geom->insert(geom->begin(), other_geom->rbegin(), other_geom->rend());
-                        changes++;
-                        other = nullptr;
-                    }
-                    else if (eq2d(end, other_geom->front()))
-                    {
-                        geom->erase(geom->end() - 1);
+                        geom->resize(geom->size() - 1);
                         geom->insert(geom->end(), other_geom->begin(), other_geom->end());
                         changes++;
                         other = nullptr;
-                    }
-                    else if (eq2d(end, other_geom->front()))
+                    }                    
+                    
+                    else if (eq2d(geom->back(), other_geom->back()))
                     {
-                        geom->erase(geom->end() - 1);
+                        geom->resize(geom->size() - 1);
                         geom->insert(geom->end(), other_geom->rbegin(), other_geom->rend());
                         changes++;
                         other = nullptr;
+                    }
+
+                    else if (eq2d(other_geom->back(), geom->front()))
+                    {
+                        other_geom->resize(other_geom->size() - 1);
+                        other_geom->insert(other_geom->end(), geom->begin(), geom->end());
+                        changes++;
+                        feature = nullptr;
+                        break;
+                    }
+
+                    else if (eq2d(other_geom->back(), geom->back()))
+                    {
+                        other_geom->resize(other_geom->size() - 1);
+                        other_geom->insert(other_geom->end(), geom->rbegin(), geom->rend());
+                        changes++;
+                        feature = nullptr;                    
+                        break;
                     }
                 }
             }
@@ -310,29 +302,34 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
                     const int size = geom->size();
                     for (int i = 0; i < size; ++i)
                     {
-                        osg::Vec3d key = (*geom)[i];
+                        osg::Vec3d point = (*geom)[i];
 
-                        PointMap::iterator ptItr = pointMap.find(key);
-
-                        if (ptItr == pointMap.end() && createPointFeatures() == true)
+                        // skip duplicates.
+                        if (i > 0 && !eq2d(point, (*geom)[i - 1], 0.1)) // local data (mercator)
                         {
-                            auto ret = pointMap.emplace(key, PointEntry(nullptr));
-                            ptItr = ret.first;
-                        }
+                            PointMap::iterator ptItr = pointMap.find(point);
 
-                        if (ptItr != pointMap.end())
-                        {
-                            PointEntry& point = ptItr->second;
-                            point.lineFeatures.push_back(feature);
-                            
-                            if (!output->empty())
+                            //if (ptItr == pointMap.end() && createPointFeatures() == true)
+                            //{
+                            //    auto ret = pointMap.emplace(key, PointEntry(nullptr));
+                            //    ptItr = ret.first;
+                            //}
+
+                            // 
+                            if (ptItr != pointMap.end())
                             {
-                                point.previous = output->back();
-                                auto& prev_point = pointMap.find(point.previous);
-                                prev_point->second.next = key;
-                            }
+                                PointEntry& entry = ptItr->second;
+                                entry.lineFeatures.emplace_back(feature);
 
-                            output->push_back(key);
+                                if (!output->empty())
+                                {
+                                    entry.previous = output->back();
+                                    auto& prev_point = pointMap.find(entry.previous);
+                                    prev_point->second.next = point;
+                                }
+
+                                output->push_back(point);
+                            }
                         }
                     }
                 });
@@ -373,10 +370,7 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
                 }
             }
         }
-        pointFeature->set("heading",
-            calculateGeometryHeading(
-                i.first, entry.previous, entry.next,
-                context.profile()->getSRS(), targetSRS));        
+        pointFeature->set("heading", calculateGeometryHeading(i.first, entry.previous, entry.next));
     }
 
     // combine all new features for output.

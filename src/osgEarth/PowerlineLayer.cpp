@@ -20,13 +20,11 @@
 #include <osgEarth/Array>
 #include <osgEarth/PowerlineLayer>
 #include <osgEarth/AltitudeFilter>
-#include <osgEarth/JoinPointsLinesFilter>
 #include <osgEarth/ElevationQuery>
-#include <osgEarth/PolygonizeLines>
 #include <osgEarth/ECEF>
 #include <osgEarth/GeometryUtils>
-#include <osgEarth/Network>
 #include <osgEarth/Math>
+#include <osgEarth/FeatureModelGraph>
 
 #include <algorithm>
 #include <iterator>
@@ -106,109 +104,66 @@ PowerlineLayer::Options::Options(const ConfigOptions& options)
 // them.
 void PowerlineLayer::Options::fromConfig(const Config& conf)
 {
-    conf.get("point_features", point_features());
-    lineSource().get(conf, "line_features");
-    FeatureDisplayLayout layout = _layout.get();
-    layout.cropFeatures() = true;
-    _layout = layout;
-    if (conf.hasChild("line_expr"))
-    {
-        lineExpr() = conf.child("line_expr").value();
-    }
-    if (conf.hasChild("cable_expr"))
-    {
-        cableExpr() = conf.child("cable_expr").value();
-    }
-    ConfigSet models = conf.children("tower_model");
-    for(ConfigSet::const_iterator i = models.begin(); i != models.end(); ++i)
-    {
-        towerModels().push_back(ModelOptions(*i));
-    }
+    conf.get("line_expr", towerExpr()); // back compat
+    conf.get("tower_expr", towerExpr());
+    conf.get("cable_expr", cableStyleExpr());
+    conf.get("num_cables", numCablesExpr());
+
+    for (auto& modelConf : conf.children("tower_model"))
+        towerModels().push_back(ModelOptions(modelConf));
+
     referrer = conf.referrer();
 }
 
 Config
 PowerlineLayer::Options::getConfig() const
 {
-    Config conf = FeatureModelLayer::Options::getConfig();
-    lineSource().set(conf, "line_features");
-    for (std::vector<ModelOptions>::const_iterator i = towerModels().begin();
-        i != towerModels().end();
-        ++i)
-    {
-        conf.add("tower_model", i->getConfig());
-    }
+    Config conf = super::getConfig();
+
+    conf.set("tower_expr", towerExpr());
+    conf.set("cable_expr", cableStyleExpr());
+    conf.set("num_cables", numCablesExpr());
+
+    for(auto& towerModel : towerModels())
+        conf.add("tower_model", towerModel.getConfig());
+
     return conf;
 }
 
-void PowerlineLayer::Options::mergeConfig(const Config& conf)
+void
+PowerlineLayer::Options::mergeConfig(const Config& conf)
 {
-    FeatureModelLayer::Options::mergeConfig(conf);
+    super::mergeConfig(conf);
     fromConfig(conf);
 }
 
-struct PowerlineRenderData
+namespace
 {
-    PowerlineRenderData(float maxSag = 5.0)
-        : _maxSag(maxSag)
-    {}
-    Vec3dVector _attachments;
-    std::string _modelName;
-    float _maxSag;
-};
-
-void parsePowerlineRenderData(PowerlineRenderData& renderData, const std::string& renderDataString)
-{
-    std::stringstream renderDataStream(renderDataString);
-    Config renderDataConfig;
-    renderDataConfig.fromXML(renderDataStream);
-}
-
-class PowerlineFeatureNodeFactory : public GeomFeatureNodeFactory
-{
-public:
-    PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles);
-
-    bool createOrUpdateNode(FeatureCursor* cursor, const Style& style,
-                            const FilterContext& context,
-                            osg::ref_ptr<osg::Node>& node,
-                            const Query& query);
-private:
-    FeatureList makeCableFeatures(FeatureList& powerFeatures, FeatureList& towerFeatures,
-                                  FilterContext& cx, const Query& query, const Style& style);
-    PowerlineLayer::ModelOptions evalTowerModel(Feature* f, const FilterContext& context);
-    std::string _lineSourceLayer;
-    FeatureSource::Options _lineSource;
-    bool _point_features;
-    optional<StringExpression> _lineExpr;
-    optional<StringExpression> _cableExpr; 
-    std::vector<PowerlineLayer::ModelOptions> _renderData;
-    PowerlineLayer::Options _powerlineOptions;
-};
-
-PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles)
-    : GeomFeatureNodeFactory(options),    
-      _lineSourceLayer(options.lineSource().externalLayerName().get()),
-      _point_features(options.point_features().get()),
-      _powerlineOptions(options)
-{
-    if (options.lineSource().embeddedOptions() != nullptr)
+    // Custom FeatureNodeFactory that creates powerline cables and towers
+    class PowerlineFeatureNodeFactory : public GeomFeatureNodeFactory
     {
-        _lineSource = *options.lineSource().embeddedOptions();
-    }
+    public:
+        PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles);
 
-    if (options.towerModels().empty())
-        return;
-    _renderData = options.towerModels();
-    if (options.lineExpr().isSet())
-    {
-        _lineExpr = options.lineExpr().get();
-    }
-    if (options.cableExpr().isSet())
-    {
-        _cableExpr = options.cableExpr().get();
-    }
-        
+        bool createOrUpdateNode(
+            FeatureCursor* cursor,
+            const Style& style,
+            const FilterContext& context,
+            osg::ref_ptr<osg::Node>& node,
+            const Query& query) override;
+
+    private:
+        FeatureList makeCableFeatures(FeatureList& powerFeatures, FeatureList& towerFeatures,
+            FilterContext& cx, const Query& query, const Style& style);
+
+        PowerlineLayer::ModelOptions evalTowerModel(Feature* f, const FilterContext& context);
+
+        optional<StringExpression> _towerExpr;
+        optional<StringExpression> _cableStyleExpr;
+        optional<NumericExpression> _numCablesExpr;
+        std::vector<PowerlineLayer::ModelOptions> _renderData;
+        PowerlineLayer::Options _powerlineOptions;
+    };
 }
 
 void
@@ -225,145 +180,22 @@ PowerlineLayer::init()
     // Will solve later (if it becomes a problem)
 }
 
+void
+PowerlineLayer::create()
+{
+    super::create();
+
+    auto* fmg = findTopMostNodeOfType<FeatureModelGraph>(getNode());
+    if (fmg)
+    {
+        fmg->setFeatureQueryBufferWidthAsPercentage(0.75);
+    }
+}
+
 FeatureNodeFactory*
 PowerlineLayer::createFeatureNodeFactoryImplementation() const
 {
     return new PowerlineFeatureNodeFactory(options(), getStyleSheet());
-}
-
-namespace
-{
-    // Network fun
-
-    // Identify an edge by its feature and position in the geometry
-    // list
-
-    struct EdgeNode
-    {
-        EdgeNode()
-            : id(0), position(0)
-        {
-        }
-        EdgeNode(FeatureID id_, int position_)
-            : id(id_), position(position_)
-        {
-        }
-        FeatureID id;
-        int position;
-        bool operator<(const EdgeNode& rhs) const
-        {
-            return (id < rhs.id) || (id == rhs.id && position < rhs.position);
-        }
-    };
-    
-    typedef osg::Vec3d NetworkNode;
-
-    typedef Network<EdgeNode, NetworkNode> PowerNetwork;
-
-    void addFeature(PowerNetwork& network, const Feature* feature)
-    {
-            const Geometry* geom = feature->getGeometry();
-            if (geom && geom->isLinear() && geom->size() >= 2)
-            {
-                FeatureID fid = feature->getFID();
-                for (int seg = 0; seg < geom->size() - 1; ++seg)
-                {
-                    network.addEdge(EdgeNode(fid, seg), (*geom)[seg], (*geom)[seg + 1]);
-                }
-            }
-    }
-
-    void addFeatures(PowerNetwork& network, const FeatureList& list)
-    {
-        for(auto& feature : list)
-        {
-            addFeature(network, feature.get());
-        }        
-    }
-    
-    Feature* getPointFeature(PointMap& pointMap, const osg::Vec3d& key)
-    {
-        PointMap::iterator itr = findPoint(pointMap, key);
-        if (itr == pointMap.end())
-        {
-            return 0L;
-        }
-        else
-        {
-            return itr->second.pointFeature.get();
-        }
-    }
-
-    double calculateHeading(osg::Vec3d& point, osg::Vec3d* previous, osg::Vec3d* next)
-    {
-        osg::Vec3d in, out;
-        if (previous)
-        {
-            in = point - *previous;
-            in.normalize();
-        }
-        if (next)
-        {
-            out = *next - point;
-            out.normalize();
-        }
-        osg::Vec3d direction = in + out;
-        direction.normalize();
-        double heading = std::atan2(-direction.x(), direction.y());
-        if (heading < -osg::PI_2) heading += osg::PI;
-        if (heading >= osg::PI_2) heading -= osg::PI;
-        return osg::RadiansToDegrees(heading);
-
-    }
-
-    double calculateHeading(Geometry* geom, int index)
-    {
-        osg::Vec3d& point = (*geom)[index];
-        osg::Vec3d* previous = 0L;
-        osg::Vec3d* next = 0L;
-        if (index > 0)
-        {
-            previous = &(*geom)[index - 1];
-        }
-        if (index < geom->size() - 1)
-        {
-            next = &(*geom)[index + 1];
-        }
-        return calculateHeading(point, previous, next);
-    }
-
-    FeatureList findNeighborLineFeatures(const FilterContext& context, const Query& query)
-    {
-        const Session* session = context.getSession();
-        FeatureList result;
-
-        if (!query.tileKey().isSet())
-            return result;
-        for (int i =-1; i <= 1; ++i)
-        {
-            for (int j = -1; j <=1; ++j)
-            {
-                if (!(i == 0 && j == 0))
-                {
-                    TileKey neighborKey = query.tileKey().get().createNeighborKey(i, j);
-                    Query newQuery(query);
-                    newQuery.bounds().unset();
-                    newQuery.tileKey() = neighborKey;
-                    FeatureCursor* cursor = session->getFeatureSource()->createFeatureCursor(newQuery);
-                    while (cursor->hasMore())
-                    {
-                        Feature* feature = cursor->nextFeature();
-                        Geometry* geom = feature->getGeometry();
-                        if (geom->isLinear())
-                        {
-                            result.push_back(feature);
-                        }
-                    }
-                }
-            }
-        }
-        return result;
-    }
 }
 
 // Make a catenary curve between two points
@@ -483,151 +315,418 @@ namespace
             return (func(-func.x1) -refHeight);
         }
     };
-}
+
+    bool eq2d(const osg::Vec3d& lhs, const osg::Vec3d& rhs, double EPS = 1e-3)
+    {
+        return
+            equivalent(lhs.x(), rhs.x(), EPS) &&
+            equivalent(lhs.y(), rhs.y(), EPS);
+    }
+    void transpose3x3(osg::Matrix& m)
+    {
+        std::swap(m(0, 1), m(1, 0));
+        std::swap(m(0, 2), m(2, 0));
+        std::swap(m(1, 2), m(2, 1));
+    }
+
+    double calculateGeometryHeading(const osg::Vec3d& point, const osg::Vec3d& previous, const osg::Vec3d& next)
+    {
+        osg::Vec3d dir;
+        if (previous.x() == DBL_MAX && next.x() == DBL_MAX)
+        {
+            return 0.0;
+        }
+        else if (previous.x() != DBL_MAX && next.x() != DBL_MAX)
+        {
+            dir = next - previous;
+        }
+        else if (previous.x() != DBL_MAX)
+        {
+            dir = point - previous;
+        }
+        else if (next.x() != DBL_MAX)
+        {
+            dir = next - point;
+        }
+        else
+        {
+            return 0.0;
+        }
+
+        dir.normalize();
+        double heading = std::atan2(-dir.x(), dir.y());
+        while (heading < -osg::PI_2) heading += osg::PI;
+        while (heading >= osg::PI_2) heading -= osg::PI;
+        return osg::RadiansToDegrees(heading);
+    }
+
+    struct PointEntry
+    {
+        PointEntry(Feature* feature)
+            : pointFeature(feature),
+            previous(DBL_MAX, DBL_MAX, DBL_MAX),
+            next(DBL_MAX, DBL_MAX, DBL_MAX)
+        {}
+        PointEntry() : PointEntry(0L) {}
+        osg::ref_ptr<Feature> pointFeature;
+        FeatureList lineFeatures;
+        osg::Vec3d previous;
+        osg::Vec3d next;
+    };
+
+    // Map that ignores elevation component of points
+    struct CompPoints
+    {
+        bool operator()(const osg::Vec3d& lhs, const osg::Vec3d& rhs) const
+        {
+            const double E = 5.0; // meters // 1e-5; // degrees
+            double dx = rhs.x() - lhs.x(), dy = rhs.y() - lhs.y();
+            if (dx < -E) return true;
+            if (dx > +E) return false;
+            if (dy < -E) return true;
+            return false;
+        }
+    };
+
+    using PointMap = std::map<osg::Vec3d, PointEntry, CompPoints>;
+
+    inline PointEntry& getPoint(PointMap& map, const osg::Vec3d& coord)
+    {
+        return map[coord];
+    }
+
+    inline PointMap::iterator findPoint(PointMap& map, const osg::Vec3d& coord)
+    {
+        return map.find(coord);
+    }
+
+    void preparePowerFeatures(FeatureList& input, FilterContext& context)
+    {
+        // collect all point features (towers and poles).
+        PointMap pointMap;
+        FeatureList points;
+        for (auto& feature : input)
+        {
+            if (feature->getGeometry()->isPointSet())
+            {
+                GeometryIterator iter(feature->getGeometry(), false);
+                iter.forEach([&](auto* geom)
+                    {
+                        for (auto& pt : *geom)
+                        {
+                            pointMap[pt] = PointEntry(feature);
+                        }
+                    });
+
+                points.emplace_back(feature);
+            }
+        }
+
+        // collect all linear features as single linestrings.
+        FeatureList lines;
+        for (auto& feature : input) {
+            auto* g = feature->getGeometry();
+            if (g && g->isLinear()) {
+                GeometryIterator iter(g, false);
+                iter.forEach([&](auto* geom)
+                    {
+                        if (geom->size() >= 2) {
+                            auto* new_feature = new Feature(*feature);
+                            new_feature->setGeometry(geom->cloneAs(Geometry::TYPE_LINESTRING));
+                            lines.emplace_back(new_feature);
+                        }
+                    });
+            }
+        }
+
+        // combine linestrings with common endpoints:
+        for (int changes = 1; changes > 0; )
+        {
+            changes = 0;
+            for (auto& feature : lines)
+            {
+                if (!feature.valid())
+                    continue;
+
+                auto* geom = feature->getGeometry();
+
+                for (auto& other : lines)
+                {
+                    if (other.valid() && other != feature)
+                    {
+                        auto* other_geom = other->getGeometry();
+
+                        if (eq2d(geom->back(), other_geom->front()))
+                        {
+                            geom->resize(geom->size() - 1);
+                            geom->insert(geom->end(), other_geom->begin(), other_geom->end());
+                            changes++;
+                            other = nullptr;
+                        }
+
+                        else if (eq2d(geom->back(), other_geom->back()))
+                        {
+                            geom->resize(geom->size() - 1);
+                            geom->insert(geom->end(), other_geom->rbegin(), other_geom->rend());
+                            changes++;
+                            other = nullptr;
+                        }
+
+                        else if (eq2d(other_geom->back(), geom->front()))
+                        {
+                            other_geom->resize(other_geom->size() - 1);
+                            other_geom->insert(other_geom->end(), geom->begin(), geom->end());
+                            changes++;
+                            feature = nullptr;
+                            break;
+                        }
+
+                        else if (eq2d(other_geom->back(), geom->back()))
+                        {
+                            other_geom->resize(other_geom->size() - 1);
+                            other_geom->insert(other_geom->end(), geom->rbegin(), geom->rend());
+                            changes++;
+                            feature = nullptr;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // remove the onces that were null'd out during connection:
+        FeatureList temp;
+        for (auto& feature : lines)
+            if (feature.valid())
+                temp.push_back(feature);
+        lines.swap(temp);
+
+        // associate all linears to their component points
+        for (auto& feature : lines)
+        {
+            if (feature.valid() && feature->getGeometry()->isLinear())
+            {
+                auto* output = new LineString();
+
+                GeometryIterator iter(feature->getGeometry(), false);
+                iter.forEach([&](Geometry* geom)
+                    {
+                        const int size = geom->size();
+                        for (int i = 0; i < size; ++i)
+                        {
+                            osg::Vec3d point = (*geom)[i];
+
+                            // skip duplicates.
+                            if (i > 0 && !eq2d(point, (*geom)[i - 1], 0.1)) // local data (mercator)
+                            {
+                                PointMap::iterator ptItr = pointMap.find(point);
+                                if (ptItr != pointMap.end())
+                                {
+                                    PointEntry& entry = ptItr->second;
+                                    entry.lineFeatures.emplace_back(feature);
+
+                                    if (!output->empty())
+                                    {
+                                        entry.previous = output->back();
+                                        auto& prev_point = pointMap.find(entry.previous);
+                                        prev_point->second.next = point;
+                                    }
+
+                                    output->push_back(point);
+                                }
+                            }
+                        }
+                    });
+
+                feature->setGeometry(output);
+            }
+        }
+        const SpatialReference* targetSRS = 0L;
+        if (context.getSession()->isMapGeocentric())
+        {
+            targetSRS = context.getSession()->getMapSRS();
+        }
+        else
+        {
+            targetSRS = context.profile()->getSRS()->getGeocentricSRS();
+        }
+
+        for (auto& i : pointMap)
+        {
+            PointEntry& entry = i.second;
+            Feature* pointFeature = entry.pointFeature.get();
+            if (!pointFeature)
+            {
+                Point* geom = new Point;
+                geom->set(i.first);
+                pointFeature = new Feature(geom, entry.lineFeatures.front()->getSRS(), Style(), 0L);
+                input.push_back(pointFeature);
+            }
+
+            for (auto& lineFeature : entry.lineFeatures)
+            {
+                const AttributeTable& attrTable = lineFeature->getAttrs();
+                for (auto& attr_entry : attrTable)
+                {
+                    if (attr_entry.first[0] != '@' && !pointFeature->hasAttr(attr_entry.first))
+                    {
+                        pointFeature->set(attr_entry.first, attr_entry.second);
+                    }
+                }
+            }
+            pointFeature->set("heading", calculateGeometryHeading(i.first, entry.previous, entry.next));
+        }
+
+        // combine all new features for output.
+        input.clear();
+        input.reserve(points.size() + lines.size());
+        input.insert(input.end(), points.begin(), points.end());
+        input.insert(input.end(), lines.begin(), lines.end());
+    }
 
 
-void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation, double slack,
-                  double maxSag,
-                  std::vector<osg::Vec3d>& result, float tessellationSize)
-{
-    // Create a frame centered at p1 with orientation normal to
-    // earth's surface
-    osg::Matrixd FrameP1(orientation);
-    toRow(FrameP1, p1, 3);
-    // p1 in this frame is at origin. Get p2 into the local frame
-    osg::Matrixd FrameP1Inv;
-    FrameP1Inv.invert(FrameP1);
-    osg::Vec3d p2local = p2 * FrameP1Inv;
-    // The math for solving the catenary assumes that the higher point
-    // is to the right on the X axis. Build a frame that reflects
-    // that.
-    //
-    // If it turns out that p1 is higher, then at the end we will need
-    // to generate points in reverse so that the resulting feature
-    // makes sense.
-    bool swapped = false;
-    osg::Vec3d Xaxis;
-    if (p2local.z() < 0.0)
+    void makeCatenary(osg::Vec3d p1, osg::Vec3d p2, const osg::Matrixd& orientation, double slack,
+        double maxSag,
+        std::vector<osg::Vec3d>& result, float tessellationSize)
     {
-        swapped = true;
-        Xaxis = osg::Vec3d(-p2local.x(), -p2local.y(), 0.0);
-    }
-    else
-    {
-        Xaxis = osg::Vec3d(p2local.x(), p2local.y(), 0.0);
-    }
-    // Horizontal distance between points
-    const double d = Xaxis.normalize();
-    osg::Vec3d Yaxis = osg::Vec3d(0.0, 0.0, 1.0) ^ Xaxis;
-    osg::Matrixd FrameCat;
-    toRow(FrameCat, Xaxis, 0);
-    toRow(FrameCat, Yaxis, 1);
-    // Height difference between points; should be positive
-    double h = 0.0;
-    if (swapped)
-    {
-        h = -p2local.z();
-        toRow(FrameCat, p2local, 3);
-    }
-    else
-    {
-        h = p2local.z();
-    }
-    // straight distance between attachment points; obviously a lower limit on the cable length
-    double straightDist = p2local.length();
-    CatenaryFunc func = CatenaryFunc::solveIt(straightDist * slack, d, h);
+        // Create a frame centered at p1 with orientation normal to
+        // earth's surface
+        osg::Matrixd FrameP1(orientation);
+        toRow(FrameP1, p1, 3);
+        // p1 in this frame is at origin. Get p2 into the local frame
+        osg::Matrixd FrameP1Inv;
+        FrameP1Inv.invert(FrameP1);
+        osg::Vec3d p2local = p2 * FrameP1Inv;
+        // The math for solving the catenary assumes that the higher point
+        // is to the right on the X axis. Build a frame that reflects
+        // that.
+        //
+        // If it turns out that p1 is higher, then at the end we will need
+        // to generate points in reverse so that the resulting feature
+        // makes sense.
+        bool swapped = false;
+        osg::Vec3d Xaxis;
+        if (p2local.z() < 0.0)
+        {
+            swapped = true;
+            Xaxis = osg::Vec3d(-p2local.x(), -p2local.y(), 0.0);
+        }
+        else
+        {
+            Xaxis = osg::Vec3d(p2local.x(), p2local.y(), 0.0);
+        }
+        // Horizontal distance between points
+        const double d = Xaxis.normalize();
+        osg::Vec3d Yaxis = osg::Vec3d(0.0, 0.0, 1.0) ^ Xaxis;
+        osg::Matrixd FrameCat;
+        toRow(FrameCat, Xaxis, 0);
+        toRow(FrameCat, Yaxis, 1);
+        // Height difference between points; should be positive
+        double h = 0.0;
+        if (swapped)
+        {
+            h = -p2local.z();
+            toRow(FrameCat, p2local, 3);
+        }
+        else
+        {
+            h = p2local.z();
+        }
+        // straight distance between attachment points; obviously a lower limit on the cable length
+        double straightDist = p2local.length();
+        CatenaryFunc func = CatenaryFunc::solveIt(straightDist * slack, d, h);
 
-    double xMin = -func.x1;
-    double yMin = func(xMin);
-    if (0.0 < xMin && yMin < -maxSag)
-    {
-        // Cable droops too much, so try a more expensive strategy
-        MinCatHeight minimum(d, h, -maxSag);
-        // No downside in choosing a very low lower bound
-        double newGuess = ((slack - 1.0) * .01 + 1.0) * straightDist;
-        // centimeter tolerence is fine
-        double Lmin = solveBisect(minimum, newGuess, straightDist * slack, 0.01, 8);
-        func = CatenaryFunc::solveIt(Lmin, d, h);
+        double xMin = -func.x1;
+        double yMin = func(xMin);
+        if (0.0 < xMin && yMin < -maxSag)
+        {
+            // Cable droops too much, so try a more expensive strategy
+            MinCatHeight minimum(d, h, -maxSag);
+            // No downside in choosing a very low lower bound
+            double newGuess = ((slack - 1.0) * .01 + 1.0) * straightDist;
+            // centimeter tolerence is fine
+            double Lmin = solveBisect(minimum, newGuess, straightDist * slack, 0.01, 8);
+            func = CatenaryFunc::solveIt(Lmin, d, h);
+        }
+        const osg::Vec3d P1(0.0, 0.0, 0.0), P2(d, 0.0, h);
+        double begin, inc;
+        int numSteps = ceil(p2local.length() / tessellationSize);
+        std::vector<osg::Vec3d> cablePts;
+        if (swapped)
+        {
+            inc = -d / numSteps;
+            begin = d + inc;
+            cablePts.push_back(P2);
+        }
+        else
+        {
+            inc = d / numSteps;
+            begin = inc;
+            cablePts.push_back(P1);
+        }
+        double x = begin;
+        for (int i = 1; i <= numSteps; ++i, x += inc)
+        {
+            double z = func(x);
+            cablePts.push_back(osg::Vec3d(x, 0.0, z));
+        }
+        osg::Matrixd cat2world = FrameCat * FrameP1;
+        for (std::vector<osg::Vec3d>::iterator itr = cablePts.begin(), end = cablePts.end();
+            itr != end;
+            ++itr)
+        {
+            *itr = *itr * cat2world;
+        }
+        result.insert(result.end(), cablePts.begin(), cablePts.end());
     }
-    const osg::Vec3d P1(0.0, 0.0, 0.0), P2(d, 0.0, h);
-    double begin, inc;
-    int numSteps = ceil(p2local.length() / tessellationSize);
-    std::vector<osg::Vec3d> cablePts;
-    if (swapped)
-    {
-        inc = -d / numSteps;
-        begin = d + inc;
-        cablePts.push_back(P2);
-    }
-    else
-    {
-        inc = d / numSteps;
-        begin = inc;
-        cablePts.push_back(P1);
-    }
-    double x = begin;
-    for (int i = 1; i <= numSteps; ++i, x += inc)
-    {
-        double z = func(x);
-        cablePts.push_back(osg::Vec3d(x, 0.0, z));
-    }
-    osg::Matrixd cat2world = FrameCat * FrameP1;
-    for (std::vector<osg::Vec3d>::iterator itr = cablePts.begin(), end = cablePts.end();
-         itr != end;
-         ++itr)
-    {
-        *itr = *itr * cat2world;
-    }
-    result.insert(result.end(), cablePts.begin(), cablePts.end());
-}
 
-int chooseAttachment(const osg::Matrixd& towerFrame0, const osg::Matrixd& towerFrame1,
-                     const osg::Vec3d& attachStart, const osg::Vec3d& attachEnd0, const osg::Vec3d& attachEnd1)
-{
-    // Get everything into tower1's local frame
-    osg::Matrixd world2Tower1 = osg::Matrixd::inverse(towerFrame0);
-    osg::Vec3d t2 = osg::Vec3d(towerFrame1(3,0), towerFrame1(3, 1), towerFrame1(3, 2))
-        * world2Tower1;
-    osg::Vec3d end0 = attachEnd0 * towerFrame1 * world2Tower1;
-    osg::Vec3d end1 = attachEnd1 * towerFrame1 * world2Tower1;
-    // Project the line segments into the XY plane.
-    // Segment 2D does just that.
-    Segment2d towers(osg::Vec3d(0.0, 0.0, 0.0), t2);
-    Segment2d line0(attachStart, end0);
-    Segment2d line1(attachStart, end1);
-    osg::Vec2d intersection;
-    // the line that doesn't intersect the towers' centerline is the
-    // right choice.
-    if (!towers.intersect(line0, intersection))
+    int chooseAttachment(
+        const osg::Matrixd& towerFrame0, const osg::Matrixd& towerFrame1,
+        const osg::Vec3d& attachStart, const osg::Vec3d& attachEnd0, const osg::Vec3d& attachEnd1)
     {
+        // Get everything into tower0's local frame
+        osg::Matrixd world2Tower0 = osg::Matrixd::inverse(towerFrame0);
+        osg::Vec3d tower0(0, 0, 0);
+        osg::Vec3d tower1 = osg::Vec3d(towerFrame1(3, 0), towerFrame1(3, 1), towerFrame1(3, 2)) * world2Tower0;
+        osg::Vec3d end0 = attachEnd0 * towerFrame1 * world2Tower0;
+        osg::Vec3d end1 = attachEnd1 * towerFrame1 * world2Tower0;
+
+        // Project the line segments into the XY plane.
+        // Segment 2D does just that.
+        Segment2d tower_to_tower(tower0, tower1);
+        Segment2d line0(attachStart, end0);
+        Segment2d line1(attachStart, end1);
+
+        osg::Vec3d dummy;
+        bool line0_crosses = tower_to_tower.intersect(line0, dummy);
+        bool line1_crosses = tower_to_tower.intersect(line1, dummy);
+
+        if (line0_crosses) return 1;
+        if (line1_crosses) return 0;
+
+        if ((tower1-tower0).length() < 1.0e-6)
+        {
+            // towers are on top of each other; shouldn't happen since we remove duplicates
+            // along the way :(
+            //OE_WARN << LC << "coincident towers..." << std::endl;
+            //return 0;
+        }
+
         return 0;
     }
-    else if (!towers.intersect(line1, intersection))
-    {
-        return 1;
-    }
-    else
-    {
-        // ??? They both suck.
-        return 0;
-    }
-}
 
-osg::Matrixd getLocalToWorld(const osg::Vec3d& geodeticPt,
-                             const SpatialReference* inputSRS,
-                             const SpatialReference* outputSRS)
-{
-    osg::Matrixd result;
-    osg::Vec3d worldPt;
-    ECEF::transformAndGetRotationMatrix(geodeticPt, inputSRS, worldPt,
-                                        outputSRS, result);
-    result.setTrans(worldPt);
-    return result;
-}
+    osg::Matrixd getLocalToWorld(const osg::Vec3d & geodeticPt,
+        const SpatialReference * inputSRS,
+        const SpatialReference * outputSRS)
+    {
+        osg::Matrixd result;
+        osg::Vec3d worldPt;
+        ECEF::transformAndGetRotationMatrix(geodeticPt, inputSRS, worldPt, outputSRS, result);
+        result.setTrans(worldPt);
+        return result;
+    }
 
-namespace
-{
-    bool evalStyle(Feature* f, FilterContext& context, const StringExpression& styleExpr, Style& combinedStyle)
+    bool evalStyle(Feature * f, FilterContext & context, const StringExpression & styleExpr, Style & combinedStyle)
     {
         StyleSheet* sheet = context.getSession()->styles();
         // See if multiple selectors become necessary
@@ -642,7 +741,7 @@ namespace
             if (styleString.length() > 0 && styleString[0] == '{')
             {
                 Config conf("style", styleString);
-                conf.setReferrer(sel. styleExpression().get().uriContext().referrer());
+                conf.setReferrer(sel.styleExpression().get().uriContext().referrer());
                 conf.set("type", "text/css");
                 combinedStyle = Style(conf);
             }
@@ -688,10 +787,10 @@ namespace
         {
             modelSymbol->orientationFromFeature() = true;
         }
-        if (!altitudeSymbol->clamping().isSet() || force)
-        {
-            altitudeSymbol->clamping()  = AltitudeSymbol::CLAMP_TO_TERRAIN;
-        }
+        //if (!altitudeSymbol->clamping().isSet() || force)
+        //{
+        //    altitudeSymbol->clamping()  = AltitudeSymbol::CLAMP_TO_TERRAIN;
+        //}
     }
 
     void setModelStyleDefaults(Style& modelStyle, const std::string& modelName, const std::string& referrer, bool force = true)
@@ -706,11 +805,36 @@ namespace
     }
 }
 
-PowerlineLayer::ModelOptions PowerlineFeatureNodeFactory::evalTowerModel(Feature *f, const FilterContext& cx)
+
+PowerlineFeatureNodeFactory::PowerlineFeatureNodeFactory(const PowerlineLayer::Options& options, StyleSheet* styles)
+    : GeomFeatureNodeFactory(options),
+    //_lineSourceLayer(options.lineSource().externalLayerName().get()),
+    //_point_features(options.point_features().get()),
+    _powerlineOptions(options)
 {
-    if (_powerlineOptions.lineExpr().isSet())
+    //if (options.lineSource().embeddedOptions() != nullptr)
+    //{
+    //    _lineSource = *options.lineSource().embeddedOptions();
+    //}
+
+    if (options.towerModels().empty())
     {
-        StringExpression lineExprCopy(_powerlineOptions.lineExpr().get());
+        OE_WARN << LC << "No tower models defined!" << std::endl;
+        return;
+    }
+
+    _renderData = options.towerModels();
+    _towerExpr = options.towerExpr();
+    _cableStyleExpr = options.cableStyleExpr();
+    _numCablesExpr = options.numCablesExpr();
+}
+
+PowerlineLayer::ModelOptions
+PowerlineFeatureNodeFactory::evalTowerModel(Feature *f, const FilterContext& cx)
+{
+    if (_powerlineOptions.towerExpr().isSet())
+    {
+        StringExpression lineExprCopy(_powerlineOptions.towerExpr().get());
         std::string renderDataString = f->eval(lineExprCopy, &cx);
         if (renderDataString[0] == '<')
         {
@@ -733,8 +857,9 @@ PowerlineLayer::ModelOptions PowerlineFeatureNodeFactory::evalTowerModel(Feature
                 }
             }
             // No model? Shouldn't happen
-            return PowerlineLayer::ModelOptions();
 
+            OE_WARN << LC << "Named tower model \"" << renderDataString << "\" not found!" << std::endl;
+            return {};
         }
     }
     else
@@ -743,18 +868,19 @@ PowerlineLayer::ModelOptions PowerlineFeatureNodeFactory::evalTowerModel(Feature
     }
 }
 
-FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFeatures,
-                                                           FeatureList& towerFeatures, FilterContext& cx,
-                                                           const Query& query,
-                                                           const Style& cableStyle)
-
+FeatureList
+PowerlineFeatureNodeFactory::makeCableFeatures(
+    FeatureList& allPowerFeatures,
+    FeatureList& towerFeatures, FilterContext& cx,
+    const Query& query,
+    const Style& cableStyle)
 {
     FeatureList result;
     const Session* session = cx.getSession();
 
     // the map against which we'll be doing elevation clamping
     osg::ref_ptr<const Map> map = session->getMap();
-    if (!map.valid() || (_renderData[0].attachment_points().empty() && !_lineExpr.isSet()))
+    if (!map.valid() || (_renderData[0].attachment_points().empty() && !_towerExpr.isSet()))
         return result;
 
     const SpatialReference* mapSRS = map->getSRS();
@@ -764,29 +890,18 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
     // SRS. XXX This should be based on the style sheet option
 
     ElevationQuery eq(map.get());
-
-    // Network stuff not really working yet.
-    PowerNetwork linesNetwork;
-    addFeatures(linesNetwork, powerFeatures);
-    if (false)
-    {
-        FeatureList neighbors = findNeighborLineFeatures(cx, query);
-        addFeatures(linesNetwork, neighbors);
-        linesNetwork.buildNetwork();
-    }
     PointMap pointMap;
 
     for(auto& feature : towerFeatures)
     {
         Geometry* geom = feature->getGeometry();
-        for(Geometry::iterator i = geom->begin(); i != geom->end(); ++i)
+        for(auto& pt : *geom)
         {
-            const osg::Vec3d& pt = *i;
             getPoint(pointMap, pt) = PointEntry(feature);
         }
     }
 
-    const SpatialReference* targetSRS = 0L;
+    const SpatialReference* targetSRS = nullptr;
     if (cx.getSession()->isMapGeocentric())
     {
         targetSRS = cx.getSession()->getMapSRS();
@@ -794,24 +909,19 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
     else
     {
         targetSRS = featureSRS->getGeocentricSRS();
-    }
+    }   
 
-    StringExpression lineExprCopy;
-    StringExpression cableExprCopy;
-
-    if (_cableExpr.isSet())
-    {
-        cableExprCopy = _cableExpr.get();
-    }
-
-    for(auto& feature : powerFeatures)
+    for(auto& feature : allPowerFeatures)
     {
         Geometry* geom = feature->getGeometry();
+
         if (geom->isLinear() && geom->size() >= 2)
         {
             const int size = geom->size();
             std::vector<osg::Matrixd> towerMats;
+           
             towerMats.reserve(size);
+
             for (int i = 0; i < size; ++i)
             {
                 double heading = 0.0;
@@ -819,37 +929,49 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                 if (itr != pointMap.end())
                 {
                     heading = itr->second.pointFeature->getDouble("heading", 0.0);
+                    const osg::Vec3d Z(0.0, 0.0, 1.0);
+                    osg::Matrixd headingMat = osg::Matrixd::rotate(osg::DegreesToRadians(heading), Z);
+                    osg::Matrixd geodMat = getLocalToWorld(itr->first, featureSRS.get(), targetSRS);
+                    towerMats.push_back(headingMat * geodMat);
                 }
                 else
                 {
                     OE_NOTICE << LC << "tower not found!\n";
                     break;
                 }
-                const osg::Vec3d Z(0.0, 0.0, 1.0);
-                osg::Matrixd headingMat = osg::Matrixd::rotate(osg::DegreesToRadians(heading), Z);
-                osg::Matrixd geodMat = getLocalToWorld(itr->first, featureSRS.get(), targetSRS);
-                towerMats.push_back(headingMat * geodMat);
             }
+
             PowerlineLayer::ModelOptions featureRenderData = evalTowerModel(feature, cx);
+
             Style localStyle;
-            if (_cableExpr.isSet())
+            if (_cableStyleExpr.isSet())
             {
-                evalStyle(feature, cx, _cableExpr.get(), localStyle);
+                evalStyle(feature, cx, _cableStyleExpr.get(), localStyle);
                 setCableStyleDefaults(localStyle);
             }
-            const Style& styleRef = _cableExpr.isSet() ? localStyle : cableStyle;
-            
+            const Style& styleRef = _cableStyleExpr.isSet() ? localStyle : cableStyle;
+
+            // calculate the number of cables to render:
+            unsigned numCables = 0;
+            if (_numCablesExpr.isSet())
+                numCables = feature->eval(_numCablesExpr.mutable_value(), &cx);
+            else
+                numCables = feature->getInt("cables", featureRenderData.attachment_points().size());
+
             // For various reasons the headings of successive towers can be inconsistant, causing
             // the cables between attachment points to cross each other. Ideally, the points are
             // specified in pairs. If the attachment point being used causes a cable to cross over
             // the center line between towers, then switch to the other attachment point. If the
             // attachment points are not in pairs... awkward...
+
+            unsigned count = 0;
+
             Array::View<osg::Vec3d> attachments(featureRenderData.attachment_points().data(),
                                                 featureRenderData.attachment_points().size() / 2, 2);
 
-            for (int attachRow = 0; attachRow < featureRenderData.attachment_points().size() / 2; ++attachRow)
+            for (int attachRow = 0; attachRow < featureRenderData.attachment_points().size() / 2 && count < numCables; ++attachRow)
             {
-                for (int startingAttachment = 0; startingAttachment < 2; ++startingAttachment)
+                for (int startingAttachment = 0; startingAttachment < 2 && count < numCables; ++startingAttachment, ++count)
                 {
                     // New feature for each cable
                     Feature* newFeature = new Feature(*feature);
@@ -859,9 +981,19 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
                     cablePoints.push_back(attachments(attachRow, currAttachment) * towerMats[0]);
                     for (int i = 1; i < size; ++i)
                     {
+                        // This function attempts to resolve the (rare) issue where lines cross between towers.
+                        // While is does prevent crossing, it also has the side effect of putting all the 
+                        // cables on the same side of the towers often.
                         int next = chooseAttachment(towerMats[i - 1], towerMats[i],
                                                     attachments(attachRow, currAttachment),
                                                     attachments(attachRow, 0), attachments(attachRow, 1));
+
+                        // For now, Just ignore the result and pick the side we think it should be on.
+                        // If we see too many crossed lines we can re-evaluate this.
+                        // The solution may be to orient the towers' headings consistently (e.g., to that 
+                        // attachment 0 is always on the "west" side)
+                        //next = startingAttachment;
+
                         osg::Vec3d worldAttach = attachments(attachRow, next) * towerMats[i];
                         cablePoints.push_back(worldAttach);
                         currAttachment = next;
@@ -901,39 +1033,82 @@ FeatureList PowerlineFeatureNodeFactory::makeCableFeatures(FeatureList& powerFea
     return result;
 }
 
-bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, const Style& style,
-                                                     const FilterContext& context,
-                                                     osg::ref_ptr<osg::Node>& node,
-                                                     const Query& query)
+class PredicateCursor : public FeatureCursor
+{
+public:
+    using Predicate = std::function<bool(Feature*)>;
+
+    PredicateCursor(FeatureCursor* cursor, Predicate predicate)
+        : FeatureCursor(), _cursor(cursor), _accept(predicate)
+    {
+        fetch();
+    }
+
+    bool hasMore() const override {
+        return _next.valid();
+    }
+
+    Feature* nextFeature() override {
+        osg::ref_ptr<Feature> result = _next.get();
+        fetch();
+        return result.release();
+    }
+
+    void fetch() {
+        while (_cursor->hasMore()) {
+            _next = _cursor->nextFeature();
+            if (_accept(_next.get()))
+                return;
+        }
+        _next = nullptr;
+    }
+private:
+    Predicate _accept;
+    osg::ref_ptr<FeatureCursor> _cursor;
+    osg::ref_ptr<Feature> _next;
+};
+
+bool PowerlineFeatureNodeFactory::createOrUpdateNode(
+    FeatureCursor* cursor,
+    const Style& style,
+    const FilterContext& context,
+    osg::ref_ptr<osg::Node>& node,
+    const Query& query)
 {
     FilterContext sharedCX = context;
     FeatureList workingSet; 
     cursor->fill(workingSet);
 
     Style cableStyle;
-    if (!_cableExpr.isSet())
-    {
-        
+
+    if (!_cableStyleExpr.isSet())
+    {        
         if (const Style* sessionCableStyle = context.getSession()->styles()->getStyle("cables"))
+        {
             cableStyle = *sessionCableStyle;
+        }
         else
         {
             // defaults
-            osg::ref_ptr<LineSymbol> lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
+            auto* lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
             lineSymbol->stroke().mutable_value().color() = Color("#6f6f6f");
             lineSymbol->stroke().mutable_value().width() = 1.5f;
             lineSymbol->useGLLines() = true;
         }
-        osg::ref_ptr<LineSymbol> lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
+
+        auto* lineSymbol = cableStyle.getOrCreateSymbol<LineSymbol>();
+
         if (!lineSymbol->stroke()->width().isSet())
         {
             lineSymbol->stroke().mutable_value().width() = .05;
             lineSymbol->stroke().mutable_value().widthUnits() = Units::METERS;
         }
+
         if (!lineSymbol->tessellationSize().isSet())
         {
             lineSymbol->tessellationSize() = Distance(20, Units::METERS);
         }
+
         if (!lineSymbol->useWireLines().isSet())
         {
             lineSymbol->useWireLines() = true;
@@ -946,17 +1121,11 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     // features.
     FeatureList pointSet;
     FilterContext localCX = sharedCX;
-    
-    osgEarth::Util::JoinPointsLinesFilter pointsLinesFilter;
-    pointsLinesFilter.lineSource().setExternalLayerName("lines");
-    pointsLinesFilter.lineSource().setEmbeddedOptions(_lineSource);
-    if (!_point_features)
-    {
-        pointsLinesFilter.createPointFeatures() = true;
-    }
-    localCX = pointsLinesFilter.push(workingSet, sharedCX);
-    Style towerStyle;
 
+    // Get all the data ready.
+    preparePowerFeatures(workingSet, localCX);
+
+    // collect just the point features.
     for(auto& feature : workingSet)
     {
         if (feature->getGeometry()->isPointSet())
@@ -964,6 +1133,15 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
             pointSet.push_back(feature);
         }
     }
+
+    // clamp them to the terrain manually.
+    Style temp_style;
+    auto* alt = temp_style.getOrCreate<AltitudeSymbol>();
+    alt->clamping() = alt->CLAMP_TO_TERRAIN;
+    AltitudeFilter clamper;
+    clamper.setPropertiesFromStyle(temp_style);
+    clamper.push(pointSet, localCX);   
+
 
     osg::ref_ptr<osg::Node> pointsNode;
     osg::ref_ptr<FeatureListCursor> listCursor = new FeatureListCursor(pointSet);
@@ -977,8 +1155,9 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     auto& selectors = sheet->getSelectors();
     bool useSelectorExp = !selectors.empty() && selectors.begin()->second.styleExpression().isSet();
     Style combinedStyle;
+
     // Create the graph for the tower models.
-    if (useSelectorExp || _powerlineOptions.lineExpr().isSet())
+    if (useSelectorExp || _powerlineOptions.towerExpr().isSet())
     {
         // The style is different for each feature, either explicitly
         // due to the style selector, or implicitly from a tower_model
@@ -1035,7 +1214,7 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
                 osg::ref_ptr<Feature> featureRef(f);
                 FeatureList flist = {featureRef};
                 osg::ref_ptr<FeatureListCursor> towerCursor = new FeatureListCursor(flist);
-                // See comment below
+
                 GeomFeatureNodeFactory::createOrUpdateNode(towerCursor.get(), combinedStyle, localCX, towerNode, query);
                 towersNode->addChild(towerNode.get());
             }
@@ -1044,8 +1223,8 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
     else
     {
         PowerlineLayer::ModelOptions modelOptions = _powerlineOptions.towerModels().front();
-        const Style* sessionTowerStyle
-            = context.getSession()->styles()->getStyle("towers", false);
+        const Style* sessionTowerStyle = context.getSession()->styles()->getStyle("towers", false);
+
         if (sessionTowerStyle)
         {
             combinedStyle = *sessionTowerStyle;
@@ -1058,25 +1237,32 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         {
             setModelStyleDefaults(combinedStyle);
         }
+
+        osg::ref_ptr<FeatureCursor> towersInExtentCursor = new PredicateCursor(
+            listCursor.get(),
+            [&](Feature* f) { return f->getExtent().intersects(localCX.extent().value()); });
+
         // This has the side effect of updating the elevations of the point features according to the
         // model style sheet. We rely on this in makeCableFeatures().
-        GeomFeatureNodeFactory::createOrUpdateNode(listCursor.get(), combinedStyle, localCX, pointsNode, query);
+        // FOR THIS REASON we cannot just remove the towers that are outside the working extent
+        // yet. Gotta find a workaround.
+        GeomFeatureNodeFactory::createOrUpdateNode(towersInExtentCursor.get(), combinedStyle, localCX, pointsNode, query);
     }
 
     osg::ref_ptr<osg::Group> results(new osg::Group);
     results->addChild(pointsNode.get());
-    FeatureList cableFeatures =  makeCableFeatures(workingSet, pointSet, localCX, query,
-                                                   cableStyle);
+
+    FeatureList cableFeatures = makeCableFeatures(workingSet, pointSet, localCX, query, cableStyle);
 
     GeometryCompiler compiler;
-    if (_cableExpr.isSet())
+    if (_cableStyleExpr.isSet())
     {
-        for (FeatureList::iterator i = cableFeatures.begin(); i != cableFeatures.end(); ++i)
+        for(auto& feature : cableFeatures)
         {
             Style localStyle;
-            evalStyle(i->get(), localCX, _cableExpr.get(), localStyle);
+            evalStyle(feature.get(), localCX, _cableStyleExpr.get(), localStyle);
             setCableStyleDefaults(localStyle);
-            osg::Node* cable = compiler.compile(i->get(), localStyle, localCX);
+            osg::Node* cable = compiler.compile(feature.get(), localStyle, localCX);
             results->addChild(cable);
         }
     }
@@ -1085,6 +1271,8 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(FeatureCursor* cursor, cons
         osg::Node* cables = compiler.compile(cableFeatures, cableStyle, localCX);
         results->addChild(cables);
     }
+
     node = results;
+
     return true;
 }

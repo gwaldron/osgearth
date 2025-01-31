@@ -62,8 +62,4 @@ add_subdirectory(osgEarth)
 set_property(TARGET osgEarth PROPERTY FOLDER "Core")
 
 # Finally, generate and install the packaging config file (osgEarth-config.cmake)
-osgearth_package_install_config_files(
-    osgEarth
-    ${OSGEARTH_VERSION}
-    ${CMAKE_INSTALL_PREFIX}/include
-    ${CMAKE_INSTALL_PREFIX}/${INSTALL_LIBRARY_FOLDER})
+osgearth_package_install_config_files()

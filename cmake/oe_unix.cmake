@@ -12,8 +12,4 @@ if(UNIX AND NOT ANDROID)
     # for ptheads in linux
     find_package(Threads REQUIRED)
     
-    # add 64 to the lib prefix.
-    set(INSTALL_LIBRARY_FOLDER "lib64")
-    set(INSTALL_PLUGINS_FOLDER "lib64")
-    
 endif(UNIX AND NOT ANDROID)

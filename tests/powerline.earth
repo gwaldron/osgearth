@@ -1,15 +1,22 @@
+
 <map name="power tower test">
 
     <PowerlineModel name="towers" max_range="6000" attenuation_range="1000">
         <features>power-lines</features>
         <filters>
-            <script>feature.properties.power === 'line' || feature.properties.power === 'tower';
+            <script>
+                feature.properties.power === 'line' ||
+                feature.properties.power === 'tower' || 
+                feature.properties.power === 'pole';
             </script>
         </filters>
         <tower_model>
             <uri>../data/power_tower.osgb</uri>
             <attachment_points>
-                LINESTRING(6.400827 -0.031 26.068, -6.3926 -0.039 26.068, 3.981 -0.01 29.88, -3.854 0.39 29.89, 6.385 0.0 21.077, -6.35 -0.01 21.077)
+                LINESTRING(
+                    6.400827 -0.031 26.068, -6.3926 -0.039 26.068,
+                    3.981 -0.01 29.88, -3.854 0.39 29.89,
+                    6.385 0.0 21.077, -6.35 -0.01 21.077)
             </attachment_points>
             <max_sag>5.0</max_sag>
         </tower_model>
@@ -23,7 +30,7 @@
         </styles>
     </PowerlineModel>
     
-    <TiledFeatureModel name="power schematics" pickable="true" open="false">
+    <TiledFeatureModel name="schematics" pickable="true" open="false">
         <features>power-lines</features>
         <styles>
             <style type="text/css">
@@ -41,6 +48,21 @@
                     point-fill: #00ff00;
                     point-size: 20px;
                     point-smooth: true;
+                }
+                poles {
+                    select: feature.properties.power === 'pole';
+                    altitude-clamping: terrain;
+                    altitude-offset: 10;
+                    point-fill: #00ffff;
+                    point-size: 15px;
+                    point-smooth: true;
+                }
+                minor_lines {
+                    select: feature.properties.power === 'minor_line';
+                    altitude-clamping: terrain;
+                    altitude-offset: 8;
+                    stroke: #007f7f;
+                    stroke-width: 2px;
                 }
             </style>
         </styles>
@@ -61,6 +83,42 @@
     </XYZFeatures>
 
     <viewpoints time="0">
+        <viewpoint>
+            <heading>-0.585078</heading>
+            <pitch>-89.8521</pitch>
+            <range>378.104m</range>
+            <long>-83.16859651279468</long>
+            <lat>42.22142582488576</lat>
+            <height>140.7135450458154</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint>
+            <heading>3.04123</heading>
+            <pitch>-89.8457</pitch>
+            <range>1680.92m</range>
+            <long>-117.3095814936931</long>
+            <lat>33.14499248796791</lat>
+            <height>-26.44459049869329</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint>
+            <heading>-4.02148</heading>
+            <pitch>-36.2144</pitch>
+            <range>1687.27m</range>
+            <long>-117.3085710443049</long>
+            <lat>33.14211955140727</lat>
+            <height>-30.83710746653378</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint name="Missing poles.">
+            <heading>10.2442</heading>
+            <pitch>-49.7483</pitch>
+            <range>1003.82m</range>
+            <long>-117.3298333666648</long>
+            <lat>33.20579918911835</lat>
+            <height>10.41661196015775</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
         <viewpoint name="Sion mystery lines">
             <heading>72.5484</heading>
             <pitch>-14.5443</pitch>

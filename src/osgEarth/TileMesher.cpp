@@ -455,7 +455,7 @@ TileMesher::createMeshWithConstraints(
     }
 
     // keep it real
-    int max_num_triangles = mesh.triangles.size() * 100;
+    int max_num_triangles = mesh.triangles.size() * 1024;
     
     bool have_any_removal_requests = false;
 

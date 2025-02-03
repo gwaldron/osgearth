@@ -125,9 +125,14 @@ namespace osgEarth
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ComparisonOperator>());
                         }
 
-                        if (ImGui::MenuItem("Clamp Points"))
+                        if (ImGui::MenuItem("Clamp Features"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ClampPointsOperation>());
+                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ClampFeaturesOperation>());
+                        }
+
+                        if (ImGui::MenuItem("Offset Features"))
+                        {
+                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<OffsetFeaturesOperation>());
                         }
 
                         if (ImGui::MenuItem("Filter Features"))
@@ -182,6 +187,40 @@ namespace osgEarth
                                 for (auto const& name : f.result())
                                 {
                                     _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<LoadImageOperation>(name));
+                                }
+                            }
+                        }
+#endif
+
+#ifdef HAS_PFD                                
+                        if (ImGui::MenuItem("Load Node"))
+                        {
+                            auto f = pfd::open_file("Node", pfd::path::home(),
+                                { "All Files", "*" },
+                                pfd::opt::multiselect);
+
+                            if (f.result().size() > 0)
+                            {
+                                for (auto const& name : f.result())
+                                {
+                                    _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<LoadNodeOperation>(name));
+                                }
+                            }
+                        }
+#endif
+
+#ifdef HAS_PFD                                
+                        if (ImGui::MenuItem("Load Features"))
+                        {
+                            auto f = pfd::open_file("Features", pfd::path::home(),
+                                { "All Files", "*" },
+                                pfd::opt::multiselect);
+
+                            if (f.result().size() > 0)
+                            {
+                                for (auto const& name : f.result())
+                                {
+                                    _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<LoadFeaturesOperation>(name));
                                 }
                             }
                         }

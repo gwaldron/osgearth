@@ -25,6 +25,7 @@
 #include <osgEarth/ImageLayer>
 #include <osgEarth/Feature>
 #include <osgEarth/FeatureSource>
+#include <osgEarth/OGRFeatureSource>
 #include <osgEarth/Random>
 #include <osgEarth/AnnotationUtils>
 #include <osgEarth/LineDrawable>
@@ -535,6 +536,62 @@ namespace osgEarth
             std::string _filename;
 
             osg::ref_ptr< osg::Node > _loaded;
+            std::mutex _mutex;
+        };
+
+        class OSGEARTHPROCEDURAL_EXPORT LoadFeaturesOperation : public NodeGraphOperation
+        {
+        public:
+            LoadFeaturesOperation()
+            {
+                _name = "Load Features";
+                addOutputAttribute("Features", NodeAttribute::FEATURES);
+            }
+
+            LoadFeaturesOperation(const std::string& filename)
+            {
+                _name = filename;
+                _filename = filename;
+                addOutputAttribute("Features", NodeAttribute::FEATURES);
+            }
+
+            virtual void execute(const NodeGraphContext& context) override
+            {
+                std::lock_guard<std::mutex> lk(_mutex);
+                if (_features.empty())
+                {
+                    osg::ref_ptr<OGRFeatureSource> input = new OGRFeatureSource();
+                    input->setURL(_filename);
+                    if (input->open().isError())
+                    {
+                        OE_NOTICE << "Failed to open " << _filename << " " << input->getStatus().message() << std::endl;
+                        return;
+                    }
+
+                    osg::ref_ptr<FeatureCursor> cursor = input->createFeatureCursor();
+                    if (cursor.valid())
+                    {
+                        FeatureList features;
+                        cursor->fill(features);
+                        _features = features;
+                    }
+                }
+
+                // Clone the features so that future Operations can modify them without affecting the original
+                FeatureList clone;
+                for (auto& f : _features)
+                {
+                    clone.push_back(new Feature(*f));
+                }
+                set_output("Features", clone);
+                _ready = true;
+            }
+
+            std::string getFilename() const { return _filename; }
+            void setFilename(const std::string& filename) { _filename = filename; }
+
+            std::string _filename;
+            FeatureList _features;
             std::mutex _mutex;
         };
 
@@ -1334,20 +1391,20 @@ namespace osgEarth
 
 
 
-        class OSGEARTHPROCEDURAL_EXPORT ClampPointsOperation : public NodeGraphOperation
+        class OSGEARTHPROCEDURAL_EXPORT ClampFeaturesOperation : public NodeGraphOperation
         {
         public:
-            ClampPointsOperation()
+            ClampFeaturesOperation()
             {
-                _name = "Clamp Points";
+                _name = "Clamp Features";
 
-                addInputAttribute("Points", NodeAttribute::FEATURES);
-                addOutputAttribute("Points", NodeAttribute::FEATURES);
+                addInputAttribute("Features", NodeAttribute::FEATURES);
+                addOutputAttribute("Features", NodeAttribute::FEATURES);
             }
 
             virtual void execute(const NodeGraphContext& context) override
             {
-                auto points = get_input("Points");
+                auto points = get_input("Features");
                 if (points)
                 {
                     osgEarth::Util::ElevationQuery eq(context.map);
@@ -1371,9 +1428,48 @@ namespace osgEarth
                         }
                     }
                     // These are modified in place, this is faster but is destructive to the features from the input
-                    set_output("Points", points->featuresValue);
+                    set_output("Features", points->featuresValue);
                 }
             }           
+        };
+
+        class OSGEARTHPROCEDURAL_EXPORT OffsetFeaturesOperation : public NodeGraphOperation
+        {
+        public:
+            OffsetFeaturesOperation()
+            {
+                _name = "Offset Features";
+
+                addInputAttribute("Features", NodeAttribute::FEATURES);
+                addInputAttribute("Offset", NodeAttribute::FLOAT);
+                addOutputAttribute("Features", NodeAttribute::FEATURES);
+            }
+
+            virtual void execute(const NodeGraphContext& context) override
+            {
+                auto points = get_input("Features");
+                auto offset = get_input("Offset");
+                if (points && offset)
+                {                    
+                    for (auto& f : points->featuresValue)
+                    {
+                        GeometryIterator itr(f->getGeometry());
+                        while (itr.hasMore())
+                        {
+                            Geometry* g = itr.next();
+                            for (Geometry::iterator v = g->begin(); v != g->end(); ++v)
+                            {
+                                double x = v->x();
+                                double y = v->y();
+                                double z = v->z();                                
+                                v->z() = z + offset->floatValue;
+                            }
+                        }
+                    }
+                    // These are modified in place, this is faster but is destructive to the features from the input
+                    set_output("Features", points->featuresValue);
+                }
+            }
         };
 
 
@@ -1682,105 +1778,12 @@ namespace osgEarth
                     line->stroke()->color() = primaryColor;
                     line->stroke()->width() = lineWidth;
 
-                    auto* alt = style.getOrCreate<AltitudeSymbol>();
-                    alt->clamping() = alt->CLAMP_TO_TERRAIN;
-
                     auto* node = new FeatureNode(lines->featuresValue, style);
 
                     set_output("Node", node);
                     _ready = true;
                     return;
-                }
-
-                if (lines)
-                {
-                    osg::Matrixd w2l;
-                    context.tileKey.getExtent().getCentroid().createWorldToLocal(w2l);
-
-                    osg::ref_ptr< LineGroup > result = new LineGroup;
-
-                    unsigned int index = 0;
-                    // We know the tile is already going to be localized so don't do it twice.
-                    for (auto& f : lines->featuresValue)
-                    {
-                        GeometryIterator itr(f->getGeometry());
-                        while (itr.hasMore())
-                        {
-                            Geometry* part = itr.next();
-                            // Skip invalid line
-                            if (part->size() < 2)
-                            {
-                                continue;
-                            }
-
-                            // if the underlying geometry is a ring (or a polygon), use a line loop; otherwise
-                            // use a line strip.
-                            bool isRing = (dynamic_cast<Ring*>(part) != 0L);
-
-                            // construct a drawable for the lines
-                            osg::ref_ptr< LineDrawable > drawable = new LineDrawable(isRing ? GL_LINE_LOOP : GL_LINE_STRIP);
-                            drawable->setUseGPU(false);
-                            float lineWidth = 1.0f;
-
-                            if (width)
-                            {
-                                // They provided a width per feature
-                                if (width->floatValues.size() == lines->featuresValue.size())
-                                {
-                                    lineWidth = width->floatValues[index];
-                                }
-                                // They provided one width for the whole set
-                                else if (width->floatValue > 0.0)
-                                {
-                                    lineWidth = width->floatValue;
-                                }
-                            }
-
-                            osg::Vec4f primaryColor = osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f);
-                            if (color && !color->vectorValue.empty())
-                            {
-                                if (color->vectorValue.size() == lines->featuresValue.size())
-                                {
-                                    primaryColor = color->vectorValue[index];
-                                }
-                                else
-                                {
-                                    primaryColor = color->vectorValue[0];
-                                }
-                            }
-
-                            unsigned int ptIndex = 0;
-                            for (Geometry::const_iterator v = part->begin(); v != part->end(); ++v)
-                            {
-                                double x = v->x();
-                                double y = v->y();
-                                double z = v->z();
-
-                                GeoPoint pt(f->getSRS(), x, y, z);
-                                pt.transformInPlace(SpatialReference::create("wgs84"));
-                                osg::Vec3d world;
-                                pt.toWorld(world);
-
-                                osg::Vec3d local = world * w2l;
-                                drawable->pushVertex(local);
-                                ptIndex++;
-                            }
-                            drawable->setColor(primaryColor);
-                            drawable->setLineWidth(lineWidth);
-                            drawable->finish();
-                            result->addChild(drawable);
-                        }
-                        ++index;
-                    }
-
-                    if (result.valid())
-                    {
-                        result->optimize();
-                    }
-
-                    set_output("Node", result.get());
-                    _ready = true;
-                }
+                }                
             }
         };
 

@@ -2,6 +2,7 @@
     <XYZElevation name="MapZen global elevation (S3)">
         <url>https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png</url>
         <elevation_encoding>terrarium</elevation_encoding>
+        <max_level>13</max_level>
         <stitch_edges>true</stitch_edges>
         <vdatum>egm96</vdatum>
     </XYZElevation>

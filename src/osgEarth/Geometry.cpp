@@ -758,7 +758,7 @@ void Geometry::removeDuplicates()
         osg::Vec3d v = front();
         for (Geometry::iterator itr = begin(); itr != end(); )
         {
-            if (itr != begin() && v == *itr)
+            if (itr != begin() && equivalent(v.x(), itr->x()) && equivalent(v.y(), itr->y()))
             {
                 itr = erase(itr);
             }

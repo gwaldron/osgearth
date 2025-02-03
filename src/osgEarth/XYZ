@@ -62,41 +62,6 @@ namespace osgEarth { namespace XYZ
         std::string::size_type _rotateStart, _rotateEnd;
         mutable std::atomic_int _rotate_iter;
     };
-
-    // Internal serialization options
-    class OSGEARTH_EXPORT XYZImageLayerOptions : public ImageLayer::Options
-    {
-    public:
-        META_LayerOptions(osgEarth, XYZImageLayerOptions, ImageLayer::Options);
-        OE_OPTION(URI, url);
-        OE_OPTION(bool, invertY, false);
-        OE_OPTION(std::string, format, {});
-        OE_OPTION(unsigned, minLevel, 0);
-        OE_OPTION(unsigned, maxLevel, 19);
-        static Config getMetadata();
-        virtual Config getConfig() const;
-    private:
-        void fromConfig(const Config& conf);
-    };
-
-    // Internal serialization options
-    class OSGEARTH_EXPORT XYZElevationLayerOptions : public ElevationLayer::Options
-    {
-    public:
-        META_LayerOptions(osgEarth, XYZElevationLayerOptions, ElevationLayer::Options);
-        OE_OPTION(URI, url);
-        OE_OPTION(bool, invertY, false);
-        OE_OPTION(std::string, format, {});
-        OE_OPTION(unsigned, minLevel, 0);
-        OE_OPTION(unsigned, maxLevel, 19);
-        OE_OPTION(std::string, elevationEncoding, {});
-        OE_OPTION(bool, stitchEdges, false);
-        OE_OPTION(RasterInterpolation, interpolation, INTERP_BILINEAR);
-        static Config getMetadata();
-        virtual Config getConfig() const;
-    private:
-        void fromConfig(const Config& conf);
-    };
 } }
 
 
@@ -125,8 +90,20 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT XYZImageLayer : public ImageLayer
     {
-    public: // serialization
-        typedef XYZ::XYZImageLayerOptions Options;
+    public:
+        class OSGEARTH_EXPORT Options : public ImageLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ImageLayer::Options);
+            OE_OPTION(URI, url);
+            OE_OPTION(bool, invertY, false);
+            OE_OPTION(std::string, format, {});
+            OE_OPTION(unsigned, minLevel, 0);
+            OE_OPTION(unsigned, maxLevel, 10);
+            Config getConfig() const override;
+        private:
+            void fromConfig(const Config& conf);
+        };
 
     public:
         META_Layer(osgEarth, XYZImageLayer, Options, ImageLayer, XYZImage);
@@ -176,7 +153,23 @@ namespace osgEarth
     class OSGEARTH_EXPORT XYZElevationLayer : public ElevationLayer
     {
     public:
-        using Options = XYZ::XYZElevationLayerOptions;
+        // Internal serialization options
+        class OSGEARTH_EXPORT Options : public ElevationLayer::Options
+        {
+        public:
+            META_LayerOptions(osgEarth, Options, ElevationLayer::Options);
+            OE_OPTION(URI, url);
+            OE_OPTION(bool, invertY, false);
+            OE_OPTION(std::string, format, {});
+            OE_OPTION(unsigned, minLevel, 0);
+            OE_OPTION(unsigned, maxLevel, 10);
+            OE_OPTION(std::string, elevationEncoding, {});
+            OE_OPTION(bool, stitchEdges, false);
+            OE_OPTION(RasterInterpolation, interpolation, INTERP_BILINEAR);
+            Config getConfig() const override;
+        private:
+            void fromConfig(const Config& conf);
+        };
 
     public:
         META_Layer(osgEarth, XYZElevationLayer, Options, ElevationLayer, XYZElevation);

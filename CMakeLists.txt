@@ -24,7 +24,7 @@ set(OSGEARTH_PATCH_VERSION 1)
 set(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
 
 # Increment this each time the ABI changes
-set(OSGEARTH_SOVERSION 165)
+set(OSGEARTH_SOVERSION 167)
 
 # Require C++14
 set(CMAKE_CXX_STANDARD 14)
@@ -47,15 +47,13 @@ include_directories(${OSGEARTH_BUILDTIME_INCLUDE_DIR})
 
 # Third-party sources included in the reposotory
 set(OSGEARTH_EMBEDDED_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/src/third_party)
-    
-# Platform-specific settings ............................................
 
-# Default installation folders. The platform-specific includes will
-# override these values as necessary.
-set(INSTALL_RUNTIME_FOLDER "bin${OSGEARTH_INSTALL_FOLDER_SUFFIX}")  # executables
-set(INSTALL_LIBRARY_FOLDER "bin${OSGEARTH_INSTALL_FOLDER_SUFFIX}")  # .dll/.so
-set(INSTALL_ARCHIVE_FOLDER "lib${OSGEARTH_INSTALL_FOLDER_SUFFIX}")  # .lib/.a
-set(INSTALL_PLUGINS_FOLDER "bin${OSGEARTH_INSTALL_FOLDER_SUFFIX}")  # parent folder of OSG plugins folder
+include(GNUInstallDirs)
+set(OSGEARTH_INSTALL_PLUGINSDIR "${CMAKE_INSTALL_LIBDIR}" CACHE STRING "Parent folder of OSG plugins folder")
+set(OSGEARTH_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/osgearth" CACHE STRING "osgEarth CMake package install directory")
+set(OSGEARTH_INSTALL_DATADIR "${CMAKE_INSTALL_DATADIR}/osgearth" CACHE STRING "osgEarth data directory")
+
+# Platform-specific settings ............................................
 
 include(oe_ios)
 include(oe_osx)

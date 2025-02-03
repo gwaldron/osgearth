@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHSYMBOLOGY_ALTITUDE_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_ALTITUDE_SYMBOL_H 1
+#pragma once
 
 #include <osgEarth/Symbol>
 #include <osgEarth/Expression>
@@ -76,11 +74,14 @@ namespace osgEarth
          */
         enum Binding
         {
-            /** Clamp every vertex independently */
+            //! Clamp every vertex independently
             BINDING_VERTEX,
 
-            /** Clamp to the centroid of the entire geometry */
-            BINDING_CENTROID
+            //! Clamp to the centroid of the entire geometry
+            BINDING_CENTROID,
+            
+            //! Clamp each endpoint of a linestring and interpolate the rest
+            BINDING_ENDPOINT
         };
 
     public:
@@ -116,5 +117,3 @@ namespace osgEarth
         virtual ~AltitudeSymbol() { }
     };
 } // namespace osgEarth
-
-#endif // OSGEARTH_SYMBOLOGY_SYMBOL_H

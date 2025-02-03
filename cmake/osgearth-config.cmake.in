@@ -12,7 +12,7 @@
 #    osgEarth_INCLUDE_DIR : include root
 #    osgEarth_SHARE_DIR : location of share folder containing cmake files and external resources
 #
-cmake_minimum_required(VERSION 3.10.0)
+cmake_minimum_required(VERSION 3.11.0)
 
 @PACKAGE_INIT@
 
@@ -25,9 +25,8 @@ if(NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_EXTENSIONS OFF)
 endif()
 
-set(osgEarth_INCLUDE_DIR "${PACKAGE_PREFIX_DIR}/include")
-set(osgEarth_SHARE_DIR "${PACKAGE_PREFIX_DIR}/share/osgEarth")
-set_and_check(osgEarth_BUILD_DIR "${PACKAGE_PREFIX_DIR}")
+set_and_check(osgEarth_INCLUDE_DIR "@PACKAGE_INCLUDE_INSTALL_DIR@")
+set(osgEarth_SHARE_DIR "@PACKAGE_OSGEARTH_INSTALL_DATADIR@")
 
 # always depend on the public-facing OSG libraries
 include(CMakeFindDependencyMacro)
@@ -37,6 +36,9 @@ find_dependency(OpenSceneGraph REQUIRED COMPONENTS osg osgDB osgGA osgUtil osgVi
 foreach(MY_DEPENDENCY @OSGEARTH_PUBLIC_DEPENDENCIES@)
     find_dependency(${MY_DEPENDENCY} REQUIRED)
 endforeach()
+if(UNIX)
+    find_dependency(Threads REQUIRED)
+endif()
 
 # include the target for each library in OSGEARTH_COMPONENTS:
 foreach(MY_COMPONENT @OSGEARTH_COMPONENTS@)

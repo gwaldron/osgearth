@@ -135,7 +135,7 @@ ProceduralTiledModelLayer::createTileImplementation(const TileKey& key, Progress
         auto centroid = key.getExtent().getCentroid();
         auto centroidMap = centroid.transform(_map->getSRS());
         centroidMap.createLocalToWorld(l2w);
-        mt->setMatrix(l2w);
+//        mt->setMatrix(l2w);
         mt->_nodeGraph = _nodeGraph;
         mt->build();
         const_cast<ProceduralTiledModelLayer*>(this)->registerNode(mt);

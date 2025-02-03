@@ -42,8 +42,7 @@ namespace osgEarth
         private:
             osg::observer_ptr< MapNode > _mapNode;
             osg::observer_ptr< ProceduralTiledModelLayer > _proceduralModelLayer;
-
-            bool _autoUpdate = true;
+            bool _autoUpdate = false;
 
         public:
             NodeGraphGUI() : ImGuiPanel("NodeGraph")
@@ -136,6 +135,11 @@ namespace osgEarth
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FilterFeaturesOperation>());
                         }
 
+                        if (ImGui::MenuItem("Select Features"))
+                        {
+                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<SelectFeaturesOperation>());
+                        }
+
                         if (ImGui::MenuItem("Feature Ouptut"))
                         {
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FeatureOutputOperation>());
@@ -159,6 +163,11 @@ namespace osgEarth
                         if (ImGui::MenuItem("Image From Layer"))
                         {
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ImageFromLayerOperation>());
+                        }
+
+                        if (ImGui::MenuItem("Get Features"))
+                        {
+                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<GetFeaturesOperation>());
                         }
 
 #ifdef HAS_PFD                                
@@ -196,7 +205,7 @@ namespace osgEarth
 
             void DrawToolbar()
             {
-                if (ImGui::Checkbox("Auto Update", &_autoUpdate))
+                if (ImGui::Checkbox("Auto Update | ", &_autoUpdate))
                 {
                     // Go ahead and do an update if we are turning on auto update
                     if (_autoUpdate)
@@ -204,14 +213,12 @@ namespace osgEarth
                         _proceduralModelLayer->dirtyNodeGraph();
                     }
                 }
+
                 // Show an Update button to manually refresh the node graph if auto update is off.
-                if (!_autoUpdate)
+                ImGui::SameLine();
+                if (ImGui::Button("Update"))
                 {
-                    ImGui::SameLine();
-                    if (ImGui::Button("Update"))
-                    {
-                        _proceduralModelLayer->dirtyNodeGraph();
-                    }
+                    _proceduralModelLayer->dirtyNodeGraph();
                 }
             }
 
@@ -251,7 +258,7 @@ namespace osgEarth
                             ImNodes::BeginNode(o->getId());
                             ImNodes::BeginNodeTitleBar();
                             ImGui::TextUnformatted(o->getName().c_str());
-                            ImNodes::EndNodeTitleBar();     
+                            ImNodes::EndNodeTitleBar();
 
                             FloatValue* floatValue = dynamic_cast<FloatValue*>(o.get());
                             if (floatValue)
@@ -332,6 +339,36 @@ namespace osgEarth
                                 ImGui::PopItemWidth();
                             }
 
+                            if (auto* getFeatures = dynamic_cast<GetFeaturesOperation*>(o.get()))
+                            {
+                                ImGui::PushItemWidth(300);
+
+                                std::vector<osg::ref_ptr<FeatureSource>> layers;
+                                _mapNode->getMap()->getLayers<FeatureSource>(layers);
+                                std::vector<const char*> layer_names;
+                                for(auto& layer : layers)
+                                    layer_names.emplace_back(layer->getName().c_str());
+                                if (layer_names.size() > 0)
+                                {
+                                    static int current_item = 0;
+
+                                    if (getFeatures->getLayerName().empty())
+                                        getFeatures->setLayerName(layer_names[current_item]);
+
+                                    if (ImGui::Combo("Layer", &current_item, layer_names.data(), layer_names.size()))
+                                    {
+                                        getFeatures->setLayerName(layer_names[current_item]);
+                                        updateNodeGraph();
+                                    }
+                                }
+                                else
+                                {
+                                    ImGui::TextColored(ImVec4(1,0,0,1), "No feature layers in map");
+                                }
+
+                                ImGui::PopItemWidth();
+                            }
+
                             JoinOperation* join = dynamic_cast<JoinOperation*>(o.get());
                             if (join)
                             {
@@ -352,7 +389,7 @@ namespace osgEarth
                             if (simplifyOp)
                             {
                                 ImGui::PushItemWidth(100.0f);
-                                
+
                                 bool dirty = false;
                                 float sampleRatio = simplifyOp->getSampleRatio();
                                 if (ImGui::SliderFloat("Sample Ratio", &sampleRatio, 0.1, 1.0f))
@@ -360,7 +397,7 @@ namespace osgEarth
                                     simplifyOp->setSampleRatio(sampleRatio);
                                     dirty = true;
                                 }
-                                
+
                                 float maximumError = simplifyOp->getMaximumError();
                                 if (ImGui::InputFloat("Maximum Error", &maximumError))
                                 {
@@ -379,7 +416,7 @@ namespace osgEarth
                                 {
                                     updateNodeGraph();
                                 }
-                                
+
                                 ImGui::PopItemWidth();
                             }
 
@@ -394,7 +431,7 @@ namespace osgEarth
                                 osg::Quat rotation, so;
 
                                 transformOp->getTransform().decompose(translation, rotation, scale, so);
-                                
+
                                 //if (ImGui::DragScalarN("Translation", ImGuiDataType_Double, translate._v, 3))
                                 if (ImGui::InputScalarN("Translation", ImGuiDataType_Double, translation._v, 3))
                                 {
@@ -469,7 +506,7 @@ namespace osgEarth
                                 ComparisonOperator::Comparison c = comparisonOperator->getComparison();
                                 ImGui::PushItemWidth(100.0f);
 
-                                const char* items[] = { ">", ">=", "<", "<=", "==", "!="};
+                                const char* items[] = { ">", ">=", "<", "<=", "==", "!=" };
                                 int item_current = c;
                                 if (ImGui::Combo("Comparison", &item_current, items, IM_ARRAYSIZE(items)))
                                 {
@@ -514,7 +551,7 @@ namespace osgEarth
                                     randomValuePerFeature->setMinValue(range[0]);
                                     randomValuePerFeature->setMaxValue(range[1]);
                                     updateNodeGraph();
-                                }                               
+                                }
                                 ImGui::PopItemWidth();
                             }
 
@@ -535,8 +572,8 @@ namespace osgEarth
                             FilterFeaturesOperation* filterFeatures = dynamic_cast<FilterFeaturesOperation*>(o.get());
                             if (filterFeatures)
                             {
-                                ImGui::PushItemWidth(100.0f);
-                                std::string attribute = filterFeatures->getAttribute();                                
+                                ImGui::PushItemWidth(200);
+                                std::string attribute = filterFeatures->getAttribute();
                                 static char attributeChar[1024];
                                 strcpy(attributeChar, attribute.c_str());
                                 if (ImGui::InputText("Attribute", attributeChar, IM_ARRAYSIZE(attributeChar)))
@@ -553,10 +590,23 @@ namespace osgEarth
                                     filterFeatures->setValue(std::string(valueChar));
                                     updateNodeGraph();
                                 }
-                                ImGui::PopItemWidth();                                                              
+                                ImGui::PopItemWidth();
                             }
 
-                            
+                            if (auto* op = dynamic_cast<SelectFeaturesOperation*>(o.get()))
+                            {
+                                ImGui::PushItemWidth(600);
+                                auto code = op->_expression;
+
+                                ImGui::Text("Javascript expression:");
+                                if (ImGuiEx::InputTextMultiline("##select_features", &code, ImVec2(600, 200)))
+                                {
+                                    op->_expression = code;
+                                    //updateNodeGraph(); // Force the user to click update
+                                }
+
+                                ImGui::PopItemWidth();
+                            }
 
                             for (auto& attr : o->getInputAttributes())
                             {

@@ -28,6 +28,8 @@
 #include <osgEarth/Random>
 #include <osgEarth/AnnotationUtils>
 #include <osgEarth/LineDrawable>
+#include <osgEarth/FeatureNode>
+#include <osgEarth/ScriptEngine>
 #include <osg/MatrixTransform>
 #include <osgUtil/Simplifier>
 #include <osgDB/ReadFile>
@@ -963,6 +965,68 @@ namespace osgEarth
         };
 
 
+        class OSGEARTHPROCEDURAL_EXPORT SelectFeaturesOperation : public NodeGraphOperation
+        {
+        public:
+            SelectFeaturesOperation()
+            {
+                _name = "Select Features";
+
+                addInputAttribute("Features", NodeAttribute::FEATURES);
+
+                addOutputAttribute("Passed", NodeAttribute::FEATURES);
+                addOutputAttribute("Failed", NodeAttribute::FEATURES);
+            }
+
+            void execute(const NodeGraphContext& context) override
+            {
+                auto in = get_input("Features");
+
+                if (in && in->featuresValue.size() > 0)
+                {
+                    FeatureList passed, failed;
+
+                    osg::ref_ptr<ScriptEngine> engine = ScriptEngineFactory::create("javascript");
+                    if (engine.valid())
+                    {
+                        osg::ref_ptr<Script> script = new Script(_expression, "javascript");
+
+                        for (auto& f : in->featuresValue)
+                        {
+                            auto result = engine->run(script.get(), f.get());
+                            bool keep = (result.success() && result.asBool() == true);
+
+                            if (keep)
+                            {
+                                passed.push_back(f.get());
+                            }
+                            else
+                            {
+                                failed.push_back(f.get());
+                            }
+                        }
+                    }
+
+                    set_output("Passed", passed);
+                    set_output("Failed", failed);
+                    _ready = true;
+                }
+            }
+
+            const std::string& getExpression() const
+            {
+                return _expression;
+            }
+
+            void setExpression(const std::string& value)
+            {
+                _expression = value;
+            }
+
+            std::string _expression = "true;";
+        };
+
+
         class OSGEARTHPROCEDURAL_EXPORT PolygonToPointsOperation : public NodeGraphOperation
         {
         public:
@@ -1597,6 +1661,36 @@ namespace osgEarth
                 auto lines = get_input("Features");
                 auto width = get_input("Width");
                 auto color = get_input("Color");
+
+                if (lines)
+                {
+                    float lineWidth = 1.0f;
+
+                    if (width)
+                    {
+                        lineWidth = width->floatValue;
+                    }
+
+                    osg::Vec4f primaryColor = osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f);
+                    if (color && !color->vectorValue.empty())
+                    {
+                        primaryColor = color->vectorValue[0];
+                    }
+
+                    Style style;
+                    auto* line = style.getOrCreate<LineSymbol>();
+                    line->stroke()->color() = primaryColor;
+                    line->stroke()->width() = lineWidth;
+
+                    auto* alt = style.getOrCreate<AltitudeSymbol>();
+                    alt->clamping() = alt->CLAMP_TO_TERRAIN;
+
+                    auto* node = new FeatureNode(lines->featuresValue, style);
+
+                    set_output("Node", node);
+                    _ready = true;
+                    return;
+                }
 
                 if (lines)
                 {

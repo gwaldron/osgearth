@@ -170,7 +170,7 @@ macro(add_osgearth_library)
     cmake_parse_arguments(MY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
     set(INSTALL_INCLUDE_FOLDER ${CMAKE_INSTALL_INCLUDEDIR}/${MY_TARGET})
-    
+
     set(ALL_HEADERS ${MY_HEADERS} ${MY_IMGUI_HEADERS} ${MY_PUBLIC_HEADERS})
     include_directories(${MY_INCLUDE_DIRECTORIES})        
 
@@ -179,11 +179,11 @@ macro(add_osgearth_library)
     source_group("Headers" FILES ${ALL_HEADERS})
     source_group("Shaders" FILES ${MY_SHADERS} )
     source_group("Templates" FILES ${MY_TEMPLATES} )
-    
+
     if(NOT MY_STATIC)
         set(MY_STATIC ${OSGEARTH_DYNAMIC_OR_STATIC})
     endif()
-    
+
     # create the library.
     add_library(
         ${MY_TARGET}
@@ -192,8 +192,6 @@ macro(add_osgearth_library)
         ${MY_SOURCES}
         ${MY_SHADERS}
         ${MY_TEMPLATES} )
-        
-    include_directories(${MY_INCLUDE_DIRECTORIES})
 
     # Link:
     if(NOT "${MY_TARGET}" STREQUAL "osgEarth")
@@ -218,7 +216,8 @@ macro(add_osgearth_library)
     # library install and target exports for the cmake config packaging.
     install(
         TARGETS ${MY_TARGET}
-        EXPORT ${MY_TARGET}Targets)
+        EXPORT ${MY_TARGET}Targets
+        INCLUDES DESTINATION include)
 
     # deploy the shaders for this library, if requested.
     if(OSGEARTH_INSTALL_SHADERS)

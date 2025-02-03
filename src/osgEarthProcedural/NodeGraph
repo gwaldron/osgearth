@@ -180,10 +180,6 @@ namespace osgEarth
 
             int getId() const { return _id; }
 
-            bool ready() const {
-                return _ready;
-            }
-
             const std::string& getName() const {
                 return _name;
             }
@@ -235,7 +231,6 @@ namespace osgEarth
             void set_input(const std::string& name, const NodeGraphResult& result)
             {
                 _inputs[name] = result;
-                _ready = false;
             }
 
             virtual void reset()
@@ -243,7 +238,6 @@ namespace osgEarth
                 _inputs.clear();
                 _outputs.clear();
                 _dependencies.clear();
-                _ready = false;
             }
 
             const std::vector< NodeAttribute >& getInputAttributes() const
@@ -320,8 +314,6 @@ namespace osgEarth
 
             std::set< NodeGraphOperation* > _dependencies;
 
-            bool _ready = false;
-
             std::string _name;
             std::string _comment;
 
@@ -339,8 +331,7 @@ namespace osgEarth
 
             virtual void execute(const NodeGraphContext& context)
             {
-                set_output("Value", _value);
-                _ready = true;
+                set_output("Value", _value);             
             }
 
             float getValue() const { return _value; }
@@ -373,7 +364,6 @@ namespace osgEarth
                     }
 
                     set_output("Value", result);
-                    _ready = true;
                 }
             }
 
@@ -412,7 +402,6 @@ namespace osgEarth
                     }
 
                     set_output("Color", result);
-                    _ready = true;
                 }
             }
 
@@ -466,7 +455,6 @@ namespace osgEarth
 
 
                     set_output("Color", result);
-                    _ready = true;
                 }
             }
         };
@@ -490,7 +478,6 @@ namespace osgEarth
                 if (radiusValue > 0)
                 {
                     set_output("Node", AnnotationUtils::createSphere(radiusValue, _color));
-                    _ready = true;
                 }
             }
 
@@ -527,7 +514,6 @@ namespace osgEarth
                 // Need to consider where to clone geometry, who knows if the node is going to be mucked with later on down the chain.  Who's responsibility should that be?
                 //set_output("Node", (osg::Node*)_loaded->clone(osg::CopyOp::DEEP_COPY_ALL));
                 set_output("Node", _loaded.get());
-                _ready = true;
             }
 
             std::string getFilename() const { return _filename; }
@@ -583,8 +569,7 @@ namespace osgEarth
                 {
                     clone.push_back(new Feature(*f));
                 }
-                set_output("Features", clone);
-                _ready = true;
+                set_output("Features", clone);                
             }
 
             std::string getFilename() const { return _filename; }
@@ -614,7 +599,6 @@ namespace osgEarth
                     mt->setMatrix(_transform);
                     mt->addChild(nodeInput->nodeValue.get());
                     set_output("Node", mt);
-                    _ready = true;
                 }
             }
 
@@ -661,7 +645,6 @@ namespace osgEarth
                     cloned->accept(simp);
 
                     set_output("Node", cloned.get());
-                    _ready = true;
                 }
             }
 
@@ -700,7 +683,6 @@ namespace osgEarth
                     if (node2) result->addChild(node2->nodeValue.get());
                     if (node3) result->addChild(node3->nodeValue.get());
                     set_output("Node", result);
-                    _ready = true;
                 }
             }
         };
@@ -733,7 +715,6 @@ namespace osgEarth
                 }
 
                 set_output("Points", features);
-                _ready = true;
             }
 
             unsigned int getCount() const
@@ -820,8 +801,7 @@ namespace osgEarth
                     x += dx;
                 }
 
-                set_output("Points", features);
-                _ready = true;
+                set_output("Points", features);             
             }
 
             unsigned int getCount() const
@@ -873,7 +853,6 @@ namespace osgEarth
                 }
 
                 set_output("Points", features);
-                _ready = true;
             }
 
             unsigned int getCount() const
@@ -922,9 +901,7 @@ namespace osgEarth
 
                             if (!features.empty())
                             {
-                                //OE_NOTICE << "Got features for tile " << context.tileKey.str() << std::endl;
-                                set_output("Features", features);
-                                _ready = true;
+                                set_output("Features", features);                             
                             }
                         }
                     }
@@ -993,7 +970,6 @@ namespace osgEarth
 
                     set_output("Passed", passed);
                     set_output("Failed", failed);
-                    _ready = true;
                 }
             }
 
@@ -1066,7 +1042,6 @@ namespace osgEarth
 
                     set_output("Passed", passed);
                     set_output("Failed", failed);
-                    _ready = true;
                 }
             }
 
@@ -1175,7 +1150,6 @@ namespace osgEarth
                     FeatureList features;
                     features.push_back(outputFeature);
                     set_output("Features", features);
-                    _ready = true;
                 }
             }
 
@@ -1261,7 +1235,6 @@ namespace osgEarth
                     }
 
                     set_output("Features", features->featuresValue);
-                    _ready = true;
                 }
             }
 
@@ -1322,7 +1295,6 @@ namespace osgEarth
                     _loaded = osgDB::readImageFile(_filename);
                 }
                 set_output("Image", _loaded.get());
-                _ready = true;
             }
 
             std::string getFilename() const { return _filename; }
@@ -1485,7 +1457,6 @@ namespace osgEarth
             virtual void execute(const NodeGraphContext& context) override
             {
                 set_output("LOD", context.tileKey.getLevelOfDetail());
-                _ready = true;
             }
         };
 
@@ -1556,7 +1527,6 @@ namespace osgEarth
                     {
                         set_output("Failed", node->nodeValue.get());
                     }
-                    _ready = true;
                 }
             }
 
@@ -1640,7 +1610,6 @@ namespace osgEarth
                     DrawInstanced::install(result->getOrCreateStateSet());
 
                     set_output("Node", result);
-                    _ready = true;
                 }
             }
 
@@ -1781,7 +1750,6 @@ namespace osgEarth
                     auto* node = new FeatureNode(lines->featuresValue, style);
 
                     set_output("Node", node);
-                    _ready = true;
                     return;
                 }                
             }
@@ -1814,8 +1782,7 @@ namespace osgEarth
                 auto i = get_input("Node");
                 if (i)
                 {
-                    result = i;
-                    _ready = true;
+                    result = i;                 
                 }
             }
         };
@@ -1835,7 +1802,6 @@ namespace osgEarth
                 if (i)
                 {
                     this->result = i;
-                    _ready = true;
                 }
             }
         };

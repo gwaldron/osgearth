@@ -876,6 +876,9 @@ namespace osgEarth
                 _name = "Get Features";
 
                 addOutputAttribute("Features", NodeAttribute::FEATURES);
+                addInputAttribute("Z", NodeAttribute::FLOAT);
+                addInputAttribute("X", NodeAttribute::FLOAT);
+                addInputAttribute("Y", NodeAttribute::FLOAT);
             }
 
             virtual void execute(const NodeGraphContext& context) override
@@ -883,26 +886,26 @@ namespace osgEarth
                 osg::ref_ptr< FeatureSource > featureSource = context.map->getLayerByName<FeatureSource>(_layerName);
                 if (featureSource.valid())
                 {
-                    // Lazy
-                    if (context.tileKey.getLevelOfDetail() == 14)
+                    double x = get_input("X")->floatValue;
+                    double y = get_input("Y")->floatValue;
+                    double z = get_input("Z")->floatValue;
+                    TileKey key = TileKey(z, x, y, featureSource->getFeatureProfile()->getTilingProfile());
+                    osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(key);
+                    if (cursor)
                     {
-                        osg::ref_ptr< FeatureCursor > cursor = featureSource->createFeatureCursor(context.tileKey);
-                        if (cursor)
+                        FeatureList features;
+                        while (cursor->hasMore())
                         {
-                            FeatureList features;
-                            while (cursor->hasMore())
+                            osg::ref_ptr< Feature > feature = cursor->nextFeature();
+                            if (context.tileKey.getExtent().contains(feature->getExtent().getCentroid()))
                             {
-                                osg::ref_ptr< Feature > feature = cursor->nextFeature();
-                                if (context.tileKey.getExtent().contains(feature->getExtent().getCentroid()))
-                                {
-                                    features.push_back(feature.get());
-                                }
+                                features.push_back(feature.get());
                             }
+                        }
 
-                            if (!features.empty())
-                            {
-                                set_output("Features", features);                             
-                            }
+                        if (!features.empty())
+                        {
+                            set_output("Features", features);
                         }
                     }
                 }

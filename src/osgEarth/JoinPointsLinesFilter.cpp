@@ -324,7 +324,7 @@ FilterContext JoinPointsLinesFilter::push(FeatureList& input, FilterContext& con
                                 if (!output->empty())
                                 {
                                     entry.previous = output->back();
-                                    auto& prev_point = pointMap.find(entry.previous);
+                                    auto prev_point = pointMap.find(entry.previous);
                                     prev_point->second.next = point;
                                 }
 

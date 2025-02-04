@@ -343,6 +343,8 @@ namespace osgEarth
 
         bool getSegment(double length, osg::Vec3d& start, osg::Vec3d& end);
 
+        bool sample(double length, osg::Vec3d& point);
+
         void close() override;
 
         double getSignedDistance2D(const osg::Vec3d& point) const override;

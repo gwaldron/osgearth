@@ -115,6 +115,11 @@ namespace osgEarth
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FeaturesToPolygonsOperation>());
                         }
 
+                        if (ImGui::MenuItem("Extrude Features"))
+                        {
+                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ExtrudeOperation>());
+                        }
+
                         if (ImGui::MenuItem("Random Value Per Feature"))
                         {
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<RandomValuePerFeature>());

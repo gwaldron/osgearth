@@ -30,6 +30,7 @@
 #include <osgEarth/AnnotationUtils>
 #include <osgEarth/LineDrawable>
 #include <osgEarth/FeatureNode>
+#include <osgEarth/ExtrusionSymbol>
 #include <osgEarth/ScriptEngine>
 #include <osg/MatrixTransform>
 #include <osgUtil/Simplifier>
@@ -943,6 +944,44 @@ namespace osgEarth
                 }
             }            
         };
+
+        class OSGEARTHPROCEDURAL_EXPORT ExtrudeOperation : public NodeGraphOperation
+        {
+        public:
+            ExtrudeOperation()
+            {
+                _name = "Extrude";
+
+                addInputAttribute("Height", NodeAttribute::FLOAT);
+                addInputAttribute("Features", NodeAttribute::FEATURES);
+                addInputAttribute("Color", NodeAttribute::VECTOR);
+                addOutputAttribute("Node", NodeAttribute::NODE);
+            }
+
+            virtual void execute(const NodeGraphContext& context) override
+            {
+                auto height = get_input("Height");
+                auto features = get_input("Features");
+                auto color = get_input("Color");
+
+                if (height && features)
+                {   
+                    Style style;                    
+                    style.getOrCreateSymbol<ExtrusionSymbol>()->height() = height->floatValue;
+                    osg::Vec4 colorValue = Color::Red;
+                    if (color)
+                    {
+                        colorValue = color->vectorValue[0];
+                    }                    
+                    style.getOrCreateSymbol<PolygonSymbol>()->fill()->color() = colorValue;
+
+                    auto* node = new FeatureNode(features->featuresValue, style);
+
+                    set_output("Node", node);
+                }
+            }
+        };
+
 
         class OSGEARTHPROCEDURAL_EXPORT GetFeaturesOperation : public NodeGraphOperation
         {

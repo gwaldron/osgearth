@@ -957,6 +957,25 @@ LineString::getSegment(double length, osg::Vec3d& start, osg::Vec3d& end)
     return false;
 }
 
+bool LineString::sample(double length, osg::Vec3d& point)
+{
+    double pos = 0;
+    for (unsigned int i = 0; i < size() - 1; ++i)
+    {
+        osg::Vec3d current = (*this)[i];
+        osg::Vec3d next = (*this)[i + 1];
+        double segLength = (next - current).length();
+        if (pos + segLength > length)
+        {
+            double t = (length - pos) / segLength;
+            point = current + (next - current) * t;
+            return true;
+        }
+        pos += segLength;
+    }
+    return false;
+}
+
 void
 LineString::close()
 {

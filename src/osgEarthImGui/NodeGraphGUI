@@ -70,6 +70,11 @@ namespace osgEarth
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FloatValue>());
                         }
 
+                        if (ImGui::MenuItem("Color"))
+                        {
+                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ColorValue>());
+                        }
+
                         if (ImGui::MenuItem("Join"))
                         {
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<JoinNodesOperation>());
@@ -105,6 +110,11 @@ namespace osgEarth
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FeaturesToLinesOperation>());
                         }
 
+                        if (ImGui::MenuItem("Features to Polygons"))
+                        {
+                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<FeaturesToPolygonsOperation>());
+                        }
+
                         if (ImGui::MenuItem("Random Value Per Feature"))
                         {
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<RandomValuePerFeature>());
@@ -128,6 +138,11 @@ namespace osgEarth
                         if (ImGui::MenuItem("Clamp Features"))
                         {
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ClampFeaturesOperation>());
+                        }
+
+                        if (ImGui::MenuItem("Buffer Features"))
+                        {
+                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<BufferOperation>());
                         }
 
                         if (ImGui::MenuItem("Offset Features"))
@@ -320,6 +335,19 @@ namespace osgEarth
                                 if (ImGui::ColorEdit4("Color", (float*)color._v, ImGuiColorEditFlags_NoInputs))
                                 {
                                     sphere->setColor(color);
+                                    updateNodeGraph();
+                                }
+                                ImGui::PopItemWidth();
+                            }
+
+                            ColorValue* colorValue = dynamic_cast<ColorValue*>(o.get());
+                            if (colorValue)
+                            {
+                                ImGui::PushItemWidth(100.0f);
+                                osg::Vec4 color = colorValue->getValue();
+                                if (ImGui::ColorEdit4("Color", (float*)color._v, ImGuiColorEditFlags_NoInputs))
+                                {
+                                    colorValue->setColor(color);
                                     updateNodeGraph();
                                 }
                                 ImGui::PopItemWidth();
@@ -646,6 +674,30 @@ namespace osgEarth
 
                                 ImGui::PopItemWidth();
                             }
+
+                            if (auto* op = dynamic_cast<BufferOperation*>(o.get()))
+                            {
+
+                                int quadSegs = op->getNumQuadSegs();
+                                ImGui::PushItemWidth(100.0f);
+                                if (ImGui::InputInt("Quad Segments", &quadSegs))
+                                {
+                                    op->setNumQuadSegs(quadSegs);;
+                                    updateNodeGraph();
+                                }
+                                ImGui::PopItemWidth();
+
+                                ImGui::PushItemWidth(100.0f);
+                                const char* items[] = { "Flat", "Square", "Round"};
+                                int item_current = static_cast<int>(op->getCapStyle());
+                                if (ImGui::Combo("Cap Style", &item_current, items, IM_ARRAYSIZE(items)))
+                                {
+                                    op->setCapStyle(static_cast<Stroke::LineCapStyle>(item_current));
+                                    updateNodeGraph();
+                                }
+                                ImGui::PopItemWidth();
+                            }
+
 
                             for (auto& attr : o->getInputAttributes())
                             {

@@ -38,7 +38,7 @@
 namespace osgEarth
 {
     namespace Procedural {
-        using namespace osgEarth;       
+        using namespace osgEarth;
 
         class OSGEARTHPROCEDURAL_EXPORT NodeGraphResult
         {
@@ -109,7 +109,7 @@ namespace osgEarth
             }
 
             int getId() const { return _id; }
-            
+
             const std::string& getName() const {
                 return _name;
             }
@@ -331,13 +331,35 @@ namespace osgEarth
 
             virtual void execute(const NodeGraphContext& context)
             {
-                set_output("Value", _value);             
+                set_output("Value", _value);
             }
 
             float getValue() const { return _value; }
             void setValue(float value) { _value = value; }
 
             float _value = 0.0f;
+        };
+
+        class OSGEARTHPROCEDURAL_EXPORT ColorValue : public NodeGraphOperation
+        {
+        public:
+            ColorValue()
+            {
+                _name = "Color";
+                addOutputAttribute("Color", NodeAttribute::VECTOR);
+            }
+
+            virtual void execute(const NodeGraphContext& context)
+            {
+                NodeGraphResult result;
+                result.vectorValue.push_back(_color);
+                set_output("Color", result);
+            }
+
+            const osg::Vec4& getValue() const { return _color; }
+            void setColor(const osg::Vec4& color) { _color = color; }
+
+            osg::Vec4 _color;
         };
 
         class OSGEARTHPROCEDURAL_EXPORT RandomValuePerFeature : public NodeGraphOperation
@@ -569,7 +591,7 @@ namespace osgEarth
                 {
                     clone.push_back(new Feature(*f));
                 }
-                set_output("Features", clone);                
+                set_output("Features", clone);
             }
 
             std::string getFilename() const { return _filename; }
@@ -801,7 +823,7 @@ namespace osgEarth
                     x += dx;
                 }
 
-                set_output("Points", features);             
+                set_output("Points", features);
             }
 
             unsigned int getCount() const
@@ -1405,7 +1427,7 @@ namespace osgEarth
                     // These are modified in place, this is faster but is destructive to the features from the input
                     set_output("Features", points->featuresValue);
                 }
-            }           
+            }
         };
 
         class OSGEARTHPROCEDURAL_EXPORT OffsetFeaturesOperation : public NodeGraphOperation
@@ -1425,7 +1447,7 @@ namespace osgEarth
                 auto points = get_input("Features");
                 auto offset = get_input("Offset");
                 if (points && offset)
-                {                    
+                {
                     for (auto& f : points->featuresValue)
                     {
                         GeometryIterator itr(f->getGeometry());
@@ -1436,7 +1458,7 @@ namespace osgEarth
                             {
                                 double x = v->x();
                                 double y = v->y();
-                                double z = v->z();                                
+                                double z = v->z();
                                 v->z() = z + offset->floatValue;
                             }
                         }
@@ -1447,6 +1469,56 @@ namespace osgEarth
             }
         };
 
+        class OSGEARTHPROCEDURAL_EXPORT BufferOperation : public NodeGraphOperation
+        {
+        public:
+            BufferOperation()
+            {
+                _name = "Buffer";
+
+                addInputAttribute("Features", NodeAttribute::FEATURES);
+                addInputAttribute("Distance", NodeAttribute::FLOAT);
+                addOutputAttribute("Features", NodeAttribute::FEATURES);
+            }
+
+            virtual void execute(const NodeGraphContext& context) override
+            {
+                auto features = get_input("Features");
+                auto distance = get_input("Distance");
+
+                if (features && distance)
+                {
+                    for (auto& f : features->featuresValue)
+                    {
+                        BufferParameters params;
+                        params._capStyle =
+                            _capStyle == Stroke::LINECAP_ROUND ? BufferParameters::CAP_ROUND :
+                            _capStyle == Stroke::LINECAP_SQUARE ? BufferParameters::CAP_SQUARE :
+                            _capStyle == Stroke::LINECAP_FLAT ? BufferParameters::CAP_FLAT :
+                            BufferParameters::CAP_SQUARE;
+
+                        params._cornerSegs = _numQuadSegs;
+
+                        osg::ref_ptr<Geometry> geom;
+                        if (f->getGeometry()->buffer(distance->floatValue, geom, params))
+                        {
+                            f->setGeometry(geom.get());
+                        }                        
+                    }
+                    set_output("Features", features->featuresValue);
+                }                
+            }
+
+            const Stroke::LineCapStyle& getCapStyle() const { return _capStyle; }
+            void setCapStyle(const Stroke::LineCapStyle& capStyle) { _capStyle = capStyle; }
+
+            const int& getNumQuadSegs() const { return _numQuadSegs; }
+            void setNumQuadSegs(const int& numQuadSegs) { _numQuadSegs = numQuadSegs; }
+
+
+            int                  _numQuadSegs = 0;
+            Stroke::LineCapStyle _capStyle = Stroke::LineCapStyle::LINECAP_SQUARE;
+        };
 
         class OSGEARTHPROCEDURAL_EXPORT CurrentLODOperation : public NodeGraphOperation
         {
@@ -1754,7 +1826,43 @@ namespace osgEarth
 
                     set_output("Node", node);
                     return;
-                }                
+                }
+            }
+        };
+
+        class OSGEARTHPROCEDURAL_EXPORT FeaturesToPolygonsOperation : public NodeGraphOperation
+        {
+        public:
+            FeaturesToPolygonsOperation()
+            {
+                _name = "Polygon Features";
+                addInputAttribute("Features", NodeAttribute::FEATURES);
+                addInputAttribute("Color", NodeAttribute::VECTOR);
+                addOutputAttribute("Node", NodeAttribute::NODE);
+            }
+
+            virtual void execute(const NodeGraphContext& context) override
+            {
+                auto features = get_input("Features");
+                auto color = get_input("Color");
+
+                if (features)
+                {
+                    osg::Vec4f primaryColor = osg::Vec4(1.0f, 0.0f, 0.0f, 1.0f);
+                    if (color && !color->vectorValue.empty())
+                    {
+                        primaryColor = color->vectorValue[0];
+                    }
+
+                    Style style;
+                    auto* polygonSymbol = style.getOrCreate<PolygonSymbol>();
+                    polygonSymbol->fill()->color() = primaryColor;
+
+                    auto* node = new FeatureNode(features->featuresValue, style);
+
+                    set_output("Node", node);
+                    return;
+                }
             }
         };
 
@@ -1785,7 +1893,7 @@ namespace osgEarth
                 auto i = get_input("Node");
                 if (i)
                 {
-                    result = i;                 
+                    result = i;
                 }
             }
         };
@@ -1886,10 +1994,10 @@ namespace osgEarth
                     NodeGraphResult* result = _nodeGraph->execute<NodeOutputOperation>(context);
 
                     if (result && result->nodeValue)
-                    {                
-                        node = result->nodeValue;                     
+                    {
+                        node = result->nodeValue;
                     }
-                }                
+                }
 
                 if (node.valid())
                 {
@@ -1901,4 +2009,5 @@ namespace osgEarth
             const Map* _map = nullptr;
             std::shared_ptr< NodeGraph > _nodeGraph;
         };
-} }
+    }
+}

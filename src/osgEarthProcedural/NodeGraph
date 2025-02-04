@@ -1581,6 +1581,8 @@ namespace osgEarth
 
                 if (features && distance)
                 {
+                    FeatureList output;
+
                     for (auto& f : features->featuresValue)
                     {
                         BufferParameters params;
@@ -1591,14 +1593,17 @@ namespace osgEarth
                             BufferParameters::CAP_SQUARE;
 
                         params._cornerSegs = _numQuadSegs;
+                        params._singleSided = _singleSided;
 
                         osg::ref_ptr<Geometry> geom;
                         if (f->getGeometry()->buffer(distance->floatValue, geom, params))
                         {
-                            f->setGeometry(geom.get());
+                            Feature* newFeature = new Feature(*f);
+                            newFeature->setGeometry(geom.get());
+                            output.push_back(newFeature);
                         }                        
                     }
-                    set_output("Features", features->featuresValue);
+                    set_output("Features", output);
                 }                
             }
 
@@ -1608,9 +1613,12 @@ namespace osgEarth
             const int& getNumQuadSegs() const { return _numQuadSegs; }
             void setNumQuadSegs(const int& numQuadSegs) { _numQuadSegs = numQuadSegs; }
 
+            const bool& getSingleSided() const { return _singleSided; }
+            void setSingleSided(const bool& singleSided) { _singleSided = singleSided; }
 
             int                  _numQuadSegs = 0;
             Stroke::LineCapStyle _capStyle = Stroke::LineCapStyle::LINECAP_SQUARE;
+            bool                 _singleSided = false;
         };
 
         class OSGEARTHPROCEDURAL_EXPORT CurrentLODOperation : public NodeGraphOperation

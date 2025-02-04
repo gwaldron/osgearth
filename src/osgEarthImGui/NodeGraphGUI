@@ -642,7 +642,6 @@ namespace osgEarth
                                     polygonsToPoints->setRandom(random);
                                     updateNodeGraph();
                                 }
-
                                 ImGui::PopItemWidth();
                             }
 
@@ -705,6 +704,17 @@ namespace osgEarth
                                     op->setCapStyle(static_cast<Stroke::LineCapStyle>(item_current));
                                     updateNodeGraph();
                                 }
+
+                                ImGui::PushItemWidth(100.0f);
+                                bool singleSided = op->getSingleSided();
+                                if (ImGui::Checkbox("Single Sided", &singleSided))
+                                {
+                                    op->setSingleSided(singleSided);
+                                    updateNodeGraph();
+                                }
+                                ImGui::PopItemWidth();
+
+                                
                                 ImGui::PopItemWidth();
                             }
 

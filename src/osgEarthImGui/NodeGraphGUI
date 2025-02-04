@@ -175,6 +175,11 @@ namespace osgEarth
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<PolygonToPointsOperation>());
                         }
 
+                        if (ImGui::MenuItem("Points Along Geometry"))
+                        {
+                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<PointsAlongGeometryOperation>());
+                        }
+
                         if (ImGui::MenuItem("Image Mask"))
                         {
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ImageMaskOperation>());
@@ -319,7 +324,7 @@ namespace osgEarth
                             {
                                 float v = floatValue->getValue();
                                 ImGui::PushItemWidth(100.0f);
-                                if (ImGui::InputFloat("Value", &v))
+                                if (ImGui::InputFloat("Value", &v, 0.0f, 0.0f, "%.5f"))
                                 {
                                     floatValue->setValue(v);
                                     updateNodeGraph();

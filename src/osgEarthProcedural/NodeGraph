@@ -890,6 +890,60 @@ namespace osgEarth
             unsigned int _count = 5;
         };
 
+        class OSGEARTHPROCEDURAL_EXPORT PointsAlongGeometryOperation : public NodeGraphOperation
+        {
+        public:
+            PointsAlongGeometryOperation()
+            {
+                _name = "Points Along Geometry";
+
+                addInputAttribute("StartOffset", NodeAttribute::FLOAT);
+                addInputAttribute("EndOffset", NodeAttribute::FLOAT);
+                addInputAttribute("Distance", NodeAttribute::FLOAT);
+                addInputAttribute("Features", NodeAttribute::FEATURES);
+                addOutputAttribute("Points", NodeAttribute::FEATURES);
+            }
+
+            virtual void execute(const NodeGraphContext& context) override
+            {               
+                auto features = get_input("Features");
+                double startOffset = get_input("StartOffset")->floatValue;
+                double endOffset = get_input("EndOffset")->floatValue;
+                double distance = get_input("Distance")->floatValue;
+
+                if (features)
+                {
+                    FeatureList points;
+
+                    for (auto& f : features->featuresValue)
+                    {
+                        Geometry* geom = f->getGeometry();
+                        LineString* lineString = dynamic_cast<LineString*>(geom);
+                        if (lineString)
+                        {                            
+                            double length = geom->getLength();
+                            double start = startOffset;
+                            double end = length - endOffset;
+
+                            double offset = start;
+                            while (offset < end)
+                            {
+                                osg::Vec3d point;
+                                lineString->sample(offset, point);
+                                PointSet* p = new PointSet;
+                                p->push_back(point);
+                                Feature* pointFeature = new Feature(p, f->getSRS());
+                                points.push_back(pointFeature);
+                                offset += distance;
+                            }
+                        }
+                    }
+
+                    set_output("Points", points);
+                }
+            }            
+        };
+
         class OSGEARTHPROCEDURAL_EXPORT GetFeaturesOperation : public NodeGraphOperation
         {
         public:
@@ -1637,9 +1691,9 @@ namespace osgEarth
                 auto points = get_input("Points");
 
                 if (node && points)
-                {
+                {                    
+                    osg::Matrixd l2w;
                     osg::Matrixd w2l;
-                    context.tileKey.getExtent().getCentroid().createWorldToLocal(w2l);
 
                     osg::ref_ptr< osg::Node > cloned = (osg::Node*)node->nodeValue->clone(osg::CopyOp::DEEP_COPY_ALL);
 
@@ -1666,6 +1720,11 @@ namespace osgEarth
                                 pt.transformInPlace(SpatialReference::create("wgs84"));
                                 osg::Vec3d world;
                                 pt.toWorld(world);
+                                if (l2w.isIdentity())
+                                {
+                                    pt.createLocalToWorld(l2w);
+                                    pt.createWorldToLocal(w2l);                                 
+                                }
 
                                 osg::Vec3d local = world * w2l;
                                 osg::MatrixTransform* mt = new osg::MatrixTransform;
@@ -1684,7 +1743,11 @@ namespace osgEarth
                     DrawInstanced::convertGraphToUseDrawInstanced(result);
                     DrawInstanced::install(result->getOrCreateStateSet());
 
-                    set_output("Node", result);
+                    osg::ref_ptr<osg::MatrixTransform> mt = new osg::MatrixTransform;
+                    mt->setMatrix(l2w);
+                    mt->addChild(result);
+
+                    set_output("Node", mt.get());
                 }
             }
 

@@ -248,42 +248,54 @@ namespace
                     std::map< std::string, std::vector<Config> > sets; // sorted
 
                     // sort into bins by name:
-                    for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c )
+                    for(auto& child : conf.children())
                     {
-                        sets[c->key()].push_back( *c );
+                        sets[child.key()].push_back(child);
                     }
 
-                    for( std::map<std::string,std::vector<Config> >::iterator i = sets.begin(); i != sets.end(); ++i )
+                    if (sets.size() == 1 && sets.begin()->second.size() > 1)
                     {
-                        if ( i->second.size() == 1 )
+                        // if there's only one set, and it has more than one member, it's a JSON array.
+                        auto& only_set = *sets.begin();
+                        auto& members = only_set.second;
+                        Json::Value array_value(Json::arrayValue);
+                        for (auto& member : members)
                         {
-                            Config& c = i->second[0];
-                            if ( c.isSimple() )
+                            array_value.append(conf2json(member, nicer, depth + 1));
+                        }
+                        value = array_value;
+                    }
+
+                    else
+                    {
+                        for (auto i : sets)
+                        {
+                            if (i.second.size() == 1)
                             {
-                                if (c.isNumber())
-                                    value[i->first] = c.valueAs<double>(0.0);
+                                auto& c = i.second[0];
+                                if (c.isSimple())
+                                {
+                                    if (c.isNumber())
+                                        value[i.first] = c.valueAs<double>(0.0);
+                                    else
+                                        value[i.first] = c.value();
+                                }
                                 else
-                                    value[i->first] = c.value();
+                                {
+                                    value[i.first] = conf2json(c, nicer, depth + 1);
+                                }
                             }
                             else
                             {
-                                Json::Value child = conf2json(c, nicer, depth+1);
-                                if (child.isObject())
+                                std::string array_key = Stringify() << i.first << "__array__";
+                                Json::Value array_value(Json::arrayValue);
+                                for (std::vector<Config>::iterator j = i.second.begin(); j != i.second.end(); ++j)
                                 {
-                                    value[i->first] = child;
-                                }   
+                                    array_value.append(conf2json(*j, nicer, depth + 1));
+                                }
+                                value[array_key] = array_value;
+                                //value = array_value;
                             }
-                        }
-                        else
-                        {
-                            std::string array_key = Stringify() << i->first << "__array__";
-                            Json::Value array_value( Json::arrayValue );
-                            for( std::vector<Config>::iterator j = i->second.begin(); j != i->second.end(); ++j )
-                            {
-                                array_value.append( conf2json(*j, nicer, depth+1) );
-                            }
-                            value[array_key] = array_value;
-                            //value = array_value;
                         }
                     }
                 }

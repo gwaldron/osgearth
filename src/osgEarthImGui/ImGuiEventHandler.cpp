@@ -72,7 +72,7 @@ ImGuiEventHandler::newFrame(osg::RenderInfo& renderInfo)
     {
         ImGui::CreateContext();
         ImNodes::CreateContext();
-        ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkDetachWithDragClick);
+        //ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkDetachWithDragClick);
         ImNodesIO& imNodesio = ImNodes::GetIO();
         imNodesio.LinkDetachWithModifierClick.Modifier = &ImGui::GetIO().KeyCtrl;
         imNodesio.MultipleSelectModifier.Modifier = &ImGui::GetIO().KeyCtrl;

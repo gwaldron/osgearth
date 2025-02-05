@@ -353,14 +353,11 @@ namespace osgEarth
             virtual void execute(const NodeGraphContext& context)
             {
                 NodeGraphResult result;
-                result.vectorValue.push_back(_color);
+                result.vectorValue.push_back(color);
                 set_output("Color", result);
             }
 
-            const osg::Vec4& getValue() const { return _color; }
-            void setColor(const osg::Vec4& color) { _color = color; }
-
-            osg::Vec4 _color;
+            osg::Vec4 color = Color::Red;
         };
 
         class OSGEARTHPROCEDURAL_EXPORT RandomValuePerFeature : public NodeGraphOperation
@@ -1621,6 +1618,46 @@ namespace osgEarth
             bool                 _singleSided = false;
         };
 
+        class OSGEARTHPROCEDURAL_EXPORT OffsetCurveOperation : public NodeGraphOperation
+        {
+        public:
+            OffsetCurveOperation()
+            {
+                _name = "Offset Curve";
+
+                addInputAttribute("Features", NodeAttribute::FEATURES);
+                addInputAttribute("Distance", NodeAttribute::FLOAT);
+                addOutputAttribute("Features", NodeAttribute::FEATURES);
+            }
+
+            virtual void execute(const NodeGraphContext& context) override
+            {
+                auto features = get_input("Features");
+                auto distance = get_input("Distance");
+
+                if (features && distance)
+                {
+                    FeatureList output;
+
+                    for (auto& f : features->featuresValue)
+                    {
+                        osg::ref_ptr<Geometry> geom;
+                        if (f->getGeometry()->offsetCurve(distance->floatValue, quadSegs, joinStyle, mitreLimit, geom))
+                        {
+                            Feature* newFeature = new Feature(*f);
+                            newFeature->setGeometry(geom.get());
+                            output.push_back(newFeature);
+                        }
+                    }
+                    set_output("Features", output);
+                }
+            }
+
+            int                  quadSegs = 8;
+            BufferParameters::JoinStyle joinStyle = BufferParameters::JOIN_MITRE;
+            double                mitreLimit = 5.0;         
+        };
+
         class OSGEARTHPROCEDURAL_EXPORT CurrentLODOperation : public NodeGraphOperation
         {
         public:
@@ -1845,54 +1882,7 @@ namespace osgEarth
             float _minHeading = 0.0f;
             float _maxHeading = 360.0f;
             Random   _prng;
-        };
-
-        class OSGEARTHPROCEDURAL_EXPORT OffsetOperation : public NodeGraphOperation
-        {
-        public:
-            OffsetOperation()
-            {
-                _name = "Offset";
-
-                addInputAttribute("Features", NodeAttribute::FEATURES);
-                addOutputAttribute("Features", NodeAttribute::FEATURES);
-            }
-
-            virtual void execute(const NodeGraphContext& context) override
-            {
-                auto features = get_input("Features");
-                if (features)
-                {
-                    for (auto& f : features->featuresValue)
-                    {
-                        GeometryIterator itr(f->getGeometry());
-                        while (itr.hasMore())
-                        {
-                            Geometry* g = itr.next();
-                            for (Geometry::iterator v = g->begin(); v != g->end(); ++v)
-                            {
-                                v->z() += _offset;
-                            }
-                        }
-                    }
-                    // These are modified in place, this is faster but is destructive to the features from the input
-                    set_output("Features", features->featuresValue);
-                }
-            }
-
-            float getOffset() const
-            {
-                return _offset;
-            }
-
-            void setOffset(float offset)
-            {
-                _offset = offset;
-            }
-
-            float _offset = 0.0f;
-        };
-
+        };        
 
         class OSGEARTHPROCEDURAL_EXPORT FeaturesToLinesOperation : public NodeGraphOperation
         {

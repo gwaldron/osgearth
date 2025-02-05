@@ -75,7 +75,7 @@ namespace osgEarth
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<ColorValue>());
                         }
 
-                        if (ImGui::MenuItem("Join"))
+                        if (ImGui::MenuItem("Join Nodes"))
                         {
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<JoinNodesOperation>());
                         }
@@ -148,6 +148,11 @@ namespace osgEarth
                         if (ImGui::MenuItem("Buffer Features"))
                         {
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<BufferOperation>());
+                        }
+
+                        if (ImGui::MenuItem("Offset Curve Features"))
+                        {
+                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<OffsetCurveOperation>());
                         }
 
                         if (ImGui::MenuItem("Offset Features"))
@@ -251,12 +256,7 @@ namespace osgEarth
                         }
 #endif
 
-                        if (ImGui::MenuItem("Offset"))
-                        {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<OffsetOperation>());
-                        }
-
-                        if (ImGui::MenuItem("Join"))
+                        if (ImGui::MenuItem("Join Features"))
                         {
                             _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<JoinOperation>());
                         }
@@ -354,28 +354,12 @@ namespace osgEarth
                             if (colorValue)
                             {
                                 ImGui::PushItemWidth(100.0f);
-                                osg::Vec4 color = colorValue->getValue();
-                                if (ImGui::ColorEdit4("Color", (float*)color._v, ImGuiColorEditFlags_NoInputs))
+                                if (ImGui::ColorEdit4("Color", (float*)colorValue->color._v, ImGuiColorEditFlags_NoInputs))
                                 {
-                                    colorValue->setColor(color);
                                     updateNodeGraph();
                                 }
                                 ImGui::PopItemWidth();
-                            }
-
-                            OffsetOperation* offset = dynamic_cast<OffsetOperation*>(o.get());
-                            if (offset)
-                            {
-                                ImGui::PushItemWidth(100.0f);
-                                float o = offset->getOffset();
-                                if (ImGui::InputFloat("Offset", &o))
-                                {
-                                    offset->setOffset(o);
-                                    updateNodeGraph();
-
-                                }
-                                ImGui::PopItemWidth();
-                            }
+                            }                            
 
                             ImageMaskOperation* imageMask = dynamic_cast<ImageMaskOperation*>(o.get());
                             if (imageMask)
@@ -705,6 +689,7 @@ namespace osgEarth
                                     updateNodeGraph();
                                 }
 
+
                                 ImGui::PushItemWidth(100.0f);
                                 bool singleSided = op->getSingleSided();
                                 if (ImGui::Checkbox("Single Sided", &singleSided))
@@ -715,6 +700,34 @@ namespace osgEarth
                                 ImGui::PopItemWidth();
 
                                 
+                                ImGui::PopItemWidth();
+                            }
+
+                            if (auto* op = dynamic_cast<OffsetCurveOperation*>(o.get()))
+                            {                                
+                                ImGui::PushItemWidth(100.0f);
+                                if (ImGui::InputInt("Quad Segments", &op->quadSegs))
+                                {                                    
+                                    updateNodeGraph();
+                                }
+                                ImGui::PopItemWidth();
+
+                                ImGui::PushItemWidth(100.0f);
+                                const char* items[] = { "Round", "Mitre", "Bevel" };
+                                int item_current = static_cast<int>(op->joinStyle);
+                                if (ImGui::Combo("Join Style", &item_current, items, IM_ARRAYSIZE(items)))
+                                {
+                                    op->joinStyle = static_cast<BufferParameters::JoinStyle>(item_current);
+                                    updateNodeGraph();
+                                }
+
+                                float v = op->mitreLimit;
+                                ImGui::PushItemWidth(100.0f);
+                                if (ImGui::InputFloat("Mitre Limit", &v, 0.0f, 0.0f, "%.5f"))
+                                {
+                                    op->mitreLimit;
+                                    updateNodeGraph();
+                                }
                                 ImGui::PopItemWidth();
                             }
 
@@ -758,7 +771,7 @@ namespace osgEarth
                     }
                     }
                     
-                    ImNodes::EndNodeEditor();
+                    ImNodes::EndNodeEditor();                    
 
                     int start_attr, end_attr;
                     if (ImNodes::IsLinkCreated(&start_attr, &end_attr))

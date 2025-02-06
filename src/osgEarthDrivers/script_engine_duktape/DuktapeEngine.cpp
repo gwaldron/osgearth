@@ -272,11 +272,7 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options, bool comp
         // any functions or objects with the EcmaScript global object.
         if ( options.script().isSet() )
         {
-            //std::string temp(options.script()->getCode());
-
             auto temp = prepareScript(options.script()->getCode());
-
-            OE_INFO << "New script context! Compiling static script:\n" << temp << std::endl;
 
             bool ok = (duk_peval_string(_ctx, temp.c_str()) == 0); // [ "result" ]
             if ( !ok )
@@ -338,8 +334,6 @@ DuktapeEngine::compile(Context& c, const std::string& code, ScriptResult& result
     {
         c._bytecodeSource = code;
         c._errorCount = 0u;
-
-        OE_INFO << "Compiling: " << code << std::endl;
 
         if (duk_pcompile_string(ctx, 0, code.c_str()) != 0) // [function|error]
         {

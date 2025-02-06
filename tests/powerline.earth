@@ -1,12 +1,24 @@
+
 <map name="power tower test">
+
     <PowerlineModel name="towers" max_range="6000" attenuation_range="1000">
         <features>power-lines</features>
+        <infer_tower_locations>false</infer_tower_locations>
+        <filters>
+            <script>
+                feature.properties.power === 'line' ||
+                feature.properties.power === 'tower' || 
+                feature.properties.power === 'pole';
+            </script>
+        </filters>
         <tower_model>
             <uri>../data/power_tower.osgb</uri>
             <attachment_points>
-                LINESTRING(6.400827 -0.031 26.068, -6.3926 -0.039 26.068, 3.981 -0.01 29.88, -3.854 0.39 29.89, 6.385 0.0 21.077, -6.35 -0.01 21.077)
+                LINESTRING(
+                    6.400827 -0.031 26.068, -6.3926 -0.039 26.068,
+                    3.981 -0.01 29.88, -3.854 0.39 29.89,
+                    6.385 0.0 21.077, -6.35 -0.01 21.077)
             </attachment_points>
-            <!-- maximum sag or droop of a single cable -->
             <max_sag>5.0</max_sag>
         </tower_model>
         <styles>
@@ -18,21 +30,132 @@
             </style>
         </styles>
     </PowerlineModel>
+    
+    <TiledFeatureModel name="schematics" pickable="true" open="false">  
+        <features>power-lines</features>
+        <styles>
+            <style type="text/css">
+                lines {
+                    select: feature.properties.power === 'line';
+                    altitude-clamping: terrain;
+                    altitude-offset: 10;
+                    stroke: #ff0000;
+                    stroke-width: 3px;
+                }
+                towers {
+                    select: feature.properties.power === 'tower';
+                    altitude-clamping: terrain;
+                    altitude-offset: 10;
+                    point-fill: #00ff00;
+                    point-size: 20px;
+                    point-smooth: true;
+                }
+                poles {
+                    select: feature.properties.power === 'pole';
+                    altitude-clamping: terrain;
+                    altitude-offset: 10;
+                    point-fill: #00ffff;
+                    point-size: 15px;
+                    point-smooth: true;
+                }
+                minor_lines {
+                    select: feature.properties.power === 'minor_line';
+                    altitude-clamping: terrain;
+                    altitude-offset: 8;
+                    stroke: #007f7f;
+                    stroke-width: 2px;
+                }
+            </style>
+        </styles>
+    </TiledFeatureModel>
 
-    <TFSFeatures name="power-lines">
-        <url>https://readymap.org/readymap/mbtiles/osm/</url>
+    <XYZFeatures name="power-lines">
+        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>
         <format>pbf</format>
+        <fid_attribute>@id</fid_attribute>
         <filters>
-            <script language="javascript">
-                <![CDATA[ (feature.properties.power === "line"); ]]>
+            <script>
+                'power' in feature.properties;
             </script>
         </filters>
-    </TFSFeatures>
+    </XYZFeatures>
 
-    <viewpoints>
+    <viewpoints time="0">
+        <viewpoint>
+            <heading>-0.585078</heading>
+            <pitch>-89.8521</pitch>
+            <range>378.104m</range>
+            <long>-83.16859651279468</long>
+            <lat>42.22142582488576</lat>
+            <height>140.7135450458154</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint>
+            <heading>3.04123</heading>
+            <pitch>-89.8457</pitch>
+            <range>1680.92m</range>
+            <long>-117.3095814936931</long>
+            <lat>33.14499248796791</lat>
+            <height>-26.44459049869329</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint>
+            <heading>-4.02148</heading>
+            <pitch>-36.2144</pitch>
+            <range>1687.27m</range>
+            <long>-117.3085710443049</long>
+            <lat>33.14211955140727</lat>
+            <height>-30.83710746653378</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint name="Missing poles.">
+            <heading>10.2442</heading>
+            <pitch>-49.7483</pitch>
+            <range>1003.82m</range>
+            <long>-117.3298333666648</long>
+            <lat>33.20579918911835</lat>
+            <height>10.41661196015775</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint name="Sion mystery lines">
+            <heading>72.5484</heading>
+            <pitch>-14.5443</pitch>
+            <range>785.863m</range>
+            <long>7.364413793845917</long>
+            <lat>46.21222739944896</lat>
+            <height>942.5281157856807</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint name="Swissue 2">
+            <heading>4.55936</heading>
+            <pitch>-60.6356</pitch>
+            <range>428.161m</range>
+            <long>7.339310147916917</long>
+            <lat>46.21942392095163</lat>
+            <height>538.3499684054404</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint name="Swissue issue">
+            <heading>8.48763</heading>
+            <pitch>-82.7926</pitch>
+            <range>1327.41m</range>
+            <long>7.365628510551915</long>
+            <lat>46.22256162729438</lat>
+            <height>539.6748825293034</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
+        <viewpoint name="Las Puglas">
+            <heading>1.0252</heading>
+            <pitch>-50.0742</pitch>
+            <range>277.225m</range>
+            <long>-117.443849086234</long>
+            <lat>33.31569349071246</lat>
+            <height>11.61921861581504</height>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
+        </viewpoint>
         <viewpoint name="Le Haillan">
             <heading>0</heading>
             <pitch>-89.0007</pitch>
@@ -47,7 +170,7 @@
             <long>7.297303744118898</long>
             <lat>46.21744910621433</lat>
             <height>532.5380253428593</height>
-            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
         </viewpoint>
         <viewpoint name="Kilo">
             <pitch>-20</pitch>
@@ -55,7 +178,7 @@
             <lat>33.320303</lat>
             <long>-117.325534</long>
             <height>155</height>
-            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
             <range>500</range>
         </viewpoint>
         <viewpoint name="problematic">
@@ -65,11 +188,17 @@
             <long>-0.6434920611453753</long>
             <lat>44.89152565710955</lat>
             <height>53.01278693787754</height>
-            <srs>+proj=longlat +datum=WGS84 +no_defs </srs>
+            <srs>+proj=longlat +datum=WGS84 +no_defs</srs>
         </viewpoint>
 
     </viewpoints>
 
-    <xi:include href="readymap_imagery.xml"/>
+    <XYZImage name="OSM Imagery">
+        <url>https://[abc].tile.openstreetmap.org/{z}/{x}/{y}.png</url>
+        <profile>spherical-mercator</profile>
+        <cache_policy usage="none"/>
+        <attribution>&#169;OpenStreetMap contributors</attribution>
+    </XYZImage>
+    
     <xi:include href="readymap_elevation.xml"/>
 </map>

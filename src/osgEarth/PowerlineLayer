@@ -16,51 +16,59 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTH_FEATURES_POWERLINE_LAYER
-#define OSGEARTH_FEATURES_POWERLINE_LAYER 1
+#pragma once
 
 #include <osgEarth/FeatureModelLayer>
 
 namespace osgEarth
 {
+    /**
+    * Specialty layer that renders power towers and lines.
+    */
     class OSGEARTH_EXPORT PowerlineLayer : public FeatureModelLayer
     {
-        // XXX Maybe hide some options from FeatureModelLayer?
     public:
+        //! Configuration for the towers.
         class ModelOptions : public ConfigOptions
         {
+        public:
             META_ConfigOptions(osgEarth, ModelOptions, ConfigOptions);
             OE_OPTION(std::string, name);
             OE_OPTION(std::string, uri);
             OE_OPTION_VECTOR(osg::Vec3d, attachment_points);
             OE_OPTION(float, maxSag);
-            // Create configuration from Feature
-        public:
+
             void fromConfig(const Config& conf);
-            virtual Config getConfig() const;
+            Config getConfig() const override;
         };
 
+        //! Configuration for the lines.
         class OSGEARTH_EXPORT Options : public FeatureModelLayer::Options
         {
         public:
             Options();
             Options(const ConfigOptions& options);
-            OE_OPTION_LAYER(FeatureSource, lineSource);
-            OE_OPTION(bool, point_features);
-            OE_OPTION(std::string, lineExpr);
-            OE_OPTION(std::string, cableExpr);
+            OE_OPTION(bool, inferTowerLocations, false);
+            OE_OPTION(StringExpression, towerExpr);
+            OE_OPTION(StringExpression, cableStyleExpr);
+            OE_OPTION(NumericExpression, numCablesExpr);
             OE_OPTION_VECTOR(ModelOptions, towerModels);
-            virtual Config getConfig() const;
+            Config getConfig() const override;
             void fromConfig(const Config& conf);
             std::string referrer;
+
         protected: // LayerOptions
             virtual void mergeConfig(const Config& conf);        
         };
+
     public:
         META_Layer(osgEarth, PowerlineLayer, Options, FeatureModelLayer, PowerlineModel);
+
+        void init() override;
+
+        void create() override;
+
     protected:
-        virtual FeatureNodeFactory* createFeatureNodeFactoryImplementation() const; // override;
+        FeatureNodeFactory* createFeatureNodeFactoryImplementation() const override;
     };
 }
-#endif // OSGEARTH_FEATURES_POWERLINE_LAYER

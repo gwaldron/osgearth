@@ -176,9 +176,12 @@ Color::Color( const std::string& input, Format format )
     if (osgEarth::startsWith(t, "rgb("))
     {
         std::string sub = t.substr(4, t.size() - 5);
-        StringTokenizer tok(",");
-        StringVector components;
-        tok.tokenize(sub, components);
+
+        auto components = StringTokenizer()
+            .delim(",")
+            .quote('\'', false).quote('\"', false)
+            .tokenize(sub);
+
         if (components.size() == 3)
         {
             unsigned int r = osgEarth::as<unsigned int>(components[0], 0u);
@@ -190,9 +193,12 @@ Color::Color( const std::string& input, Format format )
     else if (osgEarth::startsWith(t, "rgba("))
     {
         std::string sub = t.substr(5, t.size() - 6);
-        StringTokenizer tok(",");
-        StringVector components;
-        tok.tokenize(sub, components);
+
+        auto components = StringTokenizer()
+            .delim(",")
+            .quote('\'', false).quote('\"', false)
+            .tokenize(sub);
+
         if (components.size() == 4)
         {
             unsigned int r = osgEarth::as<unsigned int>(components[0], 0u);
@@ -205,9 +211,12 @@ Color::Color( const std::string& input, Format format )
     else if (osgEarth::startsWith(t, "hsl("))
     {
         std::string sub = t.substr(4, t.size() - 5);
-        StringTokenizer tok(",");
-        StringVector components;
-        tok.tokenize(sub, components);
+
+        auto components = StringTokenizer()
+            .delim(",")
+            .quote('\'', false).quote('\"', false)
+            .tokenize(sub);
+
         if (components.size() == 3)
         {
             float H = osgEarth::as<float>(components[0], 0.0f);
@@ -239,9 +248,12 @@ Color::Color( const std::string& input, Format format )
     else if (osgEarth::startsWith(t, "hsla("))
     {
         std::string sub = t.substr(5, t.size() - 6);
-        StringTokenizer tok(",");
-        StringVector components;
-        tok.tokenize(sub, components);
+
+        auto components = StringTokenizer()
+            .delim(",")
+            .quote('\'', false).quote('\"', false)
+            .tokenize(sub);
+
         if (components.size() == 4)
         {
             float H = osgEarth::as<float>(components[0], 0.0f);

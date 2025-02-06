@@ -59,6 +59,7 @@ AltitudeSymbol::getConfig() const
 
     conf.set( "binding", "vertex",   _binding, BINDING_VERTEX );
     conf.set( "binding", "centroid", _binding, BINDING_CENTROID );
+    conf.set ("binding", "endpoint", _binding, BINDING_ENDPOINT);
 
     conf.set( "clamping_resolution", _clampingResolution);
     conf.set( "vertical_offset",     _verticalOffset );
@@ -81,6 +82,7 @@ AltitudeSymbol::mergeConfig( const Config& conf )
 
     conf.get( "binding", "vertex",   _binding, BINDING_VERTEX );
     conf.get( "binding", "centroid", _binding, BINDING_CENTROID );
+    conf.get( "binding", "endpoint", _binding, BINDING_ENDPOINT);
 
     conf.get( "clamping_resolution", _clampingResolution);
     conf.get( "vertical_offset",     _verticalOffset );
@@ -139,6 +141,8 @@ AltitudeSymbol::parseSLD(const Config& c, Style& style)
             style.getOrCreate<AltitudeSymbol>()->binding() = BINDING_VERTEX;
         else if ( match(c.value(), "centroid") )
             style.getOrCreate<AltitudeSymbol>()->binding() = BINDING_CENTROID;
+        else if ( match(c.value(), "endpoint") )
+            style.getOrCreate<AltitudeSymbol>()->binding() = BINDING_ENDPOINT;
     }
     else if ( match(c.key(), "altitude-resolution") ) {
         style.getOrCreate<AltitudeSymbol>()->clampingResolution() = as<float>( c.value(), 0.0f );

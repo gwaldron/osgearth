@@ -271,11 +271,14 @@ ShaderFactory::createMains(
     Variables vars;
     for(VarDefs::iterator i = varDefs.begin(); i != varDefs.end(); ++i) 
     {
-        std::vector<std::string> tokens;        
-        StringTokenizer st;
-        st.addDelims( " \t", false );
-        st.addDelims( "[]", true );
-        st.tokenize( *i, tokens ); //(*i, tokens, " \t", "", false, true);
+        auto tokens = StringTokenizer()
+            .delim(" ", false)
+            .delim("\t", false)
+            .delim("[", true)
+            .delim("]", true)
+            .standardQuotes()
+            .tokenize(*i);
+
         if ( tokens.size() >= 2 )
         {
             int p=0;

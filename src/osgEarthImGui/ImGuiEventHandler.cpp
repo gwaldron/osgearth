@@ -116,8 +116,11 @@ namespace
 void ImGuiEventHandler::handleReadSetting(
     ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line)
 {
-    std::vector<std::string> tokens;
-    StringTokenizer(std::string(line), tokens, "=");
+    auto tokens = StringTokenizer()
+        .delim("=")
+        .standardQuotes()
+        .tokenize(std::string(line));
+
     if (tokens.size() == 2)
     {
         s_guiHandler->load(entry, tokens[0], tokens[1]);

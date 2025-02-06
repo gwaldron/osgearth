@@ -54,7 +54,7 @@ macro(add_osgearth_plugin)
    
     # install the shader source files, if requested:
     if(OSGEARTH_INSTALL_SHADERS)
-        install(FILES ${MY_SHADERS} DESTINATION share/osgEarth/shaders)
+        install(FILES ${MY_SHADERS} DESTINATION ${OSGEARTH_INSTALL_DATADIR}/shaders)
     endif()
 
     # macos-specific
@@ -64,9 +64,7 @@ macro(add_osgearth_plugin)
     
     # install the dynamic libraries.
     install(TARGETS ${MY_TARGET}
-        # RUNTIME DESTINATION ${INSTALL_RUNTIME_FOLDER}
-        # ARCHIVE DESTINATION ${INSTALL_ARCHIVE_FOLDER}/${OSG_PLUGINS}
-        LIBRARY DESTINATION ${INSTALL_PLUGINS_FOLDER}/${OSG_PLUGINS})
+        LIBRARY DESTINATION ${OSGEARTH_INSTALL_PLUGINSDIR}/${OSG_PLUGINS})
     
     # organize the files in the IDE
     source_group( "Header Files"   FILES ${ALL_HEADERS} )
@@ -127,9 +125,7 @@ macro(add_osgearth_app)
         set_target_properties(${TARGET_TARGETNAME} PROPERTIES XCODE_ATTRIBUTE_ENABLE_BITCODE ${IPHONE_ENABLE_BITCODE})
     endif()
 
-    install(
-        TARGETS ${MY_TARGET}
-        RUNTIME DESTINATION ${INSTALL_RUNTIME_FOLDER})
+    install(TARGETS ${MY_TARGET})
 
     if(NOT MY_FOLDER)
         set(MY_FOLDER "Ungrouped")
@@ -173,8 +169,8 @@ macro(add_osgearth_library)
     set(multiValueArgs SOURCES HEADERS PUBLIC_HEADERS SHADERS TEMPLATES LIBRARIES PUBLIC_LIBRARIES INCLUDE_DIRECTORIES)
     cmake_parse_arguments(MY "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     
-    set(INSTALL_INCLUDE_FOLDER include/${MY_TARGET})
-    
+    set(INSTALL_INCLUDE_FOLDER ${CMAKE_INSTALL_INCLUDEDIR}/${MY_TARGET})
+
     set(ALL_HEADERS ${MY_HEADERS} ${MY_IMGUI_HEADERS} ${MY_PUBLIC_HEADERS})
     include_directories(${MY_INCLUDE_DIRECTORIES})        
 
@@ -183,11 +179,11 @@ macro(add_osgearth_library)
     source_group("Headers" FILES ${ALL_HEADERS})
     source_group("Shaders" FILES ${MY_SHADERS} )
     source_group("Templates" FILES ${MY_TEMPLATES} )
-    
+
     if(NOT MY_STATIC)
         set(MY_STATIC ${OSGEARTH_DYNAMIC_OR_STATIC})
     endif()
-    
+
     # create the library.
     add_library(
         ${MY_TARGET}
@@ -196,8 +192,6 @@ macro(add_osgearth_library)
         ${MY_SOURCES}
         ${MY_SHADERS}
         ${MY_TEMPLATES} )
-        
-    include_directories(${MY_INCLUDE_DIRECTORIES})
 
     # Link:
     if(NOT "${MY_TARGET}" STREQUAL "osgEarth")
@@ -223,17 +217,13 @@ macro(add_osgearth_library)
     install(
         TARGETS ${MY_TARGET}
         EXPORT ${MY_TARGET}Targets
-        RUNTIME DESTINATION ${INSTALL_RUNTIME_FOLDER}
-        LIBRARY DESTINATION ${INSTALL_LIBRARY_FOLDER}
-        ARCHIVE DESTINATION ${INSTALL_ARCHIVE_FOLDER}
-        INCLUDES DESTINATION include # ${CMAKE_INSTALL_INCLUDEDIR}
-    )
+        INCLUDES DESTINATION include)
 
     # deploy the shaders for this library, if requested.
     if(OSGEARTH_INSTALL_SHADERS)
         install(
             FILES ${MY_SHADERS}
-            DESTINATION share/osgEarth/shaders )
+            DESTINATION ${OSGEARTH_INSTALL_DATADIR}/shaders )
     endif()
     
     # on Windows, install pdb files
@@ -241,7 +231,7 @@ macro(add_osgearth_library)
     if(OSGEARTH_INSTALL_PDBS)
         install(
             FILES $<TARGET_PDB_FILE:${MY_TARGET}>
-            DESTINATION ${INSTALL_LIBRARY_FOLDER} OPTIONAL)
+            DESTINATION ${CMAKE_INSTALL_LIBDIR} OPTIONAL)
     endif()
 
 

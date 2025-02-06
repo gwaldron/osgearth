@@ -173,10 +173,6 @@ namespace
             if ( chunks[i].type == GLSLChunker::Chunk::TYPE_STATEMENT )
             {
                 std::string replacement;
-                /*
-                StringVector tokens;
-                StringTokenizer(chunks[i].text, tokens, " \t\n", "", false, true);
-                */
                 const std::vector<std::string>& tokens = chunks[i].tokens;
 
                 // Note:
@@ -709,12 +705,17 @@ ShaderInfoLog::dumpErrors(
         pshader->getInfoLog(log);
 
         // split into lines:
-        std::vector<std::string> errors;
-        StringTokenizer(log, errors, "\n", "", false, true);
+        auto errors = StringTokenizer()
+            .delim("\n")
+            .keepEmpties(false)
+            .tokenize(log);
 
         // split into lines:
-        std::vector<std::string> lines;
-        StringTokenizer(shader->getShaderSource(), lines, "\n", "", false, false);
+        auto lines = StringTokenizer()
+            .delim("\n")
+            .keepEmpties(false)
+            .trimTokens(false)
+            .tokenize(shader->getShaderSource());
 
         // keep track of same lines (in order)
         std::stringstream buf;

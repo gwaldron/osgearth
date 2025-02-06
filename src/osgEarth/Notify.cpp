@@ -166,8 +166,12 @@ namespace
         void notify(osg::NotifySeverity severity, const char *message)
         {
             std::string buf(message);
-            std::vector<std::string> parts;
-            Util::StringTokenizer(buf, parts, "\n", {}, true, false);
+
+            auto parts = Strings::StringTokenizer()
+                .delim("\n")
+                .keepEmpties(true)
+                .trimTokens(false)
+                .tokenize(buf);
 
             for (auto& part : parts)
             {

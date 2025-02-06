@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHFEATURES_FEATURE_MODEL_GRAPH_H
-#define OSGEARTHFEATURES_FEATURE_MODEL_GRAPH_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osgEarth/FeatureModelSource>
@@ -78,6 +76,9 @@ namespace osgEarth { namespace Util
 
         //! Whether to attempt to use NVGL extensions
         void setUseNVGL(bool value);
+
+        //! Sets a feature query buffer width as a percentage of the current tile.
+        void setFeatureQueryBufferWidthAsPercentage(double value);
 
         //! Initialized the graph after setting all parameters.
         Status open();
@@ -226,6 +227,7 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<osgDB::ObjectCache> _nodeCachingImageCache;
 
+        optional<double> _featureQueryBufferWidthAsPercentage;
 
         void runPreMergeOperations(osg::Node* node);
         void runPostMergeOperations(osg::Node* node);
@@ -236,5 +238,3 @@ namespace osgEarth { namespace Util
         FeatureFilterChain _filterChain;
     };
 } }
-
-#endif // OSGEARTHFEATURES_FEATURE_MODEL_GRAPH_H

@@ -115,9 +115,9 @@ XYZ::Driver::read(const URI& uri,
 //........................................................................
 
 Config
-XYZImageLayerOptions::getConfig() const
+XYZImageLayer::Options::getConfig() const
 {
-    Config conf = ImageLayer::Options::getConfig();
+    Config conf = super::getConfig();
     conf.set("url", _url);
     conf.set("format", _format);
     conf.set("invert_y", _invertY);
@@ -127,10 +127,8 @@ XYZImageLayerOptions::getConfig() const
 }
 
 void
-XYZImageLayerOptions::fromConfig(const Config& conf)
+XYZImageLayer::Options::fromConfig(const Config& conf)
 {
-    invertY().setDefault(false);
-
     conf.get("url", _url);
     conf.get("format", _format);
     conf.get("invert_y", _invertY);
@@ -138,26 +136,12 @@ XYZImageLayerOptions::fromConfig(const Config& conf)
     conf.get("max_level", maxLevel());
 }
 
-Config
-XYZImageLayerOptions::getMetadata()
-{
-    return Config::readJSON( R"(
-        { "name" : "XYZ Image Tile Service",
-            "properties": [
-            { "name": "url",      "description": "Location of the TMS repository", "type": "string", "default": "" },
-            { "name": "invert_y", "description": "Set to true invert the Y index", "type": "bool", "default": "false" },
-            { "name": "format",   "description": "Image format to assume", "type": "string", "default": "" }
-            ]
-        }
-    )" );
-}
-
 //........................................................................
 
 Config
-XYZElevationLayerOptions::getConfig() const
+XYZElevationLayer::Options::getConfig() const
 {
-    Config conf = ElevationLayer::Options::getConfig();
+    Config conf = super::getConfig();
     conf.set("url", _url);
     conf.set("format", _format);
     conf.set("invert_y", _invertY);
@@ -169,7 +153,7 @@ XYZElevationLayerOptions::getConfig() const
 }
 
 void
-XYZElevationLayerOptions::fromConfig(const Config& conf)
+XYZElevationLayer::Options::fromConfig(const Config& conf)
 {
     conf.get("url", _url);
     conf.get("format", _format);
@@ -179,21 +163,6 @@ XYZElevationLayerOptions::fromConfig(const Config& conf)
     conf.get("elevation_encoding", _elevationEncoding);
     conf.get("interpretation", elevationEncoding()); // compat with QGIS
     conf.get("stitch_edges", stitchEdges());
-}
-
-Config
-XYZElevationLayerOptions::getMetadata()
-{
-    return Config::readJSON( R"(
-        { "name" : "XYZ Elevation Tile Service",
-            "properties": [
-            { "name": "url",      "description": "Location of the TMS repository", "type": "string", "default": "" },
-            { "name": "invert_y", "description": "Set to true invert the Y index", "type": "bool", "default": "false" },
-            { "name": "format",   "description": "Image format to assume", "type": "string", "default": "" },
-            { "name": "elevation_encoding", "description": "How elevation is encoded", "type": "string", "default": "" }
-            ]
-        }
-    )" );
 }
 
 //........................................................................
@@ -248,10 +217,11 @@ XYZImageLayer::openImplementation()
 
     if (dataExtents.empty())
     {
-        dataExtents.push_back(DataExtent(
-            getProfile()->getExtent(),
-            options().minLevel().value(),
-            options().maxLevel().value()));
+        DataExtent e(getProfile()->getExtent());
+        // these copy the optional, retaining the set or unset state:
+        e.minLevel() = options().minLevel();
+        e.maxLevel() = options().maxLevel();
+        dataExtents.emplace_back(e);
     }
 
     setDataExtents(dataExtents);
@@ -324,6 +294,12 @@ XYZElevationLayer::openImplementation()
         return status;
 
     setProfile(_imageLayer->getProfile());
+
+    if (!options().maxLevel().isSet())
+    {
+        OE_WARN << LC << "Warning, max_level not set on this layer, so it will default to "
+            << options().maxLevel().value() << ". This may lead to poor performance or missing data." << std::endl;
+    }
 
     DataExtentList de;
     _imageLayer->getDataExtents(de);

@@ -100,12 +100,18 @@ KML_Geometry::parseCoords( xml_node<>* node, KMLContext& cx )
         xml_node<>* coord = coords->first_node();
         while (coord)
         {
-            StringVector tuples;
-            StringTokenizer(coord->value(), tuples, " \n", "", false, true);
+            auto tuples = StringTokenizer()
+                .delim(",").delim(" ").delim("\n")
+                .keepEmpties(false)
+                .tokenize(coord->value());
+
             for (StringVector::const_iterator s = tuples.begin(); s != tuples.end(); ++s)
             {
-                StringVector parts;
-                StringTokenizer(*s, parts, ",", "", false, true);
+                auto parts = StringTokenizer()
+                    .delim(",")
+                    .keepEmpties(false)
+                    .tokenize(*s);
+
                 if (parts.size() >= 2)
                 {
                     osg::Vec3d point;

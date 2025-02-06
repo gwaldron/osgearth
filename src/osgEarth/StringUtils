@@ -16,8 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_STRING_UTILS_H
-#define OSGEARTH_STRING_UTILS_H 1
+#pragma once
 
 #include <osgEarth/Common>
 #include <osg/Vec3>
@@ -159,7 +158,7 @@ namespace osgEarth { namespace Util
     extern OSGEARTH_EXPORT std::string prettyPrintSize( double mb );  
     
     //! Extract the "i-th" token from a delimited string
-    extern OSGEARTH_EXPORT std::string getToken(const std::string& input, unsigned i, const std::string& delims=",");
+    extern OSGEARTH_EXPORT std::string getToken(const std::string& input, unsigned i, char delim);
 
 
     //------------------------------------------------------------------------
@@ -303,48 +302,73 @@ namespace osgEarth { namespace Util
     class OSGEARTH_EXPORT StringTokenizer
     {
     public:
-        StringTokenizer( 
-            const std::string& delims =" \t\r\n", 
-            const std::string& quotes ="'\"" );
+        StringTokenizer() = default;
 
-        StringTokenizer(
-            const std::string& input,
-            StringVector& output,
-            const std::string& delims =" \t\r\n", 
-            const std::string& quotes ="'\"",
-            bool keepEmpties =true, 
-            bool trimTokens =true);
+        //! Tokenize input into output.
+        //! @return true upon success, false if there was a dangling quote.
+        std::vector<std::string> operator()(const std::string& input, bool* error =nullptr) const;
 
-        StringTokenizer(
-            const std::string& input,
-            StringTable& output,
-            const std::string& delims = " \t\r\n",
-            const std::string& keypairseparators = "=",
-            const std::string& quotes = "'\"",
-            bool keepEmpties = true,
-            bool trimTokens = true);
+        //! Backwards compatibility
+        //! @deprecated
+        void tokenize(const std::string& input, std::vector<std::string>& output) const {
+            output = operator()(input, nullptr);
+        }
 
+        //! Alias
+        std::vector<std::string> tokenize(const std::string& input) const {
+            return operator()(input, nullptr);
+        }
 
-        void tokenize( const std::string& input, StringVector& output ) const;
+        //! Whether to keep emptry tokens in the output.
+        StringTokenizer& keepEmpties(bool value) {
+            _allowEmpties = value;
+            return *this;
+        }
 
-        bool& keepEmpties() { return _allowEmpties; }
+        //! Whether to trim leading and training whitespace from tokens.
+        StringTokenizer& trimTokens(bool value) {
+            _trimTokens = value;
+            return *this;
+        }
 
-        bool& trimTokens() { return _trimTokens; }
+        //! Adds a delimiter and whether to keep it in the output as a separate token.
+        StringTokenizer& delim(const std::string& value, bool keepAsToken =false) {
+            _delims[value] = keepAsToken;
+            return *this;
+        }
 
-        void addDelim( char delim, bool keepAsToken =false );
+        //! Adds a quote character and whether to keep it in the output as a separate token.
+        //! Use this is the quote opener is the same as the closer (like "'")
+        StringTokenizer& quote(char opener_and_closer, bool keepInToken = true) {
+            _quotes[opener_and_closer] = std::make_pair(opener_and_closer, keepInToken);
+            return *this;
+        }
 
-        void addDelims( const std::string& delims, bool keepAsTokens =false );
+        //! Adds a quote character pair and whether to keep them in the output as separate tokens.
+        //! Use this if the quote chars don't match (like '{' and '}')
+        StringTokenizer& quotePair(char opener, char closer, bool keepInToken = true) {
+            _quotes[opener] = std::make_pair(closer, keepInToken);
+            return *this;
+        }
 
-        void addQuote( char delim, bool keepInToken =false );
+        //! Adds standard whitespace characters as delimiters.
+        StringTokenizer& whitespaceDelims() {
+            return delim(" ").delim("\t").delim("\n").delim("\r");
+        }
 
-        void addQuotes( const std::string& delims, bool keepInTokens =false );
+        //! Adds the standard quote characters: single and double quotes, kept in the token.
+        StringTokenizer& standardQuotes() {
+            return quote('\'').quote('"');
+        }
 
     private:
-        using TokenMap = std::map<char,bool>;
-        TokenMap _delims;
-        TokenMap _quotes;
-        bool     _allowEmpties;
-        bool     _trimTokens;
+        using DelimiterMap = std::map<std::string, bool>; // string, keep?
+        using QuoteMap = std::map<char, std::pair<char, bool>>; // open, close, keep?
+
+        DelimiterMap _delims;
+        QuoteMap _quotes;
+        bool _allowEmpties = true;
+        bool _trimTokens = true;
     };
 } }
 
@@ -353,7 +377,3 @@ namespace osgEarth
 {
     namespace Strings = osgEarth::Util;
 }
-
-
-#endif // OSGEARTH_STRING_UTILS_H
-

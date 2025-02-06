@@ -2881,12 +2881,15 @@ ImageUtils::getMaxTextureSize(const osg::Image* image, const osgDB::Options* opt
 
         else if (!options->getOptionString().empty())
         {
-            std::vector<std::string> tokens;
-            StringTokenizer(options->getOptionString(), tokens);
+            auto tokens = StringTokenizer()
+                .whitespaceDelims()
+                .standardQuotes()
+                .tokenize(options->getOptionString());
+
             for (auto& token : tokens)
             {
-                std::vector<std::string> kvp;
-                StringTokenizer(token, kvp, "=");
+                auto kvp = StringTokenizer().delim("=").standardQuotes().tokenize(token);
+
                 if (kvp.size() == 2 && kvp[0] == "osgearth.max_texture_size")
                 {
                     maxdim = std::max(as<int>(kvp[1], maxdim), 1);

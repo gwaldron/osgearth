@@ -557,7 +557,6 @@ BuildGeometryFilter::processPolygonizedLines(FeatureList&   features,
         {
             polygonizer = new PolygonizeLinesOperator(line);
         }
-        //GPULinesOperator gpuLines(*line->stroke() );
 
         // iterate over all the feature's geometry parts. We will treat
         // them as lines strings.

@@ -51,8 +51,11 @@ namespace osgEarth { namespace Util
                 _tags.insert( normalize(*i) );
         }
         void addTags( const std::string& tagString ) {
-            TagVector tags;
-            StringTokenizer( tagString, tags, " ", "\"'", false, true );
+            auto tags = StringTokenizer()
+                .delim(" ")
+                .standardQuotes()
+                .keepEmpties(false)
+                .tokenize(tagString);
             addTags( tags );
         }
         void removeTag( const std::string& tag ) {
@@ -137,8 +140,11 @@ namespace osgEarth { namespace Util
                 _tags.insert( normalize(*i) );
         }
         void addTags( const std::string& tagString ) {
-            TagVector tags;
-            StringTokenizer( tagString, tags, " ", "\"'", false, true );
+            auto tags = StringTokenizer()
+                .delim(" ")
+                .standardQuotes()
+                .keepEmpties(false)
+                .tokenize(tagString);
             addTags( tags );
         }
         void removeTag( const std::string& tag ) {

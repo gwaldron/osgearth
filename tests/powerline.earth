@@ -70,8 +70,7 @@
     </TiledFeatureModel>
 
     <XYZFeatures name="power-lines">
-        <url>http://vr-theworld.com/vr-theworld/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
-        <xurl>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</xurl>
+        <url>https://readymap.org/readymap/mbtiles/osm/{z}/{x}/{-y}.pbf</url>
         <min_level>14</min_level>
         <max_level>14</max_level>
         <profile>spherical-mercator</profile>

@@ -137,9 +137,10 @@ namespace
         Config libraries = conf.child("libraries");
         if (!libraries.value().empty())
         {
-            StringTokenizer izer( ";" );
-            StringVector libs;
-            izer.tokenize( libraries.value(), libs );
+            auto libs = StringTokenizer()
+                .delim(";")
+                .tokenize(libraries.value());
+
             for (StringVector::iterator itr = libs.begin(); itr != libs.end(); ++itr)
             {
                 std::string lib = *itr;

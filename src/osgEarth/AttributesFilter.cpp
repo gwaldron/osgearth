@@ -42,8 +42,7 @@ AttributesFilter::AttributesFilter(const Config& conf)
 {
     if (conf.key() == "attributes")
     {
-        StringTokenizer tok(",");
-        tok.tokenize(conf.value(), _attributes);
+        _attributes = StringTokenizer().delim(",").tokenize(conf.value());
     }
 }
 

@@ -246,7 +246,7 @@ RoadSurfaceLayer::createImageImplementation(const TileKey& key, ProgressCallback
     GeoExtent outputExtent = key.getExtent();
 
     // Establish a local tangent plane near the output extent. This will allow
-    // the compiler to render the tile in a location cartesian space.
+    // the compiler to render the tile in a local cartesian space.
     const SpatialReference* keySRS = outputExtent.getSRS();
     osg::Vec3d pos(outputExtent.west(), outputExtent.south(), 0);
     osg::ref_ptr<const SpatialReference> srs = keySRS->createTangentPlaneSRS(pos);

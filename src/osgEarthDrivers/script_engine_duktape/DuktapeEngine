@@ -16,9 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#ifndef OSGEARTHDRIVERS_DUKTAPE_ENGINE_H
-#define OSGEARTHDRIVERS_DUKTAPE_ENGINE_H 1
+#pragma once
 
 #include <osgEarth/ScriptEngine>
 #include <osgEarth/Script>
@@ -62,15 +60,15 @@ namespace osgEarth { namespace Drivers { namespace Duktape
 
         struct Context
         {
-            Context();
+            Context() = default;
             ~Context();
             void initialize(const ScriptEngineOptions&, bool);
-            duk_context* _ctx;
             osg::observer_ptr<const Feature> _feature;
             std::string _bytecodeSource;
-            unsigned char* _bytecode;
-            unsigned _bytecodeSize;
-            unsigned _errorCount;
+            duk_context* _ctx = nullptr;
+            unsigned char* _bytecode = nullptr;
+            unsigned _bytecodeSize = 0u;
+            unsigned _errorCount = 0u;
         };
 
         PerThread<Context> _contexts;
@@ -84,5 +82,3 @@ namespace osgEarth { namespace Drivers { namespace Duktape
     };
 
 } } } // namespace osgEarth::Drivers::Duktape
-
-#endif // OSGEARTHDRIVERS_DUKTAPE_ENGINE_H

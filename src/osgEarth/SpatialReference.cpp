@@ -1529,7 +1529,20 @@ SpatialReference::init()
     if ( _name == "unnamed" || _name == "unknown" || _name.empty() )
     {
         StringTable proj4_tok;
-        StringTokenizer(_proj4, proj4_tok);
+
+        auto kvps = StringTokenizer()
+            .whitespaceDelims()
+            .standardQuotes()
+            .tokenize(_proj4);
+
+        StringTokenizer tokenize_kvp;
+        tokenize_kvp.delim("=");
+        for (auto& kvp : kvps) {
+            auto tokens = tokenize_kvp(kvp);
+            if (tokens.size() == 2)
+                proj4_tok[tokens[0]] = tokens[1];
+        }
+
         if (proj4_tok["+proj"] == "utm")
         {
             _name = Stringify() << "UTM " << proj4_tok["+zone"];

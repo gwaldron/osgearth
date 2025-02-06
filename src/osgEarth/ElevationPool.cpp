@@ -514,8 +514,10 @@ ElevationPool::prepareEnvelope(
     env._lod = std::min(getLOD(refPointMap.x(), refPointMap.y()), (int)maxLOD);
 
     // This can happen if the elevation data publishes no data extents
-    if (env._lod < 0)
+    if (env._lod < 0 && !_elevationLayers.empty())
+    {
         env._lod = maxLOD;
+    }
 
     env._profile->getNumTiles(env._lod, env._tw, env._th);
 
@@ -538,6 +540,13 @@ ElevationPool::Envelope::sampleMapCoords(
 
     if (begin == end)
         return -1;
+
+    if (_lod < 0)
+    {
+        for(auto i = begin; i != end; ++i)
+            i->z() = failValue;
+        return 0;
+    }
 
     ScopedReadLock lk(_pool->_mutex);
 
@@ -648,6 +657,13 @@ ElevationPool::sampleMapCoords(
         return -1;
 
     sync(map.get(), ws);
+
+    if (_elevationLayers.empty())
+    {
+        for (auto i = begin; i != end; ++i)
+            i->z() = failValue;
+        return 0;
+    }
 
     ScopedReadLock lk(_mutex);
 
@@ -792,6 +808,14 @@ ElevationPool::sampleMapCoords(
         return -1;
 
     sync(map.get(), ws);
+
+    if (_elevationLayers.empty())
+    {
+        for (auto i = begin; i != end; ++i)
+            i->z() = failValue;
+        return 0;
+    }
+
     ScopedReadLock lk(_mutex);
 
     Internal::RevElevationKey key;
@@ -927,6 +951,9 @@ ElevationPool::getSample(
     // ensure the Pool is in sync with the map
     sync(map, ws);
 
+    if (_elevationLayers.empty())
+        return {};
+
     ScopedReadLock lk(_mutex);
 
     Internal::RevElevationKey key;
@@ -964,11 +991,14 @@ ElevationPool::getSample(
     ProgressCallback* progress)
 {
     if (!p.isValid())
-        return ElevationSample();
+        return {};
 
     osg::ref_ptr<const Map> map = _map.get();
     if (!map.valid() || !map->getProfile())
-        return ElevationSample();
+        return {};
+
+    if (_elevationLayers.empty())
+        return {};
 
     if (!p.getSRS()->isHorizEquivalentTo(map->getProfile()->getSRS()))
     {
@@ -990,11 +1020,14 @@ ElevationPool::getSample(
     ProgressCallback* progress)
 {
     if (!p.isValid())
-        return ElevationSample();
+        return {};
+
+    if (_elevationLayers.empty())
+        return {};
 
     osg::ref_ptr<const Map> map;
     if (_map.lock(map) == false || map->getProfile() == NULL)
-        return ElevationSample();
+        return {};
 
     // mostly right. :)
     double resolutionInMapUnits = SpatialReference::transformUnits(

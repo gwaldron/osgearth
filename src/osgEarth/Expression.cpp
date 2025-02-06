@@ -99,18 +99,25 @@ NumericExpression::init()
     _vars.clear();
     _rpn.clear();
 
-    StringTokenizer variablesTokenizer( "", "" );
-    variablesTokenizer.addDelims( "[]", true );
-    variablesTokenizer.addQuotes( "'\"", true );
-    variablesTokenizer.keepEmpties() = false;
+    StringTokenizer tokenizeOperands;
+    tokenizeOperands
+        .delim(",", true)
+        .delim("(", true)
+        .delim(")", true)
+        .delim("%", true)
+        .delim("*", true)
+        .delim("/", true)
+        .delim("+", true)
+        .delim("-", true)
+        .standardQuotes()
+        .keepEmpties(false);
 
-    StringTokenizer operandTokenizer( "", "" );
-    operandTokenizer.addDelims( ",()%*/+-", true );
-    operandTokenizer.addQuotes( "'\"", true );
-    operandTokenizer.keepEmpties() = false;
-
-    StringVector variablesTokens;
-    variablesTokenizer.tokenize( _src, variablesTokens );
+    auto variablesTokens = StringTokenizer()
+        .delim("[", true)
+        .delim("]", true)
+        .standardQuotes()
+        .keepEmpties(false)
+        .tokenize(_src);
 
     StringVector t;
     bool invar = false;
@@ -136,8 +143,7 @@ NumericExpression::init()
         else
         {
             // Operands, tokenize it and add tokens
-            StringVector operandTokens;
-            operandTokenizer.tokenize( variablesTokens[i], operandTokens );
+            auto operandTokens = tokenizeOperands(variablesTokens[i]);
             t.insert(t.end(), operandTokens.begin(), operandTokens.end());
         }
     }

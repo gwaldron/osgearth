@@ -214,11 +214,50 @@ namespace
 
 //............................................................................
 
-DuktapeEngine::Context::Context()
+namespace
 {
-    _ctx = nullptr;
-    _bytecode = nullptr;
-    _errorCount = 0u;
+    std::string prepareScript(const std::string& input)
+    {
+        // There is an apparent bug(?) in duktape with respect to newlines.
+        // Where this would return true:
+        // 
+        //    return feature.properties.landuse === 'forest';
+        // 
+        // ..this returns false:
+        // 
+        //    return
+        //        feature.properties.landuse === 'forest';
+        //
+        // The workaround here is to remove newlines (that are not inside quotes);
+        // we also have to remove inline comments along the way.
+
+        // tokenizer that will detect an inline comment
+        StringTokenizer stripInlineComment;
+        stripInlineComment.delim("//").standardQuotes();
+
+        // split the script into lines
+        auto lines = StringTokenizer()
+            .delim("\n")
+            .standardQuotes()
+            .keepEmpties(false)
+            .tokenize(input);
+
+        // remove inline comments
+        for (auto& line : lines)
+        {
+            auto tokens = stripInlineComment(line);
+            if (tokens.size() > 0) // should always be true
+                line = tokens[0];
+        }
+
+        // reassemble the script into a single line string
+        std::string output;
+        output.reserve(input.size());
+        for (auto& line : lines)
+            output.append(line).append(" ");
+
+        return output;
+    }
 }
 
 void
@@ -233,7 +272,12 @@ DuktapeEngine::Context::initialize(const ScriptEngineOptions& options, bool comp
         // any functions or objects with the EcmaScript global object.
         if ( options.script().isSet() )
         {
-            std::string temp(options.script()->getCode());
+            //std::string temp(options.script()->getCode());
+
+            auto temp = prepareScript(options.script()->getCode());
+
+            OE_INFO << "New script context! Compiling static script:\n" << temp << std::endl;
+
             bool ok = (duk_peval_string(_ctx, temp.c_str()) == 0); // [ "result" ]
             if ( !ok )
             {
@@ -286,19 +330,16 @@ DuktapeEngine::~DuktapeEngine()
 }
 
 bool
-DuktapeEngine::compile(
-    Context& c,
-    const std::string& code,
-    ScriptResult& result)
+DuktapeEngine::compile(Context& c, const std::string& code, ScriptResult& result)
 {
-    //OE_PROFILING_ZONE;
-
     duk_context* ctx = c._ctx;
 
     if (code != c._bytecodeSource)
     {
         c._bytecodeSource = code;
         c._errorCount = 0u;
+
+        OE_INFO << "Compiling: " << code << std::endl;
 
         if (duk_pcompile_string(ctx, 0, code.c_str()) != 0) // [function|error]
         {

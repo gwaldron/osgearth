@@ -159,8 +159,12 @@ IconResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions
 
     else // failing that, fall back on the old encoding format..
     {
-        StringVector tok;
-        StringTokenizer( *uri, tok, "()" );
+        auto tok = StringTokenizer()
+            .delim("(")
+            .delim(")")
+            .standardQuotes()
+            .tokenize(*uri);
+
         if (tok.size() >= 2)
             return createNodeFromURI( URI(tok[1]), dbOptions );
     }

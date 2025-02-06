@@ -92,8 +92,10 @@ Config LandCoverGroup::Options::getConfig() const
 void
 LandCoverGroup::init()
 {
-    Strings::StringTokenizer t;
-    t.tokenize(options().landCoverClasses().get(), _classNames);
+    _classNames = Strings::StringTokenizer()
+        .whitespaceDelims()
+        .standardQuotes()
+        .tokenize(options().landCoverClasses().get());
 }
 
 //..........................................................

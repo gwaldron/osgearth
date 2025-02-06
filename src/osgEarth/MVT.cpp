@@ -388,9 +388,12 @@ namespace osgEarth { namespace MVT
                         {
                             std::string other_tags = value.string_value();
 
-                            StringTokenizer tok("=>");
-                            StringVector tized;
-                            tok.tokenize(other_tags, tized);
+                            auto tized = StringTokenizer()
+                                .delim("=")
+                                .delim(">")
+                                .standardQuotes()
+                                .tokenize(other_tags);
+
                             if (tized.size() == 3)
                             {
                                 if (tized[0] == "height")

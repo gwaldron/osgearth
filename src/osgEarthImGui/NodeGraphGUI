@@ -53,6 +53,42 @@ namespace osgEarth
             {
                 if (ImGui::BeginMenuBar())
                 {
+                    if (ImGui::BeginMenu("File"))
+                    {                       
+                        if (ImGui::MenuItem("Open"))
+                        {
+                            auto f = pfd::open_file("Node Graph", pfd::path::home(),
+                                                               { "All Files", "*" });
+
+                           
+                            if (!f.result().empty())
+                            {
+                                osg::ref_ptr<XmlDocument> doc = XmlDocument::load(f.result()[0]);
+                                if (doc.valid())
+                                {
+                                    auto nodeGraph = NodeGraph::fromConfig(doc->getConfig());
+                                    _proceduralModelLayer->setNodeGraph(nodeGraph);
+                                }
+                            }
+                        }
+
+                        if (ImGui::MenuItem("Save As"))
+                        {
+                            auto f = pfd::save_file("Node Graph", pfd::path::home(),
+                                { "All Files", "*" });
+
+                            if (!f.result().empty())
+                            {
+                                Config config = _proceduralModelLayer->getNodeGraph()->getConfig();
+                                std::ofstream out(f.result());
+                                osg::ref_ptr<XmlDocument> xml = new XmlDocument(config);
+                                xml->store(out);
+                            }
+                        }
+
+                        ImGui::EndMenu();
+                    }
+
                     if (ImGui::BeginMenu("Add Node"))
                     {
                         if (ImGui::MenuItem("Sphere"))
@@ -258,7 +294,7 @@ namespace osgEarth
 
                         if (ImGui::MenuItem("Join Features"))
                         {
-                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<JoinOperation>());
+                            _proceduralModelLayer->getNodeGraph()->operations.push_back(std::make_shared<JoinFeaturesOperation>());
                         }
 
                         ImGui::EndMenu();
@@ -344,10 +380,8 @@ namespace osgEarth
                             if (sphere)
                             {
                                 ImGui::PushItemWidth(100.0f);
-                                osg::Vec4 color = sphere->getColor();
-                                if (ImGui::ColorEdit4("Color", (float*)color._v, ImGuiColorEditFlags_NoInputs))
+                                if (ImGui::ColorEdit4("Color", (float*)sphere->color._v, ImGuiColorEditFlags_NoInputs))
                                 {
-                                    sphere->setColor(color);
                                     updateNodeGraph();
                                 }
                                 ImGui::PopItemWidth();
@@ -369,10 +403,8 @@ namespace osgEarth
                             {
                                 ImGui::PushItemWidth(100.0f);
 
-                                osg::Vec4 color = imageMask->getColor();
-                                if (ImGui::ColorEdit4("Color", (float*)color._v, ImGuiColorEditFlags_NoInputs))
+                                if (ImGui::ColorEdit4("Color", (float*)imageMask->color._v, ImGuiColorEditFlags_NoInputs))
                                 {
-                                    imageMask->setColor(color);
                                     updateNodeGraph();
                                 }
 
@@ -433,7 +465,7 @@ namespace osgEarth
                                 ImGui::PopItemWidth();
                             }
 
-                            JoinOperation* join = dynamic_cast<JoinOperation*>(o.get());
+                            JoinFeaturesOperation* join = dynamic_cast<JoinFeaturesOperation*>(o.get());
                             if (join)
                             {
                                 ImGui::PushItemWidth(100.0f);
@@ -491,23 +523,17 @@ namespace osgEarth
 
                                 bool dirty = false;
 
-                                osg::Vec3d translation, scale;
-                                osg::Quat rotation, so;
-
-                                transformOp->getTransform().decompose(translation, rotation, scale, so);
-
-                                //if (ImGui::DragScalarN("Translation", ImGuiDataType_Double, translate._v, 3))
-                                if (ImGui::InputScalarN("Translation", ImGuiDataType_Double, translation._v, 3))
+                                if (ImGui::InputScalarN("Translation", ImGuiDataType_Double, transformOp->translation._v, 3))
                                 {
                                     dirty = true;
                                 }
 
-                                if (ImGui::InputScalarN("Rotation", ImGuiDataType_Double, rotation._v, 4))
+                                if (ImGui::InputScalarN("Rotation", ImGuiDataType_Double, transformOp->rotation._v, 3))
                                 {
                                     dirty = true;
                                 }
 
-                                if (ImGui::InputScalarN("Scale", ImGuiDataType_Double, scale._v, 3))
+                                if (ImGui::InputScalarN("Scale", ImGuiDataType_Double, transformOp->scale._v, 3))
                                 {
                                     dirty = true;
                                 }
@@ -515,8 +541,6 @@ namespace osgEarth
 
                                 if (dirty)
                                 {
-                                    osg::Matrix newMatrix = osg::Matrixd::scale(scale) * osg::Matrix::rotate(rotation) * osg::Matrix::translate(translation);
-                                    transformOp->setTransform(newMatrix);
                                     updateNodeGraph();
                                 }
 

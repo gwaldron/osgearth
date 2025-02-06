@@ -108,6 +108,7 @@ void PowerlineLayer::Options::fromConfig(const Config& conf)
     conf.get("tower_expr", towerExpr());
     conf.get("cable_expr", cableStyleExpr());
     conf.get("num_cables", numCablesExpr());
+    conf.get("infer_tower_locations", inferTowerLocations());
 
     for (auto& modelConf : conf.children("tower_model"))
         towerModels().push_back(ModelOptions(modelConf));
@@ -123,6 +124,7 @@ PowerlineLayer::Options::getConfig() const
     conf.set("tower_expr", towerExpr());
     conf.set("cable_expr", cableStyleExpr());
     conf.set("num_cables", numCablesExpr());
+    conf.set("infer_tower_locations", inferTowerLocations());
 
     for(auto& towerModel : towerModels())
         conf.add("tower_model", towerModel.getConfig());
@@ -1052,7 +1054,45 @@ bool PowerlineFeatureNodeFactory::createOrUpdateNode(
 {
     FilterContext sharedCX = context;
     FeatureList workingSet; 
-    cursor->fill(workingSet);
+
+    if (_powerlineOptions.inferTowerLocations() == true)
+    {
+        // collect just the lines, toss the points
+        cursor->fill(workingSet, [&](const Feature* feature) {
+            return feature->getGeometry()->isLinear();
+        });
+
+        // add back in a point-set version of each line
+        int count = 0;
+        for (auto& feature : workingSet)
+        {
+            count += feature->getGeometry()->size();
+        }
+        FeatureList towerFeatures;
+        towerFeatures.reserve(count);
+
+        for (auto& feature : workingSet)
+        {
+            GeometryIterator iter(feature->getGeometry(), false);
+            iter.forEach([&](Geometry* geom)
+                {
+                    for (auto& p : *geom)
+                    {
+                        auto point = new Point();
+                        point->push_back(p);
+                        towerFeatures.push_back(new Feature(point, feature->getSRS()));
+                    }
+                });
+        }
+        workingSet.reserve(workingSet.size() + towerFeatures.size());
+        for (auto& f : towerFeatures)
+            workingSet.push_back(f);
+    }
+    else
+    {
+        // assume the feature input includes tower locations as points
+        cursor->fill(workingSet);
+    }
 
     Style cableStyle;
 
